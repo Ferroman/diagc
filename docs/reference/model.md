@@ -86,7 +86,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `style` | `RelationStyle?` | Per-relation visual overrides. |
 | `description` | `string?` | |
 | `layer` | `string?` | Must match a declared layer id. |
-| `polarity` | `'+' \| '-'?` | Causal-loop diagrams only. |
+| `polarity` | `'+' \| '-'?` | Causal-loop diagrams only. Colours the link green (`+`) or red (`-`) unless `style.color` or a layer tint says otherwise. |
 | `delay` | `boolean?` | Causal-loop diagrams only. |
 | `fromColumn` | `string?` | FK column on `from`; anchors the edge to that row. |
 | `toColumn` | `string?` | Referenced column on `to`; defaults to the target's primary key. |
@@ -96,7 +96,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | Field | Values | Default |
 | --- | --- | --- |
 | `shape` | `curved` \| `straight` \| `step` | `curved` |
-| `color` | any CSS colour | the layer tint |
+| `color` | any CSS colour | the layer tint, then the causal-loop polarity colour |
 | `width` | number (px) | the kind's width |
 | `line` | `solid` \| `dashed` \| `dotted` | the kind's line |
 | `end` | `arrow` \| `dot` \| `square` \| `diamond` \| `none` | `arrow` |

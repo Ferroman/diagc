@@ -395,6 +395,48 @@ describe('DiagramEdge', () => {
     });
   });
 
+  describe('causal-loop-diagram polarity colour', () => {
+    const strokeOf = (c: HTMLElement) =>
+      c.querySelector('path.react-flow__edge-path')?.getAttribute('style') ?? '';
+    const glyphFill = (c: HTMLElement) =>
+      (c.querySelector('.dg-polarity') as SVGTextElement | null)?.style.fill ?? '';
+
+    it('strokes a "+" link and its glyph with the positive token', () => {
+      const { container } = renderEdge({ notation: 'causal-loop', polarity: '+' });
+      expect(strokeOf(container)).toContain('var(--dg-polarity-positive)');
+      expect(glyphFill(container)).toContain('var(--dg-polarity-positive)');
+    });
+
+    it('strokes a "−" link and its glyph with the negative token', () => {
+      const { container } = renderEdge({ notation: 'causal-loop', polarity: '-' });
+      expect(strokeOf(container)).toContain('var(--dg-polarity-negative)');
+      expect(glyphFill(container)).toContain('var(--dg-polarity-negative)');
+    });
+
+    it('yields to a per-relation colour override, glyph included', () => {
+      const { container } = renderEdge({ notation: 'causal-loop', polarity: '+', relStyle: { color: '#123456' } });
+      expect(strokeOf(container)).toContain('#123456');
+      expect(strokeOf(container)).not.toContain('polarity-positive');
+      expect(glyphFill(container)).toContain('#123456');
+    });
+
+    it('yields to a layer tint', () => {
+      const { container } = renderEdge({ notation: 'causal-loop', polarity: '-', tint: '#abcdef' });
+      expect(strokeOf(container)).toContain('#abcdef');
+      expect(strokeOf(container)).not.toContain('polarity-negative');
+    });
+
+    it('leaves an unsigned causal-loop link on the default edge colour', () => {
+      const { container } = renderEdge({ notation: 'causal-loop', delay: true });
+      expect(strokeOf(container)).toContain('var(--dg-edge)');
+    });
+
+    it('does not colour by polarity outside the causal-loop notation', () => {
+      const { container } = renderEdge({ polarity: '-' });
+      expect(strokeOf(container)).toContain('var(--dg-edge)');
+    });
+  });
+
   describe('curvature', () => {
     // Bottom/Top facing each other "naturally" (target below-right of
     // source) is curvature-invariant by construction (xyflow's control

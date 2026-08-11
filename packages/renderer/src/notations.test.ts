@@ -16,6 +16,15 @@ describe('notationProfile', () => {
     expect(profile.overlay).toBe('loop-labels');
   });
 
+  it('colours causal-loop links by polarity, from theme tokens', () => {
+    const colors = notationProfile('causal-loop').edge?.polarityColors;
+    expect(colors).toEqual({ '+': 'var(--dg-polarity-positive)', '-': 'var(--dg-polarity-negative)' });
+  });
+
+  it('leaves the default profile uncoloured by polarity', () => {
+    expect(notationProfile(undefined).edge?.polarityColors).toBeUndefined();
+  });
+
   it('exposes the causal-loop profile keyed by notation id in NOTATION_PROFILES', () => {
     expect(NOTATION_PROFILES['causal-loop']).toBe(notationProfile('causal-loop'));
   });

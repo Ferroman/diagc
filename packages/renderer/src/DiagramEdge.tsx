@@ -309,9 +309,13 @@ export function DiagramEdge({
     [data?.stylePreset, path, id],
   );
 
-  // Precedence: per-relation override > layer tint > kind registry > defaults.
+  // Precedence: per-relation override > layer tint > notation polarity > kind registry > defaults.
+  // The polarity colour sits *below* the tint deliberately: a tinted layer is an
+  // explicit authored grouping, and letting the sign win would make layer tints
+  // inert on exactly the diagrams that use them most.
   const kind: KindStyle = data?.kindRegistry.resolve(data.kind) ?? {};
-  const stroke = rel?.color ?? data?.tint ?? 'var(--dg-edge)';
+  const polarityColor = data?.polarity !== undefined ? profile.edge?.polarityColors?.[data.polarity] : undefined;
+  const stroke = rel?.color ?? data?.tint ?? polarityColor ?? 'var(--dg-edge)';
   const strokeWidth = rel?.width ?? kind.width ?? 1.5;
   const line = rel?.line ?? (kind.dashed === true ? 'dashed' : 'solid');
   const animated = rel?.animated ?? kind.animated === true;
@@ -475,6 +479,11 @@ export function DiagramEdge({
           y={polarityFrame.point.y + polarityFrame.normal.y * POLARITY_OFFSET}
           textAnchor="middle"
           dominantBaseline="central"
+          /* The glyph annotates the line, so it takes the line's colour — but
+             only where the notation colours by sign; elsewhere it stays text-
+             coloured as before. Inline style, not a `fill` attribute: the
+             stylesheet's `.dg-polarity { fill }` outranks presentation attrs. */
+          {...(polarityColor !== undefined ? { style: { fill: stroke } } : {})}
         >
           {data.polarity === '-' ? '−' : '+'}
         </text>

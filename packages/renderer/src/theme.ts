@@ -20,6 +20,10 @@ export interface ThemeTokens {
   tableTypeText: string;
   tablePk: string;
   tableFk: string;
+  /** causal-loop '+' (same-direction) links and their glyph */
+  polarityPositive: string;
+  /** causal-loop '−' (opposing) links and their glyph */
+  polarityNegative: string;
 }
 
 export const lightTheme: ThemeTokens = {
@@ -44,6 +48,8 @@ export const lightTheme: ThemeTokens = {
   tableTypeText: '#66737f',
   tablePk: '#b8860b',
   tableFk: '#2563eb',
+  polarityPositive: '#1f8a4c',
+  polarityNegative: '#c2413c',
 };
 
 export const darkTheme: ThemeTokens = {
@@ -68,6 +74,8 @@ export const darkTheme: ThemeTokens = {
   tableTypeText: '#8b98a5',
   tablePk: '#e0b341',
   tableFk: '#60a5fa',
+  polarityPositive: '#5dd39e',
+  polarityNegative: '#f28b82',
 };
 
 const kebab = (s: string): string => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);

@@ -1,4 +1,4 @@
-import type { DiagramNode, NotationId, Size } from '@diagramming/core';
+import type { DiagramNode, NotationId, Polarity, Size } from '@diagramming/core';
 import type { KindStyle, TypeStyle } from './registry';
 
 /** A visual language: default look plus registry/chrome overrides for a plane's notation. */
@@ -9,7 +9,13 @@ export interface NotationProfile {
   kindStyles?: Record<string, KindStyle>;
   edgeCurvature?: number;
   node?: { typelessAsText?: boolean; leafSize?: (n: DiagramNode) => Size | undefined };
-  edge?: { marks?: boolean; bowed?: boolean };
+  edge?: {
+    marks?: boolean;
+    bowed?: boolean;
+    /** stroke colour per polarity, applied to the line *and* its +/− glyph when
+     * nothing more specific (relation override, layer tint) claims the colour */
+    polarityColors?: Record<Polarity, string>;
+  };
   overlay?: 'loop-labels';
 }
 
@@ -18,7 +24,14 @@ const CLD: NotationProfile = {
   className: 'dg-notation-cld',
   edgeCurvature: 0.55,
   node: { typelessAsText: true, leafSize: (n) => (n.type === undefined ? { width: 140, height: 48 } : undefined) },
-  edge: { marks: true, bowed: true },
+  // Signed links carry the colour, not just the glyph: at CLD densities a 13px
+  // +/− is unreadable while a two-colour link mesh reads at a glance. Theme
+  // tokens rather than literals so light/dark and future presets stay in charge.
+  edge: {
+    marks: true,
+    bowed: true,
+    polarityColors: { '+': 'var(--dg-polarity-positive)', '-': 'var(--dg-polarity-negative)' },
+  },
   overlay: 'loop-labels',
 };
 
