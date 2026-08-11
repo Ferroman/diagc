@@ -1,0 +1,184 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import fg from 'fast-glob';
+import { errMessage } from '@diagramming/core';
+import { compileFile } from './compile';
+import { findHome, homePaths } from './home';
+import { formatCompileEvent, startWatch } from './watch';
+import { publishDiagrams } from './publish/publish';
+import { runStudio } from './studio';
+
+const USAGE = `Usage: diagc <compile|watch|publish|studio> [files...] [--out dir]
+
+Commands:
+  compile   Compile *.diagram.{ts,json} sources into overlay artifacts once
+  watch     Recompile — and live-recompile — a directory of sources
+  publish   Compile and render an HTML/PNG site under .diagrams/
+  studio    Run the visual studio against the current directory
+
+Options:
+  --out dir       Artifact output directory (default .diagrams/.artifacts)
+  --no-images     Publish HTML without rendering PNG images
+  --help, -h      Show this help and exit
+`;
+
+interface Args {
+  command: string;
+  files: string[];
+  out: string;
+  images: boolean;
+}
+
+/** Parse argv into command + flags. Unknown flags (anything `--…` that is not
+ * recognized) are an error rather than being silently treated as a file path,
+ * so a typo surfaces loudly instead of quietly skewing the file set. */
+export function parseArgs(argv: string[]): Args {
+  let command = 'compile';
+  const files: string[] = [];
+  let out = '.diagrams/.artifacts';
+  let images = true;
+  let commandSeen = false;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!;
+    if (arg === '--out') {
+      out = argv[++i] ?? out;
+      continue;
+    }
+    if (arg === '--no-images') {
+      images = false;
+      continue;
+    }
+    if (arg === '--help' || arg === '-h') throw new HelpRequested();
+    if (arg.startsWith('--')) throw new UnknownFlagError(arg);
+    // The first non-flag argument names the command; anything after it is a
+    // file path (flags may appear before or after the command).
+    if (!commandSeen) {
+      command = arg;
+      commandSeen = true;
+    } else {
+      files.push(arg);
+    }
+  }
+  return { command, files, out, images };
+}
+
+/** Thrown by {@link parseArgs} for `--help`/`-h`; `main` prints usage and exits 0. */
+export class HelpRequested extends Error {
+  constructor() {
+    super('help requested');
+    this.name = 'HelpRequested';
+  }
+}
+
+/** Thrown by {@link parseArgs} for an unrecognized flag; `main` prints the
+ * offending flag plus usage and exits 1. */
+export class UnknownFlagError extends Error {
+  constructor(flag: string) {
+    super(`Unknown flag '${flag}'`);
+    this.name = 'UnknownFlagError';
+  }
+}
+
+async function main() {
+  let args: Args;
+  try {
+    args = parseArgs(process.argv.slice(2));
+  } catch (e) {
+    if (e instanceof HelpRequested) {
+      console.log(USAGE);
+      process.exit(0);
+    }
+    if (e instanceof UnknownFlagError) {
+      console.error(`diagc: ${e.message}\n`);
+      console.error(USAGE);
+      process.exit(1);
+    }
+    throw e;
+  }
+  const home = homePaths(findHome(fileURLToPath(import.meta.url)));
+
+  if (args.command === 'compile') {
+    const files = args.files.length > 0 ? args.files : await fg('.diagrams/src/**/*.diagram.{ts,json}');
+    let failed = false;
+    for (const file of files) {
+      try {
+        const artifact = await compileFile(file, args.out, { rootDir: '.diagrams/src', coreEntry: home.coreEntry });
+        console.log(formatCompileEvent({ file, ok: true, artifact }));
+      } catch (e) {
+        failed = true;
+        console.error(formatCompileEvent({ file, ok: false, error: errMessage(e) }));
+      }
+    }
+    process.exit(failed ? 1 : 0);
+  } else if (args.command === 'watch') {
+    const dir = args.files[0] ?? '.diagrams/src';
+    startWatch(dir, args.out, {
+      coreEntry: home.coreEntry,
+      onEvent: (e) => {
+        // Success goes to stdout, failure to stderr, so the streams stay parsed
+        // separately by anyone piping them.
+        if (e.ok) console.log(formatCompileEvent(e));
+        else console.error(formatCompileEvent(e));
+      },
+    });
+    console.log(`Watching ${dir} for *.diagram.{ts,json} changes...`);
+  } else if (args.command === 'publish') {
+    if (!existsSync(home.viewerShell)) {
+      console.error('viewer shell not built — run `pnpm --filter @diagramming/viewer build` in the monorepo.');
+      process.exit(1);
+    }
+    const srcDir = '.diagrams/src';
+    const artifactsDir = '.diagrams/.artifacts';
+    // Compile first so artifacts reflect current sources (TS + include expansion).
+    const sources = await fg('**/*.diagram.{ts,json}', { cwd: srcDir, absolute: true });
+    for (const f of sources) {
+      try {
+        await compileFile(f, artifactsDir, { rootDir: srcDir, coreEntry: home.coreEntry });
+      } catch (e) {
+        console.error(`✗ ${f}\n${errMessage(e)}`);
+      }
+    }
+    let images = args.images;
+    let renderPng: ((htmlPath: string, pngPath: string) => Promise<void>) | undefined;
+    if (args.images) {
+      const snapshot = await import('./publish/snapshot');
+      if (snapshot.findChrome() === undefined) {
+        console.log(
+          'No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.',
+        );
+        images = false;
+      } else {
+        renderPng = snapshot.renderPng;
+      }
+    }
+    const res = await publishDiagrams({
+      srcDir,
+      artifactsDir,
+      htmlDir: '.diagrams/html',
+      staticDir: '.diagrams/static',
+      shellPath: home.viewerShell,
+      libraryDir: home.libraryDir,
+      assetsDir: path.join(srcDir, 'assets'),
+      images,
+      names: args.files,
+      ...(renderPng !== undefined ? { renderPng } : {}),
+    });
+    console.log(`✓ ${res.pages.length} page(s) -> .diagrams/html`);
+    if (res.images.length > 0) console.log(`✓ ${res.images.length} image(s) -> .diagrams/static`);
+    console.log(`✓ gallery -> ${res.gallery}`);
+    process.exit(0);
+  } else if (args.command === 'studio') {
+    await runStudio(home, process.cwd());
+    return;
+  } else {
+    console.error(`diagc: Unknown command '${args.command}'.`);
+    console.error(USAGE);
+    process.exit(1);
+  }
+}
+
+main().catch((e) => {
+  console.error(errMessage(e));
+  process.exit(1);
+});

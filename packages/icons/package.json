@@ -1,0 +1,16 @@
+{
+  "name": "@diagramming/icons",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "lucide-react": "^1.25.0",
+    "react": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17"
+  }
+}

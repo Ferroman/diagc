@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "id": "permission",
+  "name": "Permission service",
+  "nodes": [
+    { "id": "svc", "name": "Permission svc", "type": "service" },
+    { "id": "db", "name": "App users", "type": "database", "key": "appuser-db" }
+  ],
+  "containment": [],
+  "relations": [{ "id": "svc->db#0", "from": "svc", "to": "db", "kind": "reads" }],
+  "layers": [],
+  "planes": []
+}

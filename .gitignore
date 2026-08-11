@@ -1,0 +1,12 @@
+node_modules/
+.diagrams/.artifacts/
+dist/
+.claude/*
+CLAUDE.md
+AGENTS.md
+
+# Generated interactive diagram pages (published to a gh-pages branch, not main).
+# .diagrams/static/ (README PNGs) is intentionally NOT ignored — it is committed.
+.diagrams/html/
+
+.worktrees/

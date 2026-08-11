@@ -1,0 +1,212 @@
+import type {
+  Column,
+  ContainmentEdge,
+  DiagramLayer,
+  DiagramLegend,
+  DiagramModel,
+  DiagramNode,
+  DiagramPlane,
+  DiagramRelation,
+  NotationId,
+  Polarity,
+  RelationStyle,
+} from './types';
+import { DiagramValidationError, validate } from './validate';
+
+export interface NodeOpts {
+  type?: string;
+  name?: string;
+  icon?: string;
+  /** silhouette-mask ref (see DiagramNode.shape) */
+  shape?: string;
+  /** image ref for image-typed nodes (see DiagramNode.image) */
+  image?: string;
+  /** fill/accent color (see DiagramNode.color) */
+  color?: string;
+  /** label color override (see DiagramNode.textColor) */
+  textColor?: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  /** cross-diagram identity (see DiagramNode.key) */
+  key?: string;
+  /** compose another diagram's content under this node (see DiagramNode.include) */
+  include?: string;
+  /** restrict this node to a single plane (see DiagramNode.plane) */
+  plane?: string;
+  /** transparent-sheet membership (see DiagramNode.layer) */
+  layer?: string;
+  /** ER-table rows (see DiagramNode.columns) */
+  columns?: Column[];
+}
+
+export interface RelateOpts {
+  kind: string;
+  label?: string;
+  style?: RelationStyle;
+  description?: string;
+  layer?: string;
+  polarity?: Polarity;
+  delay?: boolean;
+  /** FK column on the source table (see DiagramRelation.fromColumn) */
+  fromColumn?: string;
+  /** referenced column on the target table (see DiagramRelation.toColumn) */
+  toColumn?: string;
+}
+
+export interface ContainsOpts {
+  /** plane the containment belongs to; defaults to the model's first-declared plane */
+  plane?: string;
+}
+
+export class NodeRef {
+  constructor(
+    readonly id: string,
+    private readonly builder: ModelBuilder,
+  ) {}
+
+  /** children, optionally followed by a trailing `{ plane }` options object */
+  contains(...args: (NodeRef | ContainsOpts)[]): this {
+    const last = args[args.length - 1];
+    const opts = last !== undefined && !(last instanceof NodeRef) ? last : undefined;
+    for (const child of args) {
+      if (child instanceof NodeRef) this.builder.addContainment(this.id, child.id, opts?.plane);
+    }
+    return this;
+  }
+}
+
+export class ModelBuilder {
+  private nodes: DiagramNode[] = [];
+  private containment: ContainmentEdge[] = [];
+  private relations: DiagramRelation[] = [];
+  private layers: DiagramLayer[] = [];
+  private planes: DiagramPlane[] = [];
+  private legendConfig: DiagramLegend | undefined;
+  private pairCounters = new Map<string, number>();
+
+  constructor(
+    private readonly id: string,
+    private readonly name: string,
+  ) {}
+
+  node(id: string, opts: NodeOpts = {}): NodeRef {
+    const { name, ...rest } = opts;
+    this.nodes.push({ id, name: name ?? id, ...pruneUndefined(rest) });
+    return new NodeRef(id, this);
+  }
+
+  /** ER table: a node of type 'db-table' carrying `columns`. */
+  table(id: string, opts: Omit<NodeOpts, 'type'> & { columns: Column[] }): NodeRef {
+    return this.node(id, { type: 'db-table', ...opts });
+  }
+
+  /**
+   * Foreign key: a `kind:'fk'` relation from `from.fromColumn` to `to.toColumn`.
+   * `toColumn` defaults to the target table's single primary-key column; declare
+   * the target table (with its PK) before calling.
+   */
+  fk(
+    from: NodeRef,
+    fromColumn: string,
+    to: NodeRef,
+    toColumn?: string,
+    opts: Omit<RelateOpts, 'kind' | 'fromColumn' | 'toColumn'> = {},
+  ): this {
+    let resolved = toColumn;
+    if (resolved === undefined) {
+      const target = this.nodes.find((n) => n.id === to.id);
+      const pks = (target?.columns ?? []).filter((c) => c.pk === true);
+      if (pks.length !== 1) {
+        throw new Error(
+          `m.fk: target table '${to.id}' must have exactly one primary-key column (or pass toColumn); found ${pks.length}`,
+        );
+      }
+      resolved = pks[0]!.name;
+    }
+    return this.relate(from, to, { kind: 'fk', ...opts, fromColumn, toColumn: resolved });
+  }
+
+  /** internal — used by NodeRef */
+  addContainment(parent: string, child: string, plane?: string): void {
+    const exists = this.containment.some(
+      (e) => e.parent === parent && e.child === child && e.plane === plane,
+    );
+    if (!exists) this.containment.push({ parent, child, ...pruneUndefined({ plane }) });
+  }
+
+  relate(from: NodeRef, to: NodeRef, opts: RelateOpts): this {
+    const pair = `${from.id}->${to.id}`;
+    const n = this.pairCounters.get(pair) ?? 0;
+    this.pairCounters.set(pair, n + 1);
+    const { kind, ...rest } = opts;
+    this.relations.push({
+      id: `${pair}#${n}`,
+      from: from.id,
+      to: to.id,
+      kind,
+      ...pruneUndefined(rest),
+    });
+    return this;
+  }
+
+  layer(id: string, opts: { name?: string; tint?: string } = {}): this {
+    this.layers.push({ id, name: opts.name ?? id, ...pruneUndefined({ tint: opts.tint }) });
+    return this;
+  }
+
+  plane(
+    id: string,
+    opts: {
+      name?: string;
+      containmentOf?: string;
+      layers?: string[];
+      baseRelations?: boolean;
+      notation?: NotationId;
+      hides?: string[];
+    } = {},
+  ): this {
+    this.planes.push({
+      id,
+      name: opts.name ?? id,
+      ...pruneUndefined({
+        containmentOf: opts.containmentOf,
+        layers: opts.layers,
+        baseRelations: opts.baseRelations,
+        notation: opts.notation,
+        hides: opts.hides,
+      }),
+    });
+    return this;
+  }
+
+  /** Declare a legend. Bare `legend()` means derived sections only. */
+  legend(opts: DiagramLegend = {}): this {
+    this.legendConfig = opts;
+    return this;
+  }
+
+  toJSON(): DiagramModel {
+    const json: DiagramModel = {
+      version: 1,
+      id: this.id,
+      name: this.name,
+      nodes: this.nodes,
+      containment: this.containment,
+      relations: this.relations,
+      layers: this.layers,
+      planes: this.planes,
+      ...(this.legendConfig !== undefined ? { legend: this.legendConfig } : {}),
+    };
+    const issues = validate(json);
+    if (issues.length > 0) throw new DiagramValidationError(issues);
+    return json;
+  }
+}
+
+export function model(id: string, opts: { name?: string } = {}): ModelBuilder {
+  return new ModelBuilder(id, opts.name ?? id);
+}
+
+function pruneUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>;
+}

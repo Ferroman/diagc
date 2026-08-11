@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "id": "umbrella",
+  "name": "Architecture",
+  "nodes": [
+    { "id": "perm", "name": "Permission", "type": "system", "include": "./svc-permission.diagram.json" },
+    { "id": "comm", "name": "Communication", "type": "system", "include": "./svc-communication.diagram.json" }
+  ],
+  "containment": [],
+  "relations": [],
+  "layers": [],
+  "planes": []
+}

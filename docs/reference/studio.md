@@ -1,0 +1,103 @@
+# Studio reference
+
+Every panel, gesture and shortcut in the browser app. Start it with `pnpm dev` (in this repo) or `diagc studio` (anywhere else).
+
+## Modes
+
+| Mode | How you get there | What it allows |
+| --- | --- | --- |
+| **View** | default | Navigate, fold/unfold, toggle layers and planes, inspect. |
+| **Edit** | **Edit** in the top bar, on a JSON-backed diagram | Everything in view, plus mutation and Save. |
+
+A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot enter edit mode. Only `.diagram.json` sources are browser-editable.
+
+**New diagram** is always available while the dev server runs — it creates an empty `.diagram.json` and opens it for editing.
+
+## Navigation
+
+| Gesture | Effect |
+| --- | --- |
+| Double-click a group | Unfold it and glide into it |
+| Double-click it again | Fold it back |
+| Double-click a leaf | Zoom to it |
+| Double-click empty canvas (view mode) | Fit the whole diagram |
+| Scroll | Pan |
+| Pinch, or the corner controls | Zoom |
+| Pin chip on a group header | Force expanded/collapsed, overriding the automatic choice |
+| `⤢` chip on a group header | Enter it as its own diagram |
+| `◎` in the corner controls | Dim everything unconnected to the selection |
+| `▤` in the corner controls | Show/hide the legend. Only present when the diagram declares one and it has rows. A viewer preference, never saved. |
+| Click a layer row in the legend | Toggle that overlay, like the layer chips |
+
+## Editing
+
+| Gesture | Effect |
+| --- | --- |
+| Double-click empty canvas | Drop a node there and name it |
+| Drag a node onto another | Nest it inside |
+| Drag from a connect dot to another node | Create a `sync` relation, pinned to both dots |
+| Double-click a node | Rename in place (Enter commits, Escape cancels) |
+| Double-click an edge | Edit its label in place |
+| Drag an edge endpoint onto another node | Reconnect that end |
+| Drag an image file onto the canvas, or paste one | Create an image node |
+| Drag an image node's corner handles | Resize (aspect locked) |
+| Click a `db-table` node's rows | Add, edit, remove or reorder columns in place |
+| Drag from a column row's connect point to another table | Create a foreign key, drawn crow's-foot and anchored to that row |
+
+New nodes are **typeless** — just a label — so quick sketches stay clean. Give a node a `type` in its panel to get the registry's shape and icon.
+
+## Keyboard
+
+| Action | Shortcut |
+| --- | --- |
+| Add node | `N` |
+| Undo | `Ctrl/Cmd + Z` |
+| Redo | `Ctrl/Cmd + Shift + Z` or `Ctrl + Y` |
+| Save | `Ctrl/Cmd + S` |
+
+Shortcuts are ignored while you are typing in a form field. History is capped at 100 steps.
+
+## Panels
+
+**Properties** (node selected) — name, `type`, `icon`, colour swatches, description, free-form metadata rows, memberships (which parents contain it, per plane), delete.
+
+**Properties** (relation selected) — `kind`, label, `layer`, delete, plus a *Style* section: line shape (curved / straight / step), colour, thickness, line (solid / dashed / dotted), arrow end (arrow / dot / square / diamond / none), from/to side, animated. Anything left at *default* falls back to the kind's registry style and the layer tint.
+
+**Library** — the palette. See [Library reference](library.md) and [Use the icon library](../how-to/use-the-icon-library.md).
+
+**Layers & planes** — add, edit and remove layers (id, name, tint) and planes (id, name, containment borrowing, preset layers). In edit mode it also carries a **Legend** checkbox, which adds or removes the diagram's `legend` declaration; its title, position, sections and items are authored in the file. See [Add a legend](../how-to/add-a-legend.md).
+
+## Header controls
+
+| Control | Effect |
+| --- | --- |
+| Diagram picker | Switch diagrams |
+| Light / dark | Theme. A viewer preference, never saved to the model. |
+| `✏ sketch` / style preset | `clean`, `sketch`, `hand-drawn`, `pencil`, `blueprint`, `marker`. Remembered across reloads, independent of light/dark. |
+| Plane switcher | Present when the diagram declares planes |
+
+Switching planes keeps your place — the groups containing what you were looking at open automatically in the new plane.
+
+## Saving
+
+Save **validates first** and refuses to write an invalid model, surfacing the same issues the compiler would. On success it writes two files next to your other sources:
+
+- `.diagrams/src/<name>.diagram.json` — the model
+- `.diagrams/src/<name>.layout.json` — positions, sizes, and which planes have automatic layout switched off
+
+Subfolders are preserved. Both are pretty-printed JSON that reviews like any other source.
+
+An unsaved dot sits next to Save while the session is dirty; **Done** warns before discarding.
+
+## Gotchas
+
+- **The studio reads artifacts, not sources.** Compile at least once, or you get a "No artifacts found" banner. `pnpm dev` handles this by running the watcher.
+- **Pins, theme and style preset are viewer state.** They are not written to the diagram file — except the style preset, which a diagram *may* pin via its `style` field.
+- **JSON diagrams that declare `include` show their raw source.** Composed content is only visible for compiled, read-only diagrams.
+- **Library saves are best-effort.** A failed write to `library.json` is currently swallowed silently.
+
+## See also
+
+- [Tutorial 2 — Draw one in the browser](../tutorials/02-draw-in-the-studio.md)
+- [Use planes and layers](../how-to/use-planes-and-layers.md)
+- [Organise a large diagram](../how-to/organise-large-diagrams.md)

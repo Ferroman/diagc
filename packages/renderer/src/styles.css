@@ -1,0 +1,523 @@
+.dg-node {
+  background: var(--dg-node-fill);
+  border: 1.5px solid var(--dg-node-stroke);
+  border-radius: 8px;
+  color: var(--dg-text);
+  font: 12px/1.3 system-ui, sans-serif;
+  padding: 8px 10px;
+  min-width: 120px;
+}
+.dg-shape-cylinder { border-radius: 50% 50% 50% 50% / 18% 18% 18% 18%; }
+.dg-shape-pill { border-radius: 999px; padding: 8px 16px; }
+.dg-shape-hexagon { clip-path: polygon(8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%, 0 50%); }
+.dg-style-rough .dg-shape-hexagon { clip-path: none; }
+.dg-dashed { border-style: dashed; }
+.dg-group {
+  background: var(--dg-group-fill);
+  border: 1.5px dashed var(--dg-group-stroke);
+  border-radius: 10px;
+  width: 100%;
+  height: 100%;
+}
+.dg-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dg-text-muted);
+  font: 600 11px/1 system-ui, sans-serif;
+  padding: 8px 10px;
+}
+.dg-node-row { display: flex; align-items: center; gap: 6px; }
+.dg-label { font-weight: 600; }
+.dg-node-row .dg-label { flex: 1 1 auto; min-width: 0; }
+.dg-fs-sm { font-size: 9px; }
+.dg-fs-lg { font-size: 20px; }
+.dg-type { color: var(--dg-text-muted); font-size: 10px; }
+/* C4 outline box: thicker colored border + colored text (border/color set inline). */
+.dg-c4-outline { border-width: 2px; }
+.dg-c4-outline .dg-type { color: inherit; opacity: 0.8; }
+.dg-count, .dg-badge {
+  background: var(--dg-badge-bg);
+  border-radius: 999px;
+  color: var(--dg-badge-text);
+  font-size: 10px;
+  padding: 1px 6px;
+}
+.dg-badges { display: inline-flex; gap: 4px; margin-left: auto; }
+.dg-meta { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.dg-meta-badge {
+  border: 1px solid var(--dg-border);
+  border-radius: 4px;
+  color: var(--dg-text-muted);
+  font-size: 9px;
+  padding: 0 4px;
+}
+.dg-pin { background: none; border: none; cursor: pointer; font-size: 10px; padding: 0 2px; }
+.dg-enter { background: none; border: none; cursor: pointer; font-size: 11px; line-height: 1; padding: 0 2px; opacity: 0.65; }
+.dg-enter:hover { opacity: 1; }
+/* Chrome-less mode (the PNG export): drop the affordances nobody can click in a
+   still image, so a committed picture is the diagram and nothing else. */
+.dg-no-chrome .dg-pin, .dg-no-chrome .dg-enter { display: none; }
+.dg-breadcrumbs-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--dg-node-fill);
+  border: 1px solid var(--dg-border);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 12px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
+}
+.dg-crumb-item { display: inline-flex; align-items: center; gap: 2px; }
+.dg-crumb-sep { color: var(--dg-text-muted); }
+.dg-crumb {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--dg-text-muted);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font: inherit;
+}
+.dg-crumb:hover { background: var(--dg-badge-bg); color: var(--dg-text); }
+.dg-crumb-current { color: var(--dg-text); font-weight: 600; cursor: default; }
+.dg-crumb-home { font-size: 13px; }
+/* drill-view external stub: the original entity's own look, ghosted — the
+   double .dg-node class outranks the base border so dashed always wins */
+.dg-ghost { opacity: 0.75; cursor: pointer; }
+.dg-node.dg-ghost { border-style: dashed; border-width: 1px; }
+.dg-ghost:hover { opacity: 0.95; }
+.dg-external-arrow { opacity: 0.7; flex: none; }
+.dg-handle { opacity: 0; pointer-events: none; }
+.dg-mode-edit .dg-handle { opacity: 0.35; pointer-events: all; }
+.dg-mode-edit .react-flow__node:hover .dg-handle { opacity: 1; }
+.dg-canvas { flex: 1; min-width: 0; }
+/* React Flow's container AND its Background pattern SVG each paint an opaque
+   background from --xy-background-color, so presets repaint the canvas by
+   feeding that variable; when no preset sets --dg-canvas-bg it resolves to
+   RF's own theme default, exactly as stock. The doubled class is defensive
+   against stylesheet load order only — .react-flow.dark only ever sets
+   --xy-background-color-default, which this rule intentionally delegates to. */
+.dg-canvas.dg-canvas .react-flow {
+  --xy-background-color: var(--dg-canvas-bg, var(--xy-background-color-default));
+}
+.dg-alt-move .react-flow__node { cursor: grab; }
+.dg-alt-move .react-flow__node:active { cursor: grabbing; }
+.react-flow__node { transition: transform 200ms ease, width 200ms ease, height 200ms ease; }
+/* the 200ms glide is for re-layouts; a dragged node must track the pointer raw */
+.react-flow__node.dragging { transition: none; }
+@keyframes dg-flow { to { stroke-dashoffset: -10; } }
+.dg-label-input {
+  background: var(--dg-node-fill);
+  border: 1px solid var(--dg-node-stroke);
+  border-radius: 4px;
+  color: var(--dg-text);
+  font: 600 12px/1.3 system-ui, sans-serif;
+  min-width: 60px;
+  padding: 1px 4px;
+  width: 100%;
+}
+/* normal base weight so execCommand('bold') toggles ON (a 600 base reads as
+ * already-bold, inverting the toggle); bold runs render at 700 for contrast */
+.dg-rich-input { white-space: pre-wrap; outline: none; min-width: 60px; cursor: text; font-weight: 400; }
+.dg-rich-label { font-weight: 400; }
+.dg-rich-toolbar {
+  display: inline-flex; gap: 2px; padding: 2px;
+  background: var(--dg-panel-bg, #1f2530); border: 1px solid var(--dg-border);
+  border-radius: 6px; z-index: 40;
+}
+.dg-rich-toolbar button {
+  min-width: 22px; height: 22px; border: none; border-radius: 4px;
+  background: transparent; color: var(--dg-text); cursor: pointer; font-size: 12px;
+}
+.dg-rich-toolbar button:hover { background: var(--dg-badge-bg); }
+.dg-edge-label-edit input {
+  background: var(--dg-edge-label-bg);
+  border: 1px solid var(--dg-node-stroke);
+  border-radius: 6px;
+  color: var(--dg-text);
+  font: 10px/1.4 system-ui, sans-serif;
+  padding: 2px 6px;
+  width: 110px;
+}
+/* positioned labels on sole-relation edges (top/bottom/center along the line) */
+.dg-edge-label {
+  background: var(--dg-edge-label-bg);
+  border-radius: 6px;
+  color: var(--dg-text);
+  font: 10px/1.4 system-ui, sans-serif;
+  padding: 1px 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+/* Endpoint pin dots (edit mode, selected single-relation edge): hollow = the
+   end floats and tracks the facing border; filled = pinned to a fixed side. */
+.dg-edge-pin {
+  fill: var(--dg-surface);
+  stroke: var(--dg-accent, #3b82f6);
+  stroke-width: 1.5;
+  cursor: pointer;
+  pointer-events: all;
+}
+.dg-edge-pin:hover {
+  stroke-width: 2.5;
+}
+.dg-edge-pin.pinned {
+  fill: var(--dg-accent, #3b82f6);
+}
+
+/* causal-loop-diagram edge marks: polarity (+/−) and delay (‖) */
+.dg-polarity {
+  font-size: 13px;
+  font-weight: 700;
+  fill: var(--dg-text);
+}
+.dg-delay line {
+  stroke: var(--dg-text);
+  stroke-width: 1.5;
+}
+.dg-style-font .dg-polarity {
+  font-family: var(--dg-style-font, system-ui, sans-serif);
+}
+/* causal-loop-diagram feedback-loop badges (R/B/? overlay) */
+.dg-loop-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.dg-loop-badge {
+  position: absolute;
+  pointer-events: none;
+}
+.dg-loop-badge-circle {
+  stroke: var(--dg-text-muted);
+  stroke-width: 1.5;
+}
+circle.dg-loop-badge-circle {
+  fill: var(--dg-surface);
+}
+path.dg-loop-badge-circle {
+  fill: none;
+}
+.dg-loop-badge-fill {
+  fill: var(--dg-surface);
+}
+.dg-loop-badge[data-kind='unknown'] .dg-loop-badge-circle {
+  stroke-dasharray: 3 3;
+}
+.dg-loop-badge-arc {
+  fill: none;
+  stroke: var(--dg-text-muted);
+  stroke-width: 1.5;
+}
+.dg-loop-badge text {
+  fill: var(--dg-text);
+  font: 700 13px/1 system-ui, sans-serif;
+}
+.dg-style-font .dg-loop-badge text {
+  font-family: var(--dg-style-font, system-ui, sans-serif);
+}
+/* Distinct R/B colors (cyan / magenta), kept clear of the green/red edge colors.
+   `unknown` keeps the muted default above. */
+.dg-loop-badge[data-kind='R'] {
+  color: var(--dg-loop-r, #22d3ee);
+}
+.dg-loop-badge[data-kind='B'] {
+  color: var(--dg-loop-b, #e879f9);
+}
+.dg-loop-badge[data-kind='R'] .dg-loop-badge-circle,
+.dg-loop-badge[data-kind='B'] .dg-loop-badge-circle,
+.dg-loop-badge[data-kind='R'] .dg-loop-badge-arc,
+.dg-loop-badge[data-kind='B'] .dg-loop-badge-arc {
+  stroke: currentColor;
+}
+.dg-loop-badge[data-kind='R'] text,
+.dg-loop-badge[data-kind='B'] text {
+  fill: currentColor;
+}
+/* Canvas control that hides/shows the whole loop-badge overlay. When off, the
+   ↻ glyph reads as struck-through and dimmed. */
+.dg-loop-toggle {
+  font-size: 15px;
+  line-height: 1;
+}
+.dg-loop-toggle-off {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.dg-focus-toggle {
+  font-size: 14px;
+  line-height: 1;
+}
+.dg-focus-toggle-off {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+/* Click a badge to reveal its loop */
+.dg-loop-badge {
+  cursor: pointer;
+}
+.dg-loop-badge.active .dg-loop-badge-circle {
+  stroke-width: 3;
+}
+.dg-loop-badge.active {
+  filter: drop-shadow(0 0 5px currentColor);
+}
+/* With one loop active, fade the rest so the active loop reads clearly (still
+   clickable, to switch loops). */
+.dg-loop-badge.dimmed {
+  opacity: 0.2;
+}
+/* Neon highlight of the active loop's nodes/edges; everything else dims */
+.dg-loop-node-hl {
+  filter: drop-shadow(0 0 4px var(--dg-loop-glow, #67e8f9)) drop-shadow(0 0 9px var(--dg-loop-glow, #67e8f9));
+}
+.dg-loop-node-dim {
+  opacity: 0.18;
+}
+.dg-loop-edge-dim {
+  opacity: 0.14;
+}
+/* Softer "focus the selected node's neighborhood" dim: connected stay normal,
+   the rest recede a bit but stay readable. */
+.dg-focus-node-dim {
+  opacity: 0.4;
+}
+.dg-focus-edge-dim {
+  opacity: 0.3;
+}
+.dg-loop-edge-hl .react-flow__edge-path {
+  filter: drop-shadow(0 0 3px var(--dg-loop-glow, #67e8f9)) drop-shadow(0 0 7px var(--dg-loop-glow, #67e8f9));
+}
+/* CLD variables: typeless leaves render as borderless centered text, not a box */
+.dg-notation-cld .dg-text-node {
+  background: transparent;
+  border-color: transparent;
+  min-width: 0;
+  text-align: center;
+}
+.dg-notation-cld .dg-text-node .dg-node-row {
+  justify-content: center;
+}
+.dg-image-node {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  /* the icon is the body; its frame is transparent and only appears on
+     hover/selection, and the caption is free to spill past the box */
+  overflow: visible;
+  position: relative;
+  background: transparent;
+  border-color: transparent;
+  /* fill the .react-flow__node wrapper so the body tracks a resize; min-width
+     drops .dg-node's 120px floor, which conflicts with the resizer's 40px min */
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+.dg-image-node:hover,
+.react-flow__node.selected .dg-image-node {
+  border-color: var(--dg-node-stroke);
+}
+.dg-image-node .dg-image {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  object-fit: contain;
+  pointer-events: none;
+}
+.dg-image-caption {
+  /* below the icon, centered on the node, allowed to widen past the box */
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 3px;
+  text-align: center;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.dg-image-thumb {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+:root { --dg-shape-default: var(--dg-text-muted); }
+.dg-shape-node {
+  background: transparent; border: none; position: relative; padding: 0;
+  min-width: 0; width: 100%; height: 100%; box-sizing: border-box;
+}
+.dg-shape-fill {
+  position: absolute; inset: 0; pointer-events: none;
+  mask-repeat: no-repeat; mask-position: center; mask-size: contain;
+  -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; -webkit-mask-size: contain;
+}
+/* Label sits in the shape's lower body (like the C4 person), tinted to match. */
+.dg-shape-node .dg-shape-label {
+  position: absolute; left: 0; right: 0; top: 54%; z-index: 1;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0 8px; text-align: center; line-height: 1.15;
+}
+.dg-shape-node .dg-shape-label .dg-type { color: inherit; opacity: 0.8; }
+
+/* Rough presets: the rough SVG is the visible outline, so drop the crisp chrome.
+   Image nodes render no SketchShape and keep their normal frame (docs/DEFERRALS.md). */
+.dg-style-rough .dg-node:not(.dg-image-node),
+.dg-style-rough .dg-group {
+  border-color: transparent;
+  background: transparent;
+  position: relative;
+}
+.dg-sketch-shape {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+.dg-sketch-fill {
+  fill: var(--dg-node-fill);
+}
+.dg-style-rough .dg-group .dg-sketch-fill {
+  fill: var(--dg-group-fill);
+}
+.dg-sketch-stroke {
+  fill: none;
+  stroke: var(--dg-node-stroke);
+}
+.dg-sketch-hatch {
+  fill: none;
+  stroke: var(--dg-node-stroke);
+}
+/* Dashed node semantics (system/platform) must survive into rough presets. */
+.dg-style-rough .dg-dashed .dg-sketch-stroke {
+  stroke-dasharray: 6 4;
+}
+/* keep content above the shape (scoped to rough presets — opt-in only) */
+.dg-style-rough .dg-node-row,
+.dg-style-rough .dg-group-header,
+.dg-style-rough .dg-type,
+.dg-style-rough .dg-meta {
+  position: relative;
+  z-index: 1;
+}
+/* Fonted presets: handwriting (or preset) font on node/edge text. Target the
+   elements that set font-family via the `font:` shorthand (.dg-node,
+   .dg-group-header) — a rule on the outer .react-flow__node wrapper alone
+   loses to that shorthand, so the labels would keep the crisp UI font. */
+.dg-style-font .dg-node,
+.dg-style-font .dg-group-header,
+.dg-style-font .dg-label,
+.dg-style-font .dg-type,
+.dg-style-font .react-flow__edge-text {
+  font-family: var(--dg-style-font, system-ui, sans-serif);
+}
+.dg-disclose {
+  background: none; border: none; padding: 0 2px; margin-left: 2px;
+  cursor: pointer; color: var(--dg-text-muted); font-size: 11px; line-height: 1;
+}
+.dg-disclose:hover { color: var(--dg-text); }
+.dg-cld-group { width: 100%; height: 100%; position: relative; background: transparent; border: none; }
+.dg-group-tag {
+  position: absolute; top: -8px; left: 0;
+  display: inline-flex; align-items: center; gap: 2px;
+  font: 11px/1.4 system-ui, sans-serif; color: var(--dg-text-muted);
+  background: var(--dg-bg); padding: 0 4px; border-radius: 4px; white-space: nowrap;
+}
+.dg-table {
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  padding: 0;
+  box-sizing: border-box;
+  border: 1.5px solid var(--dg-table-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--dg-node-fill);
+  font-size: 12px;
+}
+.dg-table-header {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  box-sizing: border-box;
+  background: var(--dg-table-header-bg);
+  color: var(--dg-table-header-text);
+  font-weight: 600;
+  border-bottom: 1.5px solid var(--dg-table-border);
+}
+.dg-table-body { display: flex; flex-direction: column; }
+.dg-table-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  color: var(--dg-table-row-text);
+  border-bottom: 1px solid color-mix(in srgb, var(--dg-table-border) 55%, transparent);
+}
+.dg-table-row:last-child { border-bottom: none; }
+.dg-table-key { font-size: 10px; color: var(--dg-table-fk); font-weight: 600; }
+.dg-table-col.dg-pk { font-weight: 600; color: var(--dg-table-pk); }
+.dg-table-type { color: var(--dg-table-type-text); font-variant-numeric: tabular-nums; }
+:where(.dg-table:not(.dg-table-edit)) .dg-row-handle { opacity: 0; }
+.dg-table-edit .dg-row-handle { opacity: 1; pointer-events: all; }
+.dg-table-row-edit { grid-template-columns: 20px minmax(48px, 1fr) minmax(48px, 1fr) auto auto auto; gap: 4px; }
+.dg-table-badge { background: none; border: 1px solid var(--dg-table-border); border-radius: 3px; font-size: 9px; line-height: 1; cursor: pointer; padding: 1px 3px; color: var(--dg-table-fk); }
+.dg-table-name-input, .dg-table-type-input { min-width: 0; border: 1px solid var(--dg-table-border); border-radius: 3px; background: var(--dg-node-fill); color: var(--dg-table-row-text); font-size: 11px; padding: 0 3px; }
+.dg-table-type-input { color: var(--dg-table-type-text); }
+.dg-table-move, .dg-table-del { background: none; border: none; cursor: pointer; font-size: 10px; line-height: 1; padding: 0 1px; color: var(--dg-table-type-text); }
+.dg-table-move:disabled { opacity: 0.3; cursor: default; }
+.dg-table-add { display: block; width: 100%; text-align: left; background: none; border: none; border-top: 1px solid var(--dg-table-border); color: var(--dg-table-fk); font-size: 11px; cursor: pointer; padding: 4px 10px; }
+
+/* ---- legend ------------------------------------------------------------- */
+.dg-legend {
+  background: var(--dg-surface);
+  border: 1px solid var(--dg-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  /* Chrome font, like the controls — and explicit on purpose: the export shell
+     has no page-level font-family, so inheriting would land on the browser's
+     serif default, whose wider metrics clipped rows well under the cap. */
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  /* Size to the widest row, then stop. Without max-content the panel takes a
+     shrink-to-fit width that the percentage-width rows resolve against, and
+     labels ellipsize at roughly half the cap. */
+  width: max-content;
+  max-width: 240px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+}
+.dg-legend-head { align-items: center; display: flex; gap: 6px; justify-content: space-between; }
+.dg-legend-title { font-weight: 600; }
+.dg-legend-collapse { background: none; border: none; cursor: pointer; font-size: 10px; padding: 0 2px; }
+.dg-legend-section { margin-top: 6px; }
+.dg-legend-section-title { font-size: 9px; letter-spacing: 0.06em; opacity: 0.6; text-transform: uppercase; }
+.dg-legend-row {
+  align-items: center;
+  background: none;
+  border: none;
+  display: flex;
+  gap: 6px;
+  padding: 2px 0;
+  text-align: left;
+  width: 100%;
+}
+.dg-legend-toggle { cursor: pointer; }
+.dg-legend-toggle:hover { opacity: 0.75; }
+.dg-legend-off { opacity: 0.45; }
+.dg-legend-swatch { display: inline-block; flex: 0 0 24px; height: 12px; width: 24px; }
+/* Must match the swatch's 24px flex-basis. A narrower `width` here never
+   reached layout (the basis wins) but DID feed the panel's max-content, sizing
+   it 8px short of its own longest row so every long label ellipsized. */
+.dg-legend-chip { border-radius: 3px; height: 10px; width: 24px; }
+.dg-legend-shape { position: relative; }
+.dg-legend-shape > svg { display: block; height: 100%; width: 100%; }
+.dg-legend-icon { color: var(--dg-text-muted); left: 50%; position: absolute; top: 50%; transform: translate(-50%, -50%); }
+.dg-legend-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-no-chrome .dg-legend-collapse { display: none; }
+.dg-no-chrome .dg-legend-toggle:hover { opacity: 1; }

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "id": "plain",
+  "name": "plain",
+  "nodes": [
+    { "id": "a", "name": "a", "type": "service" },
+    { "id": "b", "name": "b", "type": "service" }
+  ],
+  "containment": [],
+  "relations": [{ "id": "a->b#0", "from": "a", "to": "b", "kind": "sync" }],
+  "layers": [],
+  "planes": []
+}

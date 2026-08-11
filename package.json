@@ -1,0 +1,42 @@
+{
+  "name": "diagramming",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "diagc": "bin/diagc.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev": "sh -c 'pnpm compile:watch & trap \"trap - TERM EXIT; kill 0\" EXIT INT TERM; pnpm studio'",
+    "typecheck": "tsc -p packages/core/tsconfig.json && tsc -p packages/diagc/tsconfig.json && tsc -p packages/icons/tsconfig.json && tsc -p packages/renderer/tsconfig.json && tsc -p apps/studio/tsconfig.json && tsc -p apps/viewer/tsconfig.json",
+    "studio": "pnpm --filter @diagramming/studio dev",
+    "compile": "tsx packages/diagc/src/cli.ts compile",
+    "compile:watch": "tsx packages/diagc/src/cli.ts watch",
+    "publish-diagrams": "tsx packages/diagc/src/cli.ts publish",
+    "publish-site": "gh-pages -d .diagrams/html",
+    "build:cli": "pnpm --filter @diagramming/viewer build",
+    "lint": "npx eslint ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "eslint": "^10.8.1",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "gh-pages": "^6.3.0",
+    "jsdom": "^29.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.67.0",
+    "vitest": "^4.1.10"
+  },
+  "packageManager": "pnpm@10.18.1",
+  "dependencies": {
+    "@diagramming/core": "workspace:*"
+  }
+}

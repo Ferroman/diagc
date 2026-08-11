@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "id": "cycle-b",
+  "name": "cycle-b",
+  "nodes": [{ "id": "b", "name": "b", "type": "system", "include": "./cycle-a.diagram.json" }],
+  "containment": [],
+  "relations": [],
+  "layers": [],
+  "planes": []
+}

@@ -1,0 +1,527 @@
+import {
+  BUILTIN_NOTATIONS,
+  type Column,
+  type DiagramLayer,
+  type DiagramLegend,
+  type DiagramModel,
+  type DiagramNode,
+  type DiagramPlane,
+  type EdgeLabel,
+  type FontScale,
+  type Polarity,
+  type RelationStyle,
+  type TextAlign,
+  type TextRun,
+} from './types';
+import { normalizeRuns, runsToPlainText } from './text';
+import { childrenOf } from './children';
+
+export class CommandError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CommandError';
+  }
+}
+
+const requireNode = (m: DiagramModel, id: string): DiagramNode => {
+  const n = m.nodes.find((x) => x.id === id);
+  if (n === undefined) throw new CommandError(`Unknown node '${id}'`);
+  return n;
+};
+
+export function uniqueNodeId(m: DiagramModel, base: string): string {
+  const slug = base
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'node';
+  const taken = new Set(m.nodes.map((n) => n.id));
+  if (!taken.has(slug)) return slug;
+  for (let i = 2; ; i++) {
+    if (!taken.has(`${slug}-${i}`)) return `${slug}-${i}`;
+  }
+}
+
+export function addNode(m: DiagramModel, node: DiagramNode): DiagramModel {
+  if (m.nodes.some((n) => n.id === node.id)) throw new CommandError(`Duplicate node id '${node.id}'`);
+  return { ...m, nodes: [...m.nodes, node] };
+}
+
+export function renameNode(m: DiagramModel, id: string, name: string): DiagramModel {
+  requireNode(m, id);
+  return {
+    ...m,
+    nodes: m.nodes.map((n) => {
+      if (n.id !== id) return n;
+      const { rich: _rich, ...rest } = n;
+      return { ...rest, name };
+    }),
+  };
+}
+
+export function setNodeRich(m: DiagramModel, id: string, runs: TextRun[]): DiagramModel {
+  requireNode(m, id);
+  const norm = normalizeRuns(runs);
+  const name = runsToPlainText(norm);
+  const first = norm[0];
+  const isPlain = norm.length <= 1 && (first === undefined || (first.bold === undefined && first.italic === undefined));
+  return {
+    ...m,
+    nodes: m.nodes.map((n) => {
+      if (n.id !== id) return n;
+      const { rich: _rich, ...rest } = n;
+      return isPlain ? { ...rest, name } : { ...rest, name, rich: norm };
+    }),
+  };
+}
+
+export interface NodeDetails {
+  type?: string | null;
+  icon?: string | null;
+  image?: string | null;
+  shape?: string | null;
+  color?: string | null;
+  textColor?: string | null;
+  textAlign?: TextAlign | null;
+  fontScale?: FontScale | null;
+  description?: string | null;
+  metadata?: Record<string, unknown> | null;
+  plane?: string | null;
+  layer?: string | null;
+}
+
+/** Whitelist of {@link NodeDetails} fields wired through the loop below. Every
+ * field is flat (optional, null-clearable), so one typed pass replaces the
+ * hand-rolled `applyNullable` chain. */
+const NODE_DETAIL_KEYS = [
+  'type',
+  'icon',
+  'image',
+  'shape',
+  'color',
+  'textColor',
+  'textAlign',
+  'fontScale',
+  'description',
+  'metadata',
+  'plane',
+  'layer',
+] as const;
+type NodeDetailKey = (typeof NODE_DETAIL_KEYS)[number];
+
+// Compile-time guarantee that the whitelist is EXACTLY the interface's keys:
+// add a field to NodeDetails without listing it here and `_assertNodeKeyCoverage`
+// becomes `false`, failing this const — the silent drift a hand-written chain
+// used to permit. `void` reads the const so noUnusedLocals doesn't flag it.
+type NodeKeyCoverage = [keyof NodeDetails] extends [NodeDetailKey]
+  ? [NodeDetailKey] extends [keyof NodeDetails]
+    ? true
+    : false
+  : false;
+const _assertNodeKeyCoverage: NodeKeyCoverage = true;
+void _assertNodeKeyCoverage;
+
+const applyNullable = <T extends object, K extends keyof T>(obj: T, key: K, value: T[K] | null | undefined): T => {
+  if (value === undefined) return obj;
+  const next = { ...obj };
+  if (value === null) delete next[key];
+  else next[key] = value;
+  return next;
+};
+
+export function setNodeDetails(m: DiagramModel, id: string, details: NodeDetails): DiagramModel {
+  requireNode(m, id);
+  if (details.layer != null && !m.layers.some((l) => l.id === details.layer)) {
+    throw new CommandError(`Unknown layer '${details.layer}'`);
+  }
+  const nodes = m.nodes.map((n) => {
+    if (n.id !== id) return n;
+    let next = { ...n };
+    // One typed loop over the field whitelist (see NODE_DETAIL_KEYS) instead of
+    // 12 hand-written applyNullable calls — adding a field wires automatically
+    // and the coverage const above makes an omission a compile error.
+    for (const key of NODE_DETAIL_KEYS) {
+      next = applyNullable(next, key, details[key]);
+    }
+    return next;
+  });
+  let next: DiagramModel = { ...m, nodes };
+  // Scoping a node to a plane makes it view-local; drop it from every plane's
+  // `hides` so a formerly-hidden shared node doesn't linger there with no way
+  // to clear it via the UI (and to avoid tripping `redundant-hide`).
+  if (typeof details.plane === 'string') {
+    next = {
+      ...next,
+      planes: next.planes.map((p) => {
+        if (p.hides === undefined || !p.hides.includes(id)) return p;
+        const hides = p.hides.filter((h) => h !== id);
+        const { hides: _dropped, ...rest } = p;
+        return hides.length > 0 ? { ...rest, hides } : rest;
+      }),
+    };
+  }
+  return next;
+}
+
+export function deleteNode(m: DiagramModel, id: string): DiagramModel {
+  requireNode(m, id);
+  return {
+    ...m,
+    nodes: m.nodes.filter((n) => n.id !== id),
+    containment: m.containment.filter((e) => e.parent !== id && e.child !== id),
+    relations: m.relations.filter((r) => r.from !== id && r.to !== id),
+  };
+}
+
+export function setTableColumns(m: DiagramModel, id: string, columns: Column[]): DiagramModel {
+  requireNode(m, id);
+  // Deliberately NOT rejecting duplicate names: edit-mode inputs commit per
+  // keystroke, so a transient collision must not throw. `validate` reports
+  // duplicate-column at publish time.
+  return { ...m, nodes: m.nodes.map((n) => (n.id === id ? { ...n, columns } : n)) };
+}
+
+function wouldCycle(m: DiagramModel, parent: string, child: string, plane?: string): boolean {
+  const defaultPlane = (m.planes ?? [])[0]?.id;
+  const key = plane ?? defaultPlane;
+  // Children index over this plane's edges, plus the candidate edge being added.
+  const children = childrenOf(m.containment.filter((e) => (e.plane ?? defaultPlane) === key));
+  children.set(parent, [...(children.get(parent) ?? []), child]);
+  // child must not reach parent
+  const stack = [child];
+  const seen = new Set<string>();
+  while (stack.length > 0) {
+    const cur = stack.pop();
+    if (cur === undefined || seen.has(cur)) continue;
+    if (cur === parent && seen.size > 0) return true;
+    seen.add(cur);
+    stack.push(...(children.get(cur) ?? []));
+  }
+  return false;
+}
+
+/**
+ * Resolve a plane argument to its canonical containment form: undefined stays
+ * undefined; a declared plane resolves its `containmentOf` borrow (one hop) and,
+ * if that lands on the first-declared (default) plane, collapses to `undefined`
+ * so edges are stored/compared in the untagged base form. Throws on unknowns.
+ */
+function canonicalPlane(m: DiagramModel, plane?: string): string | undefined {
+  if (plane === undefined) return undefined;
+  const planes = m.planes ?? [];
+  const p = planes.find((x) => x.id === plane);
+  if (p === undefined) throw new CommandError(`Unknown plane '${plane}'`);
+  const resolved = p.containmentOf ?? p.id;
+  return resolved === planes[0]?.id ? undefined : resolved;
+}
+
+export function addContainment(m: DiagramModel, parent: string, child: string, plane?: string): DiagramModel {
+  requireNode(m, parent);
+  requireNode(m, child);
+  if (parent === child) throw new CommandError(`Node '${parent}' cannot contain itself`);
+  const canon = canonicalPlane(m, plane);
+  if (m.containment.some((e) => e.parent === parent && e.child === child && e.plane === canon)) return m;
+  if (wouldCycle(m, parent, child, canon)) {
+    throw new CommandError(`'${parent}' > '${child}' would create a containment cycle`);
+  }
+  return { ...m, containment: [...m.containment, { parent, child, ...(canon !== undefined ? { plane: canon } : {}) }] };
+}
+
+/**
+ * Group existing nodes under a new abstract parent: add `node`, then nest each
+ * member under it. `plane` scopes both the containment edges and (via the
+ * caller setting `node.plane`) the abstract node, so the grouping can live in a
+ * single plane's view. Atomic: a bad member id throws before any partial model
+ * escapes (the intermediate is a local value, never returned).
+ */
+export function groupNodes(
+  m: DiagramModel,
+  node: DiagramNode,
+  memberIds: readonly string[],
+  plane?: string,
+): DiagramModel {
+  let next = addNode(m, node);
+  for (const child of memberIds) {
+    next = addContainment(next, node.id, child, plane);
+  }
+  return next;
+}
+
+export function removeContainment(m: DiagramModel, parent: string, child: string, plane?: string): DiagramModel {
+  const canon = canonicalPlane(m, plane);
+  return {
+    ...m,
+    containment: m.containment.filter((e) => !(e.parent === parent && e.child === child && e.plane === canon)),
+  };
+}
+
+/** Pin the diagram's visual style preset id, or clear it with null (the
+ * app-level preference applies again). Unknown ids are intentionally
+ * accepted — the renderer treats them as unpinned. */
+export function setDiagramStyle(m: DiagramModel, style: string | null): DiagramModel {
+  if (style === null) {
+    const { style: _dropped, ...rest } = m;
+    return rest;
+  }
+  return { ...m, style };
+}
+
+/** Declare the diagram's legend, or clear it entirely with null. */
+export function setDiagramLegend(m: DiagramModel, legend: DiagramLegend | null): DiagramModel {
+  if (legend === null) {
+    const { legend: _dropped, ...rest } = m;
+    return rest;
+  }
+  return { ...m, legend };
+}
+
+export interface RelationOptsInput {
+  kind: string;
+  label?: string;
+  layer?: string;
+  description?: string;
+  style?: RelationStyle;
+  polarity?: Polarity;
+  delay?: boolean;
+  fromColumn?: string;
+  toColumn?: string;
+}
+
+export function addRelation(
+  m: DiagramModel,
+  from: string,
+  to: string,
+  opts: RelationOptsInput,
+): { model: DiagramModel; id: string } {
+  requireNode(m, from);
+  requireNode(m, to);
+  if (opts.layer !== undefined && !m.layers.some((l) => l.id === opts.layer)) {
+    throw new CommandError(`Unknown layer '${opts.layer}'`);
+  }
+  // First free suffix — counting existing pairs collides after a middle delete
+  // (delete `a->b#0`, then adding again would reuse `#1`).
+  let i = 0;
+  while (m.relations.some((r) => r.id === `${from}->${to}#${i}`)) i++;
+  const id = `${from}->${to}#${i}`;
+  const { kind, ...rest } = opts;
+  const relation = {
+    id,
+    from,
+    to,
+    kind,
+    ...Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined)),
+  };
+  return { model: { ...m, relations: [...m.relations, relation] }, id };
+}
+
+export interface RelationPatch {
+  /** move an endpoint (edge reconnection); the relation id is unchanged */
+  from?: string;
+  to?: string;
+  kind?: string;
+  label?: string | null;
+  labels?: EdgeLabel[] | null;
+  layer?: string | null;
+  description?: string | null;
+  style?: RelationStyle | null;
+  polarity?: Polarity | null;
+  delay?: boolean | null;
+  fromColumn?: string | null;
+  toColumn?: string | null;
+}
+
+/** Whitelist of {@link RelationPatch} fields that are null-clearable and applied
+ * through the loop below. `from`/`to`/`kind` are excluded — they are required
+ * relation keys set with a plain `!== undefined` guard, never null-cleared. */
+const RELATION_NULLABLE_KEYS = [
+  'label',
+  'labels',
+  'layer',
+  'description',
+  'style',
+  'polarity',
+  'delay',
+  'fromColumn',
+  'toColumn',
+] as const;
+type RelationNullableKey = (typeof RELATION_NULLABLE_KEYS)[number];
+
+// Same exhaustive-coverage guard as NodeDetails: a new null-clearable field on
+// RelationPatch must be listed here or this const becomes `false` and fails to
+// compile (the non-nullable `from`/`to`/`kind` are intentionally excluded).
+type RelationNullableKeys = Exclude<keyof RelationPatch, 'from' | 'to' | 'kind'>;
+type RelationKeyCoverage = [RelationNullableKeys] extends [RelationNullableKey]
+  ? [RelationNullableKey] extends [RelationNullableKeys]
+    ? true
+    : false
+  : false;
+const _assertRelationKeyCoverage: RelationKeyCoverage = true;
+void _assertRelationKeyCoverage;
+
+export function updateRelation(m: DiagramModel, id: string, patch: RelationPatch): DiagramModel {
+  if (!m.relations.some((r) => r.id === id)) throw new CommandError(`Unknown relation '${id}'`);
+  if (patch.layer != null && !m.layers.some((l) => l.id === patch.layer)) {
+    throw new CommandError(`Unknown layer '${patch.layer}'`);
+  }
+  for (const end of [patch.from, patch.to]) {
+    if (end !== undefined && !m.nodes.some((n) => n.id === end)) {
+      throw new CommandError(`Unknown node '${end}'`);
+    }
+  }
+  return {
+    ...m,
+    relations: m.relations.map((r) => {
+      if (r.id !== id) return r;
+      let next = { ...r };
+      if (patch.from !== undefined) next.from = patch.from;
+      if (patch.to !== undefined) next.to = patch.to;
+      if (patch.kind !== undefined) next.kind = patch.kind;
+      // The null-clearable fields go through one typed loop over the whitelist
+      // (see RELATION_NULLABLE_KEYS), preserving the same behavior as the prior
+      // hand-written chain.
+      for (const key of RELATION_NULLABLE_KEYS) {
+        next = applyNullable(next, key, patch[key]);
+      }
+      // `labels` supersedes the legacy single `label`: any labels write drops the
+      // legacy string, so removing the last label truly removes it (relationLabels
+      // won't re-synthesize) and upgraded models don't persist a redundant `label`.
+      if (patch.labels !== undefined) next = applyNullable(next, 'label', null);
+      return next;
+    }),
+  };
+}
+
+export function deleteRelation(m: DiagramModel, id: string): DiagramModel {
+  if (!m.relations.some((r) => r.id === id)) throw new CommandError(`Unknown relation '${id}'`);
+  return { ...m, relations: m.relations.filter((r) => r.id !== id) };
+}
+
+export function upsertLayer(m: DiagramModel, layer: DiagramLayer): DiagramModel {
+  const exists = m.layers.some((l) => l.id === layer.id);
+  return {
+    ...m,
+    layers: exists ? m.layers.map((l) => (l.id === layer.id ? layer : l)) : [...m.layers, layer],
+  };
+}
+
+export function deleteLayer(m: DiagramModel, id: string): DiagramModel {
+  if (!m.layers.some((l) => l.id === id)) throw new CommandError(`Unknown layer '${id}'`);
+  // Destructive: remove the layer's tagged nodes + relations. Cascade like
+  // deleteNode — a destroyed node's containment is severed (untagged children
+  // survive top-level) and relations touching it are dropped.
+  const doomed = new Set(m.nodes.filter((n) => n.layer === id).map((n) => n.id));
+  return {
+    ...m,
+    layers: m.layers.filter((l) => l.id !== id),
+    nodes: m.nodes.filter((n) => n.layer !== id),
+    relations: m.relations.filter((r) => r.layer !== id && !doomed.has(r.from) && !doomed.has(r.to)),
+    containment: m.containment.filter((e) => !doomed.has(e.parent) && !doomed.has(e.child)),
+    planes: (m.planes ?? []).map((p) => {
+      const touchesHides = p.hides !== undefined && p.hides.some((h) => doomed.has(h));
+      if (p.layers === undefined && !touchesHides) return p;
+      return {
+        ...p,
+        ...(p.layers !== undefined ? { layers: p.layers.filter((l) => l !== id) } : {}),
+        ...(p.hides !== undefined ? { hides: p.hides.filter((h) => !doomed.has(h)) } : {}),
+      };
+    }),
+  };
+}
+
+export function mergeLayers(m: DiagramModel, sourceIds: string[], targetId?: string): DiagramModel {
+  if (targetId !== undefined && !m.layers.some((l) => l.id === targetId)) {
+    throw new CommandError(`Unknown layer '${targetId}'`);
+  }
+  for (const id of sourceIds) {
+    if (!m.layers.some((l) => l.id === id)) throw new CommandError(`Unknown layer '${id}'`);
+    if (id === targetId) throw new CommandError('Cannot merge a layer into itself');
+  }
+  if (sourceIds.length === 0) return m;
+  const sources = new Set(sourceIds);
+  // Retag a source-tagged node/relation onto the target, or drop the tag
+  // entirely when merging to the base sheet (targetId omitted).
+  const retag = <T extends { layer?: string }>(x: T): T => {
+    if (x.layer === undefined || !sources.has(x.layer)) return x;
+    if (targetId === undefined) {
+      const { layer: _layer, ...rest } = x;
+      return rest as T;
+    }
+    return { ...x, layer: targetId };
+  };
+  return {
+    ...m,
+    layers: m.layers.filter((l) => !sources.has(l.id)),
+    nodes: m.nodes.map(retag),
+    relations: m.relations.map(retag),
+    planes: (m.planes ?? []).map((p) => {
+      if (p.layers === undefined) return p;
+      const layers =
+        targetId === undefined
+          ? p.layers.filter((l) => !sources.has(l))
+          : [...new Set(p.layers.map((l) => (sources.has(l) ? targetId : l)))];
+      return { ...p, layers };
+    }),
+  };
+}
+
+export function upsertPlane(m: DiagramModel, plane: DiagramPlane): DiagramModel {
+  if (plane.notation !== undefined && !(BUILTIN_NOTATIONS as readonly string[]).includes(plane.notation)) {
+    throw new CommandError(`Unknown notation '${plane.notation}'`);
+  }
+  if (plane.containmentOf !== undefined) {
+    if (plane.containmentOf === plane.id) {
+      throw new CommandError(`Plane '${plane.id}' cannot borrow containment from itself`);
+    }
+    const target = (m.planes ?? []).find((p) => p.id === plane.containmentOf);
+    if (target === undefined) {
+      throw new CommandError(`Unknown plane '${plane.containmentOf}'`);
+    }
+    if (target.containmentOf !== undefined) {
+      throw new CommandError(
+        `Plane '${plane.containmentOf}' itself borrows containment — chains are not allowed`,
+      );
+    }
+  }
+  const planes = m.planes ?? [];
+  const exists = planes.some((p) => p.id === plane.id);
+  return { ...m, planes: exists ? planes.map((p) => (p.id === plane.id ? plane : p)) : [...planes, plane] };
+}
+
+/** Add/remove a shared node from a plane's `hides`. A node already scoped to a
+ * plane is view-local, so hiding it is a no-op (validation flags a stray one). */
+export function setNodePlaneHidden(
+  m: DiagramModel,
+  nodeId: string,
+  planeId: string,
+  hidden: boolean,
+): DiagramModel {
+  const node = requireNode(m, nodeId);
+  if (hidden && node.plane !== undefined) return m;
+  return {
+    ...m,
+    planes: (m.planes ?? []).map((p) => {
+      if (p.id !== planeId) return p;
+      const set = new Set(p.hides ?? []);
+      if (hidden) set.add(nodeId);
+      else set.delete(nodeId);
+      const { hides: _drop, ...rest } = p;
+      return set.size > 0 ? { ...rest, hides: [...set] } : rest;
+    }),
+  };
+}
+
+export function deletePlane(m: DiagramModel, id: string): DiagramModel {
+  const planes = m.planes ?? [];
+  if (!planes.some((p) => p.id === id)) throw new CommandError(`Unknown plane '${id}'`);
+  const borrower = planes.find((p) => p.containmentOf === id);
+  if (borrower !== undefined) {
+    throw new CommandError(`Plane '${borrower.id}' borrows containment from '${id}' — delete or repoint it first`);
+  }
+  // The first-declared plane owns the untagged (base) edges; drop them with it so
+  // structure doesn't silently migrate to whichever plane becomes first next.
+  const isFirst = planes[0]?.id === id;
+  return {
+    ...m,
+    planes: planes.filter((p) => p.id !== id),
+    containment: m.containment.filter((e) => e.plane !== id && !(isFirst && e.plane === undefined)),
+  };
+}

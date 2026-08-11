@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "id": "umbrella-collision",
+  "name": "Architecture (collision)",
+  "nodes": [
+    { "id": "perm/svc", "name": "Existing", "type": "service" },
+    { "id": "perm", "name": "Permission", "type": "system", "include": "./svc-permission.diagram.json" }
+  ],
+  "containment": [],
+  "relations": [],
+  "layers": [],
+  "planes": []
+}

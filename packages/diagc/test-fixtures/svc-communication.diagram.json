@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "id": "communication",
+  "name": "Communication service",
+  "nodes": [
+    { "id": "svc", "name": "Communication svc", "type": "service" },
+    { "id": "db", "name": "Users", "type": "database", "key": "appuser-db" }
+  ],
+  "containment": [],
+  "relations": [{ "id": "svc->db#0", "from": "svc", "to": "db", "kind": "writes" }],
+  "layers": [],
+  "planes": []
+}
