@@ -1,12 +1,29 @@
-# diagramming
+# Diagramming
 
-Author software-architecture diagrams as TypeScript, compile them to a validated JSON model, and explore them in a browser studio with **semantic zoom** — the diagram rests as folded group boxes whose relations aggregate; double-click a group to zoom into it and unfold its parts, double-click again to fold it back.
+This is experimental tool. 
+
+Most diagram tools do one of two things. They turn code into a static picture, or they give you a canvas and good-looking shapes. This one is about the structure of a system: what sits inside what, and what you can add on top. It is still written and generated as code.
+
+The goals of the project:
+
+- Diagrams as code, in a form an AI can write
+- Diagrams with levels, so you can start from the big picture and open up the parts you care about
+- Transparent sheets ("layers") to add extra detail to any level without cluttering the base picture
+- "Planes" to group the same things in more than one way, by system in one view and by where they run in another
+
+Non-goals:
+
+- Not a shared whiteboard. It runs on your machine against your files. No accounts, no server, no two people editing at once. 
+- It does not simulate anything.
+- It does not read your code.
+
+Author diagrams as TypeScript, compile them to a validated JSON model, and explore them in a browser studio with **semantic zoom** — the diagram rests as folded group boxes whose relations aggregate; double-click a group to zoom into it and unfold its parts, double-click again to fold it back.
 
 Diagrams are code, so they diff, review, and refactor like the rest of your repo.
 
-![How a diagram becomes a picture](.diagrams/static/docs-pipeline.png)
-
 You author diagrams two ways that meet at the same validated model: write a `.diagram.ts` file, or draw one in the browser and the studio writes a `.diagram.json` for you. Either way `diagc` compiles and validates it into one artifact per diagram, which the studio renders and `diagc publish` turns into shareable pages and images.
+
+![How a diagram becomes a picture](.diagrams/static/docs-pipeline.png)
 
 ## Install
 
