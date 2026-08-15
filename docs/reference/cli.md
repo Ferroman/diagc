@@ -1,6 +1,18 @@
 # `diagc` reference
 
-The command-line interface. Invoked as `diagc <command>` when linked globally, or through the repo's pnpm scripts.
+The command-line interface. Invoked as `diagc <command>` from an install, from a global link, or through the repo's pnpm scripts.
+
+## Installing
+
+```bash
+npm i -g diagc                 # global
+npx diagc studio               # without installing
+npm i -D @diagramming/core     # optional: types for .diagram.ts authoring
+```
+
+Node ≥ 22. Everything the CLI needs is in the package — the prebuilt studio, the viewer shell `publish` stamps models into, and the icon library — so it runs against any directory with no checkout and no pnpm.
+
+From a checkout, `pnpm link --global` inside the repo gives you a `diagc` that runs the working tree instead. Both layouts are detected automatically; the differences are called out below where they matter.
 
 ```
 diagc <compile|watch|publish|studio> [files...] [--out dir] [--no-images]
@@ -50,7 +62,7 @@ diagc publish --no-images
 
 `files...` here filters by diagram **name**, not path.
 
-**Requires the viewer shell to be built.** Without it, publish exits `1` with `viewer shell not built — run pnpm --filter @diagramming/viewer build`. Run `pnpm build:cli` once.
+**Requires the viewer shell.** An installed `diagc` ships it. From a checkout you must build it once (`pnpm build:cli`); until then publish exits `1` with `viewer shell not built`.
 
 **PNG export needs a browser.** If none is found, publish prints `No Chrome found — writing HTML only` and continues without images. See `CHROME_PATH` below.
 
@@ -62,9 +74,14 @@ Runs the browser studio against the current directory.
 diagc studio
 ```
 
-Starts the compile watcher and the studio's dev server (default <http://localhost:5173>), pointed at `./.diagrams/src` and `./.diagrams/.artifacts`, and opens a browser. `Ctrl+C` stops both.
+Starts the compile watcher and an editor server (default <http://127.0.0.1:5173>, stepping to the next free port if that one is taken), pointed at `./.diagrams/src` and `./.diagrams/.artifacts`, and opens a browser. `Ctrl+C` stops both.
 
-The studio's own `node_modules` must be installed in the monorepo — this command runs the monorepo's app against your directory, it does not install anything locally.
+Which server depends on how `diagc` was installed, and nothing else does:
+
+- **Installed from npm** — the prebuilt studio bundle is served straight from the package over plain http. No Vite, no workspace, nothing installed into your project.
+- **From a checkout** (`pnpm link --global`, or `pnpm dev`) — the studio's own Vite dev server runs instead, so edits to the studio hot-reload. Its `node_modules` must be installed in the monorepo.
+
+Both serve the same API from the same route table (`packages/diagc/src/api`), so saving, renaming, assets, and the shape library behave identically.
 
 ## Flags
 
@@ -80,10 +97,10 @@ Anything not recognised as a flag is collected as `files...`.
 | Variable | Read by | Meaning |
 | --- | --- | --- |
 | `CHROME_PATH` | `publish` | Path to a Chrome/Chromium binary for PNG export. Checked before the default locations. |
-| `DIAGRAMS_DIR` | studio dev server | Source directory. Set by `diagc studio`. |
-| `ARTIFACTS_DIR` | studio dev server | Artifact directory. Set by `diagc studio`. |
-| `DIAGRAMS_CWD` | studio dev server | Extra path added to Vite's filesystem allow-list. |
-| `DIAGRAMS_OPEN` | studio dev server | `1` opens a browser on start. |
+| `DIAGRAMS_DIR` | studio server | Source directory. Set by `diagc studio`. |
+| `ARTIFACTS_DIR` | studio server | Artifact directory. Set by `diagc studio`. |
+| `DIAGRAMS_CWD` | studio dev server | Extra path added to Vite's filesystem allow-list (checkout layout only). |
+| `DIAGRAMS_OPEN` | studio server | `1` opens a browser on start. |
 
 Chrome is otherwise looked for at `/usr/bin/google-chrome`, `/usr/bin/google-chrome-stable`, `/usr/bin/chromium`, `/usr/bin/chromium-browser`, `/snap/bin/chromium`, and `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`.
 
@@ -99,6 +116,8 @@ Inside this monorepo:
 | `pnpm studio` | the studio dev server directly (not via `diagc`) |
 | `pnpm dev` | `compile:watch` and the studio together |
 | `pnpm build:cli` | builds the viewer shell `publish` needs |
+| `pnpm build:studio` | builds the static studio bundle the installed CLI serves |
+| `pnpm build:dist` | everything a release needs: both packages compiled, both bundles built and staged |
 | `pnpm publish-site` | `gh-pages -d .diagrams/html` |
 | `pnpm test` / `pnpm typecheck` | vitest / tsc across every package |
 

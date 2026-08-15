@@ -1,7 +1,35 @@
 {
   "name": "@diagramming/core",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Diagram model, validator, and builder DSL for diagc — no React, no filesystem.",
+  "license": "AGPL-3.0-only",
+  "author": "Bogdan Frankovskyi",
+  "homepage": "https://github.com/Ferroman/diagramming#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ferroman/diagramming.git",
+    "directory": "packages/core"
+  },
+  "keywords": ["diagram", "architecture", "c4", "causal-loop", "dsl"],
   "type": "module",
-  "exports": { ".": "./src/index.ts" }
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "prepack": "cd ../.. && pnpm build:core"
+  },
+  "publishConfig": {
+    "access": "public",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  }
 }

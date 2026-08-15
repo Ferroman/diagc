@@ -15,6 +15,7 @@ import {
   emptyLayout,
   errMessage,
   layoutPlaneKey,
+  SOURCE_URL,
   type Column,
   type DiagramModel,
   type EdgeLabelSide,
@@ -432,6 +433,19 @@ export function App() {
             ))}
           </select>
         )}
+        {/* AGPL section 13 offer. Near-dormant on localhost, but `diagc studio` accepts
+            a `host` option, and the moment it is bound to a non-loopback address its
+            users are interacting with the program over a network and are owed a way to
+            get its source. Cheaper to always show than to detect the binding. */}
+        <a
+          className="chip source-link"
+          href={SOURCE_URL}
+          target="_blank"
+          rel="noreferrer"
+          title="diagc is free software under the AGPL-3.0 — get the source"
+        >
+          source
+        </a>
       </header>
       {editing && (
         <EditorToolbar

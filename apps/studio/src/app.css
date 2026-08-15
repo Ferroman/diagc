@@ -14,6 +14,11 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
 .banner { background: var(--dg-surface); border-bottom: 1px solid var(--dg-border); padding: 10px 14px; }
 .banner.error { border-left: 4px solid #dc2626; }
 .chip.read-only { border-style: dashed; color: var(--dg-text-muted); cursor: default; }
+/* The licence source offer. Deliberately quiet — it must be present and reachable, not
+   prominent; it is chrome the user did not ask for. `text-decoration: none` because the
+   pill border already reads as a control. */
+.chip.source-link { color: var(--dg-text-muted); text-decoration: none; }
+.chip.source-link:hover { border-color: var(--dg-accent); color: var(--dg-accent); }
 .chip.primary { background: var(--dg-accent); border-color: var(--dg-accent); color: var(--dg-badge-text); }
 .chip:disabled { cursor: default; opacity: 0.45; }
 .editor-toolbar { align-items: center; background: var(--dg-surface); border-bottom: 1px solid var(--dg-border); display: flex; gap: 8px; padding: 6px 14px; }

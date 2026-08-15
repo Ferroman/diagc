@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
@@ -6,15 +6,26 @@ import { describe, expect, it } from 'vitest';
 import type { ViteDevServer } from 'vite';
 import { designerApi } from './designer-api';
 
-/** Minimal ViteDevServer stand-in: the plugin only reads `config.root` (to
- * build the handlers path) and calls `ssrLoadModule` (to load handlers) and
- * `middlewares.use` (to register its request middleware). */
-function fakeServer(root: string): { middleware: (req: unknown, res: unknown, next: () => void) => void } {
+// The route table and handlers themselves are tested in
+// packages/diagc/src/api. What is left here is the adapter: does the plugin
+// register a middleware, hand /api/* to the shared dispatcher with the right
+// dirs, and get out of the way for everything else.
+
+/** Minimal ViteDevServer stand-in. The plugin calls `ssrLoadModule` (to load the
+ * api module) and `middlewares.use`; the test runtime can import the real api
+ * directly, which is what Vite's SSR pipeline would end up giving it. */
+function fakeServer(root: string): {
+  middleware: (req: unknown, res: unknown, next: () => void) => void;
+  loads: string[];
+} {
   let middleware: (req: unknown, res: unknown, next: () => void) => void = () => {};
+  const loads: string[] = [];
   const server = {
     config: { root },
-    // Load the real handlers through the test runtime instead of Vite's SSR.
-    ssrLoadModule: async () => await import('./handlers'),
+    ssrLoadModule: async (id: string) => {
+      loads.push(id);
+      return await import('../../../packages/diagc/src/api/index');
+    },
     middlewares: {
       use: (fn: (req: unknown, res: unknown, next: () => void) => void) => {
         middleware = fn;
@@ -22,17 +33,14 @@ function fakeServer(root: string): { middleware: (req: unknown, res: unknown, ne
     },
   };
   // Vite types the hook as ObjectHook; invoke its callable form directly.
-  const configure = designerApi(path.join(root, 'diagrams'), path.join(root, 'artifacts')).configureServer as unknown as (
-    server: ViteDevServer,
-  ) => void;
+  const configure = designerApi(path.join(root, 'diagrams'), path.join(root, 'artifacts'))
+    .configureServer as unknown as (server: ViteDevServer) => void;
   configure(server as unknown as ViteDevServer);
-  return { middleware };
+  return { middleware, loads };
 }
 
-interface Response {
+interface Result {
   status: number;
-  headers: Record<string, string>;
-  raw: Buffer;
   body: unknown;
   next: boolean;
 }
@@ -40,20 +48,14 @@ interface Response {
 async function request(
   srv: { middleware: (req: unknown, res: unknown, next: () => void) => void },
   url: string,
-  opts: { method?: string; headers?: Record<string, string>; body?: string | Buffer } = {},
-): Promise<Response> {
+): Promise<Result> {
   let resolveDone: () => void = () => {};
   const done = new Promise<void>((resolve) => (resolveDone = resolve));
   let status = 0;
   let calledNext = false;
   const headers: Record<string, string> = {};
   const chunks: Buffer[] = [];
-  const bodyBytes = typeof opts.body === 'string' ? Buffer.from(opts.body) : opts.body;
-  const req = Object.assign(Readable.from(bodyBytes !== undefined ? [bodyBytes] : []), {
-    url,
-    method: opts.method ?? 'GET',
-    headers: opts.headers ?? {},
-  });
+  const req = Object.assign(Readable.from([]), { url, method: 'GET', headers: {} });
   const res = {
     set statusCode(v: number) {
       status = v;
@@ -77,27 +79,14 @@ async function request(
   const raw = Buffer.concat(chunks);
   return {
     status,
-    headers,
-    raw,
     body: headers['content-type'] === 'application/json' && raw.length > 0 ? JSON.parse(raw.toString('utf8')) : undefined,
     next: calledNext,
   };
 }
 
-const goodModel = {
-  version: 1,
-  id: 'foo',
-  name: 'foo',
-  nodes: [],
-  containment: [],
-  relations: [],
-  layers: [],
-  planes: [],
-};
-
-describe('designer-api routing', () => {
-  it('delegates a GET to the matching handler and sends its JSON envelope', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'ds-api-'));
+describe('designerApi plugin', () => {
+  it('serves an /api route through the shared dispatcher, with the configured dirs', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'ds-plugin-'));
     const src = path.join(root, 'diagrams');
     await mkdir(src, { recursive: true });
     await writeFile(path.join(src, 'flows.layout.json'), JSON.stringify({ version: 1, planes: {} }));
@@ -107,39 +96,28 @@ describe('designer-api routing', () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it('checks the rename route before the generic save route', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'ds-api-'));
-    // A valid diagram model would be saved (200) by the generic `(.+)` save
-    // route with name "foo/rename"; the rename route must win and reject the
-    // body for missing `to`.
-    const r = await request(fakeServer(root), '/api/diagrams/foo/rename', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(goodModel),
-    });
-    expect(r.status).toBe(400);
-    expect(JSON.stringify(r.body)).toContain("Missing 'to' name");
-  });
-
-  it('passes the raw body of the asset POST through to saveAsset', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'ds-api-'));
-    const bytes = Buffer.from('fake-png-bytes');
-    const r = await request(fakeServer(root), '/api/assets', {
-      method: 'POST',
-      headers: { 'content-type': 'image/png' },
-      body: bytes,
-    });
-    expect(r.status).toBe(200);
-    const { name } = r.body as { name: string };
-    expect(await readFile(path.join(root, 'diagrams', 'assets', name))).toEqual(bytes);
-    await rm(root, { recursive: true, force: true });
-  });
-
-  it('hands unmatched paths to the connect chain via next()', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'ds-api-'));
+  it('hands an unmatched /api path back to the connect chain', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'ds-plugin-'));
     const r = await request(fakeServer(root), '/api/not-a-route');
     expect(r.next).toBe(true);
     expect(r.status).toBe(0); // middleware never wrote a response
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('skips the api module load entirely for non-/api requests', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'ds-plugin-'));
+    const srv = fakeServer(root);
+    const r = await request(srv, '/src/main.tsx');
+    expect(r.next).toBe(true);
+    expect(srv.loads).toEqual([]);
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('loads the api from the diagc package, not from the studio app', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'ds-plugin-'));
+    const srv = fakeServer(root);
+    await request(srv, '/api/layouts');
+    expect(srv.loads[0]).toMatch(/packages[/\\]diagc[/\\]src[/\\]api[/\\]index\.ts$/);
     await rm(root, { recursive: true, force: true });
   });
 });

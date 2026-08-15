@@ -1,14 +1,45 @@
 {
-  "name": "@diagramming/diagc",
-  "version": "0.0.0",
-  "private": true,
+  "name": "diagc",
+  "version": "0.1.0",
+  "description": "Author software-architecture diagrams as code, compile them to a validated model, edit them in a local studio, and publish pages and images.",
+  "license": "AGPL-3.0-only",
+  "author": "Bogdan Frankovskyi",
+  "homepage": "https://github.com/Ferroman/diagramming#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ferroman/diagramming.git",
+    "directory": "packages/diagc"
+  },
+  "bugs": "https://github.com/Ferroman/diagramming/issues",
+  "keywords": ["diagram", "diagrams-as-code", "architecture", "c4", "causal-loop", "cli", "studio"],
   "type": "module",
-  "exports": { ".": "./src/compile.ts" },
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "diagc": "bin/diagc.mjs"
+  },
+  "exports": {
+    ".": "./src/compile.ts"
+  },
+  "files": ["bin", "dist", "assets", "THIRD-PARTY-NOTICES.md"],
+  "scripts": {
+    "prepack": "cd ../.. && pnpm build:dist"
+  },
   "dependencies": {
     "@diagramming/core": "workspace:*",
     "chokidar": "^4.0.0",
     "fast-glob": "^3.3.0",
     "jiti": "^2.0.0",
     "playwright-core": "^1.62.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/compile.d.ts",
+        "default": "./dist/compile.js"
+      }
+    }
   }
 }

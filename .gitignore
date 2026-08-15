@@ -1,6 +1,13 @@
 node_modules/
 .diagrams/.artifacts/
 dist/
+
+# Browser artifacts staged into the CLI package by `pnpm build:dist`; rebuilt
+# on every pack, never committed.
+packages/diagc/assets/
+# Same deal: a build-time copy of the root THIRD-PARTY-NOTICES.md, which `files`
+# needs package-relative. Edit the root copy, never this one.
+packages/diagc/THIRD-PARTY-NOTICES.md
 .claude/*
 CLAUDE.md
 AGENTS.md

@@ -19,6 +19,10 @@
     "publish-diagrams": "tsx packages/diagc/src/cli.ts publish",
     "publish-site": "gh-pages -d .diagrams/html",
     "build:cli": "pnpm --filter @diagramming/viewer build",
+    "build:studio": "pnpm --filter @diagramming/studio build",
+    "build:core": "tsc -p packages/core/tsconfig.build.json && node scripts/fix-esm-extensions.mjs packages/core/dist",
+    "build:diagc": "tsc -p packages/diagc/tsconfig.build.json && node scripts/fix-esm-extensions.mjs packages/diagc/dist",
+    "build:dist": "pnpm build:core && pnpm build:diagc && pnpm build:cli && pnpm build:studio && node scripts/stage-assets.mjs",
     "lint": "npx eslint ."
   },
   "devDependencies": {

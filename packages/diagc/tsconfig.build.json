@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    // Typecheck the shipped CLI against core's *built* declarations, which is
+    // what a consumer installs. Against core's source, tsc would pull .ts files
+    // from outside rootDir into the emit and fail (TS6059) — and the published
+    // types would never be exercised until someone installed them.
+    "paths": {
+      "@diagramming/core": ["../core/dist/index.d.ts"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
+}

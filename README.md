@@ -8,7 +8,18 @@ Diagrams are code, so they diff, review, and refactor like the rest of your repo
 
 You author diagrams two ways that meet at the same validated model: write a `.diagram.ts` file, or draw one in the browser and the studio writes a `.diagram.json` for you. Either way `diagc` compiles and validates it into one artifact per diagram, which the studio renders and `diagc publish` turns into shareable pages and images.
 
-## Quickstart
+## Install
+
+To use the tool on your own repo, install the CLI — no checkout needed:
+
+```bash
+npm i -g diagc                 # or: npx diagc studio
+npm i -D @diagramming/core     # optional: types for .diagram.ts authoring
+```
+
+`diagc studio` serves the editor against whatever directory you run it in. See the [`diagc` reference](docs/reference/cli.md).
+
+## Quickstart (this repo)
 
 Needs **Node ≥ 22** (the repo pins Node 24 in `mise.toml`) and **pnpm 10** (`corepack enable` once).
 
@@ -94,11 +105,64 @@ pnpm typecheck   # tsc --noEmit across every package
 
 | Path | Package | Role |
 | --- | --- | --- |
-| `packages/core` | `@diagramming/core` | Builder DSL, the JSON model + validation, the view compiler. |
+| `packages/core` | `@diagramming/core` | Builder DSL, the JSON model + validation, the view compiler. **Published.** |
 | `packages/renderer` | `@diagramming/renderer` | React `DiagramView` (React Flow + elk) and the type/kind/theme registries. |
 | `packages/icons` | `@diagramming/icons` | Icon id → lucide component. |
-| `packages/diagc` | `@diagramming/diagc` | The `diagc` CLI: compile, watch, publish, studio. |
+| `packages/diagc` | `diagc` | The `diagc` CLI: compile, watch, publish, studio. **Published.** |
 | `apps/studio` | `@diagramming/studio` | The browser app and its dev-server API. |
 | `apps/viewer` | `@diagramming/viewer` | The single-file shell `publish` stamps a model into. |
 
 The diagrams in these docs are built with this tool — sources in `.diagrams/src/docs-*.diagram.ts`, regenerated with `pnpm publish-diagrams`.
+
+### Releasing
+
+`diagc` and `@diagramming/core` are published together and share a version. The other packages are build inputs: `renderer`, `icons`, `studio`, and `viewer` are baked into what `diagc` ships and stay private.
+
+```bash
+pnpm build:dist                       # compile both packages, build viewer + studio, stage assets
+pnpm --filter @diagramming/core pack  # inspect the tarballs before trusting them
+pnpm --filter diagc pack
+pnpm -r publish --access public       # requires `npm adduser` first
+```
+
+Use **pnpm**, not `npm publish` — the published manifests rely on pnpm rewriting `publishConfig` (source `exports` become `dist` ones) and turning `workspace:*` into a real version. `prepack` rebuilds everything, so a stale `dist/` cannot ship.
+
+What an installed CLI carries that a checkout does not: `packages/diagc/assets/` holds the prebuilt viewer shell and studio bundle, and `diagc studio` serves that bundle from its own http server instead of spawning Vite. Both layouts are resolved in `packages/diagc/src/home.ts`.
+
+## Contributing
+
+Contributions are welcome. Because this project is dual-licensed — AGPL-3.0 for
+everyone, plus commercial licenses for those who need different terms — every
+contributor signs a [CLA](CLA.md) before their first pull request is merged, granting
+the right to relicense their contribution. A bot handles this on the PR; see
+[CONTRIBUTING.md](CONTRIBUTING.md) for the details and the reasoning.
+
+## License
+
+Licensed under the **[GNU Affero General Public License, version 3](LICENSE)**
+(`AGPL-3.0-only`), with additional permissions under section 7.
+
+Plainly, what that means:
+
+- **Using it is unrestricted.** Run it locally, or host it inside your company for your
+  colleagues, commercially or otherwise. You owe nothing and need not publish anything.
+- **Your diagrams are yours.** Diagram sources you author, and the artifacts, images and
+  pages built from them, are not covered by the AGPL — license them however you like.
+  That is what the section 7 additional permissions grant.
+- **Modifying and redistributing it, or offering a modified version to others over a
+  network, means publishing your source** under the same license. This is the part that
+  matters: someone cannot take this, improve it privately, and resell it as a closed
+  service.
+
+Published HTML pages embed the viewer, which stays AGPL — so each page carries a
+comment pointing at this repository, which satisfies the source offer for an
+unmodified copy. Nothing is required of you beyond leaving it in place.
+
+Third-party components bundled into the published CLI are listed in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+### Commercial licensing
+
+If the AGPL does not suit you — you want to embed this in a proprietary product, or
+offer it to third parties as a hosted service, without releasing your own source — a
+separate commercial license is available. Contact <bfrankovskyi@gmail.com>.

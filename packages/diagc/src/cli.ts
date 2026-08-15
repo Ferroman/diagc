@@ -1,3 +1,24 @@
+/*
+ * diagc — author software-architecture diagrams as code.
+ * Copyright (C) 2026 Bogdan Frankovskyi
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License version 3 as
+ * published by the Free Software Foundation, with the additional permissions
+ * granted under section 7 that are set out in the LICENSE file alongside this
+ * package. Those permissions let you license diagram sources you author, and
+ * the output produced from them, under terms of your choosing.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -125,7 +146,14 @@ async function main() {
     console.log(`Watching ${dir} for *.diagram.{ts,json} changes...`);
   } else if (args.command === 'publish') {
     if (!existsSync(home.viewerShell)) {
-      console.error('viewer shell not built — run `pnpm --filter @diagramming/viewer build` in the monorepo.');
+      // Only a checkout can be missing it; an installed package ships the shell,
+      // so there the message would send the reader off to build a repo they
+      // do not have.
+      console.error(
+        home.layout === 'monorepo'
+          ? 'viewer shell not built — run `pnpm --filter @diagramming/viewer build` in the monorepo.'
+          : `viewer shell missing from this install (${home.viewerShell}) — reinstall diagc.`,
+      );
       process.exit(1);
     }
     const srcDir = '.diagrams/src';
