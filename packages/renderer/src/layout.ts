@@ -21,7 +21,9 @@ export interface LayoutResult {
   /** parent-relative node geometry (elk output), keyed by node id */
   geometry: Map<string, NodeGeometry>;
   /** elk-routed absolute waypoints per edge id; populated only when
-   * settings.edgeRouting === 'orthogonal', otherwise empty. */
+   * settings.edgeRouting === 'orthogonal' AND the algorithm used the flat
+   * graph (layered, rectpacking, or a nested pick that fell back to flat),
+   * otherwise empty. */
   routes: Map<string, EdgePoint[]>;
 }
 
@@ -79,14 +81,18 @@ export async function layoutView(
   const hit = cache.get(key);
   if (hit) return hit;
 
-  // A rejected pick must degrade, not blank the canvas: radial throws outright
-  // on any graph that is not a tree, and a future algorithm may reject some
-  // other shape. Retry with the pre-lift graph, which is what every non-layered
-  // algorithm effectively received before.
+  // A rejected pick should degrade rather than blank the canvas: radial throws
+  // outright on any graph that is not a tree, and a future algorithm may reject
+  // some other shape. Retry with the pre-lift graph, which is what every
+  // non-layered algorithm effectively received before. Only the elk call is
+  // guarded — buildGraph itself must throw straight through, or a bug in our
+  // own graph builder (e.g. liftEdges) would silently and permanently degrade
+  // to the flat graph instead of surfacing.
   let usedNested = usesNestedLayout(settings);
   let laid: ElkShape;
+  const graph = buildGraph(view, sizeOverrides, settings);
   try {
-    laid = (await elk.layout(buildGraph(view, sizeOverrides, settings))) as ElkShape;
+    laid = (await elk.layout(graph)) as ElkShape;
   } catch {
     usedNested = false;
     laid = (await elk.layout(buildGraph(view, sizeOverrides, settings, { flat: true }))) as ElkShape;
@@ -94,10 +100,9 @@ export async function layoutView(
 
   const geometry = new Map<string, NodeGeometry>();
   const routes = new Map<string, EdgePoint[]>();
-  // Only the flat path produces routes worth drawing. On the nested path elk
-  // returns sections for a fraction of the edges, and a lifted edge's waypoints
+  // Only the flat path produces routes worth drawing: a lifted edge's waypoints
   // run between containers rather than between the nodes the renderer draws —
-  // so curved beziers are the honest fallback. See DEFERRALS.md.
+  // so curved beziers are the honest fallback on the nested path. See DEFERRALS.md.
   const wantRoutes = settings?.edgeRouting === 'orthogonal' && !usedNested;
 
   // Node x/y stay parent-relative (React Flow positions children under parentId).
