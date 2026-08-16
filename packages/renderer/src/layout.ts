@@ -1,5 +1,15 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
 import { LEAF_SIZE, type CompiledView, type LayoutSettings, type ViewEdge, type ViewNode } from '@diagramming/core';
+import {
+  buildGraph,
+  layoutOptionsFor,
+  COLLAPSED_SIZE,
+  type ElkRoutedEdge,
+  type ElkShape,
+} from './layout-graph';
+
+// Re-exported so `index.tsx` and existing importers keep their import path.
+export { COLLAPSED_SIZE, layoutOptionsFor };
 
 export interface NodeGeometry {
   x: number;
@@ -19,39 +29,6 @@ export interface LayoutResult {
   /** elk-routed absolute waypoints per edge id; populated only when
    * settings.edgeRouting === 'orthogonal', otherwise empty. */
   routes: Map<string, EdgePoint[]>;
-}
-
-export const COLLAPSED_SIZE = { width: 200, height: 88 } as const;
-
-interface ElkPoint {
-  x: number;
-  y: number;
-}
-interface ElkEdgeSection {
-  startPoint: ElkPoint;
-  endPoint: ElkPoint;
-  bendPoints?: ElkPoint[];
-}
-interface ElkEdge {
-  id: string;
-  sources: string[];
-  targets: string[];
-  // elk reserves label space only when `text` is non-empty (width/height alone
-  // are ignored), so the trigger text rides along with the footprint.
-  labels?: { width: number; height: number; text: string }[];
-}
-// elk populates `sections` (with routing waypoints) on OUTPUT edges only; typed
-// separately so the INPUT graph stays assignable to elk's ElkNode.
-type ElkRoutedEdge = ElkEdge & { sections?: ElkEdgeSection[] };
-interface ElkShape {
-  id: string;
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  children?: ElkShape[];
-  layoutOptions?: Record<string, string>;
-  edges?: ElkEdge[];
 }
 
 const elk = new ELK();
@@ -78,47 +55,6 @@ function edgeLabelBox(text: string): { width: number; height: number } | undefin
   const t = text.trim();
   if (t === '') return undefined;
   return { width: Math.round(t.length * EDGE_LABEL_CHAR + EDGE_LABEL_PAD), height: EDGE_LABEL_HEIGHT };
-}
-
-/**
- * The root elk `layoutOptions`, tuned for fewer crossings, straighter alignment,
- * roomier spacing, and label-aware placement. Pure (no elk call) so it is
- * unit-testable. Per-plane `settings` override algorithm/direction/spacing and
- * opt into orthogonal edge routing.
- */
-export function layoutOptionsFor(settings?: LayoutSettings): Record<string, string> {
-  const algorithm = settings?.algorithm ?? 'layered';
-  const spacing = settings?.spacing;
-  const nodeNode = spacing !== undefined ? String(spacing) : '40';
-  const betweenLayers = spacing !== undefined ? String(Math.round(spacing * 1.5)) : '60';
-
-  const opts: Record<string, string> = {
-    'elk.algorithm': algorithm,
-    'elk.direction': settings?.direction ?? 'RIGHT',
-    'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
-    'elk.spacing.nodeNode': nodeNode,
-    'elk.spacing.edgeNode': '20',
-    'elk.spacing.edgeEdge': '12',
-    'elk.spacing.componentComponent': '48',
-    'elk.spacing.edgeLabel': '6',
-    'elk.separateConnectedComponents': 'true',
-  };
-
-  // layered-only knobs — harmless to other algorithms but kept off the record
-  // for cleanliness / testability.
-  if (algorithm === 'layered') {
-    opts['elk.layered.spacing.nodeNodeBetweenLayers'] = betweenLayers;
-    opts['elk.layered.thoroughness'] = '10';
-    opts['elk.layered.crossingMinimization.strategy'] = 'LAYER_SWEEP';
-    opts['elk.layered.nodePlacement.strategy'] = 'BRANDES_KOEPF';
-    opts['elk.layered.nodePlacement.bk.fixedAlignment'] = 'BALANCED';
-  }
-
-  if (settings?.edgeRouting === 'orthogonal') {
-    opts['elk.edgeRouting'] = 'ORTHOGONAL';
-  }
-
-  return opts;
 }
 
 function settingsKey(settings?: LayoutSettings): string {

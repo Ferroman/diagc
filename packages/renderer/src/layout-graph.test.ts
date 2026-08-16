@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, model } from '@diagramming/core';
-import { liftEdges } from './layout-graph';
+import { liftEdges, layoutOptionsFor, usesNestedLayout } from './layout-graph';
 
 /**
  * Two containers, two leaves each, and one relation of every shape that matters:
@@ -72,5 +72,31 @@ describe('liftEdges', () => {
   it('puts every edge on the root when nothing is expanded', () => {
     const byOwner = liftEdges(compileView(crossing(), {}));
     expect([...byOwner.keys()].every((k) => k === null)).toBe(true);
+  });
+});
+
+describe('usesNestedLayout', () => {
+  it('is true only for the edge-aware algorithms that cannot see through containers', () => {
+    expect(usesNestedLayout({ algorithm: 'force' })).toBe(true);
+    expect(usesNestedLayout({ algorithm: 'stress' })).toBe(true);
+    expect(usesNestedLayout({ algorithm: 'mrtree' })).toBe(true);
+    expect(usesNestedLayout({ algorithm: 'radial' })).toBe(true);
+  });
+
+  it('is false for layered (handles hierarchy itself) and rectpacking (ignores edges)', () => {
+    expect(usesNestedLayout()).toBe(false);
+    expect(usesNestedLayout({ algorithm: 'layered' })).toBe(false);
+    expect(usesNestedLayout({ algorithm: 'rectpacking' })).toBe(false);
+  });
+});
+
+describe('layoutOptionsFor hierarchy handling', () => {
+  it('asks layered to flatten the hierarchy', () => {
+    expect(layoutOptionsFor()['elk.hierarchyHandling']).toBe('INCLUDE_CHILDREN');
+    expect(layoutOptionsFor({ algorithm: 'rectpacking' })['elk.hierarchyHandling']).toBe('INCLUDE_CHILDREN');
+  });
+
+  it('omits it for algorithms that do not implement it', () => {
+    expect(layoutOptionsFor({ algorithm: 'force' })['elk.hierarchyHandling']).toBeUndefined();
   });
 });

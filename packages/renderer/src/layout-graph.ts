@@ -1,10 +1,103 @@
-import type { CompiledView, ViewNode } from '@diagramming/core';
+import type { CompiledView, LayoutSettings, ViewNode } from '@diagramming/core';
 
 /** An elk edge after lifting: both endpoints are direct children of the owner. */
 export interface LiftedEdge {
   id: string;
   sources: string[];
   targets: string[];
+}
+
+export const COLLAPSED_SIZE = { width: 200, height: 88 } as const;
+
+export interface ElkPoint {
+  x: number;
+  y: number;
+}
+export interface ElkEdgeSection {
+  startPoint: ElkPoint;
+  endPoint: ElkPoint;
+  bendPoints?: ElkPoint[];
+}
+export interface ElkEdge {
+  id: string;
+  sources: string[];
+  targets: string[];
+  // elk reserves label space only when `text` is non-empty (width/height alone
+  // are ignored), so the trigger text rides along with the footprint.
+  labels?: { width: number; height: number; text: string }[];
+}
+// elk populates `sections` (with routing waypoints) on OUTPUT edges only; typed
+// separately so the INPUT graph stays assignable to elk's ElkNode.
+export type ElkRoutedEdge = ElkEdge & { sections?: ElkEdgeSection[] };
+export interface ElkShape {
+  id: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  children?: ElkShape[];
+  layoutOptions?: Record<string, string>;
+  edges?: ElkEdge[];
+}
+
+/**
+ * Algorithms that read edges but cannot see through a container wall, so they
+ * need per-level lifted edges and a per-container algorithm option.
+ *
+ * `layered` is absent because it implements INCLUDE_CHILDREN itself and does it
+ * better; `rectpacking` because it ignores edges by design. Lifting measurably
+ * degrades both — see the design note's table.
+ */
+export const NESTED_LAYOUT_ALGORITHMS = new Set(['force', 'stress', 'mrtree', 'radial']);
+
+export function usesNestedLayout(settings?: LayoutSettings): boolean {
+  return NESTED_LAYOUT_ALGORITHMS.has(settings?.algorithm ?? 'layered');
+}
+
+/**
+ * The root elk `layoutOptions`, tuned for fewer crossings, straighter alignment,
+ * roomier spacing, and label-aware placement. Pure (no elk call) so it is
+ * unit-testable. Per-plane `settings` override algorithm/direction/spacing and
+ * opt into orthogonal edge routing.
+ */
+export function layoutOptionsFor(settings?: LayoutSettings): Record<string, string> {
+  const algorithm = settings?.algorithm ?? 'layered';
+  const spacing = settings?.spacing;
+  const nodeNode = spacing !== undefined ? String(spacing) : '40';
+  const betweenLayers = spacing !== undefined ? String(Math.round(spacing * 1.5)) : '60';
+
+  const opts: Record<string, string> = {
+    'elk.algorithm': algorithm,
+    'elk.direction': settings?.direction ?? 'RIGHT',
+    'elk.spacing.nodeNode': nodeNode,
+    'elk.spacing.edgeNode': '20',
+    'elk.spacing.edgeEdge': '12',
+    'elk.spacing.componentComponent': '48',
+    'elk.spacing.edgeLabel': '6',
+    'elk.separateConnectedComponents': 'true',
+    // INCLUDE_CHILDREN asks elk to lay out every nesting level as one graph,
+    // which ONLY `layered` implements. The others silently ignore it and lay
+    // out each level alone, which is why they get lifted per-level edges
+    // instead (liftEdges). Sending it anyway is not harmless: it is the reason
+    // the option list looked interchangeable for so long.
+    ...(usesNestedLayout(settings) ? {} : { 'elk.hierarchyHandling': 'INCLUDE_CHILDREN' }),
+  };
+
+  // layered-only knobs — harmless to other algorithms but kept off the record
+  // for cleanliness / testability.
+  if (algorithm === 'layered') {
+    opts['elk.layered.spacing.nodeNodeBetweenLayers'] = betweenLayers;
+    opts['elk.layered.thoroughness'] = '10';
+    opts['elk.layered.crossingMinimization.strategy'] = 'LAYER_SWEEP';
+    opts['elk.layered.nodePlacement.strategy'] = 'BRANDES_KOEPF';
+    opts['elk.layered.nodePlacement.bk.fixedAlignment'] = 'BALANCED';
+  }
+
+  if (settings?.edgeRouting === 'orthogonal') {
+    opts['elk.edgeRouting'] = 'ORTHOGONAL';
+  }
+
+  return opts;
 }
 
 /**
