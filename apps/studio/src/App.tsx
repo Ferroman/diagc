@@ -137,6 +137,15 @@ export function App() {
   const { selected, setSelected, enteredPath, setEnteredPath, handleEnteredPathChange } = dl;
   const drillRoot = enteredPath.length > 0 ? enteredPath[enteredPath.length - 1] : undefined;
 
+  // The preview is diagram-scoped viewer state; every path that changes which
+  // diagram is selected — the picker, a hashchange deep link, or the stale-name
+  // fallback (all in useDeepLink) — must drop it here, or a leftover preview
+  // keyed 'default' (a key every diagram resolves to, unlike the plane/pin
+  // state it leaks alongside today) would silently re-lay out the next diagram.
+  useEffect(() => {
+    setLayoutPreview({});
+  }, [selected]);
+
   const edit = useEditSession({
     setDrafts,
     resetInspector: () => setLeftTab('properties'), // re-entering edit starts on Properties
@@ -412,7 +421,16 @@ export function App() {
         {model !== undefined &&
           (ownedNames.has(selected) ? (
             !editing && (
-              <button className="chip" onClick={() => enterEdit(selected, current?.model as DiagramModel, current?.layout ?? emptyLayout())}>
+              <button
+                className="chip"
+                onClick={() => {
+                  // Edit mode reads the session's own overlay, not the preview — drop
+                  // it here (mirroring resetView() on the diagram picker) so Save +
+                  // Done doesn't come back to a stale preview masking what was saved.
+                  setLayoutPreview({});
+                  enterEdit(selected, current?.model as DiagramModel, current?.layout ?? emptyLayout());
+                }}
+              >
                 Edit
               </button>
             )
