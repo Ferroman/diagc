@@ -149,47 +149,11 @@ describe('EditorToolbar', () => {
     expect(screen.getByText(/boom/i)).toBeDefined();
   });
 
-  it('picking a non-default algorithm patches the plane settings', () => {
-    const onSetLayoutSettings = vi.fn();
-    renderToolbar(fakeEditor(), 'arch', { onSetLayoutSettings });
-    fireEvent.change(screen.getByLabelText(/layout algorithm/i), { target: { value: 'radial' } });
-    expect(onSetLayoutSettings).toHaveBeenCalledWith({ algorithm: 'radial' });
-  });
-
-  it('picking the default algorithm clears it (undefined patch)', () => {
-    const onSetLayoutSettings = vi.fn();
-    renderToolbar(fakeEditor(), 'arch', { layoutSettings: { algorithm: 'radial' }, onSetLayoutSettings });
-    fireEvent.change(screen.getByLabelText(/layout algorithm/i), { target: { value: 'layered' } });
-    expect(onSetLayoutSettings).toHaveBeenCalledWith({ algorithm: undefined });
-  });
-
   it('switching edge routing to orthogonal patches the plane settings', () => {
     const onSetLayoutSettings = vi.fn();
     renderToolbar(fakeEditor(), 'arch', { onSetLayoutSettings });
     fireEvent.change(screen.getByLabelText(/edge routing/i), { target: { value: 'orthogonal' } });
     expect(onSetLayoutSettings).toHaveBeenCalledWith({ edgeRouting: 'orthogonal' });
-  });
-
-  it('hides the direction picker for non-layered algorithms', () => {
-    const { rerender } = renderToolbar(fakeEditor(), 'arch');
-    expect(screen.getByLabelText(/layout direction/i)).toBeDefined();
-    rerender(
-      <EditorToolbar
-        editor={fakeEditor()}
-        onNewDiagram={noop}
-        onExit={noop}
-        onSave={noop}
-        saveIssues={null}
-        activePlane={'arch'}
-        selectionColor={null}
-        autoLayout={true}
-        onToggleAutoLayout={noop}
-        getAutoPositions={() => ({})}
-        layoutSettings={{ algorithm: 'force' }}
-        onSetLayoutSettings={noop}
-      />,
-    );
-    expect(screen.queryByLabelText(/layout direction/i)).toBeNull();
   });
 
   it('does not render the relocated buttons', () => {

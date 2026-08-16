@@ -1,21 +1,7 @@
 import type { LayoutSettings } from '@diagramming/core';
 import type { EditorApi } from './useEditor';
 import { PRESET_COLORS } from './pickers';
-
-const ALGORITHMS: { value: string; label: string }[] = [
-  { value: 'layered', label: 'Layered' },
-  { value: 'force', label: 'Force' },
-  { value: 'stress', label: 'Stress' },
-  { value: 'mrtree', label: 'Tree' },
-  { value: 'radial', label: 'Radial' },
-  { value: 'rectpacking', label: 'Packed' },
-];
-const DIRECTIONS: { value: string; label: string }[] = [
-  { value: 'RIGHT', label: 'Right →' },
-  { value: 'DOWN', label: 'Down ↓' },
-  { value: 'LEFT', label: 'Left ←' },
-  { value: 'UP', label: 'Up ↑' },
-];
+import { LayoutControls } from '../LayoutControls';
 
 interface EditorToolbarProps {
   editor: EditorApi;
@@ -61,9 +47,6 @@ export function EditorToolbar({
   selectionColor,
 }: EditorToolbarProps) {
   const error = editor.session?.error;
-  const algorithm = layoutSettings.algorithm ?? 'layered';
-  const direction = layoutSettings.direction ?? 'RIGHT';
-  const edgeRouting = layoutSettings.edgeRouting ?? 'curved';
 
   const relayout = () => {
     if (autoLayout) {
@@ -104,61 +87,7 @@ export function EditorToolbar({
       >
         Auto-layout
       </button>
-      <select
-        className="chip-select"
-        aria-label="Layout algorithm"
-        title="Layout algorithm"
-        value={algorithm}
-        onChange={(e) => onSetLayoutSettings({ algorithm: e.target.value === 'layered' ? undefined : e.target.value })}
-      >
-        {ALGORITHMS.map((a) => (
-          <option key={a.value} value={a.value}>
-            {a.label}
-          </option>
-        ))}
-      </select>
-      {algorithm === 'layered' && (
-        <select
-          className="chip-select"
-          aria-label="Layout direction"
-          title="Layout direction"
-          value={direction}
-          onChange={(e) => onSetLayoutSettings({ direction: e.target.value === 'RIGHT' ? undefined : e.target.value })}
-        >
-          {DIRECTIONS.map((d) => (
-            <option key={d.value} value={d.value}>
-              {d.label}
-            </option>
-          ))}
-        </select>
-      )}
-      <input
-        type="number"
-        className="chip-num"
-        aria-label="Node spacing"
-        title="Node spacing in px (blank = default)"
-        min={8}
-        max={200}
-        step={4}
-        placeholder="40"
-        value={layoutSettings.spacing ?? ''}
-        onChange={(e) => {
-          const v = e.target.value.trim();
-          onSetLayoutSettings({ spacing: v === '' ? undefined : Number(v) });
-        }}
-      />
-      <select
-        className="chip-select"
-        aria-label="Edge routing"
-        title="Edge routing"
-        value={edgeRouting}
-        onChange={(e) =>
-          onSetLayoutSettings({ edgeRouting: e.target.value === 'curved' ? undefined : (e.target.value as 'orthogonal') })
-        }
-      >
-        <option value="curved">Curved edges</option>
-        <option value="orthogonal">Orthogonal edges</option>
-      </select>
+      <LayoutControls settings={layoutSettings} onChange={onSetLayoutSettings} />
       <span className="sep" />
       <button className="chip" onClick={() => editor.undo()} disabled={!editor.canUndo}>
         Undo
