@@ -158,4 +158,42 @@ describe('layoutView', () => {
       expect(p.y).toBeLessThanOrEqual(sysGeo.y + sysGeo.height + 1);
     }
   });
+
+  it('falls back to the flat graph when an algorithm rejects the lifted one', async () => {
+    // radial throws `IllegalArgumentException: The given graph is not a tree!`
+    // the moment it sees a cyclic edge set. It only appeared to work before
+    // because every non-layered algorithm was handed an empty edge set.
+    const m = model('cyc');
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    const c = m.node('c', { type: 'service' });
+    const sys = m.node('sys', { type: 'system' });
+    sys.contains(a, b, c);
+    m.relate(a, b, { kind: 'sync' });
+    m.relate(b, c, { kind: 'sync' });
+    m.relate(c, a, { kind: 'sync' }); // the cycle radial rejects
+    const view = compileView(m.toJSON(), { focus: ['sys'] });
+
+    const { geometry } = await layoutView(view, undefined, { algorithm: 'radial' });
+    // every node still placed — a rejected pick degrades, it does not blank
+    for (const id of ['sys', 'a', 'b', 'c']) expect(geometry.has(id)).toBe(true);
+  });
+
+  it('skips orthogonal routes on the nested path rather than returning partial ones', async () => {
+    const m = model('nr');
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    const sys = m.node('sys', { type: 'system' });
+    sys.contains(a, b);
+    m.relate(a, b, { kind: 'sync' });
+    const view = compileView(m.toJSON(), { focus: ['sys'] });
+
+    // layered still routes
+    expect((await layoutView(view, undefined, { edgeRouting: 'orthogonal' })).routes.size).toBeGreaterThan(0);
+    // force does not: elk returns sections for only some edges, and a lifted
+    // edge's waypoints connect containers, not the nodes the renderer draws.
+    expect((await layoutView(view, undefined, { algorithm: 'force', edgeRouting: 'orthogonal' })).routes.size).toBe(
+      0,
+    );
+  });
 });

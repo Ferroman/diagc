@@ -1,16 +1,9 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
-import { LEAF_SIZE, type CompiledView, type LayoutSettings, type ViewNode } from '@diagramming/core';
-import {
-  buildGraph,
-  layoutOptionsFor,
-  edgeLabelText,
-  COLLAPSED_SIZE,
-  type ElkRoutedEdge,
-  type ElkShape,
-} from './layout-graph';
+import { type CompiledView, type LayoutSettings, type ViewNode } from '@diagramming/core';
+import { buildGraph, usesNestedLayout, edgeLabelText, type ElkRoutedEdge, type ElkShape } from './layout-graph';
 
 // Re-exported so `index.tsx` and existing importers keep their import path.
-export { COLLAPSED_SIZE, layoutOptionsFor };
+export { COLLAPSED_SIZE, layoutOptionsFor } from './layout-graph';
 
 export interface NodeGeometry {
   x: number;
@@ -77,47 +70,6 @@ function signature(
   return `${nodes.join('|')}#${edges}${sized}${settingsKey(settings)}`;
 }
 
-// Edge-label footprint fed into elk so it reserves room and neighbours don't
-// overlap the label. Approximate: the drawn label is a ~10px-font chip, so a
-// per-char width plus horizontal padding lands close to the real box.
-//
-// TASK-3 NOTE: this constant plus `edgeLabelBox` and `toElkNode` below are
-// verbatim-duplicated (not moved) from what is now `buildGraph` in
-// layout-graph.ts. The task-3 brief called for deleting them here, but
-// `layoutView`'s body — which the brief also says to leave alone — calls
-// `toElkNode`/`edgeLabelBox` directly, and `edgeLabelBox` is deliberately not
-// exported from layout-graph.ts. Deleting them is only safe once `layoutView`
-// is rewired to call `buildGraph` instead of building its own `ElkShape`,
-// which is task 4's job. Left in place, flagged, rather than guessed away.
-const EDGE_LABEL_CHAR = 6;
-const EDGE_LABEL_PAD = 12;
-const EDGE_LABEL_HEIGHT = 18;
-
-function edgeLabelBox(text: string): { width: number; height: number } | undefined {
-  const t = text.trim();
-  if (t === '') return undefined;
-  return { width: Math.round(t.length * EDGE_LABEL_CHAR + EDGE_LABEL_PAD), height: EDGE_LABEL_HEIGHT };
-}
-
-function toElkNode(n: ViewNode, sizes?: Map<string, { width: number; height: number }>): ElkShape {
-  if (n.state === 'expanded') {
-    return {
-      id: n.id,
-      children: n.children.map((c) => toElkNode(c, sizes)),
-      layoutOptions: {
-        'elk.padding': '[top=36.0,left=16.0,bottom=16.0,right=16.0]',
-      },
-    };
-  }
-  // collapsed containers keep the fixed collapsed size — an image override only
-  // makes sense for a leaf, where the picture IS the body
-  if (n.state === 'collapsed') {
-    return { id: n.id, width: COLLAPSED_SIZE.width, height: COLLAPSED_SIZE.height };
-  }
-  const size = sizes?.get(n.id) ?? LEAF_SIZE;
-  return { id: n.id, width: size.width, height: size.height };
-}
-
 export async function layoutView(
   view: CompiledView,
   sizeOverrides?: Map<string, { width: number; height: number }>,
@@ -127,28 +79,26 @@ export async function layoutView(
   const hit = cache.get(key);
   if (hit) return hit;
 
-  const graph: ElkShape = {
-    id: '__root__',
-    layoutOptions: layoutOptionsFor(settings),
-    children: view.roots.map((r) => toElkNode(r, sizeOverrides)),
-    edges: view.layoutEdges
-      .filter((e) => e.from !== e.to)
-      .map((e) => {
-        const text = edgeLabelText(e).trim();
-        const box = edgeLabelBox(text);
-        return {
-          id: e.id,
-          sources: [e.from],
-          targets: [e.to],
-          ...(box !== undefined ? { labels: [{ ...box, text }] } : {}),
-        };
-      }),
-  };
+  // A rejected pick must degrade, not blank the canvas: radial throws outright
+  // on any graph that is not a tree, and a future algorithm may reject some
+  // other shape. Retry with the pre-lift graph, which is what every non-layered
+  // algorithm effectively received before.
+  let usedNested = usesNestedLayout(settings);
+  let laid: ElkShape;
+  try {
+    laid = (await elk.layout(buildGraph(view, sizeOverrides, settings))) as ElkShape;
+  } catch {
+    usedNested = false;
+    laid = (await elk.layout(buildGraph(view, sizeOverrides, settings, { flat: true }))) as ElkShape;
+  }
 
-  const laid = (await elk.layout(graph)) as ElkShape;
   const geometry = new Map<string, NodeGeometry>();
   const routes = new Map<string, EdgePoint[]>();
-  const wantRoutes = settings?.edgeRouting === 'orthogonal';
+  // Only the flat path produces routes worth drawing. On the nested path elk
+  // returns sections for a fraction of the edges, and a lifted edge's waypoints
+  // run between containers rather than between the nodes the renderer draws —
+  // so curved beziers are the honest fallback. See DEFERRALS.md.
+  const wantRoutes = settings?.edgeRouting === 'orthogonal' && !usedNested;
 
   // Node x/y stay parent-relative (React Flow positions children under parentId).
   // Edge sections, however, are relative to the container node that owns them, so
