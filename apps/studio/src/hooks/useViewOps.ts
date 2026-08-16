@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { uniqueNodeId, type DiagramModel, type DiagramPlane } from '@diagramming/core';
+import { uniqueNodeId, type DiagramModel, type DiagramPlane, type LayoutSettings } from '@diagramming/core';
 import type { DiagramSelection } from '@diagramming/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import { remapVisibleLayers } from '../layerMerge';
@@ -26,6 +26,7 @@ export interface UseViewOpsOptions {
   setGroupSel: Dispatch<SetStateAction<string[]>>;
   setPlane: Dispatch<SetStateAction<string | undefined>>;
   setPins: Dispatch<SetStateAction<Record<string, 'expanded' | 'collapsed'>>>;
+  setLayoutPreview: Dispatch<SetStateAction<Record<string, LayoutSettings>>>;
   setActiveLayers: Dispatch<SetStateAction<string[]>>;
   setActiveLayer: Dispatch<SetStateAction<string | null>>;
 }
@@ -70,6 +71,7 @@ export function useViewOps({
   setGroupSel,
   setPlane,
   setPins,
+  setLayoutPreview,
   setActiveLayers,
   setActiveLayer,
 }: UseViewOpsOptions): ViewOps {
@@ -162,6 +164,7 @@ export function useViewOps({
   const resetView = () => {
     setPlane(undefined);
     setPins({});
+    setLayoutPreview({});
     setActiveLayers([]);
     setActiveLayer(null);
     select(null);

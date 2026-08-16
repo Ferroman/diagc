@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   applyTheme,
   darkTheme,
@@ -34,6 +34,8 @@ import { useViewOps } from './hooks/useViewOps';
 import { edgeLabelsOf, addEdgeLabel, editEdgeLabel, moveEdgeLabel } from './edge-labels';
 import { computeSelectionColor } from './selection-color';
 import { EditorToolbar } from './editor/EditorToolbar';
+import { LayoutControls } from './LayoutControls';
+import { mergePreview, withLayoutPreview } from './layoutPreview';
 import { uploadAsset } from './editor/images';
 import { NodePanel } from './editor/NodePanel';
 import { EdgePanel } from './editor/EdgePanel';
@@ -92,6 +94,10 @@ export function App() {
   // The "pen": the transparent sheet new nodes/edges land on (null = base sheet).
   const [activeLayer, setActiveLayer] = useState<string | null>(null);
   const [pins, setPins] = useState<Record<string, 'expanded' | 'collapsed'>>({});
+  // A viewer's momentary layout choice, keyed by resolved containment plane like
+  // the persisted settings are. Never written: this is viewer state in the same
+  // class as pins and focus, and DEFERRALS.md:14 keeps saves explicit.
+  const [layoutPreview, setLayoutPreview] = useState<Record<string, LayoutSettings>>({});
   const [selection, setSelection] = useState<DiagramSelection | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   // Edit mode: variables shift-selected to be grouped into one abstract variable.
@@ -170,10 +176,17 @@ export function App() {
   // set in the layout sidecar. Drives the toolbar toggle and new-node placement.
   const activePlaneManual = model !== undefined && layout?.manual?.[layoutPlaneKey(model, activePlane)] === true;
 
+  // Edit mode reads the session's own overlay untouched — layout settings there
+  // are commands on the undo stack. View mode overlays the ephemeral preview.
+  const viewLayout = useMemo(
+    () => (editing ? layout : withLayoutPreview(layout, model, activePlane, layoutPreview)),
+    [editing, layout, model, activePlane, layoutPreview],
+  );
+
   // The active plane's automatic-layout settings (algorithm/direction/spacing/
-  // edge routing); empty ⇒ tuned defaults. Drives the toolbar layout picker.
+  // edge routing); empty ⇒ tuned defaults. Drives the layout picker in both modes.
   const activePlaneSettings: LayoutSettings =
-    (model !== undefined ? layout?.settings?.[layoutPlaneKey(model, activePlane)] : undefined) ?? {};
+    (model !== undefined ? viewLayout?.settings?.[layoutPlaneKey(model, activePlane)] : undefined) ?? {};
 
   // The pen, clamped to a layer that still exists (deleting the active layer
   // drops us back to the base sheet without any explicit reset).
@@ -255,6 +268,7 @@ export function App() {
     setGroupSel,
     setPlane,
     setPins,
+    setLayoutPreview,
     setActiveLayers,
     setActiveLayer,
   });
@@ -349,6 +363,17 @@ export function App() {
     editor.dispatch({ type: 'set-layout-settings', patch, ...(activePlane !== undefined ? { plane: activePlane } : {}) });
   };
 
+  // View mode never persists: merge into the ephemeral preview instead of
+  // dispatching a command.
+  const previewLayoutSettings = useCallback(
+    (patch: Partial<LayoutSettings>) => {
+      if (model === undefined) return;
+      const key = layoutPlaneKey(model, activePlane);
+      setLayoutPreview((p) => mergePreview(p, key, patch));
+    },
+    [model, activePlane],
+  );
+
   // Global color target: the selected node, or the selected single-relation
   // edge — drives the toolbar swatch row (select object -> click color).
   const selectionColor = editing && model !== undefined ? computeSelectionColor(model, selection, editor.dispatch) : null;
@@ -396,6 +421,26 @@ export function App() {
               read-only
             </span>
           ))}
+        {!editing && model !== undefined && (
+          <>
+            <LayoutControls settings={activePlaneSettings} onChange={previewLayoutSettings} />
+            {layoutPreview[layoutPlaneKey(model, activePlane)] !== undefined && (
+              <button
+                className="chip"
+                title="Drop the preview and go back to this diagram's own layout settings"
+                onClick={() =>
+                  setLayoutPreview((p) => {
+                    const next = { ...p };
+                    delete next[layoutPlaneKey(model, activePlane)];
+                    return next;
+                  })
+                }
+              >
+                Reset layout
+              </button>
+            )}
+          </>
+        )}
         <button className="chip" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
           {theme === 'dark' ? '☀ light' : '☾ dark'}
         </button>
@@ -586,7 +631,7 @@ export function App() {
                         : null))
                 }
                 {...(notation !== undefined ? { notation } : {})}
-                {...(layout !== undefined ? { layout } : {})}
+                {...(viewLayout !== undefined ? { layout: viewLayout } : {})}
                 {...(editing
                   ? {
                       mode: 'edit' as const,
