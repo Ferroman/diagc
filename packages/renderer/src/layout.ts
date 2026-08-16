@@ -1,8 +1,9 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
-import { LEAF_SIZE, type CompiledView, type LayoutSettings, type ViewEdge, type ViewNode } from '@diagramming/core';
+import { LEAF_SIZE, type CompiledView, type LayoutSettings, type ViewNode } from '@diagramming/core';
 import {
   buildGraph,
   layoutOptionsFor,
+  edgeLabelText,
   COLLAPSED_SIZE,
   type ElkRoutedEdge,
   type ElkShape,
@@ -34,28 +35,6 @@ export interface LayoutResult {
 const elk = new ELK();
 const cache = new Map<string, LayoutResult>();
 const CACHE_CAP = 50;
-
-// Edge-label footprint fed into elk so it reserves room and neighbours don't
-// overlap the label. Approximate: the drawn label is a ~10px-font chip, so a
-// per-char width plus horizontal padding lands close to the real box.
-const EDGE_LABEL_CHAR = 6;
-const EDGE_LABEL_PAD = 12;
-const EDGE_LABEL_HEIGHT = 18;
-
-/** The widest single label an edge carries (aggregate edges expose one joined
- * `label`; a sole relation exposes its positioned `labels`). Empty ⇒ no label. */
-function edgeLabelText(e: ViewEdge): string {
-  if (e.labels !== undefined && e.labels.length > 0) {
-    return e.labels.reduce((widest, l) => (l.text.length > widest.length ? l.text : widest), '');
-  }
-  return e.label ?? '';
-}
-
-function edgeLabelBox(text: string): { width: number; height: number } | undefined {
-  const t = text.trim();
-  if (t === '') return undefined;
-  return { width: Math.round(t.length * EDGE_LABEL_CHAR + EDGE_LABEL_PAD), height: EDGE_LABEL_HEIGHT };
-}
 
 function settingsKey(settings?: LayoutSettings): string {
   if (settings === undefined) return '';
@@ -96,6 +75,28 @@ function signature(
           .map(([id, s]) => `${id}:${s.width}x${s.height}`)
           .join('|')}`;
   return `${nodes.join('|')}#${edges}${sized}${settingsKey(settings)}`;
+}
+
+// Edge-label footprint fed into elk so it reserves room and neighbours don't
+// overlap the label. Approximate: the drawn label is a ~10px-font chip, so a
+// per-char width plus horizontal padding lands close to the real box.
+//
+// TASK-3 NOTE: this constant plus `edgeLabelBox` and `toElkNode` below are
+// verbatim-duplicated (not moved) from what is now `buildGraph` in
+// layout-graph.ts. The task-3 brief called for deleting them here, but
+// `layoutView`'s body — which the brief also says to leave alone — calls
+// `toElkNode`/`edgeLabelBox` directly, and `edgeLabelBox` is deliberately not
+// exported from layout-graph.ts. Deleting them is only safe once `layoutView`
+// is rewired to call `buildGraph` instead of building its own `ElkShape`,
+// which is task 4's job. Left in place, flagged, rather than guessed away.
+const EDGE_LABEL_CHAR = 6;
+const EDGE_LABEL_PAD = 12;
+const EDGE_LABEL_HEIGHT = 18;
+
+function edgeLabelBox(text: string): { width: number; height: number } | undefined {
+  const t = text.trim();
+  if (t === '') return undefined;
+  return { width: Math.round(t.length * EDGE_LABEL_CHAR + EDGE_LABEL_PAD), height: EDGE_LABEL_HEIGHT };
 }
 
 function toElkNode(n: ViewNode, sizes?: Map<string, { width: number; height: number }>): ElkShape {

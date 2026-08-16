@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, model } from '@diagramming/core';
-import { liftEdges, layoutOptionsFor, usesNestedLayout } from './layout-graph';
+import { liftEdges, layoutOptionsFor, usesNestedLayout, buildGraph, COLLAPSED_SIZE } from './layout-graph';
 
 /**
  * Two containers, two leaves each, and one relation of every shape that matters:
@@ -98,5 +98,49 @@ describe('layoutOptionsFor hierarchy handling', () => {
 
   it('omits it for algorithms that do not implement it', () => {
     expect(layoutOptionsFor({ algorithm: 'force' })['elk.hierarchyHandling']).toBeUndefined();
+  });
+});
+
+describe('buildGraph', () => {
+  it('leaves the flat path alone: all edges at the root, no algorithm on containers', () => {
+    const g = buildGraph(expanded(), undefined, undefined);
+    // all 4 relations: the flat path only drops true self-edges (from === to)
+    expect(g.edges).toHaveLength(4);
+    const left = g.children!.find((c) => c.id === 'left')!;
+    expect(left.edges).toBeUndefined();
+    expect(left.layoutOptions!['elk.algorithm']).toBeUndefined();
+    expect(left.layoutOptions!['elk.padding']).toBeDefined();
+  });
+
+  it('puts each level\'s edges on its own container for a nested algorithm', () => {
+    const g = buildGraph(expanded(), undefined, { algorithm: 'force' });
+    const left = g.children!.find((c) => c.id === 'left')!;
+    expect(left.edges).toHaveLength(1);
+    expect(left.edges![0]!.sources).toEqual(['a']);
+    // the two lifted left→right edges; left→a dropped as a would-be self-loop
+    expect(g.edges).toHaveLength(2);
+  });
+
+  it('stamps the algorithm and spacing onto every container — elk inherits neither', () => {
+    const g = buildGraph(expanded(), undefined, { algorithm: 'force', spacing: 24 });
+    const left = g.children!.find((c) => c.id === 'left')!;
+    expect(left.layoutOptions!['elk.algorithm']).toBe('force');
+    expect(left.layoutOptions!['elk.spacing.nodeNode']).toBe('24');
+    // padding must survive the merge, or containers lose their header room
+    expect(left.layoutOptions!['elk.padding']).toContain('top=36.0');
+  });
+
+  it('flat:true forces the pre-lift graph even for a nested algorithm', () => {
+    const g = buildGraph(expanded(), undefined, { algorithm: 'radial' }, { flat: true });
+    expect(g.edges).toHaveLength(4);
+    expect(g.children!.find((c) => c.id === 'left')!.edges).toBeUndefined();
+  });
+
+  it('honours size overrides on leaves and the fixed size on collapsed containers', () => {
+    const g = buildGraph(expanded(), new Map([['a', { width: 111, height: 22 }]]), undefined);
+    const a = g.children!.find((c) => c.id === 'left')!.children!.find((c) => c.id === 'a')!;
+    expect(a).toMatchObject({ width: 111, height: 22 });
+    const folded = buildGraph(compileView(crossing(), {}), undefined, undefined);
+    expect(folded.children!.find((c) => c.id === 'left')).toMatchObject(COLLAPSED_SIZE);
   });
 });

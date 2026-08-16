@@ -1,4 +1,4 @@
-import type { CompiledView, LayoutSettings, ViewNode } from '@diagramming/core';
+import { LEAF_SIZE, type CompiledView, type LayoutSettings, type ViewEdge, type ViewNode } from '@diagramming/core';
 
 /** An elk edge after lifting: both endpoints are direct children of the owner. */
 export interface LiftedEdge {
@@ -155,4 +155,102 @@ export function liftEdges(view: CompiledView): Map<string | null, LiftedEdge[]> 
     byOwner.set(owner, list);
   }
   return byOwner;
+}
+
+const CONTAINER_PADDING = '[top=36.0,left=16.0,bottom=16.0,right=16.0]';
+
+// Edge-label footprint fed into elk so it reserves room and neighbours don't
+// overlap the label. Approximate: the drawn label is a ~10px-font chip, so a
+// per-char width plus horizontal padding lands close to the real box.
+const EDGE_LABEL_CHAR = 6;
+const EDGE_LABEL_PAD = 12;
+const EDGE_LABEL_HEIGHT = 18;
+
+/** The widest single label an edge carries (aggregate edges expose one joined
+ * `label`; a sole relation exposes its positioned `labels`). Empty ⇒ no label. */
+export function edgeLabelText(e: ViewEdge): string {
+  if (e.labels !== undefined && e.labels.length > 0) {
+    return e.labels.reduce((widest, l) => (l.text.length > widest.length ? l.text : widest), '');
+  }
+  return e.label ?? '';
+}
+
+function edgeLabelBox(text: string): { width: number; height: number } | undefined {
+  const t = text.trim();
+  if (t === '') return undefined;
+  return { width: Math.round(t.length * EDGE_LABEL_CHAR + EDGE_LABEL_PAD), height: EDGE_LABEL_HEIGHT };
+}
+
+/**
+ * The elk input graph.
+ *
+ * Two shapes, picked by `usesNestedLayout`. The flat one (layered, rectpacking)
+ * hangs every edge off the root and lets INCLUDE_CHILDREN flatten the tree. The
+ * nested one gives each container its own lifted edges and its own copy of the
+ * layout options, because elk inherits neither into children.
+ *
+ * `opts.flat` forces the flat shape regardless — layoutView's fallback for an
+ * algorithm that rejects the lifted graph outright (radial throws on any graph
+ * that is not a tree).
+ */
+export function buildGraph(
+  view: CompiledView,
+  sizes: Map<string, { width: number; height: number }> | undefined,
+  settings: LayoutSettings | undefined,
+  opts?: { flat?: boolean },
+): ElkShape {
+  const rootOptions = layoutOptionsFor(settings);
+  const nested = usesNestedLayout(settings) && opts?.flat !== true;
+  const byOwner = nested ? liftEdges(view) : undefined;
+
+  // On the flat path a container carries padding only: INCLUDE_CHILDREN means
+  // elk lays the whole tree out as one graph, so the root's options already
+  // govern every level. On the nested path each level is a separate layout run
+  // and inherits nothing, so it needs the full set.
+  const containerOptions = nested
+    ? { 'elk.padding': CONTAINER_PADDING, ...rootOptions }
+    : { 'elk.padding': CONTAINER_PADDING };
+
+  const toNode = (n: ViewNode): ElkShape => {
+    if (n.state === 'expanded') {
+      const own = byOwner?.get(n.id);
+      return {
+        id: n.id,
+        children: n.children.map(toNode),
+        layoutOptions: containerOptions,
+        ...(own !== undefined && own.length > 0 ? { edges: own } : {}),
+      };
+    }
+    // collapsed containers keep the fixed collapsed size — an image override
+    // only makes sense for a leaf, where the picture IS the body
+    if (n.state === 'collapsed') return { id: n.id, width: COLLAPSED_SIZE.width, height: COLLAPSED_SIZE.height };
+    const size = sizes?.get(n.id) ?? LEAF_SIZE;
+    return { id: n.id, width: size.width, height: size.height };
+  };
+
+  // Lifted edges carry no label box. A raised edge stands for every relation
+  // between two subtrees, so no single label belongs to it, and elk's force and
+  // stress do not reserve label space the way layered does. Recorded in
+  // DEFERRALS.md rather than faked.
+  const rootEdges: ElkEdge[] = nested
+    ? (byOwner?.get(null) ?? [])
+    : view.layoutEdges
+        .filter((e) => e.from !== e.to)
+        .map((e) => {
+          const text = edgeLabelText(e).trim();
+          const box = edgeLabelBox(text);
+          return {
+            id: e.id,
+            sources: [e.from],
+            targets: [e.to],
+            ...(box !== undefined ? { labels: [{ ...box, text }] } : {}),
+          };
+        });
+
+  return {
+    id: '__root__',
+    layoutOptions: rootOptions,
+    children: view.roots.map(toNode),
+    edges: rootEdges,
+  };
 }
