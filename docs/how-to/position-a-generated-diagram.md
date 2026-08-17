@@ -1,0 +1,83 @@
+# Place boxes by hand on a generated diagram
+
+A `.diagram.ts` diagram is **read-only** in the studio: its model is compiled from the
+TypeScript, so the studio will not let you rename a node or draw a relation. Positions are
+different. They were never part of the model, so you can place the boxes wherever you like
+and keep them.
+
+## Why re-compiling does not undo it
+
+Meaning and coordinates live in two files:
+
+| File | Written by | Rewritten on `pnpm compile`? |
+| --- | --- | --- |
+| `.diagrams/src/shop.diagram.ts` | you | — it is the source |
+| `.diagrams/.artifacts/shop.diagram.json` | the compiler | **yes**, wholesale |
+| `.diagrams/src/shop.layout.json` | the studio | **no** — never touched |
+
+`diagc compile` writes exactly one file per diagram: the artifact. It never reads or writes
+a `.layout.json`. That is the point of the split — a change to the source rewrites what the
+diagram *means* and leaves where you put things alone.
+
+## Move and save
+
+1. `pnpm dev`, then open the diagram. It shows a `read-only` chip; that is expected.
+2. Hold **Alt** and drag a box. Alt is what unlocks dragging in view mode.
+3. A **Save positions** chip appears in the top bar. Click it.
+
+That writes `.diagrams/src/<name>.layout.json`:
+
+```json
+{
+  "version": 1,
+  "planes": {
+    "architecture": {
+      "platform": { "x": 71.87, "y": 171.92 }
+    }
+  }
+}
+```
+
+Positions are keyed by **plane** — `architecture` above, because that diagram declares
+planes and this is the first one. A diagram with no planes keys under `default`. Each plane
+is positioned independently, so the same node can sit in different places in different views.
+
+Nothing is written until you click. Dragging alone is throwaway state, and switching plane
+or diagram discards it — the same class of state as pins and focus.
+
+## What this does not do
+
+Saving positions does **not** switch automatic layout off. Elk keeps arranging every node
+you have not placed, and your saved coordinates win for the ones you have. If elk keeps
+shoving your arrangement around, switch the plane to manual by adding it by hand:
+
+```json
+{ "version": 1, "planes": { "architecture": { "…": {} } }, "manual": { "architecture": true } }
+```
+
+Be deliberate about that: with automatic layout off, a node added to the source later has
+no position at all until you place it.
+
+## Keep node ids stable
+
+Positions key on node id, so the id in the source is the anchor:
+
+```ts
+const platform = m.node('platform', { type: 'system' }); // 'platform' is the key
+```
+
+Rename that id and the saved position is orphaned — it is ignored, not an error, and the
+node falls back to automatic placement. Add a node and it is placed automatically until you
+move it. Remove one and its stale entry is harmless.
+
+## Do not keep a `.diagram.json` of the same name
+
+`shop.diagram.ts` and `shop.diagram.json` both compile to the same artifact path, so one
+silently overwrites the other. If you want a hand-edited model, pick one authoring route
+for that name — this page is the way to keep the TypeScript *and* control the layout.
+
+## See also
+
+- [Author diagrams in TypeScript](author-in-typescript.md)
+- [`LayoutOverlay` reference](../reference/model.md#layoutoverlay-namelayoutjson) — every field the file may carry
+- [The model](../explanation/the-model.md) — why positions live outside it

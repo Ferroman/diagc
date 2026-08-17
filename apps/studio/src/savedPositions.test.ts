@@ -1,0 +1,65 @@
+import { describe, expect, it } from 'vitest';
+import { model, type LayoutOverlay } from '@diagramming/core';
+import { withSavedPositions } from './savedPositions';
+
+function makeModel() {
+  const m = model('p');
+  m.node('a', { type: 'service' });
+  m.node('b', { type: 'service' });
+  m.plane('alt', { name: 'Alt' });
+  return m.toJSON();
+}
+
+describe('withSavedPositions', () => {
+  const saved: LayoutOverlay = {
+    version: 1,
+    planes: { alt: { a: { x: 1, y: 2 } } },
+    settings: { alt: { direction: 'DOWN' } },
+  };
+
+  it('merges the moved nodes into the plane, leaving untouched ones alone', () => {
+    const out = withSavedPositions(saved, makeModel(), 'alt', { b: { x: 30, y: 40 } });
+    expect(out.planes['alt']).toEqual({ a: { x: 1, y: 2 }, b: { x: 30, y: 40 } });
+  });
+
+  it('a re-drag of an already-saved node overwrites that entry', () => {
+    const out = withSavedPositions(saved, makeModel(), 'alt', { a: { x: 9, y: 9 } });
+    expect(out.planes['alt']).toEqual({ a: { x: 9, y: 9 } });
+  });
+
+  it('keeps every other field of the overlay, so saving positions never drops settings', () => {
+    // The overlay also carries layout settings, sizes and the manual set. A save
+    // that rebuilt the object from scratch would silently discard a diagram's
+    // hand-written algorithm choice.
+    const out = withSavedPositions(saved, makeModel(), 'alt', { b: { x: 3, y: 4 } });
+    expect(out.settings).toEqual({ alt: { direction: 'DOWN' } });
+    expect(out.version).toBe(1);
+  });
+
+  it('leaves other planes untouched', () => {
+    const two: LayoutOverlay = { version: 1, planes: { alt: {}, default: { a: { x: 5, y: 5 } } } };
+    const out = withSavedPositions(two, makeModel(), 'alt', { b: { x: 1, y: 1 } });
+    expect(out.planes['default']).toEqual({ a: { x: 5, y: 5 } });
+  });
+
+  it('synthesises an overlay when the diagram has no sidecar yet', () => {
+    // The case that matters for a TS-authored diagram: there is no layout file
+    // until the first save writes one. A plane-less model resolves to 'default'.
+    const plain = model('plain');
+    plain.node('a', { type: 'service' });
+    const out = withSavedPositions(undefined, plain.toJSON(), undefined, { a: { x: 7, y: 8 } });
+    expect(out).toEqual({ version: 1, planes: { default: { a: { x: 7, y: 8 } } } });
+  });
+
+  it('resolves an absent plane the way the compiler does — the first declared one', () => {
+    // Not 'default': layoutPlaneKey defers to resolveContainmentPlane, so a model
+    // that declares planes keys under its first, exactly as compileView renders it.
+    const out = withSavedPositions(undefined, makeModel(), undefined, { a: { x: 7, y: 8 } });
+    expect(Object.keys(out.planes)).toEqual(['alt']);
+  });
+
+  it('keys the plane the same way the persisted settings do', () => {
+    const out = withSavedPositions(undefined, makeModel(), 'alt', { a: { x: 0, y: 0 } });
+    expect(Object.keys(out.planes)).toEqual(['alt']);
+  });
+});

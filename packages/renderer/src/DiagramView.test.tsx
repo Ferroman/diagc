@@ -708,3 +708,29 @@ describe('legend', () => {
     expect(onToggleLayer).toHaveBeenCalledWith('flow');
   });
 });
+
+describe('view-mode position reporting', () => {
+  // The drag itself is a React Flow pointer gesture that jsdom cannot drive, so
+  // what is asserted here is the WIRING and the reset path — the two halves the
+  // host depends on. The gesture end-to-end (drag → save → survives a recompile)
+  // is verified in the browser; see docs/how-to/position-a-generated-diagram.md.
+  it('reports an empty set on mount, so a host can seed its state', async () => {
+    const onViewPositionsChange = vi.fn();
+    render(<DiagramView model={containerEndpointModel()} onViewPositionsChange={onViewPositionsChange} />);
+    await screen.findByText('sys');
+    expect(onViewPositionsChange).toHaveBeenCalledWith({});
+  });
+
+  it('re-reports an empty set when the model changes, so stale drags cannot leak across diagrams', async () => {
+    const onViewPositionsChange = vi.fn();
+    const { rerender } = render(
+      <DiagramView model={containerEndpointModel()} onViewPositionsChange={onViewPositionsChange} />,
+    );
+    await screen.findByText('sys');
+    onViewPositionsChange.mockClear();
+
+    rerender(<DiagramView model={promotedEndpointModel()} onViewPositionsChange={onViewPositionsChange} />);
+    await screen.findByText('shared-db');
+    expect(onViewPositionsChange).toHaveBeenCalledWith({});
+  });
+});

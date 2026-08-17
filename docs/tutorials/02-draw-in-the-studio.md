@@ -63,6 +63,8 @@ Two files are written next to your other sources:
 - `.diagrams/src/payments.layout.json` — where you dragged things.
 
 They are separate on purpose, so that moving a box around never muddies the diff of what the diagram *means*.
+It is also what lets you position a diagram compiled from TypeScript, whose model you cannot edit — see
+[Place boxes on a generated diagram](../how-to/position-a-generated-diagram.md).
 
 Because `pnpm dev` is running the watcher, the artifact is recompiled the moment you save.
 

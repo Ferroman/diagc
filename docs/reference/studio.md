@@ -85,6 +85,9 @@ Save **validates first** and refuses to write an invalid model, surfacing the sa
 - `.diagrams/src/<name>.diagram.json` — the model
 - `.diagrams/src/<name>.layout.json` — positions, sizes, and which planes have automatic layout switched off
 
+The layout file is paired by name alone, so a diagram compiled from TypeScript can have one too — see
+[Place boxes on a generated diagram](../how-to/position-a-generated-diagram.md).
+
 Subfolders are preserved. Both are pretty-printed JSON that reviews like any other source.
 
 An unsaved dot sits next to Save while the session is dirty; **Done** warns before discarding.

@@ -133,6 +133,14 @@ export interface DiagramViewProps {
   /** CLD only: the compiled signed loop-graph (the exact edge ids the canvas
    * draws), surfaced so the host can run leverage analysis against this view. */
   onCldEdges?: (edges: LoopEdgeInput[]) => void;
+  /** view mode: the ephemeral drag positions for the active plane changed
+   * (parent-relative, keyed by node id — the layout overlay's own shape). The
+   * host may persist them to the layout sidecar, which is safe even for a
+   * read-only TS-authored diagram because coordinates were never part of the
+   * model. The renderer keeps treating them as throwaway state, so a host that
+   * ignores this prop behaves exactly as before. Reports `{}` when the drags are
+   * dropped (plane switch, model reload, edit-mode toggle). */
+  onViewPositionsChange?: (positions: Record<string, { x: number; y: number }>) => void;
   /** host-driven highlight (e.g. a leverage-panel selection): glow these nodes
    * and view-edges, dim the rest. Takes precedence over the loop-badge highlight. */
   externalHighlight?: { nodes: readonly string[]; edges: readonly string[] } | null;
@@ -600,6 +608,15 @@ function Inner(props: DiagramViewProps) {
   useEffect(() => {
     setViewPositions({});
   }, [props.model, props.plane, editing]);
+
+  // Surface them upward so a host can offer to persist them. Driven off the state
+  // rather than the drag handler, so the resets above are reported too — a host
+  // that kept showing a "save" affordance after a plane switch would be offering
+  // to write positions the viewer can no longer see.
+  const { onViewPositionsChange } = props;
+  useEffect(() => {
+    onViewPositionsChange?.(viewPositions);
+  }, [viewPositions, onViewPositionsChange]);
 
   // Overlay-applied geometry: elk output with any layout-overlay positions for
   // the active plane substituted in (width/height stay elk's). Derived so the

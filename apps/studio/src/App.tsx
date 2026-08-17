@@ -36,6 +36,7 @@ import { computeSelectionColor } from './selection-color';
 import { EditorToolbar } from './editor/EditorToolbar';
 import { LayoutControls } from './LayoutControls';
 import { mergePreview, withLayoutPreview } from './layoutPreview';
+import { withSavedPositions } from './savedPositions';
 import { uploadAsset } from './editor/images';
 import { NodePanel } from './editor/NodePanel';
 import { EdgePanel } from './editor/EdgePanel';
@@ -98,6 +99,12 @@ export function App() {
   // the persisted settings are. Never written: this is viewer state in the same
   // class as pins and focus, and DEFERRALS.md:14 keeps saves explicit.
   const [layoutPreview, setLayoutPreview] = useState<Record<string, LayoutSettings>>({});
+  // Boxes moved by hand in view mode (alt-drag), not yet written to the sidecar.
+  // Unlike the layout preview these CAN be persisted — coordinates were never
+  // part of the model, so saving them is legitimate even for a read-only
+  // TS-authored diagram, whose sidecar `pnpm compile` never rewrites.
+  const [movedPositions, setMovedPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [savingPositions, setSavingPositions] = useState(false);
   const [selection, setSelection] = useState<DiagramSelection | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   // Edit mode: variables shift-selected to be grouped into one abstract variable.
@@ -372,6 +379,36 @@ export function App() {
     editor.dispatch({ type: 'set-layout-settings', patch, ...(activePlane !== undefined ? { plane: activePlane } : {}) });
   };
 
+  // Write the hand-placed positions to `<name>.layout.json` and fold them into
+  // the in-memory overlay, so they survive a plane switch (which drops the
+  // renderer's ephemeral drags) without a reload. Explicit, never automatic —
+  // DEFERRALS.md keeps "no autosave" deliberate, and this writes a repo file.
+  const savePositions = useCallback(async () => {
+    if (model === undefined || Object.keys(movedPositions).length === 0) return;
+    const next = withSavedPositions(layout, model, activePlane, movedPositions);
+    setSavingPositions(true);
+    try {
+      const res = await fetch(`/api/layouts/${selected}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(next),
+      });
+      if (!res.ok) {
+        const body = (await res.json()) as { issues?: { message: string }[] };
+        setSaveIssues(body.issues ?? [{ message: 'Could not save positions' }]);
+        return;
+      }
+      setLoaded((cur) => {
+        const entry = cur[selected];
+        return entry === undefined ? cur : { ...cur, [selected]: { ...entry, layout: next } };
+      });
+      setMovedPositions({});
+      setSaveIssues(null);
+    } finally {
+      setSavingPositions(false);
+    }
+  }, [model, movedPositions, layout, activePlane, selected, setLoaded, setSaveIssues]);
+
   // View mode never persists: merge into the ephemeral preview instead of
   // dispatching a command.
   const previewLayoutSettings = useCallback(
@@ -455,6 +492,16 @@ export function App() {
                 }
               >
                 Reset layout
+              </button>
+            )}
+            {Object.keys(movedPositions).length > 0 && (
+              <button
+                className="chip primary"
+                disabled={savingPositions}
+                title="Write the boxes you moved to this diagram's layout file. Safe on a generated diagram: re-compiling rewrites the model, never the positions."
+                onClick={() => void savePositions()}
+              >
+                {savingPositions ? 'Saving…' : 'Save positions'}
               </button>
             )}
           </>
@@ -638,6 +685,7 @@ export function App() {
                 assetBase="/api/assets/"
                 styleId={pinnedStyle ?? style}
                 onCldEdges={handleCldEdges}
+                onViewPositionsChange={setMovedPositions}
                 externalHighlight={
                   editing
                     ? groupSel.length > 0
