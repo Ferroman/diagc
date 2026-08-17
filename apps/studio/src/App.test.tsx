@@ -88,14 +88,14 @@ describe('view-mode layout preview', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
     const inEdit = await screen.findByLabelText('Layout algorithm');
-    fireEvent.change(inEdit, { target: { value: 'stress' } });
+    fireEvent.change(inEdit, { target: { value: 'mrtree' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
     await waitFor(() => expect(layoutPosts()).toContain('/api/layouts/sketch'));
 
     fireEvent.click(screen.getByRole('button', { name: /^done$/i }));
-    // A leftover 'force' preview would win over the freshly-saved 'stress' —
+    // A leftover 'force' preview would win over the freshly-saved 'mrtree' —
     // it must not resurface, and the Reset chip must not still be offered.
-    await waitFor(() => expect((screen.getByLabelText('Layout algorithm') as HTMLSelectElement).value).toBe('stress'));
+    await waitFor(() => expect((screen.getByLabelText('Layout algorithm') as HTMLSelectElement).value).toBe('mrtree'));
     expect(screen.queryByRole('button', { name: /reset layout/i })).toBeNull();
   });
 

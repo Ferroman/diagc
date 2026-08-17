@@ -546,11 +546,19 @@ function Inner(props: DiagramViewProps) {
   const [routes, setRoutes] = useState<Map<string, EdgePoint[]>>(() => new Map());
   useEffect(() => {
     let live = true;
-    void layoutView(compiled, sizeHints, layoutSettings).then((r) => {
-      if (!live) return;
-      setGeometry((old) => (old === r.geometry ? old : r.geometry));
-      setRoutes(r.routes);
-    });
+    void layoutView(compiled, sizeHints, layoutSettings)
+      .then((r) => {
+        if (!live) return;
+        setGeometry((old) => (old === r.geometry ? old : r.geometry));
+        setRoutes(r.routes);
+      })
+      // layoutView degrades to the default algorithm rather than rejecting, so
+      // getting here means even that failed. Keep the last arrangement (there is
+      // nothing better to draw) but say so — an unhandled rejection here reads on
+      // screen as the layout control silently doing nothing.
+      .catch((e: unknown) => {
+        if (live) console.error('layout failed; keeping the previous arrangement', e);
+      });
     // remember what is on screen — the plane-switch mapping reads this
     const ids: string[] = [];
     const walk = (n: ViewNode) => {

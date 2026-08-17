@@ -1,11 +1,21 @@
 import type { LayoutSettings } from '@diagramming/core';
 
+/**
+ * The arrangements worth offering.
+ *
+ * `radial` and `stress` were withdrawn (DEFERRALS.md). radial needs a TREE, so
+ * on any diagram carrying a cycle — which is every real architecture diagram —
+ * it fails on both the lifted and the flat graph and the engine degrades to
+ * layered, meaning the entry could only ever be a no-op that looked broken.
+ * stress places nodes as dimensionless points with no overlap removal, so its
+ * compact result is a pile (146 overlapping sibling pairs on platform-c4).
+ * Both are still honoured when a sidecar names them — only the picker stops
+ * proposing them.
+ */
 const ALGORITHMS: { value: string; label: string }[] = [
   { value: 'layered', label: 'Layered' },
   { value: 'force', label: 'Force' },
-  { value: 'stress', label: 'Stress' },
   { value: 'mrtree', label: 'Tree' },
-  { value: 'radial', label: 'Radial' },
   { value: 'rectpacking', label: 'Packed' },
 ];
 const DIRECTIONS: { value: string; label: string }[] = [
@@ -33,6 +43,14 @@ export function LayoutControls({ settings, onChange }: LayoutControlsProps) {
   const direction = settings.direction ?? 'RIGHT';
   const edgeRouting = settings.edgeRouting ?? 'curved';
 
+  // A diagram may already name an algorithm the picker no longer proposes (a
+  // sidecar written before radial/stress were withdrawn). Keep it in the list
+  // rather than rendering a blank select that misreports what is actually
+  // arranging the diagram — and that you could not deliberately move off.
+  const algorithms = ALGORITHMS.some((a) => a.value === algorithm)
+    ? ALGORITHMS
+    : [...ALGORITHMS, { value: algorithm, label: `${algorithm} (withdrawn)` }];
+
   return (
     <>
       <select
@@ -42,7 +60,7 @@ export function LayoutControls({ settings, onChange }: LayoutControlsProps) {
         value={algorithm}
         onChange={(e) => onChange({ algorithm: e.target.value === 'layered' ? undefined : e.target.value })}
       >
-        {ALGORITHMS.map((a) => (
+        {algorithms.map((a) => (
           <option key={a.value} value={a.value}>
             {a.label}
           </option>

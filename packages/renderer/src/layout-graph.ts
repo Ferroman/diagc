@@ -40,6 +40,10 @@ export interface ElkShape {
   edges?: ElkEdge[];
 }
 
+/** elk's default and ours: the one algorithm assumed to lay out anything we can
+ * build, which is what makes it usable as `layoutView`'s last-resort attempt. */
+export const DEFAULT_ALGORITHM = 'layered';
+
 /**
  * Algorithms that read edges but cannot see through a container wall, so they
  * need per-level lifted edges and a per-container algorithm option.
@@ -51,7 +55,7 @@ export interface ElkShape {
 export const NESTED_LAYOUT_ALGORITHMS = new Set(['force', 'stress', 'mrtree', 'radial']);
 
 export function usesNestedLayout(settings?: LayoutSettings): boolean {
-  return NESTED_LAYOUT_ALGORITHMS.has(settings?.algorithm ?? 'layered');
+  return NESTED_LAYOUT_ALGORITHMS.has(settings?.algorithm ?? DEFAULT_ALGORITHM);
 }
 
 /**
@@ -61,7 +65,7 @@ export function usesNestedLayout(settings?: LayoutSettings): boolean {
  * opt into orthogonal edge routing.
  */
 export function layoutOptionsFor(settings?: LayoutSettings): Record<string, string> {
-  const algorithm = settings?.algorithm ?? 'layered';
+  const algorithm = settings?.algorithm ?? DEFAULT_ALGORITHM;
   const spacing = settings?.spacing;
   const nodeNode = spacing !== undefined ? String(spacing) : '40';
   const betweenLayers = spacing !== undefined ? String(Math.round(spacing * 1.5)) : '60';
@@ -85,7 +89,7 @@ export function layoutOptionsFor(settings?: LayoutSettings): Record<string, stri
 
   // layered-only knobs — harmless to other algorithms but kept off the record
   // for cleanliness / testability.
-  if (algorithm === 'layered') {
+  if (algorithm === DEFAULT_ALGORITHM) {
     opts['elk.layered.spacing.nodeNodeBetweenLayers'] = betweenLayers;
     opts['elk.layered.thoroughness'] = '10';
     opts['elk.layered.crossingMinimization.strategy'] = 'LAYER_SWEEP';

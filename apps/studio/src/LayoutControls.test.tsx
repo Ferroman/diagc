@@ -33,6 +33,26 @@ describe('LayoutControls', () => {
     expect(onChange).toHaveBeenCalledWith({ spacing: undefined });
   });
 
+  it('does not offer the algorithms that cannot arrange a real diagram', () => {
+    // radial needs a TREE, so on any diagram with a cycle it fails outright and
+    // the engine degrades to layered — the picker would have been offering a
+    // no-op. stress treats nodes as dimensionless points and piles them on top
+    // of each other (146 overlapping pairs on platform-c4). See DEFERRALS.md.
+    render(<LayoutControls settings={{}} onChange={vi.fn()} />);
+    const offered = [...(screen.getByLabelText(/layout algorithm/i) as HTMLSelectElement).options].map((o) => o.value);
+    expect(offered).toEqual(['layered', 'force', 'mrtree', 'rectpacking']);
+  });
+
+  it('still shows an algorithm a diagram already names, so it can be changed away from', () => {
+    // A sidecar written before those entries were withdrawn still says `radial`.
+    // Dropping it silently would leave the picker blank and misreport what is
+    // actually laying the diagram out.
+    render(<LayoutControls settings={{ algorithm: 'radial' }} onChange={vi.fn()} />);
+    const select = screen.getByLabelText(/layout algorithm/i) as HTMLSelectElement;
+    expect(select.value).toBe('radial');
+    expect([...select.options].map((o) => o.value)).toContain('radial');
+  });
+
   it('patches edge routing', () => {
     const onChange = vi.fn();
     render(<LayoutControls settings={{}} onChange={onChange} />);

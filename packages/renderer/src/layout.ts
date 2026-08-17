@@ -1,6 +1,6 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
 import { type CompiledView, type LayoutSettings, type ViewNode } from '@diagramming/core';
-import { buildGraph, edgeLabelText, type ElkRoutedEdge, type ElkShape } from './layout-graph';
+import { buildGraph, DEFAULT_ALGORITHM, edgeLabelText, type ElkRoutedEdge, type ElkShape } from './layout-graph';
 
 // Re-exported so `index.tsx` and existing importers keep their import path.
 export { COLLAPSED_SIZE, layoutOptionsFor } from './layout-graph';
@@ -25,6 +25,11 @@ export interface LayoutResult {
    * edge between its true endpoints (`buildGraph`'s `lifted` flag), otherwise
    * empty. */
   routes: Map<string, EdgePoint[]>;
+  /** The algorithm this arrangement was actually produced with. Differs from the
+   * requested one when that one could not lay the graph out at all (see
+   * `layoutView`), so a caller can say so instead of presenting the fallback as
+   * the user's pick. */
+  algorithm: string;
 }
 
 const elk = new ELK();
@@ -81,25 +86,53 @@ export async function layoutView(
   const hit = cache.get(key);
   if (hit) return hit;
 
-  // A rejected pick should degrade rather than blank the canvas: radial throws
-  // outright on any graph that is not a tree, and a future algorithm may reject
-  // some other shape. Retry with the pre-lift graph, which is what every
-  // non-layered algorithm effectively received before. Only the elk call is
-  // guarded — buildGraph itself must throw straight through, or a bug in our
-  // own graph builder (e.g. liftEdges) would silently and permanently degrade
-  // to the flat graph instead of surfacing.
-  let laid: ElkShape;
-  const built = buildGraph(view, sizeOverrides, settings);
-  let { lifted } = built;
-  try {
-    laid = (await elk.layout(built.graph)) as ElkShape;
-  } catch {
+  // A rejected pick must degrade rather than freeze the canvas, so the attempts
+  // below run in escalating order of concession and EVERY one of them is
+  // guarded. The last is the default algorithm, which lays out anything we can
+  // build — without it a doomed pick left `layoutView` rejecting, DiagramView's
+  // `.then` never ran, and the stale arrangement stayed on screen looking like
+  // the control had simply done nothing.
+  //
+  // Retrying flat is not merely "what non-layered algorithms received before":
+  // before edge-lifting they received an EMPTY edge set, which is why radial
+  // appeared to work. Handed the real edges it rejects the lifted graph ("not a
+  // tree") and then overflows the stack on the flat one, so on a real nested
+  // diagram both of its attempts fail and only the default rescues it.
+  //
+  // buildGraph stays OUTSIDE the try: a bug in our own graph builder (e.g.
+  // liftEdges) must surface rather than silently demote us to the next attempt.
+  const chosen = settings?.algorithm ?? DEFAULT_ALGORITHM;
+  const withDefaultAlgorithm: LayoutSettings = { ...settings };
+  delete withDefaultAlgorithm.algorithm;
+
+  const attempts: { settings: LayoutSettings | undefined; flat: boolean; algorithm: string }[] = [
+    { settings, flat: false, algorithm: chosen },
+    { settings, flat: true, algorithm: chosen },
+  ];
+  if (chosen !== DEFAULT_ALGORITHM) {
+    attempts.push({ settings: withDefaultAlgorithm, flat: false, algorithm: DEFAULT_ALGORITHM });
+  }
+
+  let laid: ElkShape | undefined;
+  let lifted = false;
+  let algorithm = chosen;
+  let lastError: unknown;
+  for (const attempt of attempts) {
     // the flat graph restructures nothing, so its `lifted` is false by
     // construction — read it rather than assume it
-    const flat = buildGraph(view, sizeOverrides, settings, { flat: true });
-    lifted = flat.lifted;
-    laid = (await elk.layout(flat.graph)) as ElkShape;
+    const built = buildGraph(view, sizeOverrides, attempt.settings, attempt.flat ? { flat: true } : undefined);
+    try {
+      laid = (await elk.layout(built.graph)) as ElkShape;
+      lifted = built.lifted;
+      algorithm = attempt.algorithm;
+      break;
+    } catch (e) {
+      lastError = e;
+    }
   }
+  // Even the default failed: there is no arrangement left to show, and
+  // swallowing that would turn a real bug into a silently blank canvas.
+  if (laid === undefined) throw lastError;
 
   const geometry = new Map<string, NodeGeometry>();
   const routes = new Map<string, EdgePoint[]>();
@@ -136,7 +169,7 @@ export async function layoutView(
   };
   collect(laid, 0, 0);
 
-  const result: LayoutResult = { geometry, routes };
+  const result: LayoutResult = { geometry, routes, algorithm };
   if (cache.size >= CACHE_CAP) {
     const oldest = cache.keys().next().value;
     if (oldest !== undefined) cache.delete(oldest);
