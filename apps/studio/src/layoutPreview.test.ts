@@ -40,6 +40,15 @@ describe('withLayoutPreview', () => {
     expect(out!.settings!['alt']).toEqual({ direction: 'DOWN', algorithm: 'force' });
   });
 
+  it('the preview WINS on a field the sidecar also sets', () => {
+    // Spread order, not composition: `saved` pins direction: DOWN, so if the
+    // sidecar spread last the picker would be inert on exactly the diagrams
+    // that hand-wrote a setting. Same field on both sides is the only way to
+    // observe it — the test above sets two different ones.
+    const out = withLayoutPreview(saved, makeModel(), 'alt', { alt: { direction: 'UP' } });
+    expect(out!.settings!['alt']).toEqual({ direction: 'UP' });
+  });
+
   it('synthesises an overlay when the diagram has no sidecar at all', () => {
     const out = withLayoutPreview(undefined, makeModel(), 'alt', { alt: { algorithm: 'force' } });
     expect(out).toEqual({ version: 1, planes: {}, settings: { alt: { algorithm: 'force' } } });

@@ -192,13 +192,18 @@ function edgeLabelBox(text: string): { width: number; height: number } | undefin
  * `opts.flat` forces the flat shape regardless — layoutView's fallback for an
  * algorithm that rejects the lifted graph outright (radial throws on any graph
  * that is not a tree).
+ *
+ * Returns the graph alongside `lifted`: whether this build actually restructured
+ * the edge set (see the flag's own comment below). `layoutView` keys route
+ * collection off it, because only an unrestructured graph yields waypoints that
+ * describe the edges the renderer draws.
  */
 export function buildGraph(
   view: CompiledView,
   sizes: Map<string, { width: number; height: number }> | undefined,
   settings: LayoutSettings | undefined,
   opts?: { flat?: boolean },
-): ElkShape {
+): { graph: ElkShape; lifted: boolean } {
   const rootOptions = layoutOptionsFor(settings);
   const nested = usesNestedLayout(settings) && opts?.flat !== true;
   const byOwner = nested ? liftEdges(view) : undefined;
@@ -207,18 +212,27 @@ export function buildGraph(
   // elk lays the whole tree out as one graph, so the root's options already
   // govern every level. On the nested path each level is a separate layout run
   // and inherits nothing, so it needs the full set.
+  //
+  // Padding is applied AFTER rootOptions so the container-specific value wins:
+  // `layoutOptionsFor` never emits `elk.padding` today, but if it ever did, a
+  // container would silently lose its 36px header room and the title would
+  // overlap its children. elk is indifferent to key order.
   const containerOptions = nested
-    ? { 'elk.padding': CONTAINER_PADDING, ...rootOptions }
+    ? { ...rootOptions, 'elk.padding': CONTAINER_PADDING }
     : { 'elk.padding': CONTAINER_PADDING };
+
+  let attachedToContainer = false;
 
   const toNode = (n: ViewNode): ElkShape => {
     if (n.state === 'expanded') {
       const own = byOwner?.get(n.id);
+      const hasOwn = own !== undefined && own.length > 0;
+      if (hasOwn) attachedToContainer = true;
       return {
         id: n.id,
         children: n.children.map(toNode),
         layoutOptions: containerOptions,
-        ...(own !== undefined && own.length > 0 ? { edges: own } : {}),
+        ...(hasOwn ? { edges: own } : {}),
       };
     }
     // collapsed containers keep the fixed collapsed size — an image override
@@ -247,10 +261,38 @@ export function buildGraph(
           };
         });
 
+  // built before `lifted` is read — `toNode` is what discovers container-owned edges
+  const children = view.roots.map(toNode);
+
+  // Did this build restructure the edge set, so that elk's output sections stop
+  // describing the edges the renderer draws? Two ways it can:
+  //
+  //  - an edge moved onto a container, whose sections we would have to attribute
+  //    to a sub-layout run that elk does not route across levels; or
+  //  - an endpoint was RAISED to an ancestor. Two containers joined by a single
+  //    leaf-to-leaf edge produce no container-owned edges at all, yet the root
+  //    edge now runs container-to-container — its waypoints stop at the two
+  //    container borders, nowhere near the leaves the renderer connects.
+  //
+  // Neither happens on the flat path, nor on a nested run over a view whose
+  // containers no edge touches (a container-free diagram being the obvious
+  // case), and there the sections are honest and worth keeping.
+  const raisesEndpoint = (): boolean => {
+    const original = new Map(view.layoutEdges.map((e) => [e.id, e] as const));
+    return rootEdges.some((e) => {
+      const o = original.get(e.id);
+      return o === undefined || e.sources[0] !== o.from || e.targets[0] !== o.to;
+    });
+  };
+  const lifted = attachedToContainer || (nested && raisesEndpoint());
+
   return {
-    id: '__root__',
-    layoutOptions: rootOptions,
-    children: view.roots.map(toNode),
-    edges: rootEdges,
+    graph: {
+      id: '__root__',
+      layoutOptions: rootOptions,
+      children,
+      edges: rootEdges,
+    },
+    lifted,
   };
 }

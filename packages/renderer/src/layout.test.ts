@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, model } from '@diagramming/core';
-import { COLLAPSED_SIZE, layoutOptionsFor, layoutView } from './layout';
+import { COLLAPSED_SIZE, layoutOptionsFor, layoutView, type NodeGeometry } from './layout';
+import { buildGraph } from './layout-graph';
 
 function makeModel() {
   const m = model('t');
@@ -179,6 +180,24 @@ describe('layoutView', () => {
     for (const id of ['sys', 'a', 'b', 'c']) expect(geometry.has(id)).toBe(true);
   });
 
+  it('keeps orthogonal routes under a nested algorithm when nothing was lifted', async () => {
+    // The nested path only invalidates routes on a graph it actually
+    // restructured. A container-free diagram lifts nothing, so force must go on
+    // returning the routes it returned before edge-lifting existed — keying
+    // this off the algorithm instead of the outcome silently dropped them all.
+    const m = model('flatroutes');
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    const c = m.node('c', { type: 'service' });
+    m.relate(a, b, { kind: 'sync' });
+    m.relate(b, c, { kind: 'sync' });
+    const view = compileView(m.toJSON(), {});
+
+    const res = await layoutView(view, undefined, { algorithm: 'force', edgeRouting: 'orthogonal' });
+    expect(res.routes.size).toBe(view.layoutEdges.length);
+    for (const e of view.layoutEdges) expect(res.routes.get(e.id)!.length).toBeGreaterThanOrEqual(2);
+  });
+
   it('skips orthogonal routes on the nested path rather than returning partial ones', async () => {
     const m = model('nr');
     const a = m.node('a', { type: 'service' });
@@ -195,5 +214,70 @@ describe('layoutView', () => {
     expect((await layoutView(view, undefined, { algorithm: 'force', edgeRouting: 'orthogonal' })).routes.size).toBe(
       0,
     );
+  });
+});
+
+/**
+ * The regression that would have caught the whole class of bug this branch
+ * fixes. Before edge-lifting, every non-layered algorithm saw an empty edge set
+ * inside a nested diagram — the root edges pointed at deep descendants it could
+ * not resolve, and `elk.algorithm` never reached the containers — so all of
+ * them degraded to the same plain packing. Measured on the fixture below: with
+ * the pre-lift graph, `force` and `stress` return byte-identical geometry.
+ *
+ * Nothing else guards the mechanism. An elk upgrade that changed how the
+ * options are read, or a regression in `buildGraph`, would restore that silent
+ * collapse while every other test in this file still passed.
+ */
+describe('nested cross-container layout actually varies by algorithm', () => {
+  /** Three containers, three leaves each, and edges that ONLY cross container
+   * walls — the shape where the old code saw nothing to lay out. */
+  function crossOnly() {
+    const m = model('nested-cross');
+    const boxes = ['L', 'M', 'R'].map((id) => m.node(id, { type: 'system' }));
+    const leaf: Record<string, ReturnType<typeof m.node>> = {};
+    for (const prefix of ['l', 'm', 'r']) {
+      for (let i = 1; i <= 3; i++) leaf[`${prefix}${i}`] = m.node(`${prefix}${i}`, { type: 'service' });
+    }
+    boxes[0]!.contains(leaf['l1']!, leaf['l2']!, leaf['l3']!);
+    boxes[1]!.contains(leaf['m1']!, leaf['m2']!, leaf['m3']!);
+    boxes[2]!.contains(leaf['r1']!, leaf['r2']!, leaf['r3']!);
+    const crossing: [string, string][] = [
+      ['l1', 'm1'],
+      ['l2', 'r1'],
+      ['m2', 'r2'],
+      ['l3', 'm3'],
+      ['m1', 'r3'],
+      ['l1', 'r1'],
+    ];
+    for (const [from, to] of crossing) m.relate(leaf[from]!, leaf[to]!, { kind: 'sync' });
+    return compileView(m.toJSON(), { focus: ['L', 'M', 'R'] });
+  }
+
+  // stable, id-sorted; rounded so float noise cannot pass for a real difference
+  const serialise = (geometry: Map<string, NodeGeometry>) =>
+    [...geometry.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([id, g]) => `${id}:${Math.round(g.x)},${Math.round(g.y)},${Math.round(g.width)},${Math.round(g.height)}`)
+      .join('|');
+
+  it('force, stress and mrtree each produce different geometry', async () => {
+    const view = crossOnly();
+    const algorithms = ['force', 'stress', 'mrtree'] as const;
+    const geometries = new Map<string, string>();
+    for (const algorithm of algorithms) {
+      // the fixture must actually exercise lifting, or the comparison below
+      // degenerates into three flat-graph runs and proves nothing
+      expect(buildGraph(view, undefined, { algorithm }).lifted).toBe(true);
+      geometries.set(algorithm, serialise((await layoutView(view, undefined, { algorithm })).geometry));
+    }
+    // 3 containers + 9 leaves, all placed
+    for (const g of geometries.values()) expect(g.split('|')).toHaveLength(12);
+
+    for (const a of algorithms) {
+      for (const b of algorithms) {
+        if (a < b) expect(geometries.get(a), `${a} vs ${b}`).not.toBe(geometries.get(b));
+      }
+    }
   });
 });

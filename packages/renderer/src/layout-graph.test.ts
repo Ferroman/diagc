@@ -103,7 +103,7 @@ describe('layoutOptionsFor hierarchy handling', () => {
 
 describe('buildGraph', () => {
   it('leaves the flat path alone: all edges at the root, no algorithm on containers', () => {
-    const g = buildGraph(expanded(), undefined, undefined);
+    const { graph: g } = buildGraph(expanded(), undefined, undefined);
     // all 4 relations: the flat path only drops true self-edges (from === to)
     expect(g.edges).toHaveLength(4);
     const left = g.children!.find((c) => c.id === 'left')!;
@@ -113,7 +113,7 @@ describe('buildGraph', () => {
   });
 
   it('puts each level\'s edges on its own container for a nested algorithm', () => {
-    const g = buildGraph(expanded(), undefined, { algorithm: 'force' });
+    const { graph: g } = buildGraph(expanded(), undefined, { algorithm: 'force' });
     const left = g.children!.find((c) => c.id === 'left')!;
     expect(left.edges).toHaveLength(1);
     expect(left.edges![0]!.sources).toEqual(['a']);
@@ -122,7 +122,7 @@ describe('buildGraph', () => {
   });
 
   it('stamps the algorithm and spacing onto every container — elk inherits neither', () => {
-    const g = buildGraph(expanded(), undefined, { algorithm: 'force', spacing: 24 });
+    const { graph: g } = buildGraph(expanded(), undefined, { algorithm: 'force', spacing: 24 });
     const left = g.children!.find((c) => c.id === 'left')!;
     expect(left.layoutOptions!['elk.algorithm']).toBe('force');
     expect(left.layoutOptions!['elk.spacing.nodeNode']).toBe('24');
@@ -131,16 +131,81 @@ describe('buildGraph', () => {
   });
 
   it('flat:true forces the pre-lift graph even for a nested algorithm', () => {
-    const g = buildGraph(expanded(), undefined, { algorithm: 'radial' }, { flat: true });
+    const { graph: g } = buildGraph(expanded(), undefined, { algorithm: 'radial' }, { flat: true });
     expect(g.edges).toHaveLength(4);
     expect(g.children!.find((c) => c.id === 'left')!.edges).toBeUndefined();
   });
 
   it('honours size overrides on leaves and the fixed size on collapsed containers', () => {
-    const g = buildGraph(expanded(), new Map([['a', { width: 111, height: 22 }]]), undefined);
+    const { graph: g } = buildGraph(expanded(), new Map([['a', { width: 111, height: 22 }]]), undefined);
     const a = g.children!.find((c) => c.id === 'left')!.children!.find((c) => c.id === 'a')!;
     expect(a).toMatchObject({ width: 111, height: 22 });
-    const folded = buildGraph(compileView(crossing(), {}), undefined, undefined);
+    const { graph: folded } = buildGraph(compileView(crossing(), {}), undefined, undefined);
     expect(folded.children!.find((c) => c.id === 'left')).toMatchObject(COLLAPSED_SIZE);
+  });
+});
+
+/**
+ * `lifted` is what `layoutView` keys orthogonal-route collection off. It must
+ * report what the build actually DID, not which algorithm was asked for —
+ * keying off the algorithm alone silently dropped the routes of every
+ * container-free diagram laid out by force or stress.
+ */
+describe('buildGraph lifted flag', () => {
+  const flat = () => {
+    const m = model('flat');
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    m.relate(a, b, { kind: 'sync' });
+    return compileView(m.toJSON(), {});
+  };
+
+  it('is false for a container-free view even under a nested algorithm', () => {
+    // nothing to lift, so elk's sections describe the real endpoints
+    expect(buildGraph(flat(), undefined, { algorithm: 'force' }).lifted).toBe(false);
+    expect(buildGraph(flat(), undefined, { algorithm: 'stress' }).lifted).toBe(false);
+  });
+
+  it('is false on the flat path and under flat:true, whatever the graph', () => {
+    expect(buildGraph(expanded(), undefined, undefined).lifted).toBe(false);
+    expect(buildGraph(expanded(), undefined, { algorithm: 'rectpacking' }).lifted).toBe(false);
+    expect(buildGraph(expanded(), undefined, { algorithm: 'radial' }, { flat: true }).lifted).toBe(false);
+  });
+
+  it('is true when edges were attached to a container', () => {
+    expect(buildGraph(expanded(), undefined, { algorithm: 'force' }).lifted).toBe(true);
+  });
+
+  it('is true when a root edge was raised, even with no container-owned edges', () => {
+    // one leaf per container and a single crossing edge: nothing lands on a
+    // container, yet the root edge now runs L→R and its waypoints would stop at
+    // the two container borders rather than at the leaves the renderer joins.
+    const m = model('raise');
+    const x = m.node('x', { type: 'service' });
+    const y = m.node('y', { type: 'service' });
+    const l = m.node('L', { type: 'system' });
+    const r = m.node('R', { type: 'system' });
+    l.contains(x);
+    r.contains(y);
+    m.relate(x, y, { kind: 'sync' });
+    const view = compileView(m.toJSON(), { focus: ['L', 'R'] });
+    const { graph, lifted } = buildGraph(view, undefined, { algorithm: 'force' });
+    expect(graph.children!.every((c) => c.edges === undefined)).toBe(true);
+    expect(graph.edges![0]!.sources).toEqual(['L']);
+    expect(lifted).toBe(true);
+  });
+
+  it('is false when a container is expanded but no edge touches it', () => {
+    // the container contributes no lifted edge, so every root edge still joins
+    // its true endpoints — the routes stay usable
+    const m = model('untouched');
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    const inner = m.node('inner', { type: 'service' });
+    const box = m.node('box', { type: 'system' });
+    box.contains(inner);
+    m.relate(a, b, { kind: 'sync' });
+    const view = compileView(m.toJSON(), { focus: ['box'] });
+    expect(buildGraph(view, undefined, { algorithm: 'force' }).lifted).toBe(false);
   });
 });

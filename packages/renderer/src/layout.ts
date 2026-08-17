@@ -1,6 +1,6 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
 import { type CompiledView, type LayoutSettings, type ViewNode } from '@diagramming/core';
-import { buildGraph, usesNestedLayout, edgeLabelText, type ElkRoutedEdge, type ElkShape } from './layout-graph';
+import { buildGraph, edgeLabelText, type ElkRoutedEdge, type ElkShape } from './layout-graph';
 
 // Re-exported so `index.tsx` and existing importers keep their import path.
 export { COLLAPSED_SIZE, layoutOptionsFor } from './layout-graph';
@@ -21,9 +21,9 @@ export interface LayoutResult {
   /** parent-relative node geometry (elk output), keyed by node id */
   geometry: Map<string, NodeGeometry>;
   /** elk-routed absolute waypoints per edge id; populated only when
-   * settings.edgeRouting === 'orthogonal' AND the algorithm used the flat
-   * graph (layered, rectpacking, or a nested pick that fell back to flat),
-   * otherwise empty. */
+   * settings.edgeRouting === 'orthogonal' AND the graph handed to elk kept every
+   * edge between its true endpoints (`buildGraph`'s `lifted` flag), otherwise
+   * empty. */
   routes: Map<string, EdgePoint[]>;
 }
 
@@ -88,22 +88,28 @@ export async function layoutView(
   // guarded — buildGraph itself must throw straight through, or a bug in our
   // own graph builder (e.g. liftEdges) would silently and permanently degrade
   // to the flat graph instead of surfacing.
-  let usedNested = usesNestedLayout(settings);
   let laid: ElkShape;
-  const graph = buildGraph(view, sizeOverrides, settings);
+  const built = buildGraph(view, sizeOverrides, settings);
+  let { lifted } = built;
   try {
-    laid = (await elk.layout(graph)) as ElkShape;
+    laid = (await elk.layout(built.graph)) as ElkShape;
   } catch {
-    usedNested = false;
-    laid = (await elk.layout(buildGraph(view, sizeOverrides, settings, { flat: true }))) as ElkShape;
+    // the flat graph restructures nothing, so its `lifted` is false by
+    // construction — read it rather than assume it
+    const flat = buildGraph(view, sizeOverrides, settings, { flat: true });
+    lifted = flat.lifted;
+    laid = (await elk.layout(flat.graph)) as ElkShape;
   }
 
   const geometry = new Map<string, NodeGeometry>();
   const routes = new Map<string, EdgePoint[]>();
-  // Only the flat path produces routes worth drawing: a lifted edge's waypoints
-  // run between containers rather than between the nodes the renderer draws —
-  // so curved beziers are the honest fallback on the nested path. See DEFERRALS.md.
-  const wantRoutes = settings?.edgeRouting === 'orthogonal' && !usedNested;
+  // Only an unrestructured graph produces routes worth drawing: a lifted edge's
+  // waypoints run between containers rather than between the nodes the renderer
+  // draws — so curved beziers are the honest fallback there. See DEFERRALS.md.
+  // The key is whether lifting ACTUALLY happened, not which algorithm was
+  // picked: a container-free diagram lifts nothing, so force and stress keep
+  // their routes exactly as they did before edge-lifting existed.
+  const wantRoutes = settings?.edgeRouting === 'orthogonal' && !lifted;
 
   // Node x/y stay parent-relative (React Flow positions children under parentId).
   // Edge sections, however, are relative to the container node that owns them, so
