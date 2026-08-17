@@ -141,6 +141,13 @@ export interface DiagramViewProps {
    * ignores this prop behaves exactly as before. Reports `{}` when the drags are
    * dropped (plane switch, model reload, edit-mode toggle). */
   onViewPositionsChange?: (positions: Record<string, { x: number; y: number }>) => void;
+  /** view mode: lay the active plane out automatically even where the overlay
+   * saved a position, handing hand-placed nodes back to the layout algorithm.
+   * Without it saved coordinates beat every algorithm, so a diagram that has
+   * been positioned by hand stops responding to the picker. Affects positions
+   * only — overlay `sizes` still apply, since no algorithm computes those — and
+   * changes nothing on disk. */
+  ignoreSavedPositions?: boolean;
   /** host-driven highlight (e.g. a leverage-panel selection): glow these nodes
    * and view-edges, dim the rest. Takes precedence over the loop-badge highlight. */
   externalHighlight?: { nodes: readonly string[]; edges: readonly string[] } | null;
@@ -625,9 +632,15 @@ function Inner(props: DiagramViewProps) {
   const placedGeometry = useMemo(() => {
     if (geometry === null) return geometry;
     const key = layoutPlaneKey(props.model, props.plane);
-    const withSaved = overlayPositions(geometry, props.layout?.planes[key] ?? {});
+    // Editing always reads the saved overlay: there the positions ARE the
+    // document being edited, and the auto/manual switch is a command on the undo
+    // stack. Only a viewer may set them aside.
+    const saved = !editing && props.ignoreSavedPositions === true ? {} : (props.layout?.planes[key] ?? {});
+    const withSaved = overlayPositions(geometry, saved);
+    // A drag still wins over an automatic arrangement, so moving a box while
+    // auto-arrange is on behaves the way dragging always does.
     return editing ? withSaved : overlayPositions(withSaved, viewPositions);
-  }, [geometry, props.layout, props.model, props.plane, editing, viewPositions]);
+  }, [geometry, props.layout, props.model, props.plane, props.ignoreSavedPositions, editing, viewPositions]);
 
   // A drill (enter/exit) swaps the whole scene, so once it re-layouts, glide to
   // fit the new isolated view.

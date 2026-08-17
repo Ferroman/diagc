@@ -105,6 +105,12 @@ export function App() {
   // TS-authored diagram, whose sidecar `pnpm compile` never rewrites.
   const [movedPositions, setMovedPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [savingPositions, setSavingPositions] = useState(false);
+  // Hand back a hand-positioned plane to the layout algorithm for this view only.
+  // Saved coordinates otherwise beat every algorithm, so a diagram that has been
+  // placed by hand stops responding to the picker entirely. Viewer state, like
+  // pins and the layout preview: never written, and dropped when the diagram
+  // changes so one diagram's choice cannot silently govern the next.
+  const [autoArrange, setAutoArrange] = useState(false);
   const [selection, setSelection] = useState<DiagramSelection | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   // Edit mode: variables shift-selected to be grouped into one abstract variable.
@@ -143,6 +149,12 @@ export function App() {
   const dl = useDeepLink({ names, booted, leaveEditRef });
   const { selected, setSelected, enteredPath, setEnteredPath, handleEnteredPathChange } = dl;
   const drillRoot = enteredPath.length > 0 ? enteredPath[enteredPath.length - 1] : undefined;
+
+  // Auto-arrange is scoped to the diagram it was switched on for, so one
+  // diagram's choice cannot silently rearrange the next one you open.
+  useEffect(() => {
+    setAutoArrange(false);
+  }, [selected]);
 
   // The preview is diagram-scoped viewer state; every path that changes which
   // diagram is selected — the picker, a hashchange deep link, or the stale-name
@@ -494,6 +506,21 @@ export function App() {
                 Reset layout
               </button>
             )}
+            {Object.keys(layout?.planes[layoutPlaneKey(model, activePlane)] ?? {}).length > 0 && (
+              <button
+                type="button"
+                className={`chip${autoArrange ? ' active' : ''}`}
+                aria-pressed={autoArrange}
+                title={
+                  autoArrange
+                    ? 'Ignoring this diagram’s saved positions, so the layout algorithm arranges every node. Click to put them back.'
+                    : 'This plane has saved positions, which override the layout algorithm. Click to arrange those nodes automatically instead (nothing is written).'
+                }
+                onClick={() => setAutoArrange((v) => !v)}
+              >
+                Auto-arrange
+              </button>
+            )}
             {Object.keys(movedPositions).length > 0 && (
               <button
                 className="chip primary"
@@ -686,6 +713,7 @@ export function App() {
                 styleId={pinnedStyle ?? style}
                 onCldEdges={handleCldEdges}
                 onViewPositionsChange={setMovedPositions}
+                ignoreSavedPositions={autoArrange}
                 externalHighlight={
                   editing
                     ? groupSel.length > 0

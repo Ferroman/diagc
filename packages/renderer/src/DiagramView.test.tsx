@@ -356,6 +356,35 @@ describe('DiagramView', () => {
     await waitFor(() => expect(gw.style.transform).toContain('777'));
   });
 
+  it('ignoreSavedPositions hands the plane back to the layout algorithm', async () => {
+    // Saved coordinates otherwise beat every algorithm, so a diagram that has
+    // been placed by hand stops responding to the picker entirely. The toggle
+    // drops them for this view only — the sidecar is untouched.
+    const layout = { version: 1 as const, planes: { default: { gw: { x: 777, y: 55 } } } };
+    const { rerender } = render(<DiagramView model={containerEndpointModel()} layout={layout} />);
+    const gw = (await screen.findByText('gw')).closest('.react-flow__node') as HTMLElement;
+    await waitFor(() => expect(gw.style.transform).toContain('777'));
+
+    rerender(<DiagramView model={containerEndpointModel()} layout={layout} ignoreSavedPositions />);
+    await waitFor(() => expect(gw.style.transform).not.toContain('777'));
+  });
+
+  it('ignoreSavedPositions leaves overlay SIZES alone — only positions are automatic', async () => {
+    // Sizes are not something a layout algorithm computes, so dropping them
+    // would shrink hand-resized image nodes as a side effect of re-arranging.
+    render(
+      <DiagramView
+        model={imageModel()}
+        assetBase="/api/assets/"
+        layout={{ version: 1, planes: {}, sizes: { pic: { w: 300, h: 200 } } }}
+        ignoreSavedPositions
+      />,
+    );
+    const img = await screen.findByRole('img', { name: 'logo' });
+    const node = img.closest('.react-flow__node') as HTMLElement;
+    await waitFor(() => expect(node.style.width).toBe('300px'));
+  });
+
   it('sizes an image node from the overlay sizes map', async () => {
     render(
       <DiagramView

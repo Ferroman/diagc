@@ -45,6 +45,24 @@ is positioned independently, so the same node can sit in different places in dif
 Nothing is written until you click. Dragging alone is throwaway state, and switching plane
 or diagram discards it — the same class of state as pins and focus.
 
+## Hand a plane back to the algorithm
+
+A saved position beats every layout algorithm, so once a node is placed the algorithm
+picker stops moving it. To let the algorithms have it back, press **Auto-arrange**. It
+appears next to the picker whenever the active plane has saved positions.
+
+While it is on, the saved coordinates are ignored and the chosen algorithm arranges every
+node, so you can try Force or Tree against the whole diagram. Press it again to get your
+arrangement back. Nothing is written either way — the sidecar is untouched, and the toggle
+resets when you open another diagram.
+
+To drop the saved positions *permanently*, delete that plane's entry from
+`<name>.layout.json` (or the whole file to start over).
+
+One wrinkle: a box you have dragged in this session still sits where you dropped it, even
+with Auto-arrange on — an explicit drag outranks an automatic arrangement. Reload to clear
+those.
+
 ## What this does not do
 
 Saving positions does **not** switch automatic layout off. Elk keeps arranging every node
