@@ -1,0 +1,798 @@
+{
+  "version": 1,
+  "id": "delivery",
+  "name": "delivery",
+  "nodes": [
+    {
+      "id": "node-2",
+      "name": "feature delivery time"
+    },
+    {
+      "id": "node",
+      "name": "features complexity"
+    },
+    {
+      "id": "node-3",
+      "name": "Dev Team capacity",
+      "plane": "flow"
+    },
+    {
+      "id": "node-4",
+      "name": "Budget",
+      "plane": "flow"
+    },
+    {
+      "id": "node-5",
+      "name": "QA time",
+      "plane": "flow"
+    },
+    {
+      "id": "node-6",
+      "name": "features quality",
+      "plane": "flow"
+    },
+    {
+      "id": "node-7",
+      "name": "development time",
+      "plane": "flow"
+    },
+    {
+      "id": "node-8",
+      "name": "number of available features",
+      "plane": "flow"
+    },
+    {
+      "id": "node-9",
+      "name": "# customers",
+      "plane": "flow"
+    },
+    {
+      "id": "node-10",
+      "name": "customer sutisfaction",
+      "plane": "flow"
+    },
+    {
+      "id": "node-11",
+      "name": "feature requests",
+      "plane": "flow"
+    },
+    {
+      "id": "node-12",
+      "name": "Dev Team size",
+      "plane": "flow"
+    },
+    {
+      "id": "node-13",
+      "name": "QA Team capacity",
+      "plane": "flow"
+    },
+    {
+      "id": "node-14",
+      "name": "QA Team size",
+      "plane": "flow"
+    },
+    {
+      "id": "node-15",
+      "name": "# unique issues found",
+      "plane": "flow"
+    },
+    {
+      "id": "node-16",
+      "name": "automated tests",
+      "plane": "flow",
+      "layer": "tooling"
+    },
+    {
+      "id": "node-17",
+      "name": "# regression issues found",
+      "plane": "flow"
+    },
+    {
+      "id": "node-18",
+      "name": "# issues introduced",
+      "plane": "flow"
+    },
+    {
+      "id": "node-19",
+      "name": "# test cases executed",
+      "plane": "flow"
+    },
+    {
+      "id": "node-21",
+      "name": "non-development time",
+      "plane": "flow"
+    },
+    {
+      "id": "node-20",
+      "name": "refactoring time",
+      "plane": "flow",
+      "layer": "refactor"
+    },
+    {
+      "id": "issues-found",
+      "name": "issues found",
+      "plane": "flow"
+    }
+  ],
+  "containment": [
+    {
+      "parent": "issues-found",
+      "child": "node-17"
+    },
+    {
+      "parent": "issues-found",
+      "child": "node-15"
+    }
+  ],
+  "relations": [
+    {
+      "id": "node-5->node-2#0",
+      "from": "node-5",
+      "to": "node-2",
+      "kind": "sync",
+      "style": {
+        "fromSide": "left",
+        "toSide": "right",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node->node-5#0",
+      "from": "node",
+      "to": "node-5",
+      "kind": "sync",
+      "style": {
+        "fromSide": "top",
+        "toSide": "left",
+        "color": "#66bb6a",
+        "bow": "right"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-3->node-7#0",
+      "from": "node-3",
+      "to": "node-7",
+      "kind": "sync",
+      "style": {
+        "fromSide": "top",
+        "toSide": "bottom",
+        "color": "#66bb6a",
+        "bow": "right"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-7->node-6#0",
+      "from": "node-7",
+      "to": "node-6",
+      "kind": "sync",
+      "style": {
+        "fromSide": "left",
+        "toSide": "right",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-2->node-8#0",
+      "from": "node-2",
+      "to": "node-8",
+      "kind": "sync",
+      "style": {
+        "color": "#e05d5d",
+        "curvature": 0.4,
+        "bow": "right"
+      },
+      "polarity": "-"
+    },
+    {
+      "id": "node-9->node-4#0",
+      "from": "node-9",
+      "to": "node-4",
+      "kind": "sync",
+      "style": {
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node->node-6#0",
+      "from": "node",
+      "to": "node-6",
+      "kind": "sync",
+      "style": {
+        "fromSide": "left",
+        "toSide": "top",
+        "color": "#e05d5d"
+      },
+      "polarity": "-"
+    },
+    {
+      "id": "node-6->node-7#0",
+      "from": "node-6",
+      "to": "node-7",
+      "kind": "sync",
+      "style": {
+        "fromSide": "bottom",
+        "toSide": "left",
+        "color": "#e05d5d"
+      },
+      "polarity": "-",
+      "delay": true
+    },
+    {
+      "id": "node-8->node-10#0",
+      "from": "node-8",
+      "to": "node-10",
+      "kind": "sync",
+      "style": {
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-10->node-9#0",
+      "from": "node-10",
+      "to": "node-9",
+      "kind": "sync",
+      "style": {
+        "color": "#66bb6a",
+        "bow": "right"
+      },
+      "polarity": "+",
+      "delay": true
+    },
+    {
+      "id": "node-6->node-10#0",
+      "from": "node-6",
+      "to": "node-10",
+      "kind": "sync",
+      "style": {
+        "fromSide": "left",
+        "toSide": "top",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-9->node-11#0",
+      "from": "node-9",
+      "to": "node-11",
+      "kind": "sync",
+      "style": {
+        "color": "#66bb6a"
+      },
+      "polarity": "+",
+      "delay": true
+    },
+    {
+      "id": "node-4->node-12#0",
+      "from": "node-4",
+      "to": "node-12",
+      "kind": "sync",
+      "style": {
+        "color": "#66bb6a",
+        "bow": "right"
+      },
+      "polarity": "+",
+      "delay": true
+    },
+    {
+      "id": "node-12->node-3#0",
+      "from": "node-12",
+      "to": "node-3",
+      "kind": "sync",
+      "style": {
+        "fromSide": "right",
+        "toSide": "left",
+        "bow": "right",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-4->node-14#0",
+      "from": "node-4",
+      "to": "node-14",
+      "kind": "sync",
+      "style": {
+        "fromSide": "right",
+        "toSide": "bottom",
+        "color": "#66bb6a"
+      },
+      "polarity": "+",
+      "delay": true
+    },
+    {
+      "id": "node-14->node-13#0",
+      "from": "node-14",
+      "to": "node-13",
+      "kind": "sync",
+      "style": {
+        "bow": "right",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-15->node-7#0",
+      "from": "node-15",
+      "to": "node-7",
+      "kind": "sync",
+      "style": {
+        "fromSide": "bottom",
+        "toSide": "right",
+        "bow": "right",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-15->node-13#0",
+      "from": "node-15",
+      "to": "node-13",
+      "kind": "sync",
+      "style": {
+        "fromSide": "bottom",
+        "toSide": "left",
+        "color": "#e05d5d"
+      },
+      "polarity": "-"
+    },
+    {
+      "id": "node-11->node-10#0",
+      "from": "node-11",
+      "to": "node-10",
+      "kind": "sync",
+      "style": {
+        "fromSide": "left",
+        "toSide": "bottom",
+        "bow": "right",
+        "color": "#e05d5d"
+      },
+      "polarity": "-"
+    },
+    {
+      "id": "node->node-13#0",
+      "from": "node",
+      "to": "node-13",
+      "kind": "sync",
+      "style": {
+        "fromSide": "bottom",
+        "toSide": "left",
+        "color": "#e05d5d"
+      },
+      "polarity": "-"
+    },
+    {
+      "id": "node->node-7#0",
+      "from": "node",
+      "to": "node-7",
+      "kind": "sync",
+      "style": {
+        "toSide": "top",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-7->node-2#0",
+      "from": "node-7",
+      "to": "node-2",
+      "kind": "sync",
+      "style": {
+        "fromSide": "top",
+        "toSide": "right",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-8->node#0",
+      "from": "node-8",
+      "to": "node",
+      "kind": "sync",
+      "style": {
+        "bow": "right",
+        "color": "#66bb6a",
+        "toSide": "top"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-16->node-13#0",
+      "from": "node-16",
+      "to": "node-13",
+      "kind": "sync",
+      "layer": "tooling",
+      "polarity": "+",
+      "style": {
+        "bow": "right",
+        "color": "#66bb6a"
+      }
+    },
+    {
+      "id": "node-17->node-7#0",
+      "from": "node-17",
+      "to": "node-7",
+      "kind": "sync",
+      "style": {
+        "color": "#66bb6a",
+        "bow": "right",
+        "toSide": "right"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-17->node-13#0",
+      "from": "node-17",
+      "to": "node-13",
+      "kind": "sync",
+      "style": {
+        "color": "#e05d5d",
+        "toSide": "left"
+      },
+      "polarity": "-"
+    },
+    {
+      "id": "node->node-15#0",
+      "from": "node",
+      "to": "node-15",
+      "kind": "sync",
+      "style": {
+        "bow": "right",
+        "color": "#66bb6a",
+        "fromSide": "right"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node->node-17#0",
+      "from": "node",
+      "to": "node-17",
+      "kind": "sync",
+      "style": {
+        "fromSide": "bottom",
+        "toSide": "left",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node->node-18#0",
+      "from": "node",
+      "to": "node-18",
+      "kind": "sync",
+      "style": {
+        "bow": "right",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-18->node-15#0",
+      "from": "node-18",
+      "to": "node-15",
+      "kind": "sync",
+      "style": {
+        "bow": "right",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-18->node-17#0",
+      "from": "node-18",
+      "to": "node-17",
+      "kind": "sync",
+      "style": {
+        "bow": "right",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-6->node-18#0",
+      "from": "node-6",
+      "to": "node-18",
+      "kind": "sync",
+      "style": {
+        "color": "#e05d5d",
+        "bow": "right"
+      },
+      "polarity": "-"
+    },
+    {
+      "id": "node-13->node-16#0",
+      "from": "node-13",
+      "to": "node-16",
+      "kind": "sync",
+      "style": {
+        "bow": "right",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-17->node-3#0",
+      "from": "node-17",
+      "to": "node-3",
+      "kind": "sync",
+      "style": {
+        "bow": "right",
+        "fromSide": "bottom",
+        "toSide": "top",
+        "color": "#e05d5d"
+      },
+      "polarity": "-"
+    },
+    {
+      "id": "node-15->node-3#0",
+      "from": "node-15",
+      "to": "node-3",
+      "kind": "sync",
+      "style": {
+        "bow": "right",
+        "toSide": "top",
+        "color": "#e05d5d"
+      },
+      "polarity": "-"
+    },
+    {
+      "id": "node-13->node-19#0",
+      "from": "node-13",
+      "to": "node-19",
+      "kind": "sync",
+      "polarity": "+",
+      "style": {
+        "color": "#66bb6a"
+      }
+    },
+    {
+      "id": "node-19->node-5#0",
+      "from": "node-19",
+      "to": "node-5",
+      "kind": "sync",
+      "style": {
+        "color": "#66bb6a",
+        "fromSide": "top",
+        "toSide": "right"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-19->node-17#0",
+      "from": "node-19",
+      "to": "node-17",
+      "kind": "sync",
+      "style": {
+        "color": "#66bb6a",
+        "fromSide": "left"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-19->node-15#0",
+      "from": "node-19",
+      "to": "node-15",
+      "kind": "sync",
+      "style": {
+        "fromSide": "left",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-19->node-6#0",
+      "from": "node-19",
+      "to": "node-6",
+      "kind": "sync",
+      "style": {
+        "fromSide": "left",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-8->node-19#0",
+      "from": "node-8",
+      "to": "node-19",
+      "kind": "sync",
+      "style": {
+        "bow": "right",
+        "color": "#66bb6a",
+        "fromSide": "right"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-16->node-19#0",
+      "from": "node-16",
+      "to": "node-19",
+      "kind": "sync",
+      "layer": "tooling",
+      "style": {
+        "color": "#66bb6a",
+        "fromSide": "top",
+        "toSide": "right"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-16->node-5#0",
+      "from": "node-16",
+      "to": "node-5",
+      "kind": "sync",
+      "style": {
+        "toSide": "right",
+        "color": "#e05d5d",
+        "fromSide": "top"
+      },
+      "polarity": "-"
+    },
+    {
+      "id": "node-12->node-21#0",
+      "from": "node-12",
+      "to": "node-21",
+      "kind": "sync",
+      "style": {
+        "bow": "right",
+        "color": "#66bb6a",
+        "fromSide": "left"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-21->node-7#0",
+      "from": "node-21",
+      "to": "node-7",
+      "kind": "sync",
+      "style": {
+        "color": "#e05d5d",
+        "bow": "right"
+      },
+      "polarity": "-"
+    },
+    {
+      "id": "node-11->node-21#0",
+      "from": "node-11",
+      "to": "node-21",
+      "kind": "sync",
+      "polarity": "+",
+      "style": {
+        "color": "#66bb6a"
+      }
+    },
+    {
+      "id": "node-3->node-21#0",
+      "from": "node-3",
+      "to": "node-21",
+      "kind": "sync",
+      "polarity": "+",
+      "style": {
+        "color": "#66bb6a",
+        "toSide": "right"
+      }
+    },
+    {
+      "id": "node-21->node-6#0",
+      "from": "node-21",
+      "to": "node-6",
+      "kind": "sync",
+      "style": {
+        "bow": "right",
+        "color": "#66bb6a"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-7->node-21#0",
+      "from": "node-7",
+      "to": "node-21",
+      "kind": "sync",
+      "polarity": "-",
+      "style": {
+        "color": "#e05d5d",
+        "bow": "right"
+      }
+    },
+    {
+      "id": "node-21->node#0",
+      "from": "node-21",
+      "to": "node",
+      "kind": "sync",
+      "polarity": "-",
+      "style": {
+        "color": "#e05d5d",
+        "bow": "right"
+      }
+    },
+    {
+      "id": "node-20->node#0",
+      "from": "node-20",
+      "to": "node",
+      "kind": "sync",
+      "layer": "refactor",
+      "style": {
+        "color": "#e05d5d"
+      },
+      "polarity": "-"
+    },
+    {
+      "id": "node-20->node-7#0",
+      "from": "node-20",
+      "to": "node-7",
+      "kind": "sync",
+      "layer": "refactor",
+      "style": {
+        "color": "#66bb6a",
+        "fromSide": "top",
+        "toSide": "right"
+      },
+      "polarity": "+"
+    },
+    {
+      "id": "node-20->node-21#0",
+      "from": "node-20",
+      "to": "node-21",
+      "kind": "sync",
+      "layer": "refactor",
+      "polarity": "+",
+      "style": {
+        "color": "#66bb6a"
+      }
+    },
+    {
+      "id": "node-6->node-20#0",
+      "from": "node-6",
+      "to": "node-20",
+      "kind": "sync",
+      "layer": "refactor",
+      "polarity": "-",
+      "style": {
+        "color": "#e05d5d",
+        "toSide": "left"
+      }
+    },
+    {
+      "id": "node-8->node-11#0",
+      "from": "node-8",
+      "to": "node-11",
+      "kind": "sync",
+      "polarity": "-",
+      "style": {
+        "color": "#e05d5d"
+      }
+    },
+    {
+      "id": "node-20->node-6#0",
+      "from": "node-20",
+      "to": "node-6",
+      "kind": "sync",
+      "polarity": "+",
+      "style": {
+        "color": "#66bb6a",
+        "toSide": "right"
+      }
+    }
+  ],
+  "layers": [
+    {
+      "id": "tooling",
+      "name": "tooling"
+    },
+    {
+      "id": "refactor",
+      "name": "refactor"
+    }
+  ],
+  "planes": [
+    {
+      "id": "flow",
+      "name": "flow",
+      "notation": "causal-loop"
+    }
+  ]
+}

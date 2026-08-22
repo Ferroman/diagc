@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "id": "system-thinking-test",
+  "name": "system-thinking-test",
+  "nodes": [
+    {
+      "id": "population",
+      "name": "Population"
+    },
+    {
+      "id": "births",
+      "name": "Births"
+    },
+    {
+      "id": "deaths",
+      "name": "Deaths"
+    },
+    {
+      "id": "resources",
+      "name": "Resource level"
+    },
+    {
+      "id": "consumption",
+      "name": "Resource consumption"
+    },
+    {
+      "id": "immigration",
+      "name": "Immigration"
+    }
+  ],
+  "containment": [],
+  "relations": [
+    {
+      "id": "population->births",
+      "from": "population",
+      "to": "births",
+      "kind": "influence",
+      "polarity": "+"
+    },
+    {
+      "id": "births->population",
+      "from": "births",
+      "to": "population",
+      "kind": "influence",
+      "polarity": "+"
+    },
+    {
+      "id": "population->deaths",
+      "from": "population",
+      "to": "deaths",
+      "kind": "influence",
+      "polarity": "+"
+    },
+    {
+      "id": "deaths->population",
+      "from": "deaths",
+      "to": "population",
+      "kind": "influence",
+      "polarity": "-"
+    },
+    {
+      "id": "population->consumption",
+      "from": "population",
+      "to": "consumption",
+      "kind": "influence",
+      "polarity": "+"
+    },
+    {
+      "id": "consumption->resources",
+      "from": "consumption",
+      "to": "resources",
+      "kind": "influence",
+      "polarity": "-"
+    },
+    {
+      "id": "resources->births",
+      "from": "resources",
+      "to": "births",
+      "kind": "influence",
+      "polarity": "+",
+      "delay": true
+    },
+    {
+      "id": "immigration->population",
+      "from": "immigration",
+      "to": "population",
+      "kind": "influence",
+      "polarity": "+"
+    }
+  ],
+  "layers": [],
+  "planes": [
+    {
+      "id": "loops",
+      "name": "Feedback loops",
+      "notation": "causal-loop"
+    }
+  ]
+}

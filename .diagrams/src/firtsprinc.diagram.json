@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "id": "firtsprinc",
+  "name": "firtsprinc",
+  "nodes": [
+    {
+      "id": "node",
+      "name": "chat app"
+    },
+    {
+      "id": "node-3",
+      "name": "avoid direct/sync  communication"
+    },
+    {
+      "id": "node-4",
+      "name": "communication"
+    },
+    {
+      "id": "node-5",
+      "name": "fun and giggles"
+    },
+    {
+      "id": "node-6",
+      "name": "do not distrub"
+    },
+    {
+      "id": "node-7",
+      "name": "share news/moments"
+    },
+    {
+      "id": "node-2",
+      "name": "do they want to read/write?"
+    },
+    {
+      "id": "node-8",
+      "name": "how?"
+    }
+  ],
+  "containment": [],
+  "relations": [
+    {
+      "id": "node-3->node-6#0",
+      "from": "node-3",
+      "to": "node-6",
+      "kind": "sync"
+    },
+    {
+      "id": "node-4->node-5#0",
+      "from": "node-4",
+      "to": "node-5",
+      "kind": "sync"
+    },
+    {
+      "id": "node-4->node-7#0",
+      "from": "node-4",
+      "to": "node-7",
+      "kind": "sync"
+    },
+    {
+      "id": "node->node-3#0",
+      "from": "node",
+      "to": "node-3",
+      "kind": "sync"
+    },
+    {
+      "id": "node->node-4#0",
+      "from": "node",
+      "to": "node-4",
+      "kind": "sync",
+      "labels": [
+        {
+          "id": "l1",
+          "text": "1",
+          "t": 0.775,
+          "side": "center"
+        },
+        {
+          "id": "l2",
+          "text": "2",
+          "t": 0.1,
+          "side": "center"
+        }
+      ]
+    },
+    {
+      "id": "node-7->node-8#0",
+      "from": "node-7",
+      "to": "node-8",
+      "kind": "sync"
+    }
+  ],
+  "layers": [],
+  "planes": []
+}

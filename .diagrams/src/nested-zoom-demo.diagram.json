@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "id": "nested-zoom-demo",
+  "name": "nested-zoom-demo",
+  "nodes": [
+    {
+      "id": "svc",
+      "name": "OrderService",
+      "type": "system",
+      "color": "#1168bd"
+    },
+    {
+      "id": "db",
+      "name": "Postgres",
+      "type": "database",
+      "color": "#6b4fbb"
+    },
+    {
+      "id": "order-ctrl",
+      "name": "OrderController",
+      "type": "service"
+    },
+    {
+      "id": "pay-gw",
+      "name": "PaymentGateway",
+      "type": "service"
+    },
+    {
+      "id": "orders-tbl",
+      "name": "orders"
+    },
+    {
+      "id": "payments-tbl",
+      "name": "payments"
+    }
+  ],
+  "containment": [
+    {
+      "parent": "svc",
+      "child": "order-ctrl"
+    },
+    {
+      "parent": "svc",
+      "child": "pay-gw"
+    },
+    {
+      "parent": "db",
+      "child": "orders-tbl"
+    },
+    {
+      "parent": "db",
+      "child": "payments-tbl"
+    }
+  ],
+  "relations": [
+    {
+      "id": "order-ctrl->orders#0",
+      "from": "order-ctrl",
+      "to": "orders-tbl",
+      "kind": "reads",
+      "label": "reads"
+    },
+    {
+      "id": "order-ctrl->payments#0",
+      "from": "order-ctrl",
+      "to": "payments-tbl",
+      "kind": "writes",
+      "label": "writes"
+    },
+    {
+      "id": "pay-gw->payments#0",
+      "from": "pay-gw",
+      "to": "payments-tbl",
+      "kind": "reads",
+      "label": "reads"
+    }
+  ],
+  "layers": [],
+  "planes": []
+}
