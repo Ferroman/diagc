@@ -15,6 +15,7 @@ import {
   HardDrive,
   ListOrdered,
   Mail,
+  MessageSquare,
   Monitor,
   Puzzle,
   Search,
@@ -42,6 +43,7 @@ const BUILTIN: Record<string, IconComponent> = {
   server: Server,
   kubernetes: Container,
   infra: HardDrive,
+  comment: MessageSquare,
   // C4 container/component stencils: one glyph per common technology shape.
   browser: Globe,
   spa: AppWindow,

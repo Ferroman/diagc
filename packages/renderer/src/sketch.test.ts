@@ -22,7 +22,7 @@ describe('seedFrom', () => {
 
 describe('sketchNode', () => {
   it('produces non-empty fill and stroke path data for each shape', () => {
-    for (const kind of ['box', 'cylinder', 'hexagon'] as const) {
+    for (const kind of ['box', 'cylinder', 'hexagon', 'bubble'] as const) {
       const p = sketchNode(kind, 160, 80, 42, SOLID);
       expect(p.stroke.length).toBeGreaterThan(0);
       expect(p.fill.length).toBeGreaterThan(0);
@@ -35,12 +35,31 @@ describe('sketchNode', () => {
     expect(sketchNode('box', 120, 60, 7, SOLID).stroke).not.toBe(sketchNode('box', 120, 60, 8, SOLID).stroke);
   });
   it('tolerates zero/degenerate sizes without throwing, for every shape', () => {
-    for (const kind of ['box', 'cylinder', 'hexagon'] as const) {
+    for (const kind of ['box', 'cylinder', 'hexagon', 'bubble'] as const) {
       expect(() => sketchNode(kind, 0, 0, 1, SOLID)).not.toThrow();
       const p = sketchNode(kind, 0, 0, 1, SOLID);
       expect(p.stroke).not.toContain('NaN');
       expect(p.fill).not.toContain('NaN');
     }
+  });
+});
+
+/** every y coordinate in rough's path output (commands are all x,y pairs) */
+const ys = (d: string): number[] => (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number).filter((_n, i) => i % 2 === 1);
+
+describe('sketchNode bubble', () => {
+  it('hangs a tail below the box, so the outline reaches past the node height', () => {
+    // The tail is the whole point of the shape: a bubble whose outline stayed
+    // inside the box would be indistinguishable from a box.
+    const box = sketchNode('box', 160, 80, 42, SOLID);
+    const bubble = sketchNode('bubble', 160, 80, 42, SOLID);
+    expect(Math.max(...ys(box.stroke))).toBeLessThan(84);
+    expect(Math.max(...ys(bubble.stroke))).toBeGreaterThan(86);
+  });
+  it('keeps the body one closed outline, not a box with a triangle stuck on', () => {
+    // Two sub-paths would draw a seam across the tail base and fill twice.
+    const d = sketchNode('bubble', 160, 80, 42, SOLID).fill;
+    expect((d.match(/M/g) ?? []).length).toBe(1);
   });
 });
 
@@ -115,6 +134,8 @@ describe('cornerRadius', () => {
     const sharp = sketchNode('box', 160, 80, 42, HACHURE);
     const round = sketchNode('box', 160, 80, 42, HACHURE, 14);
     expect(round.stroke).not.toBe(sharp.stroke);
+    // a bubble is a box with a tail — it rounds like one
+    expect(sketchNode('bubble', 160, 80, 42, HACHURE, 14).stroke).not.toBe(sketchNode('bubble', 160, 80, 42, HACHURE).stroke);
     // cylinder/hexagon ignore the radius entirely
     for (const kind of ['cylinder', 'hexagon'] as const) {
       expect(sketchNode(kind, 160, 80, 42, HACHURE, 14)).toEqual(sketchNode(kind, 160, 80, 42, HACHURE));

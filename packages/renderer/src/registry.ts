@@ -1,4 +1,4 @@
-export type ShapeId = 'box' | 'cylinder' | 'pill' | 'hexagon' | 'table';
+export type ShapeId = 'box' | 'cylinder' | 'pill' | 'hexagon' | 'table' | 'bubble';
 
 export interface TypeStyle {
   shape: ShapeId;
@@ -37,6 +37,9 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   queue: { shape: 'pill', icon: 'queue' },
   infra: { shape: 'hexagon', icon: 'server' },
   person: { shape: 'pill', icon: 'user' },
+  // A speech bubble for remarks about the diagram: an ordinary node (wire it up
+  // with normal relations) that merely looks like an aside, not a component.
+  comment: { shape: 'bubble', icon: 'comment' },
   // ---- C4 (https://c4model.com) -------------------------------------------
   // Every level's element plus its `external` twin (same stencil, grey accent
   // supplied by the library entry). Boundaries are dashed so they read as

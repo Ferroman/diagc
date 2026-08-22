@@ -239,15 +239,15 @@ containers have no effect.
 
 Strings the renderer already knows. Anything else falls back to a plain box or a plain line.
 
-**Node types** — `system`, `platform` (dashed boxes); `service` (box + icon); `database`, `aws-rds`, `table` (cylinders); `db-table` (ER table); `queue` (pill); `infra` (hexagon); `person` (pill); and the 33 `c4-*` types listed in [Library reference](library.md).
+**Node types** — `system`, `platform` (dashed boxes); `service` (box + icon); `database`, `aws-rds`, `table` (cylinders); `db-table` (ER table); `queue` (pill); `infra` (hexagon); `person` (pill); `comment` (speech bubble — an ordinary node for remarks, wired up with normal relations); and the 33 `c4-*` types listed in [Library reference](library.md).
 
 **Relation kinds** — `sync`, `async` (dashed), `reads`, `writes` (thick), `hosted-on` (dashed), `flow` (animated), `mixed` (thick, used for aggregates), `fk` (crow's-foot).
 
 An **aggregate** edge (one arrow standing for several relations, after a fold) labels itself from its constituents: their distinct labels joined with ` / ` while that stays within 32 characters, or a single distinct label whatever its length, and otherwise `N relations`. Single-relation edges always carry their own label. Long labels are ellipsised at ~24 characters when drawn; the arrow's hover title carries the full text. See [Views](../explanation/views.md#semantic-zoom).
 
-**Shapes** — `box`, `cylinder`, `pill`, `hexagon`, `table`.
+**Shapes** — `box`, `cylinder`, `pill`, `hexagon`, `table`, `bubble` (a rounded box with a tail at the bottom-left; the tail hangs outside the node's layout box, so spacing and edge attachment behave exactly as for a box).
 
-**Icons** — `database`, `postgres`, `table`, `user`, `cloud`, `mail`, `service`, `system`, `queue`, `server`, `kubernetes`, `infra`, `browser`, `spa`, `mobile`, `desktop`, `api`, `function`, `cli`, `blob`, `search`, `component`, `interface`, `class`, `node`, `instance`.
+**Icons** — `database`, `postgres`, `table`, `user`, `cloud`, `mail`, `service`, `system`, `queue`, `server`, `kubernetes`, `infra`, `browser`, `spa`, `mobile`, `desktop`, `api`, `function`, `cli`, `blob`, `search`, `component`, `interface`, `class`, `node`, `instance`, `comment`.
 
 ## See also
 

@@ -56,6 +56,13 @@ function Swatch({ swatch, icons }: { swatch?: LegendSwatch; icons?: IconRegistry
           <rect x="2" y="3" width="20" height="10" rx="5" fill="var(--dg-surface)" stroke={stroke} {...(dashed !== undefined ? { strokeDasharray: dashed } : {})} />
         ) : s.shape === 'hexagon' ? (
           <polygon points="6,3 18,3 22,8 18,13 6,13 2,8" fill="var(--dg-surface)" stroke={stroke} />
+        ) : s.shape === 'bubble' ? (
+          <path
+            d="M 4 3 L 20 3 Q 22 3 22 5 L 22 11 Q 22 13 20 13 L 10 13 L 6 16 L 6 13 L 4 13 Q 2 13 2 11 L 2 5 Q 2 3 4 3 Z"
+            fill="var(--dg-surface)"
+            stroke={stroke}
+            {...(dashed !== undefined ? { strokeDasharray: dashed } : {})}
+          />
         ) : (
           <rect x="2" y="3" width="20" height="10" rx="2" fill="var(--dg-surface)" stroke={stroke} {...(dashed !== undefined ? { strokeDasharray: dashed } : {})} />
         )}

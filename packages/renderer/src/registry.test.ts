@@ -63,6 +63,10 @@ describe('registries', () => {
     }
   });
 
+  it('resolves comment to the speech-bubble shape with its own glyph', () => {
+    expect(createTypeRegistry().resolve('comment')).toEqual({ shape: 'bubble', icon: 'comment' });
+  });
+
   it('resolves db-table to the table shape', () => {
     expect(createTypeRegistry().resolve('db-table').shape).toBe('table');
   });

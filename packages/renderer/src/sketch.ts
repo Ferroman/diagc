@@ -14,7 +14,7 @@ const gen = rough.generator();
 const FILL_SENTINEL = 'sentinel-fill';
 const STROKE_SENTINEL = 'sentinel-stroke';
 
-export type SketchShapeKind = 'box' | 'cylinder' | 'hexagon';
+export type SketchShapeKind = 'box' | 'cylinder' | 'hexagon' | 'bubble';
 export interface SketchPaths {
   /** combined `d` for solid fill polygon(s) — render with fill */
   fill: string;
@@ -75,8 +75,23 @@ function hexPoints(w: number, h: number): [number, number][] {
   ];
 }
 
-/** rounded-rect outline (quadratic corner arcs), inset 1px like the sharp box */
-function roundedBoxPath(w: number, h: number, r: number): string {
+/** Speech-bubble tail, in px from the body's bottom-left corner: where its base
+ * sits on the bottom edge and how far the tip hangs below the box. The tail is
+ * OUTSIDE the node's layout box on purpose — elk spaces and edges attach to the
+ * body rect, exactly as for a box; the tail is decoration. The crisp twin in
+ * styles.css (.dg-shape-bubble::before/::after) uses the same numbers. */
+export const BUBBLE_TAIL = { left: 14, width: 16, height: 12 } as const;
+
+/** rounded-rect outline (quadratic corner arcs), inset 1px like the sharp box.
+ * `bottom` replaces the bottom edge, drawn right-to-left from `xr` to `xl` — the
+ * bubble hangs its tail off it while staying one closed sub-path (a separate
+ * triangle would fill twice and draw a seam across the tail base). */
+function roundedBoxPath(
+  w: number,
+  h: number,
+  r: number,
+  bottom: (xr: number, y: number, xl: number) => string[] = (_xr, y, xl) => [`L ${xl} ${y}`],
+): string {
   const x0 = 1;
   const y0 = 1;
   const x1 = w - 1;
@@ -88,12 +103,22 @@ function roundedBoxPath(w: number, h: number, r: number): string {
     `Q ${x1} ${y0} ${x1} ${y0 + rad}`,
     `L ${x1} ${y1 - rad}`,
     `Q ${x1} ${y1} ${x1 - rad} ${y1}`,
-    `L ${x0 + rad} ${y1}`,
+    ...bottom(x1 - rad, y1, x0 + rad),
     `Q ${x0} ${y1} ${x0} ${y1 - rad}`,
     `L ${x0} ${y0 + rad}`,
     `Q ${x0} ${y0} ${x0 + rad} ${y0}`,
     'Z',
   ].join(' ');
+}
+
+/** rounded box whose bottom edge dips into a tail at the bottom-left; the tail
+ * shrinks to fit (and to nothing) on a box too narrow to hold it */
+function bubblePath(w: number, h: number, r: number): string {
+  return roundedBoxPath(w, h, r, (xr, y, xl) => {
+    const base0 = Math.max(xl, Math.min(xl + BUBBLE_TAIL.left, xr));
+    const base1 = Math.min(base0 + BUBBLE_TAIL.width, xr);
+    return [`L ${base1} ${y}`, `L ${base0} ${y + BUBBLE_TAIL.height}`, `L ${base0} ${y}`, `L ${xl} ${y}`];
+  });
 }
 
 export function sketchNode(
@@ -112,7 +137,9 @@ export function sketchNode(
       ? [gen.polygon(hexPoints(w, h), o)]
       : kind === 'cylinder'
         ? [gen.rectangle(1, 8, w - 2, h - 10, o), gen.ellipse(w / 2, 8, w - 6, 14, o)]
-        : cornerRadius > 0
+        : kind === 'bubble'
+          ? [gen.path(bubblePath(w, h, cornerRadius), o)]
+          : cornerRadius > 0
           ? [gen.path(roundedBoxPath(w, h, cornerRadius), o)]
           : [gen.rectangle(1, 1, w - 2, h - 2, o)];
   return partition(drawables.flatMap((d) => gen.toPaths(d) as PathInfo[]));

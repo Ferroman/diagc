@@ -228,6 +228,21 @@ describe('DiagramNode', () => {
     expect(screen.getByText('orders')).toBeDefined();
   });
 
+  it('renders a comment as a bubble, crisp and sketched, with the tail hanging below the box', () => {
+    const crisp = renderNode({ label: 'legacy', typeId: 'comment' }, undefined, { width: 160, height: 80 });
+    expect(crisp.container.querySelector('.dg-shape-bubble')).not.toBeNull();
+    cleanup();
+    const { container } = renderNode(
+      { label: 'legacy', typeId: 'comment', stylePreset: stylePreset('sketch') },
+      undefined,
+      { width: 160, height: 80 },
+    );
+    expect(container.querySelector('.dg-shape-bubble')).not.toBeNull();
+    const d = container.querySelector('svg.dg-sketch-shape .dg-sketch-stroke')?.getAttribute('d') ?? '';
+    const ys = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number).filter((_n, i) => i % 2 === 1);
+    expect(Math.max(...ys)).toBeGreaterThan(86); // a plain box would stop at ~80
+  });
+
   it('renders no sketch shape in clean mode', () => {
     const { container } = renderNode({ label: 'orders' }, undefined, { width: 160, height: 80 });
     expect(container.querySelector('svg.dg-sketch-shape')).toBeNull();

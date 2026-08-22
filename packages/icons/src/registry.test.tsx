@@ -13,6 +13,10 @@ describe('icon registry', () => {
     expect(container.querySelector('svg')).not.toBeNull();
   });
 
+  it('resolves the comment glyph the bubble type names', () => {
+    expect(createIconRegistry().resolve('comment')).toBeDefined();
+  });
+
   it('returns undefined for unknown ids', () => {
     expect(createIconRegistry().resolve('nope')).toBeUndefined();
   });

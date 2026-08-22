@@ -11,6 +11,42 @@
 .dg-shape-pill { border-radius: 999px; padding: 8px 16px; }
 .dg-shape-hexagon { clip-path: polygon(8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%, 0 50%); }
 .dg-style-rough .dg-shape-hexagon { clip-path: none; }
+/* Speech bubble: an ordinary rounded box whose tail hangs off the bottom-left
+   edge OUTSIDE the layout box — elk spacing and edge attachment see a plain
+   box; the tail is decoration. Geometry mirrors BUBBLE_TAIL in sketch.ts (base
+   14px in from the left, 16px wide, 12px tall) so crisp and rough presets
+   match. ::before is the stroke — a border-drawn triangle, so it inherits the
+   node's border colour, accent included. ::after is the fill, inset by the
+   1.5px stroke and overlapping the node's own bottom border so body and tail
+   read as one shape. */
+.dg-shape-bubble { position: relative; }
+.dg-shape-bubble::before,
+.dg-shape-bubble::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+.dg-shape-bubble::before {
+  left: 14px;
+  bottom: -12px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 12px 16px;
+  border-color: inherit;
+  border-bottom-color: transparent;
+}
+.dg-shape-bubble::after {
+  left: 15.5px;
+  bottom: -9px;
+  width: 12px;
+  height: 9px;
+  background: inherit;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+/* rough presets draw the tail in the sketch SVG instead */
+.dg-style-rough .dg-shape-bubble::before,
+.dg-style-rough .dg-shape-bubble::after { display: none; }
 .dg-dashed { border-style: dashed; }
 .dg-group {
   background: var(--dg-group-fill);

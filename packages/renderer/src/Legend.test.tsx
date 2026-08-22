@@ -92,6 +92,19 @@ describe('Legend', () => {
     expect(cylinderSvg.querySelector('rect')).toBeNull();
   });
 
+  it('renders a bubble swatch as one outline path with the tail, not the box rect', () => {
+    const rows: LegendRow[] = [
+      { id: 'types:comment', section: 'types', label: 'Comment', swatch: { draw: 'shape', style: { shape: 'bubble' } } },
+    ];
+    const { container } = render(<Legend rows={rows} interactive />);
+    const svg = container.querySelector('span.dg-legend-shape > svg')!;
+    expect(svg.querySelector('rect')).toBeNull();
+    const d = svg.querySelector('path')?.getAttribute('d') ?? '';
+    // the tail dips below the body's bottom edge (y=13 on the 24x16 swatch)
+    const ys = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number).filter((_n, i) => i % 2 === 1);
+    expect(Math.max(...ys)).toBeGreaterThan(13);
+  });
+
   it('draws the icon on a shape swatch when an icon registry is supplied', () => {
     const iconRows: LegendRow[] = [
       {
