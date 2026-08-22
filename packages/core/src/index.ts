@@ -29,8 +29,9 @@ export { validate, DiagramValidationError, IMAGE_REF, LIBRARY_IMAGE_REF, type Va
 export { isLayoutOverlay } from './guards';
 export { errMessage, SOURCE_URL } from './util';
 export { childrenOf, countAnchored } from './children';
-export { compileView, resolveContainmentPlane } from './view/compile';
+export { compileView, presetLayers, resolveContainmentPlane } from './view/compile';
 export { buildHierarchy, type HierarchyIndex } from './view/hierarchy';
+export { relationLayer } from './view/layers';
 export { scopeToRoot, EXTERNAL_STUB_PREFIX, type ScopedModel } from './view/scope';
 export { estimateSizes, LEAF_SIZE, CONTAINER_PADDING, CONTAINER_HEADER } from './view/size';
 export type {

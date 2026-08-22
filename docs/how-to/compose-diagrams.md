@@ -21,7 +21,7 @@ What happens to the included content:
 | --- | --- |
 | Node ids | prefixed — `db` → `perm/db` |
 | Relation ids | prefixed the same way |
-| Layer ids | prefixed; the layer *name* becomes `Permissions/<name>` |
+| Layer ids | prefixed; the layer *name* becomes `Permissions/<name>` — **unless the umbrella declares a layer with the same id**, in which case the included layer merges into it (umbrella name and tint win) and the include's `layer` refs on nodes and relations point at the shared layer |
 | Containment | **only the default plane's edges**, imported untagged |
 | Included roots | children of the include node |
 

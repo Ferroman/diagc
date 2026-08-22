@@ -329,6 +329,18 @@ describe('per-plane membership validation', () => {
     expect(issues.some((i) => i.code === 'unknown-hidden-node' && i.ref === 'p')).toBe(true);
   });
 
+  it('checks plane.hidesTree the same way as plane.hides', () => {
+    const issues = validate(raw({
+      nodes: [{ id: 'a', name: 'a', type: 't' }],
+      planes: [{ id: 'p', name: 'p', hidesTree: ['nope'] }],
+    }));
+    expect(issues.some((i) => i.code === 'unknown-hidden-node' && i.ref === 'p')).toBe(true);
+    expect(validate(raw({
+      nodes: [{ id: 'a', name: 'a', type: 't' }],
+      planes: [{ id: 'p', name: 'p', hidesTree: ['a'] }],
+    }))).toEqual([]);
+  });
+
   it('flags hiding a node that is already scoped to a plane (redundant)', () => {
     const issues = validate(raw({
       nodes: [{ id: 'a', name: 'a', type: 't', plane: 'p' }],

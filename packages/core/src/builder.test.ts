@@ -173,3 +173,54 @@ describe('legend', () => {
     expect(m.toJSON().legend).toEqual({});
   });
 });
+
+describe('typeColors', () => {
+  it('travels on the model when declared', () => {
+    const m = model('m');
+    m.node('a', { type: 'c4-person' });
+    m.typeColors({ 'c4-person': '#c62828', '*': '#1565c0' });
+    expect(m.toJSON().typeColors).toEqual({ 'c4-person': '#c62828', '*': '#1565c0' });
+  });
+
+  it('is absent when never declared', () => {
+    const m = model('m');
+    m.node('a', {});
+    expect(m.toJSON().typeColors).toBeUndefined();
+  });
+
+  it('merges successive calls, last wins per key', () => {
+    const m = model('m');
+    m.node('a', {});
+    m.typeColors({ '*': '#111111', 'c4-person': '#222222' });
+    m.typeColors({ 'c4-person': '#333333' });
+    expect(m.toJSON().typeColors).toEqual({ '*': '#111111', 'c4-person': '#333333' });
+  });
+});
+
+describe('layerRules', () => {
+  it('travels on the model, appending across calls', () => {
+    const m = model('m');
+    m.layer('http', {});
+    m.layer('sql', {});
+    m.node('a', {});
+    m.layerRules([{ color: '#ef6c00', layer: 'http' }]);
+    m.layerRules([{ kind: 'sql', layer: 'sql' }]);
+    expect(m.toJSON().layerRules).toEqual([
+      { color: '#ef6c00', layer: 'http' },
+      { kind: 'sql', layer: 'sql' },
+    ]);
+  });
+
+  it('is absent when never declared', () => {
+    const m = model('m');
+    m.node('a', {});
+    expect(m.toJSON().layerRules).toBeUndefined();
+  });
+
+  it('rejects a rule naming an undeclared layer', () => {
+    const m = model('m');
+    m.node('a', {});
+    m.layerRules([{ kind: 'sql', layer: 'nope' }]);
+    expect(() => m.toJSON()).toThrow(/unknown layer 'nope'/);
+  });
+});

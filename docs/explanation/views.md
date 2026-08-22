@@ -38,7 +38,18 @@ The diagram rests fully folded: every group is one box. Double-click a group and
 
 The rule that makes this readable is that **siblings stay folded**. You are always reading one focused path of detail against a group-level overview, never a fully-exploded graph. A pin (the chip on a group's header) overrides the automatic decision for that container until you clear it.
 
-When a container folds, relations that crossed its boundary do not vanish — they re-anchor to the box that absorbed the hidden endpoint. Several relations between the same visible pair then fold into one arrow carrying a count. If those relations no longer share a single `kind`, the aggregate shows as `mixed`.
+When a container folds, relations that crossed its boundary do not vanish — they re-anchor to the box that absorbed the hidden endpoint. Several relations between the same visible pair then fold into **one** arrow. If those relations no longer share a single `kind`, the aggregate shows as `mixed`.
+
+What that one arrow is labelled follows a width budget, because at platform altitude there are hundreds of them:
+
+| The aggregate's constituents | Its label |
+| --- | --- |
+| One distinct label (or the same one repeated) | that label, however long — the renderer ellipsises it at ~24 characters |
+| Several, joined in ≤ 32 characters | the join, e.g. `reads / writes` |
+| Several, longer than that | `N relations`, N being how many it rolled up |
+| None labelled at all | `N relations` |
+
+Naming two short relations is more useful than counting them; naming five long ones is not — it is what turns a folded landscape into a wall of text. Nothing is lost either way: unfold the box, or hover the arrow (its title carries the full text), to see the constituents.
 
 ### Planes
 
@@ -59,7 +70,8 @@ Layers are **off by default**. Untagged relations always show; a tagged one appe
 
 ## Gotchas
 
-- **PNG export activates no layers of its own — but a plane's `layers` are always on.** `compileView` unions the viewport's active layers with the active plane's, so an overlay you want in a committed image belongs either on the base sheet or on a plane that presets it. That is how the data-flow image in [Use planes and layers](../how-to/use-planes-and-layers.md) exists.
+- **PNG export activates no layers of its own — but a plane's `layers` still draw.** `viewport.activeLayers` left **undefined** means "the host has no opinion", and `compileView` then falls back to the active plane's `layers`. An overlay you want in a committed image therefore belongs either on the base sheet or on a plane that presets it. That is how the data-flow image in [Use planes and layers](../how-to/use-planes-and-layers.md) exists.
+- **A plane's `layers` are a default, not a union.** A host that owns a layer switch passes its own `activeLayers`, and a present array — *even an empty one* — replaces the presets rather than adding to them, so a preset layer can be switched off. Such a host must seed its state with `presetLayers(model.planes, plane)` when the view opens and on every plane change; otherwise the diagram opens with its own overlays off. (Unioning them, which is what this did until the switch existed, made a preset layer permanently unturn-off-able.)
 - **PNG export unfolds everything.** The image is a flat overview, not the folded resting state. A diagram that reads well folded can be dense as a PNG.
 - **Pins are viewer state, not model state.** They are not saved to the diagram file.
 - **Automatic follow-the-viewport zoom exists but is off.** `computeFocusChain` is implemented and parked; navigation is by double-click.

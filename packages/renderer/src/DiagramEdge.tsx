@@ -13,6 +13,7 @@ import type { ReactElement } from 'react';
 import type { Column, EdgeLabel, EdgeLabelSide, NotationId, Polarity, RelationStyle } from '@diagramming/core';
 import { bowPath, DEFAULT_CURVATURE, edgePoint, edgeTangent, nearestT, type BowSide, type EdgePathParams, type EdgeShape, type Point } from './edge-geometry';
 import { getEdgeParams, sideFromPosition, type Side } from './floating';
+import { truncateEdgeLabel } from './label-size';
 import { LoopHighlightContext } from './loop-highlight';
 import { notationProfile } from './notations';
 import type { KindStyle, Registry } from './registry';
@@ -455,7 +456,10 @@ export function DiagramEdge({
         }}
         {...(data?.labels === undefined && data?.label !== undefined
           ? {
-              label: data.label,
+              // Shortened here, not in CSS: React Flow renders this as SVG
+              // <text>, where text-overflow does nothing. The full text is on the
+              // hit-path's <title> below.
+              label: truncateEdgeLabel(data.label),
               labelX,
               labelY,
               labelStyle: { fill: 'var(--dg-text)', fontSize: 10 },
@@ -470,7 +474,9 @@ export function DiagramEdge({
           edges layer, so the native dblclick never lands on the edge) — DiagramView
           detects the double-click from click events and threads `pendingAdd`. */}
       <path d={path} fill="none" stroke="transparent" strokeWidth={14}>
-        <title>{`${data?.kind ?? ''}${data !== undefined && data.constituentCount > 1 ? ` ×${data.constituentCount}` : ''}`}</title>
+        <title>{`${data?.kind ?? ''}${data !== undefined && data.constituentCount > 1 ? ` ×${data.constituentCount}` : ''}${
+          data?.labels === undefined && data?.label !== undefined ? ` — ${data.label}` : ''
+        }`}</title>
       </path>
       {polarityFrame !== undefined && data?.polarity !== undefined && (
         <text

@@ -104,10 +104,11 @@ The first plane declared is the default and owns untagged containment.
 | --- | --- | --- |
 | `name` | `string?` | Defaults to `id`. |
 | `containmentOf` | `string?` | Borrow another plane's structure. |
-| `layers` | `string[]?` | Layers on by default in this plane. |
+| `layers` | `string[]?` | Layers on by default in this plane. A default, not a floor: hosts with a layer switch start from this (`presetLayers`) and can turn them off — an export, which has no switch, always draws them. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations. |
 | `notation` | `'causal-loop'?` | |
-| `hides` | `string[]?` | Shared node ids to hide here. |
+| `hides` | `string[]?` | Shared node ids to hide here, promoting their contents into their place. |
+| `hidesTree` | `string[]?` | Shared node ids to hide here together with their contents, however deep. A child another visible box also contains stays. |
 
 ## `m.legend(opts?) → m`
 
@@ -125,6 +126,36 @@ m.legend({ items: [{ label: 'Fire-and-forget', kind: 'flow' }] });
 ```
 
 Calling it twice replaces the config. See [Add a legend](../how-to/add-a-legend.md) and [`DiagramLegend`](model.md#diagramlegend).
+
+## `m.typeColors(map) → m`
+
+A colour convention for the whole diagram: a default accent colour per node type, with `*` as the fallback for every type without an entry.
+
+```ts
+m.typeColors({ 'c4-person': '#c62828', 'c4-container-spa': '#f9a825', '*': '#1565c0' });
+```
+
+This is the only way to colour nodes the diagram did not author — an umbrella that composes a dozen `include`s cannot reach into the grafted nodes, but it can say what a `c4-container` looks like here. Precedence, highest first: the node's own `color`, the entry for its type, `*`. An untyped node with no `*` entry keeps the registry look.
+
+Successive calls merge (last wins per key). `typeColors` is presentation, so it does NOT travel through `include`: the host's convention is kept and every child's is dropped — the diagram you are looking at owns the look.
+
+## `m.layerRules(rules) → m`
+
+Put relations that carry no `layer` of their own onto layers by class. Each rule names a `kind` and/or a `color` (matched against `style.color`) and the `layer` to assign; every field a rule names must match; first match wins.
+
+```ts
+m.layer('http', { name: 'HTTP', tint: '#ef6c00' });
+m.layer('sql', { name: 'SQL', tint: '#2e7d32' });
+m.layerRules([
+  { color: '#ef6c00', layer: 'http' },
+  { kind: 'sql', layer: 'sql' },
+  { kind: 'fk', layer: 'sql' },
+]);
+```
+
+This is the one way a composed diagram can layer relations an `include` brought in: the umbrella cannot edit grafted relations, but it can say "everything orange is HTTP here". A relation's own `layer` always beats the rules; a relation no rule matches stays on the base sheet. Combine with a plane's `layers` presets and `baseRelations: false` to draw exactly one class.
+
+Successive calls append. Like `typeColors`, rules are presentation and do NOT travel through `include`: the host's are kept, every child's dropped. A rule naming an undeclared layer fails validation (`unknown-layer`).
 
 ## `m.toJSON() → DiagramModel`
 

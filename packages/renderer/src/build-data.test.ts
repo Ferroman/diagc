@@ -289,3 +289,26 @@ describe('cached builder identity', () => {
     expect(changed).not.toBe(first);
   });
 });
+describe('buildNodeData: typeColors fallback', () => {
+  it("uses the type's colour when the node declares none", () => {
+    const d = buildNodeData(viewNode(), nodeCtx({ typeColors: { service: '#1565c0' } }));
+    expect(d.color).toBe('#1565c0');
+  });
+
+  it("falls back to '*' for a type with no entry", () => {
+    const d = buildNodeData(viewNode(), nodeCtx({ typeColors: { 'c4-person': '#c62828', '*': '#1565c0' } }));
+    expect(d.color).toBe('#1565c0');
+  });
+
+  it("lets the node's own colour win", () => {
+    const n = viewNode({ node: { id: 'n1', name: 'One', type: 'service', color: '#00ff00' } });
+    const d = buildNodeData(n, nodeCtx({ typeColors: { service: '#1565c0', '*': '#111111' } }));
+    expect(d.color).toBe('#00ff00');
+  });
+
+  it('leaves an untyped node alone when there is no fallback', () => {
+    const n = viewNode({ node: { id: 'n1', name: 'One' } });
+    const d = buildNodeData(n, nodeCtx({ typeColors: { service: '#1565c0' } }));
+    expect(d.color).toBeUndefined();
+  });
+});

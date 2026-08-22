@@ -23,7 +23,7 @@ One sentence each:
 | --- | --- |
 | Logical ownership *and* physical deployment of the same services | **plane** |
 | A team-ownership view over the same systems | **plane** |
-| A view scoped to one product area, with everything else gone | **plane** (leave the rest uncontained, or use `hides`) |
+| A view scoped to one product area, with everything else gone | **plane** (leave the rest uncontained, or use `hides` / `hidesTree`) |
 | Data flow drawn over the architecture | **layer** |
 | Failure and retry paths, shown only when discussing resilience | **layer** |
 | Which calls are synchronous, on demand | **layer** |
@@ -103,8 +103,8 @@ Those three options are the whole trick, and they compose:
 
 | Option | Effect |
 | --- | --- |
-| `containmentOf: 'architecture'` | Do not declare containment — borrow it |
-| `layers: ['data-flow']` | This layer is **always on** in this plane |
+| `containmentOf: 'architecture'` | Do not declare containment — borrow it (the donor's `hides`/`hidesTree` come along, unless this plane declares its own) |
+| `layers: ['data-flow']` | This layer is **on by default** in this plane. Hosts with a layer switch (`diagc studio`, a published page) start from this and can turn them off |
 | `baseRelations: false` | Hide untagged relations, leaving only layer arrows |
 
 ---
@@ -147,6 +147,14 @@ m.node('k8s', { type: 'infra', name: 'K8s cluster', plane: 'infra' });      // p
 
 `hides` is for nodes shared across planes. Listing a node that already has `plane` set is a `redundant-hide` validation issue.
 
+`hides` keeps what was inside the box: the children move up to where the box was. That is usually what you want for a framing box, and it is what composition relies on. When you meant "and everything in it", use `hidesTree`:
+
+```ts
+m.plane('landscape', { name: 'Landscape', hidesTree: ['orders-db'] });   // the database AND its tables
+```
+
+Hiding a box with `hidesTree` hides what is inside it, unless something visible still contains it — so one entry on a store removes its tables too, while a table a second, visible store also contains stays. Hiding also drops the hidden nodes' arrows, which is the reason to reach for it when a view is unreadable from edge density; [`export.collapsed`](publish-and-share.md) only folds, and a folded box still anchors its children's arrows.
+
 ### Preset a reviewer's starting view
 
 ```ts
@@ -160,6 +168,25 @@ m.plane('security', {
 
 Anyone who picks that plane lands with exactly the two overlays on and nothing else in the way.
 
+### Layer relations you did not author
+
+A composed diagram (`include`) cannot edit the relations it grafts — but it can layer them by class with `layerRules`, and then treat each class as an overlay:
+
+```ts
+m.layer('http', { name: 'HTTP', tint: '#ef6c00' });
+m.layer('sql', { name: 'SQL', tint: '#2e7d32' });
+m.layer('storage', { name: 'Queues / object storage', tint: '#8e24aa' });
+m.layerRules([
+  { color: '#ef6c00', layer: 'http' },
+  { kind: 'sql', layer: 'sql' },
+  { kind: 'fk', layer: 'sql' },
+  { color: '#8e24aa', layer: 'storage' },
+]);
+m.plane('data', { name: 'Where the data lives', layers: ['sql', 'storage'], baseRelations: false });
+```
+
+Rules match on `kind` and/or `style.color` (every field a rule names must match; first match wins) and only touch relations that have no `layer` of their own. Combined with `layers` presets and `baseRelations: false`, one plane per question falls out of a single dense model: the `data` plane above draws SQL and storage and nothing else, while a `context` plane presets `['nats','http']` over the same boxes. Rules are the host's — an included model's rules are dropped on graft, exactly like `typeColors`.
+
 ---
 
 ## In the studio
@@ -169,7 +196,8 @@ Open the **Layers & planes** drawer from the edit-mode toolbar.
 - **Add a layer** — id, name, tint. It appears immediately as a toggle.
 - **Add a plane** — id, name, whether it borrows another plane's containment, and which layers it presets.
 - **Switch planes** with the plane switcher in the header. Your place is kept: the groups containing whatever you were looking at open automatically in the new plane.
-- **Toggle layers** from the layer chips. Arrows appear and disappear; boxes never move.
+- **Toggle layers** from the layer chips. Arrows appear and disappear; boxes never move. Switching plane re-seeds the chips from that plane's `layers`, discarding your previous plane's choice — deliberately, since a viewpoint's presets are part of what the viewpoint means.
+- **On a published page** the same switch lives on the legend's LAYERS rows, which are clickable there (the page needs a legend that shows the `layers` section — see [Add a legend](add-a-legend.md)).
 
 When you drag a node into a new parent, the containment edge is created **on the plane you are currently viewing**. Switch to the plane you mean to edit before rearranging.
 
@@ -179,9 +207,11 @@ When you drag a node into a new parent, the containment edge is created **on the
 
 - **Untagged containment belongs to the first-declared plane.** `shop.contains(web)` with no `{ plane }` is not "on every plane" — it is on the default one. In a diagram with several planes, tag containment explicitly, or reordering your `m.plane(...)` calls will silently change what the diagram means.
 - **`containmentOf` borrows edges tagged for that plane.** If your architecture edges are untagged and `architecture` is not declared first, a plane borrowing `architecture` gets nothing and every node floats loose.
+- **A borrowing plane inherits the donor's `hides` and `hidesTree`, and overrides either by declaring it** — `hidesTree: []` on the borrower keeps the detail the donor drops. That is how one model carries a stripped-down overview plane and a full one over the same hierarchy.
 - **A node with no containment in a plane becomes a root**, not a hidden node — an empty box, not an absence. Use `hides` or a node-level `plane`.
+- **`hides` promotes the interior, `hidesTree` removes it.** Hiding a box with `hides` lifts its children into its place; layers behave the same way, so a box on an inactive layer leaves its children floating as roots.
 - **Relations vanish with their endpoints.** If a node is not in the active plane, arrows touching it are not drawn.
-- **Layers are off by default, but a plane's `layers` are always on** — including in exported PNGs. That is how the data-flow image above exists.
+- **Layers are off by default; a plane's `layers` are on by default** — including in exported PNGs, which have no switch at all. That is how the data-flow image above exists. On an interactive page or in the studio the presets are a **starting point, not a floor**: the switch is seeded from them when the view opens and on every plane change, and the reader can then turn any of them off. Turn one off and switch planes and back to get the presets again.
 - **`baseRelations: false` hides untagged relations only.** Relations on *other* layers still appear if those layers are on.
 - **Layer toggles never move boxes.** If yours do, something else changed — layout is computed from the full relation set on purpose.
 

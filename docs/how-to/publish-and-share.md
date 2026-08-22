@@ -38,7 +38,7 @@ That is a normal repo path — it works on GitHub with no Pages setup.
 
 **Three things about the exported image**, each of which will surprise you once:
 
-- **Every group is unfolded.** The PNG is a flat overview, not the folded resting state. A diagram that reads beautifully folded can be dense as an image.
+- **Every group is unfolded.** The PNG is a flat overview, not the folded resting state. A diagram that reads beautifully folded can be dense as an image. A view with hundreds of leaves can name the groups to keep folded in its layout overlay — `"export": { "collapsed": ["big-group", "other-group"] }` — which the image honours and the interactive page ignores. Fold rather than hide: a folded box still anchors its hidden children's edges, where a plane-hidden node drops them.
 - **No layer is switched on interactively** — but a plane's preset `layers` *are* active, because the view compiler unions the two. So an overlay reaches a committed image only if the exported plane presets it.
 - **A declared legend is baked in.** If the diagram calls `m.legend()`, the key travels with the image, and the capture frame **grows** by the panel's height so it never covers the diagram. Layers that are off are dropped rather than greyed — neither an image nor a published page offers a layer switch, so the rows that remain are plain rows rather than dead buttons. See [Add a legend](add-a-legend.md).
 
@@ -68,6 +68,8 @@ Checked automatically: `/usr/bin/google-chrome`, `/usr/bin/google-chrome-stable`
 ## Share an interactive page
 
 `.diagrams/html/<name>.html` is a single file with everything inlined. Email it, drop it in Slack, open it from disk — it folds and unfolds exactly like the studio, it just cannot save.
+
+Pages with several planes get a plane picker at the top; the PNG always shows the first plane.
 
 ## Publish to GitHub Pages
 

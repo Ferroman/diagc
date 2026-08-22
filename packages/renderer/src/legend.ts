@@ -1,6 +1,6 @@
 import {
   buildHierarchy,
-  resolveContainmentPlane,
+  relationLayer,
   scopeToRoot,
   type CompiledView,
   type DiagramLegend,
@@ -41,7 +41,11 @@ export interface LegendInput {
   /** the drill root, when the view is scoped to one node's interior; mirrors
    *  `ViewportState.root` */
   root?: string;
-  activeLayers: string[];
+  /** the host's layer choice, or ABSENT when it has none — in which case the
+   *  plane's `layers` presets apply. Exactly `ViewportState.activeLayers`, and it
+   *  must be passed through with the same nullability: coercing undefined to []
+   *  here tells the legend "nothing is on" while compileView draws the presets. */
+  activeLayers?: string[];
   /** already notation-composed by the caller (see DiagramView) */
   typeRegistry: Registry<TypeStyle>;
   kindRegistry: Registry<KindStyle>;
@@ -74,13 +78,12 @@ function orderByRegistry(ids: string[], known: readonly string[]): string[] {
  * The nodes and relations this view could draw, resolved exactly the way
  * `compileView` resolves them — never approximated. Two traps live here:
  *
- * - Visibility is decided by the CONTAINMENT plane, not the viewport plane. A
- *   plane with `containmentOf` borrows the donor's containment, and
- *   `compileView` passes `resolveContainmentPlane(...)` to `buildHierarchy`, so
- *   it is the DONOR's `hides` that applies and the donor's id a `node.plane`
- *   scope is matched against. Filtering by the viewport plane instead drops
- *   every node of a borrowing plane, and with them the layer rows for arrows
- *   that are, visibly, on screen.
+ * - Containment is decided by the DONOR plane when this one borrows it, which is
+ *   why the viewport plane goes to `buildHierarchy` and `buildHierarchy` resolves
+ *   `containmentOf` itself: filtering this model's containment by the borrowing
+ *   plane's own id instead drops every node it has, and with them the layer rows
+ *   for arrows that are, visibly, on screen. A `node.plane` scope is matched
+ *   against the donor; `hides` is the borrower's own when it declares one.
  * - A drill view draws only the root's interior plus external stubs, so it is
  *   `scopeToRoot` that decides membership there.
  *
@@ -93,7 +96,7 @@ function drawableSlice(input: LegendInput): {
   relations: readonly DiagramRelation[];
 } {
   const m = input.model;
-  const hierarchy = buildHierarchy(m, resolveContainmentPlane(m, input.plane?.id));
+  const hierarchy = buildHierarchy(m, input.plane?.id);
   if (input.root !== undefined && hierarchy.childrenOf.has(input.root)) {
     // Same guard and same call compileView's drill branch makes. A stub node
     // carries no `layer` (scopeToRoot copies only visual identity), so a layer
@@ -116,14 +119,22 @@ function relevantLayerIds(input: LegendInput): Set<string> {
   const { nodes, relations } = drawableSlice(input);
   const ids = new Set<string>();
   for (const n of nodes) if (n.layer !== undefined) ids.add(n.layer);
-  for (const r of relations) if (r.layer !== undefined) ids.add(r.layer);
+  // The EFFECTIVE layer — a relation the model's `layerRules` place on a layer
+  // counts for that layer's row exactly as one tagged by hand does.
+  for (const r of relations) {
+    const l = relationLayer(input.model, r);
+    if (l !== undefined) ids.add(l);
+  }
   return ids;
 }
 
 function layerRows(input: LegendInput): LegendRow[] {
   const relevant = relevantLayerIds(input);
-  // compileView unions the viewport's layers with the plane's presets; mirror it.
-  const active = new Set([...input.activeLayers, ...(input.plane?.layers ?? [])]);
+  // Exactly compileView's rule, and it must stay exactly it: an absent
+  // `activeLayers` falls back to the plane's presets, a present one (even empty)
+  // replaces them. This used to union the two, which is how a layer the plane
+  // presets came up ON in the key while the host's own switch reported it off.
+  const active = new Set(input.activeLayers ?? input.plane?.layers ?? []);
   const out: LegendRow[] = [];
   for (const l of input.model.layers) {
     if (!relevant.has(l.id)) continue;

@@ -61,6 +61,6 @@ describe('nested-zoom edge aggregation (bird’s-eye ⇄ drilled)', () => {
     const j = m.toJSON();
     const top = compileView(j, { focus: [] }).edges;
     expect(top).toHaveLength(1);
-    expect(top[0]).toMatchObject({ id: 'service=>db:', from: 'service', to: 'db', label: '2' });
+    expect(top[0]).toMatchObject({ id: 'service=>db:', from: 'service', to: 'db', label: '2 relations' });
   });
 });

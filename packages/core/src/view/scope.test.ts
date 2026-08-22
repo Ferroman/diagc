@@ -45,7 +45,7 @@ describe('compileView drill root (isolated view + external stubs)', () => {
     const toStub = v.edges.filter((e) => e.to === stub.id);
     expect(toStub.map((e) => e.from).sort()).toEqual(['order-ctrl', 'pay-gw']);
     // order-ctrl's two relations (reads+writes) aggregate into one counted edge
-    expect(v.edges.find((e) => e.from === 'order-ctrl' && e.to === stub.id)?.label).toBe('2');
+    expect(v.edges.find((e) => e.from === 'order-ctrl' && e.to === stub.id)?.label).toBe('2 relations');
     expect(v.externals?.get(stub.id)).toBe('db');
   });
 

@@ -10,6 +10,7 @@ The goals of the project:
 - Diagrams with levels, so you can start from the big picture and open up the parts you care about
 - Transparent sheets ("layers") to add extra detail to any level without cluttering the base picture
 - "Planes" to group the same things in more than one way, by system in one view and by where they run in another
+- Combine diagrams from multiple sources together, so each system's diagram can be shown in context of other systems without copy-paste
 
 Non-goals:
 

@@ -174,13 +174,20 @@ function validateNodes(ctx: Ctx): void {
   }
 }
 
-/** Duplicate layer ids. */
+/** Duplicate layer ids, and `layerRules` that name a layer nobody declared (a
+ * rule is the one place a layer can be referenced without a node or relation
+ * carrying it, so it is checked here, right after the layers are known). */
 function validateLayers(ctx: Ctx): void {
   const { m, issues, layerIds } = ctx;
   for (const l of m.layers) {
     if (layerIds.has(l.id)) report(issues, 'duplicate-layer', `Duplicate layer id '${l.id}'`, l.id);
     layerIds.add(l.id);
   }
+  (m.layerRules ?? []).forEach((rule, i) => {
+    if (!layerIds.has(rule.layer)) {
+      report(issues, 'unknown-layer', `layerRules[${i}] references unknown layer '${rule.layer}'`);
+    }
+  });
 }
 
 /** Plane declarations: duplicate ids, notation, containmentOf borrowing (unknown
@@ -219,12 +226,12 @@ function validatePlanes(ctx: Ctx): void {
   }
 }
 
-/** plane.hides must reference existing, shared nodes. */
+/** plane.hides and plane.hidesTree must reference existing, shared nodes. */
 function validatePlaneHides(ctx: Ctx): void {
   const { m, issues, nodeIds, planes } = ctx;
   const scopedPlaneOf = new Map(m.nodes.map((n) => [n.id, n.plane]));
   for (const p of planes) {
-    for (const id of p.hides ?? []) {
+    for (const id of [...(p.hides ?? []), ...(p.hidesTree ?? [])]) {
       if (!nodeIds.has(id)) {
         report(issues, 'unknown-hidden-node', `Plane '${p.id}' hides unknown node '${id}'`, p.id);
       } else if (scopedPlaneOf.get(id) !== undefined) {

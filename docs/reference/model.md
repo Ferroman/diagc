@@ -15,6 +15,8 @@ For *why* the model is shaped like this, see [What is in a model](../explanation
 | `name` | `string` | Display name. |
 | `style` | `string?` | Renderer style preset pinned by this file. Unknown ids fall back to the app preference. |
 | `legend` | `DiagramLegend?` | Opt-in key for the diagram's visual vocabulary. Absent means no legend anywhere. |
+| `typeColors` | `Record<string, string>?` | Default accent colour per node type; `*` is the fallback. A node's own `color` wins. Dropped from included models on graft — the host owns the look. |
+| `layerRules` | `LayerRule[]?` | Class → layer for relations without a `layer`: `{ kind?, color?, layer }`, every named field must match, first match wins, explicit `layer` beats the rules. Dropped from included models on graft. |
 | `nodes` | `DiagramNode[]` | |
 | `containment` | `ContainmentEdge[]` | |
 | `relations` | `DiagramRelation[]` | |
@@ -132,7 +134,8 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `layers` | `string[]?` | Layers switched on when this plane is selected. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations, leaving only layer arrows. |
 | `notation` | `string?` | Visual language. Only `causal-loop` is built in. |
-| `hides` | `string[]?` | Shared node ids this plane hides. |
+| `hides` | `string[]?` | Shared node ids this plane hides; their children are promoted into their place. |
+| `hidesTree` | `string[]?` | Shared node ids this plane hides along with everything inside them (a child with another visible parent stays). |
 
 ## `DiagramLegend`
 
@@ -174,6 +177,29 @@ An item naming a `kind` or `type` that already has a derived row **recaptions th
 | `planes` | `Record<plane, Record<nodeId, {x, y}>>` | Positions, per plane. |
 | `sizes` | `Record<nodeId, {w, h}>?` | Plane-independent — a node is the same size everywhere. |
 | `manual` | `Record<plane, true>?` | Planes with automatic layout switched off. |
+| `settings` | `Record<plane, LayoutSettings>?` | Per-plane automatic-layout settings. Absent means the tuned defaults. |
+| `export` | `{ collapsed?: string[] }?` | How the PNG export differs from the interactive page. |
+
+Both are keyed by the **resolved containment plane** (`layoutPlaneKey`), the same
+as `planes` and `manual` — so a plane that borrows containment with
+`containmentOf` shares the donor's entry rather than having its own.
+
+### `LayoutSettings`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `algorithm` | `string?` | elk.algorithm: `layered` (default), `force`, `stress`, `mrtree`, `radial`, `rectpacking`. |
+| `direction` | `string?` | elk.direction for `layered`: `RIGHT` (default), `DOWN`, `LEFT`, `UP`. |
+| `spacing` | `number?` | Base node-to-node spacing in px; between-layer spacing is derived from it. |
+| `edgeRouting` | `'curved' \| 'orthogonal'?` | Floating beziers (default) or orthogonal along elk waypoints. |
+
+`export.collapsed` lists node ids to keep FOLDED in the PNG only; the interactive
+page ignores it and always rests fully folded so the reader unfolds what they
+want. The exporter otherwise unfolds every container, which turns a view with
+hundreds of leaves into an unreadable thumbnail. Folding rather than the plane's
+`hides` is the right tool when the edges matter: a folded box still ANCHORS its
+hidden children's edges, where a hidden node drops them. Ids that are not
+containers have no effect.
 
 ## Validation codes
 
@@ -192,8 +218,8 @@ An item naming a `kind` or `type` that already has a derived row **recaptions th
 | `unknown-layer` | A `layer` does not match any declared layer. |
 | `unknown-plane` | A `plane` does not match any declared plane. |
 | `unknown-column` | `fromColumn`/`toColumn` names no column on that table. |
-| `unknown-hidden-node` | `hides` names a node that does not exist. |
-| `redundant-hide` | `hides` names a node already scoped to one plane. |
+| `unknown-hidden-node` | `hides`/`hidesTree` names a node that does not exist. |
+| `redundant-hide` | `hides`/`hidesTree` names a node already scoped to one plane. |
 | `invalid-plane` | Malformed plane declaration. |
 | `invalid-style` | `style` is not a non-empty string. |
 | `invalid-legend` | Malformed `legend`: bad title, unknown position or section, or a bad `items` entry. |
@@ -216,6 +242,8 @@ Strings the renderer already knows. Anything else falls back to a plain box or a
 **Node types** — `system`, `platform` (dashed boxes); `service` (box + icon); `database`, `aws-rds`, `table` (cylinders); `db-table` (ER table); `queue` (pill); `infra` (hexagon); `person` (pill); and the 33 `c4-*` types listed in [Library reference](library.md).
 
 **Relation kinds** — `sync`, `async` (dashed), `reads`, `writes` (thick), `hosted-on` (dashed), `flow` (animated), `mixed` (thick, used for aggregates), `fk` (crow's-foot).
+
+An **aggregate** edge (one arrow standing for several relations, after a fold) labels itself from its constituents: their distinct labels joined with ` / ` while that stays within 32 characters, or a single distinct label whatever its length, and otherwise `N relations`. Single-relation edges always carry their own label. Long labels are ellipsised at ~24 characters when drawn; the arrow's hover title carries the full text. See [Views](../explanation/views.md#semantic-zoom).
 
 **Shapes** — `box`, `cylinder`, `pill`, `hexagon`, `table`.
 

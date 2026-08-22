@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { model } from '../builder';
 import { validate } from '../validate';
-import { compileView } from './compile';
+import { compileView, presetLayers } from './compile';
 import type { DiagramModel } from '../types';
 
 function planesModel(): DiagramModel {
@@ -167,5 +167,71 @@ describe('planes', () => {
     const v = compileView(j, { plane: 'p' });
     expect(ids(v.roots)).not.toContain('a'); // node itself is gone
     expect(v.edges.some((e) => e.from === 'a')).toBe(false); // and so is its edge
+  });
+});
+
+/**
+ * A plane's `layers` are a DEFAULT, not a permanent union. `viewport.activeLayers`
+ * undefined means "the host has no opinion" → the plane's presets apply; an array,
+ * even an empty one, is the host's own choice and wins outright. The union it
+ * replaces made a preset layer unturn-off-able: a studio/viewer layer switch could
+ * not hide the plane's own sheets, so NATS arrows stayed on screen with the chip off.
+ */
+describe('plane layer presets are a default, not a union', () => {
+  function presetModel(): DiagramModel {
+    const m = model('presets');
+    m.layer('nats', { name: 'NATS messaging', tint: '#0ea5e9' });
+    m.layer('monitoring', { name: 'Monitoring', tint: '#a855f7' });
+    m.plane('landscape', { name: 'Landscape', layers: ['nats', 'monitoring'] });
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    m.relate(a, b, { kind: 'sync' });
+    m.relate(a, b, { kind: 'flow', label: 'events', layer: 'nats' });
+    m.relate(a, b, { kind: 'flow', label: 'metrics', layer: 'monitoring' });
+    return m.toJSON();
+  }
+  const edges = (v: { edges: { id: string }[] }) => v.edges.map((e) => e.id).sort();
+
+  it('applies the preset when the host expresses no choice (activeLayers undefined)', () => {
+    const v = compileView(presetModel(), { plane: 'landscape' });
+    expect(edges(v)).toEqual(['a=>b:', 'a=>b:monitoring', 'a=>b:nats']);
+  });
+
+  it('an explicit empty array is a choice: every preset layer is off', () => {
+    const v = compileView(presetModel(), { plane: 'landscape', activeLayers: [] });
+    expect(edges(v)).toEqual(['a=>b:']); // base sheet only
+  });
+
+  it('an explicit list replaces the preset rather than adding to it', () => {
+    const v = compileView(presetModel(), { plane: 'landscape', activeLayers: ['nats'] });
+    expect(edges(v)).toEqual(['a=>b:', 'a=>b:nats']); // monitoring off
+  });
+
+  it('presetLayers gives a host the seed for its own switch, resolving the plane like compileView', () => {
+    const j = presetModel();
+    expect(presetLayers(j.planes, 'landscape')).toEqual(['nats', 'monitoring']);
+    expect(presetLayers(j.planes, undefined)).toEqual(['nats', 'monitoring']); // = first plane
+    expect(presetLayers(j.planes, 'ghost')).toEqual([]); // unknown plane presets nothing
+    expect(presetLayers([], undefined)).toEqual([]);
+    // A copy, never the model's own array: host state must not alias the model.
+    expect(presetLayers(j.planes, 'landscape')).not.toBe(j.planes[0]!.layers);
+  });
+
+  it('a host that seeds from presetLayers reproduces the no-opinion view exactly', () => {
+    const j = presetModel();
+    const seeded = compileView(j, { plane: 'landscape', activeLayers: presetLayers(j.planes, 'landscape') });
+    const noOpinion = compileView(j, { plane: 'landscape' });
+    expect(edges(seeded)).toEqual(edges(noOpinion));
+  });
+
+  it('the same rule governs layer-tagged NODES, not only relations', () => {
+    const m = model('preset-nodes');
+    m.layer('monitoring', { name: 'Monitoring' });
+    m.plane('landscape', { layers: ['monitoring'] });
+    m.node('app', { type: 'service' });
+    m.node('grafana', { type: 'service', layer: 'monitoring' });
+    const j = m.toJSON();
+    expect(ids(compileView(j, { plane: 'landscape' }).roots)).toEqual(['app', 'grafana']);
+    expect(ids(compileView(j, { plane: 'landscape', activeLayers: [] }).roots)).toEqual(['app']);
   });
 });

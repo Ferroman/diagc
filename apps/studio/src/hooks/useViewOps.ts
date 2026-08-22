@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { uniqueNodeId, type DiagramModel, type DiagramPlane, type LayoutSettings } from '@diagramming/core';
+import { presetLayers, uniqueNodeId, type DiagramModel, type DiagramPlane, type LayoutSettings } from '@diagramming/core';
 import type { DiagramSelection } from '@diagramming/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import { remapVisibleLayers } from '../layerMerge';
@@ -114,12 +114,14 @@ export function useViewOps({
     setSelection({ kind: 'node', id });
   };
 
+  // A plane change re-seeds the layer switch from the new plane's presets, and the
+  // user owns it from there (see presetLayers / ViewportState.activeLayers): a
+  // plane's `layers` are a starting point, not a floor the compiler re-imposes.
   const switchPlane = (id: string) => {
-    const def = planes.find((p) => p.id === id);
     setPlane(id);
     setPins({});
     select(null);
-    setActiveLayers(def?.layers ?? []);
+    setActiveLayers(presetLayers(planes, id));
     setActiveLayer(null);
   };
 
@@ -165,7 +167,10 @@ export function useViewOps({
     setPlane(undefined);
     setPins({});
     setLayoutPreview({});
-    setActiveLayers([]);
+    // The Default chip clears `plane`, and compileView resolves an absent plane to
+    // planes[0] — so the seed comes from planes[0] too. Seeding [] instead would
+    // leave the layer chips describing a different view from the one on canvas.
+    setActiveLayers(presetLayers(planes, undefined));
     setActiveLayer(null);
     select(null);
   };

@@ -23,7 +23,11 @@ function fixture(): DiagramModel {
 /** Compiles the same viewport the legend is told about, so a test can never
  *  assert a key against a view the product would not have drawn. */
 function rows(m: DiagramModel, over: Partial<LegendInput> = {}) {
-  const activeLayers = over.activeLayers ?? [];
+  // Left UNDEFINED when the caller says nothing, never coerced to []: undefined
+  // is "the host has no opinion" (plane presets apply) and [] is "the host chose
+  // nothing" (no layers at all). Coercing here would hide the whole distinction
+  // this fixture exists to exercise.
+  const activeLayers = over.activeLayers;
   const pins = Object.fromEntries(
     [...new Set(m.containment.map((c) => c.parent))].map((id) => [id, 'expanded' as const]),
   );
@@ -31,11 +35,11 @@ function rows(m: DiagramModel, over: Partial<LegendInput> = {}) {
     model: m,
     compiled: compileView(m, {
       pins,
-      activeLayers,
+      ...(activeLayers !== undefined ? { activeLayers } : {}),
       ...(over.plane !== undefined ? { plane: over.plane.id } : {}),
       ...(over.root !== undefined ? { root: over.root } : {}),
     }),
-    activeLayers,
+    ...(activeLayers !== undefined ? { activeLayers } : {}),
     typeRegistry: createTypeRegistry(),
     kindRegistry: createKindRegistry(),
     config: {},
@@ -82,6 +86,17 @@ describe('legendRows', () => {
     expect(rows(m, { activeLayers: ['data-flow'] }).find((x) => x.layer === 'data-flow')?.active).toBe(true);
     const planed = rows(m, { plane: { id: 'p', name: 'P', layers: ['data-flow'] } });
     expect(planed.find((x) => x.layer === 'data-flow')?.active).toBe(true);
+  });
+
+  it('a plane preset is a default the host can override, not a floor', () => {
+    // Same rule as compileView: an explicit array (even empty) is the host's
+    // choice and replaces the preset, so the chip can report a preset layer OFF.
+    // Unioning them here is what left the legend claiming NATS was on while the
+    // studio's switch said otherwise.
+    const m = fixture();
+    const plane = { id: 'p', name: 'P', layers: ['data-flow'] };
+    expect(rows(m, { plane, activeLayers: [] }).find((x) => x.layer === 'data-flow')?.active).toBe(false);
+    expect(rows(m, { plane, activeLayers: ['hosting'] }).find((x) => x.layer === 'data-flow')?.active).toBe(false);
   });
 
   it('drops inactive layers, but keeps active ones, when nothing can toggle them', () => {
@@ -287,5 +302,30 @@ describe('legendRows', () => {
     const m = model('empty');
     m.node('a');
     expect(rows(m.toJSON())).toEqual([]);
+  });
+});
+
+describe('legendRows: layers assigned by layerRules', () => {
+  it('lists a layer whose only relations reach it through a rule', () => {
+    const m = model('lr');
+    m.layer('sql', { name: 'SQL', tint: '#2e7d32' });
+    const a = m.node('a', { type: 'service' });
+    const db = m.node('db', { type: 'database' });
+    m.relate(a, db, { kind: 'sql' }); // no explicit layer
+    m.layerRules([{ kind: 'sql', layer: 'sql' }]);
+    m.plane('p', { name: 'p', layers: ['sql'] });
+    m.legend({ show: ['layers'] });
+    const j = m.toJSON();
+    const compiled = compileView(j, { plane: 'p' });
+    const rows = legendRows({
+      model: j,
+      compiled,
+      plane: j.planes[0],
+      typeRegistry: createTypeRegistry(),
+      kindRegistry: createKindRegistry(),
+      config: j.legend!,
+      canToggleLayers: false,
+    });
+    expect(rows.map((r) => r.id)).toContain('layers:sql');
   });
 });

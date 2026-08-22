@@ -33,6 +33,9 @@ export interface NodeDataContext {
   metaKeys: string[];
   hiddenCounts: ReadonlyMap<string, number>;
   typeRegistry: Registry<TypeStyle>;
+  /** the model's colour convention: default accent per node type, `*` as the
+   * fallback. Applied only where the node itself declares no `color`. */
+  typeColors?: Record<string, string>;
   icons: IconRegistry;
   pins?: Record<string, 'expanded' | 'collapsed'>;
   onTogglePin?: (id: string) => void;
@@ -75,6 +78,16 @@ export interface EdgeDataContext {
   routes: ReadonlyMap<string, EdgePoint[]>;
 }
 
+/** A node's accent colour: its own `color`, else the model's convention for its
+ * type, else the convention's `*` fallback (see DiagramModel.typeColors). */
+function typeColor(n: ViewNode, ctx: NodeDataContext): string | undefined {
+  if (n.node.color !== undefined) return n.node.color;
+  const byType = ctx.typeColors;
+  if (byType === undefined) return undefined;
+  const own = n.node.type !== undefined ? byType[n.node.type] : undefined;
+  return own ?? byType['*'];
+}
+
 /** Build the data channel for one view node. Pure: same inputs → equivalent
  * output; the wrapped callbacks bind the view's host callbacks to this node's
  * id (rename/rich-commit/resize/columns) exactly as the inline construction did. */
@@ -94,7 +107,7 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     icons: ctx.icons,
     ...(n.node.type !== undefined ? { typeId: n.node.type } : {}),
     ...(n.node.icon !== undefined ? { icon: n.node.icon } : {}),
-    ...(n.node.color !== undefined ? { color: n.node.color } : {}),
+    ...(typeColor(n, ctx) !== undefined ? { color: typeColor(n, ctx) } : {}),
     ...(n.node.textColor !== undefined ? { textColor: n.node.textColor } : {}),
     ...(n.node.rich !== undefined ? { rich: n.node.rich } : {}),
     ...(n.node.textAlign !== undefined ? { textAlign: n.node.textAlign } : {}),

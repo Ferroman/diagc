@@ -15,6 +15,7 @@ import {
   emptyLayout,
   errMessage,
   layoutPlaneKey,
+  presetLayers,
   SOURCE_URL,
   type Column,
   type DiagramModel,
@@ -199,6 +200,27 @@ export function App() {
   // vanish. Stage 1 disables plane-scoped membership editing there — new
   // nodes are added shared instead (see createNodeAt).
   const activePlaneBorrowsContainment = planes.find((p) => p.id === activePlane)?.containmentOf !== undefined;
+
+  // Seed the layer switch from the plane's presets when a diagram arrives on
+  // screen. A plane's `layers` are a DEFAULT the user then owns (see
+  // presetLayers): compileView no longer unions them in on every compile, so
+  // without a seed a diagram opens with its own overlays off. Keyed on the
+  // diagram, not on `model` — editing rebuilds the model on every keystroke, and
+  // re-seeding there would undo the user's own toggles mid-edit. A plane change
+  // does not re-seed here either; switchPlane owns that transition.
+  const seededDiagram = useRef<string | null>(null);
+  useEffect(() => {
+    if (model === undefined || seededDiagram.current === selected) return;
+    seededDiagram.current = selected;
+    setActiveLayers(presetLayers(model.planes, plane));
+    // Same seed as the exporter: a diagram whose layout names groups in
+    // `export.collapsed` opens with exactly those folded here too. Without it the
+    // studio drew a picture the published image never shows — the author would
+    // fold by hand to see what they were shipping, or (worse) not notice that a
+    // box is folded in the image at all. Empty list, empty pins: unchanged.
+    const folded = layout?.export?.collapsed ?? [];
+    setPins(Object.fromEntries(folded.map((id) => [id, 'collapsed' as const])));
+  }, [selected, model, plane, layout]);
 
   // Whether the active plane is in manual (frozen) layout — its manual flag is
   // set in the layout sidecar. Drives the toolbar toggle and new-node placement.

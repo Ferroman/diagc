@@ -70,6 +70,16 @@ describe('DiagramEdge', () => {
     expect(getByText('3')).toBeDefined();
   });
 
+  it('ellipsises a long label chip and keeps the full text on the hover title', () => {
+    // React Flow draws this chip as SVG <text>: CSS cannot ellipsise it, and an
+    // un-shortened sentence covers whatever the arrow passes over.
+    const long = 'publishes employee.tenure.recalculated to the mesh';
+    const { container, queryByText } = renderEdge({ label: long, constituentCount: 1 });
+    expect(queryByText(long)).toBeNull();
+    expect(container.textContent).toContain('…');
+    expect(container.querySelector('title')?.textContent).toContain(long);
+  });
+
   it('renders each positioned label text', () => {
     const { getByText } = renderEdge({
       labels: [

@@ -7,6 +7,7 @@ import type {
   DiagramNode,
   DiagramPlane,
   DiagramRelation,
+  LayerRule,
   NotationId,
   Polarity,
   RelationStyle,
@@ -82,6 +83,8 @@ export class ModelBuilder {
   private layers: DiagramLayer[] = [];
   private planes: DiagramPlane[] = [];
   private legendConfig: DiagramLegend | undefined;
+  private typeColorMap: Record<string, string> | undefined;
+  private layerRuleList: LayerRule[] | undefined;
   private pairCounters = new Map<string, number>();
 
   constructor(
@@ -163,6 +166,7 @@ export class ModelBuilder {
       baseRelations?: boolean;
       notation?: NotationId;
       hides?: string[];
+      hidesTree?: string[];
     } = {},
   ): this {
     this.planes.push({
@@ -174,6 +178,7 @@ export class ModelBuilder {
         baseRelations: opts.baseRelations,
         notation: opts.notation,
         hides: opts.hides,
+        hidesTree: opts.hidesTree,
       }),
     });
     return this;
@@ -182,6 +187,23 @@ export class ModelBuilder {
   /** Declare a legend. Bare `legend()` means derived sections only. */
   legend(opts: DiagramLegend = {}): this {
     this.legendConfig = opts;
+    return this;
+  }
+
+  /** Default accent colour per node type; `*` is the fallback for the rest.
+   * The one way to colour nodes a composed diagram did not author. Successive
+   * calls merge, last wins per key; a node's own `color` still wins over both. */
+  typeColors(map: Record<string, string>): this {
+    this.typeColorMap = { ...(this.typeColorMap ?? {}), ...map };
+    return this;
+  }
+
+  /** Put unlayered relations on layers by class (`kind` and/or `style.color`),
+   * first match wins. The one way a composed diagram can layer relations an
+   * include brought in. Successive calls append; an explicit relation `layer`
+   * still beats every rule. */
+  layerRules(rules: LayerRule[]): this {
+    this.layerRuleList = [...(this.layerRuleList ?? []), ...rules];
     return this;
   }
 
@@ -196,6 +218,8 @@ export class ModelBuilder {
       layers: this.layers,
       planes: this.planes,
       ...(this.legendConfig !== undefined ? { legend: this.legendConfig } : {}),
+      ...(this.typeColorMap !== undefined ? { typeColors: this.typeColorMap } : {}),
+      ...(this.layerRuleList !== undefined ? { layerRules: this.layerRuleList } : {}),
     };
     const issues = validate(json);
     if (issues.length > 0) throw new DiagramValidationError(issues);

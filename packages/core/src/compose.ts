@@ -94,12 +94,23 @@ async function expand(
   return out;
 }
 
-/** merge `child`'s content into `host` under `into`, namespaced by its id */
+/** merge `child`'s content into `host` under `into`, namespaced by its id.
+ * Same-id layers unify with the host's; see the note inside. */
 function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): DiagramModel {
   const p = (id: string): string => `${into.id}/${id}`;
   const defaultPlane = resolveContainmentPlane(child, undefined);
 
-  const nodes: DiagramNode[] = child.nodes.map((n) => ({ ...n, id: p(n.id) }));
+  // Layers: an included layer whose id the host already declares merges into the
+  // host's layer (host name/tint win, no duplicate row); every other layer is
+  // namespaced like the nodes. Node and relation `layer` refs follow the same map.
+  const hostLayerIds = new Set(host.layers.map((l) => l.id));
+  const layerId = (id: string): string => (hostLayerIds.has(id) ? id : p(id));
+
+  const nodes: DiagramNode[] = child.nodes.map((n) => ({
+    ...n,
+    id: p(n.id),
+    ...(n.layer !== undefined ? { layer: layerId(n.layer) } : {}),
+  }));
 
   // only the include's default-plane structure comes along, imported untagged
   const containment: ContainmentEdge[] = child.containment
@@ -112,15 +123,20 @@ function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): Diag
     if (!hasParent.has(n.id)) containment.push({ parent: into.id, child: n.id });
   }
 
-  const layers = child.layers.map((l) => ({ ...l, id: p(l.id), name: `${into.name}/${l.name}` }));
+  const layers = child.layers
+    .filter((l) => !hostLayerIds.has(l.id))
+    .map((l) => ({ ...l, id: p(l.id), name: `${into.name}/${l.name}` }));
   const relations: DiagramRelation[] = child.relations.map((r) => ({
     ...r,
     id: p(r.id),
     from: p(r.from),
     to: p(r.to),
-    ...(r.layer !== undefined ? { layer: p(r.layer) } : {}),
+    ...(r.layer !== undefined ? { layer: layerId(r.layer) } : {}),
   }));
 
+  // Everything not listed below is the HOST's — `...host` carries its `legend`,
+  // `typeColors` and `layerRules` and the child's are never read. Deliberate:
+  // those are presentation, and the diagram being looked at owns the look.
   return {
     ...host,
     nodes: [...host.nodes, ...nodes],

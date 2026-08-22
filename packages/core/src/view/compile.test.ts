@@ -44,7 +44,7 @@ describe('compileView on the acme fixture', () => {
         kind: 'sync',
         labels: [{ id: 'legacy', text: 'authz check', t: 0.5, side: 'center' }],
       }),
-      expect.objectContaining({ id: 'communication=>shared-postgres:', kind: 'reads', label: '2' }),
+      expect.objectContaining({ id: 'communication=>shared-postgres:', kind: 'reads', label: '2 relations' }),
       expect.objectContaining({ id: 'billing=>shared-postgres:', kind: 'writes' }),
       expect.objectContaining({ id: 'billing=>identity:', kind: 'async' }),
     ]);
@@ -60,7 +60,7 @@ describe('compileView on the acme fixture', () => {
       expect.objectContaining({
         id: 'platform=>k8s-cluster:hosting',
         kind: 'hosted-on',
-        label: '3',
+        label: '3 relations',
         tint: '#7c3aed',
       }),
     ]);

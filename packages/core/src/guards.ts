@@ -21,12 +21,23 @@ export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
   );
   if (!planesOk) return false;
   const dim = (v: unknown): boolean => typeof v === 'number' && Number.isFinite(v) && v > 0;
-  return (
+  const sizesOk =
     layout.sizes === undefined ||
     (typeof layout.sizes === 'object' &&
       layout.sizes !== null &&
       Object.values(layout.sizes).every(
         (s) => typeof s === 'object' && s !== null && dim((s as { w?: unknown }).w) && dim((s as { h?: unknown }).h),
-      ))
+      ));
+  if (!sizesOk) return false;
+  // `export` is export-only presentation (see LayoutOverlay): an object whose
+  // only field today is a list of node ids. Validate it structurally so a typo
+  // is a 400 from the studio's save endpoint rather than a silently ignored
+  // block — an unreadable PNG is a hard defect to trace back to a layout file.
+  const exp = (u as { export?: unknown }).export;
+  if (exp === undefined) return true;
+  if (typeof exp !== 'object' || exp === null || Array.isArray(exp)) return false;
+  const collapsed = (exp as { collapsed?: unknown }).collapsed;
+  return (
+    collapsed === undefined || (Array.isArray(collapsed) && collapsed.every((id) => typeof id === 'string'))
   );
 }

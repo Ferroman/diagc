@@ -1,6 +1,5 @@
 import {
   buildHierarchy,
-  resolveContainmentPlane,
   type CompiledView,
   type DiagramModel,
   type Size,
@@ -15,7 +14,7 @@ import type { NodeGeometry } from './layout';
  * Entities that don't exist in the target plane contribute nothing.
  */
 export function focusForVisible(m: DiagramModel, plane: string | undefined, visibleIds: string[]): string[] {
-  const h = buildHierarchy(m, resolveContainmentPlane(m, plane));
+  const h = buildHierarchy(m, plane);
   const focus = new Set<string>();
   for (const id of visibleIds) {
     const stack = [...(h.parentsOf.get(id) ?? [])];

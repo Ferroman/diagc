@@ -146,16 +146,23 @@ export function setNodeDetails(m: DiagramModel, id: string, details: NodeDetails
   });
   let next: DiagramModel = { ...m, nodes };
   // Scoping a node to a plane makes it view-local; drop it from every plane's
-  // `hides` so a formerly-hidden shared node doesn't linger there with no way
-  // to clear it via the UI (and to avoid tripping `redundant-hide`).
+  // `hides`/`hidesTree` so a formerly-hidden shared node doesn't linger there
+  // with no way to clear it via the UI (and to avoid tripping `redundant-hide`).
   if (typeof details.plane === 'string') {
+    const without = (list: string[] | undefined): string[] | undefined =>
+      list === undefined ? undefined : list.filter((h) => h !== id);
     next = {
       ...next,
       planes: next.planes.map((p) => {
-        if (p.hides === undefined || !p.hides.includes(id)) return p;
-        const hides = p.hides.filter((h) => h !== id);
-        const { hides: _dropped, ...rest } = p;
-        return hides.length > 0 ? { ...rest, hides } : rest;
+        const hides = without(p.hides);
+        const hidesTree = without(p.hidesTree);
+        if (hides?.length === p.hides?.length && hidesTree?.length === p.hidesTree?.length) return p;
+        const { hides: _h, hidesTree: _t, ...rest } = p;
+        return {
+          ...rest,
+          ...(hides !== undefined && hides.length > 0 ? { hides } : {}),
+          ...(hidesTree !== undefined && hidesTree.length > 0 ? { hidesTree } : {}),
+        };
       }),
     };
   }
@@ -416,12 +423,13 @@ export function deleteLayer(m: DiagramModel, id: string): DiagramModel {
     relations: m.relations.filter((r) => r.layer !== id && !doomed.has(r.from) && !doomed.has(r.to)),
     containment: m.containment.filter((e) => !doomed.has(e.parent) && !doomed.has(e.child)),
     planes: (m.planes ?? []).map((p) => {
-      const touchesHides = p.hides !== undefined && p.hides.some((h) => doomed.has(h));
+      const touchesHides = [...(p.hides ?? []), ...(p.hidesTree ?? [])].some((h) => doomed.has(h));
       if (p.layers === undefined && !touchesHides) return p;
       return {
         ...p,
         ...(p.layers !== undefined ? { layers: p.layers.filter((l) => l !== id) } : {}),
         ...(p.hides !== undefined ? { hides: p.hides.filter((h) => !doomed.has(h)) } : {}),
+        ...(p.hidesTree !== undefined ? { hidesTree: p.hidesTree.filter((h) => !doomed.has(h)) } : {}),
       };
     }),
   };

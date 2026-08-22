@@ -1,24 +1,49 @@
-import type { DiagramModel } from '../types';
-import { buildHierarchy } from './hierarchy';
+import type { DiagramModel, DiagramPlane } from '../types';
+import { buildHierarchy, containmentPlaneOf } from './hierarchy';
 import { computeLod } from './lod';
 import { buildViewTree } from './tree';
 import { resolveEdges } from './edges';
 import { scopeToRoot } from './scope';
 import type { CompiledView, ViewportState } from './types';
 
-/** which plane's containment edges a view of `planeId` uses (resolves containmentOf) */
+/** which plane's containment edges a view of `planeId` uses (resolves containmentOf).
+ *  Kept here as the name the layout overlay is keyed by (see `layoutPlaneKey`);
+ *  the resolution itself lives with the hierarchy, which also needs it. */
 export function resolveContainmentPlane(m: DiagramModel, planeId?: string): string | undefined {
-  const planes = m.planes ?? [];
-  const plane = planeId !== undefined ? planes.find((p) => p.id === planeId) : planes[0];
-  return plane?.containmentOf ?? plane?.id;
+  return containmentPlaneOf(m, planeId);
+}
+
+/**
+ * The layers a host's own layer switch should START from: the plane's presets,
+ * with the plane resolved exactly as `compileView` resolves it (an absent id = the
+ * first-declared plane). Returns a fresh array, so host state never aliases the
+ * model's own `layers`.
+ *
+ * A host that shows layer toggles must seed with this — on load and on every
+ * plane change — and pass its state as `ViewportState.activeLayers` from then on.
+ * Seeding is what keeps "presets are the default" and "the user can turn a preset
+ * off" from being contradictory: the default arrives once, as state, instead of
+ * being re-applied underneath the user on every compile.
+ */
+export function presetLayers(planes: readonly DiagramPlane[], plane?: string): string[] {
+  const p = plane !== undefined ? planes.find((x) => x.id === plane) : planes[0];
+  return [...(p?.layers ?? [])];
 }
 
 export function compileView(m: DiagramModel, viewport: ViewportState): CompiledView {
   const planes = m.planes ?? [];
   const plane = viewport.plane !== undefined ? planes.find((p) => p.id === viewport.plane) : planes[0];
-  const activeLayerSet = new Set([...(viewport.activeLayers ?? []), ...(plane?.layers ?? [])]);
-  const activeLayers = [...activeLayerSet];
-  const hierarchy = buildHierarchy(m, resolveContainmentPlane(m, viewport.plane), activeLayerSet);
+  // A plane's `layers` are the DEFAULT, not a floor: `activeLayers` undefined
+  // means the host has no opinion, so the plane's presets apply; an array — even
+  // an empty one — is the host's own choice and replaces them. Unioning the two
+  // (what this did until the layer switch existed) made a preset layer
+  // impossible to turn off, so a host with toggles seeds its state from
+  // `plane.layers` and owns it from then on.
+  const activeLayers = viewport.activeLayers ?? plane?.layers ?? [];
+  const activeLayerSet = new Set(activeLayers);
+  // The plane being viewed, not its containment donor: buildHierarchy resolves
+  // `containmentOf` itself, and needs the viewed plane to read its `hides`.
+  const hierarchy = buildHierarchy(m, viewport.plane, activeLayerSet);
 
   // Isolated drill view: swap in a model scoped to root's interior (+ external
   // stubs), then run the standard pipeline over it so LOD, promotion and edge

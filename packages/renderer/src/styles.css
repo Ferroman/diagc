@@ -141,7 +141,12 @@
   padding: 2px 6px;
   width: 110px;
 }
-/* positioned labels on sole-relation edges (top/bottom/center along the line) */
+/* positioned labels on sole-relation edges (top/bottom/center along the line).
+   Capped at ~24ch and ellipsised: one sentence-length label otherwise covers
+   whatever its arrow crosses, and on a folded platform view there are hundreds of
+   arrows. The SVG label chip (React Flow's `label`) cannot use this — CSS cannot
+   ellipsise SVG text — and is shortened in the string instead, by the same budget
+   (truncateEdgeLabel / EDGE_LABEL_MAX_CHARS in label-size.ts). */
 .dg-edge-label {
   background: var(--dg-edge-label-bg);
   border-radius: 6px;
@@ -150,6 +155,9 @@
   padding: 1px 6px;
   text-align: center;
   white-space: nowrap;
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* Endpoint pin dots (edit mode, selected single-relation edge): hollow = the
    end floats and tracks the facing border; filled = pinned to a fixed side. */

@@ -63,6 +63,48 @@ describe('composeIncludes: expansion', () => {
     expect(validate(m)).toEqual([]);
   });
 
+  it('unifies an included layer with a same-id host layer and remaps node/relation layer refs', async () => {
+    const svc = doc('svc', {
+      nodes: [
+        { id: 'a', name: 'a', type: 'service' },
+        { id: 'obs', name: 'obs', type: 'infra', layer: 'monitoring' },
+      ],
+      layers: [
+        { id: 'monitoring', name: 'Monitoring', tint: '#90a4ae' },
+        { id: 'flow', name: 'Flow' },
+      ],
+      relations: [
+        { id: 'a->obs#0', from: 'a', to: 'obs', kind: 'telemetry', layer: 'monitoring' },
+        { id: 'a->a#0', from: 'a', to: 'a', kind: 'loop', layer: 'flow' },
+      ],
+    });
+    const umbrella = doc('arch', {
+      nodes: [{ id: 's', name: 'Svc', type: 'system', include: 'svc' }],
+      layers: [{ id: 'monitoring', name: 'Monitoring / telemetry', tint: '#000000' }],
+    });
+    const { model: m } = await composeIncludes(umbrella, 'mem:arch', memory({ svc }));
+    // host layer kept as-is, no duplicate; unmatched layer still namespaced
+    expect(m.layers).toEqual([
+      { id: 'monitoring', name: 'Monitoring / telemetry', tint: '#000000' },
+      { id: 's/flow', name: 'Svc/Flow' },
+    ]);
+    expect(m.relations.find((r) => r.id === 's/a->obs#0')).toMatchObject({ layer: 'monitoring' });
+    expect(m.relations.find((r) => r.id === 's/a->a#0')).toMatchObject({ layer: 's/flow' });
+    expect(m.nodes.find((n) => n.id === 's/obs')).toMatchObject({ layer: 'monitoring' });
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('namespaces node layer refs when the host does not declare the layer', async () => {
+    const svc = doc('svc', {
+      nodes: [{ id: 'obs', name: 'obs', type: 'infra', layer: 'monitoring' }],
+      layers: [{ id: 'monitoring', name: 'Monitoring' }],
+    });
+    const umbrella = doc('arch', { nodes: [{ id: 's', name: 'Svc', type: 'system', include: 'svc' }] });
+    const { model: m } = await composeIncludes(umbrella, 'mem:arch', memory({ svc }));
+    expect(m.nodes.find((n) => n.id === 's/obs')).toMatchObject({ layer: 's/monitoring' });
+    expect(validate(m)).toEqual([]);
+  });
+
   it('expands includes-of-includes depth-first', async () => {
     const inner = doc('inner', { nodes: [{ id: 'x', name: 'x', type: 'service' }] });
     const outer = doc('outer', { nodes: [{ id: 'sub', name: 'Sub', type: 'system', include: 'inner' }] });
@@ -268,5 +310,36 @@ describe('composeIncludes: legend', () => {
     const umbrella = doc('arch', { nodes: [{ id: 'wrap', name: 'Wrap', include: 'child' }] });
     const { model: m } = await composeIncludes(umbrella, 'mem:arch', memory({ child }));
     expect(m.legend).toBeUndefined();
+  });
+});
+
+describe('typeColors on graft', () => {
+  it('keeps the host convention and drops the child one', async () => {
+    const child = doc('child', {
+      nodes: [{ id: 'c', key: 'c', name: 'c', type: 'c4-person' }],
+      typeColors: { 'c4-person': '#ff0000' },
+    });
+    const host = doc('host', {
+      nodes: [{ id: 'wrap', name: 'wrap', include: 'child' }],
+      typeColors: { '*': '#1565c0' },
+    });
+    const { model: m } = await composeIncludes(host, 'mem:host', memory({ child }));
+    expect(m.typeColors).toEqual({ '*': '#1565c0' });
+    expect(m.nodes.some((n) => n.name === 'c')).toBe(true);
+  });
+
+  it('keeps the host layerRules and drops the child ones', async () => {
+    const child = doc('child', {
+      nodes: [{ id: 'c', key: 'c', name: 'c' }],
+      layers: [{ id: 'x', name: 'X' }],
+      layerRules: [{ kind: 'sql', layer: 'x' }],
+    });
+    const host = doc('host', {
+      nodes: [{ id: 'wrap', name: 'wrap', include: 'child' }],
+      layers: [{ id: 'http', name: 'HTTP' }],
+      layerRules: [{ color: '#ef6c00', layer: 'http' }],
+    });
+    const { model: m } = await composeIncludes(host, 'mem:host', memory({ child }));
+    expect(m.layerRules).toEqual([{ color: '#ef6c00', layer: 'http' }]);
   });
 });

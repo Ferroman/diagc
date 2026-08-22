@@ -31,7 +31,6 @@ import {
   countAnchored,
   DEFAULT_IMAGE_NODE_SIZE,
   layoutPlaneKey,
-  resolveContainmentPlane,
   runsToPlainText,
   type Column,
   type DiagramModel,
@@ -422,7 +421,7 @@ function Inner(props: DiagramViewProps) {
   // Containment index for the active plane — the source of the drill chain
   // (enterNode's drillChain).
   const viewHierarchy = useMemo(
-    () => buildHierarchy(props.model, resolveContainmentPlane(props.model, props.plane)),
+    () => buildHierarchy(props.model, props.plane),
     [props.model, props.plane],
   );
   const nameOf = useMemo(
@@ -471,7 +470,10 @@ function Inner(props: DiagramViewProps) {
             // Drilled in, only the root's interior is on screen; the key has to
             // be scoped the same way or it explains things nothing draws.
             ...(drillRoot !== undefined ? { root: drillRoot } : {}),
-            activeLayers: props.activeLayers ?? [],
+            // Passed through undefined-and-all: the legend resolves plane
+            // presets the same way compileView does, and `?? []` here would
+            // tell it "no layers on" on a page that draws the presets.
+            ...(props.activeLayers !== undefined ? { activeLayers: props.activeLayers } : {}),
             typeRegistry,
             kindRegistry,
             config: legendConfig,
@@ -708,6 +710,7 @@ function Inner(props: DiagramViewProps) {
       hiddenCounts,
       typeRegistry,
       icons,
+      ...(props.model.typeColors !== undefined ? { typeColors: props.model.typeColors } : {}),
       pins: props.pins,
       onTogglePin: props.onTogglePin,
       onToggleExpand: props.onToggleExpand,
@@ -728,6 +731,7 @@ function Inner(props: DiagramViewProps) {
       hiddenCounts,
       typeRegistry,
       icons,
+      props.model.typeColors,
       props.pins,
       props.onTogglePin,
       props.onToggleExpand,

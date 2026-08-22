@@ -93,9 +93,20 @@ export interface DiagramPlane {
   baseRelations?: boolean;
   /** visual language; absent = default look */
   notation?: string;
-  /** shared node ids this plane hides (a node with `plane` set is already
-   *  scoped, so it never belongs here). */
+  /** shared node ids this plane hides, KEEPING their contents: a hidden box's
+   *  children are promoted to where the box was, each with its own nesting
+   *  intact. That is what composition needs — an umbrella hides the `include`
+   *  wrapper to lift a whole service model into place. A node with `plane` set is
+   *  already scoped, so it never belongs here. */
   hides?: string[];
+  /** shared node ids this plane hides ALONG WITH everything inside them, however
+   *  deep. A child with another still-visible parent survives (containment is a
+   *  DAG). Use this to drop detail a view does not want — a database's tables —
+   *  where `hides` would promote that detail to the top level instead. Hiding
+   *  removes the hidden nodes' edges too, which is the point when a view is
+   *  unreadable from edge density; `layout.export.collapsed` folds instead, and
+   *  a folded box still anchors its children's edges. */
+  hidesTree?: string[];
 }
 
 /** Per-relation visual overrides (whiteboard-style); anything unset falls back
@@ -200,12 +211,31 @@ export interface DiagramModel {
   style?: string;
   /** opt-in key for this diagram's visual vocabulary; absent = no legend */
   legend?: DiagramLegend;
+  /** default accent colour per node type, so a composed diagram can carry a
+   * colour convention its included models know nothing about. `*` is the
+   * fallback for any type without an entry. A node's own `color` always wins,
+   * and an include's `typeColors` is dropped on graft: the host owns the look. */
+  typeColors?: Record<string, string>;
+  /** Class -> layer for relations that carry no `layer` of their own, so a
+   * composed diagram can put included relations on layers it declares (an
+   * umbrella cannot edit grafted relations). A rule matches when every field it
+   * names equals the relation's (`kind`, `style.color`); first match wins; an
+   * explicit `layer` always beats the rules. Presentation, so dropped from
+   * included models on graft: the host owns the look. */
+  layerRules?: LayerRule[];
   nodes: DiagramNode[];
   containment: ContainmentEdge[];
   relations: DiagramRelation[];
   layers: DiagramLayer[];
   /** empty = single implicit plane (all containment, no switcher) */
   planes: DiagramPlane[];
+}
+
+/** One `layerRules` entry. Set at least one of `kind` / `color`. */
+export interface LayerRule {
+  kind?: string;
+  color?: string;
+  layer: string;
 }
 
 /** Per-plane automatic-layout tuning. Every field is optional; an absent field
@@ -236,6 +266,19 @@ export interface LayoutOverlay {
   /** per-plane automatic-layout settings, keyed like `planes` (via
    * layoutPlaneKey). Absent ⇒ tuned defaults everywhere. */
   settings?: Record<string, LayoutSettings>;
+  /** how the PNG export should differ from the interactive page. Ignored by the
+   * interactive page, which always rests fully folded and lets the reader
+   * unfold what they want. */
+  export?: {
+    /** node ids kept folded in PNG export; ignored by the interactive page.
+     * The exporter unfolds every container to get a full overview, which makes a
+     * view with hundreds of leaves an unreadable thumbnail. Listing a container
+     * here folds it back up for the image only. Folding is the right tool
+     * (rather than the plane's `hides`) because a folded box still ANCHORS its
+     * hidden children's edges, where a hidden node drops them. Ids that are not
+     * containers have no effect. */
+    collapsed?: string[];
+  };
 }
 
 export const BUILTIN_NOTATIONS = ['causal-loop'] as const;

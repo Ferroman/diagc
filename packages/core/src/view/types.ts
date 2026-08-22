@@ -11,6 +11,11 @@ export interface ViewportState {
   /** container ids the viewer is zoomed into (renderer-computed focus chain) */
   focus?: string[];
   pins?: Record<string, 'expanded' | 'collapsed'>;
+  /** layer ids to draw. ABSENT = the host has no opinion, so the active plane's
+   * `layers` presets apply; PRESENT = the host's own choice, which replaces the
+   * presets entirely — an empty array therefore means "no layers at all", not
+   * "presets only". A host with a layer switch seeds its state from the plane's
+   * `layers` (on load and on every plane change) and owns it from then on. */
   activeLayers?: string[];
   /** nested-zoom drill root: when set, the view is scoped to this node's INTERIOR
    * — its children become the top-level content (the node itself isn't drawn) and
