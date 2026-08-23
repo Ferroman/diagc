@@ -606,3 +606,5 @@ path.dg-loop-badge-circle {
 .dg-lane-label { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); width: 170px; height: 36px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1px solid var(--dg-node-stroke); border-radius: 3px; background: var(--dg-node-fill); color: var(--dg-text); font: 14px/1 system-ui, sans-serif; }
 .dg-notation-git .react-flow__node.selected .dg-lane-label { box-shadow: 0 0 0 2px var(--dg-accent); }
 .dg-notation-git .react-flow__node.selected .dg-circle-node { box-shadow: 0 0 0 2px var(--dg-accent); }
+.dg-git-lanes { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.dg-git-tail { fill: none; stroke-width: 1.5; stroke-dasharray: 6 4; stroke-linecap: round; }
