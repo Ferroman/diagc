@@ -37,6 +37,7 @@ export {
   type PlaceOptions,
 } from './loops';
 export { LoopLabelLayer, type LoopLabelLayerProps } from './LoopLabelLayer';
+export { GIT_LAYOUT, LANE_PALETTE, gitEdgeColor, gitGraphCached, gitLayout, gitNodeColors, gitRoute } from './git-layout';
 export {
   analyzeLeverage,
   analyzeDependency,
