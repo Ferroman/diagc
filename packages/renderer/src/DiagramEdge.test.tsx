@@ -592,4 +592,16 @@ describe('DiagramEdge', () => {
       fkMarkers.forEach((m) => expect(m.getAttribute('stroke')).not.toBeNull());
     });
   });
+
+  describe('interrupt zigzag glyph', () => {
+    it('draws a zigzag glyph at the midpoint of an interrupt edge', () => {
+      const { container } = renderEdge({ kind: 'interrupt' });
+      expect(container.querySelector('polyline.dg-edge-zigzag')).not.toBeNull();
+    });
+
+    it('ordinary kinds draw no zigzag', () => {
+      const { container } = renderEdge({ kind: 'control' });
+      expect(container.querySelector('polyline.dg-edge-zigzag')).toBeNull();
+    });
+  });
 });

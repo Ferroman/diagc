@@ -236,6 +236,10 @@
   stroke: var(--dg-text);
   stroke-width: 1.5;
 }
+/* UML interrupt-flow zigzag: purely decorative, never a click/hover target */
+.dg-edge-zigzag {
+  pointer-events: none;
+}
 .dg-style-font .dg-polarity {
   font-family: var(--dg-style-font, system-ui, sans-serif);
 }

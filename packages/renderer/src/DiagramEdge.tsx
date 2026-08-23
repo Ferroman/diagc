@@ -146,6 +146,9 @@ const DELAY_HALF_LEN = 6;
 /** delay mark: how far apart the two hash lines sit, along the tangent (px) */
 const DELAY_GAP = 3;
 
+/** interrupt zigzag: half-length of the lightning jog along the tangent (px) */
+const ZIGZAG_HALF = 12;
+
 /** perpendicular offset for top/bottom positioned labels (px) */
 const LABEL_OFFSET = 14;
 
@@ -346,6 +349,10 @@ export function DiagramEdge({
   const delayFrame =
     showMarks && data?.delay === true ? markFrame(effectiveShape, pathParams, curvature, 0.5, bowSide) : undefined;
 
+  // UML interrupt flow: a lightning jog at the midpoint. Gated on the KIND
+  // style (not the notation profile) — activity edges appear on any canvas.
+  const zigzagFrame = kind.zigzag === true ? markFrame(effectiveShape, pathParams, curvature, 0.5, bowSide) : undefined;
+
   // Loop highlight: when a loop badge is active, glow this edge if it's a member,
   // otherwise dim it. Wraps the whole edge (path + marks + marker) as one group.
   const highlight = useContext(LoopHighlightContext);
@@ -514,6 +521,25 @@ export function DiagramEdge({
             );
           })}
         </g>
+      )}
+      {zigzagFrame !== undefined && (
+        <polyline
+          className="dg-edge-zigzag"
+          points={[
+            [-ZIGZAG_HALF, 4],
+            [2, -2],
+            [-2, 2],
+            [ZIGZAG_HALF, -4],
+          ]
+            .map(([a, b]) => {
+              const { point, tangent, normal } = zigzagFrame;
+              return `${point.x + a! * tangent.x + b! * normal.x},${point.y + a! * tangent.y + b! * normal.y}`;
+            })
+            .join(' ')}
+          fill="none"
+          strokeWidth={1.75}
+          stroke="var(--dg-text)"
+        />
       )}
       </g>
       {pinDots}
