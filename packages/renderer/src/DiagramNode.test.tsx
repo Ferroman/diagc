@@ -485,6 +485,58 @@ describe('activity diagram nodes', () => {
   });
 });
 
+describe('activity container chrome', () => {
+  it('renders an activity lane as a chrome band even when leaf (empty lane)', () => {
+    const { container } = renderNode({ typeId: 'activity-lane', label: 'Orders', state: 'leaf' });
+    expect(container.querySelector('.dg-activity-lane')).not.toBeNull();
+    expect(container.querySelector('.dg-node')).toBeNull();
+    expect(screen.queryByTestId('enter-chip')).toBeNull();
+    expect(screen.queryByTestId('pin-chip')).toBeNull();
+    const strip = container.querySelector('.dg-activity-strip');
+    expect(strip).not.toBeNull();
+    expect(strip!.querySelector('.dg-activity-name')?.textContent).toBe('Orders');
+  });
+
+  it('renders the frame with its rotated title strip', () => {
+    const { container } = renderNode({ typeId: 'activity-frame', label: 'Checkout', state: 'expanded' });
+    expect(container.querySelector('.dg-activity-frame')).not.toBeNull();
+    expect(container.querySelector('.dg-node')).toBeNull();
+    expect(screen.queryByTestId('enter-chip')).toBeNull();
+    expect(screen.queryByTestId('pin-chip')).toBeNull();
+    const strip = container.querySelector('.dg-activity-strip');
+    expect(strip).not.toBeNull();
+    expect(strip!.querySelector('.dg-activity-name')?.textContent).toBe('Checkout');
+  });
+
+  it('renders a region with its name, without fold chrome', () => {
+    const { container } = renderNode({ typeId: 'activity-region', label: 'Fulfillment', state: 'expanded' });
+    expect(container.querySelector('.dg-activity-region')).not.toBeNull();
+    expect(container.querySelector('.dg-node')).toBeNull();
+    expect(container.querySelector('.dg-activity-region-name')?.textContent).toBe('Fulfillment');
+    expect(screen.queryByTestId('enter-chip')).toBeNull();
+    expect(screen.queryByTestId('pin-chip')).toBeNull();
+    expect(screen.queryByTestId('disclose-chip')).toBeNull();
+  });
+
+  it('a region with no label renders no name span', () => {
+    const { container } = renderNode({ typeId: 'activity-region', label: '', state: 'leaf' });
+    expect(container.querySelector('.dg-activity-region')).not.toBeNull();
+    expect(container.querySelector('.dg-activity-region-name')).toBeNull();
+  });
+
+  it('a lane color reaches the band via the --dg-act-accent custom property', () => {
+    const { container } = renderNode({ typeId: 'activity-lane', label: 'Orders', state: 'leaf', color: '#7ba7d9' });
+    const band = container.querySelector('.dg-activity-lane') as HTMLElement;
+    expect(band.style.getPropertyValue('--dg-act-accent')).toBe('#7ba7d9');
+  });
+
+  it('a lane without color sets no --dg-act-accent property', () => {
+    const { container } = renderNode({ typeId: 'activity-lane', label: 'Orders', state: 'leaf' });
+    const band = container.querySelector('.dg-activity-lane') as HTMLElement;
+    expect(band.style.getPropertyValue('--dg-act-accent')).toBe('');
+  });
+});
+
 describe('git graph nodes', () => {
   const gitTypes = createTypeRegistry({ commit: { shape: 'circle' }, branch: { shape: 'box' } });
   const base = (over: Partial<DiagramNodeData>): DiagramNodeData => ({

@@ -406,6 +406,32 @@ export function DiagramNode({
     );
   }
 
+  // Activity chrome keys on the type, not container state: an empty lane or
+  // frame has no children, compiles as 'leaf', and must still render as a
+  // band/frame — never as an ordinary leaf box (the git empty-lane lesson).
+  if (data.typeId === 'activity-lane' || data.typeId === 'activity-frame') {
+    const isFrame = data.typeId === 'activity-frame';
+    return (
+      <div
+        className={`${isFrame ? 'dg-activity-frame' : 'dg-activity-lane'}${loopClass}`}
+        {...(data.color !== undefined ? { style: { '--dg-act-accent': data.color } as CSSProperties } : {})}
+      >
+        <span className="dg-activity-strip">
+          <span className="dg-activity-name">{name}</span>
+        </span>
+        {sideHandles}
+      </div>
+    );
+  }
+  if (data.typeId === 'activity-region') {
+    return (
+      <div className={`dg-activity-region${loopClass}`}>
+        {(data.label !== '' || data.labelEditing === true) && <span className="dg-activity-region-name">{name}</span>}
+        {sideHandles}
+      </div>
+    );
+  }
+
   if (isCldGroup && data.state === 'expanded') {
     // Members render as their own loose React Flow nodes within this node's
     // (now transparent) bounds; we only draw a small name tag + collapse toggle.
