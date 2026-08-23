@@ -57,9 +57,9 @@ New nodes are **typeless** — just a label — so quick sketches stay clean. Gi
 | Undo | `Ctrl/Cmd + Z` |
 | Redo | `Ctrl/Cmd + Shift + Z` or `Ctrl + Y` |
 | Save | `Ctrl/Cmd + S` |
-| Pen (edit mode) | `p` |
-| Eraser (edit mode) | `e` |
-| Back to Select (edit mode) | `Esc` |
+| Pen | `p` |
+| Eraser | `e` |
+| Back to Select | `Esc` |
 
 Shortcuts are ignored while you are typing in a form field. History is capped at 100 steps.
 

@@ -287,3 +287,4 @@ An **aggregate** edge (one arrow standing for several relations, after a fold) l
 
 - [Builder API](builder-api.md) — the TypeScript way to produce this.
 - [What is in a model](../explanation/the-model.md) — the reasoning.
+- [Draw on a diagram](../how-to/draw-on-a-diagram.md) — the pen that writes the drawings sidecar.

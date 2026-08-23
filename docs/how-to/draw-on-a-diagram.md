@@ -12,4 +12,8 @@ Circle a region, sketch an arrow, scribble a remark — by hand, on top of the b
 
 **What moves and what does not.** Strokes sit at absolute canvas coordinates. On a plane with automatic layout, adding a node can slide the boxes out from under your ink; freeze the plane (**Auto-layout** off) or save positions first if the drawing must line up. Drawings are shown at the top level only — enter a container and they disappear until you come back.
 
-See also: [Publish and share](publish-and-share.md), [`Drawings`](../reference/model.md#drawings-namedrawingsjson).
+## See also
+
+- [Publish and share](publish-and-share.md) — drawings ship with the page and the PNG
+- [`Drawings` reference](../reference/model.md#drawings-namedrawingsjson) — every field the file may carry
+- [The model](../explanation/the-model.md) — why the strokes live outside it
