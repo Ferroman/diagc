@@ -75,7 +75,8 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
 .field > span { color: var(--dg-text-muted); font-size: 12px; }
 .node-panel input, .node-panel textarea, .node-panel select,
 .edge-panel input, .edge-panel textarea, .edge-panel select,
-.lp-panel input, .lp-panel textarea, .lp-panel select { background: var(--dg-bg); border: 1px solid var(--dg-border); border-radius: 6px; color: var(--dg-text); font: inherit; font-size: 13px; padding: 4px 8px; width: 100%; }
+.lp-panel input, .lp-panel textarea, .lp-panel select,
+.git-panel input, .git-panel select { background: var(--dg-bg); border: 1px solid var(--dg-border); border-radius: 6px; color: var(--dg-text); font: inherit; font-size: 13px; padding: 4px 8px; width: 100%; }
 .node-panel textarea, .edge-panel textarea { resize: vertical; }
 /* Name grows with its line count (rows), so no manual drag-resize */
 .node-panel textarea.name-input { resize: none; overflow: hidden; line-height: 1.35; }
@@ -111,7 +112,10 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
 
 .git-panel .git-lanes { list-style: none; margin: 0 0 8px; padding: 0; }
 .git-panel .git-lanes li { padding: 2px 0; }
-.git-panel input, .git-panel select { width: 100%; margin: 4px 0; box-sizing: border-box; }
+/* width: 100% already comes from the shared field rule above; scoped here to
+   margin only, so it doesn't re-assert after (and beat) `.lp-check input`'s
+   `width: auto` for the Gap field, which shares that rule's specificity. */
+.git-panel input, .git-panel select { margin: 4px 0; }
 .git-panel .chip { margin: 4px 0 8px; }
 
 /* excalidraw-style option/color pickers */

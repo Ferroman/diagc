@@ -25,7 +25,7 @@ const d1 = dev.commit({ from: t1a });
 const d2 = dev.commit();
 const t1b = team1.merge(d2);
 nightly.commit(); // n2
-const n3 = nightly.merge(t1b);
+nightly.merge(t1b);
 
 // feature team 2, same dance, lands in nightly
 const t2a = team2.commit({ from: n1 });
@@ -56,5 +56,4 @@ const hf = hotfix.commit({ from: v20 });
 const v21 = master.merge(hf, { tag: '2.1' });
 nightly.merge(v21);
 
-void n3;
 export default m;

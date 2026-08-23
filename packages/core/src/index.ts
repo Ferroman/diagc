@@ -41,7 +41,7 @@ export { isDrawings, isLayoutOverlay } from './guards';
 export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrokeId } from './drawings';
 export { errMessage, SOURCE_URL } from './util';
 export { childrenOf, countAnchored } from './children';
-export { compileView, presetLayers, resolveContainmentPlane } from './view/compile';
+export { activeNotation, compileView, presetLayers, resolveContainmentPlane } from './view/compile';
 export { buildHierarchy, type HierarchyIndex } from './view/hierarchy';
 export { relationLayer } from './view/layers';
 export { scopeToRoot, EXTERNAL_STUB_PREFIX, type ScopedModel } from './view/scope';

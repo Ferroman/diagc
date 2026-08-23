@@ -1125,4 +1125,23 @@ describe('git-graph notation', () => {
     // nightly is untouched — still on its precomputed routed (non-bezier) path.
     expect(nightlyLink?.getAttribute('d') ?? '').not.toContain('C');
   });
+
+  it('view mode: double-click on a lane does not drill into it — a lane has no interior to enter', async () => {
+    const m = gitModel();
+    const onEnteredPathChange = vi.fn();
+    const { container } = render(
+      <DiagramView model={m} plane="git-graph" notation="git-graph" onEnteredPathChange={onEnteredPathChange} />,
+    );
+    await waitFor(() => expect(container.querySelectorAll('.dg-circle-node')).toHaveLength(4));
+    // same correlated-click sequence the container drill test uses (a real
+    // dblclick misfires here once the first click remounts the node)
+    const label = await screen.findByText('Master');
+    fireEvent.click(label, { clientX: 10, clientY: 10 });
+    fireEvent.click(screen.getByText('Master'), { clientX: 10, clientY: 10, detail: 2 });
+    expect(screen.queryByLabelText('Nested zoom breadcrumb')).toBeNull();
+    expect(onEnteredPathChange).not.toHaveBeenCalledWith(expect.arrayContaining(['master']));
+    // a successful drill would scope the view to master's own commits only —
+    // all 4 circles (across all three lanes) must still be on screen
+    expect(container.querySelectorAll('.dg-circle-node')).toHaveLength(4);
+  });
 });

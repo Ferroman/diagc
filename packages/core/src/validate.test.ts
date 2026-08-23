@@ -559,6 +559,15 @@ describe('validate: git graph', () => {
     ]);
   });
 
+  it('git-cycle: a cycle formed ENTIRELY of cross-lane links reports only the cycle, not git-commit-lane', () => {
+    const m = gitModel();
+    // the fixture already branches master -> nightly (m1->n1); merge nightly
+    // back into master (n1->m1) closes the loop without ever repeating a lane,
+    // so no relation here is a same-lane branch/merge or a cross-lane commit.
+    m.relations.push({ id: 'x', from: 'n1', to: 'm1', kind: 'merge' });
+    expect(validate(m)).toEqual([{ code: 'git-cycle', message: "Git links form a cycle (cut at relation 'x')", ref: 'x' }]);
+  });
+
   it('git-commit-outside-lane: a commit must sit in a branch on the git plane', () => {
     const m = gitModel();
     m.nodes.push({ id: 'loose', name: '', type: 'commit' });

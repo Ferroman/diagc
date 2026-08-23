@@ -1,13 +1,12 @@
 import type { CSSProperties } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import {
-  BUILTIN_NOTATIONS,
+  activeNotation,
   presetLayers,
   type DiagramModel,
   type DiagramPlane,
   type Drawings,
   type LayoutOverlay,
-  type NotationId,
 } from '@diagramming/core';
 import { applyTheme, DiagramView, isKnownStyle, lightTheme, type LayoutApi } from '@diagramming/renderer';
 import { createIconRegistry } from '@diagramming/icons';
@@ -278,12 +277,9 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
   // its own default, which IS the first plane.
   const plane = activePlaneId(model.planes, picked, expandAll);
   // Mirror the drawn plane's notation so the visual language follows the plane
-  // the reader is on. Narrow to a known id the same way styleId does — an
-  // unrecognized notation falls back to the default look instead of erroring.
-  const activeNotation = (plane !== undefined ? model.planes.find((p) => p.id === plane) : model.planes[0])?.notation;
-  const notation = (BUILTIN_NOTATIONS as readonly string[]).includes(activeNotation ?? '')
-    ? (activeNotation as NotationId)
-    : undefined;
+  // the reader is on — the studio resolves it the same way, so an editable
+  // diagram and its published page always agree.
+  const notation = activeNotation(model.planes, plane);
   const togglePin = (id: string) =>
     setPins((p) => ({ ...p, [id]: p[id] === 'expanded' ? 'collapsed' : 'expanded' }));
   // A plane change re-seeds the layer switch from the new plane's presets, so the

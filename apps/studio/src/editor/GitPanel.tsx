@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  gapOf,
   gitGraph,
   latestCommit,
   uniqueNodeId,
@@ -210,7 +211,7 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
               type="number"
               min={0}
               step={1}
-              defaultValue={String(parseGap(String(selected.metadata?.['gap'] ?? '0')))}
+              defaultValue={String(gapOf(selected))}
               onChange={(e) => setSelectedGap(e.target.value)}
             />
           </label>

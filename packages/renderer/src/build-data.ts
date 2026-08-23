@@ -160,6 +160,7 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
 
 /** Build the data channel for one view edge (pure; same contract as buildNodeData). */
 export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeData {
+  const notationColor = ctx.edgeColors?.get(e.id);
   const data: DiagramEdgeData = {
     kind: e.kind,
     constituentCount: e.constituents.length,
@@ -172,7 +173,7 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     ...(ctx.notation !== undefined ? { notation: ctx.notation } : {}),
     ...(e.polarity !== undefined ? { polarity: e.polarity } : {}),
     ...(e.delay !== undefined ? { delay: e.delay } : {}),
-    ...(ctx.edgeColors?.get(e.id) !== undefined ? { notationColor: ctx.edgeColors.get(e.id) } : {}),
+    ...(notationColor !== undefined ? { notationColor } : {}),
   };
   const soleRelation = e.constituents.length === 1 ? e.constituents[0] : undefined;
   if (soleRelation?.fromColumn !== undefined) data.fromColumn = soleRelation.fromColumn;

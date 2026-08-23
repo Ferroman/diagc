@@ -116,6 +116,22 @@ describe('colours', () => {
     expect(gitEdgeColor(edgeBetween(v, 'hotfix-1', 'master-3'), m, plane)).toBe(LANE_PALETTE[1]); // merge up → lower lane
   });
 
+  it('a merge into a HIGHER-index lane (downward) takes the target lane, not the source', () => {
+    // master (index 0) -> nightly (index 1); nightly merges master's commit in,
+    // so the merge edge's source lane index (0) is LESS than its target's (1) —
+    // the mirror of `graph()`'s merges, which all land back on the lower lane.
+    const m2 = model('g2');
+    const g2 = m2.gitGraph();
+    const master2 = g2.branch('master', { name: 'Master', color: '#7ba7d9' });
+    const nightly2 = g2.branch('nightly', { name: 'Nightly', color: '#7bbf7b' });
+    const v1 = master2.commit('1.0');
+    nightly2.commit({ from: v1 });
+    nightly2.merge(v1);
+    const j = m2.toJSON();
+    const v2 = view(j);
+    expect(gitEdgeColor(edgeBetween(v2, 'master-1', 'nightly-2'), j, j.planes[0]?.id)).toBe('#7bbf7b');
+  });
+
   it('leaves non-git links alone', () => {
     const m = graph();
     m.nodes.push({ id: 'note', name: 'Why', type: 'comment' });

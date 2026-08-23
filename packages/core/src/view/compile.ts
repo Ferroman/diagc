@@ -1,4 +1,4 @@
-import type { DiagramModel, DiagramPlane } from '../types';
+import { BUILTIN_NOTATIONS, type DiagramModel, type DiagramPlane, type NotationId } from '../types';
 import { buildHierarchy, containmentPlaneOf } from './hierarchy';
 import { computeLod } from './lod';
 import { buildViewTree } from './tree';
@@ -28,6 +28,19 @@ export function resolveContainmentPlane(m: DiagramModel, planeId?: string): stri
 export function presetLayers(planes: readonly DiagramPlane[], plane?: string): string[] {
   const p = plane !== undefined ? planes.find((x) => x.id === plane) : planes[0];
   return [...(p?.layers ?? [])];
+}
+
+/**
+ * The visual language of the view being shown: the resolved plane's `notation`
+ * (an absent id = the first-declared plane, matching `compileView`). An
+ * unrecognized id falls back to the default look (`undefined`) instead of
+ * erroring — both the studio and the published viewer resolve it this way, so
+ * an editable diagram and its published page always agree.
+ */
+export function activeNotation(planes: readonly DiagramPlane[], plane?: string): NotationId | undefined {
+  const p = plane !== undefined ? planes.find((x) => x.id === plane) : planes[0];
+  const id = p?.notation;
+  return id !== undefined && (BUILTIN_NOTATIONS as readonly string[]).includes(id) ? (id as NotationId) : undefined;
 }
 
 export function compileView(m: DiagramModel, viewport: ViewportState): CompiledView {

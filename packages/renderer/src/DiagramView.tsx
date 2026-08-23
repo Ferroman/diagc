@@ -718,9 +718,12 @@ function Inner(props: DiagramViewProps) {
         setRoutes(r.routes);
       })
       // layoutView degrades to the default algorithm rather than rejecting, so
-      // getting here means even that failed. Keep the last arrangement (there is
-      // nothing better to draw) but say so — an unhandled rejection here reads on
-      // screen as the layout control silently doing nothing.
+      // getting here via that path means even the degraded attempt failed. A
+      // notation's own layout (e.g. git-graph's) has no such fallback — any
+      // throw it raises lands here directly. Either way, keep the last
+      // arrangement (there is nothing better to draw) but say so — an
+      // unhandled rejection here reads on screen as the layout control
+      // silently doing nothing.
       .catch((e: unknown) => {
         if (live) console.error('layout failed; keeping the previous arrangement', e);
       });
@@ -828,13 +831,19 @@ function Inner(props: DiagramViewProps) {
   // across drills (reads the path from a ref) so it can be threaded onto nodes.
   const enterNode = useCallback(
     (id: string) => {
+      // A notation container that is always expanded (e.g. a git lane) is a row,
+      // not a box with an inside — nothing offers drilling into one, but a
+      // double-click can still reach here via the click-correlation path, so
+      // guard it explicitly rather than relying on the absent affordance.
+      const node = props.model.nodes.find((n) => n.id === id);
+      if (node !== undefined && profile.node?.alwaysExpanded?.(node) === true) return;
       const chain = drillChain(viewHierarchy.parentsOf, id, enteredPathRef.current);
       if (chain.length === 0) return; // unknown / not in this plane
       pendingRootFitRef.current = true;
       setEnteredPath(chain);
       setFocus([]); // drilling replaces any in-place (sheet-flip/peek) expansion
     },
-    [viewHierarchy],
+    [viewHierarchy, props.model.nodes, profile],
   );
 
   // Exit out to a breadcrumb (`null` = the home button → bird's-eye). The scene
