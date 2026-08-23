@@ -1,4 +1,4 @@
-import type { LayoutOverlay } from './types';
+import type { Drawings, LayoutOverlay } from './types';
 
 /** Structural guard for a LayoutOverlay, shared by the studio server (before
  * persisting a layout) and the client (before trusting a loaded one). Checks
@@ -39,5 +39,29 @@ export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
   const collapsed = (exp as { collapsed?: unknown }).collapsed;
   return (
     collapsed === undefined || (Array.isArray(collapsed) && collapsed.every((id) => typeof id === 'string'))
+  );
+}
+
+/** Structural guard for a drawings sidecar — the same contract as
+ * isLayoutOverlay: shape only, shared by the save route and the client loader.
+ * Every rule here is one the renderer relies on without re-checking (even point
+ * count, finite numbers, positive width). */
+export function isDrawings(u: unknown): u is Drawings {
+  if (typeof u !== 'object' || u === null) return false;
+  const d = u as { version?: unknown; planes?: unknown };
+  if (d.version !== 1 || typeof d.planes !== 'object' || d.planes === null) return false;
+  const finite = (n: unknown): boolean => typeof n === 'number' && Number.isFinite(n);
+  return Object.values(d.planes).every(
+    (bucket) =>
+      Array.isArray(bucket) &&
+      bucket.every((s) => {
+        if (typeof s !== 'object' || s === null) return false;
+        const st = s as { id?: unknown; points?: unknown; color?: unknown; width?: unknown };
+        if (typeof st.id !== 'string') return false;
+        if (!Array.isArray(st.points) || st.points.length < 2 || st.points.length % 2 !== 0) return false;
+        if (!st.points.every(finite)) return false;
+        if (st.color !== undefined && typeof st.color !== 'string') return false;
+        return st.width === undefined || (finite(st.width) && (st.width as number) > 0);
+      }),
   );
 }

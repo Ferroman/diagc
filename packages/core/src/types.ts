@@ -281,6 +281,33 @@ export interface LayoutOverlay {
   };
 }
 
+/** One freehand stroke from the studio's pen. Coordinates are ABSOLUTE flow
+ * coordinates at the top level of the diagram (never drilled): a stroke is an
+ * overlay on the canvas, not a property of a node, so a re-layout can slide
+ * boxes out from under it — the accepted trade for "draw anywhere". */
+export interface Stroke {
+  id: string;
+  /** flat `[x0, y0, x1, y1, …]`, integer-rounded at capture; length ≥ 2 and even.
+   * A single point is a tap, drawn as a dot by round caps. */
+  points: number[];
+  /** any CSS color; absent → the theme's ink token (`--dg-ink`) */
+  color?: string;
+  /** flow px; absent → DEFAULT_STROKE_WIDTH */
+  width?: number;
+}
+
+/** `<name>.drawings.json` — the second thing kept out of the model, in its own
+ * file rather than the layout overlay so a box nudge and a scribble never land
+ * in one hunk (see .claude/specs/2026-08-23-drawings-sidecar-design.md).
+ * Keyed exactly like `LayoutOverlay.planes` (layoutPlaneKey). */
+export interface Drawings {
+  version: 1;
+  planes: Record<string, Stroke[]>;
+}
+
+/** Pen width when a stroke names none. In core so editor and renderer cannot drift. */
+export const DEFAULT_STROKE_WIDTH = 3;
+
 export const BUILTIN_NOTATIONS = ['causal-loop'] as const;
 export type NotationId = (typeof BUILTIN_NOTATIONS)[number];
 export type Polarity = '+' | '-';
