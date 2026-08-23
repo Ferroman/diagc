@@ -119,12 +119,23 @@ describe('editor reducer', () => {
       ],
     });
     expect(s.past).toHaveLength(1);
-    expect(s.lastRelationId).toBe(s.state.model.relations[0]?.id);
+    // A batch never sets lastRelationId, even one ending in add-relation: that
+    // field exists solely to let App.tsx select the edge a canvas connect
+    // gesture just drew, and a batch is never a connect gesture (e.g. the Git
+    // panel's own batches end in add-relation but must not steal selection
+    // away from the panel's own onSelect).
+    expect(s.lastRelationId).toBeUndefined();
     s = undo(s);
     expect(s.state.model.nodes.some((n) => n.id === 'db')).toBe(false);
     expect(s.state.model.relations).toHaveLength(0);
     s = dispatch(s, { type: 'batch', commands: [] });
     expect(s.past).toHaveLength(0);
     expect(isDirty(s)).toBe(false);
+  });
+
+  it('a bare add-relation dispatch still sets lastRelationId (unlike a batch)', () => {
+    let s = startSession('draft', state());
+    s = dispatch(s, { type: 'add-relation', from: 'a', to: 'sys', opts: { kind: 'sync' } });
+    expect(s.lastRelationId).toBe(s.state.model.relations[0]?.id);
   });
 });

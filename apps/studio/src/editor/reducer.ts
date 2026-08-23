@@ -62,12 +62,21 @@ export function dispatch(s: EditorSession, command: EditorCommand): EditorSessio
       }
     }
     const past = [...s.past, { command, stateBefore: s.state }].slice(-HISTORY_CAP);
+    // lastRelationId exists solely so App.tsx can select the edge a canvas
+    // connect gesture just drew — it must fire only for that exact gesture
+    // shape (a bare add-relation), never for a batch. applyCommandWithResult
+    // surfaces relationId for any relation-ending batch too (by design, for
+    // programmatic callers), but a panel like GitPanel that ends its own
+    // batch in add-relation and then calls onSelect itself would otherwise
+    // have that selection clobbered one tick later by the connect-gesture
+    // effect. Keyed on `command.type`, not on whether relationId came back.
+    const surfacesRelationId = command.type === 'add-relation';
     return {
       ...s,
       state: nextState,
       past,
       future: [],
-      ...(relationId !== undefined ? { lastRelationId: relationId } : {}),
+      ...(surfacesRelationId && relationId !== undefined ? { lastRelationId: relationId } : {}),
       error: undefined,
     };
   } catch (e) {

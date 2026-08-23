@@ -208,7 +208,11 @@ export function DiagramNode({
         : undefined;
   const isContainer = data.state !== 'leaf';
   const isCldGroup = profile.node?.typelessAsText === true && data.typeId === undefined && isContainer;
-  const isLane = profile.id === 'git-graph' && data.typeId === 'branch' && isContainer;
+  // Not gated on isContainer: a branch with no commits yet has no children,
+  // so the view compiler marks it 'leaf' — but it is still a lane row (the
+  // notation keeps every lane, empty or not, drawn full-width by gitLayout),
+  // not an ordinary leaf box.
+  const isLane = profile.id === 'git-graph' && data.typeId === 'branch';
   const highlight = useContext(LoopHighlightContext);
   // 'loop': members glow, rest strong-dim. 'focus': members stay normal, rest light-dim.
   const loopClass = !highlight.active

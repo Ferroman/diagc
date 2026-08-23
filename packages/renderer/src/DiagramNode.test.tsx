@@ -491,6 +491,15 @@ describe('git graph nodes', () => {
     expect(screen.queryByTestId('disclose-chip')).toBeNull();
   });
 
+  it('an empty lane (leaf state, no commits yet) still renders as a band, not a leaf box', () => {
+    const { container } = renderNode(base({ typeId: 'branch', label: 'Master', state: 'leaf', color: '#7ba7d9' }));
+    expect(container.querySelector('.dg-lane')).not.toBeNull();
+    const label = container.querySelector('.dg-lane-label') as HTMLElement;
+    expect(label.textContent).toBe('Master');
+    expect(container.querySelector('.dg-node')).toBeNull();
+    expect(container.querySelector('.dg-group')).toBeNull();
+  });
+
   it('outside the git notation a branch-typed container is an ordinary group', () => {
     const { container } = renderNode({ ...base({ typeId: 'branch', label: 'Master', state: 'expanded' }), notation: undefined });
     expect(container.querySelector('.dg-lane')).toBeNull();
