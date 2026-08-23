@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { model, type DiagramModel } from '@diagramming/core';
+import { applyCommand, emptyDrawings, emptyLayout, model, type DiagramModel, type EditorCommand, type EditorState } from '@diagramming/core';
 import { GitPanel } from './GitPanel';
 
 /** master: 1.0; nightly: n1 (from 1.0) */
@@ -101,5 +101,51 @@ describe('GitPanel', () => {
   it('offers no commit actions when the selection is not a commit', () => {
     setup({ kind: 'node', id: 'master' });
     expect(screen.queryByLabelText('Branch into lane')).toBeNull();
+  });
+
+  it('resets the branch-lane choice after a successful branch, so a repeat click never targets the new selection\'s own lane', () => {
+    const m = gitModel();
+    m.nodes.push({ id: 'qa', name: 'QA', type: 'branch' });
+    let state: EditorState = { model: m, layout: emptyLayout(), drawings: emptyDrawings() };
+    const onCommand = vi.fn((cmd: EditorCommand) => {
+      state = applyCommand(state, cmd);
+    });
+    const onSelect = vi.fn();
+    const { rerender } = render(
+      <GitPanel model={state.model} plane="git-graph" selection={{ kind: 'node', id: 'master-1' }} onCommand={onCommand} onSelect={onSelect} />,
+    );
+    // pick a lane other than the visible default (nightly) — qa
+    fireEvent.change(screen.getByLabelText('Branch into lane'), { target: { value: 'qa' } });
+    fireEvent.click(screen.getByRole('button', { name: /^branch$/i }));
+    expect(onSelect).toHaveBeenCalledWith('qa-1');
+
+    // the app would now re-render with the just-created commit selected
+    onCommand.mockClear();
+    rerender(
+      <GitPanel model={state.model} plane="git-graph" selection={{ kind: 'node', id: 'qa-1' }} onCommand={onCommand} onSelect={onSelect} />,
+    );
+    // click Branch again WITHOUT touching the select
+    fireEvent.click(screen.getByRole('button', { name: /^branch$/i }));
+    expect(onCommand).toHaveBeenCalledWith({
+      type: 'batch',
+      commands: [
+        { type: 'add-node', node: { id: 'master-2', name: '', type: 'commit' }, parent: { id: 'master', plane: 'git-graph' } },
+        { type: 'add-relation', from: 'qa-1', to: 'master-2', opts: { kind: 'branch' } },
+      ],
+    });
+  });
+
+  it('shows the newly selected commit\'s own gap, not the previous selection\'s', () => {
+    const m = gitModel();
+    const master1 = m.nodes.find((n) => n.id === 'master-1')!;
+    master1.metadata = { gap: 3 };
+    const { rerender } = render(
+      <GitPanel model={m} plane="git-graph" selection={{ kind: 'node', id: 'master-1' }} onCommand={vi.fn()} onSelect={vi.fn()} />,
+    );
+    expect((screen.getByLabelText('Commit gap') as HTMLInputElement).value).toBe('3');
+    rerender(
+      <GitPanel model={m} plane="git-graph" selection={{ kind: 'node', id: 'nightly-1' }} onCommand={vi.fn()} onSelect={vi.fn()} />,
+    );
+    expect((screen.getByLabelText('Commit gap') as HTMLInputElement).value).toBe('0');
   });
 });

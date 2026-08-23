@@ -105,6 +105,11 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
         { type: 'add-relation', from: selected.id, to: id, opts: { kind: 'branch' } },
       ],
     });
+    // The commit just created is on `lane`; once onSelect below moves the
+    // selection there, `lane` becomes that commit's OWN branch and must drop
+    // out of `otherLanes` — an un-reset choice would silently re-target it on
+    // the very next click.
+    setBranchLane('');
     onSelect(id);
   };
 
@@ -122,6 +127,9 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
       ],
     });
     setMergeTag('');
+    // Same staleness as branchInto: the new commit lives on `lane`, and the
+    // selection is about to move there.
+    setMergeLane('');
     onSelect(id);
   };
 
@@ -193,7 +201,18 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
           </button>
           <label className="lp-check">
             Gap
-            <input aria-label="Commit gap" type="number" min={0} step={1} defaultValue={String(parseGap(String(selected.metadata?.['gap'] ?? '0')))} onChange={(e) => setSelectedGap(e.target.value)} />
+            {/* uncontrolled (defaultValue) so typing doesn't fight the parent's
+             * round-trip through the model; keyed on the commit so switching
+             * selection remounts it instead of keeping the old commit's value */}
+            <input
+              key={selected.id}
+              aria-label="Commit gap"
+              type="number"
+              min={0}
+              step={1}
+              defaultValue={String(parseGap(String(selected.metadata?.['gap'] ?? '0')))}
+              onChange={(e) => setSelectedGap(e.target.value)}
+            />
           </label>
         </section>
       )}
