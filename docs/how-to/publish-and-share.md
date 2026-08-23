@@ -73,6 +73,8 @@ Checked automatically: `/usr/bin/google-chrome`, `/usr/bin/google-chrome-stable`
 
 Pages with several planes get a plane picker at the top; the PNG always shows the first plane.
 
+Presenting the page on a call? Press `L` (or the `◉` corner control) for a laser pointer: drag to draw a red trail that fades out after a second, so people can see what you are pointing at. It never touches the diagram, and `Esc` switches it off. The studio has the same control.
+
 ## Publish to GitHub Pages
 
 Pages cannot serve a dot-folder, so push the *contents* of `.diagrams/html` to a `gh-pages` branch:

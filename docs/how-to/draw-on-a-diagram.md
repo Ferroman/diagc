@@ -10,6 +10,8 @@ Circle a region, sketch an arrow, scribble a remark — by hand, on top of the b
 
 **Hiding and showing.** The `✎` control in the corner, and the **Drawings** row in the legend (when the diagram has one), switch every stroke off and on. That is a viewer preference — the published page opens with drawings shown, and the PNG always includes them.
 
+**Pointing, not drawing.** To point at something during a screenshare, use the laser pointer instead: `L` (or `◉` in the corner controls) in either mode, drag to draw a red trail that fades out after a second. It is never saved, it works inside containers too, and `Esc` switches it off.
+
 **What moves and what does not.** Strokes sit at absolute canvas coordinates. On a plane with automatic layout, adding a node can slide the boxes out from under your ink; freeze the plane (**Auto-layout** off) or save positions first if the drawing must line up. Drawings are shown at the top level only — enter a container and they disappear until you come back.
 
 ## See also

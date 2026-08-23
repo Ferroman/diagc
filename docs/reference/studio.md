@@ -27,6 +27,7 @@ A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot ente
 | `⤢` chip on a group header | Enter it as its own diagram |
 | `◎` in the corner controls | Dim everything unconnected to the selection |
 | `▤` in the corner controls | Show/hide the legend. Only present when the diagram declares one and it has rows. A viewer preference, never saved. |
+| `◉` in the corner controls, or `L` | Laser pointer for screenshares: drag to draw a red trail that fades out after a second. Works in both modes and inside a drilled-in group; never saved. `Esc` switches it off. |
 | Click a layer row in the legend | Toggle that overlay, like the layer chips |
 
 ## Editing
@@ -59,7 +60,8 @@ New nodes are **typeless** — just a label — so quick sketches stay clean. Gi
 | Save | `Ctrl/Cmd + S` |
 | Pen | `P` |
 | Eraser | `E` |
-| Back to Select | `Esc` |
+| Laser pointer on/off (both modes) | `L` |
+| Back to Select, laser off | `Esc` |
 
 Shortcuts are ignored while you are typing in a form field. History is capped at 100 steps.
 
