@@ -925,3 +925,82 @@ describe('freehand drawings', () => {
     expect(screen.getByLabelText('Show drawings')).toBeTruthy();
   });
 });
+
+describe('laser pointer', () => {
+  const pane = (container: HTMLElement) =>
+    waitFor(() => {
+      const el = container.querySelector('.react-flow__pane');
+      if (el === null) throw new Error('pane not rendered');
+      return el as HTMLElement;
+    });
+
+  it('the control and the L key toggle it, Escape turns it off, a diagram switch resets it', async () => {
+    const m = containerEndpointModel();
+    const { container, rerender } = render(<DiagramView model={m} />);
+    await screen.findByText('gw');
+    const button = screen.getByLabelText('Laser pointer');
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    expect(container.querySelector('.dg-canvas')?.classList.contains('dg-tool-laser')).toBe(false);
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    expect(container.querySelector('.dg-canvas')?.classList.contains('dg-tool-laser')).toBe(true);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.keyDown(window, { key: 'l' });
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.keyDown(window, { key: 'L' });
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.keyDown(window, { key: 'l' });
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    rerender(<DiagramView model={{ ...m, id: 'other' }} />);
+    expect(screen.getByLabelText('Laser pointer').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('ignores the L key typed into a form field and with a modifier held', async () => {
+    render(<DiagramView model={containerEndpointModel()} />);
+    await screen.findByText('gw');
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    fireEvent.keyDown(input, { key: 'l' });
+    fireEvent.keyDown(window, { key: 'l', ctrlKey: true });
+    expect(screen.getByLabelText('Laser pointer').getAttribute('aria-pressed')).toBe('false');
+    input.remove();
+  });
+
+  it('a drag with the laser on leaves a fading trail and never reaches the pen', async () => {
+    const onAddStroke = vi.fn();
+    const { container } = render(
+      <DiagramView model={containerEndpointModel()} mode="edit" tool="pen" edit={{ onAddStroke }} />,
+    );
+    const el = await pane(container);
+    fireEvent.keyDown(window, { key: 'l' });
+    // the laser takes the gesture over from the pen while it is on
+    expect(container.querySelector('.dg-canvas')?.classList.contains('dg-tool-pen')).toBe(false);
+    fireEvent.pointerDown(el, { button: 0, pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(el, { pointerId: 1, clientX: 50, clientY: 30 });
+    expect(container.querySelector('g.dg-laser-trail.dg-laser-live')).not.toBeNull();
+    fireEvent.pointerUp(el, { pointerId: 1, clientX: 50, clientY: 30 });
+    expect(container.querySelector('g.dg-laser-trail.dg-laser-fade')).not.toBeNull();
+    expect(container.querySelector('g.dg-laser-trail.dg-laser-live')).toBeNull();
+    expect(onAddStroke).not.toHaveBeenCalled();
+    // …and hands it back when switched off
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(container.querySelector('.dg-canvas')?.classList.contains('dg-tool-pen')).toBe(true);
+    fireEvent.pointerDown(el, { button: 0, pointerId: 2, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(el, { pointerId: 2, clientX: 50, clientY: 10 });
+    fireEvent.pointerUp(el, { pointerId: 2, clientX: 50, clientY: 10 });
+    expect(onAddStroke).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays available while drilled in — it is a light, not ink', async () => {
+    render(<DiagramView model={containerEndpointModel()} enteredPath={['sys']} />);
+    await screen.findByText('api');
+    expect(screen.getByLabelText('Laser pointer')).toBeTruthy();
+  });
+
+  it('has no control in the chrome-less export', async () => {
+    render(<DiagramView model={containerEndpointModel()} chrome={false} />);
+    await screen.findByText('gw');
+    expect(screen.queryByLabelText('Laser pointer')).toBeNull();
+  });
+});

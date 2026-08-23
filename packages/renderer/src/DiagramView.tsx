@@ -65,7 +65,9 @@ import { overlayPositions } from './placement';
 import { createKindRegistry, createTypeRegistry, type KindStyle, type Registry, type TypeStyle } from './registry';
 import { stylePreset } from './stylePresets';
 import { useClickCorrelation } from './useClickCorrelation';
-import { usePen } from './usePen';
+import { usePen, type PenHandlers } from './usePen';
+import { useLaser } from './useLaser';
+import { LaserLayer } from './LaserLayer';
 import './styles.css';
 import '@fontsource/kalam/400.css';
 import '@fontsource/kalam/700.css';
@@ -472,8 +474,17 @@ function Inner(props: DiagramViewProps) {
   // layer below is hidden whenever drillRoot is set), so a gesture inside a
   // drilled view would append strokes to the top-level bucket that the person
   // drawing cannot see — and an eraser would delete ink they are not looking at.
-  const penActive = editing && props.tool === 'pen' && drillRoot === undefined;
-  const eraserActive = editing && props.tool === 'eraser' && drillRoot === undefined;
+  // The laser pointer is viewer state like drawingsVisible: never saved, reset
+  // per diagram, and available in BOTH modes and while drilled — it is a light
+  // on the screen, not ink in the sidecar, so the drawings gating below does not
+  // apply. While it is on it owns the drag, so the studio's pen and eraser stand
+  // down (their toolbar buttons stay pressed; switching the laser off hands the
+  // gesture straight back).
+  const [laserOn, setLaserOn] = useState(false);
+  const penActive = editing && props.tool === 'pen' && drillRoot === undefined && !laserOn;
+  const eraserActive = editing && props.tool === 'eraser' && drillRoot === undefined && !laserOn;
+  /** pen or laser: a primary-button drag is captured, so React Flow must not pan/drag/select */
+  const gestureCaptured = penActive || laserOn;
   // The active plane's strokes. Keyed like layout.planes, so a borrowing plane
   // shares its donor's bucket exactly as it shares positions.
   const strokes = useMemo(
@@ -490,7 +501,29 @@ function Inner(props: DiagramViewProps) {
   const [drawingsVisible, setDrawingsVisible] = useState(true);
   useEffect(() => {
     setDrawingsVisible(true);
+    setLaserOn(false);
   }, [props.model.id]);
+  // L toggles the laser, Escape switches it off — window-level like the Alt
+  // listener, ignored inside form fields and with a modifier held (Ctrl+L is the
+  // browser's address bar). Not installed for the chrome-less export, which has
+  // no control to show the state and no one at the keyboard.
+  const chromeless = props.chrome === false;
+  useEffect(() => {
+    if (chromeless) return;
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable === true) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'Escape') setLaserOn(false);
+      else if (e.key.toLowerCase() === 'l' && !e.repeat) {
+        e.preventDefault();
+        setLaserOn((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [chromeless]);
   const { pen: penSettings } = props;
   const onAddStroke = edit?.onAddStroke;
   const pen = usePen({
@@ -503,6 +536,25 @@ function Inner(props: DiagramViewProps) {
         width: penSettings?.width ?? DEFAULT_STROKE_WIDTH,
       }),
   });
+  const laser = useLaser({ enabled: laserOn, toFlow: reactFlow.screenToFlowPosition });
+  // Both capture hooks stay attached at all times and each ignores pointers it
+  // did not start: a handler swap on toggle would strand a gesture in flight
+  // (pen stroke begun, L pressed mid-drag) with no up event to finish it. At
+  // most one of them is enabled, so at most one claims a given pointerdown.
+  const gestureHandlers = useMemo<PenHandlers>(() => {
+    const both =
+      (k: keyof PenHandlers): PenHandlers[keyof PenHandlers] =>
+      (e) => {
+        laser.handlers[k](e);
+        pen.handlers[k](e);
+      };
+    return {
+      onPointerDownCapture: both('onPointerDownCapture'),
+      onPointerMoveCapture: both('onPointerMoveCapture'),
+      onPointerUpCapture: both('onPointerUpCapture'),
+      onPointerCancelCapture: both('onPointerCancelCapture'),
+    };
+  }, [laser.handlers, pen.handlers]);
 
   const compiled = useMemo(
     () =>
@@ -1088,7 +1140,7 @@ function Inner(props: DiagramViewProps) {
         preset.id !== 'clean' ? ` dg-style-${preset.id}` : ''
       }${preset.rough !== undefined ? ' dg-style-rough' : ''}${preset.fontFamily !== undefined ? ' dg-style-font' : ''}${
         profile.className !== undefined ? ' ' + profile.className : ''
-      }${penActive ? ' dg-tool-pen' : ''}${eraserActive ? ' dg-tool-eraser' : ''}`}
+      }${penActive ? ' dg-tool-pen' : ''}${eraserActive ? ' dg-tool-eraser' : ''}${laserOn ? ' dg-tool-laser' : ''}`}
       style={
         {
           width: '100%',
@@ -1127,7 +1179,7 @@ function Inner(props: DiagramViewProps) {
         if (files.length === 0) return;
         edit.onImageFiles(files, reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY }));
       }}
-      {...pen.handlers}
+      {...gestureHandlers}
     >
       <ReactFlow
         nodes={rfNodes}
@@ -1272,12 +1324,13 @@ function Inner(props: DiagramViewProps) {
         zoomOnDoubleClick={false}
         multiSelectionKeyCode={null}
         panOnScroll
-        // The pen owns the drag: no pan, no selection rectangle, no node drag or
-        // connect — a stroke that started on a box would otherwise move it.
-        panOnDrag={!penActive}
-        elementsSelectable={!penActive}
-        nodesDraggable={(editing || altHeld) && !penActive}
-        nodesConnectable={editing && !penActive}
+        // The pen (or the laser) owns the drag: no pan, no selection rectangle,
+        // no node drag or connect — a stroke that started on a box would
+        // otherwise move it.
+        panOnDrag={!gestureCaptured}
+        elementsSelectable={!gestureCaptured}
+        nodesDraggable={(editing || altHeld) && !gestureCaptured}
+        nodesConnectable={editing && !gestureCaptured}
         proOptions={{ hideAttribution: true }}
       >
         <Background />
@@ -1288,6 +1341,7 @@ function Inner(props: DiagramViewProps) {
           erasing={eraserActive}
           onErase={(id) => edit?.onDeleteStroke?.(id)}
         />
+        <LaserLayer trails={laser.trails} live={laser.live} />
         <Breadcrumbs path={enteredPath} nameOf={(id) => nameOf.get(id) ?? id} onCrumb={exitTo} />
         {showLegend && legendRowList.length > 0 && (
           // LegendPosition is a subset of React Flow's PanelPosition — no cast needed.
@@ -1317,6 +1371,15 @@ function Inner(props: DiagramViewProps) {
             onClick={() => setFocusConnected((v) => !v)}
           >
             ◎
+          </ControlButton>
+          <ControlButton
+            className={`dg-laser-toggle${laserOn ? ' dg-laser-toggle-on' : ''}`}
+            title={laserOn ? 'Laser pointer off (L)' : 'Laser pointer (L)'}
+            aria-label="Laser pointer"
+            aria-pressed={laserOn}
+            onClick={() => setLaserOn((v) => !v)}
+          >
+            ◉
           </ControlButton>
           {/* Gated on the drill root for the same reason the layer is: drilled in,
               every stroke is hidden, so a switch that flips an invisible layer is
