@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { model } from './builder';
 import { applyCommand, applyCommandWithResult, emptyLayout, layoutPlaneKey, type EditorState } from './commands';
+import { emptyDrawings } from './drawings';
 import { CommandError } from './mutate';
 
 function state(): EditorState {
@@ -9,7 +10,7 @@ function state(): EditorState {
   const a = m.node('a', { type: 'service' });
   const sys = m.node('sys', { type: 'system' });
   sys.contains(a);
-  return { model: m.toJSON(), layout: emptyLayout() };
+  return { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
 }
 
 // Declares two real planes, 'default' and 'arch', so `layoutPlaneKey` resolves
@@ -18,7 +19,7 @@ function state(): EditorState {
 function emptyState(): EditorState {
   const m = model('t');
   m.plane('default').plane('arch');
-  return { model: m.toJSON(), layout: emptyLayout() };
+  return { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
 }
 
 describe('applyCommand', () => {
@@ -80,7 +81,7 @@ describe('applyCommand', () => {
     const a = m.node('a', { type: 'service' });
     const sys = m.node('sys', { type: 'system' });
     sys.contains(a, { plane: 'infra' });
-    let s: EditorState = { model: m.toJSON(), layout: emptyLayout() };
+    let s: EditorState = { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
     s = applyCommand(s, { type: 'set-position', plane: 'infra', nodeId: 'a', x: 1, y: 1 });
     expect(s.layout.planes['infra']).toBeDefined();
     s = applyCommand(s, { type: 'delete-plane', id: 'infra' });
@@ -195,7 +196,7 @@ describe('applyCommand', () => {
     m.node('a', { type: 'service' });
     m.node('b', { type: 'service' });
     const out = applyCommand(
-      { model: m.toJSON(), layout: emptyLayout() },
+      { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() },
       { type: 'group-nodes', node: { id: 'grp', name: 'G' }, memberIds: ['a', 'b'] },
     ).model;
     expect(out.nodes.some((n) => n.id === 'grp')).toBe(true);
@@ -213,7 +214,7 @@ describe('applyCommand', () => {
       planes: { [key]: { a: { x: 500, y: 500 }, b: { x: 510, y: 505 }, other: { x: 1, y: 1 } } },
     };
     const out = applyCommand(
-      { model: base, layout },
+      { model: base, layout, drawings: emptyDrawings() },
       { type: 'group-nodes', node: { id: 'grp', name: 'G' }, memberIds: ['a', 'b'] },
     );
     expect(out.layout.planes[key]).toEqual({ other: { x: 1, y: 1 } }); // a, b (and grp) dropped; unrelated kept
@@ -228,6 +229,7 @@ describe('applyCommand', () => {
         containment: [], relations: [], layers: [], planes: [{ id: 'p', name: 'p' }],
       },
       layout: { version: 1 as const, planes: {} },
+      drawings: emptyDrawings(),
     };
     const next = applyCommand(state, { type: 'set-node-plane-hidden', nodeId: 'a', plane: 'p', hidden: true });
     expect(next.model.planes[0]!.hides).toEqual(['a']);
@@ -249,6 +251,7 @@ describe('applyCommand', () => {
         planes: [{ id: 'infra', name: 'Infra', layers: ['ops'] }],
       },
       layout: emptyLayout(),
+      drawings: emptyDrawings(),
     };
     const s1 = applyCommand(s0, { type: 'merge-layers', sources: ['ops'], target: 'flow' });
     expect(s1.model.layers.map((l) => l.id)).toEqual(['flow']);
@@ -273,6 +276,7 @@ describe('applyCommand', () => {
         planes: [{ id: 'p', name: 'p' }],
       },
       layout: { version: 1, planes: { p: { a: { x: 1, y: 2 }, b: { x: 3, y: 4 } } }, sizes: { a: { w: 5, h: 6 } } },
+      drawings: emptyDrawings(),
     };
     const s1 = applyCommand(s0, { type: 'delete-layer', id: 'ai' });
     expect(s1.model.nodes.map((n) => n.id)).toEqual(['b']); // a destroyed
@@ -293,6 +297,7 @@ describe('applyCommand', () => {
         planes: [{ id: 'p', name: 'p', layers: ['ops'] }],
       },
       layout: emptyLayout(),
+      drawings: emptyDrawings(),
     };
     const s1 = applyCommand(s0, { type: 'merge-layers', sources: ['ops'] });
     expect(s1.model.layers).toEqual([]);
@@ -305,6 +310,7 @@ describe('applyCommand', () => {
     const state: EditorState = {
       model: { version: 1, id: 'm', name: 'M', nodes: [], containment: [], relations: [], layers: [], planes: [] },
       layout: emptyLayout(),
+      drawings: emptyDrawings(),
     };
     const pinned = applyCommand(state, { type: 'set-diagram-style', style: 'blueprint' });
     expect(pinned.model.style).toBe('blueprint');
@@ -316,7 +322,7 @@ describe('applyCommand', () => {
   it('sets and clears the diagram legend', () => {
     const m = model('d');
     m.node('a');
-    const start = { model: m.toJSON(), layout: emptyLayout() };
+    const start = { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
     const on = applyCommand(start, { type: 'set-diagram-legend', legend: { title: 'Key' } });
     expect(on.model.legend).toEqual({ title: 'Key' });
     const off = applyCommand(on, { type: 'set-diagram-legend', legend: null });
@@ -326,8 +332,55 @@ describe('applyCommand', () => {
   it('routes set-table-columns', () => {
     const state: EditorState = { model: { version: 1, id: 'd', name: 'd',
       nodes: [{ id: 't', name: 't', type: 'db-table', columns: [] }],
-      containment: [], relations: [], layers: [], planes: [] }, layout: emptyLayout() };
+      containment: [], relations: [], layers: [], planes: [] }, layout: emptyLayout(), drawings: emptyDrawings() };
     const next = applyCommand(state, { type: 'set-table-columns', id: 't', columns: [{ name: 'id', pk: true }] });
     expect(next.model.nodes[0]?.columns).toEqual([{ name: 'id', pk: true }]);
+  });
+});
+
+describe('stroke commands', () => {
+  const stroke = { id: 'k1', points: [0, 0, 10, 10] };
+
+  it('add-stroke lands in the resolved plane bucket and leaves model/layout by reference', () => {
+    const before = emptyState();
+    const after = applyCommand(before, { type: 'add-stroke', plane: 'arch', stroke });
+    expect(after.drawings.planes['arch']).toEqual([stroke]);
+    expect(after.model).toBe(before.model);
+    expect(after.layout).toBe(before.layout);
+  });
+
+  it('add-stroke without a plane uses the layout plane key', () => {
+    const s = applyCommand(state(), { type: 'add-stroke', stroke });
+    expect(s.drawings.planes[layoutPlaneKey(s.model)]).toEqual([stroke]);
+  });
+
+  it('delete-stroke removes it; unknown ids and duplicates are CommandErrors', () => {
+    const s = applyCommand(emptyState(), { type: 'add-stroke', plane: 'arch', stroke });
+    expect(() => applyCommand(s, { type: 'add-stroke', plane: 'arch', stroke })).toThrow(CommandError);
+    const gone = applyCommand(s, { type: 'delete-stroke', plane: 'arch', id: 'k1' });
+    expect(gone.drawings.planes['arch']).toBeUndefined();
+    expect(() => applyCommand(gone, { type: 'delete-stroke', plane: 'arch', id: 'k1' })).toThrow(CommandError);
+  });
+
+  it('delete-plane prunes the plane bucket', () => {
+    let s = applyCommand(emptyState(), { type: 'add-stroke', plane: 'arch', stroke });
+    s = applyCommand(s, { type: 'add-stroke', plane: 'default', stroke });
+    s = applyCommand(s, { type: 'delete-plane', id: 'arch' });
+    expect(s.drawings.planes).toEqual({ default: [stroke] });
+  });
+
+  it('every non-stroke command passes drawings through by reference', () => {
+    const before = applyCommand(state(), { type: 'add-stroke', stroke });
+    const renamed = applyCommand(before, { type: 'rename-node', id: 'a', name: 'A!' });
+    expect(renamed.drawings).toBe(before.drawings);
+    const moved = applyCommand(before, { type: 'set-position', nodeId: 'a', x: 1, y: 2 });
+    expect(moved.drawings).toBe(before.drawings);
+    const { state: related } = applyCommandWithResult(before, {
+      type: 'add-relation',
+      from: 'a',
+      to: 'a',
+      opts: { kind: 'sync' },
+    });
+    expect(related.drawings).toBe(before.drawings);
   });
 });

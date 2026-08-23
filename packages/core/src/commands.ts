@@ -5,11 +5,14 @@ import type {
   DiagramModel,
   DiagramNode,
   DiagramPlane,
+  Drawings,
   LayoutOverlay,
   LayoutSettings,
+  Stroke,
   TextRun,
 } from './types';
 import { resolveContainmentPlane } from './view/compile';
+import { addStroke, deleteStroke, pruneDrawingsPlane } from './drawings';
 import {
   addContainment,
   addNode,
@@ -40,7 +43,14 @@ import {
 export interface EditorState {
   model: DiagramModel;
   layout: LayoutOverlay;
+  /** the freehand-drawings sidecar; emptyDrawings() when the diagram has none */
+  drawings: Drawings;
 }
+
+/** The two members the original command switch knows about. Kept as its own
+ * type so that switch is untouched by the drawings sidecar: `applyCommand`
+ * wraps it and owns the third member. */
+type ModelLayout = Pick<EditorState, 'model' | 'layout'>;
 
 export const emptyLayout = (): LayoutOverlay => ({ version: 1, planes: {} });
 
@@ -75,7 +85,9 @@ export type EditorCommand =
   | { type: 'clear-positions'; plane?: string }
   | { type: 'set-positions'; plane?: string; positions: Record<string, { x: number; y: number }> }
   | { type: 'set-plane-layout'; plane?: string; manual: boolean }
-  | { type: 'set-layout-settings'; plane?: string; patch: Partial<LayoutSettings> };
+  | { type: 'set-layout-settings'; plane?: string; patch: Partial<LayoutSettings> }
+  | { type: 'add-stroke'; plane?: string; stroke: Stroke }
+  | { type: 'delete-stroke'; plane?: string; id: string };
 
 function setPos(layout: LayoutOverlay, key: string, nodeId: string, pos?: { x: number; y: number }): LayoutOverlay {
   const plane = { ...(layout.planes[key] ?? {}) };
@@ -143,7 +155,7 @@ function prunePlaneLayout(layout: LayoutOverlay, plane: string): LayoutOverlay {
   return next;
 }
 
-export function applyCommand(state: EditorState, command: EditorCommand): EditorState {
+function applyModelLayout(state: ModelLayout, command: EditorCommand): ModelLayout {
   const { model, layout } = state;
   switch (command.type) {
     case 'add-node': {
@@ -274,6 +286,26 @@ export function applyCommand(state: EditorState, command: EditorCommand): Editor
   }
 }
 
+export function applyCommand(state: EditorState, command: EditorCommand): EditorState {
+  const { model, layout, drawings } = state;
+  switch (command.type) {
+    case 'add-stroke':
+      return { model, layout, drawings: addStroke(drawings, layoutPlaneKey(model, command.plane), command.stroke) };
+    case 'delete-stroke':
+      return { model, layout, drawings: deleteStroke(drawings, layoutPlaneKey(model, command.plane), command.id) };
+    case 'delete-plane': {
+      // The drawings bucket is keyed by the plane id, like the layout bucket —
+      // same mirror hygiene, third file.
+      const next = applyModelLayout(state, command);
+      return { model: next.model, layout: next.layout, drawings: pruneDrawingsPlane(drawings, command.id) };
+    }
+    default: {
+      const next = applyModelLayout(state, command);
+      return { model: next.model, layout: next.layout, drawings };
+    }
+  }
+}
+
 /**
  * Like {@link applyCommand}, but surfaces the generated id for `add-relation` so
  * callers (e.g. a connect gesture) can select the new relation. All other
@@ -285,7 +317,7 @@ export function applyCommandWithResult(
 ): { state: EditorState; relationId?: string } {
   if (command.type === 'add-relation') {
     const { model, id } = addRelation(state.model, command.from, command.to, command.opts);
-    return { state: { model, layout: state.layout }, relationId: id };
+    return { state: { model, layout: state.layout, drawings: state.drawings }, relationId: id };
   }
   return { state: applyCommand(state, command) };
 }
