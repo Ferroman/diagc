@@ -39,6 +39,7 @@ export {
 export { LoopLabelLayer, type LoopLabelLayerProps } from './LoopLabelLayer';
 export { GIT_LAYOUT, LANE_PALETTE, gitEdgeColor, gitGraphCached, gitLayout, gitNodeColors, gitRoute } from './git-layout';
 export { GitLanesOverlay, type GitLanesOverlayProps } from './GitLanesOverlay';
+export { ACTIVITY_LAYOUT, arrangeActivityFrames } from './activity-frame';
 export {
   analyzeLeverage,
   analyzeDependency,
