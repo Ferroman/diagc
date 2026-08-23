@@ -24,7 +24,18 @@ export * from './types';
 export * from './mutate';
 export { normalizeRuns, runsToPlainText } from './text';
 export { relationLabels } from './labels';
-export { model, ModelBuilder, NodeRef, type NodeOpts, type RelateOpts } from './builder';
+export {
+  model,
+  ModelBuilder,
+  NodeRef,
+  BranchRef,
+  CommitRef,
+  GitGraphBuilder,
+  type NodeOpts,
+  type RelateOpts,
+  type CommitOpts,
+  type MergeOpts,
+} from './builder';
 export { validate, DiagramValidationError, IMAGE_REF, LIBRARY_IMAGE_REF, type ValidationIssue } from './validate';
 export { isDrawings, isLayoutOverlay } from './guards';
 export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrokeId } from './drawings';

@@ -76,6 +76,93 @@ export class NodeRef {
   }
 }
 
+export interface CommitOpts {
+  /** default `${branchId}-${n}`, n = this branch's 1-based commit count */
+  id?: string;
+  /** the label drawn above the circle; absent = untagged (name '') */
+  tag?: string;
+  /** start a new segment branched off this commit (on another branch) — no
+   * `commit` link from the lane's previous commit */
+  from?: CommitRef;
+  /** empty columns to leave before this commit (`metadata.gap`) */
+  gap?: number;
+  color?: string;
+}
+export type MergeOpts = Omit<CommitOpts, 'from'>;
+
+export class CommitRef extends NodeRef {
+  constructor(
+    id: string,
+    builder: ModelBuilder,
+    readonly branch: BranchRef,
+  ) {
+    super(id, builder);
+  }
+}
+
+/** One lane of a git graph. `commit()` chains from the lane's last commit; `merge()`
+ * adds a commit that absorbs another lane's. Both hand back CommitRefs, which are
+ * NodeRefs — relate them, layer them, describe them like any node. */
+export class BranchRef extends NodeRef {
+  private count = 0;
+  private latest: CommitRef | undefined;
+  constructor(
+    id: string,
+    private readonly m: ModelBuilder,
+  ) {
+    super(id, m);
+  }
+
+  commit(tagOrOpts: string | CommitOpts = {}): CommitRef {
+    const opts: CommitOpts = typeof tagOrOpts === 'string' ? { tag: tagOrOpts } : tagOrOpts;
+    if (opts.from !== undefined && opts.from.branch === this) {
+      throw new Error(`branch '${this.id}': use commit() to continue a lane — 'from' must name a commit on another branch`);
+    }
+    const prev = this.latest;
+    const c = this.create(opts);
+    if (opts.from !== undefined) this.m.relate(opts.from, c, { kind: 'branch' });
+    else if (prev !== undefined) this.m.relate(prev, c, { kind: 'commit' });
+    return c;
+  }
+
+  merge(src: CommitRef, opts: MergeOpts = {}): CommitRef {
+    if (src.branch === this) throw new Error(`branch '${this.id}': cannot merge a lane into itself`);
+    const prev = this.latest;
+    const c = this.create(opts);
+    this.m.relate(src, c, { kind: 'merge' });
+    if (prev !== undefined) this.m.relate(prev, c, { kind: 'commit' });
+    return c;
+  }
+
+  private create(opts: MergeOpts): CommitRef {
+    this.count += 1;
+    const id = opts.id ?? `${this.id}-${this.count}`;
+    this.m.node(id, {
+      type: 'commit',
+      name: opts.tag ?? '',
+      ...(opts.color !== undefined ? { color: opts.color } : {}),
+      ...(opts.gap !== undefined && opts.gap > 0 ? { metadata: { gap: opts.gap } } : {}),
+    });
+    this.m.addContainment(this.id, id);
+    const ref = new CommitRef(id, this.m, this);
+    this.latest = ref;
+    return ref;
+  }
+}
+
+export class GitGraphBuilder {
+  constructor(private readonly m: ModelBuilder) {}
+  /** lanes are drawn top-to-bottom in the order they are declared */
+  branch(id: string, opts: { name?: string; color?: string } = {}): BranchRef {
+    this.m.node(id, {
+      type: 'branch',
+      ...(opts.name !== undefined ? { name: opts.name } : {}),
+      ...(opts.color !== undefined ? { color: opts.color } : {}),
+    });
+    return new BranchRef(id, this.m);
+  }
+}
+
 export class ModelBuilder {
   private nodes: DiagramNode[] = [];
   private containment: ContainmentEdge[] = [];
@@ -86,6 +173,7 @@ export class ModelBuilder {
   private typeColorMap: Record<string, string> | undefined;
   private layerRuleList: LayerRule[] | undefined;
   private pairCounters = new Map<string, number>();
+  private git: GitGraphBuilder | undefined;
 
   constructor(
     private readonly id: string,
@@ -182,6 +270,21 @@ export class ModelBuilder {
       }),
     });
     return this;
+  }
+
+  /**
+   * Declare this model a git graph: a plane with the `git-graph` notation that
+   * must be the default (first-declared) plane, so the lanes' containment needs
+   * no plane tag. Returns the builder for lanes; see BranchRef.
+   */
+  gitGraph(opts: { plane?: string; name?: string } = {}): GitGraphBuilder {
+    if (this.git !== undefined) throw new Error('gitGraph() already declared');
+    if (this.planes.length > 0) {
+      throw new Error('gitGraph() must come before plane(): the git plane has to be the default (first-declared) plane');
+    }
+    this.plane(opts.plane ?? 'git-graph', { name: opts.name ?? 'Git graph', notation: 'git-graph' });
+    this.git = new GitGraphBuilder(this);
+    return this.git;
   }
 
   /** Declare a legend. Bare `legend()` means derived sections only. */
