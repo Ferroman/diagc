@@ -38,6 +38,8 @@ interface EditorToolbarProps {
   onSetPen: (patch: Partial<{ color: string; width: number }>) => void;
   /** drilled in: drawings live at the top level only, so the tools are off */
   drawingDisabled: boolean;
+  /** the notation owns the arrangement: no algorithm/direction/spacing/routing to pick */
+  layoutLocked?: boolean;
 }
 
 /** The preset swatch row, shared by the selection color and the pen color —
@@ -99,6 +101,7 @@ export function EditorToolbar({
   pen,
   onSetPen,
   drawingDisabled,
+  layoutLocked,
 }: EditorToolbarProps) {
   const error = editor.session?.error;
 
@@ -141,7 +144,7 @@ export function EditorToolbar({
       >
         Auto-layout
       </button>
-      <LayoutControls settings={layoutSettings} onChange={onSetLayoutSettings} />
+      {!layoutLocked && <LayoutControls settings={layoutSettings} onChange={onSetLayoutSettings} />}
       <span className="sep" />
       <span className="tool-group" role="group" aria-label="Canvas tool">
         {(

@@ -5,6 +5,7 @@ import {
   DiagramView,
   isKnownStyle,
   lightTheme,
+  notationProfile,
   STYLE_PRESETS,
   type DiagramSelection,
   type DrawTool,
@@ -12,7 +13,6 @@ import {
   type Side,
 } from '@diagramming/renderer';
 import {
-  BUILTIN_NOTATIONS,
   DEFAULT_STROKE_WIDTH,
   emptyDrawings,
   emptyLayout,
@@ -25,11 +25,11 @@ import {
   type DiagramModel,
   type EdgeLabelSide,
   type LayoutSettings,
-  type NotationId,
   type RelationStyle,
   type Stroke,
   type TextRun,
 } from '@diagramming/core';
+import { activeNotation } from './notation';
 import { useDiagramBoot } from './hooks/useDiagramBoot';
 import { useDeepLink } from './hooks/useDeepLink';
 import { useEditSession } from './hooks/useEditSession';
@@ -48,6 +48,7 @@ import { NodePanel } from './editor/NodePanel';
 import { EdgePanel } from './editor/EdgePanel';
 import { LeveragePanel, type LeverageFocus } from './LeveragePanel';
 import { LayersPlanesPanel } from './editor/LayersPlanesPanel';
+import { GitPanel } from './editor/GitPanel';
 import { InspectorTabs, type InspectorTab } from './editor/InspectorTabs';
 import { Dock } from './Dock';
 import { clampDockWidth } from './dockWidth';
@@ -223,13 +224,13 @@ export function App() {
   // unknown pinned ids behave as unpinned so retired presets never wedge a file.
   const pinnedStyle = model?.style !== undefined && isKnownStyle(model.style) ? model.style : undefined;
   const planes = model?.planes ?? [];
-  // undefined = the base/default view (no plane overlay, no notation). Kept
-  // distinct from planes[0] so the Default chip stays reachable once planes exist.
+  // undefined = the base/default view (no plane overlay). Kept distinct from
+  // planes[0] so the Default chip stays reachable once planes exist — but the
+  // default view's containment IS the first plane's, so it takes that plane's
+  // notation too (activeNotation falls back to planes[0]), matching the
+  // published page.
   const activePlane = plane;
-  const activeNotation = planes.find((p) => p.id === activePlane)?.notation;
-  const notation = (BUILTIN_NOTATIONS as readonly string[]).includes(activeNotation ?? '')
-    ? (activeNotation as NotationId)
-    : undefined;
+  const notation = activeNotation(planes, activePlane);
   // A borrowing plane's node membership resolves to its base plane
   // (compileView/resolveContainmentPlane), so tagging node.plane with the
   // borrowing plane's own id would mismatch and the node would silently
@@ -665,6 +666,7 @@ export function App() {
             if (patch.width !== undefined) setPenWidth(patch.width);
           }}
           drawingDisabled={enteredPath.length > 0}
+          layoutLocked={notationProfile(notation).layout !== undefined}
         />
       )}
       {names.length === 0 && (
@@ -922,6 +924,15 @@ export function App() {
               maxWidth={DOCK_MAX}
               onWidthChange={setRightWidth}
             >
+              {editing && notation === 'git-graph' && (
+                <GitPanel
+                  model={model}
+                  plane={activePlane}
+                  selection={selection}
+                  onCommand={editor.dispatch}
+                  onSelect={(id) => select({ kind: 'node', id })}
+                />
+              )}
               <LayersPlanesPanel
                 model={model}
                 onCommand={editor.dispatch}

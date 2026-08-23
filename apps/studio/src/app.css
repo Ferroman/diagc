@@ -66,10 +66,10 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
 .meta dt { color: var(--dg-text-muted); font-size: 12px; min-width: 90px; }
 .meta dd { font-size: 12px; margin: 0; overflow-wrap: anywhere; }
 .meta a { color: var(--dg-accent); }
-.node-panel, .edge-panel, .lp-panel { display: flex; flex-direction: column; gap: 10px; }
+.node-panel, .edge-panel, .lp-panel, .git-panel { display: flex; flex-direction: column; gap: 10px; }
 .lp-panel { border-left: none; border-right: 1px solid var(--dg-border); }
 .panel-head { align-items: center; display: flex; justify-content: space-between; }
-.node-panel h3, .edge-panel h3, .lp-panel h3 { font-size: 12px; letter-spacing: 0.03em; margin: 0 0 6px; text-transform: uppercase; color: var(--dg-text-muted); }
+.node-panel h3, .edge-panel h3, .lp-panel h3, .git-panel h3 { font-size: 12px; letter-spacing: 0.03em; margin: 0 0 6px; text-transform: uppercase; color: var(--dg-text-muted); }
 .panel-section { border-top: 1px solid var(--dg-border); padding-top: 10px; }
 .field { display: flex; flex-direction: column; gap: 3px; }
 .field > span { color: var(--dg-text-muted); font-size: 12px; }
@@ -108,6 +108,11 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
    otherwise the inline pen radio stretches full-width and clips the layer row. */
 .lp-panel .lp-pen { flex: 0 0 auto; margin: 0; width: auto; }
 .lp-draw { font-weight: 600; }
+
+.git-panel .git-lanes { list-style: none; margin: 0 0 8px; padding: 0; }
+.git-panel .git-lanes li { padding: 2px 0; }
+.git-panel input, .git-panel select { width: 100%; margin: 4px 0; box-sizing: border-box; }
+.git-panel .chip { margin: 4px 0 8px; }
 
 /* excalidraw-style option/color pickers */
 .picker-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }

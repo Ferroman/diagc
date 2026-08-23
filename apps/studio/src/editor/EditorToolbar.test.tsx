@@ -38,6 +38,7 @@ type AutoLayoutOverrides = {
   pen?: { color: string; width: number };
   onSetPen?: (patch: Partial<{ color: string; width: number }>) => void;
   drawingDisabled?: boolean;
+  layoutLocked?: boolean;
 };
 
 function renderToolbar(editor: EditorApi, activePlane: string | undefined, extra: AutoLayoutOverrides = {}) {
@@ -52,6 +53,7 @@ function renderToolbar(editor: EditorApi, activePlane: string | undefined, extra
     pen = { color: '', width: 3 },
     onSetPen = noop,
     drawingDisabled = false,
+    layoutLocked = false,
   } = extra;
   return render(
     <EditorToolbar
@@ -70,6 +72,7 @@ function renderToolbar(editor: EditorApi, activePlane: string | undefined, extra
       tool={tool}
       onSetTool={onSetTool}
       pen={pen}
+      layoutLocked={layoutLocked}
       onSetPen={onSetPen}
       drawingDisabled={drawingDisabled}
     />,
@@ -220,5 +223,11 @@ describe('EditorToolbar', () => {
     const pen = screen.getByRole('button', { name: 'Pen' }) as HTMLButtonElement;
     expect(pen.disabled).toBe(true);
     expect(pen.title).toContain('top level');
+  });
+
+  it('hides the layout pickers when the notation owns the arrangement', () => {
+    renderToolbar(fakeEditor(), undefined, { layoutLocked: true });
+    expect(screen.queryByLabelText(/algorithm/i)).toBeNull();
+    expect(screen.getByRole('button', { name: /auto-layout/i })).toBeTruthy();
   });
 });
