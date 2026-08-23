@@ -161,4 +161,20 @@ describe('handleApiRequest', () => {
     expect(r.raw).toEqual(bytes);
     await rm(root, { recursive: true, force: true });
   });
+
+  it('routes GET /api/drawings and POST /api/drawings/<name>', async () => {
+    const root = await tempRoot();
+    const body = JSON.stringify({ version: 1, planes: { default: [{ id: 'k1', points: [1, 2, 3, 4] }] } });
+    const saved = await request(root, '/api/drawings/sketch', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body,
+    });
+    expect(saved.status).toBe(200);
+    expect(JSON.parse(await readFile(path.join(root, 'diagrams', 'sketch.drawings.json'), 'utf8')).planes.default).toHaveLength(1);
+    const listed = await request(root, '/api/drawings');
+    expect(listed.status).toBe(200);
+    expect((listed.body as { drawings: Record<string, unknown> }).drawings['sketch']).toBeDefined();
+    await rm(root, { recursive: true, force: true });
+  });
 });

@@ -42,6 +42,7 @@ export const ROUTES: Route[] = [
   // --- diagrams & layouts ---
   { method: 'GET', pattern: /^\/api\/diagrams$/, handler: (h, c) => h.listDiagramModels(c.diagramsDir, c.artifactsDir) },
   { method: 'GET', pattern: /^\/api\/layouts$/, handler: (h, c) => h.listLayouts(c.diagramsDir) },
+  { method: 'GET', pattern: /^\/api\/drawings$/, handler: (h, c) => h.listDrawings(c.diagramsDir) },
   { method: 'GET', pattern: /^\/api\/diagrams\/(.+)$/, handler: (h, c) => h.readDiagram(c.diagramsDir, decodeURIComponent(c.match[1] ?? '')) },
   // Rename must be checked before the generic save route, whose `(.+)`
   // would otherwise swallow `<from>/rename` as a filename.
@@ -50,12 +51,16 @@ export const ROUTES: Route[] = [
       if (typeof to !== 'string') return { status: 400, body: { issues: [{ message: "Missing 'to' name" }] } };
       return h.renameDiagram(c.diagramsDir, decodeURIComponent(c.match[1] ?? ''), to);
     } },
-  { method: 'POST', pattern: /^\/api\/(diagrams|layouts)\/(.+)$/, bodyMode: 'json', handler: (h, c) =>
+  { method: 'POST', pattern: /^\/api\/(diagrams|layouts|drawings)\/(.+)$/, bodyMode: 'json', handler: (h, c) => {
       // decodeURIComponent throws on malformed percent-encoding — kept
       // inside the boundary so a bad name yields 500, never a crash.
-      c.match[1] === 'diagrams'
-        ? h.saveDiagram(c.diagramsDir, decodeURIComponent(c.match[2] ?? ''), c.body)
-        : h.saveLayout(c.diagramsDir, decodeURIComponent(c.match[2] ?? ''), c.body) },
+      const name = decodeURIComponent(c.match[2] ?? '');
+      return c.match[1] === 'diagrams'
+        ? h.saveDiagram(c.diagramsDir, name, c.body)
+        : c.match[1] === 'layouts'
+          ? h.saveLayout(c.diagramsDir, name, c.body)
+          : h.saveDrawings(c.diagramsDir, name, c.body);
+    } },
 ];
 
 /** The route matching `method` + `url`, or undefined. First match wins. */

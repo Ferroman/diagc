@@ -1,7 +1,7 @@
 import { access, mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { IMAGE_REF, isLayoutOverlay, validate, type DiagramModel } from '@diagramming/core';
+import { IMAGE_REF, isDrawings, isLayoutOverlay, validate, type DiagramModel } from '@diagramming/core';
 
 export interface HandlerResult {
   status: number;
@@ -85,6 +85,20 @@ export async function listLayouts(diagramsDir: string): Promise<HandlerResult> {
   return { status: 200, body: { layouts } };
 }
 
+/** All drawings sidecars under `diagramsDir`, keyed by diagram name. Corrupt
+ * files are skipped, never fatal — same contract as listLayouts. */
+export async function listDrawings(diagramsDir: string): Promise<HandlerResult> {
+  const drawings: Record<string, unknown> = {};
+  for (const name of await walkFiles(diagramsDir, '.drawings.json')) {
+    try {
+      drawings[name] = JSON.parse(await readFile(path.join(diagramsDir, `${name}.drawings.json`), 'utf8'));
+    } catch {
+      /* skip corrupt sidecar */
+    }
+  }
+  return { status: 200, body: { drawings } };
+}
+
 /** the JSON source (+ sibling layout) of a designer-owned diagram — the studio
  * reads these directly so it never depends on a compile watcher for its own files */
 export async function readDiagram(diagramsDir: string, name: string): Promise<HandlerResult> {
@@ -101,7 +115,20 @@ export async function readDiagram(diagramsDir: string, name: string): Promise<Ha
   } catch {
     layout = undefined;
   }
-  return { status: 200, body: { model, ...(layout !== undefined ? { layout } : {}) } };
+  let drawings: unknown;
+  try {
+    drawings = JSON.parse(await readFile(path.join(diagramsDir, `${name}.drawings.json`), 'utf8'));
+  } catch {
+    drawings = undefined;
+  }
+  return {
+    status: 200,
+    body: {
+      model,
+      ...(layout !== undefined ? { layout } : {}),
+      ...(drawings !== undefined ? { drawings } : {}),
+    },
+  };
 }
 
 export async function saveDiagram(diagramsDir: string, name: string, payload: unknown): Promise<HandlerResult> {
@@ -164,6 +191,11 @@ export async function renameDiagram(diagramsDir: string, from: string, to: strin
   } catch {
     /* no layout to move */
   }
+  try {
+    await rename(path.join(diagramsDir, `${from}.drawings.json`), path.join(diagramsDir, `${to}.drawings.json`));
+  } catch {
+    /* no drawings to move */
+  }
   return { status: 200, body: { ok: true } };
 }
 
@@ -174,6 +206,28 @@ export async function saveLayout(diagramsDir: string, name: string, payload: unk
   // shared with the client-side artifact loader.
   if (!isLayoutOverlay(payload)) return { status: 400, body: { issues: [{ message: 'Not a version-1 layout overlay' }] } };
   const target = path.join(diagramsDir, `${name}.layout.json`);
+  await mkdir(path.dirname(target), { recursive: true });
+  await writeFile(target, `${JSON.stringify(payload, null, 2)}\n`);
+  return { status: 200, body: { ok: true } };
+}
+
+/** Persist the drawings sidecar. An overlay in which no bucket holds a stroke
+ * DELETES the file instead of writing it: a diagram that never had drawings
+ * must never grow an empty `<name>.drawings.json`, and erasing the last stroke
+ * should leave the tree as it was. */
+export async function saveDrawings(diagramsDir: string, name: string, payload: unknown): Promise<HandlerResult> {
+  if (!isSafeName(name)) return { status: 400, body: { issues: [{ message: `Unsafe name '${name}'` }] } };
+  if (!isDrawings(payload)) return { status: 400, body: { issues: [{ message: 'Not a version-1 drawings overlay' }] } };
+  const target = path.join(diagramsDir, `${name}.drawings.json`);
+  const hasStrokes = Object.values(payload.planes).some((bucket) => bucket.length > 0);
+  if (!hasStrokes) {
+    try {
+      await unlink(target);
+    } catch {
+      /* nothing to delete */
+    }
+    return { status: 200, body: { ok: true } };
+  }
   await mkdir(path.dirname(target), { recursive: true });
   await writeFile(target, `${JSON.stringify(payload, null, 2)}\n`);
   return { status: 200, body: { ok: true } };

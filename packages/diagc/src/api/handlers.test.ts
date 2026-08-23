@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isSafeName,
   listDiagramModels,
+  listDrawings,
   listLayouts,
   readAsset,
   readDiagram,
@@ -13,6 +14,7 @@ import {
   renameDiagram,
   saveAsset,
   saveDiagram,
+  saveDrawings,
   saveLayout,
   saveLibrary,
   walkFiles,
@@ -149,6 +151,48 @@ describe('designer api handlers', () => {
     expect((await saveLayout(dir, 'sketch', good)).status).toBe(200);
     const bad = { version: 1, planes: {}, sizes: { pic: { w: -1, h: 150 } } };
     expect((await saveLayout(dir, 'sketch', bad)).status).toBe(400);
+  });
+
+  it('saves drawings, lists them, and reads them back beside the model', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    await saveDiagram(dir, 'sketch', goodModel);
+    const drawings = { version: 1, planes: { default: [{ id: 'k1', points: [1, 2, 3, 4], width: 4 }] } };
+    expect((await saveDrawings(dir, 'sketch', drawings)).status).toBe(200);
+    expect(JSON.parse(await readFile(path.join(dir, 'sketch.drawings.json'), 'utf8'))).toEqual(drawings);
+    expect((await listDrawings(dir)).body).toEqual({ drawings: { sketch: drawings } });
+    expect((await readDiagram(dir, 'sketch')).body).toEqual({ model: goodModel, drawings });
+  });
+
+  it('rejects a malformed drawings payload and an unsafe name', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    expect((await saveDrawings(dir, 'x', { version: 1, planes: { default: [{ id: 'k1', points: [1] }] } })).status).toBe(400);
+    expect((await saveDrawings(dir, '../x', { version: 1, planes: {} })).status).toBe(400);
+  });
+
+  it('deletes the sidecar when the overlay holds no strokes, and tolerates there being none', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    const file = path.join(dir, 'sketch.drawings.json');
+    await saveDrawings(dir, 'sketch', { version: 1, planes: { default: [{ id: 'k1', points: [1, 2] }] } });
+    expect((await saveDrawings(dir, 'sketch', { version: 1, planes: { default: [] } })).status).toBe(200);
+    await expect(readFile(file, 'utf8')).rejects.toThrow();
+    // a second empty save must not fail on the missing file
+    expect((await saveDrawings(dir, 'sketch', { version: 1, planes: {} })).status).toBe(200);
+  });
+
+  it('skips a corrupt drawings file when listing', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    await writeFile(path.join(dir, 'bad.drawings.json'), '{not json');
+    expect((await listDrawings(dir)).body).toEqual({ drawings: {} });
+  });
+
+  it('rename moves the drawings sidecar too', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    await saveDiagram(dir, 'old', goodModel);
+    const drawings = { version: 1, planes: { default: [{ id: 'k1', points: [1, 2] }] } };
+    await saveDrawings(dir, 'old', drawings);
+    expect((await renameDiagram(dir, 'old', 'new')).status).toBe(200);
+    expect((await readDiagram(dir, 'new')).body).toEqual({ model: { ...goodModel, id: 'new', name: 'new' }, drawings });
+    await expect(readFile(path.join(dir, 'old.drawings.json'), 'utf8')).rejects.toThrow();
   });
 });
 
