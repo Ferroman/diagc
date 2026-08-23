@@ -6,6 +6,7 @@ import { createIconRegistry } from '@diagramming/icons';
 import { createTypeRegistry } from './registry';
 import { DiagramNode, type DiagramNodeData } from './DiagramNode';
 import { stylePreset } from './stylePresets';
+import { seedFrom, sketchNode } from './sketch';
 
 // NodeResizer needs live React Flow store internals a bare ReactFlowProvider
 // doesn't have under jsdom — same precedent as the EdgeLabelRenderer mock in
@@ -473,6 +474,14 @@ describe('activity diagram nodes', () => {
     );
     const svg = container.querySelector('svg.dg-sketch-shape');
     expect(svg).not.toBeNull();
+    // Presence alone is vacuous because the box fallback also renders the svg;
+    // the path identity is what proves the mapping.
+    const renderedPath = svg!.querySelector('.dg-sketch-stroke')?.getAttribute('d') ?? '';
+    const rough = stylePreset('sketch').rough!;
+    const diamondPath = sketchNode('diamond', 48, 48, seedFrom('n1'), rough, 0).stroke;
+    const boxPath = sketchNode('box', 48, 48, seedFrom('n1'), rough, 0).stroke;
+    expect(renderedPath).toBe(diamondPath);
+    expect(renderedPath).not.toBe(boxPath);
   });
 });
 
