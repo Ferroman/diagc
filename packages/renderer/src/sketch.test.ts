@@ -42,9 +42,14 @@ describe('sketchNode', () => {
       expect(p.fill).not.toContain('NaN');
     }
   });
-  it('sketches a circle inscribed in the box', () => {
-    const p = sketchNode('circle', 28, 28, 1, { roughness: 1, strokeWidth: 1.2, bowing: 1, fillStyle: 'solid' });
-    expect(p.stroke).not.toBe('');
+  it('sketches a circle inscribed in the box, distinct from the box fallback', () => {
+    // Same seed/style/size as the box case below: a fallback to the rectangle
+    // path (e.g. a dropped `circle` branch) would make these two identical.
+    const style: RoughStyle = { roughness: 1, bowing: 1, strokeWidth: 1.2, fillStyle: 'solid' };
+    const circle = sketchNode('circle', 28, 28, 1, style);
+    const box = sketchNode('box', 28, 28, 1, style);
+    expect(circle.stroke).not.toBe('');
+    expect(circle.stroke).not.toBe(box.stroke);
   });
 });
 
