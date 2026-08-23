@@ -933,14 +933,25 @@ function Inner(props: DiagramViewProps) {
             ? { style: { width: geo.width, height: geo.height }, zIndex: -1 }
             : (n.node.image !== undefined || n.node.shape !== undefined) && n.state === 'leaf'
               ? { style: { width: geo.width, height: geo.height } }
-              : {}),
+              : // A circle leaf (e.g. a git commit) has no CSS-natural size the way
+                // an ordinary box does — .dg-circle-node zeroes out the base node's
+                // min-width/padding and is sized entirely by its RF wrapper
+                // (width/height: 100%). Without an explicit inline size here, that
+                // wrapper collapses to its border-only intrinsic size, so the
+                // layout's diameter must be applied explicitly, same as image/shape
+                // leaves above. Ordinary boxes and CLD text chips must NOT go
+                // through this branch — forcing sizes there would change their
+                // existing CSS-driven sizing.
+                n.state === 'leaf' && n.node.type !== undefined && typeRegistry.resolve(n.node.type).shape === 'circle'
+                ? { style: { width: geo.width, height: geo.height } }
+                : {}),
         }),
       );
       n.children.forEach((c) => walk(c, n.id));
     };
     compiled.roots.forEach((r) => walk(r));
     return out;
-  }, [compiled, placedGeometry, nodeDataCtx, editing]);
+  }, [compiled, placedGeometry, nodeDataCtx, editing, typeRegistry]);
 
   // React Flow owns a copy of the nodes and we apply its changes (drag positions,
   // measured dimensions, selection) with applyNodeChanges — the v12-recommended

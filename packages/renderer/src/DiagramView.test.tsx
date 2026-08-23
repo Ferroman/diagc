@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { getViewportForBounds } from '@xyflow/react';
 import { model, type DiagramModel } from '@diagramming/core';
 import { DiagramView, type LayoutApi } from './DiagramView';
+import { GIT_LAYOUT } from './git-layout';
 
 /** container-endpoint relation: service inside a system relates to the system itself */
 function containerEndpointModel() {
@@ -1073,5 +1074,19 @@ describe('git-graph notation', () => {
     await screen.findByText('gw');
     expect(container.querySelector('svg.dg-git-lanes')).toBeNull();
     expect(container.querySelector('.dg-lane')).toBeNull();
+    // guard the narrowness of the circle-sizing fix: an ordinary box leaf must
+    // keep its CSS-natural sizing (no inline width forced on its RF wrapper)
+    const gw = container.querySelector('.react-flow__node[data-id="gw"]') as HTMLElement | null;
+    expect(gw?.style.width).toBe('');
+  });
+
+  it('sizes a commit circle leaf from the layout — it has no CSS-natural size', async () => {
+    const m = gitModel();
+    const { container } = render(<DiagramView model={m} plane="git-graph" notation="git-graph" />);
+    await waitFor(() => expect(container.querySelectorAll('.dg-circle-node')).toHaveLength(4));
+    const wrapper = container.querySelector('.react-flow__node[data-id="master-1"]') as HTMLElement | null;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper?.style.width).toBe(`${GIT_LAYOUT.DIAMETER}px`);
+    expect(wrapper?.style.height).toBe(`${GIT_LAYOUT.DIAMETER}px`);
   });
 });
