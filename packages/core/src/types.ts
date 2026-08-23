@@ -308,6 +308,6 @@ export interface Drawings {
 /** Pen width when a stroke names none. In core so editor and renderer cannot drift. */
 export const DEFAULT_STROKE_WIDTH = 3;
 
-export const BUILTIN_NOTATIONS = ['causal-loop'] as const;
+export const BUILTIN_NOTATIONS = ['causal-loop', 'git-graph'] as const;
 export type NotationId = (typeof BUILTIN_NOTATIONS)[number];
 export type Polarity = '+' | '-';

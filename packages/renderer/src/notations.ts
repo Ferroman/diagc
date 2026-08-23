@@ -35,9 +35,13 @@ const CLD: NotationProfile = {
   overlay: 'loop-labels',
 };
 
+// Filled in by the git-graph layout/rendering work; the entry exists now so the
+// Record<NotationId, …> below stays total.
+const GIT: NotationProfile = { id: 'git-graph', className: 'dg-notation-git' };
+
 // Record<NotationId, ...> keying means adding a notation id to BUILTIN_NOTATIONS
 // forces a compile error here until its profile is added — intended.
-export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = { 'causal-loop': CLD };
+export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = { 'causal-loop': CLD, 'git-graph': GIT };
 
 const DEFAULT_PROFILE: NotationProfile = { id: 'default' };
 

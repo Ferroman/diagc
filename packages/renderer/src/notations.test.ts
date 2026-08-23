@@ -33,4 +33,10 @@ describe('notationProfile', () => {
     expect(() => notationProfile('bogus' as never)).not.toThrow();
     expect(notationProfile('bogus' as never).id).toBe('default');
   });
+
+  it('exposes a git-graph profile keyed by notation id', () => {
+    expect(notationProfile('git-graph').id).toBe('git-graph');
+    expect(notationProfile('git-graph').className).toBe('dg-notation-git');
+    expect(NOTATION_PROFILES['git-graph']).toBe(notationProfile('git-graph'));
+  });
 });

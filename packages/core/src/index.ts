@@ -59,3 +59,15 @@ export {
   type IncludeResolver,
   type IncludeSource,
 } from './compose';
+export {
+  GIT_KINDS,
+  GIT_NOTATION,
+  gapOf,
+  gitGraph,
+  isGitKind,
+  latestCommit,
+  mergedAway,
+  type GitGraph,
+  type GitKind,
+  type GitLane,
+} from './git';
