@@ -596,12 +596,22 @@ describe('DiagramEdge', () => {
   describe('interrupt zigzag glyph', () => {
     it('draws a zigzag glyph at the midpoint of an interrupt edge', () => {
       const { container } = renderEdge({ kind: 'interrupt' });
-      expect(container.querySelector('polyline.dg-edge-zigzag')).not.toBeNull();
+      const polyline = container.querySelector('polyline.dg-edge-zigzag');
+      expect(polyline).not.toBeNull();
+      // tracks the edge's resolved stroke, same as the path/markers/polarity glyph —
+      // not a fixed token, so tinted/colored interrupt edges stay legible.
+      expect(polyline?.getAttribute('stroke')).toBe('var(--dg-edge)');
     });
 
     it('ordinary kinds draw no zigzag', () => {
       const { container } = renderEdge({ kind: 'control' });
       expect(container.querySelector('polyline.dg-edge-zigzag')).toBeNull();
+    });
+
+    it('the zigzag stroke follows an explicit relation color', () => {
+      const { container } = renderEdge({ kind: 'interrupt', relStyle: { color: '#ff0000' } });
+      const polyline = container.querySelector('polyline.dg-edge-zigzag');
+      expect(polyline?.getAttribute('stroke')).toBe('#ff0000');
     });
   });
 });

@@ -538,7 +538,7 @@ export function DiagramEdge({
             .join(' ')}
           fill="none"
           strokeWidth={1.75}
-          stroke="var(--dg-text)"
+          stroke={stroke}
         />
       )}
       </g>
