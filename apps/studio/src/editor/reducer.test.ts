@@ -93,6 +93,21 @@ describe('editor reducer', () => {
     expect(s.state.drawings.planes['default']).toBeUndefined();
   });
 
+  it('migrates the default buckets when the first plane arrives via a batch, not just a bare upsert-plane', () => {
+    let s = startSession('draft', state());
+    s = dispatch(s, { type: 'set-position', nodeId: 'a', x: 7, y: 8 });
+    s = dispatch(s, { type: 'add-stroke', stroke: { id: 'k1', points: [1, 2, 3, 4] } });
+    s = dispatch(s, {
+      type: 'batch',
+      commands: [{ type: 'upsert-plane', plane: { id: 'arch', name: 'Architecture' } }],
+    });
+
+    expect(s.state.layout.planes['arch']?.['a']).toEqual({ x: 7, y: 8 });
+    expect(s.state.drawings.planes['arch']).toHaveLength(1);
+    expect(s.state.layout.planes['default']).toBeUndefined();
+    expect(s.state.drawings.planes['default']).toBeUndefined();
+  });
+
   it('a batch is one undo step, and an empty batch records nothing', () => {
     let s = startSession('draft', state());
     s = dispatch(s, {

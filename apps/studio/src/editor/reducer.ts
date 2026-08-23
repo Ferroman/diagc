@@ -37,14 +37,19 @@ export function dispatch(s: EditorSession, command: EditorCommand): EditorSessio
     const { state, relationId } = applyCommandWithResult(s.state, command);
     let nextState = state;
     // obligation: plane-less model gains its first plane -> migrate 'default' buckets
-    // (positions AND drawings: both sidecars key by the same plane id)
-    if (!hadPlanes && command.type === 'upsert-plane' && (state.model.planes ?? []).length === 1) {
+    // (positions AND drawings: both sidecars key by the same plane id). Keyed on the
+    // state transition, not on `command.type === 'upsert-plane'` — the upsert can arrive
+    // nested inside a batch (or any future composite command), so only "no planes before,
+    // exactly one after" reliably detects it.
+    const newPlanes = state.model.planes ?? [];
+    if (!hadPlanes && newPlanes.length === 1) {
+      const planeId = newPlanes[0]!.id;
       const bucket = state.layout.planes['default'];
       if (bucket !== undefined) {
         const { default: _def, ...rest } = state.layout.planes;
         nextState = {
           ...nextState,
-          layout: { ...state.layout, planes: { ...rest, [command.plane.id]: bucket } },
+          layout: { ...state.layout, planes: { ...rest, [planeId]: bucket } },
         };
       }
       const strokes = state.drawings.planes['default'];
@@ -52,7 +57,7 @@ export function dispatch(s: EditorSession, command: EditorCommand): EditorSessio
         const { default: _def, ...rest } = state.drawings.planes;
         nextState = {
           ...nextState,
-          drawings: { ...state.drawings, planes: { ...rest, [command.plane.id]: strokes } },
+          drawings: { ...state.drawings, planes: { ...rest, [planeId]: strokes } },
         };
       }
     }
