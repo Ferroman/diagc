@@ -1,9 +1,10 @@
-import { isLayoutOverlay, validate, type DiagramModel, type LayoutOverlay } from '@diagramming/core';
+import { isDrawings, isLayoutOverlay, validate, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagramming/core';
 
 export interface LoadedArtifact {
   name: string;
   model?: DiagramModel;
   layout?: LayoutOverlay;
+  drawings?: Drawings;
   issues: { code?: string; message: string }[];
 }
 
@@ -21,6 +22,7 @@ export interface ApiDiagram {
 export function loadArtifacts(
   diagrams: ApiDiagram[],
   layouts: Record<string, LayoutOverlay> = {},
+  drawings: Record<string, Drawings> = {},
 ): Record<string, LoadedArtifact> {
   const out: Record<string, LoadedArtifact> = {};
   for (const d of diagrams) {
@@ -30,19 +32,23 @@ export function loadArtifacts(
     const rawLayout = layouts[d.name];
     const layout = isLayoutOverlay(rawLayout) ? rawLayout : undefined;
     const withLayout = layout !== undefined ? { layout } : {};
+    // Same trust rule as the layout: the server only parses, the guard decides.
+    const rawDrawings = drawings[d.name];
+    const withDrawings = isDrawings(rawDrawings) ? { drawings: rawDrawings } : {};
     if (d.model === null || (d.model as { version?: unknown }).version !== 1) {
       out[d.name] = {
         name: d.name,
         issues: d.issues.length > 0 ? d.issues : [{ message: 'Not a version-1 diagram model' }],
         ...withLayout,
+        ...withDrawings,
       };
       continue;
     }
     const issues = validate(d.model);
     out[d.name] =
       issues.length > 0
-        ? { name: d.name, issues, ...withLayout }
-        : { name: d.name, model: d.model, issues: [], ...withLayout };
+        ? { name: d.name, issues, ...withLayout, ...withDrawings }
+        : { name: d.name, model: d.model, issues: [], ...withLayout, ...withDrawings };
   }
   return out;
 }

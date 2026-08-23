@@ -51,7 +51,7 @@ export function useEditor(): EditorApi {
     if (snapshot === null) return { ok: false, issues: [{ message: 'No editing session' }] };
     const issues = validate(snapshot.state.model);
     if (issues.length > 0) return { ok: false, issues };
-    const post = async (kind: 'diagrams' | 'layouts', body: unknown) => {
+    const post = async (kind: 'diagrams' | 'layouts' | 'drawings', body: unknown) => {
       const res = await fetch(`/api/${kind}/${snapshot.name}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -63,6 +63,12 @@ export function useEditor(): EditorApi {
     if (modelErr !== null) return { ok: false, issues: modelErr.issues ?? [{ message: 'Save failed' }] };
     const layoutErr = await post('layouts', snapshot.state.layout);
     if (layoutErr !== null) return { ok: false, issues: layoutErr.issues ?? [{ message: 'Layout save failed' }] };
+    // Structural sharing makes identity a precise "did anything change" test:
+    // an untouched diagram never writes (or creates) its drawings sidecar.
+    if (snapshot.state.drawings !== snapshot.savedState.drawings) {
+      const drawingsErr = await post('drawings', snapshot.state.drawings);
+      if (drawingsErr !== null) return { ok: false, issues: drawingsErr.issues ?? [{ message: 'Drawings save failed' }] };
+    }
     // Mark exactly what was posted as saved. Reading the live session (not the
     // snapshot) keeps edits dispatched during the save dirty, since their state
     // differs from the posted savedState.

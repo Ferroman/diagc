@@ -12,6 +12,7 @@ import {
 } from '@diagramming/renderer';
 import {
   BUILTIN_NOTATIONS,
+  emptyDrawings,
   emptyLayout,
   errMessage,
   layoutPlaneKey,
@@ -183,6 +184,7 @@ export function App() {
   const session = editor.session;
   const model = editing ? session?.state.model : current?.model;
   const layout = editing ? session?.state.layout : current?.layout;
+  const drawings = editing ? session?.state.drawings : current?.drawings;
   // A diagram-pinned style (known preset only) outranks the app preference;
   // unknown pinned ids behave as unpinned so retired presets never wedge a file.
   const pinnedStyle = model?.style !== undefined && isKnownStyle(model.style) ? model.style : undefined;
@@ -499,7 +501,7 @@ export function App() {
                   // it here (mirroring resetView() on the diagram picker) so Save +
                   // Done doesn't come back to a stale preview masking what was saved.
                   setLayoutPreview({});
-                  enterEdit(selected, current?.model as DiagramModel, current?.layout ?? emptyLayout());
+                  enterEdit(selected, current?.model as DiagramModel, current?.layout ?? emptyLayout(), current?.drawings ?? emptyDrawings());
                 }}
               >
                 Edit
@@ -748,6 +750,7 @@ export function App() {
                 }
                 {...(notation !== undefined ? { notation } : {})}
                 {...(viewLayout !== undefined ? { layout: viewLayout } : {})}
+                {...(drawings !== undefined ? { drawings } : {})}
                 {...(editing
                   ? {
                       mode: 'edit' as const,

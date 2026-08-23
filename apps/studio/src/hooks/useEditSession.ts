@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react';
-import { errMessage, type DiagramModel, type LayoutOverlay } from '@diagramming/core';
+import { errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagramming/core';
 import type { LayoutApi } from '@diagramming/renderer';
 import type { LoadedArtifact } from '../artifacts';
 import { useEditor } from '../editor/useEditor';
@@ -36,8 +36,8 @@ export interface EditSession {
   saving: boolean;
   /** Single save path shared by the toolbar button and Ctrl/Cmd+S. */
   doSave: () => Promise<void>;
-  /** Begin an edit session over `name`'s model+layout. */
-  enterEdit: (name: string, model: DiagramModel, layout: LayoutOverlay) => void;
+  /** Begin an edit session over `name`'s model+layout+drawings. */
+  enterEdit: (name: string, model: DiagramModel, layout: LayoutOverlay, drawings: Drawings) => void;
   /** End the edit session (shadowing drafts + flushing a final save), returning
    * true when the caller may proceed (it always can today; the return keeps the
    * "confirm-discard handled by the caller" contract). */
@@ -91,7 +91,10 @@ export function useEditSession({
       setSaveIssues(null);
       if (snapshot !== null) {
         const { name, state } = snapshot;
-        setDrafts((d) => ({ ...d, [name]: { name, model: state.model, layout: state.layout, issues: [] } }));
+        setDrafts((d) => ({
+          ...d,
+          [name]: { name, model: state.model, layout: state.layout, drawings: state.drawings, issues: [] },
+        }));
       }
     } catch (e) {
       setSaveIssues([{ message: errMessage(e) }]);
@@ -111,7 +114,13 @@ export function useEditSession({
     if (editor.dirty && snap !== null) {
       setDrafts((d) => ({
         ...d,
-        [snap.name]: { name: snap.name, model: snap.state.model, layout: snap.state.layout, issues: [] },
+        [snap.name]: {
+          name: snap.name,
+          model: snap.state.model,
+          layout: snap.state.layout,
+          drawings: snap.state.drawings,
+          issues: [],
+        },
       }));
       void doSave();
     }
@@ -123,9 +132,9 @@ export function useEditSession({
   };
   leaveEditRef.current = leaveEdit;
 
-  const enterEdit = (name: string, model: DiagramModel, layout: LayoutOverlay) => {
+  const enterEdit = (name: string, model: DiagramModel, layout: LayoutOverlay, drawings: Drawings) => {
     if (model === undefined) return;
-    editor.start(name, { model, layout });
+    editor.start(name, { model, layout, drawings });
     setSaveIssues(null);
     setEditing(true);
   };

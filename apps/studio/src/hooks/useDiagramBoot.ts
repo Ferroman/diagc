@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import type { LayoutOverlay } from '@diagramming/core';
+import type { Drawings, LayoutOverlay } from '@diagramming/core';
 import { loadArtifacts, type ApiDiagram, type LoadedArtifact } from '../artifacts';
 
 export interface DiagramBoot {
@@ -54,14 +54,17 @@ export function useDiagramBoot(): DiagramBoot {
     let live = true;
     void (async () => {
       try {
-        const [dRes, lRes] = await Promise.all([fetch('/api/diagrams'), fetch('/api/layouts')]);
+        const [dRes, lRes, kRes] = await Promise.all([fetch('/api/diagrams'), fetch('/api/layouts'), fetch('/api/drawings')]);
         if (!dRes.ok) return;
         const { diagrams = [] } = (await dRes.json()) as { diagrams?: ApiDiagram[] };
         const { layouts = {} } = lRes.ok
           ? ((await lRes.json()) as { layouts?: Record<string, LayoutOverlay> })
           : { layouts: {} };
+        const { drawings = {} } = kRes.ok
+          ? ((await kRes.json()) as { drawings?: Record<string, Drawings> })
+          : { drawings: {} };
         if (!live) return;
-        setLoaded(loadArtifacts(diagrams, layouts));
+        setLoaded(loadArtifacts(diagrams, layouts, drawings));
         setOwnedNames(new Set(diagrams.filter((d) => d.editable).map((d) => d.name)));
         setCanDesign(true);
       } catch {

@@ -103,6 +103,34 @@ describe('useEditor.save', () => {
     expect(res?.issues?.length ?? 0).toBeGreaterThan(0);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('posts drawings only when they changed since the last save', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetchMock);
+    const { result } = renderHook(() => useEditor());
+    act(() => {
+      result.current.start('draft', state());
+    });
+    act(() => {
+      result.current.dispatch({ type: 'rename-node', id: 'a', name: 'Alpha' });
+    });
+    await act(async () => {
+      await result.current.save();
+    });
+    const urls = () => fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls().some((u) => u.startsWith('/api/drawings/'))).toBe(false);
+
+    act(() => {
+      result.current.dispatch({ type: 'add-stroke', stroke: { id: 'k1', points: [1, 2, 3, 4] } });
+    });
+    await act(async () => {
+      await result.current.save();
+    });
+    const call = fetchMock.mock.calls.find((c) => String(c[0]) === '/api/drawings/draft');
+    expect(call).toBeDefined();
+    expect(String(call?.[1]?.body)).toContain('"k1"');
+  });
 });
 
 describe('useEditor.peek', () => {

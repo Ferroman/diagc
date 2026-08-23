@@ -37,4 +37,16 @@ describe('loadArtifacts', () => {
     const arts = loadArtifacts([entry('ok', m.toJSON())], { ok: { version: 1, planes: {} } as never });
     expect(arts['ok']?.layout?.version).toBe(1);
   });
+
+  it('attaches a well-formed drawings sidecar and drops a malformed one', () => {
+    const m = model('ok');
+    m.node('a', { type: 'service' });
+    const good = { version: 1 as const, planes: { default: [{ id: 'k1', points: [1, 2] }] } };
+    const arts = loadArtifacts([entry('ok', m.toJSON()), entry('bad', m.toJSON())], {}, {
+      ok: good,
+      bad: { version: 1, planes: { default: 'nope' } } as unknown as typeof good,
+    });
+    expect(arts['ok']?.drawings).toEqual(good);
+    expect(arts['bad']?.drawings).toBeUndefined();
+  });
 });

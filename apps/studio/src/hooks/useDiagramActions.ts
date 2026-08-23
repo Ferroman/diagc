@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { emptyLayout, type DiagramModel } from '@diagramming/core';
+import { emptyDrawings, emptyLayout, type DiagramModel } from '@diagramming/core';
 import type { LoadedArtifact } from '../artifacts';
 import type { EditorApi } from '../editor/useEditor';
 
@@ -82,7 +82,7 @@ export function useDiagramActions({
     setSelected(raw);
     setEnteredPath([]);
     resetView();
-    editor.start(raw, { model: m, layout: emptyLayout() });
+    editor.start(raw, { model: m, layout: emptyLayout(), drawings: emptyDrawings() });
     setEditing(true);
   };
 

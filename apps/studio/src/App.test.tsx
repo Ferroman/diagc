@@ -47,6 +47,7 @@ describe('view-mode layout preview', () => {
           );
         }
         if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
+        if (url === '/api/drawings') return new Response(JSON.stringify({ drawings: {} }), { status: 200 });
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }),
     );
