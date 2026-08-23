@@ -236,13 +236,17 @@ function swatchOf(item: LegendItem, input: LegendInput): LegendSwatch | undefine
 }
 
 /** The tracing-paper switch, listed with the layers because that is where a
- * reader looks for "what can I turn off". Not a model layer: its id can never
- * collide with one, and Legend routes its click to onToggleDrawings. */
+ * reader looks for "what can I turn off". Not a model layer, so it is namespaced
+ * with a `$`: `validate()` puts no character rule on a layer id (KEY_PATTERN
+ * governs `node.key` only), so a collision is merely improbable rather than
+ * impossible — the `$` keeps a layer literally named `drawings` from sharing
+ * this row's React key. Routing does not depend on the id either way: Legend
+ * dispatches on `row.drawings === true`, not on a string match. */
 function drawingsRow(input: LegendInput): LegendRow[] {
   if (input.drawings === undefined) return [];
   return [
     {
-      id: 'layers:drawings',
+      id: 'layers:$drawings',
       section: 'layers',
       label: 'Drawings',
       swatch: { draw: 'line', style: { width: 2.5 }, color: 'var(--dg-ink)' },

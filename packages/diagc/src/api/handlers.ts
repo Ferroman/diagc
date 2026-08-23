@@ -99,7 +99,7 @@ export async function listDrawings(diagramsDir: string): Promise<HandlerResult> 
   return { status: 200, body: { drawings } };
 }
 
-/** the JSON source (+ sibling layout) of a designer-owned diagram — the studio
+/** the JSON source (+ sibling layout and drawings) of a designer-owned diagram — the studio
  * reads these directly so it never depends on a compile watcher for its own files */
 export async function readDiagram(diagramsDir: string, name: string): Promise<HandlerResult> {
   if (!isSafeName(name)) return { status: 400, body: { issues: [{ message: `Unsafe name '${name}'` }] } };
@@ -223,8 +223,13 @@ export async function saveDrawings(diagramsDir: string, name: string, payload: u
   if (!hasStrokes) {
     try {
       await unlink(target);
-    } catch {
-      /* nothing to delete */
+    } catch (e) {
+      // ENOENT only: there was nothing to delete, which is the ordinary case for
+      // a diagram that never had ink. Anything else (EACCES, EPERM, EISDIR) means
+      // the strokes are still on disk — rethrow so dispatch turns it into a 500
+      // and useEditor.save surfaces it, instead of answering `{ ok: true }` and
+      // letting the erased strokes resurrect on the next boot.
+      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
     }
     return { status: 200, body: { ok: true } };
   }

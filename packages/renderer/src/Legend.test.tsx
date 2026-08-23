@@ -156,7 +156,7 @@ describe('Legend', () => {
     const onToggleDrawings = vi.fn();
     const withDrawings: LegendRow[] = [
       ...rows,
-      { id: 'layers:drawings', section: 'layers', label: 'Drawings', drawings: true, active: true, swatch: { draw: 'line', style: { width: 2.5 }, color: 'var(--dg-ink)' } },
+      { id: 'layers:$drawings', section: 'layers', label: 'Drawings', drawings: true, active: true, swatch: { draw: 'line', style: { width: 2.5 }, color: 'var(--dg-ink)' } },
     ];
     render(<Legend rows={withDrawings} interactive onToggleDrawings={onToggleDrawings} />);
     const btn = screen.getByRole('button', { name: 'Drawings' });
@@ -166,7 +166,7 @@ describe('Legend', () => {
   });
 
   it('renders the Drawings row inert without a handler', () => {
-    render(<Legend rows={[{ id: 'layers:drawings', section: 'layers', label: 'Drawings', drawings: true, active: true }]} interactive={false} />);
+    render(<Legend rows={[{ id: 'layers:$drawings', section: 'layers', label: 'Drawings', drawings: true, active: true }]} interactive={false} />);
     expect(screen.queryByRole('button', { name: 'Drawings' })).toBeNull();
     expect(screen.getByText('Drawings')).toBeTruthy();
   });

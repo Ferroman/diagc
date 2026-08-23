@@ -160,4 +160,31 @@ describe('publishDiagrams', () => {
     expect(page).toContain('"drawings":{"version":1');
     expect(page).toContain('[7,8,9,10]');
   });
+
+  it('warns and drops a sidecar that parses but is not a drawings overlay', async () => {
+    const f = await fixture();
+    const b = model('smudged');
+    b.node('a', { name: 'A' });
+    await writeFile(path.join(f.artifacts, 'smudged.diagram.json'), JSON.stringify(b.toJSON()));
+    // Valid JSON, invalid overlay: an odd-length `points` array is exactly what
+    // isDrawings rejects — and what the renderer would read as a half-coordinate.
+    await writeFile(
+      path.join(f.src, 'smudged.drawings.json'),
+      JSON.stringify({ version: 1, planes: { default: [{ id: 'k1', points: [1] }] } }),
+    );
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const res = await publishDiagrams({
+        srcDir: f.src, artifactsDir: f.artifacts, htmlDir: f.html, staticDir: f.stat, shellPath: f.shell,
+        libraryDir: f.lib, assetsDir: f.assets, images: false,
+      });
+      // the page still ships — just without ink
+      expect(res.pages).toContain(path.join(f.html, 'smudged.html'));
+      const page = await readFile(path.join(f.html, 'smudged.html'), 'utf8');
+      expect(page).not.toContain('"drawings"');
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('smudged'));
+    } finally {
+      warn.mockRestore();
+    }
+  });
 });

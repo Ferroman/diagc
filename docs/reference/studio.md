@@ -57,8 +57,8 @@ New nodes are **typeless** — just a label — so quick sketches stay clean. Gi
 | Undo | `Ctrl/Cmd + Z` |
 | Redo | `Ctrl/Cmd + Shift + Z` or `Ctrl + Y` |
 | Save | `Ctrl/Cmd + S` |
-| Pen | `p` |
-| Eraser | `e` |
+| Pen | `P` |
+| Eraser | `E` |
 | Back to Select | `Esc` |
 
 Shortcuts are ignored while you are typing in a form field. History is capped at 100 steps.
@@ -97,7 +97,7 @@ The layout file is paired by name alone, so a diagram compiled from TypeScript c
 
 Subfolders are preserved. All are pretty-printed JSON that reviews like any other source.
 
-An unsaved dot sits next to Save while the session is dirty; **Done** warns before discarding.
+An unsaved dot sits next to Save while the session is dirty; edits autosave a moment after you stop and **Done** flushes a final save, so nothing is discarded on the way out — undo is how you take a change back.
 
 ## Gotchas
 

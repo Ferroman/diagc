@@ -4,7 +4,7 @@ Circle a region, sketch an arrow, scribble a remark — by hand, on top of the b
 
 1. Open a JSON-backed diagram and press **Edit**.
 2. Pick **Pen** in the toolbar (or press `p`). Choose a color (∅ is the theme's ink) and a width.
-3. Drag on the canvas. Scroll to pan and ctrl/pinch to zoom while the pen is active.
+3. Drag on the canvas. Scrolling still pans and `Ctrl` + wheel still zooms while the pen is active — with a mouse or trackpad. On a touch screen a second finger is ignored while you are drawing, so a resting palm cannot hijack the stroke; switch back to **Select** to pan and zoom by touch.
 4. **Eraser** (`e`) removes a stroke per click. `Esc` returns to Select. Every stroke is one undo step.
 5. Autosave writes `.diagrams/src/<name>.drawings.json` next to the model. Commit it with the rest.
 

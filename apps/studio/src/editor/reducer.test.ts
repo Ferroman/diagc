@@ -76,4 +76,20 @@ describe('editor reducer', () => {
     s = undo(s);
     expect(s.state.drawings.planes['default']).toHaveLength(1);
   });
+
+  it('migrates BOTH default buckets when positions and strokes exist together', () => {
+    // The two migrations chain off `nextState`, not off the raw command result,
+    // so the second must build on the first. Filling only one bucket (as the two
+    // tests above do) cannot tell a chain from a pair of independent rewrites of
+    // `state` — this one can: dropping the chaining loses the layout bucket.
+    let s = startSession('draft', state());
+    s = dispatch(s, { type: 'set-position', nodeId: 'a', x: 7, y: 8 });
+    s = dispatch(s, { type: 'add-stroke', stroke: { id: 'k1', points: [1, 2, 3, 4] } });
+    s = dispatch(s, { type: 'upsert-plane', plane: { id: 'arch', name: 'Architecture' } });
+
+    expect(s.state.layout.planes['arch']?.['a']).toEqual({ x: 7, y: 8 });
+    expect(s.state.drawings.planes['arch']).toHaveLength(1);
+    expect(s.state.layout.planes['default']).toBeUndefined();
+    expect(s.state.drawings.planes['default']).toBeUndefined();
+  });
 });

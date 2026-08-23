@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { DiagramModel, LayoutOverlay, Drawings } from '@diagramming/core';
-import { errMessage } from '@diagramming/core';
+import { errMessage, isDrawings } from '@diagramming/core';
 import { classifyAssetRef, rewriteAssetRefs, safeAssetPath } from './assets';
 import { buildGallery } from './gallery';
 import { discoverDiagrams } from './discover';
@@ -40,9 +40,17 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
       const layout = d.layoutPath !== undefined
         ? (JSON.parse(await readFile(d.layoutPath, 'utf8')) as LayoutOverlay)
         : undefined;
-      const drawings = d.drawingsPath !== undefined
-        ? (JSON.parse(await readFile(d.drawingsPath, 'utf8')) as Drawings)
-        : undefined;
+      // A hand-edited sidecar can be valid JSON and still not be a drawings
+      // overlay. Publishing it would stamp shapeless data into a page that has
+      // no validator of its own, so it is warned about and dropped — the page
+      // still ships, just without ink. (Unparseable JSON keeps its old
+      // behaviour: it throws, and the diagram is skipped below.)
+      let drawings: Drawings | undefined;
+      if (d.drawingsPath !== undefined) {
+        const parsed = JSON.parse(await readFile(d.drawingsPath, 'utf8')) as unknown;
+        if (isDrawings(parsed)) drawings = parsed;
+        else console.warn(`publish: ignoring malformed drawings sidecar for diagram "${d.name}" (${d.drawingsPath}); the page ships without ink.`);
+      }
 
       // Pre-read every inlinable ref so the rewrite can stay a pure sync function.
       for (const n of modelRaw.nodes) {

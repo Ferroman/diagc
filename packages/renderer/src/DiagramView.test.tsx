@@ -794,6 +794,10 @@ describe('freehand drawings', () => {
     const { container } = render(<DiagramView model={containerEndpointModel()} drawings={drawings} enteredPath={['sys']} />);
     await waitFor(() => expect(container.querySelector('svg.dg-drawings')).not.toBeNull());
     expect((container.querySelector('svg.dg-drawings') as SVGElement).style.display).toBe('none');
+    // …and the switch goes with it: a control that flips an already-hidden layer
+    // would report a state the canvas cannot honour.
+    expect(screen.queryByLabelText('Hide drawings')).toBeNull();
+    expect(screen.queryByLabelText('Show drawings')).toBeNull();
   });
 
   it('pen tool: a pointer gesture on the canvas reports one stroke with the pen settings', async () => {

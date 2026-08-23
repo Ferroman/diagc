@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -177,6 +177,22 @@ describe('designer api handlers', () => {
     await expect(readFile(file, 'utf8')).rejects.toThrow();
     // a second empty save must not fail on the missing file
     expect((await saveDrawings(dir, 'sketch', { version: 1, planes: {} })).status).toBe(200);
+  });
+
+  it('rethrows a non-ENOENT unlink failure instead of reporting a successful erase', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    await saveDrawings(dir, 'sketch', { version: 1, planes: { default: [{ id: 'k1', points: [1, 2] }] } });
+    // root ignores the write bit, so the chmod would not block the unlink and
+    // the call would (correctly) succeed — there is nothing to assert there.
+    if (process.getuid?.() === 0) return;
+    await chmod(dir, 0o555);
+    try {
+      // The strokes are still on disk: answering `{ ok: true }` here would let
+      // them resurrect on the next boot, so the failure must reach the caller.
+      await expect(saveDrawings(dir, 'sketch', { version: 1, planes: {} })).rejects.toThrow();
+    } finally {
+      await chmod(dir, 0o755);
+    }
   });
 
   it('skips a corrupt drawings file when listing', async () => {

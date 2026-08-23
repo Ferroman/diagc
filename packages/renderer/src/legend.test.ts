@@ -336,7 +336,7 @@ describe('drawings row', () => {
     expect(plain).toHaveLength(0);
     const inked = rows(fixture(), { drawings: { active: false } });
     const row = inked.find((r) => r.drawings === true);
-    expect(row).toMatchObject({ id: 'layers:drawings', section: 'layers', label: 'Drawings', active: false });
+    expect(row).toMatchObject({ id: 'layers:$drawings', section: 'layers', label: 'Drawings', active: false });
     expect(row?.swatch).toEqual({ draw: 'line', style: { width: 2.5 }, color: 'var(--dg-ink)' });
     // after every model layer row
     expect(inked.filter((r) => r.section === 'layers').at(-1)?.drawings).toBe(true);

@@ -177,8 +177,18 @@ export function App() {
   const [penColor, setPenColor] = useState('');
   const [penWidth, setPenWidth] = useState<number>(DEFAULT_STROKE_WIDTH);
   // Read through a ref by the once-subscribed keydown handler (like addNodeRef).
+  // Pen/Eraser are refused while drilled in, matching the toolbar chips, which
+  // are disabled there for the same reason (drawings are a top-level layer).
+  // The renderer is already inert while drilled, so nothing would be drawn
+  // either way — but a chip that reads pressed while disabled, and a pen that
+  // springs to life the moment you drill back out, is a first-hour
+  // contradiction. Select/Escape always get through: leaving a tool must never
+  // depend on where you are.
   const toolKeyRef = useRef<(t: DrawTool) => void>(() => {});
-  toolKeyRef.current = setTool;
+  toolKeyRef.current = (t) => {
+    if (t !== 'select' && enteredPath.length > 0) return;
+    setTool(t);
+  };
 
   const edit = useEditSession({
     setDrafts,

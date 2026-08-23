@@ -4,8 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 
 // Mirrors the fixture shape in editor/shell.test.tsx: two diagrams, no planes,
-// so the layout preview resolves to the 'default' key throughout.
-const { sketchModel, twoModel } = vi.hoisted(() => ({
+// so the layout preview resolves to the 'default' key throughout. `drillModel`
+// adds the one thing the others lack — a container to drill into — so a deep
+// link can put the app in the drilled state the pen is refused in.
+const { sketchModel, twoModel, drillModel } = vi.hoisted(() => ({
   sketchModel: {
     version: 1,
     id: 'sketch',
@@ -22,6 +24,19 @@ const { sketchModel, twoModel } = vi.hoisted(() => ({
     name: 'two',
     nodes: [{ id: 'z', name: 'zed', type: 'service' }],
     containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  },
+  drillModel: {
+    version: 1,
+    id: 'drill',
+    name: 'drill',
+    nodes: [
+      { id: 'sys', name: 'sys', type: 'system' },
+      { id: 'a', name: 'a', type: 'service' },
+    ],
+    containment: [{ parent: 'sys', child: 'a' }],
     relations: [],
     layers: [],
     planes: [],
@@ -139,5 +154,48 @@ describe('view-mode layout preview', () => {
     );
     expect(screen.queryByRole('button', { name: /reset layout/i })).toBeNull();
     expect((screen.getByLabelText('Layout algorithm') as HTMLSelectElement).value).toBe('layered');
+  });
+});
+
+// Its own boot stub, and its own describe: `names` is sorted, so folding 'drill'
+// into the list above would make it the default selection and pull the preview
+// and pen tests onto the wrong diagram.
+describe('drilled-in canvas tools', () => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/');
+    localStorage.clear();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url === '/api/diagrams') {
+          return new Response(
+            JSON.stringify({ diagrams: [{ name: 'drill', model: drillModel, issues: [], editable: true }] }),
+            { status: 200 },
+          );
+        }
+        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
+        if (url === '/api/drawings') return new Response(JSON.stringify({ drawings: {} }), { status: 200 });
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }),
+    );
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('ignores the pen key while drilled in, so the chip cannot read pressed while disabled', async () => {
+    window.location.hash = '#/drill/sys'; // deep-link straight into the container
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
+    const pen = (await screen.findByRole('button', { name: 'Pen' })) as HTMLButtonElement;
+    // The toolbar disabling Pen is how we know the drill actually took effect:
+    // it is driven by the same `enteredPath` the key gate reads.
+    await waitFor(() => expect(pen.disabled).toBe(true));
+
+    fireEvent.keyDown(window, { key: 'p' });
+
+    expect(pen.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('button', { name: 'Select' }).getAttribute('aria-pressed')).toBe('true');
   });
 });

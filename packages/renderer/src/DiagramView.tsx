@@ -1297,7 +1297,11 @@ function Inner(props: DiagramViewProps) {
               {...(legendConfig?.title !== undefined ? { title: legendConfig.title } : {})}
               interactive={props.chrome !== false}
               {...(props.onToggleLayer !== undefined ? { onToggleLayer: props.onToggleLayer } : {})}
-              onToggleDrawings={() => setDrawingsVisible((v) => !v)}
+              // Same derivation as `interactive` above: Legend decides "is this
+              // row a button" from the handler alone, so a chrome-less host (the
+              // PNG export) must get no handler — or the export would carry a
+              // focusable control nothing can press.
+              {...(props.chrome !== false ? { onToggleDrawings: () => setDrawingsVisible((v) => !v) } : {})}
               icons={icons}
               onMeasure={setLegendSize}
             />
@@ -1314,7 +1318,10 @@ function Inner(props: DiagramViewProps) {
           >
             ◎
           </ControlButton>
-          {strokes.length > 0 && (
+          {/* Gated on the drill root for the same reason the layer is: drilled in,
+              every stroke is hidden, so a switch that flips an invisible layer is
+              a control with nothing to show for it. */}
+          {strokes.length > 0 && drillRoot === undefined && (
             <ControlButton
               className={`dg-drawings-toggle${drawingsVisible ? '' : ' dg-drawings-toggle-off'}`}
               title={drawingsVisible ? 'Hide drawings' : 'Show drawings'}
