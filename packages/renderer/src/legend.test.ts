@@ -329,3 +329,20 @@ describe('legendRows: layers assigned by layerRules', () => {
     expect(rows.map((r) => r.id)).toContain('layers:sql');
   });
 });
+
+describe('drawings row', () => {
+  it('appends a Drawings row to the Layers section only when told the plane has strokes', () => {
+    const plain = rows(fixture()).filter((r) => r.drawings === true);
+    expect(plain).toHaveLength(0);
+    const inked = rows(fixture(), { drawings: { active: false } });
+    const row = inked.find((r) => r.drawings === true);
+    expect(row).toMatchObject({ id: 'layers:drawings', section: 'layers', label: 'Drawings', active: false });
+    expect(row?.swatch).toEqual({ draw: 'line', style: { width: 2.5 }, color: 'var(--dg-ink)' });
+    // after every model layer row
+    expect(inked.filter((r) => r.section === 'layers').at(-1)?.drawings).toBe(true);
+  });
+
+  it('omits the row when the legend hides the layers section', () => {
+    expect(rows(fixture(), { drawings: { active: true }, config: { show: ['kinds'] } }).some((r) => r.drawings)).toBe(false);
+  });
+});

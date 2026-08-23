@@ -80,13 +80,14 @@ export interface LegendProps {
    *  looks clickable but has nothing to call is worse than a plain row. */
   interactive: boolean;
   onToggleLayer?: (id: string) => void;
+  onToggleDrawings?: () => void;
   /** resolves `icon` on a shape swatch; without it no glyph is drawn */
   icons?: IconRegistry;
   /** reports the rendered size so the host can reserve space in an export */
   onMeasure?: (size: { width: number; height: number }) => void;
 }
 
-export function Legend({ rows, title = 'Legend', interactive, onToggleLayer, icons, onMeasure }: LegendProps) {
+export function Legend({ rows, title = 'Legend', interactive, onToggleLayer, onToggleDrawings, icons, onMeasure }: LegendProps) {
   const [collapsed, setCollapsed] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const lastSize = useRef<{ width: number; height: number } | null>(null);
@@ -137,6 +138,20 @@ export function Legend({ rows, title = 'Legend', interactive, onToggleLayer, ico
                   <Swatch {...(r.swatch !== undefined ? { swatch: r.swatch } : {})} {...(icons !== undefined ? { icons } : {})} />
                 );
                 const layer = r.layer;
+                if (r.drawings === true && onToggleDrawings !== undefined) {
+                  return (
+                    <button
+                      type="button"
+                      key={r.id}
+                      className={`dg-legend-row dg-legend-toggle${r.active === true ? '' : ' dg-legend-off'}`}
+                      aria-pressed={r.active === true}
+                      onClick={onToggleDrawings}
+                    >
+                      {swatch}
+                      <span className="dg-legend-label">{r.label}</span>
+                    </button>
+                  );
+                }
                 // A layer row is a button only where a handler exists to answer
                 // it. On a published page there is none, so the row is inert
                 // markup rather than a focusable control that does nothing.
@@ -157,7 +172,7 @@ export function Legend({ rows, title = 'Legend', interactive, onToggleLayer, ico
                 return (
                   <div
                     key={r.id}
-                    className={`dg-legend-row${layer !== undefined && r.active !== true ? ' dg-legend-off' : ''}`}
+                    className={`dg-legend-row${(layer !== undefined || r.drawings === true) && r.active !== true ? ' dg-legend-off' : ''}`}
                   >
                     {swatch}
                     <span className="dg-legend-label">{r.label}</span>

@@ -31,6 +31,8 @@ export interface LegendRow {
   layer?: string;
   /** layer rows only */
   active?: boolean;
+  /** the freehand-drawings row (not a model layer) */
+  drawings?: true;
 }
 
 export interface LegendInput {
@@ -55,6 +57,8 @@ export interface LegendInput {
    *  row nothing can un-grey is noise, not information. NOT the same question as
    *  "is chrome shown": a chrome-less host can still supply a toggle handler. */
   canToggleLayers: boolean;
+  /** present when the active plane has strokes: the Drawings row and whether it is on */
+  drawings?: { active: boolean };
 }
 
 const DEFAULT_SECTIONS: readonly LegendSection[] = ['layers', 'kinds'];
@@ -231,10 +235,27 @@ function swatchOf(item: LegendItem, input: LegendInput): LegendSwatch | undefine
   return undefined;
 }
 
+/** The tracing-paper switch, listed with the layers because that is where a
+ * reader looks for "what can I turn off". Not a model layer: its id can never
+ * collide with one, and Legend routes its click to onToggleDrawings. */
+function drawingsRow(input: LegendInput): LegendRow[] {
+  if (input.drawings === undefined) return [];
+  return [
+    {
+      id: 'layers:drawings',
+      section: 'layers',
+      label: 'Drawings',
+      swatch: { draw: 'line', style: { width: 2.5 }, color: 'var(--dg-ink)' },
+      drawings: true,
+      active: input.drawings.active,
+    },
+  ];
+}
+
 export function legendRows(input: LegendInput): LegendRow[] {
   const sections = input.config.show ?? DEFAULT_SECTIONS;
   const derived: LegendRow[] = [
-    ...(sections.includes('layers') ? layerRows(input) : []),
+    ...(sections.includes('layers') ? [...layerRows(input), ...drawingsRow(input)] : []),
     ...(sections.includes('kinds') ? kindRows(input) : []),
     ...(sections.includes('types') ? typeRows(input) : []),
   ];

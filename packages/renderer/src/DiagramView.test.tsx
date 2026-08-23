@@ -887,4 +887,14 @@ describe('freehand drawings', () => {
       HTMLElement.prototype.getBoundingClientRect = original;
     }
   });
+
+  it('the legend Drawings row toggles the same switch as the control button', async () => {
+    const m = { ...containerEndpointModel(), legend: { show: ['layers' as const] } };
+    const { container } = render(<DiagramView model={m} drawings={drawings} />);
+    const row = await screen.findByRole('button', { name: 'Drawings' });
+    const svg = container.querySelector('svg.dg-drawings') as SVGElement;
+    fireEvent.click(row);
+    expect(svg.style.display).toBe('none');
+    expect(screen.getByLabelText('Show drawings')).toBeTruthy();
+  });
 });

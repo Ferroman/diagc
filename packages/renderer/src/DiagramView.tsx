@@ -548,6 +548,9 @@ function Inner(props: DiagramViewProps) {
             // Not `chrome`: a greyed row is only worth showing to a reader who
             // can un-grey it, and only a host with a handler offers that.
             canToggleLayers: props.onToggleLayer !== undefined,
+            // Only when this plane has ink: no strokes means no toggle to show,
+            // exactly the condition the control button already uses.
+            ...(strokes.length > 0 ? { drawings: { active: drawingsVisible } } : {}),
           }),
     [
       legendConfig,
@@ -559,6 +562,8 @@ function Inner(props: DiagramViewProps) {
       typeRegistry,
       kindRegistry,
       props.onToggleLayer,
+      strokes,
+      drawingsVisible,
     ],
   );
   // Read through `legendReserveRef` (not the state above) by the layoutApiRef
@@ -1288,6 +1293,7 @@ function Inner(props: DiagramViewProps) {
               {...(legendConfig?.title !== undefined ? { title: legendConfig.title } : {})}
               interactive={props.chrome !== false}
               {...(props.onToggleLayer !== undefined ? { onToggleLayer: props.onToggleLayer } : {})}
+              onToggleDrawings={() => setDrawingsVisible((v) => !v)}
               icons={icons}
               onMeasure={setLegendSize}
             />
