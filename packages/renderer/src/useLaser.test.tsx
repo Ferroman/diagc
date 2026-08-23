@@ -45,6 +45,16 @@ describe('useLaser', () => {
     expect(getByTestId('trails').children).toHaveLength(0);
   });
 
+  it('keeps every sample, so the trail does not reshape on release', () => {
+    const { getByTestId } = render(<Host enabled />);
+    const pane = getByTestId('pane');
+    fireEvent.pointerDown(pane, { button: 0, pointerId: 1, clientX: 0, clientY: 0 });
+    fireEvent.pointerMove(pane, { pointerId: 1, clientX: 20, clientY: 0 }); // collinear: the pen would drop it
+    fireEvent.pointerMove(pane, { pointerId: 1, clientX: 40, clientY: 0 });
+    fireEvent.pointerUp(pane, { pointerId: 1, clientX: 40, clientY: 0 });
+    expect(getByTestId('trails').children[0]?.textContent).toBe('0,0,10,0,20,0');
+  });
+
   it('each trail fades on its own clock', () => {
     const { getByTestId } = render(<Host enabled />);
     const pane = getByTestId('pane');
@@ -54,7 +64,7 @@ describe('useLaser', () => {
     expect(getByTestId('trails').children).toHaveLength(2);
     act(() => vi.advanceTimersByTime(LASER_FADE_MS / 2));
     expect(getByTestId('trails').children).toHaveLength(1);
-    expect(getByTestId('trails').children[0]?.textContent).toBe('0,0,40,0');
+    expect(getByTestId('trails').children[0]?.textContent).toBe('0,0,20,0,40,0');
     act(() => vi.advanceTimersByTime(LASER_FADE_MS / 2));
     expect(getByTestId('trails').children).toHaveLength(0);
   });

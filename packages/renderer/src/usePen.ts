@@ -14,8 +14,13 @@ export interface PenOptions {
   enabled: boolean;
   /** screen → flow coordinates (reactFlow.screenToFlowPosition) */
   toFlow: (p: { x: number; y: number }) => { x: number; y: number };
-  /** one finished stroke: rounded, simplified flow points */
+  /** one finished stroke: rounded flow points, simplified unless `simplify` is false */
   onStroke: (points: number[]) => void;
+  /** RDP-simplify the finished stroke (default true). The pen wants it — the
+   * sidecar would otherwise hold ten samples for every visible bend — but a
+   * trail that is never saved keeps every sample, so nothing reshapes on
+   * release. */
+  simplify?: boolean;
 }
 
 /**
@@ -26,7 +31,10 @@ export interface PenOptions {
  * not intercepted — scroll-pan and ctrl/pinch zoom keep working mid-drawing.
  * Only the primary button draws; anything else propagates untouched.
  */
-export function usePen({ enabled, toFlow, onStroke }: PenOptions): { live: number[] | null; handlers: PenHandlers } {
+export function usePen({ enabled, toFlow, onStroke, simplify = true }: PenOptions): {
+  live: number[] | null;
+  handlers: PenHandlers;
+} {
   const [live, setLive] = useState<number[] | null>(null);
   const pointsRef = useRef<number[] | null>(null);
   const pointerIdRef = useRef<number | null>(null);
@@ -97,9 +105,12 @@ export function usePen({ enabled, toFlow, onStroke }: PenOptions): { live: numbe
       pointsRef.current = null;
       pointerIdRef.current = null;
       setLive(null);
-      if (report && pts !== null) onStroke(simplifyStroke(pts.map((v) => Math.round(v))));
+      if (report && pts !== null) {
+        const rounded = pts.map((v) => Math.round(v));
+        onStroke(simplify ? simplifyStroke(rounded) : rounded);
+      }
     },
-    [onStroke],
+    [onStroke, simplify],
   );
 
   const onPointerUpCapture = useCallback<Handler>((e) => finish(e, true), [finish]);

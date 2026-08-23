@@ -53,6 +53,6 @@ export function useLaser({ enabled, toFlow }: LaserOptions): {
     };
   }, []);
 
-  const pen = usePen({ enabled, toFlow, onStroke });
+  const pen = usePen({ enabled, toFlow, onStroke, simplify: false });
   return { live: pen.live, trails, handlers: pen.handlers };
 }
