@@ -1089,4 +1089,40 @@ describe('git-graph notation', () => {
     expect(wrapper?.style.width).toBe(`${GIT_LAYOUT.DIAMETER}px`);
     expect(wrapper?.style.height).toBe(`${GIT_LAYOUT.DIAMETER}px`);
   });
+
+  it('pins a dragged lane\'s descendant commits too, so their routed links fall back', async () => {
+    // master: 1.0 -> 2.0 (its own commit link); nightly: n1 -> n2 (from 1.0, its
+    // own commit link) — an independent lane whose link never touches master.
+    const m = model('g3');
+    const g = m.gitGraph();
+    const master = g.branch('master', { name: 'Master' });
+    const nightly = g.branch('nightly', { name: 'Nightly' });
+    const v1 = master.commit('1.0');
+    nightly.commit({ from: v1 });
+    master.commit('2.0');
+    nightly.commit();
+    const built = m.toJSON();
+
+    const { container } = render(
+      <DiagramView
+        model={built}
+        plane="git-graph"
+        notation="git-graph"
+        layout={{ version: 1, planes: { 'git-graph': { master: { x: 10, y: 10 } } } }}
+      />,
+    );
+    await waitFor(() => expect(container.querySelectorAll('.dg-circle-node')).toHaveLength(4));
+    const masterLink = await waitFor(() => {
+      const el = container.querySelector('[data-testid="rf__edge-master-1=>master-2:"] path.react-flow__edge-path');
+      if (el === null) throw new Error('master commit link not rendered');
+      return el;
+    });
+    const nightlyLink = container.querySelector('[data-testid="rf__edge-nightly-1=>nightly-2:"] path.react-flow__edge-path');
+    expect(nightlyLink).not.toBeNull();
+    // master's lane is dragged (pinned) — its commits move with it, so their
+    // precomputed route is stale: falls back to a floating (bezier, 'C') path.
+    expect(masterLink.getAttribute('d') ?? '').toContain('C');
+    // nightly is untouched — still on its precomputed routed (non-bezier) path.
+    expect(nightlyLink?.getAttribute('d') ?? '').not.toContain('C');
+  });
 });

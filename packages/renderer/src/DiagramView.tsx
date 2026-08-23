@@ -1036,19 +1036,29 @@ function Inner(props: DiagramViewProps) {
   // whose routes are the drawing (a git link has no floating form worth showing).
   // Endpoints whose position is manually overridden (saved pins, or ephemeral
   // view-mode drags) have a stale precomputed route, so those edges fall back
-  // to floating paths. Kept as a small memo apart from the edges list itself so
-  // a plane/layout change alone doesn't force the whole edge-data rebuild.
+  // to floating paths. A pinned id can also be a CONTAINER (e.g. a dragged git
+  // lane) — dragging it moves every descendant along with it, so their routes
+  // are just as stale even though only the container's own id was pinned. Walk
+  // the compiled tree once to expand each pinned id to its whole subtree: an
+  // endpoint counts as pinned when it, or any ancestor, is. Kept as a small memo
+  // apart from the edges list itself so a plane/layout change alone doesn't
+  // force the whole edge-data rebuild.
   const orthogonal = layoutSettings?.edgeRouting === 'orthogonal' || profile.layout !== undefined;
-  const pinnedIds = useMemo(
-    () =>
-      orthogonal
-        ? new Set<string>([
-            ...Object.keys(props.layout?.planes[layoutPlaneKey(props.model, props.plane)] ?? {}),
-            ...(editing ? [] : Object.keys(viewPositions)),
-          ])
-        : undefined,
-    [orthogonal, props.layout, props.model, props.plane, editing, viewPositions],
-  );
+  const pinnedIds = useMemo(() => {
+    if (!orthogonal) return undefined;
+    const rawPinned = new Set<string>([
+      ...Object.keys(props.layout?.planes[layoutPlaneKey(props.model, props.plane)] ?? {}),
+      ...(editing ? [] : Object.keys(viewPositions)),
+    ]);
+    const expanded = new Set<string>();
+    const walk = (n: ViewNode, ancestorPinned: boolean) => {
+      const pinned = ancestorPinned || rawPinned.has(n.id);
+      if (pinned) expanded.add(n.id);
+      n.children.forEach((c) => walk(c, pinned));
+    };
+    compiled.roots.forEach((r) => walk(r, false));
+    return expanded;
+  }, [orthogonal, props.layout, props.model, props.plane, editing, viewPositions, compiled]);
 
   // The per-edge data channel inputs, as one object the cached builder keys
   // its identity on (see build-data.ts) — same stability contract as the node
