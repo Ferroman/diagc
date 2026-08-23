@@ -52,6 +52,7 @@ import { DrawingsLayer } from './DrawingsLayer';
 import { drillChain, truncatePath } from './drill';
 import { reconnectPin, type Side } from './floating';
 import { focusForVisible } from './focus';
+import { GitLanesOverlay } from './GitLanesOverlay';
 import { estimateLabelSize } from './label-size';
 import { layoutView, type EdgePoint, type NodeGeometry } from './layout';
 import { Legend } from './Legend';
@@ -556,18 +557,29 @@ function Inner(props: DiagramViewProps) {
     };
   }, [laser.handlers, pen.handlers]);
 
+  // A notation may declare containers that never fold (git lanes are rows, not
+  // boxes with an inside): they are pinned expanded over whatever the host's
+  // pins say. The host's own pins still feed the chips, so nothing else changes.
+  const effectivePins = useMemo(() => {
+    const always = profile.node?.alwaysExpanded;
+    if (always === undefined) return props.pins;
+    const pins: Record<string, 'expanded' | 'collapsed'> = { ...(props.pins ?? {}) };
+    for (const n of props.model.nodes) if (always(n)) pins[n.id] = 'expanded';
+    return pins;
+  }, [profile, props.pins, props.model.nodes]);
+
   const compiled = useMemo(
     () =>
       compileView(props.model, {
         // drilled → `root` drives visibility; otherwise `focus` (pins + the plane
         // sheet-flip). Identical for view and edit — only affordances differ.
         focus: drillRoot !== undefined ? undefined : focus,
-        pins: props.pins,
+        pins: effectivePins,
         activeLayers: props.activeLayers,
         ...(props.plane !== undefined ? { plane: props.plane } : {}),
         ...(drillRoot !== undefined ? { root: drillRoot } : {}),
       }),
-    [props.model, props.plane, focus, drillRoot, props.pins, props.activeLayers],
+    [props.model, props.plane, focus, drillRoot, effectivePins, props.activeLayers],
   );
 
   // The model opts in; the control button overrides locally. Never persisted.
@@ -692,7 +704,14 @@ function Inner(props: DiagramViewProps) {
   const [routes, setRoutes] = useState<Map<string, EdgePoint[]>>(() => new Map());
   useEffect(() => {
     let live = true;
-    void layoutView(compiled, sizeHints, layoutSettings)
+    // A notation that owns the arrangement bypasses elk entirely; wrapped in a
+    // resolved promise so both paths share the .then/.catch below.
+    const notationLayout = profile.layout;
+    const arrange =
+      notationLayout !== undefined
+        ? Promise.resolve().then(() => notationLayout(compiled, props.model, props.plane, sizeHints))
+        : layoutView(compiled, sizeHints, layoutSettings);
+    void arrange
       .then((r) => {
         if (!live) return;
         setGeometry((old) => (old === r.geometry ? old : r.geometry));
@@ -716,7 +735,7 @@ function Inner(props: DiagramViewProps) {
     return () => {
       live = false;
     };
-  }, [compiled, sizeHints, layoutSettings]);
+  }, [compiled, sizeHints, layoutSettings, profile, props.model, props.plane]);
 
   // Alt-held enables ephemeral node dragging in view mode. A blur listener
   // releases a stuck Alt (e.g. after Alt+Tab).
@@ -830,6 +849,21 @@ function Inner(props: DiagramViewProps) {
   const hiddenCounts = useMemo(() => countAnchored(props.model, compiled), [props.model, compiled]);
   const metaKeys = props.onNodeMetaKeys ?? DEFAULT_ON_NODE_META_KEYS;
 
+  // Notation colour hooks: a node/edge takes its lane's (or otherwise the
+  // notation's) colour where it sets none itself. Absent notation = absent map,
+  // so an unrelated diagram's build-data pass never sees a `nodeColors` field.
+  const nodeColors = useMemo(() => profile.node?.colorOf?.(props.model, props.plane), [profile, props.model, props.plane]);
+  const edgeColors = useMemo(() => {
+    const colorOf = profile.edge?.colorOf;
+    if (colorOf === undefined) return undefined;
+    const m = new Map<string, string>();
+    for (const e of compiled.edges) {
+      const c = colorOf(e, props.model, props.plane);
+      if (c !== undefined) m.set(e.id, c);
+    }
+    return m;
+  }, [profile, compiled, props.model, props.plane]);
+
   // The per-node data channel inputs, as one object the cached builder keys
   // its identity on (see build-data.ts): while every field is referentially
   // unchanged, the cached data objects are reused instead of rebuilt.
@@ -854,6 +888,7 @@ function Inner(props: DiagramViewProps) {
       onSetTableColumns: edit?.onSetTableColumns,
       stylePreset: preset.rough !== undefined ? preset : undefined,
       notation: props.notation,
+      ...(nodeColors !== undefined ? { nodeColors } : {}),
     }),
     [
       metaKeys,
@@ -874,6 +909,7 @@ function Inner(props: DiagramViewProps) {
       edit?.onSetTableColumns,
       preset,
       props.notation,
+      nodeColors,
     ],
   );
 
@@ -985,12 +1021,13 @@ function Inner(props: DiagramViewProps) {
     };
   }, [props.layoutApiRef, reactFlow]);
 
-  // Orthogonal routing is a per-plane setting; endpoints whose position is
-  // manually overridden (saved pins, or ephemeral view-mode drags) have a stale
-  // precomputed route, so those edges fall back to floating paths. Kept as a
-  // small memo apart from the edges list itself so a plane/layout change alone
-  // doesn't force the whole edge-data rebuild.
-  const orthogonal = layoutSettings?.edgeRouting === 'orthogonal';
+  // Orthogonal routing is a per-plane setting — or the notation's own layout,
+  // whose routes are the drawing (a git link has no floating form worth showing).
+  // Endpoints whose position is manually overridden (saved pins, or ephemeral
+  // view-mode drags) have a stale precomputed route, so those edges fall back
+  // to floating paths. Kept as a small memo apart from the edges list itself so
+  // a plane/layout change alone doesn't force the whole edge-data rebuild.
+  const orthogonal = layoutSettings?.edgeRouting === 'orthogonal' || profile.layout !== undefined;
   const pinnedIds = useMemo(
     () =>
       orthogonal
@@ -1021,6 +1058,7 @@ function Inner(props: DiagramViewProps) {
       orthogonal,
       pinnedIds,
       routes,
+      ...(edgeColors !== undefined ? { edgeColors } : {}),
     }),
     [
       kindRegistry,
@@ -1036,6 +1074,7 @@ function Inner(props: DiagramViewProps) {
       orthogonal,
       pinnedIds,
       routes,
+      edgeColors,
     ],
   );
 
@@ -1430,6 +1469,9 @@ function Inner(props: DiagramViewProps) {
             {...(preset.rough !== undefined ? { rough: preset.rough } : {})}
             nodeFilter={editing ? null : selectedNode}
           />
+        )}
+        {profile.overlay === 'git-lanes' && placedGeometry !== null && (
+          <GitLanesOverlay model={props.model} plane={props.plane} />
         )}
       </ReactFlow>
     </div>

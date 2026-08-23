@@ -1018,3 +1018,60 @@ describe('laser pointer', () => {
     expect(screen.queryByLabelText('Laser pointer')).toBeNull();
   });
 });
+
+describe('git-graph notation', () => {
+  /** master: 1.0 → 2.0 (merges hf); hotfix: hf (from 1.0); nightly: n1 (from 1.0) */
+  function gitModel() {
+    const m = model('g');
+    const g = m.gitGraph();
+    const master = g.branch('master', { name: 'Master', color: '#7ba7d9' });
+    const hotfix = g.branch('hotfix', { name: 'Hotfix' });
+    const nightly = g.branch('nightly', { name: 'Nightly' });
+    const v10 = master.commit('1.0');
+    const hf = hotfix.commit({ from: v10 });
+    nightly.commit({ from: v10 });
+    master.merge(hf, { tag: '2.0' });
+    return m.toJSON();
+  }
+
+  it('lays lanes out as unfoldable bands with commit circles, routed links and the tails overlay', async () => {
+    const m = gitModel();
+    // a host pin to collapse a lane must lose: a lane is a row, not a box
+    const { container } = render(<DiagramView model={m} plane="git-graph" notation="git-graph" pins={{ master: 'collapsed' }} />);
+    await waitFor(() => expect(container.querySelectorAll('.dg-lane-label')).toHaveLength(3));
+    expect([...container.querySelectorAll('.dg-lane-label')].map((el) => el.textContent)).toEqual(['Master', 'Hotfix', 'Nightly']);
+    expect(container.querySelectorAll('.dg-circle-node')).toHaveLength(4);
+    expect(container.querySelector('.dg-count')).toBeNull();
+    expect(container.querySelector('.dg-canvas')?.classList.contains('dg-notation-git')).toBe(true);
+    expect(container.querySelector('svg.dg-git-lanes')).not.toBeNull();
+    // links are routed polylines (M/L/Q), never floating beziers (C)
+    const paths = await waitFor(() => {
+      const els = container.querySelectorAll('path.react-flow__edge-path');
+      if (els.length === 0) throw new Error('edges not rendered');
+      return els;
+    });
+    for (const p of paths) expect(p.getAttribute('d') ?? 'C').not.toContain('C');
+  });
+
+  it('colours commits and links by lane through the profile', async () => {
+    const m = gitModel();
+    const { container } = render(<DiagramView model={m} plane="git-graph" notation="git-graph" />);
+    await waitFor(() => expect(container.querySelectorAll('.dg-circle-node')).toHaveLength(4));
+    const circles = [...container.querySelectorAll('.dg-circle-node')] as HTMLElement[];
+    expect(circles.some((c) => c.style.borderColor === 'rgb(123, 167, 217)')).toBe(true); // master's commits (jsdom normalizes hex to rgb, #7ba7d9)
+    const strokes = await waitFor(() => {
+      const els = [...container.querySelectorAll('path.react-flow__edge-path')].map((p) => p.getAttribute('style') ?? '');
+      if (els.length === 0) throw new Error('edges not rendered');
+      return els;
+    });
+    expect(strokes.some((s) => s.includes('#7ba7d9'))).toBe(true); // master's commit link
+    expect(strokes.some((s) => s.includes('#d9534f'))).toBe(true); // hotfix palette colour on its branch/merge links
+  });
+
+  it('leaves elk in charge on a plane without a notation layout', async () => {
+    const { container } = render(<DiagramView model={containerEndpointModel()} />);
+    await screen.findByText('gw');
+    expect(container.querySelector('svg.dg-git-lanes')).toBeNull();
+    expect(container.querySelector('.dg-lane')).toBeNull();
+  });
+});
