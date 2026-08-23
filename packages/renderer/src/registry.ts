@@ -1,4 +1,4 @@
-export type ShapeId = 'box' | 'cylinder' | 'pill' | 'hexagon' | 'table' | 'bubble' | 'circle';
+export type ShapeId = 'box' | 'cylinder' | 'pill' | 'hexagon' | 'table' | 'bubble' | 'circle' | 'rounded' | 'diamond' | 'bar' | 'start-dot' | 'end-bullseye' | 'send-signal' | 'receive-signal' | 'note';
 
 export interface TypeStyle {
   shape: ShapeId;
@@ -9,6 +9,14 @@ export interface TypeStyle {
   /** C4-style outline: colored border + colored text over the default fill
    * (instead of the subtle tint), matching the standard C4 stencil */
   outline?: boolean;
+  /** containers of this type never fold under semantic zoom (a lane is a band,
+   * not a box with an inside); DiagramView pins them expanded alongside the
+   * notation profile's node.alwaysExpanded hook */
+  alwaysExpanded?: boolean;
+  /** default leaf w/h when neither the model nor the layout overlay sizes the
+   * node — how fixed-geometry glyphs (dots, bars, diamonds) get real footprints
+   * from the DSL, where no palette template runs */
+  defaultSize?: { width: number; height: number };
 }
 
 export interface KindStyle {
@@ -19,6 +27,8 @@ export interface KindStyle {
   startMarker?: string;
   /** marker name at the target end; overrides the default 'arrow' */
   endMarker?: string;
+  /** draw a lightning-bolt jog at the path midpoint (UML interrupt flow) */
+  zigzag?: boolean;
 }
 
 export interface Registry<T> {
@@ -76,6 +86,21 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   'c4-class': { shape: 'box', label: '[Class]', icon: 'class', outline: true },
   'c4-interface': { shape: 'box', label: '[Interface]', icon: 'interface', outline: true, dashed: true },
   'c4-enum': { shape: 'box', label: '[Enumeration]', icon: 'class', outline: true },
+  // ---- Activity diagram (UML) ------------------------------------------------
+  // Shapes `box` used by frame/lane/region are never drawn — they render as
+  // chrome branches in DiagramNode, but TypeStyle.shape is required.
+  'activity-frame': { shape: 'box', alwaysExpanded: true },
+  'activity-lane': { shape: 'box', alwaysExpanded: true },
+  'activity-region': { shape: 'box', dashed: true, alwaysExpanded: true },
+  'activity-action': { shape: 'rounded' },
+  'activity-decision': { shape: 'diamond', defaultSize: { width: 48, height: 48 } },
+  'activity-bar': { shape: 'bar', defaultSize: { width: 8, height: 100 } },
+  'activity-start': { shape: 'start-dot', defaultSize: { width: 24, height: 24 } },
+  'activity-end': { shape: 'end-bullseye', defaultSize: { width: 28, height: 28 } },
+  'activity-send': { shape: 'send-signal', defaultSize: { width: 140, height: 44 } },
+  'activity-receive': { shape: 'receive-signal', defaultSize: { width: 140, height: 44 } },
+  'activity-object': { shape: 'box' },
+  'activity-note': { shape: 'note', defaultSize: { width: 140, height: 64 } },
 };
 
 export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
@@ -87,6 +112,11 @@ export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
   flow: { animated: true },
   mixed: { width: 2.5 },
   fk: { startMarker: 'crowsfoot', endMarker: 'one' },
+  // ---- Activity diagram (UML) ------------------------------------------------
+  control: {},
+  'object-flow': { dashed: true },
+  interrupt: { zigzag: true },
+  'note-link': { dashed: true, endMarker: 'none' },
 };
 
 function createRegistry<T>(defaults: Record<string, T>, fallback: T, overrides?: Record<string, T>): Registry<T> {

@@ -76,4 +76,28 @@ describe('registries', () => {
     expect(k.startMarker).toBe('crowsfoot');
     expect(k.endMarker).toBe('one');
   });
+
+  it('registers the activity vocabulary', () => {
+    const r = createTypeRegistry();
+    expect(r.resolve('activity-frame')).toEqual({ shape: 'box', alwaysExpanded: true });
+    expect(r.resolve('activity-lane')).toEqual({ shape: 'box', alwaysExpanded: true });
+    expect(r.resolve('activity-region')).toEqual({ shape: 'box', dashed: true, alwaysExpanded: true });
+    expect(r.resolve('activity-action').shape).toBe('rounded');
+    expect(r.resolve('activity-decision')).toEqual({ shape: 'diamond', defaultSize: { width: 48, height: 48 } });
+    expect(r.resolve('activity-bar')).toEqual({ shape: 'bar', defaultSize: { width: 8, height: 100 } });
+    expect(r.resolve('activity-start')).toEqual({ shape: 'start-dot', defaultSize: { width: 24, height: 24 } });
+    expect(r.resolve('activity-end')).toEqual({ shape: 'end-bullseye', defaultSize: { width: 28, height: 28 } });
+    expect(r.resolve('activity-send')).toEqual({ shape: 'send-signal', defaultSize: { width: 140, height: 44 } });
+    expect(r.resolve('activity-receive')).toEqual({ shape: 'receive-signal', defaultSize: { width: 140, height: 44 } });
+    expect(r.resolve('activity-object').shape).toBe('box');
+    expect(r.resolve('activity-note')).toEqual({ shape: 'note', defaultSize: { width: 140, height: 64 } });
+  });
+
+  it('registers the activity relation kinds', () => {
+    const r = createKindRegistry();
+    expect(r.resolve('control')).toEqual({});
+    expect(r.resolve('object-flow')).toEqual({ dashed: true });
+    expect(r.resolve('interrupt')).toEqual({ zigzag: true });
+    expect(r.resolve('note-link')).toEqual({ dashed: true, endMarker: 'none' });
+  });
 });
