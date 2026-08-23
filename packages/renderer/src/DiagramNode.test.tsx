@@ -450,6 +450,32 @@ describe('DiagramNode', () => {
   });
 });
 
+describe('activity diagram nodes', () => {
+  it.each([
+    ['activity-action', 'dg-shape-rounded'],
+    ['activity-decision', 'dg-shape-diamond'],
+    ['activity-bar', 'dg-shape-bar'],
+    ['activity-start', 'dg-shape-start-dot'],
+    ['activity-end', 'dg-shape-end-bullseye'],
+    ['activity-send', 'dg-shape-send-signal'],
+    ['activity-receive', 'dg-shape-receive-signal'],
+    ['activity-note', 'dg-shape-note'],
+  ])('renders %s with class %s', (type, cls) => {
+    const { container } = renderNode({ typeId: type }, undefined, { width: 80, height: 64 });
+    expect(container.querySelector(`.${cls}`)).not.toBeNull();
+  });
+
+  it('renders activity-decision in rough mode with a sketch shape svg', () => {
+    const { container } = renderNode(
+      { typeId: 'activity-decision', stylePreset: stylePreset('sketch') },
+      undefined,
+      { width: 48, height: 48 },
+    );
+    const svg = container.querySelector('svg.dg-sketch-shape');
+    expect(svg).not.toBeNull();
+  });
+});
+
 describe('git graph nodes', () => {
   const gitTypes = createTypeRegistry({ commit: { shape: 'circle' }, branch: { shape: 'box' } });
   const base = (over: Partial<DiagramNodeData>): DiagramNodeData => ({

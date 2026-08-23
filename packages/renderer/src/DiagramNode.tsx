@@ -91,15 +91,11 @@ function accentStyle(color: string | undefined): CSSProperties | undefined {
 }
 
 const sketchKind = (shape: string): import('./sketch').SketchShapeKind =>
-  shape === 'circle'
-    ? 'circle'
-    : shape === 'cylinder'
-      ? 'cylinder'
-      : shape === 'hexagon'
-        ? 'hexagon'
-        : shape === 'bubble'
-          ? 'bubble'
-          : 'box';
+  shape === 'circle' || shape === 'cylinder' || shape === 'hexagon' || shape === 'bubble' ||
+  shape === 'diamond' || shape === 'bar' || shape === 'start-dot' || shape === 'end-bullseye' ||
+  shape === 'send-signal' || shape === 'receive-signal' || shape === 'note'
+    ? (shape as import('./sketch').SketchShapeKind)
+    : 'box';
 
 /** Resolve a node image ref to a URL. Absolute refs (leading '/' or http[s]) —
  * bundled library icons under /library/… — are used as-is; a bare content-hash
