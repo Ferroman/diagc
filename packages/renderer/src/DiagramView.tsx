@@ -16,6 +16,7 @@ import {
   ControlButton,
   Controls,
   getNodesBounds,
+  getViewportForBounds,
   Panel,
   ReactFlow,
   ReactFlowProvider,
@@ -30,13 +31,16 @@ import {
   compileView,
   countAnchored,
   DEFAULT_IMAGE_NODE_SIZE,
+  DEFAULT_STROKE_WIDTH,
   layoutPlaneKey,
   runsToPlainText,
   type Column,
   type DiagramModel,
+  type Drawings,
   type EdgeLabelSide,
   type LayoutOverlay,
   type NotationId,
+  type Stroke,
   type TextRun,
   type ViewNode,
 } from '@diagramming/core';
@@ -44,6 +48,8 @@ import { createIconRegistry, type IconRegistry } from '@diagramming/icons';
 import { Breadcrumbs } from './Breadcrumbs';
 import { buildEdgeDataCached, buildNodeDataCached, type EdgeDataContext, type NodeDataContext } from './build-data';
 import { edgeTypes, nodeTypes, toRfEdge, toRfNode } from './adapter';
+import { strokesBounds } from './drawings';
+import { DrawingsLayer } from './DrawingsLayer';
 import { drillChain, truncatePath } from './drill';
 import { reconnectPin, type Side } from './floating';
 import { focusForVisible } from './focus';
@@ -60,6 +66,7 @@ import { overlayPositions } from './placement';
 import { createKindRegistry, createTypeRegistry, type KindStyle, type Registry, type TypeStyle } from './registry';
 import { stylePreset } from './stylePresets';
 import { useClickCorrelation } from './useClickCorrelation';
+import { usePen } from './usePen';
 import './styles.css';
 import '@fontsource/kalam/400.css';
 import '@fontsource/kalam/700.css';
@@ -68,6 +75,14 @@ export interface DiagramSelection {
   kind: 'node' | 'edge';
   id: string;
   constituentIds?: string[];
+}
+
+/** the studio's canvas tool; absent = select (the only tool in view mode) */
+export type DrawTool = 'select' | 'pen' | 'eraser';
+export interface PenSettings {
+  /** absent → the theme's ink token */
+  color?: string;
+  width: number;
 }
 
 /** dataTransfer MIME type carrying a library entry id when one is dragged from
@@ -119,6 +134,14 @@ export interface DiagramViewProps {
   mode?: 'view' | 'edit';
   /** overlay positions (applied in both modes) that override elk x/y for matching nodes */
   layout?: LayoutOverlay;
+  /** the freehand-drawings sidecar; strokes of the active plane are drawn above
+   * the nodes at the top level only (a drilled view has its own coordinates) */
+  drawings?: Drawings;
+  /** edit mode: the active canvas tool. `pen` captures pointer gestures as
+   * strokes; `eraser` makes strokes clickable; anything else is the usual canvas. */
+  tool?: DrawTool;
+  /** edit mode: what the pen draws with */
+  pen?: PenSettings;
   /** edit-mode callbacks, grouped as one object so the view/edit split is
    * structural: a read-only host passes no `edit`; an editing host assembles
    * one. `mode="edit"` gates the canvas affordances (drag/connect); the
@@ -226,9 +249,20 @@ export interface EditingApi {
    * May return the new node's id, which immediately opens it in canvas
    * in-place rename mode (mirrors double-clicking an existing node to rename it). */
   onCreateAt?: (pos: { x: number; y: number }) => string | void;
+  /** pen tool: a stroke was drawn (rounded, simplified flow points). The host
+   * assigns the id (uniqueStrokeId) and the plane, like add-node. */
+  onAddStroke?: (stroke: Omit<Stroke, 'id'>) => void;
+  /** eraser tool: a stroke was clicked */
+  onDeleteStroke?: (id: string) => void;
 }
 
 export const DEFAULT_ON_NODE_META_KEYS = ['framework', 'language', 'tool'];
+
+// Zoom limits, shared by the <ReactFlow> element and the getViewportForBounds
+// call in `fitView` below — the same numbers have to bound both, or a fit could
+// compute a zoom the canvas then clamps and land off-frame.
+const MIN_ZOOM = 0.02;
+const MAX_ZOOM = 4;
 
 const imageFilesOf = (list: FileList | null | undefined): File[] =>
   [...(list ?? [])].filter((f) => f.type.startsWith('image/'));
@@ -432,6 +466,39 @@ function Inner(props: DiagramViewProps) {
   // The drill root (deepest entered node) scopes the view to that node's interior
   // — an isolated "the node is the canvas" view — in BOTH modes.
   const drillRoot = enteredPath.length > 0 ? enteredPath[enteredPath.length - 1] : undefined;
+
+  const penActive = editing && props.tool === 'pen';
+  const eraserActive = editing && props.tool === 'eraser';
+  // The active plane's strokes. Keyed like layout.planes, so a borrowing plane
+  // shares its donor's bucket exactly as it shares positions.
+  const strokes = useMemo(
+    () => props.drawings?.planes[layoutPlaneKey(props.model, props.plane)] ?? [],
+    [props.drawings, props.model, props.plane],
+  );
+  // Render-phase ref (same pattern as enteredPathRef): the layoutApiRef effect
+  // below keeps deps of just [layoutApiRef, reactFlow], so it reads the ink
+  // through a ref rather than re-installing the api object on every stroke.
+  const strokesRef = useRef<readonly Stroke[]>([]);
+  strokesRef.current = strokes;
+  // Tracing-paper switch: viewer state, on by default (an author drew it to be
+  // seen), reset per diagram like pins. Never saved.
+  const [drawingsVisible, setDrawingsVisible] = useState(true);
+  useEffect(() => {
+    setDrawingsVisible(true);
+  }, [props.model.id]);
+  const { pen: penSettings } = props;
+  const onAddStroke = edit?.onAddStroke;
+  const pen = usePen({
+    enabled: penActive && onAddStroke !== undefined,
+    toFlow: reactFlow.screenToFlowPosition,
+    onStroke: (points) =>
+      onAddStroke?.({
+        points,
+        ...(penSettings?.color !== undefined ? { color: penSettings.color } : {}),
+        width: penSettings?.width ?? DEFAULT_STROKE_WIDTH,
+      }),
+  });
+
   const compiled = useMemo(
     () =>
       compileView(props.model, {
@@ -817,15 +884,35 @@ function Inner(props: DiagramViewProps) {
       },
       contentBounds: () => {
         const nodes = reactFlow.getNodes();
-        return nodes.length === 0 ? undefined : getNodesBounds(nodes);
+        const nodeBounds = nodes.length === 0 ? undefined : getNodesBounds(nodes);
+        const inkBounds = strokesBounds(strokesRef.current);
+        if (nodeBounds === undefined) return inkBounds;
+        if (inkBounds === undefined) return nodeBounds;
+        // Union: a scribble outside the boxes must not be cropped from the PNG.
+        const x = Math.min(nodeBounds.x, inkBounds.x);
+        const y = Math.min(nodeBounds.y, inkBounds.y);
+        return {
+          x,
+          y,
+          width: Math.max(nodeBounds.x + nodeBounds.width, inkBounds.x + inkBounds.width) - x,
+          height: Math.max(nodeBounds.y + nodeBounds.height, inkBounds.y + inkBounds.height) - y,
+        };
       },
       fitView: (padding = 0.06) => {
-        void reactFlow.fitView({
-          padding:
-            typeof padding === 'number'
-              ? padding
-              : Object.fromEntries(Object.entries(padding).map(([k, v]) => [k, `${v}px`])),
-        });
+        const pad =
+          typeof padding === 'number'
+            ? padding
+            : Object.fromEntries(Object.entries(padding).map(([k, v]) => [k, `${v}px`]));
+        // Fit the CONTENT box (nodes ∪ strokes), not React Flow's node-only
+        // fitView — same getViewportForBounds underneath, so a stroke-less
+        // diagram lands on the identical viewport.
+        const bounds = ref.current?.contentBounds();
+        const rect = wrapperRef.current?.getBoundingClientRect();
+        if (bounds !== undefined && rect !== undefined && rect.width > 0 && rect.height > 0) {
+          void reactFlow.setViewport(getViewportForBounds(bounds, rect.width, rect.height, MIN_ZOOM, MAX_ZOOM, pad));
+          return;
+        }
+        void reactFlow.fitView({ padding: pad });
       },
       legendReserve: () => legendReserveRef.current,
     };
@@ -989,7 +1076,7 @@ function Inner(props: DiagramViewProps) {
         preset.id !== 'clean' ? ` dg-style-${preset.id}` : ''
       }${preset.rough !== undefined ? ' dg-style-rough' : ''}${preset.fontFamily !== undefined ? ' dg-style-font' : ''}${
         profile.className !== undefined ? ' ' + profile.className : ''
-      }`}
+      }${penActive ? ' dg-tool-pen' : ''}${eraserActive ? ' dg-tool-eraser' : ''}`}
       style={
         {
           width: '100%',
@@ -1028,6 +1115,7 @@ function Inner(props: DiagramViewProps) {
         if (files.length === 0) return;
         edit.onImageFiles(files, reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY }));
       }}
+      {...pen.handlers}
     >
       <ReactFlow
         nodes={rfNodes}
@@ -1166,17 +1254,28 @@ function Inner(props: DiagramViewProps) {
           }
         }}
         fitView
-        minZoom={0.02}
-        maxZoom={4}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
         zoomOnScroll={false}
         zoomOnDoubleClick={false}
         multiSelectionKeyCode={null}
         panOnScroll
-        nodesDraggable={editing || altHeld}
-        nodesConnectable={editing}
+        // The pen owns the drag: no pan, no selection rectangle, no node drag or
+        // connect — a stroke that started on a box would otherwise move it.
+        panOnDrag={!penActive}
+        elementsSelectable={!penActive}
+        nodesDraggable={(editing || altHeld) && !penActive}
+        nodesConnectable={editing && !penActive}
         proOptions={{ hideAttribution: true }}
       >
         <Background />
+        <DrawingsLayer
+          strokes={strokes}
+          live={pen.live === null ? null : { points: pen.live, width: penSettings?.width ?? DEFAULT_STROKE_WIDTH, ...(penSettings?.color !== undefined ? { color: penSettings.color } : {}) }}
+          visible={drawingsVisible && drillRoot === undefined}
+          erasing={eraserActive}
+          onErase={(id) => edit?.onDeleteStroke?.(id)}
+        />
         <Breadcrumbs path={enteredPath} nameOf={(id) => nameOf.get(id) ?? id} onCrumb={exitTo} />
         {showLegend && legendRowList.length > 0 && (
           // LegendPosition is a subset of React Flow's PanelPosition — no cast needed.
@@ -1202,6 +1301,17 @@ function Inner(props: DiagramViewProps) {
           >
             ◎
           </ControlButton>
+          {strokes.length > 0 && (
+            <ControlButton
+              className={`dg-drawings-toggle${drawingsVisible ? '' : ' dg-drawings-toggle-off'}`}
+              title={drawingsVisible ? 'Hide drawings' : 'Show drawings'}
+              aria-label={drawingsVisible ? 'Hide drawings' : 'Show drawings'}
+              aria-pressed={drawingsVisible}
+              onClick={() => setDrawingsVisible((v) => !v)}
+            >
+              ✎
+            </ControlButton>
+          )}
           {legendRowList.length > 0 && (
             <ControlButton
               className={`dg-legend-toggle-btn${showLegend ? '' : ' dg-legend-toggle-btn-off'}`}

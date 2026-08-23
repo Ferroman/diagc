@@ -763,3 +763,86 @@ describe('view-mode position reporting', () => {
     expect(onViewPositionsChange).toHaveBeenCalledWith({});
   });
 });
+
+describe('freehand drawings', () => {
+  const drawings = { version: 1 as const, planes: { default: [{ id: 'k1', points: [0, 0, 40, 40] }] } };
+
+  it('draws the active plane strokes above the canvas and toggles them from the controls', async () => {
+    const { container } = render(<DiagramView model={containerEndpointModel()} drawings={drawings} />);
+    const stroke = await waitFor(() => {
+      const el = container.querySelector('path.dg-stroke');
+      if (el === null) throw new Error('stroke not rendered');
+      return el;
+    });
+    expect(stroke.getAttribute('data-stroke-id')).toBe('k1');
+    const svg = container.querySelector('svg.dg-drawings') as SVGElement;
+    expect(svg.style.display).toBe('');
+    fireEvent.click(screen.getByLabelText('Hide drawings'));
+    expect(svg.style.display).toBe('none');
+    fireEvent.click(screen.getByLabelText('Show drawings'));
+    expect(svg.style.display).toBe('');
+  });
+
+  it('offers no toggle when the plane has no strokes', async () => {
+    render(<DiagramView model={containerEndpointModel()} />);
+    await screen.findByText('gw');
+    expect(screen.queryByLabelText('Hide drawings')).toBeNull();
+  });
+
+  it('hides the layer while drilled in', async () => {
+    const { container } = render(<DiagramView model={containerEndpointModel()} drawings={drawings} enteredPath={['sys']} />);
+    await waitFor(() => expect(container.querySelector('svg.dg-drawings')).not.toBeNull());
+    expect((container.querySelector('svg.dg-drawings') as SVGElement).style.display).toBe('none');
+  });
+
+  it('pen tool: a pointer gesture on the canvas reports one stroke with the pen settings', async () => {
+    const onAddStroke = vi.fn();
+    const { container } = render(
+      <DiagramView
+        model={containerEndpointModel()}
+        mode="edit"
+        tool="pen"
+        pen={{ color: '#d9a520', width: 6 }}
+        edit={{ onAddStroke }}
+      />,
+    );
+    const pane = await waitFor(() => {
+      const el = container.querySelector('.react-flow__pane');
+      if (el === null) throw new Error('pane not rendered');
+      return el as HTMLElement;
+    });
+    fireEvent.pointerDown(pane, { button: 0, pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(pane, { pointerId: 1, clientX: 50, clientY: 10 });
+    fireEvent.pointerUp(pane, { pointerId: 1, clientX: 50, clientY: 10 });
+    expect(onAddStroke).toHaveBeenCalledTimes(1);
+    const stroke = onAddStroke.mock.calls[0]![0] as { points: number[]; color?: string; width: number };
+    expect(stroke.color).toBe('#d9a520');
+    expect(stroke.width).toBe(6);
+    expect(stroke.points).toHaveLength(4);
+    expect(container.querySelector('.dg-canvas')?.classList.contains('dg-tool-pen')).toBe(true);
+  });
+
+  it('eraser tool: clicking a stroke hit path reports its id', async () => {
+    const onDeleteStroke = vi.fn();
+    const { container } = render(
+      <DiagramView model={containerEndpointModel()} mode="edit" tool="eraser" drawings={drawings} edit={{ onDeleteStroke }} />,
+    );
+    const hit = await waitFor(() => {
+      const el = container.querySelector('path.dg-stroke-hit');
+      if (el === null) throw new Error('hit path not rendered');
+      return el;
+    });
+    fireEvent.click(hit);
+    expect(onDeleteStroke).toHaveBeenCalledWith('k1');
+  });
+
+  it('contentBounds grows to include strokes outside the nodes', async () => {
+    const apiRef = { current: null as LayoutApi | null };
+    const far = { version: 1 as const, planes: { default: [{ id: 'k1', points: [-500, -500, -490, -490], width: 4 }] } };
+    render(<DiagramView model={containerEndpointModel()} drawings={far} layoutApiRef={apiRef} />);
+    await waitFor(() => expect(apiRef.current?.contentBounds()).toBeDefined());
+    const b = apiRef.current!.contentBounds()!;
+    expect(b.x).toBe(-502);
+    expect(b.y).toBe(-502);
+  });
+});

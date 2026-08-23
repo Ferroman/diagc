@@ -54,8 +54,12 @@ export {
   LIBRARY_ENTRY_DND_TYPE,
   type DiagramViewProps,
   type DiagramSelection,
+  type DrawTool,
   type EditingApi,
   type LayoutApi,
+  type PenSettings,
 } from './DiagramView';
+export { DrawingsLayer, type DrawingsLayerProps } from './DrawingsLayer';
+export { strokePath, simplifyStroke, strokesBounds } from './drawings';
 export { Legend, type LegendProps } from './Legend';
 export { legendRows, type LegendInput, type LegendRow, type LegendSwatch } from './legend';
