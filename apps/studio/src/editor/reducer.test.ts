@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyLayout, model, type EditorState } from '@diagramming/core';
+import { emptyDrawings, emptyLayout, model, type EditorState } from '@diagramming/core';
 import { dispatch, HISTORY_CAP, isDirty, redo, startSession, undo } from './reducer';
 
 function state(): EditorState {
@@ -7,7 +7,7 @@ function state(): EditorState {
   const a = m.node('a', { type: 'service' });
   const sys = m.node('sys', { type: 'system' });
   sys.contains(a);
-  return { model: m.toJSON(), layout: emptyLayout() };
+  return { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
 }
 
 describe('editor reducer', () => {
@@ -64,5 +64,16 @@ describe('editor reducer', () => {
     // and undo restores the pre-migration shape
     s = undo(s);
     expect(s.state.layout.planes['default']?.['a']).toEqual({ x: 7, y: 8 });
+  });
+
+  it('first plane migrates the default drawings bucket alongside the layout bucket', () => {
+    let s = startSession('draft', state());
+    s = dispatch(s, { type: 'add-stroke', stroke: { id: 'k1', points: [1, 2, 3, 4] } });
+    expect(s.state.drawings.planes['default']).toHaveLength(1);
+    s = dispatch(s, { type: 'upsert-plane', plane: { id: 'arch', name: 'Architecture' } });
+    expect(s.state.drawings.planes['arch']).toHaveLength(1);
+    expect(s.state.drawings.planes['default']).toBeUndefined();
+    s = undo(s);
+    expect(s.state.drawings.planes['default']).toHaveLength(1);
   });
 });

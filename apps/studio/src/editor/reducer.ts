@@ -33,14 +33,23 @@ export function dispatch(s: EditorSession, command: EditorCommand): EditorSessio
     const hadPlanes = (s.state.model.planes ?? []).length > 0;
     const { state, relationId } = applyCommandWithResult(s.state, command);
     let nextState = state;
-    // obligation: plane-less model gains its first plane -> migrate 'default' bucket
+    // obligation: plane-less model gains its first plane -> migrate 'default' buckets
+    // (positions AND drawings: both sidecars key by the same plane id)
     if (!hadPlanes && command.type === 'upsert-plane' && (state.model.planes ?? []).length === 1) {
       const bucket = state.layout.planes['default'];
       if (bucket !== undefined) {
         const { default: _def, ...rest } = state.layout.planes;
         nextState = {
-          ...state,
+          ...nextState,
           layout: { ...state.layout, planes: { ...rest, [command.plane.id]: bucket } },
+        };
+      }
+      const strokes = state.drawings.planes['default'];
+      if (strokes !== undefined) {
+        const { default: _def, ...rest } = state.drawings.planes;
+        nextState = {
+          ...nextState,
+          drawings: { ...state.drawings, planes: { ...rest, [command.plane.id]: strokes } },
         };
       }
     }

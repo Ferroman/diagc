@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { emptyLayout, model, type EditorState } from '@diagramming/core';
+import { emptyDrawings, emptyLayout, model, type EditorState } from '@diagramming/core';
 import { useEditor } from './useEditor';
 
 function state(): EditorState {
@@ -9,7 +9,7 @@ function state(): EditorState {
   const a = m.node('a', { type: 'service' });
   const sys = m.node('sys', { type: 'system' });
   sys.contains(a);
-  return { model: m.toJSON(), layout: emptyLayout() };
+  return { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
 }
 
 afterEach(() => {
