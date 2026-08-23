@@ -155,3 +155,21 @@ describe('cornerRadius', () => {
     expect(p.stroke).not.toContain('NaN');
   });
 });
+
+describe('sketchNode activity shapes', () => {
+  // Test with a non-solid style so that the fillStyle: 'solid' overrides
+  // in bar, start-dot, and end-bullseye make geometric or rendering difference
+  const STYLE: RoughStyle = { roughness: 1.15, bowing: 1, strokeWidth: 1.5, fillStyle: 'cross-hatch' };
+  const box = sketchNode('box', 120, 60, 7, STYLE);
+  for (const kind of ['diamond', 'bar', 'start-dot', 'end-bullseye', 'send-signal', 'receive-signal', 'note'] as const) {
+    it(`sketches a distinct ${kind}`, () => {
+      const p = sketchNode(kind, 120, 60, 7, STYLE);
+      expect(p.stroke).not.toBe('');
+      expect(p.stroke).not.toBe(box.stroke);
+    });
+  }
+  it('end-bullseye draws two concentric circles (inner solid fill present)', () => {
+    const p = sketchNode('end-bullseye', 28, 28, 7, STYLE);
+    expect(p.fill).not.toBe('');
+  });
+});

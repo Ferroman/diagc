@@ -14,7 +14,7 @@ const gen = rough.generator();
 const FILL_SENTINEL = 'sentinel-fill';
 const STROKE_SENTINEL = 'sentinel-stroke';
 
-export type SketchShapeKind = 'box' | 'cylinder' | 'hexagon' | 'bubble' | 'circle';
+export type SketchShapeKind = 'box' | 'cylinder' | 'hexagon' | 'bubble' | 'circle' | 'diamond' | 'bar' | 'start-dot' | 'end-bullseye' | 'send-signal' | 'receive-signal' | 'note';
 export interface SketchPaths {
   /** combined `d` for solid fill polygon(s) — render with fill */
   fill: string;
@@ -141,9 +141,29 @@ export function sketchNode(
         ? [gen.rectangle(1, 8, w - 2, h - 10, o), gen.ellipse(w / 2, 8, w - 6, 14, o)]
         : kind === 'bubble'
           ? [gen.path(bubblePath(w, h, cornerRadius), o)]
-          : cornerRadius > 0
-          ? [gen.path(roundedBoxPath(w, h, cornerRadius), o)]
-          : [gen.rectangle(1, 1, w - 2, h - 2, o)];
+          : kind === 'diamond'
+            ? [gen.polygon([[w / 2, 1], [w - 1, h / 2], [w / 2, h - 1], [1, h / 2]], o)]
+            : kind === 'bar'
+              ? [gen.rectangle(1, h / 2 - 1, w - 2, 2, { ...o, fillStyle: 'solid' })]
+              : kind === 'start-dot'
+                ? [gen.circle(w / 2, h / 2, Math.min(w, h) - 2, { ...o, fillStyle: 'solid' })]
+                : kind === 'end-bullseye'
+                  ? [
+                      gen.circle(w / 2, h / 2, Math.min(w, h) - 2, o),
+                      gen.circle(w / 2, h / 2, (Math.min(w, h) - 2) * 0.55, { ...o, fillStyle: 'solid' }),
+                    ]
+                  : kind === 'send-signal'
+                    ? [gen.polygon([[1, 1], [w - 15, 1], [w - 1, h / 2], [w - 15, h - 1], [1, h - 1]], o)]
+                    : kind === 'receive-signal'
+                      ? [gen.polygon([[1, 1], [w - 1, 1], [w - 1, h - 1], [1, h - 1], [15, h / 2]], o)]
+                      : kind === 'note'
+                        ? [
+                            gen.polygon([[1, 1], [w - 15, 1], [w - 1, 15], [w - 1, h - 1], [1, h - 1]], o),
+                            gen.linearPath([[w - 15, 1], [w - 15, 15], [w - 1, 15]], o),
+                          ]
+                        : cornerRadius > 0
+                        ? [gen.path(roundedBoxPath(w, h, cornerRadius), o)]
+                        : [gen.rectangle(1, 1, w - 2, h - 2, o)];
   return partition(drawables.flatMap((d) => gen.toPaths(d) as PathInfo[]));
 }
 
