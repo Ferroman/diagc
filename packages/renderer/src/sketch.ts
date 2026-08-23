@@ -144,7 +144,7 @@ export function sketchNode(
           : kind === 'diamond'
             ? [gen.polygon([[w / 2, 1], [w - 1, h / 2], [w / 2, h - 1], [1, h / 2]], o)]
             : kind === 'bar'
-              ? [gen.rectangle(1, h / 2 - 1, w - 2, 2, { ...o, fillStyle: 'solid' })]
+              ? [gen.rectangle(1, 1, w - 2, h - 2, { ...o, fillStyle: 'solid' })]
               : kind === 'start-dot'
                 ? [gen.circle(w / 2, h / 2, Math.min(w, h) - 2, { ...o, fillStyle: 'solid' })]
                 : kind === 'end-bullseye'

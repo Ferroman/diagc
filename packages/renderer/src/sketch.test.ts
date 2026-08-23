@@ -158,10 +158,20 @@ describe('cornerRadius', () => {
 
 describe('sketchNode activity shapes', () => {
   // Test with a non-solid style so that the fillStyle: 'solid' overrides
-  // in bar, start-dot, and end-bullseye make geometric or rendering difference
+  // in start-dot and end-bullseye make a geometric difference, and bar's
+  // solid fill differs from the hachure box's empty fill.
   const STYLE: RoughStyle = { roughness: 1.15, bowing: 1, strokeWidth: 1.5, fillStyle: 'cross-hatch' };
   const box = sketchNode('box', 120, 60, 7, STYLE);
-  for (const kind of ['diamond', 'bar', 'start-dot', 'end-bullseye', 'send-signal', 'receive-signal', 'note'] as const) {
+
+  // Bar shares box's outline stroke (same rectangle geometry and seed), so
+  // discrimination is by fill: bar's solid fill vs box's hachure (which leaves fill empty)
+  it('bar sketches with solid fill, distinct from hachure box', () => {
+    const p = sketchNode('bar', 120, 60, 7, STYLE);
+    expect(p.fill).not.toBe('');
+    expect(p.fill).not.toBe(box.fill);
+  });
+
+  for (const kind of ['diamond', 'start-dot', 'end-bullseye', 'send-signal', 'receive-signal', 'note'] as const) {
     it(`sketches a distinct ${kind}`, () => {
       const p = sketchNode(kind, 120, 60, 7, STYLE);
       expect(p.stroke).not.toBe('');
