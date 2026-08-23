@@ -3,12 +3,25 @@ import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { usePen } from './usePen';
 
-function Host({ enabled, onStroke, onPaneDown }: { enabled: boolean; onStroke: (p: number[]) => void; onPaneDown: () => void }) {
+function Host({
+  enabled,
+  onStroke,
+  onPaneDown,
+  onPanelDown,
+}: {
+  enabled: boolean;
+  onStroke: (p: number[]) => void;
+  onPaneDown: () => void;
+  onPanelDown?: () => void;
+}) {
   // toFlow halves screen coordinates so the test can see the conversion happen
   const pen = usePen({ enabled, toFlow: (p) => ({ x: p.x / 2, y: p.y / 2 }), onStroke });
   return (
     <div data-testid="wrapper" {...pen.handlers}>
       <div data-testid="pane" onPointerDown={onPaneDown} />
+      <div className="react-flow__panel">
+        <button data-testid="panel-button" onPointerDown={onPanelDown} />
+      </div>
       <span data-testid="live">{pen.live === null ? 'idle' : pen.live.join(',')}</span>
     </div>
   );
@@ -73,5 +86,17 @@ describe('usePen', () => {
     expect(onStroke).toHaveBeenCalledTimes(1);
     expect(onStroke).toHaveBeenCalledWith([0, 0, 21, 0]); // pointer 1's points only
     expect(getByTestId('live').textContent).toBe('idle');
+  });
+
+  it('lets a pointerdown on a React Flow panel through — the corner controls and the legend stay clickable', () => {
+    const onStroke = vi.fn();
+    const onPanelDown = vi.fn();
+    const { getByTestId } = render(<Host enabled onStroke={onStroke} onPaneDown={() => {}} onPanelDown={onPanelDown} />);
+    const button = getByTestId('panel-button');
+    fireEvent.pointerDown(button, { button: 0, pointerId: 1, clientX: 5, clientY: 5 });
+    expect(onPanelDown).toHaveBeenCalledTimes(1);
+    expect(getByTestId('live').textContent).toBe('idle');
+    fireEvent.pointerUp(button, { pointerId: 1, clientX: 5, clientY: 5 });
+    expect(onStroke).not.toHaveBeenCalled();
   });
 });

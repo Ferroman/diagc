@@ -51,6 +51,11 @@ export function usePen({ enabled, toFlow, onStroke }: PenOptions): { live: numbe
   const onPointerDownCapture = useCallback<Handler>(
     (e) => {
       if (!enabled || e.button !== 0) return;
+      // The corner controls, the legend and the breadcrumbs are React Flow
+      // panels inside the same wrapper. A press there is a click on a button,
+      // not the start of a stroke — capturing it would draw a dot and, through
+      // pointer capture, steal the click itself.
+      if ((e.target as Element | null)?.closest?.('.react-flow__panel') !== null) return;
       if (pointerIdRef.current !== null) {
         // A second primary-button pointerdown while a stroke is already in
         // progress — a palm or a second finger on a touch device. Swallow it so

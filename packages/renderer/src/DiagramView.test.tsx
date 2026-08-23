@@ -992,6 +992,20 @@ describe('laser pointer', () => {
     expect(onAddStroke).toHaveBeenCalledTimes(1);
   });
 
+  it('the corner control stays clickable while the pen is active, instead of drawing a dot', async () => {
+    const onAddStroke = vi.fn();
+    const { container } = render(
+      <DiagramView model={containerEndpointModel()} mode="edit" tool="pen" edit={{ onAddStroke }} />,
+    );
+    await pane(container);
+    const button = screen.getByLabelText('Laser pointer');
+    fireEvent.pointerDown(button, { button: 0, pointerId: 1, clientX: 5, clientY: 5 });
+    fireEvent.pointerUp(button, { pointerId: 1, clientX: 5, clientY: 5 });
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    expect(onAddStroke).not.toHaveBeenCalled();
+  });
+
   it('stays available while drilled in — it is a light, not ink', async () => {
     render(<DiagramView model={containerEndpointModel()} enteredPath={['sys']} />);
     await screen.findByText('api');
