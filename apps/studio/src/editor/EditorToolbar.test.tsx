@@ -2,6 +2,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LayoutSettings } from '@diagramming/core';
+import type { DrawTool } from '@diagramming/renderer';
 import { EditorToolbar } from './EditorToolbar';
 import type { EditorApi } from './useEditor';
 
@@ -32,6 +33,11 @@ type AutoLayoutOverrides = {
   getAutoPositions?: () => Record<string, { x: number; y: number }>;
   layoutSettings?: LayoutSettings;
   onSetLayoutSettings?: (patch: Partial<LayoutSettings>) => void;
+  tool?: DrawTool;
+  onSetTool?: (tool: DrawTool) => void;
+  pen?: { color: string; width: number };
+  onSetPen?: (patch: Partial<{ color: string; width: number }>) => void;
+  drawingDisabled?: boolean;
 };
 
 function renderToolbar(editor: EditorApi, activePlane: string | undefined, extra: AutoLayoutOverrides = {}) {
@@ -41,6 +47,11 @@ function renderToolbar(editor: EditorApi, activePlane: string | undefined, extra
     getAutoPositions = () => ({}),
     layoutSettings = {},
     onSetLayoutSettings = noop,
+    tool = 'select' as DrawTool,
+    onSetTool = noop,
+    pen = { color: '', width: 3 },
+    onSetPen = noop,
+    drawingDisabled = false,
   } = extra;
   return render(
     <EditorToolbar
@@ -56,6 +67,11 @@ function renderToolbar(editor: EditorApi, activePlane: string | undefined, extra
       getAutoPositions={getAutoPositions}
       layoutSettings={layoutSettings}
       onSetLayoutSettings={onSetLayoutSettings}
+      tool={tool}
+      onSetTool={onSetTool}
+      pen={pen}
+      onSetPen={onSetPen}
+      drawingDisabled={drawingDisabled}
     />,
   );
 }
@@ -123,6 +139,11 @@ describe('EditorToolbar', () => {
         getAutoPositions={() => ({})}
         layoutSettings={{}}
         onSetLayoutSettings={noop}
+        tool="select"
+        onSetTool={noop}
+        pen={{ color: '', width: 3 }}
+        onSetPen={noop}
+        drawingDisabled={false}
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
@@ -144,6 +165,11 @@ describe('EditorToolbar', () => {
         getAutoPositions={() => ({})}
         layoutSettings={{}}
         onSetLayoutSettings={noop}
+        tool="select"
+        onSetTool={noop}
+        pen={{ color: '', width: 3 }}
+        onSetPen={noop}
+        drawingDisabled={false}
       />,
     );
     expect(screen.getByText(/boom/i)).toBeDefined();
@@ -165,5 +191,34 @@ describe('EditorToolbar', () => {
     // kept controls still present
     expect(screen.getByRole('button', { name: /new diagram/i })).toBeDefined();
     expect(screen.getByRole('button', { name: /re-layout/i })).toBeDefined();
+  });
+
+  it('offers Select, Pen and Eraser as a pressed-state tool group', () => {
+    const onSetTool = vi.fn();
+    renderToolbar(fakeEditor(), undefined, { tool: 'pen', onSetTool });
+    expect(screen.getByRole('button', { name: 'Pen' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Select' }).getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: 'Eraser' }));
+    expect(onSetTool).toHaveBeenCalledWith('eraser');
+  });
+
+  it('shows pen color and width only while the pen is active', () => {
+    const onSetPen = vi.fn();
+    const { rerender, unmount } = renderToolbar(fakeEditor(), undefined, { tool: 'select', onSetPen });
+    expect(screen.queryByRole('group', { name: 'Pen color' })).toBeNull();
+    unmount();
+    renderToolbar(fakeEditor(), undefined, { tool: 'pen', onSetPen });
+    fireEvent.click(screen.getByRole('button', { name: 'Thick' }));
+    expect(onSetPen).toHaveBeenCalledWith({ width: 6 });
+    fireEvent.click(screen.getByTitle('Auto (theme ink)'));
+    expect(onSetPen).toHaveBeenCalledWith({ color: '' });
+    void rerender;
+  });
+
+  it('disables Pen and Eraser while drilled in, with the reason in the title', () => {
+    renderToolbar(fakeEditor(), undefined, { drawingDisabled: true });
+    const pen = screen.getByRole('button', { name: 'Pen' }) as HTMLButtonElement;
+    expect(pen.disabled).toBe(true);
+    expect(pen.title).toContain('top level');
   });
 });

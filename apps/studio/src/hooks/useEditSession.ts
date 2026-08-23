@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react';
 import { errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagramming/core';
-import type { LayoutApi } from '@diagramming/renderer';
+import type { DrawTool, LayoutApi } from '@diagramming/renderer';
 import type { LoadedArtifact } from '../artifacts';
 import { useEditor } from '../editor/useEditor';
 
@@ -15,6 +15,9 @@ export interface UseEditSessionOptions {
   /** App-owned whiteboard add-node (Library Add button / N key). Read through
    *  a ref because the keydown handler subscribes once per edit session. */
   addNodeRef: MutableRefObject<() => void>;
+  /** App-owned tool switch for the P / E / Escape keys; a ref for the same
+   *  reason as addNodeRef (the keydown handler subscribes once per session). */
+  toolKeyRef: MutableRefObject<(tool: DrawTool) => void>;
   /** App-owned, shared with useDeepLink: a cross-diagram hashchange must close
    *  any open edit session first (like every other diagram-switch path). The
    *  keydown/hashchange listeners subscribe once, so both read it through a
@@ -54,6 +57,7 @@ export function useEditSession({
   setDrafts,
   resetInspector,
   addNodeRef,
+  toolKeyRef,
   leaveEditRef,
 }: UseEditSessionOptions): EditSession {
   const [editing, setEditing] = useState(false);
@@ -151,6 +155,11 @@ export function useEditSession({
         addNodeRef.current();
         return;
       }
+      if (!(e.metaKey || e.ctrlKey || e.altKey) && (key === 'p' || key === 'e' || e.key === 'Escape')) {
+        e.preventDefault();
+        toolKeyRef.current(key === 'p' ? 'pen' : key === 'e' ? 'eraser' : 'select');
+        return;
+      }
       if (!(e.metaKey || e.ctrlKey)) return;
       if (key === 'z' && !e.shiftKey) {
         e.preventDefault();
@@ -165,7 +174,7 @@ export function useEditSession({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editing, addNodeRef]);
+  }, [editing, addNodeRef, toolKeyRef]);
 
   // Autosave: a short debounce after the last edit. `session` changes identity on
   // every dispatch, so each edit reschedules; once a save clears `dirty`, the

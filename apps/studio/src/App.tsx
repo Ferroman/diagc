@@ -7,23 +7,27 @@ import {
   lightTheme,
   STYLE_PRESETS,
   type DiagramSelection,
+  type DrawTool,
   type LoopEdgeInput,
   type Side,
 } from '@diagramming/renderer';
 import {
   BUILTIN_NOTATIONS,
+  DEFAULT_STROKE_WIDTH,
   emptyDrawings,
   emptyLayout,
   errMessage,
   layoutPlaneKey,
   presetLayers,
   SOURCE_URL,
+  uniqueStrokeId,
   type Column,
   type DiagramModel,
   type EdgeLabelSide,
   type LayoutSettings,
   type NotationId,
   type RelationStyle,
+  type Stroke,
   type TextRun,
 } from '@diagramming/core';
 import { useDiagramBoot } from './hooks/useDiagramBoot';
@@ -167,13 +171,30 @@ export function App() {
     setLayoutPreview({});
   }, [selected]);
 
+  // Canvas tool + pen settings. Viewer state: never saved, reset to Select on
+  // leaving edit mode or switching diagram so a pen never lingers invisibly.
+  const [tool, setTool] = useState<DrawTool>('select');
+  const [penColor, setPenColor] = useState('');
+  const [penWidth, setPenWidth] = useState<number>(DEFAULT_STROKE_WIDTH);
+  // Read through a ref by the once-subscribed keydown handler (like addNodeRef).
+  const toolKeyRef = useRef<(t: DrawTool) => void>(() => {});
+  toolKeyRef.current = setTool;
+
   const edit = useEditSession({
     setDrafts,
     resetInspector: () => setLeftTab('properties'), // re-entering edit starts on Properties
     addNodeRef,
+    toolKeyRef,
     leaveEditRef,
   });
   const { editing, setEditing, editor, layoutApiRef, saveIssues, setSaveIssues, saving, doSave, enterEdit, leaveEdit } = edit;
+
+  // Leaving edit mode or switching diagram drops the pen (see the tool state
+  // above): Pen/Eraser only exist in edit mode, and a tool that survived either
+  // transition would keep swallowing canvas clicks with nothing to draw on.
+  useEffect(() => {
+    setTool('select');
+  }, [editing, selected]);
 
   useEffect(() => {
     applyTheme(document.documentElement, theme === 'dark' ? darkTheme : lightTheme);
@@ -623,6 +644,14 @@ export function App() {
           layoutSettings={activePlaneSettings}
           onSetLayoutSettings={setLayoutSettings}
           selectionColor={selectionColor}
+          tool={tool}
+          onSetTool={setTool}
+          pen={{ color: penColor, width: penWidth }}
+          onSetPen={(patch) => {
+            if (patch.color !== undefined) setPenColor(patch.color);
+            if (patch.width !== undefined) setPenWidth(patch.width);
+          }}
+          drawingDisabled={enteredPath.length > 0}
         />
       )}
       {names.length === 0 && (
@@ -755,6 +784,8 @@ export function App() {
                   ? {
                       mode: 'edit' as const,
                       layoutApiRef,
+                      tool,
+                      pen: { ...(penColor !== '' ? { color: penColor } : {}), width: penWidth },
                       // Everything that mutates the model travels as ONE edit object
                       // (the read-only path passes `mode` without it — the view/edit
                       // split is then structural, not by convention).
@@ -839,6 +870,24 @@ export function App() {
                           type: 'update-relation',
                           id: relationId,
                           patch: { style: styleWithSide(relationId, end, side) },
+                        }),
+                      onAddStroke: (stroke: Omit<Stroke, 'id'>) => {
+                        // peek(): the synchronous session, so two strokes in
+                        // quick succession never reuse an id.
+                        const d = editor.peek()?.state.drawings;
+                        const m = editor.peek()?.state.model;
+                        if (d === undefined || m === undefined) return;
+                        editor.dispatch({
+                          type: 'add-stroke',
+                          stroke: { id: uniqueStrokeId(d, layoutPlaneKey(m, activePlane)), ...stroke },
+                          ...(activePlane !== undefined ? { plane: activePlane } : {}),
+                        });
+                      },
+                      onDeleteStroke: (id: string) =>
+                        editor.dispatch({
+                          type: 'delete-stroke',
+                          id,
+                          ...(activePlane !== undefined ? { plane: activePlane } : {}),
                         }),
                       },
                     }

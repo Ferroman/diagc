@@ -1,4 +1,5 @@
 import type { LayoutSettings } from '@diagramming/core';
+import type { DrawTool } from '@diagramming/renderer';
 import type { EditorApi } from './useEditor';
 import { PRESET_COLORS } from './pickers';
 import { LayoutControls } from '../LayoutControls';
@@ -29,6 +30,54 @@ interface EditorToolbarProps {
   onSetLayoutSettings: (patch: Partial<LayoutSettings>) => void;
   /** color of the current selection (node or single-relation edge); null = no color target */
   selectionColor: { value: string; onChange: (color: string) => void } | null;
+  /** the canvas tool; Pen/Eraser are edit-mode canvas modes, Select is the usual canvas */
+  tool: DrawTool;
+  onSetTool: (tool: DrawTool) => void;
+  /** what the pen draws with; color '' = Auto (theme ink) */
+  pen: { color: string; width: number };
+  onSetPen: (patch: Partial<{ color: string; width: number }>) => void;
+  /** drilled in: drawings live at the top level only, so the tools are off */
+  drawingDisabled: boolean;
+}
+
+/** The preset swatch row, shared by the selection color and the pen color —
+ *  same markup, two owners (the empty value is each row's own "Auto"). */
+function ColorRow({
+  label,
+  autoTitle,
+  value,
+  onChange,
+}: {
+  label: string;
+  autoTitle: string;
+  value: string;
+  onChange: (color: string) => void;
+}) {
+  return (
+    <span className="picker-row toolbar-colors" role="group" aria-label={label}>
+      <button
+        type="button"
+        className={`picker-btn${value === '' ? ' active' : ''}`}
+        title={autoTitle}
+        aria-pressed={value === ''}
+        onClick={() => onChange('')}
+      >
+        ∅
+      </button>
+      {PRESET_COLORS.map((c) => (
+        <button
+          key={c}
+          type="button"
+          className={`picker-btn swatch${value === c ? ' active' : ''}`}
+          style={{ background: c }}
+          title={c}
+          aria-label={`Color ${c}`}
+          aria-pressed={value === c}
+          onClick={() => onChange(c)}
+        />
+      ))}
+    </span>
+  );
 }
 
 export function EditorToolbar({
@@ -45,6 +94,11 @@ export function EditorToolbar({
   layoutSettings,
   onSetLayoutSettings,
   selectionColor,
+  tool,
+  onSetTool,
+  pen,
+  onSetPen,
+  drawingDisabled,
 }: EditorToolbarProps) {
   const error = editor.session?.error;
 
@@ -89,6 +143,52 @@ export function EditorToolbar({
       </button>
       <LayoutControls settings={layoutSettings} onChange={onSetLayoutSettings} />
       <span className="sep" />
+      <span className="tool-group" role="group" aria-label="Canvas tool">
+        {(
+          [
+            ['select', 'Select', 'Select and move (Esc)'],
+            ['pen', 'Pen', drawingDisabled ? 'Drawings are shown at the top level only — leave the drilled view to draw' : 'Draw freehand (P)'],
+            ['eraser', 'Eraser', drawingDisabled ? 'Drawings are shown at the top level only — leave the drilled view to erase' : 'Click a stroke to erase it (E)'],
+          ] as const
+        ).map(([id, label, title]) => (
+          <button
+            key={id}
+            type="button"
+            className={`chip${tool === id ? ' active' : ''}`}
+            aria-pressed={tool === id}
+            title={title}
+            disabled={id !== 'select' && drawingDisabled}
+            onClick={() => onSetTool(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </span>
+      {tool === 'pen' && (
+        <>
+          <ColorRow label="Pen color" autoTitle="Auto (theme ink)" value={pen.color} onChange={(c) => onSetPen({ color: c })} />
+          <span className="tool-group" role="group" aria-label="Pen width">
+            {(
+              [
+                [2, 'Thin'],
+                [3, 'Medium'],
+                [6, 'Thick'],
+              ] as const
+            ).map(([w, label]) => (
+              <button
+                key={w}
+                type="button"
+                className={`chip${pen.width === w ? ' active' : ''}`}
+                aria-pressed={pen.width === w}
+                onClick={() => onSetPen({ width: w })}
+              >
+                {label}
+              </button>
+            ))}
+          </span>
+        </>
+      )}
+      <span className="sep" />
       <button className="chip" onClick={() => editor.undo()} disabled={!editor.canUndo}>
         Undo
       </button>
@@ -104,29 +204,12 @@ export function EditorToolbar({
       {selectionColor !== null && (
         <>
           <span className="sep" />
-          <span className="picker-row toolbar-colors" role="group" aria-label="Selection color">
-            <button
-              type="button"
-              className={`picker-btn${selectionColor.value === '' ? ' active' : ''}`}
-              title="Auto (default color)"
-              aria-pressed={selectionColor.value === ''}
-              onClick={() => selectionColor.onChange('')}
-            >
-              ∅
-            </button>
-            {PRESET_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                className={`picker-btn swatch${selectionColor.value === c ? ' active' : ''}`}
-                style={{ background: c }}
-                title={c}
-                aria-label={`Color ${c}`}
-                aria-pressed={selectionColor.value === c}
-                onClick={() => selectionColor.onChange(c)}
-              />
-            ))}
-          </span>
+          <ColorRow
+            label="Selection color"
+            autoTitle="Auto (default color)"
+            value={selectionColor.value}
+            onChange={selectionColor.onChange}
+          />
         </>
       )}
       <span className="spacer" />

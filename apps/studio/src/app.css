@@ -205,3 +205,7 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
 
 /* Floating "Group N" action shown while shift-selecting variables to group */
 .group-action { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 5; }
+
+/* Tool group: the Select/Pen/Eraser chips (and the pen width chips) read as one
+   control, so they sit tighter than the toolbar default. */
+.tool-group { display: inline-flex; gap: 4px; }

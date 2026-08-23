@@ -100,6 +100,28 @@ describe('view-mode layout preview', () => {
     expect(screen.queryByRole('button', { name: /reset layout/i })).toBeNull();
   });
 
+  it('a pen stroke becomes an add-stroke that autosaves to /api/drawings with the active plane bucket', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Pen' }));
+    const pane = await waitFor(() => {
+      const el = document.querySelector('.react-flow__pane');
+      if (el === null) throw new Error('pane not rendered');
+      return el as HTMLElement;
+    });
+    fireEvent.pointerDown(pane, { button: 0, pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(pane, { pointerId: 1, clientX: 60, clientY: 30 });
+    fireEvent.pointerUp(pane, { pointerId: 1, clientX: 60, clientY: 30 });
+    await waitFor(() => {
+      const post = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        ([url, init]) => String(url) === '/api/drawings/sketch' && (init as RequestInit | undefined)?.method === 'POST',
+      );
+      expect(post).toBeDefined();
+      const body = JSON.parse(String((post![1] as RequestInit).body)) as { planes: Record<string, { id: string }[]> };
+      expect(body.planes['default']?.[0]?.id).toBe('k1');
+    });
+  });
+
   it('drops the preview when a hashchange switches diagrams', async () => {
     render(<App />);
     const algorithm = await screen.findByLabelText('Layout algorithm');
