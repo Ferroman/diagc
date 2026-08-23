@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { getViewportForBounds } from '@xyflow/react';
 import { model, type DiagramModel } from '@diagramming/core';
 import { DiagramView, type LayoutApi } from './DiagramView';
 
@@ -844,5 +845,46 @@ describe('freehand drawings', () => {
     const b = apiRef.current!.contentBounds()!;
     expect(b.x).toBe(-502);
     expect(b.y).toBe(-502);
+    // …and it is a UNION, not the ink alone: the far corner of the box still
+    // comes from the nodes, which all sit at or past the origin (the ink's own
+    // right/bottom edge is -488).
+    expect(b.x + b.width).toBeGreaterThan(0);
+    expect(b.y + b.height).toBeGreaterThan(0);
+  });
+
+  it('fitView lands on the viewport that frames the content box', async () => {
+    // The production fit path needs a measured canvas: jsdom reports 0×0, which
+    // is exactly the case fitView falls back to React Flow's own on. Stub a real
+    // frame so the branch the export handshake runs is the one under test.
+    const rect = { x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 600, width: 800, height: 600, toJSON: () => ({}) };
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = () => rect as DOMRect;
+    try {
+      const apiRef = { current: null as LayoutApi | null };
+      const far = { version: 1 as const, planes: { default: [{ id: 'k1', points: [-500, -500, -490, -490], width: 4 }] } };
+      const { container } = render(<DiagramView model={containerEndpointModel()} drawings={far} layoutApiRef={apiRef} />);
+      await waitFor(() => expect(apiRef.current?.contentBounds()).toBeDefined());
+      const bounds = apiRef.current!.contentBounds()!;
+      // React Flow writes the transform imperatively as
+      // `translate(<x>px,<y>px) scale(<zoom>)`; compare whitespace-insensitively
+      // so a CSS-serialization difference isn't read as a wrong viewport.
+      const transform = () =>
+        (container.querySelector('.react-flow__viewport') as HTMLElement).style.transform.replace(/\s+/g, '');
+      const expectTransform = async (v: { x: number; y: number; zoom: number }) => {
+        await waitFor(() => expect(transform()).toBe(`translate(${v.x}px,${v.y}px)scale(${v.zoom})`));
+      };
+
+      apiRef.current!.fitView();
+      await expectTransform(getViewportForBounds(bounds, 800, 600, 0.02, 4, 0.06));
+
+      // The per-side form reserves px for an overlay (the legend handshake), so
+      // it must reach getViewportForBounds as px padding, not a fraction.
+      apiRef.current!.fitView({ top: 12 });
+      const padded = getViewportForBounds(bounds, 800, 600, 0.02, 4, { top: '12px' });
+      await expectTransform(padded);
+      expect(padded).not.toEqual(getViewportForBounds(bounds, 800, 600, 0.02, 4, 0.06));
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = original;
+    }
   });
 });

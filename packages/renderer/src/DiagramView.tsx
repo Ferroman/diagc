@@ -15,7 +15,6 @@ import {
   ConnectionMode,
   ControlButton,
   Controls,
-  getNodesBounds,
   getViewportForBounds,
   Panel,
   ReactFlow,
@@ -98,10 +97,12 @@ export interface LayoutApi {
   autoPositions: () => Record<string, { x: number; y: number }>;
   /** viewport center in flow coordinates, or undefined if the canvas isn't mounted */
   viewportCenter: () => { x: number; y: number } | undefined;
-  /** bounding box of all rendered nodes in flow coordinates, or undefined when
-   * nothing is laid out yet — used to size an export snapshot to the real content */
+  /** bounding box of the content — every rendered node UNION the active plane's
+   * drawings — in flow coordinates, or undefined when nothing is laid out yet
+   * and nothing is drawn. Used to size an export snapshot to the real content. */
   contentBounds: () => { x: number; y: number; width: number; height: number } | undefined;
-  /** fit every node into the current viewport (re-run after the frame is resized).
+  /** fit that content box (nodes ∪ drawings) into the current viewport (re-run
+   * after the frame is resized).
    * A per-side padding object reserves space for an overlay such as the legend. */
   fitView: (padding?: number | { top?: number; right?: number; bottom?: number; left?: number }) => void;
   /** px reserved by the legend overlay on its own edge, or null when none is
@@ -884,7 +885,7 @@ function Inner(props: DiagramViewProps) {
       },
       contentBounds: () => {
         const nodes = reactFlow.getNodes();
-        const nodeBounds = nodes.length === 0 ? undefined : getNodesBounds(nodes);
+        const nodeBounds = nodes.length === 0 ? undefined : reactFlow.getNodesBounds(nodes);
         const inkBounds = strokesBounds(strokesRef.current);
         if (nodeBounds === undefined) return inkBounds;
         if (inkBounds === undefined) return nodeBounds;
@@ -904,8 +905,10 @@ function Inner(props: DiagramViewProps) {
             ? padding
             : Object.fromEntries(Object.entries(padding).map(([k, v]) => [k, `${v}px`]));
         // Fit the CONTENT box (nodes ∪ strokes), not React Flow's node-only
-        // fitView — same getViewportForBounds underneath, so a stroke-less
-        // diagram lands on the identical viewport.
+        // fitView. Same getViewportForBounds underneath, over bounds taken from
+        // the same node lookup fitView reads (the instance getNodesBounds, which
+        // resolves a child's parent-relative position to an absolute one), so a
+        // stroke-less diagram lands on the viewport fitView would have chosen.
         const bounds = ref.current?.contentBounds();
         const rect = wrapperRef.current?.getBoundingClientRect();
         if (bounds !== undefined && rect !== undefined && rect.width > 0 && rect.height > 0) {
