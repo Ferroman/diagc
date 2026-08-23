@@ -24,6 +24,8 @@ export interface ThemeTokens {
   polarityPositive: string;
   /** causal-loop '−' (opposing) links and their glyph */
   polarityNegative: string;
+  /** freehand drawing strokes that name no color */
+  ink: string;
 }
 
 export const lightTheme: ThemeTokens = {
@@ -50,6 +52,7 @@ export const lightTheme: ThemeTokens = {
   tableFk: '#2563eb',
   polarityPositive: '#1f8a4c',
   polarityNegative: '#c2413c',
+  ink: '#1c2733',
 };
 
 export const darkTheme: ThemeTokens = {
@@ -76,6 +79,7 @@ export const darkTheme: ThemeTokens = {
   tableFk: '#60a5fa',
   polarityPositive: '#5dd39e',
   polarityNegative: '#f28b82',
+  ink: '#e6ebf0',
 };
 
 const kebab = (s: string): string => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);

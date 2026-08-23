@@ -29,4 +29,9 @@ describe('theme', () => {
       expect(vars['--dg-table-pk']).toBeDefined();
     }
   });
+
+  it('defines an ink token for freehand drawings in both themes', () => {
+    expect(themeToCssVars(lightTheme)['--dg-ink']).toBe(lightTheme.ink);
+    expect(lightTheme.ink).not.toBe(darkTheme.ink);
+  });
 });
