@@ -36,6 +36,9 @@ export interface NodeDataContext {
   /** the model's colour convention: default accent per node type, `*` as the
    * fallback. Applied only where the node itself declares no `color`. */
   typeColors?: Record<string, string>;
+  /** notation-resolved accent per node id (e.g. a commit's lane colour); below
+   * the node's own colour, above typeColors */
+  nodeColors?: ReadonlyMap<string, string>;
   icons: IconRegistry;
   pins?: Record<string, 'expanded' | 'collapsed'>;
   onTogglePin?: (id: string) => void;
@@ -76,12 +79,16 @@ export interface EdgeDataContext {
    * stale, so those edges fall back to floating paths (undefined = no pinning) */
   pinnedIds?: Set<string>;
   routes: ReadonlyMap<string, EdgePoint[]>;
+  /** notation-resolved stroke per edge id */
+  edgeColors?: ReadonlyMap<string, string>;
 }
 
 /** A node's accent colour: its own `color`, else the model's convention for its
  * type, else the convention's `*` fallback (see DiagramModel.typeColors). */
 function typeColor(n: ViewNode, ctx: NodeDataContext): string | undefined {
   if (n.node.color !== undefined) return n.node.color;
+  const byNotation = ctx.nodeColors?.get(n.id);
+  if (byNotation !== undefined) return byNotation;
   const byType = ctx.typeColors;
   if (byType === undefined) return undefined;
   const own = n.node.type !== undefined ? byType[n.node.type] : undefined;
@@ -165,6 +172,7 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     ...(ctx.notation !== undefined ? { notation: ctx.notation } : {}),
     ...(e.polarity !== undefined ? { polarity: e.polarity } : {}),
     ...(e.delay !== undefined ? { delay: e.delay } : {}),
+    ...(ctx.edgeColors?.get(e.id) !== undefined ? { notationColor: ctx.edgeColors.get(e.id) } : {}),
   };
   const soleRelation = e.constituents.length === 1 ? e.constituents[0] : undefined;
   if (soleRelation?.fromColumn !== undefined) data.fromColumn = soleRelation.fromColumn;
@@ -238,7 +246,8 @@ function sameNodeCtx(a: NodeDataContext, b: NodeDataContext): boolean {
     a.onResize === b.onResize &&
     a.onSetTableColumns === b.onSetTableColumns &&
     a.stylePreset === b.stylePreset &&
-    a.notation === b.notation
+    a.notation === b.notation &&
+    a.nodeColors === b.nodeColors
   );
 }
 
@@ -257,7 +266,8 @@ function sameEdgeCtx(a: EdgeDataContext, b: EdgeDataContext): boolean {
     a.notation === b.notation &&
     a.orthogonal === b.orthogonal &&
     a.pinnedIds === b.pinnedIds &&
-    a.routes === b.routes
+    a.routes === b.routes &&
+    a.edgeColors === b.edgeColors
   );
 }
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import { NOTATION_PROFILES, notationProfile } from './notations';
 
 describe('notationProfile', () => {
@@ -34,9 +35,23 @@ describe('notationProfile', () => {
     expect(notationProfile('bogus' as never).id).toBe('default');
   });
 
-  it('exposes a git-graph profile keyed by notation id', () => {
-    expect(notationProfile('git-graph').id).toBe('git-graph');
-    expect(notationProfile('git-graph').className).toBe('dg-notation-git');
-    expect(NOTATION_PROFILES['git-graph']).toBe(notationProfile('git-graph'));
+  it('the git-graph profile supplies the layout, forces lanes open, colours by lane and draws the tails overlay', () => {
+    const p = notationProfile('git-graph');
+    expect(p.className).toBe('dg-notation-git');
+    expect(p.layout).toBe(gitLayout);
+    expect(p.typeStyles).toEqual({ commit: { shape: 'circle' }, branch: { shape: 'box' } });
+    expect(p.kindStyles).toEqual({
+      commit: { dashed: true, endMarker: 'none' },
+      branch: { dashed: true, endMarker: 'none' },
+      merge: { dashed: true, endMarker: 'none' },
+    });
+    expect(p.node?.alwaysExpanded?.({ id: 'm', name: 'm', type: 'branch' })).toBe(true);
+    expect(p.node?.alwaysExpanded?.({ id: 'c', name: '', type: 'commit' })).toBe(false);
+    expect(p.node?.leafSize?.({ id: 'c', name: '', type: 'commit' })).toEqual({ width: GIT_LAYOUT.DIAMETER, height: GIT_LAYOUT.DIAMETER });
+    expect(p.node?.leafSize?.({ id: 'x', name: 'x', type: 'service' })).toBeUndefined();
+    expect(p.node?.colorOf).toBe(gitNodeColors);
+    expect(p.edge?.colorOf).toBe(gitEdgeColor);
+    expect(p.overlay).toBe('git-lanes');
+    expect(NOTATION_PROFILES['git-graph']).toBe(p);
   });
 });

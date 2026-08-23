@@ -28,6 +28,8 @@ export interface DiagramEdgeData {
   /** positioned labels (sole-relation edges); replaces the single `label` for those */
   labels?: EdgeLabel[];
   tint?: string;
+  /** notation-resolved stroke (e.g. a git link's lane colour) */
+  notationColor?: string;
   /** per-relation overrides (single-constituent edges only) */
   relStyle?: RelationStyle;
   constituentCount: number;
@@ -121,6 +123,8 @@ const END_SHAPES: Record<string, { refX: number; el: ReactElement } | undefined>
   diamond: { refX: 5, el: <path d="M5,0 L10,5 L5,10 L0,5 z" /> },
   crowsfoot: { refX: 0, el: <path d="M10,1 L0,5 L10,9 M0,5 L10,5" fill="none" /> },
   one: { refX: 8, el: <path d="M5,1 L5,9" fill="none" /> },
+  // explicit "no head" for kind styles (a bare unknown id also draws none)
+  none: undefined,
 };
 
 /** line-based (unfilled) end shapes: these need the marker to carry a `stroke`
@@ -310,13 +314,13 @@ export function DiagramEdge({
     [data?.stylePreset, path, id],
   );
 
-  // Precedence: per-relation override > layer tint > notation polarity > kind registry > defaults.
-  // The polarity colour sits *below* the tint deliberately: a tinted layer is an
-  // explicit authored grouping, and letting the sign win would make layer tints
-  // inert on exactly the diagrams that use them most.
+  // Precedence: per-relation override > layer tint > notation colour > notation
+  // polarity > kind registry > defaults. The notation colour (e.g. a git link's
+  // lane) sits below the tint for the same reason polarity does — an explicit
+  // authored grouping should never go inert because a notation also wants a say.
   const kind: KindStyle = data?.kindRegistry.resolve(data.kind) ?? {};
   const polarityColor = data?.polarity !== undefined ? profile.edge?.polarityColors?.[data.polarity] : undefined;
-  const stroke = rel?.color ?? data?.tint ?? polarityColor ?? 'var(--dg-edge)';
+  const stroke = rel?.color ?? data?.tint ?? data?.notationColor ?? polarityColor ?? 'var(--dg-edge)';
   const strokeWidth = rel?.width ?? kind.width ?? 1.5;
   const line = rel?.line ?? (kind.dashed === true ? 'dashed' : 'solid');
   const animated = rel?.animated ?? kind.animated === true;

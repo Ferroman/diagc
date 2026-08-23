@@ -1,4 +1,6 @@
-import type { DiagramNode, NotationId, Polarity, Size } from '@diagramming/core';
+import type { CompiledView, DiagramModel, DiagramNode, NotationId, Polarity, Size, ViewEdge } from '@diagramming/core';
+import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
+import type { LayoutResult } from './layout';
 import type { KindStyle, TypeStyle } from './registry';
 
 /** A visual language: default look plus registry/chrome overrides for a plane's notation. */
@@ -8,15 +10,34 @@ export interface NotationProfile {
   typeStyles?: Record<string, TypeStyle>;
   kindStyles?: Record<string, KindStyle>;
   edgeCurvature?: number;
-  node?: { typelessAsText?: boolean; leafSize?: (n: DiagramNode) => Size | undefined };
+  /** the plane's arrangement, replacing elk entirely: pure, synchronous, and
+   * expected to place every node the view shows */
+  layout?: (
+    view: CompiledView,
+    model: DiagramModel,
+    plane: string | undefined,
+    sizeHints?: ReadonlyMap<string, Size>,
+  ) => LayoutResult;
+  node?: {
+    typelessAsText?: boolean;
+    leafSize?: (n: DiagramNode) => Size | undefined;
+    /** containers that never fold: the view pins them expanded whatever the
+     * viewer's pins say (a git lane is a row, not a box with an inside) */
+    alwaysExpanded?: (n: DiagramNode) => boolean;
+    /** node id → accent colour, applied where the node sets none (a commit
+     * takes its lane's colour) */
+    colorOf?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, string>;
+  };
   edge?: {
     marks?: boolean;
     bowed?: boolean;
     /** stroke colour per polarity, applied to the line *and* its +/− glyph when
      * nothing more specific (relation override, layer tint) claims the colour */
     polarityColors?: Record<Polarity, string>;
+    /** stroke colour for an edge, below the layer tint and above the default */
+    colorOf?: (e: ViewEdge, model: DiagramModel, plane: string | undefined) => string | undefined;
   };
-  overlay?: 'loop-labels';
+  overlay?: 'loop-labels' | 'git-lanes';
 }
 
 const CLD: NotationProfile = {
@@ -35,9 +56,25 @@ const CLD: NotationProfile = {
   overlay: 'loop-labels',
 };
 
-// Filled in by the git-graph layout/rendering work; the entry exists now so the
-// Record<NotationId, …> below stays total.
-const GIT: NotationProfile = { id: 'git-graph', className: 'dg-notation-git' };
+const GIT: NotationProfile = {
+  id: 'git-graph',
+  className: 'dg-notation-git',
+  typeStyles: { commit: { shape: 'circle' }, branch: { shape: 'box' } },
+  // Links are lane lines and connectors, not arrows: dashed, no heads.
+  kindStyles: {
+    commit: { dashed: true, endMarker: 'none' },
+    branch: { dashed: true, endMarker: 'none' },
+    merge: { dashed: true, endMarker: 'none' },
+  },
+  layout: gitLayout,
+  node: {
+    alwaysExpanded: (n) => n.type === 'branch',
+    leafSize: (n) => (n.type === 'commit' ? { width: GIT_LAYOUT.DIAMETER, height: GIT_LAYOUT.DIAMETER } : undefined),
+    colorOf: gitNodeColors,
+  },
+  edge: { colorOf: gitEdgeColor },
+  overlay: 'git-lanes',
+};
 
 // Record<NotationId, ...> keying means adding a notation id to BUILTIN_NOTATIONS
 // forces a compile error here until its profile is added — intended.

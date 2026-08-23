@@ -447,6 +447,23 @@ describe('DiagramEdge', () => {
     });
   });
 
+  describe('notation colour', () => {
+    it('sits below the layer tint and above the default', () => {
+      const { container } = renderEdge({ notationColor: '#123456' });
+      expect(container.querySelector('path.react-flow__edge-path')?.getAttribute('style') ?? '').toContain('#123456');
+      const tinted = renderEdge({ notationColor: '#123456', tint: '#abcdef' });
+      expect(tinted.container.querySelector('path.react-flow__edge-path')?.getAttribute('style') ?? '').toContain('#abcdef');
+    });
+
+    it('endMarker none draws no arrowhead', () => {
+      const reg = createKindRegistry();
+      reg.register('commit', { dashed: true, endMarker: 'none' });
+      const { container } = renderEdge({ kind: 'commit', kindRegistry: reg });
+      expect(container.querySelector('marker')).toBeNull();
+      expect(container.querySelector('path.react-flow__edge-path')?.getAttribute('marker-end')).toBeNull();
+    });
+  });
+
   describe('curvature', () => {
     // Bottom/Top facing each other "naturally" (target below-right of
     // source) is curvature-invariant by construction (xyflow's control

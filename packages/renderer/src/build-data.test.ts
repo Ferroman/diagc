@@ -182,6 +182,18 @@ describe('buildNodeData', () => {
     expect(d.stylePreset).toBe(preset);
     expect(d.notation).toBe('causal-loop');
   });
+
+  it('a notation colour map beats the type convention but not the node colour', () => {
+    const nodeColors = new Map([['n1', '#lane']]);
+    expect(buildNodeData(viewNode(), nodeCtx({ nodeColors, typeColors: { '*': '#type' } })).color).toBe('#lane');
+    expect(
+      buildNodeData(viewNode({ node: { id: 'n1', name: 'One', type: 't', color: '#own' } }), nodeCtx({ nodeColors })).color,
+    ).toBe('#own');
+    expect(
+      buildNodeData(viewNode({ id: 'other', node: { id: 'other', name: 'o', type: 't' } }), nodeCtx({ nodeColors, typeColors: { '*': '#type' } }))
+        .color,
+    ).toBe('#type');
+  });
 });
 
 describe('buildEdgeData', () => {
@@ -262,6 +274,11 @@ describe('buildEdgeData', () => {
     expect(buildEdgeData(viewEdge(), edgeCtx({ orthogonal: true, pinnedIds: new Set(['b']) })).orthogonal).toBeUndefined();
     // no era of route → no orthogonal flag
     expect(buildEdgeData(viewEdge(), edgeCtx({ orthogonal: true, pinnedIds: undefined, routes: new Map() })).orthogonal).toBeUndefined();
+  });
+
+  it('threads the notation colour for the edge id', () => {
+    expect(buildEdgeData(viewEdge(), edgeCtx({ edgeColors: new Map([['e1', '#lane']]) })).notationColor).toBe('#lane');
+    expect(buildEdgeData(viewEdge(), edgeCtx()).notationColor).toBeUndefined();
   });
 });
 
