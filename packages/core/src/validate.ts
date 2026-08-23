@@ -13,6 +13,7 @@ import {
   type TextRun,
 } from './types';
 import { childrenOf } from './children';
+import { GIT_NOTATION, gitGraph, isGitKind } from './git';
 
 export interface ValidationIssue {
   code:
@@ -42,7 +43,13 @@ export interface ValidationIssue {
     | 'invalid-font-scale'
     | 'invalid-edge-label'
     | 'duplicate-column'
-    | 'unknown-column';
+    | 'unknown-column'
+    | 'git-link-endpoints'
+    | 'git-commit-lane'
+    | 'git-parents'
+    | 'git-cycle'
+    | 'git-commit-outside-lane'
+    | 'git-gap';
   message: string;
   ref?: string;
 }
@@ -353,6 +360,64 @@ function validateCycles(ctx: Ctx): void {
   }
 }
 
+/**
+ * Git-graph conventions, applied only when a plane declares the notation. The
+ * layout never throws on a malformed graph — it cuts cycles and parks strays —
+ * but an author should hear about it, so each convention is an issue here. Rules
+ * read the FIRST git plane; several git planes per model is deferred.
+ */
+function validateGit(ctx: Ctx): void {
+  const { issues, m } = ctx;
+  const plane = ctx.planes.find((p) => p.notation === GIT_NOTATION);
+  if (plane === undefined) return;
+  const g = gitGraph(m, plane.id);
+  const typeOf = new Map(m.nodes.map((n) => [n.id, n.type]));
+  const isCommit = (id: string): boolean => typeOf.get(id) === 'commit';
+  const parents = new Map<string, { commit: number; branch: number }>();
+  for (const r of m.relations) {
+    if (!isGitKind(r.kind)) continue;
+    // dangling endpoints are validateRelations' finding — don't double-report
+    if (!ctx.nodeIds.has(r.from) || !ctx.nodeIds.has(r.to)) continue;
+    if (!isCommit(r.from) || !isCommit(r.to)) {
+      report(issues, 'git-link-endpoints', `Relation '${r.id}' (${r.kind}) must join two commit nodes`, r.id);
+      continue;
+    }
+    const a = g.laneOf.get(r.from);
+    const b = g.laneOf.get(r.to);
+    if (a === undefined || b === undefined) continue; // reported per commit below
+    const sameLane = a === b;
+    if (r.kind === 'commit' && !sameLane) {
+      report(issues, 'git-commit-lane', `Relation '${r.id}' (commit) must stay within one lane`, r.id);
+      continue; // an out-of-lane link isn't a valid parent edge — don't also flag it as a git-parents conflict
+    }
+    if (r.kind !== 'commit' && sameLane) {
+      report(issues, 'git-commit-lane', `Relation '${r.id}' (${r.kind}) must join commits of different lanes`, r.id);
+      continue; // ditto
+    }
+    if (r.kind !== 'merge') {
+      const p = parents.get(r.to) ?? { commit: 0, branch: 0 };
+      p[r.kind] += 1;
+      parents.set(r.to, p);
+    }
+  }
+  for (const [id, p] of parents) {
+    if (p.commit > 1) report(issues, 'git-parents', `Commit '${id}' has more than one incoming commit link`, id);
+    if (p.branch > 1) report(issues, 'git-parents', `Commit '${id}' has more than one incoming branch link`, id);
+  }
+  const cut = g.cycleEdges[0];
+  if (cut !== undefined) report(issues, 'git-cycle', `Git links form a cycle (cut at relation '${cut}')`, cut);
+  for (const s of g.strays) {
+    report(issues, 'git-commit-outside-lane', `Commit '${s.id}' is not contained by a branch on plane '${plane.id}'`, s.id);
+  }
+  for (const n of m.nodes) {
+    if (n.type !== 'commit') continue;
+    const raw = n.metadata?.['gap'];
+    if (raw === undefined) continue;
+    const ok = (typeof raw === 'number' && Number.isInteger(raw) && raw >= 0) || (typeof raw === 'string' && /^\d+$/.test(raw));
+    if (!ok) report(issues, 'git-gap', `Commit '${n.id}' has invalid gap '${String(raw)}'`, n.id);
+  }
+}
+
 export function validate(m: DiagramModel): ValidationIssue[] {
   const ctx: Ctx = {
     issues: [],
@@ -374,6 +439,7 @@ export function validate(m: DiagramModel): ValidationIssue[] {
   validateContainment(ctx);
   validateRelations(ctx);
   validateCycles(ctx);
+  validateGit(ctx);
   return ctx.issues;
 }
 
