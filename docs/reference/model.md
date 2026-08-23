@@ -201,6 +201,40 @@ hundreds of leaves into an unreadable thumbnail. Folding rather than the plane's
 hidden children's edges, where a hidden node drops them. Ids that are not
 containers have no effect.
 
+## `Drawings` (`<name>.drawings.json`)
+
+Freehand strokes drawn with the studio's pen. A third sidecar beside the layout
+file — also not part of the model, and kept out of the layout file so a box
+nudge and a scribble never share a hunk.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `version` | `1` | |
+| `planes` | `Record<plane, Stroke[]>` | Keyed by the resolved containment plane (`layoutPlaneKey`), exactly like `LayoutOverlay.planes`. |
+
+### `Stroke`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | `string` | Unique within its plane bucket (`k1`, `k2`, …). |
+| `points` | `number[]` | Flat `[x0, y0, x1, y1, …]` in **absolute** flow coordinates at the top level; integers; even length ≥ 2. One point is a dot. |
+| `color` | `string?` | Any CSS color. Absent: the theme's ink (dark on light, light on dark). |
+| `width` | `number?` | Flow px. Absent: `3`. |
+
+Strokes are positional, not anchored: automatic layout can move boxes out from
+under them. They are shown at the top level only — a drilled-in container is
+laid out in its own coordinate frame. A file in which no plane holds a stroke is
+deleted on save rather than written empty.
+
+```json
+{
+  "version": 1,
+  "planes": {
+    "default": [{ "id": "k1", "points": [120, 80, 131, 84, 150, 97], "color": "#d9a520", "width": 4 }]
+  }
+}
+```
+
 ## Validation codes
 
 `validate()` returns issues; the compiler refuses to write an artifact if there are any.

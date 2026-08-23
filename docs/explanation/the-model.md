@@ -34,6 +34,8 @@ Two reasons. The obvious one is diff hygiene — dragging boxes should not touch
 
 Any node with no recorded position is laid out automatically. The overlay is a set of overrides, not a complete description.
 
+Freehand drawings are the second thing kept out of the model, in `<name>.drawings.json`. They are coordinates too, but they get their own file rather than a key in the layout one: a box nudge and a scribble should not share a diff hunk, a repo can ignore its drawings without losing its positions, and the drawings format can grow on its own version. A drawing is an overlay on the canvas — absolute coordinates, not anchored to a node — so automatic layout can move boxes out from under it; that is the deliberate trade for "draw anywhere".
+
 ## 4. Cross-diagram identity is opt-in, via `key`
 
 Two diagrams that both mention the same database are, by default, two unrelated nodes. Give both the same `key` and, when the diagrams are composed under an umbrella via `include`, they merge into one entity with both declaring contexts as parents.

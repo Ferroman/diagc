@@ -28,6 +28,8 @@ Three outputs:
 | `.diagrams/html/index.html` | A gallery linking them all. | no |
 | `.diagrams/static/<name>.png` | Flat image, sized to the diagram. | **yes** |
 
+Freehand drawings (`<name>.drawings.json`) ship with the page and are included in the PNG; the export frame grows to fit a stroke drawn outside the boxes.
+
 ## Put an image in your docs
 
 ```markdown

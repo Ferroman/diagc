@@ -128,6 +128,7 @@ Inside this monorepo:
 | `.diagrams/src/*.diagram.ts` | you | yes |
 | `.diagrams/src/*.diagram.json` | you, via the studio | yes |
 | `.diagrams/src/*.layout.json` | the studio | yes |
+| `.diagrams/src/*.drawings.json` | the studio (freehand drawings) | yes |
 | `.diagrams/src/assets/` | the studio (imported images) | yes |
 | `.diagrams/src/library.json` | the studio (your library entries) | yes |
 | `.diagrams/.artifacts/` | `compile` | no |

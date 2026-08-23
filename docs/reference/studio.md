@@ -43,6 +43,9 @@ A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot ente
 | Drag an image node's corner handles | Resize (aspect locked) |
 | Click a `db-table` node's rows | Add, edit, remove or reorder columns in place |
 | Drag from a column row's connect point to another table | Create a foreign key, drawn crow's-foot and anchored to that row |
+| **Pen** in the toolbar (`p`), then drag on the canvas | Draw a freehand stroke in the chosen color and width |
+| **Eraser** in the toolbar (`e`), then click a stroke | Erase it (one stroke per click; undo brings it back) |
+| `✎` in the corner controls, or the **Drawings** row in the legend | Show/hide all drawings — tracing paper, never saved |
 
 New nodes are **typeless** — just a label — so quick sketches stay clean. Give a node a `type` in its panel to get the registry's shape and icon.
 
@@ -54,6 +57,9 @@ New nodes are **typeless** — just a label — so quick sketches stay clean. Gi
 | Undo | `Ctrl/Cmd + Z` |
 | Redo | `Ctrl/Cmd + Shift + Z` or `Ctrl + Y` |
 | Save | `Ctrl/Cmd + S` |
+| Pen (edit mode) | `p` |
+| Eraser (edit mode) | `e` |
+| Back to Select (edit mode) | `Esc` |
 
 Shortcuts are ignored while you are typing in a form field. History is capped at 100 steps.
 
@@ -80,15 +86,16 @@ Switching planes keeps your place — the groups containing what you were lookin
 
 ## Saving
 
-Save **validates first** and refuses to write an invalid model, surfacing the same issues the compiler would. On success it writes two files next to your other sources:
+Save **validates first** and refuses to write an invalid model, surfacing the same issues the compiler would. On success it writes these files next to your other sources:
 
 - `.diagrams/src/<name>.diagram.json` — the model
 - `.diagrams/src/<name>.layout.json` — positions, sizes, and which planes have automatic layout switched off
+- `.diagrams/src/<name>.drawings.json` — freehand strokes, only when there are any
 
 The layout file is paired by name alone, so a diagram compiled from TypeScript can have one too — see
 [Place boxes on a generated diagram](../how-to/position-a-generated-diagram.md).
 
-Subfolders are preserved. Both are pretty-printed JSON that reviews like any other source.
+Subfolders are preserved. All are pretty-printed JSON that reviews like any other source.
 
 An unsaved dot sits next to Save while the session is dirty; **Done** warns before discarding.
 
