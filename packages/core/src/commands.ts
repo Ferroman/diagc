@@ -87,7 +87,9 @@ export type EditorCommand =
   | { type: 'set-plane-layout'; plane?: string; manual: boolean }
   | { type: 'set-layout-settings'; plane?: string; patch: Partial<LayoutSettings> }
   | { type: 'add-stroke'; plane?: string; stroke: Stroke }
-  | { type: 'delete-stroke'; plane?: string; id: string };
+  | { type: 'delete-stroke'; plane?: string; id: string }
+  /** several commands as one step: applied in order, all or nothing, one undo entry */
+  | { type: 'batch'; commands: EditorCommand[] };
 
 function setPos(layout: LayoutOverlay, key: string, nodeId: string, pos?: { x: number; y: number }): LayoutOverlay {
   const plane = { ...(layout.planes[key] ?? {}) };
@@ -293,6 +295,8 @@ export function applyCommand(state: EditorState, command: EditorCommand): Editor
       return { model, layout, drawings: addStroke(drawings, layoutPlaneKey(model, command.plane), command.stroke) };
     case 'delete-stroke':
       return { model, layout, drawings: deleteStroke(drawings, layoutPlaneKey(model, command.plane), command.id) };
+    case 'batch':
+      return applyCommandWithResult(state, command).state;
     case 'delete-plane': {
       // The drawings bucket is keyed by the plane id, like the layout bucket —
       // same mirror hygiene, third file.
@@ -315,6 +319,20 @@ export function applyCommandWithResult(
   state: EditorState,
   command: EditorCommand,
 ): { state: EditorState; relationId?: string } {
+  if (command.type === 'batch') {
+    // Atomic by construction: members apply to a running copy and a throw
+    // unwinds before the caller sees anything. The last add-relation's id is
+    // surfaced exactly as a lone add-relation's would be, so a panel that ends
+    // a batch with a connect can still select the edge.
+    let next = state;
+    let relationId: string | undefined;
+    for (const c of command.commands) {
+      const r = applyCommandWithResult(next, c);
+      next = r.state;
+      if (r.relationId !== undefined) relationId = r.relationId;
+    }
+    return relationId !== undefined ? { state: next, relationId } : { state: next };
+  }
   if (command.type === 'add-relation') {
     const { model, id } = addRelation(state.model, command.from, command.to, command.opts);
     return { state: { model, layout: state.layout, drawings: state.drawings }, relationId: id };

@@ -384,3 +384,39 @@ describe('stroke commands', () => {
     expect(related.drawings).toBe(before.drawings);
   });
 });
+
+describe('batch', () => {
+  it('applies its members in order and surfaces the last relation id', () => {
+    const { state: s, relationId } = applyCommandWithResult(state(), {
+      type: 'batch',
+      commands: [
+        { type: 'add-node', node: { id: 'db', name: 'DB', type: 'database' }, parent: { id: 'sys' } },
+        { type: 'add-relation', from: 'a', to: 'db', opts: { kind: 'sync' } },
+        { type: 'batch', commands: [{ type: 'rename-node', id: 'db', name: 'Orders DB' }] },
+      ],
+    });
+    expect(s.model.nodes.at(-1)?.name).toBe('Orders DB');
+    expect(s.model.containment).toContainEqual({ parent: 'sys', child: 'db' });
+    expect(s.model.relations).toHaveLength(1);
+    expect(relationId).toBe(s.model.relations[0]?.id);
+  });
+
+  it('is atomic: a failing member throws and the input state is what the caller still holds', () => {
+    const before = state();
+    expect(() =>
+      applyCommand(before, {
+        type: 'batch',
+        commands: [
+          { type: 'add-node', node: { id: 'db', name: 'DB', type: 'database' } },
+          { type: 'add-node', node: { id: 'a', name: 'dup', type: 'service' } },
+        ],
+      }),
+    ).toThrow(CommandError);
+    expect(before.model.nodes.some((n) => n.id === 'db')).toBe(false);
+  });
+
+  it('an empty batch returns the same state object', () => {
+    const before = state();
+    expect(applyCommand(before, { type: 'batch', commands: [] })).toBe(before);
+  });
+});

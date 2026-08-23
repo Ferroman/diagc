@@ -29,6 +29,9 @@ export function startSession(name: string, state: EditorState): EditorSession {
 export const isDirty = (s: EditorSession): boolean => s.state !== s.savedState;
 
 export function dispatch(s: EditorSession, command: EditorCommand): EditorSession {
+  // An empty batch changes nothing; recording it would add an undo step that
+  // undoes nothing.
+  if (command.type === 'batch' && command.commands.length === 0) return s;
   try {
     const hadPlanes = (s.state.model.planes ?? []).length > 0;
     const { state, relationId } = applyCommandWithResult(s.state, command);

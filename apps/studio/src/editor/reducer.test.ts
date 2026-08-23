@@ -92,4 +92,24 @@ describe('editor reducer', () => {
     expect(s.state.layout.planes['default']).toBeUndefined();
     expect(s.state.drawings.planes['default']).toBeUndefined();
   });
+
+  it('a batch is one undo step, and an empty batch records nothing', () => {
+    let s = startSession('draft', state());
+    s = dispatch(s, {
+      type: 'batch',
+      commands: [
+        { type: 'add-node', node: { id: 'db', name: 'DB', type: 'database' }, parent: { id: 'sys' } },
+        { type: 'add-relation', from: 'a', to: 'db', opts: { kind: 'sync' } },
+        { type: 'rename-node', id: 'db', name: 'Orders DB' },
+      ],
+    });
+    expect(s.past).toHaveLength(1);
+    expect(s.lastRelationId).toBe(s.state.model.relations[0]?.id);
+    s = undo(s);
+    expect(s.state.model.nodes.some((n) => n.id === 'db')).toBe(false);
+    expect(s.state.model.relations).toHaveLength(0);
+    s = dispatch(s, { type: 'batch', commands: [] });
+    expect(s.past).toHaveLength(0);
+    expect(isDirty(s)).toBe(false);
+  });
 });
