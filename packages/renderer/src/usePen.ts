@@ -51,6 +51,17 @@ export function usePen({ enabled, toFlow, onStroke }: PenOptions): { live: numbe
   const onPointerDownCapture = useCallback<Handler>(
     (e) => {
       if (!enabled || e.button !== 0) return;
+      if (pointerIdRef.current !== null) {
+        // A second primary-button pointerdown while a stroke is already in
+        // progress — a palm or a second finger on a touch device. Swallow it so
+        // it can neither hijack the active stroke nor reach the pane and start a
+        // React Flow pan/pinch, but leave every ref/state untouched: the first
+        // pointer's move/up/cancel events keep matching pointerIdRef and the
+        // stroke finishes normally.
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
       e.stopPropagation();
       e.preventDefault();
       // jsdom has no pointer capture; browsers need it so a stroke that leaves

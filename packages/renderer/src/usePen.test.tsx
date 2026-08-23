@@ -56,4 +56,22 @@ describe('usePen', () => {
     expect(onStroke).not.toHaveBeenCalled();
     expect(getByTestId('live').textContent).toBe('idle');
   });
+
+  it('swallows a second primary-button pointer while a stroke is in progress', () => {
+    const onStroke = vi.fn();
+    const onPaneDown = vi.fn();
+    const { getByTestId } = render(<Host enabled onStroke={onStroke} onPaneDown={onPaneDown} />);
+    const pane = getByTestId('pane');
+    fireEvent.pointerDown(pane, { button: 0, pointerId: 1, clientX: 0, clientY: 0 });
+    // A palm or a second finger touches down mid-stroke — it must not hijack
+    // the active gesture or reach the pane.
+    fireEvent.pointerDown(pane, { button: 0, pointerId: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(pane, { pointerId: 2, clientX: 200, clientY: 200 });
+    fireEvent.pointerMove(pane, { pointerId: 1, clientX: 41, clientY: 0 });
+    fireEvent.pointerUp(pane, { pointerId: 1, clientX: 41, clientY: 0 });
+    expect(onPaneDown).not.toHaveBeenCalled();
+    expect(onStroke).toHaveBeenCalledTimes(1);
+    expect(onStroke).toHaveBeenCalledWith([0, 0, 21, 0]); // pointer 1's points only
+    expect(getByTestId('live').textContent).toBe('idle');
+  });
 });
