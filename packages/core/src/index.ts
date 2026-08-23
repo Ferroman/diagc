@@ -31,10 +31,15 @@ export {
   BranchRef,
   CommitRef,
   GitGraphBuilder,
+  ActivityBuilder,
+  ActivityScope,
+  LaneRef,
+  RegionRef,
   type NodeOpts,
   type RelateOpts,
   type CommitOpts,
   type MergeOpts,
+  type ActivityElementOpts,
 } from './builder';
 export { validate, DiagramValidationError, IMAGE_REF, LIBRARY_IMAGE_REF, type ValidationIssue } from './validate';
 export { isDrawings, isLayoutOverlay } from './guards';
