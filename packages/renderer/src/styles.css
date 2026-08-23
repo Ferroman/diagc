@@ -595,3 +595,14 @@ path.dg-loop-badge-circle {
 }
 .dg-laser-toggle { font-size: 14px; line-height: 1; }
 .dg-laser-toggle-on { color: var(--dg-laser); }
+
+/* Git graph notation. Label box size/inset mirror GIT_LAYOUT.LABEL_W/LABEL_H/MARGIN
+   in git-layout.ts — the overlay computes the tail's end from those constants. */
+.dg-circle-node { width: 100%; height: 100%; min-width: 0; min-height: 0; padding: 0; border-radius: 50%; border-width: 2px; position: relative; }
+.dg-circle-node .dg-sketch-shape { border-radius: 50%; }
+.dg-commit-tag { position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%); white-space: nowrap; font: 600 12px/1.2 system-ui, sans-serif; pointer-events: none; }
+.dg-commit-tag .dg-label-input { pointer-events: auto; }
+.dg-lane { width: 100%; height: 100%; position: relative; background: transparent; border: none; }
+.dg-lane-label { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); width: 170px; height: 36px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1px solid var(--dg-node-stroke); border-radius: 3px; background: var(--dg-node-fill); color: var(--dg-text); font: 14px/1 system-ui, sans-serif; }
+.dg-notation-git .react-flow__node.selected .dg-lane-label { box-shadow: 0 0 0 2px var(--dg-accent); }
+.dg-notation-git .react-flow__node.selected .dg-circle-node { box-shadow: 0 0 0 2px var(--dg-accent); }

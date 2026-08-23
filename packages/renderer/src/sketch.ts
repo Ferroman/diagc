@@ -14,7 +14,7 @@ const gen = rough.generator();
 const FILL_SENTINEL = 'sentinel-fill';
 const STROKE_SENTINEL = 'sentinel-stroke';
 
-export type SketchShapeKind = 'box' | 'cylinder' | 'hexagon' | 'bubble';
+export type SketchShapeKind = 'box' | 'cylinder' | 'hexagon' | 'bubble' | 'circle';
 export interface SketchPaths {
   /** combined `d` for solid fill polygon(s) — render with fill */
   fill: string;
@@ -133,7 +133,9 @@ export function sketchNode(
   const h = Math.max(2, height);
   const o = toOptions(style, seed);
   const drawables =
-    kind === 'hexagon'
+    kind === 'circle'
+      ? [gen.circle(w / 2, h / 2, Math.min(w, h) - 2, o)]
+      : kind === 'hexagon'
       ? [gen.polygon(hexPoints(w, h), o)]
       : kind === 'cylinder'
         ? [gen.rectangle(1, 8, w - 2, h - 10, o), gen.ellipse(w / 2, 8, w - 6, 14, o)]

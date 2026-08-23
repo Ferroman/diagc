@@ -42,6 +42,10 @@ describe('sketchNode', () => {
       expect(p.fill).not.toContain('NaN');
     }
   });
+  it('sketches a circle inscribed in the box', () => {
+    const p = sketchNode('circle', 28, 28, 1, { roughness: 1, strokeWidth: 1.2, bowing: 1, fillStyle: 'solid' });
+    expect(p.stroke).not.toBe('');
+  });
 });
 
 /** every y coordinate in rough's path output (commands are all x,y pairs) */

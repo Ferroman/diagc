@@ -91,7 +91,15 @@ function accentStyle(color: string | undefined): CSSProperties | undefined {
 }
 
 const sketchKind = (shape: string): import('./sketch').SketchShapeKind =>
-  shape === 'cylinder' ? 'cylinder' : shape === 'hexagon' ? 'hexagon' : shape === 'bubble' ? 'bubble' : 'box';
+  shape === 'circle'
+    ? 'circle'
+    : shape === 'cylinder'
+      ? 'cylinder'
+      : shape === 'hexagon'
+        ? 'hexagon'
+        : shape === 'bubble'
+          ? 'bubble'
+          : 'box';
 
 /** Resolve a node image ref to a URL. Absolute refs (leading '/' or http[s]) —
  * bundled library icons under /library/… — are used as-is; a bare content-hash
@@ -200,6 +208,7 @@ export function DiagramNode({
         : undefined;
   const isContainer = data.state !== 'leaf';
   const isCldGroup = profile.node?.typelessAsText === true && data.typeId === undefined && isContainer;
+  const isLane = profile.id === 'git-graph' && data.typeId === 'branch' && isContainer;
   const highlight = useContext(LoopHighlightContext);
   // 'loop': members glow, rest strong-dim. 'focus': members stay normal, rest light-dim.
   const loopClass = !highlight.active
@@ -232,6 +241,27 @@ export function DiagramNode({
 
   if (style.shape === 'table' && data.state === 'leaf') {
     return <TableNode data={data} />;
+  }
+
+  if (style.shape === 'circle' && data.state === 'leaf') {
+    // A commit: the box is the circle; the tag hangs above it, outside the
+    // layout footprint, so untagged commits and tagged ones take the same room.
+    const tagColor = data.textColor ?? data.color;
+    return (
+      <div
+        className={`dg-node dg-circle-node${ghostClass}${loopClass}`}
+        {...(data.stylePreset?.rough !== undefined ? {} : { style: accentStyle(data.color) })}
+        {...ghostTitle}
+      >
+        {sketchOf(data, 'circle', id, width, height)}
+        {(data.label !== '' || data.labelEditing === true) && (
+          <span className="dg-commit-tag" {...(tagColor !== undefined ? { style: { color: tagColor } } : {})}>
+            {name}
+          </span>
+        )}
+        {sideHandles}
+      </div>
+    );
   }
 
   if (data.shape !== undefined && data.state === 'leaf') {
@@ -360,6 +390,21 @@ export function DiagramNode({
         ))}
       </span>
     ) : null;
+
+  if (isLane) {
+    // A lane is a row, not a box: no border, no fill, none of the fold/enter/pin
+    // chrome (the notation keeps it expanded). Its name sits in a tinted box at
+    // the band's right end — the reference's "Master / Nightly" labels. Width
+    // and inset mirror GIT_LAYOUT.LABEL_W / MARGIN in styles.css.
+    return (
+      <div className={`dg-lane${loopClass}`}>
+        <span className="dg-lane-label" {...(data.color !== undefined ? { style: { ...accentStyle(data.color), color: data.textColor ?? data.color } } : {})}>
+          {name}
+        </span>
+        {sideHandles}
+      </div>
+    );
+  }
 
   if (isCldGroup && data.state === 'expanded') {
     // Members render as their own loose React Flow nodes within this node's

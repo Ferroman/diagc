@@ -449,3 +449,51 @@ describe('DiagramNode', () => {
     expect(container.querySelector('.dg-label b')).toBeNull();
   });
 });
+
+describe('git graph nodes', () => {
+  const gitTypes = createTypeRegistry({ commit: { shape: 'circle' }, branch: { shape: 'box' } });
+  const base = (over: Partial<DiagramNodeData>): DiagramNodeData => ({
+    label: '',
+    state: 'leaf',
+    promoted: false,
+    sharedMembers: [],
+    hiddenCount: 0,
+    typeRegistry: gitTypes,
+    icons: createIconRegistry(),
+    notation: 'git-graph',
+    ...over,
+  });
+
+  it('a commit is a circle with its tag above, coloured like its lane', () => {
+    const { container } = renderNode(base({ typeId: 'commit', label: '1.0', color: '#7ba7d9' }));
+    const circle = container.querySelector('.dg-node.dg-circle-node') as HTMLElement;
+    expect(circle).not.toBeNull();
+    expect(circle.style.borderColor).toBe('rgb(123, 167, 217)'); // jsdom normalizes hex to rgb (#7ba7d9)
+    const tag = container.querySelector('.dg-commit-tag') as HTMLElement;
+    expect(tag.textContent).toBe('1.0');
+    expect(tag.style.color).toBe('rgb(123, 167, 217)');
+    expect(container.querySelector('.dg-type')).toBeNull();
+  });
+
+  it('an untagged commit draws no tag', () => {
+    const { container } = renderNode(base({ typeId: 'commit', label: '' }));
+    expect(container.querySelector('.dg-commit-tag')).toBeNull();
+  });
+
+  it('a lane is a transparent band with its name boxed at the right and no group chrome', () => {
+    const { container } = renderNode(base({ typeId: 'branch', label: 'Master', state: 'expanded', color: '#7ba7d9', onEnterNode: () => {}, onTogglePin: () => {} }));
+    expect(container.querySelector('.dg-lane')).not.toBeNull();
+    const label = container.querySelector('.dg-lane-label') as HTMLElement;
+    expect(label.textContent).toBe('Master');
+    expect(label.style.borderColor).toBe('rgb(123, 167, 217)'); // jsdom normalizes hex to rgb (#7ba7d9)
+    expect(container.querySelector('.dg-group-header')).toBeNull();
+    expect(screen.queryByLabelText('Enter node')).toBeNull();
+    expect(screen.queryByTestId('disclose-chip')).toBeNull();
+  });
+
+  it('outside the git notation a branch-typed container is an ordinary group', () => {
+    const { container } = renderNode({ ...base({ typeId: 'branch', label: 'Master', state: 'expanded' }), notation: undefined });
+    expect(container.querySelector('.dg-lane')).toBeNull();
+    expect(container.querySelector('.dg-group')).not.toBeNull();
+  });
+});
