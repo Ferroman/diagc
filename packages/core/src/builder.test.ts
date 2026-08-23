@@ -336,9 +336,16 @@ describe('activity', () => {
     const s1 = lane.start();
     const s2 = lane.start();
     const d = lane.decision();
+    const b = lane.bar();
+    const e = lane.end();
     const j = m.toJSON();
-    expect([s1.id, s2.id, d.id]).toEqual(['l-start', 'l-start-2', 'l-decision']);
+    expect([s1.id, s2.id, d.id, b.id, e.id]).toEqual(['l-start', 'l-start-2', 'l-decision', 'l-bar', 'l-end']);
     expect(j.nodes.find((n) => n.id === 'l-start')?.name).toBe('');
+    const types = new Map(j.nodes.map((n) => [n.id, n.type]));
+    expect(types.get('l-start')).toBe('activity-start');
+    expect(types.get('l-decision')).toBe('activity-decision');
+    expect(types.get('l-bar')).toBe('activity-bar');
+    expect(types.get('l-end')).toBe('activity-end');
   });
 
   it('region() nests in the lane and hosts the same element helpers', () => {
