@@ -79,6 +79,14 @@ describe('Viewer', () => {
     expect(document.documentElement.style.getPropertyValue('--dg-group-stroke')).not.toBe('');
     expect(document.documentElement.style.getPropertyValue('--dg-node-stroke')).not.toBe('');
   });
+  it('forwards the stamped drawings to the canvas, in the interactive page and the export', async () => {
+    const drawings = { version: 1 as const, planes: { default: [{ id: 'k1', points: [1, 1, 50, 50] }] } };
+    const { container, unmount } = render(<Viewer data={{ model: m(), drawings }} />);
+    await waitFor(() => expect(container.querySelector('path.dg-stroke')).not.toBeNull());
+    unmount();
+    const exported = render(<Viewer data={{ model: m(), drawings }} expandAll />);
+    await waitFor(() => expect(exported.container.querySelector('path.dg-stroke')).not.toBeNull());
+  });
 });
 
 describe('Viewer plane picker', () => {

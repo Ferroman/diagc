@@ -5,6 +5,7 @@ import {
   presetLayers,
   type DiagramModel,
   type DiagramPlane,
+  type Drawings,
   type LayoutOverlay,
   type NotationId,
 } from '@diagramming/core';
@@ -16,6 +17,7 @@ const icons = createIconRegistry();
 export interface ViewerData {
   model: DiagramModel;
   layout?: LayoutOverlay;
+  drawings?: Drawings;
 }
 
 interface ExportWindow {
@@ -269,7 +271,7 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
   if (data === null || typeof data !== 'object' || (data as ViewerData).model == null) {
     return <div style={{ padding: 24 }}>No diagram to display.</div>;
   }
-  const { model, layout } = data;
+  const { model, layout, drawings } = data;
   const styleId = model.style !== undefined && isKnownStyle(model.style) ? model.style : 'clean';
   // Which plane is drawn: the reader's pick on an interactive page, and always
   // the model's first plane in export mode. `undefined` leaves DiagramView on
@@ -317,6 +319,7 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
       {...(plane !== undefined ? { plane } : {})}
       {...(notation !== undefined ? { notation } : {})}
       {...(layout !== undefined ? { layout } : {})}
+      {...(drawings !== undefined ? { drawings } : {})}
     />
   );
   // Single-plane pages and export renders keep exactly the DOM they had before
