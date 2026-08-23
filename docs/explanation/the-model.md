@@ -36,6 +36,8 @@ Any node with no recorded position is laid out automatically. The overlay is a s
 
 Freehand drawings are the second thing kept out of the model, in `<name>.drawings.json`. They are coordinates too, but they get their own file rather than a key in the layout one: a box nudge and a scribble should not share a diff hunk, a repo can ignore its drawings without losing its positions, and the drawings format can grow on its own version. A drawing is an overlay on the canvas — absolute coordinates, not anchored to a node — so automatic layout can move boxes out from under it; that is the deliberate trade for "draw anywhere".
 
+A notation may own more than the look. The `git-graph` plane computes its own arrangement — lanes by declaration order, columns from the commit graph — so the model still carries no coordinates, and the same nodes and relations would lay out differently under elk on an ordinary plane. What is fixed is *meaning*; where things go remains the renderer's call, notation included.
+
 ## 4. Cross-diagram identity is opt-in, via `key`
 
 Two diagrams that both mention the same database are, by default, two unrelated nodes. Give both the same `key` and, when the diagrams are composed under an umbrella via `include`, they merge into one entity with both declaring contexts as parents.

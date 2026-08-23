@@ -71,6 +71,7 @@ Organised along [Diátaxis](https://diataxis.fr/) lines — learning, tasks, loo
 | [Organise a large diagram](docs/how-to/organise-large-diagrams.md) | Semantic zoom, pins, drilling — and when to split instead. |
 | [Use the icon library](docs/how-to/use-the-icon-library.md) | C4 stencils, 763 AWS icons, importing your own. |
 | [Draw on a diagram](docs/how-to/draw-on-a-diagram.md) | Freehand pen and eraser on top of the boxes. |
+| [Draw a git branching diagram](docs/how-to/draw-a-git-branching-diagram.md) | Lanes of commits with branch-offs and merges, from the DSL or the studio. |
 | [Compose diagrams](docs/how-to/compose-diagrams.md) | `include` and `key`: umbrella views over several diagrams. |
 | [Publish and share](docs/how-to/publish-and-share.md) | PNGs for a README, interactive pages, GitHub Pages. |
 | [Place boxes on a generated diagram](docs/how-to/position-a-generated-diagram.md) | Position a read-only `.diagram.ts` view without losing it on re-compile. |

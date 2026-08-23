@@ -106,9 +106,43 @@ The first plane declared is the default and owns untagged containment.
 | `containmentOf` | `string?` | Borrow another plane's structure. |
 | `layers` | `string[]?` | Layers on by default in this plane. A default, not a floor: hosts with a layer switch start from this (`presetLayers`) and can turn them off — an export, which has no switch, always draws them. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations. |
-| `notation` | `'causal-loop'?` | |
+| `notation` | `'causal-loop' \| 'git-graph'?` | Prefer `m.gitGraph()` for the latter. |
 | `hides` | `string[]?` | Shared node ids to hide here, promoting their contents into their place. |
 | `hidesTree` | `string[]?` | Shared node ids to hide here together with their contents, however deep. A child another visible box also contains stays. |
+
+## `m.gitGraph(opts?) → GitGraphBuilder`
+
+Declares the model a git branching diagram: a plane with the `git-graph` notation that must be the first plane declared (it owns the lanes' containment). Throws if a plane already exists or if called twice.
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `plane` | `string?` | Plane id. Default `git-graph`. |
+| `name` | `string?` | Plane name. Default `Git graph`. |
+
+### `g.branch(id, opts?) → BranchRef`
+
+A lane. Lanes are drawn top to bottom in declaration order. `BranchRef` is a `NodeRef` (type `branch`).
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `name` | `string?` | Defaults to `id`. |
+| `color` | `string?` | The lane's colour; its commits and links inherit it. Default: a built-in palette by lane index. |
+
+### `branch.commit(tag?)` / `branch.commit(opts) → CommitRef`
+
+A commit on the lane, linked from the lane's previous commit — or, with `from`, the first commit of a new run branched off a commit on another lane. `CommitRef` is a `NodeRef` (type `commit`) with a `branch` field.
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `id` | `string?` | Default `<branch>-<n>`. |
+| `tag` | `string?` | The label above the circle (the node's `name`). Default none. |
+| `from` | `CommitRef?` | Start a new run from this commit (must be on another lane). |
+| `gap` | `number?` | Empty columns before this commit (`metadata.gap`). |
+| `color` | `string?` | Overrides the lane colour for this commit. |
+
+### `branch.merge(src, opts?) → CommitRef`
+
+A commit on the lane that absorbs `src` (a commit on another lane): a `merge` link from `src`, plus the usual link from the lane's previous commit. Same options as `commit` minus `from`.
 
 ## `m.legend(opts?) → m`
 

@@ -133,7 +133,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `containmentOf` | `string?` | Borrow another plane's containment instead of declaring your own. |
 | `layers` | `string[]?` | Layers switched on when this plane is selected. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations, leaving only layer arrows. |
-| `notation` | `string?` | Visual language. Only `causal-loop` is built in. |
+| `notation` | `string?` | Visual language. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)). |
 | `hides` | `string[]?` | Shared node ids this plane hides; their children are promoted into their place. |
 | `hidesTree` | `string[]?` | Shared node ids this plane hides along with everything inside them (a child with another visible parent stays). |
 
@@ -235,6 +235,20 @@ deleted on save rather than written empty.
 }
 ```
 
+## Git graph conventions
+
+A plane with `notation: 'git-graph'` reads ordinary nodes and relations as a branching diagram. Nothing new is stored.
+
+| Git concept | In the model |
+| --- | --- |
+| Lane | Top-level node, `type: 'branch'`. Lane order = order in `nodes`. Colour = `color`, else `typeColors`, else a built-in palette. |
+| Commit | Leaf node, `type: 'commit'`, contained by its lane on the git plane. `name` is the tag (`''` = untagged). `metadata.gap` = empty columns before it. Colour = `color`, else the lane's. |
+| Next commit on a lane | Relation `kind: 'commit'` |
+| Branch-off | Relation `kind: 'branch'`, from a commit on another lane to the first commit of a new run |
+| Merge | Relation `kind: 'merge'`, from the absorbed commit to the merge commit |
+
+A commit's column is one past every commit it follows, branches from or merges, plus its gap. The layout never fails: a cycle is cut, a commit outside every lane is parked beneath the lanes — and validation reports both (`git-*` codes below).
+
 ## Validation codes
 
 `validate()` returns issues; the compiler refuses to write an artifact if there are any.
@@ -263,6 +277,12 @@ deleted on save rather than written empty.
 | `invalid-include` | Malformed `include`. |
 | `unknown-notation` | `notation` is not a built-in id. |
 | `invalid-polarity` | `polarity` is not `+` or `-`. |
+| `git-link-endpoints` | A `commit`/`branch`/`merge` relation does not join two `commit` nodes. |
+| `git-commit-lane` | A `commit` link crosses lanes, or a `branch`/`merge` link stays in one. |
+| `git-parents` | A commit has more than one incoming `commit` link, or more than one incoming `branch` link. |
+| `git-cycle` | The git links form a cycle. |
+| `git-commit-outside-lane` | A `commit` node is not contained by a `branch` on the git plane. |
+| `git-gap` | `metadata.gap` is neither a non-negative integer nor a string of digits. |
 | `invalid-delay` | `delay` is not a boolean. |
 | `invalid-rich` | `rich` runs do not reconstruct `name`. |
 | `invalid-align` | `textAlign` outside the allowed set. |

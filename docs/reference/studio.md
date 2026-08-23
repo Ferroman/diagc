@@ -75,6 +75,8 @@ Shortcuts are ignored while you are typing in a form field. History is capped at
 
 **Layers & planes** — add, edit and remove layers (id, name, tint) and planes (id, name, containment borrowing, preset layers). In edit mode it also carries a **Legend** checkbox, which adds or removes the diagram's `legend` declaration; its title, position, sections and items are authored in the file. See [Add a legend](../how-to/add-a-legend.md).
 
+**Git** — on a plane with the `git-graph` notation, in edit mode: add lanes and commits, branch the selected commit into another lane, merge it into one, set its gap. Each action is one undo step. See [Draw a git branching diagram](../how-to/draw-a-git-branching-diagram.md).
+
 ## Header controls
 
 | Control | Effect |
@@ -107,6 +109,7 @@ An unsaved dot sits next to Save while the session is dirty; edits autosave a mo
 - **Pins, theme and style preset are viewer state.** They are not written to the diagram file — except the style preset, which a diagram *may* pin via its `style` field.
 - **JSON diagrams that declare `include` show their raw source.** Composed content is only visible for compiled, read-only diagrams.
 - **Library saves are best-effort.** A failed write to `library.json` is currently swallowed silently.
+- On a `git-graph` plane the layout pickers (algorithm, direction, spacing, routing) are hidden: the notation owns the arrangement. Auto-layout on/off and Re-layout still work.
 
 ## See also
 
