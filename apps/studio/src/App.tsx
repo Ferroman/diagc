@@ -192,9 +192,12 @@ export function App() {
   // Leaving edit mode or switching diagram drops the pen (see the tool state
   // above): Pen/Eraser only exist in edit mode, and a tool that survived either
   // transition would keep swallowing canvas clicks with nothing to draw on.
+  // Drilling in resets too — drawings are a top-level layer, so the toolbar
+  // disables both tools there and the state must follow, or the UI would show
+  // Pen pressed on a canvas that cannot draw.
   useEffect(() => {
-    setTool('select');
-  }, [editing, selected]);
+    if (!editing || enteredPath.length > 0) setTool('select');
+  }, [editing, selected, enteredPath]);
 
   useEffect(() => {
     applyTheme(document.documentElement, theme === 'dark' ? darkTheme : lightTheme);

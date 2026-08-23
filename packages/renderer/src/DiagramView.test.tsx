@@ -823,6 +823,29 @@ describe('freehand drawings', () => {
     expect(container.querySelector('.dg-canvas')?.classList.contains('dg-tool-pen')).toBe(true);
   });
 
+  it('pen tool: a gesture inside a drilled view draws nothing, because the layer is hidden there', async () => {
+    const onAddStroke = vi.fn();
+    const { container } = render(
+      <DiagramView
+        model={containerEndpointModel()}
+        mode="edit"
+        tool="pen"
+        enteredPath={['sys']}
+        edit={{ onAddStroke }}
+      />,
+    );
+    const pane = await waitFor(() => {
+      const el = container.querySelector('.react-flow__pane');
+      if (el === null) throw new Error('pane not rendered');
+      return el as HTMLElement;
+    });
+    fireEvent.pointerDown(pane, { button: 0, pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(pane, { pointerId: 1, clientX: 50, clientY: 10 });
+    fireEvent.pointerUp(pane, { pointerId: 1, clientX: 50, clientY: 10 });
+    expect(onAddStroke).not.toHaveBeenCalled();
+    expect(container.querySelector('.dg-canvas')?.classList.contains('dg-tool-pen')).toBe(false);
+  });
+
   it('eraser tool: clicking a stroke hit path reports its id', async () => {
     const onDeleteStroke = vi.fn();
     const { container } = render(

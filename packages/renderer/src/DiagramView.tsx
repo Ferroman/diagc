@@ -468,8 +468,12 @@ function Inner(props: DiagramViewProps) {
   // — an isolated "the node is the canvas" view — in BOTH modes.
   const drillRoot = enteredPath.length > 0 ? enteredPath[enteredPath.length - 1] : undefined;
 
-  const penActive = editing && props.tool === 'pen';
-  const eraserActive = editing && props.tool === 'eraser';
+  // Both tools are inert while drilled: drawings live at the top level only (the
+  // layer below is hidden whenever drillRoot is set), so a gesture inside a
+  // drilled view would append strokes to the top-level bucket that the person
+  // drawing cannot see — and an eraser would delete ink they are not looking at.
+  const penActive = editing && props.tool === 'pen' && drillRoot === undefined;
+  const eraserActive = editing && props.tool === 'eraser' && drillRoot === undefined;
   // The active plane's strokes. Keyed like layout.planes, so a borrowing plane
   // shares its donor's bucket exactly as it shares positions.
   const strokes = useMemo(
