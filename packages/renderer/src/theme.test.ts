@@ -34,4 +34,12 @@ describe('theme', () => {
     expect(themeToCssVars(lightTheme)['--dg-ink']).toBe(lightTheme.ink);
     expect(lightTheme.ink).not.toBe(darkTheme.ink);
   });
+
+  it('defines one laser token shared by both themes', () => {
+    // A laser is red on any background; the token exists so the colour is
+    // declared once, not so it can differ per theme.
+    expect(lightTheme.laser).toMatch(/^#[0-9a-f]{6}$/);
+    expect(themeToCssVars(lightTheme)['--dg-laser']).toBe(lightTheme.laser);
+    expect(darkTheme.laser).toBe(lightTheme.laser);
+  });
 });

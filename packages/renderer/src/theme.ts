@@ -26,6 +26,8 @@ export interface ThemeTokens {
   polarityNegative: string;
   /** freehand drawing strokes that name no color */
   ink: string;
+  /** the laser pointer's trail — one red for both themes, so it reads on any background */
+  laser: string;
 }
 
 export const lightTheme: ThemeTokens = {
@@ -53,6 +55,7 @@ export const lightTheme: ThemeTokens = {
   polarityPositive: '#1f8a4c',
   polarityNegative: '#c2413c',
   ink: '#1c2733',
+  laser: '#ff2d55',
 };
 
 export const darkTheme: ThemeTokens = {
@@ -80,6 +83,7 @@ export const darkTheme: ThemeTokens = {
   polarityPositive: '#5dd39e',
   polarityNegative: '#f28b82',
   ink: '#e6ebf0',
+  laser: '#ff2d55',
 };
 
 const kebab = (s: string): string => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
