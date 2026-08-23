@@ -142,4 +142,22 @@ describe('publishDiagrams', () => {
     // the layout, resolved from srcDir (not artifactsDir), was embedded too
     expect(page).toContain('"x":42');
   });
+
+  it('embeds the drawings sidecar from srcDir into the page', async () => {
+    const f = await fixture();
+    const b = model('inked');
+    b.node('a', { name: 'A' });
+    await writeFile(path.join(f.artifacts, 'inked.diagram.json'), JSON.stringify(b.toJSON()));
+    await writeFile(
+      path.join(f.src, 'inked.drawings.json'),
+      JSON.stringify({ version: 1, planes: { default: [{ id: 'k1', points: [7, 8, 9, 10] }] } }),
+    );
+    await publishDiagrams({
+      srcDir: f.src, artifactsDir: f.artifacts, htmlDir: f.html, staticDir: f.stat, shellPath: f.shell,
+      libraryDir: f.lib, assetsDir: f.assets, images: false,
+    });
+    const page = await readFile(path.join(f.html, 'inked.html'), 'utf8');
+    expect(page).toContain('"drawings":{"version":1');
+    expect(page).toContain('[7,8,9,10]');
+  });
 });

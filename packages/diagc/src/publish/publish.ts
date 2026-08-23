@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { DiagramModel, LayoutOverlay } from '@diagramming/core';
+import type { DiagramModel, LayoutOverlay, Drawings } from '@diagramming/core';
 import { errMessage } from '@diagramming/core';
 import { classifyAssetRef, rewriteAssetRefs, safeAssetPath } from './assets';
 import { buildGallery } from './gallery';
@@ -40,6 +40,9 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
       const layout = d.layoutPath !== undefined
         ? (JSON.parse(await readFile(d.layoutPath, 'utf8')) as LayoutOverlay)
         : undefined;
+      const drawings = d.drawingsPath !== undefined
+        ? (JSON.parse(await readFile(d.drawingsPath, 'utf8')) as Drawings)
+        : undefined;
 
       // Pre-read every inlinable ref so the rewrite can stay a pure sync function.
       for (const n of modelRaw.nodes) {
@@ -65,7 +68,7 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
       const inlined = rewriteAssetRefs(modelRaw, resolveAsset);
       const pagePath = path.join(opts.htmlDir, `${d.name}.html`);
       await mkdir(path.dirname(pagePath), { recursive: true });
-      await writeFile(pagePath, stampHtml(shell, { model: inlined, layout }));
+      await writeFile(pagePath, stampHtml(shell, { model: inlined, layout, drawings }));
       pages.push(pagePath);
 
       if (opts.images && opts.renderPng !== undefined) {

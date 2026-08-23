@@ -16,6 +16,7 @@ describe('discoverDiagrams', () => {
     await writeFile(path.join(artifactsDir, 'bar.diagram.json'), '{}'); // no layout
     await mkdir(path.join(artifactsDir, 'team'), { recursive: true });
     await writeFile(path.join(artifactsDir, 'team', 'app.diagram.json'), '{}');
+    await writeFile(path.join(srcDir, 'foo.drawings.json'), '{}');
 
     const found = (await discoverDiagrams(artifactsDir, srcDir)).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -23,5 +24,7 @@ describe('discoverDiagrams', () => {
     expect(found.find((f) => f.name === 'foo')?.modelPath).toBe(path.join(artifactsDir, 'foo.diagram.json'));
     expect(found.find((f) => f.name === 'foo')?.layoutPath).toBe(path.join(srcDir, 'foo.layout.json'));
     expect(found.find((f) => f.name === 'bar')?.layoutPath).toBeUndefined();
+    expect(found.find((f) => f.name === 'foo')?.drawingsPath).toBe(path.join(srcDir, 'foo.drawings.json'));
+    expect(found.find((f) => f.name === 'bar')?.drawingsPath).toBeUndefined();
   });
 });
