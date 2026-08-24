@@ -1,16 +1,17 @@
 # Library reference
 
-The palette of ready-made nodes in the studio's **Library** tab. Four read-only packs ship bundled; your own entries merge over them.
+The palette of ready-made nodes in the studio's **Library** tab. Five read-only packs ship bundled; your own entries merge over them.
 
 For how to use it, see [Use the icon library](../how-to/use-the-icon-library.md).
 
 ## Bundled packs
 
-798 entries in 33 categories, rendered in this order:
+808 entries in 34 categories, rendered in this order:
 
 | Pack | Entries | Categories | Assets |
 | --- | --- | --- | --- |
 | **C4** | 31 | 5 | `/library/shapes/person.svg` (the rest are coloured boxes) |
+| **Activity** | 10 | 1 | none — renderer-drawn glyphs, not images |
 | **Data** | 1 | 1 | none — it seeds columns, not an image |
 | **Tech** | 3 | 1 | `/library/tech/` |
 | **AWS** | 763 | 26 | `/library/aws/`, `/library/aws-resources/`, `/library/aws-groups/`, `/library/aws-categories/` |
@@ -30,6 +31,12 @@ One category per C4 diagram level. Every entry carries a `c4-*` node type that t
 Reference palette: person `#08427b`, external person `#686868`, system `#1168bd`, external system `#999999`, container `#438dd5`, external container `#b3b3b3`, component `#85bbf0`, external component `#cccccc`, boundaries `#444444`, group `#888888`, deployment node `#666666`.
 
 Dynamic diagrams reuse whichever level's elements they describe — what makes them dynamic is numbered relation labels, authored on the connector, not a separate stencil.
+
+### Activity
+
+One category, **UML · Activity** — the flow elements of the [activity diagram](../how-to/draw-an-activity-diagram.md) stencil: Activity frame, Action, Decision, Fork/join bar, Start, End, Send signal, Receive signal, Object, Note. Every entry carries an `activity-*` node type that the renderer draws as a glyph (diamond, bar, dot, …), not an image.
+
+Lanes and regions are not here — they are structural (a lane must live inside a frame, a region inside a lane) and are created from the frame's own panel, which parents them correctly in one batch, rather than dropped loose from the palette.
 
 ### Data
 
