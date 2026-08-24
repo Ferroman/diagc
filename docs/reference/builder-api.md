@@ -144,6 +144,71 @@ A commit on the lane, linked from the lane's previous commit — or, with `from`
 
 A commit on the lane that absorbs `src` (a commit on another lane): a `merge` link from `src`, plus the usual link from the lane's previous commit. Same options as `commit` minus `from`.
 
+## `m.activity(id, opts?) → ActivityBuilder`
+
+Declares an activity frame: a UML swimlane flow. Repeatable — each call is one frame, and frames are ordinary containers on whatever plane the model uses (no notation, no plane creation), so several can share a canvas. `ActivityBuilder` **is** the frame's `NodeRef` (type `activity-frame`).
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `name` | `string?` | Defaults to `id`. |
+
+### `act.lane(id, opts?) → LaneRef`
+
+A lane. Lanes are drawn top to bottom in declaration order. `LaneRef` is a `NodeRef` (type `activity-lane`).
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `name` | `string?` | Defaults to `id`. |
+| `color` | `string?` | The lane's colour. |
+
+### `lane.region(id?, name?) → RegionRef`
+
+An interruptible region: a dashed sub-area nested in the lane, hosting the same element helpers below. `RegionRef` is a `NodeRef` (type `activity-region`). `id` defaults to `${lane}-region`, `${lane}-region-2`, ….
+
+### Element helpers (`LaneRef` and `RegionRef`)
+
+Both extend `ActivityScope`, so a lane and a region expose the same leaf-creating methods; every helper contains the new node in the scope it's called on and returns a plain `NodeRef`.
+
+| Method | Type created | Notes |
+| --- | --- | --- |
+| `.action(id, name, opts?)` | `activity-action` | |
+| `.object(id, name, opts?)` | `activity-object` | |
+| `.send(id, name, opts?)` | `activity-send` | |
+| `.receive(id, name, opts?)` | `activity-receive` | |
+| `.note(id, text)` | `activity-note` | `text` becomes the node's `name`. |
+| `.decision(id?, name?)` | `activity-decision` | Auto-id `<scope>-decision`, `-2`, …; name defaults to `''`. |
+| `.bar(id?)` | `activity-bar` | Fork/join. Auto-id `<scope>-bar`, `-2`, …; unnamed. |
+| `.start(id?)` | `activity-start` | Auto-id `<scope>-start`, `-2`, …; unnamed. |
+| `.end(id?)` | `activity-end` | Auto-id `<scope>-end`, `-2`, …; unnamed. |
+
+`action`, `object`, `send` and `receive` take `opts: { color?: string }`.
+
+### `act.flow(from, to, label?) → act`
+
+A `kind: 'control'` relation — the ordinary solid arrow between two elements. `label` is a plain relation label; a guard is just a label like `[order accepted]`.
+
+### `act.objectFlow(from, to, label?) → act`
+
+A `kind: 'object-flow'` relation — dashed, for data (an object) passing between actions.
+
+### `act.interrupt(from, to, label?) → act`
+
+A `kind: 'interrupt'` relation — a zigzag jog at the midpoint, for a signal that interrupts a region.
+
+### `act.noteLink(note, target) → act`
+
+A `kind: 'note-link'` relation from a note to what it annotates — dashed, no arrowhead.
+
+```ts
+const m = model('flow');
+const act = m.activity('actors', { name: 'Actors' });
+const orders = act.lane('orders', { name: 'Orders' });
+const start = orders.start();
+const submit = orders.action('submit', 'Submit order');
+const note = orders.note('n1', 'Validated client-side first');
+act.flow(start, submit).noteLink(note, submit);
+```
+
 ## `m.legend(opts?) → m`
 
 Opt this diagram into an on-canvas key. Calling it at all is the switch — a diagram that never does has no legend. A bare `m.legend()` derives every row.

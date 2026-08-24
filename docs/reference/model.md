@@ -249,6 +249,38 @@ A plane with `notation: 'git-graph'` reads ordinary nodes and relations as a bra
 
 A commit's column is one past every commit it follows, branches from or merges, plus its gap. The layout never fails: a cycle is cut, a commit outside every lane is parked beneath the lanes — and validation reports both (`git-*` codes below).
 
+## Activity diagram conventions
+
+An `activity-frame` node containing `activity-lane` nodes reads as a UML swimlane diagram. Nothing new is stored — no notation, no plane; frames are ordinary containment, and several can share a canvas.
+
+**Node types**
+
+| Type | Shape | Default size | Notes |
+| --- | --- | --- | --- |
+| `activity-frame` | chrome (frame band) | — | Always expanded. Children must be `activity-lane`. |
+| `activity-lane` | chrome (lane band) | — | Always expanded. Parent must be an `activity-frame`. |
+| `activity-region` | chrome (dashed band) | — | Always expanded. Interruptible sub-area; parent must be an `activity-lane` if contained at all. |
+| `activity-action` | rounded | — | |
+| `activity-object` | box | — | |
+| `activity-send` | send-signal | 140 × 44 | |
+| `activity-receive` | receive-signal | 140 × 44 | |
+| `activity-decision` | diamond | 48 × 48 | |
+| `activity-bar` | bar | 8 × 100 | Fork/join. `color` ignored — drawn in the neutral stroke token. |
+| `activity-start` | start-dot | 24 × 24 | `color` ignored. |
+| `activity-end` | end-bullseye | 28 × 28 | `color` ignored. |
+| `activity-note` | note | 140 × 64 | |
+
+**Relation kinds**
+
+| Kind | Style | Meaning |
+| --- | --- | --- |
+| `control` | solid | Ordinary control flow. |
+| `object-flow` | dashed | An object (data) passing between actions. |
+| `interrupt` | zigzag mid-jog | A signal interrupting a region. |
+| `note-link` | dashed, no arrowhead | A note annotating another element. |
+
+A guard is a plain relation `label` (e.g. `[order accepted]`) — there is no dedicated guard field.
+
 ## Validation codes
 
 `validate()` returns issues; the compiler refuses to write an artifact if there are any.
@@ -283,6 +315,9 @@ A commit's column is one past every commit it follows, branches from or merges, 
 | `git-cycle` | The git links form a cycle. |
 | `git-commit-outside-lane` | A `commit` node is not contained by a `branch` on the git plane. |
 | `git-gap` | `metadata.gap` is neither a non-negative integer nor a string of digits. |
+| `activity-lane-parent` | An `activity-lane` is not contained by an `activity-frame`. |
+| `activity-frame-children` | An `activity-frame` contains something other than an `activity-lane`. |
+| `activity-region-parent` | An `activity-region` is contained by something other than an `activity-lane`. |
 | `invalid-delay` | `delay` is not a boolean. |
 | `invalid-rich` | `rich` runs do not reconstruct `name`. |
 | `invalid-align` | `textAlign` outside the allowed set. |

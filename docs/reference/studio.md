@@ -77,6 +77,8 @@ Shortcuts are ignored while you are typing in a form field. History is capped at
 
 **Git** — on a plane with the `git-graph` notation, in edit mode: add lanes and commits, branch the selected commit into another lane, merge it into one, set its gap. Each action is one undo step. See [Draw a git branching diagram](../how-to/draw-a-git-branching-diagram.md).
 
+**Activity** — when an `activity-frame`, `activity-lane` or `activity-region` is selected, in edit mode. On a frame: name a lane, pick a colour, **Add lane** (lanes stack in the order you add them). On a lane or region: an optional name field plus one quick-add button per leaf type (action, decision, fork/join bar, start, end, send signal, receive signal, object, note), and, on a lane only, **Add region**. Every add parents the new node in the selected scope and places it at a deterministic spot, sidestepping drag-and-drop entirely — the model never passes through a state validation would refuse. See [Draw an activity diagram](../how-to/draw-an-activity-diagram.md).
+
 ## Header controls
 
 | Control | Effect |
