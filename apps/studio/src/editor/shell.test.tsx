@@ -1006,4 +1006,99 @@ describe('editor shell', () => {
     await waitFor(() => expect((screen.getByRole('combobox', { name: 'Diagram' }) as HTMLSelectElement).value).toBe('two'));
     expect(window.location.hash).toBe('#/two');
   });
+
+  it('duplicates a read-only diagram into an editable copy and opens it for editing', async () => {
+    render(<App />);
+    // Wait for boot to settle on the first diagram before touching the picker:
+    // until the deep-link fallback promotes `selected` out of '', its pending
+    // update would clobber the switch (the select shows the first option in the
+    // meantime, so the DOM alone can't tell the two states apart).
+    await screen.findByRole('button', { name: /^edit$/i });
+    // 'two' is the TS-owned artifact in the fixture: viewable, not editable.
+    fireEvent.change(screen.getByRole('combobox', { name: 'Diagram' }), { target: { value: 'two' } });
+    expect(await screen.findByText(/read-only/i)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /duplicate/i }));
+    // The copy is written as a JSON source under a free name, with the model's
+    // own id/name rewritten so the file stays self-consistent.
+    await waitFor(() => {
+      const post = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        (c) => String(c[0]) === '/api/diagrams/two-copy' && (c[1] as RequestInit | undefined)?.method === 'POST',
+      );
+      expect(post).toBeDefined();
+      expect(JSON.parse(String((post![1] as RequestInit).body))).toMatchObject({
+        id: 'two-copy',
+        name: 'two-copy',
+        nodes: [{ id: 'z', name: 'zed' }],
+      });
+    });
+    // ...and the studio lands in an edit session on the copy, not the original.
+    expect(await screen.findByRole('button', { name: /^save$/i })).toBeDefined();
+    await waitFor(() =>
+      expect((screen.getByRole('combobox', { name: 'Diagram' }) as HTMLSelectElement).value).toBe('two-copy'),
+    );
+  });
+
+  it('carries the source diagram\'s saved layout onto the copy', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url === '/api/diagrams') {
+          return new Response(
+            JSON.stringify({ diagrams: [{ name: 'two', model: twoModel, issues: [], editable: false }] }),
+            { status: 200 },
+          );
+        }
+        if (url === '/api/layouts') {
+          return new Response(
+            JSON.stringify({ layouts: { two: { version: 1, planes: { default: { z: { x: 40, y: 80 } } } } } }),
+            { status: 200 },
+          );
+        }
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }),
+    );
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: /duplicate/i }));
+    // Positions are the point of duplicating for a demo: the copy must open
+    // laid out exactly like the original, not re-arranged from scratch.
+    await waitFor(() => {
+      const post = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        (c) => String(c[0]) === '/api/layouts/two-copy' && (c[1] as RequestInit | undefined)?.method === 'POST',
+      );
+      expect(post).toBeDefined();
+      expect(JSON.parse(String((post![1] as RequestInit).body))).toMatchObject({
+        planes: { default: { z: { x: 40, y: 80 } } },
+      });
+    });
+  });
+
+  it('numbers a second copy instead of colliding with the first', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url === '/api/diagrams') {
+          return new Response(
+            JSON.stringify({
+              diagrams: [
+                { name: 'two', model: twoModel, issues: [], editable: false },
+                { name: 'two-copy', model: { ...twoModel, id: 'two-copy', name: 'two-copy' }, issues: [], editable: true },
+              ],
+            }),
+            { status: 200 },
+          );
+        }
+        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }),
+    );
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: /duplicate/i }));
+    await waitFor(() => {
+      const posted = (fetch as ReturnType<typeof vi.fn>).mock.calls
+        .filter((c) => (c[1] as RequestInit | undefined)?.method === 'POST')
+        .map((c) => String(c[0]));
+      expect(posted).toContain('/api/diagrams/two-copy-2');
+      expect(posted).not.toContain('/api/diagrams/two-copy');
+    });
+  });
 });

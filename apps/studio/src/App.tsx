@@ -363,10 +363,12 @@ export function App() {
   const { select, switchPlane, activateLayer, toggleLayer, mergeSelectedLayers, togglePin, toggleExpand, resetView } = view;
   const { compareSelect, groupSelected } = view;
 
-  // Diagram lifecycle: create + rename (the flows that re-key the artifact store).
+  // Diagram lifecycle: create + rename + duplicate (the flows that re-key the
+  // artifact store).
   const actions = useDiagramActions({
     editing,
     selected,
+    current,
     names,
     ownedNames,
     setOwnedNames,
@@ -524,6 +526,15 @@ export function App() {
         {canDesign && !editing && ownedNames.has(selected) && (
           <button className="chip" onClick={() => void actions.renameDiagram()} title="Rename this diagram">
             Rename
+          </button>
+        )}
+        {canDesign && !editing && model !== undefined && (
+          <button
+            className="chip"
+            onClick={() => void actions.duplicateDiagram()}
+            title="Copy this diagram — layout and all — to a new editable one and open it"
+          >
+            Duplicate
           </button>
         )}
         <span className="spacer" />

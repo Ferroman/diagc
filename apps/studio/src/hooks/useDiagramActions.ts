@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { emptyDrawings, emptyLayout, type DiagramModel } from '@diagramming/core';
 import type { LoadedArtifact } from '../artifacts';
 import type { EditorApi } from '../editor/useEditor';
+import { nextCopyName } from '../copyName';
 
 const emptyModel = (name: string): DiagramModel => ({
   version: 1,
@@ -17,6 +18,8 @@ const emptyModel = (name: string): DiagramModel => ({
 export interface UseDiagramActionsOptions {
   editing: boolean;
   selected: string;
+  /** The selected diagram's artifact — the content a duplicate copies. */
+  current: LoadedArtifact | undefined;
   names: string[];
   ownedNames: Set<string>;
   setOwnedNames: Dispatch<SetStateAction<Set<string>>>;
@@ -37,15 +40,18 @@ export interface DiagramActions {
   /** View-mode rename of an owned diagram: move both server files, then the
    * artifact keys. */
   renameDiagram: () => Promise<void>;
+  /** Copy the selected diagram to a new editable JSON source and open it. */
+  duplicateDiagram: () => Promise<void>;
 }
 
 /**
- * Diagram lifecycle (create/rename) — the two flows that talk to the dev API
- * about whole diagrams and then re-key the artifact store + selection.
+ * Diagram lifecycle (create/rename/duplicate) — the flows that talk to the dev
+ * API about whole diagrams and then re-key the artifact store + selection.
  */
 export function useDiagramActions({
   editing,
   selected,
+  current,
   names,
   ownedNames,
   setOwnedNames,
@@ -137,5 +143,48 @@ export function useDiagramActions({
     setEnteredPath((p) => [...p]);
   };
 
-  return { newDiagram, renameDiagram };
+  // A read-only diagram is TS-authored, and what the studio holds for it is the
+  // *compiled* artifact: `include` already composed, already validated at
+  // compile time. Writing that out as a JSON source therefore yields a flat,
+  // standalone diagram the middleware owns — an editable twin of something the
+  // studio otherwise can only look at. Owned diagrams take the same path; there
+  // is nothing about it that a JSON source needs done differently.
+  const duplicateDiagram = async () => {
+    if (!leaveEdit()) return;
+    const model = current?.model;
+    if (model === undefined) return;
+    // Every name is a collision, not just the editable ones: a compiled
+    // artifact under `<copy>` would shadow the source we are about to write.
+    const copy = nextCopyName(selected, new Set([...names, ...ownedNames]));
+    const copied: DiagramModel = { ...model, id: copy, name: copy };
+    const post = (kind: 'diagrams' | 'layouts' | 'drawings', body: unknown) =>
+      fetch(`/api/${kind}/${copy}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    const res = await post('diagrams', copied);
+    if (!res.ok) {
+      window.alert(`Could not copy '${selected}'`);
+      return;
+    }
+    const layout = current?.layout ?? emptyLayout();
+    const drawings = current?.drawings ?? emptyDrawings();
+    // Hand positions and strokes are most of why a copy is worth taking, so
+    // they go over with the model — but only when the source actually has
+    // them, mirroring the editor's rule that an untouched diagram never writes
+    // a sidecar. A failure here is not fatal: the edit session below still
+    // carries both, so the first Save writes them.
+    if (current?.layout !== undefined) await post('layouts', layout);
+    if (current?.drawings !== undefined) await post('drawings', drawings);
+    setDrafts((d) => ({ ...d, [copy]: { name: copy, model: copied, layout, drawings, issues: [] } }));
+    setOwnedNames((s) => new Set(s).add(copy));
+    setSelected(copy);
+    setEnteredPath([]);
+    resetView();
+    editor.start(copy, { model: copied, layout, drawings });
+    setEditing(true);
+  };
+
+  return { newDiagram, renameDiagram, duplicateDiagram };
 }
