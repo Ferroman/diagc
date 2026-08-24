@@ -116,7 +116,7 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
    margin only, so it doesn't re-assert after (and beat) `.lp-check input`'s
    `width: auto` for the Gap field, which shares that rule's specificity. */
 .git-panel input, .git-panel select { margin: 4px 0; }
-.git-panel .chip { margin: 4px 0 8px; }
+.git-panel .chip { margin: 2px 4px 2px 0; }
 
 /* excalidraw-style option/color pickers */
 .picker-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }

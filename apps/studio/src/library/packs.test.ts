@@ -139,3 +139,15 @@ describe('Data pack', () => {
     expect(t?.template.columns).toEqual([{ name: 'id', type: 'int', pk: true }]);
   });
 });
+
+describe('Activity pack', () => {
+  it('bundles the activity pack', () => {
+    expect(BUNDLED_LIBRARY.categories.some((c) => c.id === 'activity')).toBe(true);
+    const entries = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'activity');
+    expect(entries.map((e) => e.template.type)).toEqual([
+      'activity-frame', 'activity-action', 'activity-decision', 'activity-bar', 'activity-start',
+      'activity-end', 'activity-send', 'activity-receive', 'activity-object', 'activity-note',
+    ]);
+    expect(entries.find((e) => e.template.type === 'activity-bar')?.template).toMatchObject({ width: 8, height: 100 });
+  });
+});

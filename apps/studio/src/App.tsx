@@ -49,6 +49,7 @@ import { EdgePanel } from './editor/EdgePanel';
 import { LeveragePanel, type LeverageFocus } from './LeveragePanel';
 import { LayersPlanesPanel } from './editor/LayersPlanesPanel';
 import { GitPanel } from './editor/GitPanel';
+import { ActivityPanel } from './editor/ActivityPanel';
 import { InspectorTabs, type InspectorTab } from './editor/InspectorTabs';
 import { Dock } from './Dock';
 import { clampDockWidth } from './dockWidth';
@@ -926,6 +927,15 @@ export function App() {
             >
               {editing && notation === 'git-graph' && (
                 <GitPanel
+                  model={model}
+                  plane={activePlane}
+                  selection={selection}
+                  onCommand={editor.dispatch}
+                  onSelect={(id) => select({ kind: 'node', id })}
+                />
+              )}
+              {editing && (
+                <ActivityPanel
                   model={model}
                   plane={activePlane}
                   selection={selection}

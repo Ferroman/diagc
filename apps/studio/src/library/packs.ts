@@ -1,4 +1,5 @@
 import type { Library, LibraryCategory, LibraryEntry } from './types';
+import { ACTIVITY_PACK } from './packs.activity';
 import { AWS_PACK } from './packs.aws';
 import { C4_PACK } from './packs.c4';
 import { DATA_PACK } from './packs.data';
@@ -22,10 +23,10 @@ const techEntries: LibraryEntry[] = [
 ];
 
 /** Read-only packs bundled with the app; merged with the user library on load.
- * C4 first (the smallest, most-used stencil), then the Data pack, then the
- * vendor logos, then the full AWS icon set — the panel renders categories in
- * this order. */
+ * C4 first (the smallest, most-used stencil), then the Activity stencil, then
+ * the Data pack, then the vendor logos, then the full AWS icon set — the panel
+ * renders categories in this order. */
 export const BUNDLED_LIBRARY: Library = {
-  categories: [...C4_PACK.categories, ...DATA_PACK.categories, ...techCategories, ...AWS_PACK.categories],
-  entries: [...C4_PACK.entries, ...DATA_PACK.entries, ...techEntries, ...AWS_PACK.entries],
+  categories: [...C4_PACK.categories, ...ACTIVITY_PACK.categories, ...DATA_PACK.categories, ...techCategories, ...AWS_PACK.categories],
+  entries: [...C4_PACK.entries, ...ACTIVITY_PACK.entries, ...DATA_PACK.entries, ...techEntries, ...AWS_PACK.entries],
 };
