@@ -489,6 +489,9 @@ export function DiagramNode({
   };
   // an explicit empty registry label (UML glyphs) suppresses the type subtitle entirely
   const typeLabel = data.typeId !== undefined ? (style.label ?? data.typeId) : undefined;
+  // UML draws these glyphs in a fixed neutral stroke — the docs promise node.color is
+  // ignored on bars/start/end, so skip the inline accent that would otherwise tint them
+  const neutralGlyph = style.shape === 'bar' || style.shape === 'start-dot' || style.shape === 'end-bullseye';
 
   return (
     <div
@@ -497,7 +500,7 @@ export function DiagramNode({
           ? `dg-node dg-text-node${ghostClass}${loopClass}`
           : `dg-node dg-shape-${style.shape}${style.dashed === true ? ' dg-dashed' : ''}${outline ? ' dg-c4-outline' : ''}${ghostClass}${loopClass}`
       }
-      {...(data.stylePreset?.rough !== undefined || isTypelessText ? {} : { style: boxAccent })}
+      {...(data.stylePreset?.rough !== undefined || isTypelessText || neutralGlyph ? {} : { style: boxAccent })}
       {...ghostTitle}
     >
       {!isTypelessText && sketchOf(data, style.shape, id, width, height)}

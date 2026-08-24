@@ -472,6 +472,14 @@ describe('activity diagram nodes', () => {
     expect(container.querySelector('.dg-type')).toBeNull();
   });
 
+  it('ignores node.color on a bar glyph — UML draws it in the fixed neutral stroke', () => {
+    const { container } = renderNode({ typeId: 'activity-bar', color: '#ff0000' }, undefined, { width: 8, height: 100 });
+    const bar = container.querySelector('.dg-shape-bar') as HTMLElement;
+    expect(bar).not.toBeNull();
+    expect(bar.style.background).toBe('');
+    expect(bar.style.borderColor).toBe('');
+  });
+
   it('renders activity-decision in rough mode with a sketch shape svg', () => {
     const { container } = renderNode(
       { typeId: 'activity-decision', stylePreset: stylePreset('sketch') },
