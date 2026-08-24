@@ -827,6 +827,27 @@ function Inner(props: DiagramViewProps) {
     [placedGeometry, compiled, props.model, props.layout],
   );
 
+  // Ids the band pass above moved off elk's placement (arrangeActivityFrames
+  // overrides lanes' x/y/w/h and frames' w/h AFTER elk already routed against
+  // the pre-band positions) — the exact same kind of staleness a manual drag
+  // causes for `pinnedIds` below, so these ids must join that same set (see
+  // its comment: the git-lane-drag precedent this mirrors). `arrangeActivityFrames`
+  // only `out.set()`s an id it actually changed, so "displaced" is precisely
+  // "its arranged geometry object is not the placed one" (reference
+  // inequality, not a value comparison). The `===` shortcut makes this empty
+  // and free to compute when there are no activity frames on the plane at all
+  // (arrangeActivityFrames then returns the same map back, unchanged).
+  const bandDisplacedIds = useMemo(() => {
+    if (arrangedGeometry === null || placedGeometry === null || arrangedGeometry === placedGeometry) {
+      return EMPTY_ID_SET;
+    }
+    const displaced = new Set<string>();
+    for (const [id, g] of arrangedGeometry) {
+      if (placedGeometry.get(id) !== g) displaced.add(id);
+    }
+    return displaced;
+  }, [arrangedGeometry, placedGeometry]);
+
   // A drill (enter/exit) swaps the whole scene, so once it re-layouts, glide to
   // fit the new isolated view.
   useEffect(() => {
@@ -1085,8 +1106,11 @@ function Inner(props: DiagramViewProps) {
   // whose routes are the drawing (a git link has no floating form worth showing).
   // Endpoints whose position is manually overridden (saved pins, or ephemeral
   // view-mode drags) have a stale precomputed route, so those edges fall back
-  // to floating paths. A pinned id can also be a CONTAINER (e.g. a dragged git
-  // lane) — dragging it moves every descendant along with it, so their routes
+  // to floating paths. `bandDisplacedIds` joins the same set for the same
+  // reason: the activity band pass overrides lane/frame geometry after elk
+  // ran, exactly as a drag overrides it afterward by hand. A pinned id can
+  // also be a CONTAINER (e.g. a dragged git lane, or a band-displaced activity
+  // lane) — moving it moves every descendant along with it, so their routes
   // are just as stale even though only the container's own id was pinned. Walk
   // the compiled tree once to expand each pinned id to its whole subtree: an
   // endpoint counts as pinned when it, or any ancestor, is. Kept as a small memo
@@ -1098,6 +1122,7 @@ function Inner(props: DiagramViewProps) {
     const rawPinned = new Set<string>([
       ...Object.keys(props.layout?.planes[layoutPlaneKey(props.model, props.plane)] ?? {}),
       ...(editing ? [] : Object.keys(viewPositions)),
+      ...bandDisplacedIds,
     ]);
     const expanded = new Set<string>();
     const walk = (n: ViewNode, ancestorPinned: boolean) => {
@@ -1107,7 +1132,7 @@ function Inner(props: DiagramViewProps) {
     };
     compiled.roots.forEach((r) => walk(r, false));
     return expanded;
-  }, [orthogonal, props.layout, props.model, props.plane, editing, viewPositions, compiled]);
+  }, [orthogonal, props.layout, props.model, props.plane, editing, viewPositions, compiled, bandDisplacedIds]);
 
   // The per-edge data channel inputs, as one object the cached builder keys
   // its identity on (see build-data.ts) — same stability contract as the node

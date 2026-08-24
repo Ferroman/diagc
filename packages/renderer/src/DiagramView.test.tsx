@@ -1188,6 +1188,35 @@ describe('activity diagrams', () => {
     });
   });
 
+  it('falls back to a floating path for an edge inside a band-displaced lane on orthogonal routing', async () => {
+    // one frame, one lane, two connected actions — the band pass (see
+    // arrangeActivityFrames) overrides the lane's x/y/w/h AFTER elk already
+    // routed the edge between them, so elk's precomputed orthogonal waypoints
+    // no longer match the lane's rendered position. Same staleness a dragged
+    // git lane causes (see the git-graph describe block above); mirrors that
+    // test's assertion.
+    const m = model('act-ortho');
+    const act = m.activity('flow');
+    const lane = act.lane('a', { name: 'A' });
+    const n1 = lane.action('act1', 'Do it');
+    const n2 = lane.action('act2', 'Then this');
+    act.flow(n1, n2);
+    const built = m.toJSON();
+
+    const { container } = render(
+      <DiagramView model={built} layout={{ version: 1, planes: {}, settings: { default: { edgeRouting: 'orthogonal' } } }} />,
+    );
+    await waitFor(() => expect(container.querySelectorAll('.dg-activity-lane')).toHaveLength(1));
+    const edgePath = await waitFor(() => {
+      const el = container.querySelector('[data-testid="rf__edge-act1=>act2:"] path.react-flow__edge-path');
+      if (el === null) throw new Error('flow edge not rendered');
+      return el;
+    });
+    // a stale elk route would draw a routed (non-bezier) polyline; the band
+    // displacement must force the floating bezier ('C') fallback instead
+    expect(edgePath.getAttribute('d') ?? '').toContain('C');
+  });
+
   it('a bar leaf gets its registry default size', async () => {
     const { container } = render(<DiagramView model={looseBarModel()} />);
     const wrapper = await waitFor(() => {
