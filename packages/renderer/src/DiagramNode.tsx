@@ -278,7 +278,7 @@ export function DiagramNode({
         <div className="dg-shape-label" {...(labelColor !== undefined ? { style: { color: labelColor } } : {})}>
           {ghostArrow}
           {name}
-          {typeLabel !== undefined ? <span className="dg-type">{typeLabel}</span> : null}
+          {typeLabel !== undefined && typeLabel !== '' ? <span className="dg-type">{typeLabel}</span> : null}
         </div>
         {sideHandles}
       </div>
@@ -487,6 +487,8 @@ export function DiagramNode({
     // an explicit text color overrides the default (which follows the accent on C4 boxes)
     ...(data.textColor !== undefined ? { color: data.textColor } : {}),
   };
+  // an explicit empty registry label (UML glyphs) suppresses the type subtitle entirely
+  const typeLabel = data.typeId !== undefined ? (style.label ?? data.typeId) : undefined;
 
   return (
     <div
@@ -516,7 +518,7 @@ export function DiagramNode({
         {data.state === 'collapsed' && !isCldGroup && <span className="dg-count">{data.hiddenCount}</span>}
         {badges}
       </div>
-      {data.typeId !== undefined ? <span className="dg-type">{style.label ?? data.typeId}</span> : null}
+      {typeLabel !== undefined && typeLabel !== '' ? <span className="dg-type">{typeLabel}</span> : null}
       {metaBadges}
       {sideHandles}
     </div>

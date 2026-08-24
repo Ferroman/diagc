@@ -83,14 +83,14 @@ describe('registries', () => {
     expect(r.resolve('activity-lane')).toEqual({ shape: 'box', alwaysExpanded: true });
     expect(r.resolve('activity-region')).toEqual({ shape: 'box', dashed: true, alwaysExpanded: true });
     expect(r.resolve('activity-action').shape).toBe('rounded');
-    expect(r.resolve('activity-decision')).toEqual({ shape: 'diamond', defaultSize: { width: 48, height: 48 } });
-    expect(r.resolve('activity-bar')).toEqual({ shape: 'bar', defaultSize: { width: 8, height: 100 } });
-    expect(r.resolve('activity-start')).toEqual({ shape: 'start-dot', defaultSize: { width: 24, height: 24 } });
-    expect(r.resolve('activity-end')).toEqual({ shape: 'end-bullseye', defaultSize: { width: 28, height: 28 } });
-    expect(r.resolve('activity-send')).toEqual({ shape: 'send-signal', defaultSize: { width: 140, height: 44 } });
-    expect(r.resolve('activity-receive')).toEqual({ shape: 'receive-signal', defaultSize: { width: 140, height: 44 } });
+    expect(r.resolve('activity-decision')).toEqual({ shape: 'diamond', defaultSize: { width: 48, height: 48 }, label: '' });
+    expect(r.resolve('activity-bar')).toEqual({ shape: 'bar', defaultSize: { width: 8, height: 100 }, label: '' });
+    expect(r.resolve('activity-start')).toEqual({ shape: 'start-dot', defaultSize: { width: 24, height: 24 }, label: '' });
+    expect(r.resolve('activity-end')).toEqual({ shape: 'end-bullseye', defaultSize: { width: 28, height: 28 }, label: '' });
+    expect(r.resolve('activity-send')).toEqual({ shape: 'send-signal', defaultSize: { width: 140, height: 44 }, label: '' });
+    expect(r.resolve('activity-receive')).toEqual({ shape: 'receive-signal', defaultSize: { width: 140, height: 44 }, label: '' });
     expect(r.resolve('activity-object').shape).toBe('box');
-    expect(r.resolve('activity-note')).toEqual({ shape: 'note', defaultSize: { width: 140, height: 64 } });
+    expect(r.resolve('activity-note')).toEqual({ shape: 'note', defaultSize: { width: 140, height: 64 }, label: '' });
   });
 
   it('registers the activity relation kinds', () => {

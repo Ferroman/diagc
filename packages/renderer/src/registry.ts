@@ -92,15 +92,16 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   'activity-frame': { shape: 'box', alwaysExpanded: true },
   'activity-lane': { shape: 'box', alwaysExpanded: true },
   'activity-region': { shape: 'box', dashed: true, alwaysExpanded: true },
-  'activity-action': { shape: 'rounded' },
-  'activity-decision': { shape: 'diamond', defaultSize: { width: 48, height: 48 } },
-  'activity-bar': { shape: 'bar', defaultSize: { width: 8, height: 100 } },
-  'activity-start': { shape: 'start-dot', defaultSize: { width: 24, height: 24 } },
-  'activity-end': { shape: 'end-bullseye', defaultSize: { width: 28, height: 28 } },
-  'activity-send': { shape: 'send-signal', defaultSize: { width: 140, height: 44 } },
-  'activity-receive': { shape: 'receive-signal', defaultSize: { width: 140, height: 44 } },
-  'activity-object': { shape: 'box' },
-  'activity-note': { shape: 'note', defaultSize: { width: 140, height: 64 } },
+  // UML glyphs carry no type subtitle; an empty label suppresses the `.dg-type` fallback.
+  'activity-action': { shape: 'rounded', label: '' },
+  'activity-decision': { shape: 'diamond', defaultSize: { width: 48, height: 48 }, label: '' },
+  'activity-bar': { shape: 'bar', defaultSize: { width: 8, height: 100 }, label: '' },
+  'activity-start': { shape: 'start-dot', defaultSize: { width: 24, height: 24 }, label: '' },
+  'activity-end': { shape: 'end-bullseye', defaultSize: { width: 28, height: 28 }, label: '' },
+  'activity-send': { shape: 'send-signal', defaultSize: { width: 140, height: 44 }, label: '' },
+  'activity-receive': { shape: 'receive-signal', defaultSize: { width: 140, height: 44 }, label: '' },
+  'activity-object': { shape: 'box', label: '' },
+  'activity-note': { shape: 'note', defaultSize: { width: 140, height: 64 }, label: '' },
 };
 
 export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {

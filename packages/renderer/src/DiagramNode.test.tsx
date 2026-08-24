@@ -466,6 +466,12 @@ describe('activity diagram nodes', () => {
     expect(container.querySelector(`.${cls}`)).not.toBeNull();
   });
 
+  it('renders no type subtitle on a UML glyph — the registry label is empty, not absent', () => {
+    const { container } = renderNode({ typeId: 'activity-action', label: 'Fill order' }, undefined, { width: 120, height: 44 });
+    expect(screen.getByText('Fill order')).toBeDefined();
+    expect(container.querySelector('.dg-type')).toBeNull();
+  });
+
   it('renders activity-decision in rough mode with a sketch shape svg', () => {
     const { container } = renderNode(
       { typeId: 'activity-decision', stylePreset: stylePreset('sketch') },
