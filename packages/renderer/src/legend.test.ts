@@ -230,6 +230,16 @@ describe('legendRows', () => {
     expect(r[0]!.swatch).toMatchObject({ draw: 'shape' });
   });
 
+  it('falls back to the type id for a registry label of "" instead of a blank row', () => {
+    // activity leaf types set label: '' to suppress the on-canvas node
+    // subtitle (see registry.ts) — that must not leak into the legend as an
+    // unlabeled swatch row.
+    const m = model('t2');
+    m.node('a1', { type: 'activity-action' });
+    const r = rows(m.toJSON(), { config: { show: ['types'] } });
+    expect(r.map((x) => x.label)).toEqual(['activity-action']);
+  });
+
   it('renames a derived row in place instead of appending', () => {
     const r = rows(fixture(), { config: { items: [{ label: 'Fire-and-forget', kind: 'writes' }] } });
     const kinds = r.filter((x) => x.section === 'kinds');

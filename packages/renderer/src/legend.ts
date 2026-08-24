@@ -204,10 +204,15 @@ function typeRows(input: LegendInput): LegendRow[] {
   walk(input.compiled.roots);
   return orderByRegistry([...types], Object.keys(DEFAULT_TYPE_STYLES)).map((t) => {
     const style = input.typeRegistry.resolve(t);
+    // Some registry entries set `label: ''` to suppress the node's own subtitle
+    // (the activity leaf shapes read fine unlabeled on the canvas) — that empty
+    // string is not a legend caption, so an opt-in types legend must still fall
+    // back to the type id rather than render a blank swatch row.
+    const label = style.label;
     return {
       id: `types:${t}`,
       section: 'types' as const,
-      label: style.label ?? t,
+      label: label === undefined || label === '' ? t : label,
       swatch: {
         draw: 'shape' as const,
         style,
