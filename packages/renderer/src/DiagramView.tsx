@@ -35,6 +35,7 @@ import {
   runsToPlainText,
   type Column,
   type DiagramModel,
+  type DiagramNode,
   type Drawings,
   type EdgeLabelSide,
   type LayoutOverlay,
@@ -44,6 +45,7 @@ import {
   type ViewNode,
 } from '@diagramming/core';
 import { createIconRegistry, type IconRegistry } from '@diagramming/icons';
+import { arrangeActivityFrames } from './activity-frame';
 import { Breadcrumbs } from './Breadcrumbs';
 import { buildEdgeDataCached, buildNodeDataCached, type EdgeDataContext, type NodeDataContext } from './build-data';
 import { edgeTypes, nodeTypes, toRfEdge, toRfNode } from './adapter';
@@ -336,6 +338,13 @@ const seenKeyOf = (props: DiagramViewProps): SeenKey => ({
   enteredPathProp: props.enteredPath,
 });
 
+/** leaf shapes with no CSS-natural size (padding/min-width zeroed): the RF
+ * wrapper must get the layout's size explicitly, like image/shape leaves */
+const FORCED_SIZE_SHAPES = new Set(['circle', 'diamond', 'bar', 'start-dot', 'end-bullseye']);
+/** activity chrome renders width/height:100% of its wrapper — an EMPTY lane or
+ * frame is compiled 'leaf' and would otherwise collapse to 0×0 */
+const ACTIVITY_CHROME_TYPES = new Set(['activity-frame', 'activity-lane', 'activity-region']);
+
 function Inner(props: DiagramViewProps) {
   const reactFlow = useReactFlow();
   // The edit-mode callbacks travel as one optional object (see EditingApi); the
@@ -562,11 +571,13 @@ function Inner(props: DiagramViewProps) {
   // pins say. The host's own pins still feed the chips, so nothing else changes.
   const effectivePins = useMemo(() => {
     const always = profile.node?.alwaysExpanded;
-    if (always === undefined) return props.pins;
+    const typeAlways = (n: DiagramNode) => n.type !== undefined && typeRegistry.resolve(n.type).alwaysExpanded === true;
+    const pinned = props.model.nodes.filter((n) => always?.(n) === true || typeAlways(n));
+    if (pinned.length === 0) return props.pins; // referential stability: nothing to add
     const pins: Record<string, 'expanded' | 'collapsed'> = { ...(props.pins ?? {}) };
-    for (const n of props.model.nodes) if (always(n)) pins[n.id] = 'expanded';
+    for (const n of pinned) pins[n.id] = 'expanded';
     return pins;
-  }, [profile, props.pins, props.model.nodes]);
+  }, [profile, props.pins, props.model.nodes, typeRegistry]);
 
   const compiled = useMemo(
     () =>
@@ -656,6 +667,16 @@ function Inner(props: DiagramViewProps) {
       const hint = profile.node?.leafSize?.(n);
       if (hint !== undefined) m.set(n.id, hint);
     }
+    // Registry-declared default sizes (activity dots/bars/diamonds): how
+    // fixed-geometry glyphs get real footprints from the DSL, where no palette
+    // template seeded dimensions. An explicit resize (overlay sizes) wins.
+    for (const n of props.model.nodes) {
+      if (n.type === undefined) continue;
+      const ds = typeRegistry.resolve(n.type).defaultSize;
+      if (ds === undefined) continue;
+      const s = props.layout?.sizes?.[n.id];
+      m.set(n.id, s !== undefined ? { width: s.w, height: s.h } : ds);
+    }
     for (const n of props.model.nodes) {
       if (n.image === undefined) continue;
       const s = props.layout?.sizes?.[n.id];
@@ -686,7 +707,7 @@ function Inner(props: DiagramViewProps) {
       m.set(n.id, tableSize(n.columns, n.name));
     }
     return m;
-  }, [props.model, props.layout, profile]);
+  }, [props.model, props.layout, profile, typeRegistry]);
 
   // Per-plane automatic-layout settings (algorithm/direction/spacing/edge routing)
   // from the overlay; stable-referenced so a position drag (which rebuilds
@@ -795,13 +816,24 @@ function Inner(props: DiagramViewProps) {
     return editing ? withSaved : overlayPositions(withSaved, viewPositions);
   }, [geometry, props.layout, props.model, props.plane, props.ignoreSavedPositions, editing, viewPositions]);
 
+  // Activity frames: normalize lanes into full-width stacked bands. Applied to
+  // the OVERLAY-APPLIED geometry (not the elk cache) so hand-drags participate:
+  // dragging a node inside a lane grows the band on the next frame.
+  const arrangedGeometry = useMemo(
+    () =>
+      placedGeometry === null
+        ? null
+        : arrangeActivityFrames(placedGeometry, compiled, props.model, props.layout?.sizes),
+    [placedGeometry, compiled, props.model, props.layout],
+  );
+
   // A drill (enter/exit) swaps the whole scene, so once it re-layouts, glide to
   // fit the new isolated view.
   useEffect(() => {
-    if (!pendingRootFitRef.current || placedGeometry === null) return;
+    if (!pendingRootFitRef.current || arrangedGeometry === null) return;
     pendingRootFitRef.current = false;
     void reactFlow.fitView({ padding: 0.15, duration: 500 });
-  }, [compiled, placedGeometry, reactFlow]);
+  }, [compiled, arrangedGeometry, reactFlow]);
 
   // Paste lands at the viewport center; pastes aimed at form fields stay theirs.
   const onImageFiles = edit?.onImageFiles;
@@ -836,14 +868,19 @@ function Inner(props: DiagramViewProps) {
       // double-click can still reach here via the click-correlation path, so
       // guard it explicitly rather than relying on the absent affordance.
       const node = props.model.nodes.find((n) => n.id === id);
-      if (node !== undefined && profile.node?.alwaysExpanded?.(node) === true) return;
+      if (
+        node !== undefined &&
+        (profile.node?.alwaysExpanded?.(node) === true ||
+          (node.type !== undefined && typeRegistry.resolve(node.type).alwaysExpanded === true))
+      )
+        return;
       const chain = drillChain(viewHierarchy.parentsOf, id, enteredPathRef.current);
       if (chain.length === 0) return; // unknown / not in this plane
       pendingRootFitRef.current = true;
       setEnteredPath(chain);
       setFocus([]); // drilling replaces any in-place (sheet-flip/peek) expansion
     },
-    [viewHierarchy, props.model.nodes, profile],
+    [viewHierarchy, props.model.nodes, profile, typeRegistry],
   );
 
   // Exit out to a breadcrumb (`null` = the home button → bird's-eye). The scene
@@ -923,10 +960,10 @@ function Inner(props: DiagramViewProps) {
   );
 
   const derivedNodes = useMemo((): Node[] => {
-    if (placedGeometry === null) return [];
+    if (arrangedGeometry === null) return [];
     const out: Node[] = [];
     const walk = (n: ViewNode, parent?: string) => {
-      const geo = placedGeometry.get(n.id);
+      const geo = arrangedGeometry.get(n.id);
       if (geo === undefined) return;
       const data = buildNodeDataCached(n, nodeDataCtx);
       out.push(
@@ -951,7 +988,10 @@ function Inner(props: DiagramViewProps) {
                 // leaves above. Ordinary boxes and CLD text chips must NOT go
                 // through this branch — forcing sizes there would change their
                 // existing CSS-driven sizing.
-                n.state === 'leaf' && n.node.type !== undefined && typeRegistry.resolve(n.node.type).shape === 'circle'
+                n.state === 'leaf' &&
+                  n.node.type !== undefined &&
+                  (FORCED_SIZE_SHAPES.has(typeRegistry.resolve(n.node.type).shape) ||
+                    ACTIVITY_CHROME_TYPES.has(n.node.type))
                 ? { style: { width: geo.width, height: geo.height } }
                 : {}),
         }),
@@ -960,7 +1000,7 @@ function Inner(props: DiagramViewProps) {
     };
     compiled.roots.forEach((r) => walk(r));
     return out;
-  }, [compiled, placedGeometry, nodeDataCtx, editing, typeRegistry]);
+  }, [compiled, arrangedGeometry, nodeDataCtx, editing, typeRegistry]);
 
   // React Flow owns a copy of the nodes and we apply its changes (drag positions,
   // measured dimensions, selection) with applyNodeChanges — the v12-recommended

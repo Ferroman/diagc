@@ -1145,3 +1145,57 @@ describe('git-graph notation', () => {
     expect(container.querySelectorAll('.dg-circle-node')).toHaveLength(4);
   });
 });
+
+describe('activity diagrams', () => {
+  /** frame ⊃ two lanes (a: one action, b: empty) — an empty lane is compiled
+   * 'leaf' and must still render as a full band, never collapse to 0×0. */
+  function activityModel() {
+    const m = model('act');
+    const act = m.activity('flow');
+    const laneA = act.lane('a', { name: 'A' });
+    act.lane('b', { name: 'B' });
+    laneA.action('act1', 'Do it');
+    return m.toJSON();
+  }
+
+  const looseBarModel = (): DiagramModel => ({
+    version: 1,
+    id: 'bar-only',
+    name: 'bar-only',
+    nodes: [{ id: 'b1', name: 'b1', type: 'activity-bar' }],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  });
+
+  it('pins activity frames and lanes open without any pins prop', async () => {
+    const { container } = render(<DiagramView model={activityModel()} />);
+    // no `pins` prop at all — registry alwaysExpanded alone must keep both
+    // lanes (and the frame) unfolded
+    await waitFor(() => expect(container.querySelectorAll('.dg-activity-lane')).toHaveLength(2));
+    expect(await screen.findByText('Do it')).toBeDefined();
+  });
+
+  it('activity lanes share one width (band pass applied)', async () => {
+    const { container } = render(<DiagramView model={activityModel()} />);
+    await waitFor(() => expect(container.querySelectorAll('.dg-activity-lane')).toHaveLength(2));
+    const laneA = container.querySelector('.react-flow__node[data-id="a"]') as HTMLElement | null;
+    const laneB = container.querySelector('.react-flow__node[data-id="b"]') as HTMLElement | null;
+    await waitFor(() => {
+      expect(laneA?.style.width).not.toBe('');
+      expect(laneA?.style.width).toBe(laneB?.style.width);
+    });
+  });
+
+  it('a bar leaf gets its registry default size', async () => {
+    const { container } = render(<DiagramView model={looseBarModel()} />);
+    const wrapper = await waitFor(() => {
+      const w = container.querySelector('.react-flow__node[data-id="b1"]') as HTMLElement | null;
+      if (w === null) throw new Error('bar node not rendered');
+      return w;
+    });
+    await waitFor(() => expect(wrapper.style.width).toBe('8px'));
+    expect(wrapper.style.height).toBe('100px');
+  });
+});
