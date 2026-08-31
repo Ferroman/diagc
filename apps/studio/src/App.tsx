@@ -456,7 +456,9 @@ export function App() {
   // Write the hand-placed positions to `<name>.layout.json` and fold them into
   // the in-memory overlay, so they survive a plane switch (which drops the
   // renderer's ephemeral drags) without a reload. Explicit, never automatic —
-  // DEFERRALS.md keeps "no autosave" deliberate, and this writes a repo file.
+  // unlike the edit session's autosave, this runs in view mode on diagrams the
+  // studio does not own, so committing positions to a repo file stays a
+  // deliberate act.
   const savePositions = useCallback(async () => {
     if (model === undefined || Object.keys(movedPositions).length === 0) return;
     const next = withSavedPositions(layout, model, activePlane, movedPositions);
