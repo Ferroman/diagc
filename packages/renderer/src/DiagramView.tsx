@@ -32,7 +32,6 @@ import {
   DEFAULT_STROKE_WIDTH,
   layoutPlaneKey,
   runsToPlainText,
-  type DiagramModel,
   type DiagramNode,
   type Stroke,
   type ViewNode,
@@ -83,6 +82,7 @@ import {
   LIBRARY_ENTRY_DND_TYPE,
   type DiagramViewProps,
 } from './view-types';
+import { pruneToModel, seenKeyOf, syncReducer } from './view-sync';
 
 // Zoom limits, shared by the <ReactFlow> element and the getViewportForBounds
 // call in `fitView` below — the same numbers have to bound both, or a fit could
@@ -100,63 +100,6 @@ const imageFilesOf = (list: FileList | null | undefined): File[] =>
 const droppedOnNodeId = (e: { clientX: number; clientY: number }): string | undefined =>
   document.elementFromPoint(e.clientX, e.clientY)?.closest('.react-flow__node')?.getAttribute('data-id') ??
   undefined;
-
-// Cut a drill path at the first id the model doesn't know — applying a stale
-// deep link lands on the deepest surviving prefix instead of a blank canvas.
-function pruneToModel(path: string[], m: DiagramModel): string[] {
-  const exists = new Set(m.nodes.map((n) => n.id));
-  const cut = path.findIndex((id) => !exists.has(id));
-  return cut < 0 ? path : path.slice(0, cut);
-}
-
-// ---------------------------------------------------------------------------
-// Render-phase navigation sync (useReducer). The view keeps a snapshot of the
-// props that drive navigation (model id / model object / plane / enteredPath
-// prop) and, during render, compares the current props against it to decide
-// which of the four transitions applies. The reducer owns that snapshot so the
-// transitions are visible as data: every branch dispatches the SAME `sync`
-// action with the current props snapshot, and the reducer classifies which
-// transition it was. The dispatched snapshot is never read back in the same
-// render (dispatching during render re-renders), which is exactly the ref
-// mutation it replaces — later branches read the stale snapshot, and only the
-// next render sees the updated one.
-// ---------------------------------------------------------------------------
-
-interface SeenKey {
-  modelId: string;
-  model: DiagramModel;
-  plane: string | undefined;
-  enteredPathProp: string[] | undefined;
-}
-
-type SyncTransition = 'model-switch' | 'plane-switch' | 'model-edit' | 'entered-path' | 'none';
-
-interface SyncState {
-  seen: SeenKey;
-  /** which transition the last sync action classified. Data, not behavior —
-   * the render branches below still do their own comparisons; this just makes
-   * the four transitions visible in one place (and lets the reducer be the
-   * single authority on their precedence). */
-  transition: SyncTransition;
-}
-
-type SyncAction = { type: 'sync'; next: SeenKey };
-
-function syncReducer(prev: SyncState, action: SyncAction): SyncState {
-  const seen = action.next;
-  if (prev.seen.modelId !== seen.modelId) return { seen, transition: 'model-switch' };
-  if (prev.seen.plane !== seen.plane) return { seen, transition: 'plane-switch' };
-  if (prev.seen.model !== seen.model) return { seen, transition: 'model-edit' };
-  if (prev.seen.enteredPathProp !== seen.enteredPathProp) return { seen, transition: 'entered-path' };
-  return { seen, transition: 'none' };
-}
-
-const seenKeyOf = (props: DiagramViewProps): SeenKey => ({
-  modelId: props.model.id,
-  model: props.model,
-  plane: props.plane,
-  enteredPathProp: props.enteredPath,
-});
 
 /** leaf shapes with no CSS-natural size (padding/min-width zeroed): the RF
  * wrapper must get the layout's size explicitly, like image/shape leaves */
