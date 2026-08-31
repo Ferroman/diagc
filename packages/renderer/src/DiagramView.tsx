@@ -3,7 +3,6 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
-  useReducer,
   useRef,
   useState,
   type CSSProperties,
@@ -25,7 +24,6 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
-  buildHierarchy,
   compileView,
   countAnchored,
   DEFAULT_STROKE_WIDTH,
@@ -40,9 +38,7 @@ import { buildEdgeDataCached, buildNodeDataCached, type EdgeDataContext, type No
 import { edgeTypes, nodeTypes, toRfEdge, toRfNode } from './adapter';
 import { strokesBounds } from './drawings';
 import { DrawingsLayer } from './DrawingsLayer';
-import { drillChain, truncatePath } from './drill';
 import { reconnectPin } from './floating';
-import { focusForVisible } from './focus';
 import { GitLanesOverlay } from './GitLanesOverlay';
 import { Legend } from './Legend';
 import { LoopLabelLayer } from './LoopLabelLayer';
@@ -52,6 +48,7 @@ import { createKindRegistry, createTypeRegistry } from './registry';
 import { stylePreset } from './stylePresets';
 import { useCanvasGestures } from './useCanvasGestures';
 import { useClickCorrelation } from './useClickCorrelation';
+import { useDrillNavigation } from './useDrillNavigation';
 import { useLegendState } from './useLegendState';
 import { useLoopOverlay } from './useLoopOverlay';
 import { useViewLayout } from './useViewLayout';
@@ -75,7 +72,6 @@ import {
   LIBRARY_ENTRY_DND_TYPE,
   type DiagramViewProps,
 } from './view-types';
-import { pruneToModel, seenKeyOf, syncReducer } from './view-sync';
 
 // Zoom limits, shared by the <ReactFlow> element and the getViewportForBounds
 // call in `fitView` below — the same numbers have to bound both, or a fit could
@@ -120,24 +116,6 @@ function Inner(props: DiagramViewProps) {
   const icons = useMemo(() => props.icons ?? createIconRegistry(), [props.icons]);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
-  // Nested zoom: `enteredPath` is the drill trail root→current (the breadcrumb);
-  // its deepest node is the `drillRoot` that scopes the view in both modes.
-  // (Automatic viewport-center focus is parked in ./focus.ts.)
-  const [focus, setFocus] = useState<string[]>([]);
-  const [enteredPath, setEnteredPath] = useState<string[]>(() =>
-    props.enteredPath !== undefined ? pruneToModel(props.enteredPath, props.model) : [],
-  );
-  const enteredPathRef = useRef<string[]>([]);
-  enteredPathRef.current = enteredPath;
-  // Report the drill trail upward so the host can scope new-node placement to
-  // the level currently open.
-  const { onEnteredPathChange } = props;
-  useEffect(() => {
-    onEnteredPathChange?.(enteredPath);
-  }, [enteredPath, onEnteredPathChange]);
-  // A pending "fit the whole view" (exiting to the bird's-eye), applied by the
-  // same post-layout glide effect that handles per-node fits.
-  const pendingRootFitRef = useRef(false);
   // In-place label editing target (edit mode double-click): a node's name or a
   // single-relation edge's label.
   const [labelEdit, setLabelEdit] = useState<{ kind: 'node' | 'edge'; id: string } | null>(null);
@@ -165,76 +143,42 @@ function Inner(props: DiagramViewProps) {
     const fp = reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY });
     setAddLabelAt({ edgeId, x: fp.x, y: fp.y });
   };
-  // Render-phase state adjustment (sanctioned React pattern): new model resets
-  // navigation; a plane switch instead maps it — the entities on screen stay
-  // visible, regrouped by the new plane's ancestors (the "sheet flip"). The
-  // last-seen props snapshot lives in a useReducer (see syncReducer above):
-  // each branch below dispatches the SAME `sync` action with the current props,
-  // and the reducer classifies the transition it was — so the four paths
-  // (new model / plane switch / model edit / host-driven path) are visible as
-  // data. Dispatching during render is the same sanctioned pattern the queues
-  // below already rely on: the new snapshot applies on the re-render, and the
-  // stale `sync.seen` read by later branches in THIS render is exactly what
-  // the old mutable keyRef provided.
-  const [sync, syncSeen] = useReducer(syncReducer, undefined, () => ({ seen: seenKeyOf(props), transition: 'none' as const }));
-  // The drill trail as it will actually be after this render's queued
-  // setEnteredPath calls — the state variable itself is stale once one of the
-  // branches below has already queued a reset/prune for this same render.
-  let effectivePath = enteredPath;
-  if (sync.seen.modelId !== props.model.id) {
-    // a different diagram loaded → full reset
-    syncSeen({ type: 'sync', next: seenKeyOf(props) });
-    visibleRef.current = [];
-    setFocus([]);
-    setEnteredPath([]);
-    effectivePath = [];
-  } else if (sync.seen.plane !== props.plane) {
-    syncSeen({ type: 'sync', next: seenKeyOf(props) });
-    // a plane switch remaps focus to keep the same entities visible; the drill
-    // trail (whose ids may not exist in the new plane) resets to the bird's-eye.
-    setFocus(focusForVisible(props.model, props.plane, visibleRef.current));
-    setEnteredPath([]);
-    effectivePath = [];
-    setLabelEdit(null);
-  } else if (sync.seen.model !== props.model) {
-    // same diagram, new model object (an edit): KEEP the drill trail so editing
-    // stays at the current level, but prune it to nodes that still exist —
-    // deleting the node you're inside pops you out to the surviving prefix.
-    syncSeen({ type: 'sync', next: seenKeyOf(props) });
-    setEnteredPath((path) => pruneToModel(path, props.model));
-    effectivePath = pruneToModel(enteredPath, props.model);
-  }
-
-  // Host-driven navigation (deep links / Back / Forward): apply a changed
-  // `enteredPath` prop. Reference inequality gates the check; content equality
-  // makes echoed reports (the host writing back what we just emitted) a no-op.
-  if (sync.seen.enteredPathProp !== props.enteredPath) {
-    syncSeen({ type: 'sync', next: seenKeyOf(props) });
-    if (props.enteredPath !== undefined) {
-      const next = pruneToModel(props.enteredPath, props.model);
-      if (next.length !== effectivePath.length || next.some((id, i) => id !== effectivePath[i])) {
-        pendingRootFitRef.current = true;
-        setEnteredPath(next);
-        setFocus([]);
-      }
-    }
-  }
+  // A notation container that is always expanded (e.g. a git lane) is a row, not
+  // a box with an inside — the guard enterNode applies before drilling (see
+  // useDrillNavigation). Lives here because it closes over the registries.
+  const isAlwaysExpanded = useCallback(
+    (id: string) => {
+      const node = props.model.nodes.find((n) => n.id === id);
+      return (
+        node !== undefined &&
+        (profile.node?.alwaysExpanded?.(node) === true ||
+          (node.type !== undefined && typeRegistry.resolve(node.type).alwaysExpanded === true))
+      );
+    },
+    [props.model.nodes, profile, typeRegistry],
+  );
+  // The drill trail plus the render-phase navigation sync (new model / plane
+  // switch / model edit / host-driven path). It adjusts state DURING render, so
+  // it has to run before anything that reads focus/drillRoot/enteredPath —
+  // notably the compileView memo below.
+  const nav = useDrillNavigation({
+    model: props.model,
+    plane: props.plane,
+    enteredPathProp: props.enteredPath,
+    onEnteredPathChange: props.onEnteredPathChange,
+    visibleRef,
+    // a fresh arrow each render is fine: the hook only calls this from the
+    // plane-switch branch, it never depends on its identity
+    onPlaneSwitch: () => setLabelEdit(null),
+    isAlwaysExpanded,
+  });
+  const { enteredPath, drillRoot, focus, enterNode, exitTo, pendingRootFitRef } = nav;
 
   const editing = props.mode === 'edit';
-  // Containment index for the active plane — the source of the drill chain
-  // (enterNode's drillChain).
-  const viewHierarchy = useMemo(
-    () => buildHierarchy(props.model, props.plane),
-    [props.model, props.plane],
-  );
   const nameOf = useMemo(
     () => new Map(props.model.nodes.map((n) => [n.id, n.name])),
     [props.model],
   );
-
-  // The drill root (deepest entered node) scopes the view to that node's interior
-  // — an isolated "the node is the canvas" view — in BOTH modes.
-  const drillRoot = enteredPath.length > 0 ? enteredPath[enteredPath.length - 1] : undefined;
 
   // The active plane's strokes. Keyed like layout.planes, so a borrowing plane
   // shares its donor's bucket exactly as it shares positions.
@@ -378,6 +322,7 @@ function Inner(props: DiagramViewProps) {
     if (!pendingRootFitRef.current || arrangedGeometry === null) return;
     pendingRootFitRef.current = false;
     void reactFlow.fitView({ padding: 0.15, duration: 500 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pendingRootFitRef is a stable useRef identity (owned by useDrillNavigation) read through .current
   }, [compiled, arrangedGeometry, reactFlow]);
 
   // Paste lands at the viewport center; pastes aimed at form fields stay theirs.
@@ -400,42 +345,6 @@ function Inner(props: DiagramViewProps) {
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
   }, [editing, onImageFiles, reactFlow]);
-
-  // Enter (drill into) a node: make it the drill root — the isolated view swaps to
-  // show its interior filling the canvas. Recomputing the whole chain (not
-  // appending) means entering a sibling or ancestor (e.g. an external stub)
-  // navigates correctly too. Every drill re-fits the whole new scene. Stable
-  // across drills (reads the path from a ref) so it can be threaded onto nodes.
-  const enterNode = useCallback(
-    (id: string) => {
-      // A notation container that is always expanded (e.g. a git lane) is a row,
-      // not a box with an inside — nothing offers drilling into one, but a
-      // double-click can still reach here via the click-correlation path, so
-      // guard it explicitly rather than relying on the absent affordance.
-      const node = props.model.nodes.find((n) => n.id === id);
-      if (
-        node !== undefined &&
-        (profile.node?.alwaysExpanded?.(node) === true ||
-          (node.type !== undefined && typeRegistry.resolve(node.type).alwaysExpanded === true))
-      )
-        return;
-      const chain = drillChain(viewHierarchy.parentsOf, id, enteredPathRef.current);
-      if (chain.length === 0) return; // unknown / not in this plane
-      pendingRootFitRef.current = true;
-      setEnteredPath(chain);
-      setFocus([]); // drilling replaces any in-place (sheet-flip/peek) expansion
-    },
-    [viewHierarchy, props.model.nodes, profile, typeRegistry],
-  );
-
-  // Exit out to a breadcrumb (`null` = the home button → bird's-eye). The scene
-  // becomes that frame's interior, so re-fit the whole thing.
-  const exitTo = (id: string | null) => {
-    const path = id === null ? [] : truncatePath(enteredPath, id);
-    pendingRootFitRef.current = true;
-    setEnteredPath(path);
-    setFocus([]);
-  };
 
   const hiddenCounts = useMemo(() => countAnchored(props.model, compiled), [props.model, compiled]);
   const metaKeys = props.onNodeMetaKeys ?? DEFAULT_ON_NODE_META_KEYS;
