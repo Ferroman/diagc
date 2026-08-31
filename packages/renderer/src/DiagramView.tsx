@@ -50,7 +50,6 @@ import { GitLanesOverlay } from './GitLanesOverlay';
 import { estimateLabelSize } from './label-size';
 import { layoutView, type EdgePoint, type NodeGeometry } from './layout';
 import { Legend } from './Legend';
-import { legendRows } from './legend';
 import { tableSize } from './table-ports';
 import { LoopLabelLayer } from './LoopLabelLayer';
 import { combinePolarities, type LoopEdgeInput } from './loops';
@@ -61,6 +60,7 @@ import { createKindRegistry, createTypeRegistry } from './registry';
 import { stylePreset } from './stylePresets';
 import { useCanvasGestures } from './useCanvasGestures';
 import { useClickCorrelation } from './useClickCorrelation';
+import { useLegendState } from './useLegendState';
 import { LaserLayer } from './LaserLayer';
 import './styles.css';
 import '@fontsource/kalam/400.css';
@@ -300,69 +300,19 @@ function Inner(props: DiagramViewProps) {
     [props.model, props.plane, focus, drillRoot, effectivePins, props.activeLayers],
   );
 
-  // The model opts in; the control button overrides locally. Never persisted.
-  const [showLegend, setShowLegend] = useState(props.model.legend !== undefined);
-  const [legendSize, setLegendSize] = useState<{ width: number; height: number } | null>(null);
-  const legendConfig = props.model.legend;
-  // Switching diagrams must re-seed from the new model, or a local override
-  // leaks across: hide the legend on diagram A, open B, and B's key is missing.
-  useEffect(() => {
-    setShowLegend(legendConfig !== undefined);
-  }, [props.model.id, legendConfig]);
-  const activePlane = useMemo(
-    () => props.model.planes.find((p) => p.id === (props.plane ?? props.model.planes[0]?.id)),
-    [props.model.planes, props.plane],
-  );
-  const legendRowList = useMemo(
-    () =>
-      legendConfig === undefined
-        ? []
-        : legendRows({
-            model: props.model,
-            compiled,
-            ...(activePlane !== undefined ? { plane: activePlane } : {}),
-            // Drilled in, only the root's interior is on screen; the key has to
-            // be scoped the same way or it explains things nothing draws.
-            ...(drillRoot !== undefined ? { root: drillRoot } : {}),
-            // Passed through undefined-and-all: the legend resolves plane
-            // presets the same way compileView does, and `?? []` here would
-            // tell it "no layers on" on a page that draws the presets.
-            ...(props.activeLayers !== undefined ? { activeLayers: props.activeLayers } : {}),
-            typeRegistry,
-            kindRegistry,
-            config: legendConfig,
-            // Not `chrome`: a greyed row is only worth showing to a reader who
-            // can un-grey it, and only a host with a handler offers that.
-            canToggleLayers: props.onToggleLayer !== undefined,
-            // Only when this plane has ink: no strokes means no toggle to show,
-            // exactly the condition the control button already uses.
-            ...(strokes.length > 0 ? { drawings: { active: drawingsVisible } } : {}),
-          }),
-    [
-      legendConfig,
-      props.model,
-      compiled,
-      activePlane,
-      drillRoot,
-      props.activeLayers,
-      typeRegistry,
-      kindRegistry,
-      props.onToggleLayer,
-      strokes,
-      drawingsVisible,
-    ],
-  );
-  // Read through `legendReserveRef` (not the state above) by the layoutApiRef
-  // effect below, whose own deps are intentionally just [layoutApiRef, reactFlow]
-  // — a ref keeps that closure from going stale without re-running it.
-  const legendReserveRef = useRef<{ side: 'top' | 'right' | 'bottom' | 'left'; px: number } | null>(null);
-  useEffect(() => {
-    const pos = legendConfig?.position ?? 'bottom-right';
-    legendReserveRef.current =
-      !showLegend || legendSize === null || legendRowList.length === 0
-        ? null
-        : { side: pos.startsWith('top') ? 'top' : 'bottom', px: legendSize.height + 16 };
-  }, [showLegend, legendSize, legendRowList, legendConfig]);
+  const legend = useLegendState({
+    model: props.model,
+    plane: props.plane,
+    compiled,
+    drillRoot,
+    activeLayers: props.activeLayers,
+    typeRegistry,
+    kindRegistry,
+    canToggleLayers: props.onToggleLayer !== undefined,
+    strokes,
+    drawingsVisible,
+  });
+  const { legendConfig, showLegend, setShowLegend, setLegendSize, legendRowList, legendReserveRef } = legend;
 
   // Per-node size hints: the notation profile can seed a leaf size (e.g. CLD's
   // typeless nodes rendered as text chips); image nodes then overwrite with
@@ -807,7 +757,11 @@ function Inner(props: DiagramViewProps) {
     return () => {
       ref.current = null;
     };
-  }, [props.layoutApiRef, reactFlow]);
+    // `legendReserveRef` is a `useRef` from `useLegendState`, stable for the
+    // component's lifetime like the other refs this effect reads (geometryRef,
+    // strokesRef, rfNodesRef) — listed here only because eslint's ref-stability
+    // heuristic doesn't see through the custom hook to recognize it as one.
+  }, [props.layoutApiRef, reactFlow, legendReserveRef]);
 
   // Orthogonal routing is a per-plane setting — or the notation's own layout,
   // whose routes are the drawing (a git link has no floating form worth showing).
