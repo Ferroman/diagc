@@ -10,6 +10,7 @@ import { runsToDisplay } from './richtext';
 import { SketchShape } from './SketchShape';
 import { TableNode } from './TableNode';
 import type { StylePreset } from './stylePresets';
+import type { SketchShapeKind } from './sketch';
 
 export interface DiagramNodeData {
   // --- rendering: identity, look, label ----------------------------------
@@ -90,11 +91,11 @@ function accentStyle(color: string | undefined): CSSProperties | undefined {
   };
 }
 
-const sketchKind = (shape: string): import('./sketch').SketchShapeKind =>
+const sketchKind = (shape: string): SketchShapeKind =>
   shape === 'circle' || shape === 'cylinder' || shape === 'hexagon' || shape === 'bubble' ||
   shape === 'diamond' || shape === 'bar' || shape === 'start-dot' || shape === 'end-bullseye' ||
   shape === 'send-signal' || shape === 'receive-signal' || shape === 'note'
-    ? (shape as import('./sketch').SketchShapeKind)
+    ? (shape as SketchShapeKind)
     : 'box';
 
 /** Resolve a node image ref to a URL. Absolute refs (leading '/' or http[s]) —

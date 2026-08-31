@@ -131,7 +131,8 @@ export interface RelationStyle {
   bow?: 'left' | 'right';
 }
 
-export type EdgeLabelSide = 'top' | 'bottom' | 'center';
+export const EDGE_LABEL_SIDES = ['top', 'bottom', 'center'] as const;
+export type EdgeLabelSide = (typeof EDGE_LABEL_SIDES)[number];
 /** a positioned text label on a connector; a relation may carry several */
 export interface EdgeLabel {
   id: string;

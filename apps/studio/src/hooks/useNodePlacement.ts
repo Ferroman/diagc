@@ -1,8 +1,8 @@
 import type { RefObject } from 'react';
-import { LEAF_SIZE, errMessage, type DiagramModel } from '@diagramming/core';
+import { DEFAULT_IMAGE_NODE_SIZE, LEAF_SIZE, errMessage, type DiagramModel } from '@diagramming/core';
 import type { DiagramSelection, LayoutApi } from '@diagramming/renderer';
 import type { EditorApi } from '../editor/useEditor';
-import { IMAGE_NODE_DEFAULT, readImageSize, uploadAsset } from '../editor/images';
+import { readImageSize, uploadAsset } from '../editor/images';
 import { entryToNode, entryToNodeDetails } from '../library/entry';
 import type { LibraryEntry } from '../library/types';
 import type { UseLibrary } from '../library/useLibrary';
@@ -228,7 +228,7 @@ export function useNodePlacement({
     for (const file of files) {
       try {
         const name = await uploadAsset(file);
-        const size = (await readImageSize(file)) ?? IMAGE_NODE_DEFAULT;
+        const size = (await readImageSize(file)) ?? DEFAULT_IMAGE_NODE_SIZE;
         // peek(), not session: the render-bound session is stale inside this
         // loop, so a second file would reuse the first file's node id. Read
         // right before the dispatches (after all the awaits above) so the

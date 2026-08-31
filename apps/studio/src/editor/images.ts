@@ -1,4 +1,3 @@
-export const IMAGE_NODE_DEFAULT = { w: 160, h: 120 };
 export const MAX_IMAGE_EDGE = 240;
 
 /** POST the raw file to the assets endpoint; resolves the content-hash name */

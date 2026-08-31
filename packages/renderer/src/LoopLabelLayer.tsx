@@ -10,11 +10,12 @@ import {
 } from './loops';
 import { LoopHighlightContext } from './loop-highlight';
 import { seedFrom, sketchCircle } from './sketch';
+import type { RoughStyle } from './stylePresets';
 
 export interface LoopLabelLayerProps {
   edges: readonly LoopEdgeInput[];
   /** rough params — draw the badge outline hand-drawn (absent = crisp circle) */
-  rough?: import('./stylePresets').RoughStyle;
+  rough?: RoughStyle;
   /** view-mode node focus: when set, only render badges for loops containing
    * this node id (null/undefined = show every loop) */
   nodeFilter?: string | null;
@@ -36,7 +37,7 @@ function LoopBadge({
   onSelect,
 }: {
   placement: LoopLabelPlacement;
-  rough?: import('./stylePresets').RoughStyle;
+  rough?: RoughStyle;
   active: boolean;
   dimmed: boolean;
   onSelect?: () => void;

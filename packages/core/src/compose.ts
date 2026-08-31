@@ -1,6 +1,7 @@
 import type { ContainmentEdge, DiagramModel, DiagramNode, DiagramRelation } from './types';
 import { validate } from './validate';
 import { resolveContainmentPlane } from './view/compile';
+import { errMessage } from './util';
 
 export interface IncludeSource {
   model: DiagramModel;
@@ -76,7 +77,7 @@ async function expand(
     try {
       src = await resolve(node.include, ref);
     } catch (e) {
-      throw new IncludeError(node.include, `Include '${node.include}' (from ${ref}): ${(e as Error).message}`);
+      throw new IncludeError(node.include, `Include '${node.include}' (from ${ref}): ${errMessage(e)}`);
     }
     if (path.includes(src.ref)) {
       throw new IncludeError(node.include, `Include cycle: ${[...path, src.ref].join(' -> ')}`);

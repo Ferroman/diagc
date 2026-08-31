@@ -1,5 +1,6 @@
 import {
   BUILTIN_NOTATIONS,
+  EDGE_LABEL_SIDES,
   FONT_SCALES,
   LEGEND_POSITIONS,
   LEGEND_SECTIONS,
@@ -307,7 +308,7 @@ function validateRelations(ctx: Ctx): void {
           if (typeof lb?.text !== 'string') badLabel(`text at ${i}`);
           if (lb?.t !== undefined && !(typeof lb.t === 'number' && Number.isFinite(lb.t) && lb.t >= 0 && lb.t <= 1))
             badLabel(`t at ${i}`);
-          if (lb?.side !== undefined && !['top', 'bottom', 'center'].includes(lb.side)) badLabel(`side at ${i}`);
+          if (lb?.side !== undefined && !(EDGE_LABEL_SIDES as readonly string[]).includes(lb.side)) badLabel(`side at ${i}`);
         }
     }
     if (r.style !== undefined) {
