@@ -78,8 +78,8 @@ export function useLegendState(input: LegendStateInput): LegendState {
       input.drawingsVisible,
     ],
   );
-  // Read through `legendReserveRef` (not the state above) by the layoutApiRef
-  // effect below, whose own deps are intentionally just [layoutApiRef, reactFlow]
+  // Read through `legendReserveRef` (not the state above) by DiagramView's
+  // layoutApiRef effect, whose own deps are intentionally just [layoutApiRef, reactFlow]
   // — a ref keeps that closure from going stale without re-running it.
   const legendReserveRef = useRef<{ side: 'top' | 'right' | 'bottom' | 'left'; px: number } | null>(null);
   useEffect(() => {

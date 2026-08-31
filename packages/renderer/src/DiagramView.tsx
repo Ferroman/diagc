@@ -757,11 +757,8 @@ function Inner(props: DiagramViewProps) {
     return () => {
       ref.current = null;
     };
-    // `legendReserveRef` is a `useRef` from `useLegendState`, stable for the
-    // component's lifetime like the other refs this effect reads (geometryRef,
-    // strokesRef, rfNodesRef) — listed here only because eslint's ref-stability
-    // heuristic doesn't see through the custom hook to recognize it as one.
-  }, [props.layoutApiRef, reactFlow, legendReserveRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- legendReserveRef/geometryRef/rfNodesRef/strokesRef are stable useRef identities read through .current
+  }, [props.layoutApiRef, reactFlow]);
 
   // Orthogonal routing is a per-plane setting — or the notation's own layout,
   // whose routes are the drawing (a git link has no floating form worth showing).
