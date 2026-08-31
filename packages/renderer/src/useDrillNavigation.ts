@@ -9,7 +9,7 @@ export interface DrillNavigationInput {
   plane: string | undefined;
   enteredPathProp: string[] | undefined;
   onEnteredPathChange: ((path: string[]) => void) | undefined;
-  /** written by Inner's compiled-walk effect; read by the plane-switch branch */
+  /** written by Inner's compiled-walk effect and cleared by the model-switch branch; read by the plane-switch branch */
   visibleRef: MutableRefObject<string[]>;
   /** the plane-switch branch clears Inner-owned UI state (labelEdit) */
   onPlaneSwitch: () => void;
@@ -58,7 +58,7 @@ export function useDrillNavigation(input: DrillNavigationInput): DrillNavigation
   // Render-phase state adjustment (sanctioned React pattern): new model resets
   // navigation; a plane switch instead maps it — the entities on screen stay
   // visible, regrouped by the new plane's ancestors (the "sheet flip"). The
-  // last-seen props snapshot lives in a useReducer (see syncReducer above):
+  // last-seen props snapshot lives in a useReducer (see syncReducer in view-sync.ts):
   // each branch below dispatches the SAME `sync` action with the current props,
   // and the reducer classifies the transition it was — so the four paths
   // (new model / plane switch / model edit / host-driven path) are visible as

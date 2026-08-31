@@ -186,7 +186,7 @@ function Inner(props: DiagramViewProps) {
     () => props.drawings?.planes[layoutPlaneKey(props.model, props.plane)] ?? [],
     [props.drawings, props.model, props.plane],
   );
-  // Render-phase ref (same pattern as enteredPathRef): the layoutApiRef effect
+  // Render-phase ref (same pattern as useDrillNavigation's enteredPathRef): the layoutApiRef effect
   // below keeps deps of just [layoutApiRef, reactFlow], so it reads the ink
   // through a ref rather than re-installing the api object on every stroke.
   const strokesRef = useRef<readonly Stroke[]>([]);
@@ -533,7 +533,7 @@ function Inner(props: DiagramViewProps) {
     return () => {
       ref.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- legendReserveRef/geometryRef/rfNodesRef/strokesRef are stable useRef identities read through .current
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- legendReserveRef and geometryRef come from hooks, so the rule cannot see they are stable useRef identities read through .current (rfNodesRef/strokesRef are local refs the rule already exempts)
   }, [props.layoutApiRef, reactFlow]);
 
   // The per-edge data channel inputs, as one object the cached builder keys
