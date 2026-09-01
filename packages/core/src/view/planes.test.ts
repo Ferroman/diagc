@@ -253,4 +253,16 @@ describe('activeNotation', () => {
     expect(activeNotation(planes, 'odd')).toBeUndefined();
     expect(activeNotation([], undefined)).toBeUndefined();
   });
+
+  it('falls back to the model-level notation when the plane declares none', () => {
+    expect(activeNotation([], undefined, 'c4')).toBe('c4');
+  });
+
+  it('a plane notation beats the model fallback', () => {
+    expect(activeNotation(planes, 'git', 'c4')).toBe('git-graph');
+  });
+
+  it('an unknown fallback resolves to undefined, not an error', () => {
+    expect(activeNotation([], undefined, 'nope')).toBeUndefined();
+  });
 });

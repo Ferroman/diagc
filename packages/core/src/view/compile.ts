@@ -35,11 +35,16 @@ export function presetLayers(planes: readonly DiagramPlane[], plane?: string): s
  * (an absent id = the first-declared plane, matching `compileView`). An
  * unrecognized id falls back to the default look (`undefined`) instead of
  * erroring — both the studio and the published viewer resolve it this way, so
- * an editable diagram and its published page always agree.
+ * an editable diagram and its published page always agree. `fallback` is the
+ * model-level notation, used when the resolved plane declares none.
  */
-export function activeNotation(planes: readonly DiagramPlane[], plane?: string): NotationId | undefined {
+export function activeNotation(
+  planes: readonly DiagramPlane[],
+  plane?: string,
+  fallback?: string,
+): NotationId | undefined {
   const p = plane !== undefined ? planes.find((x) => x.id === plane) : planes[0];
-  const id = p?.notation;
+  const id = p?.notation ?? fallback;
   return id !== undefined && (BUILTIN_NOTATIONS as readonly string[]).includes(id) ? (id as NotationId) : undefined;
 }
 

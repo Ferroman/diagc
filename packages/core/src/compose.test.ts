@@ -342,4 +342,17 @@ describe('typeColors on graft', () => {
     const { model: m } = await composeIncludes(host, 'mem:host', memory({ child }));
     expect(m.layerRules).toEqual([{ color: '#ef6c00', layer: 'http' }]);
   });
+
+  it('keeps the host notation and drops the child one', async () => {
+    const child = doc('child', {
+      nodes: [{ id: 'c', key: 'c', name: 'c' }],
+      notation: 'git-graph',
+    });
+    const host = doc('host', {
+      nodes: [{ id: 'wrap', name: 'wrap', include: 'child' }],
+      notation: 'c4',
+    });
+    const { model: m } = await composeIncludes(host, 'mem:host', memory({ child }));
+    expect(m.notation).toBe('c4');
+  });
 });

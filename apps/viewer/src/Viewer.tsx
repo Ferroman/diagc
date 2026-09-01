@@ -279,7 +279,7 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
   // Mirror the drawn plane's notation so the visual language follows the plane
   // the reader is on — the studio resolves it the same way, so an editable
   // diagram and its published page always agree.
-  const notation = activeNotation(model.planes, plane);
+  const notation = activeNotation(model.planes, plane, model.notation);
   const togglePin = (id: string) =>
     setPins((p) => ({ ...p, [id]: p[id] === 'expanded' ? 'collapsed' : 'expanded' }));
   // A plane change re-seeds the layer switch from the new plane's presets, so the

@@ -210,6 +210,10 @@ export interface DiagramModel {
    * file); unknown ids are legal — the renderer falls back to the app-level
    * preference */
   style?: string;
+  /** visual language for the whole diagram (travels with the file); a plane's
+   * own `notation` wins where one is declared. Unknown ids are legal — the
+   * renderer falls back to the default look */
+  notation?: string;
   /** opt-in key for this diagram's visual vocabulary; absent = no legend */
   legend?: DiagramLegend;
   /** default accent colour per node type, so a composed diagram can carry a
@@ -309,6 +313,6 @@ export interface Drawings {
 /** Pen width when a stroke names none. In core so editor and renderer cannot drift. */
 export const DEFAULT_STROKE_WIDTH = 3;
 
-export const BUILTIN_NOTATIONS = ['causal-loop', 'git-graph'] as const;
+export const BUILTIN_NOTATIONS = ['causal-loop', 'git-graph', 'c4'] as const;
 export type NotationId = (typeof BUILTIN_NOTATIONS)[number];
 export type Polarity = '+' | '-';

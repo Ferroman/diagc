@@ -231,7 +231,7 @@ export function App() {
   // notation too (activeNotation falls back to planes[0]), matching the
   // published page.
   const activePlane = plane;
-  const notation = activeNotation(planes, activePlane);
+  const notation = activeNotation(planes, activePlane, model?.notation);
   // A borrowing plane's node membership resolves to its base plane
   // (compileView/resolveContainmentPlane), so tagging node.plane with the
   // borrowing plane's own id would mismatch and the node would silently

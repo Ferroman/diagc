@@ -76,9 +76,15 @@ const GIT: NotationProfile = {
   overlay: 'git-lanes',
 };
 
+// Minimal for now — fleshed out once C4's own type/kind vocabulary lands.
+const C4: NotationProfile = {
+  id: 'c4',
+  className: 'dg-notation-c4',
+};
+
 // Record<NotationId, ...> keying means adding a notation id to BUILTIN_NOTATIONS
 // forces a compile error here until its profile is added — intended.
-export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = { 'causal-loop': CLD, 'git-graph': GIT };
+export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = { 'causal-loop': CLD, 'git-graph': GIT, c4: C4 };
 
 const DEFAULT_PROFILE: NotationProfile = { id: 'default' };
 

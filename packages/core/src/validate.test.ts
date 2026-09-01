@@ -396,6 +396,15 @@ describe('model style', () => {
     expect(issues).toHaveLength(1);
     expect(issues[0]?.code).toBe('invalid-style');
   });
+
+  it('accepts a model-level notation from BUILTIN_NOTATIONS', () => {
+    expect(validate({ ...base, notation: 'c4' })).toEqual([]);
+  });
+
+  it('rejects an unknown model-level notation', () => {
+    const issues = validate({ ...base, notation: 'uml-4ever' } as DiagramModel);
+    expect(issues).toContainEqual(expect.objectContaining({ code: 'unknown-notation' }));
+  });
 });
 
 describe('table columns + fk validation', () => {

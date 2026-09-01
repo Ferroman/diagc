@@ -97,11 +97,20 @@ interface Ctx {
 }
 
 /** Diagram-level style: pinned style must be a non-empty string. Unknown ids are
- * intentionally legal — the renderer treats them as unpinned. */
+ * intentionally legal — the renderer treats them as unpinned. Also the
+ * model-level `notation`, unlike style, must be one of BUILTIN_NOTATIONS —
+ * it is a closed vocabulary the renderer keys a `Record` on, not an open
+ * preset id. */
 function validateModelStyle(ctx: Ctx): void {
   const { m, issues } = ctx;
   if (m.style !== undefined && (typeof m.style !== 'string' || m.style === '')) {
     report(issues, 'invalid-style', 'Diagram style must be a non-empty string');
+  }
+  if (
+    m.notation !== undefined &&
+    (typeof m.notation !== 'string' || !(BUILTIN_NOTATIONS as readonly string[]).includes(m.notation))
+  ) {
+    report(issues, 'unknown-notation', `Diagram has unknown notation '${String(m.notation)}'`);
   }
 }
 
