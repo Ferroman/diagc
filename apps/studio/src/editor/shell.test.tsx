@@ -770,6 +770,18 @@ describe('editor shell', () => {
     expect(screen.getByRole('heading', { name: /layers & planes/i })).toBeDefined();
   });
 
+  it('a model-level notation reaches the canvas', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
+    await canvas().findByText('sys');
+    // model.notation -> activeNotation -> DiagramView, no plane involved (the
+    // spec's zero-plane gating concern: this diagram has none).
+    fireEvent.change(screen.getByLabelText('Notation'), { target: { value: 'c4' } });
+    await waitFor(() =>
+      expect(document.querySelector('.dg-canvas')?.classList.contains('dg-notation-c4')).toBe(true),
+    );
+  });
+
   it('shows an auto-layout toggle in edit mode, pressed by default', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));

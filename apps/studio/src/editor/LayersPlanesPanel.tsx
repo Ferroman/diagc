@@ -229,6 +229,23 @@ export function LayersPlanesPanel({
 
       {mode === 'edit' && (
         <div className="panel-section">
+          <label className="field">
+            <span>Notation</span>
+            <select
+              aria-label="Notation"
+              value={model.notation ?? ''}
+              onChange={(e) =>
+                onCommand({ type: 'set-diagram-notation', notation: e.target.value === '' ? null : e.target.value })
+              }
+            >
+              <option value="">default look</option>
+              {BUILTIN_NOTATIONS.map((n) => (
+                <option key={n} value={n}>
+                  {notationLabel(n)}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="lp-check">
             <input
               type="checkbox"

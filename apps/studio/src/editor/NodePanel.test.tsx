@@ -130,6 +130,49 @@ describe('NodePanel', () => {
     expect(shape.value).toBe('');
   });
 
+  it('the Technology field commits through node details on blur', () => {
+    const onCommand = vi.fn();
+    render(
+      <NodePanel
+        model={testModel()}
+        nodeId="a"
+        activePlane="flow"
+        onCommand={onCommand}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
+    const technology = screen.getByLabelText('Technology') as HTMLInputElement;
+    fireEvent.change(technology, { target: { value: 'Go' } });
+    fireEvent.blur(technology);
+    expect(onCommand).toHaveBeenCalledWith({
+      type: 'set-node-details',
+      id: 'a',
+      details: { technology: 'Go' },
+    });
+  });
+
+  it('clears the technology when the field is emptied', () => {
+    const onCommand = vi.fn();
+    const withTechnology = testModel();
+    withTechnology.nodes = withTechnology.nodes.map((n) => (n.id === 'a' ? { ...n, technology: 'Go' } : n));
+    render(
+      <NodePanel
+        model={withTechnology}
+        nodeId="a"
+        activePlane="flow"
+        onCommand={onCommand}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
+    const technology = screen.getByLabelText('Technology') as HTMLInputElement;
+    expect(technology.value).toBe('Go');
+    fireEvent.change(technology, { target: { value: '' } });
+    fireEvent.blur(technology);
+    expect(onCommand).toHaveBeenCalledWith({ type: 'set-node-details', id: 'a', details: { technology: null } });
+  });
+
   it('sets and clears the node color from the swatch row', () => {
     const onCommand = vi.fn();
     render(

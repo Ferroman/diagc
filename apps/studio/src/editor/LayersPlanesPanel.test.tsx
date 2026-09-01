@@ -307,4 +307,19 @@ describe('LayersPlanesPanel', () => {
     render(<LayersPlanesPanel model={m.toJSON()} onCommand={vi.fn()} mode="view" />);
     expect(screen.queryByRole('checkbox', { name: 'Legend' })).toBeNull();
   });
+
+  it('the Notation select pins the model notation and clearing removes it', () => {
+    const onCommand = vi.fn();
+    const m = model('d');
+    m.node('a');
+    render(<LayersPlanesPanel model={m.toJSON()} onCommand={onCommand} mode="edit" />);
+
+    const select = screen.getByLabelText('Notation') as HTMLSelectElement;
+    expect(select.value).toBe('');
+    fireEvent.change(select, { target: { value: 'c4' } });
+    expect(onCommand).toHaveBeenCalledWith({ type: 'set-diagram-notation', notation: 'c4' });
+
+    fireEvent.change(select, { target: { value: '' } });
+    expect(onCommand).toHaveBeenCalledWith({ type: 'set-diagram-notation', notation: null });
+  });
 });

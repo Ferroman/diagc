@@ -99,6 +99,7 @@ export function NodePanel({
   const [type, setType] = useState(node?.type ?? '');
   const [icon, setIcon] = useState(node?.icon ?? '');
   const [shape, setShape] = useState(node?.shape ?? '');
+  const [technology, setTechnology] = useState(node?.technology ?? '');
   const [description, setDescription] = useState(node?.description ?? '');
   // Stable per-row ids so React keys survive reordering/mid-row removal; the
   // counter is a ref so it is not reset by re-renders. Lazy initializers keep it
@@ -137,6 +138,7 @@ export function NodePanel({
   const modelType = node?.type;
   const modelIcon = node?.icon;
   const modelShape = node?.shape;
+  const modelTechnology = node?.technology;
   const modelDescription = node?.description;
   const modelMetadata = node?.metadata;
   useEffect(() => {
@@ -151,6 +153,9 @@ export function NodePanel({
   useEffect(() => {
     setShape(modelShape ?? '');
   }, [modelShape]);
+  useEffect(() => {
+    setTechnology(modelTechnology ?? '');
+  }, [modelTechnology]);
   useEffect(() => {
     setDescription(modelDescription ?? '');
   }, [modelDescription]);
@@ -194,6 +199,14 @@ export function NodePanel({
       return;
     }
     onCommand({ type: 'set-node-details', id: nodeId, details: { shape: trimmed === '' ? null : trimmed } });
+  };
+  const commitTechnology = () => {
+    if (technology !== (node.technology ?? ''))
+      onCommand({
+        type: 'set-node-details',
+        id: nodeId,
+        details: { technology: technology === '' ? null : technology },
+      });
   };
   const commitDescription = () => {
     if (description !== (node.description ?? ''))
@@ -442,6 +455,17 @@ export function NodePanel({
             <option key={s} value={s} />
           ))}
         </datalist>
+      </label>
+
+      <label className="field">
+        <span>Technology</span>
+        <input
+          aria-label="Technology"
+          value={technology}
+          onChange={(e) => setTechnology(e.target.value)}
+          onBlur={commitTechnology}
+          onKeyDown={(e) => commitOnEnter(e, commitTechnology)}
+        />
       </label>
 
       <label className="field">
