@@ -4,6 +4,7 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { describe, expect, it, vi } from 'vitest';
 import { createIconRegistry } from '@diagramming/icons';
 import { createTypeRegistry } from './registry';
+import { notationProfile } from './notations';
 import { DiagramNode, type DiagramNodeData } from './DiagramNode';
 import { stylePreset } from './stylePresets';
 import { seedFrom, sketchNode } from './sketch';
@@ -433,6 +434,13 @@ describe('DiagramNode', () => {
     expect(box.style.borderColor).toBe('rgb(255, 0, 0)'); // the accent color, not the registry fill
     // the accent path's color-mix() background, not the solid registry fill
     expect(box.style.background).not.toBe('rgb(17, 104, 189)');
+  });
+
+  it('the c4 notation profile paints a c4-system leaf with the solid C4 blue (profile → registry → solid look)', () => {
+    const typeRegistry = createTypeRegistry(notationProfile('c4').typeStyles);
+    const { container } = renderNode({ label: 'Web App', typeId: 'c4-system', typeRegistry });
+    const box = container.querySelector('.dg-node') as HTMLElement;
+    expect(box.style.background).toBe('rgb(17, 104, 189)'); // #1168bd, jsdom normalizes hex to rgb
   });
 
   it('renders a shape node as a masked silhouette with the label, not an image', () => {

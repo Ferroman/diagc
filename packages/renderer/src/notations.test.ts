@@ -54,4 +54,15 @@ describe('notationProfile', () => {
     expect(p.overlay).toBe('git-lanes');
     expect(NOTATION_PROFILES['git-graph']).toBe(p);
   });
+
+  it('the c4 profile paints the element families with the C4 palette', () => {
+    const t = notationProfile('c4').typeStyles!;
+    expect(t['c4-system']).toMatchObject({ fill: '#1168bd', textOn: '#ffffff' });
+    expect(t['c4-container-db']).toMatchObject({ fill: '#438dd5', shape: 'cylinder' });
+    expect(t['c4-component']).toMatchObject({ fill: '#85bbf0', textOn: '#0b1a2b' });
+    expect(t['c4-person']).toMatchObject({ fill: '#08427b', shape: 'person' });
+    expect(t['c4-system-external']).toMatchObject({ fill: '#999999' });
+    // boundaries keep no fill — they stay dashed context, not solid things
+    expect(t['c4-system-boundary']).toBeUndefined();
+  });
 });
