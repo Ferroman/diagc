@@ -408,6 +408,28 @@ describe('DiagramNode', () => {
     expect(label.style.color).not.toBe('rgb(8, 66, 123)'); // not the shape color (#08427b)
   });
 
+  it('a TypeStyle fill paints a solid body with legible text when the node has no accent', () => {
+    const typeRegistry = createTypeRegistry({
+      'c4-system': { shape: 'box', fill: '#1168bd', textOn: '#ffffff' },
+    });
+    const { container } = renderNode({ label: 'Web App', typeId: 'c4-system', typeRegistry });
+    const box = container.querySelector('.dg-node') as HTMLElement;
+    expect(box.style.background).toBe('rgb(17, 104, 189)'); // jsdom normalizes hex to rgb
+    expect(box.style.borderColor).toBe('rgb(17, 104, 189)');
+    expect(box.style.color).toBe('rgb(255, 255, 255)');
+  });
+
+  it('an explicit node color still beats the TypeStyle fill', () => {
+    const typeRegistry = createTypeRegistry({
+      'c4-system': { shape: 'box', fill: '#1168bd', textOn: '#ffffff' },
+    });
+    const { container } = renderNode({ label: 'Web App', typeId: 'c4-system', typeRegistry, color: '#ff0000' });
+    const box = container.querySelector('.dg-node') as HTMLElement;
+    expect(box.style.borderColor).toBe('rgb(255, 0, 0)'); // the accent color, not the registry fill
+    // the accent path's color-mix() background, not the solid registry fill
+    expect(box.style.background).not.toBe('rgb(17, 104, 189)');
+  });
+
   it('renders a shape node as a masked silhouette with the label, not an image', () => {
     const { container } = renderNode({
       label: 'Actor',

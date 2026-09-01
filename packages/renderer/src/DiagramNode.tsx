@@ -483,8 +483,18 @@ export function DiagramNode({
   }
 
   const outline = style.outline === true && data.color !== undefined;
+  // Registry solid look (e.g. the C4 profile): applies only when nothing more
+  // specific colours the node — an explicit color keeps today's accent path.
+  const solid =
+    data.color === undefined && style.fill !== undefined
+      ? {
+          background: style.fill,
+          borderColor: style.fill,
+          ...(style.textOn !== undefined ? { color: style.textOn } : {}),
+        }
+      : undefined;
   const boxAccent = {
-    ...(outline ? { borderColor: data.color, color: data.color } : accentStyle(data.color)),
+    ...(solid ?? (outline ? { borderColor: data.color, color: data.color } : accentStyle(data.color))),
     // an explicit text color overrides the default (which follows the accent on C4 boxes)
     ...(data.textColor !== undefined ? { color: data.textColor } : {}),
   };

@@ -17,6 +17,11 @@ export interface TypeStyle {
    * node — how fixed-geometry glyphs (dots, bars, diamonds) get real footprints
    * from the DSL, where no palette template runs */
   defaultSize?: { width: number; height: number };
+  /** solid body fill (authentic-notation looks, e.g. C4 blue); an explicit
+   * node color / model typeColors entry still wins */
+  fill?: string;
+  /** text color legible on `fill`; ignored without it */
+  textOn?: string;
 }
 
 export interface KindStyle {
