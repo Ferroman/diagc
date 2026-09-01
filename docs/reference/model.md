@@ -14,6 +14,7 @@ For *why* the model is shaped like this, see [What is in a model](../explanation
 | `id` | `string` | Diagram identity. |
 | `name` | `string` | Display name. |
 | `style` | `string?` | Renderer style preset pinned by this file. Unknown ids fall back to the app preference. |
+| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop`, `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids are legal and fall back to the default look. |
 | `legend` | `DiagramLegend?` | Opt-in key for the diagram's visual vocabulary. Absent means no legend anywhere. |
 | `typeColors` | `Record<string, string>?` | Default accent colour per node type; `*` is the fallback. A node's own `color` wins. Dropped from included models on graft — the host owns the look. |
 | `layerRules` | `LayerRule[]?` | Class → layer for relations without a `layer`: `{ kind?, color?, layer }`, every named field must match, first match wins, explicit `layer` beats the rules. Dropped from included models on graft. |
@@ -35,8 +36,9 @@ Style preset ids: `clean` (default), `sketch`, `hand-drawn`, `pencil`, `blueprin
 | `icon` | `string?` | Free-form; resolved by the icon registry. |
 | `image` | `string?` | Asset ref — the node renders as the picture itself. |
 | `shape` | `string?` | SVG silhouette ref, drawn as a tintable mask filled with `color`. Takes precedence over `image`. |
-| `color` | `string?` | Accent colour; overrides the type registry's look. |
+| `color` | `string?` | Accent colour; overrides the type registry's look. Also wins over a notation's fill (e.g. C4's solid palette) — see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md#what-to-know). |
 | `textColor` | `string?` | Label colour, independent of `color`. |
+| `technology` | `string?` | Implementation technology, composed into the type subtitle: `[Container: Java, Spring Boot]`. Meaningful in any notation, not just C4. |
 | `description` | `string?` | Shown in the detail panel — **never on the canvas**. |
 | `rich` | `TextRun[]?` | Bold/italic label runs. When present, `name` must equal the concatenated text. |
 | `textAlign` | `'left' \| 'center' \| 'right'?` | Default `left`. |
@@ -133,7 +135,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `containmentOf` | `string?` | Borrow another plane's containment instead of declaring your own. |
 | `layers` | `string[]?` | Layers switched on when this plane is selected. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations, leaving only layer arrows. |
-| `notation` | `string?` | Visual language. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)). |
+| `notation` | `string?` | Visual language, overriding the model's `notation` for this plane. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)), `c4` (see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md)). |
 | `hides` | `string[]?` | Shared node ids this plane hides; their children are promoted into their place. |
 | `hidesTree` | `string[]?` | Shared node ids this plane hides along with everything inside them (a child with another visible parent stays). |
 

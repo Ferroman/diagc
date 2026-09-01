@@ -67,13 +67,13 @@ Shortcuts are ignored while you are typing in a form field. History is capped at
 
 ## Panels
 
-**Properties** (node selected) — name, `type`, `icon`, colour swatches, description, free-form metadata rows, memberships (which parents contain it, per plane), delete.
+**Properties** (node selected) — name, `type`, `icon`, colour swatches, **Technology**, description, free-form metadata rows, memberships (which parents contain it, per plane), delete.
 
 **Properties** (relation selected) — `kind`, label, `layer`, delete, plus a *Style* section: line shape (curved / straight / step), colour, thickness, line (solid / dashed / dotted), arrow end (arrow / dot / square / diamond / none), from/to side, animated. Anything left at *default* falls back to the kind's registry style and the layer tint.
 
 **Library** — the palette. See [Library reference](library.md) and [Use the icon library](../how-to/use-the-icon-library.md).
 
-**Layers & planes** — add, edit and remove layers (id, name, tint) and planes (id, name, containment borrowing, preset layers). In edit mode it also carries a **Legend** checkbox, which adds or removes the diagram's `legend` declaration; its title, position, sections and items are authored in the file. See [Add a legend](../how-to/add-a-legend.md).
+**Layers & planes** — add, edit and remove layers (id, name, tint) and planes (id, name, containment borrowing, preset layers, its own **Notation**). In edit mode it also carries a model-level **Notation** selector (`default look`, `causal-loop`, `git-graph`, `c4` — a plane's own notation wins where set) and a **Legend** checkbox, which adds or removes the diagram's `legend` declaration; its title, position, sections and items are authored in the file. See [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md) and [Add a legend](../how-to/add-a-legend.md).
 
 **Git** — on a plane with the `git-graph` notation, in edit mode: add lanes and commits, branch the selected commit into another lane, merge it into one, set its gap. Each action is one undo step. See [Draw a git branching diagram](../how-to/draw-a-git-branching-diagram.md).
 

@@ -284,6 +284,7 @@ export class ModelBuilder {
   private legendConfig: DiagramLegend | undefined;
   private typeColorMap: Record<string, string> | undefined;
   private layerRuleList: LayerRule[] | undefined;
+  private modelNotation: string | undefined;
   private pairCounters = new Map<string, number>();
   private git: GitGraphBuilder | undefined;
 
@@ -430,6 +431,12 @@ export class ModelBuilder {
     return this;
   }
 
+  /** pin the whole diagram's visual language (see DiagramModel.notation) */
+  notation(id: string): this {
+    this.modelNotation = id;
+    return this;
+  }
+
   toJSON(): DiagramModel {
     const json: DiagramModel = {
       version: 1,
@@ -443,6 +450,7 @@ export class ModelBuilder {
       ...(this.legendConfig !== undefined ? { legend: this.legendConfig } : {}),
       ...(this.typeColorMap !== undefined ? { typeColors: this.typeColorMap } : {}),
       ...(this.layerRuleList !== undefined ? { layerRules: this.layerRuleList } : {}),
+      ...(this.modelNotation !== undefined ? { notation: this.modelNotation } : {}),
     };
     const issues = validate(json);
     if (issues.length > 0) throw new DiagramValidationError(issues);

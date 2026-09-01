@@ -203,6 +203,21 @@ describe('typeColors', () => {
   });
 });
 
+describe('notation', () => {
+  it('m.notation sets the model-level notation', () => {
+    const m = model('m');
+    m.node('a');
+    m.notation('c4');
+    expect(m.toJSON().notation).toBe('c4');
+  });
+
+  it('is absent when never declared', () => {
+    const m = model('m');
+    m.node('a');
+    expect(m.toJSON().notation).toBeUndefined();
+  });
+});
+
 describe('layerRules', () => {
   it('travels on the model, appending across calls', () => {
     const m = model('m');

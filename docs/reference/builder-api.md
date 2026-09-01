@@ -25,7 +25,8 @@ Declares an entity and returns a handle for containment and relations.
 | `type` | `string?` | Free-form; see [registry defaults](model.md#registry-defaults). |
 | `icon` | `string?` | Free-form. |
 | `image`, `shape` | `string?` | Asset refs; see [Model reference](model.md#asset-refs-image-shape). |
-| `color`, `textColor` | `string?` | |
+| `color`, `textColor` | `string?` | `color` also wins over a notation's fill (e.g. C4's solid palette). |
+| `technology` | `string?` | Composed into the type subtitle: `[Container: Java, Spring Boot]`. See [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md). |
 | `description` | `string?` | Detail panel only — never drawn on the canvas. |
 | `metadata` | `Record<string, unknown>?` | |
 | `key` | `string?` | Cross-diagram identity. |
@@ -106,7 +107,7 @@ The first plane declared is the default and owns untagged containment.
 | `containmentOf` | `string?` | Borrow another plane's structure. |
 | `layers` | `string[]?` | Layers on by default in this plane. A default, not a floor: hosts with a layer switch start from this (`presetLayers`) and can turn them off — an export, which has no switch, always draws them. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations. |
-| `notation` | `'causal-loop' \| 'git-graph'?` | Prefer `m.gitGraph()` for the latter. |
+| `notation` | `NotationId?` (`'causal-loop' \| 'git-graph' \| 'c4'`) | Prefer `m.gitGraph()` for `git-graph`. Overrides `m.notation()` for this plane. |
 | `hides` | `string[]?` | Shared node ids to hide here, promoting their contents into their place. |
 | `hidesTree` | `string[]?` | Shared node ids to hide here together with their contents, however deep. A child another visible box also contains stays. |
 
@@ -255,6 +256,16 @@ m.layerRules([
 This is the one way a composed diagram can layer relations an `include` brought in: the umbrella cannot edit grafted relations, but it can say "everything orange is HTTP here". A relation's own `layer` always beats the rules; a relation no rule matches stays on the base sheet. Combine with a plane's `layers` presets and `baseRelations: false` to draw exactly one class.
 
 Successive calls append. Like `typeColors`, rules are presentation and do NOT travel through `include`: the host's are kept, every child's dropped. A rule naming an undeclared layer fails validation (`unknown-layer`).
+
+## `m.notation(id) → m`
+
+Pin the whole diagram's visual language — the model-level fallback a plane's own `notation` overrides (see [`m.plane`](#mplaneid-opts--m)). The one way to opt a planeless diagram into a built-in look without declaring a plane purely to carry it.
+
+```ts
+m.notation('c4');
+```
+
+`id` is a free-form string; unknown ids are legal and fall back to the default look, same as an unknown `plane.notation`. Calling it twice replaces the value.
 
 ## `m.toJSON() → DiagramModel`
 
