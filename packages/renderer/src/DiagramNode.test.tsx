@@ -396,6 +396,7 @@ describe('DiagramNode', () => {
     expect(box.style.color).not.toBe(''); // colored text
     expect(box.style.borderColor).not.toBe(''); // colored border
     expect(box.style.background).toBe(''); // no fill (not the solid bg, not the color-mix tint)
+    expect(box.className).not.toContain('dg-solid'); // outline, not solid
   });
 
   it('composes the technology into the type subtitle', () => {
@@ -423,6 +424,7 @@ describe('DiagramNode', () => {
     expect(box.style.background).toBe('rgb(17, 104, 189)'); // jsdom normalizes hex to rgb
     expect(box.style.borderColor).toBe('rgb(17, 104, 189)');
     expect(box.style.color).toBe('rgb(255, 255, 255)');
+    expect(box.className).toContain('dg-solid');
   });
 
   it('an explicit node color still beats the TypeStyle fill', () => {

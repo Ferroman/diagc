@@ -109,6 +109,7 @@
 /* C4 outline box: thicker colored border + colored text (border/color set inline). */
 .dg-c4-outline { border-width: 2px; }
 .dg-c4-outline .dg-type { color: inherit; opacity: 0.8; }
+.dg-solid .dg-type { color: inherit; opacity: 0.85; }
 .dg-count, .dg-badge {
   background: var(--dg-badge-bg);
   border-radius: 999px;
