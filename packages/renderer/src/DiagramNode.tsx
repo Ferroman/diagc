@@ -11,6 +11,7 @@ import { SketchShape } from './SketchShape';
 import { TableNode } from './TableNode';
 import type { StylePreset } from './stylePresets';
 import type { SketchShapeKind } from './sketch';
+import { typeSubtitle } from './type-subtitle';
 
 export interface DiagramNodeData {
   // --- rendering: identity, look, label ----------------------------------
@@ -21,6 +22,8 @@ export interface DiagramNodeData {
   color?: string;
   /** label text color; defaults to `color` on C4/shape nodes, else inherited */
   textColor?: string;
+  /** implementation technology, composed into the type subtitle */
+  technology?: string;
   /** rich multiline label runs; when set, drawn instead of `label` on box nodes */
   rich?: TextRun[];
   /** whole-label horizontal alignment (box nodes) */
@@ -499,7 +502,7 @@ export function DiagramNode({
     ...(data.textColor !== undefined ? { color: data.textColor } : {}),
   };
   // an explicit empty registry label (UML glyphs) suppresses the type subtitle entirely
-  const typeLabel = data.typeId !== undefined ? (style.label ?? data.typeId) : undefined;
+  const typeLabel = data.typeId !== undefined ? typeSubtitle(style.label ?? data.typeId, data.technology) : undefined;
   // UML draws these glyphs in a fixed neutral stroke — the docs promise node.color is
   // ignored on bars/start/end, so skip the inline accent that would otherwise tint them
   const neutralGlyph = style.shape === 'bar' || style.shape === 'start-dot' || style.shape === 'end-bullseye';

@@ -397,6 +397,11 @@ describe('DiagramNode', () => {
     expect(box.style.background).toBe(''); // no fill (not the solid bg, not the color-mix tint)
   });
 
+  it('composes the technology into the type subtitle', () => {
+    const { container } = renderNode({ label: 'API', typeId: 'c4-container', technology: 'Java/Spring' });
+    expect(container.querySelector('.dg-type')?.textContent).toBe('[Container: Java/Spring]');
+  });
+
   it('lets an explicit textColor override the label color, independent of the accent', () => {
     // C4 outline box: border keeps the accent, text takes textColor
     const box = renderNode({ label: 'Web App', typeId: 'c4-system', color: '#1168bd', textColor: '#ff8800' }).container.querySelector('.dg-node') as HTMLElement;

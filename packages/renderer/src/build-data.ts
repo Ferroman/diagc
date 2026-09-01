@@ -116,6 +116,7 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     ...(n.node.icon !== undefined ? { icon: n.node.icon } : {}),
     ...(typeColor(n, ctx) !== undefined ? { color: typeColor(n, ctx) } : {}),
     ...(n.node.textColor !== undefined ? { textColor: n.node.textColor } : {}),
+    ...(n.node.technology !== undefined ? { technology: n.node.technology } : {}),
     ...(n.node.rich !== undefined ? { rich: n.node.rich } : {}),
     ...(n.node.textAlign !== undefined ? { textAlign: n.node.textAlign } : {}),
     ...(n.node.fontScale !== undefined ? { fontScale: n.node.fontScale } : {}),
