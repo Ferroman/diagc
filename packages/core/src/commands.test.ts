@@ -328,7 +328,9 @@ describe('applyCommand', () => {
     const on = applyCommand(state, { type: 'set-diagram-notation', notation: 'c4' });
     expect(on.model.notation).toBe('c4');
     expect(on.layout).toBe(state.layout); // layout untouched
-    const off = applyCommand(on, { type: 'set-diagram-notation', notation: null });
+    const replaced = applyCommand(on, { type: 'set-diagram-notation', notation: 'causal-loop' });
+    expect(replaced.model.notation).toBe('causal-loop');
+    const off = applyCommand(replaced, { type: 'set-diagram-notation', notation: null });
     expect('notation' in off.model).toBe(false);
   });
 

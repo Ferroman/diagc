@@ -592,6 +592,18 @@ describe('setDiagramNotation', () => {
   it('rejects an unknown notation id', () => {
     expect(() => setDiagramNotation(base, 'freeform')).toThrow(CommandError);
   });
+  it('replaces an existing notation with a different valid one', () => {
+    const withC4 = setDiagramNotation(base, 'c4');
+    const replaced = setDiagramNotation(withC4, 'causal-loop');
+    expect(replaced.notation).toBe('causal-loop');
+  });
+  it('setting the same notation again is a no-op that preserves identity', () => {
+    const withLoop = setDiagramNotation(base, 'causal-loop');
+    expect(setDiagramNotation(withLoop, 'causal-loop')).toBe(withLoop);
+  });
+  it('clearing an already-cleared model is a no-op that preserves identity', () => {
+    expect(setDiagramNotation(base, null)).toBe(base);
+  });
 });
 
 describe('setTableColumns', () => {

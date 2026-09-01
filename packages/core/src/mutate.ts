@@ -280,7 +280,7 @@ export function setDiagramStyle(m: DiagramModel, style: string | null): DiagramM
 export function setDiagramNotation(m: DiagramModel, notation: string | null): DiagramModel {
   if (notation === null) {
     if (m.notation === undefined) return m;
-    const { notation: _drop, ...rest } = m;
+    const { notation: _dropped, ...rest } = m;
     return rest;
   }
   if (!(BUILTIN_NOTATIONS as readonly string[]).includes(notation)) {
