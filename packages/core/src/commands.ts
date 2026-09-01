@@ -27,6 +27,7 @@ import {
   removeContainment,
   renameNode,
   setDiagramLegend,
+  setDiagramNotation,
   setDiagramStyle,
   setNodeDetails,
   setNodePlaneHidden,
@@ -66,6 +67,7 @@ export type EditorCommand =
   | { type: 'set-table-columns'; id: string; columns: Column[] }
   | { type: 'set-node-plane-hidden'; nodeId: string; plane: string; hidden: boolean }
   | { type: 'set-diagram-style'; style: string | null }
+  | { type: 'set-diagram-notation'; notation: string | null }
   | { type: 'set-diagram-legend'; legend: DiagramLegend | null }
   | { type: 'delete-node'; id: string }
   | { type: 'add-containment'; parent: string; child: string; plane?: string }
@@ -179,6 +181,8 @@ function applyModelLayout(state: ModelLayout, command: EditorCommand): ModelLayo
       return { model: setNodePlaneHidden(model, command.nodeId, command.plane, command.hidden), layout };
     case 'set-diagram-style':
       return { model: setDiagramStyle(model, command.style), layout };
+    case 'set-diagram-notation':
+      return { model: setDiagramNotation(model, command.notation), layout };
     case 'set-diagram-legend':
       return { model: setDiagramLegend(model, command.legend), layout };
     case 'delete-node':

@@ -15,6 +15,7 @@ import {
   removeContainment,
   renameNode,
   setDiagramLegend,
+  setDiagramNotation,
   setDiagramStyle,
   setNodeDetails,
   setNodePlaneHidden,
@@ -570,6 +571,26 @@ describe('setDiagramStyle', () => {
   it('does not mutate the input model', () => {
     setDiagramStyle(base, 'sketch');
     expect(base.style).toBeUndefined();
+  });
+});
+
+describe('setDiagramNotation', () => {
+  const base: DiagramModel = {
+    version: 1, id: 'm', name: 'M', nodes: [], containment: [], relations: [], layers: [], planes: [],
+  };
+  it('pins a notation id on the model', () => {
+    expect(setDiagramNotation(base, 'c4').notation).toBe('c4');
+  });
+  it('clearing with null removes the field entirely', () => {
+    const cleared = setDiagramNotation(setDiagramNotation(base, 'c4'), null);
+    expect('notation' in cleared).toBe(false);
+  });
+  it('does not mutate the input model', () => {
+    setDiagramNotation(base, 'c4');
+    expect(base.notation).toBeUndefined();
+  });
+  it('rejects an unknown notation id', () => {
+    expect(() => setDiagramNotation(base, 'freeform')).toThrow(CommandError);
   });
 });
 

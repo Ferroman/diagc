@@ -319,6 +319,28 @@ describe('applyCommand', () => {
     expect('style' in cleared.model).toBe(false);
   });
 
+  it('set-diagram-notation pins, replaces and clears the model notation', () => {
+    const state: EditorState = {
+      model: { version: 1, id: 'm', name: 'M', nodes: [], containment: [], relations: [], layers: [], planes: [] },
+      layout: emptyLayout(),
+      drawings: emptyDrawings(),
+    };
+    const on = applyCommand(state, { type: 'set-diagram-notation', notation: 'c4' });
+    expect(on.model.notation).toBe('c4');
+    expect(on.layout).toBe(state.layout); // layout untouched
+    const off = applyCommand(on, { type: 'set-diagram-notation', notation: null });
+    expect('notation' in off.model).toBe(false);
+  });
+
+  it('set-diagram-notation rejects an unknown id', () => {
+    const state: EditorState = {
+      model: { version: 1, id: 'm', name: 'M', nodes: [], containment: [], relations: [], layers: [], planes: [] },
+      layout: emptyLayout(),
+      drawings: emptyDrawings(),
+    };
+    expect(() => applyCommand(state, { type: 'set-diagram-notation', notation: 'freeform' })).toThrow(CommandError);
+  });
+
   it('sets and clears the diagram legend', () => {
     const m = model('d');
     m.node('a');

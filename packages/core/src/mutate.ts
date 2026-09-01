@@ -274,6 +274,21 @@ export function setDiagramStyle(m: DiagramModel, style: string | null): DiagramM
   return { ...m, style };
 }
 
+/** Pin the diagram's notation id, or clear it with null. Unlike
+ * `setDiagramStyle`, unknown ids are rejected — notation drives structural
+ * validation rules, so it must resolve to a known one. */
+export function setDiagramNotation(m: DiagramModel, notation: string | null): DiagramModel {
+  if (notation === null) {
+    if (m.notation === undefined) return m;
+    const { notation: _drop, ...rest } = m;
+    return rest;
+  }
+  if (!(BUILTIN_NOTATIONS as readonly string[]).includes(notation)) {
+    throw new CommandError(`Unknown notation '${notation}'`);
+  }
+  return m.notation === notation ? m : { ...m, notation };
+}
+
 /** Declare the diagram's legend, or clear it entirely with null. */
 export function setDiagramLegend(m: DiagramModel, legend: DiagramLegend | null): DiagramModel {
   if (legend === null) {
