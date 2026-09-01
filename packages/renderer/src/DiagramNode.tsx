@@ -270,7 +270,7 @@ export function DiagramNode({
 
   if (data.shape !== undefined && data.state === 'leaf') {
     const maskUrl = `url("${assetUrl(data.assetBase, data.shape)}")`;
-    const typeLabel = data.typeId !== undefined ? (style.label ?? data.typeId) : undefined;
+    const typeLabel = data.typeId !== undefined ? typeSubtitle(style.label ?? data.typeId, data.technology) : undefined;
     const labelColor = data.textColor ?? data.color;
     return (
       <div className={`dg-node dg-shape-node${ghostClass}${loopClass}`} {...ghostTitle}>

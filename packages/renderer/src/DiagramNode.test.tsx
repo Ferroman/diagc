@@ -451,6 +451,16 @@ describe('DiagramNode', () => {
     expect(container.querySelector('.dg-type')?.textContent).toBe('[Person]');
   });
 
+  it('composes the technology into the type subtitle on the shape (silhouette) path', () => {
+    const { container } = renderNode({
+      label: 'Actor',
+      typeId: 'c4-person',
+      shape: '/library/shapes/person.svg',
+      technology: 'Go',
+    });
+    expect(container.querySelector('.dg-type')?.textContent).toBe('[Person: Go]');
+  });
+
   it('prefixes a bare shape ref with assetBase in the mask', () => {
     const { container } = renderNode({ label: 'S', shape: 'abc123.svg', assetBase: '/api/assets/' });
     const fill = container.querySelector('.dg-shape-fill') as HTMLElement;
