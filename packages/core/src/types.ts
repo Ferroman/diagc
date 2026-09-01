@@ -214,8 +214,9 @@ export interface DiagramModel {
    * preference */
   style?: string;
   /** visual language for the whole diagram (travels with the file); a plane's
-   * own `notation` wins where one is declared. Unknown ids are legal — the
-   * renderer falls back to the default look */
+   * own `notation` wins where one is declared. Unlike `style`, unknown ids are
+   * rejected at validation (`unknown-notation`) — a closed vocabulary the
+   * renderer keys a `Record` on, not an open preset id */
   notation?: string;
   /** opt-in key for this diagram's visual vocabulary; absent = no legend */
   legend?: DiagramLegend;

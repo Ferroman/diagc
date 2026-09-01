@@ -1,6 +1,6 @@
 # Draw a C4 diagram
 
-Draw a [C4 model](https://c4model.com) — context, container, component or deployment — with the notation's authentic look: solid person/system/container/component fills and a `[Type: technology]` subtitle under each box.
+Draw a [C4 model](https://c4model.com) — context, container, component or deployment — with the notation's authentic look: solid person/system/container/component fills and a `[Type: technology]` subtitle under each box. Deployment-level stencils (`c4-deployment-node`, `c4-infrastructure-node`, `c4-container-instance`) deliberately keep the outline look — no fill override, by design.
 
 ![Internet banking system: a Personal Banking Customer and an E-mail System at context level, with the Internet Banking System drilled into its Web Application, API Application and Database containers](../../.diagrams/static/docs-c4.png)
 

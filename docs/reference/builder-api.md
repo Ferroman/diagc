@@ -265,7 +265,7 @@ Pin the whole diagram's visual language — the model-level fallback a plane's o
 m.notation('c4');
 ```
 
-`id` is a free-form string; unknown ids are legal and fall back to the default look, same as an unknown `plane.notation`. Calling it twice replaces the value.
+`id` must be one of `BUILTIN_NOTATIONS`; an unknown id fails validation with `unknown-notation`, same as an unknown `plane.notation`. Calling it twice replaces the value.
 
 ## `m.toJSON() → DiagramModel`
 

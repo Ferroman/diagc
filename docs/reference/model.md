@@ -14,7 +14,7 @@ For *why* the model is shaped like this, see [What is in a model](../explanation
 | `id` | `string` | Diagram identity. |
 | `name` | `string` | Display name. |
 | `style` | `string?` | Renderer style preset pinned by this file. Unknown ids fall back to the app preference. |
-| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop`, `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids are legal and fall back to the default look. |
+| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop`, `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
 | `legend` | `DiagramLegend?` | Opt-in key for the diagram's visual vocabulary. Absent means no legend anywhere. |
 | `typeColors` | `Record<string, string>?` | Default accent colour per node type; `*` is the fallback. A node's own `color` wins. Dropped from included models on graft — the host owns the look. |
 | `layerRules` | `LayerRule[]?` | Class → layer for relations without a `layer`: `{ kind?, color?, layer }`, every named field must match, first match wins, explicit `layer` beats the rules. Dropped from included models on graft. |
