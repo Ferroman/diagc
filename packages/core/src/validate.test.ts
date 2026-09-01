@@ -403,7 +403,9 @@ describe('model style', () => {
 
   it('rejects an unknown model-level notation', () => {
     const issues = validate({ ...base, notation: 'uml-4ever' } as DiagramModel);
-    expect(issues).toContainEqual(expect.objectContaining({ code: 'unknown-notation' }));
+    expect(issues).toEqual([
+      { code: 'unknown-notation', message: "Diagram has unknown notation 'uml-4ever'", ref: 'm' },
+    ]);
   });
 });
 
@@ -604,6 +606,26 @@ describe('validate: git graph', () => {
     m.nodes[4] = { ...m.nodes[4]!, metadata: { gap: -1 } };
     expect(validate(m)).toEqual([
       { code: 'git-gap', message: "Commit 'm2' has invalid gap '-1'", ref: 'm2' },
+    ]);
+  });
+
+  it('fires from a model-level git-graph notation with no planes at all', () => {
+    const m = gitModel();
+    m.planes = [];
+    m.notation = 'git-graph';
+    m.nodes.push({ id: 'loose', name: '', type: 'commit' });
+    expect(validate(m)).toEqual([
+      { code: 'git-commit-outside-lane', message: "Commit 'loose' is not contained by a branch", ref: 'loose' },
+    ]);
+  });
+
+  it('validates a plane with no notation of its own when the model falls back to git-graph', () => {
+    const m = gitModel();
+    m.planes = [{ id: 'git', name: 'Git' }]; // no plane-level notation; model.notation applies
+    m.notation = 'git-graph';
+    m.relations.push({ id: 'x', from: 'master', to: 'm1', kind: 'merge' });
+    expect(validate(m)).toEqual([
+      { code: 'git-link-endpoints', message: "Relation 'x' (merge) must join two commit nodes", ref: 'x' },
     ]);
   });
 });

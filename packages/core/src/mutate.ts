@@ -275,8 +275,10 @@ export function setDiagramStyle(m: DiagramModel, style: string | null): DiagramM
 }
 
 /** Pin the diagram's notation id, or clear it with null. Unlike
- * `setDiagramStyle`, unknown ids are rejected — notation drives structural
- * validation rules, so it must resolve to a known one. */
+ * `setDiagramStyle`, unknown ids are rejected — a model-level notation drives
+ * structural validation rules the same way a plane's own notation does (e.g.
+ * `validateGit` in validate.ts resolves `plane.notation ?? model.notation`),
+ * so it must resolve to a known one. */
 export function setDiagramNotation(m: DiagramModel, notation: string | null): DiagramModel {
   if (notation === null) {
     if (m.notation === undefined) return m;

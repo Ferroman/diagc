@@ -110,7 +110,7 @@ function validateModelStyle(ctx: Ctx): void {
     m.notation !== undefined &&
     (typeof m.notation !== 'string' || !(BUILTIN_NOTATIONS as readonly string[]).includes(m.notation))
   ) {
-    report(issues, 'unknown-notation', `Diagram has unknown notation '${String(m.notation)}'`);
+    report(issues, 'unknown-notation', `Diagram has unknown notation '${String(m.notation)}'`, m.id);
   }
 }
 
@@ -377,16 +377,22 @@ function validateCycles(ctx: Ctx): void {
 }
 
 /**
- * Git-graph conventions, applied only when a plane declares the notation. The
- * layout never throws on a malformed graph — it cuts cycles and parks strays —
- * but an author should hear about it, so each convention is an issue here. Rules
- * read the FIRST git plane; several git planes per model is deferred.
+ * Git-graph conventions, applied wherever RENDERING would activate the git
+ * profile — the same resolution `activeNotation` (view/compile.ts) uses: a
+ * plane's own `notation` wins, otherwise the model-level `notation` applies.
+ * That includes the zero-plane case (a model-level 'git-graph' with no planes
+ * at all validates the whole, planeless model the way `gitLayout` draws it).
+ * The layout never throws on a malformed graph — it cuts cycles and parks
+ * strays — but an author should hear about it, so each convention is an issue
+ * here. Rules read the FIRST plane whose EFFECTIVE notation is git; several
+ * git planes per model is deferred.
  */
 function validateGit(ctx: Ctx): void {
   const { issues, m } = ctx;
-  const plane = ctx.planes.find((p) => p.notation === GIT_NOTATION);
-  if (plane === undefined) return;
-  const g = gitGraph(m, plane.id);
+  const plane = ctx.planes.find((p) => (p.notation ?? m.notation) === GIT_NOTATION);
+  const modelLevel = plane === undefined && ctx.planes.length === 0 && m.notation === GIT_NOTATION;
+  if (plane === undefined && !modelLevel) return;
+  const g = gitGraph(m, plane?.id);
   const typeOf = new Map(m.nodes.map((n) => [n.id, n.type]));
   const isCommit = (id: string): boolean => typeOf.get(id) === 'commit';
   const parents = new Map<string, { commit: number; branch: number }>();
@@ -423,7 +429,12 @@ function validateGit(ctx: Ctx): void {
   const cut = g.cycleEdges[0];
   if (cut !== undefined) report(issues, 'git-cycle', `Git links form a cycle (cut at relation '${cut}')`, cut);
   for (const s of g.strays) {
-    report(issues, 'git-commit-outside-lane', `Commit '${s.id}' is not contained by a branch on plane '${plane.id}'`, s.id);
+    report(
+      issues,
+      'git-commit-outside-lane',
+      `Commit '${s.id}' is not contained by a branch${plane !== undefined ? ` on plane '${plane.id}'` : ''}`,
+      s.id,
+    );
   }
   for (const n of m.nodes) {
     if (n.type !== 'commit') continue;
