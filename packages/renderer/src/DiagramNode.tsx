@@ -512,7 +512,7 @@ export function DiagramNode({
       className={
         isTypelessText
           ? `dg-node dg-text-node${ghostClass}${loopClass}`
-          : `dg-node dg-shape-${style.shape}${style.dashed === true ? ' dg-dashed' : ''}${outline ? ' dg-c4-outline' : ''}${solid !== undefined ? ' dg-solid' : ''}${ghostClass}${loopClass}`
+          : `dg-node dg-shape-${style.shape}${style.dashed === true ? ' dg-dashed' : ''}${outline ? ' dg-c4-outline' : ''}${solid !== undefined && data.stylePreset?.rough === undefined ? ' dg-solid' : ''}${ghostClass}${loopClass}`
       }
       {...(data.stylePreset?.rough !== undefined || isTypelessText || neutralGlyph ? {} : { style: boxAccent })}
       {...ghostTitle}

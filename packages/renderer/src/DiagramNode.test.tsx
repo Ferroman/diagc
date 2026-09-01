@@ -425,6 +425,19 @@ describe('DiagramNode', () => {
     expect(box.style.borderColor).toBe('rgb(17, 104, 189)');
     expect(box.style.color).toBe('rgb(255, 255, 255)');
     expect(box.className).toContain('dg-solid');
+
+    // rough/sketch mode deliberately omits the inline solid style (the rough
+    // shape carries the fill instead) — the class must not survive either, or
+    // the subtitle flips from muted to inherited full-opacity text with no
+    // solid fill behind it (styles.css `.dg-solid .dg-type { color: inherit }`)
+    const rough = renderNode({
+      label: 'Web App',
+      typeId: 'c4-system',
+      typeRegistry,
+      stylePreset: stylePreset('sketch'),
+    }).container.querySelector('.dg-node') as HTMLElement;
+    expect(rough.style.background).toBe('');
+    expect(rough.className).not.toContain('dg-solid');
   });
 
   it('an explicit node color still beats the TypeStyle fill', () => {
