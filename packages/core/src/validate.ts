@@ -130,6 +130,9 @@ function validateNodes(ctx: Ctx): void {
     if (n.textColor !== undefined && typeof n.textColor !== 'string') {
       report(issues, 'invalid-style', `Node '${n.id}' has invalid textColor '${String(n.textColor)}'`, n.id);
     }
+    if (n.technology !== undefined && typeof n.technology !== 'string') {
+      report(issues, 'invalid-style', `Node '${n.id}' has invalid technology '${String(n.technology)}'`, n.id);
+    }
     if (n.rich !== undefined) {
       const bad =
         !Array.isArray(n.rich) ||

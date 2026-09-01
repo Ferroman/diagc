@@ -55,6 +55,9 @@ export interface DiagramNode {
   /** label text color; overrides the default (which follows `color` for C4/shape
    * nodes). Independent of `color` so text can differ from the shape/border. */
   textColor?: string;
+  /** implementation technology shown in the type subtitle, e.g. "Java/Spring"
+   * renders `[Container: Java/Spring]`; meaningful in any notation */
+  technology?: string;
   description?: string;
   /** rich multiline label; when present, name === rich.map(r => r.text).join('') */
   rich?: TextRun[];

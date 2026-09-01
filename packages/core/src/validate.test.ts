@@ -407,6 +407,19 @@ describe('model style', () => {
   });
 });
 
+describe('node technology validation', () => {
+  const base = () => ({
+    version: 1 as const, id: 'd', name: 'd',
+    nodes: [] as any[], containment: [], relations: [] as any[], layers: [], planes: [],
+  });
+
+  it('rejects a non-string technology', () => {
+    const m = base();
+    m.nodes.push({ id: 'n1', name: 'N', technology: 42 } as unknown as DiagramNode);
+    expect(validate(m)).toContainEqual(expect.objectContaining({ code: 'invalid-style', ref: 'n1' }));
+  });
+});
+
 describe('table columns + fk validation', () => {
   const base = () => ({
     version: 1 as const, id: 'd', name: 'd',

@@ -26,6 +26,8 @@ export interface NodeOpts {
   color?: string;
   /** label color override (see DiagramNode.textColor) */
   textColor?: string;
+  /** implementation technology (see DiagramNode.technology) */
+  technology?: string;
   description?: string;
   metadata?: Record<string, unknown>;
   /** cross-diagram identity (see DiagramNode.key) */

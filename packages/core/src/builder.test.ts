@@ -62,6 +62,12 @@ describe('builder: nodes and containment', () => {
     expect('type' in json.nodes[0]!).toBe(false);
     expect(json.nodes[1]).toEqual({ id: 'backlog', name: 'backlog' });
   });
+
+  it('node opts carry technology into the model', () => {
+    const m = model('t');
+    m.node('svc', { type: 'c4-container', technology: 'Go' });
+    expect(m.toJSON().nodes.find((n) => n.id === 'svc')?.technology).toBe('Go');
+  });
 });
 
 describe('builder: relations and layers', () => {

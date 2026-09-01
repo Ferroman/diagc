@@ -81,6 +81,7 @@ export interface NodeDetails {
   shape?: string | null;
   color?: string | null;
   textColor?: string | null;
+  technology?: string | null;
   textAlign?: TextAlign | null;
   fontScale?: FontScale | null;
   description?: string | null;
@@ -99,6 +100,7 @@ const NODE_DETAIL_KEYS = [
   'shape',
   'color',
   'textColor',
+  'technology',
   'textAlign',
   'fontScale',
   'description',

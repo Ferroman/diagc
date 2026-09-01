@@ -285,6 +285,13 @@ describe('mutate', () => {
     const cleared = setNodeDetails(typed, 'a', { type: null });
     expect(cleared.nodes.find((n) => n.id === 'a')?.type).toBeUndefined();
   });
+
+  it('sets and clears technology through node details', () => {
+    const set = setNodeDetails(base(), 'a', { technology: 'Java/Spring' });
+    expect(set.nodes.find((n) => n.id === 'a')?.technology).toBe('Java/Spring');
+    const cleared = setNodeDetails(set, 'a', { technology: null });
+    expect(cleared.nodes.find((n) => n.id === 'a')?.technology).toBeUndefined();
+  });
 });
 
 describe('deleteLayer (destructive)', () => {
