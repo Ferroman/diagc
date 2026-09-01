@@ -1,4 +1,4 @@
-export type ShapeId = 'box' | 'cylinder' | 'pill' | 'hexagon' | 'table' | 'bubble' | 'circle' | 'rounded' | 'diamond' | 'bar' | 'start-dot' | 'end-bullseye' | 'send-signal' | 'receive-signal' | 'note';
+export type ShapeId = 'box' | 'cylinder' | 'pill' | 'hexagon' | 'person' | 'table' | 'bubble' | 'circle' | 'rounded' | 'diamond' | 'bar' | 'start-dot' | 'end-bullseye' | 'send-signal' | 'receive-signal' | 'note';
 
 export interface TypeStyle {
   shape: ShapeId;

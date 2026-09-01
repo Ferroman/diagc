@@ -471,6 +471,12 @@ describe('DiagramNode', () => {
     expect(container.querySelector('.dg-label')?.textContent).toBe('Plain');
     expect(container.querySelector('.dg-label b')).toBeNull();
   });
+
+  it('a person-shaped type carries the dg-shape-person class', () => {
+    const typeRegistry = createTypeRegistry({ 'c4-person': { shape: 'person', label: '[Person]' } });
+    const { container } = renderNode({ label: 'Customer', typeId: 'c4-person', typeRegistry });
+    expect(container.querySelector('.dg-shape-person')).not.toBeNull();
+  });
 });
 
 describe('activity diagram nodes', () => {

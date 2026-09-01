@@ -14,7 +14,7 @@ const gen = rough.generator();
 const FILL_SENTINEL = 'sentinel-fill';
 const STROKE_SENTINEL = 'sentinel-stroke';
 
-export type SketchShapeKind = 'box' | 'cylinder' | 'hexagon' | 'bubble' | 'circle' | 'diamond' | 'bar' | 'start-dot' | 'end-bullseye' | 'send-signal' | 'receive-signal' | 'note';
+export type SketchShapeKind = 'box' | 'cylinder' | 'hexagon' | 'bubble' | 'circle' | 'person' | 'diamond' | 'bar' | 'start-dot' | 'end-bullseye' | 'send-signal' | 'receive-signal' | 'note';
 export interface SketchPaths {
   /** combined `d` for solid fill polygon(s) — render with fill */
   fill: string;
@@ -135,6 +135,13 @@ export function sketchNode(
   const drawables =
     kind === 'circle'
       ? [gen.circle(w / 2, h / 2, Math.min(w, h) - 2, o)]
+      : kind === 'person'
+        ? [
+            // head circle over a rounded body — same approximation philosophy as
+            // the cylinder (reads as a person, not a faithful redraw)
+            gen.circle(w / 2, Math.min(h * 0.22, 18), Math.min(w, h) * 0.32, o),
+            gen.rectangle(w * 0.12, Math.min(h * 0.38, 30), w * 0.76, h - Math.min(h * 0.38, 30) - 1, o),
+          ]
       : kind === 'hexagon'
       ? [gen.polygon(hexPoints(w, h), o)]
       : kind === 'cylinder'

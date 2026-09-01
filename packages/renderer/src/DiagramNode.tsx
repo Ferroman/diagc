@@ -93,7 +93,7 @@ function accentStyle(color: string | undefined): CSSProperties | undefined {
 
 const sketchKind = (shape: string): SketchShapeKind =>
   shape === 'circle' || shape === 'cylinder' || shape === 'hexagon' || shape === 'bubble' ||
-  shape === 'diamond' || shape === 'bar' || shape === 'start-dot' || shape === 'end-bullseye' ||
+  shape === 'person' || shape === 'diamond' || shape === 'bar' || shape === 'start-dot' || shape === 'end-bullseye' ||
   shape === 'send-signal' || shape === 'receive-signal' || shape === 'note'
     ? (shape as SketchShapeKind)
     : 'box';

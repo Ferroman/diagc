@@ -12,6 +12,23 @@
 .dg-shape-hexagon { clip-path: polygon(8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%, 0 50%); }
 .dg-style-rough .dg-shape-hexagon { clip-path: none; }
 .dg-shape-rounded { border-radius: 14px; }
+/* C4 person: a head circle above the box body. The wrapper keeps the normal
+ * box border (accent or solid fill included); the head inherits both so one
+ * colour paints the whole figure. */
+.dg-shape-person { position: relative; margin-top: 14px; border-radius: 12px; }
+.dg-shape-person::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -14px;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: inherit;
+  border: 1.5px solid;
+  border-color: inherit;
+}
 /* Fixed-size activity glyphs (diamond/bar/dot/bullseye) get their layout size
    from the React Flow wrapper, not from content — now that they carry no label
    text (see the UML-glyph label:'' entries in registry.ts) the div has nothing

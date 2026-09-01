@@ -182,4 +182,12 @@ describe('sketchNode activity shapes', () => {
     const p = sketchNode('end-bullseye', 28, 28, 7, STYLE);
     expect(p.fill).not.toBe('');
   });
+
+  it('person renders a head circle plus a body outline, distinct from the box fallback', () => {
+    const p = sketchNode('person', 120, 80, 7, STYLE);
+    const box = sketchNode('box', 120, 80, 7, STYLE);
+    expect(p.stroke).not.toBe(box.stroke);
+    // two drawables: the head circle contributes an extra path segment
+    expect(p.stroke.length).toBeGreaterThan(box.stroke.length);
+  });
 });
