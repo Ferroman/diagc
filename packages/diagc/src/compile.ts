@@ -6,6 +6,22 @@ import { composeIncludes, DiagramValidationError, validate, type DiagramModel } 
 import { resolveInclude } from './includes';
 
 /**
+ * Shape guard: with `{ default: true }` jiti returns the module NAMESPACE when
+ * there is no default export, so a default-less file would otherwise be written
+ * verbatim. Reject anything that is not a diagram model before we validate it.
+ */
+function assertDiagramShape(model: unknown, file: string): asserts model is DiagramModel {
+  if (
+    typeof model !== 'object' ||
+    model === null ||
+    (model as { version?: unknown }).version !== 1 ||
+    !Array.isArray((model as { nodes?: unknown }).nodes)
+  ) {
+    throw new Error(`${file}: no default export or not a diagram model`);
+  }
+}
+
+/**
  * Execute a `.diagram.ts` through jiti (core pinned to `coreEntry`) and return
  * its model — shape-guarded but not validated; callers own validation.
  */
@@ -25,18 +41,7 @@ export async function executeDiagramTs(file: string, coreEntry?: string): Promis
   const hasToJSON = typeof (def as { toJSON?: unknown } | null)?.toJSON === 'function';
   const model = (hasToJSON ? (def as { toJSON(): DiagramModel }).toJSON() : def) as DiagramModel;
 
-  // Shape guard: with `{ default: true }` jiti returns the module NAMESPACE when
-  // there is no default export, so a default-less file would otherwise be written
-  // verbatim. Reject anything that is not a diagram model before we validate it.
-  if (
-    typeof model !== 'object' ||
-    model === null ||
-    (model as { version?: unknown }).version !== 1 ||
-    !Array.isArray((model as { nodes?: unknown }).nodes)
-  ) {
-    throw new Error(`${file}: no default export or not a diagram model`);
-  }
-
+  assertDiagramShape(model, file);
   return model;
 }
 
@@ -65,16 +70,7 @@ export async function compileFile(
     const def = JSON.parse(await readFile(path.resolve(file), 'utf8'));
     const hasToJSON = typeof (def as { toJSON?: unknown } | null)?.toJSON === 'function';
     model = (hasToJSON ? (def as { toJSON(): DiagramModel }).toJSON() : def) as DiagramModel;
-
-    // Shape guard for JSON sources as well
-    if (
-      typeof model !== 'object' ||
-      model === null ||
-      (model as { version?: unknown }).version !== 1 ||
-      !Array.isArray((model as { nodes?: unknown }).nodes)
-    ) {
-      throw new Error(`${file}: no default export or not a diagram model`);
-    }
+    assertDiagramShape(model, file);
   } else {
     model = await executeDiagramTs(file, opts?.coreEntry);
   }

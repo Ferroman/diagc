@@ -126,5 +126,6 @@ describe('executeDiagramTs', () => {
     const model = await executeDiagramTs(file, coreEntry);
     expect(model.id).toBe('exec-test');
     expect(model.nodes.map((n) => n.id)).toEqual(['a']);
+    expect(await exists(path.join(tmp, 'exec-test.diagram.json'))).toBe(false);
   });
 });
