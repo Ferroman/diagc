@@ -1,8 +1,9 @@
 import { access, copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { compileFile } from './compile';
+import { compileFile, executeDiagramTs } from './compile';
 
 async function exists(p: string): Promise<boolean> {
   try {
@@ -110,5 +111,20 @@ it('fails the compile when a namespaced include id collides with an umbrella-dec
   await expect(compileFile(path.join(fixtures, 'umbrella-collision.diagram.json'), out)).rejects.toMatchObject({
     name: 'DiagramValidationError',
     message: expect.stringContaining('perm/svc'),
+  });
+});
+
+describe('executeDiagramTs', () => {
+  it('executeDiagramTs returns the built model without writing artifacts', async () => {
+    const coreEntry = fileURLToPath(new URL('../../core/src/index.ts', import.meta.url));
+    const tmp = await mkdtemp(path.join(tmpdir(), 'diagc-exec-'));
+    const file = path.join(tmp, 'exec-test.diagram.ts');
+    await writeFile(
+      file,
+      `import { model } from '@diagramming/core';\nconst m = model('exec-test');\nm.node('a');\nexport default m;\n`,
+    );
+    const model = await executeDiagramTs(file, coreEntry);
+    expect(model.id).toBe('exec-test');
+    expect(model.nodes.map((n) => n.id)).toEqual(['a']);
   });
 });

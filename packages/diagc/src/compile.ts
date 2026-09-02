@@ -6,6 +6,41 @@ import { composeIncludes, DiagramValidationError, validate, type DiagramModel } 
 import { resolveInclude } from './includes';
 
 /**
+ * Execute a `.diagram.ts` through jiti (core pinned to `coreEntry`) and return
+ * its model — shape-guarded but not validated; callers own validation.
+ */
+export async function executeDiagramTs(file: string, coreEntry?: string): Promise<DiagramModel> {
+  // Always pin @diagramming/core to the copy visible from this file. Bare
+  // resolution from the diagram's own location only works when the diagram
+  // lives under a node_modules-covered tree (it fails for e.g. /tmp), so
+  // `coreEntry` is not just a safeguard — without a default, compilation is
+  // at the mercy of the install layout.
+  const resolvedCoreEntry = coreEntry ?? createRequire(import.meta.url).resolve('@diagramming/core');
+  const jiti = createJiti(import.meta.url, {
+    moduleCache: false,
+    alias: { '@diagramming/core': resolvedCoreEntry },
+  });
+  const def = await jiti.import<unknown>(path.resolve(file), { default: true });
+
+  const hasToJSON = typeof (def as { toJSON?: unknown } | null)?.toJSON === 'function';
+  const model = (hasToJSON ? (def as { toJSON(): DiagramModel }).toJSON() : def) as DiagramModel;
+
+  // Shape guard: with `{ default: true }` jiti returns the module NAMESPACE when
+  // there is no default export, so a default-less file would otherwise be written
+  // verbatim. Reject anything that is not a diagram model before we validate it.
+  if (
+    typeof model !== 'object' ||
+    model === null ||
+    (model as { version?: unknown }).version !== 1 ||
+    !Array.isArray((model as { nodes?: unknown }).nodes)
+  ) {
+    throw new Error(`${file}: no default export or not a diagram model`);
+  }
+
+  return model;
+}
+
+/**
  * Resolve the subdirectory of `file` relative to `rootDir` so nested diagram
  * files map to nested artifacts instead of clobbering each other by basename.
  * Returns '' (flat) when there is no rootDir, the file is a top-level child of
@@ -25,36 +60,23 @@ export async function compileFile(
   opts?: { rootDir?: string; coreEntry?: string },
 ): Promise<string> {
   const isJsonSource = file.endsWith('.diagram.json');
-  let def: unknown;
+  let model: DiagramModel;
   if (isJsonSource) {
-    def = JSON.parse(await readFile(path.resolve(file), 'utf8'));
+    const def = JSON.parse(await readFile(path.resolve(file), 'utf8'));
+    const hasToJSON = typeof (def as { toJSON?: unknown } | null)?.toJSON === 'function';
+    model = (hasToJSON ? (def as { toJSON(): DiagramModel }).toJSON() : def) as DiagramModel;
+
+    // Shape guard for JSON sources as well
+    if (
+      typeof model !== 'object' ||
+      model === null ||
+      (model as { version?: unknown }).version !== 1 ||
+      !Array.isArray((model as { nodes?: unknown }).nodes)
+    ) {
+      throw new Error(`${file}: no default export or not a diagram model`);
+    }
   } else {
-    // Always pin @diagramming/core to the copy visible from this file. Bare
-    // resolution from the diagram's own location only works when the diagram
-    // lives under a node_modules-covered tree (it fails for e.g. /tmp), so
-    // `coreEntry` is not just a safeguard — without a default, compilation is
-    // at the mercy of the install layout.
-    const coreEntry = opts?.coreEntry ?? createRequire(import.meta.url).resolve('@diagramming/core');
-    const jiti = createJiti(import.meta.url, {
-      moduleCache: false,
-      alias: { '@diagramming/core': coreEntry },
-    });
-    def = await jiti.import<unknown>(path.resolve(file), { default: true });
-  }
-
-  const hasToJSON = typeof (def as { toJSON?: unknown } | null)?.toJSON === 'function';
-  let model = (hasToJSON ? (def as { toJSON(): DiagramModel }).toJSON() : def) as DiagramModel;
-
-  // Shape guard: with `{ default: true }` jiti returns the module NAMESPACE when
-  // there is no default export, so a default-less file would otherwise be written
-  // verbatim. Reject anything that is not a diagram model before we validate it.
-  if (
-    typeof model !== 'object' ||
-    model === null ||
-    (model as { version?: unknown }).version !== 1 ||
-    !Array.isArray((model as { nodes?: unknown }).nodes)
-  ) {
-    throw new Error(`${file}: no default export or not a diagram model`);
+    model = await executeDiagramTs(file, opts?.coreEntry);
   }
 
   // Validate unconditionally. The builder path already validated inside toJSON,
