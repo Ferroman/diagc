@@ -1,7 +1,8 @@
-import { access, mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, readdir, rename, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { IMAGE_REF, composeIncludes, errMessage, isDrawings, isLayoutOverlay, validate, type DiagramModel } from '@diagramming/core';
+import { writeFileAtomic } from '../atomic-write';
 import { EjectError, ejectDiagram } from '../eject';
 import { resolveInclude } from '../includes';
 import { snapshotSession } from '../snapshots';
@@ -208,7 +209,7 @@ export async function saveDiagram(diagramsDir: string, name: string, payload: un
   if (issues.length > 0) return { status: 400, body: { issues } };
   const target = path.join(diagramsDir, `${name}.diagram.json`);
   await mkdir(path.dirname(target), { recursive: true });
-  await writeFile(target, `${JSON.stringify(payload, null, 2)}\n`);
+  await writeFileAtomic(target, `${JSON.stringify(payload, null, 2)}\n`);
   return { status: 200, body: { ok: true } };
 }
 
@@ -242,7 +243,7 @@ export async function renameDiagram(diagramsDir: string, from: string, to: strin
   model['id'] = to;
   model['name'] = to;
   await mkdir(path.dirname(toDiagram), { recursive: true });
-  await writeFile(toDiagram, `${JSON.stringify(model, null, 2)}\n`);
+  await writeFileAtomic(toDiagram, `${JSON.stringify(model, null, 2)}\n`);
   await unlink(fromDiagram);
   // Carry the layout over when it exists; its absence is not an error.
   try {
@@ -282,7 +283,7 @@ export async function saveLayout(diagramsDir: string, name: string, payload: unk
   if (!isLayoutOverlay(payload)) return { status: 400, body: { issues: [{ message: 'Not a version-1 layout overlay' }] } };
   const target = path.join(diagramsDir, `${name}.layout.json`);
   await mkdir(path.dirname(target), { recursive: true });
-  await writeFile(target, `${JSON.stringify(payload, null, 2)}\n`);
+  await writeFileAtomic(target, `${JSON.stringify(payload, null, 2)}\n`);
   return { status: 200, body: { ok: true } };
 }
 
@@ -309,7 +310,7 @@ export async function saveDrawings(diagramsDir: string, name: string, payload: u
     return { status: 200, body: { ok: true } };
   }
   await mkdir(path.dirname(target), { recursive: true });
-  await writeFile(target, `${JSON.stringify(payload, null, 2)}\n`);
+  await writeFileAtomic(target, `${JSON.stringify(payload, null, 2)}\n`);
   return { status: 200, body: { ok: true } };
 }
 
@@ -365,7 +366,7 @@ export async function saveLibrary(diagramsDir: string, payload: unknown): Promis
   }
   const target = path.join(diagramsDir, 'library.json');
   await mkdir(path.dirname(target), { recursive: true });
-  await writeFile(target, `${JSON.stringify(payload, null, 2)}\n`);
+  await writeFileAtomic(target, `${JSON.stringify(payload, null, 2)}\n`);
   return { status: 200, body: { ok: true } };
 }
 
@@ -396,7 +397,7 @@ export async function saveAsset(diagramsDir: string, contentType: string, bytes:
   try {
     await access(target); // already stored — content hash guarantees same bytes
   } catch {
-    await writeFile(target, bytes);
+    await writeFileAtomic(target, bytes);
   }
   return { status: 200, body: { name } };
 }
