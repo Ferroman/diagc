@@ -1,4 +1,13 @@
-import type { DiagramModel, DiagramNode } from './types';
+import type { DiagramLayer, DiagramModel, DiagramNode, DiagramPlane, DiagramRelation } from './types';
+
+/**
+ * Two-directional, non-distributive key-set equality check (mirrors
+ * NodeKeyCoverage in mutate.ts): wrapping each side in a tuple `[...]`
+ * defeats TS's distributive conditional types over a union, which would
+ * otherwise let one missing/extra member hide behind the others in the
+ * union (`true | never` normalizes to `true`).
+ */
+type SameKeys<A extends string, B extends string> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 
 /** JS reserved words plus the two bindings the emitted file itself declares. */
 const RESERVED = new Set([
@@ -90,6 +99,14 @@ const NODE_OPT_KEYS = [
   'plane', 'layer', 'columns',
 ] as const;
 
+// Drift guard: a field added to DiagramNode without a matching entry above
+// fails this line at `pnpm typecheck` — a future model field silently
+// dropped by the emitter used to surface only as a runtime verify mismatch
+// (or, pre-I2b, a crash) at eject time. `id` is emitted explicitly, ahead of
+// the opts object, so it is excluded here.
+const _nodeOptCoverage: SameKeys<Exclude<keyof DiagramNode, 'id'>, (typeof NODE_OPT_KEYS)[number]> = true;
+void _nodeOptCoverage;
+
 /** RelateOpts emission order (after the always-first `kind` and conditional `id`)
  * — mirrors the interface declaration in builder.ts. */
 const RELATE_OPT_KEYS = [
@@ -97,10 +114,32 @@ const RELATE_OPT_KEYS = [
   'fromColumn', 'toColumn',
 ] as const;
 
+// Drift guard, same shape as _nodeOptCoverage above. `id` and `kind` are
+// emitted explicitly ahead of the opts object; `from`/`to` are the node refs
+// the call is built from, never opts entries — all four are excluded here.
+const _relateOptCoverage: SameKeys<
+  Exclude<keyof DiagramRelation, 'id' | 'from' | 'to' | 'kind'>,
+  (typeof RELATE_OPT_KEYS)[number]
+> = true;
+void _relateOptCoverage;
+
 /** plane() opts emission order — mirrors ModelBuilder.plane's opts parameter. */
 const PLANE_OPT_KEYS = [
   'name', 'containmentOf', 'layers', 'baseRelations', 'notation', 'hides', 'hidesTree',
 ] as const;
+
+// Drift guard, same shape as _nodeOptCoverage above. `id` is emitted
+// explicitly, ahead of the opts object.
+const _planeOptCoverage: SameKeys<Exclude<keyof DiagramPlane, 'id'>, (typeof PLANE_OPT_KEYS)[number]> = true;
+void _planeOptCoverage;
+
+/** layer() opts emission order — mirrors ModelBuilder.layer's opts parameter. */
+const LAYER_OPT_KEYS = ['name', 'tint'] as const;
+
+// Drift guard, same shape as _nodeOptCoverage above. `id` is emitted
+// explicitly, ahead of the opts object.
+const _layerOptCoverage: SameKeys<Exclude<keyof DiagramLayer, 'id'>, (typeof LAYER_OPT_KEYS)[number]> = true;
+void _layerOptCoverage;
 
 /** Renders a trailing options object for a call, eliding it entirely when empty. */
 function opts(entries: [string, unknown][]): string {
@@ -168,8 +207,14 @@ export function ejectSource(model: DiagramModel): string {
     sections.push(
       model.layers.map((l) => {
         const o: [string, unknown][] = [];
-        if (l.name !== l.id) o.push(['name', l.name]);
-        if (l.tint !== undefined) o.push(['tint', l.tint]);
+        for (const k of LAYER_OPT_KEYS) {
+          if (k === 'name') {
+            if (l.name !== l.id) o.push(['name', l.name]);
+            continue;
+          }
+          const v = (l as unknown as Record<string, unknown>)[k];
+          if (v !== undefined) o.push([k, v]);
+        }
         return `m.layer(${quoted(l.id)}${opts(o)});`;
       }),
     );
