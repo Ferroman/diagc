@@ -129,9 +129,10 @@ async function main() {
     throw e;
   }
   const home = homePaths(findHome(fileURLToPath(import.meta.url)));
-  // One session per CLI invocation, shared across every compile in this run:
-  // the in-memory lock + touched set must span the whole run for prune() to
-  // see everything a full-tree compile actually resolved.
+  // One session per CLI invocation, shared across every compile+publish in this
+  // run: the in-memory lock + touched set must span the whole run for prune()
+  // to see everything a full-tree compile actually resolved. `watch` builds its
+  // own separate always-locked session below instead of sharing this one.
   const snap = snapshotSession(resolveInclude, '.diagrams', args.updateIncludes ? 'update' : 'locked');
 
   if (args.command === 'compile') {
@@ -154,9 +155,14 @@ async function main() {
     process.exit(failed ? 1 : 0);
   } else if (args.command === 'watch') {
     const dir = args.files[0] ?? '.diagrams/src';
+    // Always locked, independent of args.updateIncludes: watch is a long-running
+    // live loop with no point at which "refetch and rewrite the lock" makes
+    // sense, so it ignores the flag by design rather than inheriting the shared
+    // session's mode (mirrors studio.ts's own hardcoded 'locked' session).
+    const watchSnap = snapshotSession(resolveInclude, '.diagrams', 'locked');
     startWatch(dir, args.out, {
       coreEntry: home.coreEntry,
-      resolver: snap.resolver,
+      resolver: watchSnap.resolver,
       onEvent: (e) => {
         // Success goes to stdout, failure to stderr, so the streams stay parsed
         // separately by anyone piping them.
