@@ -67,7 +67,7 @@ deleted:
 | --- | --- |
 | No `<name>.diagram.json` | Refuses: no such diagram. |
 | `<name>.diagram.ts` already exists | Refuses: already TypeScript-owned. |
-| The JSON does not parse, or fails validation | Refuses, naming the parse error or listing the validation issues. |
+| The JSON does not parse, fails validation, or holds a value the generated code cannot express | Refuses, naming the parse error, listing the validation issues, or naming the diagram and the underlying error. |
 | The generated source fails to execute | Refuses, surfacing the underlying execution error. |
 | The generated source executes but rebuilds a model that differs from the JSON | Refuses, naming the paths where the two models first differ. |
 

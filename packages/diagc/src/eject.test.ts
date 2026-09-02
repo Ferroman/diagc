@@ -109,6 +109,20 @@ describe('ejectDiagram', () => {
     await expect(readFile(path.join(diagramsDir, 'shop.diagram.json'), 'utf8')).resolves.toBeTruthy();
     await expect(readFile(path.join(diagramsDir, 'shop.diagram.ts'), 'utf8')).rejects.toThrow();
   });
+
+  it('an emitter that throws is a classified invalid refusal, not a bare crash, and changes nothing', async () => {
+    await writeFile(path.join(diagramsDir, 'shop.diagram.json'), JSON.stringify(MODEL, null, 2));
+    const boom = (): string => {
+      throw new Error('ejectSource: cannot emit a undefined literal');
+    };
+
+    await expect(ejectDiagram(diagramsDir, artifactsDir, 'shop', { coreEntry, emit: boom })).rejects.toMatchObject({
+      code: 'invalid',
+      message: expect.stringContaining("cannot eject 'shop': ejectSource: cannot emit a undefined literal"),
+    });
+    await expect(readFile(path.join(diagramsDir, 'shop.diagram.json'), 'utf8')).resolves.toBeTruthy();
+    await expect(readFile(path.join(diagramsDir, 'shop.diagram.ts'), 'utf8')).rejects.toThrow();
+  });
 });
 
 // One small, valid model per feature family, each ejected and compared against

@@ -87,7 +87,16 @@ export async function ejectDiagram(
     );
   }
 
-  const source = (opts?.emit ?? ejectSource)(parsed);
+  // A validate-clean model can still hold a value the emitter genuinely
+  // cannot express (e.g. `undefined` reaching tsLiteral); classify that as a
+  // refusal instead of letting a plain Error escape the taxonomy — otherwise
+  // the API 500s and the CLI prints a bare, uncontextualized message.
+  let source: string;
+  try {
+    source = (opts?.emit ?? ejectSource)(parsed);
+  } catch (e) {
+    throw new EjectError(`cannot eject '${name}': ${errMessage(e)}`, 'invalid');
+  }
 
   // Execute from a temp dir outside the source glob, so a running compile
   // watcher never sees the candidate file. coreEntry makes /tmp resolvable.
