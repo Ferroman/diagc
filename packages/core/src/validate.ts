@@ -7,6 +7,7 @@ import {
   RELATION_LINES,
   RELATION_MARKERS,
   RELATION_SHAPES,
+  RESERVED_NODE_ID,
   SIDES,
   TEXT_ALIGNS,
   type DiagramModel,
@@ -19,6 +20,7 @@ import { GIT_NOTATION, gitGraph, isGitKind } from './git';
 export interface ValidationIssue {
   code:
     | 'duplicate-node'
+    | 'reserved-node-id'
     | 'duplicate-layer'
     | 'duplicate-plane'
     | 'duplicate-relation'
@@ -124,6 +126,9 @@ function validateNodes(ctx: Ctx): void {
   for (const n of m.nodes) {
     if (nodeIds.has(n.id)) report(issues, 'duplicate-node', `Duplicate node id '${n.id}'`, n.id);
     nodeIds.add(n.id);
+    if (n.id === RESERVED_NODE_ID) {
+      report(issues, 'reserved-node-id', `Node id '${n.id}' is reserved for the layout root`, n.id);
+    }
     if (n.color !== undefined && typeof n.color !== 'string') {
       report(issues, 'invalid-style', `Node '${n.id}' has invalid color '${String(n.color)}'`, n.id);
     }

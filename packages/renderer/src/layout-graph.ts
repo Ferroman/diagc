@@ -1,4 +1,4 @@
-import { LEAF_SIZE, type CompiledView, type LayoutSettings, type ViewEdge, type ViewNode } from '@diagramming/core';
+import { LEAF_SIZE, RESERVED_NODE_ID, type CompiledView, type LayoutSettings, type ViewEdge, type ViewNode } from '@diagramming/core';
 
 /** An elk edge after lifting: both endpoints are direct children of the owner. */
 export interface LiftedEdge {
@@ -292,7 +292,7 @@ export function buildGraph(
 
   return {
     graph: {
-      id: '__root__',
+      id: RESERVED_NODE_ID,
       layoutOptions: rootOptions,
       children,
       edges: rootEdges,

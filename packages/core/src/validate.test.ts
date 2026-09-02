@@ -19,6 +19,14 @@ describe('validate', () => {
     ]);
   });
 
+  it('flags a node claiming the reserved layout-root id', () => {
+    const m = emptyModel();
+    m.nodes = [{ id: '__root__', name: 'sneaky', type: 't' }];
+    expect(validate(m)).toEqual([
+      { code: 'reserved-node-id', message: "Node id '__root__' is reserved for the layout root", ref: '__root__' },
+    ]);
+  });
+
   it('flags duplicate layer ids', () => {
     const m = emptyModel();
     m.layers = [

@@ -20,6 +20,11 @@ export const RELATION_MARKERS = ['arrow', 'dot', 'square', 'diamond', 'none'] as
  * core so the editor and the renderer cannot drift apart. */
 export const DEFAULT_IMAGE_NODE_SIZE = { w: 160, h: 120 } as const;
 
+/** Sentinel id the renderer's elk wrapper uses for its synthetic layout root.
+ * Kept in core so validation can refuse a model node that would collide with
+ * it — the renderer and validate() must agree on the exact string. */
+export const RESERVED_NODE_ID = '__root__';
+
 export interface Column {
   name: string;
   /** SQL-ish type shown right-aligned in the row, e.g. 'uuid', 'int', 'text' */

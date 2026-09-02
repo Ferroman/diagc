@@ -1,5 +1,5 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
-import { type CompiledView, type LayoutSettings, type ViewNode } from '@diagramming/core';
+import { RESERVED_NODE_ID, type CompiledView, type LayoutSettings, type ViewNode } from '@diagramming/core';
 import { buildGraph, DEFAULT_ALGORITHM, edgeLabelText, type ElkRoutedEdge, type ElkShape } from './layout-graph';
 
 // Re-exported so `index.tsx` and existing importers keep their import path.
@@ -151,7 +151,7 @@ export async function layoutView(
   const collect = (n: ElkShape, absX: number, absY: number) => {
     const ax = absX + (n.x ?? 0);
     const ay = absY + (n.y ?? 0);
-    if (n.id !== '__root__') {
+    if (n.id !== RESERVED_NODE_ID) {
       geometry.set(n.id, { x: n.x ?? 0, y: n.y ?? 0, width: n.width ?? 0, height: n.height ?? 0 });
     }
     if (wantRoutes && n.edges !== undefined) {
