@@ -46,7 +46,8 @@ export function diffPaths(a: unknown, b: unknown, limit = 10): string[] {
  * after executing the generated source and proving it rebuilds the identical
  * model. Every failure path leaves the source directory exactly as found; the
  * TS is written before the JSON is deleted, so a crash between the two steps
- * leaves both (compile then reports the duplicate — recovery is deleting one).
+ * leaves both — they then compile to the same artifact (last write wins), and
+ * recovery is deleting whichever source is unwanted.
  */
 export async function ejectDiagram(
   diagramsDir: string,
