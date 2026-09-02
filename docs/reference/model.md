@@ -46,6 +46,8 @@ Style preset ids: `clean` (default), `sketch`, `hand-drawn`, `pencil`, `blueprin
 | `metadata` | `Record<string, unknown>?` | Free-form; not validated. |
 | `key` | `string?` | Cross-diagram identity. Pattern `^[a-z0-9][a-z0-9-]*$`. |
 | `include` | `string?` | URL or path to another `*.diagram.json` composed under this node at compile time. |
+| `includePlane` | `string?` | Which of the included diagram's planes supplies the grafted structure (default: its default plane). Meaningful only beside `include`; an id the included diagram doesn't declare fails composition, not validation. |
+| `includePlanes` | `boolean?` | Carry every plane the included diagram declares over too — namespaced (`<include-id>/<plane-id>`, name `<Include>/<Plane>`), notation intact — so each is viewable standalone via the plane switcher. Additive to `includePlane`/the default graft, which is unaffected. Meaningful only beside `include`. |
 | `plane` | `string?` | Restrict the node to one plane. Omit to share it across all. |
 | `layer` | `string?` | The node shows only while this layer is active. |
 | `columns` | `Column[]?` | ER-table rows; rendered when `type` is `db-table`. |
@@ -308,7 +310,7 @@ A guard is a plain relation `label` (e.g. `[order accepted]`) — there is no de
 | `invalid-image` | `image` matches neither asset-ref form. |
 | `invalid-shape` | `shape` matches neither asset-ref form. |
 | `invalid-key` | `key` breaks `^[a-z0-9][a-z0-9-]*$`. |
-| `invalid-include` | Malformed `include`. |
+| `invalid-include` | Malformed `include`; or `includePlane`/`includePlanes` given without `include`. |
 | `unknown-notation` | `notation` is not a built-in id. |
 | `invalid-polarity` | `polarity` is not `+` or `-`. |
 | `git-link-endpoints` | A `commit`/`branch`/`merge` relation does not join two `commit` nodes. |

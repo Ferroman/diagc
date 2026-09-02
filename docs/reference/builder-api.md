@@ -34,6 +34,8 @@ Declares an entity and returns a handle for containment and relations.
 | `metadata` | `Record<string, unknown>?` | |
 | `key` | `string?` | Cross-diagram identity. |
 | `include` | `string?` | Compose another diagram under this node. |
+| `includePlane` | `string?` | Which of the included diagram's planes supplies the grafted structure (default: its default plane). Meaningful only beside `include`. See [Compose diagrams](../how-to/compose-diagrams.md#choosing-the-grafted-plane). |
+| `includePlanes` | `boolean?` | Carry the included diagram's planes over too — namespaced, notation intact — so each stays viewable standalone via the plane switcher. Meaningful only beside `include`. See [Compose diagrams](../how-to/compose-diagrams.md#keeping-the-includes-own-views). |
 | `plane`, `layer` | `string?` | Scope the node. |
 | `columns` | `Column[]?` | ER-table rows. |
 

@@ -35,6 +35,18 @@ diagc compile .diagrams/src/acme.diagram.ts
 - **Output:** one `<name>.diagram.json` per source under `--out`. Subdirectories of `.diagrams/src/` are mirrored, so `src/team-a/app.diagram.ts` becomes `.artifacts/team-a/app.diagram.json`.
 - **Exit code:** `0` if every file compiled, `1` if any failed. Failures print `✗ <file>` and the error; other files still compile.
 
+A remote (`https://…`) `include` resolves from a vendored snapshot, not a live fetch — **locked mode**, the default `compile` (and `watch`/`publish`/`studio`/`eject`) runs in. It reads `.diagrams/includes/<file>` and checks its hash against `.diagrams/includes.lock.json`; an include missing from the lock, or whose vendored file is gone or no longer matches its recorded hash, fails the compile naming the remedy:
+
+```
+Include 'https://example.com/svc.diagram.json' is not snapshotted — run 'diagc compile --update-includes' and commit .diagrams/includes/ + .diagrams/includes.lock.json
+```
+
+```bash
+diagc compile --update-includes   # fetch every remote include, vendor it, rewrite the lock
+```
+
+Pruning entries the run no longer touched only happens on a full-tree run — pass no `files...` alongside `--update-includes`, or nothing is pruned. Local file includes are never vendored; they resolve straight off disk on every compile. See [Compose diagrams § Snapshots](../how-to/compose-diagrams.md#snapshots).
+
 ### `watch`
 
 Recompiles on change until interrupted.
@@ -66,6 +78,8 @@ diagc publish --no-images
 
 **PNG export needs a browser.** If none is found, publish prints `No Chrome found — writing HTML only` and continues without images. See `CHROME_PATH` below.
 
+**Remote includes resolve locked**, same as `compile`; `diagc publish --update-includes` refreshes and re-pins them first. Publish always compiles the whole source tree regardless of `files...` (that only filters which pages are rendered below it), so an `--update-includes` run here always prunes unreferenced entries — there is no scoped/unpruned form the way a filtered `compile` run has.
+
 ### `studio`
 
 Runs the browser studio against the current directory.
@@ -82,6 +96,8 @@ Which server depends on how `diagc` was installed, and nothing else does:
 - **From a checkout** (`pnpm link --global`, or `pnpm dev`) — the studio's own Vite dev server runs instead, so edits to the studio hot-reload. Its `node_modules` must be installed in the monorepo.
 
 Both serve the same API from the same route table (`packages/diagc/src/api`), so saving, renaming, assets, and the shape library behave identically.
+
+Remote includes resolve locked here too, same as `compile` — there is no `--update-includes` flag on `studio` itself; run `diagc compile --update-includes` first if a lock entry is missing.
 
 ### `eject`
 
@@ -112,12 +128,16 @@ See [Eject a diagram to TypeScript](../how-to/eject-to-typescript.md) for the st
 the crash-recovery note (a crash between writing the TS and deleting the JSON leaves both —
 recovery is deleting one).
 
+Like `studio`, `eject`'s post-swap recompile resolves remote includes locked, with no
+`--update-includes` flag of its own.
+
 ## Flags
 
 | Flag | Applies to | Default | Meaning |
 | --- | --- | --- | --- |
 | `--out <dir>` | `compile`, `watch`, `eject` | `.diagrams/.artifacts` | Where artifacts are written — for `eject`, the dir its post-swap recompile writes into. |
 | `--no-images` | `publish` | off | Skip PNG export; write HTML only. |
+| `--update-includes` | `compile`, `publish` | off | Refetch every remote `include`, vendor it under `.diagrams/includes/`, and rewrite `.diagrams/includes.lock.json`. On `compile`, pruning entries the run didn't touch only happens with no `files...` given (a full-tree run); `publish` always compiles the whole tree, so its prune is unconditional. |
 
 Anything not recognised as a flag is collected as `files...`.
 
@@ -163,9 +183,12 @@ Inside this monorepo:
 | `.diagrams/.artifacts/` | `compile` | no |
 | `.diagrams/html/` | `publish` | no |
 | `.diagrams/static/*.png` | `publish` | yes — these are your doc images |
+| `.diagrams/includes/` | `compile --update-includes` | yes — vendored snapshots of remote includes |
+| `.diagrams/includes.lock.json` | `compile --update-includes` | yes — the hashes pinning them |
 
 ## See also
 
 - [Set up diagc in another repo](../how-to/set-up-in-another-repo.md)
 - [Publish and share](../how-to/publish-and-share.md)
 - [Eject a diagram to TypeScript](../how-to/eject-to-typescript.md)
+- [Compose diagrams](../how-to/compose-diagrams.md) — includes, `key`, and snapshotting remote includes
