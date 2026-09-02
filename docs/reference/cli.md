@@ -116,7 +116,7 @@ recovery is deleting one).
 
 | Flag | Applies to | Default | Meaning |
 | --- | --- | --- | --- |
-| `--out <dir>` | `compile`, `watch` | `.diagrams/.artifacts` | Where artifacts are written. |
+| `--out <dir>` | `compile`, `watch`, `eject` | `.diagrams/.artifacts` | Where artifacts are written — for `eject`, the dir its post-swap recompile writes into. |
 | `--no-images` | `publish` | off | Skip PNG export; write HTML only. |
 
 Anything not recognised as a flag is collected as `files...`.
