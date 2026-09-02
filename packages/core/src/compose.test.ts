@@ -145,6 +145,85 @@ describe('composeIncludes: expansion', () => {
   });
 });
 
+describe('composeIncludes: includePlane', () => {
+  const child = doc('child', {
+    nodes: [
+      { id: 'a', name: 'a', type: 'x' },
+      { id: 'b', name: 'b', type: 'x' },
+      { id: 'c', name: 'c', type: 'x' },
+    ],
+    planes: [{ id: 'main', name: 'Main' }, { id: 'alt', name: 'Alt' }],
+    containment: [
+      { parent: 'a', child: 'b' },                 // untagged -> default plane 'main'
+      { parent: 'a', child: 'c', plane: 'alt' },
+    ],
+  });
+
+  it("includePlane grafts the named plane's structure", async () => {
+    const host = doc('host', {
+      nodes: [{ id: 'u', name: 'U', type: 'system', include: 'child', includePlane: 'alt' }],
+    });
+    const { model: m } = await composeIncludes(host, 'mem:host', memory({ child }));
+    // only the alt-plane rows come along
+    expect(m.containment).toContainEqual({ parent: 'u/a', child: 'u/c' });
+    // 'a' has no parent in the alt plane, so it hangs directly under the include node too
+    expect(m.containment).toContainEqual({ parent: 'u', child: 'u/a' });
+    // 'b' only appears as a child in the main plane, so in alt it's parentless -> hangs under u
+    expect(m.containment).toContainEqual({ parent: 'u', child: 'u/b' });
+    expect(m.containment).toHaveLength(3);
+    expect(validate(m)).toEqual([]);
+  });
+
+  it("includePlane naming the default plane matches today's behavior", async () => {
+    const omitted = doc('host', { nodes: [{ id: 'u', name: 'U', type: 'system', include: 'child' }] });
+    const named = doc('host', {
+      nodes: [{ id: 'u', name: 'U', type: 'system', include: 'child', includePlane: 'main' }],
+    });
+    const { model: m1 } = await composeIncludes(omitted, 'mem:host', memory({ child }));
+    const { model: m2 } = await composeIncludes(named, 'mem:host', memory({ child }));
+    expect(m2).toEqual(m1);
+  });
+
+  it('an unknown includePlane fails the compose', async () => {
+    const host = doc('host', {
+      nodes: [{ id: 'u', name: 'U', type: 'system', include: 'child', includePlane: 'nope' }],
+    });
+    await expect(composeIncludes(host, 'mem:host', memory({ child }))).rejects.toThrow(/plane 'nope' not found/);
+  });
+
+  it('a selected plane borrowing containmentOf resolves to the borrowed structure', async () => {
+    const borrowing = doc('borrowing', {
+      nodes: [
+        { id: 'a', name: 'a', type: 'x' },
+        { id: 'b', name: 'b', type: 'x' },
+      ],
+      planes: [{ id: 'main', name: 'Main' }, { id: 'alt2', name: 'Alt2', containmentOf: 'main' }],
+      containment: [{ parent: 'a', child: 'b' }], // untagged -> default plane 'main'
+    });
+    const host = doc('host', {
+      nodes: [{ id: 'u', name: 'U', type: 'system', include: 'borrowing', includePlane: 'alt2' }],
+    });
+    const { model: m } = await composeIncludes(host, 'mem:host', memory({ borrowing }));
+    expect(m.containment).toContainEqual({ parent: 'u/a', child: 'u/b' });
+    expect(m.containment).toContainEqual({ parent: 'u', child: 'u/a' });
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('stripIncludes drops includePlane and includePlanes with include', async () => {
+    const simple = doc('simple', { nodes: [{ id: 'a', name: 'a' }], planes: [{ id: 'main', name: 'Main' }] });
+    const host = doc('host', {
+      nodes: [{ id: 'u', name: 'U', type: 'system', include: 'simple', includePlane: 'main', includePlanes: true }],
+    });
+    const { model: m } = await composeIncludes(host, 'mem:host', memory({ simple }));
+    const u = m.nodes.find((n) => n.id === 'u');
+    expect(u).toBeDefined();
+    expect(u?.include).toBeUndefined();
+    expect(u?.includePlane).toBeUndefined();
+    expect(u?.includePlanes).toBeUndefined();
+    expect(validate(m)).toEqual([]);
+  });
+});
+
 describe('composeIncludes: key unification', () => {
   const service = (svcName: string): DiagramModel =>
     doc(svcName, {

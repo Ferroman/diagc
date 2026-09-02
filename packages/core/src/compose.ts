@@ -42,14 +42,18 @@ export async function composeIncludes(
  * that including a published composed artifact grafts its content once instead of
  * re-expanding it (which would either ENOENT resolving relative specs against the
  * artifact's new location, or double-graft into duplicate ids). Retained `key`
- * fields carry transitive identity onward across further composes. */
+ * fields carry transitive identity onward across further composes. `includePlane`
+ * and `includePlanes` are graft-time-only options that travel with `include` and
+ * are stripped alongside it. */
 function stripIncludes(model: DiagramModel): DiagramModel {
-  if (!model.nodes.some((n) => n.include !== undefined)) return model;
+  const has = (n: DiagramNode): boolean =>
+    n.include !== undefined || n.includePlane !== undefined || n.includePlanes !== undefined;
+  if (!model.nodes.some(has)) return model;
   return {
     ...model,
     nodes: model.nodes.map((n) => {
-      if (n.include === undefined) return n;
-      const { include, ...rest } = n;
+      if (!has(n)) return n;
+      const { include: _i, includePlane: _p, includePlanes: _ps, ...rest } = n;
       return rest;
     }),
   };
@@ -99,7 +103,15 @@ async function expand(
  * Same-id layers unify with the host's; see the note inside. */
 function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): DiagramModel {
   const p = (id: string): string => `${into.id}/${id}`;
+  if (into.includePlane !== undefined && !child.planes.some((pl) => pl.id === into.includePlane)) {
+    throw new IncludeError(
+      into.include ?? into.id,
+      `Include '${into.id}': plane '${into.includePlane}' not found in the included diagram`,
+    );
+  }
   const defaultPlane = resolveContainmentPlane(child, undefined);
+  // the structural plane: the named one (resolved through containmentOf) or the default
+  const structural = resolveContainmentPlane(child, into.includePlane);
 
   // Layers: an included layer whose id the host already declares merges into the
   // host's layer (host name/tint win, no duplicate row); every other layer is
@@ -113,12 +125,13 @@ function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): Diag
     ...(n.layer !== undefined ? { layer: layerId(n.layer) } : {}),
   }));
 
-  // only the include's default-plane structure comes along, imported untagged
+  // only the selected plane's structure comes along, imported untagged (default:
+  // the include's default plane, reproducing today's behavior unchanged)
   const containment: ContainmentEdge[] = child.containment
-    .filter((e) => e.plane === undefined || e.plane === defaultPlane)
+    .filter((e) => (e.plane ?? defaultPlane) === structural)
     .map((e) => ({ parent: p(e.parent), child: p(e.child) }));
 
-  // included roots (parentless in the default plane) hang under the include node
+  // included roots (parentless in the selected plane) hang under the include node
   const hasParent = new Set(containment.map((e) => e.child));
   for (const n of nodes) {
     if (!hasParent.has(n.id)) containment.push({ parent: into.id, child: n.id });
