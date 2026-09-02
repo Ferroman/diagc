@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { access, copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -154,6 +155,60 @@ it('compileFile composes through an injected resolver', async () => {
   expect(calls).toBe(1);
   const json = JSON.parse(await readFile(artifact, 'utf8'));
   expect(json.nodes).toContainEqual(expect.objectContaining({ id: 'child/inner' }));
+});
+
+describe('compileFile default resolver', () => {
+  const umbrellaWith = (include: string): DiagramModel => ({
+    version: 1,
+    id: 'umbrella',
+    name: 'Umbrella',
+    nodes: [{ id: 'child', name: 'Child', type: 'system', include }],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  });
+
+  it('defaults to locked snapshots under rootDir: an unsnapshotted remote include fails instead of fetching', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'diagc-locked-'));
+    const src = path.join(root, 'src');
+    await mkdir(src, { recursive: true });
+    const file = path.join(src, 'umbrella.diagram.json');
+    await writeFile(file, JSON.stringify(umbrellaWith('https://example.invalid/child.diagram.json')));
+    await expect(compileFile(file, path.join(root, 'out'), { rootDir: src })).rejects.toThrow(/not snapshotted/);
+  });
+
+  it('resolves a vendored remote include offline through the default locked resolver', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'diagc-locked-'));
+    const src = path.join(root, 'src');
+    await mkdir(src, { recursive: true });
+    const url = 'https://example.invalid/child.diagram.json';
+    const file = path.join(src, 'umbrella.diagram.json');
+    await writeFile(file, JSON.stringify(umbrellaWith(url)));
+
+    const childModel: DiagramModel = {
+      version: 1,
+      id: 'child',
+      name: 'Child',
+      nodes: [{ id: 'inner', name: 'Inner', type: 'service' }],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
+    const text = `${JSON.stringify(childModel, null, 2)}\n`;
+    const hash = createHash('sha256').update(text).digest('hex');
+    await mkdir(path.join(root, 'includes'), { recursive: true });
+    await writeFile(path.join(root, 'includes', 'child.diagram.json'), text);
+    await writeFile(
+      path.join(root, 'includes.lock.json'),
+      JSON.stringify({ version: 1, includes: { [url]: { file: 'includes/child.diagram.json', sha256: hash } } }),
+    );
+
+    const artifact = await compileFile(file, path.join(root, 'out'), { rootDir: src });
+    const json = JSON.parse(await readFile(artifact, 'utf8'));
+    expect(json.nodes).toContainEqual(expect.objectContaining({ id: 'child/inner' }));
+  });
 });
 
 describe('executeDiagramTs', () => {

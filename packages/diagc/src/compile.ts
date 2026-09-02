@@ -10,6 +10,7 @@ import {
   type IncludeResolver,
 } from '@diagramming/core';
 import { resolveInclude } from './includes';
+import { snapshotSession } from './snapshots';
 
 /**
  * Shape guard: with `{ default: true }` jiti returns the module NAMESPACE when
@@ -94,7 +95,18 @@ export async function compileFile(
   if (sourceIssues.length > 0) throw new DiagramValidationError(sourceIssues);
 
   if (model.nodes.some((n) => n.include !== undefined)) {
-    const { model: composed, warnings } = await composeIncludes(model, path.resolve(file), opts?.resolver ?? resolveInclude);
+    // Default to a locked snapshot resolver rooted at rootDir's parent (the
+    // .diagrams root, same derivation as eject.ts): a call site that forgets
+    // to pass `resolver` must fail on an unsnapshotted remote include, not
+    // silently reintroduce live fetching. Local includes pass through either
+    // way; only without a rootDir to anchor the vendor dir does the raw
+    // resolver remain the fallback.
+    const resolver =
+      opts?.resolver ??
+      (opts?.rootDir !== undefined
+        ? snapshotSession(resolveInclude, path.dirname(path.resolve(opts.rootDir)), 'locked').resolver
+        : resolveInclude);
+    const { model: composed, warnings } = await composeIncludes(model, path.resolve(file), resolver);
     for (const w of warnings) console.warn(`${file}: ${w}`);
     model = composed;
     const issues = validate(model);
