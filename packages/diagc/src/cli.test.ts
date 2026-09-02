@@ -30,4 +30,8 @@ describe('parseArgs', () => {
   it('treats the second positional as the file once the command is set', () => {
     expect(parseArgs(['compile', 'a-b.diagram.ts']).files).toEqual(['a-b.diagram.ts']);
   });
+
+  it('parses eject with a diagram name', () => {
+    expect(parseArgs(['eject', 'shop'])).toMatchObject({ command: 'eject', files: ['shop'] });
+  });
 });

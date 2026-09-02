@@ -25,18 +25,20 @@ import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
 import { errMessage } from '@diagramming/core';
 import { compileFile } from './compile';
+import { ejectDiagram } from './eject';
 import { findHome, homePaths } from './home';
 import { formatCompileEvent, startWatch } from './watch';
 import { publishDiagrams } from './publish/publish';
 import { runStudio } from './studio';
 
-const USAGE = `Usage: diagc <compile|watch|publish|studio> [files...] [--out dir]
+const USAGE = `Usage: diagc <compile|watch|publish|studio|eject> [files...] [--out dir]
 
 Commands:
   compile   Compile *.diagram.{ts,json} sources into overlay artifacts once
   watch     Recompile — and live-recompile — a directory of sources
   publish   Compile and render an HTML/PNG site under .diagrams/
   studio    Run the visual studio against the current directory
+  eject     Promote a JSON diagram to a generated TypeScript source (verified)
 
 Options:
   --out dir       Artifact output directory (default .diagrams/.artifacts)
@@ -199,6 +201,21 @@ async function main() {
   } else if (args.command === 'studio') {
     await runStudio(home, process.cwd());
     return;
+  } else if (args.command === 'eject') {
+    const name = args.files[0]?.replace(/^\.diagrams\/src\//, '').replace(/\.diagram\.(ts|json)$/, '');
+    if (name === undefined || name === '') {
+      console.error('diagc: eject needs a diagram name.');
+      console.error(USAGE);
+      process.exit(1);
+    }
+    try {
+      const res = await ejectDiagram('.diagrams/src', args.out, name, { coreEntry: home.coreEntry });
+      console.log(`✓ ${res.tsPath}`);
+      process.exit(0);
+    } catch (e) {
+      console.error(errMessage(e));
+      process.exit(1);
+    }
   } else {
     console.error(`diagc: Unknown command '${args.command}'.`);
     console.error(USAGE);
