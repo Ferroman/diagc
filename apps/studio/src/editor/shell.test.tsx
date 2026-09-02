@@ -1113,4 +1113,47 @@ describe('editor shell', () => {
       expect(posted).not.toContain('/api/diagrams/two-copy');
     });
   });
+
+  it('the Eject chip promotes an owned diagram and flips it read-only', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<App />);
+    // 'sketch' is the owned (JSON-backed) diagram in the fixture, selected by default.
+    await screen.findByRole('button', { name: /^edit$/i });
+    fireEvent.click(screen.getByRole('button', { name: /^eject$/i }));
+    await waitFor(() => {
+      const post = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        (c) => String(c[0]) === '/api/diagrams/sketch/eject' && (c[1] as RequestInit | undefined)?.method === 'POST',
+      );
+      expect(post).toBeDefined();
+    });
+    // Ownership dropped locally: the Edit and Eject chips both disappear, and
+    // the diagram now renders through the read-only branch instead.
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /^edit$/i })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^eject$/i })).toBeNull();
+    });
+  });
+
+  it('declining the confirm sends nothing', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<App />);
+    await screen.findByRole('button', { name: /^edit$/i });
+    fireEvent.click(screen.getByRole('button', { name: /^eject$/i }));
+    await waitFor(() => expect(window.confirm).toHaveBeenCalled());
+    // No eject POST fired, and the diagram stays owned — the chip is still there.
+    const posts = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (c) => String(c[0]) === '/api/diagrams/sketch/eject',
+    );
+    expect(posts).toHaveLength(0);
+    expect(screen.getByRole('button', { name: /^eject$/i })).toBeDefined();
+  });
+
+  it('the Eject chip is absent for read-only diagrams', async () => {
+    render(<App />);
+    await screen.findByRole('button', { name: /^edit$/i });
+    // 'two' is the TS-owned artifact in the fixture: viewable, not editable.
+    fireEvent.change(screen.getByRole('combobox', { name: 'Diagram' }), { target: { value: 'two' } });
+    expect(await screen.findByText(/read-only/i)).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^eject$/i })).toBeNull();
+  });
 });

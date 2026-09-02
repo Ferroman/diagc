@@ -42,6 +42,8 @@ export interface DiagramActions {
   renameDiagram: () => Promise<void>;
   /** Copy the selected diagram to a new editable JSON source and open it. */
   duplicateDiagram: () => Promise<void>;
+  /** Promote the selected JSON-backed diagram to a generated TypeScript source. */
+  ejectDiagram: () => Promise<void>;
 }
 
 /**
@@ -186,5 +188,26 @@ export function useDiagramActions({
     setEditing(true);
   };
 
-  return { newDiagram, renameDiagram, duplicateDiagram };
+  // Promotion is server-verified (the generated TS must rebuild the identical
+  // model before the JSON is replaced), so the client's only jobs are consent
+  // and flipping local ownership — the model, layout and selection all stay.
+  const ejectDiagram = async () => {
+    if (editing) return;
+    const ok = window.confirm(
+      `Eject '${selected}' to TypeScript? The JSON source is replaced by a generated .diagram.ts and the diagram becomes read-only in the studio.`,
+    );
+    if (!ok) return;
+    const res = await fetch(`/api/diagrams/${selected}/eject`, { method: 'POST' });
+    if (!res.ok) {
+      window.alert(`Could not eject '${selected}'`);
+      return;
+    }
+    setOwnedNames((s) => {
+      const next = new Set(s);
+      next.delete(selected);
+      return next;
+    });
+  };
+
+  return { newDiagram, renameDiagram, duplicateDiagram, ejectDiagram };
 }

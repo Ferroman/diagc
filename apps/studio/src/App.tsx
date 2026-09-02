@@ -539,6 +539,15 @@ export function App() {
             Duplicate
           </button>
         )}
+        {canDesign && !editing && ownedNames.has(selected) && (
+          <button
+            className="chip"
+            onClick={() => void actions.ejectDiagram()}
+            title="Promote this diagram to a TypeScript source — it becomes read-only here"
+          >
+            Eject
+          </button>
+        )}
         <span className="spacer" />
         {model !== undefined &&
           (ownedNames.has(selected) ? (
