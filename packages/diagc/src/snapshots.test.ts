@@ -2,7 +2,7 @@ import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { DiagramModel, IncludeResolver } from '@diagramming/core';
+import { composeIncludes, type DiagramModel, type IncludeResolver } from '@diagramming/core';
 import { snapshotSession } from './snapshots';
 
 const CHILD: DiagramModel = {
@@ -41,6 +41,24 @@ describe('snapshotSession', () => {
     const rootDir = await tmpRoot();
     const s = snapshotSession(fakeBase, rootDir, 'locked');
     await expect(s.resolver('https://x.test/c.diagram.json', '/tmp/a.ts')).rejects.toThrow(/--update-includes/);
+  });
+
+  it('a locked session re-reads the lockfile per resolve, picking up a lock written after it was created', async () => {
+    const rootDir = await tmpRoot();
+    // Created before anything is vendored — like watch/studio starting before
+    // the first `diagc compile --update-includes` run.
+    const locked = snapshotSession(fakeBase, rootDir, 'locked');
+    await expect(locked.resolver('https://x.test/c.diagram.json', '/tmp/a.ts')).rejects.toThrow(/--update-includes/);
+
+    // A separate update run (a different process, in practice) writes the lock
+    // + vendored file while the locked session above stays alive.
+    const up = snapshotSession(fakeBase, rootDir, 'update');
+    await up.resolver('https://x.test/c.diagram.json', '/tmp/a.ts');
+
+    // The SAME locked session, never recreated, must see the new lock instead
+    // of repeating the stale-empty-lock failure for its whole process lifetime.
+    const got = await locked.resolver('https://x.test/c.diagram.json', '/tmp/a.ts');
+    expect(got.model).toEqual(CHILD);
   });
 
   it('update mode vendors the model and a locked session then resolves offline', async () => {
@@ -185,6 +203,106 @@ describe('snapshotSession', () => {
     };
     expect(Object.keys(after.includes)).toEqual(['https://x.test/a.diagram.json']);
     expect(await exists(bVendorPath)).toBe(false);
+  });
+
+  it('an update run resolving nested remote includes vendors and locks both URLs', async () => {
+    const rootDir = await tmpRoot();
+    // root --include--> parent --include--> child, all three remote: composeIncludes
+    // drives the recursion, calling the session's resolver once per hop.
+    const parent: DiagramModel = {
+      version: 1,
+      id: 'parent',
+      name: 'parent',
+      nodes: [{ id: 'child', name: 'child', include: 'https://x.test/child.diagram.json' }],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
+    const nestedBase: IncludeResolver = async (spec, fromRef) => {
+      const url = /^https?:/.test(spec) ? spec : new URL(spec, fromRef).href;
+      if (url === 'https://x.test/parent.diagram.json') return { model: parent, ref: url };
+      return { model: CHILD, ref: url }; // child.diagram.json
+    };
+    const root: DiagramModel = {
+      version: 1,
+      id: 'root',
+      name: 'root',
+      nodes: [{ id: 'parent', name: 'parent', include: 'https://x.test/parent.diagram.json' }],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
+    const up = snapshotSession(nestedBase, rootDir, 'update');
+    const { model } = await composeIncludes(root, '/tmp/root.diagram.json', up.resolver);
+    // sanity: the graft actually went two hops deep
+    expect(model.nodes.some((n) => n.id === 'parent/child/x')).toBe(true);
+
+    const lock = JSON.parse(await readFile(path.join(rootDir, 'includes.lock.json'), 'utf8')) as {
+      includes: Record<string, { file: string; sha256: string }>;
+    };
+    expect(Object.keys(lock.includes).sort()).toEqual([
+      'https://x.test/child.diagram.json',
+      'https://x.test/parent.diagram.json',
+    ]);
+    for (const entry of Object.values(lock.includes)) {
+      expect(await exists(path.join(rootDir, entry.file))).toBe(true);
+    }
+  });
+
+  it('cycle detection still fires on a vendored cycle instead of hanging', async () => {
+    const rootDir = await tmpRoot();
+    // a includes b, b includes a — vendor both directly (one resolver call each,
+    // no recursion) so the lock/vendor files exist before composeIncludes ever runs.
+    const a: DiagramModel = {
+      version: 1,
+      id: 'a',
+      name: 'a',
+      nodes: [{ id: 'toB', name: 'toB', include: 'https://x.test/b.diagram.json' }],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
+    const b: DiagramModel = {
+      version: 1,
+      id: 'b',
+      name: 'b',
+      nodes: [{ id: 'toA', name: 'toA', include: 'https://x.test/a.diagram.json' }],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
+    const cyclicBase: IncludeResolver = async (spec, fromRef) => {
+      const url = /^https?:/.test(spec) ? spec : new URL(spec, fromRef).href;
+      if (url === 'https://x.test/a.diagram.json') return { model: a, ref: url };
+      if (url === 'https://x.test/b.diagram.json') return { model: b, ref: url };
+      throw new Error(`unexpected spec ${url}`);
+    };
+    const up = snapshotSession(cyclicBase, rootDir, 'update');
+    await up.resolver('https://x.test/a.diagram.json', '/tmp/root.ts');
+    await up.resolver('https://x.test/b.diagram.json', '/tmp/root.ts');
+
+    const root: DiagramModel = {
+      version: 1,
+      id: 'root',
+      name: 'root',
+      nodes: [{ id: 'toA', name: 'toA', include: 'https://x.test/a.diagram.json' }],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
+    // Offline locked session: a resolver that would throw on any call must never
+    // be reached — the whole request is satisfied from the vendored files, and
+    // the cycle must surface as an IncludeError, not recurse forever.
+    const never: IncludeResolver = async () => {
+      throw new Error('offline');
+    };
+    const locked = snapshotSession(never, rootDir, 'locked');
+    await expect(composeIncludes(root, '/tmp/root.diagram.json', locked.resolver)).rejects.toThrow(/cycle/i);
   });
 
   it('prune is a no-op outside update mode', async () => {

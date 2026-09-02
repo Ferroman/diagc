@@ -39,13 +39,26 @@ export function snapshotSession(base: IncludeResolver, rootDir: string, mode: Sn
   let lock: Lock | undefined;
   const touched = new Set<string>();
 
-  const loadLock = async (): Promise<Lock> => {
-    if (lock !== undefined) return lock;
+  const readLock = async (): Promise<Lock> => {
     try {
-      lock = JSON.parse(await readFile(lockPath, 'utf8')) as Lock;
+      return JSON.parse(await readFile(lockPath, 'utf8')) as Lock;
     } catch {
-      lock = { version: 1, includes: {} };
+      return { version: 1, includes: {} };
     }
+  };
+
+  // Update mode keeps ONE in-memory lock for the whole session: every resolve
+  // mutates the same object in place before persisting it, and prune() needs to
+  // see everything touched across the run. Locked mode must NOT memoize —
+  // watch/studio hold one session open for as long as the process runs, and the
+  // whole point of the lockfile error's own remedy ("run `diagc compile
+  // --update-includes`") is that a *separate* process can write a new lock
+  // while this one keeps resolving. Caching a possibly-empty/stale read for the
+  // process lifetime would make that remedy silently ineffective, so a locked
+  // resolve re-reads the lockfile from disk every time instead.
+  const loadLock = async (): Promise<Lock> => {
+    if (mode === 'locked') return readLock();
+    if (lock === undefined) lock = await readLock();
     return lock;
   };
 
