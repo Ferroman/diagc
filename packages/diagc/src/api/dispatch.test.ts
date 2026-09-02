@@ -101,6 +101,17 @@ describe('handleApiRequest', () => {
     await rm(root, { recursive: true, force: true });
   });
 
+  it('checks the eject route before the generic save route', async () => {
+    const root = await tempRoot();
+    // A valid diagram model would be saved (200) by the generic `(.+)` save
+    // route with name "foo/eject"; the eject route must win and report the
+    // diagram as missing instead.
+    const r = await request(root, '/api/diagrams/foo/eject', { method: 'POST' });
+    expect(r.status).toBe(404);
+    expect(JSON.stringify(r.body)).toContain("no diagram 'foo'");
+    await rm(root, { recursive: true, force: true });
+  });
+
   it('passes the raw body of the asset POST through to saveAsset', async () => {
     const root = await tempRoot();
     const bytes = Buffer.from('fake-png-bytes');

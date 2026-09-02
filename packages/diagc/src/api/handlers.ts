@@ -2,6 +2,7 @@ import { access, mkdir, readFile, readdir, rename, unlink, writeFile } from 'nod
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { IMAGE_REF, isDrawings, isLayoutOverlay, validate, type DiagramModel } from '@diagramming/core';
+import { EjectError, ejectDiagram } from '../eject';
 
 export interface HandlerResult {
   status: number;
@@ -197,6 +198,22 @@ export async function renameDiagram(diagramsDir: string, from: string, to: strin
     /* no drawings to move */
   }
   return { status: 200, body: { ok: true } };
+}
+
+/** Promote a JSON-owned diagram to a generated `.diagram.ts`. See `ejectDiagram`
+ * for the round-trip guarantee; this just maps its failure codes to statuses. */
+export async function ejectDiagramSource(diagramsDir: string, artifactsDir: string, name: string): Promise<HandlerResult> {
+  if (!isSafeName(name)) return { status: 400, body: { issues: [{ message: `Unsafe name '${name}'` }] } };
+  try {
+    await ejectDiagram(diagramsDir, artifactsDir, name);
+    return { status: 200, body: { ok: true } };
+  } catch (e) {
+    if (e instanceof EjectError) {
+      const status = e.code === 'not-found' ? 404 : e.code === 'invalid' ? 400 : 409;
+      return { status, body: { issues: [{ message: e.message }] } };
+    }
+    throw e;
+  }
 }
 
 export async function saveLayout(diagramsDir: string, name: string, payload: unknown): Promise<HandlerResult> {

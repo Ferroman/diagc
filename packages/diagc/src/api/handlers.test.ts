@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  ejectDiagramSource,
   isSafeName,
   listDiagramModels,
   listDrawings,
@@ -209,6 +210,54 @@ describe('designer api handlers', () => {
     expect((await renameDiagram(dir, 'old', 'new')).status).toBe(200);
     expect((await readDiagram(dir, 'new')).body).toEqual({ model: { ...goodModel, id: 'new', name: 'new' }, drawings });
     await expect(readFile(path.join(dir, 'old.drawings.json'), 'utf8')).rejects.toThrow();
+  });
+});
+
+describe('ejectDiagramSource', () => {
+  it('promotes a JSON diagram and reports ok', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'designer-eject-'));
+    const diagramsDir = path.join(root, 'diagrams');
+    const artifactsDir = path.join(root, 'artifacts');
+    await mkdir(diagramsDir, { recursive: true });
+    await saveDiagram(diagramsDir, 'shop', { ...goodModel, id: 'shop', name: 'shop' });
+
+    const res = await ejectDiagramSource(diagramsDir, artifactsDir, 'shop');
+    expect(res.status).toBe(200);
+    await expect(readFile(path.join(diagramsDir, 'shop.diagram.ts'), 'utf8')).resolves.toContain(
+      "import { model } from '@diagramming/core';",
+    );
+    await expect(readFile(path.join(diagramsDir, 'shop.diagram.json'), 'utf8')).rejects.toThrow();
+  });
+
+  it('404s an unknown name', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'designer-eject-'));
+    const diagramsDir = path.join(root, 'diagrams');
+    const artifactsDir = path.join(root, 'artifacts');
+    await mkdir(diagramsDir, { recursive: true });
+
+    const res = await ejectDiagramSource(diagramsDir, artifactsDir, 'missing');
+    expect(res.status).toBe(404);
+  });
+
+  it('409s a TS-owned diagram', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'designer-eject-'));
+    const diagramsDir = path.join(root, 'diagrams');
+    const artifactsDir = path.join(root, 'artifacts');
+    await mkdir(diagramsDir, { recursive: true });
+    await writeFile(path.join(diagramsDir, 'shop.diagram.ts'), 'export default {} as never;\n');
+
+    const res = await ejectDiagramSource(diagramsDir, artifactsDir, 'shop');
+    expect(res.status).toBe(409);
+  });
+
+  it('400s an unsafe name', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'designer-eject-'));
+    const diagramsDir = path.join(root, 'diagrams');
+    const artifactsDir = path.join(root, 'artifacts');
+    await mkdir(diagramsDir, { recursive: true });
+
+    const res = await ejectDiagramSource(diagramsDir, artifactsDir, '../evil');
+    expect(res.status).toBe(400);
   });
 });
 

@@ -51,6 +51,9 @@ export const ROUTES: Route[] = [
       if (typeof to !== 'string') return { status: 400, body: { issues: [{ message: "Missing 'to' name" }] } };
       return h.renameDiagram(c.diagramsDir, decodeURIComponent(c.match[1] ?? ''), to);
     } },
+  // Eject must also precede the generic save route, whose `(.+)` would
+  // swallow `<name>/eject` as a filename.
+  { method: 'POST', pattern: /^\/api\/diagrams\/(.+)\/eject$/, handler: (h, c) => h.ejectDiagramSource(c.diagramsDir, c.artifactsDir, decodeURIComponent(c.match[1] ?? '')) },
   { method: 'POST', pattern: /^\/api\/(diagrams|layouts|drawings)\/(.+)$/, bodyMode: 'json', handler: (h, c) => {
       // decodeURIComponent throws on malformed percent-encoding — kept
       // inside the boundary so a bad name yields 500, never a crash.
