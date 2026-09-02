@@ -184,6 +184,22 @@ function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): Diag
     }
   }
 
+  // If carried planes are landing on a host that declares none of its own, the
+  // FIRST carried plane would take `planes[0]` — the model's DEFAULT view.
+  // Untagged containment resolves to `planes[0]` too (buildHierarchy/gitGraph:
+  // `defaultPlane = planes[0]?.id`, matched via `(e.plane ?? defaultPlane) ===
+  // active`), so an unguarded carry would both silently retarget the default
+  // view onto the carried plane's content and leak the host's own untagged
+  // rows into it — and corrupt a further include's structural resolution the
+  // same way, since ITS `defaultPlane` would then resolve to the carried plane
+  // instead of the host's real structure. Synthesizing an explicit host base
+  // plane ahead of the carried ones keeps `planes[0]` a plain view of untagged
+  // content, exactly like a plane-less host today; carried planes start at
+  // index 1+ and see only their own tagged rows. A later sibling include's
+  // graft sees `host.planes.length > 0` by then and skips this.
+  const basePlane: DiagramPlane[] =
+    host.planes.length === 0 && carriedPlanes.length > 0 ? [{ id: 'main', name: host.name }] : [];
+
   // Everything not listed below is the HOST's — `...host` carries its `legend`,
   // `typeColors` and `layerRules` and the child's are never read. Deliberate:
   // those are presentation, and the diagram being looked at owns the look.
@@ -193,7 +209,7 @@ function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): Diag
     containment: [...host.containment, ...containment, ...carriedContainment],
     relations: [...host.relations, ...relations],
     layers: [...host.layers, ...layers],
-    planes: [...host.planes, ...carriedPlanes],
+    planes: [...host.planes, ...basePlane, ...carriedPlanes],
   };
 }
 

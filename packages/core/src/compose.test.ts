@@ -290,7 +290,13 @@ describe('composeIncludes: includePlanes', () => {
       nodes: [{ id: 'inc', name: 'Inc', type: 'system', include: 'child', includePlanes: true }],
     });
     const { model: m } = await composeIncludes(host, 'mem:host', memory({ child }));
-    expect(m.planes).toEqual([{ id: 'inc/main', name: 'Inc', notation: 'causal-loop' }]);
+    // the plane-less host gets a synthesized base plane ahead of the carried one,
+    // so planes[0] stays the host's own default view (see the "host default view
+    // stays plane[0]" describe block below for why)
+    expect(m.planes).toEqual([
+      { id: 'main', name: 'host' },
+      { id: 'inc/main', name: 'Inc', notation: 'causal-loop' },
+    ]);
     // host structure, untagged, unchanged
     expect(m.containment).toContainEqual({ parent: 'inc/a', child: 'inc/b' });
     // tagged copy for the synthesized carried plane
@@ -329,8 +335,10 @@ describe('composeIncludes: includePlanes', () => {
     expect(m.containment).toContainEqual({ parent: 'u/a', child: 'u/c' });
     expect(m.containment).toContainEqual({ parent: 'u', child: 'u/a' });
     expect(m.containment).toContainEqual({ parent: 'u', child: 'u/b' });
-    // carried planes are unaffected by includePlane: both come over in full
+    // carried planes are unaffected by includePlane: both come over in full,
+    // after the plane-less host's synthesized base plane (planes[0])
     expect(m.planes).toEqual([
+      { id: 'main', name: 'host' },
       { id: 'u/main', name: 'U/Main' },
       { id: 'u/alt', name: 'U/Alt' },
     ]);
@@ -385,6 +393,140 @@ describe('composeIncludes: includePlanes', () => {
     expect(m2).toEqual(m1);
     expect(m1.planes).toEqual([]); // still dropped when the feature isn't opted into
     expect(validate(m1)).toEqual([]);
+  });
+});
+
+describe('composeIncludes: includePlanes — the host default view stays plane[0]', () => {
+  it('C1: a carried plane never absorbs the host\'s own untagged rows', async () => {
+    const child = doc('child', {
+      nodes: [
+        { id: 'lane', name: 'Lane', type: 'x' },
+        { id: 'c1', name: 'C1', type: 'x' },
+      ],
+      planes: [{ id: 'git-graph', name: 'Git graph', notation: 'git-graph' }],
+      containment: [{ parent: 'lane', child: 'c1' }],
+    });
+    const nodes = (includePlanes: boolean | undefined): DiagramModel['nodes'] => [
+      { id: 'repo', name: 'Repo', type: 'system', include: 'child', ...(includePlanes !== undefined ? { includePlanes } : {}) },
+      { id: 'other', name: 'Other', type: 'x' },
+      { id: 'otherChild', name: 'OtherChild', type: 'x' },
+    ];
+    const containment = [{ parent: 'other', child: 'otherChild' }];
+    const host = doc('host', { nodes: nodes(true), containment });
+    const { model: m } = await composeIncludes(host, 'mem:host', memory({ child }));
+
+    // planes[0] is a synthesized host base view — not the carried plane — so the
+    // model's default (no-plane-selected) hierarchy is undisturbed by the feature
+    expect(m.planes[0]).toEqual({ id: 'main', name: 'host' });
+    expect(m.planes).toContainEqual({ id: 'repo/git-graph', name: 'Repo/Git graph', notation: 'git-graph' });
+
+    // the default view is byte-identical to composing the same diagram without
+    // the feature: same untagged rows, same order
+    const hostNoFeature = doc('host', { nodes: nodes(undefined), containment });
+    const { model: mNoFeature } = await composeIncludes(hostNoFeature, 'mem:host', memory({ child }));
+    const basePlaneId = m.planes[0]!.id;
+    const inPlane = (planeId: string) => (e: { plane?: string }) => (e.plane ?? basePlaneId) === planeId;
+    expect(m.containment.filter(inPlane(basePlaneId))).toEqual(mNoFeature.containment);
+
+    // reproduce the reviewer's bleed scenario directly: the host's own untagged
+    // edge must not match the carried plane under the same `?? planes[0].id` test
+    const carried = 'repo/git-graph';
+    const carriedRows = m.containment.filter(inPlane(carried));
+    expect(carriedRows).toEqual([{ parent: 'repo/lane', child: 'repo/c1', plane: 'repo/git-graph' }]);
+    expect(carriedRows.some((e) => e.parent === 'other' && e.child === 'otherChild')).toBe(false);
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('C2: only the inner include carrying planes produces no duplicate containment and no carried planes at the outer level', async () => {
+    const leaf = doc('leaf', {
+      nodes: [
+        { id: 'x', name: 'x', type: 't' },
+        { id: 'y', name: 'y', type: 't' },
+      ],
+      planes: [{ id: 'p', name: 'P' }],
+      containment: [{ parent: 'x', child: 'y' }],
+    });
+    const middle = doc('middle', {
+      nodes: [{ id: 'inner', name: 'Inner', type: 'system', include: 'leaf', includePlanes: true }],
+    });
+    const outer = doc('outer', {
+      nodes: [{ id: 'mid', name: 'Mid', type: 'system', include: 'middle' }], // outer does NOT carry
+    });
+    const { model: m } = await composeIncludes(outer, 'mem:outer', memory({ leaf, middle }));
+
+    expect(m.planes).toEqual([]);
+    // exact multiset: each parent/child pair appears exactly once — the fix
+    // stops the outer graft's structural filter from also matching the middle
+    // model's inner-carried (tagged) duplicate of its own default-plane row
+    expect(m.containment).toEqual([
+      { parent: 'mid/inner/x', child: 'mid/inner/y' },
+      { parent: 'mid/inner', child: 'mid/inner/x' },
+      { parent: 'mid', child: 'mid/inner' },
+    ]);
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('C2: the outer include also carrying planes namespaces them twice, still with no duplicate rows', async () => {
+    const leaf = doc('leaf', {
+      nodes: [
+        { id: 'x', name: 'x', type: 't' },
+        { id: 'y', name: 'y', type: 't' },
+      ],
+      planes: [{ id: 'p', name: 'P' }],
+      containment: [{ parent: 'x', child: 'y' }],
+    });
+    const middle = doc('middle', {
+      nodes: [{ id: 'inner', name: 'Inner', type: 'system', include: 'leaf', includePlanes: true }],
+    });
+    const outer = doc('outer', {
+      nodes: [{ id: 'mid', name: 'Mid', type: 'system', include: 'middle', includePlanes: true }],
+    });
+    const { model: m } = await composeIncludes(outer, 'mem:outer', memory({ leaf, middle }));
+
+    // the host's own synthesized base, plus middle's base and leaf's real plane,
+    // each carried through — the leaf's plane picked up two namespace hops
+    expect(m.planes).toEqual([
+      { id: 'main', name: 'outer' },
+      { id: 'mid/main', name: 'Mid/middle' },
+      { id: 'mid/inner/p', name: 'Mid/Inner/P' },
+    ]);
+    // 6 distinct (parent, child, plane) rows — no two identical
+    expect(m.containment).toEqual([
+      { parent: 'mid/inner/x', child: 'mid/inner/y' },
+      { parent: 'mid/inner', child: 'mid/inner/x' },
+      { parent: 'mid', child: 'mid/inner' },
+      { parent: 'mid/inner/x', child: 'mid/inner/y', plane: 'mid/main' },
+      { parent: 'mid/inner', child: 'mid/inner/x', plane: 'mid/main' },
+      { parent: 'mid/inner/x', child: 'mid/inner/y', plane: 'mid/inner/p' },
+    ]);
+    const sigs = new Set(m.containment.map((e) => `${e.parent}>${e.child}@${e.plane ?? ''}`));
+    expect(sigs.size).toBe(m.containment.length);
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('I1: a real git-graph fixture carries intact lanes with zero validation issues', async () => {
+    const child = doc('child', {
+      nodes: [
+        { id: 'master', name: 'Master', type: 'branch' },
+        { id: 'm1', name: '', type: 'commit' },
+        { id: 'm2', name: '', type: 'commit' },
+      ],
+      planes: [{ id: 'git', name: 'Git', notation: 'git-graph' }],
+      containment: [
+        { parent: 'master', child: 'm1' },
+        { parent: 'master', child: 'm2' },
+      ],
+      relations: [{ id: 'm1->m2#0', from: 'm1', to: 'm2', kind: 'commit' }],
+    });
+    const host = doc('host', {
+      nodes: [{ id: 'repo', name: 'Repo', type: 'system', include: 'child', includePlanes: true }],
+    });
+    const { model: m } = await composeIncludes(host, 'mem:host', memory({ child }));
+
+    expect(validate(m)).toEqual([]);
+    // both commits are still under the branch in the carried plane — no strays
+    expect(m.containment).toContainEqual({ parent: 'repo/master', child: 'repo/m1', plane: 'repo/git' });
+    expect(m.containment).toContainEqual({ parent: 'repo/master', child: 'repo/m2', plane: 'repo/git' });
   });
 });
 
