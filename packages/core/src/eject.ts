@@ -38,7 +38,11 @@ const IDENT_KEY = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 const INLINE_LIMIT = 72;
 
 function quote(s: string): string {
-  return `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')}'`;
+  return `'${s
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')}'`;
 }
 
 /**
@@ -49,6 +53,7 @@ function quote(s: string): string {
 export function tsLiteral(value: unknown, indent: number): string {
   if (typeof value === 'string') return quote(value);
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (value === null) return 'null';
   const pad = '  '.repeat(indent);
   const inner = '  '.repeat(indent + 1);
   if (Array.isArray(value)) {
@@ -66,9 +71,12 @@ export function tsLiteral(value: unknown, indent: number): string {
     if (inline.length <= INLINE_LIMIT && !inline.includes('\n')) return inline;
     return `{\n${entries.map((e) => `${inner}${e},`).join('\n')}\n${pad}}`;
   }
-  // undefined/null never reach here: model JSON has no undefined, and no
-  // model field is nullable — a new nullable field must extend this emitter.
-  throw new Error(`ejectSource: cannot emit a ${value === null ? 'null' : typeof value} literal`);
+  // null is handled above — it round-trips: pruneUndefined (builder.ts) strips
+  // only `undefined`, so a null survives the object spread and deep-equal
+  // holds. undefined never round-trips (JSON has no undefined), so it still
+  // throws here; a caller that can legitimately produce it (e.g. a missing
+  // required field in hand-edited JSON) must guard before calling tsLiteral.
+  throw new Error(`ejectSource: cannot emit a ${typeof value} literal`);
 }
 
 function quoted(s: string): string {
@@ -107,7 +115,12 @@ function nodeOpts(n: DiagramNode): [string, unknown][] {
   const out: [string, unknown][] = [];
   for (const k of NODE_OPT_KEYS) {
     if (k === 'name') {
-      if (n.name !== n.id) out.push(['name', n.name]);
+      // A validate-clean node can lack `name` (validate() does not require
+      // it, even though DiagramNode's TS type does) — a hand-edited JSON,
+      // typically. Emit without a name opt rather than pushing `undefined`;
+      // the builder then rebuilds `name: id`, and the deep-compare refuses
+      // honestly instead of the emitter crashing.
+      if (n.name !== undefined && n.name !== n.id) out.push(['name', n.name]);
       continue;
     }
     const v = (n as unknown as Record<string, unknown>)[k];

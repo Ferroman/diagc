@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DiagramModel } from './types';
+import type { DiagramModel, DiagramNode } from './types';
 import { ejectSource, identifiersFor, tsLiteral } from './eject';
 import { model as buildModel } from './builder';
 
@@ -35,9 +35,26 @@ describe('tsLiteral', () => {
     expect(tsLiteral('a\nb', 0)).toBe("'a\\nb'");
   });
 
+  it('escapes carriage returns', () => {
+    expect(tsLiteral('a\r\nb', 0)).toBe("'a\\r\\nb'");
+    expect(tsLiteral('lone\rcr', 0)).toBe("'lone\\rcr'");
+  });
+
   it('renders numbers and booleans verbatim', () => {
     expect(tsLiteral(1.5, 0)).toBe('1.5');
     expect(tsLiteral(true, 0)).toBe('true');
+  });
+
+  it('renders null as the literal null — it round-trips through the builder', () => {
+    expect(tsLiteral(null, 0)).toBe('null');
+  });
+
+  it('renders null nested inside an object inline', () => {
+    expect(tsLiteral({ x: null }, 0)).toBe('{ x: null }');
+  });
+
+  it('still throws on undefined — it cannot round-trip, JSON has no undefined', () => {
+    expect(() => tsLiteral(undefined, 0)).toThrow(/undefined/);
   });
 
   it('renders short objects and arrays inline', () => {
@@ -163,6 +180,19 @@ describe('ejectSource', () => {
     const src = ejectSource(m);
     expect(src).toContain("m.layerRules([{ kind: 'sync', layer: 'infra' }]);");
     expect(src).toContain("m.legend({ position: 'top-left', items: [{ label: 'x', color: '#123456' }] });");
+  });
+
+  it('omits the name opt for a node with no name — hand-edited JSON, validate-clean, honestly unejectable', () => {
+    const m: DiagramModel = {
+      version: 1, id: 't', name: 't',
+      // validate() does not require `name`; a hand-edited JSON can omit it even
+      // though the TS type says it's required.
+      nodes: [{ id: 'a' } as unknown as DiagramNode],
+      containment: [], relations: [], layers: [], planes: [],
+    };
+    const src = ejectSource(m);
+    expect(src).toContain("m.node('a');");
+    expect(src).not.toContain('name:');
   });
 
   it('elides only relation ids that match the position-synthesized id, and replaying the emitted relate() calls through the real builder reproduces every original id', () => {
