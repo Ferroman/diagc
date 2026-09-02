@@ -151,14 +151,19 @@ async function main() {
         console.error(formatCompileEvent({ file, ok: false, error: errMessage(e) }));
       }
     }
-    if (args.updateIncludes && args.files.length === 0) await snap.prune();
+    // A source that fails before include resolution (e.g. a pre-compose
+    // validation error) never touches its remote URLs, so pruning here would
+    // drop their still-valid lock entries and vendored files right along with
+    // the genuinely stale ones — skip the prune until every file compiles clean.
+    if (args.updateIncludes && args.files.length === 0 && !failed) await snap.prune();
     process.exit(failed ? 1 : 0);
   } else if (args.command === 'watch') {
-    const dir = args.files[0] ?? '.diagrams/src';
     // Always locked, independent of args.updateIncludes: watch is a long-running
     // live loop with no point at which "refetch and rewrite the lock" makes
     // sense, so it ignores the flag by design rather than inheriting the shared
     // session's mode (mirrors studio.ts's own hardcoded 'locked' session).
+    if (args.updateIncludes) console.error('ignoring --update-includes: watch always runs locked');
+    const dir = args.files[0] ?? '.diagrams/src';
     const watchSnap = snapshotSession(resolveInclude, '.diagrams', 'locked');
     startWatch(dir, args.out, {
       coreEntry: home.coreEntry,
@@ -228,9 +233,15 @@ async function main() {
     console.log(`✓ gallery -> ${res.gallery}`);
     process.exit(0);
   } else if (args.command === 'studio') {
+    // Studio's own compile-watch loop always resolves includes locked (see
+    // studio.ts) — same reasoning as watch above.
+    if (args.updateIncludes) console.error('ignoring --update-includes: studio always runs locked');
     await runStudio(home, process.cwd());
     return;
   } else if (args.command === 'eject') {
+    // ejectDiagram's post-swap recompile always resolves includes locked (see
+    // eject.ts) — same reasoning as watch above.
+    if (args.updateIncludes) console.error('ignoring --update-includes: eject always runs locked');
     const name = args.files[0]?.replace(/^\.diagrams\/src\//, '').replace(/\.diagram\.(ts|json)$/, '');
     if (name === undefined || name === '') {
       console.error('diagc: eject needs a diagram name.');
