@@ -81,8 +81,20 @@ export async function listDiagramModels(diagramsDir: string, artifactsDir: strin
     if (editable && hasIncludes(model)) {
       try {
         const { model: composed, warnings } = await composeIncludes(model as DiagramModel, path.resolve(file), lockedResolver(diagramsDir));
-        model = composed;
-        for (const w of warnings) issues.push({ message: w });
+        // compileFile refuses an invalid composed result outright (CLAUDE.md:
+        // "the renderer may assume the model is sound") — an id collision
+        // between an umbrella-declared node and a namespaced include can pass
+        // composeIncludes (which only grafts) while still being invalid, so
+        // this must be checked here too, not just on compile.
+        const validationIssues = validate(composed);
+        if (validationIssues.length > 0) {
+          // fall back to the raw model (include nodes as placeholders); it
+          // still renders, unlike the unsound composed result
+          issues.push(...validationIssues);
+        } else {
+          model = composed;
+          for (const w of warnings) issues.push({ message: w });
+        }
       } catch (e) {
         // the raw model still renders (include nodes as placeholders); say why
         issues.push({ message: `Includes not expanded: ${errMessage(e)}` });
@@ -167,6 +179,11 @@ export async function readComposedDiagram(diagramsDir: string, name: string): Pr
   if (!hasIncludes(model)) return { status: 200, body: { model } };
   try {
     const { model: composed, warnings } = await composeIncludes(model, path.resolve(file), lockedResolver(diagramsDir));
+    // Same soundness check as listDiagramModels: a composed model that fails
+    // validation must never reach the renderer, so refuse it like a failed
+    // compose instead of returning 200 with an unsound model.
+    const issues = validate(composed);
+    if (issues.length > 0) return { status: 409, body: { issues } };
     return { status: 200, body: { model: composed, ...(warnings.length > 0 ? { warnings } : {}) } };
   } catch (e) {
     return { status: 409, body: { issues: [{ message: errMessage(e) }] } };

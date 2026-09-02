@@ -373,6 +373,33 @@ describe('composed reads', () => {
     layers: [],
     planes: [],
   };
+  // composeIncludes only grafts — it never checks the result for id collisions
+  // — so an umbrella-declared node whose id collides with a namespaced include
+  // id (here 'perm/svc' twice) composes cleanly and only validate() catches it.
+  // Mirrors test-fixtures/umbrella-collision.diagram.json.
+  const collisionChild = {
+    version: 1,
+    id: 'permission',
+    name: 'Permission service',
+    nodes: [{ id: 'svc', name: 'Permission svc', type: 'service' }],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  };
+  const collisionUmbrella = {
+    version: 1,
+    id: 'coll',
+    name: 'Architecture (collision)',
+    nodes: [
+      { id: 'perm/svc', name: 'Existing', type: 'service' },
+      { id: 'perm', name: 'Permission', type: 'system', include: './permission.diagram.json' },
+    ],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  };
 
   it('listDiagramModels composes an editable umbrella and surfaces warnings as issues', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'designer-compose-'));
@@ -401,6 +428,28 @@ describe('composed reads', () => {
     expect(entry?.editable).toBe(true);
     expect(entry?.model?.nodes[0]?.include).toBe('./missing.diagram.json'); // raw, unexpanded
     expect(entry?.issues[0]?.message).toMatch(/missing/);
+  });
+
+  it('listDiagramModels falls back to the raw model when the composed result fails validation', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-compose-'));
+    await writeFile(path.join(dir, 'permission.diagram.json'), JSON.stringify(collisionChild));
+    await writeFile(path.join(dir, 'coll.diagram.json'), JSON.stringify(collisionUmbrella));
+
+    const r = await listDiagramModels(dir, path.join(dir, 'art'));
+    const body = r.body as {
+      diagrams: {
+        name: string;
+        model: { nodes: { id: string; include?: string }[] } | null;
+        issues: { message: string }[];
+        editable: boolean;
+      }[];
+    };
+    const entry = body.diagrams.find((d) => d.name === 'coll');
+    expect(entry?.editable).toBe(true);
+    // the composed result is invalid (duplicate 'perm/svc'), so the raw model —
+    // still unexpanded, its include node still a placeholder — is what renders
+    expect(entry?.model?.nodes.some((n) => n.include === './permission.diagram.json')).toBe(true);
+    expect(entry?.issues.some((i) => /perm\/svc/.test(i.message))).toBe(true);
   });
 
   it('readComposedDiagram returns the composed model', async () => {
@@ -436,6 +485,17 @@ describe('composed reads', () => {
     expect(res.status).toBe(409);
     const body = res.body as { issues: { message: string }[] };
     expect(body.issues[0]?.message).toMatch(/missing/);
+  });
+
+  it('readComposedDiagram 409s when the composed result fails validation', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-compose-'));
+    await writeFile(path.join(dir, 'permission.diagram.json'), JSON.stringify(collisionChild));
+    await writeFile(path.join(dir, 'coll.diagram.json'), JSON.stringify(collisionUmbrella));
+
+    const res = await readComposedDiagram(dir, 'coll');
+    expect(res.status).toBe(409);
+    const body = res.body as { issues: { message: string }[] };
+    expect(body.issues.some((i) => /perm\/svc/.test(i.message))).toBe(true);
   });
 });
 
