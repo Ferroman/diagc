@@ -13,6 +13,16 @@ describe('registries', () => {
     expect(kinds.resolve('made-up-kind')).toEqual({});
   });
 
+  it('freezes the shared unknown-id fallback so a mutation throws instead of leaking', () => {
+    const types = createTypeRegistry();
+    const unknown = types.resolve('made-up-type');
+    expect(Object.isFrozen(unknown)).toBe(true);
+    expect(() => {
+      (unknown as { shape: string }).shape = 'cylinder';
+    }).toThrow(TypeError);
+    expect(types.resolve('other-made-up-type')).toEqual({ shape: 'box' });
+  });
+
   it('accepts overrides at creation and registration afterwards', () => {
     const types = createTypeRegistry({ 'kafka-topic': { shape: 'pill', icon: 'queue' } });
     expect(types.resolve('kafka-topic').icon).toBe('queue');

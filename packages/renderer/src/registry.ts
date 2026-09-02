@@ -127,8 +127,11 @@ export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
 
 function createRegistry<T>(defaults: Record<string, T>, fallback: T, overrides?: Record<string, T>): Registry<T> {
   const entries = new Map(Object.entries({ ...defaults, ...overrides }));
+  // One shared fallback serves every unknown id, so freeze it: an accidental
+  // mutation must throw where it happens, not restyle all unknown ids at once.
+  const frozenFallback = Object.freeze({ ...fallback });
   return {
-    resolve: (id) => entries.get(id) ?? fallback,
+    resolve: (id) => entries.get(id) ?? frozenFallback,
     register: (id, style) => {
       entries.set(id, style);
     },
