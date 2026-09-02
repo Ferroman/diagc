@@ -2,7 +2,13 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { createJiti } from 'jiti';
-import { composeIncludes, DiagramValidationError, validate, type DiagramModel } from '@diagramming/core';
+import {
+  composeIncludes,
+  DiagramValidationError,
+  validate,
+  type DiagramModel,
+  type IncludeResolver,
+} from '@diagramming/core';
 import { resolveInclude } from './includes';
 
 /**
@@ -62,7 +68,7 @@ function relativeSubdir(file: string, rootDir?: string): string {
 export async function compileFile(
   file: string,
   outDir: string,
-  opts?: { rootDir?: string; coreEntry?: string },
+  opts?: { rootDir?: string; coreEntry?: string; resolver?: IncludeResolver },
 ): Promise<string> {
   const isJsonSource = file.endsWith('.diagram.json');
   let model: DiagramModel;
@@ -88,7 +94,7 @@ export async function compileFile(
   if (sourceIssues.length > 0) throw new DiagramValidationError(sourceIssues);
 
   if (model.nodes.some((n) => n.include !== undefined)) {
-    const { model: composed, warnings } = await composeIncludes(model, path.resolve(file), resolveInclude);
+    const { model: composed, warnings } = await composeIncludes(model, path.resolve(file), opts?.resolver ?? resolveInclude);
     for (const w of warnings) console.warn(`${file}: ${w}`);
     model = composed;
     const issues = validate(model);

@@ -1,5 +1,5 @@
 import { watch as chokidarWatch } from 'chokidar';
-import { errMessage } from '@diagramming/core';
+import { errMessage, type IncludeResolver } from '@diagramming/core';
 import { compileFile } from './compile';
 
 export type WatchEvent =
@@ -55,7 +55,7 @@ export function createSerialRunner(task: (key: string) => Promise<void>): {
 export function startWatch(
   dir: string,
   outDir: string,
-  opts: { onEvent?: (e: WatchEvent) => void; coreEntry?: string } = {},
+  opts: { onEvent?: (e: WatchEvent) => void; coreEntry?: string; resolver?: IncludeResolver } = {},
 ): { close(): Promise<void> } {
   const watcher = chokidarWatch(dir, { ignoreInitial: false });
 
@@ -64,6 +64,7 @@ export function startWatch(
       const artifact = await compileFile(file, outDir, {
         rootDir: dir,
         ...(opts.coreEntry !== undefined ? { coreEntry: opts.coreEntry } : {}),
+        ...(opts.resolver !== undefined ? { resolver: opts.resolver } : {}),
       });
       opts.onEvent?.({ file, ok: true, artifact });
     } catch (e) {

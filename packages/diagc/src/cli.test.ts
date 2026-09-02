@@ -9,11 +9,23 @@ describe('parseArgs', () => {
       files: ['a.diagram.ts', 'b.diagram.ts'],
       out: 'dist',
       images: false,
+      updateIncludes: false,
     });
   });
 
   it('defaults the command to compile and imaginary flags defaults', () => {
-    expect(parseArgs([])).toEqual({ command: 'compile', files: [], out: '.diagrams/.artifacts', images: true });
+    expect(parseArgs([])).toEqual({
+      command: 'compile',
+      files: [],
+      out: '.diagrams/.artifacts',
+      images: true,
+      updateIncludes: false,
+    });
+  });
+
+  it('parses --update-includes', () => {
+    expect(parseArgs(['compile', '--update-includes'])).toMatchObject({ command: 'compile', updateIncludes: true });
+    expect(parseArgs(['compile'])).toMatchObject({ updateIncludes: false });
   });
 
   it('throws UnknownFlagError on an unrecognized flag instead of silently ignoring it', () => {

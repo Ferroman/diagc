@@ -27,6 +27,8 @@ import { errMessage } from '@diagramming/core';
 import { compileFile } from './compile';
 import { ejectDiagram } from './eject';
 import { findHome, homePaths } from './home';
+import { resolveInclude } from './includes';
+import { snapshotSession } from './snapshots';
 import { formatCompileEvent, startWatch } from './watch';
 import { publishDiagrams } from './publish/publish';
 import { runStudio } from './studio';
@@ -43,6 +45,7 @@ Commands:
 Options:
   --out dir       Artifact output directory (default .diagrams/.artifacts)
   --no-images     Publish HTML without rendering PNG images
+  --update-includes  Refetch remote includes and rewrite the snapshot lock
   --help, -h      Show this help and exit
 `;
 
@@ -51,6 +54,7 @@ interface Args {
   files: string[];
   out: string;
   images: boolean;
+  updateIncludes: boolean;
 }
 
 /** Parse argv into command + flags. Unknown flags (anything `--…` that is not
@@ -61,6 +65,7 @@ export function parseArgs(argv: string[]): Args {
   const files: string[] = [];
   let out = '.diagrams/.artifacts';
   let images = true;
+  let updateIncludes = false;
   let commandSeen = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
@@ -70,6 +75,10 @@ export function parseArgs(argv: string[]): Args {
     }
     if (arg === '--no-images') {
       images = false;
+      continue;
+    }
+    if (arg === '--update-includes') {
+      updateIncludes = true;
       continue;
     }
     if (arg === '--help' || arg === '-h') throw new HelpRequested();
@@ -83,7 +92,7 @@ export function parseArgs(argv: string[]): Args {
       files.push(arg);
     }
   }
-  return { command, files, out, images };
+  return { command, files, out, images, updateIncludes };
 }
 
 /** Thrown by {@link parseArgs} for `--help`/`-h`; `main` prints usage and exits 0. */
@@ -120,24 +129,34 @@ async function main() {
     throw e;
   }
   const home = homePaths(findHome(fileURLToPath(import.meta.url)));
+  // One session per CLI invocation, shared across every compile in this run:
+  // the in-memory lock + touched set must span the whole run for prune() to
+  // see everything a full-tree compile actually resolved.
+  const snap = snapshotSession(resolveInclude, '.diagrams', args.updateIncludes ? 'update' : 'locked');
 
   if (args.command === 'compile') {
     const files = args.files.length > 0 ? args.files : await fg('.diagrams/src/**/*.diagram.{ts,json}');
     let failed = false;
     for (const file of files) {
       try {
-        const artifact = await compileFile(file, args.out, { rootDir: '.diagrams/src', coreEntry: home.coreEntry });
+        const artifact = await compileFile(file, args.out, {
+          rootDir: '.diagrams/src',
+          coreEntry: home.coreEntry,
+          resolver: snap.resolver,
+        });
         console.log(formatCompileEvent({ file, ok: true, artifact }));
       } catch (e) {
         failed = true;
         console.error(formatCompileEvent({ file, ok: false, error: errMessage(e) }));
       }
     }
+    if (args.updateIncludes && args.files.length === 0) await snap.prune();
     process.exit(failed ? 1 : 0);
   } else if (args.command === 'watch') {
     const dir = args.files[0] ?? '.diagrams/src';
     startWatch(dir, args.out, {
       coreEntry: home.coreEntry,
+      resolver: snap.resolver,
       onEvent: (e) => {
         // Success goes to stdout, failure to stderr, so the streams stay parsed
         // separately by anyone piping them.
@@ -164,11 +183,15 @@ async function main() {
     const sources = await fg('**/*.diagram.{ts,json}', { cwd: srcDir, absolute: true });
     for (const f of sources) {
       try {
-        await compileFile(f, artifactsDir, { rootDir: srcDir, coreEntry: home.coreEntry });
+        await compileFile(f, artifactsDir, { rootDir: srcDir, coreEntry: home.coreEntry, resolver: snap.resolver });
       } catch (e) {
         console.error(`✗ ${f}\n${errMessage(e)}`);
       }
     }
+    // publish's glob above ignores args.files (that only scopes which rendered
+    // pages come out below), so it always compiles the whole source tree —
+    // an update run here is always full-tree, so the prune is unguarded.
+    if (args.updateIncludes) await snap.prune();
     let images = args.images;
     let renderPng: ((htmlPath: string, pngPath: string) => Promise<void>) | undefined;
     if (args.images) {

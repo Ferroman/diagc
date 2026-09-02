@@ -326,6 +326,63 @@ describe('round-trips every model feature', () => {
   }
 });
 
+// include/includePlane/includePlanes round-trip differently from the families
+// above: eject's final recompile composes includes, so the artifact holds the
+// GRAFTED result, not the pre-compose model. The child source has to exist on
+// disk beside the umbrella (compileFile resolves it against the real
+// filesystem) and declare the plane `includePlane` names, or the graft errors.
+const INCLUDE_MODEL: DiagramModel = {
+  version: 1,
+  id: 'include-sample',
+  name: 'Include sample',
+  nodes: [
+    {
+      id: 'child',
+      name: 'Child',
+      type: 'system',
+      include: './child.diagram.json',
+      includePlane: 'ops',
+      includePlanes: true,
+    },
+  ],
+  containment: [],
+  relations: [],
+  layers: [],
+  planes: [],
+};
+
+const INCLUDE_CHILD_MODEL: DiagramModel = {
+  version: 1,
+  id: 'child',
+  name: 'Child',
+  nodes: [{ id: 'inner', name: 'Inner', type: 'service' }],
+  containment: [],
+  relations: [],
+  layers: [],
+  planes: [{ id: 'ops', name: 'Ops' }],
+};
+
+describe('eject with an include node', () => {
+  it('writes the include opts to TS and composes the graft into the recompiled artifact', async () => {
+    await writeFile(path.join(diagramsDir, 'include-sample.diagram.json'), JSON.stringify(INCLUDE_MODEL, null, 2));
+    await writeFile(path.join(diagramsDir, 'child.diagram.json'), JSON.stringify(INCLUDE_CHILD_MODEL, null, 2));
+
+    const res = await ejectDiagram(diagramsDir, artifactsDir, 'include-sample', { coreEntry });
+
+    expect(res.tsPath).toBe(path.join(diagramsDir, 'include-sample.diagram.ts'));
+    const ts = await readFile(res.tsPath, 'utf8');
+    expect(ts).toContain("include: './child.diagram.json'");
+    expect(ts).toContain("includePlane: 'ops'");
+    expect(ts).toContain('includePlanes: true');
+
+    const artifact = JSON.parse(await readFile(path.join(artifactsDir, 'include-sample.diagram.json'), 'utf8'));
+    expect(artifact.nodes).toContainEqual(expect.objectContaining({ id: 'child/inner' }));
+    // include opts are compose-time-only and stripped from the composed output
+    const host = artifact.nodes.find((n: { id: string }) => n.id === 'child');
+    expect(host.include).toBeUndefined();
+  });
+});
+
 describe('diffPaths', () => {
   it('reports a differing top-level scalar', () => {
     expect(diffPaths({ a: 1, b: 2 }, { a: 1, b: 3 })).toEqual(['b']);

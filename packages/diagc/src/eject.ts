@@ -4,6 +4,8 @@ import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { ejectSource, errMessage, validate, type DiagramModel } from '@diagramming/core';
 import { compileFile, executeDiagramTs } from './compile';
+import { resolveInclude } from './includes';
+import { snapshotSession } from './snapshots';
 
 export type EjectFailure = 'not-found' | 'already-ts' | 'invalid' | 'mismatch';
 
@@ -125,6 +127,13 @@ export async function ejectDiagram(
 
   await writeFile(tsPath, source);
   await unlink(jsonPath);
-  await compileFile(tsPath, artifactsDir, { rootDir: diagramsDir, ...(opts?.coreEntry !== undefined ? { coreEntry: opts.coreEntry } : {}) });
+  // path.dirname(diagramsDir) is the .diagrams root when diagramsDir is
+  // .diagrams/src — the same rootDir a locked session uses elsewhere.
+  const snap = snapshotSession(resolveInclude, path.dirname(diagramsDir), 'locked');
+  await compileFile(tsPath, artifactsDir, {
+    rootDir: diagramsDir,
+    resolver: snap.resolver,
+    ...(opts?.coreEntry !== undefined ? { coreEntry: opts.coreEntry } : {}),
+  });
   return { tsPath };
 }

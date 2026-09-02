@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import type { DiagramModel, IncludeResolver } from '@diagramming/core';
 import { compileFile, executeDiagramTs } from './compile';
 
 async function exists(p: string): Promise<boolean> {
@@ -112,6 +113,47 @@ it('fails the compile when a namespaced include id collides with an umbrella-dec
     name: 'DiagramValidationError',
     message: expect.stringContaining('perm/svc'),
   });
+});
+
+it('compileFile composes through an injected resolver', async () => {
+  const out = await mkdtemp(path.join(tmpdir(), 'diagc-'));
+  const src = await mkdtemp(path.join(tmpdir(), 'diagc-src-'));
+  const umbrella: DiagramModel = {
+    version: 1,
+    id: 'umbrella',
+    name: 'Umbrella',
+    nodes: [{ id: 'child', name: 'Child', type: 'system', include: './child.diagram.json' }],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  };
+  const umbrellaFile = path.join(src, 'umbrella.diagram.json');
+  await writeFile(umbrellaFile, JSON.stringify(umbrella, null, 2));
+
+  const childModel: DiagramModel = {
+    version: 1,
+    id: 'child',
+    name: 'Child',
+    nodes: [{ id: 'inner', name: 'Inner', type: 'service' }],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  };
+  let calls = 0;
+  const stub: IncludeResolver = async (spec, fromRef) => {
+    calls++;
+    return { model: childModel, ref: `${fromRef}::${spec}` };
+  };
+
+  // The stubbed child never touches disk — a real filesystem resolve of
+  // './child.diagram.json' would ENOENT, so a passing artifact proves the
+  // injected resolver was used instead of the real one.
+  const artifact = await compileFile(umbrellaFile, out, { resolver: stub });
+  expect(calls).toBe(1);
+  const json = JSON.parse(await readFile(artifact, 'utf8'));
+  expect(json.nodes).toContainEqual(expect.objectContaining({ id: 'child/inner' }));
 });
 
 describe('executeDiagramTs', () => {
