@@ -1,4 +1,4 @@
-import { access, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -116,6 +116,29 @@ describe('snapshotSession', () => {
     const corruptedHashMatch = /file ([0-9a-f]{64})/.exec(err!.message);
     expect(corruptedHashMatch?.[1]).toBeDefined();
     expect(corruptedHashMatch?.[1]).not.toBe(entry.sha256);
+  });
+
+  it('a lock entry with its vendored file missing refuses with the --update-includes remedy', async () => {
+    const rootDir = await tmpRoot();
+    const up = snapshotSession(fakeBase, rootDir, 'update');
+    await up.resolver('https://x.test/c.diagram.json', '/tmp/a.ts');
+
+    const lock = JSON.parse(await readFile(path.join(rootDir, 'includes.lock.json'), 'utf8')) as {
+      includes: Record<string, { file: string; sha256: string }>;
+    };
+    const entry = lock.includes['https://x.test/c.diagram.json']!;
+    await rm(path.join(rootDir, entry.file)); // deleted on disk, but the lock entry still points at it
+
+    const locked = snapshotSession(fakeBase, rootDir, 'locked');
+    let err: Error | undefined;
+    try {
+      await locked.resolver('https://x.test/c.diagram.json', '/tmp/a.ts');
+    } catch (e) {
+      err = e as Error;
+    }
+    expect(err).toBeInstanceOf(Error);
+    expect(err!.message).toMatch(/--update-includes/);
+    expect(err!.message).toContain(entry.file); // names the missing vendor path
   });
 
   it('local specs pass through untouched in both modes', async () => {
