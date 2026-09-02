@@ -1,4 +1,4 @@
-import type { ContainmentEdge, DiagramModel, DiagramNode, DiagramRelation } from './types';
+import type { ContainmentEdge, DiagramModel, DiagramNode, DiagramPlane, DiagramRelation } from './types';
 import { validate } from './validate';
 import { resolveContainmentPlane } from './view/compile';
 import { errMessage } from './util';
@@ -74,6 +74,7 @@ async function expand(
     containment: [...model.containment],
     relations: [...model.relations],
     layers: [...model.layers],
+    planes: [...model.planes],
   };
   for (const node of model.nodes) {
     if (node.include === undefined) continue;
@@ -148,15 +149,51 @@ function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): Diag
     ...(r.layer !== undefined ? { layer: layerId(r.layer) } : {}),
   }));
 
+  // Carried planes (opt-in): the include's planes come over namespaced with
+  // notation intact, so switching to one shows the child's content standalone
+  // in its own visual language. The child's default-plane rows land twice —
+  // untagged (host structure, unchanged behavior) and tagged for the carried
+  // plane — while already-tagged rows land tagged only (they were dropped
+  // entirely before this feature).
+  const carriedPlanes: DiagramPlane[] = [];
+  const carriedContainment: ContainmentEdge[] = [];
+  if (into.includePlanes === true) {
+    if (child.planes.length > 0) {
+      for (const pl of child.planes) {
+        carriedPlanes.push({
+          ...pl,
+          id: p(pl.id),
+          name: `${into.name}/${pl.name}`,
+          ...(pl.containmentOf !== undefined ? { containmentOf: p(pl.containmentOf) } : {}),
+          ...(pl.layers !== undefined ? { layers: pl.layers.map(layerId) } : {}),
+          ...(pl.hides !== undefined ? { hides: pl.hides.map(p) } : {}),
+          ...(pl.hidesTree !== undefined ? { hidesTree: pl.hidesTree.map(p) } : {}),
+        });
+      }
+      for (const e of child.containment) {
+        const plane = e.plane ?? defaultPlane;
+        if (plane === undefined) continue;
+        carriedContainment.push({ parent: p(e.parent), child: p(e.child), plane: p(plane) });
+      }
+    } else if (child.notation !== undefined) {
+      // zero-plane child: synthesize one plane to carry the model-level notation
+      carriedPlanes.push({ id: p('main'), name: into.name, notation: child.notation });
+      for (const e of child.containment) {
+        carriedContainment.push({ parent: p(e.parent), child: p(e.child), plane: p('main') });
+      }
+    }
+  }
+
   // Everything not listed below is the HOST's — `...host` carries its `legend`,
   // `typeColors` and `layerRules` and the child's are never read. Deliberate:
   // those are presentation, and the diagram being looked at owns the look.
   return {
     ...host,
     nodes: [...host.nodes, ...nodes],
-    containment: [...host.containment, ...containment],
+    containment: [...host.containment, ...containment, ...carriedContainment],
     relations: [...host.relations, ...relations],
     layers: [...host.layers, ...layers],
+    planes: [...host.planes, ...carriedPlanes],
   };
 }
 
@@ -219,5 +256,11 @@ function unifyKeys(model: DiagramModel, rootIds: Set<string>, warnings: string[]
 
   const relations = model.relations.map((r) => ({ ...r, from: mapId(r.from), to: mapId(r.to) }));
 
-  return { ...model, nodes, containment, relations };
+  const planes = model.planes.map((pl) => ({
+    ...pl,
+    ...(pl.hides !== undefined ? { hides: pl.hides.map(mapId) } : {}),
+    ...(pl.hidesTree !== undefined ? { hidesTree: pl.hidesTree.map(mapId) } : {}),
+  }));
+
+  return { ...model, nodes, containment, relations, planes };
 }

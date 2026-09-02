@@ -224,6 +224,170 @@ describe('composeIncludes: includePlane', () => {
   });
 });
 
+describe('composeIncludes: includePlanes', () => {
+  it("includePlanes carries the child's planes namespaced with notation intact", async () => {
+    const child = doc('child', {
+      nodes: [
+        { id: 'lane', name: 'Lane', type: 'x' },
+        { id: 'c1', name: 'C1', type: 'x' },
+      ],
+      planes: [{ id: 'git-graph', name: 'Git graph', notation: 'git-graph' }],
+      containment: [{ parent: 'lane', child: 'c1' }],
+    });
+    const host = doc('host', {
+      nodes: [{ id: 'repo', name: 'Repo', type: 'system', include: 'child', includePlanes: true }],
+    });
+    const { model: m } = await composeIncludes(host, 'mem:host', memory({ child }));
+    expect(m.planes).toContainEqual({ id: 'repo/git-graph', name: 'Repo/Git graph', notation: 'git-graph' });
+    // host structure: untagged, unchanged from today's behavior
+    expect(m.containment).toContainEqual({ parent: 'repo/lane', child: 'repo/c1' });
+    // carried: the same edge, tagged for the carried plane
+    expect(m.containment).toContainEqual({ parent: 'repo/lane', child: 'repo/c1', plane: 'repo/git-graph' });
+    // the include node itself has no containment row in the carried plane
+    expect(m.containment.some((e) => e.plane === 'repo/git-graph' && e.parent === 'repo')).toBe(false);
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('carried planes namespace containmentOf, layers, hides and hidesTree', async () => {
+    const child = doc('child', {
+      nodes: [
+        { id: 'a', name: 'a', type: 'x' },
+        { id: 'b', name: 'b', type: 'x' },
+      ],
+      planes: [
+        { id: 'main', name: 'Main' },
+        { id: 'alt', name: 'Alt', containmentOf: 'main', layers: ['l1'], hides: ['a'], hidesTree: ['b'] },
+      ],
+      layers: [{ id: 'l1', name: 'L1' }],
+      containment: [],
+    });
+    // host declares no layer 'l1', so it namespaces
+    const host = doc('host', {
+      nodes: [{ id: 'inc', name: 'Inc', type: 'system', include: 'child', includePlanes: true }],
+    });
+    const { model: m } = await composeIncludes(host, 'mem:host', memory({ child }));
+    expect(m.planes).toContainEqual({
+      id: 'inc/alt',
+      name: 'Inc/Alt',
+      containmentOf: 'inc/main',
+      layers: ['inc/l1'],
+      hides: ['inc/a'],
+      hidesTree: ['inc/b'],
+    });
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('a zero-plane child with a model-level notation synthesizes one carried plane', async () => {
+    const child = doc('child', {
+      nodes: [
+        { id: 'a', name: 'a', type: 'x' },
+        { id: 'b', name: 'b', type: 'x' },
+      ],
+      notation: 'causal-loop',
+      containment: [{ parent: 'a', child: 'b' }],
+    });
+    const host = doc('host', {
+      nodes: [{ id: 'inc', name: 'Inc', type: 'system', include: 'child', includePlanes: true }],
+    });
+    const { model: m } = await composeIncludes(host, 'mem:host', memory({ child }));
+    expect(m.planes).toEqual([{ id: 'inc/main', name: 'Inc', notation: 'causal-loop' }]);
+    // host structure, untagged, unchanged
+    expect(m.containment).toContainEqual({ parent: 'inc/a', child: 'inc/b' });
+    // tagged copy for the synthesized carried plane
+    expect(m.containment).toContainEqual({ parent: 'inc/a', child: 'inc/b', plane: 'inc/main' });
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('a zero-plane child without notation carries nothing', async () => {
+    const child = doc('child', { nodes: [{ id: 'a', name: 'a', type: 'x' }] });
+    const host = doc('host', {
+      nodes: [{ id: 'inc', name: 'Inc', type: 'system', include: 'child', includePlanes: true }],
+    });
+    const { model: m } = await composeIncludes(host, 'mem:host', memory({ child }));
+    expect(m.planes).toEqual([]);
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('includePlanes composes with includePlane: selection picks the untagged structure; all planes still carried', async () => {
+    const child = doc('child', {
+      nodes: [
+        { id: 'a', name: 'a', type: 'x' },
+        { id: 'b', name: 'b', type: 'x' },
+        { id: 'c', name: 'c', type: 'x' },
+      ],
+      planes: [{ id: 'main', name: 'Main' }, { id: 'alt', name: 'Alt' }],
+      containment: [
+        { parent: 'a', child: 'b' },                 // untagged -> default plane 'main'
+        { parent: 'a', child: 'c', plane: 'alt' },
+      ],
+    });
+    const host = doc('host', {
+      nodes: [{ id: 'u', name: 'U', type: 'system', include: 'child', includePlane: 'alt', includePlanes: true }],
+    });
+    const { model: m } = await composeIncludes(host, 'mem:host', memory({ child }));
+    // structural (untagged) import follows includePlane: only the alt-plane rows
+    expect(m.containment).toContainEqual({ parent: 'u/a', child: 'u/c' });
+    expect(m.containment).toContainEqual({ parent: 'u', child: 'u/a' });
+    expect(m.containment).toContainEqual({ parent: 'u', child: 'u/b' });
+    // carried planes are unaffected by includePlane: both come over in full
+    expect(m.planes).toEqual([
+      { id: 'u/main', name: 'U/Main' },
+      { id: 'u/alt', name: 'U/Alt' },
+    ]);
+    expect(m.containment).toContainEqual({ parent: 'u/a', child: 'u/b', plane: 'u/main' });
+    expect(m.containment).toContainEqual({ parent: 'u/a', child: 'u/c', plane: 'u/alt' });
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('unifyKeys remaps carried-plane hides and hidesTree through key unification', async () => {
+    const childA = doc('childA', {
+      nodes: [
+        { id: 'x', name: 'X', type: 't' },
+        { id: 'shared', name: 'Shared', type: 't', key: 'k' },
+      ],
+      planes: [{ id: 'p1', name: 'P1', hides: ['shared'], hidesTree: ['shared'] }],
+      containment: [{ parent: 'x', child: 'shared' }],
+    });
+    const childB = doc('childB', { nodes: [{ id: 'shared', name: 'Shared', type: 't', key: 'k' }] });
+    const host = doc('host', {
+      nodes: [
+        { id: 'a', name: 'A', type: 'system', include: 'childA', includePlanes: true },
+        { id: 'b', name: 'B', type: 'system', include: 'childB' },
+      ],
+    });
+    const { model: m } = await composeIncludes(host, 'mem:host', memory({ childA, childB }));
+    // the merged node composes to the key id, and the carried plane's hides/hidesTree
+    // — namespaced to the pre-unification id ('a/shared') at graft time — follow the rename
+    const plane = m.planes.find((pl) => pl.id === 'a/p1');
+    expect(plane).toMatchObject({ hides: ['k'], hidesTree: ['k'] });
+    expect(m.nodes.some((n) => n.id === 'a/shared')).toBe(false);
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('without includePlanes output is byte-identical to before', async () => {
+    const child = doc('child', {
+      nodes: [
+        { id: 'a', name: 'a', type: 'x' },
+        { id: 'b', name: 'b', type: 'x' },
+      ],
+      planes: [{ id: 'main', name: 'Main' }, { id: 'alt', name: 'Alt' }],
+      containment: [
+        { parent: 'a', child: 'b' },
+        { parent: 'b', child: 'a', plane: 'alt' },
+      ],
+    });
+    const omitted = doc('host', { nodes: [{ id: 'u', name: 'U', type: 'system', include: 'child' }] });
+    const explicitFalse = doc('host', {
+      nodes: [{ id: 'u', name: 'U', type: 'system', include: 'child', includePlanes: false }],
+    });
+    const { model: m1 } = await composeIncludes(omitted, 'mem:host', memory({ child }));
+    const { model: m2 } = await composeIncludes(explicitFalse, 'mem:host', memory({ child }));
+    expect(m2).toEqual(m1);
+    expect(m1.planes).toEqual([]); // still dropped when the feature isn't opted into
+    expect(validate(m1)).toEqual([]);
+  });
+});
+
 describe('composeIncludes: key unification', () => {
   const service = (svcName: string): DiagramModel =>
     doc(svcName, {
