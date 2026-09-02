@@ -1,3 +1,5 @@
+import type { DiagramModel, DiagramNode } from './types';
+
 /** JS reserved words plus the two bindings the emitted file itself declares. */
 const RESERVED = new Set([
   'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default',
@@ -67,4 +69,158 @@ export function tsLiteral(value: unknown, indent: number): string {
   // undefined/null never reach here: model JSON has no undefined, and no
   // model field is nullable — a new nullable field must extend this emitter.
   throw new Error(`ejectSource: cannot emit a ${value === null ? 'null' : typeof value} literal`);
+}
+
+function quoted(s: string): string {
+  return tsLiteral(s, 0);
+}
+
+/** NodeOpts emission order — mirrors the interface declaration in builder.ts. */
+const NODE_OPT_KEYS = [
+  'type', 'name', 'icon', 'shape', 'image', 'color', 'textColor', 'technology',
+  'description', 'rich', 'textAlign', 'fontScale', 'metadata', 'key', 'include',
+  'plane', 'layer', 'columns',
+] as const;
+
+/** RelateOpts emission order (after the always-first `kind` and conditional `id`)
+ * — mirrors the interface declaration in builder.ts. */
+const RELATE_OPT_KEYS = [
+  'label', 'labels', 'style', 'description', 'layer', 'polarity', 'delay',
+  'fromColumn', 'toColumn',
+] as const;
+
+/** plane() opts emission order — mirrors ModelBuilder.plane's opts parameter. */
+const PLANE_OPT_KEYS = [
+  'name', 'containmentOf', 'layers', 'baseRelations', 'notation', 'hides', 'hidesTree',
+] as const;
+
+/** Renders a trailing options object for a call, eliding it entirely when empty. */
+function opts(entries: [string, unknown][]): string {
+  if (entries.length === 0) return '';
+  const rendered = entries.map(([k, v]) => `${k}: ${tsLiteral(v, 1)}`);
+  const inline = `{ ${rendered.join(', ')} }`;
+  if (inline.length <= INLINE_LIMIT && !inline.includes('\n')) return `, ${inline}`;
+  return `, {\n${rendered.map((r) => `  ${r},`).join('\n')}\n}`;
+}
+
+function nodeOpts(n: DiagramNode): [string, unknown][] {
+  const out: [string, unknown][] = [];
+  for (const k of NODE_OPT_KEYS) {
+    if (k === 'name') {
+      if (n.name !== n.id) out.push(['name', n.name]);
+      continue;
+    }
+    const v = (n as unknown as Record<string, unknown>)[k];
+    if (v !== undefined) out.push([k, v]);
+  }
+  return out;
+}
+
+/**
+ * The model as an idiomatic builder module. Sections in a fixed order, each in
+ * model-array order — exactly what ModelBuilder.toJSON() reassembles, so the
+ * emitted file reproduces the model through the builder.
+ */
+export function ejectSource(model: DiagramModel): string {
+  const referenced = new Set<string>();
+  for (const c of model.containment) {
+    referenced.add(c.parent);
+    referenced.add(c.child);
+  }
+  for (const r of model.relations) {
+    referenced.add(r.from);
+    referenced.add(r.to);
+  }
+  const idents = identifiersFor(model.nodes.filter((n) => referenced.has(n.id)).map((n) => n.id));
+
+  const sections: string[][] = [];
+
+  if (model.planes.length > 0)
+    sections.push(
+      model.planes.map((p) => {
+        const o: [string, unknown][] = [];
+        for (const k of PLANE_OPT_KEYS) {
+          if (k === 'name') {
+            if (p.name !== p.id) o.push(['name', p.name]);
+            continue;
+          }
+          const v = (p as unknown as Record<string, unknown>)[k];
+          if (v !== undefined) o.push([k, v]);
+        }
+        return `m.plane(${quoted(p.id)}${opts(o)});`;
+      }),
+    );
+
+  if (model.layers.length > 0)
+    sections.push(
+      model.layers.map((l) => {
+        const o: [string, unknown][] = [];
+        if (l.name !== l.id) o.push(['name', l.name]);
+        if (l.tint !== undefined) o.push(['tint', l.tint]);
+        return `m.layer(${quoted(l.id)}${opts(o)});`;
+      }),
+    );
+
+  if (model.nodes.length > 0)
+    sections.push(
+      model.nodes.map((n) => {
+        const ident = idents.get(n.id);
+        const call = `m.node(${quoted(n.id)}${opts(nodeOpts(n))});`;
+        return ident !== undefined ? `const ${ident} = ${call}` : call;
+      }),
+    );
+
+  if (model.containment.length > 0) {
+    const groups: { parent: string; plane: string | undefined; children: string[] }[] = [];
+    for (const c of model.containment) {
+      const last = groups[groups.length - 1];
+      if (last !== undefined && last.parent === c.parent && last.plane === c.plane) last.children.push(c.child);
+      else groups.push({ parent: c.parent, plane: c.plane, children: [c.child] });
+    }
+    sections.push(
+      groups.map((g) => {
+        const kids = g.children.map((c) => idents.get(c)!).join(', ');
+        const plane = g.plane !== undefined ? `, { plane: ${quoted(g.plane)} }` : '';
+        return `${idents.get(g.parent)!}.contains(${kids}${plane});`;
+      }),
+    );
+  }
+
+  if (model.relations.length > 0) {
+    const counters = new Map<string, number>();
+    sections.push(
+      model.relations.map((r) => {
+        const pair = `${r.from}->${r.to}`;
+        const n = counters.get(pair) ?? 0;
+        counters.set(pair, n + 1);
+        const o: [string, unknown][] = [['kind', r.kind]];
+        if (r.id !== `${pair}#${n}`) o.push(['id', r.id]);
+        for (const k of RELATE_OPT_KEYS) {
+          const v = (r as unknown as Record<string, unknown>)[k];
+          if (v !== undefined) o.push([k, v]);
+        }
+        // relate() requires opts (kind is mandatory), so opts() never returns ''.
+        return `m.relate(${idents.get(r.from)!}, ${idents.get(r.to)!}${opts(o)});`;
+      }),
+    );
+  }
+
+  const setters: string[] = [];
+  if (model.typeColors !== undefined) setters.push(`m.typeColors(${tsLiteral(model.typeColors, 0)});`);
+  if (model.layerRules !== undefined) setters.push(`m.layerRules(${tsLiteral(model.layerRules, 0)});`);
+  if (model.legend !== undefined) setters.push(`m.legend(${tsLiteral(model.legend, 0)});`);
+  if (model.notation !== undefined) setters.push(`m.notation(${quoted(model.notation)});`);
+  if (model.style !== undefined) setters.push(`m.style(${quoted(model.style)});`);
+  if (setters.length > 0) sections.push(setters);
+
+  const header = `const m = model(${quoted(model.id)}${model.name !== model.id ? `, { name: ${tsLiteral(model.name, 0)} }` : ''});`;
+  return [
+    ["import { model } from '@diagramming/core';"],
+    [header],
+    ...sections,
+    ['export default m;'],
+  ]
+    .map((s) => s.join('\n'))
+    .join('\n\n')
+    .concat('\n');
 }

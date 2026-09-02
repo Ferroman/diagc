@@ -20,6 +20,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 export const CORE_VERSION = 1;
+export { ejectSource } from './eject';
 export * from './types';
 export * from './mutate';
 export { normalizeRuns, runsToPlainText } from './text';
