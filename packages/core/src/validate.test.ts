@@ -189,6 +189,18 @@ describe('validate', () => {
     expect(validate(ok)).toEqual([]);
   });
 
+  it('flags includePlane and includePlanes problems', () => {
+    const m = emptyModel();
+    m.nodes = [
+      { id: 'a', name: 'a', includePlane: 'x' },
+      { id: 'b', name: 'b', includePlanes: true },
+      { id: 'c', name: 'c', include: './x.json', includePlane: '' },
+      { id: 'd', name: 'd', include: './x.json', includePlane: 'p', includePlanes: true },
+    ];
+    const issues = validate(m);
+    expect(issues.filter((i) => i.code === 'invalid-include').map((i) => i.ref)).toEqual(['a', 'b', 'c']);
+  });
+
   it('accepts a node with no type (typeless casual node)', () => {
     const m = emptyModel();
     m.nodes = [{ id: 'trust', name: 'Trust' }];

@@ -44,6 +44,10 @@ export interface NodeOpts {
   key?: string;
   /** compose another diagram's content under this node (see DiagramNode.include) */
   include?: string;
+  /** structure plane to graft from the include (see DiagramNode.includePlane) */
+  includePlane?: string;
+  /** carry the include's planes over (see DiagramNode.includePlanes) */
+  includePlanes?: boolean;
   /** restrict this node to a single plane (see DiagramNode.plane) */
   plane?: string;
   /** transparent-sheet membership (see DiagramNode.layer) */

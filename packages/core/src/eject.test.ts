@@ -195,6 +195,18 @@ describe('ejectSource', () => {
     expect(src).not.toContain('name:');
   });
 
+  it('emits includePlane and includePlanes', () => {
+    const m: DiagramModel = {
+      version: 1, id: 't', name: 't',
+      nodes: [{ id: 'u', name: 'u', include: './c.diagram.json', includePlane: 'flow', includePlanes: true }],
+      containment: [], relations: [], layers: [], planes: [],
+    };
+    const src = ejectSource(m);
+    expect(src).toContain("include: './c.diagram.json'");
+    expect(src).toContain("includePlane: 'flow'");
+    expect(src).toContain('includePlanes: true');
+  });
+
   it('elides only relation ids that match the position-synthesized id, and replaying the emitted relate() calls through the real builder reproduces every original id', () => {
     const m: DiagramModel = {
       version: 1, id: 't', name: 't',

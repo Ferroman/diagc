@@ -50,6 +50,12 @@ export interface DiagramNode {
   /** URL or path (relative to the declaring source) of another diagram whose
    * content this node contains after compile-time expansion */
   include?: string;
+  /** which of the included diagram's planes supplies the grafted structure
+   * (default: its default plane); meaningful only beside `include` */
+  includePlane?: string;
+  /** carry the included diagram's planes over — namespaced, notations intact —
+   * so its content stays viewable in its own visual language; opt-in */
+  includePlanes?: boolean;
   /** accent color (border/background tint); overrides the type registry look */
   color?: string;
   /** label text color; overrides the default (which follows `color` for C4/shape

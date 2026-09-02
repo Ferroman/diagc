@@ -96,7 +96,7 @@ function quoted(s: string): string {
 const NODE_OPT_KEYS = [
   'type', 'name', 'icon', 'shape', 'image', 'color', 'textColor', 'technology',
   'description', 'rich', 'textAlign', 'fontScale', 'metadata', 'key', 'include',
-  'plane', 'layer', 'columns',
+  'includePlane', 'includePlanes', 'plane', 'layer', 'columns',
 ] as const;
 
 // Drift guard: a field added to DiagramNode without a matching entry above

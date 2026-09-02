@@ -53,6 +53,14 @@ describe('builder: nodes and containment', () => {
     expect(json.nodes[1]).toMatchObject({ include: 'https://x.example/perm.diagram.json' });
   });
 
+  it('node opts carry includePlane and includePlanes', () => {
+    const m = model('t');
+    m.node('u', { include: './child.diagram.json', includePlane: 'flow', includePlanes: true });
+    const n = m.toJSON().nodes[0]!;
+    expect(n.includePlane).toBe('flow');
+    expect(n.includePlanes).toBe(true);
+  });
+
   it('creates a typeless node from bare opts', () => {
     const m = model('t');
     m.node('trust', { name: 'Trust' });

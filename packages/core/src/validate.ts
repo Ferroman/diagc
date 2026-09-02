@@ -170,6 +170,20 @@ function validateNodes(ctx: Ctx): void {
     if (n.include !== undefined && (typeof n.include !== 'string' || n.include === '')) {
       report(issues, 'invalid-include', `Node '${n.id}' has invalid include '${String(n.include)}'`, n.id);
     }
+    if (n.includePlane !== undefined) {
+      if (typeof n.includePlane !== 'string' || n.includePlane === '') {
+        report(issues, 'invalid-include', `Node '${n.id}' has invalid includePlane '${String(n.includePlane)}'`, n.id);
+      } else if (n.include === undefined) {
+        report(issues, 'invalid-include', `Node '${n.id}' has includePlane without include`, n.id);
+      }
+    }
+    if (n.includePlanes !== undefined) {
+      if (typeof n.includePlanes !== 'boolean') {
+        report(issues, 'invalid-include', `Node '${n.id}' has invalid includePlanes '${String(n.includePlanes)}'`, n.id);
+      } else if (n.include === undefined) {
+        report(issues, 'invalid-include', `Node '${n.id}' has includePlanes without include`, n.id);
+      }
+    }
     // node.plane must reference a declared plane; node.layer a declared layer
     if (n.plane !== undefined && !ctx.planeIds.has(n.plane)) {
       report(issues, 'unknown-plane', `Node '${n.id}' belongs to unknown plane '${n.plane}'`, n.id);
