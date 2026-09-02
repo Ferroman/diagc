@@ -129,13 +129,13 @@ m.node('warn', {
 
 Presets are `clean`, `sketch`, `hand-drawn`, `pencil`, `blueprint`, `marker`. Picking one in the studio header is a viewer preference and is not saved to the diagram.
 
-To make a diagram *always* render hand-drawn, set `style` on the model. The builder has no method for it, so export a plain object instead:
+To make a diagram *always* render hand-drawn, pin `style` on the model:
 
 ```ts
-export default { ...m.toJSON(), style: 'hand-drawn' };
+m.style('hand-drawn');
 ```
 
-`toJSON()` validates, so you still get compile-time checking. An unknown preset id is legal — the renderer falls back to the app-level preference.
+An unknown preset id is legal — the renderer falls back to the app-level preference.
 
 ## Organise the file
 
@@ -167,3 +167,4 @@ The message names the file and the issue, and no artifact is written. Every code
 - [Builder API reference](../reference/builder-api.md)
 - [Use planes and layers](use-planes-and-layers.md) — one model, several views
 - [Compose diagrams](compose-diagrams.md) — `include` and `key`
+- [Eject a diagram to TypeScript](eject-to-typescript.md) — started in the studio? promote it to this format.

@@ -28,6 +28,9 @@ Declares an entity and returns a handle for containment and relations.
 | `color`, `textColor` | `string?` | `color` also wins over a notation's fill (e.g. C4's solid palette). |
 | `technology` | `string?` | Composed into the type subtitle: `[Container: Java, Spring Boot]`. See [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md). |
 | `description` | `string?` | Detail panel only — never drawn on the canvas. |
+| `rich` | `TextRun[]?` | Bold/italic label runs. `name` must equal the concatenated run text, or validation fails with `invalid-rich`. |
+| `textAlign` | `'left' \| 'center' \| 'right'?` | Default `left`. |
+| `fontScale` | `'sm' \| 'md' \| 'lg'?` | Default `md`. |
 | `metadata` | `Record<string, unknown>?` | |
 | `key` | `string?` | Cross-diagram identity. |
 | `include` | `string?` | Compose another diagram under this node. |
@@ -71,14 +74,16 @@ Duplicate parent/child/plane triples are ignored, so calling it twice is safe. A
 | Option | Type | Notes |
 | --- | --- | --- |
 | `kind` | `string` | **Required.** Free-form. |
+| `id` | `string?` | Explicit relation id. Default `${from}->${to}#${n}`. The pair counter advances either way, so a later un-id'd relation on the same pair still gets the suffix it would have gotten without the override. |
 | `label` | `string?` | |
+| `labels` | `EdgeLabel[]?` | Positioned edge labels; supersedes `label` when present. See [Model reference](model.md#edgelabel). |
 | `description` | `string?` | |
 | `layer` | `string?` | Must match a declared layer. |
 | `style` | `RelationStyle?` | See [Model reference](model.md#relationstyle). |
 | `polarity`, `delay` | | Causal-loop diagrams. |
 | `fromColumn`, `toColumn` | `string?` | ER foreign keys. |
 
-Relation ids are generated as `from->to#n`, with `n` counting per ordered pair — so two relations between the same nodes never collide.
+Relation ids are generated as `from->to#n`, with `n` counting per ordered pair — so two relations between the same nodes never collide. Pass `id` to name one explicitly instead.
 
 ## `m.fk(from, fromColumn, to, toColumn?, opts?) → m`
 
@@ -266,6 +271,19 @@ m.notation('c4');
 ```
 
 `id` must be one of `BUILTIN_NOTATIONS`; an unknown id fails validation with `unknown-notation`, same as an unknown `plane.notation`. Calling it twice replaces the value.
+
+## `m.style(id) → m`
+
+Pin the model-level renderer style preset (see [Model reference](model.md#diagrammodel)) — the
+one way to make a diagram *always* render in a preset like `hand-drawn`, rather than following
+whatever the viewer's own header picker is set to.
+
+```ts
+m.style('hand-drawn');
+```
+
+An unknown preset id is legal — the renderer falls back to the app-level preference. Calling it
+twice replaces the value.
 
 ## `m.toJSON() → DiagramModel`
 

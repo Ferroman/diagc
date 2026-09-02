@@ -15,7 +15,7 @@ Node ≥ 22. Everything the CLI needs is in the package — the prebuilt studio,
 From a checkout, `pnpm link --global` inside the repo gives you a `diagc` that runs the working tree instead. Both layouts are detected automatically; the differences are called out below where they matter.
 
 ```
-diagc <compile|watch|publish|studio> [files...] [--out dir] [--no-images]
+diagc <compile|watch|publish|studio|eject> [files...] [--out dir] [--no-images]
 ```
 
 An unknown command exits `1` with that usage line.
@@ -83,6 +83,34 @@ Which server depends on how `diagc` was installed, and nothing else does:
 
 Both serve the same API from the same route table (`packages/diagc/src/api`), so saving, renaming, assets, and the shape library behave identically.
 
+### `eject`
+
+Promotes a JSON diagram to a generated `.diagram.ts` — but only after executing the generated
+source and proving it rebuilds the identical model.
+
+```bash
+diagc eject shop
+```
+
+- **Input:** one diagram name, or a path under `.diagrams/src` — either way only the name is
+  kept (the `.diagrams/src/` prefix and `.diagram.{ts,json}` suffix are both stripped).
+- **Output:** `.diagrams/src/<name>.diagram.ts`; `<name>.diagram.json` is deleted. Sidecars
+  (`.layout.json`, `.drawings.json`, …) are untouched.
+- **Exit code:** `0` and `✓ <tsPath>` on success; `1` and the reason on stderr otherwise.
+
+Every refusal leaves `.diagrams/src` exactly as it was — nothing is written, nothing is deleted:
+
+| Case | What happens |
+| --- | --- |
+| No `<name>.diagram.json` | Refuses: no such diagram. |
+| `<name>.diagram.ts` already exists | Refuses: already TypeScript-owned. |
+| The JSON does not parse, or fails validation | Refuses, naming the parse error or listing the validation issues. |
+| The generated source fails to execute, or rebuilds a model that differs from the JSON | Refuses, naming the paths where the two models first differ. |
+
+See [Eject a diagram to TypeScript](../how-to/eject-to-typescript.md) for the studio side and
+the crash-recovery note (a crash between writing the TS and deleting the JSON leaves both —
+recovery is deleting one).
+
 ## Flags
 
 | Flag | Applies to | Default | Meaning |
@@ -139,3 +167,4 @@ Inside this monorepo:
 
 - [Set up diagc in another repo](../how-to/set-up-in-another-repo.md)
 - [Publish and share](../how-to/publish-and-share.md)
+- [Eject a diagram to TypeScript](../how-to/eject-to-typescript.md)
