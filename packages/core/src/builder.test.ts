@@ -396,3 +396,41 @@ describe('activity', () => {
     ]);
   });
 });
+
+describe('builder: rich text, explicit ids, labels and style', () => {
+  it('node opts carry rich text, alignment and font scale', () => {
+    const m = model('t');
+    m.node('a', { rich: [{ text: 'hi', bold: true }], textAlign: 'center', fontScale: 'md' });
+    const n = m.toJSON().nodes[0]!;
+    expect(n.rich).toEqual([{ text: 'hi', bold: true }]);
+    expect(n.textAlign).toBe('center');
+    expect(n.fontScale).toBe('md');
+  });
+
+  it('relate honours an explicit id and still advances the pair counter', () => {
+    const m = model('t');
+    const a = m.node('a');
+    const b = m.node('b');
+    m.relate(a, b, { kind: 'sync', id: 'custom' });
+    m.relate(a, b, { kind: 'sync' });
+    expect(m.toJSON().relations.map((r) => r.id)).toEqual(['custom', 'a->b#1']);
+  });
+
+  it('relate carries multi-label edges', () => {
+    const m = model('t');
+    const a = m.node('a');
+    const b = m.node('b');
+    m.relate(a, b, { kind: 'sync', labels: [{ id: 'l1', text: 'near', t: 0.2 }] });
+    expect(m.toJSON().relations[0]!.labels).toEqual([{ id: 'l1', text: 'near', t: 0.2 }]);
+  });
+
+  it('style pins the model-level renderer preset', () => {
+    const m = model('t');
+    expect(m.style('sketch')).toBe(m);
+    expect(m.toJSON().style).toBe('sketch');
+  });
+
+  it('toJSON omits style when never set', () => {
+    expect('style' in model('t').toJSON()).toBe(false);
+  });
+});

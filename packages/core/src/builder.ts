@@ -7,10 +7,14 @@ import type {
   DiagramNode,
   DiagramPlane,
   DiagramRelation,
+  EdgeLabel,
+  FontScale,
   LayerRule,
   NotationId,
   Polarity,
   RelationStyle,
+  TextAlign,
+  TextRun,
 } from './types';
 import { DiagramValidationError, validate } from './validate';
 
@@ -29,6 +33,12 @@ export interface NodeOpts {
   /** implementation technology (see DiagramNode.technology) */
   technology?: string;
   description?: string;
+  /** rich-text label runs (see DiagramNode.rich) */
+  rich?: TextRun[];
+  /** label alignment (see DiagramNode.textAlign) */
+  textAlign?: TextAlign;
+  /** label size step (see DiagramNode.fontScale) */
+  fontScale?: FontScale;
   metadata?: Record<string, unknown>;
   /** cross-diagram identity (see DiagramNode.key) */
   key?: string;
@@ -44,7 +54,13 @@ export interface NodeOpts {
 
 export interface RelateOpts {
   kind: string;
+  /** explicit relation id; when omitted the builder synthesizes `${from}->${to}#${n}`.
+   * The pair counter advances either way, so a later un-id'd relation on the same
+   * pair gets the same suffix it would have gotten without the override. */
+  id?: string;
   label?: string;
+  /** positioned edge labels (see DiagramRelation.labels) */
+  labels?: EdgeLabel[];
   style?: RelationStyle;
   description?: string;
   layer?: string;
@@ -285,6 +301,7 @@ export class ModelBuilder {
   private typeColorMap: Record<string, string> | undefined;
   private layerRuleList: LayerRule[] | undefined;
   private modelNotation: string | undefined;
+  private modelStyle: string | undefined;
   private pairCounters = new Map<string, number>();
   private git: GitGraphBuilder | undefined;
 
@@ -342,9 +359,9 @@ export class ModelBuilder {
     const pair = `${from.id}->${to.id}`;
     const n = this.pairCounters.get(pair) ?? 0;
     this.pairCounters.set(pair, n + 1);
-    const { kind, ...rest } = opts;
+    const { kind, id, ...rest } = opts;
     this.relations.push({
-      id: `${pair}#${n}`,
+      id: id ?? `${pair}#${n}`,
       from: from.id,
       to: to.id,
       kind,
@@ -437,6 +454,12 @@ export class ModelBuilder {
     return this;
   }
 
+  /** pin the model-level renderer style preset (see DiagramModel.style) */
+  style(id: string): this {
+    this.modelStyle = id;
+    return this;
+  }
+
   toJSON(): DiagramModel {
     const json: DiagramModel = {
       version: 1,
@@ -451,6 +474,7 @@ export class ModelBuilder {
       ...(this.typeColorMap !== undefined ? { typeColors: this.typeColorMap } : {}),
       ...(this.layerRuleList !== undefined ? { layerRules: this.layerRuleList } : {}),
       ...(this.modelNotation !== undefined ? { notation: this.modelNotation } : {}),
+      ...(this.modelStyle !== undefined ? { style: this.modelStyle } : {}),
     };
     const issues = validate(json);
     if (issues.length > 0) throw new DiagramValidationError(issues);
