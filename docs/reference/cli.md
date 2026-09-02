@@ -105,7 +105,8 @@ Every refusal leaves `.diagrams/src` exactly as it was — nothing is written, n
 | No `<name>.diagram.json` | Refuses: no such diagram. |
 | `<name>.diagram.ts` already exists | Refuses: already TypeScript-owned. |
 | The JSON does not parse, or fails validation | Refuses, naming the parse error or listing the validation issues. |
-| The generated source fails to execute, or rebuilds a model that differs from the JSON | Refuses, naming the paths where the two models first differ. |
+| The generated source fails to execute | Refuses, surfacing the underlying execution error. |
+| The generated source executes but rebuilds a model that differs from the JSON | Refuses, naming the paths where the two models first differ. |
 
 See [Eject a diagram to TypeScript](../how-to/eject-to-typescript.md) for the studio side and
 the crash-recovery note (a crash between writing the TS and deleting the JSON leaves both —

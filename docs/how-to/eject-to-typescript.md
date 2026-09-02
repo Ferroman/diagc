@@ -46,8 +46,9 @@ and exits `1`.
 that generated source in a throwaway location** — outside `.diagrams/src`, so a running compile
 watcher never sees the candidate file — and deep-compares the model it rebuilds against the
 model it started from. Only once the two match exactly does it write the `.diagram.ts` and
-delete the `.diagram.json`. A mismatch — or the generated source failing to execute at all —
-refuses instead, naming the paths where the two models first differ.
+delete the `.diagram.json`. If the generated source fails to execute at all, it refuses with the
+underlying error; if it executes but rebuilds a model that differs from the JSON, it refuses
+instead, naming the paths where the two models first differ.
 
 ## Sidecars survive
 
@@ -67,7 +68,8 @@ deleted:
 | No `<name>.diagram.json` | Refuses: no such diagram. |
 | `<name>.diagram.ts` already exists | Refuses: already TypeScript-owned. |
 | The JSON does not parse, or fails validation | Refuses, naming the parse error or listing the validation issues. |
-| The generated source fails to execute, or rebuilds a model that differs from the JSON | Refuses, naming the paths where the two models first differ. |
+| The generated source fails to execute | Refuses, surfacing the underlying execution error. |
+| The generated source executes but rebuilds a model that differs from the JSON | Refuses, naming the paths where the two models first differ. |
 
 ## Crash recovery
 
