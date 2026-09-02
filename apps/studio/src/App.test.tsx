@@ -168,6 +168,81 @@ describe('view-mode layout preview', () => {
     expect(screen.queryByRole('button', { name: /reset layout/i })).toBeNull();
     expect((screen.getByLabelText('Layout algorithm') as HTMLSelectElement).value).toBe('layered');
   });
+
+  it('bails out of entering edit when the diagram switches while the raw-source fetch is in flight', async () => {
+    // Hold the GET for sketch's raw source open until the test releases it, so
+    // a diagram switch can land inside the async gap between the click and the
+    // response.
+    let releaseSketchFetch: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      releaseSketchFetch = resolve;
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url === '/api/diagrams') {
+          return new Response(
+            JSON.stringify({
+              diagrams: [
+                { name: 'sketch', model: sketchModel, issues: [], editable: true },
+                { name: 'two', model: twoModel, issues: [], editable: true },
+              ],
+            }),
+            { status: 200 },
+          );
+        }
+        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
+        if (url === '/api/drawings') return new Response(JSON.stringify({ drawings: {} }), { status: 200 });
+        if (url === '/api/diagrams/sketch' && (init === undefined || init.method === undefined || init.method === 'GET')) {
+          await gate;
+          return new Response(JSON.stringify({ model: sketchModel }), { status: 200 });
+        }
+        if (url === '/api/diagrams/two' && (init === undefined || init.method === undefined || init.method === 'GET')) {
+          return new Response(JSON.stringify({ model: twoModel }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }),
+    );
+
+    render(<App />);
+    // 'sketch' sorts first, so it is the default selection this click targets.
+    fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
+
+    // Switch to 'two' while the sketch fetch is still pending.
+    window.location.hash = '#/two';
+    fireEvent(window, new HashChangeEvent('hashchange'));
+    await waitFor(() =>
+      expect((screen.getByRole('combobox', { name: 'Diagram' }) as HTMLSelectElement).value).toBe('two'),
+    );
+
+    releaseSketchFetch?.();
+    // Let the now-resolved fetch's promise chain run.
+    await waitFor(() => expect((fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0));
+
+    // The stale response must never open an edit session on 'sketch' — the
+    // header still shows 'two', and no edit-only control ever appears.
+    expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^done$/i })).toBeNull();
+    expect((screen.getByRole('combobox', { name: 'Diagram' }) as HTMLSelectElement).value).toBe('two');
+  });
+
+  it('keeps the layout preview on a failed raw-source fetch, unlike the old synchronous drop', async () => {
+    render(<App />);
+    const algorithm = await screen.findByLabelText('Layout algorithm');
+    fireEvent.change(algorithm, { target: { value: 'force' } });
+    expect(await screen.findByRole('button', { name: /reset layout/i })).toBeDefined();
+
+    // Fail exactly the next fetch — the raw-source GET the Edit click triggers.
+    (fetch as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => new Response('', { status: 500 }));
+    fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
+
+    await screen.findByText(/Could not load 'sketch' for editing/);
+
+    // A failed entry never reached the point of dropping the preview.
+    expect((screen.getByLabelText('Layout algorithm') as HTMLSelectElement).value).toBe('force');
+    expect(screen.getByRole('button', { name: /reset layout/i })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull();
+  });
 });
 
 // Its own boot stub, and its own describe: `names` is sorted, so folding 'drill'

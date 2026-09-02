@@ -159,6 +159,12 @@ export function App() {
   const dl = useDeepLink({ names, booted, leaveEditRef });
   const { selected, setSelected, enteredPath, setEnteredPath, handleEnteredPathChange } = dl;
   const drillRoot = enteredPath.length > 0 ? enteredPath[enteredPath.length - 1] : undefined;
+  // Live mirror of `selected` for enterEditFromSource's in-flight fetch to check
+  // against once it resolves (same ref-mirror pattern as useDeepLink's urlNowRef) —
+  // a callback captures `selected` at click time, but the async gap means the
+  // user may have switched diagrams before the response arrives.
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
 
   // Auto-arrange is scoped to the diagram it was switched on for, so one
   // diagram's choice cannot silently rearrange the next one you open.
@@ -437,17 +443,25 @@ export function App() {
   // the boot model is composed for umbrellas, and a session seeded from it
   // would save grafted content into the source.
   const enterEditFromSource = async () => {
-    // Edit mode reads the session's own overlay, not the preview — drop it here
-    // (mirroring resetView() on the diagram picker) so Save + Done doesn't come
-    // back to a stale preview masking what was saved.
-    setLayoutPreview({});
+    const target = selected;
     try {
-      const res = await fetch(`/api/diagrams/${selected}`);
+      const res = await fetch(`/api/diagrams/${target}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = (await res.json()) as { model: DiagramModel; layout?: LayoutOverlay; drawings?: Drawings };
-      enterEdit(selected, body.model, body.layout ?? emptyLayout(), body.drawings ?? emptyDrawings());
+      // The user may have switched diagrams (picker or hashchange) while this
+      // fetch was in flight — entering edit on `target` now would open a session
+      // on the diagram the header no longer shows, so a stale response is
+      // dropped instead of touching any state for a diagram that isn't selected.
+      if (selectedRef.current !== target) return;
+      // Edit mode reads the session's own overlay, not the preview — drop it here
+      // (mirroring resetView() on the diagram picker) so Save + Done doesn't come
+      // back to a stale preview masking what was saved. Only on success: a
+      // failed fetch leaves the preview exactly as the old synchronous code did.
+      setLayoutPreview({});
+      enterEdit(target, body.model, body.layout ?? emptyLayout(), body.drawings ?? emptyDrawings());
     } catch (e) {
-      setSaveIssues([{ message: `Could not load '${selected}' for editing: ${errMessage(e)}` }]);
+      if (selectedRef.current !== target) return;
+      setSaveIssues([{ message: `Could not load '${target}' for editing: ${errMessage(e)}` }]);
     }
   };
 
