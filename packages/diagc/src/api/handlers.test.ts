@@ -10,6 +10,7 @@ import {
   listDrawings,
   listLayouts,
   readAsset,
+  readComposedDiagram,
   readDiagram,
   readLibrary,
   renameDiagram,
@@ -328,6 +329,113 @@ describe('listLayouts', () => {
     const body = r.body as { layouts: Record<string, { version: number }> };
     expect(body.layouts['flows']?.version).toBe(1);
     await rm(src, { recursive: true, force: true });
+  });
+});
+
+describe('composed reads', () => {
+  // child declares a keyed node whose type ('database') disagrees with the
+  // umbrella's own same-keyed node ('service') — an easy, deterministic
+  // trigger for composeIncludes' type-difference warning — alongside a plain
+  // (unkeyed) node that grafts straight through to 'u/x'.
+  const child = {
+    version: 1,
+    id: 'child',
+    name: 'child',
+    nodes: [
+      { id: 'x', name: 'X', type: 'service' },
+      { id: 'shared', name: 'Shared (child)', type: 'database', key: 'shared-key' },
+    ],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  };
+  const umbrella = {
+    version: 1,
+    id: 'umbrella',
+    name: 'umbrella',
+    nodes: [
+      { id: 'shared', name: 'Shared', type: 'service', key: 'shared-key' },
+      { id: 'u', name: 'Included', type: 'system', include: './child.diagram.json' },
+    ],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  };
+  const brokenUmbrella = {
+    version: 1,
+    id: 'umbrella',
+    name: 'umbrella',
+    nodes: [{ id: 'u', name: 'Included', type: 'system', include: './missing.diagram.json' }],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  };
+
+  it('listDiagramModels composes an editable umbrella and surfaces warnings as issues', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-compose-'));
+    await writeFile(path.join(dir, 'child.diagram.json'), JSON.stringify(child));
+    await writeFile(path.join(dir, 'umbrella.diagram.json'), JSON.stringify(umbrella));
+
+    const r = await listDiagramModels(dir, path.join(dir, 'art'));
+    const body = r.body as {
+      diagrams: { name: string; model: { nodes: { id: string }[] } | null; issues: { message: string }[]; editable: boolean }[];
+    };
+    const entry = body.diagrams.find((d) => d.name === 'umbrella');
+    expect(entry?.editable).toBe(true);
+    expect(entry?.model?.nodes.some((n) => n.id === 'u/x')).toBe(true); // grafted child content
+    expect(entry?.issues.some((i) => /shared-key/.test(i.message) && /type/.test(i.message))).toBe(true);
+  });
+
+  it('listDiagramModels falls back to the raw model when compose fails', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-compose-'));
+    await writeFile(path.join(dir, 'umbrella.diagram.json'), JSON.stringify(brokenUmbrella));
+
+    const r = await listDiagramModels(dir, path.join(dir, 'art'));
+    const body = r.body as {
+      diagrams: { name: string; model: { nodes: { include?: string }[] } | null; issues: { message: string }[]; editable: boolean }[];
+    };
+    const entry = body.diagrams.find((d) => d.name === 'umbrella');
+    expect(entry?.editable).toBe(true);
+    expect(entry?.model?.nodes[0]?.include).toBe('./missing.diagram.json'); // raw, unexpanded
+    expect(entry?.issues[0]?.message).toMatch(/missing/);
+  });
+
+  it('readComposedDiagram returns the composed model', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-compose-'));
+    await writeFile(path.join(dir, 'child.diagram.json'), JSON.stringify(child));
+    await writeFile(path.join(dir, 'umbrella.diagram.json'), JSON.stringify(umbrella));
+
+    const res = await readComposedDiagram(dir, 'umbrella');
+    expect(res.status).toBe(200);
+    const body = res.body as { model: { nodes: { id: string }[] } };
+    expect(body.model.nodes.some((n) => n.id === 'u/x')).toBe(true);
+  });
+
+  it('readComposedDiagram passes non-include sources through', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-compose-'));
+    await saveDiagram(dir, 'sketch', goodModel);
+
+    const res = await readComposedDiagram(dir, 'sketch');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ model: goodModel });
+  });
+
+  it('readComposedDiagram 404s an unknown name', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-compose-'));
+    expect((await readComposedDiagram(dir, 'missing')).status).toBe(404);
+  });
+
+  it('readComposedDiagram 409s a failing compose', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-compose-'));
+    await writeFile(path.join(dir, 'umbrella.diagram.json'), JSON.stringify(brokenUmbrella));
+
+    const res = await readComposedDiagram(dir, 'umbrella');
+    expect(res.status).toBe(409);
+    const body = res.body as { issues: { message: string }[] };
+    expect(body.issues[0]?.message).toMatch(/missing/);
   });
 });
 

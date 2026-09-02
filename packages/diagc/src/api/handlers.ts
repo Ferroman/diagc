@@ -1,8 +1,10 @@
 import { access, mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { IMAGE_REF, isDrawings, isLayoutOverlay, validate, type DiagramModel } from '@diagramming/core';
+import { IMAGE_REF, composeIncludes, errMessage, isDrawings, isLayoutOverlay, validate, type DiagramModel } from '@diagramming/core';
 import { EjectError, ejectDiagram } from '../eject';
+import { resolveInclude } from '../includes';
+import { snapshotSession } from '../snapshots';
 
 export interface HandlerResult {
   status: number;
@@ -12,6 +14,15 @@ export interface HandlerResult {
 export function isSafeName(name: string): boolean {
   return /^[a-z0-9][a-z0-9/-]*$/.test(name) && !name.includes('..') && !name.includes('//');
 }
+
+// path.dirname(diagramsDir) is the .diagrams root when diagramsDir is
+// .diagrams/src — the same rootDir a locked session uses elsewhere (eject.ts).
+// 'locked' because the boot/refresh path must never fetch or vendor a remote
+// include on a viewer's behalf — that only happens at `diagc compile`.
+const lockedResolver = (diagramsDir: string) => snapshotSession(resolveInclude, path.dirname(diagramsDir), 'locked').resolver;
+
+const hasIncludes = (m: DiagramModel | null): boolean =>
+  m !== null && Array.isArray(m.nodes) && m.nodes.some((n) => n.include !== undefined);
 
 /** Recursively collect every file under `dir` whose name ends in `suffix`,
  * posix-joined relative to `dir` with the suffix stripped. Missing dir → [].
@@ -66,6 +77,16 @@ export async function listDiagramModels(diagramsDir: string, artifactsDir: strin
       model = JSON.parse(await readFile(file, 'utf8')) as DiagramModel;
     } catch {
       issues.push({ message: `Could not read model for '${name}'` });
+    }
+    if (editable && hasIncludes(model)) {
+      try {
+        const { model: composed, warnings } = await composeIncludes(model as DiagramModel, path.resolve(file), lockedResolver(diagramsDir));
+        model = composed;
+        for (const w of warnings) issues.push({ message: w });
+      } catch (e) {
+        // the raw model still renders (include nodes as placeholders); say why
+        issues.push({ message: `Includes not expanded: ${errMessage(e)}` });
+      }
     }
     diagrams.push({ name, model, issues, editable });
   }
@@ -130,6 +151,26 @@ export async function readDiagram(diagramsDir: string, name: string): Promise<Ha
       ...(drawings !== undefined ? { drawings } : {}),
     },
   };
+}
+
+/** Composed read of an editable source — the studio's view-refresh after a
+ * save. Sources without includes pass through untouched. */
+export async function readComposedDiagram(diagramsDir: string, name: string): Promise<HandlerResult> {
+  if (!isSafeName(name)) return { status: 400, body: { issues: [{ message: `Unsafe name '${name}'` }] } };
+  const file = path.join(diagramsDir, `${name}.diagram.json`);
+  let model: DiagramModel;
+  try {
+    model = JSON.parse(await readFile(file, 'utf8')) as DiagramModel;
+  } catch {
+    return { status: 404, body: { issues: [{ message: `No diagram source '${name}'` }] } };
+  }
+  if (!hasIncludes(model)) return { status: 200, body: { model } };
+  try {
+    const { model: composed, warnings } = await composeIncludes(model, path.resolve(file), lockedResolver(diagramsDir));
+    return { status: 200, body: { model: composed, ...(warnings.length > 0 ? { warnings } : {}) } };
+  } catch (e) {
+    return { status: 409, body: { issues: [{ message: errMessage(e) }] } };
+  }
 }
 
 export async function saveDiagram(diagramsDir: string, name: string, payload: unknown): Promise<HandlerResult> {

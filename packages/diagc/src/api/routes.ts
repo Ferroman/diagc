@@ -43,6 +43,9 @@ export const ROUTES: Route[] = [
   { method: 'GET', pattern: /^\/api\/diagrams$/, handler: (h, c) => h.listDiagramModels(c.diagramsDir, c.artifactsDir) },
   { method: 'GET', pattern: /^\/api\/layouts$/, handler: (h, c) => h.listLayouts(c.diagramsDir) },
   { method: 'GET', pattern: /^\/api\/drawings$/, handler: (h, c) => h.listDrawings(c.diagramsDir) },
+  // Composed read must precede the generic read, whose `(.+)` would swallow
+  // `<name>/composed` as a filename.
+  { method: 'GET', pattern: /^\/api\/diagrams\/(.+)\/composed$/, handler: (h, c) => h.readComposedDiagram(c.diagramsDir, decodeURIComponent(c.match[1] ?? '')) },
   { method: 'GET', pattern: /^\/api\/diagrams\/(.+)$/, handler: (h, c) => h.readDiagram(c.diagramsDir, decodeURIComponent(c.match[1] ?? '')) },
   // Rename must be checked before the generic save route, whose `(.+)`
   // would otherwise swallow `<from>/rename` as a filename.
