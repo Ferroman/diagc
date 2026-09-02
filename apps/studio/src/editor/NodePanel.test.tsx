@@ -529,14 +529,18 @@ describe('NodePanel', () => {
 
     it('cascade-deletes a notation container whose children cannot be re-homed', () => {
       const onCommand = vi.fn();
-      render(<NodePanel model={frameModel()} nodeId="frame" onCommand={onCommand} onClose={noop} onDeleted={noop} />);
+      render(
+        <NodePanel model={frameModel()} nodeId="frame" activePlane={undefined} onCommand={onCommand} onClose={noop} onDeleted={noop} />,
+      );
       fireEvent.click(screen.getByRole('button', { name: 'Delete node' }));
       expect(onCommand).toHaveBeenCalledWith({ type: 'delete-node', id: 'frame', cascade: true });
     });
 
     it('Ungroup severs only, even on a notation container', () => {
       const onCommand = vi.fn();
-      render(<NodePanel model={frameModel()} nodeId="frame" onCommand={onCommand} onClose={noop} onDeleted={noop} />);
+      render(
+        <NodePanel model={frameModel()} nodeId="frame" activePlane={undefined} onCommand={onCommand} onClose={noop} onDeleted={noop} />,
+      );
       fireEvent.click(screen.getByRole('button', { name: 'Ungroup' }));
       expect(onCommand).toHaveBeenCalledWith({ type: 'delete-node', id: 'frame' });
     });

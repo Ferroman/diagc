@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pruneToModel, seenKeyOf, syncReducer, type SeenKey } from './view-sync';
+import { pruneToModel, syncReducer, type SeenKey } from './view-sync';
 import type { DiagramModel } from '@diagramming/core';
 
 const model = (id: string, nodeIds: string[]): DiagramModel => ({
@@ -13,8 +13,13 @@ const model = (id: string, nodeIds: string[]): DiagramModel => ({
   planes: [],
 });
 
-const key = (m: DiagramModel, plane?: string, enteredPath?: string[]): SeenKey =>
-  seenKeyOf({ model: m, plane, enteredPath } as Parameters<typeof seenKeyOf>[0]);
+// The snapshot shape useDrillNavigation builds off its inputs each render.
+const key = (m: DiagramModel, plane?: string, enteredPath?: string[]): SeenKey => ({
+  modelId: m.id,
+  model: m,
+  plane,
+  enteredPathProp: enteredPath,
+});
 
 describe('syncReducer', () => {
   const a = model('a', ['x']);

@@ -48,7 +48,7 @@ export function useDrillNavigation(input: DrillNavigationInput): DrillNavigation
   const pendingRootFitRef = useRef(false);
 
   // The snapshot the reducer compares against, rebuilt on demand from this
-  // hook's inputs — the same shape `seenKeyOf` reads off the props object.
+  // hook's inputs.
   const seenKey = (): SeenKey => ({
     modelId: input.model.id,
     model: input.model,

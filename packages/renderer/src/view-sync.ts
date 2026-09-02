@@ -1,5 +1,4 @@
 import type { DiagramModel } from '@diagramming/core';
-import type { DiagramViewProps } from './view-types';
 
 // Cut a drill path at the first id the model doesn't know — applying a stale
 // deep link lands on the deepest surviving prefix instead of a blank canvas.
@@ -50,10 +49,3 @@ export function syncReducer(prev: SyncState, action: SyncAction): SyncState {
   if (prev.seen.enteredPathProp !== seen.enteredPathProp) return { seen, transition: 'entered-path' };
   return { seen, transition: 'none' };
 }
-
-export const seenKeyOf = (props: DiagramViewProps): SeenKey => ({
-  modelId: props.model.id,
-  model: props.model,
-  plane: props.plane,
-  enteredPathProp: props.enteredPath,
-});
