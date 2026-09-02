@@ -151,33 +151,55 @@ export function setNodeDetails(m: DiagramModel, id: string, details: NodeDetails
   // `hides`/`hidesTree` so a formerly-hidden shared node doesn't linger there
   // with no way to clear it via the UI (and to avoid tripping `redundant-hide`).
   if (typeof details.plane === 'string') {
-    const without = (list: string[] | undefined): string[] | undefined =>
-      list === undefined ? undefined : list.filter((h) => h !== id);
-    next = {
-      ...next,
-      planes: next.planes.map((p) => {
-        const hides = without(p.hides);
-        const hidesTree = without(p.hidesTree);
-        if (hides?.length === p.hides?.length && hidesTree?.length === p.hidesTree?.length) return p;
-        const { hides: _h, hidesTree: _t, ...rest } = p;
-        return {
-          ...rest,
-          ...(hides !== undefined && hides.length > 0 ? { hides } : {}),
-          ...(hidesTree !== undefined && hidesTree.length > 0 ? { hidesTree } : {}),
-        };
-      }),
-    };
+    next = { ...next, planes: prunePlaneHides(next.planes, (h) => h === id) };
   }
   return next;
 }
 
-export function deleteNode(m: DiagramModel, id: string): DiagramModel {
+/** Drop every id satisfying `drop` from each plane's `hides`/`hidesTree`,
+ * omitting emptied lists; a plane with no change keeps its reference. */
+function prunePlaneHides(planes: DiagramPlane[], drop: (id: string) => boolean): DiagramPlane[] {
+  const without = (list: string[] | undefined): string[] | undefined =>
+    list === undefined ? undefined : list.filter((h) => !drop(h));
+  return planes.map((p) => {
+    const hides = without(p.hides);
+    const hidesTree = without(p.hidesTree);
+    if (hides?.length === p.hides?.length && hidesTree?.length === p.hidesTree?.length) return p;
+    const { hides: _h, hidesTree: _t, ...rest } = p;
+    return {
+      ...rest,
+      ...(hides !== undefined && hides.length > 0 ? { hides } : {}),
+      ...(hidesTree !== undefined && hidesTree.length > 0 ? { hidesTree } : {}),
+    };
+  });
+}
+
+/** Transitive containment descendants of `id` across every plane, plus `id`
+ * itself — the set a cascade delete destroys. */
+export function subtreeOf(m: DiagramModel, id: string): Set<string> {
+  const children = childrenOf(m.containment);
+  const doomed = new Set<string>();
+  const stack = [id];
+  while (stack.length > 0) {
+    const cur = stack.pop();
+    if (cur === undefined || doomed.has(cur)) continue;
+    doomed.add(cur);
+    stack.push(...(children.get(cur) ?? []));
+  }
+  return doomed;
+}
+
+export function deleteNode(m: DiagramModel, id: string, cascade = false): DiagramModel {
   requireNode(m, id);
+  const doomed = cascade ? subtreeOf(m, id) : new Set([id]);
   return {
     ...m,
-    nodes: m.nodes.filter((n) => n.id !== id),
-    containment: m.containment.filter((e) => e.parent !== id && e.child !== id),
-    relations: m.relations.filter((r) => r.from !== id && r.to !== id),
+    nodes: m.nodes.filter((n) => !doomed.has(n.id)),
+    containment: m.containment.filter((e) => !doomed.has(e.parent) && !doomed.has(e.child)),
+    relations: m.relations.filter((r) => !doomed.has(r.from) && !doomed.has(r.to)),
+    // A destroyed node must not linger in any plane's hides/hidesTree — the
+    // stale entry would fail `unknown-hidden-node` validation on the next save.
+    planes: prunePlaneHides(m.planes, (h) => doomed.has(h)),
   };
 }
 

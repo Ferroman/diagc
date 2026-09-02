@@ -89,6 +89,15 @@ describe('mutate', () => {
     expect(m3.containment.some((e) => e.child === 'a' && e.plane === undefined)).toBe(false);
   });
 
+  it('deleteNode prunes the deleted id from plane hides/hidesTree lists', () => {
+    const m = base();
+    m.planes = m.planes.map((p) => (p.id === 'infra' ? { ...p, hides: ['a', 'b'], hidesTree: ['a'] } : p));
+    const next = deleteNode(m, 'a');
+    const infra = next.planes.find((p) => p.id === 'infra');
+    expect(infra?.hides).toEqual(['b']);
+    expect(infra?.hidesTree).toBeUndefined();
+  });
+
   it('groupNodes adds the parent node and nests each member', () => {
     const grouped = groupNodes(base(), { id: 'grp', name: 'Dev work time' }, ['a', 'b']);
     expect(grouped.nodes.find((n) => n.id === 'grp')).toMatchObject({ id: 'grp', name: 'Dev work time' });
@@ -292,6 +301,46 @@ describe('mutate', () => {
     expect(set.nodes.find((n) => n.id === 'a')?.technology).toBe('Java/Spring');
     const cleared = setNodeDetails(set, 'a', { technology: null });
     expect(cleared.nodes.find((n) => n.id === 'a')?.technology).toBeUndefined();
+  });
+});
+
+describe('deleteNode cascade', () => {
+  // frame > lane > act, plus a free-standing bystander related to act — the
+  // activity-frame trap from the deferral ledger.
+  function frameModel(): DiagramModel {
+    const m = model('t');
+    m.plane('other');
+    const frame = m.node('frame', { type: 'activity-frame' });
+    const lane = m.node('lane', { type: 'activity-lane' });
+    const act = m.node('act', { type: 'action' });
+    const by = m.node('by', { type: 'action' });
+    frame.contains(lane);
+    lane.contains(act);
+    m.relate(act, by, { kind: 'control' });
+    return m.toJSON();
+  }
+
+  it('destroys the transitive containment subtree with its relations', () => {
+    const m = deleteNode(frameModel(), 'frame', true);
+    expect(m.nodes.map((n) => n.id)).toEqual(['by']);
+    expect(m.containment).toEqual([]);
+    expect(m.relations).toEqual([]);
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('without cascade only severs, keeping the children', () => {
+    const m = deleteNode(frameModel(), 'frame');
+    expect(m.nodes.map((n) => n.id)).toEqual(['lane', 'act', 'by']);
+    expect(m.relations).toHaveLength(1);
+  });
+
+  it('prunes every doomed id from plane hides lists', () => {
+    const m = frameModel();
+    m.planes = m.planes.map((p) => (p.id === 'other' ? { ...p, hides: ['act', 'by'], hidesTree: ['lane'] } : p));
+    const next = deleteNode(m, 'frame', true);
+    const other = next.planes.find((p) => p.id === 'other');
+    expect(other?.hides).toEqual(['by']);
+    expect(other?.hidesTree).toBeUndefined();
   });
 });
 

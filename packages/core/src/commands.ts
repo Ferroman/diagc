@@ -33,6 +33,7 @@ import {
   setNodePlaneHidden,
   setNodeRich,
   setTableColumns,
+  subtreeOf,
   updateRelation,
   upsertLayer,
   upsertPlane,
@@ -69,7 +70,7 @@ export type EditorCommand =
   | { type: 'set-diagram-style'; style: string | null }
   | { type: 'set-diagram-notation'; notation: string | null }
   | { type: 'set-diagram-legend'; legend: DiagramLegend | null }
-  | { type: 'delete-node'; id: string }
+  | { type: 'delete-node'; id: string; cascade?: boolean }
   | { type: 'add-containment'; parent: string; child: string; plane?: string }
   | { type: 'remove-containment'; parent: string; child: string; plane?: string }
   | { type: 'group-nodes'; node: DiagramNode; memberIds: string[]; plane?: string }
@@ -185,11 +186,16 @@ function applyModelLayout(state: ModelLayout, command: EditorCommand): ModelLayo
       return { model: setDiagramNotation(model, command.notation), layout };
     case 'set-diagram-legend':
       return { model: setDiagramLegend(model, command.legend), layout };
-    case 'delete-node':
+    case 'delete-node': {
+      // Cascade destroys the whole containment subtree (notation containers
+      // whose children cannot be re-homed), so the layout hygiene must cover
+      // every doomed id, not just the root.
+      const doomed = command.cascade === true ? subtreeOf(model, command.id) : new Set([command.id]);
       return {
-        model: deleteNode(model, command.id),
-        layout: prunePositions(layout, (nid) => nid === command.id),
+        model: deleteNode(model, command.id, command.cascade === true),
+        layout: prunePositions(layout, (nid) => doomed.has(nid)),
       };
+    }
     case 'add-containment':
       return { model: addContainment(model, command.parent, command.child, command.plane), layout };
     case 'remove-containment':

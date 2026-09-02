@@ -25,6 +25,12 @@ export const DEFAULT_IMAGE_NODE_SIZE = { w: 160, h: 120 } as const;
  * it — the renderer and validate() must agree on the exact string. */
 export const RESERVED_NODE_ID = '__root__';
 
+/** Node types whose containment children cannot be re-homed when the container
+ * dies — an orphaned activity lane or git commit fails validation until undone.
+ * Deleting one of these cascades to its subtree; every other container severs
+ * only. Kept in core so the editor UI and the command algebra agree. */
+export const CASCADE_DELETE_TYPES = ['activity-frame', 'branch'] as const;
+
 export interface Column {
   name: string;
   /** SQL-ish type shown right-aligned in the row, e.g. 'uuid', 'int', 'text' */

@@ -75,6 +75,16 @@ describe('applyCommand', () => {
     expect(deleted.layout.sizes?.['a']).toBeUndefined();
   });
 
+  it('delete-node cascade drops descendant positions and sizes too', () => {
+    let s = state();
+    s = applyCommand(s, { type: 'set-position', plane: 'arch', nodeId: 'a', x: 1, y: 1 });
+    s = applyCommand(s, { type: 'set-size', nodeId: 'a', w: 10, h: 10 });
+    s = applyCommand(s, { type: 'delete-node', id: 'sys', cascade: true });
+    expect(s.model.nodes.some((n) => n.id === 'a')).toBe(false);
+    expect(s.layout.planes['arch']).toEqual({});
+    expect(s.layout.sizes?.['a']).toBeUndefined();
+  });
+
   it('delete-plane removes its containment and drops its layout bucket', () => {
     const m = model('t');
     m.plane('arch').plane('infra');

@@ -502,4 +502,43 @@ describe('NodePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Large' }));
     expect(onCommand).toHaveBeenCalledWith({ type: 'set-node-details', id: 'a', details: { fontScale: 'lg' } });
   });
+
+  describe('delete', () => {
+    function frameModel(): DiagramModel {
+      return {
+        version: 1,
+        id: 'draft',
+        name: 'draft',
+        nodes: [
+          { id: 'frame', name: 'Frame', type: 'activity-frame' },
+          { id: 'lane', name: 'Lane', type: 'activity-lane' },
+        ],
+        containment: [{ parent: 'frame', child: 'lane' }],
+        relations: [],
+        layers: [],
+        planes: [],
+      };
+    }
+
+    it('plain-deletes an ordinary node (no cascade key)', () => {
+      const onCommand = vi.fn();
+      render(<NodePanel model={testModel()} nodeId="a" activePlane="flow" onCommand={onCommand} onClose={noop} onDeleted={noop} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Delete node' }));
+      expect(onCommand).toHaveBeenCalledWith({ type: 'delete-node', id: 'a' });
+    });
+
+    it('cascade-deletes a notation container whose children cannot be re-homed', () => {
+      const onCommand = vi.fn();
+      render(<NodePanel model={frameModel()} nodeId="frame" onCommand={onCommand} onClose={noop} onDeleted={noop} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Delete node' }));
+      expect(onCommand).toHaveBeenCalledWith({ type: 'delete-node', id: 'frame', cascade: true });
+    });
+
+    it('Ungroup severs only, even on a notation container', () => {
+      const onCommand = vi.fn();
+      render(<NodePanel model={frameModel()} nodeId="frame" onCommand={onCommand} onClose={noop} onDeleted={noop} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Ungroup' }));
+      expect(onCommand).toHaveBeenCalledWith({ type: 'delete-node', id: 'frame' });
+    });
+  });
 });

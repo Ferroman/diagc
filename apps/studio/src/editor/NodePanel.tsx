@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { DiagramModel, EditorCommand, FontScale, TextAlign } from '@diagramming/core';
-import { IMAGE_REF, LIBRARY_IMAGE_REF } from '@diagramming/core';
+import { CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF } from '@diagramming/core';
 import { BUILTIN_ICON_IDS } from '@diagramming/icons';
 import { DEFAULT_TYPE_STYLES } from '@diagramming/renderer';
 import { ColorRow, OptionRow } from './pickers';
@@ -271,7 +271,10 @@ export function NodePanel({
   };
 
   const deleteNode = () => {
-    onCommand({ type: 'delete-node', id: nodeId });
+    // Frames and branches take their un-re-homeable children with them;
+    // every other container severs only (and Ungroup always severs).
+    const cascade = (CASCADE_DELETE_TYPES as readonly string[]).includes(node.type ?? '');
+    onCommand({ type: 'delete-node', id: nodeId, ...(cascade ? { cascade: true } : {}) });
     onDeleted();
   };
 
