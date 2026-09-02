@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { emptyDrawings, emptyLayout, type DiagramModel } from '@diagramming/core';
+import { emptyDrawings, emptyLayout, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagramming/core';
 import type { LoadedArtifact } from '../artifacts';
 import type { EditorApi } from '../editor/useEditor';
 import { nextCopyName } from '../copyName';
@@ -150,10 +150,28 @@ export function useDiagramActions({
   // compile time. Writing that out as a JSON source therefore yields a flat,
   // standalone diagram the middleware owns — an editable twin of something the
   // studio otherwise can only look at. Owned diagrams take the same path; there
-  // is nothing about it that a JSON source needs done differently.
+  // is nothing about it that a JSON source needs done differently — UNLESS the
+  // owned diagram is itself an umbrella: its boot model is composed, and
+  // copying that would bake grafted content into a "duplicate" that no longer
+  // has an `include`. So owned diagrams copy the raw source below instead;
+  // read-only ones still copy the composed artifact, since there is no raw
+  // source to copy.
   const duplicateDiagram = async () => {
     if (!leaveEdit()) return;
-    const model = current?.model;
+    let model = current?.model;
+    let layout = current?.layout;
+    let drawings = current?.drawings;
+    if (ownedNames.has(selected)) {
+      const res = await fetch(`/api/diagrams/${selected}`);
+      if (!res.ok) {
+        window.alert(`Could not copy '${selected}'`);
+        return;
+      }
+      const body = (await res.json()) as { model: DiagramModel; layout?: LayoutOverlay; drawings?: Drawings };
+      model = body.model;
+      layout = body.layout;
+      drawings = body.drawings;
+    }
     if (model === undefined) return;
     // Every name is a collision, not just the editable ones: a compiled
     // artifact under `<copy>` would shadow the source we are about to write.
@@ -170,21 +188,21 @@ export function useDiagramActions({
       window.alert(`Could not copy '${selected}'`);
       return;
     }
-    const layout = current?.layout ?? emptyLayout();
-    const drawings = current?.drawings ?? emptyDrawings();
+    const finalLayout = layout ?? emptyLayout();
+    const finalDrawings = drawings ?? emptyDrawings();
     // Hand positions and strokes are most of why a copy is worth taking, so
     // they go over with the model — but only when the source actually has
     // them, mirroring the editor's rule that an untouched diagram never writes
     // a sidecar. A failure here is not fatal: the edit session below still
     // carries both, so the first Save writes them.
-    if (current?.layout !== undefined) await post('layouts', layout);
-    if (current?.drawings !== undefined) await post('drawings', drawings);
-    setDrafts((d) => ({ ...d, [copy]: { name: copy, model: copied, layout, drawings, issues: [] } }));
+    if (layout !== undefined) await post('layouts', finalLayout);
+    if (drawings !== undefined) await post('drawings', finalDrawings);
+    setDrafts((d) => ({ ...d, [copy]: { name: copy, model: copied, layout: finalLayout, drawings: finalDrawings, issues: [] } }));
     setOwnedNames((s) => new Set(s).add(copy));
     setSelected(copy);
     setEnteredPath([]);
     resetView();
-    editor.start(copy, { model: copied, layout, drawings });
+    editor.start(copy, { model: copied, layout: finalLayout, drawings: finalDrawings });
     setEditing(true);
   };
 

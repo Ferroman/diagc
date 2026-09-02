@@ -23,7 +23,9 @@ import {
   uniqueStrokeId,
   type Column,
   type DiagramModel,
+  type Drawings,
   type EdgeLabelSide,
+  type LayoutOverlay,
   type LayoutSettings,
   type RelationStyle,
   type Stroke,
@@ -431,6 +433,24 @@ export function App() {
     }
   };
 
+  // Edit sessions start from the raw source on disk, never the boot model —
+  // the boot model is composed for umbrellas, and a session seeded from it
+  // would save grafted content into the source.
+  const enterEditFromSource = async () => {
+    // Edit mode reads the session's own overlay, not the preview — drop it here
+    // (mirroring resetView() on the diagram picker) so Save + Done doesn't come
+    // back to a stale preview masking what was saved.
+    setLayoutPreview({});
+    try {
+      const res = await fetch(`/api/diagrams/${selected}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = (await res.json()) as { model: DiagramModel; layout?: LayoutOverlay; drawings?: Drawings };
+      enterEdit(selected, body.model, body.layout ?? emptyLayout(), body.drawings ?? emptyDrawings());
+    } catch (e) {
+      setSaveIssues([{ message: `Could not load '${selected}' for editing: ${errMessage(e)}` }]);
+    }
+  };
+
   // Flip the active plane between automatic and manual layout. Turning auto Off
   // freezes the current on-screen positions (so nothing jumps) then sets the
   // manual flag; turning it On just clears the flag (non-destructive — the pins
@@ -552,16 +572,7 @@ export function App() {
         {model !== undefined &&
           (ownedNames.has(selected) ? (
             !editing && (
-              <button
-                className="chip"
-                onClick={() => {
-                  // Edit mode reads the session's own overlay, not the preview — drop
-                  // it here (mirroring resetView() on the diagram picker) so Save +
-                  // Done doesn't come back to a stale preview masking what was saved.
-                  setLayoutPreview({});
-                  enterEdit(selected, current?.model as DiagramModel, current?.layout ?? emptyLayout(), current?.drawings ?? emptyDrawings());
-                }}
-              >
+              <button className="chip" onClick={() => void enterEditFromSource()}>
                 Edit
               </button>
             )
@@ -702,6 +713,18 @@ export function App() {
           <b>{current.name}</b> failed validation:
           <ul>
             {current.issues.map((i, idx) => (
+              <li key={idx}>{i.message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {/* enterEditFromSource's catch path sets saveIssues without ever setting
+          editing — the toolbar's own banner (below) only renders while editing,
+          so a raw-source fetch failure needs its own view-mode surface. */}
+      {!editing && saveIssues !== null && saveIssues.length > 0 && (
+        <div className="banner error">
+          <ul>
+            {saveIssues.map((i, idx) => (
               <li key={idx}>{i.message}</li>
             ))}
           </ul>

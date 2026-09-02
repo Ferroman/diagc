@@ -49,7 +49,7 @@ describe('view-mode layout preview', () => {
     localStorage.clear();
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string) => {
+      vi.fn(async (url: string, init?: RequestInit) => {
         if (url === '/api/diagrams') {
           return new Response(
             JSON.stringify({
@@ -63,6 +63,14 @@ describe('view-mode layout preview', () => {
         }
         if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
         if (url === '/api/drawings') return new Response(JSON.stringify({ drawings: {} }), { status: 200 });
+        // Edit starts from the raw source (Task 7); neither fixture has an
+        // include, so its raw source is just its own model.
+        if (url === '/api/diagrams/sketch' && (init === undefined || init.method === undefined || init.method === 'GET')) {
+          return new Response(JSON.stringify({ model: sketchModel }), { status: 200 });
+        }
+        if (url === '/api/diagrams/two' && (init === undefined || init.method === undefined || init.method === 'GET')) {
+          return new Response(JSON.stringify({ model: twoModel }), { status: 200 });
+        }
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }),
     );
@@ -103,7 +111,12 @@ describe('view-mode layout preview', () => {
     expect(await screen.findByRole('button', { name: /reset layout/i })).toBeDefined();
 
     fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
-    const inEdit = await screen.findByLabelText('Layout algorithm');
+    // Edit now starts from an async raw-source fetch: the view-mode Layout
+    // algorithm select (same aria-label) is still mounted until it resolves,
+    // so wait for an edit-only landmark first or the change below would land
+    // on the stale view-mode control instead of the editor.
+    await screen.findByRole('button', { name: /^save$/i });
+    const inEdit = screen.getByLabelText('Layout algorithm');
     fireEvent.change(inEdit, { target: { value: 'mrtree' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
     await waitFor(() => expect(layoutPosts()).toContain('/api/layouts/sketch'));
@@ -166,7 +179,7 @@ describe('drilled-in canvas tools', () => {
     localStorage.clear();
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string) => {
+      vi.fn(async (url: string, init?: RequestInit) => {
         if (url === '/api/diagrams') {
           return new Response(
             JSON.stringify({ diagrams: [{ name: 'drill', model: drillModel, issues: [], editable: true }] }),
@@ -175,6 +188,11 @@ describe('drilled-in canvas tools', () => {
         }
         if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
         if (url === '/api/drawings') return new Response(JSON.stringify({ drawings: {} }), { status: 200 });
+        // Edit starts from the raw source (Task 7); drillModel has no include,
+        // so its raw source is just its own model.
+        if (url === '/api/diagrams/drill' && (init === undefined || init.method === undefined || init.method === 'GET')) {
+          return new Response(JSON.stringify({ model: drillModel }), { status: 200 });
+        }
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }),
     );

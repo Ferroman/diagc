@@ -31,10 +31,69 @@ const { goodModel, twoModel } = vi.hoisted(() => ({
   },
 }));
 
+// An umbrella's raw source: only the include node, no grafted content — what
+// GET /api/diagrams/<name> (and /composed's absence) represent for a
+// still-unexpanded diagram. Shared by the raw-edit/duplicate/composed-refresh
+// tests below.
+const umbrellaRaw = {
+  version: 1,
+  id: 'umbrella',
+  name: 'umbrella',
+  nodes: [{ id: 'inc', name: 'inc', include: 'other' }],
+  containment: [],
+  relations: [],
+  layers: [],
+  planes: [],
+};
+
+// The same umbrella, composed: what the boot list (and GET .../composed)
+// serve — the grafted node is visible alongside the (now include-stripped)
+// placeholder.
+const umbrellaComposed = {
+  ...umbrellaRaw,
+  nodes: [
+    { id: 'inc', name: 'inc' },
+    { id: 'grafted', name: 'grafted', type: 'service' },
+  ],
+};
+
 // Scope node-label lookups to the canvas: the panel's Name field is now a
 // <textarea>, whose value is textContent, so an unscoped byText('node') also
 // matches the panel (and the id <code>).
 const canvas = () => within(document.querySelector('.dg-canvas') as HTMLElement);
+
+interface DiagramFixture {
+  name: string;
+  model: unknown;
+  issues: { message: string }[];
+  editable: boolean;
+}
+
+// Route-driven fetch stub shared by every case below. `opts.extra` is tried
+// FIRST, so a test can override any route below it (a failing POST, a custom
+// raw-source/`/composed` response, an `/api/assets` upload, …); anything it
+// leaves alone (returns undefined for) falls through to: GET /api/diagrams
+// lists `diagrams`, GET /api/layouts serves `opts.layouts`, and (since Task 7)
+// GET /api/diagrams/<name> — the raw source consumed by Edit and by
+// duplicating an owned diagram — serves that entry's own `model`. None of
+// these fixtures declare an `include`, so raw and composed coincide unless a
+// test's `extra` says otherwise.
+const stubFetch = (
+  diagrams: DiagramFixture[],
+  opts: { layouts?: unknown; extra?: (url: string, init?: RequestInit) => Response | undefined } = {},
+) =>
+  vi.fn(async (url: string, init?: RequestInit) => {
+    const custom = opts.extra?.(url, init);
+    if (custom !== undefined) return custom;
+    if (url === '/api/diagrams') return new Response(JSON.stringify({ diagrams }), { status: 200 });
+    if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: opts.layouts ?? {} }), { status: 200 });
+    const rawMatch = /^\/api\/diagrams\/([^/]+)$/.exec(url);
+    if (rawMatch !== null && (init === undefined || init.method === undefined || init.method === 'GET')) {
+      const entry = diagrams.find((d) => d.name === rawMatch[1]);
+      if (entry !== undefined) return new Response(JSON.stringify({ model: entry.model }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  });
 
 describe('editor shell', () => {
   beforeEach(() => {
@@ -44,21 +103,10 @@ describe('editor shell', () => {
     vi.spyOn(window, 'prompt').mockReturnValue('node');
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams') {
-          return new Response(
-            JSON.stringify({
-              diagrams: [
-                { name: 'sketch', model: goodModel, issues: [], editable: true },
-                { name: 'two', model: twoModel, issues: [], editable: false },
-              ],
-            }),
-            { status: 200 },
-          );
-        }
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }),
+      stubFetch([
+        { name: 'sketch', model: goodModel, issues: [], editable: true },
+        { name: 'two', model: twoModel, issues: [], editable: false },
+      ]),
     );
   });
   afterEach(() => {
@@ -105,7 +153,9 @@ describe('editor shell', () => {
     const prompt = vi.spyOn(window, 'prompt');
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
+    // Edit now starts from an async raw-source fetch: wait for the edit UI
+    // before the next click, or it lands before the session exists.
+    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
     fireEvent.click(await screen.findByRole('button', { name: /add node/i }));
     // no prompt: the node lands as 'node' and its panel opens with the name focused
     expect(prompt).not.toHaveBeenCalled();
@@ -117,6 +167,9 @@ describe('editor shell', () => {
   it('adds a node via the N shortcut in edit mode', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
+    // Edit now starts from an async raw-source fetch: the keydown listener only
+    // subscribes once the session exists, so wait for the edit UI first.
+    await screen.findByRole('button', { name: /^save$/i });
     fireEvent.keyDown(window, { key: 'n' });
     expect(await canvas().findByText('node')).toBeDefined();
   });
@@ -124,7 +177,7 @@ describe('editor shell', () => {
   it('undo reverts the last edit', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
     fireEvent.click(await screen.findByRole('button', { name: /add node/i }));
     expect(await canvas().findByText('node')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /undo/i }));
@@ -149,19 +202,7 @@ describe('editor shell', () => {
     // The compiled artifact for 'sketch' is the empty creation-time snapshot,
     // but the middleware serves the real saved source — the source must win.
     const freshModel = { ...goodModel, nodes: [...goodModel.nodes, { id: 'fresh', name: 'fresh', type: 'service' }] };
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams') {
-          return new Response(
-            JSON.stringify({ diagrams: [{ name: 'sketch', model: freshModel, issues: [], editable: true }] }),
-            { status: 200 },
-          );
-        }
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }),
-    );
+    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: freshModel, issues: [], editable: true }]));
     render(<App />);
     expect((await screen.findAllByText('fresh')).length).toBeGreaterThan(0);
   });
@@ -169,19 +210,7 @@ describe('editor shell', () => {
   it('offers New diagram from view mode even when no diagram is editable', async () => {
     // Middleware owns nothing (all artifacts TS-owned) — the header button must
     // still exist, or a fresh workspace has no way to create its first diagram.
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams') {
-          return new Response(
-            JSON.stringify({ diagrams: [{ name: 'sketch', model: goodModel, issues: [], editable: false }] }),
-            { status: 200 },
-          );
-        }
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }),
-    );
+    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: goodModel, issues: [], editable: false }]));
     vi.spyOn(window, 'prompt').mockReturnValue('fresh');
     render(<App />);
     // read-only viewer for the TS-owned artifact, no Edit button
@@ -201,7 +230,7 @@ describe('editor shell', () => {
   it('keeps a saved node visible after leaving edit mode (no draft shadowing)', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
     fireEvent.click(await screen.findByRole('button', { name: /add node/i }));
     expect(await canvas().findByText('node')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
@@ -216,26 +245,19 @@ describe('editor shell', () => {
   });
 
   it('surfaces save issues raised by a failed save via Ctrl+S', async () => {
-    // POSTs fail with a 500 carrying issues; the GET for ownership still succeeds.
+    // POSTs fail with a 500 carrying issues; the GETs (list + raw source) still succeed.
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string, init?: RequestInit) => {
-        if (url === '/api/diagrams') {
-          return new Response(
-            JSON.stringify({ diagrams: [{ name: 'sketch', model: goodModel, issues: [], editable: true }] }),
-            { status: 200 },
-          );
-        }
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        if (init?.method === 'POST') {
-          return new Response(JSON.stringify({ issues: [{ message: 'disk on fire' }] }), { status: 500 });
-        }
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      stubFetch([{ name: 'sketch', model: goodModel, issues: [], editable: true }], {
+        extra: (_url, init) =>
+          init?.method === 'POST'
+            ? new Response(JSON.stringify({ issues: [{ message: 'disk on fire' }] }), { status: 500 })
+            : undefined,
       }),
     );
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
     fireEvent.click(await screen.findByRole('button', { name: /add node/i }));
     expect(await canvas().findByText('node')).toBeDefined();
     fireEvent.keyDown(document.body, { key: 's', ctrlKey: true });
@@ -245,18 +267,9 @@ describe('editor shell', () => {
   it('creates an image node from a canvas drop', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams') {
-          return new Response(
-            JSON.stringify({ diagrams: [{ name: 'sketch', model: goodModel, issues: [], editable: true }] }),
-            { status: 200 },
-          );
-        }
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        if (url === '/api/assets') {
-          return new Response(JSON.stringify({ name: 'abc123def456.png' }), { status: 200 });
-        }
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      stubFetch([{ name: 'sketch', model: goodModel, issues: [], editable: true }], {
+        extra: (url) =>
+          url === '/api/assets' ? new Response(JSON.stringify({ name: 'abc123def456.png' }), { status: 200 }) : undefined,
       }),
     );
     const { container } = render(<App />);
@@ -274,19 +287,12 @@ describe('editor shell', () => {
     let uploads = 0;
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams') {
-          return new Response(
-            JSON.stringify({ diagrams: [{ name: 'sketch', model: goodModel, issues: [], editable: true }] }),
-            { status: 200 },
-          );
-        }
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        if (url === '/api/assets') {
+      stubFetch([{ name: 'sketch', model: goodModel, issues: [], editable: true }], {
+        extra: (url) => {
+          if (url !== '/api/assets') return undefined;
           uploads += 1;
           return new Response(JSON.stringify({ name: `hash${uploads}.png` }), { status: 200 });
-        }
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        },
       }),
     );
     const { container } = render(<App />);
@@ -320,7 +326,7 @@ describe('editor shell', () => {
   it('adds a typeless node from the toolbar (no service type)', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
     fireEvent.click(await screen.findByRole('button', { name: /add node/i }));
     await canvas().findByText('node');
     // the node panel's Type field is empty for a typeless node
@@ -331,7 +337,7 @@ describe('editor shell', () => {
   it('autosaves shortly after an edit without an explicit Save', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
     fireEvent.click(await screen.findByRole('button', { name: /add node/i }));
     expect(await canvas().findByText('node')).toBeDefined();
     // No Save click: the debounced autosave must POST both model and layout on
@@ -349,7 +355,7 @@ describe('editor shell', () => {
     const confirm = vi.spyOn(window, 'confirm');
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
     fireEvent.click(await screen.findByRole('button', { name: /add node/i }));
     expect(await canvas().findByText('node')).toBeDefined();
     // Leave while dirty: no discard confirmation (autosave replaces it), the
@@ -370,19 +376,7 @@ describe('editor shell', () => {
     // base/no-plane view (and its plain look) became unreachable. A Default chip
     // must sit beside the plane chips and be selectable.
     const planed = { ...goodModel, planes: [{ id: 'infra', name: 'Infra' }] };
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams') {
-          return new Response(
-            JSON.stringify({ diagrams: [{ name: 'sketch', model: planed, issues: [], editable: true }] }),
-            { status: 200 },
-          );
-        }
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }),
-    );
+    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: planed, issues: [], editable: true }]));
     render(<App />);
     // Default is present and active on load; the plane chip sits beside it.
     const defaultChip = await screen.findByRole('button', { name: 'Default' });
@@ -400,18 +394,7 @@ describe('editor shell', () => {
 
   it('adds a node as view-local when a plane is active, and shared on Default', async () => {
     const planed = { ...goodModel, planes: [{ id: 'infra', name: 'Infra' }] };
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams')
-          return new Response(
-            JSON.stringify({ diagrams: [{ name: 'sketch', model: planed, issues: [], editable: true }] }),
-            { status: 200 },
-          );
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }),
-    );
+    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: planed, issues: [], editable: true }]));
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
     // switch to the Infra plane, then add a node — it must not appear on Default
@@ -436,18 +419,7 @@ describe('editor shell', () => {
         { id: 'borrow', name: 'Borrow', containmentOf: 'arch' },
       ],
     };
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams')
-          return new Response(
-            JSON.stringify({ diagrams: [{ name: 'sketch', model: planed, issues: [], editable: true }] }),
-            { status: 200 },
-          );
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }),
-    );
+    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: planed, issues: [], editable: true }]));
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
     fireEvent.click(await screen.findByRole('button', { name: 'Borrow' }));
@@ -468,18 +440,7 @@ describe('editor shell', () => {
         { id: 'borrow', name: 'Borrow', containmentOf: 'arch' },
       ],
     };
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams')
-          return new Response(
-            JSON.stringify({ diagrams: [{ name: 'sketch', model: planed, issues: [], editable: true }] }),
-            { status: 200 },
-          );
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }),
-    );
+    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: planed, issues: [], editable: true }]));
     const { container } = render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
     fireEvent.click(await screen.findByRole('button', { name: 'Borrow' }));
@@ -493,18 +454,7 @@ describe('editor shell', () => {
 
   it('toggles a shared node hidden on the active plane via the "Hidden here" checkbox', async () => {
     const planed = { ...goodModel, planes: [{ id: 'infra', name: 'Infra' }] };
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams')
-          return new Response(
-            JSON.stringify({ diagrams: [{ name: 'sketch', model: planed, issues: [], editable: true }] }),
-            { status: 200 },
-          );
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }),
-    );
+    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: planed, issues: [], editable: true }]));
     const { container } = render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
     fireEvent.click(await screen.findByRole('button', { name: 'Infra' }));
@@ -593,18 +543,7 @@ describe('editor shell', () => {
   it('a diagram-pinned style wins over the app preference and disables the picker', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams') {
-          return new Response(
-            JSON.stringify({
-              diagrams: [{ name: 'sketch', model: { ...goodModel, style: 'sketch' }, issues: [], editable: true }],
-            }),
-            { status: 200 },
-          );
-        }
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }),
+      stubFetch([{ name: 'sketch', model: { ...goodModel, style: 'sketch' }, issues: [], editable: true }]),
     );
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector('.dg-style-rough')).not.toBeNull());
@@ -618,20 +557,7 @@ describe('editor shell', () => {
     localStorage.setItem('diagramming.style', 'sketch');
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams') {
-          return new Response(
-            JSON.stringify({
-              diagrams: [
-                { name: 'sketch', model: { ...goodModel, style: 'retired-style' }, issues: [], editable: true },
-              ],
-            }),
-            { status: 200 },
-          );
-        }
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }),
+      stubFetch([{ name: 'sketch', model: { ...goodModel, style: 'retired-style' }, issues: [], editable: true }]),
     );
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector('.dg-style-rough')).not.toBeNull()); // app pref won
@@ -662,7 +588,7 @@ describe('editor shell', () => {
   it('places a library node from the palette', async () => {
     const { container } = render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
     fireEvent.click(await screen.findByRole('button', { name: /place Person/i }));
     // placing keeps the Library tab active (does NOT flip to Properties)…
     expect(screen.getByRole('tab', { name: 'Library' }).getAttribute('aria-selected')).toBe('true');
@@ -765,7 +691,7 @@ describe('editor shell', () => {
     // Layers & planes lives in the right dock, always present in edit mode
     expect(screen.getByRole('heading', { name: /layers & planes/i })).toBeDefined();
     // Library is a tab; opening it does not hide Layers & planes
-    fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
     expect(screen.getByLabelText('Search library')).toBeDefined();
     expect(screen.getByRole('heading', { name: /layers & planes/i })).toBeDefined();
   });
@@ -820,19 +746,7 @@ describe('editor shell', () => {
       containment: [],
       relations: [{ id: 'a->b#0', from: 'a', to: 'b', kind: 'sync' }],
     };
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams') {
-          return new Response(
-            JSON.stringify({ diagrams: [{ name: 'sketch', model: related, issues: [], editable: true }] }),
-            { status: 200 },
-          );
-        }
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }),
-    );
+    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: related, issues: [], editable: true }]));
     const { container } = render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
     await canvas().findByText('a');
@@ -958,19 +872,7 @@ describe('editor shell', () => {
   });
 
   it('keeps the drill trail when the diagram is renamed', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams') {
-          return new Response(
-            JSON.stringify({ diagrams: [{ name: 'sketch', model: goodModel, issues: [], editable: true }] }),
-            { status: 200 },
-          );
-        }
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }),
-    );
+    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: goodModel, issues: [], editable: true }]));
     render(<App />);
     fireEvent.click(await screen.findByLabelText('Enter node')); // drill into sys
     await waitFor(() => expect(window.location.hash).toBe('#/sketch/sys'));
@@ -987,21 +889,10 @@ describe('editor shell', () => {
     // hashchange closes the edit session on 'sketch'.
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams') {
-          return new Response(
-            JSON.stringify({
-              diagrams: [
-                { name: 'sketch', model: goodModel, issues: [], editable: true },
-                { name: 'two', model: twoModel, issues: [], editable: true },
-              ],
-            }),
-            { status: 200 },
-          );
-        }
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }),
+      stubFetch([
+        { name: 'sketch', model: goodModel, issues: [], editable: true },
+        { name: 'two', model: twoModel, issues: [], editable: true },
+      ]),
     );
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
@@ -1053,20 +944,8 @@ describe('editor shell', () => {
   it('carries the source diagram\'s saved layout onto the copy', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams') {
-          return new Response(
-            JSON.stringify({ diagrams: [{ name: 'two', model: twoModel, issues: [], editable: false }] }),
-            { status: 200 },
-          );
-        }
-        if (url === '/api/layouts') {
-          return new Response(
-            JSON.stringify({ layouts: { two: { version: 1, planes: { default: { z: { x: 40, y: 80 } } } } } }),
-            { status: 200 },
-          );
-        }
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      stubFetch([{ name: 'two', model: twoModel, issues: [], editable: false }], {
+        layouts: { two: { version: 1, planes: { default: { z: { x: 40, y: 80 } } } } },
       }),
     );
     render(<App />);
@@ -1087,21 +966,10 @@ describe('editor shell', () => {
   it('numbers a second copy instead of colliding with the first', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string) => {
-        if (url === '/api/diagrams') {
-          return new Response(
-            JSON.stringify({
-              diagrams: [
-                { name: 'two', model: twoModel, issues: [], editable: false },
-                { name: 'two-copy', model: { ...twoModel, id: 'two-copy', name: 'two-copy' }, issues: [], editable: true },
-              ],
-            }),
-            { status: 200 },
-          );
-        }
-        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }),
+      stubFetch([
+        { name: 'two', model: twoModel, issues: [], editable: false },
+        { name: 'two-copy', model: { ...twoModel, id: 'two-copy', name: 'two-copy' }, issues: [], editable: true },
+      ]),
     );
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /duplicate/i }));
@@ -1155,5 +1023,94 @@ describe('editor shell', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'Diagram' }), { target: { value: 'two' } });
     expect(await screen.findByText(/read-only/i)).toBeDefined();
     expect(screen.queryByRole('button', { name: /^eject$/i })).toBeNull();
+  });
+
+  it('entering edit starts the session from the raw source, not the composed boot model', async () => {
+    vi.stubGlobal(
+      'fetch',
+      stubFetch([{ name: 'umbrella', model: umbrellaComposed, issues: [], editable: true }], {
+        extra: (url) =>
+          url === '/api/diagrams/umbrella' ? new Response(JSON.stringify({ model: umbrellaRaw }), { status: 200 }) : undefined,
+      }),
+    );
+    render(<App />);
+    // canvas() binds to '.dg-canvas' at call time; boot is async, so the first
+    // query goes through screen (always bound to document.body) instead. The
+    // boot list serves the composed umbrella: the grafted node is visible.
+    expect(await screen.findByText('grafted')).toBeDefined();
+    fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
+    // The edit session is seeded from the raw source: only the include
+    // placeholder shows, the grafted node is gone.
+    expect(await screen.findByRole('button', { name: /^save$/i })).toBeDefined();
+    await waitFor(() => expect(canvas().queryByText('grafted')).toBeNull());
+    expect(canvas().getByText('inc')).toBeDefined();
+  });
+
+  it('a failed raw-source fetch refuses to enter edit', async () => {
+    vi.stubGlobal(
+      'fetch',
+      stubFetch([{ name: 'sketch', model: goodModel, issues: [], editable: true }], {
+        extra: (url) =>
+          url === '/api/diagrams/sketch'
+            ? new Response(JSON.stringify({ issues: [{ message: 'disk on fire' }] }), { status: 500 })
+            : undefined,
+      }),
+    );
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
+    expect(await screen.findByText(/could not load 'sketch' for editing/i)).toBeDefined();
+    // still in view mode: Edit is offered again, Save never appears
+    expect(screen.getByRole('button', { name: /edit/i })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull();
+  });
+
+  it('saving an umbrella refreshes the view with the composed model', async () => {
+    vi.stubGlobal(
+      'fetch',
+      stubFetch([{ name: 'umbrella', model: umbrellaComposed, issues: [], editable: true }], {
+        extra: (url) => {
+          if (url === '/api/diagrams/umbrella') return new Response(JSON.stringify({ model: umbrellaRaw }), { status: 200 });
+          if (url === '/api/diagrams/umbrella/composed') {
+            return new Response(JSON.stringify({ model: umbrellaComposed }), { status: 200 });
+          }
+          return undefined;
+        },
+      }),
+    );
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
+    await waitFor(() => expect(canvas().queryByText('grafted')).toBeNull()); // editing the raw source
+    fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
+    fireEvent.click(await screen.findByRole('button', { name: /add node/i }));
+    expect(await canvas().findByText('node')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    await waitFor(() => {
+      const calls = (fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+      expect(calls).toContain('/api/diagrams/umbrella/composed');
+    });
+    // Leave edit; view mode must show the freshly composed model again.
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
+    expect((await canvas().findAllByText('grafted')).length).toBeGreaterThan(0);
+  });
+
+  it('duplicating an owned umbrella copies the raw source', async () => {
+    vi.stubGlobal(
+      'fetch',
+      stubFetch([{ name: 'umbrella', model: umbrellaComposed, issues: [], editable: true }], {
+        extra: (url) =>
+          url === '/api/diagrams/umbrella' ? new Response(JSON.stringify({ model: umbrellaRaw }), { status: 200 }) : undefined,
+      }),
+    );
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: /duplicate/i }));
+    await waitFor(() => {
+      const post = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        (c) => String(c[0]) === '/api/diagrams/umbrella-copy' && (c[1] as RequestInit | undefined)?.method === 'POST',
+      );
+      expect(post).toBeDefined();
+      const body = JSON.parse(String((post![1] as RequestInit).body)) as { nodes: { id: string }[] };
+      expect(body.nodes.some((n) => n.id === 'inc')).toBe(true);
+      expect(body.nodes.some((n) => n.id === 'grafted')).toBe(false);
+    });
   });
 });

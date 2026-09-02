@@ -99,6 +99,22 @@ export function useEditSession({
           ...d,
           [name]: { name, model: state.model, layout: state.layout, drawings: state.drawings, issues: [] },
         }));
+        // Umbrellas save raw; the view-mode shadow should show them composed.
+        // Non-fatal on failure — the raw model stays until the next boot.
+        if (state.model.nodes.some((n) => n.include !== undefined)) {
+          try {
+            const res = await fetch(`/api/diagrams/${name}/composed`);
+            if (res.ok) {
+              const { model } = (await res.json()) as { model: DiagramModel };
+              setDrafts((d) => {
+                const cur = d[name];
+                return cur === undefined ? d : { ...d, [name]: { ...cur, model } };
+              });
+            }
+          } catch {
+            /* keep the raw shadow */
+          }
+        }
       }
     } catch (e) {
       setSaveIssues([{ message: errMessage(e) }]);
