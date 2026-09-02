@@ -1064,7 +1064,7 @@ describe('editor shell', () => {
     expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull();
   });
 
-  it('saving an umbrella refreshes the view with the composed model', async () => {
+  it('leaving edit refreshes the view with the composed model — saves alone do not', async () => {
     vi.stubGlobal(
       'fetch',
       stubFetch([{ name: 'umbrella', model: umbrellaComposed, issues: [], editable: true }], {
@@ -1084,12 +1084,14 @@ describe('editor shell', () => {
     fireEvent.click(await screen.findByRole('button', { name: /add node/i }));
     expect(await canvas().findByText('node')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
-    await waitFor(() => {
-      const calls = (fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
-      expect(calls).toContain('/api/diagrams/umbrella/composed');
-    });
+    const calls = () => (fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+    // The save itself lands (raw POST) without a server-side re-compose: the
+    // composed shadow only matters once the session ends.
+    await waitFor(() => expect(calls().filter((u) => u === '/api/diagrams/umbrella').length).toBeGreaterThan(1));
+    expect(calls()).not.toContain('/api/diagrams/umbrella/composed');
     // Leave edit; view mode must show the freshly composed model again.
     fireEvent.click(screen.getByRole('button', { name: /done/i }));
+    await waitFor(() => expect(calls()).toContain('/api/diagrams/umbrella/composed'));
     expect((await canvas().findAllByText('grafted')).length).toBeGreaterThan(0);
   });
 

@@ -37,8 +37,9 @@ export interface EditSession {
   saveIssues: { message: string }[] | null;
   setSaveIssues: Dispatch<SetStateAction<{ message: string }[] | null>>;
   saving: boolean;
-  /** Single save path shared by the toolbar button and Ctrl/Cmd+S. */
-  doSave: () => Promise<void>;
+  /** Single save path shared by the toolbar button and Ctrl/Cmd+S. Resolves
+   * true when the save actually landed on disk. */
+  doSave: () => Promise<boolean>;
   /** Begin an edit session over `name`'s model+layout+drawings. */
   enterEdit: (name: string, model: DiagramModel, layout: LayoutOverlay, drawings: Drawings) => void;
   /** End the edit session (shadowing drafts + flushing a final save), returning
@@ -75,14 +76,36 @@ export function useEditSession({
   // Populated by DiagramView in edit mode: reads current/auto positions and the
   // viewport center for the auto-layout toggle and manual new-node placement.
   const layoutApiRef = useRef<LayoutApi | null>(null);
+  // Did any save land this session? Decides whether a clean leaveEdit still
+  // owes view mode a composed refresh (autosaves change the file long before
+  // the session ends).
+  const sessionSavedRef = useRef(false);
   const session = editor.session;
+
+  // Umbrellas save raw; the view-mode shadow should show them composed. The
+  // server-side re-compose is deferred to session end (leaveEdit) — running it
+  // on every 300ms autosave tick is wasted work while the canvas shows the raw
+  // draft anyway. Non-fatal on failure: the raw model stays until the next boot.
+  const refreshComposed = async (name: string) => {
+    try {
+      const res = await fetch(`/api/diagrams/${name}/composed`);
+      if (!res.ok) return;
+      const { model } = (await res.json()) as { model: DiagramModel };
+      setDrafts((d) => {
+        const cur = d[name];
+        return cur === undefined ? d : { ...d, [name]: { ...cur, model } };
+      });
+    } catch {
+      /* keep the raw shadow */
+    }
+  };
 
   // Single save path shared by the toolbar button and Ctrl/Cmd+S. Surfaces
   // issues (validation/HTTP/throw) uniformly and, on success, shadows the
   // compiled artifact with exactly what was saved so leaving edit shows it —
   // the creation-time draft (empty model) no longer wins forever.
-  const doSave = async () => {
-    if (!editor.dirty || savingRef.current) return;
+  const doSave = async (): Promise<boolean> => {
+    if (!editor.dirty || savingRef.current) return false;
     savingRef.current = true;
     setSaving(true);
     const snapshot = editor.session;
@@ -90,7 +113,7 @@ export function useEditSession({
       const res = await editor.save();
       if (!res.ok) {
         setSaveIssues(res.issues ?? [{ message: 'Save failed' }]);
-        return;
+        return false;
       }
       setSaveIssues(null);
       if (snapshot !== null) {
@@ -99,25 +122,12 @@ export function useEditSession({
           ...d,
           [name]: { name, model: state.model, layout: state.layout, drawings: state.drawings, issues: [] },
         }));
-        // Umbrellas save raw; the view-mode shadow should show them composed.
-        // Non-fatal on failure — the raw model stays until the next boot.
-        if (state.model.nodes.some((n) => n.include !== undefined)) {
-          try {
-            const res = await fetch(`/api/diagrams/${name}/composed`);
-            if (res.ok) {
-              const { model } = (await res.json()) as { model: DiagramModel };
-              setDrafts((d) => {
-                const cur = d[name];
-                return cur === undefined ? d : { ...d, [name]: { ...cur, model } };
-              });
-            }
-          } catch {
-            /* keep the raw shadow */
-          }
-        }
+        sessionSavedRef.current = true;
       }
+      return true;
     } catch (e) {
       setSaveIssues([{ message: errMessage(e) }]);
+      return false;
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -131,6 +141,7 @@ export function useEditSession({
     // compiled artifact with the latest edits so view mode shows them immediately,
     // and flush a final save — a failure re-surfaces the banner in view mode.
     const snap = editor.session;
+    const hasIncludes = snap !== null && snap.state.model.nodes.some((n) => n.include !== undefined);
     if (editor.dirty && snap !== null) {
       setDrafts((d) => ({
         ...d,
@@ -142,7 +153,14 @@ export function useEditSession({
           issues: [],
         },
       }));
-      void doSave();
+      void doSave().then((ok) => {
+        // Re-compose only once the final flush moved the file.
+        if (ok && hasIncludes) void refreshComposed(snap.name);
+      });
+    } else if (hasIncludes && sessionSavedRef.current && snap !== null) {
+      // Clean leave after earlier autosaves: the on-disk source changed at
+      // some point this session, so view mode still owes one composed refresh.
+      void refreshComposed(snap.name);
     }
     editor.stop();
     setEditing(false);
@@ -154,6 +172,7 @@ export function useEditSession({
 
   const enterEdit = (name: string, model: DiagramModel, layout: LayoutOverlay, drawings: Drawings) => {
     if (model === undefined) return;
+    sessionSavedRef.current = false;
     editor.start(name, { model, layout, drawings });
     setSaveIssues(null);
     setEditing(true);
