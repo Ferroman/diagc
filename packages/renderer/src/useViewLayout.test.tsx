@@ -77,6 +77,21 @@ describe('useViewLayout', () => {
     expect(hints.get('img')).toEqual({ width: 300, height: 200 });
   });
 
+  it('reserves an image node\'s caption width so long names cannot collide', async () => {
+    const spy = vi.fn();
+    const m = fixture();
+    m.nodes = m.nodes.map((n) => (n.id === 'img' ? { ...n, name: 'Amazon Elastic Kubernetes Service' } : n));
+    const layout: LayoutOverlay = { version: 1, planes: {}, sizes: { img: { w: 64, h: 64 } } };
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile: notationLayoutProfile(spy), layout }),
+    });
+    await waitFor(() => expect(result.current.geometry).not.toBeNull());
+    const hints = spy.mock.calls[0]?.[0] as ReadonlyMap<string, { width: number; height: number }>;
+    // 33 chars at ~7px + padding; the icon body keeps its 64px height and
+    // letterboxes horizontally (object-fit: contain), so only width grows
+    expect(hints.get('img')).toEqual({ width: 239, height: 64 });
+  });
+
   it('substitutes saved overlay positions for viewers, unless the viewer set them aside', async () => {
     const m = fixture();
     const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 400, y: 50 } } } };

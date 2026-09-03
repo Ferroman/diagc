@@ -9,7 +9,7 @@ import {
   type ViewNode,
 } from '@diagramming/core';
 import { arrangeActivityFrames } from './activity-frame';
-import { estimateLabelSize } from './label-size';
+import { captionWidth, estimateLabelSize } from './label-size';
 import { layoutView, type EdgePoint, type NodeGeometry } from './layout';
 import { EMPTY_ID_SET } from './loop-highlight';
 import type { NotationProfile } from './notations';
@@ -67,8 +67,15 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     }
     for (const n of input.model.nodes) {
       if (n.image === undefined) continue;
+      // cornerBadge types draw the image as container chrome and the label
+      // inside the box — no spilling caption to reserve room for
+      if (n.type !== undefined && input.typeRegistry.resolve(n.type).cornerBadge === true) continue;
       const s = input.layout?.sizes?.[n.id];
-      m.set(n.id, s !== undefined ? { width: s.w, height: s.h } : { width: DEFAULT_IMAGE_NODE_SIZE.w, height: DEFAULT_IMAGE_NODE_SIZE.h });
+      const base = s !== undefined ? { width: s.w, height: s.h } : { width: DEFAULT_IMAGE_NODE_SIZE.w, height: DEFAULT_IMAGE_NODE_SIZE.h };
+      // Reserve the caption's width (it hangs below, centered, one line): the
+      // icon letterboxes inside the wider box (object-fit: contain), so this
+      // widens the footprint without distorting the artwork.
+      m.set(n.id, { ...base, width: Math.max(base.width, captionWidth(n.name ?? n.id)) });
     }
     // Shape (silhouette) nodes honor their stored size like image nodes; without
     // one they fall through to the label-based estimate.

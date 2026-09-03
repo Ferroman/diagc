@@ -29,6 +29,17 @@ export function estimateLabelSize(text: string, fontScale: FontScale = 'md'): { 
   };
 }
 
+// The image-node caption: 12px nowrap bold, centered under the icon and free
+// to spill past the box (styles.css .dg-image-caption) — so elk must reserve
+// its width or long-named icons overlap their neighbors.
+const CAPTION_CHAR = 7;
+const CAPTION_PAD = 8;
+
+/** Deterministic (no-DOM) width of an image node's one-line caption. */
+export function captionWidth(text: string): number {
+  return Math.round(text.length * CAPTION_CHAR + CAPTION_PAD);
+}
+
 /**
  * How many characters an edge's single label chip may show. ~24 characters is
  * about the width of two folded boxes at platform altitude; past that one arrow's
