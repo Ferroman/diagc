@@ -1,20 +1,22 @@
 # Library reference
 
-The palette of ready-made nodes in the studio's **Library** tab. Five read-only packs ship bundled; your own entries merge over them.
+The palette of ready-made nodes in the studio's **Library** tab. Seven read-only packs ship bundled; your own entries merge over them.
 
 For how to use it, see [Use the icon library](../how-to/use-the-icon-library.md).
 
 ## Bundled packs
 
-808 entries in 34 categories, rendered in this order:
+839 entries in 36 categories, rendered in this order:
 
 | Pack | Entries | Categories | Assets |
 | --- | --- | --- | --- |
 | **C4** | 31 | 5 | `/library/shapes/person.svg` (the rest are coloured boxes) |
 | **Activity** | 10 | 1 | none — renderer-drawn glyphs, not images |
 | **Data** | 1 | 1 | none — it seeds columns, not an image |
-| **Tech** | 3 | 1 | `/library/tech/` |
-| **AWS** | 763 | 26 | `/library/aws/`, `/library/aws-resources/`, `/library/aws-groups/`, `/library/aws-categories/` |
+| **Shapes** | 3 | 1 | `/library/shapes/` — tintable silhouette masks |
+| **Tech** | 16 | 1 | `/library/tech/` |
+| **Kubernetes** | 6 | 1 | `/library/k8s/` |
+| **AWS** | 772 | 26 | `/library/aws/`, `/library/aws-resources/`, `/library/aws-groups/`, `/library/aws-categories/` |
 
 ### C4
 
@@ -42,9 +44,17 @@ Lanes and regions are not here — they are structural (a lane must live inside 
 
 One entry, **Table** — a `db-table` node seeded with a single `id int PK` column, ready to edit in place. The only bundled entry whose template carries `columns` rather than an image.
 
+### Shapes
+
+Person, Users, Internet — hand-drawn silhouette SVGs rendered as tintable masks (`template.shape`, not `template.image`), for the generic marks cloud diagrams hang off the edge of the frame. The person silhouette is the same one the C4 person entries use.
+
 ### Tech
 
-Temporal, NATS, StarRocks — vendor logos no cloud icon set covers, normalised onto a common tile.
+Temporal, NATS, StarRocks, Cloudflare, GitHub, GitHub Actions, Auth0, SendGrid, New Relic, ClickHouse, Redis, RabbitMQ, PostgreSQL, Helm, Jupyter, Kubernetes — vendor logos no cloud icon set covers, normalised onto a common tile.
+
+### Kubernetes
+
+Pod, Service, Deployment, Ingress, Secret, Node — the [Kubernetes community icons](https://github.com/kubernetes/community/tree/master/icons), the labeled blue heptagons k8s diagrams are drawn with. Unlike the Tech logos they ship bare (no white tile), since they carry their own chrome.
 
 ### AWS
 
@@ -58,6 +68,8 @@ The complete official AWS Architecture Icons release (2026-07-31):
 | Category tiles | 26 | `/library/aws-categories/` | 64×64 |
 
 Categories mirror AWS's own taxonomy — *AWS · Compute*, *AWS · Storage*, *AWS · Databases*, and so on — plus *AWS · Groups* and *AWS · Category icons*.
+
+*AWS · Groups* opens with nine hand-curated **boundary containers** (AWS Cloud, AWS Account, Region, Availability Zone, VPC, Public/Private Subnet, Auto Scaling Group, Generic Group). Each places a node with an `aws-*` group type the renderer styles as the official stencil draws it — corner badge, dashed or solid outline, tint-filled subnets — with the authentic accent color baked in. Add children (the node panel's containment control) and it becomes the styled boundary box; the raw badge icons follow in the same category for when you want just the glyph.
 
 Six legacy file names (`lambda.svg`, `s3.svg`, `sns.svg`, `dynamodb.svg`, `api-gateway.svg`, `cloudwatch.svg`) are kept as copies of the real icons so diagrams authored against the old placeholder pack keep resolving. They are not library entries.
 
@@ -126,7 +138,7 @@ Assets and manifests are committed; nothing fetches at build time.
 ```bash
 node scripts/build-aws-pack.mjs     # downloads the pinned AWS release
 node scripts/build-aws-pack.mjs --src <dir>   # or build from an extracted package
-node scripts/build-tech-pack.mjs    # refetches the Temporal / NATS / StarRocks marks
+node scripts/build-tech-pack.mjs    # refetches the vendor logos and Kubernetes icons
 ```
 
 Bump `RELEASE` and `RELEASE_URL` in `scripts/build-aws-pack.mjs` for a newer AWS quarterly release. Extra search aliases live in `scripts/aws-aliases.mjs`.
