@@ -217,6 +217,43 @@ describe('DiagramNode', () => {
     expect(container.querySelector('.dg-image-node')).toBeNull(); // not the image-body variant
   });
 
+  it('an outline group type renders a colored border with no tint fill when expanded', () => {
+    const registry = createTypeRegistry({ grp: { shape: 'box', outline: true, dashed: true } });
+    const { container } = renderNode({ state: 'expanded', typeId: 'grp', color: '#7aa116', typeRegistry: registry });
+    const group = container.querySelector('.dg-group') as HTMLElement;
+    expect(group.classList.contains('dg-group-outline')).toBe(true);
+    expect(group.style.borderColor).toBe('rgb(122, 161, 22)');
+    expect(group.style.background).toBe(''); // no accent tint — CSS keeps it transparent
+  });
+
+  it('a cornerBadge group renders its image flush at the corner, not in the padded header', () => {
+    const registry = createTypeRegistry({ grp: { shape: 'box', outline: true, cornerBadge: true } });
+    const { container } = renderNode({
+      state: 'expanded',
+      typeId: 'grp',
+      color: '#7aa116',
+      image: '/library/aws-groups/virtual-private-cloud-vpc.svg',
+      typeRegistry: registry,
+    });
+    expect(container.querySelector('.dg-group-corner')).not.toBeNull();
+    const badge = container.querySelector('.dg-corner-badge') as HTMLImageElement;
+    expect(badge.getAttribute('src')).toBe('/library/aws-groups/virtual-private-cloud-vpc.svg');
+    expect(container.querySelector('.dg-image-thumb')).toBeNull(); // replaces the header thumb
+  });
+
+  it('a leaf of a cornerBadge type keeps the typed-box look instead of the image body', () => {
+    const registry = createTypeRegistry({ grp: { shape: 'box', outline: true, cornerBadge: true } });
+    const { container } = renderNode({
+      label: 'VPC',
+      typeId: 'grp',
+      image: '/library/aws-groups/virtual-private-cloud-vpc.svg',
+      typeRegistry: registry,
+    });
+    expect(container.querySelector('.dg-image-node')).toBeNull();
+    expect(container.querySelector('.dg-image-thumb')).not.toBeNull(); // inline thumb in the box row
+    expect(screen.getByText('VPC')).toBeDefined();
+  });
+
   it('renders a rough sketch shape behind the node in sketch mode', () => {
     const { container } = renderNode(
       { label: 'orders', stylePreset: stylePreset('sketch') },

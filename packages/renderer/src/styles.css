@@ -100,6 +100,28 @@
   font: 600 11px/1 system-ui, sans-serif;
   padding: 8px 10px;
 }
+/* Outline group (C4 boundary / AWS region-VPC convention): the border IS the
+   look — no tint wash; the title follows the inline accent color. */
+.dg-group-outline {
+  background: transparent;
+}
+.dg-group-outline > .dg-group-header {
+  color: inherit;
+}
+/* AWS-style container: square badge flush in the top-left corner, title beside
+   it. Sharp corners — the official group stencil has none rounded. */
+.dg-group-corner {
+  border-radius: 0;
+}
+.dg-group-corner > .dg-group-header {
+  padding: 0 8px 0 0;
+  gap: 8px;
+}
+.dg-corner-badge {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
 .dg-node-row { display: flex; align-items: center; gap: 6px; }
 .dg-label { font-weight: 600; }
 .dg-node-row .dg-label { flex: 1 1 auto; min-width: 0; }

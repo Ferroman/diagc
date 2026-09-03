@@ -289,7 +289,10 @@ export function DiagramNode({
     );
   }
 
-  if (data.image !== undefined && data.state === 'leaf') {
+  // A cornerBadge type's image is container chrome, not the node's body: its
+  // leaf keeps the typed-box look (inline thumb) so a group placed before it
+  // has children doesn't balloon into a stretched icon.
+  if (data.image !== undefined && data.state === 'leaf' && style.cornerBadge !== true) {
     // NodeResizer sits outside the body div: its handles straddle the box edge
     // and the div's overflow:hidden would clip them.
     return (
@@ -463,17 +466,30 @@ export function DiagramNode({
   }
 
   if (data.state === 'expanded') {
+    // Outline group types (C4 boundaries, AWS regions/VPCs) draw a pure colored
+    // line — no accent tint; the stencil's boundary is a line, not a wash.
+    const groupOutline = style.outline === true && data.color !== undefined;
+    const corner = style.cornerBadge === true;
     return (
       <div
-        className={`dg-group${style.dashed === true ? ' dg-dashed' : ''}${loopClass}`}
+        className={`dg-group${style.dashed === true ? ' dg-dashed' : ''}${groupOutline ? ' dg-group-outline' : ''}${corner ? ' dg-group-corner' : ''}${loopClass}`}
         {...(data.stylePreset?.rough !== undefined
           ? {}
-          : { style: { ...accentStyle(data.color), ...(data.textColor !== undefined ? { color: data.textColor } : {}) } })}
+          : {
+              style: groupOutline
+                ? { borderColor: data.color, color: data.textColor ?? data.color }
+                : { ...accentStyle(data.color), ...(data.textColor !== undefined ? { color: data.textColor } : {}) },
+            })}
       >
         {sketchOf(data, style.shape, id, width, height)}
         <div className="dg-group-header">
           {data.image !== undefined && (
-            <img className="dg-image-thumb" src={assetUrl(data.assetBase, data.image)} alt="" draggable={false} />
+            <img
+              className={corner ? 'dg-corner-badge' : 'dg-image-thumb'}
+              src={assetUrl(data.assetBase, data.image)}
+              alt=""
+              draggable={false}
+            />
           )}
           {Icon !== undefined && <Icon size={14} className="dg-icon" />}
           {name}

@@ -17,6 +17,11 @@ export interface TypeStyle {
    * node — how fixed-geometry glyphs (dots, bars, diamonds) get real footprints
    * from the DSL, where no palette template runs */
   defaultSize?: { width: number; height: number };
+  /** expanded containers of this type draw their `image` as a square badge
+   * flush in the top-left corner (the AWS group convention) instead of the
+   * padded header thumbnail; leaves keep the typed-box look rather than the
+   * image-body rendering, so a freshly placed group reads as a box */
+  cornerBadge?: boolean;
   /** solid body fill (authentic-notation looks, e.g. C4 blue); an explicit
    * node color / model typeColors entry still wins */
   fill?: string;
