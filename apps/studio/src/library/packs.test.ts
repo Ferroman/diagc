@@ -159,8 +159,28 @@ describe('AWS containers', () => {
 describe('Tech pack', () => {
   it('carries the vendor logos no cloud icon set covers', () => {
     const tech = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'tech');
-    expect(tech.map((e) => e.name).sort()).toEqual(['NATS', 'StarRocks', 'Temporal']);
+    expect(tech.map((e) => e.name).sort()).toEqual([
+      'Auth0', 'ClickHouse', 'Cloudflare', 'GitHub', 'GitHub Actions', 'Helm', 'Jupyter', 'Kubernetes',
+      'NATS', 'New Relic', 'PostgreSQL', 'RabbitMQ', 'Redis', 'SendGrid', 'StarRocks', 'Temporal',
+    ]);
     for (const e of tech) expect(e.template.image).toMatch(/^\/library\/tech\//);
+  });
+});
+
+describe('Kubernetes pack', () => {
+  it('carries the community resource icons for cluster interiors', () => {
+    const k8s = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'k8s');
+    expect(k8s.map((e) => e.id).sort()).toEqual([
+      'k8s-deploy', 'k8s-ing', 'k8s-node', 'k8s-pod', 'k8s-secret', 'k8s-svc',
+    ]);
+    for (const e of k8s) expect(e.template.image).toMatch(/^\/library\/k8s\//);
+  });
+
+  it('is findable by the words people actually type', () => {
+    const kw = (id: string) => BUNDLED_LIBRARY.entries.find((e) => e.id === id)?.keywords ?? [];
+    expect(kw('k8s-pod')).toContain('kubernetes');
+    expect(kw('k8s-ing')).toContain('ingress');
+    expect(kw('k8s-svc')).toContain('service');
   });
 });
 
