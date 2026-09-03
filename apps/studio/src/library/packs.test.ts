@@ -124,6 +124,38 @@ describe('AWS pack', () => {
   });
 });
 
+describe('AWS containers', () => {
+  const byId = new Map(BUNDLED_LIBRARY.entries.map((e) => [e.id, e]));
+
+  it('offers one-drag boundary containers with the authentic accent colors', () => {
+    const want: Record<string, { type: string; color: string; image?: string }> = {
+      'aws-ctr-cloud': { type: 'aws-cloud', color: '#242F3E', image: '/library/aws-groups/aws-cloud.svg' },
+      'aws-ctr-account': { type: 'aws-account', color: '#E7157B', image: '/library/aws-groups/aws-account.svg' },
+      'aws-ctr-region': { type: 'aws-region', color: '#00A4A6', image: '/library/aws-groups/region.svg' },
+      'aws-ctr-az': { type: 'aws-az', color: '#00A4A6' },
+      'aws-ctr-vpc': { type: 'aws-vpc', color: '#8C4FFF', image: '/library/aws-groups/virtual-private-cloud-vpc.svg' },
+      'aws-ctr-subnet-public': { type: 'aws-subnet-public', color: '#7AA116', image: '/library/aws-groups/public-subnet.svg' },
+      'aws-ctr-subnet-private': { type: 'aws-subnet-private', color: '#00A4A6', image: '/library/aws-groups/private-subnet.svg' },
+      'aws-ctr-auto-scaling': { type: 'aws-auto-scaling-group', color: '#ED7100', image: '/library/aws-groups/auto-scaling-group.svg' },
+      'aws-ctr-generic': { type: 'aws-group', color: '#7D8998' },
+    };
+    for (const [id, t] of Object.entries(want)) {
+      const e = byId.get(id);
+      expect(e, `missing '${id}'`).toBeDefined();
+      expect(e?.category).toBe('aws-groups');
+      expect(e?.template).toMatchObject(t);
+    }
+  });
+
+  it('uses node types the renderer styles (no silent fallback to a plain box)', () => {
+    const ctrs = BUNDLED_LIBRARY.entries.filter((e) => e.id.startsWith('aws-ctr-'));
+    expect(ctrs.length).toBeGreaterThanOrEqual(9);
+    for (const e of ctrs) {
+      expect(DEFAULT_TYPE_STYLES[e.template.type!], `type '${e.template.type}' is not in the type registry`).toBeDefined();
+    }
+  });
+});
+
 describe('Tech pack', () => {
   it('carries the vendor logos no cloud icon set covers', () => {
     const tech = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'tech');

@@ -1,6 +1,7 @@
 import type { Library, LibraryCategory, LibraryEntry } from './types';
 import { ACTIVITY_PACK } from './packs.activity';
 import { AWS_PACK } from './packs.aws';
+import { AWS_CONTAINER_ENTRIES } from './packs.aws-containers';
 import { C4_PACK } from './packs.c4';
 import { DATA_PACK } from './packs.data';
 
@@ -28,5 +29,5 @@ const techEntries: LibraryEntry[] = [
  * renders categories in this order. */
 export const BUNDLED_LIBRARY: Library = {
   categories: [...C4_PACK.categories, ...ACTIVITY_PACK.categories, ...DATA_PACK.categories, ...techCategories, ...AWS_PACK.categories],
-  entries: [...C4_PACK.entries, ...ACTIVITY_PACK.entries, ...DATA_PACK.entries, ...techEntries, ...AWS_PACK.entries],
+  entries: [...C4_PACK.entries, ...ACTIVITY_PACK.entries, ...DATA_PACK.entries, ...techEntries, ...AWS_CONTAINER_ENTRIES, ...AWS_PACK.entries],
 };
