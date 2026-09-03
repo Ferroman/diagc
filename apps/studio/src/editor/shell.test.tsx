@@ -589,7 +589,8 @@ describe('editor shell', () => {
     const { container } = render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
     fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
-    fireEvent.click(await screen.findByRole('button', { name: /place Person/i }));
+    // two entries answer to "Place Person" now (C4 and the Shapes pack) — either works here
+    fireEvent.click((await screen.findAllByRole('button', { name: /place Person/i }))[0]!);
     // placing keeps the Library tab active (does NOT flip to Properties)…
     expect(screen.getByRole('tab', { name: 'Library' }).getAttribute('aria-selected')).toBe('true');
     // …and the node appears on the canvas
@@ -608,7 +609,8 @@ describe('editor shell', () => {
     fireEvent.click(sysEl);
     // open the Library and place a C4 Person while 'sys' is selected
     fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
-    fireEvent.click(await screen.findByRole('button', { name: /place Person/i }));
+    // two entries answer to "Place Person" now (C4 and the Shapes pack) — either works here
+    fireEvent.click((await screen.findAllByRole('button', { name: /place Person/i }))[0]!);
     // autosave posts the model with the placed node nested under 'sys'
     await waitFor(() => {
       const post = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
