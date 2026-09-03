@@ -103,6 +103,22 @@ describe('registries', () => {
     expect(r.resolve('activity-note')).toEqual({ shape: 'note', defaultSize: { width: 140, height: 64 }, label: '' });
   });
 
+  it('registers the AWS group vocabulary', () => {
+    const r = createTypeRegistry();
+    const badge = { shape: 'box', outline: true, cornerBadge: true, label: '' };
+    expect(r.resolve('aws-group')).toEqual(badge);
+    expect(r.resolve('aws-account')).toEqual(badge);
+    expect(r.resolve('aws-cloud')).toEqual(badge);
+    expect(r.resolve('aws-vpc')).toEqual(badge);
+    expect(r.resolve('aws-region')).toEqual({ ...badge, dashed: true });
+    expect(r.resolve('aws-auto-scaling-group')).toEqual({ ...badge, dashed: true });
+    // an AZ has no badge icon in the official stencil — just the dashed line
+    expect(r.resolve('aws-az')).toEqual({ shape: 'box', outline: true, dashed: true, label: '' });
+    // subnets keep the accent tint (their look is the wash, not the line)
+    expect(r.resolve('aws-subnet-public')).toEqual({ shape: 'box', cornerBadge: true, label: '' });
+    expect(r.resolve('aws-subnet-private')).toEqual({ shape: 'box', cornerBadge: true, label: '' });
+  });
+
   it('registers the activity relation kinds', () => {
     const r = createKindRegistry();
     expect(r.resolve('control')).toEqual({});

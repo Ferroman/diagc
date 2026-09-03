@@ -96,6 +96,20 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   'c4-class': { shape: 'box', label: '[Class]', icon: 'class', outline: true },
   'c4-interface': { shape: 'box', label: '[Interface]', icon: 'interface', outline: true, dashed: true },
   'c4-enum': { shape: 'box', label: '[Enumeration]', icon: 'class', outline: true },
+  // ---- AWS infrastructure groups (https://aws.amazon.com/architecture/icons/)
+  // The registry carries the stencil's structure — line style, no-tint outline,
+  // corner badge; the badge image and authentic accent color come from the
+  // library entries (palette sampled from the official group icons themselves).
+  // Empty labels: these are boundaries, a type subtitle would read as content.
+  'aws-group': { shape: 'box', outline: true, cornerBadge: true, label: '' },
+  'aws-account': { shape: 'box', outline: true, cornerBadge: true, label: '' },
+  'aws-cloud': { shape: 'box', outline: true, cornerBadge: true, label: '' },
+  'aws-vpc': { shape: 'box', outline: true, cornerBadge: true, label: '' },
+  'aws-region': { shape: 'box', outline: true, cornerBadge: true, dashed: true, label: '' },
+  'aws-auto-scaling-group': { shape: 'box', outline: true, cornerBadge: true, dashed: true, label: '' },
+  'aws-az': { shape: 'box', outline: true, dashed: true, label: '' },
+  'aws-subnet-public': { shape: 'box', cornerBadge: true, label: '' },
+  'aws-subnet-private': { shape: 'box', cornerBadge: true, label: '' },
   // ---- Activity diagram (UML) ------------------------------------------------
   // Shapes `box` used by frame/lane/region are never drawn — they render as
   // chrome branches in DiagramNode, but TypeStyle.shape is required.
