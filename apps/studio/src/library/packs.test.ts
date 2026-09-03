@@ -184,6 +184,17 @@ describe('Kubernetes pack', () => {
   });
 });
 
+describe('Shapes pack', () => {
+  it('offers the tintable silhouette marks', () => {
+    const shapes = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'shapes');
+    expect(shapes.map((e) => e.id).sort()).toEqual(['shape-internet', 'shape-person', 'shape-users']);
+    for (const e of shapes) {
+      expect(e.template.shape).toMatch(/^\/library\/shapes\//);
+      expect(e.template.image).toBeUndefined(); // masks, not image bodies
+    }
+  });
+});
+
 describe('Data pack', () => {
   it('bundles a Table entry seeded with an id pk column', () => {
     const t = BUNDLED_LIBRARY.entries.find((e) => e.id === 'data-table');
