@@ -177,6 +177,15 @@ describe('DiagramNode', () => {
     expect(screen.queryByText('table')).toBeNull(); // no type label
   });
 
+  it('shows a link badge on an image-leaf node and reports its click (AWS-icon linking target)', () => {
+    const onOpenLink = vi.fn();
+    const { container } = renderNode({ image: 'a3f9c2d4e5f6.png', link: '[[Note]]', onOpenLink });
+    const badge = container.querySelector('.dg-link-badge');
+    expect(badge).not.toBeNull();
+    fireEvent.click(badge!);
+    expect(onOpenLink).toHaveBeenCalledWith('[[Note]]');
+  });
+
   it('shows the resizer only when resizing is wired and the node is selected', () => {
     const onResize = vi.fn();
     renderNode({ image: 'a3f9c2d4e5f6.png', onResize }, true);
@@ -511,6 +520,21 @@ describe('DiagramNode', () => {
     expect(container.querySelector('.dg-type')?.textContent).toBe('[Person]');
   });
 
+  it('shows a link badge on a shape (silhouette) node and reports its click', () => {
+    const onOpenLink = vi.fn();
+    const { container } = renderNode({
+      label: 'Actor',
+      typeId: 'c4-person',
+      shape: '/library/shapes/person.svg',
+      link: 'https://x.test',
+      onOpenLink,
+    });
+    const badge = container.querySelector('.dg-link-badge');
+    expect(badge).not.toBeNull();
+    fireEvent.click(badge!);
+    expect(onOpenLink).toHaveBeenCalledWith('https://x.test');
+  });
+
   it('composes the technology into the type subtitle on the shape (silhouette) path', () => {
     const { container } = renderNode({
       label: 'Actor',
@@ -740,6 +764,15 @@ describe('git graph nodes', () => {
     expect(tag.textContent).toBe('1.0');
     expect(tag.style.color).toBe('rgb(123, 167, 217)');
     expect(container.querySelector('.dg-type')).toBeNull();
+  });
+
+  it('shows a link badge on a commit circle too (its own early-return container, not the default box)', () => {
+    const onOpenLink = vi.fn();
+    const { container } = renderNode(base({ typeId: 'commit', label: '1.0', link: '[[Note]]', onOpenLink }));
+    const badge = container.querySelector('.dg-link-badge');
+    expect(badge).not.toBeNull();
+    fireEvent.click(badge!);
+    expect(onOpenLink).toHaveBeenCalledWith('[[Note]]');
   });
 
   it('an untagged commit draws no tag', () => {

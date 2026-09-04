@@ -169,6 +169,32 @@ function InlineName({ label, onCommit }: { label: string; onCommit?: (value: str
 
 const fontScaleClass = (fs?: FontScale): string => (fs === 'sm' ? ' dg-fs-sm' : fs === 'lg' ? ' dg-fs-lg' : '');
 
+/** Corner badge for a node whose model carries `link` (see DiagramNodeData.link) —
+ * shared by every render branch below (and by TableNode, which imports it) so the
+ * click semantics live in exactly one place instead of a copy per shape. Renders
+ * nothing when the node has no link. */
+export function LinkBadge({ data }: { data: DiagramNodeData }): import('react').ReactElement | null {
+  if (data.link === undefined) return null;
+  const link = data.link;
+  return (
+    <button
+      type="button"
+      className="dg-link-badge"
+      title={link}
+      aria-label={`Open ${link}`}
+      onClick={(e) => {
+        // The badge is the navigation affordance; a plain node click keeps
+        // meaning "select", so the canvas must never see this one.
+        e.stopPropagation();
+        if (data.onOpenLink !== undefined) data.onOpenLink(link);
+        else if (/^https?:/.test(link)) window.open(link, '_blank', 'noopener');
+      }}
+    >
+      🔗
+    </button>
+  );
+}
+
 /** The box label body: rich runs when present, else plain name — with pre-wrap
  * and alignment. Used only on box paths (image caption / group header stay plain). */
 function BoxLabel({ data }: { data: DiagramNodeData }): import('react').ReactElement {
@@ -279,6 +305,7 @@ export function DiagramNode({
             {name}
           </span>
         )}
+        <LinkBadge data={data} />
         {sideHandles}
       </div>
     );
@@ -300,6 +327,7 @@ export function DiagramNode({
           {name}
           {typeLabel !== undefined && typeLabel !== '' ? <span className="dg-type">{typeLabel}</span> : null}
         </div>
+        <LinkBadge data={data} />
         {sideHandles}
       </div>
     );
@@ -339,6 +367,7 @@ export function DiagramNode({
             {ghostArrow}
             {name}
           </div>
+          <LinkBadge data={data} />
           {sideHandles}
         </div>
       </>
@@ -569,23 +598,7 @@ export function DiagramNode({
       </div>
       {typeLabel !== undefined && typeLabel !== '' ? <span className="dg-type">{typeLabel}</span> : null}
       {metaBadges}
-      {data.link !== undefined && (
-        <button
-          type="button"
-          className="dg-link-badge"
-          title={data.link}
-          aria-label={`Open ${data.link}`}
-          onClick={(e) => {
-            // The badge is the navigation affordance; a plain node click keeps
-            // meaning "select", so the canvas must never see this one.
-            e.stopPropagation();
-            if (data.onOpenLink !== undefined) data.onOpenLink(data.link!);
-            else if (/^https?:/.test(data.link!)) window.open(data.link, '_blank', 'noopener');
-          }}
-        >
-          🔗
-        </button>
-      )}
+      <LinkBadge data={data} />
       {sideHandles}
     </div>
   );

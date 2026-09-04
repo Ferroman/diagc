@@ -1,6 +1,6 @@
 import { Handle, Position } from '@xyflow/react';
 import type { Column } from '@diagramming/core';
-import type { DiagramNodeData } from './DiagramNode';
+import { LinkBadge, type DiagramNodeData } from './DiagramNode';
 import { TABLE_HEADER_H, TABLE_ROW_H } from './table-ports';
 
 const COMMON_TYPES = ['uuid', 'int', 'bigint', 'text', 'varchar', 'bool', 'timestamp', 'timestamptz', 'jsonb', 'numeric'];
@@ -87,6 +87,7 @@ export function TableNode({ data }: { data: DiagramNodeData }) {
           </datalist>
         </>
       )}
+      <LinkBadge data={data} />
     </div>
   );
 }

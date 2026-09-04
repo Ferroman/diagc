@@ -35,6 +35,19 @@ describe('TableNode', () => {
     expect(screen.getByText('access_level')).toBeDefined();
     expect(screen.getByText('FK')).toBeDefined();
   });
+
+  it('shows a link badge and reports its click, same as the other node kinds', () => {
+    const onOpenLink = vi.fn();
+    const { container } = render(
+      <ReactFlowProvider>
+        <DiagramNode id="accounts" data={{ ...data(), link: '[[Note]]', onOpenLink }} />
+      </ReactFlowProvider>,
+    );
+    const badge = container.querySelector('.dg-link-badge');
+    expect(badge).not.toBeNull();
+    fireEvent.click(badge!);
+    expect(onOpenLink).toHaveBeenCalledWith('[[Note]]');
+  });
 });
 
 describe('TableNode edit mode', () => {
