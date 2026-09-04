@@ -110,7 +110,8 @@
   "settings": {
     "default": {
       "direction": "DOWN",
-      "spacing": 70
+      "spacing": 70,
+      "edgeRouting": "orthogonal"
     }
   }
 }
