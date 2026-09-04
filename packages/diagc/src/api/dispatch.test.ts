@@ -5,7 +5,7 @@ import { Readable } from 'node:stream';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { describe, expect, it } from 'vitest';
 import * as handlers from './handlers';
-import { handleApiRequest } from './dispatch';
+import { handleApiRequest, runRoute } from './dispatch';
 
 interface Result {
   status: number;
@@ -186,6 +186,32 @@ describe('handleApiRequest', () => {
     const listed = await request(root, '/api/drawings');
     expect(listed.status).toBe(200);
     expect((listed.body as { drawings: Record<string, unknown> }).drawings['sketch']).toBeDefined();
+    await rm(root, { recursive: true, force: true });
+  });
+});
+
+describe('runRoute', () => {
+  it('runRoute serves a matched route with no HTTP objects involved', async () => {
+    const root = await tempRoot();
+    const ctx = { diagramsDir: path.join(root, 'diagrams'), artifactsDir: path.join(root, 'artifacts') };
+    const r = await runRoute({ method: 'GET', url: '/api/diagrams' }, ctx, handlers);
+    expect(r?.status).toBe(200);
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('runRoute returns undefined for an unmatched url', async () => {
+    const root = await tempRoot();
+    const ctx = { diagramsDir: path.join(root, 'diagrams'), artifactsDir: path.join(root, 'artifacts') };
+    expect(await runRoute({ method: 'GET', url: '/nope' }, ctx, handlers)).toBeUndefined();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('runRoute maps a malformed JSON body to 400', async () => {
+    const root = await tempRoot();
+    const ctx = { diagramsDir: path.join(root, 'diagrams'), artifactsDir: path.join(root, 'artifacts') };
+    const r = await runRoute(
+      { method: 'POST', url: '/api/diagrams/x', body: Buffer.from('{oops') }, ctx, handlers);
+    expect(r?.status).toBe(400);
     await rm(root, { recursive: true, force: true });
   });
 });

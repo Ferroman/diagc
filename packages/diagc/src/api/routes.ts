@@ -1,5 +1,3 @@
-import type { IncomingMessage } from 'node:http';
-
 // Type-only: the route table names handlers but never imports their module, so
 // a host that loads this table (Vite's config bundle) does not drag
 // `@diagramming/core` in with it. `dispatch` takes the handlers as an argument.
@@ -13,7 +11,8 @@ export type RouteResult = Awaited<ReturnType<Handlers['readAsset']>>;
 export interface RouteCtx {
   match: RegExpMatchArray;
   body: unknown;
-  req: IncomingMessage;
+  /** content-type of the raw body (only the asset-upload route reads it) */
+  contentType?: string;
   diagramsDir: string;
   artifactsDir: string;
 }
@@ -34,7 +33,7 @@ export interface Route {
 // IS the dispatch order (the rename entry must precede the generic save entry).
 export const ROUTES: Route[] = [
   // --- assets: raw body in, raw bytes out ---
-  { method: 'POST', pattern: /^\/api\/assets$/, bodyMode: 'raw', handler: (h, c) => h.saveAsset(c.diagramsDir, String(c.req.headers['content-type'] ?? ''), c.body as Buffer) },
+  { method: 'POST', pattern: /^\/api\/assets$/, bodyMode: 'raw', handler: (h, c) => h.saveAsset(c.diagramsDir, c.contentType ?? '', c.body as Buffer) },
   { method: 'GET', pattern: /^\/api\/assets\/([^/]+)$/, handler: (h, c) => h.readAsset(c.diagramsDir, decodeURIComponent(c.match[1] ?? '')) },
   // --- library ---
   { method: 'GET', pattern: /^\/api\/library$/, handler: (h, c) => h.readLibrary(c.diagramsDir) },

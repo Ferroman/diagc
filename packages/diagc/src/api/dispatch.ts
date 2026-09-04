@@ -12,6 +12,27 @@ export interface ApiContext {
   artifactsDir: string;
 }
 
+/** A request in transport-neutral terms: no `IncomingMessage`, so a host with
+ * no HTTP objects at all (the Obsidian in-process bridge) can still drive a
+ * route. */
+export interface RouteRequest {
+  method: string;
+  url: string;
+  body?: Buffer;
+  /** only the asset-upload route reads this */
+  contentType?: string;
+}
+
+/** A route's outcome in transport-neutral terms: either a JSON-able `body`
+ * (the common case) or raw `bytes` plus `contentType` (asset reads), mirroring
+ * the two branches `handleApiRequest` writes to the wire today. */
+export interface RouteResponse {
+  status: number;
+  body?: unknown;
+  bytes?: Buffer;
+  contentType?: string;
+}
+
 async function readBody(req: IncomingMessage): Promise<Buffer> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) chunks.push(chunk as Buffer);
@@ -24,12 +45,52 @@ function send(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
+/** Run the matching route with plain values — no HTTP anywhere. undefined means
+ * no route matched (the HTTP wrapper falls through to static serving; the
+ * Obsidian host answers 404). Errors become envelopes; this boundary never
+ * rejects, same contract as before the extraction. */
+export async function runRoute(
+  request: RouteRequest,
+  ctx: ApiContext,
+  handlers: Handlers,
+): Promise<RouteResponse | undefined> {
+  const route = matchRoute(request.method, request.url);
+  if (route === undefined) return undefined;
+  try {
+    // matchRoute already proved the match; re-running exposes the captures.
+    const match = request.url.match(route.pattern) as RegExpMatchArray;
+    let body: unknown = undefined;
+    if (route.bodyMode === 'json') {
+      try {
+        body = JSON.parse((request.body ?? Buffer.alloc(0)).toString('utf8'));
+      } catch {
+        return { status: 400, body: { issues: [{ message: 'Invalid JSON body' }] } };
+      }
+    } else if (route.bodyMode === 'raw') {
+      body = request.body ?? Buffer.alloc(0);
+    }
+    const r = await route.handler(handlers, { match, body, contentType: request.contentType, ...ctx });
+    return r.bytes !== undefined
+      ? { status: 200, bytes: r.bytes, contentType: r.contentType ?? 'application/octet-stream' }
+      : { status: r.status, body: r.body };
+  } catch (e) {
+    return { status: 500, body: { issues: [{ message: errMessage(e) }] } };
+  }
+}
+
 /** Run the matching API route for `req`, writing the response.
  *
  * Returns false — having written nothing — when no route matches, so a host can
  * fall through to its own static-file serving (packaged server) or to the rest
  * of the connect chain (Vite). Every thrown error becomes a 500 envelope; the
- * boundary never rejects. */
+ * boundary never rejects.
+ *
+ * Thin wrapper over `runRoute`: match first so an unmatched url returns false
+ * having read nothing (preserving the fall-through contract), then drain the
+ * body and hand plain values to `runRoute`. The wrapper always drains the
+ * request body once matched — routes with `bodyMode: 'none'` are GETs or
+ * bodyless POSTs, so draining is a no-op semantically, just an unread stream
+ * getting consumed. */
 export async function handleApiRequest(
   req: IncomingMessage,
   res: ServerResponse,
@@ -37,32 +98,18 @@ export async function handleApiRequest(
   handlers: Handlers,
 ): Promise<boolean> {
   const url = req.url ?? '';
-  const route = matchRoute(req.method, url);
-  if (route === undefined) return false;
-  try {
-    // matchRoute already proved the match; re-running exposes the captures.
-    const match = url.match(route.pattern) as RegExpMatchArray;
-    let body: unknown = undefined;
-    if (route.bodyMode === 'json') {
-      try {
-        body = JSON.parse((await readBody(req)).toString('utf8'));
-      } catch {
-        send(res, 400, { issues: [{ message: 'Invalid JSON body' }] });
-        return true;
-      }
-    } else if (route.bodyMode === 'raw') {
-      body = await readBody(req);
-    }
-    const r = await route.handler(handlers, { match, body, req, ...ctx });
-    if (r.bytes !== undefined) {
-      res.statusCode = 200;
-      res.setHeader('content-type', r.contentType ?? 'application/octet-stream');
-      res.end(r.bytes);
-    } else {
-      send(res, r.status, r.body);
-    }
-  } catch (e) {
-    send(res, 500, { issues: [{ message: errMessage(e) }] });
+  if (matchRoute(req.method, url) === undefined) return false;
+  const r = (await runRoute(
+    { method: req.method ?? '', url, body: await readBody(req), contentType: String(req.headers['content-type'] ?? '') },
+    ctx,
+    handlers,
+  ))!; // matched above, so runRoute cannot return undefined here
+  if (r.bytes !== undefined) {
+    res.statusCode = 200;
+    res.setHeader('content-type', r.contentType ?? 'application/octet-stream');
+    res.end(r.bytes);
+  } else {
+    send(res, r.status, r.body);
   }
   return true;
 }
