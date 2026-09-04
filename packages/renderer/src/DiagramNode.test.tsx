@@ -561,6 +561,55 @@ describe('DiagramNode', () => {
     expect(container.querySelector('.dg-label b')).toBeNull();
   });
 
+  it('renders a link badge only for linked nodes and reports clicks', () => {
+    const onOpenLink = vi.fn();
+    const outerClick = vi.fn();
+    // The badge's own container click handler stands in for "the node's
+    // selection mechanism" (real usage: react-flow's onNodeClick, which lives
+    // above DiagramNode and isn't reachable from here) — stopPropagation on
+    // the badge must keep this outer handler from firing.
+    const { container } = render(
+      <div onClick={outerClick}>
+        <ReactFlowProvider>
+          <DiagramNode
+            id="n1"
+            data={{
+              label: 'users',
+              typeId: 'table',
+              state: 'leaf',
+              promoted: false,
+              sharedMembers: [],
+              hiddenCount: 0,
+              typeRegistry: createTypeRegistry(),
+              icons: createIconRegistry(),
+              link: '[[Note]]',
+              onOpenLink,
+            }}
+          />
+        </ReactFlowProvider>
+      </div>,
+    );
+    const badge = container.querySelector('.dg-link-badge');
+    expect(badge).not.toBeNull();
+    fireEvent.click(badge!);
+    expect(onOpenLink).toHaveBeenCalledTimes(1);
+    expect(onOpenLink).toHaveBeenCalledWith('[[Note]]');
+    expect(outerClick).not.toHaveBeenCalled();
+    cleanup();
+
+    // no onOpenLink host callback: an http(s) link falls back to window.open
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    const { container: fallback } = renderNode({ link: 'https://x.test' });
+    fireEvent.click(fallback.querySelector('.dg-link-badge')!);
+    expect(openSpy).toHaveBeenCalledWith('https://x.test', '_blank', 'noopener');
+    openSpy.mockRestore();
+    cleanup();
+
+    // a node without a link renders no badge at all
+    const { container: noLink } = renderNode({});
+    expect(noLink.querySelector('.dg-link-badge')).toBeNull();
+  });
+
   it('a person-shaped type carries the dg-shape-person class', () => {
     const typeRegistry = createTypeRegistry({ 'c4-person': { shape: 'person', label: '[Person]' } });
     const { container } = renderNode({ label: 'Customer', typeId: 'c4-person', typeRegistry });

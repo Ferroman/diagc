@@ -151,6 +151,8 @@
 .dg-pin { background: none; border: none; cursor: pointer; font-size: 10px; padding: 0 2px; }
 .dg-enter { background: none; border: none; cursor: pointer; font-size: 11px; line-height: 1; padding: 0 2px; opacity: 0.65; }
 .dg-enter:hover { opacity: 1; }
+.dg-link-badge { position: absolute; top: 2px; right: 2px; border: none; background: transparent; cursor: pointer; font-size: 11px; line-height: 1; padding: 2px; opacity: 0.65; }
+.dg-link-badge:hover { opacity: 1; }
 /* Chrome-less mode (the PNG export): drop the affordances nobody can click in a
    still image, so a committed picture is the diagram and nothing else. */
 .dg-no-chrome .dg-pin, .dg-no-chrome .dg-enter { display: none; }

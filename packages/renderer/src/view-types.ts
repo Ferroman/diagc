@@ -57,6 +57,10 @@ export interface DiagramViewProps {
   onToggleLayer?: (id: string) => void;
   pins?: Record<string, 'expanded' | 'collapsed'>;
   onTogglePin?: (id: string) => void;
+  /** a linked node's badge was clicked (see DiagramNode.link) — the host
+   * resolves it (e.g. the Obsidian plugin opens a [[wikilink]] note); absent
+   * falls back to DiagramNode's own best-effort (new-tab for http(s) links). */
+  onOpenLink?: (link: string) => void;
   /** binary expand/collapse for a CLD group's disclosure toggle */
   onToggleExpand?: (id: string) => void;
   onSelect?: (sel: DiagramSelection | null) => void;

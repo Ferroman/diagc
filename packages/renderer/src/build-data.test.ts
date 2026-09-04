@@ -169,6 +169,24 @@ describe('buildNodeData', () => {
     expect(view.libraryBase).toBe('app://lib/');
   });
 
+  it('carries link + onOpenLink only when the node has a link', () => {
+    const onOpenLink = vi.fn();
+    const linked = viewNode({ node: { id: 'n1', name: 'One', type: 'service', link: '[[Note]]' } });
+    const withHost = buildNodeData(linked, nodeCtx({ onOpenLink }));
+    expect(withHost.link).toBe('[[Note]]');
+    expect(withHost.onOpenLink).toBe(onOpenLink);
+
+    // link present but ctx carries no host callback: link rides alone
+    const noHost = buildNodeData(linked, nodeCtx());
+    expect(noHost.link).toBe('[[Note]]');
+    expect(noHost.onOpenLink).toBeUndefined();
+
+    // no link on the node: neither field rides along, even with onOpenLink in ctx
+    const plain = buildNodeData(viewNode(), nodeCtx({ onOpenLink }));
+    expect(plain.link).toBeUndefined();
+    expect(plain.onOpenLink).toBeUndefined();
+  });
+
   it('does not wire the resize callback for non-image nodes in edit mode', () => {
     const d = buildNodeData(viewNode(), nodeCtx({ onResize: vi.fn(), editing: true }));
     expect(d.onResize).toBeUndefined();
@@ -311,6 +329,9 @@ describe('cached builder identity', () => {
     // a libraryBase-only change also busts the cache (sameNodeCtx compares it)
     const libCtx = nodeCtx({ libraryBase: 'app://lib/' });
     expect(buildNodeDataCached(n, libCtx)).not.toBe(third);
+    // an onOpenLink-only change also busts the cache (sameNodeCtx compares it)
+    const linkCtx = nodeCtx({ onOpenLink: () => {} });
+    expect(buildNodeDataCached(n, linkCtx)).not.toBe(third);
   });
 
   it('reuses the edge data object while ctx inputs are unchanged', () => {

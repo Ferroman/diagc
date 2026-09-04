@@ -58,6 +58,10 @@ export interface DiagramNodeData {
   external?: boolean;
   /** ER-table rows (db-table nodes) */
   columns?: Column[];
+  /** navigation target (URL or host-interpreted ref, e.g. an Obsidian
+   * [[wikilink]]) — present only when the model's node carries one; drives
+   * the corner link badge */
+  link?: string;
   // --- interactions & edit callbacks -------------------------------------
   /** commit rich edits (box leaf nodes); null = cancelled */
   onRichCommit?: (runs: TextRun[] | null) => void;
@@ -75,6 +79,9 @@ export interface DiagramNodeData {
   onTogglePin?: (id: string) => void;
   /** CLD group: expand/collapse via the disclosure toggle (binary) */
   onToggleExpand?: (id: string) => void;
+  /** the link badge was clicked; absent falls back to a best-effort
+   * new-tab open for http(s) links (see the badge's onClick below) */
+  onOpenLink?: (link: string) => void;
 }
 
 // One connect point per side, all type="source": with the canvas in loose
@@ -562,6 +569,23 @@ export function DiagramNode({
       </div>
       {typeLabel !== undefined && typeLabel !== '' ? <span className="dg-type">{typeLabel}</span> : null}
       {metaBadges}
+      {data.link !== undefined && (
+        <button
+          type="button"
+          className="dg-link-badge"
+          title={data.link}
+          aria-label={`Open ${data.link}`}
+          onClick={(e) => {
+            // The badge is the navigation affordance; a plain node click keeps
+            // meaning "select", so the canvas must never see this one.
+            e.stopPropagation();
+            if (data.onOpenLink !== undefined) data.onOpenLink(data.link!);
+            else if (/^https?:/.test(data.link!)) window.open(data.link, '_blank', 'noopener');
+          }}
+        >
+          🔗
+        </button>
+      )}
       {sideHandles}
     </div>
   );

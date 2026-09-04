@@ -42,6 +42,8 @@ export interface NodeDataContext {
   icons: IconRegistry;
   pins?: Record<string, 'expanded' | 'collapsed'>;
   onTogglePin?: (id: string) => void;
+  /** see DiagramViewProps.onOpenLink; only reaches a node whose model carries `link` */
+  onOpenLink?: (link: string) => void;
   onToggleExpand?: (id: string) => void;
   onEnterNode?: (id: string) => void;
   editing: boolean;
@@ -157,6 +159,9 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
           ...(ctx.libraryBase !== undefined ? { libraryBase: ctx.libraryBase } : {}),
         }
       : {}),
+    ...(n.node.link !== undefined
+      ? { link: n.node.link, ...(ctx.onOpenLink !== undefined ? { onOpenLink: ctx.onOpenLink } : {}) }
+      : {}),
     ...(n.node.columns !== undefined ? { columns: n.node.columns } : {}),
     ...(ctx.editing && n.node.type === 'db-table' && ctx.onSetTableColumns !== undefined
       ? { onColumnsChange: (columns: Column[]) => ctx.onSetTableColumns?.(n.id, columns) }
@@ -245,6 +250,7 @@ function sameNodeCtx(a: NodeDataContext, b: NodeDataContext): boolean {
     a.icons === b.icons &&
     a.pins === b.pins &&
     a.onTogglePin === b.onTogglePin &&
+    a.onOpenLink === b.onOpenLink &&
     a.onToggleExpand === b.onToggleExpand &&
     a.onEnterNode === b.onEnterNode &&
     a.editing === b.editing &&
