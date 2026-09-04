@@ -45,6 +45,10 @@ export interface DiagramNodeData {
   shape?: string;
   /** URL prefix asset refs resolve against (studio: '/api/assets/') */
   assetBase?: string;
+  /** URL prefix substituted for a leading '/library/' on bundled-icon refs
+   * (hosts with no static server, e.g. the Obsidian plugin); absent leaves
+   * '/library/…' refs untouched (served verbatim by a static server) */
+  libraryBase?: string;
   /** style preset with rough params — render hand-drawn chrome (absent = crisp) */
   stylePreset?: StylePreset;
   /** active visual language (e.g. 'causal-loop'); selects the notation profile (see notations.ts) that drives typeless-as-text rendering and other look overrides */
@@ -101,11 +105,16 @@ const sketchKind = (shape: string): SketchShapeKind =>
     ? (shape as SketchShapeKind)
     : 'box';
 
-/** Resolve a node image ref to a URL. Absolute refs (leading '/' or http[s]) —
- * bundled library icons under /library/… — are used as-is; a bare content-hash
- * ref is served from assetBase (user-uploaded assets). */
-const assetUrl = (assetBase: string | undefined, ref: string): string =>
-  ref.startsWith('/') || /^https?:/.test(ref) ? ref : `${assetBase ?? ''}${ref}`;
+/** Resolve a node image ref to a URL. '/library/…' refs are bundled icons: served
+ * verbatim where a static server exposes them, or re-prefixed with libraryBase in
+ * hosts without one (the Obsidian plugin). Other absolute refs pass through; a
+ * bare content-hash ref is served from assetBase (user-uploaded assets). */
+const assetUrl = (assetBase: string | undefined, libraryBase: string | undefined, ref: string): string => {
+  if (libraryBase !== undefined && ref.startsWith('/library/')) {
+    return `${libraryBase}${ref.slice('/library/'.length)}`;
+  }
+  return ref.startsWith('/') || /^https?:/.test(ref) ? ref : `${assetBase ?? ''}${ref}`;
+};
 
 const sketchOf = (
   data: DiagramNodeData,
@@ -269,7 +278,7 @@ export function DiagramNode({
   }
 
   if (data.shape !== undefined && data.state === 'leaf') {
-    const maskUrl = `url("${assetUrl(data.assetBase, data.shape)}")`;
+    const maskUrl = `url("${assetUrl(data.assetBase, data.libraryBase, data.shape)}")`;
     const typeLabel = data.typeId !== undefined ? typeSubtitle(style.label ?? data.typeId, data.technology) : undefined;
     const labelColor = data.textColor ?? data.color;
     return (
@@ -315,7 +324,7 @@ export function DiagramNode({
         >
           <img
             className="dg-image"
-            src={assetUrl(data.assetBase, data.image)}
+            src={assetUrl(data.assetBase, data.libraryBase, data.image)}
             alt={data.label}
             draggable={false}
           />
@@ -486,7 +495,7 @@ export function DiagramNode({
           {data.image !== undefined && (
             <img
               className={corner ? 'dg-corner-badge' : 'dg-image-thumb'}
-              src={assetUrl(data.assetBase, data.image)}
+              src={assetUrl(data.assetBase, data.libraryBase, data.image)}
               alt=""
               draggable={false}
             />
@@ -537,7 +546,7 @@ export function DiagramNode({
       <div className="dg-node-row">
         {ghostArrow}
         {data.image !== undefined && (
-          <img className="dg-image-thumb" src={assetUrl(data.assetBase, data.image)} alt="" draggable={false} />
+          <img className="dg-image-thumb" src={assetUrl(data.assetBase, data.libraryBase, data.image)} alt="" draggable={false} />
         )}
         {Icon !== undefined && <Icon size={16} className="dg-icon" />}
         {data.labelEditing === true ? (

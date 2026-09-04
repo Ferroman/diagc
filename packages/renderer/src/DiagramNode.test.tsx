@@ -528,6 +528,20 @@ describe('DiagramNode', () => {
     expect(mask).toContain('/api/assets/abc123.svg');
   });
 
+  it('resolves /library/ refs against libraryBase when set', () => {
+    const { container } = renderNode({ label: 'S', shape: '/library/aws/ec2.svg', libraryBase: 'app://x/lib/' });
+    const fill = container.querySelector('.dg-shape-fill') as HTMLElement;
+    const mask = fill.style.maskImage || fill.style.getPropertyValue('-webkit-mask-image');
+    expect(mask).toContain('app://x/lib/aws/ec2.svg');
+    cleanup();
+
+    // absent libraryBase: today's behavior, byte-for-byte — the /library/ ref passes through verbatim
+    const { container: containerNoBase } = renderNode({ label: 'S', shape: '/library/aws/ec2.svg' });
+    const fillNoBase = containerNoBase.querySelector('.dg-shape-fill') as HTMLElement;
+    const maskNoBase = fillNoBase.style.maskImage || fillNoBase.style.getPropertyValue('-webkit-mask-image');
+    expect(maskNoBase).toContain('/library/aws/ec2.svg');
+  });
+
   it('renders rich runs as bold/italic spans on a box', () => {
     const { container } = renderNode({
       typeId: undefined, label: 'Web Server',

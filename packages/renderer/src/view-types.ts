@@ -124,6 +124,10 @@ export interface DiagramViewProps {
   enteredPath?: string[];
   /** URL prefix image-node asset refs resolve against (e.g. '/api/assets/') */
   assetBase?: string;
+  /** URL prefix substituted for a leading '/library/' on bundled-icon refs, for
+   * hosts with no static server to serve them verbatim (e.g. the Obsidian
+   * plugin); absent keeps '/library/…' refs untouched. */
+  libraryBase?: string;
   /** false hides the interactive control cluster. The PNG export sets it so a
    * committed image is the diagram alone, with no zoom widget baked into it. */
   chrome?: boolean;

@@ -52,6 +52,9 @@ export interface NodeDataContext {
   onRenameNode?: (id: string, name: string) => void;
   onSetNodeRich?: (id: string, runs: TextRun[]) => void;
   assetBase?: string;
+  /** URL prefix substituted for a leading '/library/' on bundled-icon refs
+   * (see DiagramNodeData.libraryBase) */
+  libraryBase?: string;
   onResize?: (id: string, w: number, h: number, pos: { x: number; y: number }) => void;
   onSetTableColumns?: (id: string, columns: Column[]) => void;
   stylePreset?: StylePreset;
@@ -143,11 +146,16 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
       ? {
           image: n.node.image,
           ...(ctx.assetBase !== undefined ? { assetBase: ctx.assetBase } : {}),
+          ...(ctx.libraryBase !== undefined ? { libraryBase: ctx.libraryBase } : {}),
           ...(ctx.editing && ctx.onResize !== undefined ? { onResize: ctx.onResize } : {}),
         }
       : {}),
     ...(n.node.shape !== undefined
-      ? { shape: n.node.shape, ...(ctx.assetBase !== undefined ? { assetBase: ctx.assetBase } : {}) }
+      ? {
+          shape: n.node.shape,
+          ...(ctx.assetBase !== undefined ? { assetBase: ctx.assetBase } : {}),
+          ...(ctx.libraryBase !== undefined ? { libraryBase: ctx.libraryBase } : {}),
+        }
       : {}),
     ...(n.node.columns !== undefined ? { columns: n.node.columns } : {}),
     ...(ctx.editing && n.node.type === 'db-table' && ctx.onSetTableColumns !== undefined
@@ -245,6 +253,7 @@ function sameNodeCtx(a: NodeDataContext, b: NodeDataContext): boolean {
     a.onRenameNode === b.onRenameNode &&
     a.onSetNodeRich === b.onSetNodeRich &&
     a.assetBase === b.assetBase &&
+    a.libraryBase === b.libraryBase &&
     a.onResize === b.onResize &&
     a.onSetTableColumns === b.onSetTableColumns &&
     a.stylePreset === b.stylePreset &&

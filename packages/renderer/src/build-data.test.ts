@@ -142,18 +142,31 @@ describe('buildNodeData', () => {
     expect(d.labelEditing).toBeUndefined();
   });
 
-  it('resize wiring is edit-mode and image-only; assetBase rides along', () => {
+  it('resize wiring is edit-mode and image-only; assetBase and libraryBase ride along', () => {
     const onResize = vi.fn();
     const img = viewNode({
       node: { id: 'pic', name: 'pic', type: 'image', image: 'abc.png' },
       state: 'leaf',
     });
-    const view = buildNodeData(img, nodeCtx({ assetBase: '/api/' }));
+    const view = buildNodeData(img, nodeCtx({ assetBase: '/api/', libraryBase: 'app://lib/' }));
     expect(view.image).toBe('abc.png');
     expect(view.assetBase).toBe('/api/');
+    expect(view.libraryBase).toBe('app://lib/');
     expect(view.onResize).toBeUndefined();
     const edit = buildNodeData(img, nodeCtx({ assetBase: '/api/', onResize, editing: true }));
     expect(edit.onResize).toBe(onResize);
+    // absent libraryBase stays absent (no undefined noise on the channel)
+    expect(edit.libraryBase).toBeUndefined();
+  });
+
+  it('spreads libraryBase onto the shape branch too, same as assetBase', () => {
+    const person = viewNode({
+      node: { id: 'p', name: 'Actor', type: 'c4-person', shape: '/library/shapes/person.svg' },
+    });
+    const view = buildNodeData(person, nodeCtx({ assetBase: '/api/', libraryBase: 'app://lib/' }));
+    expect(view.shape).toBe('/library/shapes/person.svg');
+    expect(view.assetBase).toBe('/api/');
+    expect(view.libraryBase).toBe('app://lib/');
   });
 
   it('does not wire the resize callback for non-image nodes in edit mode', () => {
@@ -295,6 +308,9 @@ describe('cached builder identity', () => {
     expect(third).not.toBe(first);
     // ...and the new ctx stays stable for its own subsequent renders
     expect(buildNodeDataCached(n, editCtx)).toBe(third);
+    // a libraryBase-only change also busts the cache (sameNodeCtx compares it)
+    const libCtx = nodeCtx({ libraryBase: 'app://lib/' });
+    expect(buildNodeDataCached(n, libCtx)).not.toBe(third);
   });
 
   it('reuses the edge data object while ctx inputs are unchanged', () => {
