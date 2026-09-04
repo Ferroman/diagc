@@ -76,6 +76,12 @@ describe('builder: nodes and containment', () => {
     m.node('svc', { type: 'c4-container', technology: 'Go' });
     expect(m.toJSON().nodes.find((n) => n.id === 'svc')?.technology).toBe('Go');
   });
+
+  it('carries link through the builder', () => {
+    const m = model('t');
+    m.node('a', { link: 'https://example.test' });
+    expect(m.toJSON().nodes[0]!.link).toBe('https://example.test');
+  });
 });
 
 describe('builder: relations and layers', () => {

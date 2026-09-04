@@ -32,6 +32,8 @@ export interface NodeOpts {
   textColor?: string;
   /** implementation technology (see DiagramNode.technology) */
   technology?: string;
+  /** navigation target (see DiagramNode.link) */
+  link?: string;
   description?: string;
   /** rich-text label runs (see DiagramNode.rich) */
   rich?: TextRun[];

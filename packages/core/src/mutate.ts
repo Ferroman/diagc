@@ -82,6 +82,7 @@ export interface NodeDetails {
   color?: string | null;
   textColor?: string | null;
   technology?: string | null;
+  link?: string | null;
   textAlign?: TextAlign | null;
   fontScale?: FontScale | null;
   description?: string | null;
@@ -101,6 +102,7 @@ const NODE_DETAIL_KEYS = [
   'color',
   'textColor',
   'technology',
+  'link',
   'textAlign',
   'fontScale',
   'description',

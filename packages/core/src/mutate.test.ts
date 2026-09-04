@@ -69,6 +69,13 @@ describe('mutate', () => {
     expect(() => addNode(m, { id: 'a', name: 'dup', type: 't' })).toThrowError(CommandError);
   });
 
+  it('sets and clears link through node details', () => {
+    const withLink = setNodeDetails(base(), 'a', { link: '[[Ops Runbook]]' });
+    expect(withLink.nodes.find((n) => n.id === 'a')?.link).toBe('[[Ops Runbook]]');
+    const cleared = setNodeDetails(withLink, 'a', { link: null });
+    expect(cleared.nodes.find((n) => n.id === 'a')?.link).toBeUndefined();
+  });
+
   it('delete-node cascades containment and relations', () => {
     const m = deleteNode(base(), 'a');
     expect(m.nodes.some((n) => n.id === 'a')).toBe(false);

@@ -35,6 +35,7 @@ export interface ValidationIssue {
     | 'invalid-legend'
     | 'invalid-image'
     | 'invalid-shape'
+    | 'invalid-link'
     | 'invalid-key'
     | 'duplicate-key'
     | 'invalid-include'
@@ -162,6 +163,9 @@ function validateNodes(ctx: Ctx): void {
     }
     if (n.shape !== undefined && (typeof n.shape !== 'string' || !(IMAGE_REF.test(n.shape) || LIBRARY_IMAGE_REF.test(n.shape)))) {
       report(issues, 'invalid-shape', `Node '${n.id}' has invalid shape ref '${String(n.shape)}'`, n.id);
+    }
+    if (n.link !== undefined && (typeof n.link !== 'string' || n.link.trim() === '')) {
+      report(issues, 'invalid-link', `Node '${n.id}' has invalid link`, n.id);
     }
     if (n.key !== undefined) {
       if (typeof n.key !== 'string' || !KEY_PATTERN.test(n.key)) {

@@ -267,6 +267,22 @@ describe('validate', () => {
     expect(bad.some((i) => i.code === 'invalid-shape')).toBe(true);
   });
 
+  it('rejects a blank link and accepts URLs and wikilinks', () => {
+    const base = { version: 1 as const, containment: [], relations: [], layers: [], planes: [] };
+    const bad = validate({ ...base, id: 'd', name: 'd', nodes: [{ id: 'a', name: 'A', link: '  ' }] });
+    expect(bad.some((i) => i.code === 'invalid-link')).toBe(true);
+    const ok = validate({
+      ...base,
+      id: 'd',
+      name: 'd',
+      nodes: [
+        { id: 'a', name: 'A', link: '[[Ops Runbook]]' },
+        { id: 'b', name: 'B', link: 'https://x.test' },
+      ],
+    });
+    expect(ok.filter((i) => i.code === 'invalid-link')).toHaveLength(0);
+  });
+
   it('accepts a string textColor and flags a non-string one', () => {
     const base = { version: 1 as const, containment: [], relations: [], layers: [], planes: [] };
     const ok = validate({ ...base, id: 'd', name: 'd', nodes: [{ id: 'a', name: 'a', textColor: '#ff8800' }] });

@@ -95,7 +95,7 @@ function quoted(s: string): string {
 /** NodeOpts emission order — mirrors the interface declaration in builder.ts. */
 const NODE_OPT_KEYS = [
   'type', 'name', 'icon', 'shape', 'image', 'color', 'textColor', 'technology',
-  'description', 'rich', 'textAlign', 'fontScale', 'metadata', 'key', 'include',
+  'link', 'description', 'rich', 'textAlign', 'fontScale', 'metadata', 'key', 'include',
   'includePlane', 'includePlanes', 'plane', 'layer', 'columns',
 ] as const;
 

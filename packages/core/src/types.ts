@@ -55,6 +55,10 @@ export interface DiagramNode {
    * or a `/library/…` path) rendered as a tintable CSS mask filled with the
    * node's color, over an invisible box. Takes precedence over `image`. */
   shape?: string;
+  /** navigation target attached to the node — a URL (published HTML opens it in
+   * a new tab) or a host-interpreted ref like an Obsidian [[wikilink]]; the
+   * model records it and never interprets it */
+  link?: string;
   /** cross-diagram identity: nodes sharing a key merge into one entity when
    * diagrams are composed via includes; inert otherwise */
   key?: string;
