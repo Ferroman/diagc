@@ -160,6 +160,38 @@ describe('layoutView', () => {
     }
   });
 
+  it('translates a route by the container elk re-parented it to, not the declaring node', async () => {
+    // The flat graph declares every edge on the ROOT, but INCLUDE_CHILDREN makes
+    // elk express a routed edge in the coordinate system of its endpoints'
+    // lowest common ancestor (reported in the output edge's `container` field).
+    // An external predecessor pushes the container away from the origin, so a
+    // route mistakenly read as root-relative lands visibly outside it.
+    const m = model('offs');
+    const ext = m.node('ext', { type: 'service' });
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    const sys = m.node('sys', { type: 'system' });
+    sys.contains(a, b);
+    m.relate(ext, a, { kind: 'sync' });
+    m.relate(a, b, { kind: 'sync' });
+    const view = compileView(m.toJSON(), { pins: { sys: 'expanded' } });
+
+    const res = await layoutView(view, undefined, { edgeRouting: 'orthogonal' });
+    const sysGeo = res.geometry.get('sys')!;
+    // the discriminator: ext's layer shifts sys off the origin, so the missing
+    // offset would be non-trivial
+    expect(Math.max(sysGeo.x, sysGeo.y)).toBeGreaterThan(20);
+    const edge = view.layoutEdges.find((e) => e.from === 'a' && e.to === 'b')!;
+    const route = res.routes.get(edge.id)!;
+    expect(route.length).toBeGreaterThanOrEqual(2);
+    for (const p of route) {
+      expect(p.x).toBeGreaterThanOrEqual(sysGeo.x - 1);
+      expect(p.x).toBeLessThanOrEqual(sysGeo.x + sysGeo.width + 1);
+      expect(p.y).toBeGreaterThanOrEqual(sysGeo.y - 1);
+      expect(p.y).toBeLessThanOrEqual(sysGeo.y + sysGeo.height + 1);
+    }
+  });
+
   it('falls back to the flat graph when an algorithm rejects the lifted one', async () => {
     // radial throws `IllegalArgumentException: The given graph is not a tree!`
     // the moment it sees a cyclic edge set. It only appeared to work before

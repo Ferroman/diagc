@@ -27,8 +27,11 @@ export interface ElkEdge {
   labels?: { width: number; height: number; text: string }[];
 }
 // elk populates `sections` (with routing waypoints) on OUTPUT edges only; typed
-// separately so the INPUT graph stays assignable to elk's ElkNode.
-export type ElkRoutedEdge = ElkEdge & { sections?: ElkEdgeSection[] };
+// separately so the INPUT graph stays assignable to elk's ElkNode. `container`
+// names the node whose coordinate system the sections are expressed in — under
+// INCLUDE_CHILDREN that is the endpoints' lowest common ancestor, NOT the node
+// the edge was declared on.
+export type ElkRoutedEdge = ElkEdge & { sections?: ElkEdgeSection[]; container?: string };
 export interface ElkShape {
   id: string;
   x?: number;

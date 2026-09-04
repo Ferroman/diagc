@@ -145,29 +145,39 @@ export async function layoutView(
   const wantRoutes = settings?.edgeRouting === 'orthogonal' && !lifted;
 
   // Node x/y stay parent-relative (React Flow positions children under parentId).
-  // Edge sections, however, are relative to the container node that owns them, so
-  // walk with the running absolute origin to lift routes into absolute space —
-  // which is what the renderer draws edges in.
+  // Edge sections need lifting into absolute space (what the renderer draws
+  // edges in), but NOT by the origin of the node the edge sits on: under
+  // INCLUDE_CHILDREN elk re-expresses every routed edge in the coordinate
+  // system of its endpoints' lowest common ancestor and names that node in the
+  // output edge's `container` field — while the edge itself stays declared on
+  // the root, where the flat graph put it. So walk once recording every node's
+  // absolute origin, then translate each route by its container's origin,
+  // falling back to the declaring node's for an edge elk left in place.
+  const origins = new Map<string, { x: number; y: number }>();
+  const routed: { e: ElkRoutedEdge; ownX: number; ownY: number }[] = [];
   const collect = (n: ElkShape, absX: number, absY: number) => {
     const ax = absX + (n.x ?? 0);
     const ay = absY + (n.y ?? 0);
+    origins.set(n.id, { x: ax, y: ay });
     if (n.id !== RESERVED_NODE_ID) {
       geometry.set(n.id, { x: n.x ?? 0, y: n.y ?? 0, width: n.width ?? 0, height: n.height ?? 0 });
     }
     if (wantRoutes && n.edges !== undefined) {
-      for (const e of n.edges as ElkRoutedEdge[]) {
-        const sec = e.sections?.[0];
-        if (sec === undefined) continue;
-        const pts = [sec.startPoint, ...(sec.bendPoints ?? []), sec.endPoint].map((p) => ({
-          x: ax + p.x,
-          y: ay + p.y,
-        }));
-        routes.set(e.id, pts);
-      }
+      for (const e of n.edges as ElkRoutedEdge[]) routed.push({ e, ownX: ax, ownY: ay });
     }
     n.children?.forEach((c) => collect(c, ax, ay));
   };
   collect(laid, 0, 0);
+  for (const { e, ownX, ownY } of routed) {
+    const sec = e.sections?.[0];
+    if (sec === undefined) continue;
+    const o = (e.container !== undefined ? origins.get(e.container) : undefined) ?? { x: ownX, y: ownY };
+    const pts = [sec.startPoint, ...(sec.bendPoints ?? []), sec.endPoint].map((p) => ({
+      x: o.x + p.x,
+      y: o.y + p.y,
+    }));
+    routes.set(e.id, pts);
+  }
 
   const result: LayoutResult = { geometry, routes, algorithm };
   if (cache.size >= CACHE_CAP) {
