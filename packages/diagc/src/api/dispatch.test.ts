@@ -15,17 +15,31 @@ interface Result {
   handled: boolean;
 }
 
-/** Drive one request through the dispatcher against a temp diagrams dir. */
+/** Drive one request through the dispatcher against a temp diagrams dir.
+ * `bodyError` swaps the body stream for one that rejects mid-iteration
+ * (simulating a client disconnect while uploading), instead of supplying
+ * `body` bytes. */
 async function request(
   root: string,
   url: string,
-  opts: { method?: string; headers?: Record<string, string>; body?: string | Buffer } = {},
+  opts: { method?: string; headers?: Record<string, string>; body?: string | Buffer; bodyError?: string } = {},
 ): Promise<Result> {
   let status = 0;
   const headers: Record<string, string> = {};
   const chunks: Buffer[] = [];
   const bodyBytes = typeof opts.body === 'string' ? Buffer.from(opts.body) : opts.body;
-  const req = Object.assign(Readable.from(bodyBytes !== undefined ? [bodyBytes] : []), {
+  const bodyError = opts.bodyError;
+  // Destroying the stream with an error (rather than a throwing generator)
+  // mirrors how a real client disconnect surfaces on an IncomingMessage.
+  const bodyStream =
+    bodyError !== undefined
+      ? new Readable({
+          read() {
+            this.destroy(new Error(bodyError));
+          },
+        })
+      : Readable.from(bodyBytes !== undefined ? [bodyBytes] : []);
+  const req = Object.assign(bodyStream, {
     url,
     method: opts.method ?? 'GET',
     headers: opts.headers ?? {},
@@ -152,6 +166,23 @@ describe('handleApiRequest', () => {
     // '%%' is malformed percent-encoding: decodeURIComponent throws inside the
     // route handler, which the boundary must convert rather than propagate.
     const r = await request(root, '/api/diagrams/%%');
+    expect(r.status).toBe(500);
+    expect(r.body).toHaveProperty('issues');
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('turns a rejecting body stream into a 500 envelope instead of an unhandled rejection', async () => {
+    const root = await tempRoot();
+    // A client disconnecting mid-upload makes `for await` over the request
+    // stream throw; that happens before runRoute's own try/catch even starts,
+    // so handleApiRequest must guard it itself rather than let the promise
+    // reject with nothing ever written to `res`.
+    const r = await request(root, '/api/assets', {
+      method: 'POST',
+      headers: { 'content-type': 'image/png' },
+      bodyError: 'stream boom',
+    });
+    expect(r.handled).toBe(true);
     expect(r.status).toBe(500);
     expect(r.body).toHaveProperty('issues');
     await rm(root, { recursive: true, force: true });

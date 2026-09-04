@@ -7,7 +7,7 @@ type Handlers = typeof import('./handlers');
  * optional `bytes`/`contentType`, which the wrapper streams raw. */
 export type RouteResult = Awaited<ReturnType<Handlers['readAsset']>>;
 
-/** Capture groups, already-read body, raw request, and dirs for a request. */
+/** Capture groups, already-read body, content-type, and dirs for a request. */
 export interface RouteCtx {
   match: RegExpMatchArray;
   body: unknown;

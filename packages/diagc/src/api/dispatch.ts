@@ -90,7 +90,13 @@ export async function runRoute(
  * body and hand plain values to `runRoute`. The wrapper always drains the
  * request body once matched — routes with `bodyMode: 'none'` are GETs or
  * bodyless POSTs, so draining is a no-op semantically, just an unread stream
- * getting consumed. */
+ * getting consumed.
+ *
+ * `readBody` is awaited outside `runRoute`'s own try/catch (it has to be — the
+ * bytes are part of the request `runRoute` takes), so it needs its own guard
+ * here: a body-stream failure (a client disconnecting mid-upload, realistic
+ * for the raw-body assets route) must still land as the same 500 envelope,
+ * never an unhandled rejection with no response written. */
 export async function handleApiRequest(
   req: IncomingMessage,
   res: ServerResponse,
@@ -99,8 +105,15 @@ export async function handleApiRequest(
 ): Promise<boolean> {
   const url = req.url ?? '';
   if (matchRoute(req.method, url) === undefined) return false;
+  let body: Buffer;
+  try {
+    body = await readBody(req);
+  } catch (e) {
+    send(res, 500, { issues: [{ message: errMessage(e) }] });
+    return true;
+  }
   const r = (await runRoute(
-    { method: req.method ?? '', url, body: await readBody(req), contentType: String(req.headers['content-type'] ?? '') },
+    { method: req.method ?? '', url, body, contentType: String(req.headers['content-type'] ?? '') },
     ctx,
     handlers,
   ))!; // matched above, so runRoute cannot return undefined here
