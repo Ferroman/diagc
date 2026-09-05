@@ -720,7 +720,18 @@ export function App() {
       )}
       {names.length === 0 && (
         <div className="banner">
-          No artifacts found — run <code>pnpm compile</code> (or <code>pnpm compile:watch</code>) first.
+          {canDesign ? (
+            // The API is up, so creating is possible — telling an Obsidian (or
+            // fresh-checkout) user to run pnpm compile here points at a build
+            // step their empty workspace doesn't need.
+            <>
+              No diagrams yet — use <b>New diagram</b> to create one.
+            </>
+          ) : (
+            <>
+              No artifacts found — run <code>pnpm compile</code> (or <code>pnpm compile:watch</code>) first.
+            </>
+          )}
         </div>
       )}
       {!editing && current !== undefined && current.issues.length > 0 && (
@@ -972,7 +983,7 @@ export function App() {
                   : {})}
               />
               {editing && groupSel.length >= 2 && (
-                <button className="chip group-action" onClick={groupSelected}>
+                <button className="chip group-action" onClick={() => void groupSelected()}>
                   ⊞ Group {groupSel.length}
                 </button>
               )}

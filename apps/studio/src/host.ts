@@ -26,6 +26,19 @@ export interface HostAdapter {
   assetBase: string;
   /** '/library/…' icon ref prefix override; undefined keeps refs as-is */
   libraryBase?: string;
+  /** modal text entry; resolves the entered string, or null on cancel. The
+   * default wraps window.prompt — which Electron renderers (Obsidian) do not
+   * implement (calling it THROWS), so any Electron-hosted studio must override
+   * this with a real modal. Same reason the studio never calls window.prompt
+   * directly: one un-funneled call site is a dead button in that host. */
+  promptText(message: string, initial?: string): Promise<string | null>;
+  /** modal yes/no; default wraps window.confirm. Overridden in Obsidian not
+   * because confirm breaks there but because native dialogs steal keyboard
+   * focus from the Electron window (a known quirk) — the host supplies an
+   * in-app modal instead. */
+  confirmDialog(message: string): Promise<boolean>;
+  /** fire-and-forget notice; default wraps window.alert (same focus caveat) */
+  notify(message: string): void;
 }
 
 export const defaultHost: HostAdapter = {
@@ -47,6 +60,10 @@ export const defaultHost: HostAdapter = {
     if (/^https?:/.test(link)) window.open(link, '_blank', 'noopener');
   },
   assetBase: '/api/assets/',
+  // late-bound wrappers like apiFetch: tests spy on window.prompt/confirm/alert
+  promptText: async (message, initial) => window.prompt(message, initial),
+  confirmDialog: async (message) => window.confirm(message),
+  notify: (message) => window.alert(message),
 };
 
 let current: HostAdapter = defaultHost;

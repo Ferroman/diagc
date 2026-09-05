@@ -9,6 +9,7 @@ import {
   type Polarity,
   type RelationStyle,
 } from '@diagramming/core';
+import { getHost } from '../host';
 import { ColorRow, OptionRow } from './pickers';
 
 /** a fresh, relation-unique label id (l1, l2, … skipping ids already in use) */
@@ -200,8 +201,8 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation 
         patch: { description: description === '' ? null : description },
       });
   };
-  const deleteRelation = () => {
-    if (!window.confirm(`Delete relation '${nodeName(relation.from)} → ${nodeName(relation.to)}'?`)) return;
+  const deleteRelation = async () => {
+    if (!(await getHost().confirmDialog(`Delete relation '${nodeName(relation.from)} → ${nodeName(relation.to)}'?`))) return;
     onCommand({ type: 'delete-relation', id: relationId });
     // After removal, return to the list (multi) or dismiss the panel (single).
     (onBack ?? onClose)();
@@ -427,7 +428,7 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation 
       </label>
 
       <section className="panel-section">
-        <button className="chip danger" onClick={deleteRelation}>
+        <button className="chip danger" onClick={() => void deleteRelation()}>
           Delete relation
         </button>
       </section>

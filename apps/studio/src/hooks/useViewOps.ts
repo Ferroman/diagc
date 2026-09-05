@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { presetLayers, uniqueNodeId, type DiagramModel, type DiagramPlane, type LayoutSettings } from '@diagramming/core';
 import type { DiagramSelection } from '@diagramming/renderer';
 import type { EditorApi } from '../editor/useEditor';
+import { getHost } from '../host';
 import { remapVisibleLayers } from '../layerMerge';
 import type { InspectorTab } from '../editor/InspectorTabs';
 import type { LeverageFocus } from '../LeveragePanel';
@@ -34,7 +35,7 @@ export interface UseViewOpsOptions {
 export interface ViewOps {
   select: (sel: DiagramSelection | null) => void;
   compareSelect: (id: string) => void;
-  groupSelected: () => void;
+  groupSelected: () => Promise<void>;
   switchPlane: (id: string) => void;
   activateLayer: (id: string | null) => void;
   mergeSelectedLayers: (sources: string[], target?: string) => void;
@@ -98,9 +99,9 @@ export function useViewOps({
 
   // Wrap the shift-selected variables in a new abstract variable, scoped to the
   // active plane so (in the causal-loop view) it stays out of the base view.
-  const groupSelected = () => {
+  const groupSelected = async () => {
     if (groupSel.length < 2 || model === undefined) return;
-    const name = window.prompt('Group name:', 'group')?.trim();
+    const name = (await getHost().promptText('Group name:', 'group'))?.trim();
     if (name === undefined || name === '') return;
     const id = uniqueNodeId(model, name);
     const scoped = activePlane !== undefined && !activePlaneBorrowsContainment;

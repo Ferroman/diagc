@@ -3,6 +3,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { App as StudioApp } from '@diagramming/studio/src/App';
 import { setHost } from '@diagramming/studio/src/host';
 import { buildVaultHost } from './vault-host';
+import { buildDialogs } from './dialogs';
 import { memoryUrlState } from './memory-url-state';
 import type DiagrammingPlugin from './main';
 
@@ -23,7 +24,11 @@ export class StudioView extends ItemView {
   override async onOpen(): Promise<void> {
     const vaultHost = buildVaultHost(this.app, this.plugin);
     if (vaultHost === undefined) return; // desktop-only, manifest says so
-    setHost({ ...vaultHost, urlState: this.urlState });
+    // Dialogs must be Obsidian-native: the HostAdapter defaults wrap
+    // window.prompt/confirm/alert, and Electron's prompt() THROWS — with the
+    // defaults, "New diagram" (and every other name-entry flow) is a dead
+    // button in this host.
+    setHost({ ...vaultHost, urlState: this.urlState, ...buildDialogs(this.app) });
     const el = this.contentEl.createDiv({ cls: 'dg-obsidian-root' });
     this.root = createRoot(el);
     this.root.render(<StudioApp />);

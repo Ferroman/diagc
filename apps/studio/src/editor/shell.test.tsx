@@ -2,6 +2,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import { defaultHost, setHost } from '../host';
 
 // vi.mock is hoisted above module-level consts, so the shared fixture must live
 // in vi.hoisted for the factory to reference it.
@@ -225,6 +226,34 @@ describe('editor shell', () => {
       expect(posts).toHaveLength(1);
     });
     expect(await screen.findByRole('button', { name: /^save$/i })).toBeDefined();
+  });
+
+  it('creates a diagram through host.promptText even where window.prompt throws (Electron)', async () => {
+    // The Obsidian fresh-vault repro: no diagrams at all, inside an Electron
+    // renderer — where window.prompt THROWS ("prompt() is and will not be
+    // supported."). Every name-entry flow must go through the host adapter's
+    // promptText; one direct window.prompt call is a dead button in that host.
+    vi.stubGlobal('fetch', stubFetch([]));
+    vi.spyOn(window, 'prompt').mockImplementation(() => {
+      throw new Error('prompt() is and will not be supported.');
+    });
+    setHost({ ...defaultHost, promptText: async () => 'fresh' });
+    try {
+      render(<App />);
+      // designable-but-empty workspace: invite creation instead of demanding a
+      // compile step an Obsidian vault doesn't have
+      expect(await screen.findByText(/no diagrams yet/i)).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: /new diagram/i }));
+      await waitFor(() => {
+        const posts = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+          (c) => String(c[0]) === '/api/diagrams/fresh' && (c[1] as RequestInit | undefined)?.method === 'POST',
+        );
+        expect(posts).toHaveLength(1);
+      });
+      expect(await screen.findByRole('button', { name: /^save$/i })).toBeDefined();
+    } finally {
+      setHost(defaultHost);
+    }
   });
 
   it('keeps a saved node visible after leaving edit mode (no draft shadowing)', async () => {

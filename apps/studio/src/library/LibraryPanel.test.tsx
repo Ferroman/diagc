@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LIBRARY_ENTRY_DND_TYPE } from '@diagramming/renderer';
 import { defaultHost, setHost } from '../host';
@@ -230,13 +230,13 @@ describe('LibraryPanel authoring', () => {
     expect(c.onImportIcon).toHaveBeenCalledWith('gcp', file);
   });
 
-  it('deletes a user category', () => {
+  it('deletes a user category', async () => {
     const c = cbs();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const withGcp: Library = { categories: [...library.categories, { id: 'gcp', name: 'GCP' }], entries: library.entries };
     render(<LibraryPanel library={withGcp} onPlace={() => {}} {...c} />);
     fireEvent.click(screen.getByRole('button', { name: /delete category GCP/i }));
-    expect(c.onDeleteCategory).toHaveBeenCalledWith('gcp');
+    await waitFor(() => expect(c.onDeleteCategory).toHaveBeenCalledWith('gcp'));
   });
 
   it('imports an SVG as a shape into a user category', () => {

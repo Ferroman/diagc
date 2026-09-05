@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { model, type DiagramModel } from '@diagramming/core';
 import { LayersPlanesPanel } from './LayersPlanesPanel';
@@ -66,12 +66,12 @@ describe('LayersPlanesPanel', () => {
     });
   });
 
-  it('deletes a plane after confirm as delete-plane', () => {
+  it('deletes a plane after confirm as delete-plane', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const onCommand = vi.fn();
     render(<LayersPlanesPanel model={testModel()} onCommand={onCommand} />);
     fireEvent.click(screen.getByRole('button', { name: /remove plane flow/i }));
-    expect(onCommand).toHaveBeenCalledWith({ type: 'delete-plane', id: 'flow' });
+    await waitFor(() => expect(onCommand).toHaveBeenCalledWith({ type: 'delete-plane', id: 'flow' }));
   });
 
   it('sets a plane notation via upsert-plane', () => {
@@ -203,7 +203,7 @@ describe('LayersPlanesPanel', () => {
     expect(btn.disabled).toBe(false);
   });
 
-  it('merges the selection into a chosen target and clears the selection', () => {
+  it('merges the selection into a chosen target and clears the selection', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const onMergeLayers = vi.fn();
     render(<LayersPlanesPanel model={twoLayerModel()} onCommand={vi.fn()} onMergeLayers={onMergeLayers} />);
@@ -211,37 +211,39 @@ describe('LayersPlanesPanel', () => {
     fireEvent.click(opsRow, { ctrlKey: true });
     fireEvent.click(screen.getByRole('button', { name: /merge selected layers/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Merge into Net' }));
-    expect(onMergeLayers).toHaveBeenCalledWith(['ops'], 'net');
+    await waitFor(() => expect(onMergeLayers).toHaveBeenCalledWith(['ops'], 'net'));
     expect(opsRow.className).not.toContain('selected');
   });
 
-  it('does not merge when the confirm is cancelled', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
+  it('does not merge when the confirm is cancelled', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const onMergeLayers = vi.fn();
     render(<LayersPlanesPanel model={twoLayerModel()} onCommand={vi.fn()} onMergeLayers={onMergeLayers} />);
     fireEvent.click(screen.getByLabelText('Layer name ops').closest('.lp-row')!, { ctrlKey: true });
     fireEvent.click(screen.getByRole('button', { name: /merge selected layers/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Merge into Net' }));
+    // flush the async dialog before asserting nothing was merged
+    await waitFor(() => expect(confirmSpy).toHaveBeenCalled());
     expect(onMergeLayers).not.toHaveBeenCalled();
   });
 
-  it('merges the selection into the base sheet', () => {
+  it('merges the selection into the base sheet', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const onMergeLayers = vi.fn();
     render(<LayersPlanesPanel model={twoLayerModel()} onCommand={vi.fn()} onMergeLayers={onMergeLayers} />);
     fireEvent.click(screen.getByLabelText('Layer name ops').closest('.lp-row')!, { ctrlKey: true });
     fireEvent.click(screen.getByRole('button', { name: /merge selected layers/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Merge into base sheet' }));
-    expect(onMergeLayers).toHaveBeenCalledWith(['ops'], undefined);
+    await waitFor(() => expect(onMergeLayers).toHaveBeenCalledWith(['ops'], undefined));
   });
 
-  it('deletes a layer with a destructive confirm', () => {
+  it('deletes a layer with a destructive confirm', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     const onCommand = vi.fn();
     render(<LayersPlanesPanel model={twoLayerModel()} onCommand={onCommand} onMergeLayers={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /remove layer ops/i }));
     expect(confirmSpy).toHaveBeenCalledWith("Delete layer 'Ops' and everything on it?");
-    expect(onCommand).toHaveBeenCalledWith({ type: 'delete-layer', id: 'ops' });
+    await waitFor(() => expect(onCommand).toHaveBeenCalledWith({ type: 'delete-layer', id: 'ops' }));
   });
 
   it('edit mode renders a per-layer visibility eye reflecting activeLayers', () => {

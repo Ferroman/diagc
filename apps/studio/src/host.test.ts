@@ -21,4 +21,27 @@ describe('host adapter', () => {
     setHost(defaultHost);
     expect(calls).toEqual(['/x']);
   });
+
+  it('default promptText delegates to window.prompt, passing the initial value', async () => {
+    const spy = vi.spyOn(window, 'prompt').mockReturnValue('picked');
+    await expect(getHost().promptText('Name?', 'seed')).resolves.toBe('picked');
+    expect(spy).toHaveBeenCalledWith('Name?', 'seed');
+  });
+
+  it('default promptText resolves null on cancel, like window.prompt', async () => {
+    vi.spyOn(window, 'prompt').mockReturnValue(null);
+    await expect(getHost().promptText('Name?')).resolves.toBeNull();
+  });
+
+  it('default confirmDialog delegates to window.confirm', async () => {
+    const spy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await expect(getHost().confirmDialog('Sure?')).resolves.toBe(true);
+    expect(spy).toHaveBeenCalledWith('Sure?');
+  });
+
+  it('default notify delegates to window.alert', () => {
+    const spy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    getHost().notify('saved');
+    expect(spy).toHaveBeenCalledWith('saved');
+  });
 });

@@ -1,6 +1,7 @@
 import type { LayoutSettings } from '@diagramming/core';
 import type { DrawTool } from '@diagramming/renderer';
 import type { EditorApi } from './useEditor';
+import { getHost } from '../host';
 import { PRESET_COLORS } from './pickers';
 import { LayoutControls } from '../LayoutControls';
 
@@ -105,12 +106,12 @@ export function EditorToolbar({
 }: EditorToolbarProps) {
   const error = editor.session?.error;
 
-  const relayout = () => {
+  const relayout = async () => {
     if (autoLayout) {
-      if (!window.confirm('Clear all pinned positions on this plane and re-layout?')) return;
+      if (!(await getHost().confirmDialog('Clear all pinned positions on this plane and re-layout?'))) return;
       editor.dispatch({ type: 'clear-positions', ...(activePlane !== undefined ? { plane: activePlane } : {}) });
     } else {
-      if (!window.confirm('Re-arrange this plane and re-pin every node?')) return;
+      if (!(await getHost().confirmDialog('Re-arrange this plane and re-pin every node?'))) return;
       editor.dispatch({
         type: 'set-positions',
         positions: getAutoPositions(),
@@ -128,7 +129,7 @@ export function EditorToolbar({
       <button className="chip" onClick={onNewDiagram}>
         New diagram
       </button>
-      <button className="chip" onClick={relayout}>
+      <button className="chip" onClick={() => void relayout()}>
         Re-layout
       </button>
       <button

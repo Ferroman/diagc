@@ -2,3 +2,4 @@
 .dg-embed { position: relative; border: 1px solid var(--background-modifier-border); border-radius: 6px; overflow: hidden; }
 .dg-embed-open { position: absolute; top: 6px; right: 6px; z-index: 10; }
 .dg-embed-error { border: 1px solid var(--background-modifier-border); border-left: 3px solid var(--text-error); border-radius: 6px; padding: 8px 12px; }
+.dg-dialog-input { width: 100%; }

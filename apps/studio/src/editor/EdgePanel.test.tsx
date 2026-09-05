@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DiagramModel } from '@diagramming/core';
 import { EdgePanel } from './EdgePanel';
@@ -76,13 +76,14 @@ describe('EdgePanel', () => {
     expect(onCommand).toHaveBeenCalledWith({ type: 'update-relation', id: 'a->b#0', patch: { style: null } });
   });
 
-  it('deletes the relation after confirm as delete-relation', () => {
+  it('deletes the relation after confirm as delete-relation', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const onCommand = vi.fn();
     const onClose = vi.fn();
     render(<EdgePanel model={testModel()} constituentIds={['a->b#0']} onCommand={onCommand} onClose={onClose} />);
     fireEvent.click(screen.getByRole('button', { name: /delete relation/i }));
-    expect(onCommand).toHaveBeenCalledWith({ type: 'delete-relation', id: 'a->b#0' });
+    // the confirm goes through the async host dialog, so the command lands a tick later
+    await waitFor(() => expect(onCommand).toHaveBeenCalledWith({ type: 'delete-relation', id: 'a->b#0' }));
   });
 
   it('sets polarity as update-relation, and clears it back to null', () => {

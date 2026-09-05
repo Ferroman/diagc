@@ -266,9 +266,13 @@ export function LibraryPanel({
                       className="chip icon-btn"
                       aria-label={`Delete category ${cat.name}`}
                       title={`Delete category ${cat.name}`}
-                      onClick={() => {
-                        if (window.confirm(`Delete category '${cat.name}' and its imported icons?`)) onDeleteCategory(cat.id);
-                      }}
+                      onClick={() =>
+                        void getHost()
+                          .confirmDialog(`Delete category '${cat.name}' and its imported icons?`)
+                          .then((ok) => {
+                            if (ok) onDeleteCategory(cat.id);
+                          })
+                      }
                     >
                       ✕
                     </button>

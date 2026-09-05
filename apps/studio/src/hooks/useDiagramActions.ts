@@ -70,10 +70,10 @@ export function useDiagramActions({
 }: UseDiagramActionsOptions): DiagramActions {
   const newDiagram = async () => {
     if (!leaveEdit()) return;
-    const raw = window.prompt('New diagram name (lowercase, digits, - or /):')?.trim();
+    const raw = (await getHost().promptText('New diagram name (lowercase, digits, - or /):'))?.trim();
     if (raw === undefined || raw === '') return;
     if (names.includes(raw) || ownedNames.has(raw)) {
-      window.alert(`A diagram named '${raw}' already exists.`);
+      getHost().notify(`A diagram named '${raw}' already exists.`);
       return;
     }
     const m = emptyModel(raw);
@@ -83,7 +83,7 @@ export function useDiagramActions({
       body: JSON.stringify(m),
     });
     if (!res.ok) {
-      window.alert(`Could not create '${raw}'`);
+      getHost().notify(`Could not create '${raw}'`);
       return;
     }
     setDrafts((d) => ({ ...d, [raw]: { name: raw, model: m, issues: [] } }));
@@ -97,10 +97,10 @@ export function useDiagramActions({
 
   const renameDiagram = async () => {
     if (editing) return;
-    const raw = window.prompt('Rename diagram to (lowercase, digits, - or /):', selected)?.trim();
+    const raw = (await getHost().promptText('Rename diagram to (lowercase, digits, - or /):', selected))?.trim();
     if (raw === undefined || raw === '' || raw === selected) return;
     if (names.includes(raw) || ownedNames.has(raw)) {
-      window.alert(`A diagram named '${raw}' already exists.`);
+      getHost().notify(`A diagram named '${raw}' already exists.`);
       return;
     }
     const res = await getHost().apiFetch(`/api/diagrams/${selected}/rename`, {
@@ -109,7 +109,7 @@ export function useDiagramActions({
       body: JSON.stringify({ to: raw }),
     });
     if (!res.ok) {
-      window.alert(`Could not rename '${selected}'`);
+      getHost().notify(`Could not rename '${selected}'`);
       return;
     }
     const move = (rec: Record<string, LoadedArtifact>): Record<string, LoadedArtifact> => {
@@ -165,7 +165,7 @@ export function useDiagramActions({
     if (ownedNames.has(selected)) {
       const res = await getHost().apiFetch(`/api/diagrams/${selected}`);
       if (!res.ok) {
-        window.alert(`Could not copy '${selected}'`);
+        getHost().notify(`Could not copy '${selected}'`);
         return;
       }
       const body = (await res.json()) as { model: DiagramModel; layout?: LayoutOverlay; drawings?: Drawings };
@@ -186,7 +186,7 @@ export function useDiagramActions({
       });
     const res = await post('diagrams', copied);
     if (!res.ok) {
-      window.alert(`Could not copy '${selected}'`);
+      getHost().notify(`Could not copy '${selected}'`);
       return;
     }
     const finalLayout = layout ?? emptyLayout();
@@ -212,13 +212,13 @@ export function useDiagramActions({
   // and flipping local ownership — the model, layout and selection all stay.
   const ejectDiagram = async () => {
     if (editing) return;
-    const ok = window.confirm(
+    const ok = await getHost().confirmDialog(
       `Eject '${selected}' to TypeScript? The JSON source is replaced by a generated .diagram.ts and the diagram becomes read-only in the studio.`,
     );
     if (!ok) return;
     const res = await getHost().apiFetch(`/api/diagrams/${selected}/eject`, { method: 'POST' });
     if (!res.ok) {
-      window.alert(`Could not eject '${selected}'`);
+      getHost().notify(`Could not eject '${selected}'`);
       return;
     }
     setOwnedNames((s) => {

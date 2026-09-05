@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LayoutSettings } from '@diagramming/core';
 import type { DrawTool } from '@diagramming/renderer';
@@ -84,19 +84,21 @@ afterEach(() => {
 });
 
 describe('EditorToolbar', () => {
-  it('re-layouts the active plane after confirm as clear-positions', () => {
+  it('re-layouts the active plane after confirm as clear-positions', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const editor = fakeEditor();
     renderToolbar(editor, 'arch');
     fireEvent.click(screen.getByRole('button', { name: /re-layout/i }));
-    expect(editor.dispatch).toHaveBeenCalledWith({ type: 'clear-positions', plane: 'arch' });
+    await waitFor(() => expect(editor.dispatch).toHaveBeenCalledWith({ type: 'clear-positions', plane: 'arch' }));
   });
 
-  it('does not re-layout when the confirm is cancelled', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
+  it('does not re-layout when the confirm is cancelled', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const editor = fakeEditor();
     renderToolbar(editor, 'arch');
     fireEvent.click(screen.getByRole('button', { name: /re-layout/i }));
+    // flush the async dialog before asserting nothing was dispatched
+    await waitFor(() => expect(confirmSpy).toHaveBeenCalled());
     expect(editor.dispatch).not.toHaveBeenCalled();
   });
 
@@ -113,16 +115,18 @@ describe('EditorToolbar', () => {
     expect(onToggleAutoLayout).toHaveBeenCalledTimes(1);
   });
 
-  it('re-layout in manual mode re-pins the fresh arrangement instead of clearing', () => {
+  it('re-layout in manual mode re-pins the fresh arrangement instead of clearing', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const editor = fakeEditor();
     renderToolbar(editor, 'arch', { autoLayout: false, getAutoPositions: () => ({ a: { x: 9, y: 9 } }) });
     fireEvent.click(screen.getByRole('button', { name: /re-layout/i }));
-    expect(editor.dispatch).toHaveBeenCalledWith({
-      type: 'set-positions',
-      plane: 'arch',
-      positions: { a: { x: 9, y: 9 } },
-    });
+    await waitFor(() =>
+      expect(editor.dispatch).toHaveBeenCalledWith({
+        type: 'set-positions',
+        plane: 'arch',
+        positions: { a: { x: 9, y: 9 } },
+      }),
+    );
   });
 
   it('calls onSave from the Save button when dirty', () => {

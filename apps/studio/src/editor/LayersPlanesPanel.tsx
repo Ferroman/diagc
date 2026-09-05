@@ -6,6 +6,7 @@ import {
   type DiagramPlane,
   type EditorCommand,
 } from '@diagramming/core';
+import { getHost } from '../host';
 import { PlaneSwitcher } from './PlaneSwitcher';
 
 interface LayersPlanesPanelProps {
@@ -118,12 +119,12 @@ export function LayersPlanesPanel({
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   };
 
-  const runMerge = (target: DiagramLayer | undefined) => {
+  const runMerge = async (target: DiagramLayer | undefined) => {
     const names = selectedIds
       .map((id) => `'${model.layers.find((l) => l.id === id)?.name ?? id}'`)
       .join(', ');
     const dest = target === undefined ? 'base sheet' : `'${target.name}'`;
-    if (!window.confirm(`Merge ${names} into ${dest}?`)) return;
+    if (!(await getHost().confirmDialog(`Merge ${names} into ${dest}?`))) return;
     onMergeLayers?.(selectedIds, target?.id);
     setSelected([]);
     setMergeOpen(false);
@@ -201,12 +202,12 @@ export function LayersPlanesPanel({
     setNewPlaneName('');
   };
 
-  const removeLayer = (id: string, name: string) => {
-    if (!window.confirm(`Delete layer '${name}' and everything on it?`)) return;
+  const removeLayer = async (id: string, name: string) => {
+    if (!(await getHost().confirmDialog(`Delete layer '${name}' and everything on it?`))) return;
     onCommand({ type: 'delete-layer', id });
   };
-  const removePlane = (id: string, name: string) => {
-    if (!window.confirm(`Delete plane '${name}'?`)) return;
+  const removePlane = async (id: string, name: string) => {
+    if (!(await getHost().confirmDialog(`Delete plane '${name}'?`))) return;
     onCommand({ type: 'delete-plane', id });
   };
 
@@ -346,7 +347,7 @@ export function LayersPlanesPanel({
                 <button
                   className="chip icon-btn"
                   aria-label={`Remove layer ${row.name}`}
-                  onClick={() => removeLayer(row.id, row.name)}
+                  onClick={() => void removeLayer(row.id, row.name)}
                 >
                   ✕
                 </button>
@@ -369,7 +370,7 @@ export function LayersPlanesPanel({
                       type="button"
                       className="chip"
                       aria-label="Merge into base sheet"
-                      onClick={() => runMerge(undefined)}
+                      onClick={() => void runMerge(undefined)}
                     >
                       Base sheet
                     </button>
@@ -379,7 +380,7 @@ export function LayersPlanesPanel({
                         type="button"
                         className="chip"
                         aria-label={`Merge into ${t.name}`}
-                        onClick={() => runMerge(t)}
+                        onClick={() => void runMerge(t)}
                       >
                         {t.name}
                       </button>
@@ -422,7 +423,7 @@ export function LayersPlanesPanel({
               <button
                 className="chip icon-btn"
                 aria-label={`Remove plane ${row.name}`}
-                onClick={() => removePlane(row.id, row.name)}
+                onClick={() => void removePlane(row.id, row.name)}
               >
                 ✕
               </button>
