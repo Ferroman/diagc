@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createIconRegistry } from '@diagramming/icons';
 import { createTypeRegistry, LIBRARY_ENTRY_DND_TYPE } from '@diagramming/renderer';
+import { getHost } from '../host';
 import { searchLibrary } from './entry';
 import type { Library, LibraryEntry } from './types';
 
@@ -26,9 +27,18 @@ interface LibraryPanelProps {
   assetBase?: string;
 }
 
-// absolute refs (bundled /library/… or http[s]:) pass through; bare refs go via assetBase
-const entryThumbUrl = (assetBase: string, ref: string): string =>
-  ref.startsWith('/') || /^https?:/.test(ref) ? ref : `${assetBase}${ref}`;
+// Mirrors the renderer's own assetUrl (DiagramNode.tsx): a bundled '/library/…'
+// ref is served verbatim on hosts with a static server behind that path, but the
+// Obsidian host has none — <img src> there must be an app://... resource URL, so
+// getHost().libraryBase (set only by that host) substitutes the prefix. Other
+// absolute refs pass through as before; bare (imported) refs go via assetBase.
+const entryThumbUrl = (assetBase: string, ref: string): string => {
+  const { libraryBase } = getHost();
+  if (libraryBase !== undefined && ref.startsWith('/library/')) {
+    return `${libraryBase}${ref.slice('/library/'.length)}`;
+  }
+  return ref.startsWith('/') || /^https?:/.test(ref) ? ref : `${assetBase}${ref}`;
+};
 
 /** Sections bigger than this start collapsed. The bundled AWS pack is hundreds
  * of icons across ~30 categories: rendering them all would put a thousand

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagramming/core';
-import { applyTheme, DiagramView, lightTheme } from '@diagramming/renderer';
+import { useEffect, useRef, useState } from 'react';
+import { activeNotation, errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagramming/core';
+import { applyTheme, DiagramView, isKnownStyle, lightTheme } from '@diagramming/renderer';
 import { createIconRegistry } from '@diagramming/icons';
 import type { HostAdapter } from '@diagramming/studio/src/host';
 import type { EmbedSpec } from './fence';
@@ -46,6 +46,7 @@ export interface EmbedProps {
  */
 export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpenStudio }: EmbedProps) {
   const [state, setState] = useState<EmbedState>({ status: 'loading' });
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // The embed renders in light mode (colorMode="light" below); publish the
   // light theme's --dg-* tokens so node strokes/fills and the dashed
@@ -53,10 +54,22 @@ export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpen
   // variables (React Flow's colorMode themes React Flow itself, not our
   // tokens) unless the studio pane happened to run first in this session and
   // set them — see apps/viewer/src/Viewer.tsx's identical effect, which hits
-  // the same gap for the published page.
+  // the same gap for the published page. Applied to the embed's OWN root
+  // element rather than documentElement: the studio pane (App.tsx) applies
+  // its own (default dark) theme to documentElement too, and a note can have
+  // both a studio leaf and an embed open at once — whichever mounted last
+  // would clobber the other's tokens on the shared root. Custom properties
+  // inherit downward and a value set directly on an element outranks one
+  // inherited from an ancestor, so scoping to this container is both
+  // sufficient (children read it) and non-destructive (the studio pane's
+  // tokens on documentElement are untouched).
+  // Depends on `state.status`, not `[]`: the ref only attaches once the
+  // loaded branch below actually renders the container div (the loading/error
+  // branches render no such element), so the effect must re-run when that
+  // happens instead of firing once against a still-null ref.
   useEffect(() => {
-    applyTheme(document.documentElement, lightTheme);
-  }, []);
+    if (rootRef.current !== null) applyTheme(rootRef.current, lightTheme);
+  }, [state.status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,10 +113,18 @@ export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpen
   if (state.status === 'loading') return null;
   if (state.status === 'error') return <div className="dg-embed-error">{state.message}</div>;
 
+  const { model } = state.data;
+  // Mirror Viewer.tsx: an embed that drops these two structurally
+  // mis-renders any diagram authored with a non-default style or a notation
+  // profile (git graph, activity, …) — the fetched model already carries
+  // both, so there is no excuse for the embed to fall back silently.
+  const styleId = model.style !== undefined && isKnownStyle(model.style) ? model.style : undefined;
+  const notation = activeNotation(model.planes, spec.plane, model.notation);
+
   return (
-    <div className="dg-obsidian-root dg-embed" style={{ height: spec.height }}>
+    <div ref={rootRef} className="dg-obsidian-root dg-embed" style={{ height: spec.height }}>
       <DiagramView
-        model={state.data.model}
+        model={model}
         pins={pins}
         onTogglePin={togglePin}
         onToggleExpand={togglePin}
@@ -117,6 +138,8 @@ export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpen
         activeLayers={activeLayers}
         onToggleLayer={toggleLayer}
         {...(spec.plane !== undefined ? { plane: spec.plane } : {})}
+        {...(styleId !== undefined ? { styleId } : {})}
+        {...(notation !== undefined ? { notation } : {})}
         {...(state.data.layout !== undefined ? { layout: state.data.layout } : {})}
         {...(state.data.drawings !== undefined ? { drawings: state.data.drawings } : {})}
       />

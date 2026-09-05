@@ -30,8 +30,14 @@ const resourceBase = (app: App, vaultPath: string): string =>
 /** Build the diagc-backed API/link/asset wiring for this vault, or `undefined`
  * on mobile (no `FileSystemAdapter` — the plugin is desktop-only, per
  * manifest). Creates `<diagramsFolder>/src` and `.artifacts` if they don't
- * exist yet, matching what a fresh vault needs before the first save. */
-export function buildVaultHost(app: App, plugin: DiagrammingPlugin): VaultHost | undefined {
+ * exist yet, matching what a fresh vault needs before the first save.
+ *
+ * `sourcePath` is the vault-relative path of the note whose fence/pane is
+ * opening a link — spec §6 requires `openLinkText(target, sourcePath)` so a
+ * wikilink to a duplicate note name resolves relative to the note that
+ * contains it, not the vault root. The studio pane has no containing note, so
+ * it keeps the default `''` (root-relative, today's behavior). */
+export function buildVaultHost(app: App, plugin: DiagrammingPlugin, sourcePath = ''): VaultHost | undefined {
   const adapter = app.vault.adapter;
   if (!(adapter instanceof FileSystemAdapter)) return undefined;
   const folder = plugin.settings.diagramsFolder;
@@ -39,14 +45,19 @@ export function buildVaultHost(app: App, plugin: DiagrammingPlugin): VaultHost |
   const ctx = { diagramsDir: path.join(home, 'src'), artifactsDir: path.join(home, '.artifacts') };
   mkdirSync(ctx.diagramsDir, { recursive: true });
   mkdirSync(ctx.artifactsDir, { recursive: true });
+  // `manifest.dir` is the vault-relative plugin folder Obsidian actually
+  // installed this build into; it is only absent on manifest shapes older
+  // than the field, so fall back to the conventional configDir/plugins/<id>
+  // layout rather than hardcoding this plugin's id twice.
+  const pluginDir = plugin.manifest.dir ?? `${app.vault.configDir}/plugins/${plugin.manifest.id}`;
   return {
     apiFetch: makeApiFetch(ctx, handlers),
     openLink: (link) => {
       const target = parseWikilink(link);
-      if (target !== null) void app.workspace.openLinkText(target, '', true);
+      if (target !== null) void app.workspace.openLinkText(target, sourcePath, true);
       else if (/^https?:/.test(link)) window.open(link, '_blank', 'noopener');
     },
     assetBase: resourceBase(app, `${folder}/src/assets`),
-    libraryBase: resourceBase(app, `${app.vault.configDir}/plugins/diagramming-studio/library`),
+    libraryBase: resourceBase(app, `${pluginDir}/library`),
   };
 }

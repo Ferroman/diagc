@@ -19,7 +19,7 @@ const scopeRules = (css) => {
 };
 
 mkdirSync('dist', { recursive: true });
-await esbuild.build({
+const result = await esbuild.build({
   entryPoints: ['src/main.tsx'],
   bundle: true,
   outfile: 'dist/main.js',
@@ -30,8 +30,25 @@ await esbuild.build({
   jsx: 'automatic',
   // fonts and small images ride inside the css/js — the plugin dir stays 4 files + library/
   loader: { '.woff2': 'dataurl', '.woff': 'dataurl', '.svg': 'dataurl', '.png': 'dataurl' },
-  logLevel: 'info',
+  // packages/diagc/src/compile.ts (executeDiagramTs, shared with the studio's
+  // eject/download-source route) reads `import.meta.url` to pin @diagramming/core
+  // and jiti's own resolution root. That is meaningless in a "cjs" bundle — esbuild
+  // would otherwise silently empty it out (an [empty-import-meta] warning) and jiti
+  // would resolve against the wrong base at runtime, breaking eject inside Obsidian.
+  // Rewrite the expression to a bundle-level const and synthesize its value in a
+  // banner from Node's own `__filename`, which *is* real in a cjs bundle.
+  define: { 'import.meta.url': '__importMetaUrl' },
+  banner: { js: "const __importMetaUrl = require('node:url').pathToFileURL(__filename).href;" },
+  logLevel: 'silent',       // warnings are inspected and thrown on below instead
 });
+// Warnings are a budget of zero here: the import.meta one above was the only
+// tell that eject was silently broken until someone hit it in Obsidian. Fail
+// the build on any esbuild warning rather than let a new one go unnoticed the
+// same way.
+if (result.warnings.length > 0) {
+  const formatted = await esbuild.formatMessages(result.warnings, { kind: 'warning', color: true });
+  throw new Error(`esbuild reported ${result.warnings.length} warning(s):\n\n${formatted.join('\n')}`);
+}
 // esbuild names JS-imported css after the entry; Obsidian requires styles.css.
 // Scope the bundled app.css to .dg-obsidian-root so it can't leak onto
 // Obsidian's own chrome, then append the plugin's own embed/error-card rules.

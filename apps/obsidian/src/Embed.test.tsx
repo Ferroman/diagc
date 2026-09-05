@@ -12,6 +12,14 @@ const twoNodeModel = () => {
   return b.toJSON();
 };
 
+const styledModel = () => {
+  const b = model('demo');
+  b.node('a', { name: 'Alpha', type: 'service' });
+  b.style('sketch');
+  b.notation('git-graph');
+  return b.toJSON();
+};
+
 const spec: EmbedSpec = { name: 'demo', height: 300 };
 
 // Embed imports nothing from 'obsidian' — the 'obsidian' package ships types
@@ -37,18 +45,18 @@ describe('Embed', () => {
     expect(apiFetch).toHaveBeenCalledWith('/api/diagrams/demo');
   });
 
-  it('publishes the light-theme --dg-* tokens so node/group borders resolve', () => {
-    // Without this, DiagramView's colorMode="light" themes React Flow itself
-    // but never sets the --dg-* custom properties node strokes/fills and the
-    // dashed group borders read from (see apps/viewer/src/Viewer.tsx's
-    // identical effect) — an embed opened before the studio pane ever ran
-    // this session would render every box border-less. Clear the property
-    // first (jsdom persists documentElement styles across tests in this
-    // file) so a pass here proves Embed set it, not a leftover from a
-    // previous test.
+  it('publishes the light-theme --dg-* tokens on the embed container, not documentElement', async () => {
+    // Scoped to the embed's own root rather than documentElement: the studio
+    // pane (App.tsx) applies its own (default dark) theme to documentElement
+    // too, and a vault can have both a studio leaf and an embed open at
+    // once — whichever mounted last would clobber the other's tokens if both
+    // wrote to the shared document root. Custom properties inherit downward,
+    // so setting them on this container is sufficient for DiagramView's
+    // children to read them, and it leaves documentElement (and thus the
+    // studio pane's tokens) untouched.
     document.documentElement.style.removeProperty('--dg-node-stroke');
     const apiFetch = vi.fn(async () => new Response(JSON.stringify({ model: twoNodeModel() }), { status: 200 }));
-    render(
+    const { container } = render(
       <Embed
         spec={spec}
         apiFetch={apiFetch}
@@ -58,10 +66,12 @@ describe('Embed', () => {
         onOpenStudio={vi.fn()}
       />,
     );
-    // The effect has no dependency on the fetch/load state, so it has already
-    // run (RTL's render() flushes mount-time effects) before this assertion.
-    expect(document.documentElement.style.getPropertyValue('--dg-node-stroke')).not.toBe('');
-    document.documentElement.style.removeProperty('--dg-node-stroke'); // don't leak into later tests
+    // The ref only attaches once the loaded branch renders the container div,
+    // so wait for the model to actually load before asserting.
+    await screen.findByText('Alpha');
+    const root = container.querySelector('.dg-embed') as HTMLElement;
+    expect(root.style.getPropertyValue('--dg-node-stroke')).not.toBe('');
+    expect(document.documentElement.style.getPropertyValue('--dg-node-stroke')).toBe('');
   });
 
   it('renders the error card for a failed fetch', async () => {
@@ -118,5 +128,31 @@ describe('Embed', () => {
     expect(button).not.toBeNull();
     (button as HTMLElement).click();
     expect(onOpenStudio).toHaveBeenCalled();
+  });
+
+  it('passes the loaded model\'s style and notation through to DiagramView', async () => {
+    // Mirrors apps/viewer/src/Viewer.tsx: an embed that drops these two
+    // structurally mis-renders any diagram authored with a non-default style
+    // or a notation profile. `dg-style-<id>`/`dg-style-rough` and
+    // `dg-notation-<id>` are the canvas classes DiagramView derives straight
+    // from the `styleId`/`notation` props (DiagramView.tsx), so they are a
+    // cheap, mock-free way to observe that both actually reached it.
+    const apiFetch = vi.fn(async () => new Response(JSON.stringify({ model: styledModel() }), { status: 200 }));
+    const { container } = render(
+      <Embed
+        spec={spec}
+        apiFetch={apiFetch}
+        openLink={vi.fn()}
+        assetBase=""
+        libraryBase=""
+        onOpenStudio={vi.fn()}
+      />,
+    );
+    await screen.findByText('Alpha');
+    const canvas = container.querySelector('.dg-canvas');
+    expect(canvas).not.toBeNull();
+    expect(canvas!.className).toContain('dg-style-sketch');
+    expect(canvas!.className).toContain('dg-style-rough');
+    expect(canvas!.className).toContain('dg-notation-git');
   });
 });

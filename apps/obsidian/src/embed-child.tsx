@@ -26,6 +26,8 @@ export class DiagramEmbedChild extends MarkdownRenderChild {
     containerEl: HTMLElement,
     private readonly source: string,
     private readonly plugin: DiagrammingPlugin,
+    /** the note containing the fence — see buildVaultHost's `sourcePath` doc */
+    private readonly sourcePath: string,
   ) {
     super(containerEl);
   }
@@ -37,7 +39,7 @@ export class DiagramEmbedChild extends MarkdownRenderChild {
       this.root.render(<div className="dg-embed-error">{parsed.error}</div>);
       return;
     }
-    const vaultHost = buildVaultHost(this.plugin.app, this.plugin);
+    const vaultHost = buildVaultHost(this.plugin.app, this.plugin, this.sourcePath);
     if (vaultHost === undefined) {
       this.root.render(<div className="dg-embed-error">Diagram embeds need the Obsidian desktop app.</div>);
       return;

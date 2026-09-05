@@ -46,7 +46,7 @@ export default class DiagrammingPlugin extends Plugin {
     // live preview. Each block gets its own child so Obsidian's own
     // teardown (source edited, view closed) unmounts its React root.
     this.registerMarkdownCodeBlockProcessor('diagram', (source, el, mdCtx) => {
-      mdCtx.addChild(new DiagramEmbedChild(el, source, this));
+      mdCtx.addChild(new DiagramEmbedChild(el, source, this, mdCtx.sourcePath));
     });
   }
 
