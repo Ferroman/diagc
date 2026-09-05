@@ -1,14 +1,24 @@
 // @vitest-environment jsdom
 import { act, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useRef } from 'react';
-import { useDeepLink } from './useDeepLink';
+import { defaultHost, setHost } from '../host';
+import { useDeepLink, type DeepLink } from './useDeepLink';
 
 // Drive the hook through a tiny harness so tests exercise the real effects
 // (hash writer, hashchange listener, fallback promotion) without DiagramView.
-function Harness({ names, booted }: { names: string[]; booted: boolean }) {
+function Harness({
+  names,
+  booted,
+  onDeepLink,
+}: {
+  names: string[];
+  booted: boolean;
+  onDeepLink?: (dl: DeepLink) => void;
+}) {
   const leaveEditRef = useRef<() => boolean>(() => true);
   const dl = useDeepLink({ names, booted, leaveEditRef });
+  onDeepLink?.(dl);
   return (
     <div>
       <span data-testid="selected">{dl.selected}</span>
@@ -21,12 +31,30 @@ function Harness({ names, booted }: { names: string[]; booted: boolean }) {
   );
 }
 
+// A minimal UrlStateAdapter with no window.location involved at all, to prove
+// the hook goes through the host rather than the global.
+const memoryUrlState = () => {
+  let hash = '';
+  const subs = new Set<() => void>();
+  return {
+    get: () => hash,
+    set: (h: string) => { hash = h; },
+    subscribe: (cb: () => void) => { subs.add(cb); return () => { subs.delete(cb); }; },
+    /** test hook: an "external" navigation — set + notify */
+    navigate(h: string) { hash = h; subs.forEach((cb) => cb()); },
+  };
+};
+
 const NAMES = ['sketch', 'two'];
 
 describe('useDeepLink', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '/'); // strip any hash
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    setHost(defaultHost);
   });
 
   it('seeds selected + drill path from a deep-link hash', () => {
@@ -72,5 +100,21 @@ describe('useDeepLink', () => {
       screen.getByText('drill-sys').click();
     });
     expect(window.location.hash).toBe('#/sketch/sys');
+  });
+
+  it('runs entirely against an injected urlState (no window.location)', () => {
+    const memory = memoryUrlState();
+    setHost({ ...defaultHost, urlState: memory });
+    let dl: DeepLink | undefined;
+    render(<Harness names={['a', 'b']} booted onDeepLink={(d) => { dl = d; }} />);
+
+    act(() => memory.navigate('#/b'));
+    expect(screen.getByTestId('selected').textContent).toBe('b');
+
+    act(() => dl!.setSelected('a'));
+    expect(memory.get().endsWith('#/a')).toBe(true);
+
+    // never touched the real window at all
+    expect(window.location.hash).toBe('');
   });
 });

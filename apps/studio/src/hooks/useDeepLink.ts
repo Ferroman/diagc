@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from 'react';
+import { getHost } from '../host';
 import { formatHash, parseHash, type UrlState } from '../urlState';
 import { usePersistedState } from './usePersistedState';
 
@@ -44,7 +45,7 @@ export function useDeepLink({ names, booted, leaveEditRef }: UseDeepLinkOptions)
   // Deep link: the hash names the diagram + drill path (#/<diagram>/<id>/…).
   // Parsed once at mount; it outranks the localStorage memory, and stale parts
   // are corrected (replace, not push) once sources have loaded.
-  const [initialUrl] = useState<UrlState | null>(() => parseHash(window.location.hash));
+  const [initialUrl] = useState<UrlState | null>(() => parseHash(getHost().urlState.get()));
   // Restore the last-open diagram; a stale/deleted name is corrected once the
   // source list has loaded (see the fallback effect below).
   const [selected, setSelected] = usePersistedState<string>(SELECTED_KEY, '', (raw) => initialUrl?.diagram ?? raw);
@@ -96,7 +97,7 @@ export function useDeepLink({ names, booted, leaveEditRef }: UseDeepLinkOptions)
   useEffect(() => {
     if (!booted || selected === '' || !names.includes(selected)) return;
     const target = formatHash(selected, enteredPath);
-    if (window.location.hash === target) {
+    if (getHost().urlState.get() === target) {
       // NOT the ref-clearing point: content and `booted` now arrive in the same
       // commit as this effect's first eligible run, so `enteredPath` can still be
       // the raw, unclamped path parsed from the URL (DiagramView hasn't reported
@@ -107,22 +108,21 @@ export function useDeepLink({ names, booted, leaveEditRef }: UseDeepLinkOptions)
       // handleEnteredPathChange is the sole authority for settling the ref.
       return;
     }
-    const cur = parseHash(window.location.hash);
+    const cur = parseHash(getHost().urlState.get());
     const applied = appliedUrlRef.current;
     const correction =
       cur === null ||
       !names.includes(cur.diagram) ||
       (applied !== null && applied.diagram === selected && isStrictPrefix(enteredPath, applied.path));
     appliedUrlRef.current = null;
-    if (correction) window.history.replaceState(null, '', target);
-    else window.location.hash = target; // history push: one entry per navigation step
+    getHost().urlState.set(target, correction); // history push: one entry per navigation step
   }, [booted, selected, enteredPath, names]);
 
   // External navigation: browser Back/Forward or a hand-edited/pasted hash.
   // Applying it makes state match the hash, so the writer above stays quiet.
   useEffect(() => {
-    const onHashChange = () => {
-      const parsed = parseHash(window.location.hash);
+    const onExternal = () => {
+      const parsed = parseHash(getHost().urlState.get());
       if (parsed === null) return; // never navigate to nowhere on a mangled hash
       const now = urlNowRef.current;
       // A cross-diagram navigation closes any open edit session first, like
@@ -144,8 +144,7 @@ export function useDeepLink({ names, booted, leaveEditRef }: UseDeepLinkOptions)
       setSelected(parsed.diagram);
       setEnteredPath(parsed.path);
     };
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+    return getHost().urlState.subscribe(onExternal);
   }, [leaveEditRef, setSelected, setEnteredPath]);
 
   return { selected, setSelected, enteredPath, setEnteredPath, handleEnteredPathChange };
