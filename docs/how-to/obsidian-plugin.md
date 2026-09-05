@@ -49,15 +49,23 @@ Use a `diagram` code fence, one `key: value` per line:
 
 ````markdown
 ```diagram
-name: aws-multi-az        # required — diagram name in the vault's diagrams folder
-plane: deployment         # optional; default: the model's first plane
-layers: security, ops     # optional; comma-separated layer ids to enable
-root: vpc                 # optional; drill into this node
-height: 480               # optional px; default 480
+name: aws-multi-az
+plane: deployment
+layers: security, ops
+root: vpc
+height: 480
 ```
 ````
 
-`name` is the only required key. Blank lines and `#`-comments are skipped. An unrecognised key, a missing `name`, or a non-numeric `height` renders an error card in place of the embed rather than breaking the note.
+| Key | Required | Meaning |
+| --- | --- | --- |
+| `name` | yes | Diagram name in the vault's diagrams folder |
+| `plane` | no | Which plane to open on; default: the model's first plane |
+| `layers` | no | Comma-separated layer ids to enable |
+| `root` | no | Drill into this node instead of the bird's-eye view |
+| `height` | no | Embed height in px; default `480` |
+
+Blank lines and lines starting with `#` are skipped as comments — put a comment on its own line, not trailing a value, since the parser only strips a line that starts with `#`. An unrecognised key, a missing `name`, or a non-numeric `height` renders an error card in place of the embed rather than breaking the note.
 
 The embed is the interactive `DiagramView`, read-only: semantic zoom (double-click to unfold), the layer toggles, and node links all work, seeded from the fence's `plane`/`layers`/`root` but then owned by the reader for as long as the note is open — reopening the note resets them. A corner **Open in studio** button jumps to the same diagram in the studio pane for editing.
 
