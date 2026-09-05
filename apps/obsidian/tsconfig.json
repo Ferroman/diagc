@@ -1,5 +1,16 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "jsx": "react-jsx", "lib": ["ES2022", "DOM", "DOM.Iterable"] },
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    // Explicit, not relied-on-by-accident: bridge.ts pulls diagc's node-flavored
+    // src (Buffer, node:* imports) into this program by relative import, and
+    // none of that subtree's own reachable files carry a `/// <reference
+    // types="node"/>` to bootstrap it implicitly (unlike diagc's own tsconfig,
+    // which only works because its "cli.ts" root happens to import fast-glob,
+    // whose bundled .d.ts does). Listing "node" here is the honest fix rather
+    // than depending on that accident.
+    "types": ["node"]
+  },
   "include": ["src"]
 }
