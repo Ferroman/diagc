@@ -60,6 +60,7 @@ import { Sidebar } from './Sidebar';
 import { LibraryPanel } from './library/LibraryPanel';
 import { useLibrary } from './library/useLibrary';
 import { uniqueLibraryId } from './library/entry';
+import { deleteSelectionCommand } from './editor/deleteSelection';
 import { fkConnectionCommands } from './tableConnect';
 
 const STYLE_KEY = 'diagramming.style';
@@ -927,6 +928,15 @@ export function App() {
                           to,
                           opts: { kind: 'sync', ...(penLayer !== null ? { layer: penLayer } : {}) },
                         });
+                      },
+                      onDeleteSelection: (sel: { nodeIds: string[]; relationIds: string[] }) => {
+                        // peek(): the synchronous session — the gesture must
+                        // translate against the model it was made on.
+                        const m = editor.peek()?.state.model;
+                        const cmd = m !== undefined ? deleteSelectionCommand(m, sel) : null;
+                        if (cmd === null) return;
+                        editor.dispatch(cmd);
+                        select(null); // the panel target is gone
                       },
                       onSetTableColumns: (id: string, columns: Column[]) =>
                         editor.dispatch({ type: 'set-table-columns', id, columns }),

@@ -717,7 +717,13 @@ function Inner(props: DiagramViewProps) {
         onReconnectEnd={() => {
           reconnectEndRef.current = null;
         }}
-        onNodesChange={(changes: NodeChange[]) => setRfNodes((nds) => applyNodeChanges(changes, nds))}
+        // 'remove' stays out: element existence belongs to the model. The
+        // delete key reaches the host through onDelete below instead — letting
+        // React Flow remove locally would only ghost-delete until the next
+        // model rebuild resurrected the elements.
+        onNodesChange={(changes: NodeChange[]) =>
+          setRfNodes((nds) => applyNodeChanges(changes.filter((c) => c.type !== 'remove'), nds))
+        }
         onNodeDragStop={(_e, node) => {
           if (editing) edit?.onNodeMoved?.(node.id, node.position);
           else setViewPositions((p) => ({ ...p, [node.id]: node.position }));
@@ -786,6 +792,21 @@ function Inner(props: DiagramViewProps) {
             props.onSelect?.(null);
             loopHighlight.clear();
           }
+        }}
+        // Enabled only when the host can turn the gesture into model commands;
+        // otherwise (view mode, or an edit host without the callback) the key
+        // must stay inert rather than fake a deletion.
+        deleteKeyCode={editing && edit?.onDeleteSelection !== undefined ? ['Backspace', 'Delete'] : null}
+        onDelete={({ nodes, edges }) => {
+          const nodeIds = nodes.map((n) => n.id);
+          // Only explicitly selected edges translate to relation deletes:
+          // edges React Flow cascade-deletes alongside a node are pruned
+          // model-side by delete-node already, and a bundled edge maps to
+          // every relation it draws for.
+          const relationIds = edges
+            .filter((e) => e.selected === true)
+            .flatMap((e) => compiled.edges.find((x) => x.id === e.id)?.constituents.map((c) => c.id) ?? []);
+          if (nodeIds.length > 0 || relationIds.length > 0) edit?.onDeleteSelection?.({ nodeIds, relationIds });
         }}
         fitView
         minZoom={MIN_ZOOM}

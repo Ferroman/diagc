@@ -196,6 +196,13 @@ export interface EditingApi {
    * May return the new node's id, which immediately opens it in canvas
    * in-place rename mode (mirrors double-clicking an existing node to rename it). */
   onCreateAt?: (pos: { x: number; y: number }) => string | void;
+  /** Backspace/Delete pressed with a canvas selection: `nodeIds` are the
+   * selected nodes, `relationIds` the constituent relations of any selected
+   * edges. Wiring this is what enables the delete key at all — without it
+   * (and always in view mode) the key is inert, because React Flow's own
+   * removal only touches its local element copy and the model would
+   * resurrect everything on the next rebuild. */
+  onDeleteSelection?: (sel: { nodeIds: string[]; relationIds: string[] }) => void;
   /** pen tool: a stroke was drawn (rounded, simplified flow points). The host
    * assigns the id (uniqueStrokeId) and the plane, like add-node. */
   onAddStroke?: (stroke: Omit<Stroke, 'id'>) => void;

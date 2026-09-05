@@ -281,6 +281,29 @@ describe('DiagramView', () => {
     expect(await screen.findByLabelText('Nested zoom breadcrumb')).toBeDefined();
   });
 
+  it('edit mode: Backspace on a selected node reports onDeleteSelection, never removes locally', async () => {
+    const onDeleteSelection = vi.fn();
+    render(<DiagramView model={containerEndpointModel()} mode="edit" edit={{ onDeleteSelection }} />);
+    fireEvent.click(await screen.findByText('gw'));
+    // React Flow marks the node selected through a state round-trip — wait for
+    // it before pressing the key, or the delete set is empty.
+    await waitFor(() => expect(document.querySelector('.react-flow__node.selected')).not.toBeNull());
+    fireEvent.keyDown(document.body, { key: 'Backspace' });
+    await waitFor(() => expect(onDeleteSelection).toHaveBeenCalledWith({ nodeIds: ['gw'], relationIds: [] }));
+    // the node stays on canvas: existence is the model's call, and the host's
+    // dispatch (not React Flow's local removal) is what takes it away
+    expect(screen.getByText('gw')).toBeDefined();
+  });
+
+  it('view mode: Backspace is inert — no ghost deletion without an edit host', async () => {
+    render(<DiagramView model={containerEndpointModel()} />);
+    fireEvent.click(await screen.findByText('gw'));
+    await waitFor(() => expect(document.querySelector('.react-flow__node.selected')).not.toBeNull());
+    fireEvent.keyDown(document.body, { key: 'Backspace' });
+    // still there after the keypress settles
+    await waitFor(() => expect(screen.getByText('gw')).toBeDefined());
+  });
+
   it('edit mode: dblclick edits a box label as rich text and commits runs', async () => {
     const onSetNodeRich = vi.fn();
     render(<DiagramView model={containerEndpointModel()} mode="edit" pins={{ sys: 'expanded' }} edit={{ onSetNodeRich }} />);
