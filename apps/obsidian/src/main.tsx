@@ -1,0 +1,58 @@
+/*
+ * diagc obsidian — the Obsidian plugin embedding the diagc studio.
+ * Copyright (C) 2026 Bogdan Frankovskyi
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License version 3 as
+ * published by the Free Software Foundation, with the additional permissions
+ * granted under section 7 that are set out in the LICENSE file at the root of
+ * this repository.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+import { Plugin, PluginSettingTab, Setting, type App } from 'obsidian';
+import { DEFAULT_SETTINGS, normalizeSettings, type DiagrammingSettings } from './settings';
+// Imported from the start so `dist/main.css` exists after every build — the
+// esbuild config renames it to `styles.css`, which Obsidian requires present.
+import '@diagramming/studio/src/app.css';
+import '@fontsource/caveat/500.css';
+import '@fontsource/caveat/700.css';
+
+export default class DiagrammingPlugin extends Plugin {
+  settings: DiagrammingSettings = { ...DEFAULT_SETTINGS };
+
+  override async onload(): Promise<void> {
+    this.settings = normalizeSettings(await this.loadData());
+    this.addSettingTab(new DiagrammingSettingTab(this.app, this));
+  }
+
+  async saveSettings(): Promise<void> {
+    await this.saveData(this.settings);
+  }
+}
+
+class DiagrammingSettingTab extends PluginSettingTab {
+  constructor(app: App, private readonly plugin: DiagrammingPlugin) {
+    super(app, plugin);
+  }
+  override display(): void {
+    this.containerEl.empty();
+    new Setting(this.containerEl)
+      .setName('Diagrams folder')
+      .setDesc('Vault-relative folder holding the diagc project (src/, .artifacts/)')
+      .addText((t) =>
+        t.setValue(this.plugin.settings.diagramsFolder).onChange(async (v) => {
+          this.plugin.settings = normalizeSettings({ diagramsFolder: v });
+          await this.plugin.saveSettings();
+        }),
+      );
+  }
+}

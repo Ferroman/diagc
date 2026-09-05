@@ -1,0 +1,9 @@
+{
+  "id": "diagramming-studio",
+  "name": "Diagramming Studio",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Diagram studio pane, interactive embeds and node-to-note links",
+  "author": "Bogdan Frankovskyi",
+  "isDesktopOnly": true
+}
