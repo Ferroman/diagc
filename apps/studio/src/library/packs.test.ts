@@ -52,6 +52,25 @@ describe('BUNDLED_LIBRARY', () => {
   });
 });
 
+describe('Basics pack', () => {
+  const basics = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'basics');
+
+  it('offers the plain built-in stencils, first in the panel order', () => {
+    expect(BUNDLED_LIBRARY.categories[0]?.id).toBe('basics');
+    const names = basics.map((e) => e.name);
+    for (const n of ['Box', 'Service', 'System', 'Platform', 'Database', 'Queue', 'Infrastructure', 'Comment']) {
+      expect(names, `missing basic stencil '${n}'`).toContain(n);
+    }
+  });
+
+  it('uses node types the renderer styles (no silent fallback to a plain box)', () => {
+    for (const e of basics) {
+      if (e.template.type === undefined) continue; // 'Box' is deliberately typeless
+      expect(DEFAULT_TYPE_STYLES[e.template.type], `type '${e.template.type}'`).toBeDefined();
+    }
+  });
+});
+
 describe('C4 pack', () => {
   const byId = new Map(C4_PACK.entries.map((e) => [e.id, e]));
 

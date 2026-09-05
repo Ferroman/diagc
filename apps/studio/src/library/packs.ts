@@ -5,6 +5,33 @@ import { AWS_CONTAINER_ENTRIES } from './packs.aws-containers';
 import { C4_PACK } from './packs.c4';
 import { DATA_PACK } from './packs.data';
 
+// The plain built-in stencils (the renderer's DEFAULT_TYPE_STYLES) — what a
+// .diagram.ts author gets from `type:` with no pack at all. Without these the
+// palette offered every vendor icon but no ordinary service/database box; the
+// only route to one was Add node + the Properties type field. No Person here
+// on purpose: the palette already carries two (C4's and the Shapes silhouette),
+// and a third identically-named card would be ambiguity, not coverage.
+const basic = (id: string, type: string | undefined, name: string, keywords: string[]): LibraryEntry => ({
+  id: `basic-${id}`,
+  category: 'basics',
+  name,
+  keywords,
+  template: type === undefined ? {} : { type },
+});
+
+const basicsCategories: LibraryCategory[] = [{ id: 'basics', name: 'Basics', builtin: true }];
+
+const basicsEntries: LibraryEntry[] = [
+  basic('box', undefined, 'Box', ['plain', 'node', 'generic', 'empty', 'blank']),
+  basic('service', 'service', 'Service', ['component', 'microservice', 'app', 'application']),
+  basic('system', 'system', 'System', ['boundary', 'context', 'dashed']),
+  basic('platform', 'platform', 'Platform', ['boundary', 'group', 'dashed']),
+  basic('database', 'database', 'Database', ['db', 'sql', 'store', 'storage', 'cylinder']),
+  basic('queue', 'queue', 'Queue', ['message', 'topic', 'bus', 'broker', 'pill']),
+  basic('infra', 'infra', 'Infrastructure', ['server', 'host', 'hexagon', 'machine']),
+  basic('comment', 'comment', 'Comment', ['note', 'remark', 'aside', 'bubble']),
+];
+
 // Vendor logos that no cloud provider's icon set covers. Assets are generated
 // onto a common tile by `node scripts/build-tech-pack.mjs`.
 const techIcon = (slug: string, name: string, keywords: string[]): LibraryEntry => ({
@@ -76,10 +103,11 @@ const k8sEntries: LibraryEntry[] = [
 ];
 
 /** Read-only packs bundled with the app; merged with the user library on load.
- * C4 first (the smallest, most-used stencil), then the Activity stencil, then
- * the Data pack, then the vendor logos and Kubernetes icons, then the full AWS
- * icon set — the panel renders categories in this order. */
+ * Basics first (the plain stencils every diagram starts from), then C4 (the
+ * smallest, most-used pack), the Activity stencil, the Data pack, the vendor
+ * logos and Kubernetes icons, then the full AWS icon set — the panel renders
+ * categories in this order. */
 export const BUNDLED_LIBRARY: Library = {
-  categories: [...C4_PACK.categories, ...ACTIVITY_PACK.categories, ...DATA_PACK.categories, ...shapesCategories, ...techCategories, ...k8sCategories, ...AWS_PACK.categories],
-  entries: [...C4_PACK.entries, ...ACTIVITY_PACK.entries, ...DATA_PACK.entries, ...shapesEntries, ...techEntries, ...k8sEntries, ...AWS_CONTAINER_ENTRIES, ...AWS_PACK.entries],
+  categories: [...basicsCategories, ...C4_PACK.categories, ...ACTIVITY_PACK.categories, ...DATA_PACK.categories, ...shapesCategories, ...techCategories, ...k8sCategories, ...AWS_PACK.categories],
+  entries: [...basicsEntries, ...C4_PACK.entries, ...ACTIVITY_PACK.entries, ...DATA_PACK.entries, ...shapesEntries, ...techEntries, ...k8sEntries, ...AWS_CONTAINER_ENTRIES, ...AWS_PACK.entries],
 };
