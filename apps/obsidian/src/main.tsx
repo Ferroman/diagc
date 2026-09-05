@@ -21,6 +21,7 @@
 import { Plugin, PluginSettingTab, Setting, type App } from 'obsidian';
 import { DEFAULT_SETTINGS, normalizeSettings, type DiagrammingSettings } from './settings';
 import { StudioView, VIEW_TYPE_STUDIO } from './view';
+import { DiagramEmbedChild } from './embed-child';
 import { formatHash } from '@diagramming/studio/src/urlState';
 // Imported from the start so `dist/main.css` exists after every build — the
 // esbuild config renames it to `styles.css`, which Obsidian requires present.
@@ -40,6 +41,12 @@ export default class DiagrammingPlugin extends Plugin {
       id: 'open-diagram-studio',
       name: 'Open diagram studio',
       callback: () => void this.activateStudio(),
+    });
+    // Interactive read-only embeds: ```diagram fences in reading view and
+    // live preview. Each block gets its own child so Obsidian's own
+    // teardown (source edited, view closed) unmounts its React root.
+    this.registerMarkdownCodeBlockProcessor('diagram', (source, el, mdCtx) => {
+      mdCtx.addChild(new DiagramEmbedChild(el, source, this));
     });
   }
 
