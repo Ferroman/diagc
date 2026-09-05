@@ -32,6 +32,7 @@ import {
   type TextRun,
 } from '@diagramming/core';
 import { activeNotation } from './notation';
+import { getHost } from './host';
 import { useDiagramBoot } from './hooks/useDiagramBoot';
 import { useDeepLink } from './hooks/useDeepLink';
 import { useEditSession } from './hooks/useEditSession';
@@ -445,7 +446,7 @@ export function App() {
   const enterEditFromSource = async () => {
     const target = selected;
     try {
-      const res = await fetch(`/api/diagrams/${target}`);
+      const res = await getHost().apiFetch(`/api/diagrams/${target}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = (await res.json()) as { model: DiagramModel; layout?: LayoutOverlay; drawings?: Drawings };
       // The user may have switched diagrams (picker or hashchange) while this
@@ -498,7 +499,7 @@ export function App() {
     const next = withSavedPositions(layout, model, activePlane, movedPositions);
     setSavingPositions(true);
     try {
-      const res = await fetch(`/api/layouts/${selected}`, {
+      const res = await getHost().apiFetch(`/api/layouts/${selected}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(next),
@@ -799,7 +800,7 @@ export function App() {
                       onDeleteCategory={lib.deleteCategory}
                       onImportIcon={(categoryId, file) => void importLibraryIcon(categoryId, file)}
                       onImportShape={(categoryId, file) => void importLibraryShape(categoryId, file)}
-                      assetBase="/api/assets/"
+                      assetBase={getHost().assetBase}
                     />
                   }
                 />
@@ -837,7 +838,9 @@ export function App() {
                 enteredPath={enteredPath}
                 onCompareSelect={compareSelect}
                 colorMode={theme}
-                assetBase="/api/assets/"
+                assetBase={getHost().assetBase}
+                {...(getHost().libraryBase !== undefined ? { libraryBase: getHost().libraryBase } : {})}
+                onOpenLink={(l) => getHost().openLink(l)}
                 styleId={pinnedStyle ?? style}
                 onCldEdges={handleCldEdges}
                 onViewPositionsChange={setMovedPositions}

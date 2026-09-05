@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import type { Drawings, LayoutOverlay } from '@diagramming/core';
 import { loadArtifacts, type ApiDiagram, type LoadedArtifact } from '../artifacts';
+import { getHost } from '../host';
 
 export interface DiagramBoot {
   /** render-ready models fetched from the dev API (replaces the old build-time glob) */
@@ -54,7 +55,12 @@ export function useDiagramBoot(): DiagramBoot {
     let live = true;
     void (async () => {
       try {
-        const [dRes, lRes, kRes] = await Promise.all([fetch('/api/diagrams'), fetch('/api/layouts'), fetch('/api/drawings')]);
+        const host = getHost();
+        const [dRes, lRes, kRes] = await Promise.all([
+          host.apiFetch('/api/diagrams'),
+          host.apiFetch('/api/layouts'),
+          host.apiFetch('/api/drawings'),
+        ]);
         if (!dRes.ok) return;
         const { diagrams = [] } = (await dRes.json()) as { diagrams?: ApiDiagram[] };
         const { layouts = {} } = lRes.ok

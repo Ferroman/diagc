@@ -1,4 +1,5 @@
 import type { Library } from './types';
+import { getHost } from '../host';
 
 const EMPTY: Library = { categories: [], entries: [] };
 
@@ -6,7 +7,7 @@ const EMPTY: Library = { categories: [], entries: [] };
  * have no middleware — the app still works with just the bundled packs). */
 export async function loadUserLibrary(): Promise<Library> {
   try {
-    const res = await fetch('/api/library');
+    const res = await getHost().apiFetch('/api/library');
     if (!res.ok) return EMPTY;
     const body = (await res.json()) as Partial<Library>;
     return { categories: body.categories ?? [], entries: body.entries ?? [] };
@@ -17,7 +18,7 @@ export async function loadUserLibrary(): Promise<Library> {
 
 /** PUT the whole user library; throws with the server's issue message on failure. */
 export async function saveUserLibrary(library: Library): Promise<void> {
-  const res = await fetch('/api/library', {
+  const res = await getHost().apiFetch('/api/library', {
     method: 'PUT',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(library),

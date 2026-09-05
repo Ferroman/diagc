@@ -3,6 +3,7 @@ import { emptyDrawings, emptyLayout, type DiagramModel, type Drawings, type Layo
 import type { LoadedArtifact } from '../artifacts';
 import type { EditorApi } from '../editor/useEditor';
 import { nextCopyName } from '../copyName';
+import { getHost } from '../host';
 
 const emptyModel = (name: string): DiagramModel => ({
   version: 1,
@@ -76,7 +77,7 @@ export function useDiagramActions({
       return;
     }
     const m = emptyModel(raw);
-    const res = await fetch(`/api/diagrams/${raw}`, {
+    const res = await getHost().apiFetch(`/api/diagrams/${raw}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(m),
@@ -102,7 +103,7 @@ export function useDiagramActions({
       window.alert(`A diagram named '${raw}' already exists.`);
       return;
     }
-    const res = await fetch(`/api/diagrams/${selected}/rename`, {
+    const res = await getHost().apiFetch(`/api/diagrams/${selected}/rename`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ to: raw }),
@@ -162,7 +163,7 @@ export function useDiagramActions({
     let layout = current?.layout;
     let drawings = current?.drawings;
     if (ownedNames.has(selected)) {
-      const res = await fetch(`/api/diagrams/${selected}`);
+      const res = await getHost().apiFetch(`/api/diagrams/${selected}`);
       if (!res.ok) {
         window.alert(`Could not copy '${selected}'`);
         return;
@@ -178,7 +179,7 @@ export function useDiagramActions({
     const copy = nextCopyName(selected, new Set([...names, ...ownedNames]));
     const copied: DiagramModel = { ...model, id: copy, name: copy };
     const post = (kind: 'diagrams' | 'layouts' | 'drawings', body: unknown) =>
-      fetch(`/api/${kind}/${copy}`, {
+      getHost().apiFetch(`/api/${kind}/${copy}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
@@ -215,7 +216,7 @@ export function useDiagramActions({
       `Eject '${selected}' to TypeScript? The JSON source is replaced by a generated .diagram.ts and the diagram becomes read-only in the studio.`,
     );
     if (!ok) return;
-    const res = await fetch(`/api/diagrams/${selected}/eject`, { method: 'POST' });
+    const res = await getHost().apiFetch(`/api/diagrams/${selected}/eject`, { method: 'POST' });
     if (!res.ok) {
       window.alert(`Could not eject '${selected}'`);
       return;

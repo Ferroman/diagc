@@ -8,6 +8,7 @@ import {
   undo as reduceUndo,
   type EditorSession,
 } from './reducer';
+import { getHost } from '../host';
 
 export interface EditorApi {
   session: EditorSession | null;
@@ -52,7 +53,7 @@ export function useEditor(): EditorApi {
     const issues = validate(snapshot.state.model);
     if (issues.length > 0) return { ok: false, issues };
     const post = async (kind: 'diagrams' | 'layouts' | 'drawings', body: unknown) => {
-      const res = await fetch(`/api/${kind}/${snapshot.name}`, {
+      const res = await getHost().apiFetch(`/api/${kind}/${snapshot.name}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),

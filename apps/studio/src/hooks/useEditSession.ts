@@ -3,6 +3,7 @@ import { errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from
 import type { DrawTool, LayoutApi } from '@diagramming/renderer';
 import type { LoadedArtifact } from '../artifacts';
 import { useEditor } from '../editor/useEditor';
+import { getHost } from '../host';
 
 export interface UseEditSessionOptions {
   /** App-owned artifact store: shadow a finished session's model+layout (and a
@@ -88,7 +89,7 @@ export function useEditSession({
   // draft anyway. Non-fatal on failure: the raw model stays until the next boot.
   const refreshComposed = async (name: string) => {
     try {
-      const res = await fetch(`/api/diagrams/${name}/composed`);
+      const res = await getHost().apiFetch(`/api/diagrams/${name}/composed`);
       if (!res.ok) return;
       const { model } = (await res.json()) as { model: DiagramModel };
       setDrafts((d) => {

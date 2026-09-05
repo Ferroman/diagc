@@ -1,8 +1,10 @@
+import { getHost } from '../host';
+
 export const MAX_IMAGE_EDGE = 240;
 
 /** POST the raw file to the assets endpoint; resolves the content-hash name */
 export async function uploadAsset(file: File): Promise<string> {
-  const res = await fetch('/api/assets', {
+  const res = await getHost().apiFetch('/api/assets', {
     method: 'POST',
     headers: { 'content-type': file.type },
     body: file,
