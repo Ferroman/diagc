@@ -173,6 +173,36 @@ describe('NodePanel', () => {
     expect(onCommand).toHaveBeenCalledWith({ type: 'set-node-details', id: 'a', details: { technology: null } });
   });
 
+  it('the Link field shows the node link, clears it, then commits a new value', () => {
+    const onCommand = vi.fn();
+    const withLink = testModel();
+    withLink.nodes = withLink.nodes.map((n) => (n.id === 'a' ? { ...n, link: '[[Runbook]]' } : n));
+    render(
+      <NodePanel
+        model={withLink}
+        nodeId="a"
+        activePlane="flow"
+        onCommand={onCommand}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
+    const link = screen.getByLabelText('Link') as HTMLInputElement;
+    expect(link.value).toBe('[[Runbook]]');
+
+    fireEvent.change(link, { target: { value: '' } });
+    fireEvent.blur(link);
+    expect(onCommand).toHaveBeenCalledWith({ type: 'set-node-details', id: 'a', details: { link: null } });
+
+    fireEvent.change(link, { target: { value: '[[Other]]' } });
+    fireEvent.blur(link);
+    expect(onCommand).toHaveBeenCalledWith({
+      type: 'set-node-details',
+      id: 'a',
+      details: { link: '[[Other]]' },
+    });
+  });
+
   it('sets and clears the node color from the swatch row', () => {
     const onCommand = vi.fn();
     render(

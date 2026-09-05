@@ -100,6 +100,7 @@ export function NodePanel({
   const [icon, setIcon] = useState(node?.icon ?? '');
   const [shape, setShape] = useState(node?.shape ?? '');
   const [technology, setTechnology] = useState(node?.technology ?? '');
+  const [link, setLink] = useState(node?.link ?? '');
   const [description, setDescription] = useState(node?.description ?? '');
   // Stable per-row ids so React keys survive reordering/mid-row removal; the
   // counter is a ref so it is not reset by re-renders. Lazy initializers keep it
@@ -139,6 +140,7 @@ export function NodePanel({
   const modelIcon = node?.icon;
   const modelShape = node?.shape;
   const modelTechnology = node?.technology;
+  const modelLink = node?.link;
   const modelDescription = node?.description;
   const modelMetadata = node?.metadata;
   useEffect(() => {
@@ -156,6 +158,9 @@ export function NodePanel({
   useEffect(() => {
     setTechnology(modelTechnology ?? '');
   }, [modelTechnology]);
+  useEffect(() => {
+    setLink(modelLink ?? '');
+  }, [modelLink]);
   useEffect(() => {
     setDescription(modelDescription ?? '');
   }, [modelDescription]);
@@ -206,6 +211,14 @@ export function NodePanel({
         type: 'set-node-details',
         id: nodeId,
         details: { technology: technology === '' ? null : technology },
+      });
+  };
+  const commitLink = () => {
+    if (link !== (node.link ?? ''))
+      onCommand({
+        type: 'set-node-details',
+        id: nodeId,
+        details: { link: link.trim() === '' ? null : link.trim() },
       });
   };
   const commitDescription = () => {
@@ -468,6 +481,18 @@ export function NodePanel({
           onChange={(e) => setTechnology(e.target.value)}
           onBlur={commitTechnology}
           onKeyDown={(e) => commitOnEnter(e, commitTechnology)}
+        />
+      </label>
+
+      <label className="field">
+        <span>Link</span>
+        <input
+          aria-label="Link"
+          placeholder="https://… or [[Note]]"
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          onBlur={commitLink}
+          onKeyDown={(e) => commitOnEnter(e, commitLink)}
         />
       </label>
 
