@@ -3,3 +3,18 @@
 .dg-embed-open { position: absolute; top: 6px; right: 6px; z-index: 10; }
 .dg-embed-error { border: 1px solid var(--background-modifier-border); border-left: 3px solid var(--text-error); border-radius: 6px; padding: 8px 12px; }
 .dg-dialog-input { width: 100%; }
+/* Obsidian styles `button:not(.clickable-icon)` at specificity 0-1-1, which
+   outguns the studio's `.lib-entry` (0-1-0): its fixed --input-height squashes
+   the library card and the thumbnail + caption overflow the pill. Re-assert
+   the card layout at higher specificity; other studio buttons are single-line
+   chips that survive Obsidian's sizing fine. */
+.dg-obsidian-root button.lib-entry {
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  background: var(--dg-bg);
+  box-shadow: none;
+}
