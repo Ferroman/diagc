@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { createIconRegistry } from '@diagramming/icons';
 import { Legend } from './Legend';
-import type { LegendRow } from './legend';
+import type { LegendRow } from './legendRows';
 
 const rows: LegendRow[] = [
   { id: 'layers:flow', section: 'layers', label: 'Data flow', layer: 'flow', active: false, swatch: { draw: 'chip', color: '#0ea5e9' } },

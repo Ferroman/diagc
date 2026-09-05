@@ -1,3 +1,13 @@
+// Named legendRows (not legend) so its filename doesn't collide with Legend.tsx
+// under esbuild's case-insensitive directory-entry resolution: esbuild warns
+// on `legend.ts`/`Legend.tsx` coexisting ("different-path-case") but then
+// resolves an extensionless `./legend` import to whichever of the two its
+// case-folded directory cache hits first, which can silently pick the wrong
+// file (or hard-error when the wrong file lacks the expected export) —
+// reordering resolveExtensions does not help, since it only shifts which of
+// the two same-named imports breaks. Vite/tsc resolve both files correctly;
+// only apps/obsidian's esbuild bundle (the only whole-graph esbuild consumer
+// of this package) is affected — that's where this surfaced.
 import {
   buildHierarchy,
   relationLayer,

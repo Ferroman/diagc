@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, model, type DiagramModel } from '@diagramming/core';
 import { createKindRegistry, createTypeRegistry } from './registry';
-import { legendRows, type LegendInput } from './legend';
+import { legendRows, type LegendInput } from './legendRows';
 
 /** shop -> (web, api); api -> db; a 'flow' relation on the data-flow layer */
 function fixture(): DiagramModel {

@@ -20,6 +20,8 @@
  */
 import { Plugin, PluginSettingTab, Setting, type App } from 'obsidian';
 import { DEFAULT_SETTINGS, normalizeSettings, type DiagrammingSettings } from './settings';
+import { StudioView, VIEW_TYPE_STUDIO } from './view';
+import { formatHash } from '@diagramming/studio/src/urlState';
 // Imported from the start so `dist/main.css` exists after every build — the
 // esbuild config renames it to `styles.css`, which Obsidian requires present.
 import '@diagramming/studio/src/app.css';
@@ -32,10 +34,32 @@ export default class DiagrammingPlugin extends Plugin {
   override async onload(): Promise<void> {
     this.settings = normalizeSettings(await this.loadData());
     this.addSettingTab(new DiagrammingSettingTab(this.app, this));
+    this.registerView(VIEW_TYPE_STUDIO, (leaf) => new StudioView(leaf, this));
+    this.addRibbonIcon('network', 'Open diagram studio', () => void this.activateStudio());
+    this.addCommand({
+      id: 'open-diagram-studio',
+      name: 'Open diagram studio',
+      callback: () => void this.activateStudio(),
+    });
   }
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+  }
+
+  /** Reuse an existing studio leaf if one is already open, else open a new one. */
+  async activateStudio(): Promise<void> {
+    const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE_STUDIO)[0];
+    const leaf = existing ?? this.app.workspace.getLeaf(true);
+    if (existing === undefined) await leaf.setViewState({ type: VIEW_TYPE_STUDIO, active: true });
+    await this.app.workspace.revealLeaf(leaf);
+  }
+
+  /** Focus the studio pane on one diagram — the embeds' "open in studio". */
+  async openDiagram(name: string): Promise<void> {
+    await this.activateStudio();
+    const view = this.app.workspace.getLeavesOfType(VIEW_TYPE_STUDIO)[0]?.view;
+    if (view instanceof StudioView) view.urlState.navigate(formatHash(name, []));
   }
 }
 
