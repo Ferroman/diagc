@@ -20,4 +20,9 @@ describe('parseFence', () => {
       name: 'x', height: 300,
     });
   });
+  it('drops the stray empty entry a trailing comma would otherwise leave in layers', () => {
+    expect(parseFence('name: x\nlayers: sec, ops,')).toEqual({
+      name: 'x', layers: ['sec', 'ops'], height: 480,
+    });
+  });
 });

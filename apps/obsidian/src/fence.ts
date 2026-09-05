@@ -43,7 +43,10 @@ export function parseFence(source: string): EmbedSpec | { error: string } {
   const plane = fields['plane'];
   const root = fields['root'];
   const layersRaw = fields['layers'];
-  const layers = layersRaw !== undefined ? layersRaw.split(',').map((s) => s.trim()) : undefined;
+  // Filtered after the trim-map: a trailing comma or an empty `layers:` value
+  // would otherwise leave a stray '' entry (`['sec', 'ops', '']`).
+  const layers =
+    layersRaw !== undefined ? layersRaw.split(',').map((s) => s.trim()).filter((s) => s !== '') : undefined;
 
   return {
     name,

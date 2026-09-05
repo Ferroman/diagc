@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagramming/core';
-import { DiagramView } from '@diagramming/renderer';
+import { applyTheme, DiagramView, lightTheme } from '@diagramming/renderer';
 import { createIconRegistry } from '@diagramming/icons';
 import type { HostAdapter } from '@diagramming/studio/src/host';
 import type { EmbedSpec } from './fence';
@@ -46,6 +46,17 @@ export interface EmbedProps {
  */
 export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpenStudio }: EmbedProps) {
   const [state, setState] = useState<EmbedState>({ status: 'loading' });
+
+  // The embed renders in light mode (colorMode="light" below); publish the
+  // light theme's --dg-* tokens so node strokes/fills and the dashed
+  // group-container borders resolve. Without this every embed loses those
+  // variables (React Flow's colorMode themes React Flow itself, not our
+  // tokens) unless the studio pane happened to run first in this session and
+  // set them — see apps/viewer/src/Viewer.tsx's identical effect, which hits
+  // the same gap for the published page.
+  useEffect(() => {
+    applyTheme(document.documentElement, lightTheme);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

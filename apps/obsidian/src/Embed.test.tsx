@@ -37,6 +37,33 @@ describe('Embed', () => {
     expect(apiFetch).toHaveBeenCalledWith('/api/diagrams/demo');
   });
 
+  it('publishes the light-theme --dg-* tokens so node/group borders resolve', () => {
+    // Without this, DiagramView's colorMode="light" themes React Flow itself
+    // but never sets the --dg-* custom properties node strokes/fills and the
+    // dashed group borders read from (see apps/viewer/src/Viewer.tsx's
+    // identical effect) — an embed opened before the studio pane ever ran
+    // this session would render every box border-less. Clear the property
+    // first (jsdom persists documentElement styles across tests in this
+    // file) so a pass here proves Embed set it, not a leftover from a
+    // previous test.
+    document.documentElement.style.removeProperty('--dg-node-stroke');
+    const apiFetch = vi.fn(async () => new Response(JSON.stringify({ model: twoNodeModel() }), { status: 200 }));
+    render(
+      <Embed
+        spec={spec}
+        apiFetch={apiFetch}
+        openLink={vi.fn()}
+        assetBase=""
+        libraryBase=""
+        onOpenStudio={vi.fn()}
+      />,
+    );
+    // The effect has no dependency on the fetch/load state, so it has already
+    // run (RTL's render() flushes mount-time effects) before this assertion.
+    expect(document.documentElement.style.getPropertyValue('--dg-node-stroke')).not.toBe('');
+    document.documentElement.style.removeProperty('--dg-node-stroke'); // don't leak into later tests
+  });
+
   it('renders the error card for a failed fetch', async () => {
     const apiFetch = vi.fn(
       async () => new Response(JSON.stringify({ issues: [{ message: "No diagram source 'demo'" }] }), { status: 404 }),
