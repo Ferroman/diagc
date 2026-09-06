@@ -2,6 +2,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { model } from '@diagramming/core';
+import { darkTheme, lightTheme } from '@diagramming/renderer';
 import { Embed } from './Embed';
 import type { EmbedSpec } from './fence';
 
@@ -38,6 +39,7 @@ describe('Embed', () => {
         assetBase=""
         libraryBase=""
         onOpenStudio={vi.fn()}
+        theme="light"
       />,
     );
     expect(await screen.findByText('Alpha')).toBeDefined();
@@ -45,7 +47,7 @@ describe('Embed', () => {
     expect(apiFetch).toHaveBeenCalledWith('/api/diagrams/demo');
   });
 
-  it('publishes the light-theme --dg-* tokens on the embed container, not documentElement', async () => {
+  it("publishes the theme prop's --dg-* tokens on the embed container, not documentElement", async () => {
     // Scoped to the embed's own root rather than documentElement: the studio
     // pane (App.tsx) applies its own (default dark) theme to documentElement
     // too, and a vault can have both a studio leaf and an embed open at
@@ -64,14 +66,38 @@ describe('Embed', () => {
         assetBase=""
         libraryBase=""
         onOpenStudio={vi.fn()}
+        theme="light"
       />,
     );
     // The ref only attaches once the loaded branch renders the container div,
     // so wait for the model to actually load before asserting.
     await screen.findByText('Alpha');
     const root = container.querySelector('.dg-embed') as HTMLElement;
-    expect(root.style.getPropertyValue('--dg-node-stroke')).not.toBe('');
-    expect(document.documentElement.style.getPropertyValue('--dg-node-stroke')).toBe('');
+    expect(root.style.getPropertyValue('--dg-bg')).toBe(lightTheme.bg);
+    expect(document.documentElement.style.getPropertyValue('--dg-bg')).toBe('');
+  });
+
+  it('follows the vault scheme: theme="dark" applies the dark tokens and colorMode', async () => {
+    // The regression this guards: embeds used to hard-code light mode, so a
+    // dark vault got a glaring light card that also disagreed with the studio
+    // pane. The host derives the prop from Obsidian's body class (theme.ts).
+    const apiFetch = vi.fn(async () => new Response(JSON.stringify({ model: twoNodeModel() }), { status: 200 }));
+    const { container } = render(
+      <Embed
+        spec={spec}
+        apiFetch={apiFetch}
+        openLink={vi.fn()}
+        assetBase=""
+        libraryBase=""
+        onOpenStudio={vi.fn()}
+        theme="dark"
+      />,
+    );
+    await screen.findByText('Alpha');
+    const root = container.querySelector('.dg-embed') as HTMLElement;
+    expect(root.style.getPropertyValue('--dg-bg')).toBe(darkTheme.bg);
+    // colorMode themes React Flow itself — it stamps the mode class on its root
+    expect(container.querySelector('.react-flow')?.className).toContain('dark');
   });
 
   it('renders the error card for a failed fetch', async () => {
@@ -86,6 +112,7 @@ describe('Embed', () => {
         assetBase=""
         libraryBase=""
         onOpenStudio={vi.fn()}
+        theme="light"
       />,
     );
     await waitFor(() => expect(container.querySelector('.dg-embed-error')).not.toBeNull());
@@ -104,6 +131,7 @@ describe('Embed', () => {
         assetBase=""
         libraryBase=""
         onOpenStudio={vi.fn()}
+        theme="light"
       />,
     );
     await waitFor(() => expect(container.querySelector('.dg-embed-error')).not.toBeNull());
@@ -121,6 +149,7 @@ describe('Embed', () => {
         assetBase=""
         libraryBase=""
         onOpenStudio={onOpenStudio}
+        theme="light"
       />,
     );
     await screen.findByText('Alpha');
@@ -146,6 +175,7 @@ describe('Embed', () => {
         assetBase=""
         libraryBase=""
         onOpenStudio={vi.fn()}
+        theme="light"
       />,
     );
     await screen.findByText('Alpha');

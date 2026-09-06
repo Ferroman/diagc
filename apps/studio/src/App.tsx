@@ -96,11 +96,14 @@ const applyTargetFor = (
   return n !== undefined ? { applyTarget: { id: n.id, name: n.name || n.id } } : undefined;
 };
 
-export function App() {
+/** `initialTheme` lets a host seed the color scheme (the Obsidian pane passes
+ * the vault's); the browser studio keeps its dark default. A seed only — the
+ * in-app toggle owns the state from mount on. */
+export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark' } = {}) {
   const boot = useDiagramBoot();
   const { artifacts, names, booted, ownedNames, setOwnedNames, setDrafts, setLoaded, setSources, canDesign } = boot;
 
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [theme, setTheme] = useState<'light' | 'dark'>(initialTheme);
   const [style, setStyle] = usePersistedState<string>(STYLE_KEY, 'clean', (raw) => raw);
   const [plane, setPlane] = useState<string | undefined>(undefined);
   const [activeLayers, setActiveLayers] = useState<string[]>([]);

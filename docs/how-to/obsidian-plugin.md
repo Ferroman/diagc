@@ -69,6 +69,8 @@ Blank lines and lines starting with `#` are skipped as comments — put a commen
 
 The embed is the interactive `DiagramView`, read-only: semantic zoom (double-click to unfold), the layer toggles, and node links all work, seeded from the fence's `plane`/`layers`/`root` but then owned by the reader for as long as the note is open — reopening the note resets them. A corner **Open in studio** button jumps to the same diagram in the studio pane for editing.
 
+Embeds and the studio pane both follow the vault's light/dark scheme — embeds track a theme switch live, and the studio pane opens in the vault's scheme (its own theme toggle still works from there).
+
 ## Link nodes to notes
 
 The node panel's **Link** field takes either form:

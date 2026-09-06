@@ -5,6 +5,7 @@ import { setHost } from '@diagramming/studio/src/host';
 import { buildVaultHost } from './vault-host';
 import { buildDialogs } from './dialogs';
 import { memoryUrlState } from './memory-url-state';
+import { obsidianTheme } from './theme';
 import type DiagrammingPlugin from './main';
 
 export const VIEW_TYPE_STUDIO = 'diagramming-studio';
@@ -31,7 +32,9 @@ export class StudioView extends ItemView {
     setHost({ ...vaultHost, urlState: this.urlState, ...buildDialogs(this.app) });
     const el = this.contentEl.createDiv({ cls: 'dg-obsidian-root' });
     this.root = createRoot(el);
-    this.root.render(<StudioApp />);
+    // Open in the vault's color scheme rather than the browser studio's dark
+    // default; the in-studio toggle chip still works from there.
+    this.root.render(<StudioApp initialTheme={obsidianTheme()} />);
   }
 
   override async onClose(): Promise<void> {

@@ -292,3 +292,32 @@ describe('drilled-in canvas tools', () => {
     expect(screen.getByRole('button', { name: 'Select' }).getAttribute('aria-pressed')).toBe('true');
   });
 });
+
+describe('theme seeding', () => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/');
+    localStorage.clear();
+    delete document.documentElement.dataset['theme'];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url === '/api/diagrams') return new Response(JSON.stringify({ diagrams: [] }), { status: 200 });
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }),
+    );
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('defaults dark, and a host-provided initialTheme seeds light', async () => {
+    // The Obsidian pane passes the vault's scheme (view.tsx); the browser
+    // studio renders <App /> with no prop and keeps the dark default.
+    const first = render(<App />);
+    await waitFor(() => expect(document.documentElement.dataset['theme']).toBe('dark'));
+    first.unmount();
+    render(<App initialTheme="light" />);
+    await waitFor(() => expect(document.documentElement.dataset['theme']).toBe('light'));
+  });
+});

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { activeNotation, errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagramming/core';
-import { applyTheme, DiagramView, isKnownStyle, lightTheme } from '@diagramming/renderer';
+import { applyTheme, darkTheme, DiagramView, isKnownStyle, lightTheme } from '@diagramming/renderer';
 import { createIconRegistry } from '@diagramming/icons';
 import type { HostAdapter } from '@diagramming/studio/src/host';
 import type { EmbedSpec } from './fence';
@@ -29,6 +29,10 @@ export interface EmbedProps {
   libraryBase: string;
   /** the corner "Open in studio" button was clicked */
   onOpenStudio: () => void;
+  /** Obsidian's active color scheme (obsidianTheme()); the host re-renders
+   * with a fresh value on 'css-change' so open embeds follow a vault theme
+   * switch live. */
+  theme: 'light' | 'dark';
 }
 
 /**
@@ -44,19 +48,20 @@ export interface EmbedProps {
  * bases) arrives as a prop instead — see embed-child.tsx for where those come
  * from — which is what keeps this component unit-testable under jsdom.
  */
-export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpenStudio }: EmbedProps) {
+export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpenStudio, theme }: EmbedProps) {
   const [state, setState] = useState<EmbedState>({ status: 'loading' });
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // The embed renders in light mode (colorMode="light" below); publish the
-  // light theme's --dg-* tokens so node strokes/fills and the dashed
-  // group-container borders resolve. Without this every embed loses those
-  // variables (React Flow's colorMode themes React Flow itself, not our
-  // tokens) unless the studio pane happened to run first in this session and
-  // set them — see apps/viewer/src/Viewer.tsx's identical effect, which hits
-  // the same gap for the published page. Applied to the embed's OWN root
+  // The embed renders in the vault's scheme (the `theme` prop, mirrored by
+  // colorMode below); publish that theme's --dg-* tokens so node
+  // strokes/fills and the dashed group-container borders resolve. Without
+  // this every embed loses those variables (React Flow's colorMode themes
+  // React Flow itself, not our tokens) unless the studio pane happened to run
+  // first in this session and set them — see apps/viewer/src/Viewer.tsx's
+  // identical effect, which hits the same gap for the published page.
+  // Applied to the embed's OWN root
   // element rather than documentElement: the studio pane (App.tsx) applies
-  // its own (default dark) theme to documentElement too, and a note can have
+  // its own theme to documentElement too, and a note can have
   // both a studio leaf and an embed open at once — whichever mounted last
   // would clobber the other's tokens on the shared root. Custom properties
   // inherit downward and a value set directly on an element outranks one
@@ -68,8 +73,8 @@ export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpen
   // branches render no such element), so the effect must re-run when that
   // happens instead of firing once against a still-null ref.
   useEffect(() => {
-    if (rootRef.current !== null) applyTheme(rootRef.current, lightTheme);
-  }, [state.status]);
+    if (rootRef.current !== null) applyTheme(rootRef.current, theme === 'dark' ? darkTheme : lightTheme);
+  }, [state.status, theme]);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,7 +135,7 @@ export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpen
         onToggleExpand={togglePin}
         enteredPath={enteredPath}
         onEnteredPathChange={setEnteredPath}
-        colorMode="light"
+        colorMode={theme}
         assetBase={assetBase}
         libraryBase={libraryBase}
         onOpenLink={openLink}
