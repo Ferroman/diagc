@@ -3,7 +3,7 @@ import { createIconRegistry } from '@diagramming/icons';
 import { createTypeRegistry, LIBRARY_ENTRY_DND_TYPE } from '@diagramming/renderer';
 import { getHost } from '../host';
 import { searchLibrary } from './entry';
-import type { Library, LibraryEntry } from './types';
+import type { Library, LibraryCategory, LibraryEntry } from './types';
 
 // Same registries the canvas resolves against, so a card previews the stencil it
 // will actually place. Built once — they are static defaults.
@@ -46,6 +46,34 @@ const entryThumbUrl = (assetBase: string, ref: string): string => {
  * Small sections (C4, Tech, a user's own category) stay open, so the panel looks
  * unchanged until a pack is genuinely large. */
 const AUTO_COLLAPSE_ABOVE = 16;
+
+/** Groups bigger than this (total entries across member categories) start
+ * collapsed. Sized so the C4 model group (~25 entries) opens like today while
+ * the AWS group (~800 entries over ~30 categories) rests as a single header
+ * row instead of a wall of section headers. */
+const GROUP_AUTO_COLLAPSE_ABOVE = 64;
+
+/** The panel's render order: categories in library order, with runs that share
+ * a `group` label folded into one block (first appearance fixes the block's
+ * position). Ungrouped categories become singleton blocks. */
+function groupBlocks(categories: LibraryCategory[]): { group?: string; cats: LibraryCategory[] }[] {
+  const out: { group?: string; cats: LibraryCategory[] }[] = [];
+  const byGroup = new Map<string, { group: string; cats: LibraryCategory[] }>();
+  for (const c of categories) {
+    if (c.group === undefined) {
+      out.push({ cats: [c] });
+      continue;
+    }
+    let block = byGroup.get(c.group);
+    if (block === undefined) {
+      block = { group: c.group, cats: [] };
+      byGroup.set(c.group, block);
+      out.push(block);
+    }
+    block.cats.push(c);
+  }
+  return out;
+}
 
 /** A small preview: the icon image for image entries, else a color swatch. */
 function EntryPreview({ entry, assetBase }: { entry: LibraryEntry; assetBase: string }) {
@@ -106,6 +134,9 @@ export function LibraryPanel({
   // Explicit open/closed choices, keyed by category id; absent = the size-based
   // default below. Kept across searches so a section you opened stays open.
   const [toggled, setToggled] = useState<Record<string, boolean>>({});
+  // Same, for group headers — separate map so a group label can never collide
+  // with a category id.
+  const [groupToggled, setGroupToggled] = useState<Record<string, boolean>>({});
   const matches = useMemo(() => searchLibrary(library, query), [library, query]);
   // One pass over the matches instead of re-filtering the whole entry list once
   // per category — with the AWS pack that is ~30 × 800 comparisons per render.
@@ -119,6 +150,7 @@ export function LibraryPanel({
     return m;
   }, [matches]);
   const searching = query.trim() !== '';
+  const blocks = useMemo(() => groupBlocks(library.categories), [library.categories]);
 
   // A card can restyle the selection only when there is one and a handler exists.
   const canApply = applyTarget !== undefined && onApply !== undefined;
@@ -197,7 +229,8 @@ export function LibraryPanel({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
-      {library.categories.map((cat) => {
+      {blocks.map((block) => {
+        const renderCategory = (cat: LibraryCategory) => {
         const entries = byCategory.get(cat.id) ?? [];
         // hide an empty builtin section while searching, but keep an empty user
         // category visible so you can import into it
@@ -302,6 +335,35 @@ export function LibraryPanel({
                 ))}
               </div>
             )}
+          </section>
+        );
+        };
+        if (block.group === undefined) return renderCategory(block.cats[0]!);
+        const label = block.group;
+        const total = block.cats.reduce((n, c) => n + (byCategory.get(c.id) ?? []).length, 0);
+        // While searching, a group with no hits anywhere inside hides whole —
+        // its member sections would all render null, so the header must too.
+        if (total === 0 && searching) return null;
+        const open = groupToggled[label] ?? (searching || total <= GROUP_AUTO_COLLAPSE_ABOVE);
+        return (
+          <section key={`group:${label}`} className="lib-group">
+            <h4 className="lib-cat-name lib-group-name">
+              <button
+                type="button"
+                className="lib-cat-toggle"
+                aria-label={label}
+                aria-expanded={open}
+                title={`${open ? 'Collapse' : 'Expand'} ${label}`}
+                onClick={() => setGroupToggled((t) => ({ ...t, [label]: !open }))}
+              >
+                <span className="lib-cat-caret" aria-hidden="true">
+                  {open ? '▾' : '▸'}
+                </span>
+                <span className="lib-cat-label">{label}</span>
+                <span className="lib-cat-count">{total}</span>
+              </button>
+            </h4>
+            {open && <div className="lib-group-body">{block.cats.map(renderCategory)}</div>}
           </section>
         );
       })}

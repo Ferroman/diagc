@@ -19,6 +19,10 @@ export interface LibraryEntry {
 export interface LibraryCategory {
   id: string;
   name: string;
+  /** Display label of the panel group this category nests under (e.g. 'AWS').
+   * A group is just a shared label — categories carrying the same one render
+   * beneath one collapsible header; absent = top-level, exactly as before. */
+  group?: string;
   builtin?: boolean; // bundled packs: not user-deletable
 }
 

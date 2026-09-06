@@ -248,3 +248,65 @@ describe('LibraryPanel authoring', () => {
     expect(onImportShape).toHaveBeenCalledWith('gcp', file);
   });
 });
+
+describe('LibraryPanel grouping', () => {
+  // Mirrors the bundled shape: a small grouped pack (C4), a big grouped pack
+  // (AWS, over the group auto-collapse threshold), and an ungrouped category.
+  const grouped: Library = {
+    categories: [
+      { id: 'ctx', name: 'Context', group: 'C4 model', builtin: true },
+      { id: 'cmp', name: 'Compute', group: 'AWS', builtin: true },
+      { id: 'db', name: 'Database', group: 'AWS', builtin: true },
+      { id: 'tech', name: 'Tech', builtin: true },
+    ],
+    entries: [
+      { id: 'ctx-person', category: 'ctx', name: 'Person', template: { type: 'person' } },
+      { id: 'tech-git', category: 'tech', name: 'Git', template: { type: 'service' } },
+      ...Array.from({ length: 70 }, (_, i) => ({
+        id: `aws-${i}`,
+        category: i % 2 === 0 ? 'cmp' : 'db',
+        name: `Svc ${i}`,
+        keywords: i === 7 ? ['needle'] : [],
+        template: { type: 'image', image: `/library/aws/svc-${i}.svg` },
+      })),
+    ],
+  };
+
+  const toggle = (name: string) => screen.getByRole('button', { name });
+
+  it('opens a small group with its member categories, collapses a big one to a counted header', () => {
+    render(<LibraryPanel library={grouped} onPlace={() => {}} />);
+    // small group: header open, member category and its entries visible
+    expect(toggle('C4 model').getAttribute('aria-expanded')).toBe('true');
+    expect(toggle('Context')).toBeDefined();
+    expect(screen.getByText('Person')).toBeDefined();
+    // big group: one header, total count, no member category headers
+    const aws = toggle('AWS');
+    expect(aws.getAttribute('aria-expanded')).toBe('false');
+    expect(within(aws).getByText('70')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Compute' })).toBeNull();
+    expect(screen.queryByText('Svc 0')).toBeNull();
+    // ungrouped category renders top-level, untouched
+    expect(toggle('Tech')).toBeDefined();
+    expect(screen.getByText('Git')).toBeDefined();
+  });
+
+  it('expands a collapsed group to its member sections and collapses it again', () => {
+    render(<LibraryPanel library={grouped} onPlace={() => {}} />);
+    fireEvent.click(toggle('AWS'));
+    // members are visible; the big ones follow their own size-based default
+    expect(toggle('Compute')).toBeDefined();
+    expect(toggle('Database')).toBeDefined();
+    fireEvent.click(toggle('AWS'));
+    expect(screen.queryByRole('button', { name: 'Compute' })).toBeNull();
+  });
+
+  it('search reveals a hit inside a collapsed group and hides groups without hits', () => {
+    render(<LibraryPanel library={grouped} onPlace={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Search library'), { target: { value: 'needle' } });
+    expect(screen.getByText('Svc 7')).toBeDefined();
+    expect(screen.queryByText('Svc 8')).toBeNull();
+    // the C4 group has no hit — its header vanishes with its sections
+    expect(screen.queryByRole('button', { name: 'C4 model' })).toBeNull();
+  });
+});

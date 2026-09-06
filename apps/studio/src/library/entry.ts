@@ -34,11 +34,13 @@ export function entryToNodeDetails(entry: LibraryEntry): NodeDetails {
   };
 }
 
-/** Case-insensitive substring over name + keywords + category name. Empty query = all. */
+/** Case-insensitive substring over name + keywords + category and group name.
+ * Empty query = all. The group name matters: 'Compute' lives under the 'AWS'
+ * group with no prefix of its own, so "aws" only finds its entries through it. */
 export function searchLibrary(library: Library, query: string): LibraryEntry[] {
   const q = query.trim().toLowerCase();
   if (q === '') return library.entries;
-  const catName = new Map(library.categories.map((c) => [c.id, c.name.toLowerCase()]));
+  const catName = new Map(library.categories.map((c) => [c.id, `${c.name} ${c.group ?? ''}`.toLowerCase()]));
   return library.entries.filter((e) =>
     [e.name, ...(e.keywords ?? []), catName.get(e.category) ?? ''].join(' ').toLowerCase().includes(q),
   );

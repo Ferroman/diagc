@@ -55,11 +55,11 @@ const person = (id: string, name: string, color: string, keywords: string[]): Li
 });
 
 const categories: LibraryCategory[] = [
-  { id: 'c4', name: 'C4 · Context', builtin: true },
-  { id: 'c4-containers', name: 'C4 · Container', builtin: true },
-  { id: 'c4-components', name: 'C4 · Component', builtin: true },
-  { id: 'c4-deployment', name: 'C4 · Deployment', builtin: true },
-  { id: 'c4-code', name: 'C4 · Code', builtin: true },
+  { id: 'c4', name: 'Context', group: 'C4 model', builtin: true },
+  { id: 'c4-containers', name: 'Container', group: 'C4 model', builtin: true },
+  { id: 'c4-components', name: 'Component', group: 'C4 model', builtin: true },
+  { id: 'c4-deployment', name: 'Deployment', group: 'C4 model', builtin: true },
+  { id: 'c4-code', name: 'Code', group: 'C4 model', builtin: true },
 ];
 
 const entries: LibraryEntry[] = [

@@ -57,6 +57,7 @@ describe('Basics pack', () => {
 
   it('offers the plain built-in stencils, first in the panel order', () => {
     expect(BUNDLED_LIBRARY.categories[0]?.id).toBe('basics');
+    expect(BUNDLED_LIBRARY.categories[0]?.group).toBeUndefined(); // top-level, not nested
     const names = basics.map((e) => e.name);
     for (const n of ['Box', 'Service', 'System', 'Platform', 'Database', 'Queue', 'Infrastructure', 'Comment']) {
       expect(names, `missing basic stencil '${n}'`).toContain(n);
@@ -82,6 +83,13 @@ describe('C4 pack', () => {
       'c4-deployment',
       'c4-code',
     ]);
+  });
+
+  it('nests every category under the C4 model group, names prefix-free', () => {
+    for (const c of C4_PACK.categories) {
+      expect(c.group, c.id).toBe('C4 model');
+      expect(c.name, c.id).not.toContain('C4 ·');
+    }
   });
 
   it('carries the core element of each level', () => {
@@ -126,6 +134,14 @@ describe('AWS pack', () => {
     const cats = new Set(AWS_PACK.entries.map((e) => e.category));
     expect(cats.size).toBeGreaterThanOrEqual(20);
     for (const c of cats) expect(c.startsWith('aws-')).toBe(true);
+  });
+
+  it('nests every category under the AWS group, names prefix-free', () => {
+    expect(AWS_PACK.categories.length).toBeGreaterThanOrEqual(20);
+    for (const c of AWS_PACK.categories) {
+      expect(c.group, c.id).toBe('AWS');
+      expect(c.name, c.id).not.toContain('AWS ·');
+    }
   });
 
   it('is findable by the abbreviations people actually type', () => {

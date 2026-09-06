@@ -246,10 +246,12 @@ function renderRows(fn, rows) {
 
 function renderManifest({ services, resources, groups, categories }) {
   const catIds = [...new Set([...services.rows, ...resources.rows].map((r) => r.category))].sort();
+  // Nested under the panel's 'AWS' group, so the names carry no 'AWS ·' prefix
+  // of their own — the group header already says it.
   const categoryLines = [
-    ...catIds.map((id) => `  { id: 'aws-${id}', name: 'AWS · ${categoryTitle(id)}', builtin: true },`),
-    `  { id: 'aws-groups', name: 'AWS · Groups', builtin: true },`,
-    `  { id: 'aws-categories', name: 'AWS · Category icons', builtin: true },`,
+    ...catIds.map((id) => `  { id: 'aws-${id}', name: '${categoryTitle(id)}', group: 'AWS', builtin: true },`),
+    `  { id: 'aws-groups', name: 'Groups', group: 'AWS', builtin: true },`,
+    `  { id: 'aws-categories', name: 'Category icons', group: 'AWS', builtin: true },`,
   ].join('\n');
 
   return `import type { Library, LibraryCategory, LibraryEntry } from './types';

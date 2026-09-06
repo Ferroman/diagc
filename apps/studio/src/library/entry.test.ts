@@ -56,6 +56,16 @@ describe('searchLibrary', () => {
     expect(searchLibrary(builtin, 'aws').map((e) => e.id)).toEqual(['aws-lambda']);
     expect(searchLibrary(builtin, 'zzz')).toHaveLength(0);
   });
+  it('matches through the group name of a grouped category', () => {
+    // The bundled packs rely on this: 'Compute' nests under 'AWS' with no
+    // prefix of its own, so "aws" must reach its entries via the group.
+    const grouped: Library = {
+      categories: [{ id: 'c4', name: 'Context', group: 'C4 model', builtin: true }],
+      entries: [person],
+    };
+    expect(searchLibrary(grouped, 'c4 model').map((e) => e.id)).toEqual(['c4-person']);
+    expect(searchLibrary(grouped, 'context').map((e) => e.id)).toEqual(['c4-person']);
+  });
 });
 
 describe('mergeLibrary', () => {

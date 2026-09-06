@@ -197,6 +197,10 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
 .lib-swatch-hexagon { border-radius: 0; clip-path: polygon(14% 0, 86% 0, 100% 50%, 86% 100%, 14% 100%, 0 50%); }
 .lib-cat-head { align-items: center; display: flex; gap: 6px; justify-content: space-between; }
 .lib-cat-actions { display: inline-flex; gap: 4px; }
+.lib-group { display: flex; flex-direction: column; gap: 6px; }
+/* Group headers read a step stronger than the muted category headers below them. */
+.lib-group-name { color: var(--dg-text); }
+.lib-group-body { border-left: 2px solid var(--dg-border); display: flex; flex-direction: column; gap: 6px; margin-left: 2px; padding-left: 8px; }
 
 /* Left inspector dock: tab bar over a single scrolling body */
 .inspector { display: flex; flex-direction: column; min-height: 0; }
