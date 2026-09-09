@@ -533,6 +533,45 @@ describe('NodePanel', () => {
     expect(onCommand).toHaveBeenCalledWith({ type: 'set-node-details', id: 'a', details: { fontScale: 'lg' } });
   });
 
+  it('shows the pinned position and commits an edited coordinate as set-position', () => {
+    const onCommand = vi.fn();
+    render(
+      <NodePanel model={testModel()} nodeId="a" activePlane="flow" hasPin pinned={{ x: 40, y: 60 }} onCommand={onCommand} onClose={noop} onDeleted={noop} />,
+    );
+    const x = screen.getByLabelText('X') as HTMLInputElement;
+    expect(x.value).toBe('40');
+    expect((screen.getByLabelText('Y') as HTMLInputElement).value).toBe('60');
+    fireEvent.change(x, { target: { value: '100' } });
+    fireEvent.keyDown(x, { key: 'Enter' });
+    expect(onCommand).toHaveBeenCalledWith({ type: 'set-position', nodeId: 'a', x: 100, y: 60, plane: 'flow' });
+  });
+
+  it('an unpinned node shows the live position as a placeholder and pins on commit', () => {
+    const onCommand = vi.fn();
+    render(
+      <NodePanel model={testModel()} nodeId="a" activePlane="flow" live={{ x: 12.6, y: 7 }} onCommand={onCommand} onClose={noop} onDeleted={noop} />,
+    );
+    const x = screen.getByLabelText('X') as HTMLInputElement;
+    const y = screen.getByLabelText('Y') as HTMLInputElement;
+    expect(x.value).toBe('');
+    expect(x.placeholder).toBe('13');
+    expect(y.placeholder).toBe('7');
+    expect(screen.queryByRole('button', { name: /clear pinned position/i })).toBeNull();
+    fireEvent.change(x, { target: { value: '20' } });
+    fireEvent.change(y, { target: { value: '30' } });
+    fireEvent.blur(y);
+    expect(onCommand).toHaveBeenCalledWith({ type: 'set-position', nodeId: 'a', x: 20, y: 30, plane: 'flow' });
+  });
+
+  it('does not commit a half-filled position', () => {
+    const onCommand = vi.fn();
+    render(<NodePanel model={testModel()} nodeId="a" activePlane="flow" onCommand={onCommand} onClose={noop} onDeleted={noop} />);
+    const x = screen.getByLabelText('X');
+    fireEvent.change(x, { target: { value: '20' } });
+    fireEvent.blur(x);
+    expect(onCommand).not.toHaveBeenCalled();
+  });
+
   describe('delete', () => {
     function frameModel(): DiagramModel {
       return {

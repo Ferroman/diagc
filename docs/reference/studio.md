@@ -69,7 +69,7 @@ Shortcuts are ignored while you are typing in a form field. History is capped at
 
 ## Panels
 
-**Properties** (node selected) — name, `type`, `icon`, colour swatches, **Technology**, description, free-form metadata rows, memberships (which parents contain it, per plane), delete.
+**Properties** (node selected) — name, `type`, `icon`, colour swatches, **Technology**, description, free-form metadata rows, memberships (which parents contain it, per plane), **Position** (X/Y in parent-relative px — pinned values editable, unpinned nodes show where they sit; Clear hands the node back to the algorithm), delete.
 
 **Properties** (relation selected) — `kind`, label, `layer`, delete, plus a *Style* section: line shape (curved / straight / step), colour, thickness, line (solid / dashed / dotted), arrow end (arrow / dot / square / diamond / none), from/to side, animated. Anything left at *default* falls back to the kind's registry style and the layer tint.
 

@@ -34,6 +34,11 @@ interface NodePanelProps {
   activePlane: string | undefined;
   /** node has a pinned position in the active plane's layout bucket */
   hasPin?: boolean;
+  /** the node's pinned position in the active plane (parent-relative flow px) */
+  pinned?: { x: number; y: number };
+  /** where the node sits on screen when it is NOT pinned — the inputs'
+   * placeholder, so typing a coordinate starts from something real */
+  live?: { x: number; y: number };
   /** focus + select the name input on mount (a node was just added) */
   autoFocusName?: boolean;
   onCommand: (command: EditorCommand) => void;
@@ -80,6 +85,8 @@ export function NodePanel({
   nodeId,
   activePlane,
   hasPin = false,
+  pinned,
+  live,
   autoFocusName = false,
   onCommand,
   onClose,
@@ -118,6 +125,14 @@ export function NodePanel({
   const [newValue, setNewValue] = useState('');
   const [addParent, setAddParent] = useState('');
   const [addPlane, setAddPlane] = useState('');
+
+  // Position inputs mirror the pin; a re-pin from a drag re-seeds them.
+  const [posX, setPosX] = useState(pinned !== undefined ? String(pinned.x) : '');
+  const [posY, setPosY] = useState(pinned !== undefined ? String(pinned.y) : '');
+  useEffect(() => {
+    setPosX(pinned !== undefined ? String(pinned.x) : '');
+    setPosY(pinned !== undefined ? String(pinned.y) : '');
+  }, [pinned?.x, pinned?.y]); // eslint-disable-line react-hooks/exhaustive-deps -- the two coordinates are the whole identity
 
   // Just-added node: put the caret straight into the name, text selected, so
   // typing replaces the placeholder. The panel remounts per node (key=nodeId),
@@ -299,6 +314,15 @@ export function NodePanel({
   const clearPin = () =>
     onCommand({ type: 'clear-position', nodeId, ...(activePlane !== undefined ? { plane: activePlane } : {}) });
 
+  const commitPosition = () => {
+    if (posX.trim() === '' || posY.trim() === '') return; // half a coordinate pins nothing
+    const x = Number(posX);
+    const y = Number(posY);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (pinned !== undefined && pinned.x === x && pinned.y === y) return;
+    onCommand({ type: 'set-position', nodeId, x, y, ...(activePlane !== undefined ? { plane: activePlane } : {}) });
+  };
+
   return (
     <aside className="sidebar node-panel">
       <div className="panel-head">
@@ -310,12 +334,6 @@ export function NodePanel({
       <p className="muted">
         <code>{node.id}</code> · plane <code>{planeName(activePlane)}</code>
       </p>
-      {hasPin && (
-        <button className="chip" onClick={clearPin}>
-          Clear pinned position
-        </button>
-      )}
-
       <label className="field">
         <span>Name</span>
         {/* multiline: Enter inserts a line break (default), blur commits */}
@@ -506,6 +524,44 @@ export function NodePanel({
           onBlur={commitDescription}
         />
       </label>
+
+      <section className="panel-section">
+        <h3>Position</h3>
+        <div className="member-row">
+          <label className="field">
+            <span>X</span>
+            <input
+              type="number"
+              aria-label="X"
+              step={1}
+              value={posX}
+              placeholder={live !== undefined ? String(Math.round(live.x)) : 'auto'}
+              onChange={(e) => setPosX(e.target.value)}
+              onBlur={commitPosition}
+              onKeyDown={(e) => commitOnEnter(e, commitPosition)}
+            />
+          </label>
+          <label className="field">
+            <span>Y</span>
+            <input
+              type="number"
+              aria-label="Y"
+              step={1}
+              value={posY}
+              placeholder={live !== undefined ? String(Math.round(live.y)) : 'auto'}
+              onChange={(e) => setPosY(e.target.value)}
+              onBlur={commitPosition}
+              onKeyDown={(e) => commitOnEnter(e, commitPosition)}
+            />
+          </label>
+          {hasPin && (
+            <button className="chip" onClick={clearPin}>
+              Clear pinned position
+            </button>
+          )}
+        </div>
+        <p className="muted">Parent-relative px. Empty = placed by the layout algorithm.</p>
+      </section>
 
       <section className="panel-section">
         <h3>Metadata</h3>

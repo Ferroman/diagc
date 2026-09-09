@@ -835,6 +835,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         nodeId={selection.id}
                         activePlane={activePlane}
                         hasPin={layout?.planes[layoutPlaneKey(model, activePlane)]?.[selection.id] !== undefined}
+                        {...(() => {
+                          const pinned = layout?.planes[layoutPlaneKey(model, activePlane)]?.[selection.id];
+                          const live = layoutApiRef.current?.snapshotPositions()[selection.id];
+                          return { ...(pinned !== undefined ? { pinned } : {}), ...(live !== undefined ? { live } : {}) };
+                        })()}
                         autoFocusName={selection.id === renameId}
                         onCommand={editor.dispatch}
                         onClose={() => select(null)}
