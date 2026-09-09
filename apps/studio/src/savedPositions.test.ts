@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { model, type LayoutOverlay } from '@diagramming/core';
-import { withSavedPositions } from './savedPositions';
+import { withSavedPositions, withPlaneManual } from './savedPositions';
 
 function makeModel() {
   const m = model('p');
@@ -61,5 +61,46 @@ describe('withSavedPositions', () => {
   it('keys the plane the same way the persisted settings do', () => {
     const out = withSavedPositions(undefined, makeModel(), 'alt', { a: { x: 0, y: 0 } });
     expect(Object.keys(out.planes)).toEqual(['alt']);
+  });
+});
+
+describe('withPlaneManual', () => {
+  const saved: LayoutOverlay = {
+    version: 1,
+    planes: { alt: { a: { x: 1, y: 2 } } },
+    settings: { alt: { direction: 'DOWN' } },
+  };
+
+  it('pins the snapshot over existing positions and sets the flag for the plane', () => {
+    const out = withPlaneManual(saved, makeModel(), 'alt', { a: { x: 5, y: 6 }, b: { x: 7, y: 8 } });
+    expect(out.planes['alt']).toEqual({ a: { x: 5, y: 6 }, b: { x: 7, y: 8 } });
+    expect(out.manual).toEqual({ alt: true });
+  });
+
+  it('clearing the flag keeps every position and drops an emptied manual map', () => {
+    const frozen = withPlaneManual(saved, makeModel(), 'alt', { b: { x: 7, y: 8 } });
+    const out = withPlaneManual(frozen, makeModel(), 'alt', null);
+    expect(out.manual).toBeUndefined();
+    expect(out.planes['alt']).toEqual({ a: { x: 1, y: 2 }, b: { x: 7, y: 8 } });
+  });
+
+  it('clearing one plane leaves another plane frozen', () => {
+    const two: LayoutOverlay = { version: 1, planes: {}, manual: { alt: true, default: true } };
+    expect(withPlaneManual(two, makeModel(), 'alt', null).manual).toEqual({ default: true });
+  });
+
+  it('never touches settings, sizes or export', () => {
+    const rich: LayoutOverlay = { ...saved, sizes: { a: { w: 64, h: 64 } }, export: { collapsed: ['a'] } };
+    const out = withPlaneManual(rich, makeModel(), 'alt', { a: { x: 0, y: 0 } });
+    expect(out.settings).toEqual({ alt: { direction: 'DOWN' } });
+    expect(out.sizes).toEqual({ a: { w: 64, h: 64 } });
+    expect(out.export).toEqual({ collapsed: ['a'] });
+  });
+
+  it('synthesises an overlay for a diagram with no sidecar yet', () => {
+    const plain = model('plain');
+    plain.node('a', { type: 'service' });
+    const out = withPlaneManual(undefined, plain.toJSON(), undefined, { a: { x: 7, y: 8 } });
+    expect(out).toEqual({ version: 1, planes: { default: { a: { x: 7, y: 8 } } }, manual: { default: true } });
   });
 });

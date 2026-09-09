@@ -32,3 +32,38 @@ export function withSavedPositions(
     planes: { ...base.planes, [key]: { ...base.planes[key], ...moved } },
   };
 }
+
+/**
+ * Switch a plane's manual-layout flag, optionally pinning a snapshot of every
+ * node's current position at the same time — the view-mode `Freeze layout`
+ * chip. This IS the deliberate act `withSavedPositions` refuses to take.
+ *
+ * What the flag means: the renderer never reads it (elk runs on every frame;
+ * saved positions simply win over its output). It tells the studio to stop
+ * offering the plane to the algorithm and to pin nodes it creates — so a node
+ * added to the source later still gets an automatic position until it is moved.
+ *
+ * `snapshot` non-null: merge those positions into the plane and set the flag.
+ * `null`: clear the flag and leave every position alone (the same non-destructive
+ * "back to automatic" the edit toolbar's toggle performs). An emptied `manual`
+ * map is dropped, mirroring `set-plane-layout` in core.
+ */
+export function withPlaneManual(
+  layout: LayoutOverlay | undefined,
+  model: DiagramModel,
+  plane: string | undefined,
+  snapshot: Record<string, { x: number; y: number }> | null,
+): LayoutOverlay {
+  const key = layoutPlaneKey(model, plane);
+  const base: LayoutOverlay = layout ?? { version: 1, planes: {} };
+  const { manual: current = {}, ...rest } = base;
+  if (snapshot === null) {
+    const { [key]: _drop, ...kept } = current;
+    return Object.keys(kept).length > 0 ? { ...rest, manual: kept } : rest;
+  }
+  return {
+    ...rest,
+    planes: { ...base.planes, [key]: { ...base.planes[key], ...snapshot } },
+    manual: { ...current, [key]: true },
+  };
+}
