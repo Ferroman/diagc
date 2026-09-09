@@ -65,6 +65,11 @@ export interface DiagramViewProps {
   /** binary expand/collapse for a CLD group's disclosure toggle */
   onToggleExpand?: (id: string) => void;
   onSelect?: (sel: DiagramSelection | null) => void;
+  /** the set of selected nodes changed (Shift+click, Shift+drag marquee, a
+   * plain click, a deselect). Both modes. Reported only when the ids actually
+   * differ from the last report, and through a stable callback — React Flow
+   * re-fires its selection listener whenever the callback identity changes. */
+  onMultiSelect?: (ids: string[]) => void;
   /** view mode: a node was ctrl/cmd-clicked — the host may treat it as a second
    * variable to compare (e.g. CLD dependency). Bypasses selection + drill. */
   onCompareSelect?: (id: string) => void;
@@ -150,9 +155,6 @@ export interface DiagramViewProps {
  * host (apps/viewer) can simply omit it; every callback is optional so the
  * host can opt into just the affordances it wants. */
 export interface EditingApi {
-  /** edit mode: a node was shift-clicked — add/remove it from a pending
-   *  multi-selection (e.g. to group variables). Bypasses primary selection. */
-  onGroupToggle?: (id: string) => void;
   /** a connect gesture completed between two nodes. New relations float by
    * default (no pinned sides) — the caller pins later via onSetEdgeSide/reconnect. */
   onConnect?: (from: string, to: string, sourceHandle?: string | null, targetHandle?: string | null) => void;

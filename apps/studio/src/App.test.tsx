@@ -7,7 +7,7 @@ import { App } from './App';
 // so the layout preview resolves to the 'default' key throughout. `drillModel`
 // adds the one thing the others lack — a container to drill into — so a deep
 // link can put the app in the drilled state the pen is refused in.
-const { sketchModel, twoModel, drillModel } = vi.hoisted(() => ({
+const { sketchModel, twoModel, drillModel, pairModel } = vi.hoisted(() => ({
   sketchModel: {
     version: 1,
     id: 'sketch',
@@ -37,6 +37,19 @@ const { sketchModel, twoModel, drillModel } = vi.hoisted(() => ({
       { id: 'a', name: 'a', type: 'service' },
     ],
     containment: [{ parent: 'sys', child: 'a' }],
+    relations: [],
+    layers: [],
+    planes: [],
+  },
+  pairModel: {
+    version: 1,
+    id: 'pair',
+    name: 'pair',
+    nodes: [
+      { id: 'p', name: 'pee', type: 'service' },
+      { id: 'q', name: 'queue', type: 'service' },
+    ],
+    containment: [],
     relations: [],
     layers: [],
     planes: [],
@@ -286,6 +299,45 @@ describe('view-mode layout preview', () => {
     expect(chip.getAttribute('aria-pressed')).toBe('true');
     expect(localStorage.getItem('diagramming.snap')).toBe('true');
     expect(layoutPosts()).toEqual([]); // a preference, never written to the diagram
+  });
+
+  it('the Group chip appears from a canvas multi-selection of two nodes', async () => {
+    // A dedicated fetch stub, not the shared list above: 'pair' sorts before
+    // 'sketch'/'two' (useDiagramBoot's `names` is alphabetical), so adding it
+    // to the shared list would silently become the OTHER tests' default
+    // diagram whenever they render without an explicit hash.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url === '/api/diagrams') {
+          return new Response(
+            JSON.stringify({ diagrams: [{ name: 'pair', model: pairModel, issues: [], editable: true }] }),
+            { status: 200 },
+          );
+        }
+        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
+        if (url === '/api/drawings') return new Response(JSON.stringify({ drawings: {} }), { status: 200 });
+        if (url === '/api/diagrams/pair' && (init === undefined || init.method === undefined || init.method === 'GET')) {
+          return new Response(JSON.stringify({ model: pairModel }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }),
+    );
+    window.location.hash = '#/pair'; // deep-link form: #/<diagram>, as the drill test above uses
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
+    await screen.findByRole('button', { name: /^save$/i });
+    fireEvent.click(await screen.findByText('pee'));
+    expect(screen.queryByRole('button', { name: /⊞ Group/ })).toBeNull();
+    // React Flow's multi-select gate is a real key-press hook (keydown/keyup
+    // on window), not the click event's own `shiftKey` flag — see the
+    // renderer's shift-click test for the same requirement.
+    fireEvent.keyDown(window, { key: 'Shift', code: 'ShiftLeft' });
+    // Selecting 'pee' opens its Properties panel, whose "Add parent" select
+    // lists 'queue' as a candidate container — ignore <option> text so this
+    // click targets the canvas node, not that dropdown entry.
+    fireEvent.click(screen.getByText('queue', { ignore: 'option' }), { shiftKey: true });
+    expect(await screen.findByRole('button', { name: /⊞ Group 2/ })).toBeDefined();
   });
 });
 

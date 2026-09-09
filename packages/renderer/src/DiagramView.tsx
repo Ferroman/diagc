@@ -297,6 +297,20 @@ function Inner(props: DiagramViewProps) {
   useEffect(() => {
     setViewPositions({});
   }, [props.model, props.plane, editing]);
+  // Multi-selection report. The prop is read through a ref and deduped by
+  // contents: React Flow's SelectionListener has the callback in its effect
+  // deps, so an inline host callback would otherwise fire it every render —
+  // and a host that stores the array would then re-render forever.
+  const onMultiSelectRef = useRef(props.onMultiSelect);
+  onMultiSelectRef.current = props.onMultiSelect;
+  const lastMultiRef = useRef<string[]>([]);
+  const onSelectionChange = useCallback(({ nodes }: { nodes: Node[] }) => {
+    const ids = nodes.map((n) => n.id);
+    const last = lastMultiRef.current;
+    if (ids.length === last.length && ids.every((id, i) => id === last[i])) return;
+    lastMultiRef.current = ids;
+    onMultiSelectRef.current?.(ids);
+  }, []);
   // Alignment guides drawn while a single node is dragged (see snapDragChanges);
   // cleared every frame that yields no lines, which includes drop (the final
   // frame carries dragging: false).
@@ -720,13 +734,6 @@ function Inner(props: DiagramViewProps) {
             enterNode(rep);
             return;
           }
-          // shift-click in edit mode builds a pending multi-selection (grouping).
-          // Bypass primary selection + the drill double-click correlation.
-          if (editing && e.shiftKey && edit?.onGroupToggle !== undefined) {
-            corr.clearNodeClick();
-            edit.onGroupToggle(node.id);
-            return;
-          }
           // ctrl/cmd-click picks this node as a comparison target (dependency
           // analysis). Don't disturb the primary selection or the drill
           // double-click correlation.
@@ -738,17 +745,14 @@ function Inner(props: DiagramViewProps) {
           // both modes: focus this node's neighborhood; view mode also filters badges
           setSelectedNode(node.id);
           props.onSelect?.({ kind: 'node', id: node.id });
-          // view mode: a second click (detail>=2) on the SAME node within the
-          // window is a double-click → enter (drill into) it. The detail check
-          // separates it from a click-then-click-elsewhere (e.g. deselect), which
-          // stays detail 1. Otherwise record this as a possible first click.
-          if (!editing && corr.consumeNodeDrill(node.id, e, e.detail)) {
-            enterNode(node.id);
-          } else if (editing) {
-            corr.clearNodeClick();
-          } else {
-            corr.recordNodeClick(node.id, e);
-          }
+          // A shift-click grows the multi-selection (React Flow's job) and must
+          // never count toward the view-mode drill double-click. Otherwise a
+          // second click (detail>=2) on the SAME node within the window is a
+          // double-click → enter it; the detail check separates it from a
+          // click-then-click-elsewhere, which stays detail 1.
+          if (editing || e.shiftKey) corr.clearNodeClick();
+          else if (corr.consumeNodeDrill(node.id, e, e.detail)) enterNode(node.id);
+          else corr.recordNodeClick(node.id, e);
         }}
         onNodeDoubleClick={(_e, node) => {
           // edit mode only: rename in place. View-mode enter is handled by the
@@ -881,7 +885,12 @@ function Inner(props: DiagramViewProps) {
         {...(props.snapGrid !== undefined
           ? { snapToGrid: true, snapGrid: [props.snapGrid, props.snapGrid] as [number, number] }
           : {})}
-        multiSelectionKeyCode={null}
+        // Shift+click adds to the selection; Shift+drag on the pane draws a
+        // marquee (full containment: sweeping over children inside an expanded
+        // group never grabs the group). Both off while the pen/laser owns the drag.
+        multiSelectionKeyCode={gestureCaptured ? null : 'Shift'}
+        selectionKeyCode={gestureCaptured ? null : 'Shift'}
+        onSelectionChange={onSelectionChange}
         panOnScroll
         // The pen (or the laser) owns the drag: no pan, no selection rectangle,
         // no node drag or connect — a stroke that started on a box would

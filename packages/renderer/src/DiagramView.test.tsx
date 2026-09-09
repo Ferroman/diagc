@@ -138,6 +138,45 @@ describe('DiagramView', () => {
     await waitFor(() => expect(screen.queryByText('plat')).toBeNull()); // arch-only node gone
   });
 
+  it('shift-click grows the selection and reports the whole set via onMultiSelect', async () => {
+    const onMultiSelect = vi.fn();
+    const onSelect = vi.fn();
+    render(<DiagramView model={containerEndpointModel()} mode="edit" onMultiSelect={onMultiSelect} onSelect={onSelect} />);
+    fireEvent.click(await screen.findByText('gw'));
+    await waitFor(() => expect(onMultiSelect).toHaveBeenLastCalledWith(['gw']));
+    // React Flow's multi-select gate (`multiSelectionActive`) is driven by a real
+    // keydown/keyup pair on window (a useKeyPress hook), NOT by the click event's
+    // own `shiftKey` flag — so growing the selection needs the key genuinely held.
+    fireEvent.keyDown(window, { key: 'Shift', code: 'ShiftLeft' });
+    fireEvent.click(screen.getByText('sys'), { shiftKey: true });
+    await waitFor(() => expect(onMultiSelect).toHaveBeenLastCalledWith(expect.arrayContaining(['gw', 'sys'])));
+    expect(onMultiSelect.mock.calls[onMultiSelect.mock.calls.length - 1]![0]).toHaveLength(2);
+    // the primary selection is still "the last clicked node"
+    expect(onSelect).toHaveBeenLastCalledWith({ kind: 'node', id: 'sys' });
+    // React Flow deliberately no-ops a plain click on a node that is ALREADY
+    // part of a multi-selection (so the whole group stays selected and can be
+    // dragged together) — the set survives a stray click on one of its members.
+    fireEvent.keyUp(window, { key: 'Shift', code: 'ShiftLeft' });
+    fireEvent.click(screen.getByText('gw'));
+    expect(onMultiSelect.mock.calls[onMultiSelect.mock.calls.length - 1]![0]).toHaveLength(2);
+    // shift-clicking an already-selected member again removes just that one
+    fireEvent.keyDown(window, { key: 'Shift', code: 'ShiftLeft' });
+    fireEvent.click(screen.getByText('sys'), { shiftKey: true });
+    fireEvent.keyUp(window, { key: 'Shift', code: 'ShiftLeft' });
+    await waitFor(() => expect(onMultiSelect).toHaveBeenLastCalledWith(['gw']));
+  });
+
+  it('view mode: two quick shift-clicks on a container grow the selection, they never drill', async () => {
+    const onEnteredPathChange = vi.fn();
+    render(<DiagramView model={containerEndpointModel()} onEnteredPathChange={onEnteredPathChange} />);
+    const sys = await screen.findByText('sys');
+    fireEvent.click(sys, { shiftKey: true, detail: 1 });
+    fireEvent.click(sys, { shiftKey: true, detail: 2 });
+    await waitFor(() => expect(document.querySelector('.react-flow__node.selected')).not.toBeNull());
+    expect(screen.queryByLabelText('Nested zoom breadcrumb')).toBeNull();
+    expect(onEnteredPathChange).not.toHaveBeenCalledWith(['sys']);
+  });
+
   it('view-mode double-click enters a container (nested zoom); the breadcrumb exits back out', async () => {
     render(<DiagramView model={containerEndpointModel()} />);
     const sys = await screen.findByText('sys');

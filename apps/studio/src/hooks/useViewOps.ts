@@ -24,7 +24,6 @@ export interface UseViewOpsOptions {
   setLeftTab: Dispatch<SetStateAction<InspectorTab>>;
   setLeverageFocus: Dispatch<SetStateAction<LeverageFocus | null>>;
   setCompareId: Dispatch<SetStateAction<string | null>>;
-  setGroupSel: Dispatch<SetStateAction<string[]>>;
   setPlane: Dispatch<SetStateAction<string | undefined>>;
   setPins: Dispatch<SetStateAction<Record<string, 'expanded' | 'collapsed'>>>;
   setLayoutPreview: Dispatch<SetStateAction<Record<string, LayoutSettings>>>;
@@ -69,7 +68,6 @@ export function useViewOps({
   setLeftTab,
   setLeverageFocus,
   setCompareId,
-  setGroupSel,
   setPlane,
   setPins,
   setLayoutPreview,
@@ -81,7 +79,7 @@ export function useViewOps({
     setSelection(sel);
     setLeverageFocus(null); // a new selection drops any leverage-row highlight
     setCompareId(null); // …and any active dependency comparison
-    setGroupSel([]); // …and any pending grouping multi-selection
+    // the multi-selection mirrors the canvas (App.multiSelect) — it is not cleared here
     setRenameId((r) => (r !== null && sel?.kind === 'node' && sel.id === r ? r : null));
     // Canvas clicks (this is DiagramView's onSelect) mean "edit this" → Properties.
     // Library placement uses setSelection directly, so it stays on the Library tab.
@@ -111,7 +109,6 @@ export function useViewOps({
       memberIds: groupSel,
       ...(scoped ? { plane: activePlane } : {}),
     });
-    setGroupSel([]);
     setSelection({ kind: 'node', id });
   };
 

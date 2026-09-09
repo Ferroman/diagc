@@ -133,10 +133,15 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const [autoArrange, setAutoArrange] = useState(false);
   const [selection, setSelection] = useState<DiagramSelection | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
-  // Edit mode: variables shift-selected to be grouped into one abstract variable.
+  // The canvas multi-selection (Shift+click / marquee), mirrored from the
+  // renderer. Drives the ⊞ Group chip and the selection glow. Deduped by
+  // contents so a re-report of the same set never re-renders the app.
   const [groupSel, setGroupSel] = useState<string[]>([]);
-  const groupToggle = (id: string) =>
-    setGroupSel((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  const multiSelect = useCallback(
+    (ids: string[]) =>
+      setGroupSel((cur) => (cur.length === ids.length && cur.every((id, i) => id === ids[i]) ? cur : ids)),
+    [],
+  );
   // CLD dependency: the ctrl-clicked second variable to compare with the
   // selected one (null = no comparison active).
   const [compareId, setCompareId] = useState<string | null>(null);
@@ -371,7 +376,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     setLeftTab,
     setLeverageFocus,
     setCompareId,
-    setGroupSel,
     setPlane,
     setPins,
     setLayoutPreview,
@@ -904,6 +908,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                 onTogglePin={togglePin}
                 onToggleExpand={toggleExpand}
                 onSelect={select}
+                onMultiSelect={multiSelect}
                 onEnteredPathChange={handleEnteredPathChange}
                 enteredPath={enteredPath}
                 onCompareSelect={compareSelect}
@@ -919,7 +924,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                 ignoreSavedPositions={autoArrange}
                 externalHighlight={
                   editing
-                    ? groupSel.length > 0
+                    ? groupSel.length >= 2
                       ? { nodes: groupSel, edges: [] }
                       : null
                     : (leverageFocus ??
@@ -939,7 +944,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                       // (the read-only path passes `mode` without it — the view/edit
                       // split is then structural, not by convention).
                       edit: {
-                      onGroupToggle: groupToggle,
                       onNodesMoved: (positions: Record<string, { x: number; y: number }>) =>
                         editor.dispatch({
                           type: 'set-positions',

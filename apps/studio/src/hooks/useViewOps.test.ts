@@ -38,7 +38,6 @@ function harness(m: DiagramModel, start: { plane?: string; activeLayers?: string
     setLeftTab: () => {},
     setLeverageFocus: () => {},
     setCompareId: () => {},
-    setGroupSel: () => {},
     setLayoutPreview: () => {},
     setPlane: cell(
       () => state.plane,
