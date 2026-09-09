@@ -916,12 +916,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                       // split is then structural, not by convention).
                       edit: {
                       onGroupToggle: groupToggle,
-                      onNodeMoved: (id: string, pos: { x: number; y: number }) =>
+                      onNodesMoved: (positions: Record<string, { x: number; y: number }>) =>
                         editor.dispatch({
-                          type: 'set-position',
-                          nodeId: id,
-                          x: pos.x,
-                          y: pos.y,
+                          type: 'set-positions',
+                          positions,
                           ...(activePlane !== undefined ? { plane: activePlane } : {}),
                         }),
                       onCreateAt: (pos: { x: number; y: number }) => createAt(pos),

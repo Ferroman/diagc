@@ -155,6 +155,11 @@ export interface EditingApi {
   onConnect?: (from: string, to: string, sourceHandle?: string | null, targetHandle?: string | null) => void;
   /** a node drag ended; pos is parent-relative */
   onNodeMoved?: (id: string, pos: { x: number; y: number }) => void;
+  /** one or more nodes moved together — a drag of a selection, an arrow-key
+   * burst, an align/distribute. Parent-relative, keyed by node id. Commit as
+   * ONE undo step. When absent the renderer falls back to onNodeMoved per id,
+   * so a host that never learns the batch form keeps working. */
+  onNodesMoved?: (positions: Record<string, { x: number; y: number }>) => void;
   /** an in-place rename (double-click on a node) was committed */
   onRenameNode?: (id: string, name: string) => void;
   /** an in-place rich-text edit (double-click on a box label) was committed */

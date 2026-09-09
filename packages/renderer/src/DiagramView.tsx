@@ -82,6 +82,9 @@ const MAX_ZOOM = 4;
 const imageFilesOf = (list: FileList | null | undefined): File[] =>
   [...(list ?? [])].filter((f) => f.type.startsWith('image/'));
 
+/** parent-relative positions keyed by node id — the overlay's own shape */
+type Positions = Record<string, { x: number; y: number }>;
+
 /** the node a palette drop landed on, or undefined when it fell on open canvas.
  * Cross-layer coupling: the host-side drop handler reads the renderer's DOM
  * internals (the `.react-flow__node` root + its `data-id`) to resolve the
@@ -468,6 +471,23 @@ function Inner(props: DiagramViewProps) {
   const [rfNodes, setRfNodes] = useState<Node[]>([]);
   const rfNodesRef = useRef<Node[]>([]);
   rfNodesRef.current = rfNodes;
+  // Every way a box can move — a drag, a multi-node drag, an arrow-key nudge,
+  // an align/distribute — ends here, so the two modes' persistence paths are
+  // decided in exactly one place: edit mode hands the batch to the host (one
+  // undo step), view mode keeps it as throwaway drag state the host may offer
+  // to save (onViewPositionsChange → the studio's Save positions chip).
+  const commitMoves = useCallback(
+    (positions: Positions) => {
+      if (Object.keys(positions).length === 0) return;
+      if (editing) {
+        if (edit?.onNodesMoved !== undefined) edit.onNodesMoved(positions);
+        else for (const [id, pos] of Object.entries(positions)) edit?.onNodeMoved?.(id, pos);
+      } else {
+        setViewPositions((p) => ({ ...p, ...positions }));
+      }
+    },
+    [editing, edit],
+  );
   // Resync must not wipe flags React Flow owns on its copy — selection drives
   // the image-node resizer, and a selection click itself re-renders the app,
   // recomputing derivedNodes in the same tick.
@@ -724,9 +744,10 @@ function Inner(props: DiagramViewProps) {
         onNodesChange={(changes: NodeChange[]) =>
           setRfNodes((nds) => applyNodeChanges(changes.filter((c) => c.type !== 'remove'), nds))
         }
-        onNodeDragStop={(_e, node) => {
-          if (editing) edit?.onNodeMoved?.(node.id, node.position);
-          else setViewPositions((p) => ({ ...p, [node.id]: node.position }));
+        // React Flow hands over every node the gesture moved (a selection drags
+        // as one), so a multi-node drag lands as a single batch.
+        onNodeDragStop={(_e, _node, nodes) => {
+          commitMoves(Object.fromEntries(nodes.map((n) => [n.id, n.position])));
         }}
         onConnect={(conn) => {
           if (conn.source !== null && conn.target !== null)
