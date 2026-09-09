@@ -38,6 +38,9 @@ export function computeGuides(moving: Box, candidates: readonly Box[], threshold
       for (const t of stops(c, axis)) {
         for (const m of mine) {
           const d = t - m;
+          // strict '<': on an exact tie between two stops the first one found
+          // keeps the hit, so left/centre/right (top/middle/bottom) — the
+          // order `stops` returns them in — is the tie-break.
           if (Math.abs(d) <= threshold && (hit === undefined || Math.abs(d) < Math.abs(hit.d))) hit = { d, at: t, other: c };
         }
       }
@@ -131,12 +134,22 @@ export function snapDragChanges(
   }
   const snap = computeGuides(moving, candidates, threshold);
   if (snap.lines.length === 0) return passthrough;
-  const snapped: PositionChange = {
-    ...drag,
-    position: { x: drag.position.x + snap.dx, y: drag.position.y + snap.dy },
-    ...(drag.positionAbsolute !== undefined
-      ? { positionAbsolute: { x: drag.positionAbsolute.x + snap.dx, y: drag.positionAbsolute.y + snap.dy } }
-      : {}),
-  };
-  return { changes: changes.map((c) => (c === drag ? snapped : c)), lines: snap.lines };
+  // Write through into XYDrag's OWN position object, in place — do not
+  // replace it with a fresh one. `drag.position` here is not a copy we made;
+  // React Flow's updateNodePositions builds this change with
+  // `position: dragItem.position`, the exact object XYDrag holds for the rest
+  // of the gesture (see @xyflow/react's index.mjs updateNodePositions). Two
+  // things read that same object after this: the settle frame it re-emits on
+  // release with `dragging: false`, and `onNodeDragStop`, which feeds
+  // commitMoves. A new object here would never reach either — the node would
+  // visibly pop back to the raw pointer position on drop and persist that,
+  // making the guide purely cosmetic. Mutating someone else's object is
+  // deliberate: it IS the channel this data travels through.
+  drag.position.x += snap.dx;
+  drag.position.y += snap.dy;
+  if (drag.positionAbsolute !== undefined) {
+    drag.positionAbsolute.x += snap.dx;
+    drag.positionAbsolute.y += snap.dy;
+  }
+  return { changes, lines: snap.lines };
 }

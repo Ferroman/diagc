@@ -46,14 +46,36 @@ describe('snapDragChanges', () => {
   ];
   const abs = (id: string) =>
     ({ a: { x: 100, y: 0 }, m: { x: 300, y: 300 }, p: { x: 0, y: 500 }, c: { x: 20, y: 540 }, u: { x: 700, y: 700 } })[id];
-  const drag = (id: string, x: number, y: number): NodeChange => ({ id, type: 'position', position: { x, y }, dragging: true });
+  const drag = (id: string, x: number, y: number): Extract<NodeChange, { type: 'position' }> => ({
+    id,
+    type: 'position',
+    position: { x, y },
+    dragging: true,
+  });
 
-  it('replaces a lone dragging change with the snapped position and reports the line', () => {
+  it('writes the snapped position through into the SAME change/position objects XYDrag owns', () => {
+    // XYDrag re-emits its own dragItem.position object in the settle frame and
+    // onNodeDragStop, so a fresh object here would never reach either — the
+    // snap must mutate the change (and its position) in place.
     const change = drag('m', 106, 300);
-    const r = snapDragChanges([change], { nodes, absoluteOf: abs }, 8);
-    expect(r.changes).toHaveLength(1);
-    expect(r.changes[0]).toMatchObject({ id: 'm', position: { x: 100, y: 300 } });
+    const changes = [change];
+    const r = snapDragChanges(changes, { nodes, absoluteOf: abs }, 8);
+    expect(r.changes).toBe(changes);
+    expect(r.changes[0]).toBe(change);
+    expect(change.position).toEqual({ x: 100, y: 300 });
     expect(r.lines).toHaveLength(1);
+  });
+
+  it('shifts positionAbsolute in place by the same delta when present', () => {
+    const change: Extract<NodeChange, { type: 'position' }> = {
+      id: 'm',
+      type: 'position',
+      position: { x: 106, y: 300 },
+      positionAbsolute: { x: 106, y: 300 },
+      dragging: true,
+    };
+    snapDragChanges([change], { nodes, absoluteOf: abs }, 8);
+    expect(change.positionAbsolute).toEqual({ x: 100, y: 300 });
   });
 
   it('compares siblings only: a child never snaps to a root node', () => {
