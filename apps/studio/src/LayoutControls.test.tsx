@@ -59,4 +59,26 @@ describe('LayoutControls', () => {
     fireEvent.change(screen.getByLabelText(/edge routing/i), { target: { value: 'orthogonal' } });
     expect(onChange).toHaveBeenCalledWith({ edgeRouting: 'orthogonal' });
   });
+
+  it('patches the wrap aspect ratio from a preset and clears it on off', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<LayoutControls settings={{}} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText('Wrap'), { target: { value: '1.6' } });
+    expect(onChange).toHaveBeenCalledWith({ aspectRatio: 1.6 });
+
+    rerender(<LayoutControls settings={{ aspectRatio: 1.6 }} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText('Wrap'), { target: { value: '' } });
+    expect(onChange).toHaveBeenCalledWith({ aspectRatio: undefined });
+  });
+
+  it('shows the wrap picker for layered only, and lists a custom sidecar ratio', () => {
+    const { rerender } = render(<LayoutControls settings={{ algorithm: 'force', aspectRatio: 1.6 }} onChange={vi.fn()} />);
+    expect(screen.queryByLabelText('Wrap')).toBeNull();
+    // A hand-written sidecar may name a ratio the presets don't; the select
+    // must still show it rather than render blank (same rule as algorithms).
+    rerender(<LayoutControls settings={{ aspectRatio: 1.4 }} onChange={vi.fn()} />);
+    const select = screen.getByLabelText('Wrap') as HTMLSelectElement;
+    expect(select.value).toBe('1.4');
+    expect([...select.options].map((o) => o.value)).toContain('1.4');
+  });
 });

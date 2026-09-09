@@ -196,6 +196,7 @@ as `planes` and `manual` — so a plane that borrows containment with
 | `direction` | `string?` | elk.direction for `layered`: `RIGHT` (default), `DOWN`, `LEFT`, `UP`. |
 | `spacing` | `number?` | Base node-to-node spacing in px; between-layer spacing is derived from it. |
 | `edgeRouting` | `'curved' \| 'orthogonal'?` | Floating beziers (default) or orthogonal along elk waypoints. |
+| `aspectRatio` | `number?` | `layered` only. When set, elk wraps long chains onto several rows aiming at this width÷height (`MULTI_EDGE` wrapping). Absent = no wrapping. |
 
 `export.collapsed` lists node ids to keep FOLDED in the PNG only; the interactive
 page ignores it and always rests fully folded so the reader unfolds what they

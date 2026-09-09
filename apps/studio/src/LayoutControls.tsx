@@ -24,6 +24,15 @@ const DIRECTIONS: { value: string; label: string }[] = [
   { value: 'LEFT', label: 'Left ←' },
   { value: 'UP', label: 'Up ↑' },
 ];
+// Preset targets for the layered wrap (width÷height). Values are what the
+// sidecar stores; the empty value is "off" and sends `undefined` like every
+// other control's default.
+const WRAP_PRESETS: { value: string; label: string }[] = [
+  { value: '', label: 'Wrap: off' },
+  { value: '1', label: 'Wrap: square' },
+  { value: '1.6', label: 'Wrap: screen' },
+  { value: '2', label: 'Wrap: wide' },
+];
 
 export interface LayoutControlsProps {
   /** the plane's effective settings — sidecar values with any preview merged over */
@@ -42,6 +51,13 @@ export function LayoutControls({ settings, onChange }: LayoutControlsProps) {
   const algorithm = settings.algorithm ?? 'layered';
   const direction = settings.direction ?? 'RIGHT';
   const edgeRouting = settings.edgeRouting ?? 'curved';
+
+  const wrapValue = settings.aspectRatio === undefined ? '' : String(settings.aspectRatio);
+  // A sidecar may carry a ratio outside the presets; list it so the select
+  // never misreports what is actually arranging the diagram.
+  const wrapOptions = WRAP_PRESETS.some((w) => w.value === wrapValue)
+    ? WRAP_PRESETS
+    : [...WRAP_PRESETS, { value: wrapValue, label: `Wrap: ${wrapValue} (custom)` }];
 
   // A diagram may already name an algorithm the picker no longer proposes (a
   // sidecar written before radial/stress were withdrawn). Keep it in the list
@@ -77,6 +93,21 @@ export function LayoutControls({ settings, onChange }: LayoutControlsProps) {
           {DIRECTIONS.map((d) => (
             <option key={d.value} value={d.value}>
               {d.label}
+            </option>
+          ))}
+        </select>
+      )}
+      {algorithm === 'layered' && (
+        <select
+          className="chip-select"
+          aria-label="Wrap"
+          title="Wrap long chains onto several rows, aiming at this width÷height"
+          value={wrapValue}
+          onChange={(e) => onChange({ aspectRatio: e.target.value === '' ? undefined : Number(e.target.value) })}
+        >
+          {wrapOptions.map((w) => (
+            <option key={w.value} value={w.value}>
+              {w.label}
             </option>
           ))}
         </select>

@@ -87,6 +87,7 @@ Shortcuts are ignored while you are typing in a form field. History is capped at
 | Light / dark | Theme. A viewer preference, never saved to the model. |
 | `✏ sketch` / style preset | `clean`, `sketch`, `hand-drawn`, `pencil`, `blueprint`, `marker`. Remembered across reloads, independent of light/dark. |
 | Plane switcher | Present when the diagram declares planes |
+| Layout pickers | Algorithm, direction, spacing, edge routing and **Wrap** (off / square / screen / wide — folds a long layered chain onto several rows). View mode previews; edit mode saves them to the layout file. |
 
 Switching planes keeps your place — the groups containing what you were looking at open automatically in the new plane.
 
