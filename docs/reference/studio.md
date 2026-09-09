@@ -86,6 +86,7 @@ Shortcuts are ignored while you are typing in a form field. History is capped at
 | Diagram picker | Switch diagrams |
 | Light / dark | Theme. A viewer preference, never saved to the model. |
 | `✏ sketch` / style preset | `clean`, `sketch`, `hand-drawn`, `pencil`, `blueprint`, `marker`. Remembered across reloads, independent of light/dark. |
+| `⋮⋮ Snap` | Snap dragged boxes (and arrow-key nudges) to a 10px grid; the background dots become the grid. A viewer preference, remembered across reloads, never saved to the diagram. |
 | Plane switcher | Present when the diagram declares planes |
 | Layout pickers | Algorithm, direction, spacing, edge routing and **Wrap** (off / square / screen / wide — folds a long layered chain onto several rows). View mode previews; edit mode saves them to the layout file. |
 | **Save positions** / **Freeze layout** (view mode) | Write Alt-dragged boxes to `<name>.layout.json`; pin every box and mark the plane manual (click again to hand it back). See [Place boxes on a generated diagram](../how-to/position-a-generated-diagram.md). |

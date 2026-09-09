@@ -64,6 +64,10 @@ import { deleteSelectionCommand } from './editor/deleteSelection';
 import { fkConnectionCommands } from './tableConnect';
 
 const STYLE_KEY = 'diagramming.style';
+// Snap-to-grid is a viewer preference (how one edits), not a property of the
+// diagram, so it lives beside the style preset rather than in the sidecar.
+const SNAP_KEY = 'diagramming.snap';
+const SNAP_GRID = 10;
 // The right details dock defaults open, but a collapse is remembered so it stays
 // out of the way across reloads once dismissed.
 const RIGHT_DOCK_KEY = 'diagramming.rightDock';
@@ -105,6 +109,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
 
   const [theme, setTheme] = useState<'light' | 'dark'>(initialTheme);
   const [style, setStyle] = usePersistedState<string>(STYLE_KEY, 'clean', (raw) => raw);
+  const [snap, setSnap] = usePersistedState<boolean>(SNAP_KEY, false, (raw) => (raw === null ? null : raw === 'true'));
   const [plane, setPlane] = useState<string | undefined>(undefined);
   const [activeLayers, setActiveLayers] = useState<string[]>([]);
   // The "pen": the transparent sheet new nodes/edges land on (null = base sheet).
@@ -677,6 +682,19 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             )}
           </>
         )}
+        <button
+          type="button"
+          className={`chip${snap ? ' active' : ''}`}
+          aria-pressed={snap}
+          title={
+            snap
+              ? `Snapping to a ${SNAP_GRID}px grid. Click to place boxes freely.`
+              : `Snap dragged boxes to a ${SNAP_GRID}px grid; arrow keys step by it too.`
+          }
+          onClick={() => setSnap((v) => !v)}
+        >
+          ⋮⋮ Snap
+        </button>
         <button className="chip" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
           {theme === 'dark' ? '☀ light' : '☾ dark'}
         </button>
@@ -889,6 +907,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                 {...(getHost().libraryBase !== undefined ? { libraryBase: getHost().libraryBase } : {})}
                 onOpenLink={(l) => getHost().openLink(l)}
                 styleId={pinnedStyle ?? style}
+                {...(snap ? { snapGrid: SNAP_GRID } : {})}
                 onCldEdges={handleCldEdges}
                 onViewPositionsChange={setMovedPositions}
                 layoutApiRef={layoutApiRef}

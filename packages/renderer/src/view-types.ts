@@ -138,6 +138,9 @@ export interface DiagramViewProps {
   chrome?: boolean;
   /** visual style preset id (see stylePresets.ts); unknown/absent = clean */
   styleId?: string;
+  /** snap dragged and nudged nodes to a square grid of this many flow px and
+   * draw that grid as the background dots; absent = free placement */
+  snapGrid?: number;
   /** visual language; overrides registries + chrome. props.typeRegistry/kindRegistry still win wholesale. */
   notation?: NotationId;
 }

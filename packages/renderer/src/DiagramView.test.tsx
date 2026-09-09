@@ -676,6 +676,14 @@ describe('DiagramView', () => {
     expect(typeof apiRef.current!.viewportCenter).toBe('function');
   });
 
+  it('snapGrid turns the background dots into the grid and marks it', async () => {
+    const { container, rerender } = render(<DiagramView model={containerEndpointModel()} mode="edit" snapGrid={10} />);
+    await screen.findByText('gw');
+    expect(container.querySelector('.react-flow__background.dg-grid-on')).not.toBeNull();
+    rerender(<DiagramView model={containerEndpointModel()} mode="edit" />);
+    expect(container.querySelector('.react-flow__background.dg-grid-on')).toBeNull();
+  });
+
   it('wires onColumnsChange on a db-table in edit mode to onSetTableColumns', async () => {
     const spy = vi.fn();
     const b = model('erd');

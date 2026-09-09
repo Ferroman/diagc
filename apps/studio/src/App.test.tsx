@@ -277,6 +277,16 @@ describe('view-mode layout preview', () => {
     expect(thawed.manual).toBeUndefined();
     expect(thawed.planes['default']).toEqual(frozen.planes['default']); // positions kept
   });
+
+  it('the Snap chip toggles and persists as a viewer preference', async () => {
+    render(<App />);
+    const chip = await screen.findByRole('button', { name: /snap/i });
+    expect(chip.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(chip);
+    expect(chip.getAttribute('aria-pressed')).toBe('true');
+    expect(localStorage.getItem('diagramming.snap')).toBe('true');
+    expect(layoutPosts()).toEqual([]); // a preference, never written to the diagram
+  });
 });
 
 // Its own boot stub, and its own describe: `names` is sorted, so folding 'drill'

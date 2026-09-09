@@ -834,6 +834,9 @@ function Inner(props: DiagramViewProps) {
         maxZoom={MAX_ZOOM}
         zoomOnScroll={false}
         zoomOnDoubleClick={false}
+        {...(props.snapGrid !== undefined
+          ? { snapToGrid: true, snapGrid: [props.snapGrid, props.snapGrid] as [number, number] }
+          : {})}
         multiSelectionKeyCode={null}
         panOnScroll
         // The pen (or the laser) owns the drag: no pan, no selection rectangle,
@@ -845,7 +848,8 @@ function Inner(props: DiagramViewProps) {
         nodesConnectable={editing && !gestureCaptured}
         proOptions={{ hideAttribution: true }}
       >
-        <Background />
+        {/* With snapping on the dots ARE the grid, so a dropped box visibly lands on one. */}
+        <Background {...(props.snapGrid !== undefined ? { gap: props.snapGrid, className: 'dg-grid-on' } : {})} />
         <DrawingsLayer
           strokes={strokes}
           live={pen.live === null ? null : { points: pen.live, width: penSettings?.width ?? DEFAULT_STROKE_WIDTH, ...(penSettings?.color !== undefined ? { color: penSettings.color } : {}) }}
