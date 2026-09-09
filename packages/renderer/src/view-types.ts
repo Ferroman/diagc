@@ -27,7 +27,8 @@ export interface PenSettings {
 export const LIBRARY_ENTRY_DND_TYPE = 'application/x-dg-library-entry';
 
 /** Imperative accessors the host reads to freeze/auto-place layout (the
- * auto-layout toggle). Populated only in edit mode via `layoutApiRef`. */
+ * auto-layout toggle, the view-mode freeze chip) and to run the export
+ * handshake. Populated in both modes whenever `layoutApiRef` is passed. */
 export interface LayoutApi {
   /** current on-screen positions (elk output with pins applied), parent-relative */
   snapshotPositions: () => Record<string, { x: number; y: number }>;

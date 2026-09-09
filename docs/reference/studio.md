@@ -88,6 +88,7 @@ Shortcuts are ignored while you are typing in a form field. History is capped at
 | `✏ sketch` / style preset | `clean`, `sketch`, `hand-drawn`, `pencil`, `blueprint`, `marker`. Remembered across reloads, independent of light/dark. |
 | Plane switcher | Present when the diagram declares planes |
 | Layout pickers | Algorithm, direction, spacing, edge routing and **Wrap** (off / square / screen / wide — folds a long layered chain onto several rows). View mode previews; edit mode saves them to the layout file. |
+| **Save positions** / **Freeze layout** (view mode) | Write Alt-dragged boxes to `<name>.layout.json`; pin every box and mark the plane manual (click again to hand it back). See [Place boxes on a generated diagram](../how-to/position-a-generated-diagram.md). |
 
 Switching planes keeps your place — the groups containing what you were looking at open automatically in the new plane.
 

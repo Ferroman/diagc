@@ -45,7 +45,7 @@ import { computeSelectionColor } from './selection-color';
 import { EditorToolbar } from './editor/EditorToolbar';
 import { LayoutControls } from './LayoutControls';
 import { mergePreview, withLayoutPreview } from './layoutPreview';
-import { withSavedPositions } from './savedPositions';
+import { withPlaneManual, withSavedPositions } from './savedPositions';
 import { uploadAsset } from './editor/images';
 import { NodePanel } from './editor/NodePanel';
 import { EdgePanel } from './editor/EdgePanel';
@@ -492,37 +492,55 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     editor.dispatch({ type: 'set-layout-settings', patch, ...(activePlane !== undefined ? { plane: activePlane } : {}) });
   };
 
-  // Write the hand-placed positions to `<name>.layout.json` and fold them into
-  // the in-memory overlay, so they survive a plane switch (which drops the
-  // renderer's ephemeral drags) without a reload. Explicit, never automatic —
-  // unlike the edit session's autosave, this runs in view mode on diagrams the
-  // studio does not own, so committing positions to a repo file stays a
-  // deliberate act.
+  // Write an overlay to `<name>.layout.json` and fold it into the in-memory copy
+  // on success, so it survives a plane switch (which drops the renderer's
+  // ephemeral drags) without a reload. Explicit, never automatic — unlike the
+  // edit session's autosave, this runs in view mode on diagrams the studio does
+  // not own, so committing positions to a repo file stays a deliberate act.
+  // Both view-mode chips (Save positions, Freeze layout) end here.
+  const postLayout = useCallback(
+    async (next: LayoutOverlay): Promise<boolean> => {
+      setSavingPositions(true);
+      try {
+        const res = await getHost().apiFetch(`/api/layouts/${selected}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(next),
+        });
+        if (!res.ok) {
+          const body = (await res.json()) as { issues?: { message: string }[] };
+          setSaveIssues(body.issues ?? [{ message: 'Could not save layout' }]);
+          return false;
+        }
+        setLoaded((cur) => {
+          const entry = cur[selected];
+          return entry === undefined ? cur : { ...cur, [selected]: { ...entry, layout: next } };
+        });
+        setMovedPositions({});
+        setSaveIssues(null);
+        return true;
+      } finally {
+        setSavingPositions(false);
+      }
+    },
+    [selected, setLoaded, setSaveIssues],
+  );
+
   const savePositions = useCallback(async () => {
     if (model === undefined || Object.keys(movedPositions).length === 0) return;
-    const next = withSavedPositions(layout, model, activePlane, movedPositions);
-    setSavingPositions(true);
-    try {
-      const res = await getHost().apiFetch(`/api/layouts/${selected}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(next),
-      });
-      if (!res.ok) {
-        const body = (await res.json()) as { issues?: { message: string }[] };
-        setSaveIssues(body.issues ?? [{ message: 'Could not save positions' }]);
-        return;
-      }
-      setLoaded((cur) => {
-        const entry = cur[selected];
-        return entry === undefined ? cur : { ...cur, [selected]: { ...entry, layout: next } };
-      });
-      setMovedPositions({});
-      setSaveIssues(null);
-    } finally {
-      setSavingPositions(false);
-    }
-  }, [model, movedPositions, layout, activePlane, selected, setLoaded, setSaveIssues]);
+    await postLayout(withSavedPositions(layout, model, activePlane, movedPositions));
+  }, [model, movedPositions, layout, activePlane, postLayout]);
+
+  // The view-mode manual switch. Freezing snapshots every on-screen position
+  // (React Flow's parent-relative copy — the overlay's own space, unsaved drags
+  // included) so nothing jumps, then sets the flag; thawing only clears the
+  // flag. Same semantics as the edit toolbar's toggle, minus the undo stack —
+  // see withPlaneManual for what the flag does and does not do.
+  const toggleFreeze = useCallback(async () => {
+    if (model === undefined) return;
+    const snapshot = activePlaneManual ? null : (layoutApiRef.current?.snapshotPositions() ?? {});
+    await postLayout(withPlaneManual(layout, model, activePlane, snapshot));
+  }, [model, layout, activePlane, activePlaneManual, layoutApiRef, postLayout]);
 
   // View mode never persists: merge into the ephemeral preview instead of
   // dispatching a command.
@@ -633,6 +651,20 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                 Auto-arrange
               </button>
             )}
+            <button
+              type="button"
+              className={`chip${activePlaneManual ? ' active' : ''}`}
+              aria-pressed={activePlaneManual}
+              disabled={savingPositions}
+              title={
+                activePlaneManual
+                  ? 'Positions are pinned. Click to let the layout algorithm arrange this plane again (your positions are kept).'
+                  : 'Pin every box where it is so the layout algorithm stops moving them. Boxes added to the source later are still placed automatically until you move them.'
+              }
+              onClick={() => void toggleFreeze()}
+            >
+              Freeze layout
+            </button>
             {Object.keys(movedPositions).length > 0 && (
               <button
                 className="chip primary"
@@ -859,6 +891,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                 styleId={pinnedStyle ?? style}
                 onCldEdges={handleCldEdges}
                 onViewPositionsChange={setMovedPositions}
+                layoutApiRef={layoutApiRef}
                 ignoreSavedPositions={autoArrange}
                 externalHighlight={
                   editing
@@ -876,7 +909,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                 {...(editing
                   ? {
                       mode: 'edit' as const,
-                      layoutApiRef,
                       tool,
                       pen: { ...(penColor !== '' ? { color: penColor } : {}), width: penWidth },
                       // Everything that mutates the model travels as ONE edit object

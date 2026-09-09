@@ -63,18 +63,23 @@ One wrinkle: a box you have dragged in this session still sits where you dropped
 with Auto-arrange on — an explicit drag outranks an automatic arrangement. Reload to clear
 those.
 
-## What this does not do
+## Freeze the whole plane
 
 Saving positions does **not** switch automatic layout off. Elk keeps arranging every node
 you have not placed, and your saved coordinates win for the ones you have. If elk keeps
-shoving your arrangement around, switch the plane to manual by adding it by hand:
+shoving your arrangement around, press **Freeze layout** in the top bar. It pins every box
+where it is right now (unsaved drags included) and marks the plane manual:
 
 ```json
 { "version": 1, "planes": { "architecture": { "…": {} } }, "manual": { "architecture": true } }
 ```
 
-Be deliberate about that: with automatic layout off, a node added to the source later has
-no position at all until you place it.
+Press it again to hand the plane back to the algorithm; the pinned positions stay.
+
+Be clear about what the flag does. The renderer still runs the algorithm — pinned boxes
+simply win over its output. What changes is that the studio stops offering to re-arrange
+the plane and pins nodes you create in it. A node added to the *source* later still gets an
+automatic position until you move it, so check the diagram after a source change.
 
 ## Keep node ids stable
 

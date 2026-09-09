@@ -88,6 +88,19 @@ describe('view-mode layout preview', () => {
       .map(([url]) => String(url))
       .filter((url) => url.startsWith('/api/layouts/'));
 
+  // Body of the most recent layouts POST, parsed.
+  const lastLayoutBody = () => {
+    const calls = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([url, init]) => String(url).startsWith('/api/layouts/') && (init as RequestInit | undefined)?.method === 'POST',
+    );
+    const last = calls[calls.length - 1];
+    if (last === undefined) throw new Error('no layouts POST yet');
+    return JSON.parse(String((last[1] as RequestInit).body)) as {
+      planes: Record<string, Record<string, { x: number; y: number }>>;
+      manual?: Record<string, true>;
+    };
+  };
+
   it('reaches the controls in view mode, previews without a POST, and Reset undoes it', async () => {
     render(<App />);
     const algorithm = await screen.findByLabelText('Layout algorithm');
@@ -242,6 +255,27 @@ describe('view-mode layout preview', () => {
     expect((screen.getByLabelText('Layout algorithm') as HTMLSelectElement).value).toBe('force');
     expect(screen.getByRole('button', { name: /reset layout/i })).toBeDefined();
     expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull();
+  });
+
+  it('Freeze layout pins a snapshot with the manual flag; a second click clears the flag only', async () => {
+    render(<App />);
+    // the snapshot reads React Flow's node copy — wait for the canvas to have one
+    await waitFor(() => expect(document.querySelector('.react-flow__node')).not.toBeNull());
+    fireEvent.click(await screen.findByRole('button', { name: /freeze layout/i }));
+    await waitFor(() => expect(layoutPosts()).toEqual(['/api/layouts/sketch']));
+    const frozen = lastLayoutBody();
+    expect(frozen.manual).toEqual({ default: true });
+    expect(frozen.planes['default']).toBeDefined();
+
+    // the POST succeeded, so the chip now reflects the frozen state
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /freeze layout/i }).getAttribute('aria-pressed')).toBe('true'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: /freeze layout/i }));
+    await waitFor(() => expect(layoutPosts()).toHaveLength(2));
+    const thawed = lastLayoutBody();
+    expect(thawed.manual).toBeUndefined();
+    expect(thawed.planes['default']).toEqual(frozen.planes['default']); // positions kept
   });
 });
 
