@@ -281,6 +281,10 @@ export interface LayoutSettings {
   /** how drawn edges are routed: 'curved' floating beziers (default) or
    * 'orthogonal' along elk-computed waypoints */
   edgeRouting?: 'curved' | 'orthogonal';
+  /** layered only: target width÷height. When set, elk wraps long chains onto
+   * several rows (`elk.layered.wrapping.strategy = MULTI_EDGE`) aiming at this
+   * ratio. Absent = no wrapping (one unbounded row/column, the default). */
+  aspectRatio?: number;
 }
 
 /** Editor-managed node positions, keyed by resolved containment plane. */

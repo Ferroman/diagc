@@ -98,6 +98,14 @@ export function layoutOptionsFor(settings?: LayoutSettings): Record<string, stri
     opts['elk.layered.crossingMinimization.strategy'] = 'LAYER_SWEEP';
     opts['elk.layered.nodePlacement.strategy'] = 'BRANDES_KOEPF';
     opts['elk.layered.nodePlacement.bk.fixedAlignment'] = 'BALANCED';
+    // Wrapping is a layered concept (the other algorithms have no layers to
+    // wrap). Opt-in per plane: a default would move every existing diagram
+    // and the committed docs PNGs. MULTI_EDGE was the only strategy that
+    // reined a long chain in (spec § Spike evidence); SINGLE_EDGE barely moved.
+    if (settings?.aspectRatio !== undefined) {
+      opts['elk.layered.wrapping.strategy'] = 'MULTI_EDGE';
+      opts['elk.aspectRatio'] = String(settings.aspectRatio);
+    }
   }
 
   if (settings?.edgeRouting === 'orthogonal') {

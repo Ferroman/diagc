@@ -42,6 +42,22 @@ describe('layoutOptionsFor', () => {
     expect(o['elk.layered.spacing.nodeNodeBetweenLayers']).toBe('36');
   });
 
+  it('wraps layered chains to a target aspect ratio only when asked', () => {
+    // The default must stay unwrapped: turning this on by default would move
+    // every existing diagram and every committed docs PNG.
+    expect(layoutOptionsFor()['elk.layered.wrapping.strategy']).toBeUndefined();
+    expect(layoutOptionsFor()['elk.aspectRatio']).toBeUndefined();
+    const o = layoutOptionsFor({ aspectRatio: 1.6 });
+    expect(o['elk.layered.wrapping.strategy']).toBe('MULTI_EDGE');
+    expect(o['elk.aspectRatio']).toBe('1.6');
+  });
+
+  it('never emits wrapping for a non-layered algorithm', () => {
+    const o = layoutOptionsFor({ algorithm: 'force', aspectRatio: 1.6 });
+    expect(o['elk.layered.wrapping.strategy']).toBeUndefined();
+    expect(o['elk.aspectRatio']).toBeUndefined();
+  });
+
   it('opts into orthogonal edge routing', () => {
     expect(layoutOptionsFor({ edgeRouting: 'orthogonal' })['elk.edgeRouting']).toBe('ORTHOGONAL');
     expect(layoutOptionsFor({ edgeRouting: 'curved' })['elk.edgeRouting']).toBeUndefined();
@@ -99,6 +115,14 @@ describe('layoutView', () => {
     // a different override for the same view must NOT serve the cached geometry
     const big = await layoutView(view, new Map([['ext', { width: 300, height: 200 }]]));
     expect(big.geometry.get('ext')).toMatchObject({ width: 300, height: 200 });
+  });
+
+  it('keys the cache on aspectRatio, so toggling wrap re-runs elk', async () => {
+    const view = compileView(makeModel(), { focus: ['sys'] });
+    const plain = await layoutView(view, undefined, {});
+    const wrapped = await layoutView(view, undefined, { aspectRatio: 1.6 });
+    // a different settings signature must never serve the other's geometry
+    expect(wrapped).not.toBe(plain);
   });
 
   it('reserves horizontal room for a long edge label (label-aware layout)', async () => {

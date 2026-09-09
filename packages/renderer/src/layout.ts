@@ -44,6 +44,7 @@ function settingsKey(settings?: LayoutSettings): string {
     settings.direction ?? '',
     settings.spacing ?? '',
     settings.edgeRouting ?? '',
+    settings.aspectRatio ?? '',
   ];
   return `!${parts.join(',')}`;
 }
