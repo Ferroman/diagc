@@ -5,6 +5,7 @@ import { getViewportForBounds } from '@xyflow/react';
 import { model, type DiagramModel } from '@diagramming/core';
 import { DiagramView, type LayoutApi } from './DiagramView';
 import { GIT_LAYOUT } from './git-layout';
+import { NUDGE_STEP, NUDGE_SHIFT_FACTOR } from './useNudge';
 
 /** container-endpoint relation: service inside a system relates to the system itself */
 function containerEndpointModel() {
@@ -695,6 +696,57 @@ describe('DiagramView', () => {
     // test in this file awaits node text for the same reason.
     fireEvent.click(await findByText(/add column/i));
     expect(spy).toHaveBeenCalledWith('a', expect.arrayContaining([expect.objectContaining({ name: 'id' })]));
+  });
+
+  it('edit mode: arrow keys on a selected node commit one onNodesMoved after the idle window', async () => {
+    const onNodesMoved = vi.fn();
+    const apiRef: { current: LayoutApi | null } = { current: null };
+    render(<DiagramView model={containerEndpointModel()} mode="edit" edit={{ onNodesMoved }} layoutApiRef={apiRef} />);
+    const gw = await screen.findByText('gw');
+    fireEvent.click(gw);
+    await waitFor(() => expect(document.querySelector('.react-flow__node.selected')).not.toBeNull());
+    const before = apiRef.current!.snapshotPositions()['gw']!;
+    fireEvent.keyDown(gw, { key: 'ArrowRight' });
+    fireEvent.keyDown(gw, { key: 'ArrowRight', shiftKey: true });
+    expect(onNodesMoved).not.toHaveBeenCalled(); // waits out the idle window
+    await waitFor(() => expect(onNodesMoved).toHaveBeenCalledTimes(1));
+    expect(onNodesMoved).toHaveBeenCalledWith({
+      gw: { x: before.x + NUDGE_STEP + NUDGE_STEP * NUDGE_SHIFT_FACTOR, y: before.y },
+    });
+  });
+
+  it('edit mode: falls back to onNodeMoved per node when the host has no batch callback', async () => {
+    const onNodeMoved = vi.fn();
+    render(<DiagramView model={containerEndpointModel()} mode="edit" edit={{ onNodeMoved }} />);
+    const gw = await screen.findByText('gw');
+    fireEvent.click(gw);
+    await waitFor(() => expect(document.querySelector('.react-flow__node.selected')).not.toBeNull());
+    fireEvent.keyDown(gw, { key: 'ArrowDown' });
+    await waitFor(() => expect(onNodeMoved).toHaveBeenCalledWith('gw', expect.objectContaining({ x: expect.any(Number) })));
+  });
+
+  it('view mode: a nudge is reported as a view position without Alt', async () => {
+    const onViewPositionsChange = vi.fn();
+    render(<DiagramView model={containerEndpointModel()} onViewPositionsChange={onViewPositionsChange} />);
+    const gw = await screen.findByText('gw');
+    fireEvent.click(gw);
+    await waitFor(() => expect(document.querySelector('.react-flow__node.selected')).not.toBeNull());
+    fireEvent.keyDown(gw, { key: 'ArrowLeft' });
+    await waitFor(() =>
+      expect(onViewPositionsChange).toHaveBeenLastCalledWith(expect.objectContaining({ gw: expect.anything() })),
+    );
+  });
+
+  it('snapGrid makes a nudge step by the grid', async () => {
+    const onNodesMoved = vi.fn();
+    const apiRef: { current: LayoutApi | null } = { current: null };
+    render(<DiagramView model={containerEndpointModel()} mode="edit" snapGrid={10} edit={{ onNodesMoved }} layoutApiRef={apiRef} />);
+    const gw = await screen.findByText('gw');
+    fireEvent.click(gw);
+    await waitFor(() => expect(document.querySelector('.react-flow__node.selected')).not.toBeNull());
+    const before = apiRef.current!.snapshotPositions()['gw']!;
+    fireEvent.keyDown(gw, { key: 'ArrowRight' });
+    await waitFor(() => expect(onNodesMoved).toHaveBeenCalledWith({ gw: { x: before.x + 10, y: before.y } }));
   });
 });
 

@@ -55,6 +55,7 @@ New nodes are **typeless** — just a label — so quick sketches stay clean. Gi
 | Action | Shortcut |
 | --- | --- |
 | Add node | `N` |
+| Nudge the selected node(s) | Arrow keys (5px; `Shift` = 20px; the grid step when Snap is on). Works in view mode too — no Alt needed. |
 | Undo | `Ctrl/Cmd + Z` |
 | Redo | `Ctrl/Cmd + Shift + Z` or `Ctrl + Y` |
 | Save | `Ctrl/Cmd + S` |

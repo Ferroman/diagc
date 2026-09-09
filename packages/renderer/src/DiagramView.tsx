@@ -51,6 +51,7 @@ import { useClickCorrelation } from './useClickCorrelation';
 import { useDrillNavigation } from './useDrillNavigation';
 import { useLegendState } from './useLegendState';
 import { useLoopOverlay } from './useLoopOverlay';
+import { NUDGE_STEP, useNudge } from './useNudge';
 import { useViewLayout } from './useViewLayout';
 import { LaserLayer } from './LaserLayer';
 import './styles.css';
@@ -488,16 +489,39 @@ function Inner(props: DiagramViewProps) {
     },
     [editing, edit],
   );
+  // Arrow keys (see useNudge). The step follows the snap grid when one is on,
+  // so a nudge lands on the same grid a drag would.
+  const nudge = useNudge({
+    enabled: !chromeless && !gestureCaptured,
+    step: props.snapGrid ?? NUDGE_STEP,
+    nodesRef: rfNodesRef,
+    applyMoves: (moves) =>
+      setRfNodes((nds) =>
+        applyNodeChanges(
+          Object.entries(moves).map(([id, position]) => ({ type: 'position' as const, id, position })),
+          nds,
+        ),
+      ),
+    commit: commitMoves,
+  });
   // Resync must not wipe flags React Flow owns on its copy — selection drives
   // the image-node resizer, and a selection click itself re-renders the app,
   // recomputing derivedNodes in the same tick.
   useLayoutEffect(() => {
     setRfNodes((prev) => {
       const selected = new Set(prev.filter((n) => n.selected === true).map((n) => n.id));
-      return selected.size === 0
-        ? derivedNodes
-        : derivedNodes.map((n) => (selected.has(n.id) ? { ...n, selected: true } : n));
+      // A nudge not yet committed must not be undone by a resync in its idle
+      // window: keep the pending position, exactly as the selection is kept.
+      const pending = nudge.pendingRef.current;
+      if (selected.size === 0 && Object.keys(pending).length === 0) return derivedNodes;
+      return derivedNodes.map((n) => {
+        const p = pending[n.id];
+        const s = selected.has(n.id);
+        if (!s && p === undefined) return n;
+        return { ...n, ...(s ? { selected: true } : {}), ...(p !== undefined ? { position: p } : {}) };
+      });
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nudge.pendingRef is a stable useRef identity read through .current
   }, [derivedNodes]);
 
   // Populate the host's imperative layout ref (auto-layout toggle). Functions
@@ -669,6 +693,8 @@ function Inner(props: DiagramViewProps) {
         if (files.length === 0) return;
         edit.onImageFiles(files, reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY }));
       }}
+      onKeyDownCapture={nudge.onKeyDownCapture}
+      onBlurCapture={nudge.onBlurCapture}
       {...gestureHandlers}
     >
       <ReactFlow
@@ -744,6 +770,8 @@ function Inner(props: DiagramViewProps) {
         onNodesChange={(changes: NodeChange[]) =>
           setRfNodes((nds) => applyNodeChanges(changes.filter((c) => c.type !== 'remove'), nds))
         }
+        // A pointer drag must not race a pending keyboard burst.
+        onNodeDragStart={() => nudge.flush()}
         // React Flow hands over every node the gesture moved (a selection drags
         // as one), so a multi-node drag lands as a single batch.
         onNodeDragStop={(_e, _node, nodes) => {

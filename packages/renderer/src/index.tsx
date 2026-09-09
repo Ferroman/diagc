@@ -62,6 +62,7 @@ export {
   type LayoutApi,
   type PenSettings,
 } from './DiagramView';
+export { useNudge, NUDGE_STEP, NUDGE_SHIFT_FACTOR, NUDGE_IDLE_MS, type NudgeInput } from './useNudge';
 export { DrawingsLayer, type DrawingsLayerProps } from './DrawingsLayer';
 export { strokePath, simplifyStroke, strokesBounds } from './drawings';
 export { Legend, type LegendProps } from './Legend';
