@@ -40,6 +40,8 @@ import { strokesBounds } from './drawings';
 import { DrawingsLayer } from './DrawingsLayer';
 import { reconnectPin } from './floating';
 import { GitLanesOverlay } from './GitLanesOverlay';
+import { GUIDE_THRESHOLD_PX, snapDragChanges, type Guide } from './guides';
+import { GuidesLayer } from './GuidesLayer';
 import { Legend } from './Legend';
 import { LoopLabelLayer } from './LoopLabelLayer';
 import { LoopHighlightContext } from './loop-highlight';
@@ -295,6 +297,10 @@ function Inner(props: DiagramViewProps) {
   useEffect(() => {
     setViewPositions({});
   }, [props.model, props.plane, editing]);
+  // Alignment guides drawn while a single node is dragged (see snapDragChanges);
+  // cleared every frame that yields no lines, which includes drop (the final
+  // frame carries dragging: false).
+  const [guides, setGuides] = useState<Guide[]>([]);
 
   // Surface them upward so a host can offer to persist them. Driven off the state
   // rather than the drag handler, so the resets above are reported too — a host
@@ -767,9 +773,19 @@ function Inner(props: DiagramViewProps) {
         // delete key reaches the host through onDelete below instead — letting
         // React Flow remove locally would only ghost-delete until the next
         // model rebuild resurrected the elements.
-        onNodesChange={(changes: NodeChange[]) =>
-          setRfNodes((nds) => applyNodeChanges(changes.filter((c) => c.type !== 'remove'), nds))
-        }
+        //
+        // Guides: a single dragged node snaps to its siblings' edges and
+        // centres (see snapDragChanges). Grid snapping already happened inside
+        // React Flow's drag handler, so a guide in reach beats the grid.
+        onNodesChange={(changes: NodeChange[]) => {
+          const snapped = snapDragChanges(
+            changes,
+            { nodes: rfNodesRef.current, absoluteOf: (id) => reactFlow.getInternalNode(id)?.internals.positionAbsolute },
+            GUIDE_THRESHOLD_PX / reactFlow.getZoom(),
+          );
+          setGuides((g) => (g.length === 0 && snapped.lines.length === 0 ? g : snapped.lines));
+          setRfNodes((nds) => applyNodeChanges(snapped.changes.filter((c) => c.type !== 'remove'), nds));
+        }}
         // A pointer drag must not race a pending keyboard burst.
         onNodeDragStart={() => nudge.flush()}
         // React Flow hands over every node the gesture moved (a selection drags
@@ -886,6 +902,7 @@ function Inner(props: DiagramViewProps) {
           onErase={(id) => edit?.onDeleteStroke?.(id)}
         />
         <LaserLayer trails={laser.trails} live={laser.live} />
+        <GuidesLayer lines={guides} />
         <Breadcrumbs path={enteredPath} nameOf={(id) => nameOf.get(id) ?? id} onCrumb={exitTo} />
         {showLegend && legendRowList.length > 0 && (
           // LegendPosition is a subset of React Flow's PanelPosition — no cast needed.

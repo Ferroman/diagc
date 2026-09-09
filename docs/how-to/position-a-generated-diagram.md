@@ -63,6 +63,16 @@ One wrinkle: a box you have dragged in this session still sits where you dropped
 with Auto-arrange on — an explicit drag outranks an automatic arrangement. Reload to clear
 those.
 
+## Fine-tune the placement
+
+Three aids work while you Alt-drag, no edit mode needed:
+
+- **Guides.** Drag a box near a sibling's edge or centre and it snaps into line; a dashed guide shows what it matched.
+- **Arrow keys.** Select a box and nudge it 5px at a time (`Shift` for 20px). No Alt needed.
+- **Snap.** The `⋮⋮ Snap` chip in the header snaps drags and nudges to a 10px grid.
+
+All three feed the same **Save positions** chip.
+
 ## Freeze the whole plane
 
 Saving positions does **not** switch automatic layout off. Elk keeps arranging every node

@@ -67,3 +67,5 @@ export { DrawingsLayer, type DrawingsLayerProps } from './DrawingsLayer';
 export { strokePath, simplifyStroke, strokesBounds } from './drawings';
 export { Legend, type LegendProps } from './Legend';
 export { legendRows, type LegendInput, type LegendRow, type LegendSwatch } from './legendRows';
+export type { Box } from './box';
+export { computeGuides, snapDragChanges, GUIDE_THRESHOLD_PX, type Guide, type GuideSnap } from './guides';

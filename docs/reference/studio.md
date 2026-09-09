@@ -36,6 +36,7 @@ A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot ente
 | --- | --- |
 | Double-click empty canvas | Drop a node there and name it |
 | Drag a node onto another | Nest it inside |
+| Drag a node near a sibling's edge or centre | It snaps into line and a dashed guide shows the match. Also with Alt+drag in view mode. |
 | Drag from a connect dot to another node | Create a `sync` relation, pinned to both dots |
 | Double-click a node | Rename in place (Enter commits, Escape cancels) |
 | Double-click an edge | Edit its label in place |

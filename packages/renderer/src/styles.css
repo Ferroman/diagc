@@ -366,6 +366,24 @@ path.dg-loop-badge-circle {
   opacity: 0.5;
   text-decoration: line-through;
 }
+/* Alignment guides (drag): a hairline in the accent colour above the boxes.
+   non-scaling-stroke keeps it one device pixel at any zoom. */
+.dg-guides {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1000;
+}
+.dg-guide {
+  stroke: var(--dg-accent, #3b82f6);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
 /* Click a badge to reveal its loop */
 .dg-loop-badge {
   cursor: pointer;
