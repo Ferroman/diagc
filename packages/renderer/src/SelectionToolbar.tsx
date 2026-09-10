@@ -2,8 +2,11 @@ import { NodeToolbar, Position } from '@xyflow/react';
 import type { AlignMode } from './arrange';
 
 export interface SelectionToolbarProps {
-  /** the selected node ids; nothing renders below two */
-  ids: readonly string[];
+  /** the selected node ids; nothing renders below two. A plain array (not
+   * `readonly`) because it is handed straight to NodeToolbar's `nodeId` —
+   * spreading into a fresh array on every render would defeat NodeToolbar's
+   * internal memoisation of that prop. */
+  ids: string[];
   onAlign: (mode: AlignMode) => void;
   onDistribute: (axis: 'x' | 'y') => void;
 }
@@ -28,7 +31,7 @@ export function SelectionToolbar({ ids, onAlign, onDistribute }: SelectionToolba
   if (ids.length < 2) return null;
   const canDistribute = ids.length >= 3;
   return (
-    <NodeToolbar nodeId={[...ids]} isVisible position={Position.Top} className="dg-selection-toolbar" aria-label="Arrange selection">
+    <NodeToolbar nodeId={ids} isVisible position={Position.Top} className="dg-selection-toolbar" aria-label="Arrange selection">
       {ALIGN.map((a) => (
         <button key={a.mode} type="button" className="dg-arrange-btn" title={a.label} aria-label={a.label} onClick={() => onAlign(a.mode)}>
           {a.glyph}

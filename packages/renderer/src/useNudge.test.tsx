@@ -108,4 +108,23 @@ describe('useNudge', () => {
     press('ArrowRight');
     expect(applyMoves).not.toHaveBeenCalled();
   });
+
+  it('claims modifier+arrow (stops propagation) without moving anything or preventing the default, so the browser shortcut still runs and React Flow never performs its own uncommitted nudge', () => {
+    const { press, applyMoves, commit } = setup();
+    const { preventDefault, stopPropagation } = press('ArrowLeft', { altKey: true });
+    expect(stopPropagation).toHaveBeenCalled();
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(applyMoves).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(NUDGE_IDLE_MS));
+    expect(commit).not.toHaveBeenCalled();
+  });
+
+  it('nudges the selection from a keydown on the marquee selection rectangle too', () => {
+    const { press, applyMoves } = setup();
+    const rect = document.createElement('div');
+    rect.className = 'react-flow__nodesselection-rect';
+    document.body.appendChild(rect);
+    press('ArrowRight', {}, rect);
+    expect(applyMoves).toHaveBeenLastCalledWith({ a: { x: 15, y: 10 } });
+  });
 });

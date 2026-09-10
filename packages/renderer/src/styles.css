@@ -367,7 +367,9 @@ path.dg-loop-badge-circle {
   text-decoration: line-through;
 }
 /* Alignment guides (drag): a hairline in the accent colour above the boxes.
-   non-scaling-stroke keeps it one device pixel at any zoom. */
+   Width and dash are set per-line in GuidesLayer (divided by zoom), since
+   this layer sits under a CSS-transformed ancestor and not an SVG-level
+   transform — vector-effect: non-scaling-stroke has no effect there. */
 .dg-guides {
   position: absolute;
   left: 0;
@@ -380,9 +382,6 @@ path.dg-loop-badge-circle {
 }
 .dg-guide {
   stroke: var(--dg-accent, #3b82f6);
-  stroke-width: 1;
-  stroke-dasharray: 4 3;
-  vector-effect: non-scaling-stroke;
 }
 /* Align/distribute toolbar floating above a multi-selection */
 .dg-selection-toolbar {

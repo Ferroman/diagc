@@ -749,6 +749,29 @@ describe('DiagramView', () => {
     expect(typeof apiRef.current!.viewportCenter).toBe('function');
   });
 
+  // NOTE: containerEndpointModel's own boundary relation (gw -> sys) targets the
+  // drill root itself, which scope.ts drops rather than stubs (there is nothing
+  // off-frame to represent) — drilling into `sys` there never produces an
+  // external, so it can't exercise this filter. promotedEndpointModel's b1 ->
+  // shared-db relation crosses into a genuine sibling (B), which DOES produce
+  // an external stub (`__ext__:B`) once drilled into A.
+  it('drilled-view snapshotPositions excludes external stub ids (compiled.externals)', async () => {
+    const apiRef: { current: LayoutApi | null } = { current: null };
+    render(<DiagramView model={promotedEndpointModel()} layoutApiRef={apiRef} />);
+    const a = await screen.findByText('A');
+    // correlated double-click: two clicks on the same node/point (see the
+    // plane-switch and container-drill tests above)
+    fireEvent.click(a, { clientX: 10, clientY: 10 });
+    fireEvent.click(await screen.findByText('A'), { clientX: 10, clientY: 10, detail: 2 });
+    // drilled: a1/shared-db are real content; B (outside A) stands in as a stub
+    expect(await screen.findByText('a1')).toBeDefined();
+    expect(await screen.findByText('B')).toBeDefined();
+    await waitFor(() => expect(apiRef.current).not.toBeNull());
+    await waitFor(() => expect(Object.keys(apiRef.current!.snapshotPositions()).length).toBeGreaterThan(0));
+    const positions = apiRef.current!.snapshotPositions();
+    expect(Object.keys(positions).some((id) => id.includes('__ext__'))).toBe(false);
+  });
+
   it('snapGrid turns the background dots into the grid and marks it', async () => {
     const { container, rerender } = render(<DiagramView model={containerEndpointModel()} mode="edit" snapGrid={10} />);
     await screen.findByText('gw');

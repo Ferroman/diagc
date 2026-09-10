@@ -56,7 +56,7 @@ import { useClickCorrelation } from './useClickCorrelation';
 import { useDrillNavigation } from './useDrillNavigation';
 import { useLegendState } from './useLegendState';
 import { useLoopOverlay } from './useLoopOverlay';
-import { NUDGE_STEP, useNudge } from './useNudge';
+import { NUDGE_STEP, useNudge, type Positions } from './useNudge';
 import { useViewLayout } from './useViewLayout';
 import { LaserLayer } from './LaserLayer';
 import './styles.css';
@@ -87,9 +87,6 @@ const MAX_ZOOM = 4;
 
 const imageFilesOf = (list: FileList | null | undefined): File[] =>
   [...(list ?? [])].filter((f) => f.type.startsWith('image/'));
-
-/** parent-relative positions keyed by node id — the overlay's own shape */
-type Positions = Record<string, { x: number; y: number }>;
 
 /** the node a palette drop landed on, or undefined when it fell on open canvas.
  * Cross-layer coupling: the host-side drop handler reads the renderer's DOM
@@ -246,6 +243,12 @@ function Inner(props: DiagramViewProps) {
       }),
     [props.model, props.plane, focus, drillRoot, effectivePins, props.activeLayers],
   );
+  // Render-phase ref, same pattern as strokesRef below: the layoutApiRef effect's
+  // snapshotPositions (further down) needs compiled.externals to drop stub ids,
+  // but that effect only re-runs on [layoutApiRef, reactFlow] — so it reads
+  // `compiled` through a ref kept current every render instead of depending on it.
+  const compiledRef = useRef(compiled);
+  compiledRef.current = compiled;
 
   // remember what is on screen — the plane-switch mapping reads this
   useEffect(() => {
@@ -590,8 +593,16 @@ function Inner(props: DiagramViewProps) {
     const ref = props.layoutApiRef;
     if (ref === undefined) return;
     ref.current = {
+      // External stubs (compiled.externals) are placeholders for an off-frame
+      // node while drilled — not real nodes in the model — so writing their
+      // `__ext__:` ids into the layout overlay would corrupt it for every
+      // other view of the same plane. Drop them from the snapshot.
       snapshotPositions: () =>
-        Object.fromEntries(rfNodesRef.current.map((n) => [n.id, { x: n.position.x, y: n.position.y }])),
+        Object.fromEntries(
+          rfNodesRef.current
+            .filter((n) => !(compiledRef.current.externals?.has(n.id) ?? false))
+            .map((n) => [n.id, { x: n.position.x, y: n.position.y }]),
+        ),
       autoPositions: () =>
         geometryRef.current === null
           ? {}

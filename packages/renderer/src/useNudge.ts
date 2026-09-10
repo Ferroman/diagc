@@ -45,6 +45,18 @@ const inField = (el: Element | null): boolean => {
  * when a pointer drag starts, focus leaves the node, or the canvas unmounts.
  * `pendingRef` exposes the not-yet-committed positions so DiagramView's
  * derived-node resync can keep them on screen until the commit lands.
+ *
+ * A modifier held with the arrow (Alt/Ctrl/Cmd+←/→/↑/↓ — Back, word-jump, …)
+ * is claimed with `stopPropagation()` alone, no `preventDefault()` and no
+ * move: the browser must still get to run its own shortcut, but React Flow's
+ * node-level `onKeyDown` (gated on `nodesDraggable`, not on any modifier)
+ * must NOT see the bubbled key either, or it performs its own uncommitted
+ * nudge — the exact lost-move this hook exists to prevent.
+ *
+ * The target check also accepts React Flow's own marquee selection rectangle
+ * (`.react-flow__nodesselection-rect`), which renders OUTSIDE `.react-flow__node`
+ * but is where focus sits after a marquee drag — arrow keys there must nudge
+ * the whole selection the same as they would from a single selected node.
  */
 export function useNudge(input: NudgeInput) {
   const pendingRef = useRef<Positions>({});
@@ -71,10 +83,16 @@ export function useNudge(input: NudgeInput) {
       const dir = ARROWS[e.key];
       if (!enabled || dir === undefined) return;
       const target = e.target as Element | null;
-      if (inField(target) || (target?.closest('.react-flow__node') ?? null) === null) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (inField(target)) return;
+      if ((target?.closest('.react-flow__node, .react-flow__nodesselection-rect') ?? null) === null) return;
       const selected = nodesRef.current.filter((n) => n.selected === true);
       if (selected.length === 0) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) {
+        // Claim it (so React Flow's own node onKeyDown never performs an
+        // uncommitted nudge of its own) but leave the browser's shortcut alone.
+        e.stopPropagation();
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       const d = step * (e.shiftKey ? NUDGE_SHIFT_FACTOR : 1);
