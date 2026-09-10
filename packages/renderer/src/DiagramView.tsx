@@ -551,7 +551,11 @@ function Inner(props: DiagramViewProps) {
       positions[id] = { x: n.position.x + d.dx, y: n.position.y + d.dy };
     }
     if (Object.keys(positions).length === 0) return;
-    // move at once (the commit re-derives the same positions a frame later)
+    // Move at once: the commit re-derives the same positions a frame later,
+    // but only if the host's onNodesMoved is synchronous — React 18 then
+    // batches that re-derivation with this setRfNodes into one render. An
+    // async host would let the resync useLayoutEffect run in between and
+    // briefly snap the boxes back to their pre-arrange positions.
     setRfNodes((nds) =>
       applyNodeChanges(
         Object.entries(positions).map(([id, position]) => ({ type: 'position' as const, id, position })),
