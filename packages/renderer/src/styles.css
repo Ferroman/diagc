@@ -383,7 +383,7 @@ path.dg-loop-badge-circle {
 .dg-guide {
   stroke: var(--dg-accent, #3b82f6);
 }
-/* Align/distribute toolbar floating above a multi-selection */
+/* Align/distribute toolbar, anchored to the top of the canvas (a React Flow Panel) */
 .dg-selection-toolbar {
   display: flex;
   gap: 2px;

@@ -1,11 +1,8 @@
-import { NodeToolbar, Position } from '@xyflow/react';
+import { Panel } from '@xyflow/react';
 import type { AlignMode } from './arrange';
 
 export interface SelectionToolbarProps {
-  /** the selected node ids; nothing renders below two. A plain array (not
-   * `readonly`) because it is handed straight to NodeToolbar's `nodeId` —
-   * spreading into a fresh array on every render would defeat NodeToolbar's
-   * internal memoisation of that prop. */
+  /** the selected node ids; nothing renders below two, and distribute needs three. */
   ids: string[];
   onAlign: (mode: AlignMode) => void;
   onDistribute: (axis: 'x' | 'y') => void;
@@ -23,15 +20,19 @@ const ALIGN: { mode: AlignMode; glyph: string; label: string }[] = [
 ];
 
 /**
- * Floating align/distribute buttons above a multi-selection. `isVisible` is
- * passed explicitly: NodeToolbar's default only shows for exactly ONE selected
- * node (verified in @xyflow/react 12.11.2), the opposite of what this is for.
+ * Align/distribute buttons anchored to the top-centre of the canvas whenever
+ * two or more nodes are selected. A toolbar attached to the selection's own
+ * bounds (React Flow's `NodeToolbar`) is clipped whenever the selection
+ * touches the canvas edge — which a `fitView` does by construction on a small
+ * canvas — so instead this rides React Flow's screen-space `Panel`, the same
+ * anchoring the studio uses for its `⊞ Group` chip. A canvas-anchored bar
+ * cannot be occluded by the selection's own position.
  */
 export function SelectionToolbar({ ids, onAlign, onDistribute }: SelectionToolbarProps) {
   if (ids.length < 2) return null;
   const canDistribute = ids.length >= 3;
   return (
-    <NodeToolbar nodeId={ids} isVisible position={Position.Top} className="dg-selection-toolbar" aria-label="Arrange selection">
+    <Panel position="top-center" className="dg-selection-toolbar" aria-label="Arrange selection">
       {ALIGN.map((a) => (
         <button key={a.mode} type="button" className="dg-arrange-btn" title={a.label} aria-label={a.label} onClick={() => onAlign(a.mode)}>
           {a.glyph}
@@ -58,6 +59,6 @@ export function SelectionToolbar({ ids, onAlign, onDistribute }: SelectionToolba
       >
         ⋮
       </button>
-    </NodeToolbar>
+    </Panel>
   );
 }

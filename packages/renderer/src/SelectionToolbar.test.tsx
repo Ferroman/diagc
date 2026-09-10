@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { ReactFlow, ReactFlowProvider, type Node } from '@xyflow/react';
 import { SelectionToolbar } from './SelectionToolbar';
 
-// NodeToolbar reads the nodes from React Flow's store, so the component needs
-// a real <ReactFlow> around it — the nodes only have to exist, not render.
+// `Panel` renders inside React Flow's own DOM tree, so the component needs a
+// real <ReactFlow> around it — the nodes only have to exist, not render.
 const nodes: Node[] = [
   { id: 'a', position: { x: 0, y: 0 }, data: {} },
   { id: 'b', position: { x: 200, y: 0 }, data: {} },
@@ -37,6 +37,17 @@ describe('SelectionToolbar', () => {
       expect(screen.getByRole('button', { name })).toBeDefined();
     }
     expect((screen.getByRole('button', { name: 'Distribute horizontally' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('is anchored to the canvas top-centre, not the selection, so it can never sit off-canvas', async () => {
+    mount(['a', 'b']);
+    const toolbar = await screen.findByLabelText('Arrange selection');
+    // React Flow's `Panel` renders `top`/`center` position classes alongside
+    // its own `react-flow__panel` marker — proof this rides the canvas-anchored
+    // Panel and not a selection-attached NodeToolbar.
+    expect(toolbar.classList.contains('react-flow__panel')).toBe(true);
+    expect(toolbar.classList.contains('top')).toBe(true);
+    expect(toolbar.classList.contains('center')).toBe(true);
   });
 
   it('enables distribute at three nodes', async () => {

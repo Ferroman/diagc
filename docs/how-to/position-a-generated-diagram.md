@@ -70,7 +70,7 @@ Four aids, none of which need edit mode (in view mode a box moves with Alt+drag)
 - **Guides.** Drag a box near a sibling's edge or centre and it snaps into line; a dashed guide shows what it matched.
 - **Arrow keys.** Select a box and nudge it 5px at a time (`Shift` for 20px). No Alt needed.
 - **Snap.** The `⋮⋮ Snap` chip in the header snaps drags and nudges to a 10px grid.
-- **Line several up.** `Shift`+click (or `Shift`+drag a marquee around) two or more boxes and use the toolbar that appears above them: align, or distribute three or more evenly.
+- **Line several up.** `Shift`+click (or `Shift`+drag a marquee around) two or more boxes and use the toolbar that appears at the top of the canvas: align, or distribute three or more evenly.
 
 All four feed the same **Save positions** chip.
 
