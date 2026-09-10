@@ -270,10 +270,20 @@ describe('view-mode layout preview', () => {
     expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull();
   });
 
-  it('Freeze layout pins a snapshot with the manual flag; a second click clears the flag only', async () => {
+  it('Freeze layout pins a snapshot with the manual flag; a second click clears the flag only; a pending drag survives thaw but not freeze', async () => {
     render(<App />);
     // the snapshot reads React Flow's node copy — wait for the canvas to have one
     await waitFor(() => expect(document.querySelector('.react-flow__node')).not.toBeNull());
+
+    // A view-mode drag pending BEFORE freeze: the freeze POST's body IS the
+    // current on-screen snapshot, so this drag rides along in that very
+    // write — the "Save positions" chip must clear once it succeeds.
+    const node = await screen.findByText('a');
+    fireEvent.click(node);
+    await waitFor(() => expect(document.querySelector('.react-flow__node.selected')).not.toBeNull());
+    fireEvent.keyDown(node, { key: 'ArrowRight' });
+    await screen.findByRole('button', { name: /save positions/i }, { timeout: 2000 });
+
     fireEvent.click(await screen.findByRole('button', { name: /freeze layout/i }));
     await waitFor(() => expect(layoutPosts()).toEqual(['/api/layouts/sketch']));
     const frozen = lastLayoutBody();
@@ -284,11 +294,25 @@ describe('view-mode layout preview', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /freeze layout/i }).getAttribute('aria-pressed')).toBe('true'),
     );
+    // freeze's snapshot body absorbed the pending drag — the chip clears
+    await waitFor(() => expect(screen.queryByRole('button', { name: /save positions/i })).toBeNull(), {
+      timeout: 2000,
+    });
+
+    // A second drag, still pending when we thaw: the thaw POST carries no
+    // positions at all, so this one must stay unsaved — the chip must NOT be
+    // cleared just because the plane went back to automatic.
+    fireEvent.keyDown(node, { key: 'ArrowLeft' });
+    await screen.findByRole('button', { name: /save positions/i }, { timeout: 2000 });
+
     fireEvent.click(screen.getByRole('button', { name: /freeze layout/i }));
     await waitFor(() => expect(layoutPosts()).toHaveLength(2));
     const thawed = lastLayoutBody();
     expect(thawed.manual).toBeUndefined();
     expect(thawed.planes['default']).toEqual(frozen.planes['default']); // positions kept
+
+    // the drag pending before thaw is still pending after it
+    expect(screen.getByRole('button', { name: /save positions/i })).toBeDefined();
   });
 
   it('the Snap chip toggles and persists as a viewer preference', async () => {
@@ -386,6 +410,14 @@ describe('drilled-in canvas tools', () => {
 
     expect(pen.getAttribute('aria-pressed')).toBe('false');
     expect(screen.getByRole('button', { name: 'Select' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('disables Freeze layout while drilled — a drilled snapshot only covers the subtree, not the whole plane', async () => {
+    window.location.hash = '#/drill/sys'; // view mode, deep-linked straight into the container
+    render(<App />);
+    await waitFor(() => expect(document.querySelector('.react-flow__node')).not.toBeNull());
+    const freeze = (await screen.findByRole('button', { name: /freeze layout/i })) as HTMLButtonElement;
+    expect(freeze.disabled).toBe(true);
   });
 });
 

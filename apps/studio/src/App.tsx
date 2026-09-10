@@ -525,7 +525,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
           const entry = cur[selected];
           return entry === undefined ? cur : { ...cur, [selected]: { ...entry, layout: next } };
         });
-        setMovedPositions({});
         setSaveIssues(null);
         return true;
       } finally {
@@ -537,7 +536,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
 
   const savePositions = useCallback(async () => {
     if (model === undefined || Object.keys(movedPositions).length === 0) return;
-    await postLayout(withSavedPositions(layout, model, activePlane, movedPositions));
+    const ok = await postLayout(withSavedPositions(layout, model, activePlane, movedPositions));
+    // The posted body folds movedPositions into the saved overlay, so on success
+    // those drags are no longer unsaved — clear the chip. A failed post must
+    // leave it up (postLayout surfaces saveIssues) so the user can retry.
+    if (ok) setMovedPositions({});
   }, [model, movedPositions, layout, activePlane, postLayout]);
 
   // The view-mode manual switch. Freezing snapshots every on-screen position
@@ -547,8 +550,14 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // see withPlaneManual for what the flag does and does not do.
   const toggleFreeze = useCallback(async () => {
     if (model === undefined) return;
-    const snapshot = activePlaneManual ? null : (layoutApiRef.current?.snapshotPositions() ?? {});
-    await postLayout(withPlaneManual(layout, model, activePlane, snapshot));
+    const freezing = !activePlaneManual;
+    const snapshot = freezing ? (layoutApiRef.current?.snapshotPositions() ?? {}) : null;
+    const ok = await postLayout(withPlaneManual(layout, model, activePlane, snapshot));
+    // Freezing's body IS the current on-screen snapshot, so any pending
+    // view-mode drags it covers are now saved too — clear the chip. Thawing's
+    // body carries no positions at all, so pending drags stay pending; they
+    // must NOT be discarded just because the plane went back to automatic.
+    if (ok && freezing) setMovedPositions({});
   }, [model, layout, activePlane, activePlaneManual, layoutApiRef, postLayout]);
 
   // View mode never persists: merge into the ephemeral preview instead of
@@ -565,6 +574,16 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // Global color target: the selected node, or the selected single-relation
   // edge — drives the toolbar swatch row (select object -> click color).
   const selectionColor = editing && model !== undefined ? computeSelectionColor(model, selection, editor.dispatch) : null;
+
+  // The node panel's position inputs, computed once here instead of twice in
+  // the JSX below (hasPin used to run this same lookup a second time via an
+  // IIFE just to get pinned/live) — same lookups, same values, one place.
+  const pinned =
+    selection?.kind === 'node' && model !== undefined
+      ? layout?.planes[layoutPlaneKey(model, activePlane)]?.[selection.id]
+      : undefined;
+  const live =
+    selection?.kind === 'node' && model !== undefined ? layoutApiRef.current?.snapshotPositions()[selection.id] : undefined;
 
   return (
     <div className="app">
@@ -664,11 +683,17 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
               type="button"
               className={`chip${activePlaneManual ? ' active' : ''}`}
               aria-pressed={activePlaneManual}
-              disabled={savingPositions}
+              // A drilled snapshot (layoutApiRef.current?.snapshotPositions()) holds
+              // only the visible subtree, not the whole plane — freezing from there
+              // would set the plane-wide `manual` flag off the back of a partial
+              // snapshot. Must be done from the top level instead.
+              disabled={savingPositions || enteredPath.length > 0}
               title={
-                activePlaneManual
-                  ? 'Positions are pinned. Click to let the layout algorithm arrange this plane again (your positions are kept).'
-                  : 'Pin every box where it is so the layout algorithm stops moving them. Boxes added to the source later are still placed automatically until you move them.'
+                enteredPath.length > 0
+                  ? 'Freezing pins the whole plane, but a drilled view only has positions for what it shows — leave the drilled view first.'
+                  : activePlaneManual
+                    ? 'Positions are pinned. Click to let the layout algorithm arrange this plane again (your positions are kept).'
+                    : 'Pin every box where it is so the layout algorithm stops moving them. Boxes added to the source later are still placed automatically until you move them.'
               }
               onClick={() => void toggleFreeze()}
             >
@@ -838,12 +863,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         model={model}
                         nodeId={selection.id}
                         activePlane={activePlane}
-                        hasPin={layout?.planes[layoutPlaneKey(model, activePlane)]?.[selection.id] !== undefined}
-                        {...(() => {
-                          const pinned = layout?.planes[layoutPlaneKey(model, activePlane)]?.[selection.id];
-                          const live = layoutApiRef.current?.snapshotPositions()[selection.id];
-                          return { ...(pinned !== undefined ? { pinned } : {}), ...(live !== undefined ? { live } : {}) };
-                        })()}
+                        hasPin={pinned !== undefined}
+                        {...(pinned !== undefined ? { pinned } : {})}
+                        {...(live !== undefined ? { live } : {})}
                         autoFocusName={selection.id === renameId}
                         onCommand={editor.dispatch}
                         onClose={() => select(null)}

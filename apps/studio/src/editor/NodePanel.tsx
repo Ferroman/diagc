@@ -533,7 +533,7 @@ export function NodePanel({
             <input
               type="number"
               aria-label="X"
-              step={1}
+              step="any"
               value={posX}
               placeholder={live !== undefined ? String(Math.round(live.x)) : 'auto'}
               onChange={(e) => setPosX(e.target.value)}
@@ -546,7 +546,7 @@ export function NodePanel({
             <input
               type="number"
               aria-label="Y"
-              step={1}
+              step="any"
               value={posY}
               placeholder={live !== undefined ? String(Math.round(live.y)) : 'auto'}
               onChange={(e) => setPosY(e.target.value)}

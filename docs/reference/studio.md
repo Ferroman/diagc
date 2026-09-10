@@ -22,7 +22,6 @@ A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot ente
 | Double-click a leaf | Zoom to it |
 | Double-click empty canvas (view mode) | Fit the whole diagram |
 | `Shift` + click a node, or `Shift` + drag on empty canvas | Add to the selection / draw a marquee. Dragging any selected node drags them all. |
-| Align / distribute toolbar | Floats above two or more selected nodes: align left/centre/right/top/middle/bottom, distribute (3+). In view mode it appears when positions can be saved. |
 | Scroll | Pan |
 | Pinch, or the corner controls | Zoom |
 | Pin chip on a group header | Force expanded/collapsed, overriding the automatic choice |
@@ -39,6 +38,7 @@ A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot ente
 | Double-click empty canvas | Drop a node there and name it |
 | Drag a node onto another | Nest it inside |
 | Drag a node near a sibling's edge or centre | It snaps into line and a dashed guide shows the match. Also with Alt+drag in view mode. |
+| Align / distribute toolbar | Floats above two or more selected nodes: align left/centre/right/top/middle/bottom, distribute (3+). In view mode it appears when positions can be saved. |
 | Drag from a connect dot to another node | Create a `sync` relation, pinned to both dots |
 | Double-click a node | Rename in place (Enter commits, Escape cancels) |
 | Double-click an edge | Edit its label in place |
