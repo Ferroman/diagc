@@ -384,6 +384,38 @@ path.dg-loop-badge-circle {
   stroke-dasharray: 4 3;
   vector-effect: non-scaling-stroke;
 }
+/* Align/distribute toolbar floating above a multi-selection */
+.dg-selection-toolbar {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 6px;
+  background: var(--dg-bg, #fff);
+  border: 1px solid var(--dg-border, #d0d4dc);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.dg-arrange-btn {
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--dg-text, #111);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 6px;
+}
+.dg-arrange-btn:hover:not(:disabled) {
+  background: var(--dg-border, #d0d4dc);
+}
+.dg-arrange-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+.dg-arrange-sep {
+  width: 1px;
+  margin: 2px 2px;
+  background: var(--dg-border, #d0d4dc);
+}
 /* Click a badge to reveal its loop */
 .dg-loop-badge {
   cursor: pointer;

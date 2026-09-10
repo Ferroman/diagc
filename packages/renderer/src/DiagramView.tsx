@@ -40,8 +40,11 @@ import { strokesBounds } from './drawings';
 import { DrawingsLayer } from './DrawingsLayer';
 import { reconnectPin } from './floating';
 import { GitLanesOverlay } from './GitLanesOverlay';
+import { alignBoxes, distributeBoxes, dropDescendants, type Delta } from './arrange';
+import type { Box } from './box';
 import { GUIDE_THRESHOLD_PX, snapDragChanges, type Guide } from './guides';
 import { GuidesLayer } from './GuidesLayer';
+import { SelectionToolbar } from './SelectionToolbar';
 import { Legend } from './Legend';
 import { LoopLabelLayer } from './LoopLabelLayer';
 import { LoopHighlightContext } from './loop-highlight';
@@ -524,6 +527,39 @@ function Inner(props: DiagramViewProps) {
       ),
     commit: commitMoves,
   });
+  const selectedIds = useMemo(() => rfNodes.filter((n) => n.selected === true).map((n) => n.id), [rfNodes]);
+  // Arrange buttons need somewhere for the result to land: edit mode has the
+  // host's command pipeline; view mode only the host's Save positions offer,
+  // so the published viewer (which passes neither) never shows them.
+  const canArrange = !chromeless && !gestureCaptured && (editing || props.onViewPositionsChange !== undefined);
+  const arrangeSelection = (fn: (boxes: Box[]) => Record<string, Delta>) => {
+    nudge.flush(); // a pending keyboard burst must land before this batch
+    const byId = new Map(rfNodesRef.current.map((n) => [n.id, n] as const));
+    const ids = dropDescendants(selectedIds, (id) => byId.get(id)?.parentId);
+    const boxes: Box[] = [];
+    for (const id of ids) {
+      const n = byId.get(id);
+      const abs = reactFlow.getInternalNode(id)?.internals.positionAbsolute;
+      const w = n?.measured?.width;
+      const h = n?.measured?.height;
+      if (n === undefined || abs === undefined || w === undefined || h === undefined) continue;
+      boxes.push({ id, x: abs.x, y: abs.y, w, h });
+    }
+    const positions: Positions = {};
+    for (const [id, d] of Object.entries(fn(boxes))) {
+      const n = byId.get(id)!;
+      positions[id] = { x: n.position.x + d.dx, y: n.position.y + d.dy };
+    }
+    if (Object.keys(positions).length === 0) return;
+    // move at once (the commit re-derives the same positions a frame later)
+    setRfNodes((nds) =>
+      applyNodeChanges(
+        Object.entries(positions).map(([id, position]) => ({ type: 'position' as const, id, position })),
+        nds,
+      ),
+    );
+    commitMoves(positions);
+  };
   // Resync must not wipe flags React Flow owns on its copy — selection drives
   // the image-node resizer, and a selection click itself re-renders the app,
   // recomputing derivedNodes in the same tick.
@@ -912,6 +948,13 @@ function Inner(props: DiagramViewProps) {
         />
         <LaserLayer trails={laser.trails} live={laser.live} />
         <GuidesLayer lines={guides} />
+        {canArrange && (
+          <SelectionToolbar
+            ids={selectedIds}
+            onAlign={(mode) => arrangeSelection((boxes) => alignBoxes(boxes, mode))}
+            onDistribute={(axis) => arrangeSelection((boxes) => distributeBoxes(boxes, axis))}
+          />
+        )}
         <Breadcrumbs path={enteredPath} nameOf={(id) => nameOf.get(id) ?? id} onCrumb={exitTo} />
         {showLegend && legendRowList.length > 0 && (
           // LegendPosition is a subset of React Flow's PanelPosition — no cast needed.

@@ -70,6 +70,7 @@ Three aids work while you Alt-drag, no edit mode needed:
 - **Guides.** Drag a box near a sibling's edge or centre and it snaps into line; a dashed guide shows what it matched.
 - **Arrow keys.** Select a box and nudge it 5px at a time (`Shift` for 20px). No Alt needed.
 - **Snap.** The `⋮⋮ Snap` chip in the header snaps drags and nudges to a 10px grid.
+- **Line several up.** `Shift`+click (or `Shift`+drag a marquee around) two or more boxes and use the toolbar that appears above them: align, or distribute three or more evenly.
 
 All three feed the same **Save positions** chip.
 

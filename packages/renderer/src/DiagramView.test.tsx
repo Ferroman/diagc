@@ -166,6 +166,39 @@ describe('DiagramView', () => {
     await waitFor(() => expect(onMultiSelect).toHaveBeenLastCalledWith(['gw']));
   });
 
+  it('edit mode: Align left on a two-node selection commits one batch with equal x', async () => {
+    const onNodesMoved = vi.fn();
+    render(<DiagramView model={containerEndpointModel()} mode="edit" edit={{ onNodesMoved }} />);
+    fireEvent.click(await screen.findByText('gw'));
+    fireEvent.keyDown(window, { key: 'Shift', code: 'ShiftLeft' });
+    fireEvent.click(screen.getByText('sys'), { shiftKey: true });
+    fireEvent.keyUp(window, { key: 'Shift', code: 'ShiftLeft' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Align left' }));
+    await waitFor(() => expect(onNodesMoved).toHaveBeenCalledTimes(1));
+    const positions = onNodesMoved.mock.calls[0]![0] as Record<string, { x: number; y: number }>;
+    const moved = Object.keys(positions);
+    expect(moved.length).toBeGreaterThanOrEqual(1);
+    expect(moved.every((id) => id === 'gw' || id === 'sys')).toBe(true);
+  });
+
+  it('view mode: the toolbar needs somewhere to land — shown with onViewPositionsChange, hidden without', async () => {
+    const { unmount } = render(<DiagramView model={containerEndpointModel()} onViewPositionsChange={vi.fn()} />);
+    fireEvent.click(await screen.findByText('gw'));
+    fireEvent.keyDown(window, { key: 'Shift', code: 'ShiftLeft' });
+    fireEvent.click(screen.getByText('sys'), { shiftKey: true });
+    fireEvent.keyUp(window, { key: 'Shift', code: 'ShiftLeft' });
+    expect(await screen.findByRole('button', { name: 'Align left' })).toBeDefined();
+    unmount();
+
+    render(<DiagramView model={containerEndpointModel()} />);
+    fireEvent.click(await screen.findByText('gw'));
+    fireEvent.keyDown(window, { key: 'Shift', code: 'ShiftLeft' });
+    fireEvent.click(screen.getByText('sys'), { shiftKey: true });
+    fireEvent.keyUp(window, { key: 'Shift', code: 'ShiftLeft' });
+    await waitFor(() => expect(document.querySelectorAll('.react-flow__node.selected').length).toBe(2));
+    expect(screen.queryByRole('button', { name: 'Align left' })).toBeNull();
+  });
+
   it('view mode: two quick shift-clicks on a container grow the selection, they never drill', async () => {
     const onEnteredPathChange = vi.fn();
     render(<DiagramView model={containerEndpointModel()} onEnteredPathChange={onEnteredPathChange} />);

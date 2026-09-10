@@ -21,6 +21,8 @@ A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot ente
 | Double-click it again | Fold it back |
 | Double-click a leaf | Zoom to it |
 | Double-click empty canvas (view mode) | Fit the whole diagram |
+| `Shift` + click a node, or `Shift` + drag on empty canvas | Add to the selection / draw a marquee. Dragging any selected node drags them all. |
+| Align / distribute toolbar | Floats above two or more selected nodes: align left/centre/right/top/middle/bottom, distribute (3+). In view mode it appears when positions can be saved. |
 | Scroll | Pan |
 | Pinch, or the corner controls | Zoom |
 | Pin chip on a group header | Force expanded/collapsed, overriding the automatic choice |
