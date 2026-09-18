@@ -74,6 +74,7 @@ Organised along [Diátaxis](https://diataxis.fr/) lines — learning, tasks, loo
 | [Draw a git branching diagram](docs/how-to/draw-a-git-branching-diagram.md) | Lanes of commits with branch-offs and merges, from the DSL or the studio. |
 | [Draw an activity diagram](docs/how-to/draw-an-activity-diagram.md) | Swimlanes, forks and joins, decisions, signals and interrupts. |
 | [Draw a C4 diagram](docs/how-to/draw-a-c4-diagram.md) | Solid person/system/container/component fills, and a technology subtitle. |
+| [Draw a second-order thinking diagram](docs/how-to/draw-a-second-order-thinking-diagram.md) | A decision, its consequences, and what follows from those — banded by order. |
 | [Compose diagrams](docs/how-to/compose-diagrams.md) | `include` and `key`: umbrella views over several diagrams. |
 | [Publish and share](docs/how-to/publish-and-share.md) | PNGs for a README, interactive pages, GitHub Pages. |
 | [Eject a diagram to TypeScript](docs/how-to/eject-to-typescript.md) | Promote a studio-drawn diagram to a verified, generated `.diagram.ts`. |

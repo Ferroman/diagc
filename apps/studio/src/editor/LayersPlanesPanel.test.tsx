@@ -324,4 +324,11 @@ describe('LayersPlanesPanel', () => {
     fireEvent.change(select, { target: { value: '' } });
     expect(onCommand).toHaveBeenCalledWith({ type: 'set-diagram-notation', notation: null });
   });
+
+  it('names the second-order notation properly instead of deriving "Second order"', () => {
+    const m = model('d');
+    m.node('a');
+    render(<LayersPlanesPanel model={m.toJSON()} onCommand={vi.fn()} mode="edit" />);
+    expect(screen.getByRole('option', { name: 'Second-order thinking' })).toBeDefined();
+  });
 });

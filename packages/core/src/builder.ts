@@ -17,6 +17,7 @@ import type {
   TextRun,
 } from './types';
 import { GIT_STAGE_TYPE } from './git';
+import { SO_DECISION_TYPE, SO_LEADS_TO_KIND, consequenceTypeOf, type Valence } from './second-order';
 import { DiagramValidationError, validate } from './validate';
 
 export interface NodeOpts {
@@ -209,6 +210,50 @@ export class GitGraphBuilder {
   }
 }
 
+export interface ConsequenceOpts {
+  /** good, bad or neutral (the default) — picks the node type */
+  valence?: Valence;
+  /** a label on the arrow that leads here */
+  label?: string;
+  description?: string;
+  color?: string;
+}
+
+/** A decision or a consequence. `then()` IS the method of second-order
+ * thinking — "and then what?" — so a chain of calls reads as the reasoning. */
+export class ConsequenceRef extends NodeRef {
+  constructor(
+    id: string,
+    private readonly m: ModelBuilder,
+  ) {
+    super(id, m);
+  }
+
+  /** what follows from this: a new consequence, and the arrow that leads to it */
+  then(id: string, name?: string, opts: ConsequenceOpts = {}): ConsequenceRef {
+    const { valence, label, ...rest } = opts;
+    this.m.node(id, { type: consequenceTypeOf(valence ?? '0'), ...(name !== undefined ? { name } : {}), ...rest });
+    const ref = new ConsequenceRef(id, this.m);
+    this.leadsTo(ref, label !== undefined ? { label } : {});
+    return ref;
+  }
+
+  /** join two branches: this also leads to a consequence declared elsewhere */
+  leadsTo(to: NodeRef, opts: { label?: string } = {}): this {
+    this.m.relate(this, to, { kind: SO_LEADS_TO_KIND, ...(opts.label !== undefined ? { label: opts.label } : {}) });
+    return this;
+  }
+}
+
+export class SecondOrderBuilder {
+  constructor(private readonly m: ModelBuilder) {}
+  /** the root of a tree; several decisions share one set of bands */
+  decision(id: string, name?: string, opts: Omit<ConsequenceOpts, 'valence' | 'label'> = {}): ConsequenceRef {
+    this.m.node(id, { type: SO_DECISION_TYPE, ...(name !== undefined ? { name } : {}), ...opts });
+    return new ConsequenceRef(id, this.m);
+  }
+}
+
 export interface ActivityElementOpts {
   color?: string;
 }
@@ -332,6 +377,7 @@ export class ModelBuilder {
   private modelStyle: string | undefined;
   private pairCounters = new Map<string, number>();
   private git: GitGraphBuilder | undefined;
+  private so: SecondOrderBuilder | undefined;
 
   constructor(
     private readonly id: string,
@@ -443,6 +489,19 @@ export class ModelBuilder {
     this.plane(opts.plane ?? 'git-graph', { name: opts.name ?? 'Git graph', notation: 'git-graph' });
     this.git = new GitGraphBuilder(this);
     return this.git;
+  }
+
+  /**
+   * Declare a second-order thinking diagram. With no `plane` the NOTATION is
+   * model-wide (nothing about it needs a plane — the notation is flat); name a
+   * plane to keep it beside other views of the same model.
+   */
+  secondOrder(opts: { plane?: string; name?: string } = {}): SecondOrderBuilder {
+    if (this.so !== undefined) throw new Error('secondOrder() already declared');
+    if (opts.plane !== undefined) this.plane(opts.plane, { name: opts.name ?? 'Consequences', notation: 'second-order' });
+    else this.notation('second-order');
+    this.so = new SecondOrderBuilder(this);
+    return this.so;
   }
 
   /** Declare an activity diagram: a framed swimlane flow. Repeatable — each

@@ -56,6 +56,8 @@ import { LeveragePanel, type LeverageFocus } from './LeveragePanel';
 import { LayersPlanesPanel } from './editor/LayersPlanesPanel';
 import { GitPanel } from './editor/GitPanel';
 import { ActivityPanel } from './editor/ActivityPanel';
+import { SecondOrderPanel } from './editor/SecondOrderPanel';
+import { thenWhat } from './editor/secondOrderActions';
 import { InspectorTabs, type InspectorTab } from './editor/InspectorTabs';
 import { Dock } from './Dock';
 import { clampDockWidth } from './dockWidth';
@@ -139,6 +141,12 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const [autoArrange, setAutoArrange] = useState(false);
   const [selection, setSelection] = useState<DiagramSelection | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
+  // A node created OUTSIDE the canvas (a panel button, e.g. second-order's "And
+  // then what?") that should open for rename, same as onCreateAt's canvas
+  // gesture does. Nonce-keyed (see EditingApi.editLabelRequest) so asking again
+  // for the same id still re-arms the effect.
+  const [labelRequest, setLabelRequest] = useState<{ id: string; nonce: number } | undefined>(undefined);
+  const requestLabelEdit = (id: string) => setLabelRequest((r) => ({ id, nonce: (r?.nonce ?? 0) + 1 }));
   // The canvas multi-selection (Shift+click / marquee), mirrored from the
   // renderer. Drives the ⊞ Group chip and the selection glow. Deduped by
   // contents so a re-report of the same set never re-renders the app.
@@ -173,9 +181,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // which must call the latest closure without re-subscribing on every render:
   //   - addNodeRef: the keydown N-key shortcut (see useEditSession).
   //   - leaveEditRef: the hashchange listener's cross-diagram edit close.
-  // Both are read through refs by the listeners and assigned on every render.
+  //   - thenWhatRef: the keydown Tab shortcut (second-order "and then what?").
+  // All three are read through refs by the listeners and assigned on every render.
   const addNodeRef = useRef<() => void>(() => {});
   const leaveEditRef = useRef<() => boolean>(() => true);
+  const thenWhatRef = useRef<() => boolean>(() => false);
 
   const dl = useDeepLink({ names, booted, leaveEditRef });
   const { selected, setSelected, enteredPath, setEnteredPath, handleEnteredPathChange } = dl;
@@ -227,6 +237,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     addNodeRef,
     toolKeyRef,
     leaveEditRef,
+    thenWhatRef,
   });
   const { editing, setEditing, editor, layoutApiRef, saveIssues, setSaveIssues, saving, doSave, enterEdit, leaveEdit } = edit;
 
@@ -261,6 +272,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // published page.
   const activePlane = plane;
   const notation = activeNotation(planes, activePlane, model?.notation);
+  // elk partitions (second-order's order bands) are a layered-only feature, and
+  // the renderer already forces layered for a partitioned profile — so the
+  // algorithm picker would only ever offer a choice the run ignores. Reaches
+  // both the toolbar (edit mode) and the view-mode LayoutControls below.
+  const algorithmLocked = notationProfile(notation).partitionOf !== undefined;
   // A borrowing plane's node membership resolves to its base plane
   // (compileView/resolveContainmentPlane), so tagging node.plane with the
   // borrowing plane's own id would mismatch and the node would silently
@@ -397,6 +413,20 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   });
   const { select, switchPlane, activateLayer, toggleLayer, mergeSelectedLayers, toggleExpand, resetView } = view;
   const { compareSelect, groupSelected } = view;
+
+  // Mind-map-style Tab: add a neutral consequence to the selected second-order
+  // node and open it for typing, same as the panel's own buttons. Reports
+  // whether it acted so the keydown handler only swallows Tab's default focus
+  // move when there was something to extend (see useEditSession).
+  thenWhatRef.current = () => {
+    if (!editing || notation !== 'second-order' || model === undefined || selection?.kind !== 'node') return false;
+    const out = thenWhat(model, selection.id, '0');
+    if (out === null) return false;
+    editor.dispatch(out.command);
+    select({ kind: 'node', id: out.id });
+    requestLabelEdit(out.id);
+    return true;
+  };
 
   // Diagram lifecycle: create + rename + duplicate (the flows that re-key the
   // artifact store).
@@ -695,6 +725,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
               settings={activePlaneSettings}
               onChange={previewLayoutSettings}
               {...(model !== undefined ? { defaultDirection: defaultLayoutDirection(model) } : {})}
+              algorithmLocked={algorithmLocked}
             />
             {layoutPreview[layoutPlaneKey(model, activePlane)] !== undefined && (
               <button
@@ -847,6 +878,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
           }}
           drawingDisabled={enteredPath.length > 0}
           layoutLocked={notationProfile(notation).layout !== undefined}
+          algorithmLocked={algorithmLocked}
         />
       )}
       {names.length === 0 && (
@@ -1014,6 +1046,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                       // (the read-only path passes `mode` without it — the view/edit
                       // split is then structural, not by convention).
                       edit: {
+                      ...(labelRequest !== undefined ? { editLabelRequest: labelRequest } : {}),
                       onNodesMoved: (positions: Record<string, { x: number; y: number }>) =>
                         editor.dispatch({
                           type: 'set-positions',
@@ -1146,6 +1179,16 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   selection={selection}
                   onCommand={editor.dispatch}
                   onSelect={(id) => select({ kind: 'node', id })}
+                />
+              )}
+              {editing && notation === 'second-order' && (
+                <SecondOrderPanel
+                  model={model}
+                  selection={selection}
+                  {...(activePlane !== undefined && !activePlaneBorrowsContainment ? { plane: activePlane } : {})}
+                  onCommand={editor.dispatch}
+                  onSelect={(id) => select({ kind: 'node', id })}
+                  onCreated={requestLabelEdit}
                 />
               )}
               {editing && (

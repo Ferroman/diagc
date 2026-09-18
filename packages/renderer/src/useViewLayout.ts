@@ -6,7 +6,9 @@ import {
   layoutPlaneKey,
   runsToPlainText,
   type DiagramModel,
+  type LayoutDirection,
   type LayoutOverlay,
+  type LayoutSettings,
   type ViewNode,
 } from '@diagramming/core';
 import { arrangeActivityFrames } from './activity-frame';
@@ -58,6 +60,9 @@ export interface ViewLayout {
   /** elk's reserved spot (centre) for each labelled edge's label */
   labelSpots: ReadonlyMap<string, EdgePoint>;
   layoutSettings: NonNullable<LayoutOverlay['settings']>[string] | undefined;
+  /** the direction a layered run uses — the sidecar's, else the model's, else
+   * the default (git-graph never runs elk, so this is not what it drew) */
+  flowDirection: LayoutDirection;
 }
 
 const NO_SHIFTS: ReadonlyMap<string, Shift> = new Map();
@@ -179,12 +184,25 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // keyed on the direction string so an edit (a new model object) does not by
   // itself re-run the layout.
   const modelDirection = defaultLayoutDirection(input.model);
-  const runSettings = useMemo(
-    () =>
+  const partitioned = input.profile.partitionOf !== undefined;
+  const runSettings = useMemo((): LayoutSettings | undefined => {
+    const resolved =
       layoutSettings?.direction !== undefined || modelDirection === FALLBACK_DIRECTION
         ? layoutSettings
-        : { ...layoutSettings, direction: modelDirection },
-    [layoutSettings, modelDirection],
+        : { ...layoutSettings, direction: modelDirection };
+    // partitions are a layered feature: another algorithm would ignore them and
+    // the bands would be drawn over an arrangement that knows nothing of them
+    if (!partitioned || resolved?.algorithm === undefined) return resolved;
+    const { algorithm: _layeredOnly, ...rest } = resolved;
+    return rest;
+  }, [layoutSettings, modelDirection, partitioned]);
+
+  // What a partitioned notation derives for its nodes (second-order thinking's
+  // consequence order): forces one layered run so every band lines up, whatever
+  // algorithm the sidecar names (see `runSettings` above).
+  const partitions = useMemo(
+    () => input.profile.partitionOf?.(input.model, input.plane),
+    [input.profile, input.model, input.plane],
   );
 
   const [geometry, setGeometry] = useState<Map<string, NodeGeometry> | null>(null);
@@ -202,7 +220,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     const arrange =
       notationLayout !== undefined
         ? Promise.resolve().then(() => notationLayout(input.compiled, input.model, input.plane, sizes))
-        : layoutView(input.compiled, sizes, runSettings);
+        : layoutView(input.compiled, sizes, runSettings, partitions !== undefined ? { partitions } : undefined);
     void arrange
       .then((r) => {
         if (!live) return;
@@ -223,7 +241,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     return () => {
       live = false;
     };
-  }, [input.compiled, sizes, runSettings, input.profile, input.model, input.plane]);
+  }, [input.compiled, sizes, runSettings, input.profile, input.model, input.plane, partitions]);
 
   // Overlay-applied geometry: elk output with any layout-overlay positions for
   // the active plane substituted in (width/height stay elk's). Derived so the
@@ -292,8 +310,8 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     if (input.profile.layout !== undefined) return { corner: SHARP_CORNER };
     if (layoutSettings?.edgeRouting === 'orthogonal') return { corner: SHARP_CORNER };
     if (input.profile.edge?.bowed === true) return undefined;
-    return (layoutSettings?.algorithm ?? DEFAULT_ALGORITHM) === DEFAULT_ALGORITHM ? { corner: SOFT_CORNER } : undefined;
-  }, [input.profile, layoutSettings]);
+    return (runSettings?.algorithm ?? DEFAULT_ALGORITHM) === DEFAULT_ALGORITHM ? { corner: SOFT_CORNER } : undefined;
+  }, [input.profile, layoutSettings, runSettings]);
 
   return {
     geometry,
@@ -306,5 +324,6 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     laidAt,
     labelSpots,
     layoutSettings,
+    flowDirection: (runSettings?.direction ?? FALLBACK_DIRECTION) as LayoutDirection,
   };
 }

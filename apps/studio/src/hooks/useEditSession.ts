@@ -24,6 +24,10 @@ export interface UseEditSessionOptions {
    *  keydown/hashchange listeners subscribe once, so both read it through a
    *  ref — leaveEdit assigns `.current` on every render. */
   leaveEditRef: RefObject<() => boolean>;
+  /** App-owned "and then what?" for the Tab key (second-order diagrams): adds a
+   * neutral consequence to the selection and reports whether it did. A ref for
+   * the same reason as addNodeRef. */
+  thenWhatRef: MutableRefObject<() => boolean>;
 }
 
 export interface EditSession {
@@ -61,6 +65,7 @@ export function useEditSession({
   addNodeRef,
   toolKeyRef,
   leaveEditRef,
+  thenWhatRef,
 }: UseEditSessionOptions): EditSession {
   const [editing, setEditing] = useState(false);
   const [saveIssues, setSaveIssues] = useState<{ message: string }[] | null>(null);
@@ -191,6 +196,12 @@ export function useEditSession({
         addNodeRef.current();
         return;
       }
+      // Tab is only taken when it did something: anywhere else it must stay the
+      // browser's focus key.
+      if (e.key === 'Tab' && !(e.metaKey || e.ctrlKey || e.altKey || e.shiftKey)) {
+        if (thenWhatRef.current()) e.preventDefault();
+        return;
+      }
       if (!(e.metaKey || e.ctrlKey || e.altKey) && (key === 'p' || key === 'e' || e.key === 'Escape')) {
         e.preventDefault();
         toolKeyRef.current(key === 'p' ? 'pen' : key === 'e' ? 'eraser' : 'select');
@@ -210,7 +221,7 @@ export function useEditSession({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editing, addNodeRef, toolKeyRef]);
+  }, [editing, addNodeRef, toolKeyRef, thenWhatRef]);
 
   // Autosave: a short debounce after the last edit. `session` changes identity on
   // every dispatch, so each edit reschedules; once a save clears `dirty`, the

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model, type CompiledView, type ViewNode } from '@diagramming/core';
+import { compileView, consequenceOrders, model, type CompiledView, type ViewNode } from '@diagramming/core';
 import { COLLAPSED_SIZE, layoutOptionsFor, layoutView, type NodeGeometry } from './layout';
 import { buildGraph } from './layout-graph';
 
@@ -329,6 +329,36 @@ describe('layoutView', () => {
     expect((await layoutView(view, undefined, { algorithm: 'force', edgeRouting: 'orthogonal' })).routes.size).toBe(
       0,
     );
+  });
+
+  it('keeps every order on its own row when partitions are given, across separate decisions', async () => {
+    // `b` is 1st order but only feeds the 4th-order `z`: left alone, layered
+    // sinks it next to z. The second decision is a separate component, which the
+    // planned layout would arrange as its own block with its own rows.
+    const m = model('sink');
+    const so = m.secondOrder();
+    const d = so.decision('d');
+    const z = d.then('c').then('e').then('g').then('z');
+    d.then('b').leadsTo(z);
+    so.decision('d2').then('p').then('q');
+    const json = m.toJSON();
+    const view = compileView(json, {});
+    const { orders } = consequenceOrders(json);
+
+    const pinned = await layoutView(view, undefined, undefined, { partitions: orders });
+    const rowOf = (id: string) => pinned.geometry.get(id)!.y;
+    for (const [id, order] of orders) {
+      for (const [other, otherOrder] of orders) {
+        if (order === otherOrder) expect(rowOf(id), `${id} and ${other}`).toBe(rowOf(other));
+        if (order < otherOrder) expect(rowOf(id), `${id} above ${other}`).toBeLessThan(rowOf(other));
+      }
+    }
+    expect(pinned.routes.size).toBe(view.layoutEdges.length); // still routed
+
+    const plain = await layoutView(view);
+    expect(plain).not.toBe(pinned); // the partitions are part of the cache key
+    // ...and without them `b` leaves its band-mate `c` to sit by `z`
+    expect(plain.geometry.get('b')!.y).not.toBe(plain.geometry.get('c')!.y);
   });
 });
 

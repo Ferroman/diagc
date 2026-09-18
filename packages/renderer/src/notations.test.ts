@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { model } from '@diagramming/core';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import { NOTATION_PROFILES, notationProfile } from './notations';
 
@@ -68,5 +69,22 @@ describe('notationProfile', () => {
     expect(t['c4-system-external']).toMatchObject({ fill: '#999999' });
     // boundaries keep no fill — they stay dashed context, not solid things
     expect(t['c4-system-boundary']).toBeUndefined();
+  });
+});
+
+describe('second-order profile', () => {
+  const p = notationProfile('second-order');
+  it('draws the order-bands overlay, partitioning nodes by consequence order', () => {
+    expect(notationProfile('second-order').overlay).toBe('order-bands');
+    expect(notationProfile('second-order').partitionOf).toBeDefined();
+  });
+  it('tints consequences by valence from the theme polarity tokens, and leaves the rest alone', () => {
+    const m = model('so');
+    const d = m.secondOrder().decision('d');
+    d.then('good', 'good', { valence: '+' });
+    d.then('bad', 'bad', { valence: '-' });
+    d.then('meh');
+    const colors = p.node!.colorOf!(m.toJSON(), undefined);
+    expect(Object.fromEntries(colors)).toEqual({ good: 'var(--dg-polarity-positive)', bad: 'var(--dg-polarity-negative)' });
   });
 });

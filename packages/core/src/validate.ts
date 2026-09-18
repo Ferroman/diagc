@@ -16,6 +16,7 @@ import {
 } from './types';
 import { childrenOf } from './children';
 import { GIT_NOTATION, GIT_STAGE_TYPE, gitGraph, isGitKind, stageCommit } from './git';
+import { SECOND_ORDER_NOTATION, SO_DECISION_TYPE, consequenceOrders, isSecondOrderNode } from './second-order';
 
 export interface ValidationIssue {
   code:
@@ -57,7 +58,11 @@ export interface ValidationIssue {
     | 'git-stage-span'
     | 'activity-lane-parent'
     | 'activity-frame-children'
-    | 'activity-region-parent';
+    | 'activity-region-parent'
+    | 'so-no-decision'
+    | 'so-cycle'
+    | 'so-unreachable'
+    | 'so-contained';
   message: string;
   ref?: string;
 }
@@ -524,6 +529,52 @@ function validateActivity(ctx: Ctx): void {
   }
 }
 
+/**
+ * Second-order conventions, applied wherever RENDERING would activate the
+ * profile — the same plane pick as validateGit: a plane's own `notation` wins,
+ * otherwise the model-level one; the FIRST such plane is the one read.
+ * The derivation never throws on a malformed graph, so each convention an
+ * author should hear about is an issue here.
+ */
+function validateSecondOrder(ctx: Ctx): void {
+  const { issues, m } = ctx;
+  const plane = ctx.planes.find((p) => (p.notation ?? m.notation) === SECOND_ORDER_NOTATION);
+  const modelLevel = plane === undefined && ctx.planes.length === 0 && m.notation === SECOND_ORDER_NOTATION;
+  if (plane === undefined && !modelLevel) return;
+
+  const soIds = new Set(m.nodes.filter(isSecondOrderNode).map((n) => n.id));
+  // An empty diagram — or one holding only non-second-order nodes, e.g. a
+  // stray comment — is where every second-order diagram starts, and the
+  // studio never opens a model that already has issues: this must wait for
+  // there to be a second-order node to judge before it can want a decision
+  // among them.
+  if (soIds.size > 0 && !m.nodes.some((n) => n.type === SO_DECISION_TYPE)) {
+    report(issues, 'so-no-decision', 'A second-order diagram needs at least one decision (a node of type so-decision)', plane?.id ?? m.id);
+  }
+  const { cycle, unreachable } = consequenceOrders(m);
+  if (cycle !== undefined) {
+    report(
+      issues,
+      'so-cycle',
+      `Consequences form a loop (${cycle.join(' → ')}); a feedback loop is a causal-loop diagram — use that notation for it`,
+      cycle[0],
+    );
+  }
+  for (const id of unreachable) {
+    report(issues, 'so-unreachable', `Consequence '${id}' follows from no decision`, id);
+  }
+  // Bands and groups want the same rectangle; a group spanning two bands has no
+  // sensible picture. Untagged containment belongs to the default plane.
+  const defaultPlane = ctx.planes[0]?.id;
+  const active = plane?.id ?? defaultPlane;
+  const reported = new Set<string>();
+  for (const e of m.containment) {
+    if ((e.plane ?? defaultPlane) !== active || !soIds.has(e.child) || reported.has(e.child)) continue;
+    reported.add(e.child);
+    report(issues, 'so-contained', `'${e.child}' sits inside '${e.parent}'; decisions and consequences cannot be grouped in a second-order diagram`, e.child);
+  }
+}
+
 export function validate(m: DiagramModel): ValidationIssue[] {
   const ctx: Ctx = {
     issues: [],
@@ -547,6 +598,7 @@ export function validate(m: DiagramModel): ValidationIssue[] {
   validateCycles(ctx);
   validateGit(ctx);
   validateActivity(ctx);
+  validateSecondOrder(ctx);
   return ctx.issues;
 }
 

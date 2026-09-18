@@ -33,6 +33,14 @@ export interface EdgePoint {
   y: number;
 }
 
+export interface LayoutExtras {
+  /** node id → layer partition, from a notation that derives an order for its
+   * nodes (NotationProfile.partitionOf). Forces ONE layered run: component
+   * packing arranges disconnected parts as separate blocks, whose rows would
+   * not line up with each other. */
+  partitions?: ReadonlyMap<string, number>;
+}
+
 export interface LayoutResult {
   /** parent-relative node geometry (elk output), keyed by node id */
   geometry: Map<string, NodeGeometry>;
@@ -74,6 +82,7 @@ function signature(
   view: CompiledView,
   sizes?: ReadonlyMap<string, SizeHint>,
   settings?: LayoutSettings,
+  partitions?: ReadonlyMap<string, number>,
 ): string {
   const nodes: string[] = [];
   const walk = (n: ViewNode) => {
@@ -96,19 +105,30 @@ function signature(
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([id, s]) => `${id}:${s.width}x${s.height}${s.reserveBottom !== undefined ? `+${s.reserveBottom}` : ''}`)
           .join('|')}`;
-  return `${nodes.join('|')}#${edges}${sized}${settingsKey(settings)}`;
+  const pinned =
+    partitions === undefined || partitions.size === 0
+      ? ''
+      : `%${[...partitions.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([id, p]) => `${id}:${p}`)
+          .join('|')}`;
+  return `${nodes.join('|')}#${edges}${sized}${settingsKey(settings)}${pinned}`;
 }
 
 export async function layoutView(
   view: CompiledView,
   sizeOverrides?: ReadonlyMap<string, SizeHint>,
   settings?: LayoutSettings,
+  extra?: LayoutExtras,
 ): Promise<LayoutResult> {
-  const key = signature(view, sizeOverrides, settings);
+  const partitions = extra?.partitions !== undefined && extra.partitions.size > 0 ? extra.partitions : undefined;
+  const key = signature(view, sizeOverrides, settings, partitions);
   const hit = cache.get(key);
   if (hit) return hit;
 
-  const result = (await layoutPlanned(view, sizeOverrides, settings)) ?? (await layoutSingleRun(view, sizeOverrides, settings));
+  const result =
+    (partitions === undefined ? await layoutPlanned(view, sizeOverrides, settings) : undefined) ??
+    (await layoutSingleRun(view, sizeOverrides, settings, partitions));
   releaseReserved(view, sizeOverrides, result.geometry);
   if (cache.size >= CACHE_CAP) {
     const oldest = cache.keys().next().value;
@@ -425,6 +445,7 @@ async function layoutSingleRun(
   view: CompiledView,
   sizeOverrides: ReadonlyMap<string, SizeHint> | undefined,
   settings: LayoutSettings | undefined,
+  partitions?: ReadonlyMap<string, number>,
 ): Promise<LayoutResult> {
   // A rejected pick must degrade rather than freeze the canvas, so the attempts
   // below run in escalating order of concession and EVERY one of them is
@@ -460,7 +481,10 @@ async function layoutSingleRun(
   for (const attempt of attempts) {
     // the flat graph restructures nothing, so its `lifted` is false by
     // construction — read it rather than assume it
-    const built = buildGraph(view, sizeOverrides, attempt.settings, attempt.flat ? { flat: true } : undefined);
+    const built = buildGraph(view, sizeOverrides, attempt.settings, {
+      ...(attempt.flat ? { flat: true } : {}),
+      ...(partitions !== undefined ? { partitions } : {}),
+    });
     try {
       laid = (await elk.layout(built.graph)) as ElkShape;
       lifted = built.lifted;

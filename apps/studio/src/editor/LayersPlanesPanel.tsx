@@ -43,8 +43,10 @@ type PlaneRow = {
   notation: string;
 };
 
+const NOTATION_LABELS: Record<string, string> = { 'second-order': 'Second-order thinking' };
 // Derives a display label from a notation id ('causal-loop' -> 'Causal loop').
-const notationLabel = (id: string): string => id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');
+const notationLabel = (id: string): string =>
+  NOTATION_LABELS[id] ?? id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');
 
 const commitOnEnter = (e: KeyboardEvent, run: () => void) => {
   if (e.key === 'Enter') {

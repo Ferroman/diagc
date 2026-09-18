@@ -206,6 +206,21 @@ describe('buildGraph', () => {
     expect(folded.children!.find((c) => c.id === 'left')).toMatchObject({ width: 150, height: 50 });
     expect(folded.children!.find((c) => c.id === 'right')).toMatchObject(COLLAPSED_SIZE);
   });
+
+  it('hands elk a partition per root node only when the caller supplies them', () => {
+    const m = model('so');
+    const d = m.secondOrder().decision('d');
+    d.then('a').then('b');
+    const view = compileView(m.toJSON(), {});
+    const plain = buildGraph(view, undefined, undefined).graph;
+    expect(plain.layoutOptions!['elk.partitioning.activate']).toBeUndefined();
+    expect(plain.children!.every((c) => c.layoutOptions?.['elk.partitioning.partition'] === undefined)).toBe(true);
+
+    const orders = new Map([['d', 0], ['a', 1], ['b', 2]]);
+    const pinned = buildGraph(view, undefined, undefined, { partitions: orders }).graph;
+    expect(pinned.layoutOptions!['elk.partitioning.activate']).toBe('true');
+    expect(Object.fromEntries(pinned.children!.map((c) => [c.id, c.layoutOptions?.['elk.partitioning.partition']]))).toEqual({ d: '0', a: '1', b: '2' });
+  });
 });
 
 /**

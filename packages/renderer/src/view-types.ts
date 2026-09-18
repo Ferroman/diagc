@@ -216,6 +216,11 @@ export interface EditingApi {
    * May return the new node's id, which immediately opens it in canvas
    * in-place rename mode (mirrors double-clicking an existing node to rename it). */
   onCreateAt?: (pos: { x: number; y: number }) => string | void;
+  /** Open this node's name for in-place editing — for hosts that create a node
+   * from OUTSIDE the canvas (a panel button, a key) and want the caret in it, as
+   * `onCreateAt`'s returned id does for a canvas double-click. Re-armed by a new
+   * `nonce`, so asking twice for the same id works. */
+  editLabelRequest?: { id: string; nonce: number };
   /** Backspace/Delete pressed with a canvas selection: `nodeIds` are the
    * selected nodes, `relationIds` the constituent relations of any selected
    * edges. Wiring this is what enables the delete key at all — without it

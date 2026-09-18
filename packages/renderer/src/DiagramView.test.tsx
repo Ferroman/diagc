@@ -709,6 +709,46 @@ describe('DiagramView', () => {
     expect(editor.textContent).toBe('api');
   });
 
+  it('opens editLabelRequest\'s node for rename — a host that creates a node OUTSIDE the canvas (a panel button) still gets the caret in it', async () => {
+    render(
+      <DiagramView
+        model={containerEndpointModel()}
+        mode="edit"
+        pins={{ sys: 'expanded' }}
+        edit={{ editLabelRequest: { id: 'api', nonce: 1 } }}
+      />,
+    );
+    const editor = (await screen.findByLabelText('Edit text')) as HTMLElement;
+    expect(editor.textContent).toBe('api');
+  });
+
+  it('does not replay a stale editLabelRequest across a view/edit round-trip — only a new nonce reopens it', async () => {
+    const m = containerEndpointModel();
+    const { rerender } = render(
+      <DiagramView model={m} mode="edit" pins={{ sys: 'expanded' }} edit={{ editLabelRequest: { id: 'api', nonce: 1 } }} />,
+    );
+    const box = (await screen.findByLabelText('Edit text')) as HTMLElement;
+    fireEvent.blur(box); // commits/closes, same as the rich-text rename test above
+    expect(screen.queryByLabelText('Edit text')).toBeNull();
+
+    // leave edit mode: the host drops `mode` and `edit` together (as App.tsx does) —
+    // `labelRequest` becomes undefined, but nothing tells the HOST'S state to forget
+    // the request it already served.
+    rerender(<DiagramView model={m} pins={{ sys: 'expanded' }} />);
+
+    // back to edit mode with the identical, already-served {id, nonce: 1}: must NOT reopen.
+    rerender(
+      <DiagramView model={m} mode="edit" pins={{ sys: 'expanded' }} edit={{ editLabelRequest: { id: 'api', nonce: 1 } }} />,
+    );
+    expect(screen.queryByLabelText('Edit text')).toBeNull();
+
+    // a genuinely new request (nonce bumped) still opens it.
+    rerender(
+      <DiagramView model={m} mode="edit" pins={{ sys: 'expanded' }} edit={{ editLabelRequest: { id: 'api', nonce: 2 } }} />,
+    );
+    expect(await screen.findByLabelText('Edit text')).toBeDefined();
+  });
+
   it('ctrl/cmd-click on a node calls onCompareSelect and leaves selection untouched', async () => {
     // The compare gesture (dependency analysis) must bypass onSelect and the
     // drill double-click correlation entirely — it's a distinct, non-selecting

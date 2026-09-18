@@ -66,10 +66,10 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
 .meta dt { color: var(--dg-text-muted); font-size: 12px; min-width: 90px; }
 .meta dd { font-size: 12px; margin: 0; overflow-wrap: anywhere; }
 .meta a { color: var(--dg-accent); }
-.node-panel, .edge-panel, .lp-panel, .git-panel { display: flex; flex-direction: column; gap: 10px; }
+.node-panel, .edge-panel, .lp-panel, .git-panel, .so-panel { display: flex; flex-direction: column; gap: 10px; }
 .lp-panel { border-left: none; border-right: 1px solid var(--dg-border); }
 .panel-head { align-items: center; display: flex; justify-content: space-between; }
-.node-panel h3, .edge-panel h3, .lp-panel h3, .git-panel h3 { font-size: 12px; letter-spacing: 0.03em; margin: 0 0 6px; text-transform: uppercase; color: var(--dg-text-muted); }
+.node-panel h3, .edge-panel h3, .lp-panel h3, .git-panel h3, .so-panel h3 { font-size: 12px; letter-spacing: 0.03em; margin: 0 0 6px; text-transform: uppercase; color: var(--dg-text-muted); }
 .panel-section { border-top: 1px solid var(--dg-border); padding-top: 10px; }
 .field { display: flex; flex-direction: column; gap: 3px; }
 .field > span { color: var(--dg-text-muted); font-size: 12px; }
@@ -117,6 +117,12 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
    `width: auto` for the Gap field, which shares that rule's specificity. */
 .git-panel input, .git-panel select { margin: 4px 0; }
 .git-panel .chip { margin: 2px 4px 2px 0; }
+
+.so-answers { display: flex; gap: 6px; }
+.so-answers button { flex: 1; }
+.so-hint { color: var(--dg-text-muted); font-size: 12px; margin: 0; }
+.so-issues { list-style: none; margin: 0; padding: 0; }
+.so-issues li button { background: none; border: none; color: var(--dg-text); cursor: pointer; font: inherit; padding: 3px 0; text-align: left; width: 100%; }
 
 /* excalidraw-style option/color pickers */
 .picker-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }

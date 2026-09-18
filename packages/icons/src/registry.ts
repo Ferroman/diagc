@@ -6,17 +6,21 @@ import {
   Box,
   Boxes,
   Braces,
+  CircleDot,
   Cloud,
   Component,
   Container,
   Cpu,
   Database,
+  GitFork,
   Globe,
   HardDrive,
   ListOrdered,
   Mail,
   MessageSquare,
+  Minus,
   Monitor,
+  Plus,
   Puzzle,
   Search,
   Server,
@@ -59,6 +63,12 @@ const BUILTIN: Record<string, IconComponent> = {
   class: Braces,
   node: Cpu,
   instance: Blocks,
+  // Second-order thinking: the glyph repeats the valence, so the tint is never
+  // the only signal (greyscale prints, colour-blind readers).
+  plus: Plus,
+  minus: Minus,
+  dot: CircleDot,
+  decision: GitFork,
 };
 
 /** Every id `createIconRegistry()` resolves out of the box — the source the

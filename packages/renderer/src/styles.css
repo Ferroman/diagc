@@ -732,6 +732,17 @@ path.dg-loop-badge-circle {
 .dg-git-lanes { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
 .dg-git-tail { fill: none; stroke-width: 1.5; stroke-dasharray: 6 4; stroke-linecap: round; }
 
+/* ---- second-order thinking: one stripe per order of consequence ------------ */
+/* z-index -1 inside the viewport's own stacking context: under the edges and
+   the nodes, above the canvas background. */
+.dg-order-bands { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; z-index: -1; }
+.dg-order-band { fill: color-mix(in srgb, var(--dg-text) 3%, transparent); }
+.dg-order-band-alt { fill: color-mix(in srgb, var(--dg-text) 7%, transparent); }
+.dg-order-band-header {
+  fill: var(--dg-text-muted); font: 600 11px/1 system-ui, sans-serif;
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+
 /* ---- activity diagrams: frame / lane / region chrome ---------------------- */
 /* Strip width (28px) mirrors ACTIVITY_LAYOUT.TITLE_STRIP_W / LANE_STRIP_W in
    activity-frame.ts — the layout pass reserves exactly this much room. */

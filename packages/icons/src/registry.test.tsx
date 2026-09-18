@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { createIconRegistry } from './registry';
+import { BUILTIN_ICON_IDS, createIconRegistry } from './registry';
 
 describe('icon registry', () => {
   it('resolves built-in ids to renderable components', () => {
@@ -27,5 +27,9 @@ describe('icon registry', () => {
     expect(icons.resolve('mine')).toBe(Custom);
     icons.register('postgres', Custom);
     expect(icons.resolve('postgres')).toBe(Custom);
+  });
+
+  it('has the second-order glyphs', () => {
+    for (const id of ['plus', 'minus', 'dot', 'decision']) expect(BUILTIN_ICON_IDS).toContain(id);
   });
 });

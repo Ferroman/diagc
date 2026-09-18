@@ -12,6 +12,7 @@ export {
   type NodeGeometry,
   type EdgePoint,
   type LayoutResult,
+  type LayoutExtras,
 } from './layout';
 export {
   computeFocusChain,

@@ -81,4 +81,19 @@ describe('LayoutControls', () => {
     expect(select.value).toBe('1.4');
     expect([...select.options].map((o) => o.value)).toContain('1.4');
   });
+
+  it('hides the algorithm picker — and nothing else — when the notation owns the algorithm', () => {
+    render(<LayoutControls settings={{}} onChange={() => {}} algorithmLocked />);
+    expect(screen.queryByLabelText('Layout algorithm')).toBeNull();
+    expect(screen.getByLabelText('Layout direction')).toBeDefined();
+  });
+
+  it('still runs layered-only controls when the locked notation\'s sidecar names a different algorithm', () => {
+    // Second-order pins the run to layered regardless of what a stale/foreign
+    // sidecar says (elk partitions are layered-only) — the direction/wrap
+    // controls must reflect that forced algorithm, not the unused setting.
+    render(<LayoutControls settings={{ algorithm: 'force' }} onChange={() => {}} algorithmLocked />);
+    expect(screen.queryByLabelText('Layout algorithm')).toBeNull();
+    expect(screen.getByLabelText('Layout direction')).toBeDefined();
+  });
 });

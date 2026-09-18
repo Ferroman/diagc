@@ -32,7 +32,8 @@ export function unionBounds(members: readonly (Bounds | undefined)[]): Bounds | 
  * Unmeasurable elements (all-zero rects: jsdom, or not laid out yet) are
  * skipped, so callers fall back to the node bounds exactly as before.
  */
-const OVERHANG_SELECTOR = '.react-flow__edge, .react-flow__edgelabel-renderer > *, .dg-loop-badge, .dg-image-caption';
+const OVERHANG_SELECTOR =
+  '.react-flow__edge, .react-flow__edgelabel-renderer > *, .dg-loop-badge, .dg-image-caption, .dg-order-band-header';
 
 export function overhangBounds(
   root: ParentNode | null | undefined,

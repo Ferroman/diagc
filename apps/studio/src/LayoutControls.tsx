@@ -43,6 +43,9 @@ export interface LayoutControlsProps {
    * defaultLayoutDirection) — shown as the selected option, stored as
    * `undefined`. Absent ⇒ down, the default for every model but an activity one. */
   defaultDirection?: LayoutDirection;
+  /** the notation pins the algorithm (elk partitions are layered-only): the
+   * picker is withheld, everything else stays adjustable */
+  algorithmLocked?: boolean;
 }
 
 /**
@@ -51,8 +54,11 @@ export interface LayoutControlsProps {
  * holds them in ephemeral React state. Choosing a control's default value
  * sends `undefined`, so neither store accumulates redundant entries.
  */
-export function LayoutControls({ settings, onChange, defaultDirection = 'DOWN' }: LayoutControlsProps) {
-  const algorithm = settings.algorithm ?? 'layered';
+export function LayoutControls({ settings, onChange, defaultDirection = 'DOWN', algorithmLocked }: LayoutControlsProps) {
+  // Locked notations run layered whatever the sidecar names (elk partitions are
+  // layered-only) — the layered-only controls below must reflect that forced
+  // algorithm, not a setting the run ignores.
+  const algorithm = algorithmLocked === true ? 'layered' : (settings.algorithm ?? 'layered');
   const direction = settings.direction ?? defaultDirection;
   const edgeRouting = settings.edgeRouting ?? 'curved';
 
@@ -73,19 +79,21 @@ export function LayoutControls({ settings, onChange, defaultDirection = 'DOWN' }
 
   return (
     <>
-      <select
-        className="chip-select"
-        aria-label="Layout algorithm"
-        title="Layout algorithm"
-        value={algorithm}
-        onChange={(e) => onChange({ algorithm: e.target.value === 'layered' ? undefined : e.target.value })}
-      >
-        {algorithms.map((a) => (
-          <option key={a.value} value={a.value}>
-            {a.label}
-          </option>
-        ))}
-      </select>
+      {algorithmLocked !== true && (
+        <select
+          className="chip-select"
+          aria-label="Layout algorithm"
+          title="Layout algorithm"
+          value={algorithm}
+          onChange={(e) => onChange({ algorithm: e.target.value === 'layered' ? undefined : e.target.value })}
+        >
+          {algorithms.map((a) => (
+            <option key={a.value} value={a.value}>
+              {a.label}
+            </option>
+          ))}
+        </select>
+      )}
       {algorithm === 'layered' && (
         <select
           className="chip-select"

@@ -62,6 +62,7 @@ import { Legend } from './Legend';
 import { LoopLabelLayer } from './LoopLabelLayer';
 import { LoopHighlightContext } from './loop-highlight';
 import { notationProfile } from './notations';
+import { OrderBandsOverlay } from './OrderBandsOverlay';
 import { createKindRegistry, createTypeRegistry } from './registry';
 import { stylePreset } from './stylePresets';
 import { useCanvasGestures } from './useCanvasGestures';
@@ -187,6 +188,28 @@ function Inner(props: DiagramViewProps) {
   const { enteredPath, drillRoot, focus, enterNode, exitTo, pendingRootFitRef } = nav;
 
   const editing = props.mode === 'edit';
+
+  // Open a node's name for a host-driven rename that did not originate from a
+  // canvas gesture (a panel button creating a node "outside" the canvas, e.g.
+  // second-order's "And then what?"). Mirrors onCreateAt's own in-place rename.
+  const labelRequest = edit?.editLabelRequest;
+  // The last nonce this effect actually acted on. Needed because `edit` — and
+  // the request riding on it — disappears while merely viewing (mode toggles
+  // off), so `labelRequest?.nonce` itself goes nonce -> undefined -> the SAME
+  // nonce on the way back into edit mode. "the nonce changed" would then be
+  // true again on re-entry with no new user action, replaying a stale (maybe
+  // deleted, maybe no-longer-selected) rename. The ref is deliberately left
+  // untouched while the request is absent (view mode) — only a genuinely new
+  // nonce, seen while editing, is allowed to open the box.
+  const consumedLabelNonceRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (!editing || labelRequest === undefined || labelRequest.nonce === consumedLabelNonceRef.current) return;
+    consumedLabelNonceRef.current = labelRequest.nonce;
+    setLabelEdit({ kind: 'node', id: labelRequest.id });
+    // keyed on the nonce alone: the id may repeat, the request may not
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [labelRequest?.nonce]);
+
   const nameOf = useMemo(
     () => new Map(props.model.nodes.map((n) => [n.id, n.name])),
     [props.model],
@@ -401,7 +424,7 @@ function Inner(props: DiagramViewProps) {
     ignoreSavedPositions: props.ignoreSavedPositions,
     viewPositions,
   });
-  const { geometryRef, routes, placedGeometry, arrangedGeometry, containerShifts, routing, laidAt, labelSpots } = viewLayout;
+  const { geometryRef, routes, placedGeometry, arrangedGeometry, containerShifts, routing, laidAt, labelSpots, flowDirection } = viewLayout;
 
   // Where each open container's origin sits BEFORE the fit pass shifted it, in
   // absolute flow coordinates — the frame a child's saved position is relative
@@ -1203,6 +1226,9 @@ function Inner(props: DiagramViewProps) {
         )}
         {profile.overlay === 'git-lanes' && placedGeometry !== null && (
           <GitLanesOverlay model={props.model} plane={props.plane} />
+        )}
+        {profile.overlay === 'order-bands' && placedGeometry !== null && (
+          <OrderBandsOverlay model={props.model} direction={flowDirection} />
         )}
       </ReactFlow>
     </div>

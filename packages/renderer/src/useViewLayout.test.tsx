@@ -179,4 +179,20 @@ describe('useViewLayout', () => {
     expect(result.current.laidAt.get('sys')).toEqual({ x: 100, y: 50 }); // routed against where it was LAID
     expect(result.current.laidAt.get('kid')).toEqual({ x: 116, y: 86 });
   });
+
+  it('runs a partitioned notation through layered whatever algorithm the sidecar names, and reports the flow direction', async () => {
+    const m = model('so');
+    m.secondOrder().decision('d').then('a').then('b');
+    const json = m.toJSON();
+    const force: LayoutOverlay = { version: 1, planes: {}, settings: { default: { algorithm: 'force' } } };
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(json, { profile: notationProfile('second-order'), layout: force }),
+    });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    const g = result.current.placedGeometry!;
+    expect(g.get('d')!.y).toBeLessThan(g.get('a')!.y);
+    expect(g.get('a')!.y).toBeLessThan(g.get('b')!.y);
+    expect(result.current.routing).toEqual({ corner: 28 }); // layered's soft routes, not force's floating edges
+    expect(result.current.flowDirection).toBe('DOWN');
+  });
 });

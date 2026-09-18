@@ -114,7 +114,7 @@ The first plane declared is the default and owns untagged containment.
 | `containmentOf` | `string?` | Borrow another plane's structure. |
 | `layers` | `string[]?` | Layers on by default in this plane. A default, not a floor: hosts with a layer switch start from this (`presetLayers`) and can turn them off — an export, which has no switch, always draws them. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations. |
-| `notation` | `NotationId?` (`'causal-loop' \| 'git-graph' \| 'c4'`) | Prefer `m.gitGraph()` for `git-graph`. Overrides `m.notation()` for this plane. |
+| `notation` | `NotationId?` (`'causal-loop' \| 'git-graph' \| 'c4' \| 'second-order'`) | Prefer `m.gitGraph()`/`m.secondOrder()` for `git-graph`/`second-order`. Overrides `m.notation()` for this plane. |
 | `hides` | `string[]?` | Shared node ids to hide here, promoting their contents into their place. |
 | `hidesTree` | `string[]?` | Shared node ids to hide here together with their contents, however deep. A child another visible box also contains stays. |
 
@@ -226,6 +226,32 @@ const start = orders.start();
 const submit = orders.action('submit', 'Submit order');
 const note = orders.note('n1', 'Validated client-side first');
 act.flow(start, submit).noteLink(note, submit);
+```
+
+## `m.secondOrder(opts?) → SecondOrderBuilder`
+
+Declares the model a second-order thinking diagram: a consequence tree read off ordinary nodes and a `leads-to` relation. Throws if called twice. With no `plane`, the notation is model-wide (nothing about it needs a plane — the notation is flat); name a plane to keep it beside other views of the same model.
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `plane` | `string?` | Plane id. Omit to set the notation model-wide. |
+| `name` | `string?` | Plane name, when `plane` is given. Default `Consequences`. |
+
+| Call | Returns | Notes |
+| --- | --- | --- |
+| `so.decision(id, name?, opts?)` | `ConsequenceRef` | The root of a tree. `opts`: `description?`, `color?`. Several decisions can share one set of bands. |
+| `ref.then(id, name?, { valence?, label?, description?, color? })` | `ConsequenceRef` | What follows from `ref`: creates the consequence node and the `leads-to` relation that leads to it. `valence` is `'+' \| '-' \| '0'` (good/bad/neutral), default `'0'`; `label` labels the arrow. |
+| `ref.leadsTo(other, { label? })` | `ref` | Joins two branches: `ref` also leads to a consequence declared elsewhere, with no new node. |
+
+`ConsequenceRef` (returned by both `decision` and `then`) extends `NodeRef`, so it composes with the rest of the builder (`relate`, `layer`, `contains`).
+
+```ts
+const m = model('splitting-the-monolith');
+const so = m.secondOrder();
+const split = so.decision('split', 'Split the monolith');
+const deploys = split.then('deploys', 'Teams deploy independently', { valence: '+' });
+const oncall = split.then('oncall-risk', 'More on-call load', { valence: '-' });
+deploys.leadsTo(oncall);
 ```
 
 ## `m.legend(opts?) → m`

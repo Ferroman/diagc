@@ -249,3 +249,13 @@ describe('Activity pack', () => {
     expect(entries.find((e) => e.template.type === 'activity-bar')?.template).toMatchObject({ width: 8, height: 100 });
   });
 });
+
+describe('Second-order pack', () => {
+  it('bundles the second-order pack, entries keyed by the four notation type ids', () => {
+    expect(BUNDLED_LIBRARY.categories.some((c) => c.id === 'second-order')).toBe(true);
+    const entries = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'second-order');
+    expect(entries.map((e) => e.id)).toEqual([
+      'so-decision', 'so-consequence-positive', 'so-consequence-negative', 'so-consequence-neutral',
+    ]);
+  });
+});

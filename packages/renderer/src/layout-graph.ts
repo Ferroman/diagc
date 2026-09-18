@@ -336,13 +336,21 @@ export function buildGraph(
   view: CompiledView,
   sizes: ReadonlyMap<string, SizeHint> | undefined,
   settings: LayoutSettings | undefined,
-  opts?: { flat?: boolean; substitute?: GraphSubstitutions },
+  opts?: { flat?: boolean; substitute?: GraphSubstitutions; partitions?: ReadonlyMap<string, number> },
 ): { graph: ElkShape; lifted: boolean } {
   const substitute = opts?.substitute;
+  const partitions = opts?.partitions !== undefined && opts.partitions.size > 0 ? opts.partitions : undefined;
   // A substituted graph is a block to embed, not a canvas: elk's default 12px
   // root padding would become a stray margin around every embedded block.
-  const rootOptions =
-    substitute === undefined ? layoutOptionsFor(settings) : { ...layoutOptionsFor(settings), 'elk.padding': NO_PADDING };
+  const rootOptions = {
+    ...layoutOptionsFor(settings),
+    ...(substitute !== undefined ? { 'elk.padding': NO_PADDING } : {}),
+    // A notation that derives an ORDER for its nodes (second-order thinking)
+    // pins each to it: partition k is laid out strictly before k+1, so a node
+    // cannot sink toward the only thing it feeds. Root nodes only — a partition
+    // is relative to the graph that owns the node.
+    ...(partitions !== undefined ? { 'elk.partitioning.activate': 'true' } : {}),
+  };
   const nested = usesNestedLayout(settings) && opts?.flat !== true;
   const byOwner = nested ? liftEdges(view) : undefined;
 
@@ -412,13 +420,17 @@ export function buildGraph(
     return { id: n.id, ...footprint(sizes?.get(n.id) ?? LEAF_SIZE) };
   };
 
+  const pinned = (shape: ElkShape): ElkShape => {
+    const p = partitions?.get(shape.id);
+    return p === undefined ? shape : { ...shape, layoutOptions: { ...shape.layoutOptions, 'elk.partitioning.partition': String(p) } };
+  };
   // Lifted edges carry no label box. A raised edge stands for every relation
   // between two subtrees, so no single label belongs to it, and elk's force and
   // stress do not reserve label space the way layered does. Recorded in
   // DEFERRALS.md rather than faked.
   // built before the edges are — `toNode` is what fills `emitted`, and what
   // discovers container-owned edges for the `lifted` flag below
-  const children = (substitute?.roots ?? view.roots).map(toNode);
+  const children = (substitute?.roots ?? view.roots).map((n) => pinned(toNode(n)));
 
   const rootEdges: ElkEdge[] = nested
     ? (byOwner?.get(null) ?? [])

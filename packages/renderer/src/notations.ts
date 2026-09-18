@@ -1,4 +1,4 @@
-import { GIT_STAGE_TYPE, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type Size, type ViewEdge } from '@diagramming/core';
+import { consequenceOrders, GIT_STAGE_TYPE, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type Size, type ViewEdge } from '@diagramming/core';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
@@ -18,6 +18,11 @@ export interface NotationProfile {
     plane: string | undefined,
     sizeHints?: ReadonlyMap<string, Size>,
   ) => LayoutResult;
+  /** node id → layer partition: the notation derives an ORDER for its nodes and
+   * elk keeps each in it, while still doing the arranging (unlike `layout`,
+   * which replaces elk). Honoured by `layered` only, so the view runs a
+   * partitioned plane through layered whatever its settings name. */
+  partitionOf?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, number>;
   node?: {
     typelessAsText?: boolean;
     leafSize?: (n: DiagramNode) => Size | undefined;
@@ -37,7 +42,7 @@ export interface NotationProfile {
     /** stroke colour for an edge, below the layer tint and above the default */
     colorOf?: (e: ViewEdge, model: DiagramModel, plane: string | undefined) => string | undefined;
   };
-  overlay?: 'loop-labels' | 'git-lanes';
+  overlay?: 'loop-labels' | 'git-lanes' | 'order-bands';
 }
 
 const CLD: NotationProfile = {
@@ -121,9 +126,36 @@ const C4: NotationProfile = {
   typeStyles: C4_TYPE_STYLES,
 };
 
+// ---- Second-order thinking --------------------------------------------------
+const VALENCE_COLOR = { '+': 'var(--dg-polarity-positive)', '-': 'var(--dg-polarity-negative)' } as const;
+
+/** Accent per consequence, by valence — theme tokens, never literals. Neutral
+ * gets none and keeps the plain box. */
+function valenceColors(model: DiagramModel): ReadonlyMap<string, string> {
+  const out = new Map<string, string>();
+  for (const n of model.nodes) {
+    const v = valenceOf(n.type);
+    if (v === '+' || v === '-') out.set(n.id, VALENCE_COLOR[v]);
+  }
+  return out;
+}
+
+const SECOND_ORDER: NotationProfile = {
+  id: 'second-order',
+  className: 'dg-notation-so',
+  partitionOf: (model) => consequenceOrders(model).orders,
+  node: { colorOf: valenceColors },
+  overlay: 'order-bands',
+};
+
 // Record<NotationId, ...> keying means adding a notation id to BUILTIN_NOTATIONS
 // forces a compile error here until its profile is added — intended.
-export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = { 'causal-loop': CLD, 'git-graph': GIT, c4: C4 };
+export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
+  'causal-loop': CLD,
+  'git-graph': GIT,
+  c4: C4,
+  'second-order': SECOND_ORDER,
+};
 
 const DEFAULT_PROFILE: NotationProfile = { id: 'default' };
 

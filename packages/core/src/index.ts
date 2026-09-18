@@ -37,12 +37,15 @@ export {
   ActivityScope,
   LaneRef,
   RegionRef,
+  ConsequenceRef,
+  SecondOrderBuilder,
   type NodeOpts,
   type RelateOpts,
   type CommitOpts,
   type StageOpts,
   type MergeOpts,
   type ActivityElementOpts,
+  type ConsequenceOpts,
 } from './builder';
 export { validate, DiagramValidationError, IMAGE_REF, LIBRARY_IMAGE_REF, type ValidationIssue } from './validate';
 export { isDrawings, isLayoutOverlay } from './guards';
@@ -96,3 +99,15 @@ export {
   type GitLane,
   type GitStage,
 } from './git';
+export {
+  SECOND_ORDER_NOTATION,
+  SO_CONSEQUENCE_TYPES,
+  SO_DECISION_TYPE,
+  SO_LEADS_TO_KIND,
+  consequenceOrders,
+  consequenceTypeOf,
+  isSecondOrderNode,
+  valenceOf,
+  type ConsequenceOrders,
+  type Valence,
+} from './second-order';

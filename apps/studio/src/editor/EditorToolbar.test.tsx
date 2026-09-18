@@ -39,6 +39,7 @@ type AutoLayoutOverrides = {
   onSetPen?: (patch: Partial<{ color: string; width: number }>) => void;
   drawingDisabled?: boolean;
   layoutLocked?: boolean;
+  algorithmLocked?: boolean;
 };
 
 function renderToolbar(editor: EditorApi, activePlane: string | undefined, extra: AutoLayoutOverrides = {}) {
@@ -54,6 +55,7 @@ function renderToolbar(editor: EditorApi, activePlane: string | undefined, extra
     onSetPen = noop,
     drawingDisabled = false,
     layoutLocked = false,
+    algorithmLocked = false,
   } = extra;
   return render(
     <EditorToolbar
@@ -73,6 +75,7 @@ function renderToolbar(editor: EditorApi, activePlane: string | undefined, extra
       onSetTool={onSetTool}
       pen={pen}
       layoutLocked={layoutLocked}
+      algorithmLocked={algorithmLocked}
       onSetPen={onSetPen}
       drawingDisabled={drawingDisabled}
     />,
@@ -233,5 +236,11 @@ describe('EditorToolbar', () => {
     renderToolbar(fakeEditor(), undefined, { layoutLocked: true });
     expect(screen.queryByLabelText(/algorithm/i)).toBeNull();
     expect(screen.getByRole('button', { name: /auto-layout/i })).toBeTruthy();
+  });
+
+  it('hides only the algorithm picker when the notation pins it (partitioned layout)', () => {
+    renderToolbar(fakeEditor(), undefined, { algorithmLocked: true });
+    expect(screen.queryByLabelText('Layout algorithm')).toBeNull();
+    expect(screen.getByLabelText('Layout direction')).toBeTruthy();
   });
 });

@@ -14,7 +14,7 @@ For *why* the model is shaped like this, see [What is in a model](../explanation
 | `id` | `string` | Diagram identity. |
 | `name` | `string` | Display name. |
 | `style` | `string?` | Renderer style preset pinned by this file. Unknown ids fall back to the app preference. |
-| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop`, `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
+| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop`, `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
 | `legend` | `DiagramLegend?` | Opt-in key for the diagram's visual vocabulary. Absent means no legend anywhere. |
 | `typeColors` | `Record<string, string>?` | Default accent colour per node type; `*` is the fallback. A node's own `color` wins. Dropped from included models on graft — the host owns the look. |
 | `layerRules` | `LayerRule[]?` | Class → layer for relations without a `layer`: `{ kind?, color?, layer }`, every named field must match, first match wins, explicit `layer` beats the rules. Dropped from included models on graft. |
@@ -137,7 +137,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `containmentOf` | `string?` | Borrow another plane's containment instead of declaring your own. |
 | `layers` | `string[]?` | Layers switched on when this plane is selected. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations, leaving only layer arrows. |
-| `notation` | `string?` | Visual language, overriding the model's `notation` for this plane. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)), `c4` (see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md)). |
+| `notation` | `string?` | Visual language, overriding the model's `notation` for this plane. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)), `c4` (see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)). |
 | `hides` | `string[]?` | Shared node ids this plane hides; their children are promoted into their place. |
 | `hidesTree` | `string[]?` | Shared node ids this plane hides along with everything inside them (a child with another visible parent stays). |
 
@@ -289,6 +289,27 @@ An `activity-frame` node containing `activity-lane` nodes reads as a UML swimlan
 
 A guard is a plain relation `label` (e.g. `[order accepted]`) — there is no dedicated guard field.
 
+## Second-order thinking conventions
+
+A plane with `notation: 'second-order'` reads ordinary nodes and relations as a consequence tree. Nothing new is stored — valence is a node *type*, not a field.
+
+**Node types**
+
+| Type | Shape | Notes |
+| --- | --- | --- |
+| `so-decision` | solid box | The root of a tree. Several decisions can share one set of bands. |
+| `so-consequence-positive` | tinted box, `plus` icon | A good consequence. |
+| `so-consequence-negative` | tinted box, `minus` icon | A bad consequence. |
+| `so-consequence-neutral` | plain box, `dot` icon | A neutral consequence — the default valence. |
+
+**Relation kind**
+
+| Kind | Style | Meaning |
+| --- | --- | --- |
+| `leads-to` | solid, arrow end | This leads to that. Created by the builder's `then`/`leadsTo` and the studio's "And then what?" panel. |
+
+A node's **order** (which band it draws in) is never stored — it is derived as the longest path from any decision, over every relation between two second-order nodes, not just `leads-to` ones. See [Draw a second-order thinking diagram](../how-to/draw-a-second-order-thinking-diagram.md#how-the-bands-are-decided).
+
 ## Validation codes
 
 `validate()` returns issues; the compiler refuses to write an artifact if there are any.
@@ -327,6 +348,10 @@ A guard is a plain relation `label` (e.g. `[order accepted]`) — there is no de
 | `activity-lane-parent` | An `activity-lane` is not contained by an `activity-frame`. |
 | `activity-frame-children` | An `activity-frame` contains something other than an `activity-lane`. |
 | `activity-region-parent` | An `activity-region` is contained by something other than an `activity-lane`. |
+| `so-no-decision` | The diagram has second-order nodes (consequences) but no `so-decision` node. An empty second-order diagram is valid — every one starts there. |
+| `so-cycle` | Consequences form a loop — a feedback loop is a causal-loop diagram, not a second-order one. |
+| `so-unreachable` | A consequence follows from no decision. |
+| `so-contained` | A decision or consequence sits inside a container — the notation is flat. |
 | `invalid-delay` | `delay` is not a boolean. |
 | `invalid-rich` | `rich` runs do not reconstruct `name`. |
 | `invalid-align` | `textAlign` outside the allowed set. |

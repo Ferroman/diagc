@@ -126,6 +126,13 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   'activity-receive': { shape: 'receive-signal', defaultSize: { width: 140, height: 44 }, label: '' },
   'activity-object': { shape: 'box', label: '' },
   'activity-note': { shape: 'note', defaultSize: { width: 140, height: 64 }, label: '' },
+  // ---- Second-order thinking -------------------------------------------------
+  // The decision is the solid root (theme tokens, so it inverts with the theme);
+  // a consequence's tint comes from the notation profile's colorOf, by valence.
+  'so-decision': { shape: 'rounded', icon: 'decision', label: '', fill: 'var(--dg-text)', textOn: 'var(--dg-surface)' },
+  'so-consequence-positive': { shape: 'rounded', icon: 'plus', label: '' },
+  'so-consequence-negative': { shape: 'rounded', icon: 'minus', label: '' },
+  'so-consequence-neutral': { shape: 'rounded', icon: 'dot', label: '' },
 };
 
 export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
@@ -142,6 +149,8 @@ export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
   'object-flow': { dashed: true },
   interrupt: { zigzag: true },
   'note-link': { dashed: true, endMarker: 'none' },
+  // ---- Second-order thinking -------------------------------------------------
+  'leads-to': {},
 };
 
 function createRegistry<T>(defaults: Record<string, T>, fallback: T, overrides?: Record<string, T>): Registry<T> {

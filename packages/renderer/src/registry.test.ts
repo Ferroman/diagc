@@ -126,4 +126,13 @@ describe('registries', () => {
     expect(r.resolve('interrupt')).toEqual({ zigzag: true });
     expect(r.resolve('note-link')).toEqual({ dashed: true, endMarker: 'none' });
   });
+
+  it('draws second-order nodes as boxes with a valence glyph and no type subtitle', () => {
+    const types = createTypeRegistry();
+    expect(types.resolve('so-decision')).toMatchObject({ shape: 'rounded', icon: 'decision', label: '', fill: 'var(--dg-text)', textOn: 'var(--dg-surface)' });
+    expect(types.resolve('so-consequence-positive')).toMatchObject({ shape: 'rounded', icon: 'plus', label: '' });
+    expect(types.resolve('so-consequence-negative')).toMatchObject({ shape: 'rounded', icon: 'minus', label: '' });
+    expect(types.resolve('so-consequence-neutral')).toMatchObject({ shape: 'rounded', icon: 'dot', label: '' });
+    expect(createKindRegistry().resolve('leads-to')).toEqual({});
+  });
 });

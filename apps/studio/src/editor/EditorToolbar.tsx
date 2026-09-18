@@ -43,6 +43,9 @@ interface EditorToolbarProps {
   drawingDisabled: boolean;
   /** the notation owns the arrangement: no algorithm/direction/spacing/routing to pick */
   layoutLocked?: boolean;
+  /** the notation pins the algorithm (elk partitions are layered-only): only the
+   * algorithm picker is withheld, the rest of LayoutControls stays up */
+  algorithmLocked?: boolean;
 }
 
 /** The preset swatch row, shared by the selection color and the pen color —
@@ -106,6 +109,7 @@ export function EditorToolbar({
   onSetPen,
   drawingDisabled,
   layoutLocked,
+  algorithmLocked,
 }: EditorToolbarProps) {
   const error = editor.session?.error;
 
@@ -153,6 +157,7 @@ export function EditorToolbar({
           settings={layoutSettings}
           onChange={onSetLayoutSettings}
           {...(defaultDirection !== undefined ? { defaultDirection } : {})}
+          algorithmLocked={algorithmLocked}
         />
       )}
       <span className="sep" />
