@@ -43,7 +43,7 @@ type PlaneRow = {
   notation: string;
 };
 
-const NOTATION_LABELS: Record<string, string> = { 'second-order': 'Second-order thinking' };
+const NOTATION_LABELS: Record<string, string> = { 'second-order': 'Second-order thinking', fishbone: 'Fishbone (cause and effect)' };
 // Derives a display label from a notation id ('causal-loop' -> 'Causal loop').
 const notationLabel = (id: string): string =>
   NOTATION_LABELS[id] ?? id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');

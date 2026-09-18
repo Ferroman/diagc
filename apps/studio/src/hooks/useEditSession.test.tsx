@@ -5,7 +5,7 @@ import { useRef } from 'react';
 import { useEditSession } from './useEditSession';
 
 function setup(acts: boolean) {
-  const thenWhat = vi.fn(() => acts);
+  const tabAction = vi.fn(() => acts);
   const hook = renderHook(() =>
     useEditSession({
       setDrafts: () => {},
@@ -13,11 +13,11 @@ function setup(acts: boolean) {
       addNodeRef: useRef(() => {}),
       toolKeyRef: useRef(() => {}),
       leaveEditRef: useRef(() => true),
-      thenWhatRef: useRef(thenWhat),
+      tabActionRef: useRef(tabAction),
     }),
   );
   act(() => hook.result.current.setEditing(true));
-  return thenWhat;
+  return tabAction;
 }
 const press = (init: KeyboardEventInit) => {
   const e = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
@@ -26,7 +26,7 @@ const press = (init: KeyboardEventInit) => {
 };
 
 describe('Tab in edit mode', () => {
-  it('asks "and then what?", and keeps focus on the canvas only when something was added', () => {
+  it('swallows Tab only when the tab action acted, keeping focus on the canvas', () => {
     const acted = setup(true);
     expect(press({ key: 'Tab' }).defaultPrevented).toBe(true);
     expect(acted).toHaveBeenCalledTimes(1);

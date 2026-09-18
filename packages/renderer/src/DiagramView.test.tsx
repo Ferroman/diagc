@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { getViewportForBounds } from '@xyflow/react';
 import { model, type DiagramModel } from '@diagramming/core';
 import { DiagramView, type LayoutApi } from './DiagramView';
+import { FISHBONE_LAYOUT } from './fishbone-layout';
 import { GIT_LAYOUT } from './git-layout';
 import { NUDGE_STEP, NUDGE_SHIFT_FACTOR } from './useNudge';
 
@@ -516,6 +517,29 @@ describe('DiagramView', () => {
     const rfNode = fill.closest('.react-flow__node') as HTMLElement;
     await waitFor(() => expect(rfNode.style.width).toBe('90px'));
     expect(rfNode.style.height).toBe('110px');
+  });
+
+  it('gives a fishbone leaf the layout geometry as its explicit size, and the effect the whole spine', async () => {
+    const m = model('f');
+    m.fishbone('e', 'Effect').category('c', 'Code').cause('a', 'A cause');
+    const { container } = render(<DiagramView model={m.toJSON()} notation="fishbone" />);
+    const cause = await waitFor(() => {
+      const el = container.querySelector('.dg-fb-cause');
+      if (el === null) throw new Error('cause not rendered');
+      return el;
+    });
+    const rfCause = cause.closest('.react-flow__node') as HTMLElement;
+    await waitFor(() => expect(rfCause.style.height).toBe(`${FISHBONE_LAYOUT.TEXT_H}px`));
+    const head = await waitFor(() => {
+      const el = container.querySelector('.dg-fb-head');
+      if (el === null) throw new Error('head not rendered');
+      return el;
+    });
+    const rfHead = head.closest('.react-flow__node') as HTMLElement;
+    expect(rfHead.style.height).toBe(`${FISHBONE_LAYOUT.HEAD_H}px`);
+    expect(parseFloat(rfHead.style.width)).toBeGreaterThan(FISHBONE_LAYOUT.HEAD_MIN_W + FISHBONE_LAYOUT.HEAD_GAP);
+    // the bones are routed lines, not floating edges
+    await waitFor(() => expect(container.querySelectorAll('.react-flow__edge')).toHaveLength(2));
   });
 
   it('propagates rich runs, align and font scale onto the box label', async () => {

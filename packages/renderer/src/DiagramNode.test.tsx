@@ -828,3 +828,27 @@ describe('git graph nodes', () => {
     expect(container.querySelector('.dg-group')).not.toBeNull();
   });
 });
+
+describe('fishbone looks', () => {
+  it('draws the effect as a spine with the head box at its right end', () => {
+    const { container } = renderNode({ label: 'Late deliveries', typeId: 'fb-effect', notation: 'fishbone' });
+    const head = container.querySelector('.dg-fb-head');
+    expect(head).not.toBeNull();
+    expect(head?.querySelector('.dg-fb-spine')).not.toBeNull();
+    expect(head?.querySelector('.dg-fb-head-box')?.textContent).toBe('Late deliveries');
+    expect(container.querySelector('.dg-node')).toBeNull();
+  });
+  it('draws a cause as bare text, tinted by textColor only', () => {
+    const { container } = renderNode({ label: 'No checklist', typeId: 'fb-cause', notation: 'fishbone', color: '#abc', textColor: '#123' });
+    const el = container.querySelector('.dg-fb-cause') as HTMLElement;
+    expect(el.textContent).toBe('No checklist');
+    expect(el.style.color).toBe('rgb(17, 34, 51)'); // jsdom normalizes hex to rgb (#123)
+    expect(el.style.borderColor).toBe('');
+    expect(container.querySelector('.dg-node')).toBeNull();
+  });
+  it('keeps a category on the ordinary box path', () => {
+    const { container } = renderNode({ label: 'Method', typeId: 'fb-category', notation: 'fishbone' });
+    expect(container.querySelector('.dg-node')).not.toBeNull();
+    expect(container.querySelector('.dg-fb-cause')).toBeNull();
+  });
+});

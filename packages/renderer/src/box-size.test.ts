@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, model } from '@diagramming/core';
-import { estimateBoxSize, textWidth, withBoxSizes } from './box-size';
+import { LAYOUT_SIZED_TYPES, estimateBoxSize, textWidth, withBoxSizes } from './box-size';
 import { createTypeRegistry } from './registry';
 
 // The expectations are the DOM sizes measured in headless Chrome against the
@@ -181,5 +181,11 @@ describe('withBoxSizes', () => {
     const chip = { width: 140, height: 48 };
     const sizes = withBoxSizes(compileView(m.toJSON(), {}).roots, new Map(), { ...ctx, leafSize: () => chip });
     expect(sizes.get('g')).toEqual(chip);
+  });
+});
+
+describe('LAYOUT_SIZED_TYPES', () => {
+  it('names exactly the fishbone types, which their layout sizes', () => {
+    expect([...LAYOUT_SIZED_TYPES].sort()).toEqual(['fb-category', 'fb-cause', 'fb-effect']);
   });
 });

@@ -1,18 +1,19 @@
 # Library reference
 
-The palette of ready-made nodes in the studio's **Library** tab. Eight read-only packs ship bundled; your own entries merge over them.
+The palette of ready-made nodes in the studio's **Library** tab. Nine read-only packs ship bundled; your own entries merge over them.
 
 For how to use it, see [Use the icon library](../how-to/use-the-icon-library.md).
 
 ## Bundled packs
 
-843 entries in 37 categories, rendered in this order:
+846 entries in 38 categories, rendered in this order:
 
 | Pack | Entries | Categories | Assets |
 | --- | --- | --- | --- |
 | **C4** | 31 | 5 | `/library/shapes/person.svg` (the rest are coloured boxes) |
 | **Activity** | 10 | 1 | none — renderer-drawn glyphs, not images |
 | **Second-order thinking** | 4 | 1 | none — renderer-drawn glyphs, not images |
+| **Fishbone** | 3 | 1 | none — renderer-drawn looks, not images |
 | **Data** | 1 | 1 | none — it seeds columns, not an image |
 | **Shapes** | 3 | 1 | `/library/shapes/` — tintable silhouette masks |
 | **Tech** | 16 | 1 | `/library/tech/` |
@@ -44,6 +45,10 @@ Lanes and regions are not here — they are structural (a lane must live inside 
 ### Second-order thinking
 
 One category, **Second-order thinking** — the four stencils behind an [and-then-what tree](../how-to/draw-a-second-order-thinking-diagram.md): Decision, Good consequence, Bad consequence, Neutral consequence. Valence is the node's `type` (`so-decision`, `so-consequence-positive`, `so-consequence-negative`, `so-consequence-neutral`), not a separate field, so turning a consequence from good to bad is a type change in the node panel. Every entry carries an `so-*` node type that the renderer draws as a glyph, not an image.
+
+### Fishbone
+
+One category, **Fishbone** — the three stencils behind a [fishbone diagram](../how-to/draw-a-fishbone-diagram.md): Effect, Category, Cause. Every entry carries an `fb-*` node type (`fb-effect`, `fb-category`, `fb-cause`) that the renderer draws as part of the fish, not an image. A dropped Cause waits in the stray row under the fish until it is connected to a bone.
 
 ### Data
 

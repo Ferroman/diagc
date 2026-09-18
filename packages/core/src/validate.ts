@@ -15,6 +15,7 @@ import {
   type TextRun,
 } from './types';
 import { childrenOf } from './children';
+import { FB_CATEGORY_TYPE, FB_CAUSE_TYPE, FB_EFFECT_TYPE, FISHBONE_NOTATION, fishboneParents, fishboneTree, isFishboneNode } from './fishbone';
 import { GIT_NOTATION, GIT_STAGE_TYPE, gitGraph, isGitKind, stageCommit } from './git';
 import { SECOND_ORDER_NOTATION, SO_DECISION_TYPE, consequenceOrders, isSecondOrderNode } from './second-order';
 
@@ -62,7 +63,13 @@ export interface ValidationIssue {
     | 'so-no-decision'
     | 'so-cycle'
     | 'so-unreachable'
-    | 'so-contained';
+    | 'so-contained'
+    | 'fb-no-effect'
+    | 'fb-many-effects'
+    | 'fb-unattached'
+    | 'fb-misplaced'
+    | 'fb-too-deep'
+    | 'fb-contained';
   message: string;
   ref?: string;
 }
@@ -529,6 +536,22 @@ function validateActivity(ctx: Ctx): void {
   }
 }
 
+/** Every containment edge on the active plane whose child is one of `ids` gets ONE
+ * issue (`code`, `message(child, parent)`): the notation's arrangement and a group
+ * want the same rectangle, so nothing in `ids` may be grouped. Untagged containment
+ * belongs to the default plane. */
+function reportContained(ctx: Ctx, plane: DiagramPlane | undefined, ids: ReadonlySet<string>, code: Code, message: (child: string, parent: string) => string): void {
+  const { issues, m } = ctx;
+  const defaultPlane = ctx.planes[0]?.id;
+  const active = plane?.id ?? defaultPlane;
+  const reported = new Set<string>();
+  for (const e of m.containment) {
+    if ((e.plane ?? defaultPlane) !== active || !ids.has(e.child) || reported.has(e.child)) continue;
+    reported.add(e.child);
+    report(issues, code, message(e.child, e.parent), e.child);
+  }
+}
+
 /**
  * Second-order conventions, applied wherever RENDERING would activate the
  * profile — the same plane pick as validateGit: a plane's own `notation` wins,
@@ -564,15 +587,83 @@ function validateSecondOrder(ctx: Ctx): void {
     report(issues, 'so-unreachable', `Consequence '${id}' follows from no decision`, id);
   }
   // Bands and groups want the same rectangle; a group spanning two bands has no
-  // sensible picture. Untagged containment belongs to the default plane.
-  const defaultPlane = ctx.planes[0]?.id;
-  const active = plane?.id ?? defaultPlane;
-  const reported = new Set<string>();
-  for (const e of m.containment) {
-    if ((e.plane ?? defaultPlane) !== active || !soIds.has(e.child) || reported.has(e.child)) continue;
-    reported.add(e.child);
-    report(issues, 'so-contained', `'${e.child}' sits inside '${e.parent}'; decisions and consequences cannot be grouped in a second-order diagram`, e.child);
+  // sensible picture.
+  reportContained(
+    ctx,
+    plane,
+    soIds,
+    'so-contained',
+    (child, parent) => `'${child}' sits inside '${parent}'; decisions and consequences cannot be grouped in a second-order diagram`,
+  );
+}
+
+/**
+ * Fishbone conventions, applied wherever RENDERING would activate the profile —
+ * the same plane pick as validateGit. The tree derivation never throws and
+ * simply leaves a malformed node off the fish; here each such node gets ONE
+ * issue naming why, in this order: its own parent has the wrong type for it
+ * (`fb-misplaced`); it hangs on a sub-cause (`fb-too-deep`); its chain never
+ * reaches the effect (`fb-unattached`). A cause under a misplaced category is
+ * therefore unattached, and the category is the misplaced one.
+ */
+function validateFishbone(ctx: Ctx): void {
+  const { issues, m } = ctx;
+  const plane = ctx.planes.find((p) => (p.notation ?? m.notation) === FISHBONE_NOTATION);
+  const modelLevel = plane === undefined && ctx.planes.length === 0 && m.notation === FISHBONE_NOTATION;
+  if (plane === undefined && !modelLevel) return;
+
+  const fb = m.nodes.filter(isFishboneNode);
+  // An empty diagram — or one holding only a stray comment — is where every
+  // fishbone diagram starts, and the studio never opens a model that already
+  // has issues: the head is only wanted once there is something to hang on it.
+  if (fb.length === 0) return;
+  const effects = fb.filter((n) => n.type === FB_EFFECT_TYPE);
+  if (effects.length === 0) {
+    report(issues, 'fb-no-effect', 'A fishbone diagram needs an effect (a node of type fb-effect) at its head', plane?.id ?? m.id);
   }
+  for (const extra of effects.slice(1)) {
+    report(issues, 'fb-many-effects', `'${extra.id}' is a second effect; a fishbone diagram has one head`, extra.id);
+  }
+
+  // The same parent pick fishboneTree makes — shared, so the rule can't drift between the two.
+  const typeOf = new Map(fb.map((n) => [n.id, n.type]));
+  const parentOf = fishboneParents(m);
+  const tree = fishboneTree(m);
+  const onFish = new Set<string>(tree.effect !== undefined ? [tree.effect] : []);
+  const subIds = new Set<string>();
+  for (const c of tree.categories) {
+    onFish.add(c.id);
+    for (const cause of c.causes) {
+      onFish.add(cause.id);
+      for (const s of cause.subs) {
+        onFish.add(s);
+        subIds.add(s);
+      }
+    }
+  }
+  for (const n of fb) {
+    const parent = parentOf.get(n.id);
+    if (n.type === FB_EFFECT_TYPE) {
+      if (n.id === tree.effect && parent !== undefined) {
+        report(issues, 'fb-misplaced', `'${n.id}' is the effect and hangs on '${parent}'; the effect is the head, nothing explains it`, n.id);
+      }
+      continue;
+    }
+    if (onFish.has(n.id)) continue;
+    const parentType = parent !== undefined ? typeOf.get(parent) : undefined;
+    if (n.type === FB_CATEGORY_TYPE && parent !== undefined && parentType !== FB_EFFECT_TYPE) {
+      report(issues, 'fb-misplaced', `Category '${n.id}' hangs on '${parent}'; a category hangs on the effect`, n.id);
+    } else if (n.type === FB_CAUSE_TYPE && parentType === FB_EFFECT_TYPE) {
+      report(issues, 'fb-misplaced', `Cause '${n.id}' hangs on the effect; a cause hangs on a category or on another cause`, n.id);
+    } else if (n.type === FB_CAUSE_TYPE && parent !== undefined && subIds.has(parent)) {
+      report(issues, 'fb-too-deep', `'${n.id}' hangs on the sub-cause '${parent}'; three levels below the effect is the limit`, n.id);
+    } else {
+      report(issues, 'fb-unattached', `'${n.id}' does not reach the effect`, n.id);
+    }
+  }
+  // The fish and a group want the same rectangle.
+  const fbIds = new Set(fb.map((n) => n.id));
+  reportContained(ctx, plane, fbIds, 'fb-contained', (child, parent) => `'${child}' sits inside '${parent}'; nothing on a fishbone diagram can be grouped`);
 }
 
 export function validate(m: DiagramModel): ValidationIssue[] {
@@ -599,6 +690,7 @@ export function validate(m: DiagramModel): ValidationIssue[] {
   validateGit(ctx);
   validateActivity(ctx);
   validateSecondOrder(ctx);
+  validateFishbone(ctx);
   return ctx.issues;
 }
 

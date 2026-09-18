@@ -259,3 +259,11 @@ describe('Second-order pack', () => {
     ]);
   });
 });
+
+describe('Fishbone pack', () => {
+  it('bundles the fishbone pack, entries keyed by the three notation type ids', () => {
+    expect(BUNDLED_LIBRARY.categories.some((c) => c.id === 'fishbone')).toBe(true);
+    const entries = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'fishbone');
+    expect(entries.map((e) => e.id)).toEqual(['fb-effect', 'fb-category', 'fb-cause']);
+  });
+});

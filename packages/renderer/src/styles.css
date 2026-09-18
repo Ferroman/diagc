@@ -786,3 +786,36 @@ path.dg-loop-badge-circle {
 }
 .dg-git-stage-name .dg-label { font-weight: 600; }
 .react-flow__node.selected > .dg-git-stage { box-shadow: 0 0 0 2px var(--dg-accent); }
+
+/* Fishbone. The effect node is the spine: a line the layout sizes across the
+   whole fish, the head box at its right end, the arrowhead the line's own end.
+   A category box is the generic .dg-node path (fb-effect/fb-cause return their
+   own markup and never reach it); its label wraps like any box label
+   (BoxLabel's inline pre-wrap), so a name wider than the LABEL_W band the
+   layout reserves grows the box downward past LABEL_H — see DEFERRALS. */
+.dg-fb-head { width: 100%; height: 100%; display: flex; align-items: center; color: var(--dg-text); }
+.dg-fb-spine { flex: 1; height: 2px; background: currentColor; position: relative; }
+.dg-fb-spine::after {
+  content: ''; position: absolute; right: -1px; top: 50%; transform: translateY(-50%);
+  border: 7px solid transparent; border-left: 10px solid currentColor; border-right: 0;
+}
+/* min-width mirrors FISHBONE_LAYOUT.HEAD_MIN_W; the font must match HEAD_FONT_PX,
+   which measures the effect name (see fishbone-layout.ts). */
+.dg-fb-head-box {
+  flex: none; height: 100%; box-sizing: border-box; display: flex; align-items: center;
+  padding: 0 16px; border-radius: 8px; background: var(--dg-text); color: var(--dg-surface);
+  font: 600 14px/1.2 system-ui, sans-serif; white-space: nowrap; min-width: 140px;
+}
+/* outline on the box, not .dg-fb-head itself — that container is the invisible
+   full-width spine node, and a box-shadow on it would frame the whole fish */
+.react-flow__node.selected > .dg-fb-head .dg-fb-head-box { box-shadow: 0 0 0 2px var(--dg-accent); }
+/* A cause is text on a line, not a box. Sized by the layout (LAYOUT_SIZED_TYPES);
+   the font must match FISHBONE_LAYOUT.FONT_PX, which measures the text. This draws
+   at weight 400 but the measure is calibrated for 600, so it slightly over-estimates
+   the text — the line starts a few px right of the last glyph, never through it. */
+.dg-fb-cause {
+  width: 100%; height: 100%; box-sizing: border-box; display: flex; align-items: center;
+  padding: 0 6px; font: 12px/1.2 system-ui, sans-serif; color: var(--dg-text);
+  white-space: nowrap; border-radius: 4px;
+}
+.react-flow__node.selected > .dg-fb-cause { box-shadow: 0 0 0 2px var(--dg-accent); }

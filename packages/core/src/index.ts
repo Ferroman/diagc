@@ -39,6 +39,9 @@ export {
   RegionRef,
   ConsequenceRef,
   SecondOrderBuilder,
+  FishboneBuilder,
+  CategoryRef,
+  CauseRef,
   type NodeOpts,
   type RelateOpts,
   type CommitOpts,
@@ -46,6 +49,7 @@ export {
   type MergeOpts,
   type ActivityElementOpts,
   type ConsequenceOpts,
+  type FishboneOpts,
 } from './builder';
 export { validate, DiagramValidationError, IMAGE_REF, LIBRARY_IMAGE_REF, type ValidationIssue } from './validate';
 export { isDrawings, isLayoutOverlay } from './guards';
@@ -111,3 +115,21 @@ export {
   type ConsequenceOrders,
   type Valence,
 } from './second-order';
+export {
+  FB_CATEGORY_TYPE,
+  FB_CAUSE_OF_KIND,
+  FB_CAUSE_TYPE,
+  FB_EFFECT_TYPE,
+  FISHBONE_NOTATION,
+  FISHBONE_PRESET_NAMES,
+  FISHBONE_PRESETS,
+  FISHBONE_TYPES,
+  fishboneParents,
+  fishboneTree,
+  isFishboneNode,
+  presetId,
+  type FishboneCategory,
+  type FishboneCause,
+  type FishbonePreset,
+  type FishboneTree,
+} from './fishbone';

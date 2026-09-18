@@ -134,5 +134,9 @@ describe('registries', () => {
     expect(types.resolve('so-consequence-negative')).toMatchObject({ shape: 'rounded', icon: 'minus', label: '' });
     expect(types.resolve('so-consequence-neutral')).toMatchObject({ shape: 'rounded', icon: 'dot', label: '' });
     expect(createKindRegistry().resolve('leads-to')).toEqual({});
+    expect(types.resolve('fb-effect')).toMatchObject({ shape: 'box', label: '' });
+    expect(types.resolve('fb-category')).toMatchObject({ shape: 'box', label: '' });
+    expect(types.resolve('fb-cause')).toMatchObject({ shape: 'box', label: '' });
+    expect(createKindRegistry().resolve('cause-of')).toEqual({});
   });
 });

@@ -1,4 +1,5 @@
 import { consequenceOrders, GIT_STAGE_TYPE, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type Size, type ViewEdge } from '@diagramming/core';
+import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
@@ -148,6 +149,18 @@ const SECOND_ORDER: NotationProfile = {
   overlay: 'order-bands',
 };
 
+// ---- Fishbone ---------------------------------------------------------------
+// The notation owns the arrangement (as git-graph does): the fish's shape IS
+// its structure, so elk has nothing to decide. Bones take their category's
+// colour; the head and cause looks are DiagramNode's own branches.
+const FISHBONE: NotationProfile = {
+  id: 'fishbone',
+  className: 'dg-notation-fb',
+  layout: fishboneLayout,
+  node: { colorOf: fishboneNodeColors },
+  edge: { colorOf: fishboneEdgeColor },
+};
+
 // Record<NotationId, ...> keying means adding a notation id to BUILTIN_NOTATIONS
 // forces a compile error here until its profile is added — intended.
 export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
@@ -155,6 +168,7 @@ export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
   'git-graph': GIT,
   c4: C4,
   'second-order': SECOND_ORDER,
+  fishbone: FISHBONE,
 };
 
 const DEFAULT_PROFILE: NotationProfile = { id: 'default' };

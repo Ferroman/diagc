@@ -133,6 +133,14 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   'so-consequence-positive': { shape: 'rounded', icon: 'plus', label: '' },
   'so-consequence-negative': { shape: 'rounded', icon: 'minus', label: '' },
   'so-consequence-neutral': { shape: 'rounded', icon: 'dot', label: '' },
+  // ---- Fishbone (Ishikawa) ----------------------------------------------------
+  // The head and a cause have their own looks (DiagramNode's fb branches +
+  // styles.css); a category is the plain box in its bone colour, which arrives
+  // through the notation profile's colorOf. `label: ''` keeps the raw type id
+  // off the box.
+  'fb-effect': { shape: 'box', label: '' },
+  'fb-category': { shape: 'box', label: '' },
+  'fb-cause': { shape: 'box', label: '' },
 };
 
 export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
@@ -151,6 +159,8 @@ export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
   'note-link': { dashed: true, endMarker: 'none' },
   // ---- Second-order thinking -------------------------------------------------
   'leads-to': {},
+  // ---- Fishbone (Ishikawa) ----------------------------------------------------
+  'cause-of': {}, // solid, arrow end — the defaults
 };
 
 function createRegistry<T>(defaults: Record<string, T>, fallback: T, overrides?: Record<string, T>): Registry<T> {

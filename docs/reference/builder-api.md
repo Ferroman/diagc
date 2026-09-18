@@ -114,7 +114,7 @@ The first plane declared is the default and owns untagged containment.
 | `containmentOf` | `string?` | Borrow another plane's structure. |
 | `layers` | `string[]?` | Layers on by default in this plane. A default, not a floor: hosts with a layer switch start from this (`presetLayers`) and can turn them off — an export, which has no switch, always draws them. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations. |
-| `notation` | `NotationId?` (`'causal-loop' \| 'git-graph' \| 'c4' \| 'second-order'`) | Prefer `m.gitGraph()`/`m.secondOrder()` for `git-graph`/`second-order`. Overrides `m.notation()` for this plane. |
+| `notation` | `NotationId?` (`'causal-loop' \| 'git-graph' \| 'c4' \| 'second-order' \| 'fishbone'`) | Prefer `m.gitGraph()`/`m.secondOrder()`/`m.fishbone()` for `git-graph`/`second-order`/`fishbone`. Overrides `m.notation()` for this plane. |
 | `hides` | `string[]?` | Shared node ids to hide here, promoting their contents into their place. |
 | `hidesTree` | `string[]?` | Shared node ids to hide here together with their contents, however deep. A child another visible box also contains stays. |
 
@@ -252,6 +252,41 @@ const split = so.decision('split', 'Split the monolith');
 const deploys = split.then('deploys', 'Teams deploy independently', { valence: '+' });
 const oncall = split.then('oncall-risk', 'More on-call load', { valence: '-' });
 deploys.leadsTo(oncall);
+```
+
+## `m.fishbone(id, name?, opts?) → FishboneBuilder`
+
+Declares the model a fishbone (Ishikawa) diagram: the effect at the head, cause categories as bones, causes and sub-causes hung on them. **Throws if called twice** (`'fishbone() already declared'`). With no `plane`, the notation is model-wide; name a plane to keep it beside other views of the same model — its name defaults to `Causes`.
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `plane` | `string?` | Plane id. Omit to set the notation model-wide. |
+| `planeName` | `string?` | Plane name, when `plane` is given. Default `Causes`. |
+| `description`, `color` | `string?` | `FishboneOpts`, applied to the effect node itself. |
+
+| Call | Returns | Notes |
+| --- | --- | --- |
+| `fb.category(id, name?, opts?)` | `CategoryRef` | A major bone, and the `cause-of` arrow from it to the effect. `opts`: `FishboneOpts` (`description?`, `color?`). |
+| `fb.categories(preset)` | `Record<string, CategoryRef>` | Seeds a whole preset at once — `preset` is `'Software' \| '6M' \| '4S'`. Refs are keyed by slug id (`presetId`, e.g. `'Infrastructure'` → `infrastructure`); index with `!` under `noUncheckedIndexedAccess`. |
+| `category.cause(id, name?, opts?)` | `CauseRef` | A cause on that bone, and the arrow from it to the category. |
+| `cause.cause(id, name?, opts?)` | `CauseRef` | A sub-cause, and the arrow from it to the cause. **Throws on a sub-cause** — three levels below the effect (category, cause, sub-cause) is the limit. |
+
+`FishboneOpts { description?: string; color?: string }` — the same shape at every level.
+
+The three presets, in bone order:
+
+| Preset | Categories |
+| --- | --- |
+| `Software` (default first) | People, Process, Requirements, Code, Infrastructure, Dependencies |
+| `6M` | Man, Machine, Method, Material, Measurement, Environment |
+| `4S` | Surroundings, Suppliers, Systems, Skills |
+
+```ts
+const m = model('checkout-outage');
+const fb = m.fishbone('outage', 'Checkout outage on release day');
+const { people, process } = fb.categories('Software');
+people!.cause('on-call', 'On-call engineer new to checkout');
+process!.cause('review', 'Migration merged without review').cause('single-approver', 'One approver for the whole repo');
 ```
 
 ## `m.legend(opts?) → m`

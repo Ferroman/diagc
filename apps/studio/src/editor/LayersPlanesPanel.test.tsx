@@ -331,4 +331,11 @@ describe('LayersPlanesPanel', () => {
     render(<LayersPlanesPanel model={m.toJSON()} onCommand={vi.fn()} mode="edit" />);
     expect(screen.getByRole('option', { name: 'Second-order thinking' })).toBeDefined();
   });
+
+  it('names the fishbone notation properly instead of deriving "Fishbone"', () => {
+    const m = model('d');
+    m.node('a');
+    render(<LayersPlanesPanel model={m.toJSON()} onCommand={vi.fn()} mode="edit" />);
+    expect(screen.getByRole('option', { name: 'Fishbone (cause and effect)' })).toBeDefined();
+  });
 });

@@ -66,6 +66,9 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
 .meta dt { color: var(--dg-text-muted); font-size: 12px; min-width: 90px; }
 .meta dd { font-size: 12px; margin: 0; overflow-wrap: anywhere; }
 .meta a { color: var(--dg-accent); }
+/* .so-panel, .so-hint, .so-answers and .so-issues are second-order's, but
+   notation-neutral (layout only) — the fishbone panel shares the whole group
+   rather than duplicating the rules under fishbone-prefixed names. */
 .node-panel, .edge-panel, .lp-panel, .git-panel, .so-panel { display: flex; flex-direction: column; gap: 10px; }
 .lp-panel { border-left: none; border-right: 1px solid var(--dg-border); }
 .panel-head { align-items: center; display: flex; justify-content: space-between; }

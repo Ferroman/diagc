@@ -70,6 +70,7 @@ New nodes are **typeless** — just a label — so quick sketches stay clean. Gi
 | Laser pointer on/off (both modes) | `L` |
 | Back to Select, laser off | `Esc` |
 | Add a neutral consequence to the selected decision or consequence, and start naming it (second-order diagrams) | `Tab` |
+| Add a child of the selected fishbone node (a category under the effect, a cause under a bone or a cause), and start naming it (fishbone diagrams) | `Tab` |
 
 Shortcuts are ignored while you are typing in a form field. History is capped at 100 steps.
 
@@ -81,13 +82,15 @@ Shortcuts are ignored while you are typing in a form field. History is capped at
 
 **Library** — the palette. See [Library reference](library.md) and [Use the icon library](../how-to/use-the-icon-library.md).
 
-**Layers & planes** — add, edit and remove layers (id, name, tint) and planes (id, name, containment borrowing, preset layers, its own **Notation**). In edit mode it also carries a model-level **Notation** selector (`default look`, `causal-loop`, `git-graph`, `c4`, `second-order` (shown as *Second-order thinking*) — a plane's own notation wins where set) and a **Legend** checkbox, which adds or removes the diagram's `legend` declaration; its title, position, sections and items are authored in the file. See [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md) and [Add a legend](../how-to/add-a-legend.md).
+**Layers & planes** — add, edit and remove layers (id, name, tint) and planes (id, name, containment borrowing, preset layers, its own **Notation**). In edit mode it also carries a model-level **Notation** selector (`default look`, `causal-loop`, `git-graph`, `c4`, `second-order` (shown as *Second-order thinking*), `fishbone` (shown as *Fishbone (cause and effect)*) — a plane's own notation wins where set) and a **Legend** checkbox, which adds or removes the diagram's `legend` declaration; its title, position, sections and items are authored in the file. See [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md) and [Add a legend](../how-to/add-a-legend.md).
 
 **Git** — on a plane with the `git-graph` notation, in edit mode: add lanes and commits, branch the selected commit into another lane, merge it into one, set its gap. Each action is one undo step. See [Draw a git branching diagram](../how-to/draw-a-git-branching-diagram.md).
 
 **Activity** — when an `activity-frame`, `activity-lane` or `activity-region` is selected, in edit mode. On a frame: name a lane, pick a colour, **Add lane** (lanes stack in the order you add them). On a lane or region: an optional name field plus one quick-add button per leaf type (action, decision, fork/join bar, start, end, send signal, receive signal, object, note), and, on a lane only, **Add region**. Every add parents the new node in the selected scope and places it at a deterministic spot, sidestepping drag-and-drop entirely — the model never passes through a state validation would refuse. See [Draw an activity diagram](../how-to/draw-an-activity-diagram.md).
 
 **Second-order thinking** — on a diagram with the `second-order` notation, in edit mode: "And then what?" with **Good consequence** / **Bad consequence** / **Neutral consequence**, enabled once a decision or consequence is selected, plus **Add a decision**, always offered. Each add is one undo step for the box and its arrow together; it also opens the new node's name for typing, which is a separate, later undo step once committed. Lists the notation's validation issues (an unreachable consequence, a cycle), each clickable to select the offending node. See [Draw a second-order thinking diagram](../how-to/draw-a-second-order-thinking-diagram.md).
+
+**Fishbone** — on a diagram with the `fishbone` notation, in edit mode: **Add an effect** until there is one; then **Software** / **6M** / **4S** while the effect has no bones; then **Add a category** (nothing or the effect selected) or **Add a cause** (a bone or a cause selected — disabled on a sub-cause, which takes nothing). Each add is one undo step for the node and its arrow together; it also opens the new node's name for typing, which is a separate, later undo step once committed. Lists the notation's validation issues, node ones clickable to select. The arrangement is the notation's own, so the layout controls are absent. See [Draw a fishbone diagram](../how-to/draw-a-fishbone-diagram.md).
 
 ## Header controls
 
@@ -124,7 +127,7 @@ An unsaved dot sits next to Save while the session is dirty; edits autosave a mo
 - **Pins, theme and style preset are viewer state.** They are not written to the diagram file — except the style preset, which a diagram *may* pin via its `style` field.
 - **JSON diagrams that declare `include` show their raw source.** Composed content is only visible for compiled, read-only diagrams.
 - **Library saves are best-effort.** A failed write to `library.json` is currently swallowed silently.
-- On a `git-graph` plane the layout pickers (algorithm, direction, spacing, routing) are hidden: the notation owns the arrangement. Auto-layout on/off and Re-layout still work.
+- On a `git-graph` or `fishbone` plane the layout pickers (algorithm, direction, spacing, routing) are hidden: the notation owns the arrangement. Auto-layout on/off and Re-layout still work.
 - On a `second-order` diagram only the layout **algorithm** picker is hidden — it is pinned to layered so the order bands can use elk's partitioning. Direction, spacing and edge routing stay adjustable.
 
 ## See also

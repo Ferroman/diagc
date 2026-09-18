@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { model } from '@diagramming/core';
+import { compileView, model } from '@diagramming/core';
+import { BONE_PALETTE, fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import { NOTATION_PROFILES, notationProfile } from './notations';
 
@@ -86,5 +87,28 @@ describe('second-order profile', () => {
     d.then('meh');
     const colors = p.node!.colorOf!(m.toJSON(), undefined);
     expect(Object.fromEntries(colors)).toEqual({ good: 'var(--dg-polarity-positive)', bad: 'var(--dg-polarity-negative)' });
+  });
+});
+
+describe('fishbone profile', () => {
+  const p = notationProfile('fishbone');
+  it('owns the arrangement and colours bones by category', () => {
+    expect(p.className).toBe('dg-notation-fb');
+    expect(p.layout).toBe(fishboneLayout);
+    expect(p.node?.colorOf).toBe(fishboneNodeColors);
+    expect(p.edge?.colorOf).toBe(fishboneEdgeColor);
+    expect(p.overlay).toBeUndefined();
+    expect(p.partitionOf).toBeUndefined();
+  });
+  it('colours the first category from the palette, and its bone edge to match', () => {
+    const m = model('n');
+    const fb = m.fishbone('e', 'Effect');
+    fb.category('c1', 'Alpha');
+    const j = m.toJSON();
+    const colors = p.node!.colorOf!(j, undefined);
+    expect(colors.get('c1')).toBe(BONE_PALETTE[0]);
+    const v = compileView(j, { plane: j.planes[0]?.id });
+    const bone = v.layoutEdges.find((e) => e.from === 'c1' && e.to === 'e')!;
+    expect(p.edge!.colorOf!(bone, j, undefined)).toBe(BONE_PALETTE[0]);
   });
 });

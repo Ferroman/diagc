@@ -36,7 +36,7 @@ import {
   type ViewNode,
 } from '@diagramming/core';
 import { createIconRegistry } from '@diagramming/icons';
-import { ACTIVITY_CHROME_TYPES, FORCED_SIZE_SHAPES } from './box-size';
+import { ACTIVITY_CHROME_TYPES, FORCED_SIZE_SHAPES, LAYOUT_SIZED_TYPES } from './box-size';
 import { Breadcrumbs } from './Breadcrumbs';
 import { overhangBounds, unionBounds } from './content-bounds';
 import {
@@ -590,11 +590,13 @@ function Inner(props: DiagramViewProps) {
                 // layout's diameter must be applied explicitly, same as image/shape
                 // leaves above. Ordinary boxes and CLD text chips must NOT go
                 // through this branch — forcing sizes there would change their
-                // existing CSS-driven sizing.
+                // existing CSS-driven sizing. …and a fishbone leaf, whose layout
+                // sizes it (see LAYOUT_SIZED_TYPES).
                 n.state === 'leaf' &&
                   n.node.type !== undefined &&
                   (FORCED_SIZE_SHAPES.has(typeRegistry.resolve(n.node.type).shape) ||
-                    ACTIVITY_CHROME_TYPES.has(n.node.type))
+                    ACTIVITY_CHROME_TYPES.has(n.node.type) ||
+                    LAYOUT_SIZED_TYPES.has(n.node.type))
                 ? { style: { width: geo.width, height: geo.height } }
                 : // An ordinary box keeps its CSS sizing, but never narrower than
                   // the box elk laid out (box-size.ts estimates it): routes and

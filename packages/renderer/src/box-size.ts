@@ -1,4 +1,4 @@
-import { runsToPlainText, type DiagramNode, type FontScale, type ViewNode } from '@diagramming/core';
+import { FISHBONE_TYPES, runsToPlainText, type DiagramNode, type FontScale, type ViewNode } from '@diagramming/core';
 import type { Registry, ShapeId, TypeStyle } from './registry';
 import type { SizeHint } from './layout-graph';
 import { typeSubtitle } from './type-subtitle';
@@ -9,6 +9,10 @@ export const FORCED_SIZE_SHAPES: ReadonlySet<string> = new Set(['circle', 'diamo
 /** activity chrome renders width/height:100% of its wrapper — an EMPTY lane or
  * frame is compiled 'leaf' and would otherwise collapse to 0×0 */
 export const ACTIVITY_CHROME_TYPES: ReadonlySet<string> = new Set(['activity-frame', 'activity-lane', 'activity-region']);
+/** leaves a notation's own layout sizes exactly — the head spans the spine, a
+ * cause is text on a line whose route ends at the text's edge: a CSS-natural
+ * size a few px off would leave the line short of, or into, the text */
+export const LAYOUT_SIZED_TYPES: ReadonlySet<string> = new Set(FISHBONE_TYPES);
 
 /**
  * Deterministic (no-DOM) footprint of an ordinary box node — the branch of

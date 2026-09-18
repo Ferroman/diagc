@@ -14,7 +14,7 @@ For *why* the model is shaped like this, see [What is in a model](../explanation
 | `id` | `string` | Diagram identity. |
 | `name` | `string` | Display name. |
 | `style` | `string?` | Renderer style preset pinned by this file. Unknown ids fall back to the app preference. |
-| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop`, `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
+| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop`, `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
 | `legend` | `DiagramLegend?` | Opt-in key for the diagram's visual vocabulary. Absent means no legend anywhere. |
 | `typeColors` | `Record<string, string>?` | Default accent colour per node type; `*` is the fallback. A node's own `color` wins. Dropped from included models on graft — the host owns the look. |
 | `layerRules` | `LayerRule[]?` | Class → layer for relations without a `layer`: `{ kind?, color?, layer }`, every named field must match, first match wins, explicit `layer` beats the rules. Dropped from included models on graft. |
@@ -137,7 +137,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `containmentOf` | `string?` | Borrow another plane's containment instead of declaring your own. |
 | `layers` | `string[]?` | Layers switched on when this plane is selected. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations, leaving only layer arrows. |
-| `notation` | `string?` | Visual language, overriding the model's `notation` for this plane. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)), `c4` (see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)). |
+| `notation` | `string?` | Visual language, overriding the model's `notation` for this plane. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)), `c4` (see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)). |
 | `hides` | `string[]?` | Shared node ids this plane hides; their children are promoted into their place. |
 | `hidesTree` | `string[]?` | Shared node ids this plane hides along with everything inside them (a child with another visible parent stays). |
 
@@ -310,6 +310,18 @@ A plane with `notation: 'second-order'` reads ordinary nodes and relations as a 
 
 A node's **order** (which band it draws in) is never stored — it is derived as the longest path from any decision, over every relation between two second-order nodes, not just `leads-to` ones. See [Draw a second-order thinking diagram](../how-to/draw-a-second-order-thinking-diagram.md#how-the-bands-are-decided).
 
+## Fishbone conventions
+
+A plane with `notation: 'fishbone'` reads ordinary nodes and relations as a fish. Nothing new is stored.
+
+| Type | Look | Role |
+| --- | --- | --- |
+| `fb-effect` | the head box at the right end of the spine | The one effect. |
+| `fb-category` | a box at the outer end of a major bone, in its column's colour | A category of cause (People, Process, …). |
+| `fb-cause` | text on a line | A cause, or a sub-cause — which one is where it hangs. |
+
+Relation kind `cause-of`, drawn **from the cause to what it explains**: category → effect, cause → category, sub-cause → cause. What hangs where is derived from the *first* relation between two fishbone nodes, whatever its kind, and never stored; three levels below the effect is the limit. See [Draw a fishbone diagram](../how-to/draw-a-fishbone-diagram.md#how-the-fish-is-drawn).
+
 ## Validation codes
 
 `validate()` returns issues; the compiler refuses to write an artifact if there are any.
@@ -352,6 +364,12 @@ A node's **order** (which band it draws in) is never stored — it is derived as
 | `so-cycle` | Consequences form a loop — a feedback loop is a causal-loop diagram, not a second-order one. |
 | `so-unreachable` | A consequence follows from no decision. |
 | `so-contained` | A decision or consequence sits inside a container — the notation is flat. |
+| `fb-no-effect` | The diagram has fishbone nodes but no `fb-effect`. An empty fishbone diagram is valid — every one starts there. |
+| `fb-many-effects` | A second `fb-effect`; a fishbone diagram has one head. |
+| `fb-unattached` | A category or cause whose chain never reaches the effect (a cycle included). |
+| `fb-misplaced` | The wrong parent for the type: a category not on the effect, a cause on the effect, the effect on anything. |
+| `fb-too-deep` | A cause hung on a sub-cause — three levels below the effect is the limit. |
+| `fb-contained` | A fishbone node inside a container; nothing on a fish can be grouped. |
 | `invalid-delay` | `delay` is not a boolean. |
 | `invalid-rich` | `rich` runs do not reconstruct `name`. |
 | `invalid-align` | `textAlign` outside the allowed set. |

@@ -1,6 +1,6 @@
 import { useContext, useRef, type CSSProperties } from 'react';
 import { Handle, NodeResizer, Position } from '@xyflow/react';
-import { GIT_STAGE_TYPE, type Column, type FontScale, type NotationId, type TextAlign, type TextRun } from '@diagramming/core';
+import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, type Column, type FontScale, type NotationId, type TextAlign, type TextRun } from '@diagramming/core';
 import type { IconRegistry } from '@diagramming/icons';
 import type { Registry, TypeStyle } from './registry';
 import { LoopHighlightContext } from './loop-highlight';
@@ -459,6 +459,32 @@ export function DiagramNode({
         <span className="dg-lane-label" {...(data.color !== undefined ? { style: { ...accentStyle(data.color), color: data.textColor ?? data.color } } : {})}>
           {name}
         </span>
+        {sideHandles}
+      </div>
+    );
+  }
+
+  if (data.typeId === FB_EFFECT_TYPE) {
+    // The effect IS the spine: fishboneLayout sizes this node across the whole
+    // fish, the line fills it and the head box sits at its right end (the
+    // git-lane trick — no overlay needed). Flex lets the line take whatever the
+    // box leaves, so nothing here needs to know the box's width.
+    return (
+      <div className={`dg-fb-head${loopClass}`}>
+        <span className="dg-fb-spine" aria-hidden="true" />
+        <span className="dg-fb-head-box">{name}</span>
+        {sideHandles}
+      </div>
+    );
+  }
+
+  if (data.typeId === FB_CAUSE_TYPE) {
+    // A cause is text on a line, not a box: no border, no fill, and no accent —
+    // the bone colour belongs to the line (the profile's edge colour), the text
+    // stays readable in the theme's own colour unless the author picks one.
+    return (
+      <div className={`dg-fb-cause${loopClass}`} {...(data.textColor !== undefined ? { style: { color: data.textColor } } : {})}>
+        {name}
         {sideHandles}
       </div>
     );

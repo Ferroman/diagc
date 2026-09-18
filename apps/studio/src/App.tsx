@@ -58,6 +58,8 @@ import { GitPanel } from './editor/GitPanel';
 import { ActivityPanel } from './editor/ActivityPanel';
 import { SecondOrderPanel } from './editor/SecondOrderPanel';
 import { thenWhat } from './editor/secondOrderActions';
+import { FishbonePanel } from './editor/FishbonePanel';
+import { addChild } from './editor/fishboneActions';
 import { InspectorTabs, type InspectorTab } from './editor/InspectorTabs';
 import { Dock } from './Dock';
 import { clampDockWidth } from './dockWidth';
@@ -181,11 +183,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // which must call the latest closure without re-subscribing on every render:
   //   - addNodeRef: the keydown N-key shortcut (see useEditSession).
   //   - leaveEditRef: the hashchange listener's cross-diagram edit close.
-  //   - thenWhatRef: the keydown Tab shortcut (second-order "and then what?").
+  //   - tabActionRef: the keydown Tab shortcut (a notation's "add a child").
   // All three are read through refs by the listeners and assigned on every render.
   const addNodeRef = useRef<() => void>(() => {});
   const leaveEditRef = useRef<() => boolean>(() => true);
-  const thenWhatRef = useRef<() => boolean>(() => false);
+  const tabActionRef = useRef<() => boolean>(() => false);
 
   const dl = useDeepLink({ names, booted, leaveEditRef });
   const { selected, setSelected, enteredPath, setEnteredPath, handleEnteredPathChange } = dl;
@@ -237,7 +239,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     addNodeRef,
     toolKeyRef,
     leaveEditRef,
-    thenWhatRef,
+    tabActionRef,
   });
   const { editing, setEditing, editor, layoutApiRef, saveIssues, setSaveIssues, saving, doSave, enterEdit, leaveEdit } = edit;
 
@@ -414,13 +416,15 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const { select, switchPlane, activateLayer, toggleLayer, mergeSelectedLayers, toggleExpand, resetView } = view;
   const { compareSelect, groupSelected } = view;
 
-  // Mind-map-style Tab: add a neutral consequence to the selected second-order
-  // node and open it for typing, same as the panel's own buttons. Reports
-  // whether it acted so the keydown handler only swallows Tab's default focus
-  // move when there was something to extend (see useEditSession).
-  thenWhatRef.current = () => {
-    if (!editing || notation !== 'second-order' || model === undefined || selection?.kind !== 'node') return false;
-    const out = thenWhat(model, selection.id, '0');
+  // Mind-map-style Tab: add a child of the selected node and open it for
+  // typing, same as the notation panel's own buttons — a neutral consequence
+  // on a second-order diagram, a category / cause / sub-cause on a fishbone.
+  // Reports whether it acted so the keydown handler only swallows Tab's
+  // default focus move when there was something to extend (see useEditSession).
+  tabActionRef.current = () => {
+    if (!editing || model === undefined || selection?.kind !== 'node') return false;
+    const out =
+      notation === 'second-order' ? thenWhat(model, selection.id, '0') : notation === 'fishbone' ? addChild(model, selection.id) : null;
     if (out === null) return false;
     editor.dispatch(out.command);
     select({ kind: 'node', id: out.id });
@@ -1183,6 +1187,16 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
               )}
               {editing && notation === 'second-order' && (
                 <SecondOrderPanel
+                  model={model}
+                  selection={selection}
+                  {...(activePlane !== undefined && !activePlaneBorrowsContainment ? { plane: activePlane } : {})}
+                  onCommand={editor.dispatch}
+                  onSelect={(id) => select({ kind: 'node', id })}
+                  onCreated={requestLabelEdit}
+                />
+              )}
+              {editing && notation === 'fishbone' && (
+                <FishbonePanel
                   model={model}
                   selection={selection}
                   {...(activePlane !== undefined && !activePlaneBorrowsContainment ? { plane: activePlane } : {})}
