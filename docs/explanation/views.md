@@ -22,6 +22,10 @@ The five steps, and what each is for:
 
 The output carries **two** edge sets. `edges` is what gets drawn. `layoutEdges` is the full set, including relations hidden behind an inactive layer, and it is what elk lays out against. That is why toggling a layer changes the arrows but never moves a box — the geometry was computed from everything all along.
 
+Edges are **drawn along the routes that layout computed**, not straight between their two boxes. The arrangement and the routing come from the same run, so a line goes around the box elk placed in its way. A label rides **on** its line: elk makes the label a stop on the route and runs the line through its centre, and the label layer is painted above every edge — a label covers the stretch of line under it, and no line is ever drawn across a label. A route only holds while both of its ends stand where the layout put them: move a box — by hand, from a saved position, or mid-drag — and its edges fall back to floating curves, which follow the box wherever it goes. Notations whose line *is* the notation (a causal loop's arc) always float.
+
+The same full set decides what is *independent*. Boxes that no relation ties to the rest of their level — at the top, or inside a container — are arranged on their own and packed into a compact block instead of trailing down the first column; a relation hidden behind a layer still counts as a tie, so a layer toggle cannot regroup them either.
+
 ## Three independent controls
 
 They are frequently confused because all three change what you see. They are orthogonal, and it is worth being precise:
@@ -36,7 +40,7 @@ They are frequently confused because all three change what you see. They are ort
 
 The diagram rests fully folded: every group is one box. Double-click a group and it unfolds while the viewport glides into it; double-click again to fold it back.
 
-The rule that makes this readable is that **siblings stay folded**. You are always reading one focused path of detail against a group-level overview, never a fully-exploded graph. A pin (the chip on a group's header) overrides the automatic decision for that container until you clear it.
+The rule that makes this readable is that **siblings stay folded**. You are always reading one focused path of detail against a group-level overview, never a fully-exploded graph. The `▸`/`▾` chip on a group's header overrides the automatic decision for that container: it pins the group open or shut.
 
 When a container folds, relations that crossed its boundary do not vanish — they re-anchor to the box that absorbed the hidden endpoint. Several relations between the same visible pair then fold into **one** arrow. If those relations no longer share a single `kind`, the aggregate shows as `mixed`.
 

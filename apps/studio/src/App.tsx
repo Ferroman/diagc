@@ -9,6 +9,7 @@ import {
   STYLE_PRESETS,
   type DiagramSelection,
   type DrawTool,
+  type EdgeLabelMoves,
   type LoopEdgeInput,
   type Side,
 } from '@diagramming/renderer';
@@ -17,7 +18,9 @@ import {
   emptyDrawings,
   emptyLayout,
   errMessage,
+  defaultLayoutDirection,
   layoutPlaneKey,
+  openingPins,
   presetLayers,
   SOURCE_URL,
   uniqueStrokeId,
@@ -45,7 +48,7 @@ import { computeSelectionColor } from './selection-color';
 import { EditorToolbar } from './editor/EditorToolbar';
 import { LayoutControls } from './LayoutControls';
 import { mergePreview, withLayoutPreview } from './layoutPreview';
-import { withPlaneManual, withSavedPositions } from './savedPositions';
+import { unfoldedOf, withPlaneManual, withSavedPositions } from './savedPositions';
 import { uploadAsset } from './editor/images';
 import { NodePanel } from './editor/NodePanel';
 import { EdgePanel } from './editor/EdgePanel';
@@ -124,6 +127,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // part of the model, so saving them is legitimate even for a read-only
   // TS-authored diagram, whose sidecar `pnpm compile` never rewrites.
   const [movedPositions, setMovedPositions] = useState<Record<string, { x: number; y: number }>>({});
+  // Edge labels slid along their edges in view mode (Alt+drag a label): the
+  // same class of state, saved by the same chip into the overlay's `edgeLabels`.
+  const [movedLabels, setMovedLabels] = useState<EdgeLabelMoves>({});
   const [savingPositions, setSavingPositions] = useState(false);
   // Hand back a hand-positioned plane to the layout algorithm for this view only.
   // Saved coordinates otherwise beat every algorithm, so a diagram that has been
@@ -279,8 +285,13 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     // studio drew a picture the published image never shows — the author would
     // fold by hand to see what they were shipping, or (worse) not notice that a
     // box is folded in the image at all. Empty list, empty pins: unchanged.
+    // On top of that, the boxes the layout was SAVED with open (`unfolded`):
+    // hand-placed interiors only show while their container is open.
     const folded = layout?.export?.collapsed ?? [];
-    setPins(Object.fromEntries(folded.map((id) => [id, 'collapsed' as const])));
+    setPins({
+      ...Object.fromEntries(folded.map((id) => [id, 'collapsed' as const])),
+      ...openingPins(layout, model, plane),
+    });
   }, [selected, model, plane, layout]);
 
   // Whether the active plane is in manual (frozen) layout — its manual flag is
@@ -378,11 +389,13 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     setCompareId,
     setPlane,
     setPins,
+    layout,
+    pins,
     setLayoutPreview,
     setActiveLayers,
     setActiveLayer,
   });
-  const { select, switchPlane, activateLayer, toggleLayer, mergeSelectedLayers, togglePin, toggleExpand, resetView } = view;
+  const { select, switchPlane, activateLayer, toggleLayer, mergeSelectedLayers, toggleExpand, resetView } = view;
   const { compareSelect, groupSelected } = view;
 
   // Diagram lifecycle: create + rename + duplicate (the flows that re-key the
@@ -534,14 +547,39 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     [selected, setLoaded, setSaveIssues],
   );
 
+  // While editing, the open boxes are recorded in the session's overlay (see
+  // toggleExpand), so undo/redo can change them underneath the canvas: follow.
+  // Only a CHANGE while editing counts — entering edit mode must not fold away
+  // what the viewer had open just because it was never saved.
+  const savedUnfoldedKey =
+    model !== undefined ? (layout?.unfolded?.[layoutPlaneKey(model, activePlane)] ?? []).join('\u0000') : '';
+  const lastSavedUnfolded = useRef<string | null>(null);
+  useEffect(() => {
+    const was = lastSavedUnfolded.current;
+    lastSavedUnfolded.current = editing ? savedUnfoldedKey : null;
+    if (!editing || was === null || was === savedUnfoldedKey || model === undefined) return;
+    setPins((p) => (unfoldedOf(p).join('\u0000') === savedUnfoldedKey ? p : openingPins(layout, model, activePlane)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the saved list's CONTENT; layout/model/plane are read at that moment
+  }, [editing, savedUnfoldedKey]);
+
+  // Which boxes are open is saved WITH the positions (see withSavedPositions),
+  // so the chip also has something to save when only a fold changed.
+  const unfoldedNow = useMemo(() => unfoldedOf(pins), [pins]);
+  const foldsUnsaved = model !== undefined && unfoldedNow.join('\u0000') !== savedUnfoldedKey;
+
+  const unsavedView = Object.keys(movedPositions).length > 0 || Object.keys(movedLabels).length > 0 || foldsUnsaved;
+
   const savePositions = useCallback(async () => {
-    if (model === undefined || Object.keys(movedPositions).length === 0) return;
-    const ok = await postLayout(withSavedPositions(layout, model, activePlane, movedPositions));
+    if (model === undefined || !unsavedView) return;
+    const ok = await postLayout(withSavedPositions(layout, model, activePlane, movedPositions, unfoldedNow, movedLabels));
     // The posted body folds movedPositions into the saved overlay, so on success
     // those drags are no longer unsaved — clear the chip. A failed post must
     // leave it up (postLayout surfaces saveIssues) so the user can retry.
-    if (ok) setMovedPositions({});
-  }, [model, movedPositions, layout, activePlane, postLayout]);
+    if (ok) {
+      setMovedPositions({});
+      setMovedLabels({});
+    }
+  }, [model, movedPositions, movedLabels, unsavedView, unfoldedNow, layout, activePlane, postLayout]);
 
   // The view-mode manual switch. Freezing snapshots every on-screen position
   // (React Flow's parent-relative copy — the overlay's own space, unsaved drags
@@ -552,13 +590,18 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     if (model === undefined) return;
     const freezing = !activePlaneManual;
     const snapshot = freezing ? (layoutApiRef.current?.snapshotPositions() ?? {}) : null;
-    const ok = await postLayout(withPlaneManual(layout, model, activePlane, snapshot));
+    const ok = await postLayout(
+      withPlaneManual(layout, model, activePlane, snapshot, freezing ? unfoldedNow : undefined, freezing ? movedLabels : {}),
+    );
     // Freezing's body IS the current on-screen snapshot, so any pending
     // view-mode drags it covers are now saved too — clear the chip. Thawing's
     // body carries no positions at all, so pending drags stay pending; they
     // must NOT be discarded just because the plane went back to automatic.
-    if (ok && freezing) setMovedPositions({});
-  }, [model, layout, activePlane, activePlaneManual, layoutApiRef, postLayout]);
+    if (ok && freezing) {
+      setMovedPositions({});
+      setMovedLabels({});
+    }
+  }, [model, layout, activePlane, activePlaneManual, layoutApiRef, postLayout, unfoldedNow, movedLabels]);
 
   // View mode never persists: merge into the ephemeral preview instead of
   // dispatching a command.
@@ -648,7 +691,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
           ))}
         {!editing && model !== undefined && (
           <>
-            <LayoutControls settings={activePlaneSettings} onChange={previewLayoutSettings} />
+            <LayoutControls
+              settings={activePlaneSettings}
+              onChange={previewLayoutSettings}
+              {...(model !== undefined ? { defaultDirection: defaultLayoutDirection(model) } : {})}
+            />
             {layoutPreview[layoutPlaneKey(model, activePlane)] !== undefined && (
               <button
                 className="chip"
@@ -699,11 +746,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             >
               Freeze layout
             </button>
-            {Object.keys(movedPositions).length > 0 && (
+            {unsavedView && (
               <button
                 className="chip primary"
                 disabled={savingPositions}
-                title="Write the boxes you moved to this diagram's layout file. Safe on a generated diagram: re-compiling rewrites the model, never the positions."
+                title="Write the boxes and edge labels you moved, and which groups are open, to this diagram's layout file. Safe on a generated diagram: re-compiling rewrites the model, never the layout."
                 onClick={() => void savePositions()}
               >
                 {savingPositions ? 'Saving…' : 'Save positions'}
@@ -788,6 +835,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
           onToggleAutoLayout={toggleAutoLayout}
           getAutoPositions={() => layoutApiRef.current?.autoPositions() ?? {}}
           layoutSettings={activePlaneSettings}
+          {...(model !== undefined ? { defaultDirection: defaultLayoutDirection(model) } : {})}
           onSetLayoutSettings={setLayoutSettings}
           selectionColor={selectionColor}
           tool={tool}
@@ -927,7 +975,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                 activeLayers={activeLayers}
                 onToggleLayer={toggleLayer}
                 pins={pins}
-                onTogglePin={togglePin}
                 onToggleExpand={toggleExpand}
                 onSelect={select}
                 onMultiSelect={multiSelect}
@@ -942,6 +989,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                 {...(snap ? { snapGrid: SNAP_GRID } : {})}
                 onCldEdges={handleCldEdges}
                 onViewPositionsChange={setMovedPositions}
+                onViewLabelMovesChange={setMovedLabels}
                 layoutApiRef={layoutApiRef}
                 ignoreSavedPositions={autoArrange}
                 externalHighlight={

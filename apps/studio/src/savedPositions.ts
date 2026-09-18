@@ -1,4 +1,11 @@
-import { layoutPlaneKey, type DiagramModel, type LayoutOverlay } from '@diagramming/core';
+import {
+  layoutPlaneKey,
+  withEdgeLabelPlacements,
+  withUnfolded,
+  type DiagramModel,
+  type EdgeLabelPlacement,
+  type LayoutOverlay,
+} from '@diagramming/core';
 
 /**
  * Fold a viewer's hand-placed positions into the diagram's layout overlay, ready
@@ -14,6 +21,15 @@ import { layoutPlaneKey, type DiagramModel, type LayoutOverlay } from '@diagramm
  * `manual` and `export`, and a save that dropped a hand-written algorithm choice
  * to record two box positions would be a poor trade.
  *
+ * `unfolded` (the containers open on screen right now) is saved with them and
+ * REPLACES the plane's list: a hand-placed interior only shows while its
+ * container is open, so positions saved without it reopen as a fully folded
+ * diagram that looks like the save did nothing. Omitted ⇒ the list is left
+ * alone.
+ *
+ * `labels` are the edge labels slid along their edges in view mode; they merge
+ * into the plane's `edgeLabels` the way `moved` merges into its positions.
+ *
  * Deliberately does NOT set `manual` for the plane. That switch turns automatic
  * layout off wholesale, which would leave any node added to the source later with
  * no position at all; `overlayPositions` already makes these coordinates win for
@@ -24,14 +40,24 @@ export function withSavedPositions(
   model: DiagramModel,
   plane: string | undefined,
   moved: Record<string, { x: number; y: number }>,
+  unfolded?: readonly string[],
+  labels: Readonly<Record<string, Readonly<Record<string, EdgeLabelPlacement>>>> = {},
 ): LayoutOverlay {
   const key = layoutPlaneKey(model, plane);
   const base: LayoutOverlay = layout ?? { version: 1, planes: {} };
-  return {
-    ...base,
-    planes: { ...base.planes, [key]: { ...base.planes[key], ...moved } },
-  };
+  // a save of nothing but folds or labels must not leave an empty position bucket behind
+  const positioned: LayoutOverlay =
+    Object.keys(moved).length === 0 ? base : { ...base, planes: { ...base.planes, [key]: { ...base.planes[key], ...moved } } };
+  const placed = withEdgeLabelPlacements(positioned, key, labels);
+  return unfolded === undefined ? placed : withUnfolded(placed, key, unfolded);
 }
+
+/** the containers a pins map holds open, as the sorted list the overlay saves */
+export const unfoldedOf = (pins: Record<string, 'expanded' | 'collapsed'>): string[] =>
+  Object.entries(pins)
+    .filter(([, state]) => state === 'expanded')
+    .map(([id]) => id)
+    .sort();
 
 /**
  * Switch a plane's manual-layout flag, optionally pinning a snapshot of every
@@ -43,7 +69,9 @@ export function withSavedPositions(
  * offering the plane to the algorithm and to pin nodes it creates — so a node
  * added to the source later still gets an automatic position until it is moved.
  *
- * `snapshot` non-null: merge those positions into the plane and set the flag.
+ * `snapshot` non-null: merge those positions into the plane and set the flag;
+ * `unfolded` rides along exactly as in `withSavedPositions` (a frozen picture
+ * includes which boxes were open in it).
  * `null`: clear the flag and leave every position alone (the same non-destructive
  * "back to automatic" the edit toolbar's toggle performs). An emptied `manual`
  * map is dropped, mirroring `set-plane-layout` in core.
@@ -53,6 +81,8 @@ export function withPlaneManual(
   model: DiagramModel,
   plane: string | undefined,
   snapshot: Record<string, { x: number; y: number }> | null,
+  unfolded?: readonly string[],
+  labels: Readonly<Record<string, Readonly<Record<string, EdgeLabelPlacement>>>> = {},
 ): LayoutOverlay {
   const key = layoutPlaneKey(model, plane);
   const base: LayoutOverlay = layout ?? { version: 1, planes: {} };
@@ -61,9 +91,14 @@ export function withPlaneManual(
     const { [key]: _drop, ...kept } = current;
     return Object.keys(kept).length > 0 ? { ...rest, manual: kept } : rest;
   }
-  return {
-    ...rest,
-    planes: { ...base.planes, [key]: { ...base.planes[key], ...snapshot } },
-    manual: { ...current, [key]: true },
-  };
+  const frozen: LayoutOverlay = withEdgeLabelPlacements(
+    {
+      ...rest,
+      planes: { ...base.planes, [key]: { ...base.planes[key], ...snapshot } },
+      manual: { ...current, [key]: true },
+    },
+    key,
+    labels,
+  );
+  return unfolded === undefined ? frozen : withUnfolded(frozen, key, unfolded);
 }

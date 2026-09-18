@@ -33,6 +33,15 @@ Show how releases, hotfixes, nightlies and feature work flow between branches �
 
 3. `pnpm compile`, open it in the studio or publish it. Columns are computed: every commit sits one column after everything it follows, branched from or merged — nothing to date. Leave a deliberate gap with `commit({ tag: '2.0', gap: 3 })`.
 
+4. Optionally frame the **stages** the history went through. A stage is a named frame across every lane, spanning the columns of the commits it names:
+
+   ```ts
+   g.stage('development', { name: 'Development', from: n1, to: n4, color: '#7bbf7b' });
+   g.stage('stabilisation', { name: 'Release candidates', from: rc1, to: rc3, color: '#e0a030' });
+   ```
+
+   Declare a stage after the commits it names. `to` defaults to `from` (a one-column frame); two stages over neighbouring columns share a wall. The titles take a band above the first lane, so a graph with stages is a little taller than one without.
+
 The whole picture above is `.diagrams/src/docs-git-graph.diagram.ts` in this repo.
 
 ## In the studio
@@ -48,10 +57,11 @@ The whole picture above is `.diagrams/src/docs-git-graph.diagram.ts` in this rep
 - **Lanes never fold.** Semantic zoom leaves them alone; dragging a commit still works, and the plane's *Auto-layout* switch freezes or frees positions as on any plane. The algorithm, direction, spacing and routing pickers are hidden — the notation owns the arrangement.
 - **Colours.** A commit takes its lane's colour unless it sets its own. A branch-off is drawn in the lane it starts; a merge in the lower of the two lanes (so feature work keeps its colour on the way up, and a trunk merging down takes the lane it lands in).
 - **Tags** are the commit's name; an empty name draws a plain circle.
+- **Stages** are `git-stage` nodes whose span is metadata (`from`, `to`: commit ids), not containment — a commit already belongs to its lane. The frame lets clicks through to the commits inside it; grab it by its title. There is no Git-panel form for stages yet: author them in the source.
 - **Rules.** Links of kind `commit`, `branch` and `merge` must join two commits; `commit` stays in a lane, the other two cross lanes; at most one incoming `commit` and one incoming `branch` per commit; no cycles. The compiler and the studio's save both report a violation by its [validation code](../reference/model.md#validation-codes).
 
 ## See also
 
-- [Builder API](../reference/builder-api.md#mgitgraphopts--gitgraphbuilder) — `gitGraph`, `branch`, `commit`, `merge`
+- [Builder API](../reference/builder-api.md#mgitgraphopts--gitgraphbuilder) — `gitGraph`, `branch`, `commit`, `merge`, `stage`
 - [Model reference](../reference/model.md#git-graph-conventions) — what the nodes and relations mean on a `git-graph` plane
 - [Publish and share](publish-and-share.md) — the page and the PNG work as for any diagram

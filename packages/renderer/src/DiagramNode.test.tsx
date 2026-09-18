@@ -66,12 +66,24 @@ describe('DiagramNode', () => {
     expect(container.querySelector('svg.lucide')).not.toBeNull();
   });
 
-  it('shows hidden count and pin chip on a collapsed container', () => {
-    const onTogglePin = vi.fn();
-    renderNode({ state: 'collapsed', typeId: 'system', hiddenCount: 4, onTogglePin });
+  it('shows hidden count and a fold chip on a collapsed container; the click asks to expand', () => {
+    const onToggleExpand = vi.fn();
+    renderNode({ state: 'collapsed', typeId: 'system', hiddenCount: 4, onToggleExpand });
     expect(screen.getByText('4')).toBeDefined();
-    fireEvent.click(screen.getByTestId('pin-chip'));
-    expect(onTogglePin).toHaveBeenCalledWith('n1');
+    const chip = screen.getByTestId('fold-chip');
+    expect(chip.textContent).toBe('▸');
+    expect(chip.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(chip);
+    expect(onToggleExpand).toHaveBeenCalledWith('n1', 'expanded');
+  });
+
+  it('an open container\'s fold chip asks to collapse, whatever opened it', () => {
+    const onToggleExpand = vi.fn();
+    renderNode({ state: 'expanded', typeId: 'system', onToggleExpand });
+    const chip = screen.getByTestId('fold-chip');
+    expect(chip.textContent).toBe('▾');
+    fireEvent.click(chip);
+    expect(onToggleExpand).toHaveBeenCalledWith('n1', 'collapsed');
   });
 
   it('marks promoted and shared nodes', () => {
@@ -380,10 +392,9 @@ describe('DiagramNode', () => {
       state: 'collapsed',
       hiddenCount: 2,
       onEnterNode: () => {},
-      onTogglePin: () => {},
     });
     expect(container.querySelector('.dg-disclose')?.textContent).toBe('▸');
-    expect(container.querySelector('[data-testid="pin-chip"]')).toBeNull();
+    expect(container.querySelector('[data-testid="fold-chip"]')).toBeNull();
     expect(container.querySelector('[data-testid="enter-chip"]')).toBeNull();
   });
 
@@ -695,7 +706,7 @@ describe('activity container chrome', () => {
     expect(container.querySelector('.dg-activity-lane')).not.toBeNull();
     expect(container.querySelector('.dg-node')).toBeNull();
     expect(screen.queryByTestId('enter-chip')).toBeNull();
-    expect(screen.queryByTestId('pin-chip')).toBeNull();
+    expect(screen.queryByTestId('fold-chip')).toBeNull();
     const strip = container.querySelector('.dg-activity-strip');
     expect(strip).not.toBeNull();
     expect(strip!.querySelector('.dg-activity-name')?.textContent).toBe('Orders');
@@ -706,7 +717,7 @@ describe('activity container chrome', () => {
     expect(container.querySelector('.dg-activity-frame')).not.toBeNull();
     expect(container.querySelector('.dg-node')).toBeNull();
     expect(screen.queryByTestId('enter-chip')).toBeNull();
-    expect(screen.queryByTestId('pin-chip')).toBeNull();
+    expect(screen.queryByTestId('fold-chip')).toBeNull();
     const strip = container.querySelector('.dg-activity-strip');
     expect(strip).not.toBeNull();
     expect(strip!.querySelector('.dg-activity-name')?.textContent).toBe('Checkout');
@@ -718,7 +729,7 @@ describe('activity container chrome', () => {
     expect(container.querySelector('.dg-node')).toBeNull();
     expect(container.querySelector('.dg-activity-region-name')?.textContent).toBe('Fulfillment');
     expect(screen.queryByTestId('enter-chip')).toBeNull();
-    expect(screen.queryByTestId('pin-chip')).toBeNull();
+    expect(screen.queryByTestId('fold-chip')).toBeNull();
     expect(screen.queryByTestId('disclose-chip')).toBeNull();
   });
 
@@ -781,7 +792,7 @@ describe('git graph nodes', () => {
   });
 
   it('a lane is a transparent band with its name boxed at the right and no group chrome', () => {
-    const { container } = renderNode(base({ typeId: 'branch', label: 'Master', state: 'expanded', color: '#7ba7d9', onEnterNode: () => {}, onTogglePin: () => {} }));
+    const { container } = renderNode(base({ typeId: 'branch', label: 'Master', state: 'expanded', color: '#7ba7d9', onEnterNode: () => {} }));
     expect(container.querySelector('.dg-lane')).not.toBeNull();
     const label = container.querySelector('.dg-lane-label') as HTMLElement;
     expect(label.textContent).toBe('Master');
@@ -798,6 +809,17 @@ describe('git graph nodes', () => {
     expect(label.textContent).toBe('Master');
     expect(container.querySelector('.dg-node')).toBeNull();
     expect(container.querySelector('.dg-group')).toBeNull();
+  });
+
+  it('a git stage is a titled frame, not a box: no icon, subtitle or fold chrome', () => {
+    const { container } = renderNode(base({ typeId: 'git-stage', label: 'Release candidates', state: 'leaf', color: '#e0a030' }));
+    const frame = container.querySelector('.dg-git-stage') as HTMLElement;
+    expect(frame).not.toBeNull();
+    expect(frame.style.getPropertyValue('--dg-stage')).toBe('#e0a030');
+    expect(container.querySelector('.dg-git-stage-name')?.textContent).toBe('Release candidates');
+    expect(container.querySelector('.dg-node')).toBeNull();
+    expect(container.querySelector('.dg-type')).toBeNull();
+    expect(screen.queryByTestId('fold-chip')).toBeNull();
   });
 
   it('outside the git notation a branch-typed container is an ordinary group', () => {

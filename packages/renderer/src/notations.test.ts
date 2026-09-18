@@ -39,7 +39,11 @@ describe('notationProfile', () => {
     const p = notationProfile('git-graph');
     expect(p.className).toBe('dg-notation-git');
     expect(p.layout).toBe(gitLayout);
-    expect(p.typeStyles).toEqual({ commit: { shape: 'circle' }, branch: { shape: 'box' } });
+    expect(p.typeStyles).toEqual({
+      commit: { shape: 'circle' },
+      branch: { shape: 'box' },
+      'git-stage': { shape: 'box', label: '' }, // a frame across the lanes: no '[git-stage]' subtitle
+    });
     expect(p.kindStyles).toEqual({
       commit: { dashed: true, endMarker: 'none' },
       branch: { dashed: true, endMarker: 'none' },

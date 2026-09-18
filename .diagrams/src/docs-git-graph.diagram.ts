@@ -54,6 +54,12 @@ dev.commit({ from: t2d });
 // a hotfix on 2.0 becomes 2.1, which nightly also takes
 const hf = hotfix.commit({ from: v20 });
 const v21 = master.merge(hf, { tag: '2.1' });
-nightly.merge(v21);
+const n6 = nightly.merge(v21);
+
+// the phases the history went through: frames across every lane, each spanning
+// the columns of the commits it names
+g.stage('development', { name: 'Development', from: n1, to: n4, color: '#7bbf7b' });
+g.stage('stabilisation', { name: 'Release candidates', from: rc1, to: rc3, color: '#e0a030' });
+g.stage('production', { name: 'Production', from: v20, to: n6, color: '#7ba7d9' });
 
 export default m;

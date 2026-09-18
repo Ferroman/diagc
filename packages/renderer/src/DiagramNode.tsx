@@ -1,6 +1,6 @@
 import { useContext, useRef, type CSSProperties } from 'react';
 import { Handle, NodeResizer, Position } from '@xyflow/react';
-import type { Column, FontScale, NotationId, TextAlign, TextRun } from '@diagramming/core';
+import { GIT_STAGE_TYPE, type Column, type FontScale, type NotationId, type TextAlign, type TextRun } from '@diagramming/core';
 import type { IconRegistry } from '@diagramming/icons';
 import type { Registry, TypeStyle } from './registry';
 import { LoopHighlightContext } from './loop-highlight';
@@ -36,7 +36,6 @@ export interface DiagramNodeData {
   hiddenCount: number;
   /** metadata values surfaced on the node itself (e.g. framework/language/tool) */
   metaBadges?: string[];
-  pinned?: 'expanded' | 'collapsed';
   typeRegistry: Registry<TypeStyle>;
   icons: IconRegistry;
   /** asset ref — when set the node body is this image (leaf nodes) */
@@ -75,10 +74,10 @@ export interface DiagramNodeData {
   onResize?: (id: string, w: number, h: number, pos: { x: number; y: number }) => void;
   /** edit mode (db-table): commit a replacement columns array */
   onColumnsChange?: (columns: Column[]) => void;
-  /** pin/expand affordances (both modes; the viewer wires them too) */
-  onTogglePin?: (id: string) => void;
-  /** CLD group: expand/collapse via the disclosure toggle (binary) */
-  onToggleExpand?: (id: string) => void;
+  /** the fold chip and the CLD group's disclosure toggle (both modes; the
+   * viewer wires it too). `next` is the state the click asks for — the
+   * opposite of the one on screen. */
+  onToggleExpand?: (id: string, next: 'expanded' | 'collapsed') => void;
   /** the link badge was clicked; absent falls back to a best-effort
    * new-tab open for http(s) links (see the badge's onClick below) */
   onOpenLink?: (link: string) => void;
@@ -402,17 +401,24 @@ export function DiagramNode({
         </button>
       )}
       {isContainer && !isCldGroup && (
+        // A plain fold toggle: the glyph says what the box IS (open/shut) and a
+        // click flips it. The host is told the state to land in, because only
+        // the view knows the current one — a container can be open through
+        // focus with no pin at all, and a blind flip of the pin would then be
+        // a click that changes nothing.
         <button
           type="button"
-          className="dg-pin"
-          data-testid="pin-chip"
-          title={data.pinned !== undefined ? `Pinned ${data.pinned}` : 'Auto (click to pin)'}
+          className="dg-fold"
+          data-testid="fold-chip"
+          title={data.state === 'expanded' ? 'Collapse' : 'Expand'}
+          aria-label={data.state === 'expanded' ? 'Collapse' : 'Expand'}
+          aria-expanded={data.state === 'expanded'}
           onClick={(e) => {
             e.stopPropagation();
-            data.onTogglePin?.(id);
+            data.onToggleExpand?.(id, data.state === 'expanded' ? 'collapsed' : 'expanded');
           }}
         >
-          {data.pinned !== undefined ? '📌' : '◇'}
+          {data.state === 'expanded' ? '▾' : '▸'}
         </button>
       )}
       {isCldGroup && (
@@ -424,7 +430,7 @@ export function DiagramNode({
           aria-label={data.state === 'expanded' ? 'Collapse group' : 'Expand group'}
           onClick={(e) => {
             e.stopPropagation();
-            data.onToggleExpand?.(id);
+            data.onToggleExpand?.(id, data.state === 'expanded' ? 'collapsed' : 'expanded');
           }}
         >
           {data.state === 'expanded' ? '▾' : '▸'}
@@ -454,6 +460,22 @@ export function DiagramNode({
           {name}
         </span>
         {sideHandles}
+      </div>
+    );
+  }
+
+  if (data.typeId === GIT_STAGE_TYPE) {
+    // A stage is a frame across every lane of a git graph (see gitLayout). The
+    // frame itself lets the pointer through — commits and lane lines sit inside
+    // it and must stay clickable — so only its title can be grabbed.
+    return (
+      <div
+        className={`dg-git-stage${loopClass}`}
+        {...(data.color !== undefined ? { style: { '--dg-stage': data.color } as CSSProperties } : {})}
+      >
+        <span className="dg-git-stage-name" {...(data.textColor !== undefined ? { style: { color: data.textColor } } : {})}>
+          {name}
+        </span>
       </div>
     );
   }
@@ -499,7 +521,7 @@ export function DiagramNode({
             aria-label="Collapse group"
             onClick={(e) => {
               e.stopPropagation();
-              data.onToggleExpand?.(id);
+              data.onToggleExpand?.(id, 'collapsed');
             }}
           >
             ▾

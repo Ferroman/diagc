@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { model } from './builder';
-import { applyCommand, applyCommandWithResult, emptyLayout, layoutPlaneKey, type EditorState } from './commands';
+import {
+  applyCommand,
+  applyCommandWithResult,
+  emptyLayout,
+  layoutPlaneKey,
+  openingPins,
+  withEdgeLabelPlacements,
+  type EditorState,
+} from './commands';
 import { emptyDrawings } from './drawings';
 import { CommandError } from './mutate';
 
@@ -83,6 +91,40 @@ describe('applyCommand', () => {
     expect(s.model.nodes.some((n) => n.id === 'a')).toBe(false);
     expect(s.layout.planes['arch']).toEqual({});
     expect(s.layout.sizes?.['a']).toBeUndefined();
+  });
+
+  it('set-unfolded replaces the plane list (sorted, unique); an emptied list and map are dropped', () => {
+    let s = applyCommand(state(), { type: 'set-unfolded', plane: 'arch', ids: ['sys', 'a', 'sys'] });
+    expect(s.layout.unfolded).toEqual({ arch: ['a', 'sys'] });
+    // a replace, not a merge: what is not named no longer opens unfolded
+    s = applyCommand(s, { type: 'set-unfolded', plane: 'arch', ids: ['other'] });
+    expect(s.layout.unfolded).toEqual({ arch: ['other'] });
+    s = applyCommand(s, { type: 'set-unfolded', plane: 'arch', ids: [] });
+    expect('unfolded' in s.layout).toBe(false);
+  });
+
+  it('openingPins reads a plane\'s unfolded list as expanded pins, by resolved plane key', () => {
+    const s = applyCommand(state(), { type: 'set-unfolded', plane: 'arch', ids: ['sys'] });
+    expect(openingPins(s.layout, s.model, 'arch')).toEqual({ sys: 'expanded' });
+    expect(openingPins(s.layout, s.model, 'flow')).toEqual({ sys: 'expanded' }); // borrows arch's structure
+    expect(openingPins(undefined, s.model, 'arch')).toEqual({});
+  });
+
+  it('delete-node drops it from the unfolded list, and the list with its last id', () => {
+    let s = applyCommand(state(), { type: 'set-unfolded', plane: 'arch', ids: ['sys'] });
+    s = applyCommand(s, { type: 'delete-node', id: 'sys', cascade: true });
+    expect('unfolded' in s.layout).toBe(false);
+  });
+
+  it('delete-plane drops the deleted plane unfolded list', () => {
+    const m = model('t');
+    m.plane('arch').plane('infra');
+    m.node('sys', { type: 'system' }).contains(m.node('a', { type: 'service' }), { plane: 'infra' });
+    let s: EditorState = { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
+    s = applyCommand(s, { type: 'set-unfolded', plane: 'infra', ids: ['sys'] });
+    s = applyCommand(s, { type: 'set-unfolded', plane: 'arch', ids: ['sys'] });
+    s = applyCommand(s, { type: 'delete-plane', id: 'infra' });
+    expect(s.layout.unfolded).toEqual({ arch: ['sys'] });
   });
 
   it('delete-plane removes its containment and drops its layout bucket', () => {
@@ -452,5 +494,59 @@ describe('batch', () => {
   it('an empty batch returns the same state object', () => {
     const before = state();
     expect(applyCommand(before, { type: 'batch', commands: [] })).toBe(before);
+  });
+});
+
+describe('viewer label placements (LayoutOverlay.edgeLabels)', () => {
+  function labelled(): EditorState {
+    const m = model('l');
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    m.relate(a, b, { kind: 'sync', label: 'calls' });
+    m.relate(b, a, { kind: 'sync', label: 'replies' });
+    const json = m.toJSON();
+    const [calls, replies] = json.relations;
+    const layout = withEdgeLabelPlacements(emptyLayout(), 'default', {
+      [calls!.id]: { legacy: { t: 0.2, side: 'top' } },
+      [replies!.id]: { legacy: { t: 0.8 } },
+    });
+    return { model: json, layout, drawings: emptyDrawings() };
+  }
+
+  it('merges into the plane bucket without touching other relations', () => {
+    const s = labelled();
+    const id = s.model.relations[0]!.id;
+    const next = withEdgeLabelPlacements(s.layout, 'default', { [id]: { legacy: { t: 0.4 } } });
+    expect(next.edgeLabels?.['default']?.[id]).toEqual({ legacy: { t: 0.4 } });
+    expect(Object.keys(next.edgeLabels?.['default'] ?? {})).toHaveLength(2);
+    expect(withEdgeLabelPlacements(s.layout, 'default', {})).toBe(s.layout);
+  });
+
+  it('deleting a relation drops its placements; the last one drops the field', () => {
+    let s = labelled();
+    const [calls, replies] = s.model.relations;
+    s = applyCommand(s, { type: 'delete-relation', id: calls!.id });
+    expect(Object.keys(s.layout.edgeLabels?.['default'] ?? {})).toEqual([replies!.id]);
+    s = applyCommand(s, { type: 'delete-relation', id: replies!.id });
+    expect('edgeLabels' in s.layout).toBe(false);
+  });
+
+  it('positioning a label in the MODEL drops the viewer override for it, and only for it', () => {
+    let s = labelled();
+    const [calls, replies] = s.model.relations;
+    s = applyCommand(s, {
+      type: 'update-relation',
+      id: calls!.id,
+      patch: { labels: [{ id: 'legacy', text: 'calls', t: 0.7, side: 'bottom' }] },
+    });
+    expect(s.layout.edgeLabels?.['default']?.[calls!.id]).toBeUndefined();
+    expect(s.layout.edgeLabels?.['default']?.[replies!.id]).toEqual({ legacy: { t: 0.8 } });
+  });
+
+  it('an edit that leaves the label where it was keeps the override', () => {
+    let s = labelled();
+    const calls = s.model.relations[0]!;
+    s = applyCommand(s, { type: 'update-relation', id: calls.id, patch: { description: 'unrelated' } });
+    expect(s.layout.edgeLabels?.['default']?.[calls.id]).toEqual({ legacy: { t: 0.2, side: 'top' } });
   });
 });

@@ -24,8 +24,10 @@ A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot ente
 | `Shift` + click a node, or `Shift` + drag on empty canvas | Add to the selection / draw a marquee. Dragging any selected node drags them all. |
 | Scroll | Pan |
 | Pinch, or the corner controls | Zoom |
-| Pin chip on a group header | Force expanded/collapsed, overriding the automatic choice |
+| `▸` / `▾` chip on a group header | Unfold the group in place / fold it back, without gliding into it |
 | `⤢` chip on a group header | Enter it as its own diagram |
+| `Alt` + drag a node | Move it (view mode). A node dragged past its group's wall grows the group. **Save positions** writes the move. |
+| `Alt` + drag an edge label | Slide it along its edge, or across to the other side of the line (view mode). Saved by the same chip. |
 | `◎` in the corner controls | Dim everything unconnected to the selection |
 | `▤` in the corner controls | Show/hide the legend. Only present when the diagram declares one and it has rows. A viewer preference, never saved. |
 | `◉` in the corner controls, or `L` | Laser pointer for screenshares: drag to draw a red trail that fades out after a second. Works in both modes and inside a drilled-in group; never saved. `Esc` switches it off. |
@@ -38,6 +40,7 @@ A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot ente
 | Double-click empty canvas | Drop a node there and name it |
 | Drag a node onto another | Nest it inside |
 | Drag a node near a sibling's edge or centre | It snaps into line and a dashed guide shows the match. Also with Alt+drag in view mode. |
+| Drag a node past the wall of its group | The group grows around it, in any direction — a drag never takes a node out of its group. Also with Alt+drag in view mode. |
 | Align / distribute toolbar | Appears at the top of the canvas when two or more nodes are selected: align left/centre/right/top/middle/bottom, distribute (3+). In view mode it appears when positions can be saved. |
 | Drag from a connect dot to another node | Create a `sync` relation, pinned to both dots |
 | Double-click a node | Rename in place (Enter commits, Escape cancels) |
@@ -93,7 +96,7 @@ Shortcuts are ignored while you are typing in a form field. History is capped at
 | `⋮⋮ Snap` | Snap dragged boxes (and arrow-key nudges) to a 10px grid; the background dots become the grid. A viewer preference, remembered across reloads, never saved to the diagram. |
 | Plane switcher | Present when the diagram declares planes |
 | Layout pickers | Algorithm, direction, spacing, edge routing and **Wrap** (off / square / screen / wide — folds a long layered chain onto several rows). View mode previews; edit mode saves them to the layout file. |
-| **Save positions** / **Freeze layout** (view mode) | Write Alt-dragged boxes to `<name>.layout.json`; pin every box and mark the plane manual (click again to hand it back). See [Place boxes on a generated diagram](../how-to/position-a-generated-diagram.md). |
+| **Save positions** / **Freeze layout** (view mode) | Write Alt-dragged boxes, and which groups are open, to `<name>.layout.json`; pin every box and mark the plane manual (click again to hand it back). See [Place boxes on a generated diagram](../how-to/position-a-generated-diagram.md). |
 
 Switching planes keeps your place — the groups containing what you were looking at open automatically in the new plane.
 

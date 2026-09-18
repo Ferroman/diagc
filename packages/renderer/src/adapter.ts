@@ -20,6 +20,9 @@ export interface RfNodeInput {
   parentId?: string;
   /** child drags clamp inside the parent box (membership is edited in the panel) */
   extent?: 'parent';
+  /** the parent grows around this node while it is dragged, instead of the
+   * drag being clamped inside (`extent`) or carrying the node out */
+  expandParent?: boolean;
   style?: CSSProperties;
   zIndex?: number;
 }
@@ -33,6 +36,7 @@ export function toRfNode(input: RfNodeInput): Node {
     data: input.data as unknown as Record<string, unknown>,
     ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
     ...(input.extent !== undefined ? { extent: input.extent } : {}),
+    ...(input.expandParent !== undefined ? { expandParent: input.expandParent } : {}),
     ...(input.style !== undefined ? { style: input.style } : {}),
     ...(input.zIndex !== undefined ? { zIndex: input.zIndex } : {}),
   };

@@ -1,4 +1,6 @@
 import { LEAF_SIZE, RESERVED_NODE_ID, type CompiledView, type LayoutSettings, type ViewEdge, type ViewNode } from '@diagramming/core';
+import { ACTIVITY_LAYOUT } from './activity-frame';
+import { EDGE_LABEL_MAX_CHARS } from './label-size';
 
 /** An elk edge after lifting: both endpoints are direct children of the owner. */
 export interface LiftedEdge {
@@ -8,6 +10,25 @@ export interface LiftedEdge {
 }
 
 export const COLLAPSED_SIZE = { width: 200, height: 88 } as const;
+
+/**
+ * What the layout is told about one node: the size it is DRAWN at, plus any room
+ * elk must keep free beneath it for something that hangs outside the box — an
+ * image node's caption. The strip is part of the node's elk footprint and is
+ * taken back off the reported geometry (`layoutView`), so React Flow still sizes
+ * the node to its picture while neighbours, edges and container walls stay off
+ * the text.
+ */
+export interface SizeHint {
+  width: number;
+  height: number;
+  reserveBottom?: number;
+}
+
+/** The box elk lays out for a hinted node: drawn size plus the reserved strip. */
+export function footprint(size: SizeHint): { width: number; height: number } {
+  return { width: size.width, height: size.height + (size.reserveBottom ?? 0) };
+}
 
 export interface ElkPoint {
   x: number;
@@ -24,14 +45,19 @@ export interface ElkEdge {
   targets: string[];
   // elk reserves label space only when `text` is non-empty (width/height alone
   // are ignored), so the trigger text rides along with the footprint.
-  labels?: { width: number; height: number; text: string }[];
+  labels?: { width: number; height: number; text: string; layoutOptions?: Record<string, string> }[];
 }
 // elk populates `sections` (with routing waypoints) on OUTPUT edges only; typed
 // separately so the INPUT graph stays assignable to elk's ElkNode. `container`
 // names the node whose coordinate system the sections are expressed in — under
 // INCLUDE_CHILDREN that is the endpoints' lowest common ancestor, NOT the node
 // the edge was declared on.
-export type ElkRoutedEdge = ElkEdge & { sections?: ElkEdgeSection[]; container?: string };
+export type ElkRoutedEdge = ElkEdge & {
+  sections?: ElkEdgeSection[];
+  container?: string;
+  /** on the way out elk has placed each label box (same frame as `sections`) */
+  labels?: { x?: number; y?: number; width?: number; height?: number }[];
+};
 export interface ElkShape {
   id: string;
   x?: number;
@@ -42,6 +68,11 @@ export interface ElkShape {
   layoutOptions?: Record<string, string>;
   edges?: ElkEdge[];
 }
+
+/** The flow direction when the settings name none. Callers that know the model
+ * resolve `defaultLayoutDirection(model)` into the settings first (useViewLayout);
+ * this is what that resolves to for everything but an activity model. */
+export const FALLBACK_DIRECTION = 'DOWN';
 
 /** elk's default and ours: the one algorithm assumed to lay out anything we can
  * build, which is what makes it usable as `layoutView`'s last-resort attempt. */
@@ -71,11 +102,15 @@ export function layoutOptionsFor(settings?: LayoutSettings): Record<string, stri
   const algorithm = settings?.algorithm ?? DEFAULT_ALGORITHM;
   const spacing = settings?.spacing;
   const nodeNode = spacing !== undefined ? String(spacing) : '40';
-  const betweenLayers = spacing !== undefined ? String(Math.round(spacing * 1.5)) : '60';
+  // Layers sit as far apart as the boxes within one. It used to be 1.5x, which
+  // read as loose once boxes took their real (34–50px tall) size — and elk pays
+  // the between-layers gap TWICE around every labelled edge, whose label takes
+  // a layer of its own, so the extra half was mostly spent on air around labels.
+  const betweenLayers = nodeNode;
 
   const opts: Record<string, string> = {
     'elk.algorithm': algorithm,
-    'elk.direction': settings?.direction ?? 'RIGHT',
+    'elk.direction': settings?.direction ?? FALLBACK_DIRECTION,
     'elk.spacing.nodeNode': nodeNode,
     'elk.spacing.edgeNode': '20',
     'elk.spacing.edgeEdge': '12',
@@ -108,7 +143,12 @@ export function layoutOptionsFor(settings?: LayoutSettings): Record<string, stri
     }
   }
 
-  if (settings?.edgeRouting === 'orthogonal') {
+  // Always orthogonal, whichever way the edges are then DRAWN (soft or sharp
+  // corners, see DiagramEdge): it is layered's own default, so naming it moves
+  // nothing, and it is the one router elk applies consistently — asked for
+  // SPLINES or POLYLINE it still hands back right-angled waypoints for every
+  // edge that crosses a container wall.
+  if (algorithm === DEFAULT_ALGORITHM || settings?.edgeRouting === 'orthogonal') {
     opts['elk.edgeRouting'] = 'ORTHOGONAL';
   }
 
@@ -172,7 +212,78 @@ export function liftEdges(view: CompiledView): Map<string | null, LiftedEdge[]> 
   return byOwner;
 }
 
-const CONTAINER_PADDING = '[top=36.0,left=16.0,bottom=16.0,right=16.0]';
+export interface Pad {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
+}
+
+/** Room an ordinary container keeps around its children: a 36px header band for
+ * the title, 16px elsewhere. */
+export const CONTAINER_PAD: Pad = { top: 36, left: 16, bottom: 16, right: 16 };
+// Activity chrome puts its title somewhere else, so the generic padding is wrong
+// on two sides at once: a lane's name runs down a strip on its LEFT edge (content
+// at 16px sat on top of it) and nothing heads it (36px of dead height); a frame
+// is only its own title strip plus the lanes, which the band pass
+// (activity-frame.ts) then stretches edge to edge.
+const LANE_PAD: Pad = {
+  top: ACTIVITY_LAYOUT.PAD,
+  left: ACTIVITY_LAYOUT.LANE_STRIP_W + ACTIVITY_LAYOUT.PAD,
+  bottom: ACTIVITY_LAYOUT.PAD,
+  right: ACTIVITY_LAYOUT.PAD,
+};
+const FRAME_PAD: Pad = { top: 0, left: ACTIVITY_LAYOUT.TITLE_STRIP_W, bottom: 0, right: 0 };
+
+/** The room `n` keeps around its children. Numbers, not just an elk option,
+ * because `layoutView` embeds separately arranged insides by hand and must leave
+ * exactly the room elk would. */
+export function containerPad(n: ViewNode): Pad {
+  if (n.node.type === 'activity-lane') return LANE_PAD;
+  if (n.node.type === 'activity-frame') return FRAME_PAD;
+  return CONTAINER_PAD;
+}
+
+const elkPadding = (p: Pad): string => `[top=${p.top}.0,left=${p.left}.0,bottom=${p.bottom}.0,right=${p.right}.0]`;
+const NO_PADDING = elkPadding({ top: 0, left: 0, bottom: 0, right: 0 });
+
+/**
+ * Gap between independently arranged blocks (pack.ts). Both values follow a
+ * plane's `spacing` the way the layer gap does, so one setting loosens or
+ * tightens the whole picture.
+ *
+ * Connected parts sit a little further apart than the boxes inside them (the
+ * root `componentComponent` spacing), so the eye separates the groups. A level
+ * of nothing but loose single boxes is a list, not a set of groups: it takes the
+ * plain node spacing, and so matches a same-layer stack elk drew right beside it.
+ */
+export function componentGap(settings: LayoutSettings | undefined, looseBoxesOnly: boolean): number {
+  const node = settings?.spacing ?? 40;
+  return looseBoxesOnly ? node : Math.round(node * 1.2);
+}
+
+/**
+ * Parts of the view that `layoutView` arranged separately (see layout-plan.ts)
+ * and that this graph must therefore treat as opaque, fixed-size boxes. Flat
+ * (layered) path only.
+ */
+export interface GraphSubstitutions {
+  /** the nodes forming this graph's top level — one connected group, not
+   * necessarily the view's roots */
+  roots: readonly ViewNode[];
+  /** unfolded containers whose whole inside was arranged separately: emitted as
+   * leaves of this (padding-inclusive) size */
+  prelaid: ReadonlyMap<string, { width: number; height: number }>;
+  /** per container: the children standing apart from its connected part,
+   * replaced by ONE synthetic leaf the size of their packed block */
+  packs: ReadonlyMap<string, { id: string; width: number; height: number; members: ReadonlySet<string> }>;
+}
+
+/** The per-graph spacing subset of a root option record (`elk.spacing.*` and
+ * `elk.layered.spacing.*`) — the options elk never inherits into a container. */
+function spacingOptionsOf(options: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(options).filter(([k]) => k.includes('.spacing.')));
+}
 
 // Edge-label footprint fed into elk so it reserves room and neighbours don't
 // overlap the label. Approximate: the drawn label is a ~10px-font chip, so a
@@ -190,10 +301,18 @@ export function edgeLabelText(e: ViewEdge): string {
   return e.label ?? '';
 }
 
+// A label rides ON its edge: elk makes the label box a stop on the route and
+// runs the line through its centre, where the chip then masks it. Left to its
+// default elk parks the box BESIDE the line, and a label floating in the gap
+// between two parallel arrows reads as belonging to either.
+const INLINE_LABEL = { 'elk.edgeLabels.inline': 'true' };
+
 function edgeLabelBox(text: string): { width: number; height: number } | undefined {
   const t = text.trim();
   if (t === '') return undefined;
-  return { width: Math.round(t.length * EDGE_LABEL_CHAR + EDGE_LABEL_PAD), height: EDGE_LABEL_HEIGHT };
+  // the chip is ellipsised at EDGE_LABEL_MAX_CHARS, so no more room than that
+  const chars = Math.min([...t].length, EDGE_LABEL_MAX_CHARS);
+  return { width: Math.round(chars * EDGE_LABEL_CHAR + EDGE_LABEL_PAD), height: EDGE_LABEL_HEIGHT };
 }
 
 /**
@@ -215,30 +334,61 @@ function edgeLabelBox(text: string): { width: number; height: number } | undefin
  */
 export function buildGraph(
   view: CompiledView,
-  sizes: Map<string, { width: number; height: number }> | undefined,
+  sizes: ReadonlyMap<string, SizeHint> | undefined,
   settings: LayoutSettings | undefined,
-  opts?: { flat?: boolean },
+  opts?: { flat?: boolean; substitute?: GraphSubstitutions },
 ): { graph: ElkShape; lifted: boolean } {
-  const rootOptions = layoutOptionsFor(settings);
+  const substitute = opts?.substitute;
+  // A substituted graph is a block to embed, not a canvas: elk's default 12px
+  // root padding would become a stray margin around every embedded block.
+  const rootOptions =
+    substitute === undefined ? layoutOptionsFor(settings) : { ...layoutOptionsFor(settings), 'elk.padding': NO_PADDING };
   const nested = usesNestedLayout(settings) && opts?.flat !== true;
   const byOwner = nested ? liftEdges(view) : undefined;
 
-  // On the flat path a container carries padding only: INCLUDE_CHILDREN means
-  // elk lays the whole tree out as one graph, so the root's options already
-  // govern every level. On the nested path each level is a separate layout run
-  // and inherits nothing, so it needs the full set.
+  // On the nested path each level is a separate layout run and inherits
+  // nothing, so a container needs the full option set.
   //
-  // Padding is applied AFTER rootOptions so the container-specific value wins:
+  // On the flat path INCLUDE_CHILDREN makes the whole tree ONE run, and the
+  // run-wide knobs (algorithm, direction, crossing/placement strategy) do come
+  // from the root. Spacing does not: elk reads every `*.spacing.*` option per
+  // graph, off the node that owns that graph, so a bare container laid its
+  // interior out at elk's 20/20 defaults while the root used 40/60 — and a
+  // plane's `spacing` setting only ever moved the top level. So a flat-path
+  // container carries the spacing subset, and nothing else: an `elk.algorithm`
+  // here would end the hierarchical run at this container.
+  //
+  // Padding is applied AFTER the spread so the container-specific value wins:
   // `layoutOptionsFor` never emits `elk.padding` today, but if it ever did, a
   // container would silently lose its 36px header room and the title would
   // overlap its children. elk is indifferent to key order.
-  const containerOptions = nested
-    ? { ...rootOptions, 'elk.padding': CONTAINER_PADDING }
-    : { 'elk.padding': CONTAINER_PADDING };
+  const sharedContainerOptions = nested ? rootOptions : spacingOptionsOf(rootOptions);
+  const containerOptions = (n: ViewNode): Record<string, string> => ({
+    ...sharedContainerOptions,
+    'elk.padding': elkPadding(containerPad(n)),
+  });
 
   let attachedToContainer = false;
 
+  // every id this graph emits — an edge survives substitution only when both of
+  // its endpoints did (the rest live inside a block arranged elsewhere)
+  const emitted = new Set<string>();
+
   const toNode = (n: ViewNode): ElkShape => {
+    emitted.add(n.id);
+    const prelaid = substitute?.prelaid.get(n.id);
+    if (prelaid !== undefined) return { id: n.id, width: prelaid.width, height: prelaid.height };
+    const pack = substitute?.packs.get(n.id);
+    if (pack !== undefined) {
+      return {
+        id: n.id,
+        children: [
+          ...n.children.filter((c) => !pack.members.has(c.id)).map(toNode),
+          { id: pack.id, width: pack.width, height: pack.height },
+        ],
+        layoutOptions: containerOptions(n),
+      };
+    }
     if (n.state === 'expanded') {
       const own = byOwner?.get(n.id);
       const hasOwn = own !== undefined && own.length > 0;
@@ -246,25 +396,34 @@ export function buildGraph(
       return {
         id: n.id,
         children: n.children.map(toNode),
-        layoutOptions: containerOptions,
+        layoutOptions: containerOptions(n),
         ...(hasOwn ? { edges: own } : {}),
       };
     }
-    // collapsed containers keep the fixed collapsed size — an image override
-    // only makes sense for a leaf, where the picture IS the body
-    if (n.state === 'collapsed') return { id: n.id, width: COLLAPSED_SIZE.width, height: COLLAPSED_SIZE.height };
-    const size = sizes?.get(n.id) ?? LEAF_SIZE;
-    return { id: n.id, width: size.width, height: size.height };
+    // A folded container is a titled box, never its leaf form (an image override
+    // only makes sense for a leaf, where the picture IS the body) — so a size
+    // reaching here for one must be a FOLDED-box size. `withBoxSizes` guarantees
+    // that for the view path by replacing any leaf hint on a folded node;
+    // `COLLAPSED_SIZE` is the fallback for callers that pass no sizes at all.
+    if (n.state === 'collapsed') {
+      const folded = sizes?.get(n.id) ?? COLLAPSED_SIZE;
+      return { id: n.id, width: folded.width, height: folded.height };
+    }
+    return { id: n.id, ...footprint(sizes?.get(n.id) ?? LEAF_SIZE) };
   };
 
   // Lifted edges carry no label box. A raised edge stands for every relation
   // between two subtrees, so no single label belongs to it, and elk's force and
   // stress do not reserve label space the way layered does. Recorded in
   // DEFERRALS.md rather than faked.
+  // built before the edges are — `toNode` is what fills `emitted`, and what
+  // discovers container-owned edges for the `lifted` flag below
+  const children = (substitute?.roots ?? view.roots).map(toNode);
+
   const rootEdges: ElkEdge[] = nested
     ? (byOwner?.get(null) ?? [])
     : view.layoutEdges
-        .filter((e) => e.from !== e.to)
+        .filter((e) => e.from !== e.to && (substitute === undefined || (emitted.has(e.from) && emitted.has(e.to))))
         .map((e) => {
           const text = edgeLabelText(e).trim();
           const box = edgeLabelBox(text);
@@ -272,12 +431,9 @@ export function buildGraph(
             id: e.id,
             sources: [e.from],
             targets: [e.to],
-            ...(box !== undefined ? { labels: [{ ...box, text }] } : {}),
+            ...(box !== undefined ? { labels: [{ ...box, text, layoutOptions: INLINE_LABEL }] } : {}),
           };
         });
-
-  // built before `lifted` is read — `toNode` is what discovers container-owned edges
-  const children = view.roots.map(toNode);
 
   // Did this build restructure the edge set, so that elk's output sections stop
   // describing the edges the renderer draws? Two ways it can:

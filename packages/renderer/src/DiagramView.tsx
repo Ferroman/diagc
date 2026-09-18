@@ -27,22 +27,35 @@ import {
   compileView,
   countAnchored,
   DEFAULT_STROKE_WIDTH,
+  GIT_STAGE_TYPE,
   layoutPlaneKey,
   type DiagramNode,
+  type EdgeLabelPlacement,
+  type EdgeLabelSide,
   type Stroke,
   type ViewNode,
 } from '@diagramming/core';
 import { createIconRegistry } from '@diagramming/icons';
+import { ACTIVITY_CHROME_TYPES, FORCED_SIZE_SHAPES } from './box-size';
 import { Breadcrumbs } from './Breadcrumbs';
-import { buildEdgeDataCached, buildNodeDataCached, type EdgeDataContext, type NodeDataContext } from './build-data';
+import { overhangBounds, unionBounds } from './content-bounds';
+import {
+  buildEdgeDataCached,
+  buildNodeDataCached,
+  type EdgeDataContext,
+  type EdgeLabelMoves,
+  type NodeDataContext,
+} from './build-data';
 import { edgeTypes, nodeTypes, toRfEdge, toRfNode } from './adapter';
 import { strokesBounds } from './drawings';
 import { DrawingsLayer } from './DrawingsLayer';
+import { withoutMeasuredExpansion } from './expand-parent';
+import { savedPositions } from './fit-containers';
 import { reconnectPin } from './floating';
 import { GitLanesOverlay } from './GitLanesOverlay';
 import { alignBoxes, distributeBoxes, dropDescendants, type Delta } from './arrange';
 import type { Box } from './box';
-import { GUIDE_THRESHOLD_PX, snapDragChanges, type Guide } from './guides';
+import { GUIDE_THRESHOLD_PX, snapDragFrame, type Guide, type SnapMemo } from './guides';
 import { GuidesLayer } from './GuidesLayer';
 import { SelectionToolbar } from './SelectionToolbar';
 import { Legend } from './Legend';
@@ -95,13 +108,6 @@ const imageFilesOf = (list: FileList | null | undefined): File[] =>
 const droppedOnNodeId = (e: { clientX: number; clientY: number }): string | undefined =>
   document.elementFromPoint(e.clientX, e.clientY)?.closest('.react-flow__node')?.getAttribute('data-id') ??
   undefined;
-
-/** leaf shapes with no CSS-natural size (padding/min-width zeroed): the RF
- * wrapper must get the layout's size explicitly, like image/shape leaves */
-const FORCED_SIZE_SHAPES = new Set(['circle', 'diamond', 'bar', 'start-dot', 'end-bullseye']);
-/** activity chrome renders width/height:100% of its wrapper — an EMPTY lane or
- * frame is compiled 'leaf' and would otherwise collapse to 0×0 */
-const ACTIVITY_CHROME_TYPES = new Set(['activity-frame', 'activity-lane', 'activity-region']);
 
 function Inner(props: DiagramViewProps) {
   const reactFlow = useReactFlow();
@@ -303,6 +309,39 @@ function Inner(props: DiagramViewProps) {
   useEffect(() => {
     setViewPositions({});
   }, [props.model, props.plane, editing]);
+  // Edge labels slid in view mode (Alt+drag a label): the same throwaway class
+  // of state as the box drags above, reset by the same events and offered to
+  // the host the same way (relation id → label id → placement).
+  const [viewLabelMoves, setViewLabelMoves] = useState<EdgeLabelMoves>({});
+  useEffect(() => {
+    setViewLabelMoves({});
+  }, [props.model, props.plane, editing]);
+  const { onViewLabelMovesChange } = props;
+  useEffect(() => {
+    onViewLabelMovesChange?.(viewLabelMoves);
+  }, [viewLabelMoves, onViewLabelMovesChange]);
+  const moveViewLabel = useCallback(
+    (relationId: string, labelId: string, t: number, side: EdgeLabelSide) =>
+      setViewLabelMoves((m) => ({
+        ...m,
+        [relationId]: { ...m[relationId], [labelId]: side === 'center' ? { t } : { t, side } },
+      })),
+    [],
+  );
+  // What is drawn: the saved placements for this plane (a viewer may set those
+  // aside together with the saved positions), with this session's moves on top.
+  // Editing reads only the saved ones — there a label drag edits the document.
+  const labelMoves = useMemo((): EdgeLabelMoves | undefined => {
+    const saved =
+      !editing && props.ignoreSavedPositions === true
+        ? undefined
+        : props.layout?.edgeLabels?.[layoutPlaneKey(props.model, props.plane)];
+    if (editing || Object.keys(viewLabelMoves).length === 0) return saved;
+    const merged: Record<string, Record<string, EdgeLabelPlacement>> = { ...saved };
+    for (const [relationId, labels] of Object.entries(viewLabelMoves)) merged[relationId] = { ...merged[relationId], ...labels };
+    return merged;
+  }, [editing, props.ignoreSavedPositions, props.layout, props.model, props.plane, viewLabelMoves]);
+
   // Multi-selection report. The prop is read through a ref and deduped by
   // contents: React Flow's SelectionListener has the callback in its effect
   // deps, so an inline host callback would otherwise fire it every render —
@@ -321,6 +360,16 @@ function Inner(props: DiagramViewProps) {
   // cleared every frame that yields no lines, which includes drop (the final
   // frame carries dragging: false).
   const [guides, setGuides] = useState<Guide[]>([]);
+  const snapMemoRef = useRef<SnapMemo | null>(null);
+  // A drag is in flight. While one is, NO node glides (see `.dg-dragging` in
+  // styles.css): the dragged node's container grows and its siblings are
+  // re-expressed every frame, and a 200ms transition on those would leave the
+  // box trailing the child it is supposed to hold — and React Flow measuring a
+  // half-grown box, which it then grows from.
+  const [dragging, setDragging] = useState(false);
+  // The same fact, readable inside onNodesChange in the very task the gesture
+  // starts in (the state above lands a render later).
+  const draggingRef = useRef(false);
 
   // Surface them upward so a host can offer to persist them. Driven off the state
   // rather than the drag handler, so the resets above are reported too — a host
@@ -331,6 +380,12 @@ function Inner(props: DiagramViewProps) {
     onViewPositionsChange?.(viewPositions);
   }, [viewPositions, onViewPositionsChange]);
 
+  // Both feed the node data below AND the layout's box-size estimate (a folded
+  // container's count badge and a node's meta badges take real width), so they
+  // are derived ahead of the geometry pipeline.
+  const hiddenCounts = useMemo(() => countAnchored(props.model, compiled), [props.model, compiled]);
+  const metaKeys = props.onNodeMetaKeys ?? DEFAULT_ON_NODE_META_KEYS;
+
   // The geometry pipeline (size hints → elk/notation layout → overlay-applied
   // and band-arranged geometry): see useViewLayout.
   const viewLayout = useViewLayout({
@@ -340,11 +395,41 @@ function Inner(props: DiagramViewProps) {
     compiled,
     profile,
     typeRegistry,
+    metaKeys,
+    hiddenCounts,
     editing,
     ignoreSavedPositions: props.ignoreSavedPositions,
     viewPositions,
   });
-  const { geometryRef, routes, placedGeometry, arrangedGeometry, orthogonal, pinnedIds } = viewLayout;
+  const { geometryRef, routes, placedGeometry, arrangedGeometry, containerShifts, routing, laidAt, labelSpots } = viewLayout;
+
+  // Where each open container's origin sits BEFORE the fit pass shifted it, in
+  // absolute flow coordinates — the frame a child's saved position is relative
+  // to (see fit-containers.ts). Summed root-first, the same order commitMoves
+  // sums the on-screen chain, so with no shift the two are the same float and
+  // a saved position is exactly the on-screen one.
+  const containerBases = useMemo(() => {
+    const bases = new Map<string, { x: number; y: number }>();
+    if (arrangedGeometry === null) return bases;
+    const walk = (n: ViewNode, ox: number, oy: number) => {
+      const g = arrangedGeometry.get(n.id);
+      if (g === undefined) return;
+      const x = ox + g.x;
+      const y = oy + g.y;
+      if (n.children.length === 0) return;
+      const shift = containerShifts.get(n.id);
+      bases.set(n.id, { x: x - (shift?.dx ?? 0), y: y - (shift?.dy ?? 0) });
+      n.children.forEach((c) => walk(c, x, y));
+    };
+    compiled.roots.forEach((r) => walk(r, 0, 0));
+    return bases;
+  }, [compiled, arrangedGeometry, containerShifts]);
+  // Render-phase refs (the strokesRef pattern): commitMoves reads them at
+  // gesture time and must not change identity with every re-layout.
+  const containerBasesRef = useRef(containerBases);
+  containerBasesRef.current = containerBases;
+  const containerShiftsRef = useRef(containerShifts);
+  containerShiftsRef.current = containerShifts;
 
   // A drill (enter/exit) swaps the whole scene, so once it re-layouts, glide to
   // fit the new isolated view.
@@ -376,9 +461,6 @@ function Inner(props: DiagramViewProps) {
     return () => window.removeEventListener('paste', onPaste);
   }, [editing, onImageFiles, reactFlow]);
 
-  const hiddenCounts = useMemo(() => countAnchored(props.model, compiled), [props.model, compiled]);
-  const metaKeys = props.onNodeMetaKeys ?? DEFAULT_ON_NODE_META_KEYS;
-
   // Notation colour hooks: a node/edge takes its lane's (or otherwise the
   // notation's) colour where it sets none itself. Absent notation = absent map,
   // so an unrelated diagram's build-data pass never sees a `nodeColors` field.
@@ -404,8 +486,6 @@ function Inner(props: DiagramViewProps) {
       typeRegistry,
       icons,
       ...(props.model.typeColors !== undefined ? { typeColors: props.model.typeColors } : {}),
-      pins: props.pins,
-      onTogglePin: props.onTogglePin,
       onOpenLink: props.onOpenLink,
       onToggleExpand: props.onToggleExpand,
       onEnterNode: enterNode,
@@ -428,8 +508,6 @@ function Inner(props: DiagramViewProps) {
       typeRegistry,
       icons,
       props.model.typeColors,
-      props.pins,
-      props.onTogglePin,
       props.onOpenLink,
       props.onToggleExpand,
       enterNode,
@@ -460,12 +538,26 @@ function Inner(props: DiagramViewProps) {
           position: { x: geo.x, y: geo.y },
           data,
           ...(parent !== undefined ? { parentId: parent } : {}),
-          // membership is edited in the node panel, not by dragging away — keep
-          // child drags clamped inside the parent box
-          ...(editing && parent !== undefined ? { extent: 'parent' as const } : {}),
+          // Membership is edited in the node panel, not by dragging away, so a
+          // child never leaves its box — the box gives way instead, live while
+          // dragging (React Flow's expandParent) and for good once dropped (the
+          // fit pass in useViewLayout). Both modes: an Alt-drag in view mode
+          // used to carry the child straight out through the wall. A notation
+          // that owns the arrangement sizes its own rows, so there the old
+          // edit-mode clamp stays.
+          ...(parent === undefined
+            ? {}
+            : profile.layout === undefined
+              ? { expandParent: true }
+              : editing
+                ? { extent: 'parent' as const }
+                : {}),
           ...(n.state === 'expanded'
             ? { style: { width: geo.width, height: geo.height }, zIndex: -1 }
-            : (n.node.image !== undefined || n.node.shape !== undefined) && n.state === 'leaf'
+            : n.node.type === GIT_STAGE_TYPE
+              ? // a stage frame is sized by the git layout and sits BEHIND the lanes it spans
+                { style: { width: geo.width, height: geo.height }, zIndex: -2 }
+              : (n.node.image !== undefined || n.node.shape !== undefined) && n.state === 'leaf'
               ? { style: { width: geo.width, height: geo.height } }
               : // A circle leaf (e.g. a git commit) has no CSS-natural size the way
                 // an ordinary box does — .dg-circle-node zeroes out the base node's
@@ -481,14 +573,25 @@ function Inner(props: DiagramViewProps) {
                   (FORCED_SIZE_SHAPES.has(typeRegistry.resolve(n.node.type).shape) ||
                     ACTIVITY_CHROME_TYPES.has(n.node.type))
                 ? { style: { width: geo.width, height: geo.height } }
-                : {}),
+                : // An ordinary box keeps its CSS sizing, but never narrower than
+                  // the box elk laid out (box-size.ts estimates it): routes and
+                  // gaps are computed against that box, so a narrower drawn one
+                  // leaves an orthogonal arrow starting in mid-air beside it.
+                  // A FLOOR, not a width — a label the estimate undershot still
+                  // grows the box rather than wrapping inside it. Only where
+                  // elk placed the node from such an estimate: a notation's own
+                  // layout spaces its boxes off LEAF_SIZE, and a CLD chip is
+                  // deliberately free of the box minimum.
+                  profile.layout === undefined && !(profile.node?.typelessAsText === true && n.node.type === undefined)
+                  ? { style: { minWidth: geo.width } }
+                  : {}),
         }),
       );
       n.children.forEach((c) => walk(c, n.id));
     };
     compiled.roots.forEach((r) => walk(r));
     return out;
-  }, [compiled, arrangedGeometry, nodeDataCtx, editing, typeRegistry]);
+  }, [compiled, arrangedGeometry, nodeDataCtx, editing, typeRegistry, profile]);
 
   // React Flow owns a copy of the nodes and we apply its changes (drag positions,
   // measured dimensions, selection) with applyNodeChanges — the v12-recommended
@@ -503,9 +606,23 @@ function Inner(props: DiagramViewProps) {
   // decided in exactly one place: edit mode hands the batch to the host (one
   // undo step), view mode keeps it as throwaway drag state the host may offer
   // to save (onViewPositionsChange → the studio's Save positions chip).
+  //
+  // `onScreen` is what React Flow holds (parent-relative, against the parent's
+  // origin as drawn). What gets saved is relative to the parent's UNSHIFTED
+  // origin — they differ once a container has grown left/up around a child
+  // (fit-containers.ts), or is doing so right now under expandParent.
   const commitMoves = useCallback(
-    (positions: Positions) => {
-      if (Object.keys(positions).length === 0) return;
+    (onScreen: Positions) => {
+      if (Object.keys(onScreen).length === 0) return;
+      const typeOf = (id: string) => (rfNodesRef.current.find((n) => n.id === id)?.data as { typeId?: string } | undefined)?.typeId;
+      const positions = savedPositions(
+        onScreen,
+        rfNodesRef.current,
+        containerBasesRef.current,
+        containerShiftsRef.current,
+        // an activity lane is banded at a fixed spot (arrangeActivityFrames)
+        (parentId) => typeOf(parentId) === 'activity-lane' || typeOf(parentId) === 'activity-frame',
+      );
       if (editing) {
         if (edit?.onNodesMoved !== undefined) edit.onNodesMoved(positions);
         else for (const [id, pos] of Object.entries(positions)) edit?.onNodeMoved?.(id, pos);
@@ -616,18 +733,14 @@ function Inner(props: DiagramViewProps) {
       contentBounds: () => {
         const nodes = reactFlow.getNodes();
         const nodeBounds = nodes.length === 0 ? undefined : reactFlow.getNodesBounds(nodes);
-        const inkBounds = strokesBounds(strokesRef.current);
-        if (nodeBounds === undefined) return inkBounds;
-        if (inkBounds === undefined) return nodeBounds;
-        // Union: a scribble outside the boxes must not be cropped from the PNG.
-        const x = Math.min(nodeBounds.x, inkBounds.x);
-        const y = Math.min(nodeBounds.y, inkBounds.y);
-        return {
-          x,
-          y,
-          width: Math.max(nodeBounds.x + nodeBounds.width, inkBounds.x + inkBounds.width) - x,
-          height: Math.max(nodeBounds.y + nodeBounds.height, inkBounds.y + inkBounds.height) - y,
-        };
+        // Union: neither a scribble outside the boxes nor anything drawn past
+        // them — a bowed edge, a loop badge, an icon's caption (see
+        // overhangBounds) — may be cropped from the PNG.
+        return unionBounds([
+          nodeBounds,
+          strokesBounds(strokesRef.current),
+          overhangBounds(wrapperRef.current, (p) => reactFlow.screenToFlowPosition(p, { snapToGrid: false })),
+        ]);
       },
       fitView: (padding = 0.06) => {
         const pad =
@@ -671,9 +784,15 @@ function Inner(props: DiagramViewProps) {
       onPendingAddConsumed: () => setAddLabelAt(null),
       stylePreset: preset.rough !== undefined ? preset : undefined,
       notation: props.notation,
-      orthogonal,
-      pinnedIds,
+      ...(routing !== undefined ? { routing } : {}),
       routes,
+      laidAt,
+      labelSpots,
+      ...(labelMoves !== undefined ? { labelMoves } : {}),
+      // Movable only where the move can go somewhere: a host that listens for
+      // it (the studio's Save positions chip). The published page and the PNG
+      // export pass no listener, so their labels stay put.
+      ...(!editing && props.onViewLabelMovesChange !== undefined ? { onViewMoveEdgeLabel: moveViewLabel } : {}),
       ...(edgeColors !== undefined ? { edgeColors } : {}),
     }),
     [
@@ -687,9 +806,13 @@ function Inner(props: DiagramViewProps) {
       addLabelAt,
       preset,
       props.notation,
-      orthogonal,
-      pinnedIds,
+      routing,
       routes,
+      laidAt,
+      labelSpots,
+      labelMoves,
+      props.onViewLabelMovesChange,
+      moveViewLabel,
       edgeColors,
     ],
   );
@@ -721,7 +844,7 @@ function Inner(props: DiagramViewProps) {
     <LoopHighlightContext.Provider value={loopHighlight}>
     <div
       ref={wrapperRef}
-      className={`dg-canvas${props.chrome === false ? ' dg-no-chrome' : ''}${editing ? ' dg-mode-edit' : ''}${!editing && altHeld ? ' dg-alt-move' : ''}${
+      className={`dg-canvas${props.chrome === false ? ' dg-no-chrome' : ''}${editing ? ' dg-mode-edit' : ''}${!editing && altHeld ? ' dg-alt-move' : ''}${dragging ? ' dg-dragging' : ''}${
         preset.id !== 'clean' ? ` dg-style-${preset.id}` : ''
       }${preset.rough !== undefined ? ' dg-style-rough' : ''}${preset.fontFamily !== undefined ? ' dg-style-font' : ''}${
         profile.className !== undefined ? ' ' + profile.className : ''
@@ -833,20 +956,39 @@ function Inner(props: DiagramViewProps) {
         // centres (see snapDragChanges). Grid snapping already happened inside
         // React Flow's drag handler, so a guide in reach beats the grid.
         onNodesChange={(changes: NodeChange[]) => {
-          const snapped = snapDragChanges(
+          const snapped = snapDragFrame(
             changes,
             { nodes: rfNodesRef.current, absoluteOf: (id) => reactFlow.getInternalNode(id)?.internals.positionAbsolute },
             GUIDE_THRESHOLD_PX / reactFlow.getZoom(),
+            snapMemoRef,
           );
           setGuides((g) => (g.length === 0 && snapped.lines.length === 0 ? g : snapped.lines));
-          setRfNodes((nds) => applyNodeChanges(snapped.changes.filter((c) => c.type !== 'remove'), nds));
+          // 'remove' stays out (see above); so does an expandParent expansion
+          // that was not asked for by a drag (see expand-parent.ts).
+          const kept = withoutMeasuredExpansion(snapped.changes, draggingRef.current).filter((c) => c.type !== 'remove');
+          // Advanced in step with the state, not left to the next render: a
+          // gesture's last change and onNodeDragStop arrive in the same task,
+          // and the commit below reads the final on-screen positions from here.
+          rfNodesRef.current = applyNodeChanges(kept, rfNodesRef.current);
+          setRfNodes((nds) => applyNodeChanges(kept, nds));
         }}
         // A pointer drag must not race a pending keyboard burst.
-        onNodeDragStart={() => nudge.flush()}
+        onNodeDragStart={() => {
+          nudge.flush();
+          draggingRef.current = true;
+          setDragging(true);
+        }}
         // React Flow hands over every node the gesture moved (a selection drags
         // as one), so a multi-node drag lands as a single batch.
+        //
+        // Positions come from OUR node copy, not from the event: for a child
+        // with expandParent the event carries XYDrag's raw position, which is
+        // neither clamped to the (moving) parent nor guide-snapped.
         onNodeDragStop={(_e, _node, nodes) => {
-          commitMoves(Object.fromEntries(nodes.map((n) => [n.id, n.position])));
+          draggingRef.current = false;
+          setDragging(false);
+          const now = new Map(rfNodesRef.current.map((n) => [n.id, n.position] as const));
+          commitMoves(Object.fromEntries(nodes.map((n) => [n.id, now.get(n.id) ?? n.position])));
         }}
         onConnect={(conn) => {
           if (conn.source !== null && conn.target !== null)

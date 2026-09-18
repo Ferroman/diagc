@@ -6,6 +6,7 @@ import type {
   DiagramNode,
   DiagramPlane,
   Drawings,
+  EdgeLabelPlacement,
   LayoutOverlay,
   LayoutSettings,
   Stroke,
@@ -13,6 +14,7 @@ import type {
 } from './types';
 import { resolveContainmentPlane } from './view/compile';
 import { addStroke, deleteStroke, pruneDrawingsPlane } from './drawings';
+import { relationLabels } from './labels';
 import {
   addContainment,
   addNode,
@@ -60,6 +62,20 @@ export function layoutPlaneKey(m: DiagramModel, plane?: string): string {
   return resolveContainmentPlane(m, plane) ?? 'default';
 }
 
+/**
+ * The pins a plane opens with: its saved `unfolded` containers, in the shape
+ * `compileView`'s viewport reads. One reader for every host (studio, published
+ * page, embed), so a saved arrangement reopens the same everywhere.
+ */
+export function openingPins(
+  layout: LayoutOverlay | undefined,
+  m: DiagramModel,
+  plane?: string,
+): Record<string, 'expanded' | 'collapsed'> {
+  const ids = layout?.unfolded?.[layoutPlaneKey(m, plane)] ?? [];
+  return Object.fromEntries(ids.map((id) => [id, 'expanded' as const]));
+}
+
 export type EditorCommand =
   | { type: 'add-node'; node: DiagramNode; parent?: { id: string; plane?: string } }
   | { type: 'rename-node'; id: string; name: string }
@@ -88,6 +104,9 @@ export type EditorCommand =
   | { type: 'clear-positions'; plane?: string }
   | { type: 'set-positions'; plane?: string; positions: Record<string, { x: number; y: number }> }
   | { type: 'set-plane-layout'; plane?: string; manual: boolean }
+  /** replace the list of containers the plane opens with unfolded
+   * (LayoutOverlay.unfolded); `[]` clears it */
+  | { type: 'set-unfolded'; plane?: string; ids: string[] }
   | { type: 'set-layout-settings'; plane?: string; patch: Partial<LayoutSettings> }
   | { type: 'add-stroke'; plane?: string; stroke: Stroke }
   | { type: 'delete-stroke'; plane?: string; id: string }
@@ -102,8 +121,8 @@ function setPos(layout: LayoutOverlay, key: string, nodeId: string, pos?: { x: n
 }
 
 /**
- * Drop every node position (across all planes) and every size entry whose id
- * satisfies `drop` — the shared "layout hygiene" contract for commands that
+ * Drop every node position and unfolded entry (across all planes) and every
+ * size entry whose id satisfies `drop` — the shared "layout hygiene" contract for commands that
  * destroy nodes (delete-node, and delete-layer's cascade). Identity is preserved
  * as aggressively as possible: an untouched plane bucket keeps its reference,
  * and if nothing at all is dropped the input `layout` is returned unchanged, so
@@ -127,13 +146,84 @@ function prunePositions(layout: LayoutOverlay, drop: (nodeId: string) => boolean
       changed = true;
     }
   }
+  let next = layout;
+  for (const [key, ids] of Object.entries(layout.unfolded ?? {})) {
+    const kept = ids.filter((nid) => !drop(nid));
+    if (kept.length !== ids.length) next = withUnfolded(next, key, kept);
+  }
+  if (!changed && next === layout) return layout;
+  return { ...next, planes, ...(sizes !== undefined ? { sizes } : {}) };
+}
+
+/**
+ * `layout` with the plane's unfolded list replaced. Sorted and de-duplicated so
+ * the file does not churn with the order boxes were clicked in; an emptied list
+ * is dropped and an emptied map omitted entirely (the set-plane-layout hygiene).
+ * Exported because the studio's view-mode save builds the same overlay without
+ * a command.
+ */
+export function withUnfolded(layout: LayoutOverlay, key: string, ids: readonly string[]): LayoutOverlay {
+  const { unfolded: current = {}, ...rest } = layout;
+  const { [key]: _drop, ...others } = current;
+  const list = [...new Set(ids)].sort();
+  const next = list.length > 0 ? { ...others, [key]: list } : others;
+  return Object.keys(next).length > 0 ? { ...rest, unfolded: next } : rest;
+}
+
+/**
+ * `layout` with viewer label placements merged into the plane's bucket (see
+ * LayoutOverlay.edgeLabels). Exported because the studio's view-mode save
+ * builds the overlay without a command.
+ */
+export function withEdgeLabelPlacements(
+  layout: LayoutOverlay,
+  key: string,
+  placements: Readonly<Record<string, Readonly<Record<string, EdgeLabelPlacement>>>>,
+): LayoutOverlay {
+  if (Object.keys(placements).length === 0) return layout;
+  const plane = { ...(layout.edgeLabels?.[key] ?? {}) };
+  for (const [relationId, labels] of Object.entries(placements)) plane[relationId] = { ...plane[relationId], ...labels };
+  return { ...layout, edgeLabels: { ...(layout.edgeLabels ?? {}), [key]: plane } };
+}
+
+/**
+ * Mirror hygiene for `edgeLabels` after a command changed the relations: drop
+ * the placement of a label that no longer exists (its relation or the label
+ * itself is gone), and of one whose position the command just set in the MODEL
+ * — a viewer's override must never shadow the document the author is editing,
+ * or dragging the label in edit mode would appear to do nothing.
+ */
+function pruneEdgeLabels(layout: LayoutOverlay, before: DiagramModel, after: DiagramModel): LayoutOverlay {
+  if (layout.edgeLabels === undefined || before.relations === after.relations) return layout;
+  const labelsOf = (m: DiagramModel) =>
+    new Map(m.relations.map((r) => [r.id, new Map(relationLabels(r).map((l) => [l.id, l] as const))] as const));
+  const was = labelsOf(before);
+  const now = labelsOf(after);
+  let changed = false;
+  const planes: NonNullable<LayoutOverlay['edgeLabels']> = {};
+  for (const [key, plane] of Object.entries(layout.edgeLabels)) {
+    const keptPlane: (typeof planes)[string] = {};
+    for (const [relationId, placements] of Object.entries(plane)) {
+      const kept = Object.fromEntries(
+        Object.entries(placements).filter(([labelId]) => {
+          const label = now.get(relationId)?.get(labelId);
+          const old = was.get(relationId)?.get(labelId);
+          return label !== undefined && (old === undefined || (old.t === label.t && old.side === label.side));
+        }),
+      );
+      if (Object.keys(kept).length !== Object.keys(placements).length) changed = true;
+      if (Object.keys(kept).length > 0) keptPlane[relationId] = kept;
+    }
+    if (Object.keys(keptPlane).length > 0) planes[key] = keptPlane;
+  }
   if (!changed) return layout;
-  return { ...layout, planes, ...(sizes !== undefined ? { sizes } : {}) };
+  const { edgeLabels: _drop, ...rest } = layout;
+  return Object.keys(planes).length > 0 ? { ...rest, edgeLabels: planes } : rest;
 }
 
 /**
  * Drop every layout structure keyed by `plane` — its positions bucket, manual
- * flag, and layout settings (the "mirror hygiene" for deleting a plane). An
+ * flag, layout settings, unfolded list and label placements (the "mirror hygiene" for deleting a plane). An
  * emptied `manual`/`settings` map is omitted entirely, mirroring
  * set-plane-layout / set-layout-settings. Returns the input `layout` unchanged
  * when `plane` had no layout state at all.
@@ -142,10 +232,12 @@ function prunePlaneLayout(layout: LayoutOverlay, plane: string): LayoutOverlay {
   const hasState =
     plane in layout.planes ||
     (layout.manual !== undefined && plane in layout.manual) ||
-    (layout.settings !== undefined && plane in layout.settings);
+    (layout.settings !== undefined && plane in layout.settings) ||
+    (layout.unfolded !== undefined && plane in layout.unfolded) ||
+    (layout.edgeLabels !== undefined && plane in layout.edgeLabels);
   if (!hasState) return layout;
 
-  const next: LayoutOverlay = { ...layout, planes: { ...layout.planes } };
+  const next: LayoutOverlay = { ...withUnfolded(layout, plane, []), planes: { ...layout.planes } };
   delete next.planes[plane];
   if (layout.manual !== undefined) {
     const { [plane]: _dropManual, ...manualRest } = layout.manual;
@@ -156,6 +248,11 @@ function prunePlaneLayout(layout: LayoutOverlay, plane: string): LayoutOverlay {
     const { [plane]: _dropSettings, ...settingsRest } = layout.settings;
     if (Object.keys(settingsRest).length > 0) next.settings = settingsRest;
     else delete next.settings;
+  }
+  if (layout.edgeLabels !== undefined) {
+    const { [plane]: _dropLabels, ...labelsRest } = layout.edgeLabels;
+    if (Object.keys(labelsRest).length > 0) next.edgeLabels = labelsRest;
+    else delete next.edgeLabels;
   }
   return next;
 }
@@ -277,6 +374,8 @@ function applyModelLayout(state: ModelLayout, command: EditorCommand): ModelLayo
       const { manual: _drop, ...rest } = layout;
       return { model, layout: Object.keys(manual).length > 0 ? { ...rest, manual } : rest };
     }
+    case 'set-unfolded':
+      return { model, layout: withUnfolded(layout, layoutPlaneKey(model, command.plane), command.ids) };
     case 'set-layout-settings': {
       // Merge the patch into this plane's settings; a field explicitly set to
       // undefined clears it. An emptied bucket is dropped, and an emptied
@@ -315,7 +414,7 @@ export function applyCommand(state: EditorState, command: EditorCommand): Editor
     }
     default: {
       const next = applyModelLayout(state, command);
-      return { model: next.model, layout: next.layout, drawings };
+      return { model: next.model, layout: pruneEdgeLabels(next.layout, model, next.model), drawings };
     }
   }
 }

@@ -18,10 +18,20 @@
 // This module is pure — no React imports; the React Flow type-cast boundary
 // lives in toRfNode/toRfEdge (see adapter.ts).
 
-import type { Column, EdgeLabelSide, NotationId, TextRun, ViewEdge, ViewNode } from '@diagramming/core';
+import type {
+  Column,
+  EdgeLabel,
+  EdgeLabelPlacement,
+  EdgeLabelSide,
+  NotationId,
+  TextRun,
+  ViewEdge,
+  ViewNode,
+} from '@diagramming/core';
 import { runsToPlainText } from '@diagramming/core';
 import type { IconRegistry } from '@diagramming/icons';
 import type { EdgePoint } from './layout';
+import type { EdgeRouting } from './useViewLayout';
 import type { KindStyle, Registry, TypeStyle } from './registry';
 import type { StylePreset } from './stylePresets';
 import type { DiagramEdgeData } from './DiagramEdge';
@@ -40,11 +50,9 @@ export interface NodeDataContext {
    * the node's own colour, above typeColors */
   nodeColors?: ReadonlyMap<string, string>;
   icons: IconRegistry;
-  pins?: Record<string, 'expanded' | 'collapsed'>;
-  onTogglePin?: (id: string) => void;
   /** see DiagramViewProps.onOpenLink; only reaches a node whose model carries `link` */
   onOpenLink?: (link: string) => void;
-  onToggleExpand?: (id: string) => void;
+  onToggleExpand?: (id: string, next: 'expanded' | 'collapsed') => void;
   onEnterNode?: (id: string) => void;
   editing: boolean;
   /** the node id currently in in-place rename (undefined = no label edit) */
@@ -78,15 +86,27 @@ export interface EdgeDataContext {
   onPendingAddConsumed?: () => void;
   stylePreset?: StylePreset;
   notation?: NotationId;
-  /** the active plane routes orthogonally (elk waypoints are usable) */
-  orthogonal: boolean;
-  /** endpoints whose position is manually overridden — their stored route is
-   * stale, so those edges fall back to floating paths (undefined = no pinning) */
-  pinnedIds?: Set<string>;
+  /** how the active plane draws routed edges; undefined = every edge floats */
+  routing?: EdgeRouting;
   routes: ReadonlyMap<string, EdgePoint[]>;
+  /** where the layout put each node (absolute top-left): an edge carries its
+   * endpoints' spots along, and draws its route only while both still stand
+   * there (DiagramEdge) — a moved node's route points at where it used to be */
+  laidAt: ReadonlyMap<string, EdgePoint>;
+  /** elk's reserved spot (centre) for a labelled edge's label */
+  labelSpots: ReadonlyMap<string, EdgePoint>;
+  /** where labels were slid to on this plane (saved overlay + view-mode
+   * drags): relation id → label id → placement; overrides the label's own */
+  labelMoves?: EdgeLabelMoves;
+  /** view mode: a label was slid (Alt+drag). Absent ⇒ labels are not movable
+   * there (a host that can neither keep nor save the move). */
+  onViewMoveEdgeLabel?: (relationId: string, labelId: string, t: number, side: EdgeLabelSide) => void;
   /** notation-resolved stroke per edge id */
   edgeColors?: ReadonlyMap<string, string>;
 }
+
+/** relation id → label id → where the label sits along its edge */
+export type EdgeLabelMoves = Readonly<Record<string, Readonly<Record<string, EdgeLabelPlacement>>>>;
 
 /** A node's accent colour: its own `color`, else the model's convention for its
  * type, else the convention's `*` fallback (see DiagramModel.typeColors). */
@@ -125,8 +145,6 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     ...(n.node.rich !== undefined ? { rich: n.node.rich } : {}),
     ...(n.node.textAlign !== undefined ? { textAlign: n.node.textAlign } : {}),
     ...(n.node.fontScale !== undefined ? { fontScale: n.node.fontScale } : {}),
-    ...(ctx.pins?.[n.id] !== undefined ? { pinned: ctx.pins[n.id] } : {}),
-    ...(ctx.onTogglePin !== undefined ? { onTogglePin: ctx.onTogglePin } : {}),
     ...(ctx.onToggleExpand !== undefined ? { onToggleExpand: ctx.onToggleExpand } : {}),
     ...(n.state !== 'leaf' ? { onEnterNode: ctx.onEnterNode } : {}),
     ...(n.external !== undefined ? { external: true } : {}),
@@ -172,6 +190,20 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
   return data;
 }
 
+/** A sole relation's labels with any slid placement laid over their own. The
+ * same array back when nothing was moved, so the data cache stays warm. */
+function placedLabels(e: ViewEdge, moves: EdgeLabelMoves | undefined): EdgeLabel[] {
+  const labels = e.labels ?? [];
+  const moved = e.constituents.length === 1 ? moves?.[e.constituents[0]!.id] : undefined;
+  if (moved === undefined) return labels;
+  return labels.map((l) => {
+    const to = moved[l.id];
+    if (to === undefined) return l;
+    const { side: _side, ...rest } = l;
+    return { ...rest, t: to.t, ...(to.side !== undefined ? { side: to.side } : {}) };
+  });
+}
+
 /** Build the data channel for one view edge (pure; same contract as buildNodeData). */
 export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeData {
   const notationColor = ctx.edgeColors?.get(e.id);
@@ -180,7 +212,7 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     constituentCount: e.constituents.length,
     kindRegistry: ctx.kindRegistry,
     ...(e.label !== undefined ? { label: e.label } : {}),
-    ...(e.labels !== undefined ? { labels: e.labels } : {}),
+    ...(e.labels !== undefined ? { labels: placedLabels(e, ctx.labelMoves) } : {}),
     ...(e.tint !== undefined ? { tint: e.tint } : {}),
     ...(e.style !== undefined ? { relStyle: e.style } : {}),
     ...(ctx.stylePreset !== undefined ? { stylePreset: ctx.stylePreset } : {}),
@@ -201,6 +233,12 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     data.onEditLabel = (labelId, text) => ctx.onEditEdgeLabel?.(soleRelation.id, labelId, text);
     data.onMoveLabel = (labelId, t, side) => ctx.onMoveEdgeLabel?.(soleRelation.id, labelId, t, side);
   }
+  if (!ctx.editing && soleRelation !== undefined && ctx.onViewMoveEdgeLabel !== undefined) {
+    // View mode: a label can be slid along its edge with Alt held (the same
+    // modifier that unlocks dragging a box); the move is the host's to keep.
+    data.movableLabels = true;
+    data.onMoveLabel = (labelId, t, side) => ctx.onViewMoveEdgeLabel?.(soleRelation.id, labelId, t, side);
+  }
   if (ctx.editing && soleRelation !== undefined && ctx.onSetEdgeSide !== undefined) {
     data.onSetSide = (end, side) => ctx.onSetEdgeSide?.(soleRelation.id, end, side);
     if (soleRelation.id === ctx.pinEdgeRel) data.pinsActive = true;
@@ -212,11 +250,17 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     data.pendingAdd = { x: ctx.pendingAdd.x, y: ctx.pendingAdd.y };
     data.onPendingAddConsumed = ctx.onPendingAddConsumed;
   }
-  if (ctx.orthogonal && ctx.pinnedIds !== undefined && !ctx.pinnedIds.has(e.from) && !ctx.pinnedIds.has(e.to)) {
+  if (ctx.routing !== undefined) {
     const route = ctx.routes.get(e.id);
-    if (route !== undefined && route.length >= 2) {
+    const from = ctx.laidAt.get(e.from);
+    const to = ctx.laidAt.get(e.to);
+    if (route !== undefined && route.length >= 2 && from !== undefined && to !== undefined) {
       data.route = route;
-      data.orthogonal = true;
+      data.routeCorner = ctx.routing.corner;
+      data.routeFrom = from;
+      data.routeTo = to;
+      const spot = ctx.labelSpots.get(e.id);
+      if (spot !== undefined) data.labelSpot = spot;
     }
   }
   return data;
@@ -248,8 +292,6 @@ function sameNodeCtx(a: NodeDataContext, b: NodeDataContext): boolean {
     a.hiddenCounts === b.hiddenCounts &&
     a.typeRegistry === b.typeRegistry &&
     a.icons === b.icons &&
-    a.pins === b.pins &&
-    a.onTogglePin === b.onTogglePin &&
     a.onOpenLink === b.onOpenLink &&
     a.onToggleExpand === b.onToggleExpand &&
     a.onEnterNode === b.onEnterNode &&
@@ -281,9 +323,12 @@ function sameEdgeCtx(a: EdgeDataContext, b: EdgeDataContext): boolean {
     a.onPendingAddConsumed === b.onPendingAddConsumed &&
     a.stylePreset === b.stylePreset &&
     a.notation === b.notation &&
-    a.orthogonal === b.orthogonal &&
-    a.pinnedIds === b.pinnedIds &&
+    a.routing === b.routing &&
     a.routes === b.routes &&
+    a.laidAt === b.laidAt &&
+    a.labelSpots === b.labelSpots &&
+    a.labelMoves === b.labelMoves &&
+    a.onViewMoveEdgeLabel === b.onViewMoveEdgeLabel &&
     a.edgeColors === b.edgeColors
   );
 }

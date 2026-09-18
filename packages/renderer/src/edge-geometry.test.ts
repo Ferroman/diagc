@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { Position } from '@xyflow/react';
-import { bowPath, edgePoint, edgeTangent, nearestT, type EdgePathParams } from './edge-geometry';
+import {
+  bowPath,
+  edgePoint,
+  edgeTangent,
+  nearestOnCurve,
+  nearestOnRoute,
+  nearestT,
+  roundedRoute,
+  routeCurve,
+  routeEndSides,
+  shapeCurve,
+  snapRouteEnds,
+  tidyRoute,
+  type EdgePathParams,
+} from './edge-geometry';
 
 const horizontal: EdgePathParams = {
   sourceX: 0,
@@ -178,5 +192,171 @@ describe('bowPath', () => {
     const path = bowPath(facing, 0.55);
     expect(path.startsWith('M')).toBe(true);
     expect((path.match(/C/g) ?? []).length).toBe(1);
+  });
+});
+
+// A Z-shaped route: a 10px stub, a 100px jog, a 90px leg — 200px in all.
+const Z = [
+  { x: 0, y: 0 },
+  { x: 0, y: 10 },
+  { x: 100, y: 10 },
+  { x: 100, y: 100 },
+];
+
+describe('routeCurve', () => {
+  it('is parametrised by arc length, not by waypoint', () => {
+    const c = routeCurve(Z);
+    expect(c.point(0)).toEqual({ x: 0, y: 0 });
+    expect(c.point(1)).toEqual({ x: 100, y: 100 });
+    // halfway along 200px is 90px into the jog — NOT the middle waypoint
+    expect(c.point(0.5)).toEqual({ x: 90, y: 10 });
+    expect(c.point(0.025)).toEqual({ x: 0, y: 5 });
+  });
+
+  it('gives the unit tangent of the leg t falls on', () => {
+    const c = routeCurve(Z);
+    expect(c.tangent(0.01)).toEqual({ x: 0, y: 1 });
+    expect(c.tangent(0.5)).toEqual({ x: 1, y: 0 });
+    expect(c.tangent(0.99)).toEqual({ x: 0, y: 1 });
+  });
+
+  it('survives degenerate routes', () => {
+    expect(routeCurve([{ x: 3, y: 4 }]).point(0.5)).toEqual({ x: 3, y: 4 });
+    const flat = routeCurve([{ x: 3, y: 4 }, { x: 3, y: 4 }]);
+    expect(flat.point(0.5)).toEqual({ x: 3, y: 4 });
+    expect(flat.tangent(0.5)).toEqual({ x: 0, y: 0 });
+    // a zero-length leg in the middle is skipped, not divided by
+    const c = routeCurve([{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 10, y: 0 }]);
+    expect(c.point(0.5)).toEqual({ x: 5, y: 0 });
+  });
+});
+
+describe('nearestOnCurve', () => {
+  it('projects onto a route and reports which side of it the point is on', () => {
+    const hit = nearestOnCurve(routeCurve(Z), { x: 50, y: 0 }, 200);
+    expect(hit.t).toBeCloseTo(0.3, 2); // 60px of 200 along
+    expect(hit.perp).toBeCloseTo(10, 5); // above the jog
+    expect(nearestOnCurve(routeCurve(Z), { x: 50, y: 25 }, 200).perp).toBeCloseTo(-15, 5);
+  });
+
+  it('agrees with nearestT on a floating shape', () => {
+    const viaCurve = nearestOnCurve(shapeCurve('straight', horizontal, undefined), { x: 40, y: -12 });
+    expect(viaCurve).toEqual(nearestT('straight', horizontal, undefined, { x: 40, y: -12 }));
+  });
+});
+
+describe('nearestOnRoute', () => {
+  const route = [
+    { x: 0, y: 0 },
+    { x: 0, y: 100 },
+    { x: 200, y: 100 },
+  ];
+  it('drops a point beside a leg straight onto it', () => {
+    expect(nearestOnRoute(route, { x: 11, y: 40 })).toEqual({ x: 0, y: 40 });
+    expect(nearestOnRoute(route, { x: 120, y: 93 })).toEqual({ x: 120, y: 100 });
+  });
+  it('is exact, not sampled: a point already on the line comes back unchanged', () => {
+    expect(nearestOnRoute(route, { x: 0, y: 33.3 })).toEqual({ x: 0, y: 33.3 });
+  });
+  it('clamps to the ends of the route', () => {
+    expect(nearestOnRoute(route, { x: -5, y: -30 })).toEqual({ x: 0, y: 0 });
+    expect(nearestOnRoute(route, { x: 260, y: 110 })).toEqual({ x: 200, y: 100 });
+  });
+  it('survives a zero-length leg and an empty route', () => {
+    expect(nearestOnRoute([{ x: 5, y: 5 }, { x: 5, y: 5 }], { x: 9, y: 9 })).toEqual({ x: 5, y: 5 });
+    expect(nearestOnRoute([], { x: 9, y: 9 })).toEqual({ x: 9, y: 9 });
+  });
+});
+
+describe('roundedRoute', () => {
+  it('draws two points as a straight line', () => {
+    expect(roundedRoute([{ x: 0, y: 0 }, { x: 10, y: 0 }], 28)).toBe('M0,0 L10,0');
+  });
+
+  it('caps the corner radius at half of either leg, so a short jog becomes one S-curve', () => {
+    // the first corner sits between a 10px stub and a 100px jog: radius 5
+    expect(roundedRoute(Z, 28)).toBe('M0,0 L0,5 Q0,10 5,10 L72,10 Q100,10 100,38 L100,100');
+  });
+});
+
+describe('snapRouteEnds', () => {
+  const route = [
+    { x: 50, y: 40 },
+    { x: 50, y: 70 },
+    { x: 150, y: 70 },
+    { x: 150, y: 100 },
+  ];
+
+  it('slides each end along its own leg onto the box as drawn', () => {
+    // elk thought the source was 40 tall and the target started at 100; drawn: 46 and 96
+    const out = snapRouteEnds(route, { x: 0, y: 0, width: 100, height: 46 }, { x: 100, y: 96, width: 100, height: 50 });
+    expect(out[0]).toEqual({ x: 50, y: 46 });
+    expect(out[3]).toEqual({ x: 150, y: 96 });
+    expect(route[0]).toEqual({ x: 50, y: 40 }); // never mutates the cached route
+  });
+
+  it('a route that continues INSIDE the box (container → own child) keeps the border it started on', () => {
+    const inner = [
+      { x: 69, y: 0 },
+      { x: 69, y: 36 },
+    ];
+    const out = snapRouteEnds(inner, { x: 0, y: 2, width: 200, height: 160 }, undefined);
+    expect(out[0]).toEqual({ x: 69, y: 2 });
+  });
+
+  it('leaves an end alone when its leg does not point at the box', () => {
+    const out = snapRouteEnds(route, { x: 500, y: 500, width: 10, height: 10 }, undefined);
+    expect(out[0]).toEqual({ x: 50, y: 40 });
+  });
+});
+
+describe('tidyRoute', () => {
+  it('straightens a hairline sidestep in the middle of a straight run', () => {
+    // down 80, a 2px sidestep where the edge crossed a container wall, down again
+    const kinked = [
+      { x: 470, y: 250 },
+      { x: 470, y: 320 },
+      { x: 468, y: 320 },
+      { x: 468, y: 960 },
+    ];
+    expect(tidyRoute(kinked)).toEqual([
+      { x: 468, y: 250 },
+      { x: 468, y: 960 },
+    ]);
+    expect(kinked[0]).toEqual({ x: 470, y: 250 }); // the cached route is not touched
+  });
+
+  it('keeps the leg BEFORE the run attached: only points on the moved line move', () => {
+    const route = [
+      { x: 0, y: 10 },
+      { x: 100, y: 10 },
+      { x: 100, y: 50 },
+      { x: 103, y: 50 },
+      { x: 103, y: 200 },
+    ];
+    expect(tidyRoute(route)).toEqual([
+      { x: 0, y: 10 },
+      { x: 103, y: 10 },
+      { x: 103, y: 200 },
+    ]);
+  });
+
+  it('leaves a real jog, and a route too short to have one, alone', () => {
+    expect(tidyRoute(Z)).toEqual(Z);
+    const two = [{ x: 0, y: 0 }, { x: 0, y: 9 }];
+    expect(tidyRoute(two)).toEqual(two);
+  });
+});
+
+describe('routeEndSides', () => {
+  it('reads each end\'s side off the direction of its own leg', () => {
+    // Z leaves downward and arrives from above
+    expect(routeEndSides(Z)).toEqual({ from: 'bottom', to: 'top' });
+    expect(routeEndSides([{ x: 0, y: 5 }, { x: 40, y: 5 }])).toEqual({ from: 'right', to: 'left' });
+  });
+
+  it('says nothing about a diagonal or degenerate leg', () => {
+    expect(routeEndSides([{ x: 0, y: 0 }, { x: 5, y: 9 }])).toEqual({ from: undefined, to: undefined });
+    expect(routeEndSides([{ x: 1, y: 1 }])).toEqual({ from: undefined, to: undefined });
   });
 });

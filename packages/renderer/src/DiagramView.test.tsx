@@ -166,14 +166,16 @@ describe('DiagramView', () => {
     await waitFor(() => expect(onMultiSelect).toHaveBeenLastCalledWith(['gw']));
   });
 
-  it('edit mode: Align left on a two-node selection commits one batch with equal x', async () => {
+  it('edit mode: Align top on a two-node selection commits one batch', async () => {
+    // gw → sys flows DOWN, so the two sit at different heights (their lefts may
+    // well coincide — an Align left there would rightly move nothing)
     const onNodesMoved = vi.fn();
     render(<DiagramView model={containerEndpointModel()} mode="edit" edit={{ onNodesMoved }} />);
     fireEvent.click(await screen.findByText('gw'));
     fireEvent.keyDown(window, { key: 'Shift', code: 'ShiftLeft' });
     fireEvent.click(screen.getByText('sys'), { shiftKey: true });
     fireEvent.keyUp(window, { key: 'Shift', code: 'ShiftLeft' });
-    fireEvent.click(await screen.findByRole('button', { name: 'Align left' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Align top' }));
     await waitFor(() => expect(onNodesMoved).toHaveBeenCalledTimes(1));
     const positions = onNodesMoved.mock.calls[0]![0] as Record<string, { x: number; y: number }>;
     const moved = Object.keys(positions);
@@ -1064,7 +1066,13 @@ describe('freehand drawings', () => {
     // frame so the branch the export handshake runs is the one under test.
     const rect = { x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 600, width: 800, height: 600, toJSON: () => ({}) };
     const original = HTMLElement.prototype.getBoundingClientRect;
-    HTMLElement.prototype.getBoundingClientRect = () => rect as DOMRect;
+    // Only the canvas FRAME is measured. What is drawn inside the viewport keeps
+    // jsdom's empty rect: contentBounds also measures edge labels and captions
+    // where they are drawn, and would read a blanket stub as a label the size of
+    // the frame — at a flow position that moves with every viewport change.
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      return this.closest('.react-flow__viewport') !== null ? original.call(this) : (rect as DOMRect);
+    };
     try {
       const apiRef = { current: null as LayoutApi | null };
       const far = { version: 1 as const, planes: { default: [{ id: 'k1', points: [-500, -500, -490, -490], width: 4 }] } };
@@ -1258,6 +1266,92 @@ describe('git-graph notation', () => {
     expect(gw?.style.width).toBe('');
   });
 
+  it('floors an ordinary box at the width the layout reserved for it, without forcing one', async () => {
+    // elk's routes and gaps are computed against the ESTIMATED box; a drawn box
+    // narrower than that leaves an orthogonal arrow starting in mid-air beside it.
+    // min-width (never width) closes the gap and still lets a label the estimate
+    // undershot — another platform's font — grow the box instead of wrapping.
+    const { container } = render(<DiagramView model={containerEndpointModel()} />);
+    await screen.findByText('gw');
+    const gw = await waitFor(() => {
+      const n = container.querySelector('.react-flow__node[data-id="gw"]') as HTMLElement | null;
+      if (n === null || n.style.minWidth === '') throw new Error('not laid out');
+      return n;
+    });
+    expect(parseFloat(gw.style.minWidth)).toBeGreaterThanOrEqual(142);
+    expect(gw.style.width).toBe('');
+    expect(gw.style.height).toBe('');
+  });
+
+  describe('routed edges', () => {
+    // a → b with c in between on the straight line: the route is what takes the
+    // a → c edge around b
+    function chain() {
+      const m = model('routed');
+      const a = m.node('a', { type: 'service' });
+      const b = m.node('b', { type: 'service' });
+      const c = m.node('c', { type: 'service' });
+      m.relate(a, b, { kind: 'sync' });
+      m.relate(b, c, { kind: 'sync' });
+      m.relate(a, c, { kind: 'sync', label: 'skips b' });
+      return m.toJSON();
+    }
+    const pathOf = (container: HTMLElement, id: string) =>
+      waitFor(() => {
+        const el = container.querySelector(`[data-testid="rf__edge-${id}"] path.react-flow__edge-path`);
+        if (el === null) throw new Error(`edge ${id} not rendered`);
+        return el.getAttribute('d') ?? '';
+      });
+
+    it('draws the layout\'s route by default: the long edge bends around the box in its way', async () => {
+      const { container } = render(<DiagramView model={chain()} />);
+      await screen.findByText('a');
+      const long = await waitFor(async () => {
+        const d = await pathOf(container, 'a=>c:');
+        if (d.includes('C')) throw new Error('still floating');
+        return d;
+      });
+      // a routed path: straight legs joined by rounded (quadratic) corners
+      expect(long).toContain('Q');
+      expect(await pathOf(container, 'a=>b:')).not.toContain('C');
+    });
+
+    it('floats an edge whose endpoint no longer stands where the layout put it', async () => {
+      // `c` was placed by hand: the route elk computed points at where c WAS
+      const layout = { version: 1 as const, planes: { default: { c: { x: 900, y: 40 } } } };
+      const { container } = render(<DiagramView model={chain()} layout={layout} />);
+      await screen.findByText('a');
+      await waitFor(async () => expect(await pathOf(container, 'a=>c:')).toContain('C'));
+      // …while an edge between two untouched boxes keeps its route
+      await waitFor(async () => expect(await pathOf(container, 'a=>b:')).not.toContain('C'));
+    });
+
+    it('floats everything where the notation bows its edges', async () => {
+      const { container } = render(<DiagramView model={chain()} notation="causal-loop" />);
+      await screen.findByText('a');
+      await waitFor(async () => expect(await pathOf(container, 'a=>b:')).toContain('C'));
+    });
+  });
+
+  it('a container gives way to a child placed past its wall, instead of the child leaving it', async () => {
+    const pins = { sys: 'expanded' as const };
+    const sysOf = (c: HTMLElement) =>
+      waitFor(() => {
+        const n = c.querySelector('.react-flow__node[data-id="sys"]') as HTMLElement | null;
+        if (n === null || n.style.width === '') throw new Error('not laid out');
+        return n;
+      });
+    const auto = render(<DiagramView model={containerEndpointModel()} pins={pins} />);
+    const autoWidth = parseFloat((await sysOf(auto.container)).style.width);
+    auto.unmount();
+    // the same view with `api` saved 600px into a box elk made ~170 wide
+    const layout = { version: 1 as const, planes: { default: { api: { x: 600, y: 40 } } } };
+    const { container } = render(<DiagramView model={containerEndpointModel()} pins={pins} layout={layout} />);
+    const sys = await sysOf(container);
+    expect(autoWidth).toBeLessThan(600);
+    expect(parseFloat(sys.style.width)).toBeGreaterThan(600 + 142);
+  });
+
   it('sizes a commit circle leaf from the layout — it has no CSS-natural size', async () => {
     const m = gitModel();
     const { container } = render(<DiagramView model={m} plane="git-graph" notation="git-graph" />);
@@ -1366,33 +1460,32 @@ describe('activity diagrams', () => {
     });
   });
 
-  it('falls back to a floating path for an edge inside a band-displaced lane on orthogonal routing', async () => {
-    // one frame, one lane, two connected actions — the band pass (see
-    // arrangeActivityFrames) overrides the lane's x/y/w/h AFTER elk already
-    // routed the edge between them, so elk's precomputed orthogonal waypoints
-    // no longer match the lane's rendered position. Same staleness a dragged
-    // git lane causes (see the git-graph describe block above); mirrors that
-    // test's assertion.
+  it('floats an edge inside a lane the band pass moved, and routes one inside a lane it left in place', async () => {
+    // Two lanes, each holding two connected actions. The band pass (see
+    // arrangeActivityFrames) stacks lanes edge to edge AFTER elk laid them out
+    // with a gap between them: the first lane stays where elk put it, the second
+    // is pulled up — and with it its children, whose route now points at where
+    // they used to be. An edge draws its route only while both endpoints still
+    // stand where the layout put them, so the first lane's edge is routed (a
+    // straight 'L') and the second's falls back to the floating bezier ('C').
     const m = model('act-ortho');
     const act = m.activity('flow');
-    const lane = act.lane('a', { name: 'A' });
-    const n1 = lane.action('act1', 'Do it');
-    const n2 = lane.action('act2', 'Then this');
-    act.flow(n1, n2);
+    const top = act.lane('a', { name: 'A' });
+    const bottom = act.lane('b', { name: 'B' });
+    act.flow(top.action('act1', 'Do it'), top.action('act2', 'Then this'));
+    act.flow(bottom.action('act3', 'Meanwhile'), bottom.action('act4', 'And then'));
     const built = m.toJSON();
 
-    const { container } = render(
-      <DiagramView model={built} layout={{ version: 1, planes: {}, settings: { default: { edgeRouting: 'orthogonal' } } }} />,
-    );
-    await waitFor(() => expect(container.querySelectorAll('.dg-activity-lane')).toHaveLength(1));
-    const edgePath = await waitFor(() => {
-      const el = container.querySelector('[data-testid="rf__edge-act1=>act2:"] path.react-flow__edge-path');
-      if (el === null) throw new Error('flow edge not rendered');
-      return el;
-    });
-    // a stale elk route would draw a routed (non-bezier) polyline; the band
-    // displacement must force the floating bezier ('C') fallback instead
-    expect(edgePath.getAttribute('d') ?? '').toContain('C');
+    const { container } = render(<DiagramView model={built} />);
+    await waitFor(() => expect(container.querySelectorAll('.dg-activity-lane')).toHaveLength(2));
+    const pathOf = (id: string) =>
+      waitFor(() => {
+        const el = container.querySelector(`[data-testid="rf__edge-${id}"] path.react-flow__edge-path`);
+        if (el === null) throw new Error('flow edge not rendered');
+        return el.getAttribute('d') ?? '';
+      });
+    expect(await pathOf('act1=>act2:')).not.toContain('C');
+    expect(await pathOf('act3=>act4:')).toContain('C');
   });
 
   it('a bar leaf gets its registry default size', async () => {

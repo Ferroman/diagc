@@ -1,4 +1,4 @@
-import type { LayoutSettings } from '@diagramming/core';
+import type { LayoutDirection, LayoutSettings } from '@diagramming/core';
 
 /**
  * The arrangements worth offering.
@@ -19,8 +19,8 @@ const ALGORITHMS: { value: string; label: string }[] = [
   { value: 'rectpacking', label: 'Packed' },
 ];
 const DIRECTIONS: { value: string; label: string }[] = [
-  { value: 'RIGHT', label: 'Right →' },
   { value: 'DOWN', label: 'Down ↓' },
+  { value: 'RIGHT', label: 'Right →' },
   { value: 'LEFT', label: 'Left ←' },
   { value: 'UP', label: 'Up ↑' },
 ];
@@ -39,6 +39,10 @@ export interface LayoutControlsProps {
   settings: LayoutSettings;
   /** merge a patch; a field set to undefined clears it back to the tuned default */
   onChange: (patch: Partial<LayoutSettings>) => void;
+  /** the direction this diagram flows in when the settings name none (core's
+   * defaultLayoutDirection) — shown as the selected option, stored as
+   * `undefined`. Absent ⇒ down, the default for every model but an activity one. */
+  defaultDirection?: LayoutDirection;
 }
 
 /**
@@ -47,9 +51,9 @@ export interface LayoutControlsProps {
  * holds them in ephemeral React state. Choosing a control's default value
  * sends `undefined`, so neither store accumulates redundant entries.
  */
-export function LayoutControls({ settings, onChange }: LayoutControlsProps) {
+export function LayoutControls({ settings, onChange, defaultDirection = 'DOWN' }: LayoutControlsProps) {
   const algorithm = settings.algorithm ?? 'layered';
-  const direction = settings.direction ?? 'RIGHT';
+  const direction = settings.direction ?? defaultDirection;
   const edgeRouting = settings.edgeRouting ?? 'curved';
 
   const wrapValue = settings.aspectRatio === undefined ? '' : String(settings.aspectRatio);
@@ -88,7 +92,7 @@ export function LayoutControls({ settings, onChange }: LayoutControlsProps) {
           aria-label="Layout direction"
           title="Layout direction"
           value={direction}
-          onChange={(e) => onChange({ direction: e.target.value === 'RIGHT' ? undefined : e.target.value })}
+          onChange={(e) => onChange({ direction: e.target.value === defaultDirection ? undefined : e.target.value })}
         >
           {DIRECTIONS.map((d) => (
             <option key={d.value} value={d.value}>
@@ -130,14 +134,14 @@ export function LayoutControls({ settings, onChange }: LayoutControlsProps) {
       <select
         className="chip-select"
         aria-label="Edge routing"
-        title="Edge routing"
+        title="How routed edges turn their corners. Both follow the layout's route around boxes; an edge to a hand-placed box floats as a curve either way."
         value={edgeRouting}
         onChange={(e) =>
           onChange({ edgeRouting: e.target.value === 'curved' ? undefined : (e.target.value as 'orthogonal') })
         }
       >
-        <option value="curved">Curved edges</option>
-        <option value="orthogonal">Orthogonal edges</option>
+        <option value="curved">Rounded edges</option>
+        <option value="orthogonal">Square edges</option>
       </select>
     </>
   );

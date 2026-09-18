@@ -11,11 +11,27 @@ import {
 import { useContext, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { Column, EdgeLabel, EdgeLabelSide, NotationId, Polarity, RelationStyle } from '@diagramming/core';
-import { bowPath, DEFAULT_CURVATURE, edgePoint, edgeTangent, nearestT, type BowSide, type EdgePathParams, type EdgeShape, type Point } from './edge-geometry';
+import {
+  bowPath,
+  DEFAULT_CURVATURE,
+  nearestOnCurve,
+  nearestOnRoute,
+  roundedRoute,
+  routeCurve,
+  routeEndSides,
+  shapeCurve,
+  snapRouteEnds,
+  tidyRoute,
+  type BowSide,
+  type EdgeCurve,
+  type EdgeShape,
+  type Point,
+} from './edge-geometry';
 import { getEdgeParams, sideFromPosition, type Side } from './floating';
-import { truncateEdgeLabel } from './label-size';
+import { CAPTION_HEIGHT } from './label-size';
 import { LoopHighlightContext } from './loop-highlight';
 import { notationProfile } from './notations';
+import type { DiagramNodeData } from './DiagramNode';
 import type { KindStyle, Registry } from './registry';
 import { seedFrom, sketchEdge } from './sketch';
 import { anchorToRow } from './table-ports';
@@ -46,11 +62,20 @@ export interface DiagramEdgeData {
   fromColumn?: string;
   /** referenced column on the target table — anchors the target end to that row */
   toColumn?: string;
-  /** elk-computed absolute waypoints for orthogonal routing (set only when the
-   * plane uses orthogonal edges and both endpoints sit at their elk spot) */
+  /** the layout's absolute waypoints for this edge (elk's, or a notation's own).
+   * Drawn instead of the floating shape — but only while both endpoints still
+   * stand where the layout put them (`routeFrom`/`routeTo`): a route is what
+   * keeps the line off the boxes elk steered it around, and a stale one is
+   * worse than none. */
   route?: Point[];
-  /** draw this edge as a polyline through `route` instead of a floating bezier */
-  orthogonal?: boolean;
+  /** corner radius the route is drawn with (soft for curved planes, tight for orthogonal) */
+  routeCorner?: number;
+  /** where the layout put the source / target (absolute top-left) */
+  routeFrom?: Point;
+  routeTo?: Point;
+  /** the spot (centre) elk reserved for this edge's label; used while the route
+   * stands and the label has not been placed by hand */
+  labelSpot?: Point;
   // --- edit callbacks (sole-relation edges, edit mode) --------------------
   /** edit mode, sole-relation edges only: labels can be added (double-click the
    * edge), edited (double-click a label), and slid along/across the edge
@@ -69,6 +94,9 @@ export interface DiagramEdgeData {
   onEditLabel?: (labelId: string, text: string) => void;
   /** commit a dragged label's new position (parameter `t` + perpendicular side) */
   onMoveLabel?: (labelId: string, t: number, side: EdgeLabelSide) => void;
+  /** view mode: labels slide along the edge while Alt is held (the modifier
+   * that unlocks dragging there); add/edit stay edit-mode only */
+  movableLabels?: boolean;
   /** edit mode, sole-relation edges only: pin/unpin an endpoint. The renderer
    * knows the live facing side, so it passes the side to freeze at (or null to
    * re-float). */
@@ -77,29 +105,6 @@ export interface DiagramEdgeData {
    * Driven by DiagramView's relation-keyed selection (not React Flow's edge
    * `selected`, whose id changes when a pin toggles). */
   pinsActive?: boolean;
-}
-
-/** SVG path through orthogonal waypoints with lightly rounded corners. */
-function roundedPolyline(points: Point[], radius = 8): string {
-  if (points.length < 2) return '';
-  if (points.length === 2) return `M${points[0]!.x},${points[0]!.y} L${points[1]!.x},${points[1]!.y}`;
-  let d = `M${points[0]!.x},${points[0]!.y}`;
-  for (let i = 1; i < points.length - 1; i++) {
-    const prev = points[i - 1]!;
-    const cur = points[i]!;
-    const next = points[i + 1]!;
-    const inLen = Math.hypot(cur.x - prev.x, cur.y - prev.y) || 1;
-    const outLen = Math.hypot(next.x - cur.x, next.y - cur.y) || 1;
-    const r = Math.min(radius, inLen / 2, outLen / 2);
-    const p1x = cur.x - ((cur.x - prev.x) / inLen) * r;
-    const p1y = cur.y - ((cur.y - prev.y) / inLen) * r;
-    const p2x = cur.x + ((next.x - cur.x) / outLen) * r;
-    const p2y = cur.y + ((next.y - cur.y) / outLen) * r;
-    d += ` L${p1x},${p1y} Q${cur.x},${cur.y} ${p2x},${p2y}`;
-  }
-  const last = points[points.length - 1]!;
-  d += ` L${last.x},${last.y}`;
-  return d;
 }
 
 type Props = Pick<
@@ -159,6 +164,15 @@ const SIDE_THRESHOLD = 8;
  * click, preserving double-click-to-edit) */
 const DRAG_THRESHOLD = 3;
 
+/** room a node's caption takes below its drawn box: an image leaf's name hangs
+ * under the picture (mirrors the hint useViewLayout gives elk). A cornerBadge
+ * type draws its image as chrome and its label inside the box — no caption. */
+function captionReserve(d: DiagramNodeData | undefined): number {
+  if (d === undefined || d.image === undefined || d.shape !== undefined || d.state !== 'leaf' || d.label === '') return 0;
+  if (d.typeId !== undefined && d.typeRegistry.resolve(d.typeId).cornerBadge === true) return 0;
+  return CAPTION_HEIGHT;
+}
+
 /** which side of the line a signed perpendicular distance lands on */
 function sideFromPerp(perp: number): EdgeLabelSide {
   return perp > SIDE_THRESHOLD ? 'top' : perp < -SIDE_THRESHOLD ? 'bottom' : 'center';
@@ -167,17 +181,10 @@ function sideFromPerp(perp: number): EdgeLabelSide {
 /** rendered position of a label at (t, side): the point on the edge plus the
  * top/bottom perpendicular offset — mirrors how labels are drawn, so the
  * inline editor and the drag ghost sit exactly where the label will land. */
-function labelXY(
-  shape: EdgeShape,
-  params: EdgePathParams,
-  curvature: number | undefined,
-  t: number,
-  side: EdgeLabelSide,
-  bowSide: BowSide,
-): Point {
-  const lp = edgePoint(shape, params, curvature, t, bowSide);
+function labelXY(curve: EdgeCurve, t: number, side: EdgeLabelSide): Point {
+  const lp = curve.point(t);
   if (side !== 'top' && side !== 'bottom') return lp;
-  const tan = edgeTangent(shape, params, curvature, t, bowSide);
+  const tan = curve.tangent(t);
   let nx = -tan.y;
   let ny = tan.x;
   if (ny > 0) {
@@ -191,9 +198,9 @@ function labelXY(
 /** point + local frame (unit tangent/normal) at `t` along the clean path, for
  * positioning CLD marks without touching the (possibly sketch-roughened)
  * rendered path. */
-function markFrame(shape: EdgeShape, params: EdgePathParams, curvature: number | undefined, t: number, side: BowSide) {
-  const point = edgePoint(shape, params, curvature, t, side);
-  const tangent = edgeTangent(shape, params, curvature, t, side);
+function markFrame(curve: EdgeCurve, t: number) {
+  const point = curve.point(t);
+  const tangent = curve.tangent(t);
   const normal = { x: -tangent.y, y: tangent.x };
   return { point, tangent, normal };
 }
@@ -282,17 +289,53 @@ export function DiagramEdge({
   const bowed = profile.edge?.bowed === true && shape === 'curved';
   const bowSide: BowSide = rel?.bow ?? 'left';
   const effectiveShape: EdgeShape = bowed ? 'bow' : shape;
-  // Orthogonal routing: draw along elk's precomputed waypoints (absolute flow
-  // coords, same space as the floating anchors) when the plane opted in and a
-  // valid route was threaded through. Per-relation `shape` still wins.
-  const route = data?.orthogonal === true ? data.route : undefined;
-  const useRoute = route !== undefined && route.length >= 2 && rel?.shape === undefined;
+  // Routed: draw along the layout's waypoints (absolute flow coords, the same
+  // space as the floating anchors). Only while BOTH endpoints still stand where
+  // the layout put them — a saved position, a drag in flight, a nudge or a
+  // moved ancestor all leave the route pointing at where the node used to be,
+  // and the edge floats instead. What the author fixed by hand also floats: a
+  // per-relation shape, a table-row anchor, and a pinned side the route does
+  // not happen to use (elk knows none of these). A pin the route DOES honour —
+  // the common case, since a connect gesture pins whatever sides faced each
+  // other — costs nothing, so such an edge still gets its route.
+  const stands = (n: typeof sourceNode, at: Point | undefined): boolean =>
+    n !== undefined &&
+    at !== undefined &&
+    Math.abs(n.internals.positionAbsolute.x - at.x) < 0.5 &&
+    Math.abs(n.internals.positionAbsolute.y - at.y) < 0.5;
+  const useRoute =
+    data?.route !== undefined &&
+    data.route.length >= 2 &&
+    rel?.shape === undefined &&
+    (rel?.fromSide === undefined || rel.fromSide === routeEndSides(data.route).from) &&
+    (rel?.toSide === undefined || rel.toSide === routeEndSides(data.route).to) &&
+    data.fromColumn === undefined &&
+    data.toColumn === undefined &&
+    stands(sourceNode, data.routeFrom) &&
+    stands(targetNode, data.routeTo);
   let path: string;
   let labelX: number;
   let labelY: number;
-  if (useRoute) {
-    path = roundedPolyline(route);
-    const mid = route[Math.floor(route.length / 2)]!;
+  // What labels and marks are placed ALONG: the route when one is drawn, else
+  // the floating shape.
+  let curve: EdgeCurve = shapeCurve(effectiveShape, pathParams, curvature, bowSide);
+  // elk reserved a spot for the label — nothing else is routed through it
+  let labelSpot: Point | undefined;
+  if (useRoute && data?.route !== undefined) {
+    // The ends land on the boxes as DRAWN (measured), not as estimated — where
+    // "the box" of a captioned icon includes the caption hanging under it: elk
+    // was told about that strip (SizeHint.reserveBottom) and starts the line
+    // below the text, and snapping it up to the picture would strike it through.
+    const drawn = (n: typeof sourceNode, r: typeof srcRect) =>
+      !measured || r === undefined ? undefined : { ...r, height: r.height + captionReserve(n?.data as DiagramNodeData | undefined) };
+    const pts = snapRouteEnds(tidyRoute(data.route), drawn(sourceNode, srcRect), drawn(targetNode, tgtRect));
+    path = roundedRoute(pts, data.routeCorner ?? 8);
+    curve = routeCurve(pts);
+    // elk centred the label ON the route it returned; tidying and end-snapping
+    // may since have slid that leg a few px, so the spot is re-seated on the
+    // line as drawn — a label beside its own line reads as belonging to nothing.
+    labelSpot = data.labelSpot !== undefined ? nearestOnRoute(pts, data.labelSpot) : undefined;
+    const mid = labelSpot ?? curve.point(0.5);
     labelX = mid.x;
     labelY = mid.y;
   } else if (shape === 'straight') {
@@ -301,7 +344,7 @@ export function DiagramEdge({
     [path, labelX, labelY] = getSmoothStepPath(pathParams);
   } else if (bowed) {
     const bowCurvature = curvature ?? DEFAULT_CURVATURE;
-    const mid = edgePoint('bow', pathParams, curvature, 0.5, bowSide);
+    const mid = curve.point(0.5);
     path = bowPath(pathParams, bowCurvature, bowSide);
     labelX = mid.x;
     labelY = mid.y;
@@ -345,13 +388,12 @@ export function DiagramEdge({
   // roughening. Rendered beside the END_SHAPES marker, never replacing it.
   const showMarks = profile.edge?.marks === true;
   const polarityFrame =
-    showMarks && data?.polarity !== undefined ? markFrame(effectiveShape, pathParams, curvature, 0.82, bowSide) : undefined;
-  const delayFrame =
-    showMarks && data?.delay === true ? markFrame(effectiveShape, pathParams, curvature, 0.5, bowSide) : undefined;
+    showMarks && data?.polarity !== undefined ? markFrame(curve, 0.82) : undefined;
+  const delayFrame = showMarks && data?.delay === true ? markFrame(curve, 0.5) : undefined;
 
   // UML interrupt flow: a lightning jog at the midpoint. Gated on the KIND
   // style (not the notation profile) — activity edges appear on any canvas.
-  const zigzagFrame = kind.zigzag === true ? markFrame(effectiveShape, pathParams, curvature, 0.5, bowSide) : undefined;
+  const zigzagFrame = kind.zigzag === true ? markFrame(curve, 0.5) : undefined;
 
   // Loop highlight: when a loop badge is active, glow this edge if it's a member,
   // otherwise dim it. Wraps the whole edge (path + marks + marker) as one group.
@@ -407,10 +449,15 @@ export function DiagramEdge({
   // render already keys off `effectiveShape`/`bowSide`, and so must the
   // click/drag projection, or a placed label would slide off a bowed CLD edge.
   const project = (clientX: number, clientY: number): { t: number; side: EdgeLabelSide } => {
-    const { t, perp } = nearestT(effectiveShape, pathParams, curvature, rf.screenToFlowPosition({ x: clientX, y: clientY }), bowSide);
+    const { t, perp } = nearestOnCurve(curve, rf.screenToFlowPosition({ x: clientX, y: clientY }));
     return { t, side: sideFromPerp(perp) };
   };
   const editableLabels = data?.editableLabels === true;
+  // Edit mode slides a label freely; view mode only with Alt held.
+  const canSlide = (e: { altKey: boolean }): boolean => editableLabels || (data?.movableLabels === true && e.altKey);
+  // A label nobody has placed (the default middle-of-the-line) sits on elk's
+  // reserved spot while the route stands; one that WAS placed follows the line.
+  const unplaced = (lb: EdgeLabel): boolean => (lb.t === undefined || lb.t === 0.5) && (lb.side ?? 'center') === 'center';
 
   // Correlation-driven add: DiagramView sets `pendingAdd` (flow coords) when a
 
@@ -465,20 +512,6 @@ export function DiagramEdge({
           ...(line === 'dotted' ? { strokeLinecap: 'round' as const } : {}),
           ...(animated ? { animation: 'dg-flow 0.7s linear infinite' } : {}),
         }}
-        {...(data?.labels === undefined && data?.label !== undefined
-          ? {
-              // Shortened here, not in CSS: React Flow renders this as SVG
-              // <text>, where text-overflow does nothing. The full text is on the
-              // hit-path's <title> below.
-              label: truncateEdgeLabel(data.label),
-              labelX,
-              labelY,
-              labelStyle: { fill: 'var(--dg-text)', fontSize: 10 },
-              labelBgStyle: { fill: 'var(--dg-edge-label-bg)' },
-              labelBgPadding: [6, 3] as [number, number],
-              labelBgBorderRadius: 6,
-            }
-          : {})}
       />
       {/* transparent hit-path: widens the hover/title target. Adding a label is
           no longer triggered here (a real double-click's first click remounts the
@@ -543,11 +576,27 @@ export function DiagramEdge({
       )}
       </g>
       {pinDots}
+      {/* The joined label of a bundled arrow. An HTML chip in the label layer, not
+          React Flow's SVG `label`: that one lives inside this edge's own <svg>,
+          so every edge painted later drew its line straight across the text. It
+          takes no pointer events — the press falls through to the hit-path under
+          it, whose <title> carries the untruncated text. */}
+      {data?.labels === undefined && data?.label !== undefined && (
+        <EdgeLabelRenderer>
+          <div
+            className="dg-edge-label dg-edge-chip"
+            style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
+          >
+            {data.label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
       {data?.labels !== undefined &&
         data.labels.map((lb) => {
           const lt = lb.t ?? 0.5;
           const side: EdgeLabelSide = lb.side ?? 'center';
-          const base = labelXY(effectiveShape, pathParams, curvature, lt, side, bowSide);
+          const base =
+            labelSpot !== undefined && data.labels?.length === 1 && unplaced(lb) ? labelSpot : labelXY(curve, lt, side);
           const live = drag !== null && drag.labelId === lb.id ? drag : null;
           const lx = live?.x ?? base.x;
           const ly = live?.y ?? base.y;
@@ -560,7 +609,7 @@ export function DiagramEdge({
                 onPointerDown={(e) => {
                   // don't fight the inline input for the press, and don't let
                   // React Flow steal the gesture / clear selection
-                  if (!editableLabels || editingThis) return;
+                  if (!canSlide(e) || editingThis) return;
                   e.stopPropagation();
                   dragRef.current = { labelId: lb.id, startX: e.clientX, startY: e.clientY, moved: false };
                   if (typeof e.currentTarget.setPointerCapture === 'function')
@@ -573,7 +622,7 @@ export function DiagramEdge({
                   if (!d.moved && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) < DRAG_THRESHOLD) return;
                   d.moved = true;
                   const { t, side: s } = project(e.clientX, e.clientY);
-                  const pos = labelXY(effectiveShape, pathParams, curvature, t, s, bowSide);
+                  const pos = labelXY(curve, t, s);
                   setDrag({ labelId: lb.id, x: pos.x, y: pos.y });
                 }}
                 onPointerUp={(e) => {
@@ -618,9 +667,9 @@ export function DiagramEdge({
       {editableLabels &&
         data?.pendingAdd !== undefined &&
         (() => {
-          const { t, perp } = nearestT(effectiveShape, pathParams, curvature, data.pendingAdd, bowSide);
+          const { t, perp } = nearestOnCurve(curve, data.pendingAdd);
           const side = sideFromPerp(perp);
-          const pos = labelXY(effectiveShape, pathParams, curvature, t, side, bowSide);
+          const pos = labelXY(curve, t, side);
           return (
             <EdgeLabelRenderer>
               <div

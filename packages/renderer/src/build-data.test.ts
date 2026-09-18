@@ -51,8 +51,9 @@ const edgeCtx = (over: Partial<EdgeDataContext> = {}): EdgeDataContext => ({
   editing: false,
   pinEdgeRel: null,
   pendingAdd: null,
-  orthogonal: false,
   routes: new Map(),
+  laidAt: new Map(),
+  labelSpots: new Map(),
   ...over,
 });
 
@@ -93,12 +94,6 @@ describe('buildNodeData', () => {
     // fields not present stay absent (no undefined noise on the channel)
     expect(d.shape).toBeUndefined();
     expect(d.image).toBeUndefined();
-  });
-
-  it('reads the pinned state from the pins map', () => {
-    const d = buildNodeData(viewNode(), nodeCtx({ pins: { n1: 'collapsed' } }));
-    expect(d.pinned).toBe('collapsed');
-    expect(buildNodeData(viewNode(), nodeCtx({ pins: { other: 'collapsed' } })).pinned).toBeUndefined();
   });
 
   it('wirings onEnterNode only onto non-leaf nodes', () => {
@@ -291,20 +286,54 @@ describe('buildEdgeData', () => {
     expect(buildEdgeData(viewEdge(), edgeCtx({ editing: true, pendingAdd: { edgeId: 'other', x: 1, y: 2 } })).pendingAdd).toBeUndefined();
   });
 
-  it('applies an orthogonal elk route only for unpinned endpoints', () => {
+  it('hands a routed plane\'s edge its route, corner, label spot and where its endpoints were laid', () => {
+    const route = [{ x: 0, y: 0 }, { x: 10, y: 10 }];
     const ctx = edgeCtx({
-      orthogonal: true,
-      pinnedIds: new Set(['zzz']),
-      routes: new Map<string, import('./layout').EdgePoint[]>([['e1', [{ x: 0, y: 0 }, { x: 10, y: 10 }]]]),
-      editing: false,
+      routing: { corner: 28 },
+      routes: new Map([['e1', route]]),
+      laidAt: new Map([['a', { x: 1, y: 2 }], ['b', { x: 3, y: 4 }]]),
+      labelSpots: new Map([['e1', { x: 5, y: 5 }]]),
     });
     const routed = buildEdgeData(viewEdge(), ctx);
-    expect(routed.orthogonal).toBe(true);
-    expect(routed.route).toEqual([{ x: 0, y: 0 }, { x: 10, y: 10 }]);
-    // source endpoint pinned → falls back to floating
-    expect(buildEdgeData(viewEdge(), edgeCtx({ orthogonal: true, pinnedIds: new Set(['b']) })).orthogonal).toBeUndefined();
-    // no era of route → no orthogonal flag
-    expect(buildEdgeData(viewEdge(), edgeCtx({ orthogonal: true, pinnedIds: undefined, routes: new Map() })).orthogonal).toBeUndefined();
+    expect(routed.route).toBe(route);
+    expect(routed.routeCorner).toBe(28);
+    // the edge decides at draw time whether the route still stands (DiagramEdge)
+    expect(routed.routeFrom).toEqual({ x: 1, y: 2 });
+    expect(routed.routeTo).toEqual({ x: 3, y: 4 });
+    expect(routed.labelSpot).toEqual({ x: 5, y: 5 });
+  });
+
+  it('carries no route on a floating plane, without one for the edge, or for an endpoint the layout never placed', () => {
+    const route = [{ x: 0, y: 0 }, { x: 10, y: 10 }];
+    const laidAt = new Map([['a', { x: 1, y: 2 }], ['b', { x: 3, y: 4 }]]);
+    expect(buildEdgeData(viewEdge(), edgeCtx({ routes: new Map([['e1', route]]), laidAt })).route).toBeUndefined();
+    expect(buildEdgeData(viewEdge(), edgeCtx({ routing: { corner: 8 }, laidAt })).route).toBeUndefined();
+    expect(
+      buildEdgeData(viewEdge(), edgeCtx({ routing: { corner: 8 }, routes: new Map([['e1', route]]), laidAt: new Map([['a', { x: 1, y: 2 }]]) })).route,
+    ).toBeUndefined();
+  });
+
+  it('lays a slid placement over a sole relation\'s own label position', () => {
+    const labels = [{ id: 'legacy', text: 'calls', t: 0.5, side: 'center' as const }, { id: 'l2', text: 'x' }];
+    const moved = buildEdgeData(viewEdge({ labels }), edgeCtx({ labelMoves: { r1: { legacy: { t: 0.2, side: 'top' }, l2: { t: 0.9 } } } }));
+    expect(moved.labels).toEqual([
+      { id: 'legacy', text: 'calls', t: 0.2, side: 'top' },
+      { id: 'l2', text: 'x', t: 0.9 },
+    ]);
+    // another relation's moves leave this edge's array alone (cache-friendly)
+    expect(buildEdgeData(viewEdge({ labels }), edgeCtx({ labelMoves: { other: { legacy: { t: 0.1 } } } })).labels).toBe(labels);
+  });
+
+  it('view mode makes labels movable only where the host listens for the move', () => {
+    expect(buildEdgeData(viewEdge(), edgeCtx()).movableLabels).toBeUndefined();
+    const onViewMoveEdgeLabel = vi.fn();
+    const d = buildEdgeData(viewEdge(), edgeCtx({ onViewMoveEdgeLabel }));
+    expect(d.movableLabels).toBe(true);
+    expect(d.editableLabels).toBeUndefined();
+    d.onMoveLabel?.('legacy', 0.3, 'top');
+    expect(onViewMoveEdgeLabel).toHaveBeenCalledWith('r1', 'legacy', 0.3, 'top');
+    // editing owns label moves itself
+    expect(buildEdgeData(viewEdge(), edgeCtx({ editing: true, onViewMoveEdgeLabel })).movableLabels).toBeUndefined();
   });
 
   it('threads the notation colour for the edge id', () => {

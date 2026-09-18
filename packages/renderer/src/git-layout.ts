@@ -24,6 +24,11 @@ export const GIT_LAYOUT = {
   MARGIN: 24,
   /** room between the last column and the label box */
   TAIL_GAP: 16,
+  /** band above the first lane that holds the stage titles (only when the view
+   * shows a stage — a graph without any keeps exactly the height it had) */
+  STAGE_HEADER: 30,
+  /** how far a stage frame reaches past the first/last lane it covers */
+  STAGE_PAD: 6,
 } as const;
 
 /** Lane colours for branches that set none, by lane index. */
@@ -100,7 +105,7 @@ export function gitLayout(
   plane: string | undefined,
   sizeHints?: ReadonlyMap<string, { width: number; height: number }>,
 ): LayoutResult {
-  const { COL, LANE, DIAMETER, LABEL_W, MARGIN, TAIL_GAP } = GIT_LAYOUT;
+  const { COL, LANE, DIAMETER, LABEL_W, MARGIN, TAIL_GAP, STAGE_HEADER, STAGE_PAD } = GIT_LAYOUT;
   const g = gitGraphCached(model, plane);
   const geometry = new Map<string, NodeGeometry>();
   const routes = new Map<string, EdgePoint[]>();
@@ -121,8 +126,21 @@ export function gitLayout(
   const columnX = (id: string): number => MARGIN + DIAMETER / 2 + (g.columns.get(id) ?? 0) * COL;
 
   const lanes = g.lanes.filter((l) => shown.has(l.id));
+  // Stages: frames across every lane, one column-span each, titled in a band
+  // above the first lane (the tags of that lane's commits hang just below it).
+  const stages = g.stages.filter((s) => shown.has(s.id));
+  const top = MARGIN + (stages.length > 0 ? STAGE_HEADER : 0);
+  for (const s of stages) {
+    const left = MARGIN + DIAMETER / 2 + s.fromCol * COL - COL / 2;
+    geometry.set(s.id, {
+      x: left,
+      y: top - STAGE_HEADER,
+      width: (s.toCol - s.fromCol + 1) * COL,
+      height: STAGE_HEADER + lanes.length * LANE + STAGE_PAD,
+    });
+  }
   lanes.forEach((lane, i) => {
-    const y = MARGIN + i * LANE;
+    const y = top + i * LANE;
     geometry.set(lane.id, { x: 0, y, width, height: LANE });
     for (const c of lane.commits) {
       if (!shown.has(c.id)) continue;
@@ -134,7 +152,7 @@ export function gitLayout(
 
   // Spare row: strays at their column, then everything else the view shows
   // that is not a lane or a placed commit, packed left to right.
-  const rowY = MARGIN + lanes.length * LANE + MARGIN;
+  const rowY = top + lanes.length * LANE + MARGIN;
   // MARGIN's type is the literal `24` (from GIT_LAYOUT's `as const`), which does
   // not widen through a plain `let` initializer — annotate so later reassignment
   // with plain `number` results type-checks.
@@ -165,5 +183,5 @@ export function gitLayout(
     if (s === undefined || t === undefined) continue;
     routes.set(e.id, gitRoute(s, t, COL));
   }
-  return { geometry, routes, algorithm: 'git-graph' };
+  return { geometry, routes, labelSpots: new Map(), algorithm: 'git-graph' };
 }

@@ -85,6 +85,50 @@ describe('gitLayout', () => {
   });
 });
 
+describe('gitLayout stages', () => {
+  const { STAGE_HEADER, STAGE_PAD } = GIT_LAYOUT;
+
+  /** the same graph with two stages: nightly work (columns 1–2) and the hotfix (column 5) */
+  function staged(): DiagramModel {
+    const m = graph();
+    m.nodes.push({ id: 'work', name: 'Nightly work', type: 'git-stage', metadata: { from: 'nightly-1', to: 'nightly-2' } });
+    m.nodes.push({ id: 'fix', name: 'Hotfix', type: 'git-stage', metadata: { from: 'hotfix-1' } });
+    return m;
+  }
+
+  it('frames each stage across every lane, over exactly the columns it spans', () => {
+    const m = staged();
+    const r = gitLayout(view(m), m, m.planes[0]?.id);
+    const frame = (fromCol: number, toCol: number) => ({
+      x: MARGIN + DIAMETER / 2 + fromCol * COL - COL / 2,
+      y: MARGIN,
+      width: (toCol - fromCol + 1) * COL,
+      height: STAGE_HEADER + 3 * LANE + STAGE_PAD,
+    });
+    expect(r.geometry.get('work')).toEqual(frame(1, 2));
+    expect(r.geometry.get('fix')).toEqual(frame(5, 5));
+  });
+
+  it('makes room for the stage titles above the first lane — and only when a stage is drawn', () => {
+    const m = staged();
+    const withStages = gitLayout(view(m), m, m.planes[0]?.id);
+    expect(withStages.geometry.get('master')!.y).toBe(MARGIN + STAGE_HEADER);
+    expect(withStages.geometry.get('nightly')!.y).toBe(MARGIN + STAGE_HEADER + 2 * LANE);
+    // routes follow the lanes down
+    const plain = gitLayout(view(graph()), graph(), undefined);
+    const e = view(m).layoutEdges[0]!;
+    expect(withStages.routes.get(e.id)![0]!.y).toBe(plain.routes.get(e.id)![0]!.y + STAGE_HEADER);
+    expect(plain.geometry.get('master')!.y).toBe(MARGIN);
+  });
+
+  it('never parks a stage in the spare row with the loose nodes', () => {
+    const m = staged();
+    const r = gitLayout(view(m), m, m.planes[0]?.id);
+    const spareRowY = MARGIN + STAGE_HEADER + 3 * LANE + MARGIN;
+    expect(r.geometry.get('work')!.y).toBeLessThan(spareRowY);
+  });
+});
+
 describe('gitRoute', () => {
   it('same row and degenerate links are straight', () => {
     expect(gitRoute({ x: 0, y: 5 }, { x: 50, y: 5 }, COL)).toEqual([{ x: 0, y: 5 }, { x: 50, y: 5 }]);

@@ -35,6 +35,11 @@ export function estimateLabelSize(text: string, fontScale: FontScale = 'md'): { 
 const CAPTION_CHAR = 7;
 const CAPTION_PAD = 8;
 
+/** The strip the caption occupies below the box: `margin-top: 3px` plus one
+ * 12px/1.3 line, rounded up. Reserved in the layout (`SizeHint.reserveBottom`)
+ * so the next icon, an edge, or the container's border keeps off the text. */
+export const CAPTION_HEIGHT = 20;
+
 /** Deterministic (no-DOM) width of an image node's one-line caption. */
 export function captionWidth(text: string): number {
   return Math.round(text.length * CAPTION_CHAR + CAPTION_PAD);
@@ -51,20 +56,3 @@ export function captionWidth(text: string): number {
  * for the other case — ONE authored label that happens to be a sentence.
  */
 export const EDGE_LABEL_MAX_CHARS = 24;
-
-/**
- * Shorten an edge label to `EDGE_LABEL_MAX_CHARS`, ellipsis included in the
- * budget. Needed as a STRING operation, not CSS: React Flow draws `data.label` as
- * SVG <text>, where `text-overflow: ellipsis` has no effect.
- *
- * Counts characters by code point, so an astral character is never split into
- * halves of a surrogate pair, and trims a trailing separator or space so the
- * result reads as a shortened label rather than a broken one. The full text stays
- * available: the edge's hover title carries it.
- */
-export function truncateEdgeLabel(text: string, max: number = EDGE_LABEL_MAX_CHARS): string {
-  const chars = [...text];
-  if (chars.length <= max) return text;
-  const kept = chars.slice(0, Math.max(0, max - 1)).join('');
-  return `${kept.replace(/[\s/|,;·-]+$/u, '')}…`;
-}

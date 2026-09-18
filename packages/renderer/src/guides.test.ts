@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Node, NodeChange } from '@xyflow/react';
 import type { Box } from './box';
-import { computeGuides, snapDragChanges } from './guides';
+import { computeGuides, snapDragChanges, snapDragFrame, type SnapMemo } from './guides';
 
 const box = (id: string, x: number, y: number, w = 100, h = 50): Box => ({ id, x, y, w, h });
 
@@ -93,5 +93,47 @@ describe('snapDragChanges', () => {
     expect(snapDragChanges(settled, { nodes, absoluteOf: abs }, 8)).toEqual({ changes: settled, lines: [] });
     const unmeasured = [drag('u', 106, 700)];
     expect(snapDragChanges(unmeasured, { nodes, absoluteOf: abs }, 8)).toEqual({ changes: unmeasured, lines: [] });
+  });
+});
+
+describe('snapDragFrame', () => {
+  const nodes: Node[] = [
+    { id: 'a', position: { x: 100, y: 0 }, data: {}, measured: { width: 100, height: 50 } },
+    { id: 'm', position: { x: 300, y: 300 }, data: {}, measured: { width: 100, height: 50 } },
+  ];
+  const abs = (id: string) => ({ a: { x: 100, y: 0 }, m: { x: 300, y: 300 } })[id];
+  const frame = (x: number, dragging: boolean): NodeChange[] => [
+    { id: 'm', type: 'position', position: { x, y: 300 }, dragging },
+  ];
+  const posOf = (changes: NodeChange[]) => (changes[0] as Extract<NodeChange, { type: 'position' }>).position;
+
+  it('re-applies the last snap to a settle frame that arrives with the raw position (expandParent children)', () => {
+    const memo: { current: SnapMemo | null } = { current: null };
+    const dragFrame = frame(106, true);
+    expect(snapDragFrame(dragFrame, { nodes, absoluteOf: abs }, 8, memo).lines).toHaveLength(1);
+    expect(posOf(dragFrame)).toEqual({ x: 100, y: 300 });
+    // React Flow built a FRESH position for the drop, so the snap is not in it
+    const settle = frame(106, false);
+    expect(snapDragFrame(settle, { nodes, absoluteOf: abs }, 8, memo).lines).toEqual([]);
+    expect(posOf(settle)).toEqual({ x: 100, y: 300 });
+    expect(memo.current).toBeNull();
+  });
+
+  it('leaves alone a settle frame the write-through already reached', () => {
+    const memo: { current: SnapMemo | null } = { current: null };
+    snapDragFrame(frame(106, true), { nodes, absoluteOf: abs }, 8, memo);
+    const settle = frame(100, false); // XYDrag's own object, snapped in place last frame
+    snapDragFrame(settle, { nodes, absoluteOf: abs }, 8, memo);
+    expect(posOf(settle)).toEqual({ x: 100, y: 300 });
+  });
+
+  it('forgets the snap once the box is dragged out of reach', () => {
+    const memo: { current: SnapMemo | null } = { current: null };
+    snapDragFrame(frame(106, true), { nodes, absoluteOf: abs }, 8, memo);
+    snapDragFrame(frame(160, true), { nodes, absoluteOf: abs }, 8, memo);
+    expect(memo.current).toBeNull();
+    const settle = frame(160, false);
+    snapDragFrame(settle, { nodes, absoluteOf: abs }, 8, memo);
+    expect(posOf(settle)).toEqual({ x: 160, y: 300 });
   });
 });

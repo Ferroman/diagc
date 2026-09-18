@@ -182,9 +182,11 @@ An item naming a `kind` or `type` that already has a derived row **recaptions th
 | `sizes` | `Record<nodeId, {w, h}>?` | Plane-independent — a node is the same size everywhere. |
 | `manual` | `Record<plane, true>?` | Planes with automatic layout switched off. |
 | `settings` | `Record<plane, LayoutSettings>?` | Per-plane automatic-layout settings. Absent means the tuned defaults. |
+| `unfolded` | `Record<plane, nodeId[]>?` | The groups each plane opens with unfolded. Written together with the positions; absent means the plane rests fully folded. A starting point — the reader folds and unfolds freely from there. |
+| `edgeLabels` | `Record<plane, Record<relationId, Record<labelId, {t, side?}>>>?` | Where a viewer slid an edge label (Alt+drag in view mode): `t` along the edge, `side` of it. Overrides the label's own position on that plane; editing the position in the model drops the entry. `labelId` is `legacy` for a relation's plain `label`. |
 | `export` | `{ collapsed?: string[] }?` | How the PNG export differs from the interactive page. |
 
-Both are keyed by the **resolved containment plane** (`layoutPlaneKey`), the same
+`settings`, `unfolded` and `edgeLabels` are keyed by the **resolved containment plane** (`layoutPlaneKey`), the same
 as `planes` and `manual` — so a plane that borrows containment with
 `containmentOf` shares the donor's entry rather than having its own.
 
@@ -193,14 +195,14 @@ as `planes` and `manual` — so a plane that borrows containment with
 | Field | Type | Notes |
 | --- | --- | --- |
 | `algorithm` | `string?` | elk.algorithm: `layered` (default), `force`, `stress`, `mrtree`, `radial`, `rectpacking`. |
-| `direction` | `string?` | elk.direction for `layered`: `RIGHT` (default), `DOWN`, `LEFT`, `UP`. |
-| `spacing` | `number?` | Base node-to-node spacing in px; between-layer spacing is derived from it. |
-| `edgeRouting` | `'curved' \| 'orthogonal'?` | Floating beziers (default) or orthogonal along elk waypoints. |
-| `aspectRatio` | `number?` | `layered` only. When set, elk wraps long chains onto several rows aiming at this width÷height (`MULTI_EDGE` wrapping). Absent = no wrapping. |
+| `direction` | `string?` | elk.direction for `layered`: `DOWN` (default), `RIGHT`, `LEFT`, `UP`. A model that draws activity frames defaults to `RIGHT` instead — their lanes are horizontal bands. |
+| `spacing` | `number?` | Base node-to-node spacing in px, at every nesting level. Layers sit the same distance apart, and the gap between unconnected groups is derived from it. |
+| `edgeRouting` | `'curved' \| 'orthogonal'?` | How routed edges are drawn. Both follow the layout's own waypoints, which is what keeps a line off the boxes it was steered around: `curved` (default) rounds the bends generously, `orthogonal` keeps them tight. An edge whose endpoint was placed by hand floats as a bezier either way. `layered` only. |
+| `aspectRatio` | `number?` | `layered` only. When set, elk wraps long chains onto several rows aiming at this width÷height (`MULTI_EDGE` wrapping). Absent = no wrapping. Unconnected groups are packed toward it too (toward 0.75, a portrait page, when absent). |
 
 `export.collapsed` lists node ids to keep FOLDED in the PNG only; the interactive
-page ignores it and always rests fully folded so the reader unfolds what they
-want. The exporter otherwise unfolds every container, which turns a view with
+page ignores it and opens the way `unfolded` says (fully folded when absent), so
+the reader unfolds what they want. The exporter otherwise unfolds every container, which turns a view with
 hundreds of leaves into an unreadable thumbnail. Folding rather than the plane's
 `hides` is the right tool when the edges matter: a folded box still ANCHORS its
 hidden children's edges, where a hidden node drops them. Ids that are not
@@ -251,6 +253,7 @@ A plane with `notation: 'git-graph'` reads ordinary nodes and relations as a bra
 | Next commit on a lane | Relation `kind: 'commit'` |
 | Branch-off | Relation `kind: 'branch'`, from a commit on another lane to the first commit of a new run |
 | Merge | Relation `kind: 'merge'`, from the absorbed commit to the merge commit |
+| Stage | Top-level node, `type: 'git-stage'`: a frame across every lane. `metadata.from` / `metadata.to` (commit ids; `to` defaults to `from`) give the columns it spans. `name` is its title, `color` its colour. |
 
 A commit's column is one past every commit it follows, branches from or merges, plus its gap. The layout never fails: a cycle is cut, a commit outside every lane is parked beneath the lanes — and validation reports both (`git-*` codes below).
 
@@ -320,6 +323,7 @@ A guard is a plain relation `label` (e.g. `[order accepted]`) — there is no de
 | `git-cycle` | The git links form a cycle. |
 | `git-commit-outside-lane` | A `commit` node is not contained by a `branch` on the git plane. |
 | `git-gap` | `metadata.gap` is neither a non-negative integer nor a string of digits. |
+| `git-stage-span` | A `git-stage` node's `metadata.from` is missing, or its `from`/`to` does not name a `commit` node. |
 | `activity-lane-parent` | An `activity-lane` is not contained by an `activity-frame`. |
 | `activity-frame-children` | An `activity-frame` contains something other than an `activity-lane`. |
 | `activity-region-parent` | An `activity-region` is contained by something other than an `activity-lane`. |

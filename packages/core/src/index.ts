@@ -25,6 +25,7 @@ export * from './types';
 export * from './mutate';
 export { normalizeRuns, runsToPlainText } from './text';
 export { relationLabels } from './labels';
+export { defaultLayoutDirection, type LayoutDirection } from './layout-defaults';
 export {
   model,
   ModelBuilder,
@@ -39,6 +40,7 @@ export {
   type NodeOpts,
   type RelateOpts,
   type CommitOpts,
+  type StageOpts,
   type MergeOpts,
   type ActivityElementOpts,
 } from './builder';
@@ -66,6 +68,9 @@ export {
   applyCommandWithResult,
   emptyLayout,
   layoutPlaneKey,
+  openingPins,
+  withEdgeLabelPlacements,
+  withUnfolded,
   type EditorCommand,
   type EditorState,
 } from './commands';
@@ -79,12 +84,15 @@ export {
 export {
   GIT_KINDS,
   GIT_NOTATION,
+  GIT_STAGE_TYPE,
   gapOf,
   gitGraph,
   isGitKind,
   latestCommit,
   mergedAway,
+  stageCommit,
   type GitGraph,
   type GitKind,
   type GitLane,
+  type GitStage,
 } from './git';

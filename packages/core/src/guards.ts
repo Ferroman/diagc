@@ -1,4 +1,4 @@
-import type { Drawings, LayoutOverlay } from './types';
+import { EDGE_LABEL_SIDES, type Drawings, type LayoutOverlay } from './types';
 
 /** Structural guard for a LayoutOverlay, shared by the studio server (before
  * persisting a layout) and the client (before trusting a loaded one). Checks
@@ -29,6 +29,29 @@ export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
         (s) => typeof s === 'object' && s !== null && dim((s as { w?: unknown }).w) && dim((s as { h?: unknown }).h),
       ));
   if (!sizesOk) return false;
+  const unfolded = (u as { unfolded?: unknown }).unfolded;
+  const unfoldedOk =
+    unfolded === undefined ||
+    (typeof unfolded === 'object' &&
+      unfolded !== null &&
+      !Array.isArray(unfolded) &&
+      Object.values(unfolded).every((ids) => Array.isArray(ids) && ids.every((id) => typeof id === 'string')));
+  if (!unfoldedOk) return false;
+  const edgeLabels = (u as { edgeLabels?: unknown }).edgeLabels;
+  const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+  const placementOk = (v: unknown): boolean =>
+    isRecord(v) &&
+    typeof v['t'] === 'number' &&
+    Number.isFinite(v['t']) &&
+    (v['side'] === undefined || (EDGE_LABEL_SIDES as readonly unknown[]).includes(v['side']));
+  const edgeLabelsOk =
+    edgeLabels === undefined ||
+    (isRecord(edgeLabels) &&
+      Object.values(edgeLabels).every(
+        (plane) =>
+          isRecord(plane) && Object.values(plane).every((rel) => isRecord(rel) && Object.values(rel).every(placementOk)),
+      ));
+  if (!edgeLabelsOk) return false;
   // `export` is export-only presentation (see LayoutOverlay): an object whose
   // only field today is a list of node ids. Validate it structurally so a typo
   // is a 400 from the studio's save endpoint rather than a silently ignored

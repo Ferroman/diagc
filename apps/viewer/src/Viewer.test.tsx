@@ -71,6 +71,17 @@ describe('Viewer', () => {
     expect(await screen.findByText('Box')).toBeDefined();
     expect(screen.queryByText('Inner')).toBeNull();
   });
+  it('an interactive page opens folded, unless the layout was saved with a group open', async () => {
+    const folded = render(<Viewer data={{ model: nested() }} />);
+    expect(await screen.findByText('Box')).toBeDefined();
+    expect(screen.queryByText('Inner')).toBeNull();
+    folded.unmount();
+    // Saved WITH the positions: a hand-placed interior only shows while its
+    // container is open, so a saved arrangement must reopen the way it was saved.
+    render(<Viewer data={{ model: nested(), layout: { version: 1, planes: {}, unfolded: { default: ['box'] } } }} />);
+    expect(await screen.findByText('Inner')).toBeDefined();
+  });
+
   it('applies the light theme tokens so group/node borders resolve', () => {
     document.documentElement.style.removeProperty('--dg-group-stroke');
     render(<Viewer data={{ model: m() }} />);
@@ -342,6 +353,6 @@ describe('Viewer export bounds', () => {
     // measurement, giving a real, deterministic box. Assert against that
     // measured-and-ceiled box (not the 1200x800 no-real-layout fallback) —
     // the point either way is that nothing was added on top of it.
-    expect(exportWindow().__DG_BOUNDS__).toEqual({ width: 1020, height: 600 });
+    expect(exportWindow().__DG_BOUNDS__).toEqual({ width: 800, height: 690 });
   });
 });

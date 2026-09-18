@@ -32,6 +32,34 @@ describe('isLayoutOverlay', () => {
   });
 });
 
+describe('isLayoutOverlay — unfolded', () => {
+  it('accepts per-plane id lists and an empty map', () => {
+    expect(isLayoutOverlay({ ...base, unfolded: { default: ['sys', 'db'] } })).toBe(true);
+    expect(isLayoutOverlay({ ...base, unfolded: { default: [] } })).toBe(true);
+    expect(isLayoutOverlay({ ...base, unfolded: {} })).toBe(true);
+  });
+
+  it('rejects anything that is not plane → string[]', () => {
+    expect(isLayoutOverlay({ ...base, unfolded: ['sys'] })).toBe(false);
+    expect(isLayoutOverlay({ ...base, unfolded: { default: { sys: 'expanded' } } })).toBe(false);
+    expect(isLayoutOverlay({ ...base, unfolded: { default: ['sys', 3] } })).toBe(false);
+    expect(isLayoutOverlay({ ...base, unfolded: null })).toBe(false);
+  });
+});
+
+describe('isLayoutOverlay — edgeLabels', () => {
+  it('accepts plane → relation → label → { t, side? }', () => {
+    expect(isLayoutOverlay({ ...base, edgeLabels: { default: { r1: { legacy: { t: 0.3, side: 'top' }, l2: { t: 1 } } } } })).toBe(true);
+    expect(isLayoutOverlay({ ...base, edgeLabels: {} })).toBe(true);
+  });
+
+  it('rejects a placement without a numeric t or with an unknown side', () => {
+    expect(isLayoutOverlay({ ...base, edgeLabels: { default: { r1: { legacy: { side: 'top' } } } } })).toBe(false);
+    expect(isLayoutOverlay({ ...base, edgeLabels: { default: { r1: { legacy: { t: 0.3, side: 'left' } } } } })).toBe(false);
+    expect(isLayoutOverlay({ ...base, edgeLabels: { default: { r1: [] } } })).toBe(false);
+  });
+});
+
 describe('isDrawings', () => {
   const stroke = { id: 'k1', points: [1, 2, 3, 4] };
 

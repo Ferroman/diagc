@@ -1,4 +1,4 @@
-import type { LayoutSettings } from '@diagramming/core';
+import type { LayoutDirection, LayoutSettings } from '@diagramming/core';
 import type { DrawTool } from '@diagramming/renderer';
 import type { EditorApi } from './useEditor';
 import { getHost } from '../host';
@@ -27,6 +27,8 @@ interface EditorToolbarProps {
   getAutoPositions: () => Record<string, { x: number; y: number }>;
   /** active plane's automatic-layout settings (algorithm/direction/spacing/edge routing) */
   layoutSettings: LayoutSettings;
+  /** what an unset direction resolves to for this model (see LayoutControls) */
+  defaultDirection?: LayoutDirection;
   /** merge a settings patch into the active plane (an undefined field clears it) */
   onSetLayoutSettings: (patch: Partial<LayoutSettings>) => void;
   /** color of the current selection (node or single-relation edge); null = no color target */
@@ -95,6 +97,7 @@ export function EditorToolbar({
   onToggleAutoLayout,
   getAutoPositions,
   layoutSettings,
+  defaultDirection,
   onSetLayoutSettings,
   selectionColor,
   tool,
@@ -145,7 +148,13 @@ export function EditorToolbar({
       >
         Auto-layout
       </button>
-      {!layoutLocked && <LayoutControls settings={layoutSettings} onChange={onSetLayoutSettings} />}
+      {!layoutLocked && (
+        <LayoutControls
+          settings={layoutSettings}
+          onChange={onSetLayoutSettings}
+          {...(defaultDirection !== undefined ? { defaultDirection } : {})}
+        />
+      )}
       <span className="sep" />
       <span className="tool-group" role="group" aria-label="Canvas tool">
         {(

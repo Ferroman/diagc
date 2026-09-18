@@ -1,15 +1,27 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { presetLayers, uniqueNodeId, type DiagramModel, type DiagramPlane, type LayoutSettings } from '@diagramming/core';
+import {
+  openingPins,
+  presetLayers,
+  uniqueNodeId,
+  type DiagramModel,
+  type DiagramPlane,
+  type LayoutOverlay,
+  type LayoutSettings,
+} from '@diagramming/core';
 import type { DiagramSelection } from '@diagramming/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import { getHost } from '../host';
 import { remapVisibleLayers } from '../layerMerge';
+import { unfoldedOf } from '../savedPositions';
 import type { InspectorTab } from '../editor/InspectorTabs';
 import type { LeverageFocus } from '../LeveragePanel';
 
 export interface UseViewOpsOptions {
   editor: EditorApi;
   model: DiagramModel | undefined;
+  /** the overlay on screen — where a plane's saved `unfolded` list is read from */
+  layout: LayoutOverlay | undefined;
+  pins: Record<string, 'expanded' | 'collapsed'>;
   selection: DiagramSelection | null;
   groupSel: string[];
   editing: boolean;
@@ -38,8 +50,7 @@ export interface ViewOps {
   switchPlane: (id: string) => void;
   activateLayer: (id: string | null) => void;
   mergeSelectedLayers: (sources: string[], target?: string) => void;
-  togglePin: (id: string) => void;
-  toggleExpand: (id: string) => void;
+  toggleExpand: (id: string, next: 'expanded' | 'collapsed') => void;
   toggleLayer: (id: string) => void;
   resetView: () => void;
 }
@@ -54,6 +65,8 @@ export interface ViewOps {
 export function useViewOps({
   editor,
   model,
+  layout,
+  pins,
   selection,
   groupSel,
   editing,
@@ -115,9 +128,10 @@ export function useViewOps({
   // A plane change re-seeds the layer switch from the new plane's presets, and the
   // user owns it from there (see presetLayers / ViewportState.activeLayers): a
   // plane's `layers` are a starting point, not a floor the compiler re-imposes.
+  // The folds follow the same rule: each plane opens the way IT was saved.
   const switchPlane = (id: string) => {
     setPlane(id);
-    setPins({});
+    setPins(model !== undefined ? openingPins(layout, model, id) : {});
     select(null);
     setActiveLayers(presetLayers(planes, id));
     setActiveLayer(null);
@@ -141,19 +155,24 @@ export function useViewOps({
     setActiveLayers((ls) => remapVisibleLayers(ls, sources, target));
   };
 
-  const togglePin = (id: string) =>
-    setPins((p) => {
-      const next = { ...p };
-      if (next[id] === undefined) next[id] = 'collapsed';
-      else if (next[id] === 'collapsed') next[id] = 'expanded';
-      else delete next[id];
-      return next;
-    });
-
-  // CLD group disclosure: flip straight between expanded and collapsed (no
-  // auto state), so one click always toggles.
-  const toggleExpand = (id: string) =>
-    setPins((p) => ({ ...p, [id]: p[id] === 'expanded' ? 'collapsed' : 'expanded' }));
+  // The fold chip (and a CLD group's disclosure): land in the state the canvas
+  // asked for. The renderer names it because only the view knows whether the
+  // box is open right now — focus can open one that carries no pin.
+  //
+  // While editing, which boxes are open is part of the document, exactly as the
+  // positions are: the toggle is recorded (one undo step, written by autosave),
+  // so a reload reopens what was being worked on. View mode only changes what
+  // is on screen — saving it is the explicit Save positions chip.
+  const toggleExpand = (id: string, next: 'expanded' | 'collapsed') => {
+    setPins((p) => ({ ...p, [id]: next }));
+    if (editing) {
+      editor.dispatch({
+        type: 'set-unfolded',
+        ids: unfoldedOf({ ...pins, [id]: next }),
+        ...(activePlane !== undefined ? { plane: activePlane } : {}),
+      });
+    }
+  };
 
   const toggleLayer = (id: string) => {
     // Hiding the sheet you're drawing on drops the pen back to the base.
@@ -163,7 +182,7 @@ export function useViewOps({
 
   const resetView = () => {
     setPlane(undefined);
-    setPins({});
+    setPins(model !== undefined ? openingPins(layout, model, undefined) : {});
     setLayoutPreview({});
     // The Default chip clears `plane`, and compileView resolves an absent plane to
     // planes[0] — so the seed comes from planes[0] too. Seeding [] instead would
@@ -180,7 +199,6 @@ export function useViewOps({
     switchPlane,
     activateLayer,
     mergeSelectedLayers,
-    togglePin,
     toggleExpand,
     toggleLayer,
     resetView,

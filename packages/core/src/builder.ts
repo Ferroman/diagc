@@ -16,6 +16,7 @@ import type {
   TextAlign,
   TextRun,
 } from './types';
+import { GIT_STAGE_TYPE } from './git';
 import { DiagramValidationError, validate } from './validate';
 
 export interface NodeOpts {
@@ -174,8 +175,29 @@ export class BranchRef extends NodeRef {
   }
 }
 
+export interface StageOpts {
+  /** the label drawn at the top of the frame; defaults to the id */
+  name?: string;
+  /** the commit whose column the frame starts at */
+  from: CommitRef;
+  /** the commit whose column it ends at (inclusive); defaults to `from` */
+  to?: CommitRef;
+  color?: string;
+}
+
 export class GitGraphBuilder {
   constructor(private readonly m: ModelBuilder) {}
+  /** A named frame across every lane, spanning the columns of `from`…`to` —
+   * a phase of the history ("Development", "Release candidates"). Declare it
+   * after the commits it names. */
+  stage(id: string, opts: StageOpts): NodeRef {
+    return this.m.node(id, {
+      type: GIT_STAGE_TYPE,
+      ...(opts.name !== undefined ? { name: opts.name } : {}),
+      ...(opts.color !== undefined ? { color: opts.color } : {}),
+      metadata: { from: opts.from.id, ...(opts.to !== undefined ? { to: opts.to.id } : {}) },
+    });
+  }
   /** lanes are drawn top-to-bottom in the order they are declared */
   branch(id: string, opts: { name?: string; color?: string } = {}): BranchRef {
     this.m.node(id, {

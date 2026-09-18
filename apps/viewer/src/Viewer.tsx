@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import {
   activeNotation,
+  openingPins,
   presetLayers,
   type DiagramModel,
   type DiagramPlane,
@@ -174,14 +175,17 @@ export function PlanePicker({
 
 export function Viewer({ data, expandAll = false }: { data: ViewerData | null; expandAll?: boolean }) {
   // Export snapshots want a complete overview, so seed every container group as
-  // expanded; interactive pages start folded (empty pins) so viewers explore.
+  // expanded; interactive pages open the way the layout was SAVED (`unfolded`:
+  // a hand-placed interior is only visible while its container is open) and
+  // otherwise folded, so viewers explore.
   // The one exception is `layout.export.collapsed`: a view too big to unfold
   // (hundreds of leaves) names the groups to keep folded for the image, and
   // those seed as collapsed instead. Folding is deliberate — a folded box still
   // anchors its hidden children's edges, so the relations survive the fold.
   const [pins, setPins] = useState<Record<string, 'expanded' | 'collapsed'>>(() => {
-    if (!expandAll || data === null || typeof data !== 'object' || (data as ViewerData).model == null) return {};
+    if (data === null || typeof data !== 'object' || (data as ViewerData).model == null) return {};
     const d = data as ViewerData;
+    if (!expandAll) return openingPins(d.layout, d.model);
     const folded = new Set(d.layout?.export?.collapsed ?? []);
     return Object.fromEntries(
       [...new Set(d.model.containment.map((c) => c.parent))].map((id) => [
@@ -280,14 +284,15 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
   // the reader is on — the studio resolves it the same way, so an editable
   // diagram and its published page always agree.
   const notation = activeNotation(model.planes, plane, model.notation);
-  const togglePin = (id: string) =>
-    setPins((p) => ({ ...p, [id]: p[id] === 'expanded' ? 'collapsed' : 'expanded' }));
+  const toggleExpand = (id: string, next: 'expanded' | 'collapsed') => setPins((p) => ({ ...p, [id]: next }));
   // A plane change re-seeds the layer switch from the new plane's presets, so the
   // reader's choice on one viewpoint never silently governs another — the studio
   // does the same on switchPlane.
+  // The folds follow for the same reason: each plane opens as IT was saved.
   const pickPlane = (id: string) => {
     setPicked(id);
     setLayers(presetLayers(model.planes, id));
+    setPins(openingPins(layout, model, id));
   };
   const toggleLayer = (id: string) =>
     setLayers((ls) => (ls.includes(id) ? ls.filter((l) => l !== id) : [...ls, id]));
@@ -295,8 +300,7 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
     <DiagramView
       model={model}
       pins={pins}
-      onTogglePin={togglePin}
-      onToggleExpand={togglePin}
+      onToggleExpand={toggleExpand}
       enteredPath={enteredPath}
       onEnteredPathChange={setEnteredPath}
       colorMode="light"

@@ -15,7 +15,7 @@ import {
   type TextRun,
 } from './types';
 import { childrenOf } from './children';
-import { GIT_NOTATION, gitGraph, isGitKind } from './git';
+import { GIT_NOTATION, GIT_STAGE_TYPE, gitGraph, isGitKind, stageCommit } from './git';
 
 export interface ValidationIssue {
   code:
@@ -54,6 +54,7 @@ export interface ValidationIssue {
     | 'git-cycle'
     | 'git-commit-outside-lane'
     | 'git-gap'
+    | 'git-stage-span'
     | 'activity-lane-parent'
     | 'activity-frame-children'
     | 'activity-region-parent';
@@ -458,6 +459,17 @@ function validateGit(ctx: Ctx): void {
       `Commit '${s.id}' is not contained by a branch${plane !== undefined ? ` on plane '${plane.id}'` : ''}`,
       s.id,
     );
+  }
+  for (const n of m.nodes) {
+    if (n.type !== GIT_STAGE_TYPE) continue;
+    const from = stageCommit(n, 'from');
+    if (from === undefined) {
+      report(issues, 'git-stage-span', `Stage '${n.id}' names no 'from' commit in its metadata`, n.id);
+      continue;
+    }
+    for (const id of [from, stageCommit(n, 'to')]) {
+      if (id !== undefined && !isCommit(id)) report(issues, 'git-stage-span', `Stage '${n.id}' spans '${id}', which is not a commit`, n.id);
+    }
   }
   for (const n of m.nodes) {
     if (n.type !== 'commit') continue;

@@ -38,12 +38,23 @@ That writes `.diagrams/src/<name>.layout.json`:
 }
 ```
 
+A position inside a group is relative to the group, and a group gives way to its
+contents: drag a box past its group's wall and the group grows around it, in any
+direction, instead of letting it out. (Which group a box belongs to is changed in the node
+panel, never by dragging.)
+
+**Which groups are open is saved too.** A box you placed inside a group is only visible
+while that group is unfolded, so the chip also records the groups open on screen, as an
+`unfolded` list beside the positions, and the diagram — in the studio and on its published
+page — reopens with those unfolded. Unfolding or folding a group is therefore enough to make
+the chip appear. The PNG export is unaffected: it unfolds everything regardless.
+
 Positions are keyed by **plane** — `architecture` above, because that diagram declares
 planes and this is the first one. A diagram with no planes keys under `default`. Each plane
 is positioned independently, so the same node can sit in different places in different views.
 
-Nothing is written until you click. Dragging alone is throwaway state, and switching plane
-or diagram discards it — the same class of state as pins and focus.
+Nothing is written until you click. Dragging and unfolding alone are throwaway state, and
+switching plane or diagram discards them.
 
 ## Hand a plane back to the algorithm
 
@@ -73,6 +84,10 @@ Four aids, none of which need edit mode (in view mode a box moves with Alt+drag)
 - **Line several up.** `Shift`+click (or `Shift`+drag a marquee around) two or more boxes and use the toolbar that appears at the top of the canvas: align, or distribute three or more evenly.
 
 All four feed the same **Save positions** chip.
+
+## Move an edge label
+
+Hold **Alt** and drag a label: it slides along its edge, and hops to the other side of the line when you pull it across. Use it when a label lands on top of another edge. The move is saved by the same chip, into the layout file's `edgeLabels` (never into the model), so it works on a generated diagram too. Only labels of a single relation move; the joined label of several bundled relations stays at the middle.
 
 ## Freeze the whole plane
 

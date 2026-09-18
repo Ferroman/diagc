@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { activeNotation, errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagramming/core';
+import {
+  activeNotation,
+  errMessage,
+  openingPins,
+  type DiagramModel,
+  type Drawings,
+  type LayoutOverlay,
+} from '@diagramming/core';
 import { applyTheme, darkTheme, DiagramView, isKnownStyle, lightTheme } from '@diagramming/renderer';
 import { createIconRegistry } from '@diagramming/icons';
 import type { HostAdapter } from '@diagramming/studio/src/host';
@@ -76,6 +83,11 @@ export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpen
     if (rootRef.current !== null) applyTheme(rootRef.current, theme === 'dark' ? darkTheme : lightTheme);
   }, [state.status, theme]);
 
+  // Same shape as Viewer.tsx's interactive page: folded unless the layout was
+  // saved with boxes open, owned by the reader, never written back — an embed is
+  // a read-only window.
+  const [pins, setPins] = useState<Record<string, 'expanded' | 'collapsed'>>({});
+
   useEffect(() => {
     let cancelled = false;
     setState({ status: 'loading' });
@@ -89,7 +101,12 @@ export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpen
           throw new Error(body?.issues?.[0]?.message ?? `Failed to load '${spec.name}' (${res.status})`);
         }
         if (body?.model === undefined) throw new Error(`Malformed response for '${spec.name}'`);
-        if (!cancelled) setState({ status: 'loaded', data: body as EmbedResponse });
+        if (!cancelled) {
+          const data = body as EmbedResponse;
+          setState({ status: 'loaded', data });
+          // open the way the layout was saved (see Viewer.tsx); the reader owns it from there
+          setPins(openingPins(data.layout, data.model, spec.plane));
+        }
       } catch (e) {
         if (!cancelled) setState({ status: 'error', message: errMessage(e) });
       }
@@ -99,13 +116,10 @@ export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpen
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- spec.plane is read when the response lands; a plane change alone does not refetch
   }, [apiFetch, spec.name]);
 
-  // Same shape as Viewer.tsx's interactive page: folded by default, owned by
-  // the reader, never written back — an embed is a read-only window.
-  const [pins, setPins] = useState<Record<string, 'expanded' | 'collapsed'>>({});
-  const togglePin = (id: string) =>
-    setPins((p) => ({ ...p, [id]: p[id] === 'expanded' ? 'collapsed' : 'expanded' }));
+  const toggleExpand = (id: string, next: 'expanded' | 'collapsed') => setPins((p) => ({ ...p, [id]: next }));
   // Seeded from the fence's `layers:` line, then owned by the reader from
   // there — a fence's layers are a default, not a floor (mirrors Viewer.tsx).
   const [activeLayers, setActiveLayers] = useState<string[]>(spec.layers ?? []);
@@ -131,8 +145,7 @@ export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpen
       <DiagramView
         model={model}
         pins={pins}
-        onTogglePin={togglePin}
-        onToggleExpand={togglePin}
+        onToggleExpand={toggleExpand}
         enteredPath={enteredPath}
         onEnteredPathChange={setEnteredPath}
         colorMode={theme}

@@ -4,6 +4,7 @@
 import type { Column, DiagramModel, Drawings, EdgeLabelSide, LayoutOverlay, NotationId, Stroke, TextRun } from '@diagramming/core';
 import type { IconRegistry } from '@diagramming/icons';
 import type { MutableRefObject } from 'react';
+import type { EdgeLabelMoves } from './build-data';
 import type { Side } from './floating';
 import type { LoopEdgeInput } from './loops';
 import type { KindStyle, Registry, TypeStyle } from './registry';
@@ -57,13 +58,14 @@ export interface DiagramViewProps {
   /** a legend layer row was clicked — toggle that layer's visibility */
   onToggleLayer?: (id: string) => void;
   pins?: Record<string, 'expanded' | 'collapsed'>;
-  onTogglePin?: (id: string) => void;
   /** a linked node's badge was clicked (see DiagramNode.link) — the host
    * resolves it (e.g. the Obsidian plugin opens a [[wikilink]] note); absent
    * falls back to DiagramNode's own best-effort (new-tab for http(s) links). */
   onOpenLink?: (link: string) => void;
-  /** binary expand/collapse for a CLD group's disclosure toggle */
-  onToggleExpand?: (id: string) => void;
+  /** a container's fold chip (or a CLD group's disclosure toggle) was clicked.
+   * `next` is the state to land in: the view knows what is on screen, the host
+   * only knows its pins — and a container can be open with no pin at all. */
+  onToggleExpand?: (id: string, next: 'expanded' | 'collapsed') => void;
   onSelect?: (sel: DiagramSelection | null) => void;
   /** the set of selected nodes changed (Shift+click, Shift+drag marquee, a
    * plain click, a deselect). Both modes. Reported only when the ids actually
@@ -112,6 +114,13 @@ export interface DiagramViewProps {
    * ignores this prop behaves exactly as before. Reports `{}` when the drags are
    * dropped (plane switch, model reload, edit-mode toggle). */
   onViewPositionsChange?: (positions: Record<string, { x: number; y: number }>) => void;
+  /** view mode: the edge labels the viewer slid along their edges (Alt+drag a
+   * label), relation id → label id → placement. The same contract as
+   * onViewPositionsChange: throwaway state the host may persist (to the
+   * overlay's `edgeLabels`), reported as `{}` when dropped. Passing it is also
+   * what makes labels movable in view mode at all — without a listener the
+   * move would have nowhere to go. */
+  onViewLabelMovesChange?: (moves: EdgeLabelMoves) => void;
   /** view mode: lay the active plane out automatically even where the overlay
    * saved a position, handing hand-placed nodes back to the layout algorithm.
    * Without it saved coordinates beat every algorithm, so a diagram that has

@@ -70,13 +70,17 @@ describe('DiagramEdge', () => {
     expect(getByText('3')).toBeDefined();
   });
 
-  it('ellipsises a long label chip and keeps the full text on the hover title', () => {
-    // React Flow draws this chip as SVG <text>: CSS cannot ellipsise it, and an
-    // un-shortened sentence covers whatever the arrow passes over.
+  it('draws the bundled-arrow chip in the HTML label layer, above every edge, not inside its own svg', () => {
+    // React Flow's SVG `label` lives in the edge's own <svg>: any edge painted
+    // later ran its line straight across the text.
     const long = 'publishes employee.tenure.recalculated to the mesh';
-    const { container, queryByText } = renderEdge({ label: long, constituentCount: 1 });
-    expect(queryByText(long)).toBeNull();
-    expect(container.textContent).toContain('…');
+    const { container, getByText } = renderEdge({ label: long, constituentCount: 3 });
+    const chip = getByText(long);
+    expect(chip.className).toContain('dg-edge-chip');
+    expect(chip.className).toContain('dg-edge-label'); // shares the CSS ellipsis
+    expect(container.querySelector('svg')!.contains(chip)).toBe(false);
+    expect(container.querySelector('.react-flow__edge-text')).toBeNull();
+    // the full text also rides the hover title of the hit-path under the chip
     expect(container.querySelector('title')?.textContent).toContain(long);
   });
 

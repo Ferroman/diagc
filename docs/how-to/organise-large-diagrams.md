@@ -5,7 +5,7 @@ Four mechanisms keep a big diagram readable. Pick by what you actually want:
 | Want | Use |
 | --- | --- |
 | Hide detail until asked for | nothing — **semantic zoom** is on by default |
-| One box always open, or always shut | **pins** (viewer state) |
+| One box open when the diagram opens | the `▸` fold chip, then **Save positions** |
 | The same entities under a *different hierarchy* | **planes** → [Use planes and layers](use-planes-and-layers.md) |
 | The same structure with *extra arrows* | **layers** → [Use planes and layers](use-planes-and-layers.md) |
 
@@ -35,9 +35,9 @@ Since folding follows containment, containment is your only real lever on how mu
 
 ## Force a box open or shut
 
-Click the pin chip on a group's header. A pin overrides the automatic fold decision for that container until you clear it.
+Click the `▸` chip on a group's header to unfold it where it stands, and `▾` to fold it back. Unlike a double-click, this does not glide into the group, so you can open several side by side.
 
-Pins are **viewer state** — not written to the diagram file, and not honoured by the PNG export, which expands everything regardless.
+What is open is **viewer state** until you save it: in view mode the **Save positions** chip writes the open groups to the layout file along with any boxes you moved, and in edit mode they are saved with the document. A diagram reopens — in the studio and on its published page — with those groups unfolded. The PNG export ignores all of it and expands everything regardless.
 
 ## Enter a node as its own diagram
 

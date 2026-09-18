@@ -153,3 +153,54 @@ export function snapDragChanges(
   }
   return { changes, lines: snap.lines };
 }
+
+/** the last guide snap of the gesture in flight: the raw position it was
+ * applied to, and the correction */
+export interface SnapMemo {
+  id: string;
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+}
+
+/**
+ * `snapDragChanges`, plus carrying the snap over the drop.
+ *
+ * The write-through above reaches the settle frame only when the change's
+ * position IS XYDrag's own object. For a child with `expandParent` it is not:
+ * React Flow builds a fresh, clamped `{x, y}` for every frame, the settle frame
+ * included, so the snap is lost on release and the box pops back to the raw
+ * pointer position. `memo` remembers the last snap and the raw position it
+ * corrected; a settle frame that still carries that same raw position gets the
+ * same correction. (Where the write-through did work the settle frame already
+ * carries the snapped position, which no longer matches — it is left alone.)
+ */
+export function snapDragFrame(
+  changes: NodeChange[],
+  src: NodeBoxSource,
+  threshold: number,
+  memo: { current: SnapMemo | null },
+): { changes: NodeChange[]; lines: Guide[] } {
+  const isPosition = (c: NodeChange): c is PositionChange => c.type === 'position' && c.position !== undefined;
+  const last = memo.current;
+  if (last !== null) {
+    const settle = changes.find((c): c is PositionChange => isPosition(c) && c.dragging !== true && c.id === last.id);
+    if (settle?.position !== undefined) {
+      memo.current = null;
+      if (settle.position.x === last.x && settle.position.y === last.y) {
+        settle.position = { x: last.x + last.dx, y: last.y + last.dy };
+      }
+      return { changes, lines: [] };
+    }
+  }
+  const drags = changes.filter((c): c is PositionChange => isPosition(c) && c.dragging === true);
+  const raw = drags.length === 1 ? { id: drags[0]!.id, ...drags[0]!.position! } : undefined;
+  const snapped = snapDragChanges(changes, src, threshold);
+  const pos = drags.length === 1 ? drags[0]!.position : undefined;
+  memo.current =
+    raw !== undefined && pos !== undefined && snapped.lines.length > 0
+      ? { ...raw, dx: pos.x - raw.x, dy: pos.y - raw.y }
+      : null;
+  return snapped;
+}

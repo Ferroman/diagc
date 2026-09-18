@@ -6,7 +6,7 @@ This explains the shape of the system and why it is split the way it is. It teac
 
 ![How a diagram becomes a picture](../../.diagrams/static/docs-pipeline.png)
 
-Read it left to right. You own everything in `.diagrams/src/`. Everything to the right of `diagc compile` is generated and disposable.
+Read it top to bottom. You own everything in `.diagrams/src/`. Everything below `diagc compile` is generated and disposable.
 
 There are **two ways in and one way through**. You either write a `.diagram.ts` file, or you draw in the studio and it writes a `.diagram.json` for you. Both land on the same validated model, so nothing downstream needs to know which route a diagram took.
 

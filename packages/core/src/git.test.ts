@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_NOTATIONS, type DiagramModel, type DiagramNode, type DiagramRelation } from './types';
+import { model } from './builder';
 import { GIT_KINDS, GIT_NOTATION, gapOf, gitGraph, isGitKind, latestCommit, mergedAway } from './git';
+import { validate } from './validate';
 
 const commit = (id: string, extra: Partial<DiagramNode> = {}): DiagramNode => ({ id, name: '', type: 'commit', ...extra });
 const link = (kind: string, from: string, to: string): DiagramRelation => ({ id: `${from}->${to}#${kind}`, from, to, kind });
@@ -117,5 +119,55 @@ describe('git graph', () => {
     expect(gitGraph(m, 'other').laneOf.get('n2')).toBe('nightly');
     expect(gitGraph(m, 'git').laneOf.get('n2')).toBe('nightly');
     expect(gitGraph(m, 'x').lanes.find((l) => l.id === 'team')?.commits.map((c) => c.id)).toEqual(['n2']);
+  });
+});
+
+describe('git stages', () => {
+  function staged() {
+    const m = model('stages');
+    const g = m.gitGraph();
+    const main = g.branch('main');
+    const dev = g.branch('dev');
+    const a = main.commit('1.0'); // column 0
+    const b = dev.commit({ from: a }); // 1
+    const c = dev.commit(); // 2
+    const d = main.merge(c, { tag: '1.1' }); // 3
+    return { m, g, a, b, c, d };
+  }
+
+  it('a stage is a git-stage node spanning the columns of the commits it names', () => {
+    const { m, g, b, c, d } = staged();
+    g.stage('work', { name: 'Development', from: b, to: c, color: '#7bbf7b' });
+    g.stage('ship', { from: d });
+    const json = m.toJSON();
+    expect(json.nodes.find((n) => n.id === 'work')).toMatchObject({
+      type: 'git-stage',
+      name: 'Development',
+      color: '#7bbf7b',
+      metadata: { from: b.id, to: c.id },
+    });
+    expect(gitGraph(json).stages.map((s) => [s.id, s.fromCol, s.toCol])).toEqual([
+      ['work', 1, 2],
+      ['ship', 3, 3],
+    ]);
+  });
+
+  it('reads a span either way round, and leaves out a stage that names no known commit', () => {
+    const { m, g, a, c } = staged();
+    g.stage('back', { from: c, to: a });
+    const json = m.toJSON();
+    json.nodes.push({ id: 'lost', name: 'Lost', type: 'git-stage', metadata: { from: 'nope' } });
+    json.nodes.push({ id: 'bare', name: 'Bare', type: 'git-stage' });
+    expect(gitGraph(json).stages.map((s) => [s.id, s.fromCol, s.toCol])).toEqual([['back', 0, 2]]);
+  });
+
+  it('validation reports a stage whose span does not name commits', () => {
+    const { m, g, a } = staged();
+    g.stage('ok', { from: a });
+    const json = m.toJSON();
+    json.nodes.push({ id: 'lost', name: 'Lost', type: 'git-stage', metadata: { from: 'main' } });
+    json.nodes.push({ id: 'bare', name: 'Bare', type: 'git-stage' });
+    const issues = validate(json).filter((i) => i.code === 'git-stage-span');
+    expect(issues.map((i) => i.ref).sort()).toEqual(['bare', 'lost']);
   });
 });

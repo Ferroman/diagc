@@ -152,6 +152,17 @@ A commit on the lane, linked from the lane's previous commit — or, with `from`
 
 A commit on the lane that absorbs `src` (a commit on another lane): a `merge` link from `src`, plus the usual link from the lane's previous commit. Same options as `commit` minus `from`.
 
+### `g.stage(id, opts) → NodeRef`
+
+A named frame across every lane, covering the columns from `from`'s to `to`'s (inclusive, either way round) — a phase of the history. A node of type `git-stage` with its span in `metadata`; declare it after the commits it names.
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `name` | `string?` | The title at the top of the frame. Defaults to `id`. |
+| `from` | `CommitRef` | The commit whose column the frame starts at. |
+| `to` | `CommitRef?` | The commit whose column it ends at. Defaults to `from`. |
+| `color` | `string?` | Frame and title colour. |
+
 ## `m.activity(id, opts?) → ActivityBuilder`
 
 Declares an activity frame: a UML swimlane flow. Repeatable — each call is one frame, and frames are ordinary containers on whatever plane the model uses (no notation, no plane creation), so several can share a canvas. `ActivityBuilder` **is** the frame's `NodeRef` (type `activity-frame`).

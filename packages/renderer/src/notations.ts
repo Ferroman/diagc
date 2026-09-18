@@ -1,4 +1,4 @@
-import type { CompiledView, DiagramModel, DiagramNode, NotationId, Polarity, Size, ViewEdge } from '@diagramming/core';
+import { GIT_STAGE_TYPE, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type Size, type ViewEdge } from '@diagramming/core';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
@@ -59,7 +59,7 @@ const CLD: NotationProfile = {
 const GIT: NotationProfile = {
   id: 'git-graph',
   className: 'dg-notation-git',
-  typeStyles: { commit: { shape: 'circle' }, branch: { shape: 'box' } },
+  typeStyles: { commit: { shape: 'circle' }, branch: { shape: 'box' }, [GIT_STAGE_TYPE]: { shape: 'box', label: '' } },
   // Links are lane lines and connectors, not arrows: dashed, no heads.
   kindStyles: {
     commit: { dashed: true, endMarker: 'none' },

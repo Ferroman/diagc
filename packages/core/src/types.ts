@@ -274,12 +274,15 @@ export interface LayerRule {
 export interface LayoutSettings {
   /** elk.algorithm — 'layered' (default) | 'force' | 'stress' | 'mrtree' | 'radial' | 'rectpacking' */
   algorithm?: string;
-  /** elk.direction for layered — 'RIGHT' (default) | 'DOWN' | 'LEFT' | 'UP' */
+  /** elk.direction for layered — 'DOWN' | 'RIGHT' | 'LEFT' | 'UP'. Absent ⇒
+   * `defaultLayoutDirection(model)`: down, or right where activity frames are drawn. */
   direction?: string;
   /** base node-node spacing in px; between-layers spacing is derived from it */
   spacing?: number;
-  /** how drawn edges are routed: 'curved' floating beziers (default) or
-   * 'orthogonal' along elk-computed waypoints */
+  /** how routed edges are DRAWN. Both follow the layout's own waypoints (which
+   * is what keeps a line off the boxes it was steered around): 'curved'
+   * (default) rounds the bends generously, 'orthogonal' keeps them tight. An
+   * edge whose endpoint was moved by hand floats as a bezier either way. */
   edgeRouting?: 'curved' | 'orthogonal';
   /** layered only: target width÷height. When set, elk wraps long chains onto
    * several rows (`elk.layered.wrapping.strategy = MULTI_EDGE`) aiming at this
@@ -288,6 +291,13 @@ export interface LayoutSettings {
 }
 
 /** Editor-managed node positions, keyed by resolved containment plane. */
+/** a label's place along its edge: `t` 0..1 from the source, and which side of
+ * the line it sits on (absent ⇒ centred on it) */
+export interface EdgeLabelPlacement {
+  t: number;
+  side?: EdgeLabelSide;
+}
+
 export interface LayoutOverlay {
   version: 1;
   planes: Record<string, Record<string, { x: number; y: number }>>;
@@ -300,8 +310,24 @@ export interface LayoutOverlay {
   /** per-plane automatic-layout settings, keyed like `planes` (via
    * layoutPlaneKey). Absent ⇒ tuned defaults everywhere. */
   settings?: Record<string, LayoutSettings>;
+  /** the containers each plane OPENS with unfolded, keyed like `planes` (via
+   * layoutPlaneKey). Saved together with the positions, because a hand-placed
+   * interior only means something while its container is open: without this a
+   * saved arrangement reopens fully folded and has to be unfolded by hand to be
+   * seen again. A starting point, not a lock — the reader folds and unfolds
+   * freely from there. Absent ⇒ the plane rests fully folded. Ignored by the
+   * PNG export, which unfolds everything (see `export.collapsed`). */
+  unfolded?: Record<string, string[]>;
+  /** where a VIEWER slid an edge label (Alt+drag in view mode), keyed like
+   * `planes`, then by relation id, then by label id (`legacy` for a relation's
+   * plain `label`). Overrides the label's own `t`/`side` on that plane. It
+   * lives here rather than on the relation for the same reason positions do:
+   * it is "where I put it in this picture", and a generated diagram has no
+   * model file the studio may write. Editing a label's position in the model
+   * drops the entry (see applyCommand), so the document never loses to it. */
+  edgeLabels?: Record<string, Record<string, Record<string, EdgeLabelPlacement>>>;
   /** how the PNG export should differ from the interactive page. Ignored by the
-   * interactive page, which always rests fully folded and lets the reader
+   * interactive page, which opens as `unfolded` says and lets the reader
    * unfold what they want. */
   export?: {
     /** node ids kept folded in PNG export; ignored by the interactive page.

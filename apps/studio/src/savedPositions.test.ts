@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { model, type LayoutOverlay } from '@diagramming/core';
-import { withSavedPositions, withPlaneManual } from './savedPositions';
+import { unfoldedOf, withSavedPositions, withPlaneManual } from './savedPositions';
 
 function makeModel() {
   const m = model('p');
@@ -61,6 +61,51 @@ describe('withSavedPositions', () => {
   it('keys the plane the same way the persisted settings do', () => {
     const out = withSavedPositions(undefined, makeModel(), 'alt', { a: { x: 0, y: 0 } });
     expect(Object.keys(out.planes)).toEqual(['alt']);
+  });
+});
+
+describe('saving which boxes are open', () => {
+  const saved: LayoutOverlay = { version: 1, planes: {}, unfolded: { alt: ['old'], other: ['kept'] } };
+
+  it('unfoldedOf lists the expanded pins, sorted; a collapsed pin is the rest state and is not saved', () => {
+    expect(unfoldedOf({ z: 'expanded', a: 'expanded', shut: 'collapsed' })).toEqual(['a', 'z']);
+  });
+
+  it('replaces the plane\'s list with what is open now, leaving other planes alone', () => {
+    const out = withSavedPositions(saved, makeModel(), 'alt', {}, ['b', 'a']);
+    expect(out.unfolded).toEqual({ alt: ['a', 'b'], other: ['kept'] });
+  });
+
+  it('nothing open drops the plane\'s list; omitted leaves it alone', () => {
+    expect(withSavedPositions(saved, makeModel(), 'alt', {}, []).unfolded).toEqual({ other: ['kept'] });
+    expect(withSavedPositions(saved, makeModel(), 'alt', {}).unfolded).toEqual(saved.unfolded);
+  });
+
+  it('a freeze carries it too; a thaw never touches it', () => {
+    expect(withPlaneManual(saved, makeModel(), 'alt', {}, ['a']).unfolded).toEqual({ alt: ['a'], other: ['kept'] });
+    expect(withPlaneManual(saved, makeModel(), 'alt', null).unfolded).toEqual(saved.unfolded);
+  });
+});
+
+describe('saving slid edge labels', () => {
+  const saved: LayoutOverlay = { version: 1, planes: {}, edgeLabels: { alt: { r1: { legacy: { t: 0.1 } } } } };
+
+  it('merges the moves into the plane, keeping placements saved earlier', () => {
+    const out = withSavedPositions(saved, makeModel(), 'alt', {}, undefined, { r2: { legacy: { t: 0.7, side: 'top' } } });
+    expect(out.edgeLabels).toEqual({ alt: { r1: { legacy: { t: 0.1 } }, r2: { legacy: { t: 0.7, side: 'top' } } } });
+  });
+
+  it('saving only folds or labels leaves no empty position bucket behind', () => {
+    expect(withSavedPositions({ version: 1, planes: {} }, makeModel(), 'alt', {}, ['a']).planes).toEqual({});
+  });
+
+  it('no moves leaves the overlay without the field it never had', () => {
+    expect('edgeLabels' in withSavedPositions({ version: 1, planes: {} }, makeModel(), 'alt', { a: { x: 1, y: 1 } })).toBe(false);
+  });
+
+  it('a freeze carries them too', () => {
+    const out = withPlaneManual(saved, makeModel(), 'alt', {}, undefined, { r1: { legacy: { t: 0.9 } } });
+    expect(out.edgeLabels?.['alt']?.['r1']).toEqual({ legacy: { t: 0.9 } });
   });
 });
 

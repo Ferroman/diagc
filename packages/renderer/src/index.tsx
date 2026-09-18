@@ -68,6 +68,7 @@ export { strokePath, simplifyStroke, strokesBounds } from './drawings';
 export { Legend, type LegendProps } from './Legend';
 export { legendRows, type LegendInput, type LegendRow, type LegendSwatch } from './legendRows';
 export type { Box } from './box';
+export type { EdgeLabelMoves } from './build-data';
 export { computeGuides, snapDragChanges, GUIDE_THRESHOLD_PX, type Guide, type GuideSnap } from './guides';
 export { alignBoxes, distributeBoxes, dropDescendants, type AlignMode, type Delta } from './arrange';
 export { SelectionToolbar, type SelectionToolbarProps } from './SelectionToolbar';

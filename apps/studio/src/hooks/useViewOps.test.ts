@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model, type DiagramModel } from '@diagramming/core';
+import { model, type DiagramModel, type EditorCommand, type LayoutOverlay } from '@diagramming/core';
 import { useViewOps, type UseViewOpsOptions, type ViewOps } from './useViewOps';
 
 /**
@@ -8,7 +8,11 @@ import { useViewOps, type UseViewOpsOptions, type ViewOps } from './useViewOps';
  * That matters here: the studio's own DOM-dependent suites cannot run on this
  * Node (missing localStorage), and the rule under test is state bookkeeping.
  */
-function harness(m: DiagramModel, start: { plane?: string; activeLayers?: string[] } = {}) {
+function harness(
+  m: DiagramModel,
+  start: { plane?: string; activeLayers?: string[]; layout?: LayoutOverlay; editing?: boolean } = {},
+) {
+  const dispatched: EditorCommand[] = [];
   const state = {
     plane: start.plane,
     activeLayers: start.activeLayers ?? [],
@@ -18,11 +22,15 @@ function harness(m: DiagramModel, start: { plane?: string; activeLayers?: string
   const cell = <T,>(get: () => T, set: (v: T) => void) => (next: T | ((cur: T) => T)) =>
     set(typeof next === 'function' ? (next as (cur: T) => T)(get()) : next);
   const opts = {
-    editor: { dispatch: () => {} },
+    editor: { dispatch: (c: EditorCommand) => dispatched.push(c) },
     model: m,
+    layout: start.layout,
+    get pins() {
+      return state.pins;
+    },
     selection: null,
     groupSel: [],
-    editing: false,
+    editing: start.editing ?? false,
     notation: undefined,
     activePlane: state.plane,
     activePlaneBorrowsContainment: false,
@@ -68,7 +76,7 @@ function harness(m: DiagramModel, start: { plane?: string; activeLayers?: string
   // note above), so there is no hook order for a plain function to violate.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const ops: ViewOps = useViewOps(opts);
-  return { ops, state };
+  return { ops, state, dispatched };
 }
 
 function twoPlanes(): DiagramModel {
@@ -118,5 +126,35 @@ describe('useViewOps layer seeding', () => {
     ops.resetView();
     expect(state.plane).toBeUndefined();
     expect(state.activeLayers).toEqual(['nats', 'monitoring']);
+  });
+});
+
+describe('useViewOps folds', () => {
+  const layout: LayoutOverlay = { version: 1, planes: {}, unfolded: { landscape: ['sys'], bare: ['other'] } };
+
+  it('a plane opens the way it was saved, and the default view the way planes[0] was', () => {
+    const { ops, state } = harness(twoPlanes(), { layout });
+    ops.switchPlane('bare');
+    expect(state.pins).toEqual({ other: 'expanded' });
+    ops.resetView(); // plane undefined resolves to planes[0] — 'landscape'
+    expect(state.pins).toEqual({ sys: 'expanded' });
+  });
+
+  it('the fold chip lands in the state the canvas asked for', () => {
+    const { ops, state } = harness(twoPlanes());
+    ops.toggleExpand('sys', 'expanded');
+    ops.toggleExpand('db', 'expanded');
+    ops.toggleExpand('sys', 'collapsed');
+    expect(state.pins).toEqual({ sys: 'collapsed', db: 'expanded' });
+  });
+
+  it('view mode only changes the screen; edit mode records what is open as a command', () => {
+    const view = harness(twoPlanes());
+    view.ops.toggleExpand('sys', 'expanded');
+    expect(view.dispatched).toEqual([]);
+
+    const edit = harness(twoPlanes(), { editing: true, plane: 'bare' });
+    edit.ops.toggleExpand('sys', 'expanded');
+    expect(edit.dispatched).toEqual([{ type: 'set-unfolded', ids: ['sys'], plane: 'bare' }]);
   });
 });

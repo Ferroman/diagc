@@ -9,6 +9,27 @@ export const GIT_KINDS = ['commit', 'branch', 'merge'] as const;
 export type GitKind = (typeof GIT_KINDS)[number];
 export const isGitKind = (k: string): k is GitKind => (GIT_KINDS as readonly string[]).includes(k);
 
+/** A stage: a named frame drawn across EVERY lane, from one commit's column to
+ * another's — "Development", "Release candidates", "Hotfix". It is a node of
+ * this type whose span lives in its metadata (`from`, and optionally `to`, each
+ * a commit id) rather than in containment: a commit already belongs to its lane,
+ * and a stage cuts across lanes. */
+export const GIT_STAGE_TYPE = 'git-stage' as const;
+
+export interface GitStage {
+  id: string;
+  node: DiagramNode;
+  /** first and last column the frame covers, inclusive (from ≤ to) */
+  fromCol: number;
+  toCol: number;
+}
+
+/** the commit id a stage names under `key`, if it names one at all */
+export function stageCommit(n: DiagramNode, key: 'from' | 'to'): string | undefined {
+  const raw = n.metadata?.[key];
+  return typeof raw === 'string' && raw !== '' ? raw : undefined;
+}
+
 export interface GitLane {
   id: string;
   node: DiagramNode;
@@ -27,6 +48,9 @@ export interface GitGraph {
   strays: DiagramNode[];
   /** relation ids ignored to break cycles; empty for a valid graph */
   cycleEdges: string[];
+  /** `type: 'git-stage'` nodes whose span resolves to columns, in declaration
+   * order. One that names no known commit is left out (validation reports it). */
+  stages: GitStage[];
 }
 
 /** `metadata.gap` as a count of empty columns: a non-negative integer, or a
@@ -79,7 +103,16 @@ export function gitGraph(model: DiagramModel, plane?: string): GitGraph {
   const commits = model.nodes.filter((n) => n.type === 'commit');
   const strays = commits.filter((c) => !laneOf.has(c.id));
   const { columns, cycleEdges } = computeColumns(model.relations, commits, byId, index);
-  return { lanes, laneOf, columns, strays, cycleEdges };
+  const stages: GitStage[] = [];
+  for (const n of model.nodes) {
+    if (n.type !== GIT_STAGE_TYPE) continue;
+    const from = stageCommit(n, 'from');
+    const a = from !== undefined ? columns.get(from) : undefined;
+    const b = columns.get(stageCommit(n, 'to') ?? from ?? '');
+    if (a === undefined || b === undefined) continue;
+    stages.push({ id: n.id, node: n, fromCol: Math.min(a, b), toCol: Math.max(a, b) });
+  }
+  return { lanes, laneOf, columns, strays, cycleEdges, stages };
 }
 
 /** The lane's rightmost commit (max column; ties go to the later declared). */
