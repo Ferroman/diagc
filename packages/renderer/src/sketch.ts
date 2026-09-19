@@ -14,7 +14,7 @@ const gen = rough.generator();
 const FILL_SENTINEL = 'sentinel-fill';
 const STROKE_SENTINEL = 'sentinel-stroke';
 
-export type SketchShapeKind = 'box' | 'cylinder' | 'hexagon' | 'bubble' | 'circle' | 'person' | 'diamond' | 'bar' | 'start-dot' | 'end-bullseye' | 'send-signal' | 'receive-signal' | 'note';
+export type SketchShapeKind = 'box' | 'cylinder' | 'hexagon' | 'bubble' | 'circle' | 'person' | 'diamond' | 'bar' | 'start-dot' | 'end-bullseye' | 'send-signal' | 'receive-signal' | 'note' | 'ellipse' | 'store';
 export interface SketchPaths {
   /** combined `d` for solid fill polygon(s) — render with fill */
   fill: string;
@@ -168,6 +168,14 @@ export function sketchNode(
                             gen.polygon([[1, 1], [w - 15, 1], [w - 1, 15], [w - 1, h - 1], [1, h - 1]], o),
                             gen.linearPath([[w - 15, 1], [w - 15, 15], [w - 1, 15]], o),
                           ]
+                        : kind === 'ellipse'
+                        ? // a DFD process: the ellipse fills the box, where `circle`
+                          // would inscribe a disc and leave the label overhanging
+                          [gen.ellipse(w / 2, h / 2, w - 2, h - 2, o)]
+                        : kind === 'store'
+                        ? // the MS TMT data-store glyph: two rules, open ends (no
+                          // sides, nothing enclosed — hence no fill to partition)
+                          [gen.line(1, 1, w - 1, 1, o), gen.line(1, h - 1, w - 1, h - 1, o)]
                         : cornerRadius > 0
                         ? [gen.path(roundedBoxPath(w, h, cornerRadius), o)]
                         : [gen.rectangle(1, 1, w - 2, h - 2, o)];

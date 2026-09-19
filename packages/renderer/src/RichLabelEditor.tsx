@@ -5,13 +5,17 @@ import { editorHtmlToRuns, runsToEditorHtml } from './richtext';
 
 /** Inline rich-text editor for a box label. contentEditable + execCommand for
  * bold/italic; the DOM→runs parser is the commit source of truth. Enter inserts
- * a line break; blur or Ctrl/Cmd+Enter commits; Escape cancels. */
+ * a line break; blur or Ctrl/Cmd+Enter commits; Escape cancels; Tab commits and
+ * hands on to `onTab`. */
 export function RichLabelEditor({
   runs,
   onCommit,
+  onTab,
 }: {
   runs: TextRun[];
   onCommit: (runs: TextRun[] | null) => void;
+  /** Tab inside the box: the quick add to chain once the label is committed */
+  onTab?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const done = useRef(false);
@@ -77,6 +81,14 @@ export function RichLabelEditor({
           e.stopPropagation();
           if (e.key === 'Escape') {
             finish(null);
+          } else if (e.key === 'Tab' && !e.shiftKey) {
+            // "named, next one please": commit BEFORE chaining so the add is
+            // built on the renamed model. The default would only move focus out
+            // of the canvas (this editor swallows keydowns anyway). Shift+Tab
+            // keeps the default — blur commits and focus walks back.
+            e.preventDefault();
+            commit();
+            onTab?.();
           } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
             e.preventDefault();
             commit();

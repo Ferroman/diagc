@@ -38,11 +38,16 @@ A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot ente
 | Gesture | Effect |
 | --- | --- |
 | Double-click empty canvas | Drop a node there and name it |
-| Drag a node onto another | Nest it inside |
+| `+` on the selected node | Add the node the notation expects on it — a category on the effect or a cause on a bone (fishbone; a sub-cause offers nothing), a consequence (second-order), a flow to a new process or a process inside a boundary (threat model), a commit at the lane's tip on a lane or its last commit (git graph; a mid-lane commit offers nothing — branching and merging need a target lane, so they stay in the Git panel), a connected node of the same type on any other diagram that offers one — and start naming it. `Tab` does the same. |
+| Threat badge (the count on an element or a flow) | Click to open the element's threat bubble; click again to close it. Saved with the layout, so the published page and the PNG show the bubbles you left open. In view mode (and in the published page) the badge still toggles, for the session only — entering edit mode shows the saved state. |
+| Threat bubble | Double-click a title to retitle it in place; click the status word to advance it (open → mitigated → accepted → n/a); `▸` opens the description and mitigation, written in place and committed when you leave the field (`Escape` restores). `+` adds a threat and opens its title. A bubble opens on the nearest spot next to its badge that covers nothing (its tail points at the badge); drag it where it reads best — the offset from the badge is saved and it reopens there. Click its body to select the element (Properties → Threats holds category and severity). |
+| Empty threat badge (`+` at a threat-model element's corner, or on a flow) | Adds the element's first threat, opens its bubble and its title field. |
+| `Notes` chip | Opens every threat bubble in the diagram, or — once they are all open — closes them all (edit mode; one undo step). Model-wide: an element the active plane does not draw still gets its flag, ready for the view that does. |
+| Drag a library stencil onto a node | The new node nests inside it |
 | Drag a node near a sibling's edge or centre | It snaps into line and a dashed guide shows the match. Also with Alt+drag in view mode. |
 | Drag a node past the wall of its group | The group grows around it, in any direction — a drag never takes a node out of its group. Also with Alt+drag in view mode. |
 | Align / distribute toolbar | Appears at the top of the canvas when two or more nodes are selected: align left/centre/right/top/middle/bottom, distribute (3+). In view mode it appears when positions can be saved. |
-| Drag from a connect dot to another node | Create a `sync` relation, pinned to both dots |
+| Drag from a connect dot to another node | Create a `sync` relation, pinned to both dots — a `data-flow` on a `threat-model` diagram, the one notation the kind means something to |
 | Double-click a node | Rename in place (Enter commits, Escape cancels) |
 | Double-click an edge | Edit its label in place |
 | Drag an edge endpoint onto another node | Reconnect that end |
@@ -69,28 +74,33 @@ New nodes are **typeless** — just a label — so quick sketches stay clean. Gi
 | Eraser | `E` |
 | Laser pointer on/off (both modes) | `L` |
 | Back to Select, laser off | `Esc` |
-| Add a neutral consequence to the selected decision or consequence, and start naming it (second-order diagrams) | `Tab` |
-| Add a child of the selected fishbone node (a category under the effect, a cause under a bone or a cause), and start naming it (fishbone diagrams) | `Tab` |
+| Add the node the notation expects on the selection and start naming it (same as the node's `+`); inside a name being typed, `Tab` commits it and adds the next | `Tab` |
 
 Shortcuts are ignored while you are typing in a form field. History is capped at 100 steps.
 
 ## Panels
 
-**Properties** (node selected) — name, `type`, `icon`, colour swatches, **Technology**, description, free-form metadata rows, memberships (which parents contain it, per plane), **Position** (X/Y in parent-relative px — pinned values editable, unpinned nodes show where they sit; Clear hands the node back to the algorithm), delete.
+**Properties** (node selected) — name, `type`, `icon`, colour swatches, **Technology**, description, free-form metadata rows, **Threats** (below), memberships (which parents contain it, per plane), **Position** (X/Y in parent-relative px — pinned values editable, unpinned nodes show where they sit; Clear hands the node back to the algorithm), delete.
 
-**Properties** (relation selected) — `kind`, label, `layer`, delete, plus a *Style* section: line shape (curved / straight / step), colour, thickness, line (solid / dashed / dotted), arrow end (arrow / dot / square / diamond / none), from/to side, animated. Anything left at *default* falls back to the kind's registry style and the layer tint.
+**Properties** (relation selected) — `kind`, label, **Threats** (below), `layer`, delete, plus a *Style* section: line shape (curved / straight / step), colour, thickness, line (solid / dashed / dotted), arrow end (arrow / dot / square / diamond / none), from/to side, animated. Anything left at *default* falls back to the kind's registry style and the layer tint.
+
+**Threats** — a section of both Properties panels, shown on a `threat-model` diagram, and on any element that already carries threats whatever the notation (so turning the notation off never strands them). The header counts *open / total*; on a relation, a **Crosses: *from* → *to*** line names the two trust boundaries its ends sit in (`outside` where there is none), derived from containment. The add row is a STRIDE category select — the categories that apply to this element's type first, then the rest behind a separator — a threat title, and **Add** (disabled while the title is blank; `Enter` adds). Each existing threat is a row: category, title (commits on blur or `Enter`), severity (`—`, low, medium, high, critical), status (open, mitigated, accepted, not-applicable), a **▸ details** disclosure holding description and mitigation, and **Remove**. Every commit is one undo step, and a commit that changes nothing lands none. See [Draw a threat model](../how-to/draw-a-threat-model.md).
 
 **Library** — the palette. See [Library reference](library.md) and [Use the icon library](../how-to/use-the-icon-library.md).
 
-**Layers & planes** — add, edit and remove layers (id, name, tint) and planes (id, name, containment borrowing, preset layers, its own **Notation**). In edit mode it also carries a model-level **Notation** selector (`default look`, `causal-loop`, `git-graph`, `c4`, `second-order` (shown as *Second-order thinking*), `fishbone` (shown as *Fishbone (cause and effect)*) — a plane's own notation wins where set) and a **Legend** checkbox, which adds or removes the diagram's `legend` declaration; its title, position, sections and items are authored in the file. See [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md) and [Add a legend](../how-to/add-a-legend.md).
+The left dock keeps the tab you chose: selecting on the canvas never switches it. **Add node** in the Library opens Properties for the name; a placed stencil names in place on the canvas.
 
-**Git** — on a plane with the `git-graph` notation, in edit mode: add lanes and commits, branch the selected commit into another lane, merge it into one, set its gap. Each action is one undo step. See [Draw a git branching diagram](../how-to/draw-a-git-branching-diagram.md).
+**Layers & planes** — add, edit and remove layers (id, name, tint) and planes (id, name, containment borrowing, preset layers, its own **Notation**). In edit mode it also carries a model-level **Notation** selector (`default look`, `causal-loop`, `git-graph`, `c4`, `second-order` (shown as *Second-order thinking*), `fishbone` (shown as *Fishbone (cause and effect)*), `threat-model` (shown as *Threat model (STRIDE)*) — a plane's own notation wins where set) and a **Legend** checkbox, which adds or removes the diagram's `legend` declaration; its title, position, sections and items are authored in the file. See [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md) and [Add a legend](../how-to/add-a-legend.md).
+
+**Git** — on a plane with the `git-graph` notation, in edit mode: add lanes and commits, branch the selected commit into another lane, merge it into one, set its gap. Each action is one undo step. **Add commit** is the same action as the `+` on a selected lane or tip commit. See [Draw a git branching diagram](../how-to/draw-a-git-branching-diagram.md).
 
 **Activity** — when an `activity-frame`, `activity-lane` or `activity-region` is selected, in edit mode. On a frame: name a lane, pick a colour, **Add lane** (lanes stack in the order you add them). On a lane or region: an optional name field plus one quick-add button per leaf type (action, decision, fork/join bar, start, end, send signal, receive signal, object, note), and, on a lane only, **Add region**. Every add parents the new node in the selected scope and places it at a deterministic spot, sidestepping drag-and-drop entirely — the model never passes through a state validation would refuse. See [Draw an activity diagram](../how-to/draw-an-activity-diagram.md).
 
 **Second-order thinking** — on a diagram with the `second-order` notation, in edit mode: "And then what?" with **Good consequence** / **Bad consequence** / **Neutral consequence**, enabled once a decision or consequence is selected, plus **Add a decision**, always offered. Each add is one undo step for the box and its arrow together; it also opens the new node's name for typing, which is a separate, later undo step once committed. Lists the notation's validation issues (an unreachable consequence, a cycle), each clickable to select the offending node. See [Draw a second-order thinking diagram](../how-to/draw-a-second-order-thinking-diagram.md).
 
 **Fishbone** — on a diagram with the `fishbone` notation, in edit mode: **Add an effect** until there is one; then **Software** / **6M** / **4S** while the effect has no bones; then **Add a category** (nothing or the effect selected) or **Add a cause** (a bone or a cause selected — disabled on a sub-cause, which takes nothing). Each add is one undo step for the node and its arrow together; it also opens the new node's name for typing, which is a separate, later undo step once committed. Lists the notation's validation issues, node ones clickable to select. The arrangement is the notation's own, so the layout controls are absent. See [Draw a fishbone diagram](../how-to/draw-a-fishbone-diagram.md).
+
+**Threat model** — on a diagram with the `threat-model` notation, in **both** modes: this panel only reads, so a read-only `.diagram.ts` threat model gets its register too. **Crossings to review** lists every flow whose two ends sit in different trust boundaries and that carries no threat yet — the flow's two elements on one line, the two boundaries (`outside` where there is none) underneath — each clickable to select it. **Register** lists every threat in the diagram grouped by the element that carries it, in model order (elements first, then relations), each element's row clickable to select it and showing its own *open / total*. Threat and threat-model validation issues follow under **Issues**, clickable where they name an element. Every element with threats wears a badge that opens its bubble on the canvas — see the Editing table. Title, status, description and mitigation can be written there; category and severity live in the Threats section of the Properties panel. See [Draw a threat model](../how-to/draw-a-threat-model.md).
 
 ## Header controls
 
@@ -127,6 +137,7 @@ An unsaved dot sits next to Save while the session is dirty; edits autosave a mo
 - **Pins, theme and style preset are viewer state.** They are not written to the diagram file — except the style preset, which a diagram *may* pin via its `style` field.
 - **JSON diagrams that declare `include` show their raw source.** Composed content is only visible for compiled, read-only diagrams.
 - **Library saves are best-effort.** A failed write to `library.json` is currently swallowed silently.
+- **A folded group shows no notes for what it hides.** Only its own; unfold it for the notes inside.
 - On a `git-graph` or `fishbone` plane the layout pickers (algorithm, direction, spacing, routing) are hidden: the notation owns the arrangement. Auto-layout on/off and Re-layout still work.
 - On a `second-order` diagram only the layout **algorithm** picker is hidden — it is pinned to layered so the order bands can use elk's partitioning. Direction, spacing and edge routing stay adjustable.
 

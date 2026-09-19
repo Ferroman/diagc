@@ -11,6 +11,7 @@ import {
 } from '@diagramming/core';
 import { applyTheme, DiagramView, isKnownStyle, lightTheme, type LayoutApi } from '@diagramming/renderer';
 import { createIconRegistry } from '@diagramming/icons';
+import { ThreatTable, showsThreatTable } from './ThreatTable';
 
 const icons = createIconRegistry();
 
@@ -322,14 +323,25 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
       {...(drawings !== undefined ? { drawings } : {})}
     />
   );
-  // Single-plane pages and export renders keep exactly the DOM they had before
-  // the picker existed — no wrapper, nothing over the canvas — so the PNG
-  // pipeline (which measures and screenshots this tree) is untouched.
-  if (!showsPlanePicker(model.planes, expandAll)) return view;
+  const picker = showsPlanePicker(model.planes, expandAll);
+  const table = showsThreatTable(model, expandAll);
+  // A page with nothing to add — one plane, no threats — and every export render
+  // keep exactly the DOM they had before this chrome existed: no wrapper,
+  // nothing over the canvas, nothing under it, so the PNG pipeline (which
+  // measures and screenshots this tree) is untouched. That is also why the
+  // register never renders in export mode: the snapshot screenshots `.react-flow`
+  // and frames it from __DG_BOUNDS__, measured off the canvas host, so a strip
+  // below the canvas would shrink the drawing without ever appearing in the image.
+  if (!picker && !table) return view;
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <PlanePicker planes={model.planes} active={plane} onSelect={pickPlane} />
-      {view}
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
+      {/* the canvas keeps its own positioning context: the picker is placed
+          against the drawing, not against the page with the table in it */}
+      <div style={{ position: 'relative', flex: '1 1 0', minHeight: 0 }}>
+        {picker && <PlanePicker planes={model.planes} active={plane} onSelect={pickPlane} />}
+        {view}
+      </div>
+      {table && <ThreatTable model={model} {...(plane !== undefined ? { plane } : {})} />}
     </div>
   );
 }

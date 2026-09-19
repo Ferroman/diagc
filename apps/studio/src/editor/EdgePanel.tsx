@@ -1,6 +1,9 @@
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import {
+  crossings,
   relationLabels,
+  strideFor,
+  TM_NOTATION,
   type DiagramModel,
   type EdgeLabel,
   type EdgeLabelSide,
@@ -11,6 +14,7 @@ import {
 } from '@diagramming/core';
 import { getHost } from '../host';
 import { ColorRow, OptionRow } from './pickers';
+import { ThreatsSection } from './ThreatsSection';
 
 /** a fresh, relation-unique label id (l1, l2, … skipping ids already in use) */
 const nextLabelId = (labels: EdgeLabel[]): string => {
@@ -45,6 +49,8 @@ interface EdgePanelProps {
   onClose: () => void;
   /** active plane's notation; gates CLD-specific controls (polarity/delay/curvature/flip curve) */
   notation?: NotationId;
+  /** the viewed plane — the containment a boundary crossing is derived from */
+  activePlane?: string;
 }
 
 const commitOnEnter = (e: KeyboardEvent, run: () => void) => {
@@ -128,12 +134,18 @@ interface RelationFormProps {
   onClose: () => void;
   /** active plane's notation; gates CLD-specific controls (polarity/delay/curvature/flip curve) */
   notation?: NotationId;
+  /** the viewed plane — the containment a boundary crossing is derived from */
+  activePlane?: string;
 }
 
-function RelationForm({ model, relationId, onCommand, onBack, onClose, notation }: RelationFormProps) {
+function RelationForm({ model, relationId, onCommand, onBack, onClose, notation, activePlane }: RelationFormProps) {
   const relation = model.relations.find((r) => r.id === relationId);
   const nodeName = (id: string) => model.nodes.find((n) => n.id === id)?.name ?? id;
   const isCld = notation === 'causal-loop';
+  // Every crossing on the plane in one pass (the map is shared by all relations,
+  // so it is cheaper than asking per relation) — before the early return below,
+  // because hooks cannot sit behind one.
+  const planeCrossings = useMemo(() => crossings(model, activePlane), [model, activePlane]);
 
   // Remounted (key={relationId}) when the edited relation changes, so these
   // initializers reseed; the effects below additionally resync a field whenever
@@ -208,6 +220,17 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation 
     (onBack ?? onClose)();
   };
 
+  // A crossing is derived from containment, never authored: undefined means
+  // both ends sit in the same boundary (or in none), so there is nothing to say.
+  const crossed = planeCrossings.get(relationId);
+  const crossing =
+    crossed === undefined
+      ? undefined
+      : {
+          ...(crossed.from !== undefined ? { fromName: nodeName(crossed.from) } : {}),
+          ...(crossed.to !== undefined ? { toName: nodeName(crossed.to) } : {}),
+        };
+
   // Style controls commit immediately (excalidraw-style): merge the change into
   // the relation's style; when everything is back at defaults, drop the object.
   const style = relation.style ?? {};
@@ -279,6 +302,19 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation 
           Add label
         </button>
       </section>
+
+      {/* Threats are a generic field, so the section is offered on the notation
+       * — but a relation that already carries threats keeps it whatever the
+       * plane is drawn as, or turning the notation off would strand them. */}
+      {(notation === TM_NOTATION || (relation.threats?.length ?? 0) > 0) && (
+        <ThreatsSection
+          target={{ relation: relationId }}
+          threats={relation.threats ?? []}
+          applicable={strideFor(relation.kind)}
+          {...(crossing !== undefined ? { crossing } : {})}
+          onCommand={onCommand}
+        />
+      )}
 
       <label className="field">
         <span>Layer</span>
@@ -436,7 +472,7 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation 
   );
 }
 
-export function EdgePanel({ model, constituentIds, onCommand, onClose, notation }: EdgePanelProps) {
+export function EdgePanel({ model, constituentIds, onCommand, onClose, notation, activePlane }: EdgePanelProps) {
   const nodeName = (id: string) => model.nodes.find((n) => n.id === id)?.name ?? id;
   // Filter live against the model so a deleted relation drops out of the list.
   const relations = model.relations.filter((r) => constituentIds.includes(r.id));
@@ -461,6 +497,7 @@ export function EdgePanel({ model, constituentIds, onCommand, onClose, notation 
           onCommand={onCommand}
           onClose={onClose}
           {...(notation !== undefined ? { notation } : {})}
+          {...(activePlane !== undefined ? { activePlane } : {})}
           {...(single ? {} : { onBack: () => setSelectedId(null) })}
         />
       ) : relations.length === 0 ? (

@@ -10,11 +10,16 @@ import {
   type FontScale,
   type Polarity,
   type RelationStyle,
+  type StrideCategory,
   type TextAlign,
   type TextRun,
+  type Threat,
+  type ThreatSeverity,
+  type ThreatStatus,
 } from './types';
 import { normalizeRuns, runsToPlainText } from './text';
 import { childrenOf } from './children';
+import type { ThreatTarget } from './threat-model';
 
 export class CommandError extends Error {
   constructor(message: string) {
@@ -211,6 +216,95 @@ export function setTableColumns(m: DiagramModel, id: string, columns: Column[]):
   // keystroke, so a transient collision must not throw. `validate` reports
   // duplicate-column at publish time.
   return { ...m, nodes: m.nodes.map((n) => (n.id === id ? { ...n, columns } : n)) };
+}
+
+/** Patch for update-threat: `null` clears an optional field. `category` and
+ * `title` are required on a {@link Threat}, so they are set-only. */
+export interface ThreatPatch {
+  category?: StrideCategory;
+  title?: string;
+  description?: string | null;
+  severity?: ThreatSeverity | null;
+  status?: ThreatStatus | null;
+  mitigation?: string | null;
+}
+
+/** Whitelist of the null-clearable {@link ThreatPatch} fields, applied through
+ * `applyNullable` below — same shape as RELATION_NULLABLE_KEYS. */
+const THREAT_NULLABLE_KEYS = ['description', 'severity', 'status', 'mitigation'] as const;
+type ThreatNullableKey = (typeof THREAT_NULLABLE_KEYS)[number];
+
+// Same exhaustive-coverage guard as NodeDetails/RelationPatch: a new
+// null-clearable field on ThreatPatch must be listed above or this const
+// becomes `false` and fails to compile.
+type ThreatNullableKeys = Exclude<keyof ThreatPatch, 'category' | 'title'>;
+type ThreatKeyCoverage = [ThreatNullableKeys] extends [ThreatNullableKey]
+  ? [ThreatNullableKey] extends [ThreatNullableKeys]
+    ? true
+    : false
+  : false;
+const _assertThreatKeyCoverage: ThreatKeyCoverage = true;
+void _assertThreatKeyCoverage;
+
+/**
+ * Apply `fn` to the threat list of the element `target` names. Threats hang off
+ * nodes and relations alike and the list is identical on both, so one seam
+ * serves the two; only the named element is replaced, every sibling keeps its
+ * reference. A result with no threats drops the key entirely, keeping saved
+ * files free of empty arrays.
+ */
+function mapThreats(
+  m: DiagramModel,
+  target: ThreatTarget,
+  fn: (threats: readonly Threat[]) => Threat[],
+): DiagramModel {
+  const next = <T extends { id: string; threats?: Threat[] }>(items: T[], id: string, what: string): T[] => {
+    if (!items.some((x) => x.id === id)) throw new CommandError(`Unknown ${what} '${id}'`);
+    return items.map((x) => {
+      if (x.id !== id) return x;
+      const threats = fn(x.threats ?? []);
+      const { threats: _dropped, ...rest } = x;
+      return (threats.length === 0 ? rest : { ...rest, threats }) as T;
+    });
+  };
+  return 'node' in target
+    ? { ...m, nodes: next(m.nodes, target.node, 'node') }
+    : { ...m, relations: next(m.relations, target.relation, 'relation') };
+}
+
+export function addThreat(m: DiagramModel, target: ThreatTarget, threat: Threat): DiagramModel {
+  return mapThreats(m, target, (threats) => {
+    if (threats.some((t) => t.id === threat.id)) throw new CommandError(`Duplicate threat id '${threat.id}'`);
+    return [...threats, threat];
+  });
+}
+
+export function updateThreat(
+  m: DiagramModel,
+  target: ThreatTarget,
+  id: string,
+  patch: ThreatPatch,
+): DiagramModel {
+  return mapThreats(m, target, (threats) => {
+    if (!threats.some((t) => t.id === id)) throw new CommandError(`Unknown threat '${id}'`);
+    return threats.map((t) => {
+      if (t.id !== id) return t;
+      let out: Threat = { ...t };
+      if (patch.category !== undefined) out.category = patch.category;
+      if (patch.title !== undefined) out.title = patch.title;
+      for (const key of THREAT_NULLABLE_KEYS) {
+        out = applyNullable(out, key, patch[key]);
+      }
+      return out;
+    });
+  });
+}
+
+export function removeThreat(m: DiagramModel, target: ThreatTarget, id: string): DiagramModel {
+  return mapThreats(m, target, (threats) => {
+    if (!threats.some((t) => t.id === id)) throw new CommandError(`Unknown threat '${id}'`);
+    return threats.filter((t) => t.id !== id);
+  });
 }
 
 function wouldCycle(m: DiagramModel, parent: string, child: string, plane?: string): boolean {

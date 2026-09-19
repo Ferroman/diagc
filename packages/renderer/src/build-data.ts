@@ -25,10 +25,11 @@ import type {
   EdgeLabelSide,
   NotationId,
   TextRun,
+  ThreatTarget,
   ViewEdge,
   ViewNode,
 } from '@diagramming/core';
-import { runsToPlainText } from '@diagramming/core';
+import { runsToPlainText, threatSummary } from '@diagramming/core';
 import type { IconRegistry } from '@diagramming/icons';
 import type { EdgePoint } from './layout';
 import type { EdgeRouting } from './useViewLayout';
@@ -67,6 +68,17 @@ export interface NodeDataContext {
   libraryBase?: string;
   onResize?: (id: string, w: number, h: number, pos: { x: number; y: number }) => void;
   onSetTableColumns?: (id: string, columns: Column[]) => void;
+  /** see EditingApi.quickAdd; threaded as one object, read lazily by the
+   * selected node only — never computed per node at build time. sameNodeCtx
+   * compares it by identity, so a host that rebuilds the hook every render
+   * rebuilds every node's data with it (the same bargain the callbacks above
+   * already strike — see this file's stability caveat). */
+  quickAdd?: { label: (id: string) => string | undefined; run: (id: string) => void };
+  /** see EditingApi.onAddThreat — the host opens a new row on the element's
+   * note. Threaded whole (the node passes its own id at click time); the badge
+   * decides for itself whether to offer it, since only a threat model's canvas
+   * should carry the affordance. */
+  onAddThreat?: (target: ThreatTarget) => void;
   stylePreset?: StylePreset;
   notation?: NotationId;
 }
@@ -79,6 +91,9 @@ export interface EdgeDataContext {
   onEditEdgeLabel?: (relationId: string, labelId: string, text: string) => void;
   onMoveEdgeLabel?: (relationId: string, labelId: string, t: number, side: EdgeLabelSide) => void;
   onSetEdgeSide?: (relationId: string, end: 'from' | 'to', side: import('./floating').Side | null) => void;
+  /** see EditingApi.onAddThreat; bound to the edge's sole relation below, so
+   * the chip in the renderer calls it with nothing */
+  onAddThreat?: (target: ThreatTarget) => void;
   /** the sole-relation id currently showing endpoint pin dots (null = none) */
   pinEdgeRel: string | null;
   /** a correlated double-click asked to add a label on a specific edge */
@@ -128,6 +143,9 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     .map((k) => n.node.metadata?.[k])
     .filter((v): v is NonNullable<typeof v> => v !== undefined && v !== null)
     .map(String);
+  // Counted here rather than in the component so the badge costs one pass over
+  // the threats per data build, not one per render.
+  const threats = threatSummary(n.node.threats);
   const data: DiagramNodeData = {
     label: n.node.name,
     state: n.state,
@@ -184,8 +202,11 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     ...(ctx.editing && n.node.type === 'db-table' && ctx.onSetTableColumns !== undefined
       ? { onColumnsChange: (columns: Column[]) => ctx.onSetTableColumns?.(n.id, columns) }
       : {}),
+    ...(ctx.editing && ctx.quickAdd !== undefined ? { quickAdd: ctx.quickAdd } : {}),
+    ...(ctx.editing && ctx.onAddThreat !== undefined ? { onAddThreat: ctx.onAddThreat } : {}),
     ...(ctx.stylePreset !== undefined ? { stylePreset: ctx.stylePreset } : {}),
     ...(ctx.notation !== undefined ? { notation: ctx.notation } : {}),
+    ...(threats.total > 0 ? { threats } : {}),
   };
   return data;
 }
@@ -207,6 +228,16 @@ function placedLabels(e: ViewEdge, moves: EdgeLabelMoves | undefined): EdgeLabel
 /** Build the data channel for one view edge (pure; same contract as buildNodeData). */
 export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeData {
   const notationColor = ctx.edgeColors?.get(e.id);
+  // A drawn edge can stand for several relations (a bundled arrow), so the
+  // badge counts the whole bundle — otherwise a threat would disappear the
+  // moment two flows merged into one line.
+  const threats = e.constituents.reduce(
+    (acc, c) => {
+      const t = threatSummary(c.threats);
+      return { open: acc.open + t.open, total: acc.total + t.total };
+    },
+    { open: 0, total: 0 },
+  );
   const data: DiagramEdgeData = {
     kind: e.kind,
     constituentCount: e.constituents.length,
@@ -220,8 +251,13 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     ...(e.polarity !== undefined ? { polarity: e.polarity } : {}),
     ...(e.delay !== undefined ? { delay: e.delay } : {}),
     ...(notationColor !== undefined ? { notationColor } : {}),
+    ...(threats.total > 0 ? { threats } : {}),
   };
   const soleRelation = e.constituents.length === 1 ? e.constituents[0] : undefined;
+  // Both modes: the counting chip toggles this relation's bubble in view mode
+  // too (the canvas's own session state), so the id has to travel regardless
+  // of `editing`. A string, so the cached-data comparison stays a field check.
+  if (soleRelation !== undefined) data.threatRelation = soleRelation.id;
   if (soleRelation?.fromColumn !== undefined) data.fromColumn = soleRelation.fromColumn;
   if (soleRelation?.toColumn !== undefined) data.toColumn = soleRelation.toColumn;
   if (ctx.editing && soleRelation !== undefined) {
@@ -232,6 +268,14 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     data.onAddLabel = (text, t, side) => ctx.onAddEdgeLabel?.(soleRelation.id, text, t, side);
     data.onEditLabel = (labelId, text) => ctx.onEditEdgeLabel?.(soleRelation.id, labelId, text);
     data.onMoveLabel = (labelId, t, side) => ctx.onMoveEdgeLabel?.(soleRelation.id, labelId, t, side);
+    // A threat hangs off a relation, not off the drawn arrow: the target is
+    // bound here, where the constituent is known. A bundled arrow names no
+    // single relation, so it gets no offer at all (this block is sole-relation
+    // only) — the panel is where a bundle's threats are written.
+    if (ctx.onAddThreat !== undefined) {
+      const add = ctx.onAddThreat;
+      data.onAddThreat = () => add({ relation: soleRelation.id });
+    }
   }
   if (!ctx.editing && soleRelation !== undefined && ctx.onViewMoveEdgeLabel !== undefined) {
     // View mode: a label can be slid along its edge with Alt held (the same
@@ -304,6 +348,8 @@ function sameNodeCtx(a: NodeDataContext, b: NodeDataContext): boolean {
     a.libraryBase === b.libraryBase &&
     a.onResize === b.onResize &&
     a.onSetTableColumns === b.onSetTableColumns &&
+    a.quickAdd === b.quickAdd &&
+    a.onAddThreat === b.onAddThreat &&
     a.stylePreset === b.stylePreset &&
     a.notation === b.notation &&
     a.nodeColors === b.nodeColors
@@ -318,6 +364,7 @@ function sameEdgeCtx(a: EdgeDataContext, b: EdgeDataContext): boolean {
     a.onEditEdgeLabel === b.onEditEdgeLabel &&
     a.onMoveEdgeLabel === b.onMoveEdgeLabel &&
     a.onSetEdgeSide === b.onSetEdgeSide &&
+    a.onAddThreat === b.onAddThreat &&
     a.pinEdgeRel === b.pinEdgeRel &&
     a.pendingAdd === b.pendingAdd &&
     a.onPendingAddConsumed === b.onPendingAddConsumed &&

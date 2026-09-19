@@ -49,7 +49,7 @@ The whole picture above is `.diagrams/src/docs-git-graph.diagram.ts` in this rep
 1. Create a diagram and, in **Layers & planes**, give its plane the `git-graph` notation (or open a JSON diagram whose plane already has it).
 2. Press **Edit**. The **Git** panel appears on the right.
 3. **Add lane** for each branch, top to bottom, with a colour if you like.
-4. **Add commit** to a lane (tag and gap are optional). Select a commit, then **Branch** it into another lane or **Merge** it into one — each is a single undo step.
+4. **Add commit** to a lane (tag and gap are optional) — or, on the canvas, select a lane or the last commit on it and press its `+` (or `Tab`): the commit lands at the lane's tip and its tag opens for typing, so `Tab`, tag, `Tab`, tag … runs a lane out. Select a commit, then **Branch** it into another lane or **Merge** it into one — each is a single undo step. A commit that already has a successor on its lane offers no `+`: a second child there would be a branch, and that needs a lane to land on.
 5. Rename a commit's tag by double-clicking it; delete, recolour and describe commits and lanes as any node.
 
 ## What to know

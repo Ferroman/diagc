@@ -842,3 +842,57 @@ describe('fishbone conventions', () => {
     expect(codes(m)).toEqual([]);
   });
 });
+
+describe('threats', () => {
+  const withThreats = (threats: unknown, where: 'node' | 'relation' = 'node'): DiagramModel => ({
+    ...emptyModel(),
+    nodes: [
+      { id: 'a', name: 'A', ...(where === 'node' ? { threats } : {}) } as DiagramNode,
+      { id: 'b', name: 'B' },
+    ],
+    relations: [{ id: 'r', from: 'a', to: 'b', kind: 'x', ...(where === 'relation' ? { threats } : {}) } as DiagramRelation],
+  });
+  it('accepts a well-formed list on a node and on a relation', () => {
+    const ok = [{ id: 't1', category: 'S', title: 'Spoofed', severity: 'high', status: 'open' }];
+    expect(validate(withThreats(ok))).toEqual([]);
+    expect(validate(withThreats(ok, 'relation'))).toEqual([]);
+  });
+  it('reports a threats field that is not a list of threat objects, and looks no further', () => {
+    expect(validate(withThreats(5)).map((i) => [i.code, i.ref])).toEqual([['invalid-threats', 'a']]);
+    expect(validate(withThreats(['t1'], 'relation')).map((i) => [i.code, i.ref])).toEqual([['invalid-threats', 'r']]);
+  });
+  it('reports each malformed field with the element as ref', () => {
+    const issues = validate(withThreats([
+      { id: '', category: 'S', title: 'x' },
+      { id: 't1', category: 'Q', title: 'x' },
+      { id: 't1', category: 'S', title: '' },
+      { id: 't2', category: 'S', title: 'x', status: 'fixed' },
+      { id: 't3', category: 'S', title: 'x', severity: 'urgent' },
+    ], 'relation'));
+    expect(issues.map((i) => [i.code, i.ref])).toEqual([
+      ['threat-id', 'r'],
+      ['threat-category', 'r'],
+      ['threat-id', 'r'],
+      ['threat-title', 'r'],
+      ['threat-status', 'r'],
+      ['threat-severity', 'r'],
+    ]);
+  });
+});
+
+describe('threat-model notation', () => {
+  it('forbids a data flow on a boundary, only where the notation is active', () => {
+    const m: DiagramModel = {
+      ...emptyModel(),
+      notation: 'threat-model',
+      nodes: [{ id: 'web', name: 'W', type: 'tm-process' }, { id: 'dmz', name: 'D', type: 'tm-boundary' }],
+      relations: [{ id: 'r', from: 'web', to: 'dmz', kind: 'data-flow' }],
+    };
+    expect(validate(m).map((i) => [i.code, i.ref])).toEqual([['tm-flow-boundary', 'r']]);
+    expect(validate({ ...m, notation: undefined })).toEqual([]);
+    expect(validate({ ...m, relations: [{ ...m.relations[0]!, kind: 'reads' }] })).toEqual([]);
+  });
+  it('accepts an empty threat-model diagram', () => {
+    expect(validate({ ...emptyModel(), notation: 'threat-model' })).toEqual([]);
+  });
+});

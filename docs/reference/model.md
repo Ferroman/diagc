@@ -14,7 +14,7 @@ For *why* the model is shaped like this, see [What is in a model](../explanation
 | `id` | `string` | Diagram identity. |
 | `name` | `string` | Display name. |
 | `style` | `string?` | Renderer style preset pinned by this file. Unknown ids fall back to the app preference. |
-| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop`, `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
+| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop`, `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
 | `legend` | `DiagramLegend?` | Opt-in key for the diagram's visual vocabulary. Absent means no legend anywhere. |
 | `typeColors` | `Record<string, string>?` | Default accent colour per node type; `*` is the fallback. A node's own `color` wins. Dropped from included models on graft — the host owns the look. |
 | `layerRules` | `LayerRule[]?` | Class → layer for relations without a `layer`: `{ kind?, color?, layer }`, every named field must match, first match wins, explicit `layer` beats the rules. Dropped from included models on graft. |
@@ -39,6 +39,7 @@ Style preset ids: `clean` (default), `sketch`, `hand-drawn`, `pencil`, `blueprin
 | `color` | `string?` | Accent colour; overrides the type registry's look. Also wins over a notation's fill (e.g. C4's solid palette) — see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md#what-to-know). |
 | `textColor` | `string?` | Label colour, independent of `color`. |
 | `technology` | `string?` | Implementation technology, composed into the type subtitle: `[Container: Java, Spring Boot]`. Meaningful in any notation, not just C4. |
+| `threats` | `Threat[]?` | STRIDE findings against this node. Legal in any notation, like `technology` — see [Threat-model conventions](#threat-model-conventions). |
 | `description` | `string?` | Shown in the detail panel — **never on the canvas**. |
 | `rich` | `TextRun[]?` | Bold/italic label runs. When present, `name` must equal the concatenated text. |
 | `textAlign` | `'left' \| 'center' \| 'right'?` | Default `left`. |
@@ -89,6 +90,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `kind` | `string` | Free-form; resolved by the kind registry. |
 | `label` | `string?` | Legacy single label. |
 | `labels` | `EdgeLabel[]?` | Positioned labels; supersedes `label` when present. |
+| `threats` | `Threat[]?` | STRIDE findings against this flow — see [Threat-model conventions](#threat-model-conventions). |
 | `style` | `RelationStyle?` | Per-relation visual overrides. |
 | `description` | `string?` | |
 | `layer` | `string?` | Must match a declared layer id. |
@@ -137,7 +139,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `containmentOf` | `string?` | Borrow another plane's containment instead of declaring your own. |
 | `layers` | `string[]?` | Layers switched on when this plane is selected. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations, leaving only layer arrows. |
-| `notation` | `string?` | Visual language, overriding the model's `notation` for this plane. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)), `c4` (see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)). |
+| `notation` | `string?` | Visual language, overriding the model's `notation` for this plane. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)), `c4` (see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)). |
 | `hides` | `string[]?` | Shared node ids this plane hides; their children are promoted into their place. |
 | `hidesTree` | `string[]?` | Shared node ids this plane hides along with everything inside them (a child with another visible parent stays). |
 
@@ -184,9 +186,10 @@ An item naming a `kind` or `type` that already has a derived row **recaptions th
 | `settings` | `Record<plane, LayoutSettings>?` | Per-plane automatic-layout settings. Absent means the tuned defaults. |
 | `unfolded` | `Record<plane, nodeId[]>?` | The groups each plane opens with unfolded. Written together with the positions; absent means the plane rests fully folded. A starting point — the reader folds and unfolds freely from there. |
 | `edgeLabels` | `Record<plane, Record<relationId, Record<labelId, {t, side?}>>>?` | Where a viewer slid an edge label (Alt+drag in view mode): `t` along the edge, `side` of it. Overrides the label's own position on that plane; editing the position in the model drops the entry. `labelId` is `legacy` for a relation's plain `label`. |
+| `notes` | `Record<plane, Record<'node:<id>' \| 'relation:<id>', {dx, dy, open?: true}>>?` | A threat bubble's state in this picture: where it was dragged (an offset of its top-left from the centre of the element's count badge; `0,0` means automatic placement) and whether it is open. `open` is only ever `true` — closed is spelled by leaving it out; an automatically placed entry that is not open is dropped. Dropped when the element loses its last threat. |
 | `export` | `{ collapsed?: string[] }?` | How the PNG export differs from the interactive page. |
 
-`settings`, `unfolded` and `edgeLabels` are keyed by the **resolved containment plane** (`layoutPlaneKey`), the same
+`settings`, `unfolded`, `edgeLabels` and `notes` are keyed by the **resolved containment plane** (`layoutPlaneKey`), the same
 as `planes` and `manual` — so a plane that borrows containment with
 `containmentOf` shares the donor's entry rather than having its own.
 
@@ -322,6 +325,49 @@ A plane with `notation: 'fishbone'` reads ordinary nodes and relations as a fish
 
 Relation kind `cause-of`, drawn **from the cause to what it explains**: category → effect, cause → category, sub-cause → cause. What hangs where is derived from the *first* relation between two fishbone nodes, whatever its kind, and never stored; three levels below the effect is the limit. See [Draw a fishbone diagram](../how-to/draw-a-fishbone-diagram.md#how-the-fish-is-drawn).
 
+## Threat-model conventions
+
+A plane with `notation: 'threat-model'` reads ordinary nodes and relations as a STRIDE data-flow diagram.
+
+| Type | Look | Role |
+| --- | --- | --- |
+| `tm-entity` | box | An external entity: a user, a third party, anything outside the system. |
+| `tm-process` | ellipse, default size 150 × 90 | Something the system does with the data. |
+| `tm-store` | top and bottom rules only, open ends, default size 150 × 56 | Where the data rests. |
+| `tm-boundary` | dashed outline box, drawn red on this notation (over `typeColors`, under the node's own `color`) | A trust boundary. The library stencil drops one at 320 × 220. |
+
+Relation kind `data-flow` — a plain solid arrow, drawn from the source of the data to its destination. Flows are one-way; a request and its response are two relations.
+
+**Trust boundaries are containers.** A boundary surrounds its elements through ordinary `containment`, so which boundaries a flow crosses is derived from the active plane's containment and never authored: the nearest `tm-boundary` above each end, or *outside* where there is none, and a relation whose two ends land in different boundaries is a crossing. The derivation follows the **first** parent by declaration order where containment is a DAG, and ignores the relation's kind — a crossing is a fact about the drawing. Because a boundary is containment, a `data-flow` must join two elements; one wired to a boundary itself fails validation (`tm-flow-boundary`).
+
+A boundary never folds under semantic zoom — it is a line around things, not a level you drill into — so its elements and their crossings are always on screen.
+
+### `Threat`
+
+`threats?: Threat[]` sits on a **node** or a **relation** and is legal in any notation, like `technology` — an existing C4 or ER diagram can be threat-modelled where it stands, or gain a `threat-model` plane with its own boundary containment over the same nodes. The register is derived from these lists; there is no model-wide threat array.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | `string` | Unique within **its own element's** list (two elements may both have a `t1`). The builder and the studio synthesize `t1`, `t2`, …. |
+| `category` | `'S' \| 'T' \| 'R' \| 'I' \| 'D' \| 'E'` | Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege. |
+| `title` | `string` | Required, non-empty — the line the register shows. |
+| `description` | `string?` | Longer prose. Unset = none. |
+| `severity` | `'low' \| 'medium' \| 'high' \| 'critical'?` | Unset = unrated, shown as `—`. |
+| `status` | `'open' \| 'mitigated' \| 'accepted' \| 'not-applicable'?` | **Unset means `open`** — a threat counts against the open tally until it is explicitly resolved. |
+| `mitigation` | `string?` | What was done about it. Unset = none. |
+
+Which categories apply to an element is guidance (STRIDE-per-element), not a rule — the studio offers them first and every other category behind them:
+
+| Element | Categories offered first |
+| --- | --- |
+| `tm-entity` | S, R |
+| `tm-process` | all six |
+| `tm-store` | T, R, I, D |
+| `data-flow` | T, I, D |
+| anything else | all six |
+
+See [Draw a threat model](../how-to/draw-a-threat-model.md).
+
 ## Validation codes
 
 `validate()` returns issues; the compiler refuses to write an artifact if there are any.
@@ -370,6 +416,13 @@ Relation kind `cause-of`, drawn **from the cause to what it explains**: category
 | `fb-misplaced` | The wrong parent for the type: a category not on the effect, a cause on the effect, the effect on anything. |
 | `fb-too-deep` | A cause hung on a sub-cause — three levels below the effect is the limit. |
 | `fb-contained` | A fishbone node inside a container; nothing on a fish can be grouped. |
+| `invalid-threats` | `threats` is not a list, or an entry is not an object. The per-threat checks below are skipped for that element. |
+| `threat-id` | A threat has no `id`, or repeats one already used on the same element. |
+| `threat-title` | A threat has no `title`. |
+| `threat-category` | `category` is outside `S T R I D E`. |
+| `threat-status` | `status` is present and outside `open`, `mitigated`, `accepted`, `not-applicable`. |
+| `threat-severity` | `severity` is present and outside `low`, `medium`, `high`, `critical`. |
+| `tm-flow-boundary` | A `data-flow` relation ends on a `tm-boundary`; flows connect elements, a boundary only surrounds them. |
 | `invalid-delay` | `delay` is not a boolean. |
 | `invalid-rich` | `rich` runs do not reconstruct `name`. |
 | `invalid-align` | `textAlign` outside the allowed set. |

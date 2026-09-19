@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { getViewportForBounds } from '@xyflow/react';
-import { model, type DiagramModel } from '@diagramming/core';
-import { DiagramView, type LayoutApi } from './DiagramView';
+import { layoutPlaneKey, model, type DiagramModel, type ThreatTarget } from '@diagramming/core';
+import { DiagramView, LIBRARY_ENTRY_DND_TYPE, type LayoutApi } from './DiagramView';
 import { FISHBONE_LAYOUT } from './fishbone-layout';
 import { GIT_LAYOUT } from './git-layout';
 import { NUDGE_STEP, NUDGE_SHIFT_FACTOR } from './useNudge';
+import { NOTE_WIDTH } from './NoteNode';
+import { BADGE_R, badgeCenter, estimateNoteHeight, NOTE_GAP } from './note-place';
 
 /** container-endpoint relation: service inside a system relates to the system itself */
 function containerEndpointModel() {
@@ -542,6 +544,43 @@ describe('DiagramView', () => {
     await waitFor(() => expect(container.querySelectorAll('.react-flow__edge')).toHaveLength(2));
   });
 
+  it('gives a DFD process and store the registry default size as their explicit DOM size', async () => {
+    // The ellipse and the store's two rules are footprints, not label wrappers:
+    // the wrapper must carry the reservation (registry defaultSize → elk →
+    // inline width/height), or the shape would hug its label inside it. The
+    // sketch path draws off the same measured box, so a rough ellipse spans it.
+    const m = model('tm');
+    const tm = m.threatModel();
+    tm.process('p', 'Verify');
+    tm.store('s', 'Users');
+    const { container } = render(<DiagramView model={m.toJSON()} notation="threat-model" />);
+    const rfProcess = await waitFor(() => {
+      const el = container.querySelector('.dg-shape-ellipse')?.closest('.react-flow__node') as HTMLElement | null;
+      if (el === null || el === undefined || el.style.width === '') throw new Error('process not laid out');
+      return el;
+    });
+    expect(rfProcess.style.width).toBe('150px');
+    expect(rfProcess.style.height).toBe('90px');
+    const rfStore = container.querySelector('.dg-shape-store')?.closest('.react-flow__node') as HTMLElement;
+    expect(rfStore.style.width).toBe('150px');
+    expect(rfStore.style.height).toBe('56px');
+  });
+
+  it('never folds a trust boundary, with no pins at all', async () => {
+    // A boundary is a line drawn AROUND things, not a drill level: folded, every
+    // crossing flow would re-anchor to the boundary box and the elements the
+    // crossings are about would leave the picture entirely. The registry's
+    // `alwaysExpanded` (the activity-frame / git-lane precedent) is what
+    // guarantees it — semantic zoom rests everything folded otherwise.
+    const m = model('tm-fold');
+    const tm = m.threatModel();
+    tm.boundary('dmz', 'DMZ').contains(tm.process('web', 'Web app'));
+    const { container } = render(<DiagramView model={m.toJSON()} notation="threat-model" />);
+    // no `pins` prop: nothing but the registry flag can hold the boundary open
+    expect(await screen.findByText('Web app')).toBeDefined();
+    await waitFor(() => expect(container.querySelector('.dg-group')).not.toBeNull());
+  });
+
   it('propagates rich runs, align and font scale onto the box label', async () => {
     const { container } = render(<DiagramView model={richModel()} />);
     await waitFor(() => {
@@ -744,6 +783,22 @@ describe('DiagramView', () => {
     );
     const editor = (await screen.findByLabelText('Edit text')) as HTMLElement;
     expect(editor.textContent).toBe('api');
+  });
+
+  it('editLabelRequest also moves React Flow\'s selection — the ring and the `+` chip follow the node being named', async () => {
+    // The host's select() only touches the host's own state; the chip, the ring
+    // and the resizer render off React Flow's `selected` flag. Without the move,
+    // a `+`/Tab chain would keep offering the chip on the source node.
+    const m = containerEndpointModel();
+    const { rerender } = render(<DiagramView model={m} mode="edit" pins={{ sys: 'expanded' }} edit={{}} />);
+    fireEvent.click((await screen.findByText('gw')).closest('.react-flow__node') as HTMLElement);
+    await waitFor(() => expect(document.querySelector('.react-flow__node[data-id="gw"].selected')).not.toBeNull());
+
+    rerender(
+      <DiagramView model={m} mode="edit" pins={{ sys: 'expanded' }} edit={{ editLabelRequest: { id: 'api', nonce: 1 } }} />,
+    );
+    await waitFor(() => expect(document.querySelector('.react-flow__node[data-id="api"].selected')).not.toBeNull());
+    expect(document.querySelector('.react-flow__node[data-id="gw"].selected')).toBeNull();
   });
 
   it('does not replay a stale editLabelRequest across a view/edit round-trip — only a new nonce reopens it', async () => {
@@ -1426,6 +1481,18 @@ describe('git-graph notation', () => {
     expect(wrapper?.style.height).toBe(`${GIT_LAYOUT.DIAMETER}px`);
   });
 
+  it('sizes an EMPTY lane from the layout — compiled leaf, it would otherwise collapse to 0×0 and never show', async () => {
+    const m = gitModel();
+    m.nodes.push({ id: 'dev', name: 'Dev', type: 'branch' });
+    const { container } = render(<DiagramView model={m} plane="git-graph" notation="git-graph" />);
+    await waitFor(() => expect(container.querySelectorAll('.dg-lane-label')).toHaveLength(4));
+    const empty = container.querySelector('.react-flow__node[data-id="dev"]') as HTMLElement | null;
+    const full = container.querySelector('.react-flow__node[data-id="master"]') as HTMLElement | null;
+    expect(empty?.style.height).toBe(`${GIT_LAYOUT.LANE}px`);
+    expect(empty?.style.width).not.toBe('');
+    expect(empty?.style.width).toBe(full?.style.width);
+  });
+
   it('pins a dragged lane\'s descendant commits too, so their routed links fall back', async () => {
     // master: 1.0 -> 2.0 (its own commit link); nightly: n1 -> n2 (from 1.0, its
     // own commit link) — an independent lane whose link never touches master.
@@ -1561,5 +1628,403 @@ describe('activity diagrams', () => {
     });
     await waitFor(() => expect(wrapper.style.width).toBe('8px'));
     expect(wrapper.style.height).toBe('100px');
+  });
+});
+
+/** a threat model: one threatened node inside a boundary, one clean node, and a
+ * threatened flow between them — the three note cases in one picture */
+const threatened: DiagramModel = {
+  version: 1, id: 'tm', name: 'tm', notation: 'threat-model', layers: [], planes: [],
+  nodes: [
+    { id: 'web', name: 'Web app', type: 'tm-process', threats: [{ id: 't1', category: 'S', title: 'Spoofed session' }] },
+    { id: 'db', name: 'Orders DB', type: 'tm-store' },
+    { id: 'dmz', name: 'DMZ', type: 'tm-boundary' },
+  ],
+  containment: [{ parent: 'dmz', child: 'web' }],
+  relations: [{ id: 'f', from: 'web', to: 'db', kind: 'data-flow', threats: [{ id: 't1', category: 'I', title: 'Plain-text' }] }],
+};
+
+/** a node's React Flow wrapper, once async layout has produced it. A plain
+ * `waitFor(() => querySelector(...))` would not wait at all — waitFor retries on
+ * a throw, not on a null return (see the `b1` bar-leaf case above). */
+const rfNode = (container: HTMLElement, id: string): Promise<HTMLElement> =>
+  waitFor(() => {
+    const el = container.querySelector(`.react-flow__node[data-id="${id}"]`) as HTMLElement | null;
+    if (el === null) throw new Error(`${id} not rendered`);
+    return el;
+  });
+
+/** the absolute flow coordinates React Flow wrote into a node wrapper's transform */
+const xyOf = (el: HTMLElement): { x: number; y: number } => {
+  const m = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(el.style.transform);
+  if (m === null) throw new Error(`no transform on ${el.getAttribute('data-id') ?? '?'}`);
+  return { x: Number(m[1]), y: Number(m[2]) };
+};
+
+/** size the note wrappers like real bubbles for one test (jsdom measures every
+ * element 800×600 — see test-setup.ts); returns the undo */
+const measureNotes = (width: number, height: number): (() => void) => {
+  const proto = window.HTMLElement.prototype;
+  const was = {
+    offsetWidth: Object.getOwnPropertyDescriptor(proto, 'offsetWidth')!,
+    offsetHeight: Object.getOwnPropertyDescriptor(proto, 'offsetHeight')!,
+  };
+  const isNote = (el: HTMLElement) => el.getAttribute('data-id')?.startsWith('note:') === true;
+  Object.defineProperties(proto, {
+    offsetWidth: { get(this: HTMLElement) { return isNote(this) ? width : 800; }, configurable: true },
+    offsetHeight: { get(this: HTMLElement) { return isNote(this) ? height : 600; }, configurable: true },
+  });
+  return () => Object.defineProperties(proto, was);
+};
+
+/** an overlay with `web`'s and the flow's bubbles open (the fixture's two threatened elements) */
+const allOpen = (extra: Record<string, { dx: number; dy: number }> = {}) => {
+  const key = layoutPlaneKey(threatened, undefined);
+  return {
+    version: 1 as const,
+    planes: {},
+    notes: {
+      [key]: {
+        'node:web': { dx: 0, dy: 0, ...extra['node:web'], open: true as const },
+        'relation:f': { dx: 0, dy: 0, ...extra['relation:f'], open: true as const },
+      },
+    },
+  };
+};
+
+describe('threat notes', () => {
+  it('derives a note per threatened element, none for a clean one, and never over the element', async () => {
+    const { container } = render(<DiagramView model={threatened} layout={allOpen()} pins={{ dmz: 'expanded' }} />);
+    const note = await rfNode(container, 'note:node:web');
+    expect(note).not.toBeNull();
+    expect(note.textContent).toContain('Spoofed session');
+    expect(container.querySelector('.react-flow__node[data-id="note:relation:f"]')).not.toBeNull();
+    expect(container.querySelector('.react-flow__node[data-id="note:node:db"]')).toBeNull();
+    // Inside the boundary there is no free spot the bubble's size (the header
+    // band takes "above"), so it lands on the least-covering one — still next
+    // to `web`, never on it: wholly above or wholly left of the element.
+    const element = xyOf(await rfNode(container, 'web'));
+    const at = xyOf(note);
+    const height = estimateNoteHeight('Web app', threatened.nodes[0]!.threats!, false);
+    expect(at.y + height <= element.y - NOTE_GAP || at.x + NOTE_WIDTH <= element.x - NOTE_GAP).toBe(true);
+  });
+
+  it('opens above-left of the badge, clear of the element, with the badge where the stylesheet puts it', async () => {
+    // `web` on its own at the top level: nothing above it, so the first
+    // candidate is free and the arithmetic is exact
+    const alone: DiagramModel = { ...threatened, containment: [] };
+    const { container } = render(<DiagramView model={alone} layout={allOpen()} />);
+    const note = xyOf(await rfNode(container, 'note:node:web'));
+    const element = xyOf(await rfNode(container, 'web'));
+    // a tm-process is an ellipse: the badge is tucked in, not on the corner
+    const badge = badgeCenter({ ...element, width: 0, height: 0 }, 'ellipse');
+    expect(note.y + estimateNoteHeight('Web app', alone.nodes[0]!.threats!, false)).toBe(element.y - NOTE_GAP);
+    expect(note.x + NOTE_WIDTH).toBe(badge.x + 24);
+  });
+
+  it('an aggregated edge gets no note — its threats belong to particular relations', async () => {
+    // Two flows between the same visible pair fold into ONE arrow, and a note
+    // on the bundle could not say which relation each threat belongs to.
+    const model: DiagramModel = {
+      ...threatened,
+      relations: [
+        ...threatened.relations,
+        { id: 'g', from: 'web', to: 'db', kind: 'data-flow', threats: [{ id: 't1', category: 'T', title: 'Replayed write' }] },
+      ],
+    };
+    // every bubble in play is OPEN here, the bundle's constituents included, so
+    // the missing note below cannot be "closed by default" wearing a disguise
+    const key = layoutPlaneKey(model, undefined);
+    const layout = {
+      version: 1 as const,
+      planes: {},
+      notes: {
+        [key]: {
+          'node:web': { dx: 0, dy: 0, open: true as const },
+          'relation:f': { dx: 0, dy: 0, open: true as const },
+          'relation:g': { dx: 0, dy: 0, open: true as const },
+        },
+      },
+    };
+    const { container } = render(<DiagramView model={model} layout={layout} pins={{ dmz: 'expanded' }} />);
+    // wait for a note that IS derived, so the absence below is not just "the
+    // canvas has not rendered yet"
+    await rfNode(container, 'note:node:web');
+    // ...and prove the two relations really did aggregate, or the missing note
+    // would be missing for the wrong reason
+    await waitFor(() => expect(container.querySelectorAll('.react-flow__edge')).toHaveLength(1));
+    expect(container.querySelector('[data-id^="note:relation:"]')).toBeNull();
+  });
+
+  it('a model node whose id starts with `note:` is an ordinary box', async () => {
+    // The `note:` prefix is a convention, not a reservation: only the node TYPE
+    // says the data channel holds NoteData. Reading a box's data as a note's
+    // would throw on the click.
+    const onSelect = vi.fn();
+    const model: DiagramModel = {
+      ...threatened,
+      nodes: [...threatened.nodes, { id: 'note:x', name: 'Impostor', type: 'tm-store' }],
+    };
+    const { container } = render(<DiagramView model={model} onSelect={onSelect} />);
+    const box = await rfNode(container, 'note:x');
+    expect(box.textContent).toContain('Impostor');
+    fireEvent.click(box);
+    expect(onSelect).toHaveBeenCalledWith({ kind: 'node', id: 'note:x' });
+  });
+
+  it('draws nothing closed, everything open — and never with notes={false}', async () => {
+    const { container, rerender } = render(<DiagramView model={threatened} />);
+    await screen.findByText('Web app');
+    expect(container.querySelector('[data-id^="note:"]')).toBeNull();
+    rerender(<DiagramView model={threatened} layout={allOpen()} />);
+    await rfNode(container, 'note:node:web');
+    rerender(<DiagramView model={threatened} layout={allOpen()} notes={false} />);
+    await waitFor(() => expect(container.querySelector('[data-id^="note:"]')).toBeNull());
+    // and with notes={false} the badge is not even a switch
+    expect(container.querySelector('button.dg-threat-badge[data-state="open"]')).toBeNull();
+  });
+
+  it('view mode: the badge opens a bubble for the session and closes it again', async () => {
+    const { container } = render(<DiagramView model={threatened} pins={{ dmz: 'expanded' }} />);
+    const web = await rfNode(container, 'web');
+    const badge = within(web).getByRole('button', { name: '1 open of 1 threat — show' });
+    fireEvent.click(badge);
+    await rfNode(container, 'note:node:web');
+    expect(within(web).getByRole('button', { name: '1 open of 1 threat — hide' })).toBeDefined();
+    fireEvent.click(within(web).getByRole('button', { name: '1 open of 1 threat — hide' }));
+    await waitFor(() => expect(container.querySelector('[data-id="note:node:web"]')).toBeNull());
+  });
+
+  it('view mode: a flow’s chip toggles its relation’s bubble', async () => {
+    const { container } = render(<DiagramView model={threatened} />);
+    const chip = await waitFor(() => {
+      const el = container.querySelector('button.dg-edge-threat[data-state="open"]');
+      if (el === null) throw new Error('no chip');
+      return el as HTMLElement;
+    });
+    fireEvent.click(chip);
+    await rfNode(container, 'note:relation:f');
+  });
+
+  it('edit mode: the badge asks the host to save the state and draws nothing by itself', async () => {
+    const onToggleNote = vi.fn();
+    const { container } = render(<DiagramView model={threatened} mode="edit" edit={{ onToggleNote }} pins={{ dmz: 'expanded' }} />);
+    const web = await rfNode(container, 'web');
+    fireEvent.click(within(web).getByRole('button', { name: '1 open of 1 threat — show' }));
+    expect(onToggleNote).toHaveBeenCalledWith({ node: 'web' }, true);
+    await screen.findByText('Web app');
+    expect(container.querySelector('[data-id="note:node:web"]')).toBeNull();
+  });
+
+  it('view mode: the badge closes a bubble the layout saved open, for the session', async () => {
+    // The other direction of the session override: an override of `false` has
+    // to beat a saved `open: true`, or a reader could never put down a bubble
+    // the author left open.
+    const { container } = render(<DiagramView model={threatened} layout={allOpen()} pins={{ dmz: 'expanded' }} />);
+    await rfNode(container, 'note:node:web');
+    const web = await rfNode(container, 'web');
+    fireEvent.click(within(web).getByRole('button', { name: '1 open of 1 threat — hide' }));
+    await waitFor(() => expect(container.querySelector('[data-id="note:node:web"]')).toBeNull());
+  });
+
+  it('entering edit mode drops the session toggles — edit mode shows what is saved', async () => {
+    const { container, rerender } = render(<DiagramView model={threatened} pins={{ dmz: 'expanded' }} />);
+    const web = await rfNode(container, 'web');
+    fireEvent.click(within(web).getByRole('button', { name: '1 open of 1 threat — show' }));
+    await rfNode(container, 'note:node:web');
+    rerender(<DiagramView model={threatened} pins={{ dmz: 'expanded' }} mode="edit" edit={{ onToggleNote: vi.fn() }} />);
+    await waitFor(() => expect(container.querySelector('[data-id="note:node:web"]')).toBeNull());
+  });
+
+  it('loading another diagram drops the session toggles — the keys are per model', async () => {
+    // `node:web` names an element of THIS diagram; the next one is free to use
+    // the same ids. The drill hook resets navigation on a model switch without
+    // going through onPlaneSwitch, and the studio does not re-key the canvas,
+    // so the map has to be cleared on the model too.
+    const { container, rerender } = render(<DiagramView model={threatened} pins={{ dmz: 'expanded' }} />);
+    const web = await rfNode(container, 'web');
+    fireEvent.click(within(web).getByRole('button', { name: '1 open of 1 threat — show' }));
+    await rfNode(container, 'note:node:web');
+    rerender(<DiagramView model={{ ...threatened, id: 'tm2', name: 'tm2' }} pins={{ dmz: 'expanded' }} />);
+    await waitFor(() => expect(container.querySelector('[data-id="note:node:web"]')).toBeNull());
+  });
+
+  it('a flow’s bubble hangs off its chip and its tail points there — from above by default, from below once dragged under it', async () => {
+    // The chip sits on the routed curve, which only the edge knows: it reports
+    // the spot up and the bubble anchors to it. jsdom measures every node
+    // 800×600 (test-setup) and a bubble that size would swallow its own badge
+    // and draw no tail, so size the note wrappers like real bubbles here.
+    const restore = measureNotes(NOTE_WIDTH, 80);
+    try {
+      const a = render(<DiagramView model={threatened} layout={allOpen()} />);
+      const chip = await waitFor(() => {
+        const el = a.container.querySelector('button.dg-edge-threat') as HTMLElement | null;
+        if (el === null) throw new Error('no chip');
+        return xyOf(el);
+      });
+      // Which spot is free depends on the layout (web sits right above the
+      // flow); what must hold is that the tail's tip lands on the chip's rim.
+      await waitFor(() => {
+        const note = a.container.querySelector('.react-flow__node[data-id="note:relation:f"]') as HTMLElement | null;
+        if (note === null) throw new Error('no note');
+        const at = xyOf(note);
+        const d = note.querySelector('.dg-note-tail path')?.getAttribute('d') ?? '';
+        const m = /L(-?[\d.]+) (-?[\d.]+) L/.exec(d);
+        if (m === null) throw new Error(`no tail yet: ${d}`);
+        const tip = { x: at.x + Number(m[1]), y: at.y + Number(m[2]) };
+        expect(Math.hypot(tip.x - chip.x, tip.y - chip.y)).toBeCloseTo(BADGE_R + 2, 3);
+        // and clear of the chip's pill: no candidate puts the bubble over it
+        expect(at.y + estimateNoteHeight('Web app → Orders DB', threatened.relations[0]!.threats!, false) <= chip.y - BADGE_R || at.x + NOTE_WIDTH <= chip.x - BADGE_R).toBe(true);
+      });
+      a.unmount();
+      const b = render(<DiagramView model={threatened} layout={allOpen({ 'relation:f': { dx: -110, dy: 60 } })} />);
+      await waitFor(() => {
+        const note = b.container.querySelector('.react-flow__node[data-id="note:relation:f"]') as HTMLElement | null;
+        if (note === null) throw new Error('no note');
+        expect(xyOf(note)).toEqual({ x: chip.x - 110, y: chip.y + 60 });
+        expect(note.querySelector('.dg-note-tail')?.getAttribute('data-side')).toBe('top');
+      });
+    } finally {
+      restore();
+    }
+  });
+
+  it('a saved offset is measured from the badge, whatever the automatic spot would have been', async () => {
+    // Relative to the badge, not to the automatic placement: a dragged bubble
+    // stays put when a neighbour moves or another bubble opens and the
+    // automatic spot would have changed. Parented like its element, so the
+    // offset holds inside a container too.
+    const { container } = render(
+      <DiagramView model={threatened} layout={allOpen({ 'node:web': { dx: 40, dy: 30 } })} pins={{ dmz: 'expanded' }} />,
+    );
+    const moved = xyOf(await rfNode(container, 'note:node:web'));
+    const element = xyOf(await rfNode(container, 'web'));
+    const badge = badgeCenter({ ...element, width: 0, height: 0 }, 'ellipse');
+    expect(moved).toEqual({ x: badge.x + 40, y: badge.y + 30 });
+  });
+
+  it('clicking a note selects its element, not the note', async () => {
+    const onSelect = vi.fn();
+    const { container } = render(<DiagramView model={threatened} layout={allOpen()} onSelect={onSelect} />);
+    const note = await rfNode(container, 'note:relation:f');
+    fireEvent.click(note);
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ kind: 'edge', constituentIds: ['f'] }));
+    expect(container.querySelector('.react-flow__node[data-id="note:relation:f"].selected')).toBeNull();
+  });
+
+  it('edit mode: editThreatRequest opens that row; + and retitle reach the host', async () => {
+    const onAddThreat = vi.fn();
+    const onRetitleThreat = vi.fn();
+    const edit = { onAddThreat, onRetitleThreat, editThreatRequest: { target: { node: 'web' } as ThreatTarget, id: 't1', nonce: 1 } };
+    const { container } = render(<DiagramView model={threatened} layout={allOpen()} mode="edit" edit={edit} />);
+    const input = (await screen.findByLabelText('Rename threat')) as HTMLInputElement;
+    expect(input.value).toBe('Spoofed session');
+    fireEvent.change(input, { target: { value: 'Session fixation' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onRetitleThreat).toHaveBeenCalledWith({ node: 'web' }, 't1', 'Session fixation');
+    // scoped to `web`'s note: every note carries a `+`, so a bare getAllByRole
+    // would only prove that SOME note's button reached the host
+    const webNote = await rfNode(container, 'note:node:web');
+    fireEvent.click(within(webNote).getByRole('button', { name: 'Add a threat' }));
+    expect(onAddThreat).toHaveBeenCalledWith({ node: 'web' });
+  });
+
+  it('edit mode: the status chip and the details fields reach the host', async () => {
+    const onSetThreatStatus = vi.fn();
+    const onEditThreatText = vi.fn();
+    const { container } = render(
+      <DiagramView model={threatened} layout={allOpen()} mode="edit" edit={{ onSetThreatStatus, onEditThreatText }} />,
+    );
+    const note = await rfNode(container, 'note:relation:f');
+    fireEvent.click(within(note).getByRole('button', { name: 'Set status' }));
+    expect(onSetThreatStatus).toHaveBeenCalledWith({ relation: 'f' }, 't1', 'mitigated');
+    fireEvent.click(within(note).getByRole('button', { name: 'Show details' }));
+    const desc = within(note).getByLabelText('Description');
+    fireEvent.change(desc, { target: { value: 'Sniffable on the LAN' } });
+    fireEvent.blur(desc);
+    expect(onEditThreatText).toHaveBeenCalledWith({ relation: 'f' }, 't1', 'description', 'Sniffable on the LAN');
+  });
+
+  it('edit mode: an element with no threats yet offers the first one on the canvas', async () => {
+    // The badge and the chip are the only way in for an element that has no
+    // note yet, so the hook has to reach BOTH data channels (node and edge) —
+    // this is what covers that threading end to end. `db` carries no threats
+    // and neither does the second flow, so both draw the `+` state.
+    const onAddThreat = vi.fn();
+    const model: DiagramModel = {
+      ...threatened,
+      relations: [...threatened.relations, { id: 'g', from: 'db', to: 'web', kind: 'data-flow' }],
+    };
+    // `notation` is the host's (it resolves the active plane's — see
+    // activeNotation), and the empty state is gated on it: only a threat
+    // model's canvas carries the offer.
+    const { container } = render(
+      <DiagramView model={model} notation="threat-model" mode="edit" edit={{ onAddThreat }} />,
+    );
+    const db = await rfNode(container, 'db');
+    fireEvent.click(within(db).getByRole('button', { name: 'Add a threat' }));
+    expect(onAddThreat).toHaveBeenCalledWith({ node: 'db' });
+    // the flow's chip rides the label portal, not the edge's own svg, so it is
+    // queried from the canvas rather than scoped to an edge wrapper
+    const chip = await waitFor(() => {
+      const el = container.querySelector('button.dg-edge-threat[data-state="empty"]');
+      if (el === null) throw new Error('no empty flow chip');
+      return el as HTMLElement;
+    });
+    fireEvent.click(chip);
+    expect(onAddThreat).toHaveBeenCalledWith({ relation: 'g' });
+  });
+
+  it('a note click moves React Flow’s own selection too — the ring, the chip and Backspace follow', async () => {
+    // The note is not selectable, so React Flow's flag would otherwise stay on
+    // whatever box was clicked before. deleteKeyCode/onDelete read THAT flag:
+    // without the move, Backspace deletes the previous box while the panel
+    // shows the element this note is about.
+    const { container } = render(<DiagramView model={threatened} layout={allOpen()} mode="edit" edit={{}} />);
+    fireEvent.click(await rfNode(container, 'db'));
+    await waitFor(() => expect(document.querySelector('.react-flow__node[data-id="db"].selected')).not.toBeNull());
+
+    fireEvent.click(await rfNode(container, 'note:node:web'));
+    await waitFor(() => expect(document.querySelector('.react-flow__node[data-id="web"].selected')).not.toBeNull());
+    expect(document.querySelector('.react-flow__node[data-id="db"].selected')).toBeNull();
+
+    // a flow's note selects an EDGE, so no box may keep the ring
+    fireEvent.click(await rfNode(container, 'note:relation:f'));
+    await waitFor(() => expect(document.querySelector('.react-flow__node.selected')).toBeNull());
+  });
+
+  it('a palette drop that lands on a note nests nothing — a `note:` id is no containment parent', async () => {
+    const onDropLibraryEntry = vi.fn();
+    const { container } = render(
+      <DiagramView model={threatened} layout={allOpen()} mode="edit" edit={{ onDropLibraryEntry }} />,
+    );
+    const canvas = container.querySelector('.dg-canvas') as HTMLElement;
+    const dropOn = (el: HTMLElement) => {
+      // droppedOnNodeId reads document.elementFromPoint, which jsdom cannot
+      // answer without layout — stand it on the element the drop landed on
+      const spy = vi.spyOn(document, 'elementFromPoint').mockReturnValue(el);
+      fireEvent.drop(canvas, {
+        dataTransfer: { types: [LIBRARY_ENTRY_DND_TYPE], getData: () => 'entry-1' },
+        clientX: 120,
+        clientY: 90,
+      });
+      spy.mockRestore();
+    };
+    dropOn(await rfNode(container, 'note:node:web'));
+    expect(onDropLibraryEntry).toHaveBeenCalledTimes(1);
+    expect(onDropLibraryEntry.mock.calls[0]![2]).toBeUndefined();
+    // the guard is not "always undefined": a drop on a real box still nests
+    dropOn(await rfNode(container, 'db'));
+    expect(onDropLibraryEntry.mock.calls[1]![2]).toBe('db');
+  });
+
+  it('never reports notes in snapshotPositions', async () => {
+    const ref = { current: null as LayoutApi | null };
+    const { container } = render(<DiagramView model={threatened} layout={allOpen()} layoutApiRef={ref} />);
+    // there IS a note on the canvas to leave out — without this the assertion
+    // below would pass on an empty snapshot
+    await rfNode(container, 'note:node:web');
+    await waitFor(() => expect(ref.current?.snapshotPositions()['web']).toBeDefined());
+    expect(Object.keys(ref.current!.snapshotPositions()).some((id) => id.startsWith('note:'))).toBe(false);
   });
 });

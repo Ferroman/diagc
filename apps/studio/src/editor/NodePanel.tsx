@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import type { DiagramModel, EditorCommand, FontScale, TextAlign } from '@diagramming/core';
-import { CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF } from '@diagramming/core';
+import type { DiagramModel, EditorCommand, FontScale, NotationId, TextAlign } from '@diagramming/core';
+import { CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF, TM_NOTATION, strideFor } from '@diagramming/core';
 import { BUILTIN_ICON_IDS } from '@diagramming/icons';
 import { DEFAULT_TYPE_STYLES } from '@diagramming/renderer';
 import { ColorRow, OptionRow } from './pickers';
+import { ThreatsSection } from './ThreatsSection';
 import { BUNDLED_LIBRARY } from '../library/packs';
 
 // Registry defaults surfaced as datalist hints; free text is still accepted.
@@ -41,6 +42,8 @@ interface NodePanelProps {
   live?: { x: number; y: number };
   /** focus + select the name input on mount (a node was just added) */
   autoFocusName?: boolean;
+  /** active plane's notation; gates the Threats section (threat-model) */
+  notation?: NotationId;
   onCommand: (command: EditorCommand) => void;
   onClose: () => void;
   onDeleted: () => void;
@@ -88,6 +91,7 @@ export function NodePanel({
   pinned,
   live,
   autoFocusName = false,
+  notation,
   onCommand,
   onClose,
   onDeleted,
@@ -614,6 +618,18 @@ export function NodePanel({
           </button>
         </div>
       </section>
+
+      {/* Threats are a generic field, so the section is offered on the notation
+       * — but a node that already carries threats keeps it whatever the plane
+       * is drawn as, or turning the notation off would strand them. */}
+      {(notation === TM_NOTATION || (node.threats?.length ?? 0) > 0) && (
+        <ThreatsSection
+          target={{ node: node.id }}
+          threats={node.threats ?? []}
+          applicable={strideFor(node.type)}
+          onCommand={onCommand}
+        />
+      )}
 
       <section className="panel-section">
         <h3>Memberships</h3>

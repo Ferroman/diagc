@@ -1,6 +1,6 @@
 import { Handle, Position } from '@xyflow/react';
 import type { Column } from '@diagramming/core';
-import { LinkBadge, type DiagramNodeData } from './DiagramNode';
+import { LinkBadge, QuickAddButton, type DiagramNodeData } from './DiagramNode';
 import { TABLE_HEADER_H, TABLE_ROW_H } from './table-ports';
 
 const COMMON_TYPES = ['uuid', 'int', 'bigint', 'text', 'varchar', 'bool', 'timestamp', 'timestamptz', 'jsonb', 'numeric'];
@@ -27,7 +27,7 @@ const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
  * by CSS). When `onColumnsChange` is wired the rows become editable: PK/FK cycle
  * badge, controlled name/type inputs, ↑/↓ reorder, ✕ delete, and a “+ add column”
  * footer. Inputs are controlled + keyed by index so typing keeps focus. */
-export function TableNode({ data }: { data: DiagramNodeData }) {
+export function TableNode({ id, data, selected }: { id: string; data: DiagramNodeData; selected?: boolean }) {
   const columns = data.columns ?? [];
   const onChange = data.onColumnsChange;
   const editing = onChange !== undefined;
@@ -88,6 +88,7 @@ export function TableNode({ data }: { data: DiagramNodeData }) {
         </>
       )}
       <LinkBadge data={data} />
+      <QuickAddButton id={id} data={data} selected={selected} />
     </div>
   );
 }

@@ -60,6 +60,32 @@ describe('isLayoutOverlay — edgeLabels', () => {
   });
 });
 
+describe('isLayoutOverlay — notes', () => {
+  it('accepts plane → threat target → { dx, dy }', () => {
+    expect(isLayoutOverlay({ ...base, notes: { p: { 'node:a': { dx: 4, dy: -2 } } } })).toBe(true);
+    expect(isLayoutOverlay({ ...base, notes: {} })).toBe(true);
+  });
+
+  it('rejects a non-numeric or non-finite offset, and anything but a plane map', () => {
+    expect(isLayoutOverlay({ ...base, notes: { p: { 'node:a': { dx: 'x', dy: 0 } } } })).toBe(false);
+    // NaN/Infinity reach the renderer as a note nobody can find again
+    expect(isLayoutOverlay({ ...base, notes: { p: { 'node:a': { dx: Infinity, dy: 0 } } } })).toBe(false);
+    expect(isLayoutOverlay({ ...base, notes: [] })).toBe(false);
+    expect(isLayoutOverlay({ ...base, notes: { p: { 'node:a': 3 } } })).toBe(false);
+  });
+
+  it('accepts open: true on a note entry and rejects any other open value', () => {
+    expect(isLayoutOverlay({ ...base, notes: { p: { 'node:a': { dx: 0, dy: 0, open: true } } } })).toBe(true);
+    // "closed" is spelled by omission — a stored false would be a second way to say it
+    expect(isLayoutOverlay({ ...base, notes: { p: { 'node:a': { dx: 0, dy: 0, open: false } } } })).toBe(false);
+    expect(isLayoutOverlay({ ...base, notes: { p: { 'node:a': { dx: 0, dy: 0, open: 1 } } } })).toBe(false);
+  });
+
+  it('ignores a stale notesHidden key — the guard checks known fields only, so the key is inert and rides along', () => {
+    expect(isLayoutOverlay({ ...base, notesHidden: { p: true } })).toBe(true);
+  });
+});
+
 describe('isDrawings', () => {
   const stroke = { id: 'k1', points: [1, 2, 3, 4] };
 

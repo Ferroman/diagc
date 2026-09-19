@@ -53,8 +53,8 @@ The whole picture above is `.diagrams/src/docs-second-order.diagram.ts` in this 
 1. Create a new JSON diagram and, in **Layers & planes**, set its **Notation** to *Second-order thinking*.
 2. Press **Edit**. The **And then what?** panel appears on the right.
 3. **Add a decision**, name it.
-4. Select it and pick **Good consequence**, **Bad consequence** or **Neutral consequence** — or press `Tab` for a neutral one. Type the name, then `Ctrl`/`Cmd`+`Enter` or click elsewhere to commit it — plain `Enter` starts a new line instead.
-5. Select the new consequence and repeat — `Tab` again — to go one order deeper.
+4. Select it and pick **Good consequence**, **Bad consequence** or **Neutral consequence** — or press `Tab`, or click the `+` on the selected box, for a neutral one. Type the name and press `Tab` again to chain (it commits the name and opens the next consequence); `Ctrl`/`Cmd`+`Enter` or a click elsewhere commits without adding — plain `Enter` starts a new line instead.
+5. Select the new consequence and repeat — `Tab` or its `+` again — to go one order deeper.
 6. Changing a consequence from good to bad (or to neutral) is its **type** in the node panel, not a separate field.
 
 The palette's *Second-order thinking* section holds the same four stencils (decision, good/bad/neutral consequence) for drag-and-drop.
@@ -70,7 +70,7 @@ Moving a box by hand does not change its band. The order comes from the graph, n
 - **A loop is an error here.** Consequences form a cycle → `so-cycle`. A feedback loop is a causal-loop diagram — use that notation for it.
 - **Decisions and consequences cannot be grouped.** Nesting one in a container fails validation with `so-contained` — a band and a group want the same rectangle.
 - **The layout algorithm is fixed to layered.** The bands ride elk's own layer partitions, so the algorithm picker is withheld. Direction, spacing and edge routing stay adjustable — switch to a left-to-right flow and the bands turn into columns, headers on top.
-- **A consequence nothing leads to yet is an error too** (`so-unreachable`) — a stencil dropped from the palette before it is connected, say. The studio will not save until an arrow leads to it, so draw the arrow, or use "And then what?" / `Tab`, which create the box and its arrow together.
+- **A consequence nothing leads to yet is an error too** (`so-unreachable`) — a stencil dropped from the palette before it is connected, say. The studio will not save until an arrow leads to it, so draw the arrow, or use "And then what?" / `Tab` / the node's `+`, which create the box and its arrow together.
 
 ## See also
 

@@ -27,6 +27,7 @@ Declares an entity and returns a handle for containment and relations.
 | `image`, `shape` | `string?` | Asset refs; see [Model reference](model.md#asset-refs-image-shape). |
 | `color`, `textColor` | `string?` | `color` also wins over a notation's fill (e.g. C4's solid palette). |
 | `technology` | `string?` | Composed into the type subtitle: `[Container: Java, Spring Boot]`. See [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md). |
+| `threats` | `Threat[]?` | STRIDE findings, `id` and all. Prefer [`ref.threat()`](#refthreatopts--ref), which synthesizes the id. See [Model reference](model.md#threat). |
 | `description` | `string?` | Detail panel only — never drawn on the canvas. |
 | `rich` | `TextRun[]?` | Bold/italic label runs. `name` must equal the concatenated run text, or validation fails with `invalid-rich`. |
 | `textAlign` | `'left' \| 'center' \| 'right'?` | Default `left`. |
@@ -79,6 +80,7 @@ Duplicate parent/child/plane triples are ignored, so calling it twice is safe. A
 | `id` | `string?` | Explicit relation id. Default `${from}->${to}#${n}`. The pair counter advances either way, so a later un-id'd relation on the same pair still gets the suffix it would have gotten without the override. |
 | `label` | `string?` | |
 | `labels` | `EdgeLabel[]?` | Positioned edge labels; supersedes `label` when present. See [Model reference](model.md#edgelabel). |
+| `threats` | `Threat[]?` | STRIDE findings, `id` and all. Prefer `FlowRef.threat()` — see [`ref.threat()`](#refthreatopts--ref) — which synthesizes the id. See [Model reference](model.md#threat). |
 | `description` | `string?` | |
 | `layer` | `string?` | Must match a declared layer. |
 | `style` | `RelationStyle?` | See [Model reference](model.md#relationstyle). |
@@ -114,7 +116,7 @@ The first plane declared is the default and owns untagged containment.
 | `containmentOf` | `string?` | Borrow another plane's structure. |
 | `layers` | `string[]?` | Layers on by default in this plane. A default, not a floor: hosts with a layer switch start from this (`presetLayers`) and can turn them off — an export, which has no switch, always draws them. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations. |
-| `notation` | `NotationId?` (`'causal-loop' \| 'git-graph' \| 'c4' \| 'second-order' \| 'fishbone'`) | Prefer `m.gitGraph()`/`m.secondOrder()`/`m.fishbone()` for `git-graph`/`second-order`/`fishbone`. Overrides `m.notation()` for this plane. |
+| `notation` | `NotationId?` (`'causal-loop' \| 'git-graph' \| 'c4' \| 'second-order' \| 'fishbone' \| 'threat-model'`) | Prefer `m.gitGraph()`/`m.secondOrder()`/`m.fishbone()`/`m.threatModel()` for `git-graph`/`second-order`/`fishbone`/`threat-model`. Overrides `m.notation()` for this plane. |
 | `hides` | `string[]?` | Shared node ids to hide here, promoting their contents into their place. |
 | `hidesTree` | `string[]?` | Shared node ids to hide here together with their contents, however deep. A child another visible box also contains stays. |
 
@@ -288,6 +290,52 @@ const { people, process } = fb.categories('Software');
 people!.cause('on-call', 'On-call engineer new to checkout');
 process!.cause('review', 'Migration merged without review').cause('single-approver', 'One approver for the whole repo');
 ```
+
+## `m.threatModel(opts?) → ThreatModelBuilder`
+
+Declares a threat model: a STRIDE data-flow diagram of external entities, processes, data stores, flows and trust boundaries. **Throws if called twice** (`'threatModel() already declared'`). With no `plane`, the notation is model-wide; name a plane to threat-model an existing architecture beside its other views — that plane then holds its own boundary containment over the same nodes.
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `plane` | `string?` | Plane id. Omit to set the notation model-wide. |
+| `name` | `string?` | Plane name, when `plane` is given. Default `Threat model`. |
+
+| Call | Returns | Notes |
+| --- | --- | --- |
+| `tm.entity(id, name?, opts?)` | `NodeRef` | An external entity (`tm-entity`): a user, a third party, anything outside the system. |
+| `tm.process(id, name?, opts?)` | `NodeRef` | A process (`tm-process`) — something the system does with the data. |
+| `tm.store(id, name?, opts?)` | `NodeRef` | A data store (`tm-store`) — where the data rests. |
+| `tm.boundary(id, name?, opts?)` | `NodeRef` | A trust boundary (`tm-boundary`). Put elements in it with `.contains()`; it is a container, never an endpoint. |
+| `tm.flow(from, to, label?)` | `FlowRef` | A `kind: 'data-flow'` relation between two element refs. A string argument is the flow's label; pass an object instead for the rest of [`m.relate`](#mrelatefrom-to-opts--m)'s options (minus `kind`). |
+
+`opts` on the four element helpers is [`m.node`](#mnodeid-opts--noderef)'s options minus `type` and `name`. Each hands back a plain `NodeRef`, so `contains`, `relate`, `layer` and the rest of the builder compose with them unchanged.
+
+`FlowRef { readonly id: string; threat(opts) }` — the relation's id, and the same `threat()` a `NodeRef` has.
+
+```ts
+const m = model('checkout');
+const tm = m.threatModel();
+const customer = tm.entity('customer', 'Customer');
+const web = tm.process('web', 'Web app');
+tm.boundary('edge', 'Internet-facing').contains(web);
+tm.flow(customer, web, 'HTTPS: cart, card details').threat({ category: 'S', title: 'Credential stuffing on login', severity: 'high' });
+```
+
+### `ref.threat(opts) → ref`
+
+Appends one STRIDE finding to a node or a flow. On **every** `NodeRef`, not just the four DFD ones, and on every `FlowRef` — threats are a generic field, so an existing C4 or ER diagram can be annotated where it stands.
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `category` | `'S' \| 'T' \| 'R' \| 'I' \| 'D' \| 'E'` | **Required.** |
+| `title` | `string` | **Required.** |
+| `id` | `string?` | Default `t<n>`, `n` being this element's threat count + 1. Unique within the element; a duplicate **throws**. |
+| `description` | `string?` | |
+| `severity` | `'low' \| 'medium' \| 'high' \| 'critical'?` | Unset = unrated. |
+| `status` | `'open' \| 'mitigated' \| 'accepted' \| 'not-applicable'?` | Unset = `open`. |
+| `mitigation` | `string?` | |
+
+Chainable, so a second finding on the same element is another `.threat(...)`. See [Model reference](model.md#threat) and [Draw a threat model](../how-to/draw-a-threat-model.md).
 
 ## `m.legend(opts?) → m`
 

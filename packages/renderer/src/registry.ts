@@ -1,4 +1,4 @@
-export type ShapeId = 'box' | 'cylinder' | 'pill' | 'hexagon' | 'person' | 'table' | 'bubble' | 'circle' | 'rounded' | 'diamond' | 'bar' | 'start-dot' | 'end-bullseye' | 'send-signal' | 'receive-signal' | 'note';
+export type ShapeId = 'box' | 'cylinder' | 'pill' | 'hexagon' | 'person' | 'table' | 'bubble' | 'circle' | 'rounded' | 'diamond' | 'bar' | 'start-dot' | 'end-bullseye' | 'send-signal' | 'receive-signal' | 'note' | 'ellipse' | 'store';
 
 export interface TypeStyle {
   shape: ShapeId;
@@ -141,6 +141,20 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   'fb-effect': { shape: 'box', label: '' },
   'fb-category': { shape: 'box', label: '' },
   'fb-cause': { shape: 'box', label: '' },
+  // ---- Threat model (STRIDE data flow) ----------------------------------------
+  // The shape is the type, as in every DFD, so no `[Process]` subtitle. A
+  // boundary keeps the dashed outline look; its red arrives through the
+  // notation profile's colorOf, not here, so an author's own colour still wins.
+  // `alwaysExpanded` on the boundary for the same reason an activity frame and a
+  // git lane carry it: a trust boundary is a line drawn AROUND things, never a
+  // drill level. Folded it would re-anchor every crossing flow to the boundary
+  // box and hide the very elements those crossings are about — the picture would
+  // lose the thing it exists to show. DiagramView folds registry `alwaysExpanded`
+  // into `effectivePins` and blocks drilling into it.
+  'tm-entity': { shape: 'box', label: '' },
+  'tm-process': { shape: 'ellipse', label: '', defaultSize: { width: 150, height: 90 } },
+  'tm-store': { shape: 'store', label: '', defaultSize: { width: 150, height: 56 } },
+  'tm-boundary': { shape: 'box', label: '', outline: true, dashed: true, alwaysExpanded: true },
 };
 
 export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
@@ -161,6 +175,8 @@ export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
   'leads-to': {},
   // ---- Fishbone (Ishikawa) ----------------------------------------------------
   'cause-of': {}, // solid, arrow end — the defaults
+  // ---- Threat model (STRIDE data flow) ----------------------------------------
+  'data-flow': {}, // a plain arrow: the DFD's only line style
 };
 
 function createRegistry<T>(defaults: Record<string, T>, fallback: T, overrides?: Record<string, T>): Registry<T> {

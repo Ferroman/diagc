@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { TM_BOUNDARY_TYPE, TM_ENTITY_TYPE, TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from '@diagramming/core';
 import { BUILTIN_ICON_IDS, createIconRegistry } from '@diagramming/icons';
 import { createKindRegistry, createTypeRegistry, DEFAULT_TYPE_STYLES } from './registry';
 
@@ -138,5 +139,27 @@ describe('registries', () => {
     expect(types.resolve('fb-category')).toMatchObject({ shape: 'box', label: '' });
     expect(types.resolve('fb-cause')).toMatchObject({ shape: 'box', label: '' });
     expect(createKindRegistry().resolve('cause-of')).toEqual({});
+  });
+
+  it('registers the threat-model (STRIDE data-flow) vocabulary', () => {
+    // The ids come from core, so a rename there breaks here rather than
+    // silently degrading every DFD element to the unknown-id plain box.
+    const t = createTypeRegistry();
+    expect(t.resolve(TM_ENTITY_TYPE)).toEqual({ shape: 'box', label: '' });
+    expect(t.resolve(TM_PROCESS_TYPE)).toEqual({ shape: 'ellipse', label: '', defaultSize: { width: 150, height: 90 } });
+    expect(t.resolve(TM_STORE_TYPE)).toEqual({ shape: 'store', label: '', defaultSize: { width: 150, height: 56 } });
+    // alwaysExpanded: a boundary is a line around things, not a drill level
+    expect(t.resolve(TM_BOUNDARY_TYPE)).toEqual({
+      shape: 'box',
+      label: '',
+      outline: true,
+      dashed: true,
+      alwaysExpanded: true,
+    });
+    // the shape IS the type in a DFD — no `[Process]` subtitle on any of them
+    for (const id of [TM_ENTITY_TYPE, TM_PROCESS_TYPE, TM_STORE_TYPE, TM_BOUNDARY_TYPE]) {
+      expect(t.resolve(id).label, id).toBe('');
+    }
+    expect(createKindRegistry().resolve(TM_FLOW_KIND)).toEqual({});
   });
 });

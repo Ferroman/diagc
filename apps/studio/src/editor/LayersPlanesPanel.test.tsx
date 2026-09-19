@@ -338,4 +338,12 @@ describe('LayersPlanesPanel', () => {
     render(<LayersPlanesPanel model={m.toJSON()} onCommand={vi.fn()} mode="edit" />);
     expect(screen.getByRole('option', { name: 'Fishbone (cause and effect)' })).toBeDefined();
   });
+
+  it('names the threat-model notation properly instead of deriving "Threat model"', () => {
+    const m = model('d');
+    m.node('a');
+    render(<LayersPlanesPanel model={m.toJSON()} onCommand={vi.fn()} mode="edit" />);
+    const option = screen.getByRole('option', { name: 'Threat model (STRIDE)' }) as HTMLOptionElement;
+    expect(option.value).toBe('threat-model');
+  });
 });

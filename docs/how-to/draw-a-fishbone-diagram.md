@@ -9,7 +9,7 @@ Show the causes of one effect: the effect sits at the head, categories of cause 
 1. Create a new JSON diagram and, in **Layers & planes**, set its **Notation** to *Fishbone (cause and effect)*.
 2. **Add an effect** and name it — `Enter` or a click elsewhere commits it.
 3. Start from **Software**, **6M** or **4S** for a standard set of bones, or **Add a category** of your own.
-4. Select a bone or a cause and **Add a cause** — or press `Tab` — to hang something on it. A sub-cause takes nothing further; the button is disabled once you're that deep.
+4. Select a bone or a cause and **Add a cause** — or press `Tab`, or click the `+` on the selection — to hang something on it. Type the name and press `Tab` again to chain: the name is committed and the next cause opens for typing. A sub-cause takes nothing further; the button is disabled once you're that deep.
 5. Each add is one undo step for the node and its arrow together; the typed name, once committed, is a later, separate one.
 
 The arrangement is the notation's own: there are no layout controls, and dragging a cause or category's text floats its line free of the bone — undo puts it back.

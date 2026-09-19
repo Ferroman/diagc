@@ -9,7 +9,10 @@ import {
   RELATION_SHAPES,
   RESERVED_NODE_ID,
   SIDES,
+  STRIDE,
   TEXT_ALIGNS,
+  THREAT_SEVERITIES,
+  THREAT_STATUSES,
   type DiagramModel,
   type DiagramPlane,
   type TextRun,
@@ -18,6 +21,7 @@ import { childrenOf } from './children';
 import { FB_CATEGORY_TYPE, FB_CAUSE_TYPE, FB_EFFECT_TYPE, FISHBONE_NOTATION, fishboneParents, fishboneTree, isFishboneNode } from './fishbone';
 import { GIT_NOTATION, GIT_STAGE_TYPE, gitGraph, isGitKind, stageCommit } from './git';
 import { SECOND_ORDER_NOTATION, SO_DECISION_TYPE, consequenceOrders, isSecondOrderNode } from './second-order';
+import { TM_BOUNDARY_TYPE, TM_FLOW_KIND, TM_NOTATION } from './threat-model';
 
 export interface ValidationIssue {
   code:
@@ -69,7 +73,14 @@ export interface ValidationIssue {
     | 'fb-unattached'
     | 'fb-misplaced'
     | 'fb-too-deep'
-    | 'fb-contained';
+    | 'fb-contained'
+    | 'invalid-threats'
+    | 'threat-id'
+    | 'threat-title'
+    | 'threat-category'
+    | 'threat-status'
+    | 'threat-severity'
+    | 'tm-flow-boundary';
   message: string;
   ref?: string;
 }
@@ -389,6 +400,37 @@ function validateRelations(ctx: Ctx): void {
   }
 }
 
+/** `threats` is a generic field (any notation): each entry is checked for shape
+ * wherever it appears, one issue per fault, the element as `ref`. */
+function validateThreats(ctx: Ctx): void {
+  const { issues, m } = ctx;
+  const check = (ref: string, threats: unknown): void => {
+    if (threats === undefined) return;
+    // Shape before contents: a hand-edited file can put anything here, and the
+    // derivations read it unguarded (threatSummary calls `.filter` on it), so a
+    // wrong shape is an issue rather than something to skip past. One issue for
+    // the element — the per-field checks below would only add noise about
+    // entries that are not threats at all.
+    if (!Array.isArray(threats) || threats.some((t) => t === null || typeof t !== 'object')) {
+      report(issues, 'invalid-threats', `'threats' on '${ref}' must be a list of threats`, ref);
+      return;
+    }
+    const seen = new Set<string>();
+    for (const t of threats as Record<string, unknown>[]) {
+      const id = t.id;
+      if (typeof id !== 'string' || id === '') report(issues, 'threat-id', `A threat on '${ref}' has no id`, ref);
+      else if (seen.has(id)) report(issues, 'threat-id', `Threat id '${id}' repeats on '${ref}'`, ref);
+      else seen.add(id);
+      if (!(STRIDE as readonly unknown[]).includes(t.category)) report(issues, 'threat-category', `Threat '${String(id)}' on '${ref}': category must be one of ${STRIDE.join(', ')}`, ref);
+      if (typeof t.title !== 'string' || t.title === '') report(issues, 'threat-title', `Threat '${String(id)}' on '${ref}' has no title`, ref);
+      if (t.status !== undefined && !(THREAT_STATUSES as readonly unknown[]).includes(t.status)) report(issues, 'threat-status', `Threat '${String(id)}' on '${ref}': status must be one of ${THREAT_STATUSES.join(', ')}`, ref);
+      if (t.severity !== undefined && !(THREAT_SEVERITIES as readonly unknown[]).includes(t.severity)) report(issues, 'threat-severity', `Threat '${String(id)}' on '${ref}': severity must be one of ${THREAT_SEVERITIES.join(', ')}`, ref);
+    }
+  };
+  for (const n of m.nodes) check(n.id, n.threats);
+  for (const r of m.relations) check(r.id, r.threats);
+}
+
 /** Containment cycles are checked per plane — an edge pair spanning two planes
  * is legal. Emits one `containment-cycle` issue per offending plane. */
 function validateCycles(ctx: Ctx): void {
@@ -666,6 +708,27 @@ function validateFishbone(ctx: Ctx): void {
   reportContained(ctx, plane, fbIds, 'fb-contained', (child, parent) => `'${child}' sits inside '${parent}'; nothing on a fishbone diagram can be grouped`);
 }
 
+/**
+ * Threat-model conventions, applied wherever RENDERING would activate the
+ * notation (a plane's, or the model's with no planes) — the same plane pick as
+ * validateGit. Deliberately lax, as C4 is: boundaries nest, elements may hold
+ * elements. The one structural rule is that a data flow connects elements,
+ * never a boundary — a boundary is a line around things, and an arrow into it
+ * says nothing.
+ */
+function validateThreatModel(ctx: Ctx): void {
+  const { issues, m } = ctx;
+  const plane = ctx.planes.find((p) => (p.notation ?? m.notation) === TM_NOTATION);
+  const modelLevel = plane === undefined && ctx.planes.length === 0 && m.notation === TM_NOTATION;
+  if (plane === undefined && !modelLevel) return;
+  const boundaries = new Set(m.nodes.filter((n) => n.type === TM_BOUNDARY_TYPE).map((n) => n.id));
+  for (const r of m.relations) {
+    if (r.kind !== TM_FLOW_KIND) continue;
+    const end = boundaries.has(r.from) ? r.from : boundaries.has(r.to) ? r.to : undefined;
+    if (end !== undefined) report(issues, 'tm-flow-boundary', `Data flow '${r.id}' touches the trust boundary '${end}'; flows connect elements, a boundary only surrounds them`, r.id);
+  }
+}
+
 export function validate(m: DiagramModel): ValidationIssue[] {
   const ctx: Ctx = {
     issues: [],
@@ -686,11 +749,13 @@ export function validate(m: DiagramModel): ValidationIssue[] {
   validatePlaneHides(ctx);
   validateContainment(ctx);
   validateRelations(ctx);
+  validateThreats(ctx);
   validateCycles(ctx);
   validateGit(ctx);
   validateActivity(ctx);
   validateSecondOrder(ctx);
   validateFishbone(ctx);
+  validateThreatModel(ctx);
   return ctx.issues;
 }
 

@@ -9,9 +9,12 @@ import type {
   EdgeLabelPlacement,
   LayoutOverlay,
   LayoutSettings,
+  NotePlacement,
   Stroke,
   TextRun,
+  Threat,
 } from './types';
+import { threatTargetKey, type ThreatTarget } from './threat-model';
 import { resolveContainmentPlane } from './view/compile';
 import { addStroke, deleteStroke, pruneDrawingsPlane } from './drawings';
 import { relationLabels } from './labels';
@@ -19,6 +22,7 @@ import {
   addContainment,
   addNode,
   addRelation,
+  addThreat,
   CommandError,
   deleteLayer,
   deleteNode,
@@ -27,6 +31,7 @@ import {
   groupNodes,
   mergeLayers,
   removeContainment,
+  removeThreat,
   renameNode,
   setDiagramLegend,
   setDiagramNotation,
@@ -37,11 +42,13 @@ import {
   setTableColumns,
   subtreeOf,
   updateRelation,
+  updateThreat,
   upsertLayer,
   upsertPlane,
   type NodeDetails,
   type RelationOptsInput,
   type RelationPatch,
+  type ThreatPatch,
 } from './mutate';
 
 export interface EditorState {
@@ -82,6 +89,11 @@ export type EditorCommand =
   | { type: 'set-node-details'; id: string; details: NodeDetails }
   | { type: 'set-node-rich'; id: string; runs: TextRun[] }
   | { type: 'set-table-columns'; id: string; columns: Column[] }
+  /** STRIDE findings ride on the node/relation they are about, so the three
+   * threat commands take a {@link ThreatTarget} instead of a bare id. */
+  | { type: 'add-threat'; target: ThreatTarget; threat: Threat }
+  | { type: 'update-threat'; target: ThreatTarget; id: string; patch: ThreatPatch }
+  | { type: 'remove-threat'; target: ThreatTarget; id: string }
   | { type: 'set-node-plane-hidden'; nodeId: string; plane: string; hidden: boolean }
   | { type: 'set-diagram-style'; style: string | null }
   | { type: 'set-diagram-notation'; notation: string | null }
@@ -108,6 +120,13 @@ export type EditorCommand =
    * (LayoutOverlay.unfolded); `[]` clears it */
   | { type: 'set-unfolded'; plane?: string; ids: string[] }
   | { type: 'set-layout-settings'; plane?: string; patch: Partial<LayoutSettings> }
+  /** a threat note was dragged: its offset from the automatic anchor, or null to
+   * let it sit beside its element again. Layout-only — the threats stay put. */
+  | { type: 'set-note-offset'; target: ThreatTarget; plane?: string; offset: { dx: number; dy: number } | null }
+  /** open or close one element's threat bubble in this picture (saved, so the export shows it) */
+  | { type: 'set-note-open'; target: ThreatTarget; plane?: string; open: boolean }
+  /** every element in the model that carries a threat, at once — the `Notes` chip */
+  | { type: 'set-notes-open'; plane?: string; open: boolean }
   | { type: 'add-stroke'; plane?: string; stroke: Stroke }
   | { type: 'delete-stroke'; plane?: string; id: string }
   /** several commands as one step: applied in order, all or nothing, one undo entry */
@@ -187,6 +206,67 @@ export function withEdgeLabelPlacements(
 }
 
 /**
+ * `layout` with one plane's note bucket replaced, normalised: an entry at the
+ * automatic spot that is not open (`{ dx: 0, dy: 0 }`) says nothing and is
+ * dropped, then an emptied bucket and an emptied map are omitted — the
+ * set-plane-layout hygiene, so a bubble dragged back and closed leaves no
+ * trace in the file.
+ */
+function withNoteBucket(layout: LayoutOverlay, key: string, bucket: Record<string, NotePlacement>): LayoutOverlay {
+  const kept: Record<string, NotePlacement> = {};
+  for (const [tk, p] of Object.entries(bucket)) {
+    if (p.dx === 0 && p.dy === 0 && p.open !== true) continue;
+    kept[tk] = p;
+  }
+  const { notes: current = {}, ...rest } = layout;
+  const { [key]: _drop, ...others } = current;
+  const next = Object.keys(kept).length > 0 ? { ...others, [key]: kept } : others;
+  return Object.keys(next).length > 0 ? { ...rest, notes: next } : rest;
+}
+
+/** one entry rewritten through `f` (absent = automatic, closed) */
+function withNote(
+  layout: LayoutOverlay,
+  key: string,
+  target: ThreatTarget,
+  f: (current: NotePlacement) => NotePlacement,
+): LayoutOverlay {
+  const tk = threatTargetKey(target);
+  const bucket = { ...(layout.notes?.[key] ?? {}) };
+  bucket[tk] = f(bucket[tk] ?? { dx: 0, dy: 0 });
+  return withNoteBucket(layout, key, bucket);
+}
+
+/** `open` set or removed on `p` — never `open: false`, see NotePlacement */
+function withOpen(p: NotePlacement, open: boolean): NotePlacement {
+  const { open: _drop, ...rest } = p;
+  return open ? { ...rest, open: true } : rest;
+}
+
+/**
+ * Mirror hygiene for `notes` after a command changed the model: a note exists
+ * only while its element has a threat, so an offset for an element that lost
+ * its last threat — or was deleted — is dead data. Identity is kept when
+ * nothing is dropped, like pruneEdgeLabels.
+ */
+function pruneNotes(layout: LayoutOverlay, before: DiagramModel, after: DiagramModel): LayoutOverlay {
+  if (layout.notes === undefined || (before.nodes === after.nodes && before.relations === after.relations)) return layout;
+  const alive = new Set<string>();
+  for (const n of after.nodes) if ((n.threats?.length ?? 0) > 0) alive.add(threatTargetKey({ node: n.id }));
+  for (const r of after.relations) if ((r.threats?.length ?? 0) > 0) alive.add(threatTargetKey({ relation: r.id }));
+  let changed = false;
+  const planes: NonNullable<LayoutOverlay['notes']> = {};
+  for (const [key, bucket] of Object.entries(layout.notes)) {
+    const kept = Object.fromEntries(Object.entries(bucket).filter(([tk]) => alive.has(tk)));
+    if (Object.keys(kept).length !== Object.keys(bucket).length) changed = true;
+    if (Object.keys(kept).length > 0) planes[key] = kept;
+  }
+  if (!changed) return layout;
+  const { notes: _drop, ...rest } = layout;
+  return Object.keys(planes).length > 0 ? { ...rest, notes: planes } : rest;
+}
+
+/**
  * Mirror hygiene for `edgeLabels` after a command changed the relations: drop
  * the placement of a label that no longer exists (its relation or the label
  * itself is gone), and of one whose position the command just set in the MODEL
@@ -223,7 +303,8 @@ function pruneEdgeLabels(layout: LayoutOverlay, before: DiagramModel, after: Dia
 
 /**
  * Drop every layout structure keyed by `plane` — its positions bucket, manual
- * flag, layout settings, unfolded list and label placements (the "mirror hygiene" for deleting a plane). An
+ * flag, layout settings, unfolded list, label placements and threat-bubble
+ * entries (the "mirror hygiene" for deleting a plane). An
  * emptied `manual`/`settings` map is omitted entirely, mirroring
  * set-plane-layout / set-layout-settings. Returns the input `layout` unchanged
  * when `plane` had no layout state at all.
@@ -234,7 +315,8 @@ function prunePlaneLayout(layout: LayoutOverlay, plane: string): LayoutOverlay {
     (layout.manual !== undefined && plane in layout.manual) ||
     (layout.settings !== undefined && plane in layout.settings) ||
     (layout.unfolded !== undefined && plane in layout.unfolded) ||
-    (layout.edgeLabels !== undefined && plane in layout.edgeLabels);
+    (layout.edgeLabels !== undefined && plane in layout.edgeLabels) ||
+    (layout.notes !== undefined && plane in layout.notes);
   if (!hasState) return layout;
 
   const next: LayoutOverlay = { ...withUnfolded(layout, plane, []), planes: { ...layout.planes } };
@@ -253,6 +335,11 @@ function prunePlaneLayout(layout: LayoutOverlay, plane: string): LayoutOverlay {
     const { [plane]: _dropLabels, ...labelsRest } = layout.edgeLabels;
     if (Object.keys(labelsRest).length > 0) next.edgeLabels = labelsRest;
     else delete next.edgeLabels;
+  }
+  if (layout.notes !== undefined) {
+    const { [plane]: _dropNotes, ...notesRest } = layout.notes;
+    if (Object.keys(notesRest).length > 0) next.notes = notesRest;
+    else delete next.notes;
   }
   return next;
 }
@@ -275,6 +362,12 @@ function applyModelLayout(state: ModelLayout, command: EditorCommand): ModelLayo
       return { model: setNodeRich(model, command.id, command.runs), layout };
     case 'set-table-columns':
       return { model: setTableColumns(model, command.id, command.columns), layout };
+    case 'add-threat':
+      return { model: addThreat(model, command.target, command.threat), layout };
+    case 'update-threat':
+      return { model: updateThreat(model, command.target, command.id, command.patch), layout };
+    case 'remove-threat':
+      return { model: removeThreat(model, command.target, command.id), layout };
     case 'set-node-plane-hidden':
       return { model: setNodePlaneHidden(model, command.nodeId, command.plane, command.hidden), layout };
     case 'set-diagram-style':
@@ -392,6 +485,38 @@ function applyModelLayout(state: ModelLayout, command: EditorCommand): ModelLayo
       const { settings: _drop, ...rest } = layout;
       return { model, layout: Object.keys(settings).length > 0 ? { ...rest, settings } : rest };
     }
+    case 'set-note-offset':
+      // `null` = back to the automatic spot; whether the bubble is open is a
+      // separate fact and survives the move
+      return {
+        model,
+        layout: withNote(layout, layoutPlaneKey(model, command.plane), command.target, (p) => ({
+          ...p,
+          ...(command.offset ?? { dx: 0, dy: 0 }),
+        })),
+      };
+    case 'set-note-open':
+      return {
+        model,
+        layout: withNote(layout, layoutPlaneKey(model, command.plane), command.target, (p) => withOpen(p, command.open)),
+      };
+    case 'set-notes-open': {
+      // Model-wide: every element that carries a threat, whether or not this
+      // plane draws it. An entry for an undrawn element is harmless (nothing
+      // renders it) and far simpler than threading the compiled view into
+      // core; allNotesOpen counts the same set, so the chip cannot disagree.
+      const key = layoutPlaneKey(model, command.plane);
+      const bucket = { ...(layout.notes?.[key] ?? {}) };
+      const targets: ThreatTarget[] = [
+        ...model.nodes.filter((n) => (n.threats?.length ?? 0) > 0).map((n) => ({ node: n.id })),
+        ...model.relations.filter((r) => (r.threats?.length ?? 0) > 0).map((r) => ({ relation: r.id })),
+      ];
+      for (const t of targets) {
+        const tk = threatTargetKey(t);
+        bucket[tk] = withOpen(bucket[tk] ?? { dx: 0, dy: 0 }, command.open);
+      }
+      return { model, layout: withNoteBucket(layout, key, bucket) };
+    }
     default:
       throw new CommandError(`Unknown command type '${(command as { type: string }).type}'`);
   }
@@ -414,7 +539,11 @@ export function applyCommand(state: EditorState, command: EditorCommand): Editor
     }
     default: {
       const next = applyModelLayout(state, command);
-      return { model: next.model, layout: pruneEdgeLabels(next.layout, model, next.model), drawings };
+      return {
+        model: next.model,
+        layout: pruneNotes(pruneEdgeLabels(next.layout, model, next.model), model, next.model),
+        drawings,
+      };
     }
   }
 }

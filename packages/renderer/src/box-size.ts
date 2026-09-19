@@ -3,9 +3,23 @@ import type { Registry, ShapeId, TypeStyle } from './registry';
 import type { SizeHint } from './layout-graph';
 import { typeSubtitle } from './type-subtitle';
 
-/** leaf shapes with no CSS-natural size (padding/min-width zeroed): the RF
- * wrapper must get the layout's size explicitly, like image/shape leaves */
-export const FORCED_SIZE_SHAPES: ReadonlySet<string> = new Set(['circle', 'diamond', 'bar', 'start-dot', 'end-bullseye']);
+/** Leaf shapes with no CSS-natural size (padding/min-width zeroed): the RF
+ * wrapper must get the layout's size explicitly, like image/shape leaves.
+ * The DFD pair are here for the other reason a shape belongs on this list —
+ * an ellipse and a data store read as a FOOTPRINT, not as a wrapper around a
+ * label: a label-hugging ellipse drawn inside the 150×90 the layout reserved
+ * for it looks broken, and the two rules of a store have nothing to hug at all.
+ * The registry `defaultSize` reaches elk through useViewLayout, and an overlay
+ * `sizes` entry (a resize, a studio template) still wins there. */
+export const FORCED_SIZE_SHAPES: ReadonlySet<string> = new Set([
+  'circle',
+  'diamond',
+  'bar',
+  'start-dot',
+  'end-bullseye',
+  'ellipse',
+  'store',
+]);
 /** activity chrome renders width/height:100% of its wrapper — an EMPTY lane or
  * frame is compiled 'leaf' and would otherwise collapse to 0×0 */
 export const ACTIVITY_CHROME_TYPES: ReadonlySet<string> = new Set(['activity-frame', 'activity-lane', 'activity-region']);

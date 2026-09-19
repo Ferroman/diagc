@@ -1,4 +1,4 @@
-import { consequenceOrders, GIT_STAGE_TYPE, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type Size, type ViewEdge } from '@diagramming/core';
+import { consequenceOrders, GIT_STAGE_TYPE, TM_BOUNDARY_TYPE, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type Size, type ViewEdge } from '@diagramming/core';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';
@@ -161,6 +161,25 @@ const FISHBONE: NotationProfile = {
   edge: { colorOf: fishboneEdgeColor },
 };
 
+// ---- Threat model -------------------------------------------------------------
+// A stencil notation like C4: registry shapes carry the vocabulary and elk
+// arranges. The one thing the profile adds is the boundary red — id-keyed
+// through colorOf so it applies whatever the diagram's typeColors say, while an
+// explicit node colour still wins (the accent chain is unchanged).
+/** Trust-boundary red. A literal, like the C4 palette above: it is the
+ * notation's identity and reads the same in both themes. */
+export const TM_BOUNDARY_COLOR = '#c62828';
+
+function boundaryColors(model: DiagramModel): ReadonlyMap<string, string> {
+  return new Map(model.nodes.filter((n) => n.type === TM_BOUNDARY_TYPE).map((n) => [n.id, TM_BOUNDARY_COLOR]));
+}
+
+const THREAT_MODEL: NotationProfile = {
+  id: 'threat-model',
+  className: 'dg-notation-tm',
+  node: { colorOf: boundaryColors },
+};
+
 // Record<NotationId, ...> keying means adding a notation id to BUILTIN_NOTATIONS
 // forces a compile error here until its profile is added — intended.
 export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
@@ -169,6 +188,7 @@ export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
   c4: C4,
   'second-order': SECOND_ORDER,
   fishbone: FISHBONE,
+  'threat-model': THREAT_MODEL,
 };
 
 const DEFAULT_PROFILE: NotationProfile = { id: 'default' };

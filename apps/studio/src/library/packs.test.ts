@@ -267,3 +267,28 @@ describe('Fishbone pack', () => {
     expect(entries.map((e) => e.id)).toEqual(['fb-effect', 'fb-category', 'fb-cause']);
   });
 });
+
+describe('Threat model pack', () => {
+  const entries = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'threat-model');
+
+  it('bundles the STRIDE data-flow stencils, entries keyed by the four notation type ids', () => {
+    expect(BUNDLED_LIBRARY.categories.some((c) => c.id === 'threat-model')).toBe(true);
+    expect(entries.map((e) => e.id)).toEqual(['tm-entity', 'tm-process', 'tm-store', 'tm-boundary']);
+  });
+
+  it('drops each stencil at the size its DFD shape reads at', () => {
+    const size = (id: string) => {
+      const t = entries.find((e) => e.id === id)?.template;
+      return { width: t?.width, height: t?.height };
+    };
+    expect(size('tm-process')).toEqual({ width: 150, height: 90 });
+    expect(size('tm-store')).toEqual({ width: 150, height: 56 });
+    expect(size('tm-boundary')).toEqual({ width: 320, height: 220 });
+  });
+
+  it('uses node types the renderer styles (no silent fallback to a plain box)', () => {
+    for (const e of entries) {
+      expect(DEFAULT_TYPE_STYLES[e.template.type!], `type '${e.template.type}'`).toBeDefined();
+    }
+  });
+});

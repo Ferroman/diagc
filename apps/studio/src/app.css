@@ -72,7 +72,7 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
 .node-panel, .edge-panel, .lp-panel, .git-panel, .so-panel { display: flex; flex-direction: column; gap: 10px; }
 .lp-panel { border-left: none; border-right: 1px solid var(--dg-border); }
 .panel-head { align-items: center; display: flex; justify-content: space-between; }
-.node-panel h3, .edge-panel h3, .lp-panel h3, .git-panel h3, .so-panel h3 { font-size: 12px; letter-spacing: 0.03em; margin: 0 0 6px; text-transform: uppercase; color: var(--dg-text-muted); }
+.node-panel h3, .edge-panel h3, .lp-panel h3, .git-panel h3, .so-panel h3, .so-panel h4 { font-size: 12px; letter-spacing: 0.03em; margin: 0 0 6px; text-transform: uppercase; color: var(--dg-text-muted); }
 .panel-section { border-top: 1px solid var(--dg-border); padding-top: 10px; }
 .field { display: flex; flex-direction: column; gap: 3px; }
 .field > span { color: var(--dg-text-muted); font-size: 12px; }
@@ -126,6 +126,28 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
 .so-hint { color: var(--dg-text-muted); font-size: 12px; margin: 0; }
 .so-issues { list-style: none; margin: 0; padding: 0; }
 .so-issues li button { background: none; border: none; color: var(--dg-text); cursor: pointer; font: inherit; padding: 3px 0; text-align: left; width: 100%; }
+
+/* One threat per grid row: category, title, the two ratings, the disclosure and
+   Remove. The prose fields sit under the row so they get the panel's width. */
+.threats .threat { padding: 4px 0; }
+.threats .threat + .threat { border-top: 1px solid var(--dg-border); }
+.threats .threat-row, .threats .threat-add { align-items: center; display: grid; gap: 4px; }
+.threats .threat-row { grid-template-columns: 7em 1fr auto auto auto auto; }
+.threats .threat-add { grid-template-columns: 7em 1fr auto; }
+/* grid items default to min-width:auto, and an input's is its ~20-character
+   intrinsic width — enough to push the row past a 300px panel. */
+.threats .threat-row > *, .threats .threat-add > * { min-width: 0; }
+.threats .threat-details { display: flex; flex-direction: column; gap: 4px; padding: 4px 0 0; }
+
+/* The threat-model dock panel stacks its rows instead of laying them side by
+   side as .so-answers does: a flow reads `from → to` over the boundaries it
+   crosses, and that pair of lines wants the panel's whole width. */
+.so-answers.tm-list { flex-direction: column; }
+.tm-list button { text-align: left; }
+.tm-sub { display: block; }
+.tm-group + .tm-group { margin-top: 8px; }
+.tm-threats { list-style: none; margin: 4px 0 0; padding: 0 0 0 8px; }
+.tm-threats li { color: var(--dg-text-muted); font-size: 12px; padding: 1px 0; }
 
 /* excalidraw-style option/color pickers */
 .picker-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }

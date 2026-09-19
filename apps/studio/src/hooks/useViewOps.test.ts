@@ -21,6 +21,12 @@ function harness(
   };
   const cell = <T,>(get: () => T, set: (v: T) => void) => (next: T | ((cur: T) => T)) =>
     set(typeof next === 'function' ? (next as (cur: T) => T)(get()) : next);
+  // The dock tab the user is on. `UseViewOpsOptions` no longer declares a
+  // `setLeftTab` — this recording one is handed over anyway (the object is cast),
+  // as the tripwire for the "a canvas selection never moves the dock" policy:
+  // putting a setLeftTab call back into `select` would move this cell and fail
+  // the test below.
+  let leftTab = 'library';
   const opts = {
     editor: { dispatch: (c: EditorCommand) => dispatched.push(c) },
     model: m,
@@ -43,7 +49,9 @@ function harness(
     },
     setSelection: () => {},
     setRenameId: () => {},
-    setLeftTab: () => {},
+    setLeftTab: (t: string) => {
+      leftTab = t;
+    },
     setLeverageFocus: () => {},
     setCompareId: () => {},
     setLayoutPreview: () => {},
@@ -76,7 +84,14 @@ function harness(
   // note above), so there is no hook order for a plain function to violate.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const ops: ViewOps = useViewOps(opts);
-  return { ops, state, dispatched };
+  return {
+    ops,
+    state,
+    dispatched,
+    get leftTab() {
+      return leftTab;
+    },
+  };
 }
 
 function twoPlanes(): DiagramModel {
@@ -126,6 +141,19 @@ describe('useViewOps layer seeding', () => {
     ops.resetView();
     expect(state.plane).toBeUndefined();
     expect(state.activeLayers).toEqual(['nats', 'monitoring']);
+  });
+});
+
+describe('useViewOps selection and the inspector tab', () => {
+  it('a canvas selection keeps the tab the user chose (the Library stays open while adding)', () => {
+    // Selecting used to flip the dock to Properties, so every node placed from
+    // the Library cost a trip back to the palette. Only the toolbar add and
+    // re-entering edit mode choose the tab now.
+    const h = harness(twoPlanes(), { editing: true });
+    h.ops.select({ kind: 'node', id: 'a' });
+    expect(h.leftTab).toBe('library');
+    h.ops.select({ kind: 'edge', id: 'x' });
+    expect(h.leftTab).toBe('library');
   });
 });
 

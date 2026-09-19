@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import type { Edge, EdgeTypes, Node, NodeTypes } from '@xyflow/react';
 import { DiagramEdge, type DiagramEdgeData } from './DiagramEdge';
 import { DiagramNode, type DiagramNodeData } from './DiagramNode';
+import { NoteNode, type NoteData } from './NoteNode';
 
 // The single boundary where React Flow v12's typing is widened. v12 types
 // nodeTypes/edgeTypes as components taking full NodeProps/EdgeProps while our
@@ -9,7 +10,7 @@ import { DiagramNode, type DiagramNodeData } from './DiagramNode';
 // while we carry our own DiagramNodeData/DiagramEdgeData. All the unsafe
 // `as unknown as` casts live here so reviewers can audit the whole boundary in
 // one commented location.
-export const nodeTypes = { diagram: DiagramNode } as unknown as NodeTypes;
+export const nodeTypes = { diagram: DiagramNode, note: NoteNode } as unknown as NodeTypes;
 export const edgeTypes = { diagram: DiagramEdge } as unknown as EdgeTypes;
 
 /** what the derived-nodes memo needs to hand React Flow besides the typed data */
@@ -39,6 +40,28 @@ export function toRfNode(input: RfNodeInput): Node {
     ...(input.expandParent !== undefined ? { expandParent: input.expandParent } : {}),
     ...(input.style !== undefined ? { style: input.style } : {}),
     ...(input.zIndex !== undefined ? { zIndex: input.zIndex } : {}),
+  };
+}
+
+/** a threat note's React Flow node (see NoteNode) — the same widening as toRfNode */
+export interface RfNoteInput {
+  id: string;
+  position: { x: number; y: number };
+  data: NoteData;
+  parentId?: string;
+  draggable: boolean;
+}
+export function toRfNoteNode(input: RfNoteInput): Node {
+  return {
+    id: input.id,
+    type: 'note',
+    position: input.position,
+    data: input.data as unknown as Record<string, unknown>,
+    ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
+    draggable: input.draggable,
+    selectable: false,
+    // above the boxes it annotates, below nothing that matters
+    zIndex: 2,
   };
 }
 

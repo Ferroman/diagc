@@ -52,6 +52,27 @@ export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
           isRecord(plane) && Object.values(plane).every((rel) => isRecord(rel) && Object.values(rel).every(placementOk)),
       ));
   if (!edgeLabelsOk) return false;
+  // A note offset is drawn straight into a transform, so a NaN or an Infinity
+  // here is a note the reader can never find again — finiteness is checked, not
+  // just the type.
+  const finiteNum = (v: unknown): boolean => typeof v === 'number' && Number.isFinite(v);
+  const notes = (u as { notes?: unknown }).notes;
+  const notesOk =
+    notes === undefined ||
+    (isRecord(notes) &&
+      Object.values(notes).every(
+        (plane) =>
+          isRecord(plane) &&
+          Object.values(plane).every(
+            (o) =>
+              isRecord(o) &&
+              finiteNum(o['dx']) &&
+              finiteNum(o['dy']) &&
+              // `true` or absent: a stored `false` would be a second spelling of "closed"
+              (o['open'] === undefined || o['open'] === true),
+          ),
+      ));
+  if (!notesOk) return false;
   // `export` is export-only presentation (see LayoutOverlay): an object whose
   // only field today is a list of node ids. Validate it structurally so a typo
   // is a 400 from the studio's save endpoint rather than a silently ignored

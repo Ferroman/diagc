@@ -11,6 +11,7 @@ import {
 } from './commands';
 import { emptyDrawings } from './drawings';
 import { CommandError } from './mutate';
+import { TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from './threat-model';
 
 function state(): EditorState {
   const m = model('t');
@@ -548,5 +549,208 @@ describe('viewer label placements (LayoutOverlay.edgeLabels)', () => {
     const calls = s.model.relations[0]!;
     s = applyCommand(s, { type: 'update-relation', id: calls.id, patch: { description: 'unrelated' } });
     expect(s.layout.edgeLabels?.['default']?.[calls.id]).toEqual({ legacy: { t: 0.2, side: 'top' } });
+  });
+});
+
+describe('threat commands', () => {
+  function threatState(): EditorState {
+    const m = model('t');
+    const a = m.node('a', { type: TM_PROCESS_TYPE });
+    const b = m.node('b', { type: TM_STORE_TYPE });
+    m.relate(a, b, { kind: TM_FLOW_KIND });
+    return { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
+  }
+  /** the builder's synthesized id for the single a->b flow */
+  const flowId = 'a->b#0';
+
+  it('add-threat puts a finding on a node and on a flow, leaving the layout untouched', () => {
+    const before = threatState();
+    const onNode = applyCommand(before, {
+      type: 'add-threat',
+      target: { node: 'a' },
+      threat: { id: 't1', category: 'E', title: 'Admin route' },
+    });
+    expect(onNode.model.nodes[0]?.threats).toEqual([{ id: 't1', category: 'E', title: 'Admin route' }]);
+    expect(onNode.layout).toBe(before.layout);
+
+    const onFlow = applyCommand(onNode, {
+      type: 'add-threat',
+      target: { relation: flowId },
+      threat: { id: 't1', category: 'T', title: 'Tampering' },
+    });
+    expect(onFlow.model.relations[0]?.threats).toEqual([{ id: 't1', category: 'T', title: 'Tampering' }]);
+    expect(onFlow.layout).toBe(before.layout);
+  });
+
+  it('update-threat patches and null-clears, undo-ably (the input model is untouched)', () => {
+    const added = applyCommand(threatState(), {
+      type: 'add-threat',
+      target: { node: 'a' },
+      threat: { id: 't1', category: 'S', title: 'Spoofing', severity: 'high' },
+    });
+    const next = applyCommand(added, {
+      type: 'update-threat',
+      target: { node: 'a' },
+      id: 't1',
+      patch: { status: 'mitigated', severity: null },
+    });
+    expect(next.model.nodes[0]?.threats).toEqual([
+      { id: 't1', category: 'S', title: 'Spoofing', status: 'mitigated' },
+    ]);
+    expect(added.model.nodes[0]?.threats?.[0]?.severity).toBe('high');
+    expect(next.layout).toBe(added.layout);
+  });
+
+  it('remove-threat drops it, and an unknown id is a CommandError', () => {
+    const added = applyCommand(threatState(), {
+      type: 'add-threat',
+      target: { relation: flowId },
+      threat: { id: 't1', category: 'I', title: 'Leak' },
+    });
+    const next = applyCommand(added, { type: 'remove-threat', target: { relation: flowId }, id: 't1' });
+    expect(next.model.relations[0]?.threats).toBeUndefined();
+    expect(next.layout).toBe(added.layout);
+    expect(() =>
+      applyCommand(next, { type: 'remove-threat', target: { relation: flowId }, id: 't1' }),
+    ).toThrow(CommandError);
+  });
+
+  it('carries the three through applyCommandWithResult with no relation id', () => {
+    const r = applyCommandWithResult(threatState(), {
+      type: 'add-threat',
+      target: { node: 'a' },
+      threat: { id: 't1', category: 'R', title: 'No audit log' },
+    });
+    expect(r.relationId).toBeUndefined();
+    expect(r.state.model.nodes[0]?.threats).toHaveLength(1);
+  });
+});
+
+describe('threat notes (layout-only)', () => {
+  /** the builder's synthesized id for the single a->b flow */
+  const flowId = 'a->b#0';
+
+  /** node `a` and flow `a->b#0`, each carrying one threat: the two elements a
+   * note can hang off. Plane-less, so every key resolves to `default`. */
+  function noteState(): EditorState {
+    const m = model('t');
+    const a = m.node('a', { type: TM_PROCESS_TYPE });
+    const b = m.node('b', { type: TM_STORE_TYPE });
+    m.relate(a, b, { kind: TM_FLOW_KIND });
+    let s: EditorState = { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
+    s = applyCommand(s, { type: 'add-threat', target: { node: 'a' }, threat: { id: 't1', category: 'E', title: 'Admin route' } });
+    s = applyCommand(s, { type: 'add-threat', target: { relation: flowId }, threat: { id: 't1', category: 'T', title: 'MITM' } });
+    return s;
+  }
+
+  it('set-note-offset writes and clears the plane bucket', () => {
+    const before = noteState();
+    const key = layoutPlaneKey(before.model);
+    const s1 = applyCommand(before, { type: 'set-note-offset', target: { node: 'a' }, offset: { dx: 10, dy: -5 } });
+    expect(s1.layout.notes).toEqual({ [key]: { 'node:a': { dx: 10, dy: -5 } } });
+    expect(s1.model).toBe(before.model); // model untouched — this is a picture, not a finding
+    const s2 = applyCommand(s1, { type: 'set-note-offset', target: { node: 'a' }, offset: null });
+    expect(s2.layout.notes).toBeUndefined(); // emptied bucket and map are omitted
+  });
+
+  it('set-note-offset scopes to the named plane and keeps the two namespaces apart', () => {
+    let s = applyCommand(noteState(), { type: 'set-note-offset', target: { node: 'a' }, offset: { dx: 1, dy: 2 } });
+    s = applyCommand(s, { type: 'set-note-offset', target: { relation: flowId }, offset: { dx: 3, dy: 4 } });
+    expect(s.layout.notes?.['default']).toEqual({ 'node:a': { dx: 1, dy: 2 }, [`relation:${flowId}`]: { dx: 3, dy: 4 } });
+  });
+
+  it('set-note-open writes open: true, and clearing it prunes an offset-less entry', () => {
+    const before = noteState();
+    const key = layoutPlaneKey(before.model);
+    const s1 = applyCommand(before, { type: 'set-note-open', target: { node: 'a' }, open: true });
+    expect(s1.layout.notes).toEqual({ [key]: { 'node:a': { dx: 0, dy: 0, open: true } } });
+    expect(s1.model).toBe(before.model);
+    // closing a bubble that was never dragged leaves no trace in the file
+    expect(applyCommand(s1, { type: 'set-note-open', target: { node: 'a' }, open: false }).layout.notes).toBeUndefined();
+  });
+
+  it('set-note-open keeps a dragged offset either way, and set-note-offset keeps open', () => {
+    const key = layoutPlaneKey(noteState().model);
+    let s = applyCommand(noteState(), { type: 'set-note-offset', target: { node: 'a' }, offset: { dx: 10, dy: 5 } });
+    s = applyCommand(s, { type: 'set-note-open', target: { node: 'a' }, open: true });
+    expect(s.layout.notes?.[key]?.['node:a']).toEqual({ dx: 10, dy: 5, open: true });
+    s = applyCommand(s, { type: 'set-note-open', target: { node: 'a' }, open: false });
+    expect(s.layout.notes?.[key]?.['node:a']).toEqual({ dx: 10, dy: 5 }); // closed: reopens where it was left
+    s = applyCommand(s, { type: 'set-note-open', target: { node: 'a' }, open: true });
+    // `null` = back to the automatic spot; the bubble stays open
+    s = applyCommand(s, { type: 'set-note-offset', target: { node: 'a' }, offset: null });
+    expect(s.layout.notes?.[key]?.['node:a']).toEqual({ dx: 0, dy: 0, open: true });
+  });
+
+  it('set-notes-open opens every threat-bearing element and closes them all again', () => {
+    const before = noteState();
+    const key = layoutPlaneKey(before.model);
+    const s1 = applyCommand(before, { type: 'set-notes-open', open: true });
+    expect(s1.layout.notes).toEqual({
+      [key]: { 'node:a': { dx: 0, dy: 0, open: true }, [`relation:${flowId}`]: { dx: 0, dy: 0, open: true } },
+    });
+    // `b` has no threats, so it gets no entry
+    expect(s1.layout.notes?.[key]?.['node:b']).toBeUndefined();
+    const dragged = applyCommand(s1, { type: 'set-note-offset', target: { node: 'a' }, offset: { dx: 3, dy: 3 } });
+    const s2 = applyCommand(dragged, { type: 'set-notes-open', open: false });
+    // close-all keeps offsets and drops the rest
+    expect(s2.layout.notes).toEqual({ [key]: { 'node:a': { dx: 3, dy: 3 } } });
+  });
+
+  it('set-notes-open scopes to the named plane', () => {
+    const m = model('t');
+    m.plane('p');
+    const a = m.node('a', { type: TM_PROCESS_TYPE });
+    m.node('sys', { type: 'system' }).contains(a, { plane: 'p' });
+    const base: EditorState = { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
+    const withThreat = applyCommand(base, { type: 'add-threat', target: { node: 'a' }, threat: { id: 't1', category: 'E', title: 'Admin route' } });
+    const s = applyCommand(withThreat, { type: 'set-notes-open', plane: 'p', open: true });
+    expect(s.layout.notes).toEqual({ p: { 'node:a': { dx: 0, dy: 0, open: true } } });
+  });
+
+  it('prunes a note offset when its element loses its last threat or is deleted', () => {
+    const before = noteState();
+    const key = layoutPlaneKey(before.model);
+    const s1 = applyCommand(before, { type: 'set-note-offset', target: { node: 'a' }, offset: { dx: 1, dy: 1 } });
+    const s2 = applyCommand(s1, { type: 'set-note-offset', target: { relation: flowId }, offset: { dx: 2, dy: 2 } });
+
+    const gone = applyCommand(s2, { type: 'remove-threat', target: { node: 'a' }, id: 't1' });
+    expect(Object.keys(gone.layout.notes?.[key] ?? {})).toEqual([`relation:${flowId}`]);
+
+    const del = applyCommand(s2, { type: 'delete-relation', id: flowId });
+    expect(Object.keys(del.layout.notes?.[key] ?? {})).toEqual(['node:a']);
+
+    const deleted = applyCommand(s2, { type: 'delete-node', id: 'a' });
+    expect(deleted.layout.notes?.[key]?.['node:a']).toBeUndefined();
+
+    // an untouched overlay keeps its identity (no needless re-render / re-save)
+    const same = applyCommand(s2, { type: 'rename-node', id: 'a', name: 'A2' });
+    expect(same.layout).toBe(s2.layout);
+  });
+
+  it('drops the notes map entirely when its last entry dies', () => {
+    let s = applyCommand(noteState(), { type: 'set-note-offset', target: { node: 'a' }, offset: { dx: 1, dy: 1 } });
+    s = applyCommand(s, { type: 'remove-threat', target: { node: 'a' }, id: 't1' });
+    expect(s.layout.notes).toBeUndefined();
+  });
+
+  it('delete-plane drops the plane’s notes', () => {
+    const m = model('t');
+    m.plane('p');
+    const a = m.node('a', { type: TM_PROCESS_TYPE });
+    m.node('sys', { type: 'system' }).contains(a, { plane: 'p' });
+    const base: EditorState = { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
+    const withThreat = applyCommand(base, {
+      type: 'add-threat',
+      target: { node: 'a' },
+      threat: { id: 't1', category: 'E', title: 'Admin route' },
+    });
+    const s1 = applyCommand(withThreat, { type: 'set-note-offset', target: { node: 'a' }, plane: 'p', offset: { dx: 1, dy: 1 } });
+    // both halves of the entry — the dragged offset and the open flag — so the
+    // prune is proved against a full bucket, not just an offset
+    const s2 = applyCommand(s1, { type: 'set-note-open', target: { node: 'a' }, plane: 'p', open: true });
+    expect(s2.layout.notes).toEqual({ p: { 'node:a': { dx: 1, dy: 1, open: true } } });
+    const s3 = applyCommand(s2, { type: 'delete-plane', id: 'p' });
+    expect(s3.layout.notes).toBeUndefined();
   });
 });

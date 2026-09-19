@@ -3,12 +3,14 @@ import {
   gapOf,
   gitGraph,
   latestCommit,
+  nextCommitId,
   uniqueNodeId,
   type DiagramModel,
   type DiagramNode,
   type EditorCommand,
 } from '@diagramming/core';
 import type { DiagramSelection } from '@diagramming/renderer';
+import { appendCommit } from './gitActions';
 import { ColorRow } from './pickers';
 
 interface GitPanelProps {
@@ -21,16 +23,6 @@ interface GitPanelProps {
   onSelect: (id: string) => void;
 }
 
-/** `${lane}-${n}` with the smallest n not yet taken — the DSL's naming, kept
- * unique even after deletions. */
-function nextCommitId(model: DiagramModel, laneId: string): string {
-  const taken = new Set(model.nodes.map((n) => n.id));
-  for (let n = 1; ; n++) {
-    const id = `${laneId}-${n}`;
-    if (!taken.has(id)) return id;
-  }
-}
-
 const parseGap = (raw: string): number => {
   const n = Number(raw);
   return Number.isInteger(n) && n > 0 ? n : 0;
@@ -40,7 +32,8 @@ const parseGap = (raw: string): number => {
  * The git graph's editing surface. Every action that creates a commit is ONE
  * batch — node, containment and links — so it is one undo step and the model
  * never passes through a state validation would refuse (a commit outside a
- * lane, a link to a node that is not there yet).
+ * lane, a link to a node that is not there yet). "Add commit" is
+ * `appendCommit`, the same action the canvas `+` runs.
  */
 export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPanelProps) {
   const g = gitGraph(model, plane);
@@ -81,15 +74,8 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
 
   const addCommit = () => {
     if (targetLane === '') return;
-    const id = nextCommitId(model, targetLane);
-    const latest = latestCommit(g, targetLane);
-    onCommand({
-      type: 'batch',
-      commands: [
-        { type: 'add-node', node: commitNode(id, tag.trim(), parseGap(gap)), parent: parent(targetLane) },
-        ...(latest !== undefined ? [{ type: 'add-relation' as const, from: latest.id, to: id, opts: { kind: 'commit' } }] : []),
-      ],
-    });
+    const { id, command } = appendCommit(model, plane, targetLane, { tag: tag.trim(), gap: parseGap(gap) });
+    onCommand(command);
     setTag('');
     setGap('0');
     onSelect(id);

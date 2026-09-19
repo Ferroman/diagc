@@ -249,4 +249,32 @@ describe('ejectSource', () => {
     const replayedIds = replay.toJSON().relations.map((r) => r.id);
     expect(replayedIds).toEqual(m.relations.map((r) => r.id));
   });
+
+  it('emits threats on both a node and a relation, and replaying those opts rebuilds the model', () => {
+    const m: DiagramModel = {
+      version: 1, id: 'tm', name: 'tm',
+      nodes: [
+        { id: 'web', name: 'web', type: 'tm-process', threats: [{ id: 't1', category: 'E', title: 'Admin route' }] },
+        { id: 'db', name: 'db', type: 'tm-store' },
+      ],
+      containment: [], layers: [], planes: [],
+      relations: [
+        {
+          id: 'web->db#0', from: 'web', to: 'db', kind: 'data-flow',
+          threats: [{ id: 't1', category: 'I', title: 'Leak', severity: 'high' }],
+        },
+      ],
+    };
+    const src = ejectSource(m);
+    expect(src).toContain("threats: [{ id: 't1', category: 'E', title: 'Admin route' }]");
+    expect(src).toContain("threats: [{ id: 't1', category: 'I', title: 'Leak', severity: 'high' }]");
+
+    // The emitted opt name has to be a real builder opt on both sides, so replay
+    // the same calls through the builder and demand the original model back.
+    const replay = buildModel('tm');
+    const web = replay.node('web', { type: 'tm-process', threats: [{ id: 't1', category: 'E', title: 'Admin route' }] });
+    const db = replay.node('db', { type: 'tm-store' });
+    replay.relate(web, db, { kind: 'data-flow', threats: [{ id: 't1', category: 'I', title: 'Leak', severity: 'high' }] });
+    expect(replay.toJSON()).toEqual(m);
+  });
 });

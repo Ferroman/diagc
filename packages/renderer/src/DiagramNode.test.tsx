@@ -2,10 +2,12 @@
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { describe, expect, it, vi } from 'vitest';
+import { FB_CAUSE_TYPE, FB_EFFECT_TYPE } from '@diagramming/core';
 import { createIconRegistry } from '@diagramming/icons';
 import { createTypeRegistry } from './registry';
-import { notationProfile } from './notations';
+import { notationProfile, TM_BOUNDARY_COLOR } from './notations';
 import { DiagramNode, type DiagramNodeData } from './DiagramNode';
+import { NoteStateContext, type NoteState } from './note-state';
 import { stylePreset } from './stylePresets';
 import { seedFrom, sketchNode } from './sketch';
 
@@ -822,6 +824,20 @@ describe('git graph nodes', () => {
     expect(screen.queryByTestId('fold-chip')).toBeNull();
   });
 
+  it('a selected commit and a selected lane carry the `+`, each pinned to its own wrapper; a stage stays bare', () => {
+    const offer = { label: () => 'Add a commit', run: vi.fn() };
+    const commit = renderNode(base({ typeId: 'commit', label: '', quickAdd: offer }), true);
+    expect(commit.container.querySelector('.dg-circle-node > .dg-quick-add')).toBe(screen.getByRole('button', { name: 'Add a commit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a commit' }));
+    expect(offer.run).toHaveBeenCalledWith('n1');
+    cleanup();
+    const lane = renderNode(base({ typeId: 'branch', label: 'Master', state: 'expanded', quickAdd: offer }), true);
+    expect(lane.container.querySelector('.dg-lane > .dg-quick-add')).toBe(screen.getByRole('button', { name: 'Add a commit' }));
+    cleanup();
+    const stage = renderNode(base({ typeId: 'git-stage', label: 'RC', quickAdd: offer }), true);
+    expect(stage.container.querySelector('.dg-quick-add')).toBeNull();
+  });
+
   it('outside the git notation a branch-typed container is an ordinary group', () => {
     const { container } = renderNode({ ...base({ typeId: 'branch', label: 'Master', state: 'expanded' }), notation: undefined });
     expect(container.querySelector('.dg-lane')).toBeNull();
@@ -850,5 +866,331 @@ describe('fishbone looks', () => {
     const { container } = renderNode({ label: 'Method', typeId: 'fb-category', notation: 'fishbone' });
     expect(container.querySelector('.dg-node')).not.toBeNull();
     expect(container.querySelector('.dg-fb-cause')).toBeNull();
+  });
+});
+
+describe('threat-model looks', () => {
+  it('draws a process as an ellipse and a store as the two-rule glyph', () => {
+    expect(renderNode({ label: 'Verify', typeId: 'tm-process' }).container.querySelector('.dg-shape-ellipse')).not.toBeNull();
+    cleanup();
+    expect(renderNode({ label: 'Users', typeId: 'tm-store' }).container.querySelector('.dg-shape-store')).not.toBeNull();
+  });
+
+  it('badges a leaf with its open threat count', () => {
+    const { container } = renderNode({ label: 'Verify', typeId: 'tm-process', threats: { open: 2, total: 3 } });
+    const badge = container.querySelector('.dg-threat-badge') as HTMLElement;
+    expect(badge.getAttribute('data-state')).toBe('open');
+    expect(badge.textContent).toBe('2');
+    expect(badge.getAttribute('title')).toBe('2 open of 3 threats');
+  });
+
+  it('turns the badge into a tick once every threat is handled', () => {
+    const { container } = renderNode({ label: 'Verify', typeId: 'tm-process', threats: { open: 0, total: 1 } });
+    const badge = container.querySelector('.dg-threat-badge') as HTMLElement;
+    expect(badge.getAttribute('data-state')).toBe('handled');
+    expect(badge.textContent).toBe('✓');
+    // one threat, singular — the same derivation the edge chip uses
+    expect(badge.getAttribute('title')).toBe('0 open of 1 threat');
+  });
+
+  it('under a NoteStateContext the badge is a toggle button that reports its bubble state and flips it', () => {
+    const toggle = vi.fn();
+    // renderNode renders id="n1", so the open key is node:n1
+    const state: NoteState = { isOpen: (key) => key === 'node:n1', toggle, placeChip: vi.fn() };
+    const data: DiagramNodeData = {
+      label: 'Verify',
+      typeId: 'tm-process',
+      state: 'leaf',
+      promoted: false,
+      sharedMembers: [],
+      hiddenCount: 0,
+      typeRegistry: createTypeRegistry(),
+      icons: createIconRegistry(),
+      threats: { open: 2, total: 3 },
+    };
+    const { container } = render(
+      <NoteStateContext.Provider value={state}>
+        <ReactFlowProvider>
+          <DiagramNode id="n1" data={data} />
+        </ReactFlowProvider>
+      </NoteStateContext.Provider>,
+    );
+    const badge = container.querySelector('button.dg-threat-badge') as HTMLButtonElement;
+    expect(badge.getAttribute('data-state')).toBe('open');
+    expect(badge.textContent).toBe('2');
+    expect(badge.getAttribute('title')).toBe('2 open of 3 threats');
+    expect(badge.getAttribute('aria-expanded')).toBe('true');
+    expect(badge.getAttribute('aria-label')).toBe('2 open of 3 threats — hide');
+    const seen = vi.fn();
+    document.body.addEventListener('click', seen);
+    fireEvent.click(badge);
+    expect(toggle).toHaveBeenCalledWith({ node: 'n1' });
+    expect(seen).not.toHaveBeenCalled(); // the canvas never sees it as a node click
+    document.body.removeEventListener('click', seen);
+  });
+
+  it('without a provider the badge stays the passive span it always was', () => {
+    const { container } = renderNode({ label: 'Verify', typeId: 'tm-process', threats: { open: 2, total: 3 } });
+    expect(container.querySelector('button.dg-threat-badge')).toBeNull();
+    expect(container.querySelector('span.dg-threat-badge')).not.toBeNull();
+  });
+
+  it('an external stub keeps the passive span even under a provider — its bubble is another view’s', () => {
+    // The stub stands in for a node this drill view does not draw, and the
+    // note derivation skips externals. A switch here would flip a state
+    // nothing on this canvas can show.
+    const state: NoteState = { isOpen: () => false, toggle: vi.fn(), placeChip: vi.fn() };
+    const data: DiagramNodeData = {
+      label: 'Verify',
+      typeId: 'tm-process',
+      state: 'leaf',
+      promoted: false,
+      sharedMembers: [],
+      hiddenCount: 0,
+      typeRegistry: createTypeRegistry(),
+      icons: createIconRegistry(),
+      external: true,
+      threats: { open: 1, total: 1 },
+    };
+    const { container } = render(
+      <NoteStateContext.Provider value={state}>
+        <ReactFlowProvider>
+          <DiagramNode id="n1" data={data} />
+        </ReactFlowProvider>
+      </NoteStateContext.Provider>,
+    );
+    expect(container.querySelector('button.dg-threat-badge')).toBeNull();
+    const badge = container.querySelector('span.dg-threat-badge') as HTMLElement;
+    expect(badge.getAttribute('data-state')).toBe('open');
+    expect(badge.textContent).toBe('1');
+  });
+
+  it('sketches the ellipse and the store across the whole forced box in rough mode', () => {
+    // Both are FORCED_SIZE_SHAPES, so the wrapper's size IS the drawn box — the
+    // sketch must span it rather than fall back to the box path at some other
+    // size. The path identity is what proves the mapping (presence alone is
+    // vacuous: the box fallback renders the same svg).
+    const rough = stylePreset('sketch').rough!;
+    const process = renderNode(
+      { typeId: 'tm-process', stylePreset: stylePreset('sketch') },
+      undefined,
+      { width: 150, height: 90 },
+    );
+    const processPath = process.container.querySelector('.dg-sketch-stroke')?.getAttribute('d') ?? '';
+    expect(processPath).toBe(sketchNode('ellipse', 150, 90, seedFrom('n1'), rough, 0).stroke);
+    expect(processPath).not.toBe(sketchNode('box', 150, 90, seedFrom('n1'), rough, 0).stroke);
+    cleanup();
+    const store = renderNode(
+      { typeId: 'tm-store', stylePreset: stylePreset('sketch') },
+      undefined,
+      { width: 150, height: 56 },
+    );
+    const storePath = store.container.querySelector('.dg-sketch-stroke')?.getAttribute('d') ?? '';
+    expect(storePath).toBe(sketchNode('store', 150, 56, seedFrom('n1'), rough, 0).stroke);
+    expect(storePath).not.toBe(sketchNode('box', 150, 56, seedFrom('n1'), rough, 0).stroke);
+  });
+
+  it('badges nothing on an element that carries no threats', () => {
+    expect(renderNode({ label: 'Verify', typeId: 'tm-process' }).container.querySelector('.dg-threat-badge')).toBeNull();
+    cleanup();
+    // an empty register is not a clean bill of health — still no badge
+    const { container } = renderNode({ label: 'Verify', typeId: 'tm-process', threats: { open: 0, total: 0 } });
+    expect(container.querySelector('.dg-threat-badge')).toBeNull();
+  });
+
+  it('badges an expanded trust boundary too — inside the group box', () => {
+    // The profile's colorOf is what supplies the red here (see notations.ts);
+    // the boundary must land on the outline path, drawing the pure dashed line
+    // rather than an accent wash.
+    const { container } = renderNode({
+      label: 'DMZ',
+      typeId: 'tm-boundary',
+      state: 'expanded',
+      color: TM_BOUNDARY_COLOR,
+      threats: { open: 1, total: 1 },
+    });
+    const group = container.querySelector('.dg-group') as HTMLElement;
+    expect(group.classList.contains('dg-group-outline')).toBe(true);
+    expect(group.classList.contains('dg-dashed')).toBe(true);
+    expect(group.style.borderColor).toBe('rgb(198, 40, 40)'); // jsdom normalizes #c62828
+    expect(group.querySelector('.dg-threat-badge')?.textContent).toBe('1');
+  });
+
+  it('draws an empty trust boundary as the same red dashed outline', () => {
+    // A boundary with nothing in it yet compiles as a leaf — it must still read
+    // as a boundary, not as an ordinary tinted box.
+    const { container } = renderNode({ label: 'DMZ', typeId: 'tm-boundary', color: TM_BOUNDARY_COLOR });
+    const box = container.querySelector('.dg-node') as HTMLElement;
+    expect(box.classList.contains('dg-c4-outline')).toBe(true);
+    expect(box.classList.contains('dg-dashed')).toBe(true);
+    expect(box.style.borderColor).toBe('rgb(198, 40, 40)');
+    expect(box.style.background).toBe(''); // the line is the look — no wash
+  });
+});
+
+describe('empty threat badge', () => {
+  it('offers "Add a threat" on a threat-model node in edit mode with no threats, and calls the host', () => {
+    const onAddThreat = vi.fn();
+    // renderNode mounts this node as id="n1" — the id the badge must report
+    const { container } = renderNode({ label: 'Web app', typeId: 'tm-process', notation: 'threat-model', onAddThreat });
+    const btn = container.querySelector('.dg-threat-badge[data-state="empty"]') as HTMLButtonElement;
+    expect(btn.tagName).toBe('BUTTON');
+    expect(btn.textContent).toBe('+');
+    expect(btn.getAttribute('aria-label')).toBe('Add a threat');
+    expect(btn.getAttribute('title')).toBe('Add a threat');
+    // Same contract as the quick-add `+`: the canvas must read neither the
+    // press as the start of a drag nor the click as "select". React delegates
+    // its handlers at the render root, so only a listener ABOVE that root can
+    // witness the stop — one on the node div would fire first and prove nothing.
+    const onClick = vi.fn();
+    const onMouseDown = vi.fn();
+    document.body.addEventListener('click', onClick);
+    document.body.addEventListener('mousedown', onMouseDown);
+    try {
+      fireEvent.mouseDown(btn);
+      fireEvent.click(btn);
+    } finally {
+      document.body.removeEventListener('click', onClick);
+      document.body.removeEventListener('mousedown', onMouseDown);
+    }
+    expect(onAddThreat).toHaveBeenCalledWith({ node: 'n1' });
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onMouseDown).not.toHaveBeenCalled();
+  });
+
+  it('draws nothing when there is no host hook (view mode) or another notation', () => {
+    expect(renderNode({ label: 'x', notation: 'threat-model' }).container.querySelector('.dg-threat-badge')).toBeNull();
+    expect(renderNode({ label: 'x', notation: 'c4', onAddThreat: vi.fn() }).container.querySelector('.dg-threat-badge')).toBeNull();
+  });
+
+  it('keeps the counting badge passive once threats exist', () => {
+    const { container } = renderNode({ label: 'x', notation: 'threat-model', threats: { open: 1, total: 1 }, onAddThreat: vi.fn() });
+    expect(container.querySelector('.dg-threat-badge')?.tagName).toBe('SPAN');
+  });
+
+  it('reaches an expanded trust boundary too — the group mount passes its own id', () => {
+    // The group branch mounts its own ThreatBadge: a boundary drawn open is
+    // exactly where a reviewer notices it carries no threats yet.
+    const onAddThreat = vi.fn();
+    const { container } = renderNode({
+      label: 'DMZ',
+      typeId: 'tm-boundary',
+      state: 'expanded',
+      notation: 'threat-model',
+      onAddThreat,
+    });
+    const btn = container.querySelector('.dg-group > .dg-threat-badge[data-state="empty"]') as HTMLButtonElement;
+    fireEvent.click(btn);
+    expect(onAddThreat).toHaveBeenCalledWith({ node: 'n1' });
+  });
+});
+
+describe('QuickAddButton', () => {
+  const quickAdd = (label: string | undefined, run = vi.fn()) => ({ label: () => label, run });
+
+  it('shows on the selected node, named by the label, and reports the click without selecting', () => {
+    const run = vi.fn();
+    const onClick = vi.fn();
+    const { container } = renderNode({ typeId: 'service', quickAdd: quickAdd('Add a connected node', run) }, true);
+    const btn = screen.getByRole('button', { name: 'Add a connected node' });
+    expect(btn.getAttribute('title')).toBe('Add a connected node (Tab)');
+    // in the ordinary box itself, not floating loose in the tree: the CSS hangs
+    // it off that box's right edge
+    expect(container.querySelector('.dg-node.dg-shape-box > .dg-quick-add')).toBe(btn);
+    // The click must not reach the canvas as "select", nor the press as the
+    // start of a drag. React delegates its handlers at the render root, so the
+    // listener has to sit ABOVE that root to witness the stop: one on the node
+    // div would fire before React ever ran our handler and would prove nothing.
+    // React Flow's node wrapper listens through React too, so a click stopped
+    // here never reaches it either.
+    const onMouseDown = vi.fn();
+    document.body.addEventListener('click', onClick);
+    document.body.addEventListener('mousedown', onMouseDown);
+    try {
+      fireEvent.mouseDown(btn);
+      fireEvent.click(btn);
+    } finally {
+      document.body.removeEventListener('click', onClick);
+      document.body.removeEventListener('mousedown', onMouseDown);
+    }
+    expect(run).toHaveBeenCalledWith('n1');
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onMouseDown).not.toHaveBeenCalled();
+  });
+
+  it('is absent when the node is not selected, when there is no hook, and when the label is undefined', () => {
+    // queried by class, not by accessible name: a regression that dropped the
+    // aria-label would leave a `+` button no name query could recognise, and a
+    // name-based absence check would call that a pass.
+    const unselected = renderNode({ typeId: 'service', quickAdd: quickAdd('Add a connected node') }, false);
+    expect(unselected.container.querySelector('.dg-quick-add')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add a connected node' })).toBeNull();
+    cleanup();
+    const noHook = renderNode({ typeId: 'service' }, true);
+    expect(noHook.container.querySelector('.dg-quick-add')).toBeNull();
+    cleanup();
+    const noLabel = renderNode({ typeId: 'service', quickAdd: quickAdd(undefined) }, true);
+    expect(noLabel.container.querySelector('.dg-quick-add')).toBeNull();
+  });
+
+  it('reaches the fishbone head, a cause, a group, a table, a shape and an image', () => {
+    // Each case pins the chip to ITS branch's wrapper: asserting only that some
+    // `+` exists would still pass if a gate stopped matching and the node fell
+    // through to the generic box path.
+    for (const { sel, ...partial } of [
+      { typeId: FB_EFFECT_TYPE, label: 'Outage', sel: '.dg-fb-head > .dg-quick-add' },
+      { typeId: FB_CAUSE_TYPE, label: 'Slow', sel: '.dg-fb-cause > .dg-quick-add' },
+      { typeId: 'system', state: 'expanded' as const, label: 'sys', sel: '.dg-group > .dg-quick-add' },
+      { typeId: 'db-table', label: 'users', sel: '.dg-table > .dg-quick-add' },
+      { typeId: 'service', shape: '/library/shapes/person.svg', label: 'shp', sel: '.dg-shape-node > .dg-quick-add' },
+      { typeId: 'service', image: 'abc123', label: 'img', sel: '.dg-image-node > .dg-quick-add' },
+    ]) {
+      const { container } = renderNode({ ...partial, quickAdd: quickAdd('Add a cause') }, true);
+      expect(container.querySelector(sel)).toBe(screen.getByRole('button', { name: 'Add a cause' }));
+      cleanup();
+    }
+  });
+
+  // `+` and Tab are one action, so a Tab while a name is being typed must do
+  // both halves at once: commit the name, then chain the add. Two keystrokes per
+  // node (Tab to commit, Tab to add) is what the spec's `+`, type, Tab, type …
+  // promise rules out.
+  describe('Tab inside an open label editor', () => {
+    const chain = (run = vi.fn()) => ({ label: () => 'Add a connected node', run });
+
+    it('InlineName: commits the name, then runs the quick add, and swallows the focus move', () => {
+      const offer = chain();
+      const onLabelCommit = vi.fn();
+      renderNode({ state: 'expanded', typeId: 'system', labelEditing: true, onLabelCommit, quickAdd: offer }, true);
+      const input = screen.getByLabelText('Rename') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'accounts' } });
+      expect(fireEvent.keyDown(input, { key: 'Tab' })).toBe(false); // preventDefault: focus stays on the canvas
+      expect(onLabelCommit).toHaveBeenCalledWith('accounts');
+      expect(offer.run).toHaveBeenCalledWith('n1');
+      // the rename has to land first or the add would be built on the stale model
+      expect(onLabelCommit.mock.invocationCallOrder[0]!).toBeLessThan(offer.run.mock.invocationCallOrder[0]!);
+    });
+
+    it('InlineName: Shift+Tab keeps the default — the blur commits, nothing is added', () => {
+      const offer = chain();
+      const onLabelCommit = vi.fn();
+      renderNode({ state: 'expanded', typeId: 'system', labelEditing: true, onLabelCommit, quickAdd: offer }, true);
+      const input = screen.getByLabelText('Rename') as HTMLInputElement;
+      expect(fireEvent.keyDown(input, { key: 'Tab', shiftKey: true })).toBe(true);
+      expect(offer.run).not.toHaveBeenCalled();
+      fireEvent.blur(input);
+      expect(onLabelCommit).toHaveBeenCalledWith('users');
+    });
+
+    it('the rich box editor: commits the runs, then runs the quick add', () => {
+      const offer = chain();
+      const onRichCommit = vi.fn();
+      const { container } = renderNode({ labelEditing: true, onRichCommit, quickAdd: offer }, true);
+      const el = container.querySelector('.dg-rich-input') as HTMLElement;
+      el.innerHTML = 'ledger';
+      expect(fireEvent.keyDown(el, { key: 'Tab' })).toBe(false);
+      expect(onRichCommit).toHaveBeenCalledWith([{ text: 'ledger' }]);
+      expect(offer.run).toHaveBeenCalledWith('n1');
+    });
   });
 });

@@ -1,9 +1,10 @@
 import { useContext, useRef, type CSSProperties } from 'react';
 import { Handle, NodeResizer, Position } from '@xyflow/react';
-import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, type Column, type FontScale, type NotationId, type TextAlign, type TextRun } from '@diagramming/core';
+import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type TextAlign, type TextRun, type ThreatTarget } from '@diagramming/core';
 import type { IconRegistry } from '@diagramming/icons';
 import type { Registry, TypeStyle } from './registry';
 import { LoopHighlightContext } from './loop-highlight';
+import { NoteStateContext } from './note-state';
 import { notationProfile } from './notations';
 import { RichLabelEditor } from './RichLabelEditor';
 import { runsToDisplay } from './richtext';
@@ -11,6 +12,7 @@ import { SketchShape } from './SketchShape';
 import { TableNode } from './TableNode';
 import type { StylePreset } from './stylePresets';
 import type { SketchShapeKind } from './sketch';
+import { threatBadgeProps } from './threat-badge';
 import { typeSubtitle } from './type-subtitle';
 
 export interface DiagramNodeData {
@@ -61,6 +63,8 @@ export interface DiagramNodeData {
    * [[wikilink]]) — present only when the model's node carries one; drives
    * the corner link badge */
   link?: string;
+  /** open/total STRIDE threats on the element; absent when it carries none */
+  threats?: { open: number; total: number };
   // --- interactions & edit callbacks -------------------------------------
   /** commit rich edits (box leaf nodes); null = cancelled */
   onRichCommit?: (runs: TextRun[] | null) => void;
@@ -81,6 +85,12 @@ export interface DiagramNodeData {
   /** the link badge was clicked; absent falls back to a best-effort
    * new-tab open for http(s) links (see the badge's onClick below) */
   onOpenLink?: (link: string) => void;
+  /** edit: the `+` offer for this node (see EditingApi.quickAdd); absent in
+   * view mode or when the host has no recipe */
+  quickAdd?: { label: (id: string) => string | undefined; run: (id: string) => void };
+  /** edit: open a new threat row on this element's note (see
+   * EditingApi.onAddThreat). Absent in view mode; drives the empty badge. */
+  onAddThreat?: (target: ThreatTarget) => void;
 }
 
 // One connect point per side, all type="source": with the canvas in loose
@@ -107,7 +117,7 @@ function accentStyle(color: string | undefined): CSSProperties | undefined {
 const sketchKind = (shape: string): SketchShapeKind =>
   shape === 'circle' || shape === 'cylinder' || shape === 'hexagon' || shape === 'bubble' ||
   shape === 'person' || shape === 'diamond' || shape === 'bar' || shape === 'start-dot' || shape === 'end-bullseye' ||
-  shape === 'send-signal' || shape === 'receive-signal' || shape === 'note'
+  shape === 'send-signal' || shape === 'receive-signal' || shape === 'note' || shape === 'ellipse' || shape === 'store'
     ? (shape as SketchShapeKind)
     : 'box';
 
@@ -140,7 +150,22 @@ const sketchOf = (
     />
   ) : null;
 
-function InlineName({ label, onCommit }: { label: string; onCommit?: (value: string | null) => void }) {
+/** The one inline-rename field. Exported because a threat note renames rows with
+ * the same gesture and the same commit contract (`null` = cancelled) — a second
+ * copy would be a second set of Enter/blur/Escape rules to keep in step. */
+export function InlineName({
+  label,
+  onCommit,
+  onTab,
+  ariaLabel = 'Rename',
+}: {
+  label: string;
+  onCommit?: (value: string | null) => void;
+  /** Tab inside the box: the quick add to chain once the name is committed */
+  onTab?: () => void;
+  /** what the field renames, for screen readers and for the tests that find it */
+  ariaLabel?: string;
+}) {
   const done = useRef(false); // Enter commits then blurs — don't commit twice
   const finish = (value: string | null) => {
     if (done.current) return;
@@ -150,7 +175,7 @@ function InlineName({ label, onCommit }: { label: string; onCommit?: (value: str
   return (
     <input
       className="dg-label-input nodrag nopan"
-      aria-label="Rename"
+      aria-label={ariaLabel}
       defaultValue={label}
       autoFocus
       onFocus={(e) => e.target.select()}
@@ -159,6 +184,17 @@ function InlineName({ label, onCommit }: { label: string; onCommit?: (value: str
         e.stopPropagation();
         if (e.key === 'Enter') finish((e.target as HTMLInputElement).value);
         else if (e.key === 'Escape') finish(null);
+        else if (e.key === 'Tab' && !e.shiftKey) {
+          // Tab means "this one is named, give me the next": commit BEFORE the
+          // add so the host builds it on the renamed model, then chain. The
+          // default would only move focus out of the canvas — the keydown guard
+          // never sees this key while an <input> has it. Shift+Tab keeps the
+          // default (blur commits, focus walks back), so a name can still be
+          // left without extending anything.
+          e.preventDefault();
+          finish((e.target as HTMLInputElement).value);
+          onTab?.();
+        }
       }}
       onDoubleClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
@@ -190,6 +226,116 @@ export function LinkBadge({ data }: { data: DiagramNodeData }): import('react').
       }}
     >
       🔗
+    </button>
+  );
+}
+
+/** The open-threat count (red) or a green tick once every threat is handled.
+ * Stays in exports (no .dg-no-chrome rule): the PNG is where a reviewer sees
+ * at a glance what is still open. Where there is nothing to count yet, the same
+ * corner offers the first threat instead — chrome, so THAT state is dropped
+ * from exports. */
+export function ThreatBadge({ id, data }: { id: string; data: DiagramNodeData }): import('react').ReactElement | null {
+  // Read before the early returns below: hooks cannot be conditional, and a
+  // node with no threats takes one of them.
+  const notes = useContext(NoteStateContext);
+  const t = data.threats;
+  if (t === undefined || t.total === 0) {
+    // Edit mode on a threat model: the first threat is one click away on the
+    // canvas, so the register can be written without opening the panel. Only
+    // there — a badge on every box of a C4 diagram would be noise.
+    if (data.onAddThreat === undefined || data.notation !== TM_NOTATION) return null;
+    const add = data.onAddThreat;
+    return (
+      <button
+        type="button"
+        className="dg-threat-badge nodrag"
+        data-state="empty"
+        aria-label="Add a threat"
+        title="Add a threat"
+        // The canvas must read neither the press as the start of a drag nor
+        // the click as "select" — the same contract QuickAddButton states.
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          add({ node: id });
+        }}
+      >
+        +
+      </button>
+    );
+  }
+  // state/text/title come from the shared derivation so this badge and the
+  // flow's chip cannot drift apart in what they say (see threat-badge.ts).
+  const { state, text, title } = threatBadgeProps(t);
+  // With a canvas that draws bubbles (NoteStateContext provided), the badge is
+  // the switch for this element's bubble — in BOTH modes; view mode's toggles
+  // are the canvas's own session state. Without one (a host that never draws
+  // bubbles, a bare DiagramNode) it stays the passive count it always was.
+  // An external stub takes the same passive branch: it stands in for a node
+  // this drill view does not draw, and the note derivation skips externals for
+  // exactly that reason — the bubble belongs to the view that draws the node,
+  // so a switch here would flip a state nothing on this canvas can show.
+  if (notes === null || data.external === true) {
+    return (
+      <span className="dg-threat-badge" data-state={state} title={title}>
+        {text}
+      </span>
+    );
+  }
+  const open = notes.isOpen(threatTargetKey({ node: id }));
+  return (
+    <button
+      type="button"
+      className="dg-threat-badge nodrag"
+      data-state={state}
+      title={title}
+      aria-expanded={open}
+      aria-label={`${title} — ${open ? 'hide' : 'show'}`}
+      // neither a drag start nor a node click — the empty state's contract
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        notes.toggle({ node: id });
+      }}
+    >
+      {text}
+    </button>
+  );
+}
+
+/** The `+` a selected node offers in edit mode: what the host would add on it
+ * (a cause on a bone, a flow to a new process, a connected sibling …), named
+ * so the offer is legible before the click. Selected-only, so a busy diagram
+ * shows one `+`, and mouse events stop here: the canvas must not read the
+ * click as "select" nor the press as the start of a drag. Not exported to
+ * PNGs (.dg-no-chrome). Keyboard users have Tab, the same action. */
+export function QuickAddButton({
+  id,
+  data,
+  selected,
+}: {
+  id: string;
+  data: DiagramNodeData;
+  selected: boolean | undefined;
+}): import('react').ReactElement | null {
+  if (selected !== true || data.quickAdd === undefined) return null;
+  const label = data.quickAdd.label(id);
+  if (label === undefined) return null;
+  const run = data.quickAdd.run;
+  return (
+    <button
+      type="button"
+      className="dg-quick-add nodrag"
+      title={`${label} (Tab)`}
+      aria-label={label}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        run(id);
+      }}
+    >
+      +
     </button>
   );
 }
@@ -265,9 +411,14 @@ export function DiagramNode({
       : highlight.variant === 'loop'
         ? ' dg-loop-node-dim'
         : ' dg-focus-node-dim';
+  // Tab inside an open label editor is the same offer the `+` chip makes, so it
+  // is wired from the same channel: commit, then add. `run` is a no-op when the
+  // node has no recipe, so no separate label gate is needed here.
+  const quickAdd = data.quickAdd;
+  const onTab = quickAdd !== undefined ? () => quickAdd.run(id) : undefined;
   const name =
     data.labelEditing === true ? (
-      <InlineName label={data.label} onCommit={data.onLabelCommit} />
+      <InlineName label={data.label} onCommit={data.onLabelCommit} onTab={onTab} />
     ) : (
       <span className="dg-label">{data.label}</span>
     );
@@ -285,7 +436,7 @@ export function DiagramNode({
   ) : null;
 
   if (style.shape === 'table' && data.state === 'leaf') {
-    return <TableNode data={data} />;
+    return <TableNode id={id} data={data} selected={selected} />;
   }
 
   if (style.shape === 'circle' && data.state === 'leaf') {
@@ -305,6 +456,7 @@ export function DiagramNode({
           </span>
         )}
         <LinkBadge data={data} />
+        <QuickAddButton id={id} data={data} selected={selected} />
         {sideHandles}
       </div>
     );
@@ -327,6 +479,7 @@ export function DiagramNode({
           {typeLabel !== undefined && typeLabel !== '' ? <span className="dg-type">{typeLabel}</span> : null}
         </div>
         <LinkBadge data={data} />
+        <QuickAddButton id={id} data={data} selected={selected} />
         {sideHandles}
       </div>
     );
@@ -367,6 +520,7 @@ export function DiagramNode({
             {name}
           </div>
           <LinkBadge data={data} />
+          <QuickAddButton id={id} data={data} selected={selected} />
           {sideHandles}
         </div>
       </>
@@ -453,12 +607,15 @@ export function DiagramNode({
     // A lane is a row, not a box: no border, no fill, none of the fold/enter/pin
     // chrome (the notation keeps it expanded). Its name sits in a tinted box at
     // the band's right end — the reference's "Master / Nightly" labels. Width
-    // and inset mirror GIT_LAYOUT.LABEL_W / MARGIN in styles.css.
+    // and inset mirror GIT_LAYOUT.LABEL_W / MARGIN in styles.css. The `+`
+    // (append a commit) takes the chip's default spot, just past the row's
+    // right end — beside the name, where the lane is grabbed.
     return (
       <div className={`dg-lane${loopClass}`}>
         <span className="dg-lane-label" {...(data.color !== undefined ? { style: { ...accentStyle(data.color), color: data.textColor ?? data.color } } : {})}>
           {name}
         </span>
+        <QuickAddButton id={id} data={data} selected={selected} />
         {sideHandles}
       </div>
     );
@@ -473,6 +630,7 @@ export function DiagramNode({
       <div className={`dg-fb-head${loopClass}`}>
         <span className="dg-fb-spine" aria-hidden="true" />
         <span className="dg-fb-head-box">{name}</span>
+        <QuickAddButton id={id} data={data} selected={selected} />
         {sideHandles}
       </div>
     );
@@ -485,6 +643,7 @@ export function DiagramNode({
     return (
       <div className={`dg-fb-cause${loopClass}`} {...(data.textColor !== undefined ? { style: { color: data.textColor } } : {})}>
         {name}
+        <QuickAddButton id={id} data={data} selected={selected} />
         {sideHandles}
       </div>
     );
@@ -575,6 +734,8 @@ export function DiagramNode({
             })}
       >
         {sketchOf(data, style.shape, id, width, height)}
+        <ThreatBadge id={id} data={data} />
+        <QuickAddButton id={id} data={data} selected={selected} />
         <div className="dg-group-header">
           {data.image !== undefined && (
             <img
@@ -637,6 +798,7 @@ export function DiagramNode({
           <RichLabelEditor
             runs={data.rich ?? (data.label !== '' ? [{ text: data.label }] : [])}
             onCommit={(r) => (data.onRichCommit ?? ((_r: TextRun[] | null) => {}))(r)}
+            onTab={onTab}
           />
         ) : (
           <BoxLabel data={data} />
@@ -647,6 +809,8 @@ export function DiagramNode({
       {typeLabel !== undefined && typeLabel !== '' ? <span className="dg-type">{typeLabel}</span> : null}
       {metaBadges}
       <LinkBadge data={data} />
+      <ThreatBadge id={id} data={data} />
+      <QuickAddButton id={id} data={data} selected={selected} />
       {sideHandles}
     </div>
   );

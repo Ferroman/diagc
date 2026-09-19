@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { model } from '@diagramming/core';
+import { layoutPlaneKey, model, type DiagramModel } from '@diagramming/core';
 import { handshakeReady, legendPadding, Viewer, type ViewerData } from './Viewer';
 
 const m = () => {
@@ -37,6 +37,15 @@ const onePlane = () => {
   b.node('a', { name: 'Alpha', type: 'service' });
   b.plane('only', { name: 'Only one' });
   return b.toJSON();
+};
+
+/** a threat model with one threatened element, whose badge opens a bubble on the canvas */
+const noted: DiagramModel = {
+  version: 1, id: 'noted', name: 'noted', notation: 'threat-model', layers: [], planes: [],
+  nodes: [
+    { id: 'web', name: 'Web app', type: 'tm-process', threats: [{ id: 't1', category: 'S', title: 'Spoofed session' }] },
+  ],
+  containment: [], relations: [],
 };
 
 describe('Viewer', () => {
@@ -98,6 +107,43 @@ describe('Viewer', () => {
     const exported = render(<Viewer data={{ model: m(), drawings }} expandAll />);
     await waitFor(() => expect(exported.container.querySelector('path.dg-stroke')).not.toBeNull());
   });
+  it('draws the bubbles the layout left open, and toggles one from its badge for the session', async () => {
+    // The viewer hands `layout` to the canvas untouched, so it needs no code of
+    // its own here — this case is what proves it: the saved `open` flags reach
+    // the published page and the PNG, and a reader can still open a bubble for
+    // the session.
+    const closed = render(<Viewer data={{ model: noted }} />);
+    // the register under the canvas names the element straight away, so wait on
+    // the laid-out box itself rather than on the text
+    let badge: HTMLButtonElement | null = null;
+    await waitFor(() => {
+      badge = closed.container.querySelector('.react-flow__node[data-id="web"] button.dg-threat-badge');
+      if (badge === null) throw new Error('no badge rendered');
+      expect(badge.getAttribute('aria-label')).toBe('1 open of 1 threat — show');
+    });
+    // nothing in the layout says open, so the page rests with the bubble closed
+    expect(closed.container.querySelector('.react-flow__node[data-id^="note:"]')).toBeNull();
+
+    fireEvent.click(badge!);
+    await waitFor(() => {
+      const note = closed.container.querySelector('.react-flow__node[data-id="note:node:web"] .dg-note');
+      if (note === null) throw new Error('no bubble opened from the badge');
+      expect(note.textContent).toContain('Spoofed session');
+    });
+    closed.unmount();
+
+    const layout = {
+      version: 1 as const,
+      planes: {},
+      notes: { [layoutPlaneKey(noted, undefined)]: { 'node:web': { dx: 0, dy: 0, open: true as const } } },
+    };
+    const { container } = render(<Viewer data={{ model: noted, layout }} />);
+    await waitFor(() => {
+      const note = container.querySelector('.react-flow__node[data-id="note:node:web"] .dg-note');
+      if (note === null) throw new Error('no bubble rendered');
+      expect(note.textContent).toContain('Spoofed session');
+    });
+  });
 });
 
 describe('Viewer plane picker', () => {
@@ -152,6 +198,74 @@ describe('Viewer plane picker', () => {
     // and the exported plane stays the first one.
     expect(picker()).toBeNull();
     expect(screen.queryByText('Zeta')).toBeNull();
+  });
+});
+
+/**
+ * A threat model is read as much from its register as from its boxes, so a
+ * published page carries the table under the canvas. `threatened` is the plain
+ * case; `threatenedPlanes` also has a choice of viewpoint, so the picker and the
+ * table have to coexist.
+ */
+const threatened = () => {
+  const b = model('threats');
+  const t = b.threatModel();
+  const user = t.entity('user', 'User');
+  const api = t.process('api', 'API');
+  t.flow(user, api, 'login').threat({ category: 'T', title: 'MITM' });
+  return b.toJSON();
+};
+
+const threatenedPlanes = () => {
+  const b = model('threat-planes');
+  b.plane('arch', { name: 'Architecture' });
+  const t = b.threatModel({ plane: 'tm', name: 'Threat model' });
+  const user = t.entity('user', 'User');
+  const api = t.process('api', 'API');
+  t.flow(user, api, 'login').threat({ category: 'T', title: 'MITM' });
+  return b.toJSON();
+};
+
+describe('Viewer threat table', () => {
+  const table = (container: HTMLElement) => container.querySelector('.dg-threat-table');
+
+  it('puts the register under the canvas, in a column with it', async () => {
+    const { container } = render(<Viewer data={{ model: threatened() }} />);
+    expect(await screen.findByText('User')).toBeDefined();
+    const wrap = container.firstElementChild as HTMLElement;
+    expect(wrap.style.flexDirection).toBe('column');
+    // canvas first, register last: the table is a strip under the drawing, and
+    // the canvas host keeps its own positioning context for the picker.
+    expect(wrap.firstElementChild?.querySelector('.dg-canvas')).not.toBeNull();
+    expect(wrap.lastElementChild?.classList.contains('dg-threat-table')).toBe(true);
+    expect(screen.getByText('Threats: 1 open of 1')).toBeDefined();
+    expect(screen.getByRole('table', { name: 'Threat register' })).toBeDefined();
+  });
+
+  it('keeps the export DOM bare — no wrapper, no table', async () => {
+    const { container } = render(<Viewer data={{ model: threatened() }} expandAll />);
+    expect(await screen.findByText('User')).toBeDefined();
+    // The PNG pipeline screenshots .react-flow and measures this host, so the
+    // export render must be exactly the canvas and nothing else.
+    expect(container.firstElementChild?.classList.contains('dg-canvas')).toBe(true);
+    expect(table(container)).toBeNull();
+  });
+
+  it('leaves a diagram with no threats exactly as it was', async () => {
+    const { container } = render(<Viewer data={{ model: onePlane() }} />);
+    expect(await screen.findByText('Alpha')).toBeDefined();
+    expect(container.firstElementChild?.classList.contains('dg-canvas')).toBe(true);
+    expect(table(container)).toBeNull();
+  });
+
+  it('shows the picker and the register together', async () => {
+    const { container } = render(<Viewer data={{ model: threatenedPlanes() }} />);
+    expect(await screen.findByText('User')).toBeDefined();
+    expect(table(container)).not.toBeNull();
+    // The picker stays inside the canvas host (it is absolutely placed over the
+    // drawing), not beside the table in the column.
+    const picker = screen.getByRole('group', { name: /plane/i });
+    expect(picker.parentElement).toBe(container.firstElementChild?.firstElementChild);
   });
 });
 

@@ -14,15 +14,22 @@ import {
   type Side,
 } from '@diagramming/renderer';
 import {
+  allNotesOpen,
   DEFAULT_STROKE_WIDTH,
   emptyDrawings,
   emptyLayout,
   errMessage,
   defaultLayoutDirection,
   layoutPlaneKey,
+  LEAF_SIZE,
+  NEW_THREAT_TITLE,
+  nextThreatId,
   openingPins,
   presetLayers,
   SOURCE_URL,
+  strideFor,
+  threatsOf,
+  TM_NOTATION,
   uniqueStrokeId,
   type Column,
   type DiagramModel,
@@ -33,6 +40,8 @@ import {
   type RelationStyle,
   type Stroke,
   type TextRun,
+  type ThreatStatus,
+  type ThreatTarget,
 } from '@diagramming/core';
 import { activeNotation } from './notation';
 import { getHost } from './host';
@@ -57,9 +66,9 @@ import { LayersPlanesPanel } from './editor/LayersPlanesPanel';
 import { GitPanel } from './editor/GitPanel';
 import { ActivityPanel } from './editor/ActivityPanel';
 import { SecondOrderPanel } from './editor/SecondOrderPanel';
-import { thenWhat } from './editor/secondOrderActions';
 import { FishbonePanel } from './editor/FishbonePanel';
-import { addChild } from './editor/fishboneActions';
+import { ThreatModelPanel } from './editor/ThreatModelPanel';
+import { quickAdd, quickAddLabel, quickAddPlaced, type QuickAddContext } from './editor/quickAdd';
 import { InspectorTabs, type InspectorTab } from './editor/InspectorTabs';
 import { Dock } from './Dock';
 import { clampDockWidth } from './dockWidth';
@@ -68,6 +77,7 @@ import { LibraryPanel } from './library/LibraryPanel';
 import { useLibrary } from './library/useLibrary';
 import { uniqueLibraryId } from './library/entry';
 import { deleteSelectionCommand } from './editor/deleteSelection';
+import { connectKind } from './editor/connectKind';
 import { fkConnectionCommands } from './tableConnect';
 
 const STYLE_KEY = 'diagramming.style';
@@ -149,6 +159,14 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // for the same id still re-arms the effect.
   const [labelRequest, setLabelRequest] = useState<{ id: string; nonce: number } | undefined>(undefined);
   const requestLabelEdit = (id: string) => setLabelRequest((r) => ({ id, nonce: (r?.nonce ?? 0) + 1 }));
+  // A threat added from the canvas (an element's empty badge, a note's +) opens
+  // its title on the note — the same nonce-keyed handshake as labelRequest, so
+  // adding a second threat to the same element still re-arms the request.
+  const [threatRequest, setThreatRequest] = useState<{ target: ThreatTarget; id: string; nonce: number } | undefined>(
+    undefined,
+  );
+  const requestThreatEdit = (target: ThreatTarget, id: string) =>
+    setThreatRequest((r) => ({ target, id, nonce: (r?.nonce ?? 0) + 1 }));
   // The canvas multi-selection (Shift+click / marquee), mirrored from the
   // renderer. Drives the ⊞ Group chip and the selection glow. Deduped by
   // contents so a re-report of the same set never re-renders the app.
@@ -402,7 +420,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     activeLayers,
     setSelection,
     setRenameId,
-    setLeftTab,
     setLeverageFocus,
     setCompareId,
     setPlane,
@@ -416,21 +433,121 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const { select, switchPlane, activateLayer, toggleLayer, mergeSelectedLayers, toggleExpand, resetView } = view;
   const { compareSelect, groupSelected } = view;
 
-  // Mind-map-style Tab: add a child of the selected node and open it for
-  // typing, same as the notation panel's own buttons — a neutral consequence
-  // on a second-order diagram, a category / cause / sub-cause on a fishbone.
+  // The `+` on a selected node and the Tab key are one action: add the node
+  // the notation expects on the selection (a category / cause on a fish, a
+  // consequence, a flow to a new process, a connected sibling anywhere else)
+  // and open it for typing, the way the notation panels' own buttons do.
+  // Placement: a sibling goes beside its source only when elk would not place
+  // it (manual plane) or the source is pinned — see quickAddPlaced.
   // Reports whether it acted so the keydown handler only swallows Tab's
   // default focus move when there was something to extend (see useEditSession).
-  tabActionRef.current = () => {
-    if (!editing || model === undefined || selection?.kind !== 'node') return false;
-    const out =
-      notation === 'second-order' ? thenWhat(model, selection.id, '0') : notation === 'fishbone' ? addChild(model, selection.id) : null;
-    if (out === null) return false;
-    editor.dispatch(out.command);
+  const quickAddCtx: QuickAddContext = {
+    notation,
+    plane: activePlane,
+    borrowsContainment: activePlaneBorrowsContainment,
+    penLayer,
+  };
+  const runQuickAdd = (id: string): boolean => {
+    // peek(): the synchronous session, so the add is built on the model the
+    // gesture was made on — Tab commits the name being typed a moment before it
+    // adds, and the new node's id must not collide with that render's stale one.
+    const m = editor.peek()?.state.model;
+    if (!editing || m === undefined) return false;
+    const out = quickAdd(m, id, quickAddCtx);
+    if (out === undefined) return false;
+    const key = layoutPlaneKey(m, activePlane);
+    // the source's own box size, when it was ever resized — the sibling takes it
+    // so a row of hand-sized stencils stays one size (see quickAddPlaced)
+    const size = layout?.sizes?.[id];
+    editor.dispatch(
+      quickAddPlaced(out, {
+        pinned: activePlaneManual || layout?.planes[key]?.[id] !== undefined,
+        source: layoutApiRef.current?.snapshotPositions()[id],
+        width: size?.w ?? LEAF_SIZE.width,
+        ...(size !== undefined ? { size } : {}),
+        plane: activePlane,
+      }),
+    );
     select({ kind: 'node', id: out.id });
     requestLabelEdit(out.id);
     return true;
   };
+  tabActionRef.current = () => (selection?.kind === 'node' ? runQuickAdd(selection.id) : false);
+
+  // The plane every plane-scoped command below is filed under; the base view
+  // (undefined) sends no `plane` at all, which the commands read as "the
+  // resolved default" (see layoutPlaneKey).
+  const planeOpt = activePlane !== undefined ? { plane: activePlane } : {};
+
+  // Threat notes on the canvas. The note only reports gestures — which threat
+  // to add, what a title became — and the host owns the model, exactly as it
+  // does for quick add: the renderer never invents an id or a category.
+  const addThreatOn = (target: ThreatTarget) => {
+    // peek(): the synchronous session, so a second + right after the first
+    // commit sees the threat that commit added and picks the next free id.
+    const m = editor.peek()?.state.model;
+    if (m === undefined) return;
+    const existing = threatsOf(m, target);
+    if (existing === undefined) return; // no such element: a stale note
+    // The element's own STRIDE letters, so a store opens on Tampering rather
+    // than on a constant; the panel is where it gets corrected.
+    const typeOrKind =
+      'node' in target ? m.nodes.find((n) => n.id === target.node)?.type : m.relations.find((r) => r.id === target.relation)?.kind;
+    const id = nextThreatId(existing);
+    // NEW_THREAT_TITLE, never `''`: autosave fires on a 300ms timer, so the
+    // model this dispatch produces is saved while the field is still open — and
+    // an empty title fails validation, which the save handler answers with a
+    // 400 and the toolbar with a red banner mid-typing. A placeholder keeps
+    // every intermediate state a valid model.
+    // One undo step: the first threat AND its bubble, open — the `+` was a
+    // request to write on the canvas, and a closed bubble would swallow the
+    // title field the request opens next.
+    editor.dispatch({
+      type: 'batch',
+      commands: [
+        { type: 'add-threat', target, threat: { id, category: strideFor(typeOrKind)[0] ?? 'S', title: NEW_THREAT_TITLE } },
+        { type: 'set-note-open', target, open: true, ...planeOpt },
+      ],
+    });
+    requestThreatEdit(target, id); // …and open it for typing, where it was added
+  };
+  const retitleThreat = (target: ThreatTarget, id: string, title: string) => {
+    const m = editor.peek()?.state.model;
+    const current = m !== undefined ? threatsOf(m, target)?.find((t) => t.id === id) : undefined;
+    if (current === undefined) return;
+    // An emptied or escaped field on a threat nobody has named yet takes it away
+    // again — the placeholder is how "never titled" is recognised. On a threat
+    // that carries a real title it is a cancelled edit, so the title stands; the
+    // field never writes `''` into the model, which would fail validation and
+    // wedge every autosave until it was fixed.
+    if (title === '') {
+      if (current.title === NEW_THREAT_TITLE) editor.dispatch({ type: 'remove-threat', target, id });
+      return;
+    }
+    if (title !== current.title) editor.dispatch({ type: 'update-threat', target, id, patch: { title } });
+  };
+  const setThreatStatus = (target: ThreatTarget, id: string, status: ThreatStatus) =>
+    editor.dispatch({ type: 'update-threat', target, id, patch: { status } });
+  const editThreatText = (target: ThreatTarget, id: string, field: 'description' | 'mitigation', text: string) => {
+    const m = editor.peek()?.state.model;
+    const current = m !== undefined ? threatsOf(m, target)?.find((t) => t.id === id) : undefined;
+    if (current === undefined) return;
+    // `''` clears (null in the patch — the field is optional on a Threat, and
+    // an empty string would be a third state); an unchanged value is no command
+    if ((current[field] ?? '') === text) return;
+    editor.dispatch({ type: 'update-threat', target, id, patch: { [field]: text === '' ? null : text } });
+  };
+  // The `Notes` chip reads pressed only when EVERY bubble is open (model-wide,
+  // the set-notes-open rule), so a press always does what the picture lacks.
+  const allOpen = model !== undefined && layout !== undefined && allNotesOpen(model, layout, layoutPlaneKey(model, activePlane));
+  // `some` rather than threatRegister(): this runs every render and only needs
+  // to know whether ONE threat exists, not to build (and name) every row.
+  const anyThreats =
+    model !== undefined &&
+    (model.nodes.some((n) => (n.threats?.length ?? 0) > 0) ||
+      model.relations.some((r) => (r.threats?.length ?? 0) > 0));
+  // Only a diagram that has threats (or is meant to grow them) gets the chip.
+  const hasThreats = model !== undefined && (notation === TM_NOTATION || anyThreats);
 
   // Diagram lifecycle: create + rename + duplicate (the flows that re-key the
   // artifact store).
@@ -461,6 +578,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     setSelection,
     setRenameId,
     setLeftTab,
+    requestLabelEdit,
     setSaveIssues,
     activePlane,
     activePlaneBorrowsContainment,
@@ -532,7 +650,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // stay, but automatic layout resumes driving the arrangement).
   const toggleAutoLayout = () => {
     if (editor.session?.state.model === undefined) return;
-    const planeOpt = activePlane !== undefined ? { plane: activePlane } : {};
     if (activePlaneManual) {
       editor.dispatch({ type: 'set-plane-layout', manual: false, ...planeOpt });
     } else {
@@ -793,6 +910,24 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             )}
           </>
         )}
+        {/* Beside the layout chips, and edit-mode only: opening every bubble is
+            a command on the undo stack, saved in the layout file so the
+            published page and the PNG agree — in view mode there is no session
+            to dispatch into (there the badge toggles for the session). */}
+        {editing && hasThreats && (
+          <button
+            type="button"
+            className={`chip${allOpen ? ' active' : ''}`}
+            aria-pressed={allOpen}
+            // an empty register has nothing to open: the command would push an
+            // undo step and an autosave that change nothing
+            disabled={!anyThreats}
+            title={allOpen ? 'Close all threat notes' : 'Open all threat notes'}
+            onClick={() => editor.dispatch({ type: 'set-notes-open', open: !allOpen, ...planeOpt })}
+          >
+            Notes
+          </button>
+        )}
         <button
           type="button"
           className={`chip${snap ? ' active' : ''}`}
@@ -951,6 +1086,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         {...(pinned !== undefined ? { pinned } : {})}
                         {...(live !== undefined ? { live } : {})}
                         autoFocusName={selection.id === renameId}
+                        {...(notation !== undefined ? { notation } : {})}
                         onCommand={editor.dispatch}
                         onClose={() => select(null)}
                         onDeleted={() => select(null)}
@@ -963,6 +1099,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         onCommand={editor.dispatch}
                         onClose={() => select(null)}
                         {...(notation !== undefined ? { notation } : {})}
+                        {...(activePlane !== undefined ? { activePlane } : {})}
                       />
                     ) : (
                       <Sidebar model={model} selection={selection} />
@@ -1051,6 +1188,19 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                       // split is then structural, not by convention).
                       edit: {
                       ...(labelRequest !== undefined ? { editLabelRequest: labelRequest } : {}),
+                      ...(threatRequest !== undefined ? { editThreatRequest: threatRequest } : {}),
+                      onNoteMoved: (target: ThreatTarget, offset: { dx: number; dy: number }) =>
+                        editor.dispatch({ type: 'set-note-offset', target, offset, ...planeOpt }),
+                      onToggleNote: (target: ThreatTarget, open: boolean) =>
+                        editor.dispatch({ type: 'set-note-open', target, open, ...planeOpt }),
+                      onAddThreat: addThreatOn,
+                      onRetitleThreat: retitleThreat,
+                      onSetThreatStatus: setThreatStatus,
+                      onEditThreatText: editThreatText,
+                      quickAdd: {
+                        label: (id: string) => (model !== undefined ? quickAddLabel(model, id, quickAddCtx) : undefined),
+                        run: runQuickAdd,
+                      },
                       onNodesMoved: (positions: Record<string, { x: number; y: number }>) =>
                         editor.dispatch({
                           type: 'set-positions',
@@ -1080,7 +1230,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         // edge. float by default: no pinned sides, so the new edge
                         // tracks the facing borders. Pin later via a pin dot or the
                         // panel. The edge lands on the active sheet (the pen), like
-                        // nodes.
+                        // nodes. The kind otherwise comes from the notation and the
+                        // two endpoints (connectKind) — a threat model's flows must be
+                        // data-flow to be read as flows at all, unless an end is a
+                        // trust boundary, which no flow may touch.
                         const m = editor.session?.state.model;
                         const cmds =
                           m !== undefined
@@ -1094,7 +1247,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           type: 'add-relation',
                           from,
                           to,
-                          opts: { kind: 'sync', ...(penLayer !== null ? { layer: penLayer } : {}) },
+                          opts: {
+                            kind: connectKind(notation, m, from, to),
+                            ...(penLayer !== null ? { layer: penLayer } : {}),
+                          },
                         });
                       },
                       onDeleteSelection: (sel: { nodeIds: string[]; relationIds: string[] }) => {
@@ -1203,6 +1359,17 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   onCommand={editor.dispatch}
                   onSelect={(id) => select({ kind: 'node', id })}
                   onCreated={requestLabelEdit}
+                />
+              )}
+              {/* No `editing` gate, unlike its siblings above: this panel only
+                  reads the model — the register and the crossings still to
+                  review are as much use on a read-only .diagram.ts threat model
+                  as on an editable one. */}
+              {notation === TM_NOTATION && (
+                <ThreatModelPanel
+                  model={model}
+                  {...(activePlane !== undefined ? { plane: activePlane } : {})}
+                  onSelect={select}
                 />
               )}
               {editing && (

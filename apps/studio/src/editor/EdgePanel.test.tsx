@@ -288,4 +288,118 @@ describe('EdgePanel', () => {
     // hiding the CLD controls must not clear their underlying data
     expect(onCommand).not.toHaveBeenCalled();
   });
+
+  describe('threats', () => {
+    // Two boundaries on the default plane with one node each, and a flow
+    // between them — the crossing the section reports is derived from this
+    // containment, never authored.
+    function dfd(): DiagramModel {
+      return {
+        version: 1,
+        id: 'draft',
+        name: 'draft',
+        nodes: [
+          { id: 'dmz', name: 'DMZ', type: 'tm-boundary' },
+          { id: 'backend', name: 'Backend', type: 'tm-boundary' },
+          { id: 'api', name: 'API', type: 'tm-process' },
+          { id: 'db', name: 'DB', type: 'tm-store' },
+        ],
+        containment: [
+          { parent: 'dmz', child: 'api' },
+          { parent: 'backend', child: 'db' },
+        ],
+        relations: [{ id: 'api->db#0', from: 'api', to: 'db', kind: 'data-flow' }],
+        layers: [],
+        planes: [],
+      };
+    }
+
+    it('offers the section on a threat-model plane, categories led by the ones a flow invites', () => {
+      render(
+        <EdgePanel
+          model={dfd()}
+          constituentIds={['api->db#0']}
+          onCommand={vi.fn()}
+          onClose={noop}
+          notation="threat-model"
+        />,
+      );
+      const first = (screen.getByLabelText('New threat category') as HTMLSelectElement).options[0];
+      expect(first?.textContent).toBe('T · Tampering'); // a data flow takes T, I, D
+    });
+
+    it('names the boundaries the flow crosses on the active plane', () => {
+      render(
+        <EdgePanel
+          model={dfd()}
+          constituentIds={['api->db#0']}
+          onCommand={vi.fn()}
+          onClose={noop}
+          notation="threat-model"
+          activePlane={undefined}
+        />,
+      );
+      expect(screen.getByText('Crosses: DMZ → Backend')).toBeTruthy();
+    });
+
+    it('says nothing about crossings for a flow inside one boundary', () => {
+      const m = dfd();
+      m.containment[1] = { parent: 'dmz', child: 'db' };
+      render(
+        <EdgePanel model={m} constituentIds={['api->db#0']} onCommand={vi.fn()} onClose={noop} notation="threat-model" />,
+      );
+      expect(screen.queryByText(/^Crosses:/)).toBeNull();
+    });
+
+    it('stays out of the way off the notation, unless the relation already carries threats', () => {
+      const { unmount } = render(
+        <EdgePanel model={dfd()} constituentIds={['api->db#0']} onCommand={vi.fn()} onClose={noop} />,
+      );
+      expect(screen.queryByRole('region', { name: 'Threats' })).toBeNull();
+      unmount();
+
+      const m = dfd();
+      m.relations[0]!.threats = [{ id: 't1', category: 'T', title: 'Replayed write' }];
+      render(<EdgePanel model={m} constituentIds={['api->db#0']} onCommand={vi.fn()} onClose={noop} />);
+      expect(screen.getByLabelText('Threat t1 title')).toBeTruthy();
+    });
+
+    it('keeps the list view of a merged edge threat-free; the section is per relation', () => {
+      const m = dfd();
+      m.relations.push({ id: 'api->db#1', from: 'api', to: 'db', kind: 'data-flow' });
+      render(
+        <EdgePanel
+          model={m}
+          constituentIds={['api->db#0', 'api->db#1']}
+          onCommand={vi.fn()}
+          onClose={noop}
+          notation="threat-model"
+        />,
+      );
+      expect(screen.queryByRole('region', { name: 'Threats' })).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Edit relation api->db#1' }));
+      expect(screen.getByRole('region', { name: 'Threats' })).toBeTruthy();
+    });
+
+    it('targets the relation it is editing', () => {
+      const onCommand = vi.fn();
+      render(
+        <EdgePanel
+          model={dfd()}
+          constituentIds={['api->db#0']}
+          onCommand={onCommand}
+          onClose={noop}
+          notation="threat-model"
+        />,
+      );
+      fireEvent.change(screen.getByLabelText('New threat'), { target: { value: 'Tampered payload' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Add threat' }));
+      expect(onCommand).toHaveBeenCalledWith({
+        type: 'add-threat',
+        target: { relation: 'api->db#0' },
+        threat: { id: 't1', category: 'T', title: 'Tampered payload' },
+      });
+    });
+  });
 });

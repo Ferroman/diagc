@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { layoutPlaneKey, NEW_THREAT_TITLE, validate, type DiagramModel, type NotePlacement } from '@diagramming/core';
 import { App } from '../App';
 import { defaultHost, setHost } from '../host';
 
@@ -58,10 +59,49 @@ const umbrellaComposed = {
   ],
 };
 
+// A threat model that already carries threats — the fixture for the note cases
+// below. Served under the name `sketch` because the harness auto-opens the one
+// diagram the stub lists. `web` sits inside the boundary, so at rest (containers
+// are folded) the canvas shows `dmz`, the clean `db` and the lifted `dmz → db`
+// flow, whose note is the one visible without unfolding anything.
+const tmModel: DiagramModel = {
+  version: 1,
+  id: 'sketch',
+  name: 'sketch',
+  notation: 'threat-model',
+  nodes: [
+    {
+      id: 'web',
+      name: 'Web app',
+      type: 'tm-process',
+      threats: [{ id: 't1', category: 'S', title: 'Spoofed session' }],
+    },
+    { id: 'db', name: 'Orders DB', type: 'tm-store' },
+    { id: 'dmz', name: 'DMZ', type: 'tm-boundary' },
+  ],
+  containment: [{ parent: 'dmz', child: 'web' }],
+  relations: [
+    { id: 'f', from: 'web', to: 'db', kind: 'data-flow', threats: [{ id: 't1', category: 'I', title: 'Plain-text' }] },
+  ],
+  layers: [],
+  planes: [],
+};
+
 // Scope node-label lookups to the canvas: the panel's Name field is now a
 // <textarea>, whose value is textContent, so an unscoped byText('node') also
 // matches the panel (and the id <code>).
 const canvas = () => within(document.querySelector('.dg-canvas') as HTMLElement);
+
+// The body of the LAST POST to `url`: autosave writes on every edit, so a case
+// that edits twice (add a threat, then title it) must read the newest write,
+// not the first one the mock recorded.
+const lastPostBody = <T,>(url: string): T => {
+  const post = (fetch as ReturnType<typeof vi.fn>).mock.calls
+    .filter((c) => String(c[0]) === url && (c[1] as RequestInit | undefined)?.method === 'POST')
+    .at(-1);
+  if (post === undefined) throw new Error(`no POST to ${url} yet`);
+  return JSON.parse((post[1] as RequestInit).body as string) as T;
+};
 
 interface DiagramFixture {
   name: string;
@@ -622,10 +662,32 @@ describe('editor shell', () => {
     fireEvent.click((await screen.findAllByRole('button', { name: /place Person/i }))[0]!);
     // placing keeps the Library tab active (does NOT flip to Properties)…
     expect(screen.getByRole('tab', { name: 'Library' }).getAttribute('aria-selected')).toBe('true');
-    // …and the node appears on the canvas
+    // …and the node appears on the canvas with its name open for typing (the
+    // case below covers that editor); close it to read the label back as text
+    fireEvent.keyDown(await canvas().findByLabelText('Rename'), { key: 'Escape' });
     expect(
       (await within(container.querySelector('.dg-canvas') as HTMLElement).findAllByText('Person')).length,
     ).toBeGreaterThan(0);
+  });
+
+  it('placing a library node opens its label on the canvas, and clicking it keeps the Library tab', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
+    // two entries answer to "Place Person" (C4 and the Shapes pack) — either works here
+    fireEvent.click((await screen.findAllByRole('button', { name: /place Person/i }))[0]!);
+    // the placed node's name opens on the canvas — a shape stencil's in-place
+    // editor is the 'Rename' input — instead of the Properties Name field, which
+    // is not mounted while the Library tab is up
+    const inline = (await canvas().findByLabelText('Rename')) as HTMLInputElement;
+    expect(inline.value).toBe('Person');
+    fireEvent.keyDown(inline, { key: 'Escape' }); // leave the name as placed
+    // a canvas click on it no longer yanks the dock to Properties
+    fireEvent.click((await canvas().findAllByText('Person'))[0]!.closest('.react-flow__node') as HTMLElement);
+    expect(screen.getByRole('tab', { name: 'Library' }).getAttribute('aria-selected')).toBe('true');
+    // Properties is one click away, and shows the node
+    fireEvent.click(screen.getByRole('tab', { name: 'Properties' }));
+    expect(((await screen.findByLabelText('Name')) as HTMLTextAreaElement).value).toBe('Person');
   });
 
   it('nests a placed library node under the selected container', async () => {
@@ -672,13 +734,15 @@ describe('editor shell', () => {
     });
   });
 
-  it('places a library entry where it is dropped on the canvas', async () => {
+  it('places a library entry where it is dropped on the canvas, named in place', async () => {
     const { container } = render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
     await screen.findByText('sys');
-    const canvas = container.querySelector('.dg-canvas') as HTMLElement;
+    // not named `canvas`: the shared canvas() query helper is what scopes the
+    // assertions below away from the Properties dock
+    const canvasEl = container.querySelector('.dg-canvas') as HTMLElement;
     // simulate dropping the bundled AWS Lambda entry (carried by its DnD MIME type)
-    fireEvent.drop(canvas, {
+    fireEvent.drop(canvasEl, {
       dataTransfer: {
         getData: (t: string) => (t === 'application/x-dg-library-entry' ? 'aws-lambda' : ''),
         files: [],
@@ -686,8 +750,14 @@ describe('editor shell', () => {
       clientX: 320,
       clientY: 220,
     });
-    // the dropped entry becomes an image node captioned with its name
-    expect((await screen.findAllByText('AWS Lambda')).length).toBeGreaterThan(0);
+    // a drop names the node in place, like every other placement: the canvas
+    // rename box opens on it, seeded with the entry's name
+    const inline = (await canvas().findByLabelText('Rename')) as HTMLInputElement;
+    expect(inline.value).toBe('AWS Lambda');
+    fireEvent.keyDown(inline, { key: 'Escape' }); // keep the name the drop gave it
+    // and the node itself is on the canvas, captioned — scoped to the canvas so
+    // the Properties Name field can never stand in for the caption
+    expect((await canvas().findAllByText('AWS Lambda')).length).toBeGreaterThan(0);
   });
 
   it('nests a dropped library entry under the node it lands on', async () => {
@@ -737,6 +807,210 @@ describe('editor shell', () => {
     await waitFor(() =>
       expect(document.querySelector('.dg-canvas')?.classList.contains('dg-notation-c4')).toBe(true),
     );
+  });
+
+  it('docks the threat-model panel in view mode, and only for that notation', async () => {
+    // The register and the crossings to review are a reading of the model, so
+    // this panel — alone among the notation panels — is not gated on editing:
+    // a read-only .diagram.ts threat model still gets its review surface.
+    const tm = {
+      ...goodModel,
+      notation: 'threat-model',
+      nodes: [
+        { id: 'web', name: 'Web app', type: 'tm-process' },
+        { id: 'db', name: 'Orders DB', type: 'tm-store' },
+        { id: 'dmz', name: 'DMZ', type: 'tm-boundary' },
+      ],
+      containment: [{ parent: 'dmz', child: 'web' }],
+      relations: [{ id: 'web->db#0', from: 'web', to: 'db', kind: 'data-flow' }],
+    };
+    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: tm, issues: [], editable: true }]));
+    const { unmount } = render(<App />);
+    const panel = within(await screen.findByRole('complementary', { name: 'Threat model' }));
+    expect(panel.getByRole('button', { name: /Web app → Orders DB/ })).toBeDefined();
+    unmount();
+
+    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: { ...tm, notation: 'fishbone' }, issues: [], editable: true }]));
+    render(<App />);
+    await screen.findByRole('heading', { name: /layers & planes/i }); // the right dock is up…
+    expect(screen.queryByRole('complementary', { name: 'Threat model' })).toBeNull(); // …without this panel
+  });
+
+  describe('threat notes', () => {
+    // Notes are drawn in both modes, but everything this describes — the empty
+    // badge, the title fields on a note, the chip's command — needs an edit
+    // session, so every case opens the fixture and clicks Edit.
+    const openTm = async (): Promise<HTMLElement> => {
+      vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: tmModel, issues: [], editable: true }]));
+      const { container } = render(<App />);
+      fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
+      // Edit re-reads the raw source over fetch, so the session (and every
+      // edit-mode chip and badge handler below) lands a few ticks after the
+      // click. `Done` is the toolbar that edit mode — and only edit mode —
+      // draws, so waiting for it is waiting for the session.
+      await screen.findByRole('button', { name: 'Done' });
+      return container;
+    };
+
+    // The empty badge of one named box. `dmz` carries no threats either, so it
+    // offers the same badge — an unscoped query would leave which element the
+    // first threat landed on to query order.
+    const emptyBadgeOf = (container: HTMLElement, id: string): Promise<HTMLElement> =>
+      waitFor(() => {
+        const box = container.querySelector(`.react-flow__node[data-id="${id}"]`);
+        if (box === null) throw new Error(`${id} is not on the canvas yet`);
+        return within(box as HTMLElement).getByRole('button', { name: 'Add a threat' });
+      });
+
+    it('the empty badge adds a threat and opens its title on the note; typing commits it', async () => {
+      const container = await openTm();
+      fireEvent.click(await emptyBadgeOf(container, 'db'));
+      const input = (await canvas().findByLabelText('Rename threat')) as HTMLInputElement;
+      // the field opens on the placeholder, fully selected (InlineName), so
+      // typing replaces it rather than appending to it
+      expect(input.value).toBe(NEW_THREAT_TITLE);
+      fireEvent.change(input, { target: { value: 'Stale backups' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+      await waitFor(() => {
+        const body = lastPostBody<{ nodes: { id: string; threats?: unknown[] }[] }>('/api/diagrams/sketch');
+        // `T` is strideFor('tm-store')[0]: the category is the element type's
+        // first STRIDE letter, not a fixed default.
+        expect(body.nodes.find((n) => n.id === 'db')?.threats).toEqual([
+          { id: 't1', category: 'T', title: 'Stale backups' },
+        ]);
+      });
+      // …and the `+` opened the bubble it wrote into, in the same step: a title
+      // field on a closed bubble would have nothing to appear in.
+      await waitFor(() => {
+        const body = lastPostBody<{ notes?: Record<string, Record<string, NotePlacement>> }>('/api/layouts/sketch');
+        expect(body.notes?.[layoutPlaneKey(tmModel, undefined)]?.['node:db']).toEqual({ dx: 0, dy: 0, open: true });
+      });
+    });
+
+    it('an escaped first title removes the just-added threat', async () => {
+      const container = await openTm();
+      fireEvent.click(await emptyBadgeOf(container, 'db'));
+      fireEvent.keyDown(await canvas().findByLabelText('Rename threat'), { key: 'Escape' });
+      // The placeholder is how "nobody has named this yet" is recognised:
+      // escaping the first title takes the threat away again rather than
+      // leaving `New threat` on the canvas.
+      await waitFor(() => {
+        const body = lastPostBody<{ nodes: { id: string; threats?: unknown[] }[] }>('/api/diagrams/sketch');
+        expect(body.nodes.find((n) => n.id === 'db')?.threats ?? []).toEqual([]);
+      });
+    });
+
+    it('an untitled threat autosaves as a valid model', async () => {
+      // Autosave is a 300ms debounce, so the model the field is still open on
+      // reaches the save handler on its own. It has to validate, or the handler
+      // answers 400 and the toolbar shows a red banner mid-typing.
+      const container = await openTm();
+      fireEvent.click(await emptyBadgeOf(container, 'db'));
+      await waitFor(() => {
+        const body = lastPostBody<DiagramModel>('/api/diagrams/sketch');
+        expect(body.nodes.find((n) => n.id === 'db')?.threats).toEqual([
+          { id: 't1', category: 'T', title: NEW_THREAT_TITLE },
+        ]);
+        expect(validate(body)).toEqual([]);
+      });
+      // and the placeholder is replaced, not appended to, once a title is typed
+      const input = (await canvas().findByLabelText('Rename threat')) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'Stale backups' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+      await waitFor(() => {
+        const body = lastPostBody<DiagramModel>('/api/diagrams/sketch');
+        expect(body.nodes.find((n) => n.id === 'db')?.threats).toEqual([
+          { id: 't1', category: 'T', title: 'Stale backups' },
+        ]);
+      });
+    });
+
+    it('the badge opens an element’s bubble and saves it; a second click closes it', async () => {
+      const container = await openTm();
+      // `dmz` rests folded, so the visible threatened element is the lifted flow;
+      // unfold nothing — click the flow's chip
+      expect(canvas().queryByText('Plain-text')).toBeNull(); // closed by default
+      const chip = await waitFor(() => {
+        const el = container.querySelector('button.dg-edge-threat[data-state="open"]');
+        if (el === null) throw new Error('no chip');
+        return el as HTMLElement;
+      });
+      fireEvent.click(chip);
+      expect(await canvas().findByText('Plain-text')).toBeDefined();
+      await waitFor(() => {
+        const body = lastPostBody<{ notes?: Record<string, Record<string, NotePlacement>> }>('/api/layouts/sketch');
+        expect(body.notes?.[layoutPlaneKey(tmModel, undefined)]?.['relation:f']).toEqual({ dx: 0, dy: 0, open: true });
+      });
+      fireEvent.click(container.querySelector('button.dg-edge-threat[data-state="open"]') as HTMLElement);
+      await waitFor(() => expect(canvas().queryByText('Plain-text')).toBeNull());
+      await waitFor(() => {
+        const body = lastPostBody<{ notes?: unknown }>('/api/layouts/sketch');
+        expect(body.notes).toBeUndefined(); // closed and never dragged: no trace
+      });
+    });
+
+    it('the Notes chip opens every bubble, reads pressed, and closes them all again', async () => {
+      await openTm();
+      const chip = screen.getByRole('button', { name: 'Notes' });
+      expect(chip.getAttribute('aria-pressed')).toBe('false');
+      expect(chip.getAttribute('title')).toBe('Open all threat notes');
+      fireEvent.click(chip);
+      expect(await canvas().findByText('Plain-text')).toBeDefined();
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Notes' }).getAttribute('aria-pressed')).toBe('true'));
+      expect(screen.getByRole('button', { name: 'Notes' }).getAttribute('title')).toBe('Close all threat notes');
+      await waitFor(() => {
+        const body = lastPostBody<{ notes?: Record<string, Record<string, NotePlacement>> }>('/api/layouts/sketch');
+        const bucket = body.notes?.[layoutPlaneKey(tmModel, undefined)] ?? {};
+        // `web` is inside the folded boundary and not drawn — it still gets its flag (model-wide)
+        expect(Object.keys(bucket).sort()).toEqual(['node:web', 'relation:f']);
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Notes' }));
+      await waitFor(() => expect(canvas().queryByText('Plain-text')).toBeNull());
+    });
+
+    it('the Notes chip is disabled while nothing carries a threat', async () => {
+      // A threat model starts empty, and the chip stays on show (it is where
+      // "open them all" lives once threats exist). With no target to act on,
+      // a click would only push an undo step and an autosave that change
+      // nothing — so it is offered, not armed.
+      const empty: DiagramModel = {
+        ...tmModel,
+        nodes: tmModel.nodes.map(({ threats: _threats, ...n }) => n),
+        relations: tmModel.relations.map(({ threats: _threats, ...r }) => r),
+      };
+      vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: empty, issues: [], editable: true }]));
+      render(<App />);
+      fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
+      await screen.findByRole('button', { name: 'Done' });
+      const chip = screen.getByRole('button', { name: 'Notes' });
+      expect((chip as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it('the status chip and the details fields write the threat through update-threat', async () => {
+      await openTm();
+      fireEvent.click(screen.getByRole('button', { name: 'Notes' }));
+      const bubble = (await canvas().findByText('Plain-text')).closest('.dg-note') as HTMLElement;
+      fireEvent.click(within(bubble).getByRole('button', { name: 'Set status' }));
+      await waitFor(() => {
+        const body = lastPostBody<DiagramModel>('/api/diagrams/sketch');
+        expect(body.relations.find((r) => r.id === 'f')?.threats?.[0]?.status).toBe('mitigated');
+      });
+      fireEvent.click(within(bubble).getByRole('button', { name: 'Show details' }));
+      const desc = within(bubble).getByLabelText('Description');
+      fireEvent.change(desc, { target: { value: 'Sniffable on the LAN' } });
+      fireEvent.blur(desc);
+      await waitFor(() => {
+        const body = lastPostBody<DiagramModel>('/api/diagrams/sketch');
+        expect(body.relations.find((r) => r.id === 'f')?.threats?.[0]?.description).toBe('Sniffable on the LAN');
+      });
+      // emptying clears the field rather than storing ''
+      fireEvent.change(desc, { target: { value: '' } });
+      fireEvent.blur(desc);
+      await waitFor(() => {
+        const body = lastPostBody<DiagramModel>('/api/diagrams/sketch');
+        expect(body.relations.find((r) => r.id === 'f')?.threats?.[0]?.description).toBeUndefined();
+      });
+    });
   });
 
   it('shows an auto-layout toggle in edit mode, pressed by default', async () => {
@@ -1124,6 +1398,82 @@ describe('editor shell', () => {
     fireEvent.click(screen.getByRole('button', { name: /done/i }));
     await waitFor(() => expect(calls()).toContain('/api/diagrams/umbrella/composed'));
     expect((await canvas().findAllByText('grafted')).length).toBeGreaterThan(0);
+  });
+
+  it('Tab on a plain selected node adds a connected sibling and opens it for naming', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
+    // 'a' lives inside 'sys' and edit mode draws one level at a time, so drill
+    // into 'sys' via its ⤢ chip to get at the leaf the + (and Tab) extends.
+    fireEvent.click(await screen.findByLabelText('Enter node'));
+    fireEvent.click((await canvas().findByText('a')).closest('.react-flow__node') as HTMLElement);
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    // the new node's label editor is open on the canvas — empty, because the
+    // quick add names the node '' and hands naming to the editor (not 'a''s)
+    expect((await canvas().findByLabelText('Edit text')).textContent).toBe('');
+    await waitFor(() => {
+      const post = (fetch as ReturnType<typeof vi.fn>).mock.calls
+        .filter((c) => String(c[0]) === '/api/diagrams/sketch' && (c[1] as RequestInit | undefined)?.method === 'POST')
+        .at(-1);
+      expect(post).toBeDefined();
+      const body = JSON.parse((post![1] as RequestInit).body as string) as {
+        nodes: { id: string; type?: string }[];
+        containment: { parent: string; child: string }[];
+        relations: { from: string; to: string; kind: string }[];
+      };
+      const added = body.nodes.find((n) => n.id !== 'a' && n.id !== 'sys')!;
+      expect(added.type).toBe('service'); // same type as its source
+      expect(body.containment).toContainEqual({ parent: 'sys', child: added.id }); // same container
+      expect(body.relations).toContainEqual(expect.objectContaining({ from: 'a', to: added.id, kind: 'sync' }));
+    });
+  });
+
+  it('the + on the selected node does the same as Tab', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
+    fireEvent.click(await screen.findByLabelText('Enter node')); // drill into 'sys' (see above)
+    fireEvent.click((await canvas().findByText('a')).closest('.react-flow__node') as HTMLElement);
+    fireEvent.click(await canvas().findByRole('button', { name: 'Add a connected node' }));
+    expect(await canvas().findByLabelText('Edit text')).toBeDefined();
+    await waitFor(() => {
+      const post = (fetch as ReturnType<typeof vi.fn>).mock.calls
+        .filter((c) => String(c[0]) === '/api/diagrams/sketch' && (c[1] as RequestInit | undefined)?.method === 'POST')
+        .at(-1);
+      expect(post).toBeDefined();
+      const body = JSON.parse((post![1] as RequestInit).body as string) as {
+        nodes: unknown[];
+        relations: { from: string; kind: string }[];
+      };
+      expect(body.nodes).toHaveLength(3);
+      expect(body.relations).toHaveLength(1);
+      expect(body.relations[0]).toEqual(expect.objectContaining({ from: 'a', kind: 'sync' }));
+    });
+  });
+
+  it('a second + chains off the node the first one added, never fans off the source', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
+    fireEvent.click(await screen.findByLabelText('Enter node')); // drill into 'sys' (see above)
+    fireEvent.click((await canvas().findByText('a')).closest('.react-flow__node') as HTMLElement);
+    fireEvent.click(await canvas().findByRole('button', { name: 'Add a connected node' }));
+    // close the editor without naming; the mouse never touches a node again, so
+    // the second + can only be the one the renderer moved onto the new node
+    fireEvent.keyDown(await canvas().findByLabelText('Edit text'), { key: 'Escape' });
+    fireEvent.click(await canvas().findByRole('button', { name: 'Add a connected node' }));
+    await waitFor(() => {
+      const post = (fetch as ReturnType<typeof vi.fn>).mock.calls
+        .filter((c) => String(c[0]) === '/api/diagrams/sketch' && (c[1] as RequestInit | undefined)?.method === 'POST')
+        .at(-1);
+      expect(post).toBeDefined();
+      const body = JSON.parse((post![1] as RequestInit).body as string) as {
+        nodes: unknown[];
+        relations: { from: string; to: string }[];
+      };
+      expect(body.nodes).toHaveLength(4); // sys, a, and the two added
+      expect(body.relations).toHaveLength(2);
+      expect(body.relations[0]!.from).toBe('a');
+      expect(body.relations[1]!.from).toBe(body.relations[0]!.to); // a → b → c
+    });
   });
 
   it('duplicating an owned umbrella copies the raw source', async () => {

@@ -1,7 +1,7 @@
 /** The DiagramView public surface: props, the edit-callback contract, and the
  * imperative layout API. Pure declarations — no runtime logic lives here. */
 
-import type { Column, DiagramModel, Drawings, EdgeLabelSide, LayoutOverlay, NotationId, Stroke, TextRun } from '@diagramming/core';
+import type { Column, DiagramModel, Drawings, EdgeLabelSide, LayoutOverlay, NotationId, Stroke, TextRun, ThreatStatus, ThreatTarget } from '@diagramming/core';
 import type { IconRegistry } from '@diagramming/icons';
 import type { MutableRefObject } from 'react';
 import type { EdgeLabelMoves } from './build-data';
@@ -150,6 +150,10 @@ export interface DiagramViewProps {
   /** false hides the interactive control cluster. The PNG export sets it so a
    * committed image is the diagram alone, with no zoom widget baked into it. */
   chrome?: boolean;
+  /** false draws no threat bubbles at all and leaves the badges passive counts —
+   * a host that wants none, whatever the overlay says. Default true, which is
+   * not "all of them": a bubble draws only while its element's is open. */
+  notes?: boolean;
   /** visual style preset id (see stylePresets.ts); unknown/absent = clean */
   styleId?: string;
   /** snap dragged and nudged nodes to a square grid of this many flow px and
@@ -221,6 +225,26 @@ export interface EditingApi {
    * `onCreateAt`'s returned id does for a canvas double-click. Re-armed by a new
    * `nonce`, so asking twice for the same id works. */
   editLabelRequest?: { id: string; nonce: number };
+  /** The `+` on a selected node (and the host's Tab): `label(id)` names what
+   * it would add — undefined hides the button — and `run(id)` adds it. The
+   * host owns the recipe (it knows the notation); the view only draws the
+   * offer and reports the click. */
+  quickAdd?: { label: (id: string) => string | undefined; run: (id: string) => void };
+  /** a threat note was dragged: its new offset from the automatic anchor */
+  onNoteMoved?: (target: ThreatTarget, offset: { dx: number; dy: number }) => void;
+  /** the empty badge/chip or a note's `+`: add a threat on this element. The
+   * host adds it and answers with `editThreatRequest` so its title opens. */
+  onAddThreat?: (target: ThreatTarget) => void;
+  /** a threat title was committed on its note; `''` = escaped or emptied */
+  onRetitleThreat?: (target: ThreatTarget, id: string, title: string) => void;
+  /** open this threat's title on its note — the `editLabelRequest` contract, nonce-keyed */
+  editThreatRequest?: { target: ThreatTarget; id: string; nonce: number };
+  /** the badge/chip was clicked in edit mode: save this element's bubble as open or closed */
+  onToggleNote?: (target: ThreatTarget, open: boolean) => void;
+  /** a bubble's status chip was clicked: the threat's next status */
+  onSetThreatStatus?: (target: ThreatTarget, id: string, status: ThreatStatus) => void;
+  /** a bubble's description/mitigation field was committed; `''` clears it */
+  onEditThreatText?: (target: ThreatTarget, id: string, field: 'description' | 'mitigation', text: string) => void;
   /** Backspace/Delete pressed with a canvas selection: `nodeIds` are the
    * selected nodes, `relationIds` the constituent relations of any selected
    * edges. Wiring this is what enables the delete key at all — without it

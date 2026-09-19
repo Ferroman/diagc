@@ -17,10 +17,14 @@ vi.mock('@xyflow/react', async (importOriginal) => {
 });
 import { createKindRegistry } from './registry';
 import { DiagramEdge, type DiagramEdgeData } from './DiagramEdge';
+import { NoteStateContext, type NoteState } from './note-state';
 import { edgePoint } from './edge-geometry';
 import { stylePreset } from './stylePresets';
 
-function renderEdge(
+// The element, not the render: a test that needs the edge under a context
+// provider wraps THIS and renders the result, so there is one description of
+// the edge under test rather than two that drift.
+function edgeElement(
   partial: Partial<DiagramEdgeData>,
   positions: { sourcePosition?: Position; targetPosition?: Position } = {},
 ) {
@@ -30,7 +34,7 @@ function renderEdge(
     kindRegistry: createKindRegistry(),
     ...partial,
   };
-  return render(
+  return (
     <ReactFlowProvider>
       <svg>
         <DiagramEdge
@@ -46,8 +50,15 @@ function renderEdge(
           data={data}
         />
       </svg>
-    </ReactFlowProvider>,
+    </ReactFlowProvider>
   );
+}
+
+function renderEdge(
+  partial: Partial<DiagramEdgeData>,
+  positions: { sourcePosition?: Position; targetPosition?: Position } = {},
+) {
+  return render(edgeElement(partial, positions));
 }
 
 describe('DiagramEdge', () => {
@@ -616,6 +627,118 @@ describe('DiagramEdge', () => {
       const { container } = renderEdge({ kind: 'interrupt', relStyle: { color: '#ff0000' } });
       const polyline = container.querySelector('polyline.dg-edge-zigzag');
       expect(polyline?.getAttribute('stroke')).toBe('#ff0000');
+    });
+  });
+
+  describe('threat badge', () => {
+    it('chips a flow with its open threat count, in the HTML label layer', () => {
+      const { baseElement, container } = renderEdge({ kind: 'data-flow', threats: { open: 1, total: 1 } });
+      const chip = baseElement.querySelector('.dg-edge-threat') as HTMLElement;
+      expect(chip).not.toBeNull();
+      // shares the node badge's look, so one CSS rule owns both
+      expect(chip.className).toContain('dg-threat-badge');
+      expect(chip.getAttribute('data-state')).toBe('open');
+      expect(chip.textContent).toBe('1');
+      expect(chip.getAttribute('title')).toBe('1 open of 1 threat');
+      // The chip sits in React Flow's single label portal with every other
+      // edge's, so it carries its own edge id: without it, nothing in the DOM
+      // says which flow a chip belongs to (the e2e suite pairs by this).
+      expect(chip.getAttribute('data-edge')).toBe('e1');
+      // the chip belongs to the label layer, not this edge's own svg (where a
+      // later-painted edge would draw its line straight through it)
+      expect(container.querySelector('svg')!.contains(chip)).toBe(false);
+    });
+
+    it('turns the chip into a tick once every threat on the flow is handled', () => {
+      const { baseElement } = renderEdge({ kind: 'data-flow', threats: { open: 0, total: 2 } });
+      const chip = baseElement.querySelector('.dg-edge-threat') as HTMLElement;
+      expect(chip.getAttribute('data-state')).toBe('handled');
+      expect(chip.textContent).toBe('✓');
+    });
+
+    it('chips nothing on a flow that carries no threats', () => {
+      const { baseElement, unmount } = renderEdge({ kind: 'data-flow' });
+      expect(baseElement.querySelector('.dg-edge-threat')).toBeNull();
+      unmount();
+      // an empty register is not a clean bill of health — the same rule the
+      // node badge states, so the two never disagree
+      const empty = renderEdge({ kind: 'data-flow', threats: { open: 0, total: 0 } });
+      expect(empty.baseElement.querySelector('.dg-edge-threat')).toBeNull();
+    });
+
+    it('offers "Add a threat" on an unthreatened flow in edit mode, and reports the click', () => {
+      // buildEdgeData binds the sole relation, so the chip's callback takes no
+      // arguments — what this proves is that the chip is a button and fires it.
+      const onAddThreat = vi.fn();
+      const { baseElement } = renderEdge({ kind: 'data-flow', notation: 'threat-model', onAddThreat });
+      const chip = baseElement.querySelector('button.dg-edge-threat[data-state="empty"]') as HTMLButtonElement;
+      expect(chip).not.toBeNull();
+      expect(chip.className).toContain('dg-threat-badge');
+      expect(chip.textContent).toBe('+');
+      expect(chip.getAttribute('aria-label')).toBe('Add a threat');
+      expect(chip.getAttribute('title')).toBe('Add a threat');
+      // it rides the shared label portal like the counting chip, so it carries
+      // the edge id too — nothing else in that flat layer says whose it is
+      expect(chip.getAttribute('data-edge')).toBe('e1');
+      fireEvent.click(chip);
+      expect(onAddThreat).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers nothing without a host hook (view mode) or on another notation', () => {
+      const view = renderEdge({ kind: 'data-flow', notation: 'threat-model' });
+      expect(view.baseElement.querySelector('.dg-edge-threat')).toBeNull();
+      view.unmount();
+      const elsewhere = renderEdge({ kind: 'data-flow', notation: 'c4', onAddThreat: vi.fn() });
+      expect(elsewhere.baseElement.querySelector('.dg-edge-threat')).toBeNull();
+    });
+
+    it('keeps the counting chip passive once the flow carries a threat', () => {
+      const { baseElement } = renderEdge({
+        kind: 'data-flow',
+        notation: 'threat-model',
+        threats: { open: 1, total: 1 },
+        onAddThreat: vi.fn(),
+      });
+      expect(baseElement.querySelector('.dg-edge-threat')?.tagName).toBe('SPAN');
+    });
+
+    it('under a NoteStateContext a sole-relation chip toggles its relation’s bubble; a bundle’s stays passive', () => {
+      const toggle = vi.fn();
+      const state: NoteState = { isOpen: (key) => key === 'relation:r1', toggle, placeChip: vi.fn() };
+      const wrap = (ui: React.ReactElement) => render(<NoteStateContext.Provider value={state}>{ui}</NoteStateContext.Provider>);
+      const sole = wrap(edgeElement({ kind: 'data-flow', threats: { open: 1, total: 1 }, threatRelation: 'r1' }));
+      const chip = sole.baseElement.querySelector('button.dg-edge-threat') as HTMLButtonElement;
+      expect(chip.getAttribute('aria-expanded')).toBe('true');
+      expect(chip.getAttribute('aria-label')).toBe('1 open of 1 threat — hide');
+      fireEvent.click(chip);
+      expect(toggle).toHaveBeenCalledWith({ relation: 'r1' });
+      sole.unmount();
+      const bundle = wrap(edgeElement({ kind: 'data-flow', threats: { open: 1, total: 2 }, constituentCount: 2 }));
+      expect(bundle.baseElement.querySelector('button.dg-edge-threat')).toBeNull();
+      expect(bundle.baseElement.querySelector('span.dg-edge-threat')).not.toBeNull();
+    });
+
+    it('reports where its chip is drawn, so the relation’s bubble can hang off it; a bundle reports nothing', () => {
+      const placeChip = vi.fn();
+      const state: NoteState = { isOpen: () => false, toggle: vi.fn(), placeChip };
+      const wrap = (ui: React.ReactElement) => render(<NoteStateContext.Provider value={state}>{ui}</NoteStateContext.Provider>);
+      const sole = wrap(edgeElement({ kind: 'data-flow', threats: { open: 1, total: 1 }, threatRelation: 'r1' }));
+      // the spot is the chip's own transform — the two cannot disagree
+      const chip = sole.baseElement.querySelector('button.dg-edge-threat') as HTMLElement;
+      const m = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(chip.style.transform)!;
+      // ...the side it was pushed to, a unit vector, and the line itself,
+      // sampled end to end so the bubble can keep off it
+      expect(placeChip).toHaveBeenCalledWith('r1', { x: Number(m[1]), y: Number(m[2]) }, expect.anything(), expect.anything());
+      const away = placeChip.mock.calls[0]![2] as { x: number; y: number };
+      expect(Math.hypot(away.x, away.y)).toBeCloseTo(1, 5);
+      const line = placeChip.mock.calls[0]![3] as { x: number; y: number }[];
+      expect(line.length).toBeGreaterThan(10);
+      expect(line[0]).toEqual({ x: 0, y: 0 });
+      expect(line[line.length - 1]).toEqual({ x: 100, y: 100 });
+      sole.unmount();
+      placeChip.mockClear();
+      wrap(edgeElement({ kind: 'data-flow', threats: { open: 1, total: 2 }, constituentCount: 2 }));
+      expect(placeChip).not.toHaveBeenCalled();
     });
   });
 });

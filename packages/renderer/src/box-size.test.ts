@@ -174,6 +174,24 @@ describe('withBoxSizes', () => {
     expect(sizes.get('glyph')).toEqual({ width: 48, height: 48 });
   });
 
+  it('a DFD process and store are force-sized: the reservation IS the drawn box', () => {
+    // An ellipse (and the store's two rules) reads as a footprint, not as a
+    // wrapper around a label — estimating the CSS box would shrink the drawn
+    // shape inside the 150×90 / 150×56 the layout reserved for it.
+    const m = model('tm');
+    const tm = m.threatModel();
+    tm.process('p', 'Verify the credentials thoroughly');
+    tm.store('s', 'Users');
+    const view = compileView(m.toJSON(), {});
+    const hints = new Map([
+      ['p', { width: 150, height: 90 }],
+      ['s', { width: 150, height: 56 }],
+    ]);
+    const sizes = withBoxSizes(view.roots, hints, ctx);
+    expect(sizes.get('p')).toEqual({ width: 150, height: 90 });
+    expect(sizes.get('s')).toEqual({ width: 150, height: 56 });
+  });
+
   it('uses the notation chip size for a folded typeless node when the profile has one', () => {
     const m = model('x');
     const g = m.node('g', { name: 'Group' });

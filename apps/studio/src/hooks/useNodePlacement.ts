@@ -23,6 +23,10 @@ export interface UseNodePlacementOptions {
   setSelection: (sel: DiagramSelection | null) => void;
   setRenameId: (id: string | null) => void;
   setLeftTab: (tab: InspectorTab) => void;
+  /** open the canvas label editor on a node created outside a canvas gesture
+   * (App's nonce-keyed editLabelRequest) — library placement names in place
+   * so the Library tab never has to give way to Properties */
+  requestLabelEdit: (id: string) => void;
   setSaveIssues: (issues: { message: string }[] | null) => void;
   /** active plane + whether it borrows containment (drives plane scoping) */
   activePlane: string | undefined;
@@ -69,6 +73,7 @@ export function useNodePlacement({
   setSelection,
   setRenameId,
   setLeftTab,
+  requestLabelEdit,
   setSaveIssues,
   activePlane,
   activePlaneBorrowsContainment,
@@ -154,12 +159,15 @@ export function useNodePlacement({
     return place.id;
   };
 
-  // Click-to-place from the library palette: mirrors addNode's id generation,
-  // plane/pen scoping, and rename-focus, but stamps the entry's template
-  // instead of a blank node, and sizes it when the template carries dimensions.
-  // Place a library entry as a node. Click-to-place (no position) nests under the
-  // selected container, mirroring Add node; drag-to-place passes the drop point,
-  // so the node lands there top-level instead.
+  // Place a library entry as a node: mirrors addNode's id generation and
+  // plane/pen scoping, but stamps the entry's template instead of a blank node,
+  // sizes it when the template carries dimensions, and names in place on the
+  // canvas — the Properties Name field addNode focuses is not mounted while the
+  // Library tab is up, and placing leaves that tab open on purpose (you place
+  // several in a row).
+  // Click-to-place (no position) nests under the selected container, mirroring
+  // Add node; drag-to-place passes the drop point, so the node lands there
+  // top-level instead.
   const placeFromLibrary = (
     entry: LibraryEntry,
     opts?: { parentId?: string; position?: { x: number; y: number } },
@@ -188,7 +196,7 @@ export function useNodePlacement({
       });
     }
     setSelection({ kind: 'node', id: place.id });
-    setRenameId(place.id);
+    requestLabelEdit(place.id);
   };
 
   // Restyle the selected node to match a library card: overwrite its visual

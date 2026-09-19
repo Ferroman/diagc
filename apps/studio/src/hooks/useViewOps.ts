@@ -13,7 +13,6 @@ import type { EditorApi } from '../editor/useEditor';
 import { getHost } from '../host';
 import { remapVisibleLayers } from '../layerMerge';
 import { unfoldedOf } from '../savedPositions';
-import type { InspectorTab } from '../editor/InspectorTabs';
 import type { LeverageFocus } from '../LeveragePanel';
 
 export interface UseViewOpsOptions {
@@ -33,7 +32,6 @@ export interface UseViewOpsOptions {
   activeLayers: string[];
   setSelection: Dispatch<SetStateAction<DiagramSelection | null>>;
   setRenameId: Dispatch<SetStateAction<string | null>>;
-  setLeftTab: Dispatch<SetStateAction<InspectorTab>>;
   setLeverageFocus: Dispatch<SetStateAction<LeverageFocus | null>>;
   setCompareId: Dispatch<SetStateAction<string | null>>;
   setPlane: Dispatch<SetStateAction<string | undefined>>;
@@ -78,7 +76,6 @@ export function useViewOps({
   activeLayers,
   setSelection,
   setRenameId,
-  setLeftTab,
   setLeverageFocus,
   setCompareId,
   setPlane,
@@ -87,16 +84,18 @@ export function useViewOps({
   setActiveLayers,
   setActiveLayer,
 }: UseViewOpsOptions): ViewOps {
-  // Selection moves anywhere but the pending-rename node → the rename moment is over.
+  // Selection moves anywhere but the pending-rename node → the rename moment is
+  // over. What it deliberately does NOT touch is the inspector tab: the dock
+  // keeps the one the user chose, because a canvas click while the Library was
+  // open used to flip to Properties and cost a trip back to the palette for
+  // every node placed or container selected. Only the toolbar add (which renames
+  // in the Properties Name field) and re-entering edit mode set the tab.
   const select = (sel: DiagramSelection | null) => {
     setSelection(sel);
     setLeverageFocus(null); // a new selection drops any leverage-row highlight
     setCompareId(null); // …and any active dependency comparison
     // the multi-selection mirrors the canvas (App.multiSelect) — it is not cleared here
     setRenameId((r) => (r !== null && sel?.kind === 'node' && sel.id === r ? r : null));
-    // Canvas clicks (this is DiagramView's onSelect) mean "edit this" → Properties.
-    // Library placement uses setSelection directly, so it stays on the Library tab.
-    if (sel?.kind === 'node' || sel?.kind === 'edge') setLeftTab('properties');
   };
 
   // ctrl-click a second node in the causal-loop view → compare it with the

@@ -8,9 +8,9 @@ import {
   useReactFlow,
   type EdgeProps,
 } from '@xyflow/react';
-import { useContext, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
-import type { Column, EdgeLabel, EdgeLabelSide, NotationId, Polarity, RelationStyle } from '@diagramming/core';
+import { TM_NOTATION, threatTargetKey, type Column, type EdgeLabel, type EdgeLabelSide, type NotationId, type Polarity, type RelationStyle } from '@diagramming/core';
 import {
   bowPath,
   DEFAULT_CURVATURE,
@@ -30,12 +30,14 @@ import {
 import { getEdgeParams, sideFromPosition, type Side } from './floating';
 import { CAPTION_HEIGHT } from './label-size';
 import { LoopHighlightContext } from './loop-highlight';
+import { NoteStateContext } from './note-state';
 import { notationProfile } from './notations';
 import type { DiagramNodeData } from './DiagramNode';
 import type { KindStyle, Registry } from './registry';
 import { seedFrom, sketchEdge } from './sketch';
 import { anchorToRow } from './table-ports';
 import type { StylePreset } from './stylePresets';
+import { threatBadgeProps } from './threat-badge';
 
 export interface DiagramEdgeData {
   // --- rendering: kind, marks, route -------------------------------------
@@ -58,6 +60,9 @@ export interface DiagramEdgeData {
   polarity?: Polarity;
   /** causal-loop-diagram delay marker of the sole constituent; drives the hash-mark rendered on the edge when the notation profile enables marks */
   delay?: boolean;
+  /** open/total STRIDE threats on the element; absent when it carries none
+   * (summed over every constituent — see buildEdgeData) */
+  threats?: { open: number; total: number };
   /** FK column on the source table — anchors the source end to that row (db-table) */
   fromColumn?: string;
   /** referenced column on the target table — anchors the target end to that row */
@@ -105,6 +110,14 @@ export interface DiagramEdgeData {
    * Driven by DiagramView's relation-keyed selection (not React Flow's edge
    * `selected`, whose id changes when a pin toggles). */
   pinsActive?: boolean;
+  /** edit mode, sole-relation edges only: open a new threat row on this flow's
+   * note (see EditingApi.onAddThreat). buildEdgeData has already bound the
+   * relation, so the chip calls it with nothing. */
+  onAddThreat?: () => void;
+  /** the sole relation this edge draws, when it draws exactly one — what the
+   * counting chip toggles the bubble of. A bundle names none: its threats
+   * belong to particular relations and no bubble exists for the bundle. */
+  threatRelation?: string;
 }
 
 type Props = Pick<
@@ -146,6 +159,12 @@ const PIN_OFFSET = 16;
 
 /** how far the polarity glyph sits off the path, along the normal (px) */
 const POLARITY_OFFSET = 12;
+/** how far the threat chip sits off the path, along the normal (px) */
+const THREAT_OFFSET = 10;
+/** how many segments a threat-carrying flow's line is sampled into for the
+ * bubbles' placement — a bubble is far wider than one step, so it cannot lie
+ * across the line between two samples */
+const LINE_SAMPLES = 24;
 /** delay mark: half-length of each hash line, along the normal (px) */
 const DELAY_HALF_LEN = 6;
 /** delay mark: how far apart the two hash lines sit, along the tangent (px) */
@@ -395,9 +414,56 @@ export function DiagramEdge({
   // style (not the notation profile) — activity edges appear on any canvas.
   const zigzagFrame = kind.zigzag === true ? markFrame(curve, 0.5) : undefined;
 
+  // Threat chip: gated on the edge carrying threats, not on the notation — a
+  // flow can be threat-modelled on any plane. An empty register is not a clean
+  // bill of health, so `total === 0` draws nothing — the same rule ThreatBadge
+  // states for a node. At t = 0.75 rather than the midpoint, so a centred flow
+  // label keeps the middle of the line.
+  const threats = data?.threats !== undefined && data.threats.total > 0 ? data.threats : undefined;
+  const threatBadge = threats !== undefined ? threatBadgeProps(threats) : undefined;
+  // Where there is nothing to count yet, the same spot offers the flow's first
+  // threat instead — the offer the node badge makes (see ThreatBadge), gated
+  // the same way: a host listening (edit mode) on a threat model's canvas.
+  // Exactly one of the two ever draws, so they share one frame.
+  const addThreat =
+    threats === undefined && data?.onAddThreat !== undefined && data.notation === TM_NOTATION
+      ? data.onAddThreat
+      : undefined;
+  const threatFrame = threats !== undefined || addThreat !== undefined ? markFrame(curve, 0.75) : undefined;
+  const chipX = threatFrame === undefined ? undefined : threatFrame.point.x + threatFrame.normal.x * THREAT_OFFSET;
+  const chipY = threatFrame === undefined ? undefined : threatFrame.point.y + threatFrame.normal.y * THREAT_OFFSET;
+  const threatTransform = chipX === undefined || chipY === undefined ? undefined : `translate(-50%, -50%) translate(${chipX}px, ${chipY}px)`;
+
   // Loop highlight: when a loop badge is active, glow this edge if it's a member,
   // otherwise dim it. Wraps the whole edge (path + marks + marker) as one group.
   const highlight = useContext(LoopHighlightContext);
+  // Which bubbles this canvas has open, and the switch the counting chip is —
+  // null on a canvas that draws none, where the chip stays passive.
+  const notes = useContext(NoteStateContext);
+  // Where the counting chip sits, reported up: the relation's bubble hangs off
+  // it, and only this component knows the routed curve. The same numbers the
+  // chip's transform is written from, so the two cannot disagree. A bundle
+  // names no relation and its chip is passive, so it reports nothing.
+  // The line goes with it, sampled end to end, so the bubbles can keep off
+  // it. The curve is rebuilt every render, so the samples are keyed by their
+  // rounded coordinates: the effect re-reports only when the line moved.
+  const threatRelation = threats !== undefined ? data?.threatRelation : undefined;
+  const chipNx = threatFrame?.normal.x;
+  const chipNy = threatFrame?.normal.y;
+  const lineRef = useRef<Point[]>([]);
+  let lineKey = '';
+  if (notes !== null && threatRelation !== undefined) {
+    lineRef.current = Array.from({ length: LINE_SAMPLES + 1 }, (_, k) => {
+      const p = curve.point(k / LINE_SAMPLES);
+      return { x: Math.round(p.x), y: Math.round(p.y) };
+    });
+    lineKey = lineRef.current.map((p) => `${p.x},${p.y}`).join(';');
+  }
+  useEffect(() => {
+    if (notes !== null && threatRelation !== undefined && chipX !== undefined && chipY !== undefined && chipNx !== undefined && chipNy !== undefined)
+      notes.placeChip(threatRelation, { x: chipX, y: chipY }, { x: chipNx, y: chipNy }, lineRef.current);
+    // lineKey stands in for lineRef.current, which is rebuilt every render
+  }, [notes, threatRelation, chipX, chipY, chipNx, chipNy, lineKey]);
   // 'loop': members glow, rest strong-dim. 'focus': members stay normal, rest light-dim.
   const loopEdgeClass = !highlight.active
     ? undefined
@@ -691,6 +757,79 @@ export function DiagramEdge({
             </EdgeLabelRenderer>
           );
         })()}
+      {threatFrame !== undefined && threatBadge !== undefined && (
+        <EdgeLabelRenderer>
+          {/* `data-edge`: every chip goes into React Flow's single
+              EdgeLabelRenderer portal — one flat layer of absolutely positioned
+              elements — so without the edge id on the chip itself the only thing
+              saying WHICH flow it belongs to is where it happens to sit. The
+              value is the view-edge id (`from=>to:layer`), stable across
+              re-layouts; state/text/title come from the shared derivation the
+              node badge uses, so the two cannot drift apart in what they say.
+              A sole-relation flow on a bubble-drawing canvas gets the toggle
+              button the node badge gets; a bundle keeps the passive count. */}
+          {notes !== null && data?.threatRelation !== undefined ? (
+            (() => {
+              const relation = data.threatRelation;
+              const open = notes.isOpen(threatTargetKey({ relation }));
+              return (
+                <button
+                  type="button"
+                  className="dg-threat-badge dg-edge-threat nodrag nopan"
+                  data-edge={id}
+                  data-state={threatBadge.state}
+                  title={threatBadge.title}
+                  aria-expanded={open}
+                  aria-label={`${threatBadge.title} — ${open ? 'hide' : 'show'}`}
+                  style={{ transform: threatTransform }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    notes.toggle({ relation });
+                  }}
+                >
+                  {threatBadge.text}
+                </button>
+              );
+            })()
+          ) : (
+            <span
+              className="dg-threat-badge dg-edge-threat"
+              data-edge={id}
+              data-state={threatBadge.state}
+              title={threatBadge.title}
+              style={{ transform: threatTransform }}
+            >
+              {threatBadge.text}
+            </span>
+          )}
+        </EdgeLabelRenderer>
+      )}
+      {threatFrame !== undefined && addThreat !== undefined && (
+        <EdgeLabelRenderer>
+          {/* `data-edge` for the same reason the counting chip carries it: the
+              label portal is one flat layer, so the chip itself must say which
+              flow it belongs to. Unlike that chip this one is clickable, so it
+              needs pointer events back (the base badge rule turns them off —
+              see styles.css) and must keep the press from starting a drag. */}
+          <button
+            type="button"
+            className="dg-threat-badge dg-edge-threat nodrag nopan"
+            data-edge={id}
+            data-state="empty"
+            aria-label="Add a threat"
+            title="Add a threat"
+            style={{ transform: threatTransform }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              addThreat();
+            }}
+          >
+            +
+          </button>
+        </EdgeLabelRenderer>
+      )}
     </>
   );
 }

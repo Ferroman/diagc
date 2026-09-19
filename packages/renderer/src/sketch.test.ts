@@ -55,6 +55,8 @@ describe('sketchNode', () => {
 
 /** every y coordinate in rough's path output (commands are all x,y pairs) */
 const ys = (d: string): number[] => (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number).filter((_n, i) => i % 2 === 1);
+/** every x coordinate, the twin of `ys` */
+const xs = (d: string): number[] => (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number).filter((_n, i) => i % 2 === 0);
 
 describe('sketchNode bubble', () => {
   it('hangs a tail below the box, so the outline reaches past the node height', () => {
@@ -189,5 +191,32 @@ describe('sketchNode activity shapes', () => {
     expect(p.stroke).not.toBe(box.stroke);
     // two drawables: the head circle contributes an extra path segment
     expect(p.stroke.length).toBeGreaterThan(box.stroke.length);
+  });
+});
+
+describe('sketchNode threat-model shapes', () => {
+  it('fills the box with an ellipse rather than the inscribed circle', () => {
+    // A DFD process is a wide ellipse with its label inside; falling back to
+    // `circle` (the git-commit glyph) would draw an 88px disc in a 150×90 box
+    // and leave the label hanging over the edges.
+    const ellipse = sketchNode('ellipse', 150, 90, 1, SOLID);
+    const circle = sketchNode('circle', 150, 90, 1, SOLID);
+    expect(ellipse.stroke).not.toBe('');
+    expect(ellipse.stroke).not.toBe(circle.stroke);
+    expect(Math.max(...xs(ellipse.stroke))).toBeGreaterThan(140);
+    expect(Math.max(...xs(circle.stroke))).toBeLessThan(125); // (150 + 88) / 2
+  });
+
+  it('draws a data store as two horizontal rules with open ends', () => {
+    // The MS TMT glyph: a top and a bottom line, no sides. Any vertical run
+    // would put coordinates in the middle of the box.
+    const store = sketchNode('store', 150, 56, 1, SOLID);
+    expect(store.stroke).not.toBe('');
+    expect(store.fill).toBe(''); // bare lines enclose nothing to fill
+    expect(store.hatch).toBe('');
+    for (const y of ys(store.stroke)) expect(y < 56 / 3 || y > (56 * 2) / 3, `y=${y} sits mid-box`).toBe(true);
+    // and each rule spans the whole width — the ends are open, not capped
+    expect(Math.min(...xs(store.stroke))).toBeLessThan(6);
+    expect(Math.max(...xs(store.stroke))).toBeGreaterThan(144);
   });
 });

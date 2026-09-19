@@ -42,6 +42,25 @@
 .dg-shape-send-signal { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%); padding-right: 20px; }
 .dg-shape-receive-signal { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 14px 50%); padding-left: 20px; }
 .dg-shape-note { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); text-align: left; }
+/* Threat model. A process is an ellipse with its label inside (unlike the git
+   commit circle, whose tag hangs outside); the padding keeps text inside the
+   inscribed rectangle. A data store is the two-rule DFD glyph: open ends — the
+   side borders are dropped outright rather than made transparent, so the box
+   keeps no phantom 3px where they were. Neither shape needs a
+   `.dg-style-rough` twin: the shared `.dg-style-rough .dg-node` rule below
+   already blanks the crisp border, leaving the sketch lines as all that shows.
+   Both are FORCED_SIZE_SHAPES (box-size.ts), so — like the diamond — they fill
+   the wrapper the layout sized instead of hugging their label. */
+.dg-shape-ellipse {
+  border-radius: 50%; padding: 14px 22px; text-align: center;
+  min-width: 0; width: 100%; height: 100%; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+}
+.dg-shape-store {
+  border-left: none; border-right: none; border-radius: 0; text-align: center;
+  min-width: 0; width: 100%; height: 100%; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+}
 .dg-style-rough .dg-shape-diamond,
 .dg-style-rough .dg-shape-send-signal,
 .dg-style-rough .dg-shape-receive-signal,
@@ -154,11 +173,147 @@
 .dg-enter:hover { opacity: 1; }
 .dg-link-badge { position: absolute; top: 2px; right: 2px; border: none; background: transparent; cursor: pointer; font-size: 11px; line-height: 1; padding: 2px; opacity: 0.65; }
 .dg-link-badge:hover { opacity: 1; }
+/* Open-threat count. Literal colours on purpose: the badge reads the same in
+   both themes, and — unlike the link badge — it stays in exports, so the PNG
+   carries the count. Top-LEFT, because the link badge already owns the right
+   corner and the two must never stack. It HANGS OFF that corner (negative
+   offsets, a notification badge) rather than sitting inside it: inside, it
+   covered the first character of a left-aligned label (`tm-entity` draws one)
+   and the `.dg-icon` glyph of any icon-bearing type outside the DFD vocabulary
+   being threat-modelled in place. Outside the box it overlaps nothing. */
+.dg-threat-badge {
+  position: absolute; top: -6px; left: -6px;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  font: 600 11px/18px system-ui, sans-serif; text-align: center;
+  color: #fff; pointer-events: none;
+}
+.dg-threat-badge[data-state='open'] { background: #c62828; }
+.dg-threat-badge[data-state='handled'] { background: #2e7d32; }
+/* The counting badge as a toggle (a bubble-drawing canvas — see NoteStateContext):
+   the same pill, with the UA's button chrome stripped and the pointer events the
+   passive rule above gives up taken back. In the export page nothing toggles. */
+button.dg-threat-badge[data-state='open'], button.dg-threat-badge[data-state='handled'] { border: none; pointer-events: auto; cursor: pointer; }
+button.dg-threat-badge[data-state='open']:hover, button.dg-threat-badge[data-state='handled']:hover { filter: brightness(1.12); }
+/* The button selectors are repeated because the toggle rule above is more
+   specific than a plain `.dg-no-chrome .dg-threat-badge` would be. */
+.dg-no-chrome .dg-threat-badge,
+.dg-no-chrome button.dg-threat-badge[data-state='open'],
+.dg-no-chrome button.dg-threat-badge[data-state='handled'] { pointer-events: none; }
+/* Nothing to count yet: the same corner turns into the `+` that writes the
+   first threat (edit mode, threat models only — see ThreatBadge). Muted, since
+   an empty register is an invitation, not a finding; and clickable, so it takes
+   back the pointer events the badge above gives up. */
+.dg-threat-badge[data-state='empty'] { background: var(--dg-node-stroke, #9e9e9e); opacity: 0.7; pointer-events: auto; cursor: pointer; border: none; }
+.dg-threat-badge[data-state='empty']:hover { opacity: 1; }
+/* the ellipse's top-left corner is outside the curve — tuck the badge in to
+   where the outline actually runs */
+.dg-shape-ellipse > .dg-threat-badge { top: 8px; left: 16px; }
+/* A group wears it in the header band, right of the title and LEFT of the
+   badges cluster: that cluster is right-aligned (margin-left: auto) inside a
+   header padded 10px, and holds an enter chip plus a fold chip (~15px each,
+   4px gap) — so it reaches ~44px in from the right edge. 48px clears it. */
+.dg-group > .dg-threat-badge { top: 4px; left: auto; right: 48px; }
+/* The `+` a selected node offers (QuickAddButton): a chip hanging off the
+   right edge, outside the box so it covers no label. Flow-space, like the
+   badges — it scales with the zoom and is never clipped at the canvas edge
+   (the reason the selection toolbar avoids NodeToolbar).
+   It must clear the box entirely, not straddle the edge: .react-flow__handle-right
+   is anchored at exactly `top: 50%; right: 0` with a -50%/+50% translate, it is
+   live in edit mode, and this chip is three times its size with a z-index — a
+   straddling chip would swallow the drag-to-connect gesture and add a node
+   where the user meant to draw an edge. Hence the full-width shift plus an 8px
+   gap (the handle reaches 3px past the edge, so 5px stay clear); the gap is
+   also where quickAddPlaced puts the node the chip adds. The overrides below
+   keep `right: 0` and replace the transform, so each states its own geometry —
+   and both trade this rule's horizontal clearance for vertical: on a group and
+   on a bone the chip sits ON the right edge and steps out of the handle's way
+   up or down instead. */
+.dg-quick-add {
+  position: absolute; top: 50%; right: 0; transform: translate(calc(100% + 8px), -50%);
+  width: 18px; height: 18px; border-radius: 50%; border: none; padding: 0;
+  background: var(--dg-accent, #3b82f6); color: #fff; font: 600 14px/18px system-ui, sans-serif;
+  cursor: pointer; z-index: 3;
+}
+.dg-quick-add:hover { filter: brightness(1.1); }
+/* a group's right edge is its wall; keep the chip in the header band — clear of
+   the right handle, which sits at mid-height */
+.dg-group > .dg-quick-add { top: 12px; transform: translate(50%, 0); }
+/* on a fish the bone leaves the label's end: sit below-right, off the line and
+   fully clear of the mid-height handle — a cause node is TEXT_H = 22px tall
+   (see FISHBONE_LAYOUT), so the 18px chip has to hang 13px below the box to
+   stop touching it */
+.dg-fb-head > .dg-quick-add, .dg-fb-cause > .dg-quick-add { top: auto; bottom: -13px; transform: translate(50%, 0); }
 /* Chrome-less mode (the PNG export): drop the affordances nobody can click in a
    still image, so a committed picture is the diagram and nothing else. The
    link badge is part of that contract too — a still export can't follow it,
    so it has no business in the committed picture either. */
-.dg-no-chrome .dg-fold, .dg-no-chrome .dg-enter, .dg-no-chrome .dg-link-badge { display: none; }
+.dg-no-chrome .dg-fold, .dg-no-chrome .dg-enter, .dg-no-chrome .dg-link-badge,
+.dg-no-chrome .dg-quick-add { display: none; }
+/* The counting badge stays (it is the finding), but its empty state is an
+   affordance nobody can click in a still image — out it goes with the rest. */
+.dg-no-chrome .dg-threat-badge[data-state='empty'] { display: none; }
+
+/* A threat bubble (NoteNode): a speech bubble beside its element, drawn in the
+   theme's node colours so it reads in both themes — the sticky it replaced
+   fixed a pale yellow under var(--dg-text) and vanished in the dark theme.
+   Content, not chrome: it stays in exports; its controls and fields are chrome
+   (see the .dg-no-chrome rules below). Width comes inline from NOTE_WIDTH so the
+   placement and the box agree. */
+.dg-note {
+  position: relative; box-sizing: border-box; padding: 8px 10px;
+  background: var(--dg-node-fill); border: 1.5px solid var(--dg-node-stroke); border-radius: 10px;
+  font: 12px/1.35 system-ui, sans-serif; color: var(--dg-text);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+/* The tail: an SVG laid over the box (a child paints above its parent's border)
+   with the bubble's own coordinates, spilling out to the badge it points at
+   (note-tail.ts). Its path is filled in the box's fill and stroked in the box's
+   stroke, so the two read as one drawn shape. */
+.dg-note-tail { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.dg-note-tail path { fill: var(--dg-node-fill); stroke: var(--dg-node-stroke); stroke-width: 1.5px; stroke-linejoin: round; }
+.dg-note-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+/* the name wraps (it is what says which element this is); the count never does
+   — without flex: none the header handed it the leftover width and it broke
+   one character per line */
+.dg-note-name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.dg-note-count { flex: none; white-space: nowrap; font-weight: 600; font-size: 11px; }
+.dg-note-count[data-state='open'] { color: #c62828; }
+.dg-note-count[data-state='handled'] { color: #2e7d32; }
+.dg-note-rows { list-style: none; margin: 0; padding: 0; }
+.dg-note-row { padding: 2px 0; }
+.dg-note-row + .dg-note-row { border-top: 1px solid color-mix(in srgb, var(--dg-node-stroke) 35%, transparent); }
+.dg-note-line { display: flex; align-items: center; gap: 6px; }
+/* handled: muted only — the status chip says which handling, so no strike, no ✓.
+   The details mute with the line: a handled row's expanded text is part of the
+   same row, and muting only the line left the two at different weights. */
+.dg-note-row[data-open='false'] > .dg-note-line,
+.dg-note-row[data-open='false'] > .dg-note-details { opacity: 0.6; }
+.dg-stride { flex: none; width: 15px; height: 15px; border-radius: 3px; text-align: center; font: 700 9px/15px system-ui, sans-serif; background: var(--dg-node-stroke); color: var(--dg-node-fill); }
+.dg-note-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.dg-note .dg-label-input { width: 100%; font: inherit; }
+.dg-note-status {
+  flex: none; padding: 0 5px; border-radius: 8px; border: 1px solid var(--dg-node-stroke);
+  background: transparent; color: inherit; font: 600 10px/14px system-ui, sans-serif; text-transform: lowercase;
+}
+button.dg-note-status { cursor: pointer; }
+button.dg-note-status:hover { background: color-mix(in srgb, var(--dg-node-stroke) 15%, transparent); }
+/* the four status words each read at a glance: red still open, green handled
+   (mitigated and accepted are both "dealt with"), grey ruled out. Without these
+   the last two were an untinted chip, indistinguishable from each other. */
+.dg-note-status[data-status='open'] { border-color: #c62828; color: #c62828; }
+.dg-note-status[data-status='mitigated'],
+.dg-note-status[data-status='accepted'] { border-color: #2e7d32; color: #2e7d32; }
+.dg-note-status[data-status='not-applicable'] { color: var(--dg-text-muted, #757575); border-color: currentColor; }
+.dg-note-expand { flex: none; width: 16px; height: 16px; padding: 0; border: none; background: transparent; color: inherit; font: 11px/16px system-ui, sans-serif; cursor: pointer; opacity: 0.7; }
+.dg-note-expand:hover { opacity: 1; }
+.dg-note-details { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 2px 21px; }
+.dg-note-text { margin: 0; font-size: 11px; line-height: 1.35; white-space: pre-wrap; }
+.dg-note-text-label { font-weight: 600; opacity: 0.75; }
+.dg-note-field { width: 100%; box-sizing: border-box; resize: vertical; font: 11px/1.35 system-ui, sans-serif; color: var(--dg-text); background: var(--dg-node-fill); border: 1px solid var(--dg-node-stroke); border-radius: 4px; padding: 3px 5px; }
+.dg-note-add { margin-top: 6px; width: 16px; height: 16px; border-radius: 50%; border: none; padding: 0; background: var(--dg-accent, #3b82f6); color: #fff; font: 600 12px/16px system-ui, sans-serif; cursor: pointer; }
+.dg-no-chrome .dg-note-add, .dg-no-chrome .dg-note-expand, .dg-no-chrome .dg-note textarea { display: none; }
+.dg-no-chrome .dg-note-status { pointer-events: none; }
+
 .dg-breadcrumbs-nav {
   display: inline-flex;
   align-items: center;
@@ -265,6 +420,10 @@
 }
 /* a bundled arrow's chip is not a handle: presses fall through to the edge */
 .dg-edge-chip { pointer-events: none; }
+/* The flow's threat chip rides the label layer like a label, so it needs the
+   same absolute placement its transform is written against (see .dg-threat-badge
+   for the look, which it shares with the node badge). */
+.dg-edge-threat { position: absolute; }
 /* Endpoint pin dots (edit mode, selected single-relation edge): hollow = the
    end floats and tracks the facing border; filled = pinned to a fixed side. */
 .dg-edge-pin {

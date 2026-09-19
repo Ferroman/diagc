@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DiagramModel } from '@diagramming/core';
 import { NodePanel } from './NodePanel';
@@ -612,6 +612,101 @@ describe('NodePanel', () => {
       );
       fireEvent.click(screen.getByRole('button', { name: 'Ungroup' }));
       expect(onCommand).toHaveBeenCalledWith({ type: 'delete-node', id: 'frame' });
+    });
+  });
+
+  describe('threats', () => {
+    function tmModel(threats?: DiagramModel['nodes'][number]['threats']): DiagramModel {
+      return {
+        version: 1,
+        id: 'draft',
+        name: 'draft',
+        nodes: [{ id: 'p', name: 'API', type: 'tm-process', ...(threats !== undefined ? { threats } : {}) }],
+        containment: [],
+        relations: [],
+        layers: [],
+        planes: [],
+      };
+    }
+
+    it('offers the section on a threat-model plane, categories led by the ones the type invites', () => {
+      render(
+        <NodePanel
+          model={tmModel()}
+          nodeId="p"
+          activePlane={undefined}
+          notation="threat-model"
+          onCommand={vi.fn()}
+          onClose={noop}
+          onDeleted={noop}
+        />,
+      );
+      const first = (screen.getByLabelText('New threat category') as HTMLSelectElement).options[0];
+      expect(first?.textContent).toBe('S · Spoofing'); // a process takes all six, S first
+    });
+
+    it('threat-models a node of any type, not only a DFD one', () => {
+      const m = tmModel();
+      m.nodes[0] = { id: 'p', name: 'API', type: 'service' };
+      render(
+        <NodePanel
+          model={m}
+          nodeId="p"
+          activePlane={undefined}
+          notation="threat-model"
+          onCommand={vi.fn()}
+          onClose={noop}
+          onDeleted={noop}
+        />,
+      );
+      expect(screen.getByRole('region', { name: 'Threats' })).toBeTruthy();
+    });
+
+    it('stays out of the way off the notation, unless the node already carries threats', () => {
+      const { unmount } = render(
+        <NodePanel model={tmModel()} nodeId="p" activePlane={undefined} onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+      );
+      expect(screen.queryByRole('region', { name: 'Threats' })).toBeNull();
+      unmount();
+
+      // switching the notation off must not strand threats that are already
+      // authored — they stay editable (and removable) where they live
+      render(
+        <NodePanel
+          model={tmModel([{ id: 't1', category: 'S', title: 'Spoofed caller' }])}
+          nodeId="p"
+          activePlane={undefined}
+          onCommand={vi.fn()}
+          onClose={noop}
+          onDeleted={noop}
+        />,
+      );
+      expect(screen.getByRole('region', { name: 'Threats' })).toBeTruthy();
+      expect(screen.getByLabelText('Threat t1 title')).toBeTruthy();
+    });
+
+    it('targets the node it is editing', () => {
+      const onCommand = vi.fn();
+      render(
+        <NodePanel
+          model={tmModel()}
+          nodeId="p"
+          activePlane={undefined}
+          notation="threat-model"
+          onCommand={onCommand}
+          onClose={noop}
+          onDeleted={noop}
+        />,
+      );
+      fireEvent.change(screen.getByLabelText('New threat'), { target: { value: 'Spoofed caller' } });
+      // the accessible name names what is being added — Memberships has an Add
+      // of its own, and the scoping below is the belt to that braces
+      fireEvent.click(within(screen.getByRole('region', { name: 'Threats' })).getByRole('button', { name: 'Add threat' }));
+      expect(onCommand).toHaveBeenCalledWith({
+        type: 'add-threat',
+        target: { node: 'p' },
+        threat: { id: 't1', category: 'S', title: 'Spoofed caller' },
+      });
     });
   });
 });

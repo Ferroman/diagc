@@ -1,12 +1,12 @@
 # Library reference
 
-The palette of ready-made nodes in the studio's **Library** tab. Nine read-only packs ship bundled; your own entries merge over them.
+The palette of ready-made nodes in the studio's **Library** tab. Ten read-only packs ship bundled; your own entries merge over them.
 
 For how to use it, see [Use the icon library](../how-to/use-the-icon-library.md).
 
 ## Bundled packs
 
-846 entries in 38 categories, rendered in this order:
+850 entries in 39 categories, rendered in this order:
 
 | Pack | Entries | Categories | Assets |
 | --- | --- | --- | --- |
@@ -14,6 +14,7 @@ For how to use it, see [Use the icon library](../how-to/use-the-icon-library.md)
 | **Activity** | 10 | 1 | none — renderer-drawn glyphs, not images |
 | **Second-order thinking** | 4 | 1 | none — renderer-drawn glyphs, not images |
 | **Fishbone** | 3 | 1 | none — renderer-drawn looks, not images |
+| **Threat model** | 4 | 1 | none — renderer-drawn shapes, not images |
 | **Data** | 1 | 1 | none — it seeds columns, not an image |
 | **Shapes** | 3 | 1 | `/library/shapes/` — tintable silhouette masks |
 | **Tech** | 16 | 1 | `/library/tech/` |
@@ -49,6 +50,12 @@ One category, **Second-order thinking** — the four stencils behind an [and-the
 ### Fishbone
 
 One category, **Fishbone** — the three stencils behind a [fishbone diagram](../how-to/draw-a-fishbone-diagram.md): Effect, Category, Cause. Every entry carries an `fb-*` node type (`fb-effect`, `fb-category`, `fb-cause`) that the renderer draws as part of the fish, not an image. A dropped Cause waits in the stray row under the fish until it is connected to a bone.
+
+### Threat model
+
+One category, **Threat model** — the four STRIDE data-flow stencils behind a [threat model](../how-to/draw-a-threat-model.md): External entity, Process, Data store, Trust boundary. Every entry carries a `tm-*` node type (`tm-entity`, `tm-process`, `tm-store`, `tm-boundary`) the renderer draws itself — a box, an ellipse, the open-ended store glyph, a red dashed outline — not an image. `dfd`, `stride` and `threat` are keywords on all four, so any of them finds the set.
+
+A dropped Trust boundary is an empty box: it holds elements through ordinary containment, added with the node panel's Memberships picker.
 
 ### Data
 

@@ -220,6 +220,53 @@ describe('buildNodeData', () => {
         .color,
     ).toBe('#type');
   });
+
+  it('summarises the node\'s STRIDE threats, and says nothing when it carries none', () => {
+    const threatened = viewNode({
+      node: {
+        id: 'n1',
+        name: 'One',
+        type: 'tm-process',
+        threats: [
+          { id: 't1', category: 'S', title: 'Spoofed caller' },
+          { id: 't2', category: 'T', title: 'Tampered payload', status: 'mitigated' },
+        ],
+      },
+    });
+    expect(buildNodeData(threatened, nodeCtx()).threats).toEqual({ open: 1, total: 2 });
+    // no threats ⇒ no key at all: the badge is driven by the field's presence
+    expect(buildNodeData(viewNode(), nodeCtx()).threats).toBeUndefined();
+  });
+
+  it('threads quickAdd onto every node only while editing, and keys the cache on it', () => {
+    const hook = { label: () => 'Add a connected node', run: () => {} };
+    const n = viewNode();
+    expect(buildNodeData(n, nodeCtx({ editing: true, quickAdd: hook })).quickAdd).toBe(hook);
+    expect(buildNodeData(n, nodeCtx({ editing: false, quickAdd: hook })).quickAdd).toBeUndefined();
+    // The cache compares the ctx field by field, so a spread of the same ctx is
+    // still a hit; only the hook's identity may differ between the two calls
+    // below — a new hook object must rebuild, or a host that swapped its recipe
+    // (a plane/notation change) would keep offering the old one.
+    const ctx = nodeCtx({ editing: true, quickAdd: hook });
+    const a = buildNodeDataCached(n, { ...ctx });
+    expect(buildNodeDataCached(n, { ...ctx })).toBe(a);
+    expect(buildNodeDataCached(n, { ...ctx, quickAdd: { ...hook } })).not.toBe(a);
+  });
+
+  it('threads onAddThreat onto every node only while editing, and keys the cache on it', () => {
+    // The node badge decides for itself whether to offer the `+` (its notation
+    // gate); the builder only says whether a host is listening at all — view
+    // mode has nowhere to put a new threat.
+    const onAddThreat = vi.fn();
+    const n = viewNode();
+    expect(buildNodeData(n, nodeCtx({ editing: true, onAddThreat })).onAddThreat).toBe(onAddThreat);
+    expect(buildNodeData(n, nodeCtx({ editing: false, onAddThreat })).onAddThreat).toBeUndefined();
+    const ctx = nodeCtx({ editing: true, onAddThreat });
+    const a = buildNodeDataCached(n, { ...ctx });
+    expect(buildNodeDataCached(n, { ...ctx })).toBe(a);
+    // a host that swapped the callback must not keep calling the old one
+    expect(buildNodeDataCached(n, { ...ctx, onAddThreat: vi.fn() })).not.toBe(a);
+  });
 });
 
 describe('buildEdgeData', () => {
@@ -264,6 +311,38 @@ describe('buildEdgeData', () => {
     const d = buildEdgeData(viewEdge(), edgeCtx({ onAddEdgeLabel: vi.fn() }));
     expect(d.editableLabels).toBeUndefined();
     expect(d.onAddLabel).toBeUndefined();
+  });
+
+  it('sums the STRIDE threats of every merged constituent, and says nothing when none carry any', () => {
+    // A bundled arrow stands for several relations: the badge has to count the
+    // whole bundle, or a threat would vanish the moment two flows merged.
+    const threatened = viewEdge({
+      constituents: [
+        { id: 'r1', from: 'a', to: 'b', kind: 'data-flow', threats: [{ id: 't1', category: 'I', title: 'Sniffed' }] },
+        {
+          id: 'r2',
+          from: 'a',
+          to: 'b',
+          kind: 'data-flow',
+          threats: [{ id: 't1', category: 'T', title: 'Replayed', status: 'mitigated' }],
+        },
+      ],
+    });
+    expect(buildEdgeData(threatened, edgeCtx()).threats).toEqual({ open: 1, total: 2 });
+    expect(buildEdgeData(viewEdge(), edgeCtx()).threats).toBeUndefined();
+  });
+
+  it('names the sole relation as threatRelation in both modes, and nothing on a bundle', () => {
+    const sole = viewEdge({ constituents: [{ id: 'r1', from: 'a', to: 'b', kind: 'data-flow' }] });
+    expect(buildEdgeData(sole, edgeCtx()).threatRelation).toBe('r1');
+    expect(buildEdgeData(sole, edgeCtx({ editing: true })).threatRelation).toBe('r1');
+    const bundle = viewEdge({
+      constituents: [
+        { id: 'r1', from: 'a', to: 'b', kind: 'data-flow' },
+        { id: 'r2', from: 'a', to: 'b', kind: 'data-flow' },
+      ],
+    });
+    expect(buildEdgeData(bundle, edgeCtx()).threatRelation).toBeUndefined();
   });
 
   it('wires pin dots to the active sole relation and the side callback', () => {
@@ -339,6 +418,33 @@ describe('buildEdgeData', () => {
   it('threads the notation colour for the edge id', () => {
     expect(buildEdgeData(viewEdge(), edgeCtx({ edgeColors: new Map([['e1', '#lane']]) })).notationColor).toBe('#lane');
     expect(buildEdgeData(viewEdge(), edgeCtx()).notationColor).toBeUndefined();
+  });
+
+  it('binds onAddThreat to the sole relation, in edit mode only', () => {
+    // A threat hangs off a RELATION, not off the drawn arrow: the binding has
+    // to happen here, where the constituent is known. A bundled arrow names no
+    // single relation, so it gets no offer at all.
+    const onAddThreat = vi.fn();
+    buildEdgeData(viewEdge(), edgeCtx({ editing: true, onAddThreat })).onAddThreat?.();
+    expect(onAddThreat).toHaveBeenCalledWith({ relation: 'r1' });
+    expect(buildEdgeData(viewEdge(), edgeCtx({ onAddThreat })).onAddThreat).toBeUndefined();
+    const bundled = viewEdge({
+      constituents: [
+        { id: 'r1', from: 'a', to: 'b', kind: 'data-flow' },
+        { id: 'r2', from: 'a', to: 'b', kind: 'data-flow' },
+      ],
+    });
+    expect(buildEdgeData(bundled, edgeCtx({ editing: true, onAddThreat })).onAddThreat).toBeUndefined();
+  });
+
+  it('keys the edge cache on onAddThreat', () => {
+    // same reason as the node ctx: a swapped callback must rebuild, or the
+    // chip keeps calling the host's previous one
+    const e = viewEdge();
+    const ctx = edgeCtx({ editing: true, onAddThreat: vi.fn() });
+    const first = buildEdgeDataCached(e, { ...ctx });
+    expect(buildEdgeDataCached(e, { ...ctx })).toBe(first);
+    expect(buildEdgeDataCached(e, { ...ctx, onAddThreat: vi.fn() })).not.toBe(first);
   });
 });
 

@@ -15,10 +15,20 @@ import type {
   RelationStyle,
   TextAlign,
   TextRun,
+  Threat,
 } from './types';
 import { FB_CATEGORY_TYPE, FB_CAUSE_OF_KIND, FB_CAUSE_TYPE, FB_EFFECT_TYPE, FISHBONE_PRESETS, presetId, type FishbonePreset } from './fishbone';
 import { GIT_STAGE_TYPE } from './git';
 import { SO_DECISION_TYPE, SO_LEADS_TO_KIND, consequenceTypeOf, type Valence } from './second-order';
+import {
+  TM_BOUNDARY_TYPE,
+  TM_ENTITY_TYPE,
+  TM_FLOW_KIND,
+  TM_NOTATION,
+  TM_PROCESS_TYPE,
+  TM_STORE_TYPE,
+  type ThreatTarget,
+} from './threat-model';
 import { DiagramValidationError, validate } from './validate';
 
 export interface NodeOpts {
@@ -59,6 +69,8 @@ export interface NodeOpts {
   layer?: string;
   /** ER-table rows (see DiagramNode.columns) */
   columns?: Column[];
+  /** STRIDE findings (see DiagramNode.threats) */
+  threats?: Threat[];
 }
 
 export interface RelateOpts {
@@ -79,7 +91,12 @@ export interface RelateOpts {
   fromColumn?: string;
   /** referenced column on the target table (see DiagramRelation.toColumn) */
   toColumn?: string;
+  /** STRIDE findings (see DiagramRelation.threats) */
+  threats?: Threat[];
 }
+
+/** A threat as authored: the id is synthesized (`t1`, `t2`, …) unless given. */
+export type ThreatOpts = Omit<Threat, 'id'> & { id?: string };
 
 export interface ContainsOpts {
   /** plane the containment belongs to; defaults to the model's first-declared plane */
@@ -99,6 +116,14 @@ export class NodeRef {
     for (const child of args) {
       if (child instanceof NodeRef) this.builder.addContainment(this.id, child.id, opts?.plane);
     }
+    return this;
+  }
+
+  /** A STRIDE finding against this element. On every node ref, not just the
+   * threat-model ones: threat-modelling an existing C4 or ER diagram annotates
+   * the nodes it already has. */
+  threat(opts: ThreatOpts): this {
+    this.builder.addThreat({ node: this.id }, opts);
     return this;
   }
 }
@@ -326,6 +351,57 @@ export class FishboneBuilder {
   }
 }
 
+/** A data flow: a relation ref that takes threats, the way a NodeRef does. */
+export class FlowRef {
+  constructor(
+    readonly id: string,
+    private readonly m: ModelBuilder,
+  ) {}
+
+  threat(opts: ThreatOpts): this {
+    this.m.addThreat({ relation: this.id }, opts);
+    return this;
+  }
+}
+
+/** A DFD element's node options, minus the two its helper already supplies:
+ * `type` from the helper itself, `name` from its second argument. */
+export type ElementOpts = Omit<NodeOpts, 'type' | 'name'>;
+
+/** The four DFD element kinds plus flows. Everything it hands back is an
+ * ordinary NodeRef/FlowRef, so the rest of the builder — contains, relate,
+ * layers, threat — composes with it unchanged. */
+export class ThreatModelBuilder {
+  constructor(private readonly m: ModelBuilder) {}
+
+  private element(type: string, id: string, name: string | undefined, opts: ElementOpts): NodeRef {
+    return this.m.node(id, { type, ...(name !== undefined ? { name } : {}), ...opts });
+  }
+
+  /** an external entity: a user, a third party, anything outside the system */
+  entity(id: string, name?: string, opts: ElementOpts = {}): NodeRef {
+    return this.element(TM_ENTITY_TYPE, id, name, opts);
+  }
+  /** a process: something the system does with the data */
+  process(id: string, name?: string, opts: ElementOpts = {}): NodeRef {
+    return this.element(TM_PROCESS_TYPE, id, name, opts);
+  }
+  /** a data store: where the data rests */
+  store(id: string, name?: string, opts: ElementOpts = {}): NodeRef {
+    return this.element(TM_STORE_TYPE, id, name, opts);
+  }
+  /** a trust boundary: nest elements with `.contains()` */
+  boundary(id: string, name?: string, opts: ElementOpts = {}): NodeRef {
+    return this.element(TM_BOUNDARY_TYPE, id, name, opts);
+  }
+
+  /** a data flow; a string is its label */
+  flow(from: NodeRef, to: NodeRef, labelOrOpts: string | Omit<RelateOpts, 'kind'> = {}): FlowRef {
+    const opts = typeof labelOrOpts === 'string' ? { label: labelOrOpts } : labelOrOpts;
+    return new FlowRef(this.m.addRelation(from, to, { kind: TM_FLOW_KIND, ...opts }), this.m);
+  }
+}
+
 export interface ActivityElementOpts {
   color?: string;
 }
@@ -451,6 +527,7 @@ export class ModelBuilder {
   private git: GitGraphBuilder | undefined;
   private so: SecondOrderBuilder | undefined;
   private fb: FishboneBuilder | undefined;
+  private tm: ThreatModelBuilder | undefined;
 
   constructor(
     private readonly id: string,
@@ -502,19 +579,53 @@ export class ModelBuilder {
     if (!exists) this.containment.push({ parent, child, ...pruneUndefined({ plane }) });
   }
 
+  /** internal — appends a threat to the node or relation `target` names; used by
+   * NodeRef.threat() and FlowRef.threat() */
+  addThreat(target: ThreatTarget, opts: ThreatOpts): void {
+    const element =
+      'node' in target
+        ? this.nodes.find((n) => n.id === target.node)
+        : this.relations.find((r) => r.id === target.relation);
+    if (element === undefined) {
+      throw new Error(
+        'node' in target
+          ? `threat(): unknown node '${target.node}'`
+          : `threat(): unknown relation '${target.relation}'`,
+      );
+    }
+    const threats = element.threats ?? [];
+    const { id, category, title, ...rest } = opts;
+    // Synthesized from the list's length, not a model-wide counter: an id only
+    // has to be unique within its own element (see Threat.id), so two elements'
+    // first findings are both `t1` and neither shifts when the other changes.
+    const threat: Threat = { id: id ?? `t${threats.length + 1}`, category, title, ...pruneUndefined(rest) };
+    if (threats.some((t) => t.id === threat.id)) {
+      throw new Error(`threat(): duplicate threat id '${threat.id}' on '${element.id}'`);
+    }
+    element.threats = [...threats, threat];
+  }
+
   relate(from: NodeRef, to: NodeRef, opts: RelateOpts): this {
+    this.addRelation(from, to, opts);
+    return this;
+  }
+
+  /** internal — like relate(), but returns the new relation's id (FlowRef needs
+   * it to hang threats off the flow) */
+  addRelation(from: NodeRef, to: NodeRef, opts: RelateOpts): string {
     const pair = `${from.id}->${to.id}`;
     const n = this.pairCounters.get(pair) ?? 0;
     this.pairCounters.set(pair, n + 1);
     const { kind, id, ...rest } = opts;
+    const relationId = id ?? `${pair}#${n}`;
     this.relations.push({
-      id: id ?? `${pair}#${n}`,
+      id: relationId,
       from: from.id,
       to: to.id,
       kind,
       ...pruneUndefined(rest),
     });
-    return this;
+    return relationId;
   }
 
   layer(id: string, opts: { name?: string; tint?: string } = {}): this {
@@ -591,6 +702,20 @@ export class ModelBuilder {
     const effect = this.node(id, { type: FB_EFFECT_TYPE, ...(name !== undefined ? { name } : {}), ...rest });
     this.fb = new FishboneBuilder(this, effect);
     return this.fb;
+  }
+
+  /**
+   * Declare a threat model (STRIDE data-flow diagram). With no `plane` the
+   * NOTATION is model-wide; name a plane to threat-model an existing
+   * architecture beside its other views — the plane holds its own boundary
+   * containment over the same nodes.
+   */
+  threatModel(opts: { plane?: string; name?: string } = {}): ThreatModelBuilder {
+    if (this.tm !== undefined) throw new Error('threatModel() already declared');
+    if (opts.plane !== undefined) this.plane(opts.plane, { name: opts.name ?? 'Threat model', notation: TM_NOTATION });
+    else this.notation(TM_NOTATION);
+    this.tm = new ThreatModelBuilder(this);
+    return this.tm;
   }
 
   /** Declare an activity diagram: a framed swimlane flow. Repeatable — each

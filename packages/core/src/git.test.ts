@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_NOTATIONS, type DiagramModel, type DiagramNode, type DiagramRelation } from './types';
 import { model } from './builder';
-import { GIT_KINDS, GIT_NOTATION, gapOf, gitGraph, isGitKind, latestCommit, mergedAway } from './git';
+import { GIT_KINDS, GIT_NOTATION, gapOf, gitGraph, isGitKind, latestCommit, mergedAway, nextCommitId } from './git';
 import { validate } from './validate';
 
 const commit = (id: string, extra: Partial<DiagramNode> = {}): DiagramNode => ({ id, name: '', type: 'commit', ...extra });
@@ -86,6 +86,15 @@ describe('git graph', () => {
     expect(latestCommit(g, 'master')?.id).toBe('m2');
     expect(latestCommit(g, 'tie')?.id).toBe('x2');
     expect(latestCommit(g, 'empty')).toBeUndefined();
+  });
+
+  it('nextCommitId is `<lane>-<n>` with the smallest free n, skipping ids a deletion left behind', () => {
+    const m = sample();
+    expect(nextCommitId(m, 'master')).toBe('master-1');
+    m.nodes.push(commit('master-1'), commit('master-3'));
+    expect(nextCommitId(m, 'master')).toBe('master-2');
+    m.nodes.push(commit('master-2'));
+    expect(nextCommitId(m, 'master')).toBe('master-4');
   });
 
   it('gapOf reads an integer or a digit string and ignores anything else', () => {

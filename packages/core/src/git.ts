@@ -115,6 +115,17 @@ export function gitGraph(model: DiagramModel, plane?: string): GitGraph {
   return { lanes, laneOf, columns, strays, cycleEdges, stages };
 }
 
+/** `${lane}-${n}` with the smallest n not yet taken — the DSL's naming, kept
+ * unique even after deletions. Shared by the Git panel and the canvas `+` so
+ * a commit is named the same whichever created it. */
+export function nextCommitId(model: DiagramModel, laneId: string): string {
+  const taken = new Set(model.nodes.map((n) => n.id));
+  for (let n = 1; ; n++) {
+    const id = `${laneId}-${n}`;
+    if (!taken.has(id)) return id;
+  }
+}
+
 /** The lane's rightmost commit (max column; ties go to the later declared). */
 export function latestCommit(g: GitGraph, laneId: string): DiagramNode | undefined {
   const lane = g.lanes.find((l) => l.id === laneId);

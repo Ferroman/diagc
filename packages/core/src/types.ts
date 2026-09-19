@@ -79,6 +79,8 @@ export interface DiagramNode {
   /** implementation technology shown in the type subtitle, e.g. "Java/Spring"
    * renders `[Container: Java/Spring]`; meaningful in any notation */
   technology?: string;
+  /** STRIDE findings against this node (see Threat) */
+  threats?: Threat[];
   description?: string;
   /** rich multiline label; when present, name === rich.map(r => r.text).join('') */
   rich?: TextRun[];
@@ -167,6 +169,30 @@ export interface EdgeLabel {
   side?: EdgeLabelSide;
 }
 
+export const STRIDE = ['S', 'T', 'R', 'I', 'D', 'E'] as const;
+export type StrideCategory = (typeof STRIDE)[number];
+export const THREAT_STATUSES = ['open', 'mitigated', 'accepted', 'not-applicable'] as const;
+export type ThreatStatus = (typeof THREAT_STATUSES)[number];
+export const THREAT_SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
+export type ThreatSeverity = (typeof THREAT_SEVERITIES)[number];
+
+/** One STRIDE finding against the element that carries it. Threats live ON
+ * the node or relation (not in a model-wide list) so they follow it through
+ * delete, undo, `include` namespacing and eject without any cascade code;
+ * the register is derived (see threat-model.ts). */
+export interface Threat {
+  /** unique within its element's list (`t1`, `t2`, … when synthesized) */
+  id: string;
+  category: StrideCategory;
+  title: string;
+  description?: string;
+  /** unset = unrated */
+  severity?: ThreatSeverity;
+  /** unset = 'open' */
+  status?: ThreatStatus;
+  mitigation?: string;
+}
+
 export interface DiagramRelation {
   id: string;
   from: string;
@@ -176,6 +202,8 @@ export interface DiagramRelation {
   /** positioned labels; when present, supersedes the legacy single `label`.
    * Read both through relationLabels() (bridges a legacy `label` string). */
   labels?: EdgeLabel[];
+  /** STRIDE findings against this flow (see Threat) */
+  threats?: Threat[];
   style?: RelationStyle;
   description?: string;
   layer?: string;
@@ -298,6 +326,15 @@ export interface EdgeLabelPlacement {
   side?: EdgeLabelSide;
 }
 
+/** a threat bubble's saved state — see LayoutOverlay.notes. `open` is only
+ * ever `true`: "closed" is spelled by omitting it, as `manual` spells
+ * "automatic", so there is one way to write each state. */
+export interface NotePlacement {
+  dx: number;
+  dy: number;
+  open?: true;
+}
+
 export interface LayoutOverlay {
   version: 1;
   planes: Record<string, Record<string, { x: number; y: number }>>;
@@ -326,6 +363,12 @@ export interface LayoutOverlay {
    * model file the studio may write. Editing a label's position in the model
    * drops the entry (see applyCommand), so the document never loses to it. */
   edgeLabels?: Record<string, Record<string, Record<string, EdgeLabelPlacement>>>;
+  /** one threat bubble's state in this picture: where it was dragged (an offset
+   * from its automatic anchor beside the element) and whether it is open.
+   * Absent entry = automatic spot, closed. The threat text itself stays on the
+   * element; this is only "how I left the bubble in this picture", the
+   * `edgeLabels` reasoning. Keyed like `planes`, then by `threatTargetKey`. */
+  notes?: Record<string, Record<string, NotePlacement>>;
   /** how the PNG export should differ from the interactive page. Ignored by the
    * interactive page, which opens as `unfolded` says and lets the reader
    * unfold what they want. */
@@ -368,6 +411,6 @@ export interface Drawings {
 /** Pen width when a stroke names none. In core so editor and renderer cannot drift. */
 export const DEFAULT_STROKE_WIDTH = 3;
 
-export const BUILTIN_NOTATIONS = ['causal-loop', 'git-graph', 'c4', 'second-order', 'fishbone'] as const;
+export const BUILTIN_NOTATIONS = ['causal-loop', 'git-graph', 'c4', 'second-order', 'fishbone', 'threat-model'] as const;
 export type NotationId = (typeof BUILTIN_NOTATIONS)[number];
 export type Polarity = '+' | '-';

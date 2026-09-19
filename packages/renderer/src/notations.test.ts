@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { compileView, model } from '@diagramming/core';
 import { BONE_PALETTE, fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
-import { NOTATION_PROFILES, notationProfile } from './notations';
+import { NOTATION_PROFILES, notationProfile, TM_BOUNDARY_COLOR } from './notations';
 
 describe('notationProfile', () => {
   it('returns the default profile when no id is given', () => {
@@ -110,5 +110,28 @@ describe('fishbone profile', () => {
     const v = compileView(j, { plane: j.planes[0]?.id });
     const bone = v.layoutEdges.find((e) => e.from === 'c1' && e.to === 'e')!;
     expect(p.edge!.colorOf!(bone, j, undefined)).toBe(BONE_PALETTE[0]);
+  });
+});
+
+describe('threat-model profile', () => {
+  const p = notationProfile('threat-model');
+  it('is a stencil notation: the registry carries the vocabulary and elk arranges', () => {
+    expect(p.id).toBe('threat-model');
+    expect(p.className).toBe('dg-notation-tm');
+    expect(p.layout).toBeUndefined();
+    expect(p.partitionOf).toBeUndefined();
+    expect(p.overlay).toBeUndefined();
+    expect(NOTATION_PROFILES['threat-model']).toBe(p);
+  });
+
+  it('paints trust boundaries red and leaves every other element alone', () => {
+    const m = model('tm');
+    const tm = m.threatModel();
+    const zone = tm.boundary('dmz', 'DMZ');
+    zone.contains(tm.process('api', 'API'));
+    tm.entity('user', 'User');
+    tm.store('db', 'DB');
+    const colors = p.node!.colorOf!(m.toJSON(), undefined);
+    expect(Object.fromEntries(colors)).toEqual({ dmz: TM_BOUNDARY_COLOR });
   });
 });

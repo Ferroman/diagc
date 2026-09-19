@@ -1,6 +1,7 @@
 import { useEffect, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import {
   BUILTIN_NOTATIONS,
+  TM_NOTATION,
   type DiagramLayer,
   type DiagramModel,
   type DiagramPlane,
@@ -43,7 +44,13 @@ type PlaneRow = {
   notation: string;
 };
 
-const NOTATION_LABELS: Record<string, string> = { 'second-order': 'Second-order thinking', fishbone: 'Fishbone (cause and effect)' };
+const NOTATION_LABELS: Record<string, string> = {
+  'second-order': 'Second-order thinking',
+  fishbone: 'Fishbone (cause and effect)',
+  // the notation is the STRIDE data-flow diagram; 'Threat model' alone would
+  // read as a category rather than the method the plane is drawn in
+  [TM_NOTATION]: 'Threat model (STRIDE)',
+};
 // Derives a display label from a notation id ('causal-loop' -> 'Causal loop').
 const notationLabel = (id: string): string =>
   NOTATION_LABELS[id] ?? id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');

@@ -46,6 +46,24 @@ describe('RichLabelEditor', () => {
     expect(onCommit).toHaveBeenCalledTimes(1);
   });
 
+  it('Tab commits the runs and then chains (onTab); Shift+Tab does neither', () => {
+    // Tab is "named, next one please": the commit has to land before the caller
+    // builds the next node, or that add would be made on the pre-rename model.
+    const onCommit = vi.fn();
+    const onTab = vi.fn();
+    const { container } = render(<RichLabelEditor runs={[{ text: 'a' }]} onCommit={onCommit} onTab={onTab} />);
+    const el = editor(container);
+    // Shift+Tab keeps the browser default (blur commits, focus walks back)
+    expect(fireEvent.keyDown(el, { key: 'Tab', shiftKey: true })).toBe(true);
+    expect(onTab).not.toHaveBeenCalled();
+    expect(onCommit).not.toHaveBeenCalled();
+    el.innerHTML = 'z';
+    expect(fireEvent.keyDown(el, { key: 'Tab' })).toBe(false); // default prevented: focus stays put
+    expect(onCommit).toHaveBeenCalledWith([{ text: 'z' }]);
+    expect(onTab).toHaveBeenCalledTimes(1);
+    expect(onCommit.mock.invocationCallOrder[0]!).toBeLessThan(onTab.mock.invocationCallOrder[0]!);
+  });
+
   it('shows the bold/italic toolbar only when the selection is non-empty', () => {
     // jsdom can't produce a real non-collapsed Selection, so stub getSelection to
     // drive syncToolbar's own logic; toolbar placement is browser-probe verified.
