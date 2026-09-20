@@ -1,5 +1,5 @@
 /*
- * @diagramming/core — diagram model, validator, builder DSL, and view compiler.
+ * @diagc/core — diagram model, validator, builder DSL, and view compiler.
  * Copyright (C) 2026 Bogdan Frankovskyi
  *
  * This program is free software: you can redistribute it and/or modify it

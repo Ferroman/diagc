@@ -9,7 +9,7 @@ Every method is listed in the [Builder API reference](../reference/builder-api.m
 Any file matching `.diagrams/src/**/*.diagram.ts` is picked up. The filename minus `.diagram.ts` names both the artifact and the entry in the studio's picker.
 
 ```ts
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 const m = model('shop', { name: 'Shop' });
 // ...

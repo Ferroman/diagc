@@ -2,7 +2,7 @@
 import { act } from 'react';
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { compileView, model, type DiagramModel } from '@diagramming/core';
+import { compileView, model, type DiagramModel } from '@diagc/core';
 import { createKindRegistry, createTypeRegistry } from './registry';
 import { useLegendState, type LegendStateInput } from './useLegendState';
 

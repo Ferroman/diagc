@@ -13,7 +13,7 @@ import {
   type EdgeLabelMoves,
   type LoopEdgeInput,
   type Side,
-} from '@diagramming/renderer';
+} from '@diagc/renderer';
 import {
   allNotesOpen,
   DEFAULT_STROKE_WIDTH,
@@ -43,7 +43,7 @@ import {
   type TextRun,
   type ThreatStatus,
   type ThreatTarget,
-} from '@diagramming/core';
+} from '@diagc/core';
 import { activeNotation } from './notation';
 import { getHost } from './host';
 import { useDiagramBoot } from './hooks/useDiagramBoot';
@@ -90,17 +90,17 @@ import { HotkeysDialog } from './hotkeys/HotkeysDialog';
 import { HOTKEYS_KEY, parseOverrides, resolveKeymap, type Overrides } from './hotkeys/keymap';
 import { useHotkeys, type Handlers } from './hotkeys/useHotkeys';
 
-const STYLE_KEY = 'diagramming.style';
+const STYLE_KEY = 'diagc.style';
 // Snap-to-grid is a viewer preference (how one edits), not a property of the
 // diagram, so it lives beside the style preset rather than in the sidecar.
-const SNAP_KEY = 'diagramming.snap';
+const SNAP_KEY = 'diagc.snap';
 const SNAP_GRID = 10;
 // The right details dock defaults open, but a collapse is remembered so it stays
 // out of the way across reloads once dismissed.
-const RIGHT_DOCK_KEY = 'diagramming.rightDock';
-const LEFT_DOCK_KEY = 'diagramming.leftDock';
-const LEFT_WIDTH_KEY = 'diagramming.leftDockWidth';
-const RIGHT_WIDTH_KEY = 'diagramming.rightDockWidth';
+const RIGHT_DOCK_KEY = 'diagc.rightDock';
+const LEFT_DOCK_KEY = 'diagc.leftDock';
+const LEFT_WIDTH_KEY = 'diagc.leftDockWidth';
+const RIGHT_WIDTH_KEY = 'diagc.rightDockWidth';
 const DOCK_MAX = 560;
 const LEFT_MIN = 220;
 const RIGHT_MIN = 240;
@@ -917,7 +917,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             unsaved arrangement) and the viewer's toggles on the right. Layout
             and style live in the right dock's Layout & style section; the brand
             is the first thing to give way (app.css). */}
-        <strong className="brand">Diagramming Studio</strong>
+        <strong className="brand">diagc studio</strong>
         <DiagramPicker
           names={names}
           selected={selected}

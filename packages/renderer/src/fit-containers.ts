@@ -1,4 +1,4 @@
-import type { ViewNode } from '@diagramming/core';
+import type { ViewNode } from '@diagc/core';
 import type { Pad } from './layout-graph';
 
 interface Geo {

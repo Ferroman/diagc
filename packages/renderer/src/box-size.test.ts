@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model } from '@diagramming/core';
+import { compileView, model } from '@diagc/core';
 import { LAYOUT_SIZED_TYPES, estimateBoxSize, textWidth, withBoxSizes } from './box-size';
 import { createTypeRegistry } from './registry';
 

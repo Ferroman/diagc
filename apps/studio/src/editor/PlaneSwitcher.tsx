@@ -1,4 +1,4 @@
-import type { DiagramPlane } from '@diagramming/core';
+import type { DiagramPlane } from '@diagc/core';
 
 /**
  * Switches the active plane (the derived viewpoint). `undefined` = the base/default

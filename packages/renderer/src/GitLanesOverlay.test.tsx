@@ -2,7 +2,7 @@
 import { render } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 import { GIT_LAYOUT } from './git-layout';
 
 const rfNodes: { id: string; position: { x: number; y: number }; parentId?: string; measured?: { width: number; height: number } }[] = [];

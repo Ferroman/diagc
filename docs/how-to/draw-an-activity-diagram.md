@@ -11,7 +11,7 @@ A frame's children must be lanes; a lane's children are the flow (actions, objec
 1. Declare the frame, then its lanes top to bottom:
 
    ```ts
-   import { model } from '@diagramming/core';
+   import { model } from '@diagc/core';
 
    const m = model('docs-activity', { name: 'Order processing' });
    const act = m.activity('actors', { name: 'Actors' });

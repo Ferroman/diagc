@@ -7,7 +7,7 @@ import {
   type GitGraph,
   type ViewEdge,
   type ViewNode,
-} from '@diagramming/core';
+} from '@diagc/core';
 import type { EdgePoint, LayoutResult, NodeGeometry } from './layout';
 
 /** Flow-pixel constants of the git arrangement. Tuned against real renders;

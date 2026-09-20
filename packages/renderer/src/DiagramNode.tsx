@@ -1,7 +1,7 @@
 import { useContext, useRef, type CSSProperties } from 'react';
 import { Handle, NodeResizer, Position } from '@xyflow/react';
-import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type TextAlign, type TextRun, type ThreatTarget } from '@diagramming/core';
-import type { IconRegistry } from '@diagramming/icons';
+import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type TextAlign, type TextRun, type ThreatTarget } from '@diagc/core';
+import type { IconRegistry } from '@diagc/icons';
 import type { Registry, TypeStyle } from './registry';
 import { LoopHighlightContext } from './loop-highlight';
 import { NoteStateContext } from './note-state';

@@ -65,14 +65,14 @@ describe('useDeepLink', () => {
   });
 
   it('lets the hash outrank the localStorage memory', () => {
-    localStorage.setItem('diagramming.selected', 'two');
+    localStorage.setItem('diagc.selected', 'two');
     window.location.hash = '#/sketch';
     render(<Harness names={NAMES} booted />);
     expect(screen.getByTestId('selected').textContent).toBe('sketch');
   });
 
   it('keeps the localStorage memory when there is no hash', () => {
-    localStorage.setItem('diagramming.selected', 'two');
+    localStorage.setItem('diagc.selected', 'two');
     render(<Harness names={NAMES} booted />);
     expect(screen.getByTestId('selected').textContent).toBe('two');
   });

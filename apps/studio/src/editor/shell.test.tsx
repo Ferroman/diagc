@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { layoutPlaneKey, NEW_THREAT_TITLE, validate, type DiagramModel, type NotePlacement } from '@diagramming/core';
+import { layoutPlaneKey, NEW_THREAT_TITLE, validate, type DiagramModel, type NotePlacement } from '@diagc/core';
 import { App } from '../App';
 import { defaultHost, setHost } from '../host';
 
@@ -192,14 +192,14 @@ describe('editor shell', () => {
   it('remembers the open diagram across reloads', async () => {
     const { unmount } = render(<App />);
     // the open diagram is persisted so a fresh mount can restore it
-    await waitFor(() => expect(localStorage.getItem('diagramming.selected')).toBe('sketch'));
+    await waitFor(() => expect(localStorage.getItem('diagc.selected')).toBe('sketch'));
     unmount();
     render(<App />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Diagram: sketch' })).toBeDefined());
   });
 
   it('falls back to an existing diagram when the remembered one is gone', async () => {
-    localStorage.setItem('diagramming.selected', 'deleted-diagram');
+    localStorage.setItem('diagc.selected', 'deleted-diagram');
     render(<App />);
     // once the source list settles, the missing name is corrected to a real one
     await waitFor(() => expect(screen.getByRole('button', { name: 'Diagram: sketch' })).toBeDefined());
@@ -597,11 +597,11 @@ describe('editor shell', () => {
     fireEvent.change(select, { target: { value: 'hand-drawn' } });
     await waitFor(() => expect(container.querySelector('.dg-style-hand-drawn')).not.toBeNull());
     expect(container.querySelector('.dg-style-rough')).not.toBeNull();
-    expect(localStorage.getItem('diagramming.style')).toBe('hand-drawn');
+    expect(localStorage.getItem('diagc.style')).toBe('hand-drawn');
   });
 
   it('restores the app style on reload, including legacy values', async () => {
-    localStorage.setItem('diagramming.style', 'sketch');
+    localStorage.setItem('diagc.style', 'sketch');
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector('.dg-style-rough')).not.toBeNull());
   });
@@ -654,7 +654,7 @@ describe('editor shell', () => {
   });
 
   it('selecting clean removes the style classes', async () => {
-    localStorage.setItem('diagramming.style', 'sketch');
+    localStorage.setItem('diagc.style', 'sketch');
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector('.dg-style-rough')).not.toBeNull());
     fireEvent.change(screen.getByRole('combobox', { name: 'Style' }), { target: { value: 'clean' } });
@@ -675,7 +675,7 @@ describe('editor shell', () => {
   });
 
   it('an unknown pinned style behaves as unpinned (app preference applies)', async () => {
-    localStorage.setItem('diagramming.style', 'sketch');
+    localStorage.setItem('diagc.style', 'sketch');
     vi.stubGlobal(
       'fetch',
       stubFetch([{ name: 'sketch', model: { ...goodModel, style: 'retired-style' }, issues: [], editable: true }]),
@@ -1185,7 +1185,7 @@ describe('editor shell', () => {
   });
 
   it('lets the hash diagram outrank the localStorage memory', async () => {
-    localStorage.setItem('diagramming.selected', 'two');
+    localStorage.setItem('diagc.selected', 'two');
     window.location.hash = '#/sketch';
     render(<App />);
     // canvas() binds to '.dg-canvas' at call time; boot (and so the canvas) is now
@@ -1195,7 +1195,7 @@ describe('editor shell', () => {
   });
 
   it('keeps the localStorage memory when there is no hash', async () => {
-    localStorage.setItem('diagramming.selected', 'two');
+    localStorage.setItem('diagc.selected', 'two');
     render(<App />);
     expect(await screen.findByText('zed')).toBeDefined();
   });
@@ -1582,7 +1582,7 @@ describe('editor shell', () => {
   });
 
   describe('configurable hotkeys', () => {
-    afterEach(() => localStorage.removeItem('diagramming.hotkeys'));
+    afterEach(() => localStorage.removeItem('diagc.hotkeys'));
 
     const enterEdit = async () => {
       fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
@@ -1590,7 +1590,7 @@ describe('editor shell', () => {
     };
 
     it('a rebound key adds the node, and the old key no longer does', async () => {
-      localStorage.setItem('diagramming.hotkeys', JSON.stringify({ 'edit.add-node': ['A'] }));
+      localStorage.setItem('diagc.hotkeys', JSON.stringify({ 'edit.add-node': ['A'] }));
       render(<App />);
       await enterEdit();
       // Undo, not the canvas: a new node only shows once the async layout has
@@ -1646,12 +1646,12 @@ describe('editor shell', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Change L for Laser pointer' }));
       fireEvent.keyDown(screen.getByRole('button', { name: 'Change L for Laser pointer' }), { key: 'k' });
       await waitFor(() =>
-        expect(JSON.parse(localStorage.getItem('diagramming.hotkeys') ?? '{}')).toEqual({ 'canvas.laser': ['K'] }),
+        expect(JSON.parse(localStorage.getItem('diagc.hotkeys') ?? '{}')).toEqual({ 'canvas.laser': ['K'] }),
       );
     });
 
     it('button titles name the key the action has now', async () => {
-      localStorage.setItem('diagramming.hotkeys', JSON.stringify({ 'tool.pen': ['D'] }));
+      localStorage.setItem('diagc.hotkeys', JSON.stringify({ 'tool.pen': ['D'] }));
       render(<App />);
       await enterEdit();
       expect(screen.getByRole('button', { name: 'Pen' }).getAttribute('title')).toBe('Draw freehand (D)');

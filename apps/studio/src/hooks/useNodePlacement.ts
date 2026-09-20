@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
-import { DEFAULT_IMAGE_NODE_SIZE, LEAF_SIZE, errMessage, type DiagramModel } from '@diagramming/core';
-import type { DiagramSelection, LayoutApi } from '@diagramming/renderer';
+import { DEFAULT_IMAGE_NODE_SIZE, LEAF_SIZE, errMessage, type DiagramModel } from '@diagc/core';
+import type { DiagramSelection, LayoutApi } from '@diagc/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import { readImageSize, uploadAsset } from '../editor/images';
 import { entryToNode, entryToNodeDetails } from '../library/entry';

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { DiagramModel, DiagramNode } from '@diagramming/core';
+import type { DiagramModel, DiagramNode } from '@diagc/core';
 
 const MIME: Record<string, string> = {
   svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif',

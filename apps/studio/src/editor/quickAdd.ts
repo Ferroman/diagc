@@ -17,7 +17,7 @@ import {
   type DiagramNode,
   type EditorCommand,
   type NotationId,
-} from '@diagramming/core';
+} from '@diagc/core';
 import { createNodeAt, placeTags } from '../create-node';
 import { connectKind } from './connectKind';
 import { addChild, isSubCause } from './fishboneActions';

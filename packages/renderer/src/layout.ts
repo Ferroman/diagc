@@ -1,5 +1,5 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
-import { LEAF_SIZE, RESERVED_NODE_ID, type CompiledView, type LayoutSettings, type ViewNode } from '@diagramming/core';
+import { LEAF_SIZE, RESERVED_NODE_ID, type CompiledView, type LayoutSettings, type ViewNode } from '@diagc/core';
 import {
   buildGraph,
   COLLAPSED_SIZE,

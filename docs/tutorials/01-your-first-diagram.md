@@ -17,8 +17,8 @@ You need three things. If you already have them, skip ahead.
 - **A clone of this monorepo**, with dependencies installed:
 
   ```bash
-  git clone <this repo> diagramming
-  cd diagramming
+  git clone <this repo> diagc
+  cd diagc
   pnpm install
   ```
 
@@ -31,7 +31,7 @@ Everything below runs from that clone. To use `diagc` from a *different* repo in
 Diagrams live in `.diagrams/src/`. Create `.diagrams/src/shop.diagram.ts`:
 
 ```ts
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 const m = model('shop', { name: 'Shop' });
 

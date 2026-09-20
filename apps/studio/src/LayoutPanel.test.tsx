@@ -55,6 +55,6 @@ describe('LayoutPanel', () => {
     render(<LayoutPanel controls={{ settings: {}, onChange: () => {} }} styleControl={styleControl} />);
     fireEvent.click(screen.getByRole('button', { name: 'Layout & style' }));
     expect(screen.queryByLabelText('Style')).toBeNull();
-    expect(localStorage.getItem('diagramming.dockSection.layout')).toBe('collapsed');
+    expect(localStorage.getItem('diagc.dockSection.layout')).toBe('collapsed');
   });
 });

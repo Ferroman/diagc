@@ -37,8 +37,8 @@ import {
   type Threat,
   type ThreatTarget,
   type ViewNode,
-} from '@diagramming/core';
-import { createIconRegistry } from '@diagramming/icons';
+} from '@diagc/core';
+import { createIconRegistry } from '@diagc/icons';
 import { ACTIVITY_CHROME_TYPES, FORCED_SIZE_SHAPES, LAYOUT_SIZED_TYPES } from './box-size';
 import { Breadcrumbs } from './Breadcrumbs';
 import { overhangBounds, unionBounds } from './content-bounds';

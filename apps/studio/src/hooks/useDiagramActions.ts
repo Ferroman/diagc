@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { emptyDrawings, emptyLayout, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagramming/core';
+import { emptyDrawings, emptyLayout, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagc/core';
 import type { LoadedArtifact } from '../artifacts';
 import type { EditorApi } from '../editor/useEditor';
 import { nextCopyName } from '../copyName';

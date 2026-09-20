@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { DrawTool } from '@diagramming/renderer';
+import type { DrawTool } from '@diagc/renderer';
 import { EditorToolbar } from './EditorToolbar';
 import type { EditorApi } from './useEditor';
 

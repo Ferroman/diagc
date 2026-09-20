@@ -13,7 +13,7 @@ Two groups are distinguished, because the obligations differ:
 - **Runtime dependencies** are declared in `package.json` and fetched by your package
   manager. They are not redistributed here; they arrive under their own licenses.
 
-`@diagramming/core` has no dependencies and bundles nothing. It is covered by
+`@diagc/core` has no dependencies and bundles nothing. It is covered by
 [LICENSE](LICENSE) alone.
 
 ---

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react';
-import { errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagramming/core';
-import type { LayoutApi } from '@diagramming/renderer';
+import { errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagc/core';
+import type { LayoutApi } from '@diagc/renderer';
 import type { LoadedArtifact } from '../artifacts';
 import { useEditor } from '../editor/useEditor';
 import { getHost } from '../host';

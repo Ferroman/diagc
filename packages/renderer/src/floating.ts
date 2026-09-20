@@ -1,5 +1,5 @@
 import { Position } from '@xyflow/react';
-import { SIDES, type Side } from '@diagramming/core';
+import { SIDES, type Side } from '@diagc/core';
 
 // Re-export: floating.ts is the renderer's established source for the Side
 // type (index.tsx and callers import it from here) — keep that path working.

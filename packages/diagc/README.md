@@ -15,7 +15,7 @@ Needs Node ≥ 22.
 ```bash
 mkdir -p .diagrams/src
 cat > .diagrams/src/acme.diagram.ts <<'EOF'
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 const m = model('acme', { name: 'Acme platform' });
 const web = m.node('web', { name: 'Web app', type: 'service' });
@@ -28,7 +28,7 @@ EOF
 diagc studio       # opens the editor, recompiling as you edit
 ```
 
-`npm i -D @diagramming/core` as well if you want types and completion on `.diagram.ts` files — the CLI compiles them either way.
+`npm i -D @diagc/core` as well if you want types and completion on `.diagram.ts` files — the CLI compiles them either way.
 
 ## Commands
 
@@ -51,7 +51,7 @@ Commit `.diagrams/src/`. `.diagrams/.artifacts/` and `.diagrams/html/` are build
 
 ## Documentation
 
-Full docs, tutorials, and the model reference: <https://github.com/Ferroman/diagramming>
+Full docs, tutorials, and the model reference: <https://github.com/Ferroman/diagc>
 
 ## License
 

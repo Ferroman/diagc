@@ -2,7 +2,7 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import { SO_DECISION_TYPE, SO_LEADS_TO_KIND, consequenceTypeOf, model, type DiagramModel } from '@diagramming/core';
+import { SO_DECISION_TYPE, SO_LEADS_TO_KIND, consequenceTypeOf, model, type DiagramModel } from '@diagc/core';
 
 const NODES = [
   { id: 'd', position: { x: 200, y: 0 }, measured: { width: 180, height: 48 } },

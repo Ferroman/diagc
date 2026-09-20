@@ -1,4 +1,4 @@
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 const m = model('docs-activity', { name: 'Order processing' });
 const act = m.activity('actors', { name: 'Actors' });

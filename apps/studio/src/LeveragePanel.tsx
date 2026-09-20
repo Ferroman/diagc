@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import type { DiagramModel } from '@diagramming/core';
-import { analyzeLeverage, analyzeDependency, type LeverageSign, type LoopEdgeInput } from '@diagramming/renderer';
+import type { DiagramModel } from '@diagc/core';
+import { analyzeLeverage, analyzeDependency, type LeverageSign, type LoopEdgeInput } from '@diagc/renderer';
 
 /** the nodes/edges a clicked report row asks the canvas to glow */
 export interface LeverageFocus {

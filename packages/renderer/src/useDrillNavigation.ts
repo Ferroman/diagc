@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type MutableRefObject } from 'react';
-import { buildHierarchy, type DiagramModel } from '@diagramming/core';
+import { buildHierarchy, type DiagramModel } from '@diagc/core';
 import { drillChain, truncatePath } from './drill';
 import { focusForVisible } from './focus';
 import { pruneToModel, syncReducer, type SeenKey } from './view-sync';

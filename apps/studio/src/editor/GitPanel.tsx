@@ -8,8 +8,8 @@ import {
   type DiagramModel,
   type DiagramNode,
   type EditorCommand,
-} from '@diagramming/core';
-import type { DiagramSelection } from '@diagramming/renderer';
+} from '@diagc/core';
+import type { DiagramSelection } from '@diagc/renderer';
 import { appendCommit } from './gitActions';
 import { ColorRow } from './pickers';
 import { DockSection } from '../DockSection';

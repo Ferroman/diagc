@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { model, type DiagramModel, type EditorCommand } from '@diagramming/core';
+import { model, type DiagramModel, type EditorCommand } from '@diagc/core';
 import { FishbonePanel } from './FishbonePanel';
 
 function fish(): DiagramModel {

@@ -1,4 +1,4 @@
-import type { UrlStateAdapter } from '@diagramming/studio/src/host';
+import type { UrlStateAdapter } from '@diagc/studio/src/host';
 
 /** Deep-link state without a browser URL: the studio's own writes just store
  * (replace-vs-push is meaningless with no history), while navigate() plays the

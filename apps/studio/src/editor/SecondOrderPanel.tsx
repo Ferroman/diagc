@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { validate, isSecondOrderNode, type DiagramModel, type EditorCommand, type Valence } from '@diagramming/core';
-import type { DiagramSelection } from '@diagramming/renderer';
+import { validate, isSecondOrderNode, type DiagramModel, type EditorCommand, type Valence } from '@diagc/core';
+import type { DiagramSelection } from '@diagc/renderer';
 import { addDecision, thenWhat } from './secondOrderActions';
 import { DockSection } from '../DockSection';
 

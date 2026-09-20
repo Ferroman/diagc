@@ -1,11 +1,11 @@
 # Builder API reference
 
-The TypeScript DSL exported by `@diagramming/core`. Every method returns something chainable, and `toJSON()` validates.
+The TypeScript DSL exported by `@diagc/core`. Every method returns something chainable, and `toJSON()` validates.
 
 Source of truth: `packages/core/src/builder.ts`.
 
 ```ts
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 ```
 
 ## `model(id, opts?) → ModelBuilder`

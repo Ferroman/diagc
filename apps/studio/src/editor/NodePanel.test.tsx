@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { DiagramModel } from '@diagramming/core';
+import type { DiagramModel } from '@diagc/core';
 import { NodePanel } from './NodePanel';
 
 function testModel(): DiagramModel {

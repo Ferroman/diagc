@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model, type DiagramModel } from '@diagramming/core';
+import { model, type DiagramModel } from '@diagc/core';
 import { createNodeAt, placeTags } from './create-node';
 
 // Two planes: a normal one plus one that borrows another plane's containment.

@@ -1,7 +1,7 @@
 import { access, mkdir, readFile, readdir, rename, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { IMAGE_REF, composeIncludes, errMessage, isDrawings, isLayoutOverlay, validate, type DiagramModel } from '@diagramming/core';
+import { IMAGE_REF, composeIncludes, errMessage, isDrawings, isLayoutOverlay, validate, type DiagramModel } from '@diagc/core';
 import { writeFileAtomic } from '../atomic-write';
 import { EjectError, ejectDiagram } from '../eject';
 import { resolveInclude } from '../includes';
@@ -370,7 +370,7 @@ export async function saveLibrary(diagramsDir: string, payload: unknown): Promis
   return { status: 200, body: { ok: true } };
 }
 
-// Keys here must stay in sync with IMAGE_REF's extension group (@diagramming/core) —
+// Keys here must stay in sync with IMAGE_REF's extension group (@diagc/core) —
 // an extension accepted by the regex but missing here would 404 on read.
 const ASSET_EXT: Record<string, string> = {
   'image/png': 'png',

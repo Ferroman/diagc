@@ -1,4 +1,4 @@
-# Diagramming
+# diagc
 
 This is an experimental tool.
 
@@ -32,7 +32,7 @@ To use the tool on your own repo, install the CLI — no checkout needed:
 
 ```bash
 npm i -g diagc                 # or: npx diagc studio
-npm i -D @diagramming/core     # optional: types for .diagram.ts authoring
+npm i -D @diagc/core     # optional: types for .diagram.ts authoring
 ```
 
 `diagc studio` serves the editor against whatever directory you run it in. See the [`diagc` reference](docs/reference/cli.md).
@@ -108,8 +108,8 @@ Organised along [Diátaxis](https://diataxis.fr/) lines — learning, tasks, loo
 The renderer is driven by three registries and a theme, all overridable. The studio uses the built-in defaults; these hooks apply when you render `DiagramView` yourself.
 
 ```tsx
-import { createIconRegistry } from '@diagramming/icons';
-import { createTypeRegistry, createKindRegistry, DiagramView } from '@diagramming/renderer';
+import { createIconRegistry } from '@diagc/icons';
+import { createTypeRegistry, createKindRegistry, DiagramView } from '@diagc/renderer';
 
 const typeRegistry = createTypeRegistry({ lambda: { shape: 'hexagon', icon: 'lambda', dashed: true } });
 const kindRegistry = createKindRegistry({ grpc: { animated: true, width: 2 } });
@@ -134,22 +134,22 @@ pnpm typecheck   # tsc --noEmit across every package
 
 | Path | Package | Role |
 | --- | --- | --- |
-| `packages/core` | `@diagramming/core` | Builder DSL, the JSON model + validation, the view compiler. **Published.** |
-| `packages/renderer` | `@diagramming/renderer` | React `DiagramView` (React Flow + elk) and the type/kind/theme registries. |
-| `packages/icons` | `@diagramming/icons` | Icon id → lucide component. |
+| `packages/core` | `@diagc/core` | Builder DSL, the JSON model + validation, the view compiler. **Published.** |
+| `packages/renderer` | `@diagc/renderer` | React `DiagramView` (React Flow + elk) and the type/kind/theme registries. |
+| `packages/icons` | `@diagc/icons` | Icon id → lucide component. |
 | `packages/diagc` | `diagc` | The `diagc` CLI: compile, watch, publish, studio. **Published.** |
-| `apps/studio` | `@diagramming/studio` | The browser app and its dev-server API. |
-| `apps/viewer` | `@diagramming/viewer` | The single-file shell `publish` stamps a model into. |
+| `apps/studio` | `@diagc/studio` | The browser app and its dev-server API. |
+| `apps/viewer` | `@diagc/viewer` | The single-file shell `publish` stamps a model into. |
 
 The diagrams in these docs are built with this tool — sources in `.diagrams/src/docs-*.diagram.ts`, regenerated with `pnpm publish-diagrams`.
 
 ### Releasing
 
-`diagc` and `@diagramming/core` are published together and share a version. The other packages are build inputs: `renderer`, `icons`, `studio`, and `viewer` are baked into what `diagc` ships and stay private.
+`diagc` and `@diagc/core` are published together and share a version. The other packages are build inputs: `renderer`, `icons`, `studio`, and `viewer` are baked into what `diagc` ships and stay private.
 
 ```bash
 pnpm build:dist                       # compile both packages, build viewer + studio, stage assets
-pnpm --filter @diagramming/core pack  # inspect the tarballs before trusting them
+pnpm --filter @diagc/core pack  # inspect the tarballs before trusting them
 pnpm --filter diagc pack
 pnpm -r publish --access public       # requires `npm adduser` first
 ```

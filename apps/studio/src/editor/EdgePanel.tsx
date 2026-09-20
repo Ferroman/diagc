@@ -11,7 +11,7 @@ import {
   type NotationId,
   type Polarity,
   type RelationStyle,
-} from '@diagramming/core';
+} from '@diagc/core';
 import { getHost } from '../host';
 import { ColorRow, OptionRow } from './pickers';
 import { ThreatsSection } from './ThreatsSection';

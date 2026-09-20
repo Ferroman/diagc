@@ -1,8 +1,8 @@
 /** The DiagramView public surface: props, the edit-callback contract, and the
  * imperative layout API. Pure declarations — no runtime logic lives here. */
 
-import type { Column, DiagramModel, Drawings, EdgeLabelSide, LayoutOverlay, NotationId, Stroke, TextRun, ThreatStatus, ThreatTarget } from '@diagramming/core';
-import type { IconRegistry } from '@diagramming/icons';
+import type { Column, DiagramModel, Drawings, EdgeLabelSide, LayoutOverlay, NotationId, Stroke, TextRun, ThreatStatus, ThreatTarget } from '@diagc/core';
+import type { IconRegistry } from '@diagc/icons';
 import type { MutableRefObject } from 'react';
 import type { AlignMode } from './arrange';
 import type { EdgeLabelMoves } from './build-data';

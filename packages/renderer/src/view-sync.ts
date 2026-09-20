@@ -1,4 +1,4 @@
-import type { DiagramModel } from '@diagramming/core';
+import type { DiagramModel } from '@diagc/core';
 
 // Cut a drill path at the first id the model doesn't know — applying a stale
 // deep link lands on the deepest surviving prefix instead of a blank canvas.

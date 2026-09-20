@@ -1,7 +1,7 @@
 import { ACTIONS, actionOf, type ActionId, type Scope } from './actions';
 import type { Chord } from './chord';
 
-export const HOTKEYS_KEY = 'diagramming.hotkeys';
+export const HOTKEYS_KEY = 'diagc.hotkeys';
 
 /** What the user changed, and nothing else: an absent id keeps its defaults (so a
  *  default added in a later version still reaches them), `[]` is "unbound on purpose". */

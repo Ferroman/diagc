@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { applyCommand, emptyDrawings, emptyLayout, model, type DiagramModel, type EditorCommand, type EditorState } from '@diagramming/core';
+import { applyCommand, emptyDrawings, emptyLayout, model, type DiagramModel, type EditorCommand, type EditorState } from '@diagc/core';
 import { GitPanel } from './GitPanel';
 
 /** master: 1.0; nightly: n1 (from 1.0) */

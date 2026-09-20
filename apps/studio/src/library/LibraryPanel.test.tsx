@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { LIBRARY_ENTRY_DND_TYPE } from '@diagramming/renderer';
+import { LIBRARY_ENTRY_DND_TYPE } from '@diagc/renderer';
 import { defaultHost, setHost } from '../host';
 import { LibraryPanel } from './LibraryPanel';
 import type { Library } from './types';
@@ -73,7 +73,7 @@ describe('LibraryPanel', () => {
   });
 
   it('substitutes the /library/ prefix in a shape thumbnail too, same as an image one', () => {
-    setHost({ ...defaultHost, libraryBase: 'app://vault/plugins/diagramming-studio/library/' });
+    setHost({ ...defaultHost, libraryBase: 'app://vault/plugins/diagc-studio/library/' });
     const withShape: Library = {
       ...library,
       entries: [...library.entries, { id: 'sh', category: 'aws', name: 'Diamond', template: { shape: '/library/shapes/person.svg', color: '#08427b' } }],
@@ -82,18 +82,18 @@ describe('LibraryPanel', () => {
     const btn = screen.getByRole('button', { name: /place Diamond/i });
     const thumb = btn.querySelector('.lib-shape-thumb') as HTMLElement;
     const mask = thumb.style.maskImage || thumb.style.getPropertyValue('-webkit-mask-image');
-    expect(mask).toContain('app://vault/plugins/diagramming-studio/library/shapes/person.svg');
+    expect(mask).toContain('app://vault/plugins/diagc-studio/library/shapes/person.svg');
   });
 
   it('substitutes the /library/ prefix with the host libraryBase when the host declares one', () => {
     // The Obsidian host has no static server behind '/library/…' — <img src>
     // there must be an app://... resource URL, so a host with libraryBase set
     // overrides the prefix (mirrors the renderer's own assetUrl).
-    setHost({ ...defaultHost, libraryBase: 'app://vault/plugins/diagramming-studio/library/' });
+    setHost({ ...defaultHost, libraryBase: 'app://vault/plugins/diagc-studio/library/' });
     render(<LibraryPanel library={library} onPlace={() => {}} />);
     const lambda = screen.getByRole('button', { name: /place Lambda/i });
     expect(within(lambda).getByRole('img').getAttribute('src')).toBe(
-      'app://vault/plugins/diagramming-studio/library/aws/lambda.svg',
+      'app://vault/plugins/diagc-studio/library/aws/lambda.svg',
     );
   });
 

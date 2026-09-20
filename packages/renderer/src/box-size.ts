@@ -1,4 +1,4 @@
-import { FISHBONE_TYPES, runsToPlainText, type DiagramNode, type FontScale, type ViewNode } from '@diagramming/core';
+import { FISHBONE_TYPES, runsToPlainText, type DiagramNode, type FontScale, type ViewNode } from '@diagc/core';
 import type { Registry, ShapeId, TypeStyle } from './registry';
 import type { SizeHint } from './layout-graph';
 import { typeSubtitle } from './type-subtitle';

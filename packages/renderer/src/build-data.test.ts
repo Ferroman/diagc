@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import type { NotationId, ViewEdge, ViewNode } from '@diagramming/core';
-import { createIconRegistry } from '@diagramming/icons';
+import type { NotationId, ViewEdge, ViewNode } from '@diagc/core';
+import { createIconRegistry } from '@diagc/icons';
 import {
   buildEdgeData,
   buildEdgeDataCached,

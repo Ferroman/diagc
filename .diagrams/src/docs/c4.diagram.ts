@@ -1,4 +1,4 @@
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 // The canonical C4 "Internet Banking System" picture, kept small: a person and
 // two systems at context level, with the primary system's containers drilled

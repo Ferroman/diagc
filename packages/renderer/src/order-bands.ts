@@ -1,4 +1,4 @@
-import type { LayoutDirection } from '@diagramming/core';
+import type { LayoutDirection } from '@diagc/core';
 
 export interface BandRect {
   x: number;

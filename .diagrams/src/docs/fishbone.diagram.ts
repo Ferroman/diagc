@@ -1,4 +1,4 @@
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 const m = model('docs-fishbone', { name: 'Fishbone: checkout outage on release day' });
 const fb = m.fishbone('outage', 'Checkout outage on release day');

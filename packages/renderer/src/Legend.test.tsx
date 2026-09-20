@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { createIconRegistry } from '@diagramming/icons';
+import { createIconRegistry } from '@diagc/icons';
 import { Legend } from './Legend';
 import type { LegendRow } from './legendRows';
 

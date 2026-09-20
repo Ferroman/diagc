@@ -2,7 +2,7 @@
 import { act } from 'react';
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { compileView, model, type DiagramModel } from '@diagramming/core';
+import { compileView, model, type DiagramModel } from '@diagc/core';
 import { notationProfile } from './notations';
 import { useLoopOverlay, type LoopOverlayInput } from './useLoopOverlay';
 

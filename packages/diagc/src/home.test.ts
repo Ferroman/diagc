@@ -65,13 +65,13 @@ describe('homePaths', () => {
   });
 
   it('derives packaged asset paths from the package root', () => {
-    const p = homePaths({ root: '/pkg', layout: 'packaged' }, () => '/pkg/node_modules/@diagramming/core/dist/index.js');
+    const p = homePaths({ root: '/pkg', layout: 'packaged' }, () => '/pkg/node_modules/@diagc/core/dist/index.js');
     expect(p.viewerShell).toBe(path.join('/pkg', 'assets', 'viewer', 'index.html'));
     expect(p.studioDir).toBe(path.join('/pkg', 'assets', 'studio'));
     // publish and the studio server read the one library copy the studio
     // bundle already carries.
     expect(p.libraryDir).toBe(path.join('/pkg', 'assets', 'studio', 'library'));
-    expect(p.coreEntry).toBe('/pkg/node_modules/@diagramming/core/dist/index.js');
+    expect(p.coreEntry).toBe('/pkg/node_modules/@diagc/core/dist/index.js');
   });
 
   it('does not resolve core when running from a monorepo', () => {
@@ -92,7 +92,7 @@ describe('resolveCoreEntry', () => {
   it('explains a broken install rather than surfacing MODULE_NOT_FOUND', () => {
     expect(() =>
       resolveCoreEntry(() => {
-        throw new Error("Cannot find module '@diagramming/core'");
+        throw new Error("Cannot find module '@diagc/core'");
       }),
     ).toThrow(/reinstall it/);
   });

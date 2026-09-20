@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyCommand, emptyDrawings, emptyLayout, model, type DiagramModel } from '@diagramming/core';
+import { applyCommand, emptyDrawings, emptyLayout, model, type DiagramModel } from '@diagc/core';
 import { deleteSelectionCommand } from './deleteSelection';
 
 // service `a` and `b` with a relation, plus an activity frame containing a lane

@@ -2,7 +2,7 @@
 import { act } from 'react';
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { model, type DiagramModel } from '@diagramming/core';
+import { model, type DiagramModel } from '@diagc/core';
 import { useDrillNavigation, type DrillNavigationInput } from './useDrillNavigation';
 
 /** sys > svc > inner, plus a free-standing `other` */

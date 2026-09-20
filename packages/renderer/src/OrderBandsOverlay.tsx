@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNodes, ViewportPortal } from '@xyflow/react';
-import { SO_DECISION_TYPE, consequenceOrders, type DiagramModel, type LayoutDirection } from '@diagramming/core';
+import { SO_DECISION_TYPE, consequenceOrders, type DiagramModel, type LayoutDirection } from '@diagc/core';
 import { absoluteRects } from './loops';
 import { bandLabel, computeBands } from './order-bands';
 

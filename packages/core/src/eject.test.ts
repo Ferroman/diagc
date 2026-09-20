@@ -108,7 +108,7 @@ describe('ejectSource', () => {
   it('emits the golden source for a representative model', () => {
     expect(ejectSource(input)).toBe(
       [
-        "import { model } from '@diagramming/core';",
+        "import { model } from '@diagc/core';",
         '',
         "const m = model('shop', { name: 'Web shop' });",
         '',

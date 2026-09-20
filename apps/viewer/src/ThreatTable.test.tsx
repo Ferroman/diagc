@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 import { showsThreatTable, ThreatTable } from './ThreatTable';
 
 /**

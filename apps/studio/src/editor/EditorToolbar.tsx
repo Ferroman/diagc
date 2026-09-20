@@ -1,4 +1,4 @@
-import type { DrawTool } from '@diagramming/renderer';
+import type { DrawTool } from '@diagc/renderer';
 import type { EditorApi } from './useEditor';
 import { PRESET_COLORS } from './pickers';
 import { useKeyHint } from '../hotkeys/HotkeysContext';

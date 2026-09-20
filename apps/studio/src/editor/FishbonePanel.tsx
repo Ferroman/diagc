@@ -8,8 +8,8 @@ import {
   validate,
   type DiagramModel,
   type EditorCommand,
-} from '@diagramming/core';
-import type { DiagramSelection } from '@diagramming/renderer';
+} from '@diagc/core';
+import type { DiagramSelection } from '@diagc/renderer';
 import { addChild, addEffect, isSubCause, seedCategories } from './fishboneActions';
 import { DockSection } from '../DockSection';
 

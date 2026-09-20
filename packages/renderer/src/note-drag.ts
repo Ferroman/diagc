@@ -1,5 +1,5 @@
 import type { Node, XYPosition } from '@xyflow/react';
-import type { ThreatTarget } from '@diagramming/core';
+import type { ThreatTarget } from '@diagc/core';
 import type { NoteData } from './NoteNode';
 import type { Positions } from './useNudge';
 

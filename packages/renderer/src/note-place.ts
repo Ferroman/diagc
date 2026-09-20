@@ -1,4 +1,4 @@
-import type { ThreatStatus } from '@diagramming/core';
+import type { ThreatStatus } from '@diagc/core';
 import type { NodeGeometry } from './layout';
 
 export type Rect = NodeGeometry;

@@ -8,7 +8,7 @@ import { mkdirSync } from 'node:fs';
 import * as handlers from '../../../packages/diagc/src/api/handlers';
 import { makeApiFetch } from './bridge';
 import { parseWikilink } from './wikilink';
-import type DiagrammingPlugin from './main';
+import type DiagcPlugin from './main';
 
 /** The studio pane (Task 10) and code-fence embeds (Task 11) both need this —
  * one diagc route table + vault adapter per plugin instance, so both surfaces
@@ -37,7 +37,7 @@ const resourceBase = (app: App, vaultPath: string): string =>
  * wikilink to a duplicate note name resolves relative to the note that
  * contains it, not the vault root. The studio pane has no containing note, so
  * it keeps the default `''` (root-relative, today's behavior). */
-export function buildVaultHost(app: App, plugin: DiagrammingPlugin, sourcePath = ''): VaultHost | undefined {
+export function buildVaultHost(app: App, plugin: DiagcPlugin, sourcePath = ''): VaultHost | undefined {
   const adapter = app.vault.adapter;
   if (!(adapter instanceof FileSystemAdapter)) return undefined;
   const folder = plugin.settings.diagramsFolder;

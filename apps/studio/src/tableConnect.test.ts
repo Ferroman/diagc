@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DiagramModel } from '@diagramming/core';
+import type { DiagramModel } from '@diagc/core';
 import { fkConnectionCommands } from './tableConnect';
 
 const model = (): DiagramModel => ({

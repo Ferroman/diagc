@@ -1,13 +1,13 @@
 {
-  "name": "@diagramming/core",
+  "name": "@diagc/core",
   "version": "0.1.0",
   "description": "Diagram model, validator, and builder DSL for diagc — no React, no filesystem.",
   "license": "AGPL-3.0-only",
   "author": "Bogdan Frankovskyi",
-  "homepage": "https://github.com/Ferroman/diagramming#readme",
+  "homepage": "https://github.com/Ferroman/diagc#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ferroman/diagramming.git",
+    "url": "git+https://github.com/Ferroman/diagc.git",
     "directory": "packages/core"
   },
   "keywords": ["diagram", "architecture", "c4", "causal-loop", "dsl"],

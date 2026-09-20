@@ -1,5 +1,5 @@
 import { watch as chokidarWatch } from 'chokidar';
-import { errMessage, type IncludeResolver } from '@diagramming/core';
+import { errMessage, type IncludeResolver } from '@diagc/core';
 import { compileFile } from './compile';
 
 export type WatchEvent =

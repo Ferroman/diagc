@@ -8,7 +8,7 @@ importers:
 
   .:
     dependencies:
-      '@diagramming/core':
+      '@diagc/core':
         specifier: workspace:*
         version: link:packages/core
     devDependencies:
@@ -51,16 +51,16 @@ importers:
 
   apps/obsidian:
     dependencies:
-      '@diagramming/core':
+      '@diagc/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@diagramming/icons':
+      '@diagc/icons':
         specifier: workspace:*
         version: link:../../packages/icons
-      '@diagramming/renderer':
+      '@diagc/renderer':
         specifier: workspace:*
         version: link:../../packages/renderer
-      '@diagramming/studio':
+      '@diagc/studio':
         specifier: workspace:*
         version: link:../studio
       '@fontsource/caveat':
@@ -94,13 +94,13 @@ importers:
 
   apps/studio:
     dependencies:
-      '@diagramming/core':
+      '@diagc/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@diagramming/icons':
+      '@diagc/icons':
         specifier: workspace:*
         version: link:../../packages/icons
-      '@diagramming/renderer':
+      '@diagc/renderer':
         specifier: workspace:*
         version: link:../../packages/renderer
       '@fontsource/caveat':
@@ -134,13 +134,13 @@ importers:
 
   apps/viewer:
     dependencies:
-      '@diagramming/core':
+      '@diagc/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@diagramming/icons':
+      '@diagc/icons':
         specifier: workspace:*
         version: link:../../packages/icons
-      '@diagramming/renderer':
+      '@diagc/renderer':
         specifier: workspace:*
         version: link:../../packages/renderer
       '@fontsource/caveat':
@@ -176,7 +176,7 @@ importers:
 
   packages/diagc:
     dependencies:
-      '@diagramming/core':
+      '@diagc/core':
         specifier: workspace:*
         version: link:../core
       chokidar:
@@ -207,10 +207,10 @@ importers:
 
   packages/renderer:
     dependencies:
-      '@diagramming/core':
+      '@diagc/core':
         specifier: workspace:*
         version: link:../core
-      '@diagramming/icons':
+      '@diagc/icons':
         specifier: workspace:*
         version: link:../icons
       '@fontsource/kalam':

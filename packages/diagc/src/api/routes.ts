@@ -1,6 +1,6 @@
 // Type-only: the route table names handlers but never imports their module, so
 // a host that loads this table (Vite's config bundle) does not drag
-// `@diagramming/core` in with it. `dispatch` takes the handlers as an argument.
+// `@diagc/core` in with it. `dispatch` takes the handlers as an argument.
 type Handlers = typeof import('./handlers');
 
 /** One route handler's result: handlers' JSON envelope plus readAsset's

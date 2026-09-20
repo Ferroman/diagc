@@ -1,4 +1,4 @@
-import type { DiagramSelection } from '@diagramming/renderer';
+import type { DiagramSelection } from '@diagc/renderer';
 
 /**
  * Which container a new node nests under by default: an explicitly selected node

@@ -1,4 +1,4 @@
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 // Reproduction of a classic multi-AZ AWS reference architecture, exercising the
 // cloud-infrastructure vocabulary end to end: aws-* boundary containers with

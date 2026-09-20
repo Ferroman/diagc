@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model, type DiagramModel, type EditorCommand } from '@diagramming/core';
+import { model, type DiagramModel, type EditorCommand } from '@diagc/core';
 import { QUICK_ADD_GAP, quickAdd, quickAddLabel, quickAddPlaced, type QuickAddContext } from './quickAdd';
 
 const ctx = (over: Partial<QuickAddContext> = {}): QuickAddContext => ({

@@ -20,7 +20,7 @@ The panel is there in view mode too: a read-only `.diagram.ts` threat model stil
 ## From TypeScript
 
 ```ts
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 const m = model('checkout');
 const tm = m.threatModel();

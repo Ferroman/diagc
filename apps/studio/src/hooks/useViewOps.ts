@@ -7,8 +7,8 @@ import {
   type DiagramPlane,
   type LayoutOverlay,
   type LayoutSettings,
-} from '@diagramming/core';
-import type { DiagramSelection } from '@diagramming/renderer';
+} from '@diagc/core';
+import type { DiagramSelection } from '@diagc/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import { getHost } from '../host';
 import { remapVisibleLayers } from '../layerMerge';

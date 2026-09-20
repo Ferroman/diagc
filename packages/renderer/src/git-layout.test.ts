@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model, type CompiledView, type DiagramModel, type ViewEdge } from '@diagramming/core';
+import { compileView, model, type CompiledView, type DiagramModel, type ViewEdge } from '@diagc/core';
 import { GIT_LAYOUT, LANE_PALETTE, gitEdgeColor, gitLayout, gitNodeColors, gitRoute } from './git-layout';
 
 const { COL, LANE, DIAMETER, LABEL_W, MARGIN, TAIL_GAP } = GIT_LAYOUT;

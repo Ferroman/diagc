@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import type { DiagramModel, EditorCommand, FontScale, NotationId, TextAlign } from '@diagramming/core';
-import { CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF, TM_NOTATION, strideFor } from '@diagramming/core';
-import { BUILTIN_ICON_IDS } from '@diagramming/icons';
-import { DEFAULT_TYPE_STYLES } from '@diagramming/renderer';
+import type { DiagramModel, EditorCommand, FontScale, NotationId, TextAlign } from '@diagc/core';
+import { CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF, TM_NOTATION, strideFor } from '@diagc/core';
+import { BUILTIN_ICON_IDS } from '@diagc/icons';
+import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { ColorRow, OptionRow } from './pickers';
 import { ThreatsSection } from './ThreatsSection';
 import { BUNDLED_LIBRARY } from '../library/packs';

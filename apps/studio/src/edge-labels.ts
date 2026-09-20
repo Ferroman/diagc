@@ -1,4 +1,4 @@
-import { relationLabels, type DiagramModel, type EdgeLabel, type EdgeLabelSide } from '@diagramming/core';
+import { relationLabels, type DiagramModel, type EdgeLabel, type EdgeLabelSide } from '@diagc/core';
 
 /**
  * Pure edge-label CRUD over a relation's effective labels, extracted from the

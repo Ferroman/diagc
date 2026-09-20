@@ -2,7 +2,7 @@ import { access, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promis
 import os from 'node:os';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
-import { ejectSource, errMessage, validate, type DiagramModel } from '@diagramming/core';
+import { ejectSource, errMessage, validate, type DiagramModel } from '@diagc/core';
 import { compileFile, executeDiagramTs } from './compile';
 import { resolveInclude } from './includes';
 import { snapshotSession } from './snapshots';

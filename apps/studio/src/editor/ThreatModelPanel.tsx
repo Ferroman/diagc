@@ -9,8 +9,8 @@ import {
   type DiagramModel,
   type Threat,
   type ThreatTarget,
-} from '@diagramming/core';
-import type { DiagramSelection } from '@diagramming/renderer';
+} from '@diagc/core';
+import type { DiagramSelection } from '@diagc/renderer';
 import { DockSection } from '../DockSection';
 
 interface ThreatModelPanelProps {

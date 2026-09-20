@@ -3,7 +3,7 @@ import { groupDiagrams, groupLabel, groupOf, leafOf } from './diagramGroups';
 import { usePersistedState } from './hooks/usePersistedState';
 import { useKeyHint } from './hotkeys/HotkeysContext';
 
-const COLLAPSED_KEY = 'diagramming.pickerCollapsed';
+const COLLAPSED_KEY = 'diagc.pickerCollapsed';
 
 // Anything that is not a string array (absent, corrupt, a stale format) reads
 // as "nothing collapsed" — null hands usePersistedState its fallback.

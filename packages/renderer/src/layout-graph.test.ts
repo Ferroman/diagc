@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model } from '@diagramming/core';
+import { compileView, model } from '@diagc/core';
 import { liftEdges, layoutOptionsFor, usesNestedLayout, buildGraph, COLLAPSED_SIZE, componentGap, containerPad } from './layout-graph';
 
 /**

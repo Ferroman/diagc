@@ -17,9 +17,9 @@ This bundles `apps/obsidian/dist/`: `main.js`, `manifest.json`, `styles.css`, an
 OBSIDIAN_VAULT=/path/to/vault node scripts/install-obsidian.mjs
 ```
 
-Copies `dist/` into `<vault>/.obsidian/plugins/diagramming-studio/`. The script refuses to run without `OBSIDIAN_VAULT` set, and refuses if `dist/` doesn't exist yet — build first.
+Copies `dist/` into `<vault>/.obsidian/plugins/diagc-studio/`. The script refuses to run without `OBSIDIAN_VAULT` set, and refuses if `dist/` doesn't exist yet — build first.
 
-Then, in Obsidian: **Settings → Community plugins**, make sure community plugins are enabled, find **Diagramming Studio** in the installed list, and toggle it on.
+Then, in Obsidian: **Settings → Community plugins**, make sure community plugins are enabled, find **diagc studio** in the installed list, and toggle it on.
 
 Re-run both commands after pulling changes to this repo — installing does not build for you, and Obsidian does not pick up a newer `dist/` on its own.
 
@@ -29,7 +29,7 @@ The ribbon's network icon, or the command palette's **Open diagram studio**, ope
 
 ## The diagrams folder
 
-Plugin setting **Diagrams folder** (`diagramsFolder`, default `diagrams`), vault-relative — set it under **Settings → Diagramming Studio**.
+Plugin setting **Diagrams folder** (`diagramsFolder`, default `diagrams`), vault-relative — set it under **Settings → diagc studio**.
 
 That folder is laid out exactly like a `diagc` project directory: `src/*.diagram.json` with their `.layout.json` sidecars, `src/assets/` for uploaded images, and `.artifacts/` (populated only when the CLI compiles a `.diagram.ts` source — the plugin itself never compiles TypeScript). The plugin creates `src/` and `.artifacts/` under the configured folder the first time you open the studio, if they don't already exist.
 

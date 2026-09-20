@@ -5,9 +5,9 @@ import {
   type DiagramModel,
   type DiagramNode,
   type EditorCommand,
-} from '@diagramming/core';
-import { ACTIVITY_LAYOUT } from '@diagramming/renderer';
-import type { DiagramSelection } from '@diagramming/renderer';
+} from '@diagc/core';
+import { ACTIVITY_LAYOUT } from '@diagc/renderer';
+import type { DiagramSelection } from '@diagc/renderer';
 import { ColorRow } from './pickers';
 import { DockSection } from '../DockSection';
 

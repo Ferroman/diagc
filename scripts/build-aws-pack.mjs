@@ -14,7 +14,7 @@
  *   apps/studio/public/library/aws-categories/<slug>.svg  category icons
  *   apps/studio/src/library/packs.aws.ts                  the generated manifest
  *
- * Icon file names must satisfy LIBRARY_IMAGE_REF (@diagramming/core): exactly
+ * Icon file names must satisfy LIBRARY_IMAGE_REF (@diagc/core): exactly
  * `/library/<kebab-dir>/<kebab-file>.<ext>`, lowercase, one directory level.
  */
 import { execFileSync } from 'node:child_process';

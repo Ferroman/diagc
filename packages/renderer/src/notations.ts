@@ -1,4 +1,4 @@
-import { consequenceOrders, GIT_STAGE_TYPE, TM_BOUNDARY_TYPE, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type Size, type ViewEdge } from '@diagramming/core';
+import { consequenceOrders, GIT_STAGE_TYPE, TM_BOUNDARY_TYPE, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type Size, type ViewEdge } from '@diagc/core';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';

@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ejectSource, type DiagramModel } from '@diagramming/core';
+import { ejectSource, type DiagramModel } from '@diagc/core';
 import { diffPaths, ejectDiagram } from './eject';
 
 const coreEntry = fileURLToPath(new URL('../../core/src/index.ts', import.meta.url));
@@ -47,7 +47,7 @@ describe('ejectDiagram', () => {
     expect(res.tsPath).toBe(path.join(diagramsDir, 'shop.diagram.ts'));
     await expect(readFile(path.join(diagramsDir, 'shop.diagram.json'), 'utf8')).rejects.toThrow();
     const ts = await readFile(res.tsPath, 'utf8');
-    expect(ts).toContain("import { model } from '@diagramming/core';");
+    expect(ts).toContain("import { model } from '@diagc/core';");
     const artifact = JSON.parse(await readFile(path.join(artifactsDir, 'shop.diagram.json'), 'utf8'));
     expect(artifact).toEqual(MODEL);
     // sidecar survived

@@ -28,9 +28,9 @@ import type {
   ThreatTarget,
   ViewEdge,
   ViewNode,
-} from '@diagramming/core';
-import { runsToPlainText, threatSummary } from '@diagramming/core';
-import type { IconRegistry } from '@diagramming/icons';
+} from '@diagc/core';
+import { runsToPlainText, threatSummary } from '@diagc/core';
+import type { IconRegistry } from '@diagc/icons';
 import type { EdgePoint } from './layout';
 import type { EdgeRouting } from './useViewLayout';
 import type { KindStyle, Registry, TypeStyle } from './registry';

@@ -6,7 +6,7 @@ import {
   threatRegister,
   threatSummary,
   type DiagramModel,
-} from '@diagramming/core';
+} from '@diagc/core';
 
 /** A register worth a strip of the page: one the model actually has threats for,
  * on a page a reader can scroll. Export renders are excluded — see Viewer.tsx. */

@@ -4,7 +4,7 @@ import {
   type DiagramModel,
   type Size,
   type ViewNode,
-} from '@diagramming/core';
+} from '@diagc/core';
 import type { NodeGeometry } from './layout';
 
 /**

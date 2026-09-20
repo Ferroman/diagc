@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, type DiagramModel } from '@diagramming/core';
+import { compileView, type DiagramModel } from '@diagc/core';
 import { ACTIVITY_LAYOUT as L, arrangeActivityFrames } from './activity-frame';
 
 const model = (extraLaneKids: { id: string; parent: string }[] = []): DiagramModel => ({

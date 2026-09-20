@@ -2,7 +2,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getViewportForBounds } from '@xyflow/react';
-import { layoutPlaneKey, model, type DiagramModel, type ThreatTarget } from '@diagramming/core';
+import { layoutPlaneKey, model, type DiagramModel, type ThreatTarget } from '@diagc/core';
 import { DiagramView, LIBRARY_ENTRY_DND_TYPE, type CanvasCommands, type LayoutApi } from './DiagramView';
 import { FISHBONE_LAYOUT } from './fishbone-layout';
 import { GIT_LAYOUT } from './git-layout';

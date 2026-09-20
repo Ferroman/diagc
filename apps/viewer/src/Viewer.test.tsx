@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { layoutPlaneKey, model, type DiagramModel } from '@diagramming/core';
+import { layoutPlaneKey, model, type DiagramModel } from '@diagc/core';
 import { handshakeReady, legendPadding, Viewer, type ViewerData } from './Viewer';
 
 const m = () => {

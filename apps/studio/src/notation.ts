@@ -1,1 +1,1 @@
-export { activeNotation } from '@diagramming/core';
+export { activeNotation } from '@diagc/core';

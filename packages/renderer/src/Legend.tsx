@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import type { LegendSection } from '@diagramming/core';
-import type { IconRegistry } from '@diagramming/icons';
+import type { LegendSection } from '@diagc/core';
+import type { IconRegistry } from '@diagc/icons';
 import type { LegendRow, LegendSwatch } from './legendRows';
 
 const SECTION_LABELS: Record<LegendSection | 'items', string> = {

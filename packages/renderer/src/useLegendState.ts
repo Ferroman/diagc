@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
-import { compileView, type DiagramModel, type Stroke } from '@diagramming/core';
+import { compileView, type DiagramModel, type Stroke } from '@diagc/core';
 import { legendRows, type LegendRow } from './legendRows';
 import type { KindStyle, Registry, TypeStyle } from './registry';
 

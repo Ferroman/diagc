@@ -171,13 +171,13 @@ describe('DiagramPicker', () => {
     });
 
     it("re-opens the current diagram's folder so the cursor has somewhere to land", () => {
-      localStorage.setItem('diagramming.pickerCollapsed', JSON.stringify(['docs']));
+      localStorage.setItem('diagc.pickerCollapsed', JSON.stringify(['docs']));
       open('docs/c4');
       expect(optionNames()).toContain('docs/c4');
     });
 
     it('survives a corrupt stored value', () => {
-      localStorage.setItem('diagramming.pickerCollapsed', '{not json');
+      localStorage.setItem('diagc.pickerCollapsed', '{not json');
       open('acme');
       expect(optionNames()).toEqual(LISTED);
     });

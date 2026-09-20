@@ -4,13 +4,13 @@
   "description": "Author software-architecture diagrams as code, compile them to a validated model, edit them in a local studio, and publish pages and images.",
   "license": "AGPL-3.0-only",
   "author": "Bogdan Frankovskyi",
-  "homepage": "https://github.com/Ferroman/diagramming#readme",
+  "homepage": "https://github.com/Ferroman/diagc#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ferroman/diagramming.git",
+    "url": "git+https://github.com/Ferroman/diagc.git",
     "directory": "packages/diagc"
   },
-  "bugs": "https://github.com/Ferroman/diagramming/issues",
+  "bugs": "https://github.com/Ferroman/diagc/issues",
   "keywords": ["diagram", "diagrams-as-code", "architecture", "c4", "causal-loop", "cli", "studio"],
   "type": "module",
   "engines": {
@@ -27,7 +27,7 @@
     "prepack": "cd ../.. && pnpm build:dist"
   },
   "dependencies": {
-    "@diagramming/core": "workspace:*",
+    "@diagc/core": "workspace:*",
     "chokidar": "^4.0.0",
     "fast-glob": "^3.3.0",
     "jiti": "^2.0.0",

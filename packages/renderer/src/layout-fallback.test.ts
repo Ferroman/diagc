@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { compileView, model } from '@diagramming/core';
+import { compileView, model } from '@diagc/core';
 
 /**
  * elk stubbed so a chosen algorithm can be made to fail on EVERY graph shape.

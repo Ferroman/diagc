@@ -6,7 +6,7 @@ import { usePersistedState } from './usePersistedState';
 // Remember which diagram was open so a reload reopens it instead of resetting
 // to the alphabetically-first one. localStorage is unavailable in some
 // embeddings, so every access is guarded.
-const SELECTED_KEY = 'diagramming.selected';
+const SELECTED_KEY = 'diagc.selected';
 
 // Drill-path comparisons shared by the deep-link bookkeeping: the report
 // handler settles an applied URL's validity, the URL writer classifies

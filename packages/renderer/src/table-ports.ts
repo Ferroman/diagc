@@ -1,4 +1,4 @@
-import type { Column } from '@diagramming/core';
+import type { Column } from '@diagc/core';
 import { Position } from '@xyflow/react';
 
 export const TABLE_HEADER_H = 30;

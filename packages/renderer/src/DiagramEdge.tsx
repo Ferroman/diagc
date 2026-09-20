@@ -10,7 +10,7 @@ import {
 } from '@xyflow/react';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
-import { TM_NOTATION, threatTargetKey, type Column, type EdgeLabel, type EdgeLabelSide, type NotationId, type Polarity, type RelationStyle } from '@diagramming/core';
+import { TM_NOTATION, threatTargetKey, type Column, type EdgeLabel, type EdgeLabelSide, type NotationId, type Polarity, type RelationStyle } from '@diagc/core';
 import {
   bowPath,
   DEFAULT_CURVATURE,

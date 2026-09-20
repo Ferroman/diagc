@@ -1,5 +1,5 @@
-import type { DiagramModel, EditorCommand } from '@diagramming/core';
-import type { DiagramSelection } from '@diagramming/renderer';
+import type { DiagramModel, EditorCommand } from '@diagc/core';
+import type { DiagramSelection } from '@diagc/renderer';
 
 /** The toolbar swatch row's color target: the selected node, or the selected
  * single-relation edge. Null = no color target. */

@@ -1,21 +1,21 @@
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import { createRoot, type Root } from 'react-dom/client';
-import { App as StudioApp } from '@diagramming/studio/src/App';
-import { setHost } from '@diagramming/studio/src/host';
+import { App as StudioApp } from '@diagc/studio/src/App';
+import { setHost } from '@diagc/studio/src/host';
 import { buildVaultHost } from './vault-host';
 import { buildDialogs } from './dialogs';
 import { memoryUrlState } from './memory-url-state';
 import { obsidianTheme } from './theme';
-import type DiagrammingPlugin from './main';
+import type DiagcPlugin from './main';
 
-export const VIEW_TYPE_STUDIO = 'diagramming-studio';
+export const VIEW_TYPE_STUDIO = 'diagc-studio';
 
 export class StudioView extends ItemView {
   private root: Root | undefined;
   /** Task 11's embeds and openDiagram() drive navigation through this. */
   readonly urlState = memoryUrlState();
 
-  constructor(leaf: WorkspaceLeaf, private readonly plugin: DiagrammingPlugin) {
+  constructor(leaf: WorkspaceLeaf, private readonly plugin: DiagcPlugin) {
     super(leaf);
   }
   override getViewType(): string { return VIEW_TYPE_STUDIO; }

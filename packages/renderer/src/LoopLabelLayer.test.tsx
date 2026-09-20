@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { model, type DiagramModel } from '@diagramming/core';
+import { model, type DiagramModel } from '@diagc/core';
 import { DiagramView } from './DiagramView';
 
 /** 3-node cyclic model: a->b->c->a, all relations '+' by default (flip via polarity) */

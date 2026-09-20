@@ -1,4 +1,4 @@
-import { TM_BOUNDARY_TYPE, TM_FLOW_KIND, TM_NOTATION, type DiagramModel, type NotationId } from '@diagramming/core';
+import { TM_BOUNDARY_TYPE, TM_FLOW_KIND, TM_NOTATION, type DiagramModel, type NotationId } from '@diagc/core';
 
 /**
  * The relation kind a plain canvas connect gesture creates under `notation`.

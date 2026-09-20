@@ -1,4 +1,4 @@
-import { LEAF_SIZE, RESERVED_NODE_ID, type CompiledView, type LayoutSettings, type ViewEdge, type ViewNode } from '@diagramming/core';
+import { LEAF_SIZE, RESERVED_NODE_ID, type CompiledView, type LayoutSettings, type ViewEdge, type ViewNode } from '@diagc/core';
 import { ACTIVITY_LAYOUT } from './activity-frame';
 import { EDGE_LABEL_MAX_CHARS } from './label-size';
 

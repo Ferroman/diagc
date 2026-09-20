@@ -1,4 +1,4 @@
-import type { DiagramModel } from '@diagramming/core';
+import type { DiagramModel } from '@diagc/core';
 
 // Plain-object default export (the supported non-builder path). It has the right
 // shape (version 1, nodes array) so it passes the shape guard, but the relation

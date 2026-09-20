@@ -29,7 +29,7 @@ export function DockSection({
 }) {
   // Same 'collapsed'/'expanded' on-disk format as the docks themselves.
   const [folded, setFolded] = usePersistedState<boolean>(
-    `diagramming.dockSection.${id}`,
+    `diagc.dockSection.${id}`,
     false,
     (raw) => (raw === null ? null : raw === 'collapsed'),
     (v) => (v ? 'collapsed' : 'expanded'),

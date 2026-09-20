@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 import { SecondOrderPanel } from './SecondOrderPanel';
 
 const tree = () => {

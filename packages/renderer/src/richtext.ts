@@ -1,4 +1,4 @@
-import { normalizeRuns, runsToPlainText, type TextRun } from '@diagramming/core';
+import { normalizeRuns, runsToPlainText, type TextRun } from '@diagc/core';
 
 export const plainText = runsToPlainText;
 

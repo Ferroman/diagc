@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, FB_CAUSE_OF_KIND, model, type CompiledView, type DiagramModel } from '@diagramming/core';
+import { compileView, FB_CAUSE_OF_KIND, model, type CompiledView, type DiagramModel } from '@diagc/core';
 import { textWidth } from './box-size';
 import { BONE_PALETTE, FISHBONE_LAYOUT, fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 

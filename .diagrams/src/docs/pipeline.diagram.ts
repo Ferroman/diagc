@@ -1,4 +1,4 @@
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 // Diagram for the README and docs/explanation/architecture.md: how a source file
 // becomes a picture.

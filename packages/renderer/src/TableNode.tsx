@@ -1,5 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
-import type { Column } from '@diagramming/core';
+import type { Column } from '@diagc/core';
 import { LinkBadge, QuickAddButton, type DiagramNodeData } from './DiagramNode';
 import { TABLE_HEADER_H, TABLE_ROW_H } from './table-ports';
 

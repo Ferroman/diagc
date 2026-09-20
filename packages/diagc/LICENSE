@@ -674,7 +674,7 @@ under section 7 of that license.
 
    You may license diagram source files that you author under terms of your
    choosing, notwithstanding that they import type declarations and the
-   builder DSL from @diagramming/core in order to describe a diagram. Such
+   builder DSL from @diagc/core in order to describe a diagram. Such
    files are not required to be licensed under the GNU Affero General Public
    License on account of that use.
 

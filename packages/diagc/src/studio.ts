@@ -121,7 +121,7 @@ async function servePackaged(home: HomePaths, env: StudioEnv): Promise<StudioSes
 
 /** Monorepo layout: hand off to the studio's own Vite dev server. */
 function spawnVite(home: HomePaths, env: StudioEnv): StudioSession {
-  const child = spawn('pnpm', ['--filter', '@diagramming/studio', 'dev'], {
+  const child = spawn('pnpm', ['--filter', '@diagc/studio', 'dev'], {
     cwd: home.root,
     env: { ...process.env, ...env },
     stdio: 'inherit',

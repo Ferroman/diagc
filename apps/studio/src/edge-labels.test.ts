@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 import { addEdgeLabel, editEdgeLabel, edgeLabelsOf, moveEdgeLabel, nextLabelId } from './edge-labels';
 
 function related(label?: string) {

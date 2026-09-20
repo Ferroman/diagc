@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyDrawings, emptyLayout, model, type EditorState } from '@diagramming/core';
+import { emptyDrawings, emptyLayout, model, type EditorState } from '@diagc/core';
 import { dispatch, HISTORY_CAP, isDirty, redo, startSession, undo } from './reducer';
 
 function state(): EditorState {

@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { isIP } from 'node:net';
-import { errMessage } from '@diagramming/core';
+import { errMessage } from '@diagc/core';
 import { matchRoute, type Route } from './routes';
 
 /** The handler module, passed in rather than imported: the Vite adapter loads it

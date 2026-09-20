@@ -4,7 +4,7 @@ import { buildVaultHost } from './vault-host';
 import { parseFence } from './fence';
 import { obsidianTheme } from './theme';
 import { Embed } from './Embed';
-import type DiagrammingPlugin from './main';
+import type DiagcPlugin from './main';
 
 /**
  * Owns the React root for one `diagram` code fence. Obsidian replaces the
@@ -26,7 +26,7 @@ export class DiagramEmbedChild extends MarkdownRenderChild {
   constructor(
     containerEl: HTMLElement,
     private readonly source: string,
-    private readonly plugin: DiagrammingPlugin,
+    private readonly plugin: DiagcPlugin,
     /** the note containing the fence — see buildVaultHost's `sourcePath` doc */
     private readonly sourcePath: string,
   ) {

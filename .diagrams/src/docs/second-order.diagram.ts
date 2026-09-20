@@ -1,4 +1,4 @@
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 const m = model('docs-second-order', { name: 'Second-order thinking: splitting the monolith' });
 const so = m.secondOrder();

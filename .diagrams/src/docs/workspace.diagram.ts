@@ -1,4 +1,4 @@
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 // Diagram for docs/explanation/architecture.md: which package owns what, and
 // which way the dependencies point. Read it when you come back cold and need to

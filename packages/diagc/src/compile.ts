@@ -8,7 +8,7 @@ import {
   validate,
   type DiagramModel,
   type IncludeResolver,
-} from '@diagramming/core';
+} from '@diagc/core';
 import { resolveInclude } from './includes';
 import { snapshotSession } from './snapshots';
 
@@ -33,15 +33,15 @@ function assertDiagramShape(model: unknown, file: string): asserts model is Diag
  * its model — shape-guarded but not validated; callers own validation.
  */
 export async function executeDiagramTs(file: string, coreEntry?: string): Promise<DiagramModel> {
-  // Always pin @diagramming/core to the copy visible from this file. Bare
+  // Always pin @diagc/core to the copy visible from this file. Bare
   // resolution from the diagram's own location only works when the diagram
   // lives under a node_modules-covered tree (it fails for e.g. /tmp), so
   // `coreEntry` is not just a safeguard — without a default, compilation is
   // at the mercy of the install layout.
-  const resolvedCoreEntry = coreEntry ?? createRequire(import.meta.url).resolve('@diagramming/core');
+  const resolvedCoreEntry = coreEntry ?? createRequire(import.meta.url).resolve('@diagc/core');
   const jiti = createJiti(import.meta.url, {
     moduleCache: false,
-    alias: { '@diagramming/core': resolvedCoreEntry },
+    alias: { '@diagc/core': resolvedCoreEntry },
   });
   const def = await jiti.import<unknown>(path.resolve(file), { default: true });
 

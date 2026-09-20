@@ -9,7 +9,7 @@ Show how releases, hotfixes, nightlies and feature work flow between branches â€
 1. Declare the model a git graph, then its lanes top to bottom:
 
    ```ts
-   import { model } from '@diagramming/core';
+   import { model } from '@diagc/core';
 
    const m = model('branching', { name: 'Branching strategy' });
    const g = m.gitGraph();

@@ -1,4 +1,4 @@
-import type { CompiledView, ViewNode } from '@diagramming/core';
+import type { CompiledView, ViewNode } from '@diagc/core';
 
 /**
  * Which parts of a view can be arranged independently of everything else.

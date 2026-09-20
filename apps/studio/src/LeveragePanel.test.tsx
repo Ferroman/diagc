@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { model } from '@diagramming/core';
-import type { LoopEdgeInput } from '@diagramming/renderer';
+import { model } from '@diagc/core';
+import type { LoopEdgeInput } from '@diagc/renderer';
 import { LeveragePanel } from './LeveragePanel';
 
 // a->t(+), b->a(-), t->c(+), c->a(+), d->t(+). Loop t->c->a->t (R, len 3).

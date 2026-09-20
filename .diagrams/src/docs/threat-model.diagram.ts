@@ -1,4 +1,4 @@
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 const m = model('docs-threat-model', { name: 'Threat model: online shop checkout' });
 const tm = m.threatModel();

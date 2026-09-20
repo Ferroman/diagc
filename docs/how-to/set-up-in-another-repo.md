@@ -28,7 +28,7 @@ diagc compile         # .diagrams/src/*.diagram.{ts,json} -> .diagrams/.artifact
 diagc publish         # -> .diagrams/html and .diagrams/static/*.png
 ```
 
-`.diagram.ts` sources compile in any repo without installing anything there — the CLI aliases `@diagramming/core` back to this monorepo.
+`.diagram.ts` sources compile in any repo without installing anything there — the CLI aliases `@diagc/core` back to this monorepo.
 
 ## Add to the target repo's `.gitignore`
 
@@ -51,7 +51,7 @@ Deleting or moving the monorepo breaks `diagc` everywhere.
 
 ## Gotchas
 
-- **`diagc studio` needs the monorepo's dependencies, not yours.** Do not add `@diagramming/*` to the target repo's `package.json`.
+- **`diagc studio` needs the monorepo's dependencies, not yours.** Do not add `@diagc/*` to the target repo's `package.json`.
 - **The bundled icon library lives in the monorepo too.** Published pages inline the icons they use, so a published page keeps working — but a target repo cannot serve `/library/...` on its own.
 - **Re-run `pnpm build:cli` after pulling monorepo changes**, or published pages keep using the old viewer shell.
 - **There is no version pinning.** Every repo on your machine uses whatever the monorepo is at right now.

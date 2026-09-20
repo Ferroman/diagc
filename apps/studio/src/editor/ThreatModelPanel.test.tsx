@@ -9,8 +9,8 @@ import {
   TM_PROCESS_TYPE,
   TM_STORE_TYPE,
   type DiagramModel,
-} from '@diagramming/core';
-import type { DiagramSelection } from '@diagramming/renderer';
+} from '@diagc/core';
+import type { DiagramSelection } from '@diagc/renderer';
 import { ThreatModelPanel } from './ThreatModelPanel';
 
 // core's own fixture (threat-model.test.ts), built by hand for the same reason:

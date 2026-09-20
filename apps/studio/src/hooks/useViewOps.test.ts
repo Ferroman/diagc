@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model, type DiagramModel, type EditorCommand, type LayoutOverlay } from '@diagramming/core';
+import { model, type DiagramModel, type EditorCommand, type LayoutOverlay } from '@diagc/core';
 import { useViewOps, type UseViewOpsOptions, type ViewOps } from './useViewOps';
 
 /**

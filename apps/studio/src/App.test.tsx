@@ -321,7 +321,7 @@ describe('view-mode layout preview', () => {
     expect(chip.getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(chip);
     expect(chip.getAttribute('aria-pressed')).toBe('true');
-    expect(localStorage.getItem('diagramming.snap')).toBe('true');
+    expect(localStorage.getItem('diagc.snap')).toBe('true');
     expect(layoutPosts()).toEqual([]); // a preference, never written to the diagram
   });
 

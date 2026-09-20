@@ -17,7 +17,7 @@ The arrangement is the notation's own: there are no layout controls, and nothing
 ## From TypeScript
 
 ```ts
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 const m = model('checkout-outage');
 const fb = m.fishbone('outage', 'Checkout outage on release day');

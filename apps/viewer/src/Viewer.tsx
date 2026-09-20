@@ -8,9 +8,9 @@ import {
   type DiagramPlane,
   type Drawings,
   type LayoutOverlay,
-} from '@diagramming/core';
-import { applyTheme, DiagramView, isKnownStyle, lightTheme, type LayoutApi } from '@diagramming/renderer';
-import { createIconRegistry } from '@diagramming/icons';
+} from '@diagc/core';
+import { applyTheme, DiagramView, isKnownStyle, lightTheme, type LayoutApi } from '@diagc/renderer';
+import { createIconRegistry } from '@diagc/icons';
 import { ThreatTable, showsThreatTable } from './ThreatTable';
 
 const icons = createIconRegistry();

@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 import { DG_DATA_SENTINEL } from './html';
 import { publishDiagrams } from './publish';
 

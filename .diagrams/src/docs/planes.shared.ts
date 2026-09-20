@@ -1,4 +1,4 @@
-import { model, type ModelBuilder } from '@diagramming/core';
+import { model, type ModelBuilder } from '@diagc/core';
 
 /**
  * One model, built three times with a different plane declared first.

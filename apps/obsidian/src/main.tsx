@@ -19,22 +19,22 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import { Plugin, PluginSettingTab, Setting, type App } from 'obsidian';
-import { DEFAULT_SETTINGS, normalizeSettings, type DiagrammingSettings } from './settings';
+import { DEFAULT_SETTINGS, normalizeSettings, type DiagcSettings } from './settings';
 import { StudioView, VIEW_TYPE_STUDIO } from './view';
 import { DiagramEmbedChild } from './embed-child';
-import { formatHash } from '@diagramming/studio/src/urlState';
+import { formatHash } from '@diagc/studio/src/urlState';
 // Imported from the start so `dist/main.css` exists after every build — the
 // esbuild config renames it to `styles.css`, which Obsidian requires present.
-import '@diagramming/studio/src/app.css';
+import '@diagc/studio/src/app.css';
 import '@fontsource/caveat/500.css';
 import '@fontsource/caveat/700.css';
 
-export default class DiagrammingPlugin extends Plugin {
-  settings: DiagrammingSettings = { ...DEFAULT_SETTINGS };
+export default class DiagcPlugin extends Plugin {
+  settings: DiagcSettings = { ...DEFAULT_SETTINGS };
 
   override async onload(): Promise<void> {
     this.settings = normalizeSettings(await this.loadData());
-    this.addSettingTab(new DiagrammingSettingTab(this.app, this));
+    this.addSettingTab(new DiagcSettingTab(this.app, this));
     this.registerView(VIEW_TYPE_STUDIO, (leaf) => new StudioView(leaf, this));
     this.addRibbonIcon('network', 'Open diagram studio', () => void this.activateStudio());
     this.addCommand({
@@ -70,8 +70,8 @@ export default class DiagrammingPlugin extends Plugin {
   }
 }
 
-class DiagrammingSettingTab extends PluginSettingTab {
-  constructor(app: App, private readonly plugin: DiagrammingPlugin) {
+class DiagcSettingTab extends PluginSettingTab {
+  constructor(app: App, private readonly plugin: DiagcPlugin) {
     super(app, plugin);
   }
   override display(): void {

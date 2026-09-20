@@ -2,7 +2,7 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import path from 'node:path';
-import { errMessage } from '@diagramming/core';
+import { errMessage } from '@diagc/core';
 import { handleApiRequest } from './api/dispatch';
 import * as handlers from './api/handlers';
 

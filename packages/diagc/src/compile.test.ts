@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { DiagramModel, IncludeResolver } from '@diagramming/core';
+import type { DiagramModel, IncludeResolver } from '@diagc/core';
 import { compileFile, executeDiagramTs } from './compile';
 
 async function exists(p: string): Promise<boolean> {
@@ -34,7 +34,7 @@ describe('compileFile', () => {
   it('propagates validation errors from invalid diagrams', async () => {
     const out = await mkdtemp(path.join(tmpdir(), 'diagc-'));
     // Match by name, not class: the error is constructed inside jiti's transformed
-    // copy of @diagramming/core, so instanceof against our import would fail.
+    // copy of @diagc/core, so instanceof against our import would fail.
     await expect(compileFile(path.join(fixtures, 'broken.diagram.ts'), out)).rejects.toMatchObject({
       name: 'DiagramValidationError',
     });
@@ -218,7 +218,7 @@ describe('executeDiagramTs', () => {
     const file = path.join(tmp, 'exec-test.diagram.ts');
     await writeFile(
       file,
-      `import { model } from '@diagramming/core';\nconst m = model('exec-test');\nm.node('a');\nexport default m;\n`,
+      `import { model } from '@diagc/core';\nconst m = model('exec-test');\nm.node('a');\nexport default m;\n`,
     );
     const model = await executeDiagramTs(file, coreEntry);
     expect(model.id).toBe('exec-test');

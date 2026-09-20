@@ -1,5 +1,5 @@
 import { useViewport } from '@xyflow/react';
-import { DEFAULT_STROKE_WIDTH, type Stroke } from '@diagramming/core';
+import { DEFAULT_STROKE_WIDTH, type Stroke } from '@diagc/core';
 import { strokePath } from './drawings';
 
 export interface LiveStroke {

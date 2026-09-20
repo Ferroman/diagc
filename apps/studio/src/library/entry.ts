@@ -1,4 +1,4 @@
-import type { DiagramNode, NodeDetails } from '@diagramming/core';
+import type { DiagramNode, NodeDetails } from '@diagc/core';
 import type { Library, LibraryEntry } from './types';
 
 /** Build the node a placed entry produces: template fields + identity/scoping.

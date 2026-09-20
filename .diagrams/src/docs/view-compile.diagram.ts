@@ -1,4 +1,4 @@
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 // Diagram for docs/explanation/views.md: the model is not what you see. This is
 // the transform from the stored model plus your current viewport into the tree

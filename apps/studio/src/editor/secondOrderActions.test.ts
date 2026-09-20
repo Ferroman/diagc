@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyCommand, emptyDrawings, emptyLayout, model, validate } from '@diagramming/core';
+import { applyCommand, emptyDrawings, emptyLayout, model, validate } from '@diagc/core';
 import { addDecision, thenWhat } from './secondOrderActions';
 
 const base = () => {

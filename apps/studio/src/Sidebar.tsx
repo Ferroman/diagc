@@ -1,6 +1,6 @@
 import { marked } from 'marked';
-import type { DiagramModel } from '@diagramming/core';
-import type { DiagramSelection } from '@diagramming/renderer';
+import type { DiagramModel } from '@diagc/core';
+import type { DiagramSelection } from '@diagc/renderer';
 
 function MetaTable({ metadata }: { metadata: Record<string, unknown> }) {
   const entries = Object.entries(metadata);

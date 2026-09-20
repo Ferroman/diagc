@@ -23,7 +23,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
-import { errMessage } from '@diagramming/core';
+import { errMessage } from '@diagc/core';
 import { compileFile } from './compile';
 import { ejectDiagram } from './eject';
 import { findHome, homePaths } from './home';
@@ -183,7 +183,7 @@ async function main() {
       // do not have.
       console.error(
         home.layout === 'monorepo'
-          ? 'viewer shell not built — run `pnpm --filter @diagramming/viewer build` in the monorepo.'
+          ? 'viewer shell not built — run `pnpm --filter @diagc/viewer build` in the monorepo.'
           : `viewer shell missing from this install (${home.viewerShell}) — reinstall diagc.`,
       );
       process.exit(1);

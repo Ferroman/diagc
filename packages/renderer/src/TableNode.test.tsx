@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { describe, expect, it, vi } from 'vitest';
 import { createTypeRegistry } from './registry';
-import { createIconRegistry } from '@diagramming/icons';
+import { createIconRegistry } from '@diagc/icons';
 import { DiagramNode, type DiagramNodeData } from './DiagramNode';
 
 const data = (): DiagramNodeData => ({

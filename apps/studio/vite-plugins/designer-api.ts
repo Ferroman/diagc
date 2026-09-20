@@ -5,7 +5,7 @@ import type { Plugin, ViteDevServer } from 'vite';
 // The routes and handlers live in `packages/diagc/src/api` so the packaged CLI's
 // studio server and this dev middleware dispatch the same table (see that
 // module's header). Both imports here are TYPE-only and the runtime load goes
-// through `ssrLoadModule`: a value import would put `@diagramming/core` in
+// through `ssrLoadModule`: a value import would put `@diagc/core` in
 // Vite's config-load bundle, which Node cannot resolve (core's TS sources use
 // extensionless imports). Same constraint as before the move — only the path
 // changed.

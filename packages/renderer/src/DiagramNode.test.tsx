@@ -2,8 +2,8 @@
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { describe, expect, it, vi } from 'vitest';
-import { FB_CAUSE_TYPE, FB_EFFECT_TYPE } from '@diagramming/core';
-import { createIconRegistry } from '@diagramming/icons';
+import { FB_CAUSE_TYPE, FB_EFFECT_TYPE } from '@diagc/core';
+import { createIconRegistry } from '@diagc/icons';
 import { createTypeRegistry } from './registry';
 import { notationProfile, TM_BOUNDARY_COLOR } from './notations';
 import { DiagramNode, type DiagramNodeData } from './DiagramNode';

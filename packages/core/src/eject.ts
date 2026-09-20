@@ -273,7 +273,7 @@ export function ejectSource(model: DiagramModel): string {
 
   const header = `const m = model(${quoted(model.id)}${model.name !== model.id ? `, { name: ${tsLiteral(model.name, 0)} }` : ''});`;
   return [
-    ["import { model } from '@diagramming/core';"],
+    ["import { model } from '@diagc/core';"],
     [header],
     ...sections,
     ['export default m;'],

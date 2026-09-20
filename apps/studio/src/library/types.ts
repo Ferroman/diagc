@@ -1,4 +1,4 @@
-import type { Column, DiagramNode } from '@diagramming/core';
+import type { Column, DiagramNode } from '@diagc/core';
 
 /** Fields a library entry stamps onto a fresh node when placed. Mostly a
  * presentation subset of DiagramNode, plus `columns` for db-table seeds. */

@@ -18,7 +18,7 @@ export interface HomePaths {
   viewerShell: string;
   /** icon/shape library that `publish` inlines `/library/...` refs from */
   libraryDir: string;
-  /** module `@diagramming/core` is aliased to when jiti executes a `.diagram.ts` */
+  /** module `@diagc/core` is aliased to when jiti executes a `.diagram.ts` */
   coreEntry: string;
   /** monorepo: the studio's Vite root; packaged: the prebuilt studio bundle */
   studioDir: string;
@@ -69,15 +69,15 @@ export function findHome(startPath: string): Home {
   );
 }
 
-/** Resolve the installed `@diagramming/core` entry from this module's location,
+/** Resolve the installed `@diagc/core` entry from this module's location,
  * so jiti aliases a user's `.diagram.ts` to the very copy the CLI itself uses.
  * Injectable for tests; the default is the real resolver. */
 export function resolveCoreEntry(resolve: (id: string) => string = createRequire(import.meta.url).resolve): string {
   try {
-    return resolve('@diagramming/core');
+    return resolve('@diagc/core');
   } catch {
     throw new Error(
-      "diagc is installed without its '@diagramming/core' dependency — reinstall it (npm i -g diagc).",
+      "diagc is installed without its '@diagc/core' dependency — reinstall it (npm i -g diagc).",
     );
   }
 }

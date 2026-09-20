@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model, type ViewNode } from '@diagramming/core';
+import { compileView, model, type ViewNode } from '@diagc/core';
 import { planLayout } from './layout-plan';
 
 const ids = (groups: readonly (readonly ViewNode[])[]) => groups.map((g) => g.map((n) => n.id));

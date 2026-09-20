@@ -31,7 +31,7 @@ const result = await esbuild.build({
   // fonts and small images ride inside the css/js — the plugin dir stays 4 files + library/
   loader: { '.woff2': 'dataurl', '.woff': 'dataurl', '.svg': 'dataurl', '.png': 'dataurl' },
   // packages/diagc/src/compile.ts (executeDiagramTs, shared with the studio's
-  // eject/download-source route) reads `import.meta.url` to pin @diagramming/core
+  // eject/download-source route) reads `import.meta.url` to pin @diagc/core
   // and jiti's own resolution root. That is meaningless in a "cjs" bundle — esbuild
   // would otherwise silently empty it out (an [empty-import-meta] warning) and jiti
   // would resolve against the wrong base at runtime, breaking eject inside Obsidian.

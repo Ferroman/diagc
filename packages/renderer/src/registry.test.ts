@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { TM_BOUNDARY_TYPE, TM_ENTITY_TYPE, TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from '@diagramming/core';
-import { BUILTIN_ICON_IDS, createIconRegistry } from '@diagramming/icons';
+import { TM_BOUNDARY_TYPE, TM_ENTITY_TYPE, TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from '@diagc/core';
+import { BUILTIN_ICON_IDS, createIconRegistry } from '@diagc/icons';
 import { createKindRegistry, createTypeRegistry, DEFAULT_TYPE_STYLES } from './registry';
 
 describe('registries', () => {

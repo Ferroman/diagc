@@ -11,7 +11,7 @@ C4 elements are ordinary nodes with `type: 'c4-*'` — stencils from the **Libra
 1. Pin the notation on the model, then declare the context-level nodes:
 
    ```ts
-   import { model } from '@diagramming/core';
+   import { model } from '@diagc/core';
 
    const m = model('docs-c4', { name: 'Internet banking system' });
    m.notation('c4');

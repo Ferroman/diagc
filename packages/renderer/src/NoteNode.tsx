@@ -7,7 +7,7 @@ import {
   type Threat,
   type ThreatStatus,
   type ThreatTarget,
-} from '@diagramming/core';
+} from '@diagc/core';
 import { InlineName } from './DiagramNode';
 import { NOTE_WIDTH, STATUS_WORD, type Point } from './note-place';
 import { tailGeometry } from './note-tail';

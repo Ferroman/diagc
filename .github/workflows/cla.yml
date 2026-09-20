@@ -36,13 +36,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           path-to-signatures: '.github/cla-signatures.json'
-          path-to-document: 'https://github.com/Ferroman/diagramming/blob/main/CLA.md'
+          path-to-document: 'https://github.com/Ferroman/diagc/blob/main/CLA.md'
           branch: 'main'
           allowlist: 'Ferroman,dependabot[bot],bot*'
           custom-notsigned-prcomment: >
             Thanks for the pull request. This project is dual-licensed, so before it can
-            be merged we need you to sign the [CLA](https://github.com/Ferroman/diagramming/blob/main/CLA.md).
-            [CONTRIBUTING.md](https://github.com/Ferroman/diagramming/blob/main/CONTRIBUTING.md)
+            be merged we need you to sign the [CLA](https://github.com/Ferroman/diagc/blob/main/CLA.md).
+            [CONTRIBUTING.md](https://github.com/Ferroman/diagc/blob/main/CONTRIBUTING.md)
             explains why, and what we commit to in return. You keep your copyright, and
             you only do this once.
           custom-pr-sign-comment: 'I have read the CLA Document and I hereby sign the CLA'

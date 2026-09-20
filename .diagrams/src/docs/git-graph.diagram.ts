@@ -1,4 +1,4 @@
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 // The branching-strategy example from the how-to: a release line (Master), a
 // hotfix, release candidates with their fixes, a nightly integration lane, two

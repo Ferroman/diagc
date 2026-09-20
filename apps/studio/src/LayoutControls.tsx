@@ -1,4 +1,4 @@
-import type { LayoutDirection, LayoutSettings } from '@diagramming/core';
+import type { LayoutDirection, LayoutSettings } from '@diagc/core';
 
 /**
  * The arrangements worth offering.

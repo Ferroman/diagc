@@ -21,7 +21,7 @@ import {
   type LegendItem,
   type LegendSection,
   type ViewNode,
-} from '@diagramming/core';
+} from '@diagc/core';
 import { DEFAULT_KIND_STYLES, DEFAULT_TYPE_STYLES, type KindStyle, type Registry, type TypeStyle } from './registry';
 
 /** `draw` is the discriminant — deliberately not `kind`, which already means

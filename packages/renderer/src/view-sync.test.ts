@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { pruneToModel, syncReducer, type SeenKey } from './view-sync';
-import type { DiagramModel } from '@diagramming/core';
+import type { DiagramModel } from '@diagc/core';
 
 const model = (id: string, nodeIds: string[]): DiagramModel => ({
   version: 1,

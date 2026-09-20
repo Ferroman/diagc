@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model, type DiagramModel, type Size } from '@diagramming/core';
+import { compileView, model, type DiagramModel, type Size } from '@diagc/core';
 import { COLLAPSED_SIZE, type NodeGeometry } from './layout';
 import { computeFocusChain, focusForVisible, FOCUS_ENTER_FRACTION, FOCUS_EXIT_FRACTION } from './focus';
 

@@ -6,7 +6,7 @@ import {
   type DiagramModel,
   type DiagramPlane,
   type EditorCommand,
-} from '@diagramming/core';
+} from '@diagc/core';
 import { getHost } from '../host';
 import { PlaneSwitcher } from './PlaneSwitcher';
 import { DockSection } from '../DockSection';

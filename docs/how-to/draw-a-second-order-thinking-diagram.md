@@ -9,7 +9,7 @@ Show what follows from a decision, and what follows from *that*: a consequence t
 1. Declare the model a second-order diagram, then chain "and then what?" from the decision:
 
    ```ts
-   import { model } from '@diagramming/core';
+   import { model } from '@diagc/core';
 
    const m = model('docs-second-order', { name: 'Second-order thinking: splitting the monolith' });
    const so = m.secondOrder();

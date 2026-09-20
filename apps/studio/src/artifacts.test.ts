@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 import { loadArtifacts, type ApiDiagram } from './artifacts';
 
 const entry = (name: string, m: unknown, editable = false): ApiDiagram =>

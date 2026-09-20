@@ -27,4 +27,4 @@ A key bordered in amber is bound to two actions at once (hover it to see the oth
 
 ## Where the bindings live
 
-In your browser's local storage, under `diagramming.hotkeys` — like the theme and the panel widths, they are yours, not the diagram's or the repository's. Only what you changed is stored, so new defaults in a later version still reach you. Storage is per address: the studio on `localhost:5173`, a `diagc studio` on another port and the Obsidian plugin each keep their own set.
+In your browser's local storage, under `diagc.hotkeys` — like the theme and the panel widths, they are yours, not the diagram's or the repository's. Only what you changed is stored, so new defaults in a later version still reach you. Storage is per address: the studio on `localhost:5173`, a `diagc studio` on another port and the Obsidian plugin each keep their own set.

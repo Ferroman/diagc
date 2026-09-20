@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model, type LayoutOverlay } from '@diagramming/core';
+import { model, type LayoutOverlay } from '@diagc/core';
 import { mergePreview, withLayoutPreview } from './layoutPreview';
 
 function makeModel() {

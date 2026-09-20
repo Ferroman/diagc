@@ -6,10 +6,10 @@ import {
   type DiagramModel,
   type Drawings,
   type LayoutOverlay,
-} from '@diagramming/core';
-import { applyTheme, darkTheme, DiagramView, isKnownStyle, lightTheme } from '@diagramming/renderer';
-import { createIconRegistry } from '@diagramming/icons';
-import type { HostAdapter } from '@diagramming/studio/src/host';
+} from '@diagc/core';
+import { applyTheme, darkTheme, DiagramView, isKnownStyle, lightTheme } from '@diagc/renderer';
+import { createIconRegistry } from '@diagc/icons';
+import type { HostAdapter } from '@diagc/studio/src/host';
 import type { EmbedSpec } from './fence';
 
 const icons = createIconRegistry();

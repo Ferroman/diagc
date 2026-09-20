@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model, type DiagramModel } from '@diagramming/core';
+import { compileView, model, type DiagramModel } from '@diagc/core';
 import { createKindRegistry, createTypeRegistry } from './registry';
 import { legendRows, type LegendInput } from './legendRows';
 

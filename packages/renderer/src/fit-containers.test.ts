@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model } from '@diagramming/core';
+import { compileView, model } from '@diagc/core';
 import { fitContainers, savedPosition, savedPositions } from './fit-containers';
 import { CONTAINER_PAD } from './layout-graph';
 

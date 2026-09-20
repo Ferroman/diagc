@@ -13,7 +13,7 @@ import {
   type ThreatSeverity,
   type ThreatStatus,
   type ThreatTarget,
-} from '@diagramming/core';
+} from '@diagc/core';
 
 interface ThreatsSectionProps {
   target: ThreatTarget;

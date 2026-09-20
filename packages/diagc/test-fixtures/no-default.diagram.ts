@@ -1,4 +1,4 @@
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 // Only named exports, no default. With jiti's `{ default: true }` this resolves
 // to the module namespace object, which the shape guard must reject rather than

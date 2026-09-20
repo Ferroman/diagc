@@ -19,6 +19,6 @@ if (!existsSync(dist)) {
   process.exit(1);
 }
 
-const target = path.join(vault, '.obsidian', 'plugins', 'diagramming-studio');
+const target = path.join(vault, '.obsidian', 'plugins', 'diagc-studio');
 cpSync(dist, target, { recursive: true });
-console.log(`✓ installed diagramming-studio -> ${target}`);
+console.log(`✓ installed diagc-studio -> ${target}`);

@@ -3,7 +3,7 @@ import {
   CommandError,
   type EditorCommand,
   type EditorState,
-} from '@diagramming/core';
+} from '@diagc/core';
 
 export interface HistoryEntry {
   command: EditorCommand;

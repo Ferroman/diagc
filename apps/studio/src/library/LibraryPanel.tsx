@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { createIconRegistry } from '@diagramming/icons';
-import { createTypeRegistry, LIBRARY_ENTRY_DND_TYPE } from '@diagramming/renderer';
+import { createIconRegistry } from '@diagc/icons';
+import { createTypeRegistry, LIBRARY_ENTRY_DND_TYPE } from '@diagc/renderer';
 import { getHost } from '../host';
 import { searchLibrary } from './entry';
 import type { Library, LibraryCategory, LibraryEntry } from './types';

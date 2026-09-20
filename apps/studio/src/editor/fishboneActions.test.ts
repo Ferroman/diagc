@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fishboneTree, model, type DiagramModel } from '@diagramming/core';
+import { fishboneTree, model, type DiagramModel } from '@diagc/core';
 import { addChild, addEffect, isSubCause, seedCategories } from './fishboneActions';
 
 function fish(): DiagramModel {

@@ -225,7 +225,7 @@ describe('ejectDiagramSource', () => {
     const res = await ejectDiagramSource(diagramsDir, artifactsDir, 'shop');
     expect(res.status).toBe(200);
     await expect(readFile(path.join(diagramsDir, 'shop.diagram.ts'), 'utf8')).resolves.toContain(
-      "import { model } from '@diagramming/core';",
+      "import { model } from '@diagc/core';",
     );
     await expect(readFile(path.join(diagramsDir, 'shop.diagram.json'), 'utf8')).rejects.toThrow();
   });

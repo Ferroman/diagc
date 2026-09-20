@@ -7,7 +7,7 @@ The command-line interface. Invoked as `diagc <command>` from an install, from a
 ```bash
 npm i -g diagc                 # global
 npx diagc studio               # without installing
-npm i -D @diagramming/core     # optional: types for .diagram.ts authoring
+npm i -D @diagc/core     # optional: types for .diagram.ts authoring
 ```
 
 Node ≥ 22. Everything the CLI needs is in the package — the prebuilt studio, the viewer shell `publish` stamps models into, and the icon library — so it runs against any directory with no checkout and no pnpm.

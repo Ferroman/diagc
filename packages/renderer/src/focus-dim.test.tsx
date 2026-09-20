@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 import { DiagramView } from './DiagramView';
 
 // a -> b -> c chain: a's only neighbor is b; c is not connected to a.

@@ -1,4 +1,4 @@
-import { model } from '@diagramming/core';
+import { model } from '@diagc/core';
 
 // Diagram for docs/reference/model.md and docs/explanation/the-model.md: what a
 // compiled artifact holds, and which parts point at which.

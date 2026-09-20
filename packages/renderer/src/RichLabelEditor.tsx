@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import type { TextRun } from '@diagramming/core';
+import type { TextRun } from '@diagc/core';
 import { editorHtmlToRuns, runsToEditorHtml } from './richtext';
 
 /** Inline rich-text editor for a box label. contentEditable + execCommand for

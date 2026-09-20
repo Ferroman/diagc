@@ -5,7 +5,7 @@ import {
   type DiagramModel,
   type EdgeLabelPlacement,
   type LayoutOverlay,
-} from '@diagramming/core';
+} from '@diagc/core';
 
 /**
  * Fold a viewer's hand-placed positions into the diagram's layout overlay, ready

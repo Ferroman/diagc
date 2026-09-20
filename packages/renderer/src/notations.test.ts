@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model } from '@diagramming/core';
+import { compileView, model } from '@diagc/core';
 import { BONE_PALETTE, fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import { NOTATION_PROFILES, notationProfile, TM_BOUNDARY_COLOR } from './notations';
