@@ -12,6 +12,7 @@ import {
 import type { DiagramSelection } from '@diagramming/renderer';
 import { appendCommit } from './gitActions';
 import { ColorRow } from './pickers';
+import { DockSection } from '../DockSection';
 
 interface GitPanelProps {
   model: DiagramModel;
@@ -129,10 +130,7 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
   };
 
   return (
-    <aside className="sidebar git-panel" aria-label="Git graph">
-      <div className="panel-head">
-        <h2>Git</h2>
-      </div>
+    <DockSection id="git" title="Git" label="Git graph" className="sidebar git-panel">
       <section className="panel-section">
         <h3>Lanes</h3>
         {g.lanes.length === 0 ? <p className="lp-caption">No lanes yet</p> : null}
@@ -203,6 +201,6 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
           </label>
         </section>
       )}
-    </aside>
+    </DockSection>
   );
 }

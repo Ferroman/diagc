@@ -9,6 +9,7 @@ import {
 } from '@diagramming/core';
 import { getHost } from '../host';
 import { PlaneSwitcher } from './PlaneSwitcher';
+import { DockSection } from '../DockSection';
 
 interface LayersPlanesPanelProps {
   model: DiagramModel;
@@ -228,10 +229,7 @@ export function LayersPlanesPanel({
   };
 
   return (
-    <aside className="sidebar lp-panel">
-      <div className="panel-head">
-        <h2>Layers &amp; planes</h2>
-      </div>
+    <DockSection id="layers-planes" title="Layers & planes" className="sidebar lp-panel">
 
       {onSelectPlane !== undefined && (
         <PlaneSwitcher planes={model.planes} activePlane={activePlane} onSelect={onSelectPlane} />
@@ -523,6 +521,6 @@ export function LayersPlanesPanel({
         </div>
       </section>
       )}
-    </aside>
+    </DockSection>
   );
 }

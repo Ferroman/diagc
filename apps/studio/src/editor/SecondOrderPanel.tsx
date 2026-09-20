@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { validate, isSecondOrderNode, type DiagramModel, type EditorCommand, type Valence } from '@diagramming/core';
 import type { DiagramSelection } from '@diagramming/renderer';
 import { addDecision, thenWhat } from './secondOrderActions';
+import { DockSection } from '../DockSection';
 
 interface SecondOrderPanelProps {
   model: DiagramModel;
@@ -35,8 +36,7 @@ export function SecondOrderPanel({ model, selection, plane, onCommand, onSelect,
   };
 
   return (
-    <aside className="sidebar so-panel" aria-label="Second-order thinking">
-      <h3>And then what?</h3>
+    <DockSection id="second-order" title="And then what?" label="Second-order thinking" className="sidebar so-panel">
       <p className="so-hint">{from !== undefined ? `What follows from “${from.name !== '' ? from.name : from.id}”?` : 'Select a decision or a consequence.'}</p>
       <div className="so-answers">
         {ANSWERS.map((a) => (
@@ -70,6 +70,6 @@ export function SecondOrderPanel({ model, selection, plane, onCommand, onSelect,
           })}
         </ul>
       )}
-    </aside>
+    </DockSection>
   );
 }

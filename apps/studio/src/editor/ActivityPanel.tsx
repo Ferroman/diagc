@@ -9,6 +9,7 @@ import {
 import { ACTIVITY_LAYOUT } from '@diagramming/renderer';
 import type { DiagramSelection } from '@diagramming/renderer';
 import { ColorRow } from './pickers';
+import { DockSection } from '../DockSection';
 
 interface ActivityPanelProps {
   model: DiagramModel;
@@ -93,10 +94,7 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
   };
 
   return (
-    <aside className="sidebar git-panel" aria-label="Activity diagram">
-      <div className="panel-head">
-        <h2>Activity</h2>
-      </div>
+    <DockSection id="activity" title="Activity" label="Activity diagram" className="sidebar git-panel">
       {selected.type === 'activity-frame' ? (
         <section className="panel-section">
           <h3>Lanes</h3>
@@ -122,6 +120,6 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
           )}
         </section>
       )}
-    </aside>
+    </DockSection>
   );
 }

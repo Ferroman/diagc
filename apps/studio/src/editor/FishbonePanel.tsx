@@ -11,6 +11,7 @@ import {
 } from '@diagramming/core';
 import type { DiagramSelection } from '@diagramming/renderer';
 import { addChild, addEffect, isSubCause, seedCategories } from './fishboneActions';
+import { DockSection } from '../DockSection';
 
 interface FishbonePanelProps {
   model: DiagramModel;
@@ -45,8 +46,7 @@ export function FishbonePanel({ model, selection, plane, onCommand, onSelect, on
   };
 
   return (
-    <aside className="sidebar so-panel" aria-label="Fishbone">
-      <h3>Fishbone</h3>
+    <DockSection id="fishbone" title="Fishbone" className="sidebar so-panel">
       {tree.effect === undefined ? (
         <>
           <p className="so-hint">Every fish starts with the effect at its head.</p>
@@ -107,6 +107,6 @@ export function FishbonePanel({ model, selection, plane, onCommand, onSelect, on
           })}
         </ul>
       )}
-    </aside>
+    </DockSection>
   );
 }

@@ -872,6 +872,34 @@ describe('editor shell', () => {
     expect(screen.queryByRole('complementary', { name: 'Threat model' })).toBeNull(); // …without this panel
   });
 
+  it("folds the threat-model panel on its own, leaving Layers & planes open", async () => {
+    // The dock's own toggle is all-or-nothing; a long register needs putting
+    // aside without losing the layer switches under it.
+    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: tmModel, issues: [], editable: true }]));
+    const { container, unmount } = render(<App />);
+    await screen.findByRole('complementary', { name: 'Threat model' });
+    fireEvent.click(screen.getByRole('button', { name: 'Threat model' }));
+    expect(screen.queryByRole('complementary', { name: 'Threat model' })).toBeNull();
+    // the neighbour is untouched, and so is the dock itself
+    expect(screen.getByRole('button', { name: 'Layers & planes' }).getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('heading', { name: 'Layers', level: 3 })).toBeDefined();
+    expect(container.querySelector('.dock-right .dock-toggle')?.getAttribute('aria-expanded')).toBe('true');
+    // …and it stays folded across a reload
+    unmount();
+    render(<App />);
+    await screen.findByRole('heading', { name: /layers & planes/i });
+    expect(screen.queryByRole('complementary', { name: 'Threat model' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Threat model' }).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('titles each right-dock panel once — the section header, not a second heading inside', async () => {
+    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: tmModel, issues: [], editable: true }]));
+    render(<App />);
+    await screen.findByRole('complementary', { name: 'Threat model' });
+    expect(screen.getAllByRole('heading', { name: 'Threat model' })).toHaveLength(1);
+    expect(screen.getAllByRole('heading', { name: /layers & planes/i })).toHaveLength(1);
+  });
+
   describe('threat notes', () => {
     // Notes are drawn in both modes, but everything this describes — the empty
     // badge, the title fields on a note, the chip's command — needs an edit

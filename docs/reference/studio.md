@@ -90,6 +90,8 @@ Shortcuts are ignored while you are typing in a form field. History is capped at
 
 The left dock keeps the tab you chose: selecting on the canvas never switches it. **Add node** in the Library opens Properties for the name; a placed stencil names in place on the canvas.
 
+The right dock stacks its panels — the notation's own panel (Git, Activity, And then what?, Fishbone or Threat model) above **Layers & planes** — in one scrolling column. Click a panel's heading to fold it down to that heading; the others stay open. Which panels are folded is a viewer preference, remembered across reloads and never saved to the diagram. The dock's own chevron still hides the whole column.
+
 **Layers & planes** — add, edit and remove layers (id, name, tint) and planes (id, name, containment borrowing, preset layers, its own **Notation**). In edit mode it also carries a model-level **Notation** selector (`default look`, `causal-loop`, `git-graph`, `c4`, `second-order` (shown as *Second-order thinking*), `fishbone` (shown as *Fishbone (cause and effect)*), `threat-model` (shown as *Threat model (STRIDE)*) — a plane's own notation wins where set) and a **Legend** checkbox, which adds or removes the diagram's `legend` declaration; its title, position, sections and items are authored in the file. See [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md) and [Add a legend](../how-to/add-a-legend.md).
 
 **Git** — on a plane with the `git-graph` notation, in edit mode: add lanes and commits, branch the selected commit into another lane, merge it into one, set its gap. Each action is one undo step. **Add commit** is the same action as the `+` on a selected lane or tip commit. See [Draw a git branching diagram](../how-to/draw-a-git-branching-diagram.md).

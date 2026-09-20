@@ -11,6 +11,7 @@ import {
   type ThreatTarget,
 } from '@diagramming/core';
 import type { DiagramSelection } from '@diagramming/renderer';
+import { DockSection } from '../DockSection';
 
 interface ThreatModelPanelProps {
   model: DiagramModel;
@@ -77,8 +78,7 @@ export function ThreatModelPanel({ model, plane, onSelect }: ThreatModelPanelPro
   const nodeName = (id: string): string => model.nodes.find((n) => n.id === id)?.name ?? id;
 
   return (
-    <aside className="sidebar so-panel" aria-label="Threat model">
-      <h3>Threat model</h3>
+    <DockSection id="threat-model" title="Threat model" className="sidebar so-panel">
       <section className="panel-section" aria-label="Crossings to review">
         <h4>Crossings to review</h4>
         {review.length === 0 ? (
@@ -161,6 +161,6 @@ export function ThreatModelPanel({ model, plane, onSelect }: ThreatModelPanelPro
           })}
         </ul>
       )}
-    </aside>
+    </DockSection>
   );
 }
