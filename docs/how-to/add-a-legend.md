@@ -2,7 +2,7 @@
 
 Give the reader a key to your diagram's colours and line styles — on the canvas, and in the image you commit.
 
-![A diagram with a legend](../../.diagrams/static/docs-legend.png)
+![A diagram with a legend](../../.diagrams/static/docs/legend.png)
 
 ## Switch it on
 

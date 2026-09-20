@@ -4,7 +4,7 @@ This explains the shape of the system and why it is split the way it is. It teac
 
 ## The pipeline
 
-![How a diagram becomes a picture](../../.diagrams/static/docs-pipeline.png)
+![How a diagram becomes a picture](../../.diagrams/static/docs/pipeline.png)
 
 Read it top to bottom. You own everything in `.diagrams/src/`. Everything below `diagc compile` is generated and disposable.
 
@@ -28,7 +28,7 @@ The overlay is also *partial*: nodes with no recorded position fall back to auto
 
 ## The packages
 
-![Which package owns what](../../.diagrams/static/docs-workspace.png)
+![Which package owns what](../../.diagrams/static/docs/workspace.png)
 
 | Package | Owns |
 | --- | --- |

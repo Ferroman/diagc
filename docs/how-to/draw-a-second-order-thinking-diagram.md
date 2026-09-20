@@ -2,7 +2,7 @@
 
 Show what follows from a decision, and what follows from *that*: a consequence tree, banded by how many steps from the decision each consequence sits — 1st order, 2nd order, 3rd order, each tinted good, bad or neutral.
 
-![Second-order thinking example](../../.diagrams/static/docs-second-order.png)
+![Second-order thinking example](../../.diagrams/static/docs/second-order.png)
 
 ## In TypeScript
 
@@ -46,7 +46,7 @@ Show what follows from a decision, and what follows from *that*: a consequence t
 
 3. `pnpm compile`, open it in the studio or publish it.
 
-The whole picture above is `.diagrams/src/docs-second-order.diagram.ts` in this repo.
+The whole picture above is `.diagrams/src/docs/second-order.diagram.ts` in this repo.
 
 ## In the studio
 

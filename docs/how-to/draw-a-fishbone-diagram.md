@@ -2,7 +2,7 @@
 
 Show the causes of one effect: the effect sits at the head, categories of cause hang off it as bones, and causes — and sub-causes — hang off those. A root-cause tool, in software mostly reached for during postmortems.
 
-![Fishbone example](../../.diagrams/static/docs-fishbone.png)
+![Fishbone example](../../.diagrams/static/docs/fishbone.png)
 
 ## In the studio
 
@@ -32,7 +32,7 @@ export default m;
 
 `categories()` seeds a whole preset at once and returns refs keyed by slug id (`presetId`) — `people`, `infrastructure`, and so on — so `noUncheckedIndexedAccess` wants the `!`. A `CategoryRef.cause()` returns a `CauseRef`; calling `.cause()` on *that* adds a sub-cause, and calling `.cause()` again on the sub-cause throws — three levels below the effect is the limit.
 
-The full picture at the top of this page — all six bones of `.diagrams/src/docs-fishbone.diagram.ts` — builds the same way; this listing just trims it to three.
+The full picture at the top of this page — all six bones of `.diagrams/src/docs/fishbone.diagram.ts` — builds the same way; this listing just trims it to three.
 
 ## How the fish is drawn
 

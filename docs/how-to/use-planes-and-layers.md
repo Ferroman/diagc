@@ -36,7 +36,7 @@ If you are declaring a plane whose containment is identical to another's, you ac
 
 ## A worked example
 
-One model, three views. The full source is `.diagrams/src/docs-planes.shared.ts`.
+One model, three views. The full source is `.diagrams/src/docs/planes.shared.ts`.
 
 ### The entities, declared once
 
@@ -62,7 +62,7 @@ billing.contains(payments, { plane: 'architecture' });
 orders.contains(db, { plane: 'architecture' });
 ```
 
-![The architecture plane](../../.diagrams/static/docs-plane-architecture.png)
+![The architecture plane](../../.diagrams/static/docs/plane-architecture.png)
 
 ### Plane 2 — infra: where it runs
 
@@ -73,7 +73,7 @@ k8s.contains(web, orders, payments, { plane: 'infra' });
 rds.contains(db, { plane: 'infra' });
 ```
 
-![The infrastructure plane](../../.diagrams/static/docs-plane-infra.png)
+![The infrastructure plane](../../.diagrams/static/docs/plane-infra.png)
 
 Same six entities. Nothing is duplicated — only the containment edges differ. `Storefront` is inside `Shop` on one plane and inside `K8s cluster` on the other.
 
@@ -95,7 +95,7 @@ m.plane('flow', {
 });
 ```
 
-![The data-flow plane](../../.diagrams/static/docs-plane-flow.png)
+![The data-flow plane](../../.diagrams/static/docs/plane-flow.png)
 
 Same boxes as the architecture plane, because it borrowed that structure. The `writes`, `reads` and `sync` arrows are gone; only the two blue layer arrows remain.
 

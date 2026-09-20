@@ -24,7 +24,7 @@ Diagrams are code, so they diff, review, and refactor like the rest of your repo
 
 You author diagrams two ways that meet at the same validated model: write a `.diagram.ts` file, or draw one in the browser and the studio writes a `.diagram.json` for you. Either way `diagc` compiles and validates it into one artifact per diagram, which the studio renders and `diagc publish` turns into shareable pages and images.
 
-![How a diagram becomes a picture](.diagrams/static/docs-pipeline.png)
+![How a diagram becomes a picture](.diagrams/static/docs/pipeline.png)
 
 ## Install
 
@@ -46,7 +46,7 @@ pnpm install
 pnpm dev          # compile watcher + studio at http://localhost:5173
 ```
 
-The repo ships an example, `.diagrams/src/acme.diagram.ts`, so a fresh clone renders something immediately.
+The repo ships an example, `.diagrams/src/examples/acme.diagram.ts`, so a fresh clone renders something immediately.
 
 New here? Start with **[Tutorial 1 — Your first diagram](docs/tutorials/01-your-first-diagram.md)**.
 
@@ -129,7 +129,7 @@ pnpm test        # vitest
 pnpm typecheck   # tsc --noEmit across every package
 ```
 
-![Which package owns what](.diagrams/static/docs-workspace.png)
+![Which package owns what](.diagrams/static/docs/workspace.png)
 
 | Path | Package | Role |
 | --- | --- | --- |

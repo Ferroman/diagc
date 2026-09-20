@@ -2,7 +2,7 @@
 
 A STRIDE data-flow diagram: the external entities, processes and data stores your system moves data between, the flows between them, and the trust boundaries those flows cross. Every element and every flow can carry threats — one STRIDE finding each, with a severity, a status and a mitigation — so the register travels in the diagram file instead of a spreadsheet beside it.
 
-![Threat model example](../../.diagrams/static/docs-threat-model.png)
+![Threat model example](../../.diagrams/static/docs/threat-model.png)
 
 ## In the studio
 
@@ -55,7 +55,7 @@ export default m;
 
 `.threat()` is on every node ref, not just the four DFD ones — an existing C4 or ER diagram can be threat-modelled where it stands. Give `m.threatModel({ plane: 'threats' })` a plane and the notation, and the boundary containment that goes with it, live on that plane beside the architecture's own view.
 
-The full picture at the top of this page is `.diagrams/src/docs-threat-model.diagram.ts`; this listing trims it.
+The full picture at the top of this page is `.diagrams/src/docs/threat-model.diagram.ts`; this listing trims it.
 
 ## How threats are shown
 

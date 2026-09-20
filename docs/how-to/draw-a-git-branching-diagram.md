@@ -2,7 +2,7 @@
 
 Show how releases, hotfixes, nightlies and feature work flow between branches â€” lanes of commits, with the branch-offs and merges drawn between them.
 
-![A branching strategy: Master, Hotfix, Release, Release Fixes, Nightly, two feature teams and Development](../../.diagrams/static/docs-git-graph.png)
+![A branching strategy: Master, Hotfix, Release, Release Fixes, Nightly, two feature teams and Development](../../.diagrams/static/docs/git-graph.png)
 
 ## In TypeScript
 
@@ -42,7 +42,7 @@ Show how releases, hotfixes, nightlies and feature work flow between branches â€
 
    Declare a stage after the commits it names. `to` defaults to `from` (a one-column frame); two stages over neighbouring columns share a wall. The titles take a band above the first lane, so a graph with stages is a little taller than one without.
 
-The whole picture above is `.diagrams/src/docs-git-graph.diagram.ts` in this repo.
+The whole picture above is `.diagrams/src/docs/git-graph.diagram.ts` in this repo.
 
 ## In the studio
 

@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "id": "nested-zoom-demo",
-  "name": "nested-zoom-demo",
+  "id": "examples/nested-zoom-demo",
+  "name": "examples/nested-zoom-demo",
   "nodes": [
     {
       "id": "svc",

@@ -2,7 +2,7 @@
 
 Show a workflow as a UML activity diagram: swimlanes of actions, forks and joins, decisions, and signals passing between actors — an **activity frame** containing **lanes**, each lane containing the elements that actor performs.
 
-![Order processing: Customer, Orders and Accounting lanes with a cancelable region, a fork/join, a decision and a cancel interrupt](../../.diagrams/static/docs-activity.png)
+![Order processing: Customer, Orders and Accounting lanes with a cancelable region, a fork/join, a decision and a cancel interrupt](../../.diagrams/static/docs/activity.png)
 
 A frame's children must be lanes; a lane's children are the flow (actions, objects, signals, decisions, fork/join bars, start/end, notes) plus, optionally, one or more interruptible **regions**, each hosting that same set of flow elements (a region does not nest further regions). A canvas can hold several frames — `m.activity()` is repeatable, and frames are ordinary containers on whatever plane the model uses, no notation required.
 
@@ -72,7 +72,7 @@ A frame's children must be lanes; a lane's children are the flow (actions, objec
 
 4. `pnpm compile`, then open it in the studio or publish it.
 
-The whole picture above is `.diagrams/src/docs-activity.diagram.ts` in this repo.
+The whole picture above is `.diagrams/src/docs/activity.diagram.ts` in this repo.
 
 ## In the studio
 

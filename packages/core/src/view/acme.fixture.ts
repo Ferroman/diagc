@@ -1,7 +1,7 @@
 import { model } from '../builder';
 import type { DiagramModel } from '../types';
 
-/** Test-only fixture (originally mirrored .diagrams/src/acme.diagram.ts; the demo
+/** Test-only fixture (originally mirrored .diagrams/src/examples/acme.diagram.ts; the demo
  * has since evolved — this stays frozen as the view-compiler acceptance topology). */
 export function acmeModel(): DiagramModel {
   const m = model('acme', { name: 'Acme SaaS' });

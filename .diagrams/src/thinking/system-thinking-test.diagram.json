@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "id": "system-thinking-test",
-  "name": "system-thinking-test",
+  "id": "thinking/system-thinking-test",
+  "name": "thinking/system-thinking-test",
   "nodes": [
     {
       "id": "population",

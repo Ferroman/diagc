@@ -2,7 +2,7 @@
 
 Draw a [C4 model](https://c4model.com) — context, container, component or deployment — with the notation's authentic look: solid person/system/container/component fills and a `[Type: technology]` subtitle under each box. Deployment-level stencils (`c4-deployment-node`, `c4-infrastructure-node`, `c4-container-instance`) deliberately keep the outline look — no fill override, by design.
 
-![Internet banking system: a Personal Banking Customer and an E-mail System at context level, with the Internet Banking System drilled into its Web Application, API Application and Database containers](../../.diagrams/static/docs-c4.png)
+![Internet banking system: a Personal Banking Customer and an E-mail System at context level, with the Internet Banking System drilled into its Web Application, API Application and Database containers](../../.diagrams/static/docs/c4.png)
 
 C4 elements are ordinary nodes with `type: 'c4-*'` — stencils from the **Library** panel's C4 categories, or free-form in the DSL. What makes the picture read as C4 is the **notation** (turns the fills on) and **technology** (the per-node subtitle); neither exists only for C4, but both were built for it.
 
@@ -44,7 +44,7 @@ C4 elements are ordinary nodes with `type: 'c4-*'` — stencils from the **Libra
 
 4. `pnpm compile`, open it in the studio or publish it. Double-click **Internet Banking System** to drill into its containers.
 
-The whole picture above is `.diagrams/src/docs-c4.diagram.ts` in this repo.
+The whole picture above is `.diagrams/src/docs/c4.diagram.ts` in this repo.
 
 ## In the studio
 

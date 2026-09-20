@@ -4,7 +4,7 @@ Every field of a compiled diagram, and every way the compiler can reject one. So
 
 For *why* the model is shaped like this, see [What is in a model](../explanation/the-model.md).
 
-![Anatomy of a diagram model](../../.diagrams/static/docs-model.png)
+![Anatomy of a diagram model](../../.diagrams/static/docs/model.png)
 
 ## `DiagramModel`
 

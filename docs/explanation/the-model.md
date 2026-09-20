@@ -2,7 +2,7 @@
 
 The five decisions frozen into the data structure, and why each one is the way it is. For the field-by-field listing, see [Model reference](../reference/model.md).
 
-![Anatomy of a diagram model](../../.diagrams/static/docs-model.png)
+![Anatomy of a diagram model](../../.diagrams/static/docs/model.png)
 
 A model is five flat arrays that reference each other by id, plus a separate layout file. There is no nesting in the stored form — the tree you see on screen is derived.
 

@@ -8,7 +8,7 @@ For how to use them, see [Use planes and layers](../how-to/use-planes-and-layers
 
 ## The transform
 
-![From stored model to what you see](../../.diagrams/static/docs-view-compile.png)
+![From stored model to what you see](../../.diagrams/static/docs/view-compile.png)
 
 `compileView(model, viewport)` runs on every frame that changes what is visible. The model is the same every time; the **viewport** — active plane, active layers, drill root, pins — is what varies.
 
