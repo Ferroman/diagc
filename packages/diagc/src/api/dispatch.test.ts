@@ -221,6 +221,117 @@ describe('handleApiRequest', () => {
   });
 });
 
+// The studio API is unauthenticated by design — a local, single-user tool. What
+// stands between it and the rest of the web is therefore only what the browser
+// tells the server about where a request came from.
+describe('handleApiRequest — requests from other sites', () => {
+  const HOST = '127.0.0.1:5173';
+  const saved = async (root: string) =>
+    readFile(path.join(root, 'diagrams', 'foo.diagram.json'), 'utf8').then(
+      () => true,
+      () => false,
+    );
+
+  it('refuses a save from another origin, and writes nothing', async () => {
+    // The attack a page open in the same browser can mount with no preflight:
+    // a "simple" POST (text/plain) whose body happens to be JSON.
+    const root = await tempRoot();
+    const r = await request(root, '/api/diagrams/foo', {
+      method: 'POST',
+      headers: { host: HOST, origin: 'https://evil.example', 'content-type': 'text/plain' },
+      body: JSON.stringify(goodModel),
+    });
+    expect(r.handled).toBe(true);
+    expect(r.status).toBe(403);
+    expect(JSON.stringify(r.body)).toContain('another origin');
+    expect(await saved(root)).toBe(false);
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('refuses a bodyless cross-site POST — eject takes no body, so nothing about its content could give it away', async () => {
+    const root = await tempRoot();
+    const r = await request(root, '/api/diagrams/foo/eject', {
+      method: 'POST',
+      headers: { host: HOST, origin: 'http://localhost:3000' }, // another local dev server is another origin too
+    });
+    expect(r.status).toBe(403);
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('refuses an opaque origin (a sandboxed frame, a file:// page)', async () => {
+    const root = await tempRoot();
+    const r = await request(root, '/api/diagrams', { headers: { host: HOST, origin: 'null' } });
+    expect(r.status).toBe(403);
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('lets the studio\'s own page through, on whatever address it was opened', async () => {
+    const root = await tempRoot();
+    // loopback by number and by name, IPv6, and a LAN address (the dev server
+    // started with --host, opened from a tablet)
+    for (const host of ['127.0.0.1:5173', 'localhost:5174', '[::1]:5173', '192.168.1.5:5173']) {
+      const r = await request(root, '/api/diagrams/foo', {
+        method: 'POST',
+        headers: { host, origin: `http://${host}`, 'content-type': 'application/json' },
+        body: JSON.stringify(goodModel),
+      });
+      expect(r.status, host).toBe(200);
+    }
+    expect(await saved(root)).toBe(true);
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('refuses a Host that is some other site\'s name, even when the Origin agrees with it', async () => {
+    // DNS rebinding: the attacker's name is re-pointed at this machine, so the
+    // browser sees the API as that site's OWN origin and the origin check alone
+    // passes. A raw address cannot be re-pointed; only a name can.
+    const root = await tempRoot();
+    const r = await request(root, '/api/diagrams', {
+      headers: { host: 'evil.example:5173', origin: 'http://evil.example:5173' },
+    });
+    expect(r.status).toBe(403);
+    expect(JSON.stringify(r.body)).toContain('evil.example');
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('accepts loopback names and a request with no Host at all (no browser sends one)', async () => {
+    const root = await tempRoot();
+    const cases: Record<string, string>[] = [{ host: 'localhost:5173' }, { host: 'studio.localhost:5173' }, { host: 'LOCALHOST' }, {}];
+    for (const headers of cases) {
+      const r = await request(root, '/api/diagrams', { headers });
+      expect(r.status, JSON.stringify(headers)).toBe(200);
+    }
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('takes JSON as application/json only, so a cross-site save cannot skip the preflight', async () => {
+    // Belt and braces for a browser that sends no Origin: any content type a
+    // page may use without asking first (text/plain, form encodings) is refused.
+    const root = await tempRoot();
+    const plain = await request(root, '/api/diagrams/foo', {
+      method: 'POST',
+      headers: { host: HOST, 'content-type': 'text/plain' },
+      body: JSON.stringify(goodModel),
+    });
+    expect(plain.status).toBe(415);
+    expect(await saved(root)).toBe(false);
+    const json = await request(root, '/api/diagrams/foo', {
+      method: 'POST',
+      headers: { host: HOST, 'content-type': 'application/json; charset=utf-8' },
+      body: JSON.stringify(goodModel),
+    });
+    expect(json.status).toBe(200);
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('still leaves an unmatched path to the host, whoever asked', async () => {
+    const root = await tempRoot();
+    const r = await request(root, '/index.html', { headers: { host: HOST, origin: 'https://evil.example' } });
+    expect(r.handled).toBe(false);
+    await rm(root, { recursive: true, force: true });
+  });
+});
+
 describe('runRoute', () => {
   it('runRoute serves a matched route with no HTTP objects involved', async () => {
     const root = await tempRoot();

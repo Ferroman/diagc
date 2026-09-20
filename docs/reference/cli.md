@@ -90,6 +90,8 @@ diagc studio
 
 Starts the compile watcher and an editor server (default <http://127.0.0.1:5173>, stepping to the next free port if that one is taken), pointed at `./.diagrams/src` and `./.diagrams/.artifacts`, and opens a browser. `Ctrl+C` stops both.
 
+The server is local and its `/api/*` routes carry no authentication, so it answers only its own page: a request whose `Origin` is another site, or whose `Host` is a name other than `localhost` (a raw IP address is fine), gets `403`, and the JSON routes take `application/json` only. Scripts that call the API without an `Origin` header are unaffected. See [SECURITY.md](../../SECURITY.md).
+
 Which server depends on how `diagc` was installed, and nothing else does:
 
 - **Installed from npm** — the prebuilt studio bundle is served straight from the package over plain http. No Vite, no workspace, nothing installed into your project.

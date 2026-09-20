@@ -19,7 +19,9 @@ Knowing the design helps tell a vulnerability from intended behaviour.
   sources are data and are only validated.
 - **The studio is a local, single-user tool.** `diagc studio` listens on `127.0.0.1` and its
   `/api/*` routes — which read and write files under `.diagrams/` — carry no authentication.
-  Do not bind it to a public interface or put it behind a reverse proxy.
+  They refuse requests from other origins and from hosts that are not local, which is what
+  keeps a web page open in the same browser from using them. Do not bind the server to a
+  public interface or put it behind a reverse proxy.
 - **Published pages are static.** A page from `diagc publish` is one self-contained HTML
   file: the viewer bundle with the model inlined. It makes no network requests of its own
   and has no server side.

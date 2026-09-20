@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { isIP } from 'node:net';
 import { errMessage } from '@diagramming/core';
-import { matchRoute } from './routes';
+import { matchRoute, type Route } from './routes';
 
 /** The handler module, passed in rather than imported: the Vite adapter loads it
  * through the dev pipeline, the packaged server imports it directly. */
@@ -78,6 +79,62 @@ export async function runRoute(
   }
 }
 
+/** The hostname of a `Host` header value, port and IPv6 brackets stripped. */
+function hostnameOf(host: string): string {
+  if (host.startsWith('[')) return host.slice(1, host.indexOf(']'));
+  const colon = host.lastIndexOf(':');
+  return (colon < 0 ? host : host.slice(0, colon)).toLowerCase();
+}
+
+/**
+ * Why `req` must not reach `route`, or null when it may.
+ *
+ * The API carries no authentication — it is a local, single-user tool — so any
+ * page open in the same browser can ADDRESS it. What keeps such a page from
+ * using it is the browser's own account of where a request comes from:
+ *
+ * - `Origin`, sent on every cross-origin request that can change anything, must
+ *   be the origin the API itself was reached on. Without this a "simple" POST
+ *   (text/plain body, or none — eject) from any site saves, renames and ejects
+ *   diagrams with no preflight to stop it.
+ * - `Host` must not be some other site's name. DNS rebinding re-points an
+ *   attacker's name at this machine, after which the browser treats the API as
+ *   that site's OWN origin and the check above passes. Only a name can be
+ *   re-pointed, so a raw address is fine — which is what keeps the dev server
+ *   usable from another device (`--host`, opened by LAN address). Same rule as
+ *   Vite's `allowedHosts` default. No `Host` at all is not a browser.
+ * - A JSON route takes `application/json` only: every content type a page may
+ *   send WITHOUT a preflight is refused, for the browser that sends no `Origin`.
+ *
+ * HTTP only, by design: `runRoute` stays free of it for the in-process Obsidian
+ * host, which has no browser on the other side.
+ */
+function refusal(req: IncomingMessage, route: Route): { status: number; message: string } | null {
+  const host = req.headers.host;
+  if (host !== undefined) {
+    const name = hostnameOf(host);
+    if (name !== 'localhost' && !name.endsWith('.localhost') && isIP(name) === 0) {
+      return { status: 403, message: `Refused: '${name}' is not a local address. Open the studio by localhost or by IP address.` };
+    }
+  }
+  const origin = req.headers.origin;
+  if (origin !== undefined) {
+    let originHost: string | undefined;
+    try {
+      originHost = new URL(origin).host;
+    } catch {
+      // `null` (a sandboxed frame, a file:// page) or junk: not this studio's page
+    }
+    if (originHost === undefined || host === undefined || originHost.toLowerCase() !== host.toLowerCase()) {
+      return { status: 403, message: 'Refused: the request comes from another origin.' };
+    }
+  }
+  if (route.bodyMode === 'json' && !String(req.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) {
+    return { status: 415, message: 'This route takes application/json.' };
+  }
+  return null;
+}
+
 /** Run the matching API route for `req`, writing the response.
  *
  * Returns false — having written nothing — when no route matches, so a host can
@@ -96,7 +153,11 @@ export async function runRoute(
  * bytes are part of the request `runRoute` takes), so it needs its own guard
  * here: a body-stream failure (a client disconnecting mid-upload, realistic
  * for the raw-body assets route) must still land as the same 500 envelope,
- * never an unhandled rejection with no response written. */
+ * never an unhandled rejection with no response written.
+ *
+ * A request from another site is refused before its body is read — see
+ * `refusal`. Only MATCHED routes are guarded: an unmatched path still returns
+ * false untouched, and what the host serves there (the studio bundle) is public. */
 export async function handleApiRequest(
   req: IncomingMessage,
   res: ServerResponse,
@@ -104,7 +165,13 @@ export async function handleApiRequest(
   handlers: Handlers,
 ): Promise<boolean> {
   const url = req.url ?? '';
-  if (matchRoute(req.method, url) === undefined) return false;
+  const route = matchRoute(req.method, url);
+  if (route === undefined) return false;
+  const refused = refusal(req, route);
+  if (refused !== null) {
+    send(res, refused.status, { issues: [{ message: refused.message }] });
+    return true;
+  }
   let body: Buffer;
   try {
     body = await readBody(req);
