@@ -1,6 +1,6 @@
 # Diagramming
 
-This is experimental tool. 
+This is an experimental tool.
 
 Most diagram tools do one of two things. They turn code into a static picture, or they give you a canvas and good-looking shapes. This one is about the structure of a system: what sits inside what, and what you can add on top. It is still written and generated as code.
 
@@ -165,6 +165,8 @@ everyone, plus commercial licenses for those who need different terms — every
 contributor signs a [CLA](CLA.md) before their first pull request is merged, granting
 the right to relicense their contribution. A bot handles this on the PR; see
 [CONTRIBUTING.md](CONTRIBUTING.md) for the details and the reasoning.
+
+Found a security problem? Please report it privately — see [SECURITY.md](SECURITY.md).
 
 ## License
 

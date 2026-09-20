@@ -45,7 +45,8 @@ pnpm typecheck    # six chained tsc projects
 pnpm lint         # eslint
 ```
 
-Nothing runs these automatically — there is no CI — so please run all three.
+CI runs the same three on every pull request, plus the release build (`pnpm build:dist`) —
+running them first saves a round trip.
 
 ## Conventions worth knowing
 
