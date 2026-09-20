@@ -110,7 +110,7 @@ The right dock stacks its panels — the notation's own panel (Git, Activity, An
 | --- | --- |
 | Diagram picker (`Ctrl/Cmd + K`) | Switch diagrams. Type to search — every word must appear somewhere in the name, folder included. Diagrams are grouped by the folder part of their name (`docs/fishbone` is under **docs**); diagrams with no folder come first. Click a folder heading to collapse it; collapsed folders are remembered across reloads, and a search looks inside them anyway. `↑` / `↓` move, `Enter` opens, `Esc` closes. To move a diagram into a folder, **Rename** it to `folder/name`. **New diagram** starts from the open diagram's folder. |
 | Light / dark | Theme. A viewer preference, never saved to the model. |
-| `✏ sketch` / style preset | `clean`, `sketch`, `hand-drawn`, `pencil`, `blueprint`, `marker`. Remembered across reloads, independent of light/dark. |
+| `✏ sketch` / style preset | `clean`, `sketch`, `hand-drawn`, `pencil`, `blueprint`, `marker`. Remembered across reloads, independent of light/dark. The hatched presets (`hand-drawn`, `pencil`, `marker`) hatch boxes only: an open group takes a plain wash, since its area is where its children and their edges are drawn, and an outline boundary (C4 boundary, AWS region) stays a line in every preset. |
 | `⋮⋮ Snap` | Snap dragged boxes (and arrow-key nudges) to a 10px grid; the background dots become the grid. A viewer preference, remembered across reloads, never saved to the diagram. |
 | Plane switcher | Present when the diagram declares planes |
 | Layout pickers | Algorithm, direction, spacing, edge routing and **Wrap** (off / square / screen / wide — folds a long layered chain onto several rows). View mode previews; edit mode saves them to the layout file. |

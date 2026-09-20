@@ -8,7 +8,7 @@ import { NoteStateContext } from './note-state';
 import { notationProfile } from './notations';
 import { RichLabelEditor } from './RichLabelEditor';
 import { runsToDisplay } from './richtext';
-import { SketchShape } from './SketchShape';
+import { SketchShape, type SketchFill } from './SketchShape';
 import { TableNode } from './TableNode';
 import type { StylePreset } from './stylePresets';
 import type { SketchShapeKind } from './sketch';
@@ -138,6 +138,7 @@ const sketchOf = (
   id: string,
   width?: number,
   height?: number,
+  fill: SketchFill = 'preset',
 ): import('react').ReactElement | null =>
   data.stylePreset?.rough !== undefined && width !== undefined && height !== undefined && width > 0 && height > 0 ? (
     <SketchShape
@@ -146,6 +147,7 @@ const sketchOf = (
       width={width}
       height={height}
       preset={data.stylePreset}
+      fill={fill}
       {...(data.color !== undefined ? { color: data.color } : {})}
     />
   ) : null;
@@ -733,7 +735,9 @@ export function DiagramNode({
                 : { ...accentStyle(data.color), ...(data.textColor !== undefined ? { color: data.textColor } : {}) },
             })}
       >
-        {sketchOf(data, style.shape, id, width, height)}
+        {/* never the preset's own fill: this box is where the children and their
+            edges are drawn (see SketchFill) — and an outline group stays a line */}
+        {sketchOf(data, style.shape, id, width, height, groupOutline ? 'none' : 'wash')}
         <ThreatBadge id={id} data={data} />
         <QuickAddButton id={id} data={data} selected={selected} />
         <div className="dg-group-header">

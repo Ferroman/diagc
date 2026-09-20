@@ -328,6 +328,38 @@ describe('DiagramNode', () => {
     expect(container.querySelector('.dg-sketch-hatch')).not.toBeNull();
   });
 
+  // A container's area is where its children and their edges are drawn. Hatch
+  // lines laid across it — and again by every container nested inside — bury the
+  // lot, so a container takes the solid wash whatever the preset fills with.
+  it.each(['hand-drawn', 'pencil', 'marker'])('%s: never hatches an open container, it washes it', (presetId) => {
+    const { container } = renderNode(
+      { label: 'Platform', typeId: 'system', state: 'expanded', stylePreset: stylePreset(presetId) },
+      undefined,
+      { width: 600, height: 400 },
+    );
+    const group = container.querySelector('.dg-group');
+    expect(group).not.toBeNull();
+    expect(group!.querySelector('.dg-sketch-hatch')).toBeNull();
+    expect(group!.querySelector('.dg-sketch-fill')).not.toBeNull();
+    expect(group!.querySelector('.dg-sketch-stroke')).not.toBeNull();
+  });
+
+  // The crisp twin is `.dg-group-outline { background: transparent }`: a C4
+  // boundary or an AWS region is a coloured LINE. Washing it tints everything
+  // that stands inside the boundary.
+  it.each(['sketch', 'marker'])('%s: an outline boundary stays a pure line, with no wash', (presetId) => {
+    const { container } = renderNode(
+      { label: 'Bank', typeId: 'c4-system-boundary', color: '#2563eb', state: 'expanded', stylePreset: stylePreset(presetId) },
+      undefined,
+      { width: 600, height: 400 },
+    );
+    const group = container.querySelector('.dg-group-outline');
+    expect(group).not.toBeNull();
+    expect(group!.querySelector('.dg-sketch-fill')).toBeNull();
+    expect(group!.querySelector('.dg-sketch-hatch')).toBeNull();
+    expect((group!.querySelector('.dg-sketch-stroke') as SVGPathElement).style.stroke).toContain('#2563eb');
+  });
+
   it('drops the inline accent chrome on a colored node in sketch mode (the rough shape carries color instead)', () => {
     const { container } = renderNode(
       { label: 'orders', color: '#e05d5d', stylePreset: stylePreset('sketch') },

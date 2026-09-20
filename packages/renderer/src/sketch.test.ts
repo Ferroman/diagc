@@ -138,6 +138,20 @@ describe('fill styles', () => {
       expect(p.stroke.length).toBeGreaterThan(0);
     }
   });
+
+  // SketchShape lays a hatched node over the SOLID pass's polygon, so the two
+  // passes have to wobble the same outline or the base peeks out from under it.
+  // Holds because rough seeds per call and draws the outline before it fills.
+  it('draws the same outline whatever the fill style, for one seed', () => {
+    const kinds = ['box', 'hexagon', 'cylinder', 'person', 'circle', 'diamond', 'note', 'ellipse', 'bubble'] as const;
+    for (const kind of kinds) {
+      for (const radius of [0, 14]) {
+        const hatched = sketchNode(kind, 160, 80, 42, HACHURE, radius);
+        const solid = sketchNode(kind, 160, 80, 42, { ...HACHURE, fillStyle: 'solid' }, radius);
+        expect(solid.stroke, `${kind} r${radius}`).toBe(hatched.stroke);
+      }
+    }
+  });
 });
 
 describe('cornerRadius', () => {
