@@ -179,14 +179,14 @@ describe('editor shell', () => {
     await waitFor(() => expect(localStorage.getItem('diagramming.selected')).toBe('sketch'));
     unmount();
     render(<App />);
-    await waitFor(() => expect((screen.getByRole('combobox', { name: 'Diagram' }) as HTMLSelectElement).value).toBe('sketch'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Diagram: sketch' })).toBeDefined());
   });
 
   it('falls back to an existing diagram when the remembered one is gone', async () => {
     localStorage.setItem('diagramming.selected', 'deleted-diagram');
     render(<App />);
     // once the source list settles, the missing name is corrected to a real one
-    await waitFor(() => expect((screen.getByRole('combobox', { name: 'Diagram' }) as HTMLSelectElement).value).toBe('sketch'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Diagram: sketch' })).toBeDefined());
     expect(await screen.findByRole('button', { name: /edit/i })).toBeDefined();
   });
 
@@ -291,6 +291,42 @@ describe('editor shell', () => {
         expect(posts).toHaveLength(1);
       });
       expect(await screen.findByRole('button', { name: /^save$/i })).toBeDefined();
+    } finally {
+      setHost(defaultHost);
+    }
+  });
+
+  it("seeds the New diagram prompt with the current diagram's folder", async () => {
+    // A new diagram should land in the group being looked at, not at the root.
+    vi.stubGlobal('fetch', stubFetch([{ name: 'docs/one', model: goodModel, issues: [], editable: true }]));
+    const promptText = vi.fn(async () => null);
+    setHost({ ...defaultHost, promptText });
+    try {
+      render(<App />);
+      await screen.findByRole('button', { name: 'Diagram: docs/one' });
+      fireEvent.click(screen.getByRole('button', { name: /new diagram/i }));
+      await waitFor(() => expect(promptText).toHaveBeenCalledWith(expect.any(String), 'docs/'));
+    } finally {
+      setHost(defaultHost);
+    }
+  });
+
+  it('creates nothing when the folder seed comes back without a name', async () => {
+    // OK on the untouched seed is 'docs/' — a safe name by the server's regex,
+    // and it would write a nameless `.diagram.json` into the folder.
+    vi.stubGlobal('fetch', stubFetch([{ name: 'docs/one', model: goodModel, issues: [], editable: true }]));
+    const promptText = vi.fn(async () => 'docs/');
+    setHost({ ...defaultHost, promptText });
+    try {
+      render(<App />);
+      await screen.findByRole('button', { name: 'Diagram: docs/one' });
+      fireEvent.click(screen.getByRole('button', { name: /new diagram/i }));
+      await waitFor(() => expect(promptText).toHaveBeenCalled());
+      const posts = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (c) => (c[1] as RequestInit | undefined)?.method === 'POST',
+      );
+      expect(posts).toHaveLength(0);
+      expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull();
     } finally {
       setHost(defaultHost);
     }
@@ -1211,7 +1247,7 @@ describe('editor shell', () => {
     expect(await screen.findByRole('button', { name: /^edit$/i })).toBeDefined();
     expect(screen.queryByRole('button', { name: /done/i })).toBeNull();
     expect(await canvas().findByText('zed')).toBeDefined();
-    await waitFor(() => expect((screen.getByRole('combobox', { name: 'Diagram' }) as HTMLSelectElement).value).toBe('two'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Diagram: two' })).toBeDefined());
     expect(window.location.hash).toBe('#/two');
   });
 
@@ -1223,7 +1259,8 @@ describe('editor shell', () => {
     // meantime, so the DOM alone can't tell the two states apart).
     await screen.findByRole('button', { name: /^edit$/i });
     // 'two' is the TS-owned artifact in the fixture: viewable, not editable.
-    fireEvent.change(screen.getByRole('combobox', { name: 'Diagram' }), { target: { value: 'two' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Diagram:/ }));
+    fireEvent.click(screen.getByRole('option', { name: 'two' }));
     expect(await screen.findByText(/read-only/i)).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /duplicate/i }));
     // The copy is written as a JSON source under a free name, with the model's
@@ -1242,7 +1279,7 @@ describe('editor shell', () => {
     // ...and the studio lands in an edit session on the copy, not the original.
     expect(await screen.findByRole('button', { name: /^save$/i })).toBeDefined();
     await waitFor(() =>
-      expect((screen.getByRole('combobox', { name: 'Diagram' }) as HTMLSelectElement).value).toBe('two-copy'),
+      expect(screen.getByRole('button', { name: 'Diagram: two-copy' })).toBeDefined(),
     );
   });
 
@@ -1325,7 +1362,8 @@ describe('editor shell', () => {
     render(<App />);
     await screen.findByRole('button', { name: /^edit$/i });
     // 'two' is the TS-owned artifact in the fixture: viewable, not editable.
-    fireEvent.change(screen.getByRole('combobox', { name: 'Diagram' }), { target: { value: 'two' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Diagram:/ }));
+    fireEvent.click(screen.getByRole('option', { name: 'two' }));
     expect(await screen.findByText(/read-only/i)).toBeDefined();
     expect(screen.queryByRole('button', { name: /^eject$/i })).toBeNull();
   });

@@ -54,6 +54,7 @@ import { useDiagramActions } from './hooks/useDiagramActions';
 import { useViewOps } from './hooks/useViewOps';
 import { edgeLabelsOf, addEdgeLabel, editEdgeLabel, moveEdgeLabel } from './edge-labels';
 import { computeSelectionColor } from './selection-color';
+import { DiagramPicker } from './DiagramPicker';
 import { EditorToolbar } from './editor/EditorToolbar';
 import { LayoutControls } from './LayoutControls';
 import { mergePreview, withLayoutPreview } from './layoutPreview';
@@ -783,22 +784,16 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     <div className="app">
       <header className="topbar">
         <strong>Diagramming Studio</strong>
-        <select
-          aria-label="Diagram"
-          value={selected}
-          onChange={(e) => {
+        <DiagramPicker
+          names={names}
+          selected={selected}
+          onSelect={(name) => {
             if (!leaveEdit()) return;
-            setSelected(e.target.value);
+            setSelected(name);
             setEnteredPath([]);
             resetView();
           }}
-        >
-          {names.map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </select>
+        />
         {canDesign && !editing && (
           <button className="chip" onClick={() => void actions.newDiagram()}>
             New diagram

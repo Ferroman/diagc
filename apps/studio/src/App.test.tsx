@@ -189,7 +189,7 @@ describe('view-mode layout preview', () => {
     fireEvent(window, new HashChangeEvent('hashchange'));
 
     await waitFor(() =>
-      expect((screen.getByRole('combobox', { name: 'Diagram' }) as HTMLSelectElement).value).toBe('two'),
+      expect(screen.getByRole('button', { name: 'Diagram: two' })).toBeDefined(),
     );
     expect(screen.queryByRole('button', { name: /reset layout/i })).toBeNull();
     expect((screen.getByLabelText('Layout algorithm') as HTMLSelectElement).value).toBe('layered');
@@ -238,7 +238,7 @@ describe('view-mode layout preview', () => {
     window.location.hash = '#/two';
     fireEvent(window, new HashChangeEvent('hashchange'));
     await waitFor(() =>
-      expect((screen.getByRole('combobox', { name: 'Diagram' }) as HTMLSelectElement).value).toBe('two'),
+      expect(screen.getByRole('button', { name: 'Diagram: two' })).toBeDefined(),
     );
 
     releaseSketchFetch?.();
@@ -249,7 +249,7 @@ describe('view-mode layout preview', () => {
     // header still shows 'two', and no edit-only control ever appears.
     expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /^done$/i })).toBeNull();
-    expect((screen.getByRole('combobox', { name: 'Diagram' }) as HTMLSelectElement).value).toBe('two');
+    expect(screen.getByRole('button', { name: 'Diagram: two' })).toBeDefined();
   });
 
   it('keeps the layout preview on a failed raw-source fetch, unlike the old synchronous drop', async () => {

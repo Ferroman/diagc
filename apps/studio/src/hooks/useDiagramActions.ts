@@ -3,6 +3,7 @@ import { emptyDrawings, emptyLayout, type DiagramModel, type Drawings, type Layo
 import type { LoadedArtifact } from '../artifacts';
 import type { EditorApi } from '../editor/useEditor';
 import { nextCopyName } from '../copyName';
+import { groupOf } from '../diagramGroups';
 import { getHost } from '../host';
 
 const emptyModel = (name: string): DiagramModel => ({
@@ -70,8 +71,15 @@ export function useDiagramActions({
 }: UseDiagramActionsOptions): DiagramActions {
   const newDiagram = async () => {
     if (!leaveEdit()) return;
-    const raw = (await getHost().promptText('New diagram name (lowercase, digits, - or /):'))?.trim();
-    if (raw === undefined || raw === '') return;
+    // Seed the prompt with the open diagram's folder so a new diagram lands in
+    // the group being looked at; clearing the seed puts it at the root.
+    const folder = groupOf(selected);
+    const seed = folder === '' ? '' : `${folder}/`;
+    const raw = (await getHost().promptText('New diagram name (lowercase, digits, - or /):', seed))?.trim();
+    // A trailing slash is a folder with no name in it — OK on the untouched
+    // seed. The server's isSafeName would accept it and write a nameless
+    // `.diagram.json`, so it is refused here.
+    if (raw === undefined || raw === '' || raw.endsWith('/')) return;
     if (names.includes(raw) || ownedNames.has(raw)) {
       getHost().notify(`A diagram named '${raw}' already exists.`);
       return;

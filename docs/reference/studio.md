@@ -106,7 +106,7 @@ The left dock keeps the tab you chose: selecting on the canvas never switches it
 
 | Control | Effect |
 | --- | --- |
-| Diagram picker | Switch diagrams |
+| Diagram picker (`Ctrl/Cmd + K`) | Switch diagrams. Type to search — every word must appear somewhere in the name, folder included. Diagrams are grouped by the folder part of their name (`docs/fishbone` is under **docs**); diagrams with no folder come first. Click a folder heading to collapse it; collapsed folders are remembered across reloads, and a search looks inside them anyway. `↑` / `↓` move, `Enter` opens, `Esc` closes. To move a diagram into a folder, **Rename** it to `folder/name`. **New diagram** starts from the open diagram's folder. |
 | Light / dark | Theme. A viewer preference, never saved to the model. |
 | `✏ sketch` / style preset | `clean`, `sketch`, `hand-drawn`, `pencil`, `blueprint`, `marker`. Remembered across reloads, independent of light/dark. |
 | `⋮⋮ Snap` | Snap dragged boxes (and arrow-key nudges) to a 10px grid; the background dots become the grid. A viewer preference, remembered across reloads, never saved to the diagram. |

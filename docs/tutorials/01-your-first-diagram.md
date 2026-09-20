@@ -69,7 +69,7 @@ If you made a mistake — a relation pointing at a node that does not exist, say
 pnpm studio
 ```
 
-Open <http://localhost:5173> and pick **shop** from the dropdown in the top bar.
+Open <http://localhost:5173> and pick **shop** from the diagram picker in the top bar.
 
 You will see one box, `Storefront`, with a dashed border. That is a *folded group*: the API and the database are inside it, but the diagram rests folded so you see structure before detail.
 
