@@ -1,15 +1,10 @@
-import type { LayoutDirection, LayoutSettings } from '@diagramming/core';
 import type { DrawTool } from '@diagramming/renderer';
 import type { EditorApi } from './useEditor';
-import { getHost } from '../host';
 import { PRESET_COLORS } from './pickers';
-import { LayoutControls } from '../LayoutControls';
 import { useKeyHint } from '../hotkeys/HotkeysContext';
 
 interface EditorToolbarProps {
   editor: EditorApi;
-  /** prompt for a name, create an empty diagram and edit it */
-  onNewDiagram: () => void;
   /** leave edit mode (confirm-discard handled by the caller) */
   onExit: () => void;
   /** persist the current diagram + layout (App owns the save flow) */
@@ -18,20 +13,6 @@ interface EditorToolbarProps {
   saving?: boolean;
   /** save issues surfaced by App's save flow (null = none) */
   saveIssues: { message: string }[] | null;
-  /** active plane whose pinned positions Re-layout clears */
-  activePlane: string | undefined;
-  /** whether the active plane uses automatic layout (false = manual/frozen) */
-  autoLayout: boolean;
-  /** flip the active plane's auto/manual mode (App snapshots on turning off) */
-  onToggleAutoLayout: () => void;
-  /** a fresh elk arrangement to re-pin when Re-layout runs in manual mode */
-  getAutoPositions: () => Record<string, { x: number; y: number }>;
-  /** active plane's automatic-layout settings (algorithm/direction/spacing/edge routing) */
-  layoutSettings: LayoutSettings;
-  /** what an unset direction resolves to for this model (see LayoutControls) */
-  defaultDirection?: LayoutDirection;
-  /** merge a settings patch into the active plane (an undefined field clears it) */
-  onSetLayoutSettings: (patch: Partial<LayoutSettings>) => void;
   /** color of the current selection (node or single-relation edge); null = no color target */
   selectionColor: { value: string; onChange: (color: string) => void } | null;
   /** the canvas tool; Pen/Eraser are edit-mode canvas modes, Select is the usual canvas */
@@ -42,11 +23,6 @@ interface EditorToolbarProps {
   onSetPen: (patch: Partial<{ color: string; width: number }>) => void;
   /** drilled in: drawings live at the top level only, so the tools are off */
   drawingDisabled: boolean;
-  /** the notation owns the arrangement: no algorithm/direction/spacing/routing to pick */
-  layoutLocked?: boolean;
-  /** the notation pins the algorithm (elk partitions are layered-only): only the
-   * algorithm picker is withheld, the rest of LayoutControls stays up */
-  algorithmLocked?: boolean;
 }
 
 /** The preset swatch row, shared by the selection color and the pen color —
@@ -89,49 +65,24 @@ function ColorRow({
   );
 }
 
-/** Re-layout the active plane: clear its pins under automatic layout, re-pin a
- *  fresh arrangement under manual. Exported because the toolbar button and the
- *  hotkey must be the same function — confirm and all. */
-export async function relayoutPlane(
-  editor: EditorApi,
-  o: {
-    autoLayout: boolean;
-    activePlane: string | undefined;
-    getAutoPositions: () => Record<string, { x: number; y: number }>;
-  },
-): Promise<void> {
-  const planeOpt = o.activePlane !== undefined ? { plane: o.activePlane } : {};
-  if (o.autoLayout) {
-    if (!(await getHost().confirmDialog('Clear all pinned positions on this plane and re-layout?'))) return;
-    editor.dispatch({ type: 'clear-positions', ...planeOpt });
-  } else {
-    if (!(await getHost().confirmDialog('Re-arrange this plane and re-pin every node?'))) return;
-    editor.dispatch({ type: 'set-positions', positions: o.getAutoPositions(), ...planeOpt });
-  }
-}
-
+/**
+ * Edit mode's tool row: leave, pick a canvas tool, undo / redo / save, colour
+ * the selection. The layout pickers and commands that used to ride here are in
+ * the dock's Layout & style section (LayoutPanel, LayoutActions) and New diagram
+ * is in the topbar — with them this row wrapped onto a second line at 1280px.
+ */
 export function EditorToolbar({
   editor,
-  onNewDiagram,
   onExit,
   onSave,
   saving = false,
   saveIssues,
-  activePlane,
-  autoLayout,
-  onToggleAutoLayout,
-  getAutoPositions,
-  layoutSettings,
-  defaultDirection,
-  onSetLayoutSettings,
   selectionColor,
   tool,
   onSetTool,
   pen,
   onSetPen,
   drawingDisabled,
-  layoutLocked,
-  algorithmLocked,
 }: EditorToolbarProps) {
   const error = editor.session?.error;
   // titles name the key an action has NOW — it is rebindable (hotkeys/)
@@ -142,38 +93,6 @@ export function EditorToolbar({
       <button className="chip" onClick={onExit} title={`Leave edit mode${hint('diagram.toggle-edit')}`}>
         Done
       </button>
-      <span className="sep" />
-      <button className="chip" onClick={onNewDiagram} title={`New diagram${hint('diagram.new')}`}>
-        New diagram
-      </button>
-      <button
-        className="chip"
-        onClick={() => void relayoutPlane(editor, { autoLayout, activePlane, getAutoPositions })}
-        title={`Re-layout${hint('edit.relayout')}`}
-      >
-        Re-layout
-      </button>
-      <button
-        type="button"
-        className={`chip${autoLayout ? ' active' : ''}`}
-        aria-pressed={autoLayout}
-        title={
-          autoLayout
-            ? 'Automatic layout is ON — connecting nodes can re-arrange the diagram. Click to freeze positions.'
-            : 'Manual layout — nodes stay where you put them. Click to re-enable automatic layout.'
-        }
-        onClick={onToggleAutoLayout}
-      >
-        Auto-layout
-      </button>
-      {!layoutLocked && (
-        <LayoutControls
-          settings={layoutSettings}
-          onChange={onSetLayoutSettings}
-          {...(defaultDirection !== undefined ? { defaultDirection } : {})}
-          algorithmLocked={algorithmLocked}
-        />
-      )}
       <span className="sep" />
       <span className="tool-group" role="group" aria-label="Canvas tool">
         {(

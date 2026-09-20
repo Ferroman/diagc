@@ -95,8 +95,10 @@ export function DiagramPicker({
     const onDown = (e: MouseEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) close(false);
     };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
+    // Capture phase: React Flow's pane (d3-zoom) stops a mousedown where it
+    // lands, so one on the canvas — most of the window — never bubbles up here.
+    document.addEventListener('mousedown', onDown, true);
+    return () => document.removeEventListener('mousedown', onDown, true);
   }, [open]);
 
   // Keep the cursor row in view as the arrows walk past the fold. Optional
@@ -142,7 +144,9 @@ export function DiagramPicker({
         onClick={() => (open ? close(false) : openPicker())}
       >
         {selectedGroup !== '' && <span className="diagram-picker-folder">{groupLabel(selectedGroup)} / </span>}
-        {selected === '' ? <span className="diagram-picker-folder">No diagram</span> : leafOf(selected)}
+        {/* a span, not a bare text node: a narrow topbar ellipsises the name, and
+            text-overflow does nothing for a flex container's anonymous item */}
+        {selected === '' ? <span className="diagram-picker-folder">No diagram</span> : <span className="diagram-picker-name">{leafOf(selected)}</span>}
         <span className="diagram-picker-caret" aria-hidden="true">
           ▾
         </span>

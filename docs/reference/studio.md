@@ -11,7 +11,7 @@ Every panel, gesture and shortcut in the browser app. Start it with `pnpm dev` (
 
 A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot enter edit mode. Only `.diagram.json` sources are browser-editable.
 
-**New diagram** is always available while the dev server runs — it creates an empty `.diagram.json` and opens it for editing.
+**New diagram** (`＋`, beside the diagram picker) is always available while the dev server runs — it creates an empty `.diagram.json` and opens it for editing.
 
 ## Navigation
 
@@ -63,7 +63,7 @@ New nodes are **typeless** — just a label — so quick sketches stay clean. Gi
 
 ## Keyboard
 
-Every action below can be given a different key, a second key, or none: open **Keyboard shortcuts** with the `⚙` in the header or `?` — see [Change keyboard shortcuts](../how-to/change-keyboard-shortcuts.md). These are the defaults; `Ctrl` is `Cmd` on a Mac. Button tooltips always show the key an action has *now*.
+Every action below can be given a different key, a second key, or none: open **Keyboard shortcuts** with the `⚙` in the top bar or `?` — see [Change keyboard shortcuts](../how-to/change-keyboard-shortcuts.md). These are the defaults; `Ctrl` is `Cmd` on a Mac. Button tooltips always show the key an action has *now*.
 
 | Action | Default | Where |
 | --- | --- | --- |
@@ -111,7 +111,9 @@ A shortcut acts only while its button would: Pen does nothing while you are dril
 
 The left dock keeps the tab you chose: selecting on the canvas never switches it. **Add node** in the Library opens Properties for the name; a placed stencil names in place on the canvas.
 
-The right dock stacks its panels — the notation's own panel (Git, Activity, And then what?, Fishbone or Threat model) above **Layers & planes** — in one scrolling column. Click a panel's heading to fold it down to that heading; the others stay open. Which panels are folded is a viewer preference, remembered across reloads and never saved to the diagram. The dock's own chevron still hides the whole column.
+The right dock stacks its panels — the notation's own panel (Git, Activity, And then what?, Fishbone or Threat model), then **Layout & style**, then **Layers & planes** — in one scrolling column. Click a panel's heading to fold it down to that heading; the others stay open. Which panels are folded is a viewer preference, remembered across reloads and never saved to the diagram. The dock's own chevron still hides the whole column.
+
+**Layout & style** — how the active plane is arranged and drawn, in both modes. One row per setting: **Algorithm**, **Direction**, **Wrap** (off / square / screen / wide — folds a long layered chain onto several rows), **Spacing**, **Edges** (rounded / square corners) and **Style** (`clean`, `sketch`, `hand-drawn`, `pencil`, `blueprint`, `marker`). View mode previews the layout settings (**Reset layout** drops the preview); edit mode saves them to the layout file. Style is a viewer preference in view mode, remembered across reloads and independent of light/dark; in edit mode the same row pins a style into the diagram. The hatched presets (`hand-drawn`, `pencil`, `marker`) hatch boxes only: an open group takes a plain wash, since its area is where its children and their edges are drawn, and an outline boundary (C4 boundary, AWS region) stays a line in every preset. Under the rows sit the mode's layout commands: **Auto-arrange** and **Freeze layout** in view mode (see [Place boxes on a generated diagram](../how-to/position-a-generated-diagram.md)), **Re-layout** and **Auto-layout** in edit mode. Their shortcuts work whether or not the section is folded.
 
 **Layers & planes** — add, edit and remove layers (id, name, tint) and planes (id, name, containment borrowing, preset layers, its own **Notation**). In edit mode it also carries a model-level **Notation** selector (`default look`, `causal-loop`, `git-graph`, `c4`, `second-order` (shown as *Second-order thinking*), `fishbone` (shown as *Fishbone (cause and effect)*), `threat-model` (shown as *Threat model (STRIDE)*) — a plane's own notation wins where set) and a **Legend** checkbox, which adds or removes the diagram's `legend` declaration; its title, position, sections and items are authored in the file. See [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md) and [Add a legend](../how-to/add-a-legend.md).
 
@@ -125,19 +127,27 @@ The right dock stacks its panels — the notation's own panel (Git, Activity, An
 
 **Threat model** — on a diagram with the `threat-model` notation, in **both** modes: this panel only reads, so a read-only `.diagram.ts` threat model gets its register too. **Crossings to review** lists every flow whose two ends sit in different trust boundaries and that carries no threat yet — the flow's two elements on one line, the two boundaries (`outside` where there is none) underneath — each clickable to select it. **Register** lists every threat in the diagram grouped by the element that carries it, in model order (elements first, then relations), each element's row clickable to select it and showing its own *open / total*. Threat and threat-model validation issues follow under **Issues**, clickable where they name an element. Every element with threats wears a badge that opens its bubble on the canvas — see the Editing table. Title, status, description and mitigation can be written there; category and severity live in the Threats section of the Properties panel. See [Draw a threat model](../how-to/draw-a-threat-model.md).
 
-## Header controls
+## Top bar
+
+One row, in both modes. Layout and style are not here: they are the right dock's **Layout & style** section (above).
 
 | Control | Effect |
 | --- | --- |
 | Diagram picker (`Ctrl/Cmd + K` by default) | Switch diagrams. Type to search — every word must appear somewhere in the name, folder included. Diagrams are grouped by the folder part of their name (`docs/fishbone` is under **docs**); diagrams with no folder come first. Click a folder heading to collapse it; collapsed folders are remembered across reloads, and a search looks inside them anyway. `↑` / `↓` move, `Enter` opens, `Esc` closes. To move a diagram into a folder, **Rename** it to `folder/name`. **New diagram** starts from the open diagram's folder. |
-| Light / dark | Theme. A viewer preference, never saved to the model. |
-| `✏ sketch` / style preset | `clean`, `sketch`, `hand-drawn`, `pencil`, `blueprint`, `marker`. Remembered across reloads, independent of light/dark. The hatched presets (`hand-drawn`, `pencil`, `marker`) hatch boxes only: an open group takes a plain wash, since its area is where its children and their edges are drawn, and an outline boundary (C4 boundary, AWS region) stays a line in every preset. |
-| `⋮⋮ Snap` | Snap dragged boxes (and arrow-key nudges) to a 10px grid; the background dots become the grid. A viewer preference, remembered across reloads, never saved to the diagram. |
-| Plane switcher | Present when the diagram declares planes |
-| Layout pickers | Algorithm, direction, spacing, edge routing and **Wrap** (off / square / screen / wide — folds a long layered chain onto several rows). View mode previews; edit mode saves them to the layout file. |
-| **Save positions** / **Freeze layout** (view mode) | Write Alt-dragged boxes, and which groups are open, to `<name>.layout.json`; pin every box and mark the plane manual (click again to hand it back). See [Place boxes on a generated diagram](../how-to/position-a-generated-diagram.md). |
+| `＋` | New diagram. |
+| `⋯` (view mode) | **Rename**, **Duplicate** and **Eject** — only the ones that apply: a diagram compiled from TypeScript offers Duplicate alone. `↑` / `↓` move, `Enter` runs, `Esc` closes. |
+| **Edit** / `read-only` | Enter edit mode, or the mark of a diagram compiled from `.diagram.ts`. |
+| **Save positions** (view mode) | Appears once you have moved something: writes Alt-dragged boxes and edge labels, and which groups are open, to `<name>.layout.json`. See [Place boxes on a generated diagram](../how-to/position-a-generated-diagram.md). |
+| **Notes** (edit mode, threat models) | Open or close every threat bubble at once. |
+| `⋮⋮` | Snap dragged boxes (and arrow-key nudges) to a 10px grid; the background dots become the grid. A viewer preference, remembered across reloads, never saved to the diagram. |
+| `☀` / `☾` | Light / dark theme. A viewer preference, never saved to the model. |
+| `⚙` | Keyboard shortcuts. |
 
-Switching planes keeps your place — the groups containing what you were looking at open automatically in the new plane.
+In a narrow pane the app name gives way first, then the diagram's folder and name shorten; the buttons never wrap or leave the window.
+
+In edit mode a tool row sits under the top bar: **Done**, **Select** / **Pen** / **Eraser** (with the pen's colour and width while it is active), **Undo** / **Redo** / **Save**, and the selection's colour.
+
+The plane switcher is in **Layers & planes**, present when the diagram declares planes. Switching planes keeps your place — the groups containing what you were looking at open automatically in the new plane.
 
 ## Saving
 
@@ -161,7 +171,7 @@ An unsaved dot sits next to Save while the session is dirty; edits autosave a mo
 - **JSON diagrams that declare `include` show their raw source.** Composed content is only visible for compiled, read-only diagrams.
 - **Library saves are best-effort.** A failed write to `library.json` is currently swallowed silently.
 - **A folded group shows no notes for what it hides.** Only its own; unfold it for the notes inside.
-- On a `git-graph` or `fishbone` plane the layout pickers (algorithm, direction, spacing, routing) are hidden: the notation owns the arrangement. Auto-layout on/off and Re-layout still work.
+- On a `git-graph` or `fishbone` plane the layout pickers (algorithm, direction, wrap, spacing, edges) are hidden, in both modes: the notation owns the arrangement. Style, Auto-layout on/off and Re-layout still work.
 - On a `second-order` diagram only the layout **algorithm** picker is hidden — it is pinned to layered so the order bands can use elk's partitioning. Direction, spacing and edge routing stay adjustable.
 
 ## See also

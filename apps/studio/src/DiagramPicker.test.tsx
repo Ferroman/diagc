@@ -107,6 +107,22 @@ describe('DiagramPicker', () => {
     expect(screen.queryByRole('listbox')).toBeNull();
   });
 
+  it('closes on a press its target swallows — the canvas never lets a mousedown bubble', () => {
+    // React Flow's pane (d3-zoom) stops mousedown where it lands, so a listener
+    // waiting for it to bubble up to the document never hears a canvas click —
+    // and the canvas is most of the window.
+    open();
+    const canvas = document.createElement('div');
+    canvas.addEventListener('mousedown', (e) => e.stopImmediatePropagation());
+    document.body.appendChild(canvas);
+    try {
+      fireEvent.mouseDown(canvas);
+      expect(screen.queryByRole('listbox')).toBeNull();
+    } finally {
+      canvas.remove();
+    }
+  });
+
   it('hands the host a toggle: it opens into the search box, and closes back to the trigger', () => {
     const toggleRef: { current: (() => void) | null } = { current: null };
     render(<DiagramPicker names={NAMES} selected="acme" onSelect={vi.fn()} toggleRef={toggleRef} />);

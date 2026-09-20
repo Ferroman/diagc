@@ -82,6 +82,18 @@ describe('LayoutControls', () => {
     expect([...select.options].map((o) => o.value)).toContain('1.4');
   });
 
+  it('names every control in a visible row label, so the options need no prefix', () => {
+    render(<LayoutControls settings={{}} onChange={() => {}} />);
+    // the dock gives each control a row of its own; in the topbar they were bare
+    // selects whose options had to say what they were ("Wrap: off")
+    for (const name of ['Algorithm', 'Direction', 'Wrap', 'Spacing', 'Edges']) {
+      expect(screen.getByText(name, { selector: '.layout-row > span' })).toBeDefined();
+    }
+    const labels = (name: string) => [...(screen.getByLabelText(name) as HTMLSelectElement).options].map((o) => o.textContent);
+    expect(labels('Wrap')).toEqual(['Off', 'Square', 'Screen', 'Wide']);
+    expect(labels('Edge routing')).toEqual(['Rounded', 'Square']);
+  });
+
   it('hides the algorithm picker — and nothing else — when the notation owns the algorithm', () => {
     render(<LayoutControls settings={{}} onChange={() => {}} algorithmLocked />);
     expect(screen.queryByLabelText('Layout algorithm')).toBeNull();

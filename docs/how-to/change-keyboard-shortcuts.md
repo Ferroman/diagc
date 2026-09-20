@@ -4,7 +4,7 @@ Every studio action can have its own key. The defaults are in the [studio refere
 
 ## Open the dialog
 
-Click `⚙` in the header, or press `?`. The dialog lists every action with its keys, grouped; the search box filters by action name, group or key (`ctrl+z`). Shortcuts are switched off while it is open, so the keys you press land in the dialog.
+Click `⚙` in the top bar, or press `?`. The dialog lists every action with its keys, grouped; the search box filters by action name, group or key (`ctrl+z`). Shortcuts are switched off while it is open, so the keys you press land in the dialog.
 
 ## Give an action a key
 

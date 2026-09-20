@@ -19,15 +19,15 @@ Open <http://localhost:5173>.
 
 ## Step 1 — Create a diagram you own
 
-Click **New diagram** in the top bar, name it `payments`, and press Enter.
+Click **＋** (New diagram) beside the diagram picker in the top bar, name it `payments`, and press Enter.
 
-The studio creates `.diagrams/src/payments.diagram.json` and opens it in edit mode. A toolbar appears: Add node, Layers & planes, Undo, Redo, Save, Done.
+The studio creates `.diagrams/src/payments.diagram.json` and opens it in edit mode. A tool row appears under the top bar: Done, Select / Pen / Eraser, Undo, Redo, Save.
 
 > **Why a new one?** Only `.diagram.json` files are editable in the browser. Diagrams compiled from `.diagram.ts` open with a **read-only** chip — the studio will not fight your TypeScript. The shipped `acme` example is TypeScript, so it is read-only.
 
 ## Step 2 — Place an icon
 
-Open the **Library** tab in the right-hand inspector.
+Open the **Library** tab in the left-hand inspector.
 
 Type `lambda` into the search box. Under *AWS · Compute* you will find **AWS Lambda**. Click the card.
 
@@ -47,7 +47,7 @@ Double-click the arrow and type `payment requested`, then press Enter to commit 
 
 ## Step 4 — Group them
 
-Click **Add node** in the toolbar. Name it `Payments service`.
+Click **Add node** at the top of the Library tab (or press `N`). Name it `Payments service`.
 
 Now drag `Charge card` and drop it *onto* `Payments service`. It nests inside. Do the same with `Payment events`.
 

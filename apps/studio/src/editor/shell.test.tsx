@@ -92,6 +92,22 @@ const tmModel: DiagramModel = {
 // matches the panel (and the id <code>).
 const canvas = () => within(document.querySelector('.dg-canvas') as HTMLElement);
 
+// Rename / Duplicate / Eject sit in the topbar's ⋯ menu, so a row is only in the
+// document while the menu is open. Opening is guarded: a second click on the
+// trigger would CLOSE it, and these run inside waitFor retries.
+const openDiagramMenu = () => {
+  if (screen.queryByRole('menu') === null) fireEvent.click(screen.getByRole('button', { name: 'Diagram actions' }));
+};
+const diagramActions = () => {
+  openDiagramMenu();
+  return screen.getAllByRole('menuitem').map((el) => el.textContent);
+};
+const pickDiagramAction = async (name: string) => {
+  await screen.findByRole('button', { name: 'Diagram actions' });
+  openDiagramMenu();
+  fireEvent.click(screen.getByRole('menuitem', { name }));
+};
+
 // The body of the LAST POST to `url`: autosave writes on every edit, so a case
 // that edits twice (add a threat, then title it) must read the newest write,
 // not the first one the mock recorded.
@@ -1247,7 +1263,7 @@ describe('editor shell', () => {
     await waitFor(() => expect(window.location.hash).toBe('#/sketch/sys'));
     expect(await canvas().findByText('a')).toBeDefined();
     vi.spyOn(window, 'prompt').mockReturnValue('renamed');
-    fireEvent.click(await screen.findByRole('button', { name: 'Rename' }));
+    await pickDiagramAction('Rename');
     await waitFor(() => expect(window.location.hash).toMatch(/^#\/renamed/));
     expect(await screen.findByLabelText('Nested zoom breadcrumb')).toBeDefined();
     expect(window.location.hash).toBe('#/renamed/sys');
@@ -1290,7 +1306,7 @@ describe('editor shell', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Diagram:/ }));
     fireEvent.click(screen.getByRole('option', { name: 'two' }));
     expect(await screen.findByText(/read-only/i)).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: /duplicate/i }));
+    await pickDiagramAction('Duplicate');
     // The copy is written as a JSON source under a free name, with the model's
     // own id/name rewritten so the file stays self-consistent.
     await waitFor(() => {
@@ -1319,7 +1335,7 @@ describe('editor shell', () => {
       }),
     );
     render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: /duplicate/i }));
+    await pickDiagramAction('Duplicate');
     // Positions are the point of duplicating for a demo: the copy must open
     // laid out exactly like the original, not re-arranged from scratch.
     await waitFor(() => {
@@ -1342,7 +1358,7 @@ describe('editor shell', () => {
       ]),
     );
     render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: /duplicate/i }));
+    await pickDiagramAction('Duplicate');
     await waitFor(() => {
       const posted = (fetch as ReturnType<typeof vi.fn>).mock.calls
         .filter((c) => (c[1] as RequestInit | undefined)?.method === 'POST')
@@ -1352,23 +1368,24 @@ describe('editor shell', () => {
     });
   });
 
-  it('the Eject chip promotes an owned diagram and flips it read-only', async () => {
+  it('Eject promotes an owned diagram and flips it read-only', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<App />);
     // 'sketch' is the owned (JSON-backed) diagram in the fixture, selected by default.
     await screen.findByRole('button', { name: /^edit$/i });
-    fireEvent.click(screen.getByRole('button', { name: /^eject$/i }));
+    await pickDiagramAction('Eject');
     await waitFor(() => {
       const post = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
         (c) => String(c[0]) === '/api/diagrams/sketch/eject' && (c[1] as RequestInit | undefined)?.method === 'POST',
       );
       expect(post).toBeDefined();
     });
-    // Ownership dropped locally: the Edit and Eject chips both disappear, and
-    // the diagram now renders through the read-only branch instead.
+    // Ownership dropped locally: the Edit chip disappears, the menu is down to
+    // the one row a read-only diagram gets, and the diagram now renders through
+    // the read-only branch instead.
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /^edit$/i })).toBeNull();
-      expect(screen.queryByRole('button', { name: /^eject$/i })).toBeNull();
+      expect(diagramActions()).toEqual(['Duplicate']);
     });
   });
 
@@ -1376,24 +1393,25 @@ describe('editor shell', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false);
     render(<App />);
     await screen.findByRole('button', { name: /^edit$/i });
-    fireEvent.click(screen.getByRole('button', { name: /^eject$/i }));
+    await pickDiagramAction('Eject');
     await waitFor(() => expect(window.confirm).toHaveBeenCalled());
-    // No eject POST fired, and the diagram stays owned — the chip is still there.
+    // No eject POST fired, and the diagram stays owned — Eject is still offered.
     const posts = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c) => String(c[0]) === '/api/diagrams/sketch/eject',
     );
     expect(posts).toHaveLength(0);
-    expect(screen.getByRole('button', { name: /^eject$/i })).toBeDefined();
+    expect(diagramActions()).toContain('Eject');
   });
 
-  it('the Eject chip is absent for read-only diagrams', async () => {
+  it('Eject is not offered for read-only diagrams', async () => {
     render(<App />);
     await screen.findByRole('button', { name: /^edit$/i });
     // 'two' is the TS-owned artifact in the fixture: viewable, not editable.
     fireEvent.click(screen.getByRole('button', { name: /^Diagram:/ }));
     fireEvent.click(screen.getByRole('option', { name: 'two' }));
     expect(await screen.findByText(/read-only/i)).toBeDefined();
-    expect(screen.queryByRole('button', { name: /^eject$/i })).toBeNull();
+    // the menu has to be OPEN for this to mean anything: closed, no row exists
+    expect(diagramActions()).toEqual(['Duplicate']);
   });
 
   it('entering edit starts the session from the raw source, not the composed boot model', async () => {
@@ -1551,7 +1569,7 @@ describe('editor shell', () => {
       }),
     );
     render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: /duplicate/i }));
+    await pickDiagramAction('Duplicate');
     await waitFor(() => {
       const post = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
         (c) => String(c[0]) === '/api/diagrams/umbrella-copy' && (c[1] as RequestInit | undefined)?.method === 'POST',
@@ -1646,6 +1664,79 @@ describe('editor shell', () => {
       const search = await screen.findByRole('combobox', { name: 'Search diagrams' });
       fireEvent.keyDown(search, { key: 'k', ctrlKey: true }); // typing in a field — this chord still gets through
       await waitFor(() => expect(screen.queryByRole('combobox', { name: 'Search diagrams' })).toBeNull());
+    });
+  });
+
+  // The topbar once carried ~20 controls in one row and ran past the window's
+  // edge. It keeps what names the diagram and what must be seen; the rest went
+  // to a menu and to the right dock.
+  describe('slim topbar', () => {
+    const topbar = () => within(document.querySelector('.topbar') as HTMLElement);
+    const layoutSection = () => within(screen.getByRole('complementary', { name: 'Layout & style' }));
+    const enterEdit = async () => {
+      fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
+      await screen.findByRole('button', { name: /^save$/i });
+    };
+
+    it('keeps the layout and style controls in the right dock, not the topbar', async () => {
+      render(<App />);
+      await screen.findByRole('button', { name: /^edit$/i });
+      for (const name of ['Layout algorithm', 'Layout direction', 'Wrap', 'Node spacing', 'Edge routing', 'Style']) {
+        expect(layoutSection().getByLabelText(name)).toBeDefined();
+        expect(topbar().queryByLabelText(name)).toBeNull();
+      }
+      expect(layoutSection().getByRole('button', { name: 'Freeze layout' })).toBeDefined();
+      expect(topbar().queryByRole('button', { name: 'Freeze layout' })).toBeNull();
+    });
+
+    it('files Rename, Duplicate and Eject under one menu', async () => {
+      render(<App />);
+      await screen.findByRole('button', { name: /^edit$/i });
+      for (const name of ['Rename', 'Duplicate', 'Eject']) expect(topbar().queryByRole('button', { name })).toBeNull();
+      fireEvent.click(topbar().getByRole('button', { name: 'Diagram actions' }));
+      expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Rename', 'Duplicate', 'Eject']);
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Duplicate' }));
+      expect(screen.queryByRole('menu')).toBeNull();
+      // the row did what the chip did: the copy is created and opened
+      await waitFor(() => {
+        const posts = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+          (c) => String(c[0]) === '/api/diagrams/sketch-copy' && (c[1] as RequestInit | undefined)?.method === 'POST',
+        );
+        expect(posts).toHaveLength(1);
+      });
+    });
+
+    it('offers a read-only diagram Duplicate alone — it has no source to rename or eject', async () => {
+      vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: goodModel, issues: [], editable: false }]));
+      render(<App />);
+      await screen.findByText(/read-only/i);
+      fireEvent.click(topbar().getByRole('button', { name: 'Diagram actions' }));
+      expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Duplicate']);
+    });
+
+    it('keeps its toggles as icon buttons that still say what they are', async () => {
+      render(<App />);
+      await screen.findByRole('button', { name: /^edit$/i });
+      const snap = topbar().getByRole('button', { name: 'Snap to grid' });
+      expect(snap.getAttribute('aria-pressed')).toBe('false');
+      fireEvent.click(snap);
+      expect(snap.getAttribute('aria-pressed')).toBe('true');
+      fireEvent.click(topbar().getByRole('button', { name: 'Switch to light theme' }));
+      expect(topbar().getByRole('button', { name: 'Switch to dark theme' })).toBeDefined();
+    });
+
+    it('in edit mode leaves the tool row to the tools: layout commands sit in the dock, New diagram in the topbar', async () => {
+      render(<App />);
+      await enterEdit();
+      const toolbar = within(screen.getByRole('toolbar', { name: 'Editor' }));
+      for (const name of [/new diagram/i, /re-layout/i, /auto-layout/i]) expect(toolbar.queryByRole('button', { name })).toBeNull();
+      expect(toolbar.queryByLabelText('Layout algorithm')).toBeNull();
+      expect(layoutSection().getByRole('button', { name: 'Re-layout' })).toBeDefined();
+      expect(layoutSection().getByRole('button', { name: 'Auto-layout' })).toBeDefined();
+      expect(layoutSection().getByLabelText('Diagram style')).toBeDefined();
+      expect(topbar().getByRole('button', { name: 'New diagram' })).toBeDefined();
+      // the file menu is a view-mode affordance, as its three chips were
+      expect(topbar().queryByRole('button', { name: 'Diagram actions' })).toBeNull();
     });
   });
 });

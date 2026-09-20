@@ -47,7 +47,7 @@ The breadcrumb trail at the top takes you back out.
 
 ## When a diagram is still too big
 
-If the diagram is a long chain that runs off the screen sideways, try the **Wrap** picker in the header first (`screen` aims at a 16:10 shape). It folds the chain onto several rows without touching what is nested where, and is saved with the other layout settings.
+If the diagram is a long chain that runs off the screen sideways, try the **Wrap** picker in the right dock's **Layout & style** section first (`screen` aims at a 16:10 shape). It folds the chain onto several rows without touching what is nested where, and is saved with the other layout settings.
 
 Splitting is usually better than more nesting. Give each subsystem its own diagram, then build an umbrella that pulls them together — see [Compose diagrams](compose-diagrams.md). `key` makes the shared database in two child diagrams resolve to one node in the umbrella.
 

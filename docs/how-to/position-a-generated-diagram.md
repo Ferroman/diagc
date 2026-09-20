@@ -60,7 +60,8 @@ switching plane or diagram discards them.
 
 A saved position beats every layout algorithm, so once a node is placed the algorithm
 picker stops moving it. To let the algorithms have it back, press **Auto-arrange**. It
-appears next to the picker whenever the active plane has saved positions.
+appears under the pickers, in the right dock's **Layout & style** section, whenever the
+active plane has saved positions.
 
 While it is on, the saved coordinates are ignored and the chosen algorithm arranges every
 node, so you can try Force or Tree against the whole diagram. Press it again to get your
@@ -80,7 +81,7 @@ Four aids, none of which need edit mode (in view mode a box moves with Alt+drag)
 
 - **Guides.** Drag a box near a sibling's edge or centre and it snaps into line; a dashed guide shows what it matched.
 - **Arrow keys.** Select a box and nudge it 5px at a time (`Shift` for 20px). No Alt needed.
-- **Snap.** The `⋮⋮ Snap` chip in the header snaps drags and nudges to a 10px grid.
+- **Snap.** The `⋮⋮` button in the top bar snaps drags and nudges to a 10px grid.
 - **Line several up.** `Shift`+click (or `Shift`+drag a marquee around) two or more boxes and use the toolbar that appears at the top of the canvas: align, or distribute three or more evenly.
 
 All four feed the same **Save positions** chip.
@@ -93,7 +94,8 @@ Hold **Alt** and drag a label: it slides along its edge, and hops to the other s
 
 Saving positions does **not** switch automatic layout off. Elk keeps arranging every node
 you have not placed, and your saved coordinates win for the ones you have. If elk keeps
-shoving your arrangement around, press **Freeze layout** in the top bar. It pins every box
+shoving your arrangement around, press **Freeze layout** in the right dock's **Layout & style**
+section. It pins every box
 where it is right now (unsaved drags included) and marks the plane manual:
 
 ```json

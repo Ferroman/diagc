@@ -56,8 +56,10 @@ import { useViewOps } from './hooks/useViewOps';
 import { edgeLabelsOf, addEdgeLabel, editEdgeLabel, moveEdgeLabel } from './edge-labels';
 import { computeSelectionColor } from './selection-color';
 import { DiagramPicker } from './DiagramPicker';
-import { EditorToolbar, relayoutPlane } from './editor/EditorToolbar';
-import { LayoutControls } from './LayoutControls';
+import { EditorToolbar } from './editor/EditorToolbar';
+import { EditLayoutActions, relayoutPlane } from './editor/LayoutActions';
+import { LayoutPanel } from './LayoutPanel';
+import { MenuButton, type MenuItem } from './MenuButton';
 import { mergePreview, withLayoutPreview } from './layoutPreview';
 import { unfoldedOf, withPlaneManual, withSavedPositions } from './savedPositions';
 import { uploadAsset } from './editor/images';
@@ -293,7 +295,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // elk partitions (second-order's order bands) are a layered-only feature, and
   // the renderer already forces layered for a partitioned profile — so the
   // algorithm picker would only ever offer a choice the run ignores. Reaches
-  // both the toolbar (edit mode) and the view-mode LayoutControls below.
+  // the dock's Layout & style section, which serves both modes.
   const algorithmLocked = notationProfile(notation).partitionOf !== undefined;
   // A borrowing plane's node membership resolves to its base plane
   // (compileView/resolveContainmentPlane), so tagging node.plane with the
@@ -866,6 +868,34 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   };
   useHotkeys({ rootRef: appRef, keymap, mode: editing ? 'edit' : 'view', handlersRef: hotkeyHandlers, suspended: hotkeysOpen, mac });
   const hint = (id: ActionId) => keyHint(keymap, id, mac);
+  // The topbar's ⋯ menu. Each row keeps the condition its chip had: a diagram
+  // compiled from TypeScript has no source here to rename or eject, only a
+  // model to copy.
+  const diagramMenu: MenuItem[] = [
+    ...(owned
+      ? [{ id: 'rename', label: 'Rename', title: `Rename this diagram${hint('diagram.rename')}`, onSelect: () => void actions.renameDiagram() }]
+      : []),
+    ...(model !== undefined
+      ? [
+          {
+            id: 'duplicate',
+            label: 'Duplicate',
+            title: `Copy this diagram — layout and all — to a new editable one and open it${hint('diagram.duplicate')}`,
+            onSelect: () => void actions.duplicateDiagram(),
+          },
+        ]
+      : []),
+    ...(owned
+      ? [
+          {
+            id: 'eject',
+            label: 'Eject',
+            title: `Promote this diagram to a TypeScript source — it becomes read-only here${hint('diagram.eject')}`,
+            onSelect: () => void actions.ejectDiagram(),
+          },
+        ]
+      : []),
+  ];
   const hotkeysContext = useMemo(() => ({ keymap, mac }), [keymap, mac]);
   const canvasKeyHints = useMemo(
     () => ({
@@ -882,7 +912,12 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     <HotkeysContext.Provider value={hotkeysContext}>
     <div className="app" ref={appRef}>
       <header className="topbar">
-        <strong>Diagramming Studio</strong>
+        {/* One row that has to fit a narrow Obsidian pane as well as a wide
+            window: what names the diagram on the left, what must be SEEN (an
+            unsaved arrangement) and the viewer's toggles on the right. Layout
+            and style live in the right dock's Layout & style section; the brand
+            is the first thing to give way (app.css). */}
+        <strong className="brand">Diagramming Studio</strong>
         <DiagramPicker
           names={names}
           selected={selected}
@@ -894,37 +929,24 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
           }}
           toggleRef={pickerToggleRef}
         />
+        {canDesign && (
+          <button
+            type="button"
+            className="chip icon"
+            aria-label="New diagram"
+            title={`New diagram${hint('diagram.new')}`}
+            onClick={() => void actions.newDiagram()}
+          >
+            ＋
+          </button>
+        )}
         {canDesign && !editing && (
-          <button className="chip" onClick={() => void actions.newDiagram()} title={`New diagram${hint('diagram.new')}`}>
-            New diagram
-          </button>
+          <MenuButton label="Diagram actions" items={diagramMenu}>
+            ⋯
+          </MenuButton>
         )}
-        {canDesign && !editing && ownedNames.has(selected) && (
-          <button className="chip" onClick={() => void actions.renameDiagram()} title={`Rename this diagram${hint('diagram.rename')}`}>
-            Rename
-          </button>
-        )}
-        {canDesign && !editing && model !== undefined && (
-          <button
-            className="chip"
-            onClick={() => void actions.duplicateDiagram()}
-            title={`Copy this diagram — layout and all — to a new editable one and open it${hint('diagram.duplicate')}`}
-          >
-            Duplicate
-          </button>
-        )}
-        {canDesign && !editing && ownedNames.has(selected) && (
-          <button
-            className="chip"
-            onClick={() => void actions.ejectDiagram()}
-            title={`Promote this diagram to a TypeScript source — it becomes read-only here${hint('diagram.eject')}`}
-          >
-            Eject
-          </button>
-        )}
-        <span className="spacer" />
         {model !== undefined &&
-          (ownedNames.has(selected) ? (
+          (owned ? (
             !editing && (
               <button className="chip" onClick={() => void enterEditFromSource()} title={`Edit this diagram${hint('diagram.toggle-edit')}`}>
                 Edit
@@ -935,80 +957,23 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
               read-only
             </span>
           ))}
-        {!editing && model !== undefined && (
-          <>
-            <LayoutControls
-              settings={activePlaneSettings}
-              onChange={previewLayoutSettings}
-              {...(model !== undefined ? { defaultDirection: defaultLayoutDirection(model) } : {})}
-              algorithmLocked={algorithmLocked}
-            />
-            {layoutPreview[layoutPlaneKey(model, activePlane)] !== undefined && (
-              <button
-                className="chip"
-                title="Drop the preview and go back to this diagram's own layout settings"
-                onClick={() =>
-                  setLayoutPreview((p) => {
-                    const next = { ...p };
-                    delete next[layoutPlaneKey(model, activePlane)];
-                    return next;
-                  })
-                }
-              >
-                Reset layout
-              </button>
-            )}
-            {Object.keys(layout?.planes[layoutPlaneKey(model, activePlane)] ?? {}).length > 0 && (
-              <button
-                type="button"
-                className={`chip${autoArrange ? ' active' : ''}`}
-                aria-pressed={autoArrange}
-                title={`${
-                  autoArrange
-                    ? 'Ignoring this diagram’s saved positions, so the layout algorithm arranges every node. Click to put them back.'
-                    : 'This plane has saved positions, which override the layout algorithm. Click to arrange those nodes automatically instead (nothing is written).'
-                }${hint('view.auto-arrange')}`}
-                onClick={() => setAutoArrange((v) => !v)}
-              >
-                Auto-arrange
-              </button>
-            )}
-            <button
-              type="button"
-              className={`chip${activePlaneManual ? ' active' : ''}`}
-              aria-pressed={activePlaneManual}
-              // A drilled snapshot (layoutApiRef.current?.snapshotPositions()) holds
-              // only the visible subtree, not the whole plane — freezing from there
-              // would set the plane-wide `manual` flag off the back of a partial
-              // snapshot. Must be done from the top level instead.
-              disabled={savingPositions || enteredPath.length > 0}
-              title={`${
-                enteredPath.length > 0
-                  ? 'Freezing pins the whole plane, but a drilled view only has positions for what it shows — leave the drilled view first.'
-                  : activePlaneManual
-                    ? 'Positions are pinned. Click to let the layout algorithm arrange this plane again (your positions are kept).'
-                    : 'Pin every box where it is so the layout algorithm stops moving them. Boxes added to the source later are still placed automatically until you move them.'
-              }${hint('view.freeze')}`}
-              onClick={() => void toggleFreeze()}
-            >
-              Freeze layout
-            </button>
-            {unsavedView && (
-              <button
-                className="chip primary"
-                disabled={savingPositions}
-                title={`Write the boxes and edge labels you moved, and which groups are open, to this diagram's layout file. Safe on a generated diagram: re-compiling rewrites the model, never the layout.${hint('view.save-positions')}`}
-                onClick={() => void savePositions()}
-              >
-                {savingPositions ? 'Saving…' : 'Save positions'}
-              </button>
-            )}
-          </>
+        <span className="spacer" />
+        {/* Stays up here, unlike the other layout chips: it appears only when
+            there is something to lose, and a folded dock must not hide that. */}
+        {!editing && model !== undefined && unsavedView && (
+          <button
+            className="chip primary"
+            disabled={savingPositions}
+            title={`Write the boxes and edge labels you moved, and which groups are open, to this diagram's layout file. Safe on a generated diagram: re-compiling rewrites the model, never the layout.${hint('view.save-positions')}`}
+            onClick={() => void savePositions()}
+          >
+            {savingPositions ? 'Saving…' : 'Save positions'}
+          </button>
         )}
-        {/* Beside the layout chips, and edit-mode only: opening every bubble is
-            a command on the undo stack, saved in the layout file so the
-            published page and the PNG agree — in view mode there is no session
-            to dispatch into (there the badge toggles for the session). */}
+        {/* Edit-mode only: opening every bubble is a command on the undo stack,
+            saved in the layout file so the published page and the PNG agree —
+            in view mode there is no session to dispatch into (there the badge
+            toggles for the session). */}
         {editing && hasThreats && (
           <button
             type="button"
@@ -1023,9 +988,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             Notes
           </button>
         )}
+        <span className="sep" />
         <button
           type="button"
-          className={`chip${snap ? ' active' : ''}`}
+          className={`chip icon${snap ? ' active' : ''}`}
+          aria-label="Snap to grid"
           aria-pressed={snap}
           title={`${
             snap
@@ -1034,53 +1001,21 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
           }${hint('window.snap')}`}
           onClick={() => setSnap((v) => !v)}
         >
-          ⋮⋮ Snap
+          ⋮⋮
         </button>
         <button
-          className="chip"
-          title={`Light / dark${hint('window.theme')}`}
+          type="button"
+          className="chip icon"
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          title={`${theme === 'dark' ? 'Light theme' : 'Dark theme'}${hint('window.theme')}`}
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         >
-          {theme === 'dark' ? '☀ light' : '☾ dark'}
+          {theme === 'dark' ? '☀' : '☾'}
         </button>
-        {editing ? (
-          <select
-            className="chip"
-            aria-label="Diagram style"
-            title="Diagram style (saved with the diagram)"
-            value={pinnedStyle ?? ''}
-            onChange={(e) =>
-              editor.dispatch({ type: 'set-diagram-style', style: e.target.value === '' ? null : e.target.value })
-            }
-          >
-            <option value="">(app default)</option>
-            {STYLE_PRESETS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <select
-            className="chip"
-            aria-label="Style"
-            title={pinnedStyle !== undefined ? 'Set by diagram' : 'Visual style'}
-            /* clamp: garbage in localStorage would otherwise render a blank select */
-            value={pinnedStyle ?? (isKnownStyle(style) ? style : 'clean')}
-            disabled={pinnedStyle !== undefined}
-            onChange={(e) => setStyle(e.target.value)}
-          >
-            {STYLE_PRESETS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        )}
         <button
           ref={gearRef}
           type="button"
-          className="chip"
+          className="chip icon"
           aria-label="Keyboard shortcuts"
           title={`Keyboard shortcuts${hint('window.hotkeys')}`}
           onClick={() => setHotkeysOpen(true)}
@@ -1104,18 +1039,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
       {editing && (
         <EditorToolbar
           editor={editor}
-          onNewDiagram={() => void actions.newDiagram()}
           onExit={leaveEdit}
           onSave={() => void doSave()}
           saving={saving}
           saveIssues={saveIssues}
-          activePlane={activePlane}
-          autoLayout={!activePlaneManual}
-          onToggleAutoLayout={toggleAutoLayout}
-          getAutoPositions={() => layoutApiRef.current?.autoPositions() ?? {}}
-          layoutSettings={activePlaneSettings}
-          {...(model !== undefined ? { defaultDirection: defaultLayoutDirection(model) } : {})}
-          onSetLayoutSettings={setLayoutSettings}
           selectionColor={selectionColor}
           tool={tool}
           onSetTool={setTool}
@@ -1125,8 +1052,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             if (patch.width !== undefined) setPenWidth(patch.width);
           }}
           drawingDisabled={enteredPath.length > 0}
-          layoutLocked={notationProfile(notation).layout !== undefined}
-          algorithmLocked={algorithmLocked}
         />
       )}
       {names.length === 0 && (
@@ -1497,6 +1422,121 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   onSelect={(id) => select({ kind: 'node', id })}
                 />
               )}
+              {/* How this plane is arranged and drawn — everything the topbar and
+                  the editor toolbar used to carry about layout. The pickers go
+                  when the notation arranges the plane itself (git graph,
+                  fishbone): elk never runs there, so none of them would do
+                  anything, in either mode. */}
+              <LayoutPanel
+                controls={
+                  notationProfile(notation).layout !== undefined
+                    ? null
+                    : {
+                        settings: activePlaneSettings,
+                        onChange: editing ? setLayoutSettings : previewLayoutSettings,
+                        defaultDirection: defaultLayoutDirection(model),
+                        algorithmLocked,
+                      }
+                }
+                styleControl={
+                  editing ? (
+                    <select
+                      className="chip-select"
+                      aria-label="Diagram style"
+                      title="Diagram style (saved with the diagram)"
+                      value={pinnedStyle ?? ''}
+                      onChange={(e) =>
+                        editor.dispatch({ type: 'set-diagram-style', style: e.target.value === '' ? null : e.target.value })
+                      }
+                    >
+                      <option value="">(app default)</option>
+                      {STYLE_PRESETS.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select
+                      className="chip-select"
+                      aria-label="Style"
+                      title={pinnedStyle !== undefined ? 'Set by diagram' : 'Visual style'}
+                      /* clamp: garbage in localStorage would otherwise render a blank select */
+                      value={pinnedStyle ?? (isKnownStyle(style) ? style : 'clean')}
+                      disabled={pinnedStyle !== undefined}
+                      onChange={(e) => setStyle(e.target.value)}
+                    >
+                      {STYLE_PRESETS.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  )
+                }
+              >
+                {editing && (
+                  <EditLayoutActions
+                    editor={editor}
+                    activePlane={activePlane}
+                    autoLayout={!activePlaneManual}
+                    onToggleAutoLayout={toggleAutoLayout}
+                    getAutoPositions={() => layoutApiRef.current?.autoPositions() ?? {}}
+                  />
+                )}
+                {!editing && layoutPreview[layoutPlaneKey(model, activePlane)] !== undefined && (
+                  <button
+                    className="chip"
+                    title="Drop the preview and go back to this diagram's own layout settings"
+                    onClick={() =>
+                      setLayoutPreview((p) => {
+                        const next = { ...p };
+                        delete next[layoutPlaneKey(model, activePlane)];
+                        return next;
+                      })
+                    }
+                  >
+                    Reset layout
+                  </button>
+                )}
+                {!editing && Object.keys(layout?.planes[layoutPlaneKey(model, activePlane)] ?? {}).length > 0 && (
+                  <button
+                    type="button"
+                    className={`chip${autoArrange ? ' active' : ''}`}
+                    aria-pressed={autoArrange}
+                    title={`${
+                      autoArrange
+                        ? 'Ignoring this diagram’s saved positions, so the layout algorithm arranges every node. Click to put them back.'
+                        : 'This plane has saved positions, which override the layout algorithm. Click to arrange those nodes automatically instead (nothing is written).'
+                    }${hint('view.auto-arrange')}`}
+                    onClick={() => setAutoArrange((v) => !v)}
+                  >
+                    Auto-arrange
+                  </button>
+                )}
+                {!editing && (
+                  <button
+                    type="button"
+                    className={`chip${activePlaneManual ? ' active' : ''}`}
+                    aria-pressed={activePlaneManual}
+                    // A drilled snapshot (layoutApiRef.current?.snapshotPositions()) holds
+                    // only the visible subtree, not the whole plane — freezing from there
+                    // would set the plane-wide `manual` flag off the back of a partial
+                    // snapshot. Must be done from the top level instead.
+                    disabled={savingPositions || enteredPath.length > 0}
+                    title={`${
+                      enteredPath.length > 0
+                        ? 'Freezing pins the whole plane, but a drilled view only has positions for what it shows — leave the drilled view first.'
+                        : activePlaneManual
+                          ? 'Positions are pinned. Click to let the layout algorithm arrange this plane again (your positions are kept).'
+                          : 'Pin every box where it is so the layout algorithm stops moving them. Boxes added to the source later are still placed automatically until you move them.'
+                    }${hint('view.freeze')}`}
+                    onClick={() => void toggleFreeze()}
+                  >
+                    Freeze layout
+                  </button>
+                )}
+              </LayoutPanel>
               <LayersPlanesPanel
                 model={model}
                 onCommand={editor.dispatch}

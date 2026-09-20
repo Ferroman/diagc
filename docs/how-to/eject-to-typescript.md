@@ -19,10 +19,10 @@ same as any generated diagram.
 ## In the studio
 
 1. Select an editable (JSON-owned) diagram, outside edit mode.
-2. Click the **Eject** chip in the toolbar and confirm the dialog — it names the diagram and
+2. Open the `⋯` menu beside the diagram picker, choose **Eject**, and confirm the dialog — it names the diagram and
    states plainly what's about to happen: the JSON source is replaced by a generated
    `.diagram.ts`, and the diagram becomes read-only here.
-3. On success the chip disappears — the diagram now shows the same `read-only` chip a
+3. On success **Eject** leaves the menu and **Edit** leaves the top bar — the diagram now shows the same `read-only` chip a
    `.diagram.ts` always does. The model, layout and current selection are untouched; only
    ownership flipped.
 

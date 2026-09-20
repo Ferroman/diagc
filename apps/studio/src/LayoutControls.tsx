@@ -28,10 +28,10 @@ const DIRECTIONS: { value: string; label: string }[] = [
 // sidecar stores; the empty value is "off" and sends `undefined` like every
 // other control's default.
 const WRAP_PRESETS: { value: string; label: string }[] = [
-  { value: '', label: 'Wrap: off' },
-  { value: '1', label: 'Wrap: square' },
-  { value: '1.6', label: 'Wrap: screen' },
-  { value: '2', label: 'Wrap: wide' },
+  { value: '', label: 'Off' },
+  { value: '1', label: 'Square' },
+  { value: '1.6', label: 'Screen' },
+  { value: '2', label: 'Wide' },
 ];
 
 export interface LayoutControlsProps {
@@ -53,6 +53,11 @@ export interface LayoutControlsProps {
  * the settings live. The editor dispatches them into the undo stack; view mode
  * holds them in ephemeral React state. Choosing a control's default value
  * sends `undefined`, so neither store accumulates redundant entries.
+ *
+ * One labelled row per control: these live in the dock's Layout & style section
+ * (LayoutPanel), not the topbar, where five bare selects pushed the row past
+ * the window's edge. Each control keeps its `aria-label` — the longer name
+ * ("Layout algorithm") still contains the row's visible one.
  */
 export function LayoutControls({ settings, onChange, defaultDirection = 'DOWN', algorithmLocked }: LayoutControlsProps) {
   // Locked notations run layered whatever the sidecar names (elk partitions are
@@ -67,7 +72,7 @@ export function LayoutControls({ settings, onChange, defaultDirection = 'DOWN', 
   // never misreports what is actually arranging the diagram.
   const wrapOptions = WRAP_PRESETS.some((w) => w.value === wrapValue)
     ? WRAP_PRESETS
-    : [...WRAP_PRESETS, { value: wrapValue, label: `Wrap: ${wrapValue} (custom)` }];
+    : [...WRAP_PRESETS, { value: wrapValue, label: `${wrapValue} (custom)` }];
 
   // A diagram may already name an algorithm the picker no longer proposes (a
   // sidecar written before radial/stress were withdrawn). Keep it in the list
@@ -80,77 +85,92 @@ export function LayoutControls({ settings, onChange, defaultDirection = 'DOWN', 
   return (
     <>
       {algorithmLocked !== true && (
-        <select
-          className="chip-select"
-          aria-label="Layout algorithm"
-          title="Layout algorithm"
-          value={algorithm}
-          onChange={(e) => onChange({ algorithm: e.target.value === 'layered' ? undefined : e.target.value })}
-        >
-          {algorithms.map((a) => (
-            <option key={a.value} value={a.value}>
-              {a.label}
-            </option>
-          ))}
-        </select>
+        <label className="layout-row">
+          <span>Algorithm</span>
+          <select
+            className="chip-select"
+            aria-label="Layout algorithm"
+            title="Layout algorithm"
+            value={algorithm}
+            onChange={(e) => onChange({ algorithm: e.target.value === 'layered' ? undefined : e.target.value })}
+          >
+            {algorithms.map((a) => (
+              <option key={a.value} value={a.value}>
+                {a.label}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
       {algorithm === 'layered' && (
-        <select
-          className="chip-select"
-          aria-label="Layout direction"
-          title="Layout direction"
-          value={direction}
-          onChange={(e) => onChange({ direction: e.target.value === defaultDirection ? undefined : e.target.value })}
-        >
-          {DIRECTIONS.map((d) => (
-            <option key={d.value} value={d.value}>
-              {d.label}
-            </option>
-          ))}
-        </select>
+        <label className="layout-row">
+          <span>Direction</span>
+          <select
+            className="chip-select"
+            aria-label="Layout direction"
+            title="Layout direction"
+            value={direction}
+            onChange={(e) => onChange({ direction: e.target.value === defaultDirection ? undefined : e.target.value })}
+          >
+            {DIRECTIONS.map((d) => (
+              <option key={d.value} value={d.value}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
       {algorithm === 'layered' && (
+        <label className="layout-row">
+          <span>Wrap</span>
+          <select
+            className="chip-select"
+            aria-label="Wrap"
+            title="Wrap long chains onto several rows, aiming at this width÷height"
+            value={wrapValue}
+            onChange={(e) => onChange({ aspectRatio: e.target.value === '' ? undefined : Number(e.target.value) })}
+          >
+            {wrapOptions.map((w) => (
+              <option key={w.value} value={w.value}>
+                {w.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <label className="layout-row">
+        <span>Spacing</span>
+        <input
+          type="number"
+          className="chip-num"
+          aria-label="Node spacing"
+          title="Node spacing in px (blank = default)"
+          min={8}
+          max={200}
+          step={4}
+          placeholder="40"
+          value={settings.spacing ?? ''}
+          onChange={(e) => {
+            const v = e.target.value.trim();
+            onChange({ spacing: v === '' ? undefined : Number(v) });
+          }}
+        />
+      </label>
+      <label className="layout-row">
+        <span>Edges</span>
         <select
           className="chip-select"
-          aria-label="Wrap"
-          title="Wrap long chains onto several rows, aiming at this width÷height"
-          value={wrapValue}
-          onChange={(e) => onChange({ aspectRatio: e.target.value === '' ? undefined : Number(e.target.value) })}
+          aria-label="Edge routing"
+          title="How routed edges turn their corners. Both follow the layout's route around boxes; an edge to a hand-placed box floats as a curve either way."
+          value={edgeRouting}
+          onChange={(e) =>
+            onChange({ edgeRouting: e.target.value === 'curved' ? undefined : (e.target.value as 'orthogonal') })
+          }
         >
-          {wrapOptions.map((w) => (
-            <option key={w.value} value={w.value}>
-              {w.label}
-            </option>
-          ))}
+          <option value="curved">Rounded</option>
+          <option value="orthogonal">Square</option>
         </select>
-      )}
-      <input
-        type="number"
-        className="chip-num"
-        aria-label="Node spacing"
-        title="Node spacing in px (blank = default)"
-        min={8}
-        max={200}
-        step={4}
-        placeholder="40"
-        value={settings.spacing ?? ''}
-        onChange={(e) => {
-          const v = e.target.value.trim();
-          onChange({ spacing: v === '' ? undefined : Number(v) });
-        }}
-      />
-      <select
-        className="chip-select"
-        aria-label="Edge routing"
-        title="How routed edges turn their corners. Both follow the layout's route around boxes; an edge to a hand-placed box floats as a curve either way."
-        value={edgeRouting}
-        onChange={(e) =>
-          onChange({ edgeRouting: e.target.value === 'curved' ? undefined : (e.target.value as 'orthogonal') })
-        }
-      >
-        <option value="curved">Rounded edges</option>
-        <option value="orthogonal">Square edges</option>
-      </select>
+      </label>
     </>
   );
 }
