@@ -544,7 +544,7 @@ function Inner(props: DiagramViewProps) {
     ignoreSavedPositions: props.ignoreSavedPositions,
     viewPositions,
   });
-  const { geometryRef, routes, placedGeometry, arrangedGeometry, containerShifts, routing, laidAt, labelSpots, fixed, flowDirection } = viewLayout;
+  const { geometryRef, routes, placedGeometry, arrangedGeometry, containerShifts, routing, laidAt, labelSpots, fixed, settledFor, flowDirection } = viewLayout;
 
   // Where each open container's origin sits BEFORE the fit pass shifted it, in
   // absolute flow coordinates — the frame a child's saved position is relative
@@ -574,14 +574,24 @@ function Inner(props: DiagramViewProps) {
   const containerShiftsRef = useRef(containerShifts);
   containerShiftsRef.current = containerShifts;
 
-  // A drill (enter/exit) swaps the whole scene, so once it re-layouts, glide to
-  // fit the new isolated view.
+  // A drill (enter/exit) or a different diagram swaps the whole scene, so once
+  // it re-layouts, fit the new view: a glide into a level of the same diagram, a
+  // jump to where a first open would land for another one (see RootFit).
+  //
+  // "Once it re-layouts" is `settledFor`, not `arrangedGeometry !== null`: the
+  // last arrangement is kept while the next is computed, so the render that
+  // swaps the scene already holds a non-null one — the OLD scene's. Where the
+  // two share ids (a drill always does; so does a diagram and the copy that was
+  // added to) that is a complete-looking, already-measured set of boxes, React
+  // Flow resolves the fit against it on the spot, and the real arrangement then
+  // lands under a camera framing the wrong thing.
   useEffect(() => {
-    if (!pendingRootFitRef.current || arrangedGeometry === null) return;
-    pendingRootFitRef.current = false;
-    void reactFlow.fitView({ padding: 0.15, duration: 500 });
+    const fit = pendingRootFitRef.current;
+    if (fit === null || arrangedGeometry === null || settledFor !== compiled) return;
+    pendingRootFitRef.current = null;
+    void reactFlow.fitView(fit === 'glide' ? { padding: 0.15, duration: 500 } : undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- pendingRootFitRef is a stable useRef identity (owned by useDrillNavigation) read through .current
-  }, [compiled, arrangedGeometry, reactFlow]);
+  }, [compiled, arrangedGeometry, settledFor, reactFlow]);
 
   // Paste lands at the viewport center; pastes aimed at form fields stay theirs.
   const onImageFiles = edit?.onImageFiles;

@@ -168,6 +168,42 @@ describe('useViewLayout', () => {
     expect(result.current.fixed.size).toBe(0);
   });
 
+  it('names the scene its arrangement belongs to — the old one, until the new layout lands', async () => {
+    // Layout is asynchronous and the last arrangement is kept meanwhile, so for
+    // a moment after the scene changes `arrangedGeometry` is non-null and WRONG.
+    // Whoever must wait for the scene's own layout (a fit) compares this.
+    const a = inputFor(fixture());
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), { initialProps: a });
+    expect(result.current.settledFor).toBeNull();
+    await waitFor(() => expect(result.current.settledFor).toBe(a.compiled));
+    const other = fixture();
+    other.id = 'elsewhere';
+    const b = inputFor(other);
+    rerender(b);
+    expect(result.current.arrangedGeometry).not.toBeNull();
+    expect(result.current.settledFor).toBe(a.compiled);
+    await waitFor(() => expect(result.current.settledFor).toBe(b.compiled));
+  });
+
+  it('a layout that throws still settles, so nothing waiting on the scene waits forever', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const broken: NotationProfile = {
+        id: 'default',
+        layout: () => {
+          throw new Error('no arrangement');
+        },
+      };
+      const input = inputFor(fixture(), { profile: broken });
+      const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), { initialProps: input });
+      await waitFor(() => expect(result.current.settledFor).toBe(input.compiled));
+      expect(result.current.arrangedGeometry).toBeNull();
+      expect(error).toHaveBeenCalled();
+    } finally {
+      error.mockRestore();
+    }
+  });
+
   it('layered planes route with soft corners, orthogonal planes with tight ones; bowed notations float', () => {
     const m = fixture();
     const routingOf = (over: Partial<ViewLayoutInput>) =>

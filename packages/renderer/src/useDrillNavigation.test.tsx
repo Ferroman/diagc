@@ -40,7 +40,7 @@ describe('useDrillNavigation', () => {
     act(() => result.current.enterNode('inner'));
     expect(result.current.enteredPath).toEqual(['sys', 'svc', 'inner']);
     expect(result.current.drillRoot).toBe('inner');
-    expect(result.current.pendingRootFitRef.current).toBe(true);
+    expect(result.current.pendingRootFitRef.current).toBe('glide');
     expect(onEnteredPathChange).toHaveBeenLastCalledWith(['sys', 'svc', 'inner']);
   });
 
@@ -75,6 +75,35 @@ describe('useDrillNavigation', () => {
     rerender(inputFor({ model: other, visibleRef }));
     expect(result.current.enteredPath).toEqual([]);
     expect(visibleRef.current).toEqual([]);
+  });
+
+  it('a different diagram asks for a fresh fit — a jump, the way a first open lands', () => {
+    // React Flow's `fitView` prop fits on mount only, and the studio swaps the
+    // model without remounting: unasked, the next diagram would open under the
+    // last one's pan and zoom.
+    const { result, rerender } = renderHook((p: DrillNavigationInput) => useDrillNavigation(p), { initialProps: inputFor() });
+    expect(result.current.pendingRootFitRef.current).toBeNull();
+    const other = fixture();
+    other.id = 'elsewhere';
+    rerender(inputFor({ model: other }));
+    expect(result.current.pendingRootFitRef.current).toBe('jump');
+  });
+
+  it('a deep link into a different diagram still jumps: the drill it carries does not turn the open into a glide', () => {
+    const { result, rerender } = renderHook((p: DrillNavigationInput) => useDrillNavigation(p), { initialProps: inputFor() });
+    const other = fixture();
+    other.id = 'elsewhere';
+    rerender(inputFor({ model: other, enteredPathProp: ['sys'] }));
+    expect(result.current.enteredPath).toEqual(['sys']);
+    expect(result.current.pendingRootFitRef.current).toBe('jump');
+  });
+
+  it('an edit of the same diagram leaves the camera alone', () => {
+    // same id, new object: an edit, or the compile watcher's reload — neither
+    // may move the view out from under whoever is reading it
+    const { result, rerender } = renderHook((p: DrillNavigationInput) => useDrillNavigation(p), { initialProps: inputFor() });
+    rerender(inputFor());
+    expect(result.current.pendingRootFitRef.current).toBeNull();
   });
 
   it('an edit keeps the drill trail but prunes deleted nodes to the surviving prefix', () => {
@@ -114,6 +143,6 @@ describe('useDrillNavigation', () => {
     expect(result.current.enteredPath).toEqual(['sys', 'svc']);
     rerender(inputFor({ enteredPathProp: ['sys'] }));
     expect(result.current.enteredPath).toEqual(['sys']);
-    expect(result.current.pendingRootFitRef.current).toBe(true);
+    expect(result.current.pendingRootFitRef.current).toBe('glide');
   });
 });

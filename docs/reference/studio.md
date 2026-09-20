@@ -21,6 +21,7 @@ A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot ente
 | Double-click it again | Fold it back |
 | Double-click a leaf | Zoom to it |
 | Double-click empty canvas (view mode) | Fit the whole diagram |
+| Pick another diagram (the picker, or browser Back / Forward) | It opens fitted, exactly as a first open of it does; the previous diagram's pan and zoom are not carried over. Reloading the same diagram — an edit, a recompile — leaves the view where it is. |
 | `Shift` + click a node, or `Shift` + drag on empty canvas | Add to the selection / draw a marquee. Dragging any selected node drags them all. |
 | Scroll | Pan |
 | Pinch, or the corner controls | Zoom |

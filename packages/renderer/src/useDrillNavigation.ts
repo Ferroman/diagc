@@ -18,13 +18,22 @@ export interface DrillNavigationInput {
   isAlwaysExpanded: (id: string) => boolean;
 }
 
+/**
+ * How a pending whole-scene fit moves the camera. A drill GLIDES: the new scene
+ * is a level of the same diagram, and the motion says where you went. A
+ * different diagram JUMPS, exactly as a first open of it lands — the two scenes
+ * share nothing for a glide to connect, and one reached through the picker
+ * should look the way it does reached through its URL.
+ */
+export type RootFit = 'glide' | 'jump';
+
 export interface DrillNavigation {
   enteredPath: string[];
   drillRoot: string | undefined;
   focus: string[];
   enterNode: (id: string) => void;
   exitTo: (id: string | null) => void;
-  pendingRootFitRef: MutableRefObject<boolean>;
+  pendingRootFitRef: MutableRefObject<RootFit | null>;
 }
 
 export function useDrillNavigation(input: DrillNavigationInput): DrillNavigation {
@@ -43,9 +52,9 @@ export function useDrillNavigation(input: DrillNavigationInput): DrillNavigation
   useEffect(() => {
     onEnteredPathChange?.(enteredPath);
   }, [enteredPath, onEnteredPathChange]);
-  // A pending "fit the whole view" (exiting to the bird's-eye), applied by the
-  // same post-layout glide effect that handles per-node fits.
-  const pendingRootFitRef = useRef(false);
+  // A pending "fit the whole view" (a drill, an exit to the bird's-eye, a
+  // different diagram), applied by DiagramView's post-layout fit effect.
+  const pendingRootFitRef = useRef<RootFit | null>(null);
 
   // The snapshot the reducer compares against, rebuilt on demand from this
   // hook's inputs.
@@ -78,6 +87,11 @@ export function useDrillNavigation(input: DrillNavigationInput): DrillNavigation
     setFocus([]);
     setEnteredPath([]);
     effectivePath = [];
+    // …the camera included. React Flow's `fitView` prop fits on mount only and
+    // the host swaps the model without remounting the view, so unasked the next
+    // diagram opens under this one's pan and zoom: a small one after a large one
+    // as a speck, a large one after a small one mostly off screen.
+    pendingRootFitRef.current = 'jump';
   } else if (sync.seen.plane !== input.plane) {
     syncSeen({ type: 'sync', next: seenKey() });
     // a plane switch remaps focus to keep the same entities visible; the drill
@@ -103,7 +117,9 @@ export function useDrillNavigation(input: DrillNavigationInput): DrillNavigation
     if (input.enteredPathProp !== undefined) {
       const next = pruneToModel(input.enteredPathProp, input.model);
       if (next.length !== effectivePath.length || next.some((id, i) => id !== effectivePath[i])) {
-        pendingRootFitRef.current = true;
+        // `??=`: a deep link into a DIFFERENT diagram arrives with the model
+        // switch above, and that open stays a jump.
+        pendingRootFitRef.current ??= 'glide';
         setEnteredPath(next);
         setFocus([]);
       }
@@ -139,7 +155,7 @@ export function useDrillNavigation(input: DrillNavigationInput): DrillNavigation
       if (isAlwaysExpanded(id)) return;
       const chain = drillChain(viewHierarchy.parentsOf, id, enteredPathRef.current);
       if (chain.length === 0) return; // unknown / not in this plane
-      pendingRootFitRef.current = true;
+      pendingRootFitRef.current = 'glide';
       setEnteredPath(chain);
       setFocus([]); // drilling replaces any in-place (sheet-flip/peek) expansion
     },
@@ -150,7 +166,7 @@ export function useDrillNavigation(input: DrillNavigationInput): DrillNavigation
   // becomes that frame's interior, so re-fit the whole thing.
   const exitTo = (id: string | null) => {
     const path = id === null ? [] : truncatePath(enteredPath, id);
-    pendingRootFitRef.current = true;
+    pendingRootFitRef.current = 'glide';
     setEnteredPath(path);
     setFocus([]);
   };

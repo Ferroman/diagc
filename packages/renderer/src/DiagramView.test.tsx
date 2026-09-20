@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getViewportForBounds } from '@xyflow/react';
 import { layoutPlaneKey, model, type DiagramModel, type ThreatTarget } from '@diagramming/core';
 import { DiagramView, LIBRARY_ENTRY_DND_TYPE, type CanvasCommands, type LayoutApi } from './DiagramView';
@@ -357,6 +357,112 @@ describe('DiagramView', () => {
     rerender(<DiagramView model={b.toJSON()} enteredPath={['shared']} />);
     expect(await screen.findByText('leaf-b')).toBeDefined();
     expect(await screen.findByLabelText('Nested zoom breadcrumb')).toBeDefined();
+  });
+
+  describe('switching to a different diagram', () => {
+    // test-setup's ResizeObserver reports a node the moment it is observed: one
+    // callback per node, and React Flow resolves a queued fit on the first
+    // report — framing a single box, whatever was asked of it. A browser hands
+    // over every node observed in a frame in ONE callback. These cases are about
+    // what a fit frames, so they measure the way a browser does.
+    class BatchingResizeObserver {
+      private pending: Element[] = [];
+      private readonly callback: ResizeObserverCallback;
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+      observe(target: Element) {
+        if (this.pending.push(target) > 1) return;
+        queueMicrotask(() => {
+          const contentRect = { x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 600, width: 800, height: 600 };
+          const entries = this.pending.splice(0).map((t) => ({ target: t, contentRect }));
+          act(() => this.callback(entries as unknown as ResizeObserverEntry[], this as unknown as ResizeObserver));
+        });
+      }
+      unobserve() {}
+      disconnect() {
+        this.pending = [];
+      }
+    }
+    const stubbed = window.ResizeObserver;
+    beforeEach(() => {
+      window.ResizeObserver = BatchingResizeObserver as unknown as typeof ResizeObserver;
+    });
+    afterEach(() => {
+      window.ResizeObserver = stubbed;
+    });
+
+    /** a chain of `count` services, ids n1…n<count> — two of these share ids */
+    const chain = (id: string, count: number): DiagramModel => {
+      const nodes = Array.from({ length: count }, (_, i) => ({ id: `n${i + 1}`, name: `Node ${i + 1}`, type: 'service' }));
+      return {
+        version: 1,
+        id,
+        name: id,
+        nodes,
+        containment: [],
+        relations: nodes.slice(1).map((n, i) => ({ id: `${nodes[i]!.id}->${n.id}#0`, from: nodes[i]!.id, to: n.id, kind: 'sync' })),
+        layers: [],
+        planes: [],
+      };
+    };
+    const viewportOf = (container: HTMLElement) =>
+      (container.querySelector('.react-flow__viewport') as HTMLElement).style.transform.replace(/\s+/g, '');
+    const boxes = (container: HTMLElement) => [...container.querySelectorAll<HTMLElement>('.react-flow__node')];
+    const drawn = (container: HTMLElement) => boxes(container).length;
+    /**
+     * The viewport that frames every box now drawn, the way React Flow's own
+     * fit computes it (its default padding — what the `fitView` prop uses for a
+     * first open). Every box measures 800×600 here (test-setup's
+     * offsetWidth/offsetHeight), in a pane of the same size.
+     */
+    const framing = (container: HTMLElement): string => {
+      const at = boxes(container).map((el) => {
+        const m = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(el.style.transform)!;
+        return { x: Number(m[1]), y: Number(m[2]) };
+      });
+      const x = Math.min(...at.map((p) => p.x));
+      const y = Math.min(...at.map((p) => p.y));
+      const bounds = { x, y, width: Math.max(...at.map((p) => p.x)) + 800 - x, height: Math.max(...at.map((p) => p.y)) + 600 - y };
+      const v = getViewportForBounds(bounds, 800, 600, 0.02, 4, 0.1);
+      return `translate(${v.x}px,${v.y}px)scale(${v.zoom})`;
+    };
+
+    it('fits the new diagram instead of keeping the last one\'s pan and zoom', async () => {
+      const { container, rerender } = render(<DiagramView model={containerEndpointModel()} />);
+      await screen.findByText('gw');
+      await waitFor(() => expect(viewportOf(container)).toContain('scale('));
+      rerender(<DiagramView model={chain('big', 9)} />);
+      await waitFor(() => expect(drawn(container)).toBe(9));
+      await waitFor(() => expect(viewportOf(container)).toBe(framing(container)));
+    });
+
+    it('waits for the new diagram\'s own layout: a copy that was added to shares its ids with the original', async () => {
+      // The last arrangement is kept while the next is computed, and these two
+      // diagrams share n1/n2 — so the moment after the switch there is a
+      // complete-looking, measured scene on screen that is the OLD diagram's. A
+      // fit taken then frames two boxes and leaves the other seven off screen.
+      const { container, rerender } = render(<DiagramView model={chain('original', 2)} />);
+      await waitFor(() => expect(drawn(container)).toBe(2));
+      await waitFor(() => expect(viewportOf(container)).toContain('scale('));
+      rerender(<DiagramView model={chain('copy', 9)} />);
+      await waitFor(() => expect(drawn(container)).toBe(9));
+      await waitFor(() => expect(viewportOf(container)).toBe(framing(container)));
+    });
+
+    it('leaves the view alone when the same diagram comes back as a new object (an edit, a reload)', async () => {
+      const { container, rerender } = render(<DiagramView model={chain('same', 2)} />);
+      await waitFor(() => expect(drawn(container)).toBe(2));
+      await waitFor(() => expect(viewportOf(container)).toContain('scale('));
+      const before = viewportOf(container);
+      rerender(<DiagramView model={chain('same', 9)} />);
+      await waitFor(() => expect(drawn(container)).toBe(9));
+      // give a wrongly queued fit the time to land before calling it absent
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 50));
+      });
+      expect(viewportOf(container)).toBe(before);
+    });
   });
 
   it('edit mode: Backspace on a selected node reports onDeleteSelection, never removes locally', async () => {

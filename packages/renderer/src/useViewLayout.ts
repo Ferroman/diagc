@@ -62,6 +62,13 @@ export interface ViewLayout {
   /** nodes the notation's layout fixed in place (LayoutResult.fixed): drawn
    * where they were laid whatever was saved, and not to be offered a move */
   fixed: ReadonlySet<string>;
+  /** the scene the last FINISHED layout run was for; null before the first.
+   * Layout is asynchronous and the previous arrangement is kept meanwhile, so
+   * right after the scene changes `arrangedGeometry` is non-null and the OLD
+   * scene's — whatever must act on the scene's own arrangement (a fit) waits
+   * for this to name the `compiled` it holds. A run that failed counts: there
+   * is nothing better coming, and a waiter must not wait forever. */
+  settledFor: ReturnType<typeof compileView> | null;
   layoutSettings: NonNullable<LayoutOverlay['settings']>[string] | undefined;
   /** the direction a layered run uses — the sidecar's, else the model's, else
    * the default (git-graph never runs elk, so this is not what it drew) */
@@ -224,6 +231,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   const [routes, setRoutes] = useState<Map<string, EdgePoint[]>>(() => new Map());
   const [labelSpots, setLabelSpots] = useState<ReadonlyMap<string, EdgePoint>>(NO_SPOTS);
   const [fixed, setFixed] = useState<ReadonlySet<string>>(NONE_FIXED);
+  const [settledFor, setSettledFor] = useState<ViewLayout['settledFor']>(null);
   useEffect(() => {
     let live = true;
     // A notation that owns the arrangement bypasses elk entirely; wrapped in a
@@ -240,6 +248,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
         setRoutes(r.routes);
         setLabelSpots(r.labelSpots);
         setFixed(r.fixed ?? NONE_FIXED);
+        setSettledFor(input.compiled);
       })
       // layoutView degrades to the default algorithm rather than rejecting, so
       // getting here via that path means even the degraded attempt failed. A
@@ -249,7 +258,9 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
       // unhandled rejection here reads on screen as the layout control
       // silently doing nothing.
       .catch((e: unknown) => {
-        if (live) console.error('layout failed; keeping the previous arrangement', e);
+        if (!live) return;
+        console.error('layout failed; keeping the previous arrangement', e);
+        setSettledFor(input.compiled);
       });
     return () => {
       live = false;
@@ -342,6 +353,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     laidAt,
     labelSpots,
     fixed,
+    settledFor,
     layoutSettings,
     flowDirection: (runSettings?.direction ?? FALLBACK_DIRECTION) as LayoutDirection,
   };
