@@ -24,13 +24,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      # The version comes from `packageManager` in package.json.
-      - uses: pnpm/action-setup@v4
+      # The version comes from `packageManager` in package.json. That pins pnpm 10, which
+      # is why this is still `action-setup` and not its successor `pnpm/setup` — that one
+      # installs pnpm 11 and newer only.
+      - uses: pnpm/action-setup@v6
 
       # Node 24 is what mise.toml pins for development; `engines` allows >= 22.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
