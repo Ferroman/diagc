@@ -87,6 +87,8 @@ import '@fontsource/kalam/700.css';
 export {
   DEFAULT_ON_NODE_META_KEYS,
   LIBRARY_ENTRY_DND_TYPE,
+  type CanvasCommands,
+  type CanvasKeyHint,
   type DiagramSelection,
   type DiagramViewProps,
   type DrawTool,
@@ -97,6 +99,8 @@ export {
 import {
   DEFAULT_ON_NODE_META_KEYS,
   LIBRARY_ENTRY_DND_TYPE,
+  type CanvasCommands,
+  type CanvasKeyHint,
   type DiagramViewProps,
 } from './view-types';
 
@@ -349,6 +353,7 @@ function Inner(props: DiagramViewProps) {
     tool: props.tool,
     drillRoot,
     chromeless,
+    builtinKeys: props.builtinKeys !== false,
     modelId: props.model.id,
     pen: props.pen,
     onAddStroke: edit?.onAddStroke,
@@ -1185,6 +1190,77 @@ function Inner(props: DiagramViewProps) {
   });
   const { cld, loopEdges, showLoops, setShowLoops, selectedNode, setSelectedNode, focusConnected, setFocusConnected, loopHighlight } = loops;
 
+  // The host's keyboard (see DiagramViewProps.canvasCommandsRef). Rebuilt and
+  // re-assigned on every commit rather than read through refs like the layout
+  // api: every entry closes over this render's state (is there a legend? how
+  // many boxes are selected?), and an assignment per render is cheaper than
+  // mirroring ten values into refs to keep one object stable.
+  const canvasCommands: CanvasCommands = {
+    toggleLaser: () => {
+      setLaserOn((v) => !v);
+      return true;
+    },
+    toggleDim: () => {
+      setFocusConnected((v) => !v);
+      return true;
+    },
+    toggleLegend: () => {
+      if (legendRowList.length === 0) return false;
+      setShowLegend((v) => !v);
+      return true;
+    },
+    toggleDrawings: () => {
+      if (strokes.length === 0 || drillRoot !== undefined) return false;
+      setDrawingsVisible((v) => !v);
+      return true;
+    },
+    toggleLoops: () => {
+      if (!cld) return false;
+      // same order as the button: hiding removes the badges you'd click to un-highlight
+      if (showLoops) loopHighlight.clear();
+      setShowLoops((v) => !v);
+      return true;
+    },
+    zoomIn: () => {
+      void reactFlow.zoomIn();
+      return true;
+    },
+    zoomOut: () => {
+      void reactFlow.zoomOut();
+      return true;
+    },
+    fitView: () => {
+      const api = props.layoutApiRef?.current;
+      if (api !== undefined && api !== null) api.fitView();
+      else void reactFlow.fitView();
+      return true;
+    },
+    // The counts are SelectionToolbar's own: it shows itself from two boxes and
+    // enables Distribute from three.
+    align: (mode) => {
+      if (!canArrange || selectedIds.length < 2) return false;
+      arrangeSelection((boxes) => alignBoxes(boxes, mode));
+      return true;
+    },
+    distribute: (axis) => {
+      if (!canArrange || selectedIds.length < 3) return false;
+      arrangeSelection((boxes) => distributeBoxes(boxes, axis));
+      return true;
+    },
+  };
+  useEffect(() => {
+    const ref = props.canvasCommandsRef;
+    if (ref === undefined) return;
+    ref.current = canvasCommands;
+    return () => {
+      ref.current = null;
+    };
+  });
+  const keyHint = (k: CanvasKeyHint): string => {
+    const h = props.keyHints?.[k] ?? (k === 'laser' && props.builtinKeys !== false ? 'L' : undefined);
+    return h !== undefined && h !== '' ? ` (${h})` : '';
+  };
+
   return (
     <LoopHighlightContext.Provider value={loopHighlight}>
     {/* the badges and chips inside read this to know whether their bubble is
@@ -1539,7 +1615,7 @@ function Inner(props: DiagramViewProps) {
         <Controls>
           <ControlButton
             className={`dg-focus-toggle${focusConnected ? '' : ' dg-focus-toggle-off'}`}
-            title={focusConnected ? 'Stop dimming unconnected on select' : 'Dim unconnected on select'}
+            title={`${focusConnected ? 'Stop dimming unconnected on select' : 'Dim unconnected on select'}${keyHint('dim')}`}
             aria-label={focusConnected ? 'Stop dimming unconnected on select' : 'Dim unconnected on select'}
             aria-pressed={focusConnected}
             onClick={() => setFocusConnected((v) => !v)}
@@ -1548,7 +1624,7 @@ function Inner(props: DiagramViewProps) {
           </ControlButton>
           <ControlButton
             className={`dg-laser-toggle${laserOn ? ' dg-laser-toggle-on' : ''}`}
-            title={laserOn ? 'Laser pointer off (L)' : 'Laser pointer (L)'}
+            title={`${laserOn ? 'Laser pointer off' : 'Laser pointer'}${keyHint('laser')}`}
             aria-label="Laser pointer"
             aria-pressed={laserOn}
             onClick={() => setLaserOn((v) => !v)}
@@ -1561,7 +1637,7 @@ function Inner(props: DiagramViewProps) {
           {strokes.length > 0 && drillRoot === undefined && (
             <ControlButton
               className={`dg-drawings-toggle${drawingsVisible ? '' : ' dg-drawings-toggle-off'}`}
-              title={drawingsVisible ? 'Hide drawings' : 'Show drawings'}
+              title={`${drawingsVisible ? 'Hide drawings' : 'Show drawings'}${keyHint('drawings')}`}
               aria-label={drawingsVisible ? 'Hide drawings' : 'Show drawings'}
               aria-pressed={drawingsVisible}
               onClick={() => setDrawingsVisible((v) => !v)}
@@ -1572,7 +1648,7 @@ function Inner(props: DiagramViewProps) {
           {legendRowList.length > 0 && (
             <ControlButton
               className={`dg-legend-toggle-btn${showLegend ? '' : ' dg-legend-toggle-btn-off'}`}
-              title={showLegend ? 'Hide legend' : 'Show legend'}
+              title={`${showLegend ? 'Hide legend' : 'Show legend'}${keyHint('legend')}`}
               aria-label={showLegend ? 'Hide legend' : 'Show legend'}
               aria-pressed={showLegend}
               onClick={() => setShowLegend((v) => !v)}
@@ -1583,7 +1659,7 @@ function Inner(props: DiagramViewProps) {
           {cld && (
             <ControlButton
               className={`dg-loop-toggle${showLoops ? '' : ' dg-loop-toggle-off'}`}
-              title={showLoops ? 'Hide loop badges' : 'Show loop badges'}
+              title={`${showLoops ? 'Hide loop badges' : 'Show loop badges'}${keyHint('loops')}`}
               aria-label={showLoops ? 'Hide loop badges' : 'Show loop badges'}
               aria-pressed={showLoops}
               onClick={() => {

@@ -81,6 +81,7 @@ Organised along [Diátaxis](https://diataxis.fr/) lines — learning, tasks, loo
 | [Publish and share](docs/how-to/publish-and-share.md) | PNGs for a README, interactive pages, GitHub Pages. |
 | [Eject a diagram to TypeScript](docs/how-to/eject-to-typescript.md) | Promote a studio-drawn diagram to a verified, generated `.diagram.ts`. |
 | [Place boxes on a generated diagram](docs/how-to/position-a-generated-diagram.md) | Position a read-only `.diagram.ts` view without losing it on re-compile. |
+| [Change keyboard shortcuts](docs/how-to/change-keyboard-shortcuts.md) | Give any studio action its own key, a second key, or none. |
 | [Set up `diagc` in another repo](docs/how-to/set-up-in-another-repo.md) | Use the CLI anywhere on your machine. |
 | [Use the Obsidian plugin](docs/how-to/obsidian-plugin.md) | Studio pane, diagram embeds and node-to-note links in a vault. |
 

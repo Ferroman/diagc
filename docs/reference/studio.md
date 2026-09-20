@@ -63,20 +63,41 @@ New nodes are **typeless** — just a label — so quick sketches stay clean. Gi
 
 ## Keyboard
 
-| Action | Shortcut |
-| --- | --- |
-| Add node | `N` |
-| Nudge the selected node(s) | Arrow keys (5px; `Shift` = 20px; the grid step when Snap is on). Works in view mode too — no Alt needed. |
-| Undo | `Ctrl/Cmd + Z` |
-| Redo | `Ctrl/Cmd + Shift + Z` or `Ctrl + Y` |
-| Save | `Ctrl/Cmd + S` |
-| Pen | `P` |
-| Eraser | `E` |
-| Laser pointer on/off (both modes) | `L` |
-| Back to Select, laser off | `Esc` |
-| Add the node the notation expects on the selection and start naming it (same as the node's `+`); inside a name being typed, `Tab` commits it and adds the next | `Tab` |
+Every action below can be given a different key, a second key, or none: open **Keyboard shortcuts** with the `⚙` in the header or `?` — see [Change keyboard shortcuts](../how-to/change-keyboard-shortcuts.md). These are the defaults; `Ctrl` is `Cmd` on a Mac. Button tooltips always show the key an action has *now*.
 
-Shortcuts are ignored while you are typing in a form field. History is capped at 100 steps.
+| Action | Default | Where |
+| --- | --- | --- |
+| Open the diagram picker | `Ctrl + K` | both modes |
+| Edit / Done | `Ctrl + Enter` | both modes |
+| Rename diagram | `F2` | view mode |
+| Add node | `N` | edit mode |
+| Add the node the notation expects on the selection and start naming it (same as the node's `+`); inside a name being typed, `Tab` commits it and adds the next | `Tab` | edit mode |
+| Undo | `Ctrl + Z` | edit mode |
+| Redo | `Ctrl + Shift + Z` or `Ctrl + Y` | edit mode |
+| Save | `Ctrl + S` | edit mode |
+| Group the selection | `Ctrl + G` | edit mode |
+| Select · Pen · Eraser | `V` · `P` · `E` | edit mode |
+| Fit view · zoom in · zoom out | `F` · `=` or `+` · `-` | both modes |
+| Laser pointer on/off | `L` | both modes |
+| Show/hide legend | `Shift + L` | both modes |
+| Show/hide left · right panel | `[` · `]` | both modes |
+| Light / dark | `Shift + T` | both modes |
+| Snap to grid | `Shift + S` | both modes |
+| Keyboard shortcuts | `?` | both modes |
+
+**Bindable, no default:** New / Duplicate / Eject diagram, Re-layout, Auto-layout, open/close all threat notes, pen width (thin / medium / thick), dim unconnected, show/hide drawings, show/hide loop badges, Freeze layout, Save positions, Auto-arrange, align left / centre / right / top / middle / bottom, distribute horizontally / vertically, inspector tab (Properties / Library).
+
+**Fixed** — gestures and cancels, not rebindable:
+
+| Key | Does |
+| --- | --- |
+| `Esc` | Back to Select, laser off, cancel what is being typed |
+| `Delete` / `Backspace` | Delete the selection (edit mode) |
+| Arrow keys | Nudge the selected node(s): 5px; `Shift` = 20px; the grid step when Snap is on. Works in view mode too — no Alt needed. |
+| `Shift` + click / drag | Add to the selection, marquee-select |
+| `Alt` + drag | Move a box or an edge label in view mode |
+
+A shortcut acts only while its button would: Pen does nothing while you are drilled into a group, Save positions nothing when nothing moved. Shortcuts are ignored while you are typing in a field and, in the Obsidian pane, while focus is anywhere outside the studio. A held key repeats only for Undo, Redo and zoom. Letters and digits work under a non-Latin keyboard layout (the physical key is read); a symbol follows the character your layout types. History is capped at 100 steps.
 
 ## Panels
 
@@ -108,7 +129,7 @@ The right dock stacks its panels — the notation's own panel (Git, Activity, An
 
 | Control | Effect |
 | --- | --- |
-| Diagram picker (`Ctrl/Cmd + K`) | Switch diagrams. Type to search — every word must appear somewhere in the name, folder included. Diagrams are grouped by the folder part of their name (`docs/fishbone` is under **docs**); diagrams with no folder come first. Click a folder heading to collapse it; collapsed folders are remembered across reloads, and a search looks inside them anyway. `↑` / `↓` move, `Enter` opens, `Esc` closes. To move a diagram into a folder, **Rename** it to `folder/name`. **New diagram** starts from the open diagram's folder. |
+| Diagram picker (`Ctrl/Cmd + K` by default) | Switch diagrams. Type to search — every word must appear somewhere in the name, folder included. Diagrams are grouped by the folder part of their name (`docs/fishbone` is under **docs**); diagrams with no folder come first. Click a folder heading to collapse it; collapsed folders are remembered across reloads, and a search looks inside them anyway. `↑` / `↓` move, `Enter` opens, `Esc` closes. To move a diagram into a folder, **Rename** it to `folder/name`. **New diagram** starts from the open diagram's folder. |
 | Light / dark | Theme. A viewer preference, never saved to the model. |
 | `✏ sketch` / style preset | `clean`, `sketch`, `hand-drawn`, `pencil`, `blueprint`, `marker`. Remembered across reloads, independent of light/dark. The hatched presets (`hand-drawn`, `pencil`, `marker`) hatch boxes only: an open group takes a plain wash, since its area is where its children and their edges are drawn, and an outline boundary (C4 boundary, AWS region) stays a line in every preset. |
 | `⋮⋮ Snap` | Snap dragged boxes (and arrow-key nudges) to a 10px grid; the background dots become the grid. A viewer preference, remembered across reloads, never saved to the diagram. |

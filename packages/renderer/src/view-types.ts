@@ -4,6 +4,7 @@
 import type { Column, DiagramModel, Drawings, EdgeLabelSide, LayoutOverlay, NotationId, Stroke, TextRun, ThreatStatus, ThreatTarget } from '@diagramming/core';
 import type { IconRegistry } from '@diagramming/icons';
 import type { MutableRefObject } from 'react';
+import type { AlignMode } from './arrange';
 import type { EdgeLabelMoves } from './build-data';
 import type { Side } from './floating';
 import type { LoopEdgeInput } from './loops';
@@ -49,6 +50,27 @@ export interface LayoutApi {
    * shown — the export handshake grows the capture frame by this. */
   legendReserve: () => { side: 'top' | 'right' | 'bottom' | 'left'; px: number } | null;
 }
+
+/** The corner controls and the arrange toolbar, callable: what a host binds keys
+ *  to. Each entry is the function its button runs, and reports whether it applied
+ *  — `false` when the button would not be showing (no legend, fewer than two boxes
+ *  selected, …), so the host can leave the key to the browser. `fitView` is the
+ *  one exception: React Flow's own button fits the nodes, this fits what
+ *  LayoutApi.fitView fits (nodes ∪ drawings). */
+export interface CanvasCommands {
+  toggleLaser(): boolean;
+  toggleDim(): boolean;
+  toggleLegend(): boolean;
+  toggleDrawings(): boolean;
+  toggleLoops(): boolean;
+  zoomIn(): boolean;
+  zoomOut(): boolean;
+  fitView(): boolean;
+  align(mode: AlignMode): boolean;
+  distribute(axis: 'x' | 'y'): boolean;
+}
+/** the corner controls a host can name a key for (see DiagramViewProps.keyHints) */
+export type CanvasKeyHint = 'laser' | 'dim' | 'legend' | 'drawings' | 'loops';
 
 export interface DiagramViewProps {
   model: DiagramModel;
@@ -103,6 +125,17 @@ export interface DiagramViewProps {
    * and the read-only viewer uses it for the export handshake (contentBounds/
    * fitView), so it deliberately lives OUTSIDE `edit`. */
   layoutApiRef?: MutableRefObject<LayoutApi | null>;
+  /** Populated like layoutApiRef: the canvas's own switches, for a host that owns
+   * the keyboard. */
+  canvasCommandsRef?: MutableRefObject<CanvasCommands | null>;
+  /** false = a host dispatches the canvas keys itself (the studio's configurable
+   * hotkeys), so the built-in `L` listener stands down — two listeners would
+   * toggle the laser twice. Escape → laser off stays either way: it is a cancel,
+   * not a binding. Default true: the published viewer has no host to do it. */
+  builtinKeys?: boolean;
+  /** key names appended to the corner controls' titles, e.g. `{ laser: 'K' }` →
+   * "Laser pointer (K)". Absent, the laser keeps `(L)` while builtinKeys is on. */
+  keyHints?: Partial<Record<CanvasKeyHint, string>>;
   /** CLD only: the compiled signed loop-graph (the exact edge ids the canvas
    * draws), surfaced so the host can run leverage analysis against this view. */
   onCldEdges?: (edges: LoopEdgeInput[]) => void;

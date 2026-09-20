@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { getViewportForBounds } from '@xyflow/react';
 import { layoutPlaneKey, model, type DiagramModel, type ThreatTarget } from '@diagramming/core';
-import { DiagramView, LIBRARY_ENTRY_DND_TYPE, type LayoutApi } from './DiagramView';
+import { DiagramView, LIBRARY_ENTRY_DND_TYPE, type CanvasCommands, type LayoutApi } from './DiagramView';
 import { FISHBONE_LAYOUT } from './fishbone-layout';
 import { GIT_LAYOUT } from './git-layout';
 import { NUDGE_IDLE_MS, NUDGE_STEP, NUDGE_SHIFT_FACTOR } from './useNudge';
@@ -924,6 +924,55 @@ describe('DiagramView', () => {
 
     expect(onCompareSelect).toHaveBeenCalledTimes(2);
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('hands the host canvas commands that press the same switches as the corner buttons', async () => {
+    const cmdRef: { current: CanvasCommands | null } = { current: null };
+    const m = model('t-canvas-commands');
+    m.node('a', { name: 'A' });
+    render(<DiagramView model={m.toJSON()} canvasCommandsRef={cmdRef} />);
+    await waitFor(() => expect(cmdRef.current).not.toBeNull());
+    const laser = await screen.findByLabelText('Laser pointer');
+    expect(laser.getAttribute('aria-pressed')).toBe('false');
+    let acted = false;
+    act(() => {
+      acted = cmdRef.current!.toggleLaser();
+    });
+    expect(acted).toBe(true);
+    expect(laser.getAttribute('aria-pressed')).toBe('true');
+    act(() => {
+      acted = cmdRef.current!.toggleDim();
+    });
+    expect(acted).toBe(true);
+  });
+
+  it('canvas commands report false when there is nothing for them to act on', async () => {
+    const cmdRef: { current: CanvasCommands | null } = { current: null };
+    const m = model('t-canvas-commands-idle');
+    m.node('a', { name: 'A' });
+    render(<DiagramView model={m.toJSON()} canvasCommandsRef={cmdRef} />);
+    await waitFor(() => expect(cmdRef.current).not.toBeNull());
+    const c = cmdRef.current!;
+    expect(c.toggleLegend()).toBe(false); // no legend in this model
+    expect(c.toggleDrawings()).toBe(false); // no strokes
+    expect(c.toggleLoops()).toBe(false); // not a causal-loop diagram
+    expect(c.align('left')).toBe(false); // nothing selected
+    expect(c.distribute('x')).toBe(false);
+  });
+
+  it('shows the host\'s key hints on the corner controls, and drops its own (L) when built-in keys are off', async () => {
+    const m = model('t-key-hints');
+    m.node('a', { name: 'A' });
+    const { rerender } = render(<DiagramView model={m.toJSON()} />);
+    expect((await screen.findByLabelText('Laser pointer')).getAttribute('title')).toBe('Laser pointer (L)');
+    rerender(<DiagramView model={m.toJSON()} builtinKeys={false} />);
+    expect(screen.getByLabelText('Laser pointer').getAttribute('title')).toBe('Laser pointer');
+    rerender(<DiagramView model={m.toJSON()} builtinKeys={false} keyHints={{ laser: 'K', dim: 'D' }} />);
+    expect(screen.getByLabelText('Laser pointer').getAttribute('title')).toBe('Laser pointer (K)');
+    // dimming starts ON (useLoopOverlay), so the control offers to stop it
+    expect(screen.getByLabelText('Stop dimming unconnected on select').getAttribute('title')).toBe(
+      'Stop dimming unconnected on select (D)',
+    );
   });
 
   it('populates layoutApiRef with position + viewport accessors', async () => {

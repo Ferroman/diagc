@@ -10,6 +10,7 @@ function inputFor(over: Partial<CanvasGesturesInput> = {}): CanvasGesturesInput 
     tool: 'pen',
     drillRoot: undefined,
     chromeless: false,
+    builtinKeys: true,
     modelId: 'm1',
     pen: undefined,
     onAddStroke: undefined,
@@ -79,5 +80,16 @@ describe('useCanvasGestures', () => {
     expect(result.current.laserOn).toBe(true);
     rerender(inputFor({ modelId: 'm2' }));
     expect(result.current.laserOn).toBe(false);
+  });
+
+  it('leaves L to the host when built-in keys are off, but Escape still switches the laser off', () => {
+    const { result } = renderHook((p: CanvasGesturesInput) => useCanvasGestures(p), {
+      initialProps: inputFor({ builtinKeys: false }),
+    });
+    press('l');
+    expect(result.current.laserOn).toBe(false); // the host owns the binding now
+    act(() => result.current.setLaserOn(true));
+    press('Escape');
+    expect(result.current.laserOn).toBe(false); // a cancel is not a preference
   });
 });

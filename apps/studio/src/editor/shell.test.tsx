@@ -1562,4 +1562,90 @@ describe('editor shell', () => {
       expect(body.nodes.some((n) => n.id === 'grafted')).toBe(false);
     });
   });
+
+  describe('configurable hotkeys', () => {
+    afterEach(() => localStorage.removeItem('diagramming.hotkeys'));
+
+    const enterEdit = async () => {
+      fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
+      await screen.findByRole('button', { name: /^save$/i });
+    };
+
+    it('a rebound key adds the node, and the old key no longer does', async () => {
+      localStorage.setItem('diagramming.hotkeys', JSON.stringify({ 'edit.add-node': ['A'] }));
+      render(<App />);
+      await enterEdit();
+      // Undo, not the canvas: a new node only shows once the async layout has
+      // settled, so "no node on screen yet" is true whether or not one was added.
+      const undo = screen.getByRole('button', { name: /^undo$/i }) as HTMLButtonElement;
+      fireEvent.keyDown(window, { key: 'n' });
+      expect(undo.disabled).toBe(true); // nothing was dispatched
+      fireEvent.keyDown(window, { key: 'a' });
+      expect(undo.disabled).toBe(false);
+      expect(await canvas().findByText('node')).toBeDefined();
+    });
+
+    it('Ctrl+Enter enters edit mode and leaves it again', async () => {
+      render(<App />);
+      await screen.findByRole('button', { name: /^edit$/i });
+      fireEvent.keyDown(window, { key: 'Enter', ctrlKey: true });
+      await screen.findByRole('button', { name: /^save$/i });
+      fireEvent.keyDown(window, { key: 'Enter', ctrlKey: true });
+      await screen.findByRole('button', { name: /^edit$/i });
+    });
+
+    it('V goes back to Select from the pen', async () => {
+      render(<App />);
+      await enterEdit();
+      fireEvent.keyDown(window, { key: 'p' });
+      expect(screen.getByRole('button', { name: 'Pen' }).getAttribute('aria-pressed')).toBe('true');
+      fireEvent.keyDown(window, { key: 'v' });
+      expect(screen.getByRole('button', { name: 'Select' }).getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('] folds the right panel', async () => {
+      render(<App />);
+      await screen.findByRole('button', { name: /^edit$/i });
+      const before = screen.getAllByRole('button', { name: 'Collapse panel' }).length;
+      fireEvent.keyDown(window, { key: ']' });
+      await waitFor(() => expect(screen.getAllByRole('button', { name: 'Collapse panel' }).length).toBe(before - 1));
+    });
+
+    it('? opens the shortcuts dialog, which holds the keys while it is open', async () => {
+      render(<App />);
+      await enterEdit();
+      fireEvent.keyDown(window, { key: '?', shiftKey: true });
+      const dialog = await screen.findByRole('dialog', { name: 'Keyboard shortcuts' });
+      fireEvent.keyDown(dialog, { key: 'n' }); // would add a node if the dispatcher were live
+      expect((screen.getByRole('button', { name: /^undo$/i }) as HTMLButtonElement).disabled).toBe(true);
+      fireEvent.keyDown(dialog, { key: 'Escape' });
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Keyboard shortcuts' })).toBeNull());
+    });
+
+    it('the gear opens the same dialog, and a change made there is stored', async () => {
+      render(<App />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Keyboard shortcuts' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Change L for Laser pointer' }));
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Change L for Laser pointer' }), { key: 'k' });
+      await waitFor(() =>
+        expect(JSON.parse(localStorage.getItem('diagramming.hotkeys') ?? '{}')).toEqual({ 'canvas.laser': ['K'] }),
+      );
+    });
+
+    it('button titles name the key the action has now', async () => {
+      localStorage.setItem('diagramming.hotkeys', JSON.stringify({ 'tool.pen': ['D'] }));
+      render(<App />);
+      await enterEdit();
+      expect(screen.getByRole('button', { name: 'Pen' }).getAttribute('title')).toBe('Draw freehand (D)');
+    });
+
+    it('Ctrl+K opens the diagram picker, and closes it again from inside its search box', async () => {
+      render(<App />);
+      await screen.findByRole('button', { name: /^edit$/i });
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+      const search = await screen.findByRole('combobox', { name: 'Search diagrams' });
+      fireEvent.keyDown(search, { key: 'k', ctrlKey: true }); // typing in a field — this chord still gets through
+      await waitFor(() => expect(screen.queryByRole('combobox', { name: 'Search diagrams' })).toBeNull());
+    });
+  });
 });

@@ -15,10 +15,6 @@ export interface UseNodePlacementOptions {
   editor: EditorApi;
   /** viewport center/auto-position reads for manual-layout placement */
   layoutApiRef: RefObject<LayoutApi | null>;
-  /** the synchronous add-node entry point (Library Add / N key); the keydown
-   * handler in useEditSession reads it through a ref, so this hook assigns the
-   * latest addNode to it on every render. */
-  addNodeRef: RefObject<() => void>;
   /** App-owned selection/rename/tab/bookkeeping setters */
   setSelection: (sel: DiagramSelection | null) => void;
   setRenameId: (id: string | null) => void;
@@ -69,7 +65,6 @@ export interface NodePlacement {
 export function useNodePlacement({
   editor,
   layoutApiRef,
-  addNodeRef,
   setSelection,
   setRenameId,
   setLeftTab,
@@ -123,7 +118,6 @@ export function useNodePlacement({
     setSelection({ kind: 'node', id: place.id });
     setRenameId(place.id);
   };
-  addNodeRef.current = addNode;
 
   // Double-click on empty canvas: drop a typeless node centered on that flow
   // point and open its name for renaming (mirrors the toolbar add, minus the

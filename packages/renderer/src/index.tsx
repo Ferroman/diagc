@@ -56,6 +56,8 @@ export {
   DiagramView,
   DEFAULT_ON_NODE_META_KEYS,
   LIBRARY_ENTRY_DND_TYPE,
+  type CanvasCommands,
+  type CanvasKeyHint,
   type DiagramViewProps,
   type DiagramSelection,
   type DrawTool,

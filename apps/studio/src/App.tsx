@@ -7,6 +7,7 @@ import {
   lightTheme,
   notationProfile,
   STYLE_PRESETS,
+  type CanvasCommands,
   type DiagramSelection,
   type DrawTool,
   type EdgeLabelMoves,
@@ -55,7 +56,7 @@ import { useViewOps } from './hooks/useViewOps';
 import { edgeLabelsOf, addEdgeLabel, editEdgeLabel, moveEdgeLabel } from './edge-labels';
 import { computeSelectionColor } from './selection-color';
 import { DiagramPicker } from './DiagramPicker';
-import { EditorToolbar } from './editor/EditorToolbar';
+import { EditorToolbar, relayoutPlane } from './editor/EditorToolbar';
 import { LayoutControls } from './LayoutControls';
 import { mergePreview, withLayoutPreview } from './layoutPreview';
 import { unfoldedOf, withPlaneManual, withSavedPositions } from './savedPositions';
@@ -80,6 +81,12 @@ import { uniqueLibraryId } from './library/entry';
 import { deleteSelectionCommand } from './editor/deleteSelection';
 import { connectKind } from './editor/connectKind';
 import { fkConnectionCommands } from './tableConnect';
+import type { ActionId } from './hotkeys/actions';
+import { isMac } from './hotkeys/chord';
+import { HotkeysContext, keyHint, keyName } from './hotkeys/HotkeysContext';
+import { HotkeysDialog } from './hotkeys/HotkeysDialog';
+import { HOTKEYS_KEY, parseOverrides, resolveKeymap, type Overrides } from './hotkeys/keymap';
+import { useHotkeys, type Handlers } from './hotkeys/useHotkeys';
 
 const STYLE_KEY = 'diagramming.style';
 // Snap-to-grid is a viewer preference (how one edits), not a property of the
@@ -128,6 +135,17 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const [theme, setTheme] = useState<'light' | 'dark'>(initialTheme);
   const [style, setStyle] = usePersistedState<string>(STYLE_KEY, 'clean', (raw) => raw);
   const [snap, setSnap] = usePersistedState<boolean>(SNAP_KEY, false, (raw) => (raw === null ? null : raw === 'true'));
+  // Keyboard shortcuts: viewer state like the theme — only what the user changed
+  // is stored, so a default added later still reaches them (see hotkeys/keymap).
+  const [hotkeyOverrides, setHotkeyOverrides] = usePersistedState<Overrides>(HOTKEYS_KEY, {}, parseOverrides, JSON.stringify);
+  const keymap = useMemo(() => resolveKeymap(hotkeyOverrides), [hotkeyOverrides]);
+  const [hotkeysOpen, setHotkeysOpen] = useState(false);
+  const mac = useMemo(isMac, []);
+  const appRef = useRef<HTMLDivElement>(null);
+  const gearRef = useRef<HTMLButtonElement>(null);
+  const canvasCommandsRef = useRef<CanvasCommands | null>(null);
+  const pickerToggleRef = useRef<(() => void) | null>(null);
+  const hotkeyHandlers = useRef<Handlers>({});
   const [plane, setPlane] = useState<string | undefined>(undefined);
   const [activeLayers, setActiveLayers] = useState<string[]>([]);
   // The "pen": the transparent sheet new nodes/edges land on (null = base sheet).
@@ -198,15 +216,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   );
   const lib = useLibrary();
 
-  // Synchronous re-entrancy guards for the once-subscribed listeners, each of
-  // which must call the latest closure without re-subscribing on every render:
-  //   - addNodeRef: the keydown N-key shortcut (see useEditSession).
-  //   - leaveEditRef: the hashchange listener's cross-diagram edit close.
-  //   - tabActionRef: the keydown Tab shortcut (a notation's "add a child").
-  // All three are read through refs by the listeners and assigned on every render.
-  const addNodeRef = useRef<() => void>(() => {});
+  // Read through a ref by a once-subscribed listener, and assigned on every
+  // render: leaveEditRef is the hashchange listener's cross-diagram edit close
+  // (useDeepLink). The keyboard no longer needs any — see the hotkeys block
+  // above the JSX, which runs after everything it calls exists.
   const leaveEditRef = useRef<() => boolean>(() => true);
-  const tabActionRef = useRef<() => boolean>(() => false);
 
   const dl = useDeepLink({ names, booted, leaveEditRef });
   const { selected, setSelected, enteredPath, setEnteredPath, handleEnteredPathChange } = dl;
@@ -238,27 +252,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const [tool, setTool] = useState<DrawTool>('select');
   const [penColor, setPenColor] = useState('');
   const [penWidth, setPenWidth] = useState<number>(DEFAULT_STROKE_WIDTH);
-  // Read through a ref by the once-subscribed keydown handler (like addNodeRef).
-  // Pen/Eraser are refused while drilled in, matching the toolbar chips, which
-  // are disabled there for the same reason (drawings are a top-level layer).
-  // The renderer is already inert while drilled, so nothing would be drawn
-  // either way — but a chip that reads pressed while disabled, and a pen that
-  // springs to life the moment you drill back out, is a first-hour
-  // contradiction. Select/Escape always get through: leaving a tool must never
-  // depend on where you are.
-  const toolKeyRef = useRef<(t: DrawTool) => void>(() => {});
-  toolKeyRef.current = (t) => {
-    if (t !== 'select' && enteredPath.length > 0) return;
-    setTool(t);
-  };
-
   const edit = useEditSession({
     setDrafts,
     resetInspector: () => setLeftTab('properties'), // re-entering edit starts on Properties
-    addNodeRef,
-    toolKeyRef,
     leaveEditRef,
-    tabActionRef,
   });
   const { editing, setEditing, editor, layoutApiRef, saveIssues, setSaveIssues, saving, doSave, enterEdit, leaveEdit } = edit;
 
@@ -440,8 +437,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // and open it for typing, the way the notation panels' own buttons do.
   // Placement: a sibling goes beside its source only when elk would not place
   // it (manual plane) or the source is pinned — see quickAddPlaced.
-  // Reports whether it acted so the keydown handler only swallows Tab's
-  // default focus move when there was something to extend (see useEditSession).
+  // Reports whether it acted so the hotkeys dispatcher only swallows Tab's
+  // default focus move when there was something to extend (see useHotkeys).
   const quickAddCtx: QuickAddContext = {
     notation,
     plane: activePlane,
@@ -473,7 +470,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     requestLabelEdit(out.id);
     return true;
   };
-  tabActionRef.current = () => (selection?.kind === 'node' ? runQuickAdd(selection.id) : false);
 
   // The plane every plane-scoped command below is filed under; the base view
   // (undefined) sends no `plane` at all, which the commands read as "the
@@ -575,7 +571,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const placement = useNodePlacement({
     editor,
     layoutApiRef,
-    addNodeRef,
     setSelection,
     setRenameId,
     setLeftTab,
@@ -780,8 +775,112 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const live =
     selection?.kind === 'node' && model !== undefined ? layoutApiRef.current?.snapshotPositions()[selection.id] : undefined;
 
+  // What each hotkey does right now (hotkeys/useHotkeys reads this ref on every
+  // key). The rule: a handler is present exactly while its button would be shown
+  // and enabled, so a key can never do what the UI would refuse — and a key with
+  // no handler keeps whatever meaning the browser gives it. Placed last because it
+  // draws on nearly everything above.
+  const on = <T,>(cond: boolean, fn: T): T | undefined => (cond ? fn : undefined);
+  const owned = ownedNames.has(selected);
+  const viewChips = !editing && model !== undefined;
+  const hasSavedPositions =
+    model !== undefined && Object.keys(layout?.planes[layoutPlaneKey(model, activePlane)] ?? {}).length > 0;
+  const canvasCmd = (run: (c: CanvasCommands) => boolean) => on(model !== undefined, () => (canvasCommandsRef.current !== null ? run(canvasCommandsRef.current) : false));
+  // Pen/Eraser are refused while drilled in, matching the toolbar chips, which
+  // are disabled there (drawings are a top-level layer): a chip that reads pressed
+  // while disabled, and a pen that springs to life the moment you drill back out,
+  // is a first-hour contradiction. Select always gets through.
+  const drawTool = (t: DrawTool) => () => {
+    if (enteredPath.length > 0) return false;
+    setTool(t);
+    return true;
+  };
+  hotkeyHandlers.current = {
+    'diagram.picker': () => pickerToggleRef.current?.(),
+    'diagram.toggle-edit': on(model !== undefined && owned, () => void (editing ? leaveEdit() : enterEditFromSource())),
+    'diagram.rename': on(canDesign && !editing && owned, () => void actions.renameDiagram()),
+    'diagram.new': on(canDesign, () => void actions.newDiagram()),
+    'diagram.duplicate': on(canDesign && viewChips, () => void actions.duplicateDiagram()),
+    'diagram.eject': on(canDesign && !editing && owned, () => void actions.ejectDiagram()),
+
+    'edit.add-node': on(editing, () => addNode()),
+    'edit.add-child': on(editing, () => (selection?.kind === 'node' ? runQuickAdd(selection.id) : false)),
+    'edit.undo': on(editing, () => editor.undo()),
+    'edit.redo': on(editing, () => editor.redo()),
+    'edit.save': on(editing, () => void doSave()),
+    'edit.group': on(editing && groupSel.length >= 2, () => void groupSelected()),
+    'edit.relayout': on(editing, () =>
+      void relayoutPlane(editor, {
+        autoLayout: !activePlaneManual,
+        activePlane,
+        getAutoPositions: () => layoutApiRef.current?.autoPositions() ?? {},
+      }),
+    ),
+    'edit.toggle-auto-layout': on(editing, toggleAutoLayout),
+    'edit.toggle-notes': on(editing && hasThreats && anyThreats, () =>
+      editor.dispatch({ type: 'set-notes-open', open: !allOpen, ...planeOpt }),
+    ),
+
+    'tool.select': on(editing, () => setTool('select')),
+    'tool.pen': on(editing, drawTool('pen')),
+    'tool.eraser': on(editing, drawTool('eraser')),
+    'pen.thin': on(editing && tool === 'pen', () => setPenWidth(2)),
+    'pen.medium': on(editing && tool === 'pen', () => setPenWidth(3)),
+    'pen.thick': on(editing && tool === 'pen', () => setPenWidth(6)),
+
+    'canvas.fit': canvasCmd((c) => c.fitView()),
+    'canvas.zoom-in': canvasCmd((c) => c.zoomIn()),
+    'canvas.zoom-out': canvasCmd((c) => c.zoomOut()),
+    'canvas.laser': canvasCmd((c) => c.toggleLaser()),
+    'canvas.legend': canvasCmd((c) => c.toggleLegend()),
+    'canvas.dim': canvasCmd((c) => c.toggleDim()),
+    'canvas.drawings': canvasCmd((c) => c.toggleDrawings()),
+    'canvas.loops': canvasCmd((c) => c.toggleLoops()),
+    'view.freeze': on(viewChips && !savingPositions && enteredPath.length === 0, () => void toggleFreeze()),
+    'view.save-positions': on(viewChips && unsavedView && !savingPositions, () => void savePositions()),
+    'view.auto-arrange': on(viewChips && hasSavedPositions, () => setAutoArrange((v) => !v)),
+
+    'arrange.align-left': canvasCmd((c) => c.align('left')),
+    'arrange.align-center': canvasCmd((c) => c.align('centerX')),
+    'arrange.align-right': canvasCmd((c) => c.align('right')),
+    'arrange.align-top': canvasCmd((c) => c.align('top')),
+    'arrange.align-middle': canvasCmd((c) => c.align('middle')),
+    'arrange.align-bottom': canvasCmd((c) => c.align('bottom')),
+    'arrange.distribute-x': canvasCmd((c) => c.distribute('x')),
+    'arrange.distribute-y': canvasCmd((c) => c.distribute('y')),
+
+    'window.left-dock': on(model !== undefined, () => setLeftCollapsed((v) => !v)),
+    'window.right-dock': on(model !== undefined, () => setRightCollapsed((v) => !v)),
+    // a tab nobody can see is no answer to "show me Properties": open the dock too
+    'window.inspector-properties': on(editing, () => {
+      setLeftTab('properties');
+      setLeftCollapsed(false);
+    }),
+    'window.inspector-library': on(editing, () => {
+      setLeftTab('library');
+      setLeftCollapsed(false);
+    }),
+    'window.theme': () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')),
+    'window.snap': () => setSnap((v) => !v),
+    'window.hotkeys': () => setHotkeysOpen(true),
+  };
+  useHotkeys({ rootRef: appRef, keymap, mode: editing ? 'edit' : 'view', handlersRef: hotkeyHandlers, suspended: hotkeysOpen, mac });
+  const hint = (id: ActionId) => keyHint(keymap, id, mac);
+  const hotkeysContext = useMemo(() => ({ keymap, mac }), [keymap, mac]);
+  const canvasKeyHints = useMemo(
+    () => ({
+      laser: keyName(keymap, 'canvas.laser', mac),
+      dim: keyName(keymap, 'canvas.dim', mac),
+      legend: keyName(keymap, 'canvas.legend', mac),
+      drawings: keyName(keymap, 'canvas.drawings', mac),
+      loops: keyName(keymap, 'canvas.loops', mac),
+    }),
+    [keymap, mac],
+  );
+
   return (
-    <div className="app">
+    <HotkeysContext.Provider value={hotkeysContext}>
+    <div className="app" ref={appRef}>
       <header className="topbar">
         <strong>Diagramming Studio</strong>
         <DiagramPicker
@@ -793,14 +892,15 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             setEnteredPath([]);
             resetView();
           }}
+          toggleRef={pickerToggleRef}
         />
         {canDesign && !editing && (
-          <button className="chip" onClick={() => void actions.newDiagram()}>
+          <button className="chip" onClick={() => void actions.newDiagram()} title={`New diagram${hint('diagram.new')}`}>
             New diagram
           </button>
         )}
         {canDesign && !editing && ownedNames.has(selected) && (
-          <button className="chip" onClick={() => void actions.renameDiagram()} title="Rename this diagram">
+          <button className="chip" onClick={() => void actions.renameDiagram()} title={`Rename this diagram${hint('diagram.rename')}`}>
             Rename
           </button>
         )}
@@ -808,7 +908,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
           <button
             className="chip"
             onClick={() => void actions.duplicateDiagram()}
-            title="Copy this diagram — layout and all — to a new editable one and open it"
+            title={`Copy this diagram — layout and all — to a new editable one and open it${hint('diagram.duplicate')}`}
           >
             Duplicate
           </button>
@@ -817,7 +917,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
           <button
             className="chip"
             onClick={() => void actions.ejectDiagram()}
-            title="Promote this diagram to a TypeScript source — it becomes read-only here"
+            title={`Promote this diagram to a TypeScript source — it becomes read-only here${hint('diagram.eject')}`}
           >
             Eject
           </button>
@@ -826,7 +926,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
         {model !== undefined &&
           (ownedNames.has(selected) ? (
             !editing && (
-              <button className="chip" onClick={() => void enterEditFromSource()}>
+              <button className="chip" onClick={() => void enterEditFromSource()} title={`Edit this diagram${hint('diagram.toggle-edit')}`}>
                 Edit
               </button>
             )
@@ -863,11 +963,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                 type="button"
                 className={`chip${autoArrange ? ' active' : ''}`}
                 aria-pressed={autoArrange}
-                title={
+                title={`${
                   autoArrange
                     ? 'Ignoring this diagram’s saved positions, so the layout algorithm arranges every node. Click to put them back.'
                     : 'This plane has saved positions, which override the layout algorithm. Click to arrange those nodes automatically instead (nothing is written).'
-                }
+                }${hint('view.auto-arrange')}`}
                 onClick={() => setAutoArrange((v) => !v)}
               >
                 Auto-arrange
@@ -882,13 +982,13 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
               // would set the plane-wide `manual` flag off the back of a partial
               // snapshot. Must be done from the top level instead.
               disabled={savingPositions || enteredPath.length > 0}
-              title={
+              title={`${
                 enteredPath.length > 0
                   ? 'Freezing pins the whole plane, but a drilled view only has positions for what it shows — leave the drilled view first.'
                   : activePlaneManual
                     ? 'Positions are pinned. Click to let the layout algorithm arrange this plane again (your positions are kept).'
                     : 'Pin every box where it is so the layout algorithm stops moving them. Boxes added to the source later are still placed automatically until you move them.'
-              }
+              }${hint('view.freeze')}`}
               onClick={() => void toggleFreeze()}
             >
               Freeze layout
@@ -897,7 +997,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
               <button
                 className="chip primary"
                 disabled={savingPositions}
-                title="Write the boxes and edge labels you moved, and which groups are open, to this diagram's layout file. Safe on a generated diagram: re-compiling rewrites the model, never the layout."
+                title={`Write the boxes and edge labels you moved, and which groups are open, to this diagram's layout file. Safe on a generated diagram: re-compiling rewrites the model, never the layout.${hint('view.save-positions')}`}
                 onClick={() => void savePositions()}
               >
                 {savingPositions ? 'Saving…' : 'Save positions'}
@@ -917,7 +1017,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             // an empty register has nothing to open: the command would push an
             // undo step and an autosave that change nothing
             disabled={!anyThreats}
-            title={allOpen ? 'Close all threat notes' : 'Open all threat notes'}
+            title={`${allOpen ? 'Close all threat notes' : 'Open all threat notes'}${hint('edit.toggle-notes')}`}
             onClick={() => editor.dispatch({ type: 'set-notes-open', open: !allOpen, ...planeOpt })}
           >
             Notes
@@ -927,16 +1027,20 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
           type="button"
           className={`chip${snap ? ' active' : ''}`}
           aria-pressed={snap}
-          title={
+          title={`${
             snap
               ? `Snapping to a ${SNAP_GRID}px grid. Click to place boxes freely.`
               : `Snap dragged boxes to a ${SNAP_GRID}px grid; arrow keys step by it too.`
-          }
+          }${hint('window.snap')}`}
           onClick={() => setSnap((v) => !v)}
         >
           ⋮⋮ Snap
         </button>
-        <button className="chip" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+        <button
+          className="chip"
+          title={`Light / dark${hint('window.theme')}`}
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        >
           {theme === 'dark' ? '☀ light' : '☾ dark'}
         </button>
         {editing ? (
@@ -973,6 +1077,16 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             ))}
           </select>
         )}
+        <button
+          ref={gearRef}
+          type="button"
+          className="chip"
+          aria-label="Keyboard shortcuts"
+          title={`Keyboard shortcuts${hint('window.hotkeys')}`}
+          onClick={() => setHotkeysOpen(true)}
+        >
+          ⚙
+        </button>
         {/* AGPL section 13 offer. Near-dormant on localhost, but `diagc studio` accepts
             a `host` option, and the moment it is bound to a non-loopback address its
             users are interacting with the program over a network and are owed a way to
@@ -1159,6 +1273,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                 onViewPositionsChange={setMovedPositions}
                 onViewLabelMovesChange={setMovedLabels}
                 layoutApiRef={layoutApiRef}
+                canvasCommandsRef={canvasCommandsRef}
+                builtinKeys={false}
+                keyHints={canvasKeyHints}
                 ignoreSavedPositions={autoArrange}
                 externalHighlight={
                   editing
@@ -1312,7 +1429,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   : {})}
               />
               {editing && groupSel.length >= 2 && (
-                <button className="chip group-action" onClick={() => void groupSelected()}>
+                <button
+                  className="chip group-action"
+                  title={`Group the selection${hint('edit.group')}`}
+                  onClick={() => void groupSelected()}
+                >
                   ⊞ Group {groupSel.length}
                 </button>
               )}
@@ -1392,6 +1513,18 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
           </>
         )}
       </main>
+      {hotkeysOpen && (
+        <HotkeysDialog
+          overrides={hotkeyOverrides}
+          onChange={setHotkeyOverrides}
+          onClose={() => {
+            setHotkeysOpen(false);
+            gearRef.current?.focus(); // back where the keyboard user came from
+          }}
+          mac={mac}
+        />
+      )}
     </div>
+    </HotkeysContext.Provider>
   );
 }

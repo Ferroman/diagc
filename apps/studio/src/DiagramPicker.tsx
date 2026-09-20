@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MutableRefObject } from 'react';
 import { groupDiagrams, groupLabel, groupOf, leafOf } from './diagramGroups';
 import { usePersistedState } from './hooks/usePersistedState';
+import { useKeyHint } from './hotkeys/HotkeysContext';
 
 const COLLAPSED_KEY = 'diagramming.pickerCollapsed';
 
@@ -28,10 +29,15 @@ export function DiagramPicker({
   names,
   selected,
   onSelect,
+  toggleRef,
 }: {
   names: readonly string[];
   selected: string;
   onSelect: (name: string) => void;
+  /** The host's handle for its "open diagram picker" hotkey: opens, or closes and
+   * hands focus back to the trigger. Assigned on every render, so it always acts
+   * on the current `open`/`selected`. */
+  toggleRef?: MutableRefObject<(() => void) | null>;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -75,30 +81,13 @@ export function DiagramPicker({
     if (name !== selected) onSelect(name);
   };
 
-  // Render-phase ref so the window listener below subscribes once yet always
-  // toggles against the current `open`/`selected`.
-  const toggleRef = useRef(() => {});
-  toggleRef.current = () => (open ? close(true) : openPicker());
-
-  // Ctrl/Cmd+K — form fields included, since the chord carries a modifier and
-  // the search box itself is where focus sits while open.
-  //
-  // Scoped by where the chord comes FROM, not just that it happened: the
-  // Obsidian host mounts the studio inside Obsidian's own window, where Cmd+K
-  // in a note is "insert link". So it only counts from inside the studio shell,
-  // or from <body> — nothing focused, the usual state after a canvas click.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.key.toLowerCase() !== 'k') return;
-      const shell = rootRef.current?.closest('.app') ?? rootRef.current;
-      const fromStudio = e.target instanceof Node && shell?.contains(e.target) === true;
-      if (e.target !== document.body && !fromStudio) return;
-      e.preventDefault();
-      toggleRef.current();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  // The picker used to listen for Ctrl/Cmd+K itself. The chord is the hotkeys
+  // dispatcher's now (rebindable; hotkeys/useHotkeys), which also took over this
+  // listener's two rules: a key from outside the studio shell is not ours (the
+  // Obsidian host: Cmd+K in a note is "insert link"), and this one action is let
+  // through from a form field — the search box is where focus sits while open.
+  if (toggleRef !== undefined) toggleRef.current = () => (open ? close(true) : openPicker());
+  const hint = useKeyHint();
 
   useEffect(() => {
     if (!open) return;
@@ -149,7 +138,7 @@ export function DiagramPicker({
         aria-label={`Diagram: ${selected === '' ? 'none' : selected}`}
         aria-haspopup="listbox"
         aria-expanded={open}
-        title="Switch diagram (Ctrl/Cmd+K)"
+        title={`Switch diagram${hint('diagram.picker')}`}
         onClick={() => (open ? close(false) : openPicker())}
       >
         {selectedGroup !== '' && <span className="diagram-picker-folder">{groupLabel(selectedGroup)} / </span>}

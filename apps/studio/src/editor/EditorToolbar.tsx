@@ -4,6 +4,7 @@ import type { EditorApi } from './useEditor';
 import { getHost } from '../host';
 import { PRESET_COLORS } from './pickers';
 import { LayoutControls } from '../LayoutControls';
+import { useKeyHint } from '../hotkeys/HotkeysContext';
 
 interface EditorToolbarProps {
   editor: EditorApi;
@@ -88,6 +89,27 @@ function ColorRow({
   );
 }
 
+/** Re-layout the active plane: clear its pins under automatic layout, re-pin a
+ *  fresh arrangement under manual. Exported because the toolbar button and the
+ *  hotkey must be the same function — confirm and all. */
+export async function relayoutPlane(
+  editor: EditorApi,
+  o: {
+    autoLayout: boolean;
+    activePlane: string | undefined;
+    getAutoPositions: () => Record<string, { x: number; y: number }>;
+  },
+): Promise<void> {
+  const planeOpt = o.activePlane !== undefined ? { plane: o.activePlane } : {};
+  if (o.autoLayout) {
+    if (!(await getHost().confirmDialog('Clear all pinned positions on this plane and re-layout?'))) return;
+    editor.dispatch({ type: 'clear-positions', ...planeOpt });
+  } else {
+    if (!(await getHost().confirmDialog('Re-arrange this plane and re-pin every node?'))) return;
+    editor.dispatch({ type: 'set-positions', positions: o.getAutoPositions(), ...planeOpt });
+  }
+}
+
 export function EditorToolbar({
   editor,
   onNewDiagram,
@@ -112,31 +134,23 @@ export function EditorToolbar({
   algorithmLocked,
 }: EditorToolbarProps) {
   const error = editor.session?.error;
-
-  const relayout = async () => {
-    if (autoLayout) {
-      if (!(await getHost().confirmDialog('Clear all pinned positions on this plane and re-layout?'))) return;
-      editor.dispatch({ type: 'clear-positions', ...(activePlane !== undefined ? { plane: activePlane } : {}) });
-    } else {
-      if (!(await getHost().confirmDialog('Re-arrange this plane and re-pin every node?'))) return;
-      editor.dispatch({
-        type: 'set-positions',
-        positions: getAutoPositions(),
-        ...(activePlane !== undefined ? { plane: activePlane } : {}),
-      });
-    }
-  };
+  // titles name the key an action has NOW — it is rebindable (hotkeys/)
+  const hint = useKeyHint();
 
   return (
     <div className="editor-toolbar" role="toolbar" aria-label="Editor">
-      <button className="chip" onClick={onExit}>
+      <button className="chip" onClick={onExit} title={`Leave edit mode${hint('diagram.toggle-edit')}`}>
         Done
       </button>
       <span className="sep" />
-      <button className="chip" onClick={onNewDiagram}>
+      <button className="chip" onClick={onNewDiagram} title={`New diagram${hint('diagram.new')}`}>
         New diagram
       </button>
-      <button className="chip" onClick={() => void relayout()}>
+      <button
+        className="chip"
+        onClick={() => void relayoutPlane(editor, { autoLayout, activePlane, getAutoPositions })}
+        title={`Re-layout${hint('edit.relayout')}`}
+      >
         Re-layout
       </button>
       <button
@@ -164,9 +178,9 @@ export function EditorToolbar({
       <span className="tool-group" role="group" aria-label="Canvas tool">
         {(
           [
-            ['select', 'Select', 'Select and move (Esc)'],
-            ['pen', 'Pen', drawingDisabled ? 'Drawings are shown at the top level only — leave the drilled view to draw' : 'Draw freehand (P)'],
-            ['eraser', 'Eraser', drawingDisabled ? 'Drawings are shown at the top level only — leave the drilled view to erase' : 'Click a stroke to erase it (E)'],
+            ['select', 'Select', `Select and move${hint('tool.select')} — Esc also gets you here`],
+            ['pen', 'Pen', drawingDisabled ? 'Drawings are shown at the top level only — leave the drilled view to draw' : `Draw freehand${hint('tool.pen')}`],
+            ['eraser', 'Eraser', drawingDisabled ? 'Drawings are shown at the top level only — leave the drilled view to erase' : `Click a stroke to erase it${hint('tool.eraser')}`],
           ] as const
         ).map(([id, label, title]) => (
           <button
@@ -207,13 +221,13 @@ export function EditorToolbar({
         </>
       )}
       <span className="sep" />
-      <button className="chip" onClick={() => editor.undo()} disabled={!editor.canUndo}>
+      <button className="chip" onClick={() => editor.undo()} disabled={!editor.canUndo} title={`Undo${hint('edit.undo')}`}>
         Undo
       </button>
-      <button className="chip" onClick={() => editor.redo()} disabled={!editor.canRedo}>
+      <button className="chip" onClick={() => editor.redo()} disabled={!editor.canRedo} title={`Redo${hint('edit.redo')}`}>
         Redo
       </button>
-      <button className="chip primary" onClick={onSave} disabled={!editor.dirty || saving}>
+      <button className="chip primary" onClick={onSave} disabled={!editor.dirty || saving} title={`Save${hint('edit.save')}`}>
         Save
       </button>
       <span className="save-status" aria-live="polite">

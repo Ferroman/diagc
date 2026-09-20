@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DiagramPicker } from './DiagramPicker';
 
@@ -107,46 +107,21 @@ describe('DiagramPicker', () => {
     expect(screen.queryByRole('listbox')).toBeNull();
   });
 
-  it('toggles with Ctrl+K and Cmd+K when nothing in particular has focus', () => {
+  it('hands the host a toggle: it opens into the search box, and closes back to the trigger', () => {
+    const toggleRef: { current: (() => void) | null } = { current: null };
+    render(<DiagramPicker names={NAMES} selected="acme" onSelect={vi.fn()} toggleRef={toggleRef} />);
+    expect(screen.queryByRole('listbox')).toBeNull();
+    act(() => toggleRef.current?.());
+    expect(screen.queryByRole('listbox')).not.toBeNull();
+    expect(document.activeElement).toBe(search());
+    act(() => toggleRef.current?.());
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(document.activeElement).toBe(trigger());
+  });
+
+  it('listens to no keys of its own — the chord is the hotkeys dispatcher\'s to give', () => {
     render(<DiagramPicker names={NAMES} selected="acme" onSelect={vi.fn()} />);
     fireEvent.keyDown(document.body, { key: 'k', ctrlKey: true });
-    expect(screen.queryByRole('listbox')).not.toBeNull();
-    // focus now sits in the search box, inside the picker
-    fireEvent.keyDown(search(), { key: 'k', metaKey: true });
-    expect(screen.queryByRole('listbox')).toBeNull();
-  });
-
-  it('takes the chord from anywhere inside the studio shell', () => {
-    render(
-      <div className="app">
-        <input aria-label="elsewhere in the studio" />
-        <DiagramPicker names={NAMES} selected="acme" onSelect={vi.fn()} />
-      </div>,
-    );
-    fireEvent.keyDown(screen.getByLabelText('elsewhere in the studio'), { key: 'k', ctrlKey: true });
-    expect(screen.queryByRole('listbox')).not.toBeNull();
-  });
-
-  it('leaves the chord alone when it comes from outside the studio', () => {
-    // The Obsidian host mounts the studio inside Obsidian's own window, where
-    // Cmd+K in a note is "insert link" — typing there must not pop the picker.
-    render(
-      <>
-        <textarea aria-label="a note in the host" />
-        <div className="app">
-          <DiagramPicker names={NAMES} selected="acme" onSelect={vi.fn()} />
-        </div>
-      </>,
-    );
-    const note = screen.getByLabelText('a note in the host');
-    const notPrevented = fireEvent.keyDown(note, { key: 'k', metaKey: true });
-    expect(screen.queryByRole('listbox')).toBeNull();
-    expect(notPrevented).toBe(true);
-  });
-
-  it('leaves a bare K alone', () => {
-    render(<DiagramPicker names={NAMES} selected="acme" onSelect={vi.fn()} />);
-    fireEvent.keyDown(document.body, { key: 'k' });
     expect(screen.queryByRole('listbox')).toBeNull();
   });
 

@@ -9,6 +9,7 @@ export interface CanvasGesturesInput {
   tool: DrawTool | undefined;            // props.tool
   drillRoot: string | undefined;
   chromeless: boolean;                   // props.chrome === false
+  builtinKeys: boolean;                  // props.builtinKeys !== false
   modelId: string;                       // props.model.id — the laser reset key
   pen: PenSettings | undefined;          // props.pen
   onAddStroke: ((stroke: Omit<Stroke, 'id'>) => void) | undefined; // edit?.onAddStroke
@@ -48,7 +49,9 @@ export function useCanvasGestures(input: CanvasGesturesInput): CanvasGestures {
   // L toggles the laser, Escape switches it off — window-level like the Alt
   // listener, ignored inside form fields and with a modifier held (Ctrl+L is the
   // browser's address bar). Not installed for the chrome-less export, which has
-  // no control to show the state and no one at the keyboard.
+  // no control to show the state and no one at the keyboard. A host that owns
+  // the keyboard (builtinKeys off) takes L over — it may have rebound it — but
+  // never Escape: that is a cancel, and must work whatever the keymap says.
   useEffect(() => {
     if (input.chromeless) return;
     const onKey = (e: KeyboardEvent) => {
@@ -57,14 +60,14 @@ export function useCanvasGestures(input: CanvasGesturesInput): CanvasGestures {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable === true) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === 'Escape') setLaserOn(false);
-      else if (e.key.toLowerCase() === 'l' && !e.repeat) {
+      else if (input.builtinKeys && e.key.toLowerCase() === 'l' && !e.repeat) {
         e.preventDefault();
         setLaserOn((v) => !v);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [input.chromeless]);
+  }, [input.chromeless, input.builtinKeys]);
   const pen = usePen({
     enabled: penActive && input.onAddStroke !== undefined,
     toFlow: input.toFlow,

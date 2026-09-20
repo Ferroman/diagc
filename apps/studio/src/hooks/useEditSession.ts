@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react';
 import { errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagramming/core';
-import type { DrawTool, LayoutApi } from '@diagramming/renderer';
+import type { LayoutApi } from '@diagramming/renderer';
 import type { LoadedArtifact } from '../artifacts';
 import { useEditor } from '../editor/useEditor';
 import { getHost } from '../host';
@@ -13,22 +13,11 @@ export interface UseEditSessionOptions {
   /** App-owned: reset the left inspector to its default tab on leave (re-entry
    *  then starts on Properties). */
   resetInspector: () => void;
-  /** App-owned whiteboard add-node (Library Add button / N key). Read through
-   *  a ref because the keydown handler subscribes once per edit session. */
-  addNodeRef: MutableRefObject<() => void>;
-  /** App-owned tool switch for the P / E / Escape keys; a ref for the same
-   *  reason as addNodeRef (the keydown handler subscribes once per session). */
-  toolKeyRef: MutableRefObject<(tool: DrawTool) => void>;
   /** App-owned, shared with useDeepLink: a cross-diagram hashchange must close
    *  any open edit session first (like every other diagram-switch path). The
-   *  keydown/hashchange listeners subscribe once, so both read it through a
-   *  ref — leaveEdit assigns `.current` on every render. */
+   *  hashchange listener subscribes once, so it reads it through a ref —
+   *  leaveEdit assigns `.current` on every render. */
   leaveEditRef: RefObject<() => boolean>;
-  /** App-owned Tab action (a notation's "add a child of the selection": a
-   * second-order consequence, a fishbone cause) — reports whether it did
-   * anything, so Tab keeps its focus-move meaning everywhere else. A ref for
-   * the same reason as addNodeRef. */
-  tabActionRef: MutableRefObject<() => boolean>;
 }
 
 export interface EditSession {
@@ -55,30 +44,23 @@ export interface EditSession {
 }
 
 /**
- * Edit-session domain: the editor + save + autosave + keyboard shortcuts. This
- * is where the session's refs that mirror state (editorRef, doSaveRef,
- * leaveEditRef, savingRef) live — each justified by a stale-closure comment —
- * instead of crowding the App component.
+ * Edit-session domain: the editor + save + autosave. This is where the session's
+ * refs that mirror state (doSaveRef, leaveEditRef, savingRef) live — each
+ * justified by a stale-closure comment — instead of crowding the App component.
+ * Keyboard shortcuts are NOT here: they are the hotkeys dispatcher's
+ * (hotkeys/useHotkeys), and App binds this session's undo/redo/save there. A
+ * second listener here would run every one of them twice.
  */
-export function useEditSession({
-  setDrafts,
-  resetInspector,
-  addNodeRef,
-  toolKeyRef,
-  leaveEditRef,
-  tabActionRef,
-}: UseEditSessionOptions): EditSession {
+export function useEditSession({ setDrafts, resetInspector, leaveEditRef }: UseEditSessionOptions): EditSession {
   const [editing, setEditing] = useState(false);
   const [saveIssues, setSaveIssues] = useState<{ message: string }[] | null>(null);
   const [saving, setSaving] = useState(false);
   const editor = useEditor();
-  const editorRef = useRef(editor);
-  editorRef.current = editor;
   // Synchronous re-entrancy guard: overlapping autosaves would double-POST.
   // Edits landing mid-save stay dirty and are picked up by the next tick.
   const savingRef = useRef(false);
-  // Kept in a ref so the keydown handler (bound once per edit session) always
-  // calls the latest doSave without re-subscribing on every render.
+  // Kept in a ref so the autosave timer always calls the latest doSave without
+  // rescheduling on every render.
   const doSaveRef = useRef<() => void>(() => {});
   // Populated by DiagramView in edit mode: reads current/auto positions and the
   // viewport center for the auto-layout toggle and manual new-node placement.
@@ -184,45 +166,6 @@ export function useEditSession({
     setSaveIssues(null);
     setEditing(true);
   };
-
-  // Undo/redo/save keys, edit-mode only, ignored inside form fields.
-  useEffect(() => {
-    if (!editing) return;
-    const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-      const key = e.key.toLowerCase();
-      if (!(e.metaKey || e.ctrlKey || e.altKey) && key === 'n') {
-        e.preventDefault();
-        addNodeRef.current();
-        return;
-      }
-      // Tab is only taken when it did something: anywhere else it must stay the
-      // browser's focus key.
-      if (e.key === 'Tab' && !(e.metaKey || e.ctrlKey || e.altKey || e.shiftKey)) {
-        if (tabActionRef.current()) e.preventDefault();
-        return;
-      }
-      if (!(e.metaKey || e.ctrlKey || e.altKey) && (key === 'p' || key === 'e' || e.key === 'Escape')) {
-        e.preventDefault();
-        toolKeyRef.current(key === 'p' ? 'pen' : key === 'e' ? 'eraser' : 'select');
-        return;
-      }
-      if (!(e.metaKey || e.ctrlKey)) return;
-      if (key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        editorRef.current.undo();
-      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
-        e.preventDefault();
-        editorRef.current.redo();
-      } else if (key === 's') {
-        e.preventDefault();
-        doSaveRef.current();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [editing, addNodeRef, toolKeyRef, tabActionRef]);
 
   // Autosave: a short debounce after the last edit. `session` changes identity on
   // every dispatch, so each edit reschedules; once a save clears `dirty`, the
