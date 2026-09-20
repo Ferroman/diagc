@@ -12,7 +12,7 @@ Show the causes of one effect: the effect sits at the head, categories of cause 
 4. Select a bone or a cause and **Add a cause** — or press `Tab`, or click the `+` on the selection — to hang something on it. Type the name and press `Tab` again to chain: the name is committed and the next cause opens for typing. A sub-cause takes nothing further; the button is disabled once you're that deep.
 5. Each add is one undo step for the node and its arrow together; the typed name, once committed, is a later, separate one.
 
-The arrangement is the notation's own: there are no layout controls, and dragging a cause or category's text floats its line free of the bone — undo puts it back.
+The arrangement is the notation's own: there are no layout controls, and nothing on the fish can be moved — not by dragging, the arrow keys or align. A bone ends on the spine and a cause line on its bone, not on a box, so a moved node could not take its lines along. A position saved for one by an older version is ignored, so such a diagram draws correctly again without being touched. A node that is not on the fish yet (a cause nothing hangs on, a comment) sits in a row beneath it and moves like any other box.
 
 ## From TypeScript
 

@@ -539,7 +539,7 @@ function Inner(props: DiagramViewProps) {
     ignoreSavedPositions: props.ignoreSavedPositions,
     viewPositions,
   });
-  const { geometryRef, routes, placedGeometry, arrangedGeometry, containerShifts, routing, laidAt, labelSpots, flowDirection } = viewLayout;
+  const { geometryRef, routes, placedGeometry, arrangedGeometry, containerShifts, routing, laidAt, labelSpots, fixed, flowDirection } = viewLayout;
 
   // Where each open container's origin sits BEFORE the fit pass shifted it, in
   // absolute flow coordinates — the frame a child's saved position is relative
@@ -680,6 +680,16 @@ function Inner(props: DiagramViewProps) {
           position: { x: geo.x, y: geo.y },
           data,
           ...(parent !== undefined ? { parentId: parent } : {}),
+          // A node the notation fixed (a fishbone's) takes no drag in either
+          // mode — not even the pixel of jitter in a click, which React Flow
+          // counts as one and which used to save a pin at the spot the node
+          // already stood on: invisible until the fish next changed shape and
+          // left the node behind with its lines floating. Still selectable —
+          // which needs `nopan` back: React Flow drops it from a non-draggable
+          // node, a press on one then pans the canvas, and a pan of one pixel
+          // swallows the click. Edit mode only: in view mode every node pans
+          // that way, and the effect spans the whole spine.
+          ...(fixed.has(n.id) ? { draggable: false as const, ...(editing ? { className: 'nopan' } : {}) } : {}),
           // Membership is edited in the node panel, not by dragging away, so a
           // child never leaves its box — the box gives way instead, live while
           // dragging (React Flow's expandParent) and for good once dropped (the
@@ -742,7 +752,7 @@ function Inner(props: DiagramViewProps) {
     };
     compiled.roots.forEach((r) => walk(r));
     return out;
-  }, [compiled, arrangedGeometry, nodeDataCtx, editing, typeRegistry, profile]);
+  }, [compiled, arrangedGeometry, nodeDataCtx, editing, typeRegistry, profile, fixed]);
 
   // Threat notes: one synthetic node per element that carries threats. Derived
   // from the ARRANGED geometry (so a note follows its element through drags and
@@ -964,7 +974,10 @@ function Inner(props: DiagramViewProps) {
       ),
     commit: commitMoves,
   });
-  const selectedIds = useMemo(() => rfNodes.filter((n) => n.selected === true).map((n) => n.id), [rfNodes]);
+  // What align/distribute act on: the selection minus the nodes nothing may move
+  // (see `draggable` above). They are neither moved nor lined up against, so
+  // two fish nodes are no selection to arrange and the toolbar stays away.
+  const selectedIds = useMemo(() => rfNodes.filter((n) => n.selected === true && n.draggable !== false).map((n) => n.id), [rfNodes]);
   // Arrange buttons need somewhere for the result to land: edit mode has the
   // host's command pipeline; view mode only the host's Save positions offer,
   // so the published viewer (which passes neither) never shows them.

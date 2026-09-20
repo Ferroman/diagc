@@ -103,6 +103,31 @@ describe('useNudge', () => {
     expect(commit).toHaveBeenCalledTimes(1);
   });
 
+  it('leaves a node that cannot be dragged where it is, moving the rest of the selection', () => {
+    // a notation fixes some nodes in place (a fishbone's): what a drag may not
+    // move, an arrow key may not either — and it must never reach the commit
+    const { press, applyMoves, commit, nodesRef } = setup();
+    nodesRef.current = [...nodesRef.current, { id: 'fixed', position: { x: 90, y: 90 }, data: {}, selected: true, draggable: false }];
+    press('ArrowRight');
+    expect(applyMoves).toHaveBeenLastCalledWith({ a: { x: 15, y: 10 } });
+    act(() => {
+      vi.advanceTimersByTime(NUDGE_IDLE_MS);
+    });
+    expect(commit).toHaveBeenCalledWith({ a: { x: 15, y: 10 } });
+  });
+
+  it('a selection of nothing but fixed nodes is no selection: the key is left alone', () => {
+    const { press, applyMoves, commit, nodesRef } = setup();
+    nodesRef.current = [{ id: 'fixed', position: { x: 90, y: 90 }, data: {}, selected: true, draggable: false }];
+    const { preventDefault } = press('ArrowRight');
+    act(() => {
+      vi.advanceTimersByTime(NUDGE_IDLE_MS);
+    });
+    expect(applyMoves).not.toHaveBeenCalled();
+    expect(commit).not.toHaveBeenCalled();
+    expect(preventDefault).not.toHaveBeenCalled();
+  });
+
   it('does nothing when disabled', () => {
     const { press, applyMoves } = setup({ enabled: false });
     press('ArrowRight');

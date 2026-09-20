@@ -142,6 +142,32 @@ describe('useViewLayout', () => {
     expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 400, y: 50 });
   });
 
+  it('a node the notation FIXED stays where it was laid: no saved position or view drag moves it', async () => {
+    const m = fixture();
+    const profile: NotationProfile = {
+      id: 'default',
+      layout: () => ({ geometry: GEOMETRY, routes: new Map(), labelSpots: new Map(), algorithm: 'notation', fixed: new Set(['box']) }),
+    };
+    // both nodes carry a stale pin (a fish dragged before nodes were fixed)
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 400, y: 50 }, img: { x: 70, y: 7 } } } };
+    const viewPositions = { box: { x: 999, y: 9 } };
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile, layout, viewPositions }),
+    });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    expect(result.current.fixed.has('box')).toBe(true);
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 0 });
+    expect(result.current.placedGeometry?.get('img')).toMatchObject({ x: 70, y: 7 }); // not fixed: its pin still counts
+    rerender(inputFor(m, { profile, layout, viewPositions, editing: true }));
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 0 });
+  });
+
+  it('fixes nothing when the layout names nothing (elk, git-graph)', async () => {
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), { initialProps: inputFor(fixture()) });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    expect(result.current.fixed.size).toBe(0);
+  });
+
   it('layered planes route with soft corners, orthogonal planes with tight ones; bowed notations float', () => {
     const m = fixture();
     const routingOf = (over: Partial<ViewLayoutInput>) =>

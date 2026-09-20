@@ -85,7 +85,10 @@ export function useNudge(input: NudgeInput) {
       const target = e.target as Element | null;
       if (inField(target)) return;
       if ((target?.closest('.react-flow__node, .react-flow__nodesselection-rect') ?? null) === null) return;
-      const selected = nodesRef.current.filter((n) => n.selected === true);
+      // What a drag may not move, a key may not either: a notation fixes some
+      // nodes in place (LayoutResult.fixed — a fishbone's) and DiagramView marks
+      // them `draggable: false`. A selection of nothing else is no selection.
+      const selected = nodesRef.current.filter((n) => n.selected === true && n.draggable !== false);
       if (selected.length === 0) return;
       if (e.metaKey || e.ctrlKey || e.altKey) {
         // Claim it (so React Flow's own node onKeyDown never performs an

@@ -260,6 +260,10 @@ export function fishboneLayout(
     const headW = Math.max(HEAD_MIN_W, Math.ceil(textWidth(nameOf.get(effect) ?? '', HEAD_FONT_PX)) + 2 * HEAD_PAD);
     geometry.set(effect, { x: MARGIN, y: spineY - HEAD_H / 2, width: lastRight + HEAD_GAP + headW - MARGIN, height: HEAD_H });
   }
+  // Everything placed so far is ON the fish, and stays where the fish puts it
+  // (see LayoutResult.fixed). Taken before the spare row: a stray has no line
+  // to break, so it may be moved aside like any other box.
+  const fixed = new Set(geometry.keys());
 
   // Spare row: everything the view shows that is not on the fish — a cause
   // nothing hangs on yet, a second effect, a comment — packed left to right so
@@ -285,5 +289,5 @@ export function fishboneLayout(
   };
   view.roots.forEach(placeLoose);
 
-  return { geometry, routes, labelSpots: new Map(), algorithm: 'fishbone' };
+  return { geometry, routes, labelSpots: new Map(), algorithm: 'fishbone', fixed };
 }

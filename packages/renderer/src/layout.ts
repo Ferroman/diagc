@@ -59,6 +59,13 @@ export interface LayoutResult {
    * `layoutView`), so a caller can say so instead of presenting the fallback as
    * the user's pick. */
   algorithm: string;
+  /** Nodes whose place IS the notation's structure, so nothing may move them —
+   * no drag, nudge or align, and a saved position for one is ignored. A
+   * fishbone's lines end on OTHER LINES (a bone on the spine, a cause line on
+   * its bone), not on boxes: a moved node cannot take them along, and floating
+   * them box to box draws a different diagram. Absent = everything may move,
+   * which is elk's answer and git-graph's (a floated commit link still reads). */
+  fixed?: ReadonlySet<string>;
 }
 
 const elk = new ELK();

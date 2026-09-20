@@ -59,6 +59,9 @@ export interface ViewLayout {
   laidAt: ReadonlyMap<string, EdgePoint>;
   /** elk's reserved spot (centre) for each labelled edge's label */
   labelSpots: ReadonlyMap<string, EdgePoint>;
+  /** nodes the notation's layout fixed in place (LayoutResult.fixed): drawn
+   * where they were laid whatever was saved, and not to be offered a move */
+  fixed: ReadonlySet<string>;
   layoutSettings: NonNullable<LayoutOverlay['settings']>[string] | undefined;
   /** the direction a layered run uses — the sidecar's, else the model's, else
    * the default (git-graph never runs elk, so this is not what it drew) */
@@ -67,6 +70,14 @@ export interface ViewLayout {
 
 const NO_SHIFTS: ReadonlyMap<string, Shift> = new Map();
 const NO_SPOTS: ReadonlyMap<string, EdgePoint> = new Map();
+const NONE_FIXED: ReadonlySet<string> = new Set();
+
+/** `positions` without the fixed ids; the same object back when none applies,
+ * so the memo below keeps its identity on the planes that fix nothing */
+function movable(positions: Record<string, { x: number; y: number }>, fixed: ReadonlySet<string>): Record<string, { x: number; y: number }> {
+  if (fixed.size === 0 || !Object.keys(positions).some((id) => fixed.has(id))) return positions;
+  return Object.fromEntries(Object.entries(positions).filter(([id]) => !fixed.has(id)));
+}
 
 /** How a routed edge's corners are drawn (px radius). The waypoints are elk's
  * either way; `curved` rounds them generously so a route reads as a drawn line
@@ -212,6 +223,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // 'orthogonal'); consumed by the edges memo, falling back to floating paths.
   const [routes, setRoutes] = useState<Map<string, EdgePoint[]>>(() => new Map());
   const [labelSpots, setLabelSpots] = useState<ReadonlyMap<string, EdgePoint>>(NO_SPOTS);
+  const [fixed, setFixed] = useState<ReadonlySet<string>>(NONE_FIXED);
   useEffect(() => {
     let live = true;
     // A notation that owns the arrangement bypasses elk entirely; wrapped in a
@@ -227,6 +239,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
         setGeometry((old) => (old === r.geometry ? old : r.geometry));
         setRoutes(r.routes);
         setLabelSpots(r.labelSpots);
+        setFixed(r.fixed ?? NONE_FIXED);
       })
       // layoutView degrades to the default algorithm rather than rejecting, so
       // getting here via that path means even the degraded attempt failed. A
@@ -254,11 +267,16 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     // document being edited, and the auto/manual switch is a command on the undo
     // stack. Only a viewer may set them aside.
     const saved = !input.editing && input.ignoreSavedPositions === true ? {} : (input.layout?.planes[key] ?? {});
-    const withSaved = overlayPositions(geometry, saved);
+    // A fixed node reads no position from anywhere. Filtered HERE, not only at
+    // the gesture: a pin can predate the rule (a fish dragged before its nodes
+    // were fixed), or arrive with a node that was placed as a stray and hung on
+    // the fish afterwards — either would leave it behind when the fish next
+    // changes shape, its lines floating in to a box they were never drawn to.
+    const withSaved = overlayPositions(geometry, movable(saved, fixed));
     // A drag still wins over an automatic arrangement, so moving a box while
     // auto-arrange is on behaves the way dragging always does.
-    return input.editing ? withSaved : overlayPositions(withSaved, input.viewPositions);
-  }, [geometry, input.layout, input.model, input.plane, input.ignoreSavedPositions, input.editing, input.viewPositions]);
+    return input.editing ? withSaved : overlayPositions(withSaved, movable(input.viewPositions, fixed));
+  }, [geometry, fixed, input.layout, input.model, input.plane, input.ignoreSavedPositions, input.editing, input.viewPositions]);
 
   // A hand-placed child may sit past the wall of the box elk sized for it: the
   // container gives way (fit-containers.ts). Not where the notation owns the
@@ -323,6 +341,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     routing,
     laidAt,
     labelSpots,
+    fixed,
     layoutSettings,
     flowDirection: (runSettings?.direction ?? FALLBACK_DIRECTION) as LayoutDirection,
   };

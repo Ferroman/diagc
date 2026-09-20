@@ -6,7 +6,7 @@ import { layoutPlaneKey, model, type DiagramModel, type ThreatTarget } from '@di
 import { DiagramView, LIBRARY_ENTRY_DND_TYPE, type LayoutApi } from './DiagramView';
 import { FISHBONE_LAYOUT } from './fishbone-layout';
 import { GIT_LAYOUT } from './git-layout';
-import { NUDGE_STEP, NUDGE_SHIFT_FACTOR } from './useNudge';
+import { NUDGE_IDLE_MS, NUDGE_STEP, NUDGE_SHIFT_FACTOR } from './useNudge';
 import { NOTE_WIDTH } from './NoteNode';
 import { BADGE_R, badgeCenter, estimateNoteHeight, NOTE_GAP } from './note-place';
 
@@ -519,6 +519,79 @@ describe('DiagramView', () => {
     const rfNode = fill.closest('.react-flow__node') as HTMLElement;
     await waitFor(() => expect(rfNode.style.width).toBe('90px'));
     expect(rfNode.style.height).toBe('110px');
+  });
+
+  // A fishbone's lines end on other lines, not on boxes, so a moved node cannot
+  // take them along (LayoutResult.fixed). A stray has no line to break.
+  function fishWithStray(): DiagramModel {
+    const m = model('f');
+    m.fishbone('e', 'Effect').category('c', 'Code').cause('a', 'A cause');
+    const json = m.toJSON();
+    return { ...json, nodes: [...json.nodes, { id: 'loose', name: 'Loose cause', type: 'fb-cause' }] };
+  }
+  const rfNodeOf = (container: HTMLElement, id: string) =>
+    waitFor(() => {
+      const el = container.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
+      if (el === null) throw new Error(`${id} not rendered`);
+      return el;
+    });
+
+  it('edit mode: a node on the fish cannot be dragged, a stray beneath it can', async () => {
+    const { container } = render(<DiagramView model={fishWithStray()} notation="fishbone" mode="edit" edit={{ onNodesMoved: vi.fn() }} />);
+    expect((await rfNodeOf(container, 'loose')).classList.contains('draggable')).toBe(true);
+    for (const id of ['e', 'c', 'a']) expect((await rfNodeOf(container, id)).classList.contains('draggable'), id).toBe(false);
+  });
+
+  it('edit mode: a fish node still takes the press itself, so a jittery click selects it instead of panning', async () => {
+    // React Flow lets a press on a non-draggable node pan the canvas, and a pan
+    // of even one pixel swallows the click: the node would not select. In view
+    // mode every node pans that way, the fish's included.
+    const { container, unmount } = render(<DiagramView model={fishWithStray()} notation="fishbone" mode="edit" edit={{ onNodesMoved: vi.fn() }} />);
+    expect((await rfNodeOf(container, 'c')).classList.contains('nopan')).toBe(true);
+    unmount();
+    const view = render(<DiagramView model={fishWithStray()} notation="fishbone" />);
+    expect((await rfNodeOf(view.container, 'c')).classList.contains('nopan')).toBe(false);
+  });
+
+  it('edit mode: an arrow key never moves a node on the fish', async () => {
+    const onNodesMoved = vi.fn();
+    render(<DiagramView model={fishWithStray()} notation="fishbone" mode="edit" edit={{ onNodesMoved }} />);
+    const code = await screen.findByText('Code');
+    fireEvent.click(code);
+    await waitFor(() => expect(document.querySelector('.react-flow__node.selected')).not.toBeNull());
+    fireEvent.keyDown(code, { key: 'ArrowRight' });
+    await new Promise((r) => setTimeout(r, NUDGE_IDLE_MS + 100));
+    expect(onNodesMoved).not.toHaveBeenCalled();
+  });
+
+  it('edit mode: a selection of fish nodes is offered no align or distribute', async () => {
+    render(<DiagramView model={fishWithStray()} notation="fishbone" mode="edit" edit={{ onNodesMoved: vi.fn() }} />);
+    fireEvent.click(await screen.findByText('Code'));
+    fireEvent.keyDown(window, { key: 'Shift', code: 'ShiftLeft' });
+    fireEvent.click(screen.getByText('A cause'), { shiftKey: true });
+    fireEvent.keyUp(window, { key: 'Shift', code: 'ShiftLeft' });
+    await waitFor(() => expect(document.querySelectorAll('.react-flow__node.selected').length).toBe(2));
+    expect(screen.queryByRole('button', { name: 'Align left' })).toBeNull();
+  });
+
+  it('draws a fish node where the fish put it, whatever position was once saved for it', async () => {
+    const apiRef: { current: LayoutApi | null } = { current: null };
+    const m = fishWithStray();
+    const { rerender } = render(<DiagramView model={m} notation="fishbone" layoutApiRef={apiRef} />);
+    await screen.findByText('Code');
+    await waitFor(() => expect(apiRef.current?.snapshotPositions()['c']).toBeDefined());
+    const laid = apiRef.current!.snapshotPositions();
+    // the pin a jittery click used to leave behind, and one on the stray
+    rerender(
+      <DiagramView
+        model={m}
+        notation="fishbone"
+        layoutApiRef={apiRef}
+        layout={{ version: 1, planes: { default: { c: { x: 900, y: 900 }, loose: { x: 700, y: 700 } } } }}
+      />,
+    );
+    await waitFor(() => expect(apiRef.current!.snapshotPositions()['loose']).toEqual({ x: 700, y: 700 }));
+    expect(apiRef.current!.snapshotPositions()['c']).toEqual(laid['c']);
   });
 
   it('gives a fishbone leaf the layout geometry as its explicit size, and the effect the whole spine', async () => {

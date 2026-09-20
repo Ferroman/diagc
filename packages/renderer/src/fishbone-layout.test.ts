@@ -175,6 +175,24 @@ describe('fishboneLayout', () => {
     expect(r.geometry.get('loose')!.y).toBeGreaterThan(c2.y); // and with a head, the row is under the fish
   });
 
+  it('fixes every node it put on the fish, and leaves the spare row free to move', () => {
+    const m = fish();
+    const j: DiagramModel = {
+      ...m,
+      nodes: [...m.nodes, { id: 'loose', name: 'Loose cause', type: 'fb-cause' }, { id: 'note', name: 'A note' }],
+    };
+    const r = fishboneLayout(view(j), j, undefined);
+    // a bone ends on the SPINE and a cause line on its BONE, not on a box: no
+    // node of the fish can move without its lines pointing at nothing
+    expect([...(r.fixed ?? [])].sort()).toEqual(['a', 'a1', 'a2', 'b', 'c1', 'c2', 'c3', 'd', 'e']);
+  });
+
+  it('fixes nothing on a headless model: with no fish, every node is a stray', () => {
+    const m = fish();
+    const headless: DiagramModel = { ...m, nodes: m.nodes.filter((n) => n.id !== 'e'), relations: m.relations.filter((x) => x.to !== 'e') };
+    expect(fishboneLayout(view(headless), headless, undefined).fixed?.size ?? 0).toBe(0);
+  });
+
   it('sizes a stray from its size hint when given one, and from its type fallback otherwise', () => {
     const m = fish();
     const j: DiagramModel = {

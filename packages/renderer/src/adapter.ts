@@ -26,6 +26,11 @@ export interface RfNodeInput {
   expandParent?: boolean;
   style?: CSSProperties;
   zIndex?: number;
+  /** `false` takes the node out of every move (drag, nudge, align) whatever the
+   * canvas-wide `nodesDraggable` says; absent = the canvas decides */
+  draggable?: false;
+  /** extra class on React Flow's node wrapper (its `nopan` opt-in, see toRfNode's caller) */
+  className?: string;
 }
 
 /** Build a React Flow node, widening our typed data channel at the boundary. */
@@ -40,6 +45,8 @@ export function toRfNode(input: RfNodeInput): Node {
     ...(input.expandParent !== undefined ? { expandParent: input.expandParent } : {}),
     ...(input.style !== undefined ? { style: input.style } : {}),
     ...(input.zIndex !== undefined ? { zIndex: input.zIndex } : {}),
+    ...(input.draggable !== undefined ? { draggable: input.draggable } : {}),
+    ...(input.className !== undefined ? { className: input.className } : {}),
   };
 }
 
