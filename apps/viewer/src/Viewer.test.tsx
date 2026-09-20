@@ -343,7 +343,7 @@ describe('handshakeReady', () => {
   // The exporter screenshots whatever frame the handshake asks for, so a
   // handshake that fires before ELK has laid the graph out sizes the frame from
   // the 1200x800 no-layout fallback and the real (much wider) graph is then
-  // fitted into the wrong aspect. Measured on the EngageRocket platform-c4 page:
+  // fitted into the wrong aspect. Measured on a production C4 landscape page:
   // nodes appeared at ~3.2s, the old fixed 500ms handshake fired first, and the
   // 301-node diagram exported into a portrait frame with half of it blank.
   const box = (width: number, height: number) => ({ width, height });

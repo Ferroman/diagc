@@ -23,7 +23,7 @@ function combinePolarity(rels: readonly DiagramRelation[]): Polarity | undefined
  *
  * The budget is on the joined text, not on a label count, because what makes a
  * folded view unreadable is text WIDTH on many edges at once: measured on
- * EngageRocket's platform-c4 landscape (17 folded systems, ~400 relations), the
+ * a production C4 landscape (17 folded systems, ~400 relations), the
  * old "first three joined, then +N" policy put 40-70 characters on hundreds of
  * arrows. 32 characters is about two ordinary labels ("reads / writes",
  * "publishes / consumes") — the case where naming both is genuinely more useful

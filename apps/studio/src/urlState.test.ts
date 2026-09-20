@@ -3,8 +3,8 @@ import { formatHash, parseHash } from './urlState';
 
 describe('urlState', () => {
   it('round-trips a diagram and drill path', () => {
-    expect(parseHash(formatHash('engagerocket-c4', ['platform', 'core']))).toEqual({
-      diagram: 'engagerocket-c4',
+    expect(parseHash(formatHash('platform-c4', ['platform', 'core']))).toEqual({
+      diagram: 'platform-c4',
       path: ['platform', 'core'],
     });
   });

@@ -25,7 +25,7 @@ describe('pageSize', () => {
   // the content bounds: the content gets scaled to fit the frame and the legend
   // does not, so a reserve added to `bounds.height` shrinks by the same factor
   // as the graph and the frame ends up too short by (reserve - reserve*scale).
-  // Measured on the EngageRocket platform-infra page: a 459px legend on a
+  // Measured on a production infrastructure page: a 459px legend on a
   // 24922x10717 graph left the graph half its intended size and half the frame
   // width empty.
   describe('legend reserve', () => {
