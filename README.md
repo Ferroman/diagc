@@ -54,6 +54,8 @@ New here? Start with **[Tutorial 1 — Your first diagram](docs/tutorials/01-you
 
 Organised along [Diátaxis](https://diataxis.fr/) lines — learning, tasks, lookup, understanding.
 
+**[Examples](docs/examples/README.md)** — every diagram type and feature with its source, each one also [live and zoomable](https://ferroman.github.io/diagc/).
+
 ### Tutorials — learn by doing
 
 | | |
