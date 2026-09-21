@@ -34,9 +34,12 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
 
   const pages: string[] = [];
   const images: string[] = [];
+  // diagram name → the model's display name, for the index cards
+  const titles = new Map<string, string>();
   for (const d of all) {
     try {
       const modelRaw = JSON.parse(await readFile(d.modelPath, 'utf8')) as DiagramModel;
+      titles.set(d.name, modelRaw.name);
       const layout = d.layoutPath !== undefined
         ? (JSON.parse(await readFile(d.layoutPath, 'utf8')) as LayoutOverlay)
         : undefined;
@@ -98,7 +101,9 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
   await writeFile(galleryPath, buildGallery(all
     .filter((d) => written.has(path.join(opts.htmlDir, `${d.name}.html`)))
     .map((d) => ({
-      name: d.name, hasImage: images.includes(path.join(opts.staticDir, `${d.name}.png`)),
+      name: d.name,
+      title: titles.get(d.name) ?? d.name,
+      hasImage: images.includes(path.join(opts.staticDir, `${d.name}.png`)),
     }))));
 
   return { pages, images, gallery: galleryPath };
