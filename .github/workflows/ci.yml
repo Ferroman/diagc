@@ -29,7 +29,11 @@ jobs:
       # The version comes from `packageManager` in package.json. That pins pnpm 10, which
       # is why this is still `action-setup` and not its successor `pnpm/setup` — that one
       # installs pnpm 11 and newer only.
-      - uses: pnpm/action-setup@v6
+      #
+      # Pinned to a commit because it is not GitHub's own: a tag can be moved, a commit
+      # cannot. `actions/*` stay on their major tags — they share a publisher with the
+      # runner itself. Dependabot moves the pin (.github/dependabot.yml).
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
       # Node 24 is what mise.toml pins for development; `engines` allows >= 22.
       - uses: actions/setup-node@v7

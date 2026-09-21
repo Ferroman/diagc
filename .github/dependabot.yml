@@ -1,0 +1,13 @@
+# Security fixes for the npm packages come from a repository setting, not from this file.
+# This covers what that setting leaves out: the actions the workflows run. The ones pinned
+# to a commit never move on their own, so without this they would never get a fix either.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    # One pull request for the lot rather than one per action.
+    groups:
+      actions:
+        patterns: ['*']
