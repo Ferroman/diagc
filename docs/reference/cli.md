@@ -15,7 +15,7 @@ Node ≥ 22. Everything the CLI needs is in the package — the prebuilt studio,
 From a checkout, `pnpm link --global` inside the repo gives you a `diagc` that runs the working tree instead. Both layouts are detected automatically; the differences are called out below where they matter.
 
 ```
-diagc <compile|watch|publish|studio|eject> [files...] [--out dir] [--no-images]
+diagc <compile|watch|publish|studio|eject> [files...] [--out dir] [--no-images] [--link url]
 ```
 
 An unknown command exits `1` with that usage line.
@@ -66,6 +66,7 @@ Compiles everything, then writes shareable output.
 diagc publish
 diagc publish acme shop      # only these diagrams
 diagc publish --no-images
+diagc publish --link https://github.com/you/repo
 ```
 
 - `.diagrams/html/<name>.html` — self-contained interactive pages, every asset inlined as a data URI.
@@ -73,6 +74,8 @@ diagc publish --no-images
 - `.diagrams/static/<name>.png` — flat images, unless `--no-images`.
 
 `files...` here filters by diagram **name**, not path.
+
+**`--link <url>` puts one link in the index header**, shown as the address it goes to — the project's repository, say. It must be an `http(s)` URL; anything else exits `1` before anything is compiled. Diagram pages never carry it: a published page belongs to its diagram and has no chrome of its publisher's.
 
 **Requires the viewer shell.** An installed `diagc` ships it. From a checkout you must build it once (`pnpm build:cli`); until then publish exits `1` with `viewer shell not built`.
 
@@ -139,6 +142,7 @@ Like `studio`, `eject`'s post-swap recompile resolves remote includes locked, wi
 | --- | --- | --- | --- |
 | `--out <dir>` | `compile`, `watch`, `eject` | `.diagrams/.artifacts` | Where artifacts are written — for `eject`, the dir its post-swap recompile writes into. |
 | `--no-images` | `publish` | off | Skip PNG export; write HTML only. |
+| `--link <url>` | `publish` | none | Link the index header to this `http(s)` address. |
 | `--update-includes` | `compile`, `publish` | off | Refetch every remote `include`, vendor it under `.diagrams/includes/`, and rewrite `.diagrams/includes.lock.json`. On `compile`, pruning entries the run didn't touch only happens with no `files...` given (a full-tree run); `publish` always compiles the whole tree, so its prune is unconditional. |
 
 Anything not recognised as a flag is collected as `files...`.

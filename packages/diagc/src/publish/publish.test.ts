@@ -44,6 +44,17 @@ describe('publishDiagrams', () => {
     expect(gallery).toContain('href="demo.html"');
   });
 
+  it('puts a link in the gallery header when given one, and only there', async () => {
+    const f = await fixture();
+    const res = await publishDiagrams({
+      srcDir: f.src, artifactsDir: f.artifacts, htmlDir: f.html, staticDir: f.stat, shellPath: f.shell,
+      libraryDir: f.lib, assetsDir: f.assets, images: false, link: 'https://github.com/o/r',
+    });
+    expect(await readFile(res.gallery, 'utf8')).toContain('href="https://github.com/o/r"');
+    // a diagram page carries no chrome of its publisher's (see SOURCE_NOTICE in html.ts)
+    expect(await readFile(path.join(f.html, 'demo.html'), 'utf8')).not.toContain('https://github.com/o/r');
+  });
+
   it('inlines a bare-name uploaded image asset end-to-end', async () => {
     const f = await fixture();
     await writeFile(path.join(f.assets, 'e49c5314228f.jpg'), Buffer.from('fake-jpg-bytes'));

@@ -39,7 +39,7 @@ diagc studio       # opens the editor, recompiling as you edit
 | `diagc studio` | Serve the visual editor against the current directory (default `http://127.0.0.1:5173`). Diagrams drawn here are saved back as `.diagram.json`. |
 | `diagc publish` | Write self-contained HTML pages to `.diagrams/html/` and PNGs to `.diagrams/static/`. |
 
-Flags: `--out <dir>` (artifact directory), `--no-images` (publish HTML only), `--help`.
+Flags: `--out <dir>` (artifact directory), `--no-images` (publish HTML only), `--link <url>` (link the published index to an address), `--help`.
 
 PNG export drives headless Chrome. Without one, `publish` writes HTML and says so; point `CHROME_PATH` at a browser to get images.
 
