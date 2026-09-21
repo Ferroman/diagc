@@ -57,7 +57,15 @@ export function startWatch(
   outDir: string,
   opts: { onEvent?: (e: WatchEvent) => void; coreEntry?: string; resolver?: IncludeResolver } = {},
 ): { close(): Promise<void> } {
-  const watcher = chokidarWatch(dir, { ignoreInitial: false });
+  // A save is a truncate followed by the data. Compiling on the first of those events can
+  // read an empty file, and the second is no rescue: chokidar drops a `change` that comes
+  // within 5 ms of the previous one, so the stale error would stand until the next save.
+  // Wait for the size to hold still instead. It costs ~100 ms per save and nothing at
+  // startup — chokidar does not apply it to the initial scan.
+  const watcher = chokidarWatch(dir, {
+    ignoreInitial: false,
+    awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 20 },
+  });
 
   const compile = async (file: string) => {
     try {
