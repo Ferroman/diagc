@@ -70,6 +70,35 @@ Both the table and the studio's register are derived from the same model, in the
 - **C4** — the architecture itself: who the system serves, what it is built from, what talks to what. A threat model is what you draw *about* that, and a `threat-model` plane can sit beside it on the same nodes.
 - **Fishbone** — the causes of an incident that already happened, rather than what an attacker could still do.
 
+## Examples
+
+**Starter** — a customer requesting a password reset from an internet-facing auth service, with one information-disclosure finding on the flow. Copy it into `.diagrams/src/` and change the names.
+
+```ts
+import { model } from '@diagc/core';
+
+const m = model('password-reset', { name: 'Password reset flow' });
+const tm = m.threatModel();
+
+const customer = tm.entity('customer', 'Customer');
+const auth = tm.process('auth', 'Auth service');
+tm.boundary('internet-facing', 'DMZ').contains(auth);
+
+tm.flow(customer, auth, 'HTTPS: reset request').threat({
+  category: 'I',
+  title: 'Reset token leaks to third parties via the Referer header',
+  severity: 'medium',
+});
+
+export default m;
+```
+
+[![Password reset flow](../../.diagrams/static/examples/threat-model/starter.png)](https://ferroman.github.io/diagc/html/examples/threat-model/starter.html)
+
+**Payments API** — a merchant-facing charge API that tokenizes cards in a PCI enclave nested inside an internal boundary, writes to a ledger, and settles with an external card network. Threats sit on both nodes and flows, with `severity`, `status` and `mitigation` mixing open, mitigated and accepted findings. [Source](../../.diagrams/src/examples/threat-model/payments-api.diagram.ts)
+
+[![Payments API](../../.diagrams/static/examples/threat-model/payments-api.png)](https://ferroman.github.io/diagc/html/examples/threat-model/payments-api.html)
+
 ## See also
 
 - [Builder API](../reference/builder-api.md#mthreatmodelopts--threatmodelbuilder) — `threatModel`, `entity`, `process`, `store`, `boundary`, `flow`, `threat`
