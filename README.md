@@ -79,6 +79,8 @@ Organised along [Diátaxis](https://diataxis.fr/) lines — learning, tasks, loo
 | [Draw a second-order thinking diagram](docs/how-to/draw-a-second-order-thinking-diagram.md) | A decision, its consequences, and what follows from those — banded by order. |
 | [Draw a fishbone diagram](docs/how-to/draw-a-fishbone-diagram.md) | An effect, the categories of cause, causes and sub-causes on their bones. |
 | [Draw a threat model](docs/how-to/draw-a-threat-model.md) | A STRIDE data-flow diagram whose elements and flows carry their own threat register. |
+| [Draw an ER diagram](docs/how-to/draw-an-er-diagram.md) | Tables with typed columns and keys, and foreign keys pinned row to row. |
+| [Draw a causal-loop diagram](docs/how-to/draw-a-causal-loop-diagram.md) | Variables, signed links and delays — the reinforcing and balancing loops are found for you. |
 | [Compose diagrams](docs/how-to/compose-diagrams.md) | `include` and `key`: umbrella views over several diagrams. |
 | [Publish and share](docs/how-to/publish-and-share.md) | PNGs for a README, interactive pages, GitHub Pages. |
 | [Eject a diagram to TypeScript](docs/how-to/eject-to-typescript.md) | Promote a studio-drawn diagram to a verified, generated `.diagram.ts`. |
