@@ -341,13 +341,13 @@ Chainable, so a second finding on the same element is another `.threat(...)`. Se
 
 ## `m.legend(opts?) → m`
 
-Opt this diagram into an on-canvas key. Calling it at all is the switch — a diagram that never does has no legend. A bare `m.legend()` derives every row.
+Opt this diagram into an on-canvas key. Calling it at all is the switch — a diagram that never does has no legend in its image, and on the canvas only the hidden, on-demand one that [wordless shapes](../how-to/add-a-legend.md#diagrams-that-offer-one-anyway) get. A bare `m.legend()` derives every row.
 
 | Option | Type | Notes |
 | --- | --- | --- |
 | `title` | `string?` | Default `Legend`. |
 | `position` | `string?` | `top-left`, `top-right`, `bottom-left`, `bottom-right`. Default `bottom-right`. |
-| `show` | `string[]?` | Derived sections: `layers`, `kinds`, `types`. Default `['layers', 'kinds']`. |
+| `show` | `string[]?` | Derived sections, exactly: `layers`, `kinds`, `types`, `marks`. Absent means `layers`, `kinds`, `marks`, plus the `types` whose shape carries no words. |
 | `items` | `LegendItem[]?` | Hand-written rows. One naming a derived `kind`/`type` recaptions that row in place. |
 
 ```ts

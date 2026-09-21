@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createIconRegistry } from '@diagc/icons';
 import { Legend } from './Legend';
 import type { LegendRow } from './legendRows';
+import type { KindStyle, ShapeId } from './registry';
 
 const rows: LegendRow[] = [
   { id: 'layers:flow', section: 'layers', label: 'Data flow', layer: 'flow', active: false, swatch: { draw: 'chip', color: '#0ea5e9' } },
@@ -169,5 +170,68 @@ describe('Legend', () => {
     render(<Legend rows={[{ id: 'layers:$drawings', section: 'layers', label: 'Drawings', drawings: true, active: true }]} interactive={false} />);
     expect(screen.queryByRole('button', { name: 'Drawings' })).toBeNull();
     expect(screen.getByText('Drawings')).toBeTruthy();
+  });
+
+  // ---- swatches that match the canvas ------------------------------------------
+  const svgOf = (row: LegendRow): string => {
+    const { container, unmount } = render(<Legend rows={[row]} interactive={false} />);
+    const html = container.querySelector('.dg-legend-swatch')?.innerHTML ?? '';
+    unmount();
+    return html;
+  };
+  const shapeRow = (shape: ShapeId): LegendRow => ({ id: `types:${shape}`, section: 'types', label: shape, swatch: { draw: 'shape', style: { shape } } });
+  const lineRow = (style: KindStyle): LegendRow => ({ id: 'kinds:k', section: 'kinds', label: 'k', swatch: { draw: 'line', style } });
+
+  it('gives every canvas shape a swatch of its own, never the box fallback', () => {
+    const shapes: ShapeId[] = ['cylinder', 'pill', 'hexagon', 'person', 'table', 'bubble', 'circle', 'rounded', 'diamond', 'bar', 'start-dot', 'end-bullseye', 'send-signal', 'receive-signal', 'note', 'ellipse', 'store'];
+    const box = svgOf(shapeRow('box'));
+    const drawn = shapes.map((sh) => svgOf(shapeRow(sh)));
+    for (const [i, html] of drawn.entries()) expect(html, shapes[i]).not.toBe(box);
+    // and no two shapes share one
+    expect(new Set(drawn).size).toBe(shapes.length);
+  });
+
+  it('fills the solid glyphs and leaves a store open-ended, as the canvas does', () => {
+    const { container } = render(<Legend rows={[shapeRow('start-dot'), shapeRow('end-bullseye'), shapeRow('store')]} interactive={false} />);
+    const [dot, bullseye, store] = [...container.querySelectorAll('span.dg-legend-shape > svg')];
+    expect(dot!.querySelectorAll('circle')).toHaveLength(1);
+    expect(dot!.querySelector('circle')?.getAttribute('fill')).not.toBe('var(--dg-surface)');
+    expect(bullseye!.querySelectorAll('circle')).toHaveLength(2);
+    // a data store is two rules with nothing closing the ends
+    expect(store!.querySelectorAll('line')).toHaveLength(2);
+    expect(store!.querySelector('rect')).toBeNull();
+  });
+
+  it('draws a connection with the ends its kind has', () => {
+    const arrow = 'M0,0 L10,5 L0,10 z';
+    expect(svgOf(lineRow({}))).toContain(arrow); // the default end is an arrowhead
+    expect(svgOf(lineRow({ dashed: true, endMarker: 'none' }))).not.toContain(arrow);
+    const fk = svgOf(lineRow({ startMarker: 'crowsfoot', endMarker: 'one' }));
+    expect(fk).toContain('M10,1 L0,5 L10,9 M0,5 L10,5'); // the crow's foot
+    expect(fk).toContain('M5,1 L5,9'); // the bar
+    expect(fk).not.toContain(arrow);
+  });
+
+  it('draws the lightning jog of an interrupt', () => {
+    expect(svgOf(lineRow({ zigzag: true }))).toContain('<polyline');
+    expect(svgOf(lineRow({}))).not.toContain('<polyline');
+  });
+
+  it('draws marks under their own heading, as the badge or tag the canvas shows', () => {
+    const marks: LegendRow[] = [
+      { id: 'marks:threat-open', section: 'marks', label: 'Open threats', swatch: { draw: 'mark', mark: 'threat-open' } },
+      { id: 'marks:threat-handled', section: 'marks', label: 'All threats handled', swatch: { draw: 'mark', mark: 'threat-handled' } },
+      { id: 'marks:pk', section: 'marks', label: 'Primary key', swatch: { draw: 'mark', mark: 'pk' } },
+      { id: 'marks:fk', section: 'marks', label: 'Foreign key column', swatch: { draw: 'mark', mark: 'fk' } },
+    ];
+    const { container } = render(<Legend rows={marks} interactive={false} />);
+    expect(screen.getByText('Marks')).toBeTruthy();
+    const drawn = [...container.querySelectorAll('.dg-legend-mark')].map((el) => [el.getAttribute('data-mark'), el.textContent]);
+    expect(drawn).toEqual([
+      ['threat-open', '1'],
+      ['threat-handled', '✓'],
+      ['pk', '🔑'],
+      ['fk', 'FK'],
+    ]);
   });
 });

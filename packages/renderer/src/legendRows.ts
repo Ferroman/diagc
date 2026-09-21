@@ -21,7 +21,9 @@ import {
   type LegendItem,
   type LegendSection,
   type ViewNode,
+  threatSummary,
 } from '@diagc/core';
+import { typeColor } from './build-data';
 import { DEFAULT_KIND_STYLES, DEFAULT_TYPE_STYLES, type KindStyle, type Registry, type TypeStyle } from './registry';
 
 /** `draw` is the discriminant — deliberately not `kind`, which already means
@@ -29,7 +31,11 @@ import { DEFAULT_KIND_STYLES, DEFAULT_TYPE_STYLES, type KindStyle, type Registry
 export type LegendSwatch =
   | { draw: 'line'; style: KindStyle; color?: string }
   | { draw: 'shape'; style: TypeStyle; color?: string; icon?: string }
-  | { draw: 'chip'; color: string };
+  | { draw: 'chip'; color: string }
+  | { draw: 'mark'; mark: LegendMark };
+
+/** Things the canvas draws that are neither a node type nor a line kind. */
+export type LegendMark = 'threat-open' | 'threat-handled' | 'pk' | 'fk';
 
 export interface LegendRow {
   /** `${section}:${key}` — stable and unique within the returned list */
@@ -43,6 +49,11 @@ export interface LegendRow {
   active?: boolean;
   /** the freehand-drawings row (not a model layer) */
   drawings?: true;
+  /** The row explains something that says nothing about itself on the canvas: a
+   *  captioned registry entry (a start dot, a crow's foot line) or a mark. A box that
+   *  prints its own subtitle never sets it. One such row is what offers a legend on a
+   *  diagram that declared none (see useLegendState). */
+  vocabulary?: true;
 }
 
 export interface LegendInput {
@@ -58,6 +69,9 @@ export interface LegendInput {
    *  must be passed through with the same nullability: coercing undefined to []
    *  here tells the legend "nothing is on" while compileView draws the presets. */
   activeLayers?: string[];
+  /** node id → the notation's accent (the profile's `colorOf`), exactly what the
+   *  canvas is given — without it a trust boundary's swatch is grey beside red boxes */
+  nodeColors?: ReadonlyMap<string, string>;
   /** already notation-composed by the caller (see DiagramView) */
   typeRegistry: Registry<TypeStyle>;
   kindRegistry: Registry<KindStyle>;
@@ -71,7 +85,13 @@ export interface LegendInput {
   drawings?: { active: boolean };
 }
 
-const DEFAULT_SECTIONS: readonly LegendSection[] = ['layers', 'kinds'];
+/** What a legend with no `show` derives. `types` is absent on purpose, and yet not
+ * wholly off: see {@link legendRows}. */
+const DEFAULT_SECTIONS: readonly LegendSection[] = ['layers', 'kinds', 'marks'];
+
+/** Shapes the canvas draws in a fixed neutral stroke whatever the accent says
+ * (DiagramNode's `neutralGlyph`), so their swatch must not take one either. */
+const NEUTRAL_GLYPHS: ReadonlySet<string> = new Set(['bar', 'start-dot', 'end-bullseye']);
 
 /** Registry key order first (an authored, meaningful order), then unknown ids
  * alphabetically. Deliberately NOT first-appearance order: that would reshuffle
@@ -190,30 +210,44 @@ function kindRows(input: LegendInput): LegendRow[] {
   // is the property that matters (see orderByRegistry).
   return orderByRegistry(kinds, Object.keys(DEFAULT_KIND_STYLES)).map((k) => {
     const tint = tints.get(k);
+    const style = input.kindRegistry.resolve(k);
     return {
       id: `kinds:${k}`,
       section: 'kinds' as const,
-      label: k,
+      label: style.legendLabel ?? k,
       swatch: {
         draw: 'line' as const,
-        style: input.kindRegistry.resolve(k),
+        style,
         ...(tint !== undefined ? { color: tint } : {}),
       },
+      ...(style.legendLabel !== undefined ? { vocabulary: true as const } : {}),
     };
   });
 }
 
 function typeRows(input: LegendInput): LegendRow[] {
-  const types = new Set<string>();
+  // The accent is lifted the way kindRows lifts a tint: only when every drawn node of
+  // the type agrees on one, resolved by the same chain the canvas uses.
+  const accents = new Map<string, string | undefined>();
+  const colors = {
+    ...(input.nodeColors !== undefined ? { nodeColors: input.nodeColors } : {}),
+    ...(input.model.typeColors !== undefined ? { typeColors: input.model.typeColors } : {}),
+  };
   const walk = (nodes: ViewNode[]): void => {
     for (const v of nodes) {
-      if (v.node.type !== undefined) types.add(v.node.type);
+      const t = v.node.type;
+      if (t !== undefined) {
+        const accent = typeColor(v, colors);
+        if (!accents.has(t)) accents.set(t, accent);
+        else if (accents.get(t) !== accent) accents.set(t, undefined);
+      }
       walk(v.children);
     }
   };
   walk(input.compiled.roots);
-  return orderByRegistry([...types], Object.keys(DEFAULT_TYPE_STYLES)).map((t) => {
+  return orderByRegistry([...accents.keys()], Object.keys(DEFAULT_TYPE_STYLES)).map((t) => {
     const style = input.typeRegistry.resolve(t);
+    const accent = NEUTRAL_GLYPHS.has(style.shape) ? undefined : accents.get(t);
     // Some registry entries set `label: ''` to suppress the node's own subtitle
     // (the activity leaf shapes read fine unlabeled on the canvas) — that empty
     // string is not a legend caption, so an opt-in types legend must still fall
@@ -222,14 +256,65 @@ function typeRows(input: LegendInput): LegendRow[] {
     return {
       id: `types:${t}`,
       section: 'types' as const,
-      label: label === undefined || label === '' ? t : label,
+      label: style.legendLabel ?? (label === undefined || label === '' ? t : label),
       swatch: {
         draw: 'shape' as const,
         style,
+        ...(accent !== undefined ? { color: accent } : {}),
         ...(style.icon !== undefined ? { icon: style.icon } : {}),
       },
+      ...(style.legendLabel !== undefined ? { vocabulary: true as const } : {}),
     };
   });
+}
+
+/** Badges and column tags, keyed only while one is on screen. Counted the way the
+ * canvas counts them (build-data): a node's own threats, and a drawn edge's whole
+ * bundle — so a badge and its row can never disagree about what is open. */
+function markRows(input: LegendInput): LegendRow[] {
+  const seen = new Set<LegendMark>();
+  const badge = (t: { open: number; total: number }): void => {
+    if (t.total === 0) return;
+    seen.add(t.open > 0 ? 'threat-open' : 'threat-handled');
+  };
+  const walk = (nodes: ViewNode[]): void => {
+    for (const v of nodes) {
+      badge(threatSummary(v.node.threats));
+      // A folded table draws no rows, but a table is a leaf: it has nothing to fold.
+      for (const c of v.node.columns ?? []) {
+        if (c.pk === true) seen.add('pk');
+        else if (c.fk === true) seen.add('fk');
+      }
+      walk(v.children);
+    }
+  };
+  walk(input.compiled.roots);
+  for (const e of input.compiled.edges) {
+    badge(
+      e.constituents.reduce(
+        (acc, c) => {
+          const t = threatSummary(c.threats);
+          return { open: acc.open + t.open, total: acc.total + t.total };
+        },
+        { open: 0, total: 0 },
+      ),
+    );
+  }
+  const LABELS: Record<LegendMark, string> = {
+    'threat-open': 'Open threats',
+    'threat-handled': 'All threats handled',
+    pk: 'Primary key',
+    fk: 'Foreign key column',
+  };
+  return (Object.keys(LABELS) as LegendMark[])
+    .filter((m) => seen.has(m))
+    .map((m) => ({
+      id: `marks:${m}`,
+      section: 'marks' as const,
+      label: LABELS[m],
+      swatch: { draw: 'mark' as const, mark: m },
+      vocabulary: true as const,
+    }));
 }
 
 function swatchOf(item: LegendItem, input: LegendInput): LegendSwatch | undefined {
@@ -273,10 +358,19 @@ function drawingsRow(input: LegendInput): LegendRow[] {
 
 export function legendRows(input: LegendInput): LegendRow[] {
   const sections = input.config.show ?? DEFAULT_SECTIONS;
+  // An explicit `show` is obeyed to the letter. Without one, elements are off — a box
+  // prints its own type, and a key for it repeats the canvas — except the shapes that
+  // print nothing: there the key is the only place a diamond is called a decision.
+  const types = sections.includes('types')
+    ? typeRows(input)
+    : input.config.show === undefined
+      ? typeRows(input).filter((r) => r.vocabulary === true)
+      : [];
   const derived: LegendRow[] = [
     ...(sections.includes('layers') ? [...layerRows(input), ...drawingsRow(input)] : []),
     ...(sections.includes('kinds') ? kindRows(input) : []),
-    ...(sections.includes('types') ? typeRows(input) : []),
+    ...types,
+    ...(sections.includes('marks') ? markRows(input) : []),
   ];
   const extras: LegendRow[] = [];
   (input.config.items ?? []).forEach((item, i) => {
@@ -288,7 +382,9 @@ export function legendRows(input: LegendInput): LegendRow[] {
     const hit = targetId !== undefined ? derived.find((r) => r.id === targetId) : undefined;
     if (hit !== undefined) {
       hit.label = item.label;
-      if (item.color !== undefined && hit.swatch !== undefined && hit.swatch.draw !== 'chip') {
+      // Only a line or a shape is tinted: `kind`/`type` can only ever hit one of
+      // those two, and naming them keeps a chip or a mark out of the spread.
+      if (item.color !== undefined && (hit.swatch?.draw === 'line' || hit.swatch?.draw === 'shape')) {
         hit.swatch = { ...hit.swatch, color: item.color };
       }
       // An icon only means anything on a shape swatch, but it must survive the

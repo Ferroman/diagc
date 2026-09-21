@@ -1259,6 +1259,31 @@ describe('legend', () => {
     expect(screen.queryByRole('button', { name: 'Data flow' })).toBeNull();
   });
 
+  // A diagram drawn in wordless shapes: no `legend` declared, and none needed for
+  // the reader to be able to ask what a diamond is.
+  const undeclaredEr = (): DiagramModel => {
+    const m = model('library');
+    const members = m.table('members', { columns: [{ name: 'id', type: 'uuid', pk: true }] });
+    const loans = m.table('loans', { columns: [{ name: 'member_id', type: 'uuid', fk: true }] });
+    m.fk(loans, 'member_id', members);
+    return m.toJSON();
+  };
+
+  it('offers a hidden legend on an undeclared diagram of wordless shapes', async () => {
+    render(<DiagramView model={undeclaredEr()} />);
+    const btn = await screen.findByRole('button', { name: 'Show legend' });
+    expect(screen.queryByText('Foreign key: many to one')).toBeNull();
+    fireEvent.click(btn);
+    expect(screen.getByText('Foreign key: many to one')).toBeTruthy();
+    expect(screen.getByText('Primary key')).toBeTruthy();
+  });
+
+  it('keeps an undeclared legend out of an export', async () => {
+    render(<DiagramView model={undeclaredEr()} chrome={false} />);
+    await waitFor(() => expect(screen.getByText('members')).toBeTruthy());
+    expect(screen.queryByText('Legend')).toBeNull();
+  });
+
   it('reports a layer toggle from a legend row', async () => {
     const onToggleLayer = vi.fn();
     render(<DiagramView model={legended()} onToggleLayer={onToggleLayer} />);

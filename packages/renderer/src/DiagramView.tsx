@@ -405,6 +405,10 @@ function Inner(props: DiagramViewProps) {
     visibleRef.current = ids;
   }, [compiled]);
 
+  // Up here rather than beside `edgeColors`, because the legend needs it too: a
+  // trust boundary's swatch is red for the same reason its box is.
+  const nodeColors = useMemo(() => profile.node?.colorOf?.(props.model, props.plane), [profile, props.model, props.plane]);
+
   const legend = useLegendState({
     model: props.model,
     plane: props.plane,
@@ -416,6 +420,7 @@ function Inner(props: DiagramViewProps) {
     canToggleLayers: props.onToggleLayer !== undefined,
     strokes,
     drawingsVisible,
+    ...(nodeColors !== undefined ? { nodeColors } : {}),
   });
   const { legendConfig, showLegend, setShowLegend, setLegendSize, legendRowList, legendReserveRef } = legend;
 
@@ -617,7 +622,7 @@ function Inner(props: DiagramViewProps) {
   // Notation colour hooks: a node/edge takes its lane's (or otherwise the
   // notation's) colour where it sets none itself. Absent notation = absent map,
   // so an unrelated diagram's build-data pass never sees a `nodeColors` field.
-  const nodeColors = useMemo(() => profile.node?.colorOf?.(props.model, props.plane), [profile, props.model, props.plane]);
+  // (`nodeColors` itself is computed above the legend, which keys with it.)
   const edgeColors = useMemo(() => {
     const colorOf = profile.edge?.colorOf;
     if (colorOf === undefined) return undefined;

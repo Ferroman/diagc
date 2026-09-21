@@ -30,7 +30,7 @@ A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot ente
 | `Alt` + drag a node | Move it (view mode). A node dragged past its group's wall grows the group. **Save positions** writes the move. |
 | `Alt` + drag an edge label | Slide it along its edge, or across to the other side of the line (view mode). Saved by the same chip. |
 | `◎` in the corner controls | Dim everything unconnected to the selection |
-| `▤` in the corner controls | Show/hide the legend. Only present when the diagram declares one and it has rows. A viewer preference, never saved. |
+| `▤` in the corner controls | Show/hide the legend. Present when there are rows to show: the diagram declares a legend, or it is drawn in shapes that carry no words (activity, threat model, ER) — there the panel starts hidden. A viewer preference, never saved. |
 | `◉` in the corner controls, or `L` | Laser pointer for screenshares: drag to draw a red trail that fades out after a second. Works in both modes and inside a drilled-in group; never saved. `Esc` switches it off. |
 | Click a layer row in the legend | Toggle that overlay, like the layer chips |
 

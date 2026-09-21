@@ -187,8 +187,8 @@
   font: 600 11px/18px system-ui, sans-serif; text-align: center;
   color: #fff; pointer-events: none;
 }
-.dg-threat-badge[data-state='open'] { background: #c62828; }
-.dg-threat-badge[data-state='handled'] { background: #2e7d32; }
+.dg-threat-badge[data-state='open'], .dg-legend-badge[data-state='open'] { background: #c62828; }
+.dg-threat-badge[data-state='handled'], .dg-legend-badge[data-state='handled'] { background: #2e7d32; }
 /* The counting badge as a toggle (a bubble-drawing canvas — see NoteStateContext):
    the same pill, with the UA's button chrome stripped and the pointer events the
    passive rule above gives up taken back. In the export page nothing toggles. */
@@ -850,6 +850,10 @@ path.dg-loop-badge-circle {
 .dg-legend-shape { position: relative; }
 .dg-legend-shape > svg { display: block; height: 100%; width: 100%; }
 .dg-legend-icon { color: var(--dg-text-muted); left: 50%; position: absolute; top: 50%; transform: translate(-50%, -50%); }
+.dg-legend-mark { align-items: center; display: inline-flex; justify-content: center; line-height: 1; }
+/* The canvas badge at swatch size. The two colours are the badge's own, so they are
+   listed once, beside it (see .dg-threat-badge). */
+.dg-legend-badge { border-radius: 6px; color: #fff; font: 600 8px/12px system-ui, sans-serif; height: 12px; min-width: 12px; text-align: center; }
 .dg-legend-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dg-no-chrome .dg-legend-collapse { display: none; }
 .dg-no-chrome .dg-legend-toggle:hover { opacity: 1; }

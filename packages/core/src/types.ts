@@ -235,7 +235,9 @@ export interface LegendItem {
   icon?: string;
 }
 
-export const LEGEND_SECTIONS = ['layers', 'kinds', 'types'] as const;
+/** `marks` is what is neither a node type nor a line kind: a threat badge, a table's
+ * key and foreign-key column tags. */
+export const LEGEND_SECTIONS = ['layers', 'kinds', 'types', 'marks'] as const;
 export type LegendSection = (typeof LEGEND_SECTIONS)[number];
 
 export const LEGEND_POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const;
@@ -248,7 +250,9 @@ export interface DiagramLegend {
   title?: string;
   /** default 'bottom-right' — the only corner not already occupied by chrome */
   position?: LegendPosition;
-  /** derived sections to include; default ['layers', 'kinds'] */
+  /** derived sections to include, exactly. Absent = `layers`, `kinds`, `marks`, plus the
+   * element shapes that carry no words of their own on the canvas (a start dot, a DFD
+   * process); every other element waits for an explicit `types`. */
   show?: LegendSection[];
   /** hand-written rows, appended after the derived ones */
   items?: LegendItem[];

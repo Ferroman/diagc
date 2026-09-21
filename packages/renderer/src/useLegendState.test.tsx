@@ -73,4 +73,46 @@ describe('useLegendState', () => {
     act(() => result.current.setLegendSize({ width: 100, height: 40 }));
     expect(result.current.legendReserveRef.current).toEqual({ side: 'top', px: 56 });
   });
+
+  // ---- a legend nobody declared ------------------------------------------------
+  function wordless(withLegend = false): DiagramModel {
+    const m = model('claim');
+    const act = m.activity('claim', { name: 'Expense claim' });
+    const lane = act.lane('finance', { name: 'Finance' });
+    act.flow(lane.start(), lane.end());
+    const json = m.toJSON();
+    if (withLegend) json.legend = {};
+    return json;
+  }
+  const expanded = (m: DiagramModel) =>
+    compileView(m, { pins: Object.fromEntries(m.containment.map((c) => [c.parent, 'expanded' as const])) });
+
+  it('offers a legend, hidden, on a diagram of wordless shapes that declared none', () => {
+    const m = wordless();
+    const { result } = renderHook((p: LegendStateInput) => useLegendState(p), { initialProps: inputFor(m, { compiled: expanded(m) }) });
+    // rows to show are what puts the button on the canvas; hidden is what keeps
+    // an undeclared legend out of an export, which has no button to press
+    expect(result.current.legendRowList.map((r) => r.label)).toEqual(['Control flow', 'Start', 'End']);
+    expect(result.current.showLegend).toBe(false);
+    expect(result.current.legendReserveRef.current).toBeNull();
+    act(() => result.current.setShowLegend(true));
+    expect(result.current.showLegend).toBe(true);
+  });
+
+  it('starts that legend shown once the diagram declares it', () => {
+    const m = wordless(true);
+    const { result } = renderHook((p: LegendStateInput) => useLegendState(p), { initialProps: inputFor(m, { compiled: expanded(m) }) });
+    expect(result.current.showLegend).toBe(true);
+  });
+
+  it('hands the notation colours to the rows', () => {
+    const m = model('reset');
+    const tm = m.threatModel();
+    tm.boundary('dmz', 'DMZ').contains(tm.process('auth', 'Auth'));
+    const json = m.toJSON();
+    const { result } = renderHook((p: LegendStateInput) => useLegendState(p), {
+      initialProps: inputFor(json, { compiled: expanded(json), nodeColors: new Map([['dmz', '#c62828']]) }),
+    });
+    expect(result.current.legendRowList.find((r) => r.id === 'types:tm-boundary')?.swatch).toMatchObject({ color: '#c62828' });
+  });
 });

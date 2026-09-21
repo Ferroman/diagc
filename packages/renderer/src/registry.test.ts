@@ -92,15 +92,15 @@ describe('registries', () => {
     const r = createTypeRegistry();
     expect(r.resolve('activity-frame')).toEqual({ shape: 'box', alwaysExpanded: true });
     expect(r.resolve('activity-lane')).toEqual({ shape: 'box', alwaysExpanded: true });
-    expect(r.resolve('activity-region')).toEqual({ shape: 'box', dashed: true, alwaysExpanded: true });
-    expect(r.resolve('activity-action')).toEqual({ shape: 'rounded', label: '' });
-    expect(r.resolve('activity-decision')).toEqual({ shape: 'diamond', defaultSize: { width: 48, height: 48 }, label: '' });
-    expect(r.resolve('activity-bar')).toEqual({ shape: 'bar', defaultSize: { width: 8, height: 100 }, label: '' });
-    expect(r.resolve('activity-start')).toEqual({ shape: 'start-dot', defaultSize: { width: 24, height: 24 }, label: '' });
-    expect(r.resolve('activity-end')).toEqual({ shape: 'end-bullseye', defaultSize: { width: 28, height: 28 }, label: '' });
-    expect(r.resolve('activity-send')).toEqual({ shape: 'send-signal', defaultSize: { width: 140, height: 44 }, label: '' });
-    expect(r.resolve('activity-receive')).toEqual({ shape: 'receive-signal', defaultSize: { width: 140, height: 44 }, label: '' });
-    expect(r.resolve('activity-object')).toEqual({ shape: 'box', label: '' });
+    expect(r.resolve('activity-region')).toEqual({ shape: 'box', dashed: true, alwaysExpanded: true, legendLabel: 'Interruptible region' });
+    expect(r.resolve('activity-action')).toEqual({ shape: 'rounded', label: '', legendLabel: 'Action' });
+    expect(r.resolve('activity-decision')).toEqual({ shape: 'diamond', defaultSize: { width: 48, height: 48 }, label: '', legendLabel: 'Decision / merge' });
+    expect(r.resolve('activity-bar')).toEqual({ shape: 'bar', defaultSize: { width: 8, height: 100 }, label: '', legendLabel: 'Fork / join' });
+    expect(r.resolve('activity-start')).toEqual({ shape: 'start-dot', defaultSize: { width: 24, height: 24 }, label: '', legendLabel: 'Start' });
+    expect(r.resolve('activity-end')).toEqual({ shape: 'end-bullseye', defaultSize: { width: 28, height: 28 }, label: '', legendLabel: 'End' });
+    expect(r.resolve('activity-send')).toEqual({ shape: 'send-signal', defaultSize: { width: 140, height: 44 }, label: '', legendLabel: 'Send signal' });
+    expect(r.resolve('activity-receive')).toEqual({ shape: 'receive-signal', defaultSize: { width: 140, height: 44 }, label: '', legendLabel: 'Receive signal' });
+    expect(r.resolve('activity-object')).toEqual({ shape: 'box', label: '', legendLabel: 'Object' });
     expect(r.resolve('activity-note')).toEqual({ shape: 'note', defaultSize: { width: 140, height: 64 }, label: '' });
   });
 
@@ -122,10 +122,10 @@ describe('registries', () => {
 
   it('registers the activity relation kinds', () => {
     const r = createKindRegistry();
-    expect(r.resolve('control')).toEqual({});
-    expect(r.resolve('object-flow')).toEqual({ dashed: true });
-    expect(r.resolve('interrupt')).toEqual({ zigzag: true });
-    expect(r.resolve('note-link')).toEqual({ dashed: true, endMarker: 'none' });
+    expect(r.resolve('control')).toEqual({ legendLabel: 'Control flow' });
+    expect(r.resolve('object-flow')).toEqual({ dashed: true, legendLabel: 'Object flow' });
+    expect(r.resolve('interrupt')).toEqual({ zigzag: true, legendLabel: 'Interrupt' });
+    expect(r.resolve('note-link')).toEqual({ dashed: true, endMarker: 'none', legendLabel: 'Note link' });
   });
 
   it('draws second-order nodes as boxes with a valence glyph and no type subtitle', () => {
@@ -145,9 +145,9 @@ describe('registries', () => {
     // The ids come from core, so a rename there breaks here rather than
     // silently degrading every DFD element to the unknown-id plain box.
     const t = createTypeRegistry();
-    expect(t.resolve(TM_ENTITY_TYPE)).toEqual({ shape: 'box', label: '' });
-    expect(t.resolve(TM_PROCESS_TYPE)).toEqual({ shape: 'ellipse', label: '', defaultSize: { width: 150, height: 90 } });
-    expect(t.resolve(TM_STORE_TYPE)).toEqual({ shape: 'store', label: '', defaultSize: { width: 150, height: 56 } });
+    expect(t.resolve(TM_ENTITY_TYPE)).toEqual({ shape: 'box', label: '', legendLabel: 'External entity' });
+    expect(t.resolve(TM_PROCESS_TYPE)).toEqual({ shape: 'ellipse', label: '', defaultSize: { width: 150, height: 90 }, legendLabel: 'Process' });
+    expect(t.resolve(TM_STORE_TYPE)).toEqual({ shape: 'store', label: '', defaultSize: { width: 150, height: 56 }, legendLabel: 'Data store' });
     // alwaysExpanded: a boundary is a line around things, not a drill level
     expect(t.resolve(TM_BOUNDARY_TYPE)).toEqual({
       shape: 'box',
@@ -155,11 +155,12 @@ describe('registries', () => {
       outline: true,
       dashed: true,
       alwaysExpanded: true,
+      legendLabel: 'Trust boundary',
     });
     // the shape IS the type in a DFD — no `[Process]` subtitle on any of them
     for (const id of [TM_ENTITY_TYPE, TM_PROCESS_TYPE, TM_STORE_TYPE, TM_BOUNDARY_TYPE]) {
       expect(t.resolve(id).label, id).toBe('');
     }
-    expect(createKindRegistry().resolve(TM_FLOW_KIND)).toEqual({});
+    expect(createKindRegistry().resolve(TM_FLOW_KIND)).toEqual({ legendLabel: 'Data flow' });
   });
 });

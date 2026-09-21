@@ -15,7 +15,7 @@ For *why* the model is shaped like this, see [What is in a model](../explanation
 | `name` | `string` | Display name. |
 | `style` | `string?` | Renderer style preset pinned by this file. Unknown ids fall back to the app preference. |
 | `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop` (see [Causal-loop conventions](#causal-loop-conventions)), `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
-| `legend` | `DiagramLegend?` | Opt-in key for the diagram's visual vocabulary. Absent means no legend anywhere. |
+| `legend` | `DiagramLegend?` | Opt-in key for the diagram's visual vocabulary. Absent means no legend in an image, and none on the canvas unless the diagram is drawn in [shapes that carry no words](#diagramlegend). |
 | `typeColors` | `Record<string, string>?` | Default accent colour per node type; `*` is the fallback. A node's own `color` wins. Dropped from included models on graft — the host owns the look. |
 | `layerRules` | `LayerRule[]?` | Class → layer for relations without a `layer`: `{ kind?, color?, layer }`, every named field must match, first match wins, explicit `layer` beats the rules. Dropped from included models on graft. |
 | `nodes` | `DiagramNode[]` | |
@@ -151,7 +151,7 @@ Present only if the diagram declares one. See [Add a legend](../how-to/add-a-leg
 | --- | --- | --- |
 | `title` | `string?` | Panel heading. Default `Legend`. |
 | `position` | `string?` | `top-left`, `top-right`, `bottom-left`, `bottom-right`. Default `bottom-right`. |
-| `show` | `string[]?` | Derived sections to include: `layers`, `kinds`, `types`. Default `['layers', 'kinds']` — replaced, not extended. |
+| `show` | `string[]?` | Derived sections to include, exactly: `layers`, `kinds`, `types`, `marks`. Absent means `layers`, `kinds`, `marks`, plus those `types` whose shape carries no words. Replaced, not extended. |
 | `items` | `LegendItem[]?` | Hand-written rows, appended after the derived ones. |
 
 Derived rows come from two different places, and the difference is visible:
@@ -159,9 +159,13 @@ Derived rows come from two different places, and the difference is visible:
 - **`kinds` and `types` come from the compiled view** — the arrows and boxes actually drawn. They follow the active plane, the active layers and what is currently unfolded; a kind whose only arrows are behind a switched-off layer has no row. Order within the section is the built-in registry's, then alphabetical for ids it does not know.
 - **`layers` comes from the model, per plane** — every declared layer that something the active plane could draw carries, whether it is switched on or off, in **declaration order**. Folding changes nothing here: a layer row is the switch that reveals its overlay, so it has to stay put while the overlay is hidden. When the plane borrows another's containment (`containmentOf`), relevance is resolved against the donor plane, the same way the view is; when you have drilled into a node, it is resolved against that node's interior.
 
+- **`marks` comes from the compiled view as well** — a threat badge per state on screen (*open*, *all handled*), counted the way the canvas counts it: a node's own threats, and every relation a drawn arrow stands for. A drawn table's `pk` and `fk` columns add the 🔑 and `FK` rows.
+
+A `types` row is captioned with the type's subtitle, or its id. The activity and threat-model shapes and the `fk`, activity and `data-flow` kinds carry a caption in words instead (`Start`, `Process`, `Foreign key: many to one`); those are the rows a legend with no `show` lists under **Elements**, and one of them — or a mark — drawn on a diagram with no `legend` at all is what puts the `▤` button on its canvas, the panel hidden until asked for. Such a legend is never exported.
+
 Inactive layer rows are listed **greyed** wherever the host can toggle them (the studio). Where nothing can — a published page, an exported PNG — they are **omitted** instead of shown as a row no click can change.
 
-A `kinds` swatch is the kind's registry style, tinted when every drawn arrow of that kind shares one layer tint. A per-relation `style.color` describes one arrow rather than the kind, so it is never lifted into a row.
+A `kinds` swatch is the kind's registry style, line ends included, tinted when every drawn arrow of that kind shares one layer tint. A `types` swatch is the type's shape, in the accent every drawn node of that type shares. A per-relation `style.color` describes one arrow rather than the kind, so it is never lifted into a row.
 
 ### `LegendItem`
 

@@ -65,6 +65,8 @@ The published page still carries the full detail: under the canvas, a **Threats:
 
 Both the table and the studio's register are derived from the same model, in the same order (elements first, then flows, each in declaration order), so neither can disagree with the drawing.
 
+The shapes and both badge states are keyed in the legend, which `▤` brings up whether or not the file declares one. Call `m.legend()` to have it start shown and travel into the PNG; see [Add a legend](add-a-legend.md#diagrams-that-offer-one-anyway).
+
 ## When to reach for something else
 
 - **C4** — the architecture itself: who the system serves, what it is built from, what talks to what. A threat model is what you draw *about* that, and a `threat-model` plane can sit beside it on the same nodes.

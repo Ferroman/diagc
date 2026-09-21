@@ -507,6 +507,10 @@ describe('legend validation', () => {
     expect(validate({ ...base(), legend: {} })).toEqual([]);
   });
 
+  it('accepts every derived section, marks included', () => {
+    expect(validate({ ...base(), legend: { show: ['layers', 'kinds', 'types', 'marks'] } })).toEqual([]);
+  });
+
   it('rejects an unknown section', () => {
     const issues = validate({ ...base(), legend: { show: ['colours'] } } as unknown as DiagramModel);
     expect(issues).toHaveLength(1);
