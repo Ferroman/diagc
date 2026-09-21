@@ -1,0 +1,82 @@
+# Publishes the repo's own diagrams — the docs' figures and the examples — as live,
+# zoomable pages at https://ferroman.github.io/diagc/. The docs link every image there.
+#
+# It also renders the PNGs, which makes this the one place CI exercises the image export.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A deploy must finish once started; a newer one queues behind it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      # The version comes from `packageManager` in package.json (see ci.yml).
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Working notes, not examples: they stay in the repo and off the showcase. Removed
+      # from this checkout only, before anything is compiled, so the index never lists them.
+      - run: rm -rf .diagrams/src/thinking
+
+      # `publish` stamps each model into the built viewer shell.
+      - run: pnpm build:cli
+      - run: pnpm publish-diagrams
+
+      # The index sits in html/ and reaches its thumbnails as ../static/, so both folders
+      # ship side by side and the site root forwards to the index.
+      #
+      # The last lines are deliberate: `publish` degrades to HTML-only when it finds no
+      # Chrome, and skips a diagram whose render fails. The index only gives a card a
+      # thumbnail when its image was rendered in this run — the committed PNGs would hide
+      # the gap — so a card without one fails the build instead of deploying quietly.
+      - name: Assemble the site
+        run: |
+          mkdir _site
+          cp -r .diagrams/html _site/html
+          cp -r .diagrams/static _site/static
+          printf '%s\n' \
+            '<!doctype html><meta charset="utf-8"><title>diagc examples</title>' \
+            '<meta http-equiv="refresh" content="0; url=html/index.html">' \
+            '<a href="html/index.html">diagc examples</a>' > _site/index.html
+          cards=$(grep -o 'class="card"' _site/html/index.html | wc -l)
+          thumbs=$(grep -o '<img ' _site/html/index.html | wc -l)
+          echo "$cards cards, $thumbs thumbnails"
+          test "$cards" -gt 0 && test "$cards" -eq "$thumbs"
+
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
