@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "planes": {
+    "default": {
+      "order-service-start": { "x": 52, "y": 40 },
+      "payment-captured": { "x": 96, "y": 30 },
+      "reserve-stock": { "x": 268, "y": 35 },
+
+      "cancellable": { "x": 430, "y": 16 },
+      "cancel-request": { "x": 76, "y": 36 },
+      "fork": { "x": 16, "y": 139 },
+      "pack-order": { "x": 76, "y": 146 },
+      "print-label": { "x": 76, "y": 198 },
+      "join": { "x": 296, "y": 139 },
+
+      "restock": { "x": 776, "y": 57 },
+      "cancelled": { "x": 999, "y": 60 },
+      "to-dock": { "x": 776, "y": 188 },
+      "cutoff": { "x": 952, "y": 173 },
+
+      "collect": { "x": 792, "y": 32 },
+      "tracking": { "x": 970, "y": 32 },
+      "tracking-link": { "x": 1132, "y": 27 },
+      "carrier-end": { "x": 1324, "y": 35 }
+    }
+  },
+  "settings": {
+    "default": {
+      "algorithm": "mrtree",
+      "spacing": 8
+    }
+  }
+}
