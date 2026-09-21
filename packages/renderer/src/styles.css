@@ -366,6 +366,11 @@ button.dg-note-status:hover { background: color-mix(in srgb, var(--dg-node-strok
    the node (expandParent) and the siblings re-expressed against its new origin */
 .react-flow__node.dragging, .dg-dragging .react-flow__node { transition: none; }
 @keyframes dg-flow { to { stroke-dashoffset: -10; } }
+/* A screenshot catches marching dashes at whatever phase the clock has reached, so the
+   same diagram exported twice differed by a few pixels and churned its committed PNG.
+   The chrome-less render is the export render; there the dashes stand still.
+   `!important` because DiagramEdge sets the animation inline. */
+.dg-no-chrome .react-flow__edge-path { animation: none !important; }
 .dg-label-input {
   background: var(--dg-node-fill);
   border: 1px solid var(--dg-node-stroke);
