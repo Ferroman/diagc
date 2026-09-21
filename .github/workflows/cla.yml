@@ -2,9 +2,9 @@
 #
 # This is CLA Assistant *Lite* — an action that runs in this repo, rather than the
 # hosted cla-assistant.io service. The difference that matters: signatures are committed
-# to this repository (see `path-to-signatures`), so the record of who agreed to what is
-# yours and survives the service going away. Losing that record would mean losing the
-# evidence that the project can be licensed commercially.
+# to this repository (see `path-to-signatures` and `branch`), so the record of who agreed
+# to what is yours and survives the service going away. Losing that record would mean
+# losing the evidence that the project can be licensed commercially.
 #
 # A contributor signs by commenting the exact sentence in `custom-pr-sign-comment` on
 # their PR. One signature covers all their future contributions.
@@ -39,7 +39,11 @@ jobs:
         with:
           path-to-signatures: '.github/cla-signatures.json'
           path-to-document: 'https://github.com/Ferroman/diagc/blob/main/CLA.md'
-          branch: 'main'
+          # Not `main`: the action records a signature as a direct commit, and `main` only
+          # takes pull requests. The branch has to exist already — the action creates the
+          # file on it, not the branch — and a ruleset keeps it from being rewritten or
+          # deleted.
+          branch: 'cla-signatures'
           # Exact logins only. The action turns a `*` pattern into an unanchored regex, so
           # the `bot*` its README suggests waves through any account with "bot" anywhere
           # in its name — and an unsigned contribution is what this workflow exists to stop.

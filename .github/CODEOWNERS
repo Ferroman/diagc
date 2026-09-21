@@ -1,0 +1,3 @@
+# One owner for everything, so GitHub requests their review on every pull request from
+# someone else. Later lines win, so a more specific owner goes below this one.
+* @Ferroman
