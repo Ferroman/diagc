@@ -1,7 +1,7 @@
 {
   "version": 1,
   "id": "examples/nested-zoom-demo",
-  "name": "examples/nested-zoom-demo",
+  "name": "Semantic zoom: two folded groups",
   "nodes": [
     {
       "id": "svc",
