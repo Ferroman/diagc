@@ -19,7 +19,7 @@ The arrangement is the notation's own: there are no layout controls, and nothing
 ```ts
 import { model } from '@diagc/core';
 
-const m = model('checkout-outage');
+const m = model('checkout-outage', { name: 'Checkout outage' });
 const fb = m.fishbone('outage', 'Checkout outage on release day');
 const { people, process, code } = fb.categories('Software');
 
@@ -44,6 +44,16 @@ What hangs where is never authored: any relation between two fishbone nodes hang
 
 - **Second-order thinking** — what follows from a decision, forward in time, not the causes behind something that already happened.
 - **Causal-loop diagrams** — feedback between causes, not a one-way tree.
+
+## Examples
+
+**Starter** — the listing under [From TypeScript](#from-typescript) is the whole file: three bones of the `Software` preset, each with one cause, one of them chained into a sub-cause. Copy it into `.diagrams/src/` and change the names. [Source](../../.diagrams/src/examples/fishbone/starter.diagram.ts)
+
+[![Checkout outage](../../.diagrams/static/examples/fishbone/starter.png)](https://ferroman.github.io/diagc/html/examples/fishbone/starter.html)
+
+**Checkout latency at peak** — a slow-checkout postmortem with four hand-made bones — Database, Network, Application, Third-party — instead of a preset. It exercises `fb.category()`, causes chained into sub-causes on every bone, node `description`s, and a `color` on one category. [Source](../../.diagrams/src/examples/fishbone/checkout-latency.diagram.ts)
+
+[![Checkout latency at peak](../../.diagrams/static/examples/fishbone/checkout-latency.png)](https://ferroman.github.io/diagc/html/examples/fishbone/checkout-latency.html)
 
 ## See also
 
