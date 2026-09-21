@@ -380,7 +380,7 @@ A plane with `notation: 'causal-loop'` reads ordinary nodes and relations as var
 
 `kind` is not read — the loop arithmetic uses only each link's ends and its polarity. The examples write `influence`, which draws as a plain arrow.
 
-**Loops are derived, never stored.** Every closed ring among the arrows *actually drawn* is a loop, so a layer switched off, or a plane that leaves a variable out, changes them. Links running the same direction between two variables count as one, unsigned if their polarities disagree. An even number of `-` links makes a loop **R** (reinforcing), an odd number **B** (balancing), and any unsigned link makes it **?**. Up to 50 loops of at most 20 variables are badged, shortest first, each badge just off the top-right corner of its loop's lowest-id variable.
+**Loops are derived, never stored.** Every closed ring among the arrows *actually drawn* is a loop, so a layer switched off, or a plane that leaves a variable out, changes them. Links running the same direction between two variables count as one, unsigned if their polarities disagree. An even number of `-` links makes a loop **R** (reinforcing), an odd number **B** (balancing), and any unsigned link makes it **?**. Up to 50 loops of at most 20 variables are badged, shortest first, each badge anchored just off the top-right corner of its loop's lowest-id variable, then nudged outward until it clears the boxes and the badges already placed.
 
 `invalid-polarity` and `invalid-delay` are checked on every relation, whatever the notation. See [Draw a causal-loop diagram](../how-to/draw-a-causal-loop-diagram.md#how-the-loops-are-found-and-labelled).
 
@@ -397,7 +397,7 @@ Each end of an `fk` is pinned to its column's row where the edge meets a left or
 
 A column's `fk` flag prints the `FK` marker and nothing else: what routes the edge is the relation's `fromColumn`. `m.fk` does not set the flag; the studio's row-to-table drag does.
 
-`duplicate-column` and `unknown-column` are checked on any node that has `columns`, whatever its `type`. See [Draw an ER diagram](../how-to/draw-an-er-diagram.md).
+`duplicate-column` is checked on any node that has `columns`, and `unknown-column` on any relation naming a `fromColumn` or `toColumn` — whatever the node's `type` or the relation's `kind`. See [Draw an ER diagram](../how-to/draw-an-er-diagram.md).
 
 ## Validation codes
 
@@ -466,7 +466,7 @@ Strings the renderer already knows. Anything else falls back to a plain box or a
 
 **Node types** — `system`, `platform` (dashed boxes); `service` (box + icon); `database`, `aws-rds`, `table` (cylinders); `db-table` (ER table); `queue` (pill); `infra` (hexagon); `person` (pill); `comment` (speech bubble — an ordinary node for remarks, wired up with normal relations); and the 33 `c4-*` types listed in [Library reference](library.md).
 
-**Relation kinds** — `sync`, `async` (dashed), `reads`, `writes` (thick), `hosted-on` (dashed), `flow` (animated), `mixed` (thick, used for aggregates), `fk` (crow's-foot).
+**Relation kinds** — `sync`, `async` (dashed), `reads`, `writes` (thick), `hosted-on` (dashed), `flow` (animated), `mixed` (thick, used for aggregates), `fk` (a bar at the referenced end).
 
 An **aggregate** edge (one arrow standing for several relations, after a fold) labels itself from its constituents: their distinct labels joined with ` / ` while that stays within 32 characters, or a single distinct label whatever its length, and otherwise `N relations`. Single-relation edges always carry their own label. Long labels are ellipsised at ~24 characters when drawn; the arrow's hover title carries the full text. See [Views](../explanation/views.md#semantic-zoom).
 

@@ -61,11 +61,11 @@ A `delay` is two hash marks across the middle of the link. It changes nothing ab
 
 ## Examples
 
-**Starter** — the listing under [From TypeScript](#from-typescript) is the whole file: three variables and one all-positive ring, the smallest diagram an R badge appears on. Copy it into `.diagrams/src/` and change the names. [Source](../../.diagrams/src/examples/causal-loop/starter.diagram.ts)
+**Starter** — the listing under [From TypeScript](#from-typescript) is the whole file: three variables and one all-positive ring — the smallest ring worth drawing. Copy it into `.diagrams/src/` and change the names. [Source](../../.diagrams/src/examples/causal-loop/starter.diagram.ts)
 
 [![Word-of-mouth growth](../../.diagrams/static/examples/causal-loop/starter.png)](https://ferroman.github.io/diagc/html/examples/causal-loop/starter.html)
 
-**Technical debt: the shortcut spiral** — Why a codebase everyone agrees should be cleaned up stays dirty: the spiral that deadline pressure feeds, and the two loops that keep it from running away entirely. Six typeless nodes and eight `m.relate` calls under `m.notation('causal-loop')`, with mixed polarities and a `delay` on the cleanup that is planned rather than forced. [Source](../../.diagrams/src/examples/causal-loop/tech-debt.diagram.ts)
+**Technical debt: the shortcut spiral** — a codebase everyone agrees should be cleaned up, and why it stays dirty: the spiral that deadline pressure feeds, and the two loops that keep it from running away entirely. Six typeless nodes and eight `m.relate` calls under `m.notation('causal-loop')`, with mixed polarities and a `delay` on the cleanup that is planned rather than forced. [Source](../../.diagrams/src/examples/causal-loop/tech-debt.diagram.ts)
 
 [![Technical debt: the shortcut spiral](../../.diagrams/static/examples/causal-loop/tech-debt.png)](https://ferroman.github.io/diagc/html/examples/causal-loop/tech-debt.html)
 

@@ -62,9 +62,9 @@ A paid order handed down three lanes to the carrier. An interruptible region hol
 A branching strategy as lanes of commits: a release line, a hotfix, release candidates, a nightly integration lane and two feature teams, with tags, branch-offs and merges — `m.gitGraph()`.
 [Live](https://ferroman.github.io/diagc/html/docs/git-graph.html) · [Source](../../.diagrams/src/docs/git-graph.diagram.ts) · [Guide](../how-to/draw-a-git-branching-diagram.md)
 
-#### Starter: a feature branch
+#### Starter: dark mode toggle
 
-[![Starter: a feature branch](../../.diagrams/static/examples/git-graph/starter.png)](https://ferroman.github.io/diagc/html/examples/git-graph/starter.html)
+[![Starter: dark mode toggle](../../.diagrams/static/examples/git-graph/starter.png)](https://ferroman.github.io/diagc/html/examples/git-graph/starter.html)
 
 A feature branch cut from `main`, two commits, and a tagged merge back.
 [Live](https://ferroman.github.io/diagc/html/examples/git-graph/starter.html) · [Source](../../.diagrams/src/examples/git-graph/starter.diagram.ts) · [Guide](../how-to/draw-a-git-branching-diagram.md)
@@ -104,9 +104,9 @@ A slow-checkout postmortem on four hand-made bones — Database, Network, Applic
 One decision and what follows from it, banded by order: good, bad and neutral consequences, and two branches that join — `m.secondOrder()` with `then` and `leadsTo`.
 [Live](https://ferroman.github.io/diagc/html/docs/second-order.html) · [Source](../../.diagrams/src/docs/second-order.diagram.ts) · [Guide](../how-to/draw-a-second-order-thinking-diagram.md)
 
-#### Starter: requiring 2FA
+#### Starter: requiring two-factor authentication
 
-[![Starter: requiring 2FA](../../.diagrams/static/examples/second-order/starter.png)](https://ferroman.github.io/diagc/html/examples/second-order/starter.html)
+[![Starter: requiring two-factor authentication](../../.diagrams/static/examples/second-order/starter.png)](https://ferroman.github.io/diagc/html/examples/second-order/starter.html)
 
 One decision with a good and a bad first-order consequence, each carried one step further.
 [Live](https://ferroman.github.io/diagc/html/examples/second-order/starter.html) · [Source](../../.diagrams/src/examples/second-order/starter.diagram.ts) · [Guide](../how-to/draw-a-second-order-thinking-diagram.md)

@@ -54,7 +54,7 @@ Boundaries (*Enterprise Boundary*, *System Boundary*, *Container Boundary*, *Gro
 
 The **Data** category holds one entry, **Table**. Placing it drops a `db-table` node seeded with a single `id int PK` column; edit the rows in place on the node.
 
-Drag from a column row's connect point to another table to create a foreign key — it draws with a crow's-foot marker anchored to that row. To author the same thing in TypeScript, see [`m.table` and `m.fk`](author-in-typescript.md#draw-an-er-diagram).
+Drag from a column row's connect point to another table to create a foreign key — it draws anchored to that row, with a bar at the referenced end. [Draw an ER diagram](draw-an-er-diagram.md) has the whole walkthrough, in the studio and in TypeScript.
 
 ## Add your own icons
 
