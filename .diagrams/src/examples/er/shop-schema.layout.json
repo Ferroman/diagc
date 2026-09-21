@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "planes": {
+    "default": {
+      "schema-orders": { "x": 0, "y": 0 },
+      "schema-catalog": { "x": 0, "y": 460 }
+    }
+  },
+  "unfolded": {
+    "default": ["schema-catalog", "schema-orders"]
+  },
+  "settings": {
+    "default": {
+      "direction": "RIGHT",
+      "spacing": 60
+    }
+  }
+}
