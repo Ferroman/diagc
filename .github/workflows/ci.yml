@@ -43,6 +43,10 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+      # Every diagram source in the repo — the docs' own figures and the examples — still
+      # validates. Nothing else compiles them, and the docs embed what they produce.
+      - run: pnpm compile
+
       # What a release ships: both published packages compiled, both browser bundles
       # built and staged into diagc's assets/. Nothing else exercises this path, and a
       # broken emit (the ESM extension fix-up, a bundle that no longer builds) would
