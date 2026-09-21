@@ -90,6 +90,41 @@ The whole picture above is `.diagrams/src/docs/activity.diagram.ts` in this repo
 - **Rules the compiler and the studio's save both enforce**, each with a [validation code](../reference/model.md#validation-codes): an activity frame's children must all be lanes; a lane must be contained by a frame; a region must be contained by a lane if it's contained by anything at all.
 - **No semantic checking.** Decision fan-out, token conservation, whether a fork's branches ever join — none of that is verified. This is an illustrative tool, not a UML checker.
 
+## Examples
+
+**Starter** — one lane, one decision, two guarded branches: the smallest flow that still branches. Copy it into `.diagrams/src/` and change the names.
+
+```ts
+import { model } from '@diagc/core';
+
+const m = model('expense-approval', { name: 'Expense approval' });
+
+const act = m.activity('claim', { name: 'Expense claim' });
+const finance = act.lane('finance', { name: 'Finance', color: '#3caea3' });
+
+const start = finance.start();
+const check = finance.action('check-receipts', 'Check the receipts');
+const withinPolicy = finance.decision('within-policy');
+const reimburse = finance.action('reimburse', 'Reimburse the claim');
+const end = finance.end();
+
+// A guard is just a relation label.
+act
+  .flow(start, check)
+  .flow(check, withinPolicy)
+  .flow(withinPolicy, reimburse, '[within policy]')
+  .flow(withinPolicy, end, '[over the limit]')
+  .flow(reimburse, end);
+
+export default m;
+```
+
+[![Expense approval](../../.diagrams/static/examples/activity/starter.png)](https://ferroman.github.io/diagc/html/examples/activity/starter.html)
+
+**Order fulfilment** — a paid order handed from the order service to the warehouse and on to the carrier, ending in a tracking link. It exercises `region` and `interrupt` for the part a cancellation can still stop, `bar` for the fork and join inside it, `receive` and `send` for the signals, `objectFlow` through an `object` for the tracking number, and a `note` with `noteLink` for the cut-off. [Source](../../.diagrams/src/examples/activity/order-fulfilment.diagram.ts)
+
+[![Order fulfilment](../../.diagrams/static/examples/activity/order-fulfilment.png)](https://ferroman.github.io/diagc/html/examples/activity/order-fulfilment.html)
+
 ## See also
 
 - [Builder API](../reference/builder-api.md#mactivityid-opts--activitybuilder) — `activity`, `lane`, `region`, the element helpers, `flow`/`objectFlow`/`interrupt`/`noteLink`

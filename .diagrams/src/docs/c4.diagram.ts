@@ -19,7 +19,7 @@ banking.contains(web, api, db);
 
 m.relate(customer, web, { kind: 'sync', label: 'Uses [HTTPS]' });
 m.relate(web, api, { kind: 'sync', label: 'Calls [JSON/HTTPS]' });
-m.relate(api, db, { kind: 'reads', label: 'Reads from and writes to [SQL/TCP]' });
+m.relate(api, db, { kind: 'reads', label: 'Reads and writes [SQL]' });
 m.relate(api, mail, { kind: 'async', label: 'Sends e-mail using [SMTP]' });
 
 export default m;

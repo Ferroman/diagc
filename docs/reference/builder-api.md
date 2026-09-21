@@ -78,14 +78,14 @@ Duplicate parent/child/plane triples are ignored, so calling it twice is safe. A
 | --- | --- | --- |
 | `kind` | `string` | **Required.** Free-form. |
 | `id` | `string?` | Explicit relation id. Default `${from}->${to}#${n}`. The pair counter advances either way, so a later un-id'd relation on the same pair still gets the suffix it would have gotten without the override. |
-| `label` | `string?` | |
+| `label` | `string?` | The arrow's text. Drawn in a chip that is ellipsised at about 24 characters (the hover title keeps the full text), so keep it to a phrase. |
 | `labels` | `EdgeLabel[]?` | Positioned edge labels; supersedes `label` when present. See [Model reference](model.md#edgelabel). |
 | `threats` | `Threat[]?` | STRIDE findings, `id` and all. Prefer `FlowRef.threat()` — see [`ref.threat()`](#refthreatopts--ref) — which synthesizes the id. See [Model reference](model.md#threat). |
 | `description` | `string?` | |
 | `layer` | `string?` | Must match a declared layer. |
 | `style` | `RelationStyle?` | See [Model reference](model.md#relationstyle). |
-| `polarity`, `delay` | | Causal-loop diagrams. |
-| `fromColumn`, `toColumn` | `string?` | ER foreign keys. |
+| `polarity`, `delay` | `'+' \| '-'?`, `boolean?` | Causal-loop diagrams — see [Draw a causal-loop diagram](../how-to/draw-a-causal-loop-diagram.md). |
+| `fromColumn`, `toColumn` | `string?` | ER foreign keys — [`m.fk`](#mfkfrom-fromcolumn-to-tocolumn-opts--m) sets both. |
 
 Relation ids are generated as `from->to#n`, with `n` counting per ordered pair — so two relations between the same nodes never collide. Pass `id` to name one explicitly instead.
 
@@ -98,6 +98,8 @@ m.fk(orders, 'user_id', users);
 ```
 
 **Throws** if `toColumn` is omitted and the target has zero or several primary-key columns. Declare the target table, with its PK, before calling.
+
+It does not set `fk: true` on the source column — that flag only prints the `FK` marker, so set it on the column yourself. See [Draw an ER diagram](../how-to/draw-an-er-diagram.md).
 
 ## `m.layer(id, opts?) → m`
 

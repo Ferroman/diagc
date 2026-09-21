@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "planes": {
+    "default": {
+      "incidents": { "x": 0, "y": 60 },
+      "shortcuts": { "x": 400, "y": 0 },
+      "pressure": { "x": 560, "y": 120 },
+      "cleanup": { "x": 10, "y": 250 },
+      "debt": { "x": 265, "y": 250 },
+      "speed": { "x": 460, "y": 250 }
+    }
+  }
+}

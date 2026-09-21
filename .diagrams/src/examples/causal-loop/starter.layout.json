@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "planes": {
+    "default": {
+      "word-of-mouth": { "x": 105, "y": 0 },
+      "signups": { "x": 0, "y": 160 },
+      "users": { "x": 210, "y": 160 }
+    }
+  }
+}

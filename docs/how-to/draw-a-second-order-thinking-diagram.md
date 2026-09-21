@@ -72,6 +72,33 @@ Moving a box by hand does not change its band. The order comes from the graph, n
 - **The layout algorithm is fixed to layered.** The bands ride elk's own layer partitions, so the algorithm picker is withheld. Direction, spacing and edge routing stay adjustable — switch to a left-to-right flow and the bands turn into columns, headers on top.
 - **A consequence nothing leads to yet is an error too** (`so-unreachable`) — a stencil dropped from the palette before it is connected, say. The studio will not save until an arrow leads to it, so draw the arrow, or use "And then what?" / `Tab` / the node's `+`, which create the box and its arrow together.
 
+## Examples
+
+**Starter** — one decision, a first-order win and a first-order cost, each carrying one consequence further out. Copy it into `.diagrams/src/` and change the names.
+
+```ts
+import { model } from '@diagc/core';
+
+const m = model('require-2fa', { name: 'Requiring two-factor authentication' });
+const so = m.secondOrder();
+
+const decision = so.decision('mandate-2fa', 'Require 2FA for every login');
+
+const fewerBreaches = decision.then('fewer-breaches', 'Account takeovers drop', { valence: '+' });
+const lockouts = decision.then('lockouts', 'Support is flooded with lockout tickets', { valence: '-' });
+
+fewerBreaches.then('trust', 'Customers trust the product more', { valence: '+' });
+lockouts.then('contractor', 'Support hires a contractor to keep up', { valence: '-' });
+
+export default m;
+```
+
+[![Requiring two-factor authentication](../../.diagrams/static/examples/second-order/starter.png)](https://ferroman.github.io/diagc/html/examples/second-order/starter.html)
+
+**Moving to a four-day work week** — a four-day-week proposal traced three orders out, from burnout and squeezed client calls through attrition, recruiting and Thursday overrun to a shared burnout rebound two branches feed. It exercises `then`'s `valence`, `label` and `description`, plus `leadsTo` to join two branches into one consequence. [Source](../../.diagrams/src/examples/second-order/four-day-week.diagram.ts)
+
+[![Moving to a four-day work week](../../.diagrams/static/examples/second-order/four-day-week.png)](https://ferroman.github.io/diagc/html/examples/second-order/four-day-week.html)
+
 ## See also
 
 - [Builder API](../reference/builder-api.md#msecondorderopts--secondorderbuilder) — `secondOrder`, `decision`, `then`, `leadsTo`

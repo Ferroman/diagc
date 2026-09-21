@@ -59,7 +59,7 @@ A dropped Trust boundary is an empty box: it holds elements through ordinary con
 
 ### Data
 
-One entry, **Table** — a `db-table` node seeded with a single `id int PK` column, ready to edit in place. The only bundled entry whose template carries `columns` rather than an image.
+One entry, **Table** — a `db-table` node seeded with a single `id int PK` column, ready to edit in place. The only bundled entry whose template carries `columns` rather than an image. See [Draw an ER diagram](../how-to/draw-an-er-diagram.md).
 
 ### Shapes
 
