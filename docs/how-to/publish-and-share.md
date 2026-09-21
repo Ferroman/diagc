@@ -86,6 +86,8 @@ pnpm publish-site      # gh-pages -d .diagrams/html
 
 The first run creates the branch. `main` is never touched. Then enable **Settings → Pages → Deploy from branch → gh-pages**.
 
+Or let CI deploy on every push: this repo's [`pages.yml`](../../.github/workflows/pages.yml) builds the viewer, runs `publish`, and hands the result to GitHub's Pages actions (**Settings → Pages → Source: GitHub Actions**) — it is what serves the [live examples](../examples/README.md). One thing to copy from it: the index reaches its thumbnails as `../static/<name>.png`, so ship `static/` beside `html/` if you want them; `html/` alone gives an index of titles only.
+
 README images in `.diagrams/static` need none of this.
 
 ## What to commit
