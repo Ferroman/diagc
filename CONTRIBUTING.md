@@ -66,6 +66,24 @@ running them first saves a round trip.
 The architecture and the reasoning behind it live in `docs/explanation/`. Reading that
 first will save you time on anything non-trivial.
 
+## Diagrams and their images
+
+The docs' figures and the [examples](docs/examples/README.md) are built with the tool, from
+sources in `.diagrams/src/`. Their PNGs in `.diagrams/static/` are committed, because
+GitHub renders the docs straight from the repo.
+
+- **A new example goes under `.diagrams/src/examples/<type>/` or `examples/features/`,** and
+  gets an entry in `docs/examples/README.md`. A test fails if it has none, or if a link or
+  an image in the docs points nowhere.
+- **Render only what you changed:** `pnpm build:cli` once, then
+  `pnpm publish-diagrams <name> …`. The export is stable run to run, but another Chrome
+  build redraws other diagrams a few bytes differently, and those diffs are noise.
+- **Look at the PNG before you commit it,** and commit it with the source change. Automatic
+  layout is usually right; when it is not, give the diagram layout settings or positions.
+
+CI compiles every source (`pnpm compile`), and the Pages workflow publishes them all to
+the live site.
+
 ## Third-party assets
 
 If your contribution adds an icon, logo, font, or any other third-party asset, say so in
