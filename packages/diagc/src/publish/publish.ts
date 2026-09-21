@@ -11,6 +11,8 @@ export interface PublishOptions {
   srcDir: string; artifactsDir: string; htmlDir: string; staticDir: string; shellPath: string;
   libraryDir: string; assetsDir: string; images: boolean; names?: string[];
   renderPng?: (htmlPath: string, pngPath: string) => Promise<void>;
+  /** an http(s) address for the gallery's header — never put on a diagram page */
+  link?: string;
 }
 export interface PublishResult { pages: string[]; images: string[]; gallery: string }
 
@@ -104,7 +106,7 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
       name: d.name,
       title: titles.get(d.name) ?? d.name,
       hasImage: images.includes(path.join(opts.staticDir, `${d.name}.png`)),
-    }))));
+    })), opts.link !== undefined ? { link: opts.link } : {}));
 
   return { pages, images, gallery: galleryPath };
 }

@@ -30,6 +30,7 @@ import { findHome, homePaths } from './home';
 import { resolveInclude } from './includes';
 import { snapshotSession } from './snapshots';
 import { formatCompileEvent, startWatch } from './watch';
+import { galleryLink } from './publish/gallery';
 import { publishDiagrams } from './publish/publish';
 import { runStudio } from './studio';
 
@@ -45,6 +46,7 @@ Commands:
 Options:
   --out dir       Artifact output directory (default .diagrams/.artifacts)
   --no-images     Publish HTML without rendering PNG images
+  --link url      Publish with a link to url in the index header
   --update-includes  Refetch remote includes and rewrite the snapshot lock
   --help, -h      Show this help and exit
 `;
@@ -55,6 +57,8 @@ interface Args {
   out: string;
   images: boolean;
   updateIncludes: boolean;
+  /** `--link`: validated here, so a bad address fails before anything is compiled */
+  link?: string;
 }
 
 /** Parse argv into command + flags. Unknown flags (anything `--…` that is not
@@ -66,6 +70,7 @@ export function parseArgs(argv: string[]): Args {
   let out = '.diagrams/.artifacts';
   let images = true;
   let updateIncludes = false;
+  let link: string | undefined;
   let commandSeen = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
@@ -81,6 +86,18 @@ export function parseArgs(argv: string[]): Args {
       updateIncludes = true;
       continue;
     }
+    if (arg === '--link') {
+      // No fallback for a missing value, unlike --out: there is no default address, and
+      // the URL check is also what stops the next flag being swallowed as one.
+      const value = argv[++i] ?? '';
+      try {
+        galleryLink(value);
+      } catch (e) {
+        throw new BadFlagValueError('--link', errMessage(e));
+      }
+      link = value;
+      continue;
+    }
     if (arg === '--help' || arg === '-h') throw new HelpRequested();
     if (arg.startsWith('--')) throw new UnknownFlagError(arg);
     // The first non-flag argument names the command; anything after it is a
@@ -92,7 +109,7 @@ export function parseArgs(argv: string[]): Args {
       files.push(arg);
     }
   }
-  return { command, files, out, images, updateIncludes };
+  return { command, files, out, images, updateIncludes, ...(link !== undefined ? { link } : {}) };
 }
 
 /** Thrown by {@link parseArgs} for `--help`/`-h`; `main` prints usage and exits 0. */
@@ -112,6 +129,15 @@ export class UnknownFlagError extends Error {
   }
 }
 
+/** Thrown by {@link parseArgs} for a flag whose value is missing or unusable; `main`
+ * reports it the same way as an unknown flag. */
+export class BadFlagValueError extends Error {
+  constructor(flag: string, why: string) {
+    super(`${flag}: ${why}`);
+    this.name = 'BadFlagValueError';
+  }
+}
+
 async function main() {
   let args: Args;
   try {
@@ -121,7 +147,7 @@ async function main() {
       console.log(USAGE);
       process.exit(0);
     }
-    if (e instanceof UnknownFlagError) {
+    if (e instanceof UnknownFlagError || e instanceof BadFlagValueError) {
       console.error(`diagc: ${e.message}\n`);
       console.error(USAGE);
       process.exit(1);
@@ -227,6 +253,7 @@ async function main() {
       images,
       names: args.files,
       ...(renderPng !== undefined ? { renderPng } : {}),
+      ...(args.link !== undefined ? { link: args.link } : {}),
     });
     console.log(`✓ ${res.pages.length} page(s) -> .diagrams/html`);
     if (res.images.length > 0) console.log(`✓ ${res.images.length} image(s) -> .diagrams/static`);

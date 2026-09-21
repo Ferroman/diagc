@@ -40,7 +40,9 @@ jobs:
 
       # `publish` stamps each model into the built viewer shell.
       - run: pnpm build:cli
-      - run: pnpm publish-diagrams
+      # The link puts the repository in the index header, so a visitor who was handed the
+      # site's address can find the project behind it.
+      - run: pnpm publish-diagrams --link "https://github.com/${{ github.repository }}"
 
       # The index sits in html/ and reaches its thumbnails as ../static/, so both folders
       # ship side by side and the site root forwards to the index.

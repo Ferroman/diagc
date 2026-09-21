@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HelpRequested, UnknownFlagError, parseArgs } from './cli';
+import { BadFlagValueError, HelpRequested, UnknownFlagError, parseArgs } from './cli';
 
 describe('parseArgs', () => {
   it('parses command, files and flags', () => {
@@ -45,5 +45,17 @@ describe('parseArgs', () => {
 
   it('parses eject with a diagram name', () => {
     expect(parseArgs(['eject', 'shop'])).toMatchObject({ command: 'eject', files: ['shop'] });
+  });
+
+  it('parses --link', () => {
+    expect(parseArgs(['publish', '--link', 'https://github.com/o/r']).link).toBe('https://github.com/o/r');
+    expect(parseArgs(['publish']).link).toBeUndefined();
+  });
+
+  it('throws BadFlagValueError for a --link that is missing or not an http(s) URL', () => {
+    expect(() => parseArgs(['publish', '--link'])).toThrowError(BadFlagValueError);
+    expect(() => parseArgs(['publish', '--link', 'javascript:alert(1)'])).toThrowError(BadFlagValueError);
+    // the next flag is not a value: it must not be swallowed as one
+    expect(() => parseArgs(['publish', '--link', '--no-images'])).toThrowError(BadFlagValueError);
   });
 });

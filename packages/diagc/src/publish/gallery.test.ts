@@ -38,4 +38,31 @@ describe('buildGallery', () => {
   it('escapes a model name', () => {
     expect(buildGallery([{ name: 'a', title: '<b>&', hasImage: false }])).toContain('&lt;b>&amp;');
   });
+
+  describe('header link', () => {
+    const entries = [{ name: 'a', title: 'A', hasImage: false }];
+
+    it('is absent unless asked for: the index belongs to whoever published it', () => {
+      expect(buildGallery(entries)).not.toContain('class="link"');
+    });
+
+    it('links out from the header, shown as the address it goes to', () => {
+      const html = buildGallery(entries, { link: 'https://github.com/Ferroman/diagc' });
+      expect(html).toContain('<a class="link" href="https://github.com/Ferroman/diagc"');
+      expect(html).toContain('>github.com/Ferroman/diagc');
+      // ahead of the cards, and never one of them: a deploy check counts `class="card"`
+      expect(html.indexOf('class="link"')).toBeLessThan(html.indexOf('class="card"'));
+      expect(html.match(/class="card"/g)).toHaveLength(1);
+    });
+
+    it('escapes the address', () => {
+      const html = buildGallery(entries, { link: 'https://example.com/?a=1&b=2' });
+      expect(html).toContain('href="https://example.com/?a=1&amp;b=2"');
+    });
+
+    it('refuses anything but http(s): the address lands in an href', () => {
+      expect(() => buildGallery(entries, { link: 'javascript:alert(1)' })).toThrow(/http/);
+      expect(() => buildGallery(entries, { link: 'not a url' })).toThrow(/http/);
+    });
+  });
 });
