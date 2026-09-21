@@ -60,6 +60,34 @@ The whole picture above is `.diagrams/src/docs/git-graph.diagram.ts` in this rep
 - **Stages** are `git-stage` nodes whose span is metadata (`from`, `to`: commit ids), not containment — a commit already belongs to its lane. The frame lets clicks through to the commits inside it; grab it by its title. There is no Git-panel form for stages yet: author them in the source.
 - **Rules.** Links of kind `commit`, `branch` and `merge` must join two commits; `commit` stays in a lane, the other two cross lanes; at most one incoming `commit` and one incoming `branch` per commit; no cycles. The compiler and the studio's save both report a violation by its [validation code](../reference/model.md#validation-codes).
 
+## Examples
+
+**Starter** — a feature branch cut from `main`, two commits, and a tagged merge back. Copy it into `.diagrams/src/` and change the names.
+
+```ts
+import { model } from '@diagc/core';
+
+// Copy this file, rename the branches and the tag, and grow your own history.
+const m = model('dark-mode-toggle', { name: 'Dark mode toggle' });
+const g = m.gitGraph();
+
+const main = g.branch('main', { name: 'main', color: '#2f6fed' });
+const feature = g.branch('dark-mode', { name: 'dark-mode', color: '#b08ad9' });
+
+const base = main.commit();
+feature.commit({ from: base });
+const latest = feature.commit();
+main.merge(latest, { tag: 'v3.2.0' });
+
+export default m;
+```
+
+[![Dark mode toggle](../../.diagrams/static/examples/git-graph/starter.png)](https://ferroman.github.io/diagc/html/examples/git-graph/starter.html)
+
+**Courier app release train** — a trunk-based release train cutting two release branches from `main`, and a hotfix that lands on a release and is backported to `main` before the next cut. It exercises `commit({ from })`, `merge`, a `gap`, two `stage` frames and per-lane `color`. [Source](../../.diagrams/src/examples/git-graph/release-train.diagram.ts)
+
+[![Courier app release train](../../.diagrams/static/examples/git-graph/release-train.png)](https://ferroman.github.io/diagc/html/examples/git-graph/release-train.html)
+
 ## See also
 
 - [Builder API](../reference/builder-api.md#mgitgraphopts--gitgraphbuilder) — `gitGraph`, `branch`, `commit`, `merge`, `stage`
