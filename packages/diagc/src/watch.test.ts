@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process';
 import { copyFile, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -12,15 +13,41 @@ afterEach(async () => {
   watcher = undefined;
 });
 
-function nextEvent(events: WatchEvent[], after: number, timeoutMs = 5000): Promise<WatchEvent> {
+// Each step waits for the event it is about, never for a position in the list: a file that
+// appears before the watcher is ready is compiled on its first fs event, and under load that
+// compile can catch a copy between its truncate and its data and report a transient error
+// ahead of the real result. The timeout sits under vitest's own 5 s so that a miss fails
+// with the events that did arrive.
+function eventWhere(events: WatchEvent[], match: (e: WatchEvent) => boolean, timeoutMs = 4000): Promise<WatchEvent> {
   const started = Date.now();
   return new Promise((resolve, reject) => {
     const poll = () => {
-      if (events.length > after) return resolve(events[after]!);
-      if (Date.now() - started > timeoutMs) return reject(new Error('timed out waiting for watch event'));
+      const hit = events.find(match);
+      if (hit) return resolve(hit);
+      if (Date.now() - started > timeoutMs) {
+        return reject(new Error(`timed out waiting for watch event; saw ${JSON.stringify(events)}`));
+      }
       setTimeout(poll, 50);
     };
     poll();
+  });
+}
+
+// A save as a loaded machine performs it: truncate, stall, then the data. From another
+// process, so the stall is real time on the file rather than a turn of the event loop the
+// watcher shares with this test.
+function stalledSave(target: string, source: string, stallMs = 2): Promise<void> {
+  const script = `
+    const fs = require('node:fs');
+    const [target, source, stallMs] = process.argv.slice(1);
+    const data = fs.readFileSync(source);
+    const fd = fs.openSync(target, 'w');
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Number(stallMs));
+    fs.writeSync(fd, data);
+    fs.closeSync(fd);
+  `;
+  return new Promise((resolve, reject) => {
+    execFile(process.execPath, ['-e', script, target, source, String(stallMs)], (err) => (err ? reject(err) : resolve()));
   });
 }
 
@@ -33,17 +60,14 @@ describe('startWatch', () => {
 
     const target = path.join(dir, 'app.diagram.ts');
     await copyFile(path.join(fixtures, 'sample.diagram.ts'), target);
-    const first = await nextEvent(events, 0);
-    expect(first.ok).toBe(true);
+    await eventWhere(events, (e) => e.ok);
 
     const artifact = path.join(out, 'app.diagram.json');
     const goodContent = await readFile(artifact, 'utf8');
     expect(JSON.parse(goodContent).id).toBe('sample');
 
     await copyFile(path.join(fixtures, 'broken.diagram.ts'), target);
-    const second = await nextEvent(events, 1);
-    expect(second.ok).toBe(false);
-    if (!second.ok) expect(second.error).toContain('cycle');
+    await eventWhere(events, (e) => !e.ok && e.error.includes('cycle'));
 
     // last good artifact untouched
     expect(await readFile(artifact, 'utf8')).toBe(goodContent);
@@ -67,10 +91,14 @@ describe('startWatch', () => {
     await copyFile(path.join(fixtures, 'broken.diagram.ts'), target);
     await copyFile(path.join(fixtures, 'sample.diagram.ts'), target);
 
-    // Wait for the watcher to report, then close() — which drains any in-flight
+    // Wait for a compile of the final content, then close() — which drains any in-flight
     // compile chain — to reach a deterministic quiescent state without sleeps.
-    // (chokidar may coalesce the two writes into one event or emit add+change.)
-    await nextEvent(events, 0);
+    // The first event alone is not that: the `add` from the first write can start a
+    // compile while the second write has the file truncated, and that compile reports
+    // its error before chokidar has delivered the `change` for the finished write.
+    // close() at that point drops the pending `change` and leaves the stale error as
+    // the last word. (chokidar may also coalesce the two writes into one event.)
+    await eventWhere(events, (e) => e.ok);
     await w.close();
     watcher = undefined;
 
@@ -83,14 +111,33 @@ describe('startWatch', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  // Compiling on the truncate's event reads an empty file, and the data's event never
+  // arrives to correct it: chokidar drops a second `change` within 5 ms of the first. The
+  // stale error then stands until the next save.
+  it('compiles a save only once its data has landed', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'diagc-src-'));
+    const out = await mkdtemp(path.join(tmpdir(), 'diagc-out-'));
+    const events: WatchEvent[] = [];
+    watcher = startWatch(dir, out, { onEvent: (e) => events.push(e) });
+
+    const target = path.join(dir, 'app.diagram.ts');
+    await copyFile(path.join(fixtures, 'broken.diagram.ts'), target);
+    await eventWhere(events, (e) => !e.ok && e.error.includes('cycle'));
+
+    await stalledSave(target, path.join(fixtures, 'sample.diagram.ts'));
+    await eventWhere(events, (e) => e.ok);
+    expect(JSON.parse(await readFile(path.join(out, 'app.diagram.json'), 'utf8')).id).toBe('sample');
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it('watches .diagram.json sources too', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'diagc-src-'));
     const out = await mkdtemp(path.join(tmpdir(), 'diagc-out-'));
     const events: WatchEvent[] = [];
     watcher = startWatch(dir, out, { onEvent: (e) => events.push(e) });
     await copyFile(path.join(fixtures, 'plain.diagram.json'), path.join(dir, 'plain.diagram.json'));
-    const first = await nextEvent(events, 0);
-    expect(first.ok).toBe(true);
+    await eventWhere(events, (e) => e.ok);
     expect(JSON.parse(await readFile(path.join(out, 'plain.diagram.json'), 'utf8')).id).toBe('plain');
     await rm(dir, { recursive: true, force: true });
   });
