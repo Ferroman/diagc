@@ -84,6 +84,6 @@ Tables are ordinary nodes, so ordinary containment groups them — the shop sche
 ## See also
 
 - [Builder API](../reference/builder-api.md#mtableid-opts--noderef) — `table`, `fk`
-- [Model reference](../reference/model.md) — `Column`, `fromColumn` / `toColumn`, and the `duplicate-column` and `unknown-column` validation codes
+- [Model reference](../reference/model.md#er-conventions) — the ER conventions, `Column`, `fromColumn` / `toColumn`, and the `duplicate-column` and `unknown-column` validation codes
 - [Library reference](../reference/library.md#data) — the Data pack's one stencil
 - [Author diagrams in TypeScript](author-in-typescript.md) — the rest of the builder

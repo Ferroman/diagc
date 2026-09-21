@@ -72,6 +72,6 @@ A `delay` is two hash marks across the middle of the link. It changes nothing ab
 ## See also
 
 - [Builder API](../reference/builder-api.md#mrelatefrom-to-opts--m) — `m.notation`, `m.node`, and `m.relate`'s `polarity` and `delay`
-- [Model reference](../reference/model.md) — what a relation stores, and the validation codes
+- [Model reference](../reference/model.md#causal-loop-conventions) — the causal-loop conventions, what a relation stores, and the validation codes
 - [Draw a second-order thinking diagram](draw-a-second-order-thinking-diagram.md) — the consequences of a decision, where a loop is an error
 - [Author diagrams in TypeScript](author-in-typescript.md) — the rest of the `.diagram.ts` recipes

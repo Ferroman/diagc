@@ -84,8 +84,8 @@ Duplicate parent/child/plane triples are ignored, so calling it twice is safe. A
 | `description` | `string?` | |
 | `layer` | `string?` | Must match a declared layer. |
 | `style` | `RelationStyle?` | See [Model reference](model.md#relationstyle). |
-| `polarity`, `delay` | | Causal-loop diagrams. |
-| `fromColumn`, `toColumn` | `string?` | ER foreign keys. |
+| `polarity`, `delay` | `'+' \| '-'?`, `boolean?` | Causal-loop diagrams — see [Draw a causal-loop diagram](../how-to/draw-a-causal-loop-diagram.md). |
+| `fromColumn`, `toColumn` | `string?` | ER foreign keys — [`m.fk`](#mfkfrom-fromcolumn-to-tocolumn-opts--m) sets both. |
 
 Relation ids are generated as `from->to#n`, with `n` counting per ordered pair — so two relations between the same nodes never collide. Pass `id` to name one explicitly instead.
 
@@ -98,6 +98,8 @@ m.fk(orders, 'user_id', users);
 ```
 
 **Throws** if `toColumn` is omitted and the target has zero or several primary-key columns. Declare the target table, with its PK, before calling.
+
+It does not set `fk: true` on the source column — that flag only prints the `FK` marker, so set it on the column yourself. See [Draw an ER diagram](../how-to/draw-an-er-diagram.md).
 
 ## `m.layer(id, opts?) → m`
 

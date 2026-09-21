@@ -14,7 +14,7 @@ For *why* the model is shaped like this, see [What is in a model](../explanation
 | `id` | `string` | Diagram identity. |
 | `name` | `string` | Display name. |
 | `style` | `string?` | Renderer style preset pinned by this file. Unknown ids fall back to the app preference. |
-| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop`, `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
+| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop` (see [Causal-loop conventions](#causal-loop-conventions)), `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
 | `legend` | `DiagramLegend?` | Opt-in key for the diagram's visual vocabulary. Absent means no legend anywhere. |
 | `typeColors` | `Record<string, string>?` | Default accent colour per node type; `*` is the fallback. A node's own `color` wins. Dropped from included models on graft — the host owns the look. |
 | `layerRules` | `LayerRule[]?` | Class → layer for relations without a `layer`: `{ kind?, color?, layer }`, every named field must match, first match wins, explicit `layer` beats the rules. Dropped from included models on graft. |
@@ -67,7 +67,7 @@ Two forms are accepted, and nothing else:
 | `name` | `string` | Unique within the table. |
 | `type` | `string?` | Shown right-aligned, e.g. `uuid`, `text`. |
 | `pk` | `boolean?` | Primary-key member. |
-| `fk` | `boolean?` | Drives the FK marker and the row-port edge origin. |
+| `fk` | `boolean?` | Prints the `FK` marker. Presentation only — an `fk` edge is routed by its relation's `fromColumn`, not by this flag. |
 
 ## `ContainmentEdge`
 
@@ -368,6 +368,37 @@ Which categories apply to an element is guidance (STRIDE-per-element), not a rul
 
 See [Draw a threat model](../how-to/draw-a-threat-model.md).
 
+## Causal-loop conventions
+
+A plane with `notation: 'causal-loop'` reads ordinary nodes and relations as variables and signed links. Nothing new is stored.
+
+| | Look | Role |
+| --- | --- | --- |
+| A node with no `type` | bare text, no box | A variable. A typed node keeps its ordinary stencil. |
+| A relation with a `polarity` | a bowed arrow — green for `+`, red for `-` — with its sign printed near the head | A causal link: `+` moves the target the same way as the source, `-` the opposite way. |
+| A relation with `delay: true` | two hash marks across the middle of the line | The effect arrives late. It changes nothing about how a loop is classified. |
+
+`kind` is not read — the loop arithmetic uses only each link's ends and its polarity. The examples write `influence`, which draws as a plain arrow.
+
+**Loops are derived, never stored.** Every closed ring among the arrows *actually drawn* is a loop, so a layer switched off, or a plane that leaves a variable out, changes them. Links running the same direction between two variables count as one, unsigned if their polarities disagree. An even number of `-` links makes a loop **R** (reinforcing), an odd number **B** (balancing), and any unsigned link makes it **?**. Up to 50 loops of at most 20 variables are badged, shortest first, each badge just off the top-right corner of its loop's lowest-id variable.
+
+`invalid-polarity` and `invalid-delay` are checked on every relation, whatever the notation. See [Draw a causal-loop diagram](../how-to/draw-a-causal-loop-diagram.md#how-the-loops-are-found-and-labelled).
+
+## ER conventions
+
+There is no ER notation. A schema is nodes of one type joined by relations of one kind, so tables share a plane with anything else.
+
+| | Look | Role |
+| --- | --- | --- |
+| Node type `db-table` | a titled box, one row per [`Column`](#column): marker, name, type. 30 px of header and 22 px per row; as wide as its widest row, within 160–340 px | A table. A composite key is `pk: true` on more than one column; `pk` wins where a column is both. It draws as a table only while it is a leaf. |
+| Relation kind `fk` | a bar at the referenced end | A foreign key, drawn **from the referencing table to the referenced one**, carrying `fromColumn` and `toColumn`. |
+
+Each end of an `fk` is pinned to its column's row where the edge meets a left or right border; on a top or bottom border it floats to the middle like any other relation. With no `toColumn`, the renderer falls back to the target's first `pk` column — [`m.fk`](builder-api.md#mfkfrom-fromcolumn-to-tocolumn-opts--m) is stricter, and throws unless the target has exactly one.
+
+A column's `fk` flag prints the `FK` marker and nothing else: what routes the edge is the relation's `fromColumn`. `m.fk` does not set the flag; the studio's row-to-table drag does.
+
+`duplicate-column` and `unknown-column` are checked on any node that has `columns`, whatever its `type`. See [Draw an ER diagram](../how-to/draw-an-er-diagram.md).
+
 ## Validation codes
 
 `validate()` returns issues; the compiler refuses to write an artifact if there are any.
@@ -379,7 +410,7 @@ See [Draw a threat model](../how-to/draw-a-threat-model.md).
 | `duplicate-plane` | Two planes share an id. |
 | `duplicate-relation` | Two relations share an id. |
 | `duplicate-key` | Two nodes declare the same `key`. |
-| `duplicate-column` | Two columns in one table share a name. |
+| `duplicate-column` | Two columns in one table share a name — or `columns` is malformed: not a list, or an entry without a string `name`. |
 | `containment-cycle` | A node contains itself, transitively, within a plane. |
 | `dangling-endpoint` | A relation names a node that does not exist. |
 | `unknown-layer` | A `layer` does not match any declared layer. |
