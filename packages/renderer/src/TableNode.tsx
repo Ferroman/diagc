@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { Column } from '@diagc/core';
 import { LinkBadge, QuickAddButton, type DiagramNodeData } from './DiagramNode';
@@ -26,8 +27,20 @@ const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
 /** ER table body. Read mode is inert (per-column right-side source handle hidden
  * by CSS). When `onColumnsChange` is wired the rows become editable: PK/FK cycle
  * badge, controlled name/type inputs, ↑/↓ reorder, ✕ delete, and a “+ add column”
- * footer. Inputs are controlled + keyed by index so typing keeps focus. */
-export function TableNode({ id, data, selected }: { id: string; data: DiagramNodeData; selected?: boolean }) {
+ * footer. Inputs are controlled + keyed by index so typing keeps focus.
+ * `titleEditor` is DiagramNode's rename field, shown in place of the title while
+ * the node is being renamed. */
+export function TableNode({
+  id,
+  data,
+  selected,
+  titleEditor,
+}: {
+  id: string;
+  data: DiagramNodeData;
+  selected?: boolean;
+  titleEditor?: ReactNode;
+}) {
   const columns = data.columns ?? [];
   const onChange = data.onColumnsChange;
   const editing = onChange !== undefined;
@@ -49,7 +62,7 @@ export function TableNode({ id, data, selected }: { id: string; data: DiagramNod
       {...(data.color !== undefined ? { style: { borderColor: data.color } } : {})}
     >
       <div className="dg-table-header" style={{ height: TABLE_HEADER_H }}>
-        <span className="dg-table-title">{data.label}</span>
+        {titleEditor ?? <span className="dg-table-title">{data.label}</span>}
       </div>
       <div className="dg-table-body">
         {columns.map((c, i) =>

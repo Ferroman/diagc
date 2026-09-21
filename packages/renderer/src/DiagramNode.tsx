@@ -438,7 +438,12 @@ export function DiagramNode({
   ) : null;
 
   if (style.shape === 'table' && data.state === 'leaf') {
-    return <TableNode id={id} data={data} selected={selected} />;
+    // The table draws its own header, so none of the branches below ever place `name`
+    // for it: hand the rename field over, or double-click and a dropped Table stencil
+    // would flip `labelEditing` with nothing on screen to type into.
+    return (
+      <TableNode id={id} data={data} selected={selected} {...(data.labelEditing === true ? { titleEditor: name } : {})} />
+    );
   }
 
   if (style.shape === 'circle' && data.state === 'leaf') {
