@@ -60,6 +60,38 @@ The whole picture above is `.diagrams/src/docs/c4.diagram.ts` in this repo.
 - **Component text goes dark, everyone else's goes white.** The pale component blue (`#85bbf0`) fails contrast against white, so `c4-component*` types render dark text on it; person/system/container/external all render white on their darker fills.
 - **`technology` is not C4-only.** It is a plain field on `DiagramNode`, composed into the `[Type]` subtitle in any notation — C4 is simply where it matters most.
 
+## Examples
+
+**Starter** — one person, one system, two containers, with the notation pinned and every relation labelled. Copy it into `.diagrams/src/` and change the names.
+
+```ts
+import { model } from '@diagc/core';
+
+// A C4 starter: one person, one system, two containers. The notation is what
+// paints the solid fills and the [Type: technology] subtitles.
+const m = model('expense-claims', { name: 'Expense claims' });
+m.notation('c4');
+
+const employee = m.node('employee', { type: 'c4-person', name: 'Employee' });
+const claims = m.node('claims', { type: 'c4-system', name: 'Expense Claims' });
+
+const web = m.node('web', { type: 'c4-container-web', name: 'Web Application', technology: 'TypeScript, Next.js' });
+const db = m.node('db', { type: 'c4-container-db', name: 'Claims Database', technology: 'PostgreSQL 16' });
+
+claims.contains(web, db);
+
+m.relate(employee, web, { kind: 'sync', label: 'Submits claims [HTTPS]' });
+m.relate(web, db, { kind: 'reads', label: 'Stores claims [SQL/TCP]' });
+
+export default m;
+```
+
+[![Expense claims](../../.diagrams/static/examples/c4/starter.png)](https://ferroman.github.io/diagc/html/examples/c4/starter.html)
+
+**Online bookstore** — one shop at all three C4 levels: a customer and two external systems at context level, seven containers inside the bookstore, and the Checkout API's own components one drill further down. It uses `technology` on every container and component, the database and queue container types, and relations drawn to the component that answers rather than to the box around it — folded, they aggregate onto the container, so the context view still reads. [Source](../../.diagrams/src/examples/c4/online-bookstore.diagram.ts)
+
+[![Online bookstore](../../.diagrams/static/examples/c4/online-bookstore.png)](https://ferroman.github.io/diagc/html/examples/c4/online-bookstore.html)
+
 ## See also
 
 - [Builder API](../reference/builder-api.md#mnotationid--m) — `m.notation`, and `technology` in `m.node`'s options
