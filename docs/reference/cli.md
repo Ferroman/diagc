@@ -69,7 +69,7 @@ diagc publish --no-images
 ```
 
 - `.diagrams/html/<name>.html` — self-contained interactive pages, every asset inlined as a data URI.
-- `.diagrams/html/index.html` — a gallery linking them.
+- `.diagrams/html/index.html` — a gallery linking them, grouped by source folder; a card shows the model's name and the diagram's path.
 - `.diagrams/static/<name>.png` — flat images, unless `--no-images`.
 
 `files...` here filters by diagram **name**, not path.

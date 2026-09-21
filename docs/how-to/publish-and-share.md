@@ -25,7 +25,7 @@ Three outputs:
 | Path | What it is | Commit? |
 | --- | --- | --- |
 | `.diagrams/html/<name>.html` | Self-contained interactive page — model, layout and every image inlined. No server needed. | no |
-| `.diagrams/html/index.html` | A gallery linking them all. | no |
+| `.diagrams/html/index.html` | A gallery linking them all: one section per source folder, each card titled with its model's name. | no |
 | `.diagrams/static/<name>.png` | Flat image, sized to the diagram. | **yes** |
 
 Freehand drawings (`<name>.drawings.json`) ship with the page and are included in the PNG; the export frame grows to fit a stroke drawn outside the boxes.
