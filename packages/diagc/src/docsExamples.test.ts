@@ -35,7 +35,11 @@ const nameOf = (f: string): string =>
 const rel = (f: string): string => path.relative(root, f);
 const isExternal = (t: string): boolean => /^[a-z][a-z0-9+.-]*:/i.test(t);
 
-const pages = [path.join(root, 'README.md'), ...walk(path.join(root, 'docs')).filter((f) => f.endsWith('.md'))];
+const pages = [
+  path.join(root, 'README.md'),
+  path.join(root, 'CONTRIBUTING.md'),
+  ...walk(path.join(root, 'docs')).filter((f) => f.endsWith('.md')),
+];
 
 /** Link and image targets in a page's prose. Fenced blocks and code spans are dropped
  * first: a listing may show a sample embed (the tutorial's `![Shop](…)`) that is not a
@@ -61,7 +65,7 @@ describe('docs and examples', () => {
     expect(unlisted).toEqual([]);
   });
 
-  it('has no dead relative link or image in README.md and docs/', () => {
+  it('has no dead relative link or image in README.md, CONTRIBUTING.md and docs/', () => {
     const dead: string[] = [];
     for (const page of pages) {
       for (const t of targets(readFileSync(page, 'utf8'))) {
