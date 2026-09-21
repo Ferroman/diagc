@@ -78,7 +78,7 @@ Duplicate parent/child/plane triples are ignored, so calling it twice is safe. A
 | --- | --- | --- |
 | `kind` | `string` | **Required.** Free-form. |
 | `id` | `string?` | Explicit relation id. Default `${from}->${to}#${n}`. The pair counter advances either way, so a later un-id'd relation on the same pair still gets the suffix it would have gotten without the override. |
-| `label` | `string?` | |
+| `label` | `string?` | The arrow's text. Drawn in a chip that is ellipsised at about 24 characters (the hover title keeps the full text), so keep it to a phrase. |
 | `labels` | `EdgeLabel[]?` | Positioned edge labels; supersedes `label` when present. See [Model reference](model.md#edgelabel). |
 | `threats` | `Threat[]?` | STRIDE findings, `id` and all. Prefer `FlowRef.threat()` — see [`ref.threat()`](#refthreatopts--ref) — which synthesizes the id. See [Model reference](model.md#threat). |
 | `description` | `string?` | |
