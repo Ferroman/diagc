@@ -48,6 +48,22 @@ describe('TableNode', () => {
     fireEvent.click(badge!);
     expect(onOpenLink).toHaveBeenCalledWith('[[Note]]');
   });
+
+  // A table has its own body, so it never reaches the branches that draw the shared
+  // rename field. Double-click and a dropped Table stencil both ask for it all the same.
+  it('renames in place: the header turns into the rename field and Enter commits', () => {
+    const onLabelCommit = vi.fn();
+    render(
+      <ReactFlowProvider>
+        <DiagramNode id="accounts" data={{ ...data(), labelEditing: true, onLabelCommit }} />
+      </ReactFlowProvider>,
+    );
+    const input = screen.getByLabelText('Rename') as HTMLInputElement;
+    expect(input.value).toBe('accounts');
+    fireEvent.change(input, { target: { value: 'users' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onLabelCommit).toHaveBeenCalledWith('users');
+  });
 });
 
 describe('TableNode edit mode', () => {

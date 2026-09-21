@@ -139,7 +139,10 @@ const END_SHAPES: Record<string, { refX: number; el: ReactElement } | undefined>
   dot: { refX: 5, el: <circle cx="5" cy="5" r="4" /> },
   square: { refX: 5, el: <rect x="1.2" y="1.2" width="7.6" height="7.6" /> },
   diamond: { refX: 5, el: <path d="M5,0 L10,5 L5,10 L0,5 z" /> },
-  crowsfoot: { refX: 0, el: <path d="M10,1 L0,5 L10,9 M0,5 L10,5" fill="none" /> },
+  // Anchored at its open end (x = 10), not its apex: the foot's three toes touch the
+  // table and the apex sits out on the line. Anchored at the apex, the whole shape fell
+  // on the node's side of the vertex, under the table that paints over it.
+  crowsfoot: { refX: 10, el: <path d="M10,1 L0,5 L10,9 M0,5 L10,5" fill="none" /> },
   one: { refX: 8, el: <path d="M5,1 L5,9" fill="none" /> },
   // explicit "no head" for kind styles (a bare unknown id also draws none)
   none: undefined,

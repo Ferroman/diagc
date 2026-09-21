@@ -591,6 +591,24 @@ describe('DiagramEdge', () => {
       expect(container.querySelectorAll('marker').length).toBe(2);
     });
 
+    it("draws the crow's foot on the line, not under the table it leaves", () => {
+      const { container } = renderEdge({
+        kind: 'fk',
+        kindRegistry: createKindRegistry(),
+        constituentCount: 1,
+        fromColumn: 'b_id',
+        toColumn: 'id',
+      });
+      const start = container.querySelector('marker[id^="dg-start-"]')!;
+      expect(start.getAttribute('orient')).toBe('auto-start-reverse');
+      // At the path's start that orientation turns the marker's +x axis back into the
+      // source node, and nodes paint over edges: whatever of the shape lies past refX
+      // is hidden. So the foot's open end is what must sit on the table's border.
+      const xs = [...start.querySelector('path')!.getAttribute('d')!.matchAll(/[ML](-?[\d.]+),/g)].map((m) => Number(m[1]));
+      expect(xs.length).toBeGreaterThan(0);
+      expect(Math.max(...xs)).toBeLessThanOrEqual(Number(start.getAttribute('refX')));
+    });
+
     it('strokes only the line-based fk markers, leaving filled markers outline-free', () => {
       // regression: a non-fk edge keeps its single filled arrow marker with NO
       // stroke attribute (a stroke would outline the fill and visibly lengthen

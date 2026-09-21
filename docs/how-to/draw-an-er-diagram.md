@@ -11,7 +11,7 @@ Editing needs a JSON diagram: one compiled from `.diagram.ts` opens read-only.
 1. Press **Edit** in the top bar.
 2. In the **Library** tab, find the **Data** section — or type `erd` in the search box. It holds one entry, **Table**.
 3. **Click** the card to drop a table at an auto-placed spot, or **drag** it where you want it. Either way it arrives seeded with one `id int PK` row.
-4. Name it in the **Properties** panel's *name* field.
+4. Type its name: a dropped table opens with its title ready to edit, and `Enter` commits it. Double-click the title to rename it later.
 5. Click a row to edit it in place.
 6. A row reads, left to right: a badge that cycles **none → PK → FK**, the column name, and its type. **↑** and **↓** move it, **✕** removes it, and **＋ add column** at the foot appends one. The type field suggests `uuid`, `int`, `bigint`, `text`, `varchar`, `bool`, `timestamp`, `timestamptz`, `jsonb` and `numeric`, and keeps anything else you type.
 7. Drag from a row's connect point — on the row's right edge — onto another table. That makes an `fk` relation from that column to the target's primary key, and flags the column `FK` if it was not flagged already.
@@ -62,7 +62,7 @@ A `db-table` node draws as a header plus one row per column instead of a shape. 
 
 The box is sized from the text rather than measured in the browser: 30 px of header plus 22 px per row, and a width that fits the widest row — or the title, whichever is wider — clamped to 160–340 px. That footprint is what the layout engine is given, so tables are laid out at full size instead of collapsing into default boxes.
 
-An `fk` edge is pinned to its two rows: each end keeps the x of the border it faces and takes the y of the column's row. That only works on a left or right border — when the layout stacks one table above another, the edge leaves the top or bottom and floats to the box's middle like any other relation. A column name that matches nothing is ignored by the renderer rather than failing, but `validate()` still reports it as [`unknown-column`](../reference/model.md#validation-codes), and the compiler writes no artifact while it does. The referenced end falls back to the target's first primary-key column when the relation names no `toColumn`, and the `fk` kind draws a bar there, for the *one* side of the relationship.
+An `fk` edge is pinned to its two rows: each end keeps the x of the border it faces and takes the y of the column's row. That only works on a left or right border — when the layout stacks one table above another, the edge leaves the top or bottom and floats to the box's middle like any other relation. A column name that matches nothing is ignored by the renderer rather than failing, but `validate()` still reports it as [`unknown-column`](../reference/model.md#validation-codes), and the compiler writes no artifact while it does. The referenced end falls back to the target's first primary-key column when the relation names no `toColumn`, and the `fk` kind draws a bar there and a crow's foot at the referencing end — many rows to one.
 
 Tables are ordinary nodes, so ordinary containment groups them — the shop schema above puts its catalog and its orders in two boxes — and such a group folds and unfolds like any other.
 

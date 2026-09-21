@@ -391,7 +391,7 @@ There is no ER notation. A schema is nodes of one type joined by relations of on
 | | Look | Role |
 | --- | --- | --- |
 | Node type `db-table` | a titled box, one row per [`Column`](#column): marker, name, type. 30 px of header and 22 px per row; as wide as its widest row, within 160–340 px | A table. A composite key is `pk: true` on more than one column; `pk` wins where a column is both. It draws as a table only while it is a leaf. |
-| Relation kind `fk` | a bar at the referenced end | A foreign key, drawn **from the referencing table to the referenced one**, carrying `fromColumn` and `toColumn`. |
+| Relation kind `fk` | a crow's foot at the referencing end, a bar at the referenced one | A foreign key, drawn **from the referencing table to the referenced one**, carrying `fromColumn` and `toColumn`. |
 
 Each end of an `fk` is pinned to its column's row where the edge meets a left or right border; on a top or bottom border it floats to the middle like any other relation. With no `toColumn`, the renderer falls back to the target's first `pk` column — [`m.fk`](builder-api.md#mfkfrom-fromcolumn-to-tocolumn-opts--m) is stricter, and throws unless the target has exactly one.
 
@@ -466,7 +466,7 @@ Strings the renderer already knows. Anything else falls back to a plain box or a
 
 **Node types** — `system`, `platform` (dashed boxes); `service` (box + icon); `database`, `aws-rds`, `table` (cylinders); `db-table` (ER table); `queue` (pill); `infra` (hexagon); `person` (pill); `comment` (speech bubble — an ordinary node for remarks, wired up with normal relations); and the 33 `c4-*` types listed in [Library reference](library.md).
 
-**Relation kinds** — `sync`, `async` (dashed), `reads`, `writes` (thick), `hosted-on` (dashed), `flow` (animated), `mixed` (thick, used for aggregates), `fk` (a bar at the referenced end).
+**Relation kinds** — `sync`, `async` (dashed), `reads`, `writes` (thick), `hosted-on` (dashed), `flow` (animated), `mixed` (thick, used for aggregates), `fk` (crow's foot to bar).
 
 An **aggregate** edge (one arrow standing for several relations, after a fold) labels itself from its constituents: their distinct labels joined with ` / ` while that stays within 32 characters, or a single distinct label whatever its length, and otherwise `N relations`. Single-relation edges always carry their own label. Long labels are ellipsised at ~24 characters when drawn; the arrow's hover title carries the full text. See [Views](../explanation/views.md#semantic-zoom).
 

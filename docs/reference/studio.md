@@ -55,7 +55,7 @@ A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot ente
 | Drag an image file onto the canvas, or paste one | Create an image node |
 | Drag an image node's corner handles | Resize (aspect locked) |
 | Click a `db-table` node's rows | Add, edit, remove or reorder columns in place |
-| Drag from a column row's connect point to another table | Create a foreign key, anchored to that row |
+| Drag from a column row's connect point to another table | Create a foreign key, drawn crow's-foot and anchored to that row |
 | **Pen** in the toolbar (`p`), then drag on the canvas | Draw a freehand stroke in the chosen color and width |
 | **Eraser** in the toolbar (`e`), then click a stroke | Erase it (one stroke per click; undo brings it back) |
 | `✎` in the corner controls, or the **Drawings** row in the legend | Show/hide all drawings — tracing paper, never saved |

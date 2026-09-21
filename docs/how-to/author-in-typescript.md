@@ -63,7 +63,7 @@ m.relate(api, db, { kind: 'writes' });
 m.relate(api, worker, { kind: 'async', label: 'order placed' });
 ```
 
-`kind` is free-form. Built-in kinds: `sync`, `async` (dashed), `reads`, `writes` (thick), `hosted-on` (dashed), `flow` (animated), `fk` (a bar at the referenced end).
+`kind` is free-form. Built-in kinds: `sync`, `async` (dashed), `reads`, `writes` (thick), `hosted-on` (dashed), `flow` (animated), `fk` (crow's foot to bar).
 
 Several relations between the same pair are fine — ids are generated as `from->to#0`, `#1`, and so on.
 
