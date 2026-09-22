@@ -2,6 +2,8 @@
  * `buildEdgeData` put on the render data under `annotations`. */
 export interface AnnotationCounts {
   comments: number;
+  /** always 0 on the edge channel — a relation carries no `links` field, so
+   * only a node's badge ever shows the ↗ */
   links: number;
 }
 

@@ -147,9 +147,9 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
   // Counted here rather than in the component so the badge costs one pass over
   // the threats per data build, not one per render.
   const threats = threatSummary(n.node.threats);
-  // Counts, not the lists: the badge only needs numbers, and the data channel
-  // is compared field by field (see the equality below) — a fresh array would
-  // re-render every node every frame.
+  // Counts, not the lists: the badge only needs numbers, and this data object
+  // is rebuilt whenever the compiled view is (see buildNodeDataCached), so
+  // carrying the arrays through it would buy nothing.
   const comments = n.node.comments?.length ?? 0;
   const links = n.node.links?.length ?? 0;
   const annotations: AnnotationCounts | undefined = comments > 0 || links > 0 ? { comments, links } : undefined;

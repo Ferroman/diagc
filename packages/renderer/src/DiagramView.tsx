@@ -834,9 +834,9 @@ function Inner(props: DiagramViewProps) {
       n.children.forEach((c) => walkAbs(c, g.x + ox, g.y + oy));
     };
     compiled.roots.forEach((r) => walkAbs(r, 0, 0));
-    // The lines of the flows that carry threats (the only ones that report —
-    // see DiagramEdge), so no bubble lies across one. Every other line is not
-    // avoided (.claude/DEFERRALS.md § Threat notes).
+    // The lines of the flows that report a chip — one carrying threats or
+    // comments (see DiagramEdge) — so no bubble lies across one. Every other
+    // line is not avoided (.claude/DEFERRALS.md § Threat notes).
     for (const e of compiled.edges) {
       const r = e.constituents.length === 1 ? e.constituents[0] : undefined;
       const spot = r !== undefined ? chipSpots.get(r.id) : undefined;

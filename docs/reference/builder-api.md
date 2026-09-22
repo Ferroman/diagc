@@ -348,7 +348,7 @@ A remark on the element, shown in its bubble. On every `NodeRef` and every `Flow
 
 | Option | Type | Notes |
 | --- | --- | --- |
-| `id` | `string?` | Default `c<n>`, `n` being this element's comment count + 1. Unique within the element; a duplicate **throws**. |
+| `id` | `string?` | Default the first free `c<n>` on this element, so removing `c1` and adding another remark reuses `c1`. Unique within the element; a duplicate **throws**. |
 | `by` | `string?` | Author, free text. |
 | `at` | `string?` | `YYYY-MM-DD`. |
 
