@@ -98,8 +98,10 @@ export interface PlanGraph {
 /**
  * The plan plane's structure, derived through buildHierarchy so `containmentOf`
  * and `hides` behave exactly as the view does. A zone's children are its
- * DIRECT children on the plane; `parent` follows the first parent by
- * declaration order where containment is a DAG (the same rule boundaryOf uses).
+ * DIRECT children on the plane; `parent` picks each child's first parent by
+ * containment-EDGE declaration order — `h.parentsOf` already preserves that
+ * order (the same rule `boundaryOf` uses) — filtered to the parents that are
+ * zones, since a DAG child can have non-zone parents on the plane too.
  */
 export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
@@ -116,19 +118,22 @@ export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
     else if (isPlanEvent(n)) events.push(n.id);
   }
   const zoneSet = new Set(zones);
-  const parent = new Map<string, string>();
   const children = new Map<string, PlanChildren>();
   for (const z of zones) {
     const split: PlanChildren = { zones: [], events: [], others: [] };
     for (const c of h.childrenOf.get(z) ?? []) {
       const node = byId.get(c);
       if (node === undefined) continue;
-      if (!parent.has(c)) parent.set(c, z);
       if (isPlanZone(node)) split.zones.push(c);
       else if (isPlanEvent(node)) split.events.push(c);
       else split.others.push(c);
     }
     children.set(z, split);
+  }
+  const parent = new Map<string, string>();
+  for (const [id, parents] of h.parentsOf) {
+    const zoneParent = parents.find((p) => zoneSet.has(p));
+    if (zoneParent !== undefined) parent.set(id, zoneParent);
   }
   const people: string[] = [];
   for (const r of model.relations) {

@@ -104,6 +104,19 @@ describe('planGraph', () => {
     expect(g.children.get('build')).toEqual({ zones: [], events: ['m1'], others: ['api'] });
     expect(g.children.get('design')).toEqual({ zones: [], events: [], others: [] });
   });
+  it("picks a DAG child's parent by containment-edge order, not by zone-declaration order", () => {
+    // `a` is declared before `b`, but the `b -> shared` edge is added before
+    // `a -> shared`: the edge order must win (the same rule boundaryOf uses),
+    // so the parent is `b` even though `a` comes first among `zones`.
+    const m = model('dag');
+    const a = m.node('a', { type: PLAN_ZONE_TYPE, metadata: { start: '2026-01-01', end: '2026-01-10' } });
+    const b = m.node('b', { type: PLAN_ZONE_TYPE, metadata: { start: '2026-01-01', end: '2026-01-10' } });
+    const shared = m.node('shared', { type: PLAN_EVENT_TYPE, metadata: { at: '2026-01-05' } });
+    b.contains(shared);
+    a.contains(shared);
+    const g = planGraph(m.toJSON());
+    expect(g.parent.get('shared')).toBe('b');
+  });
   it('spans the earliest to the latest date and sets the origin to 1 January of the first year', () => {
     const g = planGraph(fixture(), 'plan');
     expect(g.range).toEqual({ start: dayOf('2025-12-15'), end: dayOf('2026-03-27') });
