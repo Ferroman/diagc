@@ -139,104 +139,104 @@ export function NoteNode({
         )}
       </div>
       {data.threats.length > 0 && (
-      <ul className="dg-note-rows">
-        {data.threats.map((t) => {
-          const status = t.status ?? 'open';
-          const word = STATUS_WORD[status];
-          const hasDetails = (t.description ?? '') !== '' || (t.mitigation ?? '') !== '';
-          // `expanded` is session state that outlives edit mode, and in edit
-          // mode a row with no text still has two textareas to show. Leaving
-          // edit mode takes those away, so the same expanded row would render
-          // an empty block (and export as a gap) — gate it on the same
-          // condition the ▸ button is gated on.
-          const isExpanded = expanded.has(t.id) && (data.editing || hasDetails);
-          return (
-            <li key={t.id} className="dg-note-row" data-open={isOpen(t) ? 'true' : 'false'}>
-              <div className="dg-note-line">
-                <span className="dg-stride" data-category={t.category} title={STRIDE_NAMES[t.category]}>{t.category}</span>
-                {editingId === t.id ? (
-                  <span className="nodrag nopan" onMouseDown={stop} onPointerDown={stop}>
-                    <InlineName
-                      label={t.title}
-                      ariaLabel="Rename threat"
-                      onCommit={(v) => {
-                        // Escape hands back null and an emptied field hands back
-                        // '': both are "no title", and the host decides what that
-                        // means for a threat that was just added.
-                        data.onRetitleThreat?.(data.target, t.id, v === null ? '' : v.trim());
-                        done();
-                      }}
-                    />
-                  </span>
-                ) : (
-                  <span
-                    className="dg-note-title"
-                    onDoubleClick={data.editing ? (e) => { e.stopPropagation(); setLocalEdit(t.id); } : undefined}
-                  >
-                    {t.title}
-                  </span>
-                )}
-                {data.editing && data.onSetThreatStatus !== undefined ? (
-                  <button
-                    type="button"
-                    className="dg-note-status nodrag nopan"
-                    data-status={status}
-                    aria-label="Set status"
-                    title={`Status: ${word} — click to change`}
-                    onMouseDown={stop}
-                    onPointerDown={stop}
-                    onClick={(e) => { e.stopPropagation(); data.onSetThreatStatus?.(data.target, t.id, nextThreatStatus(t)); }}
-                  >
-                    {word}
-                  </button>
-                ) : (
-                  <span className="dg-note-status" data-status={status}>{word}</span>
-                )}
-                {(data.editing || hasDetails) && (
-                  <button
-                    type="button"
-                    className="dg-note-expand nodrag nopan"
-                    aria-expanded={isExpanded}
-                    aria-label={isExpanded ? 'Hide details' : 'Show details'}
-                    onMouseDown={stop}
-                    onPointerDown={stop}
-                    onClick={(e) => { e.stopPropagation(); toggleExpanded(t.id); }}
-                  >
-                    {isExpanded ? '▾' : '▸'}
-                  </button>
-                )}
-              </div>
-              {isExpanded && (
-                <div className="dg-note-details">
-                  {data.editing && data.onEditThreatText !== undefined ? (
-                    <>
-                      <DetailField
-                        label="Description"
-                        value={t.description ?? ''}
-                        onCommit={(text) => data.onEditThreatText?.(data.target, t.id, 'description', text)}
+        <ul className="dg-note-rows">
+          {data.threats.map((t) => {
+            const status = t.status ?? 'open';
+            const word = STATUS_WORD[status];
+            const hasDetails = (t.description ?? '') !== '' || (t.mitigation ?? '') !== '';
+            // `expanded` is session state that outlives edit mode, and in edit
+            // mode a row with no text still has two textareas to show. Leaving
+            // edit mode takes those away, so the same expanded row would render
+            // an empty block (and export as a gap) — gate it on the same
+            // condition the ▸ button is gated on.
+            const isExpanded = expanded.has(t.id) && (data.editing || hasDetails);
+            return (
+              <li key={t.id} className="dg-note-row" data-open={isOpen(t) ? 'true' : 'false'}>
+                <div className="dg-note-line">
+                  <span className="dg-stride" data-category={t.category} title={STRIDE_NAMES[t.category]}>{t.category}</span>
+                  {editingId === t.id ? (
+                    <span className="nodrag nopan" onMouseDown={stop} onPointerDown={stop}>
+                      <InlineName
+                        label={t.title}
+                        ariaLabel="Rename threat"
+                        onCommit={(v) => {
+                          // Escape hands back null and an emptied field hands back
+                          // '': both are "no title", and the host decides what that
+                          // means for a threat that was just added.
+                          data.onRetitleThreat?.(data.target, t.id, v === null ? '' : v.trim());
+                          done();
+                        }}
                       />
-                      <DetailField
-                        label="Mitigation"
-                        value={t.mitigation ?? ''}
-                        onCommit={(text) => data.onEditThreatText?.(data.target, t.id, 'mitigation', text)}
-                      />
-                    </>
+                    </span>
                   ) : (
-                    <>
-                      {(t.description ?? '') !== '' && <p className="dg-note-text">{t.description}</p>}
-                      {(t.mitigation ?? '') !== '' && (
-                        <p className="dg-note-text">
-                          <span className="dg-note-text-label">Mitigation</span> {t.mitigation}
-                        </p>
-                      )}
-                    </>
+                    <span
+                      className="dg-note-title"
+                      onDoubleClick={data.editing ? (e) => { e.stopPropagation(); setLocalEdit(t.id); } : undefined}
+                    >
+                      {t.title}
+                    </span>
+                  )}
+                  {data.editing && data.onSetThreatStatus !== undefined ? (
+                    <button
+                      type="button"
+                      className="dg-note-status nodrag nopan"
+                      data-status={status}
+                      aria-label="Set status"
+                      title={`Status: ${word} — click to change`}
+                      onMouseDown={stop}
+                      onPointerDown={stop}
+                      onClick={(e) => { e.stopPropagation(); data.onSetThreatStatus?.(data.target, t.id, nextThreatStatus(t)); }}
+                    >
+                      {word}
+                    </button>
+                  ) : (
+                    <span className="dg-note-status" data-status={status}>{word}</span>
+                  )}
+                  {(data.editing || hasDetails) && (
+                    <button
+                      type="button"
+                      className="dg-note-expand nodrag nopan"
+                      aria-expanded={isExpanded}
+                      aria-label={isExpanded ? 'Hide details' : 'Show details'}
+                      onMouseDown={stop}
+                      onPointerDown={stop}
+                      onClick={(e) => { e.stopPropagation(); toggleExpanded(t.id); }}
+                    >
+                      {isExpanded ? '▾' : '▸'}
+                    </button>
                   )}
                 </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+                {isExpanded && (
+                  <div className="dg-note-details">
+                    {data.editing && data.onEditThreatText !== undefined ? (
+                      <>
+                        <DetailField
+                          label="Description"
+                          value={t.description ?? ''}
+                          onCommit={(text) => data.onEditThreatText?.(data.target, t.id, 'description', text)}
+                        />
+                        <DetailField
+                          label="Mitigation"
+                          value={t.mitigation ?? ''}
+                          onCommit={(text) => data.onEditThreatText?.(data.target, t.id, 'mitigation', text)}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        {(t.description ?? '') !== '' && <p className="dg-note-text">{t.description}</p>}
+                        {(t.mitigation ?? '') !== '' && (
+                          <p className="dg-note-text">
+                            <span className="dg-note-text-label">Mitigation</span> {t.mitigation}
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       )}
       {data.comments.length > 0 && (
         <section className="dg-note-section" aria-label="Comments">
