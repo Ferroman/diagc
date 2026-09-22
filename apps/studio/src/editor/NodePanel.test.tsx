@@ -710,6 +710,45 @@ describe('NodePanel', () => {
     });
   });
 
+  describe('plan', () => {
+    function planModel(type: string, metadata?: DiagramModel['nodes'][number]['metadata']): DiagramModel {
+      return {
+        version: 1,
+        id: 'draft',
+        name: 'draft',
+        nodes: [{ id: 'z', name: 'Q1', type, ...(metadata !== undefined ? { metadata } : {}) }],
+        containment: [],
+        relations: [],
+        layers: [],
+        planes: [],
+      };
+    }
+
+    it('offers the Plan section on the plan notation, and on a node that already carries dates', () => {
+      const zone = planModel('plan-zone', { start: '2026-01-05', end: '2026-03-27' });
+
+      const { unmount: unmount1 } = render(
+        <NodePanel model={zone} nodeId="z" activePlane={undefined} notation="plan" onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+      );
+      expect(screen.getByLabelText('Start')).toBeTruthy();
+      unmount1();
+
+      // a plain node has nothing to date — the section stays off entirely,
+      // even on the plan notation
+      const { unmount: unmount2 } = render(
+        <NodePanel model={planModel('service')} nodeId="z" activePlane={undefined} notation="plan" onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+      );
+      expect(screen.queryByLabelText('Start')).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Plan' })).toBeNull();
+      unmount2();
+
+      // the house rule: a zone that already carries dates keeps its editor
+      // even off the plan notation, so switching planes strands nothing
+      render(<NodePanel model={zone} nodeId="z" activePlane={undefined} onCommand={vi.fn()} onClose={noop} onDeleted={noop} />);
+      expect(screen.getByLabelText('Start')).toBeTruthy();
+    });
+  });
+
   it('offers Comments and Links on a plain node (unlike Threats, not gated on a notation)', () => {
     render(
       <NodePanel model={testModel()} nodeId="a" activePlane="flow" onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,

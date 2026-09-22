@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { DiagramModel, EditorCommand, FontScale, NotationId, TextAlign } from '@diagc/core';
-import { CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF, TM_NOTATION, strideFor } from '@diagc/core';
+import { CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF, PLAN_NOTATION, TM_NOTATION, strideFor } from '@diagc/core';
 import { BUILTIN_ICON_IDS } from '@diagc/icons';
 import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { CommentsSection } from './CommentsSection';
 import { LinksSection } from './LinksSection';
 import { ColorRow, OptionRow } from './pickers';
+import { PlanSection } from './PlanSection';
 import { ThreatsSection } from './ThreatsSection';
 import { BUNDLED_LIBRARY } from '../library/packs';
 
@@ -636,6 +637,13 @@ export function NodePanel({
       )}
 
       <CommentsSection target={{ node: node.id }} comments={node.comments ?? []} onCommand={onCommand} />
+
+      {/* Same rule as threats: offered on the notation, kept on a node that
+       * already carries dates so switching the plane's look strands nothing. */}
+      {(notation === PLAN_NOTATION || node.metadata?.start !== undefined || node.metadata?.at !== undefined) &&
+        (node.type === 'plan-zone' || node.type === 'plan-event') && (
+          <PlanSection model={model} node={node} onCommand={onCommand} />
+        )}
 
       <section className="panel-section">
         <h3>Memberships</h3>
