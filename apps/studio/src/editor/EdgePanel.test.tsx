@@ -402,4 +402,9 @@ describe('EdgePanel', () => {
       });
     });
   });
+
+  it('offers Comments on a plain relation (unlike Threats, not gated on a notation)', () => {
+    render(<EdgePanel model={testModel()} constituentIds={['a->b#0']} onCommand={vi.fn()} onClose={noop} />);
+    expect(screen.getByRole('region', { name: 'Comments' })).toBeTruthy();
+  });
 });

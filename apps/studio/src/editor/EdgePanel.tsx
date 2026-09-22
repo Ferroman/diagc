@@ -13,6 +13,7 @@ import {
   type RelationStyle,
 } from '@diagc/core';
 import { getHost } from '../host';
+import { CommentsSection } from './CommentsSection';
 import { ColorRow, OptionRow } from './pickers';
 import { ThreatsSection } from './ThreatsSection';
 
@@ -315,6 +316,8 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation,
           onCommand={onCommand}
         />
       )}
+
+      <CommentsSection target={{ relation: relationId }} comments={relation.comments ?? []} onCommand={onCommand} />
 
       <label className="field">
         <span>Layer</span>

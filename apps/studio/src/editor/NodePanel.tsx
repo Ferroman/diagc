@@ -3,6 +3,8 @@ import type { DiagramModel, EditorCommand, FontScale, NotationId, TextAlign } fr
 import { CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF, TM_NOTATION, strideFor } from '@diagc/core';
 import { BUILTIN_ICON_IDS } from '@diagc/icons';
 import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
+import { CommentsSection } from './CommentsSection';
+import { LinksSection } from './LinksSection';
 import { ColorRow, OptionRow } from './pickers';
 import { ThreatsSection } from './ThreatsSection';
 import { BUNDLED_LIBRARY } from '../library/packs';
@@ -529,6 +531,8 @@ export function NodePanel({
         />
       </label>
 
+      <LinksSection nodeId={node.id} links={node.links ?? []} onCommand={onCommand} />
+
       <section className="panel-section">
         <h3>Position</h3>
         <div className="member-row">
@@ -630,6 +634,8 @@ export function NodePanel({
           onCommand={onCommand}
         />
       )}
+
+      <CommentsSection target={{ node: node.id }} comments={node.comments ?? []} onCommand={onCommand} />
 
       <section className="panel-section">
         <h3>Memberships</h3>
