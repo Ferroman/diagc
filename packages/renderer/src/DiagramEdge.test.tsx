@@ -759,4 +759,44 @@ describe('DiagramEdge', () => {
       expect(placeChip).not.toHaveBeenCalled();
     });
   });
+
+  describe('comment chip', () => {
+    it('draws a passive chip with the count, tagged with the edge id, on a plain canvas', () => {
+      const { baseElement, container } = renderEdge({ kind: 'data-flow', annotations: { comments: 2, links: 0 } });
+      const chip = baseElement.querySelector('.dg-comment-badge.dg-edge-comment') as HTMLElement;
+      expect(chip.tagName).toBe('SPAN');
+      expect(chip.getAttribute('data-edge')).toBe('e1');
+      expect(chip.textContent).toBe('2');
+      // the chip belongs to the label layer, not this edge's own svg — same
+      // reasoning the threat chip's equivalent assertion states
+      expect(container.querySelector('svg')!.contains(chip)).toBe(false);
+    });
+
+    it("toggles the sole relation's bubble on a bubble-drawing canvas, and reports its spot when there is no threat chip", () => {
+      const toggle = vi.fn();
+      const placeChip = vi.fn();
+      const state: NoteState = { isOpen: () => false, toggle, placeChip };
+      const wrap = (ui: React.ReactElement) => render(<NoteStateContext.Provider value={state}>{ui}</NoteStateContext.Provider>);
+      const { baseElement } = wrap(
+        edgeElement({ kind: 'data-flow', annotations: { comments: 1, links: 0 }, threatRelation: 'r1' }),
+      );
+      const chip = baseElement.querySelector('button.dg-comment-badge') as HTMLButtonElement;
+      fireEvent.click(chip);
+      expect(toggle).toHaveBeenCalledWith({ relation: 'r1' });
+      // no threat chip on this edge, so the comment chip is the one that
+      // reports where the relation's bubble should hang
+      expect(placeChip).toHaveBeenCalledWith('r1', expect.anything(), expect.anything(), expect.anything());
+    });
+
+    it('a bundle keeps a passive chip', () => {
+      const state: NoteState = { isOpen: () => false, toggle: vi.fn(), placeChip: vi.fn() };
+      const { baseElement } = render(
+        <NoteStateContext.Provider value={state}>
+          {edgeElement({ kind: 'data-flow', annotations: { comments: 1, links: 0 }, constituentCount: 2 })}
+        </NoteStateContext.Provider>,
+      );
+      expect(baseElement.querySelector('button.dg-comment-badge')).toBeNull();
+      expect(baseElement.querySelector('span.dg-comment-badge')).not.toBeNull();
+    });
+  });
 });

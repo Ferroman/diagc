@@ -11,6 +11,7 @@ import {
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { TM_NOTATION, threatTargetKey, type Column, type EdgeLabel, type EdgeLabelSide, type NotationId, type Polarity, type RelationStyle } from '@diagc/core';
+import { commentBadgeProps, type AnnotationCounts } from './comment-badge';
 import {
   bowPath,
   DEFAULT_CURVATURE,
@@ -63,6 +64,9 @@ export interface DiagramEdgeData {
   /** open/total STRIDE threats on the element; absent when it carries none
    * (summed over every constituent — see buildEdgeData) */
   threats?: { open: number; total: number };
+  /** comment/link counts on the element; absent when it carries neither
+   * (summed over every constituent — see buildEdgeData) */
+  annotations?: AnnotationCounts;
   /** FK column on the source table — anchors the source end to that row (db-table) */
   fromColumn?: string;
   /** referenced column on the target table — anchors the target end to that row */
@@ -438,25 +442,37 @@ export function DiagramEdge({
   const chipY = threatFrame === undefined ? undefined : threatFrame.point.y + threatFrame.normal.y * THREAT_OFFSET;
   const threatTransform = chipX === undefined || chipY === undefined ? undefined : `translate(-50%, -50%) translate(${chipX}px, ${chipY}px)`;
 
+  // Comment chip: at t = 0.25, the other side of the label from the threat
+  // chip, so a flow that has both shows both. Same passive/toggle split.
+  const commentBadge = data?.annotations !== undefined ? commentBadgeProps(data.annotations) : undefined;
+  const commentFrame = commentBadge !== undefined ? markFrame(curve, 0.25) : undefined;
+  const commentX = commentFrame === undefined ? undefined : commentFrame.point.x + commentFrame.normal.x * THREAT_OFFSET;
+  const commentY = commentFrame === undefined ? undefined : commentFrame.point.y + commentFrame.normal.y * THREAT_OFFSET;
+  const commentTransform = commentX === undefined || commentY === undefined ? undefined : `translate(-50%, -50%) translate(${commentX}px, ${commentY}px)`;
+
   // Loop highlight: when a loop badge is active, glow this edge if it's a member,
   // otherwise dim it. Wraps the whole edge (path + marks + marker) as one group.
   const highlight = useContext(LoopHighlightContext);
   // Which bubbles this canvas has open, and the switch the counting chip is —
   // null on a canvas that draws none, where the chip stays passive.
   const notes = useContext(NoteStateContext);
-  // Where the counting chip sits, reported up: the relation's bubble hangs off
-  // it, and only this component knows the routed curve. The same numbers the
-  // chip's transform is written from, so the two cannot disagree. A bundle
-  // names no relation and its chip is passive, so it reports nothing.
+  // Where the relation's bubble hangs off, reported up: the threat chip when
+  // there is one (it was first), else the comment chip — whichever chip this
+  // relation actually has. Only this component knows the routed curve. The
+  // same numbers the reporting chip's own transform is written from, so the
+  // two cannot disagree. A bundle names no relation and both chips are
+  // passive, so it reports nothing.
   // The line goes with it, sampled end to end, so the bubbles can keep off
   // it. The curve is rebuilt every render, so the samples are keyed by their
   // rounded coordinates: the effect re-reports only when the line moved.
-  const threatRelation = threats !== undefined ? data?.threatRelation : undefined;
-  const chipNx = threatFrame?.normal.x;
-  const chipNy = threatFrame?.normal.y;
+  const chipRelation = threats !== undefined || commentBadge !== undefined ? data?.threatRelation : undefined;
+  const anchorX = threats !== undefined ? chipX : commentX;
+  const anchorY = threats !== undefined ? chipY : commentY;
+  const anchorNx = threats !== undefined ? threatFrame?.normal.x : commentFrame?.normal.x;
+  const anchorNy = threats !== undefined ? threatFrame?.normal.y : commentFrame?.normal.y;
   const lineRef = useRef<Point[]>([]);
   let lineKey = '';
-  if (notes !== null && threatRelation !== undefined) {
+  if (notes !== null && chipRelation !== undefined) {
     lineRef.current = Array.from({ length: LINE_SAMPLES + 1 }, (_, k) => {
       const p = curve.point(k / LINE_SAMPLES);
       return { x: Math.round(p.x), y: Math.round(p.y) };
@@ -464,10 +480,10 @@ export function DiagramEdge({
     lineKey = lineRef.current.map((p) => `${p.x},${p.y}`).join(';');
   }
   useEffect(() => {
-    if (notes !== null && threatRelation !== undefined && chipX !== undefined && chipY !== undefined && chipNx !== undefined && chipNy !== undefined)
-      notes.placeChip(threatRelation, { x: chipX, y: chipY }, { x: chipNx, y: chipNy }, lineRef.current);
+    if (notes !== null && chipRelation !== undefined && anchorX !== undefined && anchorY !== undefined && anchorNx !== undefined && anchorNy !== undefined)
+      notes.placeChip(chipRelation, { x: anchorX, y: anchorY }, { x: anchorNx, y: anchorNy }, lineRef.current);
     // lineKey stands in for lineRef.current, which is rebuilt every render
-  }, [notes, threatRelation, chipX, chipY, chipNx, chipNy, lineKey]);
+  }, [notes, chipRelation, anchorX, anchorY, anchorNx, anchorNy, lineKey]);
   // 'loop': members glow, rest strong-dim. 'focus': members stay normal, rest light-dim.
   const loopEdgeClass = !highlight.active
     ? undefined
@@ -805,6 +821,43 @@ export function DiagramEdge({
               style={{ transform: threatTransform }}
             >
               {threatBadge.text}
+            </span>
+          )}
+        </EdgeLabelRenderer>
+      )}
+      {commentFrame !== undefined && commentBadge !== undefined && (
+        <EdgeLabelRenderer>
+          {/* Same portal, same `data-edge` reasoning as the threat chip above.
+              A sole-relation flow on a bubble-drawing canvas gets the toggle
+              button the node badge gets; a bundle keeps the passive count —
+              mirrors the threat chip's own "sole relation" test exactly, so
+              the two chips never disagree about which flows get a switch. */}
+          {notes !== null && data?.threatRelation !== undefined ? (
+            (() => {
+              const relation = data.threatRelation;
+              const open = notes.isOpen(threatTargetKey({ relation }));
+              return (
+                <button
+                  type="button"
+                  className="dg-comment-badge dg-edge-comment nodrag nopan"
+                  data-edge={id}
+                  title={commentBadge.title}
+                  aria-expanded={open}
+                  aria-label={`${commentBadge.title} — ${open ? 'hide' : 'show'}`}
+                  style={{ transform: commentTransform }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    notes.toggle({ relation });
+                  }}
+                >
+                  {commentBadge.text}
+                </button>
+              );
+            })()
+          ) : (
+            <span className="dg-comment-badge dg-edge-comment" data-edge={id} title={commentBadge.title} style={{ transform: commentTransform }}>
+              {commentBadge.text}
             </span>
           )}
         </EdgeLabelRenderer>

@@ -31,6 +31,7 @@ import type {
 } from '@diagc/core';
 import { runsToPlainText, threatSummary } from '@diagc/core';
 import type { IconRegistry } from '@diagc/icons';
+import type { AnnotationCounts } from './comment-badge';
 import type { EdgePoint } from './layout';
 import type { EdgeRouting } from './useViewLayout';
 import type { KindStyle, Registry, TypeStyle } from './registry';
@@ -146,6 +147,12 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
   // Counted here rather than in the component so the badge costs one pass over
   // the threats per data build, not one per render.
   const threats = threatSummary(n.node.threats);
+  // Counts, not the lists: the badge only needs numbers, and the data channel
+  // is compared field by field (see the equality below) — a fresh array would
+  // re-render every node every frame.
+  const comments = n.node.comments?.length ?? 0;
+  const links = n.node.links?.length ?? 0;
+  const annotations: AnnotationCounts | undefined = comments > 0 || links > 0 ? { comments, links } : undefined;
   const data: DiagramNodeData = {
     label: n.node.name,
     state: n.state,
@@ -207,6 +214,7 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     ...(ctx.stylePreset !== undefined ? { stylePreset: ctx.stylePreset } : {}),
     ...(ctx.notation !== undefined ? { notation: ctx.notation } : {}),
     ...(threats.total > 0 ? { threats } : {}),
+    ...(annotations !== undefined ? { annotations } : {}),
   };
   return data;
 }
@@ -238,6 +246,10 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     },
     { open: 0, total: 0 },
   );
+  // A bundled arrow's badge counts every constituent's comments, as the threat
+  // chip does — or a comment would vanish the moment two flows merged.
+  const comments = e.constituents.reduce((acc, c) => acc + (c.comments?.length ?? 0), 0);
+  const annotations: AnnotationCounts | undefined = comments > 0 ? { comments, links: 0 } : undefined;
   const data: DiagramEdgeData = {
     kind: e.kind,
     constituentCount: e.constituents.length,
@@ -252,6 +264,7 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     ...(e.delay !== undefined ? { delay: e.delay } : {}),
     ...(notationColor !== undefined ? { notationColor } : {}),
     ...(threats.total > 0 ? { threats } : {}),
+    ...(annotations !== undefined ? { annotations } : {}),
   };
   const soleRelation = e.constituents.length === 1 ? e.constituents[0] : undefined;
   // Both modes: the counting chip toggles this relation's bubble in view mode
