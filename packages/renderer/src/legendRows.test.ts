@@ -233,11 +233,12 @@ describe('legendRows', () => {
   it('falls back to the type id for a registry label of "" instead of a blank row', () => {
     // activity leaf types set label: '' to suppress the on-canvas node
     // subtitle (see registry.ts) — that must not leak into the legend as an
-    // unlabeled swatch row.
+    // unlabeled swatch row. A note is the one such type with no `legendLabel`
+    // to take its place.
     const m = model('t2');
-    m.node('a1', { type: 'activity-action' });
+    m.node('a1', { type: 'activity-note' });
     const r = rows(m.toJSON(), { config: { show: ['types'] } });
-    expect(r.map((x) => x.label)).toEqual(['activity-action']);
+    expect(r.map((x) => x.label)).toEqual(['activity-note']);
   });
 
   it('renames a derived row in place instead of appending', () => {
@@ -354,5 +355,119 @@ describe('drawings row', () => {
 
   it('omits the row when the legend hides the layers section', () => {
     expect(rows(fixture(), { drawings: { active: true }, config: { show: ['kinds'] } }).some((r) => r.drawings)).toBe(false);
+  });
+});
+
+// ---- Diagrams whose shapes carry no words --------------------------------------
+function activityModel(): DiagramModel {
+  const m = model('claim');
+  const act = m.activity('claim', { name: 'Expense claim' });
+  const lane = act.lane('finance', { name: 'Finance' });
+  const start = lane.start();
+  const check = lane.action('check', 'Check the receipts');
+  const ok = lane.decision('ok');
+  const end = lane.end();
+  act.flow(start, check).flow(check, ok).flow(ok, end);
+  return m.toJSON();
+}
+
+function threatModel(): DiagramModel {
+  const m = model('reset');
+  const tm = m.threatModel();
+  const customer = tm.entity('customer', 'Customer');
+  const auth = tm.process('auth', 'Auth service');
+  const vault = tm.store('vault', 'Token vault');
+  tm.boundary('dmz', 'DMZ').contains(auth);
+  tm.flow(customer, auth, 'reset request').threat({ category: 'I', title: 'Token leaks', severity: 'medium' });
+  tm.flow(auth, vault, 'store token');
+  vault.threat({ category: 'T', title: 'Tampering', severity: 'low', status: 'mitigated' });
+  return m.toJSON();
+}
+
+function erModel(): DiagramModel {
+  const m = model('library');
+  const members = m.table('members', { columns: [{ name: 'id', type: 'uuid', pk: true }] });
+  const loans = m.table('loans', {
+    columns: [
+      { name: 'id', type: 'uuid', pk: true },
+      { name: 'member_id', type: 'uuid', fk: true },
+    ],
+  });
+  m.fk(loans, 'member_id', members);
+  return m.toJSON();
+}
+
+const labelsIn = (rs: ReturnType<typeof rows>, section: string) => rs.filter((r) => r.section === section).map((r) => r.label);
+
+describe('notation vocabulary', () => {
+  it('captions a vocabulary kind and type in words, not registry ids', () => {
+    const rs = rows(activityModel());
+    expect(labelsIn(rs, 'kinds')).toEqual(['Control flow']);
+    expect(labelsIn(rs, 'types')).toEqual(['Action', 'Decision / merge', 'Start', 'End']);
+  });
+
+  it('keys wordless shapes without being asked, and leaves self-naming boxes out', () => {
+    // frame and lane print their own titles; a plain `service` prints its type
+    const rs = rows(activityModel());
+    expect(rs.some((r) => r.id === 'types:activity-frame' || r.id === 'types:activity-lane')).toBe(false);
+    expect(rows(fixture()).some((r) => r.section === 'types')).toBe(false);
+  });
+
+  it('obeys an explicit show exactly: every drawn type with `types`, none without', () => {
+    const all = rows(activityModel(), { config: { show: ['types'] } });
+    expect(all.map((r) => r.id)).toContain('types:activity-lane');
+    expect(all.find((r) => r.id === 'types:activity-start')?.label).toBe('Start');
+    expect(rows(activityModel(), { config: { show: ['kinds'] } }).some((r) => r.section === 'types')).toBe(false);
+  });
+
+  it('flags vocabulary rows, and only those', () => {
+    expect(rows(activityModel()).filter((r) => r.vocabulary === true).length).toBeGreaterThan(0);
+    expect(rows(erModel()).some((r) => r.vocabulary === true)).toBe(true);
+    expect(rows(fixture(), { config: { show: ['layers', 'kinds', 'types'] } }).some((r) => r.vocabulary === true)).toBe(false);
+  });
+
+  it('lets an item recaption a vocabulary row', () => {
+    const rs = rows(activityModel(), { config: { items: [{ label: 'Begin here', type: 'activity-start' }] } });
+    expect(rs.find((r) => r.id === 'types:activity-start')?.label).toBe('Begin here');
+  });
+
+  it('lifts the accent every drawn node of a type shares: the notation colour, else typeColors', () => {
+    const tm = threatModel();
+    const red = rows(tm, { nodeColors: new Map([['dmz', '#c62828']]) }).find((r) => r.id === 'types:tm-boundary');
+    expect(red?.swatch).toMatchObject({ draw: 'shape', color: '#c62828' });
+    // no agreed colour, no claim
+    expect(rows(tm).find((r) => r.id === 'types:tm-boundary')?.swatch).not.toHaveProperty('color');
+    const byType = rows({ ...tm, typeColors: { 'tm-process': '#1565c0' } }).find((r) => r.id === 'types:tm-process');
+    expect(byType?.swatch).toMatchObject({ color: '#1565c0' });
+  });
+});
+
+describe('marks', () => {
+  it('keys the threat badges that are drawn', () => {
+    const marks = rows(threatModel()).filter((r) => r.section === 'marks');
+    expect(marks.map((r) => [r.id, r.label, r.swatch])).toEqual([
+      ['marks:threat-open', 'Open threats', { draw: 'mark', mark: 'threat-open' }],
+      ['marks:threat-handled', 'All threats handled', { draw: 'mark', mark: 'threat-handled' }],
+    ]);
+  });
+
+  it('keys only the badge states on screen', () => {
+    const m = threatModel();
+    const handledOnly = { ...m, relations: m.relations.map((r) => ({ ...r, threats: [] })) };
+    expect(rows(handledOnly).filter((r) => r.section === 'marks').map((r) => r.id)).toEqual(['marks:threat-handled']);
+  });
+
+  it('keys the primary- and foreign-key column marks of drawn tables', () => {
+    const marks = rows(erModel()).filter((r) => r.section === 'marks');
+    expect(marks.map((r) => [r.id, r.label])).toEqual([
+      ['marks:pk', 'Primary key'],
+      ['marks:fk', 'Foreign key column'],
+    ]);
+  });
+
+  it('is a section like the others: on by default, off when `show` leaves it out', () => {
+    expect(rows(fixture()).some((r) => r.section === 'marks')).toBe(false);
+    expect(rows(erModel(), { config: { show: ['kinds'] } }).some((r) => r.section === 'marks')).toBe(false);
+    expect(rows(erModel(), { config: { show: ['marks'] } }).every((r) => r.section === 'marks')).toBe(true);
   });
 });

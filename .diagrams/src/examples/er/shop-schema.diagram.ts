@@ -99,4 +99,8 @@ m.fk(orderItems, 'order_id', orders);
 // was sold under, so the column has to be named.
 m.fk(orderItems, 'sku', variants, 'sku');
 
+// Declared, so the key starts shown and travels into the PNG. Without this line it
+// is still one click away on the page: these shapes carry no words of their own.
+m.legend();
+
 export default m;

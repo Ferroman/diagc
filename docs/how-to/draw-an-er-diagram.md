@@ -64,6 +64,8 @@ The box is sized from the text rather than measured in the browser: 30 px of hea
 
 An `fk` edge is pinned to its two rows: each end keeps the x of the border it faces and takes the y of the column's row. That only works on a left or right border — when the layout stacks one table above another, the edge leaves the top or bottom and floats to the box's middle like any other relation. A column name that matches nothing is ignored by the renderer rather than failing, but `validate()` still reports it as [`unknown-column`](../reference/model.md#validation-codes), and the compiler writes no artifact while it does. The referenced end falls back to the target's first primary-key column when the relation names no `toColumn`, and the `fk` kind draws a bar there and a crow's foot at the referencing end — many rows to one.
 
+The crow's foot, the 🔑 and the `FK` tag are keyed in the legend, which `▤` brings up whether or not the file declares one. Call `m.legend()` to have it start shown and travel into the PNG; see [Add a legend](add-a-legend.md#diagrams-that-offer-one-anyway).
+
 Tables are ordinary nodes, so ordinary containment groups them — the shop schema above puts its catalog and its orders in two boxes — and such a group folds and unfolds like any other.
 
 ## When to reach for something else

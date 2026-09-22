@@ -80,4 +80,8 @@ ledgerDb.threat({
   status: 'accepted',
 });
 
+// Declared, so the key starts shown and travels into the PNG. Without this line it
+// is still one click away on the page: these shapes carry no words of their own.
+m.legend();
+
 export default m;

@@ -133,8 +133,9 @@ type Props = Pick<
   | 'targetPosition'
 > & { data?: DiagramEdgeData };
 
-/** marker geometry per end style, in a 0..10 viewBox (refY 5) */
-const END_SHAPES: Record<string, { refX: number; el: ReactElement } | undefined> = {
+/** marker geometry per end style, in a 0..10 viewBox (refY 5). Exported for the
+ * legend, whose connection swatches must end the way the arrows they describe do. */
+export const END_SHAPES: Record<string, { refX: number; el: ReactElement } | undefined> = {
   arrow: { refX: 9, el: <path d="M0,0 L10,5 L0,10 z" /> },
   dot: { refX: 5, el: <circle cx="5" cy="5" r="4" /> },
   square: { refX: 5, el: <rect x="1.2" y="1.2" width="7.6" height="7.6" /> },
@@ -151,7 +152,7 @@ const END_SHAPES: Record<string, { refX: number; el: ReactElement } | undefined>
 /** line-based (unfilled) end shapes: these need the marker to carry a `stroke`
  * so their strokes actually draw. Filled shapes (arrow/dot/…) must NOT get a
  * stroke, or they render an unwanted same-color outline (regression guard). */
-const LINE_MARKERS = new Set(['crowsfoot', 'one']);
+export const LINE_MARKERS = new Set(['crowsfoot', 'one']);
 
 /** endpoint pin dot radius (px) */
 const PIN_R = 5;

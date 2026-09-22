@@ -125,7 +125,7 @@ export type EdgeLabelMoves = Readonly<Record<string, Readonly<Record<string, Edg
 
 /** A node's accent colour: its own `color`, else the model's convention for its
  * type, else the convention's `*` fallback (see DiagramModel.typeColors). */
-function typeColor(n: ViewNode, ctx: NodeDataContext): string | undefined {
+export function typeColor(n: ViewNode, ctx: Pick<NodeDataContext, 'nodeColors' | 'typeColors'>): string | undefined {
   if (n.node.color !== undefined) return n.node.color;
   const byNotation = ctx.nodeColors?.get(n.id);
   if (byNotation !== undefined) return byNotation;

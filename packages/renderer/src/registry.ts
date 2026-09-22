@@ -27,6 +27,11 @@ export interface TypeStyle {
   fill?: string;
   /** text color legible on `fill`; ignored without it */
   textOn?: string;
+  /** what a legend calls this type. Set only on shapes that say nothing about what they
+   * are on the canvas (a start dot, a DFD process — never a box that prints its own
+   * subtitle): such a type is keyed without being asked for, and drawing one is what
+   * offers a legend on a diagram that declared none. */
+  legendLabel?: string;
 }
 
 export interface KindStyle {
@@ -39,6 +44,9 @@ export interface KindStyle {
   endMarker?: string;
   /** draw a lightning-bolt jog at the path midpoint (UML interrupt flow) */
   zigzag?: boolean;
+  /** what a legend calls this kind — see {@link TypeStyle.legendLabel}; the line's ends
+   * and dashes are its whole meaning, and the raw id explains neither */
+  legendLabel?: string;
 }
 
 export interface Registry<T> {
@@ -115,16 +123,17 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   // chrome branches in DiagramNode, but TypeStyle.shape is required.
   'activity-frame': { shape: 'box', alwaysExpanded: true },
   'activity-lane': { shape: 'box', alwaysExpanded: true },
-  'activity-region': { shape: 'box', dashed: true, alwaysExpanded: true },
+  'activity-region': { shape: 'box', dashed: true, alwaysExpanded: true, legendLabel: 'Interruptible region' },
   // UML glyphs carry no type subtitle; an empty label suppresses the `.dg-type` fallback.
-  'activity-action': { shape: 'rounded', label: '' },
-  'activity-decision': { shape: 'diamond', defaultSize: { width: 48, height: 48 }, label: '' },
-  'activity-bar': { shape: 'bar', defaultSize: { width: 8, height: 100 }, label: '' },
-  'activity-start': { shape: 'start-dot', defaultSize: { width: 24, height: 24 }, label: '' },
-  'activity-end': { shape: 'end-bullseye', defaultSize: { width: 28, height: 28 }, label: '' },
-  'activity-send': { shape: 'send-signal', defaultSize: { width: 140, height: 44 }, label: '' },
-  'activity-receive': { shape: 'receive-signal', defaultSize: { width: 140, height: 44 }, label: '' },
-  'activity-object': { shape: 'box', label: '' },
+  // The frame, a lane and a note get no `legendLabel`: each already says what it is.
+  'activity-action': { shape: 'rounded', label: '', legendLabel: 'Action' },
+  'activity-decision': { shape: 'diamond', defaultSize: { width: 48, height: 48 }, label: '', legendLabel: 'Decision / merge' },
+  'activity-bar': { shape: 'bar', defaultSize: { width: 8, height: 100 }, label: '', legendLabel: 'Fork / join' },
+  'activity-start': { shape: 'start-dot', defaultSize: { width: 24, height: 24 }, label: '', legendLabel: 'Start' },
+  'activity-end': { shape: 'end-bullseye', defaultSize: { width: 28, height: 28 }, label: '', legendLabel: 'End' },
+  'activity-send': { shape: 'send-signal', defaultSize: { width: 140, height: 44 }, label: '', legendLabel: 'Send signal' },
+  'activity-receive': { shape: 'receive-signal', defaultSize: { width: 140, height: 44 }, label: '', legendLabel: 'Receive signal' },
+  'activity-object': { shape: 'box', label: '', legendLabel: 'Object' },
   'activity-note': { shape: 'note', defaultSize: { width: 140, height: 64 }, label: '' },
   // ---- Second-order thinking -------------------------------------------------
   // The decision is the solid root (theme tokens, so it inverts with the theme);
@@ -151,10 +160,10 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   // box and hide the very elements those crossings are about — the picture would
   // lose the thing it exists to show. DiagramView folds registry `alwaysExpanded`
   // into `effectivePins` and blocks drilling into it.
-  'tm-entity': { shape: 'box', label: '' },
-  'tm-process': { shape: 'ellipse', label: '', defaultSize: { width: 150, height: 90 } },
-  'tm-store': { shape: 'store', label: '', defaultSize: { width: 150, height: 56 } },
-  'tm-boundary': { shape: 'box', label: '', outline: true, dashed: true, alwaysExpanded: true },
+  'tm-entity': { shape: 'box', label: '', legendLabel: 'External entity' },
+  'tm-process': { shape: 'ellipse', label: '', defaultSize: { width: 150, height: 90 }, legendLabel: 'Process' },
+  'tm-store': { shape: 'store', label: '', defaultSize: { width: 150, height: 56 }, legendLabel: 'Data store' },
+  'tm-boundary': { shape: 'box', label: '', outline: true, dashed: true, alwaysExpanded: true, legendLabel: 'Trust boundary' },
 };
 
 export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
@@ -165,18 +174,18 @@ export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
   'hosted-on': { dashed: true },
   flow: { animated: true },
   mixed: { width: 2.5 },
-  fk: { startMarker: 'crowsfoot', endMarker: 'one' },
+  fk: { startMarker: 'crowsfoot', endMarker: 'one', legendLabel: 'Foreign key: many to one' },
   // ---- Activity diagram (UML) ------------------------------------------------
-  control: {},
-  'object-flow': { dashed: true },
-  interrupt: { zigzag: true },
-  'note-link': { dashed: true, endMarker: 'none' },
+  control: { legendLabel: 'Control flow' },
+  'object-flow': { dashed: true, legendLabel: 'Object flow' },
+  interrupt: { zigzag: true, legendLabel: 'Interrupt' },
+  'note-link': { dashed: true, endMarker: 'none', legendLabel: 'Note link' },
   // ---- Second-order thinking -------------------------------------------------
   'leads-to': {},
   // ---- Fishbone (Ishikawa) ----------------------------------------------------
   'cause-of': {}, // solid, arrow end — the defaults
   // ---- Threat model (STRIDE data flow) ----------------------------------------
-  'data-flow': {}, // a plain arrow: the DFD's only line style
+  'data-flow': { legendLabel: 'Data flow' }, // a plain arrow: the DFD's only line style
 };
 
 function createRegistry<T>(defaults: Record<string, T>, fallback: T, overrides?: Record<string, T>): Registry<T> {
