@@ -259,15 +259,11 @@ export function NoteNode({
           <ul className="dg-note-links">
             {data.links.map((l) => (
               <li key={`${l.label}\u0000${l.url}`}>
-                {/* eslint-disable-next-line react/jsx-no-target-blank -- noopener
-                    alone closes the reverse-tabnabbing hole this rule guards
-                    against (blocks window.opener); DiagramNode's own link badge
-                    makes the same choice via window.open(url, '_blank', 'noopener') */}
                 <a
                   className="dg-note-link nodrag nopan"
                   href={l.url}
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   onMouseDown={stop}
                   onPointerDown={stop}
                   onClick={(e) => {

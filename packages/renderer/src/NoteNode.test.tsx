@@ -237,7 +237,7 @@ describe('NoteNode — comments and links', () => {
     expect(a.textContent).toBe('Ticket');
     expect(a.getAttribute('href')).toBe('https://x/1');
     expect(a.getAttribute('target')).toBe('_blank');
-    expect(a.getAttribute('rel')).toBe('noopener');
+    expect(a.getAttribute('rel')).toBe('noopener noreferrer');
     fireEvent.click(a);
     expect(onOpenLink).toHaveBeenCalledWith('https://x/1');
   });
