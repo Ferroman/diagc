@@ -1,5 +1,6 @@
 import type {
   Column,
+  Comment,
   DiagramLayer,
   DiagramLegend,
   DiagramModel,
@@ -19,6 +20,7 @@ import { resolveContainmentPlane } from './view/compile';
 import { addStroke, deleteStroke, pruneDrawingsPlane } from './drawings';
 import { relationLabels } from './labels';
 import {
+  addComment,
   addContainment,
   addNode,
   addRelation,
@@ -30,6 +32,7 @@ import {
   deleteRelation,
   groupNodes,
   mergeLayers,
+  removeComment,
   removeContainment,
   removeThreat,
   renameNode,
@@ -41,10 +44,12 @@ import {
   setNodeRich,
   setTableColumns,
   subtreeOf,
+  updateComment,
   updateRelation,
   updateThreat,
   upsertLayer,
   upsertPlane,
+  type CommentPatch,
   type NodeDetails,
   type RelationOptsInput,
   type RelationPatch,
@@ -94,6 +99,10 @@ export type EditorCommand =
   | { type: 'add-threat'; target: ThreatTarget; threat: Threat }
   | { type: 'update-threat'; target: ThreatTarget; id: string; patch: ThreatPatch }
   | { type: 'remove-threat'; target: ThreatTarget; id: string }
+  /** Comments ride on the element too — same target type as the threat trio. */
+  | { type: 'add-comment'; target: ThreatTarget; comment: Comment }
+  | { type: 'update-comment'; target: ThreatTarget; id: string; patch: CommentPatch }
+  | { type: 'remove-comment'; target: ThreatTarget; id: string }
   | { type: 'set-node-plane-hidden'; nodeId: string; plane: string; hidden: boolean }
   | { type: 'set-diagram-style'; style: string | null }
   | { type: 'set-diagram-notation'; notation: string | null }
@@ -368,6 +377,12 @@ function applyModelLayout(state: ModelLayout, command: EditorCommand): ModelLayo
       return { model: updateThreat(model, command.target, command.id, command.patch), layout };
     case 'remove-threat':
       return { model: removeThreat(model, command.target, command.id), layout };
+    case 'add-comment':
+      return { model: addComment(model, command.target, command.comment), layout };
+    case 'update-comment':
+      return { model: updateComment(model, command.target, command.id, command.patch), layout };
+    case 'remove-comment':
+      return { model: removeComment(model, command.target, command.id), layout };
     case 'set-node-plane-hidden':
       return { model: setNodePlaneHidden(model, command.nodeId, command.plane, command.hidden), layout };
     case 'set-diagram-style':

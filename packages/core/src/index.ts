@@ -23,6 +23,8 @@ export const CORE_VERSION = 1;
 export { ejectSource } from './eject';
 export * from './types';
 export * from './mutate';
+export { commentsOf, nextCommentId, type ElementTarget } from './comments';
+export { isIsoDate } from './dates';
 export { normalizeRuns, runsToPlainText } from './text';
 export { relationLabels } from './labels';
 export { defaultLayoutDirection, type LayoutDirection } from './layout-defaults';
