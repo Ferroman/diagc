@@ -58,8 +58,8 @@ describe('roles', () => {
   });
   it('rolesOf lists people per role in declaration order, only for relations INTO the zone', () => {
     const m = model('p');
-    const z = m.node('z', { type: PLAN_ZONE_TYPE });
-    const other = m.node('other', { type: PLAN_ZONE_TYPE });
+    const z = m.node('z', { type: PLAN_ZONE_TYPE, metadata: { start: '2026-01-05', end: '2026-01-09' } });
+    const other = m.node('other', { type: PLAN_ZONE_TYPE, metadata: { start: '2026-01-05', end: '2026-01-09' } });
     const a = m.node('alice', { type: 'person' });
     const b = m.node('bob', { type: 'person' });
     m.relate(b, z, { kind: 'executes' }).relate(a, z, { kind: 'owns' }).relate(a, z, { kind: 'executes' });

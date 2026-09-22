@@ -14,6 +14,7 @@ import {
   THREAT_SEVERITIES,
   THREAT_STATUSES,
   type DiagramModel,
+  type DiagramNode,
   type DiagramPlane,
   type TextRun,
 } from './types';
@@ -21,6 +22,7 @@ import { childrenOf } from './children';
 import { isIsoDate } from './dates';
 import { FB_CATEGORY_TYPE, FB_CAUSE_TYPE, FB_EFFECT_TYPE, FISHBONE_NOTATION, fishboneParents, fishboneTree, isFishboneNode } from './fishbone';
 import { GIT_NOTATION, GIT_STAGE_TYPE, gitGraph, isGitKind, stageCommit } from './git';
+import { PLAN_NOTATION, atOf, dayOf, isPlanEvent, isPlanRole, isPlanZone, planGraph, spanOf } from './plan';
 import { SECOND_ORDER_NOTATION, SO_DECISION_TYPE, consequenceOrders, isSecondOrderNode } from './second-order';
 import { TM_BOUNDARY_TYPE, TM_FLOW_KIND, TM_NOTATION } from './threat-model';
 
@@ -86,7 +88,12 @@ export interface ValidationIssue {
     | 'comment-text'
     | 'comment-at'
     | 'invalid-links'
-    | 'tm-flow-boundary';
+    | 'tm-flow-boundary'
+    | 'plan-date'
+    | 'plan-missing'
+    | 'plan-span'
+    | 'plan-nested'
+    | 'plan-role-target';
   message: string;
   ref?: string;
 }
@@ -775,6 +782,64 @@ function validateThreatModel(ctx: Ctx): void {
   }
 }
 
+/**
+ * Plan conventions. Dates are checked wherever they are (a plan-zone on any
+ * notation is still a zone, like a threat on any element); nesting is checked
+ * against the plan plane's containment when a plane declares the notation,
+ * else the default plane's. Only `plan-role-target` is notation-gated, the
+ * same plane pick as validateThreatModel — outside a plan, `owns` is just a
+ * relation kind somebody chose.
+ */
+function validatePlan(ctx: Ctx): void {
+  const { issues, m } = ctx;
+  const dateOr = (n: DiagramNode, key: 'start' | 'end' | 'at'): number | undefined => {
+    const raw = n.metadata?.[key];
+    if (raw === undefined) {
+      report(issues, 'plan-missing', `'${n.id}' (${n.type}) has no '${key}' date`, n.id);
+      return undefined;
+    }
+    if (!isIsoDate(raw)) {
+      report(issues, 'plan-date', `'${n.id}': '${key}' must be a real YYYY-MM-DD date, got ${JSON.stringify(raw)}`, n.id);
+      return undefined;
+    }
+    return dayOf(raw);
+  };
+  for (const n of m.nodes) {
+    if (isPlanZone(n)) {
+      const start = dateOr(n, 'start');
+      const end = dateOr(n, 'end');
+      if (start !== undefined && end !== undefined && end < start) {
+        report(issues, 'plan-span', `'${n.id}': end ${String(n.metadata?.end)} is before start ${String(n.metadata?.start)}`, n.id);
+      }
+    } else if (isPlanEvent(n)) {
+      dateOr(n, 'at');
+    }
+  }
+  const plane = ctx.planes.find((p) => (p.notation ?? m.notation) === PLAN_NOTATION);
+  const g = planGraph(m, plane?.id);
+  const byId = new Map(m.nodes.map((n) => [n.id, n] as const));
+  for (const [child, parentId] of g.parent) {
+    const outer = spanOf(byId.get(parentId)!);
+    const node = byId.get(child)!;
+    if (outer === undefined) continue;
+    const inner = spanOf(node) ?? (atOf(node) !== undefined ? { start: atOf(node)!, end: atOf(node)! } : undefined);
+    if (inner === undefined) continue;
+    if (inner.start < outer.start || inner.end > outer.end) {
+      report(issues, 'plan-nested', `'${child}' lies outside its zone '${parentId}' (${String(byId.get(parentId)!.metadata?.start)} … ${String(byId.get(parentId)!.metadata?.end)})`, child);
+    }
+  }
+  const modelLevel = plane === undefined && ctx.planes.length === 0 && m.notation === PLAN_NOTATION;
+  if (plane === undefined && !modelLevel) return;
+  for (const r of m.relations) {
+    if (!isPlanRole(r.kind)) continue;
+    if (!ctx.nodeIds.has(r.from) || !ctx.nodeIds.has(r.to)) continue; // dangling ends are validateRelations' finding
+    const target = byId.get(r.to);
+    if (target !== undefined && !isPlanZone(target)) {
+      report(issues, 'plan-role-target', `Relation '${r.id}' (${r.kind}) must point at a plan-zone; '${r.to}' is ${target.type ?? 'untyped'}`, r.id);
+    }
+  }
+}
+
 export function validate(m: DiagramModel): ValidationIssue[] {
   const ctx: Ctx = {
     issues: [],
@@ -803,6 +868,7 @@ export function validate(m: DiagramModel): ValidationIssue[] {
   validateSecondOrder(ctx);
   validateFishbone(ctx);
   validateThreatModel(ctx);
+  validatePlan(ctx);
   return ctx.issues;
 }
 
