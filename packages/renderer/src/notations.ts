@@ -1,8 +1,18 @@
-import { consequenceOrders, GIT_STAGE_TYPE, TM_BOUNDARY_TYPE, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type Size, type ViewEdge } from '@diagc/core';
+import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanRole, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';
+import { PLAN_LAYOUT, planGraphCached, planLayout } from './plan-layout';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
+
+/** A small chip in a node's badge row (the plan's role chips are the only
+ * producer today, but the shape is generic — any notation could grow one). */
+export interface NodeBadge {
+  key: string;
+  text: string;
+  title: string;
+  color?: string;
+}
 
 /** A visual language: default look plus registry/chrome overrides for a plane's notation. */
 export interface NotationProfile {
@@ -33,6 +43,12 @@ export interface NotationProfile {
     /** node id → accent colour, applied where the node sets none (a commit
      * takes its lane's colour) */
     colorOf?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, string>;
+    /** small chips in a node's badge row (the plan's role chips); keyed by
+     * node id, one derivation per model like colorOf */
+    badges?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, NodeBadge[]>;
+    /** 'x' = the studio offers left/right resize handles on this node;
+     * undefined = no notation resizer */
+    resizable?: (n: DiagramNode) => 'x' | undefined;
   };
   edge?: {
     marks?: boolean;
@@ -42,8 +58,10 @@ export interface NotationProfile {
     polarityColors?: Record<Polarity, string>;
     /** stroke colour for an edge, below the layer tint and above the default */
     colorOf?: (e: ViewEdge, model: DiagramModel, plane: string | undefined) => string | undefined;
+    /** relation kinds the view never draws as edges (the legend skips them too) */
+    hidden?: (kind: string) => boolean;
   };
-  overlay?: 'loop-labels' | 'git-lanes' | 'order-bands';
+  overlay?: 'loop-labels' | 'git-lanes' | 'order-bands' | 'time-axis';
 }
 
 const CLD: NotationProfile = {
@@ -181,9 +199,54 @@ const THREAT_MODEL: NotationProfile = {
 };
 
 // ---- Plan -------------------------------------------------------------------
-// Filled in with the schedule layout, header and chips; the id must exist as
-// soon as core declares the notation or the profile table stops typechecking.
-const PLAN: NotationProfile = { id: 'plan', className: 'dg-notation-plan' };
+// The notation owns the arrangement (as git-graph does) because x IS a date.
+// Roles are relations person → zone that never draw as edges: they become
+// chips on the zone, so the picture stays a Gantt chart, not a web.
+const ROLE_LABEL: Record<PlanRole, { initial: string; title: string }> = {
+  owns: { initial: 'O', title: 'Owner' },
+  executes: { initial: 'E', title: 'Executor' },
+  checks: { initial: 'C', title: 'Checker' },
+};
+
+/** Role chips per zone, in owns / executes / checks order: `O·Alice` (first
+ * word of the name), titled `Owner: Alice Ng`, in the person's colour. */
+export function planBadges(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, NodeBadge[]> {
+  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  const out = new Map<string, NodeBadge[]>();
+  for (const id of planGraphCached(model, plane).zones) {
+    const roles = rolesOf(model, id);
+    const chips: NodeBadge[] = [];
+    for (const role of PLAN_ROLES) {
+      for (const personId of roles[role]) {
+        const person = byId.get(personId);
+        if (person === undefined) continue;
+        const first = person.name.trim().split(/\s+/)[0] ?? person.id;
+        chips.push({
+          key: `${role}:${personId}`,
+          text: `${ROLE_LABEL[role].initial}·${first}`,
+          title: `${ROLE_LABEL[role].title}: ${person.name}`,
+          ...(person.color !== undefined ? { color: person.color } : {}),
+        });
+      }
+    }
+    if (chips.length > 0) out.set(id, chips);
+  }
+  return out;
+}
+
+const PLAN: NotationProfile = {
+  id: PLAN_NOTATION,
+  className: 'dg-notation-plan',
+  layout: planLayout,
+  node: {
+    alwaysExpanded: (n) => n.type === PLAN_ZONE_TYPE,
+    leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
+    badges: planBadges,
+    resizable: (n) => (n.type === PLAN_ZONE_TYPE ? 'x' : undefined),
+  },
+  edge: { hidden: isPlanRole },
+  overlay: 'time-axis',
+};
 
 // Record<NotationId, ...> keying means adding a notation id to BUILTIN_NOTATIONS
 // forces a compile error here until its profile is added — intended.

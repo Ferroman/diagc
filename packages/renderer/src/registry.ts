@@ -1,3 +1,5 @@
+import { PLAN_LAYOUT } from './plan-layout';
+
 export type ShapeId = 'box' | 'cylinder' | 'pill' | 'hexagon' | 'person' | 'table' | 'bubble' | 'circle' | 'rounded' | 'diamond' | 'bar' | 'start-dot' | 'end-bullseye' | 'send-signal' | 'receive-signal' | 'note' | 'ellipse' | 'store';
 
 export interface TypeStyle {
@@ -164,6 +166,11 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   'tm-process': { shape: 'ellipse', label: '', defaultSize: { width: 150, height: 90 }, legendLabel: 'Process' },
   'tm-store': { shape: 'store', label: '', defaultSize: { width: 150, height: 56 }, legendLabel: 'Data store' },
   'tm-boundary': { shape: 'box', label: '', outline: true, dashed: true, alwaysExpanded: true, legendLabel: 'Trust boundary' },
+  // ---- Plan (schedule): a zone is a date-spanned container (the plan layout sizes
+  // it; the studio's left/right handles resize it into dates), an event a
+  // point marker whose name is drawn beside it.
+  'plan-zone': { shape: 'rounded', label: '', legendLabel: 'Zone' },
+  'plan-event': { shape: 'diamond', defaultSize: { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT }, label: '', legendLabel: 'Event' },
 };
 
 export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
@@ -186,6 +193,12 @@ export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
   'cause-of': {}, // solid, arrow end — the defaults
   // ---- Threat model (STRIDE data flow) ----------------------------------------
   'data-flow': { legendLabel: 'Data flow' }, // a plain arrow: the DFD's only line style
+  // Plan roles, person → zone. Registered so the legend, the studio's kind
+  // picker and validation know them; the plan profile never draws them as
+  // edges (they become chips on the zone — see planBadges).
+  owns: { legendLabel: 'Owns' },
+  executes: { legendLabel: 'Executes' },
+  checks: { legendLabel: 'Checks' },
 };
 
 function createRegistry<T>(defaults: Record<string, T>, fallback: T, overrides?: Record<string, T>): Registry<T> {

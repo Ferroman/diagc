@@ -22,7 +22,7 @@ export {
   type FocusInput,
 } from './focus';
 export { connectionSides, getEdgeParams, type EdgeParams, type FloatingNode, type Side } from './floating';
-export { NOTATION_PROFILES, notationProfile, type NotationProfile } from './notations';
+export { NOTATION_PROFILES, notationProfile, planBadges, type NodeBadge, type NotationProfile } from './notations';
 export { isKnownStyle, STYLE_PRESETS, stylePreset, type RoughStyle, type StylePreset } from './stylePresets';
 export {
   findLoops,

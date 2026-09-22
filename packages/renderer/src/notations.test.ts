@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { compileView, model } from '@diagc/core';
 import { BONE_PALETTE, fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
-import { NOTATION_PROFILES, notationProfile, TM_BOUNDARY_COLOR } from './notations';
+import { NOTATION_PROFILES, notationProfile, planBadges, TM_BOUNDARY_COLOR } from './notations';
+import { createKindRegistry, createTypeRegistry, DEFAULT_KIND_STYLES, DEFAULT_TYPE_STYLES } from './registry';
+import { planLayout, PLAN_LAYOUT } from './plan-layout';
 
 describe('notationProfile', () => {
   it('returns the default profile when no id is given', () => {
@@ -133,5 +135,56 @@ describe('threat-model profile', () => {
     tm.store('db', 'DB');
     const colors = p.node!.colorOf!(m.toJSON(), undefined);
     expect(Object.fromEntries(colors)).toEqual({ dmz: TM_BOUNDARY_COLOR });
+  });
+});
+
+describe('plan profile', () => {
+  function roadmap() {
+    const m = model('r');
+    const p = m.plan();
+    const alice = p.person('alice', 'Alice Ng', { color: '#c33' });
+    const bob = p.person('bob', 'Bob');
+    const z = p.zone('z', { start: '2026-01-05', end: '2026-01-09' }).executor(bob).owner(alice).checker(alice);
+    p.zone('bare', { start: '2026-01-05', end: '2026-01-09' });
+    void z;
+    return m.toJSON();
+  }
+  it('owns the layout and the header, pins zones open, sizes events, hides the role kinds', () => {
+    const p = notationProfile('plan');
+    expect(p.layout).toBe(planLayout);
+    expect(p.overlay).toBe('time-axis');
+    expect(p.className).toBe('dg-notation-plan');
+    expect(p.node?.alwaysExpanded?.({ id: 'z', name: 'Z', type: 'plan-zone' })).toBe(true);
+    expect(p.node?.alwaysExpanded?.({ id: 'e', name: 'E', type: 'plan-event' })).toBe(false);
+    expect(p.node?.leafSize?.({ id: 'e', name: 'E', type: 'plan-event' })).toEqual({ width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT });
+    expect(p.node?.resizable?.({ id: 'z', name: 'Z', type: 'plan-zone' })).toBe('x');
+    expect(p.node?.resizable?.({ id: 'p', name: 'P', type: 'person' })).toBeUndefined();
+    for (const k of ['owns', 'executes', 'checks']) expect(p.edge?.hidden?.(k)).toBe(true);
+    expect(p.edge?.hidden?.('sync')).toBe(false);
+  });
+  it('planBadges: one chip per role in owns/executes/checks order, first name, full title, the person\'s colour', () => {
+    const chips = planBadges(roadmap(), 'plan');
+    expect(chips.get('z')).toEqual([
+      { key: 'owns:alice', text: 'O·Alice', title: 'Owner: Alice Ng', color: '#c33' },
+      { key: 'executes:bob', text: 'E·Bob', title: 'Executor: Bob' },
+      { key: 'checks:alice', text: 'C·Alice', title: 'Checker: Alice Ng', color: '#c33' },
+    ]);
+    expect(chips.has('bare')).toBe(false);
+    expect(notationProfile('plan').node?.badges).toBe(planBadges);
+  });
+  it('registers the plan types and role kinds with legend labels', () => {
+    expect(createTypeRegistry().resolve('plan-zone')).toMatchObject({ shape: 'rounded', legendLabel: 'Zone' });
+    expect(createTypeRegistry().resolve('plan-event')).toMatchObject({ shape: 'diamond', defaultSize: { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT }, legendLabel: 'Event' });
+    expect(DEFAULT_TYPE_STYLES['plan-zone']?.label).toBe('');
+    expect(createKindRegistry().resolve('owns').legendLabel).toBe('Owns');
+    expect(DEFAULT_KIND_STYLES.checks?.legendLabel).toBe('Checks');
+  });
+  it('every other profile leaves the new hooks unset', () => {
+    for (const id of ['causal-loop', 'git-graph', 'c4', 'second-order', 'fishbone', 'threat-model'] as const) {
+      const p = notationProfile(id);
+      expect(p.node?.badges).toBeUndefined();
+      expect(p.node?.resizable).toBeUndefined();
+      expect(p.edge?.hidden).toBeUndefined();
+    }
   });
 });
