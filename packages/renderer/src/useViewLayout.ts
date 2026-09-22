@@ -62,6 +62,9 @@ export interface ViewLayout {
   /** nodes the notation's layout fixed in place (LayoutResult.fixed): drawn
    * where they were laid whatever was saved, and not to be offered a move */
   fixed: ReadonlySet<string>;
+  /** nodes the notation's layout locked on x (LayoutResult.lockedX): a saved
+   * or dragged position moves them on y only */
+  lockedX: ReadonlySet<string>;
   /** the scene the last FINISHED layout run was for; null before the first.
    * Layout is asynchronous and the previous arrangement is kept meanwhile, so
    * right after the scene changes `arrangedGeometry` is non-null and the OLD
@@ -84,6 +87,22 @@ const NONE_FIXED: ReadonlySet<string> = new Set();
 function movable(positions: Record<string, { x: number; y: number }>, fixed: ReadonlySet<string>): Record<string, { x: number; y: number }> {
   if (fixed.size === 0 || !Object.keys(positions).some((id) => fixed.has(id))) return positions;
   return Object.fromEntries(Object.entries(positions).filter(([id]) => !fixed.has(id)));
+}
+
+/** `positions` with the x of every locked id replaced by the arranged x, so
+ * overlayPositions can apply them as usual and only y takes effect. */
+function yOnly(
+  positions: Record<string, { x: number; y: number }>,
+  lockedX: ReadonlySet<string>,
+  arranged: ReadonlyMap<string, { x: number }>,
+): Record<string, { x: number; y: number }> {
+  if (lockedX.size === 0 || !Object.keys(positions).some((id) => lockedX.has(id))) return positions;
+  return Object.fromEntries(
+    Object.entries(positions).map(([id, pos]) => {
+      const g = lockedX.has(id) ? arranged.get(id) : undefined;
+      return [id, g !== undefined ? { x: g.x, y: pos.y } : pos];
+    }),
+  );
 }
 
 /** How a routed edge's corners are drawn (px radius). The waypoints are elk's
@@ -231,6 +250,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   const [routes, setRoutes] = useState<Map<string, EdgePoint[]>>(() => new Map());
   const [labelSpots, setLabelSpots] = useState<ReadonlyMap<string, EdgePoint>>(NO_SPOTS);
   const [fixed, setFixed] = useState<ReadonlySet<string>>(NONE_FIXED);
+  const [lockedX, setLockedX] = useState<ReadonlySet<string>>(NONE_FIXED);
   const [settledFor, setSettledFor] = useState<ViewLayout['settledFor']>(null);
   useEffect(() => {
     let live = true;
@@ -248,6 +268,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
         setRoutes(r.routes);
         setLabelSpots(r.labelSpots);
         setFixed(r.fixed ?? NONE_FIXED);
+        setLockedX(r.lockedX ?? NONE_FIXED);
         setSettledFor(input.compiled);
       })
       // layoutView degrades to the default algorithm rather than rejecting, so
@@ -283,11 +304,13 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     // were fixed), or arrive with a node that was placed as a stray and hung on
     // the fish afterwards — either would leave it behind when the fish next
     // changes shape, its lines floating in to a box they were never drawn to.
-    const withSaved = overlayPositions(geometry, movable(saved, fixed));
+    const withSaved = overlayPositions(geometry, yOnly(movable(saved, fixed), lockedX, geometry));
     // A drag still wins over an automatic arrangement, so moving a box while
     // auto-arrange is on behaves the way dragging always does.
-    return input.editing ? withSaved : overlayPositions(withSaved, movable(input.viewPositions, fixed));
-  }, [geometry, fixed, input.layout, input.model, input.plane, input.ignoreSavedPositions, input.editing, input.viewPositions]);
+    return input.editing
+      ? withSaved
+      : overlayPositions(withSaved, yOnly(movable(input.viewPositions, fixed), lockedX, geometry));
+  }, [geometry, fixed, lockedX, input.layout, input.model, input.plane, input.ignoreSavedPositions, input.editing, input.viewPositions]);
 
   // A hand-placed child may sit past the wall of the box elk sized for it: the
   // container gives way (fit-containers.ts). Not where the notation owns the
@@ -353,6 +376,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     laidAt,
     labelSpots,
     fixed,
+    lockedX,
     settledFor,
     layoutSettings,
     flowDirection: (runSettings?.direction ?? FALLBACK_DIRECTION) as LayoutDirection,

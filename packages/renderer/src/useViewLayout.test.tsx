@@ -162,6 +162,24 @@ describe('useViewLayout', () => {
     expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 0 });
   });
 
+  it('a node the notation LOCKED on x takes only y from a saved position or a view drag', async () => {
+    const m = fixture();
+    const profile: NotationProfile = {
+      id: 'default',
+      layout: () => ({ geometry: GEOMETRY, routes: new Map(), labelSpots: new Map(), algorithm: 'notation', lockedX: new Set(['box']) }),
+    };
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 400, y: 50 } } } };
+    const viewPositions = { box: { x: 999, y: 9 } };
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile, layout, viewPositions }),
+    });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    expect(result.current.lockedX.has('box')).toBe(true);
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 9 }); // arranged x, dragged y
+    rerender(inputFor(m, { profile, layout, viewPositions, editing: true }));
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 50 }); // arranged x, saved y
+  });
+
   it('fixes nothing when the layout names nothing (elk, git-graph)', async () => {
     const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), { initialProps: inputFor(fixture()) });
     await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
