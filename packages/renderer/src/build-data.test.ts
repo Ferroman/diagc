@@ -304,6 +304,20 @@ describe('buildNodeData', () => {
     // view mode: no handles
     expect(buildNodeData(zone, { ...ctx, editing: false }).resizeAxis).toBeUndefined();
   });
+
+  it('keys the cache on nodeBadges and resizable, like the other notation-derived maps', () => {
+    const zone = viewNode({ id: 'z', node: { id: 'z', name: 'Z', type: 'plan-zone' } });
+    const badges = new Map([['z', [{ key: 'owns:a', text: 'O·A', title: 'Owner: A' }]]]);
+    const resizable = (n: DiagramNode) => (n.type === 'plan-zone' ? ('x' as const) : undefined);
+    const ctx = nodeCtx({ editing: true, onResize: vi.fn(), nodeBadges: badges, resizable });
+    const a = buildNodeDataCached(zone, { ...ctx });
+    expect(buildNodeDataCached(zone, { ...ctx })).toBe(a);
+    // a same-content but different Map is a new derivation (the profile ran
+    // again on a changed model) — must not keep the stale chips
+    expect(buildNodeDataCached(zone, { ...ctx, nodeBadges: new Map(badges) })).not.toBe(a);
+    // a different resizable function must not keep offering the old node's answer
+    expect(buildNodeDataCached(zone, { ...ctx, resizable: (n: DiagramNode) => resizable(n) })).not.toBe(a);
+  });
 });
 
 describe('buildEdgeData', () => {

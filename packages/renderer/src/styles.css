@@ -1085,4 +1085,11 @@ path.dg-loop-badge-circle {
 .dg-event-tag .dg-label-input { pointer-events: auto; }
 .dg-role-chip { --dg-chip: var(--dg-text-muted); border: 1px solid var(--dg-chip); color: var(--dg-chip); background: color-mix(in srgb, var(--dg-chip) 12%, transparent); max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dg-group-header .dg-badges { margin-left: auto; }
-.dg-x-resize { width: 8px; height: 100%; border: none; background: transparent; cursor: ew-resize; }
+/* NodeResizeControl's default 'handle' variant carries React Flow's own
+   .react-flow__resize-control.handle(.left/.right) rules (a 5×5 square,
+   translate -50% -50%), which outrank a bare .dg-x-resize class on specificity
+   alone — so the selector has to match those classes too, not just add one. */
+.react-flow__resize-control.handle.dg-x-resize {
+  width: 8px; height: 100%; top: 0; translate: -50% 0;
+  border: none; border-radius: 0; background: transparent; cursor: ew-resize;
+}
