@@ -31,9 +31,12 @@ export function unionBounds(members: readonly (Bounds | undefined)[]): Bounds | 
  *
  * Unmeasurable elements (all-zero rects: jsdom, or not laid out yet) are
  * skipped, so callers fall back to the node bounds exactly as before.
+ *
+ * The plan's time-axis header is an overlay, not a node, so its frame rect is
+ * what reaches the export bounds.
  */
 const OVERHANG_SELECTOR =
-  '.react-flow__edge, .react-flow__edgelabel-renderer > *, .dg-loop-badge, .dg-image-caption, .dg-order-band-header';
+  '.react-flow__edge, .react-flow__edgelabel-renderer > *, .dg-loop-badge, .dg-image-caption, .dg-order-band-header, .dg-time-axis-frame';
 
 export function overhangBounds(
   root: ParentNode | null | undefined,

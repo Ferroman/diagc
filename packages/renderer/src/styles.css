@@ -975,6 +975,17 @@ path.dg-loop-badge-circle {
   letter-spacing: 0.04em; text-transform: uppercase;
 }
 
+/* ---- plan: time axis ------------------------------------------------------ */
+.dg-time-axis { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; z-index: -1; }
+.dg-time-axis-frame { fill: color-mix(in srgb, var(--dg-text) 4%, transparent); stroke: none; }
+.dg-time-axis-tick { stroke: var(--dg-border); stroke-width: 1; }
+.dg-time-axis-grid { stroke: color-mix(in srgb, var(--dg-text) 8%, transparent); stroke-width: 1; }
+.dg-time-axis-month, .dg-time-axis-week { fill: var(--dg-text-muted); font: 600 11px system-ui, sans-serif; }
+.dg-time-axis-week { font-weight: 500; font-size: 10px; }
+.dg-time-axis-event { stroke: var(--dg-text-muted); stroke-width: 1; stroke-dasharray: 4 4; }
+.dg-time-axis-today { stroke: var(--dg-accent); stroke-width: 2; }
+.dg-time-axis-today-label { fill: var(--dg-accent); font: 600 10px system-ui, sans-serif; }
+
 /* ---- activity diagrams: frame / lane / region chrome ---------------------- */
 /* Strip width (28px) mirrors ACTIVITY_LAYOUT.TITLE_STRIP_W / LANE_STRIP_W in
    activity-frame.ts — the layout pass reserves exactly this much room. */

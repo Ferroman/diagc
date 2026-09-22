@@ -41,6 +41,7 @@ export { LoopLabelLayer, type LoopLabelLayerProps } from './LoopLabelLayer';
 export { GIT_LAYOUT, LANE_PALETTE, gitEdgeColor, gitGraphCached, gitLayout, gitNodeColors, gitRoute } from './git-layout';
 export { PLAN_LAYOUT, planGraphCached, planLayout, planX } from './plan-layout';
 export { GitLanesOverlay, type GitLanesOverlayProps } from './GitLanesOverlay';
+export { timeAxis, todayIso, type TimeAxis, type AxisBand } from './time-axis';
 export { ACTIVITY_LAYOUT, arrangeActivityFrames } from './activity-frame';
 export {
   analyzeLeverage,
