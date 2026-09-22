@@ -183,7 +183,11 @@ export {
   spanOf,
   atOf,
   rolesOf,
+  planGraph,
+  planSubtree,
   type PlanRole,
   type PlanSpan,
   type PlanRoles,
+  type PlanGraph,
+  type PlanChildren,
 } from './plan';

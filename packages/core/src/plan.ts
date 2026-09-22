@@ -1,5 +1,6 @@
 import { isIsoDate } from './dates';
 import type { DiagramModel, DiagramNode } from './types';
+import { buildHierarchy } from './view/hierarchy';
 
 /** The notation id a plane (or the model) declares to be drawn as a schedule:
  * a calendar left to right, zones as bars, events as diamonds, people as a
@@ -70,4 +71,98 @@ export function rolesOf(model: DiagramModel, zoneId: string): PlanRoles {
     if (r.to === zoneId && isPlanRole(r.kind)) roles[r.kind].push(r.from);
   }
   return roles;
+}
+
+export interface PlanChildren {
+  zones: string[];
+  events: string[];
+  others: string[];
+}
+
+export interface PlanGraph {
+  /** zone ids in declaration order (visible on the plane) */
+  zones: string[];
+  events: string[];
+  /** every node with a role relation into a visible zone, declaration order, deduplicated */
+  people: string[];
+  /** zone/event/borrowed node → its zone parent on the plan plane */
+  parent: ReadonlyMap<string, string>;
+  /** zone → direct children on the plan plane, split by what they are */
+  children: ReadonlyMap<string, PlanChildren>;
+  /** earliest start/at and latest end/at over the whole graph; undefined when nothing is dated */
+  range?: PlanSpan;
+  /** 1 January of range.start's year — the x origin of the drawing */
+  origin?: number;
+}
+
+/**
+ * The plan plane's structure, derived through buildHierarchy so `containmentOf`
+ * and `hides` behave exactly as the view does. A zone's children are its
+ * DIRECT children on the plane; `parent` follows the first parent by
+ * declaration order where containment is a DAG (the same rule boundaryOf uses).
+ */
+export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
+  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  const h = buildHierarchy(model, plane);
+  // buildHierarchy seeds parentsOf (to []) for every visible node, so this is
+  // exactly "is this node visible on the plane", including shared nodes with
+  // no containment there (they surface as roots, not as absent).
+  const visible = (id: string): boolean => h.parentsOf.has(id);
+  const zones: string[] = [];
+  const events: string[] = [];
+  for (const n of model.nodes) {
+    if (!visible(n.id)) continue;
+    if (isPlanZone(n)) zones.push(n.id);
+    else if (isPlanEvent(n)) events.push(n.id);
+  }
+  const zoneSet = new Set(zones);
+  const parent = new Map<string, string>();
+  const children = new Map<string, PlanChildren>();
+  for (const z of zones) {
+    const split: PlanChildren = { zones: [], events: [], others: [] };
+    for (const c of h.childrenOf.get(z) ?? []) {
+      const node = byId.get(c);
+      if (node === undefined) continue;
+      if (!parent.has(c)) parent.set(c, z);
+      if (isPlanZone(node)) split.zones.push(c);
+      else if (isPlanEvent(node)) split.events.push(c);
+      else split.others.push(c);
+    }
+    children.set(z, split);
+  }
+  const people: string[] = [];
+  for (const r of model.relations) {
+    if (isPlanRole(r.kind) && zoneSet.has(r.to) && !people.includes(r.from) && byId.has(r.from)) people.push(r.from);
+  }
+  let range: PlanSpan | undefined;
+  const widen = (start: number, end: number): void => {
+    range = range === undefined ? { start, end } : { start: Math.min(range.start, start), end: Math.max(range.end, end) };
+  };
+  for (const z of zones) {
+    const s = spanOf(byId.get(z)!);
+    if (s !== undefined) widen(s.start, s.end);
+  }
+  for (const e of events) {
+    const at = atOf(byId.get(e)!);
+    if (at !== undefined) widen(at, at);
+  }
+  const origin = range === undefined ? undefined : dayOf(`${isoOf(range.start).slice(0, 4)}-01-01`);
+  return { zones, events, people, parent, children, ...(range !== undefined ? { range } : {}), ...(origin !== undefined ? { origin } : {}) };
+}
+
+/** `id` plus every descendant zone and event, pre-order — what moves with a
+ * zone. Borrowed nodes are not listed: their place is their row. */
+export function planSubtree(g: PlanGraph, id: string): string[] {
+  const out: string[] = [id];
+  const walk = (z: string): void => {
+    const c = g.children.get(z);
+    if (c === undefined) return;
+    for (const child of c.zones) {
+      out.push(child);
+      walk(child);
+    }
+    out.push(...c.events);
+  };
+  walk(id);
+  return out;
 }

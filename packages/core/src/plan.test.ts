@@ -8,6 +8,8 @@ import {
   dayOf,
   isPlanRole,
   isoOf,
+  planGraph,
+  planSubtree,
   rolesOf,
   spanOf,
 } from './plan';
@@ -64,5 +66,65 @@ describe('roles', () => {
     m.relate(a, other, { kind: 'checks' }).relate(z, other, { kind: 'sync' });
     expect(rolesOf(m.toJSON(), 'z')).toEqual({ owns: ['alice'], executes: ['bob', 'alice'], checks: [] });
     expect(rolesOf(m.toJSON(), 'other')).toEqual({ owns: [], executes: [], checks: ['alice'] });
+  });
+});
+
+describe('planGraph', () => {
+  /** plan plane 'plan': Q1 ⊃ (design, build ⊃ (m1 event, api)), root event kickoff; api is a shared node */
+  function fixture() {
+    const m = model('roadmap');
+    m.plane('arch').plane('plan', { notation: 'plan' });
+    const api = m.node('api', { type: 'service' });
+    const q1 = m.node('q1', { type: PLAN_ZONE_TYPE, plane: 'plan', metadata: { start: '2026-01-05', end: '2026-03-27' } });
+    const design = m.node('design', { type: PLAN_ZONE_TYPE, plane: 'plan', metadata: { start: '2026-01-05', end: '2026-01-30' } });
+    const build = m.node('build', { type: PLAN_ZONE_TYPE, plane: 'plan', metadata: { start: '2026-02-02', end: '2026-03-27' } });
+    const m1 = m.node('m1', { type: PLAN_EVENT_TYPE, plane: 'plan', metadata: { at: '2026-03-02' } });
+    const kickoff = m.node('kickoff', { type: PLAN_EVENT_TYPE, plane: 'plan', metadata: { at: '2025-12-15' } });
+    const alice = m.node('alice', { type: 'person', plane: 'plan' });
+    q1.contains(design, build, { plane: 'plan' });
+    build.contains(m1, api, { plane: 'plan' });
+    m.relate(alice, build, { kind: 'owns' }).relate(alice, q1, { kind: 'checks' });
+    void kickoff;
+    return m.toJSON();
+  }
+
+  it('lists zones, events and people in declaration order, deduplicated', () => {
+    const g = planGraph(fixture(), 'plan');
+    expect(g.zones).toEqual(['q1', 'design', 'build']);
+    expect(g.events).toEqual(['m1', 'kickoff']);
+    expect(g.people).toEqual(['alice']);
+  });
+  it('maps each node to its zone parent and each zone to its split children', () => {
+    const g = planGraph(fixture(), 'plan');
+    expect(g.parent.get('design')).toBe('q1');
+    expect(g.parent.get('m1')).toBe('build');
+    expect(g.parent.get('api')).toBe('build');
+    expect(g.parent.has('q1')).toBe(false);
+    expect(g.children.get('q1')).toEqual({ zones: ['design', 'build'], events: [], others: [] });
+    expect(g.children.get('build')).toEqual({ zones: [], events: ['m1'], others: ['api'] });
+    expect(g.children.get('design')).toEqual({ zones: [], events: [], others: [] });
+  });
+  it('spans the earliest to the latest date and sets the origin to 1 January of the first year', () => {
+    const g = planGraph(fixture(), 'plan');
+    expect(g.range).toEqual({ start: dayOf('2025-12-15'), end: dayOf('2026-03-27') });
+    expect(g.origin).toBe(dayOf('2025-01-01'));
+  });
+  it('is empty, with no range or origin, on a plane without plan nodes', () => {
+    const g = planGraph(fixture(), 'arch');
+    expect(g.zones).toEqual([]);
+    expect(g.events).toEqual([]);
+    expect(g.range).toBeUndefined();
+    expect(g.origin).toBeUndefined();
+  });
+  it('honours containmentOf: a plane borrowing the plan plane sees the same graph', () => {
+    const m = fixture();
+    m.planes.push({ id: 'mirror', name: 'Mirror', containmentOf: 'plan', notation: 'plan' });
+    expect(planGraph(m, 'mirror').children.get('q1')).toEqual(planGraph(m, 'plan').children.get('q1'));
+  });
+  it('planSubtree is the zone plus every descendant zone and event, never a borrowed node', () => {
+    const g = planGraph(fixture(), 'plan');
+    expect(planSubtree(g, 'q1')).toEqual(['q1', 'design', 'build', 'm1']);
+    expect(planSubtree(g, 'build')).toEqual(['build', 'm1']);
+    expect(planSubtree(g, 'm1')).toEqual(['m1']);
   });
 });
