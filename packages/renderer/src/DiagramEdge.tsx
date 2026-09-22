@@ -224,13 +224,25 @@ function labelXY(curve: EdgeCurve, t: number, side: EdgeLabelSide): Point {
 
 /** point + local frame (unit tangent/normal) at `t` along the clean path, for
  * positioning CLD marks without touching the (possibly sketch-roughened)
- * rendered path. */
-function markFrame(curve: EdgeCurve, t: number) {
+ * rendered path. Exported with {@link chipPosition} so a test can say where a
+ * chip is expected rather than restating the arithmetic. */
+export function markFrame(curve: EdgeCurve, t: number) {
   const point = curve.point(t);
   const tangent = curve.tangent(t);
   const normal = { x: -tangent.y, y: tangent.x };
   return { point, tangent, normal };
 }
+
+type MarkFrame = ReturnType<typeof markFrame>;
+
+/** Where a chip sits: its frame's point, pushed off the line along the normal.
+ * One helper for both chips (threat at t = 0.75, comment at t = 0.25), because
+ * the reported bubble anchor is read back off whichever of the two is drawing —
+ * two copies of this sum could disagree and hang a bubble off nothing. */
+export const chipPosition = (f: MarkFrame): Point => ({
+  x: f.point.x + f.normal.x * THREAT_OFFSET,
+  y: f.point.y + f.normal.y * THREAT_OFFSET,
+});
 
 export function DiagramEdge({
   id,
@@ -438,17 +450,17 @@ export function DiagramEdge({
       ? data.onAddThreat
       : undefined;
   const threatFrame = threats !== undefined || addThreat !== undefined ? markFrame(curve, 0.75) : undefined;
-  const chipX = threatFrame === undefined ? undefined : threatFrame.point.x + threatFrame.normal.x * THREAT_OFFSET;
-  const chipY = threatFrame === undefined ? undefined : threatFrame.point.y + threatFrame.normal.y * THREAT_OFFSET;
-  const threatTransform = chipX === undefined || chipY === undefined ? undefined : `translate(-50%, -50%) translate(${chipX}px, ${chipY}px)`;
+  const threatChip = threatFrame === undefined ? undefined : chipPosition(threatFrame);
+  const threatTransform =
+    threatChip === undefined ? undefined : `translate(-50%, -50%) translate(${threatChip.x}px, ${threatChip.y}px)`;
 
   // Comment chip: at t = 0.25, the other side of the label from the threat
   // chip, so a flow that has both shows both. Same passive/toggle split.
   const commentBadge = data?.annotations !== undefined ? commentBadgeProps(data.annotations) : undefined;
   const commentFrame = commentBadge !== undefined ? markFrame(curve, 0.25) : undefined;
-  const commentX = commentFrame === undefined ? undefined : commentFrame.point.x + commentFrame.normal.x * THREAT_OFFSET;
-  const commentY = commentFrame === undefined ? undefined : commentFrame.point.y + commentFrame.normal.y * THREAT_OFFSET;
-  const commentTransform = commentX === undefined || commentY === undefined ? undefined : `translate(-50%, -50%) translate(${commentX}px, ${commentY}px)`;
+  const commentChip = commentFrame === undefined ? undefined : chipPosition(commentFrame);
+  const commentTransform =
+    commentChip === undefined ? undefined : `translate(-50%, -50%) translate(${commentChip.x}px, ${commentChip.y}px)`;
 
   // Loop highlight: when a loop badge is active, glow this edge if it's a member,
   // otherwise dim it. Wraps the whole edge (path + marks + marker) as one group.
@@ -466,8 +478,8 @@ export function DiagramEdge({
   // it. The curve is rebuilt every render, so the samples are keyed by their
   // rounded coordinates: the effect re-reports only when the line moved.
   const chipRelation = threats !== undefined || commentBadge !== undefined ? data?.threatRelation : undefined;
-  const anchorX = threats !== undefined ? chipX : commentX;
-  const anchorY = threats !== undefined ? chipY : commentY;
+  const anchorX = threats !== undefined ? threatChip?.x : commentChip?.x;
+  const anchorY = threats !== undefined ? threatChip?.y : commentChip?.y;
   const anchorNx = threats !== undefined ? threatFrame?.normal.x : commentFrame?.normal.x;
   const anchorNy = threats !== undefined ? threatFrame?.normal.y : commentFrame?.normal.y;
   const lineRef = useRef<Point[]>([]);
