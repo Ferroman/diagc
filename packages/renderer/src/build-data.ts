@@ -20,6 +20,7 @@
 
 import type {
   Column,
+  DiagramNode,
   EdgeLabel,
   EdgeLabelPlacement,
   EdgeLabelSide,
@@ -34,6 +35,7 @@ import type { IconRegistry } from '@diagc/icons';
 import type { AnnotationCounts } from './comment-badge';
 import type { EdgePoint } from './layout';
 import type { EdgeRouting } from './useViewLayout';
+import type { NodeBadge } from './notations';
 import type { KindStyle, Registry, TypeStyle } from './registry';
 import type { StylePreset } from './stylePresets';
 import type { DiagramEdgeData } from './DiagramEdge';
@@ -51,6 +53,11 @@ export interface NodeDataContext {
   /** notation-resolved accent per node id (e.g. a commit's lane colour); below
    * the node's own colour, above typeColors */
   nodeColors?: ReadonlyMap<string, string>;
+  /** the notation's chips per node id (profile.node.badges), one derivation
+   * per model like nodeColors; absent = no notation chips */
+  nodeBadges?: ReadonlyMap<string, NodeBadge[]>;
+  /** profile.node.resizable: which nodes get the notation's x-only handles */
+  resizable?: (n: DiagramNode) => 'x' | undefined;
   icons: IconRegistry;
   /** see DiagramViewProps.onOpenLink; only reaches a node whose model carries `link` */
   onOpenLink?: (link: string) => void;
@@ -215,6 +222,10 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     ...(ctx.notation !== undefined ? { notation: ctx.notation } : {}),
     ...(threats.total > 0 ? { threats } : {}),
     ...(annotations !== undefined ? { annotations } : {}),
+    ...(ctx.nodeBadges?.get(n.id) !== undefined ? { badges: ctx.nodeBadges.get(n.id) } : {}),
+    ...(ctx.editing && ctx.onResize !== undefined && ctx.resizable?.(n.node) === 'x'
+      ? { resizeAxis: 'x' as const, onResize: ctx.onResize }
+      : {}),
   };
   return data;
 }
@@ -365,7 +376,9 @@ function sameNodeCtx(a: NodeDataContext, b: NodeDataContext): boolean {
     a.onAddThreat === b.onAddThreat &&
     a.stylePreset === b.stylePreset &&
     a.notation === b.notation &&
-    a.nodeColors === b.nodeColors
+    a.nodeColors === b.nodeColors &&
+    a.nodeBadges === b.nodeBadges &&
+    a.resizable === b.resizable
   );
 }
 

@@ -8,6 +8,7 @@ import { createTypeRegistry } from './registry';
 import { notationProfile, TM_BOUNDARY_COLOR } from './notations';
 import { DiagramNode, type DiagramNodeData } from './DiagramNode';
 import { NoteStateContext, type NoteState } from './note-state';
+import { PLAN_LAYOUT } from './plan-layout';
 import { stylePreset } from './stylePresets';
 import { seedFrom, sketchNode } from './sketch';
 
@@ -29,6 +30,22 @@ vi.mock('@xyflow/react', async (importOriginal) => {
           onClick={() => p.onResizeEnd?.(null, { x: 5, y: 7, width: 300, height: 200 })}
         />
       ),
+    NodeResizeControl: (p: {
+      position?: string;
+      resizeDirection?: string;
+      minWidth?: number;
+      className?: string;
+      onResizeEnd?: (e: unknown, params: { x: number; y: number; width: number; height: number }) => void;
+    }) => (
+      <button
+        type="button"
+        data-testid={`x-resizer-${p.position ?? ''}`}
+        data-direction={p.resizeDirection}
+        data-min-width={p.minWidth}
+        className={p.className}
+        onClick={() => p.onResizeEnd?.(null, { x: -40, y: 0, width: 340, height: 40 })}
+      />
+    ),
   };
 });
 
@@ -1276,5 +1293,54 @@ describe('QuickAddButton', () => {
       expect(onRichCommit).toHaveBeenCalledWith([{ text: 'ledger' }]);
       expect(offer.run).toHaveBeenCalledWith('n1');
     });
+  });
+});
+
+describe('plan chips and x-resize', () => {
+  it('renders role chips in the badge row with their titles and colours, on leaves and groups', () => {
+    const badges = [
+      { key: 'owns:a', text: 'O·Alice', title: 'Owner: Alice Ng', color: '#c33' },
+      { key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' },
+    ];
+    const leaf = renderNode({ typeId: 'plan-zone', badges });
+    const chips = leaf.container.querySelectorAll('.dg-role-chip');
+    expect([...chips].map((c) => c.textContent)).toEqual(['O·Alice', 'E·Bob']);
+    expect(chips[0]!.getAttribute('title')).toBe('Owner: Alice Ng');
+    expect((chips[0] as HTMLElement).style.getPropertyValue('--dg-chip')).toBe('#c33');
+    expect(leaf.container.querySelector('.dg-node')?.getAttribute('data-type')).toBe('plan-zone');
+    cleanup();
+    const group = renderNode({ typeId: 'plan-zone', state: 'expanded', badges });
+    expect(group.container.querySelectorAll('.dg-group .dg-role-chip')).toHaveLength(2);
+    expect(group.container.querySelector('.dg-group')?.getAttribute('data-type')).toBe('plan-zone');
+  });
+  it('mounts left and right horizontal resize controls when resizeAxis is x, and reports the new box', () => {
+    const onResize = vi.fn();
+    renderNode({ typeId: 'plan-zone', resizeAxis: 'x', onResize }, true);
+    const left = screen.getByTestId('x-resizer-left');
+    const right = screen.getByTestId('x-resizer-right');
+    expect(left.getAttribute('data-direction')).toBe('horizontal');
+    expect(right.getAttribute('data-min-width')).toBe(String(PLAN_LAYOUT.DAY));
+    fireEvent.click(left);
+    expect(onResize).toHaveBeenCalledWith('n1', 340, 40, { x: -40, y: 0 });
+    expect(screen.queryByTestId('resizer')).toBeNull(); // not the corner resizer
+  });
+  it('mounts no x-resizer without resizeAxis, or unselected', () => {
+    renderNode({ typeId: 'plan-zone', onResize: vi.fn() }, true);
+    expect(screen.queryByTestId('x-resizer-left')).toBeNull();
+    cleanup();
+    renderNode({ typeId: 'plan-zone', resizeAxis: 'x', onResize: vi.fn() }, false);
+    expect(screen.queryByTestId('x-resizer-left')).toBeNull();
+  });
+  it('an event is an unclipped diamond box with its name hanging beside it, in its colour', () => {
+    const { container } = renderNode({ typeId: 'plan-event', label: 'Launch', color: '#7ba7d9' });
+    const root = container.querySelector('.dg-node.dg-event-node') as HTMLElement;
+    expect(root).not.toBeNull();
+    expect(root.classList.contains('dg-shape-diamond')).toBe(false);
+    expect(root.style.color).toBe('rgb(123, 167, 217)'); // jsdom normalizes hex to rgb
+    expect(container.querySelector('.dg-event-tag')?.textContent).toBe('Launch');
+    expect(container.querySelector('.dg-node-row')).toBeNull();
+    cleanup();
+    const unnamed = renderNode({ typeId: 'plan-event', label: '' });
+    expect(unnamed.container.querySelector('.dg-event-tag')).toBeNull();
   });
 });

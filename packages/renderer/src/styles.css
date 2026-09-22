@@ -1062,3 +1062,27 @@ path.dg-loop-badge-circle {
   white-space: nowrap; border-radius: 4px;
 }
 .react-flow__node.selected > .dg-fb-cause { box-shadow: 0 0 0 2px var(--dg-accent); }
+
+/* ---- plan: zones, events, chips ------------------------------------------ */
+/* a zone is a solid bar with a thick left edge; its tint comes from the node's
+   own colour through the inline accent every root already carries, so the rule
+   only reshapes the box. The group and the leaf branch share it because a zone
+   is a leaf until it has rows. */
+.dg-notation-plan .dg-group[data-type='plan-zone'],
+.dg-notation-plan .dg-node[data-type='plan-zone'] {
+  border-style: solid;
+  border-left-width: 3px;
+  border-radius: 6px;
+}
+.dg-notation-plan .dg-node[data-type='plan-zone'] { justify-content: flex-start; text-align: left; }
+/* an event: an unclipped, unpainted box filling its 16×16 wrapper; ::before is
+   the diamond in the node's colour (currentColor — the branch sets it on the
+   root), and the tag hangs to the right. Rough mode draws the sketch instead. */
+.dg-event-node { position: relative; background: none; border: none; border-radius: 0; padding: 0; min-width: 0; width: 100%; height: 100%; box-sizing: border-box; color: var(--dg-text); overflow: visible; }
+.dg-event-node::before { content: ''; position: absolute; inset: 0; background: currentColor; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.dg-style-rough .dg-event-node::before { display: none; }
+.dg-event-tag { position: absolute; left: calc(100% + 4px); top: 50%; transform: translateY(-50%); white-space: nowrap; font: 12px/1.2 system-ui, sans-serif; pointer-events: none; }
+.dg-event-tag .dg-label-input { pointer-events: auto; }
+.dg-role-chip { --dg-chip: var(--dg-text-muted); border: 1px solid var(--dg-chip); color: var(--dg-chip); background: color-mix(in srgb, var(--dg-chip) 12%, transparent); max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-group-header .dg-badges { margin-left: auto; }
+.dg-x-resize { width: 8px; height: 100%; border: none; background: transparent; cursor: ew-resize; }

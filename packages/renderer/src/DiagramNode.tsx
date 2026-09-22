@@ -1,12 +1,13 @@
 import { useContext, useRef, type CSSProperties } from 'react';
-import { Handle, NodeResizer, Position } from '@xyflow/react';
-import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type TextAlign, type TextRun, type ThreatTarget } from '@diagc/core';
+import { Handle, NodeResizeControl, NodeResizer, Position } from '@xyflow/react';
+import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type TextAlign, type TextRun, type ThreatTarget } from '@diagc/core';
 import type { IconRegistry } from '@diagc/icons';
 import type { Registry, TypeStyle } from './registry';
 import { commentBadgeProps, type AnnotationCounts } from './comment-badge';
 import { LoopHighlightContext } from './loop-highlight';
 import { NoteStateContext } from './note-state';
-import { notationProfile } from './notations';
+import { notationProfile, type NodeBadge } from './notations';
+import { PLAN_LAYOUT } from './plan-layout';
 import { RichLabelEditor } from './RichLabelEditor';
 import { runsToDisplay } from './richtext';
 import { SketchShape, type SketchFill } from './SketchShape';
@@ -94,6 +95,11 @@ export interface DiagramNodeData {
   /** edit: open a new threat row on this element's note (see
    * EditingApi.onAddThreat). Absent in view mode; drives the empty badge. */
   onAddThreat?: (target: ThreatTarget) => void;
+  /** notation chips — the plan's roles — drawn in the badge row */
+  badges?: NodeBadge[];
+  /** with onResize: the notation resizes this node on x only, from either
+   * side (a zone's width is its dates) */
+  resizeAxis?: 'x';
 }
 
 // One connect point per side, all type="source": with the canvas in loose
@@ -154,6 +160,21 @@ const sketchOf = (
       {...(data.color !== undefined ? { color: data.color } : {})}
     />
   ) : null;
+
+/** The notation's x-only handles (a plan zone): left and right, never a
+ * corner — height is the layout's. minWidth is one day, the smallest span. */
+function XResizer({ id, data, selected }: { id: string; data: DiagramNodeData; selected: boolean | undefined }) {
+  if (data.resizeAxis !== 'x' || data.onResize === undefined || selected !== true) return null;
+  const onResize = data.onResize;
+  const end = (_e: unknown, p: { x: number; y: number; width: number; height: number }) =>
+    onResize(id, p.width, p.height, { x: p.x, y: p.y });
+  return (
+    <>
+      <NodeResizeControl position="left" resizeDirection="horizontal" minWidth={PLAN_LAYOUT.DAY} className="dg-x-resize" onResizeEnd={end} />
+      <NodeResizeControl position="right" resizeDirection="horizontal" minWidth={PLAN_LAYOUT.DAY} className="dg-x-resize" onResizeEnd={end} />
+    </>
+  );
+}
 
 /** The one inline-rename field. Exported because a threat note renames rows with
  * the same gesture and the same commit contract (`null` = cancelled) — a second
@@ -511,6 +532,27 @@ export function DiagramNode({
     );
   }
 
+  if (data.typeId === PLAN_EVENT_TYPE && data.state === 'leaf') {
+    // A plan event: the box is a small diamond (drawn by ::before — the generic
+    // diamond clip-paths its root, which would clip the name away) and the
+    // name hangs beside it, outside the layout footprint like a commit's tag.
+    return (
+      <div
+        className={`dg-node dg-event-node${ghostClass}${loopClass}`}
+        {...(data.stylePreset?.rough !== undefined || data.color === undefined ? {} : { style: { color: data.color } })}
+        {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
+        {...ghostTitle}
+      >
+        {sketchOf(data, 'diamond', id, width, height)}
+        {(data.label !== '' || data.labelEditing === true) && <span className="dg-event-tag">{name}</span>}
+        <LinkBadge data={data} />
+        <CommentBadge id={id} data={data} />
+        <QuickAddButton id={id} data={data} selected={selected} />
+        {sideHandles}
+      </div>
+    );
+  }
+
   if (data.shape !== undefined && data.state === 'leaf') {
     const maskUrl = `url("${assetUrl(data.assetBase, data.libraryBase, data.shape)}")`;
     const typeLabel = data.typeId !== undefined ? typeSubtitle(style.label ?? data.typeId, data.technology) : undefined;
@@ -588,6 +630,16 @@ export function DiagramNode({
           ⚭ {data.sharedMembers.length}
         </span>
       )}
+      {data.badges?.map((b) => (
+        <span
+          key={b.key}
+          className="dg-badge dg-role-chip"
+          title={b.title}
+          {...(b.color !== undefined ? { style: { '--dg-chip': b.color } as CSSProperties } : {})}
+        >
+          {b.text}
+        </span>
+      ))}
       {isContainer && !isCldGroup && data.onEnterNode !== undefined && (
         <button
           type="button"
@@ -781,7 +833,9 @@ export function DiagramNode({
                 ? { borderColor: data.color, color: data.textColor ?? data.color }
                 : { ...accentStyle(data.color), ...(data.textColor !== undefined ? { color: data.textColor } : {}) },
             })}
+        {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
       >
+        <XResizer id={id} data={data} selected={selected} />
         {/* never the preset's own fill: this box is where the children and their
             edges are drawn (see SketchFill) — and an outline group stays a line */}
         {sketchOf(data, style.shape, id, width, height, groupOutline ? 'none' : 'wash')}
@@ -837,8 +891,10 @@ export function DiagramNode({
           : `dg-node dg-shape-${style.shape}${style.dashed === true ? ' dg-dashed' : ''}${outline ? ' dg-c4-outline' : ''}${solid !== undefined && data.stylePreset?.rough === undefined ? ' dg-solid' : ''}${ghostClass}${loopClass}`
       }
       {...(data.stylePreset?.rough !== undefined || isTypelessText || neutralGlyph ? {} : { style: boxAccent })}
+      {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
       {...ghostTitle}
     >
+      <XResizer id={id} data={data} selected={selected} />
       {!isTypelessText && sketchOf(data, style.shape, id, width, height)}
       <div className="dg-node-row">
         {ghostArrow}
