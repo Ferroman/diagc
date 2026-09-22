@@ -257,29 +257,38 @@ export function NoteNode({
         <section className="dg-note-section" aria-label="Links">
           <h4 className="dg-note-section-title">Links</h4>
           <ul className="dg-note-links">
-            {data.links.map((l) => (
-              <li key={`${l.label}\u0000${l.url}`}>
-                <a
-                  className="dg-note-link nodrag nopan"
-                  href={l.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onMouseDown={stop}
-                  onPointerDown={stop}
-                  onClick={(e) => {
-                    // a click reads the link, never selects the element — and a
-                    // host that resolves links (Obsidian wikilinks) takes it over
-                    e.stopPropagation();
-                    if (data.onOpenLink !== undefined) {
-                      e.preventDefault();
-                      data.onOpenLink(l.url);
-                    }
-                  }}
-                >
-                  {l.label}
-                </a>
-              </li>
-            ))}
+            {data.links.map((l) => {
+              // Only an http(s) url becomes a real href. A published page has
+              // no host to intercept the click, so `javascript:` in a shared
+              // diagram would otherwise run in the page's own origin — the
+              // same test guards every other author-supplied url the repo
+              // follows (DiagramNode's LinkBadge, the studio's openLink, the
+              // published gallery). Anything else still reaches a host that
+              // resolves its own refs (an Obsidian link), and does nothing
+              // where there is none.
+              const web = /^https?:/.test(l.url);
+              return (
+                <li key={`${l.label}\u0000${l.url}`}>
+                  <a
+                    className="dg-note-link nodrag nopan"
+                    {...(web ? { href: l.url, target: '_blank', rel: 'noopener noreferrer' } : {})}
+                    onMouseDown={stop}
+                    onPointerDown={stop}
+                    onClick={(e) => {
+                      // a click reads the link, never selects the element — and a
+                      // host that resolves links (Obsidian wikilinks) takes it over
+                      e.stopPropagation();
+                      if (data.onOpenLink !== undefined) {
+                        e.preventDefault();
+                        data.onOpenLink(l.url);
+                      }
+                    }}
+                  >
+                    {l.label}
+                  </a>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
