@@ -147,6 +147,10 @@ export function setNodeDetails(m: DiagramModel, id: string, details: NodeDetails
   if (details.layer != null && !m.layers.some((l) => l.id === details.layer)) {
     throw new CommandError(`Unknown layer '${details.layer}'`);
   }
+  // An emptied list is a cleared one. A panel sends `links` whole, so deleting
+  // the last row arrives as `[]` — and a saved file must no more hold
+  // `links: []` than the threat/comment lists mapList prunes.
+  const patch: NodeDetails = details.links?.length === 0 ? { ...details, links: null } : details;
   const nodes = m.nodes.map((n) => {
     if (n.id !== id) return n;
     let next = { ...n };
@@ -154,7 +158,7 @@ export function setNodeDetails(m: DiagramModel, id: string, details: NodeDetails
     // 12 hand-written applyNullable calls — adding a field wires automatically
     // and the coverage const above makes an omission a compile error.
     for (const key of NODE_DETAIL_KEYS) {
-      next = applyNullable(next, key, details[key]);
+      next = applyNullable(next, key, patch[key]);
     }
     return next;
   });
@@ -255,8 +259,14 @@ void _assertThreatKeyCoverage;
  * comments. Same seam for both — only the named element is replaced, every
  * sibling keeps its reference, and an empty result drops the key so saved files
  * stay free of empty arrays. */
-type ElementList = 'threats' | 'comments';
-type ListItem<K extends ElementList> = K extends 'threats' ? Threat : Comment;
+// A map, not a conditional type: `K extends 'threats' ? Threat : Comment` would
+// silently hand a third list `Comment` instead of failing to compile.
+interface ElementLists {
+  threats: Threat;
+  comments: Comment;
+}
+type ElementList = keyof ElementLists;
+type ListItem<K extends ElementList> = ElementLists[K];
 
 function mapList<K extends ElementList>(
   m: DiagramModel,

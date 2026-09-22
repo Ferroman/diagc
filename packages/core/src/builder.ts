@@ -656,7 +656,7 @@ export class ModelBuilder {
     const comments = element.comments ?? [];
     const { id, ...rest } = opts;
     // per-element ids, as threats: two elements' first comments are both c1
-    const comment: Comment = { id: id ?? nextCommentId(comments), text, ...rest };
+    const comment: Comment = { id: id ?? nextCommentId(comments), text, ...pruneUndefined(rest) };
     if (comments.some((c) => c.id === comment.id)) {
       throw new Error(`comment(): duplicate comment id '${comment.id}' on '${element.id}'`);
     }

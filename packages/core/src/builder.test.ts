@@ -644,6 +644,17 @@ describe('comments and links', () => {
     expect(json.relations[0]!.comments).toEqual([{ id: 'c1', text: 'on the edge' }]);
   });
 
+  it('drops an explicitly-undefined by/at rather than writing the key', () => {
+    // A caller spreading an optional field (`{ by: user?.name }`) must not put
+    // `"by": undefined` in the saved file — the same pruning addThreat does.
+    const m = model('prune');
+    m.node('a').comment('t', { by: undefined, at: undefined });
+    const c = m.toJSON().nodes[0]!.comments![0]!;
+    expect(c).toEqual({ id: 'c1', text: 't' });
+    expect('by' in c).toBe(false);
+    expect('at' in c).toBe(false);
+  });
+
   it('rejects a duplicate comment id on the same element (but not across elements), and comment()/link() against an unknown node or relation', () => {
     const m = model('dup');
     const a = m.node('a');

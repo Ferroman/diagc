@@ -881,4 +881,17 @@ describe('comment commands', () => {
     s = applyCommand(s, { type: 'set-node-details', id: 'a', details: { links: null } });
     expect('links' in s.model.nodes[0]!).toBe(false);
   });
+
+  it('an emptied links list drops the key too — a saved file never holds links: []', () => {
+    // The rule mapList keeps for threats/comments, extended to the one list a
+    // panel edits wholesale: a UI that removes the last row can send `[]`
+    // without leaving an empty array behind in the document.
+    let s = applyCommand(commentState(), {
+      type: 'set-node-details',
+      id: 'a',
+      details: { links: [{ label: 'Doc', url: 'https://x' }] },
+    });
+    s = applyCommand(s, { type: 'set-node-details', id: 'a', details: { links: [] } });
+    expect('links' in s.model.nodes[0]!).toBe(false);
+  });
 });
