@@ -2404,4 +2404,16 @@ describe('plan notation', () => {
     expect((await rfNode('m1')).classList.contains('draggable')).toBe(true);
     expect((await rfNode('alice')).classList.contains('draggable')).toBe(false);
   });
+  it('a childless zone is as wide as its dates: the layout sizes it, not its label', async () => {
+    const { container } = render(<DiagramView model={plan()} plane="plan" notation="plan" today="2026-01-20" />);
+    const wrapper = async (id: string) =>
+      waitFor(() => {
+        const el = container.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
+        if (el === null || el.style.width === '') throw new Error(`${id} not laid out`);
+        return el;
+      });
+    // dep: 2026-02-02..2026-02-06 inclusive = 5 days; q: 2026-01-05..2026-01-30 = 26 days
+    expect((await wrapper('dep')).style.width).toBe(`${5 * PLAN_LAYOUT.DAY}px`);
+    expect((await wrapper('q')).style.width).toBe(`${26 * PLAN_LAYOUT.DAY}px`);
+  });
 });
