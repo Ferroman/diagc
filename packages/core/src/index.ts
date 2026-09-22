@@ -169,3 +169,21 @@ export {
   type Crossing,
   type ThreatRow,
 } from './threat-model';
+export {
+  PLAN_NOTATION,
+  PLAN_ZONE_TYPE,
+  PLAN_EVENT_TYPE,
+  PLAN_TYPES,
+  PLAN_ROLES,
+  isPlanZone,
+  isPlanEvent,
+  isPlanRole,
+  dayOf,
+  isoOf,
+  spanOf,
+  atOf,
+  rolesOf,
+  type PlanRole,
+  type PlanSpan,
+  type PlanRoles,
+} from './plan';

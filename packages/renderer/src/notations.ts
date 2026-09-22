@@ -180,6 +180,11 @@ const THREAT_MODEL: NotationProfile = {
   node: { colorOf: boundaryColors },
 };
 
+// ---- Plan -------------------------------------------------------------------
+// Filled in with the schedule layout, header and chips; the id must exist as
+// soon as core declares the notation or the profile table stops typechecking.
+const PLAN: NotationProfile = { id: 'plan', className: 'dg-notation-plan' };
+
 // Record<NotationId, ...> keying means adding a notation id to BUILTIN_NOTATIONS
 // forces a compile error here until its profile is added — intended.
 export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
@@ -189,6 +194,7 @@ export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
   'second-order': SECOND_ORDER,
   fishbone: FISHBONE,
   'threat-model': THREAT_MODEL,
+  plan: PLAN,
 };
 
 const DEFAULT_PROFILE: NotationProfile = { id: 'default' };
