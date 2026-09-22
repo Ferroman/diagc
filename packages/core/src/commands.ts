@@ -43,6 +43,7 @@ import {
   setNodeDetails,
   setNodePlaneHidden,
   setNodeRich,
+  setPlanDates,
   setTableColumns,
   subtreeOf,
   updateComment,
@@ -52,6 +53,7 @@ import {
   upsertPlane,
   type CommentPatch,
   type NodeDetails,
+  type PlanDates,
   type RelationOptsInput,
   type RelationPatch,
   type ThreatPatch,
@@ -93,6 +95,7 @@ export type EditorCommand =
   | { type: 'add-node'; node: DiagramNode; parent?: { id: string; plane?: string } }
   | { type: 'rename-node'; id: string; name: string }
   | { type: 'set-node-details'; id: string; details: NodeDetails }
+  | { type: 'set-plan-dates'; id: string; dates: PlanDates }
   | { type: 'set-node-rich'; id: string; runs: TextRun[] }
   | { type: 'set-table-columns'; id: string; columns: Column[] }
   /** STRIDE findings ride on the node/relation they are about, so the three
@@ -371,6 +374,8 @@ function applyModelLayout(state: ModelLayout, command: EditorCommand): ModelLayo
       return { model: renameNode(model, command.id, command.name), layout };
     case 'set-node-details':
       return { model: setNodeDetails(model, command.id, command.details), layout };
+    case 'set-plan-dates':
+      return { model: setPlanDates(model, command.id, command.dates), layout };
     case 'set-node-rich':
       return { model: setNodeRich(model, command.id, command.runs), layout };
     case 'set-table-columns':

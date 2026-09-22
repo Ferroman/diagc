@@ -172,6 +172,33 @@ export function setNodeDetails(m: DiagramModel, id: string, details: NodeDetails
   return next;
 }
 
+/** The dated keys of a plan node. A key left undefined is untouched. */
+export interface PlanDates {
+  start?: string;
+  end?: string;
+  at?: string;
+}
+
+/** Writes zone/event dates into `node.metadata`. Only the FORMAT is guarded
+ * here (a value that is not a real day can never be right); ordering and
+ * nesting are validation's findings, so a drag that momentarily crosses a
+ * bound still lands as a command and undo has something to undo. */
+export function setPlanDates(m: DiagramModel, id: string, dates: PlanDates): DiagramModel {
+  requireNode(m, id);
+  const patch: Record<string, string> = {};
+  for (const key of ['start', 'end', 'at'] as const) {
+    const v = dates[key];
+    if (v === undefined) continue;
+    if (!isIsoDate(v)) throw new CommandError(`'${key}' must be a YYYY-MM-DD date, got '${v}'`);
+    patch[key] = v;
+  }
+  if (Object.keys(patch).length === 0) return m;
+  return {
+    ...m,
+    nodes: m.nodes.map((n) => (n.id === id ? { ...n, metadata: { ...(n.metadata ?? {}), ...patch } } : n)),
+  };
+}
+
 /** Drop every id satisfying `drop` from each plane's `hides`/`hidesTree`,
  * omitting emptied lists; a plane with no change keeps its reference. */
 function prunePlaneHides(planes: DiagramPlane[], drop: (id: string) => boolean): DiagramPlane[] {
