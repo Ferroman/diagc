@@ -1,8 +1,9 @@
 import type { RefObject } from 'react';
-import { DEFAULT_IMAGE_NODE_SIZE, LEAF_SIZE, errMessage, type DiagramModel } from '@diagc/core';
+import { DEFAULT_IMAGE_NODE_SIZE, LEAF_SIZE, PLAN_NOTATION, errMessage, type DiagramModel, type NotationId } from '@diagc/core';
 import type { DiagramSelection, LayoutApi } from '@diagc/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import { readImageSize, uploadAsset } from '../editor/images';
+import { seedDates } from '../editor/planActions';
 import { entryToNode, entryToNodeDetails } from '../library/entry';
 import type { LibraryEntry } from '../library/types';
 import type { UseLibrary } from '../library/useLibrary';
@@ -38,6 +39,10 @@ export interface UseNodePlacementOptions {
   /** the render-bound model (edit mode: the session's) — used by applyFromLibrary */
   model: DiagramModel | undefined;
   lib: UseLibrary;
+  /** the active plane's notation — a plan plane seeds a dropped zone/event's dates */
+  notation?: NotationId;
+  /** the host's date, YYYY-MM-DD: where a seeded drop lands with no other anchor */
+  today: string;
 }
 
 export interface NodePlacement {
@@ -78,6 +83,8 @@ export function useNodePlacement({
   drillRoot,
   model,
   lib,
+  notation,
+  today,
 }: UseNodePlacementOptions): NodePlacement {
   // Whiteboard-style add: drop the node immediately (under the selected
   // container, if any) and put focus in its name field — no prompt.
@@ -173,7 +180,13 @@ export function useNodePlacement({
     // current drilled level, or top-level when not drilled.
     const parentId = opts?.parentId ?? (opts?.position === undefined ? defaultParentId(selection, drillRoot) : drillRoot);
     const place = createNodeAt(m, { kind, plane: activePlane, borrowsContainment: activePlaneBorrowsContainment, parentId });
-    const node = entryToNode(entry, place.id, placeTags(place, penLayer));
+    // A plan plane's Zone/Event templates carry no dates of their own — a
+    // library-dropped one is dateless (and invalid) without a seed here.
+    const seeded =
+      notation === PLAN_NOTATION
+        ? seedDates(m, activePlane, entry.template.type, { ...(opts?.position !== undefined ? { x: opts.position.x } : {}), ...(parentId !== undefined ? { parentId } : {}) }, today)
+        : undefined;
+    const node = { ...entryToNode(entry, place.id, placeTags(place, penLayer)), ...(seeded !== undefined ? { metadata: seeded } : {}) };
     editor.dispatch({ type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) });
     if (entry.template.width !== undefined && entry.template.height !== undefined) {
       editor.dispatch({ type: 'set-size', nodeId: place.id, w: entry.template.width, h: entry.template.height });
