@@ -2,7 +2,7 @@
 import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { model } from '@diagc/core';
-import type { LoopEdgeInput } from '@diagc/renderer';
+import type { LoopEdgeInput } from './loops';
 import { LeveragePanel } from './LeveragePanel';
 
 // a->t(+), b->a(-), t->c(+), c->a(+), d->t(+). Loop t->c->a->t (R, len 3).
@@ -36,7 +36,7 @@ describe('LeveragePanel', () => {
   it('shows the feedback loop (R amplifier), the ranked drivers, and the hubs', () => {
     const { container, getByText } = renderPanel();
     expect(getByText(/Feedback loops \(1\)/)).toBeDefined();
-    expect(container.querySelector('.lev-kind-R')?.textContent).toBe('R');
+    expect(container.querySelector('.dg-lev-kind-R')?.textContent).toBe('R');
 
     // driver rows exist for a (direct, +) and b (2 hops, −)
     const a = container.querySelector('[data-focus="drv:a"]')!;

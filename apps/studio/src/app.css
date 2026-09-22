@@ -239,21 +239,6 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
 }
 .toolbar-colors { flex-wrap: nowrap; }
 
-/* Leverage panel (CLD view-mode variable analysis) */
-.leverage-panel h3 { font-size: 12px; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--dg-text-muted); }
-.lev-hint { font-size: 11px; margin: -2px 0 6px; }
-.lev-row.active { border-color: var(--dg-accent); background: color-mix(in srgb, var(--dg-accent) 12%, var(--dg-bg)); }
-.lev-kind { font-weight: 700; }
-.lev-kind-R { color: #22d3ee; }
-.lev-kind-B { color: #e879f9; }
-.lev-kind-unknown { color: var(--dg-text-muted); }
-.lev-sign { font-weight: 700; display: inline-block; width: 1em; text-align: center; }
-.lev-pos { color: #22c55e; }
-.lev-neg { color: #ef4444; }
-.lev-mixed, .lev-unknown { color: var(--dg-text-muted); }
-.dep-head { display: flex; align-items: center; justify-content: space-between; }
-.dep-head h3 { margin: 0; }
-
 /* Library palette drawer */
 .lib-panel { display: flex; flex-direction: column; gap: 10px; border-left: none; border-right: 1px solid var(--dg-border); }
 .lib-actions { display: flex; gap: 6px; }
