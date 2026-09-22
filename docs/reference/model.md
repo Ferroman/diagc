@@ -40,6 +40,8 @@ Style preset ids: `clean` (default), `sketch`, `hand-drawn`, `pencil`, `blueprin
 | `textColor` | `string?` | Label colour, independent of `color`. |
 | `technology` | `string?` | Implementation technology, composed into the type subtitle: `[Container: Java, Spring Boot]`. Meaningful in any notation, not just C4. |
 | `threats` | `Threat[]?` | STRIDE findings against this node. Legal in any notation, like `technology` — see [Threat-model conventions](#threat-model-conventions). |
+| `comments` | `Comment[]?` | Remarks shown in the element's bubble; any notation — see [`Comment`](#comment). |
+| `links` | `Link[]?` | Resources listed in the bubble under the comments — see [`Link`](#link). |
 | `description` | `string?` | Shown in the detail panel — **never on the canvas**. |
 | `rich` | `TextRun[]?` | Bold/italic label runs. When present, `name` must equal the concatenated text. |
 | `textAlign` | `'left' \| 'center' \| 'right'?` | Default `left`. |
@@ -91,6 +93,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `label` | `string?` | Legacy single label. |
 | `labels` | `EdgeLabel[]?` | Positioned labels; supersedes `label` when present. |
 | `threats` | `Threat[]?` | STRIDE findings against this flow — see [Threat-model conventions](#threat-model-conventions). |
+| `comments` | `Comment[]?` | Remarks shown in the relation's bubble; any notation — see [`Comment`](#comment). |
 | `style` | `RelationStyle?` | Per-relation visual overrides. |
 | `description` | `string?` | |
 | `layer` | `string?` | Must match a declared layer id. |
@@ -372,6 +375,28 @@ Which categories apply to an element is guidance (STRIDE-per-element), not a rul
 
 See [Draw a threat model](../how-to/draw-a-threat-model.md).
 
+### `Comment`
+
+`comments?: Comment[]` sits on a **node** or a **relation** in any notation. The canvas shows a count at the element's bottom-right corner (a chip at a quarter of the way along an arrow); clicking it opens the element's bubble — the same bubble a threat register uses — with the comments listed.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | `string` | Unique within **its own element's** list. The builder and the studio synthesize `c1`, `c2`, …. |
+| `text` | `string` | Required, non-empty. |
+| `by` | `string?` | Author, free text. |
+| `at` | `string?` | `YYYY-MM-DD`, a real calendar day. |
+
+### `Link`
+
+`links?: Link[]` sits on a **node** and lists resources — a ticket, a design doc — in the bubble under the comments. It is separate from `link`, the node's single navigation target behind the 🔗 badge.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `label` | `string` | Required, non-empty — what the bubble shows. |
+| `url` | `string` | Required, non-empty. Opened in a new tab; a host that resolves links itself (Obsidian) gets it instead. |
+
+Validation codes: `invalid-comments`, `comment-id`, `comment-text`, `comment-at`, `invalid-links` (see [Validation codes](#validation-codes)).
+
 ## Causal-loop conventions
 
 A plane with `notation: 'causal-loop'` reads ordinary nodes and relations as variables and signed links. Nothing new is stored.
@@ -457,6 +482,11 @@ A column's `fk` flag prints the `FK` marker and nothing else: what routes the ed
 | `threat-category` | `category` is outside `S T R I D E`. |
 | `threat-status` | `status` is present and outside `open`, `mitigated`, `accepted`, `not-applicable`. |
 | `threat-severity` | `severity` is present and outside `low`, `medium`, `high`, `critical`. |
+| `invalid-comments` | `comments` is not a list, or an entry is not an object. The per-comment checks below are skipped for that element. |
+| `comment-id` | A comment has no `id`, or repeats one already used on the same element. |
+| `comment-text` | A comment has no `text`. |
+| `comment-at` | `at` is present and is not a `YYYY-MM-DD` date. |
+| `invalid-links` | `links` is not a list, or an entry lacks a non-empty `label` or `url`. |
 | `tm-flow-boundary` | A `data-flow` relation ends on a `tm-boundary`; flows connect elements, a boundary only surrounds them. |
 | `invalid-delay` | `delay` is not a boolean. |
 | `invalid-rich` | `rich` runs do not reconstruct `name`. |

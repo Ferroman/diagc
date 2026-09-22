@@ -108,6 +108,8 @@ A shortcut acts only while its button would: Pen does nothing while you are dril
 
 **Threats** — a section of both Properties panels, shown on a `threat-model` diagram, and on any element that already carries threats whatever the notation (so turning the notation off never strands them). The header counts *open / total*; on a relation, a **Crosses: *from* → *to*** line names the two trust boundaries its ends sit in (`outside` where there is none), derived from containment. The add row is a STRIDE category select — the categories that apply to this element's type first, then the rest behind a separator — a threat title, and **Add** (disabled while the title is blank; `Enter` adds). Each existing threat is a row: category, title (commits on blur or `Enter`), severity (`—`, low, medium, high, critical), status (open, mitigated, accepted, not-applicable), a **▸ details** disclosure holding description and mitigation, and **Remove**. Every commit is one undo step, and a commit that changes nothing lands none. See [Draw a threat model](../how-to/draw-a-threat-model.md).
 
+**Comments** (any node or relation) and **Links** (nodes) edit the lists the canvas bubble shows; the badge at the element's bottom-right corner opens that bubble in both modes. See [Comment on a diagram](../how-to/comment-on-a-diagram.md).
+
 **Library** — the palette. See [Library reference](library.md) and [Use the icon library](../how-to/use-the-icon-library.md).
 
 The left dock keeps the tab you chose: selecting on the canvas never switches it. **Add node** in the Library opens Properties for the name; a placed stencil names in place on the canvas.
