@@ -1,12 +1,12 @@
 # Library reference
 
-The palette of ready-made nodes in the studio's **Library** tab. Ten read-only packs ship bundled; your own entries merge over them.
+The palette of ready-made nodes in the studio's **Library** tab. Eleven read-only packs ship bundled; your own entries merge over them.
 
 For how to use it, see [Use the icon library](../how-to/use-the-icon-library.md).
 
 ## Bundled packs
 
-850 entries in 39 categories, rendered in this order:
+853 entries in 40 categories, rendered in this order:
 
 | Pack | Entries | Categories | Assets |
 | --- | --- | --- | --- |
@@ -15,6 +15,7 @@ For how to use it, see [Use the icon library](../how-to/use-the-icon-library.md)
 | **Second-order thinking** | 4 | 1 | none — renderer-drawn glyphs, not images |
 | **Fishbone** | 3 | 1 | none — renderer-drawn looks, not images |
 | **Threat model** | 4 | 1 | none — renderer-drawn shapes, not images |
+| **Plan** | 3 | 1 | none — renderer-drawn shapes, not images |
 | **Data** | 1 | 1 | none — it seeds columns, not an image |
 | **Shapes** | 3 | 1 | `/library/shapes/` — tintable silhouette masks |
 | **Tech** | 16 | 1 | `/library/tech/` |
@@ -56,6 +57,10 @@ One category, **Fishbone** — the three stencils behind a [fishbone diagram](..
 One category, **Threat model** — the four STRIDE data-flow stencils behind a [threat model](../how-to/draw-a-threat-model.md): External entity, Process, Data store, Trust boundary. Every entry carries a `tm-*` node type (`tm-entity`, `tm-process`, `tm-store`, `tm-boundary`) the renderer draws itself — a box, an ellipse, the open-ended store glyph, a red dashed outline — not an image. `dfd`, `stride` and `threat` are keywords on all four, so any of them finds the set.
 
 A dropped Trust boundary is an empty box: it holds elements through ordinary containment, added with the node panel's Memberships picker.
+
+### Plan
+
+One category, **Plan** — the three stencils behind a [plan](../how-to/draw-a-plan.md): Zone, Event, Person. Zone and Event carry `plan-zone`/`plan-event` node types the renderer draws as a date bar and a diamond, not images; a zone carries no size of its own — the plan layout sizes it from its dates, and a dropped one seeds two weeks wide at the date under the pointer (a zone dropped inside another starts where its parent does). Person carries the ordinary `person` type, the same pill used elsewhere. `plan` is a keyword on all three, so it finds the set.
 
 ### Data
 

@@ -22,6 +22,7 @@ const HOW_TO: Record<string, string> = {
   'threat-model': 'draw-a-threat-model.md',
   er: 'draw-an-er-diagram.md',
   'causal-loop': 'draw-a-causal-loop-diagram.md',
+  plan: 'draw-a-plan.md',
 };
 
 function walk(dir: string): string[] {

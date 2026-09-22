@@ -4,7 +4,14 @@ A schedule: zones as date bars that nest, events as milestones, people attached 
 
 ## In the studio
 
-Add a plane and set its **Notation** to *Plan (schedule)* in **Layers & planes**. Drop a **Zone** from the Library's *Plan* category — it lands two weeks wide at the date under the pointer — and name it; drop a second zone **onto** the first to nest it. Drag a bar sideways to move its dates by whole days (a nested bar stays inside its parent); drag it up or down to reorder top-level bars. Drag its left or right edge to change the start or the end. Drop an **Event** for a milestone. Add people with **Add person** in the Plan panel, then pick them as Owner / Executor / Checker on a zone — the chips `O·`, `E·`, `C·` appear on the bar, one letter per role, hover for the full name. Schedule a node that lives on another plane (a C4 container, an ER table…) by selecting it and, in Properties → Memberships, adding the zone as a container on the plan plane. Comment on a bar in Properties → Comments and attach resources in Properties → Links — the badge at the bar's corner opens both on the published page.
+1. Create a new diagram (or add a plane to an existing one) and, in **Layers & planes**, set its **Notation** to *Plan (schedule)*.
+2. Press **Edit**. The **Plan** panel appears on the right.
+3. Drop a **Zone** from the Library's *Plan* category — it lands two weeks wide at the date under the pointer (a zone dropped inside another starts where its parent does) — and name it; drop a second zone **onto** the first to nest it.
+4. Drag a bar sideways to move its dates by whole days (a nested bar stays inside its parent); drag it up or down to reorder top-level bars. Drag its left or right edge to change the start or the end.
+5. Drop an **Event** for a milestone.
+6. Add people with **Add person** in the Plan panel, then pick them as Owner / Executor / Checker on a zone — the chips `O·`, `E·`, `C·` appear on the bar, one letter per role, hover for the full name.
+7. Schedule a node that lives on another plane (a C4 container, an ER table…) by selecting it and, in Properties → Memberships, adding the zone as a container on the plan plane.
+8. Comment on a bar in Properties → Comments and attach resources in Properties → Links — the badge at the bar's corner opens both on the published page.
 
 ## From TypeScript
 
@@ -50,17 +57,13 @@ export default m;
 
 ## Examples
 
-**Starter** — three phases, one nested twice, a code freeze and a launch, three people holding all three roles on Build, a comment and a link. Copy it into `.diagrams/src/` and change the names.
+**Starter** — three phases, one nested twice, a code freeze and a launch, three people holding all three roles on Build, a comment and a link. Copy it into `.diagrams/src/` and change the names. [Source](../../.diagrams/src/examples/plan/starter.diagram.ts)
 
 [![Starter: launch plan](../../.diagrams/static/examples/plan/starter.png)](https://ferroman.github.io/diagc/html/examples/plan/starter.html)
-
-[Live](https://ferroman.github.io/diagc/html/examples/plan/starter.html) · [Source](../../.diagrams/src/examples/plan/starter.diagram.ts)
 
 **Q4 roadmap** — a C4 container view and a plan plane that schedules those same containers inside zones — switch planes on the page to see either. [Source](../../.diagrams/src/examples/plan/q4-roadmap.diagram.ts)
 
 [![Q4 roadmap](../../.diagrams/static/examples/plan/q4-roadmap.png)](https://ferroman.github.io/diagc/html/examples/plan/q4-roadmap.html)
-
-[Live](https://ferroman.github.io/diagc/html/examples/plan/q4-roadmap.html)
 
 ## See also
 

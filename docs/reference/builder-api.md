@@ -121,7 +121,7 @@ The first plane declared is the default and owns untagged containment.
 | `containmentOf` | `string?` | Borrow another plane's structure. |
 | `layers` | `string[]?` | Layers on by default in this plane. A default, not a floor: hosts with a layer switch start from this (`presetLayers`) and can turn them off — an export, which has no switch, always draws them. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations. |
-| `notation` | `NotationId?` (`'causal-loop' \| 'git-graph' \| 'c4' \| 'second-order' \| 'fishbone' \| 'threat-model'`) | Prefer `m.gitGraph()`/`m.secondOrder()`/`m.fishbone()`/`m.threatModel()` for `git-graph`/`second-order`/`fishbone`/`threat-model`. Overrides `m.notation()` for this plane. |
+| `notation` | `NotationId?` (`'causal-loop' \| 'git-graph' \| 'c4' \| 'second-order' \| 'fishbone' \| 'threat-model' \| 'plan'`) | Prefer `m.gitGraph()`/`m.secondOrder()`/`m.fishbone()`/`m.threatModel()`/`m.plan()` for `git-graph`/`second-order`/`fishbone`/`threat-model`/`plan`. Overrides `m.notation()` for this plane. |
 | `hides` | `string[]?` | Shared node ids to hide here, promoting their contents into their place. |
 | `hidesTree` | `string[]?` | Shared node ids to hide here together with their contents, however deep. A child another visible box also contains stays. |
 

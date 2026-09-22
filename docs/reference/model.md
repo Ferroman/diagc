@@ -416,6 +416,8 @@ Relation kinds `owns`, `executes`, `checks` — drawn **from the person to the z
 
 Dates live in `metadata` (the git-graph `from`/`to` pattern) so a zone is an ordinary node everywhere else. The x origin is 1 January of the earliest year in the plan; the header extends a week either side of the dated range.
 
+See [Draw a plan](../how-to/draw-a-plan.md).
+
 ## Causal-loop conventions
 
 A plane with `notation: 'causal-loop'` reads ordinary nodes and relations as variables and signed links. Nothing new is stored.
