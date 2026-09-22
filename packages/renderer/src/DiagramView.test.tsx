@@ -2310,6 +2310,19 @@ describe('comment notes', () => {
     fireEvent.click(container.querySelector('.react-flow__node[data-id="a"] button.dg-comment-badge')!);
     expect(await rfNode(container, 'note:node:a')).not.toBeNull();
   });
+  it('offers no threat on a comment-only bubble unless the canvas is a threat model', async () => {
+    // The studio wires onAddThreat whatever the diagram is, so the gate has to
+    // live here: a remark on a plain C4 box must not sprout a threat register
+    // (nor have estimateNoteHeight reserve the row for one). The same gate
+    // ThreatBadge and the studio's panels apply.
+    const plain = render(<DiagramView model={commented} layout={open()} mode="edit" edit={{ onAddThreat: vi.fn() }} />);
+    expect((await rfNode(plain.container, 'note:node:a')).querySelector('.dg-note-add')).toBeNull();
+    plain.unmount();
+    const tm = render(
+      <DiagramView model={commented} layout={open()} notation="threat-model" mode="edit" edit={{ onAddThreat: vi.fn() }} />,
+    );
+    expect((await rfNode(tm.container, 'note:node:a')).querySelector('.dg-note-add')).not.toBeNull();
+  });
   it('hands the host\'s onOpenLink to the bubble', async () => {
     const onOpenLink = vi.fn();
     const { container } = render(<DiagramView model={commented} layout={open()} onOpenLink={onOpenLink} />);

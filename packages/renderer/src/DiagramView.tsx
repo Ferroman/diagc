@@ -31,6 +31,7 @@ import {
   hasNoteContent,
   layoutPlaneKey,
   threatTargetKey,
+  TM_NOTATION,
   type Comment,
   type DiagramNode,
   type EdgeLabelPlacement,
@@ -858,7 +859,14 @@ function Inner(props: DiagramViewProps) {
     ) => {
       const key = threatTargetKey(target);
       if (!openNotes.has(key)) return;
-      const size = { width: NOTE_WIDTH, height: estimateNoteHeight(name, threats, editing, comments, links) };
+      // The offer to start a register belongs where threats do: an element that
+      // already has one, or a threat model's canvas — the gate ThreatBadge and
+      // both studio panels apply. A host wires onAddThreat whatever the diagram
+      // is, so without this a remark on a plain C4 box would offer to threat-
+      // model it. The height estimate reads the same boolean, or it would
+      // reserve ADD_ROW for a button that never draws.
+      const offerThreat = editing && (threats.length > 0 || props.notation === TM_NOTATION);
+      const size = { width: NOTE_WIDTH, height: estimateNoteHeight(name, threats, offerThreat, comments, links) };
       const p = notePlacements?.[key];
       // {0,0} is "automatic" — `set-note-offset null` writes it, and the
       // normaliser drops it — so a saved offset is anything else
@@ -881,7 +889,7 @@ function Inner(props: DiagramViewProps) {
         badge,
         editing,
         ...(noteEdit !== null && noteEdit.key === key ? { editingId: noteEdit.id } : {}),
-        ...(editing && edit?.onAddThreat !== undefined ? { onAddThreat: edit.onAddThreat } : {}),
+        ...(offerThreat && edit?.onAddThreat !== undefined ? { onAddThreat: edit.onAddThreat } : {}),
         ...(editing && edit?.onRetitleThreat !== undefined ? { onRetitleThreat: edit.onRetitleThreat } : {}),
         ...(editing && edit?.onSetThreatStatus !== undefined ? { onSetThreatStatus: edit.onSetThreatStatus } : {}),
         ...(editing && edit?.onEditThreatText !== undefined ? { onEditThreatText: edit.onEditThreatText } : {}),
@@ -947,7 +955,9 @@ function Inner(props: DiagramViewProps) {
     // props.onOpenLink may be fresh closures per host render — the same trade
     // nodeDataCtx makes, and for the same reason: a stale callback would edit
     // the wrong document, or open a link through a host that is no longer there.
-  }, [noNotes, openNotes, arrangedGeometry, compiled, notePlacements, chipSpots, editing, edit?.onAddThreat, edit?.onRetitleThreat, edit?.onSetThreatStatus, edit?.onEditThreatText, props.onOpenLink, noteEdit, nameOf, typeRegistry]);
+    // props.notation is here because the threat offer is gated on it (see
+    // offerThreat): switching to a threat-model plane has to redraw the bubbles.
+  }, [noNotes, openNotes, arrangedGeometry, compiled, notePlacements, chipSpots, editing, edit?.onAddThreat, edit?.onRetitleThreat, edit?.onSetThreatStatus, edit?.onEditThreatText, props.onOpenLink, props.notation, noteEdit, nameOf, typeRegistry]);
   // Boxes first, notes after: React Flow resolves `parentId` against the nodes
   // it has already seen, so a note must never precede the box it rides on.
   const allNodes = useMemo(
