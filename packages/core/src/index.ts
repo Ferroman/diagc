@@ -46,6 +46,8 @@ export {
   CauseRef,
   ThreatModelBuilder,
   FlowRef,
+  PlanBuilder,
+  ZoneBuilder,
   type NodeOpts,
   type RelateOpts,
   type CommitOpts,
@@ -57,6 +59,8 @@ export {
   type ThreatOpts,
   type CommentOpts,
   type ElementOpts,
+  type ZoneOpts,
+  type EventOpts,
 } from './builder';
 export { validate, DiagramValidationError, IMAGE_REF, LIBRARY_IMAGE_REF, type ValidationIssue } from './validate';
 export { isDrawings, isLayoutOverlay } from './guards';
