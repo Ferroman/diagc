@@ -59,12 +59,14 @@ describe('planMoves', () => {
     expect(planMoves(roadmap(), 'plan', { kickoff: { x: 0, y: 0 } }, { kickoff: { dx: DAY / 3, dy: 0 } })).toBeUndefined();
   });
   it('a child inside a moved parent takes the parent\'s shift, never its own', () => {
-    // q1 moves 1 day; build (a child, in the same gesture) reports 3 of its own — the guard must win
+    // q1 moves 1 day; build (a child, in the same gesture) reports -3 of its own —
+    // negative, so the clamp toward q1's END (0 days of slack that way) cannot
+    // swallow it the way a positive delta would; only the shifted-guard stops it
     const c = planMoves(
       roadmap(),
       'plan',
       { q1: { x: 0, y: 0 }, build: { x: 0, y: 0 } },
-      { q1: { dx: DAY, dy: 0 }, build: { dx: 3 * DAY, dy: 0 } },
+      { q1: { dx: DAY, dy: 0 }, build: { dx: -3 * DAY, dy: 0 } },
     );
     expect(dates(c).filter((x) => x.type === 'set-plan-dates' && x.id === 'build')).toEqual([
       { type: 'set-plan-dates', id: 'build', dates: { start: shift('2026-02-02', 1), end: shift('2026-03-27', 1) } },
