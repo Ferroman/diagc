@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model, NodeRef } from './builder';
+import { FlowRef, model, NodeRef } from './builder';
 import { validate } from './validate';
 
 describe('builder: nodes and containment', () => {
@@ -642,5 +642,17 @@ describe('comments and links', () => {
     expect(json.nodes[0]!.comments).toEqual([{ id: 'c1', text: 'via opts' }]);
     expect(json.nodes[0]!.links).toEqual([{ label: 'L', url: 'https://x' }]);
     expect(json.relations[0]!.comments).toEqual([{ id: 'c1', text: 'on the edge' }]);
+  });
+
+  it('rejects a duplicate comment id on the same element (but not across elements), and comment()/link() against an unknown node or relation', () => {
+    const m = model('dup');
+    const a = m.node('a');
+    const b = m.node('b');
+    a.comment('one', { id: 'x' });
+    expect(() => a.comment('two', { id: 'x' })).toThrow(/x/);
+    expect(() => b.comment('other', { id: 'x' })).not.toThrow();
+    expect(() => new NodeRef('zz', m).comment('nowhere')).toThrow(/zz/);
+    expect(() => new NodeRef('zz', m).link('L', 'https://x')).toThrow(/zz/);
+    expect(() => new FlowRef('rr', m).comment('nowhere')).toThrow(/rr/);
   });
 });

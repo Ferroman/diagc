@@ -19,7 +19,7 @@ import type {
   TextRun,
   Threat,
 } from './types';
-import { nextCommentId } from './comments';
+import { nextCommentId, type ElementTarget } from './comments';
 import { FB_CATEGORY_TYPE, FB_CAUSE_OF_KIND, FB_CAUSE_TYPE, FB_EFFECT_TYPE, FISHBONE_PRESETS, presetId, type FishbonePreset } from './fishbone';
 import { GIT_STAGE_TYPE } from './git';
 import { SO_DECISION_TYPE, SO_LEADS_TO_KIND, consequenceTypeOf, type Valence } from './second-order';
@@ -641,7 +641,7 @@ export class ModelBuilder {
 
   /** internal — appends a comment to the node or relation `target` names; used by
    * NodeRef.comment() and FlowRef.comment() */
-  addComment(target: ThreatTarget, text: string, opts: CommentOpts): void {
+  addComment(target: ElementTarget, text: string, opts: CommentOpts): void {
     const element =
       'node' in target
         ? this.nodes.find((n) => n.id === target.node)
@@ -656,7 +656,11 @@ export class ModelBuilder {
     const comments = element.comments ?? [];
     const { id, ...rest } = opts;
     // per-element ids, as threats: two elements' first comments are both c1
-    element.comments = [...comments, { id: id ?? nextCommentId(comments), text, ...rest }];
+    const comment: Comment = { id: id ?? nextCommentId(comments), text, ...rest };
+    if (comments.some((c) => c.id === comment.id)) {
+      throw new Error(`comment(): duplicate comment id '${comment.id}' on '${element.id}'`);
+    }
+    element.comments = [...comments, comment];
   }
 
   /** internal — appends a link to a node; used by NodeRef.link() */
