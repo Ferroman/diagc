@@ -22,8 +22,8 @@ function roadmap(): DiagramModel {
   return m.toJSON();
 }
 const origin = d('2026-01-01');
-const commands = (c: EditorCommand): EditorCommand[] => (c.type === 'batch' ? c.commands : [c]);
-const dates = (c: EditorCommand) => commands(c).filter((x) => x.type === 'set-plan-dates');
+const commands = (c: EditorCommand | undefined): EditorCommand[] => (c === undefined ? [] : c.type === 'batch' ? c.commands : [c]);
+const dates = (c: EditorCommand | undefined) => commands(c).filter((x) => x.type === 'set-plan-dates');
 
 describe('planMoves', () => {
   it('rounds a top-level zone\'s dx to days, shifts its subtree, and writes back the derived x with a clamped y', () => {
@@ -56,11 +56,23 @@ describe('planMoves', () => {
       { type: 'set-plan-dates', id: 'kickoff', dates: { at: '2026-01-03' } },
       { type: 'set-plan-dates', id: 'm1', dates: { at: '2026-03-27' } },
     ]);
-    expect(commands(planMoves(roadmap(), 'plan', { kickoff: { x: 0, y: 0 } }, { kickoff: { dx: DAY / 3, dy: 0 } }))).toEqual([]);
+    expect(planMoves(roadmap(), 'plan', { kickoff: { x: 0, y: 0 } }, { kickoff: { dx: DAY / 3, dy: 0 } })).toBeUndefined();
   });
-  it('shifts a subtree once when a parent and its child are both in the gesture', () => {
-    const c = planMoves(roadmap(), 'plan', { q1: { x: 0, y: 0 }, build: { x: 0, y: 0 } }, { q1: { dx: DAY, dy: 0 }, build: { dx: 0, dy: 0 } });
-    expect(dates(c).filter((x) => x.type === 'set-plan-dates' && x.id === 'build')).toHaveLength(1);
+  it('a child inside a moved parent takes the parent\'s shift, never its own', () => {
+    // q1 moves 1 day; build (a child, in the same gesture) reports 3 of its own — the guard must win
+    const c = planMoves(
+      roadmap(),
+      'plan',
+      { q1: { x: 0, y: 0 }, build: { x: 0, y: 0 } },
+      { q1: { dx: DAY, dy: 0 }, build: { dx: 3 * DAY, dy: 0 } },
+    );
+    expect(dates(c).filter((x) => x.type === 'set-plan-dates' && x.id === 'build')).toEqual([
+      { type: 'set-plan-dates', id: 'build', dates: { start: shift('2026-02-02', 1), end: shift('2026-03-27', 1) } },
+    ]);
+    expect(dates(c)).toContainEqual({ type: 'set-plan-dates', id: 'm1', dates: { at: shift('2026-03-02', 1) } });
+  });
+  it('a sub-day nudge on a nested zone is undefined, not an empty batch', () => {
+    expect(planMoves(roadmap(), 'plan', { design: { x: 0, y: 0 } }, { design: { dx: DAY / 4, dy: 0 } })).toBeUndefined();
   });
 });
 

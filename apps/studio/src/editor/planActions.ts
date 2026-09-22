@@ -4,7 +4,6 @@ import {
   atOf,
   dayOf,
   isPlanEvent,
-  isPlanRole,
   isPlanZone,
   isoOf,
   planGraph,
@@ -70,14 +69,15 @@ const shiftEvent = (id: string, at: number, days: number): EditorCommand => ({ t
  * whatever its saved y was; a nested zone is clamped inside its parent, a
  * top-level one gets its derived x written back (the file then reads sanely)
  * and its y clamped below the header. People and borrowed nodes never move:
- * the roster is a list and a row is a row.
+ * the roster is a list and a row is a row. Returns undefined when the gesture
+ * changes nothing, so a no-op never reaches undo.
  */
 export function planMoves(
   model: DiagramModel,
   plane: string | undefined,
   positions: Record<string, { x: number; y: number }>,
   deltas: Record<string, MoveDelta>,
-): EditorCommand {
+): EditorCommand | undefined {
   const g = planGraph(model, plane);
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const origin = g.origin ?? 0;
@@ -118,7 +118,7 @@ export function planMoves(
       if (days !== 0) out.push(shiftEvent(id, at, days));
     }
   }
-  return { type: 'batch', commands: out };
+  return out.length === 0 ? undefined : { type: 'batch', commands: out };
 }
 
 /**
@@ -194,7 +194,7 @@ export function addPerson(model: DiagramModel, plane: string | undefined, name: 
  * TypeScript): setting a role replaces whatever held it. */
 export function setRole(model: DiagramModel, zoneId: string, role: PlanRole, personId: string | null): EditorCommand {
   const commands: EditorCommand[] = model.relations
-    .filter((r) => r.to === zoneId && r.kind === role && isPlanRole(r.kind))
+    .filter((r) => r.to === zoneId && r.kind === role)
     .map((r) => ({ type: 'delete-relation' as const, id: r.id }));
   if (personId !== null) commands.push({ type: 'add-relation', from: personId, to: zoneId, opts: { kind: role } });
   return { type: 'batch', commands };
