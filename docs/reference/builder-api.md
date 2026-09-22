@@ -358,6 +358,31 @@ Chainable, so a second remark is another `.comment(...)`. A plain relation with 
 
 A resource this node points at — a ticket, a design doc — listed in its bubble under the comments. `NodeRef` only; a relation's resources go in a comment. See [`Link`](model.md#link), which distinguishes this from the node's single navigation target.
 
+## `m.plan(id?, opts?) → PlanBuilder`
+
+Declares a plan (schedule) plane — always a plane, id `plan` by default, name `Plan` — with `notation: 'plan'`. **Throws if called twice** (`'plan() already declared'`). It need not be the first plane: add it to an existing model and schedule that model's nodes inside its zones. Every node the plan builder creates is scoped to the plan plane (`plane: <id>`), so bars never appear on the other planes; nodes you `contains()` stay shared.
+
+| Call | Returns | Notes |
+| --- | --- | --- |
+| `plan.zone(id, opts)` | `ZoneBuilder` | A top-level zone (`plan-zone`). `opts` = [`m.node`](#mnodeid-opts--noderef)'s options minus `type`/`plane`/`metadata`, plus **required** `start` and `end` (`YYYY-MM-DD`, `end` inclusive). |
+| `plan.event(id, opts)` | `NodeRef` | A top-level event (`plan-event`); `opts` as above with **required** `at`. |
+| `plan.person(id, name?, opts?)` | `NodeRef` | A `person` node on the plan plane. |
+| `zone.zone(id, opts)` | `ZoneBuilder` | A nested zone, contained on the plan plane. |
+| `zone.event(id, opts)` | `NodeRef` | An event inside the zone. |
+| `zone.contains(...refs)` | `zone` | Schedules any nodes inside the zone (containment on the plan plane). |
+| `zone.owner(ref)` / `zone.executor(ref)` / `zone.checker(ref)` | `zone` | A role relation `ref → zone` of kind `owns` / `executes` / `checks`; ids follow the `from->to#n` scheme. |
+
+A `ZoneBuilder` is a `NodeRef`, so `.comment()`, `.link()` and `.threat()` chain on it.
+
+```ts
+const m = model('launch');
+const plan = m.plan();
+const alice = plan.person('alice', 'Alice Ng');
+plan.zone('build', { name: 'Build', start: '2026-01-26', end: '2026-03-06' })
+  .owner(alice)
+  .zone('api', { name: 'API', start: '2026-01-26', end: '2026-02-13' });
+```
+
 ## `m.legend(opts?) → m`
 
 Opt this diagram into an on-canvas key. Calling it at all is the switch — a diagram that never does has no legend in its image, and on the canvas only the hidden, on-demand one that [wordless shapes](../how-to/add-a-legend.md#diagrams-that-offer-one-anyway) get. A bare `m.legend()` derives every row.
