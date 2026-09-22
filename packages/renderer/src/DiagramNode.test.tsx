@@ -1127,6 +1127,19 @@ describe('CommentBadge', () => {
     expect(badge.getAttribute('title')).toBe('2 comments, 1 link');
   });
 
+  it('reaches an expanded container too — the group branch mounts its own', () => {
+    // The group branch carries a second CommentBadge (see DiagramNode), and a
+    // container drawn open is exactly where a remark about the container
+    // itself has to stay visible.
+    const { container } = renderNode({
+      label: 'Platform',
+      typeId: 'system',
+      state: 'expanded',
+      annotations: { comments: 1, links: 0 },
+    });
+    expect(container.querySelector('.dg-group > .dg-comment-badge')?.textContent).toBe('1');
+  });
+
   it('is the bubble switch on a bubble-drawing canvas', () => {
     const toggle = vi.fn();
     // renderNode renders id="n1", so the toggle target is node:n1

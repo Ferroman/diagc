@@ -16,9 +16,10 @@ vi.mock('@xyflow/react', async (importOriginal) => {
   };
 });
 import { createKindRegistry } from './registry';
-import { DiagramEdge, type DiagramEdgeData } from './DiagramEdge';
+import { chipPosition, DiagramEdge, markFrame, type DiagramEdgeData } from './DiagramEdge';
 import { NoteStateContext, type NoteState } from './note-state';
-import { edgePoint } from './edge-geometry';
+import { edgePoint, shapeCurve } from './edge-geometry';
+import { notationProfile } from './notations';
 import { stylePreset } from './stylePresets';
 
 // The element, not the render: a test that needs the edge under a context
@@ -784,8 +785,18 @@ describe('DiagramEdge', () => {
       fireEvent.click(chip);
       expect(toggle).toHaveBeenCalledWith({ relation: 'r1' });
       // no threat chip on this edge, so the comment chip is the one that
-      // reports where the relation's bubble should hang
-      expect(placeChip).toHaveBeenCalledWith('r1', expect.anything(), expect.anything(), expect.anything());
+      // reports where the relation's bubble should hang — and it reports its
+      // OWN spot: the t = 0.25 frame offset along the normal, not the threat
+      // chip's t = 0.75. The curve is the one the component builds for an
+      // unmeasured, unrouted, notation-less edge (see DiagramEdge).
+      const curve = shapeCurve(
+        'curved',
+        { sourceX: 0, sourceY: 0, targetX: 100, targetY: 100, sourcePosition: Position.Bottom, targetPosition: Position.Top },
+        notationProfile(undefined).edgeCurvature,
+      );
+      const frame = markFrame(curve, 0.25);
+      expect(placeChip).toHaveBeenCalledWith('r1', chipPosition(frame), frame.normal, expect.anything());
+      expect(chipPosition(frame)).not.toEqual(chipPosition(markFrame(curve, 0.75)));
     });
 
     it('a bundle keeps a passive chip', () => {
