@@ -28,6 +28,7 @@ import {
   countAnchored,
   DEFAULT_STROKE_WIDTH,
   GIT_STAGE_TYPE,
+  hasNoteContent,
   layoutPlaneKey,
   threatTargetKey,
   type Comment,
@@ -913,8 +914,10 @@ function Inner(props: DiagramViewProps) {
       const links = n.node.links ?? [];
       // An external stub stands in for an off-frame node (drill views): its
       // threats/comments/links belong to the view that really draws it, or the
-      // same note would appear twice, in two coordinate frames.
-      if (n.external === undefined && (threats.length > 0 || comments.length > 0 || links.length > 0))
+      // same note would appear twice, in two coordinate frames. What counts as
+      // content is core's own predicate — the one layout hygiene prunes by, so
+      // a bubble drawn here always keeps its saved place (see pruneNotes).
+      if (n.external === undefined && hasNoteContent(n.node))
         push({ node: n.id }, n.node.name, threats, comments, links, badgeCenter(rect, badgeKindOf(n)), rect, parent);
       n.children.forEach((c) => walk(c, n.id));
     };
@@ -925,7 +928,7 @@ function Inner(props: DiagramViewProps) {
     // (A relation carries no `links` field, so a flow's bubble never lists any.)
     for (const e of compiled.edges) {
       const r = e.constituents.length === 1 ? e.constituents[0] : undefined;
-      if (r === undefined || ((r.threats?.length ?? 0) === 0 && (r.comments?.length ?? 0) === 0)) continue;
+      if (r === undefined || !hasNoteContent(r)) continue;
       const a = abs.get(e.from);
       const b = abs.get(e.to);
       if (a === undefined || b === undefined) continue;

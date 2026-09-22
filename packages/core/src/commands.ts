@@ -16,6 +16,7 @@ import type {
   Threat,
 } from './types';
 import { threatTargetKey, type ThreatTarget } from './threat-model';
+import { hasNoteContent } from './comments';
 import { resolveContainmentPlane } from './view/compile';
 import { addStroke, deleteStroke, pruneDrawingsPlane } from './drawings';
 import { relationLabels } from './labels';
@@ -254,15 +255,18 @@ function withOpen(p: NotePlacement, open: boolean): NotePlacement {
 
 /**
  * Mirror hygiene for `notes` after a command changed the model: a note exists
- * only while its element has a threat, so an offset for an element that lost
- * its last threat — or was deleted — is dead data. Identity is kept when
- * nothing is dropped, like pruneEdgeLabels.
+ * only while its element has something to show, so an offset for an element
+ * that lost its last threat/comment/link — or was deleted — is dead data.
+ * `hasNoteContent` is the renderer's own test for drawing a bubble; reusing it
+ * is what stops a command that merely rewrote `nodes` (a rename, an edited
+ * comment) from throwing away a live bubble's saved place. Identity is kept
+ * when nothing is dropped, like pruneEdgeLabels.
  */
 function pruneNotes(layout: LayoutOverlay, before: DiagramModel, after: DiagramModel): LayoutOverlay {
   if (layout.notes === undefined || (before.nodes === after.nodes && before.relations === after.relations)) return layout;
   const alive = new Set<string>();
-  for (const n of after.nodes) if ((n.threats?.length ?? 0) > 0) alive.add(threatTargetKey({ node: n.id }));
-  for (const r of after.relations) if ((r.threats?.length ?? 0) > 0) alive.add(threatTargetKey({ relation: r.id }));
+  for (const n of after.nodes) if (hasNoteContent(n)) alive.add(threatTargetKey({ node: n.id }));
+  for (const r of after.relations) if (hasNoteContent(r)) alive.add(threatTargetKey({ relation: r.id }));
   let changed = false;
   const planes: NonNullable<LayoutOverlay['notes']> = {};
   for (const [key, bucket] of Object.entries(layout.notes)) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commentsOf, nextCommentId } from './comments';
+import { commentsOf, hasNoteContent, nextCommentId } from './comments';
 import type { DiagramModel } from './types';
 
 const m: DiagramModel = {
@@ -22,5 +22,15 @@ describe('nextCommentId', () => {
   it('hands out the first free c<n>', () => {
     expect(nextCommentId([])).toBe('c1');
     expect(nextCommentId([{ id: 'c1', text: 'x' }, { id: 'c3', text: 'y' }])).toBe('c2');
+  });
+});
+
+describe('hasNoteContent', () => {
+  it('is true for any of the three lists alone, false for none and for empty ones', () => {
+    expect(hasNoteContent({})).toBe(false);
+    expect(hasNoteContent({ threats: [], comments: [], links: [] })).toBe(false);
+    expect(hasNoteContent({ threats: [{ id: 't1', category: 'S', title: 'Spoofed session' }] })).toBe(true);
+    expect(hasNoteContent({ comments: [{ id: 'c1', text: 'hi' }] })).toBe(true);
+    expect(hasNoteContent({ links: [{ label: 'Ticket', url: 'https://x/1' }] })).toBe(true);
   });
 });
