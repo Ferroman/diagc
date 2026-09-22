@@ -727,4 +727,12 @@ describe('plan', () => {
     expect(json.nodes[0]!.comments).toEqual([{ id: 'c1', text: 'slipping', by: 'bf', at: '2026-01-07' }]);
     expect(json.nodes[0]!.links).toEqual([{ label: 'Tracker', url: 'https://example.test/q' }]);
   });
+
+  it("rejects person()'s plane at compile time — a person is always scoped to the plan plane", () => {
+    const m = model('guard');
+    const p = m.plan();
+    // @ts-expect-error — plane is forced to the plan's plane; person() must not accept an override,
+    // or `...opts` (which spreads after `plane: this.plane`) would silently win.
+    p.person('carol', 'Carol', { plane: 'arch' });
+  });
 });

@@ -525,8 +525,11 @@ export class PlanBuilder {
   event(id: string, opts: EventOpts): NodeRef {
     return planEvent(this.m, this.plane, id, opts);
   }
-  /** a person to hand roles to (`zone.owner(p)` …) */
-  person(id: string, name?: string, opts: ElementOpts = {}): NodeRef {
+  /** a person to hand roles to (`zone.owner(p)` …). `plane` is omitted, not
+   * just overridden: a person is always scoped to the plan plane, and `...opts`
+   * spreads after `plane: this.plane`, so a merely-overridden plane would
+   * silently win over the forced one. */
+  person(id: string, name?: string, opts: Omit<ElementOpts, 'plane'> = {}): NodeRef {
     return this.m.node(id, { type: 'person', plane: this.plane, ...(name !== undefined ? { name } : {}), ...opts });
   }
 }
