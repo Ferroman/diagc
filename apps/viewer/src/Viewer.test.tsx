@@ -470,3 +470,126 @@ describe('Viewer export bounds', () => {
     expect(exportWindow().__DG_BOUNDS__).toEqual({ width: 800, height: 690 });
   });
 });
+
+/**
+ * A causal-loop diagram is read by asking "what drives this?" — the studio
+ * answers with the leverage panel, and a published page has to answer the same
+ * way or the reader is left with a prettier picture and no analysis. One
+ * reinforcing loop, t → c → a → t, with b feeding a (−) and d feeding t (+).
+ */
+const causal = () => {
+  const b = model('cld');
+  const t = b.node('t', { name: 'Throughput' });
+  const a = b.node('a', { name: 'Automation' });
+  const c = b.node('c', { name: 'Confidence' });
+  const cuts = b.node('b', { name: 'Budget cuts' });
+  const d = b.node('d', { name: 'Demand' });
+  b.relate(a, t, { kind: 'sync', polarity: '+' });
+  b.relate(cuts, a, { kind: 'sync', polarity: '-' });
+  b.relate(t, c, { kind: 'sync', polarity: '+' });
+  b.relate(c, a, { kind: 'sync', polarity: '+' });
+  b.relate(d, t, { kind: 'sync', polarity: '+' });
+  b.plane('flow', { name: 'Flow', notation: 'causal-loop' });
+  return b.toJSON();
+};
+
+/** the same variables on a plain plane first, with the causal plane second */
+const causalSecond = () => {
+  const b = model('cld-2');
+  const t = b.node('t', { name: 'Throughput' });
+  const a = b.node('a', { name: 'Automation' });
+  b.relate(a, t, { kind: 'sync', polarity: '+' });
+  b.relate(t, a, { kind: 'sync', polarity: '+' });
+  b.plane('boxes', { name: 'Boxes' });
+  b.plane('flow', { name: 'Flow', notation: 'causal-loop' });
+  return b.toJSON();
+};
+
+describe('Viewer leverage panel', () => {
+  const panel = () => screen.queryByRole('complementary', { name: 'Leverage' });
+  const variable = (container: HTMLElement, id: string) =>
+    container.querySelector(`.react-flow__node[data-id="${id}"]`) as HTMLElement;
+
+  it('opens the report beside the canvas when a variable is clicked, and closes it again', async () => {
+    const { container } = render(<Viewer data={{ model: causal() }} />);
+    expect(await screen.findByText('Throughput')).toBeDefined();
+    // nothing selected yet: the page rests on the drawing alone
+    expect(panel()).toBeNull();
+
+    fireEvent.click(variable(container, 't'));
+    await waitFor(() => expect(panel()).not.toBeNull());
+    // the report is about the clicked variable, and reads like the studio's:
+    // its loop, its drivers ranked by distance, and its hubs
+    expect(screen.getByText(/Feedback loops \(1\)/)).toBeDefined();
+    expect(container.querySelector('[data-focus="drv:a"]')?.textContent).toContain('direct');
+    expect(container.querySelector('[data-focus="drv:b"]')?.textContent).toContain('2 hops');
+    expect(container.querySelector('[data-focus="hub:c"]')).not.toBeNull();
+    // beside the canvas, not under it: the canvas host and the report's column
+    // share a row, canvas first
+    const column = panel()!.parentElement as HTMLElement;
+    const row = column.parentElement as HTMLElement;
+    expect(row.style.flexDirection).toBe('row');
+    expect(row.firstElementChild?.querySelector('.dg-canvas')).not.toBeNull();
+    expect(row.lastElementChild).toBe(column);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close panel' }));
+    await waitFor(() => expect(panel()).toBeNull());
+  });
+
+  it('follows the selection from one variable to the next', async () => {
+    const { container } = render(<Viewer data={{ model: causal() }} />);
+    expect(await screen.findByText('Throughput')).toBeDefined();
+    fireEvent.click(variable(container, 't'));
+    await waitFor(() => expect(container.querySelector('[data-focus="drv:a"]')).not.toBeNull());
+    fireEvent.click(variable(container, 'd'));
+    // d has no upstream causes — the report is now about d, not t
+    await waitFor(() => expect(screen.getByText(/driver, not driven/)).toBeDefined());
+    expect(container.querySelector('[data-focus="drv:a"]')).toBeNull();
+  });
+
+  it('asks the canvas to glow a clicked row', async () => {
+    const { container } = render(<Viewer data={{ model: causal() }} />);
+    expect(await screen.findByText('Throughput')).toBeDefined();
+    fireEvent.click(variable(container, 't'));
+    await waitFor(() => expect(container.querySelector('[data-focus="drv:b"]')).not.toBeNull());
+    fireEvent.click(container.querySelector('[data-focus="drv:b"]')!);
+    // the row shows as active, and the canvas glows the b → a → t path and dims the rest
+    await waitFor(() => expect(container.querySelector('[data-focus="drv:b"]')?.classList.contains('active')).toBe(true));
+    expect(variable(container, 'd').querySelector('.dg-loop-node-dim')).not.toBeNull();
+    expect(variable(container, 'b').querySelector('.dg-loop-node-hl')).not.toBeNull();
+  });
+
+  it('offers no report on a page that is not a causal-loop diagram', async () => {
+    const { container } = render(<Viewer data={{ model: m() }} />);
+    expect(await screen.findByText('Alpha')).toBeDefined();
+    fireEvent.click(variable(container, 'a'));
+    // a plain click on a box does nothing new, and the DOM stays as bare as before
+    expect(panel()).toBeNull();
+    expect(container.firstElementChild?.classList.contains('dg-canvas')).toBe(true);
+  });
+
+  it('keeps the export DOM bare — no wrapper, no panel', async () => {
+    const { container } = render(<Viewer data={{ model: causal() }} expandAll />);
+    expect(await screen.findByText('Throughput')).toBeDefined();
+    expect(container.firstElementChild?.classList.contains('dg-canvas')).toBe(true);
+    fireEvent.click(variable(container, 't'));
+    expect(panel()).toBeNull();
+  });
+
+  it('drops the report when the reader switches to a plane without the notation', async () => {
+    const { container } = render(<Viewer data={{ model: causalSecond() }} />);
+    expect(await screen.findByText('Throughput')).toBeDefined();
+    // the first plane is plain boxes: a click there gets no report
+    fireEvent.click(variable(container, 't'));
+    expect(panel()).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Flow' }));
+    await waitFor(() => expect(container.querySelector('.dg-canvas.dg-notation-cld')).not.toBeNull());
+    fireEvent.click(variable(container, 't'));
+    await waitFor(() => expect(panel()).not.toBeNull());
+
+    // back to the boxes: the selection does not carry a stale report across
+    fireEvent.click(screen.getByRole('button', { name: 'Boxes' }));
+    await waitFor(() => expect(panel()).toBeNull());
+  });
+});

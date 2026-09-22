@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   activeNotation,
   openingPins,
@@ -9,7 +9,17 @@ import {
   type Drawings,
   type LayoutOverlay,
 } from '@diagc/core';
-import { applyTheme, DiagramView, isKnownStyle, lightTheme, type LayoutApi } from '@diagc/renderer';
+import {
+  applyTheme,
+  DiagramView,
+  isKnownStyle,
+  LeveragePanel,
+  lightTheme,
+  type DiagramSelection,
+  type LayoutApi,
+  type LeverageFocus,
+  type LoopEdgeInput,
+} from '@diagc/renderer';
 import { createIconRegistry } from '@diagc/icons';
 import { ThreatTable, showsThreatTable } from './ThreatTable';
 
@@ -97,6 +107,27 @@ export function activePlaneId(
 export function showsPlanePicker(planes: readonly DiagramPlane[], expandAll: boolean): boolean {
   return !expandAll && planes.length > 1;
 }
+
+/**
+ * May this page ever show the leverage report? True for an interactive page
+ * with a causal-loop view to click in. Decided from the model, not from the
+ * selection: the wrapper the panel sits in has to be there BEFORE the first
+ * click, because adding it later re-parents the canvas, which remounts React
+ * Flow and throws away the viewport the reader had.
+ */
+export function showsLeverage(model: DiagramModel, expandAll: boolean): boolean {
+  return !expandAll && (model.notation === 'causal-loop' || model.planes.some((p) => p.notation === 'causal-loop'));
+}
+
+// The report's column beside the canvas. The panel itself (renderer styles.css
+// `.dg-leverage`) fills the column and scrolls inside it; only the width and the
+// divider are the page's to decide.
+const leverageColumnStyle: CSSProperties = {
+  flex: 'none',
+  width: 300,
+  minHeight: 0,
+  borderLeft: '1px solid var(--dg-border)',
+};
 
 // Chrome styling, matched to the renderer's own overlays (`.dg-breadcrumbs-nav`
 // / `.dg-legend`): the theme's surface tokens, a 6px radius, 12px system-ui.
@@ -196,6 +227,25 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
     );
   });
   const [enteredPath, setEnteredPath] = useState<string[]>([]);
+  // The causal-loop reading aids, all viewer state and none of it saved: the
+  // clicked variable the report is about, the ctrl-clicked one to compare it
+  // with, the report row the canvas is glowing, and the signed graph the canvas
+  // compiled (the report runs on the exact edge ids drawn, so a layer switch
+  // changes both together).
+  const [selected, setSelected] = useState<string | null>(null);
+  const [compareId, setCompareId] = useState<string | null>(null);
+  const [focus, setFocus] = useState<LeverageFocus | null>(null);
+  const [cldEdges, setCldEdges] = useState<LoopEdgeInput[]>([]);
+  const onSelect = useCallback((sel: DiagramSelection | null) => {
+    setSelected(sel?.kind === 'node' ? sel.id : null);
+    // a new subject drops the comparison and the row highlight with it
+    setCompareId(null);
+    setFocus(null);
+  }, []);
+  const onCompareSelect = useCallback((id: string) => {
+    setCompareId(id);
+    setFocus(null);
+  }, []);
   // The plane the reader picked; undefined until they pick one, so the page
   // opens on the model's first plane (what the PNG shows).
   const [picked, setPicked] = useState<string | undefined>(undefined);
@@ -272,19 +322,44 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
     };
   }, [expandAll]);
 
-  if (data === null || typeof data !== 'object' || (data as ViewerData).model == null) {
-    return <div style={{ padding: 24 }}>No diagram to display.</div>;
-  }
-  const { model, layout, drawings } = data;
-  const styleId = model.style !== undefined && isKnownStyle(model.style) ? model.style : 'clean';
+  const model =
+    data !== null && typeof data === 'object' && (data as ViewerData).model != null
+      ? (data as ViewerData).model
+      : undefined;
   // Which plane is drawn: the reader's pick on an interactive page, and always
   // the model's first plane in export mode. `undefined` leaves DiagramView on
   // its own default, which IS the first plane.
-  const plane = activePlaneId(model.planes, picked, expandAll);
+  const plane = model !== undefined ? activePlaneId(model.planes, picked, expandAll) : undefined;
   // Mirror the drawn plane's notation so the visual language follows the plane
   // the reader is on — the studio resolves it the same way, so an editable
   // diagram and its published page always agree.
-  const notation = activeNotation(model.planes, plane, model.notation);
+  const notation = model !== undefined ? activeNotation(model.planes, plane, model.notation) : undefined;
+  // The report is about a variable on the causal-loop view being drawn — a
+  // box clicked on another plane, or a selection the model no longer has, gets
+  // none. Derived ahead of the fallback return below because the re-fit effect
+  // keys on it, and hooks cannot follow a return.
+  const leverage = model !== undefined && showsLeverage(model, expandAll);
+  const target =
+    leverage && notation === 'causal-loop' && selected !== null && model.nodes.some((n) => n.id === selected)
+      ? selected
+      : null;
+  // The report takes a column off the canvas, and gives it back on close. Re-fit
+  // both times: its rows glow paths anywhere in the graph, so the part the
+  // column would cover is exactly what the reader is about to look at. Only on
+  // the change — the mount fit is the canvas's own.
+  const reportOpen = target !== null;
+  const wasOpen = useRef(reportOpen);
+  useEffect(() => {
+    if (wasOpen.current === reportOpen) return;
+    wasOpen.current = reportOpen;
+    apiRef.current?.fitView();
+  }, [reportOpen]);
+
+  if (model === undefined) {
+    return <div style={{ padding: 24 }}>No diagram to display.</div>;
+  }
+  const { layout, drawings } = data as ViewerData;
+  const styleId = model.style !== undefined && isKnownStyle(model.style) ? model.style : 'clean';
   const toggleExpand = (id: string, next: 'expanded' | 'collapsed') => setPins((p) => ({ ...p, [id]: next }));
   // A plane change re-seeds the layer switch from the new plane's presets, so the
   // reader's choice on one viewpoint never silently governs another — the studio
@@ -294,6 +369,9 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
     setPicked(id);
     setLayers(presetLayers(model.planes, id));
     setPins(openingPins(layout, model, id));
+    // The canvas clears its own selection on a recompile; the report follows,
+    // or a switch back to the causal plane would revive a stale one.
+    onSelect(null);
   };
   const toggleLayer = (id: string) =>
     setLayers((ls) => (ls.includes(id) ? ls.filter((l) => l !== id) : [...ls, id]));
@@ -317,6 +395,10 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
       // row at all (legend.ts `canToggleLayers`). Export mode passes neither, so
       // the image keeps inert rows and presets-only compilation.
       {...(expandAll ? {} : { activeLayers: layers, onToggleLayer: toggleLayer })}
+      // The leverage report's hooks: which variable was clicked, which to compare
+      // it with, the compiled signed graph, and the row to glow. Export mode
+      // passes none — nothing is clicked in a screenshot.
+      {...(leverage ? { onSelect, onCompareSelect, onCldEdges: setCldEdges, externalHighlight: focus } : {})}
       {...(plane !== undefined ? { plane } : {})}
       {...(notation !== undefined ? { notation } : {})}
       {...(layout !== undefined ? { layout } : {})}
@@ -332,15 +414,43 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
   // register never renders in export mode: the snapshot screenshots `.react-flow`
   // and frames it from __DG_BOUNDS__, measured off the canvas host, so a strip
   // below the canvas would shrink the drawing without ever appearing in the image.
-  if (!picker && !table) return view;
+  if (!picker && !table && !leverage) return view;
+  // the canvas keeps its own positioning context: the picker is placed against
+  // the drawing, not against the page with the table in it
+  const host = (
+    <div style={{ position: 'relative', flex: '1 1 0', minHeight: 0, minWidth: 0 }}>
+      {picker && <PlanePicker planes={model.planes} active={plane} onSelect={pickPlane} />}
+      {view}
+    </div>
+  );
   return (
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
-      {/* the canvas keeps its own positioning context: the picker is placed
-          against the drawing, not against the page with the table in it */}
-      <div style={{ position: 'relative', flex: '1 1 0', minHeight: 0 }}>
-        {picker && <PlanePicker planes={model.planes} active={plane} onSelect={pickPlane} />}
-        {view}
-      </div>
+      {leverage ? (
+        // The drawing and, once a variable is clicked, its report side by side.
+        // The row is there from the first render so opening the report never
+        // re-parents the canvas (see showsLeverage); pages without the notation
+        // keep the DOM they had.
+        <div style={{ display: 'flex', flexDirection: 'row', flex: '1 1 0', minHeight: 0 }}>
+          {host}
+          {target !== null && (
+            <div style={leverageColumnStyle}>
+              <LeveragePanel
+                key={target}
+                model={model}
+                edges={cldEdges}
+                target={target}
+                activeFocusKey={focus?.key ?? null}
+                onFocus={setFocus}
+                onClose={() => onSelect(null)}
+                compareId={compareId}
+                onClearCompare={() => setCompareId(null)}
+              />
+            </div>
+          )}
+        </div>
+      ) : (
+        host
+      )}
       {table && <ThreatTable model={model} {...(plane !== undefined ? { plane } : {})} />}
     </div>
   );
