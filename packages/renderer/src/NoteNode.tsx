@@ -4,6 +4,8 @@ import {
   nextThreatStatus,
   STRIDE_NAMES,
   threatTargetKey,
+  type Comment,
+  type Link,
   type Threat,
   type ThreatStatus,
   type ThreatTarget,
@@ -24,6 +26,10 @@ export interface NoteData {
    * its element still says what it is about */
   name: string;
   threats: readonly Threat[];
+  comments: readonly Comment[];
+  links: readonly Link[];
+  /** see DiagramViewProps.onOpenLink — a host that resolves links itself (Obsidian) */
+  onOpenLink?: (link: string) => void;
   /** the badge's centre in the same (parent-relative) space as the bubble's
    * position — what the saved offset is measured from (see note-drag.ts) */
   anchor: Point;
@@ -124,11 +130,15 @@ export function NoteNode({
         <span className="dg-note-name">{data.name}</span>
         {/* the header reads `open / total`, not the badge's single number: a
             bubble has the room, and the denominator is what says how much of
-            the element has been thought about */}
-        <span className="dg-note-count" data-state={counts.state} title={counts.title}>
-          {`${open} / ${data.threats.length}`}
-        </span>
+            the element has been thought about. Threat-less (comment/link-only)
+            elements show no header at all — there is no count to give. */}
+        {data.threats.length > 0 && (
+          <span className="dg-note-count" data-state={counts.state} title={counts.title}>
+            {`${open} / ${data.threats.length}`}
+          </span>
+        )}
       </div>
+      {data.threats.length > 0 && (
       <ul className="dg-note-rows">
         {data.threats.map((t) => {
           const status = t.status ?? 'open';
@@ -227,6 +237,56 @@ export function NoteNode({
           );
         })}
       </ul>
+      )}
+      {data.comments.length > 0 && (
+        <section className="dg-note-section" aria-label="Comments">
+          <h4 className="dg-note-section-title">Comments</h4>
+          <ul className="dg-note-comments">
+            {data.comments.map((c) => (
+              <li key={c.id} className="dg-note-comment">
+                <p className="dg-note-text">{c.text}</p>
+                {(c.by !== undefined || c.at !== undefined) && (
+                  <span className="dg-note-meta">{[c.by, c.at].filter((s) => s !== undefined).join(' · ')}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {data.links.length > 0 && (
+        <section className="dg-note-section" aria-label="Links">
+          <h4 className="dg-note-section-title">Links</h4>
+          <ul className="dg-note-links">
+            {data.links.map((l) => (
+              <li key={`${l.label}\u0000${l.url}`}>
+                {/* eslint-disable-next-line react/jsx-no-target-blank -- noopener
+                    alone closes the reverse-tabnabbing hole this rule guards
+                    against (blocks window.opener); DiagramNode's own link badge
+                    makes the same choice via window.open(url, '_blank', 'noopener') */}
+                <a
+                  className="dg-note-link nodrag nopan"
+                  href={l.url}
+                  target="_blank"
+                  rel="noopener"
+                  onMouseDown={stop}
+                  onPointerDown={stop}
+                  onClick={(e) => {
+                    // a click reads the link, never selects the element — and a
+                    // host that resolves links (Obsidian wikilinks) takes it over
+                    e.stopPropagation();
+                    if (data.onOpenLink !== undefined) {
+                      e.preventDefault();
+                      data.onOpenLink(l.url);
+                    }
+                  }}
+                >
+                  {l.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {data.editing && data.onAddThreat !== undefined && (
         <button
           type="button"

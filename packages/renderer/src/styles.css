@@ -323,6 +323,12 @@ button.dg-note-status:hover { background: color-mix(in srgb, var(--dg-node-strok
 .dg-note-expand { flex: none; width: 16px; height: 16px; padding: 0; border: none; background: transparent; color: inherit; font: 11px/16px system-ui, sans-serif; cursor: pointer; opacity: 0.7; }
 .dg-note-expand:hover { opacity: 1; }
 .dg-note-details { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 2px 21px; }
+.dg-note-section { margin-top: 6px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--dg-node-stroke) 35%, transparent); }
+.dg-note-section-title { margin: 0 0 4px; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dg-text-muted, #757575); }
+.dg-note-comments, .dg-note-links { list-style: none; margin: 0; padding: 0; }
+.dg-note-comment + .dg-note-comment { margin-top: 4px; }
+.dg-note-meta { display: block; font-size: 10px; color: var(--dg-text-muted, #757575); }
+.dg-note-link { color: var(--dg-accent, #3b82f6); text-decoration: underline; }
 .dg-note-text { margin: 0; font-size: 11px; line-height: 1.35; white-space: pre-wrap; }
 .dg-note-text-label { font-weight: 600; opacity: 0.75; }
 .dg-note-field { width: 100%; box-sizing: border-box; resize: vertical; font: 11px/1.35 system-ui, sans-serif; color: var(--dg-text); background: var(--dg-node-fill); border: 1px solid var(--dg-node-stroke); border-radius: 4px; padding: 3px 5px; }

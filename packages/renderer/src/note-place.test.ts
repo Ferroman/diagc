@@ -136,6 +136,19 @@ describe('estimateNoteHeight', () => {
   });
 });
 
+describe('estimateNoteHeight with comments and links', () => {
+  it('grows by a section title plus one line per short comment / link, and a meta line per attributed comment', () => {
+    const bare = estimateNoteHeight('A', [], false);
+    const one = estimateNoteHeight('A', [], false, [{ text: 'short' }], []);
+    const attributed = estimateNoteHeight('A', [], false, [{ text: 'short', by: 'Ann' }], []);
+    const linked = estimateNoteHeight('A', [], false, [], [{ label: 'L' }]);
+    expect(one).toBeGreaterThan(bare);
+    expect(attributed).toBeGreaterThan(one);
+    expect(linked).toBeGreaterThan(bare);
+    expect(estimateNoteHeight('A', [], false, [], [])).toBe(bare);
+  });
+});
+
 /** overlapping area of a bubble at `at` with a rect */
 function overlap(at: { x: number; y: number }, w: number, h: number, r: Rect): number {
   const x = Math.max(0, Math.min(at.x + w, r.x + r.width) - Math.max(at.x, r.x));
