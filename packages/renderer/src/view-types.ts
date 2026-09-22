@@ -194,6 +194,8 @@ export interface DiagramViewProps {
   snapGrid?: number;
   /** visual language; overrides registries + chrome. props.typeRegistry/kindRegistry still win wholesale. */
   notation?: NotationId;
+  /** the host's date (YYYY-MM-DD) for a plan's today line; null = draw none (exports) */
+  today?: string | null;
 }
 
 /** Edit-mode callbacks an editing host (apps/studio) wires to its command
@@ -209,8 +211,14 @@ export interface EditingApi {
   /** one or more nodes moved together — a drag of a selection, an arrow-key
    * burst, an align/distribute. Parent-relative, keyed by node id. Commit as
    * ONE undo step. When absent the renderer falls back to onNodeMoved per id,
-   * so a host that never learns the batch form keeps working. */
-  onNodesMoved?: (positions: Record<string, { x: number; y: number }>) => void;
+   * so a host that never learns the batch form keeps working.
+   * `deltas` is each node's displacement from where the layout arranged it,
+   * parent-relative — what a notation that derives positions (a plan's dates)
+   * reads instead of the position. */
+  onNodesMoved?: (
+    positions: Record<string, { x: number; y: number }>,
+    deltas: Record<string, { dx: number; dy: number }>,
+  ) => void;
   /** an in-place rename (double-click on a node) was committed */
   onRenameNode?: (id: string, name: string) => void;
   /** an in-place rich-text edit (double-click on a box label) was committed */

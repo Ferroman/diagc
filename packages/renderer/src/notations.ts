@@ -1,4 +1,4 @@
-import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanRole, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
+import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanEvent, isPlanRole, isPlanZone, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';
@@ -49,6 +49,10 @@ export interface NotationProfile {
     /** 'x' = the studio offers left/right resize handles on this node;
      * undefined = no notation resizer */
     resizable?: (n: DiagramNode) => 'x' | undefined;
+    /** a `fixed` node whose drag still means something to the host: the plan reads a
+     * zone's or event's displacement as days (`onNodesMoved` deltas). The overlay
+     * still never stores a position for it — `fixed` keeps that meaning. */
+    draggableWhenFixed?: (n: DiagramNode) => boolean;
   };
   edge?: {
     marks?: boolean;
@@ -243,6 +247,7 @@ const PLAN: NotationProfile = {
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
     badges: planBadges,
     resizable: (n) => (n.type === PLAN_ZONE_TYPE ? 'x' : undefined),
+    draggableWhenFixed: (n) => isPlanZone(n) || isPlanEvent(n),
   },
   edge: { hidden: isPlanRole },
   overlay: 'time-axis',
