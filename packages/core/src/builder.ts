@@ -1,5 +1,6 @@
 import type {
   Column,
+  Comment,
   ContainmentEdge,
   DiagramLayer,
   DiagramLegend,
@@ -10,6 +11,7 @@ import type {
   EdgeLabel,
   FontScale,
   LayerRule,
+  Link,
   NotationId,
   Polarity,
   RelationStyle,
@@ -17,6 +19,7 @@ import type {
   TextRun,
   Threat,
 } from './types';
+import { nextCommentId } from './comments';
 import { FB_CATEGORY_TYPE, FB_CAUSE_OF_KIND, FB_CAUSE_TYPE, FB_EFFECT_TYPE, FISHBONE_PRESETS, presetId, type FishbonePreset } from './fishbone';
 import { GIT_STAGE_TYPE } from './git';
 import { SO_DECISION_TYPE, SO_LEADS_TO_KIND, consequenceTypeOf, type Valence } from './second-order';
@@ -71,6 +74,10 @@ export interface NodeOpts {
   columns?: Column[];
   /** STRIDE findings (see DiagramNode.threats) */
   threats?: Threat[];
+  /** remarks shown in this node's bubble (see DiagramNode.comments) */
+  comments?: Comment[];
+  /** resources this node points at, listed in its bubble (see DiagramNode.links) */
+  links?: Link[];
 }
 
 export interface RelateOpts {
@@ -93,10 +100,19 @@ export interface RelateOpts {
   toColumn?: string;
   /** STRIDE findings (see DiagramRelation.threats) */
   threats?: Threat[];
+  /** remarks shown in this relation's bubble (see DiagramRelation.comments) */
+  comments?: Comment[];
 }
 
 /** A threat as authored: the id is synthesized (`t1`, `t2`, …) unless given. */
 export type ThreatOpts = Omit<Threat, 'id'> & { id?: string };
+
+/** A comment as authored: the id is synthesized (`c1`, `c2`, …) unless given. */
+export interface CommentOpts {
+  id?: string;
+  by?: string;
+  at?: string;
+}
 
 export interface ContainsOpts {
   /** plane the containment belongs to; defaults to the model's first-declared plane */
@@ -124,6 +140,18 @@ export class NodeRef {
    * the nodes it already has. */
   threat(opts: ThreatOpts): this {
     this.builder.addThreat({ node: this.id }, opts);
+    return this;
+  }
+
+  /** A remark on this element, shown in its bubble. */
+  comment(text: string, opts: CommentOpts = {}): this {
+    this.builder.addComment({ node: this.id }, text, opts);
+    return this;
+  }
+
+  /** A resource this element points at, listed in its bubble. */
+  link(label: string, url: string): this {
+    this.builder.addLink(this.id, { label, url });
     return this;
   }
 }
@@ -351,7 +379,7 @@ export class FishboneBuilder {
   }
 }
 
-/** A data flow: a relation ref that takes threats, the way a NodeRef does. */
+/** A data flow: a relation ref that takes threats and comments, the way a NodeRef does. */
 export class FlowRef {
   constructor(
     readonly id: string,
@@ -360,6 +388,12 @@ export class FlowRef {
 
   threat(opts: ThreatOpts): this {
     this.m.addThreat({ relation: this.id }, opts);
+    return this;
+  }
+
+  /** A remark on this flow, shown in its bubble. */
+  comment(text: string, opts: CommentOpts = {}): this {
+    this.m.addComment({ relation: this.id }, text, opts);
     return this;
   }
 }
@@ -603,6 +637,33 @@ export class ModelBuilder {
       throw new Error(`threat(): duplicate threat id '${threat.id}' on '${element.id}'`);
     }
     element.threats = [...threats, threat];
+  }
+
+  /** internal — appends a comment to the node or relation `target` names; used by
+   * NodeRef.comment() and FlowRef.comment() */
+  addComment(target: ThreatTarget, text: string, opts: CommentOpts): void {
+    const element =
+      'node' in target
+        ? this.nodes.find((n) => n.id === target.node)
+        : this.relations.find((r) => r.id === target.relation);
+    if (element === undefined) {
+      throw new Error(
+        'node' in target
+          ? `comment(): unknown node '${target.node}'`
+          : `comment(): unknown relation '${target.relation}'`,
+      );
+    }
+    const comments = element.comments ?? [];
+    const { id, ...rest } = opts;
+    // per-element ids, as threats: two elements' first comments are both c1
+    element.comments = [...comments, { id: id ?? nextCommentId(comments), text, ...rest }];
+  }
+
+  /** internal — appends a link to a node; used by NodeRef.link() */
+  addLink(nodeId: string, link: Link): void {
+    const node = this.nodes.find((n) => n.id === nodeId);
+    if (node === undefined) throw new Error(`link(): unknown node '${nodeId}'`);
+    node.links = [...(node.links ?? []), link];
   }
 
   relate(from: NodeRef, to: NodeRef, opts: RelateOpts): this {

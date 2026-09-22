@@ -55,6 +55,7 @@ export {
   type ConsequenceOpts,
   type FishboneOpts,
   type ThreatOpts,
+  type CommentOpts,
   type ElementOpts,
 } from './builder';
 export { validate, DiagramValidationError, IMAGE_REF, LIBRARY_IMAGE_REF, type ValidationIssue } from './validate';
