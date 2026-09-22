@@ -2,10 +2,14 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { model } from '@diagc/core';
-import { PlanPanel } from './PlanPanel';
+import { INDENT, PlanPanel } from './PlanPanel';
 
 function plan() {
   const m = model('p');
+  // a plain node outside the plan plane: roleCandidates walks the whole
+  // model, so this proves "people first, then other nodes" against a
+  // candidate that is neither a person nor a zone/event
+  m.node('svc', { name: 'Service' });
   const p = m.plan();
   const alice = p.person('alice', 'Alice');
   const q1 = p.zone('q1', { name: 'Q1', start: '2026-01-05', end: '2026-03-27' }).owner(alice);
@@ -28,8 +32,8 @@ describe('PlanPanel', () => {
     expect((screen.getByLabelText('End Build') as HTMLInputElement).value).toBe('2026-03-27');
     expect((screen.getByLabelText('Owner Q1') as HTMLSelectElement).value).toBe('alice');
     expect((screen.getByLabelText('Executor Q1') as HTMLSelectElement).value).toBe('');
-    expect(screen.getByLabelText('Start Build').closest('li')?.style.paddingLeft).toBe('12px');
-    expect(screen.getByLabelText('Start Q1').closest('li')?.style.paddingLeft).toBe('0px');
+    expect(screen.getByLabelText('Start Build').closest('li')?.style.paddingLeft).toBe(`${INDENT}px`);
+    expect(screen.getByLabelText('Start Q1').closest('li')?.style.paddingLeft).toBe(`${0 * INDENT}px`);
     expect((screen.getByLabelText('At M1') as HTMLInputElement).value).toBe('2026-03-02');
     expect((screen.getByLabelText('At Kickoff') as HTMLInputElement).value).toBe('2026-01-05');
   });
@@ -47,7 +51,7 @@ describe('PlanPanel', () => {
   it('role pickers list people first, then other nodes, never zones or events', () => {
     setup();
     const opts = [...(screen.getByLabelText('Owner Q1') as HTMLSelectElement).options].map((o) => o.value);
-    expect(opts).toEqual(['', 'alice']);
+    expect(opts).toEqual(['', 'alice', 'svc']);
   });
   it('quick-adds nest under the selected zone and select what they made', () => {
     const { onCommand, onSelect } = setup({ kind: 'node', id: 'build' });

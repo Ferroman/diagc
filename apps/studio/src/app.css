@@ -140,7 +140,11 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
 .node-panel textarea, .edge-panel textarea { resize: vertical; }
 /* Name grows with its line count (rows), so no manual drag-resize */
 .node-panel textarea.name-input { resize: none; overflow: hidden; line-height: 1.35; }
-.kv-row, .member-row, .field-row { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.kv-row, .member-row { align-items: center; display: flex; gap: 6px; margin-bottom: 6px; }
+/* Plan's Start/End dates and role pickers — its own rule so it can wrap
+ * without also loosening the Position/metadata/membership rows above, which
+ * stay one line at sidebar widths. */
+.field-row { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
 .field-row > input, .field-row > select { flex: 1; min-width: 0; }
 .kv-key { flex: 0 0 40%; }
 .kv-value { flex: 1; }
@@ -184,6 +188,9 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
    overflow the sidebar since a nested zone's row also carries its indent. */
 .plan-panel .plan-rows li { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; }
 .plan-panel .plan-rows input, .plan-panel .plan-rows select { flex: 1 1 auto; margin: 0; min-width: 0; width: auto; }
+/* .link-btn's own align-self: flex-start beats this row's align-items:
+ * center, leaving the name top-aligned against the taller date inputs. */
+.plan-panel .plan-rows .link-btn { align-self: center; }
 
 .so-answers { display: flex; gap: 6px; }
 .so-answers button { flex: 1; }

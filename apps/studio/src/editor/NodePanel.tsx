@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { DiagramModel, EditorCommand, FontScale, NotationId, TextAlign } from '@diagc/core';
-import { CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF, PLAN_NOTATION, TM_NOTATION, strideFor } from '@diagc/core';
+import { CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF, PLAN_NOTATION, PLAN_TYPES, TM_NOTATION, strideFor } from '@diagc/core';
 import { BUILTIN_ICON_IDS } from '@diagc/icons';
 import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { CommentsSection } from './CommentsSection';
@@ -641,7 +641,7 @@ export function NodePanel({
       {/* Same rule as threats: offered on the notation, kept on a node that
        * already carries dates so switching the plane's look strands nothing. */}
       {(notation === PLAN_NOTATION || node.metadata?.start !== undefined || node.metadata?.at !== undefined) &&
-        (node.type === 'plan-zone' || node.type === 'plan-event') && (
+        PLAN_TYPES.has(node.type ?? '') && (
           <PlanSection model={model} node={node} onCommand={onCommand} />
         )}
 

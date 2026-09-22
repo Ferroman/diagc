@@ -17,7 +17,8 @@ interface PlanPanelProps {
   today: string;
 }
 
-const INDENT = 12;
+// exported so the test derives its expectation from this value rather than a magic pixel literal
+export const INDENT = 12;
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 
 /**
