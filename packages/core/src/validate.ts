@@ -18,6 +18,7 @@ import {
   type TextRun,
 } from './types';
 import { childrenOf } from './children';
+import { isIsoDate } from './dates';
 import { FB_CATEGORY_TYPE, FB_CAUSE_TYPE, FB_EFFECT_TYPE, FISHBONE_NOTATION, fishboneParents, fishboneTree, isFishboneNode } from './fishbone';
 import { GIT_NOTATION, GIT_STAGE_TYPE, gitGraph, isGitKind, stageCommit } from './git';
 import { SECOND_ORDER_NOTATION, SO_DECISION_TYPE, consequenceOrders, isSecondOrderNode } from './second-order';
@@ -80,6 +81,11 @@ export interface ValidationIssue {
     | 'threat-category'
     | 'threat-status'
     | 'threat-severity'
+    | 'invalid-comments'
+    | 'comment-id'
+    | 'comment-text'
+    | 'comment-at'
+    | 'invalid-links'
     | 'tm-flow-boundary';
   message: string;
   ref?: string;
@@ -431,6 +437,46 @@ function validateThreats(ctx: Ctx): void {
   for (const r of m.relations) check(r.id, r.threats);
 }
 
+/** `comments` (nodes and relations) and `links` (nodes) are generic fields:
+ * checked for shape wherever they appear, the element as `ref` — the same
+ * contract as validateThreats, for the same reason (the bubble reads them
+ * unguarded). */
+function validateComments(ctx: Ctx): void {
+  const { issues, m } = ctx;
+  const comments = (ref: string, list: unknown): void => {
+    if (list === undefined) return;
+    if (!Array.isArray(list) || list.some((c) => c === null || typeof c !== 'object')) {
+      report(issues, 'invalid-comments', `'comments' on '${ref}' must be a list of comments`, ref);
+      return;
+    }
+    const seen = new Set<string>();
+    for (const c of list as Record<string, unknown>[]) {
+      const id = c.id;
+      if (typeof id !== 'string' || id === '') report(issues, 'comment-id', `A comment on '${ref}' has no id`, ref);
+      else if (seen.has(id)) report(issues, 'comment-id', `Comment id '${id}' repeats on '${ref}'`, ref);
+      else seen.add(id);
+      if (typeof c.text !== 'string' || c.text === '') report(issues, 'comment-text', `Comment '${String(id)}' on '${ref}' has no text`, ref);
+      if (c.at !== undefined && !isIsoDate(c.at)) report(issues, 'comment-at', `Comment '${String(id)}' on '${ref}': 'at' must be a YYYY-MM-DD date`, ref);
+    }
+  };
+  const links = (ref: string, list: unknown): void => {
+    if (list === undefined) return;
+    if (!Array.isArray(list) || list.some((l) => l === null || typeof l !== 'object')) {
+      report(issues, 'invalid-links', `'links' on '${ref}' must be a list of { label, url }`, ref);
+      return;
+    }
+    for (const l of list as Record<string, unknown>[]) {
+      if (typeof l.label !== 'string' || l.label === '' || typeof l.url !== 'string' || l.url === '')
+        report(issues, 'invalid-links', `A link on '${ref}' needs a non-empty label and url`, ref);
+    }
+  };
+  for (const n of m.nodes) {
+    comments(n.id, n.comments);
+    links(n.id, n.links);
+  }
+  for (const r of m.relations) comments(r.id, r.comments);
+}
+
 /** Containment cycles are checked per plane — an edge pair spanning two planes
  * is legal. Emits one `containment-cycle` issue per offending plane. */
 function validateCycles(ctx: Ctx): void {
@@ -750,6 +796,7 @@ export function validate(m: DiagramModel): ValidationIssue[] {
   validateContainment(ctx);
   validateRelations(ctx);
   validateThreats(ctx);
+  validateComments(ctx);
   validateCycles(ctx);
   validateGit(ctx);
   validateActivity(ctx);
