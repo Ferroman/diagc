@@ -8,12 +8,11 @@ import {
   type LayoutOverlay,
   type LayoutSettings,
 } from '@diagc/core';
-import type { DiagramSelection } from '@diagc/renderer';
+import type { DiagramSelection, LeverageFocus } from '@diagc/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import { getHost } from '../host';
 import { remapVisibleLayers } from '../layerMerge';
 import { unfoldedOf } from '../savedPositions';
-import type { LeverageFocus } from '../LeveragePanel';
 
 export interface UseViewOpsOptions {
   editor: EditorApi;

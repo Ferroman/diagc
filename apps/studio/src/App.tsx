@@ -5,12 +5,14 @@ import {
   DiagramView,
   isKnownStyle,
   lightTheme,
+  LeveragePanel,
   notationProfile,
   STYLE_PRESETS,
   type CanvasCommands,
   type DiagramSelection,
   type DrawTool,
   type EdgeLabelMoves,
+  type LeverageFocus,
   type LoopEdgeInput,
   type Side,
 } from '@diagc/renderer';
@@ -65,7 +67,6 @@ import { unfoldedOf, withPlaneManual, withSavedPositions } from './savedPosition
 import { uploadAsset } from './editor/images';
 import { NodePanel } from './editor/NodePanel';
 import { EdgePanel } from './editor/EdgePanel';
-import { LeveragePanel, type LeverageFocus } from './LeveragePanel';
 import { LayersPlanesPanel } from './editor/LayersPlanesPanel';
 import { GitPanel } from './editor/GitPanel';
 import { ActivityPanel } from './editor/ActivityPanel';

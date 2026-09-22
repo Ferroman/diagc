@@ -52,6 +52,7 @@ export {
   type DependencyReport,
   type DependencyDirection,
 } from './leverage';
+export { LeveragePanel, type LeveragePanelProps, type LeverageFocus } from './LeveragePanel';
 export {
   DiagramView,
   DEFAULT_ON_NODE_META_KEYS,

@@ -897,6 +897,44 @@ path.dg-loop-badge-circle {
 .dg-git-lanes { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
 .dg-git-tail { fill: none; stroke-width: 1.5; stroke-dasharray: 6 4; stroke-linecap: round; }
 
+/* ---- leverage panel: the CLD variable report (LeveragePanel.tsx) ----------- */
+/* Fills whatever box the host gives it — the studio's dock, a column beside the
+   published page's canvas — and scrolls inside it. The font is explicit for the
+   same reason the legend's is: the export shell sets none. */
+.dg-leverage {
+  background: var(--dg-surface);
+  box-sizing: border-box;
+  color: var(--dg-text);
+  font: 400 13px/1.4 system-ui, sans-serif;
+  height: 100%;
+  overflow: auto;
+  padding: 14px;
+  width: 100%;
+}
+.dg-leverage h2 { font-size: 15px; margin: 0 0 4px; }
+.dg-leverage h3 { color: var(--dg-text-muted); font-size: 12px; letter-spacing: 0.03em; margin: 0 0 6px; text-transform: uppercase; }
+.dg-leverage p { margin: 0 0 8px; }
+.dg-lev-head { align-items: center; display: flex; justify-content: space-between; }
+.dg-lev-head h3 { margin: 0; }
+.dg-lev-close { background: none; border: 1px solid var(--dg-border); border-radius: 999px; color: var(--dg-text-muted); cursor: pointer; font: inherit; font-size: 11px; line-height: 1; padding: 3px 6px; }
+.dg-lev-close:hover { border-color: var(--dg-accent); color: var(--dg-text); }
+.dg-lev-muted { color: var(--dg-text-muted); }
+.dg-lev-hint { font-size: 11px; margin: -2px 0 6px; }
+.dg-lev-section { border-top: 1px solid var(--dg-border); margin-top: 10px; padding-top: 10px; }
+.dg-lev-list { display: flex; flex-direction: column; gap: 6px; }
+.dg-lev-row { background: var(--dg-bg); border: 1px solid var(--dg-border); border-radius: 6px; color: var(--dg-text); cursor: pointer; font: inherit; padding: 6px 8px; text-align: left; }
+.dg-lev-row:hover { border-color: var(--dg-accent); }
+.dg-lev-row.active { background: color-mix(in srgb, var(--dg-accent) 12%, var(--dg-bg)); border-color: var(--dg-accent); }
+/* R/B in the badge colors, +/− in the link colors: the rows name what the canvas draws. */
+.dg-lev-kind { font-weight: 700; }
+.dg-lev-kind-R { color: var(--dg-loop-r, #22d3ee); }
+.dg-lev-kind-B { color: var(--dg-loop-b, #e879f9); }
+.dg-lev-kind-unknown { color: var(--dg-text-muted); }
+.dg-lev-sign { display: inline-block; font-weight: 700; text-align: center; width: 1em; }
+.dg-lev-pos { color: var(--dg-polarity-positive); }
+.dg-lev-neg { color: var(--dg-polarity-negative); }
+.dg-lev-mixed, .dg-lev-unknown { color: var(--dg-text-muted); }
+
 /* ---- second-order thinking: one stripe per order of consequence ------------ */
 /* z-index -1 inside the viewport's own stacking context: under the edges and
    the nodes, above the canvas background. */
