@@ -79,6 +79,24 @@ describe('planLayout', () => {
     for (const id of ['api', 'db', 'm1']) expect(r.fixed?.has(id)).toBe(true);
   });
 
+  it('schedules a node contained by two zones in the FIRST-edge zone only, never both', () => {
+    // zoneB.contains(api) is declared before zoneA.contains(api): planGraph now
+    // resolves `api` to zoneB alone, so zoneB gets a title strip and a row for
+    // it while zoneA — which never actually hosts `api` in the view — stays a
+    // bare, childless bar.
+    const m = model('dag');
+    const p = m.plan();
+    const zoneB = p.zone('zoneB', { start: '2026-01-01', end: '2026-01-10' });
+    const zoneA = p.zone('zoneA', { start: '2026-02-01', end: '2026-02-10' });
+    const api = m.node('api', { type: 'service' });
+    zoneB.contains(api);
+    zoneA.contains(api);
+    const r = planLayout(view(m.toJSON()), m.toJSON(), 'plan');
+    expect(r.geometry.get('api')).toMatchObject({ x: PAD, y: TITLE_H, width: LEAF_SIZE.width, height: LEAF_SIZE.height });
+    expect(r.geometry.get('zoneB')!.height).toBe(TITLE_H + LEAF_SIZE.height + PAD);
+    expect(r.geometry.get('zoneA')!.height).toBe(BAR_H);
+  });
+
   it('wraps a row when the next borrowed node would cross the right padding', () => {
     const m = model('w');
     const p = m.plan();

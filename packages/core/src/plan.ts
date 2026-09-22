@@ -87,7 +87,12 @@ export interface PlanGraph {
   people: string[];
   /** zone/event/borrowed node → its zone parent on the plan plane */
   parent: ReadonlyMap<string, string>;
-  /** zone → direct children on the plan plane, split by what they are */
+  /** zone → DIRECT children on the plan plane, split by what they are. A child
+   * with two zone parents (a DAG node, e.g. a service two phases both borrow)
+   * is listed under exactly ONE — the same zone `parent` resolves it to, which
+   * is also the one zone the compiled VIEW hosts it under (view/tree.ts's
+   * `host`) — never both, so the layout never schedules it relative to a box
+   * it is not actually drawn inside of. */
   children: ReadonlyMap<string, PlanChildren>;
   /** earliest start/at and latest end/at over the whole graph; undefined when nothing is dated */
   range?: PlanSpan;
@@ -97,11 +102,15 @@ export interface PlanGraph {
 
 /**
  * The plan plane's structure, derived through buildHierarchy so `containmentOf`
- * and `hides` behave exactly as the view does. A zone's children are its
- * DIRECT children on the plane; `parent` picks each child's first parent by
- * containment-EDGE declaration order — `h.parentsOf` already preserves that
- * order (the same rule `boundaryOf` uses) — filtered to the parents that are
- * zones, since a DAG child can have non-zone parents on the plane too.
+ * and `hides` behave exactly as the view does. `parent` picks each child's
+ * first zone parent by containment-EDGE declaration order — `h.parentsOf`
+ * already preserves that order (the same rule `boundaryOf` uses) — filtered to
+ * the parents that are zones, since a DAG child can have non-zone parents on
+ * the plane too. `children` is derived FROM `parent`, not from
+ * `h.childrenOf` directly: a zone's direct children are exactly the nodes
+ * `parent` resolves to it, so a DAG child (contained by two zones) lands under
+ * exactly one — the view hosts it under one parent too (view/tree.ts), and the
+ * layout must agree or it draws the child relative to a box it is not in.
  */
 export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
@@ -118,10 +127,20 @@ export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
     else if (isPlanEvent(n)) events.push(n.id);
   }
   const zoneSet = new Set(zones);
+  const parent = new Map<string, string>();
+  for (const [id, parents] of h.parentsOf) {
+    const zoneParent = parents.find((p) => zoneSet.has(p));
+    if (zoneParent !== undefined) parent.set(id, zoneParent);
+  }
+  // Per zone, its h.childrenOf list keeps that zone's own containment-edge
+  // order; filtering by `parent.get(c) === z` drops a child here when another
+  // zone earlier in ITS OWN edge order already claimed it, leaving each DAG
+  // child in exactly the one zone `parent` (and the view) picked for it.
   const children = new Map<string, PlanChildren>();
   for (const z of zones) {
     const split: PlanChildren = { zones: [], events: [], others: [] };
     for (const c of h.childrenOf.get(z) ?? []) {
+      if (parent.get(c) !== z) continue;
       const node = byId.get(c);
       if (node === undefined) continue;
       if (isPlanZone(node)) split.zones.push(c);
@@ -129,11 +148,6 @@ export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
       else split.others.push(c);
     }
     children.set(z, split);
-  }
-  const parent = new Map<string, string>();
-  for (const [id, parents] of h.parentsOf) {
-    const zoneParent = parents.find((p) => zoneSet.has(p));
-    if (zoneParent !== undefined) parent.set(id, zoneParent);
   }
   const people: string[] = [];
   for (const r of model.relations) {

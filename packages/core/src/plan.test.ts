@@ -117,6 +117,20 @@ describe('planGraph', () => {
     const g = planGraph(m.toJSON());
     expect(g.parent.get('shared')).toBe('b');
   });
+  it('lists a DAG child under its resolved parent only — never under a zone `parent` did not pick', () => {
+    // same fixture as the test above: `b -> shared` is declared before
+    // `a -> shared`, so `parent` resolves `shared` to `b`; `children` must
+    // agree, or the layout would schedule `shared` in both zones at once.
+    const m = model('dag');
+    const a = m.node('a', { type: PLAN_ZONE_TYPE, metadata: { start: '2026-01-01', end: '2026-01-10' } });
+    const b = m.node('b', { type: PLAN_ZONE_TYPE, metadata: { start: '2026-01-01', end: '2026-01-10' } });
+    const shared = m.node('shared', { type: PLAN_EVENT_TYPE, metadata: { at: '2026-01-05' } });
+    b.contains(shared);
+    a.contains(shared);
+    const g = planGraph(m.toJSON());
+    expect(g.children.get('b')).toEqual({ zones: [], events: ['shared'], others: [] });
+    expect(g.children.get('a')).toEqual({ zones: [], events: [], others: [] });
+  });
   it('spans the earliest to the latest date and sets the origin to 1 January of the first year', () => {
     const g = planGraph(fixture(), 'plan');
     expect(g.range).toEqual({ start: dayOf('2025-12-15'), end: dayOf('2026-03-27') });
