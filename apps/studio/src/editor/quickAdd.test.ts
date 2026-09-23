@@ -208,6 +208,73 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
     expect(batchOf(quickAdd(j, 'master-2', ctx({ notation: 'git-graph' }))!.command)[0]).toMatchObject({ parent: { id: 'master', plane: 'git-graph' } });
   });
 
+  describe('plan: a zone or event grows its own successor', () => {
+    function planModel(): DiagramModel {
+      const m = model('plan');
+      const p = m.plan();
+      const q1 = p.zone('q1', { name: 'Q1', start: '2026-01-01', end: '2026-01-10' });
+      q1.zone('design', { name: 'Design', start: '2026-01-01', end: '2026-01-05' });
+      p.zone('solo', { name: 'Solo', start: '2026-02-01', end: '2026-02-05' });
+      p.event('kickoff', { name: 'Kickoff', at: '2026-01-01' });
+      p.person('alice', 'Alice');
+      return m.toJSON();
+    }
+    const c = ctx({ notation: 'plan', plane: 'plan' });
+
+    it('a root zone\'s next starts the day after, runs the same length, and links back with a sync dependency', () => {
+      const j = planModel();
+      expect(quickAddLabel(j, 'solo', c)).toBe('Add the next zone');
+      const out = quickAdd(j, 'solo', c)!;
+      expect(out.beside).toBe(true);
+      const cmds = batchOf(out.command);
+      expect(cmds[0]).toMatchObject({
+        type: 'add-node',
+        node: { id: out.id, name: '', type: 'plan-zone', metadata: { start: '2026-02-06', end: '2026-02-10' } },
+      });
+      expect(cmds[0]).not.toHaveProperty('parent');
+      expect(cmds[1]).toEqual({ type: 'add-relation', from: 'solo', to: out.id, opts: { kind: 'sync' } });
+    });
+
+    it('a nested zone\'s next clamps into the parent on both edges, down to a one-day zone when the source already ends there', () => {
+      const j = planModel();
+      // design (Jan1–Jan5) inside q1 (Jan1–Jan10): next is Jan6–Jan10, fits exactly
+      const next = quickAdd(j, 'design', c)!;
+      expect(batchOf(next.command)[0]).toMatchObject({ node: { metadata: { start: '2026-01-06', end: '2026-01-10' } }, parent: { id: 'q1' } });
+      // a zone already ending at the parent's end: its next is a single day, at that end
+      const tight = planModel();
+      tight.nodes.find((n) => n.id === 'design')!.metadata = { start: '2026-01-06', end: '2026-01-10' };
+      const tightNext = quickAdd(tight, 'design', c)!;
+      expect(batchOf(tightNext.command)[0]).toMatchObject({ node: { metadata: { start: '2026-01-10', end: '2026-01-10' } } });
+    });
+
+    it('an event\'s next is 7 days later, clamped into its parent', () => {
+      const j = planModel();
+      expect(quickAddLabel(j, 'kickoff', c)).toBe('Add the next event');
+      const out = quickAdd(j, 'kickoff', c)!;
+      expect(batchOf(out.command)[0]).toMatchObject({ node: { type: 'plan-event', metadata: { at: '2026-01-08' } } });
+      const m2 = model('plan2');
+      const p2 = m2.plan();
+      const zone = p2.zone('z', { start: '2026-01-01', end: '2026-01-05' });
+      zone.event('e', { at: '2026-01-03' }); // +7 = Jan10, clamped to the zone's end, Jan5
+      const evOut = quickAdd(m2.toJSON(), 'e', c)!;
+      expect(batchOf(evOut.command)[0]).toMatchObject({ node: { metadata: { at: '2026-01-05' } }, parent: { id: 'z' } });
+    });
+
+    it('a source with an unusable span offers nothing', () => {
+      const j = planModel();
+      j.nodes.find((n) => n.id === 'q1')!.metadata = { start: '2026-01-10', end: '2026-01-01' }; // reversed: spanOf undefined
+      expect(quickAddLabel(j, 'q1', c)).toBeUndefined();
+      expect(quickAdd(j, 'q1', c)).toBeUndefined();
+    });
+
+    it('a plain node on a plan plane still gets the generic sibling, kind sync', () => {
+      const j = planModel();
+      expect(quickAddLabel(j, 'alice', c)).toBe('Add a connected node');
+      const out = quickAdd(j, 'alice', c)!;
+      expect(batchOf(out.command)[1]).toMatchObject({ opts: { kind: 'sync' } });
+    });
+  });
+
   it('unknown source: nothing', () => {
     const j = plain();
     expect(quickAddLabel(j, 'nope', ctx())).toBeUndefined();

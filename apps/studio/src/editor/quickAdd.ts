@@ -1,18 +1,26 @@
 import {
   FB_CAUSE_TYPE,
   FB_EFFECT_TYPE,
+  PLAN_EVENT_TYPE,
+  PLAN_NOTATION,
+  PLAN_ZONE_TYPE,
   TM_BOUNDARY_TYPE,
   TM_FLOW_KIND,
   TM_NOTATION,
   TM_PROCESS_TYPE,
+  atOf,
   childrenOf,
   fishboneTree,
   gitGraph,
   isFishboneNode,
+  isPlanEvent,
+  isPlanZone,
   isSecondOrderNode,
   isThreatModelNode,
+  isoOf,
   latestCommit,
   resolveContainmentPlane,
+  spanOf,
   type DiagramModel,
   type DiagramNode,
   type EditorCommand,
@@ -58,11 +66,14 @@ export interface QuickAdd {
  * hung on it. A threat model is a plain graph with typed elements, so a stray
  * node there falls to the generic sibling. A git graph grows at a lane's tip
  * (see gitLaneToGrow); branching and merging need a target lane the chip
- * cannot ask for, so they stay in the Git panel.
+ * cannot ask for, so they stay in the Git panel. A plan zone or event grows
+ * its own successor (plan-next) rather than an undated sibling that would
+ * fail `plan-missing` on save; any other plan node (a person, a borrowed
+ * container) keeps the generic sibling.
  */
-type Recipe = 'fb-category' | 'fb-cause' | 'so-then' | 'tm-flow' | 'tm-inside' | 'git-commit' | 'sibling';
+type Recipe = 'fb-category' | 'fb-cause' | 'so-then' | 'tm-flow' | 'tm-inside' | 'git-commit' | 'plan-next' | 'sibling';
 
-const LABELS: Record<Recipe, string> = {
+const LABELS: Record<Exclude<Recipe, 'plan-next'>, string> = {
   'fb-category': 'Add a category',
   'fb-cause': 'Add a cause',
   'so-then': 'And then what?',
@@ -71,6 +82,13 @@ const LABELS: Record<Recipe, string> = {
   'git-commit': 'Add a commit',
   sibling: 'Add a connected node',
 };
+
+/** `+`'s accessible name for a recipe. Every recipe has one fixed label except
+ * `plan-next`, whose text depends on what "next" means for the source — a
+ * zone's successor bar or an event's successor diamond. */
+function labelFor(recipe: Recipe, source: DiagramNode): string {
+  return recipe === 'plan-next' ? (isPlanZone(source) ? 'Add the next zone' : 'Add the next event') : LABELS[recipe];
+}
 
 /** Bands, frames and interruptible regions: the Activity panel's own furniture,
  * drawn as strips rather than boxes, and the renderer hangs no `+` on any of
@@ -92,6 +110,14 @@ function recipeFor(model: DiagramModel, source: DiagramNode, ctx: QuickAddContex
     case TM_NOTATION:
       if (source.type === TM_BOUNDARY_TYPE) return 'tm-inside';
       return isThreatModelNode(source) ? 'tm-flow' : 'sibling';
+    case PLAN_NOTATION:
+      // A zone or event with no usable dates offers nothing — plan-next reads
+      // `spanOf`/`atOf` below and has no fallback anchor to grow a successor
+      // from. Anything else on a plan plane (a person, a borrowed container)
+      // is an ordinary sibling.
+      if (isPlanZone(source)) return spanOf(source) === undefined ? undefined : 'plan-next';
+      if (isPlanEvent(source)) return atOf(source) === undefined ? undefined : 'plan-next';
+      return 'sibling';
     default:
       // The invariant: `+` and Tab are one action, so a node the renderer
       // refuses to decorate offers nothing to Tab either. Activity chrome never
@@ -141,7 +167,7 @@ export function quickAddLabel(model: DiagramModel, sourceId: string, ctx: QuickA
   const source = model.nodes.find((n) => n.id === sourceId);
   if (source === undefined) return undefined;
   const recipe = recipeFor(model, source, ctx);
-  return recipe === undefined ? undefined : LABELS[recipe];
+  return recipe === undefined ? undefined : labelFor(recipe, source);
 }
 
 /** What the `+` on `sourceId` creates, or undefined when nothing applies. */
@@ -150,7 +176,7 @@ export function quickAdd(model: DiagramModel, sourceId: string, ctx: QuickAddCon
   if (source === undefined) return undefined;
   const recipe = recipeFor(model, source, ctx);
   if (recipe === undefined) return undefined;
-  const label = LABELS[recipe];
+  const label = labelFor(recipe, source);
   switch (recipe) {
     case 'fb-category':
     case 'fb-cause': {
@@ -175,6 +201,63 @@ export function quickAdd(model: DiagramModel, sourceId: string, ctx: QuickAddCon
         id: place.id,
         beside: false,
         command: { type: 'batch', commands: [{ type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) }] },
+      };
+    }
+    case 'plan-next': {
+      // The successor's parent is the source's own — a nested zone's next
+      // zone/event stays inside the same outer zone, a root's stays a root.
+      const parentId = parentIn(model, ctx.plane, sourceId);
+      const outer = parentId !== undefined ? spanOf(model.nodes.find((n) => n.id === parentId)!) : undefined;
+      const zone = isPlanZone(source);
+      const metadata = zone
+        ? (() => {
+            const s = spanOf(source)!; // recipeFor only offers plan-next for a usable span
+            const len = s.end - s.start + 1;
+            const start = outer !== undefined ? Math.min(s.end + 1, outer.end) : s.end + 1;
+            const end = outer !== undefined ? Math.min(start + len - 1, outer.end) : start + len - 1;
+            return { start: isoOf(start), end: isoOf(end) };
+          })()
+        : (() => {
+            const next = atOf(source)! + 7; // recipeFor only offers plan-next for a usable `at`
+            return { at: isoOf(outer !== undefined ? Math.min(next, outer.end) : next) };
+          })();
+      const place = createNodeAt(model, { kind: zone ? 'zone' : 'event', plane: ctx.plane, borrowsContainment: ctx.borrowsContainment, parentId });
+      // A successor copies the source's look, the same channels a sibling
+      // does — a row of tinted zones stays tinted.
+      const look: Partial<DiagramNode> = {
+        ...(source.color !== undefined ? { color: source.color } : {}),
+        ...(source.shape !== undefined ? { shape: source.shape } : {}),
+        ...(source.image !== undefined ? { image: source.image } : {}),
+        ...(source.icon !== undefined ? { icon: source.icon } : {}),
+        ...(source.textColor !== undefined ? { textColor: source.textColor } : {}),
+      };
+      const node: DiagramNode = {
+        id: place.id,
+        name: '',
+        type: zone ? PLAN_ZONE_TYPE : PLAN_EVENT_TYPE,
+        ...look,
+        metadata,
+        ...placeTags(place, ctx.penLayer),
+      };
+      return {
+        label,
+        id: place.id,
+        // the source's row: date-locked x is ignored for a root zone/event,
+        // but the y is what keeps the successor beside it rather than under
+        // the roster; a nested successor is arranged by the layout anyway.
+        beside: true,
+        command: {
+          type: 'batch',
+          commands: [
+            { type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) },
+            {
+              type: 'add-relation',
+              from: sourceId,
+              to: place.id,
+              opts: { kind: connectKind(ctx.notation, model, sourceId, place.id), ...(ctx.penLayer !== null ? { layer: ctx.penLayer } : {}) },
+            },
+          ],
+        },
       };
     }
     case 'tm-flow':
