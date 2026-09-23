@@ -26,8 +26,10 @@ export interface NotationProfile {
    * SAVED, parent-relative positions (same gating as the overlay: none while
    * a viewer asked to ignore them, always the document while editing) — an
    * arrangement that owns its plane may honour a saved position for nodes it
-   * chooses to (the plan does, for a zone's free-form children); elk-arranged
-   * planes never receive it (see useViewLayout's `layoutPositions`). */
+   * chooses to (the plan does, for a zone's free-form children). Only reaches
+   * this function when `layoutReadsPositions` says so below; every other
+   * layout (elk, git-graph's, fishbone's) gets a stable `undefined` instead
+   * (see useViewLayout's `layoutPositions`). */
   layout?: (
     view: CompiledView,
     model: DiagramModel,
@@ -35,6 +37,13 @@ export interface NotationProfile {
     sizeHints?: ReadonlyMap<string, Size>,
     positions?: Record<string, { x: number; y: number }>,
   ) => LayoutResult;
+  /** the arrangement honours saved positions for some of its nodes and must be
+   * re-run when they change; without it the layout never sees them and a drag
+   * never re-arranges. Most notation layouts (git-graph, fishbone) ignore
+   * `positions` entirely, so leaving this unset keeps their effect from
+   * re-running on every drag the way `layoutSettings` keeps elk from re-running
+   * on one (see useViewLayout's `layoutPositions`). */
+  layoutReadsPositions?: boolean;
   /** node id → layer partition: the notation derives an ORDER for its nodes and
    * elk keeps each in it, while still doing the arranging (unlike `layout`,
    * which replaces elk). Honoured by `layered` only, so the view runs a
@@ -248,6 +257,9 @@ const PLAN: NotationProfile = {
   id: PLAN_NOTATION,
   className: 'dg-notation-plan',
   layout: planLayout,
+  // planLayout reads a zone's saved child positions (a free-form "other")
+  // and clamps them itself, so it must re-run when a drag changes them.
+  layoutReadsPositions: true,
   node: {
     alwaysExpanded: (n) => n.type === PLAN_ZONE_TYPE,
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),

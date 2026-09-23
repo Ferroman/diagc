@@ -195,4 +195,9 @@ describe('plan profile', () => {
     expect(p.node?.draggableWhenFixed?.({ id: 'p', name: 'P', type: 'person' })).toBe(false);
     expect(notationProfile('fishbone').node?.draggableWhenFixed).toBeUndefined();
   });
+  it('only the plan opts its layout into saved positions — git-graph and fishbone own a layout too but never read them', () => {
+    expect(notationProfile('plan').layoutReadsPositions).toBe(true);
+    expect(notationProfile('git-graph').layoutReadsPositions).toBeUndefined();
+    expect(notationProfile('fishbone').layoutReadsPositions).toBeUndefined();
+  });
 });

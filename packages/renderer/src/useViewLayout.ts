@@ -254,14 +254,18 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   }, [input.layout, input.model, input.plane, input.ignoreSavedPositions, input.editing]);
 
   // What a notation's own layout is handed as `positions` (NotationProfile.layout):
-  // `saved` on a plane the notation arranges itself (the plan clamps a zone
-  // child's saved spot on read — see plan-layout.ts), else a STABLE `undefined`
-  // — same object identity, the JS primitive, every render — so adding this to
-  // the effect's deps below can never make an elk plane re-run elk just because
-  // a drag rebuilt `input.layout` (and, with it, `saved`); see the
-  // `layoutSettings` rationale above for the sibling problem this mirrors.
+  // `saved` only when the profile opts in with `layoutReadsPositions` (the plan
+  // does: it clamps a zone child's saved spot on read — see plan-layout.ts),
+  // else a STABLE `undefined` — same object identity, the JS primitive, every
+  // render — so adding this to the effect's deps below can never make a layout
+  // that does NOT read positions (elk, but also git-graph's and fishbone's own
+  // arrangements, which never look at `positions`) re-run just because a drag
+  // rebuilt `input.layout` (and, with it, `saved`); see the `layoutSettings`
+  // rationale above for the sibling problem this mirrors. Gating on the flag
+  // rather than on `profile.layout !== undefined` matters precisely because
+  // most notation layouts ARE defined but never read `positions`.
   const layoutPositions = useMemo(
-    () => (input.profile.layout !== undefined ? saved : undefined),
+    () => (input.profile.layoutReadsPositions === true ? saved : undefined),
     [input.profile, saved],
   );
 
