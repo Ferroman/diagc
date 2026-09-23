@@ -1,6 +1,7 @@
 import {
   LEAF_SIZE,
   atOf,
+  dayOf,
   isPlanEvent,
   isPlanZone,
   planGraph,
@@ -81,13 +82,20 @@ export function planLayout(
   view.roots.forEach(walk);
   const hint = (id: string): Size => sizeHints?.get(id) ?? LEAF_SIZE;
   const node = (id: string): DiagramNode => byId.get(id)!;
-  const startOf = (id: string): number => spanOf(node(id))?.start ?? origin;
+  /** Where a zone's bar begins. `spanOf` gives up on a reversed or malformed
+   * span — a validation finding (`plan-span`, `plan-date`) the save reports —
+   * but the raw `start` is usually still a real date, and falling back to the
+   * ORIGIN would teleport the bar to 1 January on the keystroke that made End
+   * precede Start, dragging every nested zone and event with it. The layout's
+   * job here is to leave the bar where the user can see and fix it. */
+  const anchorOf = (n: DiagramNode): number => spanOf(n)?.start ?? dayOf(n.metadata?.start) ?? origin;
+  const startOf = (id: string): number => anchorOf(node(id));
   const byStart = (ids: readonly string[]): string[] => ids.filter((id) => shown.has(id)).sort((a, b) => startOf(a) - startOf(b));
 
   /** lays out a zone's interior (children parent-relative) and returns its size */
   const layZone = (id: string): Size => {
     const span = spanOf(node(id));
-    const start = span?.start ?? origin;
+    const start = anchorOf(node(id));
     const width = span === undefined ? DAY : (span.end - span.start + 1) * DAY;
     const kids = g.children.get(id) ?? { zones: [], events: [], others: [] };
     const zones = byStart(kids.zones);

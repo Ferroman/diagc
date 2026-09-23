@@ -146,6 +146,24 @@ describe('planLayout', () => {
     expect(r.fixed?.has('stray')).toBe(false);
   });
 
+  it('anchors a zone with a reversed span at its own start, one day wide', () => {
+    // `end < start` is a validation finding (plan-span) the save reports, and
+    // one keystroke in the End field produces it: the bar must stay under the
+    // eye that is fixing it, not fly back to the origin.
+    const m = model('broken');
+    const p = m.plan();
+    p.zone('ok', { start: '2026-01-05', end: '2026-01-10' });
+    p.zone('bad', { start: '2026-03-02', end: '2026-03-10' });
+    // the builder refuses to emit the reversed span, so break it the way the
+    // studio does: in the live model, between the keystroke and the save
+    const json = m.toJSON();
+    json.nodes.find((n) => n.id === 'bad')!.metadata!.end = '2026-02-01';
+    const r = planLayout(view(json), json, 'plan');
+    expect(r.geometry.get('bad')).toMatchObject({ x: planX(dayOf('2026-03-02')!, origin), width: DAY });
+    // and it still sorts after `ok`, by its own start rather than the origin
+    expect(r.geometry.get('bad')!.y).toBeGreaterThan(r.geometry.get('ok')!.y);
+  });
+
   it('draws an empty plan as nothing, with no origin to trip on', () => {
     const m = model('empty');
     m.plan();
