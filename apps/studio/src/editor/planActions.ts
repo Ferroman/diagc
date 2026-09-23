@@ -235,3 +235,39 @@ export function seedDates(
   if (type === PLAN_EVENT_TYPE) return { at: isoOf(day) };
   return { start: isoOf(day), end: isoOf(Math.min(day + ZONE_DAYS - 1, outer?.end ?? Infinity)) };
 }
+
+/**
+ * A node that BECOMES a plan-zone/plan-event (Properties → Type, or a library
+ * card applied to the selection) has no drop point to anchor on — only
+ * whatever containment it already has. Reuses seedDates with that existing
+ * containment's zone (planGraph's `parent`, keyed off the node's CURRENT
+ * containment on `plane`, unaffected by the retype) as the anchor, so a node
+ * already nested under a zone seeds inside that zone's span exactly as a
+ * card dropped on it would; an unnested one seeds at `today`.
+ *
+ * Validation checks plan dates on every plan-zone/plan-event node whatever
+ * the plane's own notation is (`validatePlan` in core), so this seeds
+ * whenever `type` retypes into one of those — never gated on the active
+ * plane being a `plan` notation.
+ *
+ * Returns undefined when `type` isn't a plan type, the node does not exist,
+ * or it already carries valid dates FOR THAT TYPE (kept, never overwritten —
+ * checked by applying `type` to a clone and asking spanOf/atOf, since the
+ * node's own `type` field has not changed yet at the point this runs).
+ */
+export function seedOnRetype(
+  model: DiagramModel,
+  plane: string | undefined,
+  id: string,
+  type: string | undefined,
+  today: string,
+): EditorCommand | undefined {
+  if (type !== PLAN_ZONE_TYPE && type !== PLAN_EVENT_TYPE) return undefined;
+  const node = model.nodes.find((n) => n.id === id);
+  if (node === undefined) return undefined;
+  const already = type === PLAN_ZONE_TYPE ? spanOf({ ...node, type }) !== undefined : atOf({ ...node, type }) !== undefined;
+  if (already) return undefined;
+  const parentId = planGraph(model, plane).parent.get(id);
+  const dates = seedDates(model, plane, type, { parentId }, today);
+  return dates === undefined ? undefined : { type: 'set-plan-dates', id, dates };
+}

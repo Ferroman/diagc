@@ -1,9 +1,9 @@
 import type { RefObject } from 'react';
-import { DEFAULT_IMAGE_NODE_SIZE, LEAF_SIZE, PLAN_NOTATION, errMessage, type DiagramModel, type NotationId } from '@diagc/core';
+import { DEFAULT_IMAGE_NODE_SIZE, LEAF_SIZE, PLAN_NOTATION, errMessage, type DiagramModel, type EditorCommand, type NotationId } from '@diagc/core';
 import type { DiagramSelection, LayoutApi } from '@diagc/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import { readImageSize, uploadAsset } from '../editor/images';
-import { seedDates } from '../editor/planActions';
+import { seedDates, seedOnRetype } from '../editor/planActions';
 import { entryToNode, entryToNodeDetails } from '../library/entry';
 import type { LibraryEntry } from '../library/types';
 import type { UseLibrary } from '../library/useLibrary';
@@ -214,7 +214,17 @@ export function useNodePlacement({
   const applyFromLibrary = (entry: LibraryEntry) => {
     if (selection?.kind !== 'node') return;
     const id = selection.id;
-    editor.dispatch({ type: 'set-node-details', id, details: entryToNodeDetails(entry) });
+    const details = entryToNodeDetails(entry);
+    const typeCmd: EditorCommand = { type: 'set-node-details', id, details };
+    // A card can restyle the selection straight into plan-zone/plan-event —
+    // the same missing-dates trap as a Properties → Type retype (NodePanel's
+    // commitType, the notation's OTHER no-drop-point retype path), fixed the
+    // same way: seed via seedOnRetype and batch it with the retype so undo
+    // reverts both together. Anchored on the node's EXISTING containment on
+    // `activePlane` (seedOnRetype's own planGraph lookup), since restyling
+    // changes no containment of its own.
+    const dateCmd = model !== undefined && typeof details.type === 'string' ? seedOnRetype(model, activePlane, id, details.type, today) : undefined;
+    editor.dispatch(dateCmd === undefined ? typeCmd : { type: 'batch', commands: [typeCmd, dateCmd] });
     if (entry.template.width !== undefined && entry.template.height !== undefined) {
       editor.dispatch({ type: 'set-size', nodeId: id, w: entry.template.width, h: entry.template.height });
     }

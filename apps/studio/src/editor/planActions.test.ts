@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { dayOf, isoOf, model, type DiagramModel, type EditorCommand } from '@diagc/core';
 import { PLAN_LAYOUT, planX } from '@diagc/renderer';
-import { addEvent, addPerson, addZone, planMoves, planResize, seedDates, setRole, ZONE_DAYS } from './planActions';
+import { addEvent, addPerson, addZone, planMoves, planResize, seedDates, seedOnRetype, setRole, ZONE_DAYS } from './planActions';
 
 const { DAY } = PLAN_LAYOUT;
 const d = (iso: string) => dayOf(iso)!;
@@ -161,5 +161,52 @@ describe('quick-adds', () => {
     empty.plan();
     expect(seedDates(empty.toJSON(), 'plan', 'plan-zone', { x: 500 }, '2026-05-04')).toEqual({ start: '2026-05-04', end: shift('2026-05-04', ZONE_DAYS - 1) });
     expect(seedDates(m, 'plan', 'service', { x: 5 }, '2026-05-04')).toBeUndefined();
+  });
+  it('seedOnRetype: seeds a plain node retyped into a zone or event, clamped into an existing parent, keeps dates already there, and skips a non-plan type', () => {
+    const top = roadmap();
+    top.nodes.push({ id: 'blank', name: 'Blank' });
+    // top-level: today .. today+13, no containment to anchor on
+    expect(seedOnRetype(top, 'plan', 'blank', 'plan-zone', '2026-05-04')).toEqual({
+      type: 'set-plan-dates',
+      id: 'blank',
+      dates: { start: '2026-05-04', end: shift('2026-05-04', ZONE_DAYS - 1) },
+    });
+    expect(seedOnRetype(top, 'plan', 'blank', 'plan-event', '2026-05-04')).toEqual({
+      type: 'set-plan-dates',
+      id: 'blank',
+      dates: { at: '2026-05-04' },
+    });
+
+    // nested under design (Jan 5 – Jan 30) via ordinary containment — the
+    // node's own type hasn't changed yet, but planGraph resolves its zone
+    // parent from containment alone, same as any other visible node
+    const nested = roadmap();
+    nested.nodes.push({ id: 'blank', name: 'Blank' });
+    nested.containment.push({ parent: 'design', child: 'blank', plane: 'plan' });
+    expect(seedOnRetype(nested, 'plan', 'blank', 'plan-zone', '2026-05-04')).toEqual({
+      type: 'set-plan-dates',
+      id: 'blank',
+      dates: { start: '2026-01-05', end: '2026-01-18' },
+    });
+
+    // already valid for the target type: kept, no command
+    const dated = roadmap();
+    dated.nodes.push({ id: 'z', name: 'Z', metadata: { start: '2026-01-01', end: '2026-01-05' } });
+    dated.nodes.push({ id: 'e', name: 'E', metadata: { at: '2026-01-01' } });
+    expect(seedOnRetype(dated, 'plan', 'z', 'plan-zone', '2026-05-04')).toBeUndefined();
+    expect(seedOnRetype(dated, 'plan', 'e', 'plan-event', '2026-05-04')).toBeUndefined();
+    // a HALF-dated zone (start only) is not "already dated" — spanOf needs both
+    dated.nodes.push({ id: 'half', name: 'Half', metadata: { start: '2026-01-01' } });
+    expect(seedOnRetype(dated, 'plan', 'half', 'plan-zone', '2026-05-04')).toEqual({
+      type: 'set-plan-dates',
+      id: 'half',
+      dates: { start: '2026-05-04', end: shift('2026-05-04', ZONE_DAYS - 1) },
+    });
+
+    // not a plan type, or no target type at all: no command
+    expect(seedOnRetype(top, 'plan', 'blank', 'service', '2026-05-04')).toBeUndefined();
+    expect(seedOnRetype(top, 'plan', 'blank', undefined, '2026-05-04')).toBeUndefined();
+    // unknown id: no command
+    expect(seedOnRetype(top, 'plan', 'nowhere', 'plan-zone', '2026-05-04')).toBeUndefined();
   });
 });

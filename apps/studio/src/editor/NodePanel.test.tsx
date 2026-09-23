@@ -758,6 +758,34 @@ describe('NodePanel', () => {
       );
       expect(screen.getByLabelText('End')).toBeTruthy();
     });
+
+    it('retyping into plan-zone via the Type field batches the retype with seeded dates, so undo reverts both together', () => {
+      const onCommand = vi.fn();
+      render(
+        <NodePanel model={planModel('service')} nodeId="z" activePlane={undefined} onCommand={onCommand} onClose={noop} onDeleted={noop} today="2026-05-04" />,
+      );
+      const typeInput = screen.getByLabelText('Type') as HTMLInputElement;
+      fireEvent.change(typeInput, { target: { value: 'plan-zone' } });
+      fireEvent.blur(typeInput);
+      expect(onCommand).toHaveBeenCalledWith({
+        type: 'batch',
+        commands: [
+          { type: 'set-node-details', id: 'z', details: { type: 'plan-zone' } },
+          { type: 'set-plan-dates', id: 'z', dates: { start: '2026-05-04', end: '2026-05-17' } },
+        ],
+      });
+    });
+
+    it('retyping with no `today` (e.g. an embedding with nothing plan-shaped to seed) sends the plain retype, unbatched', () => {
+      const onCommand = vi.fn();
+      render(
+        <NodePanel model={planModel('service')} nodeId="z" activePlane={undefined} onCommand={onCommand} onClose={noop} onDeleted={noop} />,
+      );
+      const typeInput = screen.getByLabelText('Type') as HTMLInputElement;
+      fireEvent.change(typeInput, { target: { value: 'plan-zone' } });
+      fireEvent.blur(typeInput);
+      expect(onCommand).toHaveBeenCalledWith({ type: 'set-node-details', id: 'z', details: { type: 'plan-zone' } });
+    });
   });
 
   it('offers Comments and Links on a plain node (unlike Threats, not gated on a notation)', () => {

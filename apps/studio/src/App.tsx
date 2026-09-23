@@ -1132,6 +1132,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         {...(live !== undefined ? { live } : {})}
                         autoFocusName={selection.id === renameId}
                         {...(notation !== undefined ? { notation } : {})}
+                        today={today}
                         onCommand={editor.dispatch}
                         onClose={() => select(null)}
                         onDeleted={() => select(null)}

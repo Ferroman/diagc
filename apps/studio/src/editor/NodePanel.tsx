@@ -6,6 +6,7 @@ import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { CommentsSection } from './CommentsSection';
 import { LinksSection } from './LinksSection';
 import { ColorRow, OptionRow } from './pickers';
+import { seedOnRetype } from './planActions';
 import { PlanSection } from './PlanSection';
 import { ThreatsSection } from './ThreatsSection';
 import { BUNDLED_LIBRARY } from '../library/packs';
@@ -47,6 +48,10 @@ interface NodePanelProps {
   autoFocusName?: boolean;
   /** active plane's notation; gates the Threats section (threat-model) */
   notation?: NotationId;
+  /** the host's date, YYYY-MM-DD: seeds a Type-field retype into plan-zone/
+   * plan-event with dates the way a canvas drop would (seedOnRetype); omitted
+   * (e.g. a test harness with nothing plan-shaped to seed) just skips seeding */
+  today?: string;
   onCommand: (command: EditorCommand) => void;
   onClose: () => void;
   onDeleted: () => void;
@@ -95,6 +100,7 @@ export function NodePanel({
   live,
   autoFocusName = false,
   notation,
+  today,
   onCommand,
   onClose,
   onDeleted,
@@ -211,7 +217,12 @@ export function NodePanel({
   const commitType = () => {
     const trimmed = type.trim();
     if (trimmed === (node.type ?? '')) return;
-    onCommand({ type: 'set-node-details', id: nodeId, details: { type: trimmed === '' ? null : trimmed } });
+    const typeCmd: EditorCommand = { type: 'set-node-details', id: nodeId, details: { type: trimmed === '' ? null : trimmed } };
+    // Retyping into plan-zone/plan-event with no dates would otherwise fail
+    // save with plan-missing — seed them the way a canvas drop does, batched
+    // with the retype so undo reverts both together.
+    const dateCmd = today !== undefined ? seedOnRetype(model, activePlane, nodeId, trimmed, today) : undefined;
+    onCommand(dateCmd === undefined ? typeCmd : { type: 'batch', commands: [typeCmd, dateCmd] });
   };
   const commitIcon = () => {
     if (icon !== (node.icon ?? ''))

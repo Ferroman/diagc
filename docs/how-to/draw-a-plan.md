@@ -6,7 +6,7 @@ A schedule: zones as date bars that nest, events as milestones, people attached 
 
 1. Create a new diagram (or add a plane to an existing one) and, in **Layers & planes**, set its **Notation** to *Plan (schedule)*.
 2. Press **Edit**. The **Plan** panel appears on the right.
-3. Drop a **Zone** from the Library's *Plan* category — it lands two weeks wide at the date under the pointer (a zone dropped inside another starts where its parent does) — and name it; drop a second zone **onto** the first to nest it.
+3. Drop a **Zone** from the Library's *Plan* category — it lands two weeks wide at the date under the pointer (a zone dropped inside another starts where its parent does), and a node retyped into a Zone or Event instead (Properties → Type, or a Plan card applied to the selection) gets the same seeding anchored at today — and name it; drop a second zone **onto** the first to nest it.
 4. Drag a bar sideways to move its dates by whole days (a nested bar stays inside its parent); drag it up or down to reorder top-level bars. Drag its left or right edge to change the start or the end.
 5. Drop an **Event** for a milestone.
 6. Add people with **Add person** in the Plan panel, then pick them as Owner / Executor / Checker on a zone — the chips `O·`, `E·`, `C·` appear on the bar, one letter per role, hover for the full name.
