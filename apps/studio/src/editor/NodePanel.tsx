@@ -639,8 +639,14 @@ export function NodePanel({
       <CommentsSection target={{ node: node.id }} comments={node.comments ?? []} onCommand={onCommand} />
 
       {/* Same rule as threats: offered on the notation, kept on a node that
-       * already carries dates so switching the plane's look strands nothing. */}
-      {(notation === PLAN_NOTATION || node.metadata?.start !== undefined || node.metadata?.at !== undefined) &&
+       * already carries dates so switching the plane's look strands nothing.
+       * Every date key counts, `end` included — half a span is reachable (clear
+       * Start here, or hand-edit the source) and is exactly the state the
+       * section exists to finish. */}
+      {(notation === PLAN_NOTATION ||
+        node.metadata?.start !== undefined ||
+        node.metadata?.end !== undefined ||
+        node.metadata?.at !== undefined) &&
         PLAN_TYPES.has(node.type ?? '') && (
           <PlanSection model={model} node={node} onCommand={onCommand} />
         )}

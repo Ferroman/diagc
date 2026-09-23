@@ -744,8 +744,19 @@ describe('NodePanel', () => {
 
       // the house rule: a zone that already carries dates keeps its editor
       // even off the plan notation, so switching planes strands nothing
-      render(<NodePanel model={zone} nodeId="z" activePlane={undefined} onCommand={vi.fn()} onClose={noop} onDeleted={noop} />);
+      const { unmount: unmount3 } = render(
+        <NodePanel model={zone} nodeId="z" activePlane={undefined} onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+      );
       expect(screen.getByLabelText('Start')).toBeTruthy();
+      unmount3();
+
+      // …including a zone whose only date is `end`: half a span is exactly the
+      // state the section exists to finish, and it is reachable (clear Start in
+      // the inspector), so the rule must read every key it offers
+      render(
+        <NodePanel model={planModel('plan-zone', { end: '2026-03-27' })} nodeId="z" activePlane={undefined} onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+      );
+      expect(screen.getByLabelText('End')).toBeTruthy();
     });
   });
 

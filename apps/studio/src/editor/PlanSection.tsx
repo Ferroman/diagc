@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { PLAN_PERSON_TYPE, PLAN_ROLES, isPlanEvent, isPlanZone, rolesOf, type DiagramModel, type DiagramNode, type EditorCommand, type PlanRole } from '@diagc/core';
 import { setRole } from './planActions';
 
@@ -13,6 +14,10 @@ export function roleCandidates(model: DiagramModel): DiagramNode[] {
 interface RolePickersProps {
   model: DiagramModel;
   zoneId: string;
+  /** every node that may hold a role, derived ONCE by the caller: the list is
+   * the same for every zone, and the Plan panel renders one of these per row —
+   * a whole-model scan per zone per keystroke otherwise. */
+  candidates: readonly DiagramNode[];
   /** appended to the select labels so a list of zones reads apart (`Owner Q1`) */
   suffix?: string;
   onCommand: (command: EditorCommand) => void;
@@ -20,9 +25,8 @@ interface RolePickersProps {
 
 /** Three selects, one per role. The panel keeps one person per role — the
  * first of the relation list when TypeScript declared several. */
-export function RolePickers({ model, zoneId, suffix, onCommand }: RolePickersProps) {
+export function RolePickers({ model, zoneId, candidates, suffix, onCommand }: RolePickersProps) {
   const roles = rolesOf(model, zoneId);
-  const candidates = roleCandidates(model);
   return (
     <>
       {PLAN_ROLES.map((role) => (
@@ -76,6 +80,9 @@ interface PlanSectionProps {
 
 /** The inspector's Plan section: a zone's span and roles, an event's date. */
 export function PlanSection({ model, node, onCommand }: PlanSectionProps) {
+  // one derivation per model, not one per render: typing in a date field
+  // re-renders the whole inspector
+  const candidates = useMemo(() => roleCandidates(model), [model]);
   const set = (dates: { start?: string; end?: string; at?: string }) => onCommand({ type: 'set-plan-dates', id: node.id, dates });
   return (
     <section className="panel-section">
@@ -87,7 +94,7 @@ export function PlanSection({ model, node, onCommand }: PlanSectionProps) {
             <DateInput label="End" value={str(node.metadata?.end)} onChange={(end) => set({ end })} />
           </div>
           <div className="field-row">
-            <RolePickers model={model} zoneId={node.id} onCommand={onCommand} />
+            <RolePickers model={model} zoneId={node.id} candidates={candidates} onCommand={onCommand} />
           </div>
         </>
       )}

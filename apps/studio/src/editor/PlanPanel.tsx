@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { PLAN_ZONE_TYPE, planGraph, type DiagramModel, type EditorCommand } from '@diagc/core';
-import type { DiagramSelection } from '@diagc/renderer';
+import { useMemo, useState } from 'react';
+import { PLAN_ZONE_TYPE, type DiagramModel, type EditorCommand } from '@diagc/core';
+import { planGraphCached, type DiagramSelection } from '@diagc/renderer';
 import { DockSection } from '../DockSection';
 import { addEvent, addPerson, addZone } from './planActions';
-import { DateInput, RolePickers } from './PlanSection';
+import { DateInput, RolePickers, roleCandidates } from './PlanSection';
 
 interface PlanPanelProps {
   model: DiagramModel;
@@ -28,7 +28,11 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '');
  * field), the row's name just selects.
  */
 export function PlanPanel({ model, plane, selection, onCommand, onSelect, today }: PlanPanelProps) {
-  const g = planGraph(model, plane);
+  // the same derivation the canvas already paid for: planGraphCached keys on
+  // (model, plane), so the panel and the layout share one graph per edit
+  const g = planGraphCached(model, plane);
+  // one whole-model scan per model, not one per zone row (RolePickers takes it)
+  const candidates = useMemo(() => roleCandidates(model), [model]);
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const [personName, setPersonName] = useState('');
   const selected = selection?.kind === 'node' && byId.get(selection.id)?.type === PLAN_ZONE_TYPE ? selection.id : undefined;
@@ -59,7 +63,7 @@ export function PlanPanel({ model, plane, selection, onCommand, onSelect, today 
                 </button>
                 <DateInput label={`Start ${n.name}`} value={str(n.metadata?.start)} onChange={(start) => set(id, { start })} />
                 <DateInput label={`End ${n.name}`} value={str(n.metadata?.end)} onChange={(end) => set(id, { end })} />
-                <RolePickers model={model} zoneId={id} suffix={n.name} onCommand={onCommand} />
+                <RolePickers model={model} zoneId={id} candidates={candidates} suffix={n.name} onCommand={onCommand} />
               </li>
             );
           })}
