@@ -1266,12 +1266,16 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         void addImages(files, position),
                       onDropLibraryEntry: dropLibraryEntry,
                       onResize: (id: string, w: number, h: number, pos: { x: number; y: number }) => {
-                        const node = model?.nodes.find((n) => n.id === id);
-                        if (notation === PLAN_NOTATION && model !== undefined && node !== undefined && isPlanZone(node)) {
-                          // a zone's width is its dates: no size is ever saved for it
-                          const command = planResize(model, activePlane, id, pos.x, w);
-                          if (command !== undefined) editor.dispatch(command);
-                          return;
+                        if (notation === PLAN_NOTATION && model !== undefined) {
+                          // the lookup scans every node, so it stays inside the
+                          // guard: every other notation resizes without it
+                          const node = model.nodes.find((n) => n.id === id);
+                          if (node !== undefined && isPlanZone(node)) {
+                            // a zone's width is its dates: no size is ever saved for it
+                            const command = planResize(model, activePlane, id, pos.x, w);
+                            if (command !== undefined) editor.dispatch(command);
+                            return;
+                          }
                         }
                         editor.dispatch({ type: 'set-size', nodeId: id, w, h });
                         // top/left-handle resizes shift the node origin — pin the

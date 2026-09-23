@@ -50,13 +50,34 @@ describe('planMoves', () => {
     expect(dates(back)[0]).toEqual({ type: 'set-plan-dates', id: 'build', dates: { start: '2026-01-05', end: shift('2026-03-27', -28) } });
     expect(dates(back)[1]).toEqual({ type: 'set-plan-dates', id: 'm1', dates: { at: shift('2026-03-02', -28) } });
   });
-  it('moves a root event by days, a nested event within its zone, and ignores people and sub-day nudges', () => {
-    const c = planMoves(roadmap(), 'plan', { kickoff: { x: 0, y: 0 }, m1: { x: 0, y: 0 }, alice: { x: 5, y: 5 } }, { kickoff: { dx: -2 * DAY, dy: 0 }, m1: { dx: 60 * DAY, dy: 0 }, alice: { dx: 50, dy: 50 } });
+  it('moves a root event by days, a nested event within its zone, and ignores sub-day nudges', () => {
+    // people are absent from the gesture on purpose: planLayout marks the
+    // roster `fixed`, so a person is never dragged and never reaches here
+    const c = planMoves(roadmap(), 'plan', { kickoff: { x: 0, y: 0 }, m1: { x: 0, y: 0 } }, { kickoff: { dx: -2 * DAY, dy: 0 }, m1: { dx: 60 * DAY, dy: 0 } });
     expect(commands(c)).toEqual([
       { type: 'set-plan-dates', id: 'kickoff', dates: { at: '2026-01-03' } },
       { type: 'set-plan-dates', id: 'm1', dates: { at: '2026-03-27' } },
     ]);
     expect(planMoves(roadmap(), 'plan', { kickoff: { x: 0, y: 0 } }, { kickoff: { dx: DAY / 3, dy: 0 } })).toBeUndefined();
+  });
+  it('a stray — a node the plane shows but no zone holds — keeps the spot it was dropped on', () => {
+    // planLayout parks a stray under the chart WITHOUT marking it `fixed`, so
+    // it is the one non-zone, non-event box a plan plane lets you drag. With no
+    // command of its own the drop snapped back on the next arrange.
+    const m = roadmap();
+    m.nodes.push({ id: 'stray', name: 'Stray', type: 'service', plane: 'plan' });
+    const c = planMoves(m, 'plan', { stray: { x: 40, y: 300 } }, { stray: { dx: 40, dy: 300 } });
+    expect(commands(c)).toEqual([{ type: 'set-position', nodeId: 'stray', x: 40, y: 300, plane: 'plan' }]);
+  });
+  it('a nested zone under a parent with unusable dates still saves no position', () => {
+    // `outer === undefined` read as "top-level", but a broken parent makes it
+    // undefined too — and the position written for the child was inert noise
+    // in the layout file. The plan graph's parent map is the honest test.
+    const m = roadmap();
+    m.nodes.find((n) => n.id === 'q1')!.metadata!.end = '2025-01-01';
+    const c = planMoves(m, 'plan', { design: { x: 0, y: 0 } }, { design: { dx: DAY, dy: 0 } });
+    expect(commands(c).some((x) => x.type === 'set-position')).toBe(false);
+    expect(dates(c)).toEqual([{ type: 'set-plan-dates', id: 'design', dates: { start: shift('2026-01-05', 1), end: shift('2026-01-30', 1) } }]);
   });
   it('a child inside a moved parent takes the parent\'s shift, never its own', () => {
     // q1 moves 1 day; build (a child, in the same gesture) reports -3 of its own —

@@ -69,8 +69,10 @@ const shiftEvent = (id: string, at: number, days: number): EditorCommand => ({ t
  * whatever its saved y was; a nested zone is clamped inside its parent, a
  * top-level one gets its derived x written back (the file then reads sanely)
  * and its y clamped below the header. People and borrowed nodes never move:
- * the roster is a list and a row is a row. Returns undefined when the gesture
- * changes nothing, so a no-op never reaches undo.
+ * the roster is a list and a row is a row, and planLayout marks both `fixed`,
+ * so no gesture reaches them. A stray — a node the plane shows that no zone
+ * holds — is NOT fixed, so it keeps the spot it was dropped on. Returns
+ * undefined when the gesture changes nothing, so a no-op never reaches undo.
  */
 export function planMoves(
   model: DiagramModel,
@@ -107,7 +109,11 @@ export function planMoves(
           shifted.add(sub);
         }
       }
-      if (outer === undefined) {
+      // "is this top-level" comes from the GRAPH, not from `outer === undefined`:
+      // a nested zone whose parent's dates are unusable has no parent SPAN
+      // either, and writing it a position only litters the layout file with a
+      // coordinate the arrangement overrides anyway.
+      if (!g.parent.has(id)) {
         out.push({ type: 'set-position', nodeId: id, x: planX(span.start + days, origin), y: Math.max(0, pos.y), ...planeOpt(plane) });
       }
     } else if (isPlanEvent(node)) {
@@ -116,6 +122,12 @@ export function planMoves(
       let days = Math.round(delta.dx / DAY);
       if (outer !== undefined) days = clamp(days, outer.start - at, outer.end - at);
       if (days !== 0) out.push(shiftEvent(id, at, days));
+    } else {
+      // Everything else on a plan plane is fixed by the layout and never
+      // dragged — except a stray, which planLayout parks under the chart and
+      // deliberately leaves loose. Its drop is the only statement of where it
+      // goes, so save it verbatim; without this the box snapped back.
+      out.push({ type: 'set-position', nodeId: id, x: pos.x, y: pos.y, ...planeOpt(plane) });
     }
   }
   return out.length === 0 ? undefined : { type: 'batch', commands: out };
