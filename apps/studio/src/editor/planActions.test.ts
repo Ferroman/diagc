@@ -111,6 +111,26 @@ describe('planMoves', () => {
     expect(commands(c)).toContainEqual({ type: 'set-position', nodeId: 'other', x: 0, y: TITLE_H, plane: 'plan' });
     expect(commands(c)).toContainEqual({ type: 'set-position', nodeId: 'stray', x: -30, y: 10, plane: 'plan' });
   });
+  it('a dateless root zone dropped N days right of the origin gets start = origin + N, and its y sticks', () => {
+    const m = roadmap();
+    m.nodes.push({ id: 'fresh', name: 'Fresh', type: 'plan-zone', plane: 'plan' });
+    const n = 10;
+    const c = planMoves(m, 'plan', { fresh: { x: planX(origin + n, origin), y: 200 } }, { fresh: { dx: 0, dy: 0 } });
+    expect(dates(c)).toEqual([{ type: 'set-plan-dates', id: 'fresh', dates: { start: isoOf(origin + n), end: isoOf(origin + n + ZONE_DAYS - 1) } }]);
+    expect(commands(c)).toContainEqual({ type: 'set-position', nodeId: 'fresh', x: planX(origin + n, origin), y: 200, plane: 'plan' });
+  });
+  it('a dateless nested zone is clamped into the parent\'s span, and saves no position', () => {
+    const m = roadmap();
+    m.nodes.push({ id: 'fresh', name: 'Fresh', type: 'plan-zone' });
+    m.containment.push({ parent: 'design', child: 'fresh', plane: 'plan' }); // design: Jan 5 – Jan 30 (26 days)
+    // dropped 40 days right of design's start: past design's end, both start and end clamp there
+    const c = planMoves(m, 'plan', { fresh: { x: 40 * DAY, y: 0 } }, { fresh: { dx: 0, dy: 0 } });
+    expect(commands(c)).toEqual([{ type: 'set-plan-dates', id: 'fresh', dates: { start: shift('2026-01-05', 25), end: shift('2026-01-05', 25) } }]);
+  });
+  it('a zone that already has dates is unaffected by the dateless-drop path', () => {
+    const c = planMoves(roadmap(), 'plan', { q1: { x: 0, y: 0 } }, { q1: { dx: DAY, dy: 0 } });
+    expect(dates(c)[0]).toMatchObject({ id: 'q1', dates: { start: shift('2026-01-05', 1) } });
+  });
 });
 
 describe('planResize', () => {

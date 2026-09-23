@@ -69,17 +69,21 @@ const shiftEvent = (id: string, at: number, days: number): EditorCommand => ({ t
  * spot, so a zone moved by seven days' worth of pixels moves seven days
  * whatever its saved y was; a nested zone is clamped inside its parent, a
  * top-level one gets its derived x written back (the file then reads sanely)
- * and its y clamped below the header. People never move: the roster is a
- * list, and a person is refused outright here (planLayout also marks it
- * `fixed`, so no gesture reaches it anyway). The final arm now serves two
- * cases: a stray — a node the plane shows that no zone holds, NOT `fixed`, so
- * it keeps the exact spot it was dropped on — and a zone's "other" child (a
- * borrowed container, a plain box: see planLayout's free-form placement),
- * clamped to the same floor the layout clamps its OWN saved position by on
- * read (x ≥ 0, y ≥ TITLE_H; the right/bottom edge needs the child's width,
- * which this function doesn't have, so that clamp stays the layout's, not
- * this write's). Returns undefined when the gesture changes nothing, so a
- * no-op never reaches undo.
+ * and its y clamped below the header. A zone with no usable span yet (just
+ * retyped, or mid-edit) is not skipped either: the drop itself supplies dates
+ * — two weeks (`ZONE_DAYS`, the same default `addZone` gives a fresh one from
+ * the panel) anchored at `pos.x`, clamped into the parent's span when nested —
+ * and a root zone still gets the `set-position` it would normally get, so its
+ * y sticks. People never move: the roster is a list, and a person is refused
+ * outright here (planLayout also marks it `fixed`, so no gesture reaches it
+ * anyway). The final arm now serves two cases: a stray — a node the plane
+ * shows that no zone holds, NOT `fixed`, so it keeps the exact spot it was
+ * dropped on — and a zone's "other" child (a borrowed container, a plain box:
+ * see planLayout's free-form placement), clamped to the same floor the
+ * layout clamps its OWN saved position by on read (x ≥ 0, y ≥ TITLE_H; the
+ * right/bottom edge needs the child's width, which this function doesn't
+ * have, so that clamp stays the layout's, not this write's). Returns
+ * undefined when the gesture changes nothing, so a no-op never reaches undo.
  */
 export function planMoves(
   model: DiagramModel,
@@ -103,7 +107,20 @@ export function planMoves(
     const outer = parentSpan(g, byId, id);
     if (isPlanZone(node)) {
       const span = spanOf(node);
-      if (span === undefined) continue;
+      if (span === undefined) {
+        const base = outer?.start ?? origin;
+        let start = base + Math.round(pos.x / DAY);
+        let end = start + ZONE_DAYS - 1;
+        if (outer !== undefined) {
+          start = clamp(start, outer.start, outer.end);
+          end = clamp(end, outer.start, outer.end);
+        }
+        out.push({ type: 'set-plan-dates', id, dates: { start: isoOf(start), end: isoOf(end) } });
+        if (!g.parent.has(id)) {
+          out.push({ type: 'set-position', nodeId: id, x: planX(start, origin), y: Math.max(0, pos.y), ...planeOpt(plane) });
+        }
+        continue;
+      }
       let days = Math.round(delta.dx / DAY);
       if (outer !== undefined) days = clamp(days, outer.start - span.start, outer.end - span.end);
       if (days !== 0) {
