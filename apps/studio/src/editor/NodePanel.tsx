@@ -50,7 +50,10 @@ interface NodePanelProps {
   notation?: NotationId;
   /** the host's date, YYYY-MM-DD: seeds a Type-field retype into plan-zone/
    * plan-event with dates the way a canvas drop would (seedOnRetype); omitted
-   * (e.g. a test harness with nothing plan-shaped to seed) just skips seeding */
+   * (e.g. a test harness with nothing plan-shaped to seed) just skips seeding.
+   * Optional only so the panel's own tests can render without it — App.tsx
+   * always passes it, and a caller that forgets it loses seeding silently,
+   * with no error, since commitType's `today !== undefined` check just skips. */
   today?: string;
   onCommand: (command: EditorCommand) => void;
   onClose: () => void;
