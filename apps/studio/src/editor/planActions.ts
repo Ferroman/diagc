@@ -70,9 +70,10 @@ const shiftEvent = (id: string, at: number, days: number): EditorCommand => ({ t
  * whatever its saved y was; a nested zone is clamped inside its parent, a
  * top-level one gets its derived x written back (the file then reads sanely)
  * and its y clamped below the header. People and borrowed nodes never move:
- * the roster is a list and a row is a row, and planLayout marks both `fixed`,
- * so no gesture reaches them. A stray — a node the plane shows that no zone
- * holds — is NOT fixed, so it keeps the spot it was dropped on. Returns
+ * the roster is a list and a row is a row — a person is refused outright here,
+ * and planLayout marks both `fixed` so no gesture reaches them anyway. A stray
+ * — a node the plane shows that no zone holds — is NOT fixed, so it keeps the
+ * spot it was dropped on. Returns
  * undefined when the gesture changes nothing, so a no-op never reaches undo.
  */
 export function planMoves(
@@ -123,11 +124,13 @@ export function planMoves(
       let days = Math.round(delta.dx / DAY);
       if (outer !== undefined) days = clamp(days, outer.start - at, outer.end - at);
       if (days !== 0) out.push(shiftEvent(id, at, days));
-    } else {
-      // Everything else on a plan plane is fixed by the layout and never
-      // dragged — except a stray, which planLayout parks under the chart and
-      // deliberately leaves loose. Its drop is the only statement of where it
-      // goes, so save it verbatim; without this the box snapped back.
+    } else if (node.type !== PLAN_PERSON_TYPE) {
+      // A stray — a node the plane shows that no zone holds. planLayout parks
+      // it under the chart and deliberately leaves it loose, so its drop is the
+      // only statement of where it goes; without this the box snapped back.
+      // A person is excluded HERE, not left to the layout's `fixed` set: the
+      // roster is a list, and "a person never moves" is this function's own
+      // contract, not a fact it borrows from whoever arranged the canvas.
       out.push({ type: 'set-position', nodeId: id, x: pos.x, y: pos.y, ...planeOpt(plane) });
     }
   }

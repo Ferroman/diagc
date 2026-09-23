@@ -50,10 +50,11 @@ describe('planMoves', () => {
     expect(dates(back)[0]).toEqual({ type: 'set-plan-dates', id: 'build', dates: { start: '2026-01-05', end: shift('2026-03-27', -28) } });
     expect(dates(back)[1]).toEqual({ type: 'set-plan-dates', id: 'm1', dates: { at: shift('2026-03-02', -28) } });
   });
-  it('moves a root event by days, a nested event within its zone, and ignores sub-day nudges', () => {
-    // people are absent from the gesture on purpose: planLayout marks the
-    // roster `fixed`, so a person is never dragged and never reaches here
-    const c = planMoves(roadmap(), 'plan', { kickoff: { x: 0, y: 0 }, m1: { x: 0, y: 0 } }, { kickoff: { dx: -2 * DAY, dy: 0 }, m1: { dx: 60 * DAY, dy: 0 } });
+  it('moves a root event by days, a nested event within its zone, and ignores people and sub-day nudges', () => {
+    // `alice` is in the gesture on purpose: planLayout marks the roster `fixed`
+    // so she is never dragged, but the contract is planMoves' own — a person
+    // yields nothing here whatever the layout decides
+    const c = planMoves(roadmap(), 'plan', { kickoff: { x: 0, y: 0 }, m1: { x: 0, y: 0 }, alice: { x: 5, y: 5 } }, { kickoff: { dx: -2 * DAY, dy: 0 }, m1: { dx: 60 * DAY, dy: 0 }, alice: { dx: 50, dy: 50 } });
     expect(commands(c)).toEqual([
       { type: 'set-plan-dates', id: 'kickoff', dates: { at: '2026-01-03' } },
       { type: 'set-plan-dates', id: 'm1', dates: { at: '2026-03-27' } },
