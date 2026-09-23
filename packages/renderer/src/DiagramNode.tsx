@@ -115,11 +115,13 @@ const sideHandles = (
 );
 
 /** accent-colored border + subtle same-color fill; undefined color = registry
- * look. The tint strength is --dg-node-accent-tint (ThemeTokens.nodeAccentTint)
- * — one theme-tuned percentage shared by every accented root (a plan zone's
- * bar included), so the dark theme reads a step stronger without this
- * function knowing who is drawing. The literal 14% fallback keeps a caller
- * that renders before the theme's vars land (e.g. a bare-DOM smoke test). */
+ * look. --dg-node-accent-tint is a HOOK, not a theme token of its own: no
+ * theme sets it globally, so it is undefined almost everywhere and the
+ * literal 14% fallback — today's one shared look, unchanged in both themes —
+ * is what every ordinary accented node gets. A notation opts a root INTO a
+ * theme-tuned strength by setting the var on that root's own selector in
+ * styles.css (today only the plan zone does, via ThemeTokens.planZoneTint);
+ * this function stays ignorant of which notation, if any, did that. */
 function accentStyle(color: string | undefined): CSSProperties | undefined {
   if (color === undefined) return undefined;
   return {

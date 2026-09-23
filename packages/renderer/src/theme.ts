@@ -28,9 +28,8 @@ export interface ThemeTokens {
   ink: string;
   /** the laser pointer's trail — one red for both themes, so it reads on any background */
   laser: string;
-  /** a coloured node's fill tint strength (color-mix % against --dg-node-fill),
-   * e.g. a plan zone's bar — one shared strength for every accented node */
-  nodeAccentTint: string;
+  /** a plan zone's bar tint strength (color-mix % against --dg-node-fill) */
+  planZoneTint: string;
   /** the plan time-axis header band's tint strength (color-mix % against --dg-text) */
   planAxisBand: string;
   /** the plan time-axis grid lines' tint strength (color-mix % against --dg-text) */
@@ -76,7 +75,7 @@ export const lightTheme: ThemeTokens = {
   laser: '#ff2d55',
   // Light was tuned by hand and is the approved look — these reproduce its
   // exact current colours/strengths so the committed PNGs render unchanged.
-  nodeAccentTint: '14%',
+  planZoneTint: '14%',
   planAxisBand: '4%',
   planAxisGrid: '8%',
   planAxisTick: '#d9dde3', // == lightTheme.border, the old literal the rule read
@@ -114,7 +113,7 @@ export const darkTheme: ThemeTokens = {
   laser: '#ff2d55',
   // A step stronger/brighter than the light values above — tuned against the
   // dark canvas (#12161b), where the light strengths measured near-invisible.
-  nodeAccentTint: '24%',
+  planZoneTint: '24%',
   planAxisBand: '9%',
   planAxisGrid: '13%',
   planAxisTick: '#4c5a6b',

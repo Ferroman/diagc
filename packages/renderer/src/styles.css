@@ -1072,9 +1072,15 @@ path.dg-loop-badge-circle {
 /* a zone is a solid bar with a thick left edge; its tint comes from the node's
    own colour through the inline accent every root already carries, so the rule
    only reshapes the box. The group and the leaf branch share it because a zone
-   is a leaf until it has rows. */
+   is a leaf until it has rows.
+   --dg-node-accent-tint here sets accentStyle()'s hook (DiagramNode.tsx) ON
+   THIS ELEMENT: the inline style it carries reads that var at paint time, so
+   only a zone root gets ThemeTokens.planZoneTint's theme-tuned strength —
+   every other accented node still falls back to accentStyle()'s own literal
+   14%, unchanged in both themes. */
 .dg-notation-plan .dg-group[data-type='plan-zone'],
 .dg-notation-plan .dg-node[data-type='plan-zone'] {
+  --dg-node-accent-tint: var(--dg-plan-zone-tint);
   border-style: solid;
   border-left-width: 3px;
   border-radius: 6px;
