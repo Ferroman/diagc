@@ -1,4 +1,4 @@
-import { PLAN_ROLES, isPlanEvent, isPlanZone, rolesOf, type DiagramModel, type DiagramNode, type EditorCommand, type PlanRole } from '@diagc/core';
+import { PLAN_PERSON_TYPE, PLAN_ROLES, isPlanEvent, isPlanZone, rolesOf, type DiagramModel, type DiagramNode, type EditorCommand, type PlanRole } from '@diagc/core';
 import { setRole } from './planActions';
 
 const ROLE_TITLE: Record<PlanRole, string> = { owns: 'Owner', executes: 'Executor', checks: 'Checker' };
@@ -6,8 +6,8 @@ const ROLE_TITLE: Record<PlanRole, string> = { owns: 'Owner', executes: 'Executo
 /** Candidates for a role: people first, then anything that is not a zone or
  * an event — any node can hold a role, but a person is the usual answer. */
 export function roleCandidates(model: DiagramModel): DiagramNode[] {
-  const rest = model.nodes.filter((n) => n.type !== 'person' && !isPlanZone(n) && !isPlanEvent(n));
-  return [...model.nodes.filter((n) => n.type === 'person'), ...rest];
+  const rest = model.nodes.filter((n) => n.type !== PLAN_PERSON_TYPE && !isPlanZone(n) && !isPlanEvent(n));
+  return [...model.nodes.filter((n) => n.type === PLAN_PERSON_TYPE), ...rest];
 }
 
 interface RolePickersProps {

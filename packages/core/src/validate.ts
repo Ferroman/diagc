@@ -816,16 +816,23 @@ function validatePlan(ctx: Ctx): void {
     }
   }
   const plane = ctx.planes.find((p) => (p.notation ?? m.notation) === PLAN_NOTATION);
-  const g = planGraph(m, plane?.id);
   const byId = new Map(m.nodes.map((n) => [n.id, n] as const));
-  for (const [child, parentId] of g.parent) {
-    const outer = spanOf(byId.get(parentId)!);
-    const node = byId.get(child)!;
-    if (outer === undefined) continue;
-    const inner = spanOf(node) ?? (atOf(node) !== undefined ? { start: atOf(node)!, end: atOf(node)! } : undefined);
-    if (inner === undefined) continue;
-    if (inner.start < outer.start || inner.end > outer.end) {
-      report(issues, 'plan-nested', `'${child}' lies outside its zone '${parentId}' (${String(byId.get(parentId)!.metadata?.start)} … ${String(byId.get(parentId)!.metadata?.end)})`, child);
+  // `planGraph` is a full `buildHierarchy`, and this function runs on EVERY
+  // model — validateGit and validateFishbone return before their derivations,
+  // but this one cannot, because dates are checked whatever the notation. So
+  // the graph is paid for only where there is something to nest; the date loop
+  // above and the role-target loop below never touch it.
+  if (m.nodes.some((n) => isPlanZone(n) || isPlanEvent(n))) {
+    const g = planGraph(m, plane?.id);
+    for (const [child, parentId] of g.parent) {
+      const outer = spanOf(byId.get(parentId)!);
+      const node = byId.get(child)!;
+      if (outer === undefined) continue;
+      const inner = spanOf(node) ?? (atOf(node) !== undefined ? { start: atOf(node)!, end: atOf(node)! } : undefined);
+      if (inner === undefined) continue;
+      if (inner.start < outer.start || inner.end > outer.end) {
+        report(issues, 'plan-nested', `'${child}' lies outside its zone '${parentId}' (${String(byId.get(parentId)!.metadata?.start)} … ${String(byId.get(parentId)!.metadata?.end)})`, child);
+      }
     }
   }
   const modelLevel = plane === undefined && ctx.planes.length === 0 && m.notation === PLAN_NOTATION;

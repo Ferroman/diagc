@@ -33,7 +33,7 @@ import {
   type ThreatTarget,
 } from './threat-model';
 import { DiagramValidationError, validate } from './validate';
-import { PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ZONE_TYPE, type PlanRole } from './plan';
+import { PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_PERSON_TYPE, PLAN_ZONE_TYPE, type PlanRole } from './plan';
 
 export interface NodeOpts {
   type?: string;
@@ -530,7 +530,7 @@ export class PlanBuilder {
    * spreads after `plane: this.plane`, so a merely-overridden plane would
    * silently win over the forced one. */
   person(id: string, name?: string, opts: Omit<ElementOpts, 'plane'> = {}): NodeRef {
-    return this.m.node(id, { type: 'person', plane: this.plane, ...(name !== undefined ? { name } : {}), ...opts });
+    return this.m.node(id, { type: PLAN_PERSON_TYPE, plane: this.plane, ...(name !== undefined ? { name } : {}), ...opts });
   }
 }
 

@@ -1,5 +1,6 @@
 import {
   PLAN_EVENT_TYPE,
+  PLAN_PERSON_TYPE,
   PLAN_ZONE_TYPE,
   atOf,
   dayOf,
@@ -199,7 +200,7 @@ export function addEvent(model: DiagramModel, plane: string | undefined, opts: {
 
 export function addPerson(model: DiagramModel, plane: string | undefined, name: string): { command: EditorCommand; id: string } {
   const id = uniqueNodeId(model, name);
-  return { id, command: { type: 'add-node', node: { id, name, type: 'person', ...planeOpt(plane) } } };
+  return { id, command: { type: 'add-node', node: { id, name, type: PLAN_PERSON_TYPE, ...planeOpt(plane) } } };
 }
 
 /** The panel offers one person per role per zone (the model allows more, from

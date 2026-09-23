@@ -10,6 +10,14 @@ export const PLAN_NOTATION = 'plan' as const;
  * sits inside a zone is scheduled in it. */
 export const PLAN_ZONE_TYPE = 'plan-zone' as const;
 export const PLAN_EVENT_TYPE = 'plan-event' as const;
+/** The type a person carries. Deliberately the generic `person` type, not a
+ * `plan-person` of its own — a person is an ordinary node the plan merely
+ * reads, and keeps its pill on every other notation. It is named here because
+ * the builder, the roster layout, the studio's quick-add and the role pickers
+ * all key on it, and a literal in four packages is a drift waiting to happen.
+ * It is NOT in `PLAN_TYPES`: that set gates the inspector's date fields, and a
+ * person has no dates. */
+export const PLAN_PERSON_TYPE = 'person' as const;
 export const PLAN_TYPES: ReadonlySet<string> = new Set([PLAN_ZONE_TYPE, PLAN_EVENT_TYPE]);
 export const isPlanZone = (n: DiagramNode): boolean => n.type === PLAN_ZONE_TYPE;
 export const isPlanEvent = (n: DiagramNode): boolean => n.type === PLAN_EVENT_TYPE;

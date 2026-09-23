@@ -1,5 +1,6 @@
 import {
   LEAF_SIZE,
+  PLAN_PERSON_TYPE,
   atOf,
   dayOf,
   isPlanEvent,
@@ -153,7 +154,7 @@ export function planLayout(
   // the roster: people with roles first, then every other person root; a
   // list, not a picture, so neither axis is the overlay's
   const rootSet = new Set(roots);
-  const roster = [...g.people, ...roots.filter((id) => node(id).type === 'person')].filter((id, i, all) => rootSet.has(id) && all.indexOf(id) === i);
+  const roster = [...g.people, ...roots.filter((id) => node(id).type === PLAN_PERSON_TYPE)].filter((id, i, all) => rootSet.has(id) && all.indexOf(id) === i);
   let ry = 0;
   for (const id of roster) {
     const size = hint(id);
