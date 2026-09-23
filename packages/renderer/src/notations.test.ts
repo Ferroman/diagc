@@ -187,10 +187,11 @@ describe('plan profile', () => {
       expect(p.edge?.hidden).toBeUndefined();
     }
   });
-  it('lets a fixed zone or event be dragged (the gesture becomes days), never a person', () => {
+  it('lets a fixed zone, event or free-form child be dragged (the gesture becomes days, or a clamped drop), never a person', () => {
     const p = notationProfile('plan');
     expect(p.node?.draggableWhenFixed?.({ id: 'z', name: 'Z', type: 'plan-zone' })).toBe(true);
     expect(p.node?.draggableWhenFixed?.({ id: 'e', name: 'E', type: 'plan-event' })).toBe(true);
+    expect(p.node?.draggableWhenFixed?.({ id: 'o', name: 'O', type: 'service' })).toBe(true);
     expect(p.node?.draggableWhenFixed?.({ id: 'p', name: 'P', type: 'person' })).toBe(false);
     expect(notationProfile('fishbone').node?.draggableWhenFixed).toBeUndefined();
   });

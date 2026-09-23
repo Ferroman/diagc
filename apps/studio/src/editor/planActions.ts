@@ -20,7 +20,7 @@ import {
 } from '@diagc/core';
 import { PLAN_LAYOUT, planX } from '@diagc/renderer';
 
-const { DAY } = PLAN_LAYOUT;
+const { DAY, TITLE_H } = PLAN_LAYOUT;
 /** a fresh zone spans two weeks */
 export const ZONE_DAYS = 14;
 
@@ -69,12 +69,17 @@ const shiftEvent = (id: string, at: number, days: number): EditorCommand => ({ t
  * spot, so a zone moved by seven days' worth of pixels moves seven days
  * whatever its saved y was; a nested zone is clamped inside its parent, a
  * top-level one gets its derived x written back (the file then reads sanely)
- * and its y clamped below the header. People and borrowed nodes never move:
- * the roster is a list and a row is a row — a person is refused outright here,
- * and planLayout marks both `fixed` so no gesture reaches them anyway. A stray
- * — a node the plane shows that no zone holds — is NOT fixed, so it keeps the
- * spot it was dropped on. Returns
- * undefined when the gesture changes nothing, so a no-op never reaches undo.
+ * and its y clamped below the header. People never move: the roster is a
+ * list, and a person is refused outright here (planLayout also marks it
+ * `fixed`, so no gesture reaches it anyway). The final arm now serves two
+ * cases: a stray — a node the plane shows that no zone holds, NOT `fixed`, so
+ * it keeps the exact spot it was dropped on — and a zone's "other" child (a
+ * borrowed container, a plain box: see planLayout's free-form placement),
+ * clamped to the same floor the layout clamps its OWN saved position by on
+ * read (x ≥ 0, y ≥ TITLE_H; the right/bottom edge needs the child's width,
+ * which this function doesn't have, so that clamp stays the layout's, not
+ * this write's). Returns undefined when the gesture changes nothing, so a
+ * no-op never reaches undo.
  */
 export function planMoves(
   model: DiagramModel,
@@ -125,13 +130,24 @@ export function planMoves(
       if (outer !== undefined) days = clamp(days, outer.start - at, outer.end - at);
       if (days !== 0) out.push(shiftEvent(id, at, days));
     } else if (node.type !== PLAN_PERSON_TYPE) {
-      // A stray — a node the plane shows that no zone holds. planLayout parks
-      // it under the chart and deliberately leaves it loose, so its drop is the
-      // only statement of where it goes; without this the box snapped back.
+      // Two cases share this arm. A stray — a node the plane shows that no
+      // zone holds — is unclamped: planLayout parks it under the chart and
+      // deliberately leaves it loose, so its drop is the only statement of
+      // where it goes; without this the box snapped back. A zone's "other"
+      // child (free-form placement — see planLayout) IS clamped, the same floor the
+      // layout clamps its saved position by on read — `g.parent.has(id)` is
+      // what tells the two apart, the same test the zone branch above uses.
       // A person is excluded HERE, not left to the layout's `fixed` set: the
       // roster is a list, and "a person never moves" is this function's own
       // contract, not a fact it borrows from whoever arranged the canvas.
-      out.push({ type: 'set-position', nodeId: id, x: pos.x, y: pos.y, ...planeOpt(plane) });
+      const nested = g.parent.has(id);
+      out.push({
+        type: 'set-position',
+        nodeId: id,
+        x: nested ? Math.max(0, pos.x) : pos.x,
+        y: nested ? Math.max(TITLE_H, pos.y) : pos.y,
+        ...planeOpt(plane),
+      });
     }
   }
   return out.length === 0 ? undefined : { type: 'batch', commands: out };

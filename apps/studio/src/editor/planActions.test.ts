@@ -3,7 +3,7 @@ import { dayOf, isoOf, model, type DiagramModel, type EditorCommand } from '@dia
 import { PLAN_LAYOUT, planX } from '@diagc/renderer';
 import { addEvent, addPerson, addZone, planMoves, planResize, seedDates, seedOnRetype, setRole, ZONE_DAYS } from './planActions';
 
-const { DAY } = PLAN_LAYOUT;
+const { DAY, TITLE_H } = PLAN_LAYOUT;
 const d = (iso: string) => dayOf(iso)!;
 const shift = (iso: string, days: number) => isoOf(d(iso) + days);
 
@@ -97,6 +97,19 @@ describe('planMoves', () => {
   });
   it('a sub-day nudge on a nested zone is undefined, not an empty batch', () => {
     expect(planMoves(roadmap(), 'plan', { design: { x: 0, y: 0 } }, { design: { dx: DAY / 4, dy: 0 } })).toBeUndefined();
+  });
+  it('clamps a nested "other" child inside its zone (x ≥ 0, y ≥ TITLE_H); a stray is never clamped', () => {
+    const m = roadmap();
+    m.nodes.push({ id: 'other', name: 'Other', type: 'service' }, { id: 'stray', name: 'Stray', type: 'service', plane: 'plan' });
+    m.containment.push({ parent: 'build', child: 'other', plane: 'plan' });
+    const c = planMoves(
+      m,
+      'plan',
+      { other: { x: -30, y: 10 }, stray: { x: -30, y: 10 } },
+      { other: { dx: -30, dy: 10 }, stray: { dx: -30, dy: 10 } },
+    );
+    expect(commands(c)).toContainEqual({ type: 'set-position', nodeId: 'other', x: 0, y: TITLE_H, plane: 'plan' });
+    expect(commands(c)).toContainEqual({ type: 'set-position', nodeId: 'stray', x: -30, y: 10, plane: 'plan' });
   });
 });
 

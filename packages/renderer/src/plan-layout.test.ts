@@ -111,6 +111,50 @@ describe('planLayout', () => {
     expect(r.geometry.get('z')!.height).toBe(TITLE_H + 20 + ROW_GAP + 20 + PAD);
   });
 
+  it('draws a positioned "other" at its clamped spot, skips its flow slot, and grows the bar to cover it', () => {
+    const m = roadmap();
+    const width = days('2026-02-02', '2026-03-27') * DAY;
+    // x is way past the right wall (clamps to the last column the child fits
+    // in), y is well below the title strip (no clamp needed, but deep enough
+    // that only the positioned child's bottom, not the flow's, sets the height)
+    const positions = { api: { x: width + 500, y: 300 } };
+    const r = planLayout(view(m), m, 'plan', undefined, positions);
+    const api = r.geometry.get('api')!;
+    expect(api).toMatchObject({ x: width - LEAF_SIZE.width, y: 300, width: LEAF_SIZE.width, height: LEAF_SIZE.height });
+    // db is the only node left to flow: it takes api's old (first) slot, not a second one
+    expect(r.geometry.get('db')).toMatchObject({ x: PAD, y: TITLE_H });
+    expect(r.geometry.get('build')!.height).toBe(300 + LEAF_SIZE.height + PAD);
+    expect(r.fixed?.has('api')).toBe(true);
+  });
+
+  it('clamps a positioned "other" inside the bar: x to [0, width - its width], y to at least the title strip', () => {
+    const m = roadmap();
+    const width = days('2026-02-02', '2026-03-27') * DAY;
+    const negative = planLayout(view(m), m, 'plan', undefined, { api: { x: -50, y: 0 } });
+    expect(negative.geometry.get('api')).toMatchObject({ x: 0, y: TITLE_H });
+    const overRight = planLayout(view(m), m, 'plan', undefined, { api: { x: width + 1000, y: TITLE_H } });
+    expect(overRight.geometry.get('api')).toMatchObject({ x: width - LEAF_SIZE.width, y: TITLE_H });
+  });
+
+  it('ignores a saved position for anything but an "other": a nested zone, an event, a person', () => {
+    const m = roadmap();
+    const plain = planLayout(view(m), m, 'plan');
+    const positioned = planLayout(view(m), m, 'plan', undefined, {
+      design: { x: 999, y: 999 },
+      m1: { x: 999, y: 999 },
+      alice: { x: 999, y: 999 },
+    });
+    for (const id of ['design', 'm1', 'alice']) expect(positioned.geometry.get(id)).toEqual(plain.geometry.get(id));
+  });
+
+  it('is byte-identical to today when there are no saved child positions', () => {
+    const m = roadmap();
+    const withoutArg = planLayout(view(m), m, 'plan');
+    const withEmptyMap = planLayout(view(m), m, 'plan', undefined, {});
+    expect(withEmptyMap.geometry).toEqual(withoutArg.geometry);
+    expect(withEmptyMap.fixed).toEqual(withoutArg.fixed);
+  });
+
   it('a zone whose only children are events keeps a bare title strip', () => {
     const m = model('e');
     const p = m.plan();

@@ -25,11 +25,13 @@ const GEOMETRY = new Map<string, NodeGeometry>([
 ]);
 
 /** notation-owned arrangement: synchronous, deterministic, no elk involved */
-function notationLayoutProfile(spy?: (hints: ReadonlyMap<string, Size> | undefined) => void): NotationProfile {
+function notationLayoutProfile(
+  spy?: (hints: ReadonlyMap<string, Size> | undefined, positions: Record<string, { x: number; y: number }> | undefined) => void,
+): NotationProfile {
   return {
     id: 'default',
-    layout: (_view, _m, _plane, sizeHints) => {
-      spy?.(sizeHints);
+    layout: (_view, _m, _plane, sizeHints, positions) => {
+      spy?.(sizeHints, positions);
       return { geometry: GEOMETRY, routes: new Map(), labelSpots: new Map(), algorithm: 'notation' };
     },
   };
@@ -184,6 +186,37 @@ describe('useViewLayout', () => {
     const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), { initialProps: inputFor(fixture()) });
     await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
     expect(result.current.fixed.size).toBe(0);
+  });
+
+  it('hands a notation-owned layout the plane\'s saved positions, gated the same way as the overlay', async () => {
+    const spy = vi.fn();
+    const m = fixture();
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 40, y: 5 } } } };
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile: notationLayoutProfile(spy), layout }),
+    });
+    await waitFor(() => expect(result.current.geometry).not.toBeNull());
+    expect(spy.mock.calls[0]?.[1]).toEqual({ box: { x: 40, y: 5 } });
+    // a viewer who asked to ignore saved positions gets none, same as the overlay path
+    rerender(inputFor(m, { profile: notationLayoutProfile(spy), layout, ignoreSavedPositions: true }));
+    await waitFor(() => expect(spy.mock.calls.length).toBeGreaterThan(1));
+    expect(spy.mock.calls[spy.mock.calls.length - 1]?.[1]).toEqual({});
+  });
+
+  it('never hands positions to elk: an elk plane\'s layoutView call carries no positions argument', async () => {
+    const elkSpy = vi.spyOn(layoutModule, 'layoutView');
+    const m = fixture();
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 40, y: 5 } } } };
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile: notationProfile(), layout }),
+    });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    expect(elkSpy).toHaveBeenCalled();
+    // layoutView's signature (compiled, sizes, settings, options?) never grows a
+    // fifth "positions" argument — only a notation that owns its arrangement
+    // reads saved positions, and it bypasses layoutView entirely.
+    expect(elkSpy.mock.calls[0]).toHaveLength(4);
+    elkSpy.mockRestore();
   });
 
   it('names the scene its arrangement belongs to — the old one, until the new layout lands', async () => {

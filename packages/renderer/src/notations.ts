@@ -1,4 +1,4 @@
-import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanEvent, isPlanRole, isPlanZone, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
+import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_PERSON_TYPE, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanRole, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';
@@ -22,12 +22,18 @@ export interface NotationProfile {
   kindStyles?: Record<string, KindStyle>;
   edgeCurvature?: number;
   /** the plane's arrangement, replacing elk entirely: pure, synchronous, and
-   * expected to place every node the view shows */
+   * expected to place every node the view shows. `positions` is the plane's
+   * SAVED, parent-relative positions (same gating as the overlay: none while
+   * a viewer asked to ignore them, always the document while editing) — an
+   * arrangement that owns its plane may honour a saved position for nodes it
+   * chooses to (the plan does, for a zone's free-form children); elk-arranged
+   * planes never receive it (see useViewLayout's `layoutPositions`). */
   layout?: (
     view: CompiledView,
     model: DiagramModel,
     plane: string | undefined,
     sizeHints?: ReadonlyMap<string, Size>,
+    positions?: Record<string, { x: number; y: number }>,
   ) => LayoutResult;
   /** node id → layer partition: the notation derives an ORDER for its nodes and
    * elk keeps each in it, while still doing the arranging (unlike `layout`,
@@ -247,7 +253,11 @@ const PLAN: NotationProfile = {
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
     badges: planBadges,
     resizable: (n) => (n.type === PLAN_ZONE_TYPE ? 'x' : undefined),
-    draggableWhenFixed: (n) => isPlanZone(n) || isPlanEvent(n),
+    // Everything fixed drags except a person: a zone's or event's drag reads
+    // as a date change (planMoves), and a zone's free-form "other" child
+    // drags to a new spot within the bar the same layout clamps on read. The
+    // roster is a list — a person never moves.
+    draggableWhenFixed: (n) => n.type !== PLAN_PERSON_TYPE,
   },
   edge: { hidden: isPlanRole },
   overlay: 'time-axis',

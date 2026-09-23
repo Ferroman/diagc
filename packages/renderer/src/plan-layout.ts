@@ -58,13 +58,18 @@ export const planX = (day: number, origin: number): number => (day - origin) * P
  * The plan arrangement, in place of elk. x is a date, always; y is automatic
  * inside a zone (rows) and free for a top-level zone (the overlay's y wins —
  * see LayoutResult.lockedX). Everything but a top-level zone or a stray is
- * `fixed`, so a stale overlay position can never pull a row out of its zone.
+ * `fixed`: a nested zone, an event and a flowed "other" so a stale overlay
+ * position can never pull a row out of its zone, and a POSITIONED "other" too
+ * — there the layout itself reads and clamps the saved spot (see `positions`
+ * below), so `fixed` instead keeps the generic overlay pass from re-applying
+ * the raw, unclamped value on top.
  */
 export function planLayout(
   view: CompiledView,
   model: DiagramModel,
   plane: string | undefined,
   sizeHints?: ReadonlyMap<string, Size>,
+  positions?: Record<string, { x: number; y: number }>,
 ): LayoutResult {
   const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT, HEADER_H, ROSTER_W, ROSTER_GAP } = PLAN_LAYOUT;
   const g = planGraphCached(model, plane);
@@ -110,10 +115,32 @@ export function planLayout(
       fixed.add(c);
       y += size.height + ROW_GAP;
     }
-    // borrowed nodes flow left to right inside the padding, wrapping like text
+    // An "other" with a saved position (a plain box, a note, a borrowed C4
+    // container the author dragged inside the bar) draws there
+    // instead of flowing — clamped so it can never sit outside the bar it
+    // belongs to (a since-shrunk zone, a stale drag) — and takes no flow slot.
+    // Nothing else in `others` reads `positions`: a zone or event is never
+    // free-form, and neither is a person (positions never even reaches those).
+    let posBottom: number | undefined;
+    const flowed: string[] = [];
+    for (const c of others) {
+      const pos = positions?.[c];
+      if (pos === undefined) {
+        flowed.push(c);
+        continue;
+      }
+      const size = hint(c);
+      const cx = Math.min(Math.max(pos.x, 0), Math.max(0, width - size.width));
+      const cy = Math.max(pos.y, TITLE_H);
+      geometry.set(c, { x: cx, y: cy, ...size });
+      fixed.add(c);
+      posBottom = Math.max(posBottom ?? 0, cy + size.height);
+    }
+    // the remaining "others" flow left to right inside the padding, wrapping
+    // like text, exactly as before positioned children existed
     let x = PAD;
     let rowH = 0;
-    for (const c of others) {
+    for (const c of flowed) {
       const size = hint(c);
       if (x > PAD && x + size.width > width - PAD) {
         x = PAD;
@@ -125,14 +152,17 @@ export function planLayout(
       x += size.width + ROW_GAP;
       rowH = Math.max(rowH, size.height);
     }
-    if (others.length > 0) y += rowH + ROW_GAP;
+    if (flowed.length > 0) y += rowH + ROW_GAP;
     for (const c of events) {
       const at = atOf(node(c)) ?? start;
       geometry.set(c, { x: (at - start) * DAY + DAY / 2 - EVENT / 2, y: (TITLE_H - EVENT) / 2, width: EVENT, height: EVENT });
       fixed.add(c);
     }
-    // `y` carries a trailing ROW_GAP after the last row; the bottom PAD replaces it
-    const height = zones.length + others.length === 0 ? TITLE_H : y - ROW_GAP + PAD;
+    // `y` carries a trailing ROW_GAP after the last row; the bottom PAD
+    // replaces it. A positioned "other" can stand lower than the flow (or be
+    // the zone's only content) — the bar covers whichever bottom is greater.
+    const flowHeight = zones.length + flowed.length === 0 ? TITLE_H : y - ROW_GAP + PAD;
+    const height = posBottom === undefined ? flowHeight : Math.max(flowHeight, posBottom + PAD);
     return { width, height };
   };
 

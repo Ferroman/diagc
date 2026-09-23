@@ -242,6 +242,29 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     [input.profile, input.model, input.plane],
   );
 
+  // The plane's saved positions (parent-relative for a nested node), gated
+  // exactly as placedGeometry always applied them: a viewer who asked to
+  // ignore them sees none, editing always reads the document. Hoisted out of
+  // placedGeometry (below) so a notation that owns its arrangement can read
+  // the same value — see `layoutPositions` next.
+  const saved = useMemo(() => {
+    if (!input.editing && input.ignoreSavedPositions === true) return {};
+    const key = layoutPlaneKey(input.model, input.plane);
+    return input.layout?.planes[key] ?? {};
+  }, [input.layout, input.model, input.plane, input.ignoreSavedPositions, input.editing]);
+
+  // What a notation's own layout is handed as `positions` (NotationProfile.layout):
+  // `saved` on a plane the notation arranges itself (the plan clamps a zone
+  // child's saved spot on read — see plan-layout.ts), else a STABLE `undefined`
+  // — same object identity, the JS primitive, every render — so adding this to
+  // the effect's deps below can never make an elk plane re-run elk just because
+  // a drag rebuilt `input.layout` (and, with it, `saved`); see the
+  // `layoutSettings` rationale above for the sibling problem this mirrors.
+  const layoutPositions = useMemo(
+    () => (input.profile.layout !== undefined ? saved : undefined),
+    [input.profile, saved],
+  );
+
   const [geometry, setGeometry] = useState<Map<string, NodeGeometry> | null>(null);
   const geometryRef = useRef<Map<string, NodeGeometry> | null>(null);
   geometryRef.current = geometry;
@@ -259,7 +282,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     const notationLayout = input.profile.layout;
     const arrange =
       notationLayout !== undefined
-        ? Promise.resolve().then(() => notationLayout(input.compiled, input.model, input.plane, sizes))
+        ? Promise.resolve().then(() => notationLayout(input.compiled, input.model, input.plane, sizes, layoutPositions))
         : layoutView(input.compiled, sizes, runSettings, partitions !== undefined ? { partitions } : undefined);
     void arrange
       .then((r) => {
@@ -286,7 +309,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     return () => {
       live = false;
     };
-  }, [input.compiled, sizes, runSettings, input.profile, input.model, input.plane, partitions]);
+  }, [input.compiled, sizes, runSettings, input.profile, input.model, input.plane, partitions, layoutPositions]);
 
   // Overlay-applied geometry: elk output with any layout-overlay positions for
   // the active plane substituted in (width/height stay elk's). Derived so the
@@ -294,23 +317,21 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // raw `geometry` remains the layout-effect state.
   const placedGeometry = useMemo(() => {
     if (geometry === null) return geometry;
-    const key = layoutPlaneKey(input.model, input.plane);
-    // Editing always reads the saved overlay: there the positions ARE the
-    // document being edited, and the auto/manual switch is a command on the undo
-    // stack. Only a viewer may set them aside.
-    const saved = !input.editing && input.ignoreSavedPositions === true ? {} : (input.layout?.planes[key] ?? {});
     // A fixed node reads no position from anywhere. Filtered HERE, not only at
     // the gesture: a pin can predate the rule (a fish dragged before its nodes
     // were fixed), or arrive with a node that was placed as a stray and hung on
     // the fish afterwards — either would leave it behind when the fish next
     // changes shape, its lines floating in to a box they were never drawn to.
+    // (`saved` itself is the same value a notation's own layout may have just
+    // read and clamped — see `layoutPositions` above; a fixed id here is a
+    // node the layout placed itself, so movable() still drops it.)
     const withSaved = overlayPositions(geometry, yOnly(movable(saved, fixed), lockedX, geometry));
     // A drag still wins over an automatic arrangement, so moving a box while
     // auto-arrange is on behaves the way dragging always does.
     return input.editing
       ? withSaved
       : overlayPositions(withSaved, yOnly(movable(input.viewPositions, fixed), lockedX, geometry));
-  }, [geometry, fixed, lockedX, input.layout, input.model, input.plane, input.ignoreSavedPositions, input.editing, input.viewPositions]);
+  }, [geometry, fixed, lockedX, saved, input.editing, input.viewPositions]);
 
   // A hand-placed child may sit past the wall of the box elk sized for it: the
   // container gives way (fit-containers.ts). Not where the notation owns the
