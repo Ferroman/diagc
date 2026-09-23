@@ -103,7 +103,7 @@ A shortcut acts only while its button would: Pen does nothing while you are dril
 
 ## Panels
 
-**Properties** (node selected) — name, `type`, `icon`, colour swatches, **Technology**, description, free-form metadata rows, **Threats** (below), memberships (which parents contain it, per plane), **Position** (X/Y in parent-relative px — pinned values editable, unpinned nodes show where they sit; Clear hands the node back to the algorithm), delete.
+**Properties** (node selected) — name, `type`, `icon`, colour swatches, **Technology**, description, free-form metadata rows, **Threats** (below), memberships (which parents contain it, per plane), **Position** (X/Y in parent-relative px — pinned values editable, unpinned nodes show where they sit; Clear hands the node back to the algorithm; on a `plan` plane a top-level zone's X belongs to the layout, which re-derives it from `start`, so only Y is yours to set and the X shown here is inert), delete.
 
 **Properties** (relation selected) — `kind`, label, **Threats** (below), `layer`, delete, plus a *Style* section: line shape (curved / straight / step), colour, thickness, line (solid / dashed / dotted), arrow end (arrow / dot / square / diamond / none), from/to side, animated. Anything left at *default* falls back to the kind's registry style and the layer tint. On a causal-loop plane the panel adds **Polarity** (`∅`, `+`, `−`) and **Delay** rows, and *Style* gains **Curvature** and **Flip curve**.
 
