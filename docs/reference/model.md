@@ -403,7 +403,7 @@ A plane with `notation: 'plan'` is a schedule: a calendar runs left to right and
 
 | Type | Look | Role |
 | --- | --- | --- |
-| `plan-zone` | a rounded bar tinted with the node's `color`, a thick left edge, title top-left, role chips top-right; `(end − start + 1)` days wide | A phase or work item. A container: what it contains is scheduled in it — nested zones one row each (by start date), events in its title strip, any other node in wrapped rows. |
+| `plan-zone` | a rounded bar tinted with the node's `color`, a thick left edge, title top-left, role chips after the title; `(end − start + 1)` days wide | A phase or work item. A container: what it contains is scheduled in it — nested zones one row each (by start date), events in its title strip, any other node in wrapped rows. |
 | `plan-event` | a 16 px diamond, name beside it | A point in time. Top-level events sit in the header with a dashed rule down the chart. |
 | `person` | the ordinary pill | People. Listed in a roster left of the origin; attached to zones by role relations, never containment. |
 

@@ -1074,7 +1074,6 @@ path.dg-loop-badge-circle {
   border-left-width: 3px;
   border-radius: 6px;
 }
-.dg-notation-plan .dg-node[data-type='plan-zone'] { justify-content: flex-start; text-align: left; }
 /* an event: an unclipped, unpainted box filling its 16×16 wrapper; ::before is
    the diamond in the node's colour (currentColor — the branch sets it on the
    root), and the tag hangs to the right. Rough mode draws the sketch instead. */
@@ -1084,7 +1083,20 @@ path.dg-loop-badge-circle {
 .dg-event-tag { position: absolute; left: calc(100% + 4px); top: 50%; transform: translateY(-50%); white-space: nowrap; font: 12px/1.2 system-ui, sans-serif; pointer-events: none; }
 .dg-event-tag .dg-label-input { pointer-events: auto; }
 .dg-role-chip { --dg-chip: var(--dg-text-muted); border: 1px solid var(--dg-chip); color: var(--dg-chip); background: color-mix(in srgb, var(--dg-chip) 12%, transparent); max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dg-group-header .dg-badges { margin-left: auto; }
+/* Three things used to claim a zone's top-right corner: the role-chip row
+   (`.dg-badges` right-aligns itself with `margin-left: auto` everywhere), the
+   comment/threat count badges (a container wears them INSIDE the header band,
+   48px and 72px in from that same edge), and any event whose date falls near
+   the bar's end — the title strip is where an event is drawn. The chips give
+   the corner up: they read as part of the title ("Build O·Alice E·Bob"), which
+   is also where the eye looks for them, and the rest of the strip is then the
+   event's alone. */
+.dg-notation-plan .dg-group[data-type='plan-zone'] .dg-group-header .dg-badges { margin-left: 8px; }
+/* …and the two count badges take the LEAF spots, hanging off the box, rather
+   than the in-header spots that are now under the chips. Opposite corners,
+   same convention as every leaf: threats top-left, comments bottom-right. */
+.dg-notation-plan .dg-group[data-type='plan-zone'] > .dg-threat-badge { top: -6px; left: -6px; right: auto; }
+.dg-notation-plan .dg-group[data-type='plan-zone'] > .dg-comment-badge { top: auto; bottom: -6px; right: -6px; }
 /* NodeResizeControl's default 'handle' variant carries React Flow's own
    .react-flow__resize-control.handle(.left/.right) rules (a 5×5 square,
    translate -50% -50%), which outrank a bare .dg-x-resize class on specificity
