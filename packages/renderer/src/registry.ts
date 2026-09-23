@@ -193,9 +193,10 @@ export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
   'cause-of': {}, // solid, arrow end — the defaults
   // ---- Threat model (STRIDE data flow) ----------------------------------------
   'data-flow': { legendLabel: 'Data flow' }, // a plain arrow: the DFD's only line style
-  // Plan roles, person → zone. Registered so the legend, the studio's kind
-  // picker and validation know them; the plan profile never draws them as
-  // edges (they become chips on the zone — see planBadges).
+  // ---- Plan (schedule) --------------------------------------------------------
+  // Roles, person → zone. Registered so the legend, the studio's kind picker
+  // and validation know them; the plan profile never draws them as edges (they
+  // become chips on the zone — see planBadges).
   owns: { legendLabel: 'Owns' },
   executes: { legendLabel: 'Executes' },
   checks: { legendLabel: 'Checks' },

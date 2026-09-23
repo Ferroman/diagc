@@ -2,8 +2,9 @@
 import { render } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { dayOf, model } from '@diagc/core';
+import { dayOf, isoOf, model } from '@diagc/core';
 import { PLAN_LAYOUT, planX } from './plan-layout';
+import { MARGIN_AFTER, MARGIN_BEFORE } from './time-axis';
 
 const rfNodes: { id: string; position: { x: number; y: number }; parentId?: string; measured?: { width: number; height: number } }[] = [];
 vi.mock('@xyflow/react', async (importOriginal) => {
@@ -61,6 +62,24 @@ describe('TimeAxisOverlay', () => {
     outside.unmount();
     const none = render(<TimeAxisOverlay model={plan()} plane="plan" today={null} />);
     expect(none.container.querySelector('.dg-time-axis-today')).toBeNull();
+  });
+  it('the today line reaches the axis margins exactly, and stops one day past them', () => {
+    seed();
+    // the drawn extent is [range.start - MARGIN_BEFORE, range.end + MARGIN_AFTER),
+    // the same two numbers timeAxis lays the bands out with — derive, never repeat
+    const start = dayOf('2026-01-20')!;
+    const end = dayOf('2026-02-10')!;
+    const cases: [number, boolean][] = [
+      [start - MARGIN_BEFORE, true],
+      [start - MARGIN_BEFORE - 1, false],
+      [end + MARGIN_AFTER - 1, true], // the last day inside the exclusive end
+      [end + MARGIN_AFTER, false],
+    ];
+    for (const [day, drawn] of cases) {
+      const r = render(<TimeAxisOverlay model={plan()} plane="plan" today={isoOf(day)} />);
+      expect([isoOf(day), r.container.querySelector('.dg-time-axis-today') !== null]).toEqual([isoOf(day), drawn]);
+      r.unmount();
+    }
   });
   it('renders nothing for a plan with no dates', () => {
     rfNodes.length = 0;

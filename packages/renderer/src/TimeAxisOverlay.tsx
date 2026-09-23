@@ -3,7 +3,7 @@ import { useNodes, ViewportPortal } from '@xyflow/react';
 import { atOf, dayOf, isPlanEvent, type DiagramModel } from '@diagc/core';
 import { absoluteRects } from './loops';
 import { PLAN_LAYOUT, planGraphCached, planX } from './plan-layout';
-import { timeAxis } from './time-axis';
+import { MARGIN_AFTER, MARGIN_BEFORE, timeAxis } from './time-axis';
 
 export interface TimeAxisOverlayProps {
   model: DiagramModel;
@@ -36,8 +36,12 @@ export function TimeAxisOverlay({ model, plane, today }: TimeAxisOverlayProps) {
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const rootEvents = g.events.filter((id) => !g.parent.has(id) && isPlanEvent(byId.get(id)!));
   const todayDay = today === undefined || today === null ? undefined : dayOf(today);
+  // "inside the drawn extent" is the axis's own question, so it reads the
+  // axis's own margins rather than a second copy of 7 and 8
   const todayX =
-    todayDay !== undefined && todayDay >= g.range.start - 7 && todayDay < g.range.end + 8 ? planX(todayDay, origin) + DAY / 2 : undefined;
+    todayDay !== undefined && todayDay >= g.range.start - MARGIN_BEFORE && todayDay < g.range.end + MARGIN_AFTER
+      ? planX(todayDay, origin) + DAY / 2
+      : undefined;
   return (
     <ViewportPortal>
       <svg className="dg-time-axis" aria-hidden="true">

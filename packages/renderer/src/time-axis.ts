@@ -15,8 +15,12 @@ export interface TimeAxis {
   weeks: AxisBand[];
 }
 
-const MARGIN_BEFORE = 7;
-const MARGIN_AFTER = 8;
+/** The drawn extent's margins, in days, either side of the dated range.
+ * Exported because the today line has to agree with them: a rule drawn past
+ * `x1` would hang off the axis it belongs to. */
+export const MARGIN_BEFORE = 7;
+/** exclusive — the axis runs UP TO `range.end + MARGIN_AFTER` */
+export const MARGIN_AFTER = 8;
 /** fixed English abbreviations: the axis reads the same on every machine, and
  * a locale name would not survive the PNG round trip as text anyway */
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
