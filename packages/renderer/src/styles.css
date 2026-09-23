@@ -977,11 +977,16 @@ path.dg-loop-badge-circle {
 
 /* ---- plan: time axis ------------------------------------------------------ */
 .dg-time-axis { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; z-index: -1; }
-.dg-time-axis-frame { fill: color-mix(in srgb, var(--dg-text) 4%, transparent); stroke: none; }
-.dg-time-axis-tick { stroke: var(--dg-border); stroke-width: 1; }
-.dg-time-axis-grid { stroke: color-mix(in srgb, var(--dg-text) 8%, transparent); stroke-width: 1; }
-.dg-time-axis-month, .dg-time-axis-week { fill: var(--dg-text-muted); font: 600 11px system-ui, sans-serif; }
-.dg-time-axis-week { font-weight: 500; font-size: 10px; }
+.dg-time-axis-frame { fill: color-mix(in srgb, var(--dg-text) var(--dg-plan-axis-band), transparent); stroke: none; }
+.dg-time-axis-tick { stroke: var(--dg-plan-axis-tick); stroke-width: 1; }
+.dg-time-axis-grid { stroke: color-mix(in srgb, var(--dg-text) var(--dg-plan-axis-grid), transparent); stroke-width: 1; }
+/* month/week share the weight/family; only the colour and size differ — see
+   ThemeTokens.planAxisMonthLabel/planAxisWeekLabel (the dark values read on
+   the canvas at the fit-to-view zoom a multi-week plan lands at; light
+   reproduces the old shared --dg-text-muted read exactly). */
+.dg-time-axis-month, .dg-time-axis-week { font: 600 11px system-ui, sans-serif; }
+.dg-time-axis-month { fill: var(--dg-plan-axis-month-label); }
+.dg-time-axis-week { fill: var(--dg-plan-axis-week-label); font-weight: 500; font-size: 10px; }
 .dg-time-axis-event { stroke: var(--dg-text-muted); stroke-width: 1; stroke-dasharray: 4 4; }
 .dg-time-axis-today { stroke: var(--dg-accent); stroke-width: 2; }
 .dg-time-axis-today-label { fill: var(--dg-accent); font: 600 10px system-ui, sans-serif; }
@@ -1082,7 +1087,12 @@ path.dg-loop-badge-circle {
 .dg-style-rough .dg-event-node::before { display: none; }
 .dg-event-tag { position: absolute; left: calc(100% + 4px); top: 50%; transform: translateY(-50%); white-space: nowrap; font: 12px/1.2 system-ui, sans-serif; pointer-events: none; }
 .dg-event-tag .dg-label-input { pointer-events: auto; }
-.dg-role-chip { --dg-chip: var(--dg-text-muted); border: 1px solid var(--dg-chip); color: var(--dg-chip); background: color-mix(in srgb, var(--dg-chip) 12%, transparent); max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* text is the chip's own colour mixed toward --dg-text (ThemeTokens.roleChipText
+   — 100% in light, unmixed, reproducing the old raw `--dg-chip` read; a lower
+   dark % pulls the reader's own colour up to a legible weight against the dark
+   canvas). The border stays the raw chip colour — a hue, not running text, so
+   it carries no contrast requirement of its own. */
+.dg-role-chip { --dg-chip: var(--dg-text-muted); border: 1px solid var(--dg-chip); color: color-mix(in srgb, var(--dg-chip) var(--dg-role-chip-text), var(--dg-text)); background: color-mix(in srgb, var(--dg-chip) var(--dg-role-chip-fill), transparent); max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Three things used to claim a zone's top-right corner: the role-chip row
    (`.dg-badges` right-aligns itself with `margin-left: auto` everywhere), the
    comment/threat count badges (a container wears them INSIDE the header band,

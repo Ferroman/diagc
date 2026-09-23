@@ -28,6 +28,24 @@ export interface ThemeTokens {
   ink: string;
   /** the laser pointer's trail — one red for both themes, so it reads on any background */
   laser: string;
+  /** a coloured node's fill tint strength (color-mix % against --dg-node-fill),
+   * e.g. a plan zone's bar — one shared strength for every accented node */
+  nodeAccentTint: string;
+  /** the plan time-axis header band's tint strength (color-mix % against --dg-text) */
+  planAxisBand: string;
+  /** the plan time-axis grid lines' tint strength (color-mix % against --dg-text) */
+  planAxisGrid: string;
+  /** the plan time-axis month/week tick marks' colour */
+  planAxisTick: string;
+  /** the plan time-axis month label's colour (the stronger of the two labels) */
+  planAxisMonthLabel: string;
+  /** the plan time-axis week label's colour (a step below the month label) */
+  planAxisWeekLabel: string;
+  /** a plan role chip's background tint strength (color-mix % against transparent) */
+  roleChipFill: string;
+  /** a plan role chip's text colour: color-mix % of the person's own colour
+   * mixed toward --dg-text (100% = the raw person colour, unmixed) */
+  roleChipText: string;
 }
 
 export const lightTheme: ThemeTokens = {
@@ -56,6 +74,16 @@ export const lightTheme: ThemeTokens = {
   polarityNegative: '#c2413c',
   ink: '#1c2733',
   laser: '#ff2d55',
+  // Light was tuned by hand and is the approved look — these reproduce its
+  // exact current colours/strengths so the committed PNGs render unchanged.
+  nodeAccentTint: '14%',
+  planAxisBand: '4%',
+  planAxisGrid: '8%',
+  planAxisTick: '#d9dde3', // == lightTheme.border, the old literal the rule read
+  planAxisMonthLabel: '#66737f', // == lightTheme.textMuted, the old shared rule
+  planAxisWeekLabel: '#66737f',
+  roleChipFill: '12%',
+  roleChipText: '100%', // pure chip colour, unmixed — the old raw `--dg-chip` read
 };
 
 export const darkTheme: ThemeTokens = {
@@ -84,6 +112,16 @@ export const darkTheme: ThemeTokens = {
   polarityNegative: '#f28b82',
   ink: '#e6ebf0',
   laser: '#ff2d55',
+  // A step stronger/brighter than the light values above — tuned against the
+  // dark canvas (#12161b), where the light strengths measured near-invisible.
+  nodeAccentTint: '24%',
+  planAxisBand: '9%',
+  planAxisGrid: '13%',
+  planAxisTick: '#4c5a6b',
+  planAxisMonthLabel: '#e6ebf0', // == darkTheme.text
+  planAxisWeekLabel: '#aab6c2',
+  roleChipFill: '24%',
+  roleChipText: '55%', // mixed toward --dg-text so the person colour stays legible
 };
 
 const kebab = (s: string): string => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);

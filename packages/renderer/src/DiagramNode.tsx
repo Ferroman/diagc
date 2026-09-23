@@ -114,12 +114,17 @@ const sideHandles = (
   </>
 );
 
-/** accent-colored border + subtle same-color fill; undefined color = registry look */
+/** accent-colored border + subtle same-color fill; undefined color = registry
+ * look. The tint strength is --dg-node-accent-tint (ThemeTokens.nodeAccentTint)
+ * — one theme-tuned percentage shared by every accented root (a plan zone's
+ * bar included), so the dark theme reads a step stronger without this
+ * function knowing who is drawing. The literal 14% fallback keeps a caller
+ * that renders before the theme's vars land (e.g. a bare-DOM smoke test). */
 function accentStyle(color: string | undefined): CSSProperties | undefined {
   if (color === undefined) return undefined;
   return {
     borderColor: color,
-    background: `color-mix(in srgb, ${color} 14%, var(--dg-node-fill))`,
+    background: `color-mix(in srgb, ${color} var(--dg-node-accent-tint, 14%), var(--dg-node-fill))`,
   };
 }
 
