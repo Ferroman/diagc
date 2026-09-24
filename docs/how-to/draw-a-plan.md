@@ -13,6 +13,10 @@ A schedule: zones as date bars that nest, events as milestones, people or teams 
 7. Schedule a node that lives on another plane (a C4 container, an ER table…) by selecting it and, in Properties → Memberships, adding the zone as a container on the plan plane. It drops into the zone's flow at first; drag it anywhere inside the bar afterwards and it stays exactly there (the bar grows to fit) instead of snapping back into the flow.
 8. Comment on a bar in Properties → Comments and attach resources in Properties → Links — the badge at the bar's corner opens both on the published page.
 
+## Reading a plan
+
+Click an actor — a person or a team — and the zones they hold a role on stay bright with a coloured outline, the chip for that role turns solid, and the rest of the chart dims. Click a zone instead and its actors light up the same way, in their own colours. Click empty canvas to clear it. This works in both the studio and a published page — it is a viewer gesture, never saved to the diagram.
+
 ## From TypeScript
 
 ```ts
