@@ -1,4 +1,4 @@
-import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanActor, isPlanRole, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
+import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanActor, isPlanRole, isPlanZone, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';
@@ -49,6 +49,12 @@ export interface NotationProfile {
    * which replaces elk). Honoured by `layered` only, so the view runs a
    * partitioned plane through layered whatever its settings name. */
   partitionOf?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, number>;
+  /** nodes that belong in `id`'s selection neighbourhood although no drawn
+   * edge joins them (`useLoopOverlay` unions the result into `neighborFocus`).
+   * The plan needs this because role relations are hidden edges (`edge.hidden`
+   * below) — selecting an actor would otherwise dim every zone it holds a
+   * role on, the opposite of what a reader wants. */
+  related?: (model: DiagramModel, plane: string | undefined, id: string) => readonly string[];
   node?: {
     typelessAsText?: boolean;
     leafSize?: (n: DiagramNode) => Size | undefined;
@@ -254,6 +260,26 @@ export function planBadges(model: DiagramModel, plane: string | undefined): Read
   return out;
 }
 
+/** The other half of a role relation, whichever end `id` is: an actor's
+ * selection neighbourhood is every zone it holds a role on, and a zone's is
+ * every actor holding a role on it — both from the same `owns`/`executes`/
+ * `checks` relations `edge.hidden` keeps off the canvas. Anything else (a
+ * dependency-linked node, say) has no extra neighbours here; the edge it
+ * drew with already puts it in `neighborFocus`. */
+function planRelated(model: DiagramModel, plane: string | undefined, id: string): readonly string[] {
+  const node = model.nodes.find((n) => n.id === id);
+  if (node === undefined) return [];
+  if (isPlanActor(node)) {
+    const zones = new Set(planGraphCached(model, plane).zones);
+    return model.relations.filter((r) => r.from === id && isPlanRole(r.kind) && zones.has(r.to)).map((r) => r.to);
+  }
+  if (isPlanZone(node)) {
+    const roles = rolesOf(model, id);
+    return [...roles.owns, ...roles.executes, ...roles.checks];
+  }
+  return [];
+}
+
 const PLAN: NotationProfile = {
   id: PLAN_NOTATION,
   className: 'dg-notation-plan',
@@ -261,6 +287,7 @@ const PLAN: NotationProfile = {
   // planLayout reads a zone's saved child positions (a free-form "other")
   // and clamps them itself, so it must re-run when a drag changes them.
   layoutReadsPositions: true,
+  related: planRelated,
   node: {
     alwaysExpanded: (n) => n.type === PLAN_ZONE_TYPE,
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),

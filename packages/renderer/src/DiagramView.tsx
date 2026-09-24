@@ -1260,6 +1260,8 @@ function Inner(props: DiagramViewProps) {
   const loops = useLoopOverlay({
     profile,
     compiled,
+    model: props.model,
+    plane: props.plane,
     externalHighlight: props.externalHighlight,
     onCldEdges: props.onCldEdges,
   });

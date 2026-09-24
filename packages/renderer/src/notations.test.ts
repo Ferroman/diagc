@@ -209,4 +209,13 @@ describe('plan profile', () => {
     expect(notationProfile('git-graph').layoutReadsPositions).toBeUndefined();
     expect(notationProfile('fishbone').layoutReadsPositions).toBeUndefined();
   });
+  it('related: an actor\'s zones, a zone\'s actors, nothing for anything else', () => {
+    const m = roadmap();
+    const related = notationProfile('plan').related!;
+    expect(related(m, 'plan', 'alice')).toEqual(['z', 'z']); // owns and checks, both on z
+    expect(related(m, 'plan', 'bob')).toEqual(['z']); // executes
+    expect(related(m, 'plan', 'z')).toEqual(['alice', 'bob', 'alice']); // owns, executes, checks order
+    expect(related(m, 'plan', 'bare')).toEqual([]); // a zone with no roles
+    expect(related(m, 'plan', 'nope')).toEqual([]); // an id the model does not have
+  });
 });

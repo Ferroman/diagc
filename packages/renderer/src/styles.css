@@ -1099,6 +1099,15 @@ path.dg-loop-badge-circle {
    canvas). The border stays the raw chip colour — a hue, not running text, so
    it carries no contrast requirement of its own. */
 .dg-role-chip { --dg-chip: var(--dg-text-muted); border: 1px solid var(--dg-chip); color: color-mix(in srgb, var(--dg-chip) var(--dg-role-chip-text), var(--dg-text)); background: color-mix(in srgb, var(--dg-chip) var(--dg-role-chip-fill), transparent); max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the selected actor's own chip, filled solid (background = its colour, text
+   = --dg-surface so it reads on any chip hue) — the plain outline every other
+   chip keeps is the "not this one" state. */
+.dg-role-chip-active { background: var(--dg-chip); color: var(--dg-surface); }
+/* the reciprocal mark DiagramNode sets on a node's root: a zone lit by the
+   selected actor's chip, or an actor lit by the selected zone's roles —
+   --dg-hit is set inline to that chip's colour (falling back to --dg-accent
+   when the chip carries none), so the outline always matches the chip. */
+[data-plan-hit] { outline: 2px solid var(--dg-hit); outline-offset: 2px; }
 /* Three things used to claim a zone's top-right corner: the role-chip row
    (`.dg-badges` right-aligns itself with `margin-left: auto` everywhere), the
    comment/threat count badges (a container wears them INSIDE the header band,

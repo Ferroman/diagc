@@ -2417,3 +2417,76 @@ describe('plan notation', () => {
     expect((await wrapper('q')).style.width).toBe(`${26 * PLAN_LAYOUT.DAY}px`);
   });
 });
+
+describe('plan notation: selecting an actor lights up its zones, and a zone its actors', () => {
+  // alice owns `owned` only; bob executes `other` only — no relation of any
+  // kind joins the two zones, so the only thing that could connect them
+  // across a selection is the plan's `related` hook, not a drawn edge
+  function planActors() {
+    const m = model('pa');
+    const p = m.plan();
+    const alice = p.person('alice', 'Alice Ng', { color: '#2f6fed' });
+    const bob = p.person('bob', 'Bob Lee');
+    p.zone('owned', { name: 'Owned', start: '2026-01-05', end: '2026-01-09' }).owner(alice);
+    p.zone('other', { name: 'Other', start: '2026-02-02', end: '2026-02-06' }).executor(bob);
+    return m.toJSON();
+  }
+  const dimmed = (container: HTMLElement, id: string): boolean =>
+    container.querySelector(`.react-flow__node[data-id="${id}"] .dg-focus-node-dim`) !== null;
+  const hit = (container: HTMLElement, id: string): boolean =>
+    container.querySelector(`.react-flow__node[data-id="${id}"] [data-plan-hit]`) !== null;
+
+  it('selecting an actor keeps its zone bright and marked, dims an unrelated zone and actor', async () => {
+    const { container } = render(<DiagramView model={planActors()} plane="plan" notation="plan" today="2026-01-20" />);
+    const alice = await waitFor(() => {
+      const el = container.querySelector<HTMLElement>('.react-flow__node[data-id="alice"]');
+      if (el === null) throw new Error('not yet');
+      return el;
+    });
+    fireEvent.click(alice);
+    await waitFor(() => expect(container.querySelector('.dg-focus-node-dim')).not.toBeNull());
+    expect(dimmed(container, 'alice')).toBe(false); // the selected node itself
+    expect(dimmed(container, 'owned')).toBe(false); // alice's own zone
+    expect(dimmed(container, 'other')).toBe(true); // bob's zone, no relation to alice
+    expect(dimmed(container, 'bob')).toBe(true); // an unrelated actor
+    // the reciprocal mark: the chip alice's role made on `owned` goes solid,
+    // and the zone itself is outlined in alice's colour
+    const chip = container.querySelector('.react-flow__node[data-id="owned"] .dg-role-chip');
+    expect(chip?.classList.contains('dg-role-chip-active')).toBe(true);
+    expect(hit(container, 'owned')).toBe(true);
+    expect(hit(container, 'other')).toBe(false);
+  });
+
+  it('selecting a zone marks its actor, dims an unrelated one', async () => {
+    const { container } = render(<DiagramView model={planActors()} plane="plan" notation="plan" today="2026-01-20" />);
+    const owned = await waitFor(() => {
+      const el = container.querySelector<HTMLElement>('.react-flow__node[data-id="owned"]');
+      if (el === null) throw new Error('not yet');
+      return el;
+    });
+    fireEvent.click(owned);
+    await waitFor(() => expect(container.querySelector('.dg-focus-node-dim')).not.toBeNull());
+    expect(dimmed(container, 'alice')).toBe(false); // owned's own actor
+    expect(dimmed(container, 'other')).toBe(true);
+    expect(dimmed(container, 'bob')).toBe(true);
+    expect(hit(container, 'alice')).toBe(true); // the reciprocal mark, in alice's own colour
+    expect(hit(container, 'bob')).toBe(false);
+  });
+
+  it('clears both the dim and the hit marks on a pane click', async () => {
+    const { container } = render(<DiagramView model={planActors()} plane="plan" notation="plan" today="2026-01-20" />);
+    const alice = await waitFor(() => {
+      const el = container.querySelector<HTMLElement>('.react-flow__node[data-id="alice"]');
+      if (el === null) throw new Error('not yet');
+      return el;
+    });
+    fireEvent.click(alice);
+    await waitFor(() => expect(container.querySelector('.dg-focus-node-dim')).not.toBeNull());
+    expect(hit(container, 'owned')).toBe(true);
+
+    fireEvent.click(container.querySelector('.react-flow__pane') as HTMLElement);
+    await waitFor(() => expect(container.querySelectorAll('.dg-focus-node-dim')).toHaveLength(0));
+    expect(container.querySelector('[data-plan-hit]')).toBeNull();
+    expect(container.querySelector('.dg-role-chip-active')).toBeNull();
+  });
+});

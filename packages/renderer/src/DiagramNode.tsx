@@ -1,6 +1,6 @@
 import { useContext, useRef, type CSSProperties } from 'react';
 import { Handle, NodeResizeControl, NodeResizer, Position } from '@xyflow/react';
-import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type TextAlign, type TextRun, type ThreatTarget } from '@diagc/core';
+import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, PLAN_ACTOR_TYPES, PLAN_EVENT_TYPE, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type TextAlign, type TextRun, type ThreatTarget } from '@diagc/core';
 import type { IconRegistry } from '@diagc/icons';
 import type { Registry, TypeStyle } from './registry';
 import { commentBadgeProps, type AnnotationCounts } from './comment-badge';
@@ -483,6 +483,24 @@ export function DiagramNode({
       : highlight.variant === 'loop'
         ? ' dg-loop-node-dim'
         : ' dg-focus-node-dim';
+  // The plan's reciprocal mark, on top of the dim above: a zone whose role
+  // chip matches the selected actor gets an outline in that chip's colour
+  // (the badge carries the actor's own colour already — see planBadges);
+  // going the other way, an actor that `related` put in a selected zone's
+  // neighbourhood gets the same outline in ITS OWN colour. Neither reads
+  // `loopClass`'s dim set directly: a zone's badge is the ground truth for
+  // which actor lit it up, and an actor's own accent is its own to carry.
+  const focusId = highlight.focusId;
+  const activeBadge = focusId !== null ? data.badges?.find((b) => b.key.endsWith(`:${focusId}`)) : undefined;
+  const isPlanActorType = data.typeId !== undefined && PLAN_ACTOR_TYPES.has(data.typeId);
+  const hitColor =
+    activeBadge !== undefined
+      ? (activeBadge.color ?? 'var(--dg-accent)')
+      : focusId !== null && isPlanActorType && id !== focusId && highlight.nodes.has(id)
+        ? (data.color ?? 'var(--dg-accent)')
+        : undefined;
+  const hitStyle = hitColor !== undefined ? ({ '--dg-hit': hitColor } as CSSProperties) : undefined;
+  const hitAttrs = hitColor !== undefined ? { 'data-plan-hit': true } : {};
   // Tab inside an open label editor is the same offer the `+` chip makes, so it
   // is wired from the same channel: commit, then add. `run` is a no-op when the
   // node has no recipe, so no separate label gate is needed here.
@@ -640,7 +658,7 @@ export function DiagramNode({
       {data.badges?.map((b) => (
         <span
           key={b.key}
-          className="dg-badge dg-role-chip"
+          className={`dg-badge dg-role-chip${focusId !== null && b.key.endsWith(`:${focusId}`) ? ' dg-role-chip-active' : ''}`}
           title={b.title}
           {...(b.color !== undefined ? { style: { '--dg-chip': b.color } as CSSProperties } : {})}
         >
@@ -834,13 +852,20 @@ export function DiagramNode({
       <div
         className={`dg-group${style.dashed === true ? ' dg-dashed' : ''}${groupOutline ? ' dg-group-outline' : ''}${corner ? ' dg-group-corner' : ''}${loopClass}`}
         {...(data.stylePreset?.rough !== undefined
-          ? {}
+          ? hitStyle !== undefined
+            ? { style: hitStyle }
+            : {}
           : {
-              style: groupOutline
-                ? { borderColor: data.color, color: data.textColor ?? data.color }
-                : { ...accentStyle(data.color), ...(data.textColor !== undefined ? { color: data.textColor } : {}) },
+              style: {
+                ...(groupOutline
+                  ? { borderColor: data.color, color: data.textColor ?? data.color }
+                  : accentStyle(data.color)),
+                ...(data.textColor !== undefined ? { color: data.textColor } : {}),
+                ...hitStyle,
+              },
             })}
         {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
+        {...hitAttrs}
       >
         <XResizer id={id} data={data} selected={selected} />
         {/* never the preset's own fill: this box is where the children and their
@@ -897,8 +922,13 @@ export function DiagramNode({
           ? `dg-node dg-text-node${ghostClass}${loopClass}`
           : `dg-node dg-shape-${style.shape}${style.dashed === true ? ' dg-dashed' : ''}${outline ? ' dg-c4-outline' : ''}${solid !== undefined && data.stylePreset?.rough === undefined ? ' dg-solid' : ''}${ghostClass}${loopClass}`
       }
-      {...(data.stylePreset?.rough !== undefined || isTypelessText || neutralGlyph ? {} : { style: boxAccent })}
+      {...(data.stylePreset?.rough !== undefined || isTypelessText || neutralGlyph
+        ? hitStyle !== undefined
+          ? { style: hitStyle }
+          : {}
+        : { style: { ...boxAccent, ...hitStyle } })}
       {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
+      {...hitAttrs}
       {...ghostTitle}
     >
       <XResizer id={id} data={data} selected={selected} />
