@@ -1106,8 +1106,11 @@ path.dg-loop-badge-circle {
 /* the reciprocal mark DiagramNode sets on a node's root: a zone lit by the
    selected actor's chip, or an actor lit by the selected zone's roles —
    --dg-hit is set inline to that chip's colour (falling back to --dg-accent
-   when the chip carries none), so the outline always matches the chip. */
-[data-plan-hit] { outline: 2px solid var(--dg-hit); outline-offset: 2px; }
+   when the chip carries none), so the outline always matches the chip.
+   Scoped under the plan notation's own class — defence in depth alongside
+   DiagramNode's own profile.id gate, since `[data-plan-hit]` alone would
+   otherwise be a bare attribute selector reaching any plane. */
+.dg-notation-plan [data-plan-hit] { outline: 2px solid var(--dg-hit); outline-offset: 2px; }
 /* Three things used to claim a zone's top-right corner: the role-chip row
    (`.dg-badges` right-aligns itself with `margin-left: auto` everywhere), the
    comment/threat count badges (a container wears them INSIDE the header band,

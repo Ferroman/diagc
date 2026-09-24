@@ -2490,3 +2490,22 @@ describe('plan notation: selecting an actor lights up its zones, and a zone its 
     expect(container.querySelector('.dg-role-chip-active')).toBeNull();
   });
 });
+
+describe('the plan hit mark never leaks outside the plan notation', () => {
+  it('a person node, selected-neighbour on a non-plan diagram, carries no data-plan-hit', async () => {
+    // 'person' is an ordinary registry type (the C4 stencil, or this plain
+    // pill) any diagram can use — not just a plan's roster. `a` is selected;
+    // `person` is its one edge-neighbour, so it stays un-dimmed, but nothing
+    // here is a plan plane, so the reciprocal outline must not appear.
+    const m = model('c4ish');
+    const a = m.node('a', { type: 'service' });
+    const person = m.node('person', { type: 'person' });
+    m.relate(a, person, { kind: 'sync' });
+    const { container } = render(<DiagramView model={m.toJSON()} />);
+    await screen.findByText('a');
+    fireEvent.click(screen.getByText('a'));
+    await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="person"] .dg-focus-node-dim')).toBeNull());
+    expect(container.querySelector('.react-flow__node[data-id="person"] [data-plan-hit]')).toBeNull();
+    expect(container.querySelector('[data-plan-hit]')).toBeNull();
+  });
+});

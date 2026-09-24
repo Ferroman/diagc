@@ -1,6 +1,6 @@
 import { useContext, useRef, type CSSProperties } from 'react';
 import { Handle, NodeResizeControl, NodeResizer, Position } from '@xyflow/react';
-import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, PLAN_ACTOR_TYPES, PLAN_EVENT_TYPE, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type TextAlign, type TextRun, type ThreatTarget } from '@diagc/core';
+import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, PLAN_ACTOR_TYPES, PLAN_EVENT_TYPE, PLAN_NOTATION, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type TextAlign, type TextRun, type ThreatTarget } from '@diagc/core';
 import type { IconRegistry } from '@diagc/icons';
 import type { Registry, TypeStyle } from './registry';
 import { commentBadgeProps, type AnnotationCounts } from './comment-badge';
@@ -492,7 +492,11 @@ export function DiagramNode({
   // which actor lit it up, and an actor's own accent is its own to carry.
   const focusId = highlight.focusId;
   const activeBadge = focusId !== null ? data.badges?.find((b) => b.key.endsWith(`:${focusId}`)) : undefined;
-  const isPlanActorType = data.typeId !== undefined && PLAN_ACTOR_TYPES.has(data.typeId);
+  // Gated on the plan notation itself (as isLane gates on git-graph above):
+  // `person`/`team` are ordinary registry types any diagram can use, so an
+  // unscoped type check would mark a C4 person one edge from the selection
+  // on a plane that has never heard of roles.
+  const isPlanActorType = profile.id === PLAN_NOTATION && data.typeId !== undefined && PLAN_ACTOR_TYPES.has(data.typeId);
   const hitColor =
     activeBadge !== undefined
       ? (activeBadge.color ?? 'var(--dg-accent)')
