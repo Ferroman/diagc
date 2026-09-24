@@ -1,8 +1,8 @@
 import {
   LEAF_SIZE,
-  PLAN_PERSON_TYPE,
   atOf,
   dayOf,
+  isPlanActor,
   isPlanEvent,
   isPlanZone,
   planGraph,
@@ -187,16 +187,16 @@ export function planLayout(
     geometry.set(id, { x: planX(at, origin) + DAY / 2 - EVENT / 2, y: -HEADER_H / 2 - EVENT / 2, width: EVENT, height: EVENT });
     fixed.add(id);
   }
-  // the roster: people with roles first, then every other person root; a
-  // strip above the header, not a picture, so neither axis is the overlay's.
-  // Cards run left to right from the origin and wrap into a further row when
-  // the next one would cross the plan's width (its own date range has no
-  // bearing on a person, so the width the CHART draws is the only ruler
-  // there is; with nothing dated yet, wrap by count instead). Rows then stack
-  // UPWARD from the header, so adding a row pushes the strip further from the
-  // chart rather than pushing the chart down.
+  // the roster: actors (people or teams) with roles first, then every other
+  // actor root; a strip above the header, not a picture, so neither axis is
+  // the overlay's. Cards run left to right from the origin and wrap into a
+  // further row when the next one would cross the plan's width (an actor's
+  // own date range has no bearing here, so the width the CHART draws is the
+  // only ruler there is; with nothing dated yet, wrap by count instead). Rows
+  // then stack UPWARD from the header, so adding a row pushes the strip
+  // further from the chart rather than pushing the chart down.
   const rootSet = new Set(roots);
-  const roster = [...g.people, ...roots.filter((id) => node(id).type === PLAN_PERSON_TYPE)].filter((id, i, all) => rootSet.has(id) && all.indexOf(id) === i);
+  const roster = [...g.actors, ...roots.filter((id) => isPlanActor(node(id)))].filter((id, i, all) => rootSet.has(id) && all.indexOf(id) === i);
   const rosterWidth = g.range !== undefined ? planX(g.range.end + 1, origin) : undefined;
   const rosterRows: { id: string; size: Size }[][] = [];
   let rosterRow: { id: string; size: Size }[] = [];

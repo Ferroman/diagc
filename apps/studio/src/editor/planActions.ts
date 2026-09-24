@@ -1,9 +1,11 @@
 import {
   PLAN_EVENT_TYPE,
   PLAN_PERSON_TYPE,
+  PLAN_TEAM_TYPE,
   PLAN_ZONE_TYPE,
   atOf,
   dayOf,
+  isPlanActor,
   isPlanEvent,
   isPlanZone,
   isoOf,
@@ -146,7 +148,7 @@ export function planMoves(
       let days = Math.round(delta.dx / DAY);
       if (outer !== undefined) days = clamp(days, outer.start - at, outer.end - at);
       if (days !== 0) out.push(shiftEvent(id, at, days));
-    } else if (node.type !== PLAN_PERSON_TYPE) {
+    } else if (!isPlanActor(node)) {
       // Two cases share this arm. A stray — a node the plane shows that no
       // zone holds — is unclamped: planLayout parks it under the chart and
       // deliberately leaves it loose, so its drop is the only statement of
@@ -154,8 +156,8 @@ export function planMoves(
       // child (free-form placement — see planLayout) IS clamped, the same floor the
       // layout clamps its saved position by on read — `g.parent.has(id)` is
       // what tells the two apart, the same test the zone branch above uses.
-      // A person is excluded HERE, not left to the layout's `fixed` set: the
-      // roster is a list, and "a person never moves" is this function's own
+      // An actor is excluded HERE, not left to the layout's `fixed` set: the
+      // roster is a list, and "an actor never moves" is this function's own
       // contract, not a fact it borrows from whoever arranged the canvas.
       const nested = g.parent.has(id);
       out.push({
@@ -234,9 +236,16 @@ export function addEvent(model: DiagramModel, plane: string | undefined, opts: {
   };
 }
 
-export function addPerson(model: DiagramModel, plane: string | undefined, name: string): { command: EditorCommand; id: string } {
+/** An actor to hand roles to — a person or a team, the panel's two "Add"
+ * buttons sharing one command shape. */
+export function addActor(
+  model: DiagramModel,
+  plane: string | undefined,
+  type: typeof PLAN_PERSON_TYPE | typeof PLAN_TEAM_TYPE,
+  name: string,
+): { command: EditorCommand; id: string } {
   const id = uniqueNodeId(model, name);
-  return { id, command: { type: 'add-node', node: { id, name, type: PLAN_PERSON_TYPE, ...planeOpt(plane) } } };
+  return { id, command: { type: 'add-node', node: { id, name, type, ...planeOpt(plane) } } };
 }
 
 /** The panel offers one person per role per zone (the model allows more, from

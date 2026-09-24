@@ -67,6 +67,7 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   queue: { shape: 'pill', icon: 'queue' },
   infra: { shape: 'hexagon', icon: 'server' },
   person: { shape: 'pill', icon: 'user' },
+  team: { shape: 'pill', icon: 'users' },
   // A speech bubble for remarks about the diagram: an ordinary node (wire it up
   // with normal relations) that merely looks like an aside, not a component.
   comment: { shape: 'bubble', icon: 'comment' },

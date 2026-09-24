@@ -16,5 +16,6 @@ export const PLAN_PACK: Library = {
     entry('plan-zone', 'plan-zone', 'Zone', ['zone', 'phase', 'bar', 'gantt', 'schedule', 'plan', 'task']),
     entry('plan-event', 'plan-event', 'Event', ['event', 'milestone', 'date', 'diamond', 'plan']),
     entry('plan-person', 'person', 'Person', ['person', 'owner', 'executor', 'checker', 'role', 'plan']),
+    entry('plan-team', 'team', 'Team', ['team', 'group', 'owner', 'executor', 'checker', 'role', 'plan']),
   ],
 };

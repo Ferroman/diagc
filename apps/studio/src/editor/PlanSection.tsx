@@ -1,14 +1,15 @@
 import { useMemo } from 'react';
-import { PLAN_PERSON_TYPE, PLAN_ROLES, isPlanEvent, isPlanZone, rolesOf, type DiagramModel, type DiagramNode, type EditorCommand, type PlanRole } from '@diagc/core';
+import { PLAN_ROLES, isPlanActor, isPlanEvent, isPlanZone, rolesOf, type DiagramModel, type DiagramNode, type EditorCommand, type PlanRole } from '@diagc/core';
 import { setRole } from './planActions';
 
 const ROLE_TITLE: Record<PlanRole, string> = { owns: 'Owner', executes: 'Executor', checks: 'Checker' };
 
-/** Candidates for a role: people first, then anything that is not a zone or
- * an event — any node can hold a role, but a person is the usual answer. */
+/** Candidates for a role: actors (people, teams) first, then anything else
+ * that is not a zone or an event — any node can hold a role, but an actor is
+ * the usual answer. */
 export function roleCandidates(model: DiagramModel): DiagramNode[] {
-  const rest = model.nodes.filter((n) => n.type !== PLAN_PERSON_TYPE && !isPlanZone(n) && !isPlanEvent(n));
-  return [...model.nodes.filter((n) => n.type === PLAN_PERSON_TYPE), ...rest];
+  const rest = model.nodes.filter((n) => !isPlanActor(n) && !isPlanZone(n) && !isPlanEvent(n));
+  return [...model.nodes.filter((n) => isPlanActor(n)), ...rest];
 }
 
 interface RolePickersProps {

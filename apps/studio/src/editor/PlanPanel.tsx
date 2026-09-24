@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { PLAN_ZONE_TYPE, type DiagramModel, type EditorCommand } from '@diagc/core';
+import { PLAN_PERSON_TYPE, PLAN_TEAM_TYPE, PLAN_ZONE_TYPE, type DiagramModel, type EditorCommand } from '@diagc/core';
 import { planGraphCached, type DiagramSelection } from '@diagc/renderer';
 import { DockSection } from '../DockSection';
-import { addEvent, addPerson, addZone } from './planActions';
+import { addActor, addEvent, addZone } from './planActions';
 import { DateInput, RolePickers, roleCandidates } from './PlanSection';
 
 interface PlanPanelProps {
@@ -34,7 +34,7 @@ export function PlanPanel({ model, plane, selection, onCommand, onSelect, today 
   // one whole-model scan per model, not one per zone row (RolePickers takes it)
   const candidates = useMemo(() => roleCandidates(model), [model]);
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
-  const [personName, setPersonName] = useState('');
+  const [actorName, setActorName] = useState('');
   const selected = selection?.kind === 'node' && byId.get(selection.id)?.type === PLAN_ZONE_TYPE ? selection.id : undefined;
   // tree order: each root zone, then its subtree, depth-first
   const rows: { id: string; depth: number }[] = [];
@@ -93,19 +93,32 @@ export function PlanPanel({ model, plane, selection, onCommand, onSelect, today 
         </button>
       </section>
       <section className="panel-section">
-        <h3>People</h3>
-        <input aria-label="New person name" value={personName} onChange={(e) => setPersonName(e.target.value)} placeholder="Name" />
-        <button
-          type="button"
-          className="chip"
-          disabled={personName.trim() === ''}
-          onClick={() => {
-            run(addPerson(model, plane, personName.trim()));
-            setPersonName('');
-          }}
-        >
-          Add person
-        </button>
+        <h3>People &amp; teams</h3>
+        <input aria-label="New actor name" value={actorName} onChange={(e) => setActorName(e.target.value)} placeholder="Name" />
+        <div className="field-row">
+          <button
+            type="button"
+            className="chip"
+            disabled={actorName.trim() === ''}
+            onClick={() => {
+              run(addActor(model, plane, PLAN_PERSON_TYPE, actorName.trim()));
+              setActorName('');
+            }}
+          >
+            Add person
+          </button>
+          <button
+            type="button"
+            className="chip"
+            disabled={actorName.trim() === ''}
+            onClick={() => {
+              run(addActor(model, plane, PLAN_TEAM_TYPE, actorName.trim()));
+              setActorName('');
+            }}
+          >
+            Add team
+          </button>
+        </div>
       </section>
     </DockSection>
   );

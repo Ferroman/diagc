@@ -172,6 +172,14 @@ describe('plan profile', () => {
     expect(chips.has('bare')).toBe(false);
     expect(notationProfile('plan').node?.badges).toBe(planBadges);
   });
+  it('planBadges: a team holds a role exactly like a person, same chip shape', () => {
+    const m = model('t');
+    const p = m.plan();
+    const platform = p.team('platform', 'Platform Team', { color: '#2f6fed' });
+    p.zone('z', { start: '2026-01-05', end: '2026-01-09' }).owner(platform);
+    const chips = planBadges(m.toJSON(), 'plan');
+    expect(chips.get('z')).toEqual([{ key: 'owns:platform', text: 'O·Platform', title: 'Owner: Platform Team', color: '#2f6fed' }]);
+  });
   it('registers the plan types and role kinds with legend labels', () => {
     expect(createTypeRegistry().resolve('plan-zone')).toMatchObject({ shape: 'rounded', legendLabel: 'Zone' });
     expect(createTypeRegistry().resolve('plan-event')).toMatchObject({ shape: 'diamond', defaultSize: { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT }, legendLabel: 'Event' });
@@ -187,12 +195,13 @@ describe('plan profile', () => {
       expect(p.edge?.hidden).toBeUndefined();
     }
   });
-  it('lets a fixed zone, event or free-form child be dragged (the gesture becomes days, or a clamped drop), never a person', () => {
+  it('lets a fixed zone, event or free-form child be dragged (the gesture becomes days, or a clamped drop), never an actor', () => {
     const p = notationProfile('plan');
     expect(p.node?.draggableWhenFixed?.({ id: 'z', name: 'Z', type: 'plan-zone' })).toBe(true);
     expect(p.node?.draggableWhenFixed?.({ id: 'e', name: 'E', type: 'plan-event' })).toBe(true);
     expect(p.node?.draggableWhenFixed?.({ id: 'o', name: 'O', type: 'service' })).toBe(true);
     expect(p.node?.draggableWhenFixed?.({ id: 'p', name: 'P', type: 'person' })).toBe(false);
+    expect(p.node?.draggableWhenFixed?.({ id: 't', name: 'T', type: 'team' })).toBe(false);
     expect(notationProfile('fishbone').node?.draggableWhenFixed).toBeUndefined();
   });
   it('only the plan opts its layout into saved positions — git-graph and fishbone own a layout too but never read them', () => {

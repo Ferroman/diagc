@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { model } from './builder';
 import {
+  PLAN_ACTOR_TYPES,
   PLAN_EVENT_TYPE,
   PLAN_ROLES,
   PLAN_ZONE_TYPE,
   atOf,
   dayOf,
+  isPlanActor,
   isPlanRole,
   isoOf,
   planGraph,
@@ -69,6 +71,18 @@ describe('roles', () => {
   });
 });
 
+describe('isPlanActor', () => {
+  it('is a person or a team, never a zone, an event or an untyped/other node', () => {
+    expect(PLAN_ACTOR_TYPES).toEqual(new Set(['person', 'team']));
+    expect(isPlanActor({ id: 'a', name: 'A', type: 'person' })).toBe(true);
+    expect(isPlanActor({ id: 't', name: 'T', type: 'team' })).toBe(true);
+    expect(isPlanActor(zone({ start: '2026-01-05', end: '2026-01-09' }))).toBe(false);
+    expect(isPlanActor(event({ at: '2026-01-05' }))).toBe(false);
+    expect(isPlanActor({ id: 's', name: 'S', type: 'service' })).toBe(false);
+    expect(isPlanActor({ id: 'u', name: 'U' })).toBe(false);
+  });
+});
+
 describe('planGraph', () => {
   /** plan plane 'plan': Q1 ⊃ (design, build ⊃ (m1 event, api)), root event kickoff; api is a shared node */
   function fixture() {
@@ -88,11 +102,11 @@ describe('planGraph', () => {
     return m.toJSON();
   }
 
-  it('lists zones, events and people in declaration order, deduplicated', () => {
+  it('lists zones, events and actors in declaration order, deduplicated', () => {
     const g = planGraph(fixture(), 'plan');
     expect(g.zones).toEqual(['q1', 'design', 'build']);
     expect(g.events).toEqual(['m1', 'kickoff']);
-    expect(g.people).toEqual(['alice']);
+    expect(g.actors).toEqual(['alice']);
   });
   it('maps each node to its zone parent and each zone to its split children', () => {
     const g = planGraph(fixture(), 'plan');

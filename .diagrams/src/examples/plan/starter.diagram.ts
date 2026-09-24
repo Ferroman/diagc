@@ -7,6 +7,7 @@ const plan = m.plan();
 const alice = plan.person('alice', 'Alice Ng', { color: '#2f6fed' });
 const bob = plan.person('bob', 'Bob Lee', { color: '#b08ad9' });
 const chen = plan.person('chen', 'Chen Wu', { color: '#3a9d5d' });
+const support = plan.team('support', 'Support team', { color: '#607d8b' });
 
 const discovery = plan.zone('discovery', { name: 'Discovery', start: '2026-01-05', end: '2026-01-23', color: '#b08ad9' });
 discovery.owner(alice).executor(bob);
@@ -19,7 +20,7 @@ build.event('code-freeze', { name: 'Code freeze', at: '2026-03-02' });
 build.comment('UI started a week late; the freeze holds', { by: 'Alice Ng', at: '2026-02-16' });
 build.link('Tracker', 'https://example.com/board/launch');
 
-plan.zone('rollout', { name: 'Rollout', start: '2026-03-09', end: '2026-03-20', color: '#3a9d5d' }).owner(chen);
+plan.zone('rollout', { name: 'Rollout', start: '2026-03-09', end: '2026-03-20', color: '#3a9d5d' }).owner(chen).executor(support);
 plan.event('launch', { name: 'Launch', at: '2026-03-23' });
 
 export default m;

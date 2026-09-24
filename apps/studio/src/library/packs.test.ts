@@ -268,6 +268,16 @@ describe('Fishbone pack', () => {
   });
 });
 
+describe('Plan pack', () => {
+  it('bundles the schedule stencils: zone, event, and the two actor types', () => {
+    expect(BUNDLED_LIBRARY.categories.some((c) => c.id === 'plan')).toBe(true);
+    const entries = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'plan');
+    expect(entries.map((e) => e.id)).toEqual(['plan-zone', 'plan-event', 'plan-person', 'plan-team']);
+    expect(entries.map((e) => e.template.type)).toEqual(['plan-zone', 'plan-event', 'person', 'team']);
+    for (const e of entries) expect(e.keywords).toContain('plan');
+  });
+});
+
 describe('Threat model pack', () => {
   const entries = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'threat-model');
 

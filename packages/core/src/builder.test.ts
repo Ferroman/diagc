@@ -735,4 +735,27 @@ describe('plan', () => {
     // or `...opts` (which spreads after `plane: this.plane`) would silently win.
     p.person('carol', 'Carol', { plane: 'arch' });
   });
+
+  it('builds a team the same way as a person: scoped to the plane, holds roles', () => {
+    const m = model('roadmap');
+    const p = m.plan();
+    const platform = p.team('platform', 'Platform team', { color: '#c33' });
+    const q1 = p.zone('q1', { name: 'Q1', start: '2026-01-05', end: '2026-03-27' }).owner(platform);
+    const json = m.toJSON();
+    expect(json.nodes.map((n) => [n.id, n.type, n.plane])).toEqual([
+      ['platform', 'team', 'plan'],
+      ['q1', 'plan-zone', 'plan'],
+    ]);
+    expect(json.nodes[0]).toMatchObject({ name: 'Platform team', color: '#c33' });
+    expect(json.relations).toEqual([{ id: 'platform->q1#0', from: 'platform', to: 'q1', kind: 'owns' }]);
+    expect(validate(json)).toEqual([]);
+    void q1;
+  });
+
+  it("rejects team()'s plane at compile time — a team is always scoped to the plan plane", () => {
+    const m = model('guard');
+    const p = m.plan();
+    // @ts-expect-error — same guard as person(): plane is forced, opts must not accept an override.
+    p.team('growth', 'Growth', { plane: 'arch' });
+  });
 });

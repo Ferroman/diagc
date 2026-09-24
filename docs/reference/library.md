@@ -6,7 +6,7 @@ For how to use it, see [Use the icon library](../how-to/use-the-icon-library.md)
 
 ## Bundled packs
 
-853 entries in 40 categories, rendered in this order:
+854 entries in 40 categories, rendered in this order:
 
 | Pack | Entries | Categories | Assets |
 | --- | --- | --- | --- |
@@ -15,7 +15,7 @@ For how to use it, see [Use the icon library](../how-to/use-the-icon-library.md)
 | **Second-order thinking** | 4 | 1 | none — renderer-drawn glyphs, not images |
 | **Fishbone** | 3 | 1 | none — renderer-drawn looks, not images |
 | **Threat model** | 4 | 1 | none — renderer-drawn shapes, not images |
-| **Plan** | 3 | 1 | none — renderer-drawn shapes, not images |
+| **Plan** | 4 | 1 | none — renderer-drawn shapes, not images |
 | **Data** | 1 | 1 | none — it seeds columns, not an image |
 | **Shapes** | 3 | 1 | `/library/shapes/` — tintable silhouette masks |
 | **Tech** | 16 | 1 | `/library/tech/` |
@@ -60,7 +60,7 @@ A dropped Trust boundary is an empty box: it holds elements through ordinary con
 
 ### Plan
 
-One category, **Plan** — the three stencils behind a [plan](../how-to/draw-a-plan.md): Zone, Event, Person. Zone and Event carry `plan-zone`/`plan-event` node types the renderer draws as a date bar and a diamond, not images; a zone carries no size of its own — the plan layout sizes it from its dates, and a dropped one seeds two weeks wide at the date under the pointer (a zone dropped inside another starts where its parent does). Person carries the ordinary `person` type, the same pill used elsewhere. `plan` is a keyword on all three, so it finds the set.
+One category, **Plan** — the four stencils behind a [plan](../how-to/draw-a-plan.md): Zone, Event, Person, Team. Zone and Event carry `plan-zone`/`plan-event` node types the renderer draws as a date bar and a diamond, not images; a zone carries no size of its own — the plan layout sizes it from its dates, and a dropped one seeds two weeks wide at the date under the pointer (a zone dropped inside another starts where its parent does). Person and Team carry the ordinary `person`/`team` types, the same pills used elsewhere — a team is an actor exactly like a person, for a role that belongs to a group. `plan` is a keyword on all four, so it finds the set.
 
 ### Data
 

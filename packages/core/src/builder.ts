@@ -33,7 +33,7 @@ import {
   type ThreatTarget,
 } from './threat-model';
 import { DiagramValidationError, validate } from './validate';
-import { PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_PERSON_TYPE, PLAN_ZONE_TYPE, type PlanRole } from './plan';
+import { PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_PERSON_TYPE, PLAN_TEAM_TYPE, PLAN_ZONE_TYPE, type PlanRole } from './plan';
 
 export interface NodeOpts {
   type?: string;
@@ -531,6 +531,11 @@ export class PlanBuilder {
    * silently win over the forced one. */
   person(id: string, name?: string, opts: Omit<ElementOpts, 'plane'> = {}): NodeRef {
     return this.m.node(id, { type: PLAN_PERSON_TYPE, plane: this.plane, ...(name !== undefined ? { name } : {}), ...opts });
+  }
+  /** a team to hand roles to, same deal as `person` — an actor that holds a
+   * role but is never an individual. Same forced-plane guard. */
+  team(id: string, name?: string, opts: Omit<ElementOpts, 'plane'> = {}): NodeRef {
+    return this.m.node(id, { type: PLAN_TEAM_TYPE, plane: this.plane, ...(name !== undefined ? { name } : {}), ...opts });
   }
 }
 

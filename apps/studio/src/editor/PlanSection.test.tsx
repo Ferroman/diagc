@@ -2,7 +2,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { model } from '@diagc/core';
-import { PlanSection } from './PlanSection';
+import { PlanSection, roleCandidates } from './PlanSection';
 
 function plan() {
   const m = model('p');
@@ -31,5 +31,19 @@ describe('PlanSection', () => {
     expect((screen.getByLabelText('At') as HTMLInputElement).value).toBe('2026-01-05');
     expect(screen.queryByLabelText('Start')).toBeNull();
     expect(screen.queryByLabelText('Owner')).toBeNull();
+  });
+});
+
+describe('roleCandidates', () => {
+  it('lists actors — people and teams — first, then other nodes, never zones or events', () => {
+    const m = model('c');
+    const p = m.plan();
+    p.person('alice', 'Alice');
+    p.team('platform', 'Platform');
+    m.node('svc', { name: 'Service' });
+    p.zone('q1', { name: 'Q1', start: '2026-01-05', end: '2026-01-09' });
+    p.event('kickoff', { name: 'Kickoff', at: '2026-01-05' });
+    const ids = roleCandidates(m.toJSON()).map((n) => n.id);
+    expect(ids).toEqual(['alice', 'platform', 'svc']);
   });
 });

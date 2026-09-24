@@ -3,8 +3,9 @@ import type { DiagramModel, DiagramNode } from './types';
 import { buildHierarchy } from './view/hierarchy';
 
 /** The notation id a plane (or the model) declares to be drawn as a schedule:
- * a calendar left to right, zones as bars, events as diamonds, people as a
- * roster. Pure — the renderer and the studio derive everything from here. */
+ * a calendar left to right, zones as bars, events as diamonds, actors (people
+ * or teams) as a roster. Pure — the renderer and the studio derive everything
+ * from here. */
 export const PLAN_NOTATION = 'plan' as const;
 /** A zone is a CONTAINER with a span: nesting is containment, and whatever
  * sits inside a zone is scheduled in it. */
@@ -18,12 +19,23 @@ export const PLAN_EVENT_TYPE = 'plan-event' as const;
  * It is NOT in `PLAN_TYPES`: that set gates the inspector's date fields, and a
  * person has no dates. */
 export const PLAN_PERSON_TYPE = 'person' as const;
+/** The type a team carries — the same deal as `PLAN_PERSON_TYPE`: a generic
+ * `team`, not a `plan-team`, so it keeps its own pill everywhere else and a
+ * role relation reads it exactly like a person. Not in `PLAN_TYPES` either. */
+export const PLAN_TEAM_TYPE = 'team' as const;
 export const PLAN_TYPES: ReadonlySet<string> = new Set([PLAN_ZONE_TYPE, PLAN_EVENT_TYPE]);
+/** Everything that can hold a role: a person or a team. `rolesOf` doesn't
+ * check this (a role relation may point `from` any node), but the roster, the
+ * role pickers and the plan's drag rules all mean "an actor" when they say
+ * `PLAN_PERSON_TYPE` — this is the set they should key on instead. */
+export const PLAN_ACTOR_TYPES: ReadonlySet<string> = new Set([PLAN_PERSON_TYPE, PLAN_TEAM_TYPE]);
 export const isPlanZone = (n: DiagramNode): boolean => n.type === PLAN_ZONE_TYPE;
 export const isPlanEvent = (n: DiagramNode): boolean => n.type === PLAN_EVENT_TYPE;
+export const isPlanActor = (n: DiagramNode): boolean => n.type !== undefined && PLAN_ACTOR_TYPES.has(n.type);
 
-/** People attach to a zone through a RELATION of one of these kinds, person →
- * zone, never through containment — so one person is on many zones. */
+/** Actors (people or teams) attach to a zone through a RELATION of one of
+ * these kinds, actor → zone, never through containment — so one actor is on
+ * many zones. */
 export const PLAN_ROLES = ['owns', 'executes', 'checks'] as const;
 export type PlanRole = (typeof PLAN_ROLES)[number];
 export const isPlanRole = (k: string): k is PlanRole => (PLAN_ROLES as readonly string[]).includes(k);
@@ -91,8 +103,9 @@ export interface PlanGraph {
   /** zone ids in declaration order (visible on the plane) */
   zones: string[];
   events: string[];
-  /** every node with a role relation into a visible zone, declaration order, deduplicated */
-  people: string[];
+  /** every actor (person or team) holding a role — a role relation into a
+   * visible zone — in declaration order, deduplicated */
+  actors: string[];
   /** zone/event/borrowed node → its zone parent on the plan plane */
   parent: ReadonlyMap<string, string>;
   /** zone → DIRECT children on the plan plane, split by what they are. A child
@@ -157,9 +170,9 @@ export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
     }
     children.set(z, split);
   }
-  const people: string[] = [];
+  const actors: string[] = [];
   for (const r of model.relations) {
-    if (isPlanRole(r.kind) && zoneSet.has(r.to) && !people.includes(r.from) && byId.has(r.from)) people.push(r.from);
+    if (isPlanRole(r.kind) && zoneSet.has(r.to) && !actors.includes(r.from) && byId.has(r.from)) actors.push(r.from);
   }
   let range: PlanSpan | undefined;
   const widen = (start: number, end: number): void => {
@@ -174,7 +187,7 @@ export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
     if (at !== undefined) widen(at, at);
   }
   const origin = range === undefined ? undefined : dayOf(`${isoOf(range.start).slice(0, 4)}-01-01`);
-  return { zones, events, people, parent, children, ...(range !== undefined ? { range } : {}), ...(origin !== undefined ? { origin } : {}) };
+  return { zones, events, actors, parent, children, ...(range !== undefined ? { range } : {}), ...(origin !== undefined ? { origin } : {}) };
 }
 
 /** `id` plus every descendant zone and event, pre-order — what moves with a

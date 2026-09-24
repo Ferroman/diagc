@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { dayOf, isoOf, model, type DiagramModel, type EditorCommand } from '@diagc/core';
+import { dayOf, isoOf, model, PLAN_PERSON_TYPE, PLAN_TEAM_TYPE, type DiagramModel, type EditorCommand } from '@diagc/core';
 import { PLAN_LAYOUT, planX } from '@diagc/renderer';
-import { addEvent, addPerson, addZone, planMoves, planResize, seedDates, seedOnRetype, setRole, ZONE_DAYS } from './planActions';
+import { addActor, addEvent, addZone, planMoves, planResize, seedDates, seedOnRetype, setRole, ZONE_DAYS } from './planActions';
 
 const { DAY, TITLE_H } = PLAN_LAYOUT;
 const d = (iso: string) => dayOf(iso)!;
@@ -50,11 +50,18 @@ describe('planMoves', () => {
     expect(dates(back)[0]).toEqual({ type: 'set-plan-dates', id: 'build', dates: { start: '2026-01-05', end: shift('2026-03-27', -28) } });
     expect(dates(back)[1]).toEqual({ type: 'set-plan-dates', id: 'm1', dates: { at: shift('2026-03-02', -28) } });
   });
-  it('moves a root event by days, a nested event within its zone, and ignores people and sub-day nudges', () => {
+  it('moves a root event by days, a nested event within its zone, and ignores actors and sub-day nudges', () => {
     // `alice` is in the gesture on purpose: planLayout marks the roster `fixed`
-    // so she is never dragged, but the contract is planMoves' own — a person
-    // yields nothing here whatever the layout decides
-    const c = planMoves(roadmap(), 'plan', { kickoff: { x: 0, y: 0 }, m1: { x: 0, y: 0 }, alice: { x: 5, y: 5 } }, { kickoff: { dx: -2 * DAY, dy: 0 }, m1: { dx: 60 * DAY, dy: 0 }, alice: { dx: 50, dy: 50 } });
+    // so she is never dragged, but the contract is planMoves' own — an actor
+    // (person or team) yields nothing here whatever the layout decides
+    const m = roadmap();
+    m.nodes.push({ id: 'platform', name: 'Platform', type: 'team' });
+    const c = planMoves(
+      m,
+      'plan',
+      { kickoff: { x: 0, y: 0 }, m1: { x: 0, y: 0 }, alice: { x: 5, y: 5 }, platform: { x: 5, y: 5 } },
+      { kickoff: { dx: -2 * DAY, dy: 0 }, m1: { dx: 60 * DAY, dy: 0 }, alice: { dx: 50, dy: 50 }, platform: { dx: 50, dy: 50 } },
+    );
     expect(commands(c)).toEqual([
       { type: 'set-plan-dates', id: 'kickoff', dates: { at: '2026-01-03' } },
       { type: 'set-plan-dates', id: 'm1', dates: { at: '2026-03-27' } },
@@ -172,10 +179,11 @@ describe('quick-adds', () => {
     m.nodes.push({ id: 'zone', name: 'taken', type: 'service' });
     expect(addZone(m, 'plan', { today: '2026-05-04' }).id).toBe('zone-2');
   });
-  it('addEvent: today, clamped into the selected zone; addPerson: a slug id', () => {
+  it('addEvent: today, clamped into the selected zone; addActor: a slug id, person or team', () => {
     expect(addEvent(roadmap(), 'plan', { today: '2026-05-04' }).command).toEqual({ type: 'add-node', node: { id: 'event', name: 'Event', type: 'plan-event', plane: 'plan', metadata: { at: '2026-05-04' } } });
     expect(addEvent(roadmap(), 'plan', { selected: 'design', today: '2026-05-04' }).command).toEqual({ type: 'add-node', node: { id: 'event', name: 'Event', type: 'plan-event', plane: 'plan', metadata: { at: '2026-01-30' } }, parent: { id: 'design', plane: 'plan' } });
-    expect(addPerson(roadmap(), 'plan', 'Bob Lee')).toEqual({ id: 'bob-lee', command: { type: 'add-node', node: { id: 'bob-lee', name: 'Bob Lee', type: 'person', plane: 'plan' } } });
+    expect(addActor(roadmap(), 'plan', PLAN_PERSON_TYPE, 'Bob Lee')).toEqual({ id: 'bob-lee', command: { type: 'add-node', node: { id: 'bob-lee', name: 'Bob Lee', type: 'person', plane: 'plan' } } });
+    expect(addActor(roadmap(), 'plan', PLAN_TEAM_TYPE, 'Platform')).toEqual({ id: 'platform', command: { type: 'add-node', node: { id: 'platform', name: 'Platform', type: 'team', plane: 'plan' } } });
   });
   it('setRole replaces the role\'s relation, or removes it', () => {
     const m = roadmap();

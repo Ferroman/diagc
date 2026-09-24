@@ -60,11 +60,21 @@ describe('PlanPanel', () => {
     expect(onSelect).toHaveBeenLastCalledWith('zone');
     fireEvent.click(screen.getByRole('button', { name: 'Add event' }));
     expect(onCommand).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'add-node', node: expect.objectContaining({ type: 'plan-event', metadata: { at: '2026-03-27' } }) }));
-    const name = screen.getByLabelText('New person name');
+    const name = screen.getByLabelText('New actor name');
     expect((screen.getByRole('button', { name: 'Add person' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Add team' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(name, { target: { value: 'Bob Lee' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add person' }));
     expect(onCommand).toHaveBeenLastCalledWith({ type: 'add-node', node: { id: 'bob-lee', name: 'Bob Lee', type: 'person', plane: 'plan' } });
+    expect((name as HTMLInputElement).value).toBe('');
+  });
+  it('"Add team" beside "Add person" adds a team the same way', () => {
+    const { onCommand, onSelect } = setup();
+    const name = screen.getByLabelText('New actor name');
+    fireEvent.change(name, { target: { value: 'Platform Team' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add team' }));
+    expect(onCommand).toHaveBeenLastCalledWith({ type: 'add-node', node: { id: 'platform-team', name: 'Platform Team', type: 'team', plane: 'plan' } });
+    expect(onSelect).toHaveBeenLastCalledWith('platform-team');
     expect((name as HTMLInputElement).value).toBe('');
   });
 });

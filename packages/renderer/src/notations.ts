@@ -1,4 +1,4 @@
-import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_PERSON_TYPE, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanRole, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
+import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanActor, isPlanRole, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';
@@ -219,7 +219,7 @@ const THREAT_MODEL: NotationProfile = {
 
 // ---- Plan -------------------------------------------------------------------
 // The notation owns the arrangement (as git-graph does) because x IS a date.
-// Roles are relations person → zone that never draw as edges: they become
+// Roles are relations actor → zone that never draw as edges: they become
 // chips on the zone, so the picture stays a Gantt chart, not a web.
 const ROLE_LABEL: Record<PlanRole, { initial: string; title: string }> = {
   owns: { initial: 'O', title: 'Owner' },
@@ -228,7 +228,8 @@ const ROLE_LABEL: Record<PlanRole, { initial: string; title: string }> = {
 };
 
 /** Role chips per zone, in owns / executes / checks order: `O·Alice` (first
- * word of the name), titled `Owner: Alice Ng`, in the person's colour. */
+ * word of the name), titled `Owner: Alice Ng`, in the actor's colour. Reads
+ * the relation's `from` node whatever its type — a person or a team, alike. */
 export function planBadges(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, NodeBadge[]> {
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const out = new Map<string, NodeBadge[]>();
@@ -236,15 +237,15 @@ export function planBadges(model: DiagramModel, plane: string | undefined): Read
     const roles = rolesOf(model, id);
     const chips: NodeBadge[] = [];
     for (const role of PLAN_ROLES) {
-      for (const personId of roles[role]) {
-        const person = byId.get(personId);
-        if (person === undefined) continue;
-        const first = person.name.trim().split(/\s+/)[0] ?? person.id;
+      for (const actorId of roles[role]) {
+        const actor = byId.get(actorId);
+        if (actor === undefined) continue;
+        const first = actor.name.trim().split(/\s+/)[0] ?? actor.id;
         chips.push({
-          key: `${role}:${personId}`,
+          key: `${role}:${actorId}`,
           text: `${ROLE_LABEL[role].initial}·${first}`,
-          title: `${ROLE_LABEL[role].title}: ${person.name}`,
-          ...(person.color !== undefined ? { color: person.color } : {}),
+          title: `${ROLE_LABEL[role].title}: ${actor.name}`,
+          ...(actor.color !== undefined ? { color: actor.color } : {}),
         });
       }
     }
@@ -265,11 +266,11 @@ const PLAN: NotationProfile = {
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
     badges: planBadges,
     resizable: (n) => (n.type === PLAN_ZONE_TYPE ? 'x' : undefined),
-    // Everything fixed drags except a person: a zone's or event's drag reads
+    // Everything fixed drags except an actor: a zone's or event's drag reads
     // as a date change (planMoves), and a zone's free-form "other" child
     // drags to a new spot within the bar the same layout clamps on read. The
-    // roster is a list — a person never moves.
-    draggableWhenFixed: (n) => n.type !== PLAN_PERSON_TYPE,
+    // roster is a list — an actor never moves.
+    draggableWhenFixed: (n) => !isPlanActor(n),
   },
   edge: { hidden: isPlanRole },
   overlay: 'time-axis',

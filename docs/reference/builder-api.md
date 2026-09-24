@@ -367,6 +367,7 @@ Declares a plan (schedule) plane — always a plane, id `plan` by default, name 
 | `plan.zone(id, opts)` | `ZoneBuilder` | A top-level zone (`plan-zone`). `opts` = [`m.node`](#mnodeid-opts--noderef)'s options minus `type`/`plane`/`metadata`, plus **required** `start` and `end` (`YYYY-MM-DD`, `end` inclusive). |
 | `plan.event(id, opts)` | `NodeRef` | A top-level event (`plan-event`); `opts` as above with **required** `at`. |
 | `plan.person(id, name?, opts?)` | `NodeRef` | A `person` node on the plan plane. |
+| `plan.team(id, name?, opts?)` | `NodeRef` | A `team` node on the plan plane — an actor like `person`, for a role that belongs to a group rather than one individual. |
 | `zone.zone(id, opts)` | `ZoneBuilder` | A nested zone, contained on the plan plane. |
 | `zone.event(id, opts)` | `NodeRef` | An event inside the zone. |
 | `zone.contains(...refs)` | `zone` | Schedules any nodes inside the zone (containment on the plan plane). |
