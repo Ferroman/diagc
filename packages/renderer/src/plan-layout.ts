@@ -16,7 +16,10 @@ import {
 import type { LayoutResult, NodeGeometry } from './layout';
 
 /** The schedule's fixed geometry. `DAY` is the scale (px per calendar day);
- * the rest are the strip, row and column sizes every expectation derives from. */
+ * the rest are the strip, row and column sizes every expectation derives from.
+ * `ROSTER_GAP` is both the roster's horizontal card spacing and the vertical
+ * gap between its last row and the header; `ROW_GAP` (shared with a zone's own
+ * child rows) spaces the roster's rows from each other. */
 export const PLAN_LAYOUT = {
   DAY: 20,
   BAR_H: 40,
@@ -26,9 +29,12 @@ export const PLAN_LAYOUT = {
   EVENT: 16,
   /** month band 22 + week band 22, above y = 0 */
   HEADER_H: 44,
-  ROSTER_W: 180,
   ROSTER_GAP: 24,
 } as const;
+
+/** cards per roster row when the plan has no dated range to measure a width
+ * against (nothing to wrap by, so wrap by count instead) */
+const ROSTER_WRAP_COUNT = 6;
 
 type Size = { width: number; height: number };
 
@@ -71,7 +77,7 @@ export function planLayout(
   sizeHints?: ReadonlyMap<string, Size>,
   positions?: Record<string, { x: number; y: number }>,
 ): LayoutResult {
-  const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT, HEADER_H, ROSTER_W, ROSTER_GAP } = PLAN_LAYOUT;
+  const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT, HEADER_H, ROSTER_GAP } = PLAN_LAYOUT;
   const g = planGraphCached(model, plane);
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const origin = g.origin ?? 0;
@@ -182,15 +188,45 @@ export function planLayout(
     fixed.add(id);
   }
   // the roster: people with roles first, then every other person root; a
-  // list, not a picture, so neither axis is the overlay's
+  // strip above the header, not a picture, so neither axis is the overlay's.
+  // Cards run left to right from the origin and wrap into a further row when
+  // the next one would cross the plan's width (its own date range has no
+  // bearing on a person, so the width the CHART draws is the only ruler
+  // there is; with nothing dated yet, wrap by count instead). Rows then stack
+  // UPWARD from the header, so adding a row pushes the strip further from the
+  // chart rather than pushing the chart down.
   const rootSet = new Set(roots);
   const roster = [...g.people, ...roots.filter((id) => node(id).type === PLAN_PERSON_TYPE)].filter((id, i, all) => rootSet.has(id) && all.indexOf(id) === i);
-  let ry = 0;
+  const rosterWidth = g.range !== undefined ? planX(g.range.end + 1, origin) : undefined;
+  const rosterRows: { id: string; size: Size }[][] = [];
+  let rosterRow: { id: string; size: Size }[] = [];
+  let rowRight = 0;
   for (const id of roster) {
     const size = hint(id);
-    geometry.set(id, { x: -(ROSTER_W + ROSTER_GAP), y: ry, ...size });
-    fixed.add(id);
-    ry += size.height + ROW_GAP;
+    const overflows = rosterWidth !== undefined ? rowRight + size.width > rosterWidth : rosterRow.length >= ROSTER_WRAP_COUNT;
+    if (rosterRow.length > 0 && overflows) {
+      rosterRows.push(rosterRow);
+      rosterRow = [];
+      rowRight = 0;
+    }
+    rosterRow.push({ id, size });
+    rowRight += size.width + ROSTER_GAP;
+  }
+  if (rosterRow.length > 0) rosterRows.push(rosterRow);
+  // laid out from the last row up, so each earlier row's y falls out of the
+  // row already placed below it
+  let rowTop: number | undefined;
+  for (let i = rosterRows.length - 1; i >= 0; i--) {
+    const r = rosterRows[i]!;
+    const rowH = Math.max(...r.map((c) => c.size.height));
+    const rowY = rowTop === undefined ? -HEADER_H - ROSTER_GAP - rowH : rowTop - ROW_GAP - rowH;
+    let rx = 0;
+    for (const c of r) {
+      geometry.set(c.id, { x: rx, y: rowY, ...c.size });
+      fixed.add(c.id);
+      rx += c.size.width + ROSTER_GAP;
+    }
+    rowTop = rowY;
   }
   // strays (a shared node with no zone) park under the zones, as git-graph's spare row
   let sx = 0;

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { LEAF_SIZE, PLAN_ZONE_TYPE, compileView, dayOf, model, type CompiledView, type DiagramModel } from '@diagc/core';
 import { PLAN_LAYOUT, planLayout, planX } from './plan-layout';
 
-const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT, HEADER_H, ROSTER_W, ROSTER_GAP } = PLAN_LAYOUT;
+const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT, HEADER_H, ROSTER_GAP } = PLAN_LAYOUT;
 
 /**
  * plan plane: q1 (Jan 5 – Mar 27) ⊃ design (Jan 5 – Jan 30), build (Feb 2 – Mar 27) ⊃ { m1 event Mar 2, api, db (borrowed) };
@@ -163,15 +163,57 @@ describe('planLayout', () => {
     expect(r.geometry.get('z')!.height).toBe(TITLE_H);
   });
 
-  it('puts root events on the header baseline and people in a fixed roster column', () => {
+  it('puts root events on the header baseline and people in a fixed roster strip above it', () => {
     const m = roadmap();
     const r = planLayout(view(m), m, 'plan');
     expect(r.geometry.get('kickoff')).toEqual({ x: planX(dayOf('2026-01-05')!, origin) + DAY / 2 - EVENT / 2, y: -HEADER_H / 2 - EVENT / 2, width: EVENT, height: EVENT });
     const alice = r.geometry.get('alice')!;
     const bob = r.geometry.get('bob')!;
-    expect(alice).toMatchObject({ x: -(ROSTER_W + ROSTER_GAP), y: 0, width: LEAF_SIZE.width, height: LEAF_SIZE.height });
-    expect(bob).toMatchObject({ x: -(ROSTER_W + ROSTER_GAP), y: alice.height + ROW_GAP }); // roles first, then the rest
+    const rowY = -HEADER_H - ROSTER_GAP - LEAF_SIZE.height;
+    // both fit the one row (the plan is thousands of px wide): left to right
+    // from the origin, roles first (alice owns build), then the rest (bob)
+    expect(alice).toMatchObject({ x: 0, y: rowY, width: LEAF_SIZE.width, height: LEAF_SIZE.height });
+    expect(bob).toMatchObject({ x: LEAF_SIZE.width + ROSTER_GAP, y: rowY });
     for (const id of ['kickoff', 'alice', 'bob']) expect(r.fixed?.has(id)).toBe(true);
+  });
+
+  it('wraps the roster into a further row once a card would cross the plan width, stacking rows upward', () => {
+    const m = model('w');
+    const p = m.plan();
+    p.zone('z', { start: '2026-01-01', end: '2026-01-06' }); // 6 days = 120px plan width
+    const alice = p.person('alice', 'Alice');
+    const bob = p.person('bob', 'Bob');
+    const chen = p.person('chen', 'Chen');
+    const hints = new Map([alice, bob, chen].map((n) => [n.id, { width: 40, height: 20 }]));
+    const r = planLayout(view(m.toJSON()), m.toJSON(), 'plan', hints);
+    // alice + bob: 40 + 24 + 40 = 104 ≤ 120, same row; + chen: 104 + 24 + 40 = 168 > 120, wraps
+    const a = r.geometry.get('alice')!;
+    const b = r.geometry.get('bob')!;
+    const c = r.geometry.get('chen')!;
+    expect(a).toMatchObject({ x: 0 });
+    expect(b).toMatchObject({ x: 40 + ROSTER_GAP });
+    expect(c).toMatchObject({ x: 0 }); // its own row, back at the origin
+    // chen's row (declared last, wrapped) sits ROSTER_GAP above the header;
+    // alice/bob's row sits ROW_GAP above that
+    expect(c.y).toBe(-HEADER_H - ROSTER_GAP - 20);
+    expect(a.y).toBe(c.y - ROW_GAP - 20);
+    expect(b.y).toBe(a.y);
+    for (const id of ['alice', 'bob', 'chen']) expect(r.fixed?.has(id)).toBe(true);
+  });
+
+  it('wraps a dateless plan\'s roster by count, six to a row', () => {
+    const m = model('nodates');
+    const p = m.plan();
+    const people = Array.from({ length: 7 }, (_, i) => p.person(`p${i}`, `P${i}`));
+    void people;
+    const r = planLayout(view(m.toJSON()), m.toJSON(), 'plan');
+    // the overflow row (just the 7th person) was formed last, so it sits
+    // closest to the header; the first six sit one row further up
+    const lastRowY = -HEADER_H - ROSTER_GAP - LEAF_SIZE.height;
+    expect(r.geometry.get('p6')!.y).toBe(lastRowY);
+    expect(r.geometry.get('p6')!.x).toBe(0);
+    const firstRowY = lastRowY - ROW_GAP - LEAF_SIZE.height;
+    for (let i = 0; i < 6; i++) expect(r.geometry.get(`p${i}`)!.y).toBe(firstRowY);
   });
 
   it('gives no geometry to a node the view does not show, and parks a stray root under the zones', () => {
