@@ -43,6 +43,7 @@ import {
   type EdgeLabelSide,
   type LayoutOverlay,
   type LayoutSettings,
+  type PlanRole,
   type RelationStyle,
   type Stroke,
   type TextRun,
@@ -77,7 +78,7 @@ import { SecondOrderPanel } from './editor/SecondOrderPanel';
 import { FishbonePanel } from './editor/FishbonePanel';
 import { ThreatModelPanel } from './editor/ThreatModelPanel';
 import { PlanPanel } from './editor/PlanPanel';
-import { assign, planMoves, planResize } from './editor/planActions';
+import { assign, planMoves, planResize, setActorRole } from './editor/planActions';
 import { quickAdd, quickAddLabel, quickAddPlaced, type QuickAddContext } from './editor/quickAdd';
 import { InspectorTabs, type InspectorTab } from './editor/InspectorTabs';
 import { Dock } from './Dock';
@@ -1268,6 +1269,13 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           const command = assign(model, activePlane, id, targetId, rel);
                           if (command !== undefined) editor.dispatch(command);
                         }
+                      },
+                      // the chip only ever renders on a plan plane (DiagramNode gates it
+                      // on the notation itself), so no notation check is needed here
+                      onSetRole: (zoneId: string, actorId: string, role: PlanRole | null) => {
+                        if (model === undefined) return;
+                        const command = setActorRole(model, zoneId, actorId, role);
+                        if (command !== undefined) editor.dispatch(command);
                       },
                       onCreateAt: (pos: { x: number; y: number }) => createAt(pos),
                       onImageFiles: (files: File[], position?: { x: number; y: number }) =>

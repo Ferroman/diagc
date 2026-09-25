@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { dayOf, isoOf, model, PLAN_PERSON_TYPE, PLAN_TEAM_TYPE, type DiagramModel, type EditorCommand } from '@diagc/core';
 import { PLAN_LAYOUT, planX } from '@diagc/renderer';
-import { addActor, addEvent, addZone, assign, planMoves, planResize, seedDates, seedOnRetype, setRole, ZONE_DAYS } from './planActions';
+import { addActor, addEvent, addZone, assign, planMoves, planResize, seedDates, seedOnRetype, setActorRole, setRole, ZONE_DAYS } from './planActions';
 
 const { DAY, TITLE_H } = PLAN_LAYOUT;
 const d = (iso: string) => dayOf(iso)!;
@@ -334,6 +334,37 @@ describe('assign', () => {
       commands: [
         { type: 'add-containment', parent: 'design', child: 'other', plane: 'plan' },
         { type: 'set-position', nodeId: 'other', x: 0, y: TITLE_H, plane: 'plan' },
+      ],
+    });
+  });
+});
+
+describe('setActorRole', () => {
+  // alice owns build in roadmap() — relation id 'alice->build#0' (builder's from->to#index scheme)
+  it('a different role patches the one relation', () => {
+    expect(setActorRole(roadmap(), 'build', 'alice', 'executes')).toEqual({
+      type: 'update-relation',
+      id: 'alice->build#0',
+      patch: { kind: 'executes' },
+    });
+  });
+  it('null deletes the relation', () => {
+    expect(setActorRole(roadmap(), 'build', 'alice', null)).toEqual({ type: 'delete-relation', id: 'alice->build#0' });
+  });
+  it('no role on the zone is undefined', () => {
+    expect(setActorRole(roadmap(), 'design', 'alice', 'owns')).toBeUndefined();
+  });
+  it('already holding exactly that role is undefined', () => {
+    expect(setActorRole(roadmap(), 'build', 'alice', 'owns')).toBeUndefined();
+  });
+  it('two relations: the first is patched, extras deleted, as one batch', () => {
+    const m = roadmap();
+    m.relations.push({ id: 'alice->build#1', from: 'alice', to: 'build', kind: 'checks' });
+    expect(setActorRole(m, 'build', 'alice', 'owns')).toEqual({
+      type: 'batch',
+      commands: [
+        { type: 'update-relation', id: 'alice->build#0', patch: { kind: 'owns' } },
+        { type: 'delete-relation', id: 'alice->build#1' },
       ],
     });
   });

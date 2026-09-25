@@ -1313,6 +1313,18 @@ describe('plan chips and x-resize', () => {
     expect(group.container.querySelectorAll('.dg-group .dg-role-chip')).toHaveLength(2);
     expect(group.container.querySelector('.dg-group')?.getAttribute('data-type')).toBe('plan-zone');
   });
+  it('with onSetRole in data on the plan notation, the chip is a button', () => {
+    const badges = [{ key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' }];
+    const { container } = renderNode({ typeId: 'plan-zone', notation: 'plan', badges, onSetRole: vi.fn() });
+    const chip = container.querySelector('.dg-role-chip');
+    expect(chip?.tagName).toBe('BUTTON');
+  });
+  it('without onSetRole (view mode) the chip stays the span it was', () => {
+    const badges = [{ key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' }];
+    const { container } = renderNode({ typeId: 'plan-zone', notation: 'plan', badges });
+    const chip = container.querySelector('.dg-role-chip');
+    expect(chip?.tagName).toBe('SPAN');
+  });
   it('mounts left and right horizontal resize controls when resizeAxis is x, and reports the new box', () => {
     const onResize = vi.fn();
     renderNode({ typeId: 'plan-zone', resizeAxis: 'x', onResize }, true);

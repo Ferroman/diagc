@@ -235,7 +235,9 @@ const THREAT_MODEL: NotationProfile = {
 // The notation owns the arrangement (as git-graph does) because x IS a date.
 // Roles are relations actor → zone that never draw as edges: they become
 // chips on the zone, so the picture stays a Gantt chart, not a web.
-const ROLE_LABEL: Record<PlanRole, { initial: string; title: string }> = {
+/** short/long labels per role — the chip's `O`/`E`/`C` initial and the role
+ * chip menu's item text (see RoleChipMenu). */
+export const ROLE_LABEL: Record<PlanRole, { initial: string; title: string }> = {
   owns: { initial: 'O', title: 'Owner' },
   executes: { initial: 'E', title: 'Executor' },
   checks: { initial: 'C', title: 'Checker' },

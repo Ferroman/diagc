@@ -1,7 +1,7 @@
 /** The DiagramView public surface: props, the edit-callback contract, and the
  * imperative layout API. Pure declarations — no runtime logic lives here. */
 
-import type { Column, DiagramModel, Drawings, EdgeLabelSide, LayoutOverlay, NotationId, Stroke, TextRun, ThreatStatus, ThreatTarget } from '@diagc/core';
+import type { Column, DiagramModel, Drawings, EdgeLabelSide, LayoutOverlay, NotationId, PlanRole, Stroke, TextRun, ThreatStatus, ThreatTarget } from '@diagc/core';
 import type { IconRegistry } from '@diagc/icons';
 import type { MutableRefObject } from 'react';
 import type { AlignMode } from './arrange';
@@ -224,6 +224,9 @@ export interface EditingApi {
    * dragged box's top-left relative to the target's top-left, in flow units.
    * Reported INSTEAD of a move for that box. */
   onDropInto?: (id: string, targetId: string, rel: { x: number; y: number }) => void;
+  /** edit mode, plan notation: a role chip's menu chose a role for the actor on
+   * this zone, or `null` to remove the actor from it */
+  onSetRole?: (zoneId: string, actorId: string, role: PlanRole | null) => void;
   /** an in-place rename (double-click on a node) was committed */
   onRenameNode?: (id: string, name: string) => void;
   /** an in-place rich-text edit (double-click on a box label) was committed */

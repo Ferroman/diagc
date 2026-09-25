@@ -260,6 +260,29 @@ export function setRole(model: DiagramModel, zoneId: string, role: PlanRole, per
   return { type: 'batch', commands };
 }
 
+/**
+ * The role chip menu's choice, as one command (see EditingApi.onSetRole): the
+ * actor's role relations on `zoneId` — there is normally one, but the model
+ * lets more accumulate — all become `role`, kept in place: the first is
+ * PATCHED to it (`update-relation`, `kind`) so its id and any other fields
+ * survive, and every extra is deleted. `role: null` deletes them all instead.
+ * Two or more commands land in one `batch` (one undo step); a single command
+ * comes back bare, the same contract `assign`/`setRole` keep. Undefined when
+ * the actor holds no role on the zone at all, or holds exactly one relation
+ * already at `role` — nothing a command could change.
+ */
+export function setActorRole(model: DiagramModel, zoneId: string, actorId: string, role: PlanRole | null): EditorCommand | undefined {
+  const held = model.relations.filter((r) => r.from === actorId && r.to === zoneId && isPlanRole(r.kind));
+  if (held.length === 0) return undefined;
+  if (role !== null && held.length === 1 && held[0]!.kind === role) return undefined;
+  const [first, ...rest] = held;
+  const commands: EditorCommand[] = [
+    role === null ? { type: 'delete-relation', id: first!.id } : { type: 'update-relation', id: first!.id, patch: { kind: role } },
+    ...rest.map((r): EditorCommand => ({ type: 'delete-relation', id: r.id })),
+  ];
+  return commands.length === 1 ? commands[0]! : { type: 'batch', commands };
+}
+
 /** `id`'s current containment parents on `plane` — the raw edges, whatever
  * each parent's own type is (a zone or not), read the same way planGraph
  * reads the plane's hierarchy (buildHierarchy resolves plane-borrowing the
