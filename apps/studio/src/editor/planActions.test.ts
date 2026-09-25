@@ -301,6 +301,21 @@ describe('assign', () => {
       ],
     });
   });
+  it('a plain node contained by two zones dropped on a third removes both old edges, in edge order', () => {
+    const m = roadmap();
+    m.nodes.push({ id: 'other', name: 'Other', type: 'service' });
+    m.containment.push({ parent: 'design', child: 'other', plane: 'plan' }, { parent: 'solo', child: 'other', plane: 'plan' });
+    const c = assign(m, 'plan', 'other', 'build', { x: 5, y: TITLE_H + 5 });
+    expect(c).toEqual({
+      type: 'batch',
+      commands: [
+        { type: 'remove-containment', parent: 'design', child: 'other', plane: 'plan' },
+        { type: 'remove-containment', parent: 'solo', child: 'other', plane: 'plan' },
+        { type: 'add-containment', parent: 'build', child: 'other', plane: 'plan' },
+        { type: 'set-position', nodeId: 'other', x: 5, y: TITLE_H + 5, plane: 'plan' },
+      ],
+    });
+  });
   it('dropped on its current parent is a no-op', () => {
     const m = roadmap();
     m.nodes.push({ id: 'other', name: 'Other', type: 'service' });

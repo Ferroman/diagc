@@ -260,14 +260,17 @@ export function setRole(model: DiagramModel, zoneId: string, role: PlanRole, per
   return { type: 'batch', commands };
 }
 
-/** `id`'s current containment parent on `plane` — the raw edge, whatever the
- * parent's own type is (a zone or not), read the same way planGraph reads the
- * plane's hierarchy (buildHierarchy resolves plane-borrowing the same way).
- * A DAG child can have more than one; the first is buildHierarchy's own
- * declaration-edge order, the same tie-break planGraph's own `parent` map
- * uses for its (zone-only) view of the same edges. */
-function currentParent(model: DiagramModel, plane: string | undefined, id: string): string | undefined {
-  return buildHierarchy(model, plane).parentsOf.get(id)?.[0];
+/** `id`'s current containment parents on `plane` — the raw edges, whatever
+ * each parent's own type is (a zone or not), read the same way planGraph
+ * reads the plane's hierarchy (buildHierarchy resolves plane-borrowing the
+ * same way). A DAG child can have more than one — plan-layout hosts it under
+ * only the FIRST, by buildHierarchy's own declaration-edge order (the same
+ * tie-break planGraph's own `parent` map uses for its zone-only view of the
+ * same edges), but every one of them is a real containment edge that must be
+ * dropped on re-home, or a stale earlier parent would keep hosting the node
+ * alongside its new zone. */
+function currentParents(model: DiagramModel, plane: string | undefined, id: string): string[] {
+  return buildHierarchy(model, plane).parentsOf.get(id) ?? [];
 }
 
 /**
@@ -276,10 +279,12 @@ function currentParent(model: DiagramModel, plane: string | undefined, id: strin
  * already holds ANY role there, in which case the drop is a no-op. Any other
  * node is re-homed under the zone on this plane and placed where it was let
  * go, clamped to the same floor planLayout clamps a free-form child by
- * (x ≥ 0, y ≥ TITLE_H). A zone or an event is never assigned: their drag is
- * the date move, and DiagramView never reports them here — refused again
- * HERE so this function's contract does not depend on who called it.
- * Returns undefined when nothing would change.
+ * (x ≥ 0, y ≥ TITLE_H) — every containment edge it had on this plane is
+ * removed first, not just the one plan-layout was hosting it under, so a DAG
+ * child never keeps a stale second parent after the move. A zone or an event
+ * is never assigned: their drag is the date move, and DiagramView never
+ * reports them here — refused again HERE so this function's contract does
+ * not depend on who called it. Returns undefined when nothing would change.
  */
 export function assign(
   model: DiagramModel,
@@ -296,10 +301,10 @@ export function assign(
     if (model.relations.some((r) => r.from === id && r.to === zoneId && isPlanRole(r.kind))) return undefined;
     return { type: 'add-relation', from: id, to: zoneId, opts: { kind: 'executes' } };
   }
-  const parent = currentParent(model, plane, id);
-  if (parent === zoneId) return undefined;
+  const parents = currentParents(model, plane, id);
+  if (parents.includes(zoneId)) return undefined;
   const commands: EditorCommand[] = [];
-  if (parent !== undefined) commands.push({ type: 'remove-containment', parent, child: id, ...planeOpt(plane) });
+  for (const parent of parents) commands.push({ type: 'remove-containment', parent, child: id, ...planeOpt(plane) });
   commands.push({ type: 'add-containment', parent: zoneId, child: id, ...planeOpt(plane) });
   commands.push({ type: 'set-position', nodeId: id, x: Math.max(0, rel.x), y: Math.max(TITLE_H, rel.y), ...planeOpt(plane) });
   return { type: 'batch', commands };
