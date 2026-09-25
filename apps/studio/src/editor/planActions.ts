@@ -4,9 +4,11 @@ import {
   PLAN_TEAM_TYPE,
   PLAN_ZONE_TYPE,
   atOf,
+  buildHierarchy,
   dayOf,
   isPlanActor,
   isPlanEvent,
+  isPlanRole,
   isPlanZone,
   isoOf,
   planGraph,
@@ -255,6 +257,51 @@ export function setRole(model: DiagramModel, zoneId: string, role: PlanRole, per
     .filter((r) => r.to === zoneId && r.kind === role)
     .map((r) => ({ type: 'delete-relation' as const, id: r.id }));
   if (personId !== null) commands.push({ type: 'add-relation', from: personId, to: zoneId, opts: { kind: role } });
+  return { type: 'batch', commands };
+}
+
+/** `id`'s current containment parent on `plane` — the raw edge, whatever the
+ * parent's own type is (a zone or not), read the same way planGraph reads the
+ * plane's hierarchy (buildHierarchy resolves plane-borrowing the same way).
+ * A DAG child can have more than one; the first is buildHierarchy's own
+ * declaration-edge order, the same tie-break planGraph's own `parent` map
+ * uses for its (zone-only) view of the same edges. */
+function currentParent(model: DiagramModel, plane: string | undefined, id: string): string | undefined {
+  return buildHierarchy(model, plane).parentsOf.get(id)?.[0];
+}
+
+/**
+ * A drop on a zone (see EditingApi.onDropInto). An actor gains an `executes`
+ * role on the zone — nothing else changes, the roster is a list — unless it
+ * already holds ANY role there, in which case the drop is a no-op. Any other
+ * node is re-homed under the zone on this plane and placed where it was let
+ * go, clamped to the same floor planLayout clamps a free-form child by
+ * (x ≥ 0, y ≥ TITLE_H). A zone or an event is never assigned: their drag is
+ * the date move, and DiagramView never reports them here — refused again
+ * HERE so this function's contract does not depend on who called it.
+ * Returns undefined when nothing would change.
+ */
+export function assign(
+  model: DiagramModel,
+  plane: string | undefined,
+  id: string,
+  zoneId: string,
+  rel: { x: number; y: number },
+): EditorCommand | undefined {
+  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  const node = byId.get(id);
+  const zone = byId.get(zoneId);
+  if (node === undefined || zone === undefined || !isPlanZone(zone) || isPlanZone(node) || isPlanEvent(node)) return undefined;
+  if (isPlanActor(node)) {
+    if (model.relations.some((r) => r.from === id && r.to === zoneId && isPlanRole(r.kind))) return undefined;
+    return { type: 'add-relation', from: id, to: zoneId, opts: { kind: 'executes' } };
+  }
+  const parent = currentParent(model, plane, id);
+  if (parent === zoneId) return undefined;
+  const commands: EditorCommand[] = [];
+  if (parent !== undefined) commands.push({ type: 'remove-containment', parent, child: id, ...planeOpt(plane) });
+  commands.push({ type: 'add-containment', parent: zoneId, child: id, ...planeOpt(plane) });
+  commands.push({ type: 'set-position', nodeId: id, x: Math.max(0, rel.x), y: Math.max(TITLE_H, rel.y), ...planeOpt(plane) });
   return { type: 'batch', commands };
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { dayOf, isoOf, model, PLAN_PERSON_TYPE, PLAN_TEAM_TYPE, type DiagramModel, type EditorCommand } from '@diagc/core';
 import { PLAN_LAYOUT, planX } from '@diagc/renderer';
-import { addActor, addEvent, addZone, planMoves, planResize, seedDates, seedOnRetype, setRole, ZONE_DAYS } from './planActions';
+import { addActor, addEvent, addZone, assign, planMoves, planResize, seedDates, seedOnRetype, setRole, ZONE_DAYS } from './planActions';
 
 const { DAY, TITLE_H } = PLAN_LAYOUT;
 const d = (iso: string) => dayOf(iso)!;
@@ -249,5 +249,77 @@ describe('quick-adds', () => {
     expect(seedOnRetype(top, 'plan', 'blank', undefined, '2026-05-04')).toBeUndefined();
     // unknown id: no command
     expect(seedOnRetype(top, 'plan', 'nowhere', 'plan-zone', '2026-05-04')).toBeUndefined();
+  });
+});
+
+describe('assign', () => {
+  it('an actor dropped on a zone it holds no role on gets executes', () => {
+    expect(assign(roadmap(), 'plan', 'alice', 'design', { x: 10, y: 20 })).toEqual({
+      type: 'add-relation',
+      from: 'alice',
+      to: 'design',
+      opts: { kind: 'executes' },
+    });
+  });
+  it('an actor that already holds a role on the zone is a no-op', () => {
+    // alice already owns build (roadmap())
+    expect(assign(roadmap(), 'plan', 'alice', 'build', { x: 10, y: 20 })).toBeUndefined();
+  });
+  it('a team is an actor too', () => {
+    const m = roadmap();
+    m.nodes.push({ id: 'platform', name: 'Platform', type: 'team' });
+    expect(assign(m, 'plan', 'platform', 'design', { x: 0, y: 0 })).toEqual({
+      type: 'add-relation',
+      from: 'platform',
+      to: 'design',
+      opts: { kind: 'executes' },
+    });
+  });
+  it('a plain node at the plane root dropped on a zone is contained there, no remove-containment', () => {
+    const m = roadmap();
+    m.nodes.push({ id: 'other', name: 'Other', type: 'service' });
+    const c = assign(m, 'plan', 'other', 'design', { x: 15, y: TITLE_H + 25 });
+    expect(c).toEqual({
+      type: 'batch',
+      commands: [
+        { type: 'add-containment', parent: 'design', child: 'other', plane: 'plan' },
+        { type: 'set-position', nodeId: 'other', x: 15, y: TITLE_H + 25, plane: 'plan' },
+      ],
+    });
+  });
+  it('a plain node nested in zone A dropped on zone B moves: remove A, add B, position', () => {
+    const m = roadmap();
+    m.nodes.push({ id: 'other', name: 'Other', type: 'service' });
+    m.containment.push({ parent: 'build', child: 'other', plane: 'plan' });
+    const c = assign(m, 'plan', 'other', 'design', { x: 5, y: TITLE_H + 5 });
+    expect(c).toEqual({
+      type: 'batch',
+      commands: [
+        { type: 'remove-containment', parent: 'build', child: 'other', plane: 'plan' },
+        { type: 'add-containment', parent: 'design', child: 'other', plane: 'plan' },
+        { type: 'set-position', nodeId: 'other', x: 5, y: TITLE_H + 5, plane: 'plan' },
+      ],
+    });
+  });
+  it('dropped on its current parent is a no-op', () => {
+    const m = roadmap();
+    m.nodes.push({ id: 'other', name: 'Other', type: 'service' });
+    m.containment.push({ parent: 'build', child: 'other', plane: 'plan' });
+    expect(assign(m, 'plan', 'other', 'build', { x: 5, y: 5 })).toBeUndefined();
+  });
+  it('a zone dropped on a zone is a no-op', () => {
+    expect(assign(roadmap(), 'plan', 'design', 'build', { x: 0, y: 0 })).toBeUndefined();
+  });
+  it('rel below the floor is clamped to (0, TITLE_H)', () => {
+    const m = roadmap();
+    m.nodes.push({ id: 'other', name: 'Other', type: 'service' });
+    const c = assign(m, 'plan', 'other', 'design', { x: -50, y: -50 });
+    expect(c).toEqual({
+      type: 'batch',
+      commands: [
+        { type: 'add-containment', parent: 'design', child: 'other', plane: 'plan' },
+        { type: 'set-position', nodeId: 'other', x: 0, y: TITLE_H, plane: 'plan' },
+      ],
+    });
   });
 });

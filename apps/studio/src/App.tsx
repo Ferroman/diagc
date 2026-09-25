@@ -77,7 +77,7 @@ import { SecondOrderPanel } from './editor/SecondOrderPanel';
 import { FishbonePanel } from './editor/FishbonePanel';
 import { ThreatModelPanel } from './editor/ThreatModelPanel';
 import { PlanPanel } from './editor/PlanPanel';
-import { planMoves, planResize } from './editor/planActions';
+import { assign, planMoves, planResize } from './editor/planActions';
 import { quickAdd, quickAddLabel, quickAddPlaced, type QuickAddContext } from './editor/quickAdd';
 import { InspectorTabs, type InspectorTab } from './editor/InspectorTabs';
 import { Dock } from './Dock';
@@ -1261,6 +1261,13 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           return;
                         }
                         editor.dispatch({ type: 'set-positions', positions, ...(activePlane !== undefined ? { plane: activePlane } : {}) });
+                      },
+                      onDropInto: (id: string, targetId: string, rel: { x: number; y: number }) => {
+                        // on a plan plane a drop assigns a role or re-homes the node instead of an ordinary move
+                        if (notation === PLAN_NOTATION && model !== undefined) {
+                          const command = assign(model, activePlane, id, targetId, rel);
+                          if (command !== undefined) editor.dispatch(command);
+                        }
                       },
                       onCreateAt: (pos: { x: number; y: number }) => createAt(pos),
                       onImageFiles: (files: File[], position?: { x: number; y: number }) =>
