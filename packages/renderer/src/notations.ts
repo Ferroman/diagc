@@ -1,4 +1,4 @@
-import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanActor, isPlanRole, isPlanZone, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
+import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanActor, isPlanEvent, isPlanRole, isPlanZone, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';
@@ -72,6 +72,9 @@ export interface NotationProfile {
     resizable?: (n: DiagramNode) => 'x' | undefined;
     /** a node other nodes can be dropped into (see EditingApi.onDropInto) */
     dropTarget?: (n: DiagramNode) => boolean;
+    /** a node a drag may drop into a target (see dropTarget); every other
+     * node is always moved */
+    canDrop?: (n: DiagramNode) => boolean;
     /** a node that returns to its laid spot after every drag and is never
      * reported as moved — dragged only to be dropped somewhere */
     snapsBack?: (n: DiagramNode) => boolean;
@@ -298,12 +301,14 @@ const PLAN: NotationProfile = {
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
     badges: planBadges,
     resizable: (n) => (n.type === PLAN_ZONE_TYPE ? 'x' : undefined),
-    // A zone receives a drop (an actor's role, a plain node's containment);
-    // it is never itself dropped (DiagramView also excludes it via `fixed`,
-    // since a zone's own drag already means a date change — see the plan's
-    // rulings). isPlanZone, not a nested-only check: a root zone's Y is free
-    // and can overlap a sibling's rect just as readily as a nested one.
+    // A zone receives a drop (an actor's role, a plain node's containment).
+    // isPlanZone, not a nested-only check: a root zone's Y is free and can
+    // overlap a sibling's rect just as readily as a nested one crosses its
+    // own parent's.
     dropTarget: isPlanZone,
+    // A zone's or an event's drag is its date move; an actor or a plain box
+    // is what a zone receives, so those are what a drag may drop.
+    canDrop: (n) => isPlanActor(n) || (!isPlanZone(n) && !isPlanEvent(n)),
     // An actor is dragged only to be dropped on a zone; it never keeps the
     // position a drag left it at — the roster is a list, not a seating chart.
     snapsBack: isPlanActor,

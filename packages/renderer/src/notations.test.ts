@@ -218,6 +218,17 @@ describe('plan profile', () => {
       expect(other.node?.snapsBack).toBeUndefined();
     }
   });
+  it('says which nodes a drag may drop: actors and plain boxes, never a zone or an event — nested or not', () => {
+    const p = notationProfile('plan');
+    expect(p.node?.canDrop?.({ id: 'p', name: 'P', type: 'person' })).toBe(true);
+    expect(p.node?.canDrop?.({ id: 't', name: 'T', type: 'team' })).toBe(true);
+    expect(p.node?.canDrop?.({ id: 'o', name: 'O', type: 'service' })).toBe(true);
+    expect(p.node?.canDrop?.({ id: 'z', name: 'Z', type: 'plan-zone' })).toBe(false);
+    expect(p.node?.canDrop?.({ id: 'e', name: 'E', type: 'plan-event' })).toBe(false);
+    for (const id of ['causal-loop', 'git-graph', 'c4', 'second-order', 'fishbone', 'threat-model'] as const) {
+      expect(notationProfile(id).node?.canDrop).toBeUndefined();
+    }
+  });
   it('only the plan opts its layout into saved positions — git-graph and fishbone own a layout too but never read them', () => {
     expect(notationProfile('plan').layoutReadsPositions).toBe(true);
     expect(notationProfile('git-graph').layoutReadsPositions).toBeUndefined();

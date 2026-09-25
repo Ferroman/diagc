@@ -1078,29 +1078,20 @@ function Inner(props: DiagramViewProps) {
   // outline) and onNodeDragStop (the actual report), so the two can never
   // disagree about what counts as a hit.
   //
-  // Eligibility (which box may be reported at all) is not part of the pure
-  // hit test (plan-drop.ts) — it turns on what the DRAGGED node itself is,
-  // which plan-drop.ts has no notion of. A node the notation's own layout
-  // positions (`fixed`, see useViewLayout) is never eligible unless it also
-  // `snapsBack`: a zone's or event's drag already means something (a date
-  // change, planMoves) and must reach commitMoves undisturbed even where it
-  // happens to land on another zone's rect — root zones are free on y and can
-  // overlap a sibling's bar just as readily as a nested zone crosses its own
-  // parent's (Global ruling: zones/events are never dropped into anything). A
-  // `snapsBack` node (an actor) is eligible regardless: its "fixed" spot is a
-  // roster slot, not a position, and dragging it is only ever a gesture
-  // toward a drop. Everything the notation does not fix (a zone's free-form
-  // child) is eligible outright. One narrow consequence: a free-form child
-  // ALREADY nested in a zone is fixed too (planLayout reads its saved spot
-  // itself) and so cannot be re-homed to a DIFFERENT zone by this gesture —
-  // the node panel still reparents it.
+  // Eligibility (which box may be reported at all) is the notation's own
+  // call, not derived from layout facts: `profile.node.canDrop` — a zone's or
+  // an event's drag already means something else (planMoves reads it as a
+  // date change) whether or not it happens to land on another zone's rect
+  // (root zones are free on y and can overlap a sibling's bar just as readily
+  // as a nested zone crosses its own parent's — Global ruling: zones/events
+  // are never dropped into anything), while an actor or a plain box is
+  // exactly what a zone receives — nested or not, which is what `fixed` (a
+  // layout fact, not a statement of intent) got wrong here before.
   const dropTargetFor = (draggedId: string, point: { x: number; y: number }): string | undefined => {
     const dropTarget = profile.node?.dropTarget;
     if (dropTarget === undefined) return undefined;
     const draggedNode = props.model.nodes.find((n) => n.id === draggedId);
-    if (draggedNode === undefined) return undefined;
-    const snapsBack = profile.node?.snapsBack?.(draggedNode) === true;
-    if (!snapsBack && (dropTarget(draggedNode) || fixed.has(draggedId))) return undefined;
+    if (draggedNode === undefined || profile.node?.canDrop?.(draggedNode) !== true) return undefined;
 
     // exclude = the dragged node, its containment descendants and its
     // current parent, all read off React Flow's OWN parentId chain

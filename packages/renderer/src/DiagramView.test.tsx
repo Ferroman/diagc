@@ -2566,6 +2566,19 @@ describe('drop-to-assign', () => {
     return m.toJSON();
   }
 
+  // a plain node already nested in zone A, plus an unrelated root zone B
+  // (neither zone the other's ancestor) — the re-homing case `canDrop`
+  // (unlike the old `fixed`-based gate) lets through
+  function nestedPlainModel() {
+    const m = model('assign3');
+    const p = m.plan();
+    const a = p.zone('a', { name: 'A', start: '2026-01-05', end: '2026-01-09' });
+    const task = m.node('task', { type: 'service' });
+    a.contains(task);
+    p.zone('b', { name: 'B', start: '2026-02-02', end: '2026-02-06' });
+    return m.toJSON();
+  }
+
   type RfNode = { id: string; position: { x: number; y: number }; parentId?: string };
   const nodeOf = (id: string): RfNode => dragCapture.instance.getNodes().find((n: RfNode) => n.id === id);
   const absOf = (id: string) => dragCapture.instance.getInternalNode(id)!.internals.positionAbsolute as { x: number; y: number };
@@ -2652,6 +2665,46 @@ describe('drop-to-assign', () => {
 
     expect(onDropInto).toHaveBeenCalledTimes(1);
     expect(onDropInto).toHaveBeenCalledWith('task', 'q', { x: 10, y: 10 });
+    expect(onNodesMoved).not.toHaveBeenCalled();
+  });
+
+  // The `canDrop`-not-`fixed` distinction: a plain node ALREADY nested in a
+  // zone is still `fixed` (planLayout reads its saved spot itself), but it is
+  // not a zone or an event, so canDrop says it may still be re-homed to a
+  // DIFFERENT zone by this gesture — the case the old `fixed`-based gate
+  // wrongly blocked.
+  it('a plain node nested in zone A dropped over zone B (not its ancestor) reports onDropInto, not onNodesMoved', async () => {
+    const onNodesMoved = vi.fn();
+    const onDropInto = vi.fn();
+    const { container } = render(
+      <DiagramView model={nestedPlainModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+    );
+    await settle(container, 'a');
+    await settle(container, 'b');
+    await settle(container, 'task');
+    const aAbs = absOf('a');
+    const bAbs = absOf('b');
+    // task's on-screen position stays parent-relative to its CURRENT parent
+    // (a) through the drag — only a committed command reparents it — chosen
+    // so its ABSOLUTE position lands exactly at b's origin + (10, 10)
+    const to = { x: bAbs.x + 10 - aAbs.x, y: bAbs.y + 10 - aAbs.y };
+    const pointerFlow = { x: bAbs.x + 10, y: bAbs.y + 10 };
+    await drag('task', to, pointerFlow);
+
+    // `rel` itself (draggedAbs − targetAbs) is exercised numerically by the
+    // root-level cases above; it is not re-checked here because a NESTED
+    // dragged node's `internals.positionAbsolute` only gets recomputed off
+    // its parent's by React Flow's OWN drag pipeline (XYDrag) — a real
+    // gesture keeps it live, but this harness drives onNodesChange directly
+    // (jsdom cannot drive a pointer gesture at all — see above), so it stays
+    // at 'task's pre-drag absolute. What this case is actually proving —
+    // `canDrop`, not `fixed`, gates re-homing a nested node — needs only the
+    // id/target, not the exact offset.
+    expect(onDropInto).toHaveBeenCalledTimes(1);
+    const [id, targetId, rel] = onDropInto.mock.calls[0]!;
+    expect(id).toBe('task');
+    expect(targetId).toBe('b');
+    expect(rel).toEqual({ x: expect.any(Number), y: expect.any(Number) });
     expect(onNodesMoved).not.toHaveBeenCalled();
   });
 
