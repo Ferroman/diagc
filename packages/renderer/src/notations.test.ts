@@ -195,14 +195,28 @@ describe('plan profile', () => {
       expect(p.edge?.hidden).toBeUndefined();
     }
   });
-  it('lets a fixed zone, event or free-form child be dragged (the gesture becomes days, or a clamped drop), never an actor', () => {
+  it('lets every fixed node be dragged: a zone/event/free-form child\'s gesture becomes days or a clamped drop, an actor\'s is read for drop-to-assign', () => {
     const p = notationProfile('plan');
     expect(p.node?.draggableWhenFixed?.({ id: 'z', name: 'Z', type: 'plan-zone' })).toBe(true);
     expect(p.node?.draggableWhenFixed?.({ id: 'e', name: 'E', type: 'plan-event' })).toBe(true);
     expect(p.node?.draggableWhenFixed?.({ id: 'o', name: 'O', type: 'service' })).toBe(true);
-    expect(p.node?.draggableWhenFixed?.({ id: 'p', name: 'P', type: 'person' })).toBe(false);
-    expect(p.node?.draggableWhenFixed?.({ id: 't', name: 'T', type: 'team' })).toBe(false);
+    expect(p.node?.draggableWhenFixed?.({ id: 'p', name: 'P', type: 'person' })).toBe(true);
+    expect(p.node?.draggableWhenFixed?.({ id: 't', name: 'T', type: 'team' })).toBe(true);
     expect(notationProfile('fishbone').node?.draggableWhenFixed).toBeUndefined();
+  });
+  it('names zones as drop targets and actors as always snapping back', () => {
+    const p = notationProfile('plan');
+    expect(p.node?.dropTarget?.({ id: 'z', name: 'Z', type: 'plan-zone' })).toBe(true);
+    expect(p.node?.dropTarget?.({ id: 'e', name: 'E', type: 'plan-event' })).toBe(false);
+    expect(p.node?.dropTarget?.({ id: 'p', name: 'P', type: 'person' })).toBe(false);
+    expect(p.node?.snapsBack?.({ id: 'p', name: 'P', type: 'person' })).toBe(true);
+    expect(p.node?.snapsBack?.({ id: 't', name: 'T', type: 'team' })).toBe(true);
+    expect(p.node?.snapsBack?.({ id: 'z', name: 'Z', type: 'plan-zone' })).toBe(false);
+    for (const id of ['causal-loop', 'git-graph', 'c4', 'second-order', 'fishbone', 'threat-model'] as const) {
+      const other = notationProfile(id);
+      expect(other.node?.dropTarget).toBeUndefined();
+      expect(other.node?.snapsBack).toBeUndefined();
+    }
   });
   it('only the plan opts its layout into saved positions — git-graph and fishbone own a layout too but never read them', () => {
     expect(notationProfile('plan').layoutReadsPositions).toBe(true);

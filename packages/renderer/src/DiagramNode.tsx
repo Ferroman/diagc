@@ -100,6 +100,12 @@ export interface DiagramNodeData {
   /** with onResize: the notation resizes this node on x only, from either
    * side (a zone's width is its dates) */
   resizeAxis?: 'x';
+  /** this node is the drop target under the pointer during a single-node
+   * drag that could land on it (see EditingApi.onDropInto) — draws the
+   * notation's drag-over outline. Like `selected`, but on `data`: DiagramView
+   * patches it directly onto React Flow's node copy rather than deriving it
+   * through the cached node-data builder (see withDropTarget). */
+  dropTarget?: boolean;
 }
 
 // One connect point per side, all type="source": with the canvas in loose
@@ -505,6 +511,8 @@ export function DiagramNode({
         : undefined;
   const hitStyle = hitColor !== undefined ? ({ '--dg-hit': hitColor } as CSSProperties) : undefined;
   const hitAttrs = hitColor !== undefined ? { 'data-plan-hit': true } : {};
+  // The drag-over outline (see DiagramNodeData.dropTarget / EditingApi.onDropInto).
+  const dropTargetAttrs = data.dropTarget === true ? { 'data-drop-target': true } : {};
   // Tab inside an open label editor is the same offer the `+` chip makes, so it
   // is wired from the same channel: commit, then add. `run` is a no-op when the
   // node has no recipe, so no separate label gate is needed here.
@@ -870,6 +878,7 @@ export function DiagramNode({
             })}
         {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
         {...hitAttrs}
+        {...dropTargetAttrs}
       >
         <XResizer id={id} data={data} selected={selected} />
         {/* never the preset's own fill: this box is where the children and their
@@ -933,6 +942,7 @@ export function DiagramNode({
         : { style: { ...boxAccent, ...hitStyle } })}
       {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
       {...hitAttrs}
+      {...dropTargetAttrs}
       {...ghostTitle}
     >
       <XResizer id={id} data={data} selected={selected} />

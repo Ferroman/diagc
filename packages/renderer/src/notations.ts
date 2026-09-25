@@ -70,6 +70,11 @@ export interface NotationProfile {
     /** 'x' = the studio offers left/right resize handles on this node;
      * undefined = no notation resizer */
     resizable?: (n: DiagramNode) => 'x' | undefined;
+    /** a node other nodes can be dropped into (see EditingApi.onDropInto) */
+    dropTarget?: (n: DiagramNode) => boolean;
+    /** a node that returns to its laid spot after every drag and is never
+     * reported as moved — dragged only to be dropped somewhere */
+    snapsBack?: (n: DiagramNode) => boolean;
     /** a `fixed` node whose drag still means something to the host: the plan reads a
      * zone's or event's displacement as days (`onNodesMoved` deltas). The overlay
      * still never stores a position for it — `fixed` keeps that meaning. */
@@ -293,11 +298,19 @@ const PLAN: NotationProfile = {
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
     badges: planBadges,
     resizable: (n) => (n.type === PLAN_ZONE_TYPE ? 'x' : undefined),
-    // Everything fixed drags except an actor: a zone's or event's drag reads
-    // as a date change (planMoves), and a zone's free-form "other" child
-    // drags to a new spot within the bar the same layout clamps on read. The
-    // roster is a list — an actor never moves.
-    draggableWhenFixed: (n) => !isPlanActor(n),
+    // A zone receives a drop (an actor's role, a plain node's containment);
+    // it is never itself dropped (DiagramView also excludes it via `fixed`,
+    // since a zone's own drag already means a date change — see the plan's
+    // rulings). isPlanZone, not a nested-only check: a root zone's Y is free
+    // and can overlap a sibling's rect just as readily as a nested one.
+    dropTarget: isPlanZone,
+    // An actor is dragged only to be dropped on a zone; it never keeps the
+    // position a drag left it at — the roster is a list, not a seating chart.
+    snapsBack: isPlanActor,
+    // Everything fixed drags now, actors included: an actor drags only to be
+    // dropped (drop-to-assign) and always snaps back after (see snapsBack
+    // above) — it used to be excluded here because that gesture didn't exist.
+    draggableWhenFixed: () => true,
   },
   edge: { hidden: isPlanRole },
   overlay: 'time-axis',

@@ -219,6 +219,11 @@ export interface EditingApi {
     positions: Record<string, { x: number; y: number }>,
     deltas: Record<string, { dx: number; dy: number }>,
   ) => void;
+  /** a single dragged box was let go over a drop target (profile.node.dropTarget)
+   * that is neither in its own subtree nor its current parent. `rel` is the
+   * dragged box's top-left relative to the target's top-left, in flow units.
+   * Reported INSTEAD of a move for that box. */
+  onDropInto?: (id: string, targetId: string, rel: { x: number; y: number }) => void;
   /** an in-place rename (double-click on a node) was committed */
   onRenameNode?: (id: string, name: string) => void;
   /** an in-place rich-text edit (double-click on a box label) was committed */

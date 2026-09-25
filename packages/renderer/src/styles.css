@@ -1111,6 +1111,10 @@ path.dg-loop-badge-circle {
    DiagramNode's own profile.id gate, since `[data-plan-hit]` alone would
    otherwise be a bare attribute selector reaching any plane. */
 .dg-notation-plan [data-plan-hit] { outline: 2px solid var(--dg-hit); outline-offset: 2px; }
+/* a drop target while a single actor/plain-node drag hovers it (data-drop-target,
+   set from DiagramView's per-frame hit test) — dashed, not solid, so a target in
+   waiting reads differently from the selected actor's solid hit mark above. */
+.dg-notation-plan [data-drop-target] { outline: 2px dashed var(--dg-accent); outline-offset: 2px; }
 /* Three things used to claim a zone's top-right corner: the role-chip row
    (`.dg-badges` right-aligns itself with `margin-left: auto` everywhere), the
    comment/threat count badges (a container wears them INSIDE the header band,
