@@ -28,11 +28,15 @@ import {
   countAnchored,
   DEFAULT_STROKE_WIDTH,
   GIT_STAGE_TYPE,
+  hasNoteContent,
   layoutPlaneKey,
   threatTargetKey,
+  TM_NOTATION,
+  type Comment,
   type DiagramNode,
   type EdgeLabelPlacement,
   type EdgeLabelSide,
+  type Link,
   type Stroke,
   type Threat,
   type ThreatTarget,
@@ -774,13 +778,14 @@ function Inner(props: DiagramViewProps) {
     return out;
   }, [compiled, arrangedGeometry, nodeDataCtx, editing, typeRegistry, profile, fixed]);
 
-  // Threat notes: one synthetic node per element that carries threats. Derived
-  // from the ARRANGED geometry (so a note follows its element through drags and
-  // container growth) and never handed to elk — adding a threat must not move a
-  // single box. A box's note is parented like the box (parent-relative, rides
-  // inside the container); a flow's note is top-level. Each hangs off its
-  // badge: an unmoved bubble takes the first spot next to the badge that covers
-  // nothing (note-place.ts), a dragged one sits at badge + its saved offset.
+  // Threat notes: one synthetic node per element that carries threats, comments
+  // or links. Derived from the ARRANGED geometry (so a note follows its element
+  // through drags and container growth) and never handed to elk — adding a
+  // threat must not move a single box. A box's note is parented like the box
+  // (parent-relative, rides inside the container); a flow's note is top-level.
+  // Each hangs off its badge: an unmoved bubble takes the first spot next to
+  // the badge that covers nothing (note-place.ts), a dragged one sits at badge
+  // + its saved offset.
   const planeKey = layoutPlaneKey(props.model, props.plane);
   const noNotes = props.notes === false;
   const notePlacements = props.layout?.notes?.[planeKey];
@@ -829,9 +834,9 @@ function Inner(props: DiagramViewProps) {
       n.children.forEach((c) => walkAbs(c, g.x + ox, g.y + oy));
     };
     compiled.roots.forEach((r) => walkAbs(r, 0, 0));
-    // The lines of the flows that carry threats (the only ones that report —
-    // see DiagramEdge), so no bubble lies across one. Every other line is not
-    // avoided (.claude/DEFERRALS.md § Threat notes).
+    // The lines of the flows that report a chip — one carrying threats or
+    // comments (see DiagramEdge) — so no bubble lies across one. Every other
+    // line is not avoided (.claude/DEFERRALS.md § Threat notes).
     for (const e of compiled.edges) {
       const r = e.constituents.length === 1 ? e.constituents[0] : undefined;
       const spot = r !== undefined ? chipSpots.get(r.id) : undefined;
@@ -842,6 +847,8 @@ function Inner(props: DiagramViewProps) {
       target: ThreatTarget,
       name: string,
       threats: readonly Threat[],
+      comments: readonly Comment[],
+      links: readonly Link[],
       /** the badge's centre, absolute */
       badge: Point,
       /** the element's box, absolute; null for a flow */
@@ -852,7 +859,14 @@ function Inner(props: DiagramViewProps) {
     ) => {
       const key = threatTargetKey(target);
       if (!openNotes.has(key)) return;
-      const size = { width: NOTE_WIDTH, height: estimateNoteHeight(name, threats, editing) };
+      // The offer to start a register belongs where threats do: an element that
+      // already has one, or a threat model's canvas — the gate ThreatBadge and
+      // both studio panels apply. A host wires onAddThreat whatever the diagram
+      // is, so without this a remark on a plain C4 box would offer to threat-
+      // model it. The height estimate reads the same boolean, or it would
+      // reserve ADD_ROW for a button that never draws.
+      const offerThreat = editing && (threats.length > 0 || props.notation === TM_NOTATION);
+      const size = { width: NOTE_WIDTH, height: estimateNoteHeight(name, threats, offerThreat, comments, links) };
       const p = notePlacements?.[key];
       // {0,0} is "automatic" — `set-note-offset null` writes it, and the
       // normaliser drops it — so a saved offset is anything else
@@ -869,14 +883,17 @@ function Inner(props: DiagramViewProps) {
         target,
         name,
         threats,
+        comments,
+        links,
         anchor: { x: badge.x - shift.x, y: badge.y - shift.y },
         badge,
         editing,
         ...(noteEdit !== null && noteEdit.key === key ? { editingId: noteEdit.id } : {}),
-        ...(editing && edit?.onAddThreat !== undefined ? { onAddThreat: edit.onAddThreat } : {}),
+        ...(offerThreat && edit?.onAddThreat !== undefined ? { onAddThreat: edit.onAddThreat } : {}),
         ...(editing && edit?.onRetitleThreat !== undefined ? { onRetitleThreat: edit.onRetitleThreat } : {}),
         ...(editing && edit?.onSetThreatStatus !== undefined ? { onSetThreatStatus: edit.onSetThreatStatus } : {}),
         ...(editing && edit?.onEditThreatText !== undefined ? { onEditThreatText: edit.onEditThreatText } : {}),
+        ...(props.onOpenLink !== undefined ? { onOpenLink: props.onOpenLink } : {}),
         onEndEdit: () => setNoteEdit(null),
       };
       out.push(
@@ -901,20 +918,25 @@ function Inner(props: DiagramViewProps) {
       const rect = abs.get(n.id);
       if (rect === undefined) return;
       const threats = n.node.threats ?? [];
+      const comments = n.node.comments ?? [];
+      const links = n.node.links ?? [];
       // An external stub stands in for an off-frame node (drill views): its
-      // threats belong to the view that really draws it, or the same note
-      // would appear twice, in two coordinate frames.
-      if (n.external === undefined && threats.length > 0)
-        push({ node: n.id }, n.node.name, threats, badgeCenter(rect, badgeKindOf(n)), rect, parent);
+      // threats/comments/links belong to the view that really draws it, or the
+      // same note would appear twice, in two coordinate frames. What counts as
+      // content is core's own predicate — the one layout hygiene prunes by, so
+      // a bubble drawn here always keeps its saved place (see pruneNotes).
+      if (n.external === undefined && hasNoteContent(n.node))
+        push({ node: n.id }, n.node.name, threats, comments, links, badgeCenter(rect, badgeKindOf(n)), rect, parent);
       n.children.forEach((c) => walk(c, n.id));
     };
     compiled.roots.forEach((r) => walk(r));
     // compiled.edges is the DRAWN set, so a layer-hidden flow takes its note
-    // with it. An aggregated edge gets none: its threats belong to particular
-    // relations, and a note on the bundle could not say which.
+    // with it. An aggregated edge gets none: its threats and comments belong to
+    // particular relations, and a note on the bundle could not say which.
+    // (A relation carries no `links` field, so a flow's bubble never lists any.)
     for (const e of compiled.edges) {
       const r = e.constituents.length === 1 ? e.constituents[0] : undefined;
-      if (r === undefined || (r.threats?.length ?? 0) === 0) continue;
+      if (r === undefined || !hasNoteContent(r)) continue;
       const a = abs.get(e.from);
       const b = abs.get(e.to);
       if (a === undefined || b === undefined) continue;
@@ -926,13 +948,16 @@ function Inner(props: DiagramViewProps) {
         y: (a.y + a.height / 2 + b.y + b.height / 2) / 2,
       };
       const label = r.label !== undefined && r.label !== '' ? ` (${r.label})` : '';
-      push({ relation: r.id }, `${nameOf.get(r.from) ?? r.from} → ${nameOf.get(r.to) ?? r.to}${label}`, r.threats ?? [], at, null, undefined, chip?.away);
+      push({ relation: r.id }, `${nameOf.get(r.from) ?? r.from} → ${nameOf.get(r.to) ?? r.to}${label}`, r.threats ?? [], r.comments ?? [], [], at, null, undefined, chip?.away);
     }
     return out;
-    // edit?.onAddThreat / onRetitleThreat / onSetThreatStatus / onEditThreatText
-    // may be fresh closures per host render — the same trade nodeDataCtx makes,
-    // and for the same reason: a stale callback would edit the wrong document.
-  }, [noNotes, openNotes, arrangedGeometry, compiled, notePlacements, chipSpots, editing, edit?.onAddThreat, edit?.onRetitleThreat, edit?.onSetThreatStatus, edit?.onEditThreatText, noteEdit, nameOf, typeRegistry]);
+    // edit?.onAddThreat / onRetitleThreat / onSetThreatStatus / onEditThreatText /
+    // props.onOpenLink may be fresh closures per host render — the same trade
+    // nodeDataCtx makes, and for the same reason: a stale callback would edit
+    // the wrong document, or open a link through a host that is no longer there.
+    // props.notation is here because the threat offer is gated on it (see
+    // offerThreat): switching to a threat-model plane has to redraw the bubbles.
+  }, [noNotes, openNotes, arrangedGeometry, compiled, notePlacements, chipSpots, editing, edit?.onAddThreat, edit?.onRetitleThreat, edit?.onSetThreatStatus, edit?.onEditThreatText, props.onOpenLink, props.notation, noteEdit, nameOf, typeRegistry]);
   // Boxes first, notes after: React Flow resolves `parentId` against the nodes
   // it has already seen, so a note must never precede the box it rides on.
   const allNodes = useMemo(

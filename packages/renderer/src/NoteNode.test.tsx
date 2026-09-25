@@ -14,6 +14,8 @@ const base: NoteData = {
   anchor: { x: 0, y: 0 },
   badge: { x: 0, y: 0 },
   editing: false,
+  comments: [],
+  links: [],
 };
 const draw = (data: NoteData) => render(<ReactFlowProvider><NoteNode id="note:node:a" data={data} /></ReactFlowProvider>);
 const rowsOf = (container: HTMLElement) => Array.from(container.querySelectorAll<HTMLElement>('.dg-note-row'));
@@ -214,5 +216,53 @@ describe('NoteNode — the bubble', () => {
     at(false);
     at(true);
     expect(screen.queryByLabelText('Rename threat')).toBeNull();
+  });
+});
+
+describe('NoteNode — comments and links', () => {
+  it('lists comments with their by · at line, under a section title, and no threat header when there are no threats', () => {
+    const { container } = draw({ ...base, threats: [], comments: [{ id: 'c1', text: 'Slipped a week', by: 'Ann', at: '2026-09-22' }, { id: 'c2', text: 'Vendor confirmed' }] });
+    expect(container.querySelector('.dg-note-count')).toBeNull();
+    expect(container.querySelector('.dg-note-rows')).toBeNull();
+    const items = Array.from(container.querySelectorAll('.dg-note-comment'));
+    expect(items.map((i) => i.querySelector('.dg-note-text')?.textContent)).toEqual(['Slipped a week', 'Vendor confirmed']);
+    expect(items[0]!.querySelector('.dg-note-meta')?.textContent).toBe('Ann · 2026-09-22');
+    expect(items[1]!.querySelector('.dg-note-meta')).toBeNull();
+    expect(container.querySelector('.dg-note-section')?.textContent).toContain('Comments');
+  });
+  it('lists links as new-tab anchors, and routes through the host when it listens', () => {
+    const onOpenLink = vi.fn();
+    const { container } = draw({ ...base, threats: [], links: [{ label: 'Ticket', url: 'https://x/1' }], onOpenLink });
+    const a = container.querySelector<HTMLAnchorElement>('a.dg-note-link')!;
+    expect(a.textContent).toBe('Ticket');
+    expect(a.getAttribute('href')).toBe('https://x/1');
+    expect(a.getAttribute('target')).toBe('_blank');
+    expect(a.getAttribute('rel')).toBe('noopener noreferrer');
+    fireEvent.click(a);
+    expect(onOpenLink).toHaveBeenCalledWith('https://x/1');
+  });
+  it('makes an href only of an http(s) url — a javascript: ref is inert', () => {
+    const { container } = draw({ ...base, threats: [], links: [{ label: 'Boom', url: 'javascript:alert(1)' }] });
+    const a = container.querySelector<HTMLAnchorElement>('a.dg-note-link')!;
+    expect(a.textContent).toBe('Boom');
+    expect(a.hasAttribute('href')).toBe(false);
+    expect(a.hasAttribute('target')).toBe(false);
+    expect(a.hasAttribute('rel')).toBe(false);
+  });
+  it('routes a non-http ref through the host without navigating', () => {
+    const onOpenLink = vi.fn();
+    const { container } = draw({ ...base, threats: [], links: [{ label: 'Design note', url: 'obsidian://open?file=Design' }], onOpenLink });
+    const a = container.querySelector<HTMLAnchorElement>('a.dg-note-link')!;
+    expect(a.hasAttribute('href')).toBe(false);
+    // fireEvent hands back false when a handler called preventDefault — the
+    // click reaches the host and nothing else
+    expect(fireEvent.click(a)).toBe(false);
+    expect(onOpenLink).toHaveBeenCalledWith('obsidian://open?file=Design');
+  });
+  it('keeps the threat header and rows when threats exist alongside comments', () => {
+    const { container } = draw({ ...base, comments: [{ id: 'c1', text: 'x' }] });
+    expect(container.querySelector('.dg-note-count')).not.toBeNull();
+    expect(container.querySelectorAll('.dg-note-row').length).toBe(base.threats.length);
+    expect(container.querySelectorAll('.dg-note-comment').length).toBe(1);
   });
 });

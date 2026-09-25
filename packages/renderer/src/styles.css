@@ -213,6 +213,22 @@ button.dg-threat-badge[data-state='open']:hover, button.dg-threat-badge[data-sta
    header padded 10px, and holds an enter chip plus a fold chip (~15px each,
    4px gap) — so it reaches ~44px in from the right edge. 48px clears it. */
 .dg-group > .dg-threat-badge { top: 4px; left: auto; right: 48px; }
+/* The comment badge: the threat pill's twin at the opposite corner, in the
+   accent colour since it counts remarks, not findings. Same passive/toggle
+   split as the threat badge, same export behaviour (stays in the PNG). */
+.dg-comment-badge {
+  position: absolute; bottom: -6px; right: -6px;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  font: 600 11px/18px system-ui, sans-serif; text-align: center;
+  color: #fff; background: var(--dg-accent, #3b82f6); pointer-events: none;
+}
+button.dg-comment-badge { border: none; pointer-events: auto; cursor: pointer; }
+button.dg-comment-badge:hover { filter: brightness(1.12); }
+.dg-no-chrome .dg-comment-badge, .dg-no-chrome button.dg-comment-badge { pointer-events: none; }
+/* the ellipse's corner is outside the curve — tuck it in, mirrored from the threat rule */
+.dg-shape-ellipse > .dg-comment-badge { bottom: 8px; right: 16px; }
+/* a group wears it in the header band beside the threat badge, left of it */
+.dg-group > .dg-comment-badge { top: 4px; bottom: auto; right: 72px; }
 /* The `+` a selected node offers (QuickAddButton): a chip hanging off the
    right edge, outside the box so it covers no label. Flow-space, like the
    badges — it scales with the zoom and is never clipped at the canvas edge
@@ -307,6 +323,12 @@ button.dg-note-status:hover { background: color-mix(in srgb, var(--dg-node-strok
 .dg-note-expand { flex: none; width: 16px; height: 16px; padding: 0; border: none; background: transparent; color: inherit; font: 11px/16px system-ui, sans-serif; cursor: pointer; opacity: 0.7; }
 .dg-note-expand:hover { opacity: 1; }
 .dg-note-details { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 2px 21px; }
+.dg-note-section { margin-top: 6px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--dg-node-stroke) 35%, transparent); }
+.dg-note-section-title { margin: 0 0 4px; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dg-text-muted, #757575); }
+.dg-note-comments, .dg-note-links { list-style: none; margin: 0; padding: 0; }
+.dg-note-comment + .dg-note-comment { margin-top: 4px; }
+.dg-note-meta { display: block; font-size: 10px; color: var(--dg-text-muted, #757575); }
+.dg-note-link { color: var(--dg-accent, #3b82f6); text-decoration: underline; }
 .dg-note-text { margin: 0; font-size: 11px; line-height: 1.35; white-space: pre-wrap; }
 .dg-note-text-label { font-weight: 600; opacity: 0.75; }
 .dg-note-field { width: 100%; box-sizing: border-box; resize: vertical; font: 11px/1.35 system-ui, sans-serif; color: var(--dg-text); background: var(--dg-node-fill); border: 1px solid var(--dg-node-stroke); border-radius: 4px; padding: 3px 5px; }
@@ -429,6 +451,9 @@ button.dg-note-status:hover { background: color-mix(in srgb, var(--dg-node-strok
    same absolute placement its transform is written against (see .dg-threat-badge
    for the look, which it shares with the node badge). */
 .dg-edge-threat { position: absolute; }
+/* The flow's comment chip: the same label-layer placement as the threat chip
+   above, for the same reason (see .dg-comment-badge for the look). */
+.dg-edge-comment { position: absolute; }
 /* Endpoint pin dots (edit mode, selected single-relation edge): hollow = the
    end floats and tracks the facing border; filled = pinned to a fixed side. */
 .dg-edge-pin {

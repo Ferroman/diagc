@@ -28,6 +28,8 @@ Declares an entity and returns a handle for containment and relations.
 | `color`, `textColor` | `string?` | `color` also wins over a notation's fill (e.g. C4's solid palette). |
 | `technology` | `string?` | Composed into the type subtitle: `[Container: Java, Spring Boot]`. See [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md). |
 | `threats` | `Threat[]?` | STRIDE findings, `id` and all. Prefer [`ref.threat()`](#refthreatopts--ref), which synthesizes the id. See [Model reference](model.md#threat). |
+| `comments` | `Comment[]?` | Remarks, `id` and all. Prefer [`ref.comment()`](#refcommenttext-opts--ref), which synthesizes the id. See [Model reference](model.md#comment). |
+| `links` | `Link[]?` | Resources this node points at, listed in its bubble under the comments. Prefer [`ref.link()`](#reflinklabel-url--ref). See [Model reference](model.md#link). |
 | `description` | `string?` | Detail panel only — never drawn on the canvas. |
 | `rich` | `TextRun[]?` | Bold/italic label runs. `name` must equal the concatenated run text, or validation fails with `invalid-rich`. |
 | `textAlign` | `'left' \| 'center' \| 'right'?` | Default `left`. |
@@ -81,6 +83,7 @@ Duplicate parent/child/plane triples are ignored, so calling it twice is safe. A
 | `label` | `string?` | The arrow's text. Drawn in a chip that is ellipsised at about 24 characters (the hover title keeps the full text), so keep it to a phrase. |
 | `labels` | `EdgeLabel[]?` | Positioned edge labels; supersedes `label` when present. See [Model reference](model.md#edgelabel). |
 | `threats` | `Threat[]?` | STRIDE findings, `id` and all. Prefer `FlowRef.threat()` — see [`ref.threat()`](#refthreatopts--ref) — which synthesizes the id. See [Model reference](model.md#threat). |
+| `comments` | `Comment[]?` | Remarks, `id` and all. Prefer `FlowRef.comment()` — see [`ref.comment()`](#refcommenttext-opts--ref) — which synthesizes the id; a relation created bare through `m.relate` (no `FlowRef`) takes comments here. See [Model reference](model.md#comment). |
 | `description` | `string?` | |
 | `layer` | `string?` | Must match a declared layer. |
 | `style` | `RelationStyle?` | See [Model reference](model.md#relationstyle). |
@@ -338,6 +341,22 @@ Appends one STRIDE finding to a node or a flow. On **every** `NodeRef`, not just
 | `mitigation` | `string?` | |
 
 Chainable, so a second finding on the same element is another `.threat(...)`. See [Model reference](model.md#threat) and [Draw a threat model](../how-to/draw-a-threat-model.md).
+
+### `ref.comment(text, opts?) → ref`
+
+A remark on the element, shown in its bubble. On every `NodeRef` and every `FlowRef` — the same generic-field pattern as `ref.threat()`.
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `id` | `string?` | Default the first free `c<n>` on this element, so removing `c1` and adding another remark reuses `c1`. Unique within the element; a duplicate **throws**. |
+| `by` | `string?` | Author, free text. |
+| `at` | `string?` | `YYYY-MM-DD`. |
+
+Chainable, so a second remark is another `.comment(...)`. A plain relation with no `FlowRef` (an `m.relate()` call on its own) takes comments through [`RelateOpts.comments`](#mrelatefrom-to-opts--m) instead, or the public `m.addComment({ relation: id }, text, opts)`. See [Model reference](model.md#comment).
+
+### `ref.link(label, url) → ref`
+
+A resource this node points at — a ticket, a design doc — listed in its bubble under the comments. `NodeRef` only; a relation's resources go in a comment. See [`Link`](model.md#link), which distinguishes this from the node's single navigation target.
 
 ## `m.legend(opts?) → m`
 

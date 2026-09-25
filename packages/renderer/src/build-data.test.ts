@@ -238,6 +238,20 @@ describe('buildNodeData', () => {
     expect(buildNodeData(viewNode(), nodeCtx()).threats).toBeUndefined();
   });
 
+  it('carries comment and link counts only when the node has any', () => {
+    expect(buildNodeData(viewNode(), nodeCtx()).annotations).toBeUndefined();
+    const noted = viewNode({
+      node: {
+        id: 'n1',
+        name: 'One',
+        type: 'service',
+        comments: [{ id: 'c1', text: 'x' }],
+        links: [{ label: 'L', url: 'u' }, { label: 'M', url: 'v' }],
+      },
+    });
+    expect(buildNodeData(noted, nodeCtx()).annotations).toEqual({ comments: 1, links: 2 });
+  });
+
   it('threads quickAdd onto every node only while editing, and keys the cache on it', () => {
     const hook = { label: () => 'Add a connected node', run: () => {} };
     const n = viewNode();
@@ -330,6 +344,17 @@ describe('buildEdgeData', () => {
     });
     expect(buildEdgeData(threatened, edgeCtx()).threats).toEqual({ open: 1, total: 2 });
     expect(buildEdgeData(viewEdge(), edgeCtx()).threats).toBeUndefined();
+  });
+
+  it('sums its constituents\' comments; links are a node thing', () => {
+    const noted = viewEdge({
+      constituents: [
+        { id: 'r1', from: 'a', to: 'b', kind: 'sync', comments: [{ id: 'c1', text: 'x' }] },
+        { id: 'r2', from: 'a', to: 'b', kind: 'sync', comments: [{ id: 'c1', text: 'y' }] },
+      ],
+    });
+    expect(buildEdgeData(noted, edgeCtx()).annotations).toEqual({ comments: 2, links: 0 });
+    expect(buildEdgeData(viewEdge(), edgeCtx()).annotations).toBeUndefined();
   });
 
   it('names the sole relation as threatRelation in both modes, and nothing on a bundle', () => {

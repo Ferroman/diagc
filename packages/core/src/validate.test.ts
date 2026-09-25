@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { model } from './builder';
 import { DiagramValidationError, validate } from './validate';
-import type { DiagramModel, DiagramNode, DiagramRelation, ContainmentEdge } from './types';
+import type { Comment, ContainmentEdge, DiagramModel, DiagramNode, DiagramRelation, Link } from './types';
 
 function emptyModel(): DiagramModel {
   return { version: 1, id: 'm', name: 'm', nodes: [], containment: [], relations: [], layers: [], planes: [] };
@@ -898,5 +898,40 @@ describe('threat-model notation', () => {
   });
   it('accepts an empty threat-model diagram', () => {
     expect(validate({ ...emptyModel(), notation: 'threat-model' })).toEqual([]);
+  });
+});
+
+describe('comments and links', () => {
+  const model = (patch: Partial<DiagramNode>, rel: Partial<DiagramRelation> = {}): DiagramModel => ({
+    version: 1,
+    id: 'd',
+    name: 'd',
+    nodes: [{ id: 'a', name: 'A', ...patch }, { id: 'b', name: 'B' }],
+    containment: [],
+    relations: [{ id: 'r', from: 'a', to: 'b', kind: 'sync', ...rel }],
+    layers: [],
+    planes: [],
+  });
+  const codes = (m: DiagramModel) => validate(m).map((i) => i.code);
+
+  it('accepts well-formed comments on a node and a relation, and links on a node', () => {
+    const m = model(
+      { comments: [{ id: 'c1', text: 'ok', by: 'Ann', at: '2026-09-22' }], links: [{ label: 'Ticket', url: 'https://x/1' }] },
+      { comments: [{ id: 'c1', text: 'also ok' }] },
+    );
+    expect(codes(m)).toEqual([]);
+  });
+  it('reports the wrong shape once per element', () => {
+    expect(codes(model({ comments: 'nope' as unknown as Comment[] }))).toEqual(['invalid-comments']);
+    expect(codes(model({ links: [null] as unknown as Link[] }))).toEqual(['invalid-links']);
+    expect(codes(model({}, { comments: [1] as unknown as Comment[] }))).toEqual(['invalid-comments']);
+  });
+  it('reports a missing or repeated id, empty text, and a bad date, naming the element', () => {
+    const issues = validate(model({ comments: [{ id: '', text: 'x' }, { id: 'c1', text: '' }, { id: 'c1', text: 'y', at: '2026-02-30' }] }));
+    expect(issues.map((i) => i.code)).toEqual(['comment-id', 'comment-text', 'comment-id', 'comment-at']);
+    expect(issues.every((i) => i.ref === 'a')).toBe(true);
+  });
+  it('reports a link without a label or a url', () => {
+    expect(codes(model({ links: [{ label: '', url: 'https://x' }, { label: 'x', url: '' }] }))).toEqual(['invalid-links', 'invalid-links']);
   });
 });

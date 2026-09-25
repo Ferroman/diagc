@@ -1117,6 +1117,58 @@ describe('empty threat badge', () => {
   });
 });
 
+describe('CommentBadge', () => {
+  it('draws nothing without annotations, a passive count without a bubble-drawing canvas', () => {
+    expect(renderNode({ annotations: undefined }).container.querySelector('.dg-comment-badge')).toBeNull();
+    const { container } = renderNode({ annotations: { comments: 2, links: 1 } });
+    const badge = container.querySelector('.dg-comment-badge') as HTMLElement;
+    expect(badge.tagName).toBe('SPAN');
+    expect(badge.textContent).toBe('2');
+    expect(badge.getAttribute('title')).toBe('2 comments, 1 link');
+  });
+
+  it('reaches an expanded container too — the group branch mounts its own', () => {
+    // The group branch carries a second CommentBadge (see DiagramNode), and a
+    // container drawn open is exactly where a remark about the container
+    // itself has to stay visible.
+    const { container } = renderNode({
+      label: 'Platform',
+      typeId: 'system',
+      state: 'expanded',
+      annotations: { comments: 1, links: 0 },
+    });
+    expect(container.querySelector('.dg-group > .dg-comment-badge')?.textContent).toBe('1');
+  });
+
+  it('is the bubble switch on a bubble-drawing canvas', () => {
+    const toggle = vi.fn();
+    // renderNode renders id="n1", so the toggle target is node:n1
+    const state: NoteState = { isOpen: () => false, toggle, placeChip: vi.fn() };
+    const data: DiagramNodeData = {
+      label: 'users',
+      typeId: 'table',
+      state: 'leaf',
+      promoted: false,
+      sharedMembers: [],
+      hiddenCount: 0,
+      typeRegistry: createTypeRegistry(),
+      icons: createIconRegistry(),
+      annotations: { comments: 0, links: 1 },
+    };
+    const { container } = render(
+      <NoteStateContext.Provider value={state}>
+        <ReactFlowProvider>
+          <DiagramNode id="n1" data={data} />
+        </ReactFlowProvider>
+      </NoteStateContext.Provider>,
+    );
+    const badge = container.querySelector('button.dg-comment-badge') as HTMLButtonElement;
+    expect(badge.textContent).toBe('↗');
+    fireEvent.click(badge);
+    expect(toggle).toHaveBeenCalledWith({ node: 'n1' });
+  });
+});
+
 describe('QuickAddButton', () => {
   const quickAdd = (label: string | undefined, run = vi.fn()) => ({ label: () => label, run });
 

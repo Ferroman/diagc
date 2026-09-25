@@ -2,7 +2,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getViewportForBounds } from '@xyflow/react';
-import { layoutPlaneKey, model, type DiagramModel, type ThreatTarget } from '@diagc/core';
+import { layoutPlaneKey, model, type DiagramModel, type LayoutOverlay, type ThreatTarget } from '@diagc/core';
 import { DiagramView, LIBRARY_ENTRY_DND_TYPE, type CanvasCommands, type LayoutApi } from './DiagramView';
 import { FISHBONE_LAYOUT } from './fishbone-layout';
 import { GIT_LAYOUT } from './git-layout';
@@ -2279,5 +2279,54 @@ describe('threat notes', () => {
     await rfNode(container, 'note:node:web');
     await waitFor(() => expect(ref.current?.snapshotPositions()['web']).toBeDefined());
     expect(Object.keys(ref.current!.snapshotPositions()).some((id) => id.startsWith('note:'))).toBe(false);
+  });
+});
+
+describe('comment notes', () => {
+  const commented: DiagramModel = {
+    version: 1, id: 'd', name: 'd', layers: [], planes: [], containment: [],
+    nodes: [
+      { id: 'a', name: 'A', comments: [{ id: 'c1', text: 'Remark on A' }] },
+      { id: 'b', name: 'B', links: [{ label: 'Doc', url: 'https://x' }] },
+      { id: 'c', name: 'C' },
+    ],
+    relations: [{ id: 'r', from: 'a', to: 'b', kind: 'sync', comments: [{ id: 'c1', text: 'Remark on r' }] }],
+  };
+  const open = (): LayoutOverlay => ({
+    version: 1, planes: {},
+    notes: { [layoutPlaneKey(commented, undefined)]: { 'node:a': { dx: 0, dy: 0, open: true }, 'node:b': { dx: 0, dy: 0, open: true }, 'relation:r': { dx: 0, dy: 0, open: true }, 'node:c': { dx: 0, dy: 0, open: true } } },
+  });
+  it('derives a bubble for a commented node, a linked node and a commented relation, none for a bare one', async () => {
+    const { container } = render(<DiagramView model={commented} layout={open()} />);
+    expect((await rfNode(container, 'note:node:a')).textContent).toContain('Remark on A');
+    expect((await rfNode(container, 'note:node:b')).textContent).toContain('Doc');
+    expect((await rfNode(container, 'note:relation:r')).textContent).toContain('Remark on r');
+    expect(container.querySelector('.react-flow__node[data-id="note:node:c"]')).toBeNull();
+  });
+  it('the comment badge opens the bubble in view mode', async () => {
+    const { container } = render(<DiagramView model={commented} />);
+    await rfNode(container, 'a');
+    expect(container.querySelector('.react-flow__node[data-id="note:node:a"]')).toBeNull();
+    fireEvent.click(container.querySelector('.react-flow__node[data-id="a"] button.dg-comment-badge')!);
+    expect(await rfNode(container, 'note:node:a')).not.toBeNull();
+  });
+  it('offers no threat on a comment-only bubble unless the canvas is a threat model', async () => {
+    // The studio wires onAddThreat whatever the diagram is, so the gate has to
+    // live here: a remark on a plain C4 box must not sprout a threat register
+    // (nor have estimateNoteHeight reserve the row for one). The same gate
+    // ThreatBadge and the studio's panels apply.
+    const plain = render(<DiagramView model={commented} layout={open()} mode="edit" edit={{ onAddThreat: vi.fn() }} />);
+    expect((await rfNode(plain.container, 'note:node:a')).querySelector('.dg-note-add')).toBeNull();
+    plain.unmount();
+    const tm = render(
+      <DiagramView model={commented} layout={open()} notation="threat-model" mode="edit" edit={{ onAddThreat: vi.fn() }} />,
+    );
+    expect((await rfNode(tm.container, 'note:node:a')).querySelector('.dg-note-add')).not.toBeNull();
+  });
+  it('hands the host\'s onOpenLink to the bubble', async () => {
+    const onOpenLink = vi.fn();
+    const { container } = render(<DiagramView model={commented} layout={open()} onOpenLink={onOpenLink} />);
+    fireEvent.click((await rfNode(container, 'note:node:b')).querySelector('a.dg-note-link')!);
+    expect(onOpenLink).toHaveBeenCalledWith('https://x');
   });
 });

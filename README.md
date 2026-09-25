@@ -73,6 +73,7 @@ Organised along [Diátaxis](https://diataxis.fr/) lines — learning, tasks, loo
 | [Organise a large diagram](docs/how-to/organise-large-diagrams.md) | Semantic zoom, pins, drilling — and when to split instead. |
 | [Use the icon library](docs/how-to/use-the-icon-library.md) | C4 stencils, 763 AWS icons, importing your own. |
 | [Draw on a diagram](docs/how-to/draw-on-a-diagram.md) | Freehand pen and eraser on top of the boxes. |
+| [Comment on a diagram](docs/how-to/comment-on-a-diagram.md) | Remarks and resource links on any node or relation, read from the badge on the published page. |
 | [Draw a git branching diagram](docs/how-to/draw-a-git-branching-diagram.md) | Lanes of commits with branch-offs and merges, from the DSL or the studio. |
 | [Draw an activity diagram](docs/how-to/draw-an-activity-diagram.md) | Swimlanes, forks and joins, decisions, signals and interrupts. |
 | [Draw a C4 diagram](docs/how-to/draw-a-c4-diagram.md) | Solid person/system/container/component fills, and a technology subtitle. |

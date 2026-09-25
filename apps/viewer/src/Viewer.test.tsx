@@ -339,6 +339,28 @@ describe('Viewer layer toggles', () => {
   });
 });
 
+describe('Viewer comments', () => {
+  it('a comment badge on a published page opens the bubble with the text and a link', async () => {
+    const commented: DiagramModel = {
+      version: 1, id: 'd', name: 'd', layers: [], planes: [], containment: [], relations: [],
+      nodes: [{ id: 'a', name: 'A', comments: [{ id: 'c1', text: 'Read me on the page' }], links: [{ label: 'Doc', url: 'https://x' }] }],
+    };
+    const { container } = render(<Viewer data={{ model: commented, layout: { version: 1, planes: {} } }} />);
+    let badge: HTMLButtonElement | null = null;
+    await waitFor(() => {
+      badge = container.querySelector<HTMLButtonElement>('.react-flow__node[data-id="a"] button.dg-comment-badge');
+      if (badge === null) throw new Error('no comment badge rendered');
+    });
+    fireEvent.click(badge!);
+    await waitFor(() => {
+      const note = container.querySelector('.react-flow__node[data-id="note:node:a"]');
+      if (note === null) throw new Error('no bubble opened from the badge');
+      expect(note.textContent).toContain('Read me on the page');
+      expect(note.querySelector('a.dg-note-link')?.getAttribute('href')).toBe('https://x');
+    });
+  });
+});
+
 describe('handshakeReady', () => {
   // The exporter screenshots whatever frame the handshake asks for, so a
   // handshake that fires before ELK has laid the graph out sizes the frame from

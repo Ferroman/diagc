@@ -3,6 +3,7 @@ import { Handle, NodeResizer, Position } from '@xyflow/react';
 import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type TextAlign, type TextRun, type ThreatTarget } from '@diagc/core';
 import type { IconRegistry } from '@diagc/icons';
 import type { Registry, TypeStyle } from './registry';
+import { commentBadgeProps, type AnnotationCounts } from './comment-badge';
 import { LoopHighlightContext } from './loop-highlight';
 import { NoteStateContext } from './note-state';
 import { notationProfile } from './notations';
@@ -65,6 +66,8 @@ export interface DiagramNodeData {
   link?: string;
   /** open/total STRIDE threats on the element; absent when it carries none */
   threats?: { open: number; total: number };
+  /** comment/link counts on the element; absent when it carries neither */
+  annotations?: AnnotationCounts;
   // --- interactions & edit callbacks -------------------------------------
   /** commit rich edits (box leaf nodes); null = cancelled */
   onRichCommit?: (runs: TextRun[] | null) => void;
@@ -295,6 +298,45 @@ export function ThreatBadge({ id, data }: { id: string; data: DiagramNodeData })
       aria-expanded={open}
       aria-label={`${title} — ${open ? 'hide' : 'show'}`}
       // neither a drag start nor a node click — the empty state's contract
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        notes.toggle({ node: id });
+      }}
+    >
+      {text}
+    </button>
+  );
+}
+
+/** The comment count (or a link glyph) at the opposite corner from the threat
+ * badge. Stays in exports like the threat count: a reviewer reading the PNG
+ * should see that there is something to read. Never offers a `+` — comments
+ * are written in the panel. */
+export function CommentBadge({ id, data }: { id: string; data: DiagramNodeData }): import('react').ReactElement | null {
+  const notes = useContext(NoteStateContext);
+  const badge = data.annotations !== undefined ? commentBadgeProps(data.annotations) : undefined;
+  if (badge === undefined) return null;
+  // text/title come from the shared derivation so this badge and the flow's
+  // chip cannot drift apart in what they say (see comment-badge.ts).
+  const { text, title } = badge;
+  // Passive without a bubble-drawing canvas, and on an external stub — the
+  // same two cases ThreatBadge explains.
+  if (notes === null || data.external === true) {
+    return (
+      <span className="dg-comment-badge" title={title}>
+        {text}
+      </span>
+    );
+  }
+  const open = notes.isOpen(threatTargetKey({ node: id }));
+  return (
+    <button
+      type="button"
+      className="dg-comment-badge nodrag"
+      title={title}
+      aria-expanded={open}
+      aria-label={`${title} — ${open ? 'hide' : 'show'}`}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();
@@ -744,6 +786,7 @@ export function DiagramNode({
             edges are drawn (see SketchFill) — and an outline group stays a line */}
         {sketchOf(data, style.shape, id, width, height, groupOutline ? 'none' : 'wash')}
         <ThreatBadge id={id} data={data} />
+        <CommentBadge id={id} data={data} />
         <QuickAddButton id={id} data={data} selected={selected} />
         <div className="dg-group-header">
           {data.image !== undefined && (
@@ -819,6 +862,7 @@ export function DiagramNode({
       {metaBadges}
       <LinkBadge data={data} />
       <ThreatBadge id={id} data={data} />
+      <CommentBadge id={id} data={data} />
       <QuickAddButton id={id} data={data} selected={selected} />
       {sideHandles}
     </div>

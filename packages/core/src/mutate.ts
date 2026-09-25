@@ -1,6 +1,7 @@
 import {
   BUILTIN_NOTATIONS,
   type Column,
+  type Comment,
   type DiagramLayer,
   type DiagramLegend,
   type DiagramModel,
@@ -8,6 +9,7 @@ import {
   type DiagramPlane,
   type EdgeLabel,
   type FontScale,
+  type Link,
   type Polarity,
   type RelationStyle,
   type StrideCategory,
@@ -19,6 +21,7 @@ import {
 } from './types';
 import { normalizeRuns, runsToPlainText } from './text';
 import { childrenOf } from './children';
+import { isIsoDate } from './dates';
 import type { ThreatTarget } from './threat-model';
 
 export class CommandError extends Error {
@@ -94,6 +97,7 @@ export interface NodeDetails {
   metadata?: Record<string, unknown> | null;
   plane?: string | null;
   layer?: string | null;
+  links?: Link[] | null;
 }
 
 /** Whitelist of {@link NodeDetails} fields wired through the loop below. Every
@@ -114,6 +118,7 @@ const NODE_DETAIL_KEYS = [
   'metadata',
   'plane',
   'layer',
+  'links',
 ] as const;
 type NodeDetailKey = (typeof NODE_DETAIL_KEYS)[number];
 
@@ -142,6 +147,10 @@ export function setNodeDetails(m: DiagramModel, id: string, details: NodeDetails
   if (details.layer != null && !m.layers.some((l) => l.id === details.layer)) {
     throw new CommandError(`Unknown layer '${details.layer}'`);
   }
+  // An emptied list is a cleared one. A panel sends `links` whole, so deleting
+  // the last row arrives as `[]` — and a saved file must no more hold
+  // `links: []` than the threat/comment lists mapList prunes.
+  const patch: NodeDetails = details.links?.length === 0 ? { ...details, links: null } : details;
   const nodes = m.nodes.map((n) => {
     if (n.id !== id) return n;
     let next = { ...n };
@@ -149,7 +158,7 @@ export function setNodeDetails(m: DiagramModel, id: string, details: NodeDetails
     // 12 hand-written applyNullable calls — adding a field wires automatically
     // and the coverage const above makes an omission a compile error.
     for (const key of NODE_DETAIL_KEYS) {
-      next = applyNullable(next, key, details[key]);
+      next = applyNullable(next, key, patch[key]);
     }
     return next;
   });
@@ -246,31 +255,46 @@ type ThreatKeyCoverage = [ThreatNullableKeys] extends [ThreatNullableKey]
 const _assertThreatKeyCoverage: ThreatKeyCoverage = true;
 void _assertThreatKeyCoverage;
 
-/**
- * Apply `fn` to the threat list of the element `target` names. Threats hang off
- * nodes and relations alike and the list is identical on both, so one seam
- * serves the two; only the named element is replaced, every sibling keeps its
- * reference. A result with no threats drops the key entirely, keeping saved
- * files free of empty arrays.
- */
-function mapThreats(
+/** The two per-element lists that commands edit in place: threats and
+ * comments. Same seam for both — only the named element is replaced, every
+ * sibling keeps its reference, and an empty result drops the key so saved files
+ * stay free of empty arrays. */
+// A map, not a conditional type: `K extends 'threats' ? Threat : Comment` would
+// silently hand a third list `Comment` instead of failing to compile.
+interface ElementLists {
+  threats: Threat;
+  comments: Comment;
+}
+type ElementList = keyof ElementLists;
+type ListItem<K extends ElementList> = ElementLists[K];
+
+function mapList<K extends ElementList>(
   m: DiagramModel,
   target: ThreatTarget,
-  fn: (threats: readonly Threat[]) => Threat[],
+  key: K,
+  fn: (items: readonly ListItem<K>[]) => ListItem<K>[],
 ): DiagramModel {
-  const next = <T extends { id: string; threats?: Threat[] }>(items: T[], id: string, what: string): T[] => {
+  const next = <T extends { id: string }>(items: T[], id: string, what: string): T[] => {
     if (!items.some((x) => x.id === id)) throw new CommandError(`Unknown ${what} '${id}'`);
     return items.map((x) => {
       if (x.id !== id) return x;
-      const threats = fn(x.threats ?? []);
-      const { threats: _dropped, ...rest } = x;
-      return (threats.length === 0 ? rest : { ...rest, threats }) as T;
+      const record = x as T & Partial<Record<K, ListItem<K>[]>>;
+      const list = fn(record[key] ?? []);
+      // Computed-key destructuring here defeats tsc's narrowing back to `T`
+      // (the omit doesn't provably overlap); spread-then-delete keeps the same
+      // "drop the key, no empty array survives" behavior without the cast.
+      const rest = { ...record };
+      delete rest[key];
+      return (list.length === 0 ? rest : { ...rest, [key]: list }) as T;
     });
   };
   return 'node' in target
     ? { ...m, nodes: next(m.nodes, target.node, 'node') }
     : { ...m, relations: next(m.relations, target.relation, 'relation') };
 }
+
+const mapThreats = (m: DiagramModel, target: ThreatTarget, fn: (threats: readonly Threat[]) => Threat[]): DiagramModel =>
+  mapList(m, target, 'threats', fn);
 
 export function addThreat(m: DiagramModel, target: ThreatTarget, threat: Threat): DiagramModel {
   return mapThreats(m, target, (threats) => {
@@ -304,6 +328,58 @@ export function removeThreat(m: DiagramModel, target: ThreatTarget, id: string):
   return mapThreats(m, target, (threats) => {
     if (!threats.some((t) => t.id === id)) throw new CommandError(`Unknown threat '${id}'`);
     return threats.filter((t) => t.id !== id);
+  });
+}
+
+/** Patch for update-comment: `null` clears an optional field. `text` is
+ * required on a {@link Comment}, so it is set-only. */
+export interface CommentPatch {
+  text?: string;
+  by?: string | null;
+  at?: string | null;
+}
+const COMMENT_NULLABLE_KEYS = ['by', 'at'] as const;
+type CommentNullableKey = (typeof COMMENT_NULLABLE_KEYS)[number];
+type CommentNullableKeys = Exclude<keyof CommentPatch, 'text'>;
+type CommentKeyCoverage = [CommentNullableKeys] extends [CommentNullableKey]
+  ? [CommentNullableKey] extends [CommentNullableKeys] ? true : false
+  : false;
+const _assertCommentKeyCoverage: CommentKeyCoverage = true;
+void _assertCommentKeyCoverage;
+
+/** A date the studio's date input could not have produced is refused here, not
+ * only at compile time: the studio autosaves on a timer, and a model that fails
+ * validation wedges that save with a 400 while the user is still typing. */
+const checkCommentDate = (at: string | null | undefined): void => {
+  if (at !== undefined && at !== null && !isIsoDate(at)) throw new CommandError(`Comment date '${at}' is not a YYYY-MM-DD date`);
+};
+
+export function addComment(m: DiagramModel, target: ThreatTarget, comment: Comment): DiagramModel {
+  checkCommentDate(comment.at);
+  return mapList(m, target, 'comments', (comments) => {
+    if (comments.some((c) => c.id === comment.id)) throw new CommandError(`Duplicate comment id '${comment.id}'`);
+    return [...comments, comment];
+  });
+}
+
+export function updateComment(m: DiagramModel, target: ThreatTarget, id: string, patch: CommentPatch): DiagramModel {
+  checkCommentDate(patch.at);
+  return mapList(m, target, 'comments', (comments) => {
+    if (!comments.some((c) => c.id === id)) throw new CommandError(`Unknown comment '${id}'`);
+    return comments.map((c) => {
+      if (c.id !== id) return c;
+      let out: Comment = { ...c };
+      if (patch.text !== undefined) out.text = patch.text;
+      for (const key of COMMENT_NULLABLE_KEYS) out = applyNullable(out, key, patch[key]);
+      return out;
+    });
+  });
+}
+
+export function removeComment(m: DiagramModel, target: ThreatTarget, id: string): DiagramModel {
+  return mapList(m, target, 'comments', (comments) => {
+    if (!comments.some((c) => c.id === id)) throw new CommandError(`Unknown comment '${id}'`);
+    return comments.filter((c) => c.id !== id);
   });
 }
 

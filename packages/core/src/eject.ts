@@ -96,7 +96,7 @@ function quoted(s: string): string {
 const NODE_OPT_KEYS = [
   'type', 'name', 'icon', 'shape', 'image', 'color', 'textColor', 'technology',
   'link', 'description', 'rich', 'textAlign', 'fontScale', 'metadata', 'key', 'include',
-  'includePlane', 'includePlanes', 'plane', 'layer', 'columns', 'threats',
+  'includePlane', 'includePlanes', 'plane', 'layer', 'columns', 'threats', 'comments', 'links',
 ] as const;
 
 // Drift guard: a field added to DiagramNode without a matching entry above
@@ -111,7 +111,7 @@ void _nodeOptCoverage;
  * — mirrors the interface declaration in builder.ts. */
 const RELATE_OPT_KEYS = [
   'label', 'labels', 'style', 'description', 'layer', 'polarity', 'delay',
-  'fromColumn', 'toColumn', 'threats',
+  'fromColumn', 'toColumn', 'threats', 'comments',
 ] as const;
 
 // Drift guard, same shape as _nodeOptCoverage above. `id` and `kind` are

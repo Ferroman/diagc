@@ -187,6 +187,8 @@ export function placeNote(
 
 /** the bubble's padding, top and bottom (see .dg-note) */
 const PAD = 16;
+/** the bubble's padding, left and right (see .dg-note) */
+const PAD_X = 10;
 /** one line of 12px text at line-height 1.35 */
 const LINE = 16;
 /** the header's margin below it */
@@ -206,6 +208,10 @@ const ROW_FIXED = 20 + 15 + 6 + 6;
 const STATUS_PAD = 12;
 /** the ▸ button and its gap — every row in edit mode, rows with details otherwise */
 const EXPAND = 16 + 6;
+/** a section's border gap plus its title line (see .dg-note-section / -title) */
+const SECTION = 6 + 6 + 14;
+/** a comment's `by · at` line, below its text (see .dg-note-meta) */
+const META = 13;
 
 /**
  * A bubble's height before it is measured, from the text it will show — what
@@ -220,6 +226,8 @@ export function estimateNoteHeight(
   name: string,
   threats: readonly { title: string; status?: ThreatStatus; description?: string; mitigation?: string }[],
   editing: boolean,
+  comments: readonly { text: string; by?: string; at?: string }[] = [],
+  links: readonly { label: string }[] = [],
 ): number {
   const lines = (text: string, width: number, glyph: number) => Math.max(1, Math.ceil((text.length * glyph) / width));
   let height = PAD + lines(name, NAME_WIDTH, CHAR) * LINE + HEAD_GAP;
@@ -229,6 +237,13 @@ export function estimateNoteHeight(
     const width = NOTE_WIDTH - ROW_FIXED - (STATUS_PAD + word.length * STATUS_CHAR) - (expand ? EXPAND : 0);
     height += lines(t.title, width, CHAR) * LINE + ROW_PAD;
   }
+  // A section is a title line plus its items; a comment's `by · at` is one
+  // more small line. Text wraps across the bubble's full inner width.
+  if (comments.length > 0) {
+    height += SECTION;
+    for (const c of comments) height += lines(c.text, NOTE_WIDTH - 2 * PAD_X, CHAR) * LINE + (c.by !== undefined || c.at !== undefined ? META : 0) + ROW_PAD;
+  }
+  if (links.length > 0) height += SECTION + links.length * (LINE + ROW_PAD);
   if (editing) height += ADD_ROW;
   return height;
 }

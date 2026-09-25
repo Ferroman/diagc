@@ -709,4 +709,12 @@ describe('NodePanel', () => {
       });
     });
   });
+
+  it('offers Comments and Links on a plain node (unlike Threats, not gated on a notation)', () => {
+    render(
+      <NodePanel model={testModel()} nodeId="a" activePlane="flow" onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+    );
+    expect(screen.getByRole('region', { name: 'Comments' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Links' })).toBeTruthy();
+  });
 });

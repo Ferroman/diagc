@@ -23,6 +23,8 @@ export const CORE_VERSION = 1;
 export { ejectSource } from './eject';
 export * from './types';
 export * from './mutate';
+export { commentsOf, hasNoteContent, nextCommentId, type ElementTarget } from './comments';
+export { isIsoDate } from './dates';
 export { normalizeRuns, runsToPlainText } from './text';
 export { relationLabels } from './labels';
 export { defaultLayoutDirection, type LayoutDirection } from './layout-defaults';
@@ -53,6 +55,7 @@ export {
   type ConsequenceOpts,
   type FishboneOpts,
   type ThreatOpts,
+  type CommentOpts,
   type ElementOpts,
 } from './builder';
 export { validate, DiagramValidationError, IMAGE_REF, LIBRARY_IMAGE_REF, type ValidationIssue } from './validate';

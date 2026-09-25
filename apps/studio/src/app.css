@@ -195,6 +195,13 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
 .threats .threat-row > *, .threats .threat-add > * { min-width: 0; }
 .threats .threat-details { display: flex; flex-direction: column; gap: 4px; padding: 4px 0 0; }
 
+/* Comments and links: same idea, no per-row grid — a comment's textarea wants
+   the panel's full width, and a link is just two text boxes plus Remove. */
+.comment textarea, .comment-add textarea { width: 100%; box-sizing: border-box; font: inherit; }
+.comment-row, .link-row, .link-add { display: flex; gap: 4px; align-items: center; margin: 4px 0; }
+.comment-row input, .link-row input, .link-add input { flex: 1; min-width: 0; }
+.comment-add { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+
 /* The threat-model dock panel stacks its rows instead of laying them side by
    side as .so-answers does: a flow reads `from → to` over the boundaries it
    crosses, and that pair of lines wants the panel's whole width. */

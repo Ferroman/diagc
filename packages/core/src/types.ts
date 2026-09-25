@@ -81,6 +81,10 @@ export interface DiagramNode {
   technology?: string;
   /** STRIDE findings against this node (see Threat) */
   threats?: Threat[];
+  /** remarks shown in the element's bubble (see Comment) */
+  comments?: Comment[];
+  /** resources listed in the element's bubble (see Link) */
+  links?: Link[];
   description?: string;
   /** rich multiline label; when present, name === rich.map(r => r.text).join('') */
   rich?: TextRun[];
@@ -193,6 +197,26 @@ export interface Threat {
   mitigation?: string;
 }
 
+/** A remark on an element: what was said, by whom, when. Generic like
+ * `threats` — any node or relation in any notation can carry a list. Shown in
+ * the element's bubble on the canvas; never affects layout. */
+export interface Comment {
+  /** unique within its element's list (`c1`, `c2`, … when synthesized) */
+  id: string;
+  text: string;
+  /** author, free text */
+  by?: string;
+  /** `YYYY-MM-DD` */
+  at?: string;
+}
+
+/** A resource an element points at, beyond the single navigation `link`: a
+ * ticket, a design doc, a repo. Listed in the element's bubble. */
+export interface Link {
+  label: string;
+  url: string;
+}
+
 export interface DiagramRelation {
   id: string;
   from: string;
@@ -204,6 +228,8 @@ export interface DiagramRelation {
   labels?: EdgeLabel[];
   /** STRIDE findings against this flow (see Threat) */
   threats?: Threat[];
+  /** remarks shown in the relation's bubble (see Comment) */
+  comments?: Comment[];
   style?: RelationStyle;
   description?: string;
   layer?: string;

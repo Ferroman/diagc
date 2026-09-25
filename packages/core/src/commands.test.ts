@@ -12,6 +12,7 @@ import {
 import { emptyDrawings } from './drawings';
 import { CommandError } from './mutate';
 import { TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from './threat-model';
+import type { DiagramModel, LayoutOverlay } from './types';
 
 function state(): EditorState {
   const m = model('t');
@@ -752,5 +753,145 @@ describe('threat notes (layout-only)', () => {
     expect(s2.layout.notes).toEqual({ p: { 'node:a': { dx: 1, dy: 1, open: true } } });
     const s3 = applyCommand(s2, { type: 'delete-plane', id: 'p' });
     expect(s3.layout.notes).toBeUndefined();
+  });
+});
+
+describe('note hygiene counts comments and links as bubble content', () => {
+  /** the three reasons a bubble exists, one per node: a comment, a threat and a
+   * link. Every one of them has a saved placement, so a prune that only knew
+   * about threats would be caught here twice over. */
+  function mixedState(): EditorState {
+    const base: DiagramModel = {
+      version: 1, id: 'd', name: 'd', layers: [], planes: [], containment: [],
+      nodes: [
+        { id: 'a', name: 'A', comments: [{ id: 'c1', text: 'Remark on A' }] },
+        { id: 'b', name: 'B', threats: [{ id: 't1', category: 'S', title: 'Spoofed session' }] },
+        { id: 'c', name: 'C', links: [{ label: 'Ticket', url: 'https://x/1' }] },
+      ],
+      relations: [{ id: 'r', from: 'a', to: 'b', kind: 'sync', comments: [{ id: 'c1', text: 'Remark on r' }] }],
+    };
+    const layout: LayoutOverlay = {
+      ...emptyLayout(),
+      notes: {
+        [layoutPlaneKey(base)]: {
+          'node:a': { dx: 40, dy: -20, open: true },
+          'node:b': { dx: 1, dy: 2 },
+          'node:c': { dx: 3, dy: 4, open: true },
+          'relation:r': { dx: 5, dy: 6, open: true },
+        },
+      },
+    };
+    return { model: base, layout, drawings: emptyDrawings() };
+  }
+
+  it('keeps a comment-only and a link-only placement through an edit and a rename', () => {
+    const s = mixedState();
+    const key = layoutPlaneKey(s.model);
+    const edited = applyCommand(s, { type: 'update-comment', target: { node: 'a' }, id: 'c1', patch: { text: 'Edited' } });
+    expect(edited.layout.notes?.[key]?.['node:a']).toEqual({ dx: 40, dy: -20, open: true });
+    expect(edited.layout.notes?.[key]?.['relation:r']).toEqual({ dx: 5, dy: 6, open: true });
+    // nothing died, so the overlay keeps its identity — the same contract the
+    // threat-only case above pins
+    const renamed = applyCommand(s, { type: 'rename-node', id: 'a', name: 'A2' });
+    expect(renamed.layout).toBe(s.layout);
+    const detailed = applyCommand(s, { type: 'set-node-details', id: 'c', details: { color: '#123456' } });
+    expect(detailed.layout.notes?.[key]?.['node:c']).toEqual({ dx: 3, dy: 4, open: true });
+  });
+
+  it('prunes a bubble once its last comment or link goes', () => {
+    const s = mixedState();
+    const key = layoutPlaneKey(s.model);
+    const noComment = applyCommand(s, { type: 'remove-comment', target: { node: 'a' }, id: 'c1' });
+    expect(noComment.layout.notes?.[key]?.['node:a']).toBeUndefined();
+    expect(noComment.layout.notes?.[key]?.['node:b']).toEqual({ dx: 1, dy: 2 });
+    const noLink = applyCommand(s, { type: 'set-node-details', id: 'c', details: { links: null } });
+    expect(noLink.layout.notes?.[key]?.['node:c']).toBeUndefined();
+  });
+});
+
+describe('comment commands', () => {
+  function commentState(): EditorState {
+    const base: DiagramModel = {
+      version: 1, id: 'd', name: 'd', layers: [], planes: [], containment: [],
+      nodes: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }],
+      relations: [{ id: 'r', from: 'a', to: 'b', kind: 'sync' }],
+    };
+    return { model: base, layout: emptyLayout(), drawings: emptyDrawings() };
+  }
+
+  it('adds, updates (null clears), and removes on a node; the key disappears with the last comment', () => {
+    let s = applyCommand(commentState(), {
+      type: 'add-comment',
+      target: { node: 'a' },
+      comment: { id: 'c1', text: 'first', by: 'Ann' },
+    });
+    expect(s.model.nodes[0]?.comments).toEqual([{ id: 'c1', text: 'first', by: 'Ann' }]);
+    s = applyCommand(s, {
+      type: 'update-comment',
+      target: { node: 'a' },
+      id: 'c1',
+      patch: { text: 'edited', by: null, at: '2026-09-22' },
+    });
+    expect(s.model.nodes[0]?.comments).toEqual([{ id: 'c1', text: 'edited', at: '2026-09-22' }]);
+    s = applyCommand(s, { type: 'remove-comment', target: { node: 'a' }, id: 'c1' });
+    expect('comments' in s.model.nodes[0]!).toBe(false);
+  });
+
+  it('works on a relation and leaves every sibling by reference', () => {
+    const before = commentState();
+    const s = applyCommand(before, {
+      type: 'add-comment',
+      target: { relation: 'r' },
+      comment: { id: 'c1', text: 'x' },
+    });
+    expect(s.model.relations[0]?.comments).toEqual([{ id: 'c1', text: 'x' }]);
+    expect(s.model.nodes).toBe(before.model.nodes);
+  });
+
+  it('rejects a duplicate id, an unknown comment, an unknown element, and an invalid date', () => {
+    const s = applyCommand(commentState(), {
+      type: 'add-comment',
+      target: { node: 'a' },
+      comment: { id: 'c1', text: 'x' },
+    });
+    expect(() =>
+      applyCommand(s, { type: 'add-comment', target: { node: 'a' }, comment: { id: 'c1', text: 'y' } }),
+    ).toThrow(/Duplicate comment/);
+    expect(() =>
+      applyCommand(s, { type: 'update-comment', target: { node: 'a' }, id: 'c9', patch: { text: 'z' } }),
+    ).toThrow(/Unknown comment/);
+    expect(() =>
+      applyCommand(s, { type: 'remove-comment', target: { node: 'zz' }, id: 'c1' }),
+    ).toThrow(/Unknown node/);
+    expect(() =>
+      applyCommand(s, { type: 'add-comment', target: { node: 'a' }, comment: { id: 'c2', text: 'y', at: '2026-02-30' } }),
+    ).toThrow(/YYYY-MM-DD/);
+    expect(() =>
+      applyCommand(s, { type: 'update-comment', target: { node: 'a' }, id: 'c1', patch: { at: 'soon' } }),
+    ).toThrow(/YYYY-MM-DD/);
+  });
+
+  it('sets and clears links through set-node-details', () => {
+    let s = applyCommand(commentState(), {
+      type: 'set-node-details',
+      id: 'a',
+      details: { links: [{ label: 'Doc', url: 'https://x' }] },
+    });
+    expect(s.model.nodes[0]?.links).toEqual([{ label: 'Doc', url: 'https://x' }]);
+    s = applyCommand(s, { type: 'set-node-details', id: 'a', details: { links: null } });
+    expect('links' in s.model.nodes[0]!).toBe(false);
+  });
+
+  it('an emptied links list drops the key too — a saved file never holds links: []', () => {
+    // The rule mapList keeps for threats/comments, extended to the one list a
+    // panel edits wholesale: a UI that removes the last row can send `[]`
+    // without leaving an empty array behind in the document.
+    let s = applyCommand(commentState(), {
+      type: 'set-node-details',
+      id: 'a',
+      details: { links: [{ label: 'Doc', url: 'https://x' }] },
+    });
+    s = applyCommand(s, { type: 'set-node-details', id: 'a', details: { links: [] } });
+    expect('links' in s.model.nodes[0]!).toBe(false);
   });
 });
