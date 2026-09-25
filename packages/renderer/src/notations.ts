@@ -1,4 +1,4 @@
-import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanActor, isPlanRole, isPlanZone, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
+import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanActor, isPlanEvent, isPlanRole, isPlanZone, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';
@@ -70,6 +70,14 @@ export interface NotationProfile {
     /** 'x' = the studio offers left/right resize handles on this node;
      * undefined = no notation resizer */
     resizable?: (n: DiagramNode) => 'x' | undefined;
+    /** a node other nodes can be dropped into (see EditingApi.onDropInto) */
+    dropTarget?: (n: DiagramNode) => boolean;
+    /** a node a drag may drop into a target (see dropTarget); every other
+     * node is always moved */
+    canDrop?: (n: DiagramNode) => boolean;
+    /** a node that returns to its laid spot after every drag and is never
+     * reported as moved — dragged only to be dropped somewhere */
+    snapsBack?: (n: DiagramNode) => boolean;
     /** a `fixed` node whose drag still means something to the host: the plan reads a
      * zone's or event's displacement as days (`onNodesMoved` deltas). The overlay
      * still never stores a position for it — `fixed` keeps that meaning. */
@@ -227,7 +235,9 @@ const THREAT_MODEL: NotationProfile = {
 // The notation owns the arrangement (as git-graph does) because x IS a date.
 // Roles are relations actor → zone that never draw as edges: they become
 // chips on the zone, so the picture stays a Gantt chart, not a web.
-const ROLE_LABEL: Record<PlanRole, { initial: string; title: string }> = {
+/** short/long labels per role — the chip's `O`/`E`/`C` initial and the role
+ * chip menu's item text (see RoleChipMenu). */
+export const ROLE_LABEL: Record<PlanRole, { initial: string; title: string }> = {
   owns: { initial: 'O', title: 'Owner' },
   executes: { initial: 'E', title: 'Executor' },
   checks: { initial: 'C', title: 'Checker' },
@@ -293,11 +303,21 @@ const PLAN: NotationProfile = {
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
     badges: planBadges,
     resizable: (n) => (n.type === PLAN_ZONE_TYPE ? 'x' : undefined),
-    // Everything fixed drags except an actor: a zone's or event's drag reads
-    // as a date change (planMoves), and a zone's free-form "other" child
-    // drags to a new spot within the bar the same layout clamps on read. The
-    // roster is a list — an actor never moves.
-    draggableWhenFixed: (n) => !isPlanActor(n),
+    // A zone receives a drop (an actor's role, a plain node's containment).
+    // isPlanZone, not a nested-only check: a root zone's Y is free and can
+    // overlap a sibling's rect just as readily as a nested one crosses its
+    // own parent's.
+    dropTarget: isPlanZone,
+    // A zone's or an event's drag is its date move; an actor or a plain box
+    // is what a zone receives, so those are what a drag may drop.
+    canDrop: (n) => isPlanActor(n) || (!isPlanZone(n) && !isPlanEvent(n)),
+    // An actor is dragged only to be dropped on a zone; it never keeps the
+    // position a drag left it at — the roster is a list, not a seating chart.
+    snapsBack: isPlanActor,
+    // Everything fixed drags now, actors included: an actor drags only to be
+    // dropped (drop-to-assign) and always snaps back after (see snapsBack
+    // above) — it used to be excluded here because that gesture didn't exist.
+    draggableWhenFixed: () => true,
   },
   edge: { hidden: isPlanRole },
   overlay: 'time-axis',

@@ -1,6 +1,6 @@
 import { useContext, useRef, type CSSProperties } from 'react';
 import { Handle, NodeResizeControl, NodeResizer, Position } from '@xyflow/react';
-import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, PLAN_ACTOR_TYPES, PLAN_EVENT_TYPE, PLAN_NOTATION, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type TextAlign, type TextRun, type ThreatTarget } from '@diagc/core';
+import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, PLAN_ACTOR_TYPES, PLAN_EVENT_TYPE, PLAN_NOTATION, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type PlanRole, type TextAlign, type TextRun, type ThreatTarget } from '@diagc/core';
 import type { IconRegistry } from '@diagc/icons';
 import type { Registry, TypeStyle } from './registry';
 import { commentBadgeProps, type AnnotationCounts } from './comment-badge';
@@ -9,6 +9,7 @@ import { NoteStateContext } from './note-state';
 import { notationProfile, type NodeBadge } from './notations';
 import { PLAN_LAYOUT } from './plan-layout';
 import { RichLabelEditor } from './RichLabelEditor';
+import { RoleChipMenu } from './RoleChipMenu';
 import { runsToDisplay } from './richtext';
 import { SketchShape, type SketchFill } from './SketchShape';
 import { TableNode } from './TableNode';
@@ -92,6 +93,10 @@ export interface DiagramNodeData {
   /** edit: the `+` offer for this node (see EditingApi.quickAdd); absent in
    * view mode or when the host has no recipe */
   quickAdd?: { label: (id: string) => string | undefined; run: (id: string) => void };
+  /** edit, plan notation: a role chip's menu chose a role for its actor, or
+   * `null` to remove it (see EditingApi.onSetRole). Absent in view mode or off
+   * the plan notation — the chip then stays the plain span it always was. */
+  onSetRole?: (zoneId: string, actorId: string, role: PlanRole | null) => void;
   /** edit: open a new threat row on this element's note (see
    * EditingApi.onAddThreat). Absent in view mode; drives the empty badge. */
   onAddThreat?: (target: ThreatTarget) => void;
@@ -100,6 +105,12 @@ export interface DiagramNodeData {
   /** with onResize: the notation resizes this node on x only, from either
    * side (a zone's width is its dates) */
   resizeAxis?: 'x';
+  /** this node is the drop target under the pointer during a single-node
+   * drag that could land on it (see EditingApi.onDropInto) — draws the
+   * notation's drag-over outline. Like `selected`, but on `data`: DiagramView
+   * patches it directly onto React Flow's node copy rather than deriving it
+   * through the cached node-data builder (see withDropTarget). */
+  dropTarget?: boolean;
 }
 
 // One connect point per side, all type="source": with the canvas in loose
@@ -505,6 +516,8 @@ export function DiagramNode({
         : undefined;
   const hitStyle = hitColor !== undefined ? ({ '--dg-hit': hitColor } as CSSProperties) : undefined;
   const hitAttrs = hitColor !== undefined ? { 'data-plan-hit': true } : {};
+  // The drag-over outline (see DiagramNodeData.dropTarget / EditingApi.onDropInto).
+  const dropTargetAttrs = data.dropTarget === true ? { 'data-drop-target': true } : {};
   // Tab inside an open label editor is the same offer the `+` chip makes, so it
   // is wired from the same channel: commit, then add. `run` is a no-op when the
   // node has no recipe, so no separate label gate is needed here.
@@ -659,16 +672,33 @@ export function DiagramNode({
           ⚭ {data.sharedMembers.length}
         </span>
       )}
-      {data.badges?.map((b) => (
-        <span
-          key={b.key}
-          className={`dg-badge dg-role-chip${focusId !== null && b.key.endsWith(`:${focusId}`) ? ' dg-role-chip-active' : ''}`}
-          title={b.title}
-          {...(b.color !== undefined ? { style: { '--dg-chip': b.color } as CSSProperties } : {})}
-        >
-          {b.text}
-        </span>
-      ))}
+      {data.badges?.map((b) => {
+        const chipClass = `dg-badge dg-role-chip${focusId !== null && b.key.endsWith(`:${focusId}`) ? ' dg-role-chip-active' : ''}`;
+        // Edit mode, plan notation only: the chip opens a menu instead of
+        // sitting inert. `profile.id` gates it (as isPlanActorType does above)
+        // so a foreign notation's badge — none exist today, but the shape is
+        // generic — never grows a plan-shaped menu by accident. `b.key` is
+        // always `${role}:${actorId}` (see planBadges), so the first colon
+        // splits it back into the two.
+        if (data.onSetRole !== undefined && profile.id === PLAN_NOTATION) {
+          const sep = b.key.indexOf(':');
+          const role = b.key.slice(0, sep) as PlanRole;
+          const actorId = b.key.slice(sep + 1);
+          return (
+            <RoleChipMenu key={b.key} chip={b} className={chipClass} role={role} actorId={actorId} zoneId={id} onSetRole={data.onSetRole} />
+          );
+        }
+        return (
+          <span
+            key={b.key}
+            className={chipClass}
+            title={b.title}
+            {...(b.color !== undefined ? { style: { '--dg-chip': b.color } as CSSProperties } : {})}
+          >
+            {b.text}
+          </span>
+        );
+      })}
       {isContainer && !isCldGroup && data.onEnterNode !== undefined && (
         <button
           type="button"
@@ -870,6 +900,7 @@ export function DiagramNode({
             })}
         {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
         {...hitAttrs}
+        {...dropTargetAttrs}
       >
         <XResizer id={id} data={data} selected={selected} />
         {/* never the preset's own fill: this box is where the children and their
@@ -933,6 +964,7 @@ export function DiagramNode({
         : { style: { ...boxAccent, ...hitStyle } })}
       {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
       {...hitAttrs}
+      {...dropTargetAttrs}
       {...ghostTitle}
     >
       <XResizer id={id} data={data} selected={selected} />

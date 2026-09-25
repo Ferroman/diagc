@@ -11,6 +11,36 @@ import { NUDGE_IDLE_MS, NUDGE_STEP, NUDGE_SHIFT_FACTOR } from './useNudge';
 import { NOTE_WIDTH } from './NoteNode';
 import { BADGE_R, badgeCenter, estimateNoteHeight, NOTE_GAP } from './note-place';
 
+// The drop-to-assign tests further down need to call DiagramView's OWN
+// onNodesChange/onNodeDrag/onNodeDragStop directly — React Flow's drag is a
+// pointer gesture jsdom cannot drive (see the note above the view-mode
+// position-reporting describe block). This wraps <ReactFlow> transparently —
+// every OTHER test in this file renders through it unaffected — and captures
+// the exact props DiagramView passed it, plus the live instance (via a
+// chained onInit), so a test can call the real handlers with hand-built
+// NodeChange/event arguments instead of re-implementing their logic.
+const dragCapture = vi.hoisted(() => ({
+  props: null as unknown as Record<string, any>,
+  instance: null as any,
+}));
+vi.mock('@xyflow/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@xyflow/react')>();
+  const Actual = actual.ReactFlow;
+  function CapturingReactFlow(props: Record<string, any>) {
+    dragCapture.props = props;
+    return (
+      <Actual
+        {...props}
+        onInit={(inst: unknown) => {
+          dragCapture.instance = inst;
+          props['onInit']?.(inst);
+        }}
+      />
+    );
+  }
+  return { ...actual, ReactFlow: CapturingReactFlow };
+});
+
 /** container-endpoint relation: service inside a system relates to the system itself */
 function containerEndpointModel() {
   const m = model('t1');
@@ -2387,7 +2417,10 @@ describe('plan notation', () => {
     expect(deltas.dep.dx).toBeCloseTo(NUDGE_STEP);
     expect(deltas.dep.dy).toBeCloseTo(0);
   });
-  it('edit mode: a nested zone and an event stay draggable though the layout fixed them; a person in the roster does not', async () => {
+  it('edit mode: a nested zone, an event and a roster person all stay draggable though the layout fixed them', async () => {
+    // A person used to be excluded here (the roster never moved), but
+    // drop-to-assign needs an actor's drag too now — it always snaps back
+    // instead (see the DiagramView.test.tsx drop-to-assign tests below).
     const m = model('p');
     const p = m.plan();
     p.person('alice', 'Alice Ng');
@@ -2402,7 +2435,7 @@ describe('plan notation', () => {
       });
     expect((await rfNode('design')).classList.contains('draggable')).toBe(true);
     expect((await rfNode('m1')).classList.contains('draggable')).toBe(true);
-    expect((await rfNode('alice')).classList.contains('draggable')).toBe(false);
+    expect((await rfNode('alice')).classList.contains('draggable')).toBe(true);
   });
   it('a childless zone is as wide as its dates: the layout sizes it, not its label', async () => {
     const { container } = render(<DiagramView model={plan()} plane="plan" notation="plan" today="2026-01-20" />);
@@ -2507,5 +2540,431 @@ describe('the plan hit mark never leaks outside the plan notation', () => {
     await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="person"] .dg-focus-node-dim')).toBeNull());
     expect(container.querySelector('.react-flow__node[data-id="person"] [data-plan-hit]')).toBeNull();
     expect(container.querySelector('[data-plan-hit]')).toBeNull();
+  });
+});
+
+describe('a droppable node is not clamped to its parent', () => {
+  // q (zone) > design (nested zone); q > task (a plain node, not a zone/event)
+  function nestedDropModel(): DiagramModel {
+    const m = model('nested-drop');
+    const p = m.plan();
+    const q = p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' });
+    q.zone('design', { name: 'Design', start: '2026-01-05', end: '2026-01-09' });
+    const task = m.node('task', { type: 'service' });
+    q.contains(task);
+    return m.toJSON();
+  }
+
+  // master > master-1: a non-plan notation with its OWN layout (gitLayout) and
+  // real containment (BranchRef.commit addContainment's the commit under its
+  // branch) but no dropTarget/canDrop — the clamp must stay exactly as before.
+  function gitNestedModel(): DiagramModel {
+    const m = model('git-nested');
+    const g = m.gitGraph();
+    g.branch('master', { name: 'Master' }).commit('1.0');
+    return m.toJSON();
+  }
+
+  type RfNode = { id: string; extent?: string; expandParent?: boolean };
+  const nodesOf = () => dragCapture.props['nodes'] as RfNode[];
+
+  it('a plain node nested in a zone carries no extent on a plan profile', async () => {
+    const { container } = render(
+      <DiagramView model={nestedDropModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+    );
+    await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="task"]')).not.toBeNull());
+    const task = nodesOf().find((n) => n.id === 'task');
+    expect(task?.extent).toBeUndefined();
+  });
+
+  it('a nested zone still carries extent: parent — the exemption is for a droppable node, not every child', async () => {
+    const { container } = render(
+      <DiagramView model={nestedDropModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+    );
+    await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="design"]')).not.toBeNull());
+    const design = nodesOf().find((n) => n.id === 'design');
+    expect(design?.extent).toBe('parent');
+  });
+
+  it('a nested node on a non-plan fixture still carries extent: parent', async () => {
+    const { container } = render(
+      <DiagramView model={gitNestedModel()} plane="git-graph" notation="git-graph" mode="edit" edit={{ onNodesMoved: vi.fn() }} />,
+    );
+    await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="master-1"]')).not.toBeNull());
+    const commit = nodesOf().find((n) => n.id === 'master-1');
+    expect(commit?.extent).toBe('parent');
+  });
+});
+
+describe('drop-to-assign', () => {
+  // one top-level zone with a nested zone, a roster actor with no role yet,
+  // and a plain (non-plan-typed) node with no zone of its own
+  function assignModel() {
+    const m = model('assign');
+    const p = m.plan();
+    p.person('alice', 'Alice Ng');
+    const q = p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' });
+    q.zone('design', { name: 'Design', start: '2026-01-05', end: '2026-01-09' });
+    m.node('task', { type: 'service' });
+    return m.toJSON();
+  }
+
+  // two ROOT zones — free on y, per planLayout, so nothing stacks them apart
+  // the way a nested zone is kept inside its parent's bar
+  function twoZonesModel() {
+    const m = model('assign2');
+    const p = m.plan();
+    p.zone('q1', { name: 'Q1', start: '2026-01-05', end: '2026-01-09' });
+    p.zone('q2', { name: 'Q2', start: '2026-02-02', end: '2026-02-06' });
+    return m.toJSON();
+  }
+
+  // a plain node already nested in zone A, plus an unrelated root zone B
+  // (neither zone the other's ancestor) — the re-homing case `canDrop`
+  // (unlike the old `fixed`-based gate) lets through
+  function nestedPlainModel() {
+    const m = model('assign3');
+    const p = m.plan();
+    const a = p.zone('a', { name: 'A', start: '2026-01-05', end: '2026-01-09' });
+    const task = m.node('task', { type: 'service' });
+    a.contains(task);
+    p.zone('b', { name: 'B', start: '2026-02-02', end: '2026-02-06' });
+    return m.toJSON();
+  }
+
+  // alice already owns 'owned'; 'other' is unrelated — the exclusion under
+  // test (dropTargetFor's exclude set widened with profile.related) is about
+  // roles already held, not containment
+  function ownedZoneModel() {
+    const m = model('assign-owned');
+    const p = m.plan();
+    const alice = p.person('alice', 'Alice Ng');
+    p.zone('owned', { name: 'Owned', start: '2026-01-05', end: '2026-01-09' }).owner(alice);
+    p.zone('other', { name: 'Other', start: '2026-02-02', end: '2026-02-06' });
+    return m.toJSON();
+  }
+
+  type RfNode = { id: string; position: { x: number; y: number }; parentId?: string };
+  const nodeOf = (id: string): RfNode => dragCapture.instance.getNodes().find((n: RfNode) => n.id === id);
+  const absOf = (id: string) => dragCapture.instance.getInternalNode(id)!.internals.positionAbsolute as { x: number; y: number };
+
+  /** the target node exists AND has been measured — safe to read positions off */
+  const settle = (container: HTMLElement, id: string) =>
+    waitFor(() => {
+      if (container.querySelector(`.react-flow__node[data-id="${id}"]`) === null) throw new Error(`${id} not yet`);
+      if (dragCapture.instance?.getInternalNode(id)?.internals.positionAbsolute === undefined) throw new Error(`${id} not measured`);
+    });
+
+  /**
+   * Drives one full drag→drop gesture through DiagramView's own captured
+   * onNodesChange/onNodeDragStop (see the mock above onNodesChange applies
+   * `to` as the node's on-screen (parent-relative) position, exactly as
+   * React Flow's own drag would; `pointerFlow` is the ABSOLUTE flow point the
+   * mouse released over — screenToFlowPosition/flowToScreenPosition are exact
+   * inverses of each other on the SAME live instance, so the hit test inside
+   * onNodeDragStop lands on exactly this point whatever transform the
+   * auto-fit-on-mount landed on under jsdom's zero-size viewport.
+   */
+  async function drag(id: string, to: { x: number; y: number }, pointerFlow: { x: number; y: number }) {
+    const pointer = dragCapture.instance.flowToScreenPosition(pointerFlow);
+    act(() => dragCapture.props['onNodesChange']([{ type: 'position', id, position: to, dragging: true }]));
+    const node = await waitFor(() => {
+      const n = nodeOf(id);
+      if (n === undefined || n.position.x !== to.x || n.position.y !== to.y) throw new Error('not applied yet');
+      return n;
+    });
+    act(() => dragCapture.props['onNodeDragStop']({ clientX: pointer.x, clientY: pointer.y }, node, [node]));
+  }
+
+  it('an actor dragged and dropped over a zone reports onDropInto once, not onNodesMoved, and snaps back', async () => {
+    const onNodesMoved = vi.fn();
+    const onDropInto = vi.fn();
+    const { container } = render(
+      <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+    );
+    await settle(container, 'q');
+    await settle(container, 'alice');
+    const before = nodeOf('alice').position;
+    const qAbs = absOf('q');
+    const dropAt = { x: qAbs.x + 10, y: qAbs.y + 10 };
+    await drag('alice', dropAt, dropAt);
+
+    expect(onDropInto).toHaveBeenCalledTimes(1);
+    expect(onDropInto).toHaveBeenCalledWith('alice', 'q', { x: 10, y: 10 });
+    expect(onNodesMoved).not.toHaveBeenCalled();
+    expect(nodeOf('alice').position).toEqual(before);
+  });
+
+  it('an actor dragged and dropped over empty canvas reports no drop, no move, and snaps back', async () => {
+    const onNodesMoved = vi.fn();
+    const onDropInto = vi.fn();
+    const { container } = render(
+      <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+    );
+    await settle(container, 'q');
+    await settle(container, 'alice');
+    const before = nodeOf('alice').position;
+    const qAbs = absOf('q');
+    // far outside every zone's box (jsdom's ResizeObserver shim measures
+    // every node at a flat 800x600 — see test-setup.ts — so "outside" means
+    // well past that, not past the zone's own real, laid-out size)
+    const missAt = { x: qAbs.x + 5000, y: qAbs.y + 5000 };
+    await drag('alice', missAt, missAt);
+
+    expect(onDropInto).not.toHaveBeenCalled();
+    expect(onNodesMoved).not.toHaveBeenCalled();
+    expect(nodeOf('alice').position).toEqual(before);
+  });
+
+  it('a plain node dropped over a zone that is not its parent reports onDropInto, not onNodesMoved', async () => {
+    const onNodesMoved = vi.fn();
+    const onDropInto = vi.fn();
+    const { container } = render(
+      <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+    );
+    await settle(container, 'q');
+    await settle(container, 'task');
+    const qAbs = absOf('q');
+    const dropAt = { x: qAbs.x + 10, y: qAbs.y + 10 };
+    await drag('task', dropAt, dropAt);
+
+    expect(onDropInto).toHaveBeenCalledTimes(1);
+    expect(onDropInto).toHaveBeenCalledWith('task', 'q', { x: 10, y: 10 });
+    expect(onNodesMoved).not.toHaveBeenCalled();
+  });
+
+  // The `canDrop`-not-`fixed` distinction: a plain node ALREADY nested in a
+  // zone is still `fixed` (planLayout reads its saved spot itself), but it is
+  // not a zone or an event, so canDrop says it may still be re-homed to a
+  // DIFFERENT zone by this gesture — the case the old `fixed`-based gate
+  // wrongly blocked.
+  it('a plain node nested in zone A dropped over zone B (not its ancestor) reports onDropInto, not onNodesMoved', async () => {
+    const onNodesMoved = vi.fn();
+    const onDropInto = vi.fn();
+    const { container } = render(
+      <DiagramView model={nestedPlainModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+    );
+    await settle(container, 'a');
+    await settle(container, 'b');
+    await settle(container, 'task');
+    const aAbs = absOf('a');
+    const bAbs = absOf('b');
+    // task's on-screen position stays parent-relative to its CURRENT parent
+    // (a) through the drag — only a committed command reparents it — chosen
+    // so its ABSOLUTE position lands exactly at b's origin + (10, 10)
+    const to = { x: bAbs.x + 10 - aAbs.x, y: bAbs.y + 10 - aAbs.y };
+    const pointerFlow = { x: bAbs.x + 10, y: bAbs.y + 10 };
+    await drag('task', to, pointerFlow);
+
+    // `rel` itself (draggedAbs − targetAbs) is exercised numerically by the
+    // root-level cases above; it is not re-checked here because a NESTED
+    // dragged node's `internals.positionAbsolute` only gets recomputed off
+    // its parent's by React Flow's OWN drag pipeline (XYDrag) — a real
+    // gesture keeps it live, but this harness drives onNodesChange directly
+    // (jsdom cannot drive a pointer gesture at all — see above), so it stays
+    // at 'task's pre-drag absolute. What this case is actually proving —
+    // `canDrop`, not `fixed`, gates re-homing a nested node — needs only the
+    // id/target, not the exact offset.
+    expect(onDropInto).toHaveBeenCalledTimes(1);
+    const [id, targetId, rel] = onDropInto.mock.calls[0]!;
+    expect(id).toBe('task');
+    expect(targetId).toBe('b');
+    expect(rel).toEqual({ x: expect.any(Number), y: expect.any(Number) });
+    expect(onNodesMoved).not.toHaveBeenCalled();
+  });
+
+  it('a nested zone dropped over its parent reports no drop — the date move still works', async () => {
+    const onNodesMoved = vi.fn();
+    const onDropInto = vi.fn();
+    const { container } = render(
+      <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+    );
+    await settle(container, 'q');
+    await settle(container, 'design');
+    const qAbs = absOf('q');
+    const designBefore = nodeOf('design').position; // parent-relative to q
+    const to = { x: designBefore.x + 5, y: designBefore.y + 5 };
+    const pointerFlow = { x: qAbs.x + to.x, y: qAbs.y + to.y };
+    await drag('design', to, pointerFlow);
+
+    expect(onDropInto).not.toHaveBeenCalled();
+    expect(onNodesMoved).toHaveBeenCalledTimes(1);
+    expect(onNodesMoved.mock.calls[0]![0]).toHaveProperty('design');
+  });
+
+  // Beyond the plan's five listed cases: the Global ruling ("zones/events are
+  // never dropped into anything") is not exercised by the parent-exclusion
+  // case above — a ROOT zone has no parent to exclude, and the ledger calls
+  // this out explicitly ("root zones overlap on y"), so it gets its own case.
+  it('a root zone dragged near an unrelated zone reports no drop — its own drag is always the date move', async () => {
+    const onNodesMoved = vi.fn();
+    const onDropInto = vi.fn();
+    const { container } = render(
+      <DiagramView model={twoZonesModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+    );
+    await settle(container, 'q1');
+    await settle(container, 'q2');
+    const q2Abs = absOf('q2');
+    const dropAt = { x: q2Abs.x + 10, y: q2Abs.y + 10 };
+    await drag('q1', dropAt, dropAt);
+
+    expect(onDropInto).not.toHaveBeenCalled();
+    expect(onNodesMoved).toHaveBeenCalledTimes(1);
+    expect(onNodesMoved.mock.calls[0]![0]).toHaveProperty('q1');
+  });
+
+  it('a non-plan model: dragging a node never reports onDropInto, onNodesMoved fires exactly as before', async () => {
+    const onNodesMoved = vi.fn();
+    const onDropInto = vi.fn();
+    const { container } = render(
+      <DiagramView model={containerEndpointModel()} mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+    );
+    await settle(container, 'gw');
+    const before = nodeOf('gw').position;
+    const to = { x: before.x + 40, y: before.y + 30 };
+    await drag('gw', to, to);
+
+    expect(onDropInto).not.toHaveBeenCalled();
+    expect(onNodesMoved).toHaveBeenCalledTimes(1);
+    expect(onNodesMoved.mock.calls[0]![0]).toEqual({ gw: to });
+  });
+
+  // The drag-over outline (onNodeDrag/withDropTarget/data-drop-target): driven
+  // directly through the captured onNodeDrag, the same way the cases above
+  // drive onNodeDragStop — a real pointer move is one MouseEvent-shaped frame
+  // per position, so a `point` is turned into the same {clientX, clientY} the
+  // drop() helper already derives from flowToScreenPosition.
+  describe('the drag-over outline', () => {
+    const flagOf = (id: string): boolean | undefined =>
+      (dragCapture.instance.getNodes().find((n: RfNode) => n.id === id)?.data as { dropTarget?: boolean } | undefined)?.dropTarget;
+    // data-drop-target lands on DiagramNode's own root (.dg-group/.dg-node),
+    // a child of React Flow's `.react-flow__node` wrapper, not the wrapper
+    // itself — same reason the CSS rule (.dg-notation-plan [data-drop-target])
+    // is a descendant selector.
+    const domFlagOf = (container: HTMLElement, id: string): boolean =>
+      container.querySelector(`.react-flow__node[data-id="${id}"] [data-drop-target]`) !== null;
+    const frameAt = (flow: { x: number; y: number }) => {
+      const p = dragCapture.instance.flowToScreenPosition(flow);
+      return { clientX: p.x, clientY: p.y };
+    };
+
+    it('a single actor drag over a zone flags it (data + DOM); moving off clears the flag', async () => {
+      const { container } = render(
+        <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+      );
+      await settle(container, 'q');
+      await settle(container, 'alice');
+      const alice = nodeOf('alice');
+      const qAbs = absOf('q');
+      const overQ = frameAt({ x: qAbs.x + 10, y: qAbs.y + 10 });
+      act(() => dragCapture.props['onNodeDrag'](overQ, alice, [alice]));
+      await waitFor(() => expect(flagOf('q')).toBe(true));
+      expect(domFlagOf(container, 'q')).toBe(true);
+
+      // far outside every zone (see the 'reports no drop' case above for why)
+      const miss = frameAt({ x: qAbs.x + 5000, y: qAbs.y + 5000 });
+      act(() => dragCapture.props['onNodeDrag'](miss, alice, [alice]));
+      await waitFor(() => expect(flagOf('q')).not.toBe(true));
+      expect(domFlagOf(container, 'q')).toBe(false);
+    });
+
+    it('a second frame over the same zone does not touch the nodes array — the change-only guard', async () => {
+      const { container } = render(
+        <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+      );
+      await settle(container, 'q');
+      await settle(container, 'alice');
+      const alice = nodeOf('alice');
+      const qAbs = absOf('q');
+      const overQ = frameAt({ x: qAbs.x + 10, y: qAbs.y + 10 });
+      act(() => dragCapture.props['onNodeDrag'](overQ, alice, [alice]));
+      await waitFor(() => expect(flagOf('q')).toBe(true));
+      const nodesAfterFirstFrame = dragCapture.props['nodes'];
+
+      // same point again: the target hasn't changed, so onNodeDrag's own
+      // `target === dropTargetRef.current` short-circuit must fire before
+      // withDropTarget ever runs — no new array, not even a new node inside it.
+      act(() => dragCapture.props['onNodeDrag'](overQ, alice, [alice]));
+      expect(dragCapture.props['nodes']).toBe(nodesAfterFirstFrame);
+    });
+
+    it('a multi-node drag sets no drop-target flag', async () => {
+      const { container } = render(
+        <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+      );
+      await settle(container, 'q');
+      await settle(container, 'alice');
+      await settle(container, 'task');
+      const alice = nodeOf('alice');
+      const task = nodeOf('task');
+      const qAbs = absOf('q');
+      const overQ = frameAt({ x: qAbs.x + 10, y: qAbs.y + 10 });
+      act(() => dragCapture.props['onNodeDrag'](overQ, alice, [alice, task]));
+      expect(flagOf('q')).not.toBe(true);
+      expect(domFlagOf(container, 'q')).toBe(false);
+    });
+
+    it('onNodeDragStop clears the flag', async () => {
+      const { container } = render(
+        <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+      );
+      await settle(container, 'q');
+      await settle(container, 'alice');
+      const alice = nodeOf('alice');
+      const qAbs = absOf('q');
+      const overQ = frameAt({ x: qAbs.x + 10, y: qAbs.y + 10 });
+      act(() => dragCapture.props['onNodeDrag'](overQ, alice, [alice]));
+      await waitFor(() => expect(flagOf('q')).toBe(true));
+      act(() => dragCapture.props['onNodeDragStop'](overQ, alice, [alice]));
+      await waitFor(() => expect(flagOf('q')).not.toBe(true));
+      expect(domFlagOf(container, 'q')).toBe(false);
+    });
+
+    it('onNodeDrag is undefined on a non-plan fixture, and in view mode', async () => {
+      const { container: editContainer } = render(
+        <DiagramView model={containerEndpointModel()} mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+      );
+      await settle(editContainer, 'gw');
+      expect(dragCapture.props['onNodeDrag']).toBeUndefined();
+
+      const { container: viewContainer } = render(
+        <DiagramView model={assignModel()} plane="plan" notation="plan" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+      );
+      await settle(viewContainer, 'q');
+      expect(dragCapture.props['onNodeDrag']).toBeUndefined();
+    });
+
+    it('an actor dragged over a zone it already holds a role on gets no outline and no drop; over another zone, both', async () => {
+      const onDropInto = vi.fn();
+      const { container } = render(
+        <DiagramView model={ownedZoneModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto }} />,
+      );
+      await settle(container, 'owned');
+      await settle(container, 'other');
+      await settle(container, 'alice');
+      const alice = nodeOf('alice');
+      const ownedAbs = absOf('owned');
+      const overOwned = frameAt({ x: ownedAbs.x + 10, y: ownedAbs.y + 10 });
+      act(() => dragCapture.props['onNodeDrag'](overOwned, alice, [alice]));
+      expect(flagOf('owned')).not.toBe(true);
+      expect(domFlagOf(container, 'owned')).toBe(false);
+      act(() => dragCapture.props['onNodeDragStop'](overOwned, alice, [alice]));
+      expect(onDropInto).not.toHaveBeenCalled();
+
+      const otherAbs = absOf('other');
+      const overOther = frameAt({ x: otherAbs.x + 10, y: otherAbs.y + 10 });
+      act(() => dragCapture.props['onNodeDrag'](overOther, alice, [alice]));
+      expect(flagOf('other')).toBe(true);
+      expect(domFlagOf(container, 'other')).toBe(true);
+      act(() => dragCapture.props['onNodeDragStop'](overOther, alice, [alice]));
+      expect(onDropInto).toHaveBeenCalledTimes(1);
+      // the exact offset (draggedAbs − targetAbs) is exercised numerically by
+      // the root-level drop-to-assign cases above, which drive onNodesChange
+      // first — this case calls onNodeDragStop directly (see onNodeDrag
+      // right above it), so alice's on-screen position never actually moved
+      const [id, targetId] = onDropInto.mock.calls[0]!;
+      expect(id).toBe('alice');
+      expect(targetId).toBe('other');
+    });
   });
 });

@@ -25,6 +25,7 @@ import type {
   EdgeLabelPlacement,
   EdgeLabelSide,
   NotationId,
+  PlanRole,
   TextRun,
   ThreatTarget,
   ViewEdge,
@@ -82,6 +83,9 @@ export interface NodeDataContext {
    * rebuilds every node's data with it (the same bargain the callbacks above
    * already strike — see this file's stability caveat). */
   quickAdd?: { label: (id: string) => string | undefined; run: (id: string) => void };
+  /** see EditingApi.onSetRole — threaded whole like quickAdd (every zone reads
+   * the same callback and supplies its own id when it fires) */
+  onSetRole?: (zoneId: string, actorId: string, role: PlanRole | null) => void;
   /** see EditingApi.onAddThreat — the host opens a new row on the element's
    * note. Threaded whole (the node passes its own id at click time); the badge
    * decides for itself whether to offer it, since only a threat model's canvas
@@ -217,6 +221,7 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
       ? { onColumnsChange: (columns: Column[]) => ctx.onSetTableColumns?.(n.id, columns) }
       : {}),
     ...(ctx.editing && ctx.quickAdd !== undefined ? { quickAdd: ctx.quickAdd } : {}),
+    ...(ctx.editing && ctx.onSetRole !== undefined ? { onSetRole: ctx.onSetRole } : {}),
     ...(ctx.editing && ctx.onAddThreat !== undefined ? { onAddThreat: ctx.onAddThreat } : {}),
     ...(ctx.stylePreset !== undefined ? { stylePreset: ctx.stylePreset } : {}),
     ...(ctx.notation !== undefined ? { notation: ctx.notation } : {}),
@@ -373,6 +378,7 @@ function sameNodeCtx(a: NodeDataContext, b: NodeDataContext): boolean {
     a.onResize === b.onResize &&
     a.onSetTableColumns === b.onSetTableColumns &&
     a.quickAdd === b.quickAdd &&
+    a.onSetRole === b.onSetRole &&
     a.onAddThreat === b.onAddThreat &&
     a.stylePreset === b.stylePreset &&
     a.notation === b.notation &&

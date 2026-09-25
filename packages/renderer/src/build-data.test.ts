@@ -267,6 +267,17 @@ describe('buildNodeData', () => {
     expect(buildNodeDataCached(n, { ...ctx, quickAdd: { ...hook } })).not.toBe(a);
   });
 
+  it('threads onSetRole onto every node only while editing, and keys the cache on it', () => {
+    const n = viewNode();
+    const onSetRole = vi.fn();
+    expect(buildNodeData(n, nodeCtx({ editing: true, onSetRole })).onSetRole).toBe(onSetRole);
+    expect(buildNodeData(n, nodeCtx({ editing: false, onSetRole })).onSetRole).toBeUndefined();
+    const ctx = nodeCtx({ editing: true, onSetRole });
+    const a = buildNodeDataCached(n, { ...ctx });
+    expect(buildNodeDataCached(n, { ...ctx })).toBe(a);
+    expect(buildNodeDataCached(n, { ...ctx, onSetRole: vi.fn() })).not.toBe(a);
+  });
+
   it('threads onAddThreat onto every node only while editing, and keys the cache on it', () => {
     // The node badge decides for itself whether to offer the `+` (its notation
     // gate); the builder only says whether a host is listening at all — view
