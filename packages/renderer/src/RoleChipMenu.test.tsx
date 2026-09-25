@@ -48,6 +48,15 @@ describe('RoleChipMenu', () => {
     expect(document.activeElement).toBe(trigger());
   });
 
+  it('the menu is portalled — not a DOM descendant of the chip\'s anchor', () => {
+    renderMenu();
+    fireEvent.click(trigger());
+    const menu = screen.getByRole('menu');
+    const anchor = trigger().closest('.dg-role-chip-anchor');
+    expect(anchor?.contains(menu)).toBe(false);
+    expect(menu.parentElement).toBe(document.body);
+  });
+
   it('a mousedown outside closes it', () => {
     renderMenu();
     fireEvent.click(trigger());

@@ -1109,17 +1109,22 @@ path.dg-loop-badge-circle {
    `.dg-count, .dg-badge`), so this only strips what a <button> element adds
    on top: UA font/margin and the default arrow cursor. */
 button.dg-role-chip { font: inherit; margin: 0; cursor: pointer; appearance: none; -webkit-appearance: none; }
-/* The menu's positioning root: inline-block so it hugs the button's own box
-   (the menu is position:absolute and out of flow, so it never grows this),
-   and `top: 100%; left: 0` below lands exactly under the chip and nowhere
-   else in the badge row. */
-.dg-role-chip-anchor { position: relative; display: inline-block; }
+/* Just hugs the button's own box in the badge row (RoleChipMenu positions its
+   portalled menu off the trigger's own getBoundingClientRect, not off this
+   anchor — see the menu rule below). */
+.dg-role-chip-anchor { display: inline-block; }
 /* The chip's menu — Owner/Executor/Checker minus the current role, then
-   Remove. Same popover look as the studio's own MenuButton (.menu-button-pop
-   in apps/studio/app.css): that widget is the closest thing to this one
-   already in the codebase, so the tokens and shape are copied, not invented. */
+   Remove. Portalled to <body> (RoleChipMenu), so `position` and `top`/`left`
+   are set inline per instance from the trigger's rect, not here; this rule
+   is purely the popover's look, copied from the studio's own MenuButton
+   (.menu-button-pop in apps/studio/app.css) as the closest thing to this one
+   already in the codebase. `z-index` no longer has a React Flow node's local
+   stacking context to escape (that was the point of the portal — a zone WITH
+   children sits at zIndex: -1, which used to bury this menu under its own
+   nested bars) — it only needs to clear ordinary page content now, the same
+   modest value the rich-text toolbar's portal (.dg-rich-toolbar) uses. */
 .dg-role-chip-menu {
-  position: absolute; top: 100%; left: 0; z-index: 40;
+  z-index: 40;
   display: flex; flex-direction: column;
   min-width: 120px; margin-top: 2px; padding: 4px;
   background: var(--dg-surface); border: 1px solid var(--dg-border); border-radius: 8px;
