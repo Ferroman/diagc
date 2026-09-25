@@ -2632,6 +2632,18 @@ describe('drop-to-assign', () => {
     return m.toJSON();
   }
 
+  // alice already owns 'owned'; 'other' is unrelated — the exclusion under
+  // test (dropTargetFor's exclude set widened with profile.related) is about
+  // roles already held, not containment
+  function ownedZoneModel() {
+    const m = model('assign-owned');
+    const p = m.plan();
+    const alice = p.person('alice', 'Alice Ng');
+    p.zone('owned', { name: 'Owned', start: '2026-01-05', end: '2026-01-09' }).owner(alice);
+    p.zone('other', { name: 'Other', start: '2026-02-02', end: '2026-02-06' });
+    return m.toJSON();
+  }
+
   type RfNode = { id: string; position: { x: number; y: number }; parentId?: string };
   const nodeOf = (id: string): RfNode => dragCapture.instance.getNodes().find((n: RfNode) => n.id === id);
   const absOf = (id: string) => dragCapture.instance.getInternalNode(id)!.internals.positionAbsolute as { x: number; y: number };
@@ -2920,6 +2932,39 @@ describe('drop-to-assign', () => {
       );
       await settle(viewContainer, 'q');
       expect(dragCapture.props['onNodeDrag']).toBeUndefined();
+    });
+
+    it('an actor dragged over a zone it already holds a role on gets no outline and no drop; over another zone, both', async () => {
+      const onDropInto = vi.fn();
+      const { container } = render(
+        <DiagramView model={ownedZoneModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto }} />,
+      );
+      await settle(container, 'owned');
+      await settle(container, 'other');
+      await settle(container, 'alice');
+      const alice = nodeOf('alice');
+      const ownedAbs = absOf('owned');
+      const overOwned = frameAt({ x: ownedAbs.x + 10, y: ownedAbs.y + 10 });
+      act(() => dragCapture.props['onNodeDrag'](overOwned, alice, [alice]));
+      expect(flagOf('owned')).not.toBe(true);
+      expect(domFlagOf(container, 'owned')).toBe(false);
+      act(() => dragCapture.props['onNodeDragStop'](overOwned, alice, [alice]));
+      expect(onDropInto).not.toHaveBeenCalled();
+
+      const otherAbs = absOf('other');
+      const overOther = frameAt({ x: otherAbs.x + 10, y: otherAbs.y + 10 });
+      act(() => dragCapture.props['onNodeDrag'](overOther, alice, [alice]));
+      expect(flagOf('other')).toBe(true);
+      expect(domFlagOf(container, 'other')).toBe(true);
+      act(() => dragCapture.props['onNodeDragStop'](overOther, alice, [alice]));
+      expect(onDropInto).toHaveBeenCalledTimes(1);
+      // the exact offset (draggedAbs − targetAbs) is exercised numerically by
+      // the root-level drop-to-assign cases above, which drive onNodesChange
+      // first — this case calls onNodeDragStop directly (see onNodeDrag
+      // right above it), so alice's on-screen position never actually moved
+      const [id, targetId] = onDropInto.mock.calls[0]!;
+      expect(id).toBe('alice');
+      expect(targetId).toBe('other');
     });
   });
 });

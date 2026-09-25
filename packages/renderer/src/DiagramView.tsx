@@ -1130,6 +1130,13 @@ function Inner(props: DiagramViewProps) {
       exclude.add(id);
       queue.push(...(childrenOfRf.get(id) ?? []));
     }
+    // The outline is a promise: it says "let go here and something happens".
+    // `related` is the notation's own statement of what this node is already
+    // connected to without a drawn edge (for a plan actor: the zones it
+    // already holds a role on, planRelated) — the studio's `assign` returns
+    // undefined for exactly that pair, so offering the outline there would be
+    // a promise the drop breaks silently.
+    for (const id of profile.related?.(props.model, props.plane, draggedId) ?? []) exclude.add(id);
 
     const rects: DropRect[] = [];
     for (const n of props.model.nodes) {
