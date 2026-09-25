@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { compileView } from '@diagc/core';
+import { compileView, type DiagramModel } from '@diagc/core';
 import { combinePolarities, type LoopEdgeInput } from './loops';
 import { EMPTY_ID_SET, type LoopHighlight } from './loop-highlight';
 import type { NotationProfile } from './notations';
@@ -7,6 +7,10 @@ import type { NotationProfile } from './notations';
 export interface LoopOverlayInput {
   profile: NotationProfile;
   compiled: ReturnType<typeof compileView>;
+  /** the source `profile.related` reads — a plan's role relations live in the
+   * model, not the compiled (edge-only) view. */
+  model: DiagramModel;
+  plane: string | undefined;
   externalHighlight: { nodes: readonly string[]; edges: readonly string[] } | null | undefined;
   onCldEdges: ((edges: LoopEdgeInput[]) => void) | undefined;
 }
@@ -58,7 +62,11 @@ export function useLoopOverlay(input: LoopOverlayInput): LoopOverlay {
   // A host-driven highlight (leverage panel) overrides the internal badge one.
   const ext = input.externalHighlight;
   // The selected node's neighborhood: itself + every node one edge away (in or
-  // out) and the incident edges, over the currently-visible graph.
+  // out) and the incident edges, over the currently-visible graph — UNIONED
+  // with the notation's own `related` (nodes that belong here although no
+  // drawn edge joins them, e.g. a plan actor's zones): both describe the same
+  // "stays normal" set, just from different sources.
+  const { profile, model, plane } = input;
   const neighborFocus = useMemo(() => {
     if (!focusConnected || selectedNode === null) return null;
     const nodes = new Set<string>([selectedNode]);
@@ -72,8 +80,9 @@ export function useLoopOverlay(input: LoopOverlayInput): LoopOverlay {
         edges.add(e.id);
       }
     }
+    for (const id of profile.related?.(model, plane, selectedNode) ?? []) nodes.add(id);
     return { nodes, edges };
-  }, [focusConnected, selectedNode, input.compiled.edges]);
+  }, [focusConnected, selectedNode, input.compiled.edges, profile, model, plane]);
   // Precedence: a leverage row (ext) or loop badge glows its set (strong dim of
   // the rest); plain node selection is the gentle fallback (light dim, no glow).
   const loopHighlight = useMemo<LoopHighlight>(() => {
@@ -90,11 +99,15 @@ export function useLoopOverlay(input: LoopOverlayInput): LoopOverlay {
       active: source !== null,
       variant: strong !== null ? 'loop' : 'focus',
       activeKey: activeLoop?.key ?? null,
+      // Mirrors `selectedNode` whatever the variant, so a plan's chip/hit mark
+      // (keyed off `focusId` directly, not off `nodes`/`edges`) clears with the
+      // selection even when a strong (loop/leverage) highlight is what wins the dim.
+      focusId: selectedNode,
       toggle: (key, nodes, edges) =>
         setActiveLoop((cur) => (cur?.key === key ? null : { key, nodes: new Set(nodes), edges: new Set(edges) })),
       clear: () => setActiveLoop(null),
     };
-  }, [activeLoop, ext, neighborFocus]);
+  }, [activeLoop, ext, neighborFocus, selectedNode]);
   // A highlighted loop's ids (and the node-focus filter) go stale when the view
   // recompiles (plane / zoom / edit).
   useEffect(() => {

@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { DiagramModel, EditorCommand, FontScale, NotationId, TextAlign } from '@diagc/core';
-import { CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF, TM_NOTATION, strideFor } from '@diagc/core';
+import { CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF, PLAN_NOTATION, PLAN_TYPES, TM_NOTATION, strideFor } from '@diagc/core';
 import { BUILTIN_ICON_IDS } from '@diagc/icons';
 import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { CommentsSection } from './CommentsSection';
 import { LinksSection } from './LinksSection';
 import { ColorRow, OptionRow } from './pickers';
+import { seedOnRetype } from './planActions';
+import { PlanSection } from './PlanSection';
 import { ThreatsSection } from './ThreatsSection';
 import { BUNDLED_LIBRARY } from '../library/packs';
 
@@ -46,6 +48,13 @@ interface NodePanelProps {
   autoFocusName?: boolean;
   /** active plane's notation; gates the Threats section (threat-model) */
   notation?: NotationId;
+  /** the host's date, YYYY-MM-DD: seeds a Type-field retype into plan-zone/
+   * plan-event with dates the way a canvas drop would (seedOnRetype); omitted
+   * (e.g. a test harness with nothing plan-shaped to seed) just skips seeding.
+   * Optional only so the panel's own tests can render without it — App.tsx
+   * always passes it, and a caller that forgets it loses seeding silently,
+   * with no error, since commitType's `today !== undefined` check just skips. */
+  today?: string;
   onCommand: (command: EditorCommand) => void;
   onClose: () => void;
   onDeleted: () => void;
@@ -94,6 +103,7 @@ export function NodePanel({
   live,
   autoFocusName = false,
   notation,
+  today,
   onCommand,
   onClose,
   onDeleted,
@@ -210,7 +220,12 @@ export function NodePanel({
   const commitType = () => {
     const trimmed = type.trim();
     if (trimmed === (node.type ?? '')) return;
-    onCommand({ type: 'set-node-details', id: nodeId, details: { type: trimmed === '' ? null : trimmed } });
+    const typeCmd: EditorCommand = { type: 'set-node-details', id: nodeId, details: { type: trimmed === '' ? null : trimmed } };
+    // Retyping into plan-zone/plan-event with no dates would otherwise fail
+    // save with plan-missing — seed them the way a canvas drop does, batched
+    // with the retype so undo reverts both together.
+    const dateCmd = today !== undefined ? seedOnRetype(model, activePlane, nodeId, trimmed, today) : undefined;
+    onCommand(dateCmd === undefined ? typeCmd : { type: 'batch', commands: [typeCmd, dateCmd] });
   };
   const commitIcon = () => {
     if (icon !== (node.icon ?? ''))
@@ -636,6 +651,19 @@ export function NodePanel({
       )}
 
       <CommentsSection target={{ node: node.id }} comments={node.comments ?? []} onCommand={onCommand} />
+
+      {/* Same rule as threats: offered on the notation, kept on a node that
+       * already carries dates so switching the plane's look strands nothing.
+       * Every date key counts, `end` included — half a span is reachable (clear
+       * Start here, or hand-edit the source) and is exactly the state the
+       * section exists to finish. */}
+      {(notation === PLAN_NOTATION ||
+        node.metadata?.start !== undefined ||
+        node.metadata?.end !== undefined ||
+        node.metadata?.at !== undefined) &&
+        PLAN_TYPES.has(node.type ?? '') && (
+          <PlanSection model={model} node={node} onCommand={onCommand} />
+        )}
 
       <section className="panel-section">
         <h3>Memberships</h3>

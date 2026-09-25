@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { layoutPlaneKey, model, type DiagramModel } from '@diagc/core';
+import { dayOf, isoOf, layoutPlaneKey, model, type DiagramModel } from '@diagc/core';
+import { todayIso } from '@diagc/renderer';
 import { handshakeReady, legendPadding, Viewer, type ViewerData } from './Viewer';
 
 const m = () => {
@@ -613,5 +614,29 @@ describe('Viewer leverage panel', () => {
     // back to the boxes: the selection does not carry a stale report across
     fireEvent.click(screen.getByRole('button', { name: 'Boxes' }));
     await waitFor(() => expect(panel()).toBeNull());
+  });
+});
+
+describe('plan pages', () => {
+  // the plan spans TODAY (whenever the test runs), so the page's today line
+  // is inside the range and the export's absence of one is the only difference
+  function planPage() {
+    const today = todayIso();
+    const m = model('plan-page', { name: 'Plan page' });
+    const p = m.plan();
+    const alice = p.person('alice', 'Alice Ng');
+    p.zone('q', { name: 'Q1', start: today, end: isoOf(dayOf(today)! + 13) }).owner(alice).comment('slipping', { by: 'bf' });
+    return m.toJSON();
+  }
+  it('draws the header, the role chip and the today line', async () => {
+    const { container } = render(<Viewer data={{ model: planPage() }} />);
+    await waitFor(() => expect(container.querySelector('.dg-time-axis')).not.toBeNull());
+    expect(container.querySelector('.dg-role-chip')?.textContent).toBe('O·Alice');
+    expect(container.querySelector('.dg-time-axis-today')).not.toBeNull();
+  });
+  it('an export render has no today line', async () => {
+    const { container } = render(<Viewer data={{ model: planPage() }} expandAll />);
+    await waitFor(() => expect(container.querySelector('.dg-time-axis')).not.toBeNull());
+    expect(container.querySelector('.dg-time-axis-today')).toBeNull();
   });
 });

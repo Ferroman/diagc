@@ -32,4 +32,8 @@ describe('icon registry', () => {
   it('has the second-order glyphs', () => {
     for (const id of ['plus', 'minus', 'dot', 'decision']) expect(BUILTIN_ICON_IDS).toContain(id);
   });
+
+  it('resolves the team glyph beside the person one', () => {
+    expect(createIconRegistry().resolve('users')).toBeDefined();
+  });
 });

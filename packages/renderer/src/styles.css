@@ -975,6 +975,22 @@ path.dg-loop-badge-circle {
   letter-spacing: 0.04em; text-transform: uppercase;
 }
 
+/* ---- plan: time axis ------------------------------------------------------ */
+.dg-time-axis { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; z-index: -1; }
+.dg-time-axis-frame { fill: color-mix(in srgb, var(--dg-text) var(--dg-plan-axis-band), transparent); stroke: none; }
+.dg-time-axis-tick { stroke: var(--dg-plan-axis-tick); stroke-width: 1; }
+.dg-time-axis-grid { stroke: color-mix(in srgb, var(--dg-text) var(--dg-plan-axis-grid), transparent); stroke-width: 1; }
+/* month/week share the weight/family; only the colour and size differ — see
+   ThemeTokens.planAxisMonthLabel/planAxisWeekLabel (the dark values read on
+   the canvas at the fit-to-view zoom a multi-week plan lands at; light
+   reproduces the old shared --dg-text-muted read exactly). */
+.dg-time-axis-month, .dg-time-axis-week { font: 600 11px system-ui, sans-serif; }
+.dg-time-axis-month { fill: var(--dg-plan-axis-month-label); }
+.dg-time-axis-week { fill: var(--dg-plan-axis-week-label); font-weight: 500; font-size: 10px; }
+.dg-time-axis-event { stroke: var(--dg-text-muted); stroke-width: 1; stroke-dasharray: 4 4; }
+.dg-time-axis-today { stroke: var(--dg-accent); stroke-width: 2; }
+.dg-time-axis-today-label { fill: var(--dg-accent); font: 600 10px system-ui, sans-serif; }
+
 /* ---- activity diagrams: frame / lane / region chrome ---------------------- */
 /* Strip width (28px) mirrors ACTIVITY_LAYOUT.TITLE_STRIP_W / LANE_STRIP_W in
    activity-frame.ts — the layout pass reserves exactly this much room. */
@@ -1051,3 +1067,79 @@ path.dg-loop-badge-circle {
   white-space: nowrap; border-radius: 4px;
 }
 .react-flow__node.selected > .dg-fb-cause { box-shadow: 0 0 0 2px var(--dg-accent); }
+
+/* ---- plan: zones, events, chips ------------------------------------------ */
+/* a zone is a solid bar with a thick left edge; its tint comes from the node's
+   own colour through the inline accent every root already carries, so the rule
+   only reshapes the box. The group and the leaf branch share it because a zone
+   is a leaf until it has rows.
+   --dg-node-accent-tint here sets accentStyle()'s hook (DiagramNode.tsx) ON
+   THIS ELEMENT: the inline style it carries reads that var at paint time, so
+   only a zone root gets ThemeTokens.planZoneTint's theme-tuned strength —
+   every other accented node still falls back to accentStyle()'s own literal
+   14%, unchanged in both themes. */
+.dg-notation-plan .dg-group[data-type='plan-zone'],
+.dg-notation-plan .dg-node[data-type='plan-zone'] {
+  --dg-node-accent-tint: var(--dg-plan-zone-tint);
+  border-style: solid;
+  border-left-width: 3px;
+  border-radius: 6px;
+}
+/* an event: an unclipped, unpainted box filling its 16×16 wrapper; ::before is
+   the diamond in the node's colour (currentColor — the branch sets it on the
+   root), and the tag hangs to the right. Rough mode draws the sketch instead. */
+.dg-event-node { position: relative; background: none; border: none; border-radius: 0; padding: 0; min-width: 0; width: 100%; height: 100%; box-sizing: border-box; color: var(--dg-text); overflow: visible; }
+.dg-event-node::before { content: ''; position: absolute; inset: 0; background: currentColor; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.dg-style-rough .dg-event-node::before { display: none; }
+.dg-event-tag { position: absolute; left: calc(100% + 4px); top: 50%; transform: translateY(-50%); white-space: nowrap; font: 12px/1.2 system-ui, sans-serif; pointer-events: none; }
+.dg-event-tag .dg-label-input { pointer-events: auto; }
+/* text is the chip's own colour mixed toward --dg-text (ThemeTokens.roleChipText
+   — 100% in light, unmixed, reproducing the old raw `--dg-chip` read; a lower
+   dark % pulls the reader's own colour up to a legible weight against the dark
+   canvas). The border stays the raw chip colour — a hue, not running text, so
+   it carries no contrast requirement of its own. */
+.dg-role-chip { --dg-chip: var(--dg-text-muted); border: 1px solid var(--dg-chip); color: color-mix(in srgb, var(--dg-chip) var(--dg-role-chip-text), var(--dg-text)); background: color-mix(in srgb, var(--dg-chip) var(--dg-role-chip-fill), transparent); max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the selected actor's own chip, filled solid (background = its colour, text
+   = --dg-surface so it reads on any chip hue) — the plain outline every other
+   chip keeps is the "not this one" state. */
+.dg-role-chip-active { background: var(--dg-chip); color: var(--dg-surface); }
+/* the reciprocal mark DiagramNode sets on a node's root: a zone lit by the
+   selected actor's chip, or an actor lit by the selected zone's roles —
+   --dg-hit is set inline to that chip's colour (falling back to --dg-accent
+   when the chip carries none), so the outline always matches the chip.
+   Scoped under the plan notation's own class — defence in depth alongside
+   DiagramNode's own profile.id gate, since `[data-plan-hit]` alone would
+   otherwise be a bare attribute selector reaching any plane. */
+.dg-notation-plan [data-plan-hit] { outline: 2px solid var(--dg-hit); outline-offset: 2px; }
+/* Three things used to claim a zone's top-right corner: the role-chip row
+   (`.dg-badges` right-aligns itself with `margin-left: auto` everywhere), the
+   comment/threat count badges (a container wears them INSIDE the header band,
+   48px and 72px in from that same edge), and any event whose date falls near
+   the bar's end — the title strip is where an event is drawn. The chips give
+   the corner up: they read as part of the title ("Build O·Alice E·Bob"), which
+   is also where the eye looks for them, and the rest of the strip is then the
+   event's alone. Both roots are listed because a zone is a container only once
+   it has rows: with children it is a `.dg-group` whose chips sit in
+   `.dg-group-header`, childless it is a `.dg-node` whose chips sit in
+   `.dg-node-row` — the same bar to the reader, so the same look either way. */
+.dg-notation-plan .dg-group[data-type='plan-zone'] .dg-group-header .dg-badges,
+.dg-notation-plan .dg-node[data-type='plan-zone'] .dg-node-row .dg-badges { margin-left: 8px; }
+/* The margin alone cannot move the childless bar's chips: its label is the
+   row's flexible child (`.dg-node-row .dg-label`, flex: 1 1 auto) and grows to
+   fill whatever they leave. Let the label be its own width instead — it keeps
+   `min-width: 0`, so a long name still gives way rather than shoving the chips
+   off the end of the bar. */
+.dg-notation-plan .dg-node[data-type='plan-zone'] .dg-node-row .dg-label { flex: 0 1 auto; }
+/* …and the two count badges take the LEAF spots, hanging off the box, rather
+   than the in-header spots that are now under the chips. Opposite corners,
+   same convention as every leaf: threats top-left, comments bottom-right. */
+.dg-notation-plan .dg-group[data-type='plan-zone'] > .dg-threat-badge { top: -6px; left: -6px; right: auto; }
+.dg-notation-plan .dg-group[data-type='plan-zone'] > .dg-comment-badge { top: auto; bottom: -6px; right: -6px; }
+/* NodeResizeControl's default 'handle' variant carries React Flow's own
+   .react-flow__resize-control.handle(.left/.right) rules (a 5×5 square,
+   translate -50% -50%), which outrank a bare .dg-x-resize class on specificity
+   alone — so the selector has to match those classes too, not just add one. */
+.react-flow__resize-control.handle.dg-x-resize {
+  width: 8px; height: 100%; top: 0; translate: -50% 0;
+  border: none; border-radius: 0; background: transparent; cursor: ew-resize;
+}
