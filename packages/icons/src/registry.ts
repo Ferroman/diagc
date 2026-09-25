@@ -29,6 +29,7 @@ import {
   Table2,
   Terminal,
   User,
+  Users,
   Webhook,
 } from 'lucide-react';
 
@@ -39,6 +40,7 @@ const BUILTIN: Record<string, IconComponent> = {
   postgres: Database,
   table: Table2,
   user: User,
+  users: Users,
   cloud: Cloud,
   mail: Mail,
   service: Box,

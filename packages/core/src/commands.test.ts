@@ -895,3 +895,31 @@ describe('comment commands', () => {
     expect('links' in s.model.nodes[0]!).toBe(false);
   });
 });
+
+describe('set-plan-dates', () => {
+  const withZone = (): EditorState => {
+    const s = state();
+    s.model = { ...s.model, nodes: [...s.model.nodes, { id: 'z', name: 'Z', type: 'plan-zone', metadata: { start: '2026-01-05', end: '2026-01-09', note: 'keep' } }] };
+    return s;
+  };
+  it('writes the given keys into metadata and leaves the rest alone', () => {
+    const s = applyCommand(withZone(), { type: 'set-plan-dates', id: 'z', dates: { end: '2026-01-16' } });
+    expect(s.model.nodes.find((n) => n.id === 'z')?.metadata).toEqual({ start: '2026-01-05', end: '2026-01-16', note: 'keep' });
+  });
+  it('creates metadata on a node that had none', () => {
+    const s0 = state();
+    const s = applyCommand(s0, { type: 'set-plan-dates', id: 'a', dates: { at: '2026-02-02' } });
+    expect(s.model.nodes.find((n) => n.id === 'a')?.metadata).toEqual({ at: '2026-02-02' });
+  });
+  it('rejects a value that is not a real date, and an unknown node', () => {
+    expect(() => applyCommand(withZone(), { type: 'set-plan-dates', id: 'z', dates: { start: '2026-02-30' } })).toThrow(CommandError);
+    expect(() => applyCommand(withZone(), { type: 'set-plan-dates', id: 'z', dates: { start: 'next week' } })).toThrow(/YYYY-MM-DD/);
+    expect(() => applyCommand(withZone(), { type: 'set-plan-dates', id: 'nope', dates: { start: '2026-01-01' } })).toThrow(/nope/);
+  });
+  it('keeps the layout and the untouched nodes by identity', () => {
+    const s0 = withZone();
+    const s = applyCommand(s0, { type: 'set-plan-dates', id: 'z', dates: { start: '2026-01-06' } });
+    expect(s.layout).toBe(s0.layout);
+    expect(s.model.nodes[0]).toBe(s0.model.nodes[0]);
+  });
+});

@@ -11,6 +11,15 @@ const tm = (() => {
   return m.toJSON();
 })();
 
+/** two zones on the plan plane; roles come from the panel, never from a canvas connect */
+const plan = (() => {
+  const m = model('sched');
+  const p = m.plan();
+  p.zone('a', { name: 'A', start: '2026-01-05', end: '2026-01-09' });
+  p.zone('b', { name: 'B', start: '2026-01-12', end: '2026-01-16' });
+  return m.toJSON();
+})();
+
 describe('connectKind', () => {
   it('draws a data-flow between two elements of a threat model', () => {
     expect(connectKind('threat-model', tm, 'user', 'web')).toBe(TM_FLOW_KIND);
@@ -36,6 +45,7 @@ describe('connectKind', () => {
     expect(connectKind('fishbone', tm, 'user', 'web')).toBe('sync');
     expect(connectKind('second-order', tm, 'user', 'web')).toBe('sync');
     expect(connectKind('c4', tm, 'user', 'web')).toBe('sync');
+    expect(connectKind('plan', plan, 'a', 'b')).toBe('sync');
   });
 
   it('still flows without a model, and without a node it knows', () => {

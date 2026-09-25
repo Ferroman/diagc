@@ -14,7 +14,7 @@ For *why* the model is shaped like this, see [What is in a model](../explanation
 | `id` | `string` | Diagram identity. |
 | `name` | `string` | Display name. |
 | `style` | `string?` | Renderer style preset pinned by this file. Unknown ids fall back to the app preference. |
-| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop` (see [Causal-loop conventions](#causal-loop-conventions)), `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
+| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop` (see [Causal-loop conventions](#causal-loop-conventions)), `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)), `plan` (see [Plan conventions](#plan-conventions)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
 | `legend` | `DiagramLegend?` | Opt-in key for the diagram's visual vocabulary. Absent means no legend in an image, and none on the canvas unless the diagram is drawn in [shapes that carry no words](#diagramlegend). |
 | `typeColors` | `Record<string, string>?` | Default accent colour per node type; `*` is the fallback. A node's own `color` wins. Dropped from included models on graft — the host owns the look. |
 | `layerRules` | `LayerRule[]?` | Class → layer for relations without a `layer`: `{ kind?, color?, layer }`, every named field must match, first match wins, explicit `layer` beats the rules. Dropped from included models on graft. |
@@ -142,7 +142,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `containmentOf` | `string?` | Borrow another plane's containment instead of declaring your own. |
 | `layers` | `string[]?` | Layers switched on when this plane is selected. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations, leaving only layer arrows. |
-| `notation` | `string?` | Visual language, overriding the model's `notation` for this plane. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)), `c4` (see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)). |
+| `notation` | `string?` | Visual language, overriding the model's `notation` for this plane. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)), `c4` (see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)), `plan` (see [Plan conventions](#plan-conventions)). |
 | `hides` | `string[]?` | Shared node ids this plane hides; their children are promoted into their place. |
 | `hidesTree` | `string[]?` | Shared node ids this plane hides along with everything inside them (a child with another visible parent stays). |
 
@@ -397,6 +397,28 @@ See [Draw a threat model](../how-to/draw-a-threat-model.md).
 
 Validation codes: `invalid-comments`, `comment-id`, `comment-text`, `comment-at`, `invalid-links` (see [Validation codes](#validation-codes)).
 
+## Plan conventions
+
+A plane with `notation: 'plan'` is a schedule: a calendar runs left to right and the plane's containment is what is scheduled inside what. The layout owns every `x` (it is a date); only a top-level zone takes its `y` from the layout overlay.
+
+| Type | Look | Role |
+| --- | --- | --- |
+| `plan-zone` | a rounded bar tinted with the node's `color`, a thick left edge, title top-left, role chips after the title; `(end − start + 1)` days wide | A phase or work item. A container: what it contains is scheduled in it — nested zones one row each (by start date) and events in its title strip, both automatic; any other node (a scheduled C4 container, a plain box) is free-form instead, wrapped into rows only until it is dragged, and stays wherever it is put after that. |
+| `plan-event` | a 16 px diamond, name beside it | A point in time. Top-level events sit in the header with a dashed rule down the chart. |
+| `person` | the ordinary pill | An individual actor. Listed in a roster strip above the header (left to right, wrapping into further rows); attached to zones by role relations, never containment. |
+| `team` | the ordinary pill, a `users` icon | A group actor — same deal as `person`, drawn in the same roster and holding roles the same way, for when a role belongs to a team rather than one individual. |
+
+Relation kinds `owns`, `executes`, `checks` — drawn **from the actor (a person or a team) to the zone**, never as arrows: each becomes a chip on the zone (`O·Alice`, `E·Bob`, `C·Chen`; hover for the full name). Any other kind between zones (`sync`, …) draws as a dependency arrow.
+
+| Metadata key | On | Value |
+| --- | --- | --- |
+| `start`, `end` | `plan-zone` | `YYYY-MM-DD`; `end` inclusive; `end ≥ start` |
+| `at` | `plan-event` | `YYYY-MM-DD` |
+
+Dates live in `metadata` (the git-graph `from`/`to` pattern) so a zone is an ordinary node everywhere else. The x origin is 1 January of the earliest year in the plan; the header extends a week either side of the dated range.
+
+See [Draw a plan](../how-to/draw-a-plan.md).
+
 ## Causal-loop conventions
 
 A plane with `notation: 'causal-loop'` reads ordinary nodes and relations as variables and signed links. Nothing new is stored.
@@ -476,6 +498,11 @@ A column's `fk` flag prints the `FK` marker and nothing else: what routes the ed
 | `fb-misplaced` | The wrong parent for the type: a category not on the effect, a cause on the effect, the effect on anything. |
 | `fb-too-deep` | A cause hung on a sub-cause — three levels below the effect is the limit. |
 | `fb-contained` | A fishbone node inside a container; nothing on a fish can be grouped. |
+| `plan-date` | A `start`, `end` or `at` is present but is not a real `YYYY-MM-DD` date. |
+| `plan-missing` | A `plan-zone` lacks `start` or `end`; a `plan-event` lacks `at`. |
+| `plan-span` | A zone's `end` is before its `start`. |
+| `plan-nested` | A zone or event contained in a zone (on the plan plane) lies outside that zone's span. |
+| `plan-role-target` | On a plan, a relation of kind `owns` / `executes` / `checks` points at something that is not a `plan-zone`. |
 | `invalid-threats` | `threats` is not a list, or an entry is not an object. The per-threat checks below are skipped for that element. |
 | `threat-id` | A threat has no `id`, or repeats one already used on the same element. |
 | `threat-title` | A threat has no `title`. |

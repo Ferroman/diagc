@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import type { NotationId, ViewEdge, ViewNode } from '@diagc/core';
+import type { DiagramNode, NotationId, ViewEdge, ViewNode } from '@diagc/core';
 import { createIconRegistry } from '@diagc/icons';
 import {
   buildEdgeData,
@@ -280,6 +280,43 @@ describe('buildNodeData', () => {
     expect(buildNodeDataCached(n, { ...ctx })).toBe(a);
     // a host that swapped the callback must not keep calling the old one
     expect(buildNodeDataCached(n, { ...ctx, onAddThreat: vi.fn() })).not.toBe(a);
+  });
+
+  it('threads the profile\'s badges and resize axis into node data', () => {
+    const badges = new Map([['z', [{ key: 'owns:a', text: 'O·A', title: 'Owner: A' }]]]);
+    const zone = viewNode({ id: 'z', node: { id: 'z', name: 'Z', type: 'plan-zone' } });
+    const other = viewNode({ id: 'o', node: { id: 'o', name: 'O', type: 'service' } });
+    const ctx = {
+      ...nodeCtx(),
+      editing: true,
+      onResize: vi.fn(),
+      nodeBadges: badges,
+      resizable: (n: DiagramNode) => (n.type === 'plan-zone' ? ('x' as const) : undefined),
+    };
+    const z = buildNodeData(zone, ctx);
+    expect(z.badges).toEqual(badges.get('z'));
+    expect(z.resizeAxis).toBe('x');
+    expect(z.onResize).toBe(ctx.onResize);
+    const o = buildNodeData(other, ctx);
+    expect(o.badges).toBeUndefined();
+    expect(o.resizeAxis).toBeUndefined();
+    expect(o.onResize).toBeUndefined();
+    // view mode: no handles
+    expect(buildNodeData(zone, { ...ctx, editing: false }).resizeAxis).toBeUndefined();
+  });
+
+  it('keys the cache on nodeBadges and resizable, like the other notation-derived maps', () => {
+    const zone = viewNode({ id: 'z', node: { id: 'z', name: 'Z', type: 'plan-zone' } });
+    const badges = new Map([['z', [{ key: 'owns:a', text: 'O·A', title: 'Owner: A' }]]]);
+    const resizable = (n: DiagramNode) => (n.type === 'plan-zone' ? ('x' as const) : undefined);
+    const ctx = nodeCtx({ editing: true, onResize: vi.fn(), nodeBadges: badges, resizable });
+    const a = buildNodeDataCached(zone, { ...ctx });
+    expect(buildNodeDataCached(zone, { ...ctx })).toBe(a);
+    // a same-content but different Map is a new derivation (the profile ran
+    // again on a changed model) — must not keep the stale chips
+    expect(buildNodeDataCached(zone, { ...ctx, nodeBadges: new Map(badges) })).not.toBe(a);
+    // a different resizable function must not keep offering the old node's answer
+    expect(buildNodeDataCached(zone, { ...ctx, resizable: (n: DiagramNode) => resizable(n) })).not.toBe(a);
   });
 });
 

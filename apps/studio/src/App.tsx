@@ -8,6 +8,7 @@ import {
   LeveragePanel,
   notationProfile,
   STYLE_PRESETS,
+  todayIso,
   type CanvasCommands,
   type DiagramSelection,
   type DrawTool,
@@ -23,11 +24,13 @@ import {
   emptyLayout,
   errMessage,
   defaultLayoutDirection,
+  isPlanZone,
   layoutPlaneKey,
   LEAF_SIZE,
   NEW_THREAT_TITLE,
   nextThreatId,
   openingPins,
+  PLAN_NOTATION,
   presetLayers,
   SOURCE_URL,
   strideFor,
@@ -73,6 +76,8 @@ import { ActivityPanel } from './editor/ActivityPanel';
 import { SecondOrderPanel } from './editor/SecondOrderPanel';
 import { FishbonePanel } from './editor/FishbonePanel';
 import { ThreatModelPanel } from './editor/ThreatModelPanel';
+import { PlanPanel } from './editor/PlanPanel';
+import { planMoves, planResize } from './editor/planActions';
 import { quickAdd, quickAddLabel, quickAddPlaced, type QuickAddContext } from './editor/quickAdd';
 import { InspectorTabs, type InspectorTab } from './editor/InspectorTabs';
 import { Dock } from './Dock';
@@ -293,6 +298,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // published page.
   const activePlane = plane;
   const notation = activeNotation(planes, activePlane, model?.notation);
+  // the host's calendar date: a plan plane's today line, and where a quick-add
+  // or a library drop with no other anchor lands.
+  const today = todayIso();
   // elk partitions (second-order's order bands) are a layered-only feature, and
   // the renderer already forces layered for a partitioned profile — so the
   // algorithm picker would only ever offer a choice the run ignores. Reaches
@@ -587,6 +595,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     drillRoot,
     model,
     lib,
+    notation,
+    today,
   });
   const { addNode, createAt, placeFromLibrary, applyFromLibrary, dropLibraryEntry, addImages } = placement;
 
@@ -1122,6 +1132,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         {...(live !== undefined ? { live } : {})}
                         autoFocusName={selection.id === renameId}
                         {...(notation !== undefined ? { notation } : {})}
+                        today={today}
                         onCommand={editor.dispatch}
                         onClose={() => select(null)}
                         onDeleted={() => select(null)}
@@ -1180,6 +1191,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
               <DiagramView
                 model={model}
                 plane={activePlane}
+                today={today}
                 activeLayers={activeLayers}
                 onToggleLayer={toggleLayer}
                 pins={pins}
@@ -1239,17 +1251,33 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         label: (id: string) => (model !== undefined ? quickAddLabel(model, id, quickAddCtx) : undefined),
                         run: runQuickAdd,
                       },
-                      onNodesMoved: (positions: Record<string, { x: number; y: number }>) =>
-                        editor.dispatch({
-                          type: 'set-positions',
-                          positions,
-                          ...(activePlane !== undefined ? { plane: activePlane } : {}),
-                        }),
+                      onNodesMoved: (positions: Record<string, { x: number; y: number }>, deltas: Record<string, { dx: number; dy: number }>) => {
+                        // on a plan plane a move is a date change; the layout owns x
+                        if (notation === PLAN_NOTATION && model !== undefined) {
+                          // undefined when the gesture changed no date (a sub-day nudge):
+                          // nothing to dispatch, nothing for undo to remember
+                          const command = planMoves(model, activePlane, positions, deltas);
+                          if (command !== undefined) editor.dispatch(command);
+                          return;
+                        }
+                        editor.dispatch({ type: 'set-positions', positions, ...(activePlane !== undefined ? { plane: activePlane } : {}) });
+                      },
                       onCreateAt: (pos: { x: number; y: number }) => createAt(pos),
                       onImageFiles: (files: File[], position?: { x: number; y: number }) =>
                         void addImages(files, position),
                       onDropLibraryEntry: dropLibraryEntry,
                       onResize: (id: string, w: number, h: number, pos: { x: number; y: number }) => {
+                        if (notation === PLAN_NOTATION && model !== undefined) {
+                          // the lookup scans every node, so it stays inside the
+                          // guard: every other notation resizes without it
+                          const node = model.nodes.find((n) => n.id === id);
+                          if (node !== undefined && isPlanZone(node)) {
+                            // a zone's width is its dates: no size is ever saved for it
+                            const command = planResize(model, activePlane, id, pos.x, w);
+                            if (command !== undefined) editor.dispatch(command);
+                            return;
+                          }
+                        }
                         editor.dispatch({ type: 'set-size', nodeId: id, w, h });
                         // top/left-handle resizes shift the node origin — pin the
                         // post-resize position too, or the next resync snaps it
@@ -1382,6 +1410,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   onCommand={editor.dispatch}
                   onSelect={(id) => select({ kind: 'node', id })}
                 />
+              )}
+              {editing && notation === PLAN_NOTATION && (
+                <PlanPanel model={model} plane={activePlane} selection={selection} onCommand={editor.dispatch} onSelect={(id) => select({ kind: 'node', id })} today={today} />
               )}
               {editing && notation === 'second-order' && (
                 <SecondOrderPanel

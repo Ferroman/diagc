@@ -1,8 +1,9 @@
 import type { RefObject } from 'react';
-import { DEFAULT_IMAGE_NODE_SIZE, LEAF_SIZE, errMessage, type DiagramModel } from '@diagc/core';
+import { DEFAULT_IMAGE_NODE_SIZE, LEAF_SIZE, PLAN_NOTATION, errMessage, type DiagramModel, type EditorCommand, type NotationId } from '@diagc/core';
 import type { DiagramSelection, LayoutApi } from '@diagc/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import { readImageSize, uploadAsset } from '../editor/images';
+import { seedDates, seedOnRetype } from '../editor/planActions';
 import { entryToNode, entryToNodeDetails } from '../library/entry';
 import type { LibraryEntry } from '../library/types';
 import type { UseLibrary } from '../library/useLibrary';
@@ -38,6 +39,10 @@ export interface UseNodePlacementOptions {
   /** the render-bound model (edit mode: the session's) — used by applyFromLibrary */
   model: DiagramModel | undefined;
   lib: UseLibrary;
+  /** the active plane's notation — a plan plane seeds a dropped zone/event's dates */
+  notation?: NotationId;
+  /** the host's date, YYYY-MM-DD: where a seeded drop lands with no other anchor */
+  today: string;
 }
 
 export interface NodePlacement {
@@ -78,6 +83,8 @@ export function useNodePlacement({
   drillRoot,
   model,
   lib,
+  notation,
+  today,
 }: UseNodePlacementOptions): NodePlacement {
   // Whiteboard-style add: drop the node immediately (under the selected
   // container, if any) and put focus in its name field — no prompt.
@@ -173,7 +180,13 @@ export function useNodePlacement({
     // current drilled level, or top-level when not drilled.
     const parentId = opts?.parentId ?? (opts?.position === undefined ? defaultParentId(selection, drillRoot) : drillRoot);
     const place = createNodeAt(m, { kind, plane: activePlane, borrowsContainment: activePlaneBorrowsContainment, parentId });
-    const node = entryToNode(entry, place.id, placeTags(place, penLayer));
+    // A plan plane's Zone/Event templates carry no dates of their own — a
+    // library-dropped one is dateless (and invalid) without a seed here.
+    const seeded =
+      notation === PLAN_NOTATION
+        ? seedDates(m, activePlane, entry.template.type, { ...(opts?.position !== undefined ? { x: opts.position.x } : {}), ...(parentId !== undefined ? { parentId } : {}) }, today)
+        : undefined;
+    const node = { ...entryToNode(entry, place.id, placeTags(place, penLayer)), ...(seeded !== undefined ? { metadata: seeded } : {}) };
     editor.dispatch({ type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) });
     if (entry.template.width !== undefined && entry.template.height !== undefined) {
       editor.dispatch({ type: 'set-size', nodeId: place.id, w: entry.template.width, h: entry.template.height });
@@ -201,7 +214,17 @@ export function useNodePlacement({
   const applyFromLibrary = (entry: LibraryEntry) => {
     if (selection?.kind !== 'node') return;
     const id = selection.id;
-    editor.dispatch({ type: 'set-node-details', id, details: entryToNodeDetails(entry) });
+    const details = entryToNodeDetails(entry);
+    const typeCmd: EditorCommand = { type: 'set-node-details', id, details };
+    // A card can restyle the selection straight into plan-zone/plan-event —
+    // the same missing-dates trap as a Properties → Type retype (NodePanel's
+    // commitType, the notation's OTHER no-drop-point retype path), fixed the
+    // same way: seed via seedOnRetype and batch it with the retype so undo
+    // reverts both together. Anchored on the node's EXISTING containment on
+    // `activePlane` (seedOnRetype's own planGraph lookup), since restyling
+    // changes no containment of its own.
+    const dateCmd = model !== undefined && typeof details.type === 'string' ? seedOnRetype(model, activePlane, id, details.type, today) : undefined;
+    editor.dispatch(dateCmd === undefined ? typeCmd : { type: 'batch', commands: [typeCmd, dateCmd] });
     if (entry.template.width !== undefined && entry.template.height !== undefined) {
       editor.dispatch({ type: 'set-size', nodeId: id, w: entry.template.width, h: entry.template.height });
     }

@@ -121,7 +121,7 @@ The first plane declared is the default and owns untagged containment.
 | `containmentOf` | `string?` | Borrow another plane's structure. |
 | `layers` | `string[]?` | Layers on by default in this plane. A default, not a floor: hosts with a layer switch start from this (`presetLayers`) and can turn them off — an export, which has no switch, always draws them. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations. |
-| `notation` | `NotationId?` (`'causal-loop' \| 'git-graph' \| 'c4' \| 'second-order' \| 'fishbone' \| 'threat-model'`) | Prefer `m.gitGraph()`/`m.secondOrder()`/`m.fishbone()`/`m.threatModel()` for `git-graph`/`second-order`/`fishbone`/`threat-model`. Overrides `m.notation()` for this plane. |
+| `notation` | `NotationId?` (`'causal-loop' \| 'git-graph' \| 'c4' \| 'second-order' \| 'fishbone' \| 'threat-model' \| 'plan'`) | Prefer `m.gitGraph()`/`m.secondOrder()`/`m.fishbone()`/`m.threatModel()`/`m.plan()` for `git-graph`/`second-order`/`fishbone`/`threat-model`/`plan`. Overrides `m.notation()` for this plane. |
 | `hides` | `string[]?` | Shared node ids to hide here, promoting their contents into their place. |
 | `hidesTree` | `string[]?` | Shared node ids to hide here together with their contents, however deep. A child another visible box also contains stays. |
 
@@ -357,6 +357,32 @@ Chainable, so a second remark is another `.comment(...)`. A plain relation with 
 ### `ref.link(label, url) → ref`
 
 A resource this node points at — a ticket, a design doc — listed in its bubble under the comments. `NodeRef` only; a relation's resources go in a comment. See [`Link`](model.md#link), which distinguishes this from the node's single navigation target.
+
+## `m.plan(id?, opts?) → PlanBuilder`
+
+Declares a plan (schedule) plane — always a plane, id `plan` by default, name `Plan` — with `notation: 'plan'`. **Throws if called twice** (`'plan() already declared'`). It need not be the first plane: add it to an existing model and schedule that model's nodes inside its zones. Every node the plan builder creates is scoped to the plan plane (`plane: <id>`), so bars never appear on the other planes; nodes you `contains()` stay shared.
+
+| Call | Returns | Notes |
+| --- | --- | --- |
+| `plan.zone(id, opts)` | `ZoneBuilder` | A top-level zone (`plan-zone`). `opts` = [`m.node`](#mnodeid-opts--noderef)'s options minus `type`/`plane`/`metadata`, plus **required** `start` and `end` (`YYYY-MM-DD`, `end` inclusive). |
+| `plan.event(id, opts)` | `NodeRef` | A top-level event (`plan-event`); `opts` as above with **required** `at`. |
+| `plan.person(id, name?, opts?)` | `NodeRef` | A `person` node on the plan plane. |
+| `plan.team(id, name?, opts?)` | `NodeRef` | A `team` node on the plan plane — an actor like `person`, for a role that belongs to a group rather than one individual. |
+| `zone.zone(id, opts)` | `ZoneBuilder` | A nested zone, contained on the plan plane. |
+| `zone.event(id, opts)` | `NodeRef` | An event inside the zone. |
+| `zone.contains(...refs)` | `zone` | Schedules any nodes inside the zone (containment on the plan plane). |
+| `zone.owner(ref)` / `zone.executor(ref)` / `zone.checker(ref)` | `zone` | A role relation `ref → zone` of kind `owns` / `executes` / `checks`; ids follow the `from->to#n` scheme. |
+
+A `ZoneBuilder` is a `NodeRef`, so `.comment()`, `.link()` and `.threat()` chain on it.
+
+```ts
+const m = model('launch');
+const plan = m.plan();
+const alice = plan.person('alice', 'Alice Ng');
+plan.zone('build', { name: 'Build', start: '2026-01-26', end: '2026-03-06' })
+  .owner(alice)
+  .zone('api', { name: 'API', start: '2026-01-26', end: '2026-02-13' });
+```
 
 ## `m.legend(opts?) → m`
 

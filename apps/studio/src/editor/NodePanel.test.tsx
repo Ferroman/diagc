@@ -710,6 +710,84 @@ describe('NodePanel', () => {
     });
   });
 
+  describe('plan', () => {
+    function planModel(type: string, metadata?: DiagramModel['nodes'][number]['metadata']): DiagramModel {
+      return {
+        version: 1,
+        id: 'draft',
+        name: 'draft',
+        nodes: [{ id: 'z', name: 'Q1', type, ...(metadata !== undefined ? { metadata } : {}) }],
+        containment: [],
+        relations: [],
+        layers: [],
+        planes: [],
+      };
+    }
+
+    it('offers the Plan section on the plan notation, and on a node that already carries dates', () => {
+      const zone = planModel('plan-zone', { start: '2026-01-05', end: '2026-03-27' });
+
+      const { unmount: unmount1 } = render(
+        <NodePanel model={zone} nodeId="z" activePlane={undefined} notation="plan" onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+      );
+      expect(screen.getByLabelText('Start')).toBeTruthy();
+      unmount1();
+
+      // a plain node has nothing to date — the section stays off entirely,
+      // even on the plan notation
+      const { unmount: unmount2 } = render(
+        <NodePanel model={planModel('service')} nodeId="z" activePlane={undefined} notation="plan" onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+      );
+      expect(screen.queryByLabelText('Start')).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Plan' })).toBeNull();
+      unmount2();
+
+      // the house rule: a zone that already carries dates keeps its editor
+      // even off the plan notation, so switching planes strands nothing
+      const { unmount: unmount3 } = render(
+        <NodePanel model={zone} nodeId="z" activePlane={undefined} onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+      );
+      expect(screen.getByLabelText('Start')).toBeTruthy();
+      unmount3();
+
+      // …including a zone whose only date is `end`: half a span is exactly the
+      // state the section exists to finish, and it is reachable (clear Start in
+      // the inspector), so the rule must read every key it offers
+      render(
+        <NodePanel model={planModel('plan-zone', { end: '2026-03-27' })} nodeId="z" activePlane={undefined} onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+      );
+      expect(screen.getByLabelText('End')).toBeTruthy();
+    });
+
+    it('retyping into plan-zone via the Type field batches the retype with seeded dates, so undo reverts both together', () => {
+      const onCommand = vi.fn();
+      render(
+        <NodePanel model={planModel('service')} nodeId="z" activePlane={undefined} onCommand={onCommand} onClose={noop} onDeleted={noop} today="2026-05-04" />,
+      );
+      const typeInput = screen.getByLabelText('Type') as HTMLInputElement;
+      fireEvent.change(typeInput, { target: { value: 'plan-zone' } });
+      fireEvent.blur(typeInput);
+      expect(onCommand).toHaveBeenCalledWith({
+        type: 'batch',
+        commands: [
+          { type: 'set-node-details', id: 'z', details: { type: 'plan-zone' } },
+          { type: 'set-plan-dates', id: 'z', dates: { start: '2026-05-04', end: '2026-05-17' } },
+        ],
+      });
+    });
+
+    it('retyping with no `today` (e.g. an embedding with nothing plan-shaped to seed) sends the plain retype, unbatched', () => {
+      const onCommand = vi.fn();
+      render(
+        <NodePanel model={planModel('service')} nodeId="z" activePlane={undefined} onCommand={onCommand} onClose={noop} onDeleted={noop} />,
+      );
+      const typeInput = screen.getByLabelText('Type') as HTMLInputElement;
+      fireEvent.change(typeInput, { target: { value: 'plan-zone' } });
+      fireEvent.blur(typeInput);
+      expect(onCommand).toHaveBeenCalledWith({ type: 'set-node-details', id: 'z', details: { type: 'plan-zone' } });
+    });
+  });
+
   it('offers Comments and Links on a plain node (unlike Threats, not gated on a notation)', () => {
     render(
       <NodePanel model={testModel()} nodeId="a" activePlane="flow" onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
