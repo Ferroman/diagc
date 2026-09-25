@@ -1,4 +1,4 @@
-import { FISHBONE_TYPES, runsToPlainText, type DiagramNode, type FontScale, type ViewNode } from '@diagc/core';
+import { FISHBONE_TYPES, PLAN_ZONE_TYPE, runsToPlainText, type DiagramNode, type FontScale, type ViewNode } from '@diagc/core';
 import type { Registry, ShapeId, TypeStyle } from './registry';
 import type { SizeHint } from './layout-graph';
 import { typeSubtitle } from './type-subtitle';
@@ -25,8 +25,12 @@ export const FORCED_SIZE_SHAPES: ReadonlySet<string> = new Set([
 export const ACTIVITY_CHROME_TYPES: ReadonlySet<string> = new Set(['activity-frame', 'activity-lane', 'activity-region']);
 /** leaves a notation's own layout sizes exactly — the head spans the spine, a
  * cause is text on a line whose route ends at the text's edge: a CSS-natural
- * size a few px off would leave the line short of, or into, the text */
-export const LAYOUT_SIZED_TYPES: ReadonlySet<string> = new Set(FISHBONE_TYPES);
+ * size a few px off would leave the line short of, or into, the text. A
+ * childless `plan-zone` belongs here too: its width IS its dates,
+ * `(end − start + 1) × DAY` — that span cannot round-trip through a
+ * CSS-natural, label-hugging width, and the studio's resize reads the drawn
+ * width back into `end`, so the wrapper must carry the layout's width exactly. */
+export const LAYOUT_SIZED_TYPES: ReadonlySet<string> = new Set([...FISHBONE_TYPES, PLAN_ZONE_TYPE]);
 
 /**
  * Deterministic (no-DOM) footprint of an ordinary box node — the branch of

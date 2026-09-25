@@ -24,14 +24,21 @@ const GEOMETRY = new Map<string, NodeGeometry>([
   ['box', { x: 50, y: 0, width: 10, height: 10 }],
 ]);
 
-/** notation-owned arrangement: synchronous, deterministic, no elk involved */
-function notationLayoutProfile(spy?: (hints: ReadonlyMap<string, Size> | undefined) => void): NotationProfile {
+/** notation-owned arrangement: synchronous, deterministic, no elk involved.
+ * `readsPositions` mirrors `NotationProfile.layoutReadsPositions` (default
+ * `true`, like the plan profile) — pass `false` for a git-graph/fishbone-like
+ * stub that has a `layout` but never wants saved positions. */
+function notationLayoutProfile(
+  spy?: (hints: ReadonlyMap<string, Size> | undefined, positions: Record<string, { x: number; y: number }> | undefined) => void,
+  readsPositions = true,
+): NotationProfile {
   return {
     id: 'default',
-    layout: (_view, _m, _plane, sizeHints) => {
-      spy?.(sizeHints);
+    layout: (_view, _m, _plane, sizeHints, positions) => {
+      spy?.(sizeHints, positions);
       return { geometry: GEOMETRY, routes: new Map(), labelSpots: new Map(), algorithm: 'notation' };
     },
+    ...(readsPositions ? { layoutReadsPositions: true } : {}),
   };
 }
 
@@ -162,10 +169,82 @@ describe('useViewLayout', () => {
     expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 0 });
   });
 
+  it('a node the notation LOCKED on x takes only y from a saved position or a view drag', async () => {
+    const m = fixture();
+    const profile: NotationProfile = {
+      id: 'default',
+      layout: () => ({ geometry: GEOMETRY, routes: new Map(), labelSpots: new Map(), algorithm: 'notation', lockedX: new Set(['box']) }),
+    };
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 400, y: 50 } } } };
+    const viewPositions = { box: { x: 999, y: 9 } };
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile, layout, viewPositions }),
+    });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    expect(result.current.lockedX.has('box')).toBe(true);
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 9 }); // arranged x, dragged y
+    rerender(inputFor(m, { profile, layout, viewPositions, editing: true }));
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 50 }); // arranged x, saved y
+  });
+
   it('fixes nothing when the layout names nothing (elk, git-graph)', async () => {
     const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), { initialProps: inputFor(fixture()) });
     await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
     expect(result.current.fixed.size).toBe(0);
+  });
+
+  it('a layout with layoutReadsPositions (the plan\'s) receives the plane\'s saved positions, gated the same way as the overlay', async () => {
+    const spy = vi.fn();
+    const m = fixture();
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 40, y: 5 } } } };
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile: notationLayoutProfile(spy), layout }),
+    });
+    await waitFor(() => expect(result.current.geometry).not.toBeNull());
+    expect(spy.mock.calls[0]?.[1]).toEqual({ box: { x: 40, y: 5 } });
+    // a viewer who asked to ignore saved positions gets none, same as the overlay path
+    rerender(inputFor(m, { profile: notationLayoutProfile(spy), layout, ignoreSavedPositions: true }));
+    await waitFor(() => expect(spy.mock.calls.length).toBeGreaterThan(1));
+    expect(spy.mock.calls[spy.mock.calls.length - 1]?.[1]).toEqual({});
+  });
+
+  it('a layout WITHOUT layoutReadsPositions (git-graph\'s, fishbone\'s) never receives positions, and does not re-run for a change that only affects them', async () => {
+    const spy = vi.fn();
+    const profile = notationLayoutProfile(spy, false);
+    const m = fixture();
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 40, y: 5 } } } };
+    // one props object, reused (not rebuilt through inputFor) for the rerender:
+    // every field but ignoreSavedPositions stays the exact same reference, so
+    // `sizes` — which already depends on `input.layout`/`typeRegistry` for
+    // reasons unrelated to positions — cannot itself force a re-run and
+    // confound what this test checks.
+    const initial = inputFor(m, { profile, layout });
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), { initialProps: initial });
+    await waitFor(() => expect(result.current.geometry).not.toBeNull());
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0]?.[1]).toBeUndefined();
+    rerender({ ...initial, ignoreSavedPositions: true });
+    await new Promise((r) => setTimeout(r, 20));
+    // `layoutPositions` was already a stable `undefined` (no flag) before and
+    // after, and nothing else this layout's effect depends on moved — a
+    // gitLayout/fishboneLayout-shaped profile must not run again over this
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('never hands positions to elk: an elk plane\'s layoutView call carries no positions argument', async () => {
+    const elkSpy = vi.spyOn(layoutModule, 'layoutView');
+    const m = fixture();
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 40, y: 5 } } } };
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile: notationProfile(), layout }),
+    });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    expect(elkSpy).toHaveBeenCalled();
+    // layoutView's signature (compiled, sizes, settings, options?) never grows a
+    // fifth "positions" argument — only a notation that owns its arrangement
+    // reads saved positions, and it bypasses layoutView entirely.
+    expect(elkSpy.mock.calls[0]).toHaveLength(4);
+    elkSpy.mockRestore();
   });
 
   it('names the scene its arrangement belongs to — the old one, until the new layout lands', async () => {

@@ -76,6 +76,7 @@ import { notationProfile } from './notations';
 import { OrderBandsOverlay } from './OrderBandsOverlay';
 import { createKindRegistry, createTypeRegistry } from './registry';
 import { stylePreset } from './stylePresets';
+import { TimeAxisOverlay } from './TimeAxisOverlay';
 import { useCanvasGestures } from './useCanvasGestures';
 import { useClickCorrelation } from './useClickCorrelation';
 import { useDrillNavigation } from './useDrillNavigation';
@@ -378,19 +379,23 @@ function Inner(props: DiagramViewProps) {
     return pins;
   }, [profile, props.pins, props.model.nodes, typeRegistry]);
 
-  const compiled = useMemo(
-    () =>
-      compileView(props.model, {
-        // drilled → `root` drives visibility; otherwise `focus` (pins + the plane
-        // sheet-flip). Identical for view and edit — only affordances differ.
-        focus: drillRoot !== undefined ? undefined : focus,
-        pins: effectivePins,
-        activeLayers: props.activeLayers,
-        ...(props.plane !== undefined ? { plane: props.plane } : {}),
-        ...(drillRoot !== undefined ? { root: drillRoot } : {}),
-      }),
-    [props.model, props.plane, focus, drillRoot, effectivePins, props.activeLayers],
-  );
+  const compiled = useMemo(() => {
+    const raw = compileView(props.model, {
+      // drilled → `root` drives visibility; otherwise `focus` (pins + the plane
+      // sheet-flip). Identical for view and edit — only affordances differ.
+      focus: drillRoot !== undefined ? undefined : focus,
+      pins: effectivePins,
+      activeLayers: props.activeLayers,
+      ...(props.plane !== undefined ? { plane: props.plane } : {}),
+      ...(drillRoot !== undefined ? { root: drillRoot } : {}),
+    });
+    // A notation may keep some relation kinds off the canvas (plan roles become
+    // chips). Only the DRAWN set is filtered: layoutEdges keep every relation,
+    // the same rule that keeps a layer toggle from moving a box.
+    const hidden = profile.edge?.hidden;
+    if (hidden === undefined || !raw.edges.some((e) => hidden(e.kind))) return raw;
+    return { ...raw, edges: raw.edges.filter((e) => !hidden(e.kind)) };
+  }, [props.model, props.plane, focus, drillRoot, effectivePins, props.activeLayers, profile]);
   // Render-phase ref, same pattern as strokesRef below: the layoutApiRef effect's
   // snapshotPositions (further down) needs compiled.externals to drop stub ids,
   // but that effect only re-runs on [layoutApiRef, reactFlow] — so it reads
@@ -412,6 +417,9 @@ function Inner(props: DiagramViewProps) {
   // Up here rather than beside `edgeColors`, because the legend needs it too: a
   // trust boundary's swatch is red for the same reason its box is.
   const nodeColors = useMemo(() => profile.node?.colorOf?.(props.model, props.plane), [profile, props.model, props.plane]);
+  // Small chips in a node's badge row (the plan's role chips), derived the same
+  // way as nodeColors: id-keyed, one derivation per model/plane.
+  const nodeBadges = useMemo(() => profile.node?.badges?.(props.model, props.plane), [profile, props.model, props.plane]);
 
   const legend = useLegendState({
     model: props.model,
@@ -554,6 +562,13 @@ function Inner(props: DiagramViewProps) {
     viewPositions,
   });
   const { geometryRef, routes, placedGeometry, arrangedGeometry, containerShifts, routing, laidAt, labelSpots, fixed, settledFor, flowDirection } = viewLayout;
+  // Render-phase ref, same pattern and reason as compiledRef above: commitMoves
+  // (further down) needs the ARRANGED geometry to compute a move's displacement,
+  // but its dependency list is hand-managed and must not grow with every
+  // re-layout, so it reads arrangedGeometry through a ref kept current every
+  // render instead.
+  const arrangedRef = useRef(arrangedGeometry);
+  arrangedRef.current = arrangedGeometry;
 
   // Where each open container's origin sits BEFORE the fit pass shifted it, in
   // absolute flow coordinates — the frame a child's saved position is relative
@@ -665,6 +680,8 @@ function Inner(props: DiagramViewProps) {
       stylePreset: preset.rough !== undefined ? preset : undefined,
       notation: props.notation,
       ...(nodeColors !== undefined ? { nodeColors } : {}),
+      ...(nodeBadges !== undefined ? { nodeBadges } : {}),
+      ...(profile.node?.resizable !== undefined ? { resizable: profile.node.resizable } : {}),
     }),
     [
       metaKeys,
@@ -688,6 +705,8 @@ function Inner(props: DiagramViewProps) {
       preset,
       props.notation,
       nodeColors,
+      nodeBadges,
+      profile,
     ],
   );
 
@@ -713,7 +732,14 @@ function Inner(props: DiagramViewProps) {
           // node, a press on one then pans the canvas, and a pan of one pixel
           // swallows the click. Edit mode only: in view mode every node pans
           // that way, and the effect spans the whole spine.
-          ...(fixed.has(n.id) ? { draggable: false as const, ...(editing ? { className: 'nopan' } : {}) } : {}),
+          //
+          // A notation may except a node whose drag still means something (a
+          // plan zone's or event's displacement is read as days): it drags,
+          // and `fixed` still keeps the overlay from ever storing a position
+          // for it.
+          ...(fixed.has(n.id) && profile.node?.draggableWhenFixed?.(n.node) !== true
+            ? { draggable: false as const, ...(editing ? { className: 'nopan' } : {}) }
+            : {}),
           // Membership is edited in the node panel, not by dragging away, so a
           // child never leaves its box — the box gives way instead, live while
           // dragging (React Flow's expandParent) and for good once dropped (the
@@ -995,8 +1021,17 @@ function Inner(props: DiagramViewProps) {
         // an activity lane is banded at a fixed spot (arrangeActivityFrames)
         (parentId) => typeOf(parentId) === 'activity-lane' || typeOf(parentId) === 'activity-frame',
       );
+      // displacement from the ARRANGED spot (parent-relative on both sides):
+      // a notation that derives positions reads this, not the position
+      const arranged = arrangedRef.current;
+      const deltas = Object.fromEntries(
+        Object.entries(positions).map(([id, pos]) => {
+          const g = arranged?.get(id);
+          return [id, g === undefined ? { dx: 0, dy: 0 } : { dx: pos.x - g.x, dy: pos.y - g.y }];
+        }),
+      );
       if (editing) {
-        if (edit?.onNodesMoved !== undefined) edit.onNodesMoved(positions);
+        if (edit?.onNodesMoved !== undefined) edit.onNodesMoved(positions, deltas);
         else for (const [id, pos] of Object.entries(positions)) edit?.onNodeMoved?.(id, pos);
       } else {
         setViewPositions((p) => ({ ...p, ...positions }));
@@ -1225,6 +1260,8 @@ function Inner(props: DiagramViewProps) {
   const loops = useLoopOverlay({
     profile,
     compiled,
+    model: props.model,
+    plane: props.plane,
     externalHighlight: props.externalHighlight,
     onCldEdges: props.onCldEdges,
   });
@@ -1726,6 +1763,9 @@ function Inner(props: DiagramViewProps) {
         )}
         {profile.overlay === 'order-bands' && placedGeometry !== null && (
           <OrderBandsOverlay model={props.model} direction={flowDirection} />
+        )}
+        {profile.overlay === 'time-axis' && placedGeometry !== null && (
+          <TimeAxisOverlay model={props.model} plane={props.plane} today={props.today} />
         )}
       </ReactFlow>
     </div>

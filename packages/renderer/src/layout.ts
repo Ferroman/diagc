@@ -66,6 +66,9 @@ export interface LayoutResult {
    * them box to box draws a different diagram. Absent = everything may move,
    * which is elk's answer and git-graph's (a floated commit link still reads). */
   fixed?: ReadonlySet<string>;
+  /** nodes whose x the notation derives (a plan zone's x IS its start date):
+   * the overlay may place them on y only. A weaker pin than `fixed`. */
+  lockedX?: ReadonlySet<string>;
 }
 
 const elk = new ELK();

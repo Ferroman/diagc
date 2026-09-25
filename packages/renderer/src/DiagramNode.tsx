@@ -1,12 +1,13 @@
 import { useContext, useRef, type CSSProperties } from 'react';
-import { Handle, NodeResizer, Position } from '@xyflow/react';
-import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type TextAlign, type TextRun, type ThreatTarget } from '@diagc/core';
+import { Handle, NodeResizeControl, NodeResizer, Position } from '@xyflow/react';
+import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, PLAN_ACTOR_TYPES, PLAN_EVENT_TYPE, PLAN_NOTATION, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type TextAlign, type TextRun, type ThreatTarget } from '@diagc/core';
 import type { IconRegistry } from '@diagc/icons';
 import type { Registry, TypeStyle } from './registry';
 import { commentBadgeProps, type AnnotationCounts } from './comment-badge';
 import { LoopHighlightContext } from './loop-highlight';
 import { NoteStateContext } from './note-state';
-import { notationProfile } from './notations';
+import { notationProfile, type NodeBadge } from './notations';
+import { PLAN_LAYOUT } from './plan-layout';
 import { RichLabelEditor } from './RichLabelEditor';
 import { runsToDisplay } from './richtext';
 import { SketchShape, type SketchFill } from './SketchShape';
@@ -94,6 +95,11 @@ export interface DiagramNodeData {
   /** edit: open a new threat row on this element's note (see
    * EditingApi.onAddThreat). Absent in view mode; drives the empty badge. */
   onAddThreat?: (target: ThreatTarget) => void;
+  /** notation chips — the plan's roles — drawn in the badge row */
+  badges?: NodeBadge[];
+  /** with onResize: the notation resizes this node on x only, from either
+   * side (a zone's width is its dates) */
+  resizeAxis?: 'x';
 }
 
 // One connect point per side, all type="source": with the canvas in loose
@@ -108,12 +114,19 @@ const sideHandles = (
   </>
 );
 
-/** accent-colored border + subtle same-color fill; undefined color = registry look */
+/** accent-colored border + subtle same-color fill; undefined color = registry
+ * look. --dg-node-accent-tint is a HOOK, not a theme token of its own: no
+ * theme sets it globally, so it is undefined almost everywhere and the
+ * literal 14% fallback — today's one shared look, unchanged in both themes —
+ * is what every ordinary accented node gets. A notation opts a root INTO a
+ * theme-tuned strength by setting the var on that root's own selector in
+ * styles.css (today only the plan zone does, via ThemeTokens.planZoneTint);
+ * this function stays ignorant of which notation, if any, did that. */
 function accentStyle(color: string | undefined): CSSProperties | undefined {
   if (color === undefined) return undefined;
   return {
     borderColor: color,
-    background: `color-mix(in srgb, ${color} 14%, var(--dg-node-fill))`,
+    background: `color-mix(in srgb, ${color} var(--dg-node-accent-tint, 14%), var(--dg-node-fill))`,
   };
 }
 
@@ -154,6 +167,21 @@ const sketchOf = (
       {...(data.color !== undefined ? { color: data.color } : {})}
     />
   ) : null;
+
+/** The notation's x-only handles (a plan zone): left and right, never a
+ * corner — height is the layout's. minWidth is one day, the smallest span. */
+function XResizer({ id, data, selected }: { id: string; data: DiagramNodeData; selected: boolean | undefined }) {
+  if (data.resizeAxis !== 'x' || data.onResize === undefined || selected !== true) return null;
+  const onResize = data.onResize;
+  const end = (_e: unknown, p: { x: number; y: number; width: number; height: number }) =>
+    onResize(id, p.width, p.height, { x: p.x, y: p.y });
+  return (
+    <>
+      <NodeResizeControl position="left" resizeDirection="horizontal" minWidth={PLAN_LAYOUT.DAY} className="dg-x-resize" onResizeEnd={end} />
+      <NodeResizeControl position="right" resizeDirection="horizontal" minWidth={PLAN_LAYOUT.DAY} className="dg-x-resize" onResizeEnd={end} />
+    </>
+  );
+}
 
 /** The one inline-rename field. Exported because a threat note renames rows with
  * the same gesture and the same commit contract (`null` = cancelled) — a second
@@ -455,6 +483,28 @@ export function DiagramNode({
       : highlight.variant === 'loop'
         ? ' dg-loop-node-dim'
         : ' dg-focus-node-dim';
+  // The plan's reciprocal mark, on top of the dim above: a zone whose role
+  // chip matches the selected actor gets an outline in that chip's colour
+  // (the badge carries the actor's own colour already — see planBadges);
+  // going the other way, an actor that `related` put in a selected zone's
+  // neighbourhood gets the same outline in ITS OWN colour. Neither reads
+  // `loopClass`'s dim set directly: a zone's badge is the ground truth for
+  // which actor lit it up, and an actor's own accent is its own to carry.
+  const focusId = highlight.focusId;
+  const activeBadge = focusId !== null ? data.badges?.find((b) => b.key.endsWith(`:${focusId}`)) : undefined;
+  // Gated on the plan notation itself (as isLane gates on git-graph above):
+  // `person`/`team` are ordinary registry types any diagram can use, so an
+  // unscoped type check would mark a C4 person one edge from the selection
+  // on a plane that has never heard of roles.
+  const isPlanActorType = profile.id === PLAN_NOTATION && data.typeId !== undefined && PLAN_ACTOR_TYPES.has(data.typeId);
+  const hitColor =
+    activeBadge !== undefined
+      ? (activeBadge.color ?? 'var(--dg-accent)')
+      : focusId !== null && isPlanActorType && id !== focusId && highlight.nodes.has(id)
+        ? (data.color ?? 'var(--dg-accent)')
+        : undefined;
+  const hitStyle = hitColor !== undefined ? ({ '--dg-hit': hitColor } as CSSProperties) : undefined;
+  const hitAttrs = hitColor !== undefined ? { 'data-plan-hit': true } : {};
   // Tab inside an open label editor is the same offer the `+` chip makes, so it
   // is wired from the same channel: commit, then add. `run` is a no-op when the
   // node has no recipe, so no separate label gate is needed here.
@@ -505,6 +555,27 @@ export function DiagramNode({
           </span>
         )}
         <LinkBadge data={data} />
+        <QuickAddButton id={id} data={data} selected={selected} />
+        {sideHandles}
+      </div>
+    );
+  }
+
+  if (data.typeId === PLAN_EVENT_TYPE && data.state === 'leaf') {
+    // A plan event: the box is a small diamond (drawn by ::before — the generic
+    // diamond clip-paths its root, which would clip the name away) and the
+    // name hangs beside it, outside the layout footprint like a commit's tag.
+    return (
+      <div
+        className={`dg-node dg-event-node${ghostClass}${loopClass}`}
+        {...(data.stylePreset?.rough !== undefined || data.color === undefined ? {} : { style: { color: data.color } })}
+        {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
+        {...ghostTitle}
+      >
+        {sketchOf(data, 'diamond', id, width, height)}
+        {(data.label !== '' || data.labelEditing === true) && <span className="dg-event-tag">{name}</span>}
+        <LinkBadge data={data} />
+        <CommentBadge id={id} data={data} />
         <QuickAddButton id={id} data={data} selected={selected} />
         {sideHandles}
       </div>
@@ -588,6 +659,16 @@ export function DiagramNode({
           ⚭ {data.sharedMembers.length}
         </span>
       )}
+      {data.badges?.map((b) => (
+        <span
+          key={b.key}
+          className={`dg-badge dg-role-chip${focusId !== null && b.key.endsWith(`:${focusId}`) ? ' dg-role-chip-active' : ''}`}
+          title={b.title}
+          {...(b.color !== undefined ? { style: { '--dg-chip': b.color } as CSSProperties } : {})}
+        >
+          {b.text}
+        </span>
+      ))}
       {isContainer && !isCldGroup && data.onEnterNode !== undefined && (
         <button
           type="button"
@@ -775,13 +856,22 @@ export function DiagramNode({
       <div
         className={`dg-group${style.dashed === true ? ' dg-dashed' : ''}${groupOutline ? ' dg-group-outline' : ''}${corner ? ' dg-group-corner' : ''}${loopClass}`}
         {...(data.stylePreset?.rough !== undefined
-          ? {}
+          ? hitStyle !== undefined
+            ? { style: hitStyle }
+            : {}
           : {
-              style: groupOutline
-                ? { borderColor: data.color, color: data.textColor ?? data.color }
-                : { ...accentStyle(data.color), ...(data.textColor !== undefined ? { color: data.textColor } : {}) },
+              style: {
+                ...(groupOutline
+                  ? { borderColor: data.color, color: data.textColor ?? data.color }
+                  : accentStyle(data.color)),
+                ...(data.textColor !== undefined ? { color: data.textColor } : {}),
+                ...hitStyle,
+              },
             })}
+        {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
+        {...hitAttrs}
       >
+        <XResizer id={id} data={data} selected={selected} />
         {/* never the preset's own fill: this box is where the children and their
             edges are drawn (see SketchFill) — and an outline group stays a line */}
         {sketchOf(data, style.shape, id, width, height, groupOutline ? 'none' : 'wash')}
@@ -836,9 +926,16 @@ export function DiagramNode({
           ? `dg-node dg-text-node${ghostClass}${loopClass}`
           : `dg-node dg-shape-${style.shape}${style.dashed === true ? ' dg-dashed' : ''}${outline ? ' dg-c4-outline' : ''}${solid !== undefined && data.stylePreset?.rough === undefined ? ' dg-solid' : ''}${ghostClass}${loopClass}`
       }
-      {...(data.stylePreset?.rough !== undefined || isTypelessText || neutralGlyph ? {} : { style: boxAccent })}
+      {...(data.stylePreset?.rough !== undefined || isTypelessText || neutralGlyph
+        ? hitStyle !== undefined
+          ? { style: hitStyle }
+          : {}
+        : { style: { ...boxAccent, ...hitStyle } })}
+      {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
+      {...hitAttrs}
       {...ghostTitle}
     >
+      <XResizer id={id} data={data} selected={selected} />
       {!isTypelessText && sketchOf(data, style.shape, id, width, height)}
       <div className="dg-node-row">
         {ghostArrow}

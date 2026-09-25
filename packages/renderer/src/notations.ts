@@ -1,8 +1,18 @@
-import { consequenceOrders, GIT_STAGE_TYPE, TM_BOUNDARY_TYPE, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type Size, type ViewEdge } from '@diagc/core';
+import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanActor, isPlanRole, isPlanZone, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';
+import { PLAN_LAYOUT, planGraphCached, planLayout } from './plan-layout';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
+
+/** A small chip in a node's badge row (the plan's role chips are the only
+ * producer today, but the shape is generic — any notation could grow one). */
+export interface NodeBadge {
+  key: string;
+  text: string;
+  title: string;
+  color?: string;
+}
 
 /** A visual language: default look plus registry/chrome overrides for a plane's notation. */
 export interface NotationProfile {
@@ -12,18 +22,39 @@ export interface NotationProfile {
   kindStyles?: Record<string, KindStyle>;
   edgeCurvature?: number;
   /** the plane's arrangement, replacing elk entirely: pure, synchronous, and
-   * expected to place every node the view shows */
+   * expected to place every node the view shows. `positions` is the plane's
+   * SAVED, parent-relative positions (same gating as the overlay: none while
+   * a viewer asked to ignore them, always the document while editing) — an
+   * arrangement that owns its plane may honour a saved position for nodes it
+   * chooses to (the plan does, for a zone's free-form children). Only reaches
+   * this function when `layoutReadsPositions` says so below; every other
+   * layout (elk, git-graph's, fishbone's) gets a stable `undefined` instead
+   * (see useViewLayout's `layoutPositions`). */
   layout?: (
     view: CompiledView,
     model: DiagramModel,
     plane: string | undefined,
     sizeHints?: ReadonlyMap<string, Size>,
+    positions?: Record<string, { x: number; y: number }>,
   ) => LayoutResult;
+  /** the arrangement honours saved positions for some of its nodes and must be
+   * re-run when they change; without it the layout never sees them and a drag
+   * never re-arranges. Most notation layouts (git-graph, fishbone) ignore
+   * `positions` entirely, so leaving this unset keeps their effect from
+   * re-running on every drag the way `layoutSettings` keeps elk from re-running
+   * on one (see useViewLayout's `layoutPositions`). */
+  layoutReadsPositions?: boolean;
   /** node id → layer partition: the notation derives an ORDER for its nodes and
    * elk keeps each in it, while still doing the arranging (unlike `layout`,
    * which replaces elk). Honoured by `layered` only, so the view runs a
    * partitioned plane through layered whatever its settings name. */
   partitionOf?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, number>;
+  /** nodes that belong in `id`'s selection neighbourhood although no drawn
+   * edge joins them (`useLoopOverlay` unions the result into `neighborFocus`).
+   * The plan needs this because role relations are hidden edges (`edge.hidden`
+   * below) — selecting an actor would otherwise dim every zone it holds a
+   * role on, the opposite of what a reader wants. */
+  related?: (model: DiagramModel, plane: string | undefined, id: string) => readonly string[];
   node?: {
     typelessAsText?: boolean;
     leafSize?: (n: DiagramNode) => Size | undefined;
@@ -33,6 +64,16 @@ export interface NotationProfile {
     /** node id → accent colour, applied where the node sets none (a commit
      * takes its lane's colour) */
     colorOf?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, string>;
+    /** small chips in a node's badge row (the plan's role chips); keyed by
+     * node id, one derivation per model like colorOf */
+    badges?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, NodeBadge[]>;
+    /** 'x' = the studio offers left/right resize handles on this node;
+     * undefined = no notation resizer */
+    resizable?: (n: DiagramNode) => 'x' | undefined;
+    /** a `fixed` node whose drag still means something to the host: the plan reads a
+     * zone's or event's displacement as days (`onNodesMoved` deltas). The overlay
+     * still never stores a position for it — `fixed` keeps that meaning. */
+    draggableWhenFixed?: (n: DiagramNode) => boolean;
   };
   edge?: {
     marks?: boolean;
@@ -42,8 +83,10 @@ export interface NotationProfile {
     polarityColors?: Record<Polarity, string>;
     /** stroke colour for an edge, below the layer tint and above the default */
     colorOf?: (e: ViewEdge, model: DiagramModel, plane: string | undefined) => string | undefined;
+    /** relation kinds the view never draws as edges (the legend skips them too) */
+    hidden?: (kind: string) => boolean;
   };
-  overlay?: 'loop-labels' | 'git-lanes' | 'order-bands';
+  overlay?: 'loop-labels' | 'git-lanes' | 'order-bands' | 'time-axis';
 }
 
 const CLD: NotationProfile = {
@@ -180,6 +223,86 @@ const THREAT_MODEL: NotationProfile = {
   node: { colorOf: boundaryColors },
 };
 
+// ---- Plan -------------------------------------------------------------------
+// The notation owns the arrangement (as git-graph does) because x IS a date.
+// Roles are relations actor → zone that never draw as edges: they become
+// chips on the zone, so the picture stays a Gantt chart, not a web.
+const ROLE_LABEL: Record<PlanRole, { initial: string; title: string }> = {
+  owns: { initial: 'O', title: 'Owner' },
+  executes: { initial: 'E', title: 'Executor' },
+  checks: { initial: 'C', title: 'Checker' },
+};
+
+/** Role chips per zone, in owns / executes / checks order: `O·Alice` (first
+ * word of the name), titled `Owner: Alice Ng`, in the actor's colour. Reads
+ * the relation's `from` node whatever its type — a person or a team, alike. */
+export function planBadges(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, NodeBadge[]> {
+  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  const out = new Map<string, NodeBadge[]>();
+  for (const id of planGraphCached(model, plane).zones) {
+    const roles = rolesOf(model, id);
+    const chips: NodeBadge[] = [];
+    for (const role of PLAN_ROLES) {
+      for (const actorId of roles[role]) {
+        const actor = byId.get(actorId);
+        if (actor === undefined) continue;
+        const first = actor.name.trim().split(/\s+/)[0] ?? actor.id;
+        chips.push({
+          key: `${role}:${actorId}`,
+          text: `${ROLE_LABEL[role].initial}·${first}`,
+          title: `${ROLE_LABEL[role].title}: ${actor.name}`,
+          ...(actor.color !== undefined ? { color: actor.color } : {}),
+        });
+      }
+    }
+    if (chips.length > 0) out.set(id, chips);
+  }
+  return out;
+}
+
+/** The other half of a role relation, whichever end `id` is: an actor's
+ * selection neighbourhood is every zone it holds a role on, and a zone's is
+ * every actor holding a role on it — both from the same `owns`/`executes`/
+ * `checks` relations `edge.hidden` keeps off the canvas. Anything else (a
+ * dependency-linked node, say) has no extra neighbours here; the edge it
+ * drew with already puts it in `neighborFocus`. */
+function planRelated(model: DiagramModel, plane: string | undefined, id: string): readonly string[] {
+  const node = model.nodes.find((n) => n.id === id);
+  if (node === undefined) return [];
+  if (isPlanActor(node)) {
+    const zones = new Set(planGraphCached(model, plane).zones);
+    return model.relations.filter((r) => r.from === id && isPlanRole(r.kind) && zones.has(r.to)).map((r) => r.to);
+  }
+  if (isPlanZone(node)) {
+    const roles = rolesOf(model, id);
+    return [...roles.owns, ...roles.executes, ...roles.checks];
+  }
+  return [];
+}
+
+const PLAN: NotationProfile = {
+  id: PLAN_NOTATION,
+  className: 'dg-notation-plan',
+  layout: planLayout,
+  // planLayout reads a zone's saved child positions (a free-form "other")
+  // and clamps them itself, so it must re-run when a drag changes them.
+  layoutReadsPositions: true,
+  related: planRelated,
+  node: {
+    alwaysExpanded: (n) => n.type === PLAN_ZONE_TYPE,
+    leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
+    badges: planBadges,
+    resizable: (n) => (n.type === PLAN_ZONE_TYPE ? 'x' : undefined),
+    // Everything fixed drags except an actor: a zone's or event's drag reads
+    // as a date change (planMoves), and a zone's free-form "other" child
+    // drags to a new spot within the bar the same layout clamps on read. The
+    // roster is a list — an actor never moves.
+    draggableWhenFixed: (n) => !isPlanActor(n),
+  },
+  edge: { hidden: isPlanRole },
+  overlay: 'time-axis',
+};
+
 // Record<NotationId, ...> keying means adding a notation id to BUILTIN_NOTATIONS
 // forces a compile error here until its profile is added — intended.
 export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
@@ -189,6 +312,7 @@ export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
   'second-order': SECOND_ORDER,
   fishbone: FISHBONE,
   'threat-model': THREAT_MODEL,
+  plan: PLAN,
 };
 
 const DEFAULT_PROFILE: NotationProfile = { id: 'default' };

@@ -2,10 +2,11 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getViewportForBounds } from '@xyflow/react';
-import { layoutPlaneKey, model, type DiagramModel, type LayoutOverlay, type ThreatTarget } from '@diagc/core';
+import { dayOf, layoutPlaneKey, model, type DiagramModel, type LayoutOverlay, type ThreatTarget } from '@diagc/core';
 import { DiagramView, LIBRARY_ENTRY_DND_TYPE, type CanvasCommands, type LayoutApi } from './DiagramView';
 import { FISHBONE_LAYOUT } from './fishbone-layout';
 import { GIT_LAYOUT } from './git-layout';
+import { PLAN_LAYOUT } from './plan-layout';
 import { NUDGE_IDLE_MS, NUDGE_STEP, NUDGE_SHIFT_FACTOR } from './useNudge';
 import { NOTE_WIDTH } from './NoteNode';
 import { BADGE_R, badgeCenter, estimateNoteHeight, NOTE_GAP } from './note-place';
@@ -1154,9 +1155,13 @@ describe('DiagramView', () => {
     fireEvent.keyDown(gw, { key: 'ArrowRight', shiftKey: true });
     expect(onNodesMoved).not.toHaveBeenCalled(); // waits out the idle window
     await waitFor(() => expect(onNodesMoved).toHaveBeenCalledTimes(1));
-    expect(onNodesMoved).toHaveBeenCalledWith({
-      gw: { x: before.x + NUDGE_STEP + NUDGE_STEP * NUDGE_SHIFT_FACTOR, y: before.y },
-    });
+    // onNodesMoved now also reports each id's displacement from the arranged
+    // geometry (`deltas`, task 11) — this test is about the positions arg, so
+    // the deltas arg is matched loosely here.
+    expect(onNodesMoved).toHaveBeenCalledWith(
+      { gw: { x: before.x + NUDGE_STEP + NUDGE_STEP * NUDGE_SHIFT_FACTOR, y: before.y } },
+      expect.anything(),
+    );
   });
 
   it('edit mode: falls back to onNodeMoved per node when the host has no batch callback', async () => {
@@ -1190,7 +1195,10 @@ describe('DiagramView', () => {
     await waitFor(() => expect(document.querySelector('.react-flow__node.selected')).not.toBeNull());
     const before = apiRef.current!.snapshotPositions()['gw']!;
     fireEvent.keyDown(gw, { key: 'ArrowRight' });
-    await waitFor(() => expect(onNodesMoved).toHaveBeenCalledWith({ gw: { x: before.x + 10, y: before.y } }));
+    // deltas arg (task 11) matched loosely — this test is about the snapped position
+    await waitFor(() =>
+      expect(onNodesMoved).toHaveBeenCalledWith({ gw: { x: before.x + 10, y: before.y } }, expect.anything()),
+    );
   });
 });
 
@@ -2328,5 +2336,176 @@ describe('comment notes', () => {
     const { container } = render(<DiagramView model={commented} layout={open()} onOpenLink={onOpenLink} />);
     fireEvent.click((await rfNode(container, 'note:node:b')).querySelector('a.dg-note-link')!);
     expect(onOpenLink).toHaveBeenCalledWith('https://x');
+  });
+});
+
+describe('plan notation', () => {
+  function plan() {
+    const m = model('p');
+    const p = m.plan();
+    const alice = p.person('alice', 'Alice Ng');
+    const q = p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' }).owner(alice);
+    const dep = p.zone('dep', { name: 'Dep', start: '2026-02-02', end: '2026-02-06' });
+    m.relate(q, dep, { kind: 'sync' });
+    return m.toJSON();
+  }
+  it('draws the dependency but never a role edge, shows the role chip, and mounts the time axis', async () => {
+    const { container } = render(<DiagramView model={plan()} plane="plan" notation="plan" today="2026-01-20" />);
+    await waitFor(() => expect(container.querySelector('.dg-time-axis')).not.toBeNull());
+    await waitFor(() => expect(container.querySelectorAll('.react-flow__edge')).toHaveLength(1));
+    expect(container.querySelector('.dg-role-chip')?.textContent).toBe('O·Alice');
+    expect(container.querySelector('.dg-time-axis-today')).not.toBeNull();
+    expect(container.querySelector('.dg-notation-plan')).not.toBeNull();
+  });
+  it('draws no today line when the host passes null', async () => {
+    const { container } = render(<DiagramView model={plan()} plane="plan" notation="plan" today={null} />);
+    await waitFor(() => expect(container.querySelector('.dg-time-axis')).not.toBeNull());
+    expect(container.querySelector('.dg-time-axis-today')).toBeNull();
+  });
+  it('reports each moved node\'s displacement from the arranged geometry alongside its position', async () => {
+    const onNodesMoved = vi.fn();
+    const { container } = render(<DiagramView model={plan()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved }} />);
+    const dep = await waitFor(() => {
+      const el = container.querySelector<HTMLElement>('.react-flow__node[data-id="dep"]');
+      if (el === null) throw new Error('not yet');
+      return el;
+    });
+    // drive React Flow's drag pipeline the way the existing move tests do (see
+    // the nudge tests in this file: select, then an ArrowRight nudge by
+    // NUDGE_STEP). `dep` is a TOP-LEVEL zone (lockedX, not fixed), so it takes
+    // the drag; the key target is the node itself — the nudge listener checks
+    // `target.closest('.react-flow__node')`, which matches on the node div too.
+    fireEvent.click(dep);
+    await waitFor(() => expect(dep.classList.contains('selected')).toBe(true));
+    fireEvent.keyDown(dep, { key: 'ArrowRight' });
+    await waitFor(() => expect(onNodesMoved).toHaveBeenCalled());
+    const [positions, deltas] = onNodesMoved.mock.calls[0]!;
+    // the arranged x is `dep`'s date, laid out from the plan's origin (1 Jan of
+    // the range's start year — see PlanGraph.origin, packages/core/src/plan.ts)
+    const arrangedX = PLAN_LAYOUT.DAY * (dayOf('2026-02-02')! - dayOf('2026-01-01')!);
+    expect(deltas.dep.dx).toBeCloseTo(positions.dep.x - arrangedX);
+    expect(deltas.dep.dx).toBeCloseTo(NUDGE_STEP);
+    expect(deltas.dep.dy).toBeCloseTo(0);
+  });
+  it('edit mode: a nested zone and an event stay draggable though the layout fixed them; a person in the roster does not', async () => {
+    const m = model('p');
+    const p = m.plan();
+    p.person('alice', 'Alice Ng');
+    p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' }).zone('design', { name: 'Design', start: '2026-01-05', end: '2026-01-09' });
+    p.event('m1', { name: 'M1', at: '2026-01-15' });
+    const { container } = render(<DiagramView model={m.toJSON()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn() }} />);
+    const rfNode = (id: string) =>
+      waitFor(() => {
+        const el = container.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
+        if (el === null) throw new Error(`${id} not rendered`);
+        return el;
+      });
+    expect((await rfNode('design')).classList.contains('draggable')).toBe(true);
+    expect((await rfNode('m1')).classList.contains('draggable')).toBe(true);
+    expect((await rfNode('alice')).classList.contains('draggable')).toBe(false);
+  });
+  it('a childless zone is as wide as its dates: the layout sizes it, not its label', async () => {
+    const { container } = render(<DiagramView model={plan()} plane="plan" notation="plan" today="2026-01-20" />);
+    const wrapper = async (id: string) =>
+      waitFor(() => {
+        const el = container.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
+        if (el === null || el.style.width === '') throw new Error(`${id} not laid out`);
+        return el;
+      });
+    // dep: 2026-02-02..2026-02-06 inclusive = 5 days; q: 2026-01-05..2026-01-30 = 26 days
+    expect((await wrapper('dep')).style.width).toBe(`${5 * PLAN_LAYOUT.DAY}px`);
+    expect((await wrapper('q')).style.width).toBe(`${26 * PLAN_LAYOUT.DAY}px`);
+  });
+});
+
+describe('plan notation: selecting an actor lights up its zones, and a zone its actors', () => {
+  // alice owns `owned` only; bob executes `other` only — no relation of any
+  // kind joins the two zones, so the only thing that could connect them
+  // across a selection is the plan's `related` hook, not a drawn edge
+  function planActors() {
+    const m = model('pa');
+    const p = m.plan();
+    const alice = p.person('alice', 'Alice Ng', { color: '#2f6fed' });
+    const bob = p.person('bob', 'Bob Lee');
+    p.zone('owned', { name: 'Owned', start: '2026-01-05', end: '2026-01-09' }).owner(alice);
+    p.zone('other', { name: 'Other', start: '2026-02-02', end: '2026-02-06' }).executor(bob);
+    return m.toJSON();
+  }
+  const dimmed = (container: HTMLElement, id: string): boolean =>
+    container.querySelector(`.react-flow__node[data-id="${id}"] .dg-focus-node-dim`) !== null;
+  const hit = (container: HTMLElement, id: string): boolean =>
+    container.querySelector(`.react-flow__node[data-id="${id}"] [data-plan-hit]`) !== null;
+
+  it('selecting an actor keeps its zone bright and marked, dims an unrelated zone and actor', async () => {
+    const { container } = render(<DiagramView model={planActors()} plane="plan" notation="plan" today="2026-01-20" />);
+    const alice = await waitFor(() => {
+      const el = container.querySelector<HTMLElement>('.react-flow__node[data-id="alice"]');
+      if (el === null) throw new Error('not yet');
+      return el;
+    });
+    fireEvent.click(alice);
+    await waitFor(() => expect(container.querySelector('.dg-focus-node-dim')).not.toBeNull());
+    expect(dimmed(container, 'alice')).toBe(false); // the selected node itself
+    expect(dimmed(container, 'owned')).toBe(false); // alice's own zone
+    expect(dimmed(container, 'other')).toBe(true); // bob's zone, no relation to alice
+    expect(dimmed(container, 'bob')).toBe(true); // an unrelated actor
+    // the reciprocal mark: the chip alice's role made on `owned` goes solid,
+    // and the zone itself is outlined in alice's colour
+    const chip = container.querySelector('.react-flow__node[data-id="owned"] .dg-role-chip');
+    expect(chip?.classList.contains('dg-role-chip-active')).toBe(true);
+    expect(hit(container, 'owned')).toBe(true);
+    expect(hit(container, 'other')).toBe(false);
+  });
+
+  it('selecting a zone marks its actor, dims an unrelated one', async () => {
+    const { container } = render(<DiagramView model={planActors()} plane="plan" notation="plan" today="2026-01-20" />);
+    const owned = await waitFor(() => {
+      const el = container.querySelector<HTMLElement>('.react-flow__node[data-id="owned"]');
+      if (el === null) throw new Error('not yet');
+      return el;
+    });
+    fireEvent.click(owned);
+    await waitFor(() => expect(container.querySelector('.dg-focus-node-dim')).not.toBeNull());
+    expect(dimmed(container, 'alice')).toBe(false); // owned's own actor
+    expect(dimmed(container, 'other')).toBe(true);
+    expect(dimmed(container, 'bob')).toBe(true);
+    expect(hit(container, 'alice')).toBe(true); // the reciprocal mark, in alice's own colour
+    expect(hit(container, 'bob')).toBe(false);
+  });
+
+  it('clears both the dim and the hit marks on a pane click', async () => {
+    const { container } = render(<DiagramView model={planActors()} plane="plan" notation="plan" today="2026-01-20" />);
+    const alice = await waitFor(() => {
+      const el = container.querySelector<HTMLElement>('.react-flow__node[data-id="alice"]');
+      if (el === null) throw new Error('not yet');
+      return el;
+    });
+    fireEvent.click(alice);
+    await waitFor(() => expect(container.querySelector('.dg-focus-node-dim')).not.toBeNull());
+    expect(hit(container, 'owned')).toBe(true);
+
+    fireEvent.click(container.querySelector('.react-flow__pane') as HTMLElement);
+    await waitFor(() => expect(container.querySelectorAll('.dg-focus-node-dim')).toHaveLength(0));
+    expect(container.querySelector('[data-plan-hit]')).toBeNull();
+    expect(container.querySelector('.dg-role-chip-active')).toBeNull();
+  });
+});
+
+describe('the plan hit mark never leaks outside the plan notation', () => {
+  it('a person node, selected-neighbour on a non-plan diagram, carries no data-plan-hit', async () => {
+    // 'person' is an ordinary registry type (the C4 stencil, or this plain
+    // pill) any diagram can use — not just a plan's roster. `a` is selected;
+    // `person` is its one edge-neighbour, so it stays un-dimmed, but nothing
+    // here is a plan plane, so the reciprocal outline must not appear.
+    const m = model('c4ish');
+    const a = m.node('a', { type: 'service' });
+    const person = m.node('person', { type: 'person' });
+    m.relate(a, person, { kind: 'sync' });
+    const { container } = render(<DiagramView model={m.toJSON()} />);
+    await screen.findByText('a');
+    fireEvent.click(screen.getByText('a'));
+    await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="person"] .dg-focus-node-dim')).toBeNull());
+    expect(container.querySelector('.react-flow__node[data-id="person"] [data-plan-hit]')).toBeNull();
+    expect(container.querySelector('[data-plan-hit]')).toBeNull();
   });
 });

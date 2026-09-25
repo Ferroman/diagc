@@ -139,6 +139,22 @@ A customer, an auth service inside one trust boundary, and one information-discl
 A charge API that tokenizes cards in a PCI enclave nested inside the internal boundary, writes to a ledger and settles with a card network — seven threats across elements and flows, open, mitigated and accepted.
 [Live](https://ferroman.github.io/diagc/html/examples/threat-model/payments-api.html) · [Source](../../.diagrams/src/examples/threat-model/payments-api.diagram.ts) · [Guide](../how-to/draw-a-threat-model.md)
 
+### Plan
+
+#### Starter: launch plan
+
+[![Starter: launch plan](../../.diagrams/static/examples/plan/starter.png)](https://ferroman.github.io/diagc/html/examples/plan/starter.html)
+
+Three phases, one nested twice, a code freeze and a launch, three people with all three roles on Build, a comment and a link.
+[Live](https://ferroman.github.io/diagc/html/examples/plan/starter.html) · [Source](../../.diagrams/src/examples/plan/starter.diagram.ts) · [Guide](../how-to/draw-a-plan.md)
+
+#### Q4 roadmap
+
+[![Q4 roadmap](../../.diagrams/static/examples/plan/q4-roadmap.png)](https://ferroman.github.io/diagc/html/examples/plan/q4-roadmap.html)
+
+A C4 container view and a plan plane that schedules those containers inside zones — switch planes on the page.
+[Live](https://ferroman.github.io/diagc/html/examples/plan/q4-roadmap.html) · [Source](../../.diagrams/src/examples/plan/q4-roadmap.diagram.ts) · [Guide](../how-to/draw-a-plan.md)
+
 ### ER
 
 #### Starter: library loans

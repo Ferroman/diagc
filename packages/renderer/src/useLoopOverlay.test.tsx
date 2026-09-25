@@ -23,6 +23,8 @@ function inputFor(over: Partial<LoopOverlayInput> = {}): LoopOverlayInput {
   return {
     profile: notationProfile('causal-loop'),
     compiled: compileView(m, {}),
+    model: m,
+    plane: undefined,
     externalHighlight: undefined,
     onCldEdges: undefined,
     ...over,
@@ -55,12 +57,31 @@ describe('useLoopOverlay', () => {
   it('selecting a node focuses its one-edge neighborhood as the gentle variant', () => {
     const { result } = renderHook((p: LoopOverlayInput) => useLoopOverlay(p), { initialProps: inputFor() });
     expect(result.current.loopHighlight.active).toBe(false);
+    expect(result.current.loopHighlight.focusId).toBeNull();
     act(() => result.current.setSelectedNode('a'));
     const hl = result.current.loopHighlight;
     expect(hl.active).toBe(true);
     expect(hl.variant).toBe('focus');
     expect([...hl.nodes].sort()).toEqual(['a', 'b', 'c']); // a→b out, c→a in
     expect(hl.edges.size).toBe(2);
+    expect(hl.focusId).toBe('a');
+    act(() => result.current.setSelectedNode(null));
+    expect(result.current.loopHighlight.focusId).toBeNull();
+  });
+
+  it("unions the notation's own `related` into the neighbourhood, alongside the edge-derived one", () => {
+    // a stand-in profile with a `related` hook, the shape a plan's is: it
+    // adds 'z' to whatever node is selected, with no edge behind it at all
+    const related = notationProfile('causal-loop');
+    const withRelated = { ...related, related: (_m: DiagramModel, _p: string | undefined, id: string) => (id === 'a' ? ['z'] : []) };
+    const { result } = renderHook((p: LoopOverlayInput) => useLoopOverlay(p), {
+      initialProps: inputFor({ profile: withRelated }),
+    });
+    act(() => result.current.setSelectedNode('a'));
+    const hl = result.current.loopHighlight;
+    // 'b' and 'c' from the edges (as above), 'z' from `related` alone
+    expect([...hl.nodes].sort()).toEqual(['a', 'b', 'c', 'z']);
+    expect(hl.focusId).toBe('a');
   });
 
   it('a toggled loop badge glows its set; toggling the same key clears it', () => {

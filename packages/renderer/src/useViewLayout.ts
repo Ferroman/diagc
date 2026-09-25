@@ -62,6 +62,9 @@ export interface ViewLayout {
   /** nodes the notation's layout fixed in place (LayoutResult.fixed): drawn
    * where they were laid whatever was saved, and not to be offered a move */
   fixed: ReadonlySet<string>;
+  /** nodes the notation's layout locked on x (LayoutResult.lockedX): a saved
+   * or dragged position moves them on y only */
+  lockedX: ReadonlySet<string>;
   /** the scene the last FINISHED layout run was for; null before the first.
    * Layout is asynchronous and the previous arrangement is kept meanwhile, so
    * right after the scene changes `arrangedGeometry` is non-null and the OLD
@@ -84,6 +87,22 @@ const NONE_FIXED: ReadonlySet<string> = new Set();
 function movable(positions: Record<string, { x: number; y: number }>, fixed: ReadonlySet<string>): Record<string, { x: number; y: number }> {
   if (fixed.size === 0 || !Object.keys(positions).some((id) => fixed.has(id))) return positions;
   return Object.fromEntries(Object.entries(positions).filter(([id]) => !fixed.has(id)));
+}
+
+/** `positions` with the x of every locked id replaced by the arranged x, so
+ * overlayPositions can apply them as usual and only y takes effect. */
+function yOnly(
+  positions: Record<string, { x: number; y: number }>,
+  lockedX: ReadonlySet<string>,
+  arranged: ReadonlyMap<string, { x: number }>,
+): Record<string, { x: number; y: number }> {
+  if (lockedX.size === 0 || !Object.keys(positions).some((id) => lockedX.has(id))) return positions;
+  return Object.fromEntries(
+    Object.entries(positions).map(([id, pos]) => {
+      const g = lockedX.has(id) ? arranged.get(id) : undefined;
+      return [id, g !== undefined ? { x: g.x, y: pos.y } : pos];
+    }),
+  );
 }
 
 /** How a routed edge's corners are drawn (px radius). The waypoints are elk's
@@ -223,6 +242,33 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     [input.profile, input.model, input.plane],
   );
 
+  // The plane's saved positions (parent-relative for a nested node), gated
+  // exactly as placedGeometry always applied them: a viewer who asked to
+  // ignore them sees none, editing always reads the document. Hoisted out of
+  // placedGeometry (below) so a notation that owns its arrangement can read
+  // the same value — see `layoutPositions` next.
+  const saved = useMemo(() => {
+    if (!input.editing && input.ignoreSavedPositions === true) return {};
+    const key = layoutPlaneKey(input.model, input.plane);
+    return input.layout?.planes[key] ?? {};
+  }, [input.layout, input.model, input.plane, input.ignoreSavedPositions, input.editing]);
+
+  // What a notation's own layout is handed as `positions` (NotationProfile.layout):
+  // `saved` only when the profile opts in with `layoutReadsPositions` (the plan
+  // does: it clamps a zone child's saved spot on read — see plan-layout.ts),
+  // else a STABLE `undefined` — same object identity, the JS primitive, every
+  // render — so adding this to the effect's deps below can never make a layout
+  // that does NOT read positions (elk, but also git-graph's and fishbone's own
+  // arrangements, which never look at `positions`) re-run just because a drag
+  // rebuilt `input.layout` (and, with it, `saved`); see the `layoutSettings`
+  // rationale above for the sibling problem this mirrors. Gating on the flag
+  // rather than on `profile.layout !== undefined` matters precisely because
+  // most notation layouts ARE defined but never read `positions`.
+  const layoutPositions = useMemo(
+    () => (input.profile.layoutReadsPositions === true ? saved : undefined),
+    [input.profile, saved],
+  );
+
   const [geometry, setGeometry] = useState<Map<string, NodeGeometry> | null>(null);
   const geometryRef = useRef<Map<string, NodeGeometry> | null>(null);
   geometryRef.current = geometry;
@@ -231,6 +277,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   const [routes, setRoutes] = useState<Map<string, EdgePoint[]>>(() => new Map());
   const [labelSpots, setLabelSpots] = useState<ReadonlyMap<string, EdgePoint>>(NO_SPOTS);
   const [fixed, setFixed] = useState<ReadonlySet<string>>(NONE_FIXED);
+  const [lockedX, setLockedX] = useState<ReadonlySet<string>>(NONE_FIXED);
   const [settledFor, setSettledFor] = useState<ViewLayout['settledFor']>(null);
   useEffect(() => {
     let live = true;
@@ -239,7 +286,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     const notationLayout = input.profile.layout;
     const arrange =
       notationLayout !== undefined
-        ? Promise.resolve().then(() => notationLayout(input.compiled, input.model, input.plane, sizes))
+        ? Promise.resolve().then(() => notationLayout(input.compiled, input.model, input.plane, sizes, layoutPositions))
         : layoutView(input.compiled, sizes, runSettings, partitions !== undefined ? { partitions } : undefined);
     void arrange
       .then((r) => {
@@ -248,6 +295,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
         setRoutes(r.routes);
         setLabelSpots(r.labelSpots);
         setFixed(r.fixed ?? NONE_FIXED);
+        setLockedX(r.lockedX ?? NONE_FIXED);
         setSettledFor(input.compiled);
       })
       // layoutView degrades to the default algorithm rather than rejecting, so
@@ -265,7 +313,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     return () => {
       live = false;
     };
-  }, [input.compiled, sizes, runSettings, input.profile, input.model, input.plane, partitions]);
+  }, [input.compiled, sizes, runSettings, input.profile, input.model, input.plane, partitions, layoutPositions]);
 
   // Overlay-applied geometry: elk output with any layout-overlay positions for
   // the active plane substituted in (width/height stay elk's). Derived so the
@@ -273,21 +321,21 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // raw `geometry` remains the layout-effect state.
   const placedGeometry = useMemo(() => {
     if (geometry === null) return geometry;
-    const key = layoutPlaneKey(input.model, input.plane);
-    // Editing always reads the saved overlay: there the positions ARE the
-    // document being edited, and the auto/manual switch is a command on the undo
-    // stack. Only a viewer may set them aside.
-    const saved = !input.editing && input.ignoreSavedPositions === true ? {} : (input.layout?.planes[key] ?? {});
     // A fixed node reads no position from anywhere. Filtered HERE, not only at
     // the gesture: a pin can predate the rule (a fish dragged before its nodes
     // were fixed), or arrive with a node that was placed as a stray and hung on
     // the fish afterwards — either would leave it behind when the fish next
     // changes shape, its lines floating in to a box they were never drawn to.
-    const withSaved = overlayPositions(geometry, movable(saved, fixed));
+    // (`saved` itself is the same value a notation's own layout may have just
+    // read and clamped — see `layoutPositions` above; a fixed id here is a
+    // node the layout placed itself, so movable() still drops it.)
+    const withSaved = overlayPositions(geometry, yOnly(movable(saved, fixed), lockedX, geometry));
     // A drag still wins over an automatic arrangement, so moving a box while
     // auto-arrange is on behaves the way dragging always does.
-    return input.editing ? withSaved : overlayPositions(withSaved, movable(input.viewPositions, fixed));
-  }, [geometry, fixed, input.layout, input.model, input.plane, input.ignoreSavedPositions, input.editing, input.viewPositions]);
+    return input.editing
+      ? withSaved
+      : overlayPositions(withSaved, yOnly(movable(input.viewPositions, fixed), lockedX, geometry));
+  }, [geometry, fixed, lockedX, saved, input.editing, input.viewPositions]);
 
   // A hand-placed child may sit past the wall of the box elk sized for it: the
   // container gives way (fit-containers.ts). Not where the notation owns the
@@ -353,6 +401,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     laidAt,
     labelSpots,
     fixed,
+    lockedX,
     settledFor,
     layoutSettings,
     flowDirection: (runSettings?.direction ?? FALLBACK_DIRECTION) as LayoutDirection,

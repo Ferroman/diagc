@@ -12,6 +12,11 @@ export interface LoopHighlight {
   variant: 'loop' | 'focus';
   /** key of the active loop's badge, for its own active styling */
   activeKey: string | null;
+  /** the selected node driving this highlight (`useLoopOverlay`'s
+   * `selectedNode`, mirrored whatever the variant) — null when nothing is
+   * selected. A plan's role chip and `data-plan-hit` mark key off this
+   * directly, on top of the dim `nodes`/`edges` already carry. */
+  focusId: string | null;
   /** click a badge: highlight its loop, or clear if it is already active */
   toggle: (key: string, nodes: readonly string[], edges: readonly string[]) => void;
   clear: () => void;
@@ -25,6 +30,7 @@ export const noopLoopHighlight: LoopHighlight = {
   active: false,
   variant: 'loop',
   activeKey: null,
+  focusId: null,
   toggle: () => undefined,
   clear: () => undefined,
 };

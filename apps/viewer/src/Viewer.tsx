@@ -15,6 +15,7 @@ import {
   isKnownStyle,
   LeveragePanel,
   lightTheme,
+  todayIso,
   type DiagramSelection,
   type LayoutApi,
   type LeverageFocus,
@@ -403,6 +404,9 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
       {...(notation !== undefined ? { notation } : {})}
       {...(layout !== undefined ? { layout } : {})}
       {...(drawings !== undefined ? { drawings } : {})}
+      // the page shows where today is; a PNG must not bake in a line that is
+      // wrong tomorrow, so the export render passes none
+      today={expandAll ? null : todayIso()}
     />
   );
   const picker = showsPlanePicker(model.planes, expandAll);

@@ -46,6 +46,8 @@ export {
   CauseRef,
   ThreatModelBuilder,
   FlowRef,
+  PlanBuilder,
+  ZoneBuilder,
   type NodeOpts,
   type RelateOpts,
   type CommitOpts,
@@ -57,6 +59,8 @@ export {
   type ThreatOpts,
   type CommentOpts,
   type ElementOpts,
+  type ZoneOpts,
+  type EventOpts,
 } from './builder';
 export { validate, DiagramValidationError, IMAGE_REF, LIBRARY_IMAGE_REF, type ValidationIssue } from './validate';
 export { isDrawings, isLayoutOverlay } from './guards';
@@ -169,3 +173,29 @@ export {
   type Crossing,
   type ThreatRow,
 } from './threat-model';
+export {
+  PLAN_NOTATION,
+  PLAN_ZONE_TYPE,
+  PLAN_EVENT_TYPE,
+  PLAN_PERSON_TYPE,
+  PLAN_TEAM_TYPE,
+  PLAN_ACTOR_TYPES,
+  PLAN_TYPES,
+  PLAN_ROLES,
+  isPlanZone,
+  isPlanEvent,
+  isPlanActor,
+  isPlanRole,
+  dayOf,
+  isoOf,
+  spanOf,
+  atOf,
+  rolesOf,
+  planGraph,
+  planSubtree,
+  type PlanRole,
+  type PlanSpan,
+  type PlanRoles,
+  type PlanGraph,
+  type PlanChildren,
+} from './plan';
