@@ -21,6 +21,7 @@ import {
   type Edge,
   type Node,
   type NodeChange,
+  type OnNodeDrag,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
@@ -1142,6 +1143,28 @@ function Inner(props: DiagramViewProps) {
     }
     return dropTargetAt(point, rects, exclude);
   };
+  // Whether the drop gesture is live at all on this render — the same test
+  // onNodeDragStop below inlines for the drop itself, kept here as its own
+  // name because the drag-over OUTLINE additionally needs it before a single
+  // pointer frame has happened, to decide whether to hand React Flow a
+  // handler at all (see the spread below).
+  const dropEnabled = editing && edit?.onDropInto !== undefined && profile.node?.dropTarget !== undefined;
+  // The drag-over outline (data-drop-target, DiagramNode): single-node drags
+  // only (a selection drag is always a move — see onNodeDragStop). Recomputed
+  // every frame but only PATCHED into the node copy when the target actually
+  // changes, the same one-or-two-boxes-touched shape as soleSelection. Handed
+  // to <ReactFlow> only when dropEnabled (see the spread below), not wired
+  // unconditionally: XYDrag.updateNodes only builds its per-frame
+  // getEventHandlerParams() call when onDrag/onNodeDrag/onSelectionDrag is
+  // present, so a notation without the feature — six of the seven today —
+  // must not hand one over, or every drag on every plane pays a frame of
+  // work it never asked for.
+  const onDragFrame: OnNodeDrag = (e, node, nodes) => {
+    const target = nodes.length === 1 ? dropTargetFor(node.id, reactFlow.screenToFlowPosition(clientPointOf(e))) : undefined;
+    if (target === dropTargetRef.current) return;
+    dropTargetRef.current = target;
+    setRfNodes((prev) => withDropTarget(prev, target));
+  };
   // Arrow keys (see useNudge). The step follows the snap grid when one is on,
   // so a nudge lands on the same grid a drag would.
   const nudge = useNudge({
@@ -1632,20 +1655,13 @@ function Inner(props: DiagramViewProps) {
           draggingRef.current = true;
           setDragging(true);
         }}
-        // The drag-over outline (data-drop-target, DiagramNode): single-node
-        // drags only (a selection drag is always a move — see onNodeDragStop),
-        // and only while the host can act on a drop at all. Recomputed every
-        // frame but only PATCHED into the node copy when the target actually
-        // changes, the same one-or-two-boxes-touched shape as soleSelection.
-        onNodeDrag={(e, node, nodes) => {
-          const target =
-            editing && edit?.onDropInto !== undefined && profile.node?.dropTarget !== undefined && nodes.length === 1
-              ? dropTargetFor(node.id, reactFlow.screenToFlowPosition(clientPointOf(e)))
-              : undefined;
-          if (target === dropTargetRef.current) return;
-          dropTargetRef.current = target;
-          setRfNodes((prev) => withDropTarget(prev, target));
-        }}
+        // onDragFrame (defined above, next to dropEnabled) is spread in, not
+        // just conditionally invoked from inside an always-present handler —
+        // React Flow's own `onDrag || onNodeDrag || onSelectionDrag` presence
+        // check (XYDrag.updateNodes) needs the KEY missing, not merely a
+        // no-op function sitting behind it, or it still does the per-frame
+        // work of building drag params to hand a no-op.
+        {...(dropEnabled ? { onNodeDrag: onDragFrame } : {})}
         // React Flow hands over every node the gesture moved (a selection drags
         // as one), so a multi-node drag lands as a single batch.
         //

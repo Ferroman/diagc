@@ -2816,4 +2816,110 @@ describe('drop-to-assign', () => {
     expect(onNodesMoved).toHaveBeenCalledTimes(1);
     expect(onNodesMoved.mock.calls[0]![0]).toEqual({ gw: to });
   });
+
+  // The drag-over outline (onNodeDrag/withDropTarget/data-drop-target): driven
+  // directly through the captured onNodeDrag, the same way the cases above
+  // drive onNodeDragStop — a real pointer move is one MouseEvent-shaped frame
+  // per position, so a `point` is turned into the same {clientX, clientY} the
+  // drop() helper already derives from flowToScreenPosition.
+  describe('the drag-over outline', () => {
+    const flagOf = (id: string): boolean | undefined =>
+      (dragCapture.instance.getNodes().find((n: RfNode) => n.id === id)?.data as { dropTarget?: boolean } | undefined)?.dropTarget;
+    // data-drop-target lands on DiagramNode's own root (.dg-group/.dg-node),
+    // a child of React Flow's `.react-flow__node` wrapper, not the wrapper
+    // itself — same reason the CSS rule (.dg-notation-plan [data-drop-target])
+    // is a descendant selector.
+    const domFlagOf = (container: HTMLElement, id: string): boolean =>
+      container.querySelector(`.react-flow__node[data-id="${id}"] [data-drop-target]`) !== null;
+    const frameAt = (flow: { x: number; y: number }) => {
+      const p = dragCapture.instance.flowToScreenPosition(flow);
+      return { clientX: p.x, clientY: p.y };
+    };
+
+    it('a single actor drag over a zone flags it (data + DOM); moving off clears the flag', async () => {
+      const { container } = render(
+        <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+      );
+      await settle(container, 'q');
+      await settle(container, 'alice');
+      const alice = nodeOf('alice');
+      const qAbs = absOf('q');
+      const overQ = frameAt({ x: qAbs.x + 10, y: qAbs.y + 10 });
+      act(() => dragCapture.props['onNodeDrag'](overQ, alice, [alice]));
+      await waitFor(() => expect(flagOf('q')).toBe(true));
+      expect(domFlagOf(container, 'q')).toBe(true);
+
+      // far outside every zone (see the 'reports no drop' case above for why)
+      const miss = frameAt({ x: qAbs.x + 5000, y: qAbs.y + 5000 });
+      act(() => dragCapture.props['onNodeDrag'](miss, alice, [alice]));
+      await waitFor(() => expect(flagOf('q')).not.toBe(true));
+      expect(domFlagOf(container, 'q')).toBe(false);
+    });
+
+    it('a second frame over the same zone does not touch the nodes array — the change-only guard', async () => {
+      const { container } = render(
+        <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+      );
+      await settle(container, 'q');
+      await settle(container, 'alice');
+      const alice = nodeOf('alice');
+      const qAbs = absOf('q');
+      const overQ = frameAt({ x: qAbs.x + 10, y: qAbs.y + 10 });
+      act(() => dragCapture.props['onNodeDrag'](overQ, alice, [alice]));
+      await waitFor(() => expect(flagOf('q')).toBe(true));
+      const nodesAfterFirstFrame = dragCapture.props['nodes'];
+
+      // same point again: the target hasn't changed, so onNodeDrag's own
+      // `target === dropTargetRef.current` short-circuit must fire before
+      // withDropTarget ever runs — no new array, not even a new node inside it.
+      act(() => dragCapture.props['onNodeDrag'](overQ, alice, [alice]));
+      expect(dragCapture.props['nodes']).toBe(nodesAfterFirstFrame);
+    });
+
+    it('a multi-node drag sets no drop-target flag', async () => {
+      const { container } = render(
+        <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+      );
+      await settle(container, 'q');
+      await settle(container, 'alice');
+      await settle(container, 'task');
+      const alice = nodeOf('alice');
+      const task = nodeOf('task');
+      const qAbs = absOf('q');
+      const overQ = frameAt({ x: qAbs.x + 10, y: qAbs.y + 10 });
+      act(() => dragCapture.props['onNodeDrag'](overQ, alice, [alice, task]));
+      expect(flagOf('q')).not.toBe(true);
+      expect(domFlagOf(container, 'q')).toBe(false);
+    });
+
+    it('onNodeDragStop clears the flag', async () => {
+      const { container } = render(
+        <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+      );
+      await settle(container, 'q');
+      await settle(container, 'alice');
+      const alice = nodeOf('alice');
+      const qAbs = absOf('q');
+      const overQ = frameAt({ x: qAbs.x + 10, y: qAbs.y + 10 });
+      act(() => dragCapture.props['onNodeDrag'](overQ, alice, [alice]));
+      await waitFor(() => expect(flagOf('q')).toBe(true));
+      act(() => dragCapture.props['onNodeDragStop'](overQ, alice, [alice]));
+      await waitFor(() => expect(flagOf('q')).not.toBe(true));
+      expect(domFlagOf(container, 'q')).toBe(false);
+    });
+
+    it('onNodeDrag is undefined on a non-plan fixture, and in view mode', async () => {
+      const { container: editContainer } = render(
+        <DiagramView model={containerEndpointModel()} mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+      );
+      await settle(editContainer, 'gw');
+      expect(dragCapture.props['onNodeDrag']).toBeUndefined();
+
+      const { container: viewContainer } = render(
+        <DiagramView model={assignModel()} plane="plan" notation="plan" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+      );
+      await settle(viewContainer, 'q');
+      expect(dragCapture.props['onNodeDrag']).toBeUndefined();
+    });
+  });
 });
