@@ -251,6 +251,62 @@ describe('mutate', () => {
     expect(removed.containment.some((e) => e.parent === 'sys' && e.child === 'a')).toBe(false);
   });
 
+  // The builder's OWN addContainment (used by ZoneBuilder etc., not this
+  // file's mutate.ts one) tags every edge with its plane literally, even when
+  // that plane is the only one declared (builder.test.ts § plan: "tags
+  // containment with the plan plane even when it is the only plane") — so a
+  // plan model arrives with `{ parent, child, plane: 'plan' }` where 'plan'
+  // IS the default (first-declared) plane. A command's own plane argument
+  // canonicalizes to undefined for that same plane (canonicalPlane), so
+  // comparing `e.plane === canon` directly never matched the builder's own
+  // edge. Resolve both sides the same way reads already do (`e.plane ??
+  // defaultPlane`) before comparing.
+  describe('containment plane comparison resolves a builder-tagged default-plane edge', () => {
+    // q > e, tagged { plane: 'plan' } by the builder — 'plan' is the ONLY
+    // (hence default) plane here, same shape as examples/plan/starter
+    function planModel(): DiagramModel {
+      const m = model('solo');
+      const p = m.plan();
+      const q = p.zone('q', { start: '2026-01-05', end: '2026-01-09' });
+      q.event('e', { at: '2026-01-06' });
+      return m.toJSON();
+    }
+
+    it('is removed by a command carrying the default plane id', () => {
+      const m = planModel();
+      expect(m.containment).toEqual([{ parent: 'q', child: 'e', plane: 'plan' }]);
+      expect(removeContainment(m, 'q', 'e', 'plan').containment).toEqual([]);
+    });
+
+    it('is removed by a command carrying no plane at all', () => {
+      const m = planModel();
+      expect(removeContainment(m, 'q', 'e').containment).toEqual([]);
+    });
+
+    it('adding the same edge again, in either form, is a no-op — no duplicate', () => {
+      const m = planModel();
+      expect(addContainment(m, 'q', 'e', 'plan').containment).toEqual(m.containment);
+      expect(addContainment(m, 'q', 'e').containment).toEqual(m.containment);
+    });
+
+    it('an edge on a non-default plane is untouched by a default-plane remove', () => {
+      // 'plan' declared SECOND here (after 'arch'), so it is not the default —
+      // the builder still tags its containment with 'plan' regardless (the
+      // plan plane names its own edges "so the plan need not be the first
+      // plane declared" — builder.ts's own ZoneBuilder doc comment)
+      const m2 = model('two');
+      m2.plane('arch');
+      const p = m2.plan();
+      const q = p.zone('q', { start: '2026-01-05', end: '2026-01-09' });
+      q.event('e', { at: '2026-01-06' });
+      const json = m2.toJSON();
+      expect(json.containment).toEqual([{ parent: 'q', child: 'e', plane: 'plan' }]);
+      // no plane on the command → canon resolves to 'arch' (the actual
+      // default here), which must not match an edge tagged 'plan'
+      expect(removeContainment(json, 'q', 'e').containment).toEqual(json.containment);
+    });
+  });
+
   it('deletePlane of the first plane removes untagged containment', () => {
     const m = deletePlane(base(), 'arch');
     expect(m.containment).toEqual([]); // untagged sys>a and sys>b were owned by 'arch'

@@ -308,6 +308,12 @@ function currentParents(model: DiagramModel, plane: string | undefined, id: stri
  * is never assigned: their drag is the date move, and DiagramView never
  * reports them here — refused again HERE so this function's contract does
  * not depend on who called it. Returns undefined when nothing would change.
+ * `plane` is the studio's own active plane — possibly undefined, when the
+ * viewer is on the default one — passed straight through to the
+ * remove-containment/add-containment commands below; core resolves it
+ * (mutate.ts's canonicalPlane and its now plane-comparison-resolved
+ * addContainment/removeContainment), so this function does not need to know
+ * whether the plan happens to be the first-declared (default) plane or not.
  */
 export function assign(
   model: DiagramModel,

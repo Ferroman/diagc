@@ -433,7 +433,17 @@ function wouldCycle(m: DiagramModel, parent: string, child: string, plane?: stri
  * Resolve a plane argument to its canonical containment form: undefined stays
  * undefined; a declared plane resolves its `containmentOf` borrow (one hop) and,
  * if that lands on the first-declared (default) plane, collapses to `undefined`
- * so edges are stored/compared in the untagged base form. Throws on unknowns.
+ * so a NEW edge is always written in the untagged base form. Throws on unknowns.
+ *
+ * That collapse is a write-time convention only — an existing edge can still
+ * carry an explicit tag for the default plane (the builder DSL always names
+ * a plan's own plane on its containment, "so the plan need not be the first
+ * plane declared", even when it happens to be first — ZoneBuilder). A caller
+ * comparing against this function's result must therefore resolve THAT side
+ * too (`e.plane ?? defaultPlane`, the same normalisation `wouldCycle` above
+ * already does for its own read), not compare `e.plane` against `canon`
+ * directly, or a builder-tagged default-plane edge never matches a command
+ * that (correctly) canonicalizes to `undefined`.
  */
 function canonicalPlane(m: DiagramModel, plane?: string): string | undefined {
   if (plane === undefined) return undefined;
@@ -449,7 +459,13 @@ export function addContainment(m: DiagramModel, parent: string, child: string, p
   requireNode(m, child);
   if (parent === child) throw new CommandError(`Node '${parent}' cannot contain itself`);
   const canon = canonicalPlane(m, plane);
-  if (m.containment.some((e) => e.parent === parent && e.child === child && e.plane === canon)) return m;
+  // Resolved on both sides (see canonicalPlane's comment): an edge already in
+  // the model may carry an explicit tag for what is, today, the default
+  // plane (the builder DSL always tags a plan's containment), which a bare
+  // `e.plane === canon` would miss.
+  const defaultPlane = (m.planes ?? [])[0]?.id;
+  const key = canon ?? defaultPlane;
+  if (m.containment.some((e) => e.parent === parent && e.child === child && (e.plane ?? defaultPlane) === key)) return m;
   if (wouldCycle(m, parent, child, canon)) {
     throw new CommandError(`'${parent}' > '${child}' would create a containment cycle`);
   }
@@ -478,9 +494,13 @@ export function groupNodes(
 
 export function removeContainment(m: DiagramModel, parent: string, child: string, plane?: string): DiagramModel {
   const canon = canonicalPlane(m, plane);
+  // Same resolved-both-sides comparison as addContainment's duplicate check —
+  // see canonicalPlane's comment.
+  const defaultPlane = (m.planes ?? [])[0]?.id;
+  const key = canon ?? defaultPlane;
   return {
     ...m,
-    containment: m.containment.filter((e) => !(e.parent === parent && e.child === child && e.plane === canon)),
+    containment: m.containment.filter((e) => !(e.parent === parent && e.child === child && (e.plane ?? defaultPlane) === key)),
   };
 }
 
