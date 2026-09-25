@@ -2543,6 +2543,59 @@ describe('the plan hit mark never leaks outside the plan notation', () => {
   });
 });
 
+describe('a droppable node is not clamped to its parent', () => {
+  // q (zone) > design (nested zone); q > task (a plain node, not a zone/event)
+  function nestedDropModel(): DiagramModel {
+    const m = model('nested-drop');
+    const p = m.plan();
+    const q = p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' });
+    q.zone('design', { name: 'Design', start: '2026-01-05', end: '2026-01-09' });
+    const task = m.node('task', { type: 'service' });
+    q.contains(task);
+    return m.toJSON();
+  }
+
+  // master > master-1: a non-plan notation with its OWN layout (gitLayout) and
+  // real containment (BranchRef.commit addContainment's the commit under its
+  // branch) but no dropTarget/canDrop — the clamp must stay exactly as before.
+  function gitNestedModel(): DiagramModel {
+    const m = model('git-nested');
+    const g = m.gitGraph();
+    g.branch('master', { name: 'Master' }).commit('1.0');
+    return m.toJSON();
+  }
+
+  type RfNode = { id: string; extent?: string; expandParent?: boolean };
+  const nodesOf = () => dragCapture.props['nodes'] as RfNode[];
+
+  it('a plain node nested in a zone carries no extent on a plan profile', async () => {
+    const { container } = render(
+      <DiagramView model={nestedDropModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+    );
+    await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="task"]')).not.toBeNull());
+    const task = nodesOf().find((n) => n.id === 'task');
+    expect(task?.extent).toBeUndefined();
+  });
+
+  it('a nested zone still carries extent: parent — the exemption is for a droppable node, not every child', async () => {
+    const { container } = render(
+      <DiagramView model={nestedDropModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+    );
+    await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="design"]')).not.toBeNull());
+    const design = nodesOf().find((n) => n.id === 'design');
+    expect(design?.extent).toBe('parent');
+  });
+
+  it('a nested node on a non-plan fixture still carries extent: parent', async () => {
+    const { container } = render(
+      <DiagramView model={gitNestedModel()} plane="git-graph" notation="git-graph" mode="edit" edit={{ onNodesMoved: vi.fn() }} />,
+    );
+    await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="master-1"]')).not.toBeNull());
+    const commit = nodesOf().find((n) => n.id === 'master-1');
+    expect(commit?.extent).toBe('parent');
+  });
+});
+
 describe('drop-to-assign', () => {
   // one top-level zone with a nested zone, a roster actor with no role yet,
   // and a plain (non-plan-typed) node with no zone of its own

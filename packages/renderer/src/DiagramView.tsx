@@ -777,7 +777,20 @@ function Inner(props: DiagramViewProps) {
           // used to carry the child straight out through the wall. A notation
           // that owns the arrangement sizes its own rows, so there the old
           // edit-mode clamp stays.
-          ...(parent === undefined
+          //
+          // ...unless the node is one this drag may DROP into a different
+          // parent (dropTargetFor/onDropInto): a plan's plain node or actor,
+          // already nested in a zone, still counts as droppable, and both
+          // `extent: 'parent'` and `expandParent` would stop it ever reaching
+          // a neighbouring zone — the clamp reads it as a reparent attempt to
+          // resist, the drop feature reads the same gesture as the point. No
+          // notation today combines a droppable node with `expandParent`
+          // (only the plan sets `dropTarget`/`canDrop`, and the plan owns its
+          // layout, so it only ever reaches the `extent` branch below) — the
+          // `expandParent` omission is here anyway so a future notation that
+          // did combine them would not grow the wrong box mid-drag toward a
+          // sibling's.
+          ...(parent === undefined || (profile.node?.dropTarget !== undefined && profile.node?.canDrop?.(n.node) === true)
             ? {}
             : profile.layout === undefined
               ? { expandParent: true }
