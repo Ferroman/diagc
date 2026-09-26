@@ -1,6 +1,6 @@
 {
   "name": "@diagc/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Author software-architecture diagrams as code, compile them to a validated model, edit them in a local studio, and publish pages and images.",
   "license": "AGPL-3.0-only",
   "author": "Bogdan Frankovskyi",
@@ -11,7 +11,15 @@
     "directory": "packages/diagc"
   },
   "bugs": "https://github.com/Ferroman/diagc/issues",
-  "keywords": ["diagram", "diagrams-as-code", "architecture", "c4", "causal-loop", "cli", "studio"],
+  "keywords": [
+    "diagram",
+    "diagrams-as-code",
+    "architecture",
+    "c4",
+    "causal-loop",
+    "cli",
+    "studio"
+  ],
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -22,7 +30,12 @@
   "exports": {
     ".": "./src/compile.ts"
   },
-  "files": ["bin", "dist", "assets", "THIRD-PARTY-NOTICES.md"],
+  "files": [
+    "bin",
+    "dist",
+    "assets",
+    "THIRD-PARTY-NOTICES.md"
+  ],
   "scripts": {
     "prepack": "cd ../.. && pnpm build:dist"
   },
