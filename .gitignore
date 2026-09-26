@@ -1,6 +1,7 @@
 node_modules/
 .diagrams/.artifacts/
 dist/
+.diagrams/src/scratch/
 
 # Browser artifacts staged into the CLI package by `pnpm build:dist`; rebuilt
 # on every pack, never committed.
