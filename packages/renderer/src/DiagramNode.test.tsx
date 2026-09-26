@@ -1252,6 +1252,28 @@ describe('QuickAddButton', () => {
     }
   });
 
+  it('an activity lane carries a pair on its edges, each asking for its own side; a frame carries none', () => {
+    const run = vi.fn();
+    const label = vi.fn((_id: string, side?: string) =>
+      side === 'before' ? 'Add a lane above' : side === 'after' ? 'Add a lane below' : undefined,
+    );
+    const { container } = renderNode({ typeId: 'activity-lane', label: 'Ops', quickAdd: { label, run } }, true);
+    const above = screen.getByRole('button', { name: 'Add a lane above' });
+    const below = screen.getByRole('button', { name: 'Add a lane below' });
+    expect(container.querySelector(".dg-activity-lane > .dg-quick-add[data-side='before']")).toBe(above);
+    expect(container.querySelector(".dg-activity-lane > .dg-quick-add[data-side='after']")).toBe(below);
+    // only the lower one is Tab's action
+    expect(above.getAttribute('title')).toBe('Add a lane above');
+    expect(below.getAttribute('title')).toBe('Add a lane below (Tab)');
+    fireEvent.click(above);
+    expect(run).toHaveBeenLastCalledWith('n1', 'before');
+    fireEvent.click(below);
+    expect(run).toHaveBeenLastCalledWith('n1', 'after');
+    cleanup();
+    const frame = renderNode({ typeId: 'activity-frame', label: 'Flow', quickAdd: { label: () => 'Add', run } }, true);
+    expect(frame.container.querySelector('.dg-quick-add')).toBeNull();
+  });
+
   // `+` and Tab are one action, so a Tab while a name is being typed must do
   // both halves at once: commit the name, then chain the add. Two keystrokes per
   // node (Tab to commit, Tab to add) is what the spec's `+`, type, Tab, type …

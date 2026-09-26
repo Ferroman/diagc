@@ -259,6 +259,11 @@ button.dg-comment-badge:hover { filter: brightness(1.12); }
    (see FISHBONE_LAYOUT), so the 18px chip has to hang 13px below the box to
    stop touching it */
 .dg-fb-head > .dg-quick-add, .dg-fb-cause > .dg-quick-add { top: auto; bottom: -13px; transform: translate(50%, 0); }
+/* an activity lane's pair sits on its horizontal edges, centred: the new band
+   goes in above or below. Past the rotated name strip, whatever the lane's width. */
+.dg-activity-lane > .dg-quick-add[data-side] { right: auto; left: 50%; }
+.dg-activity-lane > .dg-quick-add[data-side='before'] { top: 0; transform: translate(-50%, -50%); }
+.dg-activity-lane > .dg-quick-add[data-side='after'] { top: auto; bottom: 0; transform: translate(-50%, 50%); }
 /* Chrome-less mode (the PNG export): drop the affordances nobody can click in a
    still image, so a committed picture is the diagram and nothing else. The
    link badge is part of that contract too — a still export can't follow it,

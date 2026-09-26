@@ -17,6 +17,7 @@ import type { StylePreset } from './stylePresets';
 import type { SketchShapeKind } from './sketch';
 import { threatBadgeProps } from './threat-badge';
 import { typeSubtitle } from './type-subtitle';
+import type { EditingApi, QuickAddSide } from './view-types';
 
 export interface DiagramNodeData {
   // --- rendering: identity, look, label ----------------------------------
@@ -92,7 +93,7 @@ export interface DiagramNodeData {
   onOpenLink?: (link: string) => void;
   /** edit: the `+` offer for this node (see EditingApi.quickAdd); absent in
    * view mode or when the host has no recipe */
-  quickAdd?: { label: (id: string) => string | undefined; run: (id: string) => void };
+  quickAdd?: EditingApi['quickAdd'];
   /** edit, plan notation: a role chip's menu chose a role for its actor, or
    * `null` to remove it (see EditingApi.onSetRole). Absent in view mode or off
    * the plan notation — the chip then stays the plain span it always was. */
@@ -397,25 +398,31 @@ export function QuickAddButton({
   id,
   data,
   selected,
+  side,
 }: {
   id: string;
   data: DiagramNodeData;
   selected: boolean | undefined;
+  /** an edge-anchored offer (activity lanes: one above, one below); only the
+   * lower one shares Tab's action, so only it names the key */
+  side?: QuickAddSide;
 }): import('react').ReactElement | null {
   if (selected !== true || data.quickAdd === undefined) return null;
-  const label = data.quickAdd.label(id);
+  const label = data.quickAdd.label(id, side);
   if (label === undefined) return null;
   const run = data.quickAdd.run;
   return (
     <button
       type="button"
       className="dg-quick-add nodrag"
-      title={`${label} (Tab)`}
+      title={side === 'before' ? label : `${label} (Tab)`}
       aria-label={label}
+      {...(side !== undefined ? { 'data-side': side } : {})}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();
-        run(id);
+        if (side === undefined) run(id);
+        else run(id, side);
       }}
     >
       +
@@ -839,6 +846,12 @@ export function DiagramNode({
           <span className="dg-activity-name">{name}</span>
         </span>
         {sideHandles}
+        {!isFrame && (
+          <>
+            <QuickAddButton id={id} data={data} selected={selected} side="before" />
+            <QuickAddButton id={id} data={data} selected={selected} side="after" />
+          </>
+        )}
       </div>
     );
   }

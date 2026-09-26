@@ -43,6 +43,22 @@ describe('applyCommand', () => {
     expect(s.model.containment).toContainEqual({ parent: 'sys', child: 'db' });
   });
 
+  it('add-node with parent.before/after slots the membership beside a sibling (child order = declaration order)', () => {
+    const base = applyCommand(state(), { type: 'add-node', node: { id: 'b', name: 'B' }, parent: { id: 'sys' } });
+    const kids = (s: typeof base) => s.model.containment.filter((e) => e.parent === 'sys').map((e) => e.child);
+    expect(kids(base)).toEqual(['a', 'b']);
+    const above = applyCommand(base, { type: 'add-node', node: { id: 'x', name: 'X' }, parent: { id: 'sys', before: 'b' } });
+    expect(kids(above)).toEqual(['a', 'x', 'b']);
+    const below = applyCommand(base, { type: 'add-node', node: { id: 'y', name: 'Y' }, parent: { id: 'sys', after: 'a' } });
+    expect(kids(below)).toEqual(['a', 'y', 'b']);
+  });
+
+  it('add-node refuses a before/after sibling that is not a child of the parent', () => {
+    expect(() =>
+      applyCommand(state(), { type: 'add-node', node: { id: 'x', name: 'X' }, parent: { id: 'sys', before: 'nope' } }),
+    ).toThrow(/not a child/);
+  });
+
   it('preserves identity of the untouched half of the state', () => {
     const before = state();
     const afterModel = applyCommand(before, { type: 'rename-node', id: 'a', name: 'A!' });

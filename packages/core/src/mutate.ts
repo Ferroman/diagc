@@ -454,7 +454,13 @@ function canonicalPlane(m: DiagramModel, plane?: string): string | undefined {
   return resolved === planes[0]?.id ? undefined : resolved;
 }
 
-export function addContainment(m: DiagramModel, parent: string, child: string, plane?: string): DiagramModel {
+export function addContainment(
+  m: DiagramModel,
+  parent: string,
+  child: string,
+  plane?: string,
+  beside?: { sibling: string; side: 'before' | 'after' },
+): DiagramModel {
   requireNode(m, parent);
   requireNode(m, child);
   if (parent === child) throw new CommandError(`Node '${parent}' cannot contain itself`);
@@ -469,7 +475,14 @@ export function addContainment(m: DiagramModel, parent: string, child: string, p
   if (wouldCycle(m, parent, child, canon)) {
     throw new CommandError(`'${parent}' > '${child}' would create a containment cycle`);
   }
-  return { ...m, containment: [...m.containment, { parent, child, ...(canon !== undefined ? { plane: canon } : {}) }] };
+  const edge = { parent, child, ...(canon !== undefined ? { plane: canon } : {}) };
+  if (beside === undefined) return { ...m, containment: [...m.containment, edge] };
+  // Children read in declaration order, so the slot in the flat array IS the
+  // sibling order — insert next to the sibling's own membership.
+  const at = m.containment.findIndex((e) => e.parent === parent && e.child === beside.sibling && e.plane === canon);
+  if (at === -1) throw new CommandError(`'${beside.sibling}' is not a child of '${parent}'`);
+  const i = beside.side === 'before' ? at : at + 1;
+  return { ...m, containment: [...m.containment.slice(0, i), edge, ...m.containment.slice(i)] };
 }
 
 /**

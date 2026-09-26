@@ -15,6 +15,7 @@ import {
   type EdgeLabelMoves,
   type LeverageFocus,
   type LoopEdgeInput,
+  type QuickAddSide,
   type Side,
 } from '@diagc/renderer';
 import {
@@ -457,13 +458,13 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     borrowsContainment: activePlaneBorrowsContainment,
     penLayer,
   };
-  const runQuickAdd = (id: string): boolean => {
+  const runQuickAdd = (id: string, side?: QuickAddSide): boolean => {
     // peek(): the synchronous session, so the add is built on the model the
     // gesture was made on — Tab commits the name being typed a moment before it
     // adds, and the new node's id must not collide with that render's stale one.
     const m = editor.peek()?.state.model;
     if (!editing || m === undefined) return false;
-    const out = quickAdd(m, id, quickAddCtx);
+    const out = quickAdd(m, id, quickAddCtx, side);
     if (out === undefined) return false;
     const key = layoutPlaneKey(m, activePlane);
     // the source's own box size, when it was ever resized — the sibling takes it
@@ -1249,7 +1250,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                       onSetThreatStatus: setThreatStatus,
                       onEditThreatText: editThreatText,
                       quickAdd: {
-                        label: (id: string) => (model !== undefined ? quickAddLabel(model, id, quickAddCtx) : undefined),
+                        label: (id: string, side?: QuickAddSide) =>
+                          model !== undefined ? quickAddLabel(model, id, quickAddCtx, side) : undefined,
                         run: runQuickAdd,
                       },
                       onNodesMoved: (positions: Record<string, { x: number; y: number }>, deltas: Record<string, { dx: number; dy: number }>) => {
