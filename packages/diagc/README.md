@@ -55,4 +55,4 @@ Full docs, tutorials, and the model reference: <https://github.com/Ferroman/diag
 
 ## License
 
-MIT
+[AGPL-3.0-only](https://github.com/Ferroman/diagc/blob/main/LICENSE), with additional permissions under section 7: diagrams you author, and the pages and images built from them, are yours to license however you like. A commercial license is available. See the [project README](https://github.com/Ferroman/diagc#license).

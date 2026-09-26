@@ -6,7 +6,7 @@ The diagram model behind [`diagc`](https://www.npmjs.com/package/@diagc/cli): th
 npm i -D @diagc/core
 ```
 
-Install it alongside `diagc` to get types and completion when authoring `.diagram.ts` files:
+Install it alongside the CLI (`@diagc/cli`) to get types and completion when authoring `.diagram.ts` files:
 
 ```ts
 import { model } from '@diagc/core';
@@ -24,4 +24,4 @@ Docs and the full model reference: <https://github.com/Ferroman/diagc>
 
 ## License
 
-MIT
+[AGPL-3.0-only](https://github.com/Ferroman/diagc/blob/main/LICENSE), with additional permissions under section 7: diagrams you author, and the pages and images built from them, are yours to license however you like. A commercial license is available. See the [project README](https://github.com/Ferroman/diagc#license).
