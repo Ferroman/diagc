@@ -5,7 +5,7 @@ Author software-architecture diagrams as code, edit them in a local visual studi
 Diagrams are plain files in your repo, so they diff, review, and refactor like the rest of it.
 
 ```bash
-npm i -g diagc      # or: npx diagc studio
+npm i -g @diagc/cli   # or: npx @diagc/cli studio
 ```
 
 Needs Node ≥ 22.
@@ -55,4 +55,4 @@ Full docs, tutorials, and the model reference: <https://github.com/Ferroman/diag
 
 ## License
 
-MIT
+[AGPL-3.0-only](https://github.com/Ferroman/diagc/blob/main/LICENSE), with additional permissions under section 7: diagrams you author, and the pages and images built from them, are yours to license however you like. A commercial license is available. See the [project README](https://github.com/Ferroman/diagc#license).

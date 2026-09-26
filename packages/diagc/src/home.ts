@@ -77,7 +77,7 @@ export function resolveCoreEntry(resolve: (id: string) => string = createRequire
     return resolve('@diagc/core');
   } catch {
     throw new Error(
-      "diagc is installed without its '@diagc/core' dependency — reinstall it (npm i -g diagc).",
+      "diagc is installed without its '@diagc/core' dependency — reinstall it (npm i -g @diagc/cli).",
     );
   }
 }

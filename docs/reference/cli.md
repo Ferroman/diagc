@@ -5,8 +5,8 @@ The command-line interface. Invoked as `diagc <command>` from an install, from a
 ## Installing
 
 ```bash
-npm i -g diagc                 # global
-npx diagc studio               # without installing
+npm i -g @diagc/cli            # global
+npx @diagc/cli studio          # without installing
 npm i -D @diagc/core     # optional: types for .diagram.ts authoring
 ```
 

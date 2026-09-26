@@ -31,7 +31,7 @@ You author diagrams two ways that meet at the same validated model: write a `.di
 To use the tool on your own repo, install the CLI — no checkout needed:
 
 ```bash
-npm i -g diagc                 # or: npx diagc studio
+npm i -g @diagc/cli            # or: npx @diagc/cli studio
 npm i -D @diagc/core     # optional: types for .diagram.ts authoring
 ```
 
@@ -143,7 +143,7 @@ pnpm typecheck   # tsc --noEmit across every package
 | `packages/core` | `@diagc/core` | Builder DSL, the JSON model + validation, the view compiler. **Published.** |
 | `packages/renderer` | `@diagc/renderer` | React `DiagramView` (React Flow + elk) and the type/kind/theme registries. |
 | `packages/icons` | `@diagc/icons` | Icon id → lucide component. |
-| `packages/diagc` | `diagc` | The `diagc` CLI: compile, watch, publish, studio. **Published.** |
+| `packages/diagc` | `@diagc/cli` | The `diagc` CLI: compile, watch, publish, studio. **Published.** |
 | `apps/studio` | `@diagc/studio` | The browser app and its dev-server API. |
 | `apps/viewer` | `@diagc/viewer` | The single-file shell `publish` stamps a model into. |
 
@@ -151,12 +151,16 @@ The diagrams in these docs are built with this tool — sources in `.diagrams/sr
 
 ### Releasing
 
-`diagc` and `@diagc/core` are published together and share a version. The other packages are build inputs: `renderer`, `icons`, `studio`, and `viewer` are baked into what `diagc` ships and stay private.
+`@diagc/cli` (the `diagc` command) and `@diagc/core` are published together and share a version. The other packages are build inputs: `renderer`, `icons`, `studio`, and `viewer` are baked into what `diagc` ships and stay private.
+
+Releases are automated with [release-please](https://github.com/googleapis/release-please) (`.github/workflows/release.yml`). Commits to `main` follow [Conventional Commits](https://www.conventionalcommits.org/): `fix:` makes a patch release, `feat:` a minor one, and `feat!:` or a `BREAKING CHANGE:` footer a major one. release-please keeps a release PR open that bumps the version (root `package.json`, copied into both published manifests) and updates `CHANGELOG.md`. Merging it tags `vX.Y.Z`, creates the GitHub release, and publishes both packages to npm through [trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC, no token). Each package's trusted publisher on npmjs.com must name this repository and `release.yml`. npm only lets you configure one on a package that already exists, so the very first release is published by hand.
+
+To publish by hand instead:
 
 ```bash
 pnpm build:dist                       # compile both packages, build viewer + studio, stage assets
 pnpm --filter @diagc/core pack  # inspect the tarballs before trusting them
-pnpm --filter diagc pack
+pnpm --filter @diagc/cli pack
 pnpm -r publish --access public       # requires `npm adduser` first
 ```
 

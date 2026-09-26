@@ -1,5 +1,5 @@
 {
-  "name": "diagc",
+  "name": "@diagc/cli",
   "version": "0.1.0",
   "description": "Author software-architecture diagrams as code, compile them to a validated model, edit them in a local studio, and publish pages and images.",
   "license": "AGPL-3.0-only",
