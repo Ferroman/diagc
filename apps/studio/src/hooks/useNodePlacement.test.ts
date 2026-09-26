@@ -76,6 +76,7 @@ function harness(m: DiagramModel, selection: string | null = null) {
     drillRoot: undefined,
     model: m,
     lib: { library: { categories: [], entries } } as unknown as UseLibrary,
+    today: '2026-01-01',
   });
   return { placement, dispatched };
 }
