@@ -1,0 +1,64 @@
+# Versioning and releases, driven by Conventional Commits on main.
+#
+# release-please keeps one release PR open that bumps the version and writes
+# CHANGELOG.md from the commits since the last release. Merging that PR tags vX.Y.Z,
+# creates the GitHub release, and then the publish job ships both npm packages.
+#
+# One version for the whole repo (release-please-config.json): `diagc` bakes in the
+# renderer, studio and viewer, so a commit anywhere can change what it ships, and
+# `@diagc/core` is published in lockstep with it. The root package.json carries the
+# version; `extra-files` copies it into the two published manifests.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # npm provenance: ties each published tarball to this workflow run.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      # pnpm, never npm: it rewrites publishConfig and `workspace:*` (see README §
+      # Releasing). Each package's prepack rebuilds its dist, so nothing stale ships.
+      # --no-git-checks: the checkout is a detached tag, not a branch.
+      - run: pnpm -r publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'

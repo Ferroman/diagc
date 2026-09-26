@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "18af518485af1e0a094fa98dd46c7b057b4e7fff",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "diagc",
+      "include-component-in-tag": false,
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        { "type": "json", "path": "packages/core/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/diagc/package.json", "jsonpath": "$.version" }
+      ]
+    }
+  }
+}

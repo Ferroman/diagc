@@ -153,6 +153,10 @@ The diagrams in these docs are built with this tool — sources in `.diagrams/sr
 
 `diagc` and `@diagc/core` are published together and share a version. The other packages are build inputs: `renderer`, `icons`, `studio`, and `viewer` are baked into what `diagc` ships and stay private.
 
+Releases are automated with [release-please](https://github.com/googleapis/release-please) (`.github/workflows/release.yml`). Commits to `main` follow [Conventional Commits](https://www.conventionalcommits.org/): `fix:` makes a patch release, `feat:` a minor one, and `feat!:` or a `BREAKING CHANGE:` footer a major one. release-please keeps a release PR open that bumps the version (root `package.json`, copied into both published manifests) and updates `CHANGELOG.md`. Merging it tags `vX.Y.Z`, creates the GitHub release, and publishes both packages to npm with provenance. That publish needs an `NPM_TOKEN` repository secret.
+
+To publish by hand instead:
+
 ```bash
 pnpm build:dist                       # compile both packages, build viewer + studio, stage assets
 pnpm --filter @diagc/core pack  # inspect the tarballs before trusting them
