@@ -159,7 +159,7 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
     expect((batchOf(flow.command)[0] as { node: { color?: string } }).node.color).toBeUndefined();
   });
 
-  it('Tab offers nothing where the renderer hangs no `+`: activity chrome, and a causal-loop group', () => {
+  it('Tab offers nothing where the renderer hangs no `+`: a frame, a region, and a causal-loop group', () => {
     const m = model('chrome');
     // the shape validate() insists on: frame › lane › region
     const frame = m.node('frame', { name: 'Checkout', type: 'activity-frame' });
@@ -171,7 +171,7 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
     const inner = m.node('inner', { name: 'Backlog' });
     grp.contains(inner);
     const j = m.toJSON();
-    for (const id of ['frame', 'lane', 'region']) {
+    for (const id of ['frame', 'region']) {
       expect(quickAddLabel(j, id, ctx())).toBeUndefined();
       expect(quickAdd(j, id, ctx())).toBeUndefined();
     }
@@ -180,6 +180,47 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
     expect(quickAdd(j, 'grp', cld)).toBeUndefined();
     // a leaf variable is still an ordinary node with a sibling to offer
     expect(quickAddLabel(j, 'inner', cld)).toBe('Add a connected node');
+  });
+
+  it('an activity lane adds a sibling band above or below itself; Tab adds below', () => {
+    const m = model('act');
+    const flow = m.activity('flow');
+    flow.lane('a', { name: 'A', color: '#ff0000' });
+    flow.lane('b', { name: 'B' });
+    const j = m.toJSON();
+    expect(quickAddLabel(j, 'a', ctx(), 'before')).toBe('Add a lane above');
+    expect(quickAddLabel(j, 'a', ctx(), 'after')).toBe('Add a lane below');
+    expect(quickAddLabel(j, 'a', ctx())).toBe('Add a lane below');
+    const above = quickAdd(j, 'a', ctx(), 'before')!;
+    expect(above).toMatchObject({ beside: false });
+    // no colour copied: neighbouring bands are usually told apart by it
+    expect(batchOf(above.command)).toEqual([
+      { type: 'add-node', node: { id: above.id, name: '', type: 'activity-lane' }, parent: { id: 'flow', before: 'a' } },
+    ]);
+    const below = quickAdd(j, 'b', ctx())!;
+    expect(batchOf(below.command)).toEqual([
+      { type: 'add-node', node: { id: below.id, name: '', type: 'activity-lane' }, parent: { id: 'flow', after: 'b' } },
+    ]);
+  });
+
+  it('a side is a lane-only offer, and a lane outside a frame has no sibling band', () => {
+    // raw: the builder validates, and a frameless lane is exactly what it refuses
+    const j: DiagramModel = {
+      version: 1,
+      id: 'odd',
+      name: 'odd',
+      nodes: [
+        { id: 'svc', name: 'svc', type: 'service' },
+        { id: 'loose', name: 'Loose', type: 'activity-lane' },
+      ],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
+    expect(quickAddLabel(j, 'svc', ctx(), 'before')).toBeUndefined();
+    expect(quickAdd(j, 'svc', ctx(), 'after')).toBeUndefined();
+    expect(quickAddLabel(j, 'loose', ctx())).toBeUndefined();
   });
 
   it('git-graph: a lane or its tip commit appends a commit the panel way; a mid-lane, stray or foreign node gets nothing', () => {

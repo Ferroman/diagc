@@ -42,7 +42,19 @@ export function arrangeActivityFrames<T extends Geo>(
 
   const arrange = (frame: ViewNode): void => {
     const lanes = frame.children.filter((c) => typeOf.get(c.id) === 'activity-lane' && out.has(c.id));
-    if (lanes.length === 0) return;
+    if (lanes.length === 0) {
+      // No bands yet (a frame straight off the palette, or one whose last lane
+      // was deleted): elk sized it as a label-sized leaf, or around a stray it
+      // wrongly holds — either way it would read as a shrunken box. Hold it at
+      // one empty band's footprint so it still looks like somewhere to draw.
+      const fg = out.get(frame.id)!;
+      out.set(frame.id, {
+        ...fg,
+        width: Math.max(fg.width, L.TITLE_STRIP_W + L.LANE_MIN_W),
+        height: Math.max(fg.height, L.LANE_MIN_H),
+      });
+      return;
+    }
     const heights: number[] = [];
     // L.LANE_MIN_W's type is the literal `320` (from ACTIVITY_LAYOUT's `as const`),
     // which does not widen through a plain `let` initializer — annotate so the

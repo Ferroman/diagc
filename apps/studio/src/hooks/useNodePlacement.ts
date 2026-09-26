@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { DEFAULT_IMAGE_NODE_SIZE, LEAF_SIZE, PLAN_NOTATION, errMessage, type DiagramModel, type EditorCommand, type NotationId } from '@diagc/core';
+import { DEFAULT_IMAGE_NODE_SIZE, LEAF_SIZE, PLAN_NOTATION, errMessage, uniqueNodeId, type DiagramModel, type DiagramNode, type EditorCommand, type NotationId } from '@diagc/core';
 import type { DiagramSelection, LayoutApi } from '@diagc/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import { readImageSize, uploadAsset } from '../editor/images';
@@ -9,6 +9,7 @@ import type { LibraryEntry } from '../library/types';
 import type { UseLibrary } from '../library/useLibrary';
 import { defaultParentId } from '../newNodeParent';
 import { createNodeAt, placeTags } from '../create-node';
+import { activityDropPosition, homeActivityParent } from '../editor/activityDrop';
 import type { InspectorTab } from '../editor/InspectorTabs';
 
 export interface UseNodePlacementOptions {
@@ -168,7 +169,8 @@ export function useNodePlacement({
   // several in a row).
   // Click-to-place (no position) nests under the selected container, mirroring
   // Add node; drag-to-place passes the drop point, so the node lands there
-  // top-level instead.
+  // top-level instead — or, dropped on a node, nests under it (at the drop point
+  // when that node is an activity lane or region, elk-placed otherwise).
   const placeFromLibrary = (
     entry: LibraryEntry,
     opts?: { parentId?: string; position?: { x: number; y: number } },
@@ -177,8 +179,16 @@ export function useNodePlacement({
     if (m === undefined) return;
     const kind = entry.template.image !== undefined || entry.template.shape !== undefined ? 'icon' : 'node';
     // Drop-on-node or click-with-selection nests; a bare drop point lands in the
-    // current drilled level, or top-level when not drilled.
-    const parentId = opts?.parentId ?? (opts?.position === undefined ? defaultParentId(selection, drillRoot) : drillRoot);
+    // current drilled level, or top-level when not drilled. Inside an activity
+    // frame the target is re-homed to a lane (only lanes may sit in a frame).
+    const boundsOf = (id: string) => layoutApiRef.current?.nodeBounds(id);
+    const parentId = homeActivityParent(
+      m,
+      activePlane,
+      opts?.parentId ?? (opts?.position === undefined ? defaultParentId(selection, drillRoot) : drillRoot),
+      opts?.position,
+      boundsOf,
+    );
     const place = createNodeAt(m, { kind, plane: activePlane, borrowsContainment: activePlaneBorrowsContainment, parentId });
     // A plan plane's Zone/Event templates carry no dates of their own — a
     // library-dropped one is dateless (and invalid) without a seed here.
@@ -187,13 +197,45 @@ export function useNodePlacement({
         ? seedDates(m, activePlane, entry.template.type, { ...(opts?.position !== undefined ? { x: opts.position.x } : {}), ...(parentId !== undefined ? { parentId } : {}) }, today)
         : undefined;
     const node = { ...entryToNode(entry, place.id, placeTags(place, penLayer)), ...(seeded !== undefined ? { metadata: seeded } : {}) };
-    editor.dispatch({ type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) });
+    const add = { type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) } as const;
+    if (node.type === 'activity-frame') {
+      // A frame is only ever drawn as its lanes, and the Activity panel's Add
+      // lane is out of sight until the frame is selected: arrive with the first
+      // band so there is somewhere to drop into. One batch, one undo.
+      const lane: DiagramNode = {
+        id: uniqueNodeId(m, 'Lane 1'),
+        name: 'Lane 1',
+        type: 'activity-lane',
+        ...placeTags(place, penLayer),
+      };
+      const lanePlane = activePlane !== undefined ? { plane: activePlane } : {};
+      editor.dispatch({
+        type: 'batch',
+        commands: [add, { type: 'add-node', node: lane, parent: { id: place.id, ...lanePlane } }],
+      });
+    } else {
+      editor.dispatch(add);
+    }
     if (entry.template.width !== undefined && entry.template.height !== undefined) {
       editor.dispatch({ type: 'set-size', nodeId: place.id, w: entry.template.width, h: entry.template.height });
     }
+    const w = entry.template.width ?? LEAF_SIZE.width;
+    const h = entry.template.height ?? LEAF_SIZE.height;
+    // Dropped into a lane: land where the pointer let go, not wherever elk would
+    // put it — the band then grows around the node you placed.
+    const local =
+      opts?.position === undefined
+        ? undefined
+        : activityDropPosition(m, place.parent?.id, opts.position, { width: w, height: h }, boundsOf);
+    if (local !== undefined) {
+      editor.dispatch({
+        type: 'set-position',
+        nodeId: place.id,
+        ...local,
+        ...(activePlane !== undefined ? { plane: activePlane } : {}),
+      });
+    }
     if (place.parent === undefined && opts?.position !== undefined) {
-      const w = entry.template.width ?? LEAF_SIZE.width;
-      const h = entry.template.height ?? LEAF_SIZE.height;
       editor.dispatch({
         type: 'set-position',
         nodeId: place.id,
@@ -242,8 +284,7 @@ export function useNodePlacement({
   const dropLibraryEntry = (entryId: string, position: { x: number; y: number }, targetNodeId?: string) => {
     const entry = lib.library.entries.find((e) => e.id === entryId);
     if (entry === undefined) return;
-    if (targetNodeId !== undefined) placeFromLibrary(entry, { parentId: targetNodeId });
-    else placeFromLibrary(entry, { position });
+    placeFromLibrary(entry, { position, ...(targetNodeId !== undefined ? { parentId: targetNodeId } : {}) });
   };
 
   // Drop/paste/picker all land here: upload, then create an image node (sized

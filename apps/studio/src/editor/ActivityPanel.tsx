@@ -57,17 +57,27 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
   const planeId = resolveContainmentPlane(model, plane);
   const withPlane = planeId !== undefined ? { plane: planeId } : {};
 
-  const childCount = model.containment.filter(
-    (e) => e.parent === selected.id && (e.plane ?? resolveContainmentPlane(model, undefined)) === planeId,
-  ).length;
+  const inPlane = model.containment.filter((e) => (e.plane ?? resolveContainmentPlane(model, undefined)) === planeId);
   const L = ACTIVITY_LAYOUT;
-  const cascade = { x: L.LANE_STRIP_W + L.PAD + 24 * childCount, y: L.PAD + 16 * childCount };
+  const cascadeIn = (parentId: string) => {
+    const childCount = inPlane.filter((e) => e.parent === parentId).length;
+    return { x: L.LANE_STRIP_W + L.PAD + 24 * childCount, y: L.PAD + 16 * childCount };
+  };
+  // Lanes are added to the frame — the selected one, or the selected lane's own,
+  // so a new band is at hand from wherever you are already working.
+  const frameId =
+    selected.type === 'activity-frame'
+      ? selected.id
+      : selected.type === 'activity-lane'
+        ? inPlane.find((e) => e.child === selected.id)?.parent
+        : undefined;
 
-  const addChild = (node: DiagramNode) => {
+  const addChild = (node: DiagramNode, parentId: string = selected.id) => {
+    const cascade = cascadeIn(parentId);
     onCommand({
       type: 'batch',
       commands: [
-        { type: 'add-node', node, parent: { id: selected.id, ...withPlane } },
+        { type: 'add-node', node, parent: { id: parentId, ...withPlane } },
         { type: 'set-position', nodeId: node.id, x: cascade.x, y: cascade.y, ...withPlane },
       ],
     });
@@ -76,13 +86,13 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
 
   const addLane = () => {
     const name = laneName.trim();
-    if (name === '') return;
+    if (name === '' || frameId === undefined) return;
     addChild({
       id: uniqueNodeId(model, name),
       name,
       type: 'activity-lane',
       ...(laneColor !== '' ? { color: laneColor } : {}),
-    });
+    }, frameId);
     setLaneName('');
   };
 
@@ -95,7 +105,7 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
 
   return (
     <DockSection id="activity" title="Activity" label="Activity diagram" className="sidebar git-panel">
-      {selected.type === 'activity-frame' ? (
+      {frameId !== undefined && (
         <section className="panel-section">
           <h3>Lanes</h3>
           <input aria-label="New lane name" value={laneName} onChange={(e) => setLaneName(e.target.value)} placeholder="Lane name" />
@@ -104,7 +114,8 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
             Add lane
           </button>
         </section>
-      ) : (
+      )}
+      {selected.type !== 'activity-frame' && (
         <section className="panel-section">
           <h3>Elements</h3>
           <input aria-label="Element name" value={elementName} onChange={(e) => setElementName(e.target.value)} placeholder="Name (optional)" />

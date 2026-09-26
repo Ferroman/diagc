@@ -92,7 +92,13 @@ export function openingPins(
 }
 
 export type EditorCommand =
-  | { type: 'add-node'; node: DiagramNode; parent?: { id: string; plane?: string } }
+  | {
+      type: 'add-node';
+      node: DiagramNode;
+      /** `before`/`after` name a sibling to slot the new membership beside:
+       * child order is containment declaration order (activity lanes, git lanes) */
+      parent?: { id: string; plane?: string; before?: string; after?: string };
+    }
   | { type: 'rename-node'; id: string; name: string }
   | { type: 'set-node-details'; id: string; details: NodeDetails }
   | { type: 'set-plan-dates'; id: string; dates: PlanDates }
@@ -366,7 +372,14 @@ function applyModelLayout(state: ModelLayout, command: EditorCommand): ModelLayo
     case 'add-node': {
       let next = addNode(model, command.node);
       if (command.parent !== undefined) {
-        next = addContainment(next, command.parent.id, command.node.id, command.parent.plane);
+        const { id, plane, before, after } = command.parent;
+        const beside =
+          before !== undefined
+            ? { sibling: before, side: 'before' as const }
+            : after !== undefined
+              ? { sibling: after, side: 'after' as const }
+              : undefined;
+        next = addContainment(next, id, command.node.id, plane, beside);
       }
       return { model: next, layout };
     }

@@ -70,6 +70,28 @@ describe('ActivityPanel', () => {
     expect((screen.getByLabelText('New lane name') as HTMLInputElement).value).toBe('');
   });
 
+  it('on a lane: Add lane adds a sibling band to the lane\'s frame', () => {
+    const { onCommand, onSelect } = setup({ kind: 'node', id: 'l' }, frameLaneModel());
+    fireEvent.change(screen.getByLabelText('New lane name'), { target: { value: 'Ops' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add lane' }));
+    expect(onCommand).toHaveBeenCalledWith({
+      type: 'batch',
+      commands: [
+        { type: 'add-node', node: { id: 'ops', name: 'Ops', type: 'activity-lane' }, parent: { id: 'f' } },
+        // the frame already holds one lane: its cascade, not the selected lane's
+        { type: 'set-position', nodeId: 'ops', x: 28 + 24 + 24, y: 24 + 16 },
+      ],
+    });
+    expect(onSelect).toHaveBeenCalledWith('ops');
+    // …and the element quick-adds stay on offer alongside
+    expect(screen.getByRole('button', { name: 'Add action' })).toBeDefined();
+  });
+
+  it('on a region: no Add lane (a region is not a band)', () => {
+    setup({ kind: 'node', id: 'r' }, frameLaneRegionModel());
+    expect(screen.queryByRole('button', { name: 'Add lane' })).toBeNull();
+  });
+
   it('on a lane: Add action creates the node inside the lane at the cascade spot', () => {
     const { onCommand, onSelect } = setup({ kind: 'node', id: 'l' }, frameLaneModel());
     fireEvent.change(screen.getByLabelText('Element name'), { target: { value: 'Fill order' } });

@@ -31,6 +31,9 @@ export const LIBRARY_ENTRY_DND_TYPE = 'application/x-dg-library-entry';
 /** Imperative accessors the host reads to freeze/auto-place layout (the
  * auto-layout toggle, the view-mode freeze chip) and to run the export
  * handshake. Populated in both modes whenever `layoutApiRef` is passed. */
+/** which edge of a band a `+` sits on: add the new one above (`before`) or below (`after`) */
+export type QuickAddSide = 'before' | 'after';
+
 export interface LayoutApi {
   /** current on-screen positions (elk output with pins applied), parent-relative */
   snapshotPositions: () => Record<string, { x: number; y: number }>;
@@ -38,6 +41,10 @@ export interface LayoutApi {
   autoPositions: () => Record<string, { x: number; y: number }>;
   /** viewport center in flow coordinates, or undefined if the canvas isn't mounted */
   viewportCenter: () => { x: number; y: number } | undefined;
+  /** a rendered node's box in flow coordinates (absolute, not parent-relative),
+   * or undefined when it is not on the canvas — how a host turns a drop point
+   * into a position inside the container it landed on */
+  nodeBounds: (id: string) => { x: number; y: number; width: number; height: number } | undefined;
   /** bounding box of the content — every rendered node UNION the active plane's
    * drawings — in flow coordinates, or undefined when nothing is laid out yet
    * and nothing is drawn. Used to size an export snapshot to the real content. */
@@ -277,8 +284,12 @@ export interface EditingApi {
   /** The `+` on a selected node (and the host's Tab): `label(id)` names what
    * it would add — undefined hides the button — and `run(id)` adds it. The
    * host owns the recipe (it knows the notation); the view only draws the
-   * offer and reports the click. */
-  quickAdd?: { label: (id: string) => string | undefined; run: (id: string) => void };
+   * offer and reports the click. An activity lane draws two, one on each edge,
+   * and passes the `side` it was clicked on; Tab passes none. */
+  quickAdd?: {
+    label: (id: string, side?: QuickAddSide) => string | undefined;
+    run: (id: string, side?: QuickAddSide) => void;
+  };
   /** a threat note was dragged: its new offset from the automatic anchor */
   onNoteMoved?: (target: ThreatTarget, offset: { dx: number; dy: number }) => void;
   /** the empty badge/chip or a note's `+`: add a threat on this element. The

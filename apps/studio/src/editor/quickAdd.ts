@@ -26,6 +26,7 @@ import {
   type EditorCommand,
   type NotationId,
 } from '@diagc/core';
+import type { QuickAddSide } from '@diagc/renderer';
 import { createNodeAt, placeTags } from '../create-node';
 import { connectKind } from './connectKind';
 import { addChild, isSubCause } from './fishboneActions';
@@ -71,7 +72,17 @@ export interface QuickAdd {
  * fail `plan-missing` on save; any other plan node (a person, a borrowed
  * container) keeps the generic sibling.
  */
-type Recipe = 'fb-category' | 'fb-cause' | 'so-then' | 'tm-flow' | 'tm-inside' | 'git-commit' | 'plan-next' | 'sibling';
+type Recipe =
+  | 'fb-category'
+  | 'fb-cause'
+  | 'so-then'
+  | 'tm-flow'
+  | 'tm-inside'
+  | 'git-commit'
+  | 'plan-next'
+  | 'lane-above'
+  | 'lane-below'
+  | 'sibling';
 
 const LABELS: Record<Exclude<Recipe, 'plan-next'>, string> = {
   'fb-category': 'Add a category',
@@ -80,6 +91,8 @@ const LABELS: Record<Exclude<Recipe, 'plan-next'>, string> = {
   'tm-flow': 'Add a flow to a new process',
   'tm-inside': 'Add a process inside',
   'git-commit': 'Add a commit',
+  'lane-above': 'Add a lane above',
+  'lane-below': 'Add a lane below',
   sibling: 'Add a connected node',
 };
 
@@ -91,11 +104,20 @@ function labelFor(recipe: Recipe, source: DiagramNode): string {
 }
 
 /** Bands, frames and interruptible regions: the Activity panel's own furniture,
- * drawn as strips rather than boxes, and the renderer hangs no `+` on any of
- * them (see DiagramNode's activity branches). */
+ * drawn as strips rather than boxes. A lane is the one that grows — the renderer
+ * hangs a `+` on each of its horizontal edges for a new band above or below; a
+ * frame and a region get none (see DiagramNode's activity branches). */
 const ACTIVITY_CHROME = new Set(['activity-lane', 'activity-frame', 'activity-region']);
 
-function recipeFor(model: DiagramModel, source: DiagramNode, ctx: QuickAddContext): Recipe | undefined {
+function recipeFor(model: DiagramModel, source: DiagramNode, ctx: QuickAddContext, side?: QuickAddSide): Recipe | undefined {
+  // A lane is a band of its frame whatever the notation, and only a lane
+  // actually in a frame can have a sibling band.
+  if (source.type === 'activity-lane') {
+    const frame = parentIn(model, ctx.plane, source.id);
+    if (frame === undefined || model.nodes.find((n) => n.id === frame)?.type !== 'activity-frame') return undefined;
+    return side === 'before' ? 'lane-above' : 'lane-below';
+  }
+  if (side !== undefined) return undefined;
   switch (ctx.notation) {
     case 'fishbone':
       if (!isFishboneNode(source)) return undefined;
@@ -163,18 +185,28 @@ function parentIn(model: DiagramModel, plane: string | undefined, id: string): s
 }
 
 /** The tooltip alone — the cheap half, called per render of the selected node. */
-export function quickAddLabel(model: DiagramModel, sourceId: string, ctx: QuickAddContext): string | undefined {
+export function quickAddLabel(
+  model: DiagramModel,
+  sourceId: string,
+  ctx: QuickAddContext,
+  side?: QuickAddSide,
+): string | undefined {
   const source = model.nodes.find((n) => n.id === sourceId);
   if (source === undefined) return undefined;
-  const recipe = recipeFor(model, source, ctx);
+  const recipe = recipeFor(model, source, ctx, side);
   return recipe === undefined ? undefined : labelFor(recipe, source);
 }
 
 /** What the `+` on `sourceId` creates, or undefined when nothing applies. */
-export function quickAdd(model: DiagramModel, sourceId: string, ctx: QuickAddContext): QuickAdd | undefined {
+export function quickAdd(
+  model: DiagramModel,
+  sourceId: string,
+  ctx: QuickAddContext,
+  side?: QuickAddSide,
+): QuickAdd | undefined {
   const source = model.nodes.find((n) => n.id === sourceId);
   if (source === undefined) return undefined;
-  const recipe = recipeFor(model, source, ctx);
+  const recipe = recipeFor(model, source, ctx, side);
   if (recipe === undefined) return undefined;
   const label = labelFor(recipe, source);
   switch (recipe) {
@@ -190,6 +222,27 @@ export function quickAdd(model: DiagramModel, sourceId: string, ctx: QuickAddCon
     case 'git-commit': {
       const lane = gitLaneToGrow(model, source, ctx.plane);
       return lane === undefined ? undefined : { label, beside: false, ...appendCommit(model, ctx.plane, lane) };
+    }
+    case 'lane-above':
+    case 'lane-below': {
+      // A new band in the same frame, slotted next to the source: lanes stack
+      // in declaration order (arrangeActivityFrames), so the containment slot
+      // IS the position — no set-position to write.
+      const frame = parentIn(model, ctx.plane, sourceId)!;
+      const place = createNodeAt(model, { kind: 'lane', plane: ctx.plane, borrowsContainment: ctx.borrowsContainment, parentId: frame });
+      const node: DiagramNode = {
+        id: place.id,
+        name: '',
+        type: 'activity-lane',
+        ...placeTags(place, ctx.penLayer),
+      };
+      const slot = recipe === 'lane-above' ? { before: sourceId } : { after: sourceId };
+      return {
+        label,
+        id: place.id,
+        beside: false,
+        command: { type: 'batch', commands: [{ type: 'add-node', node, parent: { ...place.parent!, ...slot } }] },
+      };
     }
     case 'tm-inside': {
       // a boundary is containment, never a flow endpoint: the process goes in,

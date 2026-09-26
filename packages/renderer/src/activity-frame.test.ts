@@ -135,4 +135,29 @@ describe('arrangeActivityFrames', () => {
     expect(out.get('f2')).toEqual({ x: 100, y: 100, width: L.TITLE_STRIP_W + 474, height: 294 });
     expect(out.get('k')).toEqual({ x: 400, y: 50, width: 50, height: 100 });
   });
+
+  it('a lane-less frame keeps one empty band\'s footprint, and still wraps what it holds', () => {
+    // A frame straight off the palette (no lanes yet) is an elk leaf sized by its
+    // label; a stray dropped into it would shrink it to wrap a 24px dot.
+    const m: DiagramModel = {
+      version: 1,
+      id: 'd',
+      name: 'd',
+      nodes: [
+        { id: 'f', name: 'F', type: 'activity-frame' },
+        { id: 'g', name: 'G', type: 'activity-frame' },
+      ],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
+    const g = geo([
+      ['f', { x: 10, y: 20, width: 52, height: 24 }],
+      ['g', { x: 0, y: 500, width: 900, height: 300 }],
+    ]);
+    const out = arrangeActivityFrames(g, view(m), m);
+    expect(out.get('f')).toEqual({ x: 10, y: 20, width: L.TITLE_STRIP_W + L.LANE_MIN_W, height: L.LANE_MIN_H });
+    expect(out.get('g')).toEqual({ x: 0, y: 500, width: 900, height: 300 });
+  });
 });

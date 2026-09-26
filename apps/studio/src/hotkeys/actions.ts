@@ -95,6 +95,7 @@ export const actionOf = (id: ActionId): ActionDef => BY_ID.get(id)!;
 export const FIXED_KEYS: readonly { label: string; keys: string }[] = [
   { label: 'Back to Select, laser off, cancel', keys: 'Esc' },
   { label: 'Delete the selection (edit mode)', keys: 'Delete / Backspace' },
+  { label: 'Copy / paste the selection (edit mode)', keys: 'Ctrl/Cmd + C / V' },
   { label: 'Nudge the selection', keys: 'Arrows (Shift = ×4)' },
   { label: 'Add to the selection, marquee-select', keys: 'Shift + click / drag' },
   { label: 'Move a box or an edge label in view mode', keys: 'Alt + drag' },

@@ -19,7 +19,7 @@ If another action already has the key, nothing changes yet: the dialog names the
 
 Some keys are refused:
 
-- `Esc`, `Delete`, `Backspace` and the arrows have a fixed meaning.
+- `Esc`, `Delete`, `Backspace`, the arrows, and `Ctrl + C` / `Ctrl + V` (copy and paste) have a fixed meaning.
 - Bare `Enter` and `Space` press whichever button has focus, so the action would run twice. `Ctrl + Enter` is fine.
 - `Ctrl + N`, `Ctrl + T`, `Ctrl + W` and a few others never reach a web page; the browser keeps them.
 

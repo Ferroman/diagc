@@ -1286,6 +1286,11 @@ function Inner(props: DiagramViewProps) {
           ? undefined
           : reactFlow.screenToFlowPosition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
       },
+      nodeBounds: (id) => {
+        const n = reactFlow.getInternalNode(id);
+        if (n === undefined) return undefined;
+        return { ...n.internals.positionAbsolute, width: n.measured.width ?? 0, height: n.measured.height ?? 0 };
+      },
       contentBounds: () => {
         const nodes = reactFlow.getNodes();
         const nodeBounds = nodes.length === 0 ? undefined : reactFlow.getNodesBounds(nodes);

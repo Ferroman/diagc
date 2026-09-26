@@ -51,7 +51,7 @@ describe('conflictsOf', () => {
 
 describe('reservedReason', () => {
   it('refuses the fixed keys', () => {
-    for (const c of ['Escape', 'Delete', 'Backspace', 'ArrowLeft', 'Shift+ArrowUp']) {
+    for (const c of ['Escape', 'Delete', 'Backspace', 'ArrowLeft', 'Shift+ArrowUp', 'Mod+C', 'Mod+V']) {
       expect(reservedReason(c)).toBe('This key has a fixed meaning in the studio.');
     }
   });
