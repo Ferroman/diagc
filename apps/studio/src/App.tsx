@@ -57,6 +57,7 @@ import { useDiagramBoot } from './hooks/useDiagramBoot';
 import { useDeepLink } from './hooks/useDeepLink';
 import { useEditSession } from './hooks/useEditSession';
 import { usePersistedState } from './hooks/usePersistedState';
+import { useClipboard } from './hooks/useClipboard';
 import { useNodePlacement } from './hooks/useNodePlacement';
 import { useDiagramActions } from './hooks/useDiagramActions';
 import { useViewOps } from './hooks/useViewOps';
@@ -442,6 +443,21 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     setActiveLayer,
   });
   const { select, switchPlane, activateLayer, toggleLayer, mergeSelectedLayers, toggleExpand, resetView } = view;
+
+  // Ctrl/⌘+C / Ctrl/⌘+V on the canvas (edit mode): the selection, with what it
+  // contains, through the system clipboard — see hooks/useClipboard.
+  useClipboard({
+    editing,
+    editor,
+    layoutApiRef,
+    activePlane,
+    activePlaneBorrowsContainment,
+    activePlaneManual,
+    penLayer,
+    selection,
+    multiSelection: groupSel,
+    select,
+  });
   const { compareSelect, groupSelected } = view;
 
   // The `+` on a selected node and the Tab key are one action: add the node

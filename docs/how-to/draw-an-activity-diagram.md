@@ -76,9 +76,9 @@ The whole picture above is `.diagrams/src/docs/activity.diagram.ts` in this repo
 
 ## In the studio
 
-1. Drag an **Activity frame** off the palette (**UML · Activity** category) onto the canvas.
-2. Select the frame — the **Activity** panel appears on the right with a *Lanes* section. Name a lane, pick a colour if you like, and **Add lane**. Repeat three times; lanes stack top to bottom in the order you add them.
-3. Select a lane (or a region inside one) — the panel switches to *Elements*: an optional name field plus one quick-add button per leaf type (action, decision, fork/join bar, start, end, send signal, receive signal, object, note), and, on a lane, **Add region** for an interruptible sub-area. Each quick-add parents the new node correctly and drops it at a deterministic spot inside the selected scope — no drag-and-drop needed to get it into the right container.
+1. Drag an **Activity frame** off the palette (**UML · Activity** category) onto the canvas. It arrives with one lane, *Lane 1*.
+2. Add more lanes: select a lane and click the `+` on its top or bottom edge for a new lane right above or below it (`Tab` adds below), then type its name. Or name one in the **Activity** panel and **Add lane**, which puts it at the bottom.
+3. Put elements in a lane: drag one off the palette and drop it where you want it — dropped on the frame, it goes into the lane under the pointer; dropped on another element, it goes beside it in that element's lane. Or select a lane (or a region inside one) and use the panel's *Elements*: an optional name field plus one quick-add button per leaf type (action, decision, fork/join bar, start, end, send signal, receive signal, object, note), and, on a lane, **Add region** for an interruptible sub-area. `Ctrl/Cmd` + `C` / `V` copies elements (or whole lanes) and pastes them into the selected lane.
 4. Connect elements by dragging from one to another, the same gesture as any diagram. New connections start as a plain `sync` relation; select the arrow and set its **Kind** to `control`, `object-flow`, `interrupt` or `note-link` to match what it means. Give it a **Label** like `[order accepted]` for a guard.
 5. Rename, recolour and delete lanes, regions and elements the same way as any node.
 

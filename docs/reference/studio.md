@@ -95,6 +95,7 @@ Every action below can be given a different key, a second key, or none: open **K
 | --- | --- |
 | `Esc` | Back to Select, laser off, cancel what is being typed |
 | `Delete` / `Backspace` | Delete the selection (edit mode) |
+| `Ctrl/Cmd` + `C` / `V` | Copy / paste the selection (edit mode): the selected nodes with everything inside them and the relations among them. A paste gets fresh ids, lands 24px down-right of the original (further each time), and goes into the selected container, beside a selected node, or beside the original. Works across diagrams and studio tabs; one undo step. Text fields keep their own copy/paste. |
 | Arrow keys | Nudge the selected node(s): 5px; `Shift` = 20px; the grid step when Snap is on. Works in view mode too — no Alt needed. |
 | `Shift` + click / drag | Add to the selection, marquee-select |
 | `Alt` + drag | Move a box or an edge label in view mode |

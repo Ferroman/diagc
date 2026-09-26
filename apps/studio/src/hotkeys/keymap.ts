@@ -39,6 +39,9 @@ export function conflictsOf(keymap: Keymap, id: ActionId, chord: Chord): ActionI
 }
 
 const FIXED = /^(Shift\+)?(Escape|Delete|Backspace|ArrowUp|ArrowDown|ArrowLeft|ArrowRight)$/;
+// copy/paste ride the browser's own clipboard events (useClipboard): a binding
+// would swallow the keydown, and with it the event
+const CLIPBOARD_CHORDS = new Set<Chord>(['Mod+C', 'Mod+V']);
 const PRESSES_FOCUSED = new Set<Chord>(['Enter', 'Space']);
 // Chromium and Firefox act on these before the page sees a keydown, or ignore
 // preventDefault on them — a binding would simply never fire.
@@ -57,7 +60,7 @@ const BROWSER_OWNED = new Set<Chord>([
 
 /** why `chord` cannot be bound, or null when it can */
 export function reservedReason(chord: Chord): string | null {
-  if (FIXED.test(chord)) return 'This key has a fixed meaning in the studio.';
+  if (FIXED.test(chord) || CLIPBOARD_CHORDS.has(chord)) return 'This key has a fixed meaning in the studio.';
   if (PRESSES_FOCUSED.has(chord)) return 'Enter and Space press the focused button, so the action would run twice.';
   if (BROWSER_OWNED.has(chord)) return 'The browser keeps this key for itself.';
   return null;
