@@ -1,6 +1,6 @@
 {
   "name": "@diagc/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Diagram model, validator, and builder DSL for diagc — no React, no filesystem.",
   "license": "AGPL-3.0-only",
   "author": "Bogdan Frankovskyi",
@@ -10,7 +10,13 @@
     "url": "git+https://github.com/Ferroman/diagc.git",
     "directory": "packages/core"
   },
-  "keywords": ["diagram", "architecture", "c4", "causal-loop", "dsl"],
+  "keywords": [
+    "diagram",
+    "architecture",
+    "c4",
+    "causal-loop",
+    "dsl"
+  ],
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -18,7 +24,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "prepack": "cd ../.. && pnpm build:core"
   },
