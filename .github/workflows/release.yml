@@ -38,7 +38,8 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-      # npm provenance: ties each published tarball to this workflow run.
+      # npm trusted publishing: npm trusts this workflow over OIDC, so there is no
+      # token to store or renew, and every tarball gets a provenance statement.
       id-token: write
     steps:
       - uses: actions/checkout@v4
@@ -53,12 +54,14 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
 
+      # Trusted publishing needs npm >= 11.5.1.
+      - run: npm install -g npm@latest
+
       - run: pnpm install --frozen-lockfile
 
-      # pnpm, never npm: it rewrites publishConfig and `workspace:*` (see README §
-      # Releasing). Each package's prepack rebuilds its dist, so nothing stale ships.
-      # --no-git-checks: the checkout is a detached tag, not a branch.
-      - run: pnpm -r publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: 'true'
+      # pnpm packs, npm publishes. The pack is where pnpm rewrites publishConfig and
+      # `workspace:*` (see README § Releasing), and each package's prepack rebuilds
+      # its dist, so nothing stale ships. The upload goes through npm because its
+      # OIDC exchange is the reference one; pnpm's has broken between releases.
+      - run: pnpm -r --filter @diagc/core --filter diagc exec pnpm pack --pack-destination "$RUNNER_TEMP/tarballs"
+      - run: for t in "$RUNNER_TEMP"/tarballs/*.tgz; do npm publish "$t" --access public; done
