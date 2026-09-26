@@ -1,6 +1,6 @@
 # @diagc/core
 
-The diagram model behind [`diagc`](https://www.npmjs.com/package/diagc): the `DiagramModel` types, `validate()`, the builder DSL, and the view compiler. No React, no filesystem — it does not know it is going to be drawn.
+The diagram model behind [`diagc`](https://www.npmjs.com/package/@diagc/cli): the `DiagramModel` types, `validate()`, the builder DSL, and the view compiler. No React, no filesystem — it does not know it is going to be drawn.
 
 ```bash
 npm i -D @diagc/core

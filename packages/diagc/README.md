@@ -5,7 +5,7 @@ Author software-architecture diagrams as code, edit them in a local visual studi
 Diagrams are plain files in your repo, so they diff, review, and refactor like the rest of it.
 
 ```bash
-npm i -g diagc      # or: npx diagc studio
+npm i -g @diagc/cli   # or: npx @diagc/cli studio
 ```
 
 Needs Node ≥ 22.

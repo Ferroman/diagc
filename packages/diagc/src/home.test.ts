@@ -27,7 +27,7 @@ describe('findHome', () => {
   });
 
   it('finds a packaged install from its staged assets', async () => {
-    const pkg = path.join(tmp, 'node_modules', 'diagc');
+    const pkg = path.join(tmp, 'node_modules', '@diagc', 'cli');
     await mkdir(path.join(pkg, 'dist'), { recursive: true });
     await packageAt(pkg);
     const bin = path.join(pkg, 'dist', 'cli.js');

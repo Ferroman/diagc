@@ -63,5 +63,5 @@ jobs:
       # `workspace:*` (see README § Releasing), and each package's prepack rebuilds
       # its dist, so nothing stale ships. The upload goes through npm because its
       # OIDC exchange is the reference one; pnpm's has broken between releases.
-      - run: pnpm -r --filter @diagc/core --filter diagc exec pnpm pack --pack-destination "$RUNNER_TEMP/tarballs"
+      - run: pnpm -r --filter @diagc/core --filter @diagc/cli exec pnpm pack --pack-destination "$RUNNER_TEMP/tarballs"
       - run: for t in "$RUNNER_TEMP"/tarballs/*.tgz; do npm publish "$t" --access public; done
