@@ -41,6 +41,10 @@ export interface LayoutApi {
   /** bounding box of the content — every rendered node UNION the active plane's
    * drawings — in flow coordinates, or undefined when nothing is laid out yet
    * and nothing is drawn. Used to size an export snapshot to the real content. */
+  /** a rendered node's box in flow coordinates (absolute, not parent-relative),
+   * or undefined when it is not on the canvas — how a host turns a drop point
+   * into a position inside the container it landed on */
+  nodeBounds: (id: string) => { x: number; y: number; width: number; height: number } | undefined;
   contentBounds: () => { x: number; y: number; width: number; height: number } | undefined;
   /** fit that content box (nodes ∪ drawings) into the current viewport (re-run
    * after the frame is resized).

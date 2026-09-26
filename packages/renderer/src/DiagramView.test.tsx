@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getViewportForBounds } from '@xyflow/react';
 import { dayOf, layoutPlaneKey, model, type DiagramModel, type LayoutOverlay, type ThreatTarget } from '@diagc/core';
 import { DiagramView, LIBRARY_ENTRY_DND_TYPE, type CanvasCommands, type LayoutApi } from './DiagramView';
+import { ACTIVITY_LAYOUT } from './activity-frame';
 import { FISHBONE_LAYOUT } from './fishbone-layout';
 import { GIT_LAYOUT } from './git-layout';
 import { PLAN_LAYOUT } from './plan-layout';
@@ -1908,6 +1909,46 @@ describe('activity diagrams', () => {
       });
     expect(await pathOf('act1=>act2:')).not.toContain('C');
     expect(await pathOf('act3=>act4:')).toContain('C');
+  });
+
+  it('a lane-less frame renders at one empty band\'s footprint, not its label size', async () => {
+    const frameOnly: DiagramModel = {
+      version: 1,
+      id: 'frame-only',
+      name: 'frame-only',
+      nodes: [{ id: 'f', name: 'Flow', type: 'activity-frame' }],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
+    const { container } = render(<DiagramView model={frameOnly} />);
+    const wrapper = await waitFor(() => {
+      const w = container.querySelector('.react-flow__node[data-id="f"]') as HTMLElement | null;
+      if (w === null) throw new Error('frame not rendered');
+      return w;
+    });
+    await waitFor(() => expect(wrapper.style.width).toBe(`${ACTIVITY_LAYOUT.TITLE_STRIP_W + ACTIVITY_LAYOUT.LANE_MIN_W}px`));
+    expect(wrapper.style.height).toBe(`${ACTIVITY_LAYOUT.LANE_MIN_H}px`);
+  });
+
+  it('nodeBounds reports a nested lane in absolute flow coordinates, and undefined for an unknown id', async () => {
+    const apiRef = { current: null as LayoutApi | null };
+    const { container } = render(<DiagramView model={activityModel()} layoutApiRef={apiRef} />);
+    await waitFor(() => expect(container.querySelectorAll('.dg-activity-lane')).toHaveLength(2));
+    await waitFor(() => expect(apiRef.current?.nodeBounds('b')).toBeDefined());
+    const frame = apiRef.current!.nodeBounds('flow')!;
+    const a = apiRef.current!.nodeBounds('a')!;
+    const b = apiRef.current!.nodeBounds('b')!;
+    const act1 = apiRef.current!.nodeBounds('act1')!;
+    // lanes are banded inside the frame: past its title strip, b stacked under
+    // a (lane a holds one action, so it is one empty band tall). Positions only:
+    // jsdom measures every box 800×600 (test-setup).
+    expect(a.x).toBe(frame.x + ACTIVITY_LAYOUT.TITLE_STRIP_W);
+    expect(b.y).toBe(a.y + ACTIVITY_LAYOUT.LANE_MIN_H);
+    // a grandchild accumulates both parents' offsets
+    expect(act1.x).toBeGreaterThan(a.x);
+    expect(apiRef.current!.nodeBounds('nope')).toBeUndefined();
   });
 
   it('a bar leaf gets its registry default size', async () => {
