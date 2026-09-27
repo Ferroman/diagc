@@ -34,7 +34,10 @@
    text (see the UML-glyph label:'' entries in registry.ts) the div has nothing
    to size itself around, so it must explicitly fill the wrapper, same precedent
    as .dg-circle-node. */
-.dg-shape-diamond { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); min-width: 0; padding: 4px; display: flex; align-items: center; justify-content: center; text-align: center; width: 100%; height: 100%; box-sizing: border-box; }
+.dg-shape-diamond { position: relative; background: none; border: none; border-radius: 0; min-width: 0; padding: 4px; display: flex; align-items: center; justify-content: center; text-align: center; width: 100%; height: 100%; box-sizing: border-box; }
+/* the diamond itself: the node box stays unpainted, the polygon draws fill and stroke */
+.dg-diamond-glyph { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.dg-diamond-glyph polygon { stroke-width: 1.5px; stroke-linejoin: round; }
 .dg-shape-bar { background: var(--dg-node-stroke); border: none; border-radius: 2px; min-width: 0; padding: 0; width: 100%; height: 100%; box-sizing: border-box; }
 .dg-shape-start-dot { background: var(--dg-node-stroke); border: none; border-radius: 50%; min-width: 0; padding: 0; width: 100%; height: 100%; box-sizing: border-box; }
 .dg-shape-end-bullseye { border-radius: 50%; min-width: 0; padding: 0; position: relative; background: var(--dg-node-fill); width: 100%; height: 100%; box-sizing: border-box; }
@@ -61,7 +64,6 @@
   min-width: 0; width: 100%; height: 100%; box-sizing: border-box;
   display: flex; align-items: center; justify-content: center;
 }
-.dg-style-rough .dg-shape-diamond,
 .dg-style-rough .dg-shape-send-signal,
 .dg-style-rough .dg-shape-receive-signal,
 .dg-style-rough .dg-shape-note { clip-path: none; }

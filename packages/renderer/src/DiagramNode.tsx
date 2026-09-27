@@ -952,7 +952,7 @@ export function DiagramNode({
           ...(style.textOn !== undefined ? { color: style.textOn } : {}),
         }
       : undefined;
-  const boxAccent = {
+  const boxAccent: CSSProperties = {
     ...(solid ?? (outline ? { borderColor: data.color, color: data.color } : accentStyle(data.color))),
     // an explicit text color overrides the default (which follows the accent on C4 boxes)
     ...(data.textColor !== undefined ? { color: data.textColor } : {}),
@@ -982,6 +982,19 @@ export function DiagramNode({
     >
       <XResizer id={id} data={data} selected={selected} />
       {!isTypelessText && sketchOf(data, style.shape, id, width, height)}
+      {style.shape === 'diamond' && data.stylePreset?.rough === undefined && (
+        // A clip-path cut the border off every diagonal edge, leaving the diamond
+        // drawn by its fill alone — near the canvas colour in the light theme. The
+        // polygon carries both, in the same colours the box would have used.
+        <svg className="dg-diamond-glyph" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <polygon
+            points="50,1 99,50 50,99 1,50"
+            vectorEffect="non-scaling-stroke"
+            fill={String(boxAccent.background ?? 'var(--dg-node-fill)')}
+            stroke={boxAccent.borderColor ?? 'var(--dg-node-stroke)'}
+          />
+        </svg>
+      )}
       <div className="dg-node-row">
         {ghostArrow}
         {data.image !== undefined && (
