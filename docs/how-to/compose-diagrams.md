@@ -49,6 +49,18 @@ Include 'https://example.com/svc.diagram.json' is not snapshotted — run 'diagc
 
 `diagc publish --update-includes` does the same thing during a publish (publish always compiles the whole source tree first, so its prune is unconditional).
 
+### Private hosts
+
+`--update-includes` fetches without credentials unless `DIAGC_AUTH_TOKENS` names the host. The format is Deno's `DENO_AUTH_TOKENS`: `;`-separated entries, each `token@host` (sent as `Authorization: Bearer <token>`) or `user:password@host` (sent as basic auth). Include the port in the host when the URL has one.
+
+```bash
+DIAGC_AUTH_TOKENS='ghp_xxx@raw.githubusercontent.com' diagc compile --update-includes
+```
+
+A credential goes only to the host it names, only over https, and not across a redirect to another host. Relative includes inside a private include resolve against its URL, so they reach the same host and carry the same token. The vendored snapshots are ordinary files, so locked compiles, CI included, need no token.
+
+For GitHub, a fine-grained token with read access to the repository's contents works against `raw.githubusercontent.com` URLs. GitLab documents bearer tokens for its REST API, so point the include at the repository files API (`https://gitlab.com/api/v4/projects/<id>/repository/files/<path>/raw?ref=<branch>`, with the path URL-encoded). Relative includes cannot resolve against that URL, so give nested includes absolute URLs too.
+
 ## Choosing the grafted plane
 
 By default, `include` grafts the child diagram's **default plane** — its first-declared plane, or its only (implicit) one if it has no planes at all. Name a different plane with `includePlane`:
