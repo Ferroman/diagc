@@ -222,17 +222,23 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // itself re-run the layout.
   const modelDirection = defaultLayoutDirection(input.model);
   const partitioned = input.profile.partitionOf !== undefined;
+  // the notation's algorithm where the sidecar names none (a CLD's stress)
+  const notationAlgorithm = input.profile.defaultAlgorithm;
   const runSettings = useMemo((): LayoutSettings | undefined => {
-    const resolved =
+    const directed =
       layoutSettings?.direction !== undefined || modelDirection === FALLBACK_DIRECTION
         ? layoutSettings
         : { ...layoutSettings, direction: modelDirection };
+    const resolved =
+      notationAlgorithm === undefined || directed?.algorithm !== undefined
+        ? directed
+        : { ...directed, algorithm: notationAlgorithm };
     // partitions are a layered feature: another algorithm would ignore them and
     // the bands would be drawn over an arrangement that knows nothing of them
     if (!partitioned || resolved?.algorithm === undefined) return resolved;
     const { algorithm: _layeredOnly, ...rest } = resolved;
     return rest;
-  }, [layoutSettings, modelDirection, partitioned]);
+  }, [layoutSettings, modelDirection, partitioned, notationAlgorithm]);
 
   // What a partitioned notation derives for its nodes (second-order thinking's
   // consequence order): forces one layered run so every band lines up, whatever

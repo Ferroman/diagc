@@ -124,6 +124,23 @@ describe('useViewLayout', () => {
     spy.mockRestore();
   });
 
+  it("runs the notation's default algorithm unless the sidecar names one, layered included", async () => {
+    const m = fixture();
+    const settingsOf = async (layout?: LayoutOverlay) => {
+      const spy = vi.spyOn(layoutModule, 'layoutView');
+      const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+        initialProps: inputFor(m, { profile: notationProfile('causal-loop'), ...(layout !== undefined ? { layout } : {}) }),
+      });
+      await waitFor(() => expect(result.current.geometry).not.toBeNull());
+      const settings = spy.mock.calls[0]![2];
+      spy.mockRestore();
+      return settings;
+    };
+    expect((await settingsOf())?.algorithm).toBe('stress');
+    const layered: LayoutOverlay = { version: 1, planes: {}, settings: { default: { algorithm: 'layered' } } };
+    expect((await settingsOf(layered))?.algorithm).toBe('layered');
+  });
+
   it('substitutes saved overlay positions for viewers, unless the viewer set them aside', async () => {
     const m = fixture();
     const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 400, y: 50 } } } };

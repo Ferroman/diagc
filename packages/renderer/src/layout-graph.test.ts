@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, model } from '@diagc/core';
-import { liftEdges, layoutOptionsFor, usesNestedLayout, buildGraph, COLLAPSED_SIZE, componentGap, containerPad, type ElkShape } from './layout-graph';
+import { liftEdges, layoutOptionsFor, usesNestedLayout, buildGraph, COLLAPSED_SIZE, componentGap, containerPad, STRESS_EDGE_LENGTH, type ElkShape } from './layout-graph';
 
 /**
  * Two containers, two leaves each, and one relation of every shape that matters:
@@ -343,5 +343,13 @@ describe('buildGraph on an activity', () => {
     const forced = buildGraph(activity(), undefined, { direction: 'RIGHT', algorithm: 'force' });
     expect(forced.graph.layoutOptions?.['elk.layered.cycleBreaking.strategy']).toBeUndefined();
     expect(forced.reversed.size).toBe(0);
+  });
+});
+
+describe('layoutOptionsFor stress', () => {
+  it('asks for edges about a label long, and only of stress', () => {
+    expect(layoutOptionsFor({ algorithm: 'stress' })['elk.stress.desiredEdgeLength']).toBe(String(STRESS_EDGE_LENGTH));
+    expect(layoutOptionsFor({ algorithm: 'force' })['elk.stress.desiredEdgeLength']).toBeUndefined();
+    expect(layoutOptionsFor()['elk.stress.desiredEdgeLength']).toBeUndefined();
   });
 });

@@ -40,7 +40,7 @@ export default m;
 
 There is no builder for this notation and it needs none: `m.notation('causal-loop')` to declare it, plain typeless `m.node`s for the variables, and `m.relate` carrying `polarity`. Sign every link — one unsigned link is enough to leave its whole loop unclassified. `delay: true` marks a link whose effect arrives much later. `polarity` outside `+` and `-` fails validation with `invalid-polarity`, and a non-boolean `delay` with `invalid-delay`.
 
-Automatic layout has no notion of a circle, so a diagram this shape usually wants its variables placed by hand: open it, Alt-drag them into a ring, and press **Save positions** — see [Place boxes on a generated diagram](position-a-generated-diagram.md). Both examples below carry a `<name>.layout.json` holding their positions.
+A causal-loop plane is laid out with elk's `stress` algorithm by default, not `layered`: stress places variables by how far apart they are in the graph, so a feedback loop comes out as a ring rather than a line with one edge running back up it. Boxes that land on each other are then pushed apart. Pick another algorithm in **Layout & style** if you prefer one; `layered` is stored by name on this notation, since it is not the default here. A dense diagram with many loops still reads better hand-placed: Alt-drag the variables where you want them and press **Save positions** — see [Place boxes on a generated diagram](position-a-generated-diagram.md). Both examples below carry a `<name>.layout.json` holding their positions.
 
 ## How the loops are found and labelled
 

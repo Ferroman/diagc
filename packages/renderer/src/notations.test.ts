@@ -75,6 +75,16 @@ describe('notationProfile', () => {
   });
 });
 
+describe('default algorithm', () => {
+  it('is stress for a causal loop, and unset for every other notation', () => {
+    expect(notationProfile('causal-loop').defaultAlgorithm).toBe('stress');
+    for (const [id, p] of Object.entries(NOTATION_PROFILES)) {
+      if (id !== 'causal-loop') expect(p.defaultAlgorithm, id).toBeUndefined();
+    }
+    expect(notationProfile().defaultAlgorithm).toBeUndefined();
+  });
+});
+
 describe('second-order profile', () => {
   const p = notationProfile('second-order');
   it('draws the order-bands overlay, partitioning nodes by consequence order', () => {

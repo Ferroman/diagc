@@ -204,7 +204,7 @@ as `planes` and `manual` — so a plane that borrows containment with
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `algorithm` | `string?` | elk.algorithm: `layered` (default), `force`, `stress`, `mrtree`, `radial`, `rectpacking`. |
+| `algorithm` | `string?` | elk.algorithm: `layered` (default; `stress` on a `causal-loop` plane), `force`, `stress`, `mrtree`, `radial`, `rectpacking`. `stress` asks for 240px edges and has overlapping boxes pushed apart afterwards. |
 | `direction` | `string?` | elk.direction for `layered`: `DOWN` (default), `RIGHT`, `LEFT`, `UP`. A model that draws activity frames defaults to `RIGHT` instead — their lanes are horizontal bands. |
 | `spacing` | `number?` | Base node-to-node spacing in px, at every nesting level. Layers sit the same distance apart, and the gap between unconnected groups is derived from it. |
 | `edgeRouting` | `'curved' \| 'orthogonal'?` | How routed edges are drawn. Both follow the layout's own waypoints, which is what keeps a line off the boxes it was steered around: `curved` (default) rounds the bends generously, `orthogonal` keeps them tight. An edge whose endpoint was placed by hand floats as a bezier either way. `layered` only. |

@@ -53,6 +53,21 @@ describe('LayoutControls', () => {
     expect([...select.options].map((o) => o.value)).toContain('radial');
   });
 
+  it("selects a notation's default, stores it as undefined, and stores layered by name", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<LayoutControls settings={{}} onChange={onChange} defaultAlgorithm="stress" />);
+    const select = screen.getByLabelText(/layout algorithm/i) as HTMLSelectElement;
+    expect(select.value).toBe('stress');
+    // offered under its own name, not as a withdrawn leftover
+    expect([...select.options].find((o) => o.value === 'stress')?.textContent).toBe('Stress');
+    fireEvent.change(select, { target: { value: 'layered' } });
+    expect(onChange).toHaveBeenCalledWith({ algorithm: 'layered' });
+
+    rerender(<LayoutControls settings={{ algorithm: 'layered' }} onChange={onChange} defaultAlgorithm="stress" />);
+    fireEvent.change(screen.getByLabelText(/layout algorithm/i), { target: { value: 'stress' } });
+    expect(onChange).toHaveBeenLastCalledWith({ algorithm: undefined });
+  });
+
   it('patches edge routing', () => {
     const onChange = vi.fn();
     render(<LayoutControls settings={{}} onChange={onChange} />);

@@ -21,6 +21,10 @@ export interface NotationProfile {
   typeStyles?: Record<string, TypeStyle>;
   kindStyles?: Record<string, KindStyle>;
   edgeCurvature?: number;
+  /** the elk algorithm a plane gets when its settings name none. A sidecar's
+   * own choice still wins, `layered` included — so for a notation with a
+   * default, `layered` must be stored rather than left `undefined`. */
+  defaultAlgorithm?: string;
   /** the plane's arrangement, replacing elk entirely: pure, synchronous, and
    * expected to place every node the view shows. `positions` is the plane's
    * SAVED, parent-relative positions (same gating as the overlay: none while
@@ -101,6 +105,10 @@ const CLD: NotationProfile = {
   id: 'causal-loop',
   className: 'dg-notation-cld',
   edgeCurvature: 0.55,
+  // A loop is the thing a CLD shows, and layered draws every cycle as a line
+  // with one edge running back up it. stress places nodes by graph distance,
+  // so a feedback loop comes out as a ring (see STRESS_EDGE_LENGTH, overlap.ts).
+  defaultAlgorithm: 'stress',
   node: { typelessAsText: true, leafSize: (n) => (n.type === undefined ? { width: 140, height: 48 } : undefined) },
   // Signed links carry the colour, not just the glyph: at CLD densities a 13px
   // +/− is unreadable while a two-colour link mesh reads at a glance. Theme

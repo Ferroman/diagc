@@ -17,6 +17,7 @@ import {
 } from './layout-graph';
 import { planLayout, type LayoutPlan, type LevelPlan } from './layout-plan';
 import { packBoxes } from './pack';
+import { removeOverlaps } from './overlap';
 import { bandLanes, hoistLanes, rebaseRoutes } from './swimlane';
 
 // Re-exported so `index.tsx` and existing importers keep their import path.
@@ -529,5 +530,11 @@ async function layoutSingleRun(
   // only place nodes unless orthogonal routing was asked of them.
   const wantRoutes = !lifted && (algorithm === DEFAULT_ALGORITHM || settings?.edgeRouting === 'orthogonal');
   const { geometry, routes, labelSpots } = collectLaid(laid, wantRoutes, undefined, reversed);
+  // stress places points, not boxes (overlap.ts); a route elk drew between the
+  // old spots no longer meets the boxes, so the edges float instead
+  if (algorithm === 'stress' && removeOverlaps(view, geometry, settings?.spacing ?? 40)) {
+    routes.clear();
+    labelSpots.clear();
+  }
   return { geometry, routes, labelSpots, algorithm };
 }

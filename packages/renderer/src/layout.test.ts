@@ -427,6 +427,37 @@ describe('nested cross-container layout actually varies by algorithm', () => {
   });
 });
 
+describe('stress', () => {
+  /** a feedback-heavy graph of label-wide boxes: stress's points pile these up */
+  function loops() {
+    const m = model('loops');
+    const ids = ['population', 'births', 'deaths', 'resources', 'consumption', 'immigration', 'food', 'land'];
+    const n = Object.fromEntries(ids.map((id) => [id, m.node(id, { name: `${id} ${id} ${id}` })]));
+    const pairs: [string, string][] = [
+      ['population', 'births'], ['births', 'population'], ['population', 'deaths'], ['deaths', 'population'],
+      ['population', 'consumption'], ['consumption', 'resources'], ['resources', 'births'], ['immigration', 'population'],
+      ['food', 'population'], ['population', 'food'], ['land', 'food'], ['resources', 'land'],
+    ];
+    for (const [a, b] of pairs) m.relate(n[a]!, n[b]!, { kind: 'sync' });
+    return compileView(m.toJSON(), {});
+  }
+
+  it('leaves no two boxes overlapping, and draws no stale routes', async () => {
+    const r = await layoutView(loops(), undefined, { algorithm: 'stress' });
+    expect(r.algorithm).toBe('stress');
+    const boxes = [...r.geometry.values()];
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i]!;
+        const b = boxes[j]!;
+        const apart = a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
+        expect(apart, `${i} vs ${j}`).toBe(true);
+      }
+    }
+    expect(r.routes.size).toBe(0);
+  });
+});
+
 describe('layoutView reserves room under a node without drawing it taller', () => {
   // An image node's caption hangs BELOW its box (styles.css .dg-image-caption),
   // outside the size React Flow draws. elk has to keep that strip free or the

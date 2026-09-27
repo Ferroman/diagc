@@ -86,6 +86,9 @@ export const DEFAULT_ALGORITHM = 'layered';
  * better; `rectpacking` because it ignores edges by design. Lifting measurably
  * degrades both — see the design note's table.
  */
+/** stress's ideal edge length, in px */
+export const STRESS_EDGE_LENGTH = 240;
+
 export const NESTED_LAYOUT_ALGORITHMS = new Set(['force', 'stress', 'mrtree', 'radial']);
 
 export function usesNestedLayout(settings?: LayoutSettings): boolean {
@@ -142,6 +145,12 @@ export function layoutOptionsFor(settings?: LayoutSettings): Record<string, stri
       opts['elk.aspectRatio'] = String(settings.aspectRatio);
     }
   }
+
+  // elk's default ideal edge length (100) is shorter than one box, so every
+  // edge asked for its ends to overlap; 240 is about a label and a gap, which
+  // is what turned a causal loop from a line into a loop (see overlap.ts for
+  // the boxes that still collide)
+  if (algorithm === 'stress') opts['elk.stress.desiredEdgeLength'] = String(STRESS_EDGE_LENGTH);
 
   // Always orthogonal, whichever way the edges are then DRAWN (soft or sharp
   // corners, see DiagramEdge): it is layered's own default, so naming it moves
