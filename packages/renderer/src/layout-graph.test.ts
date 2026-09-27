@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, model } from '@diagc/core';
-import { liftEdges, layoutOptionsFor, usesNestedLayout, buildGraph, COLLAPSED_SIZE, componentGap, containerPad } from './layout-graph';
+import { liftEdges, layoutOptionsFor, usesNestedLayout, buildGraph, COLLAPSED_SIZE, componentGap, containerPad, type ElkShape } from './layout-graph';
 
 /**
  * Two containers, two leaves each, and one relation of every shape that matters:
@@ -296,5 +296,52 @@ describe('componentGap', () => {
   it('spaces a level of loose single boxes like any same-layer stack', () => {
     expect(componentGap(undefined, true)).toBe(40);
     expect(componentGap({ spacing: 70 }, true)).toBe(70);
+  });
+});
+
+describe('buildGraph on an activity', () => {
+  /** start → act, a note on act; the frame's lanes as the view hands them to elk */
+  function activity() {
+    const m = model('act');
+    const frame = m.activity('f');
+    const lane = frame.lane('l');
+    const start = lane.start('s');
+    const act = lane.action('act', 'Act');
+    const note = lane.note('n', 'Why');
+    frame.flow(start, act).noteLink(note, act);
+    return compileView(m.toJSON(), { pins: { f: 'expanded', l: 'expanded' } });
+  }
+  const find = (shape: ElkShape, id: string): ElkShape | undefined =>
+    shape.id === id ? shape : (shape.children ?? []).map((c) => find(c, id)).find((x) => x !== undefined);
+
+  it('breaks cycles depth-first on the root and on every container', () => {
+    const { graph } = buildGraph(activity(), undefined, { direction: 'RIGHT' });
+    expect(graph.layoutOptions?.['elk.layered.cycleBreaking.strategy']).toBe('DEPTH_FIRST');
+    // elk reads the strategy off the graph that owns the nodes, not the root
+    expect(find(graph, 'l')?.layoutOptions?.['elk.layered.cycleBreaking.strategy']).toBe('DEPTH_FIRST');
+  });
+
+  it('pins the start node to the first layer', () => {
+    const { graph } = buildGraph(activity(), undefined, { direction: 'RIGHT' });
+    expect(find(graph, 's')?.layoutOptions?.['elk.layered.layering.layerConstraint']).toBe('FIRST');
+    expect(find(graph, 'act')?.layoutOptions).toBeUndefined();
+  });
+
+  it('hands a note link to elk end to end, and says so', () => {
+    const v = activity();
+    const { graph, reversed } = buildGraph(v, undefined, { direction: 'RIGHT' });
+    const link = v.layoutEdges.find((e) => e.kind === 'note-link')!;
+    const edge = graph.edges!.find((e) => e.id === link.id)!;
+    expect(edge).toMatchObject({ sources: ['act'], targets: ['n'] });
+    expect([...reversed]).toEqual([link.id]);
+  });
+
+  it('leaves a model without a start node, or another algorithm, alone', () => {
+    const { graph, reversed } = buildGraph(compileView(crossing(), { focus: ['left', 'right'] }), undefined, undefined);
+    expect(graph.layoutOptions?.['elk.layered.cycleBreaking.strategy']).toBeUndefined();
+    expect(reversed.size).toBe(0);
+    const forced = buildGraph(activity(), undefined, { direction: 'RIGHT', algorithm: 'force' });
+    expect(forced.graph.layoutOptions?.['elk.layered.cycleBreaking.strategy']).toBeUndefined();
+    expect(forced.reversed.size).toBe(0);
   });
 });
