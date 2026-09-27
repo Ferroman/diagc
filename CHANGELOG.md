@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/Ferroman/diagc/compare/v0.2.0...v0.2.1) (2026-09-27)
+
+
+### Bug Fixes
+
+* **renderer:** lay activity lanes out as swimlanes ([d09def0](https://github.com/Ferroman/diagc/commit/d09def0112379d10574d1304310c3fb0124741cc))
+* **renderer:** start activity layouts at the start node ([165d173](https://github.com/Ferroman/diagc/commit/165d173b57e77952b5b2c1129419acf2136b2e07))
+
 ## [0.2.0](https://github.com/Ferroman/diagc/compare/v0.1.0...v0.2.0) (2026-09-26)
 
 
