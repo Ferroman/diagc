@@ -17,6 +17,7 @@ import {
 } from './layout-graph';
 import { planLayout, type LayoutPlan, type LevelPlan } from './layout-plan';
 import { packBoxes } from './pack';
+import { bandLanes, hoistLanes, rebaseRoutes } from './swimlane';
 
 // Re-exported so `index.tsx` and existing importers keep their import path.
 export { COLLAPSED_SIZE, layoutOptionsFor } from './layout-graph';
@@ -136,10 +137,17 @@ export async function layoutView(
   const hit = cache.get(key);
   if (hit) return hit;
 
+  // Activity lanes are dissolved for elk and put back as bands (swimlane.ts).
+  const hoist = hoistLanes(view, settings);
+  const laid = hoist?.view ?? view;
   const result =
-    (partitions === undefined ? await layoutPlanned(view, sizeOverrides, settings) : undefined) ??
-    (await layoutSingleRun(view, sizeOverrides, settings, partitions));
-  releaseReserved(view, sizeOverrides, result.geometry);
+    (partitions === undefined ? await layoutPlanned(laid, sizeOverrides, settings) : undefined) ??
+    (await layoutSingleRun(laid, sizeOverrides, settings, partitions));
+  releaseReserved(laid, sizeOverrides, result.geometry);
+  if (hoist !== undefined) {
+    const moved = bandLanes(result.geometry, hoist, view, settings?.spacing ?? 40);
+    rebaseRoutes(result.routes, result.labelSpots, hoist, view, result.geometry, moved);
+  }
   if (cache.size >= CACHE_CAP) {
     const oldest = cache.keys().next().value;
     if (oldest !== undefined) cache.delete(oldest);

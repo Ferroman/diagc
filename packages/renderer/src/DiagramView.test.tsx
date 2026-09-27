@@ -1883,14 +1883,12 @@ describe('activity diagrams', () => {
     });
   });
 
-  it('floats an edge inside a lane the band pass moved, and routes one inside a lane it left in place', async () => {
-    // Two lanes, each holding two connected actions. The band pass (see
-    // arrangeActivityFrames) stacks lanes edge to edge AFTER elk laid them out
-    // with a gap between them: the first lane stays where elk put it, the second
-    // is pulled up — and with it its children, whose route now points at where
-    // they used to be. An edge draws its route only while both endpoints still
-    // stand where the layout put them, so the first lane's edge is routed (a
-    // straight 'L') and the second's falls back to the floating bezier ('C').
+  it('routes an edge inside every lane, not only the one the band pass left in place', async () => {
+    // Two lanes, each holding two connected actions. Elk used to lay the lanes out
+    // as boxes and the band pass then pulled the second one into place, so its
+    // edge's route pointed at where its ends used to be and floated (a bezier,
+    // 'C'). The lanes are now banded out of one layout (swimlane.ts) and a route
+    // is shifted with a lane that moved as one piece, so both are drawn routed.
     const m = model('act-ortho');
     const act = m.activity('flow');
     const top = act.lane('a', { name: 'A' });
@@ -1908,7 +1906,7 @@ describe('activity diagrams', () => {
         return el.getAttribute('d') ?? '';
       });
     expect(await pathOf('act1=>act2:')).not.toContain('C');
-    expect(await pathOf('act3=>act4:')).toContain('C');
+    expect(await pathOf('act3=>act4:')).not.toContain('C');
   });
 
   it('a lane-less frame renders at one empty band\'s footprint, not its label size', async () => {
