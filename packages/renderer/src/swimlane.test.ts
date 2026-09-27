@@ -194,3 +194,70 @@ describe('rebaseRoutes', () => {
     expect(routes.has(id('a', 'b'))).toBe(false);
   });
 });
+
+describe('layoutView on an activity with a loop', () => {
+  /** coin-supply's shape: a round trip to another lane, and a reissue that goes
+   * back to the write — so the only honest loop-back is reissue → write */
+  function retry(): DiagramModel {
+    const m = model('retry');
+    const act = m.activity('f');
+    const own = act.lane('own');
+    const cp = act.lane('cp');
+    const start = own.start('s');
+    const prep = own.action('prep', 'Prepare');
+    const write = own.action('write', 'Write the emission');
+    const send = own.send('send', 'Signing request');
+    const recv = cp.receive('recv', 'Signing request');
+    const sign = cp.action('sign', 'Sign');
+    const back = cp.send('back', 'Signing result');
+    const result = own.receive('result', 'Signing result');
+    const ok = own.decision('ok');
+    const done = own.action('done', 'Completed');
+    const expired = own.action('expired', 'Expired');
+    const reissue = own.action('reissue', 'Reissue');
+    const end = own.end('e');
+    const note = own.note('why', 'The ledger row is written before signing and is not reversed on EXPIRED.');
+    act
+      .flow(start, prep)
+      .flow(prep, write)
+      .flow(write, send)
+      .flow(send, recv)
+      .flow(recv, sign)
+      .flow(sign, back)
+      .flow(back, result)
+      .flow(result, ok)
+      .flow(ok, done, '[valid]')
+      .flow(ok, expired, '[expired]')
+      .flow(expired, reissue)
+      .flow(reissue, write)
+      .flow(done, end)
+      .noteLink(note, write);
+    return m.toJSON();
+  }
+
+  it('starts at the left edge and runs every step of the loop forwards', async () => {
+    const v = view(retry());
+    const { geometry } = await layoutView(v, undefined, RIGHT);
+    const abs = absolute(v, geometry);
+    const x = (id: string) => abs.get(id)!.x;
+    const order = ['s', 'prep', 'write', 'send', 'recv', 'sign', 'back', 'result', 'ok', 'expired', 'reissue'];
+    for (let i = 1; i < order.length; i++) expect(x(order[i]!), `${order[i - 1]} → ${order[i]}`).toBeGreaterThan(x(order[i - 1]!));
+    // nothing sits left of the start, the note included
+    for (const [id, g] of abs) if (!['f', 'own', 'cp'].includes(id)) expect(g.x, id).toBeGreaterThanOrEqual(x('s'));
+  });
+
+  it('draws a note link from the note, though elk laid it out the other way', async () => {
+    const v = view(retry());
+    const { geometry, routes } = await layoutView(v, undefined, RIGHT);
+    const abs = absolute(v, geometry);
+    const link = v.layoutEdges.find((e) => e.kind === 'note-link')!;
+    // note and target share a lane, so the route survives the banding
+    const route = routes.get(link.id)!;
+    expect(route).toBeDefined();
+    const note = abs.get('why')!;
+    const first = route[0]!;
+    const within = (p: { x: number; y: number }, g: NodeGeometry) =>
+      p.x >= g.x - 1 && p.x <= g.x + g.width + 1 && p.y >= g.y - 1 && p.y <= g.y + g.height + 1;
+    expect(within(first, note)).toBe(true);
+  });
+});

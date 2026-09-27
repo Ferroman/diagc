@@ -180,6 +180,7 @@ function collectLaid(
   laid: ElkShape,
   wantRoutes: boolean,
   synthetic?: ReadonlySet<string>,
+  reversed?: ReadonlySet<string>,
 ): {
   geometry: Map<string, NodeGeometry>;
   routes: Map<string, EdgePoint[]>;
@@ -221,7 +222,7 @@ function collectLaid(
       x: o.x + p.x,
       y: o.y + p.y,
     }));
-    routes.set(e.id, pts);
+    routes.set(e.id, reversed?.has(e.id) === true ? pts.reverse() : pts);
     const label = e.labels?.[0];
     if (label?.x !== undefined && label.y !== undefined) {
       labelSpots.set(e.id, { x: o.x + label.x + (label.width ?? 0) / 2, y: o.y + label.y + (label.height ?? 0) / 2 });
@@ -423,7 +424,7 @@ async function arrangeGroup(nodes: readonly ViewNode[], ctx: PlanContext): Promi
   }
   const synthetic = new Set([...packs.values()].map((p) => p.id));
   // planning is layered-only, and layered always routes
-  const { geometry, routes, labelSpots, origins } = collectLaid(laid, !built.lifted, synthetic);
+  const { geometry, routes, labelSpots, origins } = collectLaid(laid, !built.lifted, synthetic, built.reversed);
   const out: Block = {
     width: laid.width ?? 0,
     height: laid.height ?? 0,
@@ -494,6 +495,7 @@ async function layoutSingleRun(
 
   let laid: ElkShape | undefined;
   let lifted = false;
+  let reversed: ReadonlySet<string> = new Set();
   let algorithm = chosen;
   let lastError: unknown;
   for (const attempt of attempts) {
@@ -506,6 +508,7 @@ async function layoutSingleRun(
     try {
       laid = (await elk.layout(built.graph)) as ElkShape;
       lifted = built.lifted;
+      reversed = built.reversed;
       algorithm = attempt.algorithm;
       break;
     } catch (e) {
@@ -525,6 +528,6 @@ async function layoutSingleRun(
   // `layered` always routes (orthogonally — see layoutOptionsFor); the others
   // only place nodes unless orthogonal routing was asked of them.
   const wantRoutes = !lifted && (algorithm === DEFAULT_ALGORITHM || settings?.edgeRouting === 'orthogonal');
-  const { geometry, routes, labelSpots } = collectLaid(laid, wantRoutes);
+  const { geometry, routes, labelSpots } = collectLaid(laid, wantRoutes, undefined, reversed);
   return { geometry, routes, labelSpots, algorithm };
 }

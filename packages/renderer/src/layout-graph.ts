@@ -315,6 +315,14 @@ function edgeLabelBox(text: string): { width: number; height: number } | undefin
   return { width: Math.round(chars * EDGE_LABEL_CHAR + EDGE_LABEL_PAD), height: EDGE_LABEL_HEIGHT };
 }
 
+const ACTIVITY_START = 'activity-start';
+const NOTE_LINK = 'note-link';
+
+function hasActivityStart(view: CompiledView): boolean {
+  const walk = (n: ViewNode): boolean => n.node.type === ACTIVITY_START || n.children.some(walk);
+  return view.roots.some(walk);
+}
+
 /**
  * The elk input graph.
  *
@@ -327,6 +335,9 @@ function edgeLabelBox(text: string): { width: number; height: number } | undefin
  * algorithm that rejects the lifted graph outright (radial throws on any graph
  * that is not a tree).
  *
+ * `reversed` names the edges handed to elk end to end (an activity's note links):
+ * their routes come back backwards and are turned round on collection.
+ *
  * Returns the graph alongside `lifted`: whether this build actually restructured
  * the edge set (see the flag's own comment below). `layoutView` keys route
  * collection off it, because only an unrestructured graph yields waypoints that
@@ -337,12 +348,12 @@ export function buildGraph(
   sizes: ReadonlyMap<string, SizeHint> | undefined,
   settings: LayoutSettings | undefined,
   opts?: { flat?: boolean; substitute?: GraphSubstitutions; partitions?: ReadonlyMap<string, number> },
-): { graph: ElkShape; lifted: boolean } {
+): { graph: ElkShape; lifted: boolean; reversed: ReadonlySet<string> } {
   const substitute = opts?.substitute;
   const partitions = opts?.partitions !== undefined && opts.partitions.size > 0 ? opts.partitions : undefined;
   // A substituted graph is a block to embed, not a canvas: elk's default 12px
   // root padding would become a stray margin around every embedded block.
-  const rootOptions = {
+  const rootOptions: Record<string, string> = {
     ...layoutOptionsFor(settings),
     ...(substitute !== undefined ? { 'elk.padding': NO_PADDING } : {}),
     // A notation that derives an ORDER for its nodes (second-order thinking)
@@ -351,6 +362,17 @@ export function buildGraph(
     // is relative to the graph that owns the node.
     ...(partitions !== undefined ? { 'elk.partitioning.activate': 'true' } : {}),
   };
+  // An activity is read from its start node, so that is where layering begins.
+  // elk's default cycle breaking reverses whichever edges its degree heuristic
+  // picks, and on a flow with a retry loop that is often the loop's way IN — the
+  // start then lands mid-picture and the flow runs backwards from it. Depth-first
+  // from the sources reverses the loop's way BACK instead; pinning the start to
+  // the first layer keeps it at the left edge whatever else is a source. elk
+  // reads the strategy off each graph that owns the nodes, not off the root, so
+  // the containers carry it too (below) — on the root alone it changed nothing.
+  const activity = (settings?.algorithm ?? DEFAULT_ALGORITHM) === DEFAULT_ALGORITHM && hasActivityStart(view);
+  const cycleBreaking: Record<string, string> = activity ? { 'elk.layered.cycleBreaking.strategy': 'DEPTH_FIRST' } : {};
+  Object.assign(rootOptions, cycleBreaking);
   const nested = usesNestedLayout(settings) && opts?.flat !== true;
   const byOwner = nested ? liftEdges(view) : undefined;
 
@@ -370,7 +392,7 @@ export function buildGraph(
   // `layoutOptionsFor` never emits `elk.padding` today, but if it ever did, a
   // container would silently lose its 36px header room and the title would
   // overlap its children. elk is indifferent to key order.
-  const sharedContainerOptions = nested ? rootOptions : spacingOptionsOf(rootOptions);
+  const sharedContainerOptions = nested ? rootOptions : { ...spacingOptionsOf(rootOptions), ...cycleBreaking };
   const containerOptions = (n: ViewNode): Record<string, string> => ({
     ...sharedContainerOptions,
     'elk.padding': elkPadding(containerPad(n)),
@@ -417,7 +439,11 @@ export function buildGraph(
       const folded = sizes?.get(n.id) ?? COLLAPSED_SIZE;
       return { id: n.id, width: folded.width, height: folded.height };
     }
-    return { id: n.id, ...footprint(sizes?.get(n.id) ?? LEAF_SIZE) };
+    return {
+      id: n.id,
+      ...footprint(sizes?.get(n.id) ?? LEAF_SIZE),
+      ...(activity && n.node.type === ACTIVITY_START ? { layoutOptions: { 'elk.layered.layering.layerConstraint': 'FIRST' } } : {}),
+    };
   };
 
   const pinned = (shape: ElkShape): ElkShape => {
@@ -432,6 +458,8 @@ export function buildGraph(
   // discovers container-owned edges for the `lifted` flag below
   const children = (substitute?.roots ?? view.roots).map((n) => pinned(toNode(n)));
 
+  const reversed = new Set<string>();
+
   const rootEdges: ElkEdge[] = nested
     ? (byOwner?.get(null) ?? [])
     : view.layoutEdges
@@ -439,10 +467,17 @@ export function buildGraph(
         .map((e) => {
           const text = edgeLabelText(e).trim();
           const box = edgeLabelBox(text);
+          // A note points AT what it annotates, which makes every note a source:
+          // layered put them all in the first layer beside the start node, and a
+          // wide one pushed the start off the left edge. Laid out the other way
+          // round, a note lands beside its target; the route is turned back on
+          // collection (`reversed`), so the drawn edge still runs note → target.
+          const flip = activity && e.kind === NOTE_LINK;
+          if (flip) reversed.add(e.id);
           return {
             id: e.id,
-            sources: [e.from],
-            targets: [e.to],
+            sources: [flip ? e.to : e.from],
+            targets: [flip ? e.from : e.to],
             ...(box !== undefined ? { labels: [{ ...box, text, layoutOptions: INLINE_LABEL }] } : {}),
           };
         });
@@ -477,5 +512,6 @@ export function buildGraph(
       edges: rootEdges,
     },
     lifted,
+    reversed,
   };
 }
