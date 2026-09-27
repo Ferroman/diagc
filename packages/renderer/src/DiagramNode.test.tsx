@@ -732,6 +732,18 @@ describe('activity diagram nodes', () => {
     expect(bar.style.borderColor).toBe('');
   });
 
+  it('draws a decision as an outlined polygon — a clipped box lost its diagonal border', () => {
+    const { container } = renderNode({ typeId: 'activity-decision' }, undefined, { width: 48, height: 48 });
+    const polygon = container.querySelector('.dg-diamond-glyph polygon');
+    expect(polygon?.getAttribute('stroke')).toBe('var(--dg-node-stroke)');
+    expect(polygon?.getAttribute('fill')).toBe('var(--dg-node-fill)');
+  });
+
+  it('strokes a coloured decision in its accent', () => {
+    const { container } = renderNode({ typeId: 'activity-decision', color: '#ff0000' }, undefined, { width: 48, height: 48 });
+    expect(container.querySelector('.dg-diamond-glyph polygon')?.getAttribute('stroke')).toBe('#ff0000');
+  });
+
   it('renders activity-decision in rough mode with a sketch shape svg', () => {
     const { container } = renderNode(
       { typeId: 'activity-decision', stylePreset: stylePreset('sketch') },
