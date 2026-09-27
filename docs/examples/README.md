@@ -139,6 +139,22 @@ A customer, an auth service inside one trust boundary, and one information-discl
 A charge API that tokenizes cards in a PCI enclave nested inside the internal boundary, writes to a ledger and settles with a card network — seven threats across elements and flows, open, mitigated and accepted.
 [Live](https://ferroman.github.io/diagc/html/examples/threat-model/payments-api.html) · [Source](../../.diagrams/src/examples/threat-model/payments-api.diagram.ts) · [Guide](../how-to/draw-a-threat-model.md)
 
+### Deployment
+
+#### Starter: two-subnet VPC
+
+[![Starter: two-subnet VPC](../../.diagrams/static/examples/deployment/starter.png)](https://ferroman.github.io/diagc/html/examples/deployment/starter.html)
+
+A load balancer in a public subnet, an API and its database in a private one, both in a VPC.
+[Live](https://ferroman.github.io/diagc/html/examples/deployment/starter.html) · [Source](../../.diagrams/src/examples/deployment/starter.diagram.ts) · [Guide](../how-to/draw-a-deployment-diagram.md)
+
+#### Web app
+
+[![Web app deployment](../../.diagrams/static/examples/deployment/web-app.png)](https://ferroman.github.io/diagc/html/examples/deployment/web-app.html)
+
+A three-tier web app in one region: public traffic reaches only the load balancer, the app hosts sit in private subnets in two availability zones, and the database replicates across them.
+[Live](https://ferroman.github.io/diagc/html/examples/deployment/web-app.html) · [Source](../../.diagrams/src/examples/deployment/web-app.diagram.ts) · [Guide](../how-to/draw-a-deployment-diagram.md)
+
 ### Plan
 
 #### Starter: launch plan

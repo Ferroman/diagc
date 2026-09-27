@@ -174,6 +174,16 @@ export {
   type ThreatRow,
 } from './threat-model';
 export {
+  DEPLOY_NOTATION,
+  DEPLOY_ZONE_TYPES,
+  DEPLOY_NODE_TYPES,
+  DEPLOY_TYPES,
+  isDeploymentNode,
+  isDeployZone,
+  type DeployZoneType,
+  type DeployNodeType,
+} from './deployment';
+export {
   PLAN_NOTATION,
   PLAN_ZONE_TYPE,
   PLAN_EVENT_TYPE,

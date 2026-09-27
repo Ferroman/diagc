@@ -163,6 +163,27 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   // box and hide the very elements those crossings are about — the picture would
   // lose the thing it exists to show. DiagramView folds registry `alwaysExpanded`
   // into `effectivePins` and blocks drilling into it.
+  // ---- Deployment -------------------------------------------------------------
+  // Zones are containers; what a node sits inside is the information. A zone's
+  // header prints only its name and icon, so each carries a legendLabel. Outline
+  // zones draw a line in the notation's zone colour; the two subnets draw a wash,
+  // because public vs private is the one boundary a reader must not miss.
+  'deploy-environment': { shape: 'box', icon: 'environment', label: '[Environment]', outline: true, legendLabel: 'Environment' },
+  'deploy-region': { shape: 'box', icon: 'region', label: '[Region]', outline: true, legendLabel: 'Region' },
+  'deploy-zone': { shape: 'box', icon: 'zone', label: '[Availability zone]', outline: true, dashed: true, legendLabel: 'Availability zone' },
+  'deploy-network': { shape: 'box', icon: 'network', label: '[Network]', outline: true, legendLabel: 'Network' },
+  'deploy-subnet-public': { shape: 'box', icon: 'subnet-public', label: '[Public subnet]', legendLabel: 'Public subnet' },
+  'deploy-subnet-private': { shape: 'box', icon: 'subnet-private', label: '[Private subnet]', legendLabel: 'Private subnet' },
+  'deploy-cluster': { shape: 'box', icon: 'kubernetes', label: '[Cluster]', outline: true, dashed: true, legendLabel: 'Cluster' },
+  'deploy-host': { shape: 'box', icon: 'server', label: '[Host]', outline: true },
+  'deploy-service': { shape: 'rounded', icon: 'service', label: '[Service]' },
+  'deploy-database': { shape: 'cylinder', icon: 'database', label: '[Database]' },
+  'deploy-queue': { shape: 'pill', icon: 'queue', label: '[Queue]' },
+  'deploy-storage': { shape: 'cylinder', icon: 'blob', label: '[Storage]' },
+  'deploy-load-balancer': { shape: 'hexagon', icon: 'load-balancer', label: '[Load balancer]' },
+  'deploy-gateway': { shape: 'hexagon', icon: 'gateway', label: '[Gateway]' },
+  'deploy-firewall': { shape: 'box', icon: 'firewall', label: '[Firewall]' },
+  'deploy-internet': { shape: 'pill', icon: 'internet', label: '[External network]', dashed: true },
   'tm-entity': { shape: 'box', label: '', legendLabel: 'External entity' },
   'tm-process': { shape: 'ellipse', label: '', defaultSize: { width: 150, height: 90 }, legendLabel: 'Process' },
   'tm-store': { shape: 'store', label: '', defaultSize: { width: 150, height: 56 }, legendLabel: 'Data store' },

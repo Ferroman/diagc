@@ -138,6 +138,38 @@ describe('threat-model profile', () => {
   });
 });
 
+describe('deployment profile', () => {
+  const p = notationProfile('deployment');
+  it('is a stencil notation: the registry carries the vocabulary and elk arranges', () => {
+    expect(p.id).toBe('deployment');
+    expect(p.className).toBe('dg-notation-deploy');
+    expect(p.layout).toBeUndefined();
+    expect(p.partitionOf).toBeUndefined();
+    expect(p.overlay).toBeUndefined();
+    expect(NOTATION_PROFILES.deployment).toBe(p);
+  });
+
+  it('colours every zone by its type and leaves the nodes inside alone', () => {
+    const m = model('d');
+    const vpc = m.node('vpc', { name: 'VPC', type: 'deploy-network' });
+    const priv = m.node('priv', { name: 'Private', type: 'deploy-subnet-private' });
+    const vm = m.node('vm', { name: 'VM', type: 'c4-deployment-node' });
+    vpc.contains(priv);
+    priv.contains(vm);
+    vm.contains(m.node('api', { name: 'API', type: 'deploy-service' }));
+    m.node('db', { name: 'DB', type: 'deploy-database' });
+    expect(Object.fromEntries(p.node!.colorOf!(m.toJSON(), undefined))).toEqual({
+      vpc: 'var(--dg-deploy-network)',
+      priv: 'var(--dg-deploy-subnet-private)',
+      vm: 'var(--dg-deploy-host)',
+    });
+  });
+
+  it('draws a C4 deployment node as a solid host, keeping the rest of its stencil', () => {
+    expect(p.typeStyles?.['c4-deployment-node']).toEqual({ ...DEFAULT_TYPE_STYLES['c4-deployment-node'], icon: 'server', dashed: false });
+  });
+});
+
 describe('plan profile', () => {
   function roadmap() {
     const m = model('r');

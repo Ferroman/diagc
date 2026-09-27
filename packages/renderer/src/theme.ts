@@ -45,6 +45,17 @@ export interface ThemeTokens {
   /** a plan role chip's text colour: color-mix % of the person's own colour
    * mixed toward --dg-text (100% = the raw person colour, unmixed) */
   roleChipText: string;
+  /** deployment zone colours: an outline zone's line and title, a subnet's wash */
+  deployEnvironment: string;
+  deployRegion: string;
+  deployZone: string;
+  deployNetwork: string;
+  deploySubnetPublic: string;
+  deploySubnetPrivate: string;
+  deployCluster: string;
+  deployHost: string;
+  /** a subnet's wash strength (color-mix % against --dg-node-fill, like planZoneTint) */
+  deploySubnetTint: string;
 }
 
 export const lightTheme: ThemeTokens = {
@@ -83,6 +94,15 @@ export const lightTheme: ThemeTokens = {
   planAxisWeekLabel: '#66737f',
   roleChipFill: '12%',
   roleChipText: '100%', // pure chip colour, unmixed — the old raw `--dg-chip` read
+  deployEnvironment: '#3d4b5c',
+  deployRegion: '#2563eb',
+  deployZone: '#5b6b7c',
+  deployNetwork: '#7c3aed',
+  deploySubnetPublic: '#c2410c',
+  deploySubnetPrivate: '#15803d',
+  deployCluster: '#0f766e',
+  deployHost: '#475569',
+  deploySubnetTint: '10%',
 };
 
 export const darkTheme: ThemeTokens = {
@@ -121,6 +141,16 @@ export const darkTheme: ThemeTokens = {
   planAxisWeekLabel: '#aab6c2',
   roleChipFill: '24%',
   roleChipText: '55%', // mixed toward --dg-text so the person colour stays legible
+  // brighter than light's: the same hues, lifted to read as lines on #12161b
+  deployEnvironment: '#aab6c2',
+  deployRegion: '#60a5fa',
+  deployZone: '#8b98a5',
+  deployNetwork: '#a78bfa',
+  deploySubnetPublic: '#fb923c',
+  deploySubnetPrivate: '#4ade80',
+  deployCluster: '#2dd4bf',
+  deployHost: '#94a3b8',
+  deploySubnetTint: '16%',
 };
 
 const kebab = (s: string): string => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);

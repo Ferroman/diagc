@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TM_BOUNDARY_TYPE, TM_ENTITY_TYPE, TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from '@diagc/core';
+import { DEPLOY_NODE_TYPES, DEPLOY_ZONE_TYPES, TM_BOUNDARY_TYPE, TM_ENTITY_TYPE, TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from '@diagc/core';
 import { BUILTIN_ICON_IDS, createIconRegistry } from '@diagc/icons';
 import { createKindRegistry, createTypeRegistry, DEFAULT_TYPE_STYLES } from './registry';
 
@@ -139,6 +139,18 @@ describe('registries', () => {
     expect(types.resolve('fb-category')).toMatchObject({ shape: 'box', label: '' });
     expect(types.resolve('fb-cause')).toMatchObject({ shape: 'box', label: '' });
     expect(createKindRegistry().resolve('cause-of')).toEqual({});
+  });
+
+  it('registers the deployment vocabulary', () => {
+    const t = createTypeRegistry();
+    // every core type resolves to its own entry, not the unknown-id plain box
+    for (const id of [...DEPLOY_ZONE_TYPES, ...DEPLOY_NODE_TYPES]) expect(DEFAULT_TYPE_STYLES[id], id).toBeDefined();
+    // a zone's header shows only name and icon, so the legend names it
+    for (const id of DEPLOY_ZONE_TYPES.filter((z) => z !== 'deploy-host')) expect(t.resolve(id).legendLabel, id).toBeDefined();
+    // the subnets are washes, not lines: no outline
+    expect(t.resolve('deploy-subnet-private').outline).toBeUndefined();
+    expect(t.resolve('deploy-network').outline).toBe(true);
+    expect(t.resolve('deploy-database')).toMatchObject({ shape: 'cylinder', label: '[Database]' });
   });
 
   it('registers the threat-model (STRIDE data-flow) vocabulary', () => {
