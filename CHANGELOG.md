@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/Ferroman/diagc/compare/v0.2.1...v0.2.2) (2026-09-27)
+
+
+### Bug Fixes
+
+* **renderer:** outline activity decisions ([#20](https://github.com/Ferroman/diagc/issues/20)) ([b35c8f5](https://github.com/Ferroman/diagc/commit/b35c8f5d036fcc1a4c11447a3a30ed135ce87820))
+
 ## [0.2.1](https://github.com/Ferroman/diagc/compare/v0.2.0...v0.2.1) (2026-09-27)
 
 

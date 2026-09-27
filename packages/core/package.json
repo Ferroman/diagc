@@ -1,6 +1,6 @@
 {
   "name": "@diagc/core",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Diagram model, validator, and builder DSL for diagc — no React, no filesystem.",
   "license": "AGPL-3.0-only",
   "author": "Bogdan Frankovskyi",
