@@ -6,7 +6,7 @@ For how to use it, see [Use the icon library](../how-to/use-the-icon-library.md)
 
 ## Bundled packs
 
-854 entries in 40 categories, rendered in this order:
+870 entries in 41 categories, rendered in this order:
 
 | Pack | Entries | Categories | Assets |
 | --- | --- | --- | --- |
@@ -15,6 +15,7 @@ For how to use it, see [Use the icon library](../how-to/use-the-icon-library.md)
 | **Second-order thinking** | 4 | 1 | none — renderer-drawn glyphs, not images |
 | **Fishbone** | 3 | 1 | none — renderer-drawn looks, not images |
 | **Threat model** | 4 | 1 | none — renderer-drawn shapes, not images |
+| **Deployment** | 16 | 1 | none — renderer-drawn shapes, not images |
 | **Plan** | 4 | 1 | none — renderer-drawn shapes, not images |
 | **Data** | 1 | 1 | none — it seeds columns, not an image |
 | **Shapes** | 3 | 1 | `/library/shapes/` — tintable silhouette masks |
@@ -57,6 +58,10 @@ One category, **Fishbone** — the three stencils behind a [fishbone diagram](..
 One category, **Threat model** — the four STRIDE data-flow stencils behind a [threat model](../how-to/draw-a-threat-model.md): External entity, Process, Data store, Trust boundary. Every entry carries a `tm-*` node type (`tm-entity`, `tm-process`, `tm-store`, `tm-boundary`) the renderer draws itself — a box, an ellipse, the open-ended store glyph, a red dashed outline — not an image. `dfd`, `stride` and `threat` are keywords on all four, so any of them finds the set.
 
 A dropped Trust boundary is an empty box: it holds elements through ordinary containment, added with the node panel's Memberships picker.
+
+### Deployment
+
+One category, **Deployment** — the sixteen stencils behind a [deployment diagram](../how-to/draw-a-deployment-diagram.md): the zones (Environment, Region, Availability zone, Network, Public subnet, Private subnet, Cluster, Host) and what runs in them (Service, Database, Queue, Storage, Load balancer, Gateway, Firewall, External network). Every entry carries a `deploy-*` node type the renderer draws itself, not an image. `deployment` and `infrastructure` are keywords on all sixteen. A dropped zone other than Host is an empty 320 × 220 box; add its contents with the node panel's Memberships picker.
 
 ### Plan
 

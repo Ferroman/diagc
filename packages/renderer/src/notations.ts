@@ -1,4 +1,4 @@
-import { consequenceOrders, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanActor, isPlanEvent, isPlanRole, isPlanZone, rolesOf, valenceOf, type CompiledView, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
+import { consequenceOrders, DEPLOY_ZONE_TYPES, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanActor, isPlanEvent, isPlanRole, isPlanZone, rolesOf, valenceOf, type CompiledView, type DeployZoneType, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';
@@ -231,6 +231,38 @@ const THREAT_MODEL: NotationProfile = {
   node: { colorOf: boundaryColors },
 };
 
+// ---- Deployment ---------------------------------------------------------------
+// A stencil notation like C4 and the threat model: registry shapes carry the
+// vocabulary and elk arranges. The profile colours the zones — theme tokens,
+// through colorOf, so an explicit node colour still wins — and styles.css turns
+// each zone's header into a tab in that colour. A C4 deployment node draws as
+// the host it is.
+const DEPLOY_ZONE_COLOR: Record<DeployZoneType, string> = Object.fromEntries(
+  DEPLOY_ZONE_TYPES.map((t) => [t, `var(--dg-${t})`]),
+) as Record<DeployZoneType, string>;
+const ZONE_COLOR_OF: ReadonlyMap<string, string> = new Map<string, string>([
+  ...Object.entries(DEPLOY_ZONE_COLOR),
+  ['c4-deployment-node', DEPLOY_ZONE_COLOR['deploy-host']],
+]);
+
+function zoneColors(model: DiagramModel): ReadonlyMap<string, string> {
+  const out = new Map<string, string>();
+  for (const n of model.nodes) {
+    const c = n.type !== undefined ? ZONE_COLOR_OF.get(n.type) : undefined;
+    if (c !== undefined) out.set(n.id, c);
+  }
+  return out;
+}
+
+const DEPLOYMENT: NotationProfile = {
+  id: 'deployment',
+  className: 'dg-notation-deploy',
+  typeStyles: {
+    'c4-deployment-node': { ...DEFAULT_TYPE_STYLES['c4-deployment-node']!, icon: 'server', dashed: false },
+  },
+  node: { colorOf: zoneColors },
+};
+
 // ---- Plan -------------------------------------------------------------------
 // The notation owns the arrangement (as git-graph does) because x IS a date.
 // Roles are relations actor → zone that never draw as edges: they become
@@ -333,6 +365,7 @@ export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
   fishbone: FISHBONE,
   'threat-model': THREAT_MODEL,
   plan: PLAN,
+  deployment: DEPLOYMENT,
 };
 
 const DEFAULT_PROFILE: NotationProfile = { id: 'default' };

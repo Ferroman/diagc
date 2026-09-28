@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { LIBRARY_IMAGE_REF } from '@diagc/core';
+import { DEPLOY_NODE_TYPES, DEPLOY_ZONE_TYPES, LIBRARY_IMAGE_REF } from '@diagc/core';
 import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { AWS_PACK } from './packs.aws';
 import { C4_PACK } from './packs.c4';
@@ -275,6 +275,28 @@ describe('Plan pack', () => {
     expect(entries.map((e) => e.id)).toEqual(['plan-zone', 'plan-event', 'plan-person', 'plan-team']);
     expect(entries.map((e) => e.template.type)).toEqual(['plan-zone', 'plan-event', 'person', 'team']);
     for (const e of entries) expect(e.keywords).toContain('plan');
+  });
+});
+
+describe('Deployment pack', () => {
+  const entries = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'deployment');
+
+  it('bundles one stencil per core deployment type, zones first', () => {
+    expect(BUNDLED_LIBRARY.categories.some((c) => c.id === 'deployment')).toBe(true);
+    expect(entries.map((e) => e.id)).toEqual([...DEPLOY_ZONE_TYPES, ...DEPLOY_NODE_TYPES]);
+  });
+
+  it('drops a zone big enough to nest into, except a host, which is often a leaf', () => {
+    for (const e of entries) {
+      const zone = (DEPLOY_ZONE_TYPES as readonly string[]).includes(e.id) && e.id !== 'deploy-host';
+      expect(e.template.width !== undefined, e.id).toBe(zone);
+    }
+  });
+
+  it('uses node types the renderer styles (no silent fallback to a plain box)', () => {
+    for (const e of entries) {
+      expect(DEFAULT_TYPE_STYLES[e.template.type!], `type '${e.template.type}'`).toBeDefined();
+    }
   });
 });
 

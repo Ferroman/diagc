@@ -36,4 +36,10 @@ describe('icon registry', () => {
   it('resolves the team glyph beside the person one', () => {
     expect(createIconRegistry().resolve('users')).toBeDefined();
   });
+
+  it('has the deployment glyphs', () => {
+    for (const id of ['environment', 'region', 'zone', 'network', 'subnet-public', 'subnet-private', 'load-balancer', 'gateway', 'firewall', 'internet']) {
+      expect(createIconRegistry().resolve(id)).toBeDefined();
+    }
+  });
 });

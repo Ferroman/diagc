@@ -1186,3 +1186,24 @@ button.dg-role-chip { font: inherit; margin: 0; cursor: pointer; appearance: non
   width: 8px; height: 100%; top: 0; translate: -50% 0;
   border: none; border-radius: 0; background: transparent; cursor: ew-resize;
 }
+
+/* Deployment. A zone is a hard boundary, so it draws solid unless its type says
+   dashed (an availability zone, a cluster) — not the generic dashed group. Each
+   zone's header becomes a tab in the zone's colour: the outline zones' root
+   colour is that colour (DiagramNode sets it inline); a subnet is a wash, not a
+   line, so its tab takes the type's token directly. */
+.dg-notation-deploy .dg-group[data-type^='deploy-'],
+.dg-notation-deploy .dg-group[data-type='c4-deployment-node'] { border-radius: 4px; }
+.dg-notation-deploy .dg-group[data-type^='deploy-']:not(.dg-dashed),
+.dg-notation-deploy .dg-group[data-type='c4-deployment-node'] { border-style: solid; }
+.dg-notation-deploy .dg-group[data-type='deploy-environment'] { border-width: 2.5px; }
+.dg-notation-deploy .dg-group[data-type^='deploy-subnet-'] { --dg-node-accent-tint: var(--dg-deploy-subnet-tint); }
+.dg-notation-deploy .dg-group[data-type='deploy-subnet-public'] > .dg-group-header { color: var(--dg-deploy-subnet-public); }
+.dg-notation-deploy .dg-group[data-type='deploy-subnet-private'] > .dg-group-header { color: var(--dg-deploy-subnet-private); }
+.dg-notation-deploy .dg-group[data-type^='deploy-'] > .dg-group-header,
+.dg-notation-deploy .dg-group[data-type='c4-deployment-node'] > .dg-group-header {
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 3px 0 4px 0;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
