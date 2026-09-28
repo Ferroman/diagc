@@ -56,6 +56,23 @@ m.fk(orderItems, 'sku', variants, 'sku');
 
 Marking the column `fk: true` is separate from drawing the edge: the flag is what prints the `FK` marker on the row, and `m.fk` does not set it for you.
 
+### Put a column on a layer
+
+A column can carry a `layer`, like a node. The row is drawn only while that layer is on, which suits a proposed column or a group of audit fields that most readers can skip:
+
+```ts
+m.layer('proposal', { name: 'Proposed' });
+
+const events = m.table('booking_event', {
+  columns: [
+    { name: 'id', type: 'uuid', pk: true },
+    { name: 'flag', type: 'text', layer: 'proposal' },
+  ],
+});
+```
+
+The table keeps its place with the layer off; it only loses the row, and its height shrinks to match. The layer gets a legend row that switches it. An `fk` edge whose column is hidden floats to the table's middle, so tag the relation with the same layer: `m.fk(events, 'owner_id', users, undefined, { layer: 'proposal' })`.
+
 ## How a table is drawn
 
 A `db-table` node draws as a header plus one row per column instead of a shape. The header is the node's `name`; each row is a marker, the column name, and the type right-aligned. `pk` prints a 🔑 and sets the name in the key colour, `fk` prints `FK`, and a column with neither leaves that space blank.

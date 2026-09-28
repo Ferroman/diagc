@@ -70,6 +70,7 @@ Two forms are accepted, and nothing else:
 | `type` | `string?` | Shown right-aligned, e.g. `uuid`, `text`. |
 | `pk` | `boolean?` | Primary-key member. |
 | `fk` | `boolean?` | Prints the `FK` marker. Presentation only — an `fk` edge is routed by its relation's `fromColumn`, not by this flag. |
+| `layer` | `string?` | The row shows only while this layer is active; the table itself stays on the base sheet. Must name a declared layer (`unknown-layer`). |
 
 ## `ContainmentEdge`
 
@@ -447,6 +448,8 @@ There is no ER notation. A schema is nodes of one type joined by relations of on
 Each end of an `fk` is pinned to its column's row where the edge meets a left or right border; on a top or bottom border it floats to the middle like any other relation. With no `toColumn`, the renderer falls back to the target's first `pk` column — [`m.fk`](builder-api.md#mfkfrom-fromcolumn-to-tocolumn-opts--m) is stricter, and throws unless the target has exactly one.
 
 A column's `fk` flag prints the `FK` marker and nothing else: what routes the edge is the relation's `fromColumn`. `m.fk` does not set the flag; the studio's row-to-table drag does.
+
+A column with a `layer` is drawn only while that layer is active, and the table shrinks by its row while it is not. Its layer gets a legend row like any other, even when no node or relation uses it. An edge anchored to a hidden row floats to the table's middle, so put an `fk` relation on the same layer as its column. Deleting the layer deletes its rows and the relations anchored to them; merging it retags them.
 
 `duplicate-column` is checked on any node that has `columns`, and `unknown-column` on any relation naming a `fromColumn` or `toColumn` — whatever the node's `type` or the relation's `kind`. See [Draw an ER diagram](../how-to/draw-an-er-diagram.md).
 

@@ -19,7 +19,7 @@ import { layoutView, type EdgePoint, type NodeGeometry } from './layout';
 import { containerPad, DEFAULT_ALGORITHM, FALLBACK_DIRECTION, type SizeHint } from './layout-graph';
 import type { NotationProfile } from './notations';
 import { overlayPositions } from './placement';
-import { tableSize } from './table-ports';
+import { tableSize, withShownTableRows } from './table-ports';
 import type { Registry, TypeStyle } from './registry';
 
 export interface ViewLayoutInput {
@@ -173,6 +173,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     }
     // db-table nodes: reserve the intrinsic footprint for the header + all rows
     // so elk lays out the full table, not a default box. Explicit resize wins.
+    // Rows a column layer hides are subtracted per view (withShownTableRows).
     for (const n of input.model.nodes) {
       if (n.type !== 'db-table' || n.columns === undefined) continue;
       if (input.layout?.sizes?.[n.id] !== undefined) continue; // explicit resize wins
@@ -192,18 +193,25 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // `metaKeys` is compared by content: a host passing a fresh array literal each
   // render must not re-run elk each render.
   const metaKeysKey = input.metaKeys.join('\u0000');
+  // The sizes map alone, not the whole overlay: a position drag rebuilds the
+  // overlay but keeps its `sizes`, and must not re-run elk.
+  const fixedSizes = input.layout?.sizes;
   const sizes = useMemo(
     () =>
-      input.profile.layout !== undefined
-        ? sizeHints
-        : withBoxSizes(input.compiled.roots, sizeHints, {
-            typeRegistry: input.typeRegistry,
-            metaKeys: input.metaKeys,
-            hiddenCounts: input.hiddenCounts,
-            ...(input.profile.node?.leafSize !== undefined ? { leafSize: input.profile.node.leafSize } : {}),
-          }),
+      withShownTableRows(
+        input.compiled.roots,
+        input.profile.layout !== undefined
+          ? sizeHints
+          : withBoxSizes(input.compiled.roots, sizeHints, {
+              typeRegistry: input.typeRegistry,
+              metaKeys: input.metaKeys,
+              hiddenCounts: input.hiddenCounts,
+              ...(input.profile.node?.leafSize !== undefined ? { leafSize: input.profile.node.leafSize } : {}),
+            }),
+        fixedSizes,
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- input.metaKeys is tracked through metaKeysKey (see above)
-    [sizeHints, input.compiled, input.profile, input.typeRegistry, metaKeysKey, input.hiddenCounts],
+    [sizeHints, input.compiled, input.profile, input.typeRegistry, metaKeysKey, input.hiddenCounts, fixedSizes],
   );
 
   // Per-plane automatic-layout settings (algorithm/direction/spacing/edge routing)

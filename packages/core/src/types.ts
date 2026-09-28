@@ -39,6 +39,9 @@ export interface Column {
   pk?: boolean;
   /** this column is a foreign key (drives the FK marker + row-port edge origin) */
   fk?: boolean;
+  /** transparent-sheet membership, as on a node: the row shows only while this
+   *  layer is active; omit = always drawn. The table itself is unaffected. */
+  layer?: string;
 }
 
 export interface DiagramNode {

@@ -7,6 +7,7 @@ import {
   type DiagramModel,
   type DiagramNode,
   type DiagramPlane,
+  type DiagramRelation,
   type EdgeLabel,
   type FontScale,
   type Link,
@@ -248,6 +249,11 @@ export function deleteNode(m: DiagramModel, id: string, cascade = false): Diagra
 
 export function setTableColumns(m: DiagramModel, id: string, columns: Column[]): DiagramModel {
   requireNode(m, id);
+  for (const c of columns) {
+    if (c.layer !== undefined && !m.layers.some((l) => l.id === c.layer)) {
+      throw new CommandError(`Unknown layer '${c.layer}'`);
+    }
+  }
   // Deliberately NOT rejecting duplicate names: edit-mode inputs commit per
   // keystroke, so a transient collision must not throw. `validate` reports
   // duplicate-column at publish time.
@@ -689,11 +695,27 @@ export function deleteLayer(m: DiagramModel, id: string): DiagramModel {
   // deleteNode — a destroyed node's containment is severed (untagged children
   // survive top-level) and relations touching it are dropped.
   const doomed = new Set(m.nodes.filter((n) => n.layer === id).map((n) => n.id));
+  // A tagged column goes with its layer too, and so does a relation anchored to
+  // it: that relation is the column's foreign key, and without the row it would
+  // fail validation as an unknown-column.
+  const doomedColumns = new Set<string>();
+  const nodes = m.nodes
+    .filter((n) => n.layer !== id)
+    .map((n) => {
+      if (!n.columns?.some((c) => c.layer === id)) return n;
+      for (const c of n.columns) if (c.layer === id) doomedColumns.add(`${n.id}\u0000${c.name}`);
+      return { ...n, columns: n.columns.filter((c) => c.layer !== id) };
+    });
+  const anchoredToDoomed = (r: DiagramRelation): boolean =>
+    (r.fromColumn !== undefined && doomedColumns.has(`${r.from}\u0000${r.fromColumn}`)) ||
+    (r.toColumn !== undefined && doomedColumns.has(`${r.to}\u0000${r.toColumn}`));
   return {
     ...m,
     layers: m.layers.filter((l) => l.id !== id),
-    nodes: m.nodes.filter((n) => n.layer !== id),
-    relations: m.relations.filter((r) => r.layer !== id && !doomed.has(r.from) && !doomed.has(r.to)),
+    nodes,
+    relations: m.relations.filter(
+      (r) => r.layer !== id && !doomed.has(r.from) && !doomed.has(r.to) && !anchoredToDoomed(r),
+    ),
     containment: m.containment.filter((e) => !doomed.has(e.parent) && !doomed.has(e.child)),
     planes: (m.planes ?? []).map((p) => {
       const touchesHides = [...(p.hides ?? []), ...(p.hidesTree ?? [])].some((h) => doomed.has(h));
@@ -731,7 +753,11 @@ export function mergeLayers(m: DiagramModel, sourceIds: string[], targetId?: str
   return {
     ...m,
     layers: m.layers.filter((l) => !sources.has(l.id)),
-    nodes: m.nodes.map(retag),
+    nodes: m.nodes.map((n) => {
+      const node = retag(n);
+      if (!node.columns?.some((c) => c.layer !== undefined && sources.has(c.layer))) return node;
+      return { ...node, columns: node.columns.map(retag) };
+    }),
     relations: m.relations.map(retag),
     planes: (m.planes ?? []).map((p) => {
       if (p.layers === undefined) return p;

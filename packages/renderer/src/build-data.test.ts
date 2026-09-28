@@ -202,6 +202,20 @@ describe('buildNodeData', () => {
     expect(onColumnsChange).toHaveBeenCalledWith('tbl', [{ name: 'x' }]);
   });
 
+  it('draws the rows the view kept, and puts hidden rows back around an edit', () => {
+    const onSetTableColumns = vi.fn();
+    const all = [{ name: 'id', pk: true }, { name: 'flag', layer: 'flags' }, { name: 'email' }];
+    const table = viewNode({
+      id: 'tbl',
+      node: { id: 'tbl', name: 't', type: 'db-table', columns: all },
+      columns: [all[0]!, all[2]!],
+    });
+    const d = buildNodeData(table, nodeCtx({ onSetTableColumns, editing: true }));
+    expect(d.columns).toEqual([all[0], all[2]]);
+    d.onColumnsChange?.([all[0]!, { name: 'mail' }]);
+    expect(onSetTableColumns).toHaveBeenCalledWith('tbl', [all[0], all[1], { name: 'mail' }]);
+  });
+
   it('threads the style preset and notation', () => {
     const preset = { id: 'hand-drawn' as const, label: 'hd', rough: { roughness: 1, bowing: 1, strokeWidth: 1, fillStyle: 'solid' as const } };
     const d = buildNodeData(viewNode(), nodeCtx({ stylePreset: preset, notation: 'causal-loop' as NotationId }));

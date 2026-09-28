@@ -477,6 +477,73 @@ describe('deleteLayer (destructive)', () => {
   });
 });
 
+describe('deleteLayer on column layers', () => {
+  const m0 = (): DiagramModel => ({
+    version: 1,
+    id: 'd',
+    name: 'd',
+    nodes: [
+      { id: 'user', name: 'user', type: 'db-table', columns: [{ name: 'id', pk: true }] },
+      {
+        id: 'event',
+        name: 'event',
+        type: 'db-table',
+        columns: [
+          { name: 'id', pk: true },
+          { name: 'flag', layer: 'flags' },
+          { name: 'owner_id', fk: true, layer: 'flags' },
+        ],
+      },
+    ],
+    containment: [],
+    relations: [
+      { id: 'fk', from: 'event', to: 'user', kind: 'fk', fromColumn: 'owner_id', toColumn: 'id' },
+      { id: 'plain', from: 'event', to: 'user', kind: 'fk' },
+    ],
+    layers: [{ id: 'flags', name: 'Flags' }],
+    planes: [],
+  });
+
+  it('drops the tagged rows and the relations anchored to them, keeping the table', () => {
+    const m = deleteLayer(m0(), 'flags');
+    expect(m.nodes.find((n) => n.id === 'event')?.columns).toEqual([{ name: 'id', pk: true }]);
+    expect(m.relations.map((r) => r.id)).toEqual(['plain']);
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('leaves tables without tagged rows untouched', () => {
+    const before = m0();
+    const m = deleteLayer(before, 'flags');
+    expect(m.nodes.find((n) => n.id === 'user')).toBe(before.nodes[0]);
+  });
+});
+
+describe('mergeLayers on column layers', () => {
+  const m0 = (): DiagramModel => ({
+    version: 1,
+    id: 'd',
+    name: 'd',
+    nodes: [{ id: 't', name: 't', type: 'db-table', columns: [{ name: 'id' }, { name: 'flag', layer: 'ops' }] }],
+    containment: [],
+    relations: [],
+    layers: [
+      { id: 'flow', name: 'Flow' },
+      { id: 'ops', name: 'Ops' },
+    ],
+    planes: [],
+  });
+
+  it('retags rows onto the target', () => {
+    const m = mergeLayers(m0(), ['ops'], 'flow');
+    expect(m.nodes[0]?.columns).toEqual([{ name: 'id' }, { name: 'flag', layer: 'flow' }]);
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('untags rows when merging to the base sheet', () => {
+    expect(mergeLayers(m0(), ['ops']).nodes[0]?.columns).toEqual([{ name: 'id' }, { name: 'flag' }]);
+  });
+});
+
 describe('setNodePlaneHidden', () => {
   const base = () => ({
     version: 1 as const, id: 'm', name: 'm',
@@ -736,6 +803,9 @@ describe('setTableColumns', () => {
   });
   it('throws for an unknown node', () => {
     expect(() => setTableColumns(base(), 'nope', [])).toThrow(CommandError);
+  });
+  it('throws for a column on an unknown layer', () => {
+    expect(() => setTableColumns(base(), 't', [{ name: 'flag', layer: 'ghost' }])).toThrow(CommandError);
   });
 });
 

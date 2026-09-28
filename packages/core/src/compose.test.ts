@@ -94,6 +94,34 @@ describe('composeIncludes: expansion', () => {
     expect(validate(m)).toEqual([]);
   });
 
+  it('remaps column layer refs like node layer refs', async () => {
+    const svc = doc('svc', {
+      nodes: [
+        {
+          id: 't',
+          name: 't',
+          type: 'db-table',
+          columns: [{ name: 'id' }, { name: 'flag', layer: 'flags' }, { name: 'obs', layer: 'monitoring' }],
+        },
+      ],
+      layers: [
+        { id: 'flags', name: 'Flags' },
+        { id: 'monitoring', name: 'Monitoring' },
+      ],
+    });
+    const umbrella = doc('arch', {
+      nodes: [{ id: 's', name: 'Svc', type: 'system', include: 'svc' }],
+      layers: [{ id: 'monitoring', name: 'Monitoring' }],
+    });
+    const { model: m } = await composeIncludes(umbrella, 'mem:arch', memory({ svc }));
+    expect(m.nodes.find((n) => n.id === 's/t')?.columns).toEqual([
+      { name: 'id' },
+      { name: 'flag', layer: 's/flags' },
+      { name: 'obs', layer: 'monitoring' },
+    ]);
+    expect(validate(m)).toEqual([]);
+  });
+
   it('namespaces node layer refs when the host does not declare the layer', async () => {
     const svc = doc('svc', {
       nodes: [{ id: 'obs', name: 'obs', type: 'infra', layer: 'monitoring' }],

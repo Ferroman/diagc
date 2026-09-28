@@ -465,6 +465,16 @@ describe('marks', () => {
     ]);
   });
 
+  it('lists a layer that holds only table rows, and keys only the rows drawn', () => {
+    const m = model('er');
+    m.layer('flags', { name: 'Flags' });
+    m.table('users', { columns: [{ name: 'id', pk: true }] });
+    m.table('events', { columns: [{ name: 'name' }, { name: 'user_id', fk: true, layer: 'flags' }] });
+    const json = m.toJSON();
+    expect(rows(json, { activeLayers: [] }).map((r) => r.id)).toEqual(['layers:flags', 'marks:pk']);
+    expect(rows(json, { activeLayers: ['flags'] }).map((r) => r.id)).toEqual(['layers:flags', 'marks:pk', 'marks:fk']);
+  });
+
   it('is a section like the others: on by default, off when `show` leaves it out', () => {
     expect(rows(fixture()).some((r) => r.section === 'marks')).toBe(false);
     expect(rows(erModel(), { config: { show: ['kinds'] } }).some((r) => r.section === 'marks')).toBe(false);

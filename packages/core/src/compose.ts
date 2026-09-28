@@ -124,6 +124,9 @@ function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): Diag
     ...n,
     id: p(n.id),
     ...(n.layer !== undefined ? { layer: layerId(n.layer) } : {}),
+    ...(n.columns?.some((c) => c.layer !== undefined)
+      ? { columns: n.columns.map((c) => (c.layer !== undefined ? { ...c, layer: layerId(c.layer) } : c)) }
+      : {}),
   }));
 
   // only the selected plane's structure comes along, imported untagged (default:

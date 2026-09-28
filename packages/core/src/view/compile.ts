@@ -4,7 +4,8 @@ import { computeLod } from './lod';
 import { buildViewTree } from './tree';
 import { resolveEdges } from './edges';
 import { scopeToRoot } from './scope';
-import type { CompiledView, ViewportState } from './types';
+import { visibleColumns } from '../columns';
+import type { CompiledView, ViewNode, ViewportState } from './types';
 
 /** which plane's containment edges a view of `planeId` uses (resolves containmentOf).
  *  Kept here as the name the layout overlay is keyed by (see `layoutPlaneKey`);
@@ -71,6 +72,7 @@ export function compileView(m: DiagramModel, viewport: ViewportState): CompiledV
     const sh = buildHierarchy(scoped.model, undefined, activeLayerSet);
     const lod = computeLod({ hierarchy: sh, focus: viewport.focus, pins: viewport.pins });
     const tree = buildViewTree(scoped.model, sh, lod);
+    filterColumns(tree.byId.values(), activeLayerSet);
     for (const [stubId, rep] of scoped.externals) {
       const vn = tree.byId.get(stubId);
       if (vn !== undefined) vn.external = rep;
@@ -82,7 +84,20 @@ export function compileView(m: DiagramModel, viewport: ViewportState): CompiledV
 
   const lod = computeLod({ hierarchy, focus: viewport.focus, pins: viewport.pins });
   const tree = buildViewTree(m, hierarchy, lod);
+  filterColumns(tree.byId.values(), activeLayerSet);
   const edges = resolveEdges(m, tree, activeLayers, plane?.baseRelations ?? true);
   const layoutEdges = resolveEdges(m, tree, m.layers.map((l) => l.id), true);
   return { roots: tree.roots, edges, layoutEdges, lod };
+}
+
+/** Drops the rows of inactive column layers. Rows never take part in edge
+ * resolution (a row is an anchor on its table, not a node), so this is purely
+ * what the table draws, and how tall it is. */
+function filterColumns(nodes: Iterable<ViewNode>, activeLayers: ReadonlySet<string>): void {
+  for (const vn of nodes) {
+    const all = vn.node.columns;
+    if (all === undefined) continue;
+    const shown = visibleColumns(all, activeLayers);
+    if (shown !== all) vn.columns = shown;
+  }
 }

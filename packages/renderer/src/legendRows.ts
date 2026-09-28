@@ -152,7 +152,11 @@ function drawableSlice(input: LegendInput): {
 function relevantLayerIds(input: LegendInput): Set<string> {
   const { nodes, relations } = drawableSlice(input);
   const ids = new Set<string>();
-  for (const n of nodes) if (n.layer !== undefined) ids.add(n.layer);
+  for (const n of nodes) {
+    if (n.layer !== undefined) ids.add(n.layer);
+    // a layer that holds only table rows still needs its row, or it has no switch
+    for (const c of n.columns ?? []) if (c.layer !== undefined) ids.add(c.layer);
+  }
   // The EFFECTIVE layer — a relation the model's `layerRules` place on a layer
   // counts for that layer's row exactly as one tagged by hand does.
   for (const r of relations) {
@@ -281,7 +285,7 @@ function markRows(input: LegendInput): LegendRow[] {
     for (const v of nodes) {
       badge(threatSummary(v.node.threats));
       // A folded table draws no rows, but a table is a leaf: it has nothing to fold.
-      for (const c of v.node.columns ?? []) {
+      for (const c of v.columns ?? v.node.columns ?? []) {
         if (c.pk === true) seen.add('pk');
         else if (c.fk === true) seen.add('fk');
       }

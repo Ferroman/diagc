@@ -91,6 +91,16 @@ describe('validate', () => {
     ]);
   });
 
+  it('flags columns tagged with undeclared layers', () => {
+    const m = emptyModel();
+    m.nodes = [{ id: 't', name: 't', type: 'db-table', columns: [{ name: 'id' }, { name: 'flag', layer: 'nope' }] }];
+    expect(validate(m)).toEqual([
+      { code: 'unknown-layer', message: "Column 't.flag' references unknown layer 'nope'", ref: 't' },
+    ]);
+    m.layers = [{ id: 'nope', name: 'Nope' }];
+    expect(validate(m)).toEqual([]);
+  });
+
   it('flags nodes tagged with undeclared layers', () => {
     const m = emptyModel();
     m.nodes = [{ id: 'a', name: 'a', type: 't', layer: 'nope' }];
