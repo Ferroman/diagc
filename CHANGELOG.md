@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/Ferroman/diagc/compare/v0.2.2...v0.3.0) (2026-09-28)
+
+
+### Features
+
+* deployment notation ([#23](https://github.com/Ferroman/diagc/issues/23)) ([2c4dbf5](https://github.com/Ferroman/diagc/commit/2c4dbf56f67f26f5ac91452a40b94f90ac81fec0))
+* **diagc:** send credentials to private include hosts ([#22](https://github.com/Ferroman/diagc/issues/22)) ([9d9c5c3](https://github.com/Ferroman/diagc/commit/9d9c5c301bc4586ea7a1d0c444cfad3621d83c91))
+
 ## [0.2.2](https://github.com/Ferroman/diagc/compare/v0.2.1...v0.2.2) (2026-09-27)
 
 
