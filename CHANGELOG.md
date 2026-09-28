@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/Ferroman/diagc/compare/v0.3.0...v0.4.0) (2026-09-28)
+
+
+### Features
+
+* **core:** put ER table columns on layers ([#27](https://github.com/Ferroman/diagc/issues/27)) ([f9cc88e](https://github.com/Ferroman/diagc/commit/f9cc88ef5ac1350eb0f3b80cad9212241668c155))
+
 ## [0.3.0](https://github.com/Ferroman/diagc/compare/v0.2.2...v0.3.0) (2026-09-28)
 
 
