@@ -152,6 +152,7 @@ Anything not recognised as a flag is collected as `files...`.
 | Variable | Read by | Meaning |
 | --- | --- | --- |
 | `CHROME_PATH` | `publish` | Path to a Chrome/Chromium binary for PNG export. Checked before the default locations. |
+| `DIAGC_AUTH_TOKENS` | `--update-includes` | Credentials for private include hosts: `;`-separated `token@host` (bearer) or `user:pass@host` (basic). Sent over https only, to the named host only. See [Compose diagrams](../how-to/compose-diagrams.md#private-hosts). |
 | `DIAGRAMS_DIR` | studio server | Source directory. Set by `diagc studio`. |
 | `ARTIFACTS_DIR` | studio server | Artifact directory. Set by `diagc studio`. |
 | `DIAGRAMS_CWD` | studio dev server | Extra path added to Vite's filesystem allow-list (checkout layout only). |
