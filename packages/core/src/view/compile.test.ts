@@ -101,3 +101,36 @@ describe('compileView on the acme fixture', () => {
     expect(CONTAINER_HEADER).toBe(32);
   });
 });
+
+describe('compileView column layers', () => {
+  const m = () => ({
+    version: 1 as const,
+    id: 'er',
+    name: 'er',
+    nodes: [
+      {
+        id: 't',
+        name: 't',
+        type: 'db-table',
+        columns: [{ name: 'id', pk: true }, { name: 'flag', layer: 'flags' }],
+      },
+      { id: 'u', name: 'u', type: 'db-table', columns: [{ name: 'id', pk: true }] },
+    ],
+    containment: [],
+    relations: [],
+    layers: [{ id: 'flags', name: 'Flags' }],
+    planes: [],
+  });
+
+  it('hides a row whose layer is off, and marks only filtered tables', () => {
+    const v = compileView(m(), {});
+    expect(v.roots.find((r) => r.id === 't')?.columns).toEqual([{ name: 'id', pk: true }]);
+    expect(v.roots.find((r) => r.id === 'u')?.columns).toBeUndefined();
+  });
+
+  it('draws the row while its layer is active, including via plane presets', () => {
+    expect(compileView(m(), { activeLayers: ['flags'] }).roots.find((r) => r.id === 't')?.columns).toBeUndefined();
+    const withPreset = { ...m(), planes: [{ id: 'p', name: 'p', layers: ['flags'] }] };
+    expect(compileView(withPreset, {}).roots.find((r) => r.id === 't')?.columns).toBeUndefined();
+  });
+});

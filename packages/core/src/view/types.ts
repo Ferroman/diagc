@@ -1,4 +1,4 @@
-import type { DiagramNode, DiagramRelation, EdgeLabel, Polarity, RelationStyle } from '../types';
+import type { Column, DiagramNode, DiagramRelation, EdgeLabel, Polarity, RelationStyle } from '../types';
 
 export type NodeViewState = 'leaf' | 'expanded' | 'collapsed';
 
@@ -41,6 +41,9 @@ export interface ViewNode {
    * in for — an edge to something outside the current drill root. Clicking it
    * navigates into that node. */
   external?: string;
+  /** Set only when column layers hide some of this table's rows: the rows to
+   * draw. Absent = draw `node.columns` as is. */
+  columns?: Column[];
 }
 
 export interface ViewEdge {

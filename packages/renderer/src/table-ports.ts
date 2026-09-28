@@ -1,5 +1,6 @@
-import type { Column } from '@diagc/core';
+import type { Column, ViewNode } from '@diagc/core';
 import { Position } from '@xyflow/react';
+import type { SizeHint } from './layout-graph';
 
 export const TABLE_HEADER_H = 30;
 export const TABLE_ROW_H = 22;
@@ -19,6 +20,29 @@ export function tableSize(columns: Column[], title = ''): { width: number; heigh
   const width = Math.min(MAX_TABLE_W, Math.max(MIN_TABLE_W, Math.round(Math.max(body, head) + PAD_X)));
   const height = TABLE_HEADER_H + columns.length * TABLE_ROW_H;
   return { width, height };
+}
+
+/**
+ * Re-size the tables whose rows a column layer filters (`ViewNode.columns`).
+ * The model-keyed hints size every table by all of its rows, which would leave
+ * a hidden row as empty space. An explicit resize (`fixed`) still wins. Returns
+ * `hints` itself when no table is filtered.
+ */
+export function withShownTableRows(
+  roots: readonly ViewNode[],
+  hints: Map<string, SizeHint>,
+  fixed: Record<string, unknown> | undefined,
+): Map<string, SizeHint> {
+  let out = hints;
+  const walk = (n: ViewNode): void => {
+    if (n.columns !== undefined && n.node.type === 'db-table' && fixed?.[n.id] === undefined) {
+      if (out === hints) out = new Map(hints);
+      out.set(n.id, tableSize(n.columns, n.node.name));
+    }
+    n.children.forEach(walk);
+  };
+  roots.forEach(walk);
+  return out;
 }
 
 /** Vertical center of column `index`'s row, relative to the table node's top. */

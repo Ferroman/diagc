@@ -251,6 +251,9 @@ function validateNodes(ctx: Ctx): void {
             report(issues, 'duplicate-column', `Node '${n.id}' has duplicate column '${c.name}'`, n.id);
           }
           seen.add(c.name);
+          if (c.layer !== undefined && !ctx.layerIds.has(c.layer)) {
+            report(issues, 'unknown-layer', `Column '${n.id}.${c.name}' references unknown layer '${c.layer}'`, n.id);
+          }
         }
       }
     }

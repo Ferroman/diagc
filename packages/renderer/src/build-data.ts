@@ -31,7 +31,7 @@ import type {
   ViewEdge,
   ViewNode,
 } from '@diagc/core';
-import { runsToPlainText, threatSummary } from '@diagc/core';
+import { runsToPlainText, threatSummary, withHiddenColumns } from '@diagc/core';
 import type { IconRegistry } from '@diagc/icons';
 import type { AnnotationCounts } from './comment-badge';
 import type { EdgePoint } from './layout';
@@ -216,9 +216,16 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     ...(n.node.link !== undefined
       ? { link: n.node.link, ...(ctx.onOpenLink !== undefined ? { onOpenLink: ctx.onOpenLink } : {}) }
       : {}),
-    ...(n.node.columns !== undefined ? { columns: n.node.columns } : {}),
+    ...(n.node.columns !== undefined ? { columns: n.columns ?? n.node.columns } : {}),
+    // The table edits only the rows it draws; the rows an inactive layer hides
+    // are put back around the edit, or saving would delete them.
     ...(ctx.editing && n.node.type === 'db-table' && ctx.onSetTableColumns !== undefined
-      ? { onColumnsChange: (columns: Column[]) => ctx.onSetTableColumns?.(n.id, columns) }
+      ? {
+          onColumnsChange: (columns: Column[]) => {
+            const all = n.node.columns ?? [];
+            ctx.onSetTableColumns?.(n.id, withHiddenColumns(all, n.columns ?? all, columns));
+          },
+        }
       : {}),
     ...(ctx.editing && ctx.quickAdd !== undefined ? { quickAdd: ctx.quickAdd } : {}),
     ...(ctx.editing && ctx.onSetRole !== undefined ? { onSetRole: ctx.onSetRole } : {}),
