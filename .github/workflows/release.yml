@@ -13,6 +13,13 @@ name: Release
 on:
   push:
     branches: [main]
+  # Re-runs publish for a tag that already exists, when the release was cut but the
+  # npm upload never happened. Release-please is skipped: the tag and release are there.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to publish, e.g. v0.3.0'
+        required: true
 
 permissions:
   contents: write
@@ -20,6 +27,7 @@ permissions:
 
 jobs:
   release-please:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
@@ -34,7 +42,11 @@ jobs:
 
   publish:
     needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+    # `!cancelled()` because a skipped `needs` job skips this one too, which would
+    # make the manual run a no-op.
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' ||
+      needs.release-please.outputs.release_created == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -45,7 +57,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
+          ref: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
