@@ -52,3 +52,7 @@ jobs:
             you only do this once.
           custom-pr-sign-comment: 'I have read the CLA Document and I hereby sign the CLA'
           custom-allsigned-prcomment: 'All contributors have signed the CLA. Thanks!'
+          # The action locks a PR once it merges, by default. Release-please comments on
+          # its release PR right after the merge, and a locked PR fails that run before
+          # the publish job starts.
+          lock-pullrequest-aftermerge: false
