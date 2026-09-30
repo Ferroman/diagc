@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/Ferroman/diagc/compare/v0.5.0...v0.5.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* **renderer:** place causal-loop R/B markers inside their loops ([#33](https://github.com/Ferroman/diagc/issues/33)) ([33a8cad](https://github.com/Ferroman/diagc/commit/33a8cad1d101b71715838c9404cdc78d8a6b6c4f))
+
 ## [0.5.0](https://github.com/Ferroman/diagc/compare/v0.4.1...v0.5.0) (2026-09-30)
 
 
