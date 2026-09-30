@@ -6,6 +6,7 @@ import { DEPLOY_NODE_TYPES, DEPLOY_ZONE_TYPES, LIBRARY_IMAGE_REF } from '@diagc/
 import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { AWS_PACK } from './packs.aws';
 import { AZURE_PACK } from './packs.azure';
+import { GCP_PACK } from './packs.gcp';
 import { C4_PACK } from './packs.c4';
 import { BUNDLED_LIBRARY } from './packs';
 
@@ -274,6 +275,35 @@ describe('Azure pack', () => {
     expect(kw('azure-kubernetes-services')).toContain('aks');
     expect(kw('azure-virtual-networks')).toContain('vnet');
     expect(kw('azure-storage-accounts')).toContain('blob');
+  });
+});
+
+describe('Google Cloud pack', () => {
+  it('nests its three icon families under the Google Cloud group', () => {
+    expect(GCP_PACK.categories.map((c) => c.id)).toEqual(['gcp-core', 'gcp-products', 'gcp-categories']);
+    for (const c of GCP_PACK.categories) expect(c.group).toBe('Google Cloud');
+  });
+
+  it('has a manifest entry for every generated icon, and no orphans', () => {
+    for (const dir of ['gcp', 'gcp-products', 'gcp-categories']) {
+      const onDisk = readdirSync(path.join(PUBLIC_DIR, 'library', dir)).map((f) => `/library/${dir}/${f}`);
+      const listed = GCP_PACK.entries.map((e) => e.template.image).filter((i) => i?.startsWith(`/library/${dir}/`));
+      expect(listed.sort(), dir).toEqual(onDisk.sort());
+    }
+  });
+
+  it('gives the console icons readable product names', () => {
+    const names = GCP_PACK.entries.filter((e) => e.category === 'gcp-products').map((e) => e.name);
+    expect(names).toContain('Pub/Sub');
+    expect(names).toContain('Google Kubernetes Engine');
+    expect(names).toContain('Cloud Optimization AI - Fleet Routing API');
+  });
+
+  it('is findable by the abbreviations people actually type', () => {
+    const kw = (id: string) => GCP_PACK.entries.find((e) => e.id === id)?.keywords ?? [];
+    expect(kw('gcp-gke')).toContain('kubernetes');
+    expect(kw('gcp-product-pub-sub')).toContain('messaging');
+    expect(kw('gcp-cloud-storage')).toContain('gcs');
   });
 });
 
