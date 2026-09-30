@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/Ferroman/diagc/compare/v0.4.1...v0.5.0) (2026-09-30)
+
+
+### Features
+
+* **renderer:** lay causal loops out with stress ([#24](https://github.com/Ferroman/diagc/issues/24)) ([0e86367](https://github.com/Ferroman/diagc/commit/0e863675c0f68194c12f103176eb47e2ea6be440))
+
 ## [0.4.1](https://github.com/Ferroman/diagc/compare/v0.4.0...v0.4.1) (2026-09-30)
 
 
