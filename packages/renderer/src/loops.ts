@@ -272,11 +272,12 @@ function loopDirection(centers: readonly Point[]): 'cw' | 'ccw' | 'none' {
 }
 
 /**
- * Place one R/B/? label per loop, anchored just off the top-right corner of the
- * loop's canonical first node (so a badge sits *by* a node of its loop, not at
- * the diagram's shared centre), then nudged out along concentric rings to clear
- * obstacle rects and stay minLabelGap from already-placed labels — falling back
- * to the raw anchor if every candidate is blocked.
+ * Place one R/B/? label per loop at the centroid of its members' centres — the
+ * loop's interior, where the notation puts it — then nudged out along
+ * concentric rings to clear obstacle rects and stay minLabelGap from
+ * already-placed labels, falling back to the centroid if every candidate is
+ * blocked. Loops sharing a hub have nearby centroids; the ring search is what
+ * keeps their badges apart.
  */
 export function placeLoopLabels(
   loops: readonly Loop[],
@@ -300,13 +301,13 @@ export function placeLoopLabels(
     const memberRects = loop.nodes.map((id) => rects.get(id)).filter((r): r is NodeRect => r !== undefined);
     const centers = memberRects.map(rectCenter);
 
-    // Anchor by the loop's canonical first node (findLoops roots each loop at its
-    // min-id node), just off its top-right corner, so the badge reads as
-    // belonging to that node's loop.
-    const anchor = memberRects[0];
-    if (anchor === undefined) continue;
-    const cx = anchor.x + anchor.width + labelRadius + 6;
-    const cy = anchor.y - labelRadius - 6;
+    // The interior of the loop. This used to be a corner of the loop's first
+    // node, because under the layered layout every loop spanned the diagram and
+    // all centroids bunched at its middle; the causal-loop default is now
+    // stress, which draws a loop as a ring, so the centroid sits inside it.
+    if (centers.length === 0) continue;
+    const cx = centers.reduce((sum, c) => sum + c.x, 0) / centers.length;
+    const cy = centers.reduce((sum, c) => sum + c.y, 0) / centers.length;
 
     const direction = loopDirection(centers);
 
