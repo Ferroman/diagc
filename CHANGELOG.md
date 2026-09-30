@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/Ferroman/diagc/compare/v0.4.0...v0.4.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* **core:** warn about a stray fishbone cause instead of refusing to save ([#29](https://github.com/Ferroman/diagc/issues/29)) ([5ef729b](https://github.com/Ferroman/diagc/commit/5ef729b91e43ab09b853a96168471adfa246a4fa))
+
 ## [0.4.0](https://github.com/Ferroman/diagc/compare/v0.3.0...v0.4.0) (2026-09-28)
 
 
