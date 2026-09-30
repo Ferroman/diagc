@@ -38,7 +38,7 @@ The full picture at the top of this page — all six bones of `.diagrams/src/doc
 
 Categories alternate above and below the spine in the order they're declared, and pair into columns left to right — the first two categories share the first column, the next two the second, and so on. Causes stack down their bone from the category box; sub-causes tick off a cause's own line. A column shares one colour.
 
-What hangs where is never authored: any relation between two fishbone nodes hangs the child on the `to` end — the first such relation wins — so the connect gesture works as well as the panel does. Whatever cannot reach the effect (a stray cause, a chain that loops back on itself) waits in a row under the fish, and shows up in the panel's issue list rather than being silently dropped.
+What hangs where is never authored: any relation between two fishbone nodes hangs the child on the `to` end — the first such relation wins — so the connect gesture works as well as the panel does. Whatever cannot reach the effect (a stray cause, a chain that loops back on itself) waits in a row under the fish, and shows up in the panel's issue list rather than being silently dropped. It is a warning, not an error: the diagram still saves and compiles with a stray in it.
 
 ## When to reach for something else
 

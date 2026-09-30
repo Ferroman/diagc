@@ -3,7 +3,7 @@ import { access, copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/p
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { DiagramModel, IncludeResolver } from '@diagc/core';
 import { compileFile, executeDiagramTs } from './compile';
 
@@ -38,6 +38,29 @@ describe('compileFile', () => {
     await expect(compileFile(path.join(fixtures, 'broken.diagram.ts'), out)).rejects.toMatchObject({
       name: 'DiagramValidationError',
     });
+  });
+
+  it('compiles a fishbone with a stray cause, and warns about the stray', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'diagc-'));
+    const src = path.join(dir, 'fish.diagram.json');
+    const model: DiagramModel = {
+      version: 1, id: 'fish', name: 'fish', notation: 'fishbone',
+      nodes: [
+        { id: 'e', name: 'Outage', type: 'fb-effect' },
+        { id: 'c', name: 'Code', type: 'fb-category' },
+        { id: 'loose', name: 'Loose', type: 'fb-cause' },
+      ],
+      containment: [], relations: [{ id: 'c->e#0', from: 'c', to: 'e', kind: 'cause-of' }], layers: [], planes: [],
+    };
+    await writeFile(src, JSON.stringify(model));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const artifact = await compileFile(src, path.join(dir, 'out'));
+      expect(await exists(artifact)).toBe(true);
+      expect(warn).toHaveBeenCalledWith(`${src}: 'loose' does not reach the effect`);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('rejects a file with no default export and writes no artifact', async () => {

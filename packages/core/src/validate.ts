@@ -129,6 +129,8 @@ const report = (issues: ValidationIssue[], code: Code, message: string, ref?: st
  * per-section functions can cross-reference ids without rebuilding them. */
 interface Ctx {
   issues: ValidationIssue[];
+  /** notices that never block a save or a compile (see diagramWarnings) */
+  warnings: ValidationIssue[];
   m: DiagramModel;
   planes: DiagramPlane[];
   nodeIds: Set<string>;
@@ -703,9 +705,14 @@ function validateSecondOrder(ctx: Ctx): void {
  * (`fb-misplaced`); it hangs on a sub-cause (`fb-too-deep`); its chain never
  * reaches the effect (`fb-unattached`). A cause under a misplaced category is
  * therefore unattached, and the category is the misplaced one.
+ *
+ * `fb-unattached` is a warning, not an error: a cause dropped from the library
+ * is unattached until it is connected, the renderer already parks it in the
+ * stray row under the fish, and an error there made the diagram unsavable
+ * mid-edit (and unopenable once on disk).
  */
 function validateFishbone(ctx: Ctx): void {
-  const { issues, m } = ctx;
+  const { issues, warnings, m } = ctx;
   const plane = ctx.planes.find((p) => (p.notation ?? m.notation) === FISHBONE_NOTATION);
   const modelLevel = plane === undefined && ctx.planes.length === 0 && m.notation === FISHBONE_NOTATION;
   if (plane === undefined && !modelLevel) return;
@@ -756,7 +763,7 @@ function validateFishbone(ctx: Ctx): void {
     } else if (n.type === FB_CAUSE_TYPE && parent !== undefined && subIds.has(parent)) {
       report(issues, 'fb-too-deep', `'${n.id}' hangs on the sub-cause '${parent}'; three levels below the effect is the limit`, n.id);
     } else {
-      report(issues, 'fb-unattached', `'${n.id}' does not reach the effect`, n.id);
+      report(warnings, 'fb-unattached', `'${n.id}' does not reach the effect`, n.id);
     }
   }
   // The fish and a group want the same rectangle.
@@ -851,8 +858,22 @@ function validatePlan(ctx: Ctx): void {
 }
 
 export function validate(m: DiagramModel): ValidationIssue[] {
+  return check(m).issues;
+}
+
+/**
+ * What is worth telling the author but never blocks a save, a compile or an
+ * open: the model is sound and draws, just not the way it was likely meant
+ * (a fishbone cause that reaches no bone). Same issue shape as validate().
+ */
+export function diagramWarnings(m: DiagramModel): ValidationIssue[] {
+  return check(m).warnings;
+}
+
+function check(m: DiagramModel): Ctx {
   const ctx: Ctx = {
     issues: [],
+    warnings: [],
     m,
     planes: m.planes ?? [],
     nodeIds: new Set<string>(),
@@ -879,7 +900,7 @@ export function validate(m: DiagramModel): ValidationIssue[] {
   validateFishbone(ctx);
   validateThreatModel(ctx);
   validatePlan(ctx);
-  return ctx.issues;
+  return ctx;
 }
 
 function findContainmentCycle(edges: DiagramModel['containment']): string[] | null {
