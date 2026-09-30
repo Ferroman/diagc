@@ -17,13 +17,11 @@
  * Icon file names must satisfy LIBRARY_IMAGE_REF (@diagc/core): exactly
  * `/library/<kebab-dir>/<kebab-file>.<ext>`, lowercase, one directory level.
  */
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AWS_ALIASES, AWS_CATEGORY_ALIASES } from './aws-aliases.mjs';
+import { kw, lit, minifySvg, resolveSource, slugify, svgFiles } from './icon-pack-utils.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LIBRARY_DIR = path.join(ROOT, 'apps', 'studio', 'public', 'library');
@@ -48,70 +46,14 @@ const LEGACY_ALIASES = {
 
 // ---------------------------------------------------------------- helpers ---
 
-/** Lowercase kebab slug restricted to [a-z0-9-], per LIBRARY_IMAGE_REF. */
-function slugify(s) {
-  return s
-    .replace(/&/g, '-and-')
-    .replace(/\+/g, '-plus-')
-    .replace(/[^A-Za-z0-9]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .toLowerCase();
-}
-
 /** AWS encodes display names as dash-joined words; restore the spaces. */
 const displayName = (s) => s.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
-
-/**
- * Drop the parts of an AWS SVG that cost bytes but carry nothing: the XML
- * prolog, comments, and the `<title>` echo of the file name (which browsers
- * would surface as a tooltip over the icon). Inter-tag whitespace is collapsed
- * only when the file has no text nodes to damage.
- */
-function minifySvg(src) {
-  let out = src
-    .replace(/<\?xml[^>]*\?>/g, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/<title>[\s\S]*?<\/title>/g, '')
-    .replace(/<desc>[\s\S]*?<\/desc>/g, '');
-  if (!/<(text|tspan)[\s>]/.test(out)) out = out.replace(/>\s+</g, '><');
-  return `${out.trim()}\n`;
-}
-
-async function svgFiles(dir) {
-  const found = [];
-  for (const e of await readdir(dir, { withFileTypes: true, recursive: true })) {
-    if (e.isFile() && e.name.endsWith('.svg') && !e.parentPath.includes('__MACOSX')) {
-      found.push(path.join(e.parentPath, e.name));
-    }
-  }
-  return found.sort();
-}
 
 /** First-wins: AWS lists a handful of icons under two categories. */
 function claim(seen, slug, file) {
   if (seen.has(slug)) return false;
   seen.set(slug, file);
   return true;
-}
-
-async function resolveSource(argv) {
-  const srcIdx = argv.indexOf('--src');
-  if (srcIdx !== -1) return { dir: argv[srcIdx + 1], cleanup: undefined };
-
-  const work = mkdtempSync(path.join(tmpdir(), 'aws-icons-'));
-  const zipIdx = argv.indexOf('--zip');
-  let zip = argv[zipIdx + 1];
-  if (zipIdx === -1) {
-    zip = path.join(work, 'icons.zip');
-    process.stderr.write(`Downloading ${RELEASE_URL}\n`);
-    const res = await fetch(RELEASE_URL);
-    if (!res.ok) throw new Error(`Download failed: ${res.status} ${res.statusText}`);
-    await writeFile(zip, Buffer.from(await res.arrayBuffer()));
-  }
-  const dir = path.join(work, 'pkg');
-  execFileSync('unzip', ['-qo', zip, '-d', dir]);
-  return { dir, cleanup: () => rm(work, { recursive: true, force: true }) };
 }
 
 // ------------------------------------------------------------ collection ---
@@ -156,7 +98,7 @@ function categorySlug(dirName) {
 }
 
 async function main() {
-  const { dir: pkgDir, cleanup } = await resolveSource(process.argv.slice(2));
+  const { dir: pkgDir, cleanup } = await resolveSource(process.argv.slice(2), RELEASE_URL, 'aws');
   try {
     // Architecture service icons: Arch_<Category>/64/Arch_<Name>_64.svg
     const services = await collect(pkgDir, 'Architecture-Service-Icons', 'aws', (file) => {
@@ -237,9 +179,6 @@ function categoryTitle(slug) {
     .join(' ');
 }
 
-const lit = (s) => `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
-const kw = (words) => (words.length === 0 ? '' : `, [${words.map(lit).join(', ')}]`);
-
 function renderRows(fn, rows) {
   return rows.map((r) => `  ${fn}(${lit(r.category)}, ${lit(r.slug)}, ${lit(r.name)}${kw(r.keywords)}),`).join('\n');
 }
@@ -254,7 +193,8 @@ function renderManifest({ services, resources, groups, categories }) {
     `  { id: 'aws-categories', name: 'Category icons', group: 'AWS', builtin: true },`,
   ].join('\n');
 
-  return `import type { Library, LibraryCategory, LibraryEntry } from './types';
+  return `// @generated
+import type { Library, LibraryCategory, LibraryEntry } from './types';
 
 // GENERATED FILE — do not edit by hand.
 // Regenerate with: node scripts/build-aws-pack.mjs

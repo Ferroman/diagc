@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { DEPLOY_NODE_TYPES, DEPLOY_ZONE_TYPES, LIBRARY_IMAGE_REF } from '@diagc/core';
 import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { AWS_PACK } from './packs.aws';
+import { AZURE_PACK } from './packs.azure';
 import { C4_PACK } from './packs.c4';
 import { BUNDLED_LIBRARY } from './packs';
 
@@ -240,6 +241,39 @@ describe('Kubernetes pack', () => {
     expect(kw('k8s-svc')).toContain('service');
     expect(kw('k8s-sts')).toContain('statefulset');
     expect(kw('k8s-pvc')).toContain('storage');
+  });
+});
+
+describe('Azure pack', () => {
+  it('nests every category under the Azure group', () => {
+    expect(AZURE_PACK.categories.length).toBeGreaterThan(10);
+    for (const c of AZURE_PACK.categories) expect(c.group).toBe('Azure');
+    for (const e of AZURE_PACK.entries) expect(e.category).toMatch(/^azure-/);
+  });
+
+  it('is bundled after AWS', () => {
+    const ids = BUNDLED_LIBRARY.categories.map((c) => c.id);
+    expect(ids.indexOf('azure-compute')).toBeGreaterThan(ids.indexOf('aws-compute'));
+  });
+
+  it('has a manifest entry for every generated icon, and no orphans', () => {
+    const onDisk = readdirSync(path.join(PUBLIC_DIR, 'library', 'azure')).map((f) => `/library/azure/${f}`);
+    expect(AZURE_PACK.entries.map((e) => e.template.image).sort()).toEqual(onDisk.sort());
+  });
+
+  it('files the core services under their specific category, not General or Other', () => {
+    const cat = (id: string) => AZURE_PACK.entries.find((e) => e.id === id)?.category;
+    expect(cat('azure-virtual-machine')).toBe('azure-compute');
+    expect(cat('azure-kubernetes-services')).toBe('azure-compute'); // also filed under Containers; first specific folder wins
+    expect(cat('azure-storage-accounts')).toBe('azure-storage');
+    expect(cat('azure-virtual-networks')).toBe('azure-networking');
+  });
+
+  it('is findable by the abbreviations people actually type', () => {
+    const kw = (id: string) => AZURE_PACK.entries.find((e) => e.id === id)?.keywords ?? [];
+    expect(kw('azure-kubernetes-services')).toContain('aks');
+    expect(kw('azure-virtual-networks')).toContain('vnet');
+    expect(kw('azure-storage-accounts')).toContain('blob');
   });
 });
 

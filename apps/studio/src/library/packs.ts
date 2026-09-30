@@ -2,6 +2,7 @@ import type { Library, LibraryCategory, LibraryEntry } from './types';
 import { ACTIVITY_PACK } from './packs.activity';
 import { AWS_PACK } from './packs.aws';
 import { AWS_CONTAINER_ENTRIES } from './packs.aws-containers';
+import { AZURE_PACK } from './packs.azure';
 import { C4_PACK } from './packs.c4';
 import { DATA_PACK } from './packs.data';
 import { SECOND_ORDER_PACK } from './packs.second-order';
@@ -255,9 +256,9 @@ const k8sEntries: LibraryEntry[] = [
  * Basics first (the plain stencils every diagram starts from), then C4 (the
  * smallest, most-used pack), the Activity stencil, the second-order, fishbone,
  * threat-model, deployment and plan stencils, the Data pack, the vendor logos and
- * Kubernetes icons, then the full AWS icon set — the panel renders categories
- * in this order. */
+ * Kubernetes icons, then the full AWS and Azure icon sets — the panel renders
+ * categories in this order. */
 export const BUNDLED_LIBRARY: Library = {
-  categories: [...basicsCategories, ...C4_PACK.categories, ...ACTIVITY_PACK.categories, ...SECOND_ORDER_PACK.categories, ...FISHBONE_PACK.categories, ...THREAT_MODEL_PACK.categories, ...DEPLOYMENT_PACK.categories, ...PLAN_PACK.categories, ...DATA_PACK.categories, ...shapesCategories, ...techCategories, ...k8sCategories, ...AWS_PACK.categories],
-  entries: [...basicsEntries, ...C4_PACK.entries, ...ACTIVITY_PACK.entries, ...SECOND_ORDER_PACK.entries, ...FISHBONE_PACK.entries, ...THREAT_MODEL_PACK.entries, ...DEPLOYMENT_PACK.entries, ...PLAN_PACK.entries, ...DATA_PACK.entries, ...shapesEntries, ...techEntries, ...k8sEntries, ...AWS_CONTAINER_ENTRIES, ...AWS_PACK.entries],
+  categories: [...basicsCategories, ...C4_PACK.categories, ...ACTIVITY_PACK.categories, ...SECOND_ORDER_PACK.categories, ...FISHBONE_PACK.categories, ...THREAT_MODEL_PACK.categories, ...DEPLOYMENT_PACK.categories, ...PLAN_PACK.categories, ...DATA_PACK.categories, ...shapesCategories, ...techCategories, ...k8sCategories, ...AWS_PACK.categories, ...AZURE_PACK.categories],
+  entries: [...basicsEntries, ...C4_PACK.entries, ...ACTIVITY_PACK.entries, ...SECOND_ORDER_PACK.entries, ...FISHBONE_PACK.entries, ...THREAT_MODEL_PACK.entries, ...DEPLOYMENT_PACK.entries, ...PLAN_PACK.entries, ...DATA_PACK.entries, ...shapesEntries, ...techEntries, ...k8sEntries, ...AWS_CONTAINER_ENTRIES, ...AWS_PACK.entries, ...AZURE_PACK.entries],
 };
