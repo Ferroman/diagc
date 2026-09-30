@@ -1501,6 +1501,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         onChange: editing ? setLayoutSettings : previewLayoutSettings,
                         defaultDirection: defaultLayoutDirection(model),
                         algorithmLocked,
+                        ...(notationProfile(notation).defaultAlgorithm !== undefined
+                          ? { defaultAlgorithm: notationProfile(notation).defaultAlgorithm }
+                          : {}),
                       }
                 }
                 styleControl={

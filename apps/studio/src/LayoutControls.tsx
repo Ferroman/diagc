@@ -10,7 +10,10 @@ import type { LayoutDirection, LayoutSettings } from '@diagc/core';
  * stress places nodes as dimensionless points with no overlap removal, so its
  * compact result is a pile (146 overlapping sibling pairs on platform-c4).
  * Both are still honoured when a sidecar names them — only the picker stops
- * proposing them.
+ * proposing them. stress now has its boxes pushed apart after elk places them
+ * (renderer overlap.ts) and is the causal-loop default, where the picker lists
+ * it as that notation's default (`defaultAlgorithm`); elsewhere it stays off
+ * the list until it has been tried on nested diagrams like platform-c4.
  */
 const ALGORITHMS: { value: string; label: string }[] = [
   { value: 'layered', label: 'Layered' },
@@ -18,6 +21,8 @@ const ALGORITHMS: { value: string; label: string }[] = [
   { value: 'mrtree', label: 'Tree' },
   { value: 'rectpacking', label: 'Packed' },
 ];
+/** names for notation defaults the picker does not list itself */
+const ALGORITHM_NAMES: Record<string, string> = { stress: 'Stress' };
 const DIRECTIONS: { value: string; label: string }[] = [
   { value: 'DOWN', label: 'Down ↓' },
   { value: 'RIGHT', label: 'Right →' },
@@ -46,6 +51,10 @@ export interface LayoutControlsProps {
   /** the notation pins the algorithm (elk partitions are layered-only): the
    * picker is withheld, everything else stays adjustable */
   algorithmLocked?: boolean;
+  /** the algorithm this notation runs when the settings name none (a causal
+   * loop's stress) — shown as the selected option, stored as `undefined`, and
+   * listed even when the picker does not otherwise offer it. Absent ⇒ layered. */
+  defaultAlgorithm?: string;
 }
 
 /**
@@ -59,11 +68,17 @@ export interface LayoutControlsProps {
  * the window's edge. Each control keeps its `aria-label` — the longer name
  * ("Layout algorithm") still contains the row's visible one.
  */
-export function LayoutControls({ settings, onChange, defaultDirection = 'DOWN', algorithmLocked }: LayoutControlsProps) {
+export function LayoutControls({
+  settings,
+  onChange,
+  defaultDirection = 'DOWN',
+  algorithmLocked,
+  defaultAlgorithm = 'layered',
+}: LayoutControlsProps) {
   // Locked notations run layered whatever the sidecar names (elk partitions are
   // layered-only) — the layered-only controls below must reflect that forced
   // algorithm, not a setting the run ignores.
-  const algorithm = algorithmLocked === true ? 'layered' : (settings.algorithm ?? 'layered');
+  const algorithm = algorithmLocked === true ? 'layered' : (settings.algorithm ?? defaultAlgorithm);
   const direction = settings.direction ?? defaultDirection;
   const edgeRouting = settings.edgeRouting ?? 'curved';
 
@@ -78,9 +93,16 @@ export function LayoutControls({ settings, onChange, defaultDirection = 'DOWN', 
   // sidecar written before radial/stress were withdrawn). Keep it in the list
   // rather than rendering a blank select that misreports what is actually
   // arranging the diagram — and that you could not deliberately move off.
-  const algorithms = ALGORITHMS.some((a) => a.value === algorithm)
+  //
+  // A notation's own default is listed under its own name, not as withdrawn:
+  // stress is off the general picker, but on a causal loop it is the default
+  // (overlap removal makes it usable there).
+  const withDefault = ALGORITHMS.some((a) => a.value === defaultAlgorithm)
     ? ALGORITHMS
-    : [...ALGORITHMS, { value: algorithm, label: `${algorithm} (withdrawn)` }];
+    : [...ALGORITHMS, { value: defaultAlgorithm, label: ALGORITHM_NAMES[defaultAlgorithm] ?? defaultAlgorithm }];
+  const algorithms = withDefault.some((a) => a.value === algorithm)
+    ? withDefault
+    : [...withDefault, { value: algorithm, label: `${algorithm} (withdrawn)` }];
 
   return (
     <>
@@ -92,7 +114,9 @@ export function LayoutControls({ settings, onChange, defaultDirection = 'DOWN', 
             aria-label="Layout algorithm"
             title="Layout algorithm"
             value={algorithm}
-            onChange={(e) => onChange({ algorithm: e.target.value === 'layered' ? undefined : e.target.value })}
+            // the notation's default is stored as `undefined`, so `layered` is
+            // stored by name wherever it is not the default
+            onChange={(e) => onChange({ algorithm: e.target.value === defaultAlgorithm ? undefined : e.target.value })}
           >
             {algorithms.map((a) => (
               <option key={a.value} value={a.value}>

@@ -181,6 +181,7 @@ An unsaved dot sits next to Save while the session is dirty; edits autosave a mo
 - **Library saves are best-effort.** A failed write to `library.json` is currently swallowed silently.
 - **A folded group shows no notes for what it hides.** Only its own; unfold it for the notes inside.
 - On a `git-graph`, `fishbone` or `plan` plane the layout pickers (algorithm, direction, wrap, spacing, edges) are hidden, in both modes: the notation owns the arrangement. Style, Auto-layout on/off and Re-layout still work.
+- On a `causal-loop` plane the **Algorithm** picker defaults to *Stress* (overlap-free), which is otherwise not offered; choosing *Layered* there saves `layered` by name.
 - On a `second-order` diagram only the layout **algorithm** picker is hidden — it is pinned to layered so the order bands can use elk's partitioning. Direction, spacing and edge routing stay adjustable.
 
 ## See also
