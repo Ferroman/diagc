@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -16,7 +16,7 @@ describe('BUNDLED_LIBRARY', () => {
   it('bundles the C4, Tech and AWS packs, all builtin', () => {
     const ids = BUNDLED_LIBRARY.categories.map((c) => c.id);
     expect(ids).toContain('c4');
-    expect(ids).toContain('tech');
+    expect(ids).toContain('tech-data');
     expect(ids).toContain('aws-compute');
     expect(ids).toContain('aws-groups');
     expect(BUNDLED_LIBRARY.categories.every((c) => c.builtin === true)).toBe(true);
@@ -192,23 +192,45 @@ describe('AWS containers', () => {
 });
 
 describe('Tech pack', () => {
-  it('carries the vendor logos no cloud icon set covers', () => {
-    const tech = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'tech');
-    expect(tech.map((e) => e.name).sort()).toEqual([
-      'Auth0', 'ClickHouse', 'Cloudflare', 'GitHub', 'GitHub Actions', 'Helm', 'Jupyter', 'Kubernetes',
-      'NATS', 'New Relic', 'PostgreSQL', 'RabbitMQ', 'Redis', 'SendGrid', 'StarRocks', 'Temporal',
-    ]);
-    for (const e of tech) expect(e.template.image).toMatch(/^\/library\/tech\//);
+  const tech = BUNDLED_LIBRARY.entries.filter((e) => e.id.startsWith('tech-'));
+
+  it('nests every vendor-logo category under the Tech group', () => {
+    const cats = BUNDLED_LIBRARY.categories.filter((c) => c.id.startsWith('tech-'));
+    expect(cats.length).toBeGreaterThan(1);
+    for (const c of cats) expect(c.group).toBe('Tech');
+    for (const e of tech) expect(e.category).toMatch(/^tech-/);
+  });
+
+  it('keeps the logos diagrams were already drawn with', () => {
+    const ids = new Set(tech.map((e) => e.id));
+    for (const slug of [
+      'auth0', 'clickhouse', 'cloudflare', 'github', 'github-actions', 'helm', 'jupyter', 'kubernetes',
+      'nats', 'new-relic', 'postgresql', 'rabbitmq', 'redis', 'sendgrid', 'starrocks', 'temporal',
+    ]) {
+      expect(ids.has(`tech-${slug}`), `missing tech-${slug}`).toBe(true);
+    }
+  });
+
+  it('has a manifest entry for every generated logo, and no orphans', () => {
+    const onDisk = readdirSync(path.join(PUBLIC_DIR, 'library', 'tech')).map((f) => `/library/tech/${f}`);
+    expect(tech.map((e) => e.template.image).sort()).toEqual(onDisk.sort());
+  });
+
+  it('is findable by the words people actually type', () => {
+    const kw = (id: string) => BUNDLED_LIBRARY.entries.find((e) => e.id === id)?.keywords ?? [];
+    expect(kw('tech-kafka')).toContain('streaming');
+    expect(kw('tech-vault')).toContain('secrets');
+    expect(kw('tech-grafana')).toContain('dashboard');
   });
 });
 
 describe('Kubernetes pack', () => {
-  it('carries the community resource icons for cluster interiors', () => {
-    const k8s = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'k8s');
-    expect(k8s.map((e) => e.id).sort()).toEqual([
-      'k8s-deploy', 'k8s-ing', 'k8s-node', 'k8s-pod', 'k8s-secret', 'k8s-svc',
-    ]);
-    for (const e of k8s) expect(e.template.image).toMatch(/^\/library\/k8s\//);
+  const k8s = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'k8s');
+
+  it('has a manifest entry for every community icon, and no orphans', () => {
+    const onDisk = readdirSync(path.join(PUBLIC_DIR, 'library', 'k8s')).map((f) => `/library/k8s/${f}`);
+    expect(k8s.map((e) => e.template.image).sort()).toEqual(onDisk.sort());
+    expect(k8s.length).toBeGreaterThanOrEqual(39);
   });
 
   it('is findable by the words people actually type', () => {
@@ -216,6 +238,8 @@ describe('Kubernetes pack', () => {
     expect(kw('k8s-pod')).toContain('kubernetes');
     expect(kw('k8s-ing')).toContain('ingress');
     expect(kw('k8s-svc')).toContain('service');
+    expect(kw('k8s-sts')).toContain('statefulset');
+    expect(kw('k8s-pvc')).toContain('storage');
   });
 });
 
