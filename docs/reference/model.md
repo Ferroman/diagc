@@ -455,7 +455,9 @@ A column with a `layer` is drawn only while that layer is active, and the table 
 
 ## Validation codes
 
-`validate()` returns issues; the compiler refuses to write an artifact if there are any.
+`validate()` returns issues; the compiler refuses to write an artifact if there are any, and the studio refuses to save.
+`diagramWarnings()` returns the codes marked *warning* below, in the same shape: they never block a compile or a save.
+The compiler prints them, and the notation's panel lists them.
 
 | Code | Means |
 | --- | --- |
@@ -497,7 +499,7 @@ A column with a `layer` is drawn only while that layer is active, and the table 
 | `so-contained` | A decision or consequence sits inside a container — the notation is flat. |
 | `fb-no-effect` | The diagram has fishbone nodes but no `fb-effect`. An empty fishbone diagram is valid — every one starts there. |
 | `fb-many-effects` | A second `fb-effect`; a fishbone diagram has one head. |
-| `fb-unattached` | A category or cause whose chain never reaches the effect (a cycle included). |
+| `fb-unattached` | *Warning.* A category or cause whose chain never reaches the effect (a cycle included). It draws in the stray row under the fish until it is connected. |
 | `fb-misplaced` | The wrong parent for the type: a category not on the effect, a cause on the effect, the effect on anything. |
 | `fb-too-deep` | A cause hung on a sub-cause — three levels below the effect is the limit. |
 | `fb-contained` | A fishbone node inside a container; nothing on a fish can be grouped. |

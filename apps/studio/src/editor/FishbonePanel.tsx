@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import {
+  diagramWarnings,
   FB_CAUSE_TYPE,
   FB_EFFECT_TYPE,
   FISHBONE_PRESET_NAMES,
@@ -31,7 +32,9 @@ const LIMIT_HINT = 'A sub-cause takes nothing: three levels below the effect is 
  * child at a time under whatever is selected — and what validation objects to. */
 export function FishbonePanel({ model, selection, plane, onCommand, onSelect, onCreated }: FishbonePanelProps) {
   const tree = useMemo(() => fishboneTree(model), [model]);
-  const issues = useMemo(() => validate(model).filter((i) => i.code.startsWith('fb-')), [model]);
+  // Errors and warnings in one list: a stray cause (a warning, so the diagram
+  // still saves) is exactly what the author needs pointed at here.
+  const issues = useMemo(() => [...validate(model), ...diagramWarnings(model)].filter((i) => i.code.startsWith('fb-')), [model]);
   const selected = selection?.kind === 'node' ? model.nodes.find((n) => n.id === selection.id && isFishboneNode(n)) : undefined;
   // Nothing (or the effect) selected → a category; else a child of the selection.
   const parentId = selected === undefined ? tree.effect : selected.id;

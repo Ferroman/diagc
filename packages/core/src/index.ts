@@ -62,7 +62,7 @@ export {
   type ZoneOpts,
   type EventOpts,
 } from './builder';
-export { validate, DiagramValidationError, IMAGE_REF, LIBRARY_IMAGE_REF, type ValidationIssue } from './validate';
+export { validate, diagramWarnings, DiagramValidationError, IMAGE_REF, LIBRARY_IMAGE_REF, type ValidationIssue } from './validate';
 export { isDrawings, isLayoutOverlay } from './guards';
 export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrokeId } from './drawings';
 export { errMessage, SOURCE_URL } from './util';

@@ -5,6 +5,7 @@ import { createJiti } from 'jiti';
 import {
   composeIncludes,
   DiagramValidationError,
+  diagramWarnings,
   validate,
   type DiagramModel,
   type IncludeResolver,
@@ -112,6 +113,9 @@ export async function compileFile(
     const issues = validate(model);
     if (issues.length > 0) throw new DiagramValidationError(issues);
   }
+  // Sound but probably not what was meant (a fishbone cause on no bone): say so,
+  // and compile anyway — the studio saves the same model without complaint.
+  for (const w of diagramWarnings(model)) console.warn(`${file}: ${w.message}`);
 
   const base = path.basename(file).replace(/\.diagram\.(ts|json)$/, '');
   const artifactDir = path.join(outDir, relativeSubdir(file, opts?.rootDir));
