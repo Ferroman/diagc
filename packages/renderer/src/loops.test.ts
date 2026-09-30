@@ -243,15 +243,15 @@ describe('placeLoopLabels', () => {
       { id: 'e3', from: 'c', to: 'a', polarity: '+' },
     ]).loops;
 
-  it('places a triangle label off the top-right corner of its anchor node, cw when the winding is clockwise on screen', () => {
+  it('places a triangle label at the centroid of its members, cw when the winding is clockwise on screen', () => {
     const rects = new Map<string, NodeRect>([
       ['a', { x: 0, y: 0, width: 20, height: 20 }],
       ['b', { x: 100, y: 0, width: 20, height: 20 }],
       ['c', { x: 50, y: 100, width: 20, height: 20 }],
     ]);
-    // anchored by node 'a' (the loop's canonical first node): a.x+a.width+15+6=41, a.y-15-6=-21
+    // member centres (10,10), (110,10), (60,110) → centroid (60, 130/3), clear of every node
     const placements = placeLoopLabels(triangleLoop(), rects);
-    expect(placements).toEqual([{ key: 'a→b→c', kind: 'R', x: 41, y: -21, direction: 'cw' }]);
+    expect(placements).toEqual([{ key: 'a→b→c', kind: 'R', x: 60, y: 130 / 3, direction: 'cw' }]);
   });
 
   it('flips direction to ccw when member order winds counterclockwise on screen', () => {
@@ -264,17 +264,17 @@ describe('placeLoopLabels', () => {
     expect(placements[0]?.direction).toBe('ccw');
   });
 
-  it('nudges deterministically off an obstacle that covers the raw anchor corner', () => {
+  it('nudges deterministically off an obstacle that covers the centroid', () => {
     const rects = new Map<string, NodeRect>([
       ['a', { x: 0, y: 0, width: 20, height: 20 }],
       ['b', { x: 100, y: 0, width: 20, height: 20 }],
       ['c', { x: 50, y: 100, width: 20, height: 20 }],
     ]);
-    // an obstacle sitting on a's anchor corner (~41,-21) forces a nudge; the ring
+    // an obstacle sitting on the centroid (60, 130/3) forces a nudge; the ring
     // search tries due north one gap-step (36px) out next, clearing it.
-    const blocker: NodeRect = { x: 30, y: -30, width: 22, height: 22 };
+    const blocker: NodeRect = { x: 50, y: 33, width: 20, height: 20 };
     const placements = placeLoopLabels(triangleLoop(), rects, { obstacles: [blocker] });
-    expect(placements).toEqual([{ key: 'a→b→c', kind: 'R', x: 41, y: -57, direction: 'cw' }]);
+    expect(placements).toEqual([{ key: 'a→b→c', kind: 'R', x: 60, y: 130 / 3 - 36, direction: 'cw' }]);
   });
 
   it('keeps two loops sharing two of three nodes at least minLabelGap apart', () => {
@@ -337,8 +337,22 @@ describe('placeLoopLabels', () => {
     ]);
     const hugeObstacle: NodeRect = { x: -1000, y: -1000, width: 2000, height: 2000 };
     const placements = placeLoopLabels(triangleLoop(), rects, { obstacles: [hugeObstacle] });
-    // every candidate is blocked, so it falls back to the raw anchor corner (41,-21)
-    expect(placements).toEqual([{ key: 'a→b→c', kind: 'R', x: 41, y: -21, direction: 'cw' }]);
+    // every candidate is blocked, so it falls back to the centroid itself
+    expect(placements).toEqual([{ key: 'a→b→c', kind: 'R', x: 60, y: 130 / 3, direction: 'cw' }]);
+  });
+
+  // Under the layered layout a loop could sprawl; now it is drawn as a ring, and
+  // a badge off one member's corner read as that node's, not the loop's.
+  it('puts a two-node loop between its members, not beside either', () => {
+    const loops = findLoops([
+      { id: 'e1', from: 'a', to: 'b', polarity: '+' },
+      { id: 'e2', from: 'b', to: 'a', polarity: '-' },
+    ]).loops;
+    const rects = new Map<string, NodeRect>([
+      ['a', { x: 0, y: 0, width: 40, height: 20 }],
+      ['b', { x: 200, y: 0, width: 40, height: 20 }],
+    ]);
+    expect(placeLoopLabels(loops, rects)).toEqual([{ key: 'a→b', kind: 'B', x: 120, y: 10, direction: 'none' }]);
   });
 
   it('omits a loop when a member node has no rect (unmeasured)', () => {
@@ -364,9 +378,9 @@ describe('placeLoopLabels', () => {
     expect(bRect).toBeDefined();
     const obstaclesExcludingC = [aRect as NodeRect, bRect as NodeRect];
     const placements = placeLoopLabels(triangleLoop(), rects, { obstacles: obstaclesExcludingC });
-    // The anchor corner off node 'a' (41,-21) is accepted; only a and b are
+    // The centroid (60,20) lies inside c, and is accepted: only a and b are
     // obstacles and neither covers it.
-    expect(placements).toEqual([{ key: 'a→b→c', kind: 'R', x: 41, y: -21, direction: 'cw' }]);
+    expect(placements).toEqual([{ key: 'a→b→c', kind: 'R', x: 60, y: 20, direction: 'cw' }]);
   });
 });
 
