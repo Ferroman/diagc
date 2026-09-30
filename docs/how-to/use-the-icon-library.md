@@ -12,11 +12,14 @@ Type in the search box. It matches an entry's **name, its category, and its keyw
 | `sqs` | Amazon Simple Queue Service |
 | `eks` | Amazon Elastic Kubernetes Service |
 | `iam` | AWS Identity and Access Management |
-| `kafka` | Amazon Managed Streaming for Apache Kafka |
+| `kafka` | Apache Kafka, Amazon Managed Streaming for Apache Kafka, Azure's Event Hubs |
+| `aks` | Azure's Kubernetes Services |
+| `gke` | Google Kubernetes Engine, both icon styles |
+| `pvc` | the Kubernetes PersistentVolumeClaim |
 | `person` | the C4 Person stencil |
 | `erd` | the Data pack's Table |
 
-Sections with more than 16 entries start collapsed — the AWS pack is 763 icons, so the panel opens as a tidy list of headers. Searching expands whatever matched. The number beside a category name is how many entries currently match.
+Sections with more than 16 entries start collapsed — the AWS, Azure and Google Cloud packs are some 1,700 icons between them, so the panel opens as a tidy list of headers. Searching expands whatever matched. The number beside a category name is how many entries currently match.
 
 ## Place one
 

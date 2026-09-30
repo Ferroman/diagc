@@ -1,12 +1,12 @@
 # Library reference
 
-The palette of ready-made nodes in the studio's **Library** tab. Eleven read-only packs ship bundled; your own entries merge over them.
+The palette of ready-made nodes in the studio's **Library** tab. Thirteen read-only packs ship bundled; your own entries merge over them.
 
 For how to use it, see [Use the icon library](../how-to/use-the-icon-library.md).
 
 ## Bundled packs
 
-870 entries in 41 categories, rendered in this order:
+1,882 entries in 78 categories, rendered in this order:
 
 | Pack | Entries | Categories | Assets |
 | --- | --- | --- | --- |
@@ -19,9 +19,11 @@ For how to use it, see [Use the icon library](../how-to/use-the-icon-library.md)
 | **Plan** | 4 | 1 | none — renderer-drawn shapes, not images |
 | **Data** | 1 | 1 | none — it seeds columns, not an image |
 | **Shapes** | 3 | 1 | `/library/shapes/` — tintable silhouette masks |
-| **Tech** | 16 | 1 | `/library/tech/` |
-| **Kubernetes** | 6 | 1 | `/library/k8s/` |
+| **Tech** | 98 | 10 | `/library/tech/` |
+| **Kubernetes** | 39 | 1 | `/library/k8s/` |
 | **AWS** | 772 | 26 | `/library/aws/`, `/library/aws-resources/`, `/library/aws-groups/`, `/library/aws-categories/` |
+| **Azure** | 636 | 25 | `/library/azure/` |
+| **Google Cloud** | 261 | 3 | `/library/gcp/`, `/library/gcp-products/`, `/library/gcp-categories/` |
 
 ### C4
 
@@ -77,11 +79,24 @@ Person, Users, Internet — hand-drawn silhouette SVGs rendered as tintable mask
 
 ### Tech
 
-Temporal, NATS, StarRocks, Cloudflare, GitHub, GitHub Actions, Auth0, SendGrid, New Relic, ClickHouse, Redis, RabbitMQ, PostgreSQL, Helm, Jupyter, Kubernetes — vendor logos no cloud icon set covers, normalised onto a common tile.
+Vendor logos no cloud icon set covers, normalised onto a common tile, in ten categories under a **Tech** group:
+
+| Category | Entries |
+| --- | --- |
+| **Messaging & processing** | Apache Kafka, RabbitMQ, NATS, Apache Pulsar, Temporal, Celery, Apache Flink, Apache Spark, Apache Airflow |
+| **Databases & storage** | PostgreSQL, MySQL, MariaDB, Oracle Database, SQLite, MongoDB, Apache Cassandra, Redis, Memcached, Neo4j, InfluxDB, Elasticsearch, OpenSearch, ClickHouse, StarRocks, Snowflake, Databricks, DuckDB, Supabase, Firebase, etcd, MinIO |
+| **Containers & infrastructure** | Kubernetes, Helm, Docker, Podman, Terraform, Pulumi, Ansible, Vault, Consul, Istio, Envoy, Cilium, Argo, Flux, NGINX, Caddy, Kong, gRPC, GraphQL |
+| **Observability** | Grafana, Prometheus, OpenTelemetry, Jaeger, Kibana, Datadog, New Relic, Splunk, Sentry, PagerDuty |
+| **Source, CI & planning** | GitHub, GitHub Actions, GitLab, Bitbucket, Jenkins, CircleCI, Jira, Confluence, Jupyter |
+| **Hosting & edge** | Cloudflare, Fastly, Akamai, Vercel, Netlify, Heroku, DigitalOcean, Hetzner |
+| **Identity** | Auth0, Okta, Microsoft Entra ID, Keycloak |
+| **SaaS** | Stripe, Salesforce, Shopify, Twilio, SendGrid, Mailgun, Slack, Microsoft Teams, Discord, Zapier |
+| **AI** | OpenAI, Anthropic, Hugging Face |
+| **Runtimes** | Python, Node.js, Go, .NET |
 
 ### Kubernetes
 
-Pod, Service, Deployment, Ingress, Secret, Node — the [Kubernetes community icons](https://github.com/kubernetes/community/tree/master/icons), the labeled blue heptagons k8s diagrams are drawn with. Unlike the Tech logos they ship bare (no white tile), since they carry their own chrome.
+All 39 labeled [Kubernetes community icons](https://github.com/kubernetes/community/tree/master/icons), the blue heptagons k8s diagrams are drawn with: workloads (Pod, Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob, HPA), networking (Service, Ingress, Endpoints, NetworkPolicy), config and storage (ConfigMap, Secret, PV, PVC, StorageClass, Volume), policy and access (Namespace, quotas, RBAC, CRD) and cluster components (Node, control plane, API server, etcd, scheduler, controller managers, kubelet, kube-proxy). Keywords carry the kubectl short names (`sts`, `pvc`, `hpa`, …). Unlike the Tech logos they ship bare (no white tile), since they carry their own chrome.
 
 ### AWS
 
@@ -99,6 +114,22 @@ Categories mirror AWS's own taxonomy — *AWS · Compute*, *AWS · Storage*, *AW
 *AWS · Groups* opens with nine hand-curated **boundary containers** (AWS Cloud, AWS Account, Region, Availability Zone, VPC, Public/Private Subnet, Auto Scaling Group, Generic Group). Each places a node with an `aws-*` group type the renderer styles as the official stencil draws it — corner badge, dashed or solid outline, tint-filled subnets — with the authentic accent color baked in. Add children (the node panel's containment control) and it becomes the styled boundary box; the raw badge icons follow in the same category for when you want just the glyph.
 
 Six legacy file names (`lambda.svg`, `s3.svg`, `sns.svg`, `dynamodb.svg`, `api-gateway.svg`, `cloudwatch.svg`) are kept as copies of the real icons so diagrams authored against the old placeholder pack keep resolving. They are not library entries.
+
+### Azure
+
+The complete official [Azure Public Service Icons](https://learn.microsoft.com/azure/architecture/icons/) release (V24): 636 icons at 64×64 in `/library/azure/`, in Microsoft's own 25 categories — *Compute*, *Containers*, *Databases*, *Networking*, and so on — nested under an **Azure** group. Microsoft files some icons under both a specific category and *General* or *Other*; they appear once, in the specific one. Common services carry the abbreviations people type (`aks`, `vnet`, `blob`, `apim`, `vmss`).
+
+### Google Cloud
+
+Google's [three official icon archives](https://cloud.google.com/icons), nested under a **Google Cloud** group:
+
+| Family | Count | Directory |
+| --- | --- | --- |
+| Core products (the 2025 style) | 19 | `/library/gcp/` |
+| Products (console style) | 216 | `/library/gcp-products/` |
+| Category icons | 26 | `/library/gcp-categories/` |
+
+The console-style set is Google's older icon system, but it is still the only per-product icon for most services (Pub/Sub, Cloud Functions, Memorystore, …). Where a product has both, both are offered.
 
 ## Entry shape
 
@@ -122,6 +153,7 @@ interface LibraryEntry {
 interface LibraryCategory {
   id: string;
   name: string;
+  group?: string;        // panel header it nests under ('AWS', 'Azure', 'Tech', …)
   builtin?: boolean;     // bundled packs — not user-deletable
 }
 ```
