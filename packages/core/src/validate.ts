@@ -1,3 +1,4 @@
+import { lintModel, type LintCode } from './lint';
 import {
   BUILTIN_NOTATIONS,
   EDGE_LABEL_SIDES,
@@ -93,7 +94,8 @@ export interface ValidationIssue {
     | 'plan-missing'
     | 'plan-span'
     | 'plan-nested'
-    | 'plan-role-target';
+    | 'plan-role-target'
+    | LintCode;
   message: string;
   ref?: string;
 }
@@ -867,7 +869,7 @@ export function validate(m: DiagramModel): ValidationIssue[] {
  * (a fishbone cause that reaches no bone). Same issue shape as validate().
  */
 export function diagramWarnings(m: DiagramModel): ValidationIssue[] {
-  return check(m).warnings;
+  return [...check(m).warnings, ...lintModel(m)];
 }
 
 function check(m: DiagramModel): Ctx {

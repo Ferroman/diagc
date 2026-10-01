@@ -526,13 +526,28 @@ The compiler prints them, and the notation's panel lists them.
 | `invalid-font-scale` | `fontScale` outside the allowed set. |
 | `invalid-edge-label` | Malformed `labels` entry. |
 
+### Lint codes
+
+Also returned by `diagramWarnings()`, so `compile` prints them and [`diagc lint`](cli.md#lint) fails on them. Each is a diagram that validates but probably does not say what was meant.
+
+| Code | Means |
+| --- | --- |
+| `duplicate-name` | Two siblings of one type share a name (case and surrounding spaces ignored), usually one thing declared twice. Activity start, end, bar and decision glyphs are exempt. |
+| `unknown-type` | A node's `type` is not in the [registry](#registry-defaults) or its notation's vocabulary, so it draws as a plain box. Names the closest known type when one is a likely typo. Nodes with an `image` or `shape` are exempt. Reported once per type. |
+| `unknown-kind` | The same for a relation's `kind`, which draws as a plain arrow. |
+| `unused-layer` | A layer that no node, table row, relation or `layerRules` entry is on. |
+| `empty-plane` | A plane with no containment, scoped nodes, `containmentOf`, hides, layers, `baseRelations` or notation of its own: it shows every shared node flat. |
+| `unused-legend-item` | A legend row describing a `type` no node has or a `kind` no relation has. |
+| `undrawn-node` | A node that no plane's view includes (for example one scoped to a plane that borrows another's containment). |
+| `undrawn-relation` | A relation between two drawn nodes that no plane shows together. |
+
 ## Registry defaults
 
 Strings the renderer already knows. Anything else falls back to a plain box or a plain line.
 
 **Node types** — `system`, `platform` (dashed boxes); `service` (box + icon); `database`, `aws-rds`, `table` (cylinders); `db-table` (ER table); `queue` (pill); `infra` (hexagon); `person` (pill); `comment` (speech bubble — an ordinary node for remarks, wired up with normal relations); and the 33 `c4-*` types listed in [Library reference](library.md).
 
-**Relation kinds** — `sync`, `async` (dashed), `reads`, `writes` (thick), `hosted-on` (dashed), `flow` (animated), `mixed` (thick, used for aggregates), `fk` (crow's foot to bar).
+**Relation kinds** — `sync`, `async` (dashed), `reads`, `writes` (thick), `hosted-on` (dashed), `flow` (animated), `mixed` (thick, used for aggregates), `fk` (crow's foot to bar), `network` and `influence` (plain), plus each notation's kinds in its conventions above.
 
 An **aggregate** edge (one arrow standing for several relations, after a fold) labels itself from its constituents: their distinct labels joined with ` / ` while that stays within 32 characters, or a single distinct label whatever its length, and otherwise `N relations`. Single-relation edges always carry their own label. Long labels are ellipsised at ~24 characters when drawn; the arrow's hover title carries the full text. See [Views](../explanation/views.md#semantic-zoom).
 

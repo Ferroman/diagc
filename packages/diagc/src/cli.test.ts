@@ -10,6 +10,7 @@ describe('parseArgs', () => {
       out: 'dist',
       images: false,
       updateIncludes: false,
+      json: false,
     });
   });
 
@@ -20,7 +21,12 @@ describe('parseArgs', () => {
       out: '.diagrams/.artifacts',
       images: true,
       updateIncludes: false,
+      json: false,
     });
+  });
+
+  it('parses lint --json', () => {
+    expect(parseArgs(['lint', 'a.diagram.ts', '--json'])).toMatchObject({ command: 'lint', files: ['a.diagram.ts'], json: true });
   });
 
   it('parses --update-includes', () => {

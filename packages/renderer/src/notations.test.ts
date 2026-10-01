@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model } from '@diagc/core';
+import { compileView, model, NODE_TYPES, NOTATION_NODE_TYPES, NOTATION_RELATION_KINDS, RELATION_KINDS } from '@diagc/core';
 import { BONE_PALETTE, fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import { NOTATION_PROFILES, notationProfile, planBadges, TM_BOUNDARY_COLOR } from './notations';
@@ -284,5 +284,24 @@ describe('plan profile', () => {
     expect(related(m, 'plan', 'z')).toEqual(['alice', 'bob', 'alice']); // owns, executes, checks order
     expect(related(m, 'plan', 'bare')).toEqual([]); // a zone with no roles
     expect(related(m, 'plan', 'nope')).toEqual([]); // an id the model does not have
+  });
+});
+
+describe("core's vocabulary", () => {
+  // The lint (core) cannot read this registry, so it keeps its own list of ids;
+  // a new style with no vocabulary entry would be reported as a typo.
+  it('lists exactly the registered types and kinds', () => {
+    expect([...NODE_TYPES].sort()).toEqual(Object.keys(DEFAULT_TYPE_STYLES).sort());
+    expect([...RELATION_KINDS].sort()).toEqual(Object.keys(DEFAULT_KIND_STYLES).sort());
+  });
+
+  it("lists what each notation profile adds on top", () => {
+    for (const [id, profile] of Object.entries(NOTATION_PROFILES)) {
+      const key = id as keyof typeof NOTATION_NODE_TYPES;
+      const types = Object.keys(profile.typeStyles ?? {}).filter((t) => !NODE_TYPES.includes(t));
+      const kinds = Object.keys(profile.kindStyles ?? {}).filter((k) => !RELATION_KINDS.includes(k));
+      expect([id, types.sort()]).toEqual([id, [...(NOTATION_NODE_TYPES[key] ?? [])].sort()]);
+      expect([id, kinds.sort()]).toEqual([id, [...(NOTATION_RELATION_KINDS[key] ?? [])].sort()]);
+    }
   });
 });

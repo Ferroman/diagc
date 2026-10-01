@@ -213,6 +213,11 @@ export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
   'object-flow': { dashed: true, legendLabel: 'Object flow' },
   interrupt: { zigzag: true, legendLabel: 'Interrupt' },
   'note-link': { dashed: true, endMarker: 'none', legendLabel: 'Note link' },
+  // ---- Causal loop / deployment ------------------------------------------------
+  // Plain lines: the CLD draws polarity from the relation itself, and a network
+  // link is a solid arrow. Registered so the lint's vocabulary knows them.
+  influence: {},
+  network: {},
   // ---- Second-order thinking -------------------------------------------------
   'leads-to': {},
   // ---- Fishbone (Ishikawa) ----------------------------------------------------

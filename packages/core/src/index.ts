@@ -68,6 +68,8 @@ export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrok
 export { errMessage, SOURCE_URL } from './util';
 export { allowedParentTypes, childrenOf, countAnchored } from './children';
 export { bestLaneOrder } from './lanes';
+export { lintModel, type LintCode, type LintFinding } from './lint';
+export { NODE_TYPES, NOTATION_NODE_TYPES, NOTATION_RELATION_KINDS, RELATION_KINDS } from './vocabulary';
 export { visibleColumns, withHiddenColumns } from './columns';
 export { activeNotation, compileView, presetLayers, resolveContainmentPlane } from './view/compile';
 export { buildHierarchy, type HierarchyIndex } from './view/hierarchy';
