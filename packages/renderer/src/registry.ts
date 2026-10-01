@@ -34,6 +34,10 @@ export interface TypeStyle {
    * subtitle): such a type is keyed without being asked for, and drawing one is what
    * offers a legend on a diagram that declared none. */
   legendLabel?: string;
+  /** the name hangs below the box as a caption instead of sitting inside it —
+   * for glyphs too small to hold text (a 48px decision, a start dot), where an
+   * inside label overflows and the positioned glyph paints over it */
+  captionBelow?: boolean;
 }
 
 export interface KindStyle {
@@ -130,10 +134,10 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   // UML glyphs carry no type subtitle; an empty label suppresses the `.dg-type` fallback.
   // The frame, a lane and a note get no `legendLabel`: each already says what it is.
   'activity-action': { shape: 'rounded', label: '', legendLabel: 'Action' },
-  'activity-decision': { shape: 'diamond', defaultSize: { width: 48, height: 48 }, label: '', legendLabel: 'Decision / merge' },
-  'activity-bar': { shape: 'bar', defaultSize: { width: 8, height: 100 }, label: '', legendLabel: 'Fork / join' },
-  'activity-start': { shape: 'start-dot', defaultSize: { width: 24, height: 24 }, label: '', legendLabel: 'Start' },
-  'activity-end': { shape: 'end-bullseye', defaultSize: { width: 28, height: 28 }, label: '', legendLabel: 'End' },
+  'activity-decision': { shape: 'diamond', defaultSize: { width: 48, height: 48 }, label: '', legendLabel: 'Decision / merge', captionBelow: true },
+  'activity-bar': { shape: 'bar', defaultSize: { width: 8, height: 100 }, label: '', legendLabel: 'Fork / join', captionBelow: true },
+  'activity-start': { shape: 'start-dot', defaultSize: { width: 24, height: 24 }, label: '', legendLabel: 'Start', captionBelow: true },
+  'activity-end': { shape: 'end-bullseye', defaultSize: { width: 28, height: 28 }, label: '', legendLabel: 'End', captionBelow: true },
   'activity-send': { shape: 'send-signal', defaultSize: { width: 140, height: 44 }, label: '', legendLabel: 'Send signal' },
   'activity-receive': { shape: 'receive-signal', defaultSize: { width: 140, height: 44 }, label: '', legendLabel: 'Receive signal' },
   'activity-object': { shape: 'box', label: '', legendLabel: 'Object' },

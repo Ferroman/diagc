@@ -995,7 +995,7 @@ export function DiagramNode({
           />
         </svg>
       )}
-      <div className="dg-node-row">
+      <div className={style.captionBelow === true ? 'dg-node-row dg-glyph-caption' : 'dg-node-row'}>
         {ghostArrow}
         {data.image !== undefined && (
           <img className="dg-image-thumb" src={assetUrl(data.assetBase, data.libraryBase, data.image)} alt="" draggable={false} />
