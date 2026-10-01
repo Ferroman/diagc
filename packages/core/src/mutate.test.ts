@@ -13,6 +13,7 @@ import {
   deletePlane,
   groupNodes,
   mergeLayers,
+  moveChild,
   removeContainment,
   removeThreat,
   renameNode,
@@ -888,5 +889,61 @@ describe('threats', () => {
     const none = removeThreat(one, { relation: 'r' }, 't2');
     expect('threats' in none.relations[0]!).toBe(false);
     expect(() => removeThreat(none, { relation: 'r' }, 't2')).toThrow(/t2/);
+  });
+});
+
+describe('moveChild', () => {
+  /** frame f ⊃ lanes a, b, c, in that order */
+  function lanes(): DiagramModel {
+    const m = model('t');
+    const f = m.activity('f', { name: 'Frame' });
+    for (const id of ['a', 'b', 'c']) f.lane(id, { name: id.toUpperCase() });
+    return m.toJSON();
+  }
+  const order = (m: DiagramModel) => m.containment.filter((e) => e.parent === 'f').map((e) => e.child);
+
+  it('swaps a child with the sibling before or after it', () => {
+    expect(order(moveChild(lanes(), 'f', 'b', -1))).toEqual(['b', 'a', 'c']);
+    expect(order(moveChild(lanes(), 'f', 'b', 1))).toEqual(['a', 'c', 'b']);
+  });
+
+  it('leaves the model untouched at either end', () => {
+    const m = lanes();
+    expect(moveChild(m, 'f', 'a', -1)).toBe(m);
+    expect(moveChild(m, 'f', 'c', 1)).toBe(m);
+  });
+
+  it('skips containment entries under other parents', () => {
+    const m = lanes();
+    // an unrelated entry between a and b in the array must not count as a sibling
+    const containment = [...m.containment];
+    const bAt = containment.findIndex((e) => e.parent === 'f' && e.child === 'b');
+    containment.splice(bAt, 0, { parent: 'x', child: 'y' });
+    const moved = moveChild({ ...m, containment }, 'f', 'b', -1);
+    expect(order(moved)).toEqual(['b', 'a', 'c']);
+    expect(moved.containment).toContainEqual({ parent: 'x', child: 'y' });
+  });
+
+  it('only reorders within the given plane', () => {
+    const m = model('t');
+    m.plane('arch').plane('infra');
+    m.node('p');
+    for (const id of ['a', 'b']) m.node(id);
+    const json = m.toJSON();
+    const containment = [
+      { parent: 'p', child: 'a' },
+      { parent: 'p', child: 'b', plane: 'infra' },
+      { parent: 'p', child: 'b' },
+    ];
+    const moved = moveChild({ ...json, containment }, 'p', 'b', -1);
+    expect(moved.containment).toEqual([
+      { parent: 'p', child: 'b' },
+      { parent: 'p', child: 'b', plane: 'infra' },
+      { parent: 'p', child: 'a' },
+    ]);
+  });
+
+  it('rejects a child the parent does not contain', () => {
+    expect(() => moveChild(lanes(), 'f', 'zz', 1)).toThrow(CommandError);
   });
 });
