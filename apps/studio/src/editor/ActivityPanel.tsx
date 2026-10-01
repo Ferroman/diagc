@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  bestLaneOrder,
   resolveContainmentPlane,
   uniqueNodeId,
   type DiagramModel,
@@ -33,6 +34,25 @@ const ELEMENTS = [
   { type: 'activity-object', label: 'Add object', defaultName: 'Object' },
   { type: 'activity-note', label: 'Add note', defaultName: 'Note' },
 ] as const;
+
+/**
+ * The move-child steps that restack a frame's lanes from `current` into
+ * `target`, as one undo step — or null when the orders already agree. Each lane
+ * in turn is walked up into its slot, so the batch replays exactly on the model
+ * the panel saw.
+ */
+export function reorderLanesCommand(frameId: string, current: readonly string[], target: readonly string[], plane: string | undefined): EditorCommand | null {
+  const order = [...current];
+  const commands: EditorCommand[] = [];
+  target.forEach((lane, slot) => {
+    for (let at = order.indexOf(lane); at > slot; at--) {
+      commands.push({ type: 'move-child', parent: frameId, child: lane, offset: -1, ...(plane !== undefined ? { plane } : {}) });
+      [order[at - 1], order[at]] = [order[at]!, order[at - 1]!];
+    }
+  });
+  if (commands.length === 0) return null;
+  return commands.length === 1 ? commands[0]! : { type: 'batch', commands };
+}
 
 /** A lane moved `offset` band slots (a canvas drag can cross several at once)
  * as one undo step: move-child steps a single slot, so it repeats. null for no
@@ -97,6 +117,11 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
     onCommand({ type: 'move-child', parent: frameId, child: selected.id, offset, ...withPlane });
   };
 
+  // The order whose links cross the fewest lanes (bestLaneOrder) — offered,
+  // never applied unasked: lane order says who comes first.
+  const lanesOnly = laneOrder.filter((id) => model.nodes.find((n) => n.id === id)?.type === 'activity-lane');
+  const tidy = frameId !== undefined ? reorderLanesCommand(frameId, lanesOnly, bestLaneOrder(model, frameId, plane), planeId) : null;
+
   const addChild = (node: DiagramNode, parentId: string = selected.id) => {
     const cascade = cascadeIn(parentId);
     onCommand({
@@ -148,6 +173,15 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
               </button>
             </>
           )}
+          <button
+            type="button"
+            className="chip"
+            onClick={() => tidy !== null && onCommand(tidy)}
+            disabled={tidy === null}
+            title="Restack the lanes so links cross as few other lanes as possible"
+          >
+            Tidy lane order
+          </button>
         </section>
       )}
       {selected.type !== 'activity-frame' && (

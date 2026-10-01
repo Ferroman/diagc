@@ -18,7 +18,7 @@ import {
 import { planLayout, type LayoutPlan, type LevelPlan } from './layout-plan';
 import { packBoxes } from './pack';
 import { removeOverlaps } from './overlap';
-import { bandLanes, hoistLanes, rebaseRoutes } from './swimlane';
+import { bandLanes, hoistLanes, rebaseRoutes, routeBandedEdges } from './swimlane';
 
 // Re-exported so `index.tsx` and existing importers keep their import path.
 export { COLLAPSED_SIZE, layoutOptionsFor } from './layout-graph';
@@ -115,7 +115,7 @@ function signature(
       ? ''
       : `@${[...sizes.entries()]
           .sort(([a], [b]) => a.localeCompare(b))
-          .map(([id, s]) => `${id}:${s.width}x${s.height}${s.reserveBottom !== undefined ? `+${s.reserveBottom}` : ''}`)
+          .map(([id, s]) => `${id}:${s.width}x${s.height}${s.reserveBottom !== undefined ? `+${s.reserveBottom}` : ''}${s.caption !== undefined ? `_${s.caption.width}x${s.caption.height}` : ''}`)
           .join('|')}`;
   const pinned =
     partitions === undefined || partitions.size === 0
@@ -146,8 +146,12 @@ export async function layoutView(
     (await layoutSingleRun(laid, sizeOverrides, settings, partitions));
   releaseReserved(laid, sizeOverrides, result.geometry);
   if (hoist !== undefined) {
-    const moved = bandLanes(result.geometry, hoist, view, settings?.spacing ?? 40);
+    const captions = new Map<string, { width: number; height: number }>();
+    for (const [id, s] of sizeOverrides ?? []) if (s.caption !== undefined) captions.set(id, s.caption);
+    const below = new Map([...captions].map(([id, c]) => [id, c.height] as const));
+    const moved = bandLanes(result.geometry, hoist, view, settings?.spacing ?? 40, below);
     rebaseRoutes(result.routes, result.labelSpots, hoist, view, result.geometry, moved);
+    routeBandedEdges(result.routes, result.labelSpots, hoist, view, result.geometry, captions);
   }
   if (cache.size >= CACHE_CAP) {
     const oldest = cache.keys().next().value;

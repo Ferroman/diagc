@@ -29,6 +29,45 @@ interface Geo {
  * lanes grow around content, content never moves. Saved overlay sizes act as
  * minimums. Pure and cheap: runs on every placedGeometry recompute.
  */
+/**
+ * Band order is containment order: the studio restacks a lane (move-child) or
+ * slots a new one beside its neighbour by reordering containment, while the view
+ * tree lists children in NODE order, which still says creation order.
+ */
+function laneRank(model: DiagramModel): (frame: string, lane: string) => number {
+  const rank = new Map<string, number>();
+  model.containment.forEach((e, i) => {
+    const key = `${e.parent}\u0000${e.child}`;
+    if (!rank.has(key)) rank.set(key, i);
+  });
+  return (frame, lane) => rank.get(`${frame}\u0000${lane}`) ?? Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * The view with every activity frame's lanes in band order, for the layout run:
+ * the lane banding there stacks lanes in the order it is handed, and so does
+ * arrangeActivityFrames afterwards — if the two disagree, the second pass moves
+ * whole lanes under the routes the first one drew, and every link floats. The
+ * same object back when no frame needs it (it is a layout cache key).
+ */
+export function withLaneOrder(view: CompiledView, model: DiagramModel): CompiledView {
+  if (!model.nodes.some((n) => n.type === 'activity-frame')) return view;
+  const rankIn = laneRank(model);
+  let changed = false;
+  const visit = (n: ViewNode): ViewNode => {
+    let children = n.children.map(visit);
+    if (n.node.type === 'activity-frame') {
+      const sorted = [...children].sort((a, b) => rankIn(n.id, a.id) - rankIn(n.id, b.id));
+      if (sorted.some((c, i) => c !== children[i])) children = sorted;
+    }
+    if (children.every((c, i) => c === n.children[i])) return n;
+    changed = true;
+    return { ...n, children };
+  };
+  const roots = view.roots.map(visit);
+  return changed ? { ...view, roots } : view;
+}
+
 export function arrangeActivityFrames<T extends Geo>(
   geometry: ReadonlyMap<string, T>,
   view: CompiledView,
@@ -40,15 +79,7 @@ export function arrangeActivityFrames<T extends Geo>(
   const out = new Map(geometry);
   const L = ACTIVITY_LAYOUT;
 
-  // Band order is containment order: the studio restacks a lane (move-child)
-  // or slots a new one beside its neighbour by reordering containment, while
-  // the view tree lists children in NODE order, which still says creation order.
-  const rank = new Map<string, number>();
-  model.containment.forEach((e, i) => {
-    const key = `${e.parent}\u0000${e.child}`;
-    if (!rank.has(key)) rank.set(key, i);
-  });
-  const rankIn = (frame: string, lane: string) => rank.get(`${frame}\u0000${lane}`) ?? Number.MAX_SAFE_INTEGER;
+  const rankIn = laneRank(model);
 
   const arrange = (frame: ViewNode): void => {
     const lanes = frame.children

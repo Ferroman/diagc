@@ -166,6 +166,19 @@ describe('buildGraph', () => {
     expect(containerPad(compileView(m.toJSON(), {}).roots[0]!)).toEqual({ top: 0, left: 28, bottom: 0, right: 0 });
   });
 
+  it('hands a glyph caption to elk as an outside label below the box', () => {
+    const m = model('cap');
+    m.node('d', { type: 'activity-decision', name: 'Ok?' });
+    const sizes = new Map([['d', { width: 48, height: 48, caption: { width: 40, height: 19 } }]]);
+    const { graph: g } = buildGraph(compileView(m.toJSON(), {}), sizes, undefined);
+    const d = g.children!.find((c) => c.id === 'd')!;
+    // the box stays the glyph's size; the caption rides as a label
+    expect([d.width, d.height]).toEqual([48, 48]);
+    expect(d.labels).toEqual([
+      { width: 40, height: 19, text: 'caption', layoutOptions: { 'elk.nodeLabels.placement': 'OUTSIDE V_BOTTOM H_CENTER' } },
+    ]);
+  });
+
   it('puts each level\'s edges on its own container for a nested algorithm', () => {
     const { graph: g } = buildGraph(expanded(), undefined, { algorithm: 'force' });
     const left = g.children!.find((c) => c.id === 'left')!;

@@ -98,7 +98,7 @@ describe('layoutView on activity lanes', () => {
     expect(new Set(lanes.map((l) => l.width)).size).toBe(1);
   });
 
-  it('keeps the routes of a lane that moved as one piece, and floats the ones between lanes', async () => {
+  it('keeps the routes of a lane that moved as one piece, and routes the ones between lanes', async () => {
     const m = model('routes');
     const act = m.activity('f');
     const l1 = act.lane('l1');
@@ -119,7 +119,27 @@ describe('layoutView on activity lanes', () => {
     const last = within![within!.length - 1]!;
     expect(first.x).toBeCloseTo(abs.get('a')!.x + abs.get('a')!.width, 0);
     expect(last.x).toBeCloseTo(abs.get('b')!.x, 0);
-    expect(routes.has(idOf('b', 'c'))).toBe(false);
+    // between lanes elk's route is gone; the lane router draws one, right-angled,
+    // from b's side into c's
+    const across = routes.get(idOf('b', 'c'))!;
+    expect(across.every((p, i) => i === 0 || p.x === across[i - 1]!.x || p.y === across[i - 1]!.y)).toBe(true);
+    expect(across[0]!.x).toBeCloseTo(abs.get('b')!.x + abs.get('b')!.width, 0);
+    expect(across[across.length - 1]!.x).toBeCloseTo(abs.get('c')!.x, 0);
+  });
+
+  it('grows a lane to hold a caption hanging under its lowest member', async () => {
+    const m = model('cap');
+    const act = m.activity('f');
+    const l1 = act.lane('l1');
+    l1.decision('d', 'Is it in stock and ready to ship?');
+    const v = view(m.toJSON());
+    const glyph = { width: 48, height: 48 };
+    const bare = await layoutView(v, new Map([['d', glyph]]), RIGHT);
+    const captioned = await layoutView(v, new Map([['d', { ...glyph, caption: { width: 180, height: 35 } }]]), RIGHT);
+    const lane = (r: typeof bare) => r.geometry.get('l1')!;
+    const d = captioned.geometry.get('d')!;
+    expect(lane(captioned).height).toBeGreaterThanOrEqual(d.y + d.height + 35);
+    expect(lane(captioned).height).toBeGreaterThan(lane(bare).height - 1);
   });
 
   it('lays out a downward activity exactly as before', async () => {

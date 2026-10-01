@@ -67,6 +67,7 @@ export { isDrawings, isLayoutOverlay } from './guards';
 export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrokeId } from './drawings';
 export { errMessage, SOURCE_URL } from './util';
 export { allowedParentTypes, childrenOf, countAnchored } from './children';
+export { bestLaneOrder } from './lanes';
 export { visibleColumns, withHiddenColumns } from './columns';
 export { activeNotation, compileView, presetLayers, resolveContainmentPlane } from './view/compile';
 export { buildHierarchy, type HierarchyIndex } from './view/hierarchy';
