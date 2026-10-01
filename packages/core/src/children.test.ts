@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { childrenOf, compileView, countAnchored, model } from './index';
+import { allowedParentTypes, childrenOf, compileView, countAnchored, model } from './index';
 
 describe('childrenOf', () => {
   it('indexes containment edges by parent', () => {
@@ -75,5 +75,18 @@ describe('countAnchored', () => {
     const view = compileView(json, { activeLayers: [] });
     const counts = countAnchored(json, view);
     expect(counts.get('top')).toBe(1);
+  });
+});
+describe('allowedParentTypes', () => {
+  it('pins activity lanes to frames, regions to lanes, flow elements to either', () => {
+    expect([...allowedParentTypes('activity-lane')!]).toEqual(['activity-frame']);
+    expect([...allowedParentTypes('activity-region')!]).toEqual(['activity-lane']);
+    for (const t of ['activity-action', 'activity-decision', 'activity-note']) {
+      expect([...allowedParentTypes(t)!]).toEqual(['activity-lane', 'activity-region']);
+    }
+  });
+
+  it('leaves frames and every other type unconstrained', () => {
+    for (const t of ['activity-frame', 'service', 'branch', undefined]) expect(allowedParentTypes(t)).toBeUndefined();
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, type DiagramModel } from '@diagc/core';
-import { ACTIVITY_LAYOUT as L, arrangeActivityFrames, withLaneOrder } from './activity-frame';
+import { ACTIVITY_LAYOUT as L, arrangeActivityFrames, laneDropOffset, withLaneOrder } from './activity-frame';
 
 const model = (extraLaneKids: { id: string; parent: string }[] = []): DiagramModel => ({
   version: 1,
@@ -191,5 +191,33 @@ describe('withLaneOrder', () => {
   it('returns the same view when the order already agrees (it is a cache key)', () => {
     const v = view(model());
     expect(withLaneOrder(v, model())).toBe(v);
+  });
+});
+
+describe('laneDropOffset', () => {
+  // three 100px bands: a 0–100, b 100–200, c 200–300 (listed out of order on purpose)
+  const lanes = [
+    { id: 'c', y: 200, height: 100 },
+    { id: 'a', y: 0, height: 100 },
+    { id: 'b', y: 100, height: 100 },
+  ];
+
+  it('stays put while the lane has not crossed a neighbour’s middle', () => {
+    expect(laneDropOffset(lanes, 'a', 40)).toBe(0);
+    expect(laneDropOffset(lanes, 'b', 60)).toBe(0);
+  });
+
+  it('moves down one slot past the next lane’s middle, and to the end past the last', () => {
+    expect(laneDropOffset(lanes, 'a', 120)).toBe(1);
+    expect(laneDropOffset(lanes, 'a', 260)).toBe(2);
+  });
+
+  it('moves up, clamped at the top', () => {
+    expect(laneDropOffset(lanes, 'c', 80)).toBe(-1);
+    expect(laneDropOffset(lanes, 'c', -400)).toBe(-2);
+  });
+
+  it('is 0 for a lane that is not in the frame', () => {
+    expect(laneDropOffset(lanes, 'ghost', 500)).toBe(0);
   });
 });

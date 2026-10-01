@@ -45,3 +45,21 @@ export function countAnchored(model: DiagramModel, view: CompiledView): Map<stri
   for (const id of visible) counts.set(id, countHidden(id));
   return counts;
 }
+
+/**
+ * The parent types a node of `type` may sit in, or undefined when any container
+ * will do. Only the activity notation constrains this: validate() refuses a lane
+ * outside a frame and a region outside a lane, and the flow elements belong in a
+ * lane or a region — offering an action or a decision as a parent only builds a
+ * model the canvas draws as a stray box.
+ */
+export function allowedParentTypes(type: string | undefined): ReadonlySet<string> | undefined {
+  if (type === 'activity-lane') return ACTIVITY_LANE_PARENTS;
+  if (type === 'activity-region') return ACTIVITY_REGION_PARENTS;
+  if (type !== undefined && type.startsWith('activity-') && type !== 'activity-frame') return ACTIVITY_FLOW_PARENTS;
+  return undefined;
+}
+
+const ACTIVITY_LANE_PARENTS: ReadonlySet<string> = new Set(['activity-frame']);
+const ACTIVITY_REGION_PARENTS: ReadonlySet<string> = new Set(['activity-lane']);
+const ACTIVITY_FLOW_PARENTS: ReadonlySet<string> = new Set(['activity-lane', 'activity-region']);

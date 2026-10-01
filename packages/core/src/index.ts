@@ -66,7 +66,7 @@ export { validate, diagramWarnings, DiagramValidationError, IMAGE_REF, LIBRARY_I
 export { isDrawings, isLayoutOverlay } from './guards';
 export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrokeId } from './drawings';
 export { errMessage, SOURCE_URL } from './util';
-export { childrenOf, countAnchored } from './children';
+export { allowedParentTypes, childrenOf, countAnchored } from './children';
 export { bestLaneOrder } from './lanes';
 export { visibleColumns, withHiddenColumns } from './columns';
 export { activeNotation, compileView, presetLayers, resolveContainmentPlane } from './view/compile';
