@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.0](https://github.com/Ferroman/diagc/compare/v0.6.0...v0.7.0) (2026-10-01)
+
+
+### Features
+
+* **renderer:** route activity links between lanes; tidy lane order ([#40](https://github.com/Ferroman/diagc/issues/40)) ([63d620b](https://github.com/Ferroman/diagc/commit/63d620b833b4c052a210382454227c2607be01bc))
+* **studio:** drag activity lanes to reorder; editing fixes ([#39](https://github.com/Ferroman/diagc/issues/39)) ([2d69502](https://github.com/Ferroman/diagc/commit/2d695022da87520a1564f5ca13e3ce291788124b))
+* **studio:** export the canvas as a PNG ([#41](https://github.com/Ferroman/diagc/issues/41)) ([599fd18](https://github.com/Ferroman/diagc/commit/599fd18f85519fb880500cc22d526741b0fca9a9))
+
 ## [0.6.0](https://github.com/Ferroman/diagc/compare/v0.5.1...v0.6.0) (2026-10-01)
 
 
