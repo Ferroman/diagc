@@ -99,7 +99,7 @@ This is the same shape `m.toJSON()` produces from the TypeScript DSL. A browser-
 
 ## Next
 
-- [Use the icon library](../how-to/use-the-icon-library.md) — C4 stencils, 763 AWS icons, importing your own.
+- [Use the icon library](../how-to/use-the-icon-library.md) — C4 stencils, the AWS, Azure and Google Cloud icon sets, importing your own.
 - [Use planes and layers](../how-to/use-planes-and-layers.md) — one model, several views.
 - [Organise a large diagram](../how-to/organise-large-diagrams.md) — semantic zoom and pins.
 - [Studio reference](../reference/studio.md) — every panel, gesture and shortcut.

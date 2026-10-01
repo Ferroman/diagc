@@ -71,7 +71,7 @@ Organised along [Diátaxis](https://diataxis.fr/) lines — learning, tasks, loo
 | [Use planes and layers](docs/how-to/use-planes-and-layers.md) | One model, several views: a second hierarchy, or an overlay. |
 | [Add a legend](docs/how-to/add-a-legend.md) | An on-canvas key: derived rows, plus what only you can say. |
 | [Organise a large diagram](docs/how-to/organise-large-diagrams.md) | Semantic zoom, pins, drilling — and when to split instead. |
-| [Use the icon library](docs/how-to/use-the-icon-library.md) | C4 stencils, 763 AWS icons, importing your own. |
+| [Use the icon library](docs/how-to/use-the-icon-library.md) | C4 stencils, the AWS, Azure and Google Cloud icon sets, importing your own. |
 | [Draw on a diagram](docs/how-to/draw-on-a-diagram.md) | Freehand pen and eraser on top of the boxes. |
 | [Comment on a diagram](docs/how-to/comment-on-a-diagram.md) | Remarks and resource links on any node or relation, read from the badge on the published page. |
 | [Draw a git branching diagram](docs/how-to/draw-a-git-branching-diagram.md) | Lanes of commits with branch-offs and merges, from the DSL or the studio. |
@@ -100,7 +100,7 @@ Organised along [Diátaxis](https://diataxis.fr/) lines — learning, tasks, loo
 | [Model](docs/reference/model.md) | Every field of a diagram, every validation code, registry defaults. |
 | [Builder API](docs/reference/builder-api.md) | The TypeScript DSL, method by method. |
 | [Studio](docs/reference/studio.md) | Panels, gestures, shortcuts. |
-| [Library](docs/reference/library.md) | The bundled C4, Tech and AWS packs. |
+| [Library](docs/reference/library.md) | The bundled C4, Tech, Kubernetes, AWS, Azure and Google Cloud packs. |
 
 ### Explanation — understand it
 

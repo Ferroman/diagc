@@ -1,10 +1,12 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEPLOY_NODE_TYPES, DEPLOY_ZONE_TYPES, LIBRARY_IMAGE_REF } from '@diagc/core';
 import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { AWS_PACK } from './packs.aws';
+import { AZURE_PACK } from './packs.azure';
+import { GCP_PACK } from './packs.gcp';
 import { C4_PACK } from './packs.c4';
 import { BUNDLED_LIBRARY } from './packs';
 
@@ -16,7 +18,7 @@ describe('BUNDLED_LIBRARY', () => {
   it('bundles the C4, Tech and AWS packs, all builtin', () => {
     const ids = BUNDLED_LIBRARY.categories.map((c) => c.id);
     expect(ids).toContain('c4');
-    expect(ids).toContain('tech');
+    expect(ids).toContain('tech-data');
     expect(ids).toContain('aws-compute');
     expect(ids).toContain('aws-groups');
     expect(BUNDLED_LIBRARY.categories.every((c) => c.builtin === true)).toBe(true);
@@ -192,23 +194,45 @@ describe('AWS containers', () => {
 });
 
 describe('Tech pack', () => {
-  it('carries the vendor logos no cloud icon set covers', () => {
-    const tech = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'tech');
-    expect(tech.map((e) => e.name).sort()).toEqual([
-      'Auth0', 'ClickHouse', 'Cloudflare', 'GitHub', 'GitHub Actions', 'Helm', 'Jupyter', 'Kubernetes',
-      'NATS', 'New Relic', 'PostgreSQL', 'RabbitMQ', 'Redis', 'SendGrid', 'StarRocks', 'Temporal',
-    ]);
-    for (const e of tech) expect(e.template.image).toMatch(/^\/library\/tech\//);
+  const tech = BUNDLED_LIBRARY.entries.filter((e) => e.id.startsWith('tech-'));
+
+  it('nests every vendor-logo category under the Tech group', () => {
+    const cats = BUNDLED_LIBRARY.categories.filter((c) => c.id.startsWith('tech-'));
+    expect(cats.length).toBeGreaterThan(1);
+    for (const c of cats) expect(c.group).toBe('Tech');
+    for (const e of tech) expect(e.category).toMatch(/^tech-/);
+  });
+
+  it('keeps the logos diagrams were already drawn with', () => {
+    const ids = new Set(tech.map((e) => e.id));
+    for (const slug of [
+      'auth0', 'clickhouse', 'cloudflare', 'github', 'github-actions', 'helm', 'jupyter', 'kubernetes',
+      'nats', 'new-relic', 'postgresql', 'rabbitmq', 'redis', 'sendgrid', 'starrocks', 'temporal',
+    ]) {
+      expect(ids.has(`tech-${slug}`), `missing tech-${slug}`).toBe(true);
+    }
+  });
+
+  it('has a manifest entry for every generated logo, and no orphans', () => {
+    const onDisk = readdirSync(path.join(PUBLIC_DIR, 'library', 'tech')).map((f) => `/library/tech/${f}`);
+    expect(tech.map((e) => e.template.image).sort()).toEqual(onDisk.sort());
+  });
+
+  it('is findable by the words people actually type', () => {
+    const kw = (id: string) => BUNDLED_LIBRARY.entries.find((e) => e.id === id)?.keywords ?? [];
+    expect(kw('tech-kafka')).toContain('streaming');
+    expect(kw('tech-vault')).toContain('secrets');
+    expect(kw('tech-grafana')).toContain('dashboard');
   });
 });
 
 describe('Kubernetes pack', () => {
-  it('carries the community resource icons for cluster interiors', () => {
-    const k8s = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'k8s');
-    expect(k8s.map((e) => e.id).sort()).toEqual([
-      'k8s-deploy', 'k8s-ing', 'k8s-node', 'k8s-pod', 'k8s-secret', 'k8s-svc',
-    ]);
-    for (const e of k8s) expect(e.template.image).toMatch(/^\/library\/k8s\//);
+  const k8s = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'k8s');
+
+  it('has a manifest entry for every community icon, and no orphans', () => {
+    const onDisk = readdirSync(path.join(PUBLIC_DIR, 'library', 'k8s')).map((f) => `/library/k8s/${f}`);
+    expect(k8s.map((e) => e.template.image).sort()).toEqual(onDisk.sort());
+    expect(k8s.length).toBeGreaterThanOrEqual(39);
   });
 
   it('is findable by the words people actually type', () => {
@@ -216,6 +240,70 @@ describe('Kubernetes pack', () => {
     expect(kw('k8s-pod')).toContain('kubernetes');
     expect(kw('k8s-ing')).toContain('ingress');
     expect(kw('k8s-svc')).toContain('service');
+    expect(kw('k8s-sts')).toContain('statefulset');
+    expect(kw('k8s-pvc')).toContain('storage');
+  });
+});
+
+describe('Azure pack', () => {
+  it('nests every category under the Azure group', () => {
+    expect(AZURE_PACK.categories.length).toBeGreaterThan(10);
+    for (const c of AZURE_PACK.categories) expect(c.group).toBe('Azure');
+    for (const e of AZURE_PACK.entries) expect(e.category).toMatch(/^azure-/);
+  });
+
+  it('is bundled after AWS', () => {
+    const ids = BUNDLED_LIBRARY.categories.map((c) => c.id);
+    expect(ids.indexOf('azure-compute')).toBeGreaterThan(ids.indexOf('aws-compute'));
+  });
+
+  it('has a manifest entry for every generated icon, and no orphans', () => {
+    const onDisk = readdirSync(path.join(PUBLIC_DIR, 'library', 'azure')).map((f) => `/library/azure/${f}`);
+    expect(AZURE_PACK.entries.map((e) => e.template.image).sort()).toEqual(onDisk.sort());
+  });
+
+  it('files the core services under their specific category, not General or Other', () => {
+    const cat = (id: string) => AZURE_PACK.entries.find((e) => e.id === id)?.category;
+    expect(cat('azure-virtual-machine')).toBe('azure-compute');
+    expect(cat('azure-kubernetes-services')).toBe('azure-compute'); // also filed under Containers; first specific folder wins
+    expect(cat('azure-storage-accounts')).toBe('azure-storage');
+    expect(cat('azure-virtual-networks')).toBe('azure-networking');
+  });
+
+  it('is findable by the abbreviations people actually type', () => {
+    const kw = (id: string) => AZURE_PACK.entries.find((e) => e.id === id)?.keywords ?? [];
+    expect(kw('azure-kubernetes-services')).toContain('aks');
+    expect(kw('azure-virtual-networks')).toContain('vnet');
+    expect(kw('azure-storage-accounts')).toContain('blob');
+  });
+});
+
+describe('Google Cloud pack', () => {
+  it('nests its three icon families under the Google Cloud group', () => {
+    expect(GCP_PACK.categories.map((c) => c.id)).toEqual(['gcp-core', 'gcp-products', 'gcp-categories']);
+    for (const c of GCP_PACK.categories) expect(c.group).toBe('Google Cloud');
+  });
+
+  it('has a manifest entry for every generated icon, and no orphans', () => {
+    for (const dir of ['gcp', 'gcp-products', 'gcp-categories']) {
+      const onDisk = readdirSync(path.join(PUBLIC_DIR, 'library', dir)).map((f) => `/library/${dir}/${f}`);
+      const listed = GCP_PACK.entries.map((e) => e.template.image).filter((i) => i?.startsWith(`/library/${dir}/`));
+      expect(listed.sort(), dir).toEqual(onDisk.sort());
+    }
+  });
+
+  it('gives the console icons readable product names', () => {
+    const names = GCP_PACK.entries.filter((e) => e.category === 'gcp-products').map((e) => e.name);
+    expect(names).toContain('Pub/Sub');
+    expect(names).toContain('Google Kubernetes Engine');
+    expect(names).toContain('Cloud Optimization AI - Fleet Routing API');
+  });
+
+  it('is findable by the abbreviations people actually type', () => {
+    const kw = (id: string) => GCP_PACK.entries.find((e) => e.id === id)?.keywords ?? [];
+    expect(kw('gcp-gke')).toContain('kubernetes');
+    expect(kw('gcp-product-pub-sub')).toContain('messaging');
+    expect(kw('gcp-cloud-storage')).toContain('gcs');
   });
 });
 
