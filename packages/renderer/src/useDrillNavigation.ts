@@ -153,6 +153,11 @@ export function useDrillNavigation(input: DrillNavigationInput): DrillNavigation
       // double-click can still reach here via the click-correlation path, so
       // guard it explicitly rather than relying on the absent affordance.
       if (isAlwaysExpanded(id)) return;
+      // A leaf (an action, a decision, a plain service) has no inside: drilling
+      // into one only swaps the canvas for an empty frame. A view-mode
+      // double-click on any box reaches here, so refuse it rather than strand
+      // the reader on a blank page behind a breadcrumb.
+      if ((viewHierarchy.childrenOf.get(id)?.length ?? 0) === 0) return;
       const chain = drillChain(viewHierarchy.parentsOf, id, enteredPathRef.current);
       if (chain.length === 0) return; // unknown / not in this plane
       pendingRootFitRef.current = 'glide';

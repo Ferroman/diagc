@@ -102,3 +102,24 @@ export function arrangeActivityFrames<T extends Geo>(
   view.roots.forEach(walk);
   return out;
 }
+
+/**
+ * How many slots a dragged lane moves in its frame's band order: its new index
+ * (the number of OTHER lanes whose middle sits above the dragged lane's middle
+ * where it was let go) minus its current one. `lanes` are the frame's lanes as
+ * arranged (parent-relative y and height, any order); `droppedY` is the dragged
+ * lane's top where the drag ended, in the same frame-relative units. 0 when it
+ * lands back in its own slot or is not among `lanes`.
+ */
+export function laneDropOffset(
+  lanes: readonly { id: string; y: number; height: number }[],
+  draggedId: string,
+  droppedY: number,
+): number {
+  const ordered = [...lanes].sort((a, b) => a.y - b.y);
+  const from = ordered.findIndex((l) => l.id === draggedId);
+  if (from === -1) return 0;
+  const middle = droppedY + ordered[from]!.height / 2;
+  const to = ordered.filter((l) => l.id !== draggedId && l.y + l.height / 2 < middle).length;
+  return to - from;
+}

@@ -34,6 +34,22 @@ const ELEMENTS = [
   { type: 'activity-note', label: 'Add note', defaultName: 'Note' },
 ] as const;
 
+/** A lane moved `offset` band slots (a canvas drag can cross several at once)
+ * as one undo step: move-child steps a single slot, so it repeats. null for no
+ * move at all. */
+export function moveLaneCommand(frameId: string, laneId: string, offset: number, plane: string | undefined): EditorCommand | null {
+  if (offset === 0) return null;
+  const step: EditorCommand = {
+    type: 'move-child',
+    parent: frameId,
+    child: laneId,
+    offset: offset < 0 ? -1 : 1,
+    ...(plane !== undefined ? { plane } : {}),
+  };
+  const n = Math.abs(offset);
+  return n === 1 ? step : { type: 'batch', commands: Array.from({ length: n }, () => step) };
+}
+
 export function isActivityScope(model: DiagramModel, selection: DiagramSelection | null): DiagramNode | undefined {
   if (selection?.kind !== 'node') return undefined;
   const n = model.nodes.find((x) => x.id === selection.id);

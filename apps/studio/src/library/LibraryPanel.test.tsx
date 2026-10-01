@@ -3,7 +3,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LIBRARY_ENTRY_DND_TYPE } from '@diagc/renderer';
 import { defaultHost, setHost } from '../host';
-import { LibraryPanel } from './LibraryPanel';
+import { useState } from 'react';
+import { EMPTY_LIBRARY_VIEW, LibraryPanel } from './LibraryPanel';
 import type { Library } from './types';
 
 const library: Library = {
@@ -157,6 +158,25 @@ describe('LibraryPanel category collapsing', () => {
     const aws = toggle('AWS');
     expect(aws.getAttribute('aria-expanded')).toBe('false');
     expect(within(aws).getByText('40')).toBeDefined();
+  });
+
+  it('keeps the search and open sections through an unmount when the host holds them', () => {
+    // The inspector mounts only its active tab: switching to Properties and
+    // back is an unmount and a fresh mount of this panel.
+    function Host({ shown }: { shown: boolean }) {
+      const view = useState(EMPTY_LIBRARY_VIEW);
+      return shown ? <LibraryPanel library={big} onPlace={() => {}} viewState={view} /> : null;
+    }
+    const { rerender } = render(<Host shown />);
+    fireEvent.click(toggle('AWS'));
+    fireEvent.change(screen.getByLabelText('Search library'), { target: { value: 'Svc' } });
+    rerender(<Host shown={false} />);
+    rerender(<Host shown />);
+    expect((screen.getByLabelText('Search library') as HTMLInputElement).value).toBe('Svc');
+    // a search opens everything anyway; cleared, the 40-entry section would
+    // default to collapsed — still open means the click was remembered
+    fireEvent.change(screen.getByLabelText('Search library'), { target: { value: '' } });
+    expect(toggle('AWS').getAttribute('aria-expanded')).toBe('true');
   });
 
   it('expands a collapsed section on click and collapses it again', () => {

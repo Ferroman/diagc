@@ -19,6 +19,7 @@ import {
   ReactFlowProvider,
   useReactFlow,
   type Edge,
+  type EdgeChange,
   type Node,
   type NodeChange,
   type OnNodeDrag,
@@ -64,6 +65,7 @@ import { DrawingsLayer } from './DrawingsLayer';
 import { withoutMeasuredExpansion } from './expand-parent';
 import { savedPositions } from './fit-containers';
 import { reconnectPin } from './floating';
+import { laneDropOffset } from './activity-frame';
 import { GitLanesOverlay } from './GitLanesOverlay';
 import { alignBoxes, distributeBoxes, dropDescendants, type Delta } from './arrange';
 import type { Box } from './box';
@@ -1395,6 +1397,29 @@ function Inner(props: DiagramViewProps) {
     });
   }, [compiled, placedGeometry, edgeDataCtx, editing]);
 
+  // Edge selection is React Flow's own, but the edges are controlled: its
+  // select changes reach the canvas only through this set. Without it no edge
+  // ever reads `selected`, and the delete key (which acts on the selected
+  // elements) silently skips every clicked link. Kept apart from `edges` so a
+  // click restamps one flag instead of rebuilding every edge's data.
+  const [selectedEdgeIds, setSelectedEdgeIds] = useState<ReadonlySet<string>>(() => new Set());
+  const rfEdges = useMemo(
+    () => (selectedEdgeIds.size === 0 ? edges : edges.map((e) => (selectedEdgeIds.has(e.id) ? { ...e, selected: true } : e))),
+    [edges, selectedEdgeIds],
+  );
+  const onEdgesChange = (changes: EdgeChange[]) => {
+    const selects = changes.filter((c) => c.type === 'select');
+    if (selects.length === 0) return;
+    setSelectedEdgeIds((prev) => {
+      const next = new Set(prev);
+      for (const c of selects) {
+        if (c.selected) next.add(c.id);
+        else next.delete(c.id);
+      }
+      return next.size === prev.size && [...next].every((id) => prev.has(id)) ? prev : next;
+    });
+  };
+
   const loops = useLoopOverlay({
     profile,
     compiled,
@@ -1537,7 +1562,8 @@ function Inner(props: DiagramViewProps) {
     >
       <ReactFlow
         nodes={rfNodes}
-        edges={edges}
+        edges={rfEdges}
+        onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         colorMode={props.colorMode ?? 'light'}
@@ -1718,9 +1744,9 @@ function Inner(props: DiagramViewProps) {
           // plan's actors) is never reported as moved — reset to the spot
           // the layout laid it at, whether or not this gesture reported a
           // drop (an actor always returns to the roster after a drag).
+          const resets: Positions = {};
           const snapsBack = profile.node?.snapsBack;
           if (snapsBack !== undefined) {
-            const resets: Positions = {};
             for (const id of boxIds) {
               const modelNode = props.model.nodes.find((n) => n.id === id);
               if (modelNode === undefined || !snapsBack(modelNode)) continue;
@@ -1728,11 +1754,37 @@ function Inner(props: DiagramViewProps) {
               const pos = allNodesRef.current.find((n) => n.id === id)?.position;
               if (pos !== undefined) resets[id] = pos;
             }
-            if (Object.keys(resets).length > 0) {
-              const changes = Object.entries(resets).map(([id, position]) => ({ type: 'position' as const, id, position }));
-              rfNodesRef.current = applyNodeChanges(changes, rfNodesRef.current);
-              setRfNodes((nds) => applyNodeChanges(changes, nds));
+          }
+
+          // An activity lane has no position of its own — its band is stacked
+          // from containment order (arrangeActivityFrames) — so dragging one
+          // is a reorder: where its middle lands among its sibling bands says
+          // how many slots it moves. It snaps back into a band either way;
+          // the reorder, if any, restacks the frame on the model change.
+          if (boxIds.length === 1 && edit?.onMoveLane !== undefined) {
+            const id = boxIds[0]!;
+            const rf = rfNodesRef.current.find((n) => n.id === id);
+            const frameId = rf?.parentId;
+            if (rf !== undefined && frameId !== undefined && (rf.data as { typeId?: string }).typeId === 'activity-lane') {
+              const arranged = arrangedRef.current;
+              const lanes = rfNodesRef.current
+                .filter((n) => n.parentId === frameId && (n.data as { typeId?: string }).typeId === 'activity-lane')
+                .flatMap((n) => {
+                  const g = arranged?.get(n.id);
+                  return g === undefined ? [] : [{ id: n.id, y: g.y, height: g.height }];
+                });
+              const offset = laneDropOffset(lanes, id, rf.position.y);
+              skip.add(id);
+              const pos = allNodesRef.current.find((n) => n.id === id)?.position;
+              if (pos !== undefined) resets[id] = pos;
+              if (offset !== 0) edit.onMoveLane(frameId, id, offset);
             }
+          }
+
+          if (Object.keys(resets).length > 0) {
+            const changes = Object.entries(resets).map(([id, position]) => ({ type: 'position' as const, id, position }));
+            rfNodesRef.current = applyNodeChanges(changes, rfNodesRef.current);
+            setRfNodes((nds) => applyNodeChanges(changes, nds));
           }
 
           // commitMoves early-returns on an empty map, so a note-only (or
