@@ -26,6 +26,7 @@ Two groups are distinguished, because the obligations differ:
 | [@xyflow/react](https://reactflow.dev) | 12.11.2 | MIT |
 | [react](https://react.dev), react-dom | 19.2.7 | MIT |
 | [roughjs](https://roughjs.com) | 4.6.6 | MIT |
+| [html-to-image](https://github.com/bubkoo/html-to-image) | 1.11.11 | MIT |
 | [lucide-react](https://lucide.dev) | 1.25.0 | ISC |
 | [marked](https://marked.js.org) | 18.0.6 | MIT |
 | [@fontsource/kalam](https://fontsource.org) | 5.3.0 | OFL-1.1 |
@@ -66,6 +67,7 @@ Copyright holders:
 - **@xyflow/react** — Copyright (c) 2019-2025 webkid GmbH
 - **react**, **react-dom** — Copyright (c) Meta Platforms, Inc. and affiliates
 - **roughjs** — Copyright (c) 2019 Preet Shihn
+- **html-to-image** — Copyright (c) 2017-2023 W.Y.
 - **marked** — Copyright (c) 2018+, MarkedJS (https://github.com/markedjs/); Copyright (c) 2011-2018, Christopher Jeffrey (https://github.com/chjj/)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this

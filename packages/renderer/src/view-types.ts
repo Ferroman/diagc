@@ -56,6 +56,11 @@ export interface LayoutApi {
   /** px reserved by the legend overlay on its own edge, or null when none is
    * shown — the export handshake grows the capture frame by this. */
   legendReserve: () => { side: 'top' | 'right' | 'bottom' | 'left'; px: number } | null;
+  /** the canvas as drawn — folds, layers, theme, drawings — rendered to a PNG at
+   * the content's full extent (`padding` px around it, `pixelRatio` device px
+   * per px, default 2). The view jumps to the frame for a moment and comes back.
+   * Panels (controls, legend) are left out. null when nothing is laid out. */
+  exportPng: (opts?: { padding?: number; pixelRatio?: number }) => Promise<Blob | null>;
 }
 
 /** The corner controls and the arrange toolbar, callable: what a host binds keys

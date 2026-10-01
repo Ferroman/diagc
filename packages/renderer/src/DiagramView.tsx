@@ -56,6 +56,7 @@ import {
 } from './build-data';
 import { edgeTypes, nodeTypes, toRfEdge, toRfNode, toRfNoteNode } from './adapter';
 import { strokesBounds } from './drawings';
+import { captureCanvas, exportFrame } from './export-image';
 import { NOTE_WIDTH, type NoteData } from './NoteNode';
 import { splitNoteDrag } from './note-drag';
 import { badgeCenter, estimateNoteHeight, lineObstacles, obstaclesOf, placeNote, type BadgeKind, type Point, type Rect } from './note-place';
@@ -1322,6 +1323,22 @@ function Inner(props: DiagramViewProps) {
         void reactFlow.fitView({ padding: pad });
       },
       legendReserve: () => legendReserveRef.current,
+      exportPng: async (opts) => {
+        const el = wrapperRef.current?.querySelector<HTMLElement>('.react-flow');
+        const bounds = ref.current?.contentBounds();
+        if (el === null || el === undefined || bounds === undefined) return null;
+        const frame = exportFrame(bounds, opts);
+        const before = reactFlow.getViewport();
+        // Move the content to 1:1 inside a frame cut to its size, let the
+        // viewport-driven layers (drawings, overlays) catch up, then clone.
+        await reactFlow.setViewport(frame.viewport);
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        try {
+          return await captureCanvas(el, frame);
+        } finally {
+          void reactFlow.setViewport(before);
+        }
+      },
     };
     return () => {
       ref.current = null;
