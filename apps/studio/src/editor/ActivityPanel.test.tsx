@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { model, type DiagramModel } from '@diagc/core';
-import { ActivityPanel } from './ActivityPanel';
+import { applyCommand, emptyDrawings, emptyLayout, model, type DiagramModel } from '@diagc/core';
+import { ActivityPanel, moveLaneCommand } from './ActivityPanel';
 
 /** frame f, no lanes */
 function frameOnlyModel(): DiagramModel {
@@ -200,5 +200,25 @@ describe('ActivityPanel', () => {
       setup({ kind: 'node', id: 'f' }, threeLanes());
       expect(screen.queryByRole('button', { name: 'Move lane up' })).toBeNull();
     });
+  });
+});
+
+describe('moveLaneCommand', () => {
+  const order = (m: DiagramModel) => m.containment.filter((e) => e.parent === 'f').map((e) => e.child);
+  const run = (offset: number) => {
+    const command = moveLaneCommand('f', 'a', offset, undefined);
+    if (command === null) return null;
+    return order(applyCommand({ model: threeLanes(), layout: emptyLayout(), drawings: emptyDrawings() }, command).model);
+  };
+
+  it('moves a lane several slots as one command, either way', () => {
+    expect(run(2)).toEqual(['b', 'c', 'a']);
+    expect(run(1)).toEqual(['b', 'a', 'c']);
+    const up = moveLaneCommand('f', 'c', -2, 'p');
+    expect(up).toEqual({ type: 'batch', commands: [0, 1].map(() => ({ type: 'move-child', parent: 'f', child: 'c', offset: -1, plane: 'p' })) });
+  });
+
+  it('is null when the lane did not move', () => {
+    expect(run(0)).toBeNull();
   });
 });

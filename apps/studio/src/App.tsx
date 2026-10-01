@@ -76,7 +76,7 @@ import { NodePanel } from './editor/NodePanel';
 import { EdgePanel } from './editor/EdgePanel';
 import { LayersPlanesPanel } from './editor/LayersPlanesPanel';
 import { GitPanel } from './editor/GitPanel';
-import { ActivityPanel } from './editor/ActivityPanel';
+import { ActivityPanel, moveLaneCommand } from './editor/ActivityPanel';
 import { SecondOrderPanel } from './editor/SecondOrderPanel';
 import { FishbonePanel } from './editor/FishbonePanel';
 import { ThreatModelPanel } from './editor/ThreatModelPanel';
@@ -87,7 +87,7 @@ import { InspectorTabs, type InspectorTab } from './editor/InspectorTabs';
 import { Dock } from './Dock';
 import { clampDockWidth } from './dockWidth';
 import { Sidebar } from './Sidebar';
-import { LibraryPanel } from './library/LibraryPanel';
+import { EMPTY_LIBRARY_VIEW, LibraryPanel } from './library/LibraryPanel';
 import { useLibrary } from './library/useLibrary';
 import { uniqueLibraryId } from './library/entry';
 import { deleteSelectionCommand } from './editor/deleteSelection';
@@ -216,6 +216,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const handleCldEdges = useCallback((edges: LoopEdgeInput[]) => setCldEdges(edges), []);
   const [leverageFocus, setLeverageFocus] = useState<LeverageFocus | null>(null);
   const [leftTab, setLeftTab] = useState<InspectorTab>('properties');
+  // The Library tab's search and open sections, here rather than in the panel:
+  // the inspector mounts only its active tab, and a canvas click switches it to
+  // Properties, so panel-local state reset on every return to the Library.
+  const libraryView = useState(EMPTY_LIBRARY_VIEW);
   // The dock collapse states persist with an on-disk format that predates this
   // hook ('collapsed'/'expanded'), so both reader and serializer use it.
   const [leftCollapsed, setLeftCollapsed] = usePersistedState<boolean>(LEFT_DOCK_KEY, false, (raw) => raw === 'collapsed', (v) => (v ? 'collapsed' : 'expanded'));
@@ -1189,6 +1193,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                       onImportIcon={(categoryId, file) => void importLibraryIcon(categoryId, file)}
                       onImportShape={(categoryId, file) => void importLibraryShape(categoryId, file)}
                       assetBase={getHost().assetBase}
+                      viewState={libraryView}
                     />
                   }
                 />
@@ -1294,6 +1299,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           const command = assign(model, activePlane, id, targetId, rel);
                           if (command !== undefined) editor.dispatch(command);
                         }
+                      },
+                      onMoveLane: (frameId: string, laneId: string, offset: number) => {
+                        const command = moveLaneCommand(frameId, laneId, offset, activePlane);
+                        if (command !== null) editor.dispatch(command);
                       },
                       // the chip only ever renders on a plan plane (DiagramNode gates it
                       // on the notation itself), so no notation check is needed here

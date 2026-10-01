@@ -236,6 +236,10 @@ export interface EditingApi {
    * dragged box's top-left relative to the target's top-left, in flow units.
    * Reported INSTEAD of a move for that box. */
   onDropInto?: (id: string, targetId: string, rel: { x: number; y: number }) => void;
+  /** an activity lane was dragged and let go `offset` band slots away from its
+   * own (negative = up). Reported INSTEAD of a move: bands are stacked from
+   * containment order, so the lane snaps back into a band either way. */
+  onMoveLane?: (frameId: string, laneId: string, offset: number) => void;
   /** edit mode, plan notation: a role chip's menu chose a role for the actor on
    * this zone, or `null` to remove the actor from it */
   onSetRole?: (zoneId: string, actorId: string, role: PlanRole | null) => void;

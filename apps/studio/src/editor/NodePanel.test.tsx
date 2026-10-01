@@ -32,6 +32,36 @@ afterEach(() => {
 });
 
 describe('NodePanel', () => {
+  it('offers only lanes and regions as parents of an activity element', () => {
+    const model: DiagramModel = {
+      ...testModel(),
+      nodes: [
+        { id: 'frame', name: 'Frame', type: 'activity-frame' },
+        { id: 'sales', name: 'Sales', type: 'activity-lane' },
+        { id: 'stock', name: 'Stock', type: 'activity-lane' },
+        { id: 'hold', name: 'Hold', type: 'activity-region' },
+        { id: 'take', name: 'Take', type: 'activity-action' },
+        { id: 'check', name: 'Check', type: 'activity-decision' },
+      ],
+      containment: [],
+      planes: [],
+    };
+    const options = (nodeId: string) => {
+      const { unmount } = render(
+        <NodePanel model={model} nodeId={nodeId} activePlane={undefined} onCommand={noop} onClose={noop} onDeleted={noop} />,
+      );
+      const names = within(screen.getByLabelText('Add parent'))
+        .getAllByRole('option')
+        .slice(1)
+        .map((o) => o.textContent);
+      unmount();
+      return names;
+    };
+    expect(options('take')).toEqual(['Sales', 'Stock', 'Hold']);
+    expect(options('sales')).toEqual(['Frame']);
+    expect(options('hold')).toEqual(['Sales', 'Stock']);
+  });
+
   it('commits a rename on blur (Name is a multiline textarea; Enter adds a line)', () => {
     const onCommand = vi.fn();
     render(
