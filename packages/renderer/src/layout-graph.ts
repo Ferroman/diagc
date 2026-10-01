@@ -23,6 +23,11 @@ export interface SizeHint {
   width: number;
   height: number;
   reserveBottom?: number;
+  /** A caption hung below the box, outside it (an activity glyph's name): handed
+   * to elk as an outside node label, so neighbours, routes and the layer gap
+   * keep off the text while the box itself keeps its drawn size — unlike
+   * `reserveBottom`, which also works sideways only by widening the box. */
+  caption?: { width: number; height: number };
 }
 
 /** The box elk lays out for a hinted node: drawn size plus the reserved strip. */
@@ -67,6 +72,7 @@ export interface ElkShape {
   children?: ElkShape[];
   layoutOptions?: Record<string, string>;
   edges?: ElkEdge[];
+  labels?: { width: number; height: number; text: string; layoutOptions?: Record<string, string> }[];
 }
 
 /** The flow direction when the settings name none. Callers that know the model
@@ -325,6 +331,7 @@ function edgeLabelBox(text: string): { width: number; height: number } | undefin
 }
 
 const ACTIVITY_START = 'activity-start';
+const CAPTION_BELOW = { 'elk.nodeLabels.placement': 'OUTSIDE V_BOTTOM H_CENTER' };
 const NOTE_LINK = 'note-link';
 
 function hasActivityStart(view: CompiledView): boolean {
@@ -448,9 +455,12 @@ export function buildGraph(
       const folded = sizes?.get(n.id) ?? COLLAPSED_SIZE;
       return { id: n.id, width: folded.width, height: folded.height };
     }
+    const caption = sizes?.get(n.id)?.caption;
     return {
       id: n.id,
       ...footprint(sizes?.get(n.id) ?? LEAF_SIZE),
+      // like an edge label, elk reserves the box only when `text` is non-empty
+      ...(caption !== undefined ? { labels: [{ ...caption, text: 'caption', layoutOptions: CAPTION_BELOW }] } : {}),
       ...(activity && n.node.type === ACTIVITY_START ? { layoutOptions: { 'elk.layered.layering.layerConstraint': 'FIRST' } } : {}),
     };
   };

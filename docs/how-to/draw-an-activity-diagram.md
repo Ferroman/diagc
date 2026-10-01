@@ -85,7 +85,9 @@ The whole picture above is `.diagrams/src/docs/activity.diagram.ts` in this repo
 ## What to know
 
 - **Bars, start and end ignore `color`.** They draw in a neutral stroke token regardless of what the node sets — there's no per-node colour on fixed UML glyphs in v1.
-- **Lane order is declaration order**, same as git-graph lanes — there's no drag-to-reorder yet.
+- **Lane order is declaration order**, same as git-graph lanes. The Activity panel's **Tidy lane order** (with a frame or lane selected) suggests the order whose links cross the fewest other lanes and applies it as one undoable step; the layout never reorders lanes on its own, since the order usually means something. It only searches frames of up to eight lanes.
+- **Links between lanes are drawn at right angles**, through the empty columns between steps and the blank strips along each lane's edge, so they stay off boxes and captions. A link pinned to a side keeps it. One the router can't place still draws as a curve.
+- **Names of decisions, bars, start and end sit under the glyph**, and the layout leaves room for them.
 - **Loose elements are legal.** A leaf dropped or created with no lane, or a region with no parent at all, doesn't fail validation — it just doesn't draw as part of the frame. Home it with the node panel's containment editor (its *Memberships* section), the same path any other stray node uses. A region contained by something other than a lane, though, **is** a validation error (`activity-region-parent`) — "unparented" and "wrongly parented" are different things.
 - **Rules the compiler and the studio's save both enforce**, each with a [validation code](../reference/model.md#validation-codes): an activity frame's children must all be lanes; a lane must be contained by a frame; a region must be contained by a lane if it's contained by anything at all.
 - **The key is one click away.** `▤` lists what each glyph and line means — `Start`, `Decision / merge`, `Fork / join`, `Control flow` — whether or not the file declares a legend. Call `m.legend()` to have it start shown and travel into the PNG; see [Add a legend](add-a-legend.md#diagrams-that-offer-one-anyway).

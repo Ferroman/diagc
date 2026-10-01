@@ -11,10 +11,10 @@ import {
   type LayoutSettings,
   type ViewNode,
 } from '@diagc/core';
-import { arrangeActivityFrames } from './activity-frame';
+import { arrangeActivityFrames, withLaneOrder } from './activity-frame';
 import { withBoxSizes } from './box-size';
 import { fitContainers, type ContainerFit, type Shift } from './fit-containers';
-import { CAPTION_HEIGHT, captionWidth, estimateLabelSize } from './label-size';
+import { CAPTION_HEIGHT, captionWidth, estimateLabelSize, glyphCaptionSize } from './label-size';
 import { layoutView, type EdgePoint, type NodeGeometry } from './layout';
 import { containerPad, DEFAULT_ALGORITHM, FALLBACK_DIRECTION, type SizeHint } from './layout-graph';
 import type { NotationProfile } from './notations';
@@ -130,10 +130,17 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     // template seeded dimensions. An explicit resize (overlay sizes) wins.
     for (const n of input.model.nodes) {
       if (n.type === undefined) continue;
-      const ds = input.typeRegistry.resolve(n.type).defaultSize;
+      const style = input.typeRegistry.resolve(n.type);
+      const ds = style.defaultSize;
       if (ds === undefined) continue;
       const s = input.layout?.sizes?.[n.id];
-      m.set(n.id, s !== undefined ? { width: s.w, height: s.h } : ds);
+      // A named glyph's caption hangs below it, wider than the diamond or dot
+      // it names: elk is told about it, or neighbours and arrows run through it.
+      const name = style.captionBelow === true ? (n.name ?? '').trim() : '';
+      m.set(n.id, {
+        ...(s !== undefined ? { width: s.w, height: s.h } : ds),
+        ...(name !== '' ? { caption: glyphCaptionSize(name) } : {}),
+      });
     }
     for (const n of input.model.nodes) {
       if (n.image === undefined) continue;
@@ -283,6 +290,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     [input.profile, saved],
   );
 
+  const laidView = useMemo(() => withLaneOrder(input.compiled, input.model), [input.compiled, input.model]);
   const [geometry, setGeometry] = useState<Map<string, NodeGeometry> | null>(null);
   const geometryRef = useRef<Map<string, NodeGeometry> | null>(null);
   geometryRef.current = geometry;
@@ -301,7 +309,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     const arrange =
       notationLayout !== undefined
         ? Promise.resolve().then(() => notationLayout(input.compiled, input.model, input.plane, sizes, layoutPositions))
-        : layoutView(input.compiled, sizes, runSettings, partitions !== undefined ? { partitions } : undefined);
+        : layoutView(laidView, sizes, runSettings, partitions !== undefined ? { partitions } : undefined);
     void arrange
       .then((r) => {
         if (!live) return;
@@ -327,7 +335,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     return () => {
       live = false;
     };
-  }, [input.compiled, sizes, runSettings, input.profile, input.model, input.plane, partitions, layoutPositions]);
+  }, [input.compiled, laidView, sizes, runSettings, input.profile, input.model, input.plane, partitions, layoutPositions]);
 
   // Overlay-applied geometry: elk output with any layout-overlay positions for
   // the active plane substituted in (width/height stay elk's). Derived so the

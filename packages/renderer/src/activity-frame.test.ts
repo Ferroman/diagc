@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, type DiagramModel } from '@diagc/core';
-import { ACTIVITY_LAYOUT as L, arrangeActivityFrames } from './activity-frame';
+import { ACTIVITY_LAYOUT as L, arrangeActivityFrames, withLaneOrder } from './activity-frame';
 
 const model = (extraLaneKids: { id: string; parent: string }[] = []): DiagramModel => ({
   version: 1,
@@ -175,5 +175,21 @@ describe('arrangeActivityFrames', () => {
     const out = arrangeActivityFrames(g, view(m), m);
     expect(out.get('f')).toEqual({ x: 10, y: 20, width: L.TITLE_STRIP_W + L.LANE_MIN_W, height: L.LANE_MIN_H });
     expect(out.get('g')).toEqual({ x: 0, y: 500, width: 900, height: 300 });
+  });
+});
+
+describe('withLaneOrder', () => {
+  it('hands the layout a frame\'s lanes in containment order, not node order', () => {
+    const m = model();
+    // l2 restacked above l1 (what move-child does): containment says l2 first
+    const reordered = { ...m, containment: [m.containment[1]!, m.containment[0]!] };
+    const v = view(reordered);
+    expect(v.roots[0]!.children.map((c) => c.id)).toEqual(['l1', 'l2']); // the view tree: node order
+    expect(withLaneOrder(v, reordered).roots[0]!.children.map((c) => c.id)).toEqual(['l2', 'l1']);
+  });
+
+  it('returns the same view when the order already agrees (it is a cache key)', () => {
+    const v = view(model());
+    expect(withLaneOrder(v, model())).toBe(v);
   });
 });

@@ -29,7 +29,7 @@ import {
   type Point,
 } from './edge-geometry';
 import { getEdgeParams, sideFromPosition, type Side } from './floating';
-import { CAPTION_HEIGHT } from './label-size';
+import { CAPTION_HEIGHT, glyphCaptionSize } from './label-size';
 import { LoopHighlightContext } from './loop-highlight';
 import { NoteStateContext } from './note-state';
 import { notationProfile } from './notations';
@@ -192,10 +192,15 @@ const SIDE_THRESHOLD = 8;
 const DRAG_THRESHOLD = 3;
 
 /** room a node's caption takes below its drawn box: an image leaf's name hangs
- * under the picture (mirrors the hint useViewLayout gives elk). A cornerBadge
- * type draws its image as chrome and its label inside the box — no caption. */
+ * under the picture, and so does a named activity glyph's (both mirror the hint
+ * useViewLayout gives elk). A cornerBadge type draws its image as chrome and its
+ * label inside the box — no caption. */
 function captionReserve(d: DiagramNodeData | undefined): number {
-  if (d === undefined || d.image === undefined || d.shape !== undefined || d.state !== 'leaf' || d.label === '') return 0;
+  if (d === undefined || d.state !== 'leaf' || d.label === '') return 0;
+  if (d.image === undefined && d.typeId !== undefined && d.typeRegistry.resolve(d.typeId).captionBelow === true) {
+    return glyphCaptionSize(d.label).height;
+  }
+  if (d.image === undefined || d.shape !== undefined) return 0;
   if (d.typeId !== undefined && d.typeRegistry.resolve(d.typeId).cornerBadge === true) return 0;
   return CAPTION_HEIGHT;
 }

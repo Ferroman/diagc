@@ -1,6 +1,8 @@
 import type { CompiledView, LayoutSettings, ViewNode } from '@diagc/core';
 import { ACTIVITY_LAYOUT } from './activity-frame';
-import { containerPad, FALLBACK_DIRECTION } from './layout-graph';
+import { containerPad, edgeLabelText, FALLBACK_DIRECTION } from './layout-graph';
+import { routeEndSides } from './edge-geometry';
+import { routeLaneEdges, type RouterBox, type RouterEdge } from './lane-router';
 
 /**
  * Activity swimlanes: one layering along the flow, nodes banded by lane across it.
@@ -102,6 +104,9 @@ export function bandLanes<T extends Geo>(
   hoist: LaneHoist,
   original: CompiledView,
   gap: number,
+  /** px hanging below a member's box (an activity glyph's caption): counted in
+   * the band's height and in the run closing, so the text stays inside its lane */
+  below?: ReadonlyMap<string, number>,
 ): Map<string, { dx: number; dy: number }> {
   const moved = new Map<string, { dx: number; dy: number }>();
   const L = ACTIVITY_LAYOUT;
@@ -130,12 +135,13 @@ export function bandLanes<T extends Geo>(
       let right = 0;
       for (const id of inLane) {
         const g = geometry.get(id)!;
+        const hang = below?.get(id) ?? 0;
         if (reach !== -Infinity && g.y > reach + gap) shift += g.y - reach - gap;
-        reach = Math.max(reach, g.y + g.height);
+        reach = Math.max(reach, g.y + g.height + hang);
         const x = g.x - minX + pad.left;
         const y = g.y - shift + pad.top;
         placed.set(id, { x, y });
-        bottom = Math.max(bottom, y + g.height);
+        bottom = Math.max(bottom, y + g.height + hang);
         right = Math.max(right, x + g.width);
       }
       width = Math.max(width, right + pad.right);
@@ -262,5 +268,99 @@ export function rebaseRoutes(
     routes.set(id, next);
     const spot = labelSpots.get(id);
     if (spot !== undefined) labelSpots.set(id, { x: spot.x + a.dx, y: spot.y + a.dy });
+  }
+}
+
+/**
+ * Route the frame links the banding left without a route (rebaseRoutes dropped
+ * them: every link between lanes, and any whose shifted elk path ran into a
+ * box) — orthogonally, through the column gaps and lane pad strips the banded
+ * frame keeps clear (lane-router.ts). A link the router cannot place, or one
+ * pinned to a top/bottom side, keeps floating as before.
+ */
+export function routeBandedEdges(
+  routes: Map<string, Point[]>,
+  labelSpots: Map<string, Point>,
+  hoist: LaneHoist,
+  original: CompiledView,
+  geometry: ReadonlyMap<string, Geo>,
+  captions?: ReadonlyMap<string, { width: number; height: number }>,
+): void {
+  const L = ACTIVITY_LAYOUT;
+  for (const frameId of hoist.frames.keys()) {
+    const boxes: RouterBox[] = [];
+    const corridors: number[] = [];
+    let frame: ViewNode | undefined;
+    const find = (n: ViewNode) => {
+      if (n.id === frameId) frame = n;
+      else n.children.forEach(find);
+    };
+    original.roots.forEach(find);
+    // absolute origin of the frame: the sum of its ancestors' offsets
+    const origin = (() => {
+      const path: string[] = [];
+      const seek = (n: ViewNode, trail: string[]): boolean => {
+        if (n.id === frameId) {
+          path.push(...trail);
+          return true;
+        }
+        return n.children.some((c) => seek(c, [...trail, n.id]));
+      };
+      original.roots.some((r) => seek(r, []));
+      return path.reduce((o, id) => {
+        const g = geometry.get(id);
+        return g === undefined ? o : { x: o.x + g.x, y: o.y + g.y };
+      }, { x: 0, y: 0 });
+    })();
+    const fg = geometry.get(frameId);
+    if (frame === undefined || fg === undefined) continue;
+    const fx = origin.x + fg.x;
+    const fy = origin.y + fg.y;
+    const place = (n: ViewNode, ox: number, oy: number) => {
+      const g = geometry.get(n.id);
+      if (g === undefined) return;
+      const ax = ox + g.x;
+      const ay = oy + g.y;
+      if (n.state !== 'expanded') {
+        const caption = captions?.get(n.id);
+        boxes.push({ id: n.id, x: ax, y: ay, width: g.width, height: g.height, ...(caption !== undefined ? { caption } : {}) });
+      }
+      n.children.forEach((c) => place(c, ax, ay));
+    };
+    for (const lane of frame.children) {
+      const lg = geometry.get(lane.id);
+      if (lg === undefined) continue;
+      // the pad strips along a lane's top and bottom hold no member
+      corridors.push(fy + lg.y + L.PAD / 2, fy + lg.y + lg.height - L.PAD / 2);
+      lane.children.forEach((c) => place(c, fx + lg.x, fy + lg.y));
+    }
+
+    const inFrame = new Set(boxes.map((b) => b.id));
+    const edges: RouterEdge[] = original.layoutEdges
+      .filter((e) => hoist.touched.has(e.id) && inFrame.has(e.from) && inFrame.has(e.to))
+      .map((e) => {
+        // a pin only counts on a relation drawn end to end, as DiagramEdge reads it
+        const sole = e.constituents.length === 1 && e.constituents[0]!.from === e.from && e.constituents[0]!.to === e.to ? e.constituents[0]! : undefined;
+        return {
+          id: e.id,
+          from: e.from,
+          to: e.to,
+          ...(sole?.style?.fromSide !== undefined ? { fromSide: sole.style.fromSide } : {}),
+          ...(sole?.style?.toSide !== undefined ? { toSide: sole.style.toSide } : {}),
+          hasLabel: edgeLabelText(e).trim() !== '',
+        };
+      })
+      // elk's surviving routes stand, unless they break a pin (DiagramEdge
+      // would then float them): those are routed here, honouring it
+      .filter((e) => {
+        const kept = routes.get(e.id);
+        if (kept === undefined) return true;
+        const sides = routeEndSides(kept);
+        return (e.fromSide !== undefined && e.fromSide !== sides.from) || (e.toSide !== undefined && e.toSide !== sides.to);
+      });
+    if (edges.length === 0) continue;
+    const routed = routeLaneEdges({ boxes, corridors, edges });
+    for (const [id, pts] of routed.routes) routes.set(id, pts);
+    for (const [id, p] of routed.labelSpots) labelSpots.set(id, p);
   }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { estimateLabelSize, MAX_LABEL_WIDTH, MIN_LABEL_WIDTH } from './label-size';
+import { estimateLabelSize, glyphCaptionSize, MAX_LABEL_WIDTH, MIN_LABEL_WIDTH } from './label-size';
 
 describe('estimateLabelSize', () => {
   it('short text gets the minimum width', () => {
@@ -17,5 +17,17 @@ describe('estimateLabelSize', () => {
   });
   it('larger font scale yields a taller box', () => {
     expect(estimateLabelSize('a\nb\nc', 'lg').height).toBeGreaterThan(estimateLabelSize('a\nb\nc', 'sm').height);
+  });
+});
+
+describe('glyphCaptionSize', () => {
+  it('is one line as wide as a short name', () => {
+    expect(glyphCaptionSize('Start')).toEqual({ width: 43, height: 19 });
+  });
+
+  it('wraps a long name at the caption max-width', () => {
+    const s = glyphCaptionSize('Commit translation in TMS and notify every downstream system');
+    expect(s.width).toBe(180);
+    expect(s.height).toBe(3 * 16 + 3);
   });
 });

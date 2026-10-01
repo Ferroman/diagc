@@ -45,6 +45,18 @@ export function captionWidth(text: string): number {
   return Math.round(text.length * CAPTION_CHAR + CAPTION_PAD);
 }
 
+/** The CSS max-width of an activity glyph's caption (`.dg-glyph-caption`). */
+const GLYPH_CAPTION_MAX_W = 180;
+const GLYPH_CAPTION_LINE = 16;
+
+/** Deterministic (no-DOM) box of an activity glyph's caption: one line as wide
+ * as the text, wrapping at the CSS max-width, plus the 3px margin above it. */
+export function glyphCaptionSize(text: string): { width: number; height: number } {
+  const one = captionWidth(text);
+  const lines = Math.max(1, Math.ceil(one / GLYPH_CAPTION_MAX_W));
+  return { width: Math.min(one, GLYPH_CAPTION_MAX_W), height: lines * GLYPH_CAPTION_LINE + 3 };
+}
+
 /**
  * How many characters an edge's single label chip may show. ~24 characters is
  * about the width of two folded boxes at platform altitude; past that one arrow's

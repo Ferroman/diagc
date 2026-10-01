@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { model, type DiagramModel } from '@diagc/core';
-import { ActivityPanel } from './ActivityPanel';
+import { applyCommand, emptyDrawings, emptyLayout, model, type DiagramModel } from '@diagc/core';
+import { ActivityPanel, reorderLanesCommand } from './ActivityPanel';
 
 /** frame f, no lanes */
 function frameOnlyModel(): DiagramModel {
@@ -200,5 +200,39 @@ describe('ActivityPanel', () => {
       setup({ kind: 'node', id: 'f' }, threeLanes());
       expect(screen.queryByRole('button', { name: 'Move lane up' })).toBeNull();
     });
+  });
+});
+
+describe('Tidy lane order', () => {
+  /** a talks to c across b: the best order puts b at an end */
+  function apart(): DiagramModel {
+    const m = model('t');
+    const act = m.activity('f');
+    const ids = ['a', 'b', 'c'].map((id) => act.lane(id, { name: id.toUpperCase() }).action(`${id}-x`, id));
+    act.flow(ids[0]!, ids[2]!);
+    return m.toJSON();
+  }
+  const order = (m: DiagramModel) => m.containment.filter((e) => e.parent === 'f').map((e) => e.child);
+
+  it('restacks the lanes so the linked ones sit together, in one command', () => {
+    const { onCommand } = setup({ kind: 'node', id: 'f' }, apart());
+    fireEvent.click(screen.getByRole('button', { name: 'Tidy lane order' }));
+    const command = onCommand.mock.calls[0]![0];
+    const after = order(applyCommand({ model: apart(), layout: emptyLayout(), drawings: emptyDrawings() }, command).model);
+    expect(Math.abs(after.indexOf('a') - after.indexOf('c'))).toBe(1);
+  });
+
+  it('is disabled when the order is already the best', () => {
+    setup({ kind: 'node', id: 'a' }, threeLanes());
+    expect((screen.getByRole('button', { name: 'Tidy lane order' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe('reorderLanesCommand', () => {
+  it('walks each lane up into its slot', () => {
+    const step = (child: string) => ({ type: 'move-child', parent: 'f', child, offset: -1 });
+    expect(reorderLanesCommand('f', ['a', 'b', 'c'], ['c', 'a', 'b'], undefined)).toEqual({ type: 'batch', commands: [step('c'), step('c')] });
+    expect(reorderLanesCommand('f', ['a', 'b'], ['b', 'a'], undefined)).toEqual(step('b'));
+    expect(reorderLanesCommand('f', ['a', 'b'], ['a', 'b'], undefined)).toBeNull();
   });
 });
