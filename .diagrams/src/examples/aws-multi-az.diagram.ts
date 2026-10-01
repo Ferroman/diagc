@@ -85,12 +85,12 @@ const natA = m.node('nat-a', { name: 'NAT gateway', image: `${AWS_RES}/amazon-vp
 const vpnB = m.node('vpn-b', { name: 'VPN', image: `${AWS_ICON}/aws-client-vpn.svg` });
 const natB = m.node('nat-b', { name: 'NAT gateway', image: `${AWS_RES}/amazon-vpc-nat-gateway.svg` });
 
-const podA1 = m.node('pod-a1', { name: 'pod', image: '/library/k8s/pod.svg' });
-const podA2 = m.node('pod-a2', { name: 'pod', image: '/library/k8s/pod.svg' });
-const podA3 = m.node('pod-a3', { name: 'pod', image: '/library/k8s/pod.svg' });
-const podB1 = m.node('pod-b1', { name: 'pod', image: '/library/k8s/pod.svg' });
-const podB2 = m.node('pod-b2', { name: 'pod', image: '/library/k8s/pod.svg' });
-const podB3 = m.node('pod-b3', { name: 'pod', image: '/library/k8s/pod.svg' });
+const podA1 = m.node('pod-a1', { name: 'pod 1', image: '/library/k8s/pod.svg' });
+const podA2 = m.node('pod-a2', { name: 'pod 2', image: '/library/k8s/pod.svg' });
+const podA3 = m.node('pod-a3', { name: 'pod 3', image: '/library/k8s/pod.svg' });
+const podB1 = m.node('pod-b1', { name: 'pod 2', image: '/library/k8s/pod.svg' });
+const podB2 = m.node('pod-b2', { name: 'pod 3', image: '/library/k8s/pod.svg' });
+const podB3 = m.node('pod-b3', { name: 'pod 1', image: '/library/k8s/pod.svg' });
 
 const redisA = m.node('redis-a', { name: 'Redis Primary', image: '/library/tech/redis.svg' });
 const redisB = m.node('redis-b', { name: 'Redis Secondary', image: '/library/tech/redis.svg' });
