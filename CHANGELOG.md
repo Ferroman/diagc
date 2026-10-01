@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/Ferroman/diagc/compare/v0.7.0...v0.8.0) (2026-10-01)
+
+
+### Features
+
+* **library:** Azure, Google Cloud, full Kubernetes and 81 more vendor icons ([#35](https://github.com/Ferroman/diagc/issues/35)) ([10b729b](https://github.com/Ferroman/diagc/commit/10b729bf1b6412e6492d2afa81e17bdbea0f33d6))
+
 ## [0.7.0](https://github.com/Ferroman/diagc/compare/v0.6.0...v0.7.0) (2026-10-01)
 
 
