@@ -72,6 +72,15 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
         ? inPlane.find((e) => e.child === selected.id)?.parent
         : undefined;
 
+  // Bands stack in containment order (the frame's children, top to bottom),
+  // so restacking a lane is a move-child on that order — the layout follows.
+  const laneOrder = frameId !== undefined ? inPlane.filter((e) => e.parent === frameId).map((e) => e.child) : [];
+  const laneAt = selected.type === 'activity-lane' ? laneOrder.indexOf(selected.id) : -1;
+  const moveLane = (offset: -1 | 1) => {
+    if (frameId === undefined || laneAt === -1) return;
+    onCommand({ type: 'move-child', parent: frameId, child: selected.id, offset, ...withPlane });
+  };
+
   const addChild = (node: DiagramNode, parentId: string = selected.id) => {
     const cascade = cascadeIn(parentId);
     onCommand({
@@ -113,6 +122,16 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
           <button type="button" className="chip" onClick={addLane} disabled={laneName.trim() === ''}>
             Add lane
           </button>
+          {laneAt !== -1 && (
+            <>
+              <button type="button" className="chip" onClick={() => moveLane(-1)} disabled={laneAt === 0}>
+                Move lane up
+              </button>
+              <button type="button" className="chip" onClick={() => moveLane(1)} disabled={laneAt === laneOrder.length - 1}>
+                Move lane down
+              </button>
+            </>
+          )}
         </section>
       )}
       {selected.type !== 'activity-frame' && (

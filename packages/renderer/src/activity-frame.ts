@@ -40,8 +40,20 @@ export function arrangeActivityFrames<T extends Geo>(
   const out = new Map(geometry);
   const L = ACTIVITY_LAYOUT;
 
+  // Band order is containment order: the studio restacks a lane (move-child)
+  // or slots a new one beside its neighbour by reordering containment, while
+  // the view tree lists children in NODE order, which still says creation order.
+  const rank = new Map<string, number>();
+  model.containment.forEach((e, i) => {
+    const key = `${e.parent}\u0000${e.child}`;
+    if (!rank.has(key)) rank.set(key, i);
+  });
+  const rankIn = (frame: string, lane: string) => rank.get(`${frame}\u0000${lane}`) ?? Number.MAX_SAFE_INTEGER;
+
   const arrange = (frame: ViewNode): void => {
-    const lanes = frame.children.filter((c) => typeOf.get(c.id) === 'activity-lane' && out.has(c.id));
+    const lanes = frame.children
+      .filter((c) => typeOf.get(c.id) === 'activity-lane' && out.has(c.id))
+      .sort((a, b) => rankIn(frame.id, a.id) - rankIn(frame.id, b.id));
     if (lanes.length === 0) {
       // No bands yet (a frame straight off the palette, or one whose last lane
       // was deleted): elk sized it as a label-sized leaf, or around a stray it

@@ -53,6 +53,14 @@ describe('applyCommand', () => {
     expect(kids(below)).toEqual(['a', 'y', 'b']);
   });
 
+  it('move-child restacks a child among its siblings', () => {
+    const base = applyCommand(state(), { type: 'add-node', node: { id: 'b', name: 'B' }, parent: { id: 'sys' } });
+    const kids = (s: typeof base) => s.model.containment.filter((e) => e.parent === 'sys').map((e) => e.child);
+    const up = applyCommand(base, { type: 'move-child', parent: 'sys', child: 'b', offset: -1 });
+    expect(kids(up)).toEqual(['b', 'a']);
+    expect(kids(applyCommand(up, { type: 'move-child', parent: 'sys', child: 'b', offset: 1 }))).toEqual(['a', 'b']);
+  });
+
   it('add-node refuses a before/after sibling that is not a child of the parent', () => {
     expect(() =>
       applyCommand(state(), { type: 'add-node', node: { id: 'x', name: 'X' }, parent: { id: 'sys', before: 'nope' } }),

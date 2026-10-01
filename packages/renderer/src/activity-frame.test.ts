@@ -44,6 +44,22 @@ describe('arrangeActivityFrames', () => {
     expect(out).toBe(g);
   });
 
+  it('stacks bands in containment order, not node order', () => {
+    // the studio restacks a lane (move-child) or slots a new one beside its
+    // neighbour (add-node after) by reordering containment; the node array
+    // keeps creation order
+    const m = model();
+    const restacked = { ...m, containment: [...m.containment].reverse() };
+    const g = geo([
+      ['f', { x: 0, y: 0, width: 1, height: 1 }],
+      ['l1', { x: 0, y: 0, width: 1, height: 1 }],
+      ['l2', { x: 0, y: 0, width: 1, height: 1 }],
+    ]);
+    const out = arrangeActivityFrames(g, view(restacked), restacked);
+    expect(out.get('l2')?.y).toBe(0);
+    expect(out.get('l1')?.y).toBe(L.LANE_MIN_H);
+  });
+
   it('stacks empty lanes as MIN-sized bands and wraps the frame', () => {
     const m = model();
     const g = geo([

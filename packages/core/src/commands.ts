@@ -34,6 +34,7 @@ import {
   groupNodes,
   mergeLayers,
   removeComment,
+  moveChild,
   removeContainment,
   removeThreat,
   renameNode,
@@ -120,6 +121,8 @@ export type EditorCommand =
   | { type: 'delete-node'; id: string; cascade?: boolean }
   | { type: 'add-containment'; parent: string; child: string; plane?: string }
   | { type: 'remove-containment'; parent: string; child: string; plane?: string }
+  /** restack a child one place earlier (-1) or later (+1) among its siblings */
+  | { type: 'move-child'; parent: string; child: string; offset: -1 | 1; plane?: string }
   | { type: 'group-nodes'; node: DiagramNode; memberIds: string[]; plane?: string }
   | { type: 'add-relation'; from: string; to: string; opts: RelationOptsInput }
   | { type: 'update-relation'; id: string; patch: RelationPatch }
@@ -427,6 +430,8 @@ function applyModelLayout(state: ModelLayout, command: EditorCommand): ModelLayo
       return { model: addContainment(model, command.parent, command.child, command.plane), layout };
     case 'remove-containment':
       return { model: removeContainment(model, command.parent, command.child, command.plane), layout };
+    case 'move-child':
+      return { model: moveChild(model, command.parent, command.child, command.offset, command.plane), layout };
     case 'group-nodes': {
       const grouped = groupNodes(model, command.node, command.memberIds, command.plane);
       // The members were positioned as top-level nodes; once nested, those

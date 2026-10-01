@@ -523,6 +523,26 @@ export function removeContainment(m: DiagramModel, parent: string, child: string
   };
 }
 
+/**
+ * Swap `child`'s containment entry with the previous (`offset` -1) or next (+1)
+ * entry under the same parent in the same plane. Sibling order IS containment
+ * array order (buildHierarchy reads it as-is), so this is how an activity
+ * frame's lanes are restacked. Entries under other parents keep their places.
+ * At either end the model comes back unchanged (same reference).
+ */
+export function moveChild(m: DiagramModel, parent: string, child: string, offset: -1 | 1, plane?: string): DiagramModel {
+  const defaultPlane = (m.planes ?? [])[0]?.id;
+  const key = canonicalPlane(m, plane) ?? defaultPlane;
+  const siblings = m.containment.flatMap((e, i) => (e.parent === parent && (e.plane ?? defaultPlane) === key ? [i] : []));
+  const at = siblings.findIndex((i) => m.containment[i]!.child === child);
+  if (at === -1) throw new CommandError(`'${parent}' does not contain '${child}'`);
+  const other = siblings[at + offset];
+  if (other === undefined) return m;
+  const containment = [...m.containment];
+  [containment[siblings[at]!], containment[other]] = [containment[other]!, containment[siblings[at]!]!];
+  return { ...m, containment };
+}
+
 /** Pin the diagram's visual style preset id, or clear it with null (the
  * app-level preference applies again). Unknown ids are intentionally
  * accepted — the renderer treats them as unpinned. */

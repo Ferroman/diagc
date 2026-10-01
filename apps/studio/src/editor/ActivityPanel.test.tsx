@@ -46,6 +46,14 @@ function frameLaneActionModel(): DiagramModel {
   return m.toJSON();
 }
 
+/** frame f ⊃ lanes a, b, c */
+function threeLanes(): DiagramModel {
+  const m = model('a');
+  const frame = m.activity('f', { name: 'Fulfillment' });
+  for (const id of ['a', 'b', 'c']) frame.lane(id, { name: id.toUpperCase() });
+  return m.toJSON();
+}
+
 const setup = (selection: { kind: 'node' | 'edge'; id: string } | null, m: DiagramModel) => {
   const onCommand = vi.fn();
   const onSelect = vi.fn();
@@ -171,5 +179,26 @@ describe('ActivityPanel', () => {
       />,
     );
     expect(container.firstChild).toBeNull();
+  });
+
+  describe('lane order', () => {
+    it('moves the selected lane up or down one band', () => {
+      const { onCommand } = setup({ kind: 'node', id: 'b' }, threeLanes());
+      fireEvent.click(screen.getByRole('button', { name: 'Move lane up' }));
+      expect(onCommand).toHaveBeenLastCalledWith({ type: 'move-child', parent: 'f', child: 'b', offset: -1 });
+      fireEvent.click(screen.getByRole('button', { name: 'Move lane down' }));
+      expect(onCommand).toHaveBeenLastCalledWith({ type: 'move-child', parent: 'f', child: 'b', offset: 1 });
+    });
+
+    it('disables the move that would leave the frame', () => {
+      setup({ kind: 'node', id: 'a' }, threeLanes());
+      expect((screen.getByRole('button', { name: 'Move lane up' }) as HTMLButtonElement).disabled).toBe(true);
+      expect((screen.getByRole('button', { name: 'Move lane down' }) as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    it('offers no lane moves when the frame itself is selected', () => {
+      setup({ kind: 'node', id: 'f' }, threeLanes());
+      expect(screen.queryByRole('button', { name: 'Move lane up' })).toBeNull();
+    });
   });
 });
