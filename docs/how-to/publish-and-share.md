@@ -2,6 +2,12 @@
 
 Turn diagrams into things other people can open: images for your README, interactive pages for a website.
 
+## A quick image from the studio
+
+With a diagram open (not in edit mode), the topbar's **⋯** menu has **Export PNG**: it downloads the canvas as you see it — current folds, active layers, your theme and any drawings — at the diagram's full size, not just the part on screen, at twice screen resolution. The canvas jumps to the full view for a moment while it renders. The zoom controls and the legend are left out. Nothing needs to be built, and no Chrome is involved.
+
+For an image that belongs in the repo, use `publish` below instead: it is reproducible (every group unfolded, light theme, a declared legend baked in) and writes to the committed `.diagrams/static/`.
+
 ## One-time setup
 
 The exporter stamps your model into a pre-built viewer shell. Build it once:

@@ -64,6 +64,7 @@ import { useViewOps } from './hooks/useViewOps';
 import { edgeLabelsOf, addEdgeLabel, editEdgeLabel, moveEdgeLabel } from './edge-labels';
 import { computeSelectionColor } from './selection-color';
 import { DiagramPicker } from './DiagramPicker';
+import { downloadPng } from './downloadPng';
 import { EditorToolbar } from './editor/EditorToolbar';
 import { EditLayoutActions, relayoutPlane } from './editor/LayoutActions';
 import { LayoutPanel } from './LayoutPanel';
@@ -910,6 +911,12 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
       : []),
     ...(model !== undefined
       ? [
+          {
+            id: 'export-png',
+            label: 'Export PNG',
+            title: 'Save the canvas as drawn — folds, layers, theme and drawings — as a PNG image',
+            onSelect: () => void downloadPng(layoutApiRef.current, selected ?? ''),
+          },
           {
             id: 'duplicate',
             label: 'Duplicate',

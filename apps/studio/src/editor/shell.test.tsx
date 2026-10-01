@@ -1385,7 +1385,7 @@ describe('editor shell', () => {
     // the read-only branch instead.
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /^edit$/i })).toBeNull();
-      expect(diagramActions()).toEqual(['Duplicate']);
+      expect(diagramActions()).toEqual(['Export PNG', 'Duplicate']);
     });
   });
 
@@ -1411,7 +1411,7 @@ describe('editor shell', () => {
     fireEvent.click(screen.getByRole('option', { name: 'two' }));
     expect(await screen.findByText(/read-only/i)).toBeDefined();
     // the menu has to be OPEN for this to mean anything: closed, no row exists
-    expect(diagramActions()).toEqual(['Duplicate']);
+    expect(diagramActions()).toEqual(['Export PNG', 'Duplicate']);
   });
 
   it('entering edit starts the session from the raw source, not the composed boot model', async () => {
@@ -1694,7 +1694,7 @@ describe('editor shell', () => {
       await screen.findByRole('button', { name: /^edit$/i });
       for (const name of ['Rename', 'Duplicate', 'Eject']) expect(topbar().queryByRole('button', { name })).toBeNull();
       fireEvent.click(topbar().getByRole('button', { name: 'Diagram actions' }));
-      expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Rename', 'Duplicate', 'Eject']);
+      expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Rename', 'Export PNG', 'Duplicate', 'Eject']);
       fireEvent.click(screen.getByRole('menuitem', { name: 'Duplicate' }));
       expect(screen.queryByRole('menu')).toBeNull();
       // the row did what the chip did: the copy is created and opened
@@ -1706,12 +1706,12 @@ describe('editor shell', () => {
       });
     });
 
-    it('offers a read-only diagram Duplicate alone — it has no source to rename or eject', async () => {
+    it('offers a read-only diagram only Export PNG and Duplicate — it has no source to rename or eject', async () => {
       vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: goodModel, issues: [], editable: false }]));
       render(<App />);
       await screen.findByText(/read-only/i);
       fireEvent.click(topbar().getByRole('button', { name: 'Diagram actions' }));
-      expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Duplicate']);
+      expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Export PNG', 'Duplicate']);
     });
 
     it('keeps its toggles as icon buttons that still say what they are', async () => {
