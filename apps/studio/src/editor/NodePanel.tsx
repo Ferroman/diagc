@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { DiagramModel, EditorCommand, FontScale, NotationId, TextAlign } from '@diagc/core';
-import { CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF, PLAN_NOTATION, PLAN_TYPES, TM_NOTATION, strideFor } from '@diagc/core';
+import { allowedParentTypes, CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF, PLAN_NOTATION, PLAN_TYPES, TM_NOTATION, strideFor } from '@diagc/core';
 import { BUILTIN_ICON_IDS } from '@diagc/icons';
 import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { CommentsSection } from './CommentsSection';
@@ -206,7 +206,12 @@ export function NodePanel({
   }
 
   const memberships = model.containment.filter((e) => e.child === nodeId);
-  const parentOptions = model.nodes.filter((n) => n.id !== nodeId);
+  // Activity elements only make sense in their notation's containers (a lane in
+  // a frame, an action in a lane), so the picker offers those alone.
+  const parentTypes = allowedParentTypes(node.type);
+  const parentOptions = model.nodes.filter(
+    (n) => n.id !== nodeId && (parentTypes === undefined || parentTypes.has(n.type ?? '')),
+  );
   const isGroup = model.containment.some((c) => c.parent === nodeId);
 
   const commitName = () => {

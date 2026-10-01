@@ -511,6 +511,20 @@ describe('DiagramView', () => {
     expect(screen.getByText('gw')).toBeDefined();
   });
 
+  it('edit mode: Backspace on a clicked edge reports its relations', async () => {
+    const onDeleteSelection = vi.fn();
+    const { container } = render(<DiagramView model={containerEndpointModel()} mode="edit" edit={{ onDeleteSelection }} />);
+    await waitFor(() => expect(container.querySelector('.react-flow__edge')).not.toBeNull());
+    fireEvent.click(container.querySelector('.react-flow__edge')!);
+    // The edges are controlled: the click only marks one selected if the
+    // select change makes it back into the edges prop.
+    await waitFor(() => expect(container.querySelector('.react-flow__edge.selected')).not.toBeNull());
+    fireEvent.keyDown(document.body, { key: 'Backspace' });
+    await waitFor(() =>
+      expect(onDeleteSelection).toHaveBeenCalledWith({ nodeIds: [], relationIds: [expect.any(String)] }),
+    );
+  });
+
   it('view mode: Backspace is inert — no ghost deletion without an edit host', async () => {
     render(<DiagramView model={containerEndpointModel()} />);
     fireEvent.click(await screen.findByText('gw'));

@@ -14,6 +14,7 @@ function fixture(): DiagramModel {
   m.node('other', { type: 'service' });
   sys.contains(svc);
   svc.contains(inner);
+  inner.contains(m.node('leaf', { type: 'service' }));
   return m.toJSON();
 }
 
@@ -61,6 +62,14 @@ describe('useDrillNavigation', () => {
     act(() => result.current.enterNode('svc'));
     expect(result.current.enteredPath).toEqual([]);
     act(() => result.current.enterNode('ghost'));
+    expect(result.current.enteredPath).toEqual([]);
+  });
+
+  it('refuses to drill into a leaf — there is no inside to show', () => {
+    const { result } = renderHook((p: DrillNavigationInput) => useDrillNavigation(p), { initialProps: inputFor() });
+    act(() => result.current.enterNode('leaf'));
+    expect(result.current.enteredPath).toEqual([]);
+    act(() => result.current.enterNode('other'));
     expect(result.current.enteredPath).toEqual([]);
   });
 
@@ -113,7 +122,7 @@ describe('useDrillNavigation', () => {
     act(() => result.current.enterNode('inner'));
     const edited = fixture(); // same id, new object…
     edited.nodes = edited.nodes.filter((n) => n.id !== 'inner'); // …minus the node we are inside
-    edited.containment = edited.containment.filter((e) => e.child !== 'inner');
+    edited.containment = edited.containment.filter((e) => e.child !== 'inner' && e.parent !== 'inner');
     rerender(inputFor({ model: edited }));
     expect(result.current.enteredPath).toEqual(['sys', 'svc']);
     expect(result.current.drillRoot).toBe('svc');

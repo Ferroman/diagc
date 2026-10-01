@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { createIconRegistry } from '@diagc/icons';
 import { createTypeRegistry, LIBRARY_ENTRY_DND_TYPE } from '@diagc/renderer';
 import { getHost } from '../host';
@@ -25,7 +25,24 @@ interface LibraryPanelProps {
   onImportIcon?: (categoryId: string, file: File) => void;
   onImportShape?: (categoryId: string, file: File) => void;
   assetBase?: string;
+  /** The search and open/closed sections, held by the host so they outlive this
+   * panel: the inspector mounts only its active tab, and every canvas click flips
+   * it to Properties. Omitted, the panel keeps them itself (and forgets them on
+   * unmount). */
+  viewState?: [LibraryView, Dispatch<SetStateAction<LibraryView>>];
 }
+
+export interface LibraryView {
+  query: string;
+  /** Explicit open/closed choices, keyed by category id; absent = the size-based
+   * default. Kept across searches so a section you opened stays open. */
+  toggled: Record<string, boolean>;
+  /** Same, for group headers — a separate map so a group label can never collide
+   * with a category id. */
+  groupToggled: Record<string, boolean>;
+}
+
+export const EMPTY_LIBRARY_VIEW: LibraryView = { query: '', toggled: {}, groupToggled: {} };
 
 // Mirrors the renderer's own assetUrl (DiagramNode.tsx): a bundled '/library/…'
 // ref is served verbatim on hosts with a static server behind that path, but the
@@ -127,16 +144,13 @@ export function LibraryPanel({
   onImportIcon,
   onImportShape,
   assetBase = '/api/assets/',
+  viewState,
 }: LibraryPanelProps) {
-  const [query, setQuery] = useState('');
+  const ownView = useState(EMPTY_LIBRARY_VIEW);
+  const [{ query, toggled, groupToggled }, setView] = viewState ?? ownView;
+  const setQuery = (q: string) => setView((v) => ({ ...v, query: q }));
   const [newCategory, setNewCategory] = useState('');
   const [mode, setMode] = useState<'place' | 'apply'>('place');
-  // Explicit open/closed choices, keyed by category id; absent = the size-based
-  // default below. Kept across searches so a section you opened stays open.
-  const [toggled, setToggled] = useState<Record<string, boolean>>({});
-  // Same, for group headers — separate map so a group label can never collide
-  // with a category id.
-  const [groupToggled, setGroupToggled] = useState<Record<string, boolean>>({});
   const matches = useMemo(() => searchLibrary(library, query), [library, query]);
   // One pass over the matches instead of re-filtering the whole entry list once
   // per category — with the AWS pack that is ~30 × 800 comparisons per render.
@@ -250,7 +264,7 @@ export function LibraryPanel({
                   aria-label={cat.name}
                   aria-expanded={open}
                   title={`${open ? 'Collapse' : 'Expand'} ${cat.name}`}
-                  onClick={() => setToggled((t) => ({ ...t, [cat.id]: !open }))}
+                  onClick={() => setView((v) => ({ ...v, toggled: { ...v.toggled, [cat.id]: !open } }))}
                 >
                   <span className="lib-cat-caret" aria-hidden="true">
                     {open ? '▾' : '▸'}
@@ -354,7 +368,7 @@ export function LibraryPanel({
                 aria-label={label}
                 aria-expanded={open}
                 title={`${open ? 'Collapse' : 'Expand'} ${label}`}
-                onClick={() => setGroupToggled((t) => ({ ...t, [label]: !open }))}
+                onClick={() => setView((v) => ({ ...v, groupToggled: { ...v.groupToggled, [label]: !open } }))}
               >
                 <span className="lib-cat-caret" aria-hidden="true">
                   {open ? '▾' : '▸'}
