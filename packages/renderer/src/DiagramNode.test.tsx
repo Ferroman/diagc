@@ -718,6 +718,20 @@ describe('activity diagram nodes', () => {
     expect(container.querySelector(`.${cls}`)).not.toBeNull();
   });
 
+  it.each(['activity-decision', 'activity-bar', 'activity-start', 'activity-end'])(
+    'hangs a named %s caption outside the glyph, where the glyph cannot paint over it',
+    (type) => {
+      renderNode({ typeId: type, label: 'Approved?' }, undefined, { width: 48, height: 48 });
+      const row = screen.getByText('Approved?').closest('.dg-node-row');
+      expect(row?.classList.contains('dg-glyph-caption')).toBe(true);
+    },
+  );
+
+  it('keeps an action label inside its box', () => {
+    renderNode({ typeId: 'activity-action', label: 'Fill order' }, undefined, { width: 120, height: 44 });
+    expect(screen.getByText('Fill order').closest('.dg-node-row')?.classList.contains('dg-glyph-caption')).toBe(false);
+  });
+
   it('renders no type subtitle on a UML glyph — the registry label is empty, not absent', () => {
     const { container } = renderNode({ typeId: 'activity-action', label: 'Fill order' }, undefined, { width: 120, height: 44 });
     expect(screen.getByText('Fill order')).toBeDefined();

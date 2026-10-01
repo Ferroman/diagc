@@ -94,10 +94,10 @@ describe('registries', () => {
     expect(r.resolve('activity-lane')).toEqual({ shape: 'box', alwaysExpanded: true });
     expect(r.resolve('activity-region')).toEqual({ shape: 'box', dashed: true, alwaysExpanded: true, legendLabel: 'Interruptible region' });
     expect(r.resolve('activity-action')).toEqual({ shape: 'rounded', label: '', legendLabel: 'Action' });
-    expect(r.resolve('activity-decision')).toEqual({ shape: 'diamond', defaultSize: { width: 48, height: 48 }, label: '', legendLabel: 'Decision / merge' });
-    expect(r.resolve('activity-bar')).toEqual({ shape: 'bar', defaultSize: { width: 8, height: 100 }, label: '', legendLabel: 'Fork / join' });
-    expect(r.resolve('activity-start')).toEqual({ shape: 'start-dot', defaultSize: { width: 24, height: 24 }, label: '', legendLabel: 'Start' });
-    expect(r.resolve('activity-end')).toEqual({ shape: 'end-bullseye', defaultSize: { width: 28, height: 28 }, label: '', legendLabel: 'End' });
+    expect(r.resolve('activity-decision')).toEqual({ shape: 'diamond', defaultSize: { width: 48, height: 48 }, label: '', legendLabel: 'Decision / merge', captionBelow: true });
+    expect(r.resolve('activity-bar')).toEqual({ shape: 'bar', defaultSize: { width: 8, height: 100 }, label: '', legendLabel: 'Fork / join', captionBelow: true });
+    expect(r.resolve('activity-start')).toEqual({ shape: 'start-dot', defaultSize: { width: 24, height: 24 }, label: '', legendLabel: 'Start', captionBelow: true });
+    expect(r.resolve('activity-end')).toEqual({ shape: 'end-bullseye', defaultSize: { width: 28, height: 28 }, label: '', legendLabel: 'End', captionBelow: true });
     expect(r.resolve('activity-send')).toEqual({ shape: 'send-signal', defaultSize: { width: 140, height: 44 }, label: '', legendLabel: 'Send signal' });
     expect(r.resolve('activity-receive')).toEqual({ shape: 'receive-signal', defaultSize: { width: 140, height: 44 }, label: '', legendLabel: 'Receive signal' });
     expect(r.resolve('activity-object')).toEqual({ shape: 'box', label: '', legendLabel: 'Object' });
