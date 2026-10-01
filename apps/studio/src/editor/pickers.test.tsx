@@ -20,19 +20,35 @@ describe('SHADE_PALETTE', () => {
 });
 
 describe('ColorRow', () => {
-  it('renders the auto button plus a swatch for every shade', () => {
+  const swatches = () => screen.queryAllByRole('button').filter((b) => b.className.includes('swatch') && !b.className.includes('current'));
+  const openPalette = () => fireEvent.click(screen.getByRole('button', { name: 'Color palette' }));
+
+  it('is one line until the palette is opened, then shows every shade', () => {
     render(<ColorRow value="" onChange={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Auto color' })).toBeTruthy();
-    const swatches = screen
-      .getAllByRole('button')
-      .filter((b) => b.className.includes('swatch'));
-    expect(swatches).toHaveLength(SHADE_PALETTE.flat().length);
+    expect(swatches()).toHaveLength(0);
+    openPalette();
+    expect(screen.getByRole('button', { name: 'Color palette' }).getAttribute('aria-expanded')).toBe('true');
+    expect(swatches()).toHaveLength(SHADE_PALETTE.flat().length);
+  });
+
+  it('folds the palette away again once a shade is picked', () => {
+    render(<ColorRow value="" onChange={vi.fn()} />);
+    openPalette();
+    fireEvent.click(screen.getByRole('button', { name: `Color ${SHADE_PALETTE[1]![1]!}` }));
+    expect(swatches()).toHaveLength(0);
+  });
+
+  it('shows the current colour on the palette button', () => {
+    render(<ColorRow value="#123456" onChange={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Color palette' }).style.background).toBe('rgb(18, 52, 86)');
   });
 
   it('commits a lighter shade when its swatch is clicked', () => {
     const onChange = vi.fn();
     const light = SHADE_PALETTE[0]![0]!; // lightest red
     render(<ColorRow value="" onChange={onChange} />);
+    openPalette();
     fireEvent.click(screen.getByRole('button', { name: `Color ${light}` }));
     expect(onChange).toHaveBeenCalledWith(light);
   });
@@ -41,6 +57,7 @@ describe('ColorRow', () => {
     const onChange = vi.fn();
     const dark = SHADE_PALETTE[4]![2]!; // darkest blue
     render(<ColorRow value="" onChange={onChange} />);
+    openPalette();
     fireEvent.click(screen.getByRole('button', { name: `Color ${dark}` }));
     expect(onChange).toHaveBeenCalledWith(dark);
   });
@@ -48,6 +65,7 @@ describe('ColorRow', () => {
   it('marks the swatch matching the current value active', () => {
     const dark = SHADE_PALETTE[4]![2]!;
     render(<ColorRow value={dark} onChange={vi.fn()} />);
+    openPalette();
     expect(screen.getByRole('button', { name: `Color ${dark}` }).className).toContain('active');
   });
 });

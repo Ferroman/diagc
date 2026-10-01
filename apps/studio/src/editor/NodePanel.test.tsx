@@ -245,6 +245,7 @@ describe('NodePanel', () => {
         onDeleted={noop}
       />,
     );
+    fireEvent.click(screen.getByRole('button', { name: 'Color palette' }));
     fireEvent.click(screen.getByRole('button', { name: 'Color #42a5f5' }));
     expect(onCommand).toHaveBeenCalledWith({ type: 'set-node-details', id: 'a', details: { color: '#42a5f5' } });
     fireEvent.click(screen.getByRole('button', { name: 'Auto color' }));
@@ -263,6 +264,7 @@ describe('NodePanel', () => {
         onDeleted={noop}
       />,
     );
+    fireEvent.click(screen.getByRole('button', { name: 'Text color palette' }));
     fireEvent.click(screen.getByRole('button', { name: 'Text color #42a5f5' }));
     expect(onCommand).toHaveBeenCalledWith({ type: 'set-node-details', id: 'a', details: { textColor: '#42a5f5' } });
     fireEvent.click(screen.getByRole('button', { name: 'Auto text color' }));
