@@ -41,8 +41,18 @@ export function exportFrame(bounds: Bounds, opts: { padding?: number; pixelRatio
 }
 
 /** Chrome that is the canvas's furniture, not the diagram: the corner controls,
- * the minimap, overlay panels, connection handles and resize grips. */
-const SKIP = ['react-flow__panel', 'react-flow__handle', 'react-flow__resize-control', 'react-flow__minimap', 'dg-no-export'];
+ * the minimap, overlay panels, connection handles and resize grips — and the dot
+ * grid, which the clone keeps at the on-screen canvas size, so in a frame cut to
+ * the whole diagram it stopped partway across (the frame's own background colour
+ * fills it instead). */
+const SKIP = [
+  'react-flow__panel',
+  'react-flow__handle',
+  'react-flow__resize-control',
+  'react-flow__minimap',
+  'react-flow__background',
+  'dg-no-export',
+];
 
 export function keepInExport(node: Node): boolean {
   if (!(node instanceof Element)) return true;

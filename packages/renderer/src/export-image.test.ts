@@ -28,6 +28,7 @@ describe('keepInExport', () => {
     };
     expect(keepInExport(el('react-flow__panel react-flow__controls'))).toBe(false);
     expect(keepInExport(el('react-flow__handle'))).toBe(false);
+    expect(keepInExport(el('react-flow__background'))).toBe(false);
     expect(keepInExport(el('dg-no-export'))).toBe(false);
     expect(keepInExport(el('react-flow__node'))).toBe(true);
     expect(keepInExport(document.createTextNode('label'))).toBe(true);
