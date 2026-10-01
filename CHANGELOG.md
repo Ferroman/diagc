@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0](https://github.com/Ferroman/diagc/compare/v0.5.1...v0.6.0) (2026-10-01)
+
+
+### Features
+
+* **studio:** reorder activity lanes ([#37](https://github.com/Ferroman/diagc/issues/37)) ([74266d6](https://github.com/Ferroman/diagc/commit/74266d604a619ad3b237678f90e619cc1c7bf7f6))
+
+
+### Bug Fixes
+
+* **renderer:** caption named activity glyphs below them ([#36](https://github.com/Ferroman/diagc/issues/36)) ([ddd52b8](https://github.com/Ferroman/diagc/commit/ddd52b8d464bf5acdbcde7b34ef4cc5f15081d53))
+
 ## [0.5.1](https://github.com/Ferroman/diagc/compare/v0.5.0...v0.5.1) (2026-09-30)
 
 
