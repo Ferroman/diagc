@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.0](https://github.com/Ferroman/diagc/compare/v0.8.0...v0.9.0) (2026-10-02)
+
+
+### Features
+
+* **diagc:** diff command with before/after pictures between git refs ([#48](https://github.com/Ferroman/diagc/issues/48)) ([e0f7088](https://github.com/Ferroman/diagc/commit/e0f7088cda768a584f119ab613f49ce51f29fa72))
+* **diagc:** lint command for duplicate, unknown, unused and undrawn parts ([#44](https://github.com/Ferroman/diagc/issues/44)) ([d22f11e](https://github.com/Ferroman/diagc/commit/d22f11ee5a2a5d61ac9b24c009ec5a7d06a92c84))
+* **studio:** one-line colour rows; list an activity frame's lanes ([#45](https://github.com/Ferroman/diagc/issues/45)) ([5bafdff](https://github.com/Ferroman/diagc/commit/5bafdfffc53dbaa93ecbe533cbb71c748502fb5f))
+
 ## [0.8.0](https://github.com/Ferroman/diagc/compare/v0.7.0...v0.8.0) (2026-10-01)
 
 
