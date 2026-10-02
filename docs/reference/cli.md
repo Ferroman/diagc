@@ -190,7 +190,7 @@ diagc guide all        # everything
 
 - **Topics:** `activity`, `c4`, `causal-loop`, `deployment`, `er`, `fishbone`, `git-graph`, `plan`, `second-order`, `threat-model`.
 - **Matches the install.** The text ships in the package, the node types and relation kinds it lists are the ones [`lint`](#lint) checks against, and every listing in it is compiled by the test suite. It needs no network and no diagrams in the current directory.
-- **Exit code:** `0`; `1` for a topic that does not exist (the topics are listed on stderr) or for more than one.
+- **Exit code:** `0`; `1` for a topic that does not exist (the topics are listed on stderr) or for more than one, or when the install's guide or starter files are missing (the line says to reinstall diagc).
 
 ## Flags
 

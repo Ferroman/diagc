@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { NODE_TYPES, NOTATION_NODE_TYPES, NOTATION_RELATION_KINDS, RELATION_KINDS } from '@diagc/core';
-import { readStarter } from './starters';
+import { UnknownStarterError, readStarter } from './starters';
 
 /** Where `diagc guide` reads from, and the release it speaks for. */
 export interface GuideContext {
@@ -142,10 +142,10 @@ const stdio: GuideIo = {
   err: (text) => console.error(text),
 };
 
-/** `diagc guide [topic]`: print, and return the exit code. The two errors a user
- * can cause or meet — a topic that does not exist, an install with no guide —
- * are one line on stderr; anything else is a bug in the guide's own files and
- * is left to throw. */
+/** `diagc guide [topic]`: print, and return the exit code. The errors a user can
+ * cause or meet — a topic that does not exist, an install with no guide, an
+ * install with no starter files — are one line on stderr; anything else is a bug
+ * in the guide's own files and is left to throw. */
 export function runGuide(topics: readonly string[], ctx: GuideContext, io: GuideIo = stdio): number {
   if (topics.length > 1) {
     io.err(`diagc: guide takes one topic, got ${topics.length} — run it once per topic, or 'diagc guide ${ALL_TOPIC}'.`);
@@ -157,6 +157,12 @@ export function runGuide(topics: readonly string[], ctx: GuideContext, io: Guide
   } catch (e) {
     if (e instanceof UnknownTopicError || e instanceof GuideMissingError) {
       io.err(`diagc: ${e.message}`);
+      return 1;
+    }
+    // No starter type at all means the starters directory is gone, not that the
+    // guide names a misspelt one: that case has a non-empty list and stays a bug.
+    if (e instanceof UnknownStarterError && e.types.length === 0) {
+      io.err(`diagc: starter files missing from this install (${ctx.startersDir}) — reinstall diagc.`);
       return 1;
     }
     throw e;

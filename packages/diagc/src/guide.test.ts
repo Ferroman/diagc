@@ -206,4 +206,13 @@ describe('runGuide', () => {
     expect(runGuide([], ctx, c.io)).toBe(1);
     expect(c.err[0]).toMatch(/reinstall diagc/);
   });
+
+  it('reports missing starter files as a damaged install and returns 1', () => {
+    rmSync(ctx.startersDir, { recursive: true });
+    page('index', '{{starter:basic}}\n');
+    const c = capture();
+    expect(runGuide([], ctx, c.io)).toBe(1);
+    expect(c.out).toEqual([]);
+    expect(c.err[0]).toMatch(/starter files missing.*reinstall diagc/);
+  });
 });
