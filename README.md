@@ -152,7 +152,7 @@ The repo ships its own diagrams under `.diagrams/src/` — the docs' figures and
 | `apps/studio` | `@diagc/studio` | The browser app and its dev-server API. |
 | `apps/viewer` | `@diagc/viewer` | The single-file shell `publish` stamps a model into. |
 
-The diagrams in these docs are built with this tool — sources in `.diagrams/src/docs-*.diagram.ts`, regenerated with `pnpm publish-diagrams`.
+The diagrams in these docs are built with this tool — sources in `.diagrams/src/docs/*.diagram.ts`, regenerated with `pnpm publish-diagrams`.
 
 ### Releasing
 

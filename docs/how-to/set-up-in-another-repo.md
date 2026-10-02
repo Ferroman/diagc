@@ -32,7 +32,7 @@ Run `diagc init` again later, with no name, and it leaves your diagrams alone an
 | `.diagrams/static/*.png` — the images `diagc publish` renders | **yes** |
 | `.diagrams/.artifacts/`, `.diagrams/html/`, `.diagrams/diff/` — build output | no — `init` has gitignored them |
 
-One command regenerates the build output, so a clone with the sources has everything.
+`diagc publish` regenerates the artifacts and the pages, and `diagc diff` its own output, so a clone with the sources has everything. What else `diagc` writes, and whether to commit it, is in the [CLI reference](../reference/cli.md#files-and-directories).
 
 ## Types in the editor
 

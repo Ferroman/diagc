@@ -56,13 +56,13 @@ the checkout moves or its `node_modules` go. It runs the studio's Vite dev serve
 prebuilt bundle, resolves `@diagc/core` back to this checkout, and needs `pnpm build:cli` again
 after a viewer change or published pages keep the old shell. Nothing pins a version: every
 repository on the machine runs whatever the checkout is at. An installed `@diagc/cli` has none of
-these strings attached, which is why the user-facing docs never mention the link.
+these strings attached, which is why the tutorials and how-tos never mention the link.
 
 ## Before you open a pull request
 
 ```bash
 pnpm test         # vitest, whole repo
-pnpm typecheck    # six chained tsc projects
+pnpm typecheck    # seven chained tsc projects
 pnpm lint         # eslint
 ```
 
