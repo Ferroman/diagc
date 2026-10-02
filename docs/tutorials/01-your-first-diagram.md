@@ -1,6 +1,6 @@
 # Tutorial 1 — Your first diagram
 
-**Goal:** starting from an empty repo, write a diagram in TypeScript, see it in the browser, and export a PNG you can commit.
+**Goal:** starting from an empty repository, get a diagram you can read in the browser, change it in TypeScript and watch it update, and export a PNG you can commit.
 
 You will type every command. Nothing here explains *why* the pieces work the way they do — for that, read [How a diagram becomes a picture](../explanation/architecture.md) afterwards.
 
@@ -10,102 +10,112 @@ You will type every command. Nothing here explains *why* the pieces work the way
 
 ## Before you start
 
-You need three things. If you already have them, skip ahead.
+Install the CLI. One line, no Node required (macOS and Linux):
 
-- **Node.js 22 or newer.** Check with `node --version`. The repo pins Node 24 in `mise.toml`; if you use [mise](https://mise.jdx.dev), `mise install` picks the right version whenever you `cd` in.
-- **pnpm 10.** Run `corepack enable` once — Corepack ships with Node, and the version pinned in `package.json` is then used automatically.
-- **A clone of this monorepo**, with dependencies installed:
+```bash
+curl -fsSL https://raw.githubusercontent.com/Ferroman/diagc/main/install.sh | sh
+```
 
-  ```bash
-  git clone <this repo> diagc
-  cd diagc
-  pnpm install
-  ```
+With Node 22 or newer already set up, npm works too:
 
-Everything below runs from that clone. To use `diagc` from a *different* repo instead, finish this tutorial first, then follow [Set up diagc in another repo](../how-to/set-up-in-another-repo.md).
+```bash
+npm i -g @diagc/cli
+```
+
+Check it with `diagc --help`. Nothing in this tutorial needs a checkout of diagc, or a package manager in your project.
+
+Then make an empty repository to work in:
+
+```bash
+mkdir shop-diagrams && cd shop-diagrams
+git init
+```
 
 ---
 
-## Step 1 — Write the source
+## Step 1 — Create a diagram
 
-Diagrams live in `.diagrams/src/`. Create `.diagrams/src/shop.diagram.ts`:
+```bash
+diagc init shop
+```
+
+```
+✓ .diagrams/src/shop.diagram.ts         (basic starter)
+✓ .gitignore                            (+ .diagrams/.artifacts/, .diagrams/html/, .diagrams/diff/)
+✓ compiled                              -> .diagrams/.artifacts/shop.diagram.json
+
+Next:
+  diagc studio                          look at it
+  diagc guide                           how to write diagrams (for you or your agent)
+  diagc init --agents                   point coding agents at the guide (AGENTS.md)
+```
+
+Three files, one of them yours. Open `.diagrams/src/shop.diagram.ts`:
 
 ```ts
 import { model } from '@diagc/core';
 
+// A starter: a customer and one system holding two services and a database.
+// `contains` nests, `relate` draws an arrow. The system rests folded, with the
+// arrows into it bundled, until you double-click it.
 const m = model('shop', { name: 'Shop' });
 
-const web = m.node('web', { type: 'system', name: 'Storefront' });
+const customer = m.node('customer', { type: 'person', name: 'Customer' });
+const shop = m.node('shop', { type: 'system', name: 'Shop' });
+
+const web = m.node('web', { type: 'service', name: 'Storefront' });
 const api = m.node('api', { type: 'service', name: 'Orders API' });
 const db = m.node('orders-db', { type: 'database', name: 'Orders DB' });
 
-web.contains(api);
-api.contains(db);
+shop.contains(web, api, db);
 
-m.relate(api, db, { kind: 'writes' });
+m.relate(customer, web, { kind: 'sync', label: 'Browses' });
+m.relate(web, api, { kind: 'sync', label: 'Places orders' });
+m.relate(api, db, { kind: 'writes', label: 'Order rows' });
 
 export default m;
 ```
 
-Three things are happening: `m.node` declares an entity, `.contains` nests one inside another, and `m.relate` draws an arrow. The `export default` at the end is what the compiler looks for.
+`m.node` declares a box, `.contains` nests boxes inside another, and `m.relate` draws an arrow. The `export default` at the end is what the compiler looks for.
 
-## Step 2 — Compile it
+The second file, `.diagrams/.artifacts/shop.diagram.json`, is the **artifact** — your model, validated. Open it if you like; it is plain, readable JSON. You never edit it by hand, and `init` has already gitignored it.
 
-```bash
-pnpm compile
-```
+If you break the source — a relation pointing at a node that does not exist, say — the compile fails with a message naming the problem, and no artifact is written. That is the point: a diagram that cannot be drawn correctly never reaches the browser.
 
-```
-✓ .diagrams/src/shop.diagram.ts -> .diagrams/.artifacts/shop.diagram.json
-```
-
-That JSON file is the **artifact** — your model, validated. Open it if you like; it is plain, readable JSON. You never edit it by hand, and it is gitignored.
-
-If you made a mistake — a relation pointing at a node that does not exist, say — the compile fails here with a message naming the problem, and no artifact is written. That is the point: a diagram that cannot be drawn correctly never reaches the browser.
-
-## Step 3 — Look at it
+## Step 2 — Look at it
 
 ```bash
-pnpm studio
+diagc studio
 ```
 
-Open <http://localhost:5173> and pick **shop** from the diagram picker in the top bar.
+Your browser opens on the studio (<http://127.0.0.1:5173> if it does not). If **shop** is not already showing, pick it from the diagram picker in the top bar.
 
-You will see one box, `Storefront`, with a dashed border. That is a *folded group*: the API and the database are inside it, but the diagram rests folded so you see structure before detail.
+You will see `Customer`, and a `Shop` box with a dashed border and a badge counting what is inside. That is a *folded group*: the storefront, the API and the database are in there, but the diagram rests folded so you see structure before detail. The arrow from `Customer` lands on the group.
 
-**Double-click the Storefront box.** It unfolds and the view glides into it, revealing `Orders API`. Double-click `Orders API` and you reach `Orders DB`. Double-click empty canvas to fit the whole diagram again.
+**Double-click the Shop box.** It unfolds and the view glides into it, revealing `Storefront`, `Orders API` and `Orders DB` with the arrows between them. Double-click empty canvas to fit the whole diagram again.
 
 This is **semantic zoom**, and it is the reason a large diagram stays readable. You will meet it properly in [What you see is not what is stored](../explanation/views.md).
 
-Leave the studio running.
+The diagram carries a `read-only` chip: it is TypeScript, so the file is where you change it. Leave the studio running — it is also recompiling your sources whenever they change.
 
-## Step 4 — Change it and watch it update
+## Step 3 — Change it and watch it update
 
-Open a second terminal in the same directory:
-
-```bash
-pnpm compile:watch
-```
-
-Now add a second service to `shop.diagram.ts`:
+Add a second service to `shop.diagram.ts`, above the `export default` line:
 
 ```ts
 const worker = m.node('worker', { type: 'service', name: 'Fulfilment' });
-web.contains(worker);
-m.relate(worker, db, { kind: 'reads' });
+shop.contains(worker);
+m.relate(worker, db, { kind: 'reads', label: 'Open orders' });
 ```
 
-Save the file. The watcher recompiles, and the studio picks up the new artifact within a second — no reload, no re-running `pnpm compile`.
+Save the file. The studio recompiles and picks up the new artifact within a second — no reload, no command to run. Open `Shop` again if it has folded back, and `Fulfilment` is there with its arrow to the database.
 
-> `pnpm dev` runs the watcher and the studio together in one terminal. Use it from now on.
-
-## Step 5 — Export a picture
+## Step 4 — Export a picture
 
 Stop the studio (`Ctrl+C`) and run:
 
 ```bash
-pnpm build:cli        # once — builds the shell the exporter stamps your model into
-pnpm publish-diagrams
+diagc publish
 ```
 
 This writes two kinds of output:
@@ -119,13 +129,14 @@ Embed the PNG in any markdown file:
 ![Shop](.diagrams/static/shop.png)
 ```
 
-> **If you see `No Chrome found`:** the PNG step drives a real browser. Install Chrome or Chromium, or point `CHROME_PATH` at an existing binary. `pnpm publish-diagrams --no-images` skips PNGs and still writes the HTML.
+> **If you see `No Chrome found`:** the PNG step drives a real browser. Install Chrome or Chromium, or point `CHROME_PATH` at an existing binary. `diagc publish --no-images` skips PNGs and still writes the HTML.
 
 ## What you have now
 
 ```
+.gitignore                     written by init — commit it
 .diagrams/
-  src/shop.diagram.ts          you wrote this — commit it
+  src/shop.diagram.ts          you changed this — commit it
   .artifacts/shop.diagram.json generated, gitignored
   html/shop.html               generated, gitignored
   static/shop.png              generated — commit this one
@@ -134,5 +145,8 @@ Embed the PNG in any markdown file:
 ## Next
 
 - [Tutorial 2 — Draw one in the browser](02-draw-in-the-studio.md), which produces the same kind of model without writing TypeScript.
+- `diagc guide` — how to write diagrams, printed by the CLI you just installed: the DSL, the vocabularies, and one topic per diagram type. `diagc init shop --type c4` would have started you from a C4 diagram instead.
+- [Write diagrams with a coding agent](../how-to/write-diagrams-with-a-coding-agent.md) — what the `diagc init --agents` line is for.
+- [Add diagc to an existing repository](../how-to/set-up-in-another-repo.md) — what to commit, editor types, `diagc lint` in CI.
 - [Author diagrams in TypeScript](../how-to/author-in-typescript.md) for the rest of the DSL: descriptions, metadata, colours, styles.
 - [Builder API reference](../reference/builder-api.md) for every method and option.

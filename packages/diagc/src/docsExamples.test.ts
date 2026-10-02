@@ -104,4 +104,12 @@ describe('docs and examples', () => {
     }
     expect(drift).toEqual([]);
   });
+
+  it('shows the basic starter in Tutorial 1 exactly as the file has it', () => {
+    // `diagc init` copies this file; the tutorial's reader has just run that and is
+    // looking at the same text, so the page must not paraphrase it.
+    const starter = readFileSync(path.join(SRC, 'examples', 'basic', 'starter.diagram.ts'), 'utf8');
+    const tutorial = readFileSync(path.join(root, 'docs', 'tutorials', '01-your-first-diagram.md'), 'utf8');
+    expect(tutorial).toContain('```ts\n' + starter.trimEnd() + '\n```');
+  });
 });
