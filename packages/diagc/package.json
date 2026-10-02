@@ -1,6 +1,6 @@
 {
   "name": "@diagc/cli",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Author software-architecture diagrams as code, compile them to a validated model, edit them in a local studio, and publish pages and images.",
   "license": "AGPL-3.0-only",
   "author": "Bogdan Frankovskyi",
