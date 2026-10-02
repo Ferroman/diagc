@@ -207,6 +207,26 @@ describe('writeDiffPages', () => {
     expect(summary).toContain('- `~` API -> API gateway (renamed)');
   });
 
+  it('points the summary images at --image-url when given', async () => {
+    const before = await setAt('v1');
+    const after = await setAt('v2');
+    const out = mkdtempSync(path.join(tmpdir(), 'diagc-diff-out-'));
+    const shellPath = path.join(out, 'shell.html');
+    writeFileSync(shellPath, DG_DATA_SENTINEL);
+    const res = await writeDiffPages(compareDiagramSets(before, after, ['shop']), {
+      outDir: out,
+      shellPath,
+      libraryDir: out,
+      before,
+      after,
+      renderPng: async (_html, png) => writeFileSync(png, ''),
+      imageUrl: 'https://host/pr-7/{path}?raw=true',
+    });
+    expect(readFileSync(res.summary, 'utf8')).toContain(
+      '| ![before](https://host/pr-7/shop.before.png?raw=true) | ![after](https://host/pr-7/shop.after.png?raw=true) |',
+    );
+  });
+
   it('links the pages instead of images when no PNGs were rendered', async () => {
     const before = await setAt('v1');
     const after = await setAt('v2');

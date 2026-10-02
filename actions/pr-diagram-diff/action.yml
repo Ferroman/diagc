@@ -1,0 +1,122 @@
+# Posts what a pull request changed in its diagrams as one PR comment: the change list
+# and before/after pictures, kept up to date on every push.
+#
+#   - uses: actions/checkout@v7
+#     with: { fetch-depth: 2 }      # the PR's merge commit and its base parent
+#   - uses: Ferroman/diagc/actions/pr-diagram-diff@v0
+#
+# The job needs `contents: write` (the pictures are pushed to `assets-branch`, since a
+# comment can only show images that live at a URL) and `pull-requests: write`.
+# Pull requests from forks are skipped: their token can do neither.
+name: diagc diagram diff
+description: Comment on a pull request with before/after pictures of the diagrams it changed.
+inputs:
+  diagc:
+    description: How to run diagc. Needs Node 22+ on the runner.
+    default: npx --yes @diagc/cli@latest
+  assets-branch:
+    description: Branch the pictures are pushed to (created if missing), under pr-<number>/.
+    default: diagc-diff-assets
+  working-directory:
+    description: The directory holding .diagrams/.
+    default: .
+  token:
+    description: Token to push the pictures and write the comment with.
+    default: ${{ github.token }}
+outputs:
+  changed:
+    description: "'true' when a diagram changed."
+    value: ${{ steps.diff.outputs.changed }}
+runs:
+  using: composite
+  steps:
+    - id: diff
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        DIAGC: ${{ inputs.diagc }}
+        TOKEN: ${{ inputs.token }}
+        BRANCH: ${{ inputs.assets-branch }}
+        PR: ${{ github.event.pull_request.number }}
+        BASE_REF: ${{ github.event.pull_request.base.ref }}
+        HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        REPO: ${{ github.repository }}
+        SERVER: ${{ github.server_url }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+        echo "changed=false" >> "$GITHUB_OUTPUT"
+        if [ -z "$PR" ]; then echo "::notice::not a pull_request event; nothing to compare"; exit 0; fi
+        if [ "$HEAD_REPO" != "$REPO" ]; then echo "::notice::pull request from a fork; skipped (its token cannot push pictures or comment)"; exit 0; fi
+        # pull_request checks out the merge commit: parent 1 is the base branch as the PR
+        # would land on it, so HEAD^1..HEAD is exactly what merging would change.
+        if ! git rev-parse --verify --quiet HEAD^2 >/dev/null; then
+          echo "::error::HEAD is not the PR's merge commit with both parents; check out with fetch-depth: 2"
+          exit 1
+        fi
+
+        out="$RUNNER_TEMP/diagc-diff"
+        stamp="pr-$PR/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+        url="$SERVER/$REPO/blob/$BRANCH/$stamp/{path}?raw=true"
+        $DIAGC diff HEAD^1..HEAD --labels "$BASE_REF,#$PR" --out "$out" --image-url "$url"
+
+        marker='<!-- diagc-diagram-diff -->'
+        existing=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+          --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
+        body="$RUNNER_TEMP/diagc-diff-comment.md"
+
+        if [ ! -f "$out/summary.md" ]; then
+          # Nothing changed now. A comment from an earlier push would be stale: say so.
+          if [ -n "$existing" ]; then
+            printf '%s\nNo diagram changes as of %s.\n' "$marker" "$(git rev-parse --short HEAD^2)" > "$body"
+            gh api -X PATCH "repos/$REPO/issues/comments/$existing" -F "body=@$body" >/dev/null
+          fi
+          exit 0
+        fi
+        echo "changed=true" >> "$GITHUB_OUTPUT"
+        echo "out=$out" >> "$GITHUB_OUTPUT"
+
+        # The pictures, on their own branch: a fresh clone of just that branch, this PR's
+        # folder replaced, pushed. Retried, since other PRs push to the same branch.
+        assets="$RUNNER_TEMP/diagc-diff-assets"
+        auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')"
+        for attempt in 1 2 3 4 5; do
+          rm -rf "$assets"
+          git init -q "$assets"
+          git -C "$assets" remote add origin "$SERVER/$REPO.git"
+          if git -C "$assets" -c http.extraheader="$auth" fetch -q --depth=1 origin "$BRANCH" 2>/dev/null; then
+            git -C "$assets" checkout -q -B "$BRANCH" FETCH_HEAD
+          else
+            git -C "$assets" checkout -q --orphan "$BRANCH"
+          fi
+          rm -rf "$assets/pr-$PR"
+          mkdir -p "$assets/$stamp"
+          (cd "$out" && find . -name '*.png' | while IFS= read -r f; do
+            mkdir -p "$assets/$stamp/$(dirname "$f")" && cp "$f" "$assets/$stamp/$f"
+          done)
+          git -C "$assets" add -A
+          git -C "$assets" -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "diagram diff pictures for #$PR"
+          if git -C "$assets" -c http.extraheader="$auth" push -q origin "$BRANCH"; then break; fi
+          [ "$attempt" = 5 ] && { echo "::error::could not push the pictures to $BRANCH"; exit 1; }
+          sleep $((attempt * 3))
+        done
+
+        {
+          echo "$marker"
+          cat "$out/summary.md"
+          echo
+          echo "<sub>Interactive pages: the \`diagram-diff\` artifact of [this run]($RUN_URL). Updated on every push.</sub>"
+        } > "$body"
+        if [ -n "$existing" ]; then
+          gh api -X PATCH "repos/$REPO/issues/comments/$existing" -F "body=@$body" >/dev/null
+        else
+          gh api -X POST "repos/$REPO/issues/$PR/comments" -F "body=@$body" >/dev/null
+        fi
+
+    - if: steps.diff.outputs.changed == 'true'
+      uses: actions/upload-artifact@v7
+      with:
+        name: diagram-diff
+        path: ${{ steps.diff.outputs.out }}

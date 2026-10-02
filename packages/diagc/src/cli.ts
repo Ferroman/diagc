@@ -55,6 +55,8 @@ Options:
   --no-images     Publish (or diff) HTML without rendering PNG images
   --link url      Publish with a link to url in the index header
   --json          lint: print the findings as a JSON array; diff: the changes as JSON
+  --labels a,b    diff: name the two sides (default: the refs)
+  --image-url t   diff: summary.md's image links as t, {path} standing for each PNG
   --update-includes  Refetch remote includes and rewrite the snapshot lock
   --help, -h      Show this help and exit
 `;
@@ -71,6 +73,10 @@ interface Args {
   json: boolean;
   /** `--link`: validated here, so a bad address fails before anything is compiled */
   link?: string;
+  /** diff `--image-url`: a URL template for summary.md's images, `{path}` per PNG */
+  imageUrl?: string;
+  /** diff `--labels before,after`: names for the two sides in place of the refs */
+  labels?: [string, string];
 }
 
 /** Parse argv into command + flags. Unknown flags (anything `--…` that is not
@@ -85,6 +91,8 @@ export function parseArgs(argv: string[]): Args {
   let updateIncludes = false;
   let json = false;
   let link: string | undefined;
+  let imageUrl: string | undefined;
+  let labels: [string, string] | undefined;
   let commandSeen = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
@@ -103,6 +111,18 @@ export function parseArgs(argv: string[]): Args {
     }
     if (arg === '--json') {
       json = true;
+      continue;
+    }
+    if (arg === '--image-url') {
+      const value = argv[++i] ?? '';
+      if (!value.includes('{path}')) throw new BadFlagValueError('--image-url', 'needs a {path} placeholder, e.g. https://host/pr-1/{path}');
+      imageUrl = value;
+      continue;
+    }
+    if (arg === '--labels') {
+      const parts = (argv[++i] ?? '').split(',');
+      if (parts.length !== 2 || parts.some((p) => p.trim() === '')) throw new BadFlagValueError('--labels', 'takes two names, before and after: --labels main,#12');
+      labels = [parts[0]!.trim(), parts[1]!.trim()];
       continue;
     }
     if (arg === '--link') {
@@ -128,7 +148,18 @@ export function parseArgs(argv: string[]): Args {
       files.push(arg);
     }
   }
-  return { command, files, out, outGiven, images, updateIncludes, json, ...(link !== undefined ? { link } : {}) };
+  return {
+    command,
+    files,
+    out,
+    outGiven,
+    images,
+    updateIncludes,
+    json,
+    ...(link !== undefined ? { link } : {}),
+    ...(imageUrl !== undefined ? { imageUrl } : {}),
+    ...(labels !== undefined ? { labels } : {}),
+  };
 }
 
 /** Thrown by {@link parseArgs} for `--help`/`-h`; `main` prints usage and exits 0. */
@@ -354,14 +385,15 @@ async function runDiff(args: Args, home: ReturnType<typeof homePaths>): Promise<
       checkouts.push(after);
       afterDir = after.diagramsDir;
     }
-    const toLabel = to ?? 'working tree';
-    const beforeSet = await loadDiagramSet(from, before.diagramsDir, home.coreEntry);
+    const fromLabel = args.labels?.[0] ?? from;
+    const toLabel = args.labels?.[1] ?? to ?? 'working tree';
+    const beforeSet = await loadDiagramSet(fromLabel, before.diagramsDir, home.coreEntry);
     const afterSet = await loadDiagramSet(toLabel, afterDir, home.coreEntry);
     const diffs = compareDiagramSets(beforeSet, afterSet, args.files.slice(1));
     if (args.json) {
-      console.log(JSON.stringify({ from, to: toLabel, diagrams: diffs.map(({ before: _b, after: _a, ...rest }) => rest) }, null, 2));
+      console.log(JSON.stringify({ from: fromLabel, to: toLabel, diagrams: diffs.map(({ before: _b, after: _a, ...rest }) => rest) }, null, 2));
     } else {
-      console.log(formatDiffSummary(diffs, from, toLabel));
+      console.log(formatDiffSummary(diffs, fromLabel, toLabel));
     }
     if (!diffs.some((d) => d.status === 'added' || d.status === 'removed' || d.status === 'changed')) return 0;
     if (!existsSync(home.viewerShell)) {
@@ -382,6 +414,7 @@ async function runDiff(args: Args, home: ReturnType<typeof homePaths>): Promise<
       before: beforeSet,
       after: afterSet,
       ...(renderPng !== undefined ? { renderPng } : {}),
+      ...(args.imageUrl !== undefined ? { imageUrl: args.imageUrl } : {}),
     });
     // stderr, so `--json` output stays parseable on stdout
     console.error(`✓ ${res.pages.length} page(s)${res.images.length > 0 ? `, ${res.images.length} image(s)` : ''} -> ${outDir}`);

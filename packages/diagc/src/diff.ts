@@ -161,6 +161,10 @@ export interface DiffPagesOptions {
   before: DiagramSet;
   after: DiagramSet;
   renderPng?: (htmlPath: string, pngPath: string) => Promise<void>;
+  /** where `summary.md`'s images will be served from, `{path}` standing for
+   * each PNG's path under `outDir` — for a summary posted somewhere else (a PR
+   * comment), where the relative links would not resolve */
+  imageUrl?: string;
 }
 
 export interface DiffPagesResult {
@@ -227,7 +231,7 @@ export async function writeDiffPages(diffs: readonly DiagramDiff[], opts: DiffPa
   const index = path.join(opts.outDir, 'index.html');
   await writeFile(index, indexHtml(shown, files, from, to));
   const summary = path.join(opts.outDir, 'summary.md');
-  await writeFile(summary, summaryMarkdown(diffs, files, from, to));
+  await writeFile(summary, summaryMarkdown(diffs, files, from, to, opts.imageUrl));
   return { pages, images, index, summary };
 }
 
@@ -264,7 +268,14 @@ ${sections.length > 0 ? sections.join('\n') : '<p>No diagram changed.</p>'}
 `;
 }
 
-function summaryMarkdown(diffs: readonly DiagramDiff[], files: Map<string, { before?: string; after?: string; png: boolean }>, from: string, to: string): string {
+function summaryMarkdown(
+  diffs: readonly DiagramDiff[],
+  files: Map<string, { before?: string; after?: string; png: boolean }>,
+  from: string,
+  to: string,
+  imageUrl: string | undefined,
+): string {
+  const png = (rel: string) => (imageUrl !== undefined ? imageUrl.split('{path}').join(`${rel}.png`) : `${rel}.png`);
   const out = [`# Diagram changes: ${from} → ${to}`, ''];
   const shown = diffs.filter((d) => d.status !== 'unchanged');
   if (shown.length === 0) out.push('No diagram changed.', '');
@@ -276,7 +287,7 @@ function summaryMarkdown(diffs: readonly DiagramDiff[], files: Map<string, { bef
     }
     const f = files.get(d.name);
     const cell = (rel: string | undefined, label: string) =>
-      rel === undefined ? '—' : f?.png === true ? `![${label}](${rel}.png)` : `[${label}](${rel}.html)`;
+      rel === undefined ? '—' : f?.png === true ? `![${label}](${png(rel)})` : `[${label}](${rel}.html)`;
     out.push(`| Before (${from}) | After (${to}) |`, '| --- | --- |', `| ${cell(f?.before, 'before')} | ${cell(f?.after, 'after')} |`, '');
     for (const l of describeDiff(d)) out.push(`- \`${l[0]}\` ${l.slice(2)}`);
     out.push('');

@@ -74,6 +74,15 @@ describe('diff arguments', () => {
     expect(parseArgs(['diff', 'v1', '--out', 'x'])).toMatchObject({ out: 'x', outGiven: true });
   });
 
+  it('takes --labels and an --image-url template, and refuses malformed ones', () => {
+    expect(parseArgs(['diff', 'a..b', '--labels', 'main, #12', '--image-url', 'https://x/{path}?raw=true'])).toMatchObject({
+      labels: ['main', '#12'],
+      imageUrl: 'https://x/{path}?raw=true',
+    });
+    expect(() => parseArgs(['diff', 'a', '--labels', 'main'])).toThrow(BadFlagValueError);
+    expect(() => parseArgs(['diff', 'a', '--image-url', 'https://x/'])).toThrow('{path}');
+  });
+
   it('reads A..B as a range and a lone ref as against the working tree', () => {
     expect(parseRange('v1.0..v2.0')).toEqual({ from: 'v1.0', to: 'v2.0' });
     expect(parseRange('HEAD~3')).toEqual({ from: 'HEAD~3' });
