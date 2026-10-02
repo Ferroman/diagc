@@ -10,7 +10,7 @@ A schedule: work as bars on a calendar, with milestones, nesting and the people 
 - `plan.zone(id, { name, start, end })` is a bar. Dates are `YYYY-MM-DD` and `end` is inclusive. `color` and the other node options go in the same object.
 - `zone.zone(id, { … })` nests a zone inside another; the nested dates must lie inside the parent's.
 - `plan.event(id, { name, at })` and `zone.event(id, { name, at })` are single dates, drawn as diamonds. A nested event must fall inside its zone.
-- `plan.person(id, name?, opts?)` and `plan.team(id, name?, opts?)` are the actors. `zone.owner(ref)`, `zone.executor(ref)` and `zone.checker(ref)` give one a role on a zone, and chain. A role shows as a chip on the bar, not as an arrow.
+- `plan.person(id, name?, opts?)` and `plan.team(id, name?, opts?)` are the actors. `zone.owner(handle)`, `zone.executor(handle)` and `zone.checker(handle)` give one a role on a zone, and chain. A role shows as a chip on the bar, not as an arrow.
 - `zone.comment(text, opts?)` and `zone.link(label, url)` chain on a zone. `opts` takes `by`, `at` and `id`.
 - The bars are placed from their dates: x is always the date, and rows inside a zone are automatic. Do not place them.
 

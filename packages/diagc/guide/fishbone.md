@@ -6,7 +6,7 @@ A cause-and-effect diagram: one effect at the head of a fish, categories of caus
 
 ## How it works
 
-- `m.fishbone(id, name?, opts?)` declares the diagram and its effect, the fish's head. It throws if called twice. `opts` takes `description` and `color` for the effect, and `plane` / `planeName` to keep the fish beside other views of the model.
+- `m.fishbone(id, name?, opts?)` declares the diagram and its effect, the fish's head. It throws if called twice. `opts` takes `description` and `color` for the effect, and `plane` and `planeName`: `plane` puts it on a plane of its own, and `planeName` names that plane.
 - `fb.categories('Software')` seeds a preset of bones and returns them keyed by slug id (`people`, `infrastructure`). A key is read with `!`: `people!.cause(…)`.
 - The presets are `Software` (People, Process, Requirements, Code, Infrastructure, Dependencies), `6M` (Man, Machine, Method, Material, Measurement, Environment) and `4S` (Surroundings, Suppliers, Systems, Skills).
 - `fb.category(id, name?, opts?)` adds one bone by hand. `opts` takes `description` and `color`.

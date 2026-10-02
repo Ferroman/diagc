@@ -8,7 +8,7 @@ This guide is for diagc {{version}}.
 
 1. Write or edit `.diagrams/src/<name>.diagram.ts`. A folder is allowed: `.diagrams/src/team/app.diagram.ts` is the diagram `team/app`.
 2. Run `diagc lint --json`. It prints `[]` and exits 0 when everything is clean. Otherwise each finding has `file`, `severity`, `code` and `message`: fix it and run again. An `error` means the diagram does not compile. A `warning` compiles but is probably a mistake, such as a misspelled type.
-3. Run `diagc publish <name>` and look at `.diagrams/static/<name>.png` to check the picture. It needs Chrome; set `CHROME_PATH` when none is found.
+3. Run `diagc publish <name>` and look at `.diagrams/static/<name>.png` to check the picture. It needs Chrome; set `CHROME_PATH` when none is found. The PNG shows the first plane with every group opened and only the layers that plane turns on; other planes and layers are on the page `.diagrams/html/<name>.html`.
 
 A person runs `diagc studio` to browse every diagram and to move boxes by hand.
 
@@ -22,6 +22,7 @@ Commit `.diagrams/src/` and `.diagrams/static/`. `.diagrams/.artifacts/` and `.d
 - `m.node(id, { type, name })` declares a box and returns a handle. Keep the handle: `contains` and `relate` take handles, not ids.
 - `parent.contains(a, b)` nests. A box with children is a group. It rests folded and shows how many boxes are hidden inside it. Arrows to anything inside it end on the group, merged into one arrow per box at the other end, until it is opened.
 - `m.relate(from, to, { kind, label })` draws an arrow. `kind` is required.
+- diagc supplies `@diagc/core` when it compiles, so the import needs no install; `npm i -D @diagc/core@{{version}}` only adds types for your editor.
 
 More node options:
 
@@ -42,6 +43,8 @@ More relation options: `layer`, `description`, `id`.
 Node types for any diagram: {{node-types}}
 
 Relation kinds: {{relation-kinds}}
+
+The general kinds are `sync`, `async`, `reads`, `writes` and `hosted-on`. The rest belong to one diagram type and are written by its builder or named in its topic.
 
 Each diagram type listed at the end adds node types of its own; its topic lists them.
 
@@ -98,7 +101,7 @@ export default m;
 
 ## Diagram types
 
-Run `diagc guide <topic>` before writing one of these. Each has its own builder or its own node types.
+Run `diagc guide <topic>` before writing one of these. Some are switched on with `m.notation('<id>')`, some come with a builder (`m.gitGraph()`, `m.plan()`, …), and the topic says which.
 
 {{topics}}
 

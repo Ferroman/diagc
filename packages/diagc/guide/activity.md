@@ -8,7 +8,7 @@ A UML activity diagram: swimlanes of actions, decisions, forks and joins, and si
 
 - `m.activity(id, { name })` declares a frame. Call it again for another frame: each call is one frame, and several share a canvas. It needs no `m.notation` call.
 - `act.lane(id, { name, color })` adds a lane to the frame. Lanes are drawn top to bottom in the order you declare them.
-- Elements are created on a lane and return a ref you can wire up: `.action(id, name)`, `.decision(id?, name?)`, `.bar(id?)` for a fork or join, `.start(id?)`, `.end(id?)`, `.send(id, name)`, `.receive(id, name)`, `.object(id, name)` and `.note(id, text)`.
+- Elements are created on a lane and return a handle you can wire up: `.action(id, name)`, `.decision(id?, name?)`, `.bar(id?)` for a fork or join, `.start(id?)`, `.end(id?)`, `.send(id, name)`, `.receive(id, name)`, `.object(id, name)` and `.note(id, text)`.
 - `lane.region(id?, name?)` adds an interruptible region inside a lane. It takes the same element methods, but not another `region`.
 - `act.flow(from, to, label?)` draws control flow. `act.objectFlow` draws a dashed arrow for data. `act.interrupt` leaves a region. `act.noteLink(note, target)` ties a note to what it annotates. Each returns `act`, so they chain.
 - A guard is a label: `act.flow(decision, next, '[approved]')`.

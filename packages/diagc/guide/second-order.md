@@ -6,7 +6,7 @@ A consequence tree: a decision, what follows from it, and what follows from that
 
 ## How it works
 
-- `m.secondOrder(opts?)` declares the diagram. It throws if called twice. `opts` takes `plane` and `name` to keep it beside other views of the model.
+- `m.secondOrder(opts?)` declares the diagram. It throws if called twice. `opts` takes `plane` and `name`: `plane` puts it on a plane of its own, and `name` names that plane.
 - `so.decision(id, name?, opts?)` is the root. `opts` takes `description` and `color`. Several decisions can share one set of bands.
 - `ref.then(id, name?, opts?)` adds what follows from `ref`, and the arrow to it. `opts` is `{ valence, label, description, color }`. It returns the new consequence, so calls chain.
 - `valence` is `'+'` good, `'-'` bad or `'0'` neutral. It defaults to `'0'` and picks the node type. `label` labels the arrow that leads to the consequence.

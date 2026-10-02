@@ -7,7 +7,7 @@ Where software runs: the environments, regions, networks and subnets around it, 
 ## How it works
 
 - `m.notation('deployment')` declares the diagram. It needs no builder call of its own: every element is an `m.node` with a `deploy-*` type.
-- Zones are containers, built with `contains`: an environment, a region, an availability zone, a network, a public or private subnet, a cluster, a host. They nest, outermost first.
+- Zones are groups, built with `contains`: an environment, a region, an availability zone, a network, a public or private subnet, a cluster, a host. They nest, outermost first.
 - What a box sits inside is the information. A private subnet says how a service is reached, an availability zone what it fails with.
 - The nodes inside the zones are a service, database, queue, storage, load balancer, gateway or firewall. `deploy-internet` is the outside: the internet, or any network you do not own.
 - A connection is `m.relate(a, b, { kind: 'network', label })`. The label is the port or protocol: `'HTTPS 443'`.
