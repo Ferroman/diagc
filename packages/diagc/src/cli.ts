@@ -191,6 +191,14 @@ export class BadFlagValueError extends Error {
   }
 }
 
+const SOURCES = '.diagrams/src/**/*.diagram.{ts,json}';
+
+/** The one message a repository with no diagrams gets, on stderr: `lint --json`'s
+ * stdout stays an array and the exit codes hold, so CI without diagrams passes. */
+function warnNoSources(dir = '.diagrams/src'): void {
+  console.error(`No diagrams under ${dir} — run 'diagc init' to create one.`);
+}
+
 async function main() {
   let args: Args;
   try {
@@ -215,7 +223,8 @@ async function main() {
   const snap = snapshotSession(resolveInclude, '.diagrams', args.updateIncludes ? 'update' : 'locked');
 
   if (args.command === 'compile') {
-    const files = args.files.length > 0 ? args.files : await fg('.diagrams/src/**/*.diagram.{ts,json}');
+    const files = args.files.length > 0 ? args.files : await fg(SOURCES);
+    if (args.files.length === 0 && files.length === 0) warnNoSources();
     let failed = false;
     for (const file of files) {
       try {
@@ -237,7 +246,8 @@ async function main() {
     if (args.updateIncludes && args.files.length === 0 && !failed) await snap.prune();
     process.exit(failed ? 1 : 0);
   } else if (args.command === 'lint') {
-    const files = args.files.length > 0 ? args.files : await fg('.diagrams/src/**/*.diagram.{ts,json}');
+    const files = args.files.length > 0 ? args.files : await fg(SOURCES);
+    if (args.files.length === 0 && files.length === 0) warnNoSources();
     const reports: LintReport[] = [];
     for (const file of files) {
       reports.push(...(await lintFile(file, { rootDir: '.diagrams/src', coreEntry: home.coreEntry, resolver: snap.resolver })));
@@ -252,6 +262,7 @@ async function main() {
     // session's mode (mirrors studio.ts's own hardcoded 'locked' session).
     if (args.updateIncludes) console.error('ignoring --update-includes: watch always runs locked');
     const dir = args.files[0] ?? '.diagrams/src';
+    if ((await fg('**/*.diagram.{ts,json}', { cwd: dir })).length === 0) warnNoSources(dir);
     const watchSnap = snapshotSession(resolveInclude, '.diagrams', 'locked');
     startWatch(dir, args.out, {
       coreEntry: home.coreEntry,
@@ -280,6 +291,7 @@ async function main() {
     const artifactsDir = '.diagrams/.artifacts';
     // Compile first so artifacts reflect current sources (TS + include expansion).
     const sources = await fg('**/*.diagram.{ts,json}', { cwd: srcDir, absolute: true });
+    if (sources.length === 0) warnNoSources(srcDir);
     for (const f of sources) {
       try {
         await compileFile(f, artifactsDir, { rootDir: srcDir, coreEntry: home.coreEntry, resolver: snap.resolver });
