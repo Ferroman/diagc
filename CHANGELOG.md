@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/Ferroman/diagc/compare/v0.9.0...v0.10.0) (2026-10-02)
+
+
+### Features
+
+* one-line curl | sh installer for the CLI and studio ([#47](https://github.com/Ferroman/diagc/issues/47)) ([3adaec4](https://github.com/Ferroman/diagc/commit/3adaec4e0966ef9cac83c13141d27833681b6a91))
+
 ## [0.9.0](https://github.com/Ferroman/diagc/compare/v0.8.0...v0.9.0) (2026-10-02)
 
 
