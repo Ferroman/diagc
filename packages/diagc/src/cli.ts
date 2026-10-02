@@ -31,6 +31,7 @@ import { ejectDiagram } from './eject';
 import { formatLintReport, lintFile, type LintReport } from './lint';
 import { runGuide } from './guide';
 import { cliVersion, findHome, homePaths } from './home';
+import { runInit } from './init';
 import { resolveInclude } from './includes';
 import { snapshotSession } from './snapshots';
 import { formatCompileEvent, startWatch } from './watch';
@@ -38,9 +39,12 @@ import { galleryLink } from './publish/gallery';
 import { publishDiagrams } from './publish/publish';
 import { runStudio } from './studio';
 
-const USAGE = `Usage: diagc <compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir]
+const USAGE = `Usage: diagc <init|compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir]
 
 Commands:
+  init      init [name] [--type <type>] [--agents]: set a repository up — a starter
+            diagram under .diagrams/src (compiled), the .gitignore lines, and with
+            --agents a pointer to the guide for coding agents (AGENTS.md / CLAUDE.md)
   compile   Compile *.diagram.{ts,json} sources into overlay artifacts once
   lint      Report suspicious diagrams (typos, duplicates, unused or undrawn parts); exit 1 on any
   watch     Recompile — and live-recompile — a directory of sources
@@ -61,6 +65,8 @@ Options:
   --labels a,b    diff: name the two sides (default: the refs)
   --image-url t   diff: summary.md's image links as t, {path} standing for each PNG
   --update-includes  Refetch remote includes and rewrite the snapshot lock
+  --type <type>   init: the starter to copy (default basic; 'diagc guide' lists the types)
+  --agents        init: write the coding-agent block into AGENTS.md / CLAUDE.md
   --help, -h      Show this help and exit
 `;
 
@@ -80,6 +86,10 @@ interface Args {
   imageUrl?: string;
   /** diff `--labels before,after`: names for the two sides in place of the refs */
   labels?: [string, string];
+  /** init `--type`: which starter to copy */
+  type?: string;
+  /** init `--agents`: write the coding-agent block */
+  agents: boolean;
 }
 
 /** Parse argv into command + flags. Unknown flags (anything `--…` that is not
@@ -96,6 +106,8 @@ export function parseArgs(argv: string[]): Args {
   let link: string | undefined;
   let imageUrl: string | undefined;
   let labels: [string, string] | undefined;
+  let type: string | undefined;
+  let agents = false;
   let commandSeen = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
@@ -114,6 +126,18 @@ export function parseArgs(argv: string[]): Args {
     }
     if (arg === '--json') {
       json = true;
+      continue;
+    }
+    if (arg === '--type') {
+      // No fallback: a missing value would otherwise swallow the next flag as the type.
+      const value = argv[i + 1];
+      if (value === undefined || value.startsWith('--')) throw new BadFlagValueError('--type', "needs a diagram type, e.g. --type c4 ('diagc guide' lists them)");
+      type = value;
+      i++;
+      continue;
+    }
+    if (arg === '--agents') {
+      agents = true;
       continue;
     }
     if (arg === '--image-url') {
@@ -159,6 +183,8 @@ export function parseArgs(argv: string[]): Args {
     images,
     updateIncludes,
     json,
+    agents,
+    ...(type !== undefined ? { type } : {}),
     ...(link !== undefined ? { link } : {}),
     ...(imageUrl !== undefined ? { imageUrl } : {}),
     ...(labels !== undefined ? { labels } : {}),
@@ -367,6 +393,22 @@ async function main() {
       guideDir: home.guideDir,
       startersDir: home.startersDir,
       version: cliVersion(home.root),
+    });
+    return;
+  } else if (args.command === 'init') {
+    if (args.files.length > 1) {
+      console.error(`diagc: init takes one name, got ${args.files.length} — e.g. diagc init shop --type c4`);
+      process.exit(1);
+    }
+    process.exitCode = await runInit({
+      cwd: process.cwd(),
+      ...(args.files[0] !== undefined ? { name: args.files[0] } : {}),
+      ...(args.type !== undefined ? { type: args.type } : {}),
+      agents: args.agents,
+      startersDir: home.startersDir,
+      version: cliVersion(home.root),
+      coreEntry: home.coreEntry,
+      resolver: snap.resolver,
     });
     return;
   } else {

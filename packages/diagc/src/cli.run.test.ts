@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -81,5 +81,43 @@ describe('with no sources', () => {
     const r = run(['lint', '--json'], dir);
     expect(r.stderr).toBe('');
     expect(r.stdout).toBe('[]\n');
+  }, 30_000);
+});
+
+describe('diagc init, through the real CLI', () => {
+  it('sets up an empty directory and exits 0', () => {
+    const dir = fresh();
+    const r = run(['init', 'shop', '--type', 'c4'], dir);
+    expect(r.status).toBe(0);
+    expect(r.stderr).toBe('');
+    expect(existsSync(path.join(dir, '.diagrams', 'src', 'shop.diagram.ts'))).toBe(true);
+    expect(existsSync(path.join(dir, '.diagrams', '.artifacts', 'shop.diagram.json'))).toBe(true);
+    expect(readFileSync(path.join(dir, '.gitignore'), 'utf8')).toContain('.diagrams/html/');
+    expect(r.stdout).toMatch(/^✓ \.diagrams\/src\/shop\.diagram\.ts\s+\(c4 starter\)$/m);
+    expect(r.stdout).toContain('Next:');
+    // the directory is then a repository with a diagram: no more no-sources message
+    expect(run(['lint', '--json'], dir).stderr).toBe('');
+  }, 60_000);
+
+  it('refuses an unknown type on stderr with exit 1 and writes nothing', () => {
+    const dir = fresh();
+    const r = run(['init', '--type', 'c5'], dir);
+    expect(r.status).toBe(1);
+    expect(r.stdout).toBe('');
+    expect(r.stderr).toMatch(/^diagc: No starter 'c5'\. Types: activity, basic, c4/);
+    expect(readdirSync(dir)).toEqual([]);
+  }, 30_000);
+
+  it('takes one name at most', () => {
+    const r = run(['init', 'a', 'b'], fresh());
+    expect(r.status).toBe(1);
+    expect(r.stderr).toMatch(/^diagc: init takes one name, got 2/);
+  }, 30_000);
+
+  it('lists init in --help', () => {
+    const r = run(['--help'], fresh());
+    expect(r.stdout).toMatch(/^ {2}init /m);
+    expect(r.stdout).toMatch(/^ {2}--type <type>/m);
+    expect(r.stdout).toMatch(/^ {2}--agents/m);
   }, 30_000);
 });
