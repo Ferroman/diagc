@@ -28,7 +28,13 @@ You author diagrams two ways that meet at the same validated model: write a `.di
 
 ## Install
 
-To use the tool on your own repo, install the CLI — no checkout needed:
+To use the tool on your own repo, install the CLI — no checkout needed. One line, no Node required (macOS and Linux):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Ferroman/diagc/main/install.sh | sh
+```
+
+It installs into `~/.local/share/diagc` with a `diagc` launcher in `~/.local/bin`, using your Node if it is 22 or newer and downloading its own otherwise. Run it again to update. With Node already set up, npm works too:
 
 ```bash
 npm i -g @diagc/cli            # or: npx @diagc/cli studio

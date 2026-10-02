@@ -56,3 +56,23 @@ jobs:
       # broken emit (the ESM extension fix-up, a bundle that no longer builds) would
       # otherwise surface only at publish time.
       - run: pnpm build:dist
+
+  # The `curl … | sh` installer, for real: it installs the published @diagc/cli from npm
+  # (not this branch's code), once with the runner's own Node and once with a downloaded
+  # one, on both systems it supports. The unit test (packages/diagc/src/
+  # install-script.test.ts) covers its branches against stand-ins; this covers nodejs.org,
+  # npm and macOS's userland.
+  install-script:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [path, download]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - run: sh install.sh
+        env:
+          DIAGC_NODE: ${{ matrix.node == 'download' && 'download' || '' }}
+      - run: ~/.local/bin/diagc --help
