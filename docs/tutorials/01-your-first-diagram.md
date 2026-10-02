@@ -1,6 +1,6 @@
 # Tutorial 1 — Your first diagram
 
-**Goal:** starting from an empty repository, get a diagram you can read in the browser, change it in TypeScript and watch it update, and export a PNG you can commit.
+**Goal:** starting from an empty repository, get a diagram you can read in the browser, change it in TypeScript and see the change, and export a PNG you can commit.
 
 You will type every command. Nothing here explains *why* the pieces work the way they do — for that, read [How a diagram becomes a picture](../explanation/architecture.md) afterwards.
 
@@ -78,7 +78,7 @@ export default m;
 
 `m.node` declares a box, `.contains` nests boxes inside another, and `m.relate` draws an arrow. The `export default` at the end is what the compiler looks for.
 
-The second file, `.diagrams/.artifacts/shop.diagram.json`, is the **artifact** — your model, validated. Open it if you like; it is plain, readable JSON. You never edit it by hand, and `init` has already gitignored it.
+The compiled file, `.diagrams/.artifacts/shop.diagram.json`, is the **artifact** — your model, validated. Open it if you like; it is plain, readable JSON. You never edit it by hand, and `init` has already gitignored it.
 
 If you break the source — a relation pointing at a node that does not exist, say — the compile fails with a message naming the problem, and no artifact is written. That is the point: a diagram that cannot be drawn correctly never reaches the browser.
 
@@ -88,7 +88,7 @@ If you break the source — a relation pointing at a node that does not exist, s
 diagc studio
 ```
 
-Your browser opens on the studio (<http://127.0.0.1:5173> if it does not). If **shop** is not already showing, pick it from the diagram picker in the top bar.
+Your browser opens on the studio (if it does not, open the address the terminal prints — normally <http://127.0.0.1:5173>). If **shop** is not already showing, pick it from the diagram picker in the top bar.
 
 You will see `Customer`, and a `Shop` box with a dashed border and a badge counting what is inside. That is a *folded group*: the storefront, the API and the database are in there, but the diagram rests folded so you see structure before detail. The arrow from `Customer` lands on the group.
 
@@ -98,7 +98,7 @@ This is **semantic zoom**, and it is the reason a large diagram stays readable. 
 
 The diagram carries a `read-only` chip: it is TypeScript, so the file is where you change it. Leave the studio running — it is also recompiling your sources whenever they change.
 
-## Step 3 — Change it and watch it update
+## Step 3 — Change it
 
 Add a second service to `shop.diagram.ts`, above the `export default` line:
 
@@ -108,7 +108,7 @@ shop.contains(worker);
 m.relate(worker, db, { kind: 'reads', label: 'Open orders' });
 ```
 
-Save the file. The studio recompiles and picks up the new artifact within a second — no reload, no command to run. Open `Shop` again if it has folded back, and `Fulfilment` is there with its arrow to the database.
+Save the file. The terminal running the studio prints a `✓` line as it recompiles. Reload the browser tab — the studio reopens `shop` — and double-click `Shop` again: `Fulfilment` is there with its arrow to the database.
 
 ## Step 4 — Export a picture
 
@@ -120,7 +120,7 @@ diagc publish
 
 This writes two kinds of output:
 
-- `.diagrams/html/shop.html` — a self-contained interactive page. Open it in a browser: it has the same fold/unfold behaviour and needs no server.
+- `.diagrams/html/shop.html` — a self-contained interactive page. Open it in a browser: it has the same fold/unfold behaviour and needs no server. An `index.html` beside it lists every diagram.
 - `.diagrams/static/shop.png` — a flat image, sized to your diagram, with every group unfolded.
 
 Embed the PNG in any markdown file:
@@ -139,6 +139,7 @@ Embed the PNG in any markdown file:
   src/shop.diagram.ts          you changed this — commit it
   .artifacts/shop.diagram.json generated, gitignored
   html/shop.html               generated, gitignored
+  html/index.html              generated, gitignored
   static/shop.png              generated — commit this one
 ```
 
