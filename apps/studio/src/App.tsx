@@ -170,7 +170,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // Boxes moved by hand in view mode (alt-drag), not yet written to the sidecar.
   // Unlike the layout preview these CAN be persisted — coordinates were never
   // part of the model, so saving them is legitimate even for a read-only
-  // TS-authored diagram, whose sidecar `pnpm compile` never rewrites.
+  // TS-authored diagram, whose sidecar `diagc compile` never rewrites.
   const [movedPositions, setMovedPositions] = useState<Record<string, { x: number; y: number }>>({});
   // Edge labels slid along their edges in view mode (Alt+drag a label): the
   // same class of state, saved by the same chip into the overlay's `edgeLabels`.
@@ -1098,14 +1098,14 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
         <div className="banner">
           {canDesign ? (
             // The API is up, so creating is possible — telling an Obsidian (or
-            // fresh-checkout) user to run pnpm compile here points at a build
+            // fresh-checkout) user to run diagc compile here points at a build
             // step their empty workspace doesn't need.
             <>
               No diagrams yet — use <b>New diagram</b> to create one.
             </>
           ) : (
             <>
-              No artifacts found — run <code>pnpm compile</code> (or <code>pnpm compile:watch</code>) first.
+              No artifacts found — run <code>diagc compile</code> (or <code>diagc watch</code>) first.
             </>
           )}
         </div>

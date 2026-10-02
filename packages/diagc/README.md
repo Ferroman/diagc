@@ -13,18 +13,7 @@ Needs Node ≥ 22.
 ## Quickstart
 
 ```bash
-mkdir -p .diagrams/src
-cat > .diagrams/src/acme.diagram.ts <<'EOF'
-import { model } from '@diagc/core';
-
-const m = model('acme', { name: 'Acme platform' });
-const web = m.node('web', { name: 'Web app', type: 'service' });
-const db = m.node('db', { name: 'Postgres', type: 'database' });
-m.relate(web, db, { kind: 'reads' });
-
-export default m;
-EOF
-
+diagc init shop    # a starter diagram in .diagrams/src/, the .gitignore lines, compiled
 diagc studio       # opens the editor, recompiling as you edit
 ```
 
@@ -34,6 +23,7 @@ diagc studio       # opens the editor, recompiling as you edit
 
 | Command | What it does |
 | --- | --- |
+| `diagc init` | Set a repository up: a starter diagram (`--type c4` for a C4 one), the `.gitignore` lines, and with `--agents` a pointer to the guide for coding agents. |
 | `diagc compile` | Compile `.diagrams/src/**/*.diagram.{ts,json}` into validated artifacts under `.diagrams/.artifacts/`. The default command. |
 | `diagc watch` | The same, recompiling on change. |
 | `diagc studio` | Serve the visual editor against the current directory (default `http://127.0.0.1:5173`). Diagrams drawn here are saved back as `.diagram.json`. |

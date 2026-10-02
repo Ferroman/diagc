@@ -1,5 +1,5 @@
 import { diagramWarnings, errMessage, type ValidationIssue } from '@diagc/core';
-import { loadModel, type LoadOptions } from './compile';
+import { LoadError, loadModel, type LoadOptions } from './compile';
 
 /** One line of `diagc lint` output. An `error` is what fails a compile too; a
  * `warning` is what compile only mentions — lint fails on both. */
@@ -9,6 +9,9 @@ export interface LintReport {
   code: string;
   message: string;
   ref?: string;
+  /** where a `load` finding happened in the source, when the stack placed it */
+  line?: number;
+  column?: number;
 }
 
 const report = (file: string, severity: LintReport['severity'], i: Pick<ValidationIssue, 'message' | 'ref'> & { code: string }): LintReport => ({
@@ -30,10 +33,22 @@ export async function lintFile(file: string, opts?: LoadOptions): Promise<LintRe
     if (e instanceof Error && e.name === 'DiagramValidationError' && Array.isArray((e as { issues?: unknown }).issues)) {
       return (e as Error & { issues: ValidationIssue[] }).issues.map((i) => report(file, 'error', i));
     }
+    if (e instanceof LoadError) {
+      return [
+        {
+          file,
+          severity: 'error',
+          code: 'load',
+          message: e.reason,
+          ...(e.line !== undefined && e.column !== undefined ? { line: e.line, column: e.column } : {}),
+        },
+      ];
+    }
     return [report(file, 'error', { code: 'load', message: errMessage(e) })];
   }
 }
 
 export function formatLintReport(r: LintReport): string {
-  return `${r.file}: ${r.severity} ${r.code}: ${r.message}`;
+  const where = r.line !== undefined && r.column !== undefined ? `${r.file}:${r.line}:${r.column}` : r.file;
+  return `${where}: ${r.severity} ${r.code}: ${r.message}`;
 }

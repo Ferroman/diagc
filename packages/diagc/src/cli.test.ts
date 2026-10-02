@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { BadFlagValueError, HelpRequested, UnknownFlagError, diffOutDir, parseArgs, parseRange } from './cli';
 
 describe('parseArgs', () => {
+  it('parses init with a name, --type and --agents, in any order', () => {
+    expect(parseArgs(['init'])).toMatchObject({ command: 'init', files: [], agents: false });
+    expect(parseArgs(['init', 'shop', '--type', 'c4', '--agents'])).toMatchObject({ command: 'init', files: ['shop'], type: 'c4', agents: true });
+    expect(parseArgs(['--agents', 'init'])).toMatchObject({ command: 'init', agents: true });
+    expect(parseArgs(['compile'])).not.toHaveProperty('type');
+  });
+
+  it('refuses --type without a value', () => {
+    expect(() => parseArgs(['init', '--type'])).toThrow(BadFlagValueError);
+    expect(() => parseArgs(['init', '--type', '--agents'])).toThrow(/--type: needs a diagram type/);
+  });
+
   it('parses guide with and without a topic', () => {
     expect(parseArgs(['guide'])).toMatchObject({ command: 'guide', files: [] });
     expect(parseArgs(['guide', 'c4'])).toMatchObject({ command: 'guide', files: ['c4'] });
@@ -17,6 +29,7 @@ describe('parseArgs', () => {
       images: false,
       updateIncludes: false,
       json: false,
+      agents: false,
     });
   });
 
@@ -29,6 +42,7 @@ describe('parseArgs', () => {
       images: true,
       updateIncludes: false,
       json: false,
+      agents: false,
     });
   });
 

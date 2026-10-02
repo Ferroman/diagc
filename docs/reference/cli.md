@@ -28,12 +28,30 @@ Everything the CLI needs is in the package — the prebuilt studio, the viewer s
 From a checkout, `pnpm link --global` inside the repo gives you a `diagc` that runs the working tree instead. Both layouts are detected automatically; the differences are called out below where they matter.
 
 ```
-diagc <compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir] [--no-images] [--link url]
+diagc <init|compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir] [--no-images] [--link url]
 ```
 
 An unknown command exits `1` with that usage line.
 
 ## Commands
+
+### `init`
+
+Sets a repository up for diagc, from the installed CLI alone.
+
+```bash
+diagc init                      # .diagrams/src/example.diagram.ts from the basic starter
+diagc init shop --type c4       # a C4 starter named shop
+diagc init --agents             # point coding agents at the guide (AGENTS.md / CLAUDE.md)
+```
+
+- **Steps, in order:** writes `.diagrams/src/<name>.diagram.ts` from the bundled starter for `--type`; appends whichever of `.diagrams/.artifacts/`, `.diagrams/html/` and `.diagrams/diff/` are missing from `.gitignore` (creating it if needed); with `--agents`, writes a short block into `AGENTS.md` and `CLAUDE.md` — whichever exist, or a new `AGENTS.md` — between `<!-- diagc:begin -->` and `<!-- diagc:end -->`, replacing it in place on a later run; compiles the starter; prints what to do next.
+- **Name:** `example` by default; a folder is allowed (`team/app`); lowercase letters, digits, `-` and `/`. `shop.diagram.ts` and `.diagrams/src/shop` mean `shop`.
+- **Type:** `basic` by default; the types are the diagram types `diagc guide` lists, plus `basic`. An unknown type lists them.
+- **Already set up:** with neither a name nor `--type`, and a diagram already under `.diagrams/src`, the starter step is skipped — `diagc init --agents` can run in any repository.
+- **Refuses, writing nothing:** a name whose `.diagram.ts` or `.diagram.json` exists, an unknown type, an unsafe name. Exit `1` with one line on stderr.
+- **Never:** runs a package manager (it prints `npm i -D @diagc/core@<version>` when there is a `package.json`; the types are for the editor, the CLI compiles without them), or asks a question — arguments and flags only, so a script or an agent can run it.
+- **Exit code:** `0` when every step it attempted succeeded.
 
 ### `compile` (default)
 
@@ -46,7 +64,7 @@ diagc compile .diagrams/src/acme.diagram.ts
 
 - **Input:** `files...` if given, otherwise everything matching `.diagrams/src/**/*.diagram.{ts,json}`.
 - **Output:** one `<name>.diagram.json` per source under `--out`. Subdirectories of `.diagrams/src/` are mirrored, so `src/team-a/app.diagram.ts` becomes `.artifacts/team-a/app.diagram.json`.
-- **Exit code:** `0` if every file compiled, `1` if any failed. Failures print `✗ <file>` and the error; other files still compile.
+- **Exit code:** `0` if every file compiled, `1` if any failed. Failures print `✗ <file>` and the error; other files still compile. A source that throws while it runs — a misspelled method, a builder call that refuses — is placed at `<file>:<line>:<column>`, the first stack frame inside that file.
 
 A remote (`https://…`) `include` resolves from a vendored snapshot, not a live fetch — **locked mode**, the default `compile` (and `watch`/`publish`/`studio`/`eject`) runs in. It reads `.diagrams/includes/<file>` and checks its hash against `.diagrams/includes.lock.json`; an include missing from the lock, or whose vendored file is gone or no longer matches its recorded hash, fails the compile naming the remedy:
 
@@ -70,7 +88,7 @@ diagc lint .diagrams/src/acme.diagram.ts --json
 ```
 
 - **Input:** as `compile`. Nothing is written.
-- **Output:** one line per finding, `<file>: <severity> <code>: <message>`, or with `--json` one array of `{ file, severity, code, message, ref? }`. A source that does not compile reports its validation errors (severity `error`); one that does reports its warnings (severity `warning`): the [lint codes](model.md#lint-codes) plus the notation warnings `compile` prints.
+- **Output:** one line per finding, `<file>: <severity> <code>: <message>`, or with `--json` one array of `{ file, severity, code, message, ref?, line?, column? }`. A source that does not compile reports its validation errors (severity `error`); one that does reports its warnings (severity `warning`): the [lint codes](model.md#lint-codes) plus the notation warnings `compile` prints. A source that throws while it runs is one `load` finding; when the stack places it, the text form reads `<file>:<line>:<column>: error load: <message>` and the JSON form carries `line` and `column`.
 - **Exit code:** `0` when there are no findings, `1` otherwise — so a script or an agent can loop until it is clean.
 
 ### `diff`
@@ -202,6 +220,8 @@ diagc guide all        # everything
 | `--labels <a,b>` | `diff` | the refs | Names for the before and after sides. |
 | `--image-url <template>` | `diff` | relative | `summary.md`'s image links; `{path}` stands for each PNG's path. |
 | `--json` | `lint`, `diff` | off | Print the findings (lint) or the changes (diff) as JSON. |
+| `--type <type>` | `init` | `basic` | Which starter to copy. |
+| `--agents` | `init` | off | Write the coding-agent block into `AGENTS.md` / `CLAUDE.md`. |
 | `--update-includes` | `compile`, `publish` | off | Refetch every remote `include`, vendor it under `.diagrams/includes/`, and rewrite `.diagrams/includes.lock.json`. On `compile`, pruning entries the run didn't touch only happens with no `files...` given (a full-tree run); `publish` always compiles the whole tree, so its prune is unconditional. |
 
 Anything not recognised as a flag is collected as `files...`.

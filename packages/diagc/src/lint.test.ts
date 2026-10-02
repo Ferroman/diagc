@@ -50,6 +50,27 @@ describe('lintFile', () => {
     const [r] = await lintFile(path.join(fixtures, 'no-default.diagram.ts'));
     expect(r).toMatchObject({ severity: 'error', code: 'load' });
   });
+
+  it('places a load error and keeps its message free of the position', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'diagc-lint-'));
+    const file = path.join(dir, 'typo.diagram.ts');
+    await writeFile(file, "import { model } from '@diagc/core';\nconst m = model('x');\nm.nod('a', { type: 'service' });\nexport default m;\n");
+    const [r, ...rest] = await lintFile(file);
+    expect(rest).toEqual([]);
+    expect(r).toMatchObject({ file, severity: 'error', code: 'load', message: 'm.nod is not a function', line: 3 });
+    expect(typeof r!.column).toBe('number');
+    expect(formatLintReport(r!)).toBe(`${file}:3:${r!.column}: error load: m.nod is not a function`);
+  });
+
+  it('reports a load error with no position without one', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'diagc-lint-'));
+    const file = path.join(dir, 'broken.diagram.ts');
+    await writeFile(file, 'const = ;\n');
+    const [r] = await lintFile(file);
+    expect(r).toMatchObject({ file, severity: 'error', code: 'load' });
+    expect(r).not.toHaveProperty('line');
+    expect(formatLintReport(r!)).toBe(`${file}: error load: ${r!.message}`);
+  });
 });
 
 describe('formatLintReport', () => {

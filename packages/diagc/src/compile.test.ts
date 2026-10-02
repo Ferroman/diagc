@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { DiagramModel, IncludeResolver } from '@diagc/core';
-import { compileFile, executeDiagramTs } from './compile';
+import { compileFile, executeDiagramTs, LoadError, positionIn } from './compile';
 
 async function exists(p: string): Promise<boolean> {
   try {
@@ -247,5 +247,72 @@ describe('executeDiagramTs', () => {
     expect(model.id).toBe('exec-test');
     expect(model.nodes.map((n) => n.id)).toEqual(['a']);
     expect(await exists(path.join(tmp, 'exec-test.diagram.json'))).toBe(false);
+  });
+});
+
+describe('LoadError', () => {
+  async function throwing(name: string, body: string): Promise<string> {
+    const dir = await mkdtemp(path.join(tmpdir(), 'diagc-load-'));
+    const file = path.join(dir, name);
+    await writeFile(file, `import { model } from '@diagc/core';\nconst m = model('x');\n${body}\nexport default m;\n`);
+    return file;
+  }
+
+  it('places a typo at the line and column of the first frame inside the file', async () => {
+    const file = await throwing('typo.diagram.ts', "m.nod('a', { type: 'service' });");
+    const err = await executeDiagramTs(file).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(LoadError);
+    const le = err as LoadError;
+    expect(le.file).toBe(file);
+    expect(le.reason).toBe('m.nod is not a function');
+    expect(le.line).toBe(3);
+    expect(typeof le.column).toBe('number');
+    expect(le.message).toBe(`${file}:3:${le.column}: m.nod is not a function`);
+  });
+
+  it('places a refusal thrown by the builder at the call in the file, not inside core', async () => {
+    const file = await throwing('twice.diagram.ts', "m.fishbone('f', 'Effect');\nm.fishbone('g', 'Again');");
+    const err = (await executeDiagramTs(file).catch((e: unknown) => e)) as LoadError;
+    expect(err).toBeInstanceOf(LoadError);
+    expect(err.reason).toBe('fishbone() already declared');
+    expect(err.line).toBe(4);
+  });
+
+  it('keeps a syntax error as it is, with no position', async () => {
+    const file = await throwing('broken.diagram.ts', 'const = ;');
+    const err = (await executeDiagramTs(file).catch((e: unknown) => e)) as LoadError;
+    expect(err).toBeInstanceOf(LoadError);
+    expect(err.line).toBeUndefined();
+    expect(err.column).toBeUndefined();
+    expect(err.message).toBe(err.reason);
+    expect(err.reason).not.toBe('');
+  });
+
+  it('leaves a validation error alone, so lint still reads its issues', async () => {
+    const file = await throwing('dup.diagram.ts', "m.node('a', { type: 'service' });\nm.node('a', { type: 'service' });");
+    const err = (await executeDiagramTs(file).catch((e: unknown) => e)) as Error;
+    expect(err).not.toBeInstanceOf(LoadError);
+    expect(err.name).toBe('DiagramValidationError');
+  });
+});
+
+describe('positionIn', () => {
+  it('reads the first frame that is inside the file', () => {
+    const stack = ['TypeError: x', '    at ModelBuilder.fishbone (/repo/packages/core/src/builder.ts:972:10)', '    at /work/twice.diagram.ts:4:3', '    at /work/twice.diagram.ts:9:1'].join('\n');
+    expect(positionIn(stack, '/work/twice.diagram.ts')).toEqual({ line: 4, column: 3 });
+  });
+
+  it('matches the basename only after a path separator, in either style', () => {
+    expect(positionIn('    at Object.<anonymous> (C:\\work\\a.diagram.ts:2:7)', 'a.diagram.ts')).toEqual({ line: 2, column: 7 });
+    expect(positionIn('    at /work/not-a.diagram.ts:2:7', 'a.diagram.ts')).toBeUndefined();
+  });
+
+  it('ignores a position that is in the message rather than in a frame', () => {
+    const stack = 'Error: Transform failed with 1 error:\n/work/b.diagram.ts:3:7: ERROR: Unexpected "="\n    at failureErrorWithLog (/repo/node_modules/esbuild/lib/main.js:1748:15)';
+    expect(positionIn(stack, '/work/b.diagram.ts')).toBeUndefined();
+  });
+
+  it('is undefined for no stack', () => {
+    expect(positionIn(undefined, 'a.diagram.ts')).toBeUndefined();
   });
 });
