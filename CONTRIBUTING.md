@@ -37,6 +37,27 @@ pnpm install
 pnpm dev          # compile watcher + studio at http://localhost:5173
 ```
 
+The repo's own diagrams live under `.diagrams/src/` — the docs' figures and the examples — so
+`pnpm dev` renders something immediately.
+
+### Running a checkout as `diagc`
+
+To try the working tree against another repository on your machine, put the dev entry on your
+PATH:
+
+```bash
+pnpm build:cli        # once — the viewer shell `publish` stamps models into
+pnpm link --global    # `diagc` now runs this checkout, from any directory
+```
+
+`bin/diagc.mjs` finds the monorepo by walking up from its own real path to `pnpm-workspace.yaml`
+(`packages/diagc/src/home.ts`), so the linked `diagc` works anywhere — and breaks everywhere if
+the checkout moves or its `node_modules` go. It runs the studio's Vite dev server instead of the
+prebuilt bundle, resolves `@diagc/core` back to this checkout, and needs `pnpm build:cli` again
+after a viewer change or published pages keep the old shell. Nothing pins a version: every
+repository on the machine runs whatever the checkout is at. An installed `@diagc/cli` has none of
+these strings attached, which is why the user-facing docs never mention the link.
+
 ## Before you open a pull request
 
 ```bash
