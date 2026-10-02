@@ -90,6 +90,8 @@ import { useLoopOverlay } from './useLoopOverlay';
 import { NUDGE_STEP, useNudge, type Positions } from './useNudge';
 import { useViewLayout } from './useViewLayout';
 import { LaserLayer } from './LaserLayer';
+import type { DiagramNodeData } from './DiagramNode';
+import { diffEdgeStatus, diffNodeClasses, withDiffClass } from './diff-marks';
 import './styles.css';
 import '@fontsource/kalam/400.css';
 import '@fontsource/kalam/700.css';
@@ -1033,10 +1035,24 @@ function Inner(props: DiagramViewProps) {
   }, [noNotes, openNotes, arrangedGeometry, compiled, notePlacements, chipSpots, editing, edit?.onAddThreat, edit?.onRetitleThreat, edit?.onSetThreatStatus, edit?.onEditThreatText, props.onOpenLink, props.notation, noteEdit, nameOf, typeRegistry]);
   // Boxes first, notes after: React Flow resolves `parentId` against the nodes
   // it has already seen, so a note must never precede the box it rides on.
-  const allNodes = useMemo(
-    () => (noteNodes.length === 0 ? derivedNodes : [...derivedNodes, ...noteNodes]),
-    [derivedNodes, noteNodes],
-  );
+  //
+  // A diff picture's marks ride on React Flow's wrapper class, so every node
+  // shape gets them without each render branch knowing. `inside` only on a
+  // folded box: an open one shows the changed child itself.
+  const diffMarks = props.diffMarks;
+  const diffClasses = useMemo(() => (diffMarks !== undefined ? diffNodeClasses(props.model, diffMarks) : null), [diffMarks, props.model]);
+  const allNodes = useMemo(() => {
+    const boxes =
+      diffClasses === null
+        ? derivedNodes
+        : derivedNodes.map((n) => {
+            const status = diffClasses.get(n.id);
+            if (status === undefined || (status === 'inside' && (n.data as unknown as DiagramNodeData).state === 'expanded')) return n;
+            const className = withDiffClass(n.className, status);
+            return className !== undefined ? { ...n, className } : n;
+          });
+    return noteNodes.length === 0 ? boxes : [...boxes, ...noteNodes];
+  }, [derivedNodes, noteNodes, diffClasses]);
   // Render-phase ref (the arrangedRef/rfNodesRef pattern): a snap-back reset
   // (onNodeDragStop below) needs each node's LAID position — the same source
   // the resync effect further down reads when it copies allNodes into rfNodes
@@ -1404,15 +1420,17 @@ function Inner(props: DiagramViewProps) {
     return compiled.edges.map((e) => {
       const data = buildEdgeDataCached(e, edgeDataCtx);
       const soleRelation = e.constituents.length === 1 ? e.constituents[0] : undefined;
+      const diffClass = withDiffClass(undefined, diffMarks !== undefined ? diffEdgeStatus(e.constituents, diffMarks) : undefined);
       return toRfEdge({
         id: e.id,
         source: e.from,
         target: e.to,
         data,
         reconnectable: editing && soleRelation !== undefined,
+        ...(diffClass !== undefined ? { className: diffClass } : {}),
       });
     });
-  }, [compiled, placedGeometry, edgeDataCtx, editing]);
+  }, [compiled, placedGeometry, edgeDataCtx, editing, diffMarks]);
 
   // Edge selection is React Flow's own, but the edges are controlled: its
   // select changes reach the canvas only through this set. Without it no edge

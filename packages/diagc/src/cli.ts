@@ -25,6 +25,8 @@ import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
 import { errMessage } from '@diagc/core';
 import { compileFile } from './compile';
+import { compareDiagramSets, formatDiffSummary, loadDiagramSet, writeDiffPages } from './diff';
+import { checkoutDiagrams, type CheckedOutRef } from './git-ref';
 import { ejectDiagram } from './eject';
 import { formatLintReport, lintFile, type LintReport } from './lint';
 import { findHome, homePaths } from './home';
@@ -35,7 +37,7 @@ import { galleryLink } from './publish/gallery';
 import { publishDiagrams } from './publish/publish';
 import { runStudio } from './studio';
 
-const USAGE = `Usage: diagc <compile|lint|watch|publish|studio|eject> [files...] [--out dir]
+const USAGE = `Usage: diagc <compile|lint|watch|publish|studio|eject|diff> [files...] [--out dir]
 
 Commands:
   compile   Compile *.diagram.{ts,json} sources into overlay artifacts once
@@ -44,12 +46,15 @@ Commands:
   publish   Compile and render an HTML/PNG site under .diagrams/
   studio    Run the visual studio against the current directory
   eject     Promote a JSON diagram to a generated TypeScript source (verified)
+  diff      diff <from>[..<to>] [names...]: what changed in the diagrams between two git
+            refs (or a ref and the working tree), with before/after pages and PNGs
 
 Options:
-  --out dir       Artifact output directory (default .diagrams/.artifacts)
-  --no-images     Publish HTML without rendering PNG images
+  --out dir       Artifact output directory (default .diagrams/.artifacts;
+                  diff: .diagrams/diff/<from>..<to>)
+  --no-images     Publish (or diff) HTML without rendering PNG images
   --link url      Publish with a link to url in the index header
-  --json          lint: print the findings as a JSON array
+  --json          lint: print the findings as a JSON array; diff: the changes as JSON
   --update-includes  Refetch remote includes and rewrite the snapshot lock
   --help, -h      Show this help and exit
 `;
@@ -58,6 +63,8 @@ interface Args {
   command: string;
   files: string[];
   out: string;
+  /** `--out` was passed: diff only defaults its own directory when it was not */
+  outGiven: boolean;
   images: boolean;
   updateIncludes: boolean;
   /** `--json`: lint's findings as one JSON array on stdout */
@@ -73,6 +80,7 @@ export function parseArgs(argv: string[]): Args {
   let command = 'compile';
   const files: string[] = [];
   let out = '.diagrams/.artifacts';
+  let outGiven = false;
   let images = true;
   let updateIncludes = false;
   let json = false;
@@ -82,6 +90,7 @@ export function parseArgs(argv: string[]): Args {
     const arg = argv[i]!;
     if (arg === '--out') {
       out = argv[++i] ?? out;
+      outGiven = true;
       continue;
     }
     if (arg === '--no-images') {
@@ -119,7 +128,7 @@ export function parseArgs(argv: string[]): Args {
       files.push(arg);
     }
   }
-  return { command, files, out, images, updateIncludes, json, ...(link !== undefined ? { link } : {}) };
+  return { command, files, out, outGiven, images, updateIncludes, json, ...(link !== undefined ? { link } : {}) };
 }
 
 /** Thrown by {@link parseArgs} for `--help`/`-h`; `main` prints usage and exits 0. */
@@ -302,10 +311,88 @@ async function main() {
       console.error(errMessage(e));
       process.exit(1);
     }
+  } else if (args.command === 'diff') {
+    process.exit(await runDiff(args, home));
   } else {
     console.error(`diagc: Unknown command '${args.command}'.`);
     console.error(USAGE);
     process.exit(1);
+  }
+}
+
+/** `A..B` or `A` (against the working tree). */
+export function parseRange(range: string): { from: string; to?: string } {
+  const at = range.indexOf('..');
+  if (at === -1) return { from: range };
+  const from = range.slice(0, at);
+  const to = range.slice(at + 2);
+  if (from === '' || to === '' || to.startsWith('.')) throw new Error(`'${range}' is not a range: write <from>..<to>, or one ref to compare with the working tree`);
+  return { from, to };
+}
+
+/** A ref as a directory name: `v1.0..feature/x` -> `v1.0..feature-x`. */
+export function diffOutDir(from: string, to: string | undefined): string {
+  const safe = (s: string) => s.replace(/[^A-Za-z0-9._-]+/g, '-');
+  return path.join('.diagrams', 'diff', `${safe(from)}..${to !== undefined ? safe(to) : 'working-tree'}`);
+}
+
+async function runDiff(args: Args, home: ReturnType<typeof homePaths>): Promise<number> {
+  const range = args.files[0];
+  if (range === undefined) {
+    console.error('diagc: diff needs a git ref (diff v1.0) or a range (diff v1.0..v2.0).');
+    console.error(USAGE);
+    return 1;
+  }
+  const checkouts: CheckedOutRef[] = [];
+  try {
+    const { from, to } = parseRange(range);
+    const before = await checkoutDiagrams(from, process.cwd());
+    checkouts.push(before);
+    let afterDir = '.diagrams';
+    if (to !== undefined) {
+      const after = await checkoutDiagrams(to, process.cwd());
+      checkouts.push(after);
+      afterDir = after.diagramsDir;
+    }
+    const toLabel = to ?? 'working tree';
+    const beforeSet = await loadDiagramSet(from, before.diagramsDir, home.coreEntry);
+    const afterSet = await loadDiagramSet(toLabel, afterDir, home.coreEntry);
+    const diffs = compareDiagramSets(beforeSet, afterSet, args.files.slice(1));
+    if (args.json) {
+      console.log(JSON.stringify({ from, to: toLabel, diagrams: diffs.map(({ before: _b, after: _a, ...rest }) => rest) }, null, 2));
+    } else {
+      console.log(formatDiffSummary(diffs, from, toLabel));
+    }
+    if (!diffs.some((d) => d.status === 'added' || d.status === 'removed' || d.status === 'changed')) return 0;
+    if (!existsSync(home.viewerShell)) {
+      console.error('viewer shell not available — writing the summary only (see `diagc publish` for how to build it).');
+      return 0;
+    }
+    let renderPng: ((htmlPath: string, pngPath: string) => Promise<void>) | undefined;
+    if (args.images) {
+      const snapshot = await import('./publish/snapshot');
+      if (snapshot.findChrome() === undefined) console.error('No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.');
+      else renderPng = snapshot.renderPng;
+    }
+    const outDir = args.outGiven ? args.out : diffOutDir(from, to);
+    const res = await writeDiffPages(diffs, {
+      outDir,
+      shellPath: home.viewerShell,
+      libraryDir: home.libraryDir,
+      before: beforeSet,
+      after: afterSet,
+      ...(renderPng !== undefined ? { renderPng } : {}),
+    });
+    // stderr, so `--json` output stays parseable on stdout
+    console.error(`✓ ${res.pages.length} page(s)${res.images.length > 0 ? `, ${res.images.length} image(s)` : ''} -> ${outDir}`);
+    console.error(`✓ side by side -> ${res.index}`);
+    console.error(`✓ for an ADR -> ${res.summary}`);
+    return 0;
+  } catch (e) {
+    console.error(`diagc: ${errMessage(e)}`);
+    return 1;
+  } finally {
+    for (const c of checkouts) await c.cleanup();
   }
 }
 

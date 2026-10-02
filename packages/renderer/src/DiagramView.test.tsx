@@ -3021,3 +3021,25 @@ describe('drop-to-assign', () => {
     });
   });
 });
+
+describe('diff marks', () => {
+  it('classes marked nodes and edges, and a folded box holding a change as inside', async () => {
+    const { container } = render(
+      <DiagramView
+        model={containerEndpointModel()}
+        diffMarks={{ nodes: { api: 'added', gw: 'changed' }, relations: { 'gw->sys#0': 'removed' } }}
+      />,
+    );
+    const node = (id: string) => container.querySelector(`.react-flow__node[data-id="${id}"]`);
+    await waitFor(() => expect(node('gw')?.classList.contains('dg-diff-changed')).toBe(true));
+    // sys rests folded, so the added api inside it shows only as a mark on sys
+    expect(node('sys')?.classList.contains('dg-diff-inside')).toBe(true);
+    await waitFor(() => expect(container.querySelector('.react-flow__edge.dg-diff-removed')).not.toBeNull());
+  });
+
+  it('marks nothing without diffMarks', async () => {
+    const { container } = render(<DiagramView model={containerEndpointModel()} />);
+    await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="gw"]')).not.toBeNull());
+    expect(container.querySelector('[class*="dg-diff-"]')).toBeNull();
+  });
+});

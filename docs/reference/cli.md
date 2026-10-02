@@ -15,7 +15,7 @@ Node ≥ 22. Everything the CLI needs is in the package — the prebuilt studio,
 From a checkout, `pnpm link --global` inside the repo gives you a `diagc` that runs the working tree instead. Both layouts are detected automatically; the differences are called out below where they matter.
 
 ```
-diagc <compile|watch|publish|studio|eject> [files...] [--out dir] [--no-images] [--link url]
+diagc <compile|lint|watch|publish|studio|eject|diff> [files...] [--out dir] [--no-images] [--link url]
 ```
 
 An unknown command exits `1` with that usage line.
@@ -59,6 +59,21 @@ diagc lint .diagrams/src/acme.diagram.ts --json
 - **Input:** as `compile`. Nothing is written.
 - **Output:** one line per finding, `<file>: <severity> <code>: <message>`, or with `--json` one array of `{ file, severity, code, message, ref? }`. A source that does not compile reports its validation errors (severity `error`); one that does reports its warnings (severity `warning`): the [lint codes](model.md#lint-codes) plus the notation warnings `compile` prints.
 - **Exit code:** `0` when there are no findings, `1` otherwise — so a script or an agent can loop until it is clean.
+
+### `diff`
+
+Compares the diagrams at two git refs, or at one ref and the working tree, and draws what changed. How to use it: [Show what changed between two versions](../how-to/show-what-changed.md).
+
+```bash
+diagc diff v1.0..v2.0              # two refs
+diagc diff main                    # a ref against the working tree
+diagc diff v1.0..v2.0 checkout     # only these diagrams, by name
+```
+
+- **Input:** the `.diagrams/` tree at each ref, read with `git archive` (nothing is checked out), and every `*.diagram.{ts,json}` in it compiled in memory. Diagrams pair up by name.
+- **Output:** the change list on stdout (`+` added, `-` removed, `~` changed), or with `--json` one object `{ from, to, diagrams: [{ name, status, diff?, error? }] }`. When anything changed, it also writes to `.diagrams/diff/<from>..<to>/` (or `--out`): a page and a PNG per side of each changed diagram with the changes outlined, `index.html` with the two sides next to each other, and `summary.md` for an ADR. `--no-images` skips the PNGs; they also need Chrome, as `publish` does.
+- **What counts:** nodes by id (any field, plus a move to another container), relations by id or else by endpoints and kind, layers and planes by id. Layout positions are not compared.
+- **Exit code:** `0` whether or not anything changed; `1` for a ref that does not exist or a failure.
 
 ### `watch`
 
@@ -153,10 +168,10 @@ Like `studio`, `eject`'s post-swap recompile resolves remote includes locked, wi
 
 | Flag | Applies to | Default | Meaning |
 | --- | --- | --- | --- |
-| `--out <dir>` | `compile`, `watch`, `eject` | `.diagrams/.artifacts` | Where artifacts are written — for `eject`, the dir its post-swap recompile writes into. |
-| `--no-images` | `publish` | off | Skip PNG export; write HTML only. |
+| `--out <dir>` | `compile`, `watch`, `eject`, `diff` | `.diagrams/.artifacts` (`diff`: `.diagrams/diff/<from>..<to>`) | Where artifacts are written — for `eject`, the dir its post-swap recompile writes into; for `diff`, its pages and images. |
+| `--no-images` | `publish`, `diff` | off | Skip PNG export; write HTML only. |
 | `--link <url>` | `publish` | none | Link the index header to this `http(s)` address. |
-| `--json` | `lint` | off | Print the findings as one JSON array. |
+| `--json` | `lint`, `diff` | off | Print the findings (lint) or the changes (diff) as JSON. |
 | `--update-includes` | `compile`, `publish` | off | Refetch every remote `include`, vendor it under `.diagrams/includes/`, and rewrite `.diagrams/includes.lock.json`. On `compile`, pruning entries the run didn't touch only happens with no `files...` given (a full-tree run); `publish` always compiles the whole tree, so its prune is unconditional. |
 
 Anything not recognised as a flag is collected as `files...`.
@@ -203,6 +218,7 @@ Inside this monorepo:
 | `.diagrams/src/library.json` | the studio (your library entries) | yes |
 | `.diagrams/.artifacts/` | `compile` | no |
 | `.diagrams/html/` | `publish` | no |
+| `.diagrams/diff/` | `diff` | usually not — copy the PNGs you keep next to the ADR |
 | `.diagrams/static/*.png` | `publish` | yes — these are your doc images |
 | `.diagrams/includes/` | `compile --update-includes` | yes — vendored snapshots of remote includes |
 | `.diagrams/includes.lock.json` | `compile --update-includes` | yes — the hashes pinning them |

@@ -79,6 +79,8 @@ export interface RfEdgeInput {
   target: string;
   data: DiagramEdgeData;
   reconnectable?: boolean;
+  /** extra class on React Flow's edge wrapper (a diff mark) */
+  className?: string;
 }
 
 /** Build a React Flow edge, widening our typed data channel at the boundary. */
@@ -89,6 +91,7 @@ export function toRfEdge(input: RfEdgeInput): Edge {
     target: input.target,
     type: 'diagram',
     ...(input.reconnectable !== undefined ? { reconnectable: input.reconnectable } : {}),
+    ...(input.className !== undefined ? { className: input.className } : {}),
     data: input.data as unknown as Record<string, unknown>,
   };
 }

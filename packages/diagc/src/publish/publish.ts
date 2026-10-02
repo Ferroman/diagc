@@ -20,13 +20,47 @@ async function readMaybe(p: string): Promise<Buffer | undefined> {
   try { return await readFile(p); } catch { return undefined; }
 }
 
+/**
+ * The model with every image/shape ref it can read swapped for inline data, so
+ * the page stands alone. `cache` is shared across the diagrams of one run
+ * (refs are content hashes, so one read serves them all); `label` names the
+ * diagram in the warnings for refs it has to leave as they are.
+ */
+export async function inlineAssets(
+  model: DiagramModel,
+  dirs: { libraryDir: string; assetsDir: string },
+  cache: Map<string, Buffer>,
+  label: string,
+): Promise<DiagramModel> {
+  // Pre-read every inlinable ref so the rewrite can stay a pure sync function.
+  for (const n of model.nodes) {
+    for (const ref of [n.image, n.shape]) {
+      if (ref === undefined || cache.has(ref)) continue;
+      const kind = classifyAssetRef(ref);
+      if (kind === 'skip') continue;
+      const base = kind === 'library' ? dirs.libraryDir : dirs.assetsDir;
+      const rel = kind === 'library' ? ref.slice('/library/'.length)
+        : kind === 'api-assets' ? ref.slice('/api/assets/'.length)
+        : ref;
+      const filePath = safeAssetPath(base, rel);
+      if (filePath === undefined) {
+        console.warn(`publish: refusing out-of-root asset "${ref}" for ${label}; leaving ref as-is.`);
+        continue;
+      }
+      const bytes = await readMaybe(filePath);
+      if (bytes !== undefined) cache.set(ref, bytes);
+      else console.warn(`publish: could not read asset "${ref}" for ${label} (looked in ${filePath}); leaving ref as-is.`);
+    }
+  }
+  return rewriteAssetRefs(model, (ref) => cache.get(ref));
+}
+
 export async function publishDiagrams(opts: PublishOptions): Promise<PublishResult> {
   const shell = await readFile(opts.shellPath, 'utf8');
   await mkdir(opts.htmlDir, { recursive: true });
   if (opts.images) await mkdir(opts.staticDir, { recursive: true });
 
   const cache = new Map<string, Buffer>();
-  const resolveAsset = (ref: string): Buffer | undefined => cache.get(ref);
 
   let all = await discoverDiagrams(opts.artifactsDir, opts.srcDir);
   if (opts.names !== undefined && opts.names.length > 0) {
@@ -57,28 +91,7 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
         else console.warn(`publish: ignoring malformed drawings sidecar for diagram "${d.name}" (${d.drawingsPath}); the page ships without ink.`);
       }
 
-      // Pre-read every inlinable ref so the rewrite can stay a pure sync function.
-      for (const n of modelRaw.nodes) {
-        for (const ref of [n.image, n.shape]) {
-          if (ref === undefined || cache.has(ref)) continue;
-          const kind = classifyAssetRef(ref);
-          if (kind === 'skip') continue;
-          const base = kind === 'library' ? opts.libraryDir : opts.assetsDir;
-          const rel = kind === 'library' ? ref.slice('/library/'.length)
-            : kind === 'api-assets' ? ref.slice('/api/assets/'.length)
-            : ref;
-          const filePath = safeAssetPath(base, rel);
-          if (filePath === undefined) {
-            console.warn(`publish: refusing out-of-root asset "${ref}" for diagram "${d.name}"; leaving ref as-is.`);
-            continue;
-          }
-          const bytes = await readMaybe(filePath);
-          if (bytes !== undefined) cache.set(ref, bytes);
-          else console.warn(`publish: could not read asset "${ref}" for diagram "${d.name}" (looked in ${filePath}); leaving ref as-is.`);
-        }
-      }
-
-      const inlined = rewriteAssetRefs(modelRaw, resolveAsset);
+      const inlined = await inlineAssets(modelRaw, opts, cache, `diagram "${d.name}"`);
       const pagePath = path.join(opts.htmlDir, `${d.name}.html`);
       await mkdir(path.dirname(pagePath), { recursive: true });
       await writeFile(pagePath, stampHtml(shell, { model: inlined, layout, drawings }));

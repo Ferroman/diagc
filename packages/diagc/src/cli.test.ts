@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BadFlagValueError, HelpRequested, UnknownFlagError, parseArgs } from './cli';
+import { BadFlagValueError, HelpRequested, UnknownFlagError, diffOutDir, parseArgs, parseRange } from './cli';
 
 describe('parseArgs', () => {
   it('parses command, files and flags', () => {
@@ -8,6 +8,7 @@ describe('parseArgs', () => {
       command: 'compile',
       files: ['a.diagram.ts', 'b.diagram.ts'],
       out: 'dist',
+      outGiven: true,
       images: false,
       updateIncludes: false,
       json: false,
@@ -19,6 +20,7 @@ describe('parseArgs', () => {
       command: 'compile',
       files: [],
       out: '.diagrams/.artifacts',
+      outGiven: false,
       images: true,
       updateIncludes: false,
       json: false,
@@ -63,5 +65,24 @@ describe('parseArgs', () => {
     expect(() => parseArgs(['publish', '--link', 'javascript:alert(1)'])).toThrowError(BadFlagValueError);
     // the next flag is not a value: it must not be swallowed as one
     expect(() => parseArgs(['publish', '--link', '--no-images'])).toThrowError(BadFlagValueError);
+  });
+});
+
+describe('diff arguments', () => {
+  it('takes the range and the diagram names as files, and notes an explicit --out', () => {
+    expect(parseArgs(['diff', 'v1..v2', 'shop'])).toMatchObject({ command: 'diff', files: ['v1..v2', 'shop'], outGiven: false });
+    expect(parseArgs(['diff', 'v1', '--out', 'x'])).toMatchObject({ out: 'x', outGiven: true });
+  });
+
+  it('reads A..B as a range and a lone ref as against the working tree', () => {
+    expect(parseRange('v1.0..v2.0')).toEqual({ from: 'v1.0', to: 'v2.0' });
+    expect(parseRange('HEAD~3')).toEqual({ from: 'HEAD~3' });
+    expect(() => parseRange('v1..')).toThrow('is not a range');
+    expect(() => parseRange('v1...v2')).toThrow('is not a range');
+  });
+
+  it('names the output directory after the range', () => {
+    expect(diffOutDir('v1.0', 'feature/x')).toBe('.diagrams/diff/v1.0..feature-x');
+    expect(diffOutDir('HEAD~3', undefined)).toBe('.diagrams/diff/HEAD-3..working-tree');
   });
 });
