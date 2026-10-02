@@ -1,11 +1,14 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { guideTopics, renderGuide, type GuideContext } from './guide';
+import { BUILTIN_NOTATIONS } from '@diagc/core';
+import { ALL_TOPIC, guideTopics, renderGuide, type GuideContext } from './guide';
 import { cliVersion, findHome, homePaths } from './home';
 import { lintFile } from './lint';
+import { starterTypes } from './starters';
 
 // A test of the guide's TEXT — the files this checkout ships — where guide.test.ts
 // tests the renderer on fixtures. Like docsExamples.test.ts it only ever runs in a
@@ -35,14 +38,65 @@ describe('guide content', () => {
       const blocks = tsBlocks(renderGuide(page, ctx));
       expect(blocks.length).toBeGreaterThan(0);
       const dir = mkdtempSync(path.join(tmpdir(), 'diagc-guide-blocks-'));
-      for (const [i, src] of blocks.entries()) {
-        // A fragment cannot be checked, and an agent copies what it is shown.
-        expect(src, `block ${i + 1} is a fragment`).toContain('export default');
-        const file = path.join(dir, `block-${i + 1}.diagram.ts`);
-        writeFileSync(file, src);
-        expect(await lintFile(file, { coreEntry: home.coreEntry }), `block ${i + 1}`).toEqual([]);
+      try {
+        for (const [i, src] of blocks.entries()) {
+          // A fragment cannot be checked, and an agent copies what it is shown.
+          expect(src, `block ${i + 1} is a fragment`).toContain('export default');
+          const file = path.join(dir, `block-${i + 1}.diagram.ts`);
+          writeFileSync(file, src);
+          expect(await lintFile(file, { coreEntry: home.coreEntry }), `block ${i + 1}`).toEqual([]);
+        }
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
       }
     },
     60_000,
   );
+});
+
+describe('guide coverage', () => {
+  it('has a topic for every starter type but basic, and nothing else', () => {
+    // Derived from the files, not listed: a new diagram type that ships a starter
+    // without a topic (or the reverse) fails here. `basic` is the index's own.
+    const types = starterTypes(ctx.startersDir);
+    expect(guideTopics(ctx.guideDir)).toEqual(types.filter((t) => t !== 'basic'));
+  });
+
+  it('has a starter for every notation, for ER, for activity and for basic', () => {
+    const types = starterTypes(ctx.startersDir);
+    for (const id of [...BUILTIN_NOTATIONS, 'er', 'activity', 'basic']) expect(types, id).toContain(id);
+  });
+
+  it('keeps the names the renderer reserves free', () => {
+    expect(guideTopics(ctx.guideDir)).not.toContain(ALL_TOPIC);
+  });
+});
+
+describe('diagc guide, through the real CLI', () => {
+  // The development entry: tsx-registered, no build step. Run from a directory with
+  // no diagrams, because the guide must not need any.
+  const bin = path.join(home.root, 'bin', 'diagc.mjs');
+  const cwd = tmpdir();
+
+  it('prints the whole guide through a pipe, complete', () => {
+    const out = execFileSync(process.execPath, [bin, 'guide', ALL_TOPIC], { encoding: 'utf8', cwd });
+    expect(out).toBe(`${renderGuide(ALL_TOPIC, ctx)}\n`);
+  }, 30_000);
+
+  it('prints one topic', () => {
+    const out = execFileSync(process.execPath, [bin, 'guide', 'c4'], { encoding: 'utf8', cwd });
+    expect(out).toBe(`${renderGuide('c4', ctx)}\n`);
+  }, 30_000);
+
+  it('refuses an unknown topic on stderr with exit 1 and nothing on stdout', () => {
+    const r = spawnSync(process.execPath, [bin, 'guide', 'nope'], { encoding: 'utf8', cwd });
+    expect(r.status).toBe(1);
+    expect(r.stdout).toBe('');
+    expect(r.stderr).toContain("diagc: No guide topic 'nope'. Topics: all, activity, c4");
+  }, 30_000);
+
+  it('lists guide in --help', () => {
+    const out = execFileSync(process.execPath, [bin, '--help'], { encoding: 'utf8', cwd });
+    expect(out).toMatch(/^ {2}guide /m);
+  }, 30_000);
 });
