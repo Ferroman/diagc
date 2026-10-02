@@ -20,14 +20,14 @@ Commit `.diagrams/src/` and `.diagrams/static/`. `.diagrams/.artifacts/` and `.d
 
 - `model(id, { name })` starts a diagram, and `export default m` is what the compiler reads.
 - `m.node(id, { type, name })` declares a box and returns a handle. Keep the handle: `contains` and `relate` take handles, not ids.
-- `parent.contains(a, b)` nests. A box with children is a group. It rests folded and shows how many children it holds, and the arrows to its children are drawn to it as one bundled arrow until it is opened.
+- `parent.contains(a, b)` nests. A box with children is a group. It rests folded and shows how many boxes are hidden inside it. Arrows to anything inside it end on the group, merged into one arrow per box at the other end, until it is opened.
 - `m.relate(from, to, { kind, label })` draws an arrow. `kind` is required.
 
 More node options:
 
 | Option | Meaning |
 | --- | --- |
-| `technology` | Printed under the name as `[Type: technology]`. |
+| `technology` | Printed under the name, after the type: `service: Go`, or `[Container: Go]` on a C4 node. |
 | `color` | Accent colour, for example `'#1565c0'`. |
 | `description` | Shown in the detail panel only, never on the canvas. |
 | `metadata` | Free-form key and value data. |
@@ -84,7 +84,7 @@ export default m;
 - The first plane declared is the default. Containment without `{ plane }` belongs to it, not to every plane.
 - A node with no containment in a plane still appears there, as a loose box. Give a grouping node a `plane` so that it shows only where it groups.
 - `m.plane(id, { containmentOf: 'other' })` reuses another plane's grouping. `layers: ['data']` switches those layers on by default in that plane.
-- Layers never move boxes.
+- A layer on a relation never moves boxes. A node on a layer appears and disappears with its layer.
 
 ## Rules that catch people
 
