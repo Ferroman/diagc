@@ -28,7 +28,7 @@ Everything the CLI needs is in the package — the prebuilt studio, the viewer s
 From a checkout, `pnpm link --global` inside the repo gives you a `diagc` that runs the working tree instead. Both layouts are detected automatically; the differences are called out below where they matter.
 
 ```
-diagc <compile|lint|watch|publish|studio|eject|diff> [files...] [--out dir] [--no-images] [--link url]
+diagc <compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir] [--no-images] [--link url]
 ```
 
 An unknown command exits `1` with that usage line.
@@ -177,6 +177,20 @@ recovery is deleting one).
 
 Like `studio`, `eject`'s post-swap recompile resolves remote includes locked, with no
 `--update-includes` flag of its own.
+
+### `guide`
+
+Prints how to write a diagram, as Markdown on stdout — for a person, or for a coding agent that reads it before it writes one.
+
+```bash
+diagc guide            # the DSL, the vocabularies, the rules, and the list of topics
+diagc guide c4         # one diagram type: its conventions, its node types, its starter
+diagc guide all        # everything
+```
+
+- **Topics:** `activity`, `c4`, `causal-loop`, `deployment`, `er`, `fishbone`, `git-graph`, `plan`, `second-order`, `threat-model`.
+- **Matches the install.** The text ships in the package, the node types and relation kinds it lists are the ones [`lint`](#lint) checks against, and every listing in it is compiled by the test suite. It needs no network and no diagrams in the current directory.
+- **Exit code:** `0`; `1` for a topic that does not exist (the topics are listed on stderr) or for more than one.
 
 ## Flags
 

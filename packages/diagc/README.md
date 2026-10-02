@@ -38,6 +38,7 @@ diagc studio       # opens the editor, recompiling as you edit
 | `diagc watch` | The same, recompiling on change. |
 | `diagc studio` | Serve the visual editor against the current directory (default `http://127.0.0.1:5173`). Diagrams drawn here are saved back as `.diagram.json`. |
 | `diagc publish` | Write self-contained HTML pages to `.diagrams/html/` and PNGs to `.diagrams/static/`. |
+| `diagc guide` | Print how to write a diagram: the DSL, then one topic per diagram type (`diagc guide c4`). Written for a coding agent as much as for a person. |
 
 Flags: `--out <dir>` (artifact directory), `--no-images` (publish HTML only), `--link <url>` (link the published index to an address), `--help`.
 
