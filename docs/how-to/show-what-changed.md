@@ -56,11 +56,59 @@ Relations are coloured the same way. A relation whose endpoints or kind changed 
 
 PNGs need Chrome, as for `publish`; without it, or with `--no-images`, you get the HTML pages and a summary that links to them.
 
+## Show it on every pull request
+
+A pull request that touches a diagram can get a comment with the change list and both pictures, kept up to date on every push. Add `.github/workflows/diagram-diff.yml`:
+
+```yaml
+name: Diagram diff
+on:
+  pull_request:
+permissions:
+  contents: write      # the pictures are pushed to a branch, so the comment can show them
+  pull-requests: write # the comment
+concurrency:
+  group: diagram-diff-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2   # the PR's merge commit and the base it merges into
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: Ferroman/diagc/actions/pr-diagram-diff@main
+```
+
+What it does on each push:
+
+1. Runs `diagc diff` between the base branch and the PR's merge commit: exactly what merging would change.
+2. Pushes the PNGs to the `diagc-diff-assets` branch, under `pr-<number>/`. A comment can only show an image that has a URL, and a branch in the same repository keeps them as private as the code.
+3. Writes one comment, and edits it on later pushes. If a push takes the diagram change back out, the comment says there are no changes any more.
+
+The interactive pages are attached to the run as the `diagram-diff` artifact.
+
+| Input | Default | |
+| --- | --- | --- |
+| `diagc` | `npx --yes @diagc/cli@latest` | how to run the CLI; pin a version here |
+| `assets-branch` | `diagc-diff-assets` | where the pictures go |
+| `working-directory` | `.` | the directory holding `.diagrams/` |
+| `token` | `github.token` | needs the two permissions above |
+
+Two limits:
+
+- **Pull requests from forks are skipped.** GitHub gives a fork's workflow a read-only token, so it can neither push the pictures nor comment.
+- **Do not add a `paths:` filter** to the workflow. A push that removes the PR's diagram change would not run, and the comment would keep showing it. Without diagram changes and without an earlier comment, the action does nothing.
+
 ## Gotchas
 
 - **Each version is compiled as it was.** A diagram that did not compile at one of the refs is reported (`!`) and not compared.
 - **Only `.diagrams/` is read at each ref.** A local `include` that points outside `.diagrams/` cannot be resolved at an old ref.
 - **Nodes match by id.** Renaming a node's *name* is a change; changing its *id* reads as one node removed and another added.
 - **Add `.diagrams/diff/` to `.gitignore`** unless you mean to commit the output.
+- **The assets branch only grows.** Each PR's folder is replaced on every push, but a closed PR's folder stays. Delete the branch now and then; it is recreated on the next run.
 
 See the [`diff` reference](../reference/cli.md#diff) for every option.

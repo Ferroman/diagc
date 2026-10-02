@@ -72,6 +72,7 @@ diagc diff v1.0..v2.0 checkout     # only these diagrams, by name
 
 - **Input:** the `.diagrams/` tree at each ref, read with `git archive` (nothing is checked out), and every `*.diagram.{ts,json}` in it compiled in memory. Diagrams pair up by name.
 - **Output:** the change list on stdout (`+` added, `-` removed, `~` changed), or with `--json` one object `{ from, to, diagrams: [{ name, status, diff?, error? }] }`. When anything changed, it also writes to `.diagrams/diff/<from>..<to>/` (or `--out`): a page and a PNG per side of each changed diagram with the changes outlined, `index.html` with the two sides next to each other, and `summary.md` for an ADR. `--no-images` skips the PNGs; they also need Chrome, as `publish` does.
+- **For a comment elsewhere:** `--labels main,#12` names the two sides in place of the refs, and `--image-url 'https://host/pr-12/{path}'` makes `summary.md` link its images there (`{path}` is each PNG's path under the output directory). The [pull-request action](../how-to/show-what-changed.md#show-it-on-every-pull-request) uses both.
 - **What counts:** nodes by id (any field, plus a move to another container), relations by id or else by endpoints and kind, layers and planes by id. Layout positions are not compared.
 - **Exit code:** `0` whether or not anything changed; `1` for a ref that does not exist or a failure.
 
@@ -171,6 +172,8 @@ Like `studio`, `eject`'s post-swap recompile resolves remote includes locked, wi
 | `--out <dir>` | `compile`, `watch`, `eject`, `diff` | `.diagrams/.artifacts` (`diff`: `.diagrams/diff/<from>..<to>`) | Where artifacts are written — for `eject`, the dir its post-swap recompile writes into; for `diff`, its pages and images. |
 | `--no-images` | `publish`, `diff` | off | Skip PNG export; write HTML only. |
 | `--link <url>` | `publish` | none | Link the index header to this `http(s)` address. |
+| `--labels <a,b>` | `diff` | the refs | Names for the before and after sides. |
+| `--image-url <template>` | `diff` | relative | `summary.md`'s image links; `{path}` stands for each PNG's path. |
 | `--json` | `lint`, `diff` | off | Print the findings (lint) or the changes (diff) as JSON. |
 | `--update-includes` | `compile`, `publish` | off | Refetch every remote `include`, vendor it under `.diagrams/includes/`, and rewrite `.diagrams/includes.lock.json`. On `compile`, pruning entries the run didn't touch only happens with no `files...` given (a full-tree run); `publish` always compiles the whole tree, so its prune is unconditional. |
 
