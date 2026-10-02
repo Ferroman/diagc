@@ -3,7 +3,7 @@ import { realpathSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { findHome, homePaths, resolveCoreEntry } from './home';
+import { cliVersion, findHome, homePaths, resolveCoreEntry } from './home';
 
 let tmp: string;
 beforeEach(async () => { tmp = realpathSync(await mkdtemp(path.join(os.tmpdir(), 'diagc-home-'))); });
@@ -82,6 +82,20 @@ describe('homePaths', () => {
     });
     expect(p.coreEntry).toBe(path.join('/repo', 'packages', 'core', 'src', 'index.ts'));
   });
+
+  it('finds the guide and the starters in a checkout', () => {
+    const p = homePaths({ root: '/repo', layout: 'monorepo' });
+    expect(p.guideDir).toBe(path.join('/repo', 'packages', 'diagc', 'guide'));
+    // The starters are the examples' own files: the gallery and the how-tos
+    // already read them there.
+    expect(p.startersDir).toBe(path.join('/repo', '.diagrams', 'src', 'examples'));
+  });
+
+  it('finds the guide and the starters in a packaged install', () => {
+    const p = homePaths({ root: '/pkg', layout: 'packaged' }, () => '/pkg/node_modules/@diagc/core/dist/index.js');
+    expect(p.guideDir).toBe(path.join('/pkg', 'assets', 'guide'));
+    expect(p.startersDir).toBe(path.join('/pkg', 'assets', 'starters'));
+  });
 });
 
 describe('resolveCoreEntry', () => {
@@ -95,5 +109,17 @@ describe('resolveCoreEntry', () => {
         throw new Error("Cannot find module '@diagc/core'");
       }),
     ).toThrow(/reinstall it/);
+  });
+});
+
+describe('cliVersion', () => {
+  it("reads the version from the home's manifest", async () => {
+    await writeFile(path.join(tmp, 'package.json'), '{"name":"@diagc/cli","version":"1.2.3"}');
+    expect(cliVersion(tmp)).toBe('1.2.3');
+  });
+
+  it('explains a manifest without a version', async () => {
+    await writeFile(path.join(tmp, 'package.json'), '{"name":"@diagc/cli"}');
+    expect(() => cliVersion(tmp)).toThrow(/reinstall diagc/);
   });
 });

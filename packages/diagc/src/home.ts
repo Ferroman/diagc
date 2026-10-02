@@ -1,4 +1,4 @@
-import { existsSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
@@ -22,6 +22,10 @@ export interface HomePaths {
   coreEntry: string;
   /** monorepo: the studio's Vite root; packaged: the prebuilt studio bundle */
   studioDir: string;
+  /** the authoring guide `diagc guide` prints: `index.md` plus one file per topic */
+  guideDir: string;
+  /** `<type>/starter.diagram.ts`, one folder per diagram type */
+  startersDir: string;
 }
 
 export interface Home {
@@ -95,6 +99,8 @@ export function homePaths(home: Home, coreEntry = resolveCoreEntry): HomePaths {
       libraryDir: path.join(studioDir, 'library'),
       coreEntry: coreEntry(),
       studioDir,
+      guideDir: path.join(root, 'assets', 'guide'),
+      startersDir: path.join(root, 'assets', 'starters'),
     };
   }
   return {
@@ -104,5 +110,22 @@ export function homePaths(home: Home, coreEntry = resolveCoreEntry): HomePaths {
     libraryDir: path.join(root, 'apps', 'studio', 'public', 'library'),
     coreEntry: path.join(root, 'packages', 'core', 'src', 'index.ts'),
     studioDir: path.join(root, 'apps', 'studio'),
+    guideDir: path.join(root, 'packages', 'diagc', 'guide'),
+    // A checkout reads the starters where the examples keep them; `stage-assets`
+    // copies only the starter files out, into the same `<type>/` shape.
+    startersDir: path.join(root, '.diagrams', 'src', 'examples'),
   };
+}
+
+/** The release this CLI is, read from the home's own `package.json`. release-please
+ * keeps the workspace root and the published manifest on one number, so the same
+ * read is right in both layouts. Not a `HomePaths` field: `homePaths` touches no
+ * file, and only the commands that print a version should pay for the read. */
+export function cliVersion(root: string): string {
+  const manifest = path.join(root, 'package.json');
+  const version = (JSON.parse(readFileSync(manifest, 'utf8')) as { version?: unknown }).version;
+  if (typeof version !== 'string' || version === '') {
+    throw new Error(`no version in ${manifest} — reinstall diagc.`);
+  }
+  return version;
 }
