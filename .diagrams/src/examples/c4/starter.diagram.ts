@@ -9,13 +9,11 @@ const employee = m.node('employee', { type: 'c4-person', name: 'Employee' });
 const claims = m.node('claims', { type: 'c4-system', name: 'Expense Claims' });
 
 const web = m.node('web', { type: 'c4-container-web', name: 'Web Application', technology: 'TypeScript, Next.js' });
-const api = m.node('api', { type: 'c4-container', name: 'Claims API', technology: 'Go 1.25' });
-const db = m.node('db', { type: 'c4-container-db', name: 'Claims Database', technology: 'PostgreSQL 17' });
+const db = m.node('db', { type: 'c4-container-db', name: 'Claims Database', technology: 'PostgreSQL 16' });
 
-claims.contains(web, api, db);
+claims.contains(web, db);
 
 m.relate(employee, web, { kind: 'sync', label: 'Submits claims [HTTPS]' });
-m.relate(web, api, { kind: 'sync', label: 'Calls [JSON/HTTPS]' });
-m.relate(api, db, { kind: 'reads', label: 'Stores claims [SQL/TCP]' });
+m.relate(web, db, { kind: 'reads', label: 'Stores claims [SQL/TCP]' });
 
 export default m;
