@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/Ferroman/diagc/compare/v0.11.0...v0.12.0) (2026-10-02)
+
+
+### Features
+
+* **diagc:** init command ([#56](https://github.com/Ferroman/diagc/issues/56)) ([c4f8c92](https://github.com/Ferroman/diagc/commit/c4f8c9273fc5e63a6e24bbd206e8c14135ac02ae))
+
 ## [0.11.0](https://github.com/Ferroman/diagc/compare/v0.10.0...v0.11.0) (2026-10-02)
 
 
