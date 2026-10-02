@@ -11,7 +11,7 @@ You do not need [Tutorial 1](01-your-first-diagram.md) first, but it helps — t
 ## Before you start
 
 - `diagc` installed — see [Tutorial 1 → Before you start](01-your-first-diagram.md#before-you-start). Nothing else: the studio works in any folder, empty or not, and creates `.diagrams/src/` when it is missing.
-- The studio running in that folder: `diagc studio`. It starts the compile watcher *and* the editor, which is what you want while drawing, and opens your browser (<http://127.0.0.1:5173> if it does not).
+- The studio running in that folder: `diagc studio`. It starts the compile watcher *and* the editor, which is what you want while drawing, and opens your browser (if it does not, open the address the terminal prints — normally <http://127.0.0.1:5173>).
 
 ---
 
@@ -21,7 +21,7 @@ Click **＋** (New diagram) beside the diagram picker in the top bar, name it `p
 
 The studio creates `.diagrams/src/payments.diagram.json` and opens it in edit mode. A tool row appears under the top bar: Done, Select / Pen / Eraser, Undo, Redo, Save.
 
-> **Why a new one?** Only `.diagram.json` files are editable in the browser. Diagrams compiled from `.diagram.ts` open with a **read-only** chip — the studio will not fight your TypeScript. A diagram made by `diagc init`, or any `.diagram.ts` you wrote, opens read-only.
+> **Why a new one?** Only `.diagram.json` files are editable in the browser. Diagrams compiled from `.diagram.ts` open with a **read-only** chip — the studio will not fight your TypeScript. A diagram made by `diagc init` is one of these.
 
 ## Step 2 — Place an icon
 
