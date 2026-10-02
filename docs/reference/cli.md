@@ -46,7 +46,7 @@ diagc compile .diagrams/src/acme.diagram.ts
 
 - **Input:** `files...` if given, otherwise everything matching `.diagrams/src/**/*.diagram.{ts,json}`.
 - **Output:** one `<name>.diagram.json` per source under `--out`. Subdirectories of `.diagrams/src/` are mirrored, so `src/team-a/app.diagram.ts` becomes `.artifacts/team-a/app.diagram.json`.
-- **Exit code:** `0` if every file compiled, `1` if any failed. Failures print `✗ <file>` and the error; other files still compile.
+- **Exit code:** `0` if every file compiled, `1` if any failed. Failures print `✗ <file>` and the error; other files still compile. A source that throws while it runs — a misspelled method, a builder call that refuses — is placed at `<file>:<line>:<column>`, the first stack frame inside that file.
 
 A remote (`https://…`) `include` resolves from a vendored snapshot, not a live fetch — **locked mode**, the default `compile` (and `watch`/`publish`/`studio`/`eject`) runs in. It reads `.diagrams/includes/<file>` and checks its hash against `.diagrams/includes.lock.json`; an include missing from the lock, or whose vendored file is gone or no longer matches its recorded hash, fails the compile naming the remedy:
 
@@ -70,7 +70,7 @@ diagc lint .diagrams/src/acme.diagram.ts --json
 ```
 
 - **Input:** as `compile`. Nothing is written.
-- **Output:** one line per finding, `<file>: <severity> <code>: <message>`, or with `--json` one array of `{ file, severity, code, message, ref? }`. A source that does not compile reports its validation errors (severity `error`); one that does reports its warnings (severity `warning`): the [lint codes](model.md#lint-codes) plus the notation warnings `compile` prints.
+- **Output:** one line per finding, `<file>: <severity> <code>: <message>`, or with `--json` one array of `{ file, severity, code, message, ref?, line?, column? }`. A source that does not compile reports its validation errors (severity `error`); one that does reports its warnings (severity `warning`): the [lint codes](model.md#lint-codes) plus the notation warnings `compile` prints. A source that throws while it runs is one `load` finding; when the stack places it, the text form reads `<file>:<line>:<column>: error load: <message>` and the JSON form carries `line` and `column`.
 - **Exit code:** `0` when there are no findings, `1` otherwise — so a script or an agent can loop until it is clean.
 
 ### `diff`

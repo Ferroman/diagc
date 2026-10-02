@@ -6,6 +6,7 @@ import {
   composeIncludes,
   DiagramValidationError,
   diagramWarnings,
+  errMessage,
   validate,
   type DiagramModel,
   type IncludeResolver,
@@ -30,6 +31,44 @@ function assertDiagramShape(model: unknown, file: string): asserts model is Diag
 }
 
 /**
+ * A source that threw while running — a misspelled method, a builder call that
+ * refused — placed at the first stack frame inside that file. V8 writes the file
+ * into every frame and jiti keeps the author's lines, so no source map is needed;
+ * taking the first frame *in the user's file* also puts a refusal the builder
+ * throws at the call that caused it. A transform error has no such frame: then
+ * there is no position and the message is left as it was.
+ */
+export class LoadError extends Error {
+  readonly line: number | undefined;
+  readonly column: number | undefined;
+  constructor(
+    readonly file: string,
+    readonly reason: string,
+    position?: { line: number; column: number },
+  ) {
+    super(position !== undefined ? `${file}:${position.line}:${position.column}: ${reason}` : reason);
+    this.name = 'LoadError';
+    this.line = position?.line;
+    this.column = position?.column;
+  }
+}
+
+/** The line and column of the first `at` frame inside `file`. Matched on the
+ * basename after a path separator: a frame spells the path as it was imported,
+ * which a symlinked temp dir would not equal; the message line is skipped because
+ * a transform error quotes `file:line:col` there and that is not a frame. */
+export function positionIn(stack: string | undefined, file: string): { line: number; column: number } | undefined {
+  const base = path.basename(file).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const frame = new RegExp(`[\\\\/]${base}:(\\d+):(\\d+)`);
+  for (const line of (stack ?? '').split('\n')) {
+    if (!line.trimStart().startsWith('at ')) continue;
+    const m = frame.exec(line);
+    if (m !== null) return { line: Number(m[1]), column: Number(m[2]) };
+  }
+  return undefined;
+}
+
+/**
  * Execute a `.diagram.ts` through jiti (core pinned to `coreEntry`) and return
  * its model — shape-guarded but not validated; callers own validation.
  */
@@ -44,7 +83,15 @@ export async function executeDiagramTs(file: string, coreEntry?: string): Promis
     moduleCache: false,
     alias: { '@diagc/core': resolvedCoreEntry },
   });
-  const def = await jiti.import<unknown>(path.resolve(file), { default: true });
+  let def: unknown;
+  try {
+    def = await jiti.import<unknown>(path.resolve(file), { default: true });
+  } catch (e) {
+    // A validation error thrown inside the module keeps its shape: lint reads its
+    // `issues` by name. Everything else is the source failing to run.
+    if (e instanceof Error && e.name === 'DiagramValidationError') throw e;
+    throw new LoadError(file, errMessage(e), positionIn(e instanceof Error ? e.stack : undefined, file));
+  }
 
   const hasToJSON = typeof (def as { toJSON?: unknown } | null)?.toJSON === 'function';
   const model = (hasToJSON ? (def as { toJSON(): DiagramModel }).toJSON() : def) as DiagramModel;
