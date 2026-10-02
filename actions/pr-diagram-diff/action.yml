@@ -8,6 +8,10 @@
 # The job needs `contents: write` (the pictures are pushed to `assets-branch`, since a
 # comment can only show images that live at a URL) and `pull-requests: write`.
 # Pull requests from forks are skipped: their token can do neither.
+#
+# Do not put a `paths:` filter on the workflow: a push that takes a PR's diagram change
+# back out would not run, and the comment would keep showing it. Unchanged, the action
+# only edits an earlier comment to say so.
 name: diagc diagram diff
 description: Comment on a pull request with before/after pictures of the diagrams it changed.
 inputs:
