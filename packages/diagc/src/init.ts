@@ -41,7 +41,8 @@ const COL = 38;
 const done = (left: string, right: string): string => `✓ ${left.padEnd(COL)}${right}`;
 const skipped = (left: string, right: string): string => `· ${left.padEnd(COL)}${right}`;
 
-/** A refusal: one line on stderr and exit 1, with the tree untouched. */
+/** A one-line failure on stderr with exit 1. A refusal leaves the tree untouched;
+ * a compile failure comes after the writes, so the starter and `.gitignore` stay. */
 export class InitError extends Error {
   constructor(message: string) {
     super(message);
@@ -78,14 +79,11 @@ async function starterStep(opts: InitOptions, io: InitIo): Promise<string | unde
     }
   }
   const name = diagramName(opts.name ?? DEFAULT_NAME);
-  if (!isSafeName(name)) {
+  if (!isSafeName(name) || name.endsWith('/')) {
     throw new InitError(`'${name}' is not a diagram name — use lowercase letters, digits and '-', with '/' for a folder (shop, team/app).`);
   }
-  for (const ext of ['ts', 'json']) {
-    if (existsSync(path.join(srcDir, `${name}.diagram.${ext}`))) {
-      throw new InitError(`${SRC_DIR}/${name}.diagram.${ext} already exists — pick another name, or run 'diagc init' with no name to leave it alone.`);
-    }
-  }
+  // The type is checked before the name clash: a wrong `--type` is the more useful
+  // thing to hear, and it too is checked before anything is written.
   const type = opts.type ?? DEFAULT_TYPE;
   let source: string;
   try {
@@ -98,6 +96,11 @@ async function starterStep(opts: InitOptions, io: InitIo): Promise<string | unde
         ? `starter files missing from this install (${opts.startersDir}) — reinstall diagc.`
         : `${e.message} — e.g. diagc init ${name} --type ${e.types[0]}`,
     );
+  }
+  for (const ext of ['ts', 'json']) {
+    if (existsSync(path.join(srcDir, `${name}.diagram.${ext}`))) {
+      throw new InitError(`${SRC_DIR}/${name}.diagram.${ext} already exists — pick another name, or run 'diagc init' with no name to leave it alone.`);
+    }
   }
   const file = path.join(srcDir, `${name}.diagram.ts`);
   await mkdir(path.dirname(file), { recursive: true });
@@ -133,7 +136,7 @@ async function compileStep(file: string, opts: InitOptions, io: InitIo): Promise
       ...(opts.resolver !== undefined ? { resolver: opts.resolver } : {}),
     });
   } catch (e) {
-    throw new InitError(`the starter did not compile — ${errMessage(e)}`);
+    throw new InitError(`compile failed — ${errMessage(e)}`);
   }
   io.out(done('compiled', `-> ${path.relative(opts.cwd, artifact).split(path.sep).join('/')}`));
 }

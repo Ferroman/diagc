@@ -70,6 +70,8 @@ describe('runInit, fresh', () => {
   it('reads shop.diagram.ts and .diagrams/src/shop as shop', async () => {
     expect(await runInit(opts({ name: '.diagrams/src/shop.diagram.ts' }), io)).toBe(0);
     expect(has('.diagrams/src/shop.diagram.ts')).toBe(true);
+    expect(await runInit(opts({ name: '.diagrams/src/shop2' }), io)).toBe(0);
+    expect(has('.diagrams/src/shop2.diagram.ts')).toBe(true);
   });
 
   it('suggests the editor types only where there is a package.json, with this version', async () => {
@@ -111,6 +113,28 @@ describe('runInit refuses, and writes nothing', () => {
     expect(has('.gitignore')).toBe(false);
   });
 
+  it('a name that exists as TypeScript', async () => {
+    mkdirSync(path.join(cwd, '.diagrams', 'src'), { recursive: true });
+    writeFileSync(path.join(cwd, '.diagrams', 'src', 'shop.diagram.ts'), 'export default 1;');
+    const before = tree();
+    expect(await runInit(opts({ name: 'shop' }), io)).toBe(1);
+    expect(err[0]).toContain('shop.diagram.ts already exists');
+    expect(tree()).toEqual(before);
+  });
+
+  it('a trailing slash', async () => {
+    expect(await runInit(opts({ name: 'shop/' }), io)).toBe(1);
+    expect(err[0]).toMatch(/is not a diagram name/);
+    expect(tree()).toEqual([]);
+  });
+
+  it('an unknown type even when the default name is taken', async () => {
+    await runInit(opts(), io);
+    err = [];
+    expect(await runInit(opts({ type: 'c5' }), io)).toBe(1);
+    expect(err[0]).toMatch(/No starter 'c5'/);
+  });
+
   it('an unknown type, naming the real ones', async () => {
     expect(await runInit(opts({ type: 'c5' }), io)).toBe(1);
     expect(err[0]).toMatch(/^diagc: No starter 'c5'\. Types: activity, basic, c4, .* — e\.g\. diagc init example --type activity$/);
@@ -150,5 +174,16 @@ describe('diagramName', () => {
     expect(diagramName('shop')).toBe('shop');
     expect(diagramName('shop.diagram.ts')).toBe('shop');
     expect(diagramName('.diagrams/src/team/app.diagram.json')).toBe('team/app');
+  });
+});
+
+describe('runInit, compile failure', () => {
+  it('reports compile failed and leaves the written starter', async () => {
+    const startersDir = path.join(cwd, 'starters');
+    mkdirSync(path.join(startersDir, 'bad'), { recursive: true });
+    writeFileSync(path.join(startersDir, 'bad', 'starter.diagram.ts'), 'throw new Error("boom");\n');
+    expect(await runInit(opts({ startersDir, type: 'bad' }), io)).toBe(1);
+    expect(err[0]).toMatch(/compile failed/);
+    expect(has('.diagrams/src/example.diagram.ts')).toBe(true);
   });
 });
