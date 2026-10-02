@@ -9,7 +9,9 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         { "type": "json", "path": "packages/core/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/diagc/package.json", "jsonpath": "$.version" }
+        { "type": "json", "path": "packages/diagc/package.json", "jsonpath": "$.version" },
+        { "type": "generic", "path": "docs/how-to/show-what-changed.md" },
+        { "type": "generic", "path": "actions/pr-diagram-diff/action.yml" }
       ]
     }
   }
