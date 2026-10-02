@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -69,6 +69,16 @@ describe('guide coverage', () => {
 
   it('keeps the names the renderer reserves free', () => {
     expect(guideTopics(ctx.guideDir)).not.toContain(ALL_TOPIC);
+  });
+
+  it('lists in docs/reference/cli.md the topics the package ships', () => {
+    // That list is typed by hand; this is what makes a new topic page fail until
+    // the reference names it.
+    const cli = readFileSync(path.join(home.root, 'docs', 'reference', 'cli.md'), 'utf8');
+    const line = cli.split('\n').find((l) => l.startsWith('- **Topics:**'));
+    expect(line, 'a "**Topics:**" bullet in the guide section').toBeDefined();
+    const listed = [...line!.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+    expect(listed).toEqual(guideTopics(ctx.guideDir));
   });
 });
 
