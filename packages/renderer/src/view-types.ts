@@ -1,7 +1,7 @@
 /** The DiagramView public surface: props, the edit-callback contract, and the
  * imperative layout API. Pure declarations — no runtime logic lives here. */
 
-import type { Column, DiagramModel, Drawings, EdgeLabelSide, LayoutOverlay, NotationId, PlanRole, Stroke, TextRun, ThreatStatus, ThreatTarget } from '@diagc/core';
+import type { Column, DiagramModel, DiffMarks, Drawings, EdgeLabelSide, LayoutOverlay, NotationId, PlanRole, Stroke, TextRun, ThreatStatus, ThreatTarget } from '@diagc/core';
 import type { IconRegistry } from '@diagc/icons';
 import type { MutableRefObject } from 'react';
 import type { AlignMode } from './arrange';
@@ -176,6 +176,9 @@ export interface DiagramViewProps {
   /** host-driven highlight (e.g. a leverage-panel selection): glow these nodes
    * and view-edges, dim the rest. Takes precedence over the loop-badge highlight. */
   externalHighlight?: { nodes: readonly string[]; edges: readonly string[] } | null;
+  /** a diff picture: outline these nodes and relations by how they changed
+   * (core's diffMarks), and a folded box that holds a change as `inside` */
+  diffMarks?: DiffMarks;
   /** host notification: the drill trail changed (root→current; `[]` at the
    *  bird's-eye). Lets the host parent new nodes to the level being edited. */
   onEnteredPathChange?: (path: string[]) => void;

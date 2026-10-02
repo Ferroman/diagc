@@ -69,6 +69,7 @@ export { errMessage, SOURCE_URL } from './util';
 export { allowedParentTypes, childrenOf, countAnchored } from './children';
 export { bestLaneOrder } from './lanes';
 export { lintModel, type LintCode, type LintFinding } from './lint';
+export { diffMarks, diffModels, isEmptyDiff, type DiffMarks, type DiffStatus, type ModelDiff, type NodeChange, type RelationChange } from './diff';
 export { NODE_TYPES, NOTATION_NODE_TYPES, NOTATION_RELATION_KINDS, RELATION_KINDS } from './vocabulary';
 export { visibleColumns, withHiddenColumns } from './columns';
 export { activeNotation, compileView, presetLayers, resolveContainmentPlane } from './view/compile';

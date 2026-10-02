@@ -55,6 +55,10 @@ describe('Viewer', () => {
     expect(await screen.findByText('Alpha')).toBeDefined();
     expect(screen.getByText('Beta')).toBeDefined();
   });
+  it("outlines a diff side's marked nodes", async () => {
+    const { container } = render(<Viewer data={{ model: onePlane(), diff: { marks: { nodes: { a: 'added' }, relations: {} } } }} />);
+    await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="a"]')?.classList.contains('dg-diff-added')).toBe(true));
+  });
   it('shows a fallback when there is no diagram', () => {
     render(<Viewer data={null} />);
     expect(screen.getByText(/no diagram/i)).toBeDefined();

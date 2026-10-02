@@ -6,6 +6,7 @@ import {
   presetLayers,
   type DiagramModel,
   type DiagramPlane,
+  type DiffMarks,
   type Drawings,
   type LayoutOverlay,
 } from '@diagc/core';
@@ -30,6 +31,8 @@ export interface ViewerData {
   model: DiagramModel;
   layout?: LayoutOverlay;
   drawings?: Drawings;
+  /** a `diagc diff` side: outline what changed against the other version */
+  diff?: { marks: DiffMarks };
 }
 
 interface ExportWindow {
@@ -359,7 +362,7 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
   if (model === undefined) {
     return <div style={{ padding: 24 }}>No diagram to display.</div>;
   }
-  const { layout, drawings } = data as ViewerData;
+  const { layout, drawings, diff } = data as ViewerData;
   const styleId = model.style !== undefined && isKnownStyle(model.style) ? model.style : 'clean';
   const toggleExpand = (id: string, next: 'expanded' | 'collapsed') => setPins((p) => ({ ...p, [id]: next }));
   // A plane change re-seeds the layer switch from the new plane's presets, so the
@@ -404,6 +407,7 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
       {...(notation !== undefined ? { notation } : {})}
       {...(layout !== undefined ? { layout } : {})}
       {...(drawings !== undefined ? { drawings } : {})}
+      {...(diff !== undefined ? { diffMarks: diff.marks } : {})}
       // the page shows where today is; a PNG must not bake in a line that is
       // wrong tomorrow, so the export render passes none
       today={expandAll ? null : todayIso()}

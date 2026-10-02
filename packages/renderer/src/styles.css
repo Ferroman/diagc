@@ -1213,3 +1213,50 @@ button.dg-role-chip { font: inherit; margin: 0; cursor: pointer; appearance: non
   border-radius: 3px 0 4px 0;
   background: color-mix(in srgb, currentColor 12%, transparent);
 }
+
+/* Diff pictures (DiagramViewProps.diffMarks): the mark sits on React Flow's
+   wrapper, so it outlines every node shape alike. Removed boxes also fade, so the
+   before picture reads as "this went". !important on edges: a kind's colour is an
+   inline style on the path. */
+.dg-canvas {
+  --dg-diff-added: #16a34a;
+  --dg-diff-removed: #dc2626;
+  --dg-diff-changed: #d97706;
+}
+.react-flow__node.dg-diff-added,
+.react-flow__node.dg-diff-removed,
+.react-flow__node.dg-diff-changed,
+.react-flow__node.dg-diff-inside {
+  outline: 3px solid var(--dg-diff-changed);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.react-flow__node.dg-diff-added {
+  outline-color: var(--dg-diff-added);
+}
+.react-flow__node.dg-diff-removed {
+  outline-color: var(--dg-diff-removed);
+  outline-style: dashed;
+}
+.react-flow__node.dg-diff-removed > * {
+  opacity: 0.55;
+}
+.react-flow__node.dg-diff-inside {
+  outline-width: 2px;
+  outline-style: dashed;
+}
+.react-flow__edge.dg-diff-added .react-flow__edge-path,
+.react-flow__edge.dg-diff-removed .react-flow__edge-path,
+.react-flow__edge.dg-diff-changed .react-flow__edge-path {
+  stroke-width: 3px !important;
+}
+.react-flow__edge.dg-diff-added .react-flow__edge-path {
+  stroke: var(--dg-diff-added) !important;
+}
+.react-flow__edge.dg-diff-removed .react-flow__edge-path {
+  stroke: var(--dg-diff-removed) !important;
+  stroke-dasharray: 8 5 !important;
+}
+.react-flow__edge.dg-diff-changed .react-flow__edge-path {
+  stroke: var(--dg-diff-changed) !important;
+}
