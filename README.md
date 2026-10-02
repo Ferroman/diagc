@@ -97,6 +97,7 @@ Organised along [Diátaxis](https://diataxis.fr/) lines — learning, tasks, loo
 | [Place boxes on a generated diagram](docs/how-to/position-a-generated-diagram.md) | Position a read-only `.diagram.ts` view without losing it on re-compile. |
 | [Change keyboard shortcuts](docs/how-to/change-keyboard-shortcuts.md) | Give any studio action its own key, a second key, or none. |
 | [Set up `diagc` in another repo](docs/how-to/set-up-in-another-repo.md) | Use the CLI anywhere on your machine. |
+| [Write diagrams with a coding agent](docs/how-to/write-diagrams-with-a-coding-agent.md) | `diagc init --agents`, `diagc guide`, the lint loop, and a picture the agent can check. |
 | [Use the Obsidian plugin](docs/how-to/obsidian-plugin.md) | Studio pane, diagram embeds and node-to-note links in a vault. |
 
 ### Reference — look it up
