@@ -47,6 +47,19 @@ diagc compile --update-includes   # fetch every remote include, vendor it, rewri
 
 Pruning entries the run no longer touched only happens on a full-tree run — pass no `files...` alongside `--update-includes`, or nothing is pruned. Local file includes are never vendored; they resolve straight off disk on every compile. See [Compose diagrams § Snapshots](../how-to/compose-diagrams.md#snapshots).
 
+### `lint`
+
+Reports what compiles but is probably a mistake — the slips a generated diagram makes and nothing else catches, because each one still draws.
+
+```bash
+diagc lint
+diagc lint .diagrams/src/acme.diagram.ts --json
+```
+
+- **Input:** as `compile`. Nothing is written.
+- **Output:** one line per finding, `<file>: <severity> <code>: <message>`, or with `--json` one array of `{ file, severity, code, message, ref? }`. A source that does not compile reports its validation errors (severity `error`); one that does reports its warnings (severity `warning`): the [lint codes](model.md#lint-codes) plus the notation warnings `compile` prints.
+- **Exit code:** `0` when there are no findings, `1` otherwise — so a script or an agent can loop until it is clean.
+
 ### `watch`
 
 Recompiles on change until interrupted.
@@ -143,6 +156,7 @@ Like `studio`, `eject`'s post-swap recompile resolves remote includes locked, wi
 | `--out <dir>` | `compile`, `watch`, `eject` | `.diagrams/.artifacts` | Where artifacts are written — for `eject`, the dir its post-swap recompile writes into. |
 | `--no-images` | `publish` | off | Skip PNG export; write HTML only. |
 | `--link <url>` | `publish` | none | Link the index header to this `http(s)` address. |
+| `--json` | `lint` | off | Print the findings as one JSON array. |
 | `--update-includes` | `compile`, `publish` | off | Refetch every remote `include`, vendor it under `.diagrams/includes/`, and rewrite `.diagrams/includes.lock.json`. On `compile`, pruning entries the run didn't touch only happens with no `files...` given (a full-tree run); `publish` always compiles the whole tree, so its prune is unconditional. |
 
 Anything not recognised as a flag is collected as `files...`.

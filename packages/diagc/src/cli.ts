@@ -26,6 +26,7 @@ import fg from 'fast-glob';
 import { errMessage } from '@diagc/core';
 import { compileFile } from './compile';
 import { ejectDiagram } from './eject';
+import { formatLintReport, lintFile, type LintReport } from './lint';
 import { findHome, homePaths } from './home';
 import { resolveInclude } from './includes';
 import { snapshotSession } from './snapshots';
@@ -34,10 +35,11 @@ import { galleryLink } from './publish/gallery';
 import { publishDiagrams } from './publish/publish';
 import { runStudio } from './studio';
 
-const USAGE = `Usage: diagc <compile|watch|publish|studio|eject> [files...] [--out dir]
+const USAGE = `Usage: diagc <compile|lint|watch|publish|studio|eject> [files...] [--out dir]
 
 Commands:
   compile   Compile *.diagram.{ts,json} sources into overlay artifacts once
+  lint      Report suspicious diagrams (typos, duplicates, unused or undrawn parts); exit 1 on any
   watch     Recompile — and live-recompile — a directory of sources
   publish   Compile and render an HTML/PNG site under .diagrams/
   studio    Run the visual studio against the current directory
@@ -47,6 +49,7 @@ Options:
   --out dir       Artifact output directory (default .diagrams/.artifacts)
   --no-images     Publish HTML without rendering PNG images
   --link url      Publish with a link to url in the index header
+  --json          lint: print the findings as a JSON array
   --update-includes  Refetch remote includes and rewrite the snapshot lock
   --help, -h      Show this help and exit
 `;
@@ -57,6 +60,8 @@ interface Args {
   out: string;
   images: boolean;
   updateIncludes: boolean;
+  /** `--json`: lint's findings as one JSON array on stdout */
+  json: boolean;
   /** `--link`: validated here, so a bad address fails before anything is compiled */
   link?: string;
 }
@@ -70,6 +75,7 @@ export function parseArgs(argv: string[]): Args {
   let out = '.diagrams/.artifacts';
   let images = true;
   let updateIncludes = false;
+  let json = false;
   let link: string | undefined;
   let commandSeen = false;
   for (let i = 0; i < argv.length; i++) {
@@ -84,6 +90,10 @@ export function parseArgs(argv: string[]): Args {
     }
     if (arg === '--update-includes') {
       updateIncludes = true;
+      continue;
+    }
+    if (arg === '--json') {
+      json = true;
       continue;
     }
     if (arg === '--link') {
@@ -109,7 +119,7 @@ export function parseArgs(argv: string[]): Args {
       files.push(arg);
     }
   }
-  return { command, files, out, images, updateIncludes, ...(link !== undefined ? { link } : {}) };
+  return { command, files, out, images, updateIncludes, json, ...(link !== undefined ? { link } : {}) };
 }
 
 /** Thrown by {@link parseArgs} for `--help`/`-h`; `main` prints usage and exits 0. */
@@ -183,6 +193,15 @@ async function main() {
     // the genuinely stale ones — skip the prune until every file compiles clean.
     if (args.updateIncludes && args.files.length === 0 && !failed) await snap.prune();
     process.exit(failed ? 1 : 0);
+  } else if (args.command === 'lint') {
+    const files = args.files.length > 0 ? args.files : await fg('.diagrams/src/**/*.diagram.{ts,json}');
+    const reports: LintReport[] = [];
+    for (const file of files) {
+      reports.push(...(await lintFile(file, { rootDir: '.diagrams/src', coreEntry: home.coreEntry, resolver: snap.resolver })));
+    }
+    if (args.json) console.log(JSON.stringify(reports, null, 2));
+    else for (const r of reports) console.log(formatLintReport(r));
+    process.exit(reports.length > 0 ? 1 : 0);
   } else if (args.command === 'watch') {
     // Always locked, independent of args.updateIncludes: watch is a long-running
     // live loop with no point at which "refetch and rewrite the lock" makes

@@ -67,11 +67,17 @@ function relativeSubdir(file: string, rootDir?: string): string {
   return dir === '.' ? '' : dir;
 }
 
-export async function compileFile(
-  file: string,
-  outDir: string,
-  opts?: { rootDir?: string; coreEntry?: string; resolver?: IncludeResolver },
-): Promise<string> {
+export interface LoadOptions {
+  rootDir?: string;
+  coreEntry?: string;
+  resolver?: IncludeResolver;
+}
+
+/**
+ * Read a source, validate it, expand its includes and validate the result: the
+ * model `compile` writes and `lint` inspects. Throws on anything invalid.
+ */
+export async function loadModel(file: string, opts?: LoadOptions): Promise<DiagramModel> {
   const isJsonSource = file.endsWith('.diagram.json');
   let model: DiagramModel;
   if (isJsonSource) {
@@ -113,8 +119,14 @@ export async function compileFile(
     const issues = validate(model);
     if (issues.length > 0) throw new DiagramValidationError(issues);
   }
-  // Sound but probably not what was meant (a fishbone cause on no bone): say so,
-  // and compile anyway — the studio saves the same model without complaint.
+  return model;
+}
+
+export async function compileFile(file: string, outDir: string, opts?: LoadOptions): Promise<string> {
+  const model = await loadModel(file, opts);
+  // Sound but probably not what was meant (a fishbone cause on no bone, a typo'd
+  // type): say so, and compile anyway — the studio saves the same model without
+  // complaint. `diagc lint` is the strict reading of the same list.
   for (const w of diagramWarnings(model)) console.warn(`${file}: ${w.message}`);
 
   const base = path.basename(file).replace(/\.diagram\.(ts|json)$/, '');
