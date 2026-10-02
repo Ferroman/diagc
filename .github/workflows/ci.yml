@@ -21,6 +21,11 @@ concurrency:
 
 jobs:
   check:
+    # release-please's PR only bumps the versions and writes the changelog; the code in it
+    # is main's, which this job already passed on push. Skipped at the job, not filtered
+    # out of the workflow: `check` is a required status, and a skipped job satisfies it
+    # where a workflow that never runs would leave the PR waiting forever.
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
