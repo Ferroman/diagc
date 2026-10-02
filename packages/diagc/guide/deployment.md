@@ -17,7 +17,7 @@ Where software runs: the environments, regions, networks and subnets around it, 
 
 {{node-types}}
 
-The zones are `deploy-environment`, `deploy-region`, `deploy-zone`, `deploy-network`, `deploy-subnet-public`, `deploy-subnet-private`, `deploy-cluster` and `deploy-host`. The nodes are the other eight. A `deploy-host` is a leaf when you draw nothing inside it.
+The zones are `deploy-environment`, `deploy-region`, `deploy-zone`, `deploy-network`, `deploy-subnet-public`, `deploy-subnet-private`, `deploy-cluster` and `deploy-host` (a host is a leaf when nothing is drawn inside it); the other eight are nodes.
 
 ## Rules
 
@@ -25,4 +25,4 @@ The zones are `deploy-environment`, `deploy-region`, `deploy-zone`, `deploy-netw
 - Use `kind: 'network'` for every connection. A kind outside the registry draws as a plain arrow and raises the `unknown-kind` lint warning.
 - Pick the type from the list above. An unlisted `type` draws as a plain box and raises the `unknown-type` lint warning.
 - The notation adds no validation codes of its own, so nothing checks that a node sits in the right zone. Put each one in the zone it really runs in.
-- A node's own `color` wins over its zone's colour; leave it unset.
+- A zone's own `color` replaces the notation's colour for its type; leave it unset.
