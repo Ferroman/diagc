@@ -19,7 +19,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
@@ -288,7 +288,7 @@ async function main() {
     // session's mode (mirrors studio.ts's own hardcoded 'locked' session).
     if (args.updateIncludes) console.error('ignoring --update-includes: watch always runs locked');
     const dir = args.files[0] ?? '.diagrams/src';
-    if ((await fg('**/*.diagram.{ts,json}', { cwd: dir })).length === 0) warnNoSources(dir);
+    if (existsSync(dir) && statSync(dir).isDirectory() && (await fg('**/*.diagram.{ts,json}', { cwd: dir })).length === 0) warnNoSources(dir);
     const watchSnap = snapshotSession(resolveInclude, '.diagrams', 'locked');
     startWatch(dir, args.out, {
       coreEntry: home.coreEntry,
