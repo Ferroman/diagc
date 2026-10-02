@@ -5,12 +5,25 @@ The command-line interface. Invoked as `diagc <command>` from an install, from a
 ## Installing
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/Ferroman/diagc/main/install.sh | sh
 npm i -g @diagc/cli            # global
 npx @diagc/cli studio          # without installing
 npm i -D @diagc/core     # optional: types for .diagram.ts authoring
 ```
 
-Node ≥ 22. Everything the CLI needs is in the package — the prebuilt studio, the viewer shell `publish` stamps models into, and the icon library — so it runs against any directory with no checkout and no pnpm.
+Node ≥ 22. The install script ([`install.sh`](../../install.sh), macOS and Linux) needs only `curl` and `tar`: it uses the Node on your `PATH` when that is new enough, and otherwise downloads the current Node 24 into its own directory, checked against nodejs.org's published checksums. Nothing needs root.
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `DIAGC_VERSION` | `latest` | the `@diagc/cli` release to install |
+| `DIAGC_HOME` | `~/.local/share/diagc` | where the package (and a downloaded Node) go |
+| `DIAGC_BIN_DIR` | `~/.local/bin` | where the `diagc` launcher goes |
+| `DIAGC_NODE` | | `download` fetches a private Node even when the `PATH` has one |
+| `DIAGC_NODE_MIRROR` | `https://nodejs.org/dist` | where Node is downloaded from |
+
+Re-running the script updates to the latest release. To uninstall, delete `DIAGC_HOME` and the launcher.
+
+Everything the CLI needs is in the package — the prebuilt studio, the viewer shell `publish` stamps models into, and the icon library — so it runs against any directory with no checkout and no pnpm.
 
 From a checkout, `pnpm link --global` inside the repo gives you a `diagc` that runs the working tree instead. Both layouts are detected automatically; the differences are called out below where they matter.
 
