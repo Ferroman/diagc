@@ -177,6 +177,13 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
 
 .git-panel .git-lanes { list-style: none; margin: 0 0 8px; padding: 0; }
 .git-panel .git-lanes li { padding: 2px 0; }
+.activity-lanes { list-style: none; margin: 0 0 6px; padding: 0; }
+.activity-lanes li { align-items: center; border-radius: 5px; display: flex; gap: 4px; padding: 1px 4px; }
+.activity-lanes li[aria-current='true'] { background: var(--dg-bg); box-shadow: inset 0 0 0 1px var(--dg-border); }
+.activity-lanes .lane-dot { background: var(--dg-border); border-radius: 50%; flex: none; height: 10px; width: 10px; }
+.activity-lanes .lane-name { background: none; border: 0; color: var(--dg-text); cursor: pointer; flex: 1; font: inherit; min-width: 0; overflow: hidden; padding: 2px 0; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.activity-lanes .lane-name:hover { color: var(--dg-accent); }
+.activity-lanes .picker-btn { height: 22px; min-width: 22px; }
 /* width: 100% already comes from the shared field rule above; scoped here to
    margin only, so it doesn't re-assert after (and beat) `.lp-check input`'s
    `width: auto` for the Gap field, which shares that rule's specificity. */
@@ -244,10 +251,20 @@ body { background: var(--dg-bg); color: var(--dg-text); font: 14px/1.4 system-ui
   padding: 0 4px;
 }
 .picker-btn:hover { border-color: var(--dg-text-muted); }
+.picker-btn:disabled { cursor: default; opacity: 0.35; }
+.picker-btn:disabled:hover { border-color: var(--dg-border); }
 .picker-btn.active { border-color: #42a5f5; box-shadow: 0 0 0 1px #42a5f5 inset; }
 .picker-btn.swatch { min-width: 22px; width: 22px; height: 22px; border-radius: 5px; }
 .picker-btn.swatch.active { outline: 2px solid var(--dg-text); outline-offset: 1px; }
 .swatch-grid { display: grid; grid-template-columns: repeat(7, 22px); gap: 4px; margin-top: 4px; }
+.color-line { align-items: center; display: flex; gap: 6px; }
+.color-line .color-label { color: var(--dg-text-muted); flex: none; font-size: 12px; min-width: 72px; white-space: nowrap; }
+/* panels stretch their inputs full width; here the text box takes what is left */
+.color-line .swatch-text { flex: 1; margin: 0; min-width: 0; width: auto; }
+.picker-btn.swatch.current { height: 24px; min-width: 24px; width: 24px; }
+.picker-btn.swatch.current[aria-expanded='true'] { outline: 2px solid var(--dg-accent); outline-offset: 1px; }
+/* no colour set: a diagonal strike, the usual "none" mark */
+.picker-btn.swatch.auto { background: linear-gradient(to top right, transparent calc(50% - 1px), var(--dg-text-muted) 50%, transparent calc(50% + 1px)); }
 .w-line { background: currentColor; border-radius: 2px; display: inline-block; width: 14px; }
 .swatch-text {
   background: transparent;

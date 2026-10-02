@@ -2,7 +2,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { applyCommand, emptyDrawings, emptyLayout, model, type DiagramModel } from '@diagc/core';
-import { ActivityPanel, moveLaneCommand, reorderLanesCommand } from './ActivityPanel';
+import { ActivityPanel, activityContext, moveLaneCommand, reorderLanesCommand } from './ActivityPanel';
 
 /** frame f, no lanes */
 function frameOnlyModel(): DiagramModel {
@@ -95,9 +95,11 @@ describe('ActivityPanel', () => {
     expect(screen.getByRole('button', { name: 'Add action' })).toBeDefined();
   });
 
-  it('on a region: no Add lane (a region is not a band)', () => {
-    setup({ kind: 'node', id: 'r' }, frameLaneRegionModel());
-    expect(screen.queryByRole('button', { name: 'Add lane' })).toBeNull();
+  it('on a region: Add lane still adds a band to the frame', () => {
+    const { onCommand } = setup({ kind: 'node', id: 'r' }, frameLaneRegionModel());
+    fireEvent.change(screen.getByLabelText('New lane name'), { target: { value: 'Ops' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add lane' }));
+    expect(onCommand.mock.calls[0]![0].commands[0]).toMatchObject({ type: 'add-node', parent: { id: 'f' } });
   });
 
   it('on a lane: Add action creates the node inside the lane at the cascade spot', () => {
@@ -168,37 +170,66 @@ describe('ActivityPanel', () => {
     expect(screen.queryByRole('button', { name: 'Add region' })).toBeNull();
   });
 
-  it('mounts nothing for a non-activity selection', () => {
-    const { container } = render(
-      <ActivityPanel
-        model={frameLaneActionModel()}
-        plane={undefined}
-        selection={{ kind: 'node', id: 'ship' }}
-        onCommand={vi.fn()}
-        onSelect={vi.fn()}
-      />,
-    );
+  it('on an element: keeps the lanes listed and adds beside it, into its lane', () => {
+    const { onCommand } = setup({ kind: 'node', id: 'ship' }, frameLaneActionModel());
+    expect(screen.getByRole('list', { name: 'Lanes' }).textContent).toContain('Warehouse');
+    expect(screen.getByText('Adding to Warehouse')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Add action' }));
+    expect(onCommand.mock.calls[0]![0].commands[0]).toMatchObject({ type: 'add-node', parent: { id: 'l' } });
+  });
+
+  it('with nothing selected, works on the only frame and asks for a lane before steps', () => {
+    setup(null, frameLaneModel());
+    expect(screen.getByRole('heading', { name: 'Lanes in Fulfillment' })).toBeDefined();
+    expect(screen.getByText('Select a lane to add steps to it.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Add action' })).toBeNull();
+  });
+
+  it('says so when the frame has no lanes yet', () => {
+    setup({ kind: 'node', id: 'f' }, frameOnlyModel());
+    expect(screen.getByText('No lanes yet. Add the first one below.')).toBeDefined();
+  });
+
+  it('adds a lane on Enter', () => {
+    const { onCommand } = setup(null, frameOnlyModel());
+    fireEvent.change(screen.getByLabelText('New lane name'), { target: { value: 'Ops' } });
+    fireEvent.submit(screen.getByLabelText('New lane name'));
+    expect(onCommand.mock.calls[0]![0].commands[0]).toMatchObject({ node: { id: 'ops', type: 'activity-lane' }, parent: { id: 'f' } });
+  });
+
+  it('selects a lane from the list', () => {
+    const { onSelect } = setup(null, threeLanes());
+    fireEvent.click(screen.getByRole('button', { name: 'B' }));
+    expect(onSelect).toHaveBeenCalledWith('b');
+  });
+
+  it('mounts nothing for a diagram with no activity frame', () => {
+    const m = model('x');
+    m.node('svc', { name: 'Svc', type: 'service' });
+    const { container } = render(<ActivityPanel model={m.toJSON()} plane={undefined} selection={{ kind: 'node', id: 'svc' }} onCommand={vi.fn()} onSelect={vi.fn()} />);
     expect(container.firstChild).toBeNull();
   });
 
   describe('lane order', () => {
-    it('moves the selected lane up or down one band', () => {
-      const { onCommand } = setup({ kind: 'node', id: 'b' }, threeLanes());
-      fireEvent.click(screen.getByRole('button', { name: 'Move lane up' }));
+    it('moves any listed lane up or down one band', () => {
+      const { onCommand } = setup({ kind: 'node', id: 'f' }, threeLanes());
+      fireEvent.click(screen.getByRole('button', { name: 'Move B up' }));
       expect(onCommand).toHaveBeenLastCalledWith({ type: 'move-child', parent: 'f', child: 'b', offset: -1 });
-      fireEvent.click(screen.getByRole('button', { name: 'Move lane down' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Move B down' }));
       expect(onCommand).toHaveBeenLastCalledWith({ type: 'move-child', parent: 'f', child: 'b', offset: 1 });
     });
 
-    it('disables the move that would leave the frame', () => {
+    it('disables the moves that would leave the frame', () => {
       setup({ kind: 'node', id: 'a' }, threeLanes());
-      expect((screen.getByRole('button', { name: 'Move lane up' }) as HTMLButtonElement).disabled).toBe(true);
-      expect((screen.getByRole('button', { name: 'Move lane down' }) as HTMLButtonElement).disabled).toBe(false);
+      expect((screen.getByRole('button', { name: 'Move A up' }) as HTMLButtonElement).disabled).toBe(true);
+      expect((screen.getByRole('button', { name: 'Move A down' }) as HTMLButtonElement).disabled).toBe(false);
+      expect((screen.getByRole('button', { name: 'Move C down' }) as HTMLButtonElement).disabled).toBe(true);
     });
 
-    it('offers no lane moves when the frame itself is selected', () => {
-      setup({ kind: 'node', id: 'f' }, threeLanes());
-      expect(screen.queryByRole('button', { name: 'Move lane up' })).toBeNull();
+    it('marks the selected lane in the list', () => {
+      setup({ kind: 'node', id: 'b' }, threeLanes());
+      const current = screen.getByRole('list', { name: 'Lanes' }).querySelector('[aria-current="true"]');
+      expect(current?.textContent).toContain('B');
     });
   });
 });
@@ -254,5 +285,22 @@ describe('moveLaneCommand', () => {
 
   it('is null when the lane did not move', () => {
     expect(run(0)).toBeNull();
+  });
+});
+
+describe('activityContext', () => {
+  it('finds the frame above any selection, and the nearest lane or region as the target', () => {
+    const m = frameLaneRegionModel();
+    expect(activityContext(m, { kind: 'node', id: 'r' }, undefined)).toMatchObject({ frame: { id: 'f' }, target: { id: 'r' } });
+    expect(activityContext(m, { kind: 'node', id: 'l' }, undefined)).toMatchObject({ frame: { id: 'f' }, target: { id: 'l' } });
+    expect(activityContext(m, { kind: 'node', id: 'f' }, undefined)?.target).toBeUndefined();
+  });
+
+  it('needs a selection to pick between frames', () => {
+    const m = model('two');
+    m.activity('f1');
+    m.activity('f2');
+    expect(activityContext(m.toJSON(), null, undefined)).toBeUndefined();
+    expect(activityContext(m.toJSON(), { kind: 'node', id: 'f2' }, undefined)?.frame.id).toBe('f2');
   });
 });

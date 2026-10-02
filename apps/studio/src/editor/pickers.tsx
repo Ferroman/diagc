@@ -58,7 +58,12 @@ export function OptionRow<T extends string>({
   );
 }
 
-/** swatch row + free-text CSS color; '' = default/auto */
+/**
+ * One line — label, the current colour (which opens the palette), its CSS text
+ * and Auto — with the 21-shade palette folded away until asked for. A panel
+ * shows several of these at once, and an always-open grid each was most of it.
+ * '' = default/auto.
+ */
 export function ColorRow({
   label = 'Color',
   value,
@@ -69,6 +74,7 @@ export function ColorRow({
   onChange: (value: string) => void;
 }) {
   const [text, setText] = useState(value);
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     setText(value);
   }, [value]);
@@ -76,37 +82,55 @@ export function ColorRow({
     const trimmed = text.trim();
     if (trimmed !== value) onChange(trimmed);
   };
+  const pick = (c: string) => {
+    onChange(c);
+    setOpen(false);
+  };
   return (
-    <div className="field">
-      <span>{label}</span>
-      <div role="group" aria-label={label}>
-        <div className="picker-row">
-          <button
-            type="button"
-            className={`picker-btn${value === '' ? ' active' : ''}`}
-            title="Auto (default color)"
-            aria-label={`Auto ${label.toLowerCase()}`}
-            aria-pressed={value === ''}
-            onClick={() => onChange('')}
-          >
-            ∅
-          </button>
-          <input
-            className="swatch-text"
-            aria-label={`${label} value`}
-            placeholder="#hex"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onBlur={commitText}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                commitText();
-              }
-            }}
-          />
-        </div>
-        <div className="swatch-grid">
+    <div className="field color-field">
+      <div className="color-line" role="group" aria-label={label}>
+        <span className="color-label">{label}</span>
+        <button
+          type="button"
+          className={`picker-btn swatch current${value === '' ? ' auto' : ''}`}
+          style={value !== '' ? { background: value } : undefined}
+          title={open ? 'Hide palette' : 'Choose from the palette'}
+          aria-label={`${label} palette`}
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+        />
+        <input
+          className="swatch-text"
+          aria-label={`${label} value`}
+          placeholder="auto"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={commitText}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              commitText();
+            }
+          }}
+        />
+        <button
+          type="button"
+          className={`picker-btn${value === '' ? ' active' : ''}`}
+          title="Auto (default color)"
+          aria-label={`Auto ${label.toLowerCase()}`}
+          aria-pressed={value === ''}
+          onClick={() => pick('')}
+        >
+          ∅
+        </button>
+      </div>
+      {open && (
+        <div
+          className="swatch-grid"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setOpen(false);
+          }}
+        >
           {SHADE_SWATCHES.map((c) => (
             <button
               key={c}
@@ -116,11 +140,11 @@ export function ColorRow({
               title={c}
               aria-label={`${label} ${c}`}
               aria-pressed={value === c}
-              onClick={() => onChange(c)}
+              onClick={() => pick(c)}
             />
           ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }

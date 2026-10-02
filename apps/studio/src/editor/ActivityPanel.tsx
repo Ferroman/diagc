@@ -20,8 +20,6 @@ interface ActivityPanelProps {
   onSelect: (id: string) => void;
 }
 
-const SCOPE_TYPES = new Set(['activity-frame', 'activity-lane', 'activity-region']);
-
 /** quick-add vocabulary: accessible label + created type + default name */
 const ELEMENTS = [
   { type: 'activity-action', label: 'Add action', defaultName: 'Action' },
@@ -70,27 +68,55 @@ export function moveLaneCommand(frameId: string, laneId: string, offset: number,
   return n === 1 ? step : { type: 'batch', commands: Array.from({ length: n }, () => step) };
 }
 
-export function isActivityScope(model: DiagramModel, selection: DiagramSelection | null): DiagramNode | undefined {
-  if (selection?.kind !== 'node') return undefined;
-  const n = model.nodes.find((x) => x.id === selection.id);
-  return n !== undefined && n.type !== undefined && SCOPE_TYPES.has(n.type) ? n : undefined;
+export interface ActivityContext {
+  frame: DiagramNode;
+  /** where an element quick-add lands: the selected lane or region, or the one
+   * around the selected element; undefined on the frame itself */
+  target?: DiagramNode;
 }
 
 /**
- * The activity-diagram editing surface: scaffolds the structure (frame → lane
- * → elements/region) as single batches, sidestepping drag-into-container
- * entirely. Every add parents the node correctly at creation and places it at
- * a deterministic cascade spot inside its scope, so the model never passes
- * through a state validation would refuse.
+ * The frame the panel works on, and the lane or region it adds into. Anything
+ * inside a frame resolves to it — an action as much as a lane — so the lanes stay
+ * listed while you work on their contents. With nothing selected a diagram's only
+ * frame is the one; with several, a selection has to say which.
+ */
+export function activityContext(model: DiagramModel, selection: DiagramSelection | null, planeId: string | undefined): ActivityContext | undefined {
+  const byId = new Map(model.nodes.map((n) => [n.id, n]));
+  const defaultPlane = resolveContainmentPlane(model, undefined);
+  const parentOf = new Map<string, string>();
+  for (const e of model.containment) {
+    if ((e.plane ?? defaultPlane) === planeId && !parentOf.has(e.child)) parentOf.set(e.child, e.parent);
+  }
+  if (selection?.kind === 'node') {
+    let target: DiagramNode | undefined;
+    const seen = new Set<string>();
+    for (let n = byId.get(selection.id); n !== undefined && !seen.has(n.id); n = byId.get(parentOf.get(n.id) ?? '')) {
+      seen.add(n.id);
+      if (n.type === 'activity-frame') return { frame: n, ...(target !== undefined ? { target } : {}) };
+      if (target === undefined && (n.type === 'activity-lane' || n.type === 'activity-region')) target = n;
+    }
+  }
+  const frames = model.nodes.filter((n) => n.type === 'activity-frame' && (n.plane === undefined || n.plane === planeId));
+  return frames.length === 1 ? { frame: frames[0]! } : undefined;
+}
+
+/**
+ * The activity-diagram editing surface: the frame's lanes as a list (select,
+ * restack, add), then quick-adds for the steps inside one. Every add parents the
+ * node correctly at creation and places it at a deterministic cascade spot
+ * inside its scope, so the model never passes through a state validation would
+ * refuse — no drag-into-container needed.
  */
 export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: ActivityPanelProps) {
   const [laneName, setLaneName] = useState('');
   const [laneColor, setLaneColor] = useState('');
   const [elementName, setElementName] = useState('');
 
-  const selected = isActivityScope(model, selection);
-  if (selected === undefined) return null;
   const planeId = resolveContainmentPlane(model, plane);
+  const context = activityContext(model, selection, planeId);
+  if (context === undefined) return null;
+  const { frame, target } = context;
   const withPlane = planeId !== undefined ? { plane: planeId } : {};
 
   const inPlane = model.containment.filter((e) => (e.plane ?? resolveContainmentPlane(model, undefined)) === planeId);
@@ -99,30 +125,24 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
     const childCount = inPlane.filter((e) => e.parent === parentId).length;
     return { x: L.LANE_STRIP_W + L.PAD + 24 * childCount, y: L.PAD + 16 * childCount };
   };
-  // Lanes are added to the frame — the selected one, or the selected lane's own,
-  // so a new band is at hand from wherever you are already working.
-  const frameId =
-    selected.type === 'activity-frame'
-      ? selected.id
-      : selected.type === 'activity-lane'
-        ? inPlane.find((e) => e.child === selected.id)?.parent
-        : undefined;
 
   // Bands stack in containment order (the frame's children, top to bottom),
   // so restacking a lane is a move-child on that order — the layout follows.
-  const laneOrder = frameId !== undefined ? inPlane.filter((e) => e.parent === frameId).map((e) => e.child) : [];
-  const laneAt = selected.type === 'activity-lane' ? laneOrder.indexOf(selected.id) : -1;
-  const moveLane = (offset: -1 | 1) => {
-    if (frameId === undefined || laneAt === -1) return;
-    onCommand({ type: 'move-child', parent: frameId, child: selected.id, offset, ...withPlane });
+  const byId = new Map(model.nodes.map((n) => [n.id, n]));
+  const lanes = inPlane
+    .filter((e) => e.parent === frame.id)
+    .map((e) => byId.get(e.child))
+    .filter((n): n is DiagramNode => n?.type === 'activity-lane');
+  const selectedId = selection?.kind === 'node' ? selection.id : undefined;
+  const moveLane = (laneId: string, offset: -1 | 1) => {
+    onCommand({ type: 'move-child', parent: frame.id, child: laneId, offset, ...withPlane });
   };
 
   // The order whose links cross the fewest lanes (bestLaneOrder) — offered,
   // never applied unasked: lane order says who comes first.
-  const lanesOnly = laneOrder.filter((id) => model.nodes.find((n) => n.id === id)?.type === 'activity-lane');
-  const tidy = frameId !== undefined ? reorderLanesCommand(frameId, lanesOnly, bestLaneOrder(model, frameId, plane), planeId) : null;
+  const tidy = reorderLanesCommand(frame.id, lanes.map((l) => l.id), bestLaneOrder(model, frame.id, plane), planeId);
 
-  const addChild = (node: DiagramNode, parentId: string = selected.id) => {
+  const addChild = (node: DiagramNode, parentId: string) => {
     const cascade = cascadeIn(parentId);
     onCommand({
       type: 'batch',
@@ -136,43 +156,74 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
 
   const addLane = () => {
     const name = laneName.trim();
-    if (name === '' || frameId === undefined) return;
-    addChild({
-      id: uniqueNodeId(model, name),
-      name,
-      type: 'activity-lane',
-      ...(laneColor !== '' ? { color: laneColor } : {}),
-    }, frameId);
+    if (name === '') return;
+    addChild(
+      {
+        id: uniqueNodeId(model, name),
+        name,
+        type: 'activity-lane',
+        ...(laneColor !== '' ? { color: laneColor } : {}),
+      },
+      frame.id,
+    );
     setLaneName('');
   };
 
   const addElement = (type: string, defaultName: string) => {
+    if (target === undefined) return;
     const name = elementName.trim() !== '' ? elementName.trim() : defaultName;
     const idBase = name !== '' ? name : type.replace('activity-', '');
-    addChild({ id: uniqueNodeId(model, idBase), name, type });
+    addChild({ id: uniqueNodeId(model, idBase), name, type }, target.id);
     setElementName('');
   };
 
+  const label = (n: DiagramNode) => (n.name !== '' ? n.name : n.id);
+
   return (
     <DockSection id="activity" title="Activity" label="Activity diagram" className="sidebar git-panel">
-      {frameId !== undefined && (
-        <section className="panel-section">
-          <h3>Lanes</h3>
-          <input aria-label="New lane name" value={laneName} onChange={(e) => setLaneName(e.target.value)} placeholder="Lane name" />
-          <ColorRow label="Lane color" value={laneColor} onChange={setLaneColor} />
-          <button type="button" className="chip" onClick={addLane} disabled={laneName.trim() === ''}>
+      <section className="panel-section">
+        <h3>Lanes in {label(frame)}</h3>
+        {lanes.length === 0 ? (
+          <p className="lp-caption">No lanes yet. Add the first one below.</p>
+        ) : (
+          <ul className="activity-lanes" aria-label="Lanes">
+            {lanes.map((lane, i) => (
+              <li key={lane.id} aria-current={lane.id === selectedId || lane.id === target?.id ? 'true' : undefined}>
+                <span className="lane-dot" style={lane.color !== undefined ? { background: lane.color } : undefined} aria-hidden="true" />
+                <button type="button" className="lane-name" title="Select this lane" onClick={() => onSelect(lane.id)}>
+                  {label(lane)}
+                </button>
+                <button type="button" className="picker-btn" aria-label={`Move ${label(lane)} up`} title="Move up" disabled={i === 0} onClick={() => moveLane(lane.id, -1)}>
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="picker-btn"
+                  aria-label={`Move ${label(lane)} down`}
+                  title="Move down"
+                  disabled={i === lanes.length - 1}
+                  onClick={() => moveLane(lane.id, 1)}
+                >
+                  ↓
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form
+          className="field-row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            addLane();
+          }}
+        >
+          <input aria-label="New lane name" value={laneName} onChange={(e) => setLaneName(e.target.value)} placeholder="New lane name" />
+          <button type="submit" className="chip" disabled={laneName.trim() === ''}>
             Add lane
           </button>
-          {laneAt !== -1 && (
-            <>
-              <button type="button" className="chip" onClick={() => moveLane(-1)} disabled={laneAt === 0}>
-                Move lane up
-              </button>
-              <button type="button" className="chip" onClick={() => moveLane(1)} disabled={laneAt === laneOrder.length - 1}>
-                Move lane down
-              </button>
-            </>
-          )}
+        </form>
+        <ColorRow label="Lane color" value={laneColor} onChange={setLaneColor} />
+        {lanes.length > 2 && (
           <button
             type="button"
             className="chip"
@@ -182,24 +233,29 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
           >
             Tidy lane order
           </button>
-        </section>
-      )}
-      {selected.type !== 'activity-frame' && (
-        <section className="panel-section">
-          <h3>Elements</h3>
-          <input aria-label="Element name" value={elementName} onChange={(e) => setElementName(e.target.value)} placeholder="Name (optional)" />
-          {ELEMENTS.map((el) => (
-            <button key={el.type} type="button" className="chip" onClick={() => addElement(el.type, el.defaultName)}>
-              {el.label}
-            </button>
-          ))}
-          {selected.type === 'activity-lane' && (
-            <button type="button" className="chip" onClick={() => addElement('activity-region', 'Region')}>
-              Add region
-            </button>
-          )}
-        </section>
-      )}
+        )}
+      </section>
+      <section className="panel-section">
+        <h3>Elements</h3>
+        {target === undefined ? (
+          <p className="lp-caption">{lanes.length === 0 ? 'Add a lane, then its steps.' : 'Select a lane to add steps to it.'}</p>
+        ) : (
+          <>
+            <p className="lp-caption">Adding to {label(target)}</p>
+            <input aria-label="Element name" value={elementName} onChange={(e) => setElementName(e.target.value)} placeholder="Name (optional)" />
+            {ELEMENTS.map((el) => (
+              <button key={el.type} type="button" className="chip" onClick={() => addElement(el.type, el.defaultName)}>
+                {el.label}
+              </button>
+            ))}
+            {target.type === 'activity-lane' && (
+              <button type="button" className="chip" onClick={() => addElement('activity-region', 'Region')}>
+                Add region
+              </button>
+            )}
+          </>
+        )}
+      </section>
     </DockSection>
   );
 }
