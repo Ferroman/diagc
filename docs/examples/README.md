@@ -205,6 +205,13 @@ Why shortcuts feed on themselves: a reinforcing loop through delivery speed and 
 
 ## Architecture
 
+### Starter: shop
+
+[![Starter: shop](../../.diagrams/static/examples/basic/starter.png)](https://ferroman.github.io/diagc/html/examples/basic/starter.html)
+
+A customer and one system holding two services and a database — the smallest diagram that folds: the system rests closed with the arrows into it bundled, and opens on a double-click. The image shows it opened; the live page rests closed.
+[Live](https://ferroman.github.io/diagc/html/examples/basic/starter.html) · [Source](../../.diagrams/src/examples/basic/starter.diagram.ts) · [Guide](../how-to/author-in-typescript.md)
+
 ### Acme SaaS
 
 [![Acme SaaS](../../.diagrams/static/examples/acme.png)](https://ferroman.github.io/diagc/html/examples/acme.html)

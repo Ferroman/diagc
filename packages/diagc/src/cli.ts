@@ -29,7 +29,8 @@ import { compareDiagramSets, formatDiffSummary, loadDiagramSet, writeDiffPages }
 import { checkoutDiagrams, type CheckedOutRef } from './git-ref';
 import { ejectDiagram } from './eject';
 import { formatLintReport, lintFile, type LintReport } from './lint';
-import { findHome, homePaths } from './home';
+import { runGuide } from './guide';
+import { cliVersion, findHome, homePaths } from './home';
 import { resolveInclude } from './includes';
 import { snapshotSession } from './snapshots';
 import { formatCompileEvent, startWatch } from './watch';
@@ -37,7 +38,7 @@ import { galleryLink } from './publish/gallery';
 import { publishDiagrams } from './publish/publish';
 import { runStudio } from './studio';
 
-const USAGE = `Usage: diagc <compile|lint|watch|publish|studio|eject|diff> [files...] [--out dir]
+const USAGE = `Usage: diagc <compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir]
 
 Commands:
   compile   Compile *.diagram.{ts,json} sources into overlay artifacts once
@@ -48,6 +49,8 @@ Commands:
   eject     Promote a JSON diagram to a generated TypeScript source (verified)
   diff      diff <from>[..<to>] [names...]: what changed in the diagrams between two git
             refs (or a ref and the working tree), with before/after pages and PNGs
+  guide     guide [topic]: how to write a diagram, for a person or a coding agent — the
+            DSL, then one topic per diagram type ('guide all' prints every topic)
 
 Options:
   --out dir       Artifact output directory (default .diagrams/.artifacts;
@@ -344,6 +347,16 @@ async function main() {
     }
   } else if (args.command === 'diff') {
     process.exit(await runDiff(args, home));
+  } else if (args.command === 'guide') {
+    // exitCode and a return, not process.exit: the guide is tens of kilobytes and
+    // is read through a pipe by an agent. Exiting while part of it is still
+    // queued would hand over a page that stops mid-sentence.
+    process.exitCode = runGuide(args.files, {
+      guideDir: home.guideDir,
+      startersDir: home.startersDir,
+      version: cliVersion(home.root),
+    });
+    return;
   } else {
     console.error(`diagc: Unknown command '${args.command}'.`);
     console.error(USAGE);

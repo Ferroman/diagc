@@ -68,7 +68,7 @@ The whole picture above is `.diagrams/src/docs/c4.diagram.ts` in this repo.
 import { model } from '@diagc/core';
 
 // A C4 starter: one person, one system, two containers. The notation is what
-// paints the solid fills and the [Type: technology] subtitles.
+// paints the solid fills.
 const m = model('expense-claims', { name: 'Expense claims' });
 m.notation('c4');
 
@@ -81,7 +81,7 @@ const db = m.node('db', { type: 'c4-container-db', name: 'Claims Database', tech
 claims.contains(web, db);
 
 m.relate(employee, web, { kind: 'sync', label: 'Submits claims [HTTPS]' });
-m.relate(web, db, { kind: 'reads', label: 'Stores claims [SQL/TCP]' });
+m.relate(web, db, { kind: 'writes', label: 'Stores claims [SQL/TCP]' });
 
 export default m;
 ```

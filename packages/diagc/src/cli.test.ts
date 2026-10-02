@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { BadFlagValueError, HelpRequested, UnknownFlagError, diffOutDir, parseArgs, parseRange } from './cli';
 
 describe('parseArgs', () => {
+  it('parses guide with and without a topic', () => {
+    expect(parseArgs(['guide'])).toMatchObject({ command: 'guide', files: [] });
+    expect(parseArgs(['guide', 'c4'])).toMatchObject({ command: 'guide', files: ['c4'] });
+  });
+
   it('parses command, files and flags', () => {
     const args = parseArgs(['compile', 'a.diagram.ts', 'b.diagram.ts', '--out', 'dist', '--no-images']);
     expect(args).toEqual({
