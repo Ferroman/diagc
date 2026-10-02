@@ -79,5 +79,4 @@ describe('formatLintReport', () => {
       "a.diagram.ts: warning unused-layer: Layer 'x' has nothing on it",
     );
   });
-
 });

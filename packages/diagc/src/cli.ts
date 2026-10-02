@@ -31,7 +31,7 @@ import { ejectDiagram } from './eject';
 import { formatLintReport, lintFile, type LintReport } from './lint';
 import { runGuide } from './guide';
 import { cliVersion, findHome, homePaths } from './home';
-import { runInit } from './init';
+import { diagramName, runInit } from './init';
 import { resolveInclude } from './includes';
 import { snapshotSession } from './snapshots';
 import { formatCompileEvent, startWatch } from './watch';
@@ -369,7 +369,7 @@ async function main() {
     // ejectDiagram's post-swap recompile always resolves includes locked (see
     // eject.ts) — same reasoning as watch above.
     if (args.updateIncludes) console.error('ignoring --update-includes: eject always runs locked');
-    const name = args.files[0]?.replace(/^\.diagrams\/src\//, '').replace(/\.diagram\.(ts|json)$/, '');
+    const name = args.files[0] === undefined ? undefined : diagramName(args.files[0]);
     if (name === undefined || name === '') {
       console.error('diagc: eject needs a diagram name.');
       console.error(USAGE);

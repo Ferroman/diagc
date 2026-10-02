@@ -132,7 +132,7 @@ async function starterStep(opts: InitOptions, io: InitIo): Promise<string | unde
   }
   for (const ext of ['ts', 'json']) {
     if (existsSync(path.join(srcDir, `${name}.diagram.${ext}`))) {
-      throw new InitError(`${SRC_DIR}/${name}.diagram.${ext} already exists — pick another name, or run 'diagc init' with no name to leave it alone.`);
+      throw new InitError(`${SRC_DIR}/${name}.diagram.${ext} already exists — pick another name, or run 'diagc init' with no name and no --type to leave it alone.`);
     }
   }
   const file = path.join(srcDir, `${name}.diagram.ts`);

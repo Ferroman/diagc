@@ -108,7 +108,7 @@ describe('runInit refuses, and writes nothing', () => {
     writeFileSync(path.join(cwd, '.diagrams', 'src', 'shop.diagram.json'), '{}');
     const before = tree();
     expect(await runInit(opts({ name: 'shop' }), io)).toBe(1);
-    expect(err).toEqual(["diagc: .diagrams/src/shop.diagram.json already exists — pick another name, or run 'diagc init' with no name to leave it alone."]);
+    expect(err).toEqual(["diagc: .diagrams/src/shop.diagram.json already exists — pick another name, or run 'diagc init' with no name and no --type to leave it alone."]);
     expect(tree()).toEqual(before);
     expect(has('.gitignore')).toBe(false);
   });
