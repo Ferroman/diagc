@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cliVersion, findHome, homePaths } from './home';
-import { DEFAULT_NAME, IGNORED, diagramName, missingIgnores, runInit, type InitOptions } from './init';
+import { AGENTS_BEGIN, AGENTS_BLOCK, AGENTS_END, DEFAULT_NAME, IGNORED, diagramName, missingIgnores, runInit, withAgentsBlock, type InitOptions } from './init';
 import { readStarter } from './starters';
 
 // Real starters and the real core: the compile step is the point of `init`.
@@ -185,5 +185,58 @@ describe('runInit, compile failure', () => {
     expect(await runInit(opts({ startersDir, type: 'bad' }), io)).toBe(1);
     expect(err[0]).toMatch(/compile failed/);
     expect(has('.diagrams/src/example.diagram.ts')).toBe(true);
+  });
+});
+
+describe('runInit --agents', () => {
+  const count = (text: string, needle: string): number => text.split(needle).length - 1;
+
+  it('creates AGENTS.md when neither file exists, and drops the --agents hint', async () => {
+    expect(await runInit(opts({ agents: true }), io)).toBe(0);
+    expect(read('AGENTS.md')).toBe(AGENTS_BLOCK);
+    expect(has('CLAUDE.md')).toBe(false);
+    const text = out.join('\n');
+    expect(text).toMatch(/^✓ AGENTS\.md\s+\(diagc block added\)$/m);
+    expect(text).not.toContain('diagc init --agents');
+  });
+
+  it('appends to the files that exist, both when both do', async () => {
+    writeFileSync(path.join(cwd, 'CLAUDE.md'), '# Notes\n\nKeep tests green.');
+    writeFileSync(path.join(cwd, 'AGENTS.md'), '# Agents\n');
+    await runInit(opts({ agents: true }), io);
+    expect(read('CLAUDE.md')).toBe(`# Notes\n\nKeep tests green.\n\n${AGENTS_BLOCK}`);
+    expect(read('AGENTS.md')).toBe(`# Agents\n\n${AGENTS_BLOCK}`);
+  });
+
+  it('replaces its own block on a second run instead of adding another', async () => {
+    writeFileSync(path.join(cwd, 'CLAUDE.md'), `# Notes\n\n${AGENTS_BEGIN}\nold text\n${AGENTS_END}\n\n## After\n`);
+    await runInit(opts({ agents: true }), io);
+    const text = read('CLAUDE.md');
+    expect(text).toBe(`# Notes\n\n${AGENTS_BLOCK}\n## After\n`);
+    expect(count(text, AGENTS_BEGIN)).toBe(1);
+    expect(out.join('\n')).toMatch(/^✓ CLAUDE\.md\s+\(diagc block refreshed\)$/m);
+    out = [];
+    await runInit(opts({ agents: true }), io);
+    expect(read('CLAUDE.md')).toBe(text);
+  });
+
+  it('withAgentsBlock treats a begin marker with no end as no block', () => {
+    const r = withAgentsBlock(`${AGENTS_BEGIN}\nhalf\n`);
+    expect(r.replaced).toBe(false);
+    expect(r.text).toBe(`${AGENTS_BEGIN}\nhalf\n\n${AGENTS_BLOCK}`);
+  });
+
+  it('withAgentsBlock separates the block from the text above by one blank line, whatever the ending', () => {
+    expect(withAgentsBlock('a').text).toBe(`a\n\n${AGENTS_BLOCK}`);
+    expect(withAgentsBlock('a\n').text).toBe(`a\n\n${AGENTS_BLOCK}`);
+    expect(withAgentsBlock('a\n\n').text).toBe(`a\n\n${AGENTS_BLOCK}`);
+    expect(withAgentsBlock('').text).toBe(AGENTS_BLOCK);
+  });
+
+  it('the block names commands, not DSL', () => {
+    expect(AGENTS_BLOCK).toContain('diagc guide');
+    expect(AGENTS_BLOCK).toContain('diagc lint --json');
+    expect(AGENTS_BLOCK).toContain('diagc publish <name>');
+    expect(AGENTS_BLOCK).not.toMatch(/m\.node|relate|contains/);
   });
 });

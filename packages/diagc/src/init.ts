@@ -37,6 +37,39 @@ const ARTIFACTS_DIR = '.diagrams/.artifacts';
 /** build output a repository should not commit; `init` adds what is missing */
 export const IGNORED: readonly string[] = ['.diagrams/.artifacts/', '.diagrams/html/', '.diagrams/diff/'];
 
+export const AGENTS_BEGIN = '<!-- diagc:begin -->';
+export const AGENTS_END = '<!-- diagc:end -->';
+/** What `--agents` writes. Commands, not DSL: the guide is where the DSL lives, so
+ * this block does not go stale when the DSL grows. The markers let a later run
+ * replace it in place. */
+export const AGENTS_BLOCK = `${AGENTS_BEGIN}
+## Diagrams
+
+Diagrams live in \`.diagrams/src/*.diagram.ts\` and are built with \`diagc\`.
+
+- Run \`diagc guide\` before writing or changing one; \`diagc guide <type>\` covers one diagram type.
+- Run \`diagc lint --json\` until it reports nothing.
+- Run \`diagc publish <name>\` and look at \`.diagrams/static/<name>.png\` to check the picture.
+${AGENTS_END}
+`;
+
+/** `existing` with the block added at the end, or — when both markers are there —
+ * with the earlier block replaced where it stands, so a second run never
+ * duplicates it and a run after an upgrade refreshes it. */
+export function withAgentsBlock(existing: string): { text: string; replaced: boolean } {
+  const begin = existing.indexOf(AGENTS_BEGIN);
+  const end = begin === -1 ? -1 : existing.indexOf(AGENTS_END, begin);
+  if (begin !== -1 && end !== -1) {
+    let after = end + AGENTS_END.length;
+    // The block carries its own closing newline; take the old one with the old block.
+    if (existing.startsWith('\n', after)) after += 1;
+    return { text: existing.slice(0, begin) + AGENTS_BLOCK + existing.slice(after), replaced: true };
+  }
+  if (existing === '') return { text: AGENTS_BLOCK, replaced: false };
+  const sep = existing.endsWith('\n\n') ? '' : existing.endsWith('\n') ? '\n' : '\n\n';
+  return { text: `${existing}${sep}${AGENTS_BLOCK}`, replaced: false };
+}
+
 const COL = 38;
 const done = (left: string, right: string): string => `✓ ${left.padEnd(COL)}${right}`;
 const skipped = (left: string, right: string): string => `· ${left.padEnd(COL)}${right}`;
@@ -125,6 +158,20 @@ async function gitignoreStep(cwd: string, io: InitIo): Promise<void> {
   io.out(done('.gitignore', `(+ ${missing.join(', ')})`));
 }
 
+/** Step 3: the coding-agent block, only with `--agents`. Into whichever of
+ * AGENTS.md and CLAUDE.md exist; into a new AGENTS.md when neither does. */
+async function agentsStep(cwd: string, io: InitIo): Promise<void> {
+  const targets = ['AGENTS.md', 'CLAUDE.md'].filter((f) => existsSync(path.join(cwd, f)));
+  if (targets.length === 0) targets.push('AGENTS.md');
+  for (const name of targets) {
+    const file = path.join(cwd, name);
+    const existing = existsSync(file) ? await readFile(file, 'utf8') : '';
+    const { text, replaced } = withAgentsBlock(existing);
+    await writeFile(file, text);
+    io.out(done(name, replaced ? '(diagc block refreshed)' : '(diagc block added)'));
+  }
+}
+
 /** Step 4: compile what was written, so the user starts from a diagram that is
  * known to build and sees where the artifact went. */
 async function compileStep(file: string, opts: InitOptions, io: InitIo): Promise<void> {
@@ -164,6 +211,7 @@ export async function runInit(opts: InitOptions, io: InitIo = stdio): Promise<nu
   try {
     const written = await starterStep(opts, io);
     await gitignoreStep(opts.cwd, io);
+    if (opts.agents) await agentsStep(opts.cwd, io);
     if (written !== undefined) await compileStep(written, opts, io);
     io.out(nextSteps(opts));
     return 0;
