@@ -44,7 +44,7 @@ Node types for any diagram: {{node-types}}
 
 Relation kinds: {{relation-kinds}}
 
-The general kinds are `sync`, `async`, `reads`, `writes` and `hosted-on`. The rest belong to one diagram type and are written by its builder or named in its topic.
+The general kinds are `sync`, `async`, `reads`, `writes`, `hosted-on` and `flow`. `mixed` is what a bundled arrow gets when the relations it stands for differ in kind; do not write it. The rest belong to one diagram type and are written by its builder or named in its topic.
 
 Each diagram type listed at the end adds node types of its own; its topic lists them.
 

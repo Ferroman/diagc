@@ -22,4 +22,4 @@ Entity-relationship diagram: each table is a titled box listing its columns and 
 
 - Two columns in one table with the same name fail validation (`duplicate-column`).
 - A relation whose `fromColumn` or `toColumn` names no column on its table fails with `unknown-column`.
-- A column can carry a `layer`, and the row shows only while that layer is on. Give the `fk` relation the same layer, or its edge floats to the table's middle. A layer goes in the fifth argument, `{ layer }`, so name `toColumn` too: `m.fk(orders, 'created_by', users, 'id', { layer: 'audit' })`. The layer must be declared with `m.layer` first, or validation fails with `unknown-layer`.
+- A column can carry a `layer`, and the row shows only while that layer is on. Give the `fk` relation the same layer, or its edge floats to the table's middle. A layer goes in the fifth argument, `{ layer }`, so name `toColumn` too: `m.fk(orders, 'created_by', users, 'id', { layer: 'audit' })`. The layer must be declared with `m.layer`, or validation fails with `unknown-layer`.

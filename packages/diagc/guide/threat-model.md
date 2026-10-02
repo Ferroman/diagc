@@ -21,7 +21,7 @@ You never write these types yourself: the four `tm.` helpers set them, and `tm-b
 
 ## Rules
 
-- Record the threats the person you are drawing it for names. Do not invent threats to fill the table; a flow or element with none is fine.
+- Record the threats the person you are drawing it for has named. Do not invent threats to fill the table; a flow or element with none is fine.
 - A flow joins two elements, never a boundary. `tm.flow` does not stop you, but a `data-flow` relation that starts or ends on a `tm-boundary` fails validation with `tm-flow-boundary`.
 - Use `data-flow` (what `tm.flow` writes). A relation of another kind still counts as a crossing and still carries threats, but it is not checked for `tm-flow-boundary`.
 - A threat needs a `title` (`threat-title`) and a `category` from `S T R I D E` (`threat-category`). A `severity` or `status` outside the lists above fails with `threat-severity` or `threat-status`. The types allow only the listed values; JSON can still write others.
