@@ -1,8 +1,11 @@
 # diagc
 
-Author software-architecture diagrams as code, edit them in a local visual studio, and publish them as shareable pages and images.
+Diagrams as code, with a local studio. diagc turns diagram sources that live in your repository into things other people can open.
 
-Diagrams are plain files in your repo, so they diff, review, and refactor like the rest of it.
+- **Pages and pictures.** `diagc publish` writes one self-contained HTML page per diagram, and a PNG. The page folds, zooms and switches views in the browser, with no server behind it. Host the pages on GitHub Pages, GitLab Pages or any static host, and put the PNG in a README.
+- **A local studio.** `diagc studio` opens a browser app against your repository. Draw a diagram there and the studio saves it as a file in the repository. `diagc eject` turns a drawn diagram into TypeScript.
+
+Diagrams are plain files in your repository, so they diff, review and refactor like the rest of it.
 
 ```bash
 npm i -g @diagc/cli   # or: npx @diagc/cli studio
@@ -42,6 +45,8 @@ Write a `.diagram.ts` with the builder DSL, or draw one in the studio and it wri
 Commit `.diagrams/src/`. `.diagrams/.artifacts/`, `.diagrams/html/` and `.diagrams/diff/` are build output — `diagc init` gitignores them.
 
 ## Documentation
+
+Website and live examples: <https://ferroman.github.io/diagc/>
 
 Full docs, tutorials, and the model reference: <https://github.com/Ferroman/diagc>
 
