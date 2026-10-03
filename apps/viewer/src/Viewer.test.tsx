@@ -753,4 +753,12 @@ describe('Viewer theme', () => {
     expect(bg()).toBe(darkTheme.bg);
     vi.restoreAllMocks();
   });
+
+  it("writes the active plane in the badge's text colour, which reads on the badge in both themes", async () => {
+    // --dg-text on --dg-badge-bg is light on light blue in the dark theme.
+    render(<Viewer data={{ model: twoPlanes() }} />);
+    const active = await screen.findByRole('button', { name: 'Landscape' });
+    expect(active.style.color).toBe('var(--dg-badge-text)');
+    expect(screen.getByRole('button', { name: 'Full platform' }).style.color).toBe('var(--dg-text-muted)');
+  });
 });

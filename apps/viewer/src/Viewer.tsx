@@ -167,7 +167,8 @@ const planeButtonStyle = (current: boolean): CSSProperties => ({
   background: current ? 'var(--dg-badge-bg)' : 'none',
   border: 'none',
   borderRadius: 4,
-  color: current ? 'var(--dg-text)' : 'var(--dg-text-muted)',
+  // the badge's own text colour: --dg-text on the badge fill is light on light in dark
+  color: current ? 'var(--dg-badge-text)' : 'var(--dg-text-muted)',
   cursor: current ? 'default' : 'pointer',
   font: 'inherit',
   fontWeight: current ? 600 : 400,
