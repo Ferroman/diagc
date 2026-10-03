@@ -56,6 +56,10 @@ export interface ThemeTokens {
   deployHost: string;
   /** a subnet's wash strength (color-mix % against --dg-node-fill, like planZoneTint) */
   deploySubnetTint: string;
+  /** how much of its own colour an outline keeps — a C4 boundary, an AWS group: a
+   * line and a title drawn straight on the canvas. color-mix % of the colour,
+   * the rest toward --dg-text (100% = the colour as written) */
+  outlineInk: string;
 }
 
 /** Where a reader's theme choice is remembered (`localStorage`): 'light' or 'dark', and no
@@ -110,6 +114,7 @@ export const lightTheme: ThemeTokens = {
   deployCluster: '#0f766e',
   deployHost: '#475569',
   deploySubnetTint: '10%',
+  outlineInk: '100%', // the colour as written: it was picked against a light page
 };
 
 export const darkTheme: ThemeTokens = {
@@ -158,6 +163,9 @@ export const darkTheme: ThemeTokens = {
   deployCluster: '#2dd4bf',
   deployHost: '#94a3b8',
   deploySubnetTint: '16%',
+  // lifted toward --dg-text, as roleChipText is: written for a white page, the AWS
+  // Cloud navy (#242F3E) is 1.36:1 on the dark canvas, and 4.85:1 at this share
+  outlineInk: '55%',
 };
 
 const kebab = (s: string): string => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);

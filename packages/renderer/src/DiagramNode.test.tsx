@@ -77,6 +77,11 @@ function renderNode(
   );
 }
 
+// What an outline's line and title are drawn in: the node's colour, with the
+// theme deciding (--dg-outline-ink) how much of it survives the mix toward the
+// text colour — all of it in light, part of it in dark.
+const outlineInk = (color: string): string => `color-mix(in srgb, ${color} var(--dg-outline-ink, 100%), var(--dg-text))`;
+
 describe('DiagramNode', () => {
   it('renders label, resolved shape class and icon for a leaf', () => {
     const { container } = renderNode({ icon: 'postgres' });
@@ -262,8 +267,29 @@ describe('DiagramNode', () => {
     const { container } = renderNode({ state: 'expanded', typeId: 'grp', color: '#7aa116', typeRegistry: registry });
     const group = container.querySelector('.dg-group') as HTMLElement;
     expect(group.classList.contains('dg-group-outline')).toBe(true);
-    expect(group.style.borderColor).toBe('rgb(122, 161, 22)');
+    expect(group.style.borderColor).toBe(outlineInk('#7aa116'));
     expect(group.style.background).toBe(''); // no accent tint — CSS keeps it transparent
+  });
+
+  // An outline is a line and a title drawn straight on the canvas, so a colour
+  // written for a white page can vanish on the dark one: the AWS Cloud navy is
+  // 1.36:1 there as written.
+  it('an outline group draws its line and its title in the theme\'s share of its colour', () => {
+    const registry = createTypeRegistry({ grp: { shape: 'box', outline: true } });
+    const { container } = renderNode({ state: 'expanded', typeId: 'grp', color: '#242f3e', typeRegistry: registry });
+    const group = container.querySelector('.dg-group') as HTMLElement;
+    expect(group.style.borderColor).toBe(outlineInk('#242f3e'));
+    expect(group.style.color).toBe(outlineInk('#242f3e'));
+  });
+
+  it('leaves a theme token alone on an outline: it is already the theme\'s colour', () => {
+    // a deployment zone's colour is a token with its own dark value; mixing it
+    // again would wash out a colour the theme has already tuned
+    const registry = createTypeRegistry({ grp: { shape: 'box', outline: true } });
+    const { container } = renderNode({ state: 'expanded', typeId: 'grp', color: 'var(--dg-deploy-region)', typeRegistry: registry });
+    const group = container.querySelector('.dg-group') as HTMLElement;
+    expect(group.style.borderColor).toBe('var(--dg-deploy-region)');
+    expect(group.style.color).toBe('var(--dg-deploy-region)');
   });
 
   it('a cornerBadge group renders its image flush at the corner, not in the padded header', () => {
@@ -375,6 +401,16 @@ describe('DiagramNode', () => {
     expect(group!.querySelector('.dg-sketch-fill')).toBeNull();
     expect(group!.querySelector('.dg-sketch-hatch')).toBeNull();
     expect((group!.querySelector('.dg-sketch-stroke') as SVGPathElement).style.stroke).toContain('#2563eb');
+  });
+
+  it.each(['sketch', 'marker'])('%s: an outline boundary\'s line takes the theme\'s share of its colour, like its crisp twin', (presetId) => {
+    const { container } = renderNode(
+      { label: 'Bank', typeId: 'c4-system-boundary', color: '#2563eb', state: 'expanded', stylePreset: stylePreset(presetId) },
+      undefined,
+      { width: 600, height: 400 },
+    );
+    const stroke = container.querySelector('.dg-group-outline .dg-sketch-stroke') as SVGPathElement;
+    expect(stroke.style.stroke).toContain(outlineInk('#2563eb'));
   });
 
   it('drops the inline accent chrome on a colored node in sketch mode (the rough shape carries color instead)', () => {
@@ -505,6 +541,12 @@ describe('DiagramNode', () => {
     expect(box.style.borderColor).not.toBe(''); // colored border
     expect(box.style.background).toBe(''); // no fill (not the solid bg, not the color-mix tint)
     expect(box.className).not.toContain('dg-solid'); // outline, not solid
+  });
+
+  it('an outline box draws its border and its text in the theme\'s share of its colour', () => {
+    const box = renderNode({ label: 'Web App', typeId: 'c4-system', color: '#1168bd' }).container.querySelector('.dg-node') as HTMLElement;
+    expect(box.style.borderColor).toBe(outlineInk('#1168bd'));
+    expect(box.style.color).toBe(outlineInk('#1168bd'));
   });
 
   it('composes the technology into the type subtitle', () => {
@@ -1087,7 +1129,7 @@ describe('threat-model looks', () => {
     const group = container.querySelector('.dg-group') as HTMLElement;
     expect(group.classList.contains('dg-group-outline')).toBe(true);
     expect(group.classList.contains('dg-dashed')).toBe(true);
-    expect(group.style.borderColor).toBe('rgb(198, 40, 40)'); // jsdom normalizes #c62828
+    expect(group.style.borderColor).toBe(outlineInk(TM_BOUNDARY_COLOR)); // an outline's line, like any other
     expect(group.querySelector('.dg-threat-badge')?.textContent).toBe('1');
   });
 
@@ -1098,7 +1140,7 @@ describe('threat-model looks', () => {
     const box = container.querySelector('.dg-node') as HTMLElement;
     expect(box.classList.contains('dg-c4-outline')).toBe(true);
     expect(box.classList.contains('dg-dashed')).toBe(true);
-    expect(box.style.borderColor).toBe('rgb(198, 40, 40)');
+    expect(box.style.borderColor).toBe(outlineInk(TM_BOUNDARY_COLOR));
     expect(box.style.background).toBe(''); // the line is the look — no wash
   });
 });

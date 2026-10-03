@@ -35,6 +35,14 @@ describe('theme', () => {
     expect(lightTheme.ink).not.toBe(darkTheme.ink);
   });
 
+  it('keeps the whole of an outline\'s colour in light and part of it in dark', () => {
+    // An outline is a line and a title on the bare canvas. A colour written for a
+    // white page keeps all of itself there; on the dark canvas it is lifted toward
+    // the text colour, or a dark one (the AWS Cloud navy) would vanish.
+    expect(themeToCssVars(lightTheme)['--dg-outline-ink']).toBe('100%');
+    expect(themeToCssVars(darkTheme)['--dg-outline-ink']).toBe('55%');
+  });
+
   it('defines one laser token shared by both themes', () => {
     // A laser is red on any background; the token exists so the colour is
     // declared once, not so it can differ per theme.

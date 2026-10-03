@@ -11,6 +11,7 @@ import { PLAN_LAYOUT } from './plan-layout';
 import { RichLabelEditor } from './RichLabelEditor';
 import { RoleChipMenu } from './RoleChipMenu';
 import { runsToDisplay } from './richtext';
+import { outlineInk } from './outline-ink';
 import { SketchShape, type SketchFill } from './SketchShape';
 import { TableNode } from './TableNode';
 import type { StylePreset } from './stylePresets';
@@ -176,7 +177,7 @@ const sketchOf = (
       height={height}
       preset={data.stylePreset}
       fill={fill}
-      {...(data.color !== undefined ? { color: data.color } : {})}
+      {...(data.color !== undefined ? { color: fill === 'none' ? outlineInk(data.color) : data.color } : {})}
     />
   ) : null;
 
@@ -893,7 +894,8 @@ export function DiagramNode({
   if (data.state === 'expanded') {
     // Outline group types (C4 boundaries, AWS regions/VPCs) draw a pure colored
     // line — no accent tint; the stencil's boundary is a line, not a wash.
-    const groupOutline = style.outline === true && data.color !== undefined;
+    const groupInk = style.outline === true && data.color !== undefined ? outlineInk(data.color) : undefined;
+    const groupOutline = groupInk !== undefined;
     const corner = style.cornerBadge === true;
     return (
       <div
@@ -904,8 +906,8 @@ export function DiagramNode({
             : {}
           : {
               style: {
-                ...(groupOutline
-                  ? { borderColor: data.color, color: data.textColor ?? data.color }
+                ...(groupInk !== undefined
+                  ? { borderColor: groupInk, color: data.textColor ?? groupInk }
                   : accentStyle(data.color)),
                 ...(data.textColor !== undefined ? { color: data.textColor } : {}),
                 ...hitStyle,
@@ -941,7 +943,8 @@ export function DiagramNode({
     );
   }
 
-  const outline = style.outline === true && data.color !== undefined;
+  const ink = style.outline === true && data.color !== undefined ? outlineInk(data.color) : undefined;
+  const outline = ink !== undefined;
   // Registry solid look (e.g. the C4 profile): applies only when nothing more
   // specific colours the node — an explicit color keeps today's accent path.
   const solid =
@@ -953,7 +956,7 @@ export function DiagramNode({
         }
       : undefined;
   const boxAccent: CSSProperties = {
-    ...(solid ?? (outline ? { borderColor: data.color, color: data.color } : accentStyle(data.color))),
+    ...(solid ?? (ink !== undefined ? { borderColor: ink, color: ink } : accentStyle(data.color))),
     // an explicit text color overrides the default (which follows the accent on C4 boxes)
     ...(data.textColor !== undefined ? { color: data.textColor } : {}),
   };

@@ -226,7 +226,8 @@ const FISHBONE: NotationProfile = {
 // through colorOf so it applies whatever the diagram's typeColors say, while an
 // explicit node colour still wins (the accent chain is unchanged).
 /** Trust-boundary red. A literal, like the C4 palette above: it is the
- * notation's identity and reads the same in both themes. */
+ * notation's identity, one red for both themes. The boundary is an outline, so
+ * on the dark canvas it is lifted as any outline's colour is (outline-ink.ts). */
 export const TM_BOUNDARY_COLOR = '#c62828';
 
 function boundaryColors(model: DiagramModel): ReadonlyMap<string, string> {
