@@ -98,9 +98,12 @@ footer { border-top: 1px solid var(--border); padding: 24px 16px; text-align: ce
   .hero, .leads, .steps, .example { grid-template-columns: minmax(0, 1fr); }
   section { padding-top: 40px; }
   .install { flex-direction: column; }
-  /* The nav wraps to three lines here: too much of a small screen to keep in view. */
-  .nav { position: static; }
-  html { scroll-padding-top: 0; }
   /* Sized by its width, so a tall picture leaves no empty band above the button. */
   .stage-poster img { height: auto; }
+}
+/* Below this the nav wraps to two or three lines: too much of a small screen to keep in
+   view. Wider, it is one line and stays at the top. */
+@media (max-width: 480px) {
+  .nav { position: static; }
+  html { scroll-padding-top: 0; }
 }

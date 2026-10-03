@@ -16,7 +16,7 @@ You author a diagram in one of two ways, and both meet at the same validated mod
 Most diagram tools do one of two things. They turn code into a static picture, or they give you a canvas and good-looking shapes. This one is about the structure of a system: what sits inside what, and what you can add on top. It is still written and generated as code.
 
 - **Diagrams as code.** A diagram is a TypeScript file, so it diffs, reviews and refactors like the rest of your repository. `diagc` validates it when it compiles, and `diagc lint` reports what compiles but is probably a mistake. See [Author diagrams in TypeScript](docs/how-to/author-in-typescript.md).
-- **Written by coding agents.** `diagc guide` prints how to write a diagram in a form an AI can read, and `diagc init --agents` points coding agents at it. See [Write diagrams with a coding agent](docs/how-to/write-diagrams-with-a-coding-agent.md).
+- **Written by coding agents.** `diagc guide` prints how to write a diagram in a form an AI can read, and `diagc init --agents` points coding agents at it. A model with no shell reads the same guide as one file, [llms.txt](https://ferroman.github.io/diagc/llms.txt). See [Write diagrams with a coding agent](docs/how-to/write-diagrams-with-a-coding-agent.md).
 - **Semantic zoom.** A diagram rests as folded group boxes whose relations aggregate, so you start from the big picture. Double-click a group to zoom into it and unfold its parts. Double-click again to fold it back. See [Organise a large diagram](docs/how-to/organise-large-diagrams.md).
 - **Planes and layers.** A plane groups the same things in a second way: by system in one view, by where they run in another. A layer is a transparent sheet that adds detail to any level without cluttering the base picture. See [Use planes and layers](docs/how-to/use-planes-and-layers.md).
 - **Composition.** `include` combines diagrams from several sources, so each system's diagram appears in the context of the other systems without copy-paste. See [Compose diagrams](docs/how-to/compose-diagrams.md).
@@ -24,7 +24,7 @@ Most diagram tools do one of two things. They turn code into a static picture, o
 - **Icon libraries.** C4 stencils and the AWS, Azure, Google Cloud, Kubernetes and tech icon sets. See [Use the icon library](docs/how-to/use-the-icon-library.md).
 - **Diffs for review.** `diagc diff` draws what changed in the diagrams between two git refs, and a GitHub Action puts the pictures on a pull request. See [Show what changed](docs/how-to/show-what-changed.md).
 - **Notes on the picture.** [A legend](docs/how-to/add-a-legend.md), [comments and links](docs/how-to/comment-on-a-diagram.md) on any node or relation, and [freehand drawing](docs/how-to/draw-on-a-diagram.md).
-- **Obsidian.** A plugin puts the studio and diagram embeds in a vault. See [Use the Obsidian plugin](docs/how-to/obsidian-plugin.md).
+- **Obsidian.** A plugin puts the studio and diagram embeds in a vault. It is built from a checkout of this repository, not installed with the CLI. See [Use the Obsidian plugin](docs/how-to/obsidian-plugin.md).
 
 ## Install
 

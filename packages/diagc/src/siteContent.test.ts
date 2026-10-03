@@ -43,10 +43,12 @@ describe('the landing page', () => {
     expect(bad).toEqual([]);
   });
 
-  it('shows only pictures that are committed', () => {
+  it('shows only committed pictures of diagrams that exist', () => {
     const pictures = refs.filter((t) => t.startsWith('static/'));
     expect(pictures.length).toBeGreaterThanOrEqual(8);
     expect(pictures.filter((t) => !existsSync(path.join(root, '.diagrams', t)))).toEqual([]);
+    // A picture whose source is gone is a leftover: `publish` no longer draws it.
+    expect(pictures.filter((t) => !hasSource(t.slice('static/'.length).replace(/\.png$/, '')))).toEqual([]);
   });
 
   it('has no dead link into its own folder', () => {
@@ -91,5 +93,22 @@ describe('the landing page', () => {
     expect(sheets.filter(isExternal)).toEqual([]);
     expect(css).not.toBe('');
     expect(css).not.toMatch(/@import|url\(\s*['"]?(https?:)?\/\//i);
+  });
+});
+
+describe('the front pages', () => {
+  const readme = read(path.join(root, 'README.md'));
+
+  it('say that the Obsidian plugin is built from a checkout', () => {
+    // It is not part of the installed CLI, and a front page must not read as if it were.
+    const bullet = readme.split('\n').find((l) => l.startsWith('- **Obsidian.**')) ?? '';
+    const card = /<h3>Obsidian<\/h3>\s*<p>([^<]*)<\/p>/.exec(html)?.[1] ?? '';
+    expect(bullet).toContain('checkout');
+    expect(card).toContain('checkout');
+  });
+
+  it('point an agent at llms.txt', () => {
+    expect(readme).toContain('https://ferroman.github.io/diagc/llms.txt');
+    expect(refs).toContain('llms.txt');
   });
 });

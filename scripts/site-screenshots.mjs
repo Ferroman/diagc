@@ -30,6 +30,7 @@ if (chrome === undefined || !existsSync(chrome)) {
 
 async function waitForServer() {
   for (let i = 0; i < 120; i++) {
+    if (server.exitCode !== null) throw new Error('the studio dev server stopped before it answered');
     try {
       if ((await fetch(BASE)).ok) return;
     } catch {
@@ -74,10 +75,17 @@ async function shoot(page, file) {
 const compiled = spawnSync('pnpm', ['compile'], { cwd: root, stdio: 'inherit' });
 if (compiled.status !== 0) process.exit(compiled.status ?? 1);
 
-/** What git sees as changed under the diagram sources. */
-const sourceChanges = () =>
-  spawnSync('git', ['status', '--porcelain', '--', '.diagrams/src'], { cwd: root, encoding: 'utf8' }).stdout;
+/** The diagram sources as git sees them: which files differ, and how. */
+const git = (...args) => spawnSync('git', [...args, '--', '.diagrams/src'], { cwd: root, encoding: 'utf8' }).stdout;
+const sourceChanges = () => git('status', '--porcelain') + git('diff');
 const before = sourceChanges();
+
+// Whatever answers before the server is started is not the studio this script starts: a
+// server left by an interrupted run, most likely. Its pictures would be of another tree.
+if (await fetch(BASE).then(() => true, () => false)) {
+  console.error(`✗ something already answers on ${BASE} — stop it first.`);
+  process.exit(1);
+}
 
 // detached: the server gets a process group of its own, so pnpm, vite and esbuild stop
 // together.
@@ -86,6 +94,21 @@ const server = spawn(
   ['--filter', '@diagc/studio', 'exec', 'vite', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'],
   { cwd: root, stdio: 'ignore', detached: true },
 );
+const stopServer = () => {
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch {
+    /* already gone */
+  }
+};
+// Ctrl+C skips `finally`, and a server left behind holds the port for the next run.
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    stopServer();
+    process.exit(130);
+  });
+}
+
 let browser;
 try {
   await waitForServer();
@@ -109,13 +132,13 @@ try {
   await fit(page);
   await shoot(page, 'studio-edit.png');
 } finally {
-  await browser?.close();
-  process.kill(-server.pid, 'SIGTERM');
-}
-
-// The studio saves some things without being asked. A picture is not worth a changed
-// diagram, so say so loudly instead of leaving it for a later `git status`.
-if (sourceChanges() !== before) {
-  console.error('✗ the studio changed files under .diagrams/src while the pictures were taken — look at `git status`.');
-  process.exit(1);
+  await browser?.close().catch(() => {});
+  stopServer();
+  // The studio saves some things without being asked. A picture is not worth a changed
+  // diagram, so say so loudly instead of leaving it for a later `git status` — also when
+  // the run failed half way, which is when it is easiest to miss.
+  if (sourceChanges() !== before) {
+    console.error('✗ the studio changed files under .diagrams/src while the pictures were taken — look at `git status`.');
+    process.exitCode = 1;
+  }
 }
