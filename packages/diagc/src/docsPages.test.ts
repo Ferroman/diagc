@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -345,5 +345,36 @@ describe('a docs page', () => {
 
   it('loads a picture when the reader reaches it', () => {
     expect(publish).toContain('<img src="../../static/x.png" alt="pic" loading="lazy">');
+  });
+});
+
+// The docs as they are. Pages deploys only from main, so this is what stops a dead link,
+// or a page missing from the index, before it is merged.
+describe('the real docs', () => {
+  const docsDir = path.join(root, 'docs');
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
+  const files = new Map(
+    walk(docsDir)
+      .filter((f) => f.endsWith('.md'))
+      .map((f) => [path.relative(docsDir, f).split(path.sep).join('/'), readFileSync(f, 'utf8')] as const),
+  );
+  const exists = (repoPath: string): boolean => existsSync(path.join(root, repoPath));
+
+  it('render with no dead link, every page listed in the index', () => {
+    expect(renderDocs({ files, exists }).errors).toEqual([]);
+  });
+
+  it('become one page each', () => {
+    expect(files.size).toBeGreaterThanOrEqual(39);
+    expect(renderDocs({ files, exists }).pages.size).toBe(files.size);
+  });
+
+  it('would be stopped by a dead link in any of them', () => {
+    const broken = new Map(files);
+    broken.set('how-to/add-a-legend.md', `${files.get('how-to/add-a-legend.md') ?? ''}\n\n[gone](../reference/no-such-page.md)\n`);
+    expect(renderDocs({ files: broken, exists }).errors).toEqual([
+      'docs/how-to/add-a-legend.md: ../reference/no-such-page.md — no such page',
+    ]);
   });
 });
