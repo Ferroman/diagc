@@ -12,7 +12,7 @@ This guide is for diagc {{version}}.
 
 A person runs `diagc studio` to browse every diagram and to move boxes by hand.
 
-Commit `.diagrams/src/` and `.diagrams/static/`. `.diagrams/.artifacts/` and `.diagrams/html/` are build output.
+Commit `.diagrams/src/` and `.diagrams/static/`. `.diagrams/.artifacts/`, `.diagrams/html/` and `.diagrams/diff/` are build output.
 
 ## A diagram
 

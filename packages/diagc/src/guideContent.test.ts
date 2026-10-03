@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { BUILTIN_NOTATIONS } from '@diagc/core';
 import { ALL_TOPIC, guideTopics, renderGuide, type GuideContext } from './guide';
 import { cliVersion, findHome, homePaths } from './home';
+import { IGNORED } from './init';
 import { lintFile } from './lint';
 import { starterTypes } from './starters';
 
@@ -65,6 +66,12 @@ describe('guide coverage', () => {
   it('has a starter for every notation, for ER, for activity and for basic', () => {
     const types = starterTypes(ctx.startersDir);
     for (const id of [...BUILTIN_NOTATIONS, 'er', 'activity', 'basic']) expect(types, id).toContain(id);
+  });
+
+  it('calls build output exactly what init ignores', () => {
+    // The skill `init --agents` writes says the same, and an agent reads both.
+    const built = /^Commit .+?\. (.+?) are build output\.$/m.exec(renderGuide(undefined, ctx))?.[1] ?? '';
+    expect([...built.matchAll(/`([^`]+)`/g)].map((m) => m[1]).sort()).toEqual([...IGNORED].sort());
   });
 
   it('keeps the names the renderer reserves free', () => {

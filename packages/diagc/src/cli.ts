@@ -44,7 +44,8 @@ const USAGE = `Usage: diagc <init|compile|lint|watch|publish|studio|eject|diff|g
 Commands:
   init      init [name] [--type <type>] [--agents]: set a repository up — a starter
             diagram under .diagrams/src (compiled), the .gitignore lines, and with
-            --agents a pointer to the guide for coding agents (AGENTS.md / CLAUDE.md)
+            --agents a pointer to the guide for coding agents (AGENTS.md / CLAUDE.md,
+            and a skill where Claude Code is in use)
   compile   Compile *.diagram.{ts,json} sources into overlay artifacts once
   lint      Report suspicious diagrams (typos, duplicates, unused or undrawn parts); exit 1 on any
   watch     Recompile — and live-recompile — a directory of sources
@@ -66,7 +67,8 @@ Options:
   --image-url t   diff: summary.md's image links as t, {path} standing for each PNG
   --update-includes  Refetch remote includes and rewrite the snapshot lock
   --type <type>   init: the starter to copy (default basic; 'diagc guide' lists the types)
-  --agents        init: write the coding-agent block into AGENTS.md / CLAUDE.md
+  --agents        init: write the coding-agent block into AGENTS.md / CLAUDE.md, and
+                  the skill into .claude/skills/diagc/ where Claude Code is in use
   --help, -h      Show this help and exit
 `;
 
@@ -88,7 +90,7 @@ interface Args {
   labels?: [string, string];
   /** init `--type`: which starter to copy */
   type?: string;
-  /** init `--agents`: write the coding-agent block */
+  /** init `--agents`: write the coding-agent block and the Claude Code skill */
   agents: boolean;
 }
 
@@ -406,6 +408,7 @@ async function main() {
       ...(args.type !== undefined ? { type: args.type } : {}),
       agents: args.agents,
       startersDir: home.startersDir,
+      skillFile: home.skillFile,
       version: cliVersion(home.root),
       coreEntry: home.coreEntry,
       resolver: snap.resolver,

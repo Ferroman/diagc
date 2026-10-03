@@ -26,6 +26,8 @@ export interface HomePaths {
   guideDir: string;
   /** `<type>/starter.diagram.ts`, one folder per diagram type */
   startersDir: string;
+  /** the Claude Code skill `diagc init --agents` writes into a repository */
+  skillFile: string;
 }
 
 export interface Home {
@@ -101,6 +103,7 @@ export function homePaths(home: Home, coreEntry = resolveCoreEntry): HomePaths {
       studioDir,
       guideDir: path.join(root, 'assets', 'guide'),
       startersDir: path.join(root, 'assets', 'starters'),
+      skillFile: path.join(root, 'assets', 'skill', 'SKILL.md'),
     };
   }
   return {
@@ -114,6 +117,7 @@ export function homePaths(home: Home, coreEntry = resolveCoreEntry): HomePaths {
     // A checkout reads the starters where the examples keep them; `stage-assets`
     // copies only the starter files out, into the same `<type>/` shape.
     startersDir: path.join(root, '.diagrams', 'src', 'examples'),
+    skillFile: path.join(root, 'packages', 'diagc', 'skill', 'SKILL.md'),
   };
 }
 

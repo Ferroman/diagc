@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cliVersion, findHome, homePaths } from './home';
-import { AGENTS_BEGIN, AGENTS_BLOCK, AGENTS_END, DEFAULT_NAME, IGNORED, diagramName, missingIgnores, runInit, withAgentsBlock, type InitOptions } from './init';
+import { AGENTS_BEGIN, AGENTS_BLOCK, AGENTS_END, DEFAULT_NAME, IGNORED, SKILL_PATH, diagramName, missingIgnores, runInit, withAgentsBlock, type InitOptions } from './init';
 import { readStarter } from './starters';
 
 // Real starters and the real core: the compile step is the point of `init`.
@@ -27,6 +27,7 @@ const opts = (over: Partial<InitOptions> = {}): InitOptions => ({
   cwd,
   agents: false,
   startersDir: home.startersDir,
+  skillFile: home.skillFile,
   version,
   coreEntry: home.coreEntry,
   ...over,
@@ -50,7 +51,7 @@ describe('runInit, fresh', () => {
     expect(text).toContain('Next:');
     expect(text).toMatch(/^ {2}diagc studio\s+look at it$/m);
     expect(text).toMatch(/^ {2}diagc guide\s+how to write diagrams/m);
-    expect(text).toMatch(/^ {2}diagc init --agents\s+point coding agents/m);
+    expect(text).toMatch(/^ {2}diagc init --agents\s+point coding agents at the guide \(AGENTS\.md, Claude Code skill\)$/m);
     // no package.json here, so no install hint
     expect(text).not.toContain('@diagc/core');
   });
@@ -233,10 +234,120 @@ describe('runInit --agents', () => {
     expect(withAgentsBlock('').text).toBe(AGENTS_BLOCK);
   });
 
+  it('withAgentsBlock replaces only a whole begin-to-end pair, so text under a marker that lost its end stays', () => {
+    const once = withAgentsBlock(`${AGENTS_BEGIN}\nhalf\n\n## House rules\nKEEP ME\n`);
+    expect(once.replaced).toBe(false);
+    const twice = withAgentsBlock(once.text);
+    expect(twice.replaced).toBe(true);
+    expect(twice.text).toBe(once.text);
+    expect(twice.text).toContain('KEEP ME');
+  });
+
+  it('withAgentsBlock steps over an end marker that has no begin', () => {
+    const r = withAgentsBlock(`${AGENTS_END}\ntext\n\n${AGENTS_BEGIN}\nold\n${AGENTS_END}\n`);
+    expect(r).toEqual({ text: `${AGENTS_END}\ntext\n\n${AGENTS_BLOCK}`, replaced: true });
+  });
+
   it('the block names commands, not DSL', () => {
     expect(AGENTS_BLOCK).toContain('diagc guide');
     expect(AGENTS_BLOCK).toContain('diagc lint --json');
     expect(AGENTS_BLOCK).toContain('diagc publish <name>');
     expect(AGENTS_BLOCK).not.toMatch(/m\.node|relate|contains/);
+  });
+});
+
+describe('runInit --agents, the Claude Code skill', () => {
+  // The real file: what a repository gets is what the package ships.
+  const skill = readFileSync(home.skillFile, 'utf8');
+  /** the part a later run replaces: from the begin marker to the end of the file */
+  const block = skill.slice(skill.indexOf(AGENTS_BEGIN));
+  const line = (mark: '✓' | '·', what: string): RegExp => new RegExp(`^${mark} \\.claude/skills/diagc/SKILL\\.md\\s+${what}$`, 'm');
+
+  it('writes the packaged skill, byte for byte, where there is a .claude folder', async () => {
+    mkdirSync(path.join(cwd, '.claude'));
+    expect(await runInit(opts({ agents: true }), io)).toBe(0);
+    expect(read(SKILL_PATH)).toBe(skill);
+    expect(out.join('\n')).toMatch(line('✓', '\\(diagc skill added\\)'));
+  });
+
+  it('writes it where there is a CLAUDE.md and no .claude folder', async () => {
+    writeFileSync(path.join(cwd, 'CLAUDE.md'), '# Notes\n');
+    await runInit(opts({ agents: true }), io);
+    expect(read(SKILL_PATH)).toBe(skill);
+  });
+
+  it('skips it, and makes no .claude folder, where neither is there', async () => {
+    expect(await runInit(opts({ agents: true }), io)).toBe(0);
+    expect(has('.claude')).toBe(false);
+    expect(out.join('\n')).toMatch(line('·', 'no \\.claude/ or CLAUDE\\.md here — skill skipped'));
+  });
+
+  it('does not take a file named .claude for the folder', async () => {
+    writeFileSync(path.join(cwd, '.claude'), '');
+    expect(await runInit(opts({ agents: true }), io)).toBe(0);
+    expect(out.join('\n')).toMatch(line('·', 'no \\.claude/ or CLAUDE\\.md here — skill skipped'));
+    expect(read('.claude')).toBe('');
+  });
+
+  it('leaves it alone without --agents', async () => {
+    mkdirSync(path.join(cwd, '.claude'));
+    await runInit(opts(), io);
+    expect(has(SKILL_PATH)).toBe(false);
+    expect(out.join('\n')).not.toContain('SKILL.md');
+  });
+
+  it('refreshes its own text on a later run and keeps what was written around it', async () => {
+    const front = '---\nname: diagc\ndescription: ours\n---\n\n';
+    mkdirSync(path.dirname(path.join(cwd, SKILL_PATH)), { recursive: true });
+    writeFileSync(path.join(cwd, SKILL_PATH), `${front}${AGENTS_BEGIN}\nold text\n${AGENTS_END}\n\n## House rules\n`);
+    await runInit(opts({ agents: true }), io);
+    const text = read(SKILL_PATH);
+    expect(text).toBe(`${front}${block}\n## House rules\n`);
+    expect(out.join('\n')).toMatch(line('✓', '\\(diagc skill refreshed\\)'));
+    await runInit(opts({ agents: true }), io);
+    expect(read(SKILL_PATH)).toBe(text);
+  });
+
+  it('adds its text below a diagc skill that has no markers', async () => {
+    const theirs = '---\nname: diagc\ndescription: mine\n---\n\nMy rules.\n';
+    mkdirSync(path.dirname(path.join(cwd, SKILL_PATH)), { recursive: true });
+    writeFileSync(path.join(cwd, SKILL_PATH), theirs);
+    await runInit(opts({ agents: true }), io);
+    expect(read(SKILL_PATH)).toBe(`${theirs}\n${block}`);
+    expect(out.join('\n')).toMatch(line('✓', '\\(diagc skill added\\)'));
+  });
+
+  it('writes the whole skill over an empty file, frontmatter included', async () => {
+    mkdirSync(path.dirname(path.join(cwd, SKILL_PATH)), { recursive: true });
+    writeFileSync(path.join(cwd, SKILL_PATH), '\n');
+    await runInit(opts({ agents: true }), io);
+    expect(read(SKILL_PATH)).toBe(skill);
+  });
+
+  it('refuses before writing anything when the install has lost the skill', async () => {
+    mkdirSync(path.join(cwd, '.claude'));
+    const before = tree();
+    expect(await runInit(opts({ agents: true, skillFile: path.join(cwd, 'nope', 'SKILL.md') }), io)).toBe(1);
+    expect(err[0]).toMatch(/^diagc: skill file missing from this install .* — reinstall diagc\.$/);
+    expect(tree()).toEqual(before);
+  });
+
+  it('reads the skill that is already there before it writes anything', async () => {
+    // A SKILL.md that cannot be read — here, a folder of that name — stops the run
+    // with the tree as it was, not after the starter and AGENTS.md are down.
+    mkdirSync(path.join(cwd, SKILL_PATH), { recursive: true });
+    const before = tree();
+    await expect(runInit(opts({ agents: true }), io)).rejects.toThrow(/EISDIR/);
+    expect(tree()).toEqual(before);
+  });
+
+  it('does not ask for the skill where it would not write it', async () => {
+    expect(await runInit(opts({ agents: true, skillFile: path.join(cwd, 'nope', 'SKILL.md') }), io)).toBe(0);
+    expect(err).toEqual([]);
+  });
+
+  it('writes it into the folder its name says', () => {
+    // An agent finds a skill by its folder; the format wants the two to agree.
+    expect(path.basename(path.dirname(SKILL_PATH))).toBe(/^name: (.+)$/m.exec(skill)?.[1]);
   });
 });
