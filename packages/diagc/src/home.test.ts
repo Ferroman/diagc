@@ -96,6 +96,12 @@ describe('homePaths', () => {
     expect(p.guideDir).toBe(path.join('/pkg', 'assets', 'guide'));
     expect(p.startersDir).toBe(path.join('/pkg', 'assets', 'starters'));
   });
+
+  it('finds the agent skill in a checkout and in a packaged install', () => {
+    expect(homePaths({ root: '/repo', layout: 'monorepo' }).skillFile).toBe(path.join('/repo', 'packages', 'diagc', 'skill', 'SKILL.md'));
+    const p = homePaths({ root: '/pkg', layout: 'packaged' }, () => '/pkg/node_modules/@diagc/core/dist/index.js');
+    expect(p.skillFile).toBe(path.join('/pkg', 'assets', 'skill', 'SKILL.md'));
+  });
 });
 
 describe('resolveCoreEntry', () => {

@@ -26,6 +26,8 @@ const NOTICES = path.join(root, 'THIRD-PARTY-NOTICES.md');
 const GUIDE = path.join(root, 'packages', 'diagc', 'guide');
 const EXAMPLES = path.join(root, '.diagrams', 'src', 'examples');
 const STARTER = 'starter.diagram.ts';
+// What `diagc init --agents` writes into a repository that uses Claude Code.
+const SKILL = path.join(root, 'packages', 'diagc', 'skill', 'SKILL.md');
 
 async function require(target, what, how) {
   try {
@@ -40,6 +42,7 @@ await require(VIEWER_SHELL, 'viewer shell', 'pnpm build:cli');
 await require(NOTICES, 'third-party notices', 'restore THIRD-PARTY-NOTICES.md at the repo root');
 await require(path.join(GUIDE, 'index.md'), 'guide', 'restore packages/diagc/guide/');
 await require(EXAMPLES, 'examples', 'restore .diagrams/src/examples/');
+await require(SKILL, 'agent skill', 'restore packages/diagc/skill/SKILL.md');
 const starters = (await readdir(EXAMPLES, { withFileTypes: true }))
   .filter((e) => e.isDirectory() && existsSync(path.join(EXAMPLES, e.name, STARTER)))
   .map((e) => e.name)
@@ -65,6 +68,8 @@ for (const type of starters) {
   await mkdir(path.join(assets, 'starters', type), { recursive: true });
   await cp(path.join(EXAMPLES, type, STARTER), path.join(assets, 'starters', type, STARTER));
 }
+await mkdir(path.join(assets, 'skill'), { recursive: true });
+await cp(SKILL, path.join(assets, 'skill', 'SKILL.md'));
 
 // Sits outside `assets/` (which is wiped above) because it is package metadata, not a
 // build artifact — `files` lists it explicitly. Gitignored; regenerated every build.
@@ -76,3 +81,4 @@ console.log(`✓ studio bundle -> assets/studio/`);
 console.log(`✓ third-party notices -> packages/diagc/THIRD-PARTY-NOTICES.md`);
 console.log(`✓ guide -> assets/guide/`);
 console.log(`✓ starters -> assets/starters/ (${starters.join(', ')})`);
+console.log(`✓ agent skill -> assets/skill/SKILL.md`);
