@@ -79,6 +79,21 @@ describe('docs and examples', () => {
     expect(dead).toEqual([]);
   });
 
+  it('lists every docs page in the docs index', () => {
+    // The index left README.md for docs/README.md, where a missing row is easy to miss.
+    const index = path.join(root, 'docs', 'README.md');
+    const linked = new Set(
+      (existsSync(index) ? targets(readFileSync(index, 'utf8')) : [])
+        .filter((t) => !isExternal(t))
+        .map((t) => path.resolve(path.dirname(index), t.split('#')[0]!)),
+    );
+    const unlisted = walk(path.join(root, 'docs'))
+      .filter((f) => f.endsWith('.md') && f !== index)
+      .filter((f) => !linked.has(f))
+      .map(rel);
+    expect(unlisted).toEqual([]);
+  });
+
   it('points every live-page link at a diagram that exists', () => {
     const names = new Set(walk(SRC).filter(isSource).map(nameOf));
     const bad: string[] = [];
@@ -86,7 +101,8 @@ describe('docs and examples', () => {
       for (const t of targets(readFileSync(page, 'utf8'))) {
         if (!t.startsWith(LIVE)) continue;
         const name = t.slice(LIVE.length).replace(/\.html(#.*)?$/, '');
-        if (!names.has(name)) bad.push(`${rel(page)} -> ${t}`);
+        // html/index.html is the examples index that `publish` writes, not a diagram.
+        if (name !== 'index' && !names.has(name)) bad.push(`${rel(page)} -> ${t}`);
       }
     }
     expect(bad).toEqual([]);

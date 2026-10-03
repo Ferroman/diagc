@@ -73,7 +73,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # pnpm packs, npm publishes. The pack is where pnpm rewrites publishConfig and
-      # `workspace:*` (see README § Releasing), and each package's prepack rebuilds
+      # `workspace:*` (see CONTRIBUTING.md § Releasing), and each package's prepack rebuilds
       # its dist, so nothing stale ships. The upload goes through npm because its
       # OIDC exchange is the reference one; pnpm's has broken between releases.
       - run: pnpm -r --filter @diagc/core --filter @diagc/cli exec pnpm pack --pack-destination "$RUNNER_TEMP/tarballs"

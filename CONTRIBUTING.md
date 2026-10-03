@@ -30,7 +30,7 @@ A clear report is genuinely useful and carries no paperwork.
 
 ## Getting set up
 
-Needs **Node ≥ 22** and **pnpm 10** (`corepack enable` once).
+Needs **Node ≥ 22** (the repo pins Node 24 in `mise.toml`) and **pnpm 10** (`corepack enable` once).
 
 ```bash
 pnpm install
@@ -57,6 +57,21 @@ prebuilt bundle, resolves `@diagc/core` back to this checkout, and needs `pnpm b
 after a viewer change or published pages keep the old shell. Nothing pins a version: every
 repository on the machine runs whatever the checkout is at. An installed `@diagc/cli` has none of
 these strings attached, which is why the tutorials and how-tos never mention the link.
+
+## The packages
+
+![Which package owns what](.diagrams/static/docs/workspace.png)
+
+| Path | Package | Role |
+| --- | --- | --- |
+| `packages/core` | `@diagc/core` | Builder DSL, the JSON model + validation, the view compiler. **Published.** |
+| `packages/renderer` | `@diagc/renderer` | React `DiagramView` (React Flow + elk) and the type/kind/theme registries. |
+| `packages/icons` | `@diagc/icons` | Icon id → lucide component. |
+| `packages/diagc` | `@diagc/cli` | The `diagc` CLI: init, compile, lint, watch, publish, studio, eject, diff, guide. **Published.** |
+| `apps/studio` | `@diagc/studio` | The browser app and its dev-server API. |
+| `apps/viewer` | `@diagc/viewer` | The single-file shell `publish` stamps a model into. |
+
+To change what the renderer draws when you use `DiagramView` yourself inside the workspace, see [Renderer registries and theme](docs/reference/renderer.md).
 
 ## Before you open a pull request
 
@@ -91,7 +106,9 @@ first will save you time on anything non-trivial.
 
 The docs' figures and the [examples](docs/examples/README.md) are built with the tool, from
 sources in `.diagrams/src/`. Their PNGs in `.diagrams/static/` are committed, because
-GitHub renders the docs straight from the repo.
+GitHub renders the docs straight from the repo. The docs' own figures are
+`.diagrams/src/docs/*.diagram.ts`, and `pnpm publish-diagrams` regenerates every page and
+picture.
 
 - **A new example goes under `.diagrams/src/examples/<type>/` or `examples/features/`,** and
   gets an entry in `docs/examples/README.md`. A test fails if it has none, or if a link or
@@ -104,6 +121,38 @@ GitHub renders the docs straight from the repo.
 
 CI compiles every source (`pnpm compile`), and the Pages workflow publishes them all to
 the live site.
+
+## The site
+
+<https://ferroman.github.io/diagc/> is the static files in `site/`, with the published diagram pages beside them. The Pages workflow builds it on every push to `main`. To look at it locally:
+
+```bash
+pnpm build:cli
+pnpm publish-diagrams --no-images   # the pages; the pictures are already committed
+pnpm build:site                     # assembles _site/
+python3 -m http.server -d _site     # or any static server
+```
+
+A test fails when the page names a diagram, a picture or a docs file that does not exist. The studio pictures in `site/img/` come from `scripts/site-screenshots.mjs`; run it again after a change to the studio's look.
+
+## Releasing
+
+`@diagc/cli` (the `diagc` command) and `@diagc/core` are published together and share a version. The other packages are build inputs: `renderer`, `icons`, `studio`, and `viewer` are baked into what `diagc` ships and stay private.
+
+Releases are automated with [release-please](https://github.com/googleapis/release-please) (`.github/workflows/release.yml`). Commits to `main` follow [Conventional Commits](https://www.conventionalcommits.org/): `fix:` makes a patch release, `feat:` a minor one, and `feat!:` or a `BREAKING CHANGE:` footer a major one. release-please keeps a release PR open that bumps the version (root `package.json`, copied into both published manifests) and updates `CHANGELOG.md`. Merging it tags `vX.Y.Z`, creates the GitHub release, and publishes both packages to npm through [trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC, no token). Each package's trusted publisher on npmjs.com must name this repository and `release.yml`. npm only lets you configure one on a package that already exists, so the very first release is published by hand.
+
+To publish by hand instead:
+
+```bash
+pnpm build:dist                       # compile both packages, build viewer + studio, stage assets
+pnpm --filter @diagc/core pack  # inspect the tarballs before trusting them
+pnpm --filter @diagc/cli pack
+pnpm -r publish --access public       # requires `npm adduser` first
+```
+
+Use **pnpm**, not `npm publish` — the published manifests rely on pnpm rewriting `publishConfig` (source `exports` become `dist` ones) and turning `workspace:*` into a real version. `prepack` rebuilds everything, so a stale `dist/` cannot ship.
+
+What an installed CLI carries that a checkout does not: `packages/diagc/assets/` holds the prebuilt viewer shell and studio bundle, and `diagc studio` serves that bundle from its own http server instead of spawning Vite. Both layouts are resolved in `packages/diagc/src/home.ts`.
 
 ## Third-party assets
 

@@ -4,7 +4,7 @@
   "description": "Diagram model, validator, and builder DSL for diagc — no React, no filesystem.",
   "license": "AGPL-3.0-only",
   "author": "Bogdan Frankovskyi",
-  "homepage": "https://github.com/Ferroman/diagc#readme",
+  "homepage": "https://ferroman.github.io/diagc/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Ferroman/diagc.git",
