@@ -45,6 +45,8 @@ beforeEach(() => {
 afterEach(() => {
   Reflect.deleteProperty(navigator, 'clipboard');
   window.getSelection()?.removeAllRanges();
+  localStorage.clear();
+  delete document.documentElement.dataset['theme'];
 });
 
 describe('the landing page script', () => {
@@ -110,5 +112,43 @@ describe('the landing page script', () => {
     expect(marked(code, 'call')).toEqual(['f']);
     expect(marked(code, 'number')).toEqual(['1.5']);
     expect(code.textContent).toBe(sample);
+  });
+
+  it('shows the theme switch, on the state that is remembered', () => {
+    expect($('#theme-switch').hidden).toBe(false);
+    expect($('#theme-switch').textContent).toBe('◐ System');
+    expect($('#theme-switch').getAttribute('aria-label')).toBe('Theme: system. Switch to light.');
+    expect(document.documentElement.dataset['theme']).toBeUndefined();
+  });
+
+  it('cycles system, light and dark, remembering each and marking the root', () => {
+    const button = $('#theme-switch');
+    click(button);
+    expect(button.textContent).toBe('☀ Light');
+    expect(localStorage.getItem('diagc-theme')).toBe('light');
+    expect(document.documentElement.dataset['theme']).toBe('light');
+    click(button);
+    expect(button.textContent).toBe('☾ Dark');
+    expect(button.getAttribute('aria-label')).toBe('Theme: dark. Switch to system.');
+    expect(localStorage.getItem('diagc-theme')).toBe('dark');
+    expect(document.documentElement.dataset['theme']).toBe('dark');
+    click(button);
+    expect(button.textContent).toBe('◐ System');
+    expect(localStorage.getItem('diagc-theme')).toBeNull();
+    expect(document.documentElement.dataset['theme']).toBeUndefined();
+  });
+
+  it('starts from a remembered theme', () => {
+    localStorage.setItem('diagc-theme', 'dark');
+    new Function(script)();
+    expect($('#theme-switch').textContent).toBe('☾ Dark');
+    expect(document.documentElement.dataset['theme']).toBe('dark');
+  });
+
+  it('follows a choice made on a published page', () => {
+    localStorage.setItem('diagc-theme', 'dark');
+    window.dispatchEvent(new StorageEvent('storage', { key: 'diagc-theme' }));
+    expect($('#theme-switch').textContent).toBe('☾ Dark');
+    expect(document.documentElement.dataset['theme']).toBe('dark');
   });
 });

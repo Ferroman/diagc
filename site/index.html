@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>diagc — diagrams as code, with a local studio</title>
 <meta name="description" content="diagc turns diagram sources in your repository into self-contained HTML pages and pictures, and gives you a local studio to draw them.">
+<script>try{var t=localStorage.getItem('diagc-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="stylesheet" href="site.css">
 <script src="site.js" defer></script>
 </head>
@@ -17,6 +18,7 @@
     <a href="#demos">Demos</a>
     <a href="#docs">Docs</a>
     <a href="https://github.com/Ferroman/diagc">GitHub</a>
+    <button type="button" id="theme-switch" hidden></button>
   </nav>
 </header>
 
