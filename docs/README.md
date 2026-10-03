@@ -1,7 +1,5 @@
 # Documentation
 
-Organised along [Diátaxis](https://diataxis.fr/) lines — learning, tasks, lookup, understanding.
-
 **[Examples](examples/README.md)** — every diagram type and feature with its source, each one also [live and zoomable](https://ferroman.github.io/diagc/html/index.html).
 
 ## Tutorials

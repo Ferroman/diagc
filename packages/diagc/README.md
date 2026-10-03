@@ -3,6 +3,7 @@
 Diagrams as code, with a local studio. diagc turns diagram sources that live in your repository into things other people can open.
 
 - **Pages and pictures.** `diagc publish` writes one self-contained HTML page per diagram, and a PNG. The page folds, zooms and switches views in the browser, with no server behind it. Host the pages on GitHub Pages, GitLab Pages or any static host, and put the PNG in a README.
+- **Diffs in pull requests.** A GitHub Action comments on a pull request that changes a diagram: the list of changes, and the before and after pictures.
 - **A local studio.** `diagc studio` opens a browser app against your repository. Draw a diagram there and the studio saves it as a file in the repository. `diagc eject` turns a drawn diagram into TypeScript.
 
 Diagrams are plain files in your repository, so they diff, review and refactor like the rest of it.
