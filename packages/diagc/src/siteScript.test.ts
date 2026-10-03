@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { findHome } from './home';
 
@@ -11,6 +11,11 @@ const root = findHome(fileURLToPath(import.meta.url)).root;
 const read = (f: string): string => (existsSync(f) ? readFileSync(f, 'utf8') : '');
 const page = read(path.join(root, 'site', 'index.html'));
 const script = read(path.join(root, 'site', 'site.js'));
+
+// A docs page is rendered by scripts/docs-pages.mjs, loaded as docsPages.test.ts loads it.
+const { renderDocs } = (await import(pathToFileURL(path.join(root, 'scripts', 'docs-pages.mjs')).href)) as {
+  renderDocs: (input: { files: Map<string, string>; exists: (repoPath: string) => boolean }) => { pages: Map<string, string> };
+};
 
 const $ = <T extends Element = HTMLElement>(selector: string): T => {
   const el = document.querySelector<T>(selector);
@@ -150,5 +155,27 @@ describe('the landing page script', () => {
     window.dispatchEvent(new StorageEvent('storage', { key: 'diagc-theme' }));
     expect($('#theme-switch').textContent).toBe('☾ Dark');
     expect(document.documentElement.dataset['theme']).toBe('dark');
+  });
+});
+
+describe('the script on a docs page', () => {
+  beforeEach(() => {
+    const markdown = '# Docs\n\n```ts\nconst a = 1;\n```\n\n```bash\nexport A=1 # for now\n```\n';
+    const { pages } = renderDocs({ files: new Map([['README.md', markdown]]), exists: () => true });
+    document.documentElement.innerHTML = /<html[^>]*>([\s\S]*)<\/html>/i.exec(pages.get('docs/index.html') ?? '')?.[1] ?? '';
+    new Function(script)();
+  });
+
+  it('colours a TypeScript block', () => {
+    expect(marked($('code.language-ts'), 'keyword')).toEqual(['const']);
+  });
+
+  it('leaves a shell block in one colour: the token rules read TypeScript', () => {
+    expect($('code.language-bash').children).toHaveLength(0);
+    expect($('code.language-bash').textContent).toBe('export A=1 # for now\n');
+  });
+
+  it('shows the theme switch', () => {
+    expect($('#theme-switch').hidden).toBe(false);
   });
 });

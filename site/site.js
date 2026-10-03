@@ -1,7 +1,8 @@
-// The landing page's four behaviours: a demo loads into the stage, the install line
-// copies, the theme switches, and the code sample gets its colours. A plain script, not a
-// module: the page loads it with `defer`, and its test evaluates it the same way. Without
-// it the page still works: every demo is a link, the theme is the system's, and the code
+// The site's behaviours: a demo loads into the stage, the install line copies, the theme
+// switches, and a code sample gets its colours. The landing page has all four; a docs page
+// has the last two, and the first two find nothing there to attach to. A plain script, not
+// a module: a page loads it with `defer`, and its test evaluates it the same way. Without
+// it a page still works: every demo is a link, the theme is the system's, and the code
 // reads in one colour.
 (() => {
   const poster = document.querySelector('.stage-poster');
@@ -111,7 +112,12 @@
     /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`)|\b(import|from|export|default|const|let|function|return|new|await|async|if|else|for|of|true|false|null|undefined)\b|\b(\d+(?:\.\d+)?)\b|([A-Za-z_$][\w$]*)(?=\s*\()|([A-Za-z_$][\w$]*)(?=\s*:)/g;
   const KINDS = ['comment', 'string', 'keyword', 'number', 'call', 'property'];
 
+  // A docs page marks each block with its language; the landing page's sample has no mark
+  // and is TypeScript. A block in a language the rules cannot read keeps one colour.
+  const READABLE = ['ts', 'tsx', 'js', 'json'];
   document.querySelectorAll('pre code').forEach((code) => {
+    const language = /\blanguage-(\S+)/.exec(code.className)?.[1];
+    if (language !== undefined && !READABLE.includes(language)) return;
     // Built from text nodes and spans, never from markup, so the sample's text cannot change.
     const text = code.textContent;
     const parts = document.createDocumentFragment();

@@ -377,4 +377,11 @@ describe('the real docs', () => {
       'docs/how-to/add-a-legend.md: ../reference/no-such-page.md — no such page',
     ]);
   });
+
+  it('load only stylesheets and a script the site has', () => {
+    const page = renderDocs({ files, exists }).pages.get('docs/index.html') ?? '';
+    const own = [...page.matchAll(/(?:href|src)="\.\.\/([^"/]+\.(?:css|js))"/g)].map((m) => m[1]!);
+    expect(own).toEqual(['site.css', 'docs.css', 'site.js']);
+    expect(own.filter((f) => !existsSync(path.join(root, 'site', f)))).toEqual([]);
+  });
 });
