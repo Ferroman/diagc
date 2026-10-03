@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/Ferroman/diagc/compare/v0.12.0...v0.13.0) (2026-10-03)
+
+
+### Features
+
+* **diagc:** init --agents writes a Claude Code skill ([#59](https://github.com/Ferroman/diagc/issues/59)) ([19b8c1a](https://github.com/Ferroman/diagc/commit/19b8c1a4040325ddf73d487a28b969a0cdf1bd2d))
+
 ## [0.12.0](https://github.com/Ferroman/diagc/compare/v0.11.0...v0.12.0) (2026-10-02)
 
 
