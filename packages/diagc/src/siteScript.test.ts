@@ -34,6 +34,10 @@ const click = (el: Element, init: MouseEventInit = {}): boolean => {
   return cancelled;
 };
 
+/** The text of every span the script marked as one kind of token. */
+const marked = (code: Element, kind: string): string[] =>
+  [...code.querySelectorAll(`.tok-${kind}`)].map((s) => s.textContent ?? '');
+
 beforeEach(() => {
   document.documentElement.innerHTML = /<html[^>]*>([\s\S]*)<\/html>/i.exec(page)?.[1] ?? '';
   new Function(script)();
@@ -80,5 +84,31 @@ describe('the landing page script', () => {
     click($('#copy-install'));
     await vi.waitFor(() => expect($('#copy-install').textContent).toBe('Selected'));
     expect(window.getSelection()?.getRangeAt(0).toString()).toBe($('#install-command').textContent);
+  });
+
+  it('colours the code sample and leaves its text as it was', () => {
+    const starter = read(path.join(root, '.diagrams', 'src', 'examples', 'basic', 'starter.diagram.ts')).trimEnd();
+    const code = $('#starter code');
+    expect(code.textContent).toBe(starter);
+    expect(marked(code, 'keyword')).toEqual(expect.arrayContaining(['import', 'from', 'const', 'export', 'default']));
+    expect(marked(code, 'string')).toContain("'@diagc/core'");
+    expect(marked(code, 'comment')).toContain(
+      '// `contains` nests, `relate` draws an arrow. The system rests folded, with the',
+    );
+    expect(marked(code, 'call')).toEqual(expect.arrayContaining(['model', 'node', 'contains', 'relate']));
+    expect(marked(code, 'property')).toEqual(expect.arrayContaining(['type', 'name', 'kind', 'label']));
+  });
+
+  it('colours nothing inside a comment or a string', () => {
+    const sample = "const a = 'import x(1)'; // const b = `c`\nlet n = f(1.5);";
+    const code = $('#starter code');
+    code.textContent = sample;
+    new Function(script)();
+    expect(marked(code, 'keyword')).toEqual(['const', 'let']);
+    expect(marked(code, 'string')).toEqual(["'import x(1)'"]);
+    expect(marked(code, 'comment')).toEqual(['// const b = `c`']);
+    expect(marked(code, 'call')).toEqual(['f']);
+    expect(marked(code, 'number')).toEqual(['1.5']);
+    expect(code.textContent).toBe(sample);
   });
 });

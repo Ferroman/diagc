@@ -70,7 +70,9 @@ describe('the landing page', () => {
       .split('\n')
       .find((l) => l.startsWith('curl -fsSL'));
     expect(line).toBeDefined();
-    expect(unescape(/<code id="install-command">([^<]*)<\/code>/.exec(html)?.[1] ?? '')).toBe(line);
+    // <wbr> only says where the line may wrap: it is no part of the text, or of a copy.
+    const shown = /<code id="install-command">([\s\S]*?)<\/code>/.exec(html)?.[1] ?? '';
+    expect(unescape(shown.replace(/<wbr>/g, ''))).toBe(line);
   });
 
   it('shows the basic starter exactly as the file has it', () => {
@@ -93,6 +95,21 @@ describe('the landing page', () => {
     expect(sheets.filter(isExternal)).toEqual([]);
     expect(css).not.toBe('');
     expect(css).not.toMatch(/@import|url\(\s*['"]?(https?:)?\/\//i);
+  });
+
+  it('hides its decorative icons from a screen reader', () => {
+    // Each sits beside a heading that says the same thing in words.
+    const icons = [...html.matchAll(/<svg\b[^>]*>/g)].map((m) => m[0]);
+    expect(icons.length).toBeGreaterThanOrEqual(15);
+    expect(icons.filter((t) => !/\saria-hidden="true"/.test(t))).toEqual([]);
+  });
+
+  it('stills its motion for a reader who asked for less', () => {
+    // Smooth scrolling and the hover transitions are decoration.
+    expect(css).toMatch(/transition:|scroll-behavior:\s*smooth/);
+    const reduced = /@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    expect(reduced).toMatch(/scroll-behavior:\s*auto/);
+    expect(reduced).toMatch(/transition:\s*none/);
   });
 });
 

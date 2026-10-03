@@ -1,6 +1,7 @@
-// The landing page's two behaviours: a demo loads into the stage, and the install line
-// copies. A plain script, not a module: the page loads it with `defer`, and its test
-// evaluates it the same way. Without it the page still works: every demo is a link.
+// The landing page's three behaviours: a demo loads into the stage, the install line
+// copies, and the code sample gets its colours. A plain script, not a module: the page
+// loads it with `defer`, and its test evaluates it the same way. Without it the page still
+// works: every demo is a link, and the code reads in one colour.
 (() => {
   const poster = document.querySelector('.stage-poster');
   const live = document.querySelector('.stage-live');
@@ -57,4 +58,27 @@
       }
     });
   }
+
+  // One alternative per kind of token, in the order of KINDS. A comment and a string come
+  // first, so a keyword or a call inside one is never looked at. A regex, not a parser: it
+  // only has to read the TypeScript this page shows.
+  const TOKEN =
+    /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`)|\b(import|from|export|default|const|let|function|return|new|await|async|if|else|for|of|true|false|null|undefined)\b|\b(\d+(?:\.\d+)?)\b|([A-Za-z_$][\w$]*)(?=\s*\()|([A-Za-z_$][\w$]*)(?=\s*:)/g;
+  const KINDS = ['comment', 'string', 'keyword', 'number', 'call', 'property'];
+
+  document.querySelectorAll('pre code').forEach((code) => {
+    // Built from text nodes and spans, never from markup, so the sample's text cannot change.
+    const text = code.textContent;
+    const parts = document.createDocumentFragment();
+    let at = 0;
+    for (const match of text.matchAll(TOKEN)) {
+      const span = document.createElement('span');
+      span.className = `tok-${KINDS[match.slice(1).findIndex((group) => group !== undefined)]}`;
+      span.textContent = match[0];
+      parts.append(text.slice(at, match.index), span);
+      at = match.index + match[0].length;
+    }
+    parts.append(text.slice(at));
+    code.replaceChildren(parts);
+  });
 })();
