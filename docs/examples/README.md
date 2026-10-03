@@ -2,7 +2,7 @@
 
 Every diagram here is built by `diagc` from a source in this repository. Click an image to open the live page: it folds, drills and switches planes the way the PNG cannot. **Source** is the file to copy from; **Guide** is the page that explains it.
 
-To open them in the studio instead, run `pnpm dev` in a clone and pick one from the diagram picker — they are grouped by the same folders.
+To open them in the studio instead, run `diagc studio` in a clone of this repository (or `pnpm dev` from the checkout) and pick one from the diagram picker — they are grouped by the same folders.
 
 - [Diagram types](#diagram-types)
 - [Architecture](#architecture)

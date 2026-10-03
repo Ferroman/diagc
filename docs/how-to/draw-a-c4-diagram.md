@@ -42,7 +42,7 @@ C4 elements are ordinary nodes with `type: 'c4-*'` — stencils from the **Libra
    export default m;
    ```
 
-4. `pnpm compile`, open it in the studio or publish it. Double-click **Internet Banking System** to drill into its containers.
+4. `diagc compile`, open it in the studio or publish it. Double-click **Internet Banking System** to drill into its containers.
 
 The whole picture above is `.diagrams/src/docs/c4.diagram.ts` in this repo.
 
@@ -58,7 +58,7 @@ The whole picture above is `.diagrams/src/docs/c4.diagram.ts` in this repo.
 - **An explicit node colour always beats the notation's fill.** That's the standing rule for every notation, not a C4 special case — `node.color`, and failing that a model `typeColors` entry, wins over whatever the active notation would paint. The **Library**'s C4 cards set an explicit `color` on every stencil, so a dropped Person or Software System already reads about right without turning the notation on at all — but that same colour then shadows the authentic multi-shade palette once you do. The External twins carry a grey close to the notation's own, so they look right regardless; the others need their Colour swatch cleared (or `m.node(...)` called without `color`, as in the DSL example above) to show it. This diagram's nodes never set `color`, so the fill is the notation speaking.
 - **Sketch/hand-drawn presets keep the outline look.** Rough rendering (`sketch`, `hand-drawn`, `pencil`, `blueprint`, `marker`) never fills a C4 box solid — the wobbly stroke stays an outline over the plain canvas whatever the notation says, so switching presets mutes the palette back down.
 - **Component text goes dark, everyone else's goes white.** The pale component blue (`#85bbf0`) fails contrast against white, so `c4-component*` types render dark text on it; person/system/container/external all render white on their darker fills.
-- **`technology` is not C4-only.** It is a plain field on `DiagramNode`, composed into the `[Type]` subtitle in any notation — C4 is simply where it matters most.
+- **`technology` is not C4-only.** It is a plain field on `DiagramNode`, appended to the type subtitle in any notation — `service: Go` on a plain node, `[Container: Go]` on a C4 one — C4 is simply where it matters most.
 
 ## Examples
 

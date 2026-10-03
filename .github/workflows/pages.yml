@@ -65,6 +65,10 @@ jobs:
           thumbs=$(grep -o '<img ' _site/html/index.html | wc -l)
           echo "$cards cards, $thumbs thumbnails"
           test "$cards" -gt 0 && test "$cards" -eq "$thumbs"
+      # The guide, as one file at the site root, for a model that has no shell to run
+      # `diagc guide` in. `bin/diagc.mjs` is the checkout's CLI, so the text is main's.
+      - name: Write llms.txt
+        run: node bin/diagc.mjs guide all > _site/llms.txt && test -s _site/llms.txt
 
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

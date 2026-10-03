@@ -104,4 +104,29 @@ describe('docs and examples', () => {
     }
     expect(drift).toEqual([]);
   });
+
+  it('shows the basic starter in Tutorial 1 exactly as the file has it', () => {
+    // `diagc init` copies this file; the tutorial's reader has just run that and is
+    // looking at the same text, so the page must not paraphrase it.
+    const starter = readFileSync(path.join(SRC, 'examples', 'basic', 'starter.diagram.ts'), 'utf8');
+    const tutorial = readFileSync(path.join(root, 'docs', 'tutorials', '01-your-first-diagram.md'), 'utf8');
+    expect(tutorial).toContain('```ts\n' + starter.trimEnd() + '\n```');
+  });
+
+  it('runs no pnpm script in a tutorial or a how-to', () => {
+    // These pages are read by someone with an installed `diagc` and no checkout, so a
+    // pnpm script there is a command they cannot run. The Obsidian plugin is the one
+    // exception: it is still built from a checkout.
+    const exempt = new Set([path.join(root, 'docs', 'how-to', 'obsidian-plugin.md')]);
+    const offenders: string[] = [];
+    for (const page of [...walk(path.join(root, 'docs', 'tutorials')), ...walk(path.join(root, 'docs', 'how-to'))]) {
+      if (!page.endsWith('.md') || exempt.has(page)) continue;
+      readFileSync(page, 'utf8')
+        .split('\n')
+        .forEach((line, i) => {
+          if (/\bpnpm\b/.test(line)) offenders.push(`${rel(page)}:${i + 1}: ${line.trim()}`);
+        });
+    }
+    expect(offenders).toEqual([]);
+  });
 });

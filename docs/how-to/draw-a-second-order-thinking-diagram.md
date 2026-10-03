@@ -44,7 +44,7 @@ Show what follows from a decision, and what follows from *that*: a consequence t
 
    `valence` is `'+' | '-' | '0'` (good / bad / neutral) and defaults to neutral. `leadsTo` is how two branches arrive at the same consequence — above, `deploys` and `infra` both lead into `oncall`.
 
-3. `pnpm compile`, open it in the studio or publish it.
+3. `diagc compile`, open it in the studio or publish it.
 
 The whole picture above is `.diagrams/src/docs/second-order.diagram.ts` in this repo.
 

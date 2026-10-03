@@ -70,7 +70,7 @@ A frame's children must be lanes; a lane's children are the flow (actions, objec
    export default m.toJSON();
    ```
 
-4. `pnpm compile`, then open it in the studio or publish it.
+4. `diagc compile`, then open it in the studio or publish it.
 
 The whole picture above is `.diagrams/src/docs/activity.diagram.ts` in this repo.
 

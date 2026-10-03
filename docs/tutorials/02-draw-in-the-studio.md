@@ -10,10 +10,8 @@ You do not need [Tutorial 1](01-your-first-diagram.md) first, but it helps — t
 
 ## Before you start
 
-- A clone of this monorepo with `pnpm install` run once (see [Tutorial 1 → Before you start](01-your-first-diagram.md#before-you-start)).
-- The studio running: `pnpm dev` — this starts the compiler watcher *and* the studio, which is what you want while drawing.
-
-Open <http://localhost:5173>.
+- `diagc` installed — see [Tutorial 1 → Before you start](01-your-first-diagram.md#before-you-start). Nothing else: the studio works in any folder, empty or not, and creates `.diagrams/src/` when it is missing.
+- The studio running in that folder: `diagc studio`. It starts the compile watcher *and* the editor, which is what you want while drawing, and opens your browser (if it does not, open the address the terminal prints — normally <http://127.0.0.1:5173>).
 
 ---
 
@@ -23,7 +21,7 @@ Click **＋** (New diagram) beside the diagram picker in the top bar, name it `p
 
 The studio creates `.diagrams/src/payments.diagram.json` and opens it in edit mode. A tool row appears under the top bar: Done, Select / Pen / Eraser, Undo, Redo, Save.
 
-> **Why a new one?** Only `.diagram.json` files are editable in the browser. Diagrams compiled from `.diagram.ts` open with a **read-only** chip — the studio will not fight your TypeScript. The shipped `acme` example is TypeScript, so it is read-only.
+> **Why a new one?** Only `.diagram.json` files are editable in the browser. Diagrams compiled from `.diagram.ts` open with a **read-only** chip — the studio will not fight your TypeScript. A diagram made by `diagc init` is one of these.
 
 ## Step 2 — Place an icon
 
@@ -66,7 +64,9 @@ They are separate on purpose, so that moving a box around never muddies the diff
 It is also what lets you position a diagram compiled from TypeScript, whose model you cannot edit — see
 [Place boxes on a generated diagram](../how-to/position-a-generated-diagram.md).
 
-Because `pnpm dev` is running the watcher, the artifact is recompiled the moment you save.
+If this folder is a git repository, run `diagc init` once when you are done (stop the studio with `Ctrl+C` first): with a diagram already present it skips the starter and only adds `.diagrams/.artifacts/`, `.diagrams/html/` and `.diagrams/diff/` to `.gitignore`.
+
+Because `diagc studio` is running the watcher, the artifact is recompiled the moment you save.
 
 > **Save validates first.** If the model is somehow invalid, Save refuses and shows you the same issues the compiler would. Nothing half-written reaches disk.
 

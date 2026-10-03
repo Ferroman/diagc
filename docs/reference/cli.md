@@ -208,6 +208,7 @@ diagc guide all        # everything
 
 - **Topics:** `activity`, `c4`, `causal-loop`, `deployment`, `er`, `fishbone`, `git-graph`, `plan`, `second-order`, `threat-model`.
 - **Matches the install.** The text ships in the package, the node types and relation kinds it lists are the ones [`lint`](#lint) checks against, and every listing in it is compiled by the test suite. It needs no network and no diagrams in the current directory.
+- **Also online:** <https://ferroman.github.io/diagc/llms.txt> is `diagc guide all` for the current `main`, for a model with no shell to run the command in.
 - **Exit code:** `0`; `1` for a topic that does not exist (the topics are listed on stderr) or for more than one, or when the install's guide or starter files are missing (the line says to reinstall diagc).
 
 ## Flags
@@ -275,7 +276,7 @@ Inside this monorepo:
 
 ## See also
 
-- [Set up diagc in another repo](../how-to/set-up-in-another-repo.md)
+- [Add diagc to an existing repository](../how-to/set-up-in-another-repo.md)
 - [Publish and share](../how-to/publish-and-share.md)
 - [Eject a diagram to TypeScript](../how-to/eject-to-typescript.md)
 - [Compose diagrams](../how-to/compose-diagrams.md) — includes, `key`, and snapshotting remote includes

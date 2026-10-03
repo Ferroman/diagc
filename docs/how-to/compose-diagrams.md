@@ -126,7 +126,7 @@ Rules worth knowing:
 ## Verify the composition
 
 ```bash
-pnpm compile .diagrams/src/umbrella.diagram.ts
+diagc compile .diagrams/src/umbrella.diagram.ts
 ```
 
 The artifact is the *composed* result — open it and you will see the prefixed ids and the merged node. That is also what the studio renders.

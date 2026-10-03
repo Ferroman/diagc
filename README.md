@@ -28,33 +28,24 @@ You author diagrams two ways that meet at the same validated model: write a `.di
 
 ## Install
 
-To use the tool on your own repo, install the CLI — no checkout needed. One line, no Node required (macOS and Linux):
+One line, no Node required (macOS and Linux):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Ferroman/diagc/main/install.sh | sh
 ```
 
-It installs into `~/.local/share/diagc` with a `diagc` launcher in `~/.local/bin`, using your Node if it is 22 or newer and downloading its own otherwise. Run it again to update. With Node already set up, npm works too:
+It installs into `~/.local/share/diagc` with a `diagc` launcher in `~/.local/bin`, using your Node if it is 22 or newer and downloading its own otherwise. Run it again to update. With Node already set up, `npm i -g @diagc/cli` works too, and `npx @diagc/cli <command>` needs no install at all.
+
+Then, in any repository:
 
 ```bash
-npm i -g @diagc/cli            # or: npx @diagc/cli studio
-npm i -D @diagc/core     # optional: types for .diagram.ts authoring
+diagc init shop     # a starter diagram in .diagrams/src/, the .gitignore lines, compiled
+diagc studio        # look at it — recompiles as you edit
 ```
 
-`diagc studio` serves the editor against whatever directory you run it in. See the [`diagc` reference](docs/reference/cli.md).
+No checkout, no pnpm, nothing installed into your project. `diagc guide` prints how to write a diagram, for you or for a coding agent (`diagc init --agents` points agents at it); `npm i -D @diagc/core` is optional, for types in the editor.
 
-## Quickstart (this repo)
-
-Needs **Node ≥ 22** (the repo pins Node 24 in `mise.toml`) and **pnpm 10** (`corepack enable` once).
-
-```bash
-pnpm install
-pnpm dev          # compile watcher + studio at http://localhost:5173
-```
-
-The repo ships an example, `.diagrams/src/examples/acme.diagram.ts`, so a fresh clone renders something immediately.
-
-New here? Start with **[Tutorial 1 — Your first diagram](docs/tutorials/01-your-first-diagram.md)**.
+New here? Start with **[Tutorial 1 — Your first diagram](docs/tutorials/01-your-first-diagram.md)**. Every command is in the [`diagc` reference](docs/reference/cli.md).
 
 ## Documentation
 
@@ -96,7 +87,8 @@ Organised along [Diátaxis](https://diataxis.fr/) lines — learning, tasks, loo
 | [Eject a diagram to TypeScript](docs/how-to/eject-to-typescript.md) | Promote a studio-drawn diagram to a verified, generated `.diagram.ts`. |
 | [Place boxes on a generated diagram](docs/how-to/position-a-generated-diagram.md) | Position a read-only `.diagram.ts` view without losing it on re-compile. |
 | [Change keyboard shortcuts](docs/how-to/change-keyboard-shortcuts.md) | Give any studio action its own key, a second key, or none. |
-| [Set up `diagc` in another repo](docs/how-to/set-up-in-another-repo.md) | Use the CLI anywhere on your machine. |
+| [Add `diagc` to an existing repository](docs/how-to/set-up-in-another-repo.md) | Install, `diagc init`, what to commit, editor types, `diagc lint` in CI. |
+| [Write diagrams with a coding agent](docs/how-to/write-diagrams-with-a-coding-agent.md) | `diagc init --agents`, `diagc guide`, the lint loop, and a picture the agent can check. |
 | [Use the Obsidian plugin](docs/how-to/obsidian-plugin.md) | Studio pane, diagram embeds and node-to-note links in a vault. |
 
 ### Reference — look it up
@@ -138,11 +130,16 @@ Colours are a flat [`ThemeTokens`](./packages/renderer/src/theme.ts) object expo
 
 ## Development
 
+Needs **Node ≥ 22** (the repo pins Node 24 in `mise.toml`) and **pnpm 10** (`corepack enable` once).
+
 ```bash
-pnpm dev         # compile:watch + studio together
+pnpm install
+pnpm dev         # compile:watch + studio together at http://localhost:5173
 pnpm test        # vitest
 pnpm typecheck   # tsc --noEmit across every package
 ```
+
+The repo ships its own diagrams under `.diagrams/src/` — the docs' figures and the [examples](docs/examples/README.md) — so a fresh clone renders something immediately. To run the checkout as `diagc` against another repository, see [CONTRIBUTING.md § Getting set up](CONTRIBUTING.md#getting-set-up).
 
 ![Which package owns what](.diagrams/static/docs/workspace.png)
 
@@ -151,11 +148,11 @@ pnpm typecheck   # tsc --noEmit across every package
 | `packages/core` | `@diagc/core` | Builder DSL, the JSON model + validation, the view compiler. **Published.** |
 | `packages/renderer` | `@diagc/renderer` | React `DiagramView` (React Flow + elk) and the type/kind/theme registries. |
 | `packages/icons` | `@diagc/icons` | Icon id → lucide component. |
-| `packages/diagc` | `@diagc/cli` | The `diagc` CLI: compile, watch, publish, studio. **Published.** |
+| `packages/diagc` | `@diagc/cli` | The `diagc` CLI: init, compile, lint, watch, publish, studio, guide. **Published.** |
 | `apps/studio` | `@diagc/studio` | The browser app and its dev-server API. |
 | `apps/viewer` | `@diagc/viewer` | The single-file shell `publish` stamps a model into. |
 
-The diagrams in these docs are built with this tool — sources in `.diagrams/src/docs-*.diagram.ts`, regenerated with `pnpm publish-diagrams`.
+The diagrams in these docs are built with this tool — sources in `.diagrams/src/docs/*.diagram.ts`, regenerated with `pnpm publish-diagrams`.
 
 ### Releasing
 

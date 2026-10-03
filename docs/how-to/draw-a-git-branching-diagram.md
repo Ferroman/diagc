@@ -31,7 +31,7 @@ Show how releases, hotfixes, nightlies and feature work flow between branches �
    export default m;
    ```
 
-3. `pnpm compile`, open it in the studio or publish it. Columns are computed: every commit sits one column after everything it follows, branched from or merged — nothing to date. Leave a deliberate gap with `commit({ tag: '2.0', gap: 3 })`.
+3. `diagc compile`, open it in the studio or publish it. Columns are computed: every commit sits one column after everything it follows, branched from or merged — nothing to date. Leave a deliberate gap with `commit({ tag: '2.0', gap: 3 })`.
 
 4. Optionally frame the **stages** the history went through. A stage is a named frame across every lane, spanning the columns of the commits it names:
 
