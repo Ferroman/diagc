@@ -39,7 +39,7 @@ PNG export drives headless Chrome. Without one, `publish` writes HTML and says s
 
 Write a `.diagram.ts` with the builder DSL, or draw one in the studio and it writes a `.diagram.json` for you. Both compile to the same validated model, so a diagram is never trapped in the tool that made it. Positions live in a separate `<name>.layout.json`, which keeps meaning and coordinates in different diffs.
 
-Commit `.diagrams/src/`. `.diagrams/.artifacts/` and `.diagrams/html/` are build output.
+Commit `.diagrams/src/`. `.diagrams/.artifacts/`, `.diagrams/html/` and `.diagrams/diff/` are build output — `diagc init` gitignores them.
 
 ## Documentation
 

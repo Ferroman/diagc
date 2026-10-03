@@ -64,7 +64,7 @@ They are separate on purpose, so that moving a box around never muddies the diff
 It is also what lets you position a diagram compiled from TypeScript, whose model you cannot edit — see
 [Place boxes on a generated diagram](../how-to/position-a-generated-diagram.md).
 
-If this folder is a git repository, run `diagc init` once: with a diagram already present it skips the starter and only adds `.diagrams/.artifacts/`, `.diagrams/html/` and `.diagrams/diff/` to `.gitignore`.
+If this folder is a git repository, run `diagc init` once when you are done (stop the studio with `Ctrl+C` first): with a diagram already present it skips the starter and only adds `.diagrams/.artifacts/`, `.diagrams/html/` and `.diagrams/diff/` to `.gitignore`.
 
 Because `diagc studio` is running the watcher, the artifact is recompiled the moment you save.
 

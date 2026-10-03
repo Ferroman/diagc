@@ -12,7 +12,7 @@ For an image that belongs in the repo, use `publish` below instead: it is reprod
 
 ```bash
 diagc publish                # everything
-diagc publish acme shop      # only these, by diagram name
+diagc publish shop payments  # only these, by diagram name
 diagc publish --no-images    # HTML only
 ```
 

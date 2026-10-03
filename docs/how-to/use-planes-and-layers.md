@@ -23,7 +23,7 @@ One sentence each:
 | --- | --- |
 | Logical ownership *and* physical deployment of the same services | **plane** |
 | A team-ownership view over the same systems | **plane** |
-| A view scoped to one product area, with everything else gone | **plane** (leave the rest uncontained, or use `hides` / `hidesTree`) |
+| A view scoped to one product area, with everything else gone | **plane** (with `hides` / `hidesTree`, or `plane` on the nodes) |
 | Data flow drawn over the architecture | **layer** |
 | Failure and retry paths, shown only when discussing resilience | **layer** |
 | Which calls are synchronous, on demand | **layer** |
