@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/Ferroman/diagc/compare/v0.14.0...v0.14.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* **renderer:** outline colours stay readable in the dark theme ([#65](https://github.com/Ferroman/diagc/issues/65)) ([d4d52b2](https://github.com/Ferroman/diagc/commit/d4d52b21680078f5ccfa377e0738c0c230da4182))
+
 ## [0.14.0](https://github.com/Ferroman/diagc/compare/v0.13.0...v0.14.0) (2026-10-03)
 
 
