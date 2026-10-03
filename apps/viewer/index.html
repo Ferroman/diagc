@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Diagram</title>
-    <style>html,body,#root{margin:0;height:100%;width:100%}</style>
+    <!-- Both schemes, so the empty page is not white on a dark system while the script
+         loads. The viewer then sets the one it resolved. -->
+    <meta name="color-scheme" content="light dark" />
+    <style>html,body,#root{margin:0;height:100%;width:100%}body{background:var(--dg-bg,Canvas)}</style>
   </head>
   <body>
     <div id="root"></div>

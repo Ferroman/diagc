@@ -12,6 +12,7 @@ import {
 } from '@diagc/core';
 import {
   applyTheme,
+  darkTheme,
   DiagramView,
   isKnownStyle,
   LeveragePanel,
@@ -24,6 +25,7 @@ import {
 } from '@diagc/renderer';
 import { createIconRegistry } from '@diagc/icons';
 import { ThreatTable, showsThreatTable } from './ThreatTable';
+import { useTheme } from './theme';
 
 const icons = createIconRegistry();
 
@@ -265,13 +267,18 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
   );
   const apiRef = useRef<LayoutApi | null>(null);
 
-  // The Viewer renders in light mode; publish the light theme's --dg-* tokens so
-  // node strokes/fills and the dashed group-container borders resolve. Without
-  // this every published page loses those variables (React Flow's colorMode
-  // themes React Flow itself, not our tokens), so group boxes render border-less.
+  // Which theme, and the reader's switch where they have one (see theme.ts for the
+  // order: an export is always light).
+  const { theme, toggle: toggleTheme } = useTheme(expandAll);
+  // Publish the theme's --dg-* tokens so node strokes/fills and the dashed
+  // group-container borders resolve. Without this every published page loses those
+  // variables (React Flow's colorMode themes React Flow itself, not our tokens), so
+  // group boxes render border-less. `color-scheme` makes scrollbars and form controls
+  // follow the page rather than the system.
   useEffect(() => {
-    applyTheme(document.documentElement, lightTheme);
-  }, []);
+    applyTheme(document.documentElement, theme === 'dark' ? darkTheme : lightTheme);
+    document.documentElement.style.colorScheme = theme;
+  }, [theme]);
 
   // Export handshake: once layout has settled, publish the TRUE content bounds
   // (flow coordinates, not a post-fit viewport measurement) and a re-fit hook so
@@ -386,7 +393,8 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
       onToggleExpand={toggleExpand}
       enteredPath={enteredPath}
       onEnteredPathChange={setEnteredPath}
-      colorMode="light"
+      colorMode={theme}
+      {...(toggleTheme !== undefined ? { onToggleTheme: toggleTheme } : {})}
       // Export mode is a one-shot screenshot: no one clicks the controls, and
       // they would be baked into the committed PNG.
       chrome={!expandAll}
