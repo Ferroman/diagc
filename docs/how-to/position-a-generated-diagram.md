@@ -9,7 +9,7 @@ and keep them.
 
 Meaning and coordinates live in two files:
 
-| File | Written by | Rewritten on `pnpm compile`? |
+| File | Written by | Rewritten on `diagc compile`? |
 | --- | --- | --- |
 | `.diagrams/src/shop.diagram.ts` | you | — it is the source |
 | `.diagrams/.artifacts/shop.diagram.json` | the compiler | **yes**, wholesale |
@@ -21,7 +21,7 @@ diagram *means* and leaves where you put things alone.
 
 ## Move and save
 
-1. `pnpm dev`, then open the diagram. It shows a `read-only` chip; that is expected.
+1. `diagc studio`, then open the diagram. It shows a `read-only` chip; that is expected.
 2. Hold **Alt** and drag a box. Alt is what unlocks dragging in view mode.
 3. A **Save positions** chip appears in the top bar. Click it.
 

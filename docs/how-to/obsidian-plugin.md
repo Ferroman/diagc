@@ -41,7 +41,7 @@ diagc compile
 diagc publish
 ```
 
-(See [Set up diagc in another repo](set-up-in-another-repo.md) if `diagc` isn't linked on your machine yet.)
+(See [Add diagc to an existing repository](set-up-in-another-repo.md) if `diagc` is not installed on your machine yet.)
 
 ## Embed a diagram in a note
 
@@ -92,4 +92,4 @@ Obsidian does not index the diagram's JSON, so a node link never shows up in tha
 ## See also
 
 - [`diagc` reference](../reference/cli.md)
-- [Set up diagc in another repo](set-up-in-another-repo.md)
+- [Add diagc to an existing repository](set-up-in-another-repo.md)

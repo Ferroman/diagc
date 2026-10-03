@@ -276,7 +276,7 @@ Inside this monorepo:
 
 ## See also
 
-- [Set up diagc in another repo](../how-to/set-up-in-another-repo.md)
+- [Add diagc to an existing repository](../how-to/set-up-in-another-repo.md)
 - [Publish and share](../how-to/publish-and-share.md)
 - [Eject a diagram to TypeScript](../how-to/eject-to-typescript.md)
 - [Compose diagrams](../how-to/compose-diagrams.md) — includes, `key`, and snapshotting remote includes

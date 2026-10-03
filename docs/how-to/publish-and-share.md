@@ -8,22 +8,12 @@ With a diagram open (not in edit mode), the topbar's **⋯** menu has **Export P
 
 For an image that belongs in the repo, use `publish` below instead: it is reproducible (every group unfolded, light theme, a declared legend baked in) and writes to the committed `.diagrams/static/`.
 
-## One-time setup
-
-The exporter stamps your model into a pre-built viewer shell. Build it once:
-
-```bash
-pnpm build:cli
-```
-
-Without it, `publish` exits with `viewer shell not built`.
-
 ## Export
 
 ```bash
-pnpm publish-diagrams              # everything
-pnpm publish-diagrams acme shop    # only these, by diagram name
-pnpm publish-diagrams --no-images  # HTML only
+diagc publish                # everything
+diagc publish acme shop      # only these, by diagram name
+diagc publish --no-images    # HTML only
 ```
 
 Three outputs:
@@ -68,7 +58,7 @@ No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use 
 Point it at any Chrome or Chromium:
 
 ```bash
-CHROME_PATH=/path/to/chrome pnpm publish-diagrams
+CHROME_PATH=/path/to/chrome diagc publish
 ```
 
 Checked automatically: `/usr/bin/google-chrome`, `/usr/bin/google-chrome-stable`, `/usr/bin/chromium`, `/usr/bin/chromium-browser`, `/snap/bin/chromium`, `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`.
@@ -86,8 +76,8 @@ Presenting the page on a call? Press `L` (or the `◉` corner control) for a las
 Pages cannot serve a dot-folder, so push the *contents* of `.diagrams/html` to a `gh-pages` branch:
 
 ```bash
-pnpm publish-diagrams
-pnpm publish-site      # gh-pages -d .diagrams/html
+diagc publish
+npx gh-pages -d .diagrams/html
 ```
 
 The first run creates the branch. `main` is never touched. Then enable **Settings → Pages → Deploy from branch → gh-pages**.
@@ -103,15 +93,16 @@ README images in `.diagrams/static` need none of this.
 ```gitignore
 .diagrams/.artifacts/
 .diagrams/html/
+.diagrams/diff/
 ```
 
-Commit `.diagrams/src/` and `.diagrams/static/*.png`. The artifacts and the HTML are build output — one command regenerates them.
+Commit `.diagrams/src/` and `.diagrams/static/*.png`. The artifacts, the HTML and the diff output are build output — `diagc init` adds these three lines; `diagc publish` regenerates the artifacts and the HTML, `diagc diff` the diff output.
 
 ## Keeping images fresh
 
-Nothing regenerates a committed PNG automatically. Re-run `pnpm publish-diagrams` when a diagram changes, and commit the image with the source change so the two never drift.
+Nothing regenerates a committed PNG automatically. Re-run `diagc publish` when a diagram changes, and commit the image with the source change so the two never drift.
 
 ## See also
 
 - [`diagc` reference](../reference/cli.md)
-- [Set up diagc in another repo](set-up-in-another-repo.md)
+- [Add diagc to an existing repository](set-up-in-another-repo.md)

@@ -19,7 +19,7 @@ export default m;
 Compile one file instead of all of them:
 
 ```bash
-pnpm compile .diagrams/src/shop.diagram.ts
+diagc compile .diagrams/src/shop.diagram.ts
 ```
 
 ## Give a node a look
