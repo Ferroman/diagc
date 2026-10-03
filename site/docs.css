@@ -6,7 +6,9 @@ body.docs { background: var(--bg); }
 
 .docs-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr) 210px; gap: 0 40px; max-width: 1360px; margin: 0 auto; padding: 0 16px; }
 .docs main { max-width: none; margin: 0; padding: 32px 0 72px; min-width: 0; }
-.docs article { max-width: 800px; }
+/* A bare address in a sentence has no place to break, and would push a narrow phone's page
+   sideways. */
+.docs article { max-width: 800px; overflow-wrap: break-word; }
 
 /* The sidebar and the page's own headings stay in view while the article scrolls. */
 .docs-side, .docs-toc { position: sticky; top: 57px; align-self: start; max-height: calc(100vh - 57px); overflow-y: auto; padding: 32px 0; font-size: 14.5px; }

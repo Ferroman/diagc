@@ -51,6 +51,38 @@ describe('a heading id', () => {
   });
 });
 
+describe('a page the index names twice', () => {
+  const TWICE = [
+    '# Docs',
+    '',
+    'New here? Start with [the first one](tutorials/first.md).',
+    '',
+    '## Tutorials',
+    '',
+    '| | |',
+    '| --- | --- |',
+    '| [First steps](tutorials/first.md) | Zero to one. |',
+    '| [First, again](tutorials/first.md) | A second row. |',
+  ].join('\n');
+
+  it('is listed once: its row in a section wins over a mention above the sections', () => {
+    expect(readNav(TWICE).map((e) => [e.file, e.title, e.section])).toEqual([
+      ['README.md', 'Docs', undefined],
+      ['tutorials/first.md', 'First steps', 'Tutorials'],
+    ]);
+  });
+
+  it('is rendered once, with no link of its own reported', () => {
+    const files = new Map([
+      ['README.md', TWICE],
+      ['tutorials/first.md', '# First\n\n[index](../README.md)\n'],
+    ]);
+    const { pages, errors } = renderDocs({ files, exists: () => true });
+    expect(errors).toEqual([]);
+    expect((pages.get('docs/index.html') ?? '').match(/<aside class="docs-side">[\s\S]*?<\/aside>/)?.[0].match(/first\.html"/g)).toHaveLength(1);
+  });
+});
+
 describe('a page path', () => {
   it('keeps the name and takes .html', () => {
     expect(outPath('how-to/publish-and-share.md')).toBe('how-to/publish-and-share.html');
@@ -210,6 +242,12 @@ describe('a dead link in a docs page', () => {
     expect(dead('# A\n\n[x](../../../elsewhere.md)\n')).toEqual(['docs/how-to/a.md: ../../../elsewhere.md — leaves the repository']);
   });
 
+  it('with a scheme a page has no use for is reported: a link must not run a script', () => {
+    expect(dead('# A\n\n[x](javascript:alert(1))\n')).toEqual([
+      'docs/how-to/a.md: javascript:alert(1) — only http, https and mailto links leave the site',
+    ]);
+  });
+
   it('is reported once for each, so one run shows them all', () => {
     expect(dead('# A\n\n[x](missing.md) [y](#nope)\n\n| t |\n| --- |\n| [z](gone.md) |\n')).toHaveLength(3);
   });
@@ -339,6 +377,42 @@ describe('a docs page', () => {
     expect(publish).not.toContain('<kbd>');
   });
 
+  it('drops an HTML comment, as GitHub does: a release marker is not prose', () => {
+    const { pages } = build({
+      'how-to/a.md': '# A\n\n| a |\n| --- |\n| pinned <!-- x-release-please-version --> |\n\n<!-- a block comment -->\n\nAfter.\n',
+    });
+    const html = article(pages, 'docs/how-to/a.html');
+    expect(html).not.toContain('x-release-please-version');
+    expect(html).not.toContain('a block comment');
+    expect(html).toContain('pinned');
+    expect(html).toContain('<p>After.</p>');
+  });
+
+  it('shows markup as text after an inline tag too', () => {
+    // After <kbd> or <code>, marked takes what follows for HTML and would pass it through.
+    const { pages } = build({ 'how-to/a.md': '# A\n\nPress <kbd><img/src=x/onerror=alert(1)></kbd> now.\n' });
+    const html = article(pages, 'docs/how-to/a.html');
+    expect(html).not.toContain('<img');
+    expect(html).toContain('&lt;img/src=x/onerror=alert(1)&gt;');
+  });
+
+  it('escapes a page title and a section name wherever it shows them', () => {
+    const escaped = renderDocs({
+      files: new Map([
+        ['README.md', '# Docs\n\n## Q&A <fast> "now"\n\n| | |\n| --- | --- |\n| [A <b> & "c"](a.md) | |\n| [Z](z.md) | |\n'],
+        ['a.md', '# A\n'],
+        ['z.md', '# Z\n\n![x <y> & "z"](../.diagrams/static/p.png)\n'],
+      ]),
+      exists: () => true,
+    });
+    const z = escaped.pages.get('docs/z.html') ?? '';
+    expect(escaped.errors).toEqual([]);
+    expect(z).toContain('<h2>Q&amp;A &lt;fast&gt; &quot;now&quot;</h2>');
+    expect(z).toContain('<a href="a.html">A &lt;b&gt; &amp; &quot;c&quot;</a>');
+    expect(z).toContain('<small>Previous</small>A &lt;b&gt; &amp; &quot;c&quot;</a>');
+    expect(z).toContain('alt="x &lt;y&gt; &amp; &quot;z&quot;"');
+  });
+
   it('puts a table in a box of its own, so a wide one scrolls there', () => {
     expect(publish).toMatch(/<div class="table-wrap"><table>[\s\S]*?<\/table>\s*<\/div>/);
   });
@@ -363,6 +437,13 @@ describe('the real docs', () => {
 
   it('render with no dead link, every page listed in the index', () => {
     expect(renderDocs({ files, exists }).errors).toEqual([]);
+  });
+
+  it('show no HTML comment as text', () => {
+    // Two pages name a comment in a code span, which is the page saying it, not leaking it.
+    const prose = (html: string): string => html.replace(/<pre>[\s\S]*?<\/pre>/g, '').replace(/<code[^>]*>[\s\S]*?<\/code>/g, '');
+    const { pages } = renderDocs({ files, exists });
+    expect([...pages].filter(([, html]) => prose(html).includes('&lt;!--')).map(([page]) => page)).toEqual([]);
   });
 
   it('become one page each', () => {

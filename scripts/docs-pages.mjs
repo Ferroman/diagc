@@ -71,7 +71,16 @@ export function readNav(indexMarkdown) {
       for (const row of t.rows) add(firstLink(row[0]?.tokens), row[1] === undefined ? '' : plain(row[1].tokens));
     } else if (t.type === 'paragraph' && section === undefined) add(firstLink(t.tokens), '');
   }
-  return entries;
+  // A page the index names twice is still one page: its row in a section wins over a
+  // mention above the sections, and a first row over a later one. Rendered twice, it would
+  // also have its links rewritten twice, and the second pass reports links nobody wrote.
+  const inSection = new Set(entries.filter((e) => e.section !== undefined).map((e) => e.file));
+  const seen = new Set();
+  return entries.filter((e) => {
+    if ((e.section === undefined && inSection.has(e.file)) || seen.has(e.file)) return false;
+    seen.add(e.file);
+    return true;
+  });
 }
 
 /** One page: the landing page's head and header around the sidebar, the article and the
@@ -169,7 +178,11 @@ export function renderDocs({ files, exists }) {
     // Where a link written for GitHub leads on the site. Another docs page: that page.
     // A picture: the site's copy under static/. Any other file: its page on GitHub.
     const relink = (href, picture) => {
-      if (isAbsolute(href)) return href;
+      // Out of the site: a web or a mail address. Any other scheme (javascript:, data:) has
+      // no place in a page of docs, and GitHub strips it too.
+      if (isAbsolute(href)) {
+        return /^(https?:|mailto:|\/\/)/i.test(href) ? href : dead(href, 'only http, https and mailto links leave the site');
+      }
       if (href.startsWith('#')) return doc.ids.has(decode(href.slice(1))) ? href : dead(href, 'no such heading on this page');
       const [target, hash] = href.split('#');
       const suffix = hash === undefined ? '' : `#${hash}`;
@@ -198,9 +211,11 @@ export function renderDocs({ files, exists }) {
         table(token) {
           return `<div class="table-wrap">${Renderer.prototype.table.call(this, token)}</div>\n`;
         },
-        // The docs use no raw HTML, and a stray <name> in prose must show, not vanish.
+        // The docs use no raw HTML, and a stray <name> in prose must show, not vanish. A
+        // comment is the exception, dropped as GitHub drops it: release-please finds the
+        // version it bumps by one (docs/how-to/show-what-changed.md).
         html({ text }) {
-          return esc(text);
+          return /^\s*<!--[\s\S]*?-->\s*$/.test(text) ? '' : esc(text);
         },
         image({ href, title, text }) {
           return `<img src="${esc(href)}" alt="${esc(text)}"${title ? ` title="${esc(title)}"` : ''} loading="lazy">`;
@@ -210,6 +225,9 @@ export function renderDocs({ files, exists }) {
     marked.walkTokens(doc.tokens, (t) => {
       if (t.type === 'link') t.href = relink(t.href, false);
       else if (t.type === 'image') t.href = relink(t.href, true);
+      // After an inline <kbd> or <code>, marked takes what follows for HTML and marks it as
+      // escaped already. The tags are shown as text here, so what stands between them is too.
+      else if (t.type === 'text' && t.escaped) t.escaped = false;
     });
     const href = (other) => to(path.posix.join('docs', outPath(other.file)));
     const item = (other) =>

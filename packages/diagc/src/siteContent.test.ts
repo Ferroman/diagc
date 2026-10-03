@@ -106,7 +106,7 @@ describe('the landing page', () => {
 
   it('shows the basic starter exactly as the file has it', () => {
     const starter = readFileSync(path.join(SRC, 'examples', 'basic', 'starter.diagram.ts'), 'utf8');
-    const shown = /<pre id="starter"><code>([\s\S]*?)<\/code><\/pre>/.exec(html)?.[1] ?? '';
+    const shown = /<pre id="starter"><code class="language-ts">([\s\S]*?)<\/code><\/pre>/.exec(html)?.[1] ?? '';
     expect(unescape(shown)).toBe(starter.trimEnd());
   });
 

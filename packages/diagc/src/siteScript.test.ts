@@ -160,7 +160,7 @@ describe('the landing page script', () => {
 
 describe('the script on a docs page', () => {
   beforeEach(() => {
-    const markdown = '# Docs\n\n```ts\nconst a = 1;\n```\n\n```bash\nexport A=1 # for now\n```\n';
+    const markdown = '# Docs\n\n```ts\nconst a = 1;\n```\n\n```bash\nexport A=1 # for now\n```\n\n```\nwrote 1 file for you\n```\n';
     const { pages } = renderDocs({ files: new Map([['README.md', markdown]]), exists: () => true });
     document.documentElement.innerHTML = /<html[^>]*>([\s\S]*)<\/html>/i.exec(pages.get('docs/index.html') ?? '')?.[1] ?? '';
     new Function(script)();
@@ -175,7 +175,24 @@ describe('the script on a docs page', () => {
     expect($('code.language-bash').textContent).toBe('export A=1 # for now\n');
   });
 
+  it('leaves a block that names no language in one colour: it is output, not code', () => {
+    expect($('pre code:not([class])').children).toHaveLength(0);
+    expect($('pre code:not([class])').textContent).toBe('wrote 1 file for you\n');
+  });
+
   it('shows the theme switch', () => {
     expect($('#theme-switch').hidden).toBe(false);
+  });
+
+  it("brings the marked page into view in a sidebar that is longer than the screen", () => {
+    // jsdom lays nothing out, so the sizes are given: a list box 800 high, and the page's
+    // own entry 30 high, 1200 down the list. Centred, it sits 385 below the box's top.
+    const side = $('.docs-side');
+    const here = $('.docs-side [aria-current="page"]');
+    Object.defineProperty(side, 'clientHeight', { value: 800, configurable: true });
+    Object.defineProperty(here, 'offsetTop', { value: 1200, configurable: true });
+    Object.defineProperty(here, 'offsetHeight', { value: 30, configurable: true });
+    new Function(script)();
+    expect(side.scrollTop).toBe(815);
   });
 });
