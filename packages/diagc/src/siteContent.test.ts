@@ -1,6 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { findHome } from './home';
 
@@ -26,6 +26,31 @@ const unescape = (s: string): string =>
   s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
 const hasSource = (name: string): boolean =>
   existsSync(path.join(SRC, `${name}.diagram.ts`)) || existsSync(path.join(SRC, `${name}.diagram.json`));
+
+// The docs pages the site builds (scripts/docs-pages.mjs), to check links against.
+const { renderDocs } = (await import(pathToFileURL(path.join(root, 'scripts', 'docs-pages.mjs')).href)) as {
+  renderDocs: (input: { files: Map<string, string>; exists: (repoPath: string) => boolean }) => { pages: Map<string, string> };
+};
+const DOCS = path.join(root, 'docs');
+const walk = (dir: string): string[] =>
+  existsSync(dir)
+    ? readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]))
+    : [];
+const docsPages = renderDocs({
+  files: new Map(
+    walk(DOCS)
+      .filter((f) => f.endsWith('.md'))
+      .map((f) => [path.relative(DOCS, f).split(path.sep).join('/'), readFileSync(f, 'utf8')] as const),
+  ),
+  exists: (repoPath) => existsSync(path.join(root, repoPath)),
+}).pages;
+/** Links that name no built page, or a heading the page does not have. */
+const deadDocsLinks = (links: string[]): string[] =>
+  links.filter((t) => {
+    const [page, hash] = t.split('#');
+    const html = docsPages.get(page!.endsWith('/') ? `${page}index.html` : page!);
+    return html === undefined || (hash !== undefined && !html.includes(` id="${hash}"`));
+  });
 
 describe('the landing page', () => {
   it('has a section for every link in its nav', () => {
@@ -53,16 +78,20 @@ describe('the landing page', () => {
 
   it('has no dead link into its own folder', () => {
     const own = refs.filter(
-      (t) => !isExternal(t) && !t.startsWith('#') && !t.startsWith('html/') && !t.startsWith('static/') && !BUILT.has(t),
+      (t) => !isExternal(t) && !t.startsWith('#') && !t.startsWith('html/') && !t.startsWith('static/') && !t.startsWith('docs/') && !BUILT.has(t),
     );
     expect(own.length).toBeGreaterThanOrEqual(4);
     expect(own.filter((t) => !existsSync(path.join(SITE, t)))).toEqual([]);
   });
 
-  it('links only docs files that exist', () => {
-    const docs = refs.filter((t) => t.startsWith(BLOB));
-    expect(docs.length).toBeGreaterThanOrEqual(10);
-    expect(docs.filter((t) => !existsSync(path.join(root, t.slice(BLOB.length).split('#')[0]!)))).toEqual([]);
+  it('links only docs pages the site builds, and headings they have', () => {
+    const docs = refs.filter((t) => t.startsWith('docs/'));
+    expect(docs.length).toBeGreaterThanOrEqual(19);
+    expect(deadDocsLinks(docs)).toEqual([]);
+  });
+
+  it('sends no reader to GitHub for a docs page', () => {
+    expect(refs.filter((t) => t.startsWith(`${BLOB}docs/`))).toEqual([]);
   });
 
   it('shows the install line the README gives', () => {
@@ -148,6 +177,13 @@ describe('the front pages', () => {
     const card = /<h3>Obsidian<\/h3>\s*<p>([^<]*)<\/p>/.exec(html)?.[1] ?? '';
     expect(bullet).toContain('checkout');
     expect(card).toContain('checkout');
+  });
+
+  it('point the README at docs pages the site builds', () => {
+    const SITE_DOCS = 'https://ferroman.github.io/diagc/';
+    const links = [...readme.matchAll(/\]\((https:\/\/ferroman\.github\.io\/diagc\/docs\/[^)\s]*)\)/g)].map((m) => m[1]!.slice(SITE_DOCS.length));
+    expect(links.length).toBeGreaterThanOrEqual(8);
+    expect(deadDocsLinks(links)).toEqual([]);
   });
 
   it('point an agent at llms.txt', () => {
