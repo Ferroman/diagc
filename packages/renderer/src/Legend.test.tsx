@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createIconRegistry } from '@diagc/icons';
 import { Legend } from './Legend';
 import type { LegendRow } from './legendRows';
+import { outlineInk } from './outline-ink';
 import type { KindStyle, ShapeId } from './registry';
 
 const rows: LegendRow[] = [
@@ -91,6 +92,25 @@ describe('Legend', () => {
     expect(cylinderSvg.querySelector('ellipse')).not.toBeNull();
     expect(cylinderSvg.querySelector('path')).not.toBeNull();
     expect(cylinderSvg.querySelector('rect')).toBeNull();
+  });
+
+  // The canvas softens an outline's colour in dark (see outline-ink.ts); a swatch
+  // in the raw colour beside it would describe a box that is not on the canvas.
+  it('draws an outline type\'s swatch in the theme\'s share of its colour, as the canvas draws the box', () => {
+    const row: LegendRow = {
+      id: 'types:tm-boundary',
+      section: 'types',
+      label: 'Trust boundary',
+      swatch: { draw: 'shape', style: { shape: 'box', outline: true, dashed: true }, color: '#c62828' },
+    };
+    const { container } = render(<Legend rows={[row]} interactive />);
+    expect(container.querySelector('.dg-legend-shape rect')?.getAttribute('stroke')).toBe(outlineInk('#c62828'));
+  });
+
+  it('draws a filled type\'s swatch in its colour as written', () => {
+    const row: LegendRow = { id: 'types:service', section: 'types', label: 'Service', swatch: { draw: 'shape', style: { shape: 'box' }, color: '#c62828' } };
+    const { container } = render(<Legend rows={[row]} interactive />);
+    expect(container.querySelector('.dg-legend-shape rect')?.getAttribute('stroke')).toBe('#c62828');
   });
 
   it('renders a bubble swatch as one outline path with the tail, not the box rect', () => {

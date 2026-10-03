@@ -3,6 +3,7 @@ import type { LegendSection } from '@diagc/core';
 import type { IconRegistry } from '@diagc/icons';
 import { END_SHAPES, LINE_MARKERS } from './DiagramEdge';
 import type { LegendMark, LegendRow, LegendSwatch } from './legendRows';
+import { outlineInk } from './outline-ink';
 import type { KindStyle, TypeStyle } from './registry';
 import { threatBadgeProps } from './threat-badge';
 
@@ -170,10 +171,14 @@ function Swatch({ swatch, icons }: { swatch?: LegendSwatch; icons?: IconRegistry
   // `IconComponent` accepts only `size`/`className`, so the glyph cannot be a
   // nested <svg> with x/y — it is overlaid on the shape with CSS instead.
   const Icon = swatch.icon !== undefined ? icons?.resolve(swatch.icon) : undefined;
+  // An outline type's box is drawn in the theme's share of its colour (outline-ink.ts);
+  // the sample follows, or it would describe a box that is not on the canvas.
+  const stroke =
+    swatch.color === undefined ? NODE_STROKE : swatch.style.outline === true ? outlineInk(swatch.color) : swatch.color;
   return (
     <span className="dg-legend-swatch dg-legend-shape">
       <svg viewBox="0 0 24 16" width="24" height="16" aria-hidden="true">
-        <ShapeGlyph s={swatch.style} stroke={swatch.color ?? NODE_STROKE} />
+        <ShapeGlyph s={swatch.style} stroke={stroke} />
       </svg>
       {Icon !== undefined && <Icon size={9} className="dg-legend-icon" />}
     </span>
