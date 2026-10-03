@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>diagc — diagrams as code, with a local studio</title>
+<meta name="description" content="diagc turns diagram sources in your repository into self-contained HTML pages and pictures, and gives you a local studio to draw them.">
+<link rel="stylesheet" href="site.css">
+<script src="site.js" defer></script>
+</head>
+<body>
+<header class="nav">
+  <a class="brand" href="#top">diagc</a>
+  <nav aria-label="Sections">
+    <a href="#features">Features</a>
+    <a href="#how-it-works">How it works</a>
+    <a href="#demos">Demos</a>
+    <a href="#docs">Docs</a>
+    <a href="https://github.com/Ferroman/diagc">GitHub</a>
+  </nav>
+</header>
+
+<main id="top">
+<section class="hero">
+  <div>
+    <h1>Diagrams as code, with a local studio</h1>
+    <p class="lead">diagc turns diagram sources in your repository into self-contained pages and pictures, and gives you a browser studio to draw them.</p>
+    <div class="install">
+      <code id="install-command">curl -fsSL https://raw.githubusercontent.com/Ferroman/diagc/main/install.sh | sh</code>
+      <button type="button" id="copy-install">Copy</button>
+    </div>
+    <p class="note">macOS and Linux, no Node required. With Node 22 or newer: <code>npm i -g @diagc/cli</code>.</p>
+    <p class="actions">
+      <a class="button" href="#demos">Open a live demo</a>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/tutorials/01-your-first-diagram.md">Read the tutorial</a>
+    </p>
+  </div>
+  <img src="img/studio-view.png" width="1360" height="850" alt="The diagc studio: a platform diagram with one system unfolded and the others folded">
+</section>
+
+<section id="features">
+  <h2>Features</h2>
+  <div class="leads">
+    <article class="card">
+      <h3>Pages and pictures</h3>
+      <p><code>diagc publish</code> writes one self-contained HTML page per diagram, and a PNG. The page folds, zooms and switches views in the browser, with no server behind it.</p>
+      <p>Host the pages on GitHub Pages, GitLab Pages or any static host. Put the PNG in a README.</p>
+      <ul class="files">
+        <li><code>.diagrams/html/&lt;name&gt;.html</code> one file, with everything inlined</li>
+        <li><code>.diagrams/html/index.html</code> an index of all the pages</li>
+        <li><code>.diagrams/static/&lt;name&gt;.png</code> a picture to commit</li>
+      </ul>
+      <p><a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/publish-and-share.md">Publish and share</a></p>
+    </article>
+    <article class="card">
+      <h3>A local studio</h3>
+      <p><code>diagc studio</code> opens a browser app against your repository. Draw a diagram there and the studio saves it as a file in the repository. <code>diagc eject</code> turns a drawn diagram into TypeScript.</p>
+      <p>It runs on your machine against your files: no accounts and no server.</p>
+      <img src="img/studio-edit.png" width="1360" height="850" loading="lazy" alt="The studio in edit mode, with the icon library open beside the canvas">
+      <p><a href="https://github.com/Ferroman/diagc/blob/main/docs/tutorials/02-draw-in-the-studio.md">Draw one in the browser</a></p>
+    </article>
+  </div>
+  <div class="grid">
+    <article class="card">
+      <h3>Diagrams as code</h3>
+      <p>A diagram is a TypeScript file, so it diffs, reviews and refactors like the rest of your repository. <code>diagc lint</code> reports what compiles but is probably a mistake.</p>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/author-in-typescript.md">Author diagrams in TypeScript</a>
+    </article>
+    <article class="card">
+      <h3>Written by coding agents</h3>
+      <p><code>diagc guide</code> prints how to write a diagram in a form an AI can read. <code>diagc init --agents</code> points coding agents at it.</p>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/write-diagrams-with-a-coding-agent.md">Write diagrams with a coding agent</a>
+    </article>
+    <article class="card">
+      <h3>Semantic zoom</h3>
+      <p>A diagram rests as folded groups whose relations aggregate. Start from the big picture and double-click a group to open it.</p>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/organise-large-diagrams.md">Organise a large diagram</a>
+    </article>
+    <article class="card">
+      <h3>Planes and layers</h3>
+      <p>A plane groups the same things in a second way: by system in one view, by where they run in another. A layer adds detail without cluttering the base picture.</p>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/use-planes-and-layers.md">Use planes and layers</a>
+    </article>
+    <article class="card">
+      <h3>Composition</h3>
+      <p><code>include</code> combines diagrams from several sources, so each system appears in the context of the others without copy-paste.</p>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/compose-diagrams.md">Compose diagrams</a>
+    </article>
+    <article class="card">
+      <h3>Ten diagram types</h3>
+      <p>C4, deployment, ER, activity, threat model, causal loop, plan, fishbone, git graph and second-order thinking. Each has a starter to copy.</p>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/examples/README.md">Examples of every type</a>
+    </article>
+    <article class="card">
+      <h3>Icon libraries</h3>
+      <p>C4 stencils and the AWS, Azure, Google Cloud, Kubernetes and tech icon sets. Import your own images too.</p>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/use-the-icon-library.md">Use the icon library</a>
+    </article>
+    <article class="card">
+      <h3>Diffs for review</h3>
+      <p><code>diagc diff</code> draws what changed between two git refs. A GitHub Action puts the before and after pictures on a pull request.</p>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/show-what-changed.md">Show what changed</a>
+    </article>
+    <article class="card">
+      <h3>Notes on the picture</h3>
+      <p>A legend, comments and links on any node or relation, and freehand drawing on top of the boxes.</p>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/comment-on-a-diagram.md">Comment on a diagram</a>
+    </article>
+    <article class="card">
+      <h3>Obsidian</h3>
+      <p>A plugin puts the studio and diagram embeds in a vault, and links a node to a note.</p>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/obsidian-plugin.md">Use the Obsidian plugin</a>
+    </article>
+  </div>
+</section>
+
+<section id="how-it-works">
+  <h2>How it works</h2>
+  <ol class="steps">
+    <li class="card">
+      <h3>Write or draw</h3>
+      <p>A diagram is a <code>.diagram.ts</code> file under <code>.diagrams/src/</code>. Or draw it in the studio, which writes a <code>.diagram.json</code>. Positions go to a separate <code>.layout.json</code>, so meaning and coordinates land in different diffs.</p>
+    </li>
+    <li class="card">
+      <h3>Compile and validate</h3>
+      <p><code>diagc compile</code> checks each source and writes one validated model per diagram. Both ways of authoring meet at that model.</p>
+    </li>
+    <li class="card">
+      <h3>Look, then publish</h3>
+      <p><code>diagc studio</code> shows the result and recompiles as you edit. <code>diagc publish</code> writes the HTML pages and the PNGs.</p>
+    </li>
+  </ol>
+  <div class="example">
+    <pre id="starter"><code>import { model } from '@diagc/core';
+
+// A starter: a customer and one system holding two services and a database.
+// `contains` nests, `relate` draws an arrow. The system rests folded, with the
+// arrows into it bundled, until you double-click it.
+const m = model('shop', { name: 'Shop' });
+
+const customer = m.node('customer', { type: 'person', name: 'Customer' });
+const shop = m.node('shop', { type: 'system', name: 'Shop' });
+
+const web = m.node('web', { type: 'service', name: 'Storefront' });
+const api = m.node('api', { type: 'service', name: 'Orders API' });
+const db = m.node('orders-db', { type: 'database', name: 'Orders DB' });
+
+shop.contains(web, api, db);
+
+m.relate(customer, web, { kind: 'sync', label: 'Browses' });
+m.relate(web, api, { kind: 'sync', label: 'Places orders' });
+m.relate(api, db, { kind: 'writes', label: 'Order rows' });
+
+export default m;</code></pre>
+    <a href="html/examples/basic/starter.html"><img src="static/examples/basic/starter.png" loading="lazy" alt="The diagram that source draws: a customer, and a shop holding a storefront, an orders API and a database"></a>
+  </div>
+  <figure>
+    <a href="html/docs/pipeline.html"><img src="static/docs/pipeline.png" loading="lazy" alt="The pipeline: TypeScript and JSON sources are validated into one model, which the studio and publish both read"></a>
+    <figcaption>The pipeline, drawn with diagc. <a href="https://github.com/Ferroman/diagc/blob/main/docs/explanation/architecture.md">How a diagram becomes a picture</a></figcaption>
+  </figure>
+</section>
+
+<section id="demos">
+  <h2>Demos</h2>
+  <p>Each one is a page that <code>diagc publish</code> wrote. Double-click a group to open it, scroll to pan, pinch to zoom.</p>
+  <div class="stage">
+    <a class="stage-poster" href="html/examples/c4/online-bookstore.html" data-live data-title="Online bookstore">
+      <img src="static/examples/c4/online-bookstore.png" alt="Online bookstore, a C4 diagram: a customer, the shop's containers and two external systems">
+      <span class="cta">Open the live diagram</span>
+    </a>
+    <div class="stage-live" hidden>
+      <div class="stage-bar">
+        <strong id="stage-title"></strong>
+        <a id="stage-open" target="_blank" rel="noopener">Open in a new tab</a>
+        <button type="button" id="stage-close">Close</button>
+      </div>
+      <div id="stage-frame"></div>
+    </div>
+  </div>
+  <ul class="thumbs">
+    <li><a href="html/examples/c4/online-bookstore.html" data-live data-title="Online bookstore"><img src="static/examples/c4/online-bookstore.png" loading="lazy" alt=""><span>Online bookstore<small>C4</small></span></a></li>
+    <li><a href="html/examples/aws-multi-az.html" data-live data-title="Multi-AZ EKS on AWS"><img src="static/examples/aws-multi-az.png" loading="lazy" alt=""><span>Multi-AZ EKS on AWS<small>Architecture, AWS icons</small></span></a></li>
+    <li><a href="html/examples/deployment/web-app.html" data-live data-title="Web app"><img src="static/examples/deployment/web-app.png" loading="lazy" alt=""><span>Web app<small>Deployment</small></span></a></li>
+    <li><a href="html/examples/threat-model/payments-api.html" data-live data-title="Payments API"><img src="static/examples/threat-model/payments-api.png" loading="lazy" alt=""><span>Payments API<small>Threat model</small></span></a></li>
+    <li><a href="html/examples/plan/q4-roadmap.html" data-live data-title="Q4 roadmap"><img src="static/examples/plan/q4-roadmap.png" loading="lazy" alt=""><span>Q4 roadmap<small>Plan</small></span></a></li>
+    <li><a href="html/examples/causal-loop/tech-debt.html" data-live data-title="Technical debt: the shortcut spiral"><img src="static/examples/causal-loop/tech-debt.png" loading="lazy" alt=""><span>Technical debt<small>Causal loop</small></span></a></li>
+  </ul>
+  <p><a href="html/index.html">All examples</a></p>
+</section>
+
+<section id="docs">
+  <h2>Docs</h2>
+  <div class="grid">
+    <article class="card">
+      <h3>Tutorials</h3>
+      <p>Learn by doing. Zero to a compiled, rendered, exported diagram.</p>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/tutorials/01-your-first-diagram.md">Your first diagram</a>
+    </article>
+    <article class="card">
+      <h3>How-to guides</h3>
+      <p>One task each: a diagram type, planes and layers, publishing, a coding agent.</p>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/README.md#how-to-guides">All how-to guides</a>
+    </article>
+    <article class="card">
+      <h3>Reference</h3>
+      <p>The CLI, the model, the builder API, the studio and the icon library.</p>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/README.md#reference">Reference pages</a>
+    </article>
+    <article class="card">
+      <h3>Explanation</h3>
+      <p>The pipeline, the model, and why a view is not what is stored.</p>
+      <a href="https://github.com/Ferroman/diagc/blob/main/docs/README.md#explanation">Explanation pages</a>
+    </article>
+  </div>
+  <p class="note">For a model with no shell to run <code>diagc guide</code> in, the whole guide is one file: <a href="llms.txt">llms.txt</a>.</p>
+</section>
+</main>
+
+<footer>
+  <p>diagc is licensed under AGPL-3.0-only. The diagrams you author, and the pages and pictures built from them, are yours.</p>
+  <p><a href="https://github.com/Ferroman/diagc">GitHub</a> · <a href="https://www.npmjs.com/package/@diagc/cli">npm</a> · <a href="https://github.com/Ferroman/diagc/blob/main/LICENSE">License</a></p>
+</footer>
+</body>
+</html>
