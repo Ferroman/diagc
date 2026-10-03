@@ -132,6 +132,17 @@ describe('diagc init, through the real CLI', () => {
     expect(readdirSync(dir)).toEqual([]);
   }, 30_000);
 
+  it('--agents writes the skill the checkout ships into a repository with a .claude folder', () => {
+    const dir = fresh();
+    mkdirSync(path.join(dir, '.claude'));
+    const r = run(['init', '--agents'], dir);
+    expect(r.stderr).toBe('');
+    expect(r.status).toBe(0);
+    const shipped = readFileSync(path.join(path.dirname(path.dirname(bin)), 'packages', 'diagc', 'skill', 'SKILL.md'), 'utf8');
+    expect(readFileSync(path.join(dir, '.claude', 'skills', 'diagc', 'SKILL.md'), 'utf8')).toBe(shipped);
+    expect(r.stdout).toMatch(/^✓ \.claude\/skills\/diagc\/SKILL\.md\s+\(diagc skill added\)$/m);
+  }, 60_000);
+
   it('takes one name at most', () => {
     const r = run(['init', 'a', 'b'], fresh());
     expect(r.status).toBe(1);

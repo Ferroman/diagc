@@ -16,9 +16,11 @@ export interface InitOptions {
   name?: string;
   /** the starter to copy; `basic` when omitted */
   type?: string;
-  /** write the coding-agent block into AGENTS.md / CLAUDE.md */
+  /** write the coding-agent block into AGENTS.md / CLAUDE.md, and the Claude Code skill */
   agents: boolean;
   startersDir: string;
+  /** the skill the package ships, copied into a repository that uses Claude Code */
+  skillFile: string;
   /** what the `npm i -D @diagc/core@…` hint names */
   version: string;
   coreEntry: string;
@@ -53,22 +55,28 @@ Diagrams live in \`.diagrams/src/*.diagram.ts\` and are built with \`diagc\`.
 ${AGENTS_END}
 `;
 
-/** `existing` with the block added at the end, or — when both markers are there —
+/** Where the skill goes: the folder Claude Code reads a repository's skills from. */
+export const SKILL_PATH = '.claude/skills/diagc/SKILL.md';
+
+/** `existing` with `block` added at the end, or — when both markers are there —
  * with the earlier block replaced where it stands, so a second run never
- * duplicates it and a run after an upgrade refreshes it. */
-export function withAgentsBlock(existing: string): { text: string; replaced: boolean } {
+ * duplicates it and a run after an upgrade refreshes it. `block` runs from the
+ * begin marker to the newline after the end marker. */
+export function withBlock(existing: string, block: string): { text: string; replaced: boolean } {
   const begin = existing.indexOf(AGENTS_BEGIN);
   const end = begin === -1 ? -1 : existing.indexOf(AGENTS_END, begin);
   if (begin !== -1 && end !== -1) {
     let after = end + AGENTS_END.length;
     // The block carries its own closing newline; take the old one with the old block.
     if (existing.startsWith('\n', after)) after += 1;
-    return { text: existing.slice(0, begin) + AGENTS_BLOCK + existing.slice(after), replaced: true };
+    return { text: existing.slice(0, begin) + block + existing.slice(after), replaced: true };
   }
-  if (existing === '') return { text: AGENTS_BLOCK, replaced: false };
+  if (existing === '') return { text: block, replaced: false };
   const sep = existing.endsWith('\n\n') ? '' : existing.endsWith('\n') ? '\n' : '\n\n';
-  return { text: `${existing}${sep}${AGENTS_BLOCK}`, replaced: false };
+  return { text: `${existing}${sep}${block}`, replaced: false };
 }
+
+export const withAgentsBlock = (existing: string): { text: string; replaced: boolean } => withBlock(existing, AGENTS_BLOCK);
 
 const COL = 38;
 const done = (left: string, right: string): string => `✓ ${left.padEnd(COL)}${right}`;
@@ -172,7 +180,47 @@ async function agentsStep(cwd: string, io: InitIo): Promise<void> {
   }
 }
 
-/** Step 4: compile what was written, so the user starts from a diagram that is
+/** The skill as the package ships it, and the part of it a later run replaces. */
+interface Skill {
+  source: string;
+  block: string;
+}
+
+/** `.claude/` is Claude Code's own folder, not neutral ground like `AGENTS.md`, so
+ * the skill goes only where the repository already shows that tool in use. */
+const usesClaudeCode = (cwd: string): boolean => existsSync(path.join(cwd, '.claude')) || existsSync(path.join(cwd, 'CLAUDE.md'));
+
+async function readSkill(skillFile: string): Promise<Skill> {
+  if (!existsSync(skillFile)) throw new InitError(`skill file missing from this install (${skillFile}) — reinstall diagc.`);
+  const source = await readFile(skillFile, 'utf8');
+  const begin = source.indexOf(AGENTS_BEGIN);
+  // The shipped file's own shape, held by skillContent.test.ts: a bug, not a refusal.
+  if (begin === -1) throw new Error(`${skillFile}: no ${AGENTS_BEGIN} marker`);
+  return { source, block: source.slice(begin) };
+}
+
+/** Step 4: the Claude Code skill, with `--agents`. A new file is the shipped one,
+ * frontmatter and all; in a file that is already there only the text between the
+ * markers is diagc's, as in AGENTS.md. `skill` is undefined where it does not go. */
+async function skillStep(cwd: string, skill: Skill | undefined, io: InitIo): Promise<void> {
+  if (skill === undefined) {
+    io.out(skipped(SKILL_PATH, 'no .claude/ or CLAUDE.md here — skill skipped'));
+    return;
+  }
+  const file = path.join(cwd, SKILL_PATH);
+  const existing = existsSync(file) ? await readFile(file, 'utf8') : '';
+  if (existing.trim() === '') {
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, skill.source);
+    io.out(done(SKILL_PATH, '(diagc skill added)'));
+    return;
+  }
+  const { text, replaced } = withBlock(existing, skill.block);
+  await writeFile(file, text);
+  io.out(done(SKILL_PATH, replaced ? '(diagc skill refreshed)' : '(diagc skill added)'));
+}
+
+/** Step 5: compile what was written, so the user starts from a diagram that is
  * known to build and sees where the artifact went. */
 async function compileStep(file: string, opts: InitOptions, io: InitIo): Promise<void> {
   let artifact: string;
@@ -188,14 +236,14 @@ async function compileStep(file: string, opts: InitOptions, io: InitIo): Promise
   io.out(done('compiled', `-> ${path.relative(opts.cwd, artifact).split(path.sep).join('/')}`));
 }
 
-/** Step 5: what to do now. The `--agents` line goes when `--agents` was given; the
+/** Step 6: what to do now. The `--agents` line goes when `--agents` was given; the
  * install hint only where there is a `package.json` to install into. */
 function nextSteps(opts: InitOptions): string {
   const lines: [string, string][] = [
     ['diagc studio', 'look at it'],
     ['diagc guide', 'how to write diagrams (for you or your agent)'],
   ];
-  if (!opts.agents) lines.push(['diagc init --agents', 'point coding agents at the guide (AGENTS.md)']);
+  if (!opts.agents) lines.push(['diagc init --agents', 'point coding agents at the guide (AGENTS.md, Claude Code skill)']);
   if (existsSync(path.join(opts.cwd, 'package.json'))) lines.push([`npm i -D @diagc/core@${opts.version}`, 'editor types for .diagram.ts']);
   return `\nNext:\n${lines.map(([cmd, what]) => `  ${cmd.padEnd(COL)}${what}`).join('\n')}`;
 }
@@ -209,9 +257,15 @@ const stdio: InitIo = {
  * line on stderr; anything else is a bug and is left to throw. */
 export async function runInit(opts: InitOptions, io: InitIo = stdio): Promise<number> {
   try {
+    // Read before the first write: an install that lost the file is a refusal, and
+    // a refusal leaves the tree untouched.
+    const skill = opts.agents && usesClaudeCode(opts.cwd) ? await readSkill(opts.skillFile) : undefined;
     const written = await starterStep(opts, io);
     await gitignoreStep(opts.cwd, io);
-    if (opts.agents) await agentsStep(opts.cwd, io);
+    if (opts.agents) {
+      await agentsStep(opts.cwd, io);
+      await skillStep(opts.cwd, skill, io);
+    }
     if (written !== undefined) await compileStep(written, opts, io);
     io.out(nextSteps(opts));
     return 0;
