@@ -3,7 +3,7 @@
 // the pages. It only makes strings: scripts/build-site.mjs reads the files and writes the
 // result, and packages/diagc/src/docsPages.test.ts calls it directly.
 import path from 'node:path';
-import { Marked } from 'marked';
+import { Marked, Renderer } from 'marked';
 
 export const REPO = 'https://github.com/Ferroman/diagc';
 
@@ -74,6 +74,61 @@ export function readNav(indexMarkdown) {
   return entries;
 }
 
+/** One page: the landing page's head and header around the sidebar, the article and the
+ * list of its headings. `root` is the way from the page up to the site's root. The header
+ * is site/index.html's, with links that lead back to it; a test compares the two. The
+ * sidebar is there twice, folded for a narrow screen and open beside the article for a
+ * wide one, so neither needs a script; docs.css shows one of them. */
+function page({ root, title, description, sidebar, article, headings, previous, next, source }) {
+  const pager = (entry, label, side) =>
+    entry === undefined ? '<span></span>' : `<a class="${side}" href="${esc(entry.href)}"><small>${label}</small>${esc(entry.title)}</a>`;
+  const toc =
+    headings.length < 2
+      ? ''
+      : `<aside class="docs-toc"><nav aria-label="On this page"><h2>On this page</h2><ul>${headings
+          .map((h) => `<li><a href="#${esc(h.id)}">${esc(h.text)}</a></li>`)
+          .join('')}</ul></nav></aside>\n`;
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(title)} — diagc docs</title>
+${description === '' ? '' : `<meta name="description" content="${esc(description)}">\n`}<script>try{var t=localStorage.getItem('diagc-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="${root}site.css">
+<link rel="stylesheet" href="${root}docs.css">
+<script src="${root}site.js" defer></script>
+</head>
+<body class="docs">
+<header class="nav">
+  <a class="brand" href="${root}index.html">diagc</a>
+  <nav aria-label="Sections">
+    <a href="${root}index.html#features">Features</a>
+    <a href="${root}index.html#how-it-works">How it works</a>
+    <a href="${root}index.html#demos">Demos</a>
+    <a href="${root}docs/index.html" aria-current="true">Docs</a>
+    <a href="${REPO}">GitHub</a>
+    <button type="button" id="theme-switch" hidden></button>
+  </nav>
+</header>
+<div class="docs-layout">
+<details class="docs-menu"><summary>All pages</summary>${sidebar}</details>
+<aside class="docs-side">${sidebar}</aside>
+<main>
+<article>
+${article}</article>
+<nav class="docs-pager" aria-label="Previous and next page">
+${pager(previous, 'Previous', 'prev')}
+${pager(next, 'Next', 'next')}
+</nav>
+<p class="docs-source"><a href="${esc(source)}">View this page on GitHub</a></p>
+</main>
+${toc}</div>
+</body>
+</html>
+`;
+}
+
 /** Every page of the docs, and every link in them that leads nowhere.
  * `files`: a path under docs/ (posix) -> its Markdown. `exists(repoPath)`: whether the
  * repository has that file. Returns `pages`: a path under the site -> its HTML, and
@@ -101,7 +156,7 @@ export function renderDocs({ files, exists }) {
   }
 
   const pages = new Map();
-  nav.forEach((entry) => {
+  nav.forEach((entry, at) => {
     const { file } = entry;
     const doc = parsed.get(file);
     const out = path.posix.join('docs', outPath(file));
@@ -139,13 +194,50 @@ export function renderDocs({ files, exists }) {
         heading({ tokens, depth, id }) {
           return `<h${depth} id="${esc(id)}">${this.parser.parseInline(tokens)}</h${depth}>\n`;
         },
+        // A wide table scrolls in a box of its own, so the page never scrolls sideways.
+        table(token) {
+          return `<div class="table-wrap">${Renderer.prototype.table.call(this, token)}</div>\n`;
+        },
+        // The docs use no raw HTML, and a stray <name> in prose must show, not vanish.
+        html({ text }) {
+          return esc(text);
+        },
+        image({ href, title, text }) {
+          return `<img src="${esc(href)}" alt="${esc(text)}"${title ? ` title="${esc(title)}"` : ''} loading="lazy">`;
+        },
       },
     });
     marked.walkTokens(doc.tokens, (t) => {
       if (t.type === 'link') t.href = relink(t.href, false);
       else if (t.type === 'image') t.href = relink(t.href, true);
     });
-    pages.set(out, `<article>\n${marked.parser(doc.tokens)}</article>\n`);
+    const href = (other) => to(path.posix.join('docs', outPath(other.file)));
+    const item = (other) =>
+      `<li><a href="${esc(href(other))}"${other.file === file ? ' aria-current="page"' : ''}>${esc(other.title)}</a></li>`;
+    const sidebar = `<nav aria-label="Documentation">${[...new Set(nav.map((other) => other.section))]
+      .map(
+        (section) =>
+          `${section === undefined ? '' : `<h2>${esc(section)}</h2>`}<ul>${nav
+            .filter((other) => other.section === section)
+            .map(item)
+            .join('')}</ul>`,
+      )
+      .join('')}</nav>`;
+    const beside = (other) => (other === undefined ? undefined : { href: href(other), title: other.title });
+    pages.set(
+      out,
+      page({
+        root: '../'.repeat(out.split('/').length - 1),
+        title: doc.headings.find((h) => h.depth === 1)?.text ?? entry.title,
+        description: entry.description,
+        sidebar,
+        article: marked.parser(doc.tokens),
+        headings: doc.headings.filter((h) => h.depth === 2),
+        previous: beside(nav[at - 1]),
+        next: beside(nav[at + 1]),
+        source: `${REPO}/blob/main/docs/${file}`,
+      }),
+    );
   });
   return { pages, errors };
 }

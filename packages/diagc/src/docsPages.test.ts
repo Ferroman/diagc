@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -229,5 +230,120 @@ describe('a heading in a docs page', () => {
     expect(html).toContain('<h1 id="cli">CLI</h1>');
     expect(html).toContain('<h2 id="export">Export</h2>');
     expect(html).toContain('<h2 id="export-1">Export</h2>');
+  });
+});
+
+describe('a docs page', () => {
+  const INDEX_OF_THREE = [
+    '# Docs',
+    '',
+    '## Tutorials',
+    '',
+    '| | |',
+    '| --- | --- |',
+    '| [First](tutorials/first.md) | Zero to a "picture" & back. |',
+    '',
+    '## How-to guides',
+    '',
+    '| | |',
+    '| --- | --- |',
+    '| [Publish](how-to/publish.md) | |',
+  ].join('\n');
+  const { pages, errors } = renderDocs({
+    files: new Map([
+      ['README.md', INDEX_OF_THREE],
+      ['tutorials/first.md', '# First <steps> & more\n\nOne.\n'],
+      [
+        'how-to/publish.md',
+        '# `diagc` publish\n\n## Export\n\nPress <kbd>P</kbd>.\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n![pic](../../.diagrams/static/x.png)\n\n## Share <now>\n',
+      ],
+    ]),
+    exists: () => true,
+  });
+  const first = pages.get('docs/tutorials/first.html') ?? '';
+  const publish = pages.get('docs/how-to/publish.html') ?? '';
+  const index = pages.get('docs/index.html') ?? '';
+
+  it('renders with no dead link', () => {
+    expect(errors).toEqual([]);
+  });
+
+  it('is titled by its heading, in words', () => {
+    expect(publish).toContain('<title>diagc publish — diagc docs</title>');
+    expect(first).toContain('<title>First &lt;steps&gt; &amp; more — diagc docs</title>');
+  });
+
+  it("takes its description from the index, and has none when the index gives none", () => {
+    expect(first).toContain('<meta name="description" content="Zero to a &quot;picture&quot; &amp; back.">');
+    expect(publish).not.toContain('<meta name="description"');
+  });
+
+  it('applies the remembered theme before its stylesheets are read', () => {
+    expect(publish.indexOf("localStorage.getItem('diagc-theme')")).toBeGreaterThan(-1);
+    expect(publish.indexOf("localStorage.getItem('diagc-theme')")).toBeLessThan(publish.indexOf('<link rel="stylesheet"'));
+  });
+
+  it("reaches the site's stylesheets and script from its own folder", () => {
+    for (const ref of ['href="../../site.css"', 'href="../../docs.css"', 'src="../../site.js"']) expect(publish).toContain(ref);
+    for (const ref of ['href="../site.css"', 'href="../docs.css"', 'src="../site.js"']) expect(index).toContain(ref);
+  });
+
+  it("has the landing page's header, leading back to it", () => {
+    const labels = (html: string): string[] =>
+      [.../<header class="nav">([\s\S]*?)<\/header>/.exec(html)![1]!.matchAll(/<a [^>]*>([^<]*)<\/a>/g)].map((m) => m[1]!);
+    const landing = readFileSync(path.join(root, 'site', 'index.html'), 'utf8');
+    expect(labels(publish)).toEqual(labels(landing));
+    expect(publish).toContain('<a href="../../index.html#features">Features</a>');
+    expect(publish).toContain('<a href="../../docs/index.html" aria-current="true">Docs</a>');
+    expect(publish).toContain('<button type="button" id="theme-switch" hidden></button>');
+  });
+
+  it('lists every page by section in its sidebar, and marks the one it is', () => {
+    const side = /<aside class="docs-side">([\s\S]*?)<\/aside>/.exec(publish)?.[1] ?? '';
+    expect(side).toContain('<h2>Tutorials</h2>');
+    expect(side).toContain('<h2>How-to guides</h2>');
+    expect(side).toContain('<a href="../index.html">Docs</a>');
+    expect(side).toContain('<a href="../tutorials/first.html">First</a>');
+    expect(side).toContain('<a href="publish.html" aria-current="page">Publish</a>');
+    expect(side.match(/aria-current/g)).toHaveLength(1);
+  });
+
+  it('has the same list folded, for a narrow screen', () => {
+    const side = /<aside class="docs-side">([\s\S]*?)<\/aside>/.exec(publish)?.[1];
+    const menu = /<details class="docs-menu"><summary>All pages<\/summary>([\s\S]*?)<\/details>/.exec(publish)?.[1];
+    expect(side).toContain('<h2>Tutorials</h2>');
+    expect(menu).toBe(side);
+  });
+
+  it('lists its own second-level headings when it has two or more', () => {
+    const toc = /<aside class="docs-toc">([\s\S]*?)<\/aside>/.exec(publish)?.[1] ?? '';
+    expect(toc).toContain('<a href="#export">Export</a>');
+    expect(toc).toContain('<a href="#share-now">Share &lt;now&gt;</a>');
+    expect(first).not.toContain('docs-toc');
+  });
+
+  it("leads to the previous and the next page in the sidebar's order, across sections", () => {
+    const pager = (html: string): string => /<nav class="docs-pager"[^>]*>([\s\S]*?)<\/nav>/.exec(html)?.[1] ?? '';
+    expect(pager(first)).toContain('<a class="prev" href="../index.html"><small>Previous</small>Docs</a>');
+    expect(pager(first)).toContain('<a class="next" href="../how-to/publish.html"><small>Next</small>Publish</a>');
+    expect(pager(index)).not.toContain('class="prev"');
+    expect(pager(publish)).not.toContain('class="next"');
+  });
+
+  it('leads to its Markdown on GitHub', () => {
+    expect(publish).toContain('<a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/publish.md">View this page on GitHub</a>');
+  });
+
+  it('shows raw HTML as text', () => {
+    expect(publish).toContain('Press &lt;kbd&gt;P&lt;/kbd&gt;.');
+    expect(publish).not.toContain('<kbd>');
+  });
+
+  it('puts a table in a box of its own, so a wide one scrolls there', () => {
+    expect(publish).toMatch(/<div class="table-wrap"><table>[\s\S]*?<\/table>\s*<\/div>/);
+  });
+
+  it('loads a picture when the reader reaches it', () => {
+    expect(publish).toContain('<img src="../../static/x.png" alt="pic" loading="lazy">');
   });
 });
