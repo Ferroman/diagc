@@ -23,7 +23,7 @@ diagc studio       # opens the editor, recompiling as you edit
 
 | Command | What it does |
 | --- | --- |
-| `diagc init` | Set a repository up: a starter diagram (`--type c4` for a C4 one), the `.gitignore` lines, and with `--agents` a pointer to the guide for coding agents. |
+| `diagc init` | Set a repository up: a starter diagram (`--type c4` for a C4 one), the `.gitignore` lines, and with `--agents` a pointer to the guide for coding agents (`AGENTS.md` / `CLAUDE.md`, and a Claude Code skill). |
 | `diagc compile` | Compile `.diagrams/src/**/*.diagram.{ts,json}` into validated artifacts under `.diagrams/.artifacts/`. The default command. |
 | `diagc lint` | Report what compiles but is probably a mistake — typos, duplicates, unused or undrawn parts. `--json` for a script or an agent; exit 1 until clean. |
 | `diagc watch` | The same, recompiling on change. |

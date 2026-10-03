@@ -47,7 +47,7 @@ diagc init shop
 Next:
   diagc studio                          look at it
   diagc guide                           how to write diagrams (for you or your agent)
-  diagc init --agents                   point coding agents at the guide (AGENTS.md)
+  diagc init --agents                   point coding agents at the guide (AGENTS.md, Claude Code skill)
 ```
 
 Three files, one of them yours. Open `.diagrams/src/shop.diagram.ts`:

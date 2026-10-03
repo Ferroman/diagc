@@ -22,6 +22,12 @@ Diagrams live in `.diagrams/src/*.diagram.ts` and are built with `diagc`.
 
 The block names commands, not DSL details, so it does not go stale as the DSL grows; a later `diagc init --agents` replaces it in place. Edit around it freely — only the text between the markers is diagc's. In a repository with no diagrams yet, the same command also writes and compiles the starter.
 
+## The Claude Code skill
+
+In a repository that has a `.claude/` folder or a `CLAUDE.md`, the same command also writes `.claude/skills/diagc/SKILL.md`. Claude Code loads a skill only when the task matches its description — here, a request to draw or change a diagram — so the skill says more than the block does and costs nothing on any other task: read the guide first, run the lint loop, look at the PNG, never write positions, leave `<name>.layout.json` and a studio-drawn `.diagram.json` alone, and what to commit.
+
+Like the block, it names commands and files and no DSL, and only the text between its markers is diagc's: a later `diagc init --agents` replaces that and keeps what you wrote around it, the frontmatter included. Where there is neither a `.claude/` folder nor a `CLAUDE.md` the step is skipped, and the output says so; make the folder and run the command again to get the skill.
+
 ## What the agent reads
 
 `diagc guide` prints the DSL, the node types and relation kinds the linter accepts, the rules a diagram must follow, and the list of topics. `diagc guide c4` — or `er`, `deployment`, `activity`, any topic in that list — adds one diagram type's conventions and a complete starter. The text ships inside the CLI, so it describes the version the agent is running, and every listing in it is compiled by diagc's own test suite.

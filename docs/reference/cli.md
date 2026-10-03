@@ -45,7 +45,7 @@ diagc init shop --type c4       # a C4 starter named shop
 diagc init --agents             # point coding agents at the guide (AGENTS.md / CLAUDE.md)
 ```
 
-- **Steps, in order:** writes `.diagrams/src/<name>.diagram.ts` from the bundled starter for `--type`; appends whichever of `.diagrams/.artifacts/`, `.diagrams/html/` and `.diagrams/diff/` are missing from `.gitignore` (creating it if needed); with `--agents`, writes a short block into `AGENTS.md` and `CLAUDE.md` — whichever exist, or a new `AGENTS.md` — between `<!-- diagc:begin -->` and `<!-- diagc:end -->`, replacing it in place on a later run; compiles the starter; prints what to do next.
+- **Steps, in order:** writes `.diagrams/src/<name>.diagram.ts` from the bundled starter for `--type`; appends whichever of `.diagrams/.artifacts/`, `.diagrams/html/` and `.diagrams/diff/` are missing from `.gitignore` (creating it if needed); with `--agents`, writes a short block into `AGENTS.md` and `CLAUDE.md` — whichever exist, or a new `AGENTS.md` — between `<!-- diagc:begin -->` and `<!-- diagc:end -->`, replacing it in place on a later run, and — where the repository has a `.claude/` folder or a `CLAUDE.md` — the Claude Code skill `.claude/skills/diagc/SKILL.md`, whose text between the same markers it replaces on a later run; compiles the starter; prints what to do next.
 - **Name:** `example` by default; a folder is allowed (`team/app`); lowercase letters, digits, `-` and `/`. `shop.diagram.ts` and `.diagrams/src/shop` mean `shop`.
 - **Type:** `basic` by default; the types are the diagram types `diagc guide` lists, plus `basic`. An unknown type lists them.
 - **Already set up:** with neither a name nor `--type`, and a diagram already under `.diagrams/src`, the starter step is skipped — `diagc init --agents` can run in any repository.
@@ -222,7 +222,7 @@ diagc guide all        # everything
 | `--image-url <template>` | `diff` | relative | `summary.md`'s image links; `{path}` stands for each PNG's path. |
 | `--json` | `lint`, `diff` | off | Print the findings (lint) or the changes (diff) as JSON. |
 | `--type <type>` | `init` | `basic` | Which starter to copy. |
-| `--agents` | `init` | off | Write the coding-agent block into `AGENTS.md` / `CLAUDE.md`. |
+| `--agents` | `init` | off | Write the coding-agent block into `AGENTS.md` / `CLAUDE.md`, and the Claude Code skill where there is a `.claude/` folder or a `CLAUDE.md`. |
 | `--update-includes` | `compile`, `publish` | off | Refetch every remote `include`, vendor it under `.diagrams/includes/`, and rewrite `.diagrams/includes.lock.json`. On `compile`, pruning entries the run didn't touch only happens with no `files...` given (a full-tree run); `publish` always compiles the whole tree, so its prune is unconditional. |
 
 Anything not recognised as a flag is collected as `files...`.
@@ -273,6 +273,8 @@ Inside this monorepo:
 | `.diagrams/static/*.png` | `publish` | yes — these are your doc images |
 | `.diagrams/includes/` | `compile --update-includes` | yes — vendored snapshots of remote includes |
 | `.diagrams/includes.lock.json` | `compile --update-includes` | yes — the hashes pinning them |
+| `AGENTS.md`, `CLAUDE.md` | you; `init --agents` owns the text between the `diagc` markers | yes |
+| `.claude/skills/diagc/SKILL.md` | `init --agents`; the text outside the `diagc` markers is yours | yes |
 
 ## See also
 
