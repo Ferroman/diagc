@@ -1,7 +1,4 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { THEME_STORAGE_KEY } from '@diagc/renderer';
 import { canSwitchTheme, nextStored, readStoredTheme, resolveTheme, writeStoredTheme, type ThemeInputs } from './theme';
@@ -91,13 +88,5 @@ describe('the remembered choice', () => {
     expect(readStoredTheme()).toBeUndefined();
     expect(() => writeStoredTheme('dark')).not.toThrow();
     expect(() => writeStoredTheme(undefined)).not.toThrow();
-  });
-});
-
-describe('the page shell', () => {
-  it('declares both colour schemes, so the empty page is not white on a dark system', () => {
-    // a path, not a URL: under jsdom `URL` is jsdom's, which node's fs does not take
-    const html = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'index.html'), 'utf8');
-    expect(html).toContain('<meta name="color-scheme" content="light dark" />');
   });
 });

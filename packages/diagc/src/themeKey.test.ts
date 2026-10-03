@@ -18,3 +18,11 @@ describe('the theme key', () => {
     expect(read('site', 'index.html')).toContain(`localStorage.getItem('${THEME_STORAGE_KEY}')`);
   });
 });
+
+// Kept here, not beside the viewer: that app's tsconfig has no node types, and this is
+// the package that reads files.
+describe('the published page shell', () => {
+  it('declares both colour schemes, so the empty page is not white on a dark system', () => {
+    expect(read('apps', 'viewer', 'index.html')).toContain('<meta name="color-scheme" content="light dark" />');
+  });
+});
