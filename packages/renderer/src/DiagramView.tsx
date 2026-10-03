@@ -2029,6 +2029,17 @@ function Inner(props: DiagramViewProps) {
               ↻
             </ControlButton>
           )}
+          {/* Last in the cluster: it is the host's switch, not a property of the drawing. */}
+          {props.onToggleTheme !== undefined && (
+            <ControlButton
+              className="dg-theme-toggle"
+              title={props.colorMode === 'dark' ? 'Light theme' : 'Dark theme'}
+              aria-label={props.colorMode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+              onClick={props.onToggleTheme}
+            >
+              {props.colorMode === 'dark' ? '☀' : '☾'}
+            </ControlButton>
+          )}
         </Controls>
         )}
         {showLoops && loopEdges !== null && placedGeometry !== null && (

@@ -58,6 +58,13 @@ export interface ThemeTokens {
   deploySubnetTint: string;
 }
 
+/** Where a reader's theme choice is remembered (`localStorage`): 'light' or 'dark', and no
+ * entry means "follow the system". The CLI's generated pages and the landing site use the
+ * same key (packages/diagc/src/publish/pageTheme.ts, site/site.js), which is what makes one
+ * choice cover every page on a host. They cannot import this one, so
+ * packages/diagc/src/themeKey.test.ts pins the three together. */
+export const THEME_STORAGE_KEY = 'diagc-theme';
+
 export const lightTheme: ThemeTokens = {
   bg: '#f6f7f9',
   surface: '#ffffff',
