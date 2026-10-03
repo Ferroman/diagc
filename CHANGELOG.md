@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/Ferroman/diagc/compare/v0.13.0...v0.14.0) (2026-10-03)
+
+
+### Features
+
+* **viewer:** published pages follow light and dark ([#63](https://github.com/Ferroman/diagc/issues/63)) ([47ef428](https://github.com/Ferroman/diagc/commit/47ef428e2c3b24258ed9c7daa46f81ddb25d358e))
+
 ## [0.13.0](https://github.com/Ferroman/diagc/compare/v0.12.0...v0.13.0) (2026-10-03)
 
 
