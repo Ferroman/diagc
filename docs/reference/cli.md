@@ -42,7 +42,7 @@ Sets a repository up for diagc, from the installed CLI alone.
 ```bash
 diagc init                      # .diagrams/src/example.diagram.ts from the basic starter
 diagc init shop --type c4       # a C4 starter named shop
-diagc init --agents             # point coding agents at the guide (AGENTS.md / CLAUDE.md)
+diagc init --agents             # point coding agents at the guide (AGENTS.md / CLAUDE.md, Claude Code skill)
 ```
 
 - **Steps, in order:** writes `.diagrams/src/<name>.diagram.ts` from the bundled starter for `--type`; appends whichever of `.diagrams/.artifacts/`, `.diagrams/html/` and `.diagrams/diff/` are missing from `.gitignore` (creating it if needed); with `--agents`, writes a short block into `AGENTS.md` and `CLAUDE.md` — whichever exist, or a new `AGENTS.md` — between `<!-- diagc:begin -->` and `<!-- diagc:end -->`, replacing it in place on a later run, and — where the repository has a `.claude/` folder or a `CLAUDE.md` — the Claude Code skill `.claude/skills/diagc/SKILL.md`, whose text between the same markers it replaces on a later run; compiles the starter; prints what to do next.

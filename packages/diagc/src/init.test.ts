@@ -234,6 +234,20 @@ describe('runInit --agents', () => {
     expect(withAgentsBlock('').text).toBe(AGENTS_BLOCK);
   });
 
+  it('withAgentsBlock replaces only a whole begin-to-end pair, so text under a marker that lost its end stays', () => {
+    const once = withAgentsBlock(`${AGENTS_BEGIN}\nhalf\n\n## House rules\nKEEP ME\n`);
+    expect(once.replaced).toBe(false);
+    const twice = withAgentsBlock(once.text);
+    expect(twice.replaced).toBe(true);
+    expect(twice.text).toBe(once.text);
+    expect(twice.text).toContain('KEEP ME');
+  });
+
+  it('withAgentsBlock steps over an end marker that has no begin', () => {
+    const r = withAgentsBlock(`${AGENTS_END}\ntext\n\n${AGENTS_BEGIN}\nold\n${AGENTS_END}\n`);
+    expect(r).toEqual({ text: `${AGENTS_END}\ntext\n\n${AGENTS_BLOCK}`, replaced: true });
+  });
+
   it('the block names commands, not DSL', () => {
     expect(AGENTS_BLOCK).toContain('diagc guide');
     expect(AGENTS_BLOCK).toContain('diagc lint --json');
@@ -247,13 +261,13 @@ describe('runInit --agents, the Claude Code skill', () => {
   const skill = readFileSync(home.skillFile, 'utf8');
   /** the part a later run replaces: from the begin marker to the end of the file */
   const block = skill.slice(skill.indexOf(AGENTS_BEGIN));
-  const line = (what: string): RegExp => new RegExp(`^[✓·] \\.claude/skills/diagc/SKILL\\.md\\s+${what}$`, 'm');
+  const line = (mark: '✓' | '·', what: string): RegExp => new RegExp(`^${mark} \\.claude/skills/diagc/SKILL\\.md\\s+${what}$`, 'm');
 
   it('writes the packaged skill, byte for byte, where there is a .claude folder', async () => {
     mkdirSync(path.join(cwd, '.claude'));
     expect(await runInit(opts({ agents: true }), io)).toBe(0);
     expect(read(SKILL_PATH)).toBe(skill);
-    expect(out.join('\n')).toMatch(line('\\(diagc skill added\\)'));
+    expect(out.join('\n')).toMatch(line('✓', '\\(diagc skill added\\)'));
   });
 
   it('writes it where there is a CLAUDE.md and no .claude folder', async () => {
@@ -265,7 +279,14 @@ describe('runInit --agents, the Claude Code skill', () => {
   it('skips it, and makes no .claude folder, where neither is there', async () => {
     expect(await runInit(opts({ agents: true }), io)).toBe(0);
     expect(has('.claude')).toBe(false);
-    expect(out.join('\n')).toMatch(line('no \\.claude/ or CLAUDE\\.md here — skill skipped'));
+    expect(out.join('\n')).toMatch(line('·', 'no \\.claude/ or CLAUDE\\.md here — skill skipped'));
+  });
+
+  it('does not take a file named .claude for the folder', async () => {
+    writeFileSync(path.join(cwd, '.claude'), '');
+    expect(await runInit(opts({ agents: true }), io)).toBe(0);
+    expect(out.join('\n')).toMatch(line('·', 'no \\.claude/ or CLAUDE\\.md here — skill skipped'));
+    expect(read('.claude')).toBe('');
   });
 
   it('leaves it alone without --agents', async () => {
@@ -282,7 +303,7 @@ describe('runInit --agents, the Claude Code skill', () => {
     await runInit(opts({ agents: true }), io);
     const text = read(SKILL_PATH);
     expect(text).toBe(`${front}${block}\n## House rules\n`);
-    expect(out.join('\n')).toMatch(line('\\(diagc skill refreshed\\)'));
+    expect(out.join('\n')).toMatch(line('✓', '\\(diagc skill refreshed\\)'));
     await runInit(opts({ agents: true }), io);
     expect(read(SKILL_PATH)).toBe(text);
   });
@@ -293,7 +314,7 @@ describe('runInit --agents, the Claude Code skill', () => {
     writeFileSync(path.join(cwd, SKILL_PATH), theirs);
     await runInit(opts({ agents: true }), io);
     expect(read(SKILL_PATH)).toBe(`${theirs}\n${block}`);
-    expect(out.join('\n')).toMatch(line('\\(diagc skill added\\)'));
+    expect(out.join('\n')).toMatch(line('✓', '\\(diagc skill added\\)'));
   });
 
   it('writes the whole skill over an empty file, frontmatter included', async () => {
@@ -308,6 +329,15 @@ describe('runInit --agents, the Claude Code skill', () => {
     const before = tree();
     expect(await runInit(opts({ agents: true, skillFile: path.join(cwd, 'nope', 'SKILL.md') }), io)).toBe(1);
     expect(err[0]).toMatch(/^diagc: skill file missing from this install .* — reinstall diagc\.$/);
+    expect(tree()).toEqual(before);
+  });
+
+  it('reads the skill that is already there before it writes anything', async () => {
+    // A SKILL.md that cannot be read — here, a folder of that name — stops the run
+    // with the tree as it was, not after the starter and AGENTS.md are down.
+    mkdirSync(path.join(cwd, SKILL_PATH), { recursive: true });
+    const before = tree();
+    await expect(runInit(opts({ agents: true }), io)).rejects.toThrow(/EISDIR/);
     expect(tree()).toEqual(before);
   });
 

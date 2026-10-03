@@ -24,7 +24,7 @@ The block names commands, not DSL details, so it does not go stale as the DSL gr
 
 ## The Claude Code skill
 
-In a repository that has a `.claude/` folder or a `CLAUDE.md`, the same command also writes `.claude/skills/diagc/SKILL.md`. Claude Code loads a skill only when the task matches its description — here, a request to draw or change a diagram — so the skill says more than the block does and costs nothing on any other task: read the guide first, run the lint loop, look at the PNG, never write positions, leave `<name>.layout.json` and a studio-drawn `.diagram.json` alone, and what to commit.
+In a repository that has a `.claude/` folder or a `CLAUDE.md`, the same command also writes `.claude/skills/diagc/SKILL.md`. Claude Code loads a skill only when the task matches its description — here, a request to draw or change a diagram — so the skill says more than the block does, and on any other task it costs only that description: read the guide first, run the lint loop, look at the PNG, never write positions, leave `<name>.layout.json` and a studio-drawn `.diagram.json` alone, and what to commit.
 
 Like the block, it names commands and files and no DSL, and only the text between its markers is diagc's: a later `diagc init --agents` replaces that and keeps what you wrote around it, the frontmatter included. Where there is neither a `.claude/` folder nor a `CLAUDE.md` the step is skipped, and the output says so; make the folder and run the command again to get the skill.
 

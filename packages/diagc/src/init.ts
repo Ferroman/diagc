@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import fg from 'fast-glob';
@@ -58,19 +58,19 @@ ${AGENTS_END}
 /** Where the skill goes: the folder Claude Code reads a repository's skills from. */
 export const SKILL_PATH = '.claude/skills/diagc/SKILL.md';
 
-/** `existing` with `block` added at the end, or — when both markers are there —
- * with the earlier block replaced where it stands, so a second run never
- * duplicates it and a run after an upgrade refreshes it. `block` runs from the
- * begin marker to the newline after the end marker. */
+/** An earlier block: a begin marker, its end marker with no second begin between
+ * them, and the closing newline the block carries. A begin whose end was deleted
+ * by hand is not one — taking it up to the next block's end would delete
+ * whatever the user wrote in between. */
+const EARLIER_BLOCK = new RegExp(`${AGENTS_BEGIN}(?:(?!${AGENTS_BEGIN})[\\s\\S])*?${AGENTS_END}\\n?`);
+
+/** `existing` with `block` added at the end, or — when an earlier block is there —
+ * with that block replaced where it stands, so a second run never duplicates it
+ * and a run after an upgrade refreshes it. `block` runs from the begin marker to
+ * the newline after the end marker. */
 export function withBlock(existing: string, block: string): { text: string; replaced: boolean } {
-  const begin = existing.indexOf(AGENTS_BEGIN);
-  const end = begin === -1 ? -1 : existing.indexOf(AGENTS_END, begin);
-  if (begin !== -1 && end !== -1) {
-    let after = end + AGENTS_END.length;
-    // The block carries its own closing newline; take the old one with the old block.
-    if (existing.startsWith('\n', after)) after += 1;
-    return { text: existing.slice(0, begin) + block + existing.slice(after), replaced: true };
-  }
+  // A function, so a `$&` in the block is text and not a back-reference.
+  if (EARLIER_BLOCK.test(existing)) return { text: existing.replace(EARLIER_BLOCK, () => block), replaced: true };
   if (existing === '') return { text: block, replaced: false };
   const sep = existing.endsWith('\n\n') ? '' : existing.endsWith('\n') ? '\n' : '\n\n';
   return { text: `${existing}${sep}${block}`, replaced: false };
@@ -180,44 +180,45 @@ async function agentsStep(cwd: string, io: InitIo): Promise<void> {
   }
 }
 
-/** The skill as the package ships it, and the part of it a later run replaces. */
-interface Skill {
-  source: string;
-  block: string;
+/** What step 4 writes into the skill file, and whether that replaces an earlier block. */
+interface SkillPlan {
+  text: string;
+  replaced: boolean;
 }
 
 /** `.claude/` is Claude Code's own folder, not neutral ground like `AGENTS.md`, so
  * the skill goes only where the repository already shows that tool in use. */
-const usesClaudeCode = (cwd: string): boolean => existsSync(path.join(cwd, '.claude')) || existsSync(path.join(cwd, 'CLAUDE.md'));
+const usesClaudeCode = (cwd: string): boolean =>
+  (statSync(path.join(cwd, '.claude'), { throwIfNoEntry: false })?.isDirectory() ?? false) || existsSync(path.join(cwd, 'CLAUDE.md'));
 
-async function readSkill(skillFile: string): Promise<Skill> {
-  if (!existsSync(skillFile)) throw new InitError(`skill file missing from this install (${skillFile}) — reinstall diagc.`);
-  const source = await readFile(skillFile, 'utf8');
+/** Everything step 4 has to read, read before the first write: an install that
+ * lost its skill is a refusal, and a refusal leaves the tree untouched. A new file
+ * is the shipped one, frontmatter and all; in a file that is already there only
+ * the text between the markers is diagc's, as in AGENTS.md. Undefined where the
+ * skill does not go. */
+async function planSkill(opts: InitOptions): Promise<SkillPlan | undefined> {
+  if (!opts.agents || !usesClaudeCode(opts.cwd)) return undefined;
+  if (!existsSync(opts.skillFile)) throw new InitError(`skill file missing from this install (${opts.skillFile}) — reinstall diagc.`);
+  const source = await readFile(opts.skillFile, 'utf8');
   const begin = source.indexOf(AGENTS_BEGIN);
   // The shipped file's own shape, held by skillContent.test.ts: a bug, not a refusal.
-  if (begin === -1) throw new Error(`${skillFile}: no ${AGENTS_BEGIN} marker`);
-  return { source, block: source.slice(begin) };
+  if (begin === -1) throw new Error(`${opts.skillFile}: no ${AGENTS_BEGIN} marker`);
+  const file = path.join(opts.cwd, SKILL_PATH);
+  const existing = existsSync(file) ? await readFile(file, 'utf8') : '';
+  // An empty file has no frontmatter to keep: it gets the whole skill, as a new one does.
+  return existing.trim() === '' ? { text: source, replaced: false } : withBlock(existing, source.slice(begin));
 }
 
-/** Step 4: the Claude Code skill, with `--agents`. A new file is the shipped one,
- * frontmatter and all; in a file that is already there only the text between the
- * markers is diagc's, as in AGENTS.md. `skill` is undefined where it does not go. */
-async function skillStep(cwd: string, skill: Skill | undefined, io: InitIo): Promise<void> {
-  if (skill === undefined) {
+/** Step 4: the Claude Code skill, with `--agents`. */
+async function skillStep(cwd: string, plan: SkillPlan | undefined, io: InitIo): Promise<void> {
+  if (plan === undefined) {
     io.out(skipped(SKILL_PATH, 'no .claude/ or CLAUDE.md here — skill skipped'));
     return;
   }
   const file = path.join(cwd, SKILL_PATH);
-  const existing = existsSync(file) ? await readFile(file, 'utf8') : '';
-  if (existing.trim() === '') {
-    await mkdir(path.dirname(file), { recursive: true });
-    await writeFile(file, skill.source);
-    io.out(done(SKILL_PATH, '(diagc skill added)'));
-    return;
-  }
-  const { text, replaced } = withBlock(existing, skill.block);
-  await writeFile(file, text);
-  io.out(done(SKILL_PATH, replaced ? '(diagc skill refreshed)' : '(diagc skill added)'));
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, plan.text);
+  io.out(done(SKILL_PATH, plan.replaced ? '(diagc skill refreshed)' : '(diagc skill added)'));
 }
 
 /** Step 5: compile what was written, so the user starts from a diagram that is
@@ -257,9 +258,7 @@ const stdio: InitIo = {
  * line on stderr; anything else is a bug and is left to throw. */
 export async function runInit(opts: InitOptions, io: InitIo = stdio): Promise<number> {
   try {
-    // Read before the first write: an install that lost the file is a refusal, and
-    // a refusal leaves the tree untouched.
-    const skill = opts.agents && usesClaudeCode(opts.cwd) ? await readSkill(opts.skillFile) : undefined;
+    const skill = await planSkill(opts);
     const written = await starterStep(opts, io);
     await gitignoreStep(opts.cwd, io);
     if (opts.agents) {

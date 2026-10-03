@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { guideTopics } from './guide';
 import { findHome, homePaths } from './home';
 import { AGENTS_BEGIN, AGENTS_END, IGNORED } from './init';
 
@@ -70,7 +71,20 @@ describe('skill content', () => {
     expect(calls).toEqual(expect.arrayContaining(['diagc guide', 'diagc lint --json', 'diagc publish <name>']));
   }, 30_000);
 
-  it('calls build output exactly what init ignores', () => {
+  it('gives real topics as its examples', () => {
+    // `diagc guide C4` is an unknown topic: an example is an id the command takes.
+    const line = skill.split('\n').find((l) => l.includes('`diagc guide <topic>`')) ?? '';
+    const examples = [...line.matchAll(/`([^`\n]+)`/g)].map((m) => m[1]!).filter((s) => !s.startsWith('diagc'));
+    expect(examples.length).toBeGreaterThan(0);
+    for (const topic of examples) expect(guideTopics(home.guideDir), topic).toContain(topic);
+  });
+
+  it('says to commit the sources and the images, and calls build output exactly what init ignores', () => {
+    const spans = (text: string | undefined): string[] => [...(text ?? '').matchAll(/`([^`\n]+)`/g)].map((m) => m[1]!);
+    const rule = /^- Commit (.+?)\. (.+?) are build output\.$/m.exec(skill);
+    expect(spans(rule?.[1])).toEqual(['.diagrams/src/', '.diagrams/static/']);
+    expect(spans(rule?.[2]).sort()).toEqual([...IGNORED].sort());
+    // and nowhere else names a directory of its own
     const dirs = [...new Set(codeSpans.filter((s) => /^\.diagrams\/[^<*]*\/$/.test(s)))];
     expect(dirs.sort()).toEqual([...IGNORED, '.diagrams/src/', '.diagrams/static/'].sort());
   });
