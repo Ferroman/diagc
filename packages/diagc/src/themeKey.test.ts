@@ -25,4 +25,10 @@ describe('the published page shell', () => {
   it('declares both colour schemes, so the empty page is not white on a dark system', () => {
     expect(read('apps', 'viewer', 'index.html')).toContain('<meta name="color-scheme" content="light dark" />');
   });
+
+  it('paints no page background of its own', () => {
+    // The canvas is transparent in the light theme, so a PNG's background is the page's.
+    // A background here would tint every committed picture.
+    expect(read('apps', 'viewer', 'index.html')).not.toMatch(/background/);
+  });
 });
