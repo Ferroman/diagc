@@ -7,6 +7,7 @@ import type { DiagramModel } from '@diagc/core';
 import { compareDiagramSets, describeDiff, formatDiffSummary, loadDiagramSet, writeDiffPages, type DiagramSet } from './diff';
 import { checkoutDiagrams, type CheckedOutRef } from './git-ref';
 import { DG_DATA_SENTINEL } from './publish/html';
+import { THEME_HEAD_SCRIPT } from './publish/pageTheme';
 
 function model(id: string, parts: Partial<DiagramModel>): DiagramModel {
   return { version: 1, id, name: id, nodes: [], containment: [], relations: [], layers: [], planes: [], ...parts };
@@ -201,6 +202,10 @@ describe('writeDiffPages', () => {
     expect(index).toContain('<iframe src="shop.before.html?export=1"');
     expect(index).toContain('<iframe src="new/fresh.after.html?export=1"');
     expect(index).toContain('<li class="add">+ Orders DB [database]</li>');
+    // the overview follows the reader's theme, as the index page does
+    expect(index).toContain(THEME_HEAD_SCRIPT);
+    expect(index).toContain(':root[data-theme=dark]');
+    expect(index).toContain('id="dg-theme"');
     const summary = readFileSync(res.summary, 'utf8');
     expect(summary).toContain('| ![before](shop.before.png) | ![after](shop.after.png) |');
     expect(summary).toContain('| ![before](gone.before.png) | — |');

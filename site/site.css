@@ -21,8 +21,10 @@
   --shadow-window: 0 32px 64px -28px rgba(16, 24, 40, 0.4), 0 10px 24px -14px rgba(16, 24, 40, 0.2);
   color-scheme: light dark;
 }
+/* The dark set, twice: for a dark system unless the reader chose light, and for a reader
+   who chose dark (site.js sets data-theme). siteContent.test.ts fails when they drift. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #12161b;
     --surface: #1b222b;
     --border: #2d3743;
@@ -42,6 +44,27 @@
     --shadow-window: 0 32px 64px -28px rgba(0, 0, 0, 0.75), 0 10px 24px -14px rgba(0, 0, 0, 0.5);
   }
 }
+:root[data-theme='dark'] {
+  --bg: #12161b;
+  --surface: #1b222b;
+  --border: #2d3743;
+  --text: #e6ebf0;
+  --muted: #8b98a5;
+  --accent: #60a5fa;
+  --accent-2: #a78bfa;
+  --accent-text: #0b1220;
+  --code-bg: #232c37;
+  --tint: rgba(96, 165, 250, 0.14);
+  --ring: rgba(96, 165, 250, 0.5);
+  --glow: rgba(96, 165, 250, 0.13);
+  --dot: rgba(230, 235, 240, 0.1);
+  --nav-bg: rgba(27, 34, 43, 0.8);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-lift: 0 14px 28px -12px rgba(0, 0, 0, 0.6);
+  --shadow-window: 0 32px 64px -28px rgba(0, 0, 0, 0.75), 0 10px 24px -14px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+:root[data-theme='light'] { color-scheme: light; }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 64px; }
@@ -76,8 +99,9 @@ p { margin: 0 0 12px; }
 .nav nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; }
 .nav nav a { color: var(--text); text-decoration: none; font-size: 15px; transition: color 0.15s ease, border-color 0.15s ease; }
 .nav nav a:hover { color: var(--accent); }
-.nav nav a:last-child { padding: 3px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
-.nav nav a:last-child:hover { border-color: var(--ring); }
+.nav nav a:last-of-type { padding: 3px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+.nav nav a:last-of-type:hover { border-color: var(--ring); }
+#theme-switch { padding: 3px 12px; border-radius: 999px; font-size: 14px; }
 
 main { max-width: 1120px; margin: 0 auto; padding: 0 16px 72px; }
 section { padding-top: 72px; }

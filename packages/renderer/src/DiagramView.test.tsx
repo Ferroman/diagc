@@ -3043,3 +3043,34 @@ describe('diff marks', () => {
     expect(container.querySelector('[class*="dg-diff-"]')).toBeNull();
   });
 });
+
+describe('DiagramView theme switch', () => {
+  const one = (() => {
+    const m = model('t-theme');
+    m.node('a', { name: 'A' });
+    return m.toJSON();
+  })();
+
+  it('offers no theme switch to a host that passes no handler', async () => {
+    render(<DiagramView model={one} />);
+    await screen.findByLabelText('Laser pointer');
+    expect(screen.queryByLabelText(/Switch to (dark|light) theme/)).toBeNull();
+  });
+
+  it('offers the other theme and calls the host on a click', async () => {
+    const onToggleTheme = vi.fn();
+    const { rerender } = render(<DiagramView model={one} onToggleTheme={onToggleTheme} />);
+    const toDark = await screen.findByLabelText('Switch to dark theme');
+    expect(toDark.textContent).toBe('☾');
+    fireEvent.click(toDark);
+    expect(onToggleTheme).toHaveBeenCalledTimes(1);
+    rerender(<DiagramView model={one} colorMode="dark" onToggleTheme={onToggleTheme} />);
+    expect((await screen.findByLabelText('Switch to light theme')).textContent).toBe('☀');
+  });
+
+  it('draws no theme switch where the controls are off', async () => {
+    render(<DiagramView model={one} chrome={false} onToggleTheme={() => {}} />);
+    await screen.findByText('A');
+    expect(screen.queryByLabelText(/Switch to (dark|light) theme/)).toBeNull();
+  });
+});

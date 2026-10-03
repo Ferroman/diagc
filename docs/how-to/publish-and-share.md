@@ -26,6 +26,8 @@ Three outputs:
 
 Freehand drawings (`<name>.drawings.json`) ship with the page and are included in the PNG; the export frame grows to fit a stroke drawn outside the boxes.
 
+The PNG is always drawn in the light theme, whatever theme a reader of the page uses.
+
 ## Put an image in your docs
 
 ```markdown
@@ -68,6 +70,10 @@ Checked automatically: `/usr/bin/google-chrome`, `/usr/bin/google-chrome-stable`
 `.diagrams/html/<name>.html` is a single file with everything inlined. Email it, drop it in Slack, open it from disk — it folds and unfolds exactly like the studio, it just cannot save.
 
 Pages with several planes get a plane picker at the top; the PNG always shows the first plane.
+
+The page opens in the theme of the reader's system, light or dark. The `☾` / `☀` corner control switches it, and the browser remembers the choice for every published page on the same host. Switching back to the system's own theme forgets the choice, so the page follows the system again. The index page has the same switch.
+
+To fix the theme of a page you embed on another site, add `?theme=dark` or `?theme=light` to its address. The page then shows no switch.
 
 Presenting the page on a call? Press `L` (or the `◉` corner control) for a laser pointer: drag to draw a red trail that fades out after a second, so people can see what you are pointing at. It never touches the diagram, and `Esc` switches it off. The studio has the same control.
 

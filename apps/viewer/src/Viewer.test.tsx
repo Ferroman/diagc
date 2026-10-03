@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { dayOf, isoOf, layoutPlaneKey, model, type DiagramModel } from '@diagc/core';
-import { todayIso } from '@diagc/renderer';
+import { darkTheme, lightTheme, THEME_STORAGE_KEY, todayIso } from '@diagc/renderer';
 import { handshakeReady, legendPadding, Viewer, type ViewerData } from './Viewer';
 
 const m = () => {
@@ -642,5 +642,123 @@ describe('plan pages', () => {
     const { container } = render(<Viewer data={{ model: planPage() }} expandAll />);
     await waitFor(() => expect(container.querySelector('.dg-time-axis')).not.toBeNull());
     expect(container.querySelector('.dg-time-axis-today')).toBeNull();
+  });
+});
+
+describe('Viewer theme', () => {
+  /** A system that prefers dark or light, and a way to flip it while the page is open. */
+  const system = (dark: boolean) => {
+    type Listener = (e: { matches: boolean }) => void;
+    const listeners = new Set<Listener>();
+    const mq = {
+      matches: dark,
+      addEventListener: (_: string, l: Listener) => listeners.add(l),
+      removeEventListener: (_: string, l: Listener) => listeners.delete(l),
+    };
+    vi.stubGlobal('matchMedia', () => mq);
+    return (next: boolean) => {
+      mq.matches = next;
+      act(() => listeners.forEach((l) => l({ matches: next })));
+    };
+  };
+  const bg = () => document.documentElement.style.getPropertyValue('--dg-bg');
+  const switchButton = () => screen.queryByLabelText(/Switch to (dark|light) theme/);
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    localStorage.clear();
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('opens dark on a dark system', async () => {
+    system(true);
+    const { container } = render(<Viewer data={{ model: m() }} />);
+    await screen.findByText('Alpha');
+    expect(bg()).toBe(darkTheme.bg);
+    expect(container.querySelector('.react-flow')?.classList.contains('dark')).toBe(true);
+    expect(document.documentElement.style.colorScheme).toBe('dark');
+  });
+
+  it('follows the system while nothing is remembered', async () => {
+    const flip = system(false);
+    render(<Viewer data={{ model: m() }} />);
+    await screen.findByText('Alpha');
+    expect(bg()).toBe(lightTheme.bg);
+    flip(true);
+    expect(bg()).toBe(darkTheme.bg);
+  });
+
+  it('keeps a remembered choice when the system changes', async () => {
+    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    const flip = system(false);
+    render(<Viewer data={{ model: m() }} />);
+    await screen.findByText('Alpha');
+    expect(bg()).toBe(darkTheme.bg);
+    flip(true);
+    flip(false);
+    expect(bg()).toBe(darkTheme.bg);
+  });
+
+  it("remembers a switch away from the system's theme, and forgets it on the way back", async () => {
+    system(false);
+    render(<Viewer data={{ model: m() }} />);
+    fireEvent.click(await screen.findByLabelText('Switch to dark theme'));
+    expect(bg()).toBe(darkTheme.bg);
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
+    fireEvent.click(await screen.findByLabelText('Switch to light theme'));
+    expect(bg()).toBe(lightTheme.bg);
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
+  });
+
+  it('follows a choice made in another tab', async () => {
+    system(false);
+    render(<Viewer data={{ model: m() }} />);
+    await screen.findByText('Alpha');
+    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: THEME_STORAGE_KEY }));
+    });
+    expect(bg()).toBe(darkTheme.bg);
+  });
+
+  it('keeps an export render light, with no switch', async () => {
+    system(true);
+    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    window.history.replaceState(null, '', '/?export=1&theme=dark');
+    const { container } = render(<Viewer data={{ model: m() }} expandAll />);
+    await screen.findByText('Alpha');
+    expect(bg()).toBe(lightTheme.bg);
+    expect(container.querySelector('.react-flow')?.classList.contains('dark')).toBe(false);
+    expect(switchButton()).toBeNull();
+  });
+
+  it('takes the theme from the URL, and offers no switch there', async () => {
+    system(false);
+    localStorage.setItem(THEME_STORAGE_KEY, 'light');
+    window.history.replaceState(null, '', '/?theme=dark');
+    render(<Viewer data={{ model: m() }} />);
+    await screen.findByText('Alpha');
+    expect(bg()).toBe(darkTheme.bg);
+    await screen.findByLabelText('Laser pointer');
+    expect(switchButton()).toBeNull();
+  });
+
+  it('still switches when the store throws', async () => {
+    system(false);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    render(<Viewer data={{ model: m() }} />);
+    fireEvent.click(await screen.findByLabelText('Switch to dark theme'));
+    expect(bg()).toBe(darkTheme.bg);
+    vi.restoreAllMocks();
+  });
+
+  it("writes the active plane in the badge's text colour, which reads on the badge in both themes", async () => {
+    // --dg-text on --dg-badge-bg is light on light blue in the dark theme.
+    render(<Viewer data={{ model: twoPlanes() }} />);
+    const active = await screen.findByRole('button', { name: 'Landscape' });
+    expect(active.style.color).toBe('var(--dg-badge-text)');
+    expect(screen.getByRole('button', { name: 'Full platform' }).style.color).toBe('var(--dg-text-muted)');
   });
 });

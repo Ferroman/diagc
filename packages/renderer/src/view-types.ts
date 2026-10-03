@@ -113,6 +113,10 @@ export interface DiagramViewProps {
   kindRegistry?: Registry<KindStyle>;
   icons?: IconRegistry;
   colorMode?: 'light' | 'dark';
+  /** A host that lets its reader switch theme from the canvas (the published page) passes
+   * this: the control cluster then shows a ☾/☀ button that calls it. The studio has its
+   * own toolbar button and passes none. */
+  onToggleTheme?: () => void;
   /** metadata keys whose values show as badges on the node itself */
   onNodeMetaKeys?: string[];
   /** 'edit' unlocks drag/connect affordances; uses the same semantic-zoom LOD as view (one level at a time); default 'view' */

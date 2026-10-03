@@ -97,6 +97,32 @@ describe('the landing page', () => {
     expect(css).not.toMatch(/@import|url\(\s*['"]?(https?:)?\/\//i);
   });
 
+  it('lets a reader force either theme, with one dark set', () => {
+    // The dark tokens are written twice: for a dark system unless the reader chose
+    // light, and for a reader who chose dark. The two must not drift.
+    const decls = (block: string | undefined): string[] =>
+      (block ?? '')
+        .split(';')
+        .map((d) => d.trim())
+        .filter((d) => d.startsWith('--'));
+    const system = /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme='light'\]\) \{([^}]*)\}/.exec(css)?.[1];
+    const forced = /\n:root\[data-theme='dark'\] \{([^}]*)\}/.exec(css)?.[1];
+    expect(decls(system).length).toBeGreaterThanOrEqual(10);
+    expect(decls(forced)).toEqual(decls(system));
+    expect(forced).toMatch(/color-scheme:\s*dark/);
+    expect(css).toMatch(/:root\[data-theme='light'\] \{\s*color-scheme:\s*light;?\s*\}/);
+  });
+
+  it('applies the remembered theme before its stylesheet is read', () => {
+    const head = /<script>try\{[^<]*<\/script>/.exec(html)?.[0] ?? '';
+    expect(head).toContain("localStorage.getItem('diagc-theme')");
+    expect(html.indexOf(head)).toBeLessThan(html.indexOf('<link rel="stylesheet"'));
+  });
+
+  it('hides the theme switch until the script can run it', () => {
+    expect(html).toMatch(/<button type="button" id="theme-switch" hidden><\/button>/);
+  });
+
   it('hides its decorative icons from a screen reader', () => {
     // Each sits beside a heading that says the same thing in words.
     const icons = [...html.matchAll(/<svg\b[^>]*>/g)].map((m) => m[0]);

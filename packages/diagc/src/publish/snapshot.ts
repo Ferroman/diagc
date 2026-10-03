@@ -35,7 +35,9 @@ export async function renderPng(htmlPath: string, pngPath: string): Promise<void
   }
   const browser = await chromium.launch({ executablePath, headless: true });
   try {
-    const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 2 });
+    // Light, by name: `?export=1` already makes the viewer light whatever the browser
+    // prefers, and this says so where the picture is taken.
+    const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 2, colorScheme: 'light' });
     // `?export=1` tells the viewer to unfold every group for a full overview.
     await page.goto(`${pathToFileURL(path.resolve(htmlPath)).href}?export=1`);
     await page.waitForFunction(() => (window as unknown as ExportWindow).__DG_READY__ === true, null, { timeout: 15_000 });
