@@ -19,6 +19,7 @@
     "compile:watch": "tsx packages/diagc/src/cli.ts watch",
     "publish-diagrams": "tsx packages/diagc/src/cli.ts publish",
     "publish-site": "gh-pages -d .diagrams/html",
+    "build:site": "node scripts/build-site.mjs",
     "build:cli": "pnpm --filter @diagc/viewer build",
     "build:studio": "pnpm --filter @diagc/studio build",
     "build:obsidian": "pnpm --filter @diagc/obsidian build",

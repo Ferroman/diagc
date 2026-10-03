@@ -17,5 +17,7 @@ AGENTS.md
 # .diagrams/static/ (README PNGs) is intentionally NOT ignored — it is committed.
 .diagrams/html/
 .diagrams/diff/
+# The assembled GitHub Pages site (`pnpm build:site`); pages.yml builds its own.
+_site/
 
 .worktrees/

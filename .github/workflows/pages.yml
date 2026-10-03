@@ -1,5 +1,6 @@
-# Publishes the repo's own diagrams — the docs' figures and the examples — as live,
-# zoomable pages at https://ferroman.github.io/diagc/. The docs link every image there.
+# Publishes the project's site at https://ferroman.github.io/diagc/: the landing page from
+# site/, and the repo's own diagrams — the docs' figures and the examples — as live,
+# zoomable pages under html/. The docs link every image there.
 #
 # It also renders the PNGs, which makes this the one place CI exercises the image export.
 name: Pages
@@ -45,8 +46,8 @@ jobs:
       # site's address can find the project behind it.
       - run: pnpm publish-diagrams --link "https://github.com/${{ github.repository }}"
 
-      # The index sits in html/ and reaches its thumbnails as ../static/, so both folders
-      # ship side by side and the site root forwards to the index.
+      # The landing page from site/ goes to the root. The index sits in html/ and reaches
+      # its thumbnails as ../static/, so both folders ship side by side.
       #
       # The last lines are deliberate: `publish` degrades to HTML-only when it finds no
       # Chrome, and skips a diagram whose render fails. The index only gives a card a
@@ -54,13 +55,7 @@ jobs:
       # the gap — so a card without one fails the build instead of deploying quietly.
       - name: Assemble the site
         run: |
-          mkdir _site
-          cp -r .diagrams/html _site/html
-          cp -r .diagrams/static _site/static
-          printf '%s\n' \
-            '<!doctype html><meta charset="utf-8"><title>diagc examples</title>' \
-            '<meta http-equiv="refresh" content="0; url=html/index.html">' \
-            '<a href="html/index.html">diagc examples</a>' > _site/index.html
+          node scripts/build-site.mjs
           cards=$(grep -o 'class="card"' _site/html/index.html | wc -l)
           thumbs=$(grep -o '<img ' _site/html/index.html | wc -l)
           echo "$cards cards, $thumbs thumbnails"

@@ -122,6 +122,19 @@ picture.
 CI compiles every source (`pnpm compile`), and the Pages workflow publishes them all to
 the live site.
 
+## The site
+
+<https://ferroman.github.io/diagc/> is the static files in `site/`, with the published diagram pages beside them. The Pages workflow builds it on every push to `main`. To look at it locally:
+
+```bash
+pnpm build:cli
+pnpm publish-diagrams --no-images   # the pages; the pictures are already committed
+pnpm build:site                     # assembles _site/
+python3 -m http.server -d _site     # or any static server
+```
+
+A test fails when the page names a diagram, a picture or a docs file that does not exist. The studio pictures in `site/img/` come from `scripts/site-screenshots.mjs`; run it again after a change to the studio's look.
+
 ## Releasing
 
 `@diagc/cli` (the `diagc` command) and `@diagc/core` are published together and share a version. The other packages are build inputs: `renderer`, `icons`, `studio`, and `viewer` are baked into what `diagc` ships and stay private.
