@@ -1,3 +1,5 @@
+import { THEME_HEAD_SCRIPT, THEME_SWITCH, themeCss } from './pageTheme';
+
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 }
@@ -38,6 +40,11 @@ export function galleryLink(raw: string): { href: string; text: string } {
   return { href: url.href, text: `${url.host}${url.pathname}`.replace(/\/$/, '') };
 }
 
+// The page's two palettes. The dark one is the studio's own dark surface colours
+// (packages/renderer/src/theme.ts), so the index and the pages it links read as one.
+const LIGHT = '--bg:#fafafa;--card:#fff;--border:#ddd;--text:#222;--muted:#555;--faint:#777';
+const DARK = '--bg:#12161b;--card:#1b222b;--border:#2d3743;--text:#e6ebf0;--muted:#a3afbb;--faint:#8b98a5';
+
 export function buildGallery(entries: GalleryEntry[], opts: GalleryOptions = {}): string {
   // One section per source folder, in path order, root diagrams first and unheaded:
   // a flat grid of sixty path names is not a front page. ('' sorts ahead of every
@@ -63,19 +70,23 @@ export function buildGallery(entries: GalleryEntry[], opts: GalleryOptions = {})
 <html lang="en"><head><meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Diagrams</title>
+${THEME_HEAD_SCRIPT}
 <style>
-body{font-family:system-ui,sans-serif;margin:24px;background:#fafafa}
+${themeCss(LIGHT, DARK)}
+body{font-family:system-ui,sans-serif;margin:24px;background:var(--bg);color:var(--text)}
 header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:0 16px}
+.tools{display:flex;align-items:center;gap:12px}
 h1{font-size:18px}
-.link{font-size:13px;color:#555;text-decoration:none}
+.link{font-size:13px;color:var(--muted);text-decoration:none}
 .link:hover{text-decoration:underline}
-h2{font-size:14px;margin:28px 0 12px;color:#555;font-weight:600}
+h2{font-size:14px;margin:28px 0 12px;color:var(--muted);font-weight:600}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
-.card{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #ddd;border-radius:8px;text-decoration:none;color:#222;background:#fff}
+.card{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--text);background:var(--card)}
+/* a picture is light in both themes, so its tile is too */
 .card img{width:100%;height:140px;object-fit:contain;background:#f4f4f4;border-radius:4px}
-.card .path{font-size:12px;color:#777}
+.card .path{font-size:12px;color:var(--faint)}
 </style></head>
-<body><header><h1>Diagrams</h1>${linkHtml}</header>
+<body><header><h1>Diagrams</h1><span class="tools">${linkHtml}${THEME_SWITCH}</span></header>
 ${sections}
 </body></html>`;
 }
