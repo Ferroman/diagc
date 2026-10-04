@@ -51,13 +51,13 @@ New here? Start with **[Tutorial 1 — Your first diagram](docs/tutorials/01-you
 
 ## Documentation
 
-The documentation follows [Diátaxis](https://diataxis.fr/). The full index is [docs/README.md](docs/README.md).
+The documentation follows [Diátaxis](https://diataxis.fr/). Read it [on the site](https://ferroman.github.io/diagc/docs/), or as Markdown from [docs/README.md](docs/README.md).
 
-- **[Tutorials](docs/README.md#tutorials)** teach by doing. Start with [Your first diagram](docs/tutorials/01-your-first-diagram.md).
-- **[How-to guides](docs/README.md#how-to-guides)** each get one task done, from authoring to publishing.
-- **[Reference](docs/README.md#reference)** is for lookup: the [`diagc` CLI](docs/reference/cli.md), the model, the builder API and the studio.
-- **[Explanation](docs/README.md#explanation)** gives the reasons behind the design.
-- **[Examples](docs/examples/README.md)** show every diagram type and feature with its source. Each one is also live and zoomable.
+- **[Tutorials](https://ferroman.github.io/diagc/docs/#tutorials)** teach by doing. Start with [Your first diagram](https://ferroman.github.io/diagc/docs/tutorials/01-your-first-diagram.html).
+- **[How-to guides](https://ferroman.github.io/diagc/docs/#how-to-guides)** each get one task done, from authoring to publishing.
+- **[Reference](https://ferroman.github.io/diagc/docs/#reference)** is for lookup: the [`diagc` CLI](https://ferroman.github.io/diagc/docs/reference/cli.html), the model, the builder API and the studio.
+- **[Explanation](https://ferroman.github.io/diagc/docs/#explanation)** gives the reasons behind the design.
+- **[Examples](https://ferroman.github.io/diagc/docs/examples/)** show every diagram type and feature with its source. Each one is also live and zoomable.
 
 ## Status, and what it is not
 

@@ -35,7 +35,7 @@
     <p class="note">macOS and Linux, no Node required. With Node 22 or newer: <code>npm i -g @diagc/cli</code>.</p>
     <p class="actions">
       <a class="button" href="#demos">Open a live demo</a>
-      <a class="more" href="https://github.com/Ferroman/diagc/blob/main/docs/tutorials/01-your-first-diagram.md">Read the tutorial</a>
+      <a class="more" href="docs/tutorials/01-your-first-diagram.html">Read the tutorial</a>
     </p>
   </div>
   <div class="window">
@@ -57,14 +57,14 @@
         <li><code>.diagrams/static/&lt;name&gt;.png</code> a picture to commit</li>
       </ul>
       <a href="html/examples/causal-loop/tech-debt.html"><img src="static/examples/causal-loop/tech-debt.png" loading="lazy" alt="A causal-loop diagram about technical debt, as the PNG that publish writes"></a>
-      <p><a class="more" href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/publish-and-share.md">Publish and share</a></p>
+      <p><a class="more" href="docs/how-to/publish-and-share.html">Publish and share</a></p>
     </article>
     <article class="card">
       <h3>A local studio</h3>
       <p><code>diagc studio</code> opens a browser app against your repository. Draw a diagram there and the studio saves it as a file in the repository. <code>diagc eject</code> turns a drawn diagram into TypeScript.</p>
       <p>It runs on your machine against your files: no accounts and no server.</p>
       <img src="img/studio-edit.png" width="1360" height="850" loading="lazy" alt="The studio in edit mode, with the icon library open beside the canvas">
-      <p><a class="more" href="https://github.com/Ferroman/diagc/blob/main/docs/tutorials/02-draw-in-the-studio.md">Draw one in the browser</a></p>
+      <p><a class="more" href="docs/tutorials/02-draw-in-the-studio.html">Draw one in the browser</a></p>
     </article>
   </div>
   <div class="grid">
@@ -72,67 +72,67 @@
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg></span>
       <h3>Diagrams as code</h3>
       <p>A diagram is a TypeScript file, so it diffs, reviews and refactors like the rest of your repository. <code>diagc lint</code> reports what compiles but is probably a mistake.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/author-in-typescript.md">Author diagrams in TypeScript</a>
+      <a href="docs/how-to/author-in-typescript.html">Author diagrams in TypeScript</a>
     </article>
     <article class="card">
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></svg></span>
       <h3>Code generation</h3>
       <p>Draw a diagram in the studio, then eject it. <code>diagc eject</code> replaces the drawing with a generated TypeScript source that rebuilds exactly the same model.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/eject-to-typescript.md">Eject a diagram to TypeScript</a>
+      <a href="docs/how-to/eject-to-typescript.html">Eject a diagram to TypeScript</a>
     </article>
     <article class="card">
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span>
       <h3>AI-written diagrams</h3>
       <p>Ask a coding agent for a diagram, and it writes the source and checks its own work. <code>diagc guide</code> tells it how, and <code>diagc init --agents</code> points it there.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/write-diagrams-with-a-coding-agent.md">Write diagrams with a coding agent</a>
+      <a href="docs/how-to/write-diagrams-with-a-coding-agent.html">Write diagrams with a coding agent</a>
     </article>
     <article class="card">
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></svg></span>
       <h3>Semantic zoom</h3>
       <p>A diagram rests as folded groups whose relations aggregate. Start from the big picture and double-click a group to open it.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/organise-large-diagrams.md">Organise a large diagram</a>
+      <a href="docs/how-to/organise-large-diagrams.html">Organise a large diagram</a>
     </article>
     <article class="card">
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg></span>
       <h3>Planes and layers</h3>
       <p>A plane groups the same things in a second way: by system in one view, by where they run in another. A layer adds detail without cluttering the base picture.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/use-planes-and-layers.md">Use planes and layers</a>
+      <a href="docs/how-to/use-planes-and-layers.html">Use planes and layers</a>
     </article>
     <article class="card">
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"/><rect x="14" y="2" width="8" height="8" rx="1"/></svg></span>
       <h3>Composition</h3>
       <p><code>include</code> combines diagrams from several sources, so each system appears in the context of the others without copy-paste.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/compose-diagrams.md">Compose diagrams</a>
+      <a href="docs/how-to/compose-diagrams.html">Compose diagrams</a>
     </article>
     <article class="card">
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/></svg></span>
       <h3>Multiple diagram types</h3>
       <p>C4, deployment, ER, activity, threat model, causal loop, plan, fishbone, git graph and second-order thinking. Each has a starter to copy.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/examples/README.md">Examples of every type</a>
+      <a href="docs/examples/index.html">Examples of every type</a>
     </article>
     <article class="card">
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></span>
       <h3>Icon libraries</h3>
       <p>C4 stencils and the AWS, Azure, Google Cloud, Kubernetes and tech icon sets. Import your own images too.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/use-the-icon-library.md">Use the icon library</a>
+      <a href="docs/how-to/use-the-icon-library.html">Use the icon library</a>
     </article>
     <article class="card">
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" x2="6" y1="9" y2="21"/></svg></span>
       <h3>Diffs for review</h3>
       <p><code>diagc diff</code> draws what changed between two git refs. A GitHub Action puts the before and after pictures on a pull request.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/show-what-changed.md">Show what changed</a>
+      <a href="docs/how-to/show-what-changed.html">Show what changed</a>
     </article>
     <article class="card">
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></svg></span>
       <h3>Notes on the picture</h3>
       <p>A legend, comments and links on any node or relation, and freehand drawing on top of the boxes.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/comment-on-a-diagram.md">Comment on a diagram</a>
+      <a href="docs/how-to/comment-on-a-diagram.html">Comment on a diagram</a>
     </article>
     <article class="card">
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3 8 9l4 13 4-13-2.5-6"/><path d="M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3z"/><path d="M2 9h20"/></svg></span>
       <h3>Obsidian</h3>
       <p>A plugin puts the studio and diagram embeds in a vault, and links a node to a note. It is built from a checkout of this repository.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/obsidian-plugin.md">Use the Obsidian plugin</a>
+      <a href="docs/how-to/obsidian-plugin.html">Use the Obsidian plugin</a>
     </article>
   </div>
 </section>
@@ -156,7 +156,7 @@
   <div class="example">
     <div class="window code-window">
       <div class="window-bar">.diagrams/src/shop.diagram.ts</div>
-      <pre id="starter"><code>import { model } from '@diagc/core';
+      <pre id="starter"><code class="language-ts">import { model } from '@diagc/core';
 
 // A starter: a customer and one system holding two services and a database.
 // `contains` nests, `relate` draws an arrow. The system rests folded, with the
@@ -182,7 +182,7 @@ export default m;</code></pre>
   </div>
   <figure>
     <a href="html/docs/pipeline.html"><img src="static/docs/pipeline.png" loading="lazy" alt="The pipeline: TypeScript and JSON sources are validated into one model, which the studio and publish both read"></a>
-    <figcaption>The pipeline, drawn with diagc. <a href="https://github.com/Ferroman/diagc/blob/main/docs/explanation/architecture.md">How a diagram becomes a picture</a></figcaption>
+    <figcaption>The pipeline, drawn with diagc. <a href="docs/explanation/architecture.html">How a diagram becomes a picture</a></figcaption>
   </figure>
 </section>
 
@@ -221,28 +221,29 @@ export default m;</code></pre>
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg></span>
       <h3>Tutorials</h3>
       <p>Learn by doing. Zero to a compiled, rendered, exported diagram.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/tutorials/01-your-first-diagram.md">Your first diagram</a>
+      <a href="docs/tutorials/01-your-first-diagram.html">Your first diagram</a>
     </article>
     <article class="card">
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/></svg></span>
       <h3>How-to guides</h3>
       <p>One task each: a diagram type, planes and layers, publishing, a coding agent.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/README.md#how-to-guides">All how-to guides</a>
+      <a href="docs/index.html#how-to-guides">All how-to guides</a>
     </article>
     <article class="card">
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></span>
       <h3>Reference</h3>
       <p>The CLI, the model, the builder API, the studio and the icon library.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/README.md#reference">Reference pages</a>
+      <a href="docs/index.html#reference">Reference pages</a>
     </article>
     <article class="card">
       <span class="badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></span>
       <h3>Explanation</h3>
       <p>The pipeline, the model, and why a view is not what is stored.</p>
-      <a href="https://github.com/Ferroman/diagc/blob/main/docs/README.md#explanation">Explanation pages</a>
+      <a href="docs/index.html#explanation">Explanation pages</a>
     </article>
   </div>
   <p class="note">For a model with no shell to run <code>diagc guide</code> in, the whole guide is one file: <a href="llms.txt">llms.txt</a>.</p>
+  <p><a class="more" href="docs/index.html">All documentation</a></p>
 </section>
 </main>
 

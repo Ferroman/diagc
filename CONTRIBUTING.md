@@ -124,7 +124,7 @@ the live site.
 
 ## The site
 
-<https://ferroman.github.io/diagc/> is the static files in `site/`, with the published diagram pages beside them. The Pages workflow builds it on every push to `main`. To look at it locally:
+<https://ferroman.github.io/diagc/> is the static files in `site/`, with the published diagram pages and the documentation beside them. `scripts/build-site.mjs` renders every page of `docs/` under `docs/` on the site; the sidebar is read from `docs/README.md`, so a new page appears there once the index lists it. The Pages workflow builds the site on every push to `main`. To look at it locally:
 
 ```bash
 pnpm build:cli
@@ -133,7 +133,7 @@ pnpm build:site                     # assembles _site/
 python3 -m http.server -d _site     # or any static server
 ```
 
-A test fails when the page names a diagram, a picture or a docs file that does not exist. The studio pictures in `site/img/` come from `scripts/site-screenshots.mjs`; run it again after a change to the studio's look.
+A test fails when the landing page names a diagram, a picture or a docs page that does not exist. A dead link in `docs/`, to a page or to a heading, fails the build and a test, and both name the file and the link. The studio pictures in `site/img/` come from `scripts/site-screenshots.mjs`; run it again after a change to the studio's look.
 
 ## Releasing
 

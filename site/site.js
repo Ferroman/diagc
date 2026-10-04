@@ -1,8 +1,9 @@
-// The landing page's four behaviours: a demo loads into the stage, the install line
-// copies, the theme switches, and the code sample gets its colours. A plain script, not a
-// module: the page loads it with `defer`, and its test evaluates it the same way. Without
-// it the page still works: every demo is a link, the theme is the system's, and the code
-// reads in one colour.
+// The site's behaviours: a demo loads into the stage, the install line copies, the theme
+// switches, a code sample gets its colours, and a docs page's sidebar opens on its own
+// entry. The landing page has the first four; a docs page has the last three, and the
+// others find nothing there to attach to. A plain script, not a module: a page loads it
+// with `defer`, and its test evaluates it the same way. Without it a page still works:
+// every demo is a link, the theme is the system's, and the code reads in one colour.
 (() => {
   const poster = document.querySelector('.stage-poster');
   const live = document.querySelector('.stage-live');
@@ -111,7 +112,13 @@
     /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`)|\b(import|from|export|default|const|let|function|return|new|await|async|if|else|for|of|true|false|null|undefined)\b|\b(\d+(?:\.\d+)?)\b|([A-Za-z_$][\w$]*)(?=\s*\()|([A-Za-z_$][\w$]*)(?=\s*:)/g;
   const KINDS = ['comment', 'string', 'keyword', 'number', 'call', 'property'];
 
+  // A block says what it holds (`language-ts`), and only what the rules can read is
+  // coloured. A shell line keeps one colour, and so does a block that names no language:
+  // in the docs that is a command's output, where `for` and `1` are words, not tokens.
+  const READABLE = ['ts', 'tsx', 'js', 'json'];
   document.querySelectorAll('pre code').forEach((code) => {
+    const language = /\blanguage-(\S+)/.exec(code.className)?.[1];
+    if (language === undefined || !READABLE.includes(language)) return;
     // Built from text nodes and spans, never from markup, so the sample's text cannot change.
     const text = code.textContent;
     const parts = document.createDocumentFragment();
@@ -126,4 +133,10 @@
     parts.append(text.slice(at));
     code.replaceChildren(parts);
   });
+
+  // A docs page's sidebar is longer than most screens and scrolls on its own. It opens at
+  // its top, so the entry of a page far down the list would be out of sight: centre it.
+  const side = document.querySelector('.docs-side');
+  const here = side?.querySelector('[aria-current="page"]');
+  if (side && here) side.scrollTop = here.offsetTop - (side.clientHeight - here.offsetHeight) / 2;
 })();

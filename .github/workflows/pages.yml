@@ -1,6 +1,7 @@
 # Publishes the project's site at https://ferroman.github.io/diagc/: the landing page from
-# site/, and the repo's own diagrams — the docs' figures and the examples — as live,
-# zoomable pages under html/. The docs link every image there.
+# site/, the documentation rendered from docs/, and the repo's own diagrams — the docs'
+# figures and the examples — as live, zoomable pages under html/. The docs link every image
+# there.
 #
 # It also renders the PNGs, which makes this the one place CI exercises the image export.
 name: Pages
@@ -46,7 +47,8 @@ jobs:
       # site's address can find the project behind it.
       - run: pnpm publish-diagrams --link "https://github.com/${{ github.repository }}"
 
-      # The landing page from site/ goes to the root. The index sits in html/ and reaches
+      # The landing page from site/ goes to the root, and docs/ is rendered beside it (a
+      # dead link there fails this step). The index sits in html/ and reaches
       # its thumbnails as ../static/, so both folders ship side by side.
       #
       # The last lines are deliberate: `publish` degrades to HTML-only when it finds no
