@@ -15,6 +15,9 @@ AGENTS.md
 
 # Generated interactive diagram pages (published to a gh-pages branch, not main).
 # .diagrams/static/ (README PNGs) is intentionally NOT ignored — it is committed.
+# Except the pictures of the working notes in .diagrams/src/thinking/: those sources stay
+# off the site (pages.yml removes them), and their pictures are nobody's to commit.
+.diagrams/static/thinking/
 .diagrams/html/
 .diagrams/diff/
 # The assembled GitHub Pages site (`pnpm build:site`); pages.yml builds its own.
