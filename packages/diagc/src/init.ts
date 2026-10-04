@@ -79,8 +79,12 @@ export function withBlock(existing: string, block: string): { text: string; repl
 export const withAgentsBlock = (existing: string): { text: string; replaced: boolean } => withBlock(existing, AGENTS_BLOCK);
 
 const COL = 38;
-const done = (left: string, right: string): string => `✓ ${left.padEnd(COL)}${right}`;
-const skipped = (left: string, right: string): string => `· ${left.padEnd(COL)}${right}`;
+/** A line of two columns: the right one starts COL in, and never less than two spaces after
+ * the left one. A path with a folder in its name is longer than the column, and padding
+ * alone would run it into the text beside it. */
+const columns = (left: string, right: string): string => `${left.padEnd(COL - 2)}  ${right}`;
+const done = (left: string, right: string): string => `✓ ${columns(left, right)}`;
+const skipped = (left: string, right: string): string => `· ${columns(left, right)}`;
 
 /** A one-line failure on stderr with exit 1. A refusal leaves the tree untouched;
  * a compile failure comes after the writes, so the starter and `.gitignore` stay. */
@@ -246,7 +250,7 @@ function nextSteps(opts: InitOptions): string {
   ];
   if (!opts.agents) lines.push(['diagc init --agents', 'point coding agents at the guide (AGENTS.md, Claude Code skill)']);
   if (existsSync(path.join(opts.cwd, 'package.json'))) lines.push([`npm i -D @diagc/core@${opts.version}`, 'editor types for .diagram.ts']);
-  return `\nNext:\n${lines.map(([cmd, what]) => `  ${cmd.padEnd(COL)}${what}`).join('\n')}`;
+  return `\nNext:\n${lines.map(([cmd, what]) => `  ${columns(cmd, what)}`).join('\n')}`;
 }
 
 const stdio: InitIo = {
