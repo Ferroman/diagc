@@ -1,31 +1,14 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { inRepo, loadDocsPages, readDocs } from '../test-fixtures/docs-site';
 import { findHome } from './home';
 
-// scripts/docs-pages.mjs, the module that renders docs/ as pages of the site. It is plain
-// JavaScript outside this package, so it is loaded by URL and its shape is declared here.
-// The tests sit in this package for the reasons docsExamples.test.ts gives.
-interface NavEntry {
-  file: string;
-  title: string;
-  description: string;
-  section: string | undefined;
-}
-interface DocsPages {
-  slugger: () => (text: string) => string;
-  outPath: (file: string) => string;
-  readNav: (indexMarkdown: string) => NavEntry[];
-  renderDocs: (input: { files: Map<string, string>; exists: (repoPath: string) => boolean }) => {
-    pages: Map<string, string>;
-    errors: string[];
-  };
-}
+// scripts/docs-pages.mjs, the module that renders docs/ as pages of the site. The tests sit
+// in this package for the reasons docsExamples.test.ts gives.
 const root = findHome(fileURLToPath(import.meta.url)).root;
-const { slugger, outPath, readNav, renderDocs } = (await import(
-  pathToFileURL(path.join(root, 'scripts', 'docs-pages.mjs')).href
-)) as DocsPages;
+const { slugger, outPath, readNav, renderDocs } = await loadDocsPages(root);
 
 describe('a heading id', () => {
   const id = (text: string): string => slugger()(text);
@@ -48,6 +31,15 @@ describe('a heading id', () => {
   it('numbers a repeated heading from the second one on', () => {
     const slug = slugger();
     expect([slug('Export'), slug('Export'), slug('Export')]).toEqual(['export', 'export-1', 'export-2']);
+  });
+
+  it('steps past an id that a heading of its own already has', () => {
+    const slug = slugger();
+    expect([slug('Export 1'), slug('Export'), slug('Export')]).toEqual(['export-1', 'export', 'export-2']);
+  });
+
+  it('keeps a combining mark with its letter', () => {
+    expect(id('cafe\u0301 bar')).toBe('cafe\u0301-bar');
   });
 });
 
@@ -179,12 +171,32 @@ describe('a link in a docs page', () => {
   });
 
   it('to a heading of its own page, or to another site, is left as written', () => {
-    const { pages, errors } = build({ 'how-to/a.md': '# A\n\n## Export\n\n[e](#export) [x](https://example.org/a.md) [m](mailto:a@example.org)\n' });
+    const { pages, errors } = build({
+      'how-to/a.md': '# A\n\n## Export\n\n[e](#export) [x](https://example.org/a.md) [m](mailto:a@example.org) [p](//example.org/a.md)\n',
+    });
     expect(errors).toEqual([]);
     const html = article(pages, 'docs/how-to/a.html');
     expect(html).toContain('<a href="#export">e</a>');
     expect(html).toContain('<a href="https://example.org/a.md">x</a>');
     expect(html).toContain('<a href="mailto:a@example.org">m</a>');
+    expect(html).toContain('<a href="//example.org/a.md">p</a>');
+  });
+
+  it('to an encoded heading of another page finds it under its letters', () => {
+    const { errors } = build({ 'how-to/a.md': '# A\n\n[d](b.md#di%C3%A1taxis)\n', 'how-to/b.md': '# B\n\n## Diátaxis\n' });
+    expect(errors).toEqual([]);
+  });
+
+  it('to a page whose name has a space finds it, and writes the space as a link must', () => {
+    const files = new Map([
+      ['README.md', '# Docs\n\n| | |\n| --- | --- |\n| [My page](how-to/my%20page.md) | |\n| [A](how-to/a.md) | |\n'],
+      ['how-to/my page.md', '# My page\n'],
+      ['how-to/a.md', '# A\n\n[mine](my%20page.md)\n'],
+    ]);
+    const { pages, errors } = renderDocs({ files, exists: () => true });
+    expect(errors).toEqual([]);
+    expect(article(pages, 'docs/how-to/a.html')).toContain('<a href="my%20page.html">mine</a>');
+    expect(pages.get('docs/how-to/a.html')).toContain('<a href="my%20page.html">My page</a>');
   });
 
   it('finds a repeated heading under its number, and an encoded one under its letters', () => {
@@ -269,6 +281,14 @@ describe('a heading in a docs page', () => {
     expect(html).toContain('<h2 id="export">Export</h2>');
     expect(html).toContain('<h2 id="export-1">Export</h2>');
   });
+
+  it('reads an entity as the character it stands for, as GitHub does', () => {
+    const { pages } = build({ 'how-to/a.md': '# Q&amp;A\n\n## Pages &amp; pictures\n\n## Two\n' });
+    const html = pages.get('docs/how-to/a.html') ?? '';
+    expect(html).toContain('<h2 id="pages--pictures">Pages &amp; pictures</h2>');
+    expect(html).toContain('<title>Q&amp;A — diagc docs</title>');
+    expect(html).toContain('<a href="#pages--pictures">Pages &amp; pictures</a>');
+  });
 });
 
 describe('a docs page', () => {
@@ -324,22 +344,42 @@ describe('a docs page', () => {
   it("reaches the site's stylesheets and script from its own folder", () => {
     for (const ref of ['href="../../site.css"', 'href="../../docs.css"', 'src="../../site.js"']) expect(publish).toContain(ref);
     for (const ref of ['href="../site.css"', 'href="../docs.css"', 'src="../site.js"']) expect(index).toContain(ref);
+    const deep = build({ 'a/b/c.md': '# C\n' }).pages.get('docs/a/b/c.html') ?? '';
+    for (const ref of ['href="../../../site.css"', 'href="../../../docs.css"', 'src="../../../site.js"', 'href="../../../index.html#features"']) {
+      expect(deep).toContain(ref);
+    }
+  });
+
+  it('starts with a way past the header and the list of pages, to the article', () => {
+    expect(publish).toMatch(/<body class="docs">\s*<a class="skip" href="#Article">Skip to the article<\/a>/);
+    expect(publish).toContain('<main id="Article">');
+    expect(publish.match(/id="Article"/g)).toHaveLength(1);
+  });
+
+  it('has its own title as its first heading: the sidebar names its sections without one', () => {
+    expect(/<h[1-6]/.exec(publish.slice(publish.indexOf('<body')))?.[0]).toBe('<h1');
   });
 
   it("has the landing page's header, leading back to it", () => {
-    const labels = (html: string): string[] =>
-      [.../<header class="nav">([\s\S]*?)<\/header>/.exec(html)![1]!.matchAll(/<a [^>]*>([^<]*)<\/a>/g)].map((m) => m[1]!);
+    // Link by link: the landing page links its own sections, and a docs page links the same
+    // places from where it is.
+    const links = (html: string): string[][] =>
+      [.../<header class="nav">([\s\S]*?)<\/header>/.exec(html)![1]!.matchAll(/<a [^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)].map((m) => [m[1]!, m[2]!]);
     const landing = readFileSync(path.join(root, 'site', 'index.html'), 'utf8');
-    expect(labels(publish)).toEqual(labels(landing));
-    expect(publish).toContain('<a href="../../index.html#features">Features</a>');
+    const fromHowTo = ([href, label]: string[]): string[] => [
+      href === '#top' ? '../../index.html' : href === '#docs' ? '../../docs/index.html' : href!.startsWith('#') ? `../../index.html${href}` : href!,
+      label!,
+    ];
+    expect(links(publish)).toEqual(links(landing).map(fromHowTo));
+    expect(links(publish)).toHaveLength(6);
     expect(publish).toContain('<a href="../../docs/index.html" aria-current="true">Docs</a>');
     expect(publish).toContain('<button type="button" id="theme-switch" hidden></button>');
   });
 
   it('lists every page by section in its sidebar, and marks the one it is', () => {
     const side = /<aside class="docs-side">([\s\S]*?)<\/aside>/.exec(publish)?.[1] ?? '';
-    expect(side).toContain('<h2>Tutorials</h2>');
-    expect(side).toContain('<h2>How-to guides</h2>');
+    expect(side).toContain('<p class="docs-group">Tutorials</p>');
+    expect(side).toContain('<p class="docs-group">How-to guides</p>');
     expect(side).toContain('<a href="../index.html">Docs</a>');
     expect(side).toContain('<a href="../tutorials/first.html">First</a>');
     expect(side).toContain('<a href="publish.html" aria-current="page">Publish</a>');
@@ -349,7 +389,7 @@ describe('a docs page', () => {
   it('has the same list folded, for a narrow screen', () => {
     const side = /<aside class="docs-side">([\s\S]*?)<\/aside>/.exec(publish)?.[1];
     const menu = /<details class="docs-menu"><summary>All pages<\/summary>([\s\S]*?)<\/details>/.exec(publish)?.[1];
-    expect(side).toContain('<h2>Tutorials</h2>');
+    expect(side).toContain('<p class="docs-group">Tutorials</p>');
     expect(menu).toBe(side);
   });
 
@@ -358,6 +398,18 @@ describe('a docs page', () => {
     expect(toc).toContain('<a href="#export">Export</a>');
     expect(toc).toContain('<a href="#share-now">Share &lt;now&gt;</a>');
     expect(first).not.toContain('docs-toc');
+  });
+
+  it('lists none for a page with one, and never a third-level heading', () => {
+    const { pages: built } = build({
+      'how-to/one.md': '# One\n\n## Only\n\n### Deeper\n',
+      'how-to/two.md': '# Two\n\n## First\n\n### Deeper\n\n## Second\n',
+    });
+    expect(built.get('docs/how-to/one.html')).not.toContain('docs-toc');
+    const toc = /<aside class="docs-toc">([\s\S]*?)<\/aside>/.exec(built.get('docs/how-to/two.html') ?? '')?.[1] ?? '';
+    expect(toc).toContain('href="#first"');
+    expect(toc).toContain('href="#second"');
+    expect(toc).not.toContain('href="#deeper"');
   });
 
   it("leads to the previous and the next page in the sidebar's order, across sections", () => {
@@ -407,7 +459,7 @@ describe('a docs page', () => {
     });
     const z = escaped.pages.get('docs/z.html') ?? '';
     expect(escaped.errors).toEqual([]);
-    expect(z).toContain('<h2>Q&amp;A &lt;fast&gt; &quot;now&quot;</h2>');
+    expect(z).toContain('<p class="docs-group">Q&amp;A &lt;fast&gt; &quot;now&quot;</p>');
     expect(z).toContain('<a href="a.html">A &lt;b&gt; &amp; &quot;c&quot;</a>');
     expect(z).toContain('<small>Previous</small>A &lt;b&gt; &amp; &quot;c&quot;</a>');
     expect(z).toContain('alt="x &lt;y&gt; &amp; &quot;z&quot;"');
@@ -425,15 +477,8 @@ describe('a docs page', () => {
 // The docs as they are. Pages deploys only from main, so this is what stops a dead link,
 // or a page missing from the index, before it is merged.
 describe('the real docs', () => {
-  const docsDir = path.join(root, 'docs');
-  const walk = (dir: string): string[] =>
-    readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
-  const files = new Map(
-    walk(docsDir)
-      .filter((f) => f.endsWith('.md'))
-      .map((f) => [path.relative(docsDir, f).split(path.sep).join('/'), readFileSync(f, 'utf8')] as const),
-  );
-  const exists = (repoPath: string): boolean => existsSync(path.join(root, repoPath));
+  const files = readDocs(root);
+  const exists = inRepo(root);
 
   it('render with no dead link, every page listed in the index', () => {
     expect(renderDocs({ files, exists }).errors).toEqual([]);

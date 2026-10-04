@@ -198,8 +198,10 @@ footer { border-top: 1px solid var(--border); padding: 32px 16px; text-align: ce
   .stage-poster img { height: auto; }
 }
 /* Below this the nav wraps to two or three lines: too much of a small screen to keep in
-   view. Wider, it is one line and stays at the top. */
-@media (max-width: 480px) {
+   view, and taller than the room `scroll-padding-top` leaves, so a linked heading would
+   land under it. It wraps from about 610px down; the margin is for wider fonts. Wider, it
+   is one line and stays at the top. */
+@media (max-width: 640px) {
   .nav { position: static; }
   html { scroll-padding-top: 0; }
 }
