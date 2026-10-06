@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { isLayoutOverlay } from '@diagc/core';
 import { findHome } from './home';
 
 // A test of the repo's docs, kept in this package for two reasons: it is the one package
@@ -144,5 +145,17 @@ describe('docs and examples', () => {
         });
     }
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('committed layouts', () => {
+  it('passes the layout guard for every .layout.json under .diagrams/src', () => {
+    // The guard decides trust: the studio treats a failing overlay as absent and
+    // the save route refuses it. A guard grown stricter than the files already
+    // committed would quietly drop their arrangement, so check them all.
+    const layouts = walk(SRC).filter((f) => f.endsWith('.layout.json'));
+    expect(layouts.length).toBeGreaterThan(0);
+    const rejected = layouts.filter((f) => !isLayoutOverlay(JSON.parse(readFileSync(f, 'utf8')))).map(rel);
+    expect(rejected).toEqual([]);
   });
 });
