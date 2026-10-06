@@ -1,5 +1,6 @@
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BadFlagValueError, HelpRequested, UnknownFlagError, diffOutDir, parseArgs, parseRange } from './cli';
+import { BadFlagValueError, HelpRequested, UnknownFlagError, diffOutDir, parseArgs, parseRange, publishDirs } from './cli';
 
 describe('parseArgs', () => {
   it('parses init with a name, --type and --agents, in any order', () => {
@@ -84,6 +85,37 @@ describe('parseArgs', () => {
     expect(() => parseArgs(['publish', '--link', 'javascript:alert(1)'])).toThrowError(BadFlagValueError);
     // the next flag is not a value: it must not be swallowed as one
     expect(() => parseArgs(['publish', '--link', '--no-images'])).toThrowError(BadFlagValueError);
+  });
+
+  it('takes --out with a directory', () => {
+    expect(parseArgs(['compile', '--out', 'dist'])).toMatchObject({ out: 'dist', outGiven: true });
+  });
+
+  it('throws BadFlagValueError for an --out with no directory after it', () => {
+    // trailing: not a quiet fall back to the default
+    expect(() => parseArgs(['compile', '--out'])).toThrowError(BadFlagValueError);
+    // the next flag is not a directory: it must not be swallowed as one
+    expect(() => parseArgs(['compile', '--out', '--json'])).toThrow(/^--out: needs a directory/);
+  });
+});
+
+describe('publish directories', () => {
+  it('compiles into the default artifacts directory without --out', () => {
+    expect(publishDirs(parseArgs(['publish']))).toEqual({
+      srcDir: '.diagrams/src',
+      artifactsDir: '.diagrams/.artifacts',
+      htmlDir: '.diagrams/html',
+      staticDir: '.diagrams/static',
+      assetsDir: path.join('.diagrams/src', 'assets'),
+    });
+  });
+
+  it('compiles into --out and reads the pages from there, leaving the pages and images where they were', () => {
+    expect(publishDirs(parseArgs(['publish', '--out', 'build/artifacts']))).toMatchObject({
+      artifactsDir: 'build/artifacts',
+      htmlDir: '.diagrams/html',
+      staticDir: '.diagrams/static',
+    });
   });
 });
 

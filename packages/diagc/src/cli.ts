@@ -36,7 +36,7 @@ import { resolveInclude } from './includes';
 import { snapshotSession } from './snapshots';
 import { formatCompileEvent, startWatch } from './watch';
 import { galleryLink } from './publish/gallery';
-import { publishDiagrams } from './publish/publish';
+import { publishDiagrams, type PublishOptions } from './publish/publish';
 import { runStudio } from './studio';
 
 const USAGE = `Usage: diagc <init|compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir]
@@ -114,8 +114,13 @@ export function parseArgs(argv: string[]): Args {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === '--out') {
-      out = argv[++i] ?? out;
+      // No fallback to the default: a trailing --out would quietly write somewhere the
+      // user did not ask for, and a missing value would swallow the next flag as the dir.
+      const value = argv[i + 1];
+      if (value === undefined || value.startsWith('--')) throw new BadFlagValueError('--out', 'needs a directory, e.g. --out build/artifacts');
+      out = value;
       outGiven = true;
+      i++;
       continue;
     }
     if (arg === '--no-images') {
@@ -155,8 +160,8 @@ export function parseArgs(argv: string[]): Args {
       continue;
     }
     if (arg === '--link') {
-      // No fallback for a missing value, unlike --out: there is no default address, and
-      // the URL check is also what stops the next flag being swallowed as one.
+      // No fallback for a missing value: there is no default address, and the URL
+      // check is also what stops the next flag being swallowed as one.
       const value = argv[++i] ?? '';
       try {
         galleryLink(value);
@@ -225,6 +230,21 @@ const SOURCES = '.diagrams/src/**/*.diagram.{ts,json}';
  * stdout stays an array and the exit codes hold, so CI without diagrams passes. */
 function warnNoSources(dir = '.diagrams/src'): void {
   console.error(`No diagrams under ${dir} — run 'diagc init' to create one.`);
+}
+
+/** Where `publish` compiles to and builds pages from. One object for both steps, so
+ * the pages are always made from the artifacts this run just wrote. `--out` moves the
+ * artifacts only: the pages and PNGs stay where `.gitignore`, the docs and the READMEs
+ * that embed them expect to find them. */
+export function publishDirs(args: Pick<Args, 'out'>): Pick<PublishOptions, 'srcDir' | 'artifactsDir' | 'htmlDir' | 'staticDir' | 'assetsDir'> {
+  const srcDir = '.diagrams/src';
+  return {
+    srcDir,
+    artifactsDir: args.out,
+    htmlDir: '.diagrams/html',
+    staticDir: '.diagrams/static',
+    assetsDir: path.join(srcDir, 'assets'),
+  };
 }
 
 async function main() {
@@ -315,14 +335,13 @@ async function main() {
       );
       process.exit(1);
     }
-    const srcDir = '.diagrams/src';
-    const artifactsDir = '.diagrams/.artifacts';
+    const dirs = publishDirs(args);
     // Compile first so artifacts reflect current sources (TS + include expansion).
-    const sources = await fg('**/*.diagram.{ts,json}', { cwd: srcDir, absolute: true });
-    if (sources.length === 0) warnNoSources(srcDir);
+    const sources = await fg('**/*.diagram.{ts,json}', { cwd: dirs.srcDir, absolute: true });
+    if (sources.length === 0) warnNoSources(dirs.srcDir);
     for (const f of sources) {
       try {
-        await compileFile(f, artifactsDir, { rootDir: srcDir, coreEntry: home.coreEntry, resolver: snap.resolver });
+        await compileFile(f, dirs.artifactsDir, { rootDir: dirs.srcDir, coreEntry: home.coreEntry, resolver: snap.resolver });
       } catch (e) {
         console.error(`✗ ${f}\n${errMessage(e)}`);
       }
@@ -345,20 +364,16 @@ async function main() {
       }
     }
     const res = await publishDiagrams({
-      srcDir,
-      artifactsDir,
-      htmlDir: '.diagrams/html',
-      staticDir: '.diagrams/static',
+      ...dirs,
       shellPath: home.viewerShell,
       libraryDir: home.libraryDir,
-      assetsDir: path.join(srcDir, 'assets'),
       images,
       names: args.files,
       ...(renderPng !== undefined ? { renderPng } : {}),
       ...(args.link !== undefined ? { link: args.link } : {}),
     });
-    console.log(`✓ ${res.pages.length} page(s) -> .diagrams/html`);
-    if (res.images.length > 0) console.log(`✓ ${res.images.length} image(s) -> .diagrams/static`);
+    console.log(`✓ ${res.pages.length} page(s) -> ${dirs.htmlDir}`);
+    if (res.images.length > 0) console.log(`✓ ${res.images.length} image(s) -> ${dirs.staticDir}`);
     console.log(`✓ gallery -> ${res.gallery}`);
     process.exit(0);
   } else if (args.command === 'studio') {

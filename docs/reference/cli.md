@@ -215,7 +215,7 @@ diagc guide all        # everything
 
 | Flag | Applies to | Default | Meaning |
 | --- | --- | --- | --- |
-| `--out <dir>` | `compile`, `watch`, `eject`, `diff` | `.diagrams/.artifacts` (`diff`: `.diagrams/diff/<from>..<to>`) | Where artifacts are written — for `eject`, the dir its post-swap recompile writes into; for `diff`, its pages and images. |
+| `--out <dir>` | `compile`, `watch`, `publish`, `eject`, `diff` | `.diagrams/.artifacts` (`diff`: `.diagrams/diff/<from>..<to>`) | Where artifacts are written — for `publish`, the artifacts only, its pages and images still go under `.diagrams/`; for `eject`, the dir its post-swap recompile writes into; for `diff`, its pages and images. |
 | `--no-images` | `publish`, `diff` | off | Skip PNG export; write HTML only. |
 | `--link <url>` | `publish` | none | Link the index header to this `http(s)` address. |
 | `--labels <a,b>` | `diff` | the refs | Names for the before and after sides. |
