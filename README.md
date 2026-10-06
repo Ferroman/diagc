@@ -51,7 +51,7 @@ New here? Start with **[Tutorial 1 — Your first diagram](docs/tutorials/01-you
 
 ## Documentation
 
-The documentation follows [Diátaxis](https://diataxis.fr/). Read it [on the site](https://ferroman.github.io/diagc/docs/), or as Markdown from [docs/README.md](docs/README.md).
+Read the documentation [on the site](https://ferroman.github.io/diagc/docs/), or as Markdown from [docs/README.md](docs/README.md).
 
 - **[Tutorials](https://ferroman.github.io/diagc/docs/#tutorials)** teach by doing. Start with [Your first diagram](https://ferroman.github.io/diagc/docs/tutorials/01-your-first-diagram.html).
 - **[How-to guides](https://ferroman.github.io/diagc/docs/#how-to-guides)** each get one task done, from authoring to publishing.

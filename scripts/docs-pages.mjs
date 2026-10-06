@@ -20,17 +20,38 @@ const decode = (s) => {
  * space. One slugger per page, because a repeated heading gets -1, -2. The docs link to
  * headings by these ids, so the same `#anchor` has to work in both places. */
 export function slugger() {
-  const seen = new Map();
+  const taken = new Map();
   return (text) => {
     const base = text.toLowerCase().replace(/[^\p{L}\p{M}\p{N}\p{Pc}\- ]/gu, '').replace(/ /g, '-');
-    const count = seen.get(base) ?? 0;
-    seen.set(base, count + 1);
-    return count === 0 ? base : `${base}-${count}`;
+    // GitHub counts up from the plain id until one is free, so "Export 1", "Export",
+    // "Export" ends on export-2 and not on a second export-1.
+    let id = base;
+    while (taken.has(id)) {
+      taken.set(base, taken.get(base) + 1);
+      id = `${base}-${taken.get(base)}`;
+    }
+    taken.set(id, 0);
+    return id;
   };
 }
 
-/** The words of inline tokens, with the markup dropped. */
-const plain = (tokens) => tokens.map((t) => (t.tokens !== undefined ? plain(t.tokens) : (t.text ?? ''))).join('');
+const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0' };
+/** An entity as the character it stands for. marked keeps `&amp;` in a text token as it was
+ * written and writes it out unchanged, which is right for the article. An id and a title
+ * are made from the words, so they need the character: GitHub's id for "Q&amp;A" is `qa`. */
+const unentity = (text) =>
+  text.replace(/&(#[xX][0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g, (whole, name) => {
+    if (name[0] !== '#') return ENTITIES[name] ?? whole;
+    const code = name[1] === 'x' || name[1] === 'X' ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
+    return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : whole;
+  });
+
+/** The words of inline tokens, with the markup dropped. A code span's text is taken as it
+ * stands: an entity written inside one is the characters, not what they would stand for. */
+const plain = (tokens) =>
+  tokens
+    .map((t) => (t.tokens !== undefined ? plain(t.tokens) : t.type === 'text' ? unentity(t.text ?? '') : (t.text ?? '')))
+    .join('');
 
 /** A page's path under docs/ on the site. A folder's README is its index. */
 export const outPath = (file) =>
@@ -62,7 +83,7 @@ export function readNav(indexMarkdown) {
   let section;
   const add = (link, description) => {
     if (link === undefined || isAbsolute(link.href)) return;
-    const file = path.posix.normalize(link.href.split('#')[0]);
+    const file = path.posix.normalize(decode(link.href.split('#')[0]));
     if (file.endsWith('.md')) entries.push({ file, title: plain(link.tokens), description, section });
   };
   for (const t of tokens) {
@@ -87,7 +108,10 @@ export function readNav(indexMarkdown) {
  * list of its headings. `root` is the way from the page up to the site's root. The header
  * is site/index.html's, with links that lead back to it; a test compares the two. The
  * sidebar is there twice, folded for a narrow screen and open beside the article for a
- * wide one, so neither needs a script; docs.css shows one of them. */
+ * wide one, so neither needs a script; docs.css shows one of them. Its section names are
+ * not headings: they come before the article, and the page's first heading is its title.
+ * The first link of the page skips both to the article; its target's capital keeps it
+ * clear of every heading id, which are lower case. */
 function page({ root, title, description, sidebar, article, headings, previous, next, source }) {
   const pager = (entry, label, side) =>
     entry === undefined ? '<span></span>' : `<a class="${side}" href="${esc(entry.href)}"><small>${label}</small>${esc(entry.title)}</a>`;
@@ -109,6 +133,7 @@ ${description === '' ? '' : `<meta name="description" content="${esc(description
 <script src="${root}site.js" defer></script>
 </head>
 <body class="docs">
+<a class="skip" href="#Article">Skip to the article</a>
 <header class="nav">
   <a class="brand" href="${root}index.html">diagc</a>
   <nav aria-label="Sections">
@@ -123,7 +148,7 @@ ${description === '' ? '' : `<meta name="description" content="${esc(description
 <div class="docs-layout">
 <details class="docs-menu"><summary>All pages</summary>${sidebar}</details>
 <aside class="docs-side">${sidebar}</aside>
-<main>
+<main id="Article">
 <article>
 ${article}</article>
 <nav class="docs-pager" aria-label="Previous and next page">
@@ -229,13 +254,14 @@ export function renderDocs({ files, exists }) {
       // escaped already. The tags are shown as text here, so what stands between them is too.
       else if (t.type === 'text' && t.escaped) t.escaped = false;
     });
-    const href = (other) => to(path.posix.join('docs', outPath(other.file)));
+    // encoded as a link must be: a file name may hold a space
+    const href = (other) => encodeURI(to(path.posix.join('docs', outPath(other.file))));
     const item = (other) =>
       `<li><a href="${esc(href(other))}"${other.file === file ? ' aria-current="page"' : ''}>${esc(other.title)}</a></li>`;
     const sidebar = `<nav aria-label="Documentation">${[...new Set(nav.map((other) => other.section))]
       .map(
         (section) =>
-          `${section === undefined ? '' : `<h2>${esc(section)}</h2>`}<ul>${nav
+          `${section === undefined ? '' : `<p class="docs-group">${esc(section)}</p>`}<ul>${nav
             .filter((other) => other.section === section)
             .map(item)
             .join('')}</ul>`,

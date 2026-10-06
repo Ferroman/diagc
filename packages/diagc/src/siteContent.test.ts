@@ -1,7 +1,8 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { inRepo, loadDocsPages, readDocs } from '../test-fixtures/docs-site';
 import { findHome } from './home';
 
 // A test of the landing page in site/, kept in this package for the reasons
@@ -28,22 +29,8 @@ const hasSource = (name: string): boolean =>
   existsSync(path.join(SRC, `${name}.diagram.ts`)) || existsSync(path.join(SRC, `${name}.diagram.json`));
 
 // The docs pages the site builds (scripts/docs-pages.mjs), to check links against.
-const { renderDocs } = (await import(pathToFileURL(path.join(root, 'scripts', 'docs-pages.mjs')).href)) as {
-  renderDocs: (input: { files: Map<string, string>; exists: (repoPath: string) => boolean }) => { pages: Map<string, string> };
-};
-const DOCS = path.join(root, 'docs');
-const walk = (dir: string): string[] =>
-  existsSync(dir)
-    ? readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]))
-    : [];
-const docsPages = renderDocs({
-  files: new Map(
-    walk(DOCS)
-      .filter((f) => f.endsWith('.md'))
-      .map((f) => [path.relative(DOCS, f).split(path.sep).join('/'), readFileSync(f, 'utf8')] as const),
-  ),
-  exists: (repoPath) => existsSync(path.join(root, repoPath)),
-}).pages;
+const { renderDocs } = await loadDocsPages(root);
+const docsPages = renderDocs({ files: readDocs(root), exists: inRepo(root) }).pages;
 /** Links that name no built page, or a heading the page does not have. */
 const deadDocsLinks = (links: string[]): string[] =>
   links.filter((t) => {
