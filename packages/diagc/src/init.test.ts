@@ -75,6 +75,25 @@ describe('runInit, fresh', () => {
     expect(has('.diagrams/src/shop2.diagram.ts')).toBe(true);
   });
 
+  it('keeps the two columns apart, however long the left one is', async () => {
+    // a foldered name makes a path longer than the column it is padded to
+    expect(await runInit(opts({ name: 'team/checkout-flow' }), io)).toBe(0);
+    expect(out.join('\n')).toContain('✓ .diagrams/src/team/checkout-flow.diagram.ts  (basic starter)');
+  });
+
+  it('keeps the next steps apart from their commands too', async () => {
+    writeFileSync(path.join(cwd, 'package.json'), '{}');
+    await runInit(opts({ version: '0.14.1-beta.20261004.1' }), io);
+    expect(out.join('\n')).toContain('  npm i -D @diagc/core@0.14.1-beta.20261004.1  editor types for .diagram.ts');
+  });
+
+  it('starts the right column of the short lines in one place', async () => {
+    await runInit(opts(), io);
+    const lines = out.join('\n').split('\n');
+    const at = (right: string): number => lines.find((l) => l.includes(right))?.indexOf(right) ?? -1;
+    expect([at('(basic starter)'), at('(+ .diagrams/'), at('-> .diagrams/'), at('look at it')]).toEqual([40, 40, 40, 40]);
+  });
+
   it('suggests the editor types only where there is a package.json, with this version', async () => {
     writeFileSync(path.join(cwd, 'package.json'), '{}');
     await runInit(opts(), io);
