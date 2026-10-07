@@ -72,7 +72,8 @@ export function useDeepLink({ names, booted, leaveEditRef }: UseDeepLinkOptions)
     // write. Anything else → unrelated to the applied URL; clear the ref.
     const applied = appliedUrlRef.current;
     if (applied !== null) {
-      if (contentsEqual(path, applied.path)) appliedUrlRef.current = null; // deep link confirmed valid
+      if (contentsEqual(path, applied.path))
+        appliedUrlRef.current = null; // deep link confirmed valid
       else if (!isStrictPrefix(path, applied.path)) appliedUrlRef.current = null; // unrelated report
     }
     setEnteredPath(path);

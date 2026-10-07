@@ -6,7 +6,7 @@ describe('outlineInk', () => {
     expect(outlineInk('#242f3e')).toBe('color-mix(in srgb, #242f3e var(--dg-outline-ink, 100%), var(--dg-text))');
   });
 
-  it('leaves a theme token alone: it is already the theme\'s colour', () => {
+  it("leaves a theme token alone: it is already the theme's colour", () => {
     expect(outlineInk('var(--dg-deploy-region)')).toBe('var(--dg-deploy-region)');
   });
 });

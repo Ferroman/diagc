@@ -44,13 +44,19 @@ describe('compileFile', () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'diagc-'));
     const src = path.join(dir, 'fish.diagram.json');
     const model: DiagramModel = {
-      version: 1, id: 'fish', name: 'fish', notation: 'fishbone',
+      version: 1,
+      id: 'fish',
+      name: 'fish',
+      notation: 'fishbone',
       nodes: [
         { id: 'e', name: 'Outage', type: 'fb-effect' },
         { id: 'c', name: 'Code', type: 'fb-category' },
         { id: 'loose', name: 'Loose', type: 'fb-cause' },
       ],
-      containment: [], relations: [{ id: 'c->e#0', from: 'c', to: 'e', kind: 'cause-of' }], layers: [], planes: [],
+      containment: [],
+      relations: [{ id: 'c->e#0', from: 'c', to: 'e', kind: 'cause-of' }],
+      layers: [],
+      planes: [],
     };
     await writeFile(src, JSON.stringify(model));
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -108,7 +114,19 @@ describe('compileFile with JSON sources', () => {
   it('rejects an invalid JSON model', async () => {
     const out = await mkdtemp(path.join(tmpdir(), 'diagc-'));
     const bad = path.join(out, 'bad.diagram.json');
-    await writeFile(bad, JSON.stringify({ version: 1, id: 'x', name: 'x', nodes: [], containment: [], relations: [{ id: 'r', from: 'a', to: 'b', kind: 'k' }], layers: [], planes: [] }));
+    await writeFile(
+      bad,
+      JSON.stringify({
+        version: 1,
+        id: 'x',
+        name: 'x',
+        nodes: [],
+        containment: [],
+        relations: [{ id: 'r', from: 'a', to: 'b', kind: 'k' }],
+        layers: [],
+        planes: [],
+      }),
+    );
     await expect(compileFile(bad, out)).rejects.toMatchObject({ name: 'DiagramValidationError' });
   });
 });
@@ -289,7 +307,10 @@ describe('LoadError', () => {
   });
 
   it('leaves a validation error alone, so lint still reads its issues', async () => {
-    const file = await throwing('dup.diagram.ts', "m.node('a', { type: 'service' });\nm.node('a', { type: 'service' });");
+    const file = await throwing(
+      'dup.diagram.ts',
+      "m.node('a', { type: 'service' });\nm.node('a', { type: 'service' });",
+    );
     const err = (await executeDiagramTs(file).catch((e: unknown) => e)) as Error;
     expect(err).not.toBeInstanceOf(LoadError);
     expect(err.name).toBe('DiagramValidationError');
@@ -298,17 +319,26 @@ describe('LoadError', () => {
 
 describe('positionIn', () => {
   it('reads the first frame that is inside the file', () => {
-    const stack = ['TypeError: x', '    at ModelBuilder.fishbone (/repo/packages/core/src/builder.ts:972:10)', '    at /work/twice.diagram.ts:4:3', '    at /work/twice.diagram.ts:9:1'].join('\n');
+    const stack = [
+      'TypeError: x',
+      '    at ModelBuilder.fishbone (/repo/packages/core/src/builder.ts:972:10)',
+      '    at /work/twice.diagram.ts:4:3',
+      '    at /work/twice.diagram.ts:9:1',
+    ].join('\n');
     expect(positionIn(stack, '/work/twice.diagram.ts')).toEqual({ line: 4, column: 3 });
   });
 
   it('matches the basename only after a path separator, in either style', () => {
-    expect(positionIn('    at Object.<anonymous> (C:\\work\\a.diagram.ts:2:7)', 'a.diagram.ts')).toEqual({ line: 2, column: 7 });
+    expect(positionIn('    at Object.<anonymous> (C:\\work\\a.diagram.ts:2:7)', 'a.diagram.ts')).toEqual({
+      line: 2,
+      column: 7,
+    });
     expect(positionIn('    at /work/not-a.diagram.ts:2:7', 'a.diagram.ts')).toBeUndefined();
   });
 
   it('ignores a position that is in the message rather than in a frame', () => {
-    const stack = 'Error: Transform failed with 1 error:\n/work/b.diagram.ts:3:7: ERROR: Unexpected "="\n    at failureErrorWithLog (/repo/node_modules/esbuild/lib/main.js:1748:15)';
+    const stack =
+      'Error: Transform failed with 1 error:\n/work/b.diagram.ts:3:7: ERROR: Unexpected "="\n    at failureErrorWithLog (/repo/node_modules/esbuild/lib/main.js:1748:15)';
     expect(positionIn(stack, '/work/b.diagram.ts')).toBeUndefined();
   });
 

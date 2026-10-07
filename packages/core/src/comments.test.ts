@@ -3,8 +3,16 @@ import { commentsOf, hasNoteContent, nextCommentId } from './comments';
 import type { DiagramModel } from './types';
 
 const m: DiagramModel = {
-  version: 1, id: 'd', name: 'd', layers: [], planes: [], containment: [],
-  nodes: [{ id: 'a', name: 'A', comments: [{ id: 'c1', text: 'hi' }] }, { id: 'b', name: 'B' }],
+  version: 1,
+  id: 'd',
+  name: 'd',
+  layers: [],
+  planes: [],
+  containment: [],
+  nodes: [
+    { id: 'a', name: 'A', comments: [{ id: 'c1', text: 'hi' }] },
+    { id: 'b', name: 'B' },
+  ],
   relations: [{ id: 'r', from: 'a', to: 'b', kind: 'sync' }],
 };
 
@@ -21,7 +29,12 @@ describe('commentsOf', () => {
 describe('nextCommentId', () => {
   it('hands out the first free c<n>', () => {
     expect(nextCommentId([])).toBe('c1');
-    expect(nextCommentId([{ id: 'c1', text: 'x' }, { id: 'c3', text: 'y' }])).toBe('c2');
+    expect(
+      nextCommentId([
+        { id: 'c1', text: 'x' },
+        { id: 'c3', text: 'y' },
+      ]),
+    ).toBe('c2');
   });
 });
 

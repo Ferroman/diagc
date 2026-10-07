@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, model } from '@diagc/core';
-import { liftEdges, layoutOptionsFor, usesNestedLayout, buildGraph, COLLAPSED_SIZE, componentGap, containerPad, STRESS_EDGE_LENGTH, type ElkShape } from './layout-graph';
+import {
+  liftEdges,
+  layoutOptionsFor,
+  usesNestedLayout,
+  buildGraph,
+  COLLAPSED_SIZE,
+  componentGap,
+  containerPad,
+  STRESS_EDGE_LENGTH,
+  type ElkShape,
+} from './layout-graph';
 
 /**
  * Two containers, two leaves each, and one relation of every shape that matters:
@@ -25,8 +35,7 @@ function crossing() {
 }
 
 const expanded = () => compileView(crossing(), { focus: ['left', 'right'] });
-const allLifted = (byOwner: Map<string | null, { id: string }[]>) =>
-  [...byOwner.values()].flat();
+const allLifted = (byOwner: Map<string | null, { id: string }[]>) => [...byOwner.values()].flat();
 
 describe('liftEdges', () => {
   it('keeps a same-parent edge on that parent, endpoints unchanged', () => {
@@ -175,11 +184,16 @@ describe('buildGraph', () => {
     // the box stays the glyph's size; the caption rides as a label
     expect([d.width, d.height]).toEqual([48, 48]);
     expect(d.labels).toEqual([
-      { width: 40, height: 19, text: 'caption', layoutOptions: { 'elk.nodeLabels.placement': 'OUTSIDE V_BOTTOM H_CENTER' } },
+      {
+        width: 40,
+        height: 19,
+        text: 'caption',
+        layoutOptions: { 'elk.nodeLabels.placement': 'OUTSIDE V_BOTTOM H_CENTER' },
+      },
     ]);
   });
 
-  it('puts each level\'s edges on its own container for a nested algorithm', () => {
+  it("puts each level's edges on its own container for a nested algorithm", () => {
     const { graph: g } = buildGraph(expanded(), undefined, { algorithm: 'force' });
     const left = g.children!.find((c) => c.id === 'left')!;
     expect(left.edges).toHaveLength(1);
@@ -215,7 +229,11 @@ describe('buildGraph', () => {
     // the view path always does (withBoxSizes) — the DOM draws a folded container
     // as a ~150x50 titled box, and reserving 200x88 for it left every folded view
     // twice as loose as the spacing setting says
-    const { graph: folded } = buildGraph(compileView(crossing(), {}), new Map([['left', { width: 150, height: 50 }]]), undefined);
+    const { graph: folded } = buildGraph(
+      compileView(crossing(), {}),
+      new Map([['left', { width: 150, height: 50 }]]),
+      undefined,
+    );
     expect(folded.children!.find((c) => c.id === 'left')).toMatchObject({ width: 150, height: 50 });
     expect(folded.children!.find((c) => c.id === 'right')).toMatchObject(COLLAPSED_SIZE);
   });
@@ -229,10 +247,16 @@ describe('buildGraph', () => {
     expect(plain.layoutOptions!['elk.partitioning.activate']).toBeUndefined();
     expect(plain.children!.every((c) => c.layoutOptions?.['elk.partitioning.partition'] === undefined)).toBe(true);
 
-    const orders = new Map([['d', 0], ['a', 1], ['b', 2]]);
+    const orders = new Map([
+      ['d', 0],
+      ['a', 1],
+      ['b', 2],
+    ]);
     const pinned = buildGraph(view, undefined, undefined, { partitions: orders }).graph;
     expect(pinned.layoutOptions!['elk.partitioning.activate']).toBe('true');
-    expect(Object.fromEntries(pinned.children!.map((c) => [c.id, c.layoutOptions?.['elk.partitioning.partition']]))).toEqual({ d: '0', a: '1', b: '2' });
+    expect(
+      Object.fromEntries(pinned.children!.map((c) => [c.id, c.layoutOptions?.['elk.partitioning.partition']])),
+    ).toEqual({ d: '0', a: '1', b: '2' });
   });
 });
 

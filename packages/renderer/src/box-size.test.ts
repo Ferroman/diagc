@@ -40,7 +40,11 @@ describe('estimateBoxSize', () => {
 
   it('meta badges widen the second row', () => {
     const bare = estimateBoxSize({ name: 'x', subtitle: 'service' });
-    const tagged = estimateBoxSize({ name: 'x', subtitle: 'service', metaBadges: ['typescript', 'nestjs', 'kubernetes'] });
+    const tagged = estimateBoxSize({
+      name: 'x',
+      subtitle: 'service',
+      metaBadges: ['typescript', 'nestjs', 'kubernetes'],
+    });
     expect(tagged.width).toBeGreaterThan(bare.width);
   });
 
@@ -51,7 +55,9 @@ describe('estimateBoxSize', () => {
   });
 
   it('a pill pads wider than a box', () => {
-    expect(estimateBoxSize({ name: 'Person', shape: 'pill' }).width).toBe(estimateBoxSize({ name: 'Person' }).width + 12);
+    expect(estimateBoxSize({ name: 'Person', shape: 'pill' }).width).toBe(
+      estimateBoxSize({ name: 'Person' }).width + 12,
+    );
   });
 
   it('font scale changes both dimensions', () => {

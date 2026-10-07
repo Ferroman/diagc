@@ -76,15 +76,29 @@ describe('with no sources', () => {
 
   it('watch still accepts a single file instead of crashing on the source check', async () => {
     const dir = fresh(true);
-    const model = { version: 1, id: 'x', name: 'X', nodes: [{ id: 'a', name: 'A', type: 'service' }], containment: [], relations: [], layers: [], planes: [] };
+    const model = {
+      version: 1,
+      id: 'x',
+      name: 'X',
+      nodes: [{ id: 'a', name: 'A', type: 'service' }],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
     writeFileSync(path.join(dir, '.diagrams', 'src', 'x.diagram.json'), JSON.stringify(model));
     const child = spawn(process.execPath, [bin, 'watch', '.diagrams/src/x.diagram.json'], { cwd: dir });
     let stderr = '';
-    child.stderr.on('data', (d: Buffer) => { stderr += d.toString(); });
+    child.stderr.on('data', (d: Buffer) => {
+      stderr += d.toString();
+    });
     const stdout = await new Promise<string>((resolve) => {
       let buf = '';
       const timer = setTimeout(() => resolve(buf), 20_000);
-      child.on('exit', () => { clearTimeout(timer); resolve(buf); });
+      child.on('exit', () => {
+        clearTimeout(timer);
+        resolve(buf);
+      });
       child.stdout.on('data', (d: Buffer) => {
         buf += d.toString();
         if (buf.includes('Watching')) {
@@ -100,7 +114,16 @@ describe('with no sources', () => {
 
   it('does not say so when there is a source', () => {
     const dir = fresh(true);
-    const model = { version: 1, id: 'x', name: 'X', nodes: [{ id: 'a', name: 'A', type: 'service' }], containment: [], relations: [], layers: [], planes: [] };
+    const model = {
+      version: 1,
+      id: 'x',
+      name: 'X',
+      nodes: [{ id: 'a', name: 'A', type: 'service' }],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
     writeFileSync(path.join(dir, '.diagrams', 'src', 'x.diagram.json'), JSON.stringify(model));
     const r = run(['lint', '--json'], dir);
     expect(r.stderr).toBe('');
@@ -138,7 +161,10 @@ describe('diagc init, through the real CLI', () => {
     const r = run(['init', '--agents'], dir);
     expect(r.stderr).toBe('');
     expect(r.status).toBe(0);
-    const shipped = readFileSync(path.join(path.dirname(path.dirname(bin)), 'packages', 'diagc', 'skill', 'SKILL.md'), 'utf8');
+    const shipped = readFileSync(
+      path.join(path.dirname(path.dirname(bin)), 'packages', 'diagc', 'skill', 'SKILL.md'),
+      'utf8',
+    );
     expect(readFileSync(path.join(dir, '.claude', 'skills', 'diagc', 'SKILL.md'), 'utf8')).toBe(shipped);
     expect(r.stdout).toMatch(/^✓ \.claude\/skills\/diagc\/SKILL\.md\s+\(diagc skill added\)$/m);
   }, 60_000);

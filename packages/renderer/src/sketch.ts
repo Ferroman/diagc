@@ -14,7 +14,22 @@ const gen = rough.generator();
 const FILL_SENTINEL = 'sentinel-fill';
 const STROKE_SENTINEL = 'sentinel-stroke';
 
-export type SketchShapeKind = 'box' | 'cylinder' | 'hexagon' | 'bubble' | 'circle' | 'person' | 'diamond' | 'bar' | 'start-dot' | 'end-bullseye' | 'send-signal' | 'receive-signal' | 'note' | 'ellipse' | 'store';
+export type SketchShapeKind =
+  | 'box'
+  | 'cylinder'
+  | 'hexagon'
+  | 'bubble'
+  | 'circle'
+  | 'person'
+  | 'diamond'
+  | 'bar'
+  | 'start-dot'
+  | 'end-bullseye'
+  | 'send-signal'
+  | 'receive-signal'
+  | 'note'
+  | 'ellipse'
+  | 'store';
 export interface SketchPaths {
   /** combined `d` for solid fill polygon(s) — render with fill */
   fill: string;
@@ -33,7 +48,7 @@ export function seedFrom(id: string): number {
   }
   // rough treats seed 0 as "no seed" and falls back to Math.random(), which
   // would make that one node/edge re-wobble nondeterministically every render.
-  return (h >>> 0) || 1;
+  return h >>> 0 || 1;
 }
 
 interface PathInfo {
@@ -55,7 +70,11 @@ const toOptions = (style: RoughStyle, seed: number): Options => ({
 });
 
 function partition(infos: PathInfo[]): SketchPaths {
-  const joined = (pred: (i: PathInfo) => boolean) => infos.filter(pred).map((i) => i.d).join(' ');
+  const joined = (pred: (i: PathInfo) => boolean) =>
+    infos
+      .filter(pred)
+      .map((i) => i.d)
+      .join(' ');
   return {
     fill: joined((i) => i.fill === FILL_SENTINEL),
     hatch: joined((i) => i.stroke === FILL_SENTINEL),
@@ -142,43 +161,91 @@ export function sketchNode(
             gen.circle(w / 2, Math.min(h * 0.22, 18), Math.min(w, h) * 0.32, o),
             gen.rectangle(w * 0.12, Math.min(h * 0.38, 30), w * 0.76, h - Math.min(h * 0.38, 30) - 1, o),
           ]
-      : kind === 'hexagon'
-      ? [gen.polygon(hexPoints(w, h), o)]
-      : kind === 'cylinder'
-        ? [gen.rectangle(1, 8, w - 2, h - 10, o), gen.ellipse(w / 2, 8, w - 6, 14, o)]
-        : kind === 'bubble'
-          ? [gen.path(bubblePath(w, h, cornerRadius), o)]
-          : kind === 'diamond'
-            ? [gen.polygon([[w / 2, 1], [w - 1, h / 2], [w / 2, h - 1], [1, h / 2]], o)]
-            : kind === 'bar'
-              ? [gen.rectangle(1, 1, w - 2, h - 2, { ...o, fillStyle: 'solid' })]
-              : kind === 'start-dot'
-                ? [gen.circle(w / 2, h / 2, Math.min(w, h) - 2, { ...o, fillStyle: 'solid' })]
-                : kind === 'end-bullseye'
-                  ? [
-                      gen.circle(w / 2, h / 2, Math.min(w, h) - 2, o),
-                      gen.circle(w / 2, h / 2, (Math.min(w, h) - 2) * 0.55, { ...o, fillStyle: 'solid' }),
-                    ]
-                  : kind === 'send-signal'
-                    ? [gen.polygon([[1, 1], [w - 15, 1], [w - 1, h / 2], [w - 15, h - 1], [1, h - 1]], o)]
-                    : kind === 'receive-signal'
-                      ? [gen.polygon([[1, 1], [w - 1, 1], [w - 1, h - 1], [1, h - 1], [15, h / 2]], o)]
-                      : kind === 'note'
+        : kind === 'hexagon'
+          ? [gen.polygon(hexPoints(w, h), o)]
+          : kind === 'cylinder'
+            ? [gen.rectangle(1, 8, w - 2, h - 10, o), gen.ellipse(w / 2, 8, w - 6, 14, o)]
+            : kind === 'bubble'
+              ? [gen.path(bubblePath(w, h, cornerRadius), o)]
+              : kind === 'diamond'
+                ? [
+                    gen.polygon(
+                      [
+                        [w / 2, 1],
+                        [w - 1, h / 2],
+                        [w / 2, h - 1],
+                        [1, h / 2],
+                      ],
+                      o,
+                    ),
+                  ]
+                : kind === 'bar'
+                  ? [gen.rectangle(1, 1, w - 2, h - 2, { ...o, fillStyle: 'solid' })]
+                  : kind === 'start-dot'
+                    ? [gen.circle(w / 2, h / 2, Math.min(w, h) - 2, { ...o, fillStyle: 'solid' })]
+                    : kind === 'end-bullseye'
+                      ? [
+                          gen.circle(w / 2, h / 2, Math.min(w, h) - 2, o),
+                          gen.circle(w / 2, h / 2, (Math.min(w, h) - 2) * 0.55, { ...o, fillStyle: 'solid' }),
+                        ]
+                      : kind === 'send-signal'
                         ? [
-                            gen.polygon([[1, 1], [w - 15, 1], [w - 1, 15], [w - 1, h - 1], [1, h - 1]], o),
-                            gen.linearPath([[w - 15, 1], [w - 15, 15], [w - 1, 15]], o),
+                            gen.polygon(
+                              [
+                                [1, 1],
+                                [w - 15, 1],
+                                [w - 1, h / 2],
+                                [w - 15, h - 1],
+                                [1, h - 1],
+                              ],
+                              o,
+                            ),
                           ]
-                        : kind === 'ellipse'
-                        ? // a DFD process: the ellipse fills the box, where `circle`
-                          // would inscribe a disc and leave the label overhanging
-                          [gen.ellipse(w / 2, h / 2, w - 2, h - 2, o)]
-                        : kind === 'store'
-                        ? // the MS TMT data-store glyph: two rules, open ends (no
-                          // sides, nothing enclosed — hence no fill to partition)
-                          [gen.line(1, 1, w - 1, 1, o), gen.line(1, h - 1, w - 1, h - 1, o)]
-                        : cornerRadius > 0
-                        ? [gen.path(roundedBoxPath(w, h, cornerRadius), o)]
-                        : [gen.rectangle(1, 1, w - 2, h - 2, o)];
+                        : kind === 'receive-signal'
+                          ? [
+                              gen.polygon(
+                                [
+                                  [1, 1],
+                                  [w - 1, 1],
+                                  [w - 1, h - 1],
+                                  [1, h - 1],
+                                  [15, h / 2],
+                                ],
+                                o,
+                              ),
+                            ]
+                          : kind === 'note'
+                            ? [
+                                gen.polygon(
+                                  [
+                                    [1, 1],
+                                    [w - 15, 1],
+                                    [w - 1, 15],
+                                    [w - 1, h - 1],
+                                    [1, h - 1],
+                                  ],
+                                  o,
+                                ),
+                                gen.linearPath(
+                                  [
+                                    [w - 15, 1],
+                                    [w - 15, 15],
+                                    [w - 1, 15],
+                                  ],
+                                  o,
+                                ),
+                              ]
+                            : kind === 'ellipse'
+                              ? // a DFD process: the ellipse fills the box, where `circle`
+                                // would inscribe a disc and leave the label overhanging
+                                [gen.ellipse(w / 2, h / 2, w - 2, h - 2, o)]
+                              : kind === 'store'
+                                ? // the MS TMT data-store glyph: two rules, open ends (no
+                                  // sides, nothing enclosed — hence no fill to partition)
+                                  [gen.line(1, 1, w - 1, 1, o), gen.line(1, h - 1, w - 1, h - 1, o)]
+                                : cornerRadius > 0
+                                  ? [gen.path(roundedBoxPath(w, h, cornerRadius), o)]
+                                  : [gen.rectangle(1, 1, w - 2, h - 2, o)];
   return partition(drawables.flatMap((d) => gen.toPaths(d) as PathInfo[]));
 }
 
@@ -193,7 +260,10 @@ export function sketchEdge(path: string, seed: number, style: RoughStyle): strin
   // and read as two separate edges. Nodes keep the default two-pass look.
   const o = { ...toOptions(style, seed), fill: undefined, disableMultiStroke: true };
   const infos = gen.toPaths(gen.path(path, o)) as PathInfo[];
-  const d = infos.filter((i) => i.stroke === STROKE_SENTINEL).map((i) => i.d).join(' ');
+  const d = infos
+    .filter((i) => i.stroke === STROKE_SENTINEL)
+    .map((i) => i.d)
+    .join(' ');
   // A degenerate input (e.g. a bare moveto) can roughen to zero stroke
   // sub-paths — fall back to the original path rather than blank the edge.
   return d === '' ? path : d;

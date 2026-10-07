@@ -1,5 +1,15 @@
 import { useMemo } from 'react';
-import { PLAN_ROLES, isPlanActor, isPlanEvent, isPlanZone, rolesOf, type DiagramModel, type DiagramNode, type EditorCommand, type PlanRole } from '@diagc/core';
+import {
+  PLAN_ROLES,
+  isPlanActor,
+  isPlanEvent,
+  isPlanZone,
+  rolesOf,
+  type DiagramModel,
+  type DiagramNode,
+  type EditorCommand,
+  type PlanRole,
+} from '@diagc/core';
 import { setRole } from './planActions';
 
 const ROLE_TITLE: Record<PlanRole, string> = { owns: 'Owner', executes: 'Executor', checks: 'Checker' };
@@ -84,7 +94,8 @@ export function PlanSection({ model, node, onCommand }: PlanSectionProps) {
   // one derivation per model, not one per render: typing in a date field
   // re-renders the whole inspector
   const candidates = useMemo(() => roleCandidates(model), [model]);
-  const set = (dates: { start?: string; end?: string; at?: string }) => onCommand({ type: 'set-plan-dates', id: node.id, dates });
+  const set = (dates: { start?: string; end?: string; at?: string }) =>
+    onCommand({ type: 'set-plan-dates', id: node.id, dates });
   return (
     <section className="panel-section">
       <h3>Plan</h3>

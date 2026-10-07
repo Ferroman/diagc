@@ -152,7 +152,7 @@ describe('arrangeActivityFrames', () => {
     expect(out.get('k')).toEqual({ x: 400, y: 50, width: 50, height: 100 });
   });
 
-  it('a lane-less frame keeps one empty band\'s footprint, and still wraps what it holds', () => {
+  it("a lane-less frame keeps one empty band's footprint, and still wraps what it holds", () => {
     // A frame straight off the palette (no lanes yet) is an elk leaf sized by its
     // label; a stray dropped into it would shrink it to wrap a 24px dot.
     const m: DiagramModel = {
@@ -179,7 +179,7 @@ describe('arrangeActivityFrames', () => {
 });
 
 describe('withLaneOrder', () => {
-  it('hands the layout a frame\'s lanes in containment order, not node order', () => {
+  it("hands the layout a frame's lanes in containment order, not node order", () => {
     const m = model();
     // l2 restacked above l1 (what move-child does): containment says l2 first
     const reordered = { ...m, containment: [m.containment[1]!, m.containment[0]!] };

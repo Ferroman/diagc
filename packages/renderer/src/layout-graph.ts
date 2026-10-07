@@ -1,4 +1,11 @@
-import { LEAF_SIZE, RESERVED_NODE_ID, type CompiledView, type LayoutSettings, type ViewEdge, type ViewNode } from '@diagc/core';
+import {
+  LEAF_SIZE,
+  RESERVED_NODE_ID,
+  type CompiledView,
+  type LayoutSettings,
+  type ViewEdge,
+  type ViewNode,
+} from '@diagc/core';
 import { ACTIVITY_LAYOUT } from './activity-frame';
 import { EDGE_LABEL_MAX_CHARS } from './label-size';
 
@@ -461,13 +468,17 @@ export function buildGraph(
       ...footprint(sizes?.get(n.id) ?? LEAF_SIZE),
       // like an edge label, elk reserves the box only when `text` is non-empty
       ...(caption !== undefined ? { labels: [{ ...caption, text: 'caption', layoutOptions: CAPTION_BELOW }] } : {}),
-      ...(activity && n.node.type === ACTIVITY_START ? { layoutOptions: { 'elk.layered.layering.layerConstraint': 'FIRST' } } : {}),
+      ...(activity && n.node.type === ACTIVITY_START
+        ? { layoutOptions: { 'elk.layered.layering.layerConstraint': 'FIRST' } }
+        : {}),
     };
   };
 
   const pinned = (shape: ElkShape): ElkShape => {
     const p = partitions?.get(shape.id);
-    return p === undefined ? shape : { ...shape, layoutOptions: { ...shape.layoutOptions, 'elk.partitioning.partition': String(p) } };
+    return p === undefined
+      ? shape
+      : { ...shape, layoutOptions: { ...shape.layoutOptions, 'elk.partitioning.partition': String(p) } };
   };
   // Lifted edges carry no label box. A raised edge stands for every relation
   // between two subtrees, so no single label belongs to it, and elk's force and

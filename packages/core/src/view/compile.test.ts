@@ -112,7 +112,10 @@ describe('compileView column layers', () => {
         id: 't',
         name: 't',
         type: 'db-table',
-        columns: [{ name: 'id', pk: true }, { name: 'flag', layer: 'flags' }],
+        columns: [
+          { name: 'id', pk: true },
+          { name: 'flag', layer: 'flags' },
+        ],
       },
       { id: 'u', name: 'u', type: 'db-table', columns: [{ name: 'id', pk: true }] },
     ],

@@ -92,7 +92,9 @@ export function copySelection(
   return {
     format: CLIPBOARD_FORMAT,
     nodes,
-    containment: edges.filter((e) => picked.has(e.parent) && picked.has(e.child)).map(({ parent, child }) => ({ parent, child })),
+    containment: edges
+      .filter((e) => picked.has(e.parent) && picked.has(e.child))
+      .map(({ parent, child }) => ({ parent, child })),
     roots: nodes
       .filter((n) => !picked.has(parentOf.get(n.id) ?? ''))
       .map((n) => {
@@ -112,7 +114,9 @@ export function parseClipboard(text: string): ClipboardPayload | null {
   if (!text.includes(CLIPBOARD_FORMAT)) return null;
   try {
     const p = JSON.parse(text) as Partial<ClipboardPayload>;
-    return p.format === CLIPBOARD_FORMAT && Array.isArray(p.nodes) && Array.isArray(p.roots) ? (p as ClipboardPayload) : null;
+    return p.format === CLIPBOARD_FORMAT && Array.isArray(p.nodes) && Array.isArray(p.roots)
+      ? (p as ClipboardPayload)
+      : null;
   } catch {
     return null;
   }
@@ -155,7 +159,8 @@ export interface PasteResult {
  */
 export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx: PasteContext): PasteResult | null {
   if (payload.nodes.length === 0) return null;
-  const typeOf = (id: string | undefined) => (id === undefined ? undefined : model.nodes.find((n) => n.id === id)?.type);
+  const typeOf = (id: string | undefined) =>
+    id === undefined ? undefined : model.nodes.find((n) => n.id === id)?.type;
   const exists = (id: string | undefined) => id !== undefined && model.nodes.some((n) => n.id === id);
   const edges = edgesOn(model, ctx.plane);
   const hereParent = (id: string) => edges.find((e) => e.child === id)?.parent;
@@ -193,7 +198,7 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
     // `key` is cross-diagram identity: a copy sharing it would MERGE with its
     // original on compose. Plane and layer are re-scoped to where it lands.
     const { key: _key, plane: _plane, layer, ...rest } = n;
-    const onLayer = layer !== undefined && layers.has(layer) ? layer : ctx.penLayer ?? undefined;
+    const onLayer = layer !== undefined && layers.has(layer) ? layer : (ctx.penLayer ?? undefined);
     return {
       ...rest,
       id: idMap.get(n.id)!,
@@ -238,7 +243,7 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
     const to = idMap.get(r.to)!;
     const i = pairs.get(`${from}->${to}`) ?? 0;
     pairs.set(`${from}->${to}`, i + 1);
-    const onLayer = r.layer !== undefined && layers.has(r.layer) ? r.layer : ctx.penLayer ?? undefined;
+    const onLayer = r.layer !== undefined && layers.has(r.layer) ? r.layer : (ctx.penLayer ?? undefined);
     commands.push({
       type: 'add-relation',
       from,

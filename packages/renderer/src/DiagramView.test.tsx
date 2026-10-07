@@ -95,7 +95,13 @@ const richModel = (): DiagramModel => ({
   id: 'rt',
   name: 'rt',
   nodes: [
-    { id: 'a', name: 'Web Server', rich: [{ text: 'Web ' }, { text: 'Server', bold: true }], textAlign: 'center', fontScale: 'lg' },
+    {
+      id: 'a',
+      name: 'Web Server',
+      rich: [{ text: 'Web ' }, { text: 'Server', bold: true }],
+      textAlign: 'center',
+      fontScale: 'lg',
+    },
   ],
   containment: [],
   relations: [],
@@ -128,12 +134,7 @@ describe('DiagramView', () => {
   });
 
   it('renders aggregated edges to a promoted node between collapsed systems', async () => {
-    render(
-      <DiagramView
-        model={promotedEndpointModel()}
-        pins={{ A: 'collapsed', B: 'collapsed' }}
-      />,
-    );
+    render(<DiagramView model={promotedEndpointModel()} pins={{ A: 'collapsed', B: 'collapsed' }} />);
     expect(await screen.findByText('shared-db')).toBeDefined();
     expect(await screen.findByTestId('promoted-marker')).toBeDefined();
     // A=>shared-db (reads) and B=>shared-db (writes) both anchor to the promoted node
@@ -176,7 +177,9 @@ describe('DiagramView', () => {
   it('shift-click grows the selection and reports the whole set via onMultiSelect', async () => {
     const onMultiSelect = vi.fn();
     const onSelect = vi.fn();
-    render(<DiagramView model={containerEndpointModel()} mode="edit" onMultiSelect={onMultiSelect} onSelect={onSelect} />);
+    render(
+      <DiagramView model={containerEndpointModel()} mode="edit" onMultiSelect={onMultiSelect} onSelect={onSelect} />,
+    );
     fireEvent.click(await screen.findByText('gw'));
     await waitFor(() => expect(onMultiSelect).toHaveBeenLastCalledWith(['gw']));
     // React Flow's multi-select gate (`multiSelectionActive`) is driven by a real
@@ -426,14 +429,20 @@ describe('DiagramView', () => {
 
     /** a chain of `count` services, ids n1…n<count> — two of these share ids */
     const chain = (id: string, count: number): DiagramModel => {
-      const nodes = Array.from({ length: count }, (_, i) => ({ id: `n${i + 1}`, name: `Node ${i + 1}`, type: 'service' }));
+      const nodes = Array.from({ length: count }, (_, i) => ({
+        id: `n${i + 1}`,
+        name: `Node ${i + 1}`,
+        type: 'service',
+      }));
       return {
         version: 1,
         id,
         name: id,
         nodes,
         containment: [],
-        relations: nodes.slice(1).map((n, i) => ({ id: `${nodes[i]!.id}->${n.id}#0`, from: nodes[i]!.id, to: n.id, kind: 'sync' })),
+        relations: nodes
+          .slice(1)
+          .map((n, i) => ({ id: `${nodes[i]!.id}->${n.id}#0`, from: nodes[i]!.id, to: n.id, kind: 'sync' })),
         layers: [],
         planes: [],
       };
@@ -455,12 +464,17 @@ describe('DiagramView', () => {
       });
       const x = Math.min(...at.map((p) => p.x));
       const y = Math.min(...at.map((p) => p.y));
-      const bounds = { x, y, width: Math.max(...at.map((p) => p.x)) + 800 - x, height: Math.max(...at.map((p) => p.y)) + 600 - y };
+      const bounds = {
+        x,
+        y,
+        width: Math.max(...at.map((p) => p.x)) + 800 - x,
+        height: Math.max(...at.map((p) => p.y)) + 600 - y,
+      };
       const v = getViewportForBounds(bounds, 800, 600, 0.02, 4, 0.1);
       return `translate(${v.x}px,${v.y}px)scale(${v.zoom})`;
     };
 
-    it('fits the new diagram instead of keeping the last one\'s pan and zoom', async () => {
+    it("fits the new diagram instead of keeping the last one's pan and zoom", async () => {
       const { container, rerender } = render(<DiagramView model={containerEndpointModel()} />);
       await screen.findByText('gw');
       await waitFor(() => expect(viewportOf(container)).toContain('scale('));
@@ -469,7 +483,7 @@ describe('DiagramView', () => {
       await waitFor(() => expect(viewportOf(container)).toBe(framing(container)));
     });
 
-    it('waits for the new diagram\'s own layout: a copy that was added to shares its ids with the original', async () => {
+    it("waits for the new diagram's own layout: a copy that was added to shares its ids with the original", async () => {
       // The last arrangement is kept while the next is computed, and these two
       // diagrams share n1/n2 — so the moment after the switch there is a
       // complete-looking, measured scene on screen that is the OLD diagram's. A
@@ -513,7 +527,9 @@ describe('DiagramView', () => {
 
   it('edit mode: Backspace on a clicked edge reports its relations', async () => {
     const onDeleteSelection = vi.fn();
-    const { container } = render(<DiagramView model={containerEndpointModel()} mode="edit" edit={{ onDeleteSelection }} />);
+    const { container } = render(
+      <DiagramView model={containerEndpointModel()} mode="edit" edit={{ onDeleteSelection }} />,
+    );
     await waitFor(() => expect(container.querySelector('.react-flow__edge')).not.toBeNull());
     fireEvent.click(container.querySelector('.react-flow__edge')!);
     // The edges are controlled: the click only marks one selected if the
@@ -536,7 +552,9 @@ describe('DiagramView', () => {
 
   it('edit mode: dblclick edits a box label as rich text and commits runs', async () => {
     const onSetNodeRich = vi.fn();
-    render(<DiagramView model={containerEndpointModel()} mode="edit" pins={{ sys: 'expanded' }} edit={{ onSetNodeRich }} />);
+    render(
+      <DiagramView model={containerEndpointModel()} mode="edit" pins={{ sys: 'expanded' }} edit={{ onSetNodeRich }} />,
+    );
     expect(await screen.findByText('api')).toBeDefined();
     fireEvent.doubleClick(screen.getAllByText('api')[0]!);
     const box = (await screen.findByLabelText('Edit text')) as HTMLElement;
@@ -568,11 +586,7 @@ describe('DiagramView', () => {
     const onAddEdgeLabel = vi.fn();
     const onCreateAt = vi.fn();
     const { container } = render(
-      <DiagramView
-        model={containerEndpointModel()}
-        mode="edit"
-        edit={{ onAddEdgeLabel, onCreateAt }}
-      />,
+      <DiagramView model={containerEndpointModel()} mode="edit" edit={{ onAddEdgeLabel, onCreateAt }} />,
     );
     const edge = await waitFor(() => {
       const el = container.querySelector('.react-flow__edge');
@@ -689,16 +703,21 @@ describe('DiagramView', () => {
     });
 
   it('edit mode: a node on the fish cannot be dragged, a stray beneath it can', async () => {
-    const { container } = render(<DiagramView model={fishWithStray()} notation="fishbone" mode="edit" edit={{ onNodesMoved: vi.fn() }} />);
+    const { container } = render(
+      <DiagramView model={fishWithStray()} notation="fishbone" mode="edit" edit={{ onNodesMoved: vi.fn() }} />,
+    );
     expect((await rfNodeOf(container, 'loose')).classList.contains('draggable')).toBe(true);
-    for (const id of ['e', 'c', 'a']) expect((await rfNodeOf(container, id)).classList.contains('draggable'), id).toBe(false);
+    for (const id of ['e', 'c', 'a'])
+      expect((await rfNodeOf(container, id)).classList.contains('draggable'), id).toBe(false);
   });
 
   it('edit mode: a fish node still takes the press itself, so a jittery click selects it instead of panning', async () => {
     // React Flow lets a press on a non-draggable node pan the canvas, and a pan
     // of even one pixel swallows the click: the node would not select. In view
     // mode every node pans that way, the fish's included.
-    const { container, unmount } = render(<DiagramView model={fishWithStray()} notation="fishbone" mode="edit" edit={{ onNodesMoved: vi.fn() }} />);
+    const { container, unmount } = render(
+      <DiagramView model={fishWithStray()} notation="fishbone" mode="edit" edit={{ onNodesMoved: vi.fn() }} />,
+    );
     expect((await rfNodeOf(container, 'c')).classList.contains('nopan')).toBe(true);
     unmount();
     const view = render(<DiagramView model={fishWithStray()} notation="fishbone" />);
@@ -863,9 +882,7 @@ describe('DiagramView', () => {
     fireEvent.click(img.closest('.react-flow__node') as HTMLElement);
     // clicking selects through React Flow's own onNodesChange pipeline; the
     // real NodeResizer then shows its corner controls
-    await waitFor(() =>
-      expect(container.querySelectorAll('.react-flow__resize-control').length).toBeGreaterThan(0),
-    );
+    await waitFor(() => expect(container.querySelectorAll('.react-flow__resize-control').length).toBeGreaterThan(0));
     // a new callback identity recomputes derivedNodes (exactly what the studio's
     // inline props do on every App render) — the resync must not wipe React
     // Flow's selection, or the resizer vanishes the instant anything re-renders
@@ -875,9 +892,7 @@ describe('DiagramView', () => {
 
   it('surfaces image files dropped on the canvas with a flow position', async () => {
     const onImageFiles = vi.fn();
-    const { container } = render(
-      <DiagramView model={containerEndpointModel()} mode="edit" edit={{ onImageFiles }} />,
-    );
+    const { container } = render(<DiagramView model={containerEndpointModel()} mode="edit" edit={{ onImageFiles }} />);
     const file = new File(['png-bytes'], 'logo.png', { type: 'image/png' });
     const canvas = container.querySelector('.dg-canvas') as HTMLElement;
     fireEvent.drop(canvas, { dataTransfer: { files: [file] }, clientX: 200, clientY: 150 });
@@ -889,9 +904,7 @@ describe('DiagramView', () => {
 
   it('prevents the default navigation when a non-image file is dropped', async () => {
     const onImageFiles = vi.fn();
-    const { container } = render(
-      <DiagramView model={containerEndpointModel()} mode="edit" edit={{ onImageFiles }} />,
-    );
+    const { container } = render(<DiagramView model={containerEndpointModel()} mode="edit" edit={{ onImageFiles }} />);
     const file = new File(['x'], 'notes.txt', { type: 'text/plain' });
     const canvas = container.querySelector('.dg-canvas') as HTMLElement;
     // dragOver already preventDefault()s to claim the drop; if drop doesn't
@@ -916,9 +929,7 @@ describe('DiagramView', () => {
 
   it('creates a node at an edit-mode double-click on empty canvas', async () => {
     const onCreateAt = vi.fn();
-    const { container } = render(
-      <DiagramView model={containerEndpointModel()} mode="edit" edit={{ onCreateAt }} />,
-    );
+    const { container } = render(<DiagramView model={containerEndpointModel()} mode="edit" edit={{ onCreateAt }} />);
     const pane = container.querySelector('.react-flow__pane') as HTMLElement;
     fireEvent.click(pane, { detail: 2, clientX: 240, clientY: 160 });
     await waitFor(() => expect(onCreateAt).toHaveBeenCalledTimes(1));
@@ -970,9 +981,7 @@ describe('DiagramView', () => {
   });
 
   it('applies the causal-loop notation class when notation is set', async () => {
-    const { container } = render(
-      <DiagramView model={containerEndpointModel()} notation="causal-loop" />,
-    );
+    const { container } = render(<DiagramView model={containerEndpointModel()} notation="causal-loop" />);
     await screen.findByText('gw');
     expect(container.querySelector('.dg-notation-cld')).not.toBeNull();
   });
@@ -997,7 +1006,7 @@ describe('DiagramView', () => {
     expect(editor.textContent).toBe('api');
   });
 
-  it('opens editLabelRequest\'s node for rename — a host that creates a node OUTSIDE the canvas (a panel button) still gets the caret in it', async () => {
+  it("opens editLabelRequest's node for rename — a host that creates a node OUTSIDE the canvas (a panel button) still gets the caret in it", async () => {
     render(
       <DiagramView
         model={containerEndpointModel()}
@@ -1010,7 +1019,7 @@ describe('DiagramView', () => {
     expect(editor.textContent).toBe('api');
   });
 
-  it('editLabelRequest also moves React Flow\'s selection — the ring and the `+` chip follow the node being named', async () => {
+  it("editLabelRequest also moves React Flow's selection — the ring and the `+` chip follow the node being named", async () => {
     // The host's select() only touches the host's own state; the chip, the ring
     // and the resizer render off React Flow's `selected` flag. Without the move,
     // a `+`/Tab chain would keep offering the chip on the source node.
@@ -1020,7 +1029,12 @@ describe('DiagramView', () => {
     await waitFor(() => expect(document.querySelector('.react-flow__node[data-id="gw"].selected')).not.toBeNull());
 
     rerender(
-      <DiagramView model={m} mode="edit" pins={{ sys: 'expanded' }} edit={{ editLabelRequest: { id: 'api', nonce: 1 } }} />,
+      <DiagramView
+        model={m}
+        mode="edit"
+        pins={{ sys: 'expanded' }}
+        edit={{ editLabelRequest: { id: 'api', nonce: 1 } }}
+      />,
     );
     await waitFor(() => expect(document.querySelector('.react-flow__node[data-id="api"].selected')).not.toBeNull());
     expect(document.querySelector('.react-flow__node[data-id="gw"].selected')).toBeNull();
@@ -1029,7 +1043,12 @@ describe('DiagramView', () => {
   it('does not replay a stale editLabelRequest across a view/edit round-trip — only a new nonce reopens it', async () => {
     const m = containerEndpointModel();
     const { rerender } = render(
-      <DiagramView model={m} mode="edit" pins={{ sys: 'expanded' }} edit={{ editLabelRequest: { id: 'api', nonce: 1 } }} />,
+      <DiagramView
+        model={m}
+        mode="edit"
+        pins={{ sys: 'expanded' }}
+        edit={{ editLabelRequest: { id: 'api', nonce: 1 } }}
+      />,
     );
     const box = (await screen.findByLabelText('Edit text')) as HTMLElement;
     fireEvent.blur(box); // commits/closes, same as the rich-text rename test above
@@ -1042,13 +1061,23 @@ describe('DiagramView', () => {
 
     // back to edit mode with the identical, already-served {id, nonce: 1}: must NOT reopen.
     rerender(
-      <DiagramView model={m} mode="edit" pins={{ sys: 'expanded' }} edit={{ editLabelRequest: { id: 'api', nonce: 1 } }} />,
+      <DiagramView
+        model={m}
+        mode="edit"
+        pins={{ sys: 'expanded' }}
+        edit={{ editLabelRequest: { id: 'api', nonce: 1 } }}
+      />,
     );
     expect(screen.queryByLabelText('Edit text')).toBeNull();
 
     // a genuinely new request (nonce bumped) still opens it.
     rerender(
-      <DiagramView model={m} mode="edit" pins={{ sys: 'expanded' }} edit={{ editLabelRequest: { id: 'api', nonce: 2 } }} />,
+      <DiagramView
+        model={m}
+        mode="edit"
+        pins={{ sys: 'expanded' }}
+        edit={{ editLabelRequest: { id: 'api', nonce: 2 } }}
+      />,
     );
     expect(await screen.findByLabelText('Edit text')).toBeDefined();
   });
@@ -1059,13 +1088,7 @@ describe('DiagramView', () => {
     // pick of a second variable.
     const onSelect = vi.fn();
     const onCompareSelect = vi.fn();
-    render(
-      <DiagramView
-        model={containerEndpointModel()}
-        onSelect={onSelect}
-        onCompareSelect={onCompareSelect}
-      />,
-    );
+    render(<DiagramView model={containerEndpointModel()} onSelect={onSelect} onCompareSelect={onCompareSelect} />);
     const sys = await screen.findByText('sys');
     fireEvent.click(sys, { ctrlKey: true });
     expect(onCompareSelect).toHaveBeenCalledWith('sys');
@@ -1112,7 +1135,7 @@ describe('DiagramView', () => {
     expect(c.distribute('x')).toBe(false);
   });
 
-  it('shows the host\'s key hints on the corner controls, and drops its own (L) when built-in keys are off', async () => {
+  it("shows the host's key hints on the corner controls, and drops its own (L) when built-in keys are off", async () => {
     const m = model('t-key-hints');
     m.node('a', { name: 'A' });
     const { rerender } = render(<DiagramView model={m.toJSON()} />);
@@ -1179,9 +1202,7 @@ describe('DiagramView', () => {
     const spy = vi.fn();
     const b = model('erd');
     b.table('a', { columns: [{ name: 'id', pk: true }] });
-    const { findByText } = render(
-      <DiagramView model={b.toJSON()} mode="edit" edit={{ onSetTableColumns: spy }} />,
-    );
+    const { findByText } = render(<DiagramView model={b.toJSON()} mode="edit" edit={{ onSetTableColumns: spy }} />);
     // node rendering is async (elk layout resolves via a promise) — every other
     // test in this file awaits node text for the same reason.
     fireEvent.click(await findByText(/add column/i));
@@ -1216,7 +1237,9 @@ describe('DiagramView', () => {
     fireEvent.click(gw);
     await waitFor(() => expect(document.querySelector('.react-flow__node.selected')).not.toBeNull());
     fireEvent.keyDown(gw, { key: 'ArrowDown' });
-    await waitFor(() => expect(onNodeMoved).toHaveBeenCalledWith('gw', expect.objectContaining({ x: expect.any(Number) })));
+    await waitFor(() =>
+      expect(onNodeMoved).toHaveBeenCalledWith('gw', expect.objectContaining({ x: expect.any(Number) })),
+    );
   });
 
   it('view mode: a nudge is reported as a view position without Alt', async () => {
@@ -1234,7 +1257,15 @@ describe('DiagramView', () => {
   it('snapGrid makes a nudge step by the grid', async () => {
     const onNodesMoved = vi.fn();
     const apiRef: { current: LayoutApi | null } = { current: null };
-    render(<DiagramView model={containerEndpointModel()} mode="edit" snapGrid={10} edit={{ onNodesMoved }} layoutApiRef={apiRef} />);
+    render(
+      <DiagramView
+        model={containerEndpointModel()}
+        mode="edit"
+        snapGrid={10}
+        edit={{ onNodesMoved }}
+        layoutApiRef={apiRef}
+      />,
+    );
     const gw = await screen.findByText('gw');
     fireEvent.click(gw);
     await waitFor(() => expect(document.querySelector('.react-flow__node.selected')).not.toBeNull());
@@ -1397,7 +1428,9 @@ describe('freehand drawings', () => {
   });
 
   it('hides the layer while drilled in', async () => {
-    const { container } = render(<DiagramView model={containerEndpointModel()} drawings={drawings} enteredPath={['sys']} />);
+    const { container } = render(
+      <DiagramView model={containerEndpointModel()} drawings={drawings} enteredPath={['sys']} />,
+    );
     await waitFor(() => expect(container.querySelector('svg.dg-drawings')).not.toBeNull());
     expect((container.querySelector('svg.dg-drawings') as SVGElement).style.display).toBe('none');
     // …and the switch goes with it: a control that flips an already-hidden layer
@@ -1459,7 +1492,13 @@ describe('freehand drawings', () => {
   it('eraser tool: clicking a stroke hit path reports its id', async () => {
     const onDeleteStroke = vi.fn();
     const { container } = render(
-      <DiagramView model={containerEndpointModel()} mode="edit" tool="eraser" drawings={drawings} edit={{ onDeleteStroke }} />,
+      <DiagramView
+        model={containerEndpointModel()}
+        mode="edit"
+        tool="eraser"
+        drawings={drawings}
+        edit={{ onDeleteStroke }}
+      />,
     );
     const hit = await waitFor(() => {
       const el = container.querySelector('path.dg-stroke-hit');
@@ -1472,7 +1511,10 @@ describe('freehand drawings', () => {
 
   it('contentBounds grows to include strokes outside the nodes', async () => {
     const apiRef = { current: null as LayoutApi | null };
-    const far = { version: 1 as const, planes: { default: [{ id: 'k1', points: [-500, -500, -490, -490], width: 4 }] } };
+    const far = {
+      version: 1 as const,
+      planes: { default: [{ id: 'k1', points: [-500, -500, -490, -490], width: 4 }] },
+    };
     render(<DiagramView model={containerEndpointModel()} drawings={far} layoutApiRef={apiRef} />);
     await waitFor(() => expect(apiRef.current?.contentBounds()).toBeDefined());
     const b = apiRef.current!.contentBounds()!;
@@ -1500,8 +1542,13 @@ describe('freehand drawings', () => {
     };
     try {
       const apiRef = { current: null as LayoutApi | null };
-      const far = { version: 1 as const, planes: { default: [{ id: 'k1', points: [-500, -500, -490, -490], width: 4 }] } };
-      const { container } = render(<DiagramView model={containerEndpointModel()} drawings={far} layoutApiRef={apiRef} />);
+      const far = {
+        version: 1 as const,
+        planes: { default: [{ id: 'k1', points: [-500, -500, -490, -490], width: 4 }] },
+      };
+      const { container } = render(
+        <DiagramView model={containerEndpointModel()} drawings={far} layoutApiRef={apiRef} />,
+      );
       await waitFor(() => expect(apiRef.current?.contentBounds()).toBeDefined());
       const bounds = apiRef.current!.contentBounds()!;
       // React Flow writes the transform imperatively as
@@ -1649,9 +1696,15 @@ describe('git-graph notation', () => {
   it('lays lanes out as unfoldable bands with commit circles, routed links and the tails overlay', async () => {
     const m = gitModel();
     // a host pin to collapse a lane must lose: a lane is a row, not a box
-    const { container } = render(<DiagramView model={m} plane="git-graph" notation="git-graph" pins={{ master: 'collapsed' }} />);
+    const { container } = render(
+      <DiagramView model={m} plane="git-graph" notation="git-graph" pins={{ master: 'collapsed' }} />,
+    );
     await waitFor(() => expect(container.querySelectorAll('.dg-lane-label')).toHaveLength(3));
-    expect([...container.querySelectorAll('.dg-lane-label')].map((el) => el.textContent)).toEqual(['Master', 'Hotfix', 'Nightly']);
+    expect([...container.querySelectorAll('.dg-lane-label')].map((el) => el.textContent)).toEqual([
+      'Master',
+      'Hotfix',
+      'Nightly',
+    ]);
     expect(container.querySelectorAll('.dg-circle-node')).toHaveLength(4);
     expect(container.querySelector('.dg-count')).toBeNull();
     expect(container.querySelector('.dg-canvas')?.classList.contains('dg-notation-git')).toBe(true);
@@ -1672,7 +1725,9 @@ describe('git-graph notation', () => {
     const circles = [...container.querySelectorAll('.dg-circle-node')] as HTMLElement[];
     expect(circles.some((c) => c.style.borderColor === 'rgb(123, 167, 217)')).toBe(true); // master's commits (jsdom normalizes hex to rgb, #7ba7d9)
     const strokes = await waitFor(() => {
-      const els = [...container.querySelectorAll('path.react-flow__edge-path')].map((p) => p.getAttribute('style') ?? '');
+      const els = [...container.querySelectorAll('path.react-flow__edge-path')].map(
+        (p) => p.getAttribute('style') ?? '',
+      );
       if (els.length === 0) throw new Error('edges not rendered');
       return els;
     });
@@ -1728,7 +1783,7 @@ describe('git-graph notation', () => {
         return el.getAttribute('d') ?? '';
       });
 
-    it('draws the layout\'s route by default: the long edge bends around the box in its way', async () => {
+    it("draws the layout's route by default: the long edge bends around the box in its way", async () => {
       const { container } = render(<DiagramView model={chain()} />);
       await screen.findByText('a');
       const long = await waitFor(async () => {
@@ -1799,7 +1854,7 @@ describe('git-graph notation', () => {
     expect(empty?.style.width).toBe(full?.style.width);
   });
 
-  it('pins a dragged lane\'s descendant commits too, so their routed links fall back', async () => {
+  it("pins a dragged lane's descendant commits too, so their routed links fall back", async () => {
     // master: 1.0 -> 2.0 (its own commit link); nightly: n1 -> n2 (from 1.0, its
     // own commit link) — an independent lane whose link never touches master.
     const m = model('g3');
@@ -1826,7 +1881,9 @@ describe('git-graph notation', () => {
       if (el === null) throw new Error('master commit link not rendered');
       return el;
     });
-    const nightlyLink = container.querySelector('[data-testid="rf__edge-nightly-1=>nightly-2:"] path.react-flow__edge-path');
+    const nightlyLink = container.querySelector(
+      '[data-testid="rf__edge-nightly-1=>nightly-2:"] path.react-flow__edge-path',
+    );
     expect(nightlyLink).not.toBeNull();
     // master's lane is dragged (pinned) — its commits move with it, so their
     // precomputed route is stale: falls back to a floating (bezier, 'C') path.
@@ -1923,7 +1980,7 @@ describe('activity diagrams', () => {
     expect(await pathOf('act3=>act4:')).not.toContain('C');
   });
 
-  it('a lane-less frame renders at one empty band\'s footprint, not its label size', async () => {
+  it("a lane-less frame renders at one empty band's footprint, not its label size", async () => {
     const frameOnly: DiagramModel = {
       version: 1,
       id: 'frame-only',
@@ -1940,7 +1997,9 @@ describe('activity diagrams', () => {
       if (w === null) throw new Error('frame not rendered');
       return w;
     });
-    await waitFor(() => expect(wrapper.style.width).toBe(`${ACTIVITY_LAYOUT.TITLE_STRIP_W + ACTIVITY_LAYOUT.LANE_MIN_W}px`));
+    await waitFor(() =>
+      expect(wrapper.style.width).toBe(`${ACTIVITY_LAYOUT.TITLE_STRIP_W + ACTIVITY_LAYOUT.LANE_MIN_W}px`),
+    );
     expect(wrapper.style.height).toBe(`${ACTIVITY_LAYOUT.LANE_MIN_H}px`);
   });
 
@@ -1978,14 +2037,26 @@ describe('activity diagrams', () => {
 /** a threat model: one threatened node inside a boundary, one clean node, and a
  * threatened flow between them — the three note cases in one picture */
 const threatened: DiagramModel = {
-  version: 1, id: 'tm', name: 'tm', notation: 'threat-model', layers: [], planes: [],
+  version: 1,
+  id: 'tm',
+  name: 'tm',
+  notation: 'threat-model',
+  layers: [],
+  planes: [],
   nodes: [
-    { id: 'web', name: 'Web app', type: 'tm-process', threats: [{ id: 't1', category: 'S', title: 'Spoofed session' }] },
+    {
+      id: 'web',
+      name: 'Web app',
+      type: 'tm-process',
+      threats: [{ id: 't1', category: 'S', title: 'Spoofed session' }],
+    },
     { id: 'db', name: 'Orders DB', type: 'tm-store' },
     { id: 'dmz', name: 'DMZ', type: 'tm-boundary' },
   ],
   containment: [{ parent: 'dmz', child: 'web' }],
-  relations: [{ id: 'f', from: 'web', to: 'db', kind: 'data-flow', threats: [{ id: 't1', category: 'I', title: 'Plain-text' }] }],
+  relations: [
+    { id: 'f', from: 'web', to: 'db', kind: 'data-flow', threats: [{ id: 't1', category: 'I', title: 'Plain-text' }] },
+  ],
 };
 
 /** a node's React Flow wrapper, once async layout has produced it. A plain
@@ -2015,8 +2086,18 @@ const measureNotes = (width: number, height: number): (() => void) => {
   };
   const isNote = (el: HTMLElement) => el.getAttribute('data-id')?.startsWith('note:') === true;
   Object.defineProperties(proto, {
-    offsetWidth: { get(this: HTMLElement) { return isNote(this) ? width : 800; }, configurable: true },
-    offsetHeight: { get(this: HTMLElement) { return isNote(this) ? height : 600; }, configurable: true },
+    offsetWidth: {
+      get(this: HTMLElement) {
+        return isNote(this) ? width : 800;
+      },
+      configurable: true,
+    },
+    offsetHeight: {
+      get(this: HTMLElement) {
+        return isNote(this) ? height : 600;
+      },
+      configurable: true,
+    },
   });
   return () => Object.defineProperties(proto, was);
 };
@@ -2073,7 +2154,13 @@ describe('threat notes', () => {
       ...threatened,
       relations: [
         ...threatened.relations,
-        { id: 'g', from: 'web', to: 'db', kind: 'data-flow', threats: [{ id: 't1', category: 'T', title: 'Replayed write' }] },
+        {
+          id: 'g',
+          from: 'web',
+          to: 'db',
+          kind: 'data-flow',
+          threats: [{ id: 't1', category: 'T', title: 'Replayed write' }],
+        },
       ],
     };
     // every bubble in play is OPEN here, the bundle's constituents included, so
@@ -2152,7 +2239,9 @@ describe('threat notes', () => {
 
   it('edit mode: the badge asks the host to save the state and draws nothing by itself', async () => {
     const onToggleNote = vi.fn();
-    const { container } = render(<DiagramView model={threatened} mode="edit" edit={{ onToggleNote }} pins={{ dmz: 'expanded' }} />);
+    const { container } = render(
+      <DiagramView model={threatened} mode="edit" edit={{ onToggleNote }} pins={{ dmz: 'expanded' }} />,
+    );
     const web = await rfNode(container, 'web');
     fireEvent.click(within(web).getByRole('button', { name: '1 open of 1 threat — show' }));
     expect(onToggleNote).toHaveBeenCalledWith({ node: 'web' }, true);
@@ -2176,7 +2265,9 @@ describe('threat notes', () => {
     const web = await rfNode(container, 'web');
     fireEvent.click(within(web).getByRole('button', { name: '1 open of 1 threat — show' }));
     await rfNode(container, 'note:node:web');
-    rerender(<DiagramView model={threatened} pins={{ dmz: 'expanded' }} mode="edit" edit={{ onToggleNote: vi.fn() }} />);
+    rerender(
+      <DiagramView model={threatened} pins={{ dmz: 'expanded' }} mode="edit" edit={{ onToggleNote: vi.fn() }} />,
+    );
     await waitFor(() => expect(container.querySelector('[data-id="note:node:web"]')).toBeNull());
   });
 
@@ -2218,7 +2309,10 @@ describe('threat notes', () => {
         const tip = { x: at.x + Number(m[1]), y: at.y + Number(m[2]) };
         expect(Math.hypot(tip.x - chip.x, tip.y - chip.y)).toBeCloseTo(BADGE_R + 2, 3);
         // and clear of the chip's pill: no candidate puts the bubble over it
-        expect(at.y + estimateNoteHeight('Web app → Orders DB', threatened.relations[0]!.threats!, false) <= chip.y - BADGE_R || at.x + NOTE_WIDTH <= chip.x - BADGE_R).toBe(true);
+        expect(
+          at.y + estimateNoteHeight('Web app → Orders DB', threatened.relations[0]!.threats!, false) <=
+            chip.y - BADGE_R || at.x + NOTE_WIDTH <= chip.x - BADGE_R,
+        ).toBe(true);
       });
       a.unmount();
       const b = render(<DiagramView model={threatened} layout={allOpen({ 'relation:f': { dx: -110, dy: 60 } })} />);
@@ -2239,7 +2333,11 @@ describe('threat notes', () => {
     // automatic spot would have changed. Parented like its element, so the
     // offset holds inside a container too.
     const { container } = render(
-      <DiagramView model={threatened} layout={allOpen({ 'node:web': { dx: 40, dy: 30 } })} pins={{ dmz: 'expanded' }} />,
+      <DiagramView
+        model={threatened}
+        layout={allOpen({ 'node:web': { dx: 40, dy: 30 } })}
+        pins={{ dmz: 'expanded' }}
+      />,
     );
     const moved = xyOf(await rfNode(container, 'note:node:web'));
     const element = xyOf(await rfNode(container, 'web'));
@@ -2259,7 +2357,11 @@ describe('threat notes', () => {
   it('edit mode: editThreatRequest opens that row; + and retitle reach the host', async () => {
     const onAddThreat = vi.fn();
     const onRetitleThreat = vi.fn();
-    const edit = { onAddThreat, onRetitleThreat, editThreatRequest: { target: { node: 'web' } as ThreatTarget, id: 't1', nonce: 1 } };
+    const edit = {
+      onAddThreat,
+      onRetitleThreat,
+      editThreatRequest: { target: { node: 'web' } as ThreatTarget, id: 't1', nonce: 1 },
+    };
     const { container } = render(<DiagramView model={threatened} layout={allOpen()} mode="edit" edit={edit} />);
     const input = (await screen.findByLabelText('Rename threat')) as HTMLInputElement;
     expect(input.value).toBe('Spoofed session');
@@ -2375,7 +2477,12 @@ describe('threat notes', () => {
 
 describe('comment notes', () => {
   const commented: DiagramModel = {
-    version: 1, id: 'd', name: 'd', layers: [], planes: [], containment: [],
+    version: 1,
+    id: 'd',
+    name: 'd',
+    layers: [],
+    planes: [],
+    containment: [],
     nodes: [
       { id: 'a', name: 'A', comments: [{ id: 'c1', text: 'Remark on A' }] },
       { id: 'b', name: 'B', links: [{ label: 'Doc', url: 'https://x' }] },
@@ -2384,8 +2491,16 @@ describe('comment notes', () => {
     relations: [{ id: 'r', from: 'a', to: 'b', kind: 'sync', comments: [{ id: 'c1', text: 'Remark on r' }] }],
   };
   const open = (): LayoutOverlay => ({
-    version: 1, planes: {},
-    notes: { [layoutPlaneKey(commented, undefined)]: { 'node:a': { dx: 0, dy: 0, open: true }, 'node:b': { dx: 0, dy: 0, open: true }, 'relation:r': { dx: 0, dy: 0, open: true }, 'node:c': { dx: 0, dy: 0, open: true } } },
+    version: 1,
+    planes: {},
+    notes: {
+      [layoutPlaneKey(commented, undefined)]: {
+        'node:a': { dx: 0, dy: 0, open: true },
+        'node:b': { dx: 0, dy: 0, open: true },
+        'relation:r': { dx: 0, dy: 0, open: true },
+        'node:c': { dx: 0, dy: 0, open: true },
+      },
+    },
   });
   it('derives a bubble for a commented node, a linked node and a commented relation, none for a bare one', async () => {
     const { container } = render(<DiagramView model={commented} layout={open()} />);
@@ -2410,11 +2525,17 @@ describe('comment notes', () => {
     expect((await rfNode(plain.container, 'note:node:a')).querySelector('.dg-note-add')).toBeNull();
     plain.unmount();
     const tm = render(
-      <DiagramView model={commented} layout={open()} notation="threat-model" mode="edit" edit={{ onAddThreat: vi.fn() }} />,
+      <DiagramView
+        model={commented}
+        layout={open()}
+        notation="threat-model"
+        mode="edit"
+        edit={{ onAddThreat: vi.fn() }}
+      />,
     );
     expect((await rfNode(tm.container, 'note:node:a')).querySelector('.dg-note-add')).not.toBeNull();
   });
-  it('hands the host\'s onOpenLink to the bubble', async () => {
+  it("hands the host's onOpenLink to the bubble", async () => {
     const onOpenLink = vi.fn();
     const { container } = render(<DiagramView model={commented} layout={open()} onOpenLink={onOpenLink} />);
     fireEvent.click((await rfNode(container, 'note:node:b')).querySelector('a.dg-note-link')!);
@@ -2445,9 +2566,11 @@ describe('plan notation', () => {
     await waitFor(() => expect(container.querySelector('.dg-time-axis')).not.toBeNull());
     expect(container.querySelector('.dg-time-axis-today')).toBeNull();
   });
-  it('reports each moved node\'s displacement from the arranged geometry alongside its position', async () => {
+  it("reports each moved node's displacement from the arranged geometry alongside its position", async () => {
     const onNodesMoved = vi.fn();
-    const { container } = render(<DiagramView model={plan()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved }} />);
+    const { container } = render(
+      <DiagramView model={plan()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved }} />,
+    );
     const dep = await waitFor(() => {
       const el = container.querySelector<HTMLElement>('.react-flow__node[data-id="dep"]');
       if (el === null) throw new Error('not yet');
@@ -2477,9 +2600,15 @@ describe('plan notation', () => {
     const m = model('p');
     const p = m.plan();
     p.person('alice', 'Alice Ng');
-    p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' }).zone('design', { name: 'Design', start: '2026-01-05', end: '2026-01-09' });
+    p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' }).zone('design', {
+      name: 'Design',
+      start: '2026-01-05',
+      end: '2026-01-09',
+    });
     p.event('m1', { name: 'M1', at: '2026-01-15' });
-    const { container } = render(<DiagramView model={m.toJSON()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn() }} />);
+    const { container } = render(
+      <DiagramView model={m.toJSON()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn() }} />,
+    );
     const rfNode = (id: string) =>
       waitFor(() => {
         const el = container.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
@@ -2590,7 +2719,9 @@ describe('the plan hit mark never leaks outside the plan notation', () => {
     const { container } = render(<DiagramView model={m.toJSON()} />);
     await screen.findByText('a');
     fireEvent.click(screen.getByText('a'));
-    await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="person"] .dg-focus-node-dim')).toBeNull());
+    await waitFor(() =>
+      expect(container.querySelector('.react-flow__node[data-id="person"] .dg-focus-node-dim')).toBeNull(),
+    );
     expect(container.querySelector('.react-flow__node[data-id="person"] [data-plan-hit]')).toBeNull();
     expect(container.querySelector('[data-plan-hit]')).toBeNull();
   });
@@ -2623,7 +2754,13 @@ describe('a droppable node is not clamped to its parent', () => {
 
   it('a plain node nested in a zone carries no extent on a plan profile', async () => {
     const { container } = render(
-      <DiagramView model={nestedDropModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+      <DiagramView
+        model={nestedDropModel()}
+        plane="plan"
+        notation="plan"
+        mode="edit"
+        edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }}
+      />,
     );
     await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="task"]')).not.toBeNull());
     const task = nodesOf().find((n) => n.id === 'task');
@@ -2632,7 +2769,13 @@ describe('a droppable node is not clamped to its parent', () => {
 
   it('a nested zone still carries extent: parent — the exemption is for a droppable node, not every child', async () => {
     const { container } = render(
-      <DiagramView model={nestedDropModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+      <DiagramView
+        model={nestedDropModel()}
+        plane="plan"
+        notation="plan"
+        mode="edit"
+        edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }}
+      />,
     );
     await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="design"]')).not.toBeNull());
     const design = nodesOf().find((n) => n.id === 'design');
@@ -2641,7 +2784,13 @@ describe('a droppable node is not clamped to its parent', () => {
 
   it('a nested node on a non-plan fixture still carries extent: parent', async () => {
     const { container } = render(
-      <DiagramView model={gitNestedModel()} plane="git-graph" notation="git-graph" mode="edit" edit={{ onNodesMoved: vi.fn() }} />,
+      <DiagramView
+        model={gitNestedModel()}
+        plane="git-graph"
+        notation="git-graph"
+        mode="edit"
+        edit={{ onNodesMoved: vi.fn() }}
+      />,
     );
     await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="master-1"]')).not.toBeNull());
     const commit = nodesOf().find((n) => n.id === 'master-1');
@@ -2699,13 +2848,15 @@ describe('drop-to-assign', () => {
 
   type RfNode = { id: string; position: { x: number; y: number }; parentId?: string };
   const nodeOf = (id: string): RfNode => dragCapture.instance.getNodes().find((n: RfNode) => n.id === id);
-  const absOf = (id: string) => dragCapture.instance.getInternalNode(id)!.internals.positionAbsolute as { x: number; y: number };
+  const absOf = (id: string) =>
+    dragCapture.instance.getInternalNode(id)!.internals.positionAbsolute as { x: number; y: number };
 
   /** the target node exists AND has been measured — safe to read positions off */
   const settle = (container: HTMLElement, id: string) =>
     waitFor(() => {
       if (container.querySelector(`.react-flow__node[data-id="${id}"]`) === null) throw new Error(`${id} not yet`);
-      if (dragCapture.instance?.getInternalNode(id)?.internals.positionAbsolute === undefined) throw new Error(`${id} not measured`);
+      if (dragCapture.instance?.getInternalNode(id)?.internals.positionAbsolute === undefined)
+        throw new Error(`${id} not measured`);
     });
 
   /**
@@ -2733,7 +2884,13 @@ describe('drop-to-assign', () => {
     const onNodesMoved = vi.fn();
     const onDropInto = vi.fn();
     const { container } = render(
-      <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+      <DiagramView
+        model={assignModel()}
+        plane="plan"
+        notation="plan"
+        mode="edit"
+        edit={{ onNodesMoved, onDropInto }}
+      />,
     );
     await settle(container, 'q');
     await settle(container, 'alice');
@@ -2752,7 +2909,13 @@ describe('drop-to-assign', () => {
     const onNodesMoved = vi.fn();
     const onDropInto = vi.fn();
     const { container } = render(
-      <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+      <DiagramView
+        model={assignModel()}
+        plane="plan"
+        notation="plan"
+        mode="edit"
+        edit={{ onNodesMoved, onDropInto }}
+      />,
     );
     await settle(container, 'q');
     await settle(container, 'alice');
@@ -2773,7 +2936,13 @@ describe('drop-to-assign', () => {
     const onNodesMoved = vi.fn();
     const onDropInto = vi.fn();
     const { container } = render(
-      <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+      <DiagramView
+        model={assignModel()}
+        plane="plan"
+        notation="plan"
+        mode="edit"
+        edit={{ onNodesMoved, onDropInto }}
+      />,
     );
     await settle(container, 'q');
     await settle(container, 'task');
@@ -2795,7 +2964,13 @@ describe('drop-to-assign', () => {
     const onNodesMoved = vi.fn();
     const onDropInto = vi.fn();
     const { container } = render(
-      <DiagramView model={nestedPlainModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+      <DiagramView
+        model={nestedPlainModel()}
+        plane="plan"
+        notation="plan"
+        mode="edit"
+        edit={{ onNodesMoved, onDropInto }}
+      />,
     );
     await settle(container, 'a');
     await settle(container, 'b');
@@ -2830,7 +3005,13 @@ describe('drop-to-assign', () => {
     const onNodesMoved = vi.fn();
     const onDropInto = vi.fn();
     const { container } = render(
-      <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+      <DiagramView
+        model={assignModel()}
+        plane="plan"
+        notation="plan"
+        mode="edit"
+        edit={{ onNodesMoved, onDropInto }}
+      />,
     );
     await settle(container, 'q');
     await settle(container, 'design');
@@ -2853,7 +3034,13 @@ describe('drop-to-assign', () => {
     const onNodesMoved = vi.fn();
     const onDropInto = vi.fn();
     const { container } = render(
-      <DiagramView model={twoZonesModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+      <DiagramView
+        model={twoZonesModel()}
+        plane="plan"
+        notation="plan"
+        mode="edit"
+        edit={{ onNodesMoved, onDropInto }}
+      />,
     );
     await settle(container, 'q1');
     await settle(container, 'q2');
@@ -2889,7 +3076,8 @@ describe('drop-to-assign', () => {
   // drop() helper already derives from flowToScreenPosition.
   describe('the drag-over outline', () => {
     const flagOf = (id: string): boolean | undefined =>
-      (dragCapture.instance.getNodes().find((n: RfNode) => n.id === id)?.data as { dropTarget?: boolean } | undefined)?.dropTarget;
+      (dragCapture.instance.getNodes().find((n: RfNode) => n.id === id)?.data as { dropTarget?: boolean } | undefined)
+        ?.dropTarget;
     // data-drop-target lands on DiagramNode's own root (.dg-group/.dg-node),
     // a child of React Flow's `.react-flow__node` wrapper, not the wrapper
     // itself — same reason the CSS rule (.dg-notation-plan [data-drop-target])
@@ -2903,7 +3091,13 @@ describe('drop-to-assign', () => {
 
     it('a single actor drag over a zone flags it (data + DOM); moving off clears the flag', async () => {
       const { container } = render(
-        <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+        <DiagramView
+          model={assignModel()}
+          plane="plan"
+          notation="plan"
+          mode="edit"
+          edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }}
+        />,
       );
       await settle(container, 'q');
       await settle(container, 'alice');
@@ -2923,7 +3117,13 @@ describe('drop-to-assign', () => {
 
     it('a second frame over the same zone does not touch the nodes array — the change-only guard', async () => {
       const { container } = render(
-        <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+        <DiagramView
+          model={assignModel()}
+          plane="plan"
+          notation="plan"
+          mode="edit"
+          edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }}
+        />,
       );
       await settle(container, 'q');
       await settle(container, 'alice');
@@ -2943,7 +3143,13 @@ describe('drop-to-assign', () => {
 
     it('a multi-node drag sets no drop-target flag', async () => {
       const { container } = render(
-        <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+        <DiagramView
+          model={assignModel()}
+          plane="plan"
+          notation="plan"
+          mode="edit"
+          edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }}
+        />,
       );
       await settle(container, 'q');
       await settle(container, 'alice');
@@ -2959,7 +3165,13 @@ describe('drop-to-assign', () => {
 
     it('onNodeDragStop clears the flag', async () => {
       const { container } = render(
-        <DiagramView model={assignModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+        <DiagramView
+          model={assignModel()}
+          plane="plan"
+          notation="plan"
+          mode="edit"
+          edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }}
+        />,
       );
       await settle(container, 'q');
       await settle(container, 'alice');
@@ -2975,13 +3187,22 @@ describe('drop-to-assign', () => {
 
     it('onNodeDrag is undefined on a non-plan fixture, and in view mode', async () => {
       const { container: editContainer } = render(
-        <DiagramView model={containerEndpointModel()} mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+        <DiagramView
+          model={containerEndpointModel()}
+          mode="edit"
+          edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }}
+        />,
       );
       await settle(editContainer, 'gw');
       expect(dragCapture.props['onNodeDrag']).toBeUndefined();
 
       const { container: viewContainer } = render(
-        <DiagramView model={assignModel()} plane="plan" notation="plan" edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }} />,
+        <DiagramView
+          model={assignModel()}
+          plane="plan"
+          notation="plan"
+          edit={{ onNodesMoved: vi.fn(), onDropInto: vi.fn() }}
+        />,
       );
       await settle(viewContainer, 'q');
       expect(dragCapture.props['onNodeDrag']).toBeUndefined();
@@ -2990,7 +3211,13 @@ describe('drop-to-assign', () => {
     it('an actor dragged over a zone it already holds a role on gets no outline and no drop; over another zone, both', async () => {
       const onDropInto = vi.fn();
       const { container } = render(
-        <DiagramView model={ownedZoneModel()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved: vi.fn(), onDropInto }} />,
+        <DiagramView
+          model={ownedZoneModel()}
+          plane="plan"
+          notation="plan"
+          mode="edit"
+          edit={{ onNodesMoved: vi.fn(), onDropInto }}
+        />,
       );
       await settle(container, 'owned');
       await settle(container, 'other');

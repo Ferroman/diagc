@@ -183,12 +183,7 @@ export function analyzeLeverage(edges: readonly LoopEdgeInput[], target: string)
       loopCount: loopCount.get(id) ?? 0,
       path: pathTo(id),
     }))
-    .sort(
-      (a, b) =>
-        a.distance - b.distance ||
-        b.loopCount - a.loopCount ||
-        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
-    );
+    .sort((a, b) => a.distance - b.distance || b.loopCount - a.loopCount || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
   const hubs: LeverageHub[] = [...loopCount.entries()]
     .filter(([id]) => id !== target)
@@ -243,11 +238,7 @@ function loopKindFrom(a: LeverageSign, b: LeverageSign): LoopKind {
  * when both exist, the kind of the feedback loop the two shortest paths close.
  * Structural only (a CLD has no numbers).
  */
-export function analyzeDependency(
-  edges: readonly LoopEdgeInput[],
-  from: string,
-  to: string,
-): DependencyReport {
+export function analyzeDependency(edges: readonly LoopEdgeInput[], from: string, to: string): DependencyReport {
   const arcs = collapse(edges);
   const forward = directionOf(arcs, from, to);
   const backward = directionOf(arcs, to, from);

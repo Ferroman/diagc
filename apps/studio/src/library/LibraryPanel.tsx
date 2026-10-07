@@ -95,7 +95,14 @@ function groupBlocks(categories: LibraryCategory[]): { group?: string; cats: Lib
 /** A small preview: the icon image for image entries, else a color swatch. */
 function EntryPreview({ entry, assetBase }: { entry: LibraryEntry; assetBase: string }) {
   if (entry.template.image !== undefined) {
-    return <img className="lib-thumb" src={entryThumbUrl(assetBase, entry.template.image)} alt={entry.name} draggable={false} />;
+    return (
+      <img
+        className="lib-thumb"
+        src={entryThumbUrl(assetBase, entry.template.image)}
+        alt={entry.name}
+        draggable={false}
+      />
+    );
   }
   if (entry.template.shape !== undefined) {
     // Preview a shape entry as its silhouette, tinted like the placed node (mask,
@@ -245,112 +252,112 @@ export function LibraryPanel({
       />
       {blocks.map((block) => {
         const renderCategory = (cat: LibraryCategory) => {
-        const entries = byCategory.get(cat.id) ?? [];
-        // hide an empty builtin section while searching, but keep an empty user
-        // category visible so you can import into it
-        if (entries.length === 0 && (searching || cat.builtin === true)) return null;
-        // A search expands the sections that matched, so hits are never hidden
-        // behind a collapsed header — unless you closed that one yourself.
-        const open = toggled[cat.id] ?? (searching || entries.length <= AUTO_COLLAPSE_ABOVE);
-        return (
-          <section key={cat.id} className="lib-category">
-            <div className="lib-cat-head">
-              <h4 className="lib-cat-name">
-                <button
-                  type="button"
-                  className="lib-cat-toggle"
-                  // Name is the section, state is aria-expanded; the visible
-                  // count stays out of the name so it doesn't read as "AWS40".
-                  aria-label={cat.name}
-                  aria-expanded={open}
-                  title={`${open ? 'Collapse' : 'Expand'} ${cat.name}`}
-                  onClick={() => setView((v) => ({ ...v, toggled: { ...v.toggled, [cat.id]: !open } }))}
-                >
-                  <span className="lib-cat-caret" aria-hidden="true">
-                    {open ? '▾' : '▸'}
-                  </span>
-                  <span className="lib-cat-label">{cat.name}</span>
-                  <span className="lib-cat-count">{entries.length}</span>
-                </button>
-              </h4>
-              {cat.builtin !== true && (
-                <span className="lib-cat-actions">
-                  {onImportIcon !== undefined && (
-                    <label className="chip icon-btn" title={`Import icon into ${cat.name}`}>
-                      Icon
-                      <input
-                        type="file"
-                        accept="image/*"
-                        hidden
-                        aria-label={`Import icon into ${cat.name}`}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file !== undefined) onImportIcon(cat.id, file);
-                          e.target.value = '';
-                        }}
-                      />
-                    </label>
-                  )}
-                  {onImportShape !== undefined && (
-                    <label className="chip icon-btn" title={`Import shape into ${cat.name}`}>
-                      Shape
-                      <input
-                        type="file"
-                        accept=".svg,image/svg+xml"
-                        hidden
-                        aria-label={`Import shape into ${cat.name}`}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file !== undefined) onImportShape(cat.id, file);
-                          e.target.value = '';
-                        }}
-                      />
-                    </label>
-                  )}
-                  {onDeleteCategory !== undefined && (
-                    <button
-                      type="button"
-                      className="chip icon-btn"
-                      aria-label={`Delete category ${cat.name}`}
-                      title={`Delete category ${cat.name}`}
-                      onClick={() =>
-                        void getHost()
-                          .confirmDialog(`Delete category '${cat.name}' and its imported icons?`)
-                          .then((ok) => {
-                            if (ok) onDeleteCategory(cat.id);
-                          })
-                      }
-                    >
-                      ✕
-                    </button>
-                  )}
-                </span>
-              )}
-            </div>
-            {open && (
-              <div className="lib-grid">
-                {entries.map((entry) => (
+          const entries = byCategory.get(cat.id) ?? [];
+          // hide an empty builtin section while searching, but keep an empty user
+          // category visible so you can import into it
+          if (entries.length === 0 && (searching || cat.builtin === true)) return null;
+          // A search expands the sections that matched, so hits are never hidden
+          // behind a collapsed header — unless you closed that one yourself.
+          const open = toggled[cat.id] ?? (searching || entries.length <= AUTO_COLLAPSE_ABOVE);
+          return (
+            <section key={cat.id} className="lib-category">
+              <div className="lib-cat-head">
+                <h4 className="lib-cat-name">
                   <button
-                    key={entry.id}
                     type="button"
-                    className="lib-entry"
-                    aria-label={applying ? `Apply ${entry.name}` : `Place ${entry.name}`}
-                    title={applying ? `Apply ${entry.name} to ${applyTarget!.name}` : `Place ${entry.name}`}
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData(LIBRARY_ENTRY_DND_TYPE, entry.id);
-                      e.dataTransfer.effectAllowed = 'copy';
-                    }}
-                    onClick={() => (applying ? onApply!(entry) : onPlace(entry))}
+                    className="lib-cat-toggle"
+                    // Name is the section, state is aria-expanded; the visible
+                    // count stays out of the name so it doesn't read as "AWS40".
+                    aria-label={cat.name}
+                    aria-expanded={open}
+                    title={`${open ? 'Collapse' : 'Expand'} ${cat.name}`}
+                    onClick={() => setView((v) => ({ ...v, toggled: { ...v.toggled, [cat.id]: !open } }))}
                   >
-                    <EntryPreview entry={entry} assetBase={assetBase} />
-                    <span className="lib-entry-name">{entry.name}</span>
+                    <span className="lib-cat-caret" aria-hidden="true">
+                      {open ? '▾' : '▸'}
+                    </span>
+                    <span className="lib-cat-label">{cat.name}</span>
+                    <span className="lib-cat-count">{entries.length}</span>
                   </button>
-                ))}
+                </h4>
+                {cat.builtin !== true && (
+                  <span className="lib-cat-actions">
+                    {onImportIcon !== undefined && (
+                      <label className="chip icon-btn" title={`Import icon into ${cat.name}`}>
+                        Icon
+                        <input
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          aria-label={`Import icon into ${cat.name}`}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file !== undefined) onImportIcon(cat.id, file);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                    )}
+                    {onImportShape !== undefined && (
+                      <label className="chip icon-btn" title={`Import shape into ${cat.name}`}>
+                        Shape
+                        <input
+                          type="file"
+                          accept=".svg,image/svg+xml"
+                          hidden
+                          aria-label={`Import shape into ${cat.name}`}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file !== undefined) onImportShape(cat.id, file);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                    )}
+                    {onDeleteCategory !== undefined && (
+                      <button
+                        type="button"
+                        className="chip icon-btn"
+                        aria-label={`Delete category ${cat.name}`}
+                        title={`Delete category ${cat.name}`}
+                        onClick={() =>
+                          void getHost()
+                            .confirmDialog(`Delete category '${cat.name}' and its imported icons?`)
+                            .then((ok) => {
+                              if (ok) onDeleteCategory(cat.id);
+                            })
+                        }
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </span>
+                )}
               </div>
-            )}
-          </section>
-        );
+              {open && (
+                <div className="lib-grid">
+                  {entries.map((entry) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      className="lib-entry"
+                      aria-label={applying ? `Apply ${entry.name}` : `Place ${entry.name}`}
+                      title={applying ? `Apply ${entry.name} to ${applyTarget!.name}` : `Place ${entry.name}`}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData(LIBRARY_ENTRY_DND_TYPE, entry.id);
+                        e.dataTransfer.effectAllowed = 'copy';
+                      }}
+                      onClick={() => (applying ? onApply!(entry) : onPlace(entry))}
+                    >
+                      <EntryPreview entry={entry} assetBase={assetBase} />
+                      <span className="lib-entry-name">{entry.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+          );
         };
         if (block.group === undefined) return renderCategory(block.cats[0]!);
         const label = block.group;

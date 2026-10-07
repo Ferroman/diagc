@@ -68,7 +68,10 @@ export function ThreatModelPanel({ model, plane, onSelect }: ThreatModelPanelPro
   // The threat codes are generic (any notation may carry threats), tm- ones are
   // this notation's own; both belong to the reviewer looking at this panel.
   const issues = useMemo(
-    () => validate(model).filter((i) => i.code.startsWith('threat-') || i.code.startsWith('tm-') || i.code === 'invalid-threats'),
+    () =>
+      validate(model).filter(
+        (i) => i.code.startsWith('threat-') || i.code.startsWith('tm-') || i.code === 'invalid-threats',
+      ),
     [model],
   );
 
@@ -112,7 +115,10 @@ export function ThreatModelPanel({ model, plane, onSelect }: ThreatModelPanelPro
                     header and a crossing read alike */}
                 <div className="so-answers tm-list">
                   <button type="button" onClick={() => onSelect(g.selection)}>
-                    {g.name} <span className="so-hint">{open} / {total}</span>
+                    {g.name}{' '}
+                    <span className="so-hint">
+                      {open} / {total}
+                    </span>
                   </button>
                 </div>
                 <ul className="tm-threats">

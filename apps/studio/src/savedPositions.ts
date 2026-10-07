@@ -47,7 +47,9 @@ export function withSavedPositions(
   const base: LayoutOverlay = layout ?? { version: 1, planes: {} };
   // a save of nothing but folds or labels must not leave an empty position bucket behind
   const positioned: LayoutOverlay =
-    Object.keys(moved).length === 0 ? base : { ...base, planes: { ...base.planes, [key]: { ...base.planes[key], ...moved } } };
+    Object.keys(moved).length === 0
+      ? base
+      : { ...base, planes: { ...base.planes, [key]: { ...base.planes[key], ...moved } } };
   const placed = withEdgeLabelPlacements(positioned, key, labels);
   return unfolded === undefined ? placed : withUnfolded(placed, key, unfolded);
 }

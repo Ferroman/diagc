@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { badgeCenter, estimateNoteHeight, lineObstacles, NOTE_GAP, obstaclesOf, placeNote, type Rect } from './note-place';
+import {
+  badgeCenter,
+  estimateNoteHeight,
+  lineObstacles,
+  NOTE_GAP,
+  obstaclesOf,
+  placeNote,
+  type Rect,
+} from './note-place';
 
 const W = 220;
 // the element: a 120×60 box at (300, 300), badge at its top-left corner
@@ -26,7 +34,10 @@ describe('placeNote', () => {
   it('takes the next candidate when the first would cover a neighbour', () => {
     // a wide bar right above the element: everything "above" is taken
     const bar: Rect = { x: 0, y: 200, width: 1000, height: 90 };
-    const obstacles = obstaclesOf([{ rect: box, kind: 'box' }, { rect: bar, kind: 'box' }]);
+    const obstacles = obstaclesOf([
+      { rect: box, kind: 'box' },
+      { rect: bar, kind: 'box' },
+    ]);
     const at = placeNote(badge, box, { width: W, height: 80 }, obstacles);
     expect(overlap(at, W, 80, bar)).toBe(0);
     expect(overlap(at, W, 80, box)).toBe(0);
@@ -67,7 +78,10 @@ describe('placeNote', () => {
   it('a container blocks only its header band and border — a bubble inside it is free', () => {
     const group: Rect = { x: 100, y: 100, width: 600, height: 500 };
     const inner: Rect = { x: 400, y: 300, width: 120, height: 60 };
-    const obstacles = obstaclesOf([{ rect: group, kind: 'group' }, { rect: inner, kind: 'box' }]);
+    const obstacles = obstaclesOf([
+      { rect: group, kind: 'group' },
+      { rect: inner, kind: 'box' },
+    ]);
     const at = placeNote(badgeCenter(inner, 'box'), inner, { width: W, height: 80 }, obstacles);
     // above-left of the badge, well inside the group
     expect(at.x).toBeGreaterThan(group.x);

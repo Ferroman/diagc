@@ -73,7 +73,10 @@ describe('useLoopOverlay', () => {
     // a stand-in profile with a `related` hook, the shape a plan's is: it
     // adds 'z' to whatever node is selected, with no edge behind it at all
     const related = notationProfile('causal-loop');
-    const withRelated = { ...related, related: (_m: DiagramModel, _p: string | undefined, id: string) => (id === 'a' ? ['z'] : []) };
+    const withRelated = {
+      ...related,
+      related: (_m: DiagramModel, _p: string | undefined, id: string) => (id === 'a' ? ['z'] : []),
+    };
     const { result } = renderHook((p: LoopOverlayInput) => useLoopOverlay(p), {
       initialProps: inputFor({ profile: withRelated }),
     });

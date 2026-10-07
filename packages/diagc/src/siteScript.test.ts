@@ -159,9 +159,11 @@ describe('the landing page script', () => {
 
 describe('the script on a docs page', () => {
   beforeEach(() => {
-    const markdown = '# Docs\n\n```ts\nconst a = 1;\n```\n\n```bash\nexport A=1 # for now\n```\n\n```\nwrote 1 file for you\n```\n\n```json\n{ "a": 1 }\n```\n';
+    const markdown =
+      '# Docs\n\n```ts\nconst a = 1;\n```\n\n```bash\nexport A=1 # for now\n```\n\n```\nwrote 1 file for you\n```\n\n```json\n{ "a": 1 }\n```\n';
     const { pages } = renderDocs({ files: new Map([['README.md', markdown]]), exists: () => true });
-    document.documentElement.innerHTML = /<html[^>]*>([\s\S]*)<\/html>/i.exec(pages.get('docs/index.html') ?? '')?.[1] ?? '';
+    document.documentElement.innerHTML =
+      /<html[^>]*>([\s\S]*)<\/html>/i.exec(pages.get('docs/index.html') ?? '')?.[1] ?? '';
     new Function(script)();
   });
 
@@ -188,7 +190,7 @@ describe('the script on a docs page', () => {
     expect($('#theme-switch').hidden).toBe(false);
   });
 
-  it("brings the marked page into view in a sidebar that is longer than the screen", () => {
+  it('brings the marked page into view in a sidebar that is longer than the screen', () => {
     // jsdom lays nothing out, so the sizes are given: a list box 800 high, and the page's
     // own entry 30 high, 1200 down the list. Centred, it sits 385 below the box's top.
     const side = $('.docs-side');

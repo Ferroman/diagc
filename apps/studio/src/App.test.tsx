@@ -78,7 +78,10 @@ describe('view-mode layout preview', () => {
         if (url === '/api/drawings') return new Response(JSON.stringify({ drawings: {} }), { status: 200 });
         // Edit starts from the raw source (Task 7); neither fixture has an
         // include, so its raw source is just its own model.
-        if (url === '/api/diagrams/sketch' && (init === undefined || init.method === undefined || init.method === 'GET')) {
+        if (
+          url === '/api/diagrams/sketch' &&
+          (init === undefined || init.method === undefined || init.method === 'GET')
+        ) {
           return new Response(JSON.stringify({ model: sketchModel }), { status: 200 });
         }
         if (url === '/api/diagrams/two' && (init === undefined || init.method === undefined || init.method === 'GET')) {
@@ -188,9 +191,7 @@ describe('view-mode layout preview', () => {
     window.location.hash = '#/two';
     fireEvent(window, new HashChangeEvent('hashchange'));
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Diagram: two' })).toBeDefined(),
-    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Diagram: two' })).toBeDefined());
     expect(screen.queryByRole('button', { name: /reset layout/i })).toBeNull();
     expect((screen.getByLabelText('Layout algorithm') as HTMLSelectElement).value).toBe('layered');
   });
@@ -219,7 +220,10 @@ describe('view-mode layout preview', () => {
         }
         if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
         if (url === '/api/drawings') return new Response(JSON.stringify({ drawings: {} }), { status: 200 });
-        if (url === '/api/diagrams/sketch' && (init === undefined || init.method === undefined || init.method === 'GET')) {
+        if (
+          url === '/api/diagrams/sketch' &&
+          (init === undefined || init.method === undefined || init.method === 'GET')
+        ) {
           await gate;
           return new Response(JSON.stringify({ model: sketchModel }), { status: 200 });
         }
@@ -237,9 +241,7 @@ describe('view-mode layout preview', () => {
     // Switch to 'two' while the sketch fetch is still pending.
     window.location.hash = '#/two';
     fireEvent(window, new HashChangeEvent('hashchange'));
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Diagram: two' })).toBeDefined(),
-    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Diagram: two' })).toBeDefined());
 
     releaseSketchFetch?.();
     // Let the now-resolved fetch's promise chain run.
@@ -341,7 +343,10 @@ describe('view-mode layout preview', () => {
         }
         if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
         if (url === '/api/drawings') return new Response(JSON.stringify({ drawings: {} }), { status: 200 });
-        if (url === '/api/diagrams/pair' && (init === undefined || init.method === undefined || init.method === 'GET')) {
+        if (
+          url === '/api/diagrams/pair' &&
+          (init === undefined || init.method === undefined || init.method === 'GET')
+        ) {
           return new Response(JSON.stringify({ model: pairModel }), { status: 200 });
         }
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -385,7 +390,10 @@ describe('drilled-in canvas tools', () => {
         if (url === '/api/drawings') return new Response(JSON.stringify({ drawings: {} }), { status: 200 });
         // Edit starts from the raw source (Task 7); drillModel has no include,
         // so its raw source is just its own model.
-        if (url === '/api/diagrams/drill' && (init === undefined || init.method === undefined || init.method === 'GET')) {
+        if (
+          url === '/api/diagrams/drill' &&
+          (init === undefined || init.method === undefined || init.method === 'GET')
+        ) {
           return new Response(JSON.stringify({ model: drillModel }), { status: 200 });
         }
         return new Response(JSON.stringify({ ok: true }), { status: 200 });

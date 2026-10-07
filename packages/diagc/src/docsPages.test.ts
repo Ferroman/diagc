@@ -71,7 +71,11 @@ describe('a page the index names twice', () => {
     ]);
     const { pages, errors } = renderDocs({ files, exists: () => true });
     expect(errors).toEqual([]);
-    expect((pages.get('docs/index.html') ?? '').match(/<aside class="docs-side">[\s\S]*?<\/aside>/)?.[0].match(/first\.html"/g)).toHaveLength(1);
+    expect(
+      (pages.get('docs/index.html') ?? '')
+        .match(/<aside class="docs-side">[\s\S]*?<\/aside>/)?.[0]
+        .match(/first\.html"/g),
+    ).toHaveLength(1);
   });
 });
 
@@ -120,7 +124,12 @@ describe('the navigation', () => {
 
   it("lists each section's pages in the index's order, with their descriptions", () => {
     expect(nav.slice(2)).toEqual([
-      { file: 'tutorials/01-first.md', title: 'Your first diagram', description: 'Zero to a picture.', section: 'Tutorials' },
+      {
+        file: 'tutorials/01-first.md',
+        title: 'Your first diagram',
+        description: 'Zero to a picture.',
+        section: 'Tutorials',
+      },
       { file: 'reference/cli.md', title: 'diagc CLI', description: 'Every command.', section: 'Reference' },
       { file: 'reference/model.md', title: 'Model', description: 'The DiagramModel types.', section: 'Reference' },
     ]);
@@ -132,7 +141,9 @@ const build = (
   given: Record<string, string>,
   exists: (repoPath: string) => boolean = () => true,
 ): { pages: Map<string, string>; errors: string[] } => {
-  const index = ['# Docs', '', '| | |', '| --- | --- |', ...Object.keys(given).map((f) => `| [${f}](${f}) | |`)].join('\n');
+  const index = ['# Docs', '', '| | |', '| --- | --- |', ...Object.keys(given).map((f) => `| [${f}](${f}) | |`)].join(
+    '\n',
+  );
   return renderDocs({ files: new Map(Object.entries({ 'README.md': index, ...given })), exists });
 };
 /** The article of one built page: the links under test are the ones the Markdown wrote. */
@@ -142,13 +153,19 @@ const CLI = '# CLI\n\n## Publish\n\n## Export\n\n## Export\n';
 
 describe('a link in a docs page', () => {
   it('to another page leads to that page, with its heading', () => {
-    const { pages, errors } = build({ 'how-to/a.md': '# A\n\n[cli](../reference/cli.md#publish)\n', 'reference/cli.md': CLI });
+    const { pages, errors } = build({
+      'how-to/a.md': '# A\n\n[cli](../reference/cli.md#publish)\n',
+      'reference/cli.md': CLI,
+    });
     expect(errors).toEqual([]);
     expect(article(pages, 'docs/how-to/a.html')).toContain('<a href="../reference/cli.html#publish">cli</a>');
   });
 
   it("to a folder's README leads to its index", () => {
-    const { pages, errors } = build({ 'how-to/a.md': '# A\n\n[docs](../README.md) [ex](../examples/README.md)\n', 'examples/README.md': '# Ex\n' });
+    const { pages, errors } = build({
+      'how-to/a.md': '# A\n\n[docs](../README.md) [ex](../examples/README.md)\n',
+      'examples/README.md': '# Ex\n',
+    });
     expect(errors).toEqual([]);
     expect(article(pages, 'docs/how-to/a.html')).toContain('<a href="../index.html">docs</a>');
     expect(article(pages, 'docs/how-to/a.html')).toContain('<a href="../examples/index.html">ex</a>');
@@ -162,17 +179,21 @@ describe('a link in a docs page', () => {
 
   it('to any other file of the repository leads to GitHub', () => {
     const { pages, errors } = build({
-      'how-to/a.md': '# A\n\n[src](../../.diagrams/src/examples/basic/starter.diagram.ts) [c](../../CONTRIBUTING.md#the-site)\n',
+      'how-to/a.md':
+        '# A\n\n[src](../../.diagrams/src/examples/basic/starter.diagram.ts) [c](../../CONTRIBUTING.md#the-site)\n',
     });
     expect(errors).toEqual([]);
     const html = article(pages, 'docs/how-to/a.html');
-    expect(html).toContain('href="https://github.com/Ferroman/diagc/blob/main/.diagrams/src/examples/basic/starter.diagram.ts"');
+    expect(html).toContain(
+      'href="https://github.com/Ferroman/diagc/blob/main/.diagrams/src/examples/basic/starter.diagram.ts"',
+    );
     expect(html).toContain('href="https://github.com/Ferroman/diagc/blob/main/CONTRIBUTING.md#the-site"');
   });
 
   it('to a heading of its own page, or to another site, is left as written', () => {
     const { pages, errors } = build({
-      'how-to/a.md': '# A\n\n## Export\n\n[e](#export) [x](https://example.org/a.md) [m](mailto:a@example.org) [p](//example.org/a.md)\n',
+      'how-to/a.md':
+        '# A\n\n## Export\n\n[e](#export) [x](https://example.org/a.md) [m](mailto:a@example.org) [p](//example.org/a.md)\n',
     });
     expect(errors).toEqual([]);
     const html = article(pages, 'docs/how-to/a.html');
@@ -183,7 +204,10 @@ describe('a link in a docs page', () => {
   });
 
   it('to an encoded heading of another page finds it under its letters', () => {
-    const { errors } = build({ 'how-to/a.md': '# A\n\n[d](b.md#di%C3%A1taxis)\n', 'how-to/b.md': '# B\n\n## Diátaxis\n' });
+    const { errors } = build({
+      'how-to/a.md': '# A\n\n[d](b.md#di%C3%A1taxis)\n',
+      'how-to/b.md': '# B\n\n## Diátaxis\n',
+    });
     expect(errors).toEqual([]);
   });
 
@@ -208,14 +232,18 @@ describe('a link in a docs page', () => {
   });
 
   it('from a page two folders deep still reaches the pictures and the index', () => {
-    const { pages, errors } = build({ 'a/b/c.md': '# C\n\n![p](../../../.diagrams/static/x.png) [up](../../README.md)\n' });
+    const { pages, errors } = build({
+      'a/b/c.md': '# C\n\n![p](../../../.diagrams/static/x.png) [up](../../README.md)\n',
+    });
     expect(errors).toEqual([]);
     expect(article(pages, 'docs/a/b/c.html')).toContain('src="../../../static/x.png"');
     expect(article(pages, 'docs/a/b/c.html')).toContain('<a href="../../index.html">up</a>');
   });
 
   it('inside a listing or a code span is text, not a link', () => {
-    const { pages, errors } = build({ 'how-to/a.md': '# A\n\nWrite `![Shop](missing.png)`:\n\n```markdown\n[x](missing.md)\n```\n' });
+    const { pages, errors } = build({
+      'how-to/a.md': '# A\n\nWrite `![Shop](missing.png)`:\n\n```markdown\n[x](missing.md)\n```\n',
+    });
     expect(errors).toEqual([]);
     expect(article(pages, 'docs/how-to/a.html')).toContain('[x](missing.md)');
   });
@@ -241,7 +269,9 @@ describe('a dead link in a docs page', () => {
     expect(dead('# A\n\n![p](../../.diagrams/static/gone.png)\n', gone)).toEqual([
       'docs/how-to/a.md: ../../.diagrams/static/gone.png — no such picture',
     ]);
-    expect(dead('# A\n\n[f](../../gone.txt)\n', gone)).toEqual(['docs/how-to/a.md: ../../gone.txt — no such file in the repository']);
+    expect(dead('# A\n\n[f](../../gone.txt)\n', gone)).toEqual([
+      'docs/how-to/a.md: ../../gone.txt — no such file in the repository',
+    ]);
   });
 
   it('to a picture outside the published ones is reported: the site would not serve it', () => {
@@ -251,7 +281,9 @@ describe('a dead link in a docs page', () => {
   });
 
   it('that leaves the repository is reported', () => {
-    expect(dead('# A\n\n[x](../../../elsewhere.md)\n')).toEqual(['docs/how-to/a.md: ../../../elsewhere.md — leaves the repository']);
+    expect(dead('# A\n\n[x](../../../elsewhere.md)\n')).toEqual([
+      'docs/how-to/a.md: ../../../elsewhere.md — leaves the repository',
+    ]);
   });
 
   it('with a scheme a page has no use for is reported: a link must not run a script', () => {
@@ -269,7 +301,9 @@ describe('a dead link in a docs page', () => {
       ['README.md', '# Docs\n'],
       ['how-to/orphan.md', '# Orphan\n'],
     ]);
-    expect(renderDocs({ files, exists: () => true }).errors).toEqual(['docs/how-to/orphan.md: not listed in docs/README.md']);
+    expect(renderDocs({ files, exists: () => true }).errors).toEqual([
+      'docs/how-to/orphan.md: not listed in docs/README.md',
+    ]);
   });
 });
 
@@ -331,21 +365,29 @@ describe('a docs page', () => {
     expect(first).toContain('<title>First &lt;steps&gt; &amp; more — diagc docs</title>');
   });
 
-  it("takes its description from the index, and has none when the index gives none", () => {
+  it('takes its description from the index, and has none when the index gives none', () => {
     expect(first).toContain('<meta name="description" content="Zero to a &quot;picture&quot; &amp; back.">');
     expect(publish).not.toContain('<meta name="description"');
   });
 
   it('applies the remembered theme before its stylesheets are read', () => {
     expect(publish.indexOf("localStorage.getItem('diagc-theme')")).toBeGreaterThan(-1);
-    expect(publish.indexOf("localStorage.getItem('diagc-theme')")).toBeLessThan(publish.indexOf('<link rel="stylesheet"'));
+    expect(publish.indexOf("localStorage.getItem('diagc-theme')")).toBeLessThan(
+      publish.indexOf('<link rel="stylesheet"'),
+    );
   });
 
   it("reaches the site's stylesheets and script from its own folder", () => {
-    for (const ref of ['href="../../site.css"', 'href="../../docs.css"', 'src="../../site.js"']) expect(publish).toContain(ref);
+    for (const ref of ['href="../../site.css"', 'href="../../docs.css"', 'src="../../site.js"'])
+      expect(publish).toContain(ref);
     for (const ref of ['href="../site.css"', 'href="../docs.css"', 'src="../site.js"']) expect(index).toContain(ref);
     const deep = build({ 'a/b/c.md': '# C\n' }).pages.get('docs/a/b/c.html') ?? '';
-    for (const ref of ['href="../../../site.css"', 'href="../../../docs.css"', 'src="../../../site.js"', 'href="../../../index.html#features"']) {
+    for (const ref of [
+      'href="../../../site.css"',
+      'href="../../../docs.css"',
+      'src="../../../site.js"',
+      'href="../../../index.html#features"',
+    ]) {
       expect(deep).toContain(ref);
     }
   });
@@ -364,10 +406,20 @@ describe('a docs page', () => {
     // Link by link: the landing page links its own sections, and a docs page links the same
     // places from where it is.
     const links = (html: string): string[][] =>
-      [.../<header class="nav">([\s\S]*?)<\/header>/.exec(html)![1]!.matchAll(/<a [^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)].map((m) => [m[1]!, m[2]!]);
+      [
+        .../<header class="nav">([\s\S]*?)<\/header>/
+          .exec(html)![1]!
+          .matchAll(/<a [^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g),
+      ].map((m) => [m[1]!, m[2]!]);
     const landing = readFileSync(path.join(root, 'site', 'index.html'), 'utf8');
     const fromHowTo = ([href, label]: string[]): string[] => [
-      href === '#top' ? '../../index.html' : href === '#docs' ? '../../docs/index.html' : href!.startsWith('#') ? `../../index.html${href}` : href!,
+      href === '#top'
+        ? '../../index.html'
+        : href === '#docs'
+          ? '../../docs/index.html'
+          : href!.startsWith('#')
+            ? `../../index.html${href}`
+            : href!,
       label!,
     ];
     expect(links(publish)).toEqual(links(landing).map(fromHowTo));
@@ -421,7 +473,9 @@ describe('a docs page', () => {
   });
 
   it('leads to its Markdown on GitHub', () => {
-    expect(publish).toContain('<a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/publish.md">View this page on GitHub</a>');
+    expect(publish).toContain(
+      '<a href="https://github.com/Ferroman/diagc/blob/main/docs/how-to/publish.md">View this page on GitHub</a>',
+    );
   });
 
   it('shows raw HTML as text', () => {
@@ -431,7 +485,8 @@ describe('a docs page', () => {
 
   it('drops an HTML comment, as GitHub does: a release marker is not prose', () => {
     const { pages } = build({
-      'how-to/a.md': '# A\n\n| a |\n| --- |\n| pinned <!-- x-release-please-version --> |\n\n<!-- a block comment -->\n\nAfter.\n',
+      'how-to/a.md':
+        '# A\n\n| a |\n| --- |\n| pinned <!-- x-release-please-version --> |\n\n<!-- a block comment -->\n\nAfter.\n',
     });
     const html = article(pages, 'docs/how-to/a.html');
     expect(html).not.toContain('x-release-please-version');
@@ -451,7 +506,10 @@ describe('a docs page', () => {
   it('escapes a page title and a section name wherever it shows them', () => {
     const escaped = renderDocs({
       files: new Map([
-        ['README.md', '# Docs\n\n## Q&A <fast> "now"\n\n| | |\n| --- | --- |\n| [A <b> & "c"](a.md) | |\n| [Z](z.md) | |\n'],
+        [
+          'README.md',
+          '# Docs\n\n## Q&A <fast> "now"\n\n| | |\n| --- | --- |\n| [A <b> & "c"](a.md) | |\n| [Z](z.md) | |\n',
+        ],
         ['a.md', '# A\n'],
         ['z.md', '# Z\n\n![x <y> & "z"](../.diagrams/static/p.png)\n'],
       ]),
@@ -486,7 +544,8 @@ describe('the real docs', () => {
 
   it('show no HTML comment as text', () => {
     // Two pages name a comment in a code span, which is the page saying it, not leaking it.
-    const prose = (html: string): string => html.replace(/<pre>[\s\S]*?<\/pre>/g, '').replace(/<code[^>]*>[\s\S]*?<\/code>/g, '');
+    const prose = (html: string): string =>
+      html.replace(/<pre>[\s\S]*?<\/pre>/g, '').replace(/<code[^>]*>[\s\S]*?<\/code>/g, '');
     const { pages } = renderDocs({ files, exists });
     expect([...pages].filter(([, html]) => prose(html).includes('&lt;!--')).map(([page]) => page)).toEqual([]);
   });
@@ -498,7 +557,10 @@ describe('the real docs', () => {
 
   it('would be stopped by a dead link in any of them', () => {
     const broken = new Map(files);
-    broken.set('how-to/add-a-legend.md', `${files.get('how-to/add-a-legend.md') ?? ''}\n\n[gone](../reference/no-such-page.md)\n`);
+    broken.set(
+      'how-to/add-a-legend.md',
+      `${files.get('how-to/add-a-legend.md') ?? ''}\n\n[gone](../reference/no-such-page.md)\n`,
+    );
     expect(renderDocs({ files: broken, exists }).errors).toEqual([
       'docs/how-to/add-a-legend.md: ../reference/no-such-page.md — no such page',
     ]);

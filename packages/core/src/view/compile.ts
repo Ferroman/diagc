@@ -78,7 +78,12 @@ export function compileView(m: DiagramModel, viewport: ViewportState): CompiledV
       if (vn !== undefined) vn.external = rep;
     }
     const edges = resolveEdges(scoped.model, tree, activeLayers, plane?.baseRelations ?? true);
-    const layoutEdges = resolveEdges(scoped.model, tree, scoped.model.layers.map((l) => l.id), true);
+    const layoutEdges = resolveEdges(
+      scoped.model,
+      tree,
+      scoped.model.layers.map((l) => l.id),
+      true,
+    );
     return { roots: tree.roots, edges, layoutEdges, lod, externals: scoped.externals };
   }
 
@@ -86,7 +91,12 @@ export function compileView(m: DiagramModel, viewport: ViewportState): CompiledV
   const tree = buildViewTree(m, hierarchy, lod);
   filterColumns(tree.byId.values(), activeLayerSet);
   const edges = resolveEdges(m, tree, activeLayers, plane?.baseRelations ?? true);
-  const layoutEdges = resolveEdges(m, tree, m.layers.map((l) => l.id), true);
+  const layoutEdges = resolveEdges(
+    m,
+    tree,
+    m.layers.map((l) => l.id),
+    true,
+  );
   return { roots: tree.roots, edges, layoutEdges, lod };
 }
 

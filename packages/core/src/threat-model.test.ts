@@ -1,6 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_NOTATIONS, STRIDE, type DiagramModel, type LayoutOverlay } from './types';
-import { allNotesOpen, boundaryName, boundaryOf, crossingLabel, crossings, isOpen, isThreatModelNode, nextThreatId, nextThreatStatus, strideFor, STRIDE_NAMES, threatRegister, threatsOf, threatSummary, threatTargetKey, TM_BOUNDARY_TYPE, TM_ENTITY_TYPE, TM_FLOW_KIND, TM_NOTATION, TM_PROCESS_TYPE, TM_STORE_TYPE } from './threat-model';
+import {
+  allNotesOpen,
+  boundaryName,
+  boundaryOf,
+  crossingLabel,
+  crossings,
+  isOpen,
+  isThreatModelNode,
+  nextThreatId,
+  nextThreatStatus,
+  strideFor,
+  STRIDE_NAMES,
+  threatRegister,
+  threatsOf,
+  threatSummary,
+  threatTargetKey,
+  TM_BOUNDARY_TYPE,
+  TM_ENTITY_TYPE,
+  TM_FLOW_KIND,
+  TM_NOTATION,
+  TM_PROCESS_TYPE,
+  TM_STORE_TYPE,
+} from './threat-model';
 
 // Built by hand, not through the builder, so this file stays green on its own.
 const base = (): DiagramModel => ({
@@ -10,7 +32,15 @@ const base = (): DiagramModel => ({
   notation: 'threat-model',
   nodes: [
     { id: 'user', name: 'Customer', type: TM_ENTITY_TYPE },
-    { id: 'web', name: 'Web app', type: TM_PROCESS_TYPE, threats: [{ id: 't1', category: 'E', title: 'Admin route open' }, { id: 't2', category: 'S', title: 'Weak session', status: 'mitigated' }] },
+    {
+      id: 'web',
+      name: 'Web app',
+      type: TM_PROCESS_TYPE,
+      threats: [
+        { id: 't1', category: 'E', title: 'Admin route open' },
+        { id: 't2', category: 'S', title: 'Weak session', status: 'mitigated' },
+      ],
+    },
     { id: 'db', name: 'Orders DB', type: TM_STORE_TYPE },
     { id: 'dmz', name: 'DMZ', type: TM_BOUNDARY_TYPE },
     { id: 'backend', name: 'Backend', type: TM_BOUNDARY_TYPE },
@@ -20,7 +50,14 @@ const base = (): DiagramModel => ({
     { parent: 'backend', child: 'db' },
   ],
   relations: [
-    { id: 'user->web#0', from: 'user', to: 'web', kind: TM_FLOW_KIND, label: 'HTTPS', threats: [{ id: 't1', category: 'T', title: 'MITM', severity: 'high' }] },
+    {
+      id: 'user->web#0',
+      from: 'user',
+      to: 'web',
+      kind: TM_FLOW_KIND,
+      label: 'HTTPS',
+      threats: [{ id: 't1', category: 'T', title: 'MITM', severity: 'high' }],
+    },
     { id: 'web->db#0', from: 'web', to: 'db', kind: TM_FLOW_KIND },
   ],
   layers: [],
@@ -65,7 +102,11 @@ describe('boundaryOf', () => {
   it('walks through non-boundary parents and stops at the nearest boundary', () => {
     const m = base();
     m.nodes.push({ id: 'grp', name: 'Group' }, { id: 'inner', name: 'Inner', type: TM_BOUNDARY_TYPE });
-    m.containment.push({ parent: 'backend', child: 'inner' }, { parent: 'inner', child: 'grp' }, { parent: 'grp', child: 'db' });
+    m.containment.push(
+      { parent: 'backend', child: 'inner' },
+      { parent: 'inner', child: 'grp' },
+      { parent: 'grp', child: 'db' },
+    );
     m.containment = m.containment.filter((e) => !(e.parent === 'backend' && e.child === 'db'));
     expect(boundaryOf(m, undefined, 'db')).toBe('inner');
   });
@@ -175,9 +216,19 @@ describe('threatTargetKey / threatsOf / nextThreatId', () => {
 
   it('hands out the first free t<n>', () => {
     expect(nextThreatId([])).toBe('t1');
-    expect(nextThreatId([{ id: 't1', category: 'S', title: 'a' }, { id: 't2', category: 'S', title: 'b' }])).toBe('t3');
+    expect(
+      nextThreatId([
+        { id: 't1', category: 'S', title: 'a' },
+        { id: 't2', category: 'S', title: 'b' },
+      ]),
+    ).toBe('t3');
     // the gap a removed threat left is reused — ids are per element, not global
-    expect(nextThreatId([{ id: 't1', category: 'S', title: 'a' }, { id: 't3', category: 'S', title: 'b' }])).toBe('t2');
+    expect(
+      nextThreatId([
+        { id: 't1', category: 'S', title: 'a' },
+        { id: 't3', category: 'S', title: 'b' },
+      ]),
+    ).toBe('t2');
   });
 });
 
@@ -204,26 +255,49 @@ describe('nextThreatStatus', () => {
 
 describe('allNotesOpen', () => {
   const model: DiagramModel = {
-    version: 1, id: 'm', name: 'm', layers: [], planes: [], containment: [],
+    version: 1,
+    id: 'm',
+    name: 'm',
+    layers: [],
+    planes: [],
+    containment: [],
     nodes: [
       { id: 'a', name: 'A', threats: [{ id: 't1', category: 'S', title: 'x' }] },
       { id: 'b', name: 'B' },
     ],
-    relations: [{ id: 'r', from: 'a', to: 'b', kind: TM_FLOW_KIND, threats: [{ id: 't1', category: 'T', title: 'y' }] }],
+    relations: [
+      { id: 'r', from: 'a', to: 'b', kind: TM_FLOW_KIND, threats: [{ id: 't1', category: 'T', title: 'y' }] },
+    ],
   };
-  const layout = (notes: LayoutOverlay['notes']): LayoutOverlay => ({ version: 1, planes: {}, ...(notes !== undefined ? { notes } : {}) });
+  const layout = (notes: LayoutOverlay['notes']): LayoutOverlay => ({
+    version: 1,
+    planes: {},
+    ...(notes !== undefined ? { notes } : {}),
+  });
 
   it('is true only when every threat-bearing element has open: true on that plane', () => {
     expect(allNotesOpen(model, layout(undefined), 'default')).toBe(false);
     expect(allNotesOpen(model, layout({ default: { 'node:a': { dx: 0, dy: 0, open: true } } }), 'default')).toBe(false);
     expect(
-      allNotesOpen(model, layout({ default: { 'node:a': { dx: 0, dy: 0, open: true }, 'relation:r': { dx: 5, dy: 0, open: true } } }), 'default'),
+      allNotesOpen(
+        model,
+        layout({ default: { 'node:a': { dx: 0, dy: 0, open: true }, 'relation:r': { dx: 5, dy: 0, open: true } } }),
+        'default',
+      ),
     ).toBe(true);
     // another plane's bucket says nothing about this one
-    expect(allNotesOpen(model, layout({ p: { 'node:a': { dx: 0, dy: 0, open: true }, 'relation:r': { dx: 0, dy: 0, open: true } } }), 'default')).toBe(false);
+    expect(
+      allNotesOpen(
+        model,
+        layout({ p: { 'node:a': { dx: 0, dy: 0, open: true }, 'relation:r': { dx: 0, dy: 0, open: true } } }),
+        'default',
+      ),
+    ).toBe(false);
   });
 
   it('is false for a model with no threats — nothing is open, so "all open" would be vacuous', () => {
-    expect(allNotesOpen({ ...model, nodes: [{ id: 'b', name: 'B' }], relations: [] }, layout(undefined), 'default')).toBe(false);
+    expect(
+      allNotesOpen({ ...model, nodes: [{ id: 'b', name: 'B' }], relations: [] }, layout(undefined), 'default'),
+    ).toBe(false);
   });
 });

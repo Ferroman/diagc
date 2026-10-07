@@ -19,7 +19,10 @@ export interface OrderBandsOverlayProps {
 export function OrderBandsOverlay({ model, direction }: OrderBandsOverlayProps) {
   const nodes = useNodes();
   const orders = useMemo(() => consequenceOrders(model).orders, [model]);
-  const decisions = useMemo(() => model.nodes.filter((n) => n.type === SO_DECISION_TYPE && orders.get(n.id) === 0).length, [model, orders]);
+  const decisions = useMemo(
+    () => model.nodes.filter((n) => n.type === SO_DECISION_TYPE && orders.get(n.id) === 0).length,
+    [model, orders],
+  );
   const bands = useMemo(() => computeBands(absoluteRects(nodes), orders, direction), [nodes, orders, direction]);
   if (bands.length === 0) return null;
   return (
@@ -27,7 +30,14 @@ export function OrderBandsOverlay({ model, direction }: OrderBandsOverlayProps) 
       <svg className="dg-order-bands" aria-hidden="true">
         {bands.map((b, i) => (
           <g key={b.order}>
-            <rect className={`dg-order-band${i % 2 === 1 ? ' dg-order-band-alt' : ''}`} x={b.x} y={b.y} width={b.width} height={b.height} rx={6} />
+            <rect
+              className={`dg-order-band${i % 2 === 1 ? ' dg-order-band-alt' : ''}`}
+              x={b.x}
+              y={b.y}
+              width={b.width}
+              height={b.height}
+              rx={6}
+            />
             <text className="dg-order-band-header" x={b.header.x} y={b.header.y} dominantBaseline="hanging">
               {bandLabel(b.order, decisions)}
             </text>

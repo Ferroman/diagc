@@ -223,7 +223,8 @@ export function withEdgeLabelPlacements(
 ): LayoutOverlay {
   if (Object.keys(placements).length === 0) return layout;
   const plane = { ...(layout.edgeLabels?.[key] ?? {}) };
-  for (const [relationId, labels] of Object.entries(placements)) plane[relationId] = { ...plane[relationId], ...labels };
+  for (const [relationId, labels] of Object.entries(placements))
+    plane[relationId] = { ...plane[relationId], ...labels };
   return { ...layout, edgeLabels: { ...(layout.edgeLabels ?? {}), [key]: plane } };
 }
 
@@ -275,7 +276,8 @@ function withOpen(p: NotePlacement, open: boolean): NotePlacement {
  * when nothing is dropped, like pruneEdgeLabels.
  */
 function pruneNotes(layout: LayoutOverlay, before: DiagramModel, after: DiagramModel): LayoutOverlay {
-  if (layout.notes === undefined || (before.nodes === after.nodes && before.relations === after.relations)) return layout;
+  if (layout.notes === undefined || (before.nodes === after.nodes && before.relations === after.relations))
+    return layout;
   const alive = new Set<string>();
   for (const n of after.nodes) if (hasNoteContent(n)) alive.add(threatTargetKey({ node: n.id }));
   for (const r of after.relations) if (hasNoteContent(r)) alive.add(threatTargetKey({ relation: r.id }));
@@ -540,7 +542,9 @@ function applyModelLayout(state: ModelLayout, command: EditorCommand): ModelLayo
     case 'set-note-open':
       return {
         model,
-        layout: withNote(layout, layoutPlaneKey(model, command.plane), command.target, (p) => withOpen(p, command.open)),
+        layout: withNote(layout, layoutPlaneKey(model, command.plane), command.target, (p) =>
+          withOpen(p, command.open),
+        ),
       };
     case 'set-notes-open': {
       // Model-wide: every element that carries a threat, whether or not this

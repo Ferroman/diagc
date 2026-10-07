@@ -24,7 +24,18 @@ describe('resolveInclude', () => {
       server = createServer((req, res) => {
         if (req.url === '/perm.diagram.json') {
           res.setHeader('content-type', 'application/json');
-          res.end(JSON.stringify({ version: 1, id: 'perm', name: 'perm', nodes: [], containment: [], relations: [], layers: [], planes: [] }));
+          res.end(
+            JSON.stringify({
+              version: 1,
+              id: 'perm',
+              name: 'perm',
+              nodes: [],
+              containment: [],
+              relations: [],
+              layers: [],
+              planes: [],
+            }),
+          );
         } else {
           res.statusCode = 404;
           res.end('nope');
@@ -69,7 +80,16 @@ describe('parseAuthTokens', () => {
 });
 
 describe('resolveInclude with credentials', () => {
-  const model = { version: 1, id: 'priv', name: 'priv', nodes: [], containment: [], relations: [], layers: [], planes: [] };
+  const model = {
+    version: 1,
+    id: 'priv',
+    name: 'priv',
+    nodes: [],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  };
   const fetchSpy = () =>
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify(model), { status: 200 }));
   const authOf = (spy: ReturnType<typeof fetchSpy>, call = 0): string | undefined =>
@@ -106,7 +126,9 @@ describe('resolveInclude with credentials', () => {
   it('hints at the variable when an unauthenticated fetch is refused', async () => {
     vi.stubEnv(AUTH_TOKENS_ENV, '');
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('', { status: 404 }));
-    await expect(resolveInclude('https://raw.githubusercontent.com/o/r/main/a.diagram.json', '/x.diagram.json')).rejects.toThrow(
+    await expect(
+      resolveInclude('https://raw.githubusercontent.com/o/r/main/a.diagram.json', '/x.diagram.json'),
+    ).rejects.toThrow(
       `HTTP 404 fetching https://raw.githubusercontent.com/o/r/main/a.diagram.json — if the host is private, set ${AUTH_TOKENS_ENV}=<token>@raw.githubusercontent.com`,
     );
   });
@@ -114,7 +136,10 @@ describe('resolveInclude with credentials', () => {
   it('never puts the token in an error', async () => {
     vi.stubEnv(AUTH_TOKENS_ENV, 'ghp_abc@raw.githubusercontent.com');
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('', { status: 401 }));
-    const err = await resolveInclude('https://raw.githubusercontent.com/o/r/main/a.diagram.json', '/x.diagram.json').catch((e: Error) => e);
+    const err = await resolveInclude(
+      'https://raw.githubusercontent.com/o/r/main/a.diagram.json',
+      '/x.diagram.json',
+    ).catch((e: Error) => e);
     expect(String(err)).toMatch(/HTTP 401/);
     expect(String(err)).not.toMatch(/ghp_abc|DIAGC_AUTH_TOKENS/);
   });

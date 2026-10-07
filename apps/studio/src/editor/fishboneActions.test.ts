@@ -12,7 +12,10 @@ function fish(): DiagramModel {
 describe('fishboneActions', () => {
   it('adds an effect, on the given plane', () => {
     const out = addEffect(fish(), 'p');
-    expect(out).toEqual({ id: 'effect', command: { type: 'add-node', node: { id: 'effect', name: '', type: 'fb-effect', plane: 'p' } } });
+    expect(out).toEqual({
+      id: 'effect',
+      command: { type: 'add-node', node: { id: 'effect', name: '', type: 'fb-effect', plane: 'p' } },
+    });
   });
 
   it('adds the child the parent can take — category, cause, sub-cause — wired to it in one batch', () => {
@@ -27,8 +30,12 @@ describe('fishboneActions', () => {
         ],
       },
     });
-    expect(addChild(m, 'c')?.command).toMatchObject({ commands: [{ node: { type: 'fb-cause' } }, { from: 'cause', to: 'c' }] });
-    expect(addChild(m, 'a')?.command).toMatchObject({ commands: [{ node: { type: 'fb-cause' } }, { from: 'cause', to: 'a' }] });
+    expect(addChild(m, 'c')?.command).toMatchObject({
+      commands: [{ node: { type: 'fb-cause' } }, { from: 'cause', to: 'c' }],
+    });
+    expect(addChild(m, 'a')?.command).toMatchObject({
+      commands: [{ node: { type: 'fb-cause' } }, { from: 'cause', to: 'a' }],
+    });
   });
 
   it('refuses a fourth level, a non-fishbone parent and an unknown id', () => {
@@ -66,7 +73,7 @@ describe('fishboneActions', () => {
     expect(seedCategories(m.toJSON(), 'nope', '4S')).toBeNull();
   });
 
-  it('seeds ids unique against the model too, not just the batch: a taken slug falls back to uniqueNodeId\'s -2 suffix', () => {
+  it("seeds ids unique against the model too, not just the batch: a taken slug falls back to uniqueNodeId's -2 suffix", () => {
     const m = model('f');
     m.fishbone('e', 'Effect');
     const j = m.toJSON();

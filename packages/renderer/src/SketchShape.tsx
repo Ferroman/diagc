@@ -57,9 +57,19 @@ export function SketchShape({
   const fillColor = tinted(mix.fill, '--dg-node-fill');
   const strokeColor = tinted(mix.stroke, '--dg-node-stroke');
   return (
-    <svg className="dg-sketch-shape" width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
+    <svg
+      className="dg-sketch-shape"
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      aria-hidden="true"
+    >
       {fill !== 'none' && paths.fill !== '' && (
-        <path className="dg-sketch-fill" d={paths.fill} {...(fillColor !== undefined ? { style: { fill: fillColor } } : {})} />
+        <path
+          className="dg-sketch-fill"
+          d={paths.fill}
+          {...(fillColor !== undefined ? { style: { fill: fillColor } } : {})}
+        />
       )}
       {hatched && paths.hatch !== '' && (
         <path

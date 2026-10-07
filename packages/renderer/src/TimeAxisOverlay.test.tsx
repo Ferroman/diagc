@@ -6,10 +6,19 @@ import { dayOf, isoOf, model } from '@diagc/core';
 import { PLAN_LAYOUT, planX } from './plan-layout';
 import { MARGIN_AFTER, MARGIN_BEFORE } from './time-axis';
 
-const rfNodes: { id: string; position: { x: number; y: number }; parentId?: string; measured?: { width: number; height: number } }[] = [];
+const rfNodes: {
+  id: string;
+  position: { x: number; y: number };
+  parentId?: string;
+  measured?: { width: number; height: number };
+}[] = [];
 vi.mock('@xyflow/react', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@xyflow/react')>();
-  return { ...mod, useNodes: () => rfNodes, ViewportPortal: ({ children }: { children: ReactNode }) => <>{children}</> };
+  return {
+    ...mod,
+    useNodes: () => rfNodes,
+    ViewportPortal: ({ children }: { children: ReactNode }) => <>{children}</>,
+  };
 });
 const { TimeAxisOverlay } = await import('./TimeAxisOverlay');
 
@@ -28,7 +37,11 @@ function seed() {
   rfNodes.length = 0;
   rfNodes.push(
     { id: 'z', position: { x: planX(dayOf('2026-01-20')!, origin), y: 0 }, measured: { width: 22 * DAY, height: 40 } },
-    { id: 'e', position: { x: planX(dayOf('2026-02-02')!, origin) + DAY / 2 - EVENT / 2, y: -HEADER_H / 2 - EVENT / 2 }, measured: { width: EVENT, height: EVENT } },
+    {
+      id: 'e',
+      position: { x: planX(dayOf('2026-02-02')!, origin) + DAY / 2 - EVENT / 2, y: -HEADER_H / 2 - EVENT / 2 },
+      measured: { width: EVENT, height: EVENT },
+    },
   );
 }
 

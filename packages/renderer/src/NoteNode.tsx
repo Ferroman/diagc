@@ -113,7 +113,10 @@ export function NoteNode({
   // no tail rather than one aimed from a guessed size.
   const tail =
     width !== undefined && height !== undefined && width > 0 && height > 0
-      ? tailGeometry({ x: data.badge.x - (positionAbsoluteX ?? 0), y: data.badge.y - (positionAbsoluteY ?? 0) }, { width, height })
+      ? tailGeometry(
+          { x: data.badge.x - (positionAbsoluteX ?? 0), y: data.badge.y - (positionAbsoluteY ?? 0) },
+          { width, height },
+        )
       : null;
   return (
     <div className="dg-note" data-target={threatTargetKey(data.target)} style={{ width: NOTE_WIDTH }}>
@@ -123,7 +126,9 @@ export function NoteNode({
               only the two long sides — and the base sits inside the border,
               so the fill covers the border line and the tail merges with the
               box, the way a drawn bubble does */}
-          <path d={`M${tail.base[0].x} ${tail.base[0].y} L${tail.tip.x} ${tail.tip.y} L${tail.base[1].x} ${tail.base[1].y}`} />
+          <path
+            d={`M${tail.base[0].x} ${tail.base[0].y} L${tail.tip.x} ${tail.tip.y} L${tail.base[1].x} ${tail.base[1].y}`}
+          />
         </svg>
       )}
       <div className="dg-note-head">
@@ -153,7 +158,9 @@ export function NoteNode({
             return (
               <li key={t.id} className="dg-note-row" data-open={isOpen(t) ? 'true' : 'false'}>
                 <div className="dg-note-line">
-                  <span className="dg-stride" data-category={t.category} title={STRIDE_NAMES[t.category]}>{t.category}</span>
+                  <span className="dg-stride" data-category={t.category} title={STRIDE_NAMES[t.category]}>
+                    {t.category}
+                  </span>
                   {editingId === t.id ? (
                     <span className="nodrag nopan" onMouseDown={stop} onPointerDown={stop}>
                       <InlineName
@@ -171,7 +178,14 @@ export function NoteNode({
                   ) : (
                     <span
                       className="dg-note-title"
-                      onDoubleClick={data.editing ? (e) => { e.stopPropagation(); setLocalEdit(t.id); } : undefined}
+                      onDoubleClick={
+                        data.editing
+                          ? (e) => {
+                              e.stopPropagation();
+                              setLocalEdit(t.id);
+                            }
+                          : undefined
+                      }
                     >
                       {t.title}
                     </span>
@@ -185,12 +199,17 @@ export function NoteNode({
                       title={`Status: ${word} — click to change`}
                       onMouseDown={stop}
                       onPointerDown={stop}
-                      onClick={(e) => { e.stopPropagation(); data.onSetThreatStatus?.(data.target, t.id, nextThreatStatus(t)); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        data.onSetThreatStatus?.(data.target, t.id, nextThreatStatus(t));
+                      }}
                     >
                       {word}
                     </button>
                   ) : (
-                    <span className="dg-note-status" data-status={status}>{word}</span>
+                    <span className="dg-note-status" data-status={status}>
+                      {word}
+                    </span>
                   )}
                   {(data.editing || hasDetails) && (
                     <button
@@ -200,7 +219,10 @@ export function NoteNode({
                       aria-label={isExpanded ? 'Hide details' : 'Show details'}
                       onMouseDown={stop}
                       onPointerDown={stop}
-                      onClick={(e) => { e.stopPropagation(); toggleExpanded(t.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleExpanded(t.id);
+                      }}
                     >
                       {isExpanded ? '▾' : '▸'}
                     </button>
@@ -300,7 +322,10 @@ export function NoteNode({
           title="Add a threat"
           onMouseDown={stop}
           onPointerDown={stop}
-          onClick={(e) => { e.stopPropagation(); data.onAddThreat?.(data.target); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            data.onAddThreat?.(data.target);
+          }}
         >
           +
         </button>
@@ -321,7 +346,9 @@ function DetailField({ label, value, onCommit }: { label: string; value: string;
   // it — a `value` change while the field is idle replaces the draft. Nothing
   // else writes the field while it has focus: every path to the panel blurs it
   // first, and that blur commits.
-  useEffect(() => { setDraft(value); }, [value]);
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
   // Escape restores and blurs in one tick — the blur below still sees the typed
   // draft in its closure, so it needs telling that this one is a cancel.
   const escaped = useRef(false);

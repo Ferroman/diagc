@@ -10,7 +10,10 @@ export type Keymap = Readonly<Record<ActionId, readonly Chord[]>>;
 export type Mode = 'view' | 'edit';
 
 export function resolveKeymap(overrides: Overrides): Keymap {
-  return Object.fromEntries(ACTIONS.map((a) => [a.id, overrides[a.id] ?? a.defaults])) as Record<ActionId, readonly Chord[]>;
+  return Object.fromEntries(ACTIONS.map((a) => [a.id, overrides[a.id] ?? a.defaults])) as Record<
+    ActionId,
+    readonly Chord[]
+  >;
 }
 
 // Esc is a cancel, not a preference: it must always get you back to Select, so
@@ -35,7 +38,9 @@ const overlaps = (a: Scope, b: Scope): boolean => a === 'both' || b === 'both' |
  *  view-only and an edit-only action never meet, so they may share a key. */
 export function conflictsOf(keymap: Keymap, id: ActionId, chord: Chord): ActionId[] {
   const scope = actionOf(id).scope;
-  return ACTIONS.filter((a) => a.id !== id && overlaps(a.scope, scope) && keymap[a.id].includes(chord)).map((a) => a.id);
+  return ACTIONS.filter((a) => a.id !== id && overlaps(a.scope, scope) && keymap[a.id].includes(chord)).map(
+    (a) => a.id,
+  );
 }
 
 const FIXED = /^(Shift\+)?(Escape|Delete|Backspace|ArrowUp|ArrowDown|ArrowLeft|ArrowRight)$/;

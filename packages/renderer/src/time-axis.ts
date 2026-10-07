@@ -59,11 +59,15 @@ export function timeAxis(range: PlanSpan, origin: number): TimeAxis {
     months.push({ x: x(d), width: x(end) - x(d), label: `${MONTHS[monthOf(d)]!} ${String(yearOf(d))}` });
   }
   const weeks: AxisBand[] = [];
-  for (let d = from; d < to; ) {
+  for (let d = from; d < to;) {
     const nextMonday = d + ((8 - weekday(d)) % 7 || 7);
     const end = Math.min(nextMonday, to);
     const width = end - d;
-    weeks.push({ x: x(d), width: width * PLAN_LAYOUT.DAY, label: width >= MIN_LABELLED_WEEK ? `W${String(isoWeek(d)).padStart(2, '0')}` : '' });
+    weeks.push({
+      x: x(d),
+      width: width * PLAN_LAYOUT.DAY,
+      label: width >= MIN_LABELLED_WEEK ? `W${String(isoWeek(d)).padStart(2, '0')}` : '',
+    });
     d = end;
   }
   return { x0: x(from), x1: x(to), months, weeks };

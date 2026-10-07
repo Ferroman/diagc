@@ -323,7 +323,11 @@ function markRows(input: LegendInput): LegendRow[] {
 
 function swatchOf(item: LegendItem, input: LegendInput): LegendSwatch | undefined {
   if (item.kind !== undefined) {
-    return { draw: 'line', style: input.kindRegistry.resolve(item.kind), ...(item.color !== undefined ? { color: item.color } : {}) };
+    return {
+      draw: 'line',
+      style: input.kindRegistry.resolve(item.kind),
+      ...(item.color !== undefined ? { color: item.color } : {}),
+    };
   }
   if (item.type !== undefined) {
     const style = input.typeRegistry.resolve(item.type);

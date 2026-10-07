@@ -23,7 +23,10 @@ describe('PlanSection', () => {
     fireEvent.change(screen.getByLabelText('Start'), { target: { value: '2026-01-06' } });
     expect(onCommand).toHaveBeenCalledWith({ type: 'set-plan-dates', id: 'q1', dates: { start: '2026-01-06' } });
     fireEvent.change(screen.getByLabelText('Owner'), { target: { value: 'alice' } });
-    expect(onCommand).toHaveBeenLastCalledWith({ type: 'batch', commands: [{ type: 'add-relation', from: 'alice', to: 'q1', opts: { kind: 'owns' } }] });
+    expect(onCommand).toHaveBeenLastCalledWith({
+      type: 'batch',
+      commands: [{ type: 'add-relation', from: 'alice', to: 'q1', opts: { kind: 'owns' } }],
+    });
   });
   it('an event: at only', () => {
     const m = plan();

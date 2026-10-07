@@ -39,12 +39,23 @@ const ELEMENTS = [
  * in turn is walked up into its slot, so the batch replays exactly on the model
  * the panel saw.
  */
-export function reorderLanesCommand(frameId: string, current: readonly string[], target: readonly string[], plane: string | undefined): EditorCommand | null {
+export function reorderLanesCommand(
+  frameId: string,
+  current: readonly string[],
+  target: readonly string[],
+  plane: string | undefined,
+): EditorCommand | null {
   const order = [...current];
   const commands: EditorCommand[] = [];
   target.forEach((lane, slot) => {
     for (let at = order.indexOf(lane); at > slot; at--) {
-      commands.push({ type: 'move-child', parent: frameId, child: lane, offset: -1, ...(plane !== undefined ? { plane } : {}) });
+      commands.push({
+        type: 'move-child',
+        parent: frameId,
+        child: lane,
+        offset: -1,
+        ...(plane !== undefined ? { plane } : {}),
+      });
       [order[at - 1], order[at]] = [order[at]!, order[at - 1]!];
     }
   });
@@ -55,7 +66,12 @@ export function reorderLanesCommand(frameId: string, current: readonly string[],
 /** A lane moved `offset` band slots (a canvas drag can cross several at once)
  * as one undo step: move-child steps a single slot, so it repeats. null for no
  * move at all. */
-export function moveLaneCommand(frameId: string, laneId: string, offset: number, plane: string | undefined): EditorCommand | null {
+export function moveLaneCommand(
+  frameId: string,
+  laneId: string,
+  offset: number,
+  plane: string | undefined,
+): EditorCommand | null {
   if (offset === 0) return null;
   const step: EditorCommand = {
     type: 'move-child',
@@ -81,7 +97,11 @@ export interface ActivityContext {
  * listed while you work on their contents. With nothing selected a diagram's only
  * frame is the one; with several, a selection has to say which.
  */
-export function activityContext(model: DiagramModel, selection: DiagramSelection | null, planeId: string | undefined): ActivityContext | undefined {
+export function activityContext(
+  model: DiagramModel,
+  selection: DiagramSelection | null,
+  planeId: string | undefined,
+): ActivityContext | undefined {
   const byId = new Map(model.nodes.map((n) => [n.id, n]));
   const defaultPlane = resolveContainmentPlane(model, undefined);
   const parentOf = new Map<string, string>();
@@ -97,7 +117,9 @@ export function activityContext(model: DiagramModel, selection: DiagramSelection
       if (target === undefined && (n.type === 'activity-lane' || n.type === 'activity-region')) target = n;
     }
   }
-  const frames = model.nodes.filter((n) => n.type === 'activity-frame' && (n.plane === undefined || n.plane === planeId));
+  const frames = model.nodes.filter(
+    (n) => n.type === 'activity-frame' && (n.plane === undefined || n.plane === planeId),
+  );
   return frames.length === 1 ? { frame: frames[0]! } : undefined;
 }
 
@@ -140,7 +162,12 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
 
   // The order whose links cross the fewest lanes (bestLaneOrder) — offered,
   // never applied unasked: lane order says who comes first.
-  const tidy = reorderLanesCommand(frame.id, lanes.map((l) => l.id), bestLaneOrder(model, frame.id, plane), planeId);
+  const tidy = reorderLanesCommand(
+    frame.id,
+    lanes.map((l) => l.id),
+    bestLaneOrder(model, frame.id, plane),
+    planeId,
+  );
 
   const addChild = (node: DiagramNode, parentId: string) => {
     const cascade = cascadeIn(parentId);
@@ -189,11 +216,22 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
           <ul className="activity-lanes" aria-label="Lanes">
             {lanes.map((lane, i) => (
               <li key={lane.id} aria-current={lane.id === selectedId || lane.id === target?.id ? 'true' : undefined}>
-                <span className="lane-dot" style={lane.color !== undefined ? { background: lane.color } : undefined} aria-hidden="true" />
+                <span
+                  className="lane-dot"
+                  style={lane.color !== undefined ? { background: lane.color } : undefined}
+                  aria-hidden="true"
+                />
                 <button type="button" className="lane-name" title="Select this lane" onClick={() => onSelect(lane.id)}>
                   {label(lane)}
                 </button>
-                <button type="button" className="picker-btn" aria-label={`Move ${label(lane)} up`} title="Move up" disabled={i === 0} onClick={() => moveLane(lane.id, -1)}>
+                <button
+                  type="button"
+                  className="picker-btn"
+                  aria-label={`Move ${label(lane)} up`}
+                  title="Move up"
+                  disabled={i === 0}
+                  onClick={() => moveLane(lane.id, -1)}
+                >
                   ↑
                 </button>
                 <button
@@ -217,7 +255,12 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
             addLane();
           }}
         >
-          <input aria-label="New lane name" value={laneName} onChange={(e) => setLaneName(e.target.value)} placeholder="New lane name" />
+          <input
+            aria-label="New lane name"
+            value={laneName}
+            onChange={(e) => setLaneName(e.target.value)}
+            placeholder="New lane name"
+          />
           <button type="submit" className="chip" disabled={laneName.trim() === ''}>
             Add lane
           </button>
@@ -238,11 +281,18 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
       <section className="panel-section">
         <h3>Elements</h3>
         {target === undefined ? (
-          <p className="lp-caption">{lanes.length === 0 ? 'Add a lane, then its steps.' : 'Select a lane to add steps to it.'}</p>
+          <p className="lp-caption">
+            {lanes.length === 0 ? 'Add a lane, then its steps.' : 'Select a lane to add steps to it.'}
+          </p>
         ) : (
           <>
             <p className="lp-caption">Adding to {label(target)}</p>
-            <input aria-label="Element name" value={elementName} onChange={(e) => setElementName(e.target.value)} placeholder="Name (optional)" />
+            <input
+              aria-label="Element name"
+              value={elementName}
+              onChange={(e) => setElementName(e.target.value)}
+              placeholder="Name (optional)"
+            />
             {ELEMENTS.map((el) => (
               <button key={el.type} type="button" className="chip" onClick={() => addElement(el.type, el.defaultName)}>
                 {el.label}

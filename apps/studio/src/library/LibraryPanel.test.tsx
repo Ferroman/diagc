@@ -8,10 +8,25 @@ import { EMPTY_LIBRARY_VIEW, LibraryPanel } from './LibraryPanel';
 import type { Library } from './types';
 
 const library: Library = {
-  categories: [{ id: 'c4', name: 'C4', builtin: true }, { id: 'aws', name: 'AWS', builtin: true }],
+  categories: [
+    { id: 'c4', name: 'C4', builtin: true },
+    { id: 'aws', name: 'AWS', builtin: true },
+  ],
   entries: [
-    { id: 'c4-person', category: 'c4', name: 'Person', keywords: ['actor'], template: { type: 'person', color: '#08427b' } },
-    { id: 'aws-lambda', category: 'aws', name: 'Lambda', keywords: ['faas'], template: { type: 'image', image: '/library/aws/lambda.svg' } },
+    {
+      id: 'c4-person',
+      category: 'c4',
+      name: 'Person',
+      keywords: ['actor'],
+      template: { type: 'person', color: '#08427b' },
+    },
+    {
+      id: 'aws-lambda',
+      category: 'aws',
+      name: 'Lambda',
+      keywords: ['faas'],
+      template: { type: 'image', image: '/library/aws/lambda.svg' },
+    },
   ],
 };
 
@@ -61,7 +76,15 @@ describe('LibraryPanel', () => {
   it('renders a masked silhouette thumbnail for shape entries', () => {
     const withShape: Library = {
       ...library,
-      entries: [...library.entries, { id: 'sh', category: 'aws', name: 'Diamond', template: { shape: '/library/shapes/person.svg', color: '#08427b' } }],
+      entries: [
+        ...library.entries,
+        {
+          id: 'sh',
+          category: 'aws',
+          name: 'Diamond',
+          template: { shape: '/library/shapes/person.svg', color: '#08427b' },
+        },
+      ],
     };
     render(<LibraryPanel library={withShape} onPlace={() => {}} assetBase="/api/assets/" />);
     const btn = screen.getByRole('button', { name: /place Diamond/i });
@@ -77,7 +100,15 @@ describe('LibraryPanel', () => {
     setHost({ ...defaultHost, libraryBase: 'app://vault/plugins/diagc-studio/library/' });
     const withShape: Library = {
       ...library,
-      entries: [...library.entries, { id: 'sh', category: 'aws', name: 'Diamond', template: { shape: '/library/shapes/person.svg', color: '#08427b' } }],
+      entries: [
+        ...library.entries,
+        {
+          id: 'sh',
+          category: 'aws',
+          name: 'Diamond',
+          template: { shape: '/library/shapes/person.svg', color: '#08427b' },
+        },
+      ],
     };
     render(<LibraryPanel library={withShape} onPlace={() => {}} assetBase="/api/assets/" />);
     const btn = screen.getByRole('button', { name: /place Diamond/i });
@@ -105,7 +136,13 @@ describe('LibraryPanel', () => {
   });
 
   it('prefixes a bare (imported) icon ref with assetBase in the thumbnail', () => {
-    const withImport: Library = { ...library, entries: [...library.entries, { id: 'imp-1', category: 'aws', name: 'Imported', template: { type: 'image', image: 'abc123.svg' } }] };
+    const withImport: Library = {
+      ...library,
+      entries: [
+        ...library.entries,
+        { id: 'imp-1', category: 'aws', name: 'Imported', template: { type: 'image', image: 'abc123.svg' } },
+      ],
+    };
     render(<LibraryPanel library={withImport} onPlace={() => {}} assetBase="/api/assets/" />);
     const btn = screen.getByRole('button', { name: /place Imported/i });
     expect(within(btn).getByRole('img').getAttribute('src')).toBe('/api/assets/abc123.svg');
@@ -114,14 +151,7 @@ describe('LibraryPanel', () => {
   it('renders an Add node / Add image action row and fires them', () => {
     const onAddNode = vi.fn();
     const onAddImages = vi.fn();
-    render(
-      <LibraryPanel
-        library={library}
-        onPlace={() => {}}
-        onAddNode={onAddNode}
-        onAddImages={onAddImages}
-      />,
-    );
+    render(<LibraryPanel library={library} onPlace={() => {}} onAddNode={onAddNode} onAddImages={onAddImages} />);
     fireEvent.click(screen.getByRole('button', { name: 'Add node' }));
     expect(onAddNode).toHaveBeenCalled();
 
@@ -135,7 +165,10 @@ describe('LibraryPanel', () => {
 describe('LibraryPanel category collapsing', () => {
   // Big enough to trip the auto-collapse threshold the AWS pack exists to exercise.
   const big: Library = {
-    categories: [{ id: 'c4', name: 'C4', builtin: true }, { id: 'aws', name: 'AWS', builtin: true }],
+    categories: [
+      { id: 'c4', name: 'C4', builtin: true },
+      { id: 'aws', name: 'AWS', builtin: true },
+    ],
     entries: [
       library.entries[0]!,
       ...Array.from({ length: 40 }, (_, i) => ({
@@ -205,7 +238,14 @@ describe('LibraryPanel apply-to-selection', () => {
   it('clicking a card places (not applies) while in the default Place mode', () => {
     const onPlace = vi.fn();
     const onApply = vi.fn();
-    render(<LibraryPanel library={library} onPlace={onPlace} onApply={onApply} applyTarget={{ id: 'x', name: 'ER Staff' }} />);
+    render(
+      <LibraryPanel
+        library={library}
+        onPlace={onPlace}
+        onApply={onApply}
+        applyTarget={{ id: 'x', name: 'ER Staff' }}
+      />,
+    );
     fireEvent.click(screen.getByRole('button', { name: /place Lambda/i }));
     expect(onPlace).toHaveBeenCalledWith(library.entries[1]);
     expect(onApply).not.toHaveBeenCalled();
@@ -214,7 +254,14 @@ describe('LibraryPanel apply-to-selection', () => {
   it('after switching to Apply mode, clicking a card applies it to the selection', () => {
     const onPlace = vi.fn();
     const onApply = vi.fn();
-    render(<LibraryPanel library={library} onPlace={onPlace} onApply={onApply} applyTarget={{ id: 'x', name: 'ER Staff' }} />);
+    render(
+      <LibraryPanel
+        library={library}
+        onPlace={onPlace}
+        onApply={onApply}
+        applyTarget={{ id: 'x', name: 'ER Staff' }}
+      />,
+    );
     fireEvent.click(screen.getByRole('button', { name: /apply to ER Staff/i }));
     fireEvent.click(screen.getByRole('button', { name: /apply Lambda/i }));
     expect(onApply).toHaveBeenCalledWith(library.entries[1]);
@@ -242,7 +289,10 @@ describe('LibraryPanel authoring', () => {
 
   it('imports an icon into a user category', () => {
     const c = cbs();
-    const withGcp: Library = { categories: [...library.categories, { id: 'gcp', name: 'GCP' }], entries: library.entries };
+    const withGcp: Library = {
+      categories: [...library.categories, { id: 'gcp', name: 'GCP' }],
+      entries: library.entries,
+    };
     render(<LibraryPanel library={withGcp} onPlace={() => {}} {...c} />);
     const file = new File(['<svg/>'], 'bigquery.svg', { type: 'image/svg+xml' });
     const input = screen.getByLabelText('Import icon into GCP') as HTMLInputElement;
@@ -253,7 +303,10 @@ describe('LibraryPanel authoring', () => {
   it('deletes a user category', async () => {
     const c = cbs();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    const withGcp: Library = { categories: [...library.categories, { id: 'gcp', name: 'GCP' }], entries: library.entries };
+    const withGcp: Library = {
+      categories: [...library.categories, { id: 'gcp', name: 'GCP' }],
+      entries: library.entries,
+    };
     render(<LibraryPanel library={withGcp} onPlace={() => {}} {...c} />);
     fireEvent.click(screen.getByRole('button', { name: /delete category GCP/i }));
     await waitFor(() => expect(c.onDeleteCategory).toHaveBeenCalledWith('gcp'));
@@ -261,8 +314,20 @@ describe('LibraryPanel authoring', () => {
 
   it('imports an SVG as a shape into a user category', () => {
     const onImportShape = vi.fn();
-    const withGcp: Library = { categories: [...library.categories, { id: 'gcp', name: 'GCP' }], entries: library.entries };
-    render(<LibraryPanel library={withGcp} onPlace={() => {}} onAddCategory={vi.fn()} onDeleteCategory={vi.fn()} onImportIcon={vi.fn()} onImportShape={onImportShape} />);
+    const withGcp: Library = {
+      categories: [...library.categories, { id: 'gcp', name: 'GCP' }],
+      entries: library.entries,
+    };
+    render(
+      <LibraryPanel
+        library={withGcp}
+        onPlace={() => {}}
+        onAddCategory={vi.fn()}
+        onDeleteCategory={vi.fn()}
+        onImportIcon={vi.fn()}
+        onImportShape={onImportShape}
+      />,
+    );
     const file = new File(['<svg/>'], 'diamond.svg', { type: 'image/svg+xml' });
     fireEvent.change(screen.getByLabelText('Import shape into GCP'), { target: { files: [file] } });
     expect(onImportShape).toHaveBeenCalledWith('gcp', file);

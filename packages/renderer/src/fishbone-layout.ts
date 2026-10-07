@@ -148,8 +148,26 @@ export function fishboneLayout(
   _plane: string | undefined,
   sizeHints?: ReadonlyMap<string, { width: number; height: number }>,
 ): LayoutResult {
-  const { BONE_K, ROW, TEXT_H, TEXT_PAD, FONT_PX, HEAD_FONT_PX, SUB_RISE, SUB_GAP, SUB_INSET, MIN_LINE, LABEL_W, LABEL_H, HEAD_H, HEAD_MIN_W, HEAD_PAD, HEAD_GAP, MARGIN, COLUMN_GAP } =
-    FISHBONE_LAYOUT;
+  const {
+    BONE_K,
+    ROW,
+    TEXT_H,
+    TEXT_PAD,
+    FONT_PX,
+    HEAD_FONT_PX,
+    SUB_RISE,
+    SUB_GAP,
+    SUB_INSET,
+    MIN_LINE,
+    LABEL_W,
+    LABEL_H,
+    HEAD_H,
+    HEAD_MIN_W,
+    HEAD_PAD,
+    HEAD_GAP,
+    MARGIN,
+    COLUMN_GAP,
+  } = FISHBONE_LAYOUT;
   const tree = fishboneTreeCached(model);
   const geometry = new Map<string, NodeGeometry>();
   const routes = new Map<string, EdgePoint[]>();
@@ -179,7 +197,9 @@ export function fishboneLayout(
   const effect = tree.effect !== undefined && shown.has(tree.effect) ? tree.effect : undefined;
 
   const side = (cat: FishboneCategory, above: boolean): Side => {
-    const causes = cat.causes.filter((c) => shown.has(c.id)).map((c) => ({ id: c.id, subs: c.subs.filter((s) => shown.has(s)) }));
+    const causes = cat.causes
+      .filter((c) => shown.has(c.id))
+      .map((c) => ({ id: c.id, subs: c.subs.filter((s) => shown.has(s)) }));
     // One text row per cause; a cause with sub-causes also needs the row above
     // its line for their texts, plus the ticks' rise. A final ROW keeps the
     // lowest line off the spine; a bare bone is still two rows long.
@@ -220,14 +240,16 @@ export function fishboneLayout(
     };
   };
 
-  const sides = effect === undefined ? [] : tree.categories.filter((c) => shown.has(c.id)).map((c, i) => side(c, i % 2 === 0));
+  const sides =
+    effect === undefined ? [] : tree.categories.filter((c) => shown.has(c.id)).map((c, i) => side(c, i % 2 === 0));
   const columns: Side[][] = [];
   sides.forEach((s, i) => {
     const col = columns[Math.floor(i / 2)];
     if (col === undefined) columns.push([s]);
     else col.push(s);
   });
-  const tallest = (above: boolean): number => sides.filter((s) => s.above === above).reduce((max, s) => Math.max(max, s.height), 0);
+  const tallest = (above: boolean): number =>
+    sides.filter((s) => s.above === above).reduce((max, s) => Math.max(max, s.height), 0);
   const topH = tallest(true);
   const bottomH = tallest(false);
   // No top side: the head alone decides where the spine runs.
@@ -242,7 +264,12 @@ export function fishboneLayout(
     for (const s of col) {
       const at = (p: SidePoint): EdgePoint => ({ x: join + p.x, y: s.above ? spineY - p.h : spineY + p.h });
       for (const t of s.texts) {
-        geometry.set(t.id, { x: join + t.x, y: s.above ? spineY - t.hLo - t.height : spineY + t.hLo, width: t.width, height: t.height });
+        geometry.set(t.id, {
+          x: join + t.x,
+          y: s.above ? spineY - t.hLo - t.height : spineY + t.hLo,
+          width: t.width,
+          height: t.height,
+        });
       }
       for (const l of s.links) {
         const id = edgeIds.get(`${l.from} ${l.to}`);
@@ -258,7 +285,12 @@ export function fishboneLayout(
     // and the CSS-drawn head (flex: none; white-space: nowrap) then steals the
     // difference from the spine, eventually crossing back over the last column.
     const headW = Math.max(HEAD_MIN_W, Math.ceil(textWidth(nameOf.get(effect) ?? '', HEAD_FONT_PX)) + 2 * HEAD_PAD);
-    geometry.set(effect, { x: MARGIN, y: spineY - HEAD_H / 2, width: lastRight + HEAD_GAP + headW - MARGIN, height: HEAD_H });
+    geometry.set(effect, {
+      x: MARGIN,
+      y: spineY - HEAD_H / 2,
+      width: lastRight + HEAD_GAP + headW - MARGIN,
+      height: HEAD_H,
+    });
   }
   // Everything placed so far is ON the fish, and stays where the fish puts it
   // (see LayoutResult.fixed). Taken before the spare row: a stray has no line

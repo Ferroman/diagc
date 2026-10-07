@@ -85,7 +85,10 @@ describe('designer api handlers', () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
     const res = await saveLayout(dir, 'sketch', { version: 1, planes: { default: { a: { x: 1, y: 2 } } } });
     expect(res.status).toBe(200);
-    expect(JSON.parse(await readFile(path.join(dir, 'sketch.layout.json'), 'utf8')).planes.default.a).toEqual({ x: 1, y: 2 });
+    expect(JSON.parse(await readFile(path.join(dir, 'sketch.layout.json'), 'utf8')).planes.default.a).toEqual({
+      x: 1,
+      y: 2,
+    });
   });
 
   it('renames a diagram: moves both files, rewrites id/name, frees the old name', async () => {
@@ -167,7 +170,9 @@ describe('designer api handlers', () => {
 
   it('rejects a malformed drawings payload and an unsafe name', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
-    expect((await saveDrawings(dir, 'x', { version: 1, planes: { default: [{ id: 'k1', points: [1] }] } })).status).toBe(400);
+    expect(
+      (await saveDrawings(dir, 'x', { version: 1, planes: { default: [{ id: 'k1', points: [1] }] } })).status,
+    ).toBe(400);
     expect((await saveDrawings(dir, '../x', { version: 1, planes: {} })).status).toBe(400);
   });
 
@@ -264,7 +269,7 @@ describe('ejectDiagramSource', () => {
 
 describe('walkFiles', () => {
   it('collects files by suffix, posix-joined with the suffix stripped', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'walk-'),);
+    const root = await mkdtemp(path.join(os.tmpdir(), 'walk-'));
     await mkdir(path.join(root, 'sub', 'deep'), { recursive: true });
     await writeFile(path.join(root, 'a.diagram.json'), '{}');
     await writeFile(path.join(root, 'sub', 'b.diagram.json'), '{}');
@@ -291,7 +296,8 @@ describe('listDiagramModels', () => {
     const art = path.join(root, 'art');
     await mkdir(src, { recursive: true });
     await mkdir(art, { recursive: true });
-    const json = (id: string) => JSON.stringify({ version: 1, id, name: id, nodes: [], containment: [], relations: [], layers: [], planes: [] });
+    const json = (id: string) =>
+      JSON.stringify({ version: 1, id, name: id, nodes: [], containment: [], relations: [], layers: [], planes: [] });
     // a JSON source (editable) that also has a compiled artifact; source must win
     await writeFile(path.join(src, 'flows.diagram.json'), json('flows'));
     await writeFile(path.join(art, 'flows.diagram.json'), json('flows-artifact'));
@@ -408,7 +414,12 @@ describe('composed reads', () => {
 
     const r = await listDiagramModels(dir, path.join(dir, 'art'));
     const body = r.body as {
-      diagrams: { name: string; model: { nodes: { id: string }[] } | null; issues: { message: string }[]; editable: boolean }[];
+      diagrams: {
+        name: string;
+        model: { nodes: { id: string }[] } | null;
+        issues: { message: string }[];
+        editable: boolean;
+      }[];
     };
     const entry = body.diagrams.find((d) => d.name === 'umbrella');
     expect(entry?.editable).toBe(true);
@@ -422,7 +433,12 @@ describe('composed reads', () => {
 
     const r = await listDiagramModels(dir, path.join(dir, 'art'));
     const body = r.body as {
-      diagrams: { name: string; model: { nodes: { include?: string }[] } | null; issues: { message: string }[]; editable: boolean }[];
+      diagrams: {
+        name: string;
+        model: { nodes: { include?: string }[] } | null;
+        issues: { message: string }[];
+        editable: boolean;
+      }[];
     };
     const entry = body.diagrams.find((d) => d.name === 'umbrella');
     expect(entry?.editable).toBe(true);
@@ -503,7 +519,14 @@ describe('library handlers', () => {
   const emptyLib = { categories: [], entries: [] };
   const goodLib = {
     categories: [{ id: 'gcp', name: 'GCP' }],
-    entries: [{ id: 'gcp-bq', category: 'gcp', name: 'BigQuery', template: { type: 'image', image: 'a1b2c3.svg', width: 64, height: 64 } }],
+    entries: [
+      {
+        id: 'gcp-bq',
+        category: 'gcp',
+        name: 'BigQuery',
+        template: { type: 'image', image: 'a1b2c3.svg', width: 64, height: 64 },
+      },
+    ],
   };
 
   it('reads an empty library when the file is absent', async () => {
@@ -524,7 +547,9 @@ describe('library handlers', () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
     const withShape = {
       categories: [{ id: 'gcp', name: 'GCP' }],
-      entries: [{ id: 'gcp-sil', category: 'gcp', name: 'Silhouette', template: { shape: 'a1b2c3.svg', color: '#08427b' } }],
+      entries: [
+        { id: 'gcp-sil', category: 'gcp', name: 'Silhouette', template: { shape: 'a1b2c3.svg', color: '#08427b' } },
+      ],
     };
     expect((await saveLibrary(dir, withShape)).status).toBe(200);
     expect((await readLibrary(dir)).body).toEqual(withShape);
@@ -544,14 +569,18 @@ describe('library handlers', () => {
 
   it('rejects duplicate ids and bad template field types', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
-    const dup = { categories: [{ id: 'c', name: 'C' }], entries: [
-      { id: 'e', category: 'c', name: 'E', template: { color: '#000' } },
-      { id: 'e', category: 'c', name: 'E2', template: { color: '#111' } },
-    ] };
+    const dup = {
+      categories: [{ id: 'c', name: 'C' }],
+      entries: [
+        { id: 'e', category: 'c', name: 'E', template: { color: '#000' } },
+        { id: 'e', category: 'c', name: 'E2', template: { color: '#111' } },
+      ],
+    };
     expect((await saveLibrary(dir, dup)).status).toBe(400);
-    const badField = { categories: [{ id: 'c', name: 'C' }], entries: [
-      { id: 'e', category: 'c', name: 'E', template: { width: 'big' } },
-    ] };
+    const badField = {
+      categories: [{ id: 'c', name: 'C' }],
+      entries: [{ id: 'e', category: 'c', name: 'E', template: { width: 'big' } }],
+    };
     expect((await saveLibrary(dir, badField)).status).toBe(400);
   });
 });

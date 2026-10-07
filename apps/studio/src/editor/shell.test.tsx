@@ -390,7 +390,9 @@ describe('editor shell', () => {
       'fetch',
       stubFetch([{ name: 'sketch', model: goodModel, issues: [], editable: true }], {
         extra: (url) =>
-          url === '/api/assets' ? new Response(JSON.stringify({ name: 'abc123def456.png' }), { status: 200 }) : undefined,
+          url === '/api/assets'
+            ? new Response(JSON.stringify({ name: 'abc123def456.png' }), { status: 200 })
+            : undefined,
       }),
     );
     const { container } = render(<App />);
@@ -856,9 +858,7 @@ describe('editor shell', () => {
     // model.notation -> activeNotation -> DiagramView, no plane involved (the
     // spec's zero-plane gating concern: this diagram has none).
     fireEvent.change(screen.getByLabelText('Notation'), { target: { value: 'c4' } });
-    await waitFor(() =>
-      expect(document.querySelector('.dg-canvas')?.classList.contains('dg-notation-c4')).toBe(true),
-    );
+    await waitFor(() => expect(document.querySelector('.dg-canvas')?.classList.contains('dg-notation-c4')).toBe(true));
   });
 
   it('docks the threat-model panel in view mode, and only for that notation', async () => {
@@ -882,13 +882,16 @@ describe('editor shell', () => {
     expect(panel.getByRole('button', { name: /Web app → Orders DB/ })).toBeDefined();
     unmount();
 
-    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: { ...tm, notation: 'fishbone' }, issues: [], editable: true }]));
+    vi.stubGlobal(
+      'fetch',
+      stubFetch([{ name: 'sketch', model: { ...tm, notation: 'fishbone' }, issues: [], editable: true }]),
+    );
     render(<App />);
     await screen.findByRole('heading', { name: /layers & planes/i }); // the right dock is up…
     expect(screen.queryByRole('complementary', { name: 'Threat model' })).toBeNull(); // …without this panel
   });
 
-  it("folds the threat-model panel on its own, leaving Layers & planes open", async () => {
+  it('folds the threat-model panel on its own, leaving Layers & planes open', async () => {
     // The dock's own toggle is all-or-nothing; a long register needs putting
     // aside without losing the layer switches under it.
     vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: tmModel, issues: [], editable: true }]));
@@ -1036,7 +1039,9 @@ describe('editor shell', () => {
       expect(chip.getAttribute('title')).toBe('Open all threat notes');
       fireEvent.click(chip);
       expect(await canvas().findByText('Plain-text')).toBeDefined();
-      await waitFor(() => expect(screen.getByRole('button', { name: 'Notes' }).getAttribute('aria-pressed')).toBe('true'));
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Notes' }).getAttribute('aria-pressed')).toBe('true'),
+      );
       expect(screen.getByRole('button', { name: 'Notes' }).getAttribute('title')).toBe('Close all threat notes');
       await waitFor(() => {
         const body = lastPostBody<{ notes?: Record<string, Record<string, NotePlacement>> }>('/api/layouts/sketch');
@@ -1322,12 +1327,10 @@ describe('editor shell', () => {
     });
     // ...and the studio lands in an edit session on the copy, not the original.
     expect(await screen.findByRole('button', { name: /^save$/i })).toBeDefined();
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Diagram: two-copy' })).toBeDefined(),
-    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Diagram: two-copy' })).toBeDefined());
   });
 
-  it('carries the source diagram\'s saved layout onto the copy', async () => {
+  it("carries the source diagram's saved layout onto the copy", async () => {
     vi.stubGlobal(
       'fetch',
       stubFetch([{ name: 'two', model: twoModel, issues: [], editable: false }], {
@@ -1419,7 +1422,9 @@ describe('editor shell', () => {
       'fetch',
       stubFetch([{ name: 'umbrella', model: umbrellaComposed, issues: [], editable: true }], {
         extra: (url) =>
-          url === '/api/diagrams/umbrella' ? new Response(JSON.stringify({ model: umbrellaRaw }), { status: 200 }) : undefined,
+          url === '/api/diagrams/umbrella'
+            ? new Response(JSON.stringify({ model: umbrellaRaw }), { status: 200 })
+            : undefined,
       }),
     );
     render(<App />);
@@ -1458,7 +1463,8 @@ describe('editor shell', () => {
       'fetch',
       stubFetch([{ name: 'umbrella', model: umbrellaComposed, issues: [], editable: true }], {
         extra: (url) => {
-          if (url === '/api/diagrams/umbrella') return new Response(JSON.stringify({ model: umbrellaRaw }), { status: 200 });
+          if (url === '/api/diagrams/umbrella')
+            return new Response(JSON.stringify({ model: umbrellaRaw }), { status: 200 });
           if (url === '/api/diagrams/umbrella/composed') {
             return new Response(JSON.stringify({ model: umbrellaComposed }), { status: 200 });
           }
@@ -1565,7 +1571,9 @@ describe('editor shell', () => {
       'fetch',
       stubFetch([{ name: 'umbrella', model: umbrellaComposed, issues: [], editable: true }], {
         extra: (url) =>
-          url === '/api/diagrams/umbrella' ? new Response(JSON.stringify({ model: umbrellaRaw }), { status: 200 }) : undefined,
+          url === '/api/diagrams/umbrella'
+            ? new Response(JSON.stringify({ model: umbrellaRaw }), { status: 200 })
+            : undefined,
       }),
     );
     render(<App />);
@@ -1694,7 +1702,12 @@ describe('editor shell', () => {
       await screen.findByRole('button', { name: /^edit$/i });
       for (const name of ['Rename', 'Duplicate', 'Eject']) expect(topbar().queryByRole('button', { name })).toBeNull();
       fireEvent.click(topbar().getByRole('button', { name: 'Diagram actions' }));
-      expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Rename', 'Export PNG', 'Duplicate', 'Eject']);
+      expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual([
+        'Rename',
+        'Export PNG',
+        'Duplicate',
+        'Eject',
+      ]);
       fireEvent.click(screen.getByRole('menuitem', { name: 'Duplicate' }));
       expect(screen.queryByRole('menu')).toBeNull();
       // the row did what the chip did: the copy is created and opened
@@ -1729,7 +1742,8 @@ describe('editor shell', () => {
       render(<App />);
       await enterEdit();
       const toolbar = within(screen.getByRole('toolbar', { name: 'Editor' }));
-      for (const name of [/new diagram/i, /re-layout/i, /auto-layout/i]) expect(toolbar.queryByRole('button', { name })).toBeNull();
+      for (const name of [/new diagram/i, /re-layout/i, /auto-layout/i])
+        expect(toolbar.queryByRole('button', { name })).toBeNull();
       expect(toolbar.queryByLabelText('Layout algorithm')).toBeNull();
       expect(layoutSection().getByRole('button', { name: 'Re-layout' })).toBeDefined();
       expect(layoutSection().getByRole('button', { name: 'Auto-layout' })).toBeDefined();

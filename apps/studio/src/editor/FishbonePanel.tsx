@@ -34,8 +34,12 @@ export function FishbonePanel({ model, selection, plane, onCommand, onSelect, on
   const tree = useMemo(() => fishboneTree(model), [model]);
   // Errors and warnings in one list: a stray cause (a warning, so the diagram
   // still saves) is exactly what the author needs pointed at here.
-  const issues = useMemo(() => [...validate(model), ...diagramWarnings(model)].filter((i) => i.code.startsWith('fb-')), [model]);
-  const selected = selection?.kind === 'node' ? model.nodes.find((n) => n.id === selection.id && isFishboneNode(n)) : undefined;
+  const issues = useMemo(
+    () => [...validate(model), ...diagramWarnings(model)].filter((i) => i.code.startsWith('fb-')),
+    [model],
+  );
+  const selected =
+    selection?.kind === 'node' ? model.nodes.find((n) => n.id === selection.id && isFishboneNode(n)) : undefined;
   // Nothing (or the effect) selected → a category; else a child of the selection.
   const parentId = selected === undefined ? tree.effect : selected.id;
   const isSub = selected?.type === FB_CAUSE_TYPE && isSubCause(tree, selected.id);
@@ -79,13 +83,23 @@ export function FishbonePanel({ model, selection, plane, onCommand, onSelect, on
             </>
           )}
           <p className="so-hint">
-            {isSub ? LIMIT_HINT : selected !== undefined ? `Under “${selected.name !== '' ? selected.name : selected.id}”:` : 'Adds a category to the effect.'}
+            {isSub
+              ? LIMIT_HINT
+              : selected !== undefined
+                ? `Under “${selected.name !== '' ? selected.name : selected.id}”:`
+                : 'Adds a category to the effect.'}
           </p>
-          <button type="button" disabled={isSub || parentId === undefined} onClick={() => parentId !== undefined && created(addChild(model, parentId))}>
+          <button
+            type="button"
+            disabled={isSub || parentId === undefined}
+            onClick={() => parentId !== undefined && created(addChild(model, parentId))}
+          >
             {childLabel}
           </button>
           <p className="so-hint">
-            {selected !== undefined ? 'Tab does the same for the selection.' : 'Select a bone or a cause, and the button (or Tab) hangs something on it instead.'}
+            {selected !== undefined
+              ? 'Tab does the same for the selection.'
+              : 'Select a bone or a cause, and the button (or Tab) hangs something on it instead.'}
           </p>
         </>
       )}

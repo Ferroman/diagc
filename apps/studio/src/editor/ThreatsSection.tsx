@@ -209,7 +209,10 @@ export function ThreatsSection({ target, threats, applicable, crossing, onComman
   return (
     <section className="panel-section threats" aria-label="Threats">
       <h3>
-        Threats <span className="so-hint">{open} / {total}</span>
+        Threats{' '}
+        <span className="so-hint">
+          {open} / {total}
+        </span>
       </h3>
       {crossing !== undefined && (
         // Derived from containment, never authored: an end in no boundary reads

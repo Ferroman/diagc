@@ -55,7 +55,11 @@ const bounds: Record<string, { x: number; y: number; width: number; height: numb
 function harness(m: DiagramModel, selection: string | null = null) {
   const dispatched: EditorCommand[] = [];
   const session = { state: { model: m } } as unknown as NonNullable<EditorApi['session']>;
-  const editor = { session, peek: () => session, dispatch: (c: EditorCommand) => dispatched.push(c) } as unknown as EditorApi;
+  const editor = {
+    session,
+    peek: () => session,
+    dispatch: (c: EditorCommand) => dispatched.push(c),
+  } as unknown as EditorApi;
   const layoutApi = { nodeBounds: (id: string) => bounds[id] } as unknown as LayoutApi;
   const noop = () => {};
   // Safe despite the name: useNodePlacement calls no React hook of its own.

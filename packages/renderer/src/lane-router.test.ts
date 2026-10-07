@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { columnGaps, obstacleOf, routeLaneEdges, type Point, type RouterBox } from './lane-router';
 
-const box = (id: string, x: number, y: number, width = 100, height = 40, caption?: { width: number; height: number }): RouterBox => ({
+const box = (
+  id: string,
+  x: number,
+  y: number,
+  width = 100,
+  height = 40,
+  caption?: { width: number; height: number },
+): RouterBox => ({
   id,
   x,
   y,
@@ -28,7 +35,12 @@ const hits = (pts: Point[], r: { x: number; y: number; width: number; height: nu
 
 describe('obstacleOf / columnGaps', () => {
   it('widens a captioned glyph to its caption and hangs the caption below', () => {
-    expect(obstacleOf(box('d', 100, 0, 40, 40, { width: 120, height: 20 }))).toEqual({ x: 60, y: 0, width: 120, height: 60 });
+    expect(obstacleOf(box('d', 100, 0, 40, 40, { width: 120, height: 20 }))).toEqual({
+      x: 60,
+      y: 0,
+      width: 120,
+      height: 60,
+    });
   });
 
   it('finds the x ranges no box reaches at any height', () => {

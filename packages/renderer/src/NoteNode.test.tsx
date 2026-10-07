@@ -9,7 +9,14 @@ const base: NoteData = {
   name: 'Web app',
   threats: [
     { id: 't1', category: 'S', title: 'Spoofed session' },
-    { id: 't2', category: 'T', title: 'Config tamper', status: 'mitigated', description: 'Config is world-writable', mitigation: 'chmod 600' },
+    {
+      id: 't2',
+      category: 'T',
+      title: 'Config tamper',
+      status: 'mitigated',
+      description: 'Config is world-writable',
+      mitigation: 'chmod 600',
+    },
   ],
   anchor: { x: 0, y: 0 },
   badge: { x: 0, y: 0 },
@@ -17,7 +24,12 @@ const base: NoteData = {
   comments: [],
   links: [],
 };
-const draw = (data: NoteData) => render(<ReactFlowProvider><NoteNode id="note:node:a" data={data} /></ReactFlowProvider>);
+const draw = (data: NoteData) =>
+  render(
+    <ReactFlowProvider>
+      <NoteNode id="note:node:a" data={data} />
+    </ReactFlowProvider>,
+  );
 const rowsOf = (container: HTMLElement) => Array.from(container.querySelectorAll<HTMLElement>('.dg-note-row'));
 
 describe('NoteNode — the bubble', () => {
@@ -34,7 +46,14 @@ describe('NoteNode — the bubble', () => {
     // the bubble sits at (100, 100) absolute, 220×80; the badge is below-right of it
     const { container } = render(
       <ReactFlowProvider>
-        <NoteNode id="note:node:a" data={{ ...base, badge: { x: 340, y: 200 } }} positionAbsoluteX={100} positionAbsoluteY={100} width={220} height={80} />
+        <NoteNode
+          id="note:node:a"
+          data={{ ...base, badge: { x: 340, y: 200 } }}
+          positionAbsoluteX={100}
+          positionAbsoluteY={100}
+          width={220}
+          height={80}
+        />
       </ReactFlowProvider>,
     );
     const tail = container.querySelector('svg.dg-note-tail') as SVGElement;
@@ -46,14 +65,26 @@ describe('NoteNode — the bubble', () => {
   it('draws no tail before it is measured, nor with the badge under the bubble', () => {
     const unmeasured = render(
       <ReactFlowProvider>
-        <NoteNode id="note:node:a" data={{ ...base, badge: { x: 340, y: 200 } }} positionAbsoluteX={100} positionAbsoluteY={100} />
+        <NoteNode
+          id="note:node:a"
+          data={{ ...base, badge: { x: 340, y: 200 } }}
+          positionAbsoluteX={100}
+          positionAbsoluteY={100}
+        />
       </ReactFlowProvider>,
     );
     expect(unmeasured.container.querySelector('.dg-note-tail')).toBeNull();
     unmeasured.unmount();
     const covered = render(
       <ReactFlowProvider>
-        <NoteNode id="note:node:a" data={{ ...base, badge: { x: 150, y: 140 } }} positionAbsoluteX={100} positionAbsoluteY={100} width={220} height={80} />
+        <NoteNode
+          id="note:node:a"
+          data={{ ...base, badge: { x: 150, y: 140 } }}
+          positionAbsoluteX={100}
+          positionAbsoluteY={100}
+          width={220}
+          height={80}
+        />
       </ReactFlowProvider>,
     );
     expect(covered.container.querySelector('.dg-note-tail')).toBeNull();
@@ -74,7 +105,10 @@ describe('NoteNode — the bubble', () => {
   });
 
   it('shows n/a for not-applicable', () => {
-    const { container } = draw({ ...base, threats: [{ id: 't', category: 'D', title: 'x', status: 'not-applicable' }] });
+    const { container } = draw({
+      ...base,
+      threats: [{ id: 't', category: 'D', title: 'x', status: 'not-applicable' }],
+    });
     const chip = container.querySelector('.dg-note-status') as HTMLElement;
     expect(chip.textContent).toBe('n/a');
     expect(chip.getAttribute('data-status')).toBe('not-applicable');
@@ -176,7 +210,14 @@ describe('NoteNode — the bubble', () => {
   it('mouse events on the controls and fields never reach the canvas', () => {
     const seen = vi.fn();
     document.body.addEventListener('mousedown', seen);
-    const { container } = draw({ ...base, editing: true, onAddThreat: vi.fn(), onRetitleThreat: vi.fn(), onSetThreatStatus: vi.fn(), onEditThreatText: vi.fn() });
+    const { container } = draw({
+      ...base,
+      editing: true,
+      onAddThreat: vi.fn(),
+      onRetitleThreat: vi.fn(),
+      onSetThreatStatus: vi.fn(),
+      onEditThreatText: vi.fn(),
+    });
     fireEvent.mouseDown(screen.getByRole('button', { name: 'Add a threat' }));
     const [open, handled] = rowsOf(container);
     fireEvent.mouseDown(within(open!).getByRole('button', { name: 'Set status' }));
@@ -200,7 +241,11 @@ describe('NoteNode — the bubble', () => {
     fireEvent.click(within(empty!).getByRole('button', { name: 'Show details' }));
     fireEvent.click(within(filled!).getByRole('button', { name: 'Show details' }));
     expect(container.querySelectorAll('.dg-note-details')).toHaveLength(2);
-    rerender(<ReactFlowProvider><NoteNode id="note:node:a" data={{ ...base, editing: false }} /></ReactFlowProvider>);
+    rerender(
+      <ReactFlowProvider>
+        <NoteNode id="note:node:a" data={{ ...base, editing: false }} />
+      </ReactFlowProvider>,
+    );
     // not "collapse everything on the way out": the row that has text to show
     // stays expanded, so the empty one's disappearance is about being empty
     expect(rowsOf(container)[0]?.querySelector('.dg-note-details')).toBeNull();
@@ -212,7 +257,11 @@ describe('NoteNode — the bubble', () => {
     fireEvent.doubleClick(container.querySelectorAll('.dg-note-title')[0]!);
     expect(screen.getByLabelText('Rename threat')).toBeDefined();
     const at = (editing: boolean) =>
-      rerender(<ReactFlowProvider><NoteNode id="note:node:a" data={{ ...base, editing, onRetitleThreat: vi.fn() }} /></ReactFlowProvider>);
+      rerender(
+        <ReactFlowProvider>
+          <NoteNode id="note:node:a" data={{ ...base, editing, onRetitleThreat: vi.fn() }} />
+        </ReactFlowProvider>,
+      );
     at(false);
     at(true);
     expect(screen.queryByLabelText('Rename threat')).toBeNull();
@@ -221,11 +270,21 @@ describe('NoteNode — the bubble', () => {
 
 describe('NoteNode — comments and links', () => {
   it('lists comments with their by · at line, under a section title, and no threat header when there are no threats', () => {
-    const { container } = draw({ ...base, threats: [], comments: [{ id: 'c1', text: 'Slipped a week', by: 'Ann', at: '2026-09-22' }, { id: 'c2', text: 'Vendor confirmed' }] });
+    const { container } = draw({
+      ...base,
+      threats: [],
+      comments: [
+        { id: 'c1', text: 'Slipped a week', by: 'Ann', at: '2026-09-22' },
+        { id: 'c2', text: 'Vendor confirmed' },
+      ],
+    });
     expect(container.querySelector('.dg-note-count')).toBeNull();
     expect(container.querySelector('.dg-note-rows')).toBeNull();
     const items = Array.from(container.querySelectorAll('.dg-note-comment'));
-    expect(items.map((i) => i.querySelector('.dg-note-text')?.textContent)).toEqual(['Slipped a week', 'Vendor confirmed']);
+    expect(items.map((i) => i.querySelector('.dg-note-text')?.textContent)).toEqual([
+      'Slipped a week',
+      'Vendor confirmed',
+    ]);
     expect(items[0]!.querySelector('.dg-note-meta')?.textContent).toBe('Ann · 2026-09-22');
     expect(items[1]!.querySelector('.dg-note-meta')).toBeNull();
     expect(container.querySelector('.dg-note-section')?.textContent).toContain('Comments');
@@ -251,7 +310,12 @@ describe('NoteNode — comments and links', () => {
   });
   it('routes a non-http ref through the host without navigating', () => {
     const onOpenLink = vi.fn();
-    const { container } = draw({ ...base, threats: [], links: [{ label: 'Design note', url: 'obsidian://open?file=Design' }], onOpenLink });
+    const { container } = draw({
+      ...base,
+      threats: [],
+      links: [{ label: 'Design note', url: 'obsidian://open?file=Design' }],
+      onOpenLink,
+    });
     const a = container.querySelector<HTMLAnchorElement>('a.dg-note-link')!;
     expect(a.hasAttribute('href')).toBe(false);
     // fireEvent hands back false when a handler called preventDefault — the

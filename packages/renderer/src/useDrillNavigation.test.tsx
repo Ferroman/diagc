@@ -45,7 +45,7 @@ describe('useDrillNavigation', () => {
     expect(onEnteredPathChange).toHaveBeenLastCalledWith(['sys', 'svc', 'inner']);
   });
 
-  it('exitTo truncates to a breadcrumb; null exits to the bird\'s-eye', () => {
+  it("exitTo truncates to a breadcrumb; null exits to the bird's-eye", () => {
     const { result } = renderHook((p: DrillNavigationInput) => useDrillNavigation(p), { initialProps: inputFor() });
     act(() => result.current.enterNode('inner'));
     act(() => result.current.exitTo('sys'));
@@ -90,7 +90,9 @@ describe('useDrillNavigation', () => {
     // React Flow's `fitView` prop fits on mount only, and the studio swaps the
     // model without remounting: unasked, the next diagram would open under the
     // last one's pan and zoom.
-    const { result, rerender } = renderHook((p: DrillNavigationInput) => useDrillNavigation(p), { initialProps: inputFor() });
+    const { result, rerender } = renderHook((p: DrillNavigationInput) => useDrillNavigation(p), {
+      initialProps: inputFor(),
+    });
     expect(result.current.pendingRootFitRef.current).toBeNull();
     const other = fixture();
     other.id = 'elsewhere';
@@ -99,7 +101,9 @@ describe('useDrillNavigation', () => {
   });
 
   it('a deep link into a different diagram still jumps: the drill it carries does not turn the open into a glide', () => {
-    const { result, rerender } = renderHook((p: DrillNavigationInput) => useDrillNavigation(p), { initialProps: inputFor() });
+    const { result, rerender } = renderHook((p: DrillNavigationInput) => useDrillNavigation(p), {
+      initialProps: inputFor(),
+    });
     const other = fixture();
     other.id = 'elsewhere';
     rerender(inputFor({ model: other, enteredPathProp: ['sys'] }));
@@ -110,7 +114,9 @@ describe('useDrillNavigation', () => {
   it('an edit of the same diagram leaves the camera alone', () => {
     // same id, new object: an edit, or the compile watcher's reload — neither
     // may move the view out from under whoever is reading it
-    const { result, rerender } = renderHook((p: DrillNavigationInput) => useDrillNavigation(p), { initialProps: inputFor() });
+    const { result, rerender } = renderHook((p: DrillNavigationInput) => useDrillNavigation(p), {
+      initialProps: inputFor(),
+    });
     rerender(inputFor());
     expect(result.current.pendingRootFitRef.current).toBeNull();
   });

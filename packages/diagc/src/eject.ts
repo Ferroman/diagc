@@ -10,7 +10,10 @@ import { snapshotSession } from './snapshots';
 export type EjectFailure = 'not-found' | 'already-ts' | 'invalid' | 'mismatch';
 
 export class EjectError extends Error {
-  constructor(message: string, readonly code: EjectFailure) {
+  constructor(
+    message: string,
+    readonly code: EjectFailure,
+  ) {
     super(message);
     this.name = 'EjectError';
   }

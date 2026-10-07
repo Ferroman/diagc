@@ -13,7 +13,14 @@ export const SECOND_ORDER_PACK: Library = {
   entries: [
     entry('so-decision', 'Decision', ['decision', 'choice', 'option', 'second order']),
     entry('so-consequence-positive', 'Good consequence', ['consequence', 'effect', 'good', 'positive', 'upside']),
-    entry('so-consequence-negative', 'Bad consequence', ['consequence', 'effect', 'bad', 'negative', 'downside', 'risk']),
+    entry('so-consequence-negative', 'Bad consequence', [
+      'consequence',
+      'effect',
+      'bad',
+      'negative',
+      'downside',
+      'risk',
+    ]),
     entry('so-consequence-neutral', 'Neutral consequence', ['consequence', 'effect', 'neutral', 'and then what']),
   ],
 };

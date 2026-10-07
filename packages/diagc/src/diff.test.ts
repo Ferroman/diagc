@@ -4,7 +4,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { DiagramModel } from '@diagc/core';
-import { compareDiagramSets, describeDiff, formatDiffSummary, loadDiagramSet, writeDiffPages, type DiagramSet } from './diff';
+import {
+  compareDiagramSets,
+  describeDiff,
+  formatDiffSummary,
+  loadDiagramSet,
+  writeDiffPages,
+  type DiagramSet,
+} from './diff';
 import { checkoutDiagrams, type CheckedOutRef } from './git-ref';
 import { DG_DATA_SENTINEL } from './publish/html';
 import { THEME_HEAD_SCRIPT } from './publish/pageTheme';
@@ -39,7 +46,10 @@ const gone = model('gone', { nodes: [{ id: 'x', name: 'X' }] });
 const fresh = model('fresh', { nodes: [{ id: 'y', name: 'Y' }] });
 
 const git = (cwd: string, ...args: string[]) =>
-  execFileSync('git', ['-c', 'user.email=t@example.com', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...args], { cwd, stdio: 'pipe' });
+  execFileSync('git', ['-c', 'user.email=t@example.com', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...args], {
+    cwd,
+    stdio: 'pipe',
+  });
 const put = (repo: string, rel: string, data: unknown) => {
   const file = path.join(repo, rel);
   mkdirSync(path.dirname(file), { recursive: true });
@@ -122,8 +132,13 @@ describe('compareDiagramSets', () => {
     expect(diffs.map((d) => d.name)).toEqual(['shop']);
   });
 
-  it("reports a diagram that does not compile on one side instead of diffing it", async () => {
-    const broken: DiagramSet = { label: 'wip', diagramsDir: '', versions: new Map(), errors: new Map([['shop', 'bad json']]) };
+  it('reports a diagram that does not compile on one side instead of diffing it', async () => {
+    const broken: DiagramSet = {
+      label: 'wip',
+      diagramsDir: '',
+      versions: new Map(),
+      errors: new Map([['shop', 'bad json']]),
+    };
     const [d] = compareDiagramSets(await setAt('v1'), broken, ['shop']);
     expect(d).toMatchObject({ status: 'error', error: 'does not compile at wip: bad json' });
   });
@@ -160,7 +175,10 @@ describe('writeDiffPages', () => {
     const diffs = compareDiagramSets(before, after);
     const out = mkdtempSync(path.join(tmpdir(), 'diagc-diff-out-'));
     const shellPath = path.join(out, 'shell.html');
-    writeFileSync(shellPath, `<!doctype html><script id="dg-data" type="application/json">${DG_DATA_SENTINEL}</script>`);
+    writeFileSync(
+      shellPath,
+      `<!doctype html><script id="dg-data" type="application/json">${DG_DATA_SENTINEL}</script>`,
+    );
     const rendered: string[] = [];
     const res = await writeDiffPages(diffs, {
       outDir: path.join(out, 'diff'),
@@ -183,7 +201,9 @@ describe('writeDiffPages', () => {
 
     const stamped = (rel: string) => {
       const html = readFileSync(path.join(out, 'diff', rel), 'utf8');
-      return JSON.parse(html.slice(html.indexOf('>', html.indexOf('id="dg-data"')) + 1, html.lastIndexOf('</script>'))) as {
+      return JSON.parse(
+        html.slice(html.indexOf('>', html.indexOf('id="dg-data"')) + 1, html.lastIndexOf('</script>')),
+      ) as {
         diff: { marks: unknown };
         layout?: unknown;
       };
@@ -238,7 +258,13 @@ describe('writeDiffPages', () => {
     const out = mkdtempSync(path.join(tmpdir(), 'diagc-diff-out-'));
     const shellPath = path.join(out, 'shell.html');
     writeFileSync(shellPath, DG_DATA_SENTINEL);
-    const res = await writeDiffPages(compareDiagramSets(before, after, ['shop']), { outDir: out, shellPath, libraryDir: out, before, after });
+    const res = await writeDiffPages(compareDiagramSets(before, after, ['shop']), {
+      outDir: out,
+      shellPath,
+      libraryDir: out,
+      before,
+      after,
+    });
     expect(res.images).toEqual([]);
     expect(readFileSync(res.summary, 'utf8')).toContain('| [before](shop.before.html) | [after](shop.after.html) |');
   });

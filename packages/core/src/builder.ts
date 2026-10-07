@@ -20,7 +20,15 @@ import type {
   Threat,
 } from './types';
 import { nextCommentId, type ElementTarget } from './comments';
-import { FB_CATEGORY_TYPE, FB_CAUSE_OF_KIND, FB_CAUSE_TYPE, FB_EFFECT_TYPE, FISHBONE_PRESETS, presetId, type FishbonePreset } from './fishbone';
+import {
+  FB_CATEGORY_TYPE,
+  FB_CAUSE_OF_KIND,
+  FB_CAUSE_TYPE,
+  FB_EFFECT_TYPE,
+  FISHBONE_PRESETS,
+  presetId,
+  type FishbonePreset,
+} from './fishbone';
 import { GIT_STAGE_TYPE } from './git';
 import { SO_DECISION_TYPE, SO_LEADS_TO_KIND, consequenceTypeOf, type Valence } from './second-order';
 import {
@@ -33,7 +41,14 @@ import {
   type ThreatTarget,
 } from './threat-model';
 import { DiagramValidationError, validate } from './validate';
-import { PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_PERSON_TYPE, PLAN_TEAM_TYPE, PLAN_ZONE_TYPE, type PlanRole } from './plan';
+import {
+  PLAN_EVENT_TYPE,
+  PLAN_NOTATION,
+  PLAN_PERSON_TYPE,
+  PLAN_TEAM_TYPE,
+  PLAN_ZONE_TYPE,
+  type PlanRole,
+} from './plan';
 
 export interface NodeOpts {
   type?: string;
@@ -197,7 +212,9 @@ export class BranchRef extends NodeRef {
   commit(tagOrOpts: string | CommitOpts = {}): CommitRef {
     const opts: CommitOpts = typeof tagOrOpts === 'string' ? { tag: tagOrOpts } : tagOrOpts;
     if (opts.from !== undefined && opts.from.branch === this) {
-      throw new Error(`branch '${this.id}': use commit() to continue a lane — 'from' must name a commit on another branch`);
+      throw new Error(
+        `branch '${this.id}': use commit() to continue a lane — 'from' must name a commit on another branch`,
+      );
     }
     const prev = this.latest;
     const c = this.create(opts);
@@ -329,7 +346,9 @@ export class CauseRef extends NodeRef {
   /** a sub-cause of this cause, and the arrow from it to here */
   cause(id: string, name?: string, opts: FishboneOpts = {}): CauseRef {
     if (this.level === 3) {
-      throw new Error(`fishbone: '${id}' would be a fourth level below the effect; three levels (category, cause, sub-cause) is the limit`);
+      throw new Error(
+        `fishbone: '${id}' would be a fourth level below the effect; three levels (category, cause, sub-cause) is the limit`,
+      );
     }
     this.m.node(id, { type: FB_CAUSE_TYPE, ...(name !== undefined ? { name } : {}), ...opts });
     const ref = new CauseRef(id, this.m, 3);
@@ -530,12 +549,22 @@ export class PlanBuilder {
    * spreads after `plane: this.plane`, so a merely-overridden plane would
    * silently win over the forced one. */
   person(id: string, name?: string, opts: Omit<ElementOpts, 'plane'> = {}): NodeRef {
-    return this.m.node(id, { type: PLAN_PERSON_TYPE, plane: this.plane, ...(name !== undefined ? { name } : {}), ...opts });
+    return this.m.node(id, {
+      type: PLAN_PERSON_TYPE,
+      plane: this.plane,
+      ...(name !== undefined ? { name } : {}),
+      ...opts,
+    });
   }
   /** a team to hand roles to, same deal as `person` — an actor that holds a
    * role but is never an individual. Same forced-plane guard. */
   team(id: string, name?: string, opts: Omit<ElementOpts, 'plane'> = {}): NodeRef {
-    return this.m.node(id, { type: PLAN_TEAM_TYPE, plane: this.plane, ...(name !== undefined ? { name } : {}), ...opts });
+    return this.m.node(id, {
+      type: PLAN_TEAM_TYPE,
+      plane: this.plane,
+      ...(name !== undefined ? { name } : {}),
+      ...opts,
+    });
   }
 }
 
@@ -711,9 +740,7 @@ export class ModelBuilder {
 
   /** internal — used by NodeRef */
   addContainment(parent: string, child: string, plane?: string): void {
-    const exists = this.containment.some(
-      (e) => e.parent === parent && e.child === child && e.plane === plane,
-    );
+    const exists = this.containment.some((e) => e.parent === parent && e.child === child && e.plane === plane);
     if (!exists) this.containment.push({ parent, child, ...pruneUndefined({ plane }) });
   }
 
@@ -837,7 +864,9 @@ export class ModelBuilder {
   gitGraph(opts: { plane?: string; name?: string } = {}): GitGraphBuilder {
     if (this.git !== undefined) throw new Error('gitGraph() already declared');
     if (this.planes.length > 0) {
-      throw new Error('gitGraph() must come before plane(): the git plane has to be the default (first-declared) plane');
+      throw new Error(
+        'gitGraph() must come before plane(): the git plane has to be the default (first-declared) plane',
+      );
     }
     this.plane(opts.plane ?? 'git-graph', { name: opts.name ?? 'Git graph', notation: 'git-graph' });
     this.git = new GitGraphBuilder(this);
@@ -851,7 +880,8 @@ export class ModelBuilder {
    */
   secondOrder(opts: { plane?: string; name?: string } = {}): SecondOrderBuilder {
     if (this.so !== undefined) throw new Error('secondOrder() already declared');
-    if (opts.plane !== undefined) this.plane(opts.plane, { name: opts.name ?? 'Consequences', notation: 'second-order' });
+    if (opts.plane !== undefined)
+      this.plane(opts.plane, { name: opts.name ?? 'Consequences', notation: 'second-order' });
     else this.notation('second-order');
     this.so = new SecondOrderBuilder(this);
     return this.so;
@@ -863,7 +893,11 @@ export class ModelBuilder {
    * (the notation is flat); name a plane to keep it beside other views of the
    * same model. The effect's own options ride in `opts` too.
    */
-  fishbone(id: string, name?: string, opts: FishboneOpts & { plane?: string; planeName?: string } = {}): FishboneBuilder {
+  fishbone(
+    id: string,
+    name?: string,
+    opts: FishboneOpts & { plane?: string; planeName?: string } = {},
+  ): FishboneBuilder {
     if (this.fb !== undefined) throw new Error('fishbone() already declared');
     const { plane, planeName, ...rest } = opts;
     if (plane !== undefined) this.plane(plane, { name: planeName ?? 'Causes', notation: 'fishbone' });

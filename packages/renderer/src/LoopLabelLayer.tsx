@@ -162,9 +162,7 @@ export function LoopLabelLayer({ edges, rough, nodeFilter }: LoopLabelLayerProps
               rough={rough}
               active={highlight.activeKey === p.key}
               dimmed={highlight.active && highlight.activeKey !== p.key}
-              {...(loop !== undefined
-                ? { onSelect: () => highlight.toggle(p.key, loop.nodes, loop.edgeIds) }
-                : {})}
+              {...(loop !== undefined ? { onSelect: () => highlight.toggle(p.key, loop.nodes, loop.edgeIds) } : {})}
             />
           );
         })}

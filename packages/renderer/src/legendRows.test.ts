@@ -121,7 +121,11 @@ describe('legendRows', () => {
     // b->a 'async' edge. Registry order is sync, async, reads, writes, …,
     // mixed, …, so 'async' (rank 1) still sorts before 'mixed' (rank 6) despite
     // compiling second — that is the "not by appearance" this test is for.
-    expect(rows(m.toJSON()).filter((x) => x.section === 'kinds').map((x) => x.label)).toEqual(['async', 'mixed']);
+    expect(
+      rows(m.toJSON())
+        .filter((x) => x.section === 'kinds')
+        .map((x) => x.label),
+    ).toEqual(['async', 'mixed']);
   });
 
   it('sorts a registered kind before unregistered ones, and unregistered ones alphabetically', () => {
@@ -142,11 +146,11 @@ describe('legendRows', () => {
     m.relate(c, a, { kind: 'zulu' });
     m.relate(a, b, { kind: 'writes' });
     m.relate(b, c, { kind: 'alpha' });
-    expect(rows(m.toJSON()).filter((x) => x.section === 'kinds').map((x) => x.label)).toEqual([
-      'writes',
-      'alpha',
-      'zulu',
-    ]);
+    expect(
+      rows(m.toJSON())
+        .filter((x) => x.section === 'kinds')
+        .map((x) => x.label),
+    ).toEqual(['writes', 'alpha', 'zulu']);
   });
 
   it('explains the aggregate kind, which nothing else in the product names', () => {
@@ -158,7 +162,11 @@ describe('legendRows', () => {
     const b = m.node('b');
     m.relate(a, b, { kind: 'sync' });
     m.relate(a, b, { kind: 'writes' });
-    expect(rows(m.toJSON()).filter((x) => x.section === 'kinds').map((x) => x.label)).toEqual(['mixed']);
+    expect(
+      rows(m.toJSON())
+        .filter((x) => x.section === 'kinds')
+        .map((x) => x.label),
+    ).toEqual(['mixed']);
   });
 
   it('lists a layer that tags only nodes, so it stays switchable', () => {
@@ -218,8 +226,16 @@ describe('legendRows', () => {
     box.contains(inner);
     m.relate(inner, outside, { kind: 'flow', layer: 'wire' });
     const json = m.toJSON();
-    expect(rows(json).map((x) => x.layer).filter(Boolean)).toEqual(['ops', 'wire']);
-    expect(rows(json, { root: 'box' }).map((x) => x.layer).filter(Boolean)).toEqual(['wire']);
+    expect(
+      rows(json)
+        .map((x) => x.layer)
+        .filter(Boolean),
+    ).toEqual(['ops', 'wire']);
+    expect(
+      rows(json, { root: 'box' })
+        .map((x) => x.layer)
+        .filter(Boolean),
+    ).toEqual(['wire']);
   });
 
   it('lists types only when asked, using the registry label', () => {
@@ -354,7 +370,9 @@ describe('drawings row', () => {
   });
 
   it('omits the row when the legend hides the layers section', () => {
-    expect(rows(fixture(), { drawings: { active: true }, config: { show: ['kinds'] } }).some((r) => r.drawings)).toBe(false);
+    expect(rows(fixture(), { drawings: { active: true }, config: { show: ['kinds'] } }).some((r) => r.drawings)).toBe(
+      false,
+    );
   });
 });
 
@@ -397,7 +415,8 @@ function erModel(): DiagramModel {
   return m.toJSON();
 }
 
-const labelsIn = (rs: ReturnType<typeof rows>, section: string) => rs.filter((r) => r.section === section).map((r) => r.label);
+const labelsIn = (rs: ReturnType<typeof rows>, section: string) =>
+  rs.filter((r) => r.section === section).map((r) => r.label);
 
 describe('notation vocabulary', () => {
   it('captions a vocabulary kind and type in words, not registry ids', () => {
@@ -423,7 +442,9 @@ describe('notation vocabulary', () => {
   it('flags vocabulary rows, and only those', () => {
     expect(rows(activityModel()).filter((r) => r.vocabulary === true).length).toBeGreaterThan(0);
     expect(rows(erModel()).some((r) => r.vocabulary === true)).toBe(true);
-    expect(rows(fixture(), { config: { show: ['layers', 'kinds', 'types'] } }).some((r) => r.vocabulary === true)).toBe(false);
+    expect(rows(fixture(), { config: { show: ['layers', 'kinds', 'types'] } }).some((r) => r.vocabulary === true)).toBe(
+      false,
+    );
   });
 
   it('lets an item recaption a vocabulary row', () => {
@@ -454,7 +475,11 @@ describe('marks', () => {
   it('keys only the badge states on screen', () => {
     const m = threatModel();
     const handledOnly = { ...m, relations: m.relations.map((r) => ({ ...r, threats: [] })) };
-    expect(rows(handledOnly).filter((r) => r.section === 'marks').map((r) => r.id)).toEqual(['marks:threat-handled']);
+    expect(
+      rows(handledOnly)
+        .filter((r) => r.section === 'marks')
+        .map((r) => r.id),
+    ).toEqual(['marks:threat-handled']);
   });
 
   it('keys the primary- and foreign-key column marks of drawn tables', () => {

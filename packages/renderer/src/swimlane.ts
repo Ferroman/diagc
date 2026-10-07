@@ -126,9 +126,14 @@ export function bandLanes<T extends Geo>(
     let width: number = L.LANE_MIN_W;
     const bands = frame.lanes.map((lane) => {
       const laneNode = byId.get(lane.id);
-      const pad = laneNode !== undefined ? containerPad(laneNode) : { top: L.PAD, left: L.LANE_STRIP_W + L.PAD, bottom: L.PAD, right: L.PAD };
+      const pad =
+        laneNode !== undefined
+          ? containerPad(laneNode)
+          : { top: L.PAD, left: L.LANE_STRIP_W + L.PAD, bottom: L.PAD, right: L.PAD };
       const placed = new Map<string, { x: number; y: number }>();
-      const inLane = lane.members.filter((id) => geometry.has(id)).sort((a, b) => geometry.get(a)!.y - geometry.get(b)!.y);
+      const inLane = lane.members
+        .filter((id) => geometry.has(id))
+        .sort((a, b) => geometry.get(a)!.y - geometry.get(b)!.y);
       let shift = inLane.length > 0 ? geometry.get(inLane[0]!)!.y : 0;
       let reach = -Infinity; // lowest bottom so far, in elk's coordinates
       let bottom = 0;
@@ -243,7 +248,8 @@ export function rebaseRoutes(
     const ax = ox + g.x;
     const ay = oy + g.y;
     const here = inside || hoist.frames.has(n.id);
-    if (here && n.state !== 'expanded') boxes.push({ id: n.id, box: { x: ax, y: ay, width: g.width, height: g.height } });
+    if (here && n.state !== 'expanded')
+      boxes.push({ id: n.id, box: { x: ax, y: ay, width: g.width, height: g.height } });
     n.children.forEach((c) => place(c, ax, ay, here));
   };
   original.roots.forEach((r) => place(r, 0, 0, false));
@@ -259,7 +265,10 @@ export function rebaseRoutes(
     const blocked =
       a.dx !== b.dx ||
       a.dy !== b.dy ||
-      boxes.some(({ id: boxId, box }) => boxId !== e.from && boxId !== e.to && next.some((p, i) => i > 0 && crosses(next[i - 1]!, p, box)));
+      boxes.some(
+        ({ id: boxId, box }) =>
+          boxId !== e.from && boxId !== e.to && next.some((p, i) => i > 0 && crosses(next[i - 1]!, p, box)),
+      );
     if (blocked) {
       routes.delete(id);
       labelSpots.delete(id);
@@ -307,10 +316,13 @@ export function routeBandedEdges(
         return n.children.some((c) => seek(c, [...trail, n.id]));
       };
       original.roots.some((r) => seek(r, []));
-      return path.reduce((o, id) => {
-        const g = geometry.get(id);
-        return g === undefined ? o : { x: o.x + g.x, y: o.y + g.y };
-      }, { x: 0, y: 0 });
+      return path.reduce(
+        (o, id) => {
+          const g = geometry.get(id);
+          return g === undefined ? o : { x: o.x + g.x, y: o.y + g.y };
+        },
+        { x: 0, y: 0 },
+      );
     })();
     const fg = geometry.get(frameId);
     if (frame === undefined || fg === undefined) continue;
@@ -323,7 +335,14 @@ export function routeBandedEdges(
       const ay = oy + g.y;
       if (n.state !== 'expanded') {
         const caption = captions?.get(n.id);
-        boxes.push({ id: n.id, x: ax, y: ay, width: g.width, height: g.height, ...(caption !== undefined ? { caption } : {}) });
+        boxes.push({
+          id: n.id,
+          x: ax,
+          y: ay,
+          width: g.width,
+          height: g.height,
+          ...(caption !== undefined ? { caption } : {}),
+        });
       }
       n.children.forEach((c) => place(c, ax, ay));
     };
@@ -340,7 +359,10 @@ export function routeBandedEdges(
       .filter((e) => hoist.touched.has(e.id) && inFrame.has(e.from) && inFrame.has(e.to))
       .map((e) => {
         // a pin only counts on a relation drawn end to end, as DiagramEdge reads it
-        const sole = e.constituents.length === 1 && e.constituents[0]!.from === e.from && e.constituents[0]!.to === e.to ? e.constituents[0]! : undefined;
+        const sole =
+          e.constituents.length === 1 && e.constituents[0]!.from === e.from && e.constituents[0]!.to === e.to
+            ? e.constituents[0]!
+            : undefined;
         return {
           id: e.id,
           from: e.from,
@@ -356,7 +378,9 @@ export function routeBandedEdges(
         const kept = routes.get(e.id);
         if (kept === undefined) return true;
         const sides = routeEndSides(kept);
-        return (e.fromSide !== undefined && e.fromSide !== sides.from) || (e.toSide !== undefined && e.toSide !== sides.to);
+        return (
+          (e.fromSide !== undefined && e.fromSide !== sides.from) || (e.toSide !== undefined && e.toSide !== sides.to)
+        );
       });
     if (edges.length === 0) continue;
     const routed = routeLaneEdges({ boxes, corridors, edges });

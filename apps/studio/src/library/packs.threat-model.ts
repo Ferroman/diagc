@@ -1,6 +1,11 @@
 import type { Library, LibraryEntry } from './types';
 
-const entry = (id: string, name: string, keywords: string[], size?: { width: number; height: number }): LibraryEntry => ({
+const entry = (
+  id: string,
+  name: string,
+  keywords: string[],
+  size?: { width: number; height: number },
+): LibraryEntry => ({
   id,
   category: 'threat-model',
   name,
@@ -17,7 +22,13 @@ export const THREAT_MODEL_PACK: Library = {
   entries: [
     entry('tm-entity', 'External entity', ['entity', 'actor', 'user', 'external', 'dfd', 'stride', 'threat']),
     entry('tm-process', 'Process', ['process', 'service', 'dfd', 'stride', 'threat'], { width: 150, height: 90 }),
-    entry('tm-store', 'Data store', ['store', 'database', 'file', 'dfd', 'stride', 'threat'], { width: 150, height: 56 }),
-    entry('tm-boundary', 'Trust boundary', ['boundary', 'trust', 'zone', 'dfd', 'stride', 'threat'], { width: 320, height: 220 }),
+    entry('tm-store', 'Data store', ['store', 'database', 'file', 'dfd', 'stride', 'threat'], {
+      width: 150,
+      height: 56,
+    }),
+    entry('tm-boundary', 'Trust boundary', ['boundary', 'trust', 'zone', 'dfd', 'stride', 'threat'], {
+      width: 320,
+      height: 220,
+    }),
   ],
 };

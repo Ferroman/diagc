@@ -49,11 +49,7 @@ vi.mock('@xyflow/react', async (importOriginal) => {
   };
 });
 
-function renderNode(
-  partial: Partial<DiagramNodeData>,
-  selected?: boolean,
-  size?: { width: number; height: number },
-) {
+function renderNode(partial: Partial<DiagramNodeData>, selected?: boolean, size?: { width: number; height: number }) {
   const data: DiagramNodeData = {
     label: 'users',
     typeId: 'table',
@@ -67,12 +63,7 @@ function renderNode(
   };
   return render(
     <ReactFlowProvider>
-      <DiagramNode
-        id="n1"
-        data={data}
-        {...(selected !== undefined ? { selected } : {})}
-        {...(size ?? {})}
-      />
+      <DiagramNode id="n1" data={data} {...(selected !== undefined ? { selected } : {})} {...(size ?? {})} />
     </ReactFlowProvider>,
   );
 }
@@ -80,7 +71,8 @@ function renderNode(
 // What an outline's line and title are drawn in: the node's colour, with the
 // theme deciding (--dg-outline-ink) how much of it survives the mix toward the
 // text colour — all of it in light, part of it in dark.
-const outlineInk = (color: string): string => `color-mix(in srgb, ${color} var(--dg-outline-ink, 100%), var(--dg-text))`;
+const outlineInk = (color: string): string =>
+  `color-mix(in srgb, ${color} var(--dg-outline-ink, 100%), var(--dg-text))`;
 
 describe('DiagramNode', () => {
   it('renders label, resolved shape class and icon for a leaf', () => {
@@ -101,7 +93,7 @@ describe('DiagramNode', () => {
     expect(onToggleExpand).toHaveBeenCalledWith('n1', 'expanded');
   });
 
-  it('an open container\'s fold chip asks to collapse, whatever opened it', () => {
+  it("an open container's fold chip asks to collapse, whatever opened it", () => {
     const onToggleExpand = vi.fn();
     renderNode({ state: 'expanded', typeId: 'system', onToggleExpand });
     const chip = screen.getByTestId('fold-chip');
@@ -274,7 +266,7 @@ describe('DiagramNode', () => {
   // An outline is a line and a title drawn straight on the canvas, so a colour
   // written for a white page can vanish on the dark one: the AWS Cloud navy is
   // 1.36:1 there as written.
-  it('an outline group draws its line and its title in the theme\'s share of its colour', () => {
+  it("an outline group draws its line and its title in the theme's share of its colour", () => {
     const registry = createTypeRegistry({ grp: { shape: 'box', outline: true } });
     const { container } = renderNode({ state: 'expanded', typeId: 'grp', color: '#242f3e', typeRegistry: registry });
     const group = container.querySelector('.dg-group') as HTMLElement;
@@ -282,11 +274,16 @@ describe('DiagramNode', () => {
     expect(group.style.color).toBe(outlineInk('#242f3e'));
   });
 
-  it('leaves a theme token alone on an outline: it is already the theme\'s colour', () => {
+  it("leaves a theme token alone on an outline: it is already the theme's colour", () => {
     // a deployment zone's colour is a token with its own dark value; mixing it
     // again would wash out a colour the theme has already tuned
     const registry = createTypeRegistry({ grp: { shape: 'box', outline: true } });
-    const { container } = renderNode({ state: 'expanded', typeId: 'grp', color: 'var(--dg-deploy-region)', typeRegistry: registry });
+    const { container } = renderNode({
+      state: 'expanded',
+      typeId: 'grp',
+      color: 'var(--dg-deploy-region)',
+      typeRegistry: registry,
+    });
     const group = container.querySelector('.dg-group') as HTMLElement;
     expect(group.style.borderColor).toBe('var(--dg-deploy-region)');
     expect(group.style.color).toBe('var(--dg-deploy-region)');
@@ -321,11 +318,10 @@ describe('DiagramNode', () => {
   });
 
   it('renders a rough sketch shape behind the node in sketch mode', () => {
-    const { container } = renderNode(
-      { label: 'orders', stylePreset: stylePreset('sketch') },
-      undefined,
-      { width: 160, height: 80 },
-    );
+    const { container } = renderNode({ label: 'orders', stylePreset: stylePreset('sketch') }, undefined, {
+      width: 160,
+      height: 80,
+    });
     const svg = container.querySelector('svg.dg-sketch-shape');
     expect(svg).not.toBeNull();
     const stroke = svg!.querySelector('.dg-sketch-stroke') as SVGPathElement | null;
@@ -354,20 +350,18 @@ describe('DiagramNode', () => {
   });
 
   it('renders no sketch shape for a preset without rough params', () => {
-    const { container } = renderNode(
-      { label: 'orders', stylePreset: stylePreset('blueprint') },
-      undefined,
-      { width: 160, height: 80 },
-    );
+    const { container } = renderNode({ label: 'orders', stylePreset: stylePreset('blueprint') }, undefined, {
+      width: 160,
+      height: 80,
+    });
     expect(container.querySelector('.dg-sketch-shape')).toBeNull();
   });
 
   it('renders hatch fill lines for a hachure preset', () => {
-    const { container } = renderNode(
-      { label: 'orders', stylePreset: stylePreset('hand-drawn') },
-      undefined,
-      { width: 160, height: 80 },
-    );
+    const { container } = renderNode({ label: 'orders', stylePreset: stylePreset('hand-drawn') }, undefined, {
+      width: 160,
+      height: 80,
+    });
     expect(container.querySelector('.dg-sketch-hatch')).not.toBeNull();
   });
 
@@ -392,7 +386,13 @@ describe('DiagramNode', () => {
   // that stands inside the boundary.
   it.each(['sketch', 'marker'])('%s: an outline boundary stays a pure line, with no wash', (presetId) => {
     const { container } = renderNode(
-      { label: 'Bank', typeId: 'c4-system-boundary', color: '#2563eb', state: 'expanded', stylePreset: stylePreset(presetId) },
+      {
+        label: 'Bank',
+        typeId: 'c4-system-boundary',
+        color: '#2563eb',
+        state: 'expanded',
+        stylePreset: stylePreset(presetId),
+      },
       undefined,
       { width: 600, height: 400 },
     );
@@ -403,15 +403,24 @@ describe('DiagramNode', () => {
     expect((group!.querySelector('.dg-sketch-stroke') as SVGPathElement).style.stroke).toContain('#2563eb');
   });
 
-  it.each(['sketch', 'marker'])('%s: an outline boundary\'s line takes the theme\'s share of its colour, like its crisp twin', (presetId) => {
-    const { container } = renderNode(
-      { label: 'Bank', typeId: 'c4-system-boundary', color: '#2563eb', state: 'expanded', stylePreset: stylePreset(presetId) },
-      undefined,
-      { width: 600, height: 400 },
-    );
-    const stroke = container.querySelector('.dg-group-outline .dg-sketch-stroke') as SVGPathElement;
-    expect(stroke.style.stroke).toContain(outlineInk('#2563eb'));
-  });
+  it.each(['sketch', 'marker'])(
+    "%s: an outline boundary's line takes the theme's share of its colour, like its crisp twin",
+    (presetId) => {
+      const { container } = renderNode(
+        {
+          label: 'Bank',
+          typeId: 'c4-system-boundary',
+          color: '#2563eb',
+          state: 'expanded',
+          stylePreset: stylePreset(presetId),
+        },
+        undefined,
+        { width: 600, height: 400 },
+      );
+      const stroke = container.querySelector('.dg-group-outline .dg-sketch-stroke') as SVGPathElement;
+      expect(stroke.style.stroke).toContain(outlineInk('#2563eb'));
+    },
+  );
 
   it('drops the inline accent chrome on a colored node in sketch mode (the rough shape carries color instead)', () => {
     const { container } = renderNode(
@@ -488,7 +497,11 @@ describe('DiagramNode', () => {
   it('the disclosure toggle expands via onToggleExpand', () => {
     const onToggleExpand = vi.fn();
     const { container } = renderNode({
-      label: 'dev work time', typeId: undefined, notation: 'causal-loop', state: 'collapsed', onToggleExpand,
+      label: 'dev work time',
+      typeId: undefined,
+      notation: 'causal-loop',
+      state: 'collapsed',
+      onToggleExpand,
     });
     fireEvent.click(container.querySelector('.dg-disclose')!);
     expect(onToggleExpand).toHaveBeenCalled();
@@ -496,7 +509,10 @@ describe('DiagramNode', () => {
 
   it('an expanded CLD group renders a name tag and no group box', () => {
     const { container } = renderNode({
-      label: 'dev work time', typeId: undefined, notation: 'causal-loop', state: 'expanded',
+      label: 'dev work time',
+      typeId: undefined,
+      notation: 'causal-loop',
+      state: 'expanded',
     });
     expect(container.querySelector('.dg-group')).toBeNull(); // no bordered box
     expect(container.querySelector('.dg-group-tag')?.textContent).toContain('dev work time');
@@ -543,8 +559,10 @@ describe('DiagramNode', () => {
     expect(box.className).not.toContain('dg-solid'); // outline, not solid
   });
 
-  it('an outline box draws its border and its text in the theme\'s share of its colour', () => {
-    const box = renderNode({ label: 'Web App', typeId: 'c4-system', color: '#1168bd' }).container.querySelector('.dg-node') as HTMLElement;
+  it("an outline box draws its border and its text in the theme's share of its colour", () => {
+    const box = renderNode({ label: 'Web App', typeId: 'c4-system', color: '#1168bd' }).container.querySelector(
+      '.dg-node',
+    ) as HTMLElement;
     expect(box.style.borderColor).toBe(outlineInk('#1168bd'));
     expect(box.style.color).toBe(outlineInk('#1168bd'));
   });
@@ -556,11 +574,22 @@ describe('DiagramNode', () => {
 
   it('lets an explicit textColor override the label color, independent of the accent', () => {
     // C4 outline box: border keeps the accent, text takes textColor
-    const box = renderNode({ label: 'Web App', typeId: 'c4-system', color: '#1168bd', textColor: '#ff8800' }).container.querySelector('.dg-node') as HTMLElement;
+    const box = renderNode({
+      label: 'Web App',
+      typeId: 'c4-system',
+      color: '#1168bd',
+      textColor: '#ff8800',
+    }).container.querySelector('.dg-node') as HTMLElement;
     expect(box.style.color).not.toBe('');
     expect(box.style.color).not.toBe(box.style.borderColor); // text differs from the border/accent
     // shape node: the label span carries the text color
-    const label = renderNode({ label: 'Actor', typeId: 'c4-person', color: '#08427b', shape: '/library/shapes/person.svg', textColor: '#ff8800' }).container.querySelector('.dg-shape-label') as HTMLElement;
+    const label = renderNode({
+      label: 'Actor',
+      typeId: 'c4-person',
+      color: '#08427b',
+      shape: '/library/shapes/person.svg',
+      textColor: '#ff8800',
+    }).container.querySelector('.dg-shape-label') as HTMLElement;
     expect(label.style.color).not.toBe('');
     expect(label.style.color).not.toBe('rgb(8, 66, 123)'); // not the shape color (#08427b)
   });
@@ -618,7 +647,9 @@ describe('DiagramNode', () => {
     });
     const fill = container.querySelector('.dg-shape-fill') as HTMLElement;
     expect(fill).not.toBeNull();
-    expect(fill.style.maskImage || fill.style.getPropertyValue('-webkit-mask-image')).toContain('/library/shapes/person.svg');
+    expect(fill.style.maskImage || fill.style.getPropertyValue('-webkit-mask-image')).toContain(
+      '/library/shapes/person.svg',
+    );
     expect(container.querySelector('img.dg-image')).toBeNull(); // shape precedence
     expect(container.querySelector('.dg-shape-label')?.textContent).toContain('Actor');
     expect(container.querySelector('.dg-type')?.textContent).toBe('[Person]');
@@ -672,7 +703,8 @@ describe('DiagramNode', () => {
 
   it('renders rich runs as bold/italic spans on a box', () => {
     const { container } = renderNode({
-      typeId: undefined, label: 'Web Server',
+      typeId: undefined,
+      label: 'Web Server',
       rich: [{ text: 'Web ' }, { text: 'Server', bold: true }],
     });
     expect(container.querySelector('.dg-label b')?.textContent).toBe('Server');
@@ -775,13 +807,19 @@ describe('activity diagram nodes', () => {
   });
 
   it('renders no type subtitle on a UML glyph — the registry label is empty, not absent', () => {
-    const { container } = renderNode({ typeId: 'activity-action', label: 'Fill order' }, undefined, { width: 120, height: 44 });
+    const { container } = renderNode({ typeId: 'activity-action', label: 'Fill order' }, undefined, {
+      width: 120,
+      height: 44,
+    });
     expect(screen.getByText('Fill order')).toBeDefined();
     expect(container.querySelector('.dg-type')).toBeNull();
   });
 
   it('ignores node.color on a bar glyph — UML draws it in the fixed neutral stroke', () => {
-    const { container } = renderNode({ typeId: 'activity-bar', color: '#ff0000' }, undefined, { width: 8, height: 100 });
+    const { container } = renderNode({ typeId: 'activity-bar', color: '#ff0000' }, undefined, {
+      width: 8,
+      height: 100,
+    });
     const bar = container.querySelector('.dg-shape-bar') as HTMLElement;
     expect(bar).not.toBeNull();
     expect(bar.style.background).toBe('');
@@ -796,16 +834,18 @@ describe('activity diagram nodes', () => {
   });
 
   it('strokes a coloured decision in its accent', () => {
-    const { container } = renderNode({ typeId: 'activity-decision', color: '#ff0000' }, undefined, { width: 48, height: 48 });
+    const { container } = renderNode({ typeId: 'activity-decision', color: '#ff0000' }, undefined, {
+      width: 48,
+      height: 48,
+    });
     expect(container.querySelector('.dg-diamond-glyph polygon')?.getAttribute('stroke')).toBe('#ff0000');
   });
 
   it('renders activity-decision in rough mode with a sketch shape svg', () => {
-    const { container } = renderNode(
-      { typeId: 'activity-decision', stylePreset: stylePreset('sketch') },
-      undefined,
-      { width: 48, height: 48 },
-    );
+    const { container } = renderNode({ typeId: 'activity-decision', stylePreset: stylePreset('sketch') }, undefined, {
+      width: 48,
+      height: 48,
+    });
     const svg = container.querySelector('svg.dg-sketch-shape');
     expect(svg).not.toBeNull();
     // Presence alone is vacuous because the box fallback also renders the svg;
@@ -911,7 +951,9 @@ describe('git graph nodes', () => {
   });
 
   it('a lane is a transparent band with its name boxed at the right and no group chrome', () => {
-    const { container } = renderNode(base({ typeId: 'branch', label: 'Master', state: 'expanded', color: '#7ba7d9', onEnterNode: () => {} }));
+    const { container } = renderNode(
+      base({ typeId: 'branch', label: 'Master', state: 'expanded', color: '#7ba7d9', onEnterNode: () => {} }),
+    );
     expect(container.querySelector('.dg-lane')).not.toBeNull();
     const label = container.querySelector('.dg-lane-label') as HTMLElement;
     expect(label.textContent).toBe('Master');
@@ -931,7 +973,9 @@ describe('git graph nodes', () => {
   });
 
   it('a git stage is a titled frame, not a box: no icon, subtitle or fold chrome', () => {
-    const { container } = renderNode(base({ typeId: 'git-stage', label: 'Release candidates', state: 'leaf', color: '#e0a030' }));
+    const { container } = renderNode(
+      base({ typeId: 'git-stage', label: 'Release candidates', state: 'leaf', color: '#e0a030' }),
+    );
     const frame = container.querySelector('.dg-git-stage') as HTMLElement;
     expect(frame).not.toBeNull();
     expect(frame.style.getPropertyValue('--dg-stage')).toBe('#e0a030');
@@ -944,19 +988,26 @@ describe('git graph nodes', () => {
   it('a selected commit and a selected lane carry the `+`, each pinned to its own wrapper; a stage stays bare', () => {
     const offer = { label: () => 'Add a commit', run: vi.fn() };
     const commit = renderNode(base({ typeId: 'commit', label: '', quickAdd: offer }), true);
-    expect(commit.container.querySelector('.dg-circle-node > .dg-quick-add')).toBe(screen.getByRole('button', { name: 'Add a commit' }));
+    expect(commit.container.querySelector('.dg-circle-node > .dg-quick-add')).toBe(
+      screen.getByRole('button', { name: 'Add a commit' }),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Add a commit' }));
     expect(offer.run).toHaveBeenCalledWith('n1');
     cleanup();
     const lane = renderNode(base({ typeId: 'branch', label: 'Master', state: 'expanded', quickAdd: offer }), true);
-    expect(lane.container.querySelector('.dg-lane > .dg-quick-add')).toBe(screen.getByRole('button', { name: 'Add a commit' }));
+    expect(lane.container.querySelector('.dg-lane > .dg-quick-add')).toBe(
+      screen.getByRole('button', { name: 'Add a commit' }),
+    );
     cleanup();
     const stage = renderNode(base({ typeId: 'git-stage', label: 'RC', quickAdd: offer }), true);
     expect(stage.container.querySelector('.dg-quick-add')).toBeNull();
   });
 
   it('outside the git notation a branch-typed container is an ordinary group', () => {
-    const { container } = renderNode({ ...base({ typeId: 'branch', label: 'Master', state: 'expanded' }), notation: undefined });
+    const { container } = renderNode({
+      ...base({ typeId: 'branch', label: 'Master', state: 'expanded' }),
+      notation: undefined,
+    });
     expect(container.querySelector('.dg-lane')).toBeNull();
     expect(container.querySelector('.dg-group')).not.toBeNull();
   });
@@ -972,7 +1023,13 @@ describe('fishbone looks', () => {
     expect(container.querySelector('.dg-node')).toBeNull();
   });
   it('draws a cause as bare text, tinted by textColor only', () => {
-    const { container } = renderNode({ label: 'No checklist', typeId: 'fb-cause', notation: 'fishbone', color: '#abc', textColor: '#123' });
+    const { container } = renderNode({
+      label: 'No checklist',
+      typeId: 'fb-cause',
+      notation: 'fishbone',
+      color: '#abc',
+      textColor: '#123',
+    });
     const el = container.querySelector('.dg-fb-cause') as HTMLElement;
     expect(el.textContent).toBe('No checklist');
     expect(el.style.color).toBe('rgb(17, 34, 51)'); // jsdom normalizes hex to rgb (#123)
@@ -988,9 +1045,13 @@ describe('fishbone looks', () => {
 
 describe('threat-model looks', () => {
   it('draws a process as an ellipse and a store as the two-rule glyph', () => {
-    expect(renderNode({ label: 'Verify', typeId: 'tm-process' }).container.querySelector('.dg-shape-ellipse')).not.toBeNull();
+    expect(
+      renderNode({ label: 'Verify', typeId: 'tm-process' }).container.querySelector('.dg-shape-ellipse'),
+    ).not.toBeNull();
     cleanup();
-    expect(renderNode({ label: 'Users', typeId: 'tm-store' }).container.querySelector('.dg-shape-store')).not.toBeNull();
+    expect(
+      renderNode({ label: 'Users', typeId: 'tm-store' }).container.querySelector('.dg-shape-store'),
+    ).not.toBeNull();
   });
 
   it('badges a leaf with its open threat count', () => {
@@ -1088,27 +1149,27 @@ describe('threat-model looks', () => {
     // size. The path identity is what proves the mapping (presence alone is
     // vacuous: the box fallback renders the same svg).
     const rough = stylePreset('sketch').rough!;
-    const process = renderNode(
-      { typeId: 'tm-process', stylePreset: stylePreset('sketch') },
-      undefined,
-      { width: 150, height: 90 },
-    );
+    const process = renderNode({ typeId: 'tm-process', stylePreset: stylePreset('sketch') }, undefined, {
+      width: 150,
+      height: 90,
+    });
     const processPath = process.container.querySelector('.dg-sketch-stroke')?.getAttribute('d') ?? '';
     expect(processPath).toBe(sketchNode('ellipse', 150, 90, seedFrom('n1'), rough, 0).stroke);
     expect(processPath).not.toBe(sketchNode('box', 150, 90, seedFrom('n1'), rough, 0).stroke);
     cleanup();
-    const store = renderNode(
-      { typeId: 'tm-store', stylePreset: stylePreset('sketch') },
-      undefined,
-      { width: 150, height: 56 },
-    );
+    const store = renderNode({ typeId: 'tm-store', stylePreset: stylePreset('sketch') }, undefined, {
+      width: 150,
+      height: 56,
+    });
     const storePath = store.container.querySelector('.dg-sketch-stroke')?.getAttribute('d') ?? '';
     expect(storePath).toBe(sketchNode('store', 150, 56, seedFrom('n1'), rough, 0).stroke);
     expect(storePath).not.toBe(sketchNode('box', 150, 56, seedFrom('n1'), rough, 0).stroke);
   });
 
   it('badges nothing on an element that carries no threats', () => {
-    expect(renderNode({ label: 'Verify', typeId: 'tm-process' }).container.querySelector('.dg-threat-badge')).toBeNull();
+    expect(
+      renderNode({ label: 'Verify', typeId: 'tm-process' }).container.querySelector('.dg-threat-badge'),
+    ).toBeNull();
     cleanup();
     // an empty register is not a clean bill of health — still no badge
     const { container } = renderNode({ label: 'Verify', typeId: 'tm-process', threats: { open: 0, total: 0 } });
@@ -1177,11 +1238,18 @@ describe('empty threat badge', () => {
 
   it('draws nothing when there is no host hook (view mode) or another notation', () => {
     expect(renderNode({ label: 'x', notation: 'threat-model' }).container.querySelector('.dg-threat-badge')).toBeNull();
-    expect(renderNode({ label: 'x', notation: 'c4', onAddThreat: vi.fn() }).container.querySelector('.dg-threat-badge')).toBeNull();
+    expect(
+      renderNode({ label: 'x', notation: 'c4', onAddThreat: vi.fn() }).container.querySelector('.dg-threat-badge'),
+    ).toBeNull();
   });
 
   it('keeps the counting badge passive once threats exist', () => {
-    const { container } = renderNode({ label: 'x', notation: 'threat-model', threats: { open: 1, total: 1 }, onAddThreat: vi.fn() });
+    const { container } = renderNode({
+      label: 'x',
+      notation: 'threat-model',
+      threats: { open: 1, total: 1 },
+      onAddThreat: vi.fn(),
+    });
     expect(container.querySelector('.dg-threat-badge')?.tagName).toBe('SPAN');
   });
 

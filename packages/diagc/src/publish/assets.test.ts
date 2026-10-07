@@ -23,11 +23,16 @@ describe('dataUri', () => {
 
 describe('rewriteAssetRefs', () => {
   const model = {
-    id: 'm', nodes: [
+    id: 'm',
+    nodes: [
       { id: 'a', name: 'A', shape: '/library/shapes/person.svg' },
       { id: 'b', name: 'B', image: '/api/assets/pic.png' },
       { id: 'c', name: 'C', image: 'https://ext/x.png' },
-    ], containment: [], relations: [], layers: [], planes: [],
+    ],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
   } as any;
   it('inlines resolvable /library and /api/assets refs, leaves others', () => {
     const resolve = (ref: string) => (ref.includes('external') ? undefined : Buffer.from(ref));
@@ -44,8 +49,12 @@ describe('rewriteAssetRefs', () => {
 
   it('inlines a bare uploaded-asset ref (no leading slash, not a URL)', () => {
     const bare = {
-      id: 'm', nodes: [{ id: 'a', name: 'A', image: 'pic.png' }],
-      containment: [], relations: [], layers: [], planes: [],
+      id: 'm',
+      nodes: [{ id: 'a', name: 'A', image: 'pic.png' }],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
     } as any;
     const resolve = (ref: string) => (ref === 'pic.png' ? Buffer.from('bytes') : undefined);
     const out = rewriteAssetRefs(bare, resolve);
@@ -54,11 +63,16 @@ describe('rewriteAssetRefs', () => {
 
   it('leaves data: and http(s): refs untouched even though a resolver is provided', () => {
     const untouched = {
-      id: 'm', nodes: [
+      id: 'm',
+      nodes: [
         { id: 'a', name: 'A', image: 'data:image/png;base64,eA==' },
         { id: 'b', name: 'B', image: 'http://ext/x.png' },
         { id: 'c', name: 'C', image: 'https://ext/x.png' },
-      ], containment: [], relations: [], layers: [], planes: [],
+      ],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
     } as any;
     const resolve = () => Buffer.from('should not be used');
     const out = rewriteAssetRefs(untouched, resolve);

@@ -82,7 +82,12 @@ const before = sourceChanges();
 
 // Whatever answers before the server is started is not the studio this script starts: a
 // server left by an interrupted run, most likely. Its pictures would be of another tree.
-if (await fetch(BASE).then(() => true, () => false)) {
+if (
+  await fetch(BASE).then(
+    () => true,
+    () => false,
+  )
+) {
   console.error(`✗ something already answers on ${BASE} — stop it first.`);
   process.exit(1);
 }
@@ -138,7 +143,9 @@ try {
   // diagram, so say so loudly instead of leaving it for a later `git status` — also when
   // the run failed half way, which is when it is easiest to miss.
   if (sourceChanges() !== before) {
-    console.error('✗ the studio changed files under .diagrams/src while the pictures were taken — look at `git status`.');
+    console.error(
+      '✗ the studio changed files under .diagrams/src while the pictures were taken — look at `git status`.',
+    );
     process.exitCode = 1;
   }
 }

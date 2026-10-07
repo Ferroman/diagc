@@ -159,7 +159,7 @@ describe('Embed', () => {
     expect(onOpenStudio).toHaveBeenCalled();
   });
 
-  it('passes the loaded model\'s style and notation through to DiagramView', async () => {
+  it("passes the loaded model's style and notation through to DiagramView", async () => {
     // Mirrors apps/viewer/src/Viewer.tsx: an embed that drops these two
     // structurally mis-renders any diagram authored with a non-default style
     // or a notation profile. `dg-style-<id>`/`dg-style-rough` and

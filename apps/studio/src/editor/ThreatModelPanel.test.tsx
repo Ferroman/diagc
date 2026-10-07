@@ -77,7 +77,10 @@ function setup(m: DiagramModel, plane?: string) {
 // No @testing-library/jest-dom in this repo (see ThreatsSection.test.tsx), so
 // text is read off the elements directly.
 const section = (name: string) => within(screen.getByRole('region', { name }));
-const rowNames = (name: string) => section(name).queryAllByRole('button').map((b) => b.textContent);
+const rowNames = (name: string) =>
+  section(name)
+    .queryAllByRole('button')
+    .map((b) => b.textContent);
 
 describe('ThreatModelPanel', () => {
   it('reviews only the boundary crossings that carry no threat, over the boundaries they cross', () => {
@@ -117,7 +120,10 @@ describe('ThreatModelPanel', () => {
     ];
     // the untagged edges belong to the first-declared plane, so the threats
     // plane needs both: on it, Backend holds the two ends and nothing crosses
-    m.containment.push({ parent: 'backend', child: 'web', plane: 'threats' }, { parent: 'backend', child: 'db', plane: 'threats' });
+    m.containment.push(
+      { parent: 'backend', child: 'web', plane: 'threats' },
+      { parent: 'backend', child: 'db', plane: 'threats' },
+    );
     setup(m, 'threats');
     expect(rowNames('Crossings to review')).toEqual([]);
   });

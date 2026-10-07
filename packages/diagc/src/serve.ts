@@ -66,7 +66,10 @@ export function resolveStatic(root: string, urlPath: string): string | undefined
   }
   // Normalizing against '/' first collapses '..' segments before they are ever
   // joined to a real directory, so the resolve below cannot climb out.
-  const rel = path.posix.normalize(decoded).replace(/^(\.\.(\/|$))+/, '').replace(/^\/+/, '');
+  const rel = path.posix
+    .normalize(decoded)
+    .replace(/^(\.\.(\/|$))+/, '')
+    .replace(/^\/+/, '');
   const full = path.resolve(root, rel);
   const rootResolved = path.resolve(root);
   if (full !== rootResolved && !full.startsWith(rootResolved + path.sep)) return undefined;

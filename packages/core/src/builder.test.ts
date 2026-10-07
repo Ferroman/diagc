@@ -153,7 +153,12 @@ describe('m.table / m.fk', () => {
 
   it('m.fk defaults toColumn to the target PK and sets kind fk', () => {
     const m = model('d');
-    const a = m.table('a', { columns: [{ name: 'id', pk: true }, { name: 'b_id', fk: true }] });
+    const a = m.table('a', {
+      columns: [
+        { name: 'id', pk: true },
+        { name: 'b_id', fk: true },
+      ],
+    });
     const b = m.table('b', { columns: [{ name: 'id', pk: true }] });
     m.fk(a, 'b_id', b);
     const r = m.toJSON().relations[0];
@@ -162,7 +167,12 @@ describe('m.table / m.fk', () => {
 
   it('m.fk throws when the target table has no single PK and no explicit toColumn', () => {
     const m = model('d');
-    const a = m.table('a', { columns: [{ name: 'id', pk: true }, { name: 'b_id', fk: true }] });
+    const a = m.table('a', {
+      columns: [
+        { name: 'id', pk: true },
+        { name: 'b_id', fk: true },
+      ],
+    });
     const b = m.table('b', { columns: [{ name: 'x' }, { name: 'y' }] });
     expect(() => m.fk(a, 'b_id', b)).toThrow(/primary-key/);
   });
@@ -579,18 +589,32 @@ describe('threatModel', () => {
     const web = tm.process('web', 'Web app', { technology: 'Next.js' });
     const db = tm.store('db', 'Orders DB');
     tm.boundary('dmz', 'DMZ').contains(web);
-    const login = tm.flow(user, web, 'HTTPS: credentials').threat({ category: 'S', title: 'Credential stuffing', severity: 'high' });
+    const login = tm
+      .flow(user, web, 'HTTPS: credentials')
+      .threat({ category: 'S', title: 'Credential stuffing', severity: 'high' });
     tm.flow(web, db, { description: 'SQL' });
-    web.threat({ category: 'E', title: 'Admin route', status: 'mitigated', mitigation: 'RBAC' }).threat({ id: 'custom', category: 'D', title: 'Flood' });
+    web
+      .threat({ category: 'E', title: 'Admin route', status: 'mitigated', mitigation: 'RBAC' })
+      .threat({ id: 'custom', category: 'D', title: 'Flood' });
     const json = m.toJSON();
     expect(json.nodes.map((n) => [n.id, n.type])).toEqual([
-      ['user', 'tm-entity'], ['web', 'tm-process'], ['db', 'tm-store'], ['dmz', 'tm-boundary'],
+      ['user', 'tm-entity'],
+      ['web', 'tm-process'],
+      ['db', 'tm-store'],
+      ['dmz', 'tm-boundary'],
     ]);
     expect(json.nodes[1]!.technology).toBe('Next.js');
     expect(json.containment).toEqual([{ parent: 'dmz', child: 'web' }]);
     expect(login.id).toBe('user->web#0');
     expect(json.relations).toEqual([
-      { id: 'user->web#0', from: 'user', to: 'web', kind: 'data-flow', label: 'HTTPS: credentials', threats: [{ id: 't1', category: 'S', title: 'Credential stuffing', severity: 'high' }] },
+      {
+        id: 'user->web#0',
+        from: 'user',
+        to: 'web',
+        kind: 'data-flow',
+        label: 'HTTPS: credentials',
+        threats: [{ id: 't1', category: 'S', title: 'Credential stuffing', severity: 'high' }],
+      },
       { id: 'web->db#0', from: 'web', to: 'db', kind: 'data-flow', description: 'SQL' },
     ]);
     expect(json.nodes[1]!.threats).toEqual([
@@ -623,11 +647,18 @@ describe('threatModel', () => {
 describe('comments and links', () => {
   it('ref.comment() synthesises c1, c2 per element and keeps by/at; ref.link() appends', () => {
     const m = model('d', { name: 'D' });
-    const a = m.node('a', { name: 'A' }).comment('first').comment('second', { by: 'Ann', at: '2026-09-22' }).link('Ticket', 'https://x/1');
+    const a = m
+      .node('a', { name: 'A' })
+      .comment('first')
+      .comment('second', { by: 'Ann', at: '2026-09-22' })
+      .link('Ticket', 'https://x/1');
     const b = m.node('b', { name: 'B' }).comment('other');
     m.threatModel().flow(a, b, 'sync').comment('on the arrow', { id: 'note' });
     const json = m.toJSON();
-    expect(json.nodes[0]!.comments).toEqual([{ id: 'c1', text: 'first' }, { id: 'c2', text: 'second', by: 'Ann', at: '2026-09-22' }]);
+    expect(json.nodes[0]!.comments).toEqual([
+      { id: 'c1', text: 'first' },
+      { id: 'c2', text: 'second', by: 'Ann', at: '2026-09-22' },
+    ]);
     expect(json.nodes[0]!.links).toEqual([{ label: 'Ticket', url: 'https://x/1' }]);
     expect(json.nodes[1]!.comments).toEqual([{ id: 'c1', text: 'other' }]);
     expect(json.relations[0]!.comments).toEqual([{ id: 'note', text: 'on the arrow' }]);
@@ -635,7 +666,11 @@ describe('comments and links', () => {
 
   it('accepts comments and links as node/relation opts', () => {
     const m = model('opts');
-    const a = m.node('x', { name: 'X', comments: [{ id: 'c1', text: 'via opts' }], links: [{ label: 'L', url: 'https://x' }] });
+    const a = m.node('x', {
+      name: 'X',
+      comments: [{ id: 'c1', text: 'via opts' }],
+      links: [{ label: 'L', url: 'https://x' }],
+    });
     const b = m.node('b');
     m.relate(a, b, { kind: 'reads', comments: [{ id: 'c1', text: 'on the edge' }] });
     const json = m.toJSON();
@@ -686,7 +721,11 @@ describe('plan', () => {
     const p = m.plan();
     const alice = p.person('alice', 'Alice Ng', { color: '#c33' });
     const q1 = p.zone('q1', { name: 'Q1', start: '2026-01-05', end: '2026-03-27', color: '#2f6fed' });
-    const build = q1.zone('build', { name: 'Build', start: '2026-02-02', end: '2026-03-27' }).contains(api).owner(alice).executor(alice);
+    const build = q1
+      .zone('build', { name: 'Build', start: '2026-02-02', end: '2026-03-27' })
+      .contains(api)
+      .owner(alice)
+      .executor(alice);
     build.event('m1', { name: 'M1', at: '2026-03-02' });
     const kickoff = p.event('kickoff', { name: 'Kickoff', at: '2026-01-05' });
     q1.checker(alice);
@@ -699,7 +738,11 @@ describe('plan', () => {
       ['m1', 'plan-event', 'plan'],
       ['kickoff', 'plan-event', 'plan'],
     ]);
-    expect(json.nodes[2]).toMatchObject({ name: 'Q1', color: '#2f6fed', metadata: { start: '2026-01-05', end: '2026-03-27' } });
+    expect(json.nodes[2]).toMatchObject({
+      name: 'Q1',
+      color: '#2f6fed',
+      metadata: { start: '2026-01-05', end: '2026-03-27' },
+    });
     expect(json.nodes[4]!.metadata).toEqual({ at: '2026-03-02' });
     expect(json.nodes[1]).toMatchObject({ name: 'Alice Ng', color: '#c33' });
     expect(json.containment).toEqual([

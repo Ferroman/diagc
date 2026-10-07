@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model, NODE_TYPES, NOTATION_NODE_TYPES, NOTATION_RELATION_KINDS, RELATION_KINDS } from '@diagc/core';
+import {
+  compileView,
+  model,
+  NODE_TYPES,
+  NOTATION_NODE_TYPES,
+  NOTATION_RELATION_KINDS,
+  RELATION_KINDS,
+} from '@diagc/core';
 import { BONE_PALETTE, fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import { NOTATION_PROFILES, notationProfile, planBadges, TM_BOUNDARY_COLOR } from './notations';
@@ -55,7 +62,10 @@ describe('notationProfile', () => {
     });
     expect(p.node?.alwaysExpanded?.({ id: 'm', name: 'm', type: 'branch' })).toBe(true);
     expect(p.node?.alwaysExpanded?.({ id: 'c', name: '', type: 'commit' })).toBe(false);
-    expect(p.node?.leafSize?.({ id: 'c', name: '', type: 'commit' })).toEqual({ width: GIT_LAYOUT.DIAMETER, height: GIT_LAYOUT.DIAMETER });
+    expect(p.node?.leafSize?.({ id: 'c', name: '', type: 'commit' })).toEqual({
+      width: GIT_LAYOUT.DIAMETER,
+      height: GIT_LAYOUT.DIAMETER,
+    });
     expect(p.node?.leafSize?.({ id: 'x', name: 'x', type: 'service' })).toBeUndefined();
     expect(p.node?.colorOf).toBe(gitNodeColors);
     expect(p.edge?.colorOf).toBe(gitEdgeColor);
@@ -98,7 +108,10 @@ describe('second-order profile', () => {
     d.then('bad', 'bad', { valence: '-' });
     d.then('meh');
     const colors = p.node!.colorOf!(m.toJSON(), undefined);
-    expect(Object.fromEntries(colors)).toEqual({ good: 'var(--dg-polarity-positive)', bad: 'var(--dg-polarity-negative)' });
+    expect(Object.fromEntries(colors)).toEqual({
+      good: 'var(--dg-polarity-positive)',
+      bad: 'var(--dg-polarity-negative)',
+    });
   });
 });
 
@@ -176,7 +189,11 @@ describe('deployment profile', () => {
   });
 
   it('draws a C4 deployment node as a solid host, keeping the rest of its stencil', () => {
-    expect(p.typeStyles?.['c4-deployment-node']).toEqual({ ...DEFAULT_TYPE_STYLES['c4-deployment-node'], icon: 'server', dashed: false });
+    expect(p.typeStyles?.['c4-deployment-node']).toEqual({
+      ...DEFAULT_TYPE_STYLES['c4-deployment-node'],
+      icon: 'server',
+      dashed: false,
+    });
   });
 });
 
@@ -198,13 +215,16 @@ describe('plan profile', () => {
     expect(p.className).toBe('dg-notation-plan');
     expect(p.node?.alwaysExpanded?.({ id: 'z', name: 'Z', type: 'plan-zone' })).toBe(true);
     expect(p.node?.alwaysExpanded?.({ id: 'e', name: 'E', type: 'plan-event' })).toBe(false);
-    expect(p.node?.leafSize?.({ id: 'e', name: 'E', type: 'plan-event' })).toEqual({ width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT });
+    expect(p.node?.leafSize?.({ id: 'e', name: 'E', type: 'plan-event' })).toEqual({
+      width: PLAN_LAYOUT.EVENT,
+      height: PLAN_LAYOUT.EVENT,
+    });
     expect(p.node?.resizable?.({ id: 'z', name: 'Z', type: 'plan-zone' })).toBe('x');
     expect(p.node?.resizable?.({ id: 'p', name: 'P', type: 'person' })).toBeUndefined();
     for (const k of ['owns', 'executes', 'checks']) expect(p.edge?.hidden?.(k)).toBe(true);
     expect(p.edge?.hidden?.('sync')).toBe(false);
   });
-  it('planBadges: one chip per role in owns/executes/checks order, first name, full title, the person\'s colour', () => {
+  it("planBadges: one chip per role in owns/executes/checks order, first name, full title, the person's colour", () => {
     const chips = planBadges(roadmap(), 'plan');
     expect(chips.get('z')).toEqual([
       { key: 'owns:alice', text: 'O·Alice', title: 'Owner: Alice Ng', color: '#c33' },
@@ -220,11 +240,17 @@ describe('plan profile', () => {
     const platform = p.team('platform', 'Platform Team', { color: '#2f6fed' });
     p.zone('z', { start: '2026-01-05', end: '2026-01-09' }).owner(platform);
     const chips = planBadges(m.toJSON(), 'plan');
-    expect(chips.get('z')).toEqual([{ key: 'owns:platform', text: 'O·Platform', title: 'Owner: Platform Team', color: '#2f6fed' }]);
+    expect(chips.get('z')).toEqual([
+      { key: 'owns:platform', text: 'O·Platform', title: 'Owner: Platform Team', color: '#2f6fed' },
+    ]);
   });
   it('registers the plan types and role kinds with legend labels', () => {
     expect(createTypeRegistry().resolve('plan-zone')).toMatchObject({ shape: 'rounded', legendLabel: 'Zone' });
-    expect(createTypeRegistry().resolve('plan-event')).toMatchObject({ shape: 'diamond', defaultSize: { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT }, legendLabel: 'Event' });
+    expect(createTypeRegistry().resolve('plan-event')).toMatchObject({
+      shape: 'diamond',
+      defaultSize: { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT },
+      legendLabel: 'Event',
+    });
     expect(DEFAULT_TYPE_STYLES['plan-zone']?.label).toBe('');
     expect(createKindRegistry().resolve('owns').legendLabel).toBe('Owns');
     expect(DEFAULT_KIND_STYLES.checks?.legendLabel).toBe('Checks');
@@ -237,7 +263,7 @@ describe('plan profile', () => {
       expect(p.edge?.hidden).toBeUndefined();
     }
   });
-  it('lets every fixed node be dragged: a zone/event/free-form child\'s gesture becomes days or a clamped drop, an actor\'s is read for drop-to-assign', () => {
+  it("lets every fixed node be dragged: a zone/event/free-form child's gesture becomes days or a clamped drop, an actor's is read for drop-to-assign", () => {
     const p = notationProfile('plan');
     expect(p.node?.draggableWhenFixed?.({ id: 'z', name: 'Z', type: 'plan-zone' })).toBe(true);
     expect(p.node?.draggableWhenFixed?.({ id: 'e', name: 'E', type: 'plan-event' })).toBe(true);
@@ -276,7 +302,7 @@ describe('plan profile', () => {
     expect(notationProfile('git-graph').layoutReadsPositions).toBeUndefined();
     expect(notationProfile('fishbone').layoutReadsPositions).toBeUndefined();
   });
-  it('related: an actor\'s zones, a zone\'s actors, nothing for anything else', () => {
+  it("related: an actor's zones, a zone's actors, nothing for anything else", () => {
     const m = roadmap();
     const related = notationProfile('plan').related!;
     expect(related(m, 'plan', 'alice')).toEqual(['z', 'z']); // owns and checks, both on z
@@ -295,7 +321,7 @@ describe("core's vocabulary", () => {
     expect([...RELATION_KINDS].sort()).toEqual(Object.keys(DEFAULT_KIND_STYLES).sort());
   });
 
-  it("lists what each notation profile adds on top", () => {
+  it('lists what each notation profile adds on top', () => {
     for (const [id, profile] of Object.entries(NOTATION_PROFILES)) {
       const key = id as keyof typeof NOTATION_NODE_TYPES;
       const types = Object.keys(profile.typeStyles ?? {}).filter((t) => !NODE_TYPES.includes(t));

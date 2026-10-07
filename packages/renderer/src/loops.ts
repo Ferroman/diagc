@@ -333,7 +333,12 @@ export function placeLoopLabels(
 }
 
 export function absoluteRects(
-  nodes: readonly { id: string; position: { x: number; y: number }; parentId?: string; measured?: { width?: number; height?: number } }[],
+  nodes: readonly {
+    id: string;
+    position: { x: number; y: number };
+    parentId?: string;
+    measured?: { width?: number; height?: number };
+  }[],
 ): Map<string, NodeRect> {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const resolving = new Set<string>();

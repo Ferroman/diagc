@@ -1,6 +1,24 @@
 import { PLAN_LAYOUT } from './plan-layout';
 
-export type ShapeId = 'box' | 'cylinder' | 'pill' | 'hexagon' | 'person' | 'table' | 'bubble' | 'circle' | 'rounded' | 'diamond' | 'bar' | 'start-dot' | 'end-bullseye' | 'send-signal' | 'receive-signal' | 'note' | 'ellipse' | 'store';
+export type ShapeId =
+  | 'box'
+  | 'cylinder'
+  | 'pill'
+  | 'hexagon'
+  | 'person'
+  | 'table'
+  | 'bubble'
+  | 'circle'
+  | 'rounded'
+  | 'diamond'
+  | 'bar'
+  | 'start-dot'
+  | 'end-bullseye'
+  | 'send-signal'
+  | 'receive-signal'
+  | 'note'
+  | 'ellipse'
+  | 'store';
 
 export interface TypeStyle {
   shape: ShapeId;
@@ -134,12 +152,46 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   // UML glyphs carry no type subtitle; an empty label suppresses the `.dg-type` fallback.
   // The frame, a lane and a note get no `legendLabel`: each already says what it is.
   'activity-action': { shape: 'rounded', label: '', legendLabel: 'Action' },
-  'activity-decision': { shape: 'diamond', defaultSize: { width: 48, height: 48 }, label: '', legendLabel: 'Decision / merge', captionBelow: true },
-  'activity-bar': { shape: 'bar', defaultSize: { width: 8, height: 100 }, label: '', legendLabel: 'Fork / join', captionBelow: true },
-  'activity-start': { shape: 'start-dot', defaultSize: { width: 24, height: 24 }, label: '', legendLabel: 'Start', captionBelow: true },
-  'activity-end': { shape: 'end-bullseye', defaultSize: { width: 28, height: 28 }, label: '', legendLabel: 'End', captionBelow: true },
-  'activity-send': { shape: 'send-signal', defaultSize: { width: 140, height: 44 }, label: '', legendLabel: 'Send signal' },
-  'activity-receive': { shape: 'receive-signal', defaultSize: { width: 140, height: 44 }, label: '', legendLabel: 'Receive signal' },
+  'activity-decision': {
+    shape: 'diamond',
+    defaultSize: { width: 48, height: 48 },
+    label: '',
+    legendLabel: 'Decision / merge',
+    captionBelow: true,
+  },
+  'activity-bar': {
+    shape: 'bar',
+    defaultSize: { width: 8, height: 100 },
+    label: '',
+    legendLabel: 'Fork / join',
+    captionBelow: true,
+  },
+  'activity-start': {
+    shape: 'start-dot',
+    defaultSize: { width: 24, height: 24 },
+    label: '',
+    legendLabel: 'Start',
+    captionBelow: true,
+  },
+  'activity-end': {
+    shape: 'end-bullseye',
+    defaultSize: { width: 28, height: 28 },
+    label: '',
+    legendLabel: 'End',
+    captionBelow: true,
+  },
+  'activity-send': {
+    shape: 'send-signal',
+    defaultSize: { width: 140, height: 44 },
+    label: '',
+    legendLabel: 'Send signal',
+  },
+  'activity-receive': {
+    shape: 'receive-signal',
+    defaultSize: { width: 140, height: 44 },
+    label: '',
+    legendLabel: 'Receive signal',
+  },
   'activity-object': { shape: 'box', label: '', legendLabel: 'Object' },
   'activity-note': { shape: 'note', defaultSize: { width: 140, height: 64 }, label: '' },
   // ---- Second-order thinking -------------------------------------------------
@@ -172,13 +224,43 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   // header prints only its name and icon, so each carries a legendLabel. Outline
   // zones draw a line in the notation's zone colour; the two subnets draw a wash,
   // because public vs private is the one boundary a reader must not miss.
-  'deploy-environment': { shape: 'box', icon: 'environment', label: '[Environment]', outline: true, legendLabel: 'Environment' },
+  'deploy-environment': {
+    shape: 'box',
+    icon: 'environment',
+    label: '[Environment]',
+    outline: true,
+    legendLabel: 'Environment',
+  },
   'deploy-region': { shape: 'box', icon: 'region', label: '[Region]', outline: true, legendLabel: 'Region' },
-  'deploy-zone': { shape: 'box', icon: 'zone', label: '[Availability zone]', outline: true, dashed: true, legendLabel: 'Availability zone' },
+  'deploy-zone': {
+    shape: 'box',
+    icon: 'zone',
+    label: '[Availability zone]',
+    outline: true,
+    dashed: true,
+    legendLabel: 'Availability zone',
+  },
   'deploy-network': { shape: 'box', icon: 'network', label: '[Network]', outline: true, legendLabel: 'Network' },
-  'deploy-subnet-public': { shape: 'box', icon: 'subnet-public', label: '[Public subnet]', legendLabel: 'Public subnet' },
-  'deploy-subnet-private': { shape: 'box', icon: 'subnet-private', label: '[Private subnet]', legendLabel: 'Private subnet' },
-  'deploy-cluster': { shape: 'box', icon: 'kubernetes', label: '[Cluster]', outline: true, dashed: true, legendLabel: 'Cluster' },
+  'deploy-subnet-public': {
+    shape: 'box',
+    icon: 'subnet-public',
+    label: '[Public subnet]',
+    legendLabel: 'Public subnet',
+  },
+  'deploy-subnet-private': {
+    shape: 'box',
+    icon: 'subnet-private',
+    label: '[Private subnet]',
+    legendLabel: 'Private subnet',
+  },
+  'deploy-cluster': {
+    shape: 'box',
+    icon: 'kubernetes',
+    label: '[Cluster]',
+    outline: true,
+    dashed: true,
+    legendLabel: 'Cluster',
+  },
   'deploy-host': { shape: 'box', icon: 'server', label: '[Host]', outline: true },
   'deploy-service': { shape: 'rounded', icon: 'service', label: '[Service]' },
   'deploy-database': { shape: 'cylinder', icon: 'database', label: '[Database]' },
@@ -191,12 +273,24 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   'tm-entity': { shape: 'box', label: '', legendLabel: 'External entity' },
   'tm-process': { shape: 'ellipse', label: '', defaultSize: { width: 150, height: 90 }, legendLabel: 'Process' },
   'tm-store': { shape: 'store', label: '', defaultSize: { width: 150, height: 56 }, legendLabel: 'Data store' },
-  'tm-boundary': { shape: 'box', label: '', outline: true, dashed: true, alwaysExpanded: true, legendLabel: 'Trust boundary' },
+  'tm-boundary': {
+    shape: 'box',
+    label: '',
+    outline: true,
+    dashed: true,
+    alwaysExpanded: true,
+    legendLabel: 'Trust boundary',
+  },
   // ---- Plan (schedule): a zone is a date-spanned container (the plan layout sizes
   // it; the studio's left/right handles resize it into dates), an event a
   // point marker whose name is drawn beside it.
   'plan-zone': { shape: 'rounded', label: '', legendLabel: 'Zone' },
-  'plan-event': { shape: 'diamond', defaultSize: { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT }, label: '', legendLabel: 'Event' },
+  'plan-event': {
+    shape: 'diamond',
+    defaultSize: { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT },
+    label: '',
+    legendLabel: 'Event',
+  },
 };
 
 export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {

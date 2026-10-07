@@ -41,7 +41,8 @@ export function computeGuides(moving: Box, candidates: readonly Box[], threshold
           // strict '<': on an exact tie between two stops the first one found
           // keeps the hit, so left/centre/right (top/middle/bottom) — the
           // order `stops` returns them in — is the tie-break.
-          if (Math.abs(d) <= threshold && (hit === undefined || Math.abs(d) < Math.abs(hit.d))) hit = { d, at: t, other: c };
+          if (Math.abs(d) <= threshold && (hit === undefined || Math.abs(d) < Math.abs(hit.d)))
+            hit = { d, at: t, other: c };
         }
       }
     }

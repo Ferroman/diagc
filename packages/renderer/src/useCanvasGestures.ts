@@ -6,12 +6,12 @@ import type { DrawTool, PenSettings } from './view-types';
 
 export interface CanvasGesturesInput {
   editing: boolean;
-  tool: DrawTool | undefined;            // props.tool
+  tool: DrawTool | undefined; // props.tool
   drillRoot: string | undefined;
-  chromeless: boolean;                   // props.chrome === false
-  builtinKeys: boolean;                  // props.builtinKeys !== false
-  modelId: string;                       // props.model.id — the laser reset key
-  pen: PenSettings | undefined;          // props.pen
+  chromeless: boolean; // props.chrome === false
+  builtinKeys: boolean; // props.builtinKeys !== false
+  modelId: string; // props.model.id — the laser reset key
+  pen: PenSettings | undefined; // props.pen
   onAddStroke: ((stroke: Omit<Stroke, 'id'>) => void) | undefined; // edit?.onAddStroke
   toFlow: (p: { x: number; y: number }) => { x: number; y: number }; // reactFlow.screenToFlowPosition
 }

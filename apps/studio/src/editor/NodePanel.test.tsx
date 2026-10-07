@@ -48,7 +48,14 @@ describe('NodePanel', () => {
     };
     const options = (nodeId: string) => {
       const { unmount } = render(
-        <NodePanel model={model} nodeId={nodeId} activePlane={undefined} onCommand={noop} onClose={noop} onDeleted={noop} />,
+        <NodePanel
+          model={model}
+          nodeId={nodeId}
+          activePlane={undefined}
+          onCommand={noop}
+          onClose={noop}
+          onDeleted={noop}
+        />,
       );
       const names = within(screen.getByLabelText('Add parent'))
         .getAllByRole('option')
@@ -125,14 +132,7 @@ describe('NodePanel', () => {
     const model = testModel();
     model.nodes = model.nodes.map((n) => (n.id === 'a' ? { ...n, shape: '/library/shapes/person.svg' } : n));
     render(
-      <NodePanel
-        model={model}
-        nodeId="a"
-        activePlane="flow"
-        onCommand={onCommand}
-        onClose={noop}
-        onDeleted={noop}
-      />,
+      <NodePanel model={model} nodeId="a" activePlane="flow" onCommand={onCommand} onClose={noop} onDeleted={noop} />,
     );
     const shape = screen.getByLabelText('Shape') as HTMLInputElement;
     expect(shape.value).toBe('/library/shapes/person.svg');
@@ -333,14 +333,7 @@ describe('NodePanel', () => {
       nodes: base.nodes.map((n) => (n.id === 'a' ? { ...n, name: 'Renamed' } : n)),
     };
     rerender(
-      <NodePanel
-        model={renamed}
-        nodeId="a"
-        activePlane="flow"
-        onCommand={onCommand}
-        onClose={noop}
-        onDeleted={noop}
-      />,
+      <NodePanel model={renamed} nodeId="a" activePlane="flow" onCommand={onCommand} onClose={noop} onDeleted={noop} />,
     );
     const name = screen.getByLabelText<HTMLTextAreaElement>('Name');
     expect(name.value).toBe('Renamed');
@@ -391,9 +384,7 @@ describe('NodePanel', () => {
     const base = testModel();
     const model: DiagramModel = {
       ...base,
-      nodes: base.nodes.map((n) =>
-        n.id === 'a' ? { ...n, metadata: { owner: 'platform-team', tier: 'gold' } } : n,
-      ),
+      nodes: base.nodes.map((n) => (n.id === 'a' ? { ...n, metadata: { owner: 'platform-team', tier: 'gold' } } : n)),
     };
     render(
       <NodePanel model={model} nodeId="a" activePlane="flow" onCommand={onCommand} onClose={noop} onDeleted={noop} />,
@@ -536,9 +527,7 @@ describe('NodePanel', () => {
     const m = testModel();
     m.layers = [{ id: 'ops', name: 'Ops' }];
     m.nodes[0] = { ...m.nodes[0]!, layer: 'ops' };
-    render(
-      <NodePanel model={m} nodeId="a" activePlane="flow" onCommand={onCommand} onClose={noop} onDeleted={noop} />,
-    );
+    render(<NodePanel model={m} nodeId="a" activePlane="flow" onCommand={onCommand} onClose={noop} onDeleted={noop} />);
     const layer = screen.getByLabelText<HTMLSelectElement>('Layer');
     expect(layer.value).toBe('ops'); // seeded from the node
     fireEvent.change(layer, { target: { value: '' } });
@@ -554,13 +543,31 @@ describe('NodePanel', () => {
 
   it('sets and clears text alignment', () => {
     const onCommand = vi.fn();
-    render(<NodePanel model={testModel()} nodeId="a" activePlane="flow" onCommand={onCommand} onClose={noop} onDeleted={noop} />);
+    render(
+      <NodePanel
+        model={testModel()}
+        nodeId="a"
+        activePlane="flow"
+        onCommand={onCommand}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Center' }));
     expect(onCommand).toHaveBeenCalledWith({ type: 'set-node-details', id: 'a', details: { textAlign: 'center' } });
   });
   it('sets font size to large', () => {
     const onCommand = vi.fn();
-    render(<NodePanel model={testModel()} nodeId="a" activePlane="flow" onCommand={onCommand} onClose={noop} onDeleted={noop} />);
+    render(
+      <NodePanel
+        model={testModel()}
+        nodeId="a"
+        activePlane="flow"
+        onCommand={onCommand}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Large' }));
     expect(onCommand).toHaveBeenCalledWith({ type: 'set-node-details', id: 'a', details: { fontScale: 'lg' } });
   });
@@ -568,7 +575,16 @@ describe('NodePanel', () => {
   it('shows the pinned position and commits an edited coordinate as set-position', () => {
     const onCommand = vi.fn();
     render(
-      <NodePanel model={testModel()} nodeId="a" activePlane="flow" hasPin pinned={{ x: 40, y: 60 }} onCommand={onCommand} onClose={noop} onDeleted={noop} />,
+      <NodePanel
+        model={testModel()}
+        nodeId="a"
+        activePlane="flow"
+        hasPin
+        pinned={{ x: 40, y: 60 }}
+        onCommand={onCommand}
+        onClose={noop}
+        onDeleted={noop}
+      />,
     );
     const x = screen.getByLabelText('X') as HTMLInputElement;
     expect(x.value).toBe('40');
@@ -581,7 +597,15 @@ describe('NodePanel', () => {
   it('an unpinned node shows the live position as a placeholder and pins on commit', () => {
     const onCommand = vi.fn();
     render(
-      <NodePanel model={testModel()} nodeId="a" activePlane="flow" live={{ x: 12.6, y: 7 }} onCommand={onCommand} onClose={noop} onDeleted={noop} />,
+      <NodePanel
+        model={testModel()}
+        nodeId="a"
+        activePlane="flow"
+        live={{ x: 12.6, y: 7 }}
+        onCommand={onCommand}
+        onClose={noop}
+        onDeleted={noop}
+      />,
     );
     const x = screen.getByLabelText('X') as HTMLInputElement;
     const y = screen.getByLabelText('Y') as HTMLInputElement;
@@ -597,7 +621,16 @@ describe('NodePanel', () => {
 
   it('does not commit a half-filled position', () => {
     const onCommand = vi.fn();
-    render(<NodePanel model={testModel()} nodeId="a" activePlane="flow" onCommand={onCommand} onClose={noop} onDeleted={noop} />);
+    render(
+      <NodePanel
+        model={testModel()}
+        nodeId="a"
+        activePlane="flow"
+        onCommand={onCommand}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
     const x = screen.getByLabelText('X');
     fireEvent.change(x, { target: { value: '20' } });
     fireEvent.blur(x);
@@ -623,7 +656,16 @@ describe('NodePanel', () => {
 
     it('plain-deletes an ordinary node (no cascade key)', () => {
       const onCommand = vi.fn();
-      render(<NodePanel model={testModel()} nodeId="a" activePlane="flow" onCommand={onCommand} onClose={noop} onDeleted={noop} />);
+      render(
+        <NodePanel
+          model={testModel()}
+          nodeId="a"
+          activePlane="flow"
+          onCommand={onCommand}
+          onClose={noop}
+          onDeleted={noop}
+        />,
+      );
       fireEvent.click(screen.getByRole('button', { name: 'Delete node' }));
       expect(onCommand).toHaveBeenCalledWith({ type: 'delete-node', id: 'a' });
     });
@@ -631,7 +673,14 @@ describe('NodePanel', () => {
     it('cascade-deletes a notation container whose children cannot be re-homed', () => {
       const onCommand = vi.fn();
       render(
-        <NodePanel model={frameModel()} nodeId="frame" activePlane={undefined} onCommand={onCommand} onClose={noop} onDeleted={noop} />,
+        <NodePanel
+          model={frameModel()}
+          nodeId="frame"
+          activePlane={undefined}
+          onCommand={onCommand}
+          onClose={noop}
+          onDeleted={noop}
+        />,
       );
       fireEvent.click(screen.getByRole('button', { name: 'Delete node' }));
       expect(onCommand).toHaveBeenCalledWith({ type: 'delete-node', id: 'frame', cascade: true });
@@ -640,7 +689,14 @@ describe('NodePanel', () => {
     it('Ungroup severs only, even on a notation container', () => {
       const onCommand = vi.fn();
       render(
-        <NodePanel model={frameModel()} nodeId="frame" activePlane={undefined} onCommand={onCommand} onClose={noop} onDeleted={noop} />,
+        <NodePanel
+          model={frameModel()}
+          nodeId="frame"
+          activePlane={undefined}
+          onCommand={onCommand}
+          onClose={noop}
+          onDeleted={noop}
+        />,
       );
       fireEvent.click(screen.getByRole('button', { name: 'Ungroup' }));
       expect(onCommand).toHaveBeenCalledWith({ type: 'delete-node', id: 'frame' });
@@ -696,7 +752,14 @@ describe('NodePanel', () => {
 
     it('stays out of the way off the notation, unless the node already carries threats', () => {
       const { unmount } = render(
-        <NodePanel model={tmModel()} nodeId="p" activePlane={undefined} onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+        <NodePanel
+          model={tmModel()}
+          nodeId="p"
+          activePlane={undefined}
+          onCommand={vi.fn()}
+          onClose={noop}
+          onDeleted={noop}
+        />,
       );
       expect(screen.queryByRole('region', { name: 'Threats' })).toBeNull();
       unmount();
@@ -733,7 +796,9 @@ describe('NodePanel', () => {
       fireEvent.change(screen.getByLabelText('New threat'), { target: { value: 'Spoofed caller' } });
       // the accessible name names what is being added — Memberships has an Add
       // of its own, and the scoping below is the belt to that braces
-      fireEvent.click(within(screen.getByRole('region', { name: 'Threats' })).getByRole('button', { name: 'Add threat' }));
+      fireEvent.click(
+        within(screen.getByRole('region', { name: 'Threats' })).getByRole('button', { name: 'Add threat' }),
+      );
       expect(onCommand).toHaveBeenCalledWith({
         type: 'add-threat',
         target: { node: 'p' },
@@ -760,7 +825,15 @@ describe('NodePanel', () => {
       const zone = planModel('plan-zone', { start: '2026-01-05', end: '2026-03-27' });
 
       const { unmount: unmount1 } = render(
-        <NodePanel model={zone} nodeId="z" activePlane={undefined} notation="plan" onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+        <NodePanel
+          model={zone}
+          nodeId="z"
+          activePlane={undefined}
+          notation="plan"
+          onCommand={vi.fn()}
+          onClose={noop}
+          onDeleted={noop}
+        />,
       );
       expect(screen.getByLabelText('Start')).toBeTruthy();
       unmount1();
@@ -768,7 +841,15 @@ describe('NodePanel', () => {
       // a plain node has nothing to date — the section stays off entirely,
       // even on the plan notation
       const { unmount: unmount2 } = render(
-        <NodePanel model={planModel('service')} nodeId="z" activePlane={undefined} notation="plan" onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+        <NodePanel
+          model={planModel('service')}
+          nodeId="z"
+          activePlane={undefined}
+          notation="plan"
+          onCommand={vi.fn()}
+          onClose={noop}
+          onDeleted={noop}
+        />,
       );
       expect(screen.queryByLabelText('Start')).toBeNull();
       expect(screen.queryByRole('heading', { name: 'Plan' })).toBeNull();
@@ -777,7 +858,14 @@ describe('NodePanel', () => {
       // the house rule: a zone that already carries dates keeps its editor
       // even off the plan notation, so switching planes strands nothing
       const { unmount: unmount3 } = render(
-        <NodePanel model={zone} nodeId="z" activePlane={undefined} onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+        <NodePanel
+          model={zone}
+          nodeId="z"
+          activePlane={undefined}
+          onCommand={vi.fn()}
+          onClose={noop}
+          onDeleted={noop}
+        />,
       );
       expect(screen.getByLabelText('Start')).toBeTruthy();
       unmount3();
@@ -786,7 +874,14 @@ describe('NodePanel', () => {
       // state the section exists to finish, and it is reachable (clear Start in
       // the inspector), so the rule must read every key it offers
       render(
-        <NodePanel model={planModel('plan-zone', { end: '2026-03-27' })} nodeId="z" activePlane={undefined} onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+        <NodePanel
+          model={planModel('plan-zone', { end: '2026-03-27' })}
+          nodeId="z"
+          activePlane={undefined}
+          onCommand={vi.fn()}
+          onClose={noop}
+          onDeleted={noop}
+        />,
       );
       expect(screen.getByLabelText('End')).toBeTruthy();
     });
@@ -794,7 +889,15 @@ describe('NodePanel', () => {
     it('retyping into plan-zone via the Type field batches the retype with seeded dates, so undo reverts both together', () => {
       const onCommand = vi.fn();
       render(
-        <NodePanel model={planModel('service')} nodeId="z" activePlane={undefined} onCommand={onCommand} onClose={noop} onDeleted={noop} today="2026-05-04" />,
+        <NodePanel
+          model={planModel('service')}
+          nodeId="z"
+          activePlane={undefined}
+          onCommand={onCommand}
+          onClose={noop}
+          onDeleted={noop}
+          today="2026-05-04"
+        />,
       );
       const typeInput = screen.getByLabelText('Type') as HTMLInputElement;
       fireEvent.change(typeInput, { target: { value: 'plan-zone' } });
@@ -811,7 +914,14 @@ describe('NodePanel', () => {
     it('retyping with no `today` (e.g. an embedding with nothing plan-shaped to seed) sends the plain retype, unbatched', () => {
       const onCommand = vi.fn();
       render(
-        <NodePanel model={planModel('service')} nodeId="z" activePlane={undefined} onCommand={onCommand} onClose={noop} onDeleted={noop} />,
+        <NodePanel
+          model={planModel('service')}
+          nodeId="z"
+          activePlane={undefined}
+          onCommand={onCommand}
+          onClose={noop}
+          onDeleted={noop}
+        />,
       );
       const typeInput = screen.getByLabelText('Type') as HTMLInputElement;
       fireEvent.change(typeInput, { target: { value: 'plan-zone' } });
@@ -822,7 +932,14 @@ describe('NodePanel', () => {
 
   it('offers Comments and Links on a plain node (unlike Threats, not gated on a notation)', () => {
     render(
-      <NodePanel model={testModel()} nodeId="a" activePlane="flow" onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+      <NodePanel
+        model={testModel()}
+        nodeId="a"
+        activePlane="flow"
+        onCommand={vi.fn()}
+        onClose={noop}
+        onDeleted={noop}
+      />,
     );
     expect(screen.getByRole('region', { name: 'Comments' })).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Links' })).toBeTruthy();

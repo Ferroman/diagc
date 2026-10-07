@@ -3,7 +3,12 @@ import type { Library, LibraryEntry } from './types';
 /** a dropped zone is an empty box, big enough to nest things into */
 const ZONE_SIZE = { width: 320, height: 220 };
 
-const entry = (id: string, name: string, keywords: string[], size?: { width: number; height: number }): LibraryEntry => ({
+const entry = (
+  id: string,
+  name: string,
+  keywords: string[],
+  size?: { width: number; height: number },
+): LibraryEntry => ({
   id,
   category: 'deployment',
   name,

@@ -14,9 +14,7 @@ describe('validate', () => {
       { id: 'a', name: 'a', type: 't' },
       { id: 'a', name: 'other', type: 't' },
     ];
-    expect(validate(m)).toEqual([
-      { code: 'duplicate-node', message: "Duplicate node id 'a'", ref: 'a' },
-    ]);
+    expect(validate(m)).toEqual([{ code: 'duplicate-node', message: "Duplicate node id 'a'", ref: 'a' }]);
   });
 
   it('flags a node claiming the reserved layout-root id', () => {
@@ -33,9 +31,7 @@ describe('validate', () => {
       { id: 'l', name: 'l' },
       { id: 'l', name: 'l2' },
     ];
-    expect(validate(m)).toEqual([
-      { code: 'duplicate-layer', message: "Duplicate layer id 'l'", ref: 'l' },
-    ]);
+    expect(validate(m)).toEqual([{ code: 'duplicate-layer', message: "Duplicate layer id 'l'", ref: 'l' }]);
   });
 
   it('flags duplicate relation ids', () => {
@@ -260,7 +256,12 @@ describe('validate', () => {
 
   it('accepts a bundled /library image ref and still rejects a bad one', () => {
     const base = { version: 1 as const, containment: [], relations: [], layers: [], planes: [] };
-    const ok = validate({ ...base, id: 'd', name: 'd', nodes: [{ id: 'n', name: 'n', image: '/library/aws/lambda.svg' }] });
+    const ok = validate({
+      ...base,
+      id: 'd',
+      name: 'd',
+      nodes: [{ id: 'n', name: 'n', image: '/library/aws/lambda.svg' }],
+    });
     expect(ok.filter((i) => i.code === 'invalid-image')).toHaveLength(0);
     const bad = validate({ ...base, id: 'd', name: 'd', nodes: [{ id: 'n', name: 'n', image: '/etc/passwd' }] });
     expect(bad.some((i) => i.code === 'invalid-image')).toBe(true);
@@ -268,10 +269,15 @@ describe('validate', () => {
 
   it('accepts a valid shape ref and rejects a bad one', () => {
     const base = { version: 1 as const, containment: [], relations: [], layers: [], planes: [] };
-    const ok = validate({ ...base, id: 'd', name: 'd', nodes: [
-      { id: 'a', name: 'a', shape: '/library/shapes/person.svg' },
-      { id: 'b', name: 'b', shape: 'a1b2c3.svg' },
-    ] });
+    const ok = validate({
+      ...base,
+      id: 'd',
+      name: 'd',
+      nodes: [
+        { id: 'a', name: 'a', shape: '/library/shapes/person.svg' },
+        { id: 'b', name: 'b', shape: 'a1b2c3.svg' },
+      ],
+    });
     expect(ok.filter((i) => i.code === 'invalid-shape')).toHaveLength(0);
     const bad = validate({ ...base, id: 'd', name: 'd', nodes: [{ id: 'a', name: 'a', shape: '../secret' }] });
     expect(bad.some((i) => i.code === 'invalid-shape')).toBe(true);
@@ -297,7 +303,12 @@ describe('validate', () => {
     const base = { version: 1 as const, containment: [], relations: [], layers: [], planes: [] };
     const ok = validate({ ...base, id: 'd', name: 'd', nodes: [{ id: 'a', name: 'a', textColor: '#ff8800' }] });
     expect(ok.filter((i) => i.code === 'invalid-style')).toHaveLength(0);
-    const bad = validate({ ...base, id: 'd', name: 'd', nodes: [{ id: 'a', name: 'a', textColor: 123 as unknown as string }] });
+    const bad = validate({
+      ...base,
+      id: 'd',
+      name: 'd',
+      nodes: [{ id: 'a', name: 'a', textColor: 123 as unknown as string }],
+    });
     expect(bad.some((i) => i.code === 'invalid-style')).toBe(true);
   });
 
@@ -308,12 +319,16 @@ describe('validate', () => {
     ];
     const good = emptyModel();
     good.nodes = nodes;
-    good.relations = [{ id: 'r', from: 'a', to: 'b', kind: 'k', labels: [{ id: 'l1', text: 'hi', t: 0.5, side: 'top' }] }];
+    good.relations = [
+      { id: 'r', from: 'a', to: 'b', kind: 'k', labels: [{ id: 'l1', text: 'hi', t: 0.5, side: 'top' }] },
+    ];
     expect(validate(good)).toEqual([]);
 
     const badText = emptyModel();
     badText.nodes = nodes;
-    badText.relations = [{ id: 'r', from: 'a', to: 'b', kind: 'k', labels: [{ id: 'l1', text: 5 as unknown as string }] }];
+    badText.relations = [
+      { id: 'r', from: 'a', to: 'b', kind: 'k', labels: [{ id: 'l1', text: 5 as unknown as string }] },
+    ];
     expect(validate(badText).map((i) => i.code)).toContain('invalid-edge-label');
 
     const badT = emptyModel();
@@ -323,7 +338,9 @@ describe('validate', () => {
 
     const badSide = emptyModel();
     badSide.nodes = nodes;
-    badSide.relations = [{ id: 'r', from: 'a', to: 'b', kind: 'k', labels: [{ id: 'l1', text: 'x', side: 'left' as never }] }];
+    badSide.relations = [
+      { id: 'r', from: 'a', to: 'b', kind: 'k', labels: [{ id: 'l1', text: 'x', side: 'left' as never }] },
+    ];
     expect(validate(badSide).map((i) => i.code)).toContain('invalid-edge-label');
   });
 
@@ -345,73 +362,100 @@ describe('validate', () => {
 });
 
 const raw = (over: Partial<DiagramModel>): DiagramModel => ({
-  version: 1, id: 'x', name: 'x',
-  nodes: [], containment: [], relations: [], layers: [], planes: [],
+  version: 1,
+  id: 'x',
+  name: 'x',
+  nodes: [],
+  containment: [],
+  relations: [],
+  layers: [],
+  planes: [],
   ...over,
 });
 
 describe('per-plane membership validation', () => {
   it('flags a node.plane that references no declared plane', () => {
-    const issues = validate(raw({
-      nodes: [{ id: 'a', name: 'a', type: 't', plane: 'ghost' }],
-      planes: [{ id: 'real', name: 'real' }],
-    }));
+    const issues = validate(
+      raw({
+        nodes: [{ id: 'a', name: 'a', type: 't', plane: 'ghost' }],
+        planes: [{ id: 'real', name: 'real' }],
+      }),
+    );
     expect(issues.some((i) => i.code === 'unknown-plane' && i.ref === 'a')).toBe(true);
   });
 
   it('accepts a node.plane that matches a declared plane', () => {
-    const issues = validate(raw({
-      nodes: [{ id: 'a', name: 'a', type: 't', plane: 'infra' }],
-      planes: [{ id: 'infra', name: 'infra' }],
-    }));
+    const issues = validate(
+      raw({
+        nodes: [{ id: 'a', name: 'a', type: 't', plane: 'infra' }],
+        planes: [{ id: 'infra', name: 'infra' }],
+      }),
+    );
     expect(issues.some((i) => i.code === 'unknown-plane')).toBe(false);
   });
 
   it('flags plane.hides referencing an unknown node', () => {
-    const issues = validate(raw({
-      nodes: [{ id: 'a', name: 'a', type: 't' }],
-      planes: [{ id: 'p', name: 'p', hides: ['nope'] }],
-    }));
+    const issues = validate(
+      raw({
+        nodes: [{ id: 'a', name: 'a', type: 't' }],
+        planes: [{ id: 'p', name: 'p', hides: ['nope'] }],
+      }),
+    );
     expect(issues.some((i) => i.code === 'unknown-hidden-node' && i.ref === 'p')).toBe(true);
   });
 
   it('checks plane.hidesTree the same way as plane.hides', () => {
-    const issues = validate(raw({
-      nodes: [{ id: 'a', name: 'a', type: 't' }],
-      planes: [{ id: 'p', name: 'p', hidesTree: ['nope'] }],
-    }));
+    const issues = validate(
+      raw({
+        nodes: [{ id: 'a', name: 'a', type: 't' }],
+        planes: [{ id: 'p', name: 'p', hidesTree: ['nope'] }],
+      }),
+    );
     expect(issues.some((i) => i.code === 'unknown-hidden-node' && i.ref === 'p')).toBe(true);
-    expect(validate(raw({
-      nodes: [{ id: 'a', name: 'a', type: 't' }],
-      planes: [{ id: 'p', name: 'p', hidesTree: ['a'] }],
-    }))).toEqual([]);
+    expect(
+      validate(
+        raw({
+          nodes: [{ id: 'a', name: 'a', type: 't' }],
+          planes: [{ id: 'p', name: 'p', hidesTree: ['a'] }],
+        }),
+      ),
+    ).toEqual([]);
   });
 
   it('flags hiding a node that is already scoped to a plane (redundant)', () => {
-    const issues = validate(raw({
-      nodes: [{ id: 'a', name: 'a', type: 't', plane: 'p' }],
-      planes: [{ id: 'p', name: 'p', hides: ['a'] }],
-    }));
+    const issues = validate(
+      raw({
+        nodes: [{ id: 'a', name: 'a', type: 't', plane: 'p' }],
+        planes: [{ id: 'p', name: 'p', hides: ['a'] }],
+      }),
+    );
     expect(issues.some((i) => i.code === 'redundant-hide' && i.ref === 'p')).toBe(true);
   });
 
   it('accepts hiding a shared node', () => {
-    const issues = validate(raw({
-      nodes: [{ id: 'a', name: 'a', type: 't' }],
-      planes: [{ id: 'p', name: 'p', hides: ['a'] }],
-    }));
+    const issues = validate(
+      raw({
+        nodes: [{ id: 'a', name: 'a', type: 't' }],
+        planes: [{ id: 'p', name: 'p', hides: ['a'] }],
+      }),
+    );
     expect(issues).toEqual([]);
   });
 
   it('flags invalid rich runs, align and fontScale', () => {
     const m: DiagramModel = {
-      version: 1, id: 'd', name: 'd',
+      version: 1,
+      id: 'd',
+      name: 'd',
       nodes: [
         { id: 'a', name: 'a', rich: [{ text: 5 as unknown as string }] },
         { id: 'b', name: 'b', textAlign: 'middle' as unknown as 'left' },
         { id: 'c', name: 'c', fontScale: 'huge' as unknown as 'sm' },
       ],
-      containment: [], relations: [], layers: [], planes: [],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
     };
     const codes = validate(m).map((i) => i.code);
     expect(codes).toContain('invalid-rich');
@@ -420,9 +464,16 @@ describe('per-plane membership validation', () => {
   });
   it('accepts a valid rich node', () => {
     const m: DiagramModel = {
-      version: 1, id: 'd', name: 'd',
-      nodes: [{ id: 'a', name: 'ab', rich: [{ text: 'a', bold: true }, { text: 'b' }], textAlign: 'center', fontScale: 'lg' }],
-      containment: [], relations: [], layers: [], planes: [],
+      version: 1,
+      id: 'd',
+      name: 'd',
+      nodes: [
+        { id: 'a', name: 'ab', rich: [{ text: 'a', bold: true }, { text: 'b' }], textAlign: 'center', fontScale: 'lg' },
+      ],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
     };
     expect(validate(m)).toEqual([]);
   });
@@ -430,7 +481,14 @@ describe('per-plane membership validation', () => {
 
 describe('model style', () => {
   const base: DiagramModel = {
-    version: 1, id: 'm', name: 'M', nodes: [], containment: [], relations: [], layers: [], planes: [],
+    version: 1,
+    id: 'm',
+    name: 'M',
+    nodes: [],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
   };
   it('accepts absent, known, and unknown style ids (unknown must not block saves)', () => {
     expect(validate(base)).toEqual([]);
@@ -457,8 +515,14 @@ describe('model style', () => {
 
 describe('node technology validation', () => {
   const base = () => ({
-    version: 1 as const, id: 'd', name: 'd',
-    nodes: [] as any[], containment: [], relations: [] as any[], layers: [], planes: [],
+    version: 1 as const,
+    id: 'd',
+    name: 'd',
+    nodes: [] as any[],
+    containment: [],
+    relations: [] as any[],
+    layers: [],
+    planes: [],
   });
 
   it('rejects a non-string technology', () => {
@@ -470,8 +534,14 @@ describe('node technology validation', () => {
 
 describe('table columns + fk validation', () => {
   const base = () => ({
-    version: 1 as const, id: 'd', name: 'd',
-    nodes: [] as any[], containment: [], relations: [] as any[], layers: [], planes: [],
+    version: 1 as const,
+    id: 'd',
+    name: 'd',
+    nodes: [] as any[],
+    containment: [],
+    relations: [] as any[],
+    layers: [],
+    planes: [],
   });
 
   it('flags duplicate column names within a table', () => {
@@ -493,7 +563,15 @@ describe('table columns + fk validation', () => {
   it('accepts a valid fk', () => {
     const m = base();
     m.nodes = [
-      { id: 'a', name: 'a', type: 'db-table', columns: [{ name: 'id', pk: true }, { name: 'b_id', fk: true }] },
+      {
+        id: 'a',
+        name: 'a',
+        type: 'db-table',
+        columns: [
+          { name: 'id', pk: true },
+          { name: 'b_id', fk: true },
+        ],
+      },
       { id: 'b', name: 'b', type: 'db-table', columns: [{ name: 'id', pk: true }] },
     ];
     m.relations = [{ id: 'a->b#0', from: 'a', to: 'b', kind: 'fk', fromColumn: 'b_id', toColumn: 'id' }];
@@ -509,7 +587,15 @@ describe('legend validation', () => {
   };
 
   it('accepts a well-formed legend', () => {
-    const json = { ...base(), legend: { title: 'Key', position: 'top-left' as const, show: ['kinds' as const], items: [{ label: 'Team A', color: '#f59e0b' }] } };
+    const json = {
+      ...base(),
+      legend: {
+        title: 'Key',
+        position: 'top-left' as const,
+        show: ['kinds' as const],
+        items: [{ label: 'Team A', color: '#f59e0b' }],
+      },
+    };
     expect(validate(json)).toEqual([]);
   });
 
@@ -538,7 +624,9 @@ describe('legend validation', () => {
   });
 
   it('rejects items that are not a list', () => {
-    expect(validate({ ...base(), legend: { items: {} } } as unknown as DiagramModel)[0]).toMatchObject({ code: 'invalid-legend' });
+    expect(validate({ ...base(), legend: { items: {} } } as unknown as DiagramModel)[0]).toMatchObject({
+      code: 'invalid-legend',
+    });
   });
 
   it('rejects an item without a label', () => {
@@ -553,7 +641,15 @@ describe('legend validation', () => {
 
   it('accepts unknown registry ids on an item', () => {
     // registry ids are free-form everywhere else in the model; they fall back silently
-    const json = { ...base(), legend: { items: [{ label: 'gRPC', kind: 'grpc' }, { label: 'Thing', type: 'whatever' }] } };
+    const json = {
+      ...base(),
+      legend: {
+        items: [
+          { label: 'gRPC', kind: 'grpc' },
+          { label: 'Thing', type: 'whatever' },
+        ],
+      },
+    };
     expect(validate(json)).toEqual([]);
   });
 });
@@ -568,11 +664,17 @@ describe('validate: git graph', () => {
         { id: 'master', name: 'Master', type: 'branch' },
         { id: 'nightly', name: 'Nightly', type: 'branch' },
         { id: 'team', name: 'Team', type: 'branch' },
-        commit('m1'), commit('m2'), commit('n1'), commit('n2'), commit('t1'),
+        commit('m1'),
+        commit('m2'),
+        commit('n1'),
+        commit('n2'),
+        commit('t1'),
       ],
       containment: [
-        { parent: 'master', child: 'm1' }, { parent: 'master', child: 'm2' },
-        { parent: 'nightly', child: 'n1' }, { parent: 'nightly', child: 'n2' },
+        { parent: 'master', child: 'm1' },
+        { parent: 'master', child: 'm2' },
+        { parent: 'nightly', child: 'n1' },
+        { parent: 'nightly', child: 'n2' },
         { parent: 'team', child: 't1' },
       ],
       relations: [
@@ -607,7 +709,10 @@ describe('validate: git graph', () => {
 
   it('git-commit-lane: commit links stay in a lane, branch/merge links cross lanes', () => {
     const m = gitModel();
-    m.relations.push({ id: 'x', from: 'm2', to: 'n2', kind: 'commit' }, { id: 'y', from: 'm1', to: 'm2', kind: 'merge' });
+    m.relations.push(
+      { id: 'x', from: 'm2', to: 'n2', kind: 'commit' },
+      { id: 'y', from: 'm1', to: 'm2', kind: 'merge' },
+    );
     expect(validate(m)).toEqual([
       { code: 'git-commit-lane', message: "Relation 'x' (commit) must stay within one lane", ref: 'x' },
       { code: 'git-commit-lane', message: "Relation 'y' (merge) must join commits of different lanes", ref: 'y' },
@@ -639,14 +744,20 @@ describe('validate: git graph', () => {
     // back into master (n1->m1) closes the loop without ever repeating a lane,
     // so no relation here is a same-lane branch/merge or a cross-lane commit.
     m.relations.push({ id: 'x', from: 'n1', to: 'm1', kind: 'merge' });
-    expect(validate(m)).toEqual([{ code: 'git-cycle', message: "Git links form a cycle (cut at relation 'x')", ref: 'x' }]);
+    expect(validate(m)).toEqual([
+      { code: 'git-cycle', message: "Git links form a cycle (cut at relation 'x')", ref: 'x' },
+    ]);
   });
 
   it('git-commit-outside-lane: a commit must sit in a branch on the git plane', () => {
     const m = gitModel();
     m.nodes.push({ id: 'loose', name: '', type: 'commit' });
     expect(validate(m)).toEqual([
-      { code: 'git-commit-outside-lane', message: "Commit 'loose' is not contained by a branch on plane 'git'", ref: 'loose' },
+      {
+        code: 'git-commit-outside-lane',
+        message: "Commit 'loose' is not contained by a branch on plane 'git'",
+        ref: 'loose',
+      },
     ]);
   });
 
@@ -654,9 +765,7 @@ describe('validate: git graph', () => {
     const m = gitModel();
     m.nodes[3] = { ...m.nodes[3]!, metadata: { gap: '2' } };
     m.nodes[4] = { ...m.nodes[4]!, metadata: { gap: -1 } };
-    expect(validate(m)).toEqual([
-      { code: 'git-gap', message: "Commit 'm2' has invalid gap '-1'", ref: 'm2' },
-    ]);
+    expect(validate(m)).toEqual([{ code: 'git-gap', message: "Commit 'm2' has invalid gap '-1'", ref: 'm2' }]);
   });
 
   it('fires from a model-level git-graph notation with no planes at all', () => {
@@ -682,7 +791,14 @@ describe('validate: git graph', () => {
 
 describe('validateActivity', () => {
   const base = (nodes: DiagramNode[], containment: ContainmentEdge[]): DiagramModel => ({
-    version: 1, id: 'd', name: 'd', nodes, containment, relations: [], layers: [], planes: [],
+    version: 1,
+    id: 'd',
+    name: 'd',
+    nodes,
+    containment,
+    relations: [],
+    layers: [],
+    planes: [],
   });
 
   it('accepts frame ⊃ lane ⊃ elements ⊃ region', () => {
@@ -755,15 +871,30 @@ describe('validateActivity', () => {
 });
 
 describe('second-order conventions', () => {
-  const so = (nodes: DiagramNode[], relations: DiagramRelation[] = [], containment: DiagramModel['containment'] = []): DiagramModel => ({
-    version: 1, id: 'so', name: 'so', notation: 'second-order', nodes, containment, relations, layers: [], planes: [],
+  const so = (
+    nodes: DiagramNode[],
+    relations: DiagramRelation[] = [],
+    containment: DiagramModel['containment'] = [],
+  ): DiagramModel => ({
+    version: 1,
+    id: 'so',
+    name: 'so',
+    notation: 'second-order',
+    nodes,
+    containment,
+    relations,
+    layers: [],
+    planes: [],
   });
   const n = (id: string, type: string): DiagramNode => ({ id, name: id, type });
   const r = (from: string, to: string): DiagramRelation => ({ id: `${from}->${to}`, from, to, kind: 'leads-to' });
   const codes = (m: DiagramModel) => validate(m).map((i) => i.code);
 
   it('accepts a decision with a chain of consequences', () => {
-    const m = so([n('d', 'so-decision'), n('a', 'so-consequence-positive'), n('b', 'so-consequence-negative')], [r('d', 'a'), r('a', 'b')]);
+    const m = so(
+      [n('d', 'so-decision'), n('a', 'so-consequence-positive'), n('b', 'so-consequence-negative')],
+      [r('d', 'a'), r('a', 'b')],
+    );
     expect(validate(m)).toEqual([]);
   });
   it('wants at least one decision', () => {
@@ -776,7 +907,12 @@ describe('second-order conventions', () => {
     expect(codes(so([n('note', 'comment')]))).not.toContain('so-no-decision');
   });
   it('sends a loop to the causal-loop notation', () => {
-    const issues = validate(so([n('d', 'so-decision'), n('a', 'so-consequence-neutral'), n('b', 'so-consequence-neutral')], [r('d', 'a'), r('a', 'b'), r('b', 'a')]));
+    const issues = validate(
+      so(
+        [n('d', 'so-decision'), n('a', 'so-consequence-neutral'), n('b', 'so-consequence-neutral')],
+        [r('d', 'a'), r('a', 'b'), r('b', 'a')],
+      ),
+    );
     const cycle = issues.find((i) => i.code === 'so-cycle')!;
     expect(cycle.message).toContain('causal-loop');
     expect(cycle.ref).toBe('a');
@@ -795,19 +931,42 @@ describe('second-order conventions', () => {
     expect(codes(m).filter((c) => c.startsWith('so-'))).toEqual([]);
   });
   it('reads a plane-level notation too', () => {
-    const m: DiagramModel = { ...so([n('a', 'so-consequence-neutral')]), planes: [{ id: 'p', name: 'P', notation: 'second-order' }] };
+    const m: DiagramModel = {
+      ...so([n('a', 'so-consequence-neutral')]),
+      planes: [{ id: 'p', name: 'P', notation: 'second-order' }],
+    };
     delete (m as { notation?: string }).notation;
     expect(codes(m)).toContain('so-no-decision');
   });
 });
 
 describe('fishbone conventions', () => {
-  const fb = (nodes: DiagramNode[], relations: DiagramRelation[], containment: ContainmentEdge[] = []): DiagramModel => ({
-    version: 1, id: 'm', name: 'm', notation: 'fishbone', nodes, containment, relations, layers: [], planes: [],
+  const fb = (
+    nodes: DiagramNode[],
+    relations: DiagramRelation[],
+    containment: ContainmentEdge[] = [],
+  ): DiagramModel => ({
+    version: 1,
+    id: 'm',
+    name: 'm',
+    notation: 'fishbone',
+    nodes,
+    containment,
+    relations,
+    layers: [],
+    planes: [],
   });
   const n = (id: string, type?: string): DiagramNode => ({ id, name: id, ...(type !== undefined ? { type } : {}) });
-  const r = (from: string, to: string, kind = 'cause-of'): DiagramRelation => ({ id: `${from}->${to}`, from, to, kind });
-  const codes = (m: DiagramModel) => validate(m).filter((i) => i.code.startsWith('fb-')).map((i) => [i.code, i.ref]);
+  const r = (from: string, to: string, kind = 'cause-of'): DiagramRelation => ({
+    id: `${from}->${to}`,
+    from,
+    to,
+    kind,
+  });
+  const codes = (m: DiagramModel) =>
+    validate(m)
+      .filter((i) => i.code.startsWith('fb-'))
+      .map((i) => [i.code, i.ref]);
   const warned = (m: DiagramModel) => diagramWarnings(m).map((i) => [i.code, i.ref]);
 
   it('accepts an empty fishbone diagram and a well-formed fish', () => {
@@ -829,10 +988,29 @@ describe('fishbone conventions', () => {
   it('names the wrong parent, the fourth level, and what never reaches the effect — one issue per node', () => {
     const m = fb(
       [
-        n('e', 'fb-effect'), n('c', 'fb-category'), n('a', 'fb-cause'), n('a1', 'fb-cause'), n('a11', 'fb-cause'),
-        n('cc', 'fb-category'), n('direct', 'fb-cause'), n('under-cc', 'fb-cause'), n('x', 'fb-cause'), n('y', 'fb-cause'),
+        n('e', 'fb-effect'),
+        n('c', 'fb-category'),
+        n('a', 'fb-cause'),
+        n('a1', 'fb-cause'),
+        n('a11', 'fb-cause'),
+        n('cc', 'fb-category'),
+        n('direct', 'fb-cause'),
+        n('under-cc', 'fb-cause'),
+        n('x', 'fb-cause'),
+        n('y', 'fb-cause'),
       ],
-      [r('c', 'e'), r('a', 'c'), r('a1', 'a'), r('a11', 'a1'), r('cc', 'c'), r('direct', 'e'), r('under-cc', 'cc'), r('x', 'y'), r('y', 'x'), r('e', 'x')],
+      [
+        r('c', 'e'),
+        r('a', 'c'),
+        r('a1', 'a'),
+        r('a11', 'a1'),
+        r('cc', 'c'),
+        r('direct', 'e'),
+        r('under-cc', 'cc'),
+        r('x', 'y'),
+        r('y', 'x'),
+        r('e', 'x'),
+      ],
     );
     expect(codes(m)).toEqual([
       ['fb-misplaced', 'e'],
@@ -853,7 +1031,9 @@ describe('fishbone conventions', () => {
   it('lets a stray cause through validation and warns about it instead', () => {
     const m = fb([n('e', 'fb-effect'), n('c', 'fb-category'), n('loose', 'fb-cause')], [r('c', 'e')]);
     expect(validate(m)).toEqual([]);
-    expect(diagramWarnings(m)).toEqual([{ code: 'fb-unattached', message: "'loose' does not reach the effect", ref: 'loose' }]);
+    expect(diagramWarnings(m)).toEqual([
+      { code: 'fb-unattached', message: "'loose' does not reach the effect", ref: 'loose' },
+    ]);
   });
 
   it('warns about nothing on a well-formed fish or off the notation', () => {
@@ -875,11 +1055,10 @@ describe('fishbone conventions', () => {
 describe('threats', () => {
   const withThreats = (threats: unknown, where: 'node' | 'relation' = 'node'): DiagramModel => ({
     ...emptyModel(),
-    nodes: [
-      { id: 'a', name: 'A', ...(where === 'node' ? { threats } : {}) } as DiagramNode,
-      { id: 'b', name: 'B' },
+    nodes: [{ id: 'a', name: 'A', ...(where === 'node' ? { threats } : {}) } as DiagramNode, { id: 'b', name: 'B' }],
+    relations: [
+      { id: 'r', from: 'a', to: 'b', kind: 'x', ...(where === 'relation' ? { threats } : {}) } as DiagramRelation,
     ],
-    relations: [{ id: 'r', from: 'a', to: 'b', kind: 'x', ...(where === 'relation' ? { threats } : {}) } as DiagramRelation],
   });
   it('accepts a well-formed list on a node and on a relation', () => {
     const ok = [{ id: 't1', category: 'S', title: 'Spoofed', severity: 'high', status: 'open' }];
@@ -891,13 +1070,18 @@ describe('threats', () => {
     expect(validate(withThreats(['t1'], 'relation')).map((i) => [i.code, i.ref])).toEqual([['invalid-threats', 'r']]);
   });
   it('reports each malformed field with the element as ref', () => {
-    const issues = validate(withThreats([
-      { id: '', category: 'S', title: 'x' },
-      { id: 't1', category: 'Q', title: 'x' },
-      { id: 't1', category: 'S', title: '' },
-      { id: 't2', category: 'S', title: 'x', status: 'fixed' },
-      { id: 't3', category: 'S', title: 'x', severity: 'urgent' },
-    ], 'relation'));
+    const issues = validate(
+      withThreats(
+        [
+          { id: '', category: 'S', title: 'x' },
+          { id: 't1', category: 'Q', title: 'x' },
+          { id: 't1', category: 'S', title: '' },
+          { id: 't2', category: 'S', title: 'x', status: 'fixed' },
+          { id: 't3', category: 'S', title: 'x', severity: 'urgent' },
+        ],
+        'relation',
+      ),
+    );
     expect(issues.map((i) => [i.code, i.ref])).toEqual([
       ['threat-id', 'r'],
       ['threat-category', 'r'],
@@ -914,7 +1098,10 @@ describe('threat-model notation', () => {
     const m: DiagramModel = {
       ...emptyModel(),
       notation: 'threat-model',
-      nodes: [{ id: 'web', name: 'W', type: 'tm-process' }, { id: 'dmz', name: 'D', type: 'tm-boundary' }],
+      nodes: [
+        { id: 'web', name: 'W', type: 'tm-process' },
+        { id: 'dmz', name: 'D', type: 'tm-boundary' },
+      ],
       relations: [{ id: 'r', from: 'web', to: 'dmz', kind: 'data-flow' }],
     };
     expect(validate(m).map((i) => [i.code, i.ref])).toEqual([['tm-flow-boundary', 'r']]);
@@ -931,7 +1118,10 @@ describe('comments and links', () => {
     version: 1,
     id: 'd',
     name: 'd',
-    nodes: [{ id: 'a', name: 'A', ...patch }, { id: 'b', name: 'B' }],
+    nodes: [
+      { id: 'a', name: 'A', ...patch },
+      { id: 'b', name: 'B' },
+    ],
     containment: [],
     relations: [{ id: 'r', from: 'a', to: 'b', kind: 'sync', ...rel }],
     layers: [],
@@ -941,7 +1131,10 @@ describe('comments and links', () => {
 
   it('accepts well-formed comments on a node and a relation, and links on a node', () => {
     const m = model(
-      { comments: [{ id: 'c1', text: 'ok', by: 'Ann', at: '2026-09-22' }], links: [{ label: 'Ticket', url: 'https://x/1' }] },
+      {
+        comments: [{ id: 'c1', text: 'ok', by: 'Ann', at: '2026-09-22' }],
+        links: [{ label: 'Ticket', url: 'https://x/1' }],
+      },
       { comments: [{ id: 'c1', text: 'also ok' }] },
     );
     expect(codes(m)).toEqual([]);
@@ -952,58 +1145,121 @@ describe('comments and links', () => {
     expect(codes(model({}, { comments: [1] as unknown as Comment[] }))).toEqual(['invalid-comments']);
   });
   it('reports a missing or repeated id, empty text, and a bad date, naming the element', () => {
-    const issues = validate(model({ comments: [{ id: '', text: 'x' }, { id: 'c1', text: '' }, { id: 'c1', text: 'y', at: '2026-02-30' }] }));
+    const issues = validate(
+      model({
+        comments: [
+          { id: '', text: 'x' },
+          { id: 'c1', text: '' },
+          { id: 'c1', text: 'y', at: '2026-02-30' },
+        ],
+      }),
+    );
     expect(issues.map((i) => i.code)).toEqual(['comment-id', 'comment-text', 'comment-id', 'comment-at']);
     expect(issues.every((i) => i.ref === 'a')).toBe(true);
   });
   it('reports a link without a label or a url', () => {
-    expect(codes(model({ links: [{ label: '', url: 'https://x' }, { label: 'x', url: '' }] }))).toEqual(['invalid-links', 'invalid-links']);
+    expect(
+      codes(
+        model({
+          links: [
+            { label: '', url: 'https://x' },
+            { label: 'x', url: '' },
+          ],
+        }),
+      ),
+    ).toEqual(['invalid-links', 'invalid-links']);
   });
 });
 
 describe('plan', () => {
-  const planModel = (nodes: DiagramNode[], containment: { parent: string; child: string }[] = [], relations: DiagramModel['relations'] = []): DiagramModel => ({
-    version: 1, id: 'p', name: 'p', notation: 'plan', layers: [], planes: [], nodes, containment, relations,
+  const planModel = (
+    nodes: DiagramNode[],
+    containment: { parent: string; child: string }[] = [],
+    relations: DiagramModel['relations'] = [],
+  ): DiagramModel => ({
+    version: 1,
+    id: 'p',
+    name: 'p',
+    notation: 'plan',
+    layers: [],
+    planes: [],
+    nodes,
+    containment,
+    relations,
   });
   const zone = (id: string, start?: string, end?: string): DiagramNode => ({
-    id, name: id, type: 'plan-zone', metadata: { ...(start !== undefined ? { start } : {}), ...(end !== undefined ? { end } : {}) },
+    id,
+    name: id,
+    type: 'plan-zone',
+    metadata: { ...(start !== undefined ? { start } : {}), ...(end !== undefined ? { end } : {}) },
   });
-  const event = (id: string, at?: string): DiagramNode => ({ id, name: id, type: 'plan-event', metadata: at !== undefined ? { at } : {} });
+  const event = (id: string, at?: string): DiagramNode => ({
+    id,
+    name: id,
+    type: 'plan-event',
+    metadata: at !== undefined ? { at } : {},
+  });
   const codes = (m: DiagramModel) => validate(m).map((i) => [i.code, i.ref]);
 
   it('accepts a well-formed plan', () => {
     const m = planModel(
-      [zone('q', '2026-01-05', '2026-03-27'), zone('d', '2026-01-05', '2026-01-30'), event('e', '2026-02-02'), { id: 'p', name: 'P', type: 'person' }],
-      [{ parent: 'q', child: 'd' }, { parent: 'q', child: 'e' }],
+      [
+        zone('q', '2026-01-05', '2026-03-27'),
+        zone('d', '2026-01-05', '2026-01-30'),
+        event('e', '2026-02-02'),
+        { id: 'p', name: 'P', type: 'person' },
+      ],
+      [
+        { parent: 'q', child: 'd' },
+        { parent: 'q', child: 'e' },
+      ],
       [{ id: 'r', from: 'p', to: 'q', kind: 'owns' }],
     );
     expect(validate(m)).toEqual([]);
   });
   it('plan-date: a date that is not a real YYYY-MM-DD, on any notation', () => {
     const m = planModel([zone('q', '2026-02-30', '2026-03-27'), event('e', 'soon')]);
-    expect(codes(m)).toEqual([['plan-date', 'q'], ['plan-date', 'e']]);
-    expect(codes({ ...m, notation: undefined })).toEqual([['plan-date', 'q'], ['plan-date', 'e']]);
+    expect(codes(m)).toEqual([
+      ['plan-date', 'q'],
+      ['plan-date', 'e'],
+    ]);
+    expect(codes({ ...m, notation: undefined })).toEqual([
+      ['plan-date', 'q'],
+      ['plan-date', 'e'],
+    ]);
   });
   it('plan-missing: a zone without start or end, an event without at', () => {
     expect(codes(planModel([zone('q', '2026-01-05'), zone('r', undefined, '2026-01-05'), event('e')]))).toEqual([
-      ['plan-missing', 'q'], ['plan-missing', 'r'], ['plan-missing', 'e'],
+      ['plan-missing', 'q'],
+      ['plan-missing', 'r'],
+      ['plan-missing', 'e'],
     ]);
   });
   it('plan-span: end before start', () => {
     expect(codes(planModel([zone('q', '2026-03-27', '2026-01-05')]))).toEqual([['plan-span', 'q']]);
   });
-  it('plan-nested: a contained zone or event outside its zone\'s span, on the plan plane', () => {
+  it("plan-nested: a contained zone or event outside its zone's span, on the plan plane", () => {
     const m = planModel(
       [zone('q', '2026-01-05', '2026-01-30'), zone('late', '2026-01-20', '2026-02-10'), event('e', '2026-01-01')],
-      [{ parent: 'q', child: 'late' }, { parent: 'q', child: 'e' }],
+      [
+        { parent: 'q', child: 'late' },
+        { parent: 'q', child: 'e' },
+      ],
     );
-    expect(codes(m)).toEqual([['plan-nested', 'late'], ['plan-nested', 'e']]);
+    expect(codes(m)).toEqual([
+      ['plan-nested', 'late'],
+      ['plan-nested', 'e'],
+    ]);
   });
-  it('plan-nested reads the plan PLANE\'s containment when the notation is on a plane', () => {
+  it("plan-nested reads the plan PLANE's containment when the notation is on a plane", () => {
     const m = model('two');
     m.plane('arch').plane('plan', { notation: 'plan' });
     const q = m.node('q', { type: 'plan-zone', plane: 'plan', metadata: { start: '2026-01-05', end: '2026-01-30' } });
-    const late = m.node('late', { type: 'plan-zone', plane: 'plan', metadata: { start: '2026-02-01', end: '2026-02-10' } });
+    const late = m.node('late', {
+      type: 'plan-zone',
+      plane: 'plan',
+      metadata: { start: '2026-02-01', end: '2026-02-10' },
+    });
     q.contains(late, { plane: 'plan' });
     // toJSON() itself validates and throws (see 'toJSON throws DiagramValidationError...'
     // above), so a model that is expected to carry an issue is read off the thrown error.
@@ -1016,15 +1272,24 @@ describe('plan', () => {
     // the same nesting declared on the ARCH plane is not a schedule
     const m2 = model('two');
     m2.plane('arch').plane('plan', { notation: 'plan' });
-    m2.node('q', { type: 'plan-zone', plane: 'plan', metadata: { start: '2026-01-05', end: '2026-01-30' } })
-      .contains(m2.node('late', { type: 'plan-zone', plane: 'plan', metadata: { start: '2026-02-01', end: '2026-02-10' } }), { plane: 'arch' });
+    m2.node('q', { type: 'plan-zone', plane: 'plan', metadata: { start: '2026-01-05', end: '2026-01-30' } }).contains(
+      m2.node('late', { type: 'plan-zone', plane: 'plan', metadata: { start: '2026-02-01', end: '2026-02-10' } }),
+      { plane: 'arch' },
+    );
     expect(codes(m2.toJSON())).toEqual([]);
   });
   it('plan-role-target: a role relation into a non-zone, only under the plan notation', () => {
     const m = planModel(
-      [zone('q', '2026-01-05', '2026-01-30'), { id: 'p', name: 'P', type: 'person' }, { id: 's', name: 'S', type: 'service' }],
+      [
+        zone('q', '2026-01-05', '2026-01-30'),
+        { id: 'p', name: 'P', type: 'person' },
+        { id: 's', name: 'S', type: 'service' },
+      ],
       [],
-      [{ id: 'bad', from: 'p', to: 's', kind: 'executes' }, { id: 'ok', from: 'p', to: 'q', kind: 'checks' }],
+      [
+        { id: 'bad', from: 'p', to: 's', kind: 'executes' },
+        { id: 'ok', from: 'p', to: 'q', kind: 'checks' },
+      ],
     );
     expect(codes(m)).toEqual([['plan-role-target', 'bad']]);
     expect(codes({ ...m, notation: undefined })).toEqual([]);

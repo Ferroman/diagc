@@ -35,7 +35,8 @@ export function PlanPanel({ model, plane, selection, onCommand, onSelect, today 
   const candidates = useMemo(() => roleCandidates(model), [model]);
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const [actorName, setActorName] = useState('');
-  const selected = selection?.kind === 'node' && byId.get(selection.id)?.type === PLAN_ZONE_TYPE ? selection.id : undefined;
+  const selected =
+    selection?.kind === 'node' && byId.get(selection.id)?.type === PLAN_ZONE_TYPE ? selection.id : undefined;
   // tree order: each root zone, then its subtree, depth-first
   const rows: { id: string; depth: number }[] = [];
   const walk = (id: string, depth: number): void => {
@@ -43,7 +44,8 @@ export function PlanPanel({ model, plane, selection, onCommand, onSelect, today 
     for (const c of g.children.get(id)?.zones ?? []) walk(c, depth + 1);
   };
   for (const z of g.zones) if (!g.parent.has(z)) walk(z, 0);
-  const set = (id: string, dates: { start?: string; end?: string; at?: string }) => onCommand({ type: 'set-plan-dates', id, dates });
+  const set = (id: string, dates: { start?: string; end?: string; at?: string }) =>
+    onCommand({ type: 'set-plan-dates', id, dates });
   const run = (made: { command: EditorCommand; id: string }) => {
     onCommand(made.command);
     onSelect(made.id);
@@ -61,14 +63,22 @@ export function PlanPanel({ model, plane, selection, onCommand, onSelect, today 
                 <button type="button" className="link-btn" aria-label={`Select ${n.name}`} onClick={() => onSelect(id)}>
                   {n.name}
                 </button>
-                <DateInput label={`Start ${n.name}`} value={str(n.metadata?.start)} onChange={(start) => set(id, { start })} />
+                <DateInput
+                  label={`Start ${n.name}`}
+                  value={str(n.metadata?.start)}
+                  onChange={(start) => set(id, { start })}
+                />
                 <DateInput label={`End ${n.name}`} value={str(n.metadata?.end)} onChange={(end) => set(id, { end })} />
                 <RolePickers model={model} zoneId={id} candidates={candidates} suffix={n.name} onCommand={onCommand} />
               </li>
             );
           })}
         </ul>
-        <button type="button" className="chip" onClick={() => run(addZone(model, plane, { ...(selected !== undefined ? { selected } : {}), today }))}>
+        <button
+          type="button"
+          className="chip"
+          onClick={() => run(addZone(model, plane, { ...(selected !== undefined ? { selected } : {}), today }))}
+        >
           Add zone
         </button>
       </section>
@@ -88,13 +98,22 @@ export function PlanPanel({ model, plane, selection, onCommand, onSelect, today 
             );
           })}
         </ul>
-        <button type="button" className="chip" onClick={() => run(addEvent(model, plane, { ...(selected !== undefined ? { selected } : {}), today }))}>
+        <button
+          type="button"
+          className="chip"
+          onClick={() => run(addEvent(model, plane, { ...(selected !== undefined ? { selected } : {}), today }))}
+        >
           Add event
         </button>
       </section>
       <section className="panel-section">
         <h3>People &amp; teams</h3>
-        <input aria-label="New actor name" value={actorName} onChange={(e) => setActorName(e.target.value)} placeholder="Name" />
+        <input
+          aria-label="New actor name"
+          value={actorName}
+          onChange={(e) => setActorName(e.target.value)}
+          placeholder="Name"
+        />
         <div className="field-row">
           <button
             type="button"

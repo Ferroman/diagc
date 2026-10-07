@@ -28,7 +28,14 @@ interface ActionShape {
 // Style and layout selects, a plane, a layer, a dock section) and the gestures
 // and cancels listed in FIXED_KEYS.
 const DEFS = [
-  { id: 'diagram.picker', label: 'Open diagram picker', group: 'Diagram', scope: 'both', defaults: ['Mod+K'], inFields: true },
+  {
+    id: 'diagram.picker',
+    label: 'Open diagram picker',
+    group: 'Diagram',
+    scope: 'both',
+    defaults: ['Mod+K'],
+    inFields: true,
+  },
   { id: 'diagram.toggle-edit', label: 'Edit / Done', group: 'Diagram', scope: 'both', defaults: ['Mod+Enter'] },
   { id: 'diagram.rename', label: 'Rename diagram', group: 'Diagram', scope: 'view', defaults: ['F2'] },
   { id: 'diagram.new', label: 'New diagram', group: 'Diagram', scope: 'both', defaults: [] },

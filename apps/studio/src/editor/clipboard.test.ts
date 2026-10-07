@@ -53,7 +53,16 @@ function system(): DiagramModel {
   };
 }
 
-const empty = (): DiagramModel => ({ version: 1, id: 'other', name: 'other', nodes: [], containment: [], relations: [], layers: [], planes: [] });
+const empty = (): DiagramModel => ({
+  version: 1,
+  id: 'other',
+  name: 'other',
+  nodes: [],
+  containment: [],
+  relations: [],
+  layers: [],
+  planes: [],
+});
 
 const layoutWith = (planes: LayoutOverlay['planes'], sizes?: LayoutOverlay['sizes']): LayoutOverlay => ({
   ...emptyLayout(),
@@ -80,7 +89,7 @@ describe('copySelection', () => {
     expect(p.relations.map((r) => [r.from, r.to])).toEqual([['api', 'db']]);
   });
 
-  it('records a nested root\'s parent, and the saved positions and sizes', () => {
+  it("records a nested root's parent, and the saved positions and sizes", () => {
     const m = system();
     const layout = layoutWith({ default: { api: { x: 10, y: 20 } } }, { api: { w: 200, h: 90 } });
     const p = copySelection(m, layout, undefined, ['api', 'nope'])!;
@@ -144,7 +153,7 @@ describe('pasteCommand', () => {
     expect(validate(moved)).toEqual([]);
   });
 
-  it('with nothing selected, pastes under the originals\' parent; into another diagram, at top level', () => {
+  it("with nothing selected, pastes under the originals' parent; into another diagram, at top level", () => {
     const m = system();
     const p = copySelection(m, undefined, undefined, ['api'])!;
     const same = pasteCommand(m, p, ctx())!;
@@ -168,7 +177,10 @@ describe('pasteCommand', () => {
 
   it('steps each repeat further from the original, and keeps nested positions as they were', () => {
     const m = system();
-    const layout = layoutWith({ default: { sys: { x: 100, y: 50 }, api: { x: 8, y: 9 } } }, { sys: { w: 400, h: 300 } });
+    const layout = layoutWith(
+      { default: { sys: { x: 100, y: 50 }, api: { x: 8, y: 9 } } },
+      { sys: { w: 400, h: 300 } },
+    );
     const p = copySelection(m, layout, undefined, ['sys'])!;
     const first = pasteCommand(m, p, ctx())!;
     const second = pasteCommand(m, p, ctx({ repeat: 1 }))!;
@@ -177,7 +189,9 @@ describe('pasteCommand', () => {
     expect(pos(first.command, first.roots[0]!)).toMatchObject({ x: 100 + PASTE_STEP, y: 50 + PASTE_STEP });
     expect(pos(second.command, second.roots[0]!)).toMatchObject({ x: 100 + 2 * PASTE_STEP, y: 50 + 2 * PASTE_STEP });
     const after = applied(m, first.command, layout);
-    const apiCopy = after.model.containment.find((e) => e.parent === first.roots[0] && after.model.nodes.find((n) => n.id === e.child)?.type === 'service')!.child;
+    const apiCopy = after.model.containment.find(
+      (e) => e.parent === first.roots[0] && after.model.nodes.find((n) => n.id === e.child)?.type === 'service',
+    )!.child;
     expect(after.layout.planes.default?.[apiCopy]).toEqual({ x: 8, y: 9 });
     expect(after.layout.sizes?.[first.roots[0]!]).toEqual({ w: 400, h: 300 });
   });
@@ -186,7 +200,9 @@ describe('pasteCommand', () => {
     const m = system();
     const withLabels: DiagramModel = {
       ...m,
-      relations: m.relations.map((r) => (r.from === 'api' ? { ...r, labels: [{ id: 'l1', text: 'reads', t: 0.3 }] } : r)),
+      relations: m.relations.map((r) =>
+        r.from === 'api' ? { ...r, labels: [{ id: 'l1', text: 'reads', t: 0.3 }] } : r,
+      ),
     };
     const p = copySelection(withLabels, undefined, undefined, ['sys'])!;
     const out = pasteCommand(withLabels, p, ctx())!;
@@ -200,7 +216,10 @@ describe('pasteCommand', () => {
     const m = system();
     const doubled: DiagramModel = {
       ...m,
-      relations: [...m.relations, { id: 'api->db#1', from: 'api', to: 'db', kind: 'uses', labels: [{ id: 'l2', text: 'writes', t: 0.5 }] }],
+      relations: [
+        ...m.relations,
+        { id: 'api->db#1', from: 'api', to: 'db', kind: 'uses', labels: [{ id: 'l2', text: 'writes', t: 0.5 }] },
+      ],
     };
     const p = copySelection(doubled, undefined, undefined, ['sys'])!;
     const after = applied(doubled, pasteCommand(doubled, p, ctx())!.command).model;

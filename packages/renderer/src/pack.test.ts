@@ -30,12 +30,18 @@ describe('packBoxes', () => {
 
   it('turns a long run of equal boxes into a grid near the target aspect, not a column', () => {
     // the default target is a portrait page: a dozen boxes make two columns of six
-    const { boxes, width, height } = packBoxes(Array.from({ length: 12 }, () => box(142, 34)), { gap: 40 });
+    const { boxes, width, height } = packBoxes(
+      Array.from({ length: 12 }, () => box(142, 34)),
+      { gap: 40 },
+    );
     expect(new Set(boxes.map((b) => b.x)).size).toBe(2);
     expect(width / height).toBeGreaterThan(0.5);
     expect(width / height).toBeLessThan(1.2);
     // asked for a screen's shape instead, the same boxes spread wider than tall
-    const wide = packBoxes(Array.from({ length: 12 }, () => box(142, 34)), { gap: 40, aspect: 1.6 });
+    const wide = packBoxes(
+      Array.from({ length: 12 }, () => box(142, 34)),
+      { gap: 40, aspect: 1.6 },
+    );
     expect(wide.width / wide.height).toBeGreaterThan(1.2);
   });
 
@@ -46,8 +52,16 @@ describe('packBoxes', () => {
   });
 
   it('fills an equal-box grid row by row in input order', () => {
-    const { boxes } = packBoxes(Array.from({ length: 4 }, () => box(142, 34)), { gap: 40, aspect: 1.6 });
-    expect(boxes.map((b) => [b.x, b.y])).toEqual([[0, 0], [182, 0], [0, 74], [182, 74]]);
+    const { boxes } = packBoxes(
+      Array.from({ length: 4 }, () => box(142, 34)),
+      { gap: 40, aspect: 1.6 },
+    );
+    expect(boxes.map((b) => [b.x, b.y])).toEqual([
+      [0, 0],
+      [182, 0],
+      [0, 74],
+      [182, 74],
+    ]);
   });
 
   it('lines look-alike boxes of different widths up as a true grid, centred in their columns', () => {

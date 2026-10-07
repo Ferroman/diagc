@@ -326,9 +326,7 @@ describe('layoutView', () => {
     expect((await layoutView(view, undefined, { edgeRouting: 'orthogonal' })).routes.size).toBeGreaterThan(0);
     // force does not: elk returns sections for only some edges, and a lifted
     // edge's waypoints connect containers, not the nodes the renderer draws.
-    expect((await layoutView(view, undefined, { algorithm: 'force', edgeRouting: 'orthogonal' })).routes.size).toBe(
-      0,
-    );
+    expect((await layoutView(view, undefined, { algorithm: 'force', edgeRouting: 'orthogonal' })).routes.size).toBe(0);
   });
 
   it('keeps every order on its own row when partitions are given, across separate decisions', async () => {
@@ -434,9 +432,18 @@ describe('stress', () => {
     const ids = ['population', 'births', 'deaths', 'resources', 'consumption', 'immigration', 'food', 'land'];
     const n = Object.fromEntries(ids.map((id) => [id, m.node(id, { name: `${id} ${id} ${id}` })]));
     const pairs: [string, string][] = [
-      ['population', 'births'], ['births', 'population'], ['population', 'deaths'], ['deaths', 'population'],
-      ['population', 'consumption'], ['consumption', 'resources'], ['resources', 'births'], ['immigration', 'population'],
-      ['food', 'population'], ['population', 'food'], ['land', 'food'], ['resources', 'land'],
+      ['population', 'births'],
+      ['births', 'population'],
+      ['population', 'deaths'],
+      ['deaths', 'population'],
+      ['population', 'consumption'],
+      ['consumption', 'resources'],
+      ['resources', 'births'],
+      ['immigration', 'population'],
+      ['food', 'population'],
+      ['population', 'food'],
+      ['land', 'food'],
+      ['resources', 'land'],
     ];
     for (const [a, b] of pairs) m.relate(n[a]!, n[b]!, { kind: 'sync' });
     return compileView(m.toJSON(), {});
@@ -472,7 +479,14 @@ describe('layoutView reserves room under a node without drawing it taller', () =
   const icon = { width: 64, height: 64, reserveBottom: 20 };
 
   it('keeps the strip free between stacked nodes and reports the DRAWN height', async () => {
-    const { geometry } = await layoutView(stacked(), new Map([['p', icon], ['q', icon]]), { direction: 'RIGHT' });
+    const { geometry } = await layoutView(
+      stacked(),
+      new Map([
+        ['p', icon],
+        ['q', icon],
+      ]),
+      { direction: 'RIGHT' },
+    );
     const [gp, gq] = [geometry.get('p')!, geometry.get('q')!];
     expect(gp.height).toBe(64);
     expect(gq.height).toBe(64);
@@ -525,7 +539,10 @@ describe('layoutView packs independent parts', () => {
   const bounds = (rects: Rect[]) => {
     const x = Math.min(...rects.map((r) => r.x));
     const y = Math.min(...rects.map((r) => r.y));
-    return { width: Math.max(...rects.map((r) => r.x + r.width)) - x, height: Math.max(...rects.map((r) => r.y + r.height)) - y };
+    return {
+      width: Math.max(...rects.map((r) => r.x + r.width)) - x,
+      height: Math.max(...rects.map((r) => r.y + r.height)) - y,
+    };
   };
 
   it('lays a dozen unrelated boxes out as a grid, not a column', async () => {

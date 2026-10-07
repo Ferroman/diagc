@@ -122,9 +122,7 @@ describe('mutate', () => {
 
   it('groupNodes plane-tags the containment edges when a plane is given', () => {
     const grouped = groupNodes(base(), { id: 'grp', name: 'G', plane: 'infra' }, ['a'], 'infra');
-    expect(grouped.containment).toEqual(
-      expect.arrayContaining([{ parent: 'grp', child: 'a', plane: 'infra' }]),
-    );
+    expect(grouped.containment).toEqual(expect.arrayContaining([{ parent: 'grp', child: 'a', plane: 'infra' }]));
   });
 
   it('groupNodes rejects an unknown member (and does not half-apply)', () => {
@@ -317,9 +315,9 @@ describe('mutate', () => {
   it('upsertPlane rejects self-borrow and borrow chains', () => {
     expect(() => upsertPlane(base(), { id: 'p', name: 'P', containmentOf: 'p' })).toThrowError(CommandError);
     const borrower = upsertPlane(base(), { id: 'flow-view', name: 'Flow', containmentOf: 'arch' });
-    expect(() =>
-      upsertPlane(borrower, { id: 'chain', name: 'C', containmentOf: 'flow-view' }),
-    ).toThrowError(CommandError);
+    expect(() => upsertPlane(borrower, { id: 'chain', name: 'C', containmentOf: 'flow-view' })).toThrowError(
+      CommandError,
+    );
   });
 
   it('plane upsert/delete with borrow protection', () => {
@@ -603,13 +601,17 @@ describe('mergeLayers on column layers', () => {
 
 describe('setNodePlaneHidden', () => {
   const base = () => ({
-    version: 1 as const, id: 'm', name: 'm',
+    version: 1 as const,
+    id: 'm',
+    name: 'm',
     nodes: [{ id: 'a', name: 'a', type: 't' }],
-    containment: [], relations: [], layers: [],
+    containment: [],
+    relations: [],
+    layers: [],
     planes: [{ id: 'p', name: 'p' }],
   });
 
-  it('adds a shared node to a plane\'s hides', () => {
+  it("adds a shared node to a plane's hides", () => {
     const next = setNodePlaneHidden(base(), 'a', 'p', true);
     expect(next.planes[0]!.hides).toEqual(['a']);
   });
@@ -634,9 +636,14 @@ describe('setNodePlaneHidden', () => {
 
 describe('setNodeDetails plane', () => {
   const m = () => ({
-    version: 1 as const, id: 'm', name: 'm',
+    version: 1 as const,
+    id: 'm',
+    name: 'm',
     nodes: [{ id: 'a', name: 'a', type: 't' }],
-    containment: [], relations: [], layers: [], planes: [{ id: 'p', name: 'p' }],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [{ id: 'p', name: 'p' }],
   });
   it('scopes a node to a plane and clears it back to shared', () => {
     const local = setNodeDetails(m(), 'a', { plane: 'p' });
@@ -645,7 +652,7 @@ describe('setNodeDetails plane', () => {
     expect('plane' in shared.nodes[0]!).toBe(false);
   });
 
-  it('scoping a node to a plane clears it from every plane\'s hides (dropping an emptied key)', () => {
+  it("scoping a node to a plane clears it from every plane's hides (dropping an emptied key)", () => {
     const hidden = setNodePlaneHidden(m(), 'a', 'p', true);
     expect(hidden.planes[0]!.hides).toEqual(['a']);
     const scoped = setNodeDetails(hidden, 'a', { plane: 'p' });
@@ -656,8 +663,14 @@ describe('setNodeDetails plane', () => {
 
 describe('setNodeRich', () => {
   const base = (): DiagramModel => ({
-    version: 1, id: 'd', name: 'd', nodes: [{ id: 'a', name: 'a' }],
-    containment: [], relations: [], layers: [], planes: [],
+    version: 1,
+    id: 'd',
+    name: 'd',
+    nodes: [{ id: 'a', name: 'a' }],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
   });
   it('sets rich and syncs name from runs', () => {
     const m = setNodeRich(base(), 'a', [{ text: 'Web ' }, { text: 'Server', bold: true }]);
@@ -672,7 +685,11 @@ describe('setNodeRich', () => {
     expect(m.nodes[0]!.rich).toBeUndefined();
   });
   it('normalizes runs (merges adjacent, drops empties)', () => {
-    const m = setNodeRich(base(), 'a', [{ text: 'a', bold: true }, { text: '', bold: true }, { text: 'b', bold: true }]);
+    const m = setNodeRich(base(), 'a', [
+      { text: 'a', bold: true },
+      { text: '', bold: true },
+      { text: 'b', bold: true },
+    ]);
     expect(m.nodes[0]!.rich).toEqual([{ text: 'ab', bold: true }]);
   });
 });
@@ -680,8 +697,18 @@ describe('setNodeRich', () => {
 describe('renameNode clears rich', () => {
   it('drops stale rich runs on a plain rename', () => {
     const seeded = setNodeRich(
-      { version: 1, id: 'd', name: 'd', nodes: [{ id: 'a', name: 'a' }], containment: [], relations: [], layers: [], planes: [] },
-      'a', [{ text: 'x', bold: true }, { text: 'y' }],
+      {
+        version: 1,
+        id: 'd',
+        name: 'd',
+        nodes: [{ id: 'a', name: 'a' }],
+        containment: [],
+        relations: [],
+        layers: [],
+        planes: [],
+      },
+      'a',
+      [{ text: 'x', bold: true }, { text: 'y' }],
     );
     expect(seeded.nodes[0]!.rich).toBeDefined();
     const renamed = renameNode(seeded, 'a', 'New');
@@ -691,7 +718,16 @@ describe('renameNode clears rich', () => {
 });
 
 describe('setNodeDetails align/scale', () => {
-  const m0 = (): DiagramModel => ({ version: 1, id: 'd', name: 'd', nodes: [{ id: 'a', name: 'a' }], containment: [], relations: [], layers: [], planes: [] });
+  const m0 = (): DiagramModel => ({
+    version: 1,
+    id: 'd',
+    name: 'd',
+    nodes: [{ id: 'a', name: 'a' }],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  });
   it('sets and clears textAlign and fontScale', () => {
     let m = setNodeDetails(m0(), 'a', { textAlign: 'center', fontScale: 'lg' });
     expect(m.nodes[0]!.textAlign).toBe('center');
@@ -798,7 +834,14 @@ describe('mergeLayers', () => {
 
 describe('setDiagramStyle', () => {
   const base: DiagramModel = {
-    version: 1, id: 'm', name: 'M', nodes: [], containment: [], relations: [], layers: [], planes: [],
+    version: 1,
+    id: 'm',
+    name: 'M',
+    nodes: [],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
   };
   it('pins a style id on the model', () => {
     expect(setDiagramStyle(base, 'hand-drawn').style).toBe('hand-drawn');
@@ -815,7 +858,14 @@ describe('setDiagramStyle', () => {
 
 describe('setDiagramNotation', () => {
   const base: DiagramModel = {
-    version: 1, id: 'm', name: 'M', nodes: [], containment: [], relations: [], layers: [], planes: [],
+    version: 1,
+    id: 'm',
+    name: 'M',
+    nodes: [],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
   };
   it('pins a notation id on the model', () => {
     expect(setDiagramNotation(base, 'c4').notation).toBe('c4');
@@ -847,12 +897,20 @@ describe('setDiagramNotation', () => {
 
 describe('setTableColumns', () => {
   const base = (): DiagramModel => ({
-    version: 1, id: 'd', name: 'd',
+    version: 1,
+    id: 'd',
+    name: 'd',
     nodes: [{ id: 't', name: 't', type: 'db-table', columns: [{ name: 'id', pk: true }] }],
-    containment: [], relations: [], layers: [], planes: [],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
   });
   it('replaces the columns array', () => {
-    const cols: Column[] = [{ name: 'id', pk: true }, { name: 'email', type: 'text' }];
+    const cols: Column[] = [
+      { name: 'id', pk: true },
+      { name: 'email', type: 'text' },
+    ];
     expect(setTableColumns(base(), 't', cols).nodes[0]?.columns).toEqual(cols);
   });
   it('accepts duplicate names without throwing (validate catches them)', () => {
@@ -868,9 +926,17 @@ describe('setTableColumns', () => {
 
 describe('relation fk columns', () => {
   const m = (): DiagramModel => ({
-    version: 1, id: 'd', name: 'd',
-    nodes: [{ id: 'a', name: 'a' }, { id: 'b', name: 'b' }],
-    containment: [], relations: [], layers: [], planes: [],
+    version: 1,
+    id: 'd',
+    name: 'd',
+    nodes: [
+      { id: 'a', name: 'a' },
+      { id: 'b', name: 'b' },
+    ],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
   });
   it('addRelation carries fromColumn/toColumn', () => {
     const r = addRelation(m(), 'a', 'b', { kind: 'fk', fromColumn: 'b_id', toColumn: 'id' }).model.relations[0];
@@ -905,11 +971,17 @@ describe('setDiagramLegend', () => {
 
 describe('threats', () => {
   const m = (): DiagramModel => ({
-    version: 1, id: 'm', name: 'm',
-    nodes: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }],
+    version: 1,
+    id: 'm',
+    name: 'm',
+    nodes: [
+      { id: 'a', name: 'A' },
+      { id: 'b', name: 'B' },
+    ],
     containment: [],
     relations: [{ id: 'r', from: 'a', to: 'b', kind: 'x' }],
-    layers: [], planes: [],
+    layers: [],
+    planes: [],
   });
   const t = (id: string): Threat => ({ id, category: 'S', title: `T ${id}` });
 
@@ -932,7 +1004,11 @@ describe('threats', () => {
   it('patches fields, clearing optionals with null', () => {
     const one = addThreat(m(), { node: 'a' }, { ...t('t1'), severity: 'high', mitigation: 'x' });
     const after = updateThreat(one, { node: 'a' }, 't1', {
-      title: 'Renamed', category: 'E', severity: null, status: 'mitigated', mitigation: null,
+      title: 'Renamed',
+      category: 'E',
+      severity: null,
+      status: 'mitigated',
+      mitigation: null,
     });
     expect(after.nodes[0]!.threats).toEqual([{ id: 't1', category: 'E', title: 'Renamed', status: 'mitigated' }]);
     expect(() => updateThreat(one, { node: 'a' }, 'nope', { title: 'x' })).toThrow(/nope/);

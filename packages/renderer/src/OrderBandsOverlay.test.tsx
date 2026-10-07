@@ -22,7 +22,11 @@ describe('OrderBandsOverlay', () => {
     m.secondOrder().decision('d').then('a').then('b');
     const { container } = render(<OrderBandsOverlay model={m.toJSON()} direction="DOWN" />);
     expect(container.querySelectorAll('rect.dg-order-band')).toHaveLength(3);
-    expect([...container.querySelectorAll('.dg-order-band-header')].map((t) => t.textContent)).toEqual(['Decision', '1st order', '2nd order']);
+    expect([...container.querySelectorAll('.dg-order-band-header')].map((t) => t.textContent)).toEqual([
+      'Decision',
+      '1st order',
+      '2nd order',
+    ]);
     expect(container.querySelectorAll('rect.dg-order-band-alt')).toHaveLength(1); // every other band
   });
   it('draws nothing for a graph it cannot number (a loop)', () => {

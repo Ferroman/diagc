@@ -25,7 +25,7 @@ import type { Registry, TypeStyle } from './registry';
 export interface ViewLayoutInput {
   model: DiagramModel;
   plane: string | undefined;
-  layout: LayoutOverlay | undefined;     // props.layout
+  layout: LayoutOverlay | undefined; // props.layout
   compiled: ReturnType<typeof compileView>;
   profile: NotationProfile;
   typeRegistry: Registry<TypeStyle>;
@@ -84,7 +84,10 @@ const NONE_FIXED: ReadonlySet<string> = new Set();
 
 /** `positions` without the fixed ids; the same object back when none applies,
  * so the memo below keeps its identity on the planes that fix nothing */
-function movable(positions: Record<string, { x: number; y: number }>, fixed: ReadonlySet<string>): Record<string, { x: number; y: number }> {
+function movable(
+  positions: Record<string, { x: number; y: number }>,
+  fixed: ReadonlySet<string>,
+): Record<string, { x: number; y: number }> {
   if (fixed.size === 0 || !Object.keys(positions).some((id) => fixed.has(id))) return positions;
   return Object.fromEntries(Object.entries(positions).filter(([id]) => !fixed.has(id)));
 }
@@ -148,7 +151,10 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
       // inside the box — no spilling caption to reserve room for
       if (n.type !== undefined && input.typeRegistry.resolve(n.type).cornerBadge === true) continue;
       const s = input.layout?.sizes?.[n.id];
-      const base = s !== undefined ? { width: s.w, height: s.h } : { width: DEFAULT_IMAGE_NODE_SIZE.w, height: DEFAULT_IMAGE_NODE_SIZE.h };
+      const base =
+        s !== undefined
+          ? { width: s.w, height: s.h }
+          : { width: DEFAULT_IMAGE_NODE_SIZE.w, height: DEFAULT_IMAGE_NODE_SIZE.h };
       // Reserve the caption's width (it hangs below, centered, one line): the
       // icon letterboxes inside the wider box (object-fit: contain), so this
       // widens the footprint without distorting the artwork. Its HEIGHT cannot
@@ -335,7 +341,17 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     return () => {
       live = false;
     };
-  }, [input.compiled, laidView, sizes, runSettings, input.profile, input.model, input.plane, partitions, layoutPositions]);
+  }, [
+    input.compiled,
+    laidView,
+    sizes,
+    runSettings,
+    input.profile,
+    input.model,
+    input.plane,
+    partitions,
+    layoutPositions,
+  ]);
 
   // Overlay-applied geometry: elk output with any layout-overlay positions for
   // the active plane substituted in (width/height stay elk's). Derived so the
@@ -366,8 +382,11 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   const fitted = useMemo((): ContainerFit<NodeGeometry> | null => {
     if (placedGeometry === null) return null;
     if (input.profile.layout !== undefined) return { geometry: placedGeometry, shifts: NO_SHIFTS };
-    return fitContainers(placedGeometry, input.compiled.roots, containerPad, (n) =>
-      n.node.type === 'activity-lane' || n.node.type === 'activity-frame',
+    return fitContainers(
+      placedGeometry,
+      input.compiled.roots,
+      containerPad,
+      (n) => n.node.type === 'activity-lane' || n.node.type === 'activity-frame',
     );
   }, [placedGeometry, input.compiled, input.profile]);
 

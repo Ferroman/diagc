@@ -45,7 +45,9 @@ describe('snapDragChanges', () => {
     { id: 'u', position: { x: 700, y: 700 }, data: {} }, // unmeasured
   ];
   const abs = (id: string) =>
-    ({ a: { x: 100, y: 0 }, m: { x: 300, y: 300 }, p: { x: 0, y: 500 }, c: { x: 20, y: 540 }, u: { x: 700, y: 700 } })[id];
+    ({ a: { x: 100, y: 0 }, m: { x: 300, y: 300 }, p: { x: 0, y: 500 }, c: { x: 20, y: 540 }, u: { x: 700, y: 700 } })[
+      id
+    ];
   const drag = (id: string, x: number, y: number): Extract<NodeChange, { type: 'position' }> => ({
     id,
     type: 'position',

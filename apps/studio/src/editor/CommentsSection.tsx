@@ -7,7 +7,15 @@ interface CommentsSectionProps {
   onCommand: (command: EditorCommand) => void;
 }
 
-function CommentRow({ target, comment, onCommand }: { target: ElementTarget; comment: Comment; onCommand: (c: EditorCommand) => void }) {
+function CommentRow({
+  target,
+  comment,
+  onCommand,
+}: {
+  target: ElementTarget;
+  comment: Comment;
+  onCommand: (c: EditorCommand) => void;
+}) {
   const patch = (p: { text?: string; by?: string | null; at?: string | null }) =>
     onCommand({ type: 'update-comment', target, id: comment.id, patch: p });
   // Controlled with resync, as ThreatRow: local state carries the keystrokes,
@@ -90,7 +98,13 @@ export function CommentsSection({ target, comments, onCommand }: CommentsSection
         <CommentRow key={c.id} target={target} comment={c} onCommand={onCommand} />
       ))}
       <div className="comment-add">
-        <textarea aria-label="New comment" placeholder="Comment" rows={2} value={draft} onChange={(e) => setDraft(e.target.value)} />
+        <textarea
+          aria-label="New comment"
+          placeholder="Comment"
+          rows={2}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+        />
         <button type="button" className="chip" aria-label="Add comment" onClick={add} disabled={draft.trim() === ''}>
           Add
         </button>

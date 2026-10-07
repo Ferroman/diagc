@@ -7,7 +7,17 @@ interface LinksSectionProps {
   onCommand: (command: EditorCommand) => void;
 }
 
-function LinkRow({ index, link, onChange, onRemove }: { index: number; link: Link; onChange: (l: Link) => void; onRemove: () => void }) {
+function LinkRow({
+  index,
+  link,
+  onChange,
+  onRemove,
+}: {
+  index: number;
+  link: Link;
+  onChange: (l: Link) => void;
+  onRemove: () => void;
+}) {
   const [label, setLabel] = useState(link.label);
   useEffect(() => setLabel(link.label), [link.label]);
   const [url, setUrl] = useState(link.url);
@@ -24,9 +34,20 @@ function LinkRow({ index, link, onChange, onRemove }: { index: number; link: Lin
   };
   return (
     <div className="link-row">
-      <input aria-label={`Link ${index} label`} value={label} onChange={(e) => setLabel(e.target.value)} onBlur={commit} />
+      <input
+        aria-label={`Link ${index} label`}
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        onBlur={commit}
+      />
       <input aria-label={`Link ${index} url`} value={url} onChange={(e) => setUrl(e.target.value)} onBlur={commit} />
-      <button type="button" className="chip icon-btn" aria-label={`Remove link ${index}`} title="Remove link" onClick={onRemove}>
+      <button
+        type="button"
+        className="chip icon-btn"
+        aria-label={`Remove link ${index}`}
+        title="Remove link"
+        onClick={onRemove}
+      >
         Remove
       </button>
     </div>
@@ -39,7 +60,8 @@ function LinkRow({ index, link, onChange, onRemove }: { index: number; link: Lin
 export function LinksSection({ nodeId, links, onCommand }: LinksSectionProps) {
   const [label, setLabel] = useState('');
   const [url, setUrl] = useState('');
-  const write = (next: Link[]) => onCommand({ type: 'set-node-details', id: nodeId, details: { links: next.length === 0 ? null : next } });
+  const write = (next: Link[]) =>
+    onCommand({ type: 'set-node-details', id: nodeId, details: { links: next.length === 0 ? null : next } });
   const add = () => {
     const l = { label: label.trim(), url: url.trim() };
     if (l.label === '' || l.url === '') return;
@@ -60,9 +82,20 @@ export function LinksSection({ nodeId, links, onCommand }: LinksSectionProps) {
         />
       ))}
       <div className="link-add">
-        <input aria-label="New link label" placeholder="Label" value={label} onChange={(e) => setLabel(e.target.value)} />
+        <input
+          aria-label="New link label"
+          placeholder="Label"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+        />
         <input aria-label="New link url" placeholder="https://…" value={url} onChange={(e) => setUrl(e.target.value)} />
-        <button type="button" className="chip" aria-label="Add link" onClick={add} disabled={label.trim() === '' || url.trim() === ''}>
+        <button
+          type="button"
+          className="chip"
+          aria-label="Add link"
+          onClick={add}
+          disabled={label.trim() === '' || url.trim() === ''}
+        >
           Add
         </button>
       </div>

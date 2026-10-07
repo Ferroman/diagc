@@ -32,8 +32,14 @@ describe('publishDiagrams', () => {
   it('writes a stamped, asset-inlined page and a gallery; no images when images:false', async () => {
     const f = await fixture();
     const res = await publishDiagrams({
-      srcDir: f.src, artifactsDir: f.artifacts, htmlDir: f.html, staticDir: f.stat, shellPath: f.shell,
-      libraryDir: f.lib, assetsDir: f.assets, images: false,
+      srcDir: f.src,
+      artifactsDir: f.artifacts,
+      htmlDir: f.html,
+      staticDir: f.stat,
+      shellPath: f.shell,
+      libraryDir: f.lib,
+      assetsDir: f.assets,
+      images: false,
     });
     expect(res.pages).toEqual([path.join(f.html, 'demo.html')]);
     expect(res.images).toEqual([]);
@@ -47,8 +53,15 @@ describe('publishDiagrams', () => {
   it('puts a link in the gallery header when given one, and only there', async () => {
     const f = await fixture();
     const res = await publishDiagrams({
-      srcDir: f.src, artifactsDir: f.artifacts, htmlDir: f.html, staticDir: f.stat, shellPath: f.shell,
-      libraryDir: f.lib, assetsDir: f.assets, images: false, link: 'https://github.com/o/r',
+      srcDir: f.src,
+      artifactsDir: f.artifacts,
+      htmlDir: f.html,
+      staticDir: f.stat,
+      shellPath: f.shell,
+      libraryDir: f.lib,
+      assetsDir: f.assets,
+      images: false,
+      link: 'https://github.com/o/r',
     });
     expect(await readFile(res.gallery, 'utf8')).toContain('href="https://github.com/o/r"');
     // a diagram page carries no chrome of its publisher's (see SOURCE_NOTICE in html.ts)
@@ -63,8 +76,14 @@ describe('publishDiagrams', () => {
     await writeFile(path.join(f.artifacts, 'withimg.diagram.json'), JSON.stringify(b.toJSON()));
 
     const res = await publishDiagrams({
-      srcDir: f.src, artifactsDir: f.artifacts, htmlDir: f.html, staticDir: f.stat, shellPath: f.shell,
-      libraryDir: f.lib, assetsDir: f.assets, images: false,
+      srcDir: f.src,
+      artifactsDir: f.artifacts,
+      htmlDir: f.html,
+      staticDir: f.stat,
+      shellPath: f.shell,
+      libraryDir: f.lib,
+      assetsDir: f.assets,
+      images: false,
     });
 
     expect(res.pages).toContain(path.join(f.html, 'withimg.html'));
@@ -85,18 +104,25 @@ describe('publishDiagrams', () => {
     };
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     let res: Awaited<ReturnType<typeof publishDiagrams>> | undefined;
-    await expect((async () => {
-      res = await publishDiagrams({
-        srcDir: f.src, artifactsDir: f.artifacts, htmlDir: f.html, staticDir: f.stat, shellPath: f.shell,
-        libraryDir: f.lib, assetsDir: f.assets, images: true, renderPng,
-      });
-    })()).resolves.not.toThrow();
+    await expect(
+      (async () => {
+        res = await publishDiagrams({
+          srcDir: f.src,
+          artifactsDir: f.artifacts,
+          htmlDir: f.html,
+          staticDir: f.stat,
+          shellPath: f.shell,
+          libraryDir: f.lib,
+          assetsDir: f.assets,
+          images: true,
+          renderPng,
+        });
+      })(),
+    ).resolves.not.toThrow();
     warnSpy.mockRestore();
 
     expect(calls).toBe(2);
-    expect(res!.pages.sort()).toEqual(
-      [path.join(f.html, 'demo.html'), path.join(f.html, 'demo2.html')].sort(),
-    );
+    expect(res!.pages.sort()).toEqual([path.join(f.html, 'demo.html'), path.join(f.html, 'demo2.html')].sort());
     expect(res!.images).toEqual([]);
     await expect(readFile(path.join(f.html, 'demo.html'), 'utf8')).resolves.toContain('demo');
     await expect(readFile(path.join(f.html, 'demo2.html'), 'utf8')).resolves.toContain('demo2');
@@ -111,8 +137,14 @@ describe('publishDiagrams', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const res = await publishDiagrams({
-      srcDir: f.src, artifactsDir: f.artifacts, htmlDir: f.html, staticDir: f.stat, shellPath: f.shell,
-      libraryDir: f.lib, assetsDir: f.assets, images: false,
+      srcDir: f.src,
+      artifactsDir: f.artifacts,
+      htmlDir: f.html,
+      staticDir: f.stat,
+      shellPath: f.shell,
+      libraryDir: f.lib,
+      assetsDir: f.assets,
+      images: false,
     });
 
     expect(warnSpy).toHaveBeenCalled();
@@ -142,8 +174,14 @@ describe('publishDiagrams', () => {
     );
 
     const res = await publishDiagrams({
-      srcDir: f.src, artifactsDir: f.artifacts, htmlDir: f.html, staticDir: f.stat, shellPath: f.shell,
-      libraryDir: f.lib, assetsDir: f.assets, images: false,
+      srcDir: f.src,
+      artifactsDir: f.artifacts,
+      htmlDir: f.html,
+      staticDir: f.stat,
+      shellPath: f.shell,
+      libraryDir: f.lib,
+      assetsDir: f.assets,
+      images: false,
     });
 
     expect(res.pages).toContain(path.join(f.html, 'umbrella.html'));
@@ -164,8 +202,14 @@ describe('publishDiagrams', () => {
       JSON.stringify({ version: 1, planes: { default: [{ id: 'k1', points: [7, 8, 9, 10] }] } }),
     );
     await publishDiagrams({
-      srcDir: f.src, artifactsDir: f.artifacts, htmlDir: f.html, staticDir: f.stat, shellPath: f.shell,
-      libraryDir: f.lib, assetsDir: f.assets, images: false,
+      srcDir: f.src,
+      artifactsDir: f.artifacts,
+      htmlDir: f.html,
+      staticDir: f.stat,
+      shellPath: f.shell,
+      libraryDir: f.lib,
+      assetsDir: f.assets,
+      images: false,
     });
     const page = await readFile(path.join(f.html, 'inked.html'), 'utf8');
     expect(page).toContain('"drawings":{"version":1');
@@ -186,8 +230,14 @@ describe('publishDiagrams', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const res = await publishDiagrams({
-        srcDir: f.src, artifactsDir: f.artifacts, htmlDir: f.html, staticDir: f.stat, shellPath: f.shell,
-        libraryDir: f.lib, assetsDir: f.assets, images: false,
+        srcDir: f.src,
+        artifactsDir: f.artifacts,
+        htmlDir: f.html,
+        staticDir: f.stat,
+        shellPath: f.shell,
+        libraryDir: f.lib,
+        assetsDir: f.assets,
+        images: false,
       });
       // the page still ships — just without ink
       expect(res.pages).toContain(path.join(f.html, 'smudged.html'));

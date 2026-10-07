@@ -13,7 +13,15 @@ const setup = (selection: { kind: 'node'; id: string } | null, json = tree()) =>
   const onCommand = vi.fn();
   const onSelect = vi.fn();
   const onCreated = vi.fn();
-  render(<SecondOrderPanel model={json} selection={selection} onCommand={onCommand} onSelect={onSelect} onCreated={onCreated} />);
+  render(
+    <SecondOrderPanel
+      model={json}
+      selection={selection}
+      onCommand={onCommand}
+      onSelect={onSelect}
+      onCreated={onCreated}
+    />,
+  );
   return { onCommand, onSelect, onCreated };
 };
 
@@ -35,7 +43,10 @@ describe('SecondOrderPanel', () => {
   it('offers a decision, always', () => {
     const { onCommand } = setup(null);
     fireEvent.click(screen.getByRole('button', { name: 'Add a decision' }));
-    expect(onCommand).toHaveBeenCalledWith({ type: 'add-node', node: { id: 'decision', name: '', type: 'so-decision' } });
+    expect(onCommand).toHaveBeenCalledWith({
+      type: 'add-node',
+      node: { id: 'decision', name: '', type: 'so-decision' },
+    });
   });
   it('lists what validation objects to, each a way to the node', () => {
     const json = tree();
@@ -60,7 +71,14 @@ describe('SecondOrderPanel', () => {
   it('tags a decision added from a plane-scoped panel with that plane', () => {
     const onCommand = vi.fn();
     render(
-      <SecondOrderPanel model={tree()} selection={null} plane="p" onCommand={onCommand} onSelect={vi.fn()} onCreated={vi.fn()} />,
+      <SecondOrderPanel
+        model={tree()}
+        selection={null}
+        plane="p"
+        onCommand={onCommand}
+        onSelect={vi.fn()}
+        onCreated={vi.fn()}
+      />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Add a decision' }));
     expect(onCommand).toHaveBeenCalledWith({

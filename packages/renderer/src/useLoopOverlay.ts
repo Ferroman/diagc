@@ -115,5 +115,15 @@ export function useLoopOverlay(input: LoopOverlayInput): LoopOverlay {
     setSelectedNode(null);
   }, [input.compiled]);
 
-  return { cld, loopEdges, showLoops, setShowLoops, selectedNode, setSelectedNode, focusConnected, setFocusConnected, loopHighlight };
+  return {
+    cld,
+    loopEdges,
+    showLoops,
+    setShowLoops,
+    selectedNode,
+    setSelectedNode,
+    focusConnected,
+    setFocusConnected,
+    loopHighlight,
+  };
 }

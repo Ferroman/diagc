@@ -3,7 +3,17 @@ import { diffMarks, diffModels, isEmptyDiff } from './diff';
 import type { DiagramModel } from './types';
 
 function model(parts: Partial<DiagramModel>): DiagramModel {
-  return { version: 1, id: 'm', name: 'M', nodes: [], containment: [], relations: [], layers: [], planes: [], ...parts };
+  return {
+    version: 1,
+    id: 'm',
+    name: 'M',
+    nodes: [],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+    ...parts,
+  };
 }
 
 const base = model({
@@ -87,14 +97,21 @@ describe('diffModels', () => {
   });
 
   it('reports a relation that changed kind as removed and added', () => {
-    const after = model({ ...base, relations: [{ id: 'r2', from: 'api', to: 'db', kind: 'writes' }, base.relations[1]!] });
+    const after = model({
+      ...base,
+      relations: [{ id: 'r2', from: 'api', to: 'db', kind: 'writes' }, base.relations[1]!],
+    });
     const d = diffModels(base, after);
     expect(d.relations.added.map((r) => r.id)).toEqual(['r2']);
     expect(d.relations.removed.map((r) => r.id)).toEqual(['api->db#0']);
   });
 
   it('reports layers and planes by id', () => {
-    const after = model({ ...base, layers: [{ id: 'ops', name: 'Ops' }], planes: [...base.planes, { id: 'deploy', name: 'Deploy' }] });
+    const after = model({
+      ...base,
+      layers: [{ id: 'ops', name: 'Ops' }],
+      planes: [...base.planes, { id: 'deploy', name: 'Deploy' }],
+    });
     const d = diffModels(base, after);
     expect(d.layers).toEqual({ added: ['ops'], removed: ['sec'] });
     expect(d.planes).toEqual({ added: ['deploy'], removed: [] });
@@ -104,7 +121,10 @@ describe('diffModels', () => {
 describe('diffMarks', () => {
   const after = model({
     ...base,
-    nodes: [...base.nodes.filter((n) => n.id !== 'old').map((n) => (n.id === 'db' ? { ...n, name: 'Postgres' } : n)), { id: 'cache', name: 'Cache' }],
+    nodes: [
+      ...base.nodes.filter((n) => n.id !== 'old').map((n) => (n.id === 'db' ? { ...n, name: 'Postgres' } : n)),
+      { id: 'cache', name: 'Cache' },
+    ],
     relations: [
       { id: 'r-new', from: 'api', to: 'db', kind: 'reads', label: 'SQL' },
       { id: 'api->cache#0', from: 'api', to: 'cache', kind: 'reads' },

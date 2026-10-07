@@ -93,8 +93,7 @@ class ConfirmModal extends Modal {
 
 export function buildDialogs(app: App): HostDialogs {
   return {
-    promptText: (message, initial) =>
-      new Promise((resolve) => new PromptModal(app, message, initial, resolve).open()),
+    promptText: (message, initial) => new Promise((resolve) => new PromptModal(app, message, initial, resolve).open()),
     confirmDialog: (message) => new Promise((resolve) => new ConfirmModal(app, message, resolve).open()),
     notify: (message) => {
       new Notice(message);

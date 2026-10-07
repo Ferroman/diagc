@@ -23,8 +23,8 @@ const result = await esbuild.build({
   entryPoints: ['src/main.tsx'],
   bundle: true,
   outfile: 'dist/main.js',
-  format: 'cjs',            // Obsidian loads plugins as CommonJS
-  platform: 'node',         // desktop Electron: node builtins are real
+  format: 'cjs', // Obsidian loads plugins as CommonJS
+  platform: 'node', // desktop Electron: node builtins are real
   target: 'es2022',
   external: ['obsidian', 'electron'],
   jsx: 'automatic',
@@ -39,7 +39,7 @@ const result = await esbuild.build({
   // banner from Node's own `__filename`, which *is* real in a cjs bundle.
   define: { 'import.meta.url': '__importMetaUrl' },
   banner: { js: "const __importMetaUrl = require('node:url').pathToFileURL(__filename).href;" },
-  logLevel: 'silent',       // warnings are inspected and thrown on below instead
+  logLevel: 'silent', // warnings are inspected and thrown on below instead
 });
 // Warnings are a budget of zero here: the import.meta one above was the only
 // tell that eject was silently broken until someone hit it in Obsidian. Fail

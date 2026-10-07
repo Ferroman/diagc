@@ -126,7 +126,11 @@ export function useDiagramActions({
       const { [selected]: _drop, ...rest } = rec;
       return {
         ...rest,
-        [raw]: { ...art, name: raw, ...(art.model !== undefined ? { model: { ...art.model, id: raw, name: raw } } : {}) },
+        [raw]: {
+          ...art,
+          name: raw,
+          ...(art.model !== undefined ? { model: { ...art.model, id: raw, name: raw } } : {}),
+        },
       };
     };
     // `loaded` (the boot API's models) now holds a diagram's content in the
@@ -206,7 +210,10 @@ export function useDiagramActions({
     // carries both, so the first Save writes them.
     if (layout !== undefined) await post('layouts', finalLayout);
     if (drawings !== undefined) await post('drawings', finalDrawings);
-    setDrafts((d) => ({ ...d, [copy]: { name: copy, model: copied, layout: finalLayout, drawings: finalDrawings, issues: [] } }));
+    setDrafts((d) => ({
+      ...d,
+      [copy]: { name: copy, model: copied, layout: finalLayout, drawings: finalDrawings, issues: [] },
+    }));
     setOwnedNames((s) => new Set(s).add(copy));
     setSelected(copy);
     setEnteredPath([]);

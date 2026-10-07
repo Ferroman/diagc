@@ -1,4 +1,7 @@
-export interface Size { width: number; height: number }
+export interface Size {
+  width: number;
+  height: number;
+}
 
 /**
  * The capture frame for a diagram: the content at the largest scale that fits

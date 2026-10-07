@@ -38,7 +38,8 @@ export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
       Object.values(unfolded).every((ids) => Array.isArray(ids) && ids.every((id) => typeof id === 'string')));
   if (!unfoldedOk) return false;
   const edgeLabels = (u as { edgeLabels?: unknown }).edgeLabels;
-  const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+  const isRecord = (v: unknown): v is Record<string, unknown> =>
+    typeof v === 'object' && v !== null && !Array.isArray(v);
   const placementOk = (v: unknown): boolean =>
     isRecord(v) &&
     typeof v['t'] === 'number' &&
@@ -49,7 +50,8 @@ export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
     (isRecord(edgeLabels) &&
       Object.values(edgeLabels).every(
         (plane) =>
-          isRecord(plane) && Object.values(plane).every((rel) => isRecord(rel) && Object.values(rel).every(placementOk)),
+          isRecord(plane) &&
+          Object.values(plane).every((rel) => isRecord(rel) && Object.values(rel).every(placementOk)),
       ));
   if (!edgeLabelsOk) return false;
   // A note offset is drawn straight into a transform, so a NaN or an Infinity
@@ -92,9 +94,7 @@ export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
   if (exp === undefined) return true;
   if (typeof exp !== 'object' || exp === null || Array.isArray(exp)) return false;
   const collapsed = (exp as { collapsed?: unknown }).collapsed;
-  return (
-    collapsed === undefined || (Array.isArray(collapsed) && collapsed.every((id) => typeof id === 'string'))
-  );
+  return collapsed === undefined || (Array.isArray(collapsed) && collapsed.every((id) => typeof id === 'string'));
 }
 
 /** Structural guard for a drawings sidecar — the same contract as

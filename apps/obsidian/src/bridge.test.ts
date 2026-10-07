@@ -34,7 +34,14 @@ describe('makeApiFetch', () => {
     const apiFetch = makeApiFetch(ctx, handlers);
     // version: 1 is a required discriminant on DiagramModel (core/src/types.ts)
     // — saveDiagram's own arraysOk check 400s without it.
-    const model = { version: 1, nodes: [{ id: 'a', name: 'A' }], containment: [], relations: [], layers: [], planes: [] };
+    const model = {
+      version: 1,
+      nodes: [{ id: 'a', name: 'A' }],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
     const save = await apiFetch('/api/diagrams/test', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

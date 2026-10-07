@@ -49,7 +49,15 @@ const SKETCH: StylePreset = {
 const HAND_DRAWN: StylePreset = {
   id: 'hand-drawn',
   label: 'Hand-drawn',
-  rough: { roughness: 0.9, bowing: 0.8, strokeWidth: 1.2, fillStyle: 'hachure', fillWeight: 0.8, hachureGap: 5, hatchOpacity: 0.45 },
+  rough: {
+    roughness: 0.9,
+    bowing: 0.8,
+    strokeWidth: 1.2,
+    fillStyle: 'hachure',
+    fillWeight: 0.8,
+    hachureGap: 5,
+    hatchOpacity: 0.45,
+  },
   cornerRadius: 14,
   fontFamily: "'Caveat', 'Kalam', cursive",
   colorMix: { fill: 22, stroke: 85 },
@@ -79,7 +87,15 @@ const PENCIL: StylePreset = {
   label: 'Pencil',
   // Near-zero roughness/bowing: the outline reads as carefully ruled, not
   // wobbled — the pencil feel comes entirely from the delicate hachure fill.
-  rough: { roughness: 0.3, bowing: 0.1, strokeWidth: 1.4, fillStyle: 'hachure', fillWeight: 0.55, hachureGap: 5, hatchOpacity: 0.5 },
+  rough: {
+    roughness: 0.3,
+    bowing: 0.1,
+    strokeWidth: 1.4,
+    fillStyle: 'hachure',
+    fillWeight: 0.55,
+    hachureGap: 5,
+    hatchOpacity: 0.5,
+  },
   cornerRadius: 16,
   fontFamily: "'Caveat', 'Kalam', cursive",
   colorMix: { fill: 22, stroke: 85 },
@@ -88,7 +104,15 @@ const PENCIL: StylePreset = {
 const MARKER: StylePreset = {
   id: 'marker',
   label: 'Marker',
-  rough: { roughness: 1.6, bowing: 1.2, strokeWidth: 2.5, fillStyle: 'zigzag', fillWeight: 1.8, hachureGap: 7, hatchOpacity: 0.25 },
+  rough: {
+    roughness: 1.6,
+    bowing: 1.2,
+    strokeWidth: 2.5,
+    fillStyle: 'zigzag',
+    fillWeight: 1.8,
+    hachureGap: 7,
+    hatchOpacity: 0.25,
+  },
   cornerRadius: 8,
   fontFamily: "'Kalam', system-ui, sans-serif",
   colorMix: { fill: 28, stroke: 100 },

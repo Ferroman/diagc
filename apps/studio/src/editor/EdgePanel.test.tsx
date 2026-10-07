@@ -186,13 +186,7 @@ describe('EdgePanel', () => {
     const m = testModel();
     m.relations[0]!.style = { bow: 'right' };
     render(
-      <EdgePanel
-        model={m}
-        constituentIds={['a->b#0']}
-        onCommand={onCommand}
-        onClose={noop}
-        notation="causal-loop"
-      />,
+      <EdgePanel model={m} constituentIds={['a->b#0']} onCommand={onCommand} onClose={noop} notation="causal-loop" />,
     );
     fireEvent.click(screen.getByRole('button', { name: /flip curve/i }));
     expect(onCommand).toHaveBeenCalledWith({ type: 'update-relation', id: 'a->b#0', patch: { style: null } });
@@ -246,7 +240,9 @@ describe('EdgePanel', () => {
   it('retargets a label side to bottom via its toggle', () => {
     const onCommand = vi.fn();
     render(<EdgePanel model={testModel()} constituentIds={['a->b#1']} onCommand={onCommand} onClose={noop} />);
-    fireEvent.click(within(screen.getByRole('group', { name: 'Label 1 side' })).getByRole('button', { name: 'bottom' }));
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Label 1 side' })).getByRole('button', { name: 'bottom' }),
+    );
     expect(onCommand).toHaveBeenCalledWith({
       type: 'update-relation',
       id: 'a->b#1',
@@ -346,7 +342,13 @@ describe('EdgePanel', () => {
       const m = dfd();
       m.containment[1] = { parent: 'dmz', child: 'db' };
       render(
-        <EdgePanel model={m} constituentIds={['api->db#0']} onCommand={vi.fn()} onClose={noop} notation="threat-model" />,
+        <EdgePanel
+          model={m}
+          constituentIds={['api->db#0']}
+          onCommand={vi.fn()}
+          onClose={noop}
+          notation="threat-model"
+        />,
       );
       expect(screen.queryByText(/^Crosses:/)).toBeNull();
     });

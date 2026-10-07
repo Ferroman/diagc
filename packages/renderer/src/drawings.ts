@@ -31,16 +31,28 @@ export function simplifyStroke(points: number[], epsilon = 0.75): number[] {
   const stack: [number, number][] = [[0, n - 1]];
   while (stack.length > 0) {
     const [a, b] = stack.pop()!;
-    const ax = points[2 * a]!, ay = points[2 * a + 1]!, bx = points[2 * b]!, by = points[2 * b + 1]!;
-    const dx = bx - ax, dy = by - ay;
+    const ax = points[2 * a]!,
+      ay = points[2 * a + 1]!,
+      bx = points[2 * b]!,
+      by = points[2 * b + 1]!;
+    const dx = bx - ax,
+      dy = by - ay;
     const len = Math.hypot(dx, dy);
-    let worst = -1, worstDist = epsilon;
+    let worst = -1,
+      worstDist = epsilon;
     for (let i = a + 1; i < b; i++) {
-      const px = points[2 * i]!, py = points[2 * i + 1]!;
+      const px = points[2 * i]!,
+        py = points[2 * i + 1]!;
       const dist = len === 0 ? Math.hypot(px - ax, py - ay) : Math.abs(dy * px - dx * py + bx * ay - by * ax) / len;
-      if (dist > worstDist) { worst = i; worstDist = dist; }
+      if (dist > worstDist) {
+        worst = i;
+        worstDist = dist;
+      }
     }
-    if (worst !== -1) { keep[worst] = true; stack.push([a, worst], [worst, b]); }
+    if (worst !== -1) {
+      keep[worst] = true;
+      stack.push([a, worst], [worst, b]);
+    }
   }
   const out: number[] = [];
   for (let i = 0; i < n; i++) if (keep[i]) out.push(points[2 * i]!, points[2 * i + 1]!);
@@ -52,13 +64,19 @@ export function simplifyStroke(points: number[], epsilon = 0.75): number[] {
 export function strokesBounds(
   strokes: readonly Stroke[],
 ): { x: number; y: number; width: number; height: number } | undefined {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
   for (const s of strokes) {
     const pad = (s.width ?? DEFAULT_STROKE_WIDTH) / 2;
     for (let i = 0; i < s.points.length; i += 2) {
-      const x = s.points[i]!, y = s.points[i + 1]!;
-      minX = Math.min(minX, x - pad); maxX = Math.max(maxX, x + pad);
-      minY = Math.min(minY, y - pad); maxY = Math.max(maxY, y + pad);
+      const x = s.points[i]!,
+        y = s.points[i + 1]!;
+      minX = Math.min(minX, x - pad);
+      maxX = Math.max(maxX, x + pad);
+      minY = Math.min(minY, y - pad);
+      maxY = Math.max(maxY, y + pad);
     }
   }
   if (minX === Infinity) return undefined;

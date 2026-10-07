@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { model } from '@diagc/core';
 import { loadArtifacts, type ApiDiagram } from './artifacts';
 
-const entry = (name: string, m: unknown, editable = false): ApiDiagram =>
-  ({ name, model: m as ApiDiagram['model'], issues: [], editable });
+const entry = (name: string, m: unknown, editable = false): ApiDiagram => ({
+  name,
+  model: m as ApiDiagram['model'],
+  issues: [],
+  editable,
+});
 
 describe('loadArtifacts', () => {
   it('names, validates and returns good artifacts', () => {
@@ -16,9 +20,14 @@ describe('loadArtifacts', () => {
 
   it('flags invalid artifacts with issues instead of a model', () => {
     const bad = {
-      version: 1, id: 'bad', name: 'bad',
+      version: 1,
+      id: 'bad',
+      name: 'bad',
       nodes: [{ id: 'a', name: 'a', type: 't' }],
-      containment: [], relations: [{ id: 'r', from: 'a', to: 'ghost', kind: 'k' }], layers: [], planes: [],
+      containment: [],
+      relations: [{ id: 'r', from: 'a', to: 'ghost', kind: 'k' }],
+      layers: [],
+      planes: [],
     };
     const arts = loadArtifacts([entry('bad', bad)]);
     expect(arts['bad']?.model).toBeUndefined();
@@ -42,10 +51,14 @@ describe('loadArtifacts', () => {
     const m = model('ok');
     m.node('a', { type: 'service' });
     const good = { version: 1 as const, planes: { default: [{ id: 'k1', points: [1, 2] }] } };
-    const arts = loadArtifacts([entry('ok', m.toJSON()), entry('bad', m.toJSON())], {}, {
-      ok: good,
-      bad: { version: 1, planes: { default: 'nope' } } as unknown as typeof good,
-    });
+    const arts = loadArtifacts(
+      [entry('ok', m.toJSON()), entry('bad', m.toJSON())],
+      {},
+      {
+        ok: good,
+        bad: { version: 1, planes: { default: 'nope' } } as unknown as typeof good,
+      },
+    );
     expect(arts['ok']?.drawings).toEqual(good);
     expect(arts['bad']?.drawings).toBeUndefined();
   });

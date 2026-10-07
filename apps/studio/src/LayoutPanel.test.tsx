@@ -41,7 +41,12 @@ describe('LayoutPanel', () => {
   });
 
   it('passes the algorithm lock through: that picker goes, the rest stay', () => {
-    render(<LayoutPanel controls={{ settings: {}, onChange: () => {}, algorithmLocked: true }} styleControl={styleControl} />);
+    render(
+      <LayoutPanel
+        controls={{ settings: {}, onChange: () => {}, algorithmLocked: true }}
+        styleControl={styleControl}
+      />,
+    );
     expect(screen.queryByLabelText('Layout algorithm')).toBeNull();
     expect(screen.getByLabelText('Layout direction')).toBeDefined();
   });

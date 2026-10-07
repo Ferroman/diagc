@@ -3,7 +3,12 @@ import type { NodeChange } from '@xyflow/react';
 import { withoutMeasuredExpansion } from './expand-parent';
 
 const measured: NodeChange = { id: 'kid', type: 'dimensions', dimensions: { width: 156, height: 50 } };
-const pinned: NodeChange = { id: 'box', type: 'dimensions', setAttributes: true, dimensions: { width: 179, height: 176 } };
+const pinned: NodeChange = {
+  id: 'box',
+  type: 'dimensions',
+  setAttributes: true,
+  dimensions: { width: 179, height: 176 },
+};
 const parentMoved: NodeChange = { id: 'box', type: 'position', position: { x: -4, y: 12 } };
 const siblingMoved: NodeChange = { id: 'other', type: 'position', position: { x: 20, y: 36 } };
 
@@ -14,7 +19,11 @@ describe('withoutMeasuredExpansion', () => {
   });
 
   it('lets the same expansion through while a drag is in flight — that is the one we want', () => {
-    const batch = [{ id: 'kid', type: 'position', position: { x: 0, y: 36 }, dragging: true } as NodeChange, parentMoved, pinned];
+    const batch = [
+      { id: 'kid', type: 'position', position: { x: 0, y: 36 }, dragging: true } as NodeChange,
+      parentMoved,
+      pinned,
+    ];
     expect(withoutMeasuredExpansion(batch, true)).toBe(batch);
   });
 

@@ -102,7 +102,8 @@ export function planLayout(
    * job here is to leave the bar where the user can see and fix it. */
   const anchorOf = (n: DiagramNode): number => spanOf(n)?.start ?? dayOf(n.metadata?.start) ?? origin;
   const startOf = (id: string): number => anchorOf(node(id));
-  const byStart = (ids: readonly string[]): string[] => ids.filter((id) => shown.has(id)).sort((a, b) => startOf(a) - startOf(b));
+  const byStart = (ids: readonly string[]): string[] =>
+    ids.filter((id) => shown.has(id)).sort((a, b) => startOf(a) - startOf(b));
 
   /** lays out a zone's interior (children parent-relative) and returns its size */
   const layZone = (id: string): Size => {
@@ -161,7 +162,12 @@ export function planLayout(
     if (flowed.length > 0) y += rowH + ROW_GAP;
     for (const c of events) {
       const at = atOf(node(c)) ?? start;
-      geometry.set(c, { x: (at - start) * DAY + DAY / 2 - EVENT / 2, y: (TITLE_H - EVENT) / 2, width: EVENT, height: EVENT });
+      geometry.set(c, {
+        x: (at - start) * DAY + DAY / 2 - EVENT / 2,
+        y: (TITLE_H - EVENT) / 2,
+        width: EVENT,
+        height: EVENT,
+      });
       fixed.add(c);
     }
     // `y` carries a trailing ROW_GAP after the last row; the bottom PAD
@@ -184,7 +190,12 @@ export function planLayout(
   for (const id of roots) {
     if (!isPlanEvent(node(id))) continue;
     const at = atOf(node(id)) ?? origin;
-    geometry.set(id, { x: planX(at, origin) + DAY / 2 - EVENT / 2, y: -HEADER_H / 2 - EVENT / 2, width: EVENT, height: EVENT });
+    geometry.set(id, {
+      x: planX(at, origin) + DAY / 2 - EVENT / 2,
+      y: -HEADER_H / 2 - EVENT / 2,
+      width: EVENT,
+      height: EVENT,
+    });
     fixed.add(id);
   }
   // the roster: actors (people or teams) with roles first, then every other
@@ -196,14 +207,17 @@ export function planLayout(
   // then stack UPWARD from the header, so adding a row pushes the strip
   // further from the chart rather than pushing the chart down.
   const rootSet = new Set(roots);
-  const roster = [...g.actors, ...roots.filter((id) => isPlanActor(node(id)))].filter((id, i, all) => rootSet.has(id) && all.indexOf(id) === i);
+  const roster = [...g.actors, ...roots.filter((id) => isPlanActor(node(id)))].filter(
+    (id, i, all) => rootSet.has(id) && all.indexOf(id) === i,
+  );
   const rosterWidth = g.range !== undefined ? planX(g.range.end + 1, origin) : undefined;
   const rosterRows: { id: string; size: Size }[][] = [];
   let rosterRow: { id: string; size: Size }[] = [];
   let rowRight = 0;
   for (const id of roster) {
     const size = hint(id);
-    const overflows = rosterWidth !== undefined ? rowRight + size.width > rosterWidth : rosterRow.length >= ROSTER_WRAP_COUNT;
+    const overflows =
+      rosterWidth !== undefined ? rowRight + size.width > rosterWidth : rosterRow.length >= ROSTER_WRAP_COUNT;
     if (rosterRow.length > 0 && overflows) {
       rosterRows.push(rosterRow);
       rosterRow = [];

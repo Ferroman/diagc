@@ -11,7 +11,7 @@ export interface LegendStateInput {
   activeLayers: string[] | undefined;
   typeRegistry: Registry<TypeStyle>;
   kindRegistry: Registry<KindStyle>;
-  canToggleLayers: boolean;              // props.onToggleLayer !== undefined
+  canToggleLayers: boolean; // props.onToggleLayer !== undefined
   strokes: readonly Stroke[];
   drawingsVisible: boolean;
   /** the notation profile's node accents, as the canvas is given them */

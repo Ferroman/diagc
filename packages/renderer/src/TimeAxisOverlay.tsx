@@ -26,7 +26,10 @@ export function TimeAxisOverlay({ model, plane, today }: TimeAxisOverlayProps) {
   const nodes = useNodes();
   const rects = useMemo(() => absoluteRects(nodes), [nodes]);
   const g = planGraphCached(model, plane);
-  const axis = useMemo(() => (g.range !== undefined && g.origin !== undefined ? timeAxis(g.range, g.origin) : undefined), [g]);
+  const axis = useMemo(
+    () => (g.range !== undefined && g.origin !== undefined ? timeAxis(g.range, g.origin) : undefined),
+    [g],
+  );
   if (axis === undefined || g.origin === undefined || g.range === undefined) return null;
   const { DAY, HEADER_H, PAD } = PLAN_LAYOUT;
   const origin = g.origin;

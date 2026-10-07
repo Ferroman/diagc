@@ -95,9 +95,18 @@ describe('EditLayoutActions', () => {
   it('names the key each command has now', () => {
     render(
       <HotkeysContext.Provider
-        value={{ keymap: resolveKeymap({ 'edit.relayout': ['Shift+R'], 'edit.toggle-auto-layout': ['Shift+A'] }), mac: false }}
+        value={{
+          keymap: resolveKeymap({ 'edit.relayout': ['Shift+R'], 'edit.toggle-auto-layout': ['Shift+A'] }),
+          mac: false,
+        }}
       >
-        <EditLayoutActions editor={fakeEditor()} activePlane={undefined} autoLayout onToggleAutoLayout={() => {}} getAutoPositions={() => ({})} />
+        <EditLayoutActions
+          editor={fakeEditor()}
+          activePlane={undefined}
+          autoLayout
+          onToggleAutoLayout={() => {}}
+          getAutoPositions={() => ({})}
+        />
       </HotkeysContext.Provider>,
     );
     expect(screen.getByRole('button', { name: /re-layout/i }).title).toBe('Re-layout (Shift+R)');

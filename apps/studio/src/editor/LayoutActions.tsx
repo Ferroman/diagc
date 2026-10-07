@@ -37,7 +37,11 @@ export function EditLayoutActions({
   const hint = useKeyHint();
   return (
     <>
-      <button className="chip" onClick={() => void relayoutPlane(editor, relayout)} title={`Re-layout${hint('edit.relayout')}`}>
+      <button
+        className="chip"
+        onClick={() => void relayoutPlane(editor, relayout)}
+        title={`Re-layout${hint('edit.relayout')}`}
+      >
         Re-layout
       </button>
       <button

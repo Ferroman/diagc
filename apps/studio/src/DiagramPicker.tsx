@@ -1,4 +1,11 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MutableRefObject } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MutableRefObject,
+} from 'react';
 import { groupDiagrams, groupLabel, groupOf, leafOf } from './diagramGroups';
 import { usePersistedState } from './hooks/usePersistedState';
 import { useKeyHint } from './hotkeys/HotkeysContext';
@@ -146,7 +153,11 @@ export function DiagramPicker({
         {selectedGroup !== '' && <span className="diagram-picker-folder">{groupLabel(selectedGroup)} / </span>}
         {/* a span, not a bare text node: a narrow topbar ellipsises the name, and
             text-overflow does nothing for a flex container's anonymous item */}
-        {selected === '' ? <span className="diagram-picker-folder">No diagram</span> : <span className="diagram-picker-name">{leafOf(selected)}</span>}
+        {selected === '' ? (
+          <span className="diagram-picker-folder">No diagram</span>
+        ) : (
+          <span className="diagram-picker-name">{leafOf(selected)}</span>
+        )}
         <span className="diagram-picker-caret" aria-hidden="true">
           ▾
         </span>

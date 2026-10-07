@@ -5,10 +5,19 @@ import { describe, expect, it, vi } from 'vitest';
 import { model } from '@diagc/core';
 import { GIT_LAYOUT } from './git-layout';
 
-const rfNodes: { id: string; position: { x: number; y: number }; parentId?: string; measured?: { width: number; height: number } }[] = [];
+const rfNodes: {
+  id: string;
+  position: { x: number; y: number };
+  parentId?: string;
+  measured?: { width: number; height: number };
+}[] = [];
 vi.mock('@xyflow/react', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@xyflow/react')>();
-  return { ...mod, useNodes: () => rfNodes, ViewportPortal: ({ children }: { children: ReactNode }) => <>{children}</> };
+  return {
+    ...mod,
+    useNodes: () => rfNodes,
+    ViewportPortal: ({ children }: { children: ReactNode }) => <>{children}</>,
+  };
 });
 const { GitLanesOverlay } = await import('./GitLanesOverlay');
 
@@ -33,13 +42,18 @@ function seed() {
     { id: 'master', position: { x: 0, y: MARGIN }, measured: { width: WIDTH, height: LANE } },
     { id: 'hotfix', position: { x: 0, y: MARGIN + LANE }, measured: { width: WIDTH, height: LANE } },
     { id: 'master-1', parentId: 'master', position: { x: 24, y: 14 }, measured: { width: DIAMETER, height: DIAMETER } },
-    { id: 'master-2', parentId: 'master', position: { x: 152, y: 14 }, measured: { width: DIAMETER, height: DIAMETER } },
+    {
+      id: 'master-2',
+      parentId: 'master',
+      position: { x: 152, y: 14 },
+      measured: { width: DIAMETER, height: DIAMETER },
+    },
     { id: 'hotfix-1', parentId: 'hotfix', position: { x: 88, y: 14 }, measured: { width: DIAMETER, height: DIAMETER } },
   );
 }
 
 describe('GitLanesOverlay', () => {
-  it('draws a tail from a lane\'s rightmost commit to its label box, in the lane colour — but not for a lane merged away', () => {
+  it("draws a tail from a lane's rightmost commit to its label box, in the lane colour — but not for a lane merged away", () => {
     seed();
     const m = graph();
     const { container } = render(<GitLanesOverlay model={m} plane="git-graph" />);
@@ -54,8 +68,14 @@ describe('GitLanesOverlay', () => {
 
   it('draws nothing for a lane whose commits are not on screen', () => {
     seed();
-    rfNodes.splice(rfNodes.findIndex((n) => n.id === 'master-2'), 1);
-    rfNodes.splice(rfNodes.findIndex((n) => n.id === 'master-1'), 1);
+    rfNodes.splice(
+      rfNodes.findIndex((n) => n.id === 'master-2'),
+      1,
+    );
+    rfNodes.splice(
+      rfNodes.findIndex((n) => n.id === 'master-1'),
+      1,
+    );
     const { container } = render(<GitLanesOverlay model={graph()} plane="git-graph" />);
     expect(container.querySelectorAll('line.dg-git-tail')).toHaveLength(0);
   });

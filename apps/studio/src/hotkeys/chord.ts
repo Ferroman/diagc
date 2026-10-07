@@ -5,7 +5,18 @@ export type Chord = string;
 
 // Presses that are not a key to bind: a modifier on its own, or a key the
 // platform has not resolved yet.
-const NOT_A_KEY = new Set(['Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'CapsLock', 'OS', 'Dead', 'Unidentified', '']);
+const NOT_A_KEY = new Set([
+  'Shift',
+  'Control',
+  'Alt',
+  'Meta',
+  'AltGraph',
+  'CapsLock',
+  'OS',
+  'Dead',
+  'Unidentified',
+  '',
+]);
 
 // e.code → [plain, shifted] on a US-QWERTY board: what a key MEANS when the
 // active layout types something that is not ASCII (Cyrillic, Greek, …).
@@ -41,7 +52,9 @@ function keyOf(e: KeyboardEvent): { key: string; shiftSpent: boolean } | null {
   if (letter !== null) return { key: letter[1]!, shiftSpent: false };
   const digit = /^Digit(\d)$/.exec(e.code);
   if (digit !== null) {
-    return e.shiftKey ? { key: DIGIT_SHIFTED[Number(digit[1])]!, shiftSpent: true } : { key: digit[1]!, shiftSpent: false };
+    return e.shiftKey
+      ? { key: DIGIT_SHIFTED[Number(digit[1])]!, shiftSpent: true }
+      : { key: digit[1]!, shiftSpent: false };
   }
   const symbol = CODE_SYMBOLS[e.code];
   if (symbol !== undefined) return { key: e.shiftKey ? symbol[1] : symbol[0], shiftSpent: true };
@@ -83,7 +96,12 @@ const MAC_ORDER = ['Ctrl', 'Alt', 'Shift', 'Mod'];
 export function formatChord(chord: Chord, mac: boolean): string {
   const { mods, key } = splitChord(chord);
   const name = KEY_NAMES[key] ?? key;
-  if (mac) return MAC_ORDER.filter((m) => mods.includes(m)).map((m) => MAC_GLYPHS[m]!).join('') + name;
+  if (mac)
+    return (
+      MAC_ORDER.filter((m) => mods.includes(m))
+        .map((m) => MAC_GLYPHS[m]!)
+        .join('') + name
+    );
   return [...mods.map((m) => (m === 'Mod' ? 'Ctrl' : m)), name].join('+');
 }
 

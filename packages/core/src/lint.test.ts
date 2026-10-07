@@ -66,8 +66,16 @@ describe('lintModel', () => {
         relations: [{ id: 'r', from: 'a', to: 'b', kind: 'object_flow' }],
       });
       expect(lintModel(m)).toEqual([
-        { code: 'unknown-type', message: "'a' has type 'servcie', which draws as a plain box (did you mean 'service'?)", ref: 'a' },
-        { code: 'unknown-kind', message: "'r' has kind 'object_flow', which draws as a plain arrow (did you mean 'object-flow'?)", ref: 'r' },
+        {
+          code: 'unknown-type',
+          message: "'a' has type 'servcie', which draws as a plain box (did you mean 'service'?)",
+          ref: 'a',
+        },
+        {
+          code: 'unknown-kind',
+          message: "'r' has kind 'object_flow', which draws as a plain arrow (did you mean 'object-flow'?)",
+          ref: 'r',
+        },
       ]);
     });
 

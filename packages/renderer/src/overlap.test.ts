@@ -13,11 +13,13 @@ interface Box {
 /** every pair at least `gap` apart on one axis, to the half pixel the pass works to */
 function clear(boxes: readonly Box[], gap: number): boolean {
   return boxes.every((a, i) =>
-    boxes.slice(i + 1).every(
-      (b) =>
-        Math.min(a.x + a.width, b.x + b.width) + gap - Math.max(a.x, b.x) <= 0.5 ||
-        Math.min(a.y + a.height, b.y + b.height) + gap - Math.max(a.y, b.y) <= 0.5,
-    ),
+    boxes
+      .slice(i + 1)
+      .every(
+        (b) =>
+          Math.min(a.x + a.width, b.x + b.width) + gap - Math.max(a.x, b.x) <= 0.5 ||
+          Math.min(a.y + a.height, b.y + b.height) + gap - Math.max(a.y, b.y) <= 0.5,
+      ),
   );
 }
 
@@ -50,7 +52,8 @@ describe('separate', () => {
   });
 
   it('is deterministic', () => {
-    const pile = () => Array.from({ length: 8 }, (_, i) => ({ x: (i * 7) % 5, y: (i * 3) % 4, width: 120, height: 40 }));
+    const pile = () =>
+      Array.from({ length: 8 }, (_, i) => ({ x: (i * 7) % 5, y: (i * 3) % 4, width: 120, height: 40 }));
     const a = pile();
     const b = pile();
     separate(a, 20);

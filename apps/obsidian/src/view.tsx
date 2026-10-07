@@ -15,12 +15,21 @@ export class StudioView extends ItemView {
   /** Task 11's embeds and openDiagram() drive navigation through this. */
   readonly urlState = memoryUrlState();
 
-  constructor(leaf: WorkspaceLeaf, private readonly plugin: DiagcPlugin) {
+  constructor(
+    leaf: WorkspaceLeaf,
+    private readonly plugin: DiagcPlugin,
+  ) {
     super(leaf);
   }
-  override getViewType(): string { return VIEW_TYPE_STUDIO; }
-  override getDisplayText(): string { return 'Diagram Studio'; }
-  override getIcon(): string { return 'network'; }
+  override getViewType(): string {
+    return VIEW_TYPE_STUDIO;
+  }
+  override getDisplayText(): string {
+    return 'Diagram Studio';
+  }
+  override getIcon(): string {
+    return 'network';
+  }
 
   override async onOpen(): Promise<void> {
     const vaultHost = buildVaultHost(this.app, this.plugin);

@@ -14,7 +14,11 @@ export function normalizeRuns(runs: TextRun[]): TextRun[] {
     if (r.bold === true) run.bold = true;
     if (r.italic === true) run.italic = true;
     const prev = out[out.length - 1];
-    if (prev !== undefined && Boolean(prev.bold) === Boolean(run.bold) && Boolean(prev.italic) === Boolean(run.italic)) {
+    if (
+      prev !== undefined &&
+      Boolean(prev.bold) === Boolean(run.bold) &&
+      Boolean(prev.italic) === Boolean(run.italic)
+    ) {
       prev.text += run.text;
     } else {
       out.push(run);

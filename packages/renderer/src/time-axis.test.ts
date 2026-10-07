@@ -37,7 +37,10 @@ describe('timeAxis', () => {
     const a = timeAxis(range, origin);
     expect(a.months.map((m) => m.label)).toEqual(['Jan 2026', 'Feb 2026']);
     expect(a.months[0]).toMatchObject({ x: a.x0, width: planX(d('2026-02-01'), origin) - a.x0 });
-    expect(a.months[1]).toMatchObject({ x: planX(d('2026-02-01'), origin), width: a.x1 - planX(d('2026-02-01'), origin) });
+    expect(a.months[1]).toMatchObject({
+      x: planX(d('2026-02-01'), origin),
+      width: a.x1 - planX(d('2026-02-01'), origin),
+    });
   });
   it('bands weeks from each Monday, labelling only those at least three days wide', () => {
     const a = timeAxis(range, origin);

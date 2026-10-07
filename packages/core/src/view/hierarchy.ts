@@ -110,8 +110,6 @@ export function buildHierarchy(m: DiagramModel, plane?: string, activeLayers?: R
     childrenOf.get(e.parent)?.push(e.child);
     parentsOf.get(e.child)?.push(e.parent);
   }
-  const roots = m.nodes
-    .filter((n) => visible.has(n.id) && (parentsOf.get(n.id)?.length ?? 0) === 0)
-    .map((n) => n.id);
+  const roots = m.nodes.filter((n) => visible.has(n.id) && (parentsOf.get(n.id)?.length ?? 0) === 0).map((n) => n.id);
   return { parentsOf, childrenOf, roots };
 }

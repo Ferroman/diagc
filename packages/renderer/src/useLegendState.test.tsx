@@ -40,7 +40,9 @@ describe('useLegendState', () => {
   });
 
   it('stays hidden with no legend config and yields no rows', () => {
-    const { result } = renderHook((p: LegendStateInput) => useLegendState(p), { initialProps: inputFor(fixture(false)) });
+    const { result } = renderHook((p: LegendStateInput) => useLegendState(p), {
+      initialProps: inputFor(fixture(false)),
+    });
     expect(result.current.showLegend).toBe(false);
     expect(result.current.legendRowList).toEqual([]);
   });
@@ -89,7 +91,9 @@ describe('useLegendState', () => {
 
   it('offers a legend, hidden, on a diagram of wordless shapes that declared none', () => {
     const m = wordless();
-    const { result } = renderHook((p: LegendStateInput) => useLegendState(p), { initialProps: inputFor(m, { compiled: expanded(m) }) });
+    const { result } = renderHook((p: LegendStateInput) => useLegendState(p), {
+      initialProps: inputFor(m, { compiled: expanded(m) }),
+    });
     // rows to show are what puts the button on the canvas; hidden is what keeps
     // an undeclared legend out of an export, which has no button to press
     expect(result.current.legendRowList.map((r) => r.label)).toEqual(['Control flow', 'Start', 'End']);
@@ -101,7 +105,9 @@ describe('useLegendState', () => {
 
   it('starts that legend shown once the diagram declares it', () => {
     const m = wordless(true);
-    const { result } = renderHook((p: LegendStateInput) => useLegendState(p), { initialProps: inputFor(m, { compiled: expanded(m) }) });
+    const { result } = renderHook((p: LegendStateInput) => useLegendState(p), {
+      initialProps: inputFor(m, { compiled: expanded(m) }),
+    });
     expect(result.current.showLegend).toBe(true);
   });
 
@@ -113,6 +119,8 @@ describe('useLegendState', () => {
     const { result } = renderHook((p: LegendStateInput) => useLegendState(p), {
       initialProps: inputFor(json, { compiled: expanded(json), nodeColors: new Map([['dmz', '#c62828']]) }),
     });
-    expect(result.current.legendRowList.find((r) => r.id === 'types:tm-boundary')?.swatch).toMatchObject({ color: '#c62828' });
+    expect(result.current.legendRowList.find((r) => r.id === 'types:tm-boundary')?.swatch).toMatchObject({
+      color: '#c62828',
+    });
   });
 });

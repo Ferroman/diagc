@@ -9,7 +9,16 @@ const chip: NodeBadge = { key: 'executes:bob', text: 'E·Bob', title: 'Executor:
 const trigger = () => screen.getByRole('button', { name: 'E·Bob' });
 
 function renderMenu(onSetRole = vi.fn()) {
-  render(<RoleChipMenu chip={chip} className="dg-badge dg-role-chip" role="executes" actorId="bob" zoneId="build" onSetRole={onSetRole} />);
+  render(
+    <RoleChipMenu
+      chip={chip}
+      className="dg-badge dg-role-chip"
+      role="executes"
+      actorId="bob"
+      zoneId="build"
+      onSetRole={onSetRole}
+    />,
+  );
   return onSetRole;
 }
 
@@ -48,7 +57,7 @@ describe('RoleChipMenu', () => {
     expect(document.activeElement).toBe(trigger());
   });
 
-  it('the menu is portalled — not a DOM descendant of the chip\'s anchor', () => {
+  it("the menu is portalled — not a DOM descendant of the chip's anchor", () => {
     renderMenu();
     fireEvent.click(trigger());
     const menu = screen.getByRole('menu');
@@ -85,7 +94,14 @@ describe('RoleChipMenu', () => {
     const onParentClick = vi.fn();
     render(
       <div onClick={onParentClick}>
-        <RoleChipMenu chip={chip} className="dg-badge dg-role-chip" role="executes" actorId="bob" zoneId="build" onSetRole={vi.fn()} />
+        <RoleChipMenu
+          chip={chip}
+          className="dg-badge dg-role-chip"
+          role="executes"
+          actorId="bob"
+          zoneId="build"
+          onSetRole={vi.fn()}
+        />
       </div>,
     );
     const btn = trigger();

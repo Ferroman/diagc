@@ -176,7 +176,8 @@ export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
   }
   let range: PlanSpan | undefined;
   const widen = (start: number, end: number): void => {
-    range = range === undefined ? { start, end } : { start: Math.min(range.start, start), end: Math.max(range.end, end) };
+    range =
+      range === undefined ? { start, end } : { start: Math.min(range.start, start), end: Math.max(range.end, end) };
   };
   for (const z of zones) {
     const s = spanOf(byId.get(z)!);
@@ -187,7 +188,15 @@ export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
     if (at !== undefined) widen(at, at);
   }
   const origin = range === undefined ? undefined : dayOf(`${isoOf(range.start).slice(0, 4)}-01-01`);
-  return { zones, events, actors, parent, children, ...(range !== undefined ? { range } : {}), ...(origin !== undefined ? { origin } : {}) };
+  return {
+    zones,
+    events,
+    actors,
+    parent,
+    children,
+    ...(range !== undefined ? { range } : {}),
+    ...(origin !== undefined ? { origin } : {}),
+  };
 }
 
 /** `id` plus every descendant zone and event, pre-order — what moves with a
