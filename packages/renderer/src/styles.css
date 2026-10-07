@@ -1054,8 +1054,8 @@ path.dg-loop-badge-circle {
    A category box is the generic .dg-node path (fb-effect/fb-cause return their
    own markup and never reach it); its label wraps like any box label
    (BoxLabel's inline pre-wrap), so a name wider than the LABEL_W band the
-   layout reserves grows the box downward past LABEL_H, which the layout does not
-   re-measure. */
+   layout reserves grows the box downward past LABEL_H. The layout never measures
+   the name, so above the spine a long one grows towards the next bone. */
 .dg-fb-head { width: 100%; height: 100%; display: flex; align-items: center; color: var(--dg-text); }
 .dg-fb-spine { flex: 1; height: 2px; background: currentColor; position: relative; }
 .dg-fb-spine::after {

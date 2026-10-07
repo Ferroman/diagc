@@ -6,15 +6,20 @@ that explains them. Contributors: the names these take in the code are in
 
 ## Artifact
 
-The validated JSON a diagram source compiles to, in `.diagrams/.artifacts/`. The studio
-and `publish` read artifacts, never sources, so an edit shows up only after a compile.
-See [Why an artifact at all](../explanation/architecture.md#why-an-artifact-at-all).
+The validated JSON a diagram source compiles to, in `.diagrams/.artifacts/`. `publish`
+builds its pages from artifacts, and the studio shows a `.diagram.ts` diagram through its
+artifact, so a TypeScript edit appears only after a compile (`diagc studio` keeps one
+running). A `.diagram.json` drawn in the studio is read from its source. See
+[Why an artifact at all](../explanation/architecture.md#why-an-artifact-at-all).
 
 ## Badge
 
-The count at an element's bottom-right corner, or a quarter of the way along an arrow,
-saying how many threats or comments it carries (`↗` when it has only links). Click it to
-open the element's note. See [Comment on a diagram](../how-to/comment-on-a-diagram.md).
+A count on an element; click it to open the element's note. A threat badge hangs off a
+box's top-left corner, or sits three-quarters of the way along an arrow, and shows how
+many threats are open, or a green `✓` once all are handled. A comment badge sits at the
+bottom-right corner, or a quarter of the way along an arrow, and shows the comment count,
+or `↗` when there are only links. See [Comment on a diagram](../how-to/comment-on-a-diagram.md)
+and [How threats are shown](../how-to/draw-a-threat-model.md#how-threats-are-shown).
 
 ## Chip
 
@@ -25,18 +30,20 @@ chips, a legend's colour chip. See [Studio](studio.md#top-bar).
 ## Drill
 
 Entering a node as its own diagram with the `⤢` chip: it becomes the whole canvas, and
-everything outside it becomes an external stub. See
+each node outside it that a relation reaches shows as an external stub. See
 [Enter a node as its own diagram](../how-to/organise-large-diagrams.md#enter-a-node-as-its-own-diagram).
 
 ## Element
 
-A node or a relation, as something that can carry threats, comments and links. See
+A node or a relation, as something that can carry threats and comments; a node can also
+carry links. See
 [Comment on a diagram](../how-to/comment-on-a-diagram.md).
 
 ## External stub
 
-In a drill view, the stand-in at the edge of the canvas for a node outside the drilled
-subtree, so arrows that leave the subtree still land somewhere. See
+In a drill view, a ghosted, dashed stand-in for a node outside the drilled subtree that a
+relation reaches, so the arrow still lands somewhere. Outside nodes that nothing reaches
+are left out. See
 [Enter a node as its own diagram](../how-to/organise-large-diagrams.md#enter-a-node-as-its-own-diagram).
 
 ## Fold
@@ -58,7 +65,8 @@ and [Draw an activity diagram](../how-to/draw-an-activity-diagram.md).
 ## Layer
 
 A named, cross-cutting set of nodes and relations that a viewer switches on or off. Layers
-are off by default, and toggling one never moves a box. See
+are off by default. Toggling a layer of relations never moves a box; a layer that tags
+nodes adds or removes those boxes, so the arrangement changes with it. See
 [Layers](../explanation/views.md#layers).
 
 ## Layout overlay
@@ -81,14 +89,16 @@ A visual language for the whole model or one plane — `c4`, `git-graph`, `threa
 ## Note
 
 The speech bubble that opens from a badge, listing an element's threats, comments and
-links. You can drag it where it reads best, and its place is saved. See
+links. In edit mode you can drag it where it reads best, and its place is saved with the
+layout. See
 [How threats are shown](../how-to/draw-a-threat-model.md#how-threats-are-shown).
 
 ## Pin
 
 A viewer's override that holds a group open or shut, whatever semantic zoom would decide.
-Pins are viewer state and are not saved. Elsewhere the docs also use "pin" in its everyday
-sense: a pinned version, style or edge end. See
+Pins are viewer state, but the groups open when you click **Save positions**, or while you
+edit, are saved in the layout overlay and open again on the next load. Elsewhere the docs
+also use "pin" in its everyday sense: a pinned version, style or edge end. See
 [Semantic zoom](../explanation/views.md#semantic-zoom).
 
 ## Plane
@@ -99,8 +109,9 @@ say, an architecture view and an infrastructure view. See
 
 ## Semantic zoom
 
-The diagram rests folded, every group one box. Double-click a group to unfold it; its
-siblings stay folded, so you read one path of detail against an overview. See
+The diagram rests folded, every group one box, apart from groups the layout overlay saved
+open. Double-click a group to unfold it; its siblings stay folded, so you read one path of
+detail against an overview. See
 [Semantic zoom](../explanation/views.md#semantic-zoom).
 
 ## Sidecar
@@ -116,8 +127,8 @@ The small example for each diagram type that `diagc init` copies into a reposito
 
 ## Text node
 
-A node with no type, drawn as bare text rather than a box. Causal-loop variables are text
-nodes. See [Draw a causal-loop diagram](../how-to/draw-a-causal-loop-diagram.md).
+In a causal-loop diagram, a node with no type, drawn as bare text rather than a box: a
+variable. In other notations a typeless node is a plain box. See [Draw a causal-loop diagram](../how-to/draw-a-causal-loop-diagram.md).
 
 ## Threat register
 

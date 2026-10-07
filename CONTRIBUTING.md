@@ -112,7 +112,7 @@ had drifted on. When you touch code that still uses a retired name, rename it.
 | --- | --- | --- |
 | Count marker on a node or relation; click to open its note | **badge** | "chip" for the one on a relation (`chipSpots`, `placeChip`) |
 | Panel listing an element's threats, comments and links | **note** (the layout file says `notes`, the command `set-note-offset`) | "bubble" and "threat note" in code; user docs may say "bubble" for its shape |
-| Small pill-shaped control or label: fold toggle, layer toggle, top-bar toggle, plan role, legend swatch | **chip** | "chip" for anything else; `NodeBadge` (a plan role) → `NodeChip` |
+| Small pill-shaped control or label, for example a fold toggle, a layer toggle, a top-bar button, a plan role, a legend swatch | **chip** | "chip" for a badge, a text node, an external stub, a label or the quick-add button; `NodeBadge` (a plan role) → `NodeChip` |
 | Typeless node drawn as plain text (a causal-loop variable) | **text node** | "text chip" |
 | Stand-in for an off-frame node in a drill view | **external stub** | "ghost chip" |
 | Text on a relation | **label** | "label chip" |
@@ -121,9 +121,9 @@ had drifted on. When you touch code that still uses a retired name, rename it.
 | A node's stored coordinates | **saved position** | `pinned` for positions, `QuickAddPlacement.pinned` |
 | Style named in the model | **diagram style** | `pinnedStyle` |
 | Relation end fixed to one side of its node | **fixed side** | "pinned side", `PinDot` |
-| A node or relation that can carry notes | **element** (`ElementRef`) | `ThreatTarget` for anything that is not a threat |
+| A node or relation that can carry notes | **element** (type to come: `ElementRef`) | `ThreatTarget` for anything that is not a threat |
 | Threats listed for an element, or for the page | **threat register** | — |
-| `<name>.layout.json` / `<name>.drawings.json` beside a diagram | **sidecar** (the file); its content is the **layout overlay** (`LayoutOverlay`) | bare "overlay" for the sidecar |
+| `<name>.layout.json` / `<name>.drawings.json` beside a diagram | **sidecar** (the file); the layout file holds the **layout overlay** (`LayoutOverlay`), the drawings file `Drawings` | bare "overlay" for the sidecar |
 | Keeping layout entries in step with the model when ids are deleted | **layout pruning** (`prune*`) | "mirror", "mirror hygiene" |
 | What a notation draws above the diagram: loop labels, git lanes, order bands, the time axis | **canvas overlay** | bare "overlay" |
 | Cross-cutting set of nodes or relations toggled together | **layer** | "overlay" for a layer in code |

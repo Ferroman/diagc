@@ -175,7 +175,7 @@ An unsaved dot sits next to Save while the session is dirty; edits autosave a mo
 
 ## Gotchas
 
-- **The studio reads artifacts, not sources.** Compile at least once, or you get a "No artifacts found" banner. `diagc studio` handles this by running the watcher.
+- **A TypeScript diagram shows its last compile.** The studio reads a `.diagram.json` straight from its source, but a `.diagram.ts` only through its compiled artifact. `diagc studio` keeps that current by running the compile watcher.
 - **Pins, theme and style preset are viewer state.** They are not written to the diagram file — except the style preset, which a diagram *may* pin via its `style` field.
 - **JSON diagrams that declare `include` show their raw source.** Composed content is only visible for compiled, read-only diagrams.
 - **Library saves are best-effort.** A failed write to `library.json` is currently swallowed silently.

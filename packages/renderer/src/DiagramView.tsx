@@ -1613,7 +1613,7 @@ function Inner(props: DiagramViewProps) {
           // carry is React Flow's OWN edge selection — that is set inside React
           // Flow's edge click handler, which a node click never runs — so an
           // edge reached through its note gets no selection ring and Backspace
-          // stays inert on it; selecting the line itself is how to delete it.
+          // stays inert on it; select the line itself to delete it from the keyboard.
           //
           // Gated on the node TYPE, not the id prefix: a model node whose id
           // happens to start with `note:` arrives with box data, and reading

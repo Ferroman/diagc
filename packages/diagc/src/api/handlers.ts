@@ -82,8 +82,8 @@ export async function listDiagramModels(diagramsDir: string, artifactsDir: strin
     if (editable && hasIncludes(model)) {
       try {
         const { model: composed, warnings } = await composeIncludes(model as DiagramModel, path.resolve(file), lockedResolver(diagramsDir));
-        // compileFile refuses an invalid composed result outright (CLAUDE.md:
-        // "the renderer may assume the model is sound") — an id collision
+        // compileFile refuses an invalid composed result outright, because the
+        // renderer assumes a validated model — an id collision
         // between an umbrella-declared node and a namespaced include can pass
         // composeIncludes (which only grafts) while still being invalid, so
         // this must be checked here too, not just on compile.
