@@ -104,6 +104,10 @@ pnpm format && git commit -a --amend --no-edit   # whatever the rebase left unfo
 git rebase --onto main a1b1497      # your commits onto main; conflicts here are real
 ```
 
+`git blame` skips the reformat once you run
+`git config blame.ignoreRevsFile .git-blame-ignore-revs`; GitHub's blame view does it
+already.
+
 ## Conventions worth knowing
 
 - **Tests live beside the code** (`foo.ts` + `foo.test.ts`) and coverage is close to
