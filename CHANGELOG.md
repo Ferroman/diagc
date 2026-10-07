@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.14.2](https://github.com/Ferroman/diagc/compare/v0.14.1...v0.14.2) (2026-10-07)
+
+
+### Bug Fixes
+
+* **cli:** keep a gap between the columns of init's output ([#68](https://github.com/Ferroman/diagc/issues/68)) ([861270c](https://github.com/Ferroman/diagc/commit/861270c31dc9e59e5cbdc66eae5e41c405c409a9))
+* **core:** the layout guard checks every field, and deleting a layer leaves no empty lists ([#71](https://github.com/Ferroman/diagc/issues/71)) ([74c8d3c](https://github.com/Ferroman/diagc/commit/74c8d3c9d1747cc44b57ba2b698f34a5b73826be))
+* **diagc:** --out needs a value, and publish honours it ([#72](https://github.com/Ferroman/diagc/issues/72)) ([153d3c0](https://github.com/Ferroman/diagc/commit/153d3c011642494c50ffaafb5c7ed400038d9d07))
+
 ## [0.14.1](https://github.com/Ferroman/diagc/compare/v0.14.0...v0.14.1) (2026-10-03)
 
 
