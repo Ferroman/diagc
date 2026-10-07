@@ -9,8 +9,8 @@ const entry = (id: string, name: string, keywords: string[], size?: { width: num
 });
 
 /** The STRIDE data-flow stencils. A dropped boundary is an empty box: nest
- * elements into it with the Memberships picker (drag-to-reparent is a
- * deliberate non-feature — see DEFERRALS). */
+ * elements into it with the Memberships picker (dragging a box onto another
+ * never changes its container). */
 export const THREAT_MODEL_PACK: Library = {
   categories: [{ id: 'threat-model', name: 'Threat model', builtin: true }],
   entries: [

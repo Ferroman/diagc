@@ -3,7 +3,7 @@ import type { LayoutDirection, LayoutSettings } from '@diagc/core';
 /**
  * The arrangements worth offering.
  *
- * `radial` and `stress` were withdrawn (DEFERRALS.md). radial needs a TREE, so
+ * `radial` and `stress` are not offered. radial needs a TREE, so
  * on any diagram carrying a cycle — which is every real architecture diagram —
  * it fails on both the lifted and the flat graph and the engine degrades to
  * layered, meaning the entry could only ever be a no-op that looked broken.

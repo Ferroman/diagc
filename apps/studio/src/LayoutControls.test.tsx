@@ -37,7 +37,7 @@ describe('LayoutControls', () => {
     // radial needs a TREE, so on any diagram with a cycle it fails outright and
     // the engine degrades to layered — the picker would have been offering a
     // no-op. stress treats nodes as dimensionless points and piles them on top
-    // of each other (146 overlapping pairs on platform-c4). See DEFERRALS.md.
+    // of each other (146 overlapping pairs on platform-c4).
     render(<LayoutControls settings={{}} onChange={vi.fn()} />);
     const offered = [...(screen.getByLabelText(/layout algorithm/i) as HTMLSelectElement).options].map((o) => o.value);
     expect(offered).toEqual(['layered', 'force', 'mrtree', 'rectpacking']);

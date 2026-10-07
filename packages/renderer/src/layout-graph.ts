@@ -471,8 +471,8 @@ export function buildGraph(
   };
   // Lifted edges carry no label box. A raised edge stands for every relation
   // between two subtrees, so no single label belongs to it, and elk's force and
-  // stress do not reserve label space the way layered does. Recorded in
-  // DEFERRALS.md rather than faked.
+  // stress do not reserve label space the way layered does, so a lifted
+  // edge's label may overlap nearby boxes; that is accepted rather than faked.
   // built before the edges are — `toNode` is what fills `emitted`, and what
   // discovers container-owned edges for the `lifted` flag below
   const children = (substitute?.roots ?? view.roots).map((n) => pinned(toNode(n)));

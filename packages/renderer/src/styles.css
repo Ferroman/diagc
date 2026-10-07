@@ -732,7 +732,8 @@ path.dg-loop-badge-circle {
 .dg-shape-node .dg-shape-label .dg-type { color: inherit; opacity: 0.8; }
 
 /* Rough presets: the rough SVG is the visible outline, so drop the crisp chrome.
-   Image nodes render no SketchShape and keep their normal frame (docs/DEFERRALS.md). */
+   Image nodes render no SketchShape and keep their normal frame, so a sketch diagram
+   with pictures mixes rough outlines and clean image borders. */
 .dg-style-rough .dg-node:not(.dg-image-node),
 .dg-style-rough .dg-group {
   border-color: transparent;
@@ -1053,7 +1054,8 @@ path.dg-loop-badge-circle {
    A category box is the generic .dg-node path (fb-effect/fb-cause return their
    own markup and never reach it); its label wraps like any box label
    (BoxLabel's inline pre-wrap), so a name wider than the LABEL_W band the
-   layout reserves grows the box downward past LABEL_H — see DEFERRALS. */
+   layout reserves grows the box downward past LABEL_H, which the layout does not
+   re-measure. */
 .dg-fb-head { width: 100%; height: 100%; display: flex; align-items: center; color: var(--dg-text); }
 .dg-fb-spine { flex: 1; height: 2px; background: currentColor; position: relative; }
 .dg-fb-spine::after {

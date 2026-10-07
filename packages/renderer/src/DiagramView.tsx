@@ -909,9 +909,9 @@ function Inner(props: DiagramViewProps) {
       n.children.forEach((c) => walkAbs(c, g.x + ox, g.y + oy));
     };
     compiled.roots.forEach((r) => walkAbs(r, 0, 0));
-    // The lines of the flows that report a chip — one carrying threats or
-    // comments (see DiagramEdge) — so no bubble lies across one. Every other
-    // line is not avoided (.claude/DEFERRALS.md § Threat notes).
+    // The lines of the flows that show a badge — one carrying threats or
+    // comments (see DiagramEdge) — so no note lies across one. Other lines and
+    // edge labels are not obstacles: a note may cover them.
     for (const e of compiled.edges) {
       const r = e.constituents.length === 1 ? e.constituents[0] : undefined;
       const spot = r !== undefined ? chipSpots.get(r.id) : undefined;
@@ -1613,7 +1613,7 @@ function Inner(props: DiagramViewProps) {
           // carry is React Flow's OWN edge selection — that is set inside React
           // Flow's edge click handler, which a node click never runs — so an
           // edge reached through its note gets no selection ring and Backspace
-          // stays inert on it (see .claude/DEFERRALS.md § Threat notes).
+          // stays inert on it; selecting the line itself is how to delete it.
           //
           // Gated on the node TYPE, not the id prefix: a model node whose id
           // happens to start with `note:` arrives with box data, and reading
