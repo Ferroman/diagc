@@ -88,19 +88,30 @@ Markdown, JSON and everything under `.diagrams/` are left as written.
 
 ### Rebasing over the reformat
 
-The whole repository was reformatted in one commit, `style: format with Prettier`; the
-commit before it adds Prettier and its settings. A branch that was open across it rebases
-like this, with `<reformat>` being that `style:` commit
-(`git log main --format=%h --grep='^style: format with Prettier'`):
+The whole repository was reformatted in [#74](https://github.com/Ferroman/diagc/pull/74),
+which landed on `main` as one commit (73270d3) that also adds Prettier itself. GitHub
+keeps the pull request's own commits, where the formatting is a commit of its own,
+a1b1497. A branch that was open across the reformat rebases over that commit, then onto
+a `main` that is up to date (contains 73270d3).
+
+Run the lines one at a time. When a rebase stops, resolve it and run
+`git rebase --continue` before the next line; a line run during a stopped rebase can
+commit conflict markers or undo a deletion.
 
 ```bash
-git rebase <reformat>^              # catch up to just before the reformat
+git fetch https://github.com/Ferroman/diagc.git pull/74/head   # the commits of #74
+git rebase a1b1497~1                # catch up to just before the reformat
 pnpm install                        # brings in Prettier
 pnpm format && git commit -am "style: format"
-git rebase <reformat> -X theirs     # conflicts are formatting only: your side wins, your style commit re-formats it
-pnpm format                         # amend if anything changed
-git rebase main                     # the commits after the reformat
+git rebase a1b1497 -X theirs        # formatting conflicts go your way; a file you deleted stops it: git rm it
+pnpm format && git commit -a --amend --no-edit   # whatever the rebase left unformatted
+git rebase --onto main a1b1497      # your commits onto main; conflicts here are real
 ```
+
+`git blame --ignore-revs-file .git-blame-ignore-revs <file>` skips the reformat, and
+GitHub's blame view does it already. Setting
+`git config blame.ignoreRevsFile .git-blame-ignore-revs` does the same for every blame,
+but blame then fails in any checkout without that file, such as an older commit.
 
 ## Conventions worth knowing
 
