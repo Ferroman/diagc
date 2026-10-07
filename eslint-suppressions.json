@@ -1,0 +1,383 @@
+{
+  "apps/studio/src/App.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/DiagramPicker.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/Dock.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/editor/ActivityPanel.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/editor/EdgePanel.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/editor/EditorToolbar.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/editor/GitPanel.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/editor/LayersPlanesPanel.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/editor/NodePanel.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/editor/activityDrop.ts": {
+    "max-params": {
+      "count": 2
+    }
+  },
+  "apps/studio/src/editor/clipboard.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/editor/planActions.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 4
+    }
+  },
+  "apps/studio/src/editor/quickAdd.ts": {
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/hooks/useDiagramActions.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/hooks/useNodePlacement.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/hotkeys/HotkeysDialog.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/library/LibraryPanel.tsx": {
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "apps/studio/src/library/packs.aws-containers.ts": {
+    "max-params": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/library/packs.c4.ts": {
+    "max-params": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/library/packs.ts": {
+    "max-params": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/savedPositions.ts": {
+    "max-params": {
+      "count": 2
+    }
+  },
+  "apps/studio/src/tableConnect.ts": {
+    "max-params": {
+      "count": 1
+    }
+  },
+  "apps/viewer/src/Viewer.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/core/src/builder.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    }
+  },
+  "packages/core/src/commands.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/core/src/guards.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/core/src/lint.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/core/src/mutate.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 2
+    }
+  },
+  "packages/core/src/plan.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/core/src/validate.ts": {
+    "complexity": {
+      "count": 5
+    },
+    "max-depth": {
+      "count": 6
+    },
+    "max-lines": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    }
+  },
+  "packages/core/src/view/edges.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/core/src/view/hierarchy.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/core/src/view/scope.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/core/src/view/tree.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/diagc/src/api/handlers.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 1
+    }
+  },
+  "packages/diagc/src/cli.ts": {
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/diagc/src/diff.ts": {
+    "max-params": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/DiagramEdge.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/DiagramNode.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/DiagramView.tsx": {
+    "complexity": {
+      "count": 6
+    },
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/LeveragePanel.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/NoteNode.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/TableNode.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/build-data.ts": {
+    "complexity": {
+      "count": 3
+    }
+  },
+  "packages/renderer/src/edge-geometry.ts": {
+    "max-params": {
+      "count": 6
+    }
+  },
+  "packages/renderer/src/fishbone-layout.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/fit-containers.ts": {
+    "max-params": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/lane-router.ts": {
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 4
+    }
+  },
+  "packages/renderer/src/layout-graph.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/layout.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/leverage.ts": {
+    "max-depth": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/notations.ts": {
+    "max-params": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/note-place.ts": {
+    "max-params": {
+      "count": 2
+    }
+  },
+  "packages/renderer/src/plan-layout.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/sketch.ts": {
+    "max-params": {
+      "count": 2
+    }
+  },
+  "packages/renderer/src/swimlane.ts": {
+    "max-params": {
+      "count": 3
+    }
+  },
+  "packages/renderer/src/useViewLayout.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  }
+}

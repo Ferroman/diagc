@@ -32,6 +32,20 @@ export default ts.config(
     },
   },
   {
+    // Size limits, so no component quietly grows into a god component. Existing
+    // violations are listed in eslint-suppressions.json, which only shrinks (see
+    // CONTRIBUTING.md § Size limits). Blank and comment lines do not count.
+    files: ['**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}', '**/test-setup.ts', 'apps/studio/src/library/packs.{aws,azure,gcp}.ts'],
+    rules: {
+      'max-lines': ['error', { max: 500, skipBlankLines: true, skipComments: true }],
+      'max-lines-per-function': ['error', { max: 120, skipBlankLines: true, skipComments: true }],
+      'max-params': ['error', 4],
+      complexity: ['error', 20],
+      'max-depth': ['error', 4],
+    },
+  },
+  {
     ignores: [
       '**/node_modules/**',
       '**/dist/**',
