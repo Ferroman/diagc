@@ -48,25 +48,37 @@ export function tailGeometry(badge: Point, size: { width: number; height: number
   switch (best.side) {
     case 'top': {
       const x = along(w, badge.x);
-      base = [{ x: x - BASE_HALF, y: INSET }, { x: x + BASE_HALF, y: INSET }];
+      base = [
+        { x: x - BASE_HALF, y: INSET },
+        { x: x + BASE_HALF, y: INSET },
+      ];
       centre = { x, y: INSET };
       break;
     }
     case 'bottom': {
       const x = along(w, badge.x);
-      base = [{ x: x - BASE_HALF, y: h - INSET }, { x: x + BASE_HALF, y: h - INSET }];
+      base = [
+        { x: x - BASE_HALF, y: h - INSET },
+        { x: x + BASE_HALF, y: h - INSET },
+      ];
       centre = { x, y: h - INSET };
       break;
     }
     case 'left': {
       const y = along(h, badge.y);
-      base = [{ x: INSET, y: y - BASE_HALF }, { x: INSET, y: y + BASE_HALF }];
+      base = [
+        { x: INSET, y: y - BASE_HALF },
+        { x: INSET, y: y + BASE_HALF },
+      ];
       centre = { x: INSET, y };
       break;
     }
     default: {
       const y = along(h, badge.y);
-      base = [{ x: w - INSET, y: y - BASE_HALF }, { x: w - INSET, y: y + BASE_HALF }];
+      base = [
+        { x: w - INSET, y: y - BASE_HALF },
+        { x: w - INSET, y: y + BASE_HALF },
+      ];
       centre = { x: w - INSET, y };
     }
   }

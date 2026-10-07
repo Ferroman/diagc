@@ -77,7 +77,12 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
     expect(quickAddLabel(j, 'note', c)).toBeUndefined();
     const out = quickAdd(j, 'c1', c)!;
     expect(out.beside).toBe(false);
-    expect(batchOf(out.command)[1]).toMatchObject({ type: 'add-relation', from: 'c1', to: out.id, opts: { kind: 'leads-to' } });
+    expect(batchOf(out.command)[1]).toMatchObject({
+      type: 'add-relation',
+      from: 'c1',
+      to: out.id,
+      opts: { kind: 'leads-to' },
+    });
   });
 
   it('threat model: an element gets a flow to a new process; a boundary gets a process inside; a stray node the generic rule', () => {
@@ -99,7 +104,11 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
     expect(flow.beside).toBe(true);
     const fc = batchOf(flow.command);
     // the sibling lands in the source's container (web sits in dmz)
-    expect(fc[0]).toMatchObject({ type: 'add-node', node: { id: flow.id, name: '', type: 'tm-process' }, parent: { id: 'dmz' } });
+    expect(fc[0]).toMatchObject({
+      type: 'add-node',
+      node: { id: flow.id, name: '', type: 'tm-process' },
+      parent: { id: 'dmz' },
+    });
     expect(fc[1]).toMatchObject({ type: 'add-relation', from: 'web', to: flow.id, opts: { kind: 'data-flow' } });
 
     const inside = quickAdd(j, 'dmz', c)!;
@@ -115,7 +124,11 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
     expect(out.label).toBe('Add a connected node');
     expect(out.beside).toBe(true);
     const cmds = batchOf(out.command);
-    expect(cmds[0]).toMatchObject({ type: 'add-node', node: { id: out.id, name: '', type: 'service', color: '#123456' }, parent: { id: 'sys' } });
+    expect(cmds[0]).toMatchObject({
+      type: 'add-node',
+      node: { id: out.id, name: '', type: 'service', color: '#123456' },
+      parent: { id: 'sys' },
+    });
     expect(cmds[1]).toMatchObject({ type: 'add-relation', from: 'a', to: out.id, opts: { kind: 'sync' } });
     // a top-level source: no parent on the add
     const top = quickAdd(j, 'b', ctx())!;
@@ -195,7 +208,11 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
     expect(above).toMatchObject({ beside: false });
     // no colour copied: neighbouring bands are usually told apart by it
     expect(batchOf(above.command)).toEqual([
-      { type: 'add-node', node: { id: above.id, name: '', type: 'activity-lane' }, parent: { id: 'flow', before: 'a' } },
+      {
+        type: 'add-node',
+        node: { id: above.id, name: '', type: 'activity-lane' },
+        parent: { id: 'flow', before: 'a' },
+      },
     ]);
     const below = quickAdd(j, 'b', ctx())!;
     expect(batchOf(below.command)).toEqual([
@@ -231,12 +248,19 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
     const tip = quickAdd(j, 'master-2', c)!;
     expect(tip).toMatchObject({ id: 'master-3', beside: false });
     expect(batchOf(tip.command)).toEqual([
-      { type: 'add-node', node: { id: 'master-3', name: '', type: 'commit' }, parent: { id: 'master', plane: 'git-graph' } },
+      {
+        type: 'add-node',
+        node: { id: 'master-3', name: '', type: 'commit' },
+        parent: { id: 'master', plane: 'git-graph' },
+      },
       { type: 'add-relation', from: 'master-2', to: 'master-3', opts: { kind: 'commit' } },
     ]);
     // a lane: appended at its tip; an empty lane gets its first, unlinked commit
     expect(quickAddLabel(j, 'nightly', c)).toBe('Add a commit');
-    expect(batchOf(quickAdd(j, 'nightly', c)!.command)).toMatchObject([{ node: { id: 'nightly-2' } }, { from: 'nightly-1', to: 'nightly-2' }]);
+    expect(batchOf(quickAdd(j, 'nightly', c)!.command)).toMatchObject([
+      { node: { id: 'nightly-2' } },
+      { from: 'nightly-1', to: 'nightly-2' },
+    ]);
     expect(batchOf(quickAdd(j, 'dev', c)!.command)).toEqual([
       { type: 'add-node', node: { id: 'dev-1', name: '', type: 'commit' }, parent: { id: 'dev', plane: 'git-graph' } },
     ]);
@@ -246,7 +270,9 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
       expect(quickAdd(j, id, c), id).toBeUndefined();
     }
     // the base view resolves to the same (default) plane
-    expect(batchOf(quickAdd(j, 'master-2', ctx({ notation: 'git-graph' }))!.command)[0]).toMatchObject({ parent: { id: 'master', plane: 'git-graph' } });
+    expect(batchOf(quickAdd(j, 'master-2', ctx({ notation: 'git-graph' }))!.command)[0]).toMatchObject({
+      parent: { id: 'master', plane: 'git-graph' },
+    });
   });
 
   describe('plan: a zone or event grows its own successor', () => {
@@ -262,7 +288,7 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
     }
     const c = ctx({ notation: 'plan', plane: 'plan' });
 
-    it('a root zone\'s next starts the day after, runs the same length, and links back with a sync dependency', () => {
+    it("a root zone's next starts the day after, runs the same length, and links back with a sync dependency", () => {
       const j = planModel();
       expect(quickAddLabel(j, 'solo', c)).toBe('Add the next zone');
       const out = quickAdd(j, 'solo', c)!;
@@ -276,19 +302,24 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
       expect(cmds[1]).toEqual({ type: 'add-relation', from: 'solo', to: out.id, opts: { kind: 'sync' } });
     });
 
-    it('a nested zone\'s next clamps into the parent on both edges, down to a one-day zone when the source already ends there', () => {
+    it("a nested zone's next clamps into the parent on both edges, down to a one-day zone when the source already ends there", () => {
       const j = planModel();
       // design (Jan1–Jan5) inside q1 (Jan1–Jan10): next is Jan6–Jan10, fits exactly
       const next = quickAdd(j, 'design', c)!;
-      expect(batchOf(next.command)[0]).toMatchObject({ node: { metadata: { start: '2026-01-06', end: '2026-01-10' } }, parent: { id: 'q1' } });
+      expect(batchOf(next.command)[0]).toMatchObject({
+        node: { metadata: { start: '2026-01-06', end: '2026-01-10' } },
+        parent: { id: 'q1' },
+      });
       // a zone already ending at the parent's end: its next is a single day, at that end
       const tight = planModel();
       tight.nodes.find((n) => n.id === 'design')!.metadata = { start: '2026-01-06', end: '2026-01-10' };
       const tightNext = quickAdd(tight, 'design', c)!;
-      expect(batchOf(tightNext.command)[0]).toMatchObject({ node: { metadata: { start: '2026-01-10', end: '2026-01-10' } } });
+      expect(batchOf(tightNext.command)[0]).toMatchObject({
+        node: { metadata: { start: '2026-01-10', end: '2026-01-10' } },
+      });
     });
 
-    it('an event\'s next is 7 days later, clamped into its parent', () => {
+    it("an event's next is 7 days later, clamped into its parent", () => {
       const j = planModel();
       expect(quickAddLabel(j, 'kickoff', c)).toBe('Add the next event');
       const out = quickAdd(j, 'kickoff', c)!;
@@ -298,7 +329,10 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
       const zone = p2.zone('z', { start: '2026-01-01', end: '2026-01-05' });
       zone.event('e', { at: '2026-01-03' }); // +7 = Jan10, clamped to the zone's end, Jan5
       const evOut = quickAdd(m2.toJSON(), 'e', c)!;
-      expect(batchOf(evOut.command)[0]).toMatchObject({ node: { metadata: { at: '2026-01-05' } }, parent: { id: 'z' } });
+      expect(batchOf(evOut.command)[0]).toMatchObject({
+        node: { metadata: { at: '2026-01-05' } },
+        parent: { id: 'z' },
+      });
     });
 
     it('a source with an unusable span offers nothing', () => {
@@ -345,7 +379,13 @@ describe('quickAddPlaced', () => {
     const cmd = quickAddPlaced(out(), { pinned: true, source: { x: 100, y: 50 }, width: 160, plane: 'p' });
     const cmds = batchOf(cmd);
     expect(cmds).toHaveLength(3);
-    expect(cmds[2]).toEqual({ type: 'set-position', nodeId: out().id, x: 100 + 160 + QUICK_ADD_GAP, y: 50, plane: 'p' });
+    expect(cmds[2]).toEqual({
+      type: 'set-position',
+      nodeId: out().id,
+      x: 100 + 160 + QUICK_ADD_GAP,
+      y: 50,
+      plane: 'p',
+    });
   });
 
   it('omits the plane when there is none, and does nothing for an unpinned or unrendered source or a notation recipe', () => {
@@ -355,25 +395,37 @@ describe('quickAddPlaced', () => {
     expect(quickAddPlaced(o, { pinned: false, source: { x: 0, y: 0 }, width: 10, plane: undefined })).toBe(o.command);
     expect(quickAddPlaced(o, { pinned: true, source: undefined, width: 10, plane: undefined })).toBe(o.command);
     const bone = quickAdd(fish(), 'code', ctx({ notation: 'fishbone' }))!;
-    expect(quickAddPlaced(bone, { pinned: true, source: { x: 0, y: 0 }, width: 10, plane: undefined })).toBe(bone.command);
+    expect(quickAddPlaced(bone, { pinned: true, source: { x: 0, y: 0 }, width: 10, plane: undefined })).toBe(
+      bone.command,
+    );
   });
 
   it('appends a set-size from the source, whether or not a position is needed — and never on a notation recipe', () => {
     const o = out();
     // unpinned: elk still owns the arrangement, but a resized source must breed
     // a same-sized sibling, so the size rides alone
-    const alone = batchOf(quickAddPlaced(o, { pinned: false, source: undefined, width: 64, size: { w: 64, h: 64 }, plane: undefined }));
+    const alone = batchOf(
+      quickAddPlaced(o, { pinned: false, source: undefined, width: 64, size: { w: 64, h: 64 }, plane: undefined }),
+    );
     expect(alone).toHaveLength(3);
     expect(alone[2]).toEqual({ type: 'set-size', nodeId: o.id, w: 64, h: 64 });
     // pinned: position first, then size — both in the one undo step
-    const both = batchOf(quickAddPlaced(o, { pinned: true, source: { x: 0, y: 0 }, width: 64, size: { w: 64, h: 64 }, plane: undefined }));
+    const both = batchOf(
+      quickAddPlaced(o, { pinned: true, source: { x: 0, y: 0 }, width: 64, size: { w: 64, h: 64 }, plane: undefined }),
+    );
     expect(both).toHaveLength(4);
     expect(both[2]).toMatchObject({ type: 'set-position' });
     expect(both[3]).toEqual({ type: 'set-size', nodeId: o.id, w: 64, h: 64 });
     // a bone is laid out by the notation: it takes neither
     const bone = quickAdd(fish(), 'code', ctx({ notation: 'fishbone' }))!;
-    expect(quickAddPlaced(bone, { pinned: true, source: { x: 0, y: 0 }, width: 64, size: { w: 64, h: 64 }, plane: undefined })).toBe(
-      bone.command,
-    );
+    expect(
+      quickAddPlaced(bone, {
+        pinned: true,
+        source: { x: 0, y: 0 },
+        width: 64,
+        size: { w: 64, h: 64 },
+        plane: undefined,
+      }),
+    ).toBe(bone.command);
   });
 });

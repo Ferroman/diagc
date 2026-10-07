@@ -10,10 +10,7 @@ import path from 'node:path';
  * regenerable build output.
  */
 export async function writeFileAtomic(target: string, data: string | Buffer): Promise<void> {
-  const tmp = path.join(
-    path.dirname(target),
-    `.${path.basename(target)}.${randomBytes(6).toString('hex')}.tmp`,
-  );
+  const tmp = path.join(path.dirname(target), `.${path.basename(target)}.${randomBytes(6).toString('hex')}.tmp`);
   try {
     await writeFile(tmp, data);
     await rename(tmp, target);

@@ -109,7 +109,12 @@ function labelFor(recipe: Recipe, source: DiagramNode): string {
  * frame and a region get none (see DiagramNode's activity branches). */
 const ACTIVITY_CHROME = new Set(['activity-lane', 'activity-frame', 'activity-region']);
 
-function recipeFor(model: DiagramModel, source: DiagramNode, ctx: QuickAddContext, side?: QuickAddSide): Recipe | undefined {
+function recipeFor(
+  model: DiagramModel,
+  source: DiagramNode,
+  ctx: QuickAddContext,
+  side?: QuickAddSide,
+): Recipe | undefined {
   // A lane is a band of its frame whatever the notation, and only a lane
   // actually in a frame can have a sibling band.
   if (source.type === 'activity-lane') {
@@ -147,7 +152,8 @@ function recipeFor(model: DiagramModel, source: DiagramNode, ctx: QuickAddContex
       // draws an open one as a bare name tag and arranges its members itself,
       // so "add a connected node" would have nowhere to put the result.
       if (source.type !== undefined && ACTIVITY_CHROME.has(source.type)) return undefined;
-      if (ctx.notation === 'causal-loop' && childrenOf(containmentOn(model, ctx.plane)).has(source.id)) return undefined;
+      if (ctx.notation === 'causal-loop' && childrenOf(containmentOn(model, ctx.plane)).has(source.id))
+        return undefined;
       return 'sibling';
   }
 }
@@ -229,7 +235,12 @@ export function quickAdd(
       // in declaration order (arrangeActivityFrames), so the containment slot
       // IS the position — no set-position to write.
       const frame = parentIn(model, ctx.plane, sourceId)!;
-      const place = createNodeAt(model, { kind: 'lane', plane: ctx.plane, borrowsContainment: ctx.borrowsContainment, parentId: frame });
+      const place = createNodeAt(model, {
+        kind: 'lane',
+        plane: ctx.plane,
+        borrowsContainment: ctx.borrowsContainment,
+        parentId: frame,
+      });
       const node: DiagramNode = {
         id: place.id,
         name: '',
@@ -247,13 +258,21 @@ export function quickAdd(
     case 'tm-inside': {
       // a boundary is containment, never a flow endpoint: the process goes in,
       // with no relation (a data-flow touching a boundary fails validation)
-      const place = createNodeAt(model, { kind: 'process', plane: ctx.plane, borrowsContainment: ctx.borrowsContainment, parentId: sourceId });
+      const place = createNodeAt(model, {
+        kind: 'process',
+        plane: ctx.plane,
+        borrowsContainment: ctx.borrowsContainment,
+        parentId: sourceId,
+      });
       const node: DiagramNode = { id: place.id, name: '', type: TM_PROCESS_TYPE, ...placeTags(place, ctx.penLayer) };
       return {
         label,
         id: place.id,
         beside: false,
-        command: { type: 'batch', commands: [{ type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) }] },
+        command: {
+          type: 'batch',
+          commands: [{ type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) }],
+        },
       };
     }
     case 'plan-next': {
@@ -274,7 +293,12 @@ export function quickAdd(
             const next = atOf(source)! + 7; // recipeFor only offers plan-next for a usable `at`
             return { at: isoOf(outer !== undefined ? Math.min(next, outer.end) : next) };
           })();
-      const place = createNodeAt(model, { kind: zone ? 'zone' : 'event', plane: ctx.plane, borrowsContainment: ctx.borrowsContainment, parentId });
+      const place = createNodeAt(model, {
+        kind: zone ? 'zone' : 'event',
+        plane: ctx.plane,
+        borrowsContainment: ctx.borrowsContainment,
+        parentId,
+      });
       // A successor copies the source's look, the same channels a sibling
       // does — a row of tinted zones stays tinted.
       const look: Partial<DiagramNode> = {
@@ -307,7 +331,10 @@ export function quickAdd(
               type: 'add-relation',
               from: sourceId,
               to: place.id,
-              opts: { kind: connectKind(ctx.notation, model, sourceId, place.id), ...(ctx.penLayer !== null ? { layer: ctx.penLayer } : {}) },
+              opts: {
+                kind: connectKind(ctx.notation, model, sourceId, place.id),
+                ...(ctx.penLayer !== null ? { layer: ctx.penLayer } : {}),
+              },
             },
           ],
         },
@@ -355,7 +382,12 @@ export function quickAdd(
           type: 'batch',
           commands: [
             { type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) },
-            { type: 'add-relation', from: sourceId, to: place.id, opts: { kind, ...(ctx.penLayer !== null ? { layer: ctx.penLayer } : {}) } },
+            {
+              type: 'add-relation',
+              from: sourceId,
+              to: place.id,
+              opts: { kind, ...(ctx.penLayer !== null ? { layer: ctx.penLayer } : {}) },
+            },
           ],
         },
       };

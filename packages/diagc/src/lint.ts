@@ -14,7 +14,11 @@ export interface LintReport {
   column?: number;
 }
 
-const report = (file: string, severity: LintReport['severity'], i: Pick<ValidationIssue, 'message' | 'ref'> & { code: string }): LintReport => ({
+const report = (
+  file: string,
+  severity: LintReport['severity'],
+  i: Pick<ValidationIssue, 'message' | 'ref'> & { code: string },
+): LintReport => ({
   file,
   severity,
   code: i.code,
@@ -30,7 +34,11 @@ export async function lintFile(file: string, opts?: LoadOptions): Promise<LintRe
     return diagramWarnings(model).map((w) => report(file, 'warning', w));
   } catch (e) {
     // By name, not instanceof: a builder diagram throws from jiti's own copy of core.
-    if (e instanceof Error && e.name === 'DiagramValidationError' && Array.isArray((e as { issues?: unknown }).issues)) {
+    if (
+      e instanceof Error &&
+      e.name === 'DiagramValidationError' &&
+      Array.isArray((e as { issues?: unknown }).issues)
+    ) {
       return (e as Error & { issues: ValidationIssue[] }).issues.map((i) => report(file, 'error', i));
     }
     if (e instanceof LoadError) {

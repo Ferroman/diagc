@@ -1,5 +1,15 @@
 import type { RefObject } from 'react';
-import { DEFAULT_IMAGE_NODE_SIZE, LEAF_SIZE, PLAN_NOTATION, errMessage, uniqueNodeId, type DiagramModel, type DiagramNode, type EditorCommand, type NotationId } from '@diagc/core';
+import {
+  DEFAULT_IMAGE_NODE_SIZE,
+  LEAF_SIZE,
+  PLAN_NOTATION,
+  errMessage,
+  uniqueNodeId,
+  type DiagramModel,
+  type DiagramNode,
+  type EditorCommand,
+  type NotationId,
+} from '@diagc/core';
 import type { DiagramSelection, LayoutApi } from '@diagc/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import { readImageSize, uploadAsset } from '../editor/images';
@@ -171,10 +181,7 @@ export function useNodePlacement({
   // Add node; drag-to-place passes the drop point, so the node lands there
   // top-level instead — or, dropped on a node, nests under it (at the drop point
   // when that node is an activity lane or region, elk-placed otherwise).
-  const placeFromLibrary = (
-    entry: LibraryEntry,
-    opts?: { parentId?: string; position?: { x: number; y: number } },
-  ) => {
+  const placeFromLibrary = (entry: LibraryEntry, opts?: { parentId?: string; position?: { x: number; y: number } }) => {
     const m = editor.session?.state.model;
     if (m === undefined) return;
     const kind = entry.template.image !== undefined || entry.template.shape !== undefined ? 'icon' : 'node';
@@ -189,14 +196,31 @@ export function useNodePlacement({
       opts?.position,
       boundsOf,
     );
-    const place = createNodeAt(m, { kind, plane: activePlane, borrowsContainment: activePlaneBorrowsContainment, parentId });
+    const place = createNodeAt(m, {
+      kind,
+      plane: activePlane,
+      borrowsContainment: activePlaneBorrowsContainment,
+      parentId,
+    });
     // A plan plane's Zone/Event templates carry no dates of their own — a
     // library-dropped one is dateless (and invalid) without a seed here.
     const seeded =
       notation === PLAN_NOTATION
-        ? seedDates(m, activePlane, entry.template.type, { ...(opts?.position !== undefined ? { x: opts.position.x } : {}), ...(parentId !== undefined ? { parentId } : {}) }, today)
+        ? seedDates(
+            m,
+            activePlane,
+            entry.template.type,
+            {
+              ...(opts?.position !== undefined ? { x: opts.position.x } : {}),
+              ...(parentId !== undefined ? { parentId } : {}),
+            },
+            today,
+          )
         : undefined;
-    const node = { ...entryToNode(entry, place.id, placeTags(place, penLayer)), ...(seeded !== undefined ? { metadata: seeded } : {}) };
+    const node = {
+      ...entryToNode(entry, place.id, placeTags(place, penLayer)),
+      ...(seeded !== undefined ? { metadata: seeded } : {}),
+    };
     const add = { type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) } as const;
     if (node.type === 'activity-frame') {
       // A frame is only ever drawn as its lanes, and the Activity panel's Add
@@ -265,7 +289,10 @@ export function useNodePlacement({
     // reverts both together. Anchored on the node's EXISTING containment on
     // `activePlane` (seedOnRetype's own planGraph lookup), since restyling
     // changes no containment of its own.
-    const dateCmd = model !== undefined && typeof details.type === 'string' ? seedOnRetype(model, activePlane, id, details.type, today) : undefined;
+    const dateCmd =
+      model !== undefined && typeof details.type === 'string'
+        ? seedOnRetype(model, activePlane, id, details.type, today)
+        : undefined;
     editor.dispatch(dateCmd === undefined ? typeCmd : { type: 'batch', commands: [typeCmd, dateCmd] });
     if (entry.template.width !== undefined && entry.template.height !== undefined) {
       editor.dispatch({ type: 'set-size', nodeId: id, w: entry.template.width, h: entry.template.height });

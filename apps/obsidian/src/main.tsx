@@ -71,7 +71,10 @@ export default class DiagcPlugin extends Plugin {
 }
 
 class DiagcSettingTab extends PluginSettingTab {
-  constructor(app: App, private readonly plugin: DiagcPlugin) {
+  constructor(
+    app: App,
+    private readonly plugin: DiagcPlugin,
+  ) {
     super(app, plugin);
   }
   override display(): void {

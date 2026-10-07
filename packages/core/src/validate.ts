@@ -21,7 +21,15 @@ import {
 } from './types';
 import { childrenOf } from './children';
 import { isIsoDate } from './dates';
-import { FB_CATEGORY_TYPE, FB_CAUSE_TYPE, FB_EFFECT_TYPE, FISHBONE_NOTATION, fishboneParents, fishboneTree, isFishboneNode } from './fishbone';
+import {
+  FB_CATEGORY_TYPE,
+  FB_CAUSE_TYPE,
+  FB_EFFECT_TYPE,
+  FISHBONE_NOTATION,
+  fishboneParents,
+  fishboneTree,
+  isFishboneNode,
+} from './fishbone';
 import { GIT_NOTATION, GIT_STAGE_TYPE, gitGraph, isGitKind, stageCommit } from './git';
 import { PLAN_NOTATION, atOf, dayOf, isPlanEvent, isPlanRole, isPlanZone, planGraph, spanOf } from './plan';
 import { SECOND_ORDER_NOTATION, SO_DECISION_TYPE, consequenceOrders, isSecondOrderNode } from './second-order';
@@ -164,7 +172,6 @@ function validateNodes(ctx: Ctx): void {
   const { m, issues, nodeIds } = ctx;
   const keys = new Map<string, string>(); // key -> first declaring node id
 
-
   for (const n of m.nodes) {
     if (nodeIds.has(n.id)) report(issues, 'duplicate-node', `Duplicate node id '${n.id}'`, n.id);
     nodeIds.add(n.id);
@@ -186,7 +193,9 @@ function validateNodes(ctx: Ctx): void {
         n.rich.some((r) => {
           const run = r as TextRun;
           return (
-            r === null || typeof r !== 'object' || typeof run.text !== 'string' ||
+            r === null ||
+            typeof r !== 'object' ||
+            typeof run.text !== 'string' ||
             (run.bold !== undefined && typeof run.bold !== 'boolean') ||
             (run.italic !== undefined && typeof run.italic !== 'boolean')
           );
@@ -199,10 +208,16 @@ function validateNodes(ctx: Ctx): void {
     if (n.fontScale !== undefined && !(FONT_SCALES as readonly string[]).includes(n.fontScale)) {
       report(issues, 'invalid-font-scale', `Node '${n.id}' has invalid fontScale '${String(n.fontScale)}'`, n.id);
     }
-    if (n.image !== undefined && (typeof n.image !== 'string' || !(IMAGE_REF.test(n.image) || LIBRARY_IMAGE_REF.test(n.image)))) {
+    if (
+      n.image !== undefined &&
+      (typeof n.image !== 'string' || !(IMAGE_REF.test(n.image) || LIBRARY_IMAGE_REF.test(n.image)))
+    ) {
       report(issues, 'invalid-image', `Node '${n.id}' has invalid image ref '${String(n.image)}'`, n.id);
     }
-    if (n.shape !== undefined && (typeof n.shape !== 'string' || !(IMAGE_REF.test(n.shape) || LIBRARY_IMAGE_REF.test(n.shape)))) {
+    if (
+      n.shape !== undefined &&
+      (typeof n.shape !== 'string' || !(IMAGE_REF.test(n.shape) || LIBRARY_IMAGE_REF.test(n.shape)))
+    ) {
       report(issues, 'invalid-shape', `Node '${n.id}' has invalid shape ref '${String(n.shape)}'`, n.id);
     }
     if (n.link !== undefined && (typeof n.link !== 'string' || n.link.trim() === '')) {
@@ -212,7 +227,12 @@ function validateNodes(ctx: Ctx): void {
       if (typeof n.key !== 'string' || !KEY_PATTERN.test(n.key)) {
         report(issues, 'invalid-key', `Node '${n.id}' has invalid key '${String(n.key)}'`, n.id);
       } else if (keys.has(n.key)) {
-        report(issues, 'duplicate-key', `Nodes '${keys.get(n.key) ?? ''}' and '${n.id}' share key '${n.key}' in one diagram`, n.id);
+        report(
+          issues,
+          'duplicate-key',
+          `Nodes '${keys.get(n.key) ?? ''}' and '${n.id}' share key '${n.key}' in one diagram`,
+          n.id,
+        );
       } else {
         keys.set(n.key, n.id);
       }
@@ -229,7 +249,12 @@ function validateNodes(ctx: Ctx): void {
     }
     if (n.includePlanes !== undefined) {
       if (typeof n.includePlanes !== 'boolean') {
-        report(issues, 'invalid-include', `Node '${n.id}' has invalid includePlanes '${String(n.includePlanes)}'`, n.id);
+        report(
+          issues,
+          'invalid-include',
+          `Node '${n.id}' has invalid includePlanes '${String(n.includePlanes)}'`,
+          n.id,
+        );
       } else if (n.include === undefined) {
         report(issues, 'invalid-include', `Node '${n.id}' has includePlanes without include`, n.id);
       }
@@ -298,7 +323,12 @@ function validatePlanes(ctx: Ctx): void {
     if (p.containmentOf !== undefined) {
       const target = planes.find((t) => t.id === p.containmentOf);
       if (target === undefined) {
-        report(issues, 'unknown-plane', `Plane '${p.id}' borrows containment from unknown plane '${p.containmentOf}'`, p.id);
+        report(
+          issues,
+          'unknown-plane',
+          `Plane '${p.id}' borrows containment from unknown plane '${p.containmentOf}'`,
+          p.id,
+        );
       } else if (target.containmentOf !== undefined) {
         report(
           issues,
@@ -325,7 +355,12 @@ function validatePlaneHides(ctx: Ctx): void {
       if (!nodeIds.has(id)) {
         report(issues, 'unknown-hidden-node', `Plane '${p.id}' hides unknown node '${id}'`, p.id);
       } else if (scopedPlaneOf.get(id) !== undefined) {
-        report(issues, 'redundant-hide', `Plane '${p.id}' hides node '${id}', which is already scoped to a plane`, p.id);
+        report(
+          issues,
+          'redundant-hide',
+          `Plane '${p.id}' hides node '${id}', which is already scoped to a plane`,
+          p.id,
+        );
       }
     }
   }
@@ -350,7 +385,12 @@ function validateContainment(ctx: Ctx): void {
           e.plane,
         );
       } else if (!planeIds.has(e.plane)) {
-        report(issues, 'unknown-plane', `Containment '${e.parent}'>'${e.child}' references unknown plane '${e.plane}'`, e.plane);
+        report(
+          issues,
+          'unknown-plane',
+          `Containment '${e.parent}'>'${e.child}' references unknown plane '${e.plane}'`,
+          e.plane,
+        );
       }
     }
   }
@@ -387,17 +427,24 @@ function validateRelations(ctx: Ctx): void {
           if (typeof lb?.text !== 'string') badLabel(`text at ${i}`);
           if (lb?.t !== undefined && !(typeof lb.t === 'number' && Number.isFinite(lb.t) && lb.t >= 0 && lb.t <= 1))
             badLabel(`t at ${i}`);
-          if (lb?.side !== undefined && !(EDGE_LABEL_SIDES as readonly string[]).includes(lb.side)) badLabel(`side at ${i}`);
+          if (lb?.side !== undefined && !(EDGE_LABEL_SIDES as readonly string[]).includes(lb.side))
+            badLabel(`side at ${i}`);
         }
     }
     if (r.style !== undefined) {
       const s = r.style;
       const bad = (what: string) =>
         report(issues, 'invalid-style', `Relation '${r.id}' has invalid style ${what}`, r.id);
-      if (s.shape !== undefined && !(RELATION_SHAPES as readonly string[]).includes(s.shape)) bad(`shape '${String(s.shape)}'`);
-      if (s.line !== undefined && !(RELATION_LINES as readonly string[]).includes(s.line)) bad(`line '${String(s.line)}'`);
-      if (s.end !== undefined && !(RELATION_MARKERS as readonly string[]).includes(s.end)) bad(`end '${String(s.end)}'`);
-      for (const [key, v] of [['fromSide', s.fromSide], ['toSide', s.toSide]] as const) {
+      if (s.shape !== undefined && !(RELATION_SHAPES as readonly string[]).includes(s.shape))
+        bad(`shape '${String(s.shape)}'`);
+      if (s.line !== undefined && !(RELATION_LINES as readonly string[]).includes(s.line))
+        bad(`line '${String(s.line)}'`);
+      if (s.end !== undefined && !(RELATION_MARKERS as readonly string[]).includes(s.end))
+        bad(`end '${String(s.end)}'`);
+      for (const [key, v] of [
+        ['fromSide', s.fromSide],
+        ['toSide', s.toSide],
+      ] as const) {
         if (v !== undefined && !(SIDES as readonly string[]).includes(v)) bad(`${key} '${String(v)}'`);
       }
       if (s.width !== undefined && !(typeof s.width === 'number' && Number.isFinite(s.width) && s.width > 0))
@@ -412,10 +459,20 @@ function validateRelations(ctx: Ctx): void {
     }
     const colsOf = (id: string) => m.nodes.find((n) => n.id === id)?.columns ?? [];
     if (r.fromColumn !== undefined && !colsOf(r.from).some((c) => c.name === r.fromColumn)) {
-      report(issues, 'unknown-column', `Relation '${r.id}' fromColumn '${r.fromColumn}' is not a column of '${r.from}'`, r.id);
+      report(
+        issues,
+        'unknown-column',
+        `Relation '${r.id}' fromColumn '${r.fromColumn}' is not a column of '${r.from}'`,
+        r.id,
+      );
     }
     if (r.toColumn !== undefined && !colsOf(r.to).some((c) => c.name === r.toColumn)) {
-      report(issues, 'unknown-column', `Relation '${r.id}' toColumn '${r.toColumn}' is not a column of '${r.to}'`, r.id);
+      report(
+        issues,
+        'unknown-column',
+        `Relation '${r.id}' toColumn '${r.toColumn}' is not a column of '${r.to}'`,
+        r.id,
+      );
     }
   }
 }
@@ -441,10 +498,29 @@ function validateThreats(ctx: Ctx): void {
       if (typeof id !== 'string' || id === '') report(issues, 'threat-id', `A threat on '${ref}' has no id`, ref);
       else if (seen.has(id)) report(issues, 'threat-id', `Threat id '${id}' repeats on '${ref}'`, ref);
       else seen.add(id);
-      if (!(STRIDE as readonly unknown[]).includes(t.category)) report(issues, 'threat-category', `Threat '${String(id)}' on '${ref}': category must be one of ${STRIDE.join(', ')}`, ref);
-      if (typeof t.title !== 'string' || t.title === '') report(issues, 'threat-title', `Threat '${String(id)}' on '${ref}' has no title`, ref);
-      if (t.status !== undefined && !(THREAT_STATUSES as readonly unknown[]).includes(t.status)) report(issues, 'threat-status', `Threat '${String(id)}' on '${ref}': status must be one of ${THREAT_STATUSES.join(', ')}`, ref);
-      if (t.severity !== undefined && !(THREAT_SEVERITIES as readonly unknown[]).includes(t.severity)) report(issues, 'threat-severity', `Threat '${String(id)}' on '${ref}': severity must be one of ${THREAT_SEVERITIES.join(', ')}`, ref);
+      if (!(STRIDE as readonly unknown[]).includes(t.category))
+        report(
+          issues,
+          'threat-category',
+          `Threat '${String(id)}' on '${ref}': category must be one of ${STRIDE.join(', ')}`,
+          ref,
+        );
+      if (typeof t.title !== 'string' || t.title === '')
+        report(issues, 'threat-title', `Threat '${String(id)}' on '${ref}' has no title`, ref);
+      if (t.status !== undefined && !(THREAT_STATUSES as readonly unknown[]).includes(t.status))
+        report(
+          issues,
+          'threat-status',
+          `Threat '${String(id)}' on '${ref}': status must be one of ${THREAT_STATUSES.join(', ')}`,
+          ref,
+        );
+      if (t.severity !== undefined && !(THREAT_SEVERITIES as readonly unknown[]).includes(t.severity))
+        report(
+          issues,
+          'threat-severity',
+          `Threat '${String(id)}' on '${ref}': severity must be one of ${THREAT_SEVERITIES.join(', ')}`,
+          ref,
+        );
     }
   };
   for (const n of m.nodes) check(n.id, n.threats);
@@ -469,8 +545,10 @@ function validateComments(ctx: Ctx): void {
       if (typeof id !== 'string' || id === '') report(issues, 'comment-id', `A comment on '${ref}' has no id`, ref);
       else if (seen.has(id)) report(issues, 'comment-id', `Comment id '${id}' repeats on '${ref}'`, ref);
       else seen.add(id);
-      if (typeof c.text !== 'string' || c.text === '') report(issues, 'comment-text', `Comment '${String(id)}' on '${ref}' has no text`, ref);
-      if (c.at !== undefined && !isIsoDate(c.at)) report(issues, 'comment-at', `Comment '${String(id)}' on '${ref}': 'at' must be a YYYY-MM-DD date`, ref);
+      if (typeof c.text !== 'string' || c.text === '')
+        report(issues, 'comment-text', `Comment '${String(id)}' on '${ref}' has no text`, ref);
+      if (c.at !== undefined && !isIsoDate(c.at))
+        report(issues, 'comment-at', `Comment '${String(id)}' on '${ref}': 'at' must be a YYYY-MM-DD date`, ref);
     }
   };
   const links = (ref: string, list: unknown): void => {
@@ -582,14 +660,16 @@ function validateGit(ctx: Ctx): void {
       continue;
     }
     for (const id of [from, stageCommit(n, 'to')]) {
-      if (id !== undefined && !isCommit(id)) report(issues, 'git-stage-span', `Stage '${n.id}' spans '${id}', which is not a commit`, n.id);
+      if (id !== undefined && !isCommit(id))
+        report(issues, 'git-stage-span', `Stage '${n.id}' spans '${id}', which is not a commit`, n.id);
     }
   }
   for (const n of m.nodes) {
     if (n.type !== 'commit') continue;
     const raw = n.metadata?.['gap'];
     if (raw === undefined) continue;
-    const ok = (typeof raw === 'number' && Number.isInteger(raw) && raw >= 0) || (typeof raw === 'string' && /^\d+$/.test(raw));
+    const ok =
+      (typeof raw === 'number' && Number.isInteger(raw) && raw >= 0) || (typeof raw === 'string' && /^\d+$/.test(raw));
     if (!ok) report(issues, 'git-gap', `Commit '${n.id}' has invalid gap '${String(raw)}'`, n.id);
   }
 }
@@ -609,7 +689,12 @@ function validateActivity(ctx: Ctx): void {
     // dangling ids are validateContainment's finding — don't double-report
     if (!ctx.nodeIds.has(e.parent) || !ctx.nodeIds.has(e.child)) continue;
     if (typeOf.get(e.parent) === 'activity-frame' && typeOf.get(e.child) !== 'activity-lane') {
-      report(issues, 'activity-frame-children', `Activity frame '${e.parent}' may contain only lanes; '${e.child}' is not an activity-lane`, e.child);
+      report(
+        issues,
+        'activity-frame-children',
+        `Activity frame '${e.parent}' may contain only lanes; '${e.child}' is not an activity-lane`,
+        e.child,
+      );
     }
     const ct = typeOf.get(e.child);
     if (ct === 'activity-lane' || ct === 'activity-region') {
@@ -631,7 +716,12 @@ function validateActivity(ctx: Ctx): void {
       // a loose region is legal (mid-edit); only a WRONG parent is a defect
       for (const p of parentsOf.get(n.id) ?? []) {
         if (typeOf.get(p) !== 'activity-lane') {
-          report(issues, 'activity-region-parent', `Interruptible region '${n.id}' must sit inside a lane; parent '${p}' is not an activity-lane`, n.id);
+          report(
+            issues,
+            'activity-region-parent',
+            `Interruptible region '${n.id}' must sit inside a lane; parent '${p}' is not an activity-lane`,
+            n.id,
+          );
         }
       }
     }
@@ -642,7 +732,13 @@ function validateActivity(ctx: Ctx): void {
  * issue (`code`, `message(child, parent)`): the notation's arrangement and a group
  * want the same rectangle, so nothing in `ids` may be grouped. Untagged containment
  * belongs to the default plane. */
-function reportContained(ctx: Ctx, plane: DiagramPlane | undefined, ids: ReadonlySet<string>, code: Code, message: (child: string, parent: string) => string): void {
+function reportContained(
+  ctx: Ctx,
+  plane: DiagramPlane | undefined,
+  ids: ReadonlySet<string>,
+  code: Code,
+  message: (child: string, parent: string) => string,
+): void {
   const { issues, m } = ctx;
   const defaultPlane = ctx.planes[0]?.id;
   const active = plane?.id ?? defaultPlane;
@@ -674,7 +770,12 @@ function validateSecondOrder(ctx: Ctx): void {
   // there to be a second-order node to judge before it can want a decision
   // among them.
   if (soIds.size > 0 && !m.nodes.some((n) => n.type === SO_DECISION_TYPE)) {
-    report(issues, 'so-no-decision', 'A second-order diagram needs at least one decision (a node of type so-decision)', plane?.id ?? m.id);
+    report(
+      issues,
+      'so-no-decision',
+      'A second-order diagram needs at least one decision (a node of type so-decision)',
+      plane?.id ?? m.id,
+    );
   }
   const { cycle, unreachable } = consequenceOrders(m);
   if (cycle !== undefined) {
@@ -695,7 +796,8 @@ function validateSecondOrder(ctx: Ctx): void {
     plane,
     soIds,
     'so-contained',
-    (child, parent) => `'${child}' sits inside '${parent}'; decisions and consequences cannot be grouped in a second-order diagram`,
+    (child, parent) =>
+      `'${child}' sits inside '${parent}'; decisions and consequences cannot be grouped in a second-order diagram`,
   );
 }
 
@@ -726,7 +828,12 @@ function validateFishbone(ctx: Ctx): void {
   if (fb.length === 0) return;
   const effects = fb.filter((n) => n.type === FB_EFFECT_TYPE);
   if (effects.length === 0) {
-    report(issues, 'fb-no-effect', 'A fishbone diagram needs an effect (a node of type fb-effect) at its head', plane?.id ?? m.id);
+    report(
+      issues,
+      'fb-no-effect',
+      'A fishbone diagram needs an effect (a node of type fb-effect) at its head',
+      plane?.id ?? m.id,
+    );
   }
   for (const extra of effects.slice(1)) {
     report(issues, 'fb-many-effects', `'${extra.id}' is a second effect; a fishbone diagram has one head`, extra.id);
@@ -752,7 +859,12 @@ function validateFishbone(ctx: Ctx): void {
     const parent = parentOf.get(n.id);
     if (n.type === FB_EFFECT_TYPE) {
       if (n.id === tree.effect && parent !== undefined) {
-        report(issues, 'fb-misplaced', `'${n.id}' is the effect and hangs on '${parent}'; the effect is the head, nothing explains it`, n.id);
+        report(
+          issues,
+          'fb-misplaced',
+          `'${n.id}' is the effect and hangs on '${parent}'; the effect is the head, nothing explains it`,
+          n.id,
+        );
       }
       continue;
     }
@@ -761,16 +873,32 @@ function validateFishbone(ctx: Ctx): void {
     if (n.type === FB_CATEGORY_TYPE && parent !== undefined && parentType !== FB_EFFECT_TYPE) {
       report(issues, 'fb-misplaced', `Category '${n.id}' hangs on '${parent}'; a category hangs on the effect`, n.id);
     } else if (n.type === FB_CAUSE_TYPE && parentType === FB_EFFECT_TYPE) {
-      report(issues, 'fb-misplaced', `Cause '${n.id}' hangs on the effect; a cause hangs on a category or on another cause`, n.id);
+      report(
+        issues,
+        'fb-misplaced',
+        `Cause '${n.id}' hangs on the effect; a cause hangs on a category or on another cause`,
+        n.id,
+      );
     } else if (n.type === FB_CAUSE_TYPE && parent !== undefined && subIds.has(parent)) {
-      report(issues, 'fb-too-deep', `'${n.id}' hangs on the sub-cause '${parent}'; three levels below the effect is the limit`, n.id);
+      report(
+        issues,
+        'fb-too-deep',
+        `'${n.id}' hangs on the sub-cause '${parent}'; three levels below the effect is the limit`,
+        n.id,
+      );
     } else {
       report(warnings, 'fb-unattached', `'${n.id}' does not reach the effect`, n.id);
     }
   }
   // The fish and a group want the same rectangle.
   const fbIds = new Set(fb.map((n) => n.id));
-  reportContained(ctx, plane, fbIds, 'fb-contained', (child, parent) => `'${child}' sits inside '${parent}'; nothing on a fishbone diagram can be grouped`);
+  reportContained(
+    ctx,
+    plane,
+    fbIds,
+    'fb-contained',
+    (child, parent) => `'${child}' sits inside '${parent}'; nothing on a fishbone diagram can be grouped`,
+  );
 }
 
 /**
@@ -790,7 +918,13 @@ function validateThreatModel(ctx: Ctx): void {
   for (const r of m.relations) {
     if (r.kind !== TM_FLOW_KIND) continue;
     const end = boundaries.has(r.from) ? r.from : boundaries.has(r.to) ? r.to : undefined;
-    if (end !== undefined) report(issues, 'tm-flow-boundary', `Data flow '${r.id}' touches the trust boundary '${end}'; flows connect elements, a boundary only surrounds them`, r.id);
+    if (end !== undefined)
+      report(
+        issues,
+        'tm-flow-boundary',
+        `Data flow '${r.id}' touches the trust boundary '${end}'; flows connect elements, a boundary only surrounds them`,
+        r.id,
+      );
   }
 }
 
@@ -811,7 +945,12 @@ function validatePlan(ctx: Ctx): void {
       return undefined;
     }
     if (!isIsoDate(raw)) {
-      report(issues, 'plan-date', `'${n.id}': '${key}' must be a real YYYY-MM-DD date, got ${JSON.stringify(raw)}`, n.id);
+      report(
+        issues,
+        'plan-date',
+        `'${n.id}': '${key}' must be a real YYYY-MM-DD date, got ${JSON.stringify(raw)}`,
+        n.id,
+      );
       return undefined;
     }
     return dayOf(raw);
@@ -821,7 +960,12 @@ function validatePlan(ctx: Ctx): void {
       const start = dateOr(n, 'start');
       const end = dateOr(n, 'end');
       if (start !== undefined && end !== undefined && end < start) {
-        report(issues, 'plan-span', `'${n.id}': end ${String(n.metadata?.end)} is before start ${String(n.metadata?.start)}`, n.id);
+        report(
+          issues,
+          'plan-span',
+          `'${n.id}': end ${String(n.metadata?.end)} is before start ${String(n.metadata?.start)}`,
+          n.id,
+        );
       }
     } else if (isPlanEvent(n)) {
       dateOr(n, 'at');
@@ -843,7 +987,12 @@ function validatePlan(ctx: Ctx): void {
       const inner = spanOf(node) ?? (atOf(node) !== undefined ? { start: atOf(node)!, end: atOf(node)! } : undefined);
       if (inner === undefined) continue;
       if (inner.start < outer.start || inner.end > outer.end) {
-        report(issues, 'plan-nested', `'${child}' lies outside its zone '${parentId}' (${String(byId.get(parentId)!.metadata?.start)} … ${String(byId.get(parentId)!.metadata?.end)})`, child);
+        report(
+          issues,
+          'plan-nested',
+          `'${child}' lies outside its zone '${parentId}' (${String(byId.get(parentId)!.metadata?.start)} … ${String(byId.get(parentId)!.metadata?.end)})`,
+          child,
+        );
       }
     }
   }
@@ -854,7 +1003,12 @@ function validatePlan(ctx: Ctx): void {
     if (!ctx.nodeIds.has(r.from) || !ctx.nodeIds.has(r.to)) continue; // dangling ends are validateRelations' finding
     const target = byId.get(r.to);
     if (target !== undefined && !isPlanZone(target)) {
-      report(issues, 'plan-role-target', `Relation '${r.id}' (${r.kind}) must point at a plan-zone; '${r.to}' is ${target.type ?? 'untyped'}`, r.id);
+      report(
+        issues,
+        'plan-role-target',
+        `Relation '${r.id}' (${r.kind}) must point at a plan-zone; '${r.to}' is ${target.type ?? 'untyped'}`,
+        r.id,
+      );
     }
   }
 }

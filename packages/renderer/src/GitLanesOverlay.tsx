@@ -44,7 +44,15 @@ export function GitLanesOverlay({ model, plane }: GitLanesOverlayProps) {
     <ViewportPortal>
       <svg className="dg-git-lanes" aria-hidden="true">
         {tails.map((t) => (
-          <line key={t.id} className="dg-git-tail" x1={t.x1} y1={t.y} x2={t.x2} y2={t.y} stroke={t.color ?? 'var(--dg-edge)'} />
+          <line
+            key={t.id}
+            className="dg-git-tail"
+            x1={t.x1}
+            y1={t.y}
+            x2={t.x2}
+            y2={t.y}
+            stroke={t.color ?? 'var(--dg-edge)'}
+          />
         ))}
       </svg>
     </ViewportPortal>

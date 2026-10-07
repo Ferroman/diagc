@@ -13,7 +13,8 @@ export const FISHBONE_TYPES: readonly string[] = [FB_EFFECT_TYPE, FB_CATEGORY_TY
  * explains. The derivation below does NOT filter by it (see fishboneTree). */
 export const FB_CAUSE_OF_KIND = 'cause-of' as const;
 
-export const isFishboneNode = (n: { type?: string }): boolean => n.type !== undefined && FISHBONE_TYPES.includes(n.type);
+export const isFishboneNode = (n: { type?: string }): boolean =>
+  n.type !== undefined && FISHBONE_TYPES.includes(n.type);
 
 export type FishbonePreset = 'Software' | '6M' | '4S';
 /** Category sets an author can start from. Software first: it is what this

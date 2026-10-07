@@ -115,7 +115,10 @@ function signature(
       ? ''
       : `@${[...sizes.entries()]
           .sort(([a], [b]) => a.localeCompare(b))
-          .map(([id, s]) => `${id}:${s.width}x${s.height}${s.reserveBottom !== undefined ? `+${s.reserveBottom}` : ''}${s.caption !== undefined ? `_${s.caption.width}x${s.caption.height}` : ''}`)
+          .map(
+            ([id, s]) =>
+              `${id}:${s.width}x${s.height}${s.reserveBottom !== undefined ? `+${s.reserveBottom}` : ''}${s.caption !== undefined ? `_${s.caption.width}x${s.caption.height}` : ''}`,
+          )
           .join('|')}`;
   const pinned =
     partitions === undefined || partitions.size === 0
@@ -261,7 +264,11 @@ function shiftBlock(b: Block, dx: number, dy: number): void {
     const g = b.geometry.get(id);
     if (g !== undefined) b.geometry.set(id, { ...g, x: g.x + dx, y: g.y + dy });
   }
-  for (const [id, pts] of b.routes) b.routes.set(id, pts.map((p) => ({ x: p.x + dx, y: p.y + dy })));
+  for (const [id, pts] of b.routes)
+    b.routes.set(
+      id,
+      pts.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+    );
   for (const [id, p] of b.labelSpots) b.labelSpots.set(id, { x: p.x + dx, y: p.y + dy });
 }
 
@@ -271,7 +278,11 @@ function embed(outer: Block, inner: Block, at: { dx: number; dy: number; absX: n
   for (const [id, g] of inner.geometry) {
     outer.geometry.set(id, inner.top.includes(id) ? { ...g, x: g.x + at.dx, y: g.y + at.dy } : g);
   }
-  for (const [id, pts] of inner.routes) outer.routes.set(id, pts.map((p) => ({ x: p.x + at.absX, y: p.y + at.absY })));
+  for (const [id, pts] of inner.routes)
+    outer.routes.set(
+      id,
+      pts.map((p) => ({ x: p.x + at.absX, y: p.y + at.absY })),
+    );
   for (const [id, p] of inner.labelSpots) outer.labelSpots.set(id, { x: p.x + at.absX, y: p.y + at.absY });
 }
 
@@ -303,7 +314,12 @@ async function layoutPlanned(
   try {
     const rootLevel = plan.levels.get(null);
     const block = rootLevel !== undefined ? await arrangeLevel(rootLevel, ctx) : await arrangeGroup(view.roots, ctx);
-    return { geometry: block.geometry, routes: block.routes, labelSpots: block.labelSpots, algorithm: DEFAULT_ALGORITHM };
+    return {
+      geometry: block.geometry,
+      routes: block.routes,
+      labelSpots: block.labelSpots,
+      algorithm: DEFAULT_ALGORITHM,
+    };
   } catch (e) {
     if (e instanceof ElkRejected) return undefined;
     throw e;
@@ -403,8 +419,7 @@ async function arrangeGroup(nodes: readonly ViewNode[], ctx: PlanContext): Promi
     const n = nodes[0]!;
     const hint = ctx.sizes?.get(n.id);
     const size =
-      prelaid.get(n.id) ??
-      (n.state === 'collapsed' ? (hint ?? COLLAPSED_SIZE) : footprint(hint ?? LEAF_SIZE));
+      prelaid.get(n.id) ?? (n.state === 'collapsed' ? (hint ?? COLLAPSED_SIZE) : footprint(hint ?? LEAF_SIZE));
     const out: Block = {
       width: size.width,
       height: size.height,
@@ -415,7 +430,8 @@ async function arrangeGroup(nodes: readonly ViewNode[], ctx: PlanContext): Promi
     };
     const block = inner.get(n.id);
     const pad = pads.get(n.id);
-    if (block !== undefined && pad !== undefined) embed(out, block, { dx: pad.left, dy: pad.top, absX: pad.left, absY: pad.top });
+    if (block !== undefined && pad !== undefined)
+      embed(out, block, { dx: pad.left, dy: pad.top, absX: pad.left, absY: pad.top });
     return out;
   }
 
@@ -526,7 +542,7 @@ async function layoutSingleRun(
 
   // Only an unrestructured graph produces routes worth drawing: a lifted edge's
   // waypoints run between containers rather than between the nodes the renderer
-  // draws — so curved beziers are the honest fallback there. See DEFERRALS.md.
+  // draws — so curved beziers are the honest fallback there.
   // The key is whether lifting ACTUALLY happened, not which algorithm was
   // picked: a container-free diagram lifts nothing, so force and stress keep
   // their routes exactly as they did before edge-lifting existed.

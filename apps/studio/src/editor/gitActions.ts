@@ -32,7 +32,9 @@ export function appendCommit(
           node: { id, name: opts.tag ?? '', type: 'commit', ...(gap > 0 ? { metadata: { gap } } : {}) },
           parent: { id: laneId, ...(planeId !== undefined ? { plane: planeId } : {}) },
         },
-        ...(latest !== undefined ? [{ type: 'add-relation' as const, from: latest.id, to: id, opts: { kind: 'commit' } }] : []),
+        ...(latest !== undefined
+          ? [{ type: 'add-relation' as const, from: latest.id, to: id, opts: { kind: 'commit' } }]
+          : []),
       ],
     },
   };

@@ -103,7 +103,10 @@ async function main() {
     // Architecture service icons: Arch_<Category>/64/Arch_<Name>_64.svg
     const services = await collect(pkgDir, 'Architecture-Service-Icons', 'aws', (file) => {
       if (path.basename(path.dirname(file)) !== '64') return undefined;
-      const core = path.basename(file, '.svg').replace(/^Arch_/, '').replace(/_64$/, '');
+      const core = path
+        .basename(file, '.svg')
+        .replace(/^Arch_/, '')
+        .replace(/_64$/, '');
       const category = categorySlug(path.basename(path.dirname(path.dirname(file))));
       const slug = slugify(core);
       return { category, slug, name: displayName(core), keywords: AWS_ALIASES[slug] ?? [] };
@@ -141,7 +144,10 @@ async function main() {
     // Category icons: Arch-Category_64/Arch-Category_<Name>_64.svg
     const categories = await collect(pkgDir, 'Category-Icons', 'aws-categories', (file) => {
       if (path.basename(path.dirname(file)) !== 'Arch-Category_64') return undefined;
-      const core = path.basename(file, '.svg').replace(/^Arch-Category_/, '').replace(/_64$/, '');
+      const core = path
+        .basename(file, '.svg')
+        .replace(/^Arch-Category_/, '')
+        .replace(/_64$/, '');
       return { category: 'categories', slug: slugify(core), name: displayName(core), keywords: ['category'] };
     });
 

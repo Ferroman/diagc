@@ -4,7 +4,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cliVersion, findHome, homePaths } from './home';
-import { AGENTS_BEGIN, AGENTS_BLOCK, AGENTS_END, DEFAULT_NAME, IGNORED, SKILL_PATH, diagramName, missingIgnores, runInit, withAgentsBlock, type InitOptions } from './init';
+import {
+  AGENTS_BEGIN,
+  AGENTS_BLOCK,
+  AGENTS_END,
+  DEFAULT_NAME,
+  IGNORED,
+  SKILL_PATH,
+  diagramName,
+  missingIgnores,
+  runInit,
+  withAgentsBlock,
+  type InitOptions,
+} from './init';
 import { readStarter } from './starters';
 
 // Real starters and the real core: the compile step is the point of `init`.
@@ -51,7 +63,9 @@ describe('runInit, fresh', () => {
     expect(text).toContain('Next:');
     expect(text).toMatch(/^ {2}diagc studio\s+look at it$/m);
     expect(text).toMatch(/^ {2}diagc guide\s+how to write diagrams/m);
-    expect(text).toMatch(/^ {2}diagc init --agents\s+point coding agents at the guide \(AGENTS\.md, Claude Code skill\)$/m);
+    expect(text).toMatch(
+      /^ {2}diagc init --agents\s+point coding agents at the guide \(AGENTS\.md, Claude Code skill\)$/m,
+    );
     // no package.json here, so no install hint
     expect(text).not.toContain('@diagc/core');
   });
@@ -91,13 +105,20 @@ describe('runInit, fresh', () => {
     await runInit(opts(), io);
     const lines = out.join('\n').split('\n');
     const at = (right: string): number => lines.find((l) => l.includes(right))?.indexOf(right) ?? -1;
-    expect([at('(basic starter)'), at('(+ .diagrams/'), at('-> .diagrams/'), at('look at it')]).toEqual([40, 40, 40, 40]);
+    expect([at('(basic starter)'), at('(+ .diagrams/'), at('-> .diagrams/'), at('look at it')]).toEqual([
+      40, 40, 40, 40,
+    ]);
   });
 
   it('suggests the editor types only where there is a package.json, with this version', async () => {
     writeFileSync(path.join(cwd, 'package.json'), '{}');
     await runInit(opts(), io);
-    expect(out.join('\n')).toMatch(new RegExp(`^ {2}npm i -D @diagc/core@${version.replace(/\./g, '\\.')}\\s+editor types for \\.diagram\\.ts$`, 'm'));
+    expect(out.join('\n')).toMatch(
+      new RegExp(
+        `^ {2}npm i -D @diagc/core@${version.replace(/\./g, '\\.')}\\s+editor types for \\.diagram\\.ts$`,
+        'm',
+      ),
+    );
   });
 });
 
@@ -128,7 +149,9 @@ describe('runInit refuses, and writes nothing', () => {
     writeFileSync(path.join(cwd, '.diagrams', 'src', 'shop.diagram.json'), '{}');
     const before = tree();
     expect(await runInit(opts({ name: 'shop' }), io)).toBe(1);
-    expect(err).toEqual(["diagc: .diagrams/src/shop.diagram.json already exists — pick another name, or run 'diagc init' with no name and no --type to leave it alone."]);
+    expect(err).toEqual([
+      "diagc: .diagrams/src/shop.diagram.json already exists — pick another name, or run 'diagc init' with no name and no --type to leave it alone.",
+    ]);
     expect(tree()).toEqual(before);
     expect(has('.gitignore')).toBe(false);
   });
@@ -157,7 +180,9 @@ describe('runInit refuses, and writes nothing', () => {
 
   it('an unknown type, naming the real ones', async () => {
     expect(await runInit(opts({ type: 'c5' }), io)).toBe(1);
-    expect(err[0]).toMatch(/^diagc: No starter 'c5'\. Types: activity, basic, c4, .* — e\.g\. diagc init example --type activity$/);
+    expect(err[0]).toMatch(
+      /^diagc: No starter 'c5'\. Types: activity, basic, c4, .* — e\.g\. diagc init example --type activity$/,
+    );
     expect(tree()).toEqual([]);
   });
 
@@ -280,7 +305,8 @@ describe('runInit --agents, the Claude Code skill', () => {
   const skill = readFileSync(home.skillFile, 'utf8');
   /** the part a later run replaces: from the begin marker to the end of the file */
   const block = skill.slice(skill.indexOf(AGENTS_BEGIN));
-  const line = (mark: '✓' | '·', what: string): RegExp => new RegExp(`^${mark} \\.claude/skills/diagc/SKILL\\.md\\s+${what}$`, 'm');
+  const line = (mark: '✓' | '·', what: string): RegExp =>
+    new RegExp(`^${mark} \\.claude/skills/diagc/SKILL\\.md\\s+${what}$`, 'm');
 
   it('writes the packaged skill, byte for byte, where there is a .claude folder', async () => {
     mkdirSync(path.join(cwd, '.claude'));

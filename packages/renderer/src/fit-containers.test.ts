@@ -91,16 +91,19 @@ describe('savedPosition', () => {
   const ZERO = { x: 0, y: 0 };
 
   it('is the identity while nothing has shifted', () => {
-    expect(savedPosition({ x: 40.5, y: 12 }, { x: 300, y: 80 }, { x: 300, y: 80 }, undefined)).toEqual({ x: 40.5, y: 12 });
+    expect(savedPosition({ x: 40.5, y: 12 }, { x: 300, y: 80 }, { x: 300, y: 80 }, undefined)).toEqual({
+      x: 40.5,
+      y: 12,
+    });
     expect(savedPosition({ x: 40.5, y: 12 }, ZERO, ZERO, undefined)).toEqual({ x: 40.5, y: 12 });
   });
 
-  it('undoes the parent\'s shift: a child is saved against the unshifted origin', () => {
+  it("undoes the parent's shift: a child is saved against the unshifted origin", () => {
     // the parent's origin moved 100 left of its base, the child is drawn 16 in
     expect(savedPosition({ x: 16, y: 36 }, { x: 200, y: 50 }, { x: 300, y: 50 }, undefined)).toEqual({ x: -84, y: 36 });
   });
 
-  it('undoes a container\'s own shift: its saved position is its unshifted one', () => {
+  it("undoes a container's own shift: its saved position is its unshifted one", () => {
     expect(savedPosition({ x: 200, y: 50 }, ZERO, ZERO, { dx: -100, dy: -30 })).toEqual({ x: 300, y: 80 });
   });
 

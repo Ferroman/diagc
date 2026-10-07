@@ -29,7 +29,10 @@ const GEOMETRY = new Map<string, NodeGeometry>([
  * `true`, like the plan profile) — pass `false` for a git-graph/fishbone-like
  * stub that has a `layout` but never wants saved positions. */
 function notationLayoutProfile(
-  spy?: (hints: ReadonlyMap<string, Size> | undefined, positions: Record<string, { x: number; y: number }> | undefined) => void,
+  spy?: (
+    hints: ReadonlyMap<string, Size> | undefined,
+    positions: Record<string, { x: number; y: number }> | undefined,
+  ) => void,
   readsPositions = true,
 ): NotationProfile {
   return {
@@ -86,7 +89,7 @@ describe('useViewLayout', () => {
     expect(hints.get('img')).toEqual({ width: 300, height: 200, reserveBottom: 20 });
   });
 
-  it('reserves an image node\'s caption width so long names cannot collide', async () => {
+  it("reserves an image node's caption width so long names cannot collide", async () => {
     const spy = vi.fn();
     const m = fixture();
     m.nodes = m.nodes.map((n) => (n.id === 'img' ? { ...n, name: 'Amazon Elastic Kubernetes Service' } : n));
@@ -111,7 +114,11 @@ describe('useViewLayout', () => {
     const folded = compileView(json, {});
     const spy = vi.spyOn(layoutModule, 'layoutView');
     const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
-      initialProps: inputFor(json, { profile: { id: 'default' }, compiled: folded, hiddenCounts: new Map([['sys', 1]]) }),
+      initialProps: inputFor(json, {
+        profile: { id: 'default' },
+        compiled: folded,
+        hiddenCounts: new Map([['sys', 1]]),
+      }),
     });
     await waitFor(() => expect(result.current.geometry).not.toBeNull());
     const sizes = spy.mock.calls[0]![1]!;
@@ -129,7 +136,10 @@ describe('useViewLayout', () => {
     const settingsOf = async (layout?: LayoutOverlay) => {
       const spy = vi.spyOn(layoutModule, 'layoutView');
       const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
-        initialProps: inputFor(m, { profile: notationProfile('causal-loop'), ...(layout !== undefined ? { layout } : {}) }),
+        initialProps: inputFor(m, {
+          profile: notationProfile('causal-loop'),
+          ...(layout !== undefined ? { layout } : {}),
+        }),
       });
       await waitFor(() => expect(result.current.geometry).not.toBeNull());
       const settings = spy.mock.calls[0]![2];
@@ -170,7 +180,13 @@ describe('useViewLayout', () => {
     const m = fixture();
     const profile: NotationProfile = {
       id: 'default',
-      layout: () => ({ geometry: GEOMETRY, routes: new Map(), labelSpots: new Map(), algorithm: 'notation', fixed: new Set(['box']) }),
+      layout: () => ({
+        geometry: GEOMETRY,
+        routes: new Map(),
+        labelSpots: new Map(),
+        algorithm: 'notation',
+        fixed: new Set(['box']),
+      }),
     };
     // both nodes carry a stale pin (a fish dragged before nodes were fixed)
     const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 400, y: 50 }, img: { x: 70, y: 7 } } } };
@@ -190,7 +206,13 @@ describe('useViewLayout', () => {
     const m = fixture();
     const profile: NotationProfile = {
       id: 'default',
-      layout: () => ({ geometry: GEOMETRY, routes: new Map(), labelSpots: new Map(), algorithm: 'notation', lockedX: new Set(['box']) }),
+      layout: () => ({
+        geometry: GEOMETRY,
+        routes: new Map(),
+        labelSpots: new Map(),
+        algorithm: 'notation',
+        lockedX: new Set(['box']),
+      }),
     };
     const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 400, y: 50 } } } };
     const viewPositions = { box: { x: 999, y: 9 } };
@@ -210,7 +232,7 @@ describe('useViewLayout', () => {
     expect(result.current.fixed.size).toBe(0);
   });
 
-  it('a layout with layoutReadsPositions (the plan\'s) receives the plane\'s saved positions, gated the same way as the overlay', async () => {
+  it("a layout with layoutReadsPositions (the plan's) receives the plane's saved positions, gated the same way as the overlay", async () => {
     const spy = vi.fn();
     const m = fixture();
     const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 40, y: 5 } } } };
@@ -225,7 +247,7 @@ describe('useViewLayout', () => {
     expect(spy.mock.calls[spy.mock.calls.length - 1]?.[1]).toEqual({});
   });
 
-  it('a layout WITHOUT layoutReadsPositions (git-graph\'s, fishbone\'s) never receives positions, and does not re-run for a change that only affects them', async () => {
+  it("a layout WITHOUT layoutReadsPositions (git-graph's, fishbone's) never receives positions, and does not re-run for a change that only affects them", async () => {
     const spy = vi.fn();
     const profile = notationLayoutProfile(spy, false);
     const m = fixture();
@@ -248,7 +270,7 @@ describe('useViewLayout', () => {
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
-  it('never hands positions to elk: an elk plane\'s layoutView call carries no positions argument', async () => {
+  it("never hands positions to elk: an elk plane's layoutView call carries no positions argument", async () => {
     const elkSpy = vi.spyOn(layoutModule, 'layoutView');
     const m = fixture();
     const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 40, y: 5 } } } };

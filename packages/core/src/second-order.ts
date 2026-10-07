@@ -5,7 +5,11 @@ export const SECOND_ORDER_NOTATION = 'second-order' as const;
 export const SO_DECISION_TYPE = 'so-decision' as const;
 /** Valence is a TYPE VARIANT, not a field: a registry and palette entry, no
  * schema change — the same trick C4 uses for its `-external` stencils. */
-export const SO_CONSEQUENCE_TYPES = ['so-consequence-positive', 'so-consequence-negative', 'so-consequence-neutral'] as const;
+export const SO_CONSEQUENCE_TYPES = [
+  'so-consequence-positive',
+  'so-consequence-negative',
+  'so-consequence-neutral',
+] as const;
 /** The kind the builder and the studio create. The derivation below does NOT
  * filter by it (see consequenceOrders). */
 export const SO_LEADS_TO_KIND = 'leads-to' as const;
@@ -80,7 +84,7 @@ export function consequenceOrders(model: DiagramModel): ConsequenceOrders {
     // the report names the loop itself.
     const released = new Set(topo);
     const stuck = new Set(nodes.map((n) => n.id).filter((id) => !released.has(id)));
-    for (let peeled = true; peeled; ) {
+    for (let peeled = true; peeled;) {
       peeled = false;
       for (const id of stuck) {
         if (next.get(id)!.some((to) => stuck.has(to))) continue;
@@ -94,7 +98,10 @@ export function consequenceOrders(model: DiagramModel): ConsequenceOrders {
   const typeOf = new Map(nodes.map((n) => [n.id, n.type]));
   const orders = new Map<string, number>();
   for (const id of topo) {
-    const causes = prev.get(id)!.map((p) => orders.get(p)).filter((o): o is number => o !== undefined);
+    const causes = prev
+      .get(id)!
+      .map((p) => orders.get(p))
+      .filter((o): o is number => o !== undefined);
     if (causes.length > 0) orders.set(id, Math.max(...causes) + 1);
     else if (typeOf.get(id) === SO_DECISION_TYPE) orders.set(id, 0);
   }

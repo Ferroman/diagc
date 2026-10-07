@@ -132,7 +132,9 @@ export function LeveragePanel({
               )}
               {dep.backward.exists && (
                 <Row focus={{ key: 'dep:bwd', nodes: dep.backward.path.nodes, edges: dep.backward.path.edgeIds }}>
-                  <span className={`dg-lev-sign ${SIGN_CLASS[dep.backward.sign]}`}>{SIGN_GLYPH[dep.backward.sign]}</span>{' '}
+                  <span className={`dg-lev-sign ${SIGN_CLASS[dep.backward.sign]}`}>
+                    {SIGN_GLYPH[dep.backward.sign]}
+                  </span>{' '}
                   {name(compareId!)} → {name(target)}{' '}
                   <span className="dg-lev-muted">· {distLabel(dep.backward.distance)}</span>
                 </Row>
@@ -192,7 +194,9 @@ export function LeveragePanel({
       {report.hubs.length > 0 && (
         <section className="dg-lev-section">
           <h3>Leverage points</h3>
-          <p className="dg-lev-muted dg-lev-hint">Variables recurring across this one's loops — change one, move many.</p>
+          <p className="dg-lev-muted dg-lev-hint">
+            Variables recurring across this one's loops — change one, move many.
+          </p>
           <div className="dg-lev-list">
             {report.hubs.slice(0, HUBS_SHOWN).map((h) => (
               <Row key={h.id} focus={hubFocus(h.id)}>

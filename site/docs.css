@@ -1,76 +1,274 @@
 /* The documentation pages, which scripts/docs-pages.mjs renders from docs/. Loaded after
    site.css, which gives the tokens, the header and the theme; this file is the layout and
    the prose. */
-body.docs { background: var(--bg); }
+body.docs {
+  background: var(--bg);
+}
 /* The first stop for a keyboard: past the header and the list of pages, to the article. Out
    of sight until it has the focus. */
-.skip { position: absolute; left: 16px; top: -100px; z-index: 20; padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
-.skip:focus { top: 8px; }
-.nav nav a[aria-current] { color: var(--accent); font-weight: 600; }
+.skip {
+  position: absolute;
+  left: 16px;
+  top: -100px;
+  z-index: 20;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+.skip:focus {
+  top: 8px;
+}
+.nav nav a[aria-current] {
+  color: var(--accent);
+  font-weight: 600;
+}
 
-.docs-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr) 210px; gap: 0 40px; max-width: 1360px; margin: 0 auto; padding: 0 16px; }
-.docs main { max-width: none; margin: 0; padding: 32px 0 72px; min-width: 0; }
+.docs-layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr) 210px;
+  gap: 0 40px;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+.docs main {
+  max-width: none;
+  margin: 0;
+  padding: 32px 0 72px;
+  min-width: 0;
+}
 /* A bare address in a sentence has no place to break, and would push a narrow phone's page
    sideways. */
-.docs article { max-width: 800px; overflow-wrap: break-word; }
+.docs article {
+  max-width: 800px;
+  overflow-wrap: break-word;
+}
 
 /* The sidebar and the page's own headings stay in view while the article scrolls. */
-.docs-side, .docs-toc { position: sticky; top: 57px; align-self: start; max-height: calc(100vh - 57px); overflow-y: auto; padding: 32px 0; font-size: 14.5px; }
-.docs-group, .docs-toc nav h2 { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 20px 0 6px; }
-.docs-toc nav h2::before { content: none; }
-.docs-layout nav ul { list-style: none; margin: 0; padding: 0; }
-.docs-layout nav li a { display: block; padding: 4px 10px; border-radius: 6px; color: var(--text); text-decoration: none; line-height: 1.35; }
-.docs-layout nav li a:hover { color: var(--accent); }
-.docs-side a[aria-current], .docs-menu a[aria-current] { background: var(--tint); color: var(--accent); font-weight: 600; }
-.docs-toc nav li a { color: var(--muted); padding: 3px 0; }
-.docs-toc nav h2 { margin-top: 0; }
+.docs-side,
+.docs-toc {
+  position: sticky;
+  top: 57px;
+  align-self: start;
+  max-height: calc(100vh - 57px);
+  overflow-y: auto;
+  padding: 32px 0;
+  font-size: 14.5px;
+}
+.docs-group,
+.docs-toc nav h2 {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 20px 0 6px;
+}
+.docs-toc nav h2::before {
+  content: none;
+}
+.docs-layout nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.docs-layout nav li a {
+  display: block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: var(--text);
+  text-decoration: none;
+  line-height: 1.35;
+}
+.docs-layout nav li a:hover {
+  color: var(--accent);
+}
+.docs-side a[aria-current],
+.docs-menu a[aria-current] {
+  background: var(--tint);
+  color: var(--accent);
+  font-weight: 600;
+}
+.docs-toc nav li a {
+  color: var(--muted);
+  padding: 3px 0;
+}
+.docs-toc nav h2 {
+  margin-top: 0;
+}
 /* The folded list of pages is for a narrow screen; a wide one has the sidebar. */
-.docs-menu { display: none; grid-column: 1 / -1; margin-top: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); font-size: 15px; }
-.docs-menu summary { padding: 10px 14px; cursor: pointer; font-weight: 600; }
-.docs-menu nav { padding: 0 8px 12px; }
+.docs-menu {
+  display: none;
+  grid-column: 1 / -1;
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 15px;
+}
+.docs-menu summary {
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.docs-menu nav {
+  padding: 0 8px 12px;
+}
 
 /* Prose. site.css sizes its headings for a landing page; an article's are smaller. */
-.docs article h1 { font-size: clamp(28px, 4vw, 38px); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 20px; }
-.docs article h2 { font-size: 24px; margin: 40px 0 12px; padding-top: 8px; }
-.docs article h2::before { content: none; }
-.docs article h3 { font-size: 18.5px; margin: 28px 0 8px; }
-.docs article h4 { font-size: 16px; margin: 24px 0 8px; }
-.docs article p, .docs article ul, .docs article ol, .docs article blockquote, .docs article pre, .docs article .table-wrap { margin: 0 0 16px; }
-.docs article ul, .docs article ol { padding-left: 24px; }
-.docs article li { margin: 4px 0; }
-.docs article li > ul, .docs article li > ol { margin-bottom: 0; }
-.docs article blockquote { padding: 2px 16px; border-left: 4px solid var(--border); color: var(--muted); }
-.docs article hr { border: 0; border-top: 1px solid var(--border); margin: 32px 0; }
+.docs article h1 {
+  font-size: clamp(28px, 4vw, 38px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 20px;
+}
+.docs article h2 {
+  font-size: 24px;
+  margin: 40px 0 12px;
+  padding-top: 8px;
+}
+.docs article h2::before {
+  content: none;
+}
+.docs article h3 {
+  font-size: 18.5px;
+  margin: 28px 0 8px;
+}
+.docs article h4 {
+  font-size: 16px;
+  margin: 24px 0 8px;
+}
+.docs article p,
+.docs article ul,
+.docs article ol,
+.docs article blockquote,
+.docs article pre,
+.docs article .table-wrap {
+  margin: 0 0 16px;
+}
+.docs article ul,
+.docs article ol {
+  padding-left: 24px;
+}
+.docs article li {
+  margin: 4px 0;
+}
+.docs article li > ul,
+.docs article li > ol {
+  margin-bottom: 0;
+}
+.docs article blockquote {
+  padding: 2px 16px;
+  border-left: 4px solid var(--border);
+  color: var(--muted);
+}
+.docs article hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 32px 0;
+}
 /* site.css keeps a code span on one line; in a paragraph a long name must wrap, or it
    pushes a phone's page sideways. */
-.docs article code { white-space: normal; overflow-wrap: break-word; }
+.docs article code {
+  white-space: normal;
+  overflow-wrap: break-word;
+}
 /* Dark in both schemes, as the landing page's editor is: the token colours are set once. */
-.docs article pre { border: 1px solid #263041; background: #0f1722; color: #d6deeb; font-size: 13.5px; line-height: 1.6; }
-.docs article pre code { white-space: pre; overflow-wrap: normal; }
+.docs article pre {
+  border: 1px solid #263041;
+  background: #0f1722;
+  color: #d6deeb;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.docs article pre code {
+  white-space: pre;
+  overflow-wrap: normal;
+}
 /* Pictures are drawn in the light theme, so they sit on white in both schemes. */
-.docs article img { border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+.docs article img {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
 /* A wide table scrolls in its own box, so the page never scrolls sideways. */
-.table-wrap { overflow-x: auto; }
-.docs article table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
-.docs article th, .docs article td { padding: 8px 12px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
-.docs article th { background: var(--surface); font-weight: 600; }
+.table-wrap {
+  overflow-x: auto;
+}
+.docs article table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14.5px;
+}
+.docs article th,
+.docs article td {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.docs article th {
+  background: var(--surface);
+  font-weight: 600;
+}
 /* The index's tables have an empty header row, which would draw as a bar. */
-.docs article thead:not(:has(th:not(:empty))) { display: none; }
+.docs article thead:not(:has(th:not(:empty))) {
+  display: none;
+}
 
-.docs-pager { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; max-width: 800px; margin-top: 48px; }
-.docs-pager a { padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); text-decoration: none; font-weight: 600; }
-.docs-pager a:hover { border-color: var(--ring); }
-.docs-pager .next { text-align: right; }
-.docs-pager small { display: block; font-weight: 400; color: var(--muted); }
-.docs-source { max-width: 800px; margin-top: 20px; font-size: 14px; }
+.docs-pager {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 800px;
+  margin-top: 48px;
+}
+.docs-pager a {
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  text-decoration: none;
+  font-weight: 600;
+}
+.docs-pager a:hover {
+  border-color: var(--ring);
+}
+.docs-pager .next {
+  text-align: right;
+}
+.docs-pager small {
+  display: block;
+  font-weight: 400;
+  color: var(--muted);
+}
+.docs-source {
+  max-width: 800px;
+  margin-top: 20px;
+  font-size: 14px;
+}
 
 @media (max-width: 1180px) {
-  .docs-layout { grid-template-columns: 250px minmax(0, 1fr); }
-  .docs-toc { display: none; }
+  .docs-layout {
+    grid-template-columns: 250px minmax(0, 1fr);
+  }
+  .docs-toc {
+    display: none;
+  }
 }
 @media (max-width: 860px) {
-  .docs-layout { grid-template-columns: minmax(0, 1fr); }
-  .docs-side { display: none; }
-  .docs-menu { display: block; }
-  .docs main { padding-top: 20px; }
+  .docs-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .docs-side {
+    display: none;
+  }
+  .docs-menu {
+    display: block;
+  }
+  .docs main {
+    padding-top: 20px;
+  }
 }

@@ -96,7 +96,11 @@ describe('useNodePlacement.applyFromLibrary', () => {
     expect(dispatch).toHaveBeenCalledWith({
       type: 'batch',
       commands: [
-        { type: 'set-node-details', id: 'target', details: { type: 'plan-zone', color: null, image: null, shape: null } },
+        {
+          type: 'set-node-details',
+          id: 'target',
+          details: { type: 'plan-zone', color: null, image: null, shape: null },
+        },
         // target is nested under design (Jan 5 – Jan 30): seeded at the
         // parent's start, clamped to 14 days inside it — same numbers
         // planActions.test.ts's seedDates/seedOnRetype cases use for `design`.
@@ -107,7 +111,12 @@ describe('useNodePlacement.applyFromLibrary', () => {
 
   it('a card that is not a plan type sends the plain restyle, unbatched', () => {
     const dispatch = vi.fn<(c: EditorCommand) => void>();
-    const tableCard: LibraryEntry = { id: 'service', category: 'general', name: 'Service', template: { type: 'service' } };
+    const tableCard: LibraryEntry = {
+      id: 'service',
+      category: 'general',
+      name: 'Service',
+      template: { type: 'service' },
+    };
 
     const { result } = renderHook(() =>
       useNodePlacement({

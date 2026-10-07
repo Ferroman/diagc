@@ -40,7 +40,9 @@ describe('DrawingsLayer', () => {
 
   it('adds clickable hit paths only while erasing, and reports the stroke id', () => {
     const onErase = vi.fn();
-    const { container, rerender } = mount(<DrawingsLayer strokes={strokes} visible erasing={false} onErase={onErase} />);
+    const { container, rerender } = mount(
+      <DrawingsLayer strokes={strokes} visible erasing={false} onErase={onErase} />,
+    );
     expect(container.querySelectorAll('path.dg-stroke-hit')).toHaveLength(0);
     rerender(
       <ReactFlowProvider>

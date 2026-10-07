@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { LEAF_SIZE, PLAN_ZONE_TYPE, compileView, dayOf, model, type CompiledView, type DiagramModel } from '@diagc/core';
+import {
+  LEAF_SIZE,
+  PLAN_ZONE_TYPE,
+  compileView,
+  dayOf,
+  model,
+  type CompiledView,
+  type DiagramModel,
+} from '@diagc/core';
 import { PLAN_LAYOUT, planLayout, planX } from './plan-layout';
 
 const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT, HEADER_H, ROSTER_GAP } = PLAN_LAYOUT;
@@ -23,13 +31,16 @@ function roadmap(): DiagramModel {
   const alice = p.person('alice', 'Alice');
   build.owner(alice);
   p.person('bob', 'Bob');
-  void later; void design;
+  void later;
+  void design;
   return m.toJSON();
 }
 
 /** zones pinned expanded, as DiagramView does through alwaysExpanded */
 function view(m: DiagramModel): CompiledView {
-  const pins = Object.fromEntries(m.nodes.filter((n) => n.type === PLAN_ZONE_TYPE).map((n) => [n.id, 'expanded' as const]));
+  const pins = Object.fromEntries(
+    m.nodes.filter((n) => n.type === PLAN_ZONE_TYPE).map((n) => [n.id, 'expanded' as const]),
+  );
   return compileView(m, { plane: 'plan', pins });
 }
 
@@ -75,7 +86,12 @@ describe('planLayout', () => {
     expect(db).toMatchObject({ x: PAD + LEAF_SIZE.width + ROW_GAP, y: TITLE_H });
     expect(build.height).toBe(TITLE_H + LEAF_SIZE.height + PAD);
     const m1 = r.geometry.get('m1')!;
-    expect(m1).toEqual({ x: (dayOf('2026-03-02')! - dayOf('2026-02-02')!) * DAY + DAY / 2 - EVENT / 2, y: (TITLE_H - EVENT) / 2, width: EVENT, height: EVENT });
+    expect(m1).toEqual({
+      x: (dayOf('2026-03-02')! - dayOf('2026-02-02')!) * DAY + DAY / 2 - EVENT / 2,
+      y: (TITLE_H - EVENT) / 2,
+      width: EVENT,
+      height: EVENT,
+    });
     for (const id of ['api', 'db', 'm1']) expect(r.fixed?.has(id)).toBe(true);
   });
 
@@ -92,7 +108,12 @@ describe('planLayout', () => {
     zoneB.contains(api);
     zoneA.contains(api);
     const r = planLayout(view(m.toJSON()), m.toJSON(), 'plan');
-    expect(r.geometry.get('api')).toMatchObject({ x: PAD, y: TITLE_H, width: LEAF_SIZE.width, height: LEAF_SIZE.height });
+    expect(r.geometry.get('api')).toMatchObject({
+      x: PAD,
+      y: TITLE_H,
+      width: LEAF_SIZE.width,
+      height: LEAF_SIZE.height,
+    });
     expect(r.geometry.get('zoneB')!.height).toBe(TITLE_H + LEAF_SIZE.height + PAD);
     expect(r.geometry.get('zoneA')!.height).toBe(BAR_H);
   });
@@ -166,7 +187,12 @@ describe('planLayout', () => {
   it('puts root events on the header baseline and people in a fixed roster strip above it', () => {
     const m = roadmap();
     const r = planLayout(view(m), m, 'plan');
-    expect(r.geometry.get('kickoff')).toEqual({ x: planX(dayOf('2026-01-05')!, origin) + DAY / 2 - EVENT / 2, y: -HEADER_H / 2 - EVENT / 2, width: EVENT, height: EVENT });
+    expect(r.geometry.get('kickoff')).toEqual({
+      x: planX(dayOf('2026-01-05')!, origin) + DAY / 2 - EVENT / 2,
+      y: -HEADER_H / 2 - EVENT / 2,
+      width: EVENT,
+      height: EVENT,
+    });
     const alice = r.geometry.get('alice')!;
     const bob = r.geometry.get('bob')!;
     const rowY = -HEADER_H - ROSTER_GAP - LEAF_SIZE.height;
@@ -201,7 +227,7 @@ describe('planLayout', () => {
     for (const id of ['alice', 'bob', 'chen']) expect(r.fixed?.has(id)).toBe(true);
   });
 
-  it('wraps a dateless plan\'s roster by count, six to a row', () => {
+  it("wraps a dateless plan's roster by count, six to a row", () => {
     const m = model('nodates');
     const p = m.plan();
     const people = Array.from({ length: 7 }, (_, i) => p.person(`p${i}`, `P${i}`));
@@ -224,7 +250,9 @@ describe('planLayout', () => {
     m.layers.push({ id: 'maybe', name: 'Maybe' });
     m.nodes.find((n) => n.id === 'later')!.layer = 'maybe';
     m.nodes.push({ id: 'stray', name: 'Stray', type: 'service', plane: 'plan' });
-    const pins = Object.fromEntries(m.nodes.filter((n) => n.type === PLAN_ZONE_TYPE).map((n) => [n.id, 'expanded' as const]));
+    const pins = Object.fromEntries(
+      m.nodes.filter((n) => n.type === PLAN_ZONE_TYPE).map((n) => [n.id, 'expanded' as const]),
+    );
     const r = planLayout(compileView(m, { plane: 'plan', pins, activeLayers: [] }), m, 'plan');
     expect(r.geometry.has('later')).toBe(false);
     const q1 = r.geometry.get('q1')!;

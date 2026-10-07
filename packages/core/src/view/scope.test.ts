@@ -85,7 +85,10 @@ describe('compileView drill root (isolated view + external stubs)', () => {
 
   it('represents an off-frame endpoint by its outermost ancestor OUTSIDE the drill root’s ancestor chain, not by a shared ancestor', () => {
     const v = compileView(nested(), { root: 'analytics' });
-    const externals = v.roots.filter((r) => r.external !== undefined).map((r) => r.external).sort();
+    const externals = v.roots
+      .filter((r) => r.external !== undefined)
+      .map((r) => r.external)
+      .sort();
     // dashboard-api is a sibling → stands for itself; appuser-db rolls up to its
     // container Postgres; NEITHER may collapse into the shared ancestor `platform`
     expect(externals).toEqual(['dashboard-api', 'postgres']);

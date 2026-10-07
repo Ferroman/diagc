@@ -39,10 +39,11 @@ const requireNode = (m: DiagramModel, id: string): DiagramNode => {
 };
 
 export function uniqueNodeId(m: DiagramModel, base: string): string {
-  const slug = base
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'node';
+  const slug =
+    base
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'node';
   const taken = new Set(m.nodes.map((n) => n.id));
   if (!taken.has(slug)) return slug;
   for (let i = 2; ; i++) {
@@ -344,8 +345,11 @@ function mapList<K extends ElementList>(
     : { ...m, relations: next(m.relations, target.relation, 'relation') };
 }
 
-const mapThreats = (m: DiagramModel, target: ThreatTarget, fn: (threats: readonly Threat[]) => Threat[]): DiagramModel =>
-  mapList(m, target, 'threats', fn);
+const mapThreats = (
+  m: DiagramModel,
+  target: ThreatTarget,
+  fn: (threats: readonly Threat[]) => Threat[],
+): DiagramModel => mapList(m, target, 'threats', fn);
 
 export function addThreat(m: DiagramModel, target: ThreatTarget, threat: Threat): DiagramModel {
   return mapThreats(m, target, (threats) => {
@@ -354,12 +358,7 @@ export function addThreat(m: DiagramModel, target: ThreatTarget, threat: Threat)
   });
 }
 
-export function updateThreat(
-  m: DiagramModel,
-  target: ThreatTarget,
-  id: string,
-  patch: ThreatPatch,
-): DiagramModel {
+export function updateThreat(m: DiagramModel, target: ThreatTarget, id: string, patch: ThreatPatch): DiagramModel {
   return mapThreats(m, target, (threats) => {
     if (!threats.some((t) => t.id === id)) throw new CommandError(`Unknown threat '${id}'`);
     return threats.map((t) => {
@@ -393,7 +392,9 @@ const COMMENT_NULLABLE_KEYS = ['by', 'at'] as const;
 type CommentNullableKey = (typeof COMMENT_NULLABLE_KEYS)[number];
 type CommentNullableKeys = Exclude<keyof CommentPatch, 'text'>;
 type CommentKeyCoverage = [CommentNullableKeys] extends [CommentNullableKey]
-  ? [CommentNullableKey] extends [CommentNullableKeys] ? true : false
+  ? [CommentNullableKey] extends [CommentNullableKeys]
+    ? true
+    : false
   : false;
 const _assertCommentKeyCoverage: CommentKeyCoverage = true;
 void _assertCommentKeyCoverage;
@@ -402,7 +403,8 @@ void _assertCommentKeyCoverage;
  * only at compile time: the studio autosaves on a timer, and a model that fails
  * validation wedges that save with a 400 while the user is still typing. */
 const checkCommentDate = (at: string | null | undefined): void => {
-  if (at !== undefined && at !== null && !isIsoDate(at)) throw new CommandError(`Comment date '${at}' is not a YYYY-MM-DD date`);
+  if (at !== undefined && at !== null && !isIsoDate(at))
+    throw new CommandError(`Comment date '${at}' is not a YYYY-MM-DD date`);
 };
 
 export function addComment(m: DiagramModel, target: ThreatTarget, comment: Comment): DiagramModel {
@@ -495,7 +497,8 @@ export function addContainment(
   // `e.plane === canon` would miss.
   const defaultPlane = (m.planes ?? [])[0]?.id;
   const key = canon ?? defaultPlane;
-  if (m.containment.some((e) => e.parent === parent && e.child === child && (e.plane ?? defaultPlane) === key)) return m;
+  if (m.containment.some((e) => e.parent === parent && e.child === child && (e.plane ?? defaultPlane) === key))
+    return m;
   if (wouldCycle(m, parent, child, canon)) {
     throw new CommandError(`'${parent}' > '${child}' would create a containment cycle`);
   }
@@ -537,7 +540,9 @@ export function removeContainment(m: DiagramModel, parent: string, child: string
   const key = canon ?? defaultPlane;
   return {
     ...m,
-    containment: m.containment.filter((e) => !(e.parent === parent && e.child === child && (e.plane ?? defaultPlane) === key)),
+    containment: m.containment.filter(
+      (e) => !(e.parent === parent && e.child === child && (e.plane ?? defaultPlane) === key),
+    ),
   };
 }
 
@@ -548,10 +553,18 @@ export function removeContainment(m: DiagramModel, parent: string, child: string
  * frame's lanes are restacked. Entries under other parents keep their places.
  * At either end the model comes back unchanged (same reference).
  */
-export function moveChild(m: DiagramModel, parent: string, child: string, offset: -1 | 1, plane?: string): DiagramModel {
+export function moveChild(
+  m: DiagramModel,
+  parent: string,
+  child: string,
+  offset: -1 | 1,
+  plane?: string,
+): DiagramModel {
   const defaultPlane = (m.planes ?? [])[0]?.id;
   const key = canonicalPlane(m, plane) ?? defaultPlane;
-  const siblings = m.containment.flatMap((e, i) => (e.parent === parent && (e.plane ?? defaultPlane) === key ? [i] : []));
+  const siblings = m.containment.flatMap((e, i) =>
+    e.parent === parent && (e.plane ?? defaultPlane) === key ? [i] : [],
+  );
   const at = siblings.findIndex((i) => m.containment[i]!.child === child);
   if (at === -1) throw new CommandError(`'${parent}' does not contain '${child}'`);
   const other = siblings[at + offset];
@@ -818,9 +831,7 @@ export function upsertPlane(m: DiagramModel, plane: DiagramPlane): DiagramModel 
       throw new CommandError(`Unknown plane '${plane.containmentOf}'`);
     }
     if (target.containmentOf !== undefined) {
-      throw new CommandError(
-        `Plane '${plane.containmentOf}' itself borrows containment — chains are not allowed`,
-      );
+      throw new CommandError(`Plane '${plane.containmentOf}' itself borrows containment — chains are not allowed`);
     }
   }
   const planes = m.planes ?? [];
@@ -830,12 +841,7 @@ export function upsertPlane(m: DiagramModel, plane: DiagramPlane): DiagramModel 
 
 /** Add/remove a shared node from a plane's `hides`. A node already scoped to a
  * plane is view-local, so hiding it is a no-op (validation flags a stray one). */
-export function setNodePlaneHidden(
-  m: DiagramModel,
-  nodeId: string,
-  planeId: string,
-  hidden: boolean,
-): DiagramModel {
+export function setNodePlaneHidden(m: DiagramModel, nodeId: string, planeId: string, hidden: boolean): DiagramModel {
   const node = requireNode(m, nodeId);
   if (hidden && node.plane !== undefined) return m;
   return {

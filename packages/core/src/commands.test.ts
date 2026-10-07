@@ -47,9 +47,17 @@ describe('applyCommand', () => {
     const base = applyCommand(state(), { type: 'add-node', node: { id: 'b', name: 'B' }, parent: { id: 'sys' } });
     const kids = (s: typeof base) => s.model.containment.filter((e) => e.parent === 'sys').map((e) => e.child);
     expect(kids(base)).toEqual(['a', 'b']);
-    const above = applyCommand(base, { type: 'add-node', node: { id: 'x', name: 'X' }, parent: { id: 'sys', before: 'b' } });
+    const above = applyCommand(base, {
+      type: 'add-node',
+      node: { id: 'x', name: 'X' },
+      parent: { id: 'sys', before: 'b' },
+    });
     expect(kids(above)).toEqual(['a', 'x', 'b']);
-    const below = applyCommand(base, { type: 'add-node', node: { id: 'y', name: 'Y' }, parent: { id: 'sys', after: 'a' } });
+    const below = applyCommand(base, {
+      type: 'add-node',
+      node: { id: 'y', name: 'Y' },
+      parent: { id: 'sys', after: 'a' },
+    });
     expect(kids(below)).toEqual(['a', 'y', 'b']);
   });
 
@@ -129,7 +137,7 @@ describe('applyCommand', () => {
     expect('unfolded' in s.layout).toBe(false);
   });
 
-  it('openingPins reads a plane\'s unfolded list as expanded pins, by resolved plane key', () => {
+  it("openingPins reads a plane's unfolded list as expanded pins, by resolved plane key", () => {
     const s = applyCommand(state(), { type: 'set-unfolded', plane: 'arch', ids: ['sys'] });
     expect(openingPins(s.layout, s.model, 'arch')).toEqual({ sys: 'expanded' });
     expect(openingPins(s.layout, s.model, 'flow')).toEqual({ sys: 'expanded' }); // borrows arch's structure
@@ -264,9 +272,9 @@ describe('applyCommand', () => {
 
   it('throws CommandError on unknown command types and bad targets', () => {
     expect(() => applyCommand(state(), { type: 'rename-node', id: 'ghost', name: 'x' })).toThrowError(CommandError);
-    expect(() =>
-      applyCommand(state(), { type: 'nope' } as unknown as Parameters<typeof applyCommand>[1]),
-    ).toThrowError(CommandError);
+    expect(() => applyCommand(state(), { type: 'nope' } as unknown as Parameters<typeof applyCommand>[1])).toThrowError(
+      CommandError,
+    );
   });
 
   it('group-nodes nests members under the new node', () => {
@@ -302,9 +310,14 @@ describe('applyCommand', () => {
   it('applies set-node-plane-hidden', () => {
     const state = {
       model: {
-        version: 1 as const, id: 'm', name: 'm',
+        version: 1 as const,
+        id: 'm',
+        name: 'm',
         nodes: [{ id: 'a', name: 'a', type: 't' }],
-        containment: [], relations: [], layers: [], planes: [{ id: 'p', name: 'p' }],
+        containment: [],
+        relations: [],
+        layers: [],
+        planes: [{ id: 'p', name: 'p' }],
       },
       layout: { version: 1 as const, planes: {} },
       drawings: emptyDrawings(),
@@ -432,9 +445,20 @@ describe('applyCommand', () => {
   });
 
   it('routes set-table-columns', () => {
-    const state: EditorState = { model: { version: 1, id: 'd', name: 'd',
-      nodes: [{ id: 't', name: 't', type: 'db-table', columns: [] }],
-      containment: [], relations: [], layers: [], planes: [] }, layout: emptyLayout(), drawings: emptyDrawings() };
+    const state: EditorState = {
+      model: {
+        version: 1,
+        id: 'd',
+        name: 'd',
+        nodes: [{ id: 't', name: 't', type: 'db-table', columns: [] }],
+        containment: [],
+        relations: [],
+        layers: [],
+        planes: [],
+      },
+      layout: emptyLayout(),
+      drawings: emptyDrawings(),
+    };
     const next = applyCommand(state, { type: 'set-table-columns', id: 't', columns: [{ name: 'id', pk: true }] });
     expect(next.model.nodes[0]?.columns).toEqual([{ name: 'id', pk: true }]);
   });
@@ -619,9 +643,7 @@ describe('threat commands', () => {
       id: 't1',
       patch: { status: 'mitigated', severity: null },
     });
-    expect(next.model.nodes[0]?.threats).toEqual([
-      { id: 't1', category: 'S', title: 'Spoofing', status: 'mitigated' },
-    ]);
+    expect(next.model.nodes[0]?.threats).toEqual([{ id: 't1', category: 'S', title: 'Spoofing', status: 'mitigated' }]);
     expect(added.model.nodes[0]?.threats?.[0]?.severity).toBe('high');
     expect(next.layout).toBe(added.layout);
   });
@@ -635,9 +657,9 @@ describe('threat commands', () => {
     const next = applyCommand(added, { type: 'remove-threat', target: { relation: flowId }, id: 't1' });
     expect(next.model.relations[0]?.threats).toBeUndefined();
     expect(next.layout).toBe(added.layout);
-    expect(() =>
-      applyCommand(next, { type: 'remove-threat', target: { relation: flowId }, id: 't1' }),
-    ).toThrow(CommandError);
+    expect(() => applyCommand(next, { type: 'remove-threat', target: { relation: flowId }, id: 't1' })).toThrow(
+      CommandError,
+    );
   });
 
   it('carries the three through applyCommandWithResult with no relation id', () => {
@@ -663,8 +685,16 @@ describe('threat notes (layout-only)', () => {
     const b = m.node('b', { type: TM_STORE_TYPE });
     m.relate(a, b, { kind: TM_FLOW_KIND });
     let s: EditorState = { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
-    s = applyCommand(s, { type: 'add-threat', target: { node: 'a' }, threat: { id: 't1', category: 'E', title: 'Admin route' } });
-    s = applyCommand(s, { type: 'add-threat', target: { relation: flowId }, threat: { id: 't1', category: 'T', title: 'MITM' } });
+    s = applyCommand(s, {
+      type: 'add-threat',
+      target: { node: 'a' },
+      threat: { id: 't1', category: 'E', title: 'Admin route' },
+    });
+    s = applyCommand(s, {
+      type: 'add-threat',
+      target: { relation: flowId },
+      threat: { id: 't1', category: 'T', title: 'MITM' },
+    });
     return s;
   }
 
@@ -681,7 +711,10 @@ describe('threat notes (layout-only)', () => {
   it('set-note-offset scopes to the named plane and keeps the two namespaces apart', () => {
     let s = applyCommand(noteState(), { type: 'set-note-offset', target: { node: 'a' }, offset: { dx: 1, dy: 2 } });
     s = applyCommand(s, { type: 'set-note-offset', target: { relation: flowId }, offset: { dx: 3, dy: 4 } });
-    expect(s.layout.notes?.['default']).toEqual({ 'node:a': { dx: 1, dy: 2 }, [`relation:${flowId}`]: { dx: 3, dy: 4 } });
+    expect(s.layout.notes?.['default']).toEqual({
+      'node:a': { dx: 1, dy: 2 },
+      [`relation:${flowId}`]: { dx: 3, dy: 4 },
+    });
   });
 
   it('set-note-open writes open: true, and clearing it prunes an offset-less entry', () => {
@@ -691,7 +724,9 @@ describe('threat notes (layout-only)', () => {
     expect(s1.layout.notes).toEqual({ [key]: { 'node:a': { dx: 0, dy: 0, open: true } } });
     expect(s1.model).toBe(before.model);
     // closing a bubble that was never dragged leaves no trace in the file
-    expect(applyCommand(s1, { type: 'set-note-open', target: { node: 'a' }, open: false }).layout.notes).toBeUndefined();
+    expect(
+      applyCommand(s1, { type: 'set-note-open', target: { node: 'a' }, open: false }).layout.notes,
+    ).toBeUndefined();
   });
 
   it('set-note-open keeps a dragged offset either way, and set-note-offset keeps open', () => {
@@ -728,7 +763,11 @@ describe('threat notes (layout-only)', () => {
     const a = m.node('a', { type: TM_PROCESS_TYPE });
     m.node('sys', { type: 'system' }).contains(a, { plane: 'p' });
     const base: EditorState = { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
-    const withThreat = applyCommand(base, { type: 'add-threat', target: { node: 'a' }, threat: { id: 't1', category: 'E', title: 'Admin route' } });
+    const withThreat = applyCommand(base, {
+      type: 'add-threat',
+      target: { node: 'a' },
+      threat: { id: 't1', category: 'E', title: 'Admin route' },
+    });
     const s = applyCommand(withThreat, { type: 'set-notes-open', plane: 'p', open: true });
     expect(s.layout.notes).toEqual({ p: { 'node:a': { dx: 0, dy: 0, open: true } } });
   });
@@ -770,7 +809,12 @@ describe('threat notes (layout-only)', () => {
       target: { node: 'a' },
       threat: { id: 't1', category: 'E', title: 'Admin route' },
     });
-    const s1 = applyCommand(withThreat, { type: 'set-note-offset', target: { node: 'a' }, plane: 'p', offset: { dx: 1, dy: 1 } });
+    const s1 = applyCommand(withThreat, {
+      type: 'set-note-offset',
+      target: { node: 'a' },
+      plane: 'p',
+      offset: { dx: 1, dy: 1 },
+    });
     // both halves of the entry — the dragged offset and the open flag — so the
     // prune is proved against a full bucket, not just an offset
     const s2 = applyCommand(s1, { type: 'set-note-open', target: { node: 'a' }, plane: 'p', open: true });
@@ -786,7 +830,12 @@ describe('note hygiene counts comments and links as bubble content', () => {
    * about threats would be caught here twice over. */
   function mixedState(): EditorState {
     const base: DiagramModel = {
-      version: 1, id: 'd', name: 'd', layers: [], planes: [], containment: [],
+      version: 1,
+      id: 'd',
+      name: 'd',
+      layers: [],
+      planes: [],
+      containment: [],
       nodes: [
         { id: 'a', name: 'A', comments: [{ id: 'c1', text: 'Remark on A' }] },
         { id: 'b', name: 'B', threats: [{ id: 't1', category: 'S', title: 'Spoofed session' }] },
@@ -811,7 +860,12 @@ describe('note hygiene counts comments and links as bubble content', () => {
   it('keeps a comment-only and a link-only placement through an edit and a rename', () => {
     const s = mixedState();
     const key = layoutPlaneKey(s.model);
-    const edited = applyCommand(s, { type: 'update-comment', target: { node: 'a' }, id: 'c1', patch: { text: 'Edited' } });
+    const edited = applyCommand(s, {
+      type: 'update-comment',
+      target: { node: 'a' },
+      id: 'c1',
+      patch: { text: 'Edited' },
+    });
     expect(edited.layout.notes?.[key]?.['node:a']).toEqual({ dx: 40, dy: -20, open: true });
     expect(edited.layout.notes?.[key]?.['relation:r']).toEqual({ dx: 5, dy: 6, open: true });
     // nothing died, so the overlay keeps its identity — the same contract the
@@ -836,8 +890,16 @@ describe('note hygiene counts comments and links as bubble content', () => {
 describe('comment commands', () => {
   function commentState(): EditorState {
     const base: DiagramModel = {
-      version: 1, id: 'd', name: 'd', layers: [], planes: [], containment: [],
-      nodes: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }],
+      version: 1,
+      id: 'd',
+      name: 'd',
+      layers: [],
+      planes: [],
+      containment: [],
+      nodes: [
+        { id: 'a', name: 'A' },
+        { id: 'b', name: 'B' },
+      ],
       relations: [{ id: 'r', from: 'a', to: 'b', kind: 'sync' }],
     };
     return { model: base, layout: emptyLayout(), drawings: emptyDrawings() };
@@ -884,11 +946,13 @@ describe('comment commands', () => {
     expect(() =>
       applyCommand(s, { type: 'update-comment', target: { node: 'a' }, id: 'c9', patch: { text: 'z' } }),
     ).toThrow(/Unknown comment/);
+    expect(() => applyCommand(s, { type: 'remove-comment', target: { node: 'zz' }, id: 'c1' })).toThrow(/Unknown node/);
     expect(() =>
-      applyCommand(s, { type: 'remove-comment', target: { node: 'zz' }, id: 'c1' }),
-    ).toThrow(/Unknown node/);
-    expect(() =>
-      applyCommand(s, { type: 'add-comment', target: { node: 'a' }, comment: { id: 'c2', text: 'y', at: '2026-02-30' } }),
+      applyCommand(s, {
+        type: 'add-comment',
+        target: { node: 'a' },
+        comment: { id: 'c2', text: 'y', at: '2026-02-30' },
+      }),
     ).toThrow(/YYYY-MM-DD/);
     expect(() =>
       applyCommand(s, { type: 'update-comment', target: { node: 'a' }, id: 'c1', patch: { at: 'soon' } }),
@@ -923,12 +987,22 @@ describe('comment commands', () => {
 describe('set-plan-dates', () => {
   const withZone = (): EditorState => {
     const s = state();
-    s.model = { ...s.model, nodes: [...s.model.nodes, { id: 'z', name: 'Z', type: 'plan-zone', metadata: { start: '2026-01-05', end: '2026-01-09', note: 'keep' } }] };
+    s.model = {
+      ...s.model,
+      nodes: [
+        ...s.model.nodes,
+        { id: 'z', name: 'Z', type: 'plan-zone', metadata: { start: '2026-01-05', end: '2026-01-09', note: 'keep' } },
+      ],
+    };
     return s;
   };
   it('writes the given keys into metadata and leaves the rest alone', () => {
     const s = applyCommand(withZone(), { type: 'set-plan-dates', id: 'z', dates: { end: '2026-01-16' } });
-    expect(s.model.nodes.find((n) => n.id === 'z')?.metadata).toEqual({ start: '2026-01-05', end: '2026-01-16', note: 'keep' });
+    expect(s.model.nodes.find((n) => n.id === 'z')?.metadata).toEqual({
+      start: '2026-01-05',
+      end: '2026-01-16',
+      note: 'keep',
+    });
   });
   it('creates metadata on a node that had none', () => {
     const s0 = state();
@@ -936,9 +1010,15 @@ describe('set-plan-dates', () => {
     expect(s.model.nodes.find((n) => n.id === 'a')?.metadata).toEqual({ at: '2026-02-02' });
   });
   it('rejects a value that is not a real date, and an unknown node', () => {
-    expect(() => applyCommand(withZone(), { type: 'set-plan-dates', id: 'z', dates: { start: '2026-02-30' } })).toThrow(CommandError);
-    expect(() => applyCommand(withZone(), { type: 'set-plan-dates', id: 'z', dates: { start: 'next week' } })).toThrow(/YYYY-MM-DD/);
-    expect(() => applyCommand(withZone(), { type: 'set-plan-dates', id: 'nope', dates: { start: '2026-01-01' } })).toThrow(/nope/);
+    expect(() => applyCommand(withZone(), { type: 'set-plan-dates', id: 'z', dates: { start: '2026-02-30' } })).toThrow(
+      CommandError,
+    );
+    expect(() => applyCommand(withZone(), { type: 'set-plan-dates', id: 'z', dates: { start: 'next week' } })).toThrow(
+      /YYYY-MM-DD/,
+    );
+    expect(() =>
+      applyCommand(withZone(), { type: 'set-plan-dates', id: 'nope', dates: { start: '2026-01-01' } }),
+    ).toThrow(/nope/);
   });
   it('keeps the layout and the untouched nodes by identity', () => {
     const s0 = withZone();

@@ -17,8 +17,18 @@ import {
 } from './plan';
 import type { DiagramNode } from './types';
 
-const zone = (metadata: Record<string, unknown>): DiagramNode => ({ id: 'z', name: 'Z', type: PLAN_ZONE_TYPE, metadata });
-const event = (metadata: Record<string, unknown>): DiagramNode => ({ id: 'e', name: 'E', type: PLAN_EVENT_TYPE, metadata });
+const zone = (metadata: Record<string, unknown>): DiagramNode => ({
+  id: 'z',
+  name: 'Z',
+  type: PLAN_ZONE_TYPE,
+  metadata,
+});
+const event = (metadata: Record<string, unknown>): DiagramNode => ({
+  id: 'e',
+  name: 'E',
+  type: PLAN_EVENT_TYPE,
+  metadata,
+});
 
 describe('dayOf / isoOf', () => {
   it('round-trips a real date as UTC days since the epoch', () => {
@@ -37,7 +47,10 @@ describe('dayOf / isoOf', () => {
 
 describe('spanOf / atOf', () => {
   it('reads a zone span from metadata, inclusive ends as day numbers', () => {
-    expect(spanOf(zone({ start: '2026-01-05', end: '2026-01-09' }))).toEqual({ start: dayOf('2026-01-05'), end: dayOf('2026-01-09') });
+    expect(spanOf(zone({ start: '2026-01-05', end: '2026-01-09' }))).toEqual({
+      start: dayOf('2026-01-05'),
+      end: dayOf('2026-01-09'),
+    });
   });
   it('is undefined for a non-zone, a missing or bad date, or end before start', () => {
     expect(spanOf({ ...zone({ start: '2026-01-05', end: '2026-01-09' }), type: 'service' })).toBeUndefined();
@@ -89,9 +102,21 @@ describe('planGraph', () => {
     const m = model('roadmap');
     m.plane('arch').plane('plan', { notation: 'plan' });
     const api = m.node('api', { type: 'service' });
-    const q1 = m.node('q1', { type: PLAN_ZONE_TYPE, plane: 'plan', metadata: { start: '2026-01-05', end: '2026-03-27' } });
-    const design = m.node('design', { type: PLAN_ZONE_TYPE, plane: 'plan', metadata: { start: '2026-01-05', end: '2026-01-30' } });
-    const build = m.node('build', { type: PLAN_ZONE_TYPE, plane: 'plan', metadata: { start: '2026-02-02', end: '2026-03-27' } });
+    const q1 = m.node('q1', {
+      type: PLAN_ZONE_TYPE,
+      plane: 'plan',
+      metadata: { start: '2026-01-05', end: '2026-03-27' },
+    });
+    const design = m.node('design', {
+      type: PLAN_ZONE_TYPE,
+      plane: 'plan',
+      metadata: { start: '2026-01-05', end: '2026-01-30' },
+    });
+    const build = m.node('build', {
+      type: PLAN_ZONE_TYPE,
+      plane: 'plan',
+      metadata: { start: '2026-02-02', end: '2026-03-27' },
+    });
     const m1 = m.node('m1', { type: PLAN_EVENT_TYPE, plane: 'plan', metadata: { at: '2026-03-02' } });
     const kickoff = m.node('kickoff', { type: PLAN_EVENT_TYPE, plane: 'plan', metadata: { at: '2025-12-15' } });
     const alice = m.node('alice', { type: 'person', plane: 'plan' });

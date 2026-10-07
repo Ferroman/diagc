@@ -3,7 +3,14 @@ import { seedFrom, sketchNode, sketchEdge, sketchCircle } from './sketch';
 import type { RoughStyle } from './stylePresets';
 
 const SOLID: RoughStyle = { roughness: 1.15, bowing: 1, strokeWidth: 1.5, fillStyle: 'solid' };
-const HACHURE: RoughStyle = { roughness: 0.9, bowing: 0.8, strokeWidth: 1.2, fillStyle: 'hachure', fillWeight: 0.8, hachureGap: 5 };
+const HACHURE: RoughStyle = {
+  roughness: 0.9,
+  bowing: 0.8,
+  strokeWidth: 1.2,
+  fillStyle: 'hachure',
+  fillWeight: 0.8,
+  hachureGap: 5,
+};
 
 describe('seedFrom', () => {
   it('is stable and varies by id', () => {
@@ -91,7 +98,7 @@ describe('sketchEdge', () => {
     expect(sketchEdge(bare, 1, SOLID)).toBe(bare);
   });
 
-  it('draws a single stroke pass, not rough\'s default two overlapping ones', () => {
+  it("draws a single stroke pass, not rough's default two overlapping ones", () => {
     // rough.js sketches each line as TWO overlapping passes by default; on a
     // long curved edge (e.g. a CLD bow) the two passes run visibly parallel and
     // read as two separate edges. One pass per edge keeps it a single line.
@@ -131,7 +138,14 @@ describe('fill styles', () => {
   it('puts geometry in hatch (not fill) for every non-solid fill style', () => {
     const nonSolid: RoughStyle['fillStyle'][] = ['hachure', 'cross-hatch', 'zigzag', 'dots'];
     for (const fillStyle of nonSolid) {
-      const style: RoughStyle = { roughness: 0.9, bowing: 0.8, strokeWidth: 1.2, fillStyle, fillWeight: 0.8, hachureGap: 5 };
+      const style: RoughStyle = {
+        roughness: 0.9,
+        bowing: 0.8,
+        strokeWidth: 1.2,
+        fillStyle,
+        fillWeight: 0.8,
+        hachureGap: 5,
+      };
       const p = sketchNode('box', 160, 80, 42, style);
       expect(p.hatch.length).toBeGreaterThan(0);
       expect(p.fill).toBe('');
@@ -160,7 +174,9 @@ describe('cornerRadius', () => {
     const round = sketchNode('box', 160, 80, 42, HACHURE, 14);
     expect(round.stroke).not.toBe(sharp.stroke);
     // a bubble is a box with a tail — it rounds like one
-    expect(sketchNode('bubble', 160, 80, 42, HACHURE, 14).stroke).not.toBe(sketchNode('bubble', 160, 80, 42, HACHURE).stroke);
+    expect(sketchNode('bubble', 160, 80, 42, HACHURE, 14).stroke).not.toBe(
+      sketchNode('bubble', 160, 80, 42, HACHURE).stroke,
+    );
     // cylinder/hexagon ignore the radius entirely
     for (const kind of ['cylinder', 'hexagon'] as const) {
       expect(sketchNode(kind, 160, 80, 42, HACHURE, 14)).toEqual(sketchNode(kind, 160, 80, 42, HACHURE));

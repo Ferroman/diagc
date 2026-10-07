@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { relationLabels } from './labels';
 import type { DiagramRelation } from './types';
 
-const rel = (extra: Partial<DiagramRelation>): DiagramRelation => ({ id: 'r', from: 'a', to: 'b', kind: 'sync', ...extra });
+const rel = (extra: Partial<DiagramRelation>): DiagramRelation => ({
+  id: 'r',
+  from: 'a',
+  to: 'b',
+  kind: 'sync',
+  ...extra,
+});
 
 describe('relationLabels', () => {
   it('returns the labels list when present (wins over legacy label)', () => {

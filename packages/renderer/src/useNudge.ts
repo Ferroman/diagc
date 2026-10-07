@@ -29,7 +29,9 @@ const ARROWS: Record<string, { x: number; y: number }> = {
 
 const inField = (el: Element | null): boolean => {
   const tag = el?.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el as HTMLElement | null)?.isContentEditable === true;
+  return (
+    tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el as HTMLElement | null)?.isContentEditable === true
+  );
 };
 
 /**

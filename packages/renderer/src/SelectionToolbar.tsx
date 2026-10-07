@@ -34,7 +34,14 @@ export function SelectionToolbar({ ids, onAlign, onDistribute }: SelectionToolba
   return (
     <Panel position="top-center" className="dg-selection-toolbar" aria-label="Arrange selection">
       {ALIGN.map((a) => (
-        <button key={a.mode} type="button" className="dg-arrange-btn" title={a.label} aria-label={a.label} onClick={() => onAlign(a.mode)}>
+        <button
+          key={a.mode}
+          type="button"
+          className="dg-arrange-btn"
+          title={a.label}
+          aria-label={a.label}
+          onClick={() => onAlign(a.mode)}
+        >
           {a.glyph}
         </button>
       ))}

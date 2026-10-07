@@ -149,7 +149,12 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const [snap, setSnap] = usePersistedState<boolean>(SNAP_KEY, false, (raw) => (raw === null ? null : raw === 'true'));
   // Keyboard shortcuts: viewer state like the theme — only what the user changed
   // is stored, so a default added later still reaches them (see hotkeys/keymap).
-  const [hotkeyOverrides, setHotkeyOverrides] = usePersistedState<Overrides>(HOTKEYS_KEY, {}, parseOverrides, JSON.stringify);
+  const [hotkeyOverrides, setHotkeyOverrides] = usePersistedState<Overrides>(
+    HOTKEYS_KEY,
+    {},
+    parseOverrides,
+    JSON.stringify,
+  );
   const keymap = useMemo(() => resolveKeymap(hotkeyOverrides), [hotkeyOverrides]);
   const [hotkeysOpen, setHotkeysOpen] = useState(false);
   const mac = useMemo(isMac, []);
@@ -164,8 +169,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const [activeLayer, setActiveLayer] = useState<string | null>(null);
   const [pins, setPins] = useState<Record<string, 'expanded' | 'collapsed'>>({});
   // A viewer's momentary layout choice, keyed by resolved containment plane like
-  // the persisted settings are. Never written: this is viewer state in the same
-  // class as pins and focus, and DEFERRALS.md:14 keeps saves explicit.
+  // the persisted settings are. Never written to the sidecar: like focus, it is
+  // viewer state.
   const [layoutPreview, setLayoutPreview] = useState<Record<string, LayoutSettings>>({});
   // Boxes moved by hand in view mode (alt-drag), not yet written to the sidecar.
   // Unlike the layout preview these CAN be persisted — coordinates were never
@@ -222,8 +227,18 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const libraryView = useState(EMPTY_LIBRARY_VIEW);
   // The dock collapse states persist with an on-disk format that predates this
   // hook ('collapsed'/'expanded'), so both reader and serializer use it.
-  const [leftCollapsed, setLeftCollapsed] = usePersistedState<boolean>(LEFT_DOCK_KEY, false, (raw) => raw === 'collapsed', (v) => (v ? 'collapsed' : 'expanded'));
-  const [rightCollapsed, setRightCollapsed] = usePersistedState<boolean>(RIGHT_DOCK_KEY, false, (raw) => raw === 'collapsed', (v) => (v ? 'collapsed' : 'expanded'));
+  const [leftCollapsed, setLeftCollapsed] = usePersistedState<boolean>(
+    LEFT_DOCK_KEY,
+    false,
+    (raw) => raw === 'collapsed',
+    (v) => (v ? 'collapsed' : 'expanded'),
+  );
+  const [rightCollapsed, setRightCollapsed] = usePersistedState<boolean>(
+    RIGHT_DOCK_KEY,
+    false,
+    (raw) => raw === 'collapsed',
+    (v) => (v ? 'collapsed' : 'expanded'),
+  );
   const [leftWidth, setLeftWidth] = usePersistedState<number>(LEFT_WIDTH_KEY, LEFT_DEFAULT, (raw) =>
     readClampedWidth(raw, LEFT_MIN, DOCK_MAX),
   );
@@ -273,7 +288,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     resetInspector: () => setLeftTab('properties'), // re-entering edit starts on Properties
     leaveEditRef,
   });
-  const { editing, setEditing, editor, layoutApiRef, saveIssues, setSaveIssues, saving, doSave, enterEdit, leaveEdit } = edit;
+  const { editing, setEditing, editor, layoutApiRef, saveIssues, setSaveIssues, saving, doSave, enterEdit, leaveEdit } =
+    edit;
 
   // Leaving edit mode or switching diagram drops the pen (see the tool state
   // above): Pen/Eraser only exist in edit mode, and a tool that survived either
@@ -523,7 +539,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     // The element's own STRIDE letters, so a store opens on Tampering rather
     // than on a constant; the panel is where it gets corrected.
     const typeOrKind =
-      'node' in target ? m.nodes.find((n) => n.id === target.node)?.type : m.relations.find((r) => r.id === target.relation)?.kind;
+      'node' in target
+        ? m.nodes.find((n) => n.id === target.node)?.type
+        : m.relations.find((r) => r.id === target.relation)?.kind;
     const id = nextThreatId(existing);
     // NEW_THREAT_TITLE, never `''`: autosave fires on a 300ms timer, so the
     // model this dispatch produces is saved while the field is still open — and
@@ -536,7 +554,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     editor.dispatch({
       type: 'batch',
       commands: [
-        { type: 'add-threat', target, threat: { id, category: strideFor(typeOrKind)[0] ?? 'S', title: NEW_THREAT_TITLE } },
+        {
+          type: 'add-threat',
+          target,
+          threat: { id, category: strideFor(typeOrKind)[0] ?? 'S', title: NEW_THREAT_TITLE },
+        },
         { type: 'set-note-open', target, open: true, ...planeOpt },
       ],
     });
@@ -570,7 +592,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   };
   // The `Notes` chip reads pressed only when EVERY bubble is open (model-wide,
   // the set-notes-open rule), so a press always does what the picture lacks.
-  const allOpen = model !== undefined && layout !== undefined && allNotesOpen(model, layout, layoutPlaneKey(model, activePlane));
+  const allOpen =
+    model !== undefined && layout !== undefined && allNotesOpen(model, layout, layoutPlaneKey(model, activePlane));
   // `some` rather than threatRegister(): this runs every render and only needs
   // to know whether ONE threat exists, not to build (and name) every row.
   const anyThreats =
@@ -685,7 +708,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     if (activePlaneManual) {
       editor.dispatch({ type: 'set-plane-layout', manual: false, ...planeOpt });
     } else {
-      editor.dispatch({ type: 'set-positions', positions: layoutApiRef.current?.snapshotPositions() ?? {}, ...planeOpt });
+      editor.dispatch({
+        type: 'set-positions',
+        positions: layoutApiRef.current?.snapshotPositions() ?? {},
+        ...planeOpt,
+      });
       editor.dispatch({ type: 'set-plane-layout', manual: true, ...planeOpt });
     }
   };
@@ -694,7 +721,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // clears it back to the tuned default; the reducer drops emptied buckets).
   const setLayoutSettings = (patch: Partial<LayoutSettings>) => {
     if (editor.session?.state.model === undefined) return;
-    editor.dispatch({ type: 'set-layout-settings', patch, ...(activePlane !== undefined ? { plane: activePlane } : {}) });
+    editor.dispatch({
+      type: 'set-layout-settings',
+      patch,
+      ...(activePlane !== undefined ? { plane: activePlane } : {}),
+    });
   };
 
   // Write an overlay to `<name>.layout.json` and fold it into the in-memory copy
@@ -754,7 +785,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
 
   const savePositions = useCallback(async () => {
     if (model === undefined || !unsavedView) return;
-    const ok = await postLayout(withSavedPositions(layout, model, activePlane, movedPositions, unfoldedNow, movedLabels));
+    const ok = await postLayout(
+      withSavedPositions(layout, model, activePlane, movedPositions, unfoldedNow, movedLabels),
+    );
     // The posted body folds movedPositions into the saved overlay, so on success
     // those drags are no longer unsaved — clear the chip. A failed post must
     // leave it up (postLayout surfaces saveIssues) so the user can retry.
@@ -774,7 +807,14 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     const freezing = !activePlaneManual;
     const snapshot = freezing ? (layoutApiRef.current?.snapshotPositions() ?? {}) : null;
     const ok = await postLayout(
-      withPlaneManual(layout, model, activePlane, snapshot, freezing ? unfoldedNow : undefined, freezing ? movedLabels : {}),
+      withPlaneManual(
+        layout,
+        model,
+        activePlane,
+        snapshot,
+        freezing ? unfoldedNow : undefined,
+        freezing ? movedLabels : {},
+      ),
     );
     // Freezing's body IS the current on-screen snapshot, so any pending
     // view-mode drags it covers are now saved too — clear the chip. Thawing's
@@ -799,7 +839,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
 
   // Global color target: the selected node, or the selected single-relation
   // edge — drives the toolbar swatch row (select object -> click color).
-  const selectionColor = editing && model !== undefined ? computeSelectionColor(model, selection, editor.dispatch) : null;
+  const selectionColor =
+    editing && model !== undefined ? computeSelectionColor(model, selection, editor.dispatch) : null;
 
   // The node panel's position inputs, computed once here instead of twice in
   // the JSX below (hasPin used to run this same lookup a second time via an
@@ -809,7 +850,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
       ? layout?.planes[layoutPlaneKey(model, activePlane)]?.[selection.id]
       : undefined;
   const live =
-    selection?.kind === 'node' && model !== undefined ? layoutApiRef.current?.snapshotPositions()[selection.id] : undefined;
+    selection?.kind === 'node' && model !== undefined
+      ? layoutApiRef.current?.snapshotPositions()[selection.id]
+      : undefined;
 
   // What each hotkey does right now (hotkeys/useHotkeys reads this ref on every
   // key). The rule: a handler is present exactly while its button would be shown
@@ -821,7 +864,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const viewChips = !editing && model !== undefined;
   const hasSavedPositions =
     model !== undefined && Object.keys(layout?.planes[layoutPlaneKey(model, activePlane)] ?? {}).length > 0;
-  const canvasCmd = (run: (c: CanvasCommands) => boolean) => on(model !== undefined, () => (canvasCommandsRef.current !== null ? run(canvasCommandsRef.current) : false));
+  const canvasCmd = (run: (c: CanvasCommands) => boolean) =>
+    on(model !== undefined, () => (canvasCommandsRef.current !== null ? run(canvasCommandsRef.current) : false));
   // Pen/Eraser are refused while drilled in, matching the toolbar chips, which
   // are disabled there (drawings are a top-level layer): a chip that reads pressed
   // while disabled, and a pen that springs to life the moment you drill back out,
@@ -845,12 +889,14 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     'edit.redo': on(editing, () => editor.redo()),
     'edit.save': on(editing, () => void doSave()),
     'edit.group': on(editing && groupSel.length >= 2, () => void groupSelected()),
-    'edit.relayout': on(editing, () =>
-      void relayoutPlane(editor, {
-        autoLayout: !activePlaneManual,
-        activePlane,
-        getAutoPositions: () => layoutApiRef.current?.autoPositions() ?? {},
-      }),
+    'edit.relayout': on(
+      editing,
+      () =>
+        void relayoutPlane(editor, {
+          autoLayout: !activePlaneManual,
+          activePlane,
+          getAutoPositions: () => layoutApiRef.current?.autoPositions() ?? {},
+        }),
     ),
     'edit.toggle-auto-layout': on(editing, toggleAutoLayout),
     'edit.toggle-notes': on(editing && hasThreats && anyThreats, () =>
@@ -900,14 +946,28 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     'window.snap': () => setSnap((v) => !v),
     'window.hotkeys': () => setHotkeysOpen(true),
   };
-  useHotkeys({ rootRef: appRef, keymap, mode: editing ? 'edit' : 'view', handlersRef: hotkeyHandlers, suspended: hotkeysOpen, mac });
+  useHotkeys({
+    rootRef: appRef,
+    keymap,
+    mode: editing ? 'edit' : 'view',
+    handlersRef: hotkeyHandlers,
+    suspended: hotkeysOpen,
+    mac,
+  });
   const hint = (id: ActionId) => keyHint(keymap, id, mac);
   // The topbar's ⋯ menu. Each row keeps the condition its chip had: a diagram
   // compiled from TypeScript has no source here to rename or eject, only a
   // model to copy.
   const diagramMenu: MenuItem[] = [
     ...(owned
-      ? [{ id: 'rename', label: 'Rename', title: `Rename this diagram${hint('diagram.rename')}`, onSelect: () => void actions.renameDiagram() }]
+      ? [
+          {
+            id: 'rename',
+            label: 'Rename',
+            title: `Rename this diagram${hint('diagram.rename')}`,
+            onSelect: () => void actions.renameDiagram(),
+          },
+        ]
       : []),
     ...(model !== undefined
       ? [
@@ -950,705 +1010,734 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
 
   return (
     <HotkeysContext.Provider value={hotkeysContext}>
-    <div className="app" ref={appRef}>
-      <header className="topbar">
-        {/* One row that has to fit a narrow Obsidian pane as well as a wide
+      <div className="app" ref={appRef}>
+        <header className="topbar">
+          {/* One row that has to fit a narrow Obsidian pane as well as a wide
             window: what names the diagram on the left, what must be SEEN (an
             unsaved arrangement) and the viewer's toggles on the right. Layout
             and style live in the right dock's Layout & style section; the brand
             is the first thing to give way (app.css). */}
-        <strong className="brand">diagc studio</strong>
-        <DiagramPicker
-          names={names}
-          selected={selected}
-          onSelect={(name) => {
-            if (!leaveEdit()) return;
-            setSelected(name);
-            setEnteredPath([]);
-            resetView();
-          }}
-          toggleRef={pickerToggleRef}
-        />
-        {canDesign && (
-          <button
-            type="button"
-            className="chip icon"
-            aria-label="New diagram"
-            title={`New diagram${hint('diagram.new')}`}
-            onClick={() => void actions.newDiagram()}
-          >
-            ＋
-          </button>
-        )}
-        {canDesign && !editing && (
-          <MenuButton label="Diagram actions" items={diagramMenu}>
-            ⋯
-          </MenuButton>
-        )}
-        {model !== undefined &&
-          (owned ? (
-            !editing && (
-              <button className="chip" onClick={() => void enterEditFromSource()} title={`Edit this diagram${hint('diagram.toggle-edit')}`}>
-                Edit
-              </button>
-            )
-          ) : (
-            <span className="chip read-only" title="Compiled from TypeScript — edit the source">
-              read-only
-            </span>
-          ))}
-        <span className="spacer" />
-        {/* Stays up here, unlike the other layout chips: it appears only when
+          <strong className="brand">diagc studio</strong>
+          <DiagramPicker
+            names={names}
+            selected={selected}
+            onSelect={(name) => {
+              if (!leaveEdit()) return;
+              setSelected(name);
+              setEnteredPath([]);
+              resetView();
+            }}
+            toggleRef={pickerToggleRef}
+          />
+          {canDesign && (
+            <button
+              type="button"
+              className="chip icon"
+              aria-label="New diagram"
+              title={`New diagram${hint('diagram.new')}`}
+              onClick={() => void actions.newDiagram()}
+            >
+              ＋
+            </button>
+          )}
+          {canDesign && !editing && (
+            <MenuButton label="Diagram actions" items={diagramMenu}>
+              ⋯
+            </MenuButton>
+          )}
+          {model !== undefined &&
+            (owned ? (
+              !editing && (
+                <button
+                  className="chip"
+                  onClick={() => void enterEditFromSource()}
+                  title={`Edit this diagram${hint('diagram.toggle-edit')}`}
+                >
+                  Edit
+                </button>
+              )
+            ) : (
+              <span className="chip read-only" title="Compiled from TypeScript — edit the source">
+                read-only
+              </span>
+            ))}
+          <span className="spacer" />
+          {/* Stays up here, unlike the other layout chips: it appears only when
             there is something to lose, and a folded dock must not hide that. */}
-        {!editing && model !== undefined && unsavedView && (
-          <button
-            className="chip primary"
-            disabled={savingPositions}
-            title={`Write the boxes and edge labels you moved, and which groups are open, to this diagram's layout file. Safe on a generated diagram: re-compiling rewrites the model, never the layout.${hint('view.save-positions')}`}
-            onClick={() => void savePositions()}
-          >
-            {savingPositions ? 'Saving…' : 'Save positions'}
-          </button>
-        )}
-        {/* Edit-mode only: opening every bubble is a command on the undo stack,
+          {!editing && model !== undefined && unsavedView && (
+            <button
+              className="chip primary"
+              disabled={savingPositions}
+              title={`Write the boxes and edge labels you moved, and which groups are open, to this diagram's layout file. Safe on a generated diagram: re-compiling rewrites the model, never the layout.${hint('view.save-positions')}`}
+              onClick={() => void savePositions()}
+            >
+              {savingPositions ? 'Saving…' : 'Save positions'}
+            </button>
+          )}
+          {/* Edit-mode only: opening every bubble is a command on the undo stack,
             saved in the layout file so the published page and the PNG agree —
             in view mode there is no session to dispatch into (there the badge
             toggles for the session). */}
-        {editing && hasThreats && (
+          {editing && hasThreats && (
+            <button
+              type="button"
+              className={`chip${allOpen ? ' active' : ''}`}
+              aria-pressed={allOpen}
+              // an empty register has nothing to open: the command would push an
+              // undo step and an autosave that change nothing
+              disabled={!anyThreats}
+              title={`${allOpen ? 'Close all threat notes' : 'Open all threat notes'}${hint('edit.toggle-notes')}`}
+              onClick={() => editor.dispatch({ type: 'set-notes-open', open: !allOpen, ...planeOpt })}
+            >
+              Notes
+            </button>
+          )}
+          <span className="sep" />
           <button
             type="button"
-            className={`chip${allOpen ? ' active' : ''}`}
-            aria-pressed={allOpen}
-            // an empty register has nothing to open: the command would push an
-            // undo step and an autosave that change nothing
-            disabled={!anyThreats}
-            title={`${allOpen ? 'Close all threat notes' : 'Open all threat notes'}${hint('edit.toggle-notes')}`}
-            onClick={() => editor.dispatch({ type: 'set-notes-open', open: !allOpen, ...planeOpt })}
+            className={`chip icon${snap ? ' active' : ''}`}
+            aria-label="Snap to grid"
+            aria-pressed={snap}
+            title={`${
+              snap
+                ? `Snapping to a ${SNAP_GRID}px grid. Click to place boxes freely.`
+                : `Snap dragged boxes to a ${SNAP_GRID}px grid; arrow keys step by it too.`
+            }${hint('window.snap')}`}
+            onClick={() => setSnap((v) => !v)}
           >
-            Notes
+            ⋮⋮
           </button>
-        )}
-        <span className="sep" />
-        <button
-          type="button"
-          className={`chip icon${snap ? ' active' : ''}`}
-          aria-label="Snap to grid"
-          aria-pressed={snap}
-          title={`${
-            snap
-              ? `Snapping to a ${SNAP_GRID}px grid. Click to place boxes freely.`
-              : `Snap dragged boxes to a ${SNAP_GRID}px grid; arrow keys step by it too.`
-          }${hint('window.snap')}`}
-          onClick={() => setSnap((v) => !v)}
-        >
-          ⋮⋮
-        </button>
-        <button
-          type="button"
-          className="chip icon"
-          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-          title={`${theme === 'dark' ? 'Light theme' : 'Dark theme'}${hint('window.theme')}`}
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        >
-          {theme === 'dark' ? '☀' : '☾'}
-        </button>
-        <button
-          ref={gearRef}
-          type="button"
-          className="chip icon"
-          aria-label="Keyboard shortcuts"
-          title={`Keyboard shortcuts${hint('window.hotkeys')}`}
-          onClick={() => setHotkeysOpen(true)}
-        >
-          ⚙
-        </button>
-        {/* AGPL section 13 offer. Near-dormant on localhost, but `diagc studio` accepts
+          <button
+            type="button"
+            className="chip icon"
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            title={`${theme === 'dark' ? 'Light theme' : 'Dark theme'}${hint('window.theme')}`}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            {theme === 'dark' ? '☀' : '☾'}
+          </button>
+          <button
+            ref={gearRef}
+            type="button"
+            className="chip icon"
+            aria-label="Keyboard shortcuts"
+            title={`Keyboard shortcuts${hint('window.hotkeys')}`}
+            onClick={() => setHotkeysOpen(true)}
+          >
+            ⚙
+          </button>
+          {/* AGPL section 13 offer. Near-dormant on localhost, but `diagc studio` accepts
             a `host` option, and the moment it is bound to a non-loopback address its
             users are interacting with the program over a network and are owed a way to
             get its source. Cheaper to always show than to detect the binding. */}
-        <a
-          className="chip source-link"
-          href={SOURCE_URL}
-          target="_blank"
-          rel="noreferrer"
-          title="diagc is free software under the AGPL-3.0 — get the source"
-        >
-          source
-        </a>
-      </header>
-      {editing && (
-        <EditorToolbar
-          editor={editor}
-          onExit={leaveEdit}
-          onSave={() => void doSave()}
-          saving={saving}
-          saveIssues={saveIssues}
-          selectionColor={selectionColor}
-          tool={tool}
-          onSetTool={setTool}
-          pen={{ color: penColor, width: penWidth }}
-          onSetPen={(patch) => {
-            if (patch.color !== undefined) setPenColor(patch.color);
-            if (patch.width !== undefined) setPenWidth(patch.width);
-          }}
-          drawingDisabled={enteredPath.length > 0}
-        />
-      )}
-      {names.length === 0 && (
-        <div className="banner">
-          {canDesign ? (
-            // The API is up, so creating is possible — telling an Obsidian (or
-            // fresh-checkout) user to run diagc compile here points at a build
-            // step their empty workspace doesn't need.
-            <>
-              No diagrams yet — use <b>New diagram</b> to create one.
-            </>
-          ) : (
-            <>
-              No artifacts found — run <code>diagc compile</code> (or <code>diagc watch</code>) first.
-            </>
-          )}
-        </div>
-      )}
-      {!editing && current !== undefined && current.issues.length > 0 && (
-        <div className="banner error">
-          <b>{current.name}</b> failed validation:
-          <ul>
-            {current.issues.map((i, idx) => (
-              <li key={idx}>{i.message}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {/* enterEditFromSource's catch path sets saveIssues without ever setting
+          <a
+            className="chip source-link"
+            href={SOURCE_URL}
+            target="_blank"
+            rel="noreferrer"
+            title="diagc is free software under the AGPL-3.0 — get the source"
+          >
+            source
+          </a>
+        </header>
+        {editing && (
+          <EditorToolbar
+            editor={editor}
+            onExit={leaveEdit}
+            onSave={() => void doSave()}
+            saving={saving}
+            saveIssues={saveIssues}
+            selectionColor={selectionColor}
+            tool={tool}
+            onSetTool={setTool}
+            pen={{ color: penColor, width: penWidth }}
+            onSetPen={(patch) => {
+              if (patch.color !== undefined) setPenColor(patch.color);
+              if (patch.width !== undefined) setPenWidth(patch.width);
+            }}
+            drawingDisabled={enteredPath.length > 0}
+          />
+        )}
+        {names.length === 0 && (
+          <div className="banner">
+            {canDesign ? (
+              // The API is up, so creating is possible — telling an Obsidian (or
+              // fresh-checkout) user to run diagc compile here points at a build
+              // step their empty workspace doesn't need.
+              <>
+                No diagrams yet — use <b>New diagram</b> to create one.
+              </>
+            ) : (
+              <>
+                No artifacts found — run <code>diagc compile</code> (or <code>diagc watch</code>) first.
+              </>
+            )}
+          </div>
+        )}
+        {!editing && current !== undefined && current.issues.length > 0 && (
+          <div className="banner error">
+            <b>{current.name}</b> failed validation:
+            <ul>
+              {current.issues.map((i, idx) => (
+                <li key={idx}>{i.message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {/* enterEditFromSource's catch path sets saveIssues without ever setting
           editing — the toolbar's own banner (below) only renders while editing,
           so a raw-source fetch failure needs its own view-mode surface. */}
-      {!editing && saveIssues !== null && saveIssues.length > 0 && (
-        <div className="banner error">
-          <ul>
-            {saveIssues.map((i, idx) => (
-              <li key={idx}>{i.message}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <main className="body">
-        {model !== undefined && (
-          <>
-            <Dock
-              side="left"
-              collapsed={leftCollapsed}
-              onToggle={() => setLeftCollapsed((v) => !v)}
-              hasContent={editing ? true : selection !== null}
-              width={leftWidth}
-              minWidth={LEFT_MIN}
-              maxWidth={DOCK_MAX}
-              onWidthChange={setLeftWidth}
-            >
-              {editing ? (
-                <InspectorTabs
-                  activeTab={leftTab}
-                  onTabChange={setLeftTab}
-                  properties={
-                    selection?.kind === 'node' && model.nodes.some((n) => n.id === selection.id) ? (
-                      <NodePanel
-                        key={selection.id}
-                        model={model}
-                        nodeId={selection.id}
-                        activePlane={activePlane}
-                        hasPin={pinned !== undefined}
-                        {...(pinned !== undefined ? { pinned } : {})}
-                        {...(live !== undefined ? { live } : {})}
-                        autoFocusName={selection.id === renameId}
-                        {...(notation !== undefined ? { notation } : {})}
-                        today={today}
-                        onCommand={editor.dispatch}
-                        onClose={() => select(null)}
-                        onDeleted={() => select(null)}
-                      />
-                    ) : selection?.kind === 'edge' ? (
-                      <EdgePanel
-                        key={selection.id}
-                        model={model}
-                        constituentIds={selection.constituentIds ?? [selection.id]}
-                        onCommand={editor.dispatch}
-                        onClose={() => select(null)}
-                        {...(notation !== undefined ? { notation } : {})}
-                        {...(activePlane !== undefined ? { activePlane } : {})}
-                      />
-                    ) : (
-                      <Sidebar model={model} selection={selection} />
-                    )
-                  }
-                  library={
-                    <LibraryPanel
-                      library={lib.library}
-                      onPlace={placeFromLibrary}
-                      onApply={applyFromLibrary}
-                      {...(applyTargetFor(model, selection) ?? {})}
-                      onAddNode={addNode}
-                      onAddImages={(files) => void addImages(files)}
-                      onAddCategory={lib.addCategory}
-                      onDeleteCategory={lib.deleteCategory}
-                      onImportIcon={(categoryId, file) => void importLibraryIcon(categoryId, file)}
-                      onImportShape={(categoryId, file) => void importLibraryShape(categoryId, file)}
-                      assetBase={getHost().assetBase}
-                      viewState={libraryView}
-                    />
-                  }
-                />
-              ) : notation === 'causal-loop' &&
-                selection?.kind === 'node' &&
-                model.nodes.some((n) => n.id === selection.id) ? (
-                <LeveragePanel
-                  key={selection.id}
-                  model={model}
-                  edges={cldEdges}
-                  target={selection.id}
-                  activeFocusKey={leverageFocus?.key ?? null}
-                  onFocus={setLeverageFocus}
-                  onClose={() => select(null)}
-                  compareId={compareId}
-                  onClearCompare={() => setCompareId(null)}
-                />
-              ) : selection !== null ? (
-                <Sidebar model={model} selection={selection} />
-              ) : (
-                <div className="sidebar dock-empty">Select a node or edge for details.</div>
-              )}
-            </Dock>
-            <div className="canvas-area">
-              <DiagramView
-                model={model}
-                plane={activePlane}
-                today={today}
-                activeLayers={activeLayers}
-                onToggleLayer={toggleLayer}
-                pins={pins}
-                onToggleExpand={toggleExpand}
-                onSelect={select}
-                onMultiSelect={multiSelect}
-                onEnteredPathChange={handleEnteredPathChange}
-                enteredPath={enteredPath}
-                onCompareSelect={compareSelect}
-                colorMode={theme}
-                assetBase={getHost().assetBase}
-                {...(getHost().libraryBase !== undefined ? { libraryBase: getHost().libraryBase } : {})}
-                onOpenLink={(l) => getHost().openLink(l)}
-                styleId={pinnedStyle ?? style}
-                {...(snap ? { snapGrid: SNAP_GRID } : {})}
-                onCldEdges={handleCldEdges}
-                onViewPositionsChange={setMovedPositions}
-                onViewLabelMovesChange={setMovedLabels}
-                layoutApiRef={layoutApiRef}
-                canvasCommandsRef={canvasCommandsRef}
-                builtinKeys={false}
-                keyHints={canvasKeyHints}
-                ignoreSavedPositions={autoArrange}
-                externalHighlight={
-                  editing
-                    ? groupSel.length >= 2
-                      ? { nodes: groupSel, edges: [] }
-                      : null
-                    : (leverageFocus ??
-                      (compareId !== null && selection?.kind === 'node'
-                        ? { nodes: [selection.id, compareId], edges: [] }
-                        : null))
-                }
-                {...(notation !== undefined ? { notation } : {})}
-                {...(viewLayout !== undefined ? { layout: viewLayout } : {})}
-                {...(drawings !== undefined ? { drawings } : {})}
-                {...(editing
-                  ? {
-                      mode: 'edit' as const,
-                      tool,
-                      pen: { ...(penColor !== '' ? { color: penColor } : {}), width: penWidth },
-                      // Everything that mutates the model travels as ONE edit object
-                      // (the read-only path passes `mode` without it — the view/edit
-                      // split is then structural, not by convention).
-                      edit: {
-                      ...(labelRequest !== undefined ? { editLabelRequest: labelRequest } : {}),
-                      ...(threatRequest !== undefined ? { editThreatRequest: threatRequest } : {}),
-                      onNoteMoved: (target: ThreatTarget, offset: { dx: number; dy: number }) =>
-                        editor.dispatch({ type: 'set-note-offset', target, offset, ...planeOpt }),
-                      onToggleNote: (target: ThreatTarget, open: boolean) =>
-                        editor.dispatch({ type: 'set-note-open', target, open, ...planeOpt }),
-                      onAddThreat: addThreatOn,
-                      onRetitleThreat: retitleThreat,
-                      onSetThreatStatus: setThreatStatus,
-                      onEditThreatText: editThreatText,
-                      quickAdd: {
-                        label: (id: string, side?: QuickAddSide) =>
-                          model !== undefined ? quickAddLabel(model, id, quickAddCtx, side) : undefined,
-                        run: runQuickAdd,
-                      },
-                      onNodesMoved: (positions: Record<string, { x: number; y: number }>, deltas: Record<string, { dx: number; dy: number }>) => {
-                        // on a plan plane a move is a date change; the layout owns x
-                        if (notation === PLAN_NOTATION && model !== undefined) {
-                          // undefined when the gesture changed no date (a sub-day nudge):
-                          // nothing to dispatch, nothing for undo to remember
-                          const command = planMoves(model, activePlane, positions, deltas);
-                          if (command !== undefined) editor.dispatch(command);
-                          return;
-                        }
-                        editor.dispatch({ type: 'set-positions', positions, ...(activePlane !== undefined ? { plane: activePlane } : {}) });
-                      },
-                      onDropInto: (id: string, targetId: string, rel: { x: number; y: number }) => {
-                        // on a plan plane a drop assigns a role or re-homes the node instead of an ordinary move
-                        if (notation === PLAN_NOTATION && model !== undefined) {
-                          const command = assign(model, activePlane, id, targetId, rel);
-                          if (command !== undefined) editor.dispatch(command);
-                        }
-                      },
-                      onMoveLane: (frameId: string, laneId: string, offset: number) => {
-                        const command = moveLaneCommand(frameId, laneId, offset, activePlane);
-                        if (command !== null) editor.dispatch(command);
-                      },
-                      // the chip only ever renders on a plan plane (DiagramNode gates it
-                      // on the notation itself), so no notation check is needed here
-                      onSetRole: (zoneId: string, actorId: string, role: PlanRole | null) => {
-                        if (model === undefined) return;
-                        const command = setActorRole(model, zoneId, actorId, role);
-                        if (command !== undefined) editor.dispatch(command);
-                      },
-                      onCreateAt: (pos: { x: number; y: number }) => createAt(pos),
-                      onImageFiles: (files: File[], position?: { x: number; y: number }) =>
-                        void addImages(files, position),
-                      onDropLibraryEntry: dropLibraryEntry,
-                      onResize: (id: string, w: number, h: number, pos: { x: number; y: number }) => {
-                        if (notation === PLAN_NOTATION && model !== undefined) {
-                          // the lookup scans every node, so it stays inside the
-                          // guard: every other notation resizes without it
-                          const node = model.nodes.find((n) => n.id === id);
-                          if (node !== undefined && isPlanZone(node)) {
-                            // a zone's width is its dates: no size is ever saved for it
-                            const command = planResize(model, activePlane, id, pos.x, w);
-                            if (command !== undefined) editor.dispatch(command);
-                            return;
-                          }
-                        }
-                        editor.dispatch({ type: 'set-size', nodeId: id, w, h });
-                        // top/left-handle resizes shift the node origin — pin the
-                        // post-resize position too, or the next resync snaps it
-                        // back by the size delta.
-                        editor.dispatch({
-                          type: 'set-position',
-                          nodeId: id,
-                          x: pos.x,
-                          y: pos.y,
-                          ...(activePlane !== undefined ? { plane: activePlane } : {}),
-                        });
-                      },
-                      onConnect: (from: string, to: string, sourceHandle?: string | null) => {
-                        // Dragging from a table column's row handle creates an fk
-                        // relation (+ flags the column) instead of the default float
-                        // edge. float by default: no pinned sides, so the new edge
-                        // tracks the facing borders. Pin later via a pin dot or the
-                        // panel. The edge lands on the active sheet (the pen), like
-                        // nodes. The kind otherwise comes from the notation and the
-                        // two endpoints (connectKind) — a threat model's flows must be
-                        // data-flow to be read as flows at all, unless an end is a
-                        // trust boundary, which no flow may touch.
-                        const m = editor.session?.state.model;
-                        const cmds =
-                          m !== undefined
-                            ? fkConnectionCommands(m, from, to, sourceHandle, penLayer !== null ? { layer: penLayer } : undefined)
-                            : null;
-                        if (cmds !== null) {
-                          for (const c of cmds) editor.dispatch(c);
-                          return;
-                        }
-                        editor.dispatch({
-                          type: 'add-relation',
-                          from,
-                          to,
-                          opts: {
-                            kind: connectKind(notation, m, from, to),
-                            ...(penLayer !== null ? { layer: penLayer } : {}),
-                          },
-                        });
-                      },
-                      onDeleteSelection: (sel: { nodeIds: string[]; relationIds: string[] }) => {
-                        // peek(): the synchronous session — the gesture must
-                        // translate against the model it was made on.
-                        const m = editor.peek()?.state.model;
-                        const cmd = m !== undefined ? deleteSelectionCommand(m, sel) : null;
-                        if (cmd === null) return;
-                        editor.dispatch(cmd);
-                        select(null); // the panel target is gone
-                      },
-                      onSetTableColumns: (id: string, columns: Column[]) =>
-                        editor.dispatch({ type: 'set-table-columns', id, columns }),
-                      onRenameNode: (id: string, name: string) =>
-                        editor.dispatch({ type: 'rename-node', id, name }),
-                      onSetNodeRich: (id: string, runs: TextRun[]) =>
-                        editor.dispatch({ type: 'set-node-rich', id, runs }),
-                      onAddEdgeLabel: addEdgeLabelFor,
-                      onEditEdgeLabel: editEdgeLabelFor,
-                      onMoveEdgeLabel: moveEdgeLabelFor,
-                      onReconnect: (
-                        relationId: string,
-                        from: string,
-                        to: string,
-                        endPin?: { end: 'from' | 'to'; side: Side | null },
-                      ) =>
-                        // move the endpoint(s); the dragged end floats (new node) or
-                        // pins to the side it was dropped on (same node)
-                        editor.dispatch({
-                          type: 'update-relation',
-                          id: relationId,
-                          patch: {
-                            from,
-                            to,
-                            ...(endPin !== undefined ? { style: styleWithSide(relationId, endPin.end, endPin.side) } : {}),
-                          },
-                        }),
-                      onSetEdgeSide: (relationId: string, end: 'from' | 'to', side: Side | null) =>
-                        editor.dispatch({
-                          type: 'update-relation',
-                          id: relationId,
-                          patch: { style: styleWithSide(relationId, end, side) },
-                        }),
-                      onAddStroke: (stroke: Omit<Stroke, 'id'>) => {
-                        // peek(): the synchronous session, so two strokes in
-                        // quick succession never reuse an id.
-                        const d = editor.peek()?.state.drawings;
-                        const m = editor.peek()?.state.model;
-                        if (d === undefined || m === undefined) return;
-                        editor.dispatch({
-                          type: 'add-stroke',
-                          stroke: { id: uniqueStrokeId(d, layoutPlaneKey(m, activePlane)), ...stroke },
-                          ...(activePlane !== undefined ? { plane: activePlane } : {}),
-                        });
-                      },
-                      onDeleteStroke: (id: string) =>
-                        editor.dispatch({
-                          type: 'delete-stroke',
-                          id,
-                          ...(activePlane !== undefined ? { plane: activePlane } : {}),
-                        }),
-                      },
+        {!editing && saveIssues !== null && saveIssues.length > 0 && (
+          <div className="banner error">
+            <ul>
+              {saveIssues.map((i, idx) => (
+                <li key={idx}>{i.message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <main className="body">
+          {model !== undefined && (
+            <>
+              <Dock
+                side="left"
+                collapsed={leftCollapsed}
+                onToggle={() => setLeftCollapsed((v) => !v)}
+                hasContent={editing ? true : selection !== null}
+                width={leftWidth}
+                minWidth={LEFT_MIN}
+                maxWidth={DOCK_MAX}
+                onWidthChange={setLeftWidth}
+              >
+                {editing ? (
+                  <InspectorTabs
+                    activeTab={leftTab}
+                    onTabChange={setLeftTab}
+                    properties={
+                      selection?.kind === 'node' && model.nodes.some((n) => n.id === selection.id) ? (
+                        <NodePanel
+                          key={selection.id}
+                          model={model}
+                          nodeId={selection.id}
+                          activePlane={activePlane}
+                          hasPin={pinned !== undefined}
+                          {...(pinned !== undefined ? { pinned } : {})}
+                          {...(live !== undefined ? { live } : {})}
+                          autoFocusName={selection.id === renameId}
+                          {...(notation !== undefined ? { notation } : {})}
+                          today={today}
+                          onCommand={editor.dispatch}
+                          onClose={() => select(null)}
+                          onDeleted={() => select(null)}
+                        />
+                      ) : selection?.kind === 'edge' ? (
+                        <EdgePanel
+                          key={selection.id}
+                          model={model}
+                          constituentIds={selection.constituentIds ?? [selection.id]}
+                          onCommand={editor.dispatch}
+                          onClose={() => select(null)}
+                          {...(notation !== undefined ? { notation } : {})}
+                          {...(activePlane !== undefined ? { activePlane } : {})}
+                        />
+                      ) : (
+                        <Sidebar model={model} selection={selection} />
+                      )
                     }
-                  : {})}
-              />
-              {editing && groupSel.length >= 2 && (
-                <button
-                  className="chip group-action"
-                  title={`Group the selection${hint('edit.group')}`}
-                  onClick={() => void groupSelected()}
-                >
-                  ⊞ Group {groupSel.length}
-                </button>
-              )}
-            </div>
-            <Dock
-              side="right"
-              collapsed={rightCollapsed}
-              onToggle={() => setRightCollapsed((v) => !v)}
-              hasContent
-              width={rightWidth}
-              minWidth={RIGHT_MIN}
-              maxWidth={DOCK_MAX}
-              onWidthChange={setRightWidth}
-            >
-              {editing && notation === 'git-graph' && (
-                <GitPanel
+                    library={
+                      <LibraryPanel
+                        library={lib.library}
+                        onPlace={placeFromLibrary}
+                        onApply={applyFromLibrary}
+                        {...(applyTargetFor(model, selection) ?? {})}
+                        onAddNode={addNode}
+                        onAddImages={(files) => void addImages(files)}
+                        onAddCategory={lib.addCategory}
+                        onDeleteCategory={lib.deleteCategory}
+                        onImportIcon={(categoryId, file) => void importLibraryIcon(categoryId, file)}
+                        onImportShape={(categoryId, file) => void importLibraryShape(categoryId, file)}
+                        assetBase={getHost().assetBase}
+                        viewState={libraryView}
+                      />
+                    }
+                  />
+                ) : notation === 'causal-loop' &&
+                  selection?.kind === 'node' &&
+                  model.nodes.some((n) => n.id === selection.id) ? (
+                  <LeveragePanel
+                    key={selection.id}
+                    model={model}
+                    edges={cldEdges}
+                    target={selection.id}
+                    activeFocusKey={leverageFocus?.key ?? null}
+                    onFocus={setLeverageFocus}
+                    onClose={() => select(null)}
+                    compareId={compareId}
+                    onClearCompare={() => setCompareId(null)}
+                  />
+                ) : selection !== null ? (
+                  <Sidebar model={model} selection={selection} />
+                ) : (
+                  <div className="sidebar dock-empty">Select a node or edge for details.</div>
+                )}
+              </Dock>
+              <div className="canvas-area">
+                <DiagramView
                   model={model}
                   plane={activePlane}
-                  selection={selection}
-                  onCommand={editor.dispatch}
-                  onSelect={(id) => select({ kind: 'node', id })}
+                  today={today}
+                  activeLayers={activeLayers}
+                  onToggleLayer={toggleLayer}
+                  pins={pins}
+                  onToggleExpand={toggleExpand}
+                  onSelect={select}
+                  onMultiSelect={multiSelect}
+                  onEnteredPathChange={handleEnteredPathChange}
+                  enteredPath={enteredPath}
+                  onCompareSelect={compareSelect}
+                  colorMode={theme}
+                  assetBase={getHost().assetBase}
+                  {...(getHost().libraryBase !== undefined ? { libraryBase: getHost().libraryBase } : {})}
+                  onOpenLink={(l) => getHost().openLink(l)}
+                  styleId={pinnedStyle ?? style}
+                  {...(snap ? { snapGrid: SNAP_GRID } : {})}
+                  onCldEdges={handleCldEdges}
+                  onViewPositionsChange={setMovedPositions}
+                  onViewLabelMovesChange={setMovedLabels}
+                  layoutApiRef={layoutApiRef}
+                  canvasCommandsRef={canvasCommandsRef}
+                  builtinKeys={false}
+                  keyHints={canvasKeyHints}
+                  ignoreSavedPositions={autoArrange}
+                  externalHighlight={
+                    editing
+                      ? groupSel.length >= 2
+                        ? { nodes: groupSel, edges: [] }
+                        : null
+                      : (leverageFocus ??
+                        (compareId !== null && selection?.kind === 'node'
+                          ? { nodes: [selection.id, compareId], edges: [] }
+                          : null))
+                  }
+                  {...(notation !== undefined ? { notation } : {})}
+                  {...(viewLayout !== undefined ? { layout: viewLayout } : {})}
+                  {...(drawings !== undefined ? { drawings } : {})}
+                  {...(editing
+                    ? {
+                        mode: 'edit' as const,
+                        tool,
+                        pen: { ...(penColor !== '' ? { color: penColor } : {}), width: penWidth },
+                        // Everything that mutates the model travels as ONE edit object
+                        // (the read-only path passes `mode` without it — the view/edit
+                        // split is then structural, not by convention).
+                        edit: {
+                          ...(labelRequest !== undefined ? { editLabelRequest: labelRequest } : {}),
+                          ...(threatRequest !== undefined ? { editThreatRequest: threatRequest } : {}),
+                          onNoteMoved: (target: ThreatTarget, offset: { dx: number; dy: number }) =>
+                            editor.dispatch({ type: 'set-note-offset', target, offset, ...planeOpt }),
+                          onToggleNote: (target: ThreatTarget, open: boolean) =>
+                            editor.dispatch({ type: 'set-note-open', target, open, ...planeOpt }),
+                          onAddThreat: addThreatOn,
+                          onRetitleThreat: retitleThreat,
+                          onSetThreatStatus: setThreatStatus,
+                          onEditThreatText: editThreatText,
+                          quickAdd: {
+                            label: (id: string, side?: QuickAddSide) =>
+                              model !== undefined ? quickAddLabel(model, id, quickAddCtx, side) : undefined,
+                            run: runQuickAdd,
+                          },
+                          onNodesMoved: (
+                            positions: Record<string, { x: number; y: number }>,
+                            deltas: Record<string, { dx: number; dy: number }>,
+                          ) => {
+                            // on a plan plane a move is a date change; the layout owns x
+                            if (notation === PLAN_NOTATION && model !== undefined) {
+                              // undefined when the gesture changed no date (a sub-day nudge):
+                              // nothing to dispatch, nothing for undo to remember
+                              const command = planMoves(model, activePlane, positions, deltas);
+                              if (command !== undefined) editor.dispatch(command);
+                              return;
+                            }
+                            editor.dispatch({
+                              type: 'set-positions',
+                              positions,
+                              ...(activePlane !== undefined ? { plane: activePlane } : {}),
+                            });
+                          },
+                          onDropInto: (id: string, targetId: string, rel: { x: number; y: number }) => {
+                            // on a plan plane a drop assigns a role or re-homes the node instead of an ordinary move
+                            if (notation === PLAN_NOTATION && model !== undefined) {
+                              const command = assign(model, activePlane, id, targetId, rel);
+                              if (command !== undefined) editor.dispatch(command);
+                            }
+                          },
+                          onMoveLane: (frameId: string, laneId: string, offset: number) => {
+                            const command = moveLaneCommand(frameId, laneId, offset, activePlane);
+                            if (command !== null) editor.dispatch(command);
+                          },
+                          // the chip only ever renders on a plan plane (DiagramNode gates it
+                          // on the notation itself), so no notation check is needed here
+                          onSetRole: (zoneId: string, actorId: string, role: PlanRole | null) => {
+                            if (model === undefined) return;
+                            const command = setActorRole(model, zoneId, actorId, role);
+                            if (command !== undefined) editor.dispatch(command);
+                          },
+                          onCreateAt: (pos: { x: number; y: number }) => createAt(pos),
+                          onImageFiles: (files: File[], position?: { x: number; y: number }) =>
+                            void addImages(files, position),
+                          onDropLibraryEntry: dropLibraryEntry,
+                          onResize: (id: string, w: number, h: number, pos: { x: number; y: number }) => {
+                            if (notation === PLAN_NOTATION && model !== undefined) {
+                              // the lookup scans every node, so it stays inside the
+                              // guard: every other notation resizes without it
+                              const node = model.nodes.find((n) => n.id === id);
+                              if (node !== undefined && isPlanZone(node)) {
+                                // a zone's width is its dates: no size is ever saved for it
+                                const command = planResize(model, activePlane, id, pos.x, w);
+                                if (command !== undefined) editor.dispatch(command);
+                                return;
+                              }
+                            }
+                            editor.dispatch({ type: 'set-size', nodeId: id, w, h });
+                            // top/left-handle resizes shift the node origin — pin the
+                            // post-resize position too, or the next resync snaps it
+                            // back by the size delta.
+                            editor.dispatch({
+                              type: 'set-position',
+                              nodeId: id,
+                              x: pos.x,
+                              y: pos.y,
+                              ...(activePlane !== undefined ? { plane: activePlane } : {}),
+                            });
+                          },
+                          onConnect: (from: string, to: string, sourceHandle?: string | null) => {
+                            // Dragging from a table column's row handle creates an fk
+                            // relation (+ flags the column) instead of the default float
+                            // edge. float by default: no pinned sides, so the new edge
+                            // tracks the facing borders. Pin later via a pin dot or the
+                            // panel. The edge lands on the active sheet (the pen), like
+                            // nodes. The kind otherwise comes from the notation and the
+                            // two endpoints (connectKind) — a threat model's flows must be
+                            // data-flow to be read as flows at all, unless an end is a
+                            // trust boundary, which no flow may touch.
+                            const m = editor.session?.state.model;
+                            const cmds =
+                              m !== undefined
+                                ? fkConnectionCommands(
+                                    m,
+                                    from,
+                                    to,
+                                    sourceHandle,
+                                    penLayer !== null ? { layer: penLayer } : undefined,
+                                  )
+                                : null;
+                            if (cmds !== null) {
+                              for (const c of cmds) editor.dispatch(c);
+                              return;
+                            }
+                            editor.dispatch({
+                              type: 'add-relation',
+                              from,
+                              to,
+                              opts: {
+                                kind: connectKind(notation, m, from, to),
+                                ...(penLayer !== null ? { layer: penLayer } : {}),
+                              },
+                            });
+                          },
+                          onDeleteSelection: (sel: { nodeIds: string[]; relationIds: string[] }) => {
+                            // peek(): the synchronous session — the gesture must
+                            // translate against the model it was made on.
+                            const m = editor.peek()?.state.model;
+                            const cmd = m !== undefined ? deleteSelectionCommand(m, sel) : null;
+                            if (cmd === null) return;
+                            editor.dispatch(cmd);
+                            select(null); // the panel target is gone
+                          },
+                          onSetTableColumns: (id: string, columns: Column[]) =>
+                            editor.dispatch({ type: 'set-table-columns', id, columns }),
+                          onRenameNode: (id: string, name: string) =>
+                            editor.dispatch({ type: 'rename-node', id, name }),
+                          onSetNodeRich: (id: string, runs: TextRun[]) =>
+                            editor.dispatch({ type: 'set-node-rich', id, runs }),
+                          onAddEdgeLabel: addEdgeLabelFor,
+                          onEditEdgeLabel: editEdgeLabelFor,
+                          onMoveEdgeLabel: moveEdgeLabelFor,
+                          onReconnect: (
+                            relationId: string,
+                            from: string,
+                            to: string,
+                            endPin?: { end: 'from' | 'to'; side: Side | null },
+                          ) =>
+                            // move the endpoint(s); the dragged end floats (new node) or
+                            // pins to the side it was dropped on (same node)
+                            editor.dispatch({
+                              type: 'update-relation',
+                              id: relationId,
+                              patch: {
+                                from,
+                                to,
+                                ...(endPin !== undefined
+                                  ? { style: styleWithSide(relationId, endPin.end, endPin.side) }
+                                  : {}),
+                              },
+                            }),
+                          onSetEdgeSide: (relationId: string, end: 'from' | 'to', side: Side | null) =>
+                            editor.dispatch({
+                              type: 'update-relation',
+                              id: relationId,
+                              patch: { style: styleWithSide(relationId, end, side) },
+                            }),
+                          onAddStroke: (stroke: Omit<Stroke, 'id'>) => {
+                            // peek(): the synchronous session, so two strokes in
+                            // quick succession never reuse an id.
+                            const d = editor.peek()?.state.drawings;
+                            const m = editor.peek()?.state.model;
+                            if (d === undefined || m === undefined) return;
+                            editor.dispatch({
+                              type: 'add-stroke',
+                              stroke: { id: uniqueStrokeId(d, layoutPlaneKey(m, activePlane)), ...stroke },
+                              ...(activePlane !== undefined ? { plane: activePlane } : {}),
+                            });
+                          },
+                          onDeleteStroke: (id: string) =>
+                            editor.dispatch({
+                              type: 'delete-stroke',
+                              id,
+                              ...(activePlane !== undefined ? { plane: activePlane } : {}),
+                            }),
+                        },
+                      }
+                    : {})}
                 />
-              )}
-              {editing && notation === PLAN_NOTATION && (
-                <PlanPanel model={model} plane={activePlane} selection={selection} onCommand={editor.dispatch} onSelect={(id) => select({ kind: 'node', id })} today={today} />
-              )}
-              {editing && notation === 'second-order' && (
-                <SecondOrderPanel
-                  model={model}
-                  selection={selection}
-                  {...(activePlane !== undefined && !activePlaneBorrowsContainment ? { plane: activePlane } : {})}
-                  onCommand={editor.dispatch}
-                  onSelect={(id) => select({ kind: 'node', id })}
-                  onCreated={requestLabelEdit}
-                />
-              )}
-              {editing && notation === 'fishbone' && (
-                <FishbonePanel
-                  model={model}
-                  selection={selection}
-                  {...(activePlane !== undefined && !activePlaneBorrowsContainment ? { plane: activePlane } : {})}
-                  onCommand={editor.dispatch}
-                  onSelect={(id) => select({ kind: 'node', id })}
-                  onCreated={requestLabelEdit}
-                />
-              )}
-              {/* No `editing` gate, unlike its siblings above: this panel only
+                {editing && groupSel.length >= 2 && (
+                  <button
+                    className="chip group-action"
+                    title={`Group the selection${hint('edit.group')}`}
+                    onClick={() => void groupSelected()}
+                  >
+                    ⊞ Group {groupSel.length}
+                  </button>
+                )}
+              </div>
+              <Dock
+                side="right"
+                collapsed={rightCollapsed}
+                onToggle={() => setRightCollapsed((v) => !v)}
+                hasContent
+                width={rightWidth}
+                minWidth={RIGHT_MIN}
+                maxWidth={DOCK_MAX}
+                onWidthChange={setRightWidth}
+              >
+                {editing && notation === 'git-graph' && (
+                  <GitPanel
+                    model={model}
+                    plane={activePlane}
+                    selection={selection}
+                    onCommand={editor.dispatch}
+                    onSelect={(id) => select({ kind: 'node', id })}
+                  />
+                )}
+                {editing && notation === PLAN_NOTATION && (
+                  <PlanPanel
+                    model={model}
+                    plane={activePlane}
+                    selection={selection}
+                    onCommand={editor.dispatch}
+                    onSelect={(id) => select({ kind: 'node', id })}
+                    today={today}
+                  />
+                )}
+                {editing && notation === 'second-order' && (
+                  <SecondOrderPanel
+                    model={model}
+                    selection={selection}
+                    {...(activePlane !== undefined && !activePlaneBorrowsContainment ? { plane: activePlane } : {})}
+                    onCommand={editor.dispatch}
+                    onSelect={(id) => select({ kind: 'node', id })}
+                    onCreated={requestLabelEdit}
+                  />
+                )}
+                {editing && notation === 'fishbone' && (
+                  <FishbonePanel
+                    model={model}
+                    selection={selection}
+                    {...(activePlane !== undefined && !activePlaneBorrowsContainment ? { plane: activePlane } : {})}
+                    onCommand={editor.dispatch}
+                    onSelect={(id) => select({ kind: 'node', id })}
+                    onCreated={requestLabelEdit}
+                  />
+                )}
+                {/* No `editing` gate, unlike its siblings above: this panel only
                   reads the model — the register and the crossings still to
                   review are as much use on a read-only .diagram.ts threat model
                   as on an editable one. */}
-              {notation === TM_NOTATION && (
-                <ThreatModelPanel
-                  model={model}
-                  {...(activePlane !== undefined ? { plane: activePlane } : {})}
-                  onSelect={select}
-                />
-              )}
-              {editing && (
-                <ActivityPanel
-                  model={model}
-                  plane={activePlane}
-                  selection={selection}
-                  onCommand={editor.dispatch}
-                  onSelect={(id) => select({ kind: 'node', id })}
-                />
-              )}
-              {/* How this plane is arranged and drawn — everything the topbar and
+                {notation === TM_NOTATION && (
+                  <ThreatModelPanel
+                    model={model}
+                    {...(activePlane !== undefined ? { plane: activePlane } : {})}
+                    onSelect={select}
+                  />
+                )}
+                {editing && (
+                  <ActivityPanel
+                    model={model}
+                    plane={activePlane}
+                    selection={selection}
+                    onCommand={editor.dispatch}
+                    onSelect={(id) => select({ kind: 'node', id })}
+                  />
+                )}
+                {/* How this plane is arranged and drawn — everything the topbar and
                   the editor toolbar used to carry about layout. The pickers go
                   when the notation arranges the plane itself (git graph,
                   fishbone): elk never runs there, so none of them would do
                   anything, in either mode. */}
-              <LayoutPanel
-                controls={
-                  notationProfile(notation).layout !== undefined
-                    ? null
-                    : {
-                        settings: activePlaneSettings,
-                        onChange: editing ? setLayoutSettings : previewLayoutSettings,
-                        defaultDirection: defaultLayoutDirection(model),
-                        algorithmLocked,
-                        ...(notationProfile(notation).defaultAlgorithm !== undefined
-                          ? { defaultAlgorithm: notationProfile(notation).defaultAlgorithm }
-                          : {}),
-                      }
-                }
-                styleControl={
-                  editing ? (
-                    <select
-                      className="chip-select"
-                      aria-label="Diagram style"
-                      title="Diagram style (saved with the diagram)"
-                      value={pinnedStyle ?? ''}
-                      onChange={(e) =>
-                        editor.dispatch({ type: 'set-diagram-style', style: e.target.value === '' ? null : e.target.value })
+                <LayoutPanel
+                  controls={
+                    notationProfile(notation).layout !== undefined
+                      ? null
+                      : {
+                          settings: activePlaneSettings,
+                          onChange: editing ? setLayoutSettings : previewLayoutSettings,
+                          defaultDirection: defaultLayoutDirection(model),
+                          algorithmLocked,
+                          ...(notationProfile(notation).defaultAlgorithm !== undefined
+                            ? { defaultAlgorithm: notationProfile(notation).defaultAlgorithm }
+                            : {}),
+                        }
+                  }
+                  styleControl={
+                    editing ? (
+                      <select
+                        className="chip-select"
+                        aria-label="Diagram style"
+                        title="Diagram style (saved with the diagram)"
+                        value={pinnedStyle ?? ''}
+                        onChange={(e) =>
+                          editor.dispatch({
+                            type: 'set-diagram-style',
+                            style: e.target.value === '' ? null : e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">(app default)</option>
+                        {STYLE_PRESETS.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <select
+                        className="chip-select"
+                        aria-label="Style"
+                        title={pinnedStyle !== undefined ? 'Set by diagram' : 'Visual style'}
+                        /* clamp: garbage in localStorage would otherwise render a blank select */
+                        value={pinnedStyle ?? (isKnownStyle(style) ? style : 'clean')}
+                        disabled={pinnedStyle !== undefined}
+                        onChange={(e) => setStyle(e.target.value)}
+                      >
+                        {STYLE_PRESETS.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                    )
+                  }
+                >
+                  {editing && (
+                    <EditLayoutActions
+                      editor={editor}
+                      activePlane={activePlane}
+                      autoLayout={!activePlaneManual}
+                      onToggleAutoLayout={toggleAutoLayout}
+                      getAutoPositions={() => layoutApiRef.current?.autoPositions() ?? {}}
+                    />
+                  )}
+                  {!editing && layoutPreview[layoutPlaneKey(model, activePlane)] !== undefined && (
+                    <button
+                      className="chip"
+                      title="Drop the preview and go back to this diagram's own layout settings"
+                      onClick={() =>
+                        setLayoutPreview((p) => {
+                          const next = { ...p };
+                          delete next[layoutPlaneKey(model, activePlane)];
+                          return next;
+                        })
                       }
                     >
-                      <option value="">(app default)</option>
-                      {STYLE_PRESETS.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <select
-                      className="chip-select"
-                      aria-label="Style"
-                      title={pinnedStyle !== undefined ? 'Set by diagram' : 'Visual style'}
-                      /* clamp: garbage in localStorage would otherwise render a blank select */
-                      value={pinnedStyle ?? (isKnownStyle(style) ? style : 'clean')}
-                      disabled={pinnedStyle !== undefined}
-                      onChange={(e) => setStyle(e.target.value)}
+                      Reset layout
+                    </button>
+                  )}
+                  {!editing && Object.keys(layout?.planes[layoutPlaneKey(model, activePlane)] ?? {}).length > 0 && (
+                    <button
+                      type="button"
+                      className={`chip${autoArrange ? ' active' : ''}`}
+                      aria-pressed={autoArrange}
+                      title={`${
+                        autoArrange
+                          ? 'Ignoring this diagram’s saved positions, so the layout algorithm arranges every node. Click to put them back.'
+                          : 'This plane has saved positions, which override the layout algorithm. Click to arrange those nodes automatically instead (nothing is written).'
+                      }${hint('view.auto-arrange')}`}
+                      onClick={() => setAutoArrange((v) => !v)}
                     >
-                      {STYLE_PRESETS.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.label}
-                        </option>
-                      ))}
-                    </select>
-                  )
-                }
-              >
-                {editing && (
-                  <EditLayoutActions
-                    editor={editor}
-                    activePlane={activePlane}
-                    autoLayout={!activePlaneManual}
-                    onToggleAutoLayout={toggleAutoLayout}
-                    getAutoPositions={() => layoutApiRef.current?.autoPositions() ?? {}}
-                  />
-                )}
-                {!editing && layoutPreview[layoutPlaneKey(model, activePlane)] !== undefined && (
-                  <button
-                    className="chip"
-                    title="Drop the preview and go back to this diagram's own layout settings"
-                    onClick={() =>
-                      setLayoutPreview((p) => {
-                        const next = { ...p };
-                        delete next[layoutPlaneKey(model, activePlane)];
-                        return next;
-                      })
-                    }
-                  >
-                    Reset layout
-                  </button>
-                )}
-                {!editing && Object.keys(layout?.planes[layoutPlaneKey(model, activePlane)] ?? {}).length > 0 && (
-                  <button
-                    type="button"
-                    className={`chip${autoArrange ? ' active' : ''}`}
-                    aria-pressed={autoArrange}
-                    title={`${
-                      autoArrange
-                        ? 'Ignoring this diagram’s saved positions, so the layout algorithm arranges every node. Click to put them back.'
-                        : 'This plane has saved positions, which override the layout algorithm. Click to arrange those nodes automatically instead (nothing is written).'
-                    }${hint('view.auto-arrange')}`}
-                    onClick={() => setAutoArrange((v) => !v)}
-                  >
-                    Auto-arrange
-                  </button>
-                )}
-                {!editing && (
-                  <button
-                    type="button"
-                    className={`chip${activePlaneManual ? ' active' : ''}`}
-                    aria-pressed={activePlaneManual}
-                    // A drilled snapshot (layoutApiRef.current?.snapshotPositions()) holds
-                    // only the visible subtree, not the whole plane — freezing from there
-                    // would set the plane-wide `manual` flag off the back of a partial
-                    // snapshot. Must be done from the top level instead.
-                    disabled={savingPositions || enteredPath.length > 0}
-                    title={`${
-                      enteredPath.length > 0
-                        ? 'Freezing pins the whole plane, but a drilled view only has positions for what it shows — leave the drilled view first.'
-                        : activePlaneManual
-                          ? 'Positions are pinned. Click to let the layout algorithm arrange this plane again (your positions are kept).'
-                          : 'Pin every box where it is so the layout algorithm stops moving them. Boxes added to the source later are still placed automatically until you move them.'
-                    }${hint('view.freeze')}`}
-                    onClick={() => void toggleFreeze()}
-                  >
-                    Freeze layout
-                  </button>
-                )}
-              </LayoutPanel>
-              <LayersPlanesPanel
-                model={model}
-                onCommand={editor.dispatch}
-                mode={editing ? 'edit' : 'view'}
-                activeLayer={penLayer}
-                onActivateLayer={activateLayer}
-                activePlane={activePlane}
-                onSelectPlane={(id) => (id === undefined ? resetView() : switchPlane(id))}
-                activeLayers={activeLayers}
-                onToggleLayer={toggleLayer}
-                onMergeLayers={mergeSelectedLayers}
-              />
-            </Dock>
-          </>
+                      Auto-arrange
+                    </button>
+                  )}
+                  {!editing && (
+                    <button
+                      type="button"
+                      className={`chip${activePlaneManual ? ' active' : ''}`}
+                      aria-pressed={activePlaneManual}
+                      // A drilled snapshot (layoutApiRef.current?.snapshotPositions()) holds
+                      // only the visible subtree, not the whole plane — freezing from there
+                      // would set the plane-wide `manual` flag off the back of a partial
+                      // snapshot. Must be done from the top level instead.
+                      disabled={savingPositions || enteredPath.length > 0}
+                      title={`${
+                        enteredPath.length > 0
+                          ? 'Freezing pins the whole plane, but a drilled view only has positions for what it shows — leave the drilled view first.'
+                          : activePlaneManual
+                            ? 'Positions are pinned. Click to let the layout algorithm arrange this plane again (your positions are kept).'
+                            : 'Pin every box where it is so the layout algorithm stops moving them. Boxes added to the source later are still placed automatically until you move them.'
+                      }${hint('view.freeze')}`}
+                      onClick={() => void toggleFreeze()}
+                    >
+                      Freeze layout
+                    </button>
+                  )}
+                </LayoutPanel>
+                <LayersPlanesPanel
+                  model={model}
+                  onCommand={editor.dispatch}
+                  mode={editing ? 'edit' : 'view'}
+                  activeLayer={penLayer}
+                  onActivateLayer={activateLayer}
+                  activePlane={activePlane}
+                  onSelectPlane={(id) => (id === undefined ? resetView() : switchPlane(id))}
+                  activeLayers={activeLayers}
+                  onToggleLayer={toggleLayer}
+                  onMergeLayers={mergeSelectedLayers}
+                />
+              </Dock>
+            </>
+          )}
+        </main>
+        {hotkeysOpen && (
+          <HotkeysDialog
+            overrides={hotkeyOverrides}
+            onChange={setHotkeyOverrides}
+            onClose={() => {
+              setHotkeysOpen(false);
+              gearRef.current?.focus(); // back where the keyboard user came from
+            }}
+            mac={mac}
+          />
         )}
-      </main>
-      {hotkeysOpen && (
-        <HotkeysDialog
-          overrides={hotkeyOverrides}
-          onChange={setHotkeyOverrides}
-          onClose={() => {
-            setHotkeysOpen(false);
-            gearRef.current?.focus(); // back where the keyboard user came from
-          }}
-          mac={mac}
-        />
-      )}
-    </div>
+      </div>
     </HotkeysContext.Provider>
   );
 }

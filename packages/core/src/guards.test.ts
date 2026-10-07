@@ -49,13 +49,17 @@ describe('isLayoutOverlay — unfolded', () => {
 
 describe('isLayoutOverlay — edgeLabels', () => {
   it('accepts plane → relation → label → { t, side? }', () => {
-    expect(isLayoutOverlay({ ...base, edgeLabels: { default: { r1: { legacy: { t: 0.3, side: 'top' }, l2: { t: 1 } } } } })).toBe(true);
+    expect(
+      isLayoutOverlay({ ...base, edgeLabels: { default: { r1: { legacy: { t: 0.3, side: 'top' }, l2: { t: 1 } } } } }),
+    ).toBe(true);
     expect(isLayoutOverlay({ ...base, edgeLabels: {} })).toBe(true);
   });
 
   it('rejects a placement without a numeric t or with an unknown side', () => {
     expect(isLayoutOverlay({ ...base, edgeLabels: { default: { r1: { legacy: { side: 'top' } } } } })).toBe(false);
-    expect(isLayoutOverlay({ ...base, edgeLabels: { default: { r1: { legacy: { t: 0.3, side: 'left' } } } } })).toBe(false);
+    expect(isLayoutOverlay({ ...base, edgeLabels: { default: { r1: { legacy: { t: 0.3, side: 'left' } } } } })).toBe(
+      false,
+    );
     expect(isLayoutOverlay({ ...base, edgeLabels: { default: { r1: [] } } })).toBe(false);
   });
 });

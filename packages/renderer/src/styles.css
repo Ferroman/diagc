@@ -3,19 +3,36 @@
   border: 1.5px solid var(--dg-node-stroke);
   border-radius: 8px;
   color: var(--dg-text);
-  font: 12px/1.3 system-ui, sans-serif;
+  font:
+    12px/1.3 system-ui,
+    sans-serif;
   padding: 8px 10px;
   min-width: 120px;
 }
-.dg-shape-cylinder { border-radius: 50% 50% 50% 50% / 18% 18% 18% 18%; }
-.dg-shape-pill { border-radius: 999px; padding: 8px 16px; }
-.dg-shape-hexagon { clip-path: polygon(8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%, 0 50%); }
-.dg-style-rough .dg-shape-hexagon { clip-path: none; }
-.dg-shape-rounded { border-radius: 14px; }
+.dg-shape-cylinder {
+  border-radius: 50% 50% 50% 50% / 18% 18% 18% 18%;
+}
+.dg-shape-pill {
+  border-radius: 999px;
+  padding: 8px 16px;
+}
+.dg-shape-hexagon {
+  clip-path: polygon(8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%, 0 50%);
+}
+.dg-style-rough .dg-shape-hexagon {
+  clip-path: none;
+}
+.dg-shape-rounded {
+  border-radius: 14px;
+}
 /* C4 person: a head circle above the box body. The wrapper keeps the normal
  * box border (accent or solid fill included); the head inherits both so one
  * colour paints the whole figure. */
-.dg-shape-person { position: relative; margin-top: 14px; border-radius: 12px; }
+.dg-shape-person {
+  position: relative;
+  margin-top: 14px;
+  border-radius: 12px;
+}
 .dg-shape-person::before {
   content: '';
   position: absolute;
@@ -34,23 +51,100 @@
    text (see the UML-glyph label:'' entries in registry.ts) the div has nothing
    to size itself around, so it must explicitly fill the wrapper, same precedent
    as .dg-circle-node. */
-.dg-shape-diamond { position: relative; background: none; border: none; border-radius: 0; min-width: 0; padding: 4px; display: flex; align-items: center; justify-content: center; text-align: center; width: 100%; height: 100%; box-sizing: border-box; }
+.dg-shape-diamond {
+  position: relative;
+  background: none;
+  border: none;
+  border-radius: 0;
+  min-width: 0;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
 /* the diamond itself: the node box stays unpainted, the polygon draws fill and stroke */
-.dg-diamond-glyph { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-.dg-diamond-glyph polygon { stroke-width: 1.5px; stroke-linejoin: round; }
-.dg-shape-bar { background: var(--dg-node-stroke); border: none; border-radius: 2px; min-width: 0; padding: 0; width: 100%; height: 100%; box-sizing: border-box; }
-.dg-shape-start-dot { background: var(--dg-node-stroke); border: none; border-radius: 50%; min-width: 0; padding: 0; width: 100%; height: 100%; box-sizing: border-box; }
-.dg-shape-end-bullseye { border-radius: 50%; min-width: 0; padding: 0; position: relative; background: var(--dg-node-fill); width: 100%; height: 100%; box-sizing: border-box; }
-.dg-shape-end-bullseye::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: var(--dg-node-stroke); }
+.dg-diamond-glyph {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.dg-diamond-glyph polygon {
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+}
+.dg-shape-bar {
+  background: var(--dg-node-stroke);
+  border: none;
+  border-radius: 2px;
+  min-width: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+.dg-shape-start-dot {
+  background: var(--dg-node-stroke);
+  border: none;
+  border-radius: 50%;
+  min-width: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+.dg-shape-end-bullseye {
+  border-radius: 50%;
+  min-width: 0;
+  padding: 0;
+  position: relative;
+  background: var(--dg-node-fill);
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+.dg-shape-end-bullseye::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--dg-node-stroke);
+}
 /* A named glyph's label (a decision's question, a start dot's "Start") hangs
    below it like an image caption. Left inside, it overflowed the 24-48px box
    and sat under the diamond polygon / bullseye dot, which are positioned and so
    paint above an in-flow row. The z-index keeps it above the glyph's own layers;
    max-content stops the 24px box from squeezing it to a word per line. */
-.dg-node-row.dg-glyph-caption { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 3px; z-index: 1; width: max-content; max-width: 180px; font-size: 12px; text-align: center; }
-.dg-shape-send-signal { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%); padding-right: 20px; }
-.dg-shape-receive-signal { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 14px 50%); padding-left: 20px; }
-.dg-shape-note { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); text-align: left; }
+.dg-node-row.dg-glyph-caption {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 3px;
+  z-index: 1;
+  width: max-content;
+  max-width: 180px;
+  font-size: 12px;
+  text-align: center;
+}
+.dg-shape-send-signal {
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
+  padding-right: 20px;
+}
+.dg-shape-receive-signal {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 14px 50%);
+  padding-left: 20px;
+}
+.dg-shape-note {
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+  text-align: left;
+}
 /* Threat model. A process is an ellipse with its label inside (unlike the git
    commit circle, whose tag hangs outside); the padding keeps text inside the
    inscribed rectangle. A data store is the two-rule DFD glyph: open ends — the
@@ -61,18 +155,35 @@
    Both are FORCED_SIZE_SHAPES (box-size.ts), so — like the diamond — they fill
    the wrapper the layout sized instead of hugging their label. */
 .dg-shape-ellipse {
-  border-radius: 50%; padding: 14px 22px; text-align: center;
-  min-width: 0; width: 100%; height: 100%; box-sizing: border-box;
-  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  padding: 14px 22px;
+  text-align: center;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .dg-shape-store {
-  border-left: none; border-right: none; border-radius: 0; text-align: center;
-  min-width: 0; width: 100%; height: 100%; box-sizing: border-box;
-  display: flex; align-items: center; justify-content: center;
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+  text-align: center;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .dg-style-rough .dg-shape-send-signal,
 .dg-style-rough .dg-shape-receive-signal,
-.dg-style-rough .dg-shape-note { clip-path: none; }
+.dg-style-rough .dg-shape-note {
+  clip-path: none;
+}
 /* rough mode: the filled glyphs keep their crisp fill (a hand-drawn solid dot
  * reads as a scribble at 24px), only the outline shapes go sketchy */
 /* Speech bubble: an ordinary rounded box whose tail hangs off the bottom-left
@@ -83,7 +194,9 @@
    node's border colour, accent included. ::after is the fill, inset by the
    1.5px stroke and overlapping the node's own bottom border so body and tail
    read as one shape. */
-.dg-shape-bubble { position: relative; }
+.dg-shape-bubble {
+  position: relative;
+}
 .dg-shape-bubble::before,
 .dg-shape-bubble::after {
   content: '';
@@ -110,8 +223,12 @@
 }
 /* rough presets draw the tail in the sketch SVG instead */
 .dg-style-rough .dg-shape-bubble::before,
-.dg-style-rough .dg-shape-bubble::after { display: none; }
-.dg-dashed { border-style: dashed; }
+.dg-style-rough .dg-shape-bubble::after {
+  display: none;
+}
+.dg-dashed {
+  border-style: dashed;
+}
 .dg-group {
   background: var(--dg-group-fill);
   border: 1.5px dashed var(--dg-group-stroke);
@@ -124,7 +241,9 @@
   align-items: center;
   gap: 6px;
   color: var(--dg-text-muted);
-  font: 600 11px/1 system-ui, sans-serif;
+  font:
+    600 11px/1 system-ui,
+    sans-serif;
   padding: 8px 10px;
 }
 /* Outline group (C4 boundary / AWS region-VPC convention): the border IS the
@@ -149,25 +268,59 @@
   width: 24px;
   height: 24px;
 }
-.dg-node-row { display: flex; align-items: center; gap: 6px; }
-.dg-label { font-weight: 600; }
-.dg-node-row .dg-label { flex: 1 1 auto; min-width: 0; }
-.dg-fs-sm { font-size: 9px; }
-.dg-fs-lg { font-size: 20px; }
-.dg-type { color: var(--dg-text-muted); font-size: 10px; }
+.dg-node-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dg-label {
+  font-weight: 600;
+}
+.dg-node-row .dg-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.dg-fs-sm {
+  font-size: 9px;
+}
+.dg-fs-lg {
+  font-size: 20px;
+}
+.dg-type {
+  color: var(--dg-text-muted);
+  font-size: 10px;
+}
 /* C4 outline box: thicker colored border + colored text (border/color set inline). */
-.dg-c4-outline { border-width: 2px; }
-.dg-c4-outline .dg-type { color: inherit; opacity: 0.8; }
-.dg-solid .dg-type { color: inherit; opacity: 0.85; }
-.dg-count, .dg-badge {
+.dg-c4-outline {
+  border-width: 2px;
+}
+.dg-c4-outline .dg-type {
+  color: inherit;
+  opacity: 0.8;
+}
+.dg-solid .dg-type {
+  color: inherit;
+  opacity: 0.85;
+}
+.dg-count,
+.dg-badge {
   background: var(--dg-badge-bg);
   border-radius: 999px;
   color: var(--dg-badge-text);
   font-size: 10px;
   padding: 1px 6px;
 }
-.dg-badges { display: inline-flex; gap: 4px; margin-left: auto; }
-.dg-meta { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.dg-badges {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.dg-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
 .dg-meta-badge {
   border: 1px solid var(--dg-border);
   border-radius: 4px;
@@ -175,12 +328,46 @@
   font-size: 9px;
   padding: 0 4px;
 }
-.dg-fold { background: none; border: none; cursor: pointer; font-size: 11px; line-height: 1; padding: 0 2px; color: inherit; opacity: 0.65; }
-.dg-fold:hover { opacity: 1; }
-.dg-enter { background: none; border: none; cursor: pointer; font-size: 11px; line-height: 1; padding: 0 2px; opacity: 0.65; }
-.dg-enter:hover { opacity: 1; }
-.dg-link-badge { position: absolute; top: 2px; right: 2px; border: none; background: transparent; cursor: pointer; font-size: 11px; line-height: 1; padding: 2px; opacity: 0.65; }
-.dg-link-badge:hover { opacity: 1; }
+.dg-fold {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0 2px;
+  color: inherit;
+  opacity: 0.65;
+}
+.dg-fold:hover {
+  opacity: 1;
+}
+.dg-enter {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0 2px;
+  opacity: 0.65;
+}
+.dg-enter:hover {
+  opacity: 1;
+}
+.dg-link-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px;
+  opacity: 0.65;
+}
+.dg-link-badge:hover {
+  opacity: 1;
+}
 /* Open-threat count. Literal colours on purpose: the badge reads the same in
    both themes, and — unlike the link badge — it stays in exports, so the PNG
    carries the count. Top-LEFT, because the link badge already owns the right
@@ -190,53 +377,119 @@
    and the `.dg-icon` glyph of any icon-bearing type outside the DFD vocabulary
    being threat-modelled in place. Outside the box it overlaps nothing. */
 .dg-threat-badge {
-  position: absolute; top: -6px; left: -6px;
-  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
-  font: 600 11px/18px system-ui, sans-serif; text-align: center;
-  color: #fff; pointer-events: none;
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font:
+    600 11px/18px system-ui,
+    sans-serif;
+  text-align: center;
+  color: #fff;
+  pointer-events: none;
 }
-.dg-threat-badge[data-state='open'], .dg-legend-badge[data-state='open'] { background: #c62828; }
-.dg-threat-badge[data-state='handled'], .dg-legend-badge[data-state='handled'] { background: #2e7d32; }
+.dg-threat-badge[data-state='open'],
+.dg-legend-badge[data-state='open'] {
+  background: #c62828;
+}
+.dg-threat-badge[data-state='handled'],
+.dg-legend-badge[data-state='handled'] {
+  background: #2e7d32;
+}
 /* The counting badge as a toggle (a bubble-drawing canvas — see NoteStateContext):
    the same pill, with the UA's button chrome stripped and the pointer events the
    passive rule above gives up taken back. In the export page nothing toggles. */
-button.dg-threat-badge[data-state='open'], button.dg-threat-badge[data-state='handled'] { border: none; pointer-events: auto; cursor: pointer; }
-button.dg-threat-badge[data-state='open']:hover, button.dg-threat-badge[data-state='handled']:hover { filter: brightness(1.12); }
+button.dg-threat-badge[data-state='open'],
+button.dg-threat-badge[data-state='handled'] {
+  border: none;
+  pointer-events: auto;
+  cursor: pointer;
+}
+button.dg-threat-badge[data-state='open']:hover,
+button.dg-threat-badge[data-state='handled']:hover {
+  filter: brightness(1.12);
+}
 /* The button selectors are repeated because the toggle rule above is more
    specific than a plain `.dg-no-chrome .dg-threat-badge` would be. */
 .dg-no-chrome .dg-threat-badge,
 .dg-no-chrome button.dg-threat-badge[data-state='open'],
-.dg-no-chrome button.dg-threat-badge[data-state='handled'] { pointer-events: none; }
+.dg-no-chrome button.dg-threat-badge[data-state='handled'] {
+  pointer-events: none;
+}
 /* Nothing to count yet: the same corner turns into the `+` that writes the
    first threat (edit mode, threat models only — see ThreatBadge). Muted, since
    an empty register is an invitation, not a finding; and clickable, so it takes
    back the pointer events the badge above gives up. */
-.dg-threat-badge[data-state='empty'] { background: var(--dg-node-stroke, #9e9e9e); opacity: 0.7; pointer-events: auto; cursor: pointer; border: none; }
-.dg-threat-badge[data-state='empty']:hover { opacity: 1; }
+.dg-threat-badge[data-state='empty'] {
+  background: var(--dg-node-stroke, #9e9e9e);
+  opacity: 0.7;
+  pointer-events: auto;
+  cursor: pointer;
+  border: none;
+}
+.dg-threat-badge[data-state='empty']:hover {
+  opacity: 1;
+}
 /* the ellipse's top-left corner is outside the curve — tuck the badge in to
    where the outline actually runs */
-.dg-shape-ellipse > .dg-threat-badge { top: 8px; left: 16px; }
+.dg-shape-ellipse > .dg-threat-badge {
+  top: 8px;
+  left: 16px;
+}
 /* A group wears it in the header band, right of the title and LEFT of the
    badges cluster: that cluster is right-aligned (margin-left: auto) inside a
    header padded 10px, and holds an enter chip plus a fold chip (~15px each,
    4px gap) — so it reaches ~44px in from the right edge. 48px clears it. */
-.dg-group > .dg-threat-badge { top: 4px; left: auto; right: 48px; }
+.dg-group > .dg-threat-badge {
+  top: 4px;
+  left: auto;
+  right: 48px;
+}
 /* The comment badge: the threat pill's twin at the opposite corner, in the
    accent colour since it counts remarks, not findings. Same passive/toggle
    split as the threat badge, same export behaviour (stays in the PNG). */
 .dg-comment-badge {
-  position: absolute; bottom: -6px; right: -6px;
-  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
-  font: 600 11px/18px system-ui, sans-serif; text-align: center;
-  color: #fff; background: var(--dg-accent, #3b82f6); pointer-events: none;
+  position: absolute;
+  bottom: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font:
+    600 11px/18px system-ui,
+    sans-serif;
+  text-align: center;
+  color: #fff;
+  background: var(--dg-accent, #3b82f6);
+  pointer-events: none;
 }
-button.dg-comment-badge { border: none; pointer-events: auto; cursor: pointer; }
-button.dg-comment-badge:hover { filter: brightness(1.12); }
-.dg-no-chrome .dg-comment-badge, .dg-no-chrome button.dg-comment-badge { pointer-events: none; }
+button.dg-comment-badge {
+  border: none;
+  pointer-events: auto;
+  cursor: pointer;
+}
+button.dg-comment-badge:hover {
+  filter: brightness(1.12);
+}
+.dg-no-chrome .dg-comment-badge,
+.dg-no-chrome button.dg-comment-badge {
+  pointer-events: none;
+}
 /* the ellipse's corner is outside the curve — tuck it in, mirrored from the threat rule */
-.dg-shape-ellipse > .dg-comment-badge { bottom: 8px; right: 16px; }
+.dg-shape-ellipse > .dg-comment-badge {
+  bottom: 8px;
+  right: 16px;
+}
 /* a group wears it in the header band beside the threat badge, left of it */
-.dg-group > .dg-comment-badge { top: 4px; bottom: auto; right: 72px; }
+.dg-group > .dg-comment-badge {
+  top: 4px;
+  bottom: auto;
+  right: 72px;
+}
 /* The `+` a selected node offers (QuickAddButton): a chip hanging off the
    right edge, outside the box so it covers no label. Flow-space, like the
    badges — it scales with the zoom and is never clipped at the canvas edge
@@ -253,34 +506,72 @@ button.dg-comment-badge:hover { filter: brightness(1.12); }
    on a bone the chip sits ON the right edge and steps out of the handle's way
    up or down instead. */
 .dg-quick-add {
-  position: absolute; top: 50%; right: 0; transform: translate(calc(100% + 8px), -50%);
-  width: 18px; height: 18px; border-radius: 50%; border: none; padding: 0;
-  background: var(--dg-accent, #3b82f6); color: #fff; font: 600 14px/18px system-ui, sans-serif;
-  cursor: pointer; z-index: 3;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translate(calc(100% + 8px), -50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: var(--dg-accent, #3b82f6);
+  color: #fff;
+  font:
+    600 14px/18px system-ui,
+    sans-serif;
+  cursor: pointer;
+  z-index: 3;
 }
-.dg-quick-add:hover { filter: brightness(1.1); }
+.dg-quick-add:hover {
+  filter: brightness(1.1);
+}
 /* a group's right edge is its wall; keep the chip in the header band — clear of
    the right handle, which sits at mid-height */
-.dg-group > .dg-quick-add { top: 12px; transform: translate(50%, 0); }
+.dg-group > .dg-quick-add {
+  top: 12px;
+  transform: translate(50%, 0);
+}
 /* on a fish the bone leaves the label's end: sit below-right, off the line and
    fully clear of the mid-height handle — a cause node is TEXT_H = 22px tall
    (see FISHBONE_LAYOUT), so the 18px chip has to hang 13px below the box to
    stop touching it */
-.dg-fb-head > .dg-quick-add, .dg-fb-cause > .dg-quick-add { top: auto; bottom: -13px; transform: translate(50%, 0); }
+.dg-fb-head > .dg-quick-add,
+.dg-fb-cause > .dg-quick-add {
+  top: auto;
+  bottom: -13px;
+  transform: translate(50%, 0);
+}
 /* an activity lane's pair sits on its horizontal edges, centred: the new band
    goes in above or below. Past the rotated name strip, whatever the lane's width. */
-.dg-activity-lane > .dg-quick-add[data-side] { right: auto; left: 50%; }
-.dg-activity-lane > .dg-quick-add[data-side='before'] { top: 0; transform: translate(-50%, -50%); }
-.dg-activity-lane > .dg-quick-add[data-side='after'] { top: auto; bottom: 0; transform: translate(-50%, 50%); }
+.dg-activity-lane > .dg-quick-add[data-side] {
+  right: auto;
+  left: 50%;
+}
+.dg-activity-lane > .dg-quick-add[data-side='before'] {
+  top: 0;
+  transform: translate(-50%, -50%);
+}
+.dg-activity-lane > .dg-quick-add[data-side='after'] {
+  top: auto;
+  bottom: 0;
+  transform: translate(-50%, 50%);
+}
 /* Chrome-less mode (the PNG export): drop the affordances nobody can click in a
    still image, so a committed picture is the diagram and nothing else. The
    link badge is part of that contract too — a still export can't follow it,
    so it has no business in the committed picture either. */
-.dg-no-chrome .dg-fold, .dg-no-chrome .dg-enter, .dg-no-chrome .dg-link-badge,
-.dg-no-chrome .dg-quick-add { display: none; }
+.dg-no-chrome .dg-fold,
+.dg-no-chrome .dg-enter,
+.dg-no-chrome .dg-link-badge,
+.dg-no-chrome .dg-quick-add {
+  display: none;
+}
 /* The counting badge stays (it is the finding), but its empty state is an
    affordance nobody can click in a still image — out it goes with the rest. */
-.dg-no-chrome .dg-threat-badge[data-state='empty'] { display: none; }
+.dg-no-chrome .dg-threat-badge[data-state='empty'] {
+  display: none;
+}
 
 /* A threat bubble (NoteNode): a speech bubble beside its element, drawn in the
    theme's node colours so it reads in both themes — the sticky it replaced
@@ -289,65 +580,240 @@ button.dg-comment-badge:hover { filter: brightness(1.12); }
    (see the .dg-no-chrome rules below). Width comes inline from NOTE_WIDTH so the
    placement and the box agree. */
 .dg-note {
-  position: relative; box-sizing: border-box; padding: 8px 10px;
-  background: var(--dg-node-fill); border: 1.5px solid var(--dg-node-stroke); border-radius: 10px;
-  font: 12px/1.35 system-ui, sans-serif; color: var(--dg-text);
+  position: relative;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  background: var(--dg-node-fill);
+  border: 1.5px solid var(--dg-node-stroke);
+  border-radius: 10px;
+  font:
+    12px/1.35 system-ui,
+    sans-serif;
+  color: var(--dg-text);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 /* The tail: an SVG laid over the box (a child paints above its parent's border)
    with the bubble's own coordinates, spilling out to the badge it points at
    (note-tail.ts). Its path is filled in the box's fill and stroked in the box's
    stroke, so the two read as one drawn shape. */
-.dg-note-tail { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-.dg-note-tail path { fill: var(--dg-node-fill); stroke: var(--dg-node-stroke); stroke-width: 1.5px; stroke-linejoin: round; }
-.dg-note-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.dg-note-tail {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.dg-note-tail path {
+  fill: var(--dg-node-fill);
+  stroke: var(--dg-node-stroke);
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+}
+.dg-note-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
 /* the name wraps (it is what says which element this is); the count never does
    — without flex: none the header handed it the leftover width and it broke
    one character per line */
-.dg-note-name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
-.dg-note-count { flex: none; white-space: nowrap; font-weight: 600; font-size: 11px; }
-.dg-note-count[data-state='open'] { color: #c62828; }
-.dg-note-count[data-state='handled'] { color: #2e7d32; }
-.dg-note-rows { list-style: none; margin: 0; padding: 0; }
-.dg-note-row { padding: 2px 0; }
-.dg-note-row + .dg-note-row { border-top: 1px solid color-mix(in srgb, var(--dg-node-stroke) 35%, transparent); }
-.dg-note-line { display: flex; align-items: center; gap: 6px; }
+.dg-note-name {
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.dg-note-count {
+  flex: none;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 11px;
+}
+.dg-note-count[data-state='open'] {
+  color: #c62828;
+}
+.dg-note-count[data-state='handled'] {
+  color: #2e7d32;
+}
+.dg-note-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dg-note-row {
+  padding: 2px 0;
+}
+.dg-note-row + .dg-note-row {
+  border-top: 1px solid color-mix(in srgb, var(--dg-node-stroke) 35%, transparent);
+}
+.dg-note-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 /* handled: muted only — the status chip says which handling, so no strike, no ✓.
    The details mute with the line: a handled row's expanded text is part of the
    same row, and muting only the line left the two at different weights. */
 .dg-note-row[data-open='false'] > .dg-note-line,
-.dg-note-row[data-open='false'] > .dg-note-details { opacity: 0.6; }
-.dg-stride { flex: none; width: 15px; height: 15px; border-radius: 3px; text-align: center; font: 700 9px/15px system-ui, sans-serif; background: var(--dg-node-stroke); color: var(--dg-node-fill); }
-.dg-note-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.dg-note .dg-label-input { width: 100%; font: inherit; }
-.dg-note-status {
-  flex: none; padding: 0 5px; border-radius: 8px; border: 1px solid var(--dg-node-stroke);
-  background: transparent; color: inherit; font: 600 10px/14px system-ui, sans-serif; text-transform: lowercase;
+.dg-note-row[data-open='false'] > .dg-note-details {
+  opacity: 0.6;
 }
-button.dg-note-status { cursor: pointer; }
-button.dg-note-status:hover { background: color-mix(in srgb, var(--dg-node-stroke) 15%, transparent); }
+.dg-stride {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  text-align: center;
+  font:
+    700 9px/15px system-ui,
+    sans-serif;
+  background: var(--dg-node-stroke);
+  color: var(--dg-node-fill);
+}
+.dg-note-title {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.dg-note .dg-label-input {
+  width: 100%;
+  font: inherit;
+}
+.dg-note-status {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 8px;
+  border: 1px solid var(--dg-node-stroke);
+  background: transparent;
+  color: inherit;
+  font:
+    600 10px/14px system-ui,
+    sans-serif;
+  text-transform: lowercase;
+}
+button.dg-note-status {
+  cursor: pointer;
+}
+button.dg-note-status:hover {
+  background: color-mix(in srgb, var(--dg-node-stroke) 15%, transparent);
+}
 /* the four status words each read at a glance: red still open, green handled
    (mitigated and accepted are both "dealt with"), grey ruled out. Without these
    the last two were an untinted chip, indistinguishable from each other. */
-.dg-note-status[data-status='open'] { border-color: #c62828; color: #c62828; }
+.dg-note-status[data-status='open'] {
+  border-color: #c62828;
+  color: #c62828;
+}
 .dg-note-status[data-status='mitigated'],
-.dg-note-status[data-status='accepted'] { border-color: #2e7d32; color: #2e7d32; }
-.dg-note-status[data-status='not-applicable'] { color: var(--dg-text-muted, #757575); border-color: currentColor; }
-.dg-note-expand { flex: none; width: 16px; height: 16px; padding: 0; border: none; background: transparent; color: inherit; font: 11px/16px system-ui, sans-serif; cursor: pointer; opacity: 0.7; }
-.dg-note-expand:hover { opacity: 1; }
-.dg-note-details { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 2px 21px; }
-.dg-note-section { margin-top: 6px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--dg-node-stroke) 35%, transparent); }
-.dg-note-section-title { margin: 0 0 4px; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dg-text-muted, #757575); }
-.dg-note-comments, .dg-note-links { list-style: none; margin: 0; padding: 0; }
-.dg-note-comment + .dg-note-comment { margin-top: 4px; }
-.dg-note-meta { display: block; font-size: 10px; color: var(--dg-text-muted, #757575); }
-.dg-note-link { color: var(--dg-accent, #3b82f6); text-decoration: underline; }
-.dg-note-text { margin: 0; font-size: 11px; line-height: 1.35; white-space: pre-wrap; }
-.dg-note-text-label { font-weight: 600; opacity: 0.75; }
-.dg-note-field { width: 100%; box-sizing: border-box; resize: vertical; font: 11px/1.35 system-ui, sans-serif; color: var(--dg-text); background: var(--dg-node-fill); border: 1px solid var(--dg-node-stroke); border-radius: 4px; padding: 3px 5px; }
-.dg-note-add { margin-top: 6px; width: 16px; height: 16px; border-radius: 50%; border: none; padding: 0; background: var(--dg-accent, #3b82f6); color: #fff; font: 600 12px/16px system-ui, sans-serif; cursor: pointer; }
-.dg-no-chrome .dg-note-add, .dg-no-chrome .dg-note-expand, .dg-no-chrome .dg-note textarea { display: none; }
-.dg-no-chrome .dg-note-status { pointer-events: none; }
+.dg-note-status[data-status='accepted'] {
+  border-color: #2e7d32;
+  color: #2e7d32;
+}
+.dg-note-status[data-status='not-applicable'] {
+  color: var(--dg-text-muted, #757575);
+  border-color: currentColor;
+}
+.dg-note-expand {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font:
+    11px/16px system-ui,
+    sans-serif;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.dg-note-expand:hover {
+  opacity: 1;
+}
+.dg-note-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 2px 21px;
+}
+.dg-note-section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--dg-node-stroke) 35%, transparent);
+}
+.dg-note-section-title {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dg-text-muted, #757575);
+}
+.dg-note-comments,
+.dg-note-links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dg-note-comment + .dg-note-comment {
+  margin-top: 4px;
+}
+.dg-note-meta {
+  display: block;
+  font-size: 10px;
+  color: var(--dg-text-muted, #757575);
+}
+.dg-note-link {
+  color: var(--dg-accent, #3b82f6);
+  text-decoration: underline;
+}
+.dg-note-text {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+.dg-note-text-label {
+  font-weight: 600;
+  opacity: 0.75;
+}
+.dg-note-field {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font:
+    11px/1.35 system-ui,
+    sans-serif;
+  color: var(--dg-text);
+  background: var(--dg-node-fill);
+  border: 1px solid var(--dg-node-stroke);
+  border-radius: 4px;
+  padding: 3px 5px;
+}
+.dg-note-add {
+  margin-top: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: var(--dg-accent, #3b82f6);
+  color: #fff;
+  font:
+    600 12px/16px system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+.dg-no-chrome .dg-note-add,
+.dg-no-chrome .dg-note-expand,
+.dg-no-chrome .dg-note textarea {
+  display: none;
+}
+.dg-no-chrome .dg-note-status {
+  pointer-events: none;
+}
 
 .dg-breadcrumbs-nav {
   display: inline-flex;
@@ -360,8 +826,14 @@ button.dg-note-status:hover { background: color-mix(in srgb, var(--dg-node-strok
   font-size: 12px;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
 }
-.dg-crumb-item { display: inline-flex; align-items: center; gap: 2px; }
-.dg-crumb-sep { color: var(--dg-text-muted); }
+.dg-crumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.dg-crumb-sep {
+  color: var(--dg-text-muted);
+}
 .dg-crumb {
   background: none;
   border: none;
@@ -371,19 +843,50 @@ button.dg-note-status:hover { background: color-mix(in srgb, var(--dg-node-strok
   border-radius: 4px;
   font: inherit;
 }
-.dg-crumb:hover { background: var(--dg-badge-bg); color: var(--dg-text); }
-.dg-crumb-current { color: var(--dg-text); font-weight: 600; cursor: default; }
-.dg-crumb-home { font-size: 13px; }
+.dg-crumb:hover {
+  background: var(--dg-badge-bg);
+  color: var(--dg-text);
+}
+.dg-crumb-current {
+  color: var(--dg-text);
+  font-weight: 600;
+  cursor: default;
+}
+.dg-crumb-home {
+  font-size: 13px;
+}
 /* drill-view external stub: the original entity's own look, ghosted — the
    double .dg-node class outranks the base border so dashed always wins */
-.dg-ghost { opacity: 0.75; cursor: pointer; }
-.dg-node.dg-ghost { border-style: dashed; border-width: 1px; }
-.dg-ghost:hover { opacity: 0.95; }
-.dg-external-arrow { opacity: 0.7; flex: none; }
-.dg-handle { opacity: 0; pointer-events: none; }
-.dg-mode-edit .dg-handle { opacity: 0.35; pointer-events: all; }
-.dg-mode-edit .react-flow__node:hover .dg-handle { opacity: 1; }
-.dg-canvas { flex: 1; min-width: 0; }
+.dg-ghost {
+  opacity: 0.75;
+  cursor: pointer;
+}
+.dg-node.dg-ghost {
+  border-style: dashed;
+  border-width: 1px;
+}
+.dg-ghost:hover {
+  opacity: 0.95;
+}
+.dg-external-arrow {
+  opacity: 0.7;
+  flex: none;
+}
+.dg-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+.dg-mode-edit .dg-handle {
+  opacity: 0.35;
+  pointer-events: all;
+}
+.dg-mode-edit .react-flow__node:hover .dg-handle {
+  opacity: 1;
+}
+.dg-canvas {
+  flex: 1;
+  min-width: 0;
+}
 /* React Flow's container AND its Background pattern SVG each paint an opaque
    background from --xy-background-color, so presets repaint the canvas by
    feeding that variable; when no preset sets --dg-canvas-bg it resolves to
@@ -393,49 +896,91 @@ button.dg-note-status:hover { background: color-mix(in srgb, var(--dg-node-strok
 .dg-canvas.dg-canvas .react-flow {
   --xy-background-color: var(--dg-canvas-bg, var(--xy-background-color-default));
 }
-.dg-alt-move .react-flow__node { cursor: grab; }
-.dg-alt-move .react-flow__node:active { cursor: grabbing; }
-.react-flow__node { transition: transform 200ms ease, width 200ms ease, height 200ms ease; }
+.dg-alt-move .react-flow__node {
+  cursor: grab;
+}
+.dg-alt-move .react-flow__node:active {
+  cursor: grabbing;
+}
+.react-flow__node {
+  transition:
+    transform 200ms ease,
+    width 200ms ease,
+    height 200ms ease;
+}
 /* the 200ms glide is for re-layouts; a dragged node must track the pointer raw —
    and so must everything the drag moves with it: the container growing around
    the node (expandParent) and the siblings re-expressed against its new origin */
-.react-flow__node.dragging, .dg-dragging .react-flow__node { transition: none; }
-@keyframes dg-flow { to { stroke-dashoffset: -10; } }
+.react-flow__node.dragging,
+.dg-dragging .react-flow__node {
+  transition: none;
+}
+@keyframes dg-flow {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
 /* A screenshot catches marching dashes at whatever phase the clock has reached, so the
    same diagram exported twice differed by a few pixels and churned its committed PNG.
    The chrome-less render is the export render; there the dashes stand still.
    `!important` because DiagramEdge sets the animation inline. */
-.dg-no-chrome .react-flow__edge-path { animation: none !important; }
+.dg-no-chrome .react-flow__edge-path {
+  animation: none !important;
+}
 .dg-label-input {
   background: var(--dg-node-fill);
   border: 1px solid var(--dg-node-stroke);
   border-radius: 4px;
   color: var(--dg-text);
-  font: 600 12px/1.3 system-ui, sans-serif;
+  font:
+    600 12px/1.3 system-ui,
+    sans-serif;
   min-width: 60px;
   padding: 1px 4px;
   width: 100%;
 }
 /* normal base weight so execCommand('bold') toggles ON (a 600 base reads as
  * already-bold, inverting the toggle); bold runs render at 700 for contrast */
-.dg-rich-input { white-space: pre-wrap; outline: none; min-width: 60px; cursor: text; font-weight: 400; }
-.dg-rich-label { font-weight: 400; }
+.dg-rich-input {
+  white-space: pre-wrap;
+  outline: none;
+  min-width: 60px;
+  cursor: text;
+  font-weight: 400;
+}
+.dg-rich-label {
+  font-weight: 400;
+}
 .dg-rich-toolbar {
-  display: inline-flex; gap: 2px; padding: 2px;
-  background: var(--dg-panel-bg, #1f2530); border: 1px solid var(--dg-border);
-  border-radius: 6px; z-index: 40;
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--dg-panel-bg, #1f2530);
+  border: 1px solid var(--dg-border);
+  border-radius: 6px;
+  z-index: 40;
 }
 .dg-rich-toolbar button {
-  min-width: 22px; height: 22px; border: none; border-radius: 4px;
-  background: transparent; color: var(--dg-text); cursor: pointer; font-size: 12px;
+  min-width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dg-text);
+  cursor: pointer;
+  font-size: 12px;
 }
-.dg-rich-toolbar button:hover { background: var(--dg-badge-bg); }
+.dg-rich-toolbar button:hover {
+  background: var(--dg-badge-bg);
+}
 .dg-edge-label-edit input {
   background: var(--dg-edge-label-bg);
   border: 1px solid var(--dg-node-stroke);
   border-radius: 6px;
   color: var(--dg-text);
-  font: 10px/1.4 system-ui, sans-serif;
+  font:
+    10px/1.4 system-ui,
+    sans-serif;
   padding: 2px 6px;
   width: 110px;
 }
@@ -450,7 +995,9 @@ button.dg-note-status:hover { background: color-mix(in srgb, var(--dg-node-strok
   background: var(--dg-edge-label-bg);
   border-radius: 6px;
   color: var(--dg-text);
-  font: 10px/1.4 system-ui, sans-serif;
+  font:
+    10px/1.4 system-ui,
+    sans-serif;
   padding: 1px 6px;
   text-align: center;
   white-space: nowrap;
@@ -459,14 +1006,20 @@ button.dg-note-status:hover { background: color-mix(in srgb, var(--dg-node-strok
   text-overflow: ellipsis;
 }
 /* a bundled arrow's chip is not a handle: presses fall through to the edge */
-.dg-edge-chip { pointer-events: none; }
+.dg-edge-chip {
+  pointer-events: none;
+}
 /* The flow's threat chip rides the label layer like a label, so it needs the
    same absolute placement its transform is written against (see .dg-threat-badge
    for the look, which it shares with the node badge). */
-.dg-edge-threat { position: absolute; }
+.dg-edge-threat {
+  position: absolute;
+}
 /* The flow's comment chip: the same label-layer placement as the threat chip
    above, for the same reason (see .dg-comment-badge for the look). */
-.dg-edge-comment { position: absolute; }
+.dg-edge-comment {
+  position: absolute;
+}
 /* Endpoint pin dots (edit mode, selected single-relation edge): hollow = the
    end floats and tracks the facing border; filled = pinned to a fixed side. */
 .dg-edge-pin {
@@ -533,7 +1086,9 @@ path.dg-loop-badge-circle {
 }
 .dg-loop-badge text {
   fill: var(--dg-text);
-  font: 700 13px/1 system-ui, sans-serif;
+  font:
+    700 13px/1 system-ui,
+    sans-serif;
 }
 .dg-style-font .dg-loop-badge text {
   font-family: var(--dg-style-font, system-ui, sans-serif);
@@ -713,26 +1268,52 @@ path.dg-loop-badge-circle {
   object-fit: contain;
 }
 
-:root { --dg-shape-default: var(--dg-text-muted); }
+:root {
+  --dg-shape-default: var(--dg-text-muted);
+}
 .dg-shape-node {
-  background: transparent; border: none; position: relative; padding: 0;
-  min-width: 0; width: 100%; height: 100%; box-sizing: border-box;
+  background: transparent;
+  border: none;
+  position: relative;
+  padding: 0;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
 }
 .dg-shape-fill {
-  position: absolute; inset: 0; pointer-events: none;
-  mask-repeat: no-repeat; mask-position: center; mask-size: contain;
-  -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; -webkit-mask-size: contain;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
 }
 /* Label sits in the shape's lower body (like the C4 person), tinted to match. */
 .dg-shape-node .dg-shape-label {
-  position: absolute; left: 0; right: 0; top: 54%; z-index: 1;
-  display: flex; flex-direction: column; align-items: center;
-  padding: 0 8px; text-align: center; line-height: 1.15;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 54%;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 8px;
+  text-align: center;
+  line-height: 1.15;
 }
-.dg-shape-node .dg-shape-label .dg-type { color: inherit; opacity: 0.8; }
+.dg-shape-node .dg-shape-label .dg-type {
+  color: inherit;
+  opacity: 0.8;
+}
 
 /* Rough presets: the rough SVG is the visible outline, so drop the crisp chrome.
-   Image nodes render no SketchShape and keep their normal frame (docs/DEFERRALS.md). */
+   Image nodes render no SketchShape and keep their normal frame, so a sketch diagram
+   with pictures mixes rough outlines and clean image borders. */
 .dg-style-rough .dg-node:not(.dg-image-node),
 .dg-style-rough .dg-group {
   border-color: transparent;
@@ -784,16 +1365,40 @@ path.dg-loop-badge-circle {
   font-family: var(--dg-style-font, system-ui, sans-serif);
 }
 .dg-disclose {
-  background: none; border: none; padding: 0 2px; margin-left: 2px;
-  cursor: pointer; color: var(--dg-text-muted); font-size: 11px; line-height: 1;
+  background: none;
+  border: none;
+  padding: 0 2px;
+  margin-left: 2px;
+  cursor: pointer;
+  color: var(--dg-text-muted);
+  font-size: 11px;
+  line-height: 1;
 }
-.dg-disclose:hover { color: var(--dg-text); }
-.dg-cld-group { width: 100%; height: 100%; position: relative; background: transparent; border: none; }
+.dg-disclose:hover {
+  color: var(--dg-text);
+}
+.dg-cld-group {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: transparent;
+  border: none;
+}
 .dg-group-tag {
-  position: absolute; top: -8px; left: 0;
-  display: inline-flex; align-items: center; gap: 2px;
-  font: 11px/1.4 system-ui, sans-serif; color: var(--dg-text-muted);
-  background: var(--dg-bg); padding: 0 4px; border-radius: 4px; white-space: nowrap;
+  position: absolute;
+  top: -8px;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font:
+    11px/1.4 system-ui,
+    sans-serif;
+  color: var(--dg-text-muted);
+  background: var(--dg-bg);
+  padding: 0 4px;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 .dg-table {
   display: flex;
@@ -817,8 +1422,14 @@ path.dg-loop-badge-circle {
   font-weight: 600;
   border-bottom: 1.5px solid var(--dg-table-border);
 }
-.dg-table-header .dg-label-input { box-sizing: border-box; min-width: 0; }
-.dg-table-body { display: flex; flex-direction: column; }
+.dg-table-header .dg-label-input {
+  box-sizing: border-box;
+  min-width: 0;
+}
+.dg-table-body {
+  display: flex;
+  flex-direction: column;
+}
 .dg-table-row {
   position: relative;
   display: grid;
@@ -830,19 +1441,82 @@ path.dg-loop-badge-circle {
   color: var(--dg-table-row-text);
   border-bottom: 1px solid color-mix(in srgb, var(--dg-table-border) 55%, transparent);
 }
-.dg-table-row:last-child { border-bottom: none; }
-.dg-table-key { font-size: 10px; color: var(--dg-table-fk); font-weight: 600; }
-.dg-table-col.dg-pk { font-weight: 600; color: var(--dg-table-pk); }
-.dg-table-type { color: var(--dg-table-type-text); font-variant-numeric: tabular-nums; }
-:where(.dg-table:not(.dg-table-edit)) .dg-row-handle { opacity: 0; }
-.dg-table-edit .dg-row-handle { opacity: 1; pointer-events: all; }
-.dg-table-row-edit { grid-template-columns: 20px minmax(48px, 1fr) minmax(48px, 1fr) auto auto auto; gap: 4px; }
-.dg-table-badge { background: none; border: 1px solid var(--dg-table-border); border-radius: 3px; font-size: 9px; line-height: 1; cursor: pointer; padding: 1px 3px; color: var(--dg-table-fk); }
-.dg-table-name-input, .dg-table-type-input { min-width: 0; border: 1px solid var(--dg-table-border); border-radius: 3px; background: var(--dg-node-fill); color: var(--dg-table-row-text); font-size: 11px; padding: 0 3px; }
-.dg-table-type-input { color: var(--dg-table-type-text); }
-.dg-table-move, .dg-table-del { background: none; border: none; cursor: pointer; font-size: 10px; line-height: 1; padding: 0 1px; color: var(--dg-table-type-text); }
-.dg-table-move:disabled { opacity: 0.3; cursor: default; }
-.dg-table-add { display: block; width: 100%; text-align: left; background: none; border: none; border-top: 1px solid var(--dg-table-border); color: var(--dg-table-fk); font-size: 11px; cursor: pointer; padding: 4px 10px; }
+.dg-table-row:last-child {
+  border-bottom: none;
+}
+.dg-table-key {
+  font-size: 10px;
+  color: var(--dg-table-fk);
+  font-weight: 600;
+}
+.dg-table-col.dg-pk {
+  font-weight: 600;
+  color: var(--dg-table-pk);
+}
+.dg-table-type {
+  color: var(--dg-table-type-text);
+  font-variant-numeric: tabular-nums;
+}
+:where(.dg-table:not(.dg-table-edit)) .dg-row-handle {
+  opacity: 0;
+}
+.dg-table-edit .dg-row-handle {
+  opacity: 1;
+  pointer-events: all;
+}
+.dg-table-row-edit {
+  grid-template-columns: 20px minmax(48px, 1fr) minmax(48px, 1fr) auto auto auto;
+  gap: 4px;
+}
+.dg-table-badge {
+  background: none;
+  border: 1px solid var(--dg-table-border);
+  border-radius: 3px;
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 1px 3px;
+  color: var(--dg-table-fk);
+}
+.dg-table-name-input,
+.dg-table-type-input {
+  min-width: 0;
+  border: 1px solid var(--dg-table-border);
+  border-radius: 3px;
+  background: var(--dg-node-fill);
+  color: var(--dg-table-row-text);
+  font-size: 11px;
+  padding: 0 3px;
+}
+.dg-table-type-input {
+  color: var(--dg-table-type-text);
+}
+.dg-table-move,
+.dg-table-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  padding: 0 1px;
+  color: var(--dg-table-type-text);
+}
+.dg-table-move:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.dg-table-add {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--dg-table-border);
+  color: var(--dg-table-fk);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 10px;
+}
 
 /* ---- legend ------------------------------------------------------------- */
 .dg-legend {
@@ -862,11 +1536,31 @@ path.dg-loop-badge-circle {
   max-width: 240px;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
 }
-.dg-legend-head { align-items: center; display: flex; gap: 6px; justify-content: space-between; }
-.dg-legend-title { font-weight: 600; }
-.dg-legend-collapse { background: none; border: none; cursor: pointer; font-size: 10px; padding: 0 2px; }
-.dg-legend-section { margin-top: 6px; }
-.dg-legend-section-title { font-size: 9px; letter-spacing: 0.06em; opacity: 0.6; text-transform: uppercase; }
+.dg-legend-head {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+}
+.dg-legend-title {
+  font-weight: 600;
+}
+.dg-legend-collapse {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0 2px;
+}
+.dg-legend-section {
+  margin-top: 6px;
+}
+.dg-legend-section-title {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+  text-transform: uppercase;
+}
 .dg-legend-row {
   align-items: center;
   background: none;
@@ -877,67 +1571,248 @@ path.dg-loop-badge-circle {
   text-align: left;
   width: 100%;
 }
-.dg-legend-toggle { cursor: pointer; }
-.dg-legend-toggle:hover { opacity: 0.75; }
-.dg-legend-off { opacity: 0.45; }
-.dg-legend-swatch { display: inline-block; flex: 0 0 24px; height: 12px; width: 24px; }
+.dg-legend-toggle {
+  cursor: pointer;
+}
+.dg-legend-toggle:hover {
+  opacity: 0.75;
+}
+.dg-legend-off {
+  opacity: 0.45;
+}
+.dg-legend-swatch {
+  display: inline-block;
+  flex: 0 0 24px;
+  height: 12px;
+  width: 24px;
+}
 /* Must match the swatch's 24px flex-basis. A narrower `width` here never
    reached layout (the basis wins) but DID feed the panel's max-content, sizing
    it 8px short of its own longest row so every long label ellipsized. */
-.dg-legend-chip { border-radius: 3px; height: 10px; width: 24px; }
-.dg-legend-shape { position: relative; }
-.dg-legend-shape > svg { display: block; height: 100%; width: 100%; }
-.dg-legend-icon { color: var(--dg-text-muted); left: 50%; position: absolute; top: 50%; transform: translate(-50%, -50%); }
-.dg-legend-mark { align-items: center; display: inline-flex; justify-content: center; line-height: 1; }
+.dg-legend-chip {
+  border-radius: 3px;
+  height: 10px;
+  width: 24px;
+}
+.dg-legend-shape {
+  position: relative;
+}
+.dg-legend-shape > svg {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+.dg-legend-icon {
+  color: var(--dg-text-muted);
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.dg-legend-mark {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  line-height: 1;
+}
 /* The canvas badge at swatch size. The two colours are the badge's own, so they are
    listed once, beside it (see .dg-threat-badge). */
-.dg-legend-badge { border-radius: 6px; color: #fff; font: 600 8px/12px system-ui, sans-serif; height: 12px; min-width: 12px; text-align: center; }
-.dg-legend-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dg-no-chrome .dg-legend-collapse { display: none; }
-.dg-no-chrome .dg-legend-toggle:hover { opacity: 1; }
+.dg-legend-badge {
+  border-radius: 6px;
+  color: #fff;
+  font:
+    600 8px/12px system-ui,
+    sans-serif;
+  height: 12px;
+  min-width: 12px;
+  text-align: center;
+}
+.dg-legend-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dg-no-chrome .dg-legend-collapse {
+  display: none;
+}
+.dg-no-chrome .dg-legend-toggle:hover {
+  opacity: 1;
+}
 
 /* Freehand drawings: tracing paper over the canvas. z-index 4 puts the layer
    above .react-flow__renderer (also 4, but earlier in the DOM) and below the
    z-5 panels/controls. The svg never takes the pointer — nodes stay clickable
    under ink — except the eraser's deliberately wide hit paths. */
-.dg-drawings { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; overflow: visible; }
-.dg-stroke { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.dg-stroke-hit { fill: none; stroke: transparent; stroke-linecap: round; stroke-linejoin: round; pointer-events: stroke; cursor: cell; }
-.dg-tool-pen { touch-action: none; }
-.dg-tool-pen .react-flow__pane, .dg-tool-pen .react-flow__node { cursor: crosshair !important; }
-.dg-tool-eraser .react-flow__pane { cursor: cell; }
-.dg-drawings-toggle { font-size: 14px; line-height: 1; }
-.dg-drawings-toggle-off { opacity: 0.5; text-decoration: line-through; }
+.dg-drawings {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 4;
+  pointer-events: none;
+  overflow: visible;
+}
+.dg-stroke {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.dg-stroke-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: stroke;
+  cursor: cell;
+}
+.dg-tool-pen {
+  touch-action: none;
+}
+.dg-tool-pen .react-flow__pane,
+.dg-tool-pen .react-flow__node {
+  cursor: crosshair !important;
+}
+.dg-tool-eraser .react-flow__pane {
+  cursor: cell;
+}
+.dg-drawings-toggle {
+  font-size: 14px;
+  line-height: 1;
+}
+.dg-drawings-toggle-off {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
 /* Laser pointer: a transient overlay above the drawings. The paths carry
    vector-effect="non-scaling-stroke", so these widths are SCREEN pixels at any
    zoom. The fade duration mirrors LASER_FADE_MS in useLaser.ts — the trail is
    unmounted the moment the animation ends. */
-.dg-laser { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; overflow: visible; }
-.dg-laser-trail path { fill: none; stroke: var(--dg-laser); stroke-linecap: round; stroke-linejoin: round; }
-.dg-laser-halo { stroke-width: 12px; opacity: 0.3; }
-.dg-laser-core { stroke-width: 3px; }
-.dg-laser-fade { animation: dg-laser-fade 1s ease-in forwards; }
-@keyframes dg-laser-fade { from { opacity: 1; } to { opacity: 0; } }
-.dg-tool-laser { touch-action: none; }
-/* The pointer itself reads as the laser dot between gestures. */
-.dg-tool-laser .react-flow__pane, .dg-tool-laser .react-flow__node {
-  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Ccircle cx='9' cy='9' r='7' fill='%23ff2d55' fill-opacity='0.35'/%3E%3Ccircle cx='9' cy='9' r='3.5' fill='%23ff2d55' stroke='white' stroke-width='1'/%3E%3C/svg%3E") 9 9, crosshair !important;
+.dg-laser {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+  overflow: visible;
 }
-.dg-laser-toggle { font-size: 14px; line-height: 1; }
-.dg-laser-toggle-on { color: var(--dg-laser); }
+.dg-laser-trail path {
+  fill: none;
+  stroke: var(--dg-laser);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.dg-laser-halo {
+  stroke-width: 12px;
+  opacity: 0.3;
+}
+.dg-laser-core {
+  stroke-width: 3px;
+}
+.dg-laser-fade {
+  animation: dg-laser-fade 1s ease-in forwards;
+}
+@keyframes dg-laser-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.dg-tool-laser {
+  touch-action: none;
+}
+/* The pointer itself reads as the laser dot between gestures. */
+.dg-tool-laser .react-flow__pane,
+.dg-tool-laser .react-flow__node {
+  cursor:
+    url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Ccircle cx='9' cy='9' r='7' fill='%23ff2d55' fill-opacity='0.35'/%3E%3Ccircle cx='9' cy='9' r='3.5' fill='%23ff2d55' stroke='white' stroke-width='1'/%3E%3C/svg%3E")
+      9 9,
+    crosshair !important;
+}
+.dg-laser-toggle {
+  font-size: 14px;
+  line-height: 1;
+}
+.dg-laser-toggle-on {
+  color: var(--dg-laser);
+}
 
 /* Git graph notation. Label box size/inset mirror GIT_LAYOUT.LABEL_W/LABEL_H/MARGIN
    in git-layout.ts — the overlay computes the tail's end from those constants. */
-.dg-circle-node { width: 100%; height: 100%; min-width: 0; min-height: 0; padding: 0; border-radius: 50%; border-width: 2px; position: relative; }
-.dg-circle-node .dg-sketch-shape { border-radius: 50%; }
-.dg-commit-tag { position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%); white-space: nowrap; font: 600 12px/1.2 system-ui, sans-serif; pointer-events: none; }
-.dg-commit-tag .dg-label-input { pointer-events: auto; }
-.dg-lane { width: 100%; height: 100%; position: relative; background: transparent; border: none; }
-.dg-lane-label { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); width: 170px; height: 36px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1px solid var(--dg-node-stroke); border-radius: 3px; background: var(--dg-node-fill); color: var(--dg-text); font: 14px/1 system-ui, sans-serif; }
-.dg-notation-git .react-flow__node.selected .dg-lane-label { box-shadow: 0 0 0 2px var(--dg-accent); }
-.dg-notation-git .react-flow__node.selected .dg-circle-node { box-shadow: 0 0 0 2px var(--dg-accent); }
-.dg-git-lanes { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
-.dg-git-tail { fill: none; stroke-width: 1.5; stroke-dasharray: 6 4; stroke-linecap: round; }
+.dg-circle-node {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  border-width: 2px;
+  position: relative;
+}
+.dg-circle-node .dg-sketch-shape {
+  border-radius: 50%;
+}
+.dg-commit-tag {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font:
+    600 12px/1.2 system-ui,
+    sans-serif;
+  pointer-events: none;
+}
+.dg-commit-tag .dg-label-input {
+  pointer-events: auto;
+}
+.dg-lane {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: transparent;
+  border: none;
+}
+.dg-lane-label {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 170px;
+  height: 36px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--dg-node-stroke);
+  border-radius: 3px;
+  background: var(--dg-node-fill);
+  color: var(--dg-text);
+  font:
+    14px/1 system-ui,
+    sans-serif;
+}
+.dg-notation-git .react-flow__node.selected .dg-lane-label {
+  box-shadow: 0 0 0 2px var(--dg-accent);
+}
+.dg-notation-git .react-flow__node.selected .dg-circle-node {
+  box-shadow: 0 0 0 2px var(--dg-accent);
+}
+.dg-git-lanes {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.dg-git-tail {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  stroke-linecap: round;
+}
 
 /* ---- leverage panel: the CLD variable report (LeveragePanel.tsx) ----------- */
 /* Fills whatever box the host gives it — the studio's dock, a column beside the
@@ -947,139 +1822,386 @@ path.dg-loop-badge-circle {
   background: var(--dg-surface);
   box-sizing: border-box;
   color: var(--dg-text);
-  font: 400 13px/1.4 system-ui, sans-serif;
+  font:
+    400 13px/1.4 system-ui,
+    sans-serif;
   height: 100%;
   overflow: auto;
   padding: 14px;
   width: 100%;
 }
-.dg-leverage h2 { font-size: 15px; margin: 0 0 4px; }
-.dg-leverage h3 { color: var(--dg-text-muted); font-size: 12px; letter-spacing: 0.03em; margin: 0 0 6px; text-transform: uppercase; }
-.dg-leverage p { margin: 0 0 8px; }
-.dg-lev-head { align-items: center; display: flex; justify-content: space-between; }
-.dg-lev-head h3 { margin: 0; }
-.dg-lev-close { background: none; border: 1px solid var(--dg-border); border-radius: 999px; color: var(--dg-text-muted); cursor: pointer; font: inherit; font-size: 11px; line-height: 1; padding: 3px 6px; }
-.dg-lev-close:hover { border-color: var(--dg-accent); color: var(--dg-text); }
-.dg-lev-muted { color: var(--dg-text-muted); }
-.dg-lev-hint { font-size: 11px; margin: -2px 0 6px; }
-.dg-lev-section { border-top: 1px solid var(--dg-border); margin-top: 10px; padding-top: 10px; }
-.dg-lev-list { display: flex; flex-direction: column; gap: 6px; }
-.dg-lev-row { background: var(--dg-bg); border: 1px solid var(--dg-border); border-radius: 6px; color: var(--dg-text); cursor: pointer; font: inherit; padding: 6px 8px; text-align: left; }
-.dg-lev-row:hover { border-color: var(--dg-accent); }
-.dg-lev-row.active { background: color-mix(in srgb, var(--dg-accent) 12%, var(--dg-bg)); border-color: var(--dg-accent); }
+.dg-leverage h2 {
+  font-size: 15px;
+  margin: 0 0 4px;
+}
+.dg-leverage h3 {
+  color: var(--dg-text-muted);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+}
+.dg-leverage p {
+  margin: 0 0 8px;
+}
+.dg-lev-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+.dg-lev-head h3 {
+  margin: 0;
+}
+.dg-lev-close {
+  background: none;
+  border: 1px solid var(--dg-border);
+  border-radius: 999px;
+  color: var(--dg-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+}
+.dg-lev-close:hover {
+  border-color: var(--dg-accent);
+  color: var(--dg-text);
+}
+.dg-lev-muted {
+  color: var(--dg-text-muted);
+}
+.dg-lev-hint {
+  font-size: 11px;
+  margin: -2px 0 6px;
+}
+.dg-lev-section {
+  border-top: 1px solid var(--dg-border);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+.dg-lev-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dg-lev-row {
+  background: var(--dg-bg);
+  border: 1px solid var(--dg-border);
+  border-radius: 6px;
+  color: var(--dg-text);
+  cursor: pointer;
+  font: inherit;
+  padding: 6px 8px;
+  text-align: left;
+}
+.dg-lev-row:hover {
+  border-color: var(--dg-accent);
+}
+.dg-lev-row.active {
+  background: color-mix(in srgb, var(--dg-accent) 12%, var(--dg-bg));
+  border-color: var(--dg-accent);
+}
 /* R/B in the badge colors, +/− in the link colors: the rows name what the canvas draws. */
-.dg-lev-kind { font-weight: 700; }
-.dg-lev-kind-R { color: var(--dg-loop-r, #22d3ee); }
-.dg-lev-kind-B { color: var(--dg-loop-b, #e879f9); }
-.dg-lev-kind-unknown { color: var(--dg-text-muted); }
-.dg-lev-sign { display: inline-block; font-weight: 700; text-align: center; width: 1em; }
-.dg-lev-pos { color: var(--dg-polarity-positive); }
-.dg-lev-neg { color: var(--dg-polarity-negative); }
-.dg-lev-mixed, .dg-lev-unknown { color: var(--dg-text-muted); }
+.dg-lev-kind {
+  font-weight: 700;
+}
+.dg-lev-kind-R {
+  color: var(--dg-loop-r, #22d3ee);
+}
+.dg-lev-kind-B {
+  color: var(--dg-loop-b, #e879f9);
+}
+.dg-lev-kind-unknown {
+  color: var(--dg-text-muted);
+}
+.dg-lev-sign {
+  display: inline-block;
+  font-weight: 700;
+  text-align: center;
+  width: 1em;
+}
+.dg-lev-pos {
+  color: var(--dg-polarity-positive);
+}
+.dg-lev-neg {
+  color: var(--dg-polarity-negative);
+}
+.dg-lev-mixed,
+.dg-lev-unknown {
+  color: var(--dg-text-muted);
+}
 
 /* ---- second-order thinking: one stripe per order of consequence ------------ */
 /* z-index -1 inside the viewport's own stacking context: under the edges and
    the nodes, above the canvas background. */
-.dg-order-bands { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; z-index: -1; }
-.dg-order-band { fill: color-mix(in srgb, var(--dg-text) 3%, transparent); }
-.dg-order-band-alt { fill: color-mix(in srgb, var(--dg-text) 7%, transparent); }
+.dg-order-bands {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: -1;
+}
+.dg-order-band {
+  fill: color-mix(in srgb, var(--dg-text) 3%, transparent);
+}
+.dg-order-band-alt {
+  fill: color-mix(in srgb, var(--dg-text) 7%, transparent);
+}
 .dg-order-band-header {
-  fill: var(--dg-text-muted); font: 600 11px/1 system-ui, sans-serif;
-  letter-spacing: 0.04em; text-transform: uppercase;
+  fill: var(--dg-text-muted);
+  font:
+    600 11px/1 system-ui,
+    sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 /* ---- plan: time axis ------------------------------------------------------ */
-.dg-time-axis { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; z-index: -1; }
-.dg-time-axis-frame { fill: color-mix(in srgb, var(--dg-text) var(--dg-plan-axis-band), transparent); stroke: none; }
-.dg-time-axis-tick { stroke: var(--dg-plan-axis-tick); stroke-width: 1; }
-.dg-time-axis-grid { stroke: color-mix(in srgb, var(--dg-text) var(--dg-plan-axis-grid), transparent); stroke-width: 1; }
+.dg-time-axis {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: -1;
+}
+.dg-time-axis-frame {
+  fill: color-mix(in srgb, var(--dg-text) var(--dg-plan-axis-band), transparent);
+  stroke: none;
+}
+.dg-time-axis-tick {
+  stroke: var(--dg-plan-axis-tick);
+  stroke-width: 1;
+}
+.dg-time-axis-grid {
+  stroke: color-mix(in srgb, var(--dg-text) var(--dg-plan-axis-grid), transparent);
+  stroke-width: 1;
+}
 /* month/week share the weight/family; only the colour and size differ — see
    ThemeTokens.planAxisMonthLabel/planAxisWeekLabel (the dark values read on
    the canvas at the fit-to-view zoom a multi-week plan lands at; light
    reproduces the old shared --dg-text-muted read exactly). */
-.dg-time-axis-month, .dg-time-axis-week { font: 600 11px system-ui, sans-serif; }
-.dg-time-axis-month { fill: var(--dg-plan-axis-month-label); }
-.dg-time-axis-week { fill: var(--dg-plan-axis-week-label); font-weight: 500; font-size: 10px; }
-.dg-time-axis-event { stroke: var(--dg-text-muted); stroke-width: 1; stroke-dasharray: 4 4; }
-.dg-time-axis-today { stroke: var(--dg-accent); stroke-width: 2; }
-.dg-time-axis-today-label { fill: var(--dg-accent); font: 600 10px system-ui, sans-serif; }
+.dg-time-axis-month,
+.dg-time-axis-week {
+  font:
+    600 11px system-ui,
+    sans-serif;
+}
+.dg-time-axis-month {
+  fill: var(--dg-plan-axis-month-label);
+}
+.dg-time-axis-week {
+  fill: var(--dg-plan-axis-week-label);
+  font-weight: 500;
+  font-size: 10px;
+}
+.dg-time-axis-event {
+  stroke: var(--dg-text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.dg-time-axis-today {
+  stroke: var(--dg-accent);
+  stroke-width: 2;
+}
+.dg-time-axis-today-label {
+  fill: var(--dg-accent);
+  font:
+    600 10px system-ui,
+    sans-serif;
+}
 
 /* ---- activity diagrams: frame / lane / region chrome ---------------------- */
 /* Strip width (28px) mirrors ACTIVITY_LAYOUT.TITLE_STRIP_W / LANE_STRIP_W in
    activity-frame.ts — the layout pass reserves exactly this much room. */
 .dg-activity-frame,
-.dg-activity-lane { width: 100%; height: 100%; position: relative; background: transparent; border: none; }
-.dg-activity-frame { border: 1.5px solid var(--dg-node-stroke); }
-.dg-activity-lane { border-top: 1px solid var(--dg-node-stroke); background: color-mix(in srgb, var(--dg-act-accent, transparent) 6%, transparent); }
-.dg-activity-strip { position: absolute; left: 0; top: 0; bottom: 0; width: 28px; display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--dg-node-stroke); background: color-mix(in srgb, var(--dg-act-accent, transparent) 20%, transparent); }
-.dg-activity-name { writing-mode: vertical-rl; transform: rotate(180deg); font: 600 12px/1 system-ui, sans-serif; color: var(--dg-text); white-space: nowrap; }
-.dg-activity-region { width: 100%; height: 100%; border: 1.5px dashed var(--dg-node-stroke); border-radius: 10px; background: color-mix(in srgb, var(--dg-text) 4%, transparent); }
-.dg-activity-region-name { position: absolute; top: 4px; left: 10px; font: 12px/1.2 system-ui, sans-serif; color: var(--dg-text); }
+.dg-activity-lane {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: transparent;
+  border: none;
+}
+.dg-activity-frame {
+  border: 1.5px solid var(--dg-node-stroke);
+}
+.dg-activity-lane {
+  border-top: 1px solid var(--dg-node-stroke);
+  background: color-mix(in srgb, var(--dg-act-accent, transparent) 6%, transparent);
+}
+.dg-activity-strip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--dg-node-stroke);
+  background: color-mix(in srgb, var(--dg-act-accent, transparent) 20%, transparent);
+}
+.dg-activity-name {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font:
+    600 12px/1 system-ui,
+    sans-serif;
+  color: var(--dg-text);
+  white-space: nowrap;
+}
+.dg-activity-region {
+  width: 100%;
+  height: 100%;
+  border: 1.5px dashed var(--dg-node-stroke);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dg-text) 4%, transparent);
+}
+.dg-activity-region-name {
+  position: absolute;
+  top: 4px;
+  left: 10px;
+  font:
+    12px/1.2 system-ui,
+    sans-serif;
+  color: var(--dg-text);
+}
 .react-flow__node.selected .dg-activity-frame,
 .react-flow__node.selected .dg-activity-lane,
-.react-flow__node.selected .dg-activity-region { box-shadow: 0 0 0 2px var(--dg-accent); }
+.react-flow__node.selected .dg-activity-region {
+  box-shadow: 0 0 0 2px var(--dg-accent);
+}
 
 /* view mode, Alt held: an edge label slides along its edge (see DiagramEdge) */
-.dg-alt-move .dg-edge-label { cursor: grab; }
-.dg-alt-move .dg-edge-label:active { cursor: grabbing; }
+.dg-alt-move .dg-edge-label {
+  cursor: grab;
+}
+.dg-alt-move .dg-edge-label:active {
+  cursor: grabbing;
+}
 
 /* Edge labels paint ABOVE the edges, always. React Flow raises an edge between
    nested nodes to its endpoints' z-index (1, 2, … by nesting depth) while the
    label layer stays at `auto`, so inside a group the line was drawn across its
    own label's chip — the text read as struck through. Below 1000, where React
    Flow lifts a selected node, so a selection still comes to the front. */
-.react-flow__edgelabel-renderer { z-index: 999; }
+.react-flow__edgelabel-renderer {
+  z-index: 999;
+}
 
 /* Git graph stage: a frame across every lane (gitLayout sizes it). Pointer
    events pass through the frame to the commits inside; the title takes them. */
-.react-flow__node:has(> .dg-git-stage) { pointer-events: none !important; }
+.react-flow__node:has(> .dg-git-stage) {
+  pointer-events: none !important;
+}
 .dg-git-stage {
   --dg-stage: var(--dg-node-stroke);
-  width: 100%; height: 100%; box-sizing: border-box; position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  position: relative;
   border: 1.5px dashed color-mix(in srgb, var(--dg-stage) 70%, transparent);
   border-radius: 10px;
   background: color-mix(in srgb, var(--dg-stage) 7%, transparent);
 }
 .dg-git-stage-name {
-  position: absolute; top: 6px; left: 0; right: 0; text-align: center;
-  font: 600 12px/1.2 system-ui, sans-serif; color: var(--dg-stage);
-  pointer-events: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 6px;
+  position: absolute;
+  top: 6px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font:
+    600 12px/1.2 system-ui,
+    sans-serif;
+  color: var(--dg-stage);
+  pointer-events: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 6px;
 }
-.dg-git-stage-name .dg-label { font-weight: 600; }
-.react-flow__node.selected > .dg-git-stage { box-shadow: 0 0 0 2px var(--dg-accent); }
+.dg-git-stage-name .dg-label {
+  font-weight: 600;
+}
+.react-flow__node.selected > .dg-git-stage {
+  box-shadow: 0 0 0 2px var(--dg-accent);
+}
 
 /* Fishbone. The effect node is the spine: a line the layout sizes across the
    whole fish, the head box at its right end, the arrowhead the line's own end.
    A category box is the generic .dg-node path (fb-effect/fb-cause return their
    own markup and never reach it); its label wraps like any box label
    (BoxLabel's inline pre-wrap), so a name wider than the LABEL_W band the
-   layout reserves grows the box downward past LABEL_H — see DEFERRALS. */
-.dg-fb-head { width: 100%; height: 100%; display: flex; align-items: center; color: var(--dg-text); }
-.dg-fb-spine { flex: 1; height: 2px; background: currentColor; position: relative; }
+   layout reserves grows the box downward past LABEL_H. The layout never measures
+   the name, so above the spine a long one grows towards the next bone. */
+.dg-fb-head {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  color: var(--dg-text);
+}
+.dg-fb-spine {
+  flex: 1;
+  height: 2px;
+  background: currentColor;
+  position: relative;
+}
 .dg-fb-spine::after {
-  content: ''; position: absolute; right: -1px; top: 50%; transform: translateY(-50%);
-  border: 7px solid transparent; border-left: 10px solid currentColor; border-right: 0;
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 7px solid transparent;
+  border-left: 10px solid currentColor;
+  border-right: 0;
 }
 /* min-width mirrors FISHBONE_LAYOUT.HEAD_MIN_W; the font must match HEAD_FONT_PX,
    which measures the effect name (see fishbone-layout.ts). */
 .dg-fb-head-box {
-  flex: none; height: 100%; box-sizing: border-box; display: flex; align-items: center;
-  padding: 0 16px; border-radius: 8px; background: var(--dg-text); color: var(--dg-surface);
-  font: 600 14px/1.2 system-ui, sans-serif; white-space: nowrap; min-width: 140px;
+  flex: none;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: var(--dg-text);
+  color: var(--dg-surface);
+  font:
+    600 14px/1.2 system-ui,
+    sans-serif;
+  white-space: nowrap;
+  min-width: 140px;
 }
 /* outline on the box, not .dg-fb-head itself — that container is the invisible
    full-width spine node, and a box-shadow on it would frame the whole fish */
-.react-flow__node.selected > .dg-fb-head .dg-fb-head-box { box-shadow: 0 0 0 2px var(--dg-accent); }
+.react-flow__node.selected > .dg-fb-head .dg-fb-head-box {
+  box-shadow: 0 0 0 2px var(--dg-accent);
+}
 /* A cause is text on a line, not a box. Sized by the layout (LAYOUT_SIZED_TYPES);
    the font must match FISHBONE_LAYOUT.FONT_PX, which measures the text. This draws
    at weight 400 but the measure is calibrated for 600, so it slightly over-estimates
    the text — the line starts a few px right of the last glyph, never through it. */
 .dg-fb-cause {
-  width: 100%; height: 100%; box-sizing: border-box; display: flex; align-items: center;
-  padding: 0 6px; font: 12px/1.2 system-ui, sans-serif; color: var(--dg-text);
-  white-space: nowrap; border-radius: 4px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  font:
+    12px/1.2 system-ui,
+    sans-serif;
+  color: var(--dg-text);
+  white-space: nowrap;
+  border-radius: 4px;
 }
-.react-flow__node.selected > .dg-fb-cause { box-shadow: 0 0 0 2px var(--dg-accent); }
+.react-flow__node.selected > .dg-fb-cause {
+  box-shadow: 0 0 0 2px var(--dg-accent);
+}
 
 /* ---- plan: zones, events, chips ------------------------------------------ */
 /* a zone is a solid bar with a thick left edge; its tint comes from the node's
@@ -1101,31 +2223,83 @@ path.dg-loop-badge-circle {
 /* an event: an unclipped, unpainted box filling its 16×16 wrapper; ::before is
    the diamond in the node's colour (currentColor — the branch sets it on the
    root), and the tag hangs to the right. Rough mode draws the sketch instead. */
-.dg-event-node { position: relative; background: none; border: none; border-radius: 0; padding: 0; min-width: 0; width: 100%; height: 100%; box-sizing: border-box; color: var(--dg-text); overflow: visible; }
-.dg-event-node::before { content: ''; position: absolute; inset: 0; background: currentColor; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
-.dg-style-rough .dg-event-node::before { display: none; }
-.dg-event-tag { position: absolute; left: calc(100% + 4px); top: 50%; transform: translateY(-50%); white-space: nowrap; font: 12px/1.2 system-ui, sans-serif; pointer-events: none; }
-.dg-event-tag .dg-label-input { pointer-events: auto; }
+.dg-event-node {
+  position: relative;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  color: var(--dg-text);
+  overflow: visible;
+}
+.dg-event-node::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+.dg-style-rough .dg-event-node::before {
+  display: none;
+}
+.dg-event-tag {
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  font:
+    12px/1.2 system-ui,
+    sans-serif;
+  pointer-events: none;
+}
+.dg-event-tag .dg-label-input {
+  pointer-events: auto;
+}
 /* text is the chip's own colour mixed toward --dg-text (ThemeTokens.roleChipText
    — 100% in light, unmixed, reproducing the old raw `--dg-chip` read; a lower
    dark % pulls the reader's own colour up to a legible weight against the dark
    canvas). The border stays the raw chip colour — a hue, not running text, so
    it carries no contrast requirement of its own. */
-.dg-role-chip { --dg-chip: var(--dg-text-muted); border: 1px solid var(--dg-chip); color: color-mix(in srgb, var(--dg-chip) var(--dg-role-chip-text), var(--dg-text)); background: color-mix(in srgb, var(--dg-chip) var(--dg-role-chip-fill), transparent); max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-role-chip {
+  --dg-chip: var(--dg-text-muted);
+  border: 1px solid var(--dg-chip);
+  color: color-mix(in srgb, var(--dg-chip) var(--dg-role-chip-text), var(--dg-text));
+  background: color-mix(in srgb, var(--dg-chip) var(--dg-role-chip-fill), transparent);
+  max-width: 9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 /* the selected actor's own chip, filled solid (background = its colour, text
    = --dg-surface so it reads on any chip hue) — the plain outline every other
    chip keeps is the "not this one" state. */
-.dg-role-chip-active { background: var(--dg-chip); color: var(--dg-surface); }
+.dg-role-chip-active {
+  background: var(--dg-chip);
+  color: var(--dg-surface);
+}
 /* Edit mode: the chip becomes a <button> (RoleChipMenu) that opens a menu —
    .dg-role-chip above already draws every visual property a plain span had
    (border/background/color/padding/font-size/radius from it and
    `.dg-count, .dg-badge`), so this only strips what a <button> element adds
    on top: UA font/margin and the default arrow cursor. */
-button.dg-role-chip { font: inherit; margin: 0; cursor: pointer; appearance: none; -webkit-appearance: none; }
+button.dg-role-chip {
+  font: inherit;
+  margin: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
 /* Just hugs the button's own box in the badge row (RoleChipMenu positions its
    portalled menu off the trigger's own getBoundingClientRect, not off this
    anchor — see the menu rule below). */
-.dg-role-chip-anchor { display: inline-block; }
+.dg-role-chip-anchor {
+  display: inline-block;
+}
 /* The chip's menu — Owner/Executor/Checker minus the current role, then
    Remove. Portalled to <body> (RoleChipMenu), so `position` and `top`/`left`
    are set inline per instance from the trigger's rect, not here; this rule
@@ -1138,16 +2312,34 @@ button.dg-role-chip { font: inherit; margin: 0; cursor: pointer; appearance: non
    modest value the rich-text toolbar's portal (.dg-rich-toolbar) uses. */
 .dg-role-chip-menu {
   z-index: 40;
-  display: flex; flex-direction: column;
-  min-width: 120px; margin-top: 2px; padding: 4px;
-  background: var(--dg-surface); border: 1px solid var(--dg-border); border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  margin-top: 2px;
+  padding: 4px;
+  background: var(--dg-surface);
+  border: 1px solid var(--dg-border);
+  border-radius: 8px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
 }
 .dg-role-chip-menu-item {
-  background: none; border: 0; border-radius: 5px; color: var(--dg-text);
-  cursor: pointer; font: inherit; font-size: 12px; padding: 5px 8px; text-align: left; white-space: nowrap;
+  background: none;
+  border: 0;
+  border-radius: 5px;
+  color: var(--dg-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 8px;
+  text-align: left;
+  white-space: nowrap;
 }
-.dg-role-chip-menu-item:hover, .dg-role-chip-menu-item:focus-visible { background: var(--dg-bg); box-shadow: inset 0 0 0 1px var(--dg-border); outline: none; }
+.dg-role-chip-menu-item:hover,
+.dg-role-chip-menu-item:focus-visible {
+  background: var(--dg-bg);
+  box-shadow: inset 0 0 0 1px var(--dg-border);
+  outline: none;
+}
 /* the reciprocal mark DiagramNode sets on a node's root: a zone lit by the
    selected actor's chip, or an actor lit by the selected zone's roles —
    --dg-hit is set inline to that chip's colour (falling back to --dg-accent
@@ -1155,11 +2347,17 @@ button.dg-role-chip { font: inherit; margin: 0; cursor: pointer; appearance: non
    Scoped under the plan notation's own class — defence in depth alongside
    DiagramNode's own profile.id gate, since `[data-plan-hit]` alone would
    otherwise be a bare attribute selector reaching any plane. */
-.dg-notation-plan [data-plan-hit] { outline: 2px solid var(--dg-hit); outline-offset: 2px; }
+.dg-notation-plan [data-plan-hit] {
+  outline: 2px solid var(--dg-hit);
+  outline-offset: 2px;
+}
 /* a drop target while a single actor/plain-node drag hovers it (data-drop-target,
    set from DiagramView's per-frame hit test) — dashed, not solid, so a target in
    waiting reads differently from the selected actor's solid hit mark above. */
-.dg-notation-plan [data-drop-target] { outline: 2px dashed var(--dg-accent); outline-offset: 2px; }
+.dg-notation-plan [data-drop-target] {
+  outline: 2px dashed var(--dg-accent);
+  outline-offset: 2px;
+}
 /* Three things used to claim a zone's top-right corner: the role-chip row
    (`.dg-badges` right-aligns itself with `margin-left: auto` everywhere), the
    comment/threat count badges (a container wears them INSIDE the header band,
@@ -1172,25 +2370,43 @@ button.dg-role-chip { font: inherit; margin: 0; cursor: pointer; appearance: non
    `.dg-group-header`, childless it is a `.dg-node` whose chips sit in
    `.dg-node-row` — the same bar to the reader, so the same look either way. */
 .dg-notation-plan .dg-group[data-type='plan-zone'] .dg-group-header .dg-badges,
-.dg-notation-plan .dg-node[data-type='plan-zone'] .dg-node-row .dg-badges { margin-left: 8px; }
+.dg-notation-plan .dg-node[data-type='plan-zone'] .dg-node-row .dg-badges {
+  margin-left: 8px;
+}
 /* The margin alone cannot move the childless bar's chips: its label is the
    row's flexible child (`.dg-node-row .dg-label`, flex: 1 1 auto) and grows to
    fill whatever they leave. Let the label be its own width instead — it keeps
    `min-width: 0`, so a long name still gives way rather than shoving the chips
    off the end of the bar. */
-.dg-notation-plan .dg-node[data-type='plan-zone'] .dg-node-row .dg-label { flex: 0 1 auto; }
+.dg-notation-plan .dg-node[data-type='plan-zone'] .dg-node-row .dg-label {
+  flex: 0 1 auto;
+}
 /* …and the two count badges take the LEAF spots, hanging off the box, rather
    than the in-header spots that are now under the chips. Opposite corners,
    same convention as every leaf: threats top-left, comments bottom-right. */
-.dg-notation-plan .dg-group[data-type='plan-zone'] > .dg-threat-badge { top: -6px; left: -6px; right: auto; }
-.dg-notation-plan .dg-group[data-type='plan-zone'] > .dg-comment-badge { top: auto; bottom: -6px; right: -6px; }
+.dg-notation-plan .dg-group[data-type='plan-zone'] > .dg-threat-badge {
+  top: -6px;
+  left: -6px;
+  right: auto;
+}
+.dg-notation-plan .dg-group[data-type='plan-zone'] > .dg-comment-badge {
+  top: auto;
+  bottom: -6px;
+  right: -6px;
+}
 /* NodeResizeControl's default 'handle' variant carries React Flow's own
    .react-flow__resize-control.handle(.left/.right) rules (a 5×5 square,
    translate -50% -50%), which outrank a bare .dg-x-resize class on specificity
    alone — so the selector has to match those classes too, not just add one. */
 .react-flow__resize-control.handle.dg-x-resize {
-  width: 8px; height: 100%; top: 0; translate: -50% 0;
-  border: none; border-radius: 0; background: transparent; cursor: ew-resize;
+  width: 8px;
+  height: 100%;
+  top: 0;
+  translate: -50% 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  cursor: ew-resize;
 }
 
 /* Deployment. A zone is a hard boundary, so it draws solid unless its type says
@@ -1199,13 +2415,25 @@ button.dg-role-chip { font: inherit; margin: 0; cursor: pointer; appearance: non
    colour is that colour (DiagramNode sets it inline); a subnet is a wash, not a
    line, so its tab takes the type's token directly. */
 .dg-notation-deploy .dg-group[data-type^='deploy-'],
-.dg-notation-deploy .dg-group[data-type='c4-deployment-node'] { border-radius: 4px; }
+.dg-notation-deploy .dg-group[data-type='c4-deployment-node'] {
+  border-radius: 4px;
+}
 .dg-notation-deploy .dg-group[data-type^='deploy-']:not(.dg-dashed),
-.dg-notation-deploy .dg-group[data-type='c4-deployment-node'] { border-style: solid; }
-.dg-notation-deploy .dg-group[data-type='deploy-environment'] { border-width: 2.5px; }
-.dg-notation-deploy .dg-group[data-type^='deploy-subnet-'] { --dg-node-accent-tint: var(--dg-deploy-subnet-tint); }
-.dg-notation-deploy .dg-group[data-type='deploy-subnet-public'] > .dg-group-header { color: var(--dg-deploy-subnet-public); }
-.dg-notation-deploy .dg-group[data-type='deploy-subnet-private'] > .dg-group-header { color: var(--dg-deploy-subnet-private); }
+.dg-notation-deploy .dg-group[data-type='c4-deployment-node'] {
+  border-style: solid;
+}
+.dg-notation-deploy .dg-group[data-type='deploy-environment'] {
+  border-width: 2.5px;
+}
+.dg-notation-deploy .dg-group[data-type^='deploy-subnet-'] {
+  --dg-node-accent-tint: var(--dg-deploy-subnet-tint);
+}
+.dg-notation-deploy .dg-group[data-type='deploy-subnet-public'] > .dg-group-header {
+  color: var(--dg-deploy-subnet-public);
+}
+.dg-notation-deploy .dg-group[data-type='deploy-subnet-private'] > .dg-group-header {
+  color: var(--dg-deploy-subnet-private);
+}
 .dg-notation-deploy .dg-group[data-type^='deploy-'] > .dg-group-header,
 .dg-notation-deploy .dg-group[data-type='c4-deployment-node'] > .dg-group-header {
   width: fit-content;

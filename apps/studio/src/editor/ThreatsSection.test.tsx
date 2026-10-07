@@ -4,7 +4,12 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { EditorCommand, StrideCategory, Threat } from '@diagc/core';
 import { ThreatsSection } from './ThreatsSection';
 
-const threat = (id: string, over: Partial<Threat> = {}): Threat => ({ id, category: 'S', title: `Threat ${id}`, ...over });
+const threat = (id: string, over: Partial<Threat> = {}): Threat => ({
+  id,
+  category: 'S',
+  title: `Threat ${id}`,
+  ...over,
+});
 
 function setup(
   threats: readonly Threat[],

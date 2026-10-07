@@ -59,7 +59,10 @@ describe('skill content', () => {
   });
 
   it('names only commands and flags the CLI has', () => {
-    const help = execFileSync(process.execPath, [path.join(home.root, 'bin', 'diagc.mjs'), '--help'], { encoding: 'utf8', cwd: tmpdir() });
+    const help = execFileSync(process.execPath, [path.join(home.root, 'bin', 'diagc.mjs'), '--help'], {
+      encoding: 'utf8',
+      cwd: tmpdir(),
+    });
     const commands = /^Usage: diagc <([a-z|]+)>/m.exec(help)?.[1]?.split('|') ?? [];
     const calls = codeSpans.filter((s) => s.startsWith('diagc '));
     for (const call of calls) {

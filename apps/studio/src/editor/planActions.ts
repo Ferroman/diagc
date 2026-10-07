@@ -66,7 +66,11 @@ const shiftZone = (id: string, s: PlanSpan, days: number): EditorCommand => ({
   id,
   dates: { start: isoOf(s.start + days), end: isoOf(s.end + days) },
 });
-const shiftEvent = (id: string, at: number, days: number): EditorCommand => ({ type: 'set-plan-dates', id, dates: { at: isoOf(at + days) } });
+const shiftEvent = (id: string, at: number, days: number): EditorCommand => ({
+  type: 'set-plan-dates',
+  id,
+  dates: { at: isoOf(at + days) },
+});
 
 /**
  * A drag on the plan plane, as dates. dx is the displacement from the ARRANGED
@@ -121,7 +125,13 @@ export function planMoves(
         }
         out.push({ type: 'set-plan-dates', id, dates: { start: isoOf(start), end: isoOf(end) } });
         if (!g.parent.has(id)) {
-          out.push({ type: 'set-position', nodeId: id, x: planX(start, origin), y: Math.max(0, pos.y), ...planeOpt(plane) });
+          out.push({
+            type: 'set-position',
+            nodeId: id,
+            x: planX(start, origin),
+            y: Math.max(0, pos.y),
+            ...planeOpt(plane),
+          });
         }
         continue;
       }
@@ -142,7 +152,13 @@ export function planMoves(
       // either, and writing it a position only litters the layout file with a
       // coordinate the arrangement overrides anyway.
       if (!g.parent.has(id)) {
-        out.push({ type: 'set-position', nodeId: id, x: planX(span.start + days, origin), y: Math.max(0, pos.y), ...planeOpt(plane) });
+        out.push({
+          type: 'set-position',
+          nodeId: id,
+          x: planX(span.start + days, origin),
+          y: Math.max(0, pos.y),
+          ...planeOpt(plane),
+        });
       }
     } else if (isPlanEvent(node)) {
       const at = atOf(node);
@@ -181,7 +197,13 @@ export function planMoves(
  * are clamped to the parent's span and the children's, so a gesture can never
  * produce a `plan-*` error. No size is ever saved for a zone.
  */
-export function planResize(model: DiagramModel, plane: string | undefined, id: string, x: number, w: number): EditorCommand | undefined {
+export function planResize(
+  model: DiagramModel,
+  plane: string | undefined,
+  id: string,
+  x: number,
+  w: number,
+): EditorCommand | undefined {
   const g = planGraph(model, plane);
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const node = byId.get(id);
@@ -206,7 +228,11 @@ function selectedZone(model: DiagramModel, selected: string | undefined): Diagra
   return n !== undefined && isPlanZone(n) ? n : undefined;
 }
 
-export function addZone(model: DiagramModel, plane: string | undefined, opts: { selected?: string; today: string }): { command: EditorCommand; id: string } {
+export function addZone(
+  model: DiagramModel,
+  plane: string | undefined,
+  opts: { selected?: string; today: string },
+): { command: EditorCommand; id: string } {
   const id = uniqueNodeId(model, 'zone');
   const parent = selectedZone(model, opts.selected);
   const outer = parent === undefined ? undefined : spanOf(parent);
@@ -216,13 +242,23 @@ export function addZone(model: DiagramModel, plane: string | undefined, opts: { 
     id,
     command: {
       type: 'add-node',
-      node: { id, name: 'Zone', type: PLAN_ZONE_TYPE, ...planeOpt(plane), metadata: { start: isoOf(start), end: isoOf(end) } },
+      node: {
+        id,
+        name: 'Zone',
+        type: PLAN_ZONE_TYPE,
+        ...planeOpt(plane),
+        metadata: { start: isoOf(start), end: isoOf(end) },
+      },
       ...(parent !== undefined ? { parent: { id: parent.id, ...planeOpt(plane) } } : {}),
     },
   };
 }
 
-export function addEvent(model: DiagramModel, plane: string | undefined, opts: { selected?: string; today: string }): { command: EditorCommand; id: string } {
+export function addEvent(
+  model: DiagramModel,
+  plane: string | undefined,
+  opts: { selected?: string; today: string },
+): { command: EditorCommand; id: string } {
   const id = uniqueNodeId(model, 'event');
   const parent = selectedZone(model, opts.selected);
   const outer = parent === undefined ? undefined : spanOf(parent);
@@ -271,13 +307,20 @@ export function setRole(model: DiagramModel, zoneId: string, role: PlanRole, per
  * the actor holds no role on the zone at all, or holds exactly one relation
  * already at `role` — nothing a command could change.
  */
-export function setActorRole(model: DiagramModel, zoneId: string, actorId: string, role: PlanRole | null): EditorCommand | undefined {
+export function setActorRole(
+  model: DiagramModel,
+  zoneId: string,
+  actorId: string,
+  role: PlanRole | null,
+): EditorCommand | undefined {
   const held = model.relations.filter((r) => r.from === actorId && r.to === zoneId && isPlanRole(r.kind));
   if (held.length === 0) return undefined;
   if (role !== null && held.length === 1 && held[0]!.kind === role) return undefined;
   const [first, ...rest] = held;
   const commands: EditorCommand[] = [
-    role === null ? { type: 'delete-relation', id: first!.id } : { type: 'update-relation', id: first!.id, patch: { kind: role } },
+    role === null
+      ? { type: 'delete-relation', id: first!.id }
+      : { type: 'update-relation', id: first!.id, patch: { kind: role } },
     ...rest.map((r): EditorCommand => ({ type: 'delete-relation', id: r.id })),
   ];
   return commands.length === 1 ? commands[0]! : { type: 'batch', commands };
@@ -325,7 +368,8 @@ export function assign(
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const node = byId.get(id);
   const zone = byId.get(zoneId);
-  if (node === undefined || zone === undefined || !isPlanZone(zone) || isPlanZone(node) || isPlanEvent(node)) return undefined;
+  if (node === undefined || zone === undefined || !isPlanZone(zone) || isPlanZone(node) || isPlanEvent(node))
+    return undefined;
   if (isPlanActor(node)) {
     if (model.relations.some((r) => r.from === id && r.to === zoneId && isPlanRole(r.kind))) return undefined;
     return { type: 'add-relation', from: id, to: zoneId, opts: { kind: 'executes' } };
@@ -335,7 +379,13 @@ export function assign(
   const commands: EditorCommand[] = [];
   for (const parent of parents) commands.push({ type: 'remove-containment', parent, child: id, ...planeOpt(plane) });
   commands.push({ type: 'add-containment', parent: zoneId, child: id, ...planeOpt(plane) });
-  commands.push({ type: 'set-position', nodeId: id, x: Math.max(0, rel.x), y: Math.max(TITLE_H, rel.y), ...planeOpt(plane) });
+  commands.push({
+    type: 'set-position',
+    nodeId: id,
+    x: Math.max(0, rel.x),
+    y: Math.max(TITLE_H, rel.y),
+    ...planeOpt(plane),
+  });
   return { type: 'batch', commands };
 }
 
@@ -354,7 +404,11 @@ export function seedDates(
   const parent = selectedZone(model, at.parentId);
   const outer = parent === undefined ? undefined : spanOf(parent);
   const day =
-    outer !== undefined ? outer.start : at.x !== undefined && g.origin !== undefined ? g.origin + Math.floor(at.x / DAY) : dayOf(today)!;
+    outer !== undefined
+      ? outer.start
+      : at.x !== undefined && g.origin !== undefined
+        ? g.origin + Math.floor(at.x / DAY)
+        : dayOf(today)!;
   if (type === PLAN_EVENT_TYPE) return { at: isoOf(day) };
   return { start: isoOf(day), end: isoOf(Math.min(day + ZONE_DAYS - 1, outer?.end ?? Infinity)) };
 }
@@ -388,7 +442,8 @@ export function seedOnRetype(
   if (type !== PLAN_ZONE_TYPE && type !== PLAN_EVENT_TYPE) return undefined;
   const node = model.nodes.find((n) => n.id === id);
   if (node === undefined) return undefined;
-  const already = type === PLAN_ZONE_TYPE ? spanOf({ ...node, type }) !== undefined : atOf({ ...node, type }) !== undefined;
+  const already =
+    type === PLAN_ZONE_TYPE ? spanOf({ ...node, type }) !== undefined : atOf({ ...node, type }) !== undefined;
   if (already) return undefined;
   const parentId = planGraph(model, plane).parent.get(id);
   const dates = seedDates(model, plane, type, { parentId }, today);

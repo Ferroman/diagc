@@ -50,7 +50,16 @@ export interface DiagramDiff {
   error?: string;
 }
 
-const EMPTY: DiagramModel = { version: 1, id: '', name: '', nodes: [], containment: [], relations: [], layers: [], planes: [] };
+const EMPTY: DiagramModel = {
+  version: 1,
+  id: '',
+  name: '',
+  nodes: [],
+  containment: [],
+  relations: [],
+  layers: [],
+  planes: [],
+};
 
 async function readJson(file: string): Promise<unknown> {
   return existsSync(file) ? (JSON.parse(await readFile(file, 'utf8')) as unknown) : undefined;
@@ -65,7 +74,10 @@ export async function loadDiagramSet(label: string, diagramsDir: string, coreEnt
   for (const rel of files.sort()) {
     const name = rel.replace(/\.diagram\.(ts|json)$/, '');
     try {
-      const model = await loadModel(path.join(srcDir, rel), { rootDir: srcDir, ...(coreEntry !== undefined ? { coreEntry } : {}) });
+      const model = await loadModel(path.join(srcDir, rel), {
+        rootDir: srcDir,
+        ...(coreEntry !== undefined ? { coreEntry } : {}),
+      });
       const layout = (await readJson(path.join(srcDir, `${name}.layout.json`))) as LayoutOverlay | undefined;
       const drawings = await readJson(path.join(srcDir, `${name}.drawings.json`));
       versions.set(name, {
@@ -81,8 +93,17 @@ export async function loadDiagramSet(label: string, diagramsDir: string, coreEnt
 }
 
 /** Pair the two sets by name. `names` narrows the result to those diagrams. */
-export function compareDiagramSets(before: DiagramSet, after: DiagramSet, names: readonly string[] = []): DiagramDiff[] {
-  const all = new Set([...before.versions.keys(), ...before.errors.keys(), ...after.versions.keys(), ...after.errors.keys()]);
+export function compareDiagramSets(
+  before: DiagramSet,
+  after: DiagramSet,
+  names: readonly string[] = [],
+): DiagramDiff[] {
+  const all = new Set([
+    ...before.versions.keys(),
+    ...before.errors.keys(),
+    ...after.versions.keys(),
+    ...after.errors.keys(),
+  ]);
   const wanted = names.length > 0 ? names.filter((n) => all.has(n)) : [...all].sort();
   return wanted.map((name): DiagramDiff => {
     const b = before.versions.get(name);
@@ -107,7 +128,10 @@ function nameIn(m: DiagramModel | undefined, id: string): string {
 /** The change list for one diagram, one line each, `+`/`-`/`~` first. */
 export function describeDiff(d: DiagramDiff): string[] {
   if (d.diff === undefined) return [];
-  if (d.status === 'added') return [`+ new diagram: ${d.after!.model.name} (${d.diff.nodes.added.length} nodes, ${d.diff.relations.added.length} relations)`];
+  if (d.status === 'added')
+    return [
+      `+ new diagram: ${d.after!.model.name} (${d.diff.nodes.added.length} nodes, ${d.diff.relations.added.length} relations)`,
+    ];
   if (d.status === 'removed') return [`- diagram removed: ${d.before!.model.name}`];
   const before = d.before?.model;
   const after = d.after?.model;
@@ -151,7 +175,9 @@ export function formatDiffSummary(diffs: readonly DiagramDiff[], from: string, t
   }
   const changed = diffs.filter((d) => d.status !== 'unchanged' && d.status !== 'error').length;
   const same = diffs.filter((d) => d.status === 'unchanged').length;
-  lines.push(changed === 0 ? `no diagram changed (${same} compared)` : `${changed} diagram(s) changed, ${same} unchanged`);
+  lines.push(
+    changed === 0 ? `no diagram changed (${same} compared)` : `${changed} diagram(s) changed, ${same} unchanged`,
+  );
   return lines.join('\n');
 }
 
@@ -175,7 +201,8 @@ export interface DiffPagesResult {
   summary: string;
 }
 
-const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /**
  * A page per side of every diagram that changed — the same single-file viewer
@@ -240,17 +267,26 @@ export async function writeDiffPages(diffs: readonly DiagramDiff[], opts: DiffPa
 // side, the whole picture is the point. The headings link the interactive pages.
 // The overview's two palettes. The frames are export renders and stay light in both, and
 // so do the swatches of the key, which show the outline colours drawn in those pictures.
-const OVERVIEW_LIGHT = '--bg:#fff;--card:#fff;--border:#d0d7de;--text:#1f2328;--muted:#57606a;--faint:#8c959f;--add:#16a34a;--del:#dc2626;--chg:#b45309';
-const OVERVIEW_DARK = '--bg:#12161b;--card:#1b222b;--border:#2d3743;--text:#e6ebf0;--muted:#a3afbb;--faint:#8b98a5;--add:#4ade80;--del:#f87171;--chg:#fbbf24';
+const OVERVIEW_LIGHT =
+  '--bg:#fff;--card:#fff;--border:#d0d7de;--text:#1f2328;--muted:#57606a;--faint:#8c959f;--add:#16a34a;--del:#dc2626;--chg:#b45309';
+const OVERVIEW_DARK =
+  '--bg:#12161b;--card:#1b222b;--border:#2d3743;--text:#e6ebf0;--muted:#a3afbb;--faint:#8b98a5;--add:#4ade80;--del:#f87171;--chg:#fbbf24';
 
-function indexHtml(shown: readonly DiagramDiff[], files: Map<string, { before?: string; after?: string }>, from: string, to: string): string {
+function indexHtml(
+  shown: readonly DiagramDiff[],
+  files: Map<string, { before?: string; after?: string }>,
+  from: string,
+  to: string,
+): string {
   const side = (rel: string | undefined, label: string) =>
     rel === undefined
       ? `<div class="side empty"><h3>${escapeHtml(label)}</h3><p>not present</p></div>`
       : `<div class="side"><h3><a href="${escapeHtml(rel)}.html">${escapeHtml(label)}</a></h3><iframe src="${escapeHtml(rel)}.html?export=1" title="${escapeHtml(label)}"></iframe></div>`;
   const sections = shown.map((d) => {
     const f = files.get(d.name) ?? {};
-    const list = describeDiff(d).map((l) => `<li class="${l[0] === '+' ? 'add' : l[0] === '-' ? 'del' : 'chg'}">${escapeHtml(l)}</li>`).join('');
+    const list = describeDiff(d)
+      .map((l) => `<li class="${l[0] === '+' ? 'add' : l[0] === '-' ? 'del' : 'chg'}">${escapeHtml(l)}</li>`)
+      .join('');
     return `<section><h2>${escapeHtml(d.name)}</h2><ul>${list}</ul><div class="pair">${side(f.before, `Before · ${from}`)}${side(f.after, `After · ${to}`)}</div></section>`;
   });
   return `<!doctype html>
@@ -297,7 +333,12 @@ function summaryMarkdown(
     const f = files.get(d.name);
     const cell = (rel: string | undefined, label: string) =>
       rel === undefined ? '—' : f?.png === true ? `![${label}](${png(rel)})` : `[${label}](${rel}.html)`;
-    out.push(`| Before (${from}) | After (${to}) |`, '| --- | --- |', `| ${cell(f?.before, 'before')} | ${cell(f?.after, 'after')} |`, '');
+    out.push(
+      `| Before (${from}) | After (${to}) |`,
+      '| --- | --- |',
+      `| ${cell(f?.before, 'before')} | ${cell(f?.after, 'after')} |`,
+      '',
+    );
     for (const l of describeDiff(d)) out.push(`- \`${l[0]}\` ${l.slice(2)}`);
     out.push('');
   }

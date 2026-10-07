@@ -21,8 +21,14 @@ export const ACTIVITY_PACK: Library = {
   entries: [
     entry('activity-frame', 'Activity frame', ['uml', 'activity', 'swimlane', 'frame']),
     entry('activity-action', 'Action', ['uml', 'activity', 'action', 'step', 'task']),
-    entry('activity-decision', 'Decision', ['uml', 'decision', 'merge', 'diamond', 'branch'], { width: 48, height: 48 }),
-    entry('activity-bar', 'Fork/join bar', ['uml', 'fork', 'join', 'synchronise', 'parallel'], { width: 8, height: 100 }),
+    entry('activity-decision', 'Decision', ['uml', 'decision', 'merge', 'diamond', 'branch'], {
+      width: 48,
+      height: 48,
+    }),
+    entry('activity-bar', 'Fork/join bar', ['uml', 'fork', 'join', 'synchronise', 'parallel'], {
+      width: 8,
+      height: 100,
+    }),
     entry('activity-start', 'Start', ['uml', 'initial', 'start'], { width: 24, height: 24 }),
     entry('activity-end', 'End', ['uml', 'final', 'end'], { width: 28, height: 28 }),
     entry('activity-send', 'Send signal', ['uml', 'send', 'signal', 'event'], { width: 140, height: 44 }),

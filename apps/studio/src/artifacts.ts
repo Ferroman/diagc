@@ -1,4 +1,11 @@
-import { isDrawings, isLayoutOverlay, validate, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagc/core';
+import {
+  isDrawings,
+  isLayoutOverlay,
+  validate,
+  type DiagramModel,
+  type Drawings,
+  type LayoutOverlay,
+} from '@diagc/core';
 
 export interface LoadedArtifact {
   name: string;

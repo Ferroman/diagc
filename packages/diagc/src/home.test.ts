@@ -6,8 +6,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cliVersion, findHome, homePaths, resolveCoreEntry } from './home';
 
 let tmp: string;
-beforeEach(async () => { tmp = realpathSync(await mkdtemp(path.join(os.tmpdir(), 'diagc-home-'))); });
-afterEach(async () => { await rm(tmp, { recursive: true, force: true }); });
+beforeEach(async () => {
+  tmp = realpathSync(await mkdtemp(path.join(os.tmpdir(), 'diagc-home-')));
+});
+afterEach(async () => {
+  await rm(tmp, { recursive: true, force: true });
+});
 
 /** Lay down the packaged marker (staged viewer shell + a package.json). */
 async function packageAt(dir: string): Promise<void> {
@@ -98,7 +102,9 @@ describe('homePaths', () => {
   });
 
   it('finds the agent skill in a checkout and in a packaged install', () => {
-    expect(homePaths({ root: '/repo', layout: 'monorepo' }).skillFile).toBe(path.join('/repo', 'packages', 'diagc', 'skill', 'SKILL.md'));
+    expect(homePaths({ root: '/repo', layout: 'monorepo' }).skillFile).toBe(
+      path.join('/repo', 'packages', 'diagc', 'skill', 'SKILL.md'),
+    );
     const p = homePaths({ root: '/pkg', layout: 'packaged' }, () => '/pkg/node_modules/@diagc/core/dist/index.js');
     expect(p.skillFile).toBe(path.join('/pkg', 'assets', 'skill', 'SKILL.md'));
   });

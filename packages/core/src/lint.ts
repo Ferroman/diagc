@@ -113,7 +113,9 @@ function hint(id: string, known: ReadonlySet<string>): string {
       bestDistance = d;
     }
   }
-  return best !== undefined && bestDistance <= Math.min(2, Math.floor(id.length / 3)) ? ` (did you mean '${best}'?)` : '';
+  return best !== undefined && bestDistance <= Math.min(2, Math.floor(id.length / 3))
+    ? ` (did you mean '${best}'?)`
+    : '';
 }
 
 function distance(a: string, b: string): number {
@@ -155,7 +157,12 @@ function unused(m: DiagramModel, add: Add): void {
       (p.hidesTree ?? []).length > 0 ||
       m.containment.some((e) => (e.plane ?? defaultPlane) === p.id) ||
       m.nodes.some((n) => n.plane === p.id);
-    if (!shaped) add('empty-plane', `Plane '${p.id}' has no containment or settings of its own, so it shows every shared node flat`, p.id);
+    if (!shaped)
+      add(
+        'empty-plane',
+        `Plane '${p.id}' has no containment or settings of its own, so it shows every shared node flat`,
+        p.id,
+      );
   }
 
   const types = new Set(m.nodes.map((n) => n.type));
@@ -176,7 +183,8 @@ function unused(m: DiagramModel, add: Add): void {
 function undrawn(m: DiagramModel, views: HierarchyIndex[], add: Add): void {
   const shown = (id: string, h: HierarchyIndex): boolean => h.parentsOf.has(id);
   for (const n of m.nodes) {
-    if (!views.some((h) => shown(n.id, h))) add('undrawn-node', `'${n.id}' is in no plane's view, so it is never drawn`, n.id);
+    if (!views.some((h) => shown(n.id, h)))
+      add('undrawn-node', `'${n.id}' is in no plane's view, so it is never drawn`, n.id);
   }
   const anywhere = new Set(m.nodes.filter((n) => views.some((h) => shown(n.id, h))).map((n) => n.id));
   for (const r of m.relations) {

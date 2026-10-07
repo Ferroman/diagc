@@ -4,15 +4,25 @@ import { validate } from './validate';
 import type { DiagramModel } from './types';
 
 const doc = (id: string, partial: Partial<DiagramModel>): DiagramModel => ({
-  version: 1, id, name: id, nodes: [], containment: [], relations: [], layers: [], planes: [], ...partial,
+  version: 1,
+  id,
+  name: id,
+  nodes: [],
+  containment: [],
+  relations: [],
+  layers: [],
+  planes: [],
+  ...partial,
 });
 
-const memory = (docs: Record<string, DiagramModel>): IncludeResolver => async (spec, fromRef) => {
-  const ref = spec.startsWith('mem:') ? spec : `mem:${spec}`;
-  const model = docs[ref.slice(4)];
-  if (model === undefined) throw new Error(`not found: ${spec} (from ${fromRef})`);
-  return { model: structuredClone(model), ref };
-};
+const memory =
+  (docs: Record<string, DiagramModel>): IncludeResolver =>
+  async (spec, fromRef) => {
+    const ref = spec.startsWith('mem:') ? spec : `mem:${spec}`;
+    const model = docs[ref.slice(4)];
+    if (model === undefined) throw new Error(`not found: ${spec} (from ${fromRef})`);
+    return { model: structuredClone(model), ref };
+  };
 
 describe('composeIncludes: expansion', () => {
   const permission = doc('permission', {
@@ -44,11 +54,17 @@ describe('composeIncludes: expansion', () => {
 
   it('imports layers namespaced with rewritten relation references, and drops planes', async () => {
     const svc = doc('svc', {
-      nodes: [{ id: 'a', name: 'a', type: 'service' }, { id: 'b', name: 'b', type: 'service' }],
+      nodes: [
+        { id: 'a', name: 'a', type: 'service' },
+        { id: 'b', name: 'b', type: 'service' },
+      ],
       layers: [{ id: 'flow', name: 'Flow', tint: '#0ea5e9' }],
-      planes: [{ id: 'arch', name: 'Arch' }, { id: 'infra', name: 'Infra' }],
+      planes: [
+        { id: 'arch', name: 'Arch' },
+        { id: 'infra', name: 'Infra' },
+      ],
       containment: [
-        { parent: 'a', child: 'b' },              // default plane (untagged)
+        { parent: 'a', child: 'b' }, // default plane (untagged)
         { parent: 'b', child: 'a', plane: 'infra' }, // non-default: must NOT be imported
       ],
       relations: [{ id: 'a->b#0', from: 'a', to: 'b', kind: 'flow', layer: 'flow' }],
@@ -180,9 +196,12 @@ describe('composeIncludes: includePlane', () => {
       { id: 'b', name: 'b', type: 'x' },
       { id: 'c', name: 'c', type: 'x' },
     ],
-    planes: [{ id: 'main', name: 'Main' }, { id: 'alt', name: 'Alt' }],
+    planes: [
+      { id: 'main', name: 'Main' },
+      { id: 'alt', name: 'Alt' },
+    ],
     containment: [
-      { parent: 'a', child: 'b' },                 // untagged -> default plane 'main'
+      { parent: 'a', child: 'b' }, // untagged -> default plane 'main'
       { parent: 'a', child: 'c', plane: 'alt' },
     ],
   });
@@ -225,7 +244,10 @@ describe('composeIncludes: includePlane', () => {
         { id: 'a', name: 'a', type: 'x' },
         { id: 'b', name: 'b', type: 'x' },
       ],
-      planes: [{ id: 'main', name: 'Main' }, { id: 'alt2', name: 'Alt2', containmentOf: 'main' }],
+      planes: [
+        { id: 'main', name: 'Main' },
+        { id: 'alt2', name: 'Alt2', containmentOf: 'main' },
+      ],
       containment: [{ parent: 'a', child: 'b' }], // untagged -> default plane 'main'
     });
     const host = doc('host', {
@@ -349,9 +371,12 @@ describe('composeIncludes: includePlanes', () => {
         { id: 'b', name: 'b', type: 'x' },
         { id: 'c', name: 'c', type: 'x' },
       ],
-      planes: [{ id: 'main', name: 'Main' }, { id: 'alt', name: 'Alt' }],
+      planes: [
+        { id: 'main', name: 'Main' },
+        { id: 'alt', name: 'Alt' },
+      ],
       containment: [
-        { parent: 'a', child: 'b' },                 // untagged -> default plane 'main'
+        { parent: 'a', child: 'b' }, // untagged -> default plane 'main'
         { parent: 'a', child: 'c', plane: 'alt' },
       ],
     });
@@ -406,7 +431,10 @@ describe('composeIncludes: includePlanes', () => {
         { id: 'a', name: 'a', type: 'x' },
         { id: 'b', name: 'b', type: 'x' },
       ],
-      planes: [{ id: 'main', name: 'Main' }, { id: 'alt', name: 'Alt' }],
+      planes: [
+        { id: 'main', name: 'Main' },
+        { id: 'alt', name: 'Alt' },
+      ],
       containment: [
         { parent: 'a', child: 'b' },
         { parent: 'b', child: 'a', plane: 'alt' },
@@ -425,7 +453,7 @@ describe('composeIncludes: includePlanes', () => {
 });
 
 describe('composeIncludes: includePlanes — the host default view stays plane[0]', () => {
-  it('C1: a carried plane never absorbs the host\'s own untagged rows', async () => {
+  it("C1: a carried plane never absorbs the host's own untagged rows", async () => {
     const child = doc('child', {
       nodes: [
         { id: 'lane', name: 'Lane', type: 'x' },
@@ -435,7 +463,13 @@ describe('composeIncludes: includePlanes — the host default view stays plane[0
       containment: [{ parent: 'lane', child: 'c1' }],
     });
     const nodes = (includePlanes: boolean | undefined): DiagramModel['nodes'] => [
-      { id: 'repo', name: 'Repo', type: 'system', include: 'child', ...(includePlanes !== undefined ? { includePlanes } : {}) },
+      {
+        id: 'repo',
+        name: 'Repo',
+        type: 'system',
+        include: 'child',
+        ...(includePlanes !== undefined ? { includePlanes } : {}),
+      },
       { id: 'other', name: 'Other', type: 'x' },
       { id: 'otherChild', name: 'OtherChild', type: 'x' },
     ];
@@ -576,13 +610,15 @@ describe('composeIncludes: key unification', () => {
       ],
     });
     const { model: m, warnings } = await composeIncludes(
-      umbrella, 'mem:arch', memory({ permission: service('permission'), communication: service('communication') }),
+      umbrella,
+      'mem:arch',
+      memory({ permission: service('permission'), communication: service('communication') }),
     );
     expect(warnings).toEqual([]);
     const dbs = m.nodes.filter((n) => n.key === 'appuser-db');
     expect(dbs).toHaveLength(1);
-    expect(dbs[0]?.id).toBe('appuser-db');          // composed id = the key
-    expect(dbs[0]?.name).toBe('Users');             // first include wins display
+    expect(dbs[0]?.id).toBe('appuser-db'); // composed id = the key
+    expect(dbs[0]?.name).toBe('Users'); // first include wins display
     // multi-parent: sits under both include containers
     expect(m.containment).toContainEqual({ parent: 'perm', child: 'appuser-db' });
     expect(m.containment).toContainEqual({ parent: 'comm', child: 'appuser-db' });
@@ -599,7 +635,11 @@ describe('composeIncludes: key unification', () => {
         { id: 'b', name: 'B', type: 'system', include: 'permission' },
       ],
     });
-    const { model: m, warnings } = await composeIncludes(umbrella, 'mem:arch', memory({ permission: service('permission') }));
+    const { model: m, warnings } = await composeIncludes(
+      umbrella,
+      'mem:arch',
+      memory({ permission: service('permission') }),
+    );
     expect(warnings).toEqual([]);
     const dbs = m.nodes.filter((n) => n.key === 'appuser-db');
     expect(dbs).toHaveLength(1);
@@ -690,7 +730,9 @@ describe('composeIncludes: transitive composition', () => {
       ],
     });
     const { model: composed2, warnings } = await composeIncludes(
-      outerUmbrella, 'mem:arch', memory({ 'svc-umbrella': composed1 }),
+      outerUmbrella,
+      'mem:arch',
+      memory({ 'svc-umbrella': composed1 }),
     );
     expect(warnings).toEqual([]);
     // grafts cleanly: no duplicate ids from re-expanding the already-composed artifact

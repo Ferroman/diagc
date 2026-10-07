@@ -7,7 +7,13 @@
 // that file loads inside Vite's *config* bundle; this file is ordinary
 // application source built by esbuild (and by Vite under vitest), so a
 // plain value import resolves without that extra indirection.
-import { runRoute, type ApiContext, type Handlers, type RouteRequest, type RouteResponse } from '../../../packages/diagc/src/api/dispatch';
+import {
+  runRoute,
+  type ApiContext,
+  type Handlers,
+  type RouteRequest,
+  type RouteResponse,
+} from '../../../packages/diagc/src/api/dispatch';
 
 /** studio HostAdapter.apiFetch backed by the in-process route table: the same
  * routes and handlers both HTTP hosts run, minus the HTTP. */

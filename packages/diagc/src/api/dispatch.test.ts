@@ -69,7 +69,8 @@ async function request(
     status,
     headers,
     raw,
-    body: headers['content-type'] === 'application/json' && raw.length > 0 ? JSON.parse(raw.toString('utf8')) : undefined,
+    body:
+      headers['content-type'] === 'application/json' && raw.length > 0 ? JSON.parse(raw.toString('utf8')) : undefined,
     handled,
   };
 }
@@ -213,7 +214,9 @@ describe('handleApiRequest', () => {
       body,
     });
     expect(saved.status).toBe(200);
-    expect(JSON.parse(await readFile(path.join(root, 'diagrams', 'sketch.drawings.json'), 'utf8')).planes.default).toHaveLength(1);
+    expect(
+      JSON.parse(await readFile(path.join(root, 'diagrams', 'sketch.drawings.json'), 'utf8')).planes.default,
+    ).toHaveLength(1);
     const listed = await request(root, '/api/drawings');
     expect(listed.status).toBe(200);
     expect((listed.body as { drawings: Record<string, unknown> }).drawings['sketch']).toBeDefined();
@@ -265,7 +268,7 @@ describe('handleApiRequest — requests from other sites', () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it('lets the studio\'s own page through, on whatever address it was opened', async () => {
+  it("lets the studio's own page through, on whatever address it was opened", async () => {
     const root = await tempRoot();
     // loopback by number and by name, IPv6, and a LAN address (the dev server
     // started with --host, opened from a tablet)
@@ -281,7 +284,7 @@ describe('handleApiRequest — requests from other sites', () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it('refuses a Host that is some other site\'s name, even when the Origin agrees with it', async () => {
+  it("refuses a Host that is some other site's name, even when the Origin agrees with it", async () => {
     // DNS rebinding: the attacker's name is re-pointed at this machine, so the
     // browser sees the API as that site's OWN origin and the origin check alone
     // passes. A raw address cannot be re-pointed; only a name can.
@@ -296,7 +299,12 @@ describe('handleApiRequest — requests from other sites', () => {
 
   it('accepts loopback names and a request with no Host at all (no browser sends one)', async () => {
     const root = await tempRoot();
-    const cases: Record<string, string>[] = [{ host: 'localhost:5173' }, { host: 'studio.localhost:5173' }, { host: 'LOCALHOST' }, {}];
+    const cases: Record<string, string>[] = [
+      { host: 'localhost:5173' },
+      { host: 'studio.localhost:5173' },
+      { host: 'LOCALHOST' },
+      {},
+    ];
     for (const headers of cases) {
       const r = await request(root, '/api/diagrams', { headers });
       expect(r.status, JSON.stringify(headers)).toBe(200);
@@ -351,8 +359,7 @@ describe('runRoute', () => {
   it('runRoute maps a malformed JSON body to 400', async () => {
     const root = await tempRoot();
     const ctx = { diagramsDir: path.join(root, 'diagrams'), artifactsDir: path.join(root, 'artifacts') };
-    const r = await runRoute(
-      { method: 'POST', url: '/api/diagrams/x', body: Buffer.from('{oops') }, ctx, handlers);
+    const r = await runRoute({ method: 'POST', url: '/api/diagrams/x', body: Buffer.from('{oops') }, ctx, handlers);
     expect(r?.status).toBe(400);
     await rm(root, { recursive: true, force: true });
   });

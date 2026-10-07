@@ -32,16 +32,10 @@ function combinePolarity(rels: readonly DiagramRelation[]): Polarity | undefined
  */
 const AGG_LABEL_BUDGET = 32;
 
-export function resolveEdges(
-  m: DiagramModel,
-  tree: ViewTree,
-  activeLayers?: string[],
-  includeBase = true,
-): ViewEdge[] {
+export function resolveEdges(m: DiagramModel, tree: ViewTree, activeLayers?: string[], includeBase = true): ViewEdge[] {
   const active = new Set(activeLayers ?? []);
   const tintOf = new Map(m.layers.map((l) => [l.id, l.tint]));
-  const anchorFor = (id: string): string | undefined =>
-    tree.byId.has(id) ? id : tree.anchorOf.get(id);
+  const anchorFor = (id: string): string | undefined => (tree.byId.has(id) ? id : tree.anchorOf.get(id));
   // Effective layer: the relation's own, else what `layerRules` assigns.
   const layerOf = (r: DiagramRelation): string | undefined => relationLayer(m, r);
 

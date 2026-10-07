@@ -38,17 +38,17 @@ describe('buildHierarchy explicit membership', () => {
   it('keeps a shared box a root on a plane where it is top-level, even when re-nested on another plane', () => {
     const m = model('m');
     m.plane('c4').plane('infra');
-    const web = m.node('web', { type: 't' });          // shared
+    const web = m.node('web', { type: 't' }); // shared
     const instance = m.node('instance', { type: 't', plane: 'infra' });
-    instance.contains(web, { plane: 'infra' });         // re-nest on infra only
+    instance.contains(web, { plane: 'infra' }); // re-nest on infra only
     const j = m.toJSON();
 
     const c4 = buildHierarchy(j, 'c4');
-    expect(c4.roots).toContain('web');                  // still top-level on c4
-    expect(c4.roots).not.toContain('instance');         // infra-only box absent
+    expect(c4.roots).toContain('web'); // still top-level on c4
+    expect(c4.roots).not.toContain('instance'); // infra-only box absent
 
     const infra = buildHierarchy(j, 'infra');
-    expect(infra.roots).toEqual(['instance']);          // web nested under instance
+    expect(infra.roots).toEqual(['instance']); // web nested under instance
     expect(infra.childrenOf.get('instance')).toEqual(['web']);
   });
 
@@ -59,7 +59,7 @@ describe('buildHierarchy explicit membership', () => {
     m.node('web', { type: 't' });
     const j = m.toJSON();
     const c4 = buildHierarchy(j, 'c4');
-    expect(c4.roots).toEqual(['web']);                  // user hidden
+    expect(c4.roots).toEqual(['web']); // user hidden
     expect(c4.parentsOf.has('user')).toBe(false);
   });
 });

@@ -4,8 +4,18 @@ import { model } from './builder';
 import { GIT_KINDS, GIT_NOTATION, gapOf, gitGraph, isGitKind, latestCommit, mergedAway, nextCommitId } from './git';
 import { validate } from './validate';
 
-const commit = (id: string, extra: Partial<DiagramNode> = {}): DiagramNode => ({ id, name: '', type: 'commit', ...extra });
-const link = (kind: string, from: string, to: string): DiagramRelation => ({ id: `${from}->${to}#${kind}`, from, to, kind });
+const commit = (id: string, extra: Partial<DiagramNode> = {}): DiagramNode => ({
+  id,
+  name: '',
+  type: 'commit',
+  ...extra,
+});
+const link = (kind: string, from: string, to: string): DiagramRelation => ({
+  id: `${from}->${to}#${kind}`,
+  from,
+  to,
+  kind,
+});
 
 /** master: m1 → m2 (gap 2); nightly: n1 (from m1) → n2 → n3 (merges t1); team: t1 (from n1); one stray */
 function sample(): DiagramModel {
@@ -127,7 +137,11 @@ describe('git graph', () => {
     m.planes.push({ id: 'x', name: 'X' });
     expect(gitGraph(m, 'other').laneOf.get('n2')).toBe('nightly');
     expect(gitGraph(m, 'git').laneOf.get('n2')).toBe('nightly');
-    expect(gitGraph(m, 'x').lanes.find((l) => l.id === 'team')?.commits.map((c) => c.id)).toEqual(['n2']);
+    expect(
+      gitGraph(m, 'x')
+        .lanes.find((l) => l.id === 'team')
+        ?.commits.map((c) => c.id),
+    ).toEqual(['n2']);
   });
 });
 

@@ -34,7 +34,11 @@ function walk(dir: string): string[] {
 }
 const isSource = (f: string): boolean => /\.diagram\.(ts|json)$/.test(f);
 const nameOf = (f: string): string =>
-  path.relative(SRC, f).split(path.sep).join('/').replace(/\.diagram\.(ts|json)$/, '');
+  path
+    .relative(SRC, f)
+    .split(path.sep)
+    .join('/')
+    .replace(/\.diagram\.(ts|json)$/, '');
 const rel = (f: string): string => path.relative(root, f);
 const isExternal = (t: string): boolean => /^[a-z][a-z0-9+.-]*:/i.test(t);
 

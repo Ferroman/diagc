@@ -19,12 +19,16 @@ const read = (f: string): string => (existsSync(f) ? readFileSync(f, 'utf8') : '
 const html = read(path.join(SITE, 'index.html'));
 const css = read(path.join(SITE, 'site.css'));
 
-const attrs = (name: string): string[] =>
-  [...html.matchAll(new RegExp(`\\s${name}="([^"]*)"`, 'g'))].map((m) => m[1]!);
+const attrs = (name: string): string[] => [...html.matchAll(new RegExp(`\\s${name}="([^"]*)"`, 'g'))].map((m) => m[1]!);
 const refs = [...attrs('href'), ...attrs('src')];
 const isExternal = (t: string): boolean => /^[a-z][a-z0-9+.-]*:/i.test(t);
 const unescape = (s: string): string =>
-  s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  s
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
 const hasSource = (name: string): boolean =>
   existsSync(path.join(SRC, `${name}.diagram.ts`)) || existsSync(path.join(SRC, `${name}.diagram.json`));
 
@@ -51,7 +55,9 @@ describe('the landing page', () => {
     const live = refs.filter((t) => t.startsWith('html/'));
     expect(live.length).toBeGreaterThanOrEqual(8);
     // html/index.html is the examples index that `publish` writes, not a diagram.
-    const bad = live.filter((t) => t !== 'html/index.html' && !hasSource(t.slice('html/'.length).replace(/\.html$/, '')));
+    const bad = live.filter(
+      (t) => t !== 'html/index.html' && !hasSource(t.slice('html/'.length).replace(/\.html$/, '')),
+    );
     expect(bad).toEqual([]);
   });
 
@@ -65,7 +71,13 @@ describe('the landing page', () => {
 
   it('has no dead link into its own folder', () => {
     const own = refs.filter(
-      (t) => !isExternal(t) && !t.startsWith('#') && !t.startsWith('html/') && !t.startsWith('static/') && !t.startsWith('docs/') && !BUILT.has(t),
+      (t) =>
+        !isExternal(t) &&
+        !t.startsWith('#') &&
+        !t.startsWith('html/') &&
+        !t.startsWith('static/') &&
+        !t.startsWith('docs/') &&
+        !BUILT.has(t),
     );
     expect(own.length).toBeGreaterThanOrEqual(4);
     expect(own.filter((t) => !existsSync(path.join(SITE, t)))).toEqual([]);
@@ -121,7 +133,9 @@ describe('the landing page', () => {
         .split(';')
         .map((d) => d.trim())
         .filter((d) => d.startsWith('--'));
-    const system = /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme='light'\]\) \{([^}]*)\}/.exec(css)?.[1];
+    const system = /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme='light'\]\) \{([^}]*)\}/.exec(
+      css,
+    )?.[1];
     const forced = /\n:root\[data-theme='dark'\] \{([^}]*)\}/.exec(css)?.[1];
     expect(decls(system).length).toBeGreaterThanOrEqual(10);
     expect(decls(forced)).toEqual(decls(system));
@@ -168,7 +182,9 @@ describe('the front pages', () => {
 
   it('point the README at docs pages the site builds', () => {
     const SITE_DOCS = 'https://ferroman.github.io/diagc/';
-    const links = [...readme.matchAll(/\]\((https:\/\/ferroman\.github\.io\/diagc\/docs\/[^)\s]*)\)/g)].map((m) => m[1]!.slice(SITE_DOCS.length));
+    const links = [...readme.matchAll(/\]\((https:\/\/ferroman\.github\.io\/diagc\/docs\/[^)\s]*)\)/g)].map((m) =>
+      m[1]!.slice(SITE_DOCS.length),
+    );
     expect(links.length).toBeGreaterThanOrEqual(8);
     expect(deadDocsLinks(links)).toEqual([]);
   });

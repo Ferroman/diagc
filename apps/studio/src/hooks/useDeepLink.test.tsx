@@ -38,10 +38,20 @@ const memoryUrlState = () => {
   const subs = new Set<() => void>();
   return {
     get: () => hash,
-    set: (h: string) => { hash = h; },
-    subscribe: (cb: () => void) => { subs.add(cb); return () => { subs.delete(cb); }; },
+    set: (h: string) => {
+      hash = h;
+    },
+    subscribe: (cb: () => void) => {
+      subs.add(cb);
+      return () => {
+        subs.delete(cb);
+      };
+    },
     /** test hook: an "external" navigation — set + notify */
-    navigate(h: string) { hash = h; subs.forEach((cb) => cb()); },
+    navigate(h: string) {
+      hash = h;
+      subs.forEach((cb) => cb());
+    },
   };
 };
 
@@ -106,7 +116,15 @@ describe('useDeepLink', () => {
     const memory = memoryUrlState();
     setHost({ ...defaultHost, urlState: memory });
     let dl: DeepLink | undefined;
-    render(<Harness names={['a', 'b']} booted onDeepLink={(d) => { dl = d; }} />);
+    render(
+      <Harness
+        names={['a', 'b']}
+        booted
+        onDeepLink={(d) => {
+          dl = d;
+        }}
+      />,
+    );
 
     act(() => memory.navigate('#/b'));
     expect(screen.getByTestId('selected').textContent).toBe('b');

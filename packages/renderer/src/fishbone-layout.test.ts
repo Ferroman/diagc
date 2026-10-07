@@ -1,9 +1,34 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, FB_CAUSE_OF_KIND, model, type CompiledView, type DiagramModel } from '@diagc/core';
 import { textWidth } from './box-size';
-import { BONE_PALETTE, FISHBONE_LAYOUT, fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
+import {
+  BONE_PALETTE,
+  FISHBONE_LAYOUT,
+  fishboneEdgeColor,
+  fishboneLayout,
+  fishboneNodeColors,
+} from './fishbone-layout';
 
-const { BONE_K, ROW, TEXT_H, TEXT_PAD, FONT_PX, HEAD_FONT_PX, SUB_RISE, SUB_GAP, SUB_INSET, MIN_LINE, LABEL_W, LABEL_H, HEAD_H, HEAD_MIN_W, HEAD_PAD, HEAD_GAP, MARGIN, COLUMN_GAP } = FISHBONE_LAYOUT;
+const {
+  BONE_K,
+  ROW,
+  TEXT_H,
+  TEXT_PAD,
+  FONT_PX,
+  HEAD_FONT_PX,
+  SUB_RISE,
+  SUB_GAP,
+  SUB_INSET,
+  MIN_LINE,
+  LABEL_W,
+  LABEL_H,
+  HEAD_H,
+  HEAD_MIN_W,
+  HEAD_PAD,
+  HEAD_GAP,
+  MARGIN,
+  COLUMN_GAP,
+} = FISHBONE_LAYOUT;
 const w = (text: string) => Math.ceil(textWidth(text, FONT_PX)) + 2 * TEXT_PAD;
 
 /** effect E; c1 (above): a (subs a1, a2), b; c2 (below): d; c3 (above, second column): no causes */
@@ -61,12 +86,27 @@ describe('fishboneLayout', () => {
     const hD = H2 - ROW;
     const left2 = Math.min(-BONE_K * hD - MIN_LINE - w('Cause d'), -BONE_K * H2 - LABEL_W / 2);
     const join1 = MARGIN + Math.max(-left1, -left2);
-    near(r.geometry.get('c1'), { x: join1 - BONE_K * H1 - LABEL_W / 2, y: spineY - H1 - LABEL_H, width: LABEL_W, height: LABEL_H });
+    near(r.geometry.get('c1'), {
+      x: join1 - BONE_K * H1 - LABEL_W / 2,
+      y: spineY - H1 - LABEL_H,
+      width: LABEL_W,
+      height: LABEL_H,
+    });
     near(r.geometry.get('a'), { x: join1 + leftA, y: spineY - hA - TEXT_H / 2, width: w('Cause a'), height: TEXT_H });
     near(r.geometry.get('b'), { x: join1 + leftB, y: spineY - hB - TEXT_H / 2, width: w('Cause b'), height: TEXT_H });
     // the mirror image below the spine
-    near(r.geometry.get('c2'), { x: join1 - BONE_K * H2 - LABEL_W / 2, y: spineY + H2, width: LABEL_W, height: LABEL_H });
-    near(r.geometry.get('d'), { x: join1 - BONE_K * hD - MIN_LINE - w('Cause d'), y: spineY + hD - TEXT_H / 2, width: w('Cause d'), height: TEXT_H });
+    near(r.geometry.get('c2'), {
+      x: join1 - BONE_K * H2 - LABEL_W / 2,
+      y: spineY + H2,
+      width: LABEL_W,
+      height: LABEL_H,
+    });
+    near(r.geometry.get('d'), {
+      x: join1 - BONE_K * hD - MIN_LINE - w('Cause d'),
+      y: spineY + hD - TEXT_H / 2,
+      width: w('Cause d'),
+      height: TEXT_H,
+    });
   });
 
   it('puts sub-cause texts in the row away from the spine, spaced along the cause line', () => {
@@ -125,10 +165,15 @@ describe('fishboneLayout', () => {
     expect(join3).toBeCloseTo(right1 + COLUMN_GAP + LABEL_W / 2 + BONE_K * H3, 6);
     const right3 = Math.max(join3, c3.x + LABEL_W);
     const headW = Math.max(HEAD_MIN_W, Math.ceil(textWidth('Effect', HEAD_FONT_PX)) + 2 * HEAD_PAD);
-    near(r.geometry.get('e'), { x: MARGIN, y: spineY - HEAD_H / 2, width: right3 + HEAD_GAP + headW - MARGIN, height: HEAD_H });
+    near(r.geometry.get('e'), {
+      x: MARGIN,
+      y: spineY - HEAD_H / 2,
+      width: right3 + HEAD_GAP + headW - MARGIN,
+      height: HEAD_H,
+    });
   });
 
-  it('measures the head in its own (larger) font, not a cause line\'s', () => {
+  it("measures the head in its own (larger) font, not a cause line's", () => {
     // Long enough that under-measuring it at FONT_PX (12) would fit under
     // HEAD_MIN_W and mask the bug; measured correctly at HEAD_FONT_PX (14) it
     // must exceed HEAD_MIN_W, so this test is known to exercise that branch.
@@ -168,7 +213,11 @@ describe('fishboneLayout', () => {
     const rowY = c2.y + LABEL_H + MARGIN;
     near(r.geometry.get('loose'), { x: MARGIN, y: rowY, width: w('Loose cause'), height: TEXT_H });
     near(r.geometry.get('note'), { x: MARGIN + w('Loose cause') + COLUMN_GAP, y: rowY });
-    const headless: DiagramModel = { ...j, nodes: j.nodes.filter((n) => n.id !== 'e'), relations: j.relations.filter((x) => x.to !== 'e') };
+    const headless: DiagramModel = {
+      ...j,
+      nodes: j.nodes.filter((n) => n.id !== 'e'),
+      relations: j.relations.filter((x) => x.to !== 'e'),
+    };
     const h = fishboneLayout(view(headless), headless, undefined);
     expect(h.geometry.size).toBe(headless.nodes.length);
     expect(h.routes.size).toBe(0);
@@ -189,7 +238,11 @@ describe('fishboneLayout', () => {
 
   it('fixes nothing on a headless model: with no fish, every node is a stray', () => {
     const m = fish();
-    const headless: DiagramModel = { ...m, nodes: m.nodes.filter((n) => n.id !== 'e'), relations: m.relations.filter((x) => x.to !== 'e') };
+    const headless: DiagramModel = {
+      ...m,
+      nodes: m.nodes.filter((n) => n.id !== 'e'),
+      relations: m.relations.filter((x) => x.to !== 'e'),
+    };
     expect(fishboneLayout(view(headless), headless, undefined).fixed?.size ?? 0).toBe(0);
   });
 
@@ -197,7 +250,11 @@ describe('fishboneLayout', () => {
     const m = fish();
     const j: DiagramModel = {
       ...m,
-      nodes: [...m.nodes, { id: 'loose', name: 'Loose cause', type: 'fb-cause' }, { id: 'other', name: 'Other cause', type: 'fb-cause' }],
+      nodes: [
+        ...m.nodes,
+        { id: 'loose', name: 'Loose cause', type: 'fb-cause' },
+        { id: 'other', name: 'Other cause', type: 'fb-cause' },
+      ],
     };
     const hinted = fishboneLayout(view(j), j, undefined, new Map([['loose', { width: 200, height: 50 }]]));
     expect(hinted.geometry.get('loose')).toMatchObject({ width: 200, height: 50 });

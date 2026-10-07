@@ -12,6 +12,7 @@ export function normalizeSettings(raw: unknown): DiagcSettings {
   const folder = (raw as { diagramsFolder?: unknown } | undefined)?.diagramsFolder;
   if (typeof folder !== 'string') return { ...DEFAULT_SETTINGS };
   const trimmed = folder.trim().replace(/\/+$/, '');
-  const unsafe = trimmed === '' || trimmed.startsWith('/') || trimmed.split('/').some((s) => s === '' || s === '.' || s === '..');
+  const unsafe =
+    trimmed === '' || trimmed.startsWith('/') || trimmed.split('/').some((s) => s === '' || s === '.' || s === '..');
   return unsafe ? { ...DEFAULT_SETTINGS } : { diagramsFolder: trimmed };
 }

@@ -64,7 +64,9 @@ export function computeBands(
     .map(([order, { lo, hi }]) => {
       const from = lo - BAND_PAD;
       const length = hi - lo + 2 * BAND_PAD;
-      const box = vertical ? { x: start, y: from, width: size, height: length } : { x: from, y: start, width: length, height: size };
+      const box = vertical
+        ? { x: start, y: from, width: size, height: length }
+        : { x: from, y: start, width: length, height: size };
       return { order, ...box, header: { x: box.x + HEADER_INSET, y: box.y + HEADER_INSET } };
     });
 }

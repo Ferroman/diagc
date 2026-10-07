@@ -30,7 +30,9 @@ export const AWS_CONTAINER_ENTRIES: LibraryEntry[] = [
   ctr('vpc', 'VPC container', 'aws-vpc', '#8C4FFF', 'virtual-private-cloud-vpc', ['virtual private cloud']),
   ctr('subnet-public', 'Public Subnet container', 'aws-subnet-public', '#7AA116', 'public-subnet', ['subnet']),
   ctr('subnet-private', 'Private Subnet container', 'aws-subnet-private', '#00A4A6', 'private-subnet', ['subnet']),
-  ctr('auto-scaling', 'Auto Scaling Group container', 'aws-auto-scaling-group', '#ED7100', 'auto-scaling-group', ['asg']),
+  ctr('auto-scaling', 'Auto Scaling Group container', 'aws-auto-scaling-group', '#ED7100', 'auto-scaling-group', [
+    'asg',
+  ]),
   // For everything without its own stencil (EKS cluster, node pool, …): pick
   // an icon and a color after placing — the type carries the container look.
   ctr('generic', 'Generic Group container', 'aws-group', '#7D8998'),

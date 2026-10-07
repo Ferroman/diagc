@@ -241,7 +241,11 @@ export function estimateNoteHeight(
   // more small line. Text wraps across the bubble's full inner width.
   if (comments.length > 0) {
     height += SECTION;
-    for (const c of comments) height += lines(c.text, NOTE_WIDTH - 2 * PAD_X, CHAR) * LINE + (c.by !== undefined || c.at !== undefined ? META : 0) + ROW_PAD;
+    for (const c of comments)
+      height +=
+        lines(c.text, NOTE_WIDTH - 2 * PAD_X, CHAR) * LINE +
+        (c.by !== undefined || c.at !== undefined ? META : 0) +
+        ROW_PAD;
   }
   if (links.length > 0) height += SECTION + links.length * (LINE + ROW_PAD);
   if (editing) height += ADD_ROW;

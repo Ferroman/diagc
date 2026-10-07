@@ -1,6 +1,22 @@
 import { useContext, useRef, type CSSProperties } from 'react';
 import { Handle, NodeResizeControl, NodeResizer, Position } from '@xyflow/react';
-import { FB_CAUSE_TYPE, FB_EFFECT_TYPE, GIT_STAGE_TYPE, PLAN_ACTOR_TYPES, PLAN_EVENT_TYPE, PLAN_NOTATION, TM_NOTATION, threatTargetKey, type Column, type FontScale, type NotationId, type PlanRole, type TextAlign, type TextRun, type ThreatTarget } from '@diagc/core';
+import {
+  FB_CAUSE_TYPE,
+  FB_EFFECT_TYPE,
+  GIT_STAGE_TYPE,
+  PLAN_ACTOR_TYPES,
+  PLAN_EVENT_TYPE,
+  PLAN_NOTATION,
+  TM_NOTATION,
+  threatTargetKey,
+  type Column,
+  type FontScale,
+  type NotationId,
+  type PlanRole,
+  type TextAlign,
+  type TextRun,
+  type ThreatTarget,
+} from '@diagc/core';
 import type { IconRegistry } from '@diagc/icons';
 import type { Registry, TypeStyle } from './registry';
 import { commentBadgeProps, type AnnotationCounts } from './comment-badge';
@@ -144,9 +160,20 @@ function accentStyle(color: string | undefined): CSSProperties | undefined {
 }
 
 const sketchKind = (shape: string): SketchShapeKind =>
-  shape === 'circle' || shape === 'cylinder' || shape === 'hexagon' || shape === 'bubble' ||
-  shape === 'person' || shape === 'diamond' || shape === 'bar' || shape === 'start-dot' || shape === 'end-bullseye' ||
-  shape === 'send-signal' || shape === 'receive-signal' || shape === 'note' || shape === 'ellipse' || shape === 'store'
+  shape === 'circle' ||
+  shape === 'cylinder' ||
+  shape === 'hexagon' ||
+  shape === 'bubble' ||
+  shape === 'person' ||
+  shape === 'diamond' ||
+  shape === 'bar' ||
+  shape === 'start-dot' ||
+  shape === 'end-bullseye' ||
+  shape === 'send-signal' ||
+  shape === 'receive-signal' ||
+  shape === 'note' ||
+  shape === 'ellipse' ||
+  shape === 'store'
     ? (shape as SketchShapeKind)
     : 'box';
 
@@ -190,8 +217,20 @@ function XResizer({ id, data, selected }: { id: string; data: DiagramNodeData; s
     onResize(id, p.width, p.height, { x: p.x, y: p.y });
   return (
     <>
-      <NodeResizeControl position="left" resizeDirection="horizontal" minWidth={PLAN_LAYOUT.DAY} className="dg-x-resize" onResizeEnd={end} />
-      <NodeResizeControl position="right" resizeDirection="horizontal" minWidth={PLAN_LAYOUT.DAY} className="dg-x-resize" onResizeEnd={end} />
+      <NodeResizeControl
+        position="left"
+        resizeDirection="horizontal"
+        minWidth={PLAN_LAYOUT.DAY}
+        className="dg-x-resize"
+        onResizeEnd={end}
+      />
+      <NodeResizeControl
+        position="right"
+        resizeDirection="horizontal"
+        minWidth={PLAN_LAYOUT.DAY}
+        className="dg-x-resize"
+        onResizeEnd={end}
+      />
     </>
   );
 }
@@ -515,7 +554,8 @@ export function DiagramNode({
   // `person`/`team` are ordinary registry types any diagram can use, so an
   // unscoped type check would mark a C4 person one edge from the selection
   // on a plane that has never heard of roles.
-  const isPlanActorType = profile.id === PLAN_NOTATION && data.typeId !== undefined && PLAN_ACTOR_TYPES.has(data.typeId);
+  const isPlanActorType =
+    profile.id === PLAN_NOTATION && data.typeId !== undefined && PLAN_ACTOR_TYPES.has(data.typeId);
   const hitColor =
     activeBadge !== undefined
       ? (activeBadge.color ?? 'var(--dg-accent)')
@@ -555,7 +595,12 @@ export function DiagramNode({
     // for it: hand the rename field over, or double-click and a dropped Table stencil
     // would flip `labelEditing` with nothing on screen to type into.
     return (
-      <TableNode id={id} data={data} selected={selected} {...(data.labelEditing === true ? { titleEditor: name } : {})} />
+      <TableNode
+        id={id}
+        data={data}
+        selected={selected}
+        {...(data.labelEditing === true ? { titleEditor: name } : {})}
+      />
     );
   }
 
@@ -676,7 +721,11 @@ export function DiagramNode({
         </span>
       )}
       {data.sharedMembers.length > 0 && (
-        <span className="dg-badge" data-testid="shared-badge" title={`Shared members: ${data.sharedMembers.join(', ')}`}>
+        <span
+          className="dg-badge"
+          data-testid="shared-badge"
+          title={`Shared members: ${data.sharedMembers.join(', ')}`}
+        >
           ⚭ {data.sharedMembers.length}
         </span>
       )}
@@ -693,7 +742,15 @@ export function DiagramNode({
           const role = b.key.slice(0, sep) as PlanRole;
           const actorId = b.key.slice(sep + 1);
           return (
-            <RoleChipMenu key={b.key} chip={b} className={chipClass} role={role} actorId={actorId} zoneId={id} onSetRole={data.onSetRole} />
+            <RoleChipMenu
+              key={b.key}
+              chip={b}
+              className={chipClass}
+              role={role}
+              actorId={actorId}
+              zoneId={id}
+              onSetRole={data.onSetRole}
+            />
           );
         }
         return (
@@ -780,7 +837,12 @@ export function DiagramNode({
     // right end — beside the name, where the lane is grabbed.
     return (
       <div className={`dg-lane${loopClass}`}>
-        <span className="dg-lane-label" {...(data.color !== undefined ? { style: { ...accentStyle(data.color), color: data.textColor ?? data.color } } : {})}>
+        <span
+          className="dg-lane-label"
+          {...(data.color !== undefined
+            ? { style: { ...accentStyle(data.color), color: data.textColor ?? data.color } }
+            : {})}
+        >
           {name}
         </span>
         <QuickAddButton id={id} data={data} selected={selected} />
@@ -809,7 +871,10 @@ export function DiagramNode({
     // the bone colour belongs to the line (the profile's edge colour), the text
     // stays readable in the theme's own colour unless the author picks one.
     return (
-      <div className={`dg-fb-cause${loopClass}`} {...(data.textColor !== undefined ? { style: { color: data.textColor } } : {})}>
+      <div
+        className={`dg-fb-cause${loopClass}`}
+        {...(data.textColor !== undefined ? { style: { color: data.textColor } } : {})}
+      >
         {name}
         <QuickAddButton id={id} data={data} selected={selected} />
         {sideHandles}
@@ -826,7 +891,10 @@ export function DiagramNode({
         className={`dg-git-stage${loopClass}`}
         {...(data.color !== undefined ? { style: { '--dg-stage': data.color } as CSSProperties } : {})}
       >
-        <span className="dg-git-stage-name" {...(data.textColor !== undefined ? { style: { color: data.textColor } } : {})}>
+        <span
+          className="dg-git-stage-name"
+          {...(data.textColor !== undefined ? { style: { color: data.textColor } } : {})}
+        >
           {name}
         </span>
       </div>
@@ -1001,7 +1069,12 @@ export function DiagramNode({
       <div className={style.captionBelow === true ? 'dg-node-row dg-glyph-caption' : 'dg-node-row'}>
         {ghostArrow}
         {data.image !== undefined && (
-          <img className="dg-image-thumb" src={assetUrl(data.assetBase, data.libraryBase, data.image)} alt="" draggable={false} />
+          <img
+            className="dg-image-thumb"
+            src={assetUrl(data.assetBase, data.libraryBase, data.image)}
+            alt=""
+            draggable={false}
+          />
         )}
         {Icon !== undefined && <Icon size={16} className="dg-icon" />}
         {data.labelEditing === true ? (

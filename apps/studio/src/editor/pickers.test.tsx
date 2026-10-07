@@ -20,7 +20,8 @@ describe('SHADE_PALETTE', () => {
 });
 
 describe('ColorRow', () => {
-  const swatches = () => screen.queryAllByRole('button').filter((b) => b.className.includes('swatch') && !b.className.includes('current'));
+  const swatches = () =>
+    screen.queryAllByRole('button').filter((b) => b.className.includes('swatch') && !b.className.includes('current'));
   const openPalette = () => fireEvent.click(screen.getByRole('button', { name: 'Color palette' }));
 
   it('is one line until the palette is opened, then shows every shade', () => {

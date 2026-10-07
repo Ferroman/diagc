@@ -121,7 +121,9 @@ describe.skipIf(process.platform === 'win32')('install.sh', () => {
 
     // The launcher pins that node and runs the package's entry point.
     const run = spawnSync(launcher(), ['--help'], { encoding: 'utf8' });
-    expect(run.stdout.trim()).toBe(`ran ${fakeBin}/node ${diagcHome()}/lib/node_modules/@diagc/cli/bin/diagc.mjs --help`);
+    expect(run.stdout.trim()).toBe(
+      `ran ${fakeBin}/node ${diagcHome()}/lib/node_modules/@diagc/cli/bin/diagc.mjs --help`,
+    );
   });
 
   it('downloads Node when the one on the PATH is too old, and installs with its npm', () => {
@@ -142,7 +144,10 @@ describe.skipIf(process.platform === 'win32')('install.sh', () => {
 
   it('refuses a Node download whose checksum does not match, installing nothing', () => {
     const sums = path.join(dist, 'latest-v24.x', 'SHASUMS256.txt');
-    writeFileSync(sums, readFileSync(sums, 'utf8').replace(/^[0-9a-f]{64}(?= {2}node-v24\.9\.0-(?!aix))/m, 'f'.repeat(64)));
+    writeFileSync(
+      sums,
+      readFileSync(sums, 'utf8').replace(/^[0-9a-f]{64}(?= {2}node-v24\.9\.0-(?!aix))/m, 'f'.repeat(64)),
+    );
     const res = install({ FAKE_NODE_MAJOR: '18' });
     expect(res.status).not.toBe(0);
     expect(res.stderr).toContain('checksum mismatch');

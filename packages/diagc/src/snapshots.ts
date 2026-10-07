@@ -8,8 +8,14 @@ export type SnapshotMode = 'locked' | 'update';
 const LOCK_NAME = 'includes.lock.json';
 const VENDOR_DIR = 'includes';
 
-interface LockEntry { file: string; sha256: string; }
-interface Lock { version: 1; includes: Record<string, LockEntry>; }
+interface LockEntry {
+  file: string;
+  sha256: string;
+}
+interface Lock {
+  version: 1;
+  includes: Record<string, LockEntry>;
+}
 
 const isHttp = (s: string): boolean => /^https?:\/\//.test(s);
 const digest = (text: string): string => createHash('sha256').update(text).digest('hex');
@@ -70,17 +76,26 @@ export function snapshotSession(base: IncludeResolver, rootDir: string, mode: Sn
     if (mode === 'locked') {
       const entry = l.includes[url];
       if (entry === undefined) {
-        throw new IncludeError(spec, `Include '${url}' is not snapshotted — run 'diagc compile --update-includes' and commit .diagrams/${VENDOR_DIR}/ + .diagrams/${LOCK_NAME}`);
+        throw new IncludeError(
+          spec,
+          `Include '${url}' is not snapshotted — run 'diagc compile --update-includes' and commit .diagrams/${VENDOR_DIR}/ + .diagrams/${LOCK_NAME}`,
+        );
       }
       let text: string;
       try {
         text = await readFile(path.join(rootDir, entry.file), 'utf8');
       } catch {
-        throw new IncludeError(spec, `Snapshot for '${url}' is missing its vendored file (${entry.file}) — run 'diagc compile --update-includes'`);
+        throw new IncludeError(
+          spec,
+          `Snapshot for '${url}' is missing its vendored file (${entry.file}) — run 'diagc compile --update-includes'`,
+        );
       }
       const hash = digest(text);
       if (hash !== entry.sha256) {
-        throw new IncludeError(spec, `Snapshot for '${url}' does not match its lock entry (lock ${entry.sha256}, file ${hash}) — run 'diagc compile --update-includes'`);
+        throw new IncludeError(
+          spec,
+          `Snapshot for '${url}' does not match its lock entry (lock ${entry.sha256}, file ${hash}) — run 'diagc compile --update-includes'`,
+        );
       }
       return { model: JSON.parse(text) as DiagramModel, ref: url };
     }

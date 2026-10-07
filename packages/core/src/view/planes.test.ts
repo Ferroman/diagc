@@ -146,7 +146,7 @@ describe('planes', () => {
   it('a shared box stays on its home plane after being re-nested on another', () => {
     const m = model('reuse');
     m.plane('c4').plane('infra');
-    const web = m.node('web', { type: 'service' });     // shared
+    const web = m.node('web', { type: 'service' }); // shared
     const inst = m.node('inst', { type: 'infra', plane: 'infra' });
     inst.contains(web, { plane: 'infra' });
     const j = m.toJSON();

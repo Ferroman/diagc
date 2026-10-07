@@ -42,11 +42,22 @@ const onePlane = () => {
 
 /** a threat model with one threatened element, whose badge opens a bubble on the canvas */
 const noted: DiagramModel = {
-  version: 1, id: 'noted', name: 'noted', notation: 'threat-model', layers: [], planes: [],
+  version: 1,
+  id: 'noted',
+  name: 'noted',
+  notation: 'threat-model',
+  layers: [],
+  planes: [],
   nodes: [
-    { id: 'web', name: 'Web app', type: 'tm-process', threats: [{ id: 't1', category: 'S', title: 'Spoofed session' }] },
+    {
+      id: 'web',
+      name: 'Web app',
+      type: 'tm-process',
+      threats: [{ id: 't1', category: 'S', title: 'Spoofed session' }],
+    },
   ],
-  containment: [], relations: [],
+  containment: [],
+  relations: [],
 };
 
 describe('Viewer', () => {
@@ -56,8 +67,12 @@ describe('Viewer', () => {
     expect(screen.getByText('Beta')).toBeDefined();
   });
   it("outlines a diff side's marked nodes", async () => {
-    const { container } = render(<Viewer data={{ model: onePlane(), diff: { marks: { nodes: { a: 'added' }, relations: {} } } }} />);
-    await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="a"]')?.classList.contains('dg-diff-added')).toBe(true));
+    const { container } = render(
+      <Viewer data={{ model: onePlane(), diff: { marks: { nodes: { a: 'added' }, relations: {} } } }} />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector('.react-flow__node[data-id="a"]')?.classList.contains('dg-diff-added')).toBe(true),
+    );
   });
   it('shows a fallback when there is no diagram', () => {
     render(<Viewer data={null} />);
@@ -347,8 +362,21 @@ describe('Viewer layer toggles', () => {
 describe('Viewer comments', () => {
   it('a comment badge on a published page opens the bubble with the text and a link', async () => {
     const commented: DiagramModel = {
-      version: 1, id: 'd', name: 'd', layers: [], planes: [], containment: [], relations: [],
-      nodes: [{ id: 'a', name: 'A', comments: [{ id: 'c1', text: 'Read me on the page' }], links: [{ label: 'Doc', url: 'https://x' }] }],
+      version: 1,
+      id: 'd',
+      name: 'd',
+      layers: [],
+      planes: [],
+      containment: [],
+      relations: [],
+      nodes: [
+        {
+          id: 'a',
+          name: 'A',
+          comments: [{ id: 'c1', text: 'Read me on the page' }],
+          links: [{ label: 'Doc', url: 'https://x' }],
+        },
+      ],
     };
     const { container } = render(<Viewer data={{ model: commented, layout: { version: 1, planes: {} } }} />);
     let badge: HTMLButtonElement | null = null;
@@ -449,7 +477,15 @@ describe('Viewer export bounds', () => {
     // jsdom gives every element a 0x0 rect, so the legend would measure as
     // nothing; stub a realistic size to prove the reserve is actually applied.
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
-      width: 180, height: 90, top: 0, left: 0, right: 180, bottom: 90, x: 0, y: 0, toJSON: () => ({}),
+      width: 180,
+      height: 90,
+      top: 0,
+      left: 0,
+      right: 180,
+      bottom: 90,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
     } as DOMRect);
 
     const { unmount } = render(<Viewer data={{ model: legended() }} expandAll />);
@@ -581,7 +617,9 @@ describe('Viewer leverage panel', () => {
     await waitFor(() => expect(container.querySelector('[data-focus="drv:b"]')).not.toBeNull());
     fireEvent.click(container.querySelector('[data-focus="drv:b"]')!);
     // the row shows as active, and the canvas glows the b → a → t path and dims the rest
-    await waitFor(() => expect(container.querySelector('[data-focus="drv:b"]')?.classList.contains('active')).toBe(true));
+    await waitFor(() =>
+      expect(container.querySelector('[data-focus="drv:b"]')?.classList.contains('active')).toBe(true),
+    );
     expect(variable(container, 'd').querySelector('.dg-loop-node-dim')).not.toBeNull();
     expect(variable(container, 'b').querySelector('.dg-loop-node-hl')).not.toBeNull();
   });
@@ -629,7 +667,9 @@ describe('plan pages', () => {
     const m = model('plan-page', { name: 'Plan page' });
     const p = m.plan();
     const alice = p.person('alice', 'Alice Ng');
-    p.zone('q', { name: 'Q1', start: today, end: isoOf(dayOf(today)! + 13) }).owner(alice).comment('slipping', { by: 'bf' });
+    p.zone('q', { name: 'Q1', start: today, end: isoOf(dayOf(today)! + 13) })
+      .owner(alice)
+      .comment('slipping', { by: 'bf' });
     return m.toJSON();
   }
   it('draws the header, the role chip and the today line', async () => {

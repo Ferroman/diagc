@@ -385,8 +385,7 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
     // or a switch back to the causal plane would revive a stale one.
     onSelect(null);
   };
-  const toggleLayer = (id: string) =>
-    setLayers((ls) => (ls.includes(id) ? ls.filter((l) => l !== id) : [...ls, id]));
+  const toggleLayer = (id: string) => setLayers((ls) => (ls.includes(id) ? ls.filter((l) => l !== id) : [...ls, id]));
   const view = (
     <DiagramView
       model={model}

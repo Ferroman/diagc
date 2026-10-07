@@ -23,9 +23,7 @@ interface EmbedResponse {
 }
 
 type EmbedState =
-  | { status: 'loading' }
-  | { status: 'error'; message: string }
-  | { status: 'loaded'; data: EmbedResponse };
+  { status: 'loading' } | { status: 'error'; message: string } | { status: 'loaded'; data: EmbedResponse };
 
 export interface EmbedProps {
   spec: EmbedSpec;
@@ -95,8 +93,7 @@ export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpen
       try {
         const res = await apiFetch(`/api/diagrams/${encodeURIComponent(spec.name)}`);
         const body = (await res.json().catch(() => null)) as
-          | ({ issues?: { message: string }[] } & Partial<EmbedResponse>)
-          | null;
+          ({ issues?: { message: string }[] } & Partial<EmbedResponse>) | null;
         if (!res.ok) {
           throw new Error(body?.issues?.[0]?.message ?? `Failed to load '${spec.name}' (${res.status})`);
         }

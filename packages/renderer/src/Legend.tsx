@@ -53,8 +53,18 @@ function LineSwatch({ style, color }: { style: KindStyle; color: string }) {
   const x2 = endShape !== undefined && !LINE_MARKERS.has(end) ? 23 - (endShape.refX - 2) * MARKER_SCALE : 23;
   return (
     <svg className="dg-legend-swatch" viewBox="0 0 24 12" width="24" height="12" aria-hidden="true">
-      <line x1="1" y1="6" x2={x2} y2="6" stroke={color} strokeWidth={width} {...(dash !== undefined ? { strokeDasharray: dash } : {})} />
-      {style.zigzag === true && <polyline points="8,9 12.5,4.5 10.5,7.5 15,3" fill="none" stroke={color} strokeWidth={1.25} />}
+      <line
+        x1="1"
+        y1="6"
+        x2={x2}
+        y2="6"
+        stroke={color}
+        strokeWidth={width}
+        {...(dash !== undefined ? { strokeDasharray: dash } : {})}
+      />
+      {style.zigzag === true && (
+        <polyline points="8,9 12.5,4.5 10.5,7.5 15,3" fill="none" stroke={color} strokeWidth={1.25} />
+      )}
       {style.startMarker !== undefined && <LineEnd name={style.startMarker} at="start" x={1} color={color} />}
       <LineEnd name={end} at="end" x={23} color={color} />
     </svg>
@@ -84,7 +94,10 @@ function ShapeGlyph({ s, stroke }: { s: TypeStyle; stroke: string }) {
       return <polygon points="6,3 18,3 22,8 18,13 6,13 2,8" fill="var(--dg-surface)" stroke={stroke} />;
     case 'bubble':
       return (
-        <path d="M 4 3 L 20 3 Q 22 3 22 5 L 22 11 Q 22 13 20 13 L 10 13 L 6 16 L 6 13 L 4 13 Q 2 13 2 11 L 2 5 Q 2 3 4 3 Z" {...outline} />
+        <path
+          d="M 4 3 L 20 3 Q 22 3 22 5 L 22 11 Q 22 13 20 13 L 10 13 L 6 16 L 6 13 L 4 13 Q 2 13 2 11 L 2 5 Q 2 3 4 3 Z"
+          {...outline}
+        />
       );
     case 'person':
       return (
@@ -144,11 +157,18 @@ function ShapeGlyph({ s, stroke }: { s: TypeStyle; stroke: string }) {
 
 /** A badge or column tag, drawn with the text the canvas draws it with. */
 function Mark({ mark }: { mark: LegendMark }) {
-  const badge = mark === 'threat-open' ? threatBadgeProps({ open: 1, total: 1 }) : mark === 'threat-handled' ? threatBadgeProps({ open: 0, total: 1 }) : undefined;
+  const badge =
+    mark === 'threat-open'
+      ? threatBadgeProps({ open: 1, total: 1 })
+      : mark === 'threat-handled'
+        ? threatBadgeProps({ open: 0, total: 1 })
+        : undefined;
   return (
     <span className="dg-legend-swatch dg-legend-mark" data-mark={mark} aria-hidden="true">
       {badge !== undefined ? (
-        <span className="dg-legend-badge" data-state={badge.state}>{badge.text}</span>
+        <span className="dg-legend-badge" data-state={badge.state}>
+          {badge.text}
+        </span>
       ) : (
         // the table's own class, so the tag is the colour and weight a column shows
         <span className="dg-table-key">{mark === 'pk' ? '🔑' : 'FK'}</span>
@@ -200,7 +220,15 @@ export interface LegendProps {
   onMeasure?: (size: { width: number; height: number }) => void;
 }
 
-export function Legend({ rows, title = 'Legend', interactive, onToggleLayer, onToggleDrawings, icons, onMeasure }: LegendProps) {
+export function Legend({
+  rows,
+  title = 'Legend',
+  interactive,
+  onToggleLayer,
+  onToggleDrawings,
+  icons,
+  onMeasure,
+}: LegendProps) {
   const [collapsed, setCollapsed] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const lastSize = useRef<{ width: number; height: number } | null>(null);
@@ -248,7 +276,10 @@ export function Legend({ rows, title = 'Legend', interactive, onToggleLayer, onT
               <div className="dg-legend-section-title">{SECTION_LABELS[section]}</div>
               {rs.map((r) => {
                 const swatch = (
-                  <Swatch {...(r.swatch !== undefined ? { swatch: r.swatch } : {})} {...(icons !== undefined ? { icons } : {})} />
+                  <Swatch
+                    {...(r.swatch !== undefined ? { swatch: r.swatch } : {})}
+                    {...(icons !== undefined ? { icons } : {})}
+                  />
                 );
                 const layer = r.layer;
                 if (r.drawings === true && onToggleDrawings !== undefined) {

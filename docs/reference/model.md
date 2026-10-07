@@ -378,7 +378,7 @@ See [Draw a threat model](../how-to/draw-a-threat-model.md).
 
 ### `Comment`
 
-`comments?: Comment[]` sits on a **node** or a **relation** in any notation. The canvas shows a count at the element's bottom-right corner (a chip at a quarter of the way along an arrow); clicking it opens the element's bubble — the same bubble a threat register uses — with the comments listed.
+`comments?: Comment[]` sits on a **node** or a **relation** in any notation. The canvas shows a count at the element's bottom-right corner (a quarter of the way along an arrow); clicking it opens the element's bubble — the same bubble a threat register uses — with the comments listed.
 
 | Field | Type | Notes |
 | --- | --- | --- |

@@ -177,7 +177,14 @@ describe('edgePoint / edgeTangent — bow', () => {
 
 describe('nearestT', () => {
   it('finds the midpoint of a straight edge and a signed perpendicular', () => {
-    const params = { sourceX: 0, sourceY: 0, targetX: 100, targetY: 0, sourcePosition: Position.Right, targetPosition: Position.Left };
+    const params = {
+      sourceX: 0,
+      sourceY: 0,
+      targetX: 100,
+      targetY: 0,
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+    };
     const at = nearestT('straight', params, undefined, { x: 50, y: 0 });
     expect(at.t).toBeCloseTo(0.5, 1);
     const above = nearestT('straight', params, undefined, { x: 50, y: -20 });
@@ -222,11 +229,18 @@ describe('routeCurve', () => {
 
   it('survives degenerate routes', () => {
     expect(routeCurve([{ x: 3, y: 4 }]).point(0.5)).toEqual({ x: 3, y: 4 });
-    const flat = routeCurve([{ x: 3, y: 4 }, { x: 3, y: 4 }]);
+    const flat = routeCurve([
+      { x: 3, y: 4 },
+      { x: 3, y: 4 },
+    ]);
     expect(flat.point(0.5)).toEqual({ x: 3, y: 4 });
     expect(flat.tangent(0.5)).toEqual({ x: 0, y: 0 });
     // a zero-length leg in the middle is skipped, not divided by
-    const c = routeCurve([{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 10, y: 0 }]);
+    const c = routeCurve([
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+    ]);
     expect(c.point(0.5)).toEqual({ x: 5, y: 0 });
   });
 });
@@ -263,14 +277,30 @@ describe('nearestOnRoute', () => {
     expect(nearestOnRoute(route, { x: 260, y: 110 })).toEqual({ x: 200, y: 100 });
   });
   it('survives a zero-length leg and an empty route', () => {
-    expect(nearestOnRoute([{ x: 5, y: 5 }, { x: 5, y: 5 }], { x: 9, y: 9 })).toEqual({ x: 5, y: 5 });
+    expect(
+      nearestOnRoute(
+        [
+          { x: 5, y: 5 },
+          { x: 5, y: 5 },
+        ],
+        { x: 9, y: 9 },
+      ),
+    ).toEqual({ x: 5, y: 5 });
     expect(nearestOnRoute([], { x: 9, y: 9 })).toEqual({ x: 9, y: 9 });
   });
 });
 
 describe('roundedRoute', () => {
   it('draws two points as a straight line', () => {
-    expect(roundedRoute([{ x: 0, y: 0 }, { x: 10, y: 0 }], 28)).toBe('M0,0 L10,0');
+    expect(
+      roundedRoute(
+        [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 },
+        ],
+        28,
+      ),
+    ).toBe('M0,0 L10,0');
   });
 
   it('caps the corner radius at half of either leg, so a short jog becomes one S-curve', () => {
@@ -343,20 +373,33 @@ describe('tidyRoute', () => {
 
   it('leaves a real jog, and a route too short to have one, alone', () => {
     expect(tidyRoute(Z)).toEqual(Z);
-    const two = [{ x: 0, y: 0 }, { x: 0, y: 9 }];
+    const two = [
+      { x: 0, y: 0 },
+      { x: 0, y: 9 },
+    ];
     expect(tidyRoute(two)).toEqual(two);
   });
 });
 
 describe('routeEndSides', () => {
-  it('reads each end\'s side off the direction of its own leg', () => {
+  it("reads each end's side off the direction of its own leg", () => {
     // Z leaves downward and arrives from above
     expect(routeEndSides(Z)).toEqual({ from: 'bottom', to: 'top' });
-    expect(routeEndSides([{ x: 0, y: 5 }, { x: 40, y: 5 }])).toEqual({ from: 'right', to: 'left' });
+    expect(
+      routeEndSides([
+        { x: 0, y: 5 },
+        { x: 40, y: 5 },
+      ]),
+    ).toEqual({ from: 'right', to: 'left' });
   });
 
   it('says nothing about a diagonal or degenerate leg', () => {
-    expect(routeEndSides([{ x: 0, y: 0 }, { x: 5, y: 9 }])).toEqual({ from: undefined, to: undefined });
+    expect(
+      routeEndSides([
+        { x: 0, y: 0 },
+        { x: 5, y: 9 },
+      ]),
+    ).toEqual({ from: undefined, to: undefined });
     expect(routeEndSides([{ x: 1, y: 1 }])).toEqual({ from: undefined, to: undefined });
   });
 });

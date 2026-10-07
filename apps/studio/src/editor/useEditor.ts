@@ -68,7 +68,8 @@ export function useEditor(): EditorApi {
     // an untouched diagram never writes (or creates) its drawings sidecar.
     if (snapshot.state.drawings !== snapshot.savedState.drawings) {
       const drawingsErr = await post('drawings', snapshot.state.drawings);
-      if (drawingsErr !== null) return { ok: false, issues: drawingsErr.issues ?? [{ message: 'Drawings save failed' }] };
+      if (drawingsErr !== null)
+        return { ok: false, issues: drawingsErr.issues ?? [{ message: 'Drawings save failed' }] };
     }
     // Mark exactly what was posted as saved. Reading the live session (not the
     // snapshot) keeps edits dispatched during the save dirty, since their state

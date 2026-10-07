@@ -434,7 +434,7 @@ export interface Stroke {
 
 /** `<name>.drawings.json` — the second thing kept out of the model, in its own
  * file rather than the layout overlay so a box nudge and a scribble never land
- * in one hunk (see .claude/specs/2026-08-23-drawings-sidecar-design.md).
+ * in one hunk.
  * Keyed exactly like `LayoutOverlay.planes` (layoutPlaneKey). */
 export interface Drawings {
   version: 1;
@@ -444,6 +444,15 @@ export interface Drawings {
 /** Pen width when a stroke names none. In core so editor and renderer cannot drift. */
 export const DEFAULT_STROKE_WIDTH = 3;
 
-export const BUILTIN_NOTATIONS = ['causal-loop', 'git-graph', 'c4', 'second-order', 'fishbone', 'threat-model', 'plan', 'deployment'] as const;
+export const BUILTIN_NOTATIONS = [
+  'causal-loop',
+  'git-graph',
+  'c4',
+  'second-order',
+  'fishbone',
+  'threat-model',
+  'plan',
+  'deployment',
+] as const;
 export type NotationId = (typeof BUILTIN_NOTATIONS)[number];
 export type Polarity = '+' | '-';

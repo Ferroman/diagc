@@ -37,7 +37,7 @@ describe('LayoutControls', () => {
     // radial needs a TREE, so on any diagram with a cycle it fails outright and
     // the engine degrades to layered — the picker would have been offering a
     // no-op. stress treats nodes as dimensionless points and piles them on top
-    // of each other (146 overlapping pairs on platform-c4). See DEFERRALS.md.
+    // of each other (146 overlapping pairs on platform-c4).
     render(<LayoutControls settings={{}} onChange={vi.fn()} />);
     const offered = [...(screen.getByLabelText(/layout algorithm/i) as HTMLSelectElement).options].map((o) => o.value);
     expect(offered).toEqual(['layered', 'force', 'mrtree', 'rectpacking']);
@@ -87,7 +87,9 @@ describe('LayoutControls', () => {
   });
 
   it('shows the wrap picker for layered only, and lists a custom sidecar ratio', () => {
-    const { rerender } = render(<LayoutControls settings={{ algorithm: 'force', aspectRatio: 1.6 }} onChange={vi.fn()} />);
+    const { rerender } = render(
+      <LayoutControls settings={{ algorithm: 'force', aspectRatio: 1.6 }} onChange={vi.fn()} />,
+    );
     expect(screen.queryByLabelText('Wrap')).toBeNull();
     // A hand-written sidecar may name a ratio the presets don't; the select
     // must still show it rather than render blank (same rule as algorithms).
@@ -104,7 +106,8 @@ describe('LayoutControls', () => {
     for (const name of ['Algorithm', 'Direction', 'Wrap', 'Spacing', 'Edges']) {
       expect(screen.getByText(name, { selector: '.layout-row > span' })).toBeDefined();
     }
-    const labels = (name: string) => [...(screen.getByLabelText(name) as HTMLSelectElement).options].map((o) => o.textContent);
+    const labels = (name: string) =>
+      [...(screen.getByLabelText(name) as HTMLSelectElement).options].map((o) => o.textContent);
     expect(labels('Wrap')).toEqual(['Off', 'Square', 'Screen', 'Wide']);
     expect(labels('Edge routing')).toEqual(['Rounded', 'Square']);
   });
@@ -115,7 +118,7 @@ describe('LayoutControls', () => {
     expect(screen.getByLabelText('Layout direction')).toBeDefined();
   });
 
-  it('still runs layered-only controls when the locked notation\'s sidecar names a different algorithm', () => {
+  it("still runs layered-only controls when the locked notation's sidecar names a different algorithm", () => {
     // Second-order pins the run to layered regardless of what a stale/foreign
     // sidecar says (elk partitions are layered-only) — the direction/wrap
     // controls must reflect that forced algorithm, not the unused setting.

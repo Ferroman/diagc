@@ -98,8 +98,20 @@ export function EditorToolbar({
         {(
           [
             ['select', 'Select', `Select and move${hint('tool.select')} — Esc also gets you here`],
-            ['pen', 'Pen', drawingDisabled ? 'Drawings are shown at the top level only — leave the drilled view to draw' : `Draw freehand${hint('tool.pen')}`],
-            ['eraser', 'Eraser', drawingDisabled ? 'Drawings are shown at the top level only — leave the drilled view to erase' : `Click a stroke to erase it${hint('tool.eraser')}`],
+            [
+              'pen',
+              'Pen',
+              drawingDisabled
+                ? 'Drawings are shown at the top level only — leave the drilled view to draw'
+                : `Draw freehand${hint('tool.pen')}`,
+            ],
+            [
+              'eraser',
+              'Eraser',
+              drawingDisabled
+                ? 'Drawings are shown at the top level only — leave the drilled view to erase'
+                : `Click a stroke to erase it${hint('tool.eraser')}`,
+            ],
           ] as const
         ).map(([id, label, title]) => (
           <button
@@ -117,7 +129,12 @@ export function EditorToolbar({
       </span>
       {tool === 'pen' && (
         <>
-          <ColorRow label="Pen color" autoTitle="Auto (theme ink)" value={pen.color} onChange={(c) => onSetPen({ color: c })} />
+          <ColorRow
+            label="Pen color"
+            autoTitle="Auto (theme ink)"
+            value={pen.color}
+            onChange={(c) => onSetPen({ color: c })}
+          />
           <span className="tool-group" role="group" aria-label="Pen width">
             {(
               [
@@ -140,13 +157,28 @@ export function EditorToolbar({
         </>
       )}
       <span className="sep" />
-      <button className="chip" onClick={() => editor.undo()} disabled={!editor.canUndo} title={`Undo${hint('edit.undo')}`}>
+      <button
+        className="chip"
+        onClick={() => editor.undo()}
+        disabled={!editor.canUndo}
+        title={`Undo${hint('edit.undo')}`}
+      >
         Undo
       </button>
-      <button className="chip" onClick={() => editor.redo()} disabled={!editor.canRedo} title={`Redo${hint('edit.redo')}`}>
+      <button
+        className="chip"
+        onClick={() => editor.redo()}
+        disabled={!editor.canRedo}
+        title={`Redo${hint('edit.redo')}`}
+      >
         Redo
       </button>
-      <button className="chip primary" onClick={onSave} disabled={!editor.dirty || saving} title={`Save${hint('edit.save')}`}>
+      <button
+        className="chip primary"
+        onClick={onSave}
+        disabled={!editor.dirty || saving}
+        title={`Save${hint('edit.save')}`}
+      >
         Save
       </button>
       <span className="save-status" aria-live="polite">

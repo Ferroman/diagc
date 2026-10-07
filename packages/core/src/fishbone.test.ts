@@ -16,9 +16,21 @@ const node = (id: string, type?: string): DiagramNode => ({ id, name: id, ...(ty
 const effect = (id: string) => node(id, FB_EFFECT_TYPE);
 const category = (id: string) => node(id, FB_CATEGORY_TYPE);
 const cause = (id: string) => node(id, FB_CAUSE_TYPE);
-const rel = (from: string, to: string, kind = 'cause-of'): DiagramRelation => ({ id: `${from}->${to}`, from, to, kind });
+const rel = (from: string, to: string, kind = 'cause-of'): DiagramRelation => ({
+  id: `${from}->${to}`,
+  from,
+  to,
+  kind,
+});
 const model = (nodes: DiagramNode[], relations: DiagramRelation[]): DiagramModel => ({
-  version: 1, id: 'm', name: 'm', nodes, containment: [], relations, layers: [], planes: [],
+  version: 1,
+  id: 'm',
+  name: 'm',
+  nodes,
+  containment: [],
+  relations,
+  layers: [],
+  planes: [],
 });
 
 describe('fishbone vocabulary', () => {
@@ -34,7 +46,14 @@ describe('fishbone vocabulary', () => {
   });
   it('ships three presets, Software first, with slug ids', () => {
     expect(FISHBONE_PRESET_NAMES).toEqual(['Software', '6M', '4S']);
-    expect(FISHBONE_PRESETS.Software).toEqual(['People', 'Process', 'Requirements', 'Code', 'Infrastructure', 'Dependencies']);
+    expect(FISHBONE_PRESETS.Software).toEqual([
+      'People',
+      'Process',
+      'Requirements',
+      'Code',
+      'Infrastructure',
+      'Dependencies',
+    ]);
     expect(FISHBONE_PRESETS['6M']).toEqual(['Man', 'Machine', 'Method', 'Material', 'Measurement', 'Environment']);
     expect(FISHBONE_PRESETS['4S']).toEqual(['Surroundings', 'Suppliers', 'Systems', 'Skills']);
     expect(presetId('Infrastructure')).toBe('infrastructure');
@@ -44,10 +63,7 @@ describe('fishbone vocabulary', () => {
 
 describe('fishboneParents', () => {
   it('picks the first relation in declaration order, any kind', () => {
-    const m = model(
-      [effect('e'), category('c')],
-      [rel('c', 'e', 'flow'), rel('c', 'e', 'cause-of')],
-    );
+    const m = model([effect('e'), category('c')], [rel('c', 'e', 'flow'), rel('c', 'e', 'cause-of')]);
     expect(fishboneParents(m).get('c')).toBe('e');
   });
   it('skips a self-loop', () => {
@@ -102,8 +118,26 @@ describe('fishboneTree', () => {
 
   it('leaves off wrong-shaped hangings and a fourth level, and ignores non-fishbone nodes', () => {
     const m = model(
-      [effect('e'), category('c'), cause('a'), cause('a1'), cause('a11'), category('cc'), cause('direct'), node('note'), effect('e2')],
-      [rel('c', 'e'), rel('a', 'c'), rel('a1', 'a'), rel('a11', 'a1'), rel('cc', 'c'), rel('direct', 'e'), rel('note', 'e')],
+      [
+        effect('e'),
+        category('c'),
+        cause('a'),
+        cause('a1'),
+        cause('a11'),
+        category('cc'),
+        cause('direct'),
+        node('note'),
+        effect('e2'),
+      ],
+      [
+        rel('c', 'e'),
+        rel('a', 'c'),
+        rel('a1', 'a'),
+        rel('a11', 'a1'),
+        rel('cc', 'c'),
+        rel('direct', 'e'),
+        rel('note', 'e'),
+      ],
     );
     const t = fishboneTree(m);
     expect(t.effect).toBe('e');

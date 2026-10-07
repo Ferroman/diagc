@@ -117,7 +117,10 @@ describe('C4 pack', () => {
   it('uses a node type the renderer styles (no silent fallback to a plain box)', () => {
     for (const e of C4_PACK.entries) {
       expect(e.template.type, `entry '${e.id}' has no type`).toBeDefined();
-      expect(DEFAULT_TYPE_STYLES[e.template.type!], `type '${e.template.type}' is not in the type registry`).toBeDefined();
+      expect(
+        DEFAULT_TYPE_STYLES[e.template.type!],
+        `type '${e.template.type}' is not in the type registry`,
+      ).toBeDefined();
     }
   });
 });
@@ -171,9 +174,21 @@ describe('AWS containers', () => {
       'aws-ctr-region': { type: 'aws-region', color: '#00A4A6', image: '/library/aws-groups/region.svg' },
       'aws-ctr-az': { type: 'aws-az', color: '#00A4A6' },
       'aws-ctr-vpc': { type: 'aws-vpc', color: '#8C4FFF', image: '/library/aws-groups/virtual-private-cloud-vpc.svg' },
-      'aws-ctr-subnet-public': { type: 'aws-subnet-public', color: '#7AA116', image: '/library/aws-groups/public-subnet.svg' },
-      'aws-ctr-subnet-private': { type: 'aws-subnet-private', color: '#00A4A6', image: '/library/aws-groups/private-subnet.svg' },
-      'aws-ctr-auto-scaling': { type: 'aws-auto-scaling-group', color: '#ED7100', image: '/library/aws-groups/auto-scaling-group.svg' },
+      'aws-ctr-subnet-public': {
+        type: 'aws-subnet-public',
+        color: '#7AA116',
+        image: '/library/aws-groups/public-subnet.svg',
+      },
+      'aws-ctr-subnet-private': {
+        type: 'aws-subnet-private',
+        color: '#00A4A6',
+        image: '/library/aws-groups/private-subnet.svg',
+      },
+      'aws-ctr-auto-scaling': {
+        type: 'aws-auto-scaling-group',
+        color: '#ED7100',
+        image: '/library/aws-groups/auto-scaling-group.svg',
+      },
       'aws-ctr-generic': { type: 'aws-group', color: '#7D8998' },
     };
     for (const [id, t] of Object.entries(want)) {
@@ -188,7 +203,10 @@ describe('AWS containers', () => {
     const ctrs = BUNDLED_LIBRARY.entries.filter((e) => e.id.startsWith('aws-ctr-'));
     expect(ctrs.length).toBeGreaterThanOrEqual(9);
     for (const e of ctrs) {
-      expect(DEFAULT_TYPE_STYLES[e.template.type!], `type '${e.template.type}' is not in the type registry`).toBeDefined();
+      expect(
+        DEFAULT_TYPE_STYLES[e.template.type!],
+        `type '${e.template.type}' is not in the type registry`,
+      ).toBeDefined();
     }
   });
 });
@@ -206,8 +224,22 @@ describe('Tech pack', () => {
   it('keeps the logos diagrams were already drawn with', () => {
     const ids = new Set(tech.map((e) => e.id));
     for (const slug of [
-      'auth0', 'clickhouse', 'cloudflare', 'github', 'github-actions', 'helm', 'jupyter', 'kubernetes',
-      'nats', 'new-relic', 'postgresql', 'rabbitmq', 'redis', 'sendgrid', 'starrocks', 'temporal',
+      'auth0',
+      'clickhouse',
+      'cloudflare',
+      'github',
+      'github-actions',
+      'helm',
+      'jupyter',
+      'kubernetes',
+      'nats',
+      'new-relic',
+      'postgresql',
+      'rabbitmq',
+      'redis',
+      'sendgrid',
+      'starrocks',
+      'temporal',
     ]) {
       expect(ids.has(`tech-${slug}`), `missing tech-${slug}`).toBe(true);
     }
@@ -331,8 +363,16 @@ describe('Activity pack', () => {
     expect(BUNDLED_LIBRARY.categories.some((c) => c.id === 'activity')).toBe(true);
     const entries = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'activity');
     expect(entries.map((e) => e.template.type)).toEqual([
-      'activity-frame', 'activity-action', 'activity-decision', 'activity-bar', 'activity-start',
-      'activity-end', 'activity-send', 'activity-receive', 'activity-object', 'activity-note',
+      'activity-frame',
+      'activity-action',
+      'activity-decision',
+      'activity-bar',
+      'activity-start',
+      'activity-end',
+      'activity-send',
+      'activity-receive',
+      'activity-object',
+      'activity-note',
     ]);
     expect(entries.find((e) => e.template.type === 'activity-bar')?.template).toMatchObject({ width: 8, height: 100 });
   });
@@ -343,7 +383,10 @@ describe('Second-order pack', () => {
     expect(BUNDLED_LIBRARY.categories.some((c) => c.id === 'second-order')).toBe(true);
     const entries = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'second-order');
     expect(entries.map((e) => e.id)).toEqual([
-      'so-decision', 'so-consequence-positive', 'so-consequence-negative', 'so-consequence-neutral',
+      'so-decision',
+      'so-consequence-positive',
+      'so-consequence-negative',
+      'so-consequence-neutral',
     ]);
   });
 });

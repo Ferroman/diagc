@@ -5,9 +5,21 @@ import { consequenceOrders, consequenceTypeOf, isSecondOrderNode, valenceOf } fr
 const node = (id: string, type?: string): DiagramNode => ({ id, name: id, ...(type !== undefined ? { type } : {}) });
 const d = (id: string) => node(id, 'so-decision');
 const c = (id: string, v: '+' | '-' | '0' = '0') => node(id, consequenceTypeOf(v));
-const rel = (from: string, to: string, n = 0): DiagramRelation => ({ id: `${from}->${to}#${n}`, from, to, kind: 'leads-to' });
+const rel = (from: string, to: string, n = 0): DiagramRelation => ({
+  id: `${from}->${to}#${n}`,
+  from,
+  to,
+  kind: 'leads-to',
+});
 const model = (nodes: DiagramNode[], relations: DiagramRelation[]): DiagramModel => ({
-  version: 1, id: 'm', name: 'm', nodes, containment: [], relations, layers: [], planes: [],
+  version: 1,
+  id: 'm',
+  name: 'm',
+  nodes,
+  containment: [],
+  relations,
+  layers: [],
+  planes: [],
 });
 const ordersOf = (m: DiagramModel) => Object.fromEntries(consequenceOrders(m).orders);
 
@@ -58,7 +70,10 @@ describe('consequenceOrders', () => {
   });
 
   it('reports a cycle instead of numbering anything', () => {
-    const m = model([d('d'), c('a'), c('b'), c('tail')], [rel('d', 'a'), rel('a', 'b'), rel('b', 'a'), rel('b', 'tail')]);
+    const m = model(
+      [d('d'), c('a'), c('b'), c('tail')],
+      [rel('d', 'a'), rel('a', 'b'), rel('b', 'a'), rel('b', 'tail')],
+    );
     const out = consequenceOrders(m);
     expect(out.orders.size).toBe(0);
     expect(out.cycle).toEqual(['a', 'b']); // `tail` hangs off the loop, it is not on it

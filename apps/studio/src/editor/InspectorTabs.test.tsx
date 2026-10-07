@@ -21,7 +21,12 @@ describe('InspectorTabs', () => {
 
   it('renders the library body when active', () => {
     render(
-      <InspectorTabs activeTab="library" onTabChange={() => {}} properties={<div>PROPS</div>} library={<div>LIB</div>} />,
+      <InspectorTabs
+        activeTab="library"
+        onTabChange={() => {}}
+        properties={<div>PROPS</div>}
+        library={<div>LIB</div>}
+      />,
     );
     expect(screen.getByText('LIB')).toBeDefined();
     expect(screen.queryByText('PROPS')).toBeNull();
@@ -30,7 +35,12 @@ describe('InspectorTabs', () => {
   it('fires onTabChange when a tab is clicked', () => {
     const onTabChange = vi.fn();
     render(
-      <InspectorTabs activeTab="properties" onTabChange={onTabChange} properties={<div>PROPS</div>} library={<div>LIB</div>} />,
+      <InspectorTabs
+        activeTab="properties"
+        onTabChange={onTabChange}
+        properties={<div>PROPS</div>}
+        library={<div>LIB</div>}
+      />,
     );
     screen.getByRole('tab', { name: 'Library' }).click();
     expect(onTabChange).toHaveBeenCalledWith('library');

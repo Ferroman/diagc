@@ -3,7 +3,15 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NODE_TYPES } from '@diagc/core';
-import { GuideMissingError, TOPIC_TYPE_PREFIXES, UnknownTopicError, guideTopics, renderGuide, runGuide, type GuideContext } from './guide';
+import {
+  GuideMissingError,
+  TOPIC_TYPE_PREFIXES,
+  UnknownTopicError,
+  guideTopics,
+  renderGuide,
+  runGuide,
+  type GuideContext,
+} from './guide';
 
 let tmp: string;
 let ctx: GuideContext;
@@ -52,7 +60,7 @@ describe('renderGuide', () => {
     expect(renderGuide(undefined, ctx)).toBe("Start:\n\n```ts\nexport default 'b';\n```");
   });
 
-  it("gives a topic its own starter for a bare {{starter}}", () => {
+  it('gives a topic its own starter for a bare {{starter}}', () => {
     starter('c4', "export default 'c';\n\n\n");
     page('c4', '# C4\n\n{{starter}}\n');
     expect(renderGuide('c4', ctx)).toBe("# C4\n\n```ts\nexport default 'c';\n```");
@@ -157,7 +165,10 @@ describe('TOPIC_TYPE_PREFIXES', () => {
     // that topic's list silently went empty.
     for (const [topic, prefixes] of Object.entries(TOPIC_TYPE_PREFIXES)) {
       for (const p of prefixes) {
-        expect(NODE_TYPES.some((t) => t.startsWith(p)), `${topic}: '${p}'`).toBe(true);
+        expect(
+          NODE_TYPES.some((t) => t.startsWith(p)),
+          `${topic}: '${p}'`,
+        ).toBe(true);
       }
     }
   });

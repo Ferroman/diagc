@@ -25,7 +25,8 @@ const ANSWERS: { valence: Valence; label: string }[] = [
 /** The second-order editing surface: grow the tree one "and then what?" at a
  * time, and see what validation objects to. */
 export function SecondOrderPanel({ model, selection, plane, onCommand, onSelect, onCreated }: SecondOrderPanelProps) {
-  const from = selection?.kind === 'node' ? model.nodes.find((n) => n.id === selection.id && isSecondOrderNode(n)) : undefined;
+  const from =
+    selection?.kind === 'node' ? model.nodes.find((n) => n.id === selection.id && isSecondOrderNode(n)) : undefined;
   const issues = useMemo(() => validate(model).filter((i) => i.code.startsWith('so-')), [model]);
 
   const created = (out: { command: EditorCommand; id: string } | null) => {
@@ -37,10 +38,19 @@ export function SecondOrderPanel({ model, selection, plane, onCommand, onSelect,
 
   return (
     <DockSection id="second-order" title="And then what?" label="Second-order thinking" className="sidebar so-panel">
-      <p className="so-hint">{from !== undefined ? `What follows from “${from.name !== '' ? from.name : from.id}”?` : 'Select a decision or a consequence.'}</p>
+      <p className="so-hint">
+        {from !== undefined
+          ? `What follows from “${from.name !== '' ? from.name : from.id}”?`
+          : 'Select a decision or a consequence.'}
+      </p>
       <div className="so-answers">
         {ANSWERS.map((a) => (
-          <button key={a.valence} type="button" disabled={from === undefined} onClick={() => from !== undefined && created(thenWhat(model, from.id, a.valence))}>
+          <button
+            key={a.valence}
+            type="button"
+            disabled={from === undefined}
+            onClick={() => from !== undefined && created(thenWhat(model, from.id, a.valence))}
+          >
             {a.label}
           </button>
         ))}

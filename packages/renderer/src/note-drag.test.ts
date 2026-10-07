@@ -48,10 +48,7 @@ describe('splitNoteDrag', () => {
       note('note:node:web', { x: 0, y: 0 }, { target: { node: 'web' }, anchor: { x: 100, y: 0 } }),
       box('db', { x: 9, y: 9 }), // absent from the map: falls back to its own position
     ];
-    const { notes, boxes } = splitNoteDrag(
-      nodes,
-      at(['web', { x: 30, y: 60 }], ['note:node:web', { x: 130, y: 20 }]),
-    );
+    const { notes, boxes } = splitNoteDrag(nodes, at(['web', { x: 30, y: 60 }], ['note:node:web', { x: 130, y: 20 }]));
     expect(notes).toEqual([{ target: { node: 'web' }, offset: { dx: 30, dy: 20 } }]);
     expect(boxes).toEqual({ web: { x: 30, y: 60 }, db: { x: 9, y: 9 } });
     expect(Object.keys(boxes).some((id) => id.startsWith('note:'))).toBe(false);

@@ -1,12 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   applyNodeChanges,
   Background,
@@ -60,7 +52,16 @@ import { strokesBounds } from './drawings';
 import { captureCanvas, exportFrame } from './export-image';
 import { NOTE_WIDTH, type NoteData } from './NoteNode';
 import { splitNoteDrag } from './note-drag';
-import { badgeCenter, estimateNoteHeight, lineObstacles, obstaclesOf, placeNote, type BadgeKind, type Point, type Rect } from './note-place';
+import {
+  badgeCenter,
+  estimateNoteHeight,
+  lineObstacles,
+  obstaclesOf,
+  placeNote,
+  type BadgeKind,
+  type Point,
+  type Rect,
+} from './note-place';
 import { NoteStateContext, type NoteState } from './note-state';
 import { DrawingsLayer } from './DrawingsLayer';
 import { withoutMeasuredExpansion } from './expand-parent';
@@ -130,8 +131,7 @@ const imageFilesOf = (list: FileList | null | undefined): File[] =>
  * internals (the `.react-flow__node` root + its `data-id`) to resolve the
  * nesting target — kept in one named helper so the coupling is explicit. */
 const droppedOnNodeId = (e: { clientX: number; clientY: number }): string | undefined =>
-  document.elementFromPoint(e.clientX, e.clientY)?.closest('.react-flow__node')?.getAttribute('data-id') ??
-  undefined;
+  document.elementFromPoint(e.clientX, e.clientY)?.closest('.react-flow__node')?.getAttribute('data-id') ?? undefined;
 
 /** `id` becomes the sole selection on React Flow's copy of the nodes. Every node
  * whose flag already reads right keeps its identity, so this costs one re-render
@@ -140,8 +140,7 @@ const soleSelection = (nodes: Node[], id: string): Node[] =>
   nodes.map((n) => ((n.selected === true) === (n.id === id) ? n : { ...n, selected: n.id === id }));
 
 /** nothing is selected on React Flow's copy; already-clear nodes keep their identity */
-const noSelection = (nodes: Node[]): Node[] =>
-  nodes.map((n) => (n.selected === true ? { ...n, selected: false } : n));
+const noSelection = (nodes: Node[]): Node[] => nodes.map((n) => (n.selected === true ? { ...n, selected: false } : n));
 
 /** `id` (or none) carries `data.dropTarget: true` on React Flow's copy — the
  * drag-over outline a notation's drop target draws (DiagramNode's
@@ -209,7 +208,9 @@ function Inner(props: DiagramViewProps) {
   // only the edge knows. Entries outlive their edges — a hidden flow draws no
   // bubble, and a returning one reports again — so nothing prunes it; the
   // derivation reads only the flows it draws.
-  const [chipSpots, setChipSpots] = useState<ReadonlyMap<string, { at: Point; away: Point; line: readonly Point[] }>>(() => new Map());
+  const [chipSpots, setChipSpots] = useState<ReadonlyMap<string, { at: Point; away: Point; line: readonly Point[] }>>(
+    () => new Map(),
+  );
   const placeChip = useCallback((relation: string, at: Point, away: Point, line: readonly Point[]) => {
     setChipSpots((prev) => {
       const was = prev.get(relation);
@@ -278,7 +279,11 @@ function Inner(props: DiagramViewProps) {
     // a threat note), and a field left open would reopen on the way back —
     // and the session's bubble toggles, which were about elements this plane
     // may not draw.
-    onPlaneSwitch: () => { setLabelEdit(null); setNoteEdit(null); setNoteOverrides(new Map()); },
+    onPlaneSwitch: () => {
+      setLabelEdit(null);
+      setNoteEdit(null);
+      setNoteOverrides(new Map());
+    },
     isAlwaysExpanded,
   });
   const { enteredPath, drillRoot, focus, enterNode, exitTo, pendingRootFitRef } = nav;
@@ -356,10 +361,7 @@ function Inner(props: DiagramViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the nonce alone, as editLabelRequest is
   }, [threatRequest?.nonce]);
 
-  const nameOf = useMemo(
-    () => new Map(props.model.nodes.map((n) => [n.id, n.name])),
-    [props.model],
-  );
+  const nameOf = useMemo(() => new Map(props.model.nodes.map((n) => [n.id, n.name])), [props.model]);
 
   // The active plane's strokes. Keyed like layout.planes, so a borrowing plane
   // shares its donor's bucket exactly as it shares positions.
@@ -443,10 +445,16 @@ function Inner(props: DiagramViewProps) {
 
   // Up here rather than beside `edgeColors`, because the legend needs it too: a
   // trust boundary's swatch is red for the same reason its box is.
-  const nodeColors = useMemo(() => profile.node?.colorOf?.(props.model, props.plane), [profile, props.model, props.plane]);
+  const nodeColors = useMemo(
+    () => profile.node?.colorOf?.(props.model, props.plane),
+    [profile, props.model, props.plane],
+  );
   // Small chips in a node's badge row (the plan's role chips), derived the same
   // way as nodeColors: id-keyed, one derivation per model/plane.
-  const nodeBadges = useMemo(() => profile.node?.badges?.(props.model, props.plane), [profile, props.model, props.plane]);
+  const nodeBadges = useMemo(
+    () => profile.node?.badges?.(props.model, props.plane),
+    [profile, props.model, props.plane],
+  );
 
   const legend = useLegendState({
     model: props.model,
@@ -520,7 +528,8 @@ function Inner(props: DiagramViewProps) {
         : props.layout?.edgeLabels?.[layoutPlaneKey(props.model, props.plane)];
     if (editing || Object.keys(viewLabelMoves).length === 0) return saved;
     const merged: Record<string, Record<string, EdgeLabelPlacement>> = { ...saved };
-    for (const [relationId, labels] of Object.entries(viewLabelMoves)) merged[relationId] = { ...merged[relationId], ...labels };
+    for (const [relationId, labels] of Object.entries(viewLabelMoves))
+      merged[relationId] = { ...merged[relationId], ...labels };
     return merged;
   }, [editing, props.ignoreSavedPositions, props.layout, props.model, props.plane, viewLabelMoves]);
 
@@ -595,7 +604,19 @@ function Inner(props: DiagramViewProps) {
     ignoreSavedPositions: props.ignoreSavedPositions,
     viewPositions,
   });
-  const { geometryRef, routes, placedGeometry, arrangedGeometry, containerShifts, routing, laidAt, labelSpots, fixed, settledFor, flowDirection } = viewLayout;
+  const {
+    geometryRef,
+    routes,
+    placedGeometry,
+    arrangedGeometry,
+    containerShifts,
+    routing,
+    laidAt,
+    labelSpots,
+    fixed,
+    settledFor,
+    flowDirection,
+  } = viewLayout;
   // Render-phase ref, same pattern and reason as compiledRef above: commitMoves
   // (further down) needs the ARRANGED geometry to compute a move's displacement,
   // but its dependency list is hand-managed and must not grow with every
@@ -796,7 +817,8 @@ function Inner(props: DiagramViewProps) {
           // `expandParent` omission is here anyway so a future notation that
           // did combine them would not grow the wrong box mid-drag toward a
           // sibling's.
-          ...(parent === undefined || (profile.node?.dropTarget !== undefined && profile.node?.canDrop?.(n.node) === true)
+          ...(parent === undefined ||
+          (profile.node?.dropTarget !== undefined && profile.node?.canDrop?.(n.node) === true)
             ? {}
             : profile.layout === undefined
               ? { expandParent: true }
@@ -809,42 +831,43 @@ function Inner(props: DiagramViewProps) {
               ? // a stage frame is sized by the git layout and sits BEHIND the lanes it spans
                 { style: { width: geo.width, height: geo.height }, zIndex: -2 }
               : (n.node.image !== undefined || n.node.shape !== undefined) && n.state === 'leaf'
-              ? { style: { width: geo.width, height: geo.height } }
-              : // A circle leaf (e.g. a git commit) has no CSS-natural size the way
-                // an ordinary box does — .dg-circle-node zeroes out the base node's
-                // min-width/padding and is sized entirely by its RF wrapper
-                // (width/height: 100%). Without an explicit inline size here, that
-                // wrapper collapses to its border-only intrinsic size, so the
-                // layout's diameter must be applied explicitly, same as image/shape
-                // leaves above. Ordinary boxes and CLD text chips must NOT go
-                // through this branch — forcing sizes there would change their
-                // existing CSS-driven sizing. …and a fishbone leaf, whose layout
-                // sizes it (see LAYOUT_SIZED_TYPES). An EMPTY git lane is the
-                // activity-chrome case again: no commits, so compiled 'leaf',
-                // while .dg-lane is width/height:100% of its wrapper — without
-                // gitLayout's band size it is 0×0 and React Flow never shows it
-                // (a node stays `visibility: hidden` until it measures). Keyed on
-                // the notation, not the type: a branch-typed leaf anywhere else
-                // is an ordinary box.
-                n.state === 'leaf' &&
-                  n.node.type !== undefined &&
-                  (FORCED_SIZE_SHAPES.has(typeRegistry.resolve(n.node.type).shape) ||
-                    ACTIVITY_CHROME_TYPES.has(n.node.type) ||
-                    LAYOUT_SIZED_TYPES.has(n.node.type) ||
-                    (profile.id === 'git-graph' && n.node.type === 'branch'))
                 ? { style: { width: geo.width, height: geo.height } }
-                : // An ordinary box keeps its CSS sizing, but never narrower than
-                  // the box elk laid out (box-size.ts estimates it): routes and
-                  // gaps are computed against that box, so a narrower drawn one
-                  // leaves an orthogonal arrow starting in mid-air beside it.
-                  // A FLOOR, not a width — a label the estimate undershot still
-                  // grows the box rather than wrapping inside it. Only where
-                  // elk placed the node from such an estimate: a notation's own
-                  // layout spaces its boxes off LEAF_SIZE, and a CLD chip is
-                  // deliberately free of the box minimum.
-                  profile.layout === undefined && !(profile.node?.typelessAsText === true && n.node.type === undefined)
-                  ? { style: { minWidth: geo.width } }
-                  : {}),
+                : // A circle leaf (e.g. a git commit) has no CSS-natural size the way
+                  // an ordinary box does — .dg-circle-node zeroes out the base node's
+                  // min-width/padding and is sized entirely by its RF wrapper
+                  // (width/height: 100%). Without an explicit inline size here, that
+                  // wrapper collapses to its border-only intrinsic size, so the
+                  // layout's diameter must be applied explicitly, same as image/shape
+                  // leaves above. Ordinary boxes and CLD text chips must NOT go
+                  // through this branch — forcing sizes there would change their
+                  // existing CSS-driven sizing. …and a fishbone leaf, whose layout
+                  // sizes it (see LAYOUT_SIZED_TYPES). An EMPTY git lane is the
+                  // activity-chrome case again: no commits, so compiled 'leaf',
+                  // while .dg-lane is width/height:100% of its wrapper — without
+                  // gitLayout's band size it is 0×0 and React Flow never shows it
+                  // (a node stays `visibility: hidden` until it measures). Keyed on
+                  // the notation, not the type: a branch-typed leaf anywhere else
+                  // is an ordinary box.
+                  n.state === 'leaf' &&
+                    n.node.type !== undefined &&
+                    (FORCED_SIZE_SHAPES.has(typeRegistry.resolve(n.node.type).shape) ||
+                      ACTIVITY_CHROME_TYPES.has(n.node.type) ||
+                      LAYOUT_SIZED_TYPES.has(n.node.type) ||
+                      (profile.id === 'git-graph' && n.node.type === 'branch'))
+                  ? { style: { width: geo.width, height: geo.height } }
+                  : // An ordinary box keeps its CSS sizing, but never narrower than
+                    // the box elk laid out (box-size.ts estimates it): routes and
+                    // gaps are computed against that box, so a narrower drawn one
+                    // leaves an orthogonal arrow starting in mid-air beside it.
+                    // A FLOOR, not a width — a label the estimate undershot still
+                    // grows the box rather than wrapping inside it. Only where
+                    // elk placed the node from such an estimate: a notation's own
+                    // layout spaces its boxes off LEAF_SIZE, and a CLD chip is
+                    // deliberately free of the box minimum.
+                    profile.layout === undefined &&
+                      !(profile.node?.typelessAsText === true && n.node.type === undefined)
+                    ? { style: { minWidth: geo.width } }
+                    : {}),
         }),
       );
       n.children.forEach((c) => walk(c, n.id));
@@ -909,9 +932,9 @@ function Inner(props: DiagramViewProps) {
       n.children.forEach((c) => walkAbs(c, g.x + ox, g.y + oy));
     };
     compiled.roots.forEach((r) => walkAbs(r, 0, 0));
-    // The lines of the flows that report a chip — one carrying threats or
-    // comments (see DiagramEdge) — so no bubble lies across one. Every other
-    // line is not avoided (.claude/DEFERRALS.md § Threat notes).
+    // The lines of the flows that show a badge — one carrying threats or
+    // comments (see DiagramEdge) — so no note lies across one. Other lines and
+    // edge labels are not obstacles: a note may cover them.
     for (const e of compiled.edges) {
       const r = e.constituents.length === 1 ? e.constituents[0] : undefined;
       const spot = r !== undefined ? chipSpots.get(r.id) : undefined;
@@ -1023,7 +1046,17 @@ function Inner(props: DiagramViewProps) {
         y: (a.y + a.height / 2 + b.y + b.height / 2) / 2,
       };
       const label = r.label !== undefined && r.label !== '' ? ` (${r.label})` : '';
-      push({ relation: r.id }, `${nameOf.get(r.from) ?? r.from} → ${nameOf.get(r.to) ?? r.to}${label}`, r.threats ?? [], r.comments ?? [], [], at, null, undefined, chip?.away);
+      push(
+        { relation: r.id },
+        `${nameOf.get(r.from) ?? r.from} → ${nameOf.get(r.to) ?? r.to}${label}`,
+        r.threats ?? [],
+        r.comments ?? [],
+        [],
+        at,
+        null,
+        undefined,
+        chip?.away,
+      );
     }
     return out;
     // edit?.onAddThreat / onRetitleThreat / onSetThreatStatus / onEditThreatText /
@@ -1032,7 +1065,24 @@ function Inner(props: DiagramViewProps) {
     // the wrong document, or open a link through a host that is no longer there.
     // props.notation is here because the threat offer is gated on it (see
     // offerThreat): switching to a threat-model plane has to redraw the bubbles.
-  }, [noNotes, openNotes, arrangedGeometry, compiled, notePlacements, chipSpots, editing, edit?.onAddThreat, edit?.onRetitleThreat, edit?.onSetThreatStatus, edit?.onEditThreatText, props.onOpenLink, props.notation, noteEdit, nameOf, typeRegistry]);
+  }, [
+    noNotes,
+    openNotes,
+    arrangedGeometry,
+    compiled,
+    notePlacements,
+    chipSpots,
+    editing,
+    edit?.onAddThreat,
+    edit?.onRetitleThreat,
+    edit?.onSetThreatStatus,
+    edit?.onEditThreatText,
+    props.onOpenLink,
+    props.notation,
+    noteEdit,
+    nameOf,
+    typeRegistry,
+  ]);
   // Boxes first, notes after: React Flow resolves `parentId` against the nodes
   // it has already seen, so a note must never precede the box it rides on.
   //
@@ -1040,14 +1090,21 @@ function Inner(props: DiagramViewProps) {
   // shape gets them without each render branch knowing. `inside` only on a
   // folded box: an open one shows the changed child itself.
   const diffMarks = props.diffMarks;
-  const diffClasses = useMemo(() => (diffMarks !== undefined ? diffNodeClasses(props.model, diffMarks) : null), [diffMarks, props.model]);
+  const diffClasses = useMemo(
+    () => (diffMarks !== undefined ? diffNodeClasses(props.model, diffMarks) : null),
+    [diffMarks, props.model],
+  );
   const allNodes = useMemo(() => {
     const boxes =
       diffClasses === null
         ? derivedNodes
         : derivedNodes.map((n) => {
             const status = diffClasses.get(n.id);
-            if (status === undefined || (status === 'inside' && (n.data as unknown as DiagramNodeData).state === 'expanded')) return n;
+            if (
+              status === undefined ||
+              (status === 'inside' && (n.data as unknown as DiagramNodeData).state === 'expanded')
+            )
+              return n;
             const className = withDiffClass(n.className, status);
             return className !== undefined ? { ...n, className } : n;
           });
@@ -1081,7 +1138,8 @@ function Inner(props: DiagramViewProps) {
   const commitMoves = useCallback(
     (onScreen: Positions) => {
       if (Object.keys(onScreen).length === 0) return;
-      const typeOf = (id: string) => (rfNodesRef.current.find((n) => n.id === id)?.data as { typeId?: string } | undefined)?.typeId;
+      const typeOf = (id: string) =>
+        (rfNodesRef.current.find((n) => n.id === id)?.data as { typeId?: string } | undefined)?.typeId;
       const positions = savedPositions(
         onScreen,
         rfNodesRef.current,
@@ -1186,7 +1244,8 @@ function Inner(props: DiagramViewProps) {
   // must not hand one over, or every drag on every plane pays a frame of
   // work it never asked for.
   const onDragFrame: OnNodeDrag = (e, node, nodes) => {
-    const target = nodes.length === 1 ? dropTargetFor(node.id, reactFlow.screenToFlowPosition(clientPointOf(e))) : undefined;
+    const target =
+      nodes.length === 1 ? dropTargetFor(node.id, reactFlow.screenToFlowPosition(clientPointOf(e))) : undefined;
     if (target === dropTargetRef.current) return;
     dropTargetRef.current = target;
     setRfNodes((prev) => withDropTarget(prev, target));
@@ -1209,7 +1268,10 @@ function Inner(props: DiagramViewProps) {
   // What align/distribute act on: the selection minus the nodes nothing may move
   // (see `draggable` above). They are neither moved nor lined up against, so
   // two fish nodes are no selection to arrange and the toolbar stays away.
-  const selectedIds = useMemo(() => rfNodes.filter((n) => n.selected === true && n.draggable !== false).map((n) => n.id), [rfNodes]);
+  const selectedIds = useMemo(
+    () => rfNodes.filter((n) => n.selected === true && n.draggable !== false).map((n) => n.id),
+    [rfNodes],
+  );
   // Arrange buttons need somewhere for the result to land: edit mode has the
   // host's command pipeline; view mode only the host's Save positions offer,
   // so the published viewer (which passes neither) never shows them.
@@ -1420,7 +1482,10 @@ function Inner(props: DiagramViewProps) {
     return compiled.edges.map((e) => {
       const data = buildEdgeDataCached(e, edgeDataCtx);
       const soleRelation = e.constituents.length === 1 ? e.constituents[0] : undefined;
-      const diffClass = withDiffClass(undefined, diffMarks !== undefined ? diffEdgeStatus(e.constituents, diffMarks) : undefined);
+      const diffClass = withDiffClass(
+        undefined,
+        diffMarks !== undefined ? diffEdgeStatus(e.constituents, diffMarks) : undefined,
+      );
       return toRfEdge({
         id: e.id,
         source: e.from,
@@ -1439,7 +1504,8 @@ function Inner(props: DiagramViewProps) {
   // click restamps one flag instead of rebuilding every edge's data.
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<ReadonlySet<string>>(() => new Set());
   const rfEdges = useMemo(
-    () => (selectedEdgeIds.size === 0 ? edges : edges.map((e) => (selectedEdgeIds.has(e.id) ? { ...e, selected: true } : e))),
+    () =>
+      selectedEdgeIds.size === 0 ? edges : edges.map((e) => (selectedEdgeIds.has(e.id) ? { ...e, selected: true } : e)),
     [edges, selectedEdgeIds],
   );
   const onEdgesChange = (changes: EdgeChange[]) => {
@@ -1463,7 +1529,17 @@ function Inner(props: DiagramViewProps) {
     externalHighlight: props.externalHighlight,
     onCldEdges: props.onCldEdges,
   });
-  const { cld, loopEdges, showLoops, setShowLoops, selectedNode, setSelectedNode, focusConnected, setFocusConnected, loopHighlight } = loops;
+  const {
+    cld,
+    loopEdges,
+    showLoops,
+    setShowLoops,
+    selectedNode,
+    setSelectedNode,
+    focusConnected,
+    setFocusConnected,
+    loopHighlight,
+  } = loops;
 
   // The host's keyboard (see DiagramViewProps.canvasCommandsRef). Rebuilt and
   // re-assigned on every commit rather than read through refs like the layout
@@ -1538,529 +1614,569 @@ function Inner(props: DiagramViewProps) {
 
   return (
     <LoopHighlightContext.Provider value={loopHighlight}>
-    {/* the badges and chips inside read this to know whether their bubble is
+      {/* the badges and chips inside read this to know whether their bubble is
         open and how to flip it — one provider around the whole canvas, the
         LoopHighlightContext precedent */}
-    <NoteStateContext.Provider value={noteState}>
-    <div
-      ref={wrapperRef}
-      className={`dg-canvas${props.chrome === false ? ' dg-no-chrome' : ''}${editing ? ' dg-mode-edit' : ''}${!editing && altHeld ? ' dg-alt-move' : ''}${dragging ? ' dg-dragging' : ''}${
-        preset.id !== 'clean' ? ` dg-style-${preset.id}` : ''
-      }${preset.rough !== undefined ? ' dg-style-rough' : ''}${preset.fontFamily !== undefined ? ' dg-style-font' : ''}${
-        profile.className !== undefined ? ' ' + profile.className : ''
-      }${penActive ? ' dg-tool-pen' : ''}${eraserActive ? ' dg-tool-eraser' : ''}${laserOn ? ' dg-tool-laser' : ''}`}
-      style={
-        {
-          width: '100%',
-          height: '100%',
-          ...(preset.fontFamily !== undefined ? { '--dg-style-font': preset.fontFamily } : {}),
-          ...(preset.cssVars ?? {}),
-        } as CSSProperties
-      }
-      onDragOver={(e) => {
-        if (!editing) return;
-        const hasEntry =
-          edit?.onDropLibraryEntry !== undefined && e.dataTransfer.types.includes(LIBRARY_ENTRY_DND_TYPE);
-        if (edit?.onImageFiles !== undefined || hasEntry) e.preventDefault();
-      }}
-      onDrop={(e) => {
-        if (!editing) return;
-        // A library entry dragged from the palette places that entry at the drop
-        // point — checked before the image path since both share this handler.
-        const entryId =
-          edit?.onDropLibraryEntry !== undefined && typeof e.dataTransfer?.getData === 'function'
-            ? e.dataTransfer.getData(LIBRARY_ENTRY_DND_TYPE)
-            : '';
-        if (entryId !== undefined && entryId !== '') {
-          e.preventDefault();
-          // A drop that landed on a threat note is a drop on open canvas: a
-          // `note:` id names no model node, and the host writes this straight
-          // through as a containment parent.
-          const hit = droppedOnNodeId(e);
-          const targetNodeId = hit !== undefined && isNoteId(hit) ? undefined : hit;
-          edit?.onDropLibraryEntry?.(entryId, reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY }), targetNodeId);
-          return;
-        }
-        if (edit?.onImageFiles === undefined) return;
-        // dragOver already preventDefault()d to claim the drop, so the browser
-        // is primed to otherwise navigate to the dropped file; claim it here
-        // too before filtering, or a non-image drop falls through to that
-        // navigation and unsaved edits are gone.
-        e.preventDefault();
-        const files = imageFilesOf(e.dataTransfer?.files);
-        if (files.length === 0) return;
-        edit.onImageFiles(files, reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY }));
-      }}
-      onKeyDownCapture={nudge.onKeyDownCapture}
-      onBlurCapture={nudge.onBlurCapture}
-      {...gestureHandlers}
-    >
-      <ReactFlow
-        nodes={rfNodes}
-        edges={rfEdges}
-        onEdgesChange={onEdgesChange}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        colorMode={props.colorMode ?? 'light'}
-        connectionMode={ConnectionMode.Loose}
-        onNodeClick={(e, node) => {
-          setPinEdgeRel(null);
-          corr.clearEdgeClick(); // a node click breaks any pending edge-add correlation
-          // A note is about an element: clicking it selects THAT (the note is
-          // not selectable itself — see toRfNoteNode). The relation branch
-          // repeats what onEdgeClick does *here*: the host selection, the pin
-          // dots, and clearing React Flow's node selection. What it cannot
-          // carry is React Flow's OWN edge selection — that is set inside React
-          // Flow's edge click handler, which a node click never runs — so an
-          // edge reached through its note gets no selection ring and Backspace
-          // stays inert on it (see .claude/DEFERRALS.md § Threat notes).
-          //
-          // Gated on the node TYPE, not the id prefix: a model node whose id
-          // happens to start with `note:` arrives with box data, and reading
-          // `data.target` off it would throw on the click.
-          if (node.type === 'note') {
-            corr.clearNodeClick();
-            const target = (node.data as unknown as NoteData).target;
-            if ('node' in target) {
-              setSelectedNode(target.node);
-              // ...and move React Flow's OWN selection with it. The note is not
-              // selectable, so the flag would otherwise stay on whatever box was
-              // clicked before — and the ring, the image resizer, the `+` chip
-              // and deleteKeyCode/onDelete all render off THAT flag (the same
-              // hazard the editLabelRequest effect documents). Without this,
-              // Backspace would delete the previous box while the panel shows
-              // the element this note is about.
-              setRfNodes((prev) => soleSelection(prev, target.node));
-              props.onSelect?.({ kind: 'node', id: target.node });
-            } else {
-              const ve = compiled.edges.find((x) => x.constituents.length === 1 && x.constituents[0]?.id === target.relation);
-              if (ve !== undefined) {
-                if (editing) setPinEdgeRel(target.relation);
-                setSelectedNode(null);
-                // The same hazard, with no box to move to. onEdgeClick is safe
-                // for free — React Flow clears the node selection when its own
-                // edge selection takes over — but a note click is a NODE click,
-                // so nothing clears it for us.
-                setRfNodes(noSelection);
-                props.onSelect?.({ kind: 'edge', id: ve.id, constituentIds: [target.relation] });
-              }
-            }
-            return;
+      <NoteStateContext.Provider value={noteState}>
+        <div
+          ref={wrapperRef}
+          className={`dg-canvas${props.chrome === false ? ' dg-no-chrome' : ''}${editing ? ' dg-mode-edit' : ''}${!editing && altHeld ? ' dg-alt-move' : ''}${dragging ? ' dg-dragging' : ''}${
+            preset.id !== 'clean' ? ` dg-style-${preset.id}` : ''
+          }${preset.rough !== undefined ? ' dg-style-rough' : ''}${preset.fontFamily !== undefined ? ' dg-style-font' : ''}${
+            profile.className !== undefined ? ' ' + profile.className : ''
+          }${penActive ? ' dg-tool-pen' : ''}${eraserActive ? ' dg-tool-eraser' : ''}${laserOn ? ' dg-tool-laser' : ''}`}
+          style={
+            {
+              width: '100%',
+              height: '100%',
+              ...(preset.fontFamily !== undefined ? { '--dg-style-font': preset.fontFamily } : {}),
+              ...(preset.cssVars ?? {}),
+            } as CSSProperties
           }
-          // an external stub stands in for an off-frame node — clicking it drills there
-          const rep = compiled.externals?.get(node.id);
-          if (rep !== undefined) {
-            corr.clearNodeClick();
-            enterNode(rep);
-            return;
-          }
-          // ctrl/cmd-click picks this node as a comparison target (dependency
-          // analysis). Don't disturb the primary selection or the drill
-          // double-click correlation.
-          if (!editing && (e.ctrlKey || e.metaKey) && props.onCompareSelect !== undefined) {
-            corr.clearNodeClick();
-            props.onCompareSelect(node.id);
-            return;
-          }
-          // both modes: focus this node's neighborhood; view mode also filters badges
-          setSelectedNode(node.id);
-          props.onSelect?.({ kind: 'node', id: node.id });
-          // A shift-click grows the multi-selection (React Flow's job) and must
-          // never count toward the view-mode drill double-click. Otherwise a
-          // second click (detail>=2) on the SAME node within the window is a
-          // double-click → enter it; the detail check separates it from a
-          // click-then-click-elsewhere, which stays detail 1.
-          if (editing || e.shiftKey) corr.clearNodeClick();
-          else if (corr.consumeNodeDrill(node.id, e, e.detail)) enterNode(node.id);
-          else corr.recordNodeClick(node.id, e);
-        }}
-        onNodeDoubleClick={(_e, node) => {
-          // edit mode only: rename in place. View-mode enter is handled by the
-          // click correlation above (the native node dblclick is unreliable here).
-          // A note has no model name to rename — its own double-click opens a
-          // threat row instead (NoteNode) — so it is excluded here, or the
-          // rename box would open on a `note:` id no node answers to. By type,
-          // so a model node called `note:x` still renames.
-          if (editing && node.type !== 'note') setLabelEdit({ kind: 'node', id: node.id });
-        }}
-        onReconnectStart={(_e, _edge, handleType) => {
-          reconnectEndRef.current = handleType;
-        }}
-        onReconnect={(oldEdge, conn) => {
-          if (!editing || conn.source === null || conn.target === null) return;
-          const viewEdge = compiled.edges.find((x) => x.id === oldEdge.id);
-          const relation = viewEdge?.constituents.length === 1 ? viewEdge.constituents[0] : undefined;
-          if (relation === undefined) return;
-          const endPin = reconnectPin(reconnectEndRef.current, { source: conn.source, target: conn.target, sourceHandle: conn.sourceHandle, targetHandle: conn.targetHandle }, relation);
-          edit?.onReconnect?.(relation.id, conn.source, conn.target, endPin);
-        }}
-        onReconnectEnd={() => {
-          reconnectEndRef.current = null;
-        }}
-        // 'remove' stays out: element existence belongs to the model. The
-        // delete key reaches the host through onDelete below instead — letting
-        // React Flow remove locally would only ghost-delete until the next
-        // model rebuild resurrected the elements.
-        //
-        // Guides: a single dragged node snaps to its siblings' edges and
-        // centres (see snapDragChanges). Grid snapping already happened inside
-        // React Flow's drag handler, so a guide in reach beats the grid.
-        onNodesChange={(changes: NodeChange[]) => {
-          const snapped = snapDragFrame(
-            changes,
-            { nodes: rfNodesRef.current, absoluteOf: (id) => reactFlow.getInternalNode(id)?.internals.positionAbsolute },
-            GUIDE_THRESHOLD_PX / reactFlow.getZoom(),
-            snapMemoRef,
-          );
-          setGuides((g) => (g.length === 0 && snapped.lines.length === 0 ? g : snapped.lines));
-          // 'remove' stays out (see above); so does an expandParent expansion
-          // that was not asked for by a drag (see expand-parent.ts).
-          const kept = withoutMeasuredExpansion(snapped.changes, draggingRef.current).filter((c) => c.type !== 'remove');
-          // Advanced in step with the state, not left to the next render: a
-          // gesture's last change and onNodeDragStop arrive in the same task,
-          // and the commit below reads the final on-screen positions from here.
-          rfNodesRef.current = applyNodeChanges(kept, rfNodesRef.current);
-          setRfNodes((nds) => applyNodeChanges(kept, nds));
-        }}
-        // A pointer drag must not race a pending keyboard burst.
-        onNodeDragStart={() => {
-          nudge.flush();
-          draggingRef.current = true;
-          setDragging(true);
-        }}
-        // onDragFrame (defined above, next to dropEnabled) is spread in, not
-        // just conditionally invoked from inside an always-present handler —
-        // React Flow's own `onDrag || onNodeDrag || onSelectionDrag` presence
-        // check (XYDrag.updateNodes) needs the KEY missing, not merely a
-        // no-op function sitting behind it, or it still does the per-frame
-        // work of building drag params to hand a no-op.
-        {...(dropEnabled ? { onNodeDrag: onDragFrame } : {})}
-        // React Flow hands over every node the gesture moved (a selection drags
-        // as one), so a multi-node drag lands as a single batch.
-        //
-        // Positions come from OUR node copy, not from the event: for a child
-        // with expandParent the event carries XYDrag's raw position, which is
-        // neither clamped to the (moving) parent nor guide-snapped.
-        onNodeDragStop={(e, _node, nodes) => {
-          draggingRef.current = false;
-          setDragging(false);
-          // Clear the drag-over outline regardless of outcome — both copies,
-          // same reason onNodesChange keeps the ref in step: commitMoves
-          // below reads rfNodesRef synchronously, in this same task.
-          if (dropTargetRef.current !== undefined) {
-            dropTargetRef.current = undefined;
-            rfNodesRef.current = withDropTarget(rfNodesRef.current, undefined);
-            setRfNodes((prev) => withDropTarget(prev, undefined));
-          }
-          const now = new Map(rfNodesRef.current.map((n) => [n.id, n.position] as const));
-          // The arithmetic (and why notes and boxes land in different places)
-          // lives in note-drag.ts, where it is testable without a pointer.
-          const { notes, boxes } = splitNoteDrag(nodes, now);
-          for (const n of notes) edit?.onNoteMoved?.(n.target, n.offset);
-
-          // A single dragged box may be a DROP instead of a move: reported
-          // to the host and kept out of commitMoves. Multi-node drags are
-          // always moves (see the plan's rulings) — dropTargetFor is only
-          // ever asked about ONE box here, same as the outline above.
-          const skip = new Set<string>();
-          const boxIds = Object.keys(boxes);
-          if (boxIds.length === 1 && edit?.onDropInto !== undefined && profile.node?.dropTarget !== undefined) {
-            const id = boxIds[0]!;
-            const targetId = dropTargetFor(id, reactFlow.screenToFlowPosition(clientPointOf(e)));
-            const draggedAbs = targetId !== undefined ? reactFlow.getInternalNode(id)?.internals.positionAbsolute : undefined;
-            const targetAbs = targetId !== undefined ? reactFlow.getInternalNode(targetId)?.internals.positionAbsolute : undefined;
-            if (targetId !== undefined && draggedAbs !== undefined && targetAbs !== undefined) {
-              edit.onDropInto(id, targetId, { x: draggedAbs.x - targetAbs.x, y: draggedAbs.y - targetAbs.y });
-              skip.add(id);
-            }
-          }
-
-          // Snap back: a node the notation drags only to be dropped (the
-          // plan's actors) is never reported as moved — reset to the spot
-          // the layout laid it at, whether or not this gesture reported a
-          // drop (an actor always returns to the roster after a drag).
-          const resets: Positions = {};
-          const snapsBack = profile.node?.snapsBack;
-          if (snapsBack !== undefined) {
-            for (const id of boxIds) {
-              const modelNode = props.model.nodes.find((n) => n.id === id);
-              if (modelNode === undefined || !snapsBack(modelNode)) continue;
-              skip.add(id);
-              const pos = allNodesRef.current.find((n) => n.id === id)?.position;
-              if (pos !== undefined) resets[id] = pos;
-            }
-          }
-
-          // An activity lane has no position of its own — its band is stacked
-          // from containment order (arrangeActivityFrames) — so dragging one
-          // is a reorder: where its middle lands among its sibling bands says
-          // how many slots it moves. It snaps back into a band either way;
-          // the reorder, if any, restacks the frame on the model change.
-          if (boxIds.length === 1 && edit?.onMoveLane !== undefined) {
-            const id = boxIds[0]!;
-            const rf = rfNodesRef.current.find((n) => n.id === id);
-            const frameId = rf?.parentId;
-            if (rf !== undefined && frameId !== undefined && (rf.data as { typeId?: string }).typeId === 'activity-lane') {
-              const arranged = arrangedRef.current;
-              const lanes = rfNodesRef.current
-                .filter((n) => n.parentId === frameId && (n.data as { typeId?: string }).typeId === 'activity-lane')
-                .flatMap((n) => {
-                  const g = arranged?.get(n.id);
-                  return g === undefined ? [] : [{ id: n.id, y: g.y, height: g.height }];
-                });
-              const offset = laneDropOffset(lanes, id, rf.position.y);
-              skip.add(id);
-              const pos = allNodesRef.current.find((n) => n.id === id)?.position;
-              if (pos !== undefined) resets[id] = pos;
-              if (offset !== 0) edit.onMoveLane(frameId, id, offset);
-            }
-          }
-
-          if (Object.keys(resets).length > 0) {
-            const changes = Object.entries(resets).map(([id, position]) => ({ type: 'position' as const, id, position }));
-            rfNodesRef.current = applyNodeChanges(changes, rfNodesRef.current);
-            setRfNodes((nds) => applyNodeChanges(changes, nds));
-          }
-
-          // commitMoves early-returns on an empty map, so a note-only (or
-          // fully reported/snapped-back) drag never reaches the host's move
-          // pipeline at all.
-          commitMoves(skip.size === 0 ? boxes : Object.fromEntries(Object.entries(boxes).filter(([id]) => !skip.has(id))));
-        }}
-        onConnect={(conn) => {
-          if (conn.source !== null && conn.target !== null)
-            edit?.onConnect?.(conn.source, conn.target, conn.sourceHandle, conn.targetHandle);
-        }}
-        onEdgeClick={(e, edge) => {
-          const viewEdge = compiled.edges.find((x) => x.id === edge.id);
-          // pin dots follow the sole relation (edit mode, single-relation edges)
-          const soleRel = viewEdge?.constituents.length === 1 ? viewEdge.constituents[0]?.id : undefined;
-          setPinEdgeRel(editing && soleRel !== undefined ? soleRel : null);
-          setSelectedNode(null);
-          corr.clearNodeClick(); // an edge click breaks any pending node double-click
-          props.onSelect?.({
-            kind: 'edge',
-            id: edge.id,
-            ...(viewEdge !== undefined ? { constituentIds: viewEdge.constituents.map((c) => c.id) } : {}),
-          });
-          // Double-click-to-add: detect the SECOND click of a double-click from
-          // click events (the browser's `dblclick` is unreliable once the first
-          // click remounts the edges layer). A second click on the same sole edge
-          // within the window opens the in-place add-label editor; otherwise record
-          // this as a possible first click.
-          if (editing && soleRel !== undefined) {
-            if (corr.consumeEdgeAdd(edge.id, e)) requestAddLabel(edge.id, e);
-            else corr.recordEdgeClick(edge.id, e);
-          } else {
-            corr.clearEdgeClick();
-          }
-        }}
-        onPaneClick={(e) => {
-          // An edge double-click's second click often lands on the pane (the first
-          // click remounts the edge out from under it). If a fresh same-window edge
-          // click is pending, THIS is that second click: open the add-label editor
-          // for that edge and don't also spawn a node.
-          if (editing) {
-            const edgeId = corr.takePaneEdgeAdd(e);
-            if (edgeId !== null) {
-              requestAddLabel(edgeId, e);
+          onDragOver={(e) => {
+            if (!editing) return;
+            const hasEntry =
+              edit?.onDropLibraryEntry !== undefined && e.dataTransfer.types.includes(LIBRARY_ENTRY_DND_TYPE);
+            if (edit?.onImageFiles !== undefined || hasEntry) e.preventDefault();
+          }}
+          onDrop={(e) => {
+            if (!editing) return;
+            // A library entry dragged from the palette places that entry at the drop
+            // point — checked before the image path since both share this handler.
+            const entryId =
+              edit?.onDropLibraryEntry !== undefined && typeof e.dataTransfer?.getData === 'function'
+                ? e.dataTransfer.getData(LIBRARY_ENTRY_DND_TYPE)
+                : '';
+            if (entryId !== undefined && entryId !== '') {
+              e.preventDefault();
+              // A drop that landed on a threat note is a drop on open canvas: a
+              // `note:` id names no model node, and the host writes this straight
+              // through as a containment parent.
+              const hit = droppedOnNodeId(e);
+              const targetNodeId = hit !== undefined && isNoteId(hit) ? undefined : hit;
+              edit?.onDropLibraryEntry?.(
+                entryId,
+                reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY }),
+                targetNodeId,
+              );
               return;
             }
-          }
-          // View-mode enter: the second click of a node double-click commonly lands
-          // here (the first click's selection remounted the node out from under it),
-          // carrying detail>=2. Drill into that node instead of fit-viewing.
-          const nodeId = !editing ? corr.takePaneNodeDrill(e, e.detail) : null;
-          if (nodeId !== null) {
-            enterNode(nodeId);
-            return;
-          }
-          if (e.detail === 2) {
-            // edit mode: double-click empty canvas drops a node here; view mode
-            // keeps the fit-view convenience (the ⛶ control fits in both modes).
-            if (editing && edit?.onCreateAt !== undefined) {
-              const id = edit.onCreateAt(reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY }));
-              if (typeof id === 'string') setLabelEdit({ kind: 'node', id });
-            } else {
-              void reactFlow.fitView({ padding: 0.1, duration: 500 });
-            }
-          } else {
-            setPinEdgeRel(null);
-            corr.clearAll(); // a pane deselect breaks both pending correlations
-            setSelectedNode(null);
-            props.onSelect?.(null);
-            loopHighlight.clear();
-          }
-        }}
-        // Enabled only when the host can turn the gesture into model commands;
-        // otherwise (view mode, or an edit host without the callback) the key
-        // must stay inert rather than fake a deletion.
-        deleteKeyCode={editing && edit?.onDeleteSelection !== undefined ? ['Backspace', 'Delete'] : null}
-        onDelete={({ nodes, edges }) => {
-          const nodeIds = nodes.map((n) => n.id);
-          // Only explicitly selected edges translate to relation deletes:
-          // edges React Flow cascade-deletes alongside a node are pruned
-          // model-side by delete-node already, and a bundled edge maps to
-          // every relation it draws for.
-          const relationIds = edges
-            .filter((e) => e.selected === true)
-            .flatMap((e) => compiled.edges.find((x) => x.id === e.id)?.constituents.map((c) => c.id) ?? []);
-          if (nodeIds.length > 0 || relationIds.length > 0) edit?.onDeleteSelection?.({ nodeIds, relationIds });
-        }}
-        fitView
-        minZoom={MIN_ZOOM}
-        maxZoom={MAX_ZOOM}
-        zoomOnScroll={false}
-        zoomOnDoubleClick={false}
-        {...(props.snapGrid !== undefined
-          ? { snapToGrid: true, snapGrid: [props.snapGrid, props.snapGrid] as [number, number] }
-          : {})}
-        // Shift+click adds to the selection; Shift+drag on the pane draws a
-        // marquee (full containment: sweeping over children inside an expanded
-        // group never grabs the group). Both off while the pen/laser owns the drag.
-        multiSelectionKeyCode={gestureCaptured ? null : 'Shift'}
-        selectionKeyCode={gestureCaptured ? null : 'Shift'}
-        onSelectionChange={onSelectionChange}
-        panOnScroll
-        // The pen (or the laser) owns the drag: no pan, no selection rectangle,
-        // no node drag or connect — a stroke that started on a box would
-        // otherwise move it.
-        panOnDrag={!gestureCaptured}
-        elementsSelectable={!gestureCaptured}
-        nodesDraggable={(editing || altHeld) && !gestureCaptured}
-        nodesConnectable={editing && !gestureCaptured}
-        proOptions={{ hideAttribution: true }}
-      >
-        {/* With snapping on the dots ARE the grid, so a dropped box visibly lands on one. */}
-        <Background {...(props.snapGrid !== undefined ? { gap: props.snapGrid, className: 'dg-grid-on' } : {})} />
-        <DrawingsLayer
-          strokes={strokes}
-          live={pen.live === null ? null : { points: pen.live, width: penSettings?.width ?? DEFAULT_STROKE_WIDTH, ...(penSettings?.color !== undefined ? { color: penSettings.color } : {}) }}
-          visible={drawingsVisible && drillRoot === undefined}
-          erasing={eraserActive}
-          onErase={(id) => edit?.onDeleteStroke?.(id)}
-        />
-        <LaserLayer trails={laser.trails} live={laser.live} />
-        <GuidesLayer lines={guides} />
-        {canArrange && (
-          <SelectionToolbar
-            ids={selectedIds}
-            onAlign={(mode) => arrangeSelection((boxes) => alignBoxes(boxes, mode))}
-            onDistribute={(axis) => arrangeSelection((boxes) => distributeBoxes(boxes, axis))}
-          />
-        )}
-        <Breadcrumbs path={enteredPath} nameOf={(id) => nameOf.get(id) ?? id} onCrumb={exitTo} />
-        {showLegend && legendRowList.length > 0 && (
-          // LegendPosition is a subset of React Flow's PanelPosition — no cast needed.
-          <Panel position={legendConfig?.position ?? 'bottom-right'}>
-            <Legend
-              rows={legendRowList}
-              {...(legendConfig?.title !== undefined ? { title: legendConfig.title } : {})}
-              interactive={props.chrome !== false}
-              {...(props.onToggleLayer !== undefined ? { onToggleLayer: props.onToggleLayer } : {})}
-              // Same derivation as `interactive` above: Legend decides "is this
-              // row a button" from the handler alone, so a chrome-less host (the
-              // PNG export) must get no handler — or the export would carry a
-              // focusable control nothing can press.
-              {...(props.chrome !== false ? { onToggleDrawings: () => setDrawingsVisible((v) => !v) } : {})}
-              icons={icons}
-              onMeasure={setLegendSize}
+            if (edit?.onImageFiles === undefined) return;
+            // dragOver already preventDefault()d to claim the drop, so the browser
+            // is primed to otherwise navigate to the dropped file; claim it here
+            // too before filtering, or a non-image drop falls through to that
+            // navigation and unsaved edits are gone.
+            e.preventDefault();
+            const files = imageFilesOf(e.dataTransfer?.files);
+            if (files.length === 0) return;
+            edit.onImageFiles(files, reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY }));
+          }}
+          onKeyDownCapture={nudge.onKeyDownCapture}
+          onBlurCapture={nudge.onBlurCapture}
+          {...gestureHandlers}
+        >
+          <ReactFlow
+            nodes={rfNodes}
+            edges={rfEdges}
+            onEdgesChange={onEdgesChange}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            colorMode={props.colorMode ?? 'light'}
+            connectionMode={ConnectionMode.Loose}
+            onNodeClick={(e, node) => {
+              setPinEdgeRel(null);
+              corr.clearEdgeClick(); // a node click breaks any pending edge-add correlation
+              // A note is about an element: clicking it selects THAT (the note is
+              // not selectable itself — see toRfNoteNode). The relation branch
+              // repeats what onEdgeClick does *here*: the host selection, the pin
+              // dots, and clearing React Flow's node selection. What it cannot
+              // carry is React Flow's OWN edge selection — that is set inside React
+              // Flow's edge click handler, which a node click never runs — so an
+              // edge reached through its note gets no selection ring and Backspace
+              // stays inert on it; select the line itself to delete it from the keyboard.
+              //
+              // Gated on the node TYPE, not the id prefix: a model node whose id
+              // happens to start with `note:` arrives with box data, and reading
+              // `data.target` off it would throw on the click.
+              if (node.type === 'note') {
+                corr.clearNodeClick();
+                const target = (node.data as unknown as NoteData).target;
+                if ('node' in target) {
+                  setSelectedNode(target.node);
+                  // ...and move React Flow's OWN selection with it. The note is not
+                  // selectable, so the flag would otherwise stay on whatever box was
+                  // clicked before — and the ring, the image resizer, the `+` chip
+                  // and deleteKeyCode/onDelete all render off THAT flag (the same
+                  // hazard the editLabelRequest effect documents). Without this,
+                  // Backspace would delete the previous box while the panel shows
+                  // the element this note is about.
+                  setRfNodes((prev) => soleSelection(prev, target.node));
+                  props.onSelect?.({ kind: 'node', id: target.node });
+                } else {
+                  const ve = compiled.edges.find(
+                    (x) => x.constituents.length === 1 && x.constituents[0]?.id === target.relation,
+                  );
+                  if (ve !== undefined) {
+                    if (editing) setPinEdgeRel(target.relation);
+                    setSelectedNode(null);
+                    // The same hazard, with no box to move to. onEdgeClick is safe
+                    // for free — React Flow clears the node selection when its own
+                    // edge selection takes over — but a note click is a NODE click,
+                    // so nothing clears it for us.
+                    setRfNodes(noSelection);
+                    props.onSelect?.({ kind: 'edge', id: ve.id, constituentIds: [target.relation] });
+                  }
+                }
+                return;
+              }
+              // an external stub stands in for an off-frame node — clicking it drills there
+              const rep = compiled.externals?.get(node.id);
+              if (rep !== undefined) {
+                corr.clearNodeClick();
+                enterNode(rep);
+                return;
+              }
+              // ctrl/cmd-click picks this node as a comparison target (dependency
+              // analysis). Don't disturb the primary selection or the drill
+              // double-click correlation.
+              if (!editing && (e.ctrlKey || e.metaKey) && props.onCompareSelect !== undefined) {
+                corr.clearNodeClick();
+                props.onCompareSelect(node.id);
+                return;
+              }
+              // both modes: focus this node's neighborhood; view mode also filters badges
+              setSelectedNode(node.id);
+              props.onSelect?.({ kind: 'node', id: node.id });
+              // A shift-click grows the multi-selection (React Flow's job) and must
+              // never count toward the view-mode drill double-click. Otherwise a
+              // second click (detail>=2) on the SAME node within the window is a
+              // double-click → enter it; the detail check separates it from a
+              // click-then-click-elsewhere, which stays detail 1.
+              if (editing || e.shiftKey) corr.clearNodeClick();
+              else if (corr.consumeNodeDrill(node.id, e, e.detail)) enterNode(node.id);
+              else corr.recordNodeClick(node.id, e);
+            }}
+            onNodeDoubleClick={(_e, node) => {
+              // edit mode only: rename in place. View-mode enter is handled by the
+              // click correlation above (the native node dblclick is unreliable here).
+              // A note has no model name to rename — its own double-click opens a
+              // threat row instead (NoteNode) — so it is excluded here, or the
+              // rename box would open on a `note:` id no node answers to. By type,
+              // so a model node called `note:x` still renames.
+              if (editing && node.type !== 'note') setLabelEdit({ kind: 'node', id: node.id });
+            }}
+            onReconnectStart={(_e, _edge, handleType) => {
+              reconnectEndRef.current = handleType;
+            }}
+            onReconnect={(oldEdge, conn) => {
+              if (!editing || conn.source === null || conn.target === null) return;
+              const viewEdge = compiled.edges.find((x) => x.id === oldEdge.id);
+              const relation = viewEdge?.constituents.length === 1 ? viewEdge.constituents[0] : undefined;
+              if (relation === undefined) return;
+              const endPin = reconnectPin(
+                reconnectEndRef.current,
+                {
+                  source: conn.source,
+                  target: conn.target,
+                  sourceHandle: conn.sourceHandle,
+                  targetHandle: conn.targetHandle,
+                },
+                relation,
+              );
+              edit?.onReconnect?.(relation.id, conn.source, conn.target, endPin);
+            }}
+            onReconnectEnd={() => {
+              reconnectEndRef.current = null;
+            }}
+            // 'remove' stays out: element existence belongs to the model. The
+            // delete key reaches the host through onDelete below instead — letting
+            // React Flow remove locally would only ghost-delete until the next
+            // model rebuild resurrected the elements.
+            //
+            // Guides: a single dragged node snaps to its siblings' edges and
+            // centres (see snapDragChanges). Grid snapping already happened inside
+            // React Flow's drag handler, so a guide in reach beats the grid.
+            onNodesChange={(changes: NodeChange[]) => {
+              const snapped = snapDragFrame(
+                changes,
+                {
+                  nodes: rfNodesRef.current,
+                  absoluteOf: (id) => reactFlow.getInternalNode(id)?.internals.positionAbsolute,
+                },
+                GUIDE_THRESHOLD_PX / reactFlow.getZoom(),
+                snapMemoRef,
+              );
+              setGuides((g) => (g.length === 0 && snapped.lines.length === 0 ? g : snapped.lines));
+              // 'remove' stays out (see above); so does an expandParent expansion
+              // that was not asked for by a drag (see expand-parent.ts).
+              const kept = withoutMeasuredExpansion(snapped.changes, draggingRef.current).filter(
+                (c) => c.type !== 'remove',
+              );
+              // Advanced in step with the state, not left to the next render: a
+              // gesture's last change and onNodeDragStop arrive in the same task,
+              // and the commit below reads the final on-screen positions from here.
+              rfNodesRef.current = applyNodeChanges(kept, rfNodesRef.current);
+              setRfNodes((nds) => applyNodeChanges(kept, nds));
+            }}
+            // A pointer drag must not race a pending keyboard burst.
+            onNodeDragStart={() => {
+              nudge.flush();
+              draggingRef.current = true;
+              setDragging(true);
+            }}
+            // onDragFrame (defined above, next to dropEnabled) is spread in, not
+            // just conditionally invoked from inside an always-present handler —
+            // React Flow's own `onDrag || onNodeDrag || onSelectionDrag` presence
+            // check (XYDrag.updateNodes) needs the KEY missing, not merely a
+            // no-op function sitting behind it, or it still does the per-frame
+            // work of building drag params to hand a no-op.
+            {...(dropEnabled ? { onNodeDrag: onDragFrame } : {})}
+            // React Flow hands over every node the gesture moved (a selection drags
+            // as one), so a multi-node drag lands as a single batch.
+            //
+            // Positions come from OUR node copy, not from the event: for a child
+            // with expandParent the event carries XYDrag's raw position, which is
+            // neither clamped to the (moving) parent nor guide-snapped.
+            onNodeDragStop={(e, _node, nodes) => {
+              draggingRef.current = false;
+              setDragging(false);
+              // Clear the drag-over outline regardless of outcome — both copies,
+              // same reason onNodesChange keeps the ref in step: commitMoves
+              // below reads rfNodesRef synchronously, in this same task.
+              if (dropTargetRef.current !== undefined) {
+                dropTargetRef.current = undefined;
+                rfNodesRef.current = withDropTarget(rfNodesRef.current, undefined);
+                setRfNodes((prev) => withDropTarget(prev, undefined));
+              }
+              const now = new Map(rfNodesRef.current.map((n) => [n.id, n.position] as const));
+              // The arithmetic (and why notes and boxes land in different places)
+              // lives in note-drag.ts, where it is testable without a pointer.
+              const { notes, boxes } = splitNoteDrag(nodes, now);
+              for (const n of notes) edit?.onNoteMoved?.(n.target, n.offset);
+
+              // A single dragged box may be a DROP instead of a move: reported
+              // to the host and kept out of commitMoves. Multi-node drags are
+              // always moves (see the plan's rulings) — dropTargetFor is only
+              // ever asked about ONE box here, same as the outline above.
+              const skip = new Set<string>();
+              const boxIds = Object.keys(boxes);
+              if (boxIds.length === 1 && edit?.onDropInto !== undefined && profile.node?.dropTarget !== undefined) {
+                const id = boxIds[0]!;
+                const targetId = dropTargetFor(id, reactFlow.screenToFlowPosition(clientPointOf(e)));
+                const draggedAbs =
+                  targetId !== undefined ? reactFlow.getInternalNode(id)?.internals.positionAbsolute : undefined;
+                const targetAbs =
+                  targetId !== undefined ? reactFlow.getInternalNode(targetId)?.internals.positionAbsolute : undefined;
+                if (targetId !== undefined && draggedAbs !== undefined && targetAbs !== undefined) {
+                  edit.onDropInto(id, targetId, { x: draggedAbs.x - targetAbs.x, y: draggedAbs.y - targetAbs.y });
+                  skip.add(id);
+                }
+              }
+
+              // Snap back: a node the notation drags only to be dropped (the
+              // plan's actors) is never reported as moved — reset to the spot
+              // the layout laid it at, whether or not this gesture reported a
+              // drop (an actor always returns to the roster after a drag).
+              const resets: Positions = {};
+              const snapsBack = profile.node?.snapsBack;
+              if (snapsBack !== undefined) {
+                for (const id of boxIds) {
+                  const modelNode = props.model.nodes.find((n) => n.id === id);
+                  if (modelNode === undefined || !snapsBack(modelNode)) continue;
+                  skip.add(id);
+                  const pos = allNodesRef.current.find((n) => n.id === id)?.position;
+                  if (pos !== undefined) resets[id] = pos;
+                }
+              }
+
+              // An activity lane has no position of its own — its band is stacked
+              // from containment order (arrangeActivityFrames) — so dragging one
+              // is a reorder: where its middle lands among its sibling bands says
+              // how many slots it moves. It snaps back into a band either way;
+              // the reorder, if any, restacks the frame on the model change.
+              if (boxIds.length === 1 && edit?.onMoveLane !== undefined) {
+                const id = boxIds[0]!;
+                const rf = rfNodesRef.current.find((n) => n.id === id);
+                const frameId = rf?.parentId;
+                if (
+                  rf !== undefined &&
+                  frameId !== undefined &&
+                  (rf.data as { typeId?: string }).typeId === 'activity-lane'
+                ) {
+                  const arranged = arrangedRef.current;
+                  const lanes = rfNodesRef.current
+                    .filter((n) => n.parentId === frameId && (n.data as { typeId?: string }).typeId === 'activity-lane')
+                    .flatMap((n) => {
+                      const g = arranged?.get(n.id);
+                      return g === undefined ? [] : [{ id: n.id, y: g.y, height: g.height }];
+                    });
+                  const offset = laneDropOffset(lanes, id, rf.position.y);
+                  skip.add(id);
+                  const pos = allNodesRef.current.find((n) => n.id === id)?.position;
+                  if (pos !== undefined) resets[id] = pos;
+                  if (offset !== 0) edit.onMoveLane(frameId, id, offset);
+                }
+              }
+
+              if (Object.keys(resets).length > 0) {
+                const changes = Object.entries(resets).map(([id, position]) => ({
+                  type: 'position' as const,
+                  id,
+                  position,
+                }));
+                rfNodesRef.current = applyNodeChanges(changes, rfNodesRef.current);
+                setRfNodes((nds) => applyNodeChanges(changes, nds));
+              }
+
+              // commitMoves early-returns on an empty map, so a note-only (or
+              // fully reported/snapped-back) drag never reaches the host's move
+              // pipeline at all.
+              commitMoves(
+                skip.size === 0 ? boxes : Object.fromEntries(Object.entries(boxes).filter(([id]) => !skip.has(id))),
+              );
+            }}
+            onConnect={(conn) => {
+              if (conn.source !== null && conn.target !== null)
+                edit?.onConnect?.(conn.source, conn.target, conn.sourceHandle, conn.targetHandle);
+            }}
+            onEdgeClick={(e, edge) => {
+              const viewEdge = compiled.edges.find((x) => x.id === edge.id);
+              // pin dots follow the sole relation (edit mode, single-relation edges)
+              const soleRel = viewEdge?.constituents.length === 1 ? viewEdge.constituents[0]?.id : undefined;
+              setPinEdgeRel(editing && soleRel !== undefined ? soleRel : null);
+              setSelectedNode(null);
+              corr.clearNodeClick(); // an edge click breaks any pending node double-click
+              props.onSelect?.({
+                kind: 'edge',
+                id: edge.id,
+                ...(viewEdge !== undefined ? { constituentIds: viewEdge.constituents.map((c) => c.id) } : {}),
+              });
+              // Double-click-to-add: detect the SECOND click of a double-click from
+              // click events (the browser's `dblclick` is unreliable once the first
+              // click remounts the edges layer). A second click on the same sole edge
+              // within the window opens the in-place add-label editor; otherwise record
+              // this as a possible first click.
+              if (editing && soleRel !== undefined) {
+                if (corr.consumeEdgeAdd(edge.id, e)) requestAddLabel(edge.id, e);
+                else corr.recordEdgeClick(edge.id, e);
+              } else {
+                corr.clearEdgeClick();
+              }
+            }}
+            onPaneClick={(e) => {
+              // An edge double-click's second click often lands on the pane (the first
+              // click remounts the edge out from under it). If a fresh same-window edge
+              // click is pending, THIS is that second click: open the add-label editor
+              // for that edge and don't also spawn a node.
+              if (editing) {
+                const edgeId = corr.takePaneEdgeAdd(e);
+                if (edgeId !== null) {
+                  requestAddLabel(edgeId, e);
+                  return;
+                }
+              }
+              // View-mode enter: the second click of a node double-click commonly lands
+              // here (the first click's selection remounted the node out from under it),
+              // carrying detail>=2. Drill into that node instead of fit-viewing.
+              const nodeId = !editing ? corr.takePaneNodeDrill(e, e.detail) : null;
+              if (nodeId !== null) {
+                enterNode(nodeId);
+                return;
+              }
+              if (e.detail === 2) {
+                // edit mode: double-click empty canvas drops a node here; view mode
+                // keeps the fit-view convenience (the ⛶ control fits in both modes).
+                if (editing && edit?.onCreateAt !== undefined) {
+                  const id = edit.onCreateAt(reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY }));
+                  if (typeof id === 'string') setLabelEdit({ kind: 'node', id });
+                } else {
+                  void reactFlow.fitView({ padding: 0.1, duration: 500 });
+                }
+              } else {
+                setPinEdgeRel(null);
+                corr.clearAll(); // a pane deselect breaks both pending correlations
+                setSelectedNode(null);
+                props.onSelect?.(null);
+                loopHighlight.clear();
+              }
+            }}
+            // Enabled only when the host can turn the gesture into model commands;
+            // otherwise (view mode, or an edit host without the callback) the key
+            // must stay inert rather than fake a deletion.
+            deleteKeyCode={editing && edit?.onDeleteSelection !== undefined ? ['Backspace', 'Delete'] : null}
+            onDelete={({ nodes, edges }) => {
+              const nodeIds = nodes.map((n) => n.id);
+              // Only explicitly selected edges translate to relation deletes:
+              // edges React Flow cascade-deletes alongside a node are pruned
+              // model-side by delete-node already, and a bundled edge maps to
+              // every relation it draws for.
+              const relationIds = edges
+                .filter((e) => e.selected === true)
+                .flatMap((e) => compiled.edges.find((x) => x.id === e.id)?.constituents.map((c) => c.id) ?? []);
+              if (nodeIds.length > 0 || relationIds.length > 0) edit?.onDeleteSelection?.({ nodeIds, relationIds });
+            }}
+            fitView
+            minZoom={MIN_ZOOM}
+            maxZoom={MAX_ZOOM}
+            zoomOnScroll={false}
+            zoomOnDoubleClick={false}
+            {...(props.snapGrid !== undefined
+              ? { snapToGrid: true, snapGrid: [props.snapGrid, props.snapGrid] as [number, number] }
+              : {})}
+            // Shift+click adds to the selection; Shift+drag on the pane draws a
+            // marquee (full containment: sweeping over children inside an expanded
+            // group never grabs the group). Both off while the pen/laser owns the drag.
+            multiSelectionKeyCode={gestureCaptured ? null : 'Shift'}
+            selectionKeyCode={gestureCaptured ? null : 'Shift'}
+            onSelectionChange={onSelectionChange}
+            panOnScroll
+            // The pen (or the laser) owns the drag: no pan, no selection rectangle,
+            // no node drag or connect — a stroke that started on a box would
+            // otherwise move it.
+            panOnDrag={!gestureCaptured}
+            elementsSelectable={!gestureCaptured}
+            nodesDraggable={(editing || altHeld) && !gestureCaptured}
+            nodesConnectable={editing && !gestureCaptured}
+            proOptions={{ hideAttribution: true }}
+          >
+            {/* With snapping on the dots ARE the grid, so a dropped box visibly lands on one. */}
+            <Background {...(props.snapGrid !== undefined ? { gap: props.snapGrid, className: 'dg-grid-on' } : {})} />
+            <DrawingsLayer
+              strokes={strokes}
+              live={
+                pen.live === null
+                  ? null
+                  : {
+                      points: pen.live,
+                      width: penSettings?.width ?? DEFAULT_STROKE_WIDTH,
+                      ...(penSettings?.color !== undefined ? { color: penSettings.color } : {}),
+                    }
+              }
+              visible={drawingsVisible && drillRoot === undefined}
+              erasing={eraserActive}
+              onErase={(id) => edit?.onDeleteStroke?.(id)}
             />
-          </Panel>
-        )}
-        {props.chrome !== false && (
-        <Controls>
-          <ControlButton
-            className={`dg-focus-toggle${focusConnected ? '' : ' dg-focus-toggle-off'}`}
-            title={`${focusConnected ? 'Stop dimming unconnected on select' : 'Dim unconnected on select'}${keyHint('dim')}`}
-            aria-label={focusConnected ? 'Stop dimming unconnected on select' : 'Dim unconnected on select'}
-            aria-pressed={focusConnected}
-            onClick={() => setFocusConnected((v) => !v)}
-          >
-            ◎
-          </ControlButton>
-          <ControlButton
-            className={`dg-laser-toggle${laserOn ? ' dg-laser-toggle-on' : ''}`}
-            title={`${laserOn ? 'Laser pointer off' : 'Laser pointer'}${keyHint('laser')}`}
-            aria-label="Laser pointer"
-            aria-pressed={laserOn}
-            onClick={() => setLaserOn((v) => !v)}
-          >
-            ◉
-          </ControlButton>
-          {/* Gated on the drill root for the same reason the layer is: drilled in,
+            <LaserLayer trails={laser.trails} live={laser.live} />
+            <GuidesLayer lines={guides} />
+            {canArrange && (
+              <SelectionToolbar
+                ids={selectedIds}
+                onAlign={(mode) => arrangeSelection((boxes) => alignBoxes(boxes, mode))}
+                onDistribute={(axis) => arrangeSelection((boxes) => distributeBoxes(boxes, axis))}
+              />
+            )}
+            <Breadcrumbs path={enteredPath} nameOf={(id) => nameOf.get(id) ?? id} onCrumb={exitTo} />
+            {showLegend && legendRowList.length > 0 && (
+              // LegendPosition is a subset of React Flow's PanelPosition — no cast needed.
+              <Panel position={legendConfig?.position ?? 'bottom-right'}>
+                <Legend
+                  rows={legendRowList}
+                  {...(legendConfig?.title !== undefined ? { title: legendConfig.title } : {})}
+                  interactive={props.chrome !== false}
+                  {...(props.onToggleLayer !== undefined ? { onToggleLayer: props.onToggleLayer } : {})}
+                  // Same derivation as `interactive` above: Legend decides "is this
+                  // row a button" from the handler alone, so a chrome-less host (the
+                  // PNG export) must get no handler — or the export would carry a
+                  // focusable control nothing can press.
+                  {...(props.chrome !== false ? { onToggleDrawings: () => setDrawingsVisible((v) => !v) } : {})}
+                  icons={icons}
+                  onMeasure={setLegendSize}
+                />
+              </Panel>
+            )}
+            {props.chrome !== false && (
+              <Controls>
+                <ControlButton
+                  className={`dg-focus-toggle${focusConnected ? '' : ' dg-focus-toggle-off'}`}
+                  title={`${focusConnected ? 'Stop dimming unconnected on select' : 'Dim unconnected on select'}${keyHint('dim')}`}
+                  aria-label={focusConnected ? 'Stop dimming unconnected on select' : 'Dim unconnected on select'}
+                  aria-pressed={focusConnected}
+                  onClick={() => setFocusConnected((v) => !v)}
+                >
+                  ◎
+                </ControlButton>
+                <ControlButton
+                  className={`dg-laser-toggle${laserOn ? ' dg-laser-toggle-on' : ''}`}
+                  title={`${laserOn ? 'Laser pointer off' : 'Laser pointer'}${keyHint('laser')}`}
+                  aria-label="Laser pointer"
+                  aria-pressed={laserOn}
+                  onClick={() => setLaserOn((v) => !v)}
+                >
+                  ◉
+                </ControlButton>
+                {/* Gated on the drill root for the same reason the layer is: drilled in,
               every stroke is hidden, so a switch that flips an invisible layer is
               a control with nothing to show for it. */}
-          {strokes.length > 0 && drillRoot === undefined && (
-            <ControlButton
-              className={`dg-drawings-toggle${drawingsVisible ? '' : ' dg-drawings-toggle-off'}`}
-              title={`${drawingsVisible ? 'Hide drawings' : 'Show drawings'}${keyHint('drawings')}`}
-              aria-label={drawingsVisible ? 'Hide drawings' : 'Show drawings'}
-              aria-pressed={drawingsVisible}
-              onClick={() => setDrawingsVisible((v) => !v)}
-            >
-              ✎
-            </ControlButton>
-          )}
-          {legendRowList.length > 0 && (
-            <ControlButton
-              className={`dg-legend-toggle-btn${showLegend ? '' : ' dg-legend-toggle-btn-off'}`}
-              title={`${showLegend ? 'Hide legend' : 'Show legend'}${keyHint('legend')}`}
-              aria-label={showLegend ? 'Hide legend' : 'Show legend'}
-              aria-pressed={showLegend}
-              onClick={() => setShowLegend((v) => !v)}
-            >
-              ▤
-            </ControlButton>
-          )}
-          {cld && (
-            <ControlButton
-              className={`dg-loop-toggle${showLoops ? '' : ' dg-loop-toggle-off'}`}
-              title={`${showLoops ? 'Hide loop badges' : 'Show loop badges'}${keyHint('loops')}`}
-              aria-label={showLoops ? 'Hide loop badges' : 'Show loop badges'}
-              aria-pressed={showLoops}
-              onClick={() => {
-                // hiding removes the badges you'd click to un-highlight, so drop
-                // any active loop highlight on the way out
-                if (showLoops) loopHighlight.clear();
-                setShowLoops((v) => !v);
-              }}
-            >
-              ↻
-            </ControlButton>
-          )}
-          {/* Last in the cluster: it is the host's switch, not a property of the drawing. */}
-          {props.onToggleTheme !== undefined && (
-            <ControlButton
-              className="dg-theme-toggle"
-              title={props.colorMode === 'dark' ? 'Light theme' : 'Dark theme'}
-              aria-label={props.colorMode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-              onClick={props.onToggleTheme}
-            >
-              {props.colorMode === 'dark' ? '☀' : '☾'}
-            </ControlButton>
-          )}
-        </Controls>
-        )}
-        {showLoops && loopEdges !== null && placedGeometry !== null && (
-          <LoopLabelLayer
-            edges={loopEdges}
-            {...(preset.rough !== undefined ? { rough: preset.rough } : {})}
-            nodeFilter={editing ? null : selectedNode}
-          />
-        )}
-        {profile.overlay === 'git-lanes' && placedGeometry !== null && (
-          <GitLanesOverlay model={props.model} plane={props.plane} />
-        )}
-        {profile.overlay === 'order-bands' && placedGeometry !== null && (
-          <OrderBandsOverlay model={props.model} direction={flowDirection} />
-        )}
-        {profile.overlay === 'time-axis' && placedGeometry !== null && (
-          <TimeAxisOverlay model={props.model} plane={props.plane} today={props.today} />
-        )}
-      </ReactFlow>
-    </div>
-    </NoteStateContext.Provider>
+                {strokes.length > 0 && drillRoot === undefined && (
+                  <ControlButton
+                    className={`dg-drawings-toggle${drawingsVisible ? '' : ' dg-drawings-toggle-off'}`}
+                    title={`${drawingsVisible ? 'Hide drawings' : 'Show drawings'}${keyHint('drawings')}`}
+                    aria-label={drawingsVisible ? 'Hide drawings' : 'Show drawings'}
+                    aria-pressed={drawingsVisible}
+                    onClick={() => setDrawingsVisible((v) => !v)}
+                  >
+                    ✎
+                  </ControlButton>
+                )}
+                {legendRowList.length > 0 && (
+                  <ControlButton
+                    className={`dg-legend-toggle-btn${showLegend ? '' : ' dg-legend-toggle-btn-off'}`}
+                    title={`${showLegend ? 'Hide legend' : 'Show legend'}${keyHint('legend')}`}
+                    aria-label={showLegend ? 'Hide legend' : 'Show legend'}
+                    aria-pressed={showLegend}
+                    onClick={() => setShowLegend((v) => !v)}
+                  >
+                    ▤
+                  </ControlButton>
+                )}
+                {cld && (
+                  <ControlButton
+                    className={`dg-loop-toggle${showLoops ? '' : ' dg-loop-toggle-off'}`}
+                    title={`${showLoops ? 'Hide loop badges' : 'Show loop badges'}${keyHint('loops')}`}
+                    aria-label={showLoops ? 'Hide loop badges' : 'Show loop badges'}
+                    aria-pressed={showLoops}
+                    onClick={() => {
+                      // hiding removes the badges you'd click to un-highlight, so drop
+                      // any active loop highlight on the way out
+                      if (showLoops) loopHighlight.clear();
+                      setShowLoops((v) => !v);
+                    }}
+                  >
+                    ↻
+                  </ControlButton>
+                )}
+                {/* Last in the cluster: it is the host's switch, not a property of the drawing. */}
+                {props.onToggleTheme !== undefined && (
+                  <ControlButton
+                    className="dg-theme-toggle"
+                    title={props.colorMode === 'dark' ? 'Light theme' : 'Dark theme'}
+                    aria-label={props.colorMode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+                    onClick={props.onToggleTheme}
+                  >
+                    {props.colorMode === 'dark' ? '☀' : '☾'}
+                  </ControlButton>
+                )}
+              </Controls>
+            )}
+            {showLoops && loopEdges !== null && placedGeometry !== null && (
+              <LoopLabelLayer
+                edges={loopEdges}
+                {...(preset.rough !== undefined ? { rough: preset.rough } : {})}
+                nodeFilter={editing ? null : selectedNode}
+              />
+            )}
+            {profile.overlay === 'git-lanes' && placedGeometry !== null && (
+              <GitLanesOverlay model={props.model} plane={props.plane} />
+            )}
+            {profile.overlay === 'order-bands' && placedGeometry !== null && (
+              <OrderBandsOverlay model={props.model} direction={flowDirection} />
+            )}
+            {profile.overlay === 'time-axis' && placedGeometry !== null && (
+              <TimeAxisOverlay model={props.model} plane={props.plane} today={props.today} />
+            )}
+          </ReactFlow>
+        </div>
+      </NoteStateContext.Provider>
     </LoopHighlightContext.Provider>
   );
 }

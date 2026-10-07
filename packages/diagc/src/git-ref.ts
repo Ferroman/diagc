@@ -56,7 +56,10 @@ export async function checkoutDiagrams(ref: string, cwd: string, diagramsDir = '
 /** `git archive <commit> -- <path> | tar -x -C <into>`, without a shell. */
 function pipeArchive(commit: string, repoPath: string, cwd: string, into: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const git = spawn('git', ['archive', '--format=tar', commit, '--', repoPath], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+    const git = spawn('git', ['archive', '--format=tar', commit, '--', repoPath], {
+      cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
     const tar = spawn('tar', ['-x', '-C', into], { stdio: ['pipe', 'ignore', 'pipe'] });
     let err = '';
     git.stderr.on('data', (d: Buffer) => (err += d.toString()));

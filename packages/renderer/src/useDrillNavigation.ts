@@ -128,10 +128,7 @@ export function useDrillNavigation(input: DrillNavigationInput): DrillNavigation
 
   // Containment index for the active plane — the source of the drill chain
   // (enterNode's drillChain).
-  const viewHierarchy = useMemo(
-    () => buildHierarchy(input.model, input.plane),
-    [input.model, input.plane],
-  );
+  const viewHierarchy = useMemo(() => buildHierarchy(input.model, input.plane), [input.model, input.plane]);
 
   // The drill root (deepest entered node) scopes the view to that node's interior
   // — an isolated "the node is the canvas" view — in BOTH modes.

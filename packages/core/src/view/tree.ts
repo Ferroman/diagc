@@ -64,9 +64,7 @@ export function buildViewTree(m: DiagramModel, h: HierarchyIndex, lod: LodState)
       placed = false;
       for (const n of m.nodes) {
         if (visible.has(n.id)) continue;
-        const host = (h.parentsOf.get(n.id) ?? []).find(
-          (p) => visible.has(p) && stateOf(p) === 'expanded',
-        );
+        const host = (h.parentsOf.get(n.id) ?? []).find((p) => visible.has(p) && stateOf(p) === 'expanded');
         if (host !== undefined) {
           visible.add(n.id);
           hostOf.set(n.id, host);
@@ -75,9 +73,7 @@ export function buildViewTree(m: DiagramModel, h: HierarchyIndex, lod: LodState)
       }
     }
     const memo = new Map<string, Set<string>>();
-    const candidates = m.nodes.filter(
-      (n) => !visible.has(n.id) && absorbersOf(n.id, memo).size >= 2,
-    );
+    const candidates = m.nodes.filter((n) => !visible.has(n.id) && absorbersOf(n.id, memo).size >= 2);
     if (candidates.length === 0) break;
     const candidateIds = new Set(candidates.map((n) => n.id));
     const hasCandidateAncestor = (id: string): boolean => {

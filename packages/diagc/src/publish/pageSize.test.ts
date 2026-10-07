@@ -3,8 +3,7 @@ import { pageSize } from './pageSize';
 
 describe('pageSize', () => {
   it('pads the content and caps width, preserving aspect', () => {
-    expect(pageSize({ width: 800, height: 400 }, { maxWidth: 1600, padding: 24 }))
-      .toEqual({ width: 848, height: 448 }); // 800+48, 400+48, under cap
+    expect(pageSize({ width: 800, height: 400 }, { maxWidth: 1600, padding: 24 })).toEqual({ width: 848, height: 448 }); // 800+48, 400+48, under cap
   });
   it('scales down when content exceeds maxWidth', () => {
     const s = pageSize({ width: 3200, height: 1600 }, { maxWidth: 1600, padding: 0 });
@@ -12,8 +11,7 @@ describe('pageSize', () => {
     expect(s.height).toBe(800); // aspect preserved
   });
   it('never returns zero dimensions', () => {
-    expect(pageSize({ width: 0, height: 0 }, { maxWidth: 1600, padding: 0 }))
-      .toEqual({ width: 1, height: 1 });
+    expect(pageSize({ width: 0, height: 0 }, { maxWidth: 1600, padding: 0 })).toEqual({ width: 1, height: 1 });
   });
   it('caps height when maxHeight is given, preserving aspect', () => {
     const s = pageSize({ width: 1000, height: 4000 }, { maxWidth: 2000, maxHeight: 1400, padding: 0 });
@@ -51,8 +49,9 @@ describe('pageSize', () => {
       expect(s.height - 700).toBeGreaterThan(0); // the graph kept its half
     });
     it('is a no-op when absent, so an unlegended diagram is framed as before', () => {
-      expect(pageSize({ width: 800, height: 400 }, { maxWidth: 1600, padding: 24 }))
-        .toEqual(pageSize({ width: 800, height: 400 }, { maxWidth: 1600, padding: 24, reserve: 0 }));
+      expect(pageSize({ width: 800, height: 400 }, { maxWidth: 1600, padding: 24 })).toEqual(
+        pageSize({ width: 800, height: 400 }, { maxWidth: 1600, padding: 24, reserve: 0 }),
+      );
     });
   });
 });

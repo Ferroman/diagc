@@ -67,7 +67,9 @@ function sideOf(node: FloatingNode, point: { x: number; y: number }): Position {
 const asSide = (handle: string | null | undefined): Side | undefined =>
   // Core's SIDES is a narrow `as const` tuple; widen to `readonly string[]` so
   // the membership test accepts any handle string.
-  handle !== null && handle !== undefined && (SIDES as readonly string[]).includes(handle) ? (handle as Side) : undefined;
+  handle !== null && handle !== undefined && (SIDES as readonly string[]).includes(handle)
+    ? (handle as Side)
+    : undefined;
 
 /** Pins for the sides a connect gesture actually used, so a new relation
  * attaches where the user dragged instead of re-floating to the facing sides.

@@ -8,8 +8,18 @@ export function memoryUrlState(): UrlStateAdapter & { navigate(hash: string): vo
   const subs = new Set<() => void>();
   return {
     get: () => hash,
-    set: (h) => { hash = h; },
-    subscribe: (cb) => { subs.add(cb); return () => { subs.delete(cb); }; },
-    navigate: (h) => { hash = h; subs.forEach((cb) => cb()); },
+    set: (h) => {
+      hash = h;
+    },
+    subscribe: (cb) => {
+      subs.add(cb);
+      return () => {
+        subs.delete(cb);
+      };
+    },
+    navigate: (h) => {
+      hash = h;
+      subs.forEach((cb) => cb());
+    },
   };
 }

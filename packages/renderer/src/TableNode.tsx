@@ -4,7 +4,18 @@ import type { Column } from '@diagc/core';
 import { LinkBadge, QuickAddButton, type DiagramNodeData } from './DiagramNode';
 import { TABLE_HEADER_H, TABLE_ROW_H } from './table-ports';
 
-const COMMON_TYPES = ['uuid', 'int', 'bigint', 'text', 'varchar', 'bool', 'timestamp', 'timestamptz', 'jsonb', 'numeric'];
+const COMMON_TYPES = [
+  'uuid',
+  'int',
+  'bigint',
+  'text',
+  'varchar',
+  'bool',
+  'timestamp',
+  'timestamptz',
+  'jsonb',
+  'numeric',
+];
 const TYPE_LIST_ID = 'dg-col-types';
 
 const marker = (c: Column): string => (c.pk === true ? '🔑' : c.fk === true ? 'FK' : '');
@@ -54,7 +65,8 @@ export function TableNode({
     [next[i], next[j]] = [next[j]!, next[i]!];
     onChange?.(next);
   };
-  const add = () => onChange?.([...columns, { name: uniqueName('column', new Set(columns.map((c) => c.name))), type: '' }]);
+  const add = () =>
+    onChange?.([...columns, { name: uniqueName('column', new Set(columns.map((c) => c.name))), type: '' }]);
 
   return (
     <div
@@ -68,29 +80,108 @@ export function TableNode({
         {columns.map((c, i) =>
           editing ? (
             <div key={i} className="dg-table-row dg-table-row-edit" style={{ height: TABLE_ROW_H }}>
-              <button type="button" className="dg-table-badge nodrag nopan" title="Cycle none / PK / FK" onPointerDown={stop} onClick={(e) => { stop(e); setAt(i, cyclePkFk(c)); }}>
+              <button
+                type="button"
+                className="dg-table-badge nodrag nopan"
+                title="Cycle none / PK / FK"
+                onPointerDown={stop}
+                onClick={(e) => {
+                  stop(e);
+                  setAt(i, cyclePkFk(c));
+                }}
+              >
                 {marker(c) === '' ? '○' : marker(c)}
               </button>
-              <input className="dg-table-name-input nodrag nopan" aria-label="Column name" value={c.name} onPointerDown={stop} onChange={(e) => setAt(i, { ...c, name: e.target.value })} />
-              <input className="dg-table-type-input nodrag nopan" aria-label="Column type" list={TYPE_LIST_ID} value={c.type ?? ''} onPointerDown={stop} onChange={(e) => setAt(i, { ...c, type: e.target.value })} />
-              <button type="button" className="dg-table-move nodrag nopan" aria-label="Move up" disabled={i === 0} onPointerDown={stop} onClick={(e) => { stop(e); move(i, -1); }}>↑</button>
-              <button type="button" className="dg-table-move nodrag nopan" aria-label="Move down" disabled={i === columns.length - 1} onPointerDown={stop} onClick={(e) => { stop(e); move(i, 1); }}>↓</button>
-              <button type="button" className="dg-table-del nodrag nopan" aria-label="Delete column" onPointerDown={stop} onClick={(e) => { stop(e); removeAt(i); }}>✕</button>
-              <Handle id={c.name} type="source" position={Position.Right} className="dg-handle dg-row-handle" style={{ top: TABLE_ROW_H / 2 }} />
+              <input
+                className="dg-table-name-input nodrag nopan"
+                aria-label="Column name"
+                value={c.name}
+                onPointerDown={stop}
+                onChange={(e) => setAt(i, { ...c, name: e.target.value })}
+              />
+              <input
+                className="dg-table-type-input nodrag nopan"
+                aria-label="Column type"
+                list={TYPE_LIST_ID}
+                value={c.type ?? ''}
+                onPointerDown={stop}
+                onChange={(e) => setAt(i, { ...c, type: e.target.value })}
+              />
+              <button
+                type="button"
+                className="dg-table-move nodrag nopan"
+                aria-label="Move up"
+                disabled={i === 0}
+                onPointerDown={stop}
+                onClick={(e) => {
+                  stop(e);
+                  move(i, -1);
+                }}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                className="dg-table-move nodrag nopan"
+                aria-label="Move down"
+                disabled={i === columns.length - 1}
+                onPointerDown={stop}
+                onClick={(e) => {
+                  stop(e);
+                  move(i, 1);
+                }}
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                className="dg-table-del nodrag nopan"
+                aria-label="Delete column"
+                onPointerDown={stop}
+                onClick={(e) => {
+                  stop(e);
+                  removeAt(i);
+                }}
+              >
+                ✕
+              </button>
+              <Handle
+                id={c.name}
+                type="source"
+                position={Position.Right}
+                className="dg-handle dg-row-handle"
+                style={{ top: TABLE_ROW_H / 2 }}
+              />
             </div>
           ) : (
             <div key={c.name} className="dg-table-row" style={{ height: TABLE_ROW_H }}>
-              <span className="dg-table-key" aria-hidden="true">{marker(c)}</span>
+              <span className="dg-table-key" aria-hidden="true">
+                {marker(c)}
+              </span>
               <span className={`dg-table-col${c.pk === true ? ' dg-pk' : ''}`}>{c.name}</span>
               {c.type !== undefined && <span className="dg-table-type">{c.type}</span>}
-              <Handle id={c.name} type="source" position={Position.Right} className="dg-handle dg-row-handle" style={{ top: TABLE_ROW_H / 2 }} />
+              <Handle
+                id={c.name}
+                type="source"
+                position={Position.Right}
+                className="dg-handle dg-row-handle"
+                style={{ top: TABLE_ROW_H / 2 }}
+              />
             </div>
           ),
         )}
       </div>
       {editing && (
         <>
-          <button type="button" className="dg-table-add nodrag nopan" onPointerDown={stop} onClick={(e) => { stop(e); add(); }}>
+          <button
+            type="button"
+            className="dg-table-add nodrag nopan"
+            onPointerDown={stop}
+            onClick={(e) => {
+              stop(e);
+              add();
+            }}
+          >
             ＋ add column
           </button>
           <datalist id={TYPE_LIST_ID}>

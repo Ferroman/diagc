@@ -89,7 +89,15 @@ describe('ThreatTable', () => {
     const { container } = render(<ThreatTable model={tm()} />);
     // An unset status IS open (isOpen), so it reads as the word it means rather
     // than as a blank a reader would have to interpret.
-    expect(cells(rows(container)[2]!)).toEqual(['User → API (login)', 'outside ⇢ DMZ', 'T · Tampering', 'MITM', '—', 'open', '']);
+    expect(cells(rows(container)[2]!)).toEqual([
+      'User → API (login)',
+      'outside ⇢ DMZ',
+      'T · Tampering',
+      'MITM',
+      '—',
+      'open',
+      '',
+    ]);
   });
 
   it('follows the viewed plane when it decides what a flow crosses', () => {

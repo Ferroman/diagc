@@ -33,11 +33,7 @@ const HIT_MIN_SCREEN_PX = 12;
 export function DrawingsLayer({ strokes, live, visible, erasing, onErase }: DrawingsLayerProps) {
   const { x, y, zoom } = useViewport();
   return (
-    <svg
-      className="dg-drawings"
-      aria-hidden="true"
-      style={visible ? undefined : { display: 'none' }}
-    >
+    <svg className="dg-drawings" aria-hidden="true" style={visible ? undefined : { display: 'none' }}>
       <g transform={`translate(${x} ${y}) scale(${zoom})`}>
         {strokes.map((s) => (
           <path
