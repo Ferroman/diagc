@@ -88,18 +88,20 @@ Markdown, JSON and everything under `.diagrams/` are left as written.
 
 ### Rebasing over the reformat
 
-The whole repository was reformatted in one commit, `style: format with Prettier`; the
-commit before it adds Prettier and its settings. A branch that was open across it rebases
-like this, with `<reformat>` being that `style:` commit
-(`git log main --format=%h --grep='^style: format with Prettier'`):
+The whole repository was reformatted in [#74](https://github.com/Ferroman/diagc/pull/74),
+which landed on `main` as one commit (73270d3) that also adds Prettier itself. GitHub
+keeps the pull request's own commits, where the formatting is a commit of its own,
+a1b1497. A branch that was open across the reformat rebases over that commit, then onto
+`main`:
 
 ```bash
-git rebase <reformat>^              # catch up to just before the reformat
+git fetch https://github.com/Ferroman/diagc.git pull/74/head   # #74's own commits
+git rebase a1b1497^                 # catch up to just before the reformat
 pnpm install                        # brings in Prettier
 pnpm format && git commit -am "style: format"
-git rebase <reformat> -X theirs     # conflicts are formatting only: your side wins, your style commit re-formats it
-pnpm format                         # amend if anything changed
-git rebase main                     # the commits after the reformat
+git rebase a1b1497 -X theirs        # conflicts are formatting only: your side wins, your style commit re-formats it
+pnpm format && git commit -a --amend --no-edit   # whatever the rebase left unformatted
+git rebase --onto main a1b1497      # your commits onto main; conflicts here are real
 ```
 
 ## Conventions worth knowing
