@@ -14,17 +14,29 @@ function frame(lanes: string[], links: [string, string][]) {
 describe('bestLaneOrder', () => {
   it('pulls together the lanes a link joins', () => {
     // a talks to c across b; b talks to nobody — so b belongs at an end
-    const m = frame(['a', 'b', 'c'], [['a', 'c'], ['a', 'c']]);
+    const m = frame(
+      ['a', 'b', 'c'],
+      [
+        ['a', 'c'],
+        ['a', 'c'],
+      ],
+    );
     const order = bestLaneOrder(m, 'f');
     expect(Math.abs(order.indexOf('a') - order.indexOf('c'))).toBe(1);
   });
 
   it('keeps the current order when nothing beats it', () => {
-    const m = frame(['a', 'b', 'c'], [['a', 'b'], ['b', 'c']]);
+    const m = frame(
+      ['a', 'b', 'c'],
+      [
+        ['a', 'b'],
+        ['b', 'c'],
+      ],
+    );
     expect(bestLaneOrder(m, 'f')).toEqual(['a', 'b', 'c']);
   });
 
-  it('counts members nested in a region as their lane\'s', () => {
+  it("counts members nested in a region as their lane's", () => {
     const m = model('r');
     const act = m.activity('f');
     const a = act.lane('a');
@@ -38,7 +50,19 @@ describe('bestLaneOrder', () => {
 
   it('reads the lanes of the given plane only', () => {
     const m = frame(['a', 'b', 'c'], [['a', 'c']]);
-    expect(bestLaneOrder({ ...m, planes: [{ id: 'p', name: 'P' }, { id: 'q', name: 'Q' }] }, 'f', 'q')).toEqual([]);
+    expect(
+      bestLaneOrder(
+        {
+          ...m,
+          planes: [
+            { id: 'p', name: 'P' },
+            { id: 'q', name: 'Q' },
+          ],
+        },
+        'f',
+        'q',
+      ),
+    ).toEqual([]);
   });
 
   it('returns the order unchanged with fewer than three lanes or too many to try', () => {

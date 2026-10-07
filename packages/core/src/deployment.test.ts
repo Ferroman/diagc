@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { DEPLOY_NODE_TYPES, DEPLOY_NOTATION, DEPLOY_TYPES, DEPLOY_ZONE_TYPES, isDeployZone, isDeploymentNode } from './deployment';
+import {
+  DEPLOY_NODE_TYPES,
+  DEPLOY_NOTATION,
+  DEPLOY_TYPES,
+  DEPLOY_ZONE_TYPES,
+  isDeployZone,
+  isDeploymentNode,
+} from './deployment';
 import { BUILTIN_NOTATIONS } from './types';
 
 describe('deployment vocabulary', () => {

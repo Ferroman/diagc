@@ -62,14 +62,30 @@ export {
   type ZoneOpts,
   type EventOpts,
 } from './builder';
-export { validate, diagramWarnings, DiagramValidationError, IMAGE_REF, LIBRARY_IMAGE_REF, type ValidationIssue } from './validate';
+export {
+  validate,
+  diagramWarnings,
+  DiagramValidationError,
+  IMAGE_REF,
+  LIBRARY_IMAGE_REF,
+  type ValidationIssue,
+} from './validate';
 export { isDrawings, isLayoutOverlay } from './guards';
 export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrokeId } from './drawings';
 export { errMessage, SOURCE_URL } from './util';
 export { allowedParentTypes, childrenOf, countAnchored } from './children';
 export { bestLaneOrder } from './lanes';
 export { lintModel, type LintCode, type LintFinding } from './lint';
-export { diffMarks, diffModels, isEmptyDiff, type DiffMarks, type DiffStatus, type ModelDiff, type NodeChange, type RelationChange } from './diff';
+export {
+  diffMarks,
+  diffModels,
+  isEmptyDiff,
+  type DiffMarks,
+  type DiffStatus,
+  type ModelDiff,
+  type NodeChange,
+  type RelationChange,
+} from './diff';
 export { NODE_TYPES, NOTATION_NODE_TYPES, NOTATION_RELATION_KINDS, RELATION_KINDS } from './vocabulary';
 export { visibleColumns, withHiddenColumns } from './columns';
 export { activeNotation, compileView, presetLayers, resolveContainmentPlane } from './view/compile';
@@ -77,15 +93,7 @@ export { buildHierarchy, type HierarchyIndex } from './view/hierarchy';
 export { relationLayer } from './view/layers';
 export { scopeToRoot, EXTERNAL_STUB_PREFIX, type ScopedModel } from './view/scope';
 export { estimateSizes, LEAF_SIZE, CONTAINER_PADDING, CONTAINER_HEADER } from './view/size';
-export type {
-  CompiledView,
-  LodState,
-  NodeViewState,
-  Size,
-  ViewEdge,
-  ViewNode,
-  ViewportState,
-} from './view/types';
+export type { CompiledView, LodState, NodeViewState, Size, ViewEdge, ViewNode, ViewportState } from './view/types';
 export {
   applyCommand,
   applyCommandWithResult,
@@ -97,13 +105,7 @@ export {
   type EditorCommand,
   type EditorState,
 } from './commands';
-export {
-  composeIncludes,
-  IncludeError,
-  MAX_INCLUDE_DEPTH,
-  type IncludeResolver,
-  type IncludeSource,
-} from './compose';
+export { composeIncludes, IncludeError, MAX_INCLUDE_DEPTH, type IncludeResolver, type IncludeSource } from './compose';
 export {
   GIT_KINDS,
   GIT_NOTATION,

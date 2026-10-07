@@ -10,16 +10,12 @@ const planes = [
 
 describe('PlaneSwitcher', () => {
   it('renders nothing when there are no planes', () => {
-    const { container } = render(
-      <PlaneSwitcher planes={[]} activePlane={undefined} onSelect={() => {}} />,
-    );
+    const { container } = render(<PlaneSwitcher planes={[]} activePlane={undefined} onSelect={() => {}} />);
     expect(container.firstChild).toBeNull();
   });
 
   it('marks Default active when no plane is selected, and the plane when one is', () => {
-    const { rerender } = render(
-      <PlaneSwitcher planes={planes} activePlane={undefined} onSelect={() => {}} />,
-    );
+    const { rerender } = render(<PlaneSwitcher planes={planes} activePlane={undefined} onSelect={() => {}} />);
     expect(screen.getByRole('button', { name: 'Default' }).className).toContain('active');
 
     rerender(<PlaneSwitcher planes={planes} activePlane="flow" onSelect={() => {}} />);

@@ -93,7 +93,7 @@ describe('useHotkeys', () => {
     expect(picker).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps an in-fields action out of a field that is not the studio\'s', () => {
+  it("keeps an in-fields action out of a field that is not the studio's", () => {
     const picker = vi.fn();
     setup({ 'diagram.picker': picker });
     const note = document.body.appendChild(document.createElement('textarea')); // Cmd+K in an Obsidian note is "insert link"

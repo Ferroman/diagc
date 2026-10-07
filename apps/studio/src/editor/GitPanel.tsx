@@ -111,7 +111,9 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
       commands: [
         { type: 'add-node', node: commitNode(id, mergeTag.trim(), 0), parent: parent(lane) },
         { type: 'add-relation', from: selected.id, to: id, opts: { kind: 'merge' } },
-        ...(latest !== undefined ? [{ type: 'add-relation' as const, from: latest.id, to: id, opts: { kind: 'commit' } }] : []),
+        ...(latest !== undefined
+          ? [{ type: 'add-relation' as const, from: latest.id, to: id, opts: { kind: 'commit' } }]
+          : []),
       ],
     });
     setMergeTag('');
@@ -126,7 +128,11 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
     const { gap: _drop, ...rest } = selected.metadata ?? {};
     const n = parseGap(raw);
     const metadata = n > 0 ? { ...rest, gap: n } : rest;
-    onCommand({ type: 'set-node-details', id: selected.id, details: { metadata: Object.keys(metadata).length > 0 ? metadata : null } });
+    onCommand({
+      type: 'set-node-details',
+      id: selected.id,
+      details: { metadata: Object.keys(metadata).length > 0 ? metadata : null },
+    });
   };
 
   return (
@@ -139,7 +145,12 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
             <li key={l.id}>{l.node.name}</li>
           ))}
         </ul>
-        <input aria-label="New lane name" value={laneName} onChange={(e) => setLaneName(e.target.value)} placeholder="Lane name" />
+        <input
+          aria-label="New lane name"
+          value={laneName}
+          onChange={(e) => setLaneName(e.target.value)}
+          placeholder="Lane name"
+        />
         <ColorRow label="Lane color" value={laneColor} onChange={setLaneColor} />
         <button type="button" className="chip" onClick={addLane} disabled={laneName.trim() === ''}>
           Add lane
@@ -163,7 +174,11 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
       {selected !== undefined && (
         <section className="panel-section">
           <h3>Selected commit{selected.name !== '' ? ` ${selected.name}` : ''}</h3>
-          <select aria-label="Branch into lane" value={branchLane !== '' ? branchLane : (otherLanes[0]?.id ?? '')} onChange={(e) => setBranchLane(e.target.value)}>
+          <select
+            aria-label="Branch into lane"
+            value={branchLane !== '' ? branchLane : (otherLanes[0]?.id ?? '')}
+            onChange={(e) => setBranchLane(e.target.value)}
+          >
             {otherLanes.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.node.name}
@@ -173,14 +188,23 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
           <button type="button" className="chip" onClick={branchInto} disabled={otherLanes.length === 0}>
             Branch
           </button>
-          <select aria-label="Merge into lane" value={mergeLane !== '' ? mergeLane : (otherLanes[0]?.id ?? '')} onChange={(e) => setMergeLane(e.target.value)}>
+          <select
+            aria-label="Merge into lane"
+            value={mergeLane !== '' ? mergeLane : (otherLanes[0]?.id ?? '')}
+            onChange={(e) => setMergeLane(e.target.value)}
+          >
             {otherLanes.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.node.name}
               </option>
             ))}
           </select>
-          <input aria-label="Merge tag" value={mergeTag} onChange={(e) => setMergeTag(e.target.value)} placeholder="Tag (optional)" />
+          <input
+            aria-label="Merge tag"
+            value={mergeTag}
+            onChange={(e) => setMergeTag(e.target.value)}
+            placeholder="Tag (optional)"
+          />
           <button type="button" className="chip" onClick={mergeInto} disabled={otherLanes.length === 0}>
             Merge
           </button>

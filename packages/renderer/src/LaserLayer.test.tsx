@@ -10,7 +10,13 @@ const mount = (ui: ReactElement) => render(<ReactFlowProvider>{ui}</ReactFlowPro
 describe('LaserLayer', () => {
   it('draws every finished trail as a fading halo + core pair in flow space', () => {
     const { container } = mount(
-      <LaserLayer trails={[{ id: 0, points: [0, 0, 10, 10] }, { id: 1, points: [5, 5, 6, 6] }]} live={null} />,
+      <LaserLayer
+        trails={[
+          { id: 0, points: [0, 0, 10, 10] },
+          { id: 1, points: [5, 5, 6, 6] },
+        ]}
+        live={null}
+      />,
     );
     const groups = container.querySelectorAll('g.dg-laser-trail');
     expect(groups).toHaveLength(2);

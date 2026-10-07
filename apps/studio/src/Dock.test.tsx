@@ -86,9 +86,7 @@ describe('Dock', () => {
         <div>b</div>
       </Dock>,
     );
-    const rKids = [...right.container.querySelector('.dock-right')!.children].map(
-      (c) => c.className.split(' ')[0],
-    );
+    const rKids = [...right.container.querySelector('.dock-right')!.children].map((c) => c.className.split(' ')[0]);
     // Right dock: canvas is on the left, so the handle precedes the toggle.
     expect(rKids.indexOf('dock-resize')).toBeLessThan(rKids.indexOf('dock-toggle'));
 
@@ -97,9 +95,7 @@ describe('Dock', () => {
         <div>b</div>
       </Dock>,
     );
-    const lKids = [...left.container.querySelector('.dock-left')!.children].map(
-      (c) => c.className.split(' ')[0],
-    );
+    const lKids = [...left.container.querySelector('.dock-left')!.children].map((c) => c.className.split(' ')[0]);
     // Left dock: canvas is on the right, so the handle follows the toggle.
     expect(lKids.indexOf('dock-resize')).toBeGreaterThan(lKids.indexOf('dock-toggle'));
   });

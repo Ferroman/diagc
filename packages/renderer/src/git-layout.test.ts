@@ -63,7 +63,12 @@ describe('gitLayout', () => {
     const s20 = centre(4, 0);
     expect(r.routes.get(edgeBetween(v, 'master-1', 'nightly-1').id)).toEqual([s10, { x: s10.x, y: n1.y }, n1]);
     expect(r.routes.get(edgeBetween(v, 'nightly-1', 'nightly-2').id)).toEqual([n1, n2]);
-    expect(r.routes.get(edgeBetween(v, 'nightly-2', 'master-2').id)).toEqual([n2, { x: s20.x - COL / 2, y: n2.y }, { x: s20.x - COL / 2, y: s20.y }, s20]);
+    expect(r.routes.get(edgeBetween(v, 'nightly-2', 'master-2').id)).toEqual([
+      n2,
+      { x: s20.x - COL / 2, y: n2.y },
+      { x: s20.x - COL / 2, y: s20.y },
+      s20,
+    ]);
   });
 
   it('parks strays and non-branch roots in a row beneath the lanes', () => {
@@ -91,7 +96,12 @@ describe('gitLayout stages', () => {
   /** the same graph with two stages: nightly work (columns 1–2) and the hotfix (column 5) */
   function staged(): DiagramModel {
     const m = graph();
-    m.nodes.push({ id: 'work', name: 'Nightly work', type: 'git-stage', metadata: { from: 'nightly-1', to: 'nightly-2' } });
+    m.nodes.push({
+      id: 'work',
+      name: 'Nightly work',
+      type: 'git-stage',
+      metadata: { from: 'nightly-1', to: 'nightly-2' },
+    });
     m.nodes.push({ id: 'fix', name: 'Hotfix', type: 'git-stage', metadata: { from: 'hotfix-1' } });
     return m;
   }
@@ -131,8 +141,14 @@ describe('gitLayout stages', () => {
 
 describe('gitRoute', () => {
   it('same row and degenerate links are straight', () => {
-    expect(gitRoute({ x: 0, y: 5 }, { x: 50, y: 5 }, COL)).toEqual([{ x: 0, y: 5 }, { x: 50, y: 5 }]);
-    expect(gitRoute({ x: 50, y: 5 }, { x: 0, y: 60 }, COL)).toEqual([{ x: 50, y: 5 }, { x: 0, y: 60 }]);
+    expect(gitRoute({ x: 0, y: 5 }, { x: 50, y: 5 }, COL)).toEqual([
+      { x: 0, y: 5 },
+      { x: 50, y: 5 },
+    ]);
+    expect(gitRoute({ x: 50, y: 5 }, { x: 0, y: 60 }, COL)).toEqual([
+      { x: 50, y: 5 },
+      { x: 0, y: 60 },
+    ]);
   });
 });
 

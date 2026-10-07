@@ -16,7 +16,13 @@ describe('host adapter', () => {
 
   it('setHost swaps the adapter and can be restored', async () => {
     const calls: string[] = [];
-    setHost({ ...defaultHost, apiFetch: async (u) => { calls.push(u); return new Response('{}'); } });
+    setHost({
+      ...defaultHost,
+      apiFetch: async (u) => {
+        calls.push(u);
+        return new Response('{}');
+      },
+    });
     await getHost().apiFetch('/x');
     setHost(defaultHost);
     expect(calls).toEqual(['/x']);

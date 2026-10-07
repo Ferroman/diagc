@@ -76,7 +76,8 @@ export function withBlock(existing: string, block: string): { text: string; repl
   return { text: `${existing}${sep}${block}`, replaced: false };
 }
 
-export const withAgentsBlock = (existing: string): { text: string; replaced: boolean } => withBlock(existing, AGENTS_BLOCK);
+export const withAgentsBlock = (existing: string): { text: string; replaced: boolean } =>
+  withBlock(existing, AGENTS_BLOCK);
 
 const COL = 38;
 /** A line of two columns: the right one starts COL in, and never less than two spaces after
@@ -125,7 +126,9 @@ async function starterStep(opts: InitOptions, io: InitIo): Promise<string | unde
   }
   const name = diagramName(opts.name ?? DEFAULT_NAME);
   if (!isSafeName(name) || name.endsWith('/')) {
-    throw new InitError(`'${name}' is not a diagram name — use lowercase letters, digits and '-', with '/' for a folder (shop, team/app).`);
+    throw new InitError(
+      `'${name}' is not a diagram name — use lowercase letters, digits and '-', with '/' for a folder (shop, team/app).`,
+    );
   }
   // The type is checked before the name clash: a wrong `--type` is the more useful
   // thing to hear, and it too is checked before anything is written.
@@ -144,7 +147,9 @@ async function starterStep(opts: InitOptions, io: InitIo): Promise<string | unde
   }
   for (const ext of ['ts', 'json']) {
     if (existsSync(path.join(srcDir, `${name}.diagram.${ext}`))) {
-      throw new InitError(`${SRC_DIR}/${name}.diagram.${ext} already exists — pick another name, or run 'diagc init' with no name and no --type to leave it alone.`);
+      throw new InitError(
+        `${SRC_DIR}/${name}.diagram.${ext} already exists — pick another name, or run 'diagc init' with no name and no --type to leave it alone.`,
+      );
     }
   }
   const file = path.join(srcDir, `${name}.diagram.ts`);
@@ -193,7 +198,8 @@ interface SkillPlan {
 /** `.claude/` is Claude Code's own folder, not neutral ground like `AGENTS.md`, so
  * the skill goes only where the repository already shows that tool in use. */
 const usesClaudeCode = (cwd: string): boolean =>
-  (statSync(path.join(cwd, '.claude'), { throwIfNoEntry: false })?.isDirectory() ?? false) || existsSync(path.join(cwd, 'CLAUDE.md'));
+  (statSync(path.join(cwd, '.claude'), { throwIfNoEntry: false })?.isDirectory() ?? false) ||
+  existsSync(path.join(cwd, 'CLAUDE.md'));
 
 /** Everything step 4 has to read, read before the first write: an install that
  * lost its skill is a refusal, and a refusal leaves the tree untouched. A new file
@@ -202,7 +208,8 @@ const usesClaudeCode = (cwd: string): boolean =>
  * skill does not go. */
 async function planSkill(opts: InitOptions): Promise<SkillPlan | undefined> {
   if (!opts.agents || !usesClaudeCode(opts.cwd)) return undefined;
-  if (!existsSync(opts.skillFile)) throw new InitError(`skill file missing from this install (${opts.skillFile}) — reinstall diagc.`);
+  if (!existsSync(opts.skillFile))
+    throw new InitError(`skill file missing from this install (${opts.skillFile}) — reinstall diagc.`);
   const source = await readFile(opts.skillFile, 'utf8');
   const begin = source.indexOf(AGENTS_BEGIN);
   // The shipped file's own shape, held by skillContent.test.ts: a bug, not a refusal.
@@ -248,8 +255,10 @@ function nextSteps(opts: InitOptions): string {
     ['diagc studio', 'look at it'],
     ['diagc guide', 'how to write diagrams (for you or your agent)'],
   ];
-  if (!opts.agents) lines.push(['diagc init --agents', 'point coding agents at the guide (AGENTS.md, Claude Code skill)']);
-  if (existsSync(path.join(opts.cwd, 'package.json'))) lines.push([`npm i -D @diagc/core@${opts.version}`, 'editor types for .diagram.ts']);
+  if (!opts.agents)
+    lines.push(['diagc init --agents', 'point coding agents at the guide (AGENTS.md, Claude Code skill)']);
+  if (existsSync(path.join(opts.cwd, 'package.json')))
+    lines.push([`npm i -D @diagc/core@${opts.version}`, 'editor types for .diagram.ts']);
   return `\nNext:\n${lines.map(([cmd, what]) => `  ${columns(cmd, what)}`).join('\n')}`;
 }
 

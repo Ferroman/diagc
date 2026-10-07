@@ -54,7 +54,10 @@ describe('lintFile', () => {
   it('places a load error and keeps its message free of the position', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'diagc-lint-'));
     const file = path.join(dir, 'typo.diagram.ts');
-    await writeFile(file, "import { model } from '@diagc/core';\nconst m = model('x');\nm.nod('a', { type: 'service' });\nexport default m;\n");
+    await writeFile(
+      file,
+      "import { model } from '@diagc/core';\nconst m = model('x');\nm.nod('a', { type: 'service' });\nexport default m;\n",
+    );
     const [r, ...rest] = await lintFile(file);
     expect(rest).toEqual([]);
     expect(r).toMatchObject({ file, severity: 'error', code: 'load', message: 'm.nod is not a function', line: 3 });
@@ -75,8 +78,13 @@ describe('lintFile', () => {
 
 describe('formatLintReport', () => {
   it('is one grep-able line', () => {
-    expect(formatLintReport({ file: 'a.diagram.ts', severity: 'warning', code: 'unused-layer', message: "Layer 'x' has nothing on it" })).toBe(
-      "a.diagram.ts: warning unused-layer: Layer 'x' has nothing on it",
-    );
+    expect(
+      formatLintReport({
+        file: 'a.diagram.ts',
+        severity: 'warning',
+        code: 'unused-layer',
+        message: "Layer 'x' has nothing on it",
+      }),
+    ).toBe("a.diagram.ts: warning unused-layer: Layer 'x' has nothing on it");
   });
 });

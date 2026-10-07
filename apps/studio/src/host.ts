@@ -20,9 +20,10 @@ export interface HostAdapter {
   urlState: UrlStateAdapter;
   /** open a node link; default: window.open(url, '_blank') for http(s), else no-op */
   openLink(link: string): void;
-  /** image-node asset URL prefix; default '/api/assets/' (App.tsx:802,840). The
-   * Obsidian host has no server behind that path — <img src> must be an app://
-   * resource URL, so it overrides both of these. */
+  /** asset URL prefix for image nodes and library thumbnails (App passes it to
+   * DiagramView and LibraryPanel); default '/api/assets/'. The Obsidian host has no
+   * server behind that path — <img src> must be an app:// resource URL, so it
+   * overrides the default. */
   assetBase: string;
   /** '/library/…' icon ref prefix override; undefined keeps refs as-is */
   libraryBase?: string;

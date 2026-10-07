@@ -91,7 +91,9 @@ describe('usePen', () => {
   it('lets a pointerdown on a React Flow panel through — the corner controls and the legend stay clickable', () => {
     const onStroke = vi.fn();
     const onPanelDown = vi.fn();
-    const { getByTestId } = render(<Host enabled onStroke={onStroke} onPaneDown={() => {}} onPanelDown={onPanelDown} />);
+    const { getByTestId } = render(
+      <Host enabled onStroke={onStroke} onPaneDown={() => {}} onPanelDown={onPanelDown} />,
+    );
     const button = getByTestId('panel-button');
     fireEvent.pointerDown(button, { button: 0, pointerId: 1, clientX: 5, clientY: 5 });
     expect(onPanelDown).toHaveBeenCalledTimes(1);

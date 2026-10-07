@@ -58,8 +58,7 @@ if (typeof window !== 'undefined') {
   // as a stub) — DiagramView's library-entry drop resolves the drop-target node through it,
   // so it must exist (and be spy-able) under test. Default to "nothing there" (matches real
   // browsers when the point is outside the viewport); tests that care mock a real return.
-  window.document.elementFromPoint =
-    window.document.elementFromPoint ?? ((): Element | null => null);
+  window.document.elementFromPoint = window.document.elementFromPoint ?? ((): Element | null => null);
   (globalThis as Record<string, unknown>)['DOMMatrixReadOnly'] =
     (globalThis as Record<string, unknown>)['DOMMatrixReadOnly'] ?? DOMMatrixReadOnlyStub;
   Object.defineProperties(window.HTMLElement.prototype, {
@@ -75,9 +74,7 @@ if (typeof window !== 'undefined') {
   // the `style` attribute and only normalize in getComputedStyle, so tint assertions that read
   // the raw attribute fail under jsdom. Restore browser-accurate behavior by storing the
   // specified value verbatim for the paint properties React writes on edge paths.
-  const cssProps = (globalThis as Record<string, unknown>)['CSSStyleProperties'] as
-    | { prototype: object }
-    | undefined;
+  const cssProps = (globalThis as Record<string, unknown>)['CSSStyleProperties'] as { prototype: object } | undefined;
   const marker = '__dgPaintShim';
   const g = globalThis as Record<string, unknown>;
   if (cssProps !== undefined && g[marker] !== true) {

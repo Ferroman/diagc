@@ -22,7 +22,10 @@ const decode = (s) => {
 export function slugger() {
   const taken = new Map();
   return (text) => {
-    const base = text.toLowerCase().replace(/[^\p{L}\p{M}\p{N}\p{Pc}\- ]/gu, '').replace(/ /g, '-');
+    const base = text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{M}\p{N}\p{Pc}\- ]/gu, '')
+      .replace(/ /g, '-');
     // GitHub counts up from the plain id until one is free, so "Export 1", "Export",
     // "Export" ends on export-2 and not on a second export-1.
     let id = base;
@@ -50,7 +53,9 @@ const unentity = (text) =>
  * stands: an entity written inside one is the characters, not what they would stand for. */
 const plain = (tokens) =>
   tokens
-    .map((t) => (t.tokens !== undefined ? plain(t.tokens) : t.type === 'text' ? unentity(t.text ?? '') : (t.text ?? '')))
+    .map((t) =>
+      t.tokens !== undefined ? plain(t.tokens) : t.type === 'text' ? unentity(t.text ?? '') : (t.text ?? ''),
+    )
     .join('');
 
 /** A page's path under docs/ on the site. A folder's README is its index. */
@@ -78,7 +83,12 @@ export function readNav(indexMarkdown) {
   const tokens = new Marked().lexer(indexMarkdown);
   const title = tokens.find((t) => t.type === 'heading' && t.depth === 1);
   const entries = [
-    { file: 'README.md', title: title === undefined ? 'Documentation' : plain(title.tokens), description: '', section: undefined },
+    {
+      file: 'README.md',
+      title: title === undefined ? 'Documentation' : plain(title.tokens),
+      description: '',
+      section: undefined,
+    },
   ];
   let section;
   const add = (link, description) => {
@@ -114,7 +124,9 @@ export function readNav(indexMarkdown) {
  * clear of every heading id, which are lower case. */
 function page({ root, title, description, sidebar, article, headings, previous, next, source }) {
   const pager = (entry, label, side) =>
-    entry === undefined ? '<span></span>' : `<a class="${side}" href="${esc(entry.href)}"><small>${label}</small>${esc(entry.title)}</a>`;
+    entry === undefined
+      ? '<span></span>'
+      : `<a class="${side}" href="${esc(entry.href)}"><small>${label}</small>${esc(entry.title)}</a>`;
   const toc =
     headings.length < 2
       ? ''
@@ -206,9 +218,12 @@ export function renderDocs({ files, exists }) {
       // Out of the site: a web or a mail address. Any other scheme (javascript:, data:) has
       // no place in a page of docs, and GitHub strips it too.
       if (isAbsolute(href)) {
-        return /^(https?:|mailto:|\/\/)/i.test(href) ? href : dead(href, 'only http, https and mailto links leave the site');
+        return /^(https?:|mailto:|\/\/)/i.test(href)
+          ? href
+          : dead(href, 'only http, https and mailto links leave the site');
       }
-      if (href.startsWith('#')) return doc.ids.has(decode(href.slice(1))) ? href : dead(href, 'no such heading on this page');
+      if (href.startsWith('#'))
+        return doc.ids.has(decode(href.slice(1))) ? href : dead(href, 'no such heading on this page');
       const [target, hash] = href.split('#');
       const suffix = hash === undefined ? '' : `#${hash}`;
       const repoPath = path.posix.normalize(path.posix.join('docs', path.posix.dirname(file), decode(target)));

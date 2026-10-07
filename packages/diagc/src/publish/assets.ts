@@ -2,7 +2,12 @@ import path from 'node:path';
 import type { DiagramModel, DiagramNode } from '@diagc/core';
 
 const MIME: Record<string, string> = {
-  svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif',
+  svg: 'image/svg+xml',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  gif: 'image/gif',
 };
 
 export function dataUri(bytes: Buffer, ext: string): string {
@@ -47,10 +52,7 @@ function inlineRef(ref: string | undefined, resolve: (ref: string) => Buffer | u
   return dataUri(bytes, ext);
 }
 
-export function rewriteAssetRefs(
-  model: DiagramModel,
-  resolve: (ref: string) => Buffer | undefined,
-): DiagramModel {
+export function rewriteAssetRefs(model: DiagramModel, resolve: (ref: string) => Buffer | undefined): DiagramModel {
   const nodes: DiagramNode[] = model.nodes.map((n) => {
     const image = inlineRef(n.image, resolve);
     const shape = inlineRef(n.shape, resolve);

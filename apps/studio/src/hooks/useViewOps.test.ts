@@ -19,8 +19,10 @@ function harness(
     activeLayer: null as string | null,
     pins: {} as Record<string, 'expanded' | 'collapsed'>,
   };
-  const cell = <T,>(get: () => T, set: (v: T) => void) => (next: T | ((cur: T) => T)) =>
-    set(typeof next === 'function' ? (next as (cur: T) => T)(get()) : next);
+  const cell =
+    <T>(get: () => T, set: (v: T) => void) =>
+    (next: T | ((cur: T) => T)) =>
+      set(typeof next === 'function' ? (next as (cur: T) => T)(get()) : next);
   // The dock tab the user is on. `UseViewOpsOptions` no longer declares a
   // `setLeftTab` — this recording one is handed over anyway (the object is cast),
   // as the tripwire for the "a canvas selection never moves the dock" policy:

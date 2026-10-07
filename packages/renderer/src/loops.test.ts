@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { absoluteRects, combinePolarities, findLoops, placeLoopLabels, type Loop, type LoopEdgeInput, type NodeRect } from './loops';
+import {
+  absoluteRects,
+  combinePolarities,
+  findLoops,
+  placeLoopLabels,
+  type Loop,
+  type LoopEdgeInput,
+  type NodeRect,
+} from './loops';
 
 function shuffled<T>(arr: readonly T[], seed: number): T[] {
   const a = [...arr];

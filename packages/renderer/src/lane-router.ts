@@ -98,11 +98,22 @@ export function columnGaps(obstacles: readonly Rect[]): Gap[] {
 }
 
 /** does the horizontal run y, x0..x1 stay clear of every obstacle but `skip`? */
-function clearH(y: number, x0: number, x1: number, obstacles: readonly (Rect & { id: string })[], skip: ReadonlySet<string>): boolean {
+function clearH(
+  y: number,
+  x0: number,
+  x1: number,
+  obstacles: readonly (Rect & { id: string })[],
+  skip: ReadonlySet<string>,
+): boolean {
   const lo = Math.min(x0, x1);
   const hi = Math.max(x0, x1);
   return obstacles.every(
-    (o) => skip.has(o.id) || hi <= o.x - MARGIN || lo >= o.x + o.width + MARGIN || y <= o.y - MARGIN || y >= o.y + o.height + MARGIN,
+    (o) =>
+      skip.has(o.id) ||
+      hi <= o.x - MARGIN ||
+      lo >= o.x + o.width + MARGIN ||
+      y <= o.y - MARGIN ||
+      y >= o.y + o.height + MARGIN,
   );
 }
 
@@ -115,7 +126,9 @@ function simplify(pts: Point[]): Point[] {
     out.push(p);
     while (out.length >= 3) {
       const [a, b, c] = out.slice(-3) as [Point, Point, Point];
-      const straight = (Math.abs(a.x - b.x) < 0.5 && Math.abs(b.x - c.x) < 0.5) || (Math.abs(a.y - b.y) < 0.5 && Math.abs(b.y - c.y) < 0.5);
+      const straight =
+        (Math.abs(a.x - b.x) < 0.5 && Math.abs(b.x - c.x) < 0.5) ||
+        (Math.abs(a.y - b.y) < 0.5 && Math.abs(b.y - c.y) < 0.5);
       if (!straight) break;
       out.splice(out.length - 2, 1);
     }
@@ -141,11 +154,22 @@ function labelSpotOf(pts: readonly Point[]): Point {
 }
 
 /** does the vertical run x, y0..y1 stay clear of every obstacle but `skip`? */
-function clearV(x: number, y0: number, y1: number, obstacles: readonly (Rect & { id: string })[], skip: ReadonlySet<string>): boolean {
+function clearV(
+  x: number,
+  y0: number,
+  y1: number,
+  obstacles: readonly (Rect & { id: string })[],
+  skip: ReadonlySet<string>,
+): boolean {
   const lo = Math.min(y0, y1);
   const hi = Math.max(y0, y1);
   return obstacles.every(
-    (o) => skip.has(o.id) || x <= o.x - MARGIN || x >= o.x + o.width + MARGIN || hi <= o.y - MARGIN || lo >= o.y + o.height + MARGIN,
+    (o) =>
+      skip.has(o.id) ||
+      x <= o.x - MARGIN ||
+      x >= o.x + o.width + MARGIN ||
+      hi <= o.y - MARGIN ||
+      lo >= o.y + o.height + MARGIN,
   );
 }
 
@@ -188,14 +212,23 @@ function routeVerticalEnds(
   // a horizontal end must face the run it meets
   const facesOut = (x: number) => (outSide === 'right' ? x > start.x : x < start.x);
   const facesIn = (x: number) => (inSide === 'left' ? x < end.x : x > end.x);
-  const byDistance = (ys: number[], from: number) => [...new Set(ys)].sort((p, q) => Math.abs(p - from) - Math.abs(q - from));
+  const byDistance = (ys: number[], from: number) =>
+    [...new Set(ys)].sort((p, q) => Math.abs(p - from) - Math.abs(q - from));
 
   if (outV && !inV) {
     // down (or up) to the target's row, then across into it
-    if (leaves(end.y) && facesIn(start.x) && clearV(start.x, start.y, end.y, obstacles, onlyA) && clearH(end.y, start.x, end.x, obstacles, onlyB)) {
+    if (
+      leaves(end.y) &&
+      facesIn(start.x) &&
+      clearV(start.x, start.y, end.y, obstacles, onlyA) &&
+      clearH(end.y, start.x, end.x, obstacles, onlyB)
+    ) {
       return simplify([start, { x: start.x, y: end.y }, end]);
     }
-    const gap = inSide === 'left' ? [...gaps].reverse().find((g) => g.hi <= obstacleOf(b).x + 0.5) : gaps.find((g) => g.lo >= obstacleOf(b).x + obstacleOf(b).width - 0.5);
+    const gap =
+      inSide === 'left'
+        ? [...gaps].reverse().find((g) => g.hi <= obstacleOf(b).x + 0.5)
+        : gaps.find((g) => g.lo >= obstacleOf(b).x + obstacleOf(b).width - 0.5);
     if (gap === undefined) return undefined;
     const gx = (gap.lo + gap.hi) / 2;
     if (!clearH(end.y, gx, end.x, obstacles, onlyB)) return undefined;
@@ -208,10 +241,18 @@ function routeVerticalEnds(
   }
   if (!outV && inV) {
     // across to the target's column, then down (or up) into it
-    if (arrives(start.y) && facesOut(end.x) && clearH(start.y, start.x, end.x, obstacles, onlyA) && clearV(end.x, start.y, end.y, obstacles, onlyB)) {
+    if (
+      arrives(start.y) &&
+      facesOut(end.x) &&
+      clearH(start.y, start.x, end.x, obstacles, onlyA) &&
+      clearV(end.x, start.y, end.y, obstacles, onlyB)
+    ) {
       return simplify([start, { x: end.x, y: start.y }, end]);
     }
-    const gap = outSide === 'right' ? gaps.find((g) => g.lo >= obstacleOf(a).x + obstacleOf(a).width - 0.5) : [...gaps].reverse().find((g) => g.hi <= obstacleOf(a).x + 0.5);
+    const gap =
+      outSide === 'right'
+        ? gaps.find((g) => g.lo >= obstacleOf(a).x + obstacleOf(a).width - 0.5)
+        : [...gaps].reverse().find((g) => g.hi <= obstacleOf(a).x + 0.5);
     if (gap === undefined) return undefined;
     const gx = (gap.lo + gap.hi) / 2;
     if (!clearH(start.y, start.x, gx, obstacles, onlyA)) return undefined;
@@ -224,8 +265,15 @@ function routeVerticalEnds(
   }
   // both vertical: out, across on a row both ends can reach, in
   const mid = (start.y + end.y) / 2;
-  for (const y of byDistance([mid, ...corridors].filter((y) => leaves(y) && arrives(y)), mid)) {
-    if (clearV(start.x, start.y, y, obstacles, onlyA) && clearH(y, start.x, end.x, obstacles, none) && clearV(end.x, y, end.y, obstacles, onlyB)) {
+  for (const y of byDistance(
+    [mid, ...corridors].filter((y) => leaves(y) && arrives(y)),
+    mid,
+  )) {
+    if (
+      clearV(start.x, start.y, y, obstacles, onlyA) &&
+      clearH(y, start.x, end.x, obstacles, none) &&
+      clearV(end.x, y, end.y, obstacles, onlyB)
+    ) {
       return simplify([start, { x: start.x, y }, { x: end.x, y }, end]);
     }
   }
@@ -255,10 +303,24 @@ export function routeLaneEdges(input: RouterInput): RouterResult {
     const a = byId.get(edge.from);
     const b = byId.get(edge.to);
     if (a === undefined || b === undefined || a === b) continue;
-    const outSide: HSide | undefined = edge.fromSide === undefined ? 'right' : edge.fromSide === 'left' || edge.fromSide === 'right' ? edge.fromSide : undefined;
-    const inSide: HSide | undefined = edge.toSide === undefined ? 'left' : edge.toSide === 'left' || edge.toSide === 'right' ? edge.toSide : undefined;
+    const outSide: HSide | undefined =
+      edge.fromSide === undefined
+        ? 'right'
+        : edge.fromSide === 'left' || edge.fromSide === 'right'
+          ? edge.fromSide
+          : undefined;
+    const inSide: HSide | undefined =
+      edge.toSide === undefined ? 'left' : edge.toSide === 'left' || edge.toSide === 'right' ? edge.toSide : undefined;
     if (outSide === undefined || inSide === undefined) {
-      const route = routeVerticalEnds(a, b, outSide ?? (edge.fromSide as VSide), inSide ?? (edge.toSide as VSide), obstacles, gaps, input.corridors);
+      const route = routeVerticalEnds(
+        a,
+        b,
+        outSide ?? (edge.fromSide as VSide),
+        inSide ?? (edge.toSide as VSide),
+        obstacles,
+        gaps,
+        input.corridors,
+      );
       if (route !== undefined) {
         routes.set(edge.id, route);
         if (edge.hasLabel === true) labelSpots.set(edge.id, labelSpotOf(route));
@@ -274,18 +336,31 @@ export function routeLaneEdges(input: RouterInput): RouterResult {
     const skipEnds = new Set([a.id, b.id]);
 
     // side by side on one row with nothing between: a straight line
-    if (outSide === 'right' && inSide === 'left' && Math.abs(ay - by) < 1 && end.x > start.x && clearH(ay, start.x, end.x, obstacles, skipEnds)) {
+    if (
+      outSide === 'right' &&
+      inSide === 'left' &&
+      Math.abs(ay - by) < 1 &&
+      end.x > start.x &&
+      clearH(ay, start.x, end.x, obstacles, skipEnds)
+    ) {
       routes.set(edge.id, [start, end]);
       if (edge.hasLabel === true) labelSpots.set(edge.id, labelSpotOf([start, end]));
       continue;
     }
 
-    const out = outSide === 'right' ? gaps.find((g) => g.lo >= oa.x + oa.width - 0.5) : [...gaps].reverse().find((g) => g.hi <= oa.x + 0.5);
-    const into = inSide === 'left' ? [...gaps].reverse().find((g) => g.hi <= ob.x + 0.5) : gaps.find((g) => g.lo >= ob.x + ob.width - 0.5);
+    const out =
+      outSide === 'right'
+        ? gaps.find((g) => g.lo >= oa.x + oa.width - 0.5)
+        : [...gaps].reverse().find((g) => g.hi <= oa.x + 0.5);
+    const into =
+      inSide === 'left'
+        ? [...gaps].reverse().find((g) => g.hi <= ob.x + 0.5)
+        : gaps.find((g) => g.lo >= ob.x + ob.width - 0.5);
     if (out === undefined || into === undefined) continue;
     const outX = (out.lo + out.hi) / 2;
     const intoX = (into.lo + into.hi) / 2;
-    if (!clearH(ay, start.x, outX, obstacles, new Set([a.id])) || !clearH(by, intoX, end.x, obstacles, new Set([b.id]))) continue;
+    if (!clearH(ay, start.x, outX, obstacles, new Set([a.id])) || !clearH(by, intoX, end.x, obstacles, new Set([b.id])))
+      continue;
 
     if (out === into) {
       plans.push({ edge, start, end, out, into });
@@ -341,7 +416,14 @@ export function routeLaneEdges(input: RouterInput): RouterResult {
     const pts =
       p.corridor === undefined
         ? [p.start, { x: xs.out, y: p.start.y }, { x: xs.out, y: p.end.y }, p.end]
-        : [p.start, { x: xs.out, y: p.start.y }, { x: xs.out, y: p.corridor }, { x: xs.into, y: p.corridor }, { x: xs.into, y: p.end.y }, p.end];
+        : [
+            p.start,
+            { x: xs.out, y: p.start.y },
+            { x: xs.out, y: p.corridor },
+            { x: xs.into, y: p.corridor },
+            { x: xs.into, y: p.end.y },
+            p.end,
+          ];
     const route = simplify(pts);
     routes.set(p.edge.id, route);
     if (p.edge.hasLabel === true) labelSpots.set(p.edge.id, labelSpotOf(route));

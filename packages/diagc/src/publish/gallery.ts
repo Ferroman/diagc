@@ -13,9 +13,7 @@ export interface GalleryEntry {
 }
 
 function card(e: GalleryEntry): string {
-  const thumb = e.hasImage
-    ? `<img src="../static/${esc(e.name)}.png" alt="${esc(e.title)}" loading="lazy" />`
-    : '';
+  const thumb = e.hasImage ? `<img src="../static/${esc(e.name)}.png" alt="${esc(e.title)}" loading="lazy" />` : '';
   // The path is what `diagc publish <name>` and the page URL use, so it stays on the
   // card — unless the model has no name of its own and the two would just repeat.
   const path = e.title === e.name ? '' : `<span class="path">${esc(e.name)}</span>`;

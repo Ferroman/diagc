@@ -10,13 +10,32 @@ function fish(): DiagramModel {
   fb.category('c', 'Code').cause('a', 'A').cause('a1', 'A1');
   return m.toJSON();
 }
-const empty = (): DiagramModel => ({ version: 1, id: 'f', name: 'f', notation: 'fishbone', nodes: [], containment: [], relations: [], layers: [], planes: [] });
+const empty = (): DiagramModel => ({
+  version: 1,
+  id: 'f',
+  name: 'f',
+  notation: 'fishbone',
+  nodes: [],
+  containment: [],
+  relations: [],
+  layers: [],
+  planes: [],
+});
 
 function setup(m: DiagramModel, selection: { kind: 'node'; id: string } | null = null, plane?: string) {
   const onCommand = vi.fn<(c: EditorCommand) => void>();
   const onSelect = vi.fn();
   const onCreated = vi.fn();
-  render(<FishbonePanel model={m} selection={selection} {...(plane !== undefined ? { plane } : {})} onCommand={onCommand} onSelect={onSelect} onCreated={onCreated} />);
+  render(
+    <FishbonePanel
+      model={m}
+      selection={selection}
+      {...(plane !== undefined ? { plane } : {})}
+      onCommand={onCommand}
+      onSelect={onSelect}
+      onCreated={onCreated}
+    />,
+  );
   return { onCommand, onSelect, onCreated };
 }
 
@@ -54,19 +73,39 @@ describe('FishbonePanel', () => {
     // Nothing selected: the button still targets the effect, and the copy says
     // so rather than implying a selection is required (both button and Tab).
     expect(screen.getByText('Adds a category to the effect.')).toBeTruthy();
-    expect(screen.getByText(/Select a bone or a cause, and the button \(or Tab\) hangs something on it instead\./)).toBeTruthy();
+    expect(
+      screen.getByText(/Select a bone or a cause, and the button \(or Tab\) hangs something on it instead\./),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Add a category' }));
-    expect(s1.onCommand.mock.calls[0]?.[0]).toMatchObject({ commands: [{ node: { type: 'fb-category' } }, { to: 'e' }] });
+    expect(s1.onCommand.mock.calls[0]?.[0]).toMatchObject({
+      commands: [{ node: { type: 'fb-category' } }, { to: 'e' }],
+    });
     expect(s1.onSelect).toHaveBeenCalledWith('category');
     expect(s1.onCreated).toHaveBeenCalledWith('category');
   });
 
   it('labels the child by the selection and disables it on a sub-cause with the limit as the hint', () => {
     const m = fish();
-    const { unmount } = render(<FishbonePanel model={m} selection={{ kind: 'node', id: 'c' }} onCommand={vi.fn()} onSelect={vi.fn()} onCreated={vi.fn()} />);
+    const { unmount } = render(
+      <FishbonePanel
+        model={m}
+        selection={{ kind: 'node', id: 'c' }}
+        onCommand={vi.fn()}
+        onSelect={vi.fn()}
+        onCreated={vi.fn()}
+      />,
+    );
     expect((screen.getByRole('button', { name: 'Add a cause' }) as HTMLButtonElement).disabled).toBe(false);
     unmount();
-    render(<FishbonePanel model={m} selection={{ kind: 'node', id: 'a1' }} onCommand={vi.fn()} onSelect={vi.fn()} onCreated={vi.fn()} />);
+    render(
+      <FishbonePanel
+        model={m}
+        selection={{ kind: 'node', id: 'a1' }}
+        onCommand={vi.fn()}
+        onSelect={vi.fn()}
+        onCreated={vi.fn()}
+      />,
+    );
     expect((screen.getByRole('button', { name: 'Add a cause' }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText(/three levels below the effect is the limit/)).toBeTruthy();
   });

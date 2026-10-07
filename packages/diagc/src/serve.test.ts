@@ -170,7 +170,12 @@ describe('startStudioServer', () => {
   });
 
   it('steps to the next port when the first is taken', async () => {
-    const first = await startStudioServer({ studioDir, diagramsDir, artifactsDir: path.join(tmp, 'artifacts'), port: 0 });
+    const first = await startStudioServer({
+      studioDir,
+      diagramsDir,
+      artifactsDir: path.join(tmp, 'artifacts'),
+      port: 0,
+    });
     const second = await startStudioServer({
       studioDir,
       diagramsDir,

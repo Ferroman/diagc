@@ -114,7 +114,10 @@ function refusal(req: IncomingMessage, route: Route): { status: number; message:
   if (host !== undefined) {
     const name = hostnameOf(host);
     if (name !== 'localhost' && !name.endsWith('.localhost') && isIP(name) === 0) {
-      return { status: 403, message: `Refused: '${name}' is not a local address. Open the studio by localhost or by IP address.` };
+      return {
+        status: 403,
+        message: `Refused: '${name}' is not a local address. Open the studio by localhost or by IP address.`,
+      };
     }
   }
   const origin = req.headers.origin;
@@ -129,7 +132,12 @@ function refusal(req: IncomingMessage, route: Route): { status: number; message:
       return { status: 403, message: 'Refused: the request comes from another origin.' };
     }
   }
-  if (route.bodyMode === 'json' && !String(req.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) {
+  if (
+    route.bodyMode === 'json' &&
+    !String(req.headers['content-type'] ?? '')
+      .toLowerCase()
+      .startsWith('application/json')
+  ) {
     return { status: 415, message: 'This route takes application/json.' };
   }
   return null;

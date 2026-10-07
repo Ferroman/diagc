@@ -22,7 +22,11 @@ describe('appendCommit', () => {
     expect(out.command).toEqual({
       type: 'batch',
       commands: [
-        { type: 'add-node', node: { id: 'master-3', name: '', type: 'commit' }, parent: { id: 'master', plane: 'git-graph' } },
+        {
+          type: 'add-node',
+          node: { id: 'master-3', name: '', type: 'commit' },
+          parent: { id: 'master', plane: 'git-graph' },
+        },
         { type: 'add-relation', from: 'master-2', to: 'master-3', opts: { kind: 'commit' } },
       ],
     });
@@ -33,7 +37,11 @@ describe('appendCommit', () => {
     expect(out.command).toEqual({
       type: 'batch',
       commands: [
-        { type: 'add-node', node: { id: 'dev-1', name: 'RC1', type: 'commit', metadata: { gap: 2 } }, parent: { id: 'dev', plane: 'git-graph' } },
+        {
+          type: 'add-node',
+          node: { id: 'dev-1', name: 'RC1', type: 'commit', metadata: { gap: 2 } },
+          parent: { id: 'dev', plane: 'git-graph' },
+        },
       ],
     });
   });
@@ -41,8 +49,17 @@ describe('appendCommit', () => {
   it('the base view files the containment under the default plane, and a zero gap adds no metadata', () => {
     const out = appendCommit(git(), undefined, 'nightly', { gap: 0 });
     expect(out.command).toMatchObject({
-      commands: [{ type: 'add-node', node: { id: 'nightly-2', name: '', type: 'commit' }, parent: { id: 'nightly', plane: 'git-graph' } }, { from: 'nightly-1', to: 'nightly-2' }],
+      commands: [
+        {
+          type: 'add-node',
+          node: { id: 'nightly-2', name: '', type: 'commit' },
+          parent: { id: 'nightly', plane: 'git-graph' },
+        },
+        { from: 'nightly-1', to: 'nightly-2' },
+      ],
     });
-    expect((out.command as { commands: { node?: { metadata?: unknown } }[] }).commands[0]?.node?.metadata).toBeUndefined();
+    expect(
+      (out.command as { commands: { node?: { metadata?: unknown } }[] }).commands[0]?.node?.metadata,
+    ).toBeUndefined();
   });
 });

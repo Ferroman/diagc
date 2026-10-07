@@ -142,17 +142,26 @@ describe('ejectSource', () => {
 
   it('groups consecutive same-plane containment and tags planes', () => {
     const m: DiagramModel = {
-      version: 1, id: 't', name: 't',
+      version: 1,
+      id: 't',
+      name: 't',
       nodes: [
-        { id: 'p', name: 'p' }, { id: 'a', name: 'a' }, { id: 'b', name: 'b' }, { id: 'c', name: 'c' },
+        { id: 'p', name: 'p' },
+        { id: 'a', name: 'a' },
+        { id: 'b', name: 'b' },
+        { id: 'c', name: 'c' },
       ],
       containment: [
         { parent: 'p', child: 'a' },
         { parent: 'p', child: 'b' },
         { parent: 'p', child: 'c', plane: 'alt' },
       ],
-      relations: [], layers: [],
-      planes: [{ id: 'main', name: 'main' }, { id: 'alt', name: 'alt' }],
+      relations: [],
+      layers: [],
+      planes: [
+        { id: 'main', name: 'main' },
+        { id: 'alt', name: 'alt' },
+      ],
     };
     const src = ejectSource(m);
     expect(src).toContain('p.contains(a, b);');
@@ -161,8 +170,14 @@ describe('ejectSource', () => {
 
   it('elides the model name and node names equal to their ids', () => {
     const m: DiagramModel = {
-      version: 1, id: 't', name: 't',
-      nodes: [{ id: 'a', name: 'a' }], containment: [], relations: [], layers: [], planes: [],
+      version: 1,
+      id: 't',
+      name: 't',
+      nodes: [{ id: 'a', name: 'a' }],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
     };
     const src = ejectSource(m);
     expect(src).toContain("const m = model('t');\n");
@@ -171,11 +186,16 @@ describe('ejectSource', () => {
 
   it('emits legend and layerRules when present', () => {
     const m: DiagramModel = {
-      version: 1, id: 't', name: 't',
+      version: 1,
+      id: 't',
+      name: 't',
       legend: { position: 'top-left', items: [{ label: 'x', color: '#123456' }] },
       layerRules: [{ kind: 'sync', layer: 'infra' }],
-      nodes: [], containment: [], relations: [],
-      layers: [{ id: 'infra', name: 'infra' }], planes: [],
+      nodes: [],
+      containment: [],
+      relations: [],
+      layers: [{ id: 'infra', name: 'infra' }],
+      planes: [],
     };
     const src = ejectSource(m);
     expect(src).toContain("m.layerRules([{ kind: 'sync', layer: 'infra' }]);");
@@ -184,11 +204,16 @@ describe('ejectSource', () => {
 
   it('omits the name opt for a node with no name — hand-edited JSON, validate-clean, honestly unejectable', () => {
     const m: DiagramModel = {
-      version: 1, id: 't', name: 't',
+      version: 1,
+      id: 't',
+      name: 't',
       // validate() does not require `name`; a hand-edited JSON can omit it even
       // though the TS type says it's required.
       nodes: [{ id: 'a' } as unknown as DiagramNode],
-      containment: [], relations: [], layers: [], planes: [],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
     };
     const src = ejectSource(m);
     expect(src).toContain("m.node('a');");
@@ -197,9 +222,14 @@ describe('ejectSource', () => {
 
   it('emits includePlane and includePlanes', () => {
     const m: DiagramModel = {
-      version: 1, id: 't', name: 't',
+      version: 1,
+      id: 't',
+      name: 't',
       nodes: [{ id: 'u', name: 'u', include: './c.diagram.json', includePlane: 'flow', includePlanes: true }],
-      containment: [], relations: [], layers: [], planes: [],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
     };
     const src = ejectSource(m);
     expect(src).toContain("include: './c.diagram.json'");
@@ -209,9 +239,17 @@ describe('ejectSource', () => {
 
   it('elides only relation ids that match the position-synthesized id, and replaying the emitted relate() calls through the real builder reproduces every original id', () => {
     const m: DiagramModel = {
-      version: 1, id: 't', name: 't',
-      nodes: [{ id: 'a', name: 'a' }, { id: 'b', name: 'b' }, { id: 'c', name: 'c' }],
-      containment: [], layers: [], planes: [],
+      version: 1,
+      id: 't',
+      name: 't',
+      nodes: [
+        { id: 'a', name: 'a' },
+        { id: 'b', name: 'b' },
+        { id: 'c', name: 'c' },
+      ],
+      containment: [],
+      layers: [],
+      planes: [],
       relations: [
         { id: 'a->b#0', from: 'a', to: 'b', kind: 'sync' }, // matches synthesized -> elided
         { id: 'custom-1', from: 'a', to: 'b', kind: 'async' }, // custom -> kept, counter still advances
@@ -252,15 +290,22 @@ describe('ejectSource', () => {
 
   it('emits threats on both a node and a relation, and replaying those opts rebuilds the model', () => {
     const m: DiagramModel = {
-      version: 1, id: 'tm', name: 'tm',
+      version: 1,
+      id: 'tm',
+      name: 'tm',
       nodes: [
         { id: 'web', name: 'web', type: 'tm-process', threats: [{ id: 't1', category: 'E', title: 'Admin route' }] },
         { id: 'db', name: 'db', type: 'tm-store' },
       ],
-      containment: [], layers: [], planes: [],
+      containment: [],
+      layers: [],
+      planes: [],
       relations: [
         {
-          id: 'web->db#0', from: 'web', to: 'db', kind: 'data-flow',
+          id: 'web->db#0',
+          from: 'web',
+          to: 'db',
+          kind: 'data-flow',
           threats: [{ id: 't1', category: 'I', title: 'Leak', severity: 'high' }],
         },
       ],
@@ -272,9 +317,15 @@ describe('ejectSource', () => {
     // The emitted opt name has to be a real builder opt on both sides, so replay
     // the same calls through the builder and demand the original model back.
     const replay = buildModel('tm');
-    const web = replay.node('web', { type: 'tm-process', threats: [{ id: 't1', category: 'E', title: 'Admin route' }] });
+    const web = replay.node('web', {
+      type: 'tm-process',
+      threats: [{ id: 't1', category: 'E', title: 'Admin route' }],
+    });
     const db = replay.node('db', { type: 'tm-store' });
-    replay.relate(web, db, { kind: 'data-flow', threats: [{ id: 't1', category: 'I', title: 'Leak', severity: 'high' }] });
+    replay.relate(web, db, {
+      kind: 'data-flow',
+      threats: [{ id: 't1', category: 'I', title: 'Leak', severity: 'high' }],
+    });
     expect(replay.toJSON()).toEqual(m);
   });
 });

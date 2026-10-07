@@ -41,11 +41,6 @@ export function editEdgeLabel(labels: EdgeLabel[], labelId: string, text: string
 }
 
 /** Relocate a label's position along the edge + perpendicular side. */
-export function moveEdgeLabel(
-  labels: EdgeLabel[],
-  labelId: string,
-  t: number,
-  side: EdgeLabelSide,
-): EdgeLabel[] {
+export function moveEdgeLabel(labels: EdgeLabel[], labelId: string, t: number, side: EdgeLabelSide): EdgeLabel[] {
   return labels.map((l) => (l.id === labelId ? { ...l, t, side } : l));
 }

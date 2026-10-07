@@ -11,12 +11,48 @@ type SameKeys<A extends string, B extends string> = [A] extends [B] ? ([B] exten
 
 /** JS reserved words plus the two bindings the emitted file itself declares. */
 const RESERVED = new Set([
-  'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default',
-  'delete', 'do', 'else', 'enum', 'export', 'extends', 'false', 'finally', 'for',
-  'function', 'if', 'import', 'in', 'instanceof', 'new', 'null', 'return',
-  'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'var', 'void',
-  'while', 'with', 'let', 'static', 'yield', 'await',
-  'm', 'model',
+  'break',
+  'case',
+  'catch',
+  'class',
+  'const',
+  'continue',
+  'debugger',
+  'default',
+  'delete',
+  'do',
+  'else',
+  'enum',
+  'export',
+  'extends',
+  'false',
+  'finally',
+  'for',
+  'function',
+  'if',
+  'import',
+  'in',
+  'instanceof',
+  'new',
+  'null',
+  'return',
+  'super',
+  'switch',
+  'this',
+  'throw',
+  'true',
+  'try',
+  'typeof',
+  'var',
+  'void',
+  'while',
+  'with',
+  'let',
+  'static',
+  'yield',
+  'await',
+  'm',
+  'model',
 ]);
 
 /**
@@ -30,9 +66,7 @@ export function identifiersFor(ids: readonly string[]): Map<string, string> {
   const out = new Map<string, string>();
   for (const id of ids) {
     const segments = id.split(/[^A-Za-z0-9]+/).filter((s) => s !== '');
-    let base = segments
-      .map((s, i) => (i === 0 ? s : (s[0] ?? '').toUpperCase() + s.slice(1)))
-      .join('');
+    let base = segments.map((s, i) => (i === 0 ? s : (s[0] ?? '').toUpperCase() + s.slice(1))).join('');
     if (base === '' || /^[0-9]/.test(base)) base = `n${base}`;
     let ident = base;
     for (let n = 2; RESERVED.has(ident) || taken.has(ident); n++) ident = `${base}${n}`;
@@ -47,11 +81,7 @@ const IDENT_KEY = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 const INLINE_LIMIT = 72;
 
 function quote(s: string): string {
-  return `'${s
-    .replace(/\\/g, '\\\\')
-    .replace(/'/g, "\\'")
-    .replace(/\n/g, '\\n')
-    .replace(/\r/g, '\\r')}'`;
+  return `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r')}'`;
 }
 
 /**
@@ -94,9 +124,30 @@ function quoted(s: string): string {
 
 /** NodeOpts emission order — mirrors the interface declaration in builder.ts. */
 const NODE_OPT_KEYS = [
-  'type', 'name', 'icon', 'shape', 'image', 'color', 'textColor', 'technology',
-  'link', 'description', 'rich', 'textAlign', 'fontScale', 'metadata', 'key', 'include',
-  'includePlane', 'includePlanes', 'plane', 'layer', 'columns', 'threats', 'comments', 'links',
+  'type',
+  'name',
+  'icon',
+  'shape',
+  'image',
+  'color',
+  'textColor',
+  'technology',
+  'link',
+  'description',
+  'rich',
+  'textAlign',
+  'fontScale',
+  'metadata',
+  'key',
+  'include',
+  'includePlane',
+  'includePlanes',
+  'plane',
+  'layer',
+  'columns',
+  'threats',
+  'comments',
+  'links',
 ] as const;
 
 // Drift guard: a field added to DiagramNode without a matching entry above
@@ -110,8 +161,17 @@ void _nodeOptCoverage;
 /** RelateOpts emission order (after the always-first `kind` and conditional `id`)
  * — mirrors the interface declaration in builder.ts. */
 const RELATE_OPT_KEYS = [
-  'label', 'labels', 'style', 'description', 'layer', 'polarity', 'delay',
-  'fromColumn', 'toColumn', 'threats', 'comments',
+  'label',
+  'labels',
+  'style',
+  'description',
+  'layer',
+  'polarity',
+  'delay',
+  'fromColumn',
+  'toColumn',
+  'threats',
+  'comments',
 ] as const;
 
 // Drift guard, same shape as _nodeOptCoverage above. `id` and `kind` are
@@ -124,9 +184,7 @@ const _relateOptCoverage: SameKeys<
 void _relateOptCoverage;
 
 /** plane() opts emission order — mirrors ModelBuilder.plane's opts parameter. */
-const PLANE_OPT_KEYS = [
-  'name', 'containmentOf', 'layers', 'baseRelations', 'notation', 'hides', 'hidesTree',
-] as const;
+const PLANE_OPT_KEYS = ['name', 'containmentOf', 'layers', 'baseRelations', 'notation', 'hides', 'hidesTree'] as const;
 
 // Drift guard, same shape as _nodeOptCoverage above. `id` is emitted
 // explicitly, ahead of the opts object.
@@ -272,12 +330,7 @@ export function ejectSource(model: DiagramModel): string {
   if (setters.length > 0) sections.push(setters);
 
   const header = `const m = model(${quoted(model.id)}${model.name !== model.id ? `, { name: ${tsLiteral(model.name, 0)} }` : ''});`;
-  return [
-    ["import { model } from '@diagc/core';"],
-    [header],
-    ...sections,
-    ['export default m;'],
-  ]
+  return [["import { model } from '@diagc/core';"], [header], ...sections, ['export default m;']]
     .map((s) => s.join('\n'))
     .join('\n\n')
     .concat('\n');

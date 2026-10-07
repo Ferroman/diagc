@@ -139,9 +139,16 @@ export function diffModels(before: DiagramModel, after: DiagramModel): ModelDiff
 
 export function isEmptyDiff(d: ModelDiff): boolean {
   return (
-    d.nodes.added.length + d.nodes.removed.length + d.nodes.changed.length +
-      d.relations.added.length + d.relations.removed.length + d.relations.changed.length +
-      d.layers.added.length + d.layers.removed.length + d.planes.added.length + d.planes.removed.length ===
+    d.nodes.added.length +
+      d.nodes.removed.length +
+      d.nodes.changed.length +
+      d.relations.added.length +
+      d.relations.removed.length +
+      d.relations.changed.length +
+      d.layers.added.length +
+      d.layers.removed.length +
+      d.planes.added.length +
+      d.planes.removed.length ===
     0
   );
 }

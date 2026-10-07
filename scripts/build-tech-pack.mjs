@@ -164,7 +164,38 @@ const SOURCES = [
 const K8S_ICONS = 'https://raw.githubusercontent.com/kubernetes/community/master/icons/svg';
 /** Every labeled icon upstream publishes, by its directory. */
 const K8S_FAMILIES = {
-  resources: ['c-role', 'cm', 'crb', 'crd', 'cronjob', 'deploy', 'ds', 'ep', 'group', 'hpa', 'ing', 'job', 'limits', 'netpol', 'ns', 'pod', 'psp', 'pv', 'pvc', 'quota', 'rb', 'role', 'rs', 'sa', 'sc', 'secret', 'sts', 'svc', 'user', 'vol'],
+  resources: [
+    'c-role',
+    'cm',
+    'crb',
+    'crd',
+    'cronjob',
+    'deploy',
+    'ds',
+    'ep',
+    'group',
+    'hpa',
+    'ing',
+    'job',
+    'limits',
+    'netpol',
+    'ns',
+    'pod',
+    'psp',
+    'pv',
+    'pvc',
+    'quota',
+    'rb',
+    'role',
+    'rs',
+    'sa',
+    'sc',
+    'secret',
+    'sts',
+    'svc',
+    'user',
+    'vol',
+  ],
   infrastructure_components: ['control-plane', 'etcd', 'node'],
   control_plane_components: ['api', 'c-c-m', 'c-m', 'k-proxy', 'kubelet', 'sched'],
 };
@@ -176,7 +207,10 @@ const K8S_SOURCES = Object.entries(K8S_FAMILIES).flatMap(([dir, slugs]) =>
 function viewBox(svg) {
   const vb = /viewBox="([^"]+)"/.exec(svg)?.[1];
   if (vb !== undefined) {
-    const [minX, minY, w, h] = vb.trim().split(/[\s,]+/).map(Number);
+    const [minX, minY, w, h] = vb
+      .trim()
+      .split(/[\s,]+/)
+      .map(Number);
     if (w > 0 && h > 0) return [minX, minY, w, h];
   }
   const attr = (name) => Number(new RegExp(`\\b${name}="([\\d.]+)`).exec(svg)?.[1] ?? 0);

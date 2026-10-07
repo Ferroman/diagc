@@ -10,7 +10,16 @@ import {
 } from '@xyflow/react';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
-import { TM_NOTATION, threatTargetKey, type Column, type EdgeLabel, type EdgeLabelSide, type NotationId, type Polarity, type RelationStyle } from '@diagc/core';
+import {
+  TM_NOTATION,
+  threatTargetKey,
+  type Column,
+  type EdgeLabel,
+  type EdgeLabelSide,
+  type NotationId,
+  type Polarity,
+  type RelationStyle,
+} from '@diagc/core';
 import { commentBadgeProps, type AnnotationCounts } from './comment-badge';
 import {
   bowPath,
@@ -126,15 +135,7 @@ export interface DiagramEdgeData {
 
 type Props = Pick<
   EdgeProps,
-  | 'id'
-  | 'source'
-  | 'target'
-  | 'sourceX'
-  | 'sourceY'
-  | 'targetX'
-  | 'targetY'
-  | 'sourcePosition'
-  | 'targetPosition'
+  'id' | 'source' | 'target' | 'sourceX' | 'sourceY' | 'targetX' | 'targetY' | 'sourcePosition' | 'targetPosition'
 > & { data?: DiagramEdgeData };
 
 /** marker geometry per end style, in a 0..10 viewBox (refY 5). Exported for the
@@ -272,13 +273,16 @@ export function DiagramEdge({
   // edits that label in place. `drag` holds the live ghost position while a
   // label is being slid; `dragRef` tracks the press so a click/double-click
   // below the threshold never registers as a drag.
-  const [edit, setEdit] = useState<{ labelId: string | null; t: number; side: EdgeLabelSide; x: number; y: number } | null>(
-    null,
-  );
+  const [edit, setEdit] = useState<{
+    labelId: string | null;
+    t: number;
+    side: EdgeLabelSide;
+    x: number;
+    y: number;
+  } | null>(null);
   const [drag, setDrag] = useState<{ labelId: string; x: number; y: number } | null>(null);
   const dragRef = useRef<{ labelId: string; startX: number; startY: number; moved: boolean } | null>(null);
-  const measured =
-    (sourceNode?.measured?.width ?? 0) > 0 && (targetNode?.measured?.width ?? 0) > 0;
+  const measured = (sourceNode?.measured?.width ?? 0) > 0 && (targetNode?.measured?.width ?? 0) > 0;
   const rel = data?.relStyle;
   const p =
     measured && sourceNode !== undefined && targetNode !== undefined
@@ -292,25 +296,45 @@ export function DiagramEdge({
   // each endpoint to the referenced column's row (x stays on the facing
   // left/right border — anchorToRow is a no-op for top/bottom faces or an
   // unknown column, so non-table endpoints float exactly as before).
-  const srcRect = sourceNode !== undefined
-    ? { x: sourceNode.internals.positionAbsolute.x, y: sourceNode.internals.positionAbsolute.y,
-        width: sourceNode.measured?.width ?? 0, height: sourceNode.measured?.height ?? 0,
-        columns: (sourceNode.data as { columns?: Column[] }).columns }
-    : undefined;
-  const tgtRect = targetNode !== undefined
-    ? { x: targetNode.internals.positionAbsolute.x, y: targetNode.internals.positionAbsolute.y,
-        width: targetNode.measured?.width ?? 0, height: targetNode.measured?.height ?? 0,
-        columns: (targetNode.data as { columns?: Column[] }).columns }
-    : undefined;
-  let sx = p.sx, sy = p.sy, tx = p.tx, ty = p.ty;
+  const srcRect =
+    sourceNode !== undefined
+      ? {
+          x: sourceNode.internals.positionAbsolute.x,
+          y: sourceNode.internals.positionAbsolute.y,
+          width: sourceNode.measured?.width ?? 0,
+          height: sourceNode.measured?.height ?? 0,
+          columns: (sourceNode.data as { columns?: Column[] }).columns,
+        }
+      : undefined;
+  const tgtRect =
+    targetNode !== undefined
+      ? {
+          x: targetNode.internals.positionAbsolute.x,
+          y: targetNode.internals.positionAbsolute.y,
+          width: targetNode.measured?.width ?? 0,
+          height: targetNode.measured?.height ?? 0,
+          columns: (targetNode.data as { columns?: Column[] }).columns,
+        }
+      : undefined;
+  let sx = p.sx,
+    sy = p.sy,
+    tx = p.tx,
+    ty = p.ty;
   if (measured && data?.fromColumn !== undefined && srcRect?.columns !== undefined) {
     const a = anchorToRow({ x: p.sx, y: p.sy, pos: p.sourcePos }, srcRect, data.fromColumn);
-    sx = a.x; sy = a.y;
+    sx = a.x;
+    sy = a.y;
   }
   const tgtCol = data?.toColumn ?? tgtRect?.columns?.find((c) => c.pk === true)?.name;
-  if (measured && tgtCol !== undefined && tgtRect?.columns !== undefined && (data?.fromColumn !== undefined || data?.toColumn !== undefined)) {
+  if (
+    measured &&
+    tgtCol !== undefined &&
+    tgtRect?.columns !== undefined &&
+    (data?.fromColumn !== undefined || data?.toColumn !== undefined)
+  ) {
     const a = anchorToRow({ x: p.tx, y: p.ty, pos: p.targetPos }, tgtRect, tgtCol);
-    tx = a.x; ty = a.y;
+    tx = a.x;
+    ty = a.y;
   }
 
   const shape = rel?.shape ?? 'curved';
@@ -371,7 +395,9 @@ export function DiagramEdge({
     // was told about that strip (SizeHint.reserveBottom) and starts the line
     // below the text, and snapping it up to the picture would strike it through.
     const drawn = (n: typeof sourceNode, r: typeof srcRect) =>
-      !measured || r === undefined ? undefined : { ...r, height: r.height + captionReserve(n?.data as DiagramNodeData | undefined) };
+      !measured || r === undefined
+        ? undefined
+        : { ...r, height: r.height + captionReserve(n?.data as DiagramNodeData | undefined) };
     const pts = snapRouteEnds(tidyRoute(data.route), drawn(sourceNode, srcRect), drawn(targetNode, tgtRect));
     path = roundedRoute(pts, data.routeCorner ?? 8);
     curve = routeCurve(pts);
@@ -415,7 +441,13 @@ export function DiagramEdge({
   const line = rel?.line ?? (kind.dashed === true ? 'dashed' : 'solid');
   const animated = rel?.animated ?? kind.animated === true;
   const dashArray =
-    line === 'dashed' ? '6 4' : line === 'dotted' ? `0.1 ${Math.max(5, strokeWidth * 3)}` : animated ? '6 4' : undefined;
+    line === 'dashed'
+      ? '6 4'
+      : line === 'dotted'
+        ? `0.1 ${Math.max(5, strokeWidth * 3)}`
+        : animated
+          ? '6 4'
+          : undefined;
 
   const kindStart = kind.startMarker;
   const end = rel?.end ?? kind.endMarker ?? 'arrow';
@@ -431,8 +463,7 @@ export function DiagramEdge({
   // the label/marker above) so they track the arrow rather than a sketch
   // roughening. Rendered beside the END_SHAPES marker, never replacing it.
   const showMarks = profile.edge?.marks === true;
-  const polarityFrame =
-    showMarks && data?.polarity !== undefined ? markFrame(curve, 0.82) : undefined;
+  const polarityFrame = showMarks && data?.polarity !== undefined ? markFrame(curve, 0.82) : undefined;
   const delayFrame = showMarks && data?.delay === true ? markFrame(curve, 0.5) : undefined;
 
   // UML interrupt flow: a lightning jog at the midpoint. Gated on the KIND
@@ -497,7 +528,14 @@ export function DiagramEdge({
     lineKey = lineRef.current.map((p) => `${p.x},${p.y}`).join(';');
   }
   useEffect(() => {
-    if (notes !== null && chipRelation !== undefined && anchorX !== undefined && anchorY !== undefined && anchorNx !== undefined && anchorNy !== undefined)
+    if (
+      notes !== null &&
+      chipRelation !== undefined &&
+      anchorX !== undefined &&
+      anchorY !== undefined &&
+      anchorNx !== undefined &&
+      anchorNy !== undefined
+    )
       notes.placeChip(chipRelation, { x: anchorX, y: anchorY }, { x: anchorNx, y: anchorNy }, lineRef.current);
     // lineKey stands in for lineRef.current, which is rebuilt every render
   }, [notes, chipRelation, anchorX, anchorY, anchorNx, anchorNy, lineKey]);
@@ -560,123 +598,124 @@ export function DiagramEdge({
   const canSlide = (e: { altKey: boolean }): boolean => editableLabels || (data?.movableLabels === true && e.altKey);
   // A label nobody has placed (the default middle-of-the-line) sits on elk's
   // reserved spot while the route stands; one that WAS placed follows the line.
-  const unplaced = (lb: EdgeLabel): boolean => (lb.t === undefined || lb.t === 0.5) && (lb.side ?? 'center') === 'center';
+  const unplaced = (lb: EdgeLabel): boolean =>
+    (lb.t === undefined || lb.t === 0.5) && (lb.side ?? 'center') === 'center';
 
   // Correlation-driven add: DiagramView sets `pendingAdd` (flow coords) when a
 
   return (
     <>
       <g className={loopEdgeClass}>
-      {endShape !== undefined && (
-        <defs>
-          <marker
-            id={markerId}
-            viewBox="0 0 10 10"
-            refX={endShape.refX}
-            refY="5"
-            markerWidth={markerSize}
-            markerHeight={markerSize}
-            markerUnits="userSpaceOnUse"
-            orient="auto-start-reverse"
-            fill={stroke}
-            {...(LINE_MARKERS.has(end) ? { stroke, strokeWidth: 1.2 } : {})}
-          >
-            {endShape.el}
-          </marker>
-        </defs>
-      )}
-      {startShape !== undefined && (
-        <defs>
-          <marker
-            id={startMarkerId}
-            viewBox="0 0 10 10"
-            refX={startShape.refX}
-            refY="5"
-            markerWidth={markerSize}
-            markerHeight={markerSize}
-            markerUnits="userSpaceOnUse"
-            orient="auto-start-reverse"
-            fill={stroke}
-            {...(kindStart !== undefined && LINE_MARKERS.has(kindStart) ? { stroke, strokeWidth: 1.2 } : {})}
-          >
-            {startShape.el}
-          </marker>
-        </defs>
-      )}
-      <BaseEdge
-        id={id}
-        path={renderPath}
-        {...(endShape !== undefined ? { markerEnd: `url(#${markerId})` } : {})}
-        {...(startShape !== undefined ? { markerStart: `url(#${startMarkerId})` } : {})}
-        style={{
-          stroke,
-          strokeWidth,
-          ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
-          ...(line === 'dotted' ? { strokeLinecap: 'round' as const } : {}),
-          ...(animated ? { animation: 'dg-flow 0.7s linear infinite' } : {}),
-        }}
-      />
-      {/* transparent hit-path: widens the hover/title target. Adding a label is
+        {endShape !== undefined && (
+          <defs>
+            <marker
+              id={markerId}
+              viewBox="0 0 10 10"
+              refX={endShape.refX}
+              refY="5"
+              markerWidth={markerSize}
+              markerHeight={markerSize}
+              markerUnits="userSpaceOnUse"
+              orient="auto-start-reverse"
+              fill={stroke}
+              {...(LINE_MARKERS.has(end) ? { stroke, strokeWidth: 1.2 } : {})}
+            >
+              {endShape.el}
+            </marker>
+          </defs>
+        )}
+        {startShape !== undefined && (
+          <defs>
+            <marker
+              id={startMarkerId}
+              viewBox="0 0 10 10"
+              refX={startShape.refX}
+              refY="5"
+              markerWidth={markerSize}
+              markerHeight={markerSize}
+              markerUnits="userSpaceOnUse"
+              orient="auto-start-reverse"
+              fill={stroke}
+              {...(kindStart !== undefined && LINE_MARKERS.has(kindStart) ? { stroke, strokeWidth: 1.2 } : {})}
+            >
+              {startShape.el}
+            </marker>
+          </defs>
+        )}
+        <BaseEdge
+          id={id}
+          path={renderPath}
+          {...(endShape !== undefined ? { markerEnd: `url(#${markerId})` } : {})}
+          {...(startShape !== undefined ? { markerStart: `url(#${startMarkerId})` } : {})}
+          style={{
+            stroke,
+            strokeWidth,
+            ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
+            ...(line === 'dotted' ? { strokeLinecap: 'round' as const } : {}),
+            ...(animated ? { animation: 'dg-flow 0.7s linear infinite' } : {}),
+          }}
+        />
+        {/* transparent hit-path: widens the hover/title target. Adding a label is
           no longer triggered here (a real double-click's first click remounts the
           edges layer, so the native dblclick never lands on the edge) — DiagramView
           detects the double-click from click events and threads `pendingAdd`. */}
-      <path d={path} fill="none" stroke="transparent" strokeWidth={14}>
-        <title>{`${data?.kind ?? ''}${data !== undefined && data.constituentCount > 1 ? ` ×${data.constituentCount}` : ''}${
-          data?.labels === undefined && data?.label !== undefined ? ` — ${data.label}` : ''
-        }`}</title>
-      </path>
-      {polarityFrame !== undefined && data?.polarity !== undefined && (
-        <text
-          className="dg-polarity"
-          x={polarityFrame.point.x + polarityFrame.normal.x * POLARITY_OFFSET}
-          y={polarityFrame.point.y + polarityFrame.normal.y * POLARITY_OFFSET}
-          textAnchor="middle"
-          dominantBaseline="central"
-          /* The glyph annotates the line, so it takes the line's colour — but
+        <path d={path} fill="none" stroke="transparent" strokeWidth={14}>
+          <title>{`${data?.kind ?? ''}${data !== undefined && data.constituentCount > 1 ? ` ×${data.constituentCount}` : ''}${
+            data?.labels === undefined && data?.label !== undefined ? ` — ${data.label}` : ''
+          }`}</title>
+        </path>
+        {polarityFrame !== undefined && data?.polarity !== undefined && (
+          <text
+            className="dg-polarity"
+            x={polarityFrame.point.x + polarityFrame.normal.x * POLARITY_OFFSET}
+            y={polarityFrame.point.y + polarityFrame.normal.y * POLARITY_OFFSET}
+            textAnchor="middle"
+            dominantBaseline="central"
+            /* The glyph annotates the line, so it takes the line's colour — but
              only where the notation colours by sign; elsewhere it stays text-
              coloured as before. Inline style, not a `fill` attribute: the
              stylesheet's `.dg-polarity { fill }` outranks presentation attrs. */
-          {...(polarityColor !== undefined ? { style: { fill: stroke } } : {})}
-        >
-          {data.polarity === '-' ? '−' : '+'}
-        </text>
-      )}
-      {delayFrame !== undefined && (
-        <g className="dg-delay">
-          {[-DELAY_GAP, DELAY_GAP].map((gap) => {
-            const cx = delayFrame.point.x + delayFrame.tangent.x * gap;
-            const cy = delayFrame.point.y + delayFrame.tangent.y * gap;
-            return (
-              <line
-                key={gap}
-                x1={cx - delayFrame.normal.x * DELAY_HALF_LEN}
-                y1={cy - delayFrame.normal.y * DELAY_HALF_LEN}
-                x2={cx + delayFrame.normal.x * DELAY_HALF_LEN}
-                y2={cy + delayFrame.normal.y * DELAY_HALF_LEN}
-              />
-            );
-          })}
-        </g>
-      )}
-      {zigzagFrame !== undefined && (
-        <polyline
-          className="dg-edge-zigzag"
-          points={[
-            [-ZIGZAG_HALF, 4],
-            [2, -2],
-            [-2, 2],
-            [ZIGZAG_HALF, -4],
-          ]
-            .map(([a, b]) => {
-              const { point, tangent, normal } = zigzagFrame;
-              return `${point.x + a! * tangent.x + b! * normal.x},${point.y + a! * tangent.y + b! * normal.y}`;
-            })
-            .join(' ')}
-          fill="none"
-          strokeWidth={1.75}
-          stroke={stroke}
-        />
-      )}
+            {...(polarityColor !== undefined ? { style: { fill: stroke } } : {})}
+          >
+            {data.polarity === '-' ? '−' : '+'}
+          </text>
+        )}
+        {delayFrame !== undefined && (
+          <g className="dg-delay">
+            {[-DELAY_GAP, DELAY_GAP].map((gap) => {
+              const cx = delayFrame.point.x + delayFrame.tangent.x * gap;
+              const cy = delayFrame.point.y + delayFrame.tangent.y * gap;
+              return (
+                <line
+                  key={gap}
+                  x1={cx - delayFrame.normal.x * DELAY_HALF_LEN}
+                  y1={cy - delayFrame.normal.y * DELAY_HALF_LEN}
+                  x2={cx + delayFrame.normal.x * DELAY_HALF_LEN}
+                  y2={cy + delayFrame.normal.y * DELAY_HALF_LEN}
+                />
+              );
+            })}
+          </g>
+        )}
+        {zigzagFrame !== undefined && (
+          <polyline
+            className="dg-edge-zigzag"
+            points={[
+              [-ZIGZAG_HALF, 4],
+              [2, -2],
+              [-2, 2],
+              [ZIGZAG_HALF, -4],
+            ]
+              .map(([a, b]) => {
+                const { point, tangent, normal } = zigzagFrame;
+                return `${point.x + a! * tangent.x + b! * normal.x},${point.y + a! * tangent.y + b! * normal.y}`;
+              })
+              .join(' ')}
+            fill="none"
+            strokeWidth={1.75}
+            stroke={stroke}
+          />
+        )}
       </g>
       {pinDots}
       {/* The joined label of a bundled arrow. An HTML chip in the label layer, not
@@ -708,7 +747,11 @@ export function DiagramEdge({
             <EdgeLabelRenderer key={lb.id}>
               <div
                 className={`dg-edge-label dg-edge-label-${side} nodrag nopan`}
-                style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${lx}px, ${ly}px)`, pointerEvents: 'all' }}
+                style={{
+                  position: 'absolute',
+                  transform: `translate(-50%, -50%) translate(${lx}px, ${ly}px)`,
+                  pointerEvents: 'all',
+                }}
                 onPointerDown={(e) => {
                   // don't fight the inline input for the press, and don't let
                   // React Flow steal the gesture / clear selection
@@ -873,7 +916,12 @@ export function DiagramEdge({
               );
             })()
           ) : (
-            <span className="dg-comment-badge dg-edge-comment" data-edge={id} title={commentBadge.title} style={{ transform: commentTransform }}>
+            <span
+              className="dg-comment-badge dg-edge-comment"
+              data-edge={id}
+              title={commentBadge.title}
+              style={{ transform: commentTransform }}
+            >
               {commentBadge.text}
             </span>
           )}

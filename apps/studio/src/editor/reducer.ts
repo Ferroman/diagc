@@ -1,9 +1,4 @@
-import {
-  applyCommandWithResult,
-  CommandError,
-  type EditorCommand,
-  type EditorState,
-} from '@diagc/core';
+import { applyCommandWithResult, CommandError, type EditorCommand, type EditorState } from '@diagc/core';
 
 export interface HistoryEntry {
   command: EditorCommand;

@@ -1,7 +1,15 @@
 import { access, mkdir, readFile, readdir, rename, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { IMAGE_REF, composeIncludes, errMessage, isDrawings, isLayoutOverlay, validate, type DiagramModel } from '@diagc/core';
+import {
+  IMAGE_REF,
+  composeIncludes,
+  errMessage,
+  isDrawings,
+  isLayoutOverlay,
+  validate,
+  type DiagramModel,
+} from '@diagc/core';
 import { writeFileAtomic } from '../atomic-write';
 import { EjectError, ejectDiagram } from '../eject';
 import { resolveInclude } from '../includes';
@@ -20,7 +28,8 @@ export function isSafeName(name: string): boolean {
 // .diagrams/src — the same rootDir a locked session uses elsewhere (eject.ts).
 // 'locked' because the boot/refresh path must never fetch or vendor a remote
 // include on a viewer's behalf — that only happens at `diagc compile`.
-const lockedResolver = (diagramsDir: string) => snapshotSession(resolveInclude, path.dirname(diagramsDir), 'locked').resolver;
+const lockedResolver = (diagramsDir: string) =>
+  snapshotSession(resolveInclude, path.dirname(diagramsDir), 'locked').resolver;
 
 const hasIncludes = (m: DiagramModel | null): boolean =>
   m !== null && Array.isArray(m.nodes) && m.nodes.some((n) => n.include !== undefined);
@@ -81,7 +90,11 @@ export async function listDiagramModels(diagramsDir: string, artifactsDir: strin
     }
     if (editable && hasIncludes(model)) {
       try {
-        const { model: composed, warnings } = await composeIncludes(model as DiagramModel, path.resolve(file), lockedResolver(diagramsDir));
+        const { model: composed, warnings } = await composeIncludes(
+          model as DiagramModel,
+          path.resolve(file),
+          lockedResolver(diagramsDir),
+        );
         // compileFile refuses an invalid composed result outright, because the
         // renderer assumes a validated model — an id collision
         // between an umbrella-declared node and a namespaced include can pass
@@ -261,7 +274,11 @@ export async function renameDiagram(diagramsDir: string, from: string, to: strin
 
 /** Promote a JSON-owned diagram to a generated `.diagram.ts`. See `ejectDiagram`
  * for the round-trip guarantee; this just maps its failure codes to statuses. */
-export async function ejectDiagramSource(diagramsDir: string, artifactsDir: string, name: string): Promise<HandlerResult> {
+export async function ejectDiagramSource(
+  diagramsDir: string,
+  artifactsDir: string,
+  name: string,
+): Promise<HandlerResult> {
   if (!isSafeName(name)) return { status: 400, body: { issues: [{ message: `Unsafe name '${name}'` }] } };
   try {
     await ejectDiagram(diagramsDir, artifactsDir, name);
@@ -280,7 +297,8 @@ export async function saveLayout(diagramsDir: string, name: string, payload: unk
   // Core's structural guard mirrors the old inline checks (version 1, nested
   // numeric x/y planes, optional positive-finite sizes) — one source of truth
   // shared with the client-side artifact loader.
-  if (!isLayoutOverlay(payload)) return { status: 400, body: { issues: [{ message: 'Not a version-1 layout overlay' }] } };
+  if (!isLayoutOverlay(payload))
+    return { status: 400, body: { issues: [{ message: 'Not a version-1 layout overlay' }] } };
   const target = path.join(diagramsDir, `${name}.layout.json`);
   await mkdir(path.dirname(target), { recursive: true });
   await writeFileAtomic(target, `${JSON.stringify(payload, null, 2)}\n`);
@@ -351,17 +369,29 @@ export async function saveLibrary(diagramsDir: string, payload: unknown): Promis
       return { status: 400, body: { issues: [{ message: 'Entry needs string id, name, category' }] } };
     }
     if (!catIds.has(entry.category)) {
-      return { status: 400, body: { issues: [{ message: `Entry '${entry.id}' references unknown category '${entry.category}'` }] } };
+      return {
+        status: 400,
+        body: { issues: [{ message: `Entry '${entry.id}' references unknown category '${entry.category}'` }] },
+      };
     }
-    if (entryIds.has(entry.id)) return { status: 400, body: { issues: [{ message: `Duplicate entry '${entry.id}'` }] } };
+    if (entryIds.has(entry.id))
+      return { status: 400, body: { issues: [{ message: `Duplicate entry '${entry.id}'` }] } };
     entryIds.add(entry.id);
     const t = entry.template as Record<string, unknown> | null;
     if (t === null || typeof t !== 'object' || Array.isArray(t)) {
       return { status: 400, body: { issues: [{ message: `Entry '${entry.id}' missing template` }] } };
     }
     for (const [k, v] of Object.entries(t)) {
-      const ok = TEMPLATE_STRING_KEYS.has(k) ? typeof v === 'string' : TEMPLATE_NUMBER_KEYS.has(k) ? typeof v === 'number' : false;
-      if (!ok) return { status: 400, body: { issues: [{ message: `Entry '${entry.id}' has invalid template field '${k}'` }] } };
+      const ok = TEMPLATE_STRING_KEYS.has(k)
+        ? typeof v === 'string'
+        : TEMPLATE_NUMBER_KEYS.has(k)
+          ? typeof v === 'number'
+          : false;
+      if (!ok)
+        return {
+          status: 400,
+          body: { issues: [{ message: `Entry '${entry.id}' has invalid template field '${k}'` }] },
+        };
     }
   }
   const target = path.join(diagramsDir, 'library.json');
@@ -389,7 +419,10 @@ export async function saveAsset(diagramsDir: string, contentType: string, bytes:
     return { status: 400, body: { issues: [{ message: `Unsupported image type '${contentType}'` }] } };
   }
   if (bytes.length === 0 || bytes.length > MAX_ASSET_BYTES) {
-    return { status: 400, body: { issues: [{ message: `Image must be 1 byte to ${MAX_ASSET_BYTES / 1024 / 1024} MB` }] } };
+    return {
+      status: 400,
+      body: { issues: [{ message: `Image must be 1 byte to ${MAX_ASSET_BYTES / 1024 / 1024} MB` }] },
+    };
   }
   const name = `${createHash('sha256').update(bytes).digest('hex').slice(0, 12)}.${ext}`;
   const target = path.join(diagramsDir, 'assets', name);
@@ -410,7 +443,12 @@ export async function readAsset(
   try {
     const bytes = await readFile(path.join(diagramsDir, 'assets', name));
     const ext = name.split('.').at(-1) ?? '';
-    return { status: 200, body: null, bytes, contentType: ASSET_TYPE[ext === 'jpeg' ? 'jpg' : ext] ?? 'application/octet-stream' };
+    return {
+      status: 200,
+      body: null,
+      bytes,
+      contentType: ASSET_TYPE[ext === 'jpeg' ? 'jpg' : ext] ?? 'application/octet-stream',
+    };
   } catch {
     return { status: 404, body: { issues: [{ message: `No asset '${name}'` }] } };
   }

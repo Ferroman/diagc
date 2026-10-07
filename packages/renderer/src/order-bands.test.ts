@@ -8,7 +8,17 @@ describe('bandLabel', () => {
     expect(bandLabel(0, 1)).toBe('Decision');
     expect(bandLabel(0, 2)).toBe('Decisions');
     expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101].map((n) => bandLabel(n, 1))).toEqual([
-      '1st order', '2nd order', '3rd order', '4th order', '11th order', '12th order', '13th order', '21st order', '22nd order', '23rd order', '101st order',
+      '1st order',
+      '2nd order',
+      '3rd order',
+      '4th order',
+      '11th order',
+      '12th order',
+      '13th order',
+      '21st order',
+      '22nd order',
+      '23rd order',
+      '101st order',
     ]);
   });
 });
@@ -21,7 +31,13 @@ describe('computeBands', () => {
     ['c', rect(0, 176)],
     ['c2', rect(400, 244)], // pushed a row down by a labelled arrow: same band, taller
   ]);
-  const orders = new Map([['d', 0], ['a', 1], ['b', 1], ['c', 2], ['c2', 2]]);
+  const orders = new Map([
+    ['d', 0],
+    ['a', 1],
+    ['b', 1],
+    ['c', 2],
+    ['c2', 2],
+  ]);
 
   it('spans each band over where its nodes actually landed, padded along the flow', () => {
     const bands = computeBands(rects, orders, 'DOWN');
@@ -36,8 +52,20 @@ describe('computeBands', () => {
     expect(first!.header.x).toBe(first!.x + 8);
   });
   it('turns into columns for a left-to-right flow, headers on top', () => {
-    const sideways = new Map([['d', rect(0, 100)], ['a', rect(260, 0)], ['b', rect(260, 200)]]);
-    const bands = computeBands(sideways, new Map([['d', 0], ['a', 1], ['b', 1]]), 'RIGHT');
+    const sideways = new Map([
+      ['d', rect(0, 100)],
+      ['a', rect(260, 0)],
+      ['b', rect(260, 200)],
+    ]);
+    const bands = computeBands(
+      sideways,
+      new Map([
+        ['d', 0],
+        ['a', 1],
+        ['b', 1],
+      ]),
+      'RIGHT',
+    );
     expect(bands[1]).toMatchObject({ x: 260 - BAND_PAD, width: 180 + 2 * BAND_PAD });
     expect(bands[1]!.y).toBeLessThan(0);
     expect(bands[1]!.header.y).toBeLessThan(0);

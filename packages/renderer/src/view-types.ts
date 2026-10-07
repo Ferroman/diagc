@@ -1,7 +1,20 @@
 /** The DiagramView public surface: props, the edit-callback contract, and the
  * imperative layout API. Pure declarations — no runtime logic lives here. */
 
-import type { Column, DiagramModel, DiffMarks, Drawings, EdgeLabelSide, LayoutOverlay, NotationId, PlanRole, Stroke, TextRun, ThreatStatus, ThreatTarget } from '@diagc/core';
+import type {
+  Column,
+  DiagramModel,
+  DiffMarks,
+  Drawings,
+  EdgeLabelSide,
+  LayoutOverlay,
+  NotationId,
+  PlanRole,
+  Stroke,
+  TextRun,
+  ThreatStatus,
+  ThreatTarget,
+} from '@diagc/core';
 import type { IconRegistry } from '@diagc/icons';
 import type { MutableRefObject } from 'react';
 import type { AlignMode } from './arrange';

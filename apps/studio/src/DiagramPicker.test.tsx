@@ -135,7 +135,7 @@ describe('DiagramPicker', () => {
     expect(document.activeElement).toBe(trigger());
   });
 
-  it('listens to no keys of its own — the chord is the hotkeys dispatcher\'s to give', () => {
+  it("listens to no keys of its own — the chord is the hotkeys dispatcher's to give", () => {
     render(<DiagramPicker names={NAMES} selected="acme" onSelect={vi.fn()} />);
     fireEvent.keyDown(document.body, { key: 'k', ctrlKey: true });
     expect(screen.queryByRole('listbox')).toBeNull();

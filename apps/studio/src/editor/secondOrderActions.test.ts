@@ -34,7 +34,7 @@ describe('thenWhat', () => {
     expect(thenWhat(m, 'svc', '0')).toBeNull();
     expect(thenWhat(m, 'ghost', '0')).toBeNull();
   });
-  it('tags the new consequence with the source node\'s plane, so it never leaks into every view', () => {
+  it("tags the new consequence with the source node's plane, so it never leaks into every view", () => {
     const m = { ...base(), nodes: base().nodes.map((n) => (n.id === 'd' ? { ...n, plane: 'p' } : n)) };
     const out = thenWhat(m, 'd', '0')!;
     expect(out.command).toEqual({
@@ -49,7 +49,10 @@ describe('thenWhat', () => {
 
 describe('addDecision', () => {
   it('adds a lone decision', () => {
-    expect(addDecision(base()).command).toEqual({ type: 'add-node', node: { id: 'decision', name: '', type: 'so-decision' } });
+    expect(addDecision(base()).command).toEqual({
+      type: 'add-node',
+      node: { id: 'decision', name: '', type: 'so-decision' },
+    });
   });
   it('tags a plane-scoped decision when a plane is given', () => {
     expect(addDecision(base(), 'p').command).toEqual({

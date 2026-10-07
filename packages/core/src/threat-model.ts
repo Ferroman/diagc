@@ -22,7 +22,12 @@ export const TM_STORE_TYPE = 'tm-store' as const;
  * authored, and cannot disagree with the drawing. */
 export const TM_BOUNDARY_TYPE = 'tm-boundary' as const;
 export const TM_FLOW_KIND = 'data-flow' as const;
-export const TM_TYPES: ReadonlySet<string> = new Set([TM_ENTITY_TYPE, TM_PROCESS_TYPE, TM_STORE_TYPE, TM_BOUNDARY_TYPE]);
+export const TM_TYPES: ReadonlySet<string> = new Set([
+  TM_ENTITY_TYPE,
+  TM_PROCESS_TYPE,
+  TM_STORE_TYPE,
+  TM_BOUNDARY_TYPE,
+]);
 export const isThreatModelNode = (n: DiagramNode): boolean => n.type !== undefined && TM_TYPES.has(n.type);
 
 export const STRIDE_NAMES: Record<StrideCategory, string> = {
@@ -108,7 +113,11 @@ function planeParents(m: DiagramModel, plane: string | undefined): Map<string, s
   return parents;
 }
 
-function nearestBoundary(parents: Map<string, string[]>, typeOf: Map<string, string | undefined>, id: string): string | undefined {
+function nearestBoundary(
+  parents: Map<string, string[]>,
+  typeOf: Map<string, string | undefined>,
+  id: string,
+): string | undefined {
   const seen = new Set<string>();
   let cur = parents.get(id)?.[0];
   // `seen` is belt-and-braces: validation rejects containment cycles, but a
@@ -171,7 +180,8 @@ export function crossingLabel(m: DiagramModel, crossing: Crossing): string {
  * declaration order — the one order the studio list and the published table share. */
 export function threatRegister(m: DiagramModel): ThreatRow[] {
   const rows: ThreatRow[] = [];
-  for (const n of m.nodes) for (const threat of n.threats ?? []) rows.push({ target: { node: n.id }, name: n.name, threat });
+  for (const n of m.nodes)
+    for (const threat of n.threats ?? []) rows.push({ target: { node: n.id }, name: n.name, threat });
   const nameOf = (id: string): string => m.nodes.find((n) => n.id === id)?.name ?? id;
   for (const r of m.relations) {
     if (r.threats === undefined || r.threats.length === 0) continue;

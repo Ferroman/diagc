@@ -8,16 +8,31 @@ import { discoverDiagrams } from './discover';
 import { stampHtml } from './html';
 
 export interface PublishOptions {
-  srcDir: string; artifactsDir: string; htmlDir: string; staticDir: string; shellPath: string;
-  libraryDir: string; assetsDir: string; images: boolean; names?: string[];
+  srcDir: string;
+  artifactsDir: string;
+  htmlDir: string;
+  staticDir: string;
+  shellPath: string;
+  libraryDir: string;
+  assetsDir: string;
+  images: boolean;
+  names?: string[];
   renderPng?: (htmlPath: string, pngPath: string) => Promise<void>;
   /** an http(s) address for the gallery's header — never put on a diagram page */
   link?: string;
 }
-export interface PublishResult { pages: string[]; images: string[]; gallery: string }
+export interface PublishResult {
+  pages: string[];
+  images: string[];
+  gallery: string;
+}
 
 async function readMaybe(p: string): Promise<Buffer | undefined> {
-  try { return await readFile(p); } catch { return undefined; }
+  try {
+    return await readFile(p);
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -39,9 +54,12 @@ export async function inlineAssets(
       const kind = classifyAssetRef(ref);
       if (kind === 'skip') continue;
       const base = kind === 'library' ? dirs.libraryDir : dirs.assetsDir;
-      const rel = kind === 'library' ? ref.slice('/library/'.length)
-        : kind === 'api-assets' ? ref.slice('/api/assets/'.length)
-        : ref;
+      const rel =
+        kind === 'library'
+          ? ref.slice('/library/'.length)
+          : kind === 'api-assets'
+            ? ref.slice('/api/assets/'.length)
+            : ref;
       const filePath = safeAssetPath(base, rel);
       if (filePath === undefined) {
         console.warn(`publish: refusing out-of-root asset "${ref}" for ${label}; leaving ref as-is.`);
@@ -49,7 +67,8 @@ export async function inlineAssets(
       }
       const bytes = await readMaybe(filePath);
       if (bytes !== undefined) cache.set(ref, bytes);
-      else console.warn(`publish: could not read asset "${ref}" for ${label} (looked in ${filePath}); leaving ref as-is.`);
+      else
+        console.warn(`publish: could not read asset "${ref}" for ${label} (looked in ${filePath}); leaving ref as-is.`);
     }
   }
   return rewriteAssetRefs(model, (ref) => cache.get(ref));
@@ -76,9 +95,8 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
     try {
       const modelRaw = JSON.parse(await readFile(d.modelPath, 'utf8')) as DiagramModel;
       titles.set(d.name, modelRaw.name);
-      const layout = d.layoutPath !== undefined
-        ? (JSON.parse(await readFile(d.layoutPath, 'utf8')) as LayoutOverlay)
-        : undefined;
+      const layout =
+        d.layoutPath !== undefined ? (JSON.parse(await readFile(d.layoutPath, 'utf8')) as LayoutOverlay) : undefined;
       // A hand-edited sidecar can be valid JSON and still not be a drawings
       // overlay. Publishing it would stamp shapeless data into a page that has
       // no validator of its own, so it is warned about and dropped — the page
@@ -88,7 +106,10 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
       if (d.drawingsPath !== undefined) {
         const parsed = JSON.parse(await readFile(d.drawingsPath, 'utf8')) as unknown;
         if (isDrawings(parsed)) drawings = parsed;
-        else console.warn(`publish: ignoring malformed drawings sidecar for diagram "${d.name}" (${d.drawingsPath}); the page ships without ink.`);
+        else
+          console.warn(
+            `publish: ignoring malformed drawings sidecar for diagram "${d.name}" (${d.drawingsPath}); the page ships without ink.`,
+          );
       }
 
       const inlined = await inlineAssets(modelRaw, opts, cache, `diagram "${d.name}"`);
@@ -113,13 +134,19 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
   // source that failed before its HTML wrote would otherwise get a dead link.
   const written = new Set(pages);
   const galleryPath = path.join(opts.htmlDir, 'index.html');
-  await writeFile(galleryPath, buildGallery(all
-    .filter((d) => written.has(path.join(opts.htmlDir, `${d.name}.html`)))
-    .map((d) => ({
-      name: d.name,
-      title: titles.get(d.name) ?? d.name,
-      hasImage: images.includes(path.join(opts.staticDir, `${d.name}.png`)),
-    })), opts.link !== undefined ? { link: opts.link } : {}));
+  await writeFile(
+    galleryPath,
+    buildGallery(
+      all
+        .filter((d) => written.has(path.join(opts.htmlDir, `${d.name}.html`)))
+        .map((d) => ({
+          name: d.name,
+          title: titles.get(d.name) ?? d.name,
+          hasImage: images.includes(path.join(opts.staticDir, `${d.name}.png`)),
+        })),
+      opts.link !== undefined ? { link: opts.link } : {},
+    ),
+  );
 
   return { pages, images, gallery: galleryPath };
 }

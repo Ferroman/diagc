@@ -40,9 +40,7 @@ const viewEdge = (over: Partial<ViewEdge> = {}): ViewEdge => ({
   from: 'a',
   to: 'b',
   kind: 'sync',
-  constituents: [
-    { id: 'r1', from: 'a', to: 'b', kind: 'sync', polarity: '+', fromColumn: 'fk_a', toColumn: 'id' },
-  ],
+  constituents: [{ id: 'r1', from: 'a', to: 'b', kind: 'sync', polarity: '+', fromColumn: 'fk_a', toColumn: 'id' }],
   ...over,
 });
 
@@ -217,7 +215,11 @@ describe('buildNodeData', () => {
   });
 
   it('threads the style preset and notation', () => {
-    const preset = { id: 'hand-drawn' as const, label: 'hd', rough: { roughness: 1, bowing: 1, strokeWidth: 1, fillStyle: 'solid' as const } };
+    const preset = {
+      id: 'hand-drawn' as const,
+      label: 'hd',
+      rough: { roughness: 1, bowing: 1, strokeWidth: 1, fillStyle: 'solid' as const },
+    };
     const d = buildNodeData(viewNode(), nodeCtx({ stylePreset: preset, notation: 'causal-loop' as NotationId }));
     expect(d.stylePreset).toBe(preset);
     expect(d.notation).toBe('causal-loop');
@@ -227,15 +229,18 @@ describe('buildNodeData', () => {
     const nodeColors = new Map([['n1', '#lane']]);
     expect(buildNodeData(viewNode(), nodeCtx({ nodeColors, typeColors: { '*': '#type' } })).color).toBe('#lane');
     expect(
-      buildNodeData(viewNode({ node: { id: 'n1', name: 'One', type: 't', color: '#own' } }), nodeCtx({ nodeColors })).color,
+      buildNodeData(viewNode({ node: { id: 'n1', name: 'One', type: 't', color: '#own' } }), nodeCtx({ nodeColors }))
+        .color,
     ).toBe('#own');
     expect(
-      buildNodeData(viewNode({ id: 'other', node: { id: 'other', name: 'o', type: 't' } }), nodeCtx({ nodeColors, typeColors: { '*': '#type' } }))
-        .color,
+      buildNodeData(
+        viewNode({ id: 'other', node: { id: 'other', name: 'o', type: 't' } }),
+        nodeCtx({ nodeColors, typeColors: { '*': '#type' } }),
+      ).color,
     ).toBe('#type');
   });
 
-  it('summarises the node\'s STRIDE threats, and says nothing when it carries none', () => {
+  it("summarises the node's STRIDE threats, and says nothing when it carries none", () => {
     const threatened = viewNode({
       node: {
         id: 'n1',
@@ -260,7 +265,10 @@ describe('buildNodeData', () => {
         name: 'One',
         type: 'service',
         comments: [{ id: 'c1', text: 'x' }],
-        links: [{ label: 'L', url: 'u' }, { label: 'M', url: 'v' }],
+        links: [
+          { label: 'L', url: 'u' },
+          { label: 'M', url: 'v' },
+        ],
       },
     });
     expect(buildNodeData(noted, nodeCtx()).annotations).toEqual({ comments: 1, links: 2 });
@@ -307,7 +315,7 @@ describe('buildNodeData', () => {
     expect(buildNodeDataCached(n, { ...ctx, onAddThreat: vi.fn() })).not.toBe(a);
   });
 
-  it('threads the profile\'s badges and resize axis into node data', () => {
+  it("threads the profile's badges and resize axis into node data", () => {
     const badges = new Map([['z', [{ key: 'owns:a', text: 'O·A', title: 'Owner: A' }]]]);
     const zone = viewNode({ id: 'z', node: { id: 'z', name: 'Z', type: 'plan-zone' } });
     const other = viewNode({ id: 'o', node: { id: 'o', name: 'O', type: 'service' } });
@@ -373,7 +381,10 @@ describe('buildEdgeData', () => {
     const onAdd = vi.fn();
     const onEdit = vi.fn();
     const onMove = vi.fn();
-    const d = buildEdgeData(viewEdge(), edgeCtx({ editing: true, onAddEdgeLabel: onAdd, onEditEdgeLabel: onEdit, onMoveEdgeLabel: onMove }));
+    const d = buildEdgeData(
+      viewEdge(),
+      edgeCtx({ editing: true, onAddEdgeLabel: onAdd, onEditEdgeLabel: onEdit, onMoveEdgeLabel: onMove }),
+    );
     expect(d.editableLabels).toBe(true);
     d.onAddLabel?.('x', 0.5, 'top');
     expect(onAdd).toHaveBeenCalledWith('r1', 'x', 0.5, 'top');
@@ -408,7 +419,7 @@ describe('buildEdgeData', () => {
     expect(buildEdgeData(viewEdge(), edgeCtx()).threats).toBeUndefined();
   });
 
-  it('sums its constituents\' comments; links are a node thing', () => {
+  it("sums its constituents' comments; links are a node thing", () => {
     const noted = viewEdge({
       constituents: [
         { id: 'r1', from: 'a', to: 'b', kind: 'sync', comments: [{ id: 'c1', text: 'x' }] },
@@ -439,7 +450,9 @@ describe('buildEdgeData', () => {
     d.onSetSide?.('from', 'top');
     expect(onSetSide).toHaveBeenCalledWith('r1', 'from', 'top');
     // a different active relation leaves the dots off
-    expect(buildEdgeData(viewEdge(), edgeCtx({ editing: true, pinEdgeRel: 'other', onSetEdgeSide: onSetSide })).pinsActive).toBeUndefined();
+    expect(
+      buildEdgeData(viewEdge(), edgeCtx({ editing: true, pinEdgeRel: 'other', onSetEdgeSide: onSetSide })).pinsActive,
+    ).toBeUndefined();
   });
 
   it('threads pendingAdd to the requested edge and clears it via the consumed callback', () => {
@@ -449,15 +462,23 @@ describe('buildEdgeData', () => {
     expect(d.pendingAdd).toEqual({ x: 5, y: 6 });
     d.onPendingAddConsumed?.();
     expect(consume).toHaveBeenCalledTimes(1);
-    expect(buildEdgeData(viewEdge(), edgeCtx({ editing: true, pendingAdd: { edgeId: 'other', x: 1, y: 2 } })).pendingAdd).toBeUndefined();
+    expect(
+      buildEdgeData(viewEdge(), edgeCtx({ editing: true, pendingAdd: { edgeId: 'other', x: 1, y: 2 } })).pendingAdd,
+    ).toBeUndefined();
   });
 
-  it('hands a routed plane\'s edge its route, corner, label spot and where its endpoints were laid', () => {
-    const route = [{ x: 0, y: 0 }, { x: 10, y: 10 }];
+  it("hands a routed plane's edge its route, corner, label spot and where its endpoints were laid", () => {
+    const route = [
+      { x: 0, y: 0 },
+      { x: 10, y: 10 },
+    ];
     const ctx = edgeCtx({
       routing: { corner: 28 },
       routes: new Map([['e1', route]]),
-      laidAt: new Map([['a', { x: 1, y: 2 }], ['b', { x: 3, y: 4 }]]),
+      laidAt: new Map([
+        ['a', { x: 1, y: 2 }],
+        ['b', { x: 3, y: 4 }],
+      ]),
       labelSpots: new Map([['e1', { x: 5, y: 5 }]]),
     });
     const routed = buildEdgeData(viewEdge(), ctx);
@@ -470,24 +491,41 @@ describe('buildEdgeData', () => {
   });
 
   it('carries no route on a floating plane, without one for the edge, or for an endpoint the layout never placed', () => {
-    const route = [{ x: 0, y: 0 }, { x: 10, y: 10 }];
-    const laidAt = new Map([['a', { x: 1, y: 2 }], ['b', { x: 3, y: 4 }]]);
+    const route = [
+      { x: 0, y: 0 },
+      { x: 10, y: 10 },
+    ];
+    const laidAt = new Map([
+      ['a', { x: 1, y: 2 }],
+      ['b', { x: 3, y: 4 }],
+    ]);
     expect(buildEdgeData(viewEdge(), edgeCtx({ routes: new Map([['e1', route]]), laidAt })).route).toBeUndefined();
     expect(buildEdgeData(viewEdge(), edgeCtx({ routing: { corner: 8 }, laidAt })).route).toBeUndefined();
     expect(
-      buildEdgeData(viewEdge(), edgeCtx({ routing: { corner: 8 }, routes: new Map([['e1', route]]), laidAt: new Map([['a', { x: 1, y: 2 }]]) })).route,
+      buildEdgeData(
+        viewEdge(),
+        edgeCtx({ routing: { corner: 8 }, routes: new Map([['e1', route]]), laidAt: new Map([['a', { x: 1, y: 2 }]]) }),
+      ).route,
     ).toBeUndefined();
   });
 
-  it('lays a slid placement over a sole relation\'s own label position', () => {
-    const labels = [{ id: 'legacy', text: 'calls', t: 0.5, side: 'center' as const }, { id: 'l2', text: 'x' }];
-    const moved = buildEdgeData(viewEdge({ labels }), edgeCtx({ labelMoves: { r1: { legacy: { t: 0.2, side: 'top' }, l2: { t: 0.9 } } } }));
+  it("lays a slid placement over a sole relation's own label position", () => {
+    const labels = [
+      { id: 'legacy', text: 'calls', t: 0.5, side: 'center' as const },
+      { id: 'l2', text: 'x' },
+    ];
+    const moved = buildEdgeData(
+      viewEdge({ labels }),
+      edgeCtx({ labelMoves: { r1: { legacy: { t: 0.2, side: 'top' }, l2: { t: 0.9 } } } }),
+    );
     expect(moved.labels).toEqual([
       { id: 'legacy', text: 'calls', t: 0.2, side: 'top' },
       { id: 'l2', text: 'x', t: 0.9 },
     ]);
     // another relation's moves leave this edge's array alone (cache-friendly)
-    expect(buildEdgeData(viewEdge({ labels }), edgeCtx({ labelMoves: { other: { legacy: { t: 0.1 } } } })).labels).toBe(labels);
+    expect(buildEdgeData(viewEdge({ labels }), edgeCtx({ labelMoves: { other: { legacy: { t: 0.1 } } } })).labels).toBe(
+      labels,
+    );
   });
 
   it('view mode makes labels movable only where the host listens for the move', () => {

@@ -25,7 +25,9 @@ export function bestLaneOrder(m: DiagramModel, frameId: string, plane?: string):
   const base = resolveContainmentPlane(m, undefined);
   const edges = m.containment.filter((e) => (e.plane ?? base) === planeId);
   const typeOf = new Map(m.nodes.map((n) => [n.id, n.type]));
-  const lanes = edges.filter((e) => e.parent === frameId && typeOf.get(e.child) === 'activity-lane').map((e) => e.child);
+  const lanes = edges
+    .filter((e) => e.parent === frameId && typeOf.get(e.child) === 'activity-lane')
+    .map((e) => e.child);
   if (lanes.length < 3 || lanes.length > MAX_PERMUTED_LANES) return lanes;
 
   // every node under each lane, at any depth (first claim wins on a DAG)

@@ -79,7 +79,11 @@ const BOW_MAX_OFFSET = 160;
  * direction, an edge and its reverse bow to opposite sides and visually
  * separate instead of overlapping.
  */
-function bowControlPoints(params: EdgePathParams, curvature: number, side: BowSide = 'left'): [Point, Point, Point, Point] {
+function bowControlPoints(
+  params: EdgePathParams,
+  curvature: number,
+  side: BowSide = 'left',
+): [Point, Point, Point, Point] {
   const p0: Point = { x: params.sourceX, y: params.sourceY };
   const p3: Point = { x: params.targetX, y: params.targetY };
   const dx = p3.x - p0.x;
@@ -393,13 +397,15 @@ export function roundedRoute(points: readonly Point[], radius: number): string {
  */
 export function tidyRoute(points: readonly Point[], tolerance = 10): Point[] {
   const out = points.map((p) => ({ ...p }));
-  for (let i = 1; i + 2 < out.length; ) {
+  for (let i = 1; i + 2 < out.length;) {
     const a = out[i - 1]!;
     const b = out[i]!;
     const c = out[i + 1]!;
     const d = out[i + 2]!;
-    const jogX = b.y === c.y && Math.abs(c.x - b.x) > 0 && Math.abs(c.x - b.x) <= tolerance && a.x === b.x && c.x === d.x;
-    const jogY = b.x === c.x && Math.abs(c.y - b.y) > 0 && Math.abs(c.y - b.y) <= tolerance && a.y === b.y && c.y === d.y;
+    const jogX =
+      b.y === c.y && Math.abs(c.x - b.x) > 0 && Math.abs(c.x - b.x) <= tolerance && a.x === b.x && c.x === d.x;
+    const jogY =
+      b.x === c.x && Math.abs(c.y - b.y) > 0 && Math.abs(c.y - b.y) <= tolerance && a.y === b.y && c.y === d.y;
     if (!jogX && !jogY) {
       i++;
       continue;

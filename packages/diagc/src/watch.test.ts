@@ -47,7 +47,9 @@ function stalledSave(target: string, source: string, stallMs = 2): Promise<void>
     fs.closeSync(fd);
   `;
   return new Promise((resolve, reject) => {
-    execFile(process.execPath, ['-e', script, target, source, String(stallMs)], (err) => (err ? reject(err) : resolve()));
+    execFile(process.execPath, ['-e', script, target, source, String(stallMs)], (err) =>
+      err ? reject(err) : resolve(),
+    );
   });
 }
 

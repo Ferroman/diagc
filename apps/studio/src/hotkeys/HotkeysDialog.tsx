@@ -92,7 +92,11 @@ export function HotkeysDialog({
     if (pending === null) return;
     let next = overrides;
     for (const other of pending.conflicts) {
-      next = withBinding(next, other, resolveKeymap(next)[other].filter((c) => c !== pending.chord));
+      next = withBinding(
+        next,
+        other,
+        resolveKeymap(next)[other].filter((c) => c !== pending.chord),
+      );
     }
     onChange(bind(next, pending, pending.chord));
     setPending(null);
@@ -127,7 +131,14 @@ export function HotkeysDialog({
     >
       {/* tabIndex: a click on the dialog's own padding must keep focus INSIDE it,
           or the key being recorded would be typed at the page and never seen here */}
-      <div role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" className="hotkeys-dialog" tabIndex={-1} onKeyDownCapture={onKey}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Keyboard shortcuts"
+        className="hotkeys-dialog"
+        tabIndex={-1}
+        onKeyDownCapture={onKey}
+      >
         <header className="hotkeys-head">
           <strong>Keyboard shortcuts</strong>
           <button type="button" className="chip" aria-label="Close" onClick={onClose}>
@@ -182,7 +193,9 @@ export function HotkeysDialog({
                                 type="button"
                                 className="hotkey-chip"
                                 aria-label={`Change ${fmt(c)} for ${a.label}`}
-                                {...(clash.length > 0 ? { title: `Also bound to ${labels(clash)}`, 'data-conflict': '' } : {})}
+                                {...(clash.length > 0
+                                  ? { title: `Also bound to ${labels(clash)}`, 'data-conflict': '' }
+                                  : {})}
                                 {...(isRecording(a.id, i) ? { 'data-recording': '' } : {})}
                                 onClick={() => startRecording({ id: a.id, index: i })}
                               >
@@ -192,7 +205,15 @@ export function HotkeysDialog({
                                 type="button"
                                 className="hotkey-x"
                                 aria-label={`Remove ${fmt(c)} from ${a.label}`}
-                                onClick={() => onChange(withBinding(overrides, a.id, chords.filter((_, j) => j !== i)))}
+                                onClick={() =>
+                                  onChange(
+                                    withBinding(
+                                      overrides,
+                                      a.id,
+                                      chords.filter((_, j) => j !== i),
+                                    ),
+                                  )
+                                }
                               >
                                 ×
                               </button>
@@ -209,7 +230,13 @@ export function HotkeysDialog({
                           {isRecording(a.id, chords.length) ? 'Press a key…' : '+'}
                         </button>
                         {overrides[a.id] !== undefined && (
-                          <button type="button" className="hotkey-x" aria-label={`Reset ${a.label}`} title="Back to the default" onClick={() => resetRow(a.id)}>
+                          <button
+                            type="button"
+                            className="hotkey-x"
+                            aria-label={`Reset ${a.label}`}
+                            title="Back to the default"
+                            onClick={() => resetRow(a.id)}
+                          >
                             ↺
                           </button>
                         )}
@@ -233,7 +260,12 @@ export function HotkeysDialog({
           )}
         </div>
         <footer className="hotkeys-foot">
-          <button type="button" className="chip" disabled={Object.keys(overrides).length === 0} onClick={() => void resetAll()}>
+          <button
+            type="button"
+            className="chip"
+            disabled={Object.keys(overrides).length === 0}
+            onClick={() => void resetAll()}
+          >
             Reset all to defaults
           </button>
           <span className="hotkeys-hint">Click a key to change it. Esc cancels.</span>

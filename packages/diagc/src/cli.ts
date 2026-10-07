@@ -117,7 +117,8 @@ export function parseArgs(argv: string[]): Args {
       // No fallback to the default: a trailing --out would quietly write somewhere the
       // user did not ask for, and a missing value would swallow the next flag as the dir.
       const value = argv[i + 1];
-      if (value === undefined || value.startsWith('--')) throw new BadFlagValueError('--out', 'needs a directory, e.g. --out build/artifacts');
+      if (value === undefined || value.startsWith('--'))
+        throw new BadFlagValueError('--out', 'needs a directory, e.g. --out build/artifacts');
       out = value;
       outGiven = true;
       i++;
@@ -138,7 +139,8 @@ export function parseArgs(argv: string[]): Args {
     if (arg === '--type') {
       // No fallback: a missing value would otherwise swallow the next flag as the type.
       const value = argv[i + 1];
-      if (value === undefined || value.startsWith('--')) throw new BadFlagValueError('--type', "needs a diagram type, e.g. --type c4 ('diagc guide' lists them)");
+      if (value === undefined || value.startsWith('--'))
+        throw new BadFlagValueError('--type', "needs a diagram type, e.g. --type c4 ('diagc guide' lists them)");
       type = value;
       i++;
       continue;
@@ -149,13 +151,15 @@ export function parseArgs(argv: string[]): Args {
     }
     if (arg === '--image-url') {
       const value = argv[++i] ?? '';
-      if (!value.includes('{path}')) throw new BadFlagValueError('--image-url', 'needs a {path} placeholder, e.g. https://host/pr-1/{path}');
+      if (!value.includes('{path}'))
+        throw new BadFlagValueError('--image-url', 'needs a {path} placeholder, e.g. https://host/pr-1/{path}');
       imageUrl = value;
       continue;
     }
     if (arg === '--labels') {
       const parts = (argv[++i] ?? '').split(',');
-      if (parts.length !== 2 || parts.some((p) => p.trim() === '')) throw new BadFlagValueError('--labels', 'takes two names, before and after: --labels main,#12');
+      if (parts.length !== 2 || parts.some((p) => p.trim() === ''))
+        throw new BadFlagValueError('--labels', 'takes two names, before and after: --labels main,#12');
       labels = [parts[0]!.trim(), parts[1]!.trim()];
       continue;
     }
@@ -236,7 +240,9 @@ function warnNoSources(dir = '.diagrams/src'): void {
  * the pages are always made from the artifacts this run just wrote. `--out` moves the
  * artifacts only: the pages and PNGs stay where `.gitignore`, the docs and the READMEs
  * that embed them expect to find them. */
-export function publishDirs(args: Pick<Args, 'out'>): Pick<PublishOptions, 'srcDir' | 'artifactsDir' | 'htmlDir' | 'staticDir' | 'assetsDir'> {
+export function publishDirs(
+  args: Pick<Args, 'out'>,
+): Pick<PublishOptions, 'srcDir' | 'artifactsDir' | 'htmlDir' | 'staticDir' | 'assetsDir'> {
   const srcDir = '.diagrams/src';
   return {
     srcDir,
@@ -298,7 +304,9 @@ async function main() {
     if (args.files.length === 0 && files.length === 0) warnNoSources();
     const reports: LintReport[] = [];
     for (const file of files) {
-      reports.push(...(await lintFile(file, { rootDir: '.diagrams/src', coreEntry: home.coreEntry, resolver: snap.resolver })));
+      reports.push(
+        ...(await lintFile(file, { rootDir: '.diagrams/src', coreEntry: home.coreEntry, resolver: snap.resolver })),
+      );
     }
     if (args.json) console.log(JSON.stringify(reports, null, 2));
     else for (const r of reports) console.log(formatLintReport(r));
@@ -310,7 +318,12 @@ async function main() {
     // session's mode (mirrors studio.ts's own hardcoded 'locked' session).
     if (args.updateIncludes) console.error('ignoring --update-includes: watch always runs locked');
     const dir = args.files[0] ?? '.diagrams/src';
-    if (existsSync(dir) && statSync(dir).isDirectory() && (await fg('**/*.diagram.{ts,json}', { cwd: dir })).length === 0) warnNoSources(dir);
+    if (
+      existsSync(dir) &&
+      statSync(dir).isDirectory() &&
+      (await fg('**/*.diagram.{ts,json}', { cwd: dir })).length === 0
+    )
+      warnNoSources(dir);
     const watchSnap = snapshotSession(resolveInclude, '.diagrams', 'locked');
     startWatch(dir, args.out, {
       coreEntry: home.coreEntry,
@@ -341,7 +354,11 @@ async function main() {
     if (sources.length === 0) warnNoSources(dirs.srcDir);
     for (const f of sources) {
       try {
-        await compileFile(f, dirs.artifactsDir, { rootDir: dirs.srcDir, coreEntry: home.coreEntry, resolver: snap.resolver });
+        await compileFile(f, dirs.artifactsDir, {
+          rootDir: dirs.srcDir,
+          coreEntry: home.coreEntry,
+          resolver: snap.resolver,
+        });
       } catch (e) {
         console.error(`✗ ${f}\n${errMessage(e)}`);
       }
@@ -355,9 +372,7 @@ async function main() {
     if (args.images) {
       const snapshot = await import('./publish/snapshot');
       if (snapshot.findChrome() === undefined) {
-        console.log(
-          'No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.',
-        );
+        console.log('No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.');
         images = false;
       } else {
         renderPng = snapshot.renderPng;
@@ -442,7 +457,8 @@ export function parseRange(range: string): { from: string; to?: string } {
   if (at === -1) return { from: range };
   const from = range.slice(0, at);
   const to = range.slice(at + 2);
-  if (from === '' || to === '' || to.startsWith('.')) throw new Error(`'${range}' is not a range: write <from>..<to>, or one ref to compare with the working tree`);
+  if (from === '' || to === '' || to.startsWith('.'))
+    throw new Error(`'${range}' is not a range: write <from>..<to>, or one ref to compare with the working tree`);
   return { from, to };
 }
 
@@ -476,7 +492,13 @@ async function runDiff(args: Args, home: ReturnType<typeof homePaths>): Promise<
     const afterSet = await loadDiagramSet(toLabel, afterDir, home.coreEntry);
     const diffs = compareDiagramSets(beforeSet, afterSet, args.files.slice(1));
     if (args.json) {
-      console.log(JSON.stringify({ from: fromLabel, to: toLabel, diagrams: diffs.map(({ before: _b, after: _a, ...rest }) => rest) }, null, 2));
+      console.log(
+        JSON.stringify(
+          { from: fromLabel, to: toLabel, diagrams: diffs.map(({ before: _b, after: _a, ...rest }) => rest) },
+          null,
+          2,
+        ),
+      );
     } else {
       console.log(formatDiffSummary(diffs, fromLabel, toLabel));
     }
@@ -488,7 +510,8 @@ async function runDiff(args: Args, home: ReturnType<typeof homePaths>): Promise<
     let renderPng: ((htmlPath: string, pngPath: string) => Promise<void>) | undefined;
     if (args.images) {
       const snapshot = await import('./publish/snapshot');
-      if (snapshot.findChrome() === undefined) console.error('No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.');
+      if (snapshot.findChrome() === undefined)
+        console.error('No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.');
       else renderPng = snapshot.renderPng;
     }
     const outDir = args.outGiven ? args.out : diffOutDir(from, to);
@@ -502,7 +525,9 @@ async function runDiff(args: Args, home: ReturnType<typeof homePaths>): Promise<
       ...(args.imageUrl !== undefined ? { imageUrl: args.imageUrl } : {}),
     });
     // stderr, so `--json` output stays parseable on stdout
-    console.error(`✓ ${res.pages.length} page(s)${res.images.length > 0 ? `, ${res.images.length} image(s)` : ''} -> ${outDir}`);
+    console.error(
+      `✓ ${res.pages.length} page(s)${res.images.length > 0 ? `, ${res.images.length} image(s)` : ''} -> ${outDir}`,
+    );
     console.error(`✓ side by side -> ${res.index}`);
     console.error(`✓ for an ADR -> ${res.summary}`);
     return 0;

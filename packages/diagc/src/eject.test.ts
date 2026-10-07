@@ -210,7 +210,9 @@ const ER_MODEL: DiagramModel = {
     },
   ],
   containment: [],
-  relations: [{ id: 'orders->users#0', from: 'orders', to: 'users', kind: 'fk', fromColumn: 'user_id', toColumn: 'id' }],
+  relations: [
+    { id: 'orders->users#0', from: 'orders', to: 'users', kind: 'fk', fromColumn: 'user_id', toColumn: 'id' },
+  ],
   layers: [],
   planes: [],
 };
@@ -223,10 +225,7 @@ const RICH_MODEL: DiagramModel = {
     {
       id: 'n',
       name: 'ab',
-      rich: [
-        { text: 'a', bold: true },
-        { text: 'b' },
-      ],
+      rich: [{ text: 'a', bold: true }, { text: 'b' }],
       textAlign: 'center',
       fontScale: 'lg',
     },

@@ -4,7 +4,11 @@ import { parseFence } from './fence';
 describe('parseFence', () => {
   it('parses a full fence', () => {
     expect(parseFence('name: aws\nplane: deploy\nlayers: sec, ops\nroot: vpc\nheight: 300')).toEqual({
-      name: 'aws', plane: 'deploy', layers: ['sec', 'ops'], root: 'vpc', height: 300,
+      name: 'aws',
+      plane: 'deploy',
+      layers: ['sec', 'ops'],
+      root: 'vpc',
+      height: 300,
     });
   });
   it('requires name and defaults height', () => {
@@ -17,12 +21,15 @@ describe('parseFence', () => {
   });
   it('skips blank lines and # comments', () => {
     expect(parseFence('# a diagram\nname: x\n\n# trailing comment\nheight: 300')).toEqual({
-      name: 'x', height: 300,
+      name: 'x',
+      height: 300,
     });
   });
   it('drops the stray empty entry a trailing comma would otherwise leave in layers', () => {
     expect(parseFence('name: x\nlayers: sec, ops,')).toEqual({
-      name: 'x', layers: ['sec', 'ops'], height: 480,
+      name: 'x',
+      layers: ['sec', 'ops'],
+      height: 480,
     });
   });
 });

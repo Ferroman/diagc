@@ -73,7 +73,14 @@ const techEntries: LibraryEntry[] = [
   techIcon('messaging', 'celery', 'Celery', ['task queue', 'worker', 'jobs', 'python', 'background']),
   techIcon('messaging', 'flink', 'Apache Flink', ['flink', 'stream processing', 'streaming', 'realtime']),
   techIcon('messaging', 'spark', 'Apache Spark', ['spark', 'batch', 'etl', 'big data', 'processing']),
-  techIcon('messaging', 'airflow', 'Apache Airflow', ['airflow', 'dag', 'etl', 'orchestration', 'pipeline', 'scheduler']),
+  techIcon('messaging', 'airflow', 'Apache Airflow', [
+    'airflow',
+    'dag',
+    'etl',
+    'orchestration',
+    'pipeline',
+    'scheduler',
+  ]),
 
   techIcon('data', 'postgresql', 'PostgreSQL', ['database', 'sql', 'relational', 'postgres', 'rdbms']),
   techIcon('data', 'mysql', 'MySQL', ['database', 'sql', 'relational', 'rdbms']),
@@ -151,7 +158,14 @@ const techEntries: LibraryEntry[] = [
   techIcon('identity', 'auth0', 'Auth0', ['auth', 'authentication', 'identity', 'idp', 'oauth', 'sso']),
   techIcon('identity', 'okta', 'Okta', ['auth', 'identity', 'idp', 'sso', 'oidc', 'saml']),
   // Hand-added asset, not produced by the build script.
-  techIcon('identity', 'microsoft-entra-id', 'Microsoft Entra ID', ['azure ad', 'aad', 'auth', 'identity', 'idp', 'sso']),
+  techIcon('identity', 'microsoft-entra-id', 'Microsoft Entra ID', [
+    'azure ad',
+    'aad',
+    'auth',
+    'identity',
+    'idp',
+    'sso',
+  ]),
   techIcon('identity', 'keycloak', 'Keycloak', ['auth', 'identity', 'idp', 'sso', 'oidc', 'saml']),
 
   techIcon('saas', 'stripe', 'Stripe', ['payments', 'billing', 'checkout']),
@@ -260,6 +274,39 @@ const k8sEntries: LibraryEntry[] = [
  * Kubernetes icons, then the full AWS, Azure and Google Cloud icon sets — the panel renders
  * categories in this order. */
 export const BUNDLED_LIBRARY: Library = {
-  categories: [...basicsCategories, ...C4_PACK.categories, ...ACTIVITY_PACK.categories, ...SECOND_ORDER_PACK.categories, ...FISHBONE_PACK.categories, ...THREAT_MODEL_PACK.categories, ...DEPLOYMENT_PACK.categories, ...PLAN_PACK.categories, ...DATA_PACK.categories, ...shapesCategories, ...techCategories, ...k8sCategories, ...AWS_PACK.categories, ...AZURE_PACK.categories, ...GCP_PACK.categories],
-  entries: [...basicsEntries, ...C4_PACK.entries, ...ACTIVITY_PACK.entries, ...SECOND_ORDER_PACK.entries, ...FISHBONE_PACK.entries, ...THREAT_MODEL_PACK.entries, ...DEPLOYMENT_PACK.entries, ...PLAN_PACK.entries, ...DATA_PACK.entries, ...shapesEntries, ...techEntries, ...k8sEntries, ...AWS_CONTAINER_ENTRIES, ...AWS_PACK.entries, ...AZURE_PACK.entries, ...GCP_PACK.entries],
+  categories: [
+    ...basicsCategories,
+    ...C4_PACK.categories,
+    ...ACTIVITY_PACK.categories,
+    ...SECOND_ORDER_PACK.categories,
+    ...FISHBONE_PACK.categories,
+    ...THREAT_MODEL_PACK.categories,
+    ...DEPLOYMENT_PACK.categories,
+    ...PLAN_PACK.categories,
+    ...DATA_PACK.categories,
+    ...shapesCategories,
+    ...techCategories,
+    ...k8sCategories,
+    ...AWS_PACK.categories,
+    ...AZURE_PACK.categories,
+    ...GCP_PACK.categories,
+  ],
+  entries: [
+    ...basicsEntries,
+    ...C4_PACK.entries,
+    ...ACTIVITY_PACK.entries,
+    ...SECOND_ORDER_PACK.entries,
+    ...FISHBONE_PACK.entries,
+    ...THREAT_MODEL_PACK.entries,
+    ...DEPLOYMENT_PACK.entries,
+    ...PLAN_PACK.entries,
+    ...DATA_PACK.entries,
+    ...shapesEntries,
+    ...techEntries,
+    ...k8sEntries,
+    ...AWS_CONTAINER_ENTRIES,
+    ...AWS_PACK.entries,
+    ...AZURE_PACK.entries,
+    ...GCP_PACK.entries,
+  ],
 };

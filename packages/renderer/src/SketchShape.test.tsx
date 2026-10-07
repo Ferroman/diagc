@@ -7,7 +7,8 @@ import { STYLE_PRESETS, stylePreset } from './stylePresets';
 const HATCHED = STYLE_PRESETS.filter((p) => p.rough !== undefined && p.rough.fillStyle !== 'solid');
 
 const draw = (presetId: string, extra: Partial<Parameters<typeof SketchShape>[0]> = {}) =>
-  render(<SketchShape id="n1" kind="box" width={160} height={80} preset={stylePreset(presetId)} {...extra} />).container;
+  render(<SketchShape id="n1" kind="box" width={160} height={80} preset={stylePreset(presetId)} {...extra} />)
+    .container;
 
 describe('SketchShape', () => {
   it('has hatched presets to guard (or the cases below prove nothing)', () => {

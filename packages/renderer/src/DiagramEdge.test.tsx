@@ -422,10 +422,8 @@ describe('DiagramEdge', () => {
   });
 
   describe('causal-loop-diagram polarity colour', () => {
-    const strokeOf = (c: HTMLElement) =>
-      c.querySelector('path.react-flow__edge-path')?.getAttribute('style') ?? '';
-    const glyphFill = (c: HTMLElement) =>
-      (c.querySelector('.dg-polarity') as SVGTextElement | null)?.style.fill ?? '';
+    const strokeOf = (c: HTMLElement) => c.querySelector('path.react-flow__edge-path')?.getAttribute('style') ?? '';
+    const glyphFill = (c: HTMLElement) => (c.querySelector('.dg-polarity') as SVGTextElement | null)?.style.fill ?? '';
 
     it('strokes a "+" link and its glyph with the positive token', () => {
       const { container } = renderEdge({ notation: 'causal-loop', polarity: '+' });
@@ -468,7 +466,9 @@ describe('DiagramEdge', () => {
       const { container } = renderEdge({ notationColor: '#123456' });
       expect(container.querySelector('path.react-flow__edge-path')?.getAttribute('style') ?? '').toContain('#123456');
       const tinted = renderEdge({ notationColor: '#123456', tint: '#abcdef' });
-      expect(tinted.container.querySelector('path.react-flow__edge-path')?.getAttribute('style') ?? '').toContain('#abcdef');
+      expect(tinted.container.querySelector('path.react-flow__edge-path')?.getAttribute('style') ?? '').toContain(
+        '#abcdef',
+      );
     });
 
     it('endMarker none draws no arrowhead', () => {
@@ -517,14 +517,7 @@ describe('DiagramEdge', () => {
       return render(
         <ReactFlowProvider>
           <svg>
-            <DiagramEdge
-              id="e1"
-              source="a"
-              target="b"
-              {...facingCoords}
-              {...facingPositions}
-              data={data}
-            />
+            <DiagramEdge id="e1" source="a" target="b" {...facingCoords} {...facingPositions} data={data} />
           </svg>
         </ReactFlowProvider>,
       );
@@ -605,7 +598,12 @@ describe('DiagramEdge', () => {
       // At the path's start that orientation turns the marker's +x axis back into the
       // source node, and nodes paint over edges: whatever of the shape lies past refX
       // is hidden. So the foot's open end is what must sit on the table's border.
-      const xs = [...start.querySelector('path')!.getAttribute('d')!.matchAll(/[ML](-?[\d.]+),/g)].map((m) => Number(m[1]));
+      const xs = [
+        ...start
+          .querySelector('path')!
+          .getAttribute('d')!
+          .matchAll(/[ML](-?[\d.]+),/g),
+      ].map((m) => Number(m[1]));
       expect(xs.length).toBeGreaterThan(0);
       expect(Math.max(...xs)).toBeLessThanOrEqual(Number(start.getAttribute('refX')));
     });
@@ -724,7 +722,8 @@ describe('DiagramEdge', () => {
     it('under a NoteStateContext a sole-relation chip toggles its relation’s bubble; a bundle’s stays passive', () => {
       const toggle = vi.fn();
       const state: NoteState = { isOpen: (key) => key === 'relation:r1', toggle, placeChip: vi.fn() };
-      const wrap = (ui: React.ReactElement) => render(<NoteStateContext.Provider value={state}>{ui}</NoteStateContext.Provider>);
+      const wrap = (ui: React.ReactElement) =>
+        render(<NoteStateContext.Provider value={state}>{ui}</NoteStateContext.Provider>);
       const sole = wrap(edgeElement({ kind: 'data-flow', threats: { open: 1, total: 1 }, threatRelation: 'r1' }));
       const chip = sole.baseElement.querySelector('button.dg-edge-threat') as HTMLButtonElement;
       expect(chip.getAttribute('aria-expanded')).toBe('true');
@@ -740,14 +739,20 @@ describe('DiagramEdge', () => {
     it('reports where its chip is drawn, so the relation’s bubble can hang off it; a bundle reports nothing', () => {
       const placeChip = vi.fn();
       const state: NoteState = { isOpen: () => false, toggle: vi.fn(), placeChip };
-      const wrap = (ui: React.ReactElement) => render(<NoteStateContext.Provider value={state}>{ui}</NoteStateContext.Provider>);
+      const wrap = (ui: React.ReactElement) =>
+        render(<NoteStateContext.Provider value={state}>{ui}</NoteStateContext.Provider>);
       const sole = wrap(edgeElement({ kind: 'data-flow', threats: { open: 1, total: 1 }, threatRelation: 'r1' }));
       // the spot is the chip's own transform — the two cannot disagree
       const chip = sole.baseElement.querySelector('button.dg-edge-threat') as HTMLElement;
       const m = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(chip.style.transform)!;
       // ...the side it was pushed to, a unit vector, and the line itself,
       // sampled end to end so the bubble can keep off it
-      expect(placeChip).toHaveBeenCalledWith('r1', { x: Number(m[1]), y: Number(m[2]) }, expect.anything(), expect.anything());
+      expect(placeChip).toHaveBeenCalledWith(
+        'r1',
+        { x: Number(m[1]), y: Number(m[2]) },
+        expect.anything(),
+        expect.anything(),
+      );
       const away = placeChip.mock.calls[0]![2] as { x: number; y: number };
       expect(Math.hypot(away.x, away.y)).toBeCloseTo(1, 5);
       const line = placeChip.mock.calls[0]![3] as { x: number; y: number }[];
@@ -777,7 +782,8 @@ describe('DiagramEdge', () => {
       const toggle = vi.fn();
       const placeChip = vi.fn();
       const state: NoteState = { isOpen: () => false, toggle, placeChip };
-      const wrap = (ui: React.ReactElement) => render(<NoteStateContext.Provider value={state}>{ui}</NoteStateContext.Provider>);
+      const wrap = (ui: React.ReactElement) =>
+        render(<NoteStateContext.Provider value={state}>{ui}</NoteStateContext.Provider>);
       const { baseElement } = wrap(
         edgeElement({ kind: 'data-flow', annotations: { comments: 1, links: 0 }, threatRelation: 'r1' }),
       );
@@ -791,7 +797,14 @@ describe('DiagramEdge', () => {
       // unmeasured, unrouted, notation-less edge (see DiagramEdge).
       const curve = shapeCurve(
         'curved',
-        { sourceX: 0, sourceY: 0, targetX: 100, targetY: 100, sourcePosition: Position.Bottom, targetPosition: Position.Top },
+        {
+          sourceX: 0,
+          sourceY: 0,
+          targetX: 100,
+          targetY: 100,
+          sourcePosition: Position.Bottom,
+          targetPosition: Position.Top,
+        },
         notationProfile(undefined).edgeCurvature,
       );
       const frame = markFrame(curve, 0.25);

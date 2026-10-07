@@ -37,7 +37,9 @@ describe('createNodeAt', () => {
 
   it('generates a unique id against existing nodes', () => {
     const m = twoPlanes();
-    expect(createNodeAt(m, { kind: 'node', plane: undefined, borrowsContainment: false, parentId: undefined }).id).toBe('node');
+    expect(createNodeAt(m, { kind: 'node', plane: undefined, borrowsContainment: false, parentId: undefined }).id).toBe(
+      'node',
+    );
   });
 });
 

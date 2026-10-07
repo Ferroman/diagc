@@ -32,13 +32,7 @@ const C4 = {
   node: '#666666',
 } as const;
 
-const box = (
-  category: string,
-  id: string,
-  name: string,
-  color: string,
-  keywords: string[],
-): LibraryEntry => ({
+const box = (category: string, id: string, name: string, color: string, keywords: string[]): LibraryEntry => ({
   id,
   category,
   name,
@@ -99,19 +93,11 @@ const entries: LibraryEntry[] = [
   box('c4-containers', 'c4-container-mobile', 'Mobile App', C4.container, ['ios', 'android', 'phone', 'client']),
   box('c4-containers', 'c4-container-desktop', 'Desktop App', C4.container, ['client', 'native', 'electron']),
   box('c4-containers', 'c4-container-api', 'API Application', C4.container, ['api', 'rest', 'graphql', 'backend']),
-  box('c4-containers', 'c4-container-function', 'Serverless Function', C4.container, [
-    'lambda',
-    'faas',
-    'serverless',
-  ]),
+  box('c4-containers', 'c4-container-function', 'Serverless Function', C4.container, ['lambda', 'faas', 'serverless']),
   box('c4-containers', 'c4-container-cli', 'Console / CLI', C4.container, ['cli', 'terminal', 'job', 'script']),
   box('c4-containers', 'c4-container-db', 'Database', C4.container, ['sql', 'postgres', 'store', 'rdbms']),
   box('c4-containers', 'c4-container-blob', 'Blob Store', C4.container, ['object storage', 'files', 's3', 'bucket']),
-  box('c4-containers', 'c4-container-search', 'Search Index', C4.container, [
-    'elasticsearch',
-    'opensearch',
-    'lucene',
-  ]),
+  box('c4-containers', 'c4-container-search', 'Search Index', C4.container, ['elasticsearch', 'opensearch', 'lucene']),
   box('c4-containers', 'c4-container-queue', 'Message Bus', C4.container, ['queue', 'topic', 'kafka', 'events']),
   box('c4-containers', 'c4-container-boundary', 'Container Boundary', C4.boundary, ['boundary', 'scope']),
 

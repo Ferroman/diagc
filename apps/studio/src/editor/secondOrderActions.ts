@@ -17,7 +17,11 @@ import {
  * The new node inherits `fromId`'s plane (createNodeAt's scoping): a shared
  * consequence would otherwise leak into every plane a decision does not.
  */
-export function thenWhat(model: DiagramModel, fromId: string, valence: Valence): { command: EditorCommand; id: string } | null {
+export function thenWhat(
+  model: DiagramModel,
+  fromId: string,
+  valence: Valence,
+): { command: EditorCommand; id: string } | null {
   const from = model.nodes.find((n) => n.id === fromId);
   if (from === undefined || !isSecondOrderNode(from)) return null;
   const id = uniqueNodeId(model, 'consequence');
@@ -26,7 +30,15 @@ export function thenWhat(model: DiagramModel, fromId: string, valence: Valence):
     command: {
       type: 'batch',
       commands: [
-        { type: 'add-node', node: { id, name: '', type: consequenceTypeOf(valence), ...(from.plane !== undefined ? { plane: from.plane } : {}) } },
+        {
+          type: 'add-node',
+          node: {
+            id,
+            name: '',
+            type: consequenceTypeOf(valence),
+            ...(from.plane !== undefined ? { plane: from.plane } : {}),
+          },
+        },
         { type: 'add-relation', from: fromId, to: id, opts: { kind: SO_LEADS_TO_KIND } },
       ],
     },
@@ -37,5 +49,11 @@ export function thenWhat(model: DiagramModel, fromId: string, valence: Valence):
  * keeps nodes of its own (createNodeAt's scoping); undefined adds a shared node. */
 export function addDecision(model: DiagramModel, plane?: string): { command: EditorCommand; id: string } {
   const id = uniqueNodeId(model, 'decision');
-  return { id, command: { type: 'add-node', node: { id, name: '', type: SO_DECISION_TYPE, ...(plane !== undefined ? { plane } : {}) } } };
+  return {
+    id,
+    command: {
+      type: 'add-node',
+      node: { id, name: '', type: SO_DECISION_TYPE, ...(plane !== undefined ? { plane } : {}) },
+    },
+  };
 }

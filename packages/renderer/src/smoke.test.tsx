@@ -13,7 +13,12 @@ describe('renderer testing environment', () => {
 
   it('renders a two-table FK diagram', async () => {
     const b = model('erd');
-    const a = b.table('a', { columns: [{ name: 'id', pk: true }, { name: 'b_id', fk: true }] });
+    const a = b.table('a', {
+      columns: [
+        { name: 'id', pk: true },
+        { name: 'b_id', fk: true },
+      ],
+    });
     const bb = b.table('b', { columns: [{ name: 'id', pk: true }] });
     b.fk(a, 'b_id', bb);
     render(<DiagramView model={b.toJSON()} />);

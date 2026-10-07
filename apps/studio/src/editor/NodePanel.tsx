@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { DiagramModel, EditorCommand, FontScale, NotationId, TextAlign } from '@diagc/core';
-import { allowedParentTypes, CASCADE_DELETE_TYPES, IMAGE_REF, LIBRARY_IMAGE_REF, PLAN_NOTATION, PLAN_TYPES, TM_NOTATION, strideFor } from '@diagc/core';
+import {
+  allowedParentTypes,
+  CASCADE_DELETE_TYPES,
+  IMAGE_REF,
+  LIBRARY_IMAGE_REF,
+  PLAN_NOTATION,
+  PLAN_TYPES,
+  TM_NOTATION,
+  strideFor,
+} from '@diagc/core';
 import { BUILTIN_ICON_IDS } from '@diagc/icons';
 import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { CommentsSection } from './CommentsSection';
@@ -225,7 +234,11 @@ export function NodePanel({
   const commitType = () => {
     const trimmed = type.trim();
     if (trimmed === (node.type ?? '')) return;
-    const typeCmd: EditorCommand = { type: 'set-node-details', id: nodeId, details: { type: trimmed === '' ? null : trimmed } };
+    const typeCmd: EditorCommand = {
+      type: 'set-node-details',
+      id: nodeId,
+      details: { type: trimmed === '' ? null : trimmed },
+    };
     // Retyping into plan-zone/plan-event with no dates would otherwise fail
     // save with plan-missing — seed them the way a canvas drop does, batched
     // with the retype so undo reverts both together.
@@ -457,9 +470,7 @@ export function NodePanel({
 
       <ColorRow
         value={node.color ?? ''}
-        onChange={(v) =>
-          onCommand({ type: 'set-node-details', id: nodeId, details: { color: v === '' ? null : v } })
-        }
+        onChange={(v) => onCommand({ type: 'set-node-details', id: nodeId, details: { color: v === '' ? null : v } })}
       />
 
       <ColorRow
@@ -474,13 +485,17 @@ export function NodePanel({
         label="Align"
         value={node.textAlign ?? ''}
         options={ALIGN_OPTIONS}
-        onChange={(v) => onCommand({ type: 'set-node-details', id: nodeId, details: { textAlign: v === '' ? null : v } })}
+        onChange={(v) =>
+          onCommand({ type: 'set-node-details', id: nodeId, details: { textAlign: v === '' ? null : v } })
+        }
       />
       <OptionRow
         label="Size"
         value={node.fontScale ?? ''}
         options={SIZE_OPTIONS}
-        onChange={(v) => onCommand({ type: 'set-node-details', id: nodeId, details: { fontScale: v === '' ? null : v } })}
+        onChange={(v) =>
+          onCommand({ type: 'set-node-details', id: nodeId, details: { fontScale: v === '' ? null : v } })
+        }
       />
 
       <label className="field">
@@ -666,9 +681,7 @@ export function NodePanel({
         node.metadata?.start !== undefined ||
         node.metadata?.end !== undefined ||
         node.metadata?.at !== undefined) &&
-        PLAN_TYPES.has(node.type ?? '') && (
-          <PlanSection model={model} node={node} onCommand={onCommand} />
-        )}
+        PLAN_TYPES.has(node.type ?? '') && <PlanSection model={model} node={node} onCommand={onCommand} />}
 
       <section className="panel-section">
         <h3>Memberships</h3>

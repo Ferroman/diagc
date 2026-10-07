@@ -38,7 +38,18 @@ describe('icon registry', () => {
   });
 
   it('has the deployment glyphs', () => {
-    for (const id of ['environment', 'region', 'zone', 'network', 'subnet-public', 'subnet-private', 'load-balancer', 'gateway', 'firewall', 'internet']) {
+    for (const id of [
+      'environment',
+      'region',
+      'zone',
+      'network',
+      'subnet-public',
+      'subnet-private',
+      'load-balancer',
+      'gateway',
+      'firewall',
+      'internet',
+    ]) {
       expect(createIconRegistry().resolve(id)).toBeDefined();
     }
   });

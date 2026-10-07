@@ -7,8 +7,12 @@ import { compileFile } from './compile';
 
 const coreEntry = fileURLToPath(new URL('../../core/src/index.ts', import.meta.url));
 let tmp: string;
-beforeEach(async () => { tmp = await mkdtemp(path.join(os.tmpdir(), 'diagc-alias-')); });
-afterEach(async () => { await rm(tmp, { recursive: true, force: true }); });
+beforeEach(async () => {
+  tmp = await mkdtemp(path.join(os.tmpdir(), 'diagc-alias-'));
+});
+afterEach(async () => {
+  await rm(tmp, { recursive: true, force: true });
+});
 
 describe('compileFile with coreEntry alias', () => {
   it('compiles a .diagram.ts that imports @diagc/core from outside the monorepo', async () => {

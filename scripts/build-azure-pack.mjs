@@ -92,7 +92,7 @@ const ALIASES = {
   'data-factories': ['adf', 'etl', 'pipeline'],
   'azure-databricks': ['databricks', 'spark'],
   'dns-zones': ['dns'],
-  'firewalls': ['firewall', 'network security'],
+  firewalls: ['firewall', 'network security'],
 };
 
 /** `02354-icon-service-Applens.svg` -> `Applens`. A few names carry a stray
@@ -109,7 +109,13 @@ function categorySlug(folder) {
 }
 
 function categoryTitle(slug) {
-  return CATEGORY_TITLES[slug] ?? slug.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+  return (
+    CATEGORY_TITLES[slug] ??
+    slug
+      .split('-')
+      .map((w) => w[0].toUpperCase() + w.slice(1))
+      .join(' ')
+  );
 }
 
 async function main() {
@@ -134,7 +140,12 @@ async function main() {
       if (seen.has(slug)) continue;
       seen.add(slug);
       await writeFile(path.join(OUT, `${slug}.svg`), minifySvg(await readFile(file, 'utf8')));
-      rows.push({ category: categorySlug(folderOf(file)), slug, name: displayName(core), keywords: ALIASES[slug] ?? [] });
+      rows.push({
+        category: categorySlug(folderOf(file)),
+        slug,
+        name: displayName(core),
+        keywords: ALIASES[slug] ?? [],
+      });
     }
     rows.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
 

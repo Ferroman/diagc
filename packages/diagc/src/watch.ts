@@ -2,9 +2,7 @@ import { watch as chokidarWatch } from 'chokidar';
 import { errMessage, type IncludeResolver } from '@diagc/core';
 import { compileFile } from './compile';
 
-export type WatchEvent =
-  | { file: string; ok: true; artifact: string }
-  | { file: string; ok: false; error: string };
+export type WatchEvent = { file: string; ok: true; artifact: string } | { file: string; ok: false; error: string };
 
 /** Human-readable rendering of a compile event, shared by the one-shot
  * `compile` command, the `watch` command's live log, and the `studio` watcher

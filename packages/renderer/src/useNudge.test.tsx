@@ -26,7 +26,15 @@ function setup(over: Partial<NudgeInput> = {}) {
     const stopPropagation = vi.fn();
     act(() =>
       hook.result.current.onKeyDownCapture({
-        key, target, preventDefault, stopPropagation, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false, ...init,
+        key,
+        target,
+        preventDefault,
+        stopPropagation,
+        shiftKey: false,
+        metaKey: false,
+        ctrlKey: false,
+        altKey: false,
+        ...init,
       } as never),
     );
     return { preventDefault, stopPropagation };
@@ -107,7 +115,10 @@ describe('useNudge', () => {
     // a notation fixes some nodes in place (a fishbone's): what a drag may not
     // move, an arrow key may not either — and it must never reach the commit
     const { press, applyMoves, commit, nodesRef } = setup();
-    nodesRef.current = [...nodesRef.current, { id: 'fixed', position: { x: 90, y: 90 }, data: {}, selected: true, draggable: false }];
+    nodesRef.current = [
+      ...nodesRef.current,
+      { id: 'fixed', position: { x: 90, y: 90 }, data: {}, selected: true, draggable: false },
+    ];
     press('ArrowRight');
     expect(applyMoves).toHaveBeenLastCalledWith({ a: { x: 15, y: 10 } });
     act(() => {

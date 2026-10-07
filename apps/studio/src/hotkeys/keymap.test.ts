@@ -93,7 +93,12 @@ describe('parseOverrides', () => {
     expect(parseOverrides('"x"')).toBeNull();
   });
   it('keeps known ids with string-array values and drops the rest', () => {
-    const raw = JSON.stringify({ 'edit.add-node': ['A'], 'retired.action': ['B'], 'tool.pen': 'P', 'tool.eraser': [1] });
+    const raw = JSON.stringify({
+      'edit.add-node': ['A'],
+      'retired.action': ['B'],
+      'tool.pen': 'P',
+      'tool.eraser': [1],
+    });
     expect(parseOverrides(raw)).toEqual({ 'edit.add-node': ['A'] });
   });
 });

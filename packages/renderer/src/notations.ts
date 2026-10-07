@@ -1,4 +1,28 @@
-import { consequenceOrders, DEPLOY_ZONE_TYPES, GIT_STAGE_TYPE, PLAN_EVENT_TYPE, PLAN_NOTATION, PLAN_ROLES, PLAN_ZONE_TYPE, TM_BOUNDARY_TYPE, isPlanActor, isPlanEvent, isPlanRole, isPlanZone, rolesOf, valenceOf, type CompiledView, type DeployZoneType, type DiagramModel, type DiagramNode, type NotationId, type Polarity, type PlanRole, type Size, type ViewEdge } from '@diagc/core';
+import {
+  consequenceOrders,
+  DEPLOY_ZONE_TYPES,
+  GIT_STAGE_TYPE,
+  PLAN_EVENT_TYPE,
+  PLAN_NOTATION,
+  PLAN_ROLES,
+  PLAN_ZONE_TYPE,
+  TM_BOUNDARY_TYPE,
+  isPlanActor,
+  isPlanEvent,
+  isPlanRole,
+  isPlanZone,
+  rolesOf,
+  valenceOf,
+  type CompiledView,
+  type DeployZoneType,
+  type DiagramModel,
+  type DiagramNode,
+  type NotationId,
+  type Polarity,
+  type PlanRole,
+  type Size,
+  type ViewEdge,
+} from '@diagc/core';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';

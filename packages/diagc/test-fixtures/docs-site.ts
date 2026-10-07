@@ -26,7 +26,9 @@ export const loadDocsPages = async (root: string): Promise<DocsPages> =>
 
 const walk = (dir: string): string[] =>
   existsSync(dir)
-    ? readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]))
+    ? readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+        e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)],
+      )
     : [];
 
 /** The repository's docs as the renderer takes them: a path under docs/ -> its Markdown. */

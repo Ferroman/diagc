@@ -76,13 +76,31 @@ To change what the renderer draws when you use `DiagramView` yourself inside the
 ## Before you open a pull request
 
 ```bash
-pnpm test         # vitest, whole repo
-pnpm typecheck    # seven chained tsc projects
-pnpm lint         # eslint
+pnpm test           # vitest, whole repo
+pnpm typecheck      # seven chained tsc projects
+pnpm lint           # eslint
+pnpm format         # prettier, writes; CI runs pnpm format:check
 ```
 
-CI runs the same three on every pull request, plus the release build (`pnpm build:dist`) —
-running them first saves a round trip.
+CI runs the same on every pull request, plus the release build (`pnpm build:dist`) —
+running them first saves a round trip. Prettier formats TypeScript, JavaScript and CSS;
+Markdown, JSON and everything under `.diagrams/` are left as written.
+
+### Rebasing over the reformat
+
+The whole repository was reformatted in one commit, `style: format with Prettier`; the
+commit before it adds Prettier and its settings. A branch that was open across it rebases
+like this, with `<reformat>` being that `style:` commit
+(`git log main --format=%h --grep='^style: format with Prettier'`):
+
+```bash
+git rebase <reformat>^              # catch up to just before the reformat
+pnpm install                        # brings in Prettier
+pnpm format && git commit -am "style: format"
+git rebase <reformat> -X theirs     # conflicts are formatting only: your side wins, your style commit re-formats it
+pnpm format                         # amend if anything changed
+git rebase main                     # the commits after the reformat
+```
 
 ## Conventions worth knowing
 

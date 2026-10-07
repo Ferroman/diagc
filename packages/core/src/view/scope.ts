@@ -36,7 +36,7 @@ export function scopeToRoot(m: DiagramModel, h: HierarchyIndex, root: string): S
   // the drill root and everything containing it (first-parent chain) — a stub
   // representing a box that CONTAINS the frame would say nothing about the edge
   const rootAncestors = new Set<string>([root]);
-  for (let cur = root; ; ) {
+  for (let cur = root; ;) {
     const p = (h.parentsOf.get(cur) ?? [])[0];
     if (p === undefined || rootAncestors.has(p)) break;
     rootAncestors.add(p);
@@ -86,9 +86,7 @@ export function scopeToRoot(m: DiagramModel, h: HierarchyIndex, root: string): S
   // The subtree is already within one resolved plane; the synthetic model is
   // plane-less, so strip each node's `plane` scope (else buildHierarchy would
   // filter a plane-scoped node out when no plane is active).
-  const nodes = m.nodes
-    .filter((n) => sub.has(n.id))
-    .map(({ plane: _plane, ...rest }) => rest);
+  const nodes = m.nodes.filter((n) => sub.has(n.id)).map(({ plane: _plane, ...rest }) => rest);
   // a stub keeps the represented node's visual identity (type/shape/color/icon)
   // so it renders like the original entity; the renderer adds the ghost look
   for (const [stubId, rep] of externals) {

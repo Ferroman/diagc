@@ -64,15 +64,26 @@
   --shadow-window: 0 32px 64px -28px rgba(0, 0, 0, 0.75), 0 10px 24px -14px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
-:root[data-theme='light'] { color-scheme: light; }
+:root[data-theme='light'] {
+  color-scheme: light;
+}
 
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 64px;
+}
 /* Behind the hero: the studio canvas's dot grid under a glow, both fading into the page
    colour. The top layer is that fade, and it is solid from 640px down. */
 body {
   margin: 0;
-  font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font:
+    16px/1.55 system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
   color: var(--text);
   background:
     linear-gradient(to bottom, transparent, var(--bg) 640px),
@@ -80,137 +91,615 @@ body {
     radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 1.6px) 0 0 / 22px 22px,
     var(--bg);
 }
-[hidden] { display: none !important; }
-a { color: var(--accent); }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-img { max-width: 100%; height: auto; }
-code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
-code { background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; white-space: nowrap; }
-pre { background: var(--code-bg); padding: 16px; border-radius: 8px; overflow-x: auto; margin: 0; }
-pre code { background: none; padding: 0; white-space: inherit; }
-h1 { font-size: clamp(34px, 5.2vw, 54px); font-weight: 800; line-height: 1.06; letter-spacing: -0.03em; margin: 0 0 18px; }
-h2 { font-size: clamp(26px, 3.4vw, 34px); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 24px; }
-h2::before { content: ''; display: block; width: 40px; height: 4px; margin-bottom: 16px; border-radius: 2px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
-h3 { font-size: 18px; letter-spacing: -0.01em; margin: 0 0 8px; }
-p { margin: 0 0 12px; }
+[hidden] {
+  display: none !important;
+}
+a {
+  color: var(--accent);
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+img {
+  max-width: 100%;
+  height: auto;
+}
+code,
+pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+code {
+  background: var(--code-bg);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+pre {
+  background: var(--code-bg);
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0;
+}
+pre code {
+  background: none;
+  padding: 0;
+  white-space: inherit;
+}
+h1 {
+  font-size: clamp(34px, 5.2vw, 54px);
+  font-weight: 800;
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  margin: 0 0 18px;
+}
+h2 {
+  font-size: clamp(26px, 3.4vw, 34px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 24px;
+}
+h2::before {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin-bottom: 16px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+h3 {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+}
+p {
+  margin: 0 0 12px;
+}
 
-.nav { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 24px; padding: 12px max(16px, calc((100vw - 1120px) / 2)); background: var(--nav-bg); -webkit-backdrop-filter: saturate(1.6) blur(12px); backdrop-filter: saturate(1.6) blur(12px); border-bottom: 1px solid var(--border); }
-.brand { font-weight: 800; font-size: 19px; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
-.nav nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; }
-.nav nav a { color: var(--text); text-decoration: none; font-size: 15px; transition: color 0.15s ease, border-color 0.15s ease; }
-.nav nav a:hover { color: var(--accent); }
-.nav nav a:last-of-type { padding: 3px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
-.nav nav a:last-of-type:hover { border-color: var(--ring); }
-#theme-switch { padding: 3px 12px; border-radius: 999px; font-size: 14px; }
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 24px;
+  padding: 12px max(16px, calc((100vw - 1120px) / 2));
+  background: var(--nav-bg);
+  -webkit-backdrop-filter: saturate(1.6) blur(12px);
+  backdrop-filter: saturate(1.6) blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.brand {
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  text-decoration: none;
+}
+.nav nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 20px;
+}
+.nav nav a {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 15px;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.nav nav a:hover {
+  color: var(--accent);
+}
+.nav nav a:last-of-type {
+  padding: 3px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+.nav nav a:last-of-type:hover {
+  border-color: var(--ring);
+}
+#theme-switch {
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+}
 
-main { max-width: 1120px; margin: 0 auto; padding: 0 16px 72px; }
-section { padding-top: 72px; }
-.lead { font-size: 19px; color: var(--muted); }
-.note { font-size: 14px; color: var(--muted); }
+main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 16px 72px;
+}
+section {
+  padding-top: 72px;
+}
+.lead {
+  font-size: 19px;
+  color: var(--muted);
+}
+.note {
+  font-size: 14px;
+  color: var(--muted);
+}
 
 /* Pictures are drawn in the light theme, so they sit on white in both schemes. */
-.card img, figure img, .example > a img { border: 1px solid var(--border); border-radius: 8px; background: #fff; }
-.hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 44px; align-items: center; }
+.card img,
+figure img,
+.example > a img {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 44px;
+  align-items: center;
+}
 /* Clipped to the letters, so the words take the gradient. */
-.grad { background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.install { display: flex; gap: 8px; align-items: flex-start; margin: 22px 0 8px; }
+.grad {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.install {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 22px 0 8px;
+}
 /* A terminal, dark in both schemes like the editor below. */
-.install code { flex: 1; min-width: 0; padding: 12px 14px; border: 1px solid #263041; border-radius: 10px; background: #0f1722; color: #d6deeb; font-size: 13.5px; line-height: 1.6; box-shadow: var(--shadow-lift); white-space: pre-wrap; overflow-wrap: anywhere; }
+.install code {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #263041;
+  border-radius: 10px;
+  background: #0f1722;
+  color: #d6deeb;
+  font-size: 13.5px;
+  line-height: 1.6;
+  box-shadow: var(--shadow-lift);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 /* A prompt that is not part of the line, so Copy does not take it. */
-.install code::before { content: '$'; margin-right: 8px; color: #7f8c98; user-select: none; }
-button, .button { font: inherit; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; text-decoration: none; transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
-button:hover { border-color: var(--ring); }
-.button, .cta { background: linear-gradient(135deg, var(--accent), var(--accent-2)) border-box; border-color: transparent; color: var(--accent-text); font-weight: 600; box-shadow: 0 8px 18px -8px var(--ring); }
-.button { display: inline-block; padding: 10px 18px; }
-.button:hover { transform: translateY(-1px); box-shadow: 0 12px 22px -8px var(--ring); }
-.actions { display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: center; margin-top: 22px; }
-.more, .grid .card > a { font-weight: 600; text-decoration: none; }
+.install code::before {
+  content: '$';
+  margin-right: 8px;
+  color: #7f8c98;
+  user-select: none;
+}
+button,
+.button {
+  font: inherit;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+button:hover {
+  border-color: var(--ring);
+}
+.button,
+.cta {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2)) border-box;
+  border-color: transparent;
+  color: var(--accent-text);
+  font-weight: 600;
+  box-shadow: 0 8px 18px -8px var(--ring);
+}
+.button {
+  display: inline-block;
+  padding: 10px 18px;
+}
+.button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px -8px var(--ring);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  align-items: center;
+  margin-top: 22px;
+}
+.more,
+.grid .card > a {
+  font-weight: 600;
+  text-decoration: none;
+}
 /* The arrow is decoration: the second `content` gives it an empty spoken text, where a
    browser knows that syntax. The no-break space keeps it on the line of the last word. */
-.more::after, .grid .card > a::after { content: '\00a0→'; content: '\00a0→' / ''; position: relative; left: 0; transition: left 0.15s ease; }
-.more:hover::after, .grid .card:hover > a::after { left: 3px; }
+.more::after,
+.grid .card > a::after {
+  content: '\00a0→';
+  content: '\00a0→' / '';
+  position: relative;
+  left: 0;
+  transition: left 0.15s ease;
+}
+.more:hover::after,
+.grid .card:hover > a::after {
+  left: 3px;
+}
 
 /* A screenshot or a code sample, framed as a window. The three dots are drawn, not markup. */
-.window { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow-window); }
-.window-bar { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
-.window-bar::before { content: ''; flex: none; width: 44px; height: 10px; background: radial-gradient(circle at 5px 5px, #f87171 4.5px, transparent 5px), radial-gradient(circle at 22px 5px, #fbbf24 4.5px, transparent 5px), radial-gradient(circle at 39px 5px, #34d399 4.5px, transparent 5px); }
-.window img { display: block; width: 100%; }
+.window {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow-window);
+}
+.window-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.window-bar::before {
+  content: '';
+  flex: none;
+  width: 44px;
+  height: 10px;
+  background:
+    radial-gradient(circle at 5px 5px, #f87171 4.5px, transparent 5px),
+    radial-gradient(circle at 22px 5px, #fbbf24 4.5px, transparent 5px),
+    radial-gradient(circle at 39px 5px, #34d399 4.5px, transparent 5px);
+}
+.window img {
+  display: block;
+  width: 100%;
+}
 /* The editor is dark in both schemes, so the token colours are set once. */
-.code-window { background: #0f1722; border-color: #263041; }
-.code-window .window-bar { border-color: #263041; color: #8b98a5; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-.code-window pre { padding: 18px 20px; border-radius: 0; background: none; color: #d6deeb; font-size: 13.5px; line-height: 1.6; }
-.tok-comment { color: #7f8c98; font-style: italic; }
-.tok-string { color: #a5e3a0; }
-.tok-keyword { color: #c4a7ff; }
-.tok-number { color: #f7b267; }
-.tok-call { color: #7ab8ff; }
-.tok-property { color: #7fdbe8; }
+.code-window {
+  background: #0f1722;
+  border-color: #263041;
+}
+.code-window .window-bar {
+  border-color: #263041;
+  color: #8b98a5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.code-window pre {
+  padding: 18px 20px;
+  border-radius: 0;
+  background: none;
+  color: #d6deeb;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.tok-comment {
+  color: #7f8c98;
+  font-style: italic;
+}
+.tok-string {
+  color: #a5e3a0;
+}
+.tok-keyword {
+  color: #c4a7ff;
+}
+.tok-number {
+  color: #f7b267;
+}
+.tok-call {
+  color: #7ab8ff;
+}
+.tok-property {
+  color: #7fdbe8;
+}
 
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; box-shadow: var(--shadow); }
-.card > :last-child { margin-bottom: 0; }
-.leads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-bottom: 20px; }
-.leads h3 { font-size: 22px; }
-.leads img { margin-bottom: 12px; box-shadow: var(--shadow); }
-.files { list-style: none; padding: 0; margin: 0 0 12px; }
-.files li { padding: 8px 0; border-top: 1px solid var(--border); font-size: 15px; color: var(--muted); }
-.files code { color: var(--text); margin-right: 6px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: var(--shadow);
+}
+.card > :last-child {
+  margin-bottom: 0;
+}
+.leads {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.leads h3 {
+  font-size: 22px;
+}
+.leads img {
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+.files {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+.files li {
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  font-size: 15px;
+  color: var(--muted);
+}
+.files code {
+  color: var(--text);
+  margin-right: 6px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+}
 /* A grid card has one link, and the whole card is its target. */
-.grid .card { position: relative; display: flex; flex-direction: column; align-items: flex-start; transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
-.grid .card:hover, .thumbs a:hover { transform: translateY(-3px); border-color: var(--ring); box-shadow: var(--shadow-lift); }
-.grid .card > a { margin-top: auto; }
-.grid .card > a::before { content: ''; position: absolute; inset: 0; border-radius: 14px; }
-.grid .card p, .steps p { font-size: 15px; color: var(--muted); }
-.grid .card a { font-size: 15px; }
-.grid + .note { margin-top: 20px; }
-.badge { display: grid; place-items: center; width: 40px; height: 40px; margin-bottom: 14px; border-radius: 10px; background: var(--tint); color: var(--accent); }
-.icon { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.grid .card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+.grid .card:hover,
+.thumbs a:hover {
+  transform: translateY(-3px);
+  border-color: var(--ring);
+  box-shadow: var(--shadow-lift);
+}
+.grid .card > a {
+  margin-top: auto;
+}
+.grid .card > a::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+}
+.grid .card p,
+.steps p {
+  font-size: 15px;
+  color: var(--muted);
+}
+.grid .card a {
+  font-size: 15px;
+}
+.grid + .note {
+  margin-top: 20px;
+}
+.badge {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 14px;
+  border-radius: 10px;
+  background: var(--tint);
+  color: var(--accent);
+}
+.icon {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
-.steps { list-style: none; padding: 0; margin: 0 0 28px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; counter-reset: step; }
-.steps li { counter-increment: step; }
-.steps li::before { content: counter(step); display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 14px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: var(--accent-text); font-weight: 700; }
-.example { display: grid; grid-template-columns: minmax(0, 1fr) 232px; gap: 24px; align-items: start; margin-bottom: 28px; }
-.example > a img { display: block; box-shadow: var(--shadow-lift); }
-figure { margin: 0; text-align: center; }
-figure img { max-height: 560px; }
-figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; }
+.steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  counter-reset: step;
+}
+.steps li {
+  counter-increment: step;
+}
+.steps li::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--accent-text);
+  font-weight: 700;
+}
+.example {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 232px;
+  gap: 24px;
+  align-items: start;
+  margin-bottom: 28px;
+}
+.example > a img {
+  display: block;
+  box-shadow: var(--shadow-lift);
+}
+figure {
+  margin: 0;
+  text-align: center;
+}
+figure img {
+  max-height: 560px;
+}
+figcaption {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 8px;
+}
 
-.stage { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-lift); }
-.stage-poster { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; background: #fff; text-decoration: none; }
-.stage-poster img { width: auto; height: min(65vh, 520px); object-fit: contain; }
+.stage {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lift);
+}
+.stage-poster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #fff;
+  text-decoration: none;
+}
+.stage-poster img {
+  width: auto;
+  height: min(65vh, 520px);
+  object-fit: contain;
+}
 /* On the white poster in both schemes, so its colours are fixed. */
-.cta { padding: 9px 16px; border-radius: 10px; background: linear-gradient(135deg, #2563eb, #7c3aed); color: #ffffff; box-shadow: 0 8px 18px -8px rgba(37, 99, 235, 0.6); white-space: nowrap; }
-.stage-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
-.stage-bar strong { margin-right: auto; }
-#stage-frame iframe { display: block; width: 100%; height: min(75vh, 640px); border: 0; background: #fff; }
-.thumbs { list-style: none; padding: 0; margin: 16px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
-.thumbs a { display: flex; flex-direction: column; gap: 6px; height: 100%; padding: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); text-decoration: none; color: var(--text); font-size: 14px; transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
-.thumbs img { width: 100%; height: 110px; object-fit: contain; background: #fff; border-radius: 6px; }
-.thumbs small { display: block; color: var(--muted); }
+.cta {
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: #ffffff;
+  box-shadow: 0 8px 18px -8px rgba(37, 99, 235, 0.6);
+  white-space: nowrap;
+}
+.stage-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.stage-bar strong {
+  margin-right: auto;
+}
+#stage-frame iframe {
+  display: block;
+  width: 100%;
+  height: min(75vh, 640px);
+  border: 0;
+  background: #fff;
+}
+.thumbs {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+.thumbs a {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  color: var(--text);
+  font-size: 14px;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+.thumbs img {
+  width: 100%;
+  height: 110px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 6px;
+}
+.thumbs small {
+  display: block;
+  color: var(--muted);
+}
 
-footer { border-top: 1px solid var(--border); padding: 32px 16px; text-align: center; font-size: 14px; color: var(--muted); }
+footer {
+  border-top: 1px solid var(--border);
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+}
 
 @media (max-width: 800px) {
-  .hero, .leads, .steps, .example { grid-template-columns: minmax(0, 1fr); }
-  section { padding-top: 48px; }
-  .install { flex-direction: column; }
+  .hero,
+  .leads,
+  .steps,
+  .example {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  section {
+    padding-top: 48px;
+  }
+  .install {
+    flex-direction: column;
+  }
   /* Sized by its width, so a tall picture leaves no empty band above the button. */
-  .stage-poster img { height: auto; }
+  .stage-poster img {
+    height: auto;
+  }
 }
 /* Below this the nav wraps to two or three lines: too much of a small screen to keep in
    view, and taller than the room `scroll-padding-top` leaves, so a linked heading would
    land under it. It wraps from about 610px down; the margin is for wider fonts. Wider, it
    is one line and stays at the top. */
 @media (max-width: 640px) {
-  .nav { position: static; }
-  html { scroll-padding-top: 0; }
+  .nav {
+    position: static;
+  }
+  html {
+    scroll-padding-top: 0;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after { transition: none !important; }
-  .grid .card:hover, .thumbs a:hover, .button:hover { transform: none; }
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+  .grid .card:hover,
+  .thumbs a:hover,
+  .button:hover {
+    transform: none;
+  }
 }
 /* Where the system picks the colours, gradient-clipped text would vanish. */
 @media (forced-colors: active) {
-  .grad { background: none; color: CanvasText; }
+  .grad {
+    background: none;
+    color: CanvasText;
+  }
 }

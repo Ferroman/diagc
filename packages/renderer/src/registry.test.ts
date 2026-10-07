@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { DEPLOY_NODE_TYPES, DEPLOY_ZONE_TYPES, TM_BOUNDARY_TYPE, TM_ENTITY_TYPE, TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from '@diagc/core';
+import {
+  DEPLOY_NODE_TYPES,
+  DEPLOY_ZONE_TYPES,
+  TM_BOUNDARY_TYPE,
+  TM_ENTITY_TYPE,
+  TM_FLOW_KIND,
+  TM_PROCESS_TYPE,
+  TM_STORE_TYPE,
+} from '@diagc/core';
 import { BUILTIN_ICON_IDS, createIconRegistry } from '@diagc/icons';
 import { createKindRegistry, createTypeRegistry, DEFAULT_TYPE_STYLES } from './registry';
 
@@ -92,14 +100,53 @@ describe('registries', () => {
     const r = createTypeRegistry();
     expect(r.resolve('activity-frame')).toEqual({ shape: 'box', alwaysExpanded: true });
     expect(r.resolve('activity-lane')).toEqual({ shape: 'box', alwaysExpanded: true });
-    expect(r.resolve('activity-region')).toEqual({ shape: 'box', dashed: true, alwaysExpanded: true, legendLabel: 'Interruptible region' });
+    expect(r.resolve('activity-region')).toEqual({
+      shape: 'box',
+      dashed: true,
+      alwaysExpanded: true,
+      legendLabel: 'Interruptible region',
+    });
     expect(r.resolve('activity-action')).toEqual({ shape: 'rounded', label: '', legendLabel: 'Action' });
-    expect(r.resolve('activity-decision')).toEqual({ shape: 'diamond', defaultSize: { width: 48, height: 48 }, label: '', legendLabel: 'Decision / merge', captionBelow: true });
-    expect(r.resolve('activity-bar')).toEqual({ shape: 'bar', defaultSize: { width: 8, height: 100 }, label: '', legendLabel: 'Fork / join', captionBelow: true });
-    expect(r.resolve('activity-start')).toEqual({ shape: 'start-dot', defaultSize: { width: 24, height: 24 }, label: '', legendLabel: 'Start', captionBelow: true });
-    expect(r.resolve('activity-end')).toEqual({ shape: 'end-bullseye', defaultSize: { width: 28, height: 28 }, label: '', legendLabel: 'End', captionBelow: true });
-    expect(r.resolve('activity-send')).toEqual({ shape: 'send-signal', defaultSize: { width: 140, height: 44 }, label: '', legendLabel: 'Send signal' });
-    expect(r.resolve('activity-receive')).toEqual({ shape: 'receive-signal', defaultSize: { width: 140, height: 44 }, label: '', legendLabel: 'Receive signal' });
+    expect(r.resolve('activity-decision')).toEqual({
+      shape: 'diamond',
+      defaultSize: { width: 48, height: 48 },
+      label: '',
+      legendLabel: 'Decision / merge',
+      captionBelow: true,
+    });
+    expect(r.resolve('activity-bar')).toEqual({
+      shape: 'bar',
+      defaultSize: { width: 8, height: 100 },
+      label: '',
+      legendLabel: 'Fork / join',
+      captionBelow: true,
+    });
+    expect(r.resolve('activity-start')).toEqual({
+      shape: 'start-dot',
+      defaultSize: { width: 24, height: 24 },
+      label: '',
+      legendLabel: 'Start',
+      captionBelow: true,
+    });
+    expect(r.resolve('activity-end')).toEqual({
+      shape: 'end-bullseye',
+      defaultSize: { width: 28, height: 28 },
+      label: '',
+      legendLabel: 'End',
+      captionBelow: true,
+    });
+    expect(r.resolve('activity-send')).toEqual({
+      shape: 'send-signal',
+      defaultSize: { width: 140, height: 44 },
+      label: '',
+      legendLabel: 'Send signal',
+    });
+    expect(r.resolve('activity-receive')).toEqual({
+      shape: 'receive-signal',
+      defaultSize: { width: 140, height: 44 },
+      label: '',
+      legendLabel: 'Receive signal',
+    });
     expect(r.resolve('activity-object')).toEqual({ shape: 'box', label: '', legendLabel: 'Object' });
     expect(r.resolve('activity-note')).toEqual({ shape: 'note', defaultSize: { width: 140, height: 64 }, label: '' });
   });
@@ -130,7 +177,13 @@ describe('registries', () => {
 
   it('draws second-order nodes as boxes with a valence glyph and no type subtitle', () => {
     const types = createTypeRegistry();
-    expect(types.resolve('so-decision')).toMatchObject({ shape: 'rounded', icon: 'decision', label: '', fill: 'var(--dg-text)', textOn: 'var(--dg-surface)' });
+    expect(types.resolve('so-decision')).toMatchObject({
+      shape: 'rounded',
+      icon: 'decision',
+      label: '',
+      fill: 'var(--dg-text)',
+      textOn: 'var(--dg-surface)',
+    });
     expect(types.resolve('so-consequence-positive')).toMatchObject({ shape: 'rounded', icon: 'plus', label: '' });
     expect(types.resolve('so-consequence-negative')).toMatchObject({ shape: 'rounded', icon: 'minus', label: '' });
     expect(types.resolve('so-consequence-neutral')).toMatchObject({ shape: 'rounded', icon: 'dot', label: '' });
@@ -146,7 +199,8 @@ describe('registries', () => {
     // every core type resolves to its own entry, not the unknown-id plain box
     for (const id of [...DEPLOY_ZONE_TYPES, ...DEPLOY_NODE_TYPES]) expect(DEFAULT_TYPE_STYLES[id], id).toBeDefined();
     // a zone's header shows only name and icon, so the legend names it
-    for (const id of DEPLOY_ZONE_TYPES.filter((z) => z !== 'deploy-host')) expect(t.resolve(id).legendLabel, id).toBeDefined();
+    for (const id of DEPLOY_ZONE_TYPES.filter((z) => z !== 'deploy-host'))
+      expect(t.resolve(id).legendLabel, id).toBeDefined();
     // the subnets are washes, not lines: no outline
     expect(t.resolve('deploy-subnet-private').outline).toBeUndefined();
     expect(t.resolve('deploy-network').outline).toBe(true);
@@ -158,8 +212,18 @@ describe('registries', () => {
     // silently degrading every DFD element to the unknown-id plain box.
     const t = createTypeRegistry();
     expect(t.resolve(TM_ENTITY_TYPE)).toEqual({ shape: 'box', label: '', legendLabel: 'External entity' });
-    expect(t.resolve(TM_PROCESS_TYPE)).toEqual({ shape: 'ellipse', label: '', defaultSize: { width: 150, height: 90 }, legendLabel: 'Process' });
-    expect(t.resolve(TM_STORE_TYPE)).toEqual({ shape: 'store', label: '', defaultSize: { width: 150, height: 56 }, legendLabel: 'Data store' });
+    expect(t.resolve(TM_PROCESS_TYPE)).toEqual({
+      shape: 'ellipse',
+      label: '',
+      defaultSize: { width: 150, height: 90 },
+      legendLabel: 'Process',
+    });
+    expect(t.resolve(TM_STORE_TYPE)).toEqual({
+      shape: 'store',
+      label: '',
+      defaultSize: { width: 150, height: 56 },
+      legendLabel: 'Data store',
+    });
     // alwaysExpanded: a boundary is a line around things, not a drill level
     expect(t.resolve(TM_BOUNDARY_TYPE)).toEqual({
       shape: 'box',

@@ -78,7 +78,7 @@ describe('ActivityPanel', () => {
     expect((screen.getByLabelText('New lane name') as HTMLInputElement).value).toBe('');
   });
 
-  it('on a lane: Add lane adds a sibling band to the lane\'s frame', () => {
+  it("on a lane: Add lane adds a sibling band to the lane's frame", () => {
     const { onCommand, onSelect } = setup({ kind: 'node', id: 'l' }, frameLaneModel());
     fireEvent.change(screen.getByLabelText('New lane name'), { target: { value: 'Ops' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add lane' }));
@@ -109,7 +109,11 @@ describe('ActivityPanel', () => {
     expect(onCommand).toHaveBeenCalledWith({
       type: 'batch',
       commands: [
-        { type: 'add-node', node: { id: 'fill-order', name: 'Fill order', type: 'activity-action' }, parent: { id: 'l' } },
+        {
+          type: 'add-node',
+          node: { id: 'fill-order', name: 'Fill order', type: 'activity-action' },
+          parent: { id: 'l' },
+        },
         { type: 'set-position', nodeId: 'fill-order', x: 28 + 24 + 0, y: 24 + 0 },
       ],
     });
@@ -124,7 +128,11 @@ describe('ActivityPanel', () => {
     expect(onCommand).toHaveBeenCalledWith({
       type: 'batch',
       commands: [
-        { type: 'add-node', node: { id: 'ship-order', name: 'Ship order', type: 'activity-action' }, parent: { id: 'l' } },
+        {
+          type: 'add-node',
+          node: { id: 'ship-order', name: 'Ship order', type: 'activity-action' },
+          parent: { id: 'l' },
+        },
         { type: 'set-position', nodeId: 'ship-order', x: 28 + 24 + 48, y: 24 + 32 },
       ],
     });
@@ -194,7 +202,10 @@ describe('ActivityPanel', () => {
     const { onCommand } = setup(null, frameOnlyModel());
     fireEvent.change(screen.getByLabelText('New lane name'), { target: { value: 'Ops' } });
     fireEvent.submit(screen.getByLabelText('New lane name'));
-    expect(onCommand.mock.calls[0]![0].commands[0]).toMatchObject({ node: { id: 'ops', type: 'activity-lane' }, parent: { id: 'f' } });
+    expect(onCommand.mock.calls[0]![0].commands[0]).toMatchObject({
+      node: { id: 'ops', type: 'activity-lane' },
+      parent: { id: 'f' },
+    });
   });
 
   it('selects a lane from the list', () => {
@@ -206,7 +217,15 @@ describe('ActivityPanel', () => {
   it('mounts nothing for a diagram with no activity frame', () => {
     const m = model('x');
     m.node('svc', { name: 'Svc', type: 'service' });
-    const { container } = render(<ActivityPanel model={m.toJSON()} plane={undefined} selection={{ kind: 'node', id: 'svc' }} onCommand={vi.fn()} onSelect={vi.fn()} />);
+    const { container } = render(
+      <ActivityPanel
+        model={m.toJSON()}
+        plane={undefined}
+        selection={{ kind: 'node', id: 'svc' }}
+        onCommand={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    );
     expect(container.firstChild).toBeNull();
   });
 
@@ -249,7 +268,9 @@ describe('Tidy lane order', () => {
     const { onCommand } = setup({ kind: 'node', id: 'f' }, apart());
     fireEvent.click(screen.getByRole('button', { name: 'Tidy lane order' }));
     const command = onCommand.mock.calls[0]![0];
-    const after = order(applyCommand({ model: apart(), layout: emptyLayout(), drawings: emptyDrawings() }, command).model);
+    const after = order(
+      applyCommand({ model: apart(), layout: emptyLayout(), drawings: emptyDrawings() }, command).model,
+    );
     expect(Math.abs(after.indexOf('a') - after.indexOf('c'))).toBe(1);
   });
 
@@ -262,7 +283,10 @@ describe('Tidy lane order', () => {
 describe('reorderLanesCommand', () => {
   it('walks each lane up into its slot', () => {
     const step = (child: string) => ({ type: 'move-child', parent: 'f', child, offset: -1 });
-    expect(reorderLanesCommand('f', ['a', 'b', 'c'], ['c', 'a', 'b'], undefined)).toEqual({ type: 'batch', commands: [step('c'), step('c')] });
+    expect(reorderLanesCommand('f', ['a', 'b', 'c'], ['c', 'a', 'b'], undefined)).toEqual({
+      type: 'batch',
+      commands: [step('c'), step('c')],
+    });
     expect(reorderLanesCommand('f', ['a', 'b'], ['b', 'a'], undefined)).toEqual(step('b'));
     expect(reorderLanesCommand('f', ['a', 'b'], ['a', 'b'], undefined)).toBeNull();
   });
@@ -273,14 +297,19 @@ describe('moveLaneCommand', () => {
   const run = (offset: number) => {
     const command = moveLaneCommand('f', 'a', offset, undefined);
     if (command === null) return null;
-    return order(applyCommand({ model: threeLanes(), layout: emptyLayout(), drawings: emptyDrawings() }, command).model);
+    return order(
+      applyCommand({ model: threeLanes(), layout: emptyLayout(), drawings: emptyDrawings() }, command).model,
+    );
   };
 
   it('moves a lane several slots as one command, either way', () => {
     expect(run(2)).toEqual(['b', 'c', 'a']);
     expect(run(1)).toEqual(['b', 'a', 'c']);
     const up = moveLaneCommand('f', 'c', -2, 'p');
-    expect(up).toEqual({ type: 'batch', commands: [0, 1].map(() => ({ type: 'move-child', parent: 'f', child: 'c', offset: -1, plane: 'p' })) });
+    expect(up).toEqual({
+      type: 'batch',
+      commands: [0, 1].map(() => ({ type: 'move-child', parent: 'f', child: 'c', offset: -1, plane: 'p' })),
+    });
   });
 
   it('is null when the lane did not move', () => {
@@ -291,8 +320,14 @@ describe('moveLaneCommand', () => {
 describe('activityContext', () => {
   it('finds the frame above any selection, and the nearest lane or region as the target', () => {
     const m = frameLaneRegionModel();
-    expect(activityContext(m, { kind: 'node', id: 'r' }, undefined)).toMatchObject({ frame: { id: 'f' }, target: { id: 'r' } });
-    expect(activityContext(m, { kind: 'node', id: 'l' }, undefined)).toMatchObject({ frame: { id: 'f' }, target: { id: 'l' } });
+    expect(activityContext(m, { kind: 'node', id: 'r' }, undefined)).toMatchObject({
+      frame: { id: 'f' },
+      target: { id: 'r' },
+    });
+    expect(activityContext(m, { kind: 'node', id: 'l' }, undefined)).toMatchObject({
+      frame: { id: 'f' },
+      target: { id: 'l' },
+    });
     expect(activityContext(m, { kind: 'node', id: 'f' }, undefined)?.target).toBeUndefined();
   });
 

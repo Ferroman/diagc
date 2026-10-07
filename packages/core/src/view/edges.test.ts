@@ -233,7 +233,9 @@ describe('resolveEdges', () => {
   it('collapses a join over the budget to a relation count', () => {
     // 4 x 'publishes survey.created' style labels: the old policy printed the
     // first three joined plus '+1' — ~70 characters on one arrow, times hundreds.
-    expect(joinOf(['publishes survey.created', 'consumes survey.closed', 'publishes reminder.due', 'x'])).toBe('4 relations');
+    expect(joinOf(['publishes survey.created', 'consumes survey.closed', 'publishes reminder.due', 'x'])).toBe(
+      '4 relations',
+    );
   });
 
   it('keeps a single distinct label whatever its length (the renderer truncates)', () => {

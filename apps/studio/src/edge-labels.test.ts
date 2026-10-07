@@ -27,22 +27,42 @@ describe('edge-labels', () => {
   });
 
   it('allocates the first free label id', () => {
-    expect(nextLabelId([{ id: 'l1', text: 'x' }, { id: 'l3', text: 'y' }])).toBe('l2');
-    expect(nextLabelId([{ id: 'l1', text: 'x', t: 0.2 }, { id: 'l2', text: 'y' }])).toBe('l3');
+    expect(
+      nextLabelId([
+        { id: 'l1', text: 'x' },
+        { id: 'l3', text: 'y' },
+      ]),
+    ).toBe('l2');
+    expect(
+      nextLabelId([
+        { id: 'l1', text: 'x', t: 0.2 },
+        { id: 'l2', text: 'y' },
+      ]),
+    ).toBe('l3');
   });
 
   it('adds a label with the next id', () => {
     const next = addEdgeLabel([{ id: 'l1', text: 'old' }], 'new', 0.5, 'top');
-    expect(next).toEqual([{ id: 'l1', text: 'old' }, { id: 'l2', text: 'new', t: 0.5, side: 'top' }]);
+    expect(next).toEqual([
+      { id: 'l1', text: 'old' },
+      { id: 'l2', text: 'new', t: 0.5, side: 'top' },
+    ]);
   });
 
-  it('edits a label\'s text, keeping its position', () => {
+  it("edits a label's text, keeping its position", () => {
     const next = editEdgeLabel([{ id: 'l1', text: 'a', t: 0.2, side: 'bottom' }], 'l1', 'b');
     expect(next).toEqual([{ id: 'l1', text: 'b', t: 0.2, side: 'bottom' }]);
   });
 
   it('deletes a label when blanked', () => {
-    const next = editEdgeLabel([{ id: 'l1', text: 'a' }, { id: 'l2', text: 'b' }], 'l1', '   ');
+    const next = editEdgeLabel(
+      [
+        { id: 'l1', text: 'a' },
+        { id: 'l2', text: 'b' },
+      ],
+      'l1',
+      '   ',
+    );
     expect(next).toEqual([{ id: 'l2', text: 'b' }]);
   });
 

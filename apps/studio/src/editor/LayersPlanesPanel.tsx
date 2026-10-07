@@ -132,9 +132,7 @@ export function LayersPlanesPanel({
   };
 
   const runMerge = async (target: DiagramLayer | undefined) => {
-    const names = selectedIds
-      .map((id) => `'${model.layers.find((l) => l.id === id)?.name ?? id}'`)
-      .join(', ');
+    const names = selectedIds.map((id) => `'${model.layers.find((l) => l.id === id)?.name ?? id}'`).join(', ');
     const dest = target === undefined ? 'base sheet' : `'${target.name}'`;
     if (!(await getHost().confirmDialog(`Merge ${names} into ${dest}?`))) return;
     onMergeLayers?.(selectedIds, target?.id);
@@ -232,7 +230,6 @@ export function LayersPlanesPanel({
 
   return (
     <DockSection id="layers-planes" title="Layers & planes" className="sidebar lp-panel">
-
       {onSelectPlane !== undefined && (
         <PlaneSwitcher planes={model.planes} activePlane={activePlane} onSelect={onSelectPlane} />
       )}
@@ -416,112 +413,112 @@ export function LayersPlanesPanel({
       </section>
 
       {mode === 'edit' && (
-      <section className="panel-section">
-        <h3>Planes</h3>
-        {planeRows.map((row) => (
-          <div key={row.id} className="lp-plane">
-            <div className="lp-row">
-              <input
-                aria-label={`Plane name ${row.id}`}
-                className="lp-name"
-                value={row.name}
-                onChange={(e) => editPlane(row.id, { name: e.target.value })}
-                onBlur={() => commitPlane(row)}
-                onKeyDown={(e) => commitOnEnter(e, () => commitPlane(row))}
-              />
-              <button
-                className="chip icon-btn"
-                aria-label={`Remove plane ${row.name}`}
-                onClick={() => void removePlane(row.id, row.name)}
-              >
-                ✕
-              </button>
-            </div>
-            <label className="field lp-sub">
-              <span>Containment of</span>
-              <select
-                aria-label={`Containment of ${row.name}`}
-                value={row.containmentOf}
-                onChange={(e) => {
-                  const next = { ...row, containmentOf: e.target.value };
-                  editPlane(row.id, { containmentOf: e.target.value });
-                  commitPlane(next);
-                }}
-              >
-                <option value="">own containment</option>
-                {planeRows
-                  .filter((p) => p.id !== row.id)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
+        <section className="panel-section">
+          <h3>Planes</h3>
+          {planeRows.map((row) => (
+            <div key={row.id} className="lp-plane">
+              <div className="lp-row">
+                <input
+                  aria-label={`Plane name ${row.id}`}
+                  className="lp-name"
+                  value={row.name}
+                  onChange={(e) => editPlane(row.id, { name: e.target.value })}
+                  onBlur={() => commitPlane(row)}
+                  onKeyDown={(e) => commitOnEnter(e, () => commitPlane(row))}
+                />
+                <button
+                  className="chip icon-btn"
+                  aria-label={`Remove plane ${row.name}`}
+                  onClick={() => void removePlane(row.id, row.name)}
+                >
+                  ✕
+                </button>
+              </div>
+              <label className="field lp-sub">
+                <span>Containment of</span>
+                <select
+                  aria-label={`Containment of ${row.name}`}
+                  value={row.containmentOf}
+                  onChange={(e) => {
+                    const next = { ...row, containmentOf: e.target.value };
+                    editPlane(row.id, { containmentOf: e.target.value });
+                    commitPlane(next);
+                  }}
+                >
+                  <option value="">own containment</option>
+                  {planeRows
+                    .filter((p) => p.id !== row.id)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label className="field lp-sub">
+                <span>Notation</span>
+                <select
+                  aria-label={`Notation ${row.name}`}
+                  value={row.notation}
+                  onChange={(e) => {
+                    const next = { ...row, notation: e.target.value };
+                    editPlane(row.id, { notation: e.target.value });
+                    commitPlane(next);
+                  }}
+                >
+                  <option value="">default look</option>
+                  {BUILTIN_NOTATIONS.map((n) => (
+                    <option key={n} value={n}>
+                      {notationLabel(n)}
                     </option>
                   ))}
-              </select>
-            </label>
-            <label className="field lp-sub">
-              <span>Notation</span>
-              <select
-                aria-label={`Notation ${row.name}`}
-                value={row.notation}
-                onChange={(e) => {
-                  const next = { ...row, notation: e.target.value };
-                  editPlane(row.id, { notation: e.target.value });
-                  commitPlane(next);
-                }}
-              >
-                <option value="">default look</option>
-                {BUILTIN_NOTATIONS.map((n) => (
-                  <option key={n} value={n}>
-                    {notationLabel(n)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="lp-check">
-              <input
-                type="checkbox"
-                aria-label={`Base relations in ${row.name}`}
-                checked={row.baseRelations}
-                onChange={(e) => {
-                  const next = { ...row, baseRelations: e.target.checked };
-                  editPlane(row.id, { baseRelations: e.target.checked });
-                  commitPlane(next);
-                }}
-              />
-              <span>Show base relations</span>
-            </label>
-            {model.layers.length > 0 && (
-              <div className="lp-sub">
-                <span className="lp-caption">Default layers</span>
-                {model.layers.map((l) => (
-                  <label key={l.id} className="lp-check">
-                    <input
-                      type="checkbox"
-                      aria-label={`Layer ${l.name} in ${row.name}`}
-                      checked={row.layers.includes(l.id)}
-                      onChange={(e) => toggleRowLayer(row, l.id, e.target.checked)}
-                    />
-                    <span>{l.name}</span>
-                  </label>
-                ))}
-              </div>
-            )}
+                </select>
+              </label>
+              <label className="lp-check">
+                <input
+                  type="checkbox"
+                  aria-label={`Base relations in ${row.name}`}
+                  checked={row.baseRelations}
+                  onChange={(e) => {
+                    const next = { ...row, baseRelations: e.target.checked };
+                    editPlane(row.id, { baseRelations: e.target.checked });
+                    commitPlane(next);
+                  }}
+                />
+                <span>Show base relations</span>
+              </label>
+              {model.layers.length > 0 && (
+                <div className="lp-sub">
+                  <span className="lp-caption">Default layers</span>
+                  {model.layers.map((l) => (
+                    <label key={l.id} className="lp-check">
+                      <input
+                        type="checkbox"
+                        aria-label={`Layer ${l.name} in ${row.name}`}
+                        checked={row.layers.includes(l.id)}
+                        onChange={(e) => toggleRowLayer(row, l.id, e.target.checked)}
+                      />
+                      <span>{l.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+          <div className="lp-row">
+            <input
+              aria-label="New plane name"
+              className="lp-name"
+              placeholder="Plane name"
+              value={newPlaneName}
+              onChange={(e) => setNewPlaneName(e.target.value)}
+              onKeyDown={(e) => commitOnEnter(e, addPlane)}
+            />
+            <button className="chip" onClick={addPlane}>
+              Add plane
+            </button>
           </div>
-        ))}
-        <div className="lp-row">
-          <input
-            aria-label="New plane name"
-            className="lp-name"
-            placeholder="Plane name"
-            value={newPlaneName}
-            onChange={(e) => setNewPlaneName(e.target.value)}
-            onKeyDown={(e) => commitOnEnter(e, addPlane)}
-          />
-          <button className="chip" onClick={addPlane}>
-            Add plane
-          </button>
-        </div>
-      </section>
+        </section>
       )}
     </DockSection>
   );

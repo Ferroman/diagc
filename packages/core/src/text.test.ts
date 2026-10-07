@@ -6,12 +6,20 @@ describe('normalizeRuns', () => {
     expect(normalizeRuns([{ text: '' }, { text: 'a', bold: false }])).toEqual([{ text: 'a' }]);
   });
   it('merges adjacent runs with identical marks', () => {
-    expect(normalizeRuns([{ text: 'ab', bold: true }, { text: 'cd', bold: true }])).toEqual([
-      { text: 'abcd', bold: true },
-    ]);
+    expect(
+      normalizeRuns([
+        { text: 'ab', bold: true },
+        { text: 'cd', bold: true },
+      ]),
+    ).toEqual([{ text: 'abcd', bold: true }]);
   });
   it('keeps runs with differing marks separate', () => {
-    expect(normalizeRuns([{ text: 'a', bold: true }, { text: 'b', italic: true }])).toEqual([
+    expect(
+      normalizeRuns([
+        { text: 'a', bold: true },
+        { text: 'b', italic: true },
+      ]),
+    ).toEqual([
       { text: 'a', bold: true },
       { text: 'b', italic: true },
     ]);

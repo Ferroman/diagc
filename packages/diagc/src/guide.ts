@@ -105,7 +105,10 @@ function renderPage(page: string, ctx: GuideContext): string {
         }
         case 'node-types': {
           const ids = nodeTypesFor(page);
-          if (ids.length === 0) throw new Error(`${file}: {{node-types}} is empty for '${page}' — this diagram type has no node types of its own`);
+          if (ids.length === 0)
+            throw new Error(
+              `${file}: {{node-types}} is empty for '${page}' — this diagram type has no node types of its own`,
+            );
           return codeList(ids);
         }
         case 'relation-kinds':
@@ -148,7 +151,9 @@ const stdio: GuideIo = {
  * in the guide's own files and is left to throw. */
 export function runGuide(topics: readonly string[], ctx: GuideContext, io: GuideIo = stdio): number {
   if (topics.length > 1) {
-    io.err(`diagc: guide takes one topic, got ${topics.length} — run it once per topic, or 'diagc guide ${ALL_TOPIC}'.`);
+    io.err(
+      `diagc: guide takes one topic, got ${topics.length} — run it once per topic, or 'diagc guide ${ALL_TOPIC}'.`,
+    );
     return 1;
   }
   try {

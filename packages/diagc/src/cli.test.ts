@@ -1,11 +1,24 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BadFlagValueError, HelpRequested, UnknownFlagError, diffOutDir, parseArgs, parseRange, publishDirs } from './cli';
+import {
+  BadFlagValueError,
+  HelpRequested,
+  UnknownFlagError,
+  diffOutDir,
+  parseArgs,
+  parseRange,
+  publishDirs,
+} from './cli';
 
 describe('parseArgs', () => {
   it('parses init with a name, --type and --agents, in any order', () => {
     expect(parseArgs(['init'])).toMatchObject({ command: 'init', files: [], agents: false });
-    expect(parseArgs(['init', 'shop', '--type', 'c4', '--agents'])).toMatchObject({ command: 'init', files: ['shop'], type: 'c4', agents: true });
+    expect(parseArgs(['init', 'shop', '--type', 'c4', '--agents'])).toMatchObject({
+      command: 'init',
+      files: ['shop'],
+      type: 'c4',
+      agents: true,
+    });
     expect(parseArgs(['--agents', 'init'])).toMatchObject({ command: 'init', agents: true });
     expect(parseArgs(['compile'])).not.toHaveProperty('type');
   });
@@ -48,7 +61,11 @@ describe('parseArgs', () => {
   });
 
   it('parses lint --json', () => {
-    expect(parseArgs(['lint', 'a.diagram.ts', '--json'])).toMatchObject({ command: 'lint', files: ['a.diagram.ts'], json: true });
+    expect(parseArgs(['lint', 'a.diagram.ts', '--json'])).toMatchObject({
+      command: 'lint',
+      files: ['a.diagram.ts'],
+      json: true,
+    });
   });
 
   it('parses --update-includes', () => {
@@ -121,12 +138,18 @@ describe('publish directories', () => {
 
 describe('diff arguments', () => {
   it('takes the range and the diagram names as files, and notes an explicit --out', () => {
-    expect(parseArgs(['diff', 'v1..v2', 'shop'])).toMatchObject({ command: 'diff', files: ['v1..v2', 'shop'], outGiven: false });
+    expect(parseArgs(['diff', 'v1..v2', 'shop'])).toMatchObject({
+      command: 'diff',
+      files: ['v1..v2', 'shop'],
+      outGiven: false,
+    });
     expect(parseArgs(['diff', 'v1', '--out', 'x'])).toMatchObject({ out: 'x', outGiven: true });
   });
 
   it('takes --labels and an --image-url template, and refuses malformed ones', () => {
-    expect(parseArgs(['diff', 'a..b', '--labels', 'main, #12', '--image-url', 'https://x/{path}?raw=true'])).toMatchObject({
+    expect(
+      parseArgs(['diff', 'a..b', '--labels', 'main, #12', '--image-url', 'https://x/{path}?raw=true']),
+    ).toMatchObject({
       labels: ['main', '#12'],
       imageUrl: 'https://x/{path}?raw=true',
     });

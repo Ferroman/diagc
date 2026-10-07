@@ -9,8 +9,11 @@ export function findChrome(): string | undefined {
   const env = process.env['CHROME_PATH'];
   if (env !== undefined && existsSync(env)) return env;
   const candidates = [
-    '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium',
-    '/usr/bin/chromium-browser', '/snap/bin/chromium',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/snap/bin/chromium',
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   ];
   return candidates.find((p) => existsSync(p));
@@ -37,19 +40,29 @@ export async function renderPng(htmlPath: string, pngPath: string): Promise<void
   try {
     // Light, by name: `?export=1` already makes the viewer light whatever the browser
     // prefers, and this says so where the picture is taken.
-    const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 2, colorScheme: 'light' });
+    const page = await browser.newPage({
+      viewport: { width: 1600, height: 1000 },
+      deviceScaleFactor: 2,
+      colorScheme: 'light',
+    });
     // `?export=1` tells the viewer to unfold every group for a full overview.
     await page.goto(`${pathToFileURL(path.resolve(htmlPath)).href}?export=1`);
-    await page.waitForFunction(() => (window as unknown as ExportWindow).__DG_READY__ === true, null, { timeout: 15_000 });
+    await page.waitForFunction(() => (window as unknown as ExportWindow).__DG_READY__ === true, null, {
+      timeout: 15_000,
+    });
     // __DG_BOUNDS__ is the TRUE node bounding box in flow coordinates, so the
     // frame gets the real content aspect; then re-fit into it (React Flow's
     // `fitView` prop only fits on init, not after this resize) so nothing clips.
     // __DG_RESERVE__ is the legend's extent in SCREEN px and is added to the
     // frame unscaled — see pageSize for why the two must not be mixed.
-    const bounds = await page.evaluate(() => (window as unknown as ExportWindow).__DG_BOUNDS__ ?? { width: 1200, height: 800 });
+    const bounds = await page.evaluate(
+      () => (window as unknown as ExportWindow).__DG_BOUNDS__ ?? { width: 1200, height: 800 },
+    );
     const reserve = await page.evaluate(() => (window as unknown as ExportWindow).__DG_RESERVE__ ?? null);
     const size = pageSize(bounds, {
-      maxWidth: 2000, maxHeight: 1400, padding: FRAME_PADDING,
+      maxWidth: 2000,
+      maxHeight: 1400,
+      padding: FRAME_PADDING,
       // Only a top/bottom legend costs height, which is all `legendReserve`
       // ever reports today; a side legend would need pageSize to widen instead.
       reserve: reserve === null || reserve.side === 'left' || reserve.side === 'right' ? 0 : reserve.px,

@@ -88,7 +88,12 @@ describe('layoutView on activity lanes', () => {
     const abs = absolute(v, geometry);
     const lanes = ['l1', 'l2', 'l3'].map((id) => abs.get(id)!);
     for (let i = 1; i < lanes.length; i++) expect(lanes[i]!.y).toBe(lanes[i - 1]!.y + lanes[i - 1]!.height);
-    for (const [member, lane] of [['a', 'l1'], ['c', 'l1'], ['b', 'l2'], ['d', 'l3']] as const) {
+    for (const [member, lane] of [
+      ['a', 'l1'],
+      ['c', 'l1'],
+      ['b', 'l2'],
+      ['d', 'l3'],
+    ] as const) {
       const n = abs.get(member)!;
       const l = abs.get(lane)!;
       expect(n.y).toBeGreaterThanOrEqual(l.y);
@@ -184,33 +189,91 @@ describe('rebaseRoutes', () => {
 
   it('shifts a route whose ends moved together', () => {
     const { v, hoist, id } = setup();
-    const routes = new Map([[id('a', 'b'), [{ x: 10, y: 10 }, { x: 50, y: 10 }]]]);
+    const routes = new Map([
+      [
+        id('a', 'b'),
+        [
+          { x: 10, y: 10 },
+          { x: 50, y: 10 },
+        ],
+      ],
+    ]);
     const spots = new Map([[id('a', 'b'), { x: 30, y: 10 }]]);
     const geometry = new Map<string, NodeGeometry>([['f', { x: 0, y: 0, width: 999, height: 999 }]]);
     const same = { dx: 5, dy: 7 };
-    rebaseRoutes(routes, spots, hoist, v, geometry, new Map([['a', same], ['b', same]]));
-    expect(routes.get(id('a', 'b'))).toEqual([{ x: 15, y: 17 }, { x: 55, y: 17 }]);
+    rebaseRoutes(
+      routes,
+      spots,
+      hoist,
+      v,
+      geometry,
+      new Map([
+        ['a', same],
+        ['b', same],
+      ]),
+    );
+    expect(routes.get(id('a', 'b'))).toEqual([
+      { x: 15, y: 17 },
+      { x: 55, y: 17 },
+    ]);
     expect(spots.get(id('a', 'b'))).toEqual({ x: 35, y: 17 });
   });
 
   it('drops a route whose ends moved apart', () => {
     const { v, hoist, id } = setup();
-    const routes = new Map([[id('a', 'b'), [{ x: 10, y: 10 }, { x: 50, y: 10 }]]]);
+    const routes = new Map([
+      [
+        id('a', 'b'),
+        [
+          { x: 10, y: 10 },
+          { x: 50, y: 10 },
+        ],
+      ],
+    ]);
     const geometry = new Map<string, NodeGeometry>([['f', { x: 0, y: 0, width: 999, height: 999 }]]);
-    rebaseRoutes(routes, new Map(), hoist, v, geometry, new Map([['a', { dx: 0, dy: 0 }], ['b', { dx: 0, dy: 90 }]]));
+    rebaseRoutes(
+      routes,
+      new Map(),
+      hoist,
+      v,
+      geometry,
+      new Map([
+        ['a', { dx: 0, dy: 0 }],
+        ['b', { dx: 0, dy: 90 }],
+      ]),
+    );
     expect(routes.has(id('a', 'b'))).toBe(false);
   });
 
   it('drops a route the banding put a box on', () => {
     const { v, hoist, id } = setup();
-    const routes = new Map([[id('a', 'b'), [{ x: 0, y: 10 }, { x: 300, y: 10 }]]]);
+    const routes = new Map([
+      [
+        id('a', 'b'),
+        [
+          { x: 0, y: 10 },
+          { x: 300, y: 10 },
+        ],
+      ],
+    ]);
     const geometry = new Map<string, NodeGeometry>([
       ['f', { x: 0, y: 0, width: 999, height: 999 }],
       ['l3', { x: 0, y: 0, width: 999, height: 999 }],
       ['d', { x: 100, y: 0, width: 50, height: 40 }],
     ]);
     const still = { dx: 0, dy: 0 };
-    rebaseRoutes(routes, new Map(), hoist, v, geometry, new Map([['a', still], ['b', still], ['d', still]]));
+    rebaseRoutes(
+      routes,
+      new Map(),
+      hoist,
+      v,
+      geometry,
+      new Map([
+        ['a', still],
+        ['b', still],
+        ['d', still],
+      ]),
+    );
     expect(routes.has(id('a', 'b'))).toBe(false);
   });
 });
@@ -261,7 +324,8 @@ describe('layoutView on an activity with a loop', () => {
     const abs = absolute(v, geometry);
     const x = (id: string) => abs.get(id)!.x;
     const order = ['s', 'prep', 'write', 'send', 'recv', 'sign', 'back', 'result', 'ok', 'expired', 'reissue'];
-    for (let i = 1; i < order.length; i++) expect(x(order[i]!), `${order[i - 1]} → ${order[i]}`).toBeGreaterThan(x(order[i - 1]!));
+    for (let i = 1; i < order.length; i++)
+      expect(x(order[i]!), `${order[i - 1]} → ${order[i]}`).toBeGreaterThan(x(order[i - 1]!));
     // nothing sits left of the start, the note included
     for (const [id, g] of abs) if (!['f', 'own', 'cp'].includes(id)) expect(g.x, id).toBeGreaterThanOrEqual(x('s'));
   });

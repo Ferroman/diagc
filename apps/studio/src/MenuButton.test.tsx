@@ -13,7 +13,11 @@ const trigger = () => screen.getByRole('button', { name: 'Diagram actions' });
 
 describe('MenuButton', () => {
   it('shows nothing until opened, then lists the items with focus on the first', () => {
-    render(<MenuButton label="Diagram actions" items={items()}>⋯</MenuButton>);
+    render(
+      <MenuButton label="Diagram actions" items={items()}>
+        ⋯
+      </MenuButton>,
+    );
     expect(screen.queryByRole('menu')).toBeNull();
     expect(trigger().getAttribute('aria-expanded')).toBe('false');
     fireEvent.click(trigger());
@@ -25,7 +29,11 @@ describe('MenuButton', () => {
 
   it('runs the chosen item, closes, and hands focus back to the trigger', () => {
     const duplicate = vi.fn();
-    render(<MenuButton label="Diagram actions" items={items({ duplicate })}>⋯</MenuButton>);
+    render(
+      <MenuButton label="Diagram actions" items={items({ duplicate })}>
+        ⋯
+      </MenuButton>,
+    );
     fireEvent.click(trigger());
     fireEvent.click(screen.getByRole('menuitem', { name: 'Duplicate' }));
     expect(duplicate).toHaveBeenCalledTimes(1);
@@ -34,7 +42,11 @@ describe('MenuButton', () => {
   });
 
   it('walks the items with the arrows, wrapping at both ends', () => {
-    render(<MenuButton label="Diagram actions" items={items()}>⋯</MenuButton>);
+    render(
+      <MenuButton label="Diagram actions" items={items()}>
+        ⋯
+      </MenuButton>,
+    );
     fireEvent.click(trigger());
     const menu = screen.getByRole('menu');
     fireEvent.keyDown(menu, { key: 'ArrowDown' });
@@ -47,7 +59,11 @@ describe('MenuButton', () => {
   });
 
   it('closes on Escape, claiming the key and returning focus', () => {
-    render(<MenuButton label="Diagram actions" items={items()}>⋯</MenuButton>);
+    render(
+      <MenuButton label="Diagram actions" items={items()}>
+        ⋯
+      </MenuButton>,
+    );
     fireEvent.click(trigger());
     // fireEvent returns false when the handler called preventDefault — which is
     // what keeps the studio's key dispatcher from also acting on this Escape
@@ -59,7 +75,9 @@ describe('MenuButton', () => {
   it('closes on a press outside without pulling focus back', () => {
     render(
       <>
-        <MenuButton label="Diagram actions" items={items()}>⋯</MenuButton>
+        <MenuButton label="Diagram actions" items={items()}>
+          ⋯
+        </MenuButton>
         <button type="button">elsewhere</button>
       </>,
     );
@@ -74,7 +92,11 @@ describe('MenuButton', () => {
   it('closes on a press its target swallows — the canvas never lets a mousedown bubble', () => {
     // React Flow's pane (d3-zoom) stops mousedown where it lands; see the same
     // case in DiagramPicker.test.tsx
-    render(<MenuButton label="Diagram actions" items={items()}>⋯</MenuButton>);
+    render(
+      <MenuButton label="Diagram actions" items={items()}>
+        ⋯
+      </MenuButton>,
+    );
     fireEvent.click(trigger());
     const canvas = document.createElement('div');
     canvas.addEventListener('mousedown', (e) => e.stopImmediatePropagation());
@@ -88,21 +110,33 @@ describe('MenuButton', () => {
   });
 
   it('closes when Tab moves on, leaving the key to the browser', () => {
-    render(<MenuButton label="Diagram actions" items={items()}>⋯</MenuButton>);
+    render(
+      <MenuButton label="Diagram actions" items={items()}>
+        ⋯
+      </MenuButton>,
+    );
     fireEvent.click(trigger());
     expect(fireEvent.keyDown(screen.getByRole('menu'), { key: 'Tab' })).toBe(true);
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
   it('a second click on the trigger closes it', () => {
-    render(<MenuButton label="Diagram actions" items={items()}>⋯</MenuButton>);
+    render(
+      <MenuButton label="Diagram actions" items={items()}>
+        ⋯
+      </MenuButton>,
+    );
     fireEvent.click(trigger());
     fireEvent.click(trigger());
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
   it('renders nothing at all when there is nothing to offer', () => {
-    const { container } = render(<MenuButton label="Diagram actions" items={[]}>⋯</MenuButton>);
+    const { container } = render(
+      <MenuButton label="Diagram actions" items={[]}>
+        ⋯
+      </MenuButton>,
+    );
     expect(container.innerHTML).toBe('');
   });
 });

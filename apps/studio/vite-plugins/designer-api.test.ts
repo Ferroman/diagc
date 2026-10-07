@@ -79,7 +79,8 @@ async function request(
   const raw = Buffer.concat(chunks);
   return {
     status,
-    body: headers['content-type'] === 'application/json' && raw.length > 0 ? JSON.parse(raw.toString('utf8')) : undefined,
+    body:
+      headers['content-type'] === 'application/json' && raw.length > 0 ? JSON.parse(raw.toString('utf8')) : undefined,
     next: calledNext,
   };
 }

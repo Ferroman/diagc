@@ -26,7 +26,13 @@ export function isSubCause(tree: FishboneTree, id: string): boolean {
  * nodes of its own (createNodeAt's scoping); undefined adds a shared node. */
 export function addEffect(model: DiagramModel, plane?: string): { command: EditorCommand; id: string } {
   const id = uniqueNodeId(model, 'effect');
-  return { id, command: { type: 'add-node', node: { id, name: '', type: FB_EFFECT_TYPE, ...(plane !== undefined ? { plane } : {}) } } };
+  return {
+    id,
+    command: {
+      type: 'add-node',
+      node: { id, name: '', type: FB_EFFECT_TYPE, ...(plane !== undefined ? { plane } : {}) },
+    },
+  };
 }
 
 /**
@@ -53,7 +59,10 @@ export function addChild(model: DiagramModel, parentId: string): { command: Edit
     command: {
       type: 'batch',
       commands: [
-        { type: 'add-node', node: { id, name: '', type, ...(parent.plane !== undefined ? { plane: parent.plane } : {}) } },
+        {
+          type: 'add-node',
+          node: { id, name: '', type, ...(parent.plane !== undefined ? { plane: parent.plane } : {}) },
+        },
         { type: 'add-relation', from: id, to: parentId, opts: { kind: FB_CAUSE_OF_KIND } },
       ],
     },
@@ -61,7 +70,11 @@ export function addChild(model: DiagramModel, parentId: string): { command: Edit
 }
 
 /** A standard category set hung on `effectId`, as one batch (one undo step). */
-export function seedCategories(model: DiagramModel, effectId: string, preset: FishbonePreset): { command: EditorCommand; ids: string[] } | null {
+export function seedCategories(
+  model: DiagramModel,
+  effectId: string,
+  preset: FishbonePreset,
+): { command: EditorCommand; ids: string[] } | null {
   const effect = model.nodes.find((n) => n.id === effectId);
   if (effect === undefined || effect.type !== FB_EFFECT_TYPE) return null;
   const commands: EditorCommand[] = [];
@@ -72,7 +85,10 @@ export function seedCategories(model: DiagramModel, effectId: string, preset: Fi
     const id = uniqueNodeId({ ...model, nodes }, presetId(name));
     nodes = [...nodes, { id, name }];
     ids.push(id);
-    commands.push({ type: 'add-node', node: { id, name, type: FB_CATEGORY_TYPE, ...(effect.plane !== undefined ? { plane: effect.plane } : {}) } });
+    commands.push({
+      type: 'add-node',
+      node: { id, name, type: FB_CATEGORY_TYPE, ...(effect.plane !== undefined ? { plane: effect.plane } : {}) },
+    });
     commands.push({ type: 'add-relation', from: id, to: effectId, opts: { kind: FB_CAUSE_OF_KIND } });
   }
   return { ids, command: { type: 'batch', commands } };

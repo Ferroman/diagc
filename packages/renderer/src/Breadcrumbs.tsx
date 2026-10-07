@@ -15,7 +15,12 @@ export function Breadcrumbs({ path, nameOf, onCrumb }: BreadcrumbsProps) {
   return (
     <Panel position="top-left" className="dg-breadcrumbs">
       <nav className="dg-breadcrumbs-nav" aria-label="Nested zoom breadcrumb">
-        <button type="button" className="dg-crumb dg-crumb-home" title="Zoom out to the bird’s-eye view" onClick={() => onCrumb(null)}>
+        <button
+          type="button"
+          className="dg-crumb dg-crumb-home"
+          title="Zoom out to the bird’s-eye view"
+          onClick={() => onCrumb(null)}
+        >
           ⌂
         </button>
         {path.map((id, i) => {

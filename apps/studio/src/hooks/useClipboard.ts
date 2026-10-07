@@ -22,7 +22,10 @@ export interface UseClipboardOptions {
 
 /** A field, or text the user has highlighted: the browser's own copy/paste. */
 function isTextTarget(target: EventTarget | null): boolean {
-  if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select, [contenteditable]') !== null)) {
+  if (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || target.closest('input, textarea, select, [contenteditable]') !== null)
+  ) {
     return true;
   }
   const sel = typeof window.getSelection === 'function' ? window.getSelection() : null;
@@ -58,8 +61,7 @@ export function useClipboard(opts: UseClipboardOptions): void {
       if (e.clipboardData === null || isTextTarget(e.target)) return;
       const m = o.editor.peek()?.state.model;
       if (m === undefined) return;
-      const ids =
-        o.multiSelection.length > 0 ? o.multiSelection : o.selection?.kind === 'node' ? [o.selection.id] : [];
+      const ids = o.multiSelection.length > 0 ? o.multiSelection : o.selection?.kind === 'node' ? [o.selection.id] : [];
       const onScreen = o.activePlaneManual ? (o.layoutApiRef.current?.snapshotPositions() ?? {}) : {};
       const payload = copySelection(m, o.editor.peek()?.state.layout, o.activePlane, ids, onScreen);
       if (payload === null) return;

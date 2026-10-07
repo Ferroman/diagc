@@ -10,7 +10,9 @@ const dist = path.join(root, 'apps', 'obsidian', 'dist');
 
 const vault = process.env.OBSIDIAN_VAULT;
 if (!vault) {
-  console.error('install-obsidian: OBSIDIAN_VAULT is not set\n  usage: OBSIDIAN_VAULT=/path/to/vault node scripts/install-obsidian.mjs');
+  console.error(
+    'install-obsidian: OBSIDIAN_VAULT is not set\n  usage: OBSIDIAN_VAULT=/path/to/vault node scripts/install-obsidian.mjs',
+  );
   process.exit(1);
 }
 

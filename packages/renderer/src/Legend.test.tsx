@@ -8,7 +8,14 @@ import { outlineInk } from './outline-ink';
 import type { KindStyle, ShapeId } from './registry';
 
 const rows: LegendRow[] = [
-  { id: 'layers:flow', section: 'layers', label: 'Data flow', layer: 'flow', active: false, swatch: { draw: 'chip', color: '#0ea5e9' } },
+  {
+    id: 'layers:flow',
+    section: 'layers',
+    label: 'Data flow',
+    layer: 'flow',
+    active: false,
+    swatch: { draw: 'chip', color: '#0ea5e9' },
+  },
   { id: 'kinds:async', section: 'kinds', label: 'async', swatch: { draw: 'line', style: { dashed: true } } },
   { id: 'items:0', section: 'items', label: 'Owned by Payments', swatch: { draw: 'chip', color: '#f59e0b' } },
 ];
@@ -51,9 +58,7 @@ describe('Legend', () => {
     // users alike, so the row must be inert markup instead.
     const { container } = render(<Legend rows={rows} interactive />);
     expect(screen.queryByRole('button', { name: 'Data flow' })).toBeNull();
-    const row = [...container.querySelectorAll('.dg-legend-row')].find(
-      (el) => el.textContent === 'Data flow',
-    );
+    const row = [...container.querySelectorAll('.dg-legend-row')].find((el) => el.textContent === 'Data flow');
     expect(row?.tagName.toLowerCase()).toBe('div');
     // still greyed, so a caller that does show inactive rows reads them as off
     expect(row?.classList.contains('dg-legend-off')).toBe(true);
@@ -75,7 +80,12 @@ describe('Legend', () => {
   it('renders shape swatches for the default box shape and a non-default shape', () => {
     const shapeRows: LegendRow[] = [
       { id: 'types:service', section: 'types', label: 'Service', swatch: { draw: 'shape', style: { shape: 'box' } } },
-      { id: 'types:database', section: 'types', label: 'Database', swatch: { draw: 'shape', style: { shape: 'cylinder' } } },
+      {
+        id: 'types:database',
+        section: 'types',
+        label: 'Database',
+        swatch: { draw: 'shape', style: { shape: 'cylinder' } },
+      },
     ];
     const { container } = render(<Legend rows={shapeRows} interactive />);
     // A shape swatch is a span (so an icon can be overlaid) wrapping the svg.
@@ -96,7 +106,7 @@ describe('Legend', () => {
 
   // The canvas softens an outline's colour in dark (see outline-ink.ts); a swatch
   // in the raw colour beside it would describe a box that is not on the canvas.
-  it('draws an outline type\'s swatch in the theme\'s share of its colour, as the canvas draws the box', () => {
+  it("draws an outline type's swatch in the theme's share of its colour, as the canvas draws the box", () => {
     const row: LegendRow = {
       id: 'types:tm-boundary',
       section: 'types',
@@ -107,15 +117,25 @@ describe('Legend', () => {
     expect(container.querySelector('.dg-legend-shape rect')?.getAttribute('stroke')).toBe(outlineInk('#c62828'));
   });
 
-  it('draws a filled type\'s swatch in its colour as written', () => {
-    const row: LegendRow = { id: 'types:service', section: 'types', label: 'Service', swatch: { draw: 'shape', style: { shape: 'box' }, color: '#c62828' } };
+  it("draws a filled type's swatch in its colour as written", () => {
+    const row: LegendRow = {
+      id: 'types:service',
+      section: 'types',
+      label: 'Service',
+      swatch: { draw: 'shape', style: { shape: 'box' }, color: '#c62828' },
+    };
     const { container } = render(<Legend rows={[row]} interactive />);
     expect(container.querySelector('.dg-legend-shape rect')?.getAttribute('stroke')).toBe('#c62828');
   });
 
   it('renders a bubble swatch as one outline path with the tail, not the box rect', () => {
     const rows: LegendRow[] = [
-      { id: 'types:comment', section: 'types', label: 'Comment', swatch: { draw: 'shape', style: { shape: 'bubble' } } },
+      {
+        id: 'types:comment',
+        section: 'types',
+        label: 'Comment',
+        swatch: { draw: 'shape', style: { shape: 'bubble' } },
+      },
     ];
     const { container } = render(<Legend rows={rows} interactive />);
     const svg = container.querySelector('span.dg-legend-shape > svg')!;
@@ -177,7 +197,14 @@ describe('Legend', () => {
     const onToggleDrawings = vi.fn();
     const withDrawings: LegendRow[] = [
       ...rows,
-      { id: 'layers:$drawings', section: 'layers', label: 'Drawings', drawings: true, active: true, swatch: { draw: 'line', style: { width: 2.5 }, color: 'var(--dg-ink)' } },
+      {
+        id: 'layers:$drawings',
+        section: 'layers',
+        label: 'Drawings',
+        drawings: true,
+        active: true,
+        swatch: { draw: 'line', style: { width: 2.5 }, color: 'var(--dg-ink)' },
+      },
     ];
     render(<Legend rows={withDrawings} interactive onToggleDrawings={onToggleDrawings} />);
     const btn = screen.getByRole('button', { name: 'Drawings' });
@@ -187,7 +214,12 @@ describe('Legend', () => {
   });
 
   it('renders the Drawings row inert without a handler', () => {
-    render(<Legend rows={[{ id: 'layers:$drawings', section: 'layers', label: 'Drawings', drawings: true, active: true }]} interactive={false} />);
+    render(
+      <Legend
+        rows={[{ id: 'layers:$drawings', section: 'layers', label: 'Drawings', drawings: true, active: true }]}
+        interactive={false}
+      />,
+    );
     expect(screen.queryByRole('button', { name: 'Drawings' })).toBeNull();
     expect(screen.getByText('Drawings')).toBeTruthy();
   });
@@ -199,11 +231,39 @@ describe('Legend', () => {
     unmount();
     return html;
   };
-  const shapeRow = (shape: ShapeId): LegendRow => ({ id: `types:${shape}`, section: 'types', label: shape, swatch: { draw: 'shape', style: { shape } } });
-  const lineRow = (style: KindStyle): LegendRow => ({ id: 'kinds:k', section: 'kinds', label: 'k', swatch: { draw: 'line', style } });
+  const shapeRow = (shape: ShapeId): LegendRow => ({
+    id: `types:${shape}`,
+    section: 'types',
+    label: shape,
+    swatch: { draw: 'shape', style: { shape } },
+  });
+  const lineRow = (style: KindStyle): LegendRow => ({
+    id: 'kinds:k',
+    section: 'kinds',
+    label: 'k',
+    swatch: { draw: 'line', style },
+  });
 
   it('gives every canvas shape a swatch of its own, never the box fallback', () => {
-    const shapes: ShapeId[] = ['cylinder', 'pill', 'hexagon', 'person', 'table', 'bubble', 'circle', 'rounded', 'diamond', 'bar', 'start-dot', 'end-bullseye', 'send-signal', 'receive-signal', 'note', 'ellipse', 'store'];
+    const shapes: ShapeId[] = [
+      'cylinder',
+      'pill',
+      'hexagon',
+      'person',
+      'table',
+      'bubble',
+      'circle',
+      'rounded',
+      'diamond',
+      'bar',
+      'start-dot',
+      'end-bullseye',
+      'send-signal',
+      'receive-signal',
+      'note',
+      'ellipse',
+      'store',
+    ];
     const box = svgOf(shapeRow('box'));
     const drawn = shapes.map((sh) => svgOf(shapeRow(sh)));
     for (const [i, html] of drawn.entries()) expect(html, shapes[i]).not.toBe(box);
@@ -212,7 +272,9 @@ describe('Legend', () => {
   });
 
   it('fills the solid glyphs and leaves a store open-ended, as the canvas does', () => {
-    const { container } = render(<Legend rows={[shapeRow('start-dot'), shapeRow('end-bullseye'), shapeRow('store')]} interactive={false} />);
+    const { container } = render(
+      <Legend rows={[shapeRow('start-dot'), shapeRow('end-bullseye'), shapeRow('store')]} interactive={false} />,
+    );
     const [dot, bullseye, store] = [...container.querySelectorAll('span.dg-legend-shape > svg')];
     expect(dot!.querySelectorAll('circle')).toHaveLength(1);
     expect(dot!.querySelector('circle')?.getAttribute('fill')).not.toBe('var(--dg-surface)');
@@ -239,14 +301,27 @@ describe('Legend', () => {
 
   it('draws marks under their own heading, as the badge or tag the canvas shows', () => {
     const marks: LegendRow[] = [
-      { id: 'marks:threat-open', section: 'marks', label: 'Open threats', swatch: { draw: 'mark', mark: 'threat-open' } },
-      { id: 'marks:threat-handled', section: 'marks', label: 'All threats handled', swatch: { draw: 'mark', mark: 'threat-handled' } },
+      {
+        id: 'marks:threat-open',
+        section: 'marks',
+        label: 'Open threats',
+        swatch: { draw: 'mark', mark: 'threat-open' },
+      },
+      {
+        id: 'marks:threat-handled',
+        section: 'marks',
+        label: 'All threats handled',
+        swatch: { draw: 'mark', mark: 'threat-handled' },
+      },
       { id: 'marks:pk', section: 'marks', label: 'Primary key', swatch: { draw: 'mark', mark: 'pk' } },
       { id: 'marks:fk', section: 'marks', label: 'Foreign key column', swatch: { draw: 'mark', mark: 'fk' } },
     ];
     const { container } = render(<Legend rows={marks} interactive={false} />);
     expect(screen.getByText('Marks')).toBeTruthy();
-    const drawn = [...container.querySelectorAll('.dg-legend-mark')].map((el) => [el.getAttribute('data-mark'), el.textContent]);
+    const drawn = [...container.querySelectorAll('.dg-legend-mark')].map((el) => [
+      el.getAttribute('data-mark'),
+      el.textContent,
+    ]);
     expect(drawn).toEqual([
       ['threat-open', '1'],
       ['threat-handled', '✓'],

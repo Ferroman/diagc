@@ -18,7 +18,10 @@ const home = homePaths(findHome(fileURLToPath(import.meta.url)));
 const ctx: GuideContext = { guideDir: home.guideDir, startersDir: home.startersDir, version: cliVersion(home.root) };
 
 /** `undefined` is the index, as `renderGuide` takes it. */
-const pages: [string, string | undefined][] = [['index', undefined], ...guideTopics(ctx.guideDir).map((t): [string, string] => [t, t])];
+const pages: [string, string | undefined][] = [
+  ['index', undefined],
+  ...guideTopics(ctx.guideDir).map((t): [string, string] => [t, t]),
+];
 
 // The index is what an agent reads first, on every task: its size is a cost paid
 // each time, so it is a budget and not a guideline.

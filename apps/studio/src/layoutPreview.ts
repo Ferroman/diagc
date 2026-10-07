@@ -30,7 +30,7 @@ export function mergePreview(
  *
  * Returns `layout` UNCHANGED when there is nothing to preview. That identity
  * matters — DiagramView memoizes its layout settings on the layout object
- * (DiagramView.tsx:536), and handing it a fresh object every render would
+ * (useViewLayout's `layoutSettings`), and handing it a fresh object every render would
  * invalidate that memo and re-run elk on every render.
  */
 export function withLayoutPreview(

@@ -71,7 +71,9 @@ describe('TableNode edit mode', () => {
 
   it('read mode shows no editing controls', () => {
     const { container } = render(
-      <ReactFlowProvider><DiagramNode id="t" data={data()} /></ReactFlowProvider>,
+      <ReactFlowProvider>
+        <DiagramNode id="t" data={data()} />
+      </ReactFlowProvider>,
     );
     expect(container.querySelector('.dg-table-name-input')).toBeNull();
     expect(container.querySelector('.dg-table-add')).toBeNull();
@@ -80,7 +82,9 @@ describe('TableNode edit mode', () => {
   it('“+ add column” appends a column', () => {
     const spy = vi.fn();
     const { getByText } = render(
-      <ReactFlowProvider><DiagramNode id="t" data={editData(spy)} /></ReactFlowProvider>,
+      <ReactFlowProvider>
+        <DiagramNode id="t" data={editData(spy)} />
+      </ReactFlowProvider>,
     );
     fireEvent.click(getByText(/add column/i));
     const cols = spy.mock.calls[0]![0];
@@ -91,7 +95,9 @@ describe('TableNode edit mode', () => {
   it('editing a name input commits the new name', () => {
     const spy = vi.fn();
     const { container } = render(
-      <ReactFlowProvider><DiagramNode id="t" data={editData(spy)} /></ReactFlowProvider>,
+      <ReactFlowProvider>
+        <DiagramNode id="t" data={editData(spy)} />
+      </ReactFlowProvider>,
     );
     const first = container.querySelector('.dg-table-name-input') as HTMLInputElement;
     fireEvent.change(first, { target: { value: 'account_id' } });
@@ -101,7 +107,9 @@ describe('TableNode edit mode', () => {
   it('the badge cycles pk→fk on the id column', () => {
     const spy = vi.fn();
     const { container } = render(
-      <ReactFlowProvider><DiagramNode id="t" data={editData(spy)} /></ReactFlowProvider>,
+      <ReactFlowProvider>
+        <DiagramNode id="t" data={editData(spy)} />
+      </ReactFlowProvider>,
     );
     // first fixture column is `id` (pk); one click cycles pk → fk
     fireEvent.click(container.querySelectorAll('.dg-table-badge')[0]!);
@@ -111,7 +119,9 @@ describe('TableNode edit mode', () => {
   it('delete removes the row', () => {
     const spy = vi.fn();
     const { container } = render(
-      <ReactFlowProvider><DiagramNode id="t" data={editData(spy)} /></ReactFlowProvider>,
+      <ReactFlowProvider>
+        <DiagramNode id="t" data={editData(spy)} />
+      </ReactFlowProvider>,
     );
     fireEvent.click(container.querySelectorAll('.dg-table-del')[0]!);
     expect(spy.mock.calls[0]![0].length).toBe(data().columns!.length - 1);

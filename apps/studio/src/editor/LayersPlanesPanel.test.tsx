@@ -123,12 +123,7 @@ describe('LayersPlanesPanel', () => {
   it('drops the pen back to the base sheet', () => {
     const onActivateLayer = vi.fn();
     render(
-      <LayersPlanesPanel
-        model={testModel()}
-        onCommand={vi.fn()}
-        activeLayer="ops"
-        onActivateLayer={onActivateLayer}
-      />,
+      <LayersPlanesPanel model={testModel()} onCommand={vi.fn()} activeLayer="ops" onActivateLayer={onActivateLayer} />,
     );
     expect(screen.getByLabelText<HTMLInputElement>('Draw on Ops').checked).toBe(true);
     fireEvent.click(screen.getByLabelText('Draw on base sheet'));
