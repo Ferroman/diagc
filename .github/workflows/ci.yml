@@ -48,7 +48,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm lint
+      # Lint, then fail if eslint-suppressions.json lists anything that is gone. `pnpm lint`
+      # alone misses entries for a deleted or moved file, and a new file at that path would
+      # inherit them.
+      - run: pnpm lint:prune && git diff --exit-code eslint-suppressions.json
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test

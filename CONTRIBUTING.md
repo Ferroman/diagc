@@ -176,12 +176,14 @@ That file only shrinks:
   cover a new violation; reviewers check that the file only gets smaller.
 - **Fixed one? Prune.** `pnpm lint` fails while the file lists a violation that is gone;
   `pnpm lint:prune` removes it.
-- **Moving or renaming a file** that has entries: suppress the moved file alone,
+- **Moving code that has entries,** by renaming a file or by moving a function into
+  another file: from the repository root, suppress the file the code moved to alone,
   `npx eslint <new-path> --suppress-rule max-lines --suppress-rule max-lines-per-function --suppress-rule max-params --suppress-rule complexity --suppress-rule max-depth`,
-  then run `pnpm lint:prune`, and show in the PR that the moved file's counts are no
-  higher than the old path's.
+  then run `pnpm lint:prune`, and show in the PR that no rule's total went up:
+  `jq -r '[.[] | to_entries[]] | group_by(.key)[] | "\(.[0].key) \(map(.value.count) | add)"' eslint-suppressions.json`.
 - **Deleting a file** that has entries: run `pnpm lint:prune`. `pnpm lint` does not
-  notice entries for a path that no longer exists, so they stay until pruned.
+  notice entries for a path that no longer exists, but CI does and fails until they are
+  pruned.
 - **A limit is wrong for some code?** Change the rule in `eslint.config.mjs` with a
   comment saying why, rather than suppressing it.
 
