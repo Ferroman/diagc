@@ -52,6 +52,7 @@ Look it up.
 | --- | --- |
 | [`diagc` CLI](reference/cli.md) | Commands, flags, environment variables, which files to commit. |
 | [Model](reference/model.md) | Every field of a diagram, every validation code, registry defaults. |
+| [Glossary](reference/glossary.md) | The words the docs and the studio use, one or two sentences each. |
 | [Builder API](reference/builder-api.md) | The TypeScript DSL, method by method. |
 | [Studio](reference/studio.md) | Panels, gestures, shortcuts. |
 | [Library](reference/library.md) | The bundled C4, Tech, Kubernetes, AWS, Azure and Google Cloud packs. |

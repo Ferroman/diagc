@@ -434,7 +434,7 @@ export interface Stroke {
 
 /** `<name>.drawings.json` — the second thing kept out of the model, in its own
  * file rather than the layout overlay so a box nudge and a scribble never land
- * in one hunk (see .claude/specs/2026-08-23-drawings-sidecar-design.md).
+ * in one hunk.
  * Keyed exactly like `LayoutOverlay.planes` (layoutPlaneKey). */
 export interface Drawings {
   version: 1;

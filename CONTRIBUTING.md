@@ -102,6 +102,48 @@ running them first saves a round trip.
 The architecture and the reasoning behind it live in `docs/explanation/`. Reading that
 first will save you time on anything non-trivial.
 
+## Code vocabulary
+
+One name per concept, so a reader meets one word for one thing. The user-facing words
+are in the [glossary](docs/reference/glossary.md). This table settles the ones the code
+had drifted on. When you touch code that still uses a retired name, rename it.
+
+| Concept | Use | Retire |
+| --- | --- | --- |
+| Count marker on a node or relation; click to open its note | **badge** | "chip" for the one on a relation (`chipSpots`, `placeChip`) |
+| Panel listing an element's threats, comments and links | **note** (the layout file says `notes`, the command `set-note-offset`) | "bubble" and "threat note" in code; user docs may say "bubble" for its shape |
+| Small pill-shaped control or label, for example a fold toggle, a layer toggle, a top-bar button, a plan role, a legend swatch | **chip** | "chip" for a badge, a text node, an external stub, a label or the quick-add button; `NodeBadge` (a plan role) → `NodeChip` |
+| Typeless node drawn as plain text (a causal-loop variable) | **text node** | "text chip" |
+| Stand-in for an off-frame node in a drill view | **external stub** | "ghost chip" |
+| Text on a relation | **label** | "label chip" |
+| The `+` that adds a connected node | **quick-add button** | "`+` chip" |
+| Viewer-set fold override | **pin** | "pin" for anything else in code |
+| A node's stored coordinates | **saved position** | `pinned` for positions, `QuickAddPlacement.pinned` |
+| Style named in the model | **diagram style** | `pinnedStyle` |
+| Relation end fixed to one side of its node | **fixed side** | "pinned side", `PinDot` |
+| A node or relation that can carry notes | **element** (type to come: `ElementRef`) | `ThreatTarget` for anything that is not a threat |
+| Threats listed for an element, or for the page | **threat register** | — |
+| `<name>.layout.json` / `<name>.drawings.json` beside a diagram | **sidecar** (the file); the layout file holds the **layout overlay** (`LayoutOverlay`), the drawings file `Drawings` | bare "overlay" for the sidecar |
+| Keeping layout entries in step with the model when ids are deleted | **layout pruning** (`prune*`) | "mirror", "mirror hygiene" |
+| What a notation draws above the diagram: loop labels, git lanes, order bands, the time axis | **canvas overlay** | bare "overlay" |
+| Cross-cutting set of nodes or relations toggled together | **layer** | "overlay" for a layer in code |
+
+## Comments
+
+Comments carry the reasons the code cannot show, and several here encode fixed race
+conditions. Keep them, and keep them readable:
+
+1. **Say why, not what,** in the present tense.
+2. **No history.** No "now", "used to", "no longer", "pre-X", and no plan, stage, task or
+   PR numbers. Git keeps the history.
+3. **Use the vocabulary word.** Define any other term the first time it appears in the
+   file.
+4. **Lead with the point** in one sentence. A block longer than about 8 lines splits into
+   the point plus details, or moves to `docs/explanation/` with a link.
+5. **Never point at a gitignored file.** The code is public and `.claude/` is not. State
+   the limitation inline in one sentence instead.
+6. **Refer to a doc section by its heading,** never by line number.
+
 ## Diagrams and their images
 
 The docs' figures and the [examples](docs/examples/README.md) are built with the tool, from

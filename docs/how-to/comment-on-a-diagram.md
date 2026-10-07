@@ -6,7 +6,7 @@ Leave remarks and resource links on any node or relation, and read them on the p
 
 1. Select the element. In the inspector, the **Comments** section lists what is there; type in the box and press **Add**. Set the author and date on a row if they matter.
 2. For a node, the **Links** section takes a label and a URL per row.
-3. A badge appears at the element's bottom-right corner (a chip a quarter of the way along an arrow) with the comment count, or `↗` when there are only links. Click it to open the bubble; drag the bubble to where it reads best. Its place and open state are saved with the layout, so the published page opens the way you left it.
+3. A badge appears at the element's bottom-right corner (a quarter of the way along an arrow) with the comment count, or `↗` when there are only links. Click it to open the bubble; drag the bubble to where it reads best. Its place and open state are saved with the layout, so the published page opens the way you left it.
 
 ## In TypeScript
 

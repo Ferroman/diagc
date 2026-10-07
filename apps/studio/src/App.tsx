@@ -164,8 +164,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const [activeLayer, setActiveLayer] = useState<string | null>(null);
   const [pins, setPins] = useState<Record<string, 'expanded' | 'collapsed'>>({});
   // A viewer's momentary layout choice, keyed by resolved containment plane like
-  // the persisted settings are. Never written: this is viewer state in the same
-  // class as pins and focus, and DEFERRALS.md:14 keeps saves explicit.
+  // the persisted settings are. Never written to the sidecar: like focus, it is
+  // viewer state.
   const [layoutPreview, setLayoutPreview] = useState<Record<string, LayoutSettings>>({});
   // Boxes moved by hand in view mode (alt-drag), not yet written to the sidecar.
   // Unlike the layout preview these CAN be persisted — coordinates were never

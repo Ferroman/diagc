@@ -526,7 +526,7 @@ async function layoutSingleRun(
 
   // Only an unrestructured graph produces routes worth drawing: a lifted edge's
   // waypoints run between containers rather than between the nodes the renderer
-  // draws — so curved beziers are the honest fallback there. See DEFERRALS.md.
+  // draws — so curved beziers are the honest fallback there.
   // The key is whether lifting ACTUALLY happened, not which algorithm was
   // picked: a container-free diagram lifts nothing, so force and stress keep
   // their routes exactly as they did before edge-lifting existed.

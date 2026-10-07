@@ -3,14 +3,15 @@ import type { LayoutDirection, LayoutSettings } from '@diagc/core';
 /**
  * The arrangements worth offering.
  *
- * `radial` and `stress` were withdrawn (DEFERRALS.md). radial needs a TREE, so
+ * `radial` is never offered, and `stress` only as the causal-loop default.
+ * radial needs a TREE, so
  * on any diagram carrying a cycle — which is every real architecture diagram —
  * it fails on both the lifted and the flat graph and the engine degrades to
  * layered, meaning the entry could only ever be a no-op that looked broken.
  * stress places nodes as dimensionless points with no overlap removal, so its
  * compact result is a pile (146 overlapping sibling pairs on platform-c4).
- * Both are still honoured when a sidecar names them — only the picker stops
- * proposing them. stress now has its boxes pushed apart after elk places them
+ * Both are still honoured when a sidecar names them; only the picker leaves
+ * them out. stress gets its boxes pushed apart after elk places them
  * (renderer overlap.ts) and is the causal-loop default, where the picker lists
  * it as that notation's default (`defaultAlgorithm`); elsewhere it stays off
  * the list until it has been tried on nested diagrams like platform-c4.
