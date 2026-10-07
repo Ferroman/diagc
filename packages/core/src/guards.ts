@@ -73,6 +73,17 @@ export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
           ),
       ));
   if (!notesOk) return false;
+  // `manual` spells "automatic" by omission, so `true` is its only stored value
+  // (the `open` reasoning above). `settings` is checked for shape only — each
+  // plane's entry an object, its fields unread — so a sidecar from an older or
+  // newer version, with a setting retired or added, still loads: failing here
+  // would cost the reader every saved position, not just one unfamiliar field.
+  const manual = (u as { manual?: unknown }).manual;
+  const manualOk = manual === undefined || (isRecord(manual) && Object.values(manual).every((v) => v === true));
+  if (!manualOk) return false;
+  const settings = (u as { settings?: unknown }).settings;
+  const settingsOk = settings === undefined || (isRecord(settings) && Object.values(settings).every(isRecord));
+  if (!settingsOk) return false;
   // `export` is export-only presentation (see LayoutOverlay): an object whose
   // only field today is a list of node ids. Validate it structurally so a typo
   // is a 400 from the studio's save endpoint rather than a silently ignored

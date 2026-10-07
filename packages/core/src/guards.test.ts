@@ -86,6 +86,43 @@ describe('isLayoutOverlay — notes', () => {
   });
 });
 
+describe('isLayoutOverlay — manual', () => {
+  it('accepts plane → true, an empty map, and no map at all', () => {
+    expect(isLayoutOverlay({ ...base, manual: { default: true, infra: true } })).toBe(true);
+    expect(isLayoutOverlay({ ...base, manual: {} })).toBe(true);
+    expect(isLayoutOverlay(base)).toBe(true);
+  });
+
+  it('rejects any value but true, and anything but a plane map', () => {
+    // "automatic" is spelled by omission — a stored false would be a second way to say it
+    expect(isLayoutOverlay({ ...base, manual: { default: false } })).toBe(false);
+    expect(isLayoutOverlay({ ...base, manual: { default: 'yes' } })).toBe(false);
+    expect(isLayoutOverlay({ ...base, manual: ['default'] })).toBe(false);
+    expect(isLayoutOverlay({ ...base, manual: null })).toBe(false);
+  });
+});
+
+describe('isLayoutOverlay — settings', () => {
+  it('accepts plane → object, an empty map, and no map at all', () => {
+    expect(isLayoutOverlay({ ...base, settings: { default: { direction: 'RIGHT', spacing: 60 } } })).toBe(true);
+    expect(isLayoutOverlay({ ...base, settings: { default: {} } })).toBe(true);
+    expect(isLayoutOverlay({ ...base, settings: {} })).toBe(true);
+    expect(isLayoutOverlay(base)).toBe(true);
+  });
+
+  it('checks shape only, so a setting from another version still loads', () => {
+    expect(isLayoutOverlay({ ...base, settings: { default: { algorithm: 'tomorrow', spacing: 'wide' } } })).toBe(true);
+  });
+
+  it('rejects a plane entry that is not an object, and anything but a plane map', () => {
+    expect(isLayoutOverlay({ ...base, settings: { default: 'RIGHT' } })).toBe(false);
+    expect(isLayoutOverlay({ ...base, settings: { default: null } })).toBe(false);
+    expect(isLayoutOverlay({ ...base, settings: { default: ['RIGHT'] } })).toBe(false);
+    expect(isLayoutOverlay({ ...base, settings: [{ direction: 'RIGHT' }] })).toBe(false);
+    expect(isLayoutOverlay({ ...base, settings: null })).toBe(false);
+  });
+});
+
 describe('isDrawings', () => {
   const stroke = { id: 'k1', points: [1, 2, 3, 4] };
 

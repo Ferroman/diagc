@@ -409,6 +409,14 @@ describe('deleteNode cascade', () => {
     expect(other?.hides).toEqual(['by']);
     expect(other?.hidesTree).toBeUndefined();
   });
+
+  it('leaves an untouched list as written and in place', () => {
+    const m = frameModel();
+    m.planes = m.planes.map((p) => (p.id === 'other' ? { ...p, hidesTree: [], hides: ['act'] } : p));
+    const other = deleteNode(m, 'frame', true).planes.find((p) => p.id === 'other');
+    expect(other).toStrictEqual({ id: 'other', name: 'other', hidesTree: [] });
+    expect(Object.keys(other!)).toEqual(['id', 'name', 'hidesTree']);
+  });
 });
 
 describe('deleteLayer (destructive)', () => {
@@ -467,6 +475,54 @@ describe('deleteLayer (destructive)', () => {
     const m = deleteLayer(delModel(), 'ai');
     expect(m.layers.map((l) => l.id)).toEqual(['ops']);
     expect(m.planes.find((p) => p.id === 'p')?.layers).toEqual(['ops']);
+  });
+
+  // `toStrictEqual` throughout: `toEqual` would count `layers: undefined` as
+  // absent, and absence (no `[]` left in the saved JSON) is the point.
+  it('omits a plane layers list that the deletion emptied', () => {
+    const m0: DiagramModel = { ...delModel(), planes: [{ id: 'p', name: 'p', layers: ['ai'] }] };
+    expect(deleteLayer(m0, 'ai').planes).toStrictEqual([{ id: 'p', name: 'p' }]);
+  });
+
+  it('omits a hides or hidesTree list that the deletion emptied', () => {
+    const m0: DiagramModel = {
+      ...delModel(),
+      planes: [
+        { id: 'p', name: 'p', hides: ['box'] },
+        { id: 'q', name: 'q', hidesTree: ['box'] },
+      ],
+    };
+    expect(deleteLayer(m0, 'ai').planes).toStrictEqual([
+      { id: 'p', name: 'p' },
+      { id: 'q', name: 'q' },
+    ]);
+  });
+
+  it('keeps an untouched plane by reference, an authored empty list included', () => {
+    const m0: DiagramModel = {
+      ...delModel(),
+      planes: [
+        { id: 'p', name: 'p', layers: ['ai', 'ops'] },
+        { id: 'q', name: 'q', layers: ['ops'], hides: ['keep'] },
+        { id: 'r', name: 'r', layers: [] },
+      ],
+    };
+    const m = deleteLayer(m0, 'ai');
+    expect(m.planes[1]).toBe(m0.planes[1]);
+    expect(m.planes[2]).toBe(m0.planes[2]);
+  });
+
+  it('leaves the lists it does not touch as written and in place', () => {
+    // Only an emptied list goes: an authored `[]` beside it stays, and so does
+    // the key order, so the saved file's diff is the deletion and nothing else.
+    const m0: DiagramModel = {
+      ...delModel(),
+      planes: [{ id: 'p', name: 'p', hides: ['box'], layers: [], hidesTree: ['keep'] }],
+    };
+    const p = deleteLayer(m0, 'ai').planes[0]!;
+    expect(p).toStrictEqual({ id: 'p', name: 'p', layers: [], hidesTree: ['keep'] });
+    expect(Object.keys(p)).toEqual(['id', 'name', 'layers', 'hidesTree']);
+    expect(p.hidesTree).toBe(m0.planes[0]!.hidesTree);
   });
 
   it('throws on an unknown layer and does not mutate its input', () => {

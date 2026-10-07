@@ -200,22 +200,40 @@ export function setPlanDates(m: DiagramModel, id: string, dates: PlanDates): Dia
   };
 }
 
-/** Drop every id satisfying `drop` from each plane's `hides`/`hidesTree`,
- * omitting emptied lists; a plane with no change keeps its reference. */
-function prunePlaneHides(planes: DiagramPlane[], drop: (id: string) => boolean): DiagramPlane[] {
-  const without = (list: string[] | undefined): string[] | undefined =>
-    list === undefined ? undefined : list.filter((h) => !drop(h));
+type PlaneIdList = 'layers' | 'hides' | 'hidesTree';
+
+/** Drop the ids each predicate matches from that list on every plane. An empty
+ * list means the same as an absent one, so a list this pass empties is omitted
+ * rather than saved as `[]`. A list it does not touch — an authored `[]`
+ * included — stays as written and in its place, so the saved file's diff is
+ * the deletion alone; a plane with no change keeps its reference. */
+function prunePlaneLists(
+  planes: DiagramPlane[],
+  drop: Partial<Record<PlaneIdList, (id: string) => boolean>>,
+): DiagramPlane[] {
+  const keys = Object.keys(drop) as PlaneIdList[];
   return planes.map((p) => {
-    const hides = without(p.hides);
-    const hidesTree = without(p.hidesTree);
-    if (hides?.length === p.hides?.length && hidesTree?.length === p.hidesTree?.length) return p;
-    const { hides: _h, hidesTree: _t, ...rest } = p;
-    return {
-      ...rest,
-      ...(hides !== undefined && hides.length > 0 ? { hides } : {}),
-      ...(hidesTree !== undefined && hidesTree.length > 0 ? { hidesTree } : {}),
-    };
+    let next = p;
+    for (const key of keys) {
+      const list = p[key];
+      const test = drop[key];
+      if (list === undefined || test === undefined) continue;
+      const kept = list.filter((x) => !test(x));
+      if (kept.length === list.length) continue;
+      if (kept.length > 0) {
+        next = { ...next, [key]: kept };
+      } else {
+        const { [key]: _emptied, ...rest } = next;
+        next = rest;
+      }
+    }
+    return next;
   });
+}
+
+/** Drop every id satisfying `drop` from each plane's `hides`/`hidesTree`. */
+function prunePlaneHides(planes: DiagramPlane[], drop: (id: string) => boolean): DiagramPlane[] {
+  return prunePlaneLists(planes, { hides: drop, hidesTree: drop });
 }
 
 /** Transitive containment descendants of `id` across every plane, plus `id`
@@ -737,15 +755,12 @@ export function deleteLayer(m: DiagramModel, id: string): DiagramModel {
       (r) => r.layer !== id && !doomed.has(r.from) && !doomed.has(r.to) && !anchoredToDoomed(r),
     ),
     containment: m.containment.filter((e) => !doomed.has(e.parent) && !doomed.has(e.child)),
-    planes: (m.planes ?? []).map((p) => {
-      const touchesHides = [...(p.hides ?? []), ...(p.hidesTree ?? [])].some((h) => doomed.has(h));
-      if (p.layers === undefined && !touchesHides) return p;
-      return {
-        ...p,
-        ...(p.layers !== undefined ? { layers: p.layers.filter((l) => l !== id) } : {}),
-        ...(p.hides !== undefined ? { hides: p.hides.filter((h) => !doomed.has(h)) } : {}),
-        ...(p.hidesTree !== undefined ? { hidesTree: p.hidesTree.filter((h) => !doomed.has(h)) } : {}),
-      };
+    // The layer leaves every plane's preset list, and its destroyed nodes every
+    // hides/hidesTree (a stale entry fails `unknown-hidden-node` on the next save).
+    planes: prunePlaneLists(m.planes ?? [], {
+      layers: (l) => l === id,
+      hides: (h) => doomed.has(h),
+      hidesTree: (h) => doomed.has(h),
     }),
   };
 }
