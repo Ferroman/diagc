@@ -162,6 +162,29 @@ conditions. Keep them, and keep them readable:
    the limitation inline in one sentence instead.
 6. **Refer to a doc section by its heading,** never by line number.
 
+## Size limits
+
+ESLint holds TypeScript source to five limits: a file at most 500 lines, a function at
+most 120, at most 4 parameters, complexity at most 20, nesting at most 4 deep. Blank and
+comment lines do not count, and tests are exempt. The limits exist because the
+2026-09 decomposition of `DiagramView` and `App` grew back within a month.
+
+Code that broke a limit when the limits arrived is listed in `eslint-suppressions.json`.
+That file only shrinks:
+
+- **New code meets the limits.** Never re-run `--suppress-all` or `--suppress-rule` to
+  cover a new violation; reviewers check that the file only gets smaller.
+- **Fixed one? Prune.** `pnpm lint` fails while the file lists a violation that is gone;
+  `pnpm lint:prune` removes it.
+- **Moving or renaming a file** that has entries: suppress the moved file alone,
+  `npx eslint <new-path> --suppress-rule max-lines --suppress-rule max-lines-per-function --suppress-rule max-params --suppress-rule complexity --suppress-rule max-depth`,
+  then run `pnpm lint:prune`, and show in the PR that the moved file's counts are no
+  higher than the old path's.
+- **Deleting a file** that has entries: run `pnpm lint:prune`. `pnpm lint` does not
+  notice entries for a path that no longer exists, so they stay until pruned.
+- **A limit is wrong for some code?** Change the rule in `eslint.config.mjs` with a
+  comment saying why, rather than suppressing it.
+
 ## Diagrams and their images
 
 The docs' figures and the [examples](docs/examples/README.md) are built with the tool, from
