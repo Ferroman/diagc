@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/Ferroman/diagc/compare/v0.14.2...v1.0.0) (2026-10-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** everything else @diagc/core exported — commands and mutations, the view compiler, layout helpers, compose, diff, lint, eject, the guards, the vocabulary lists, the notation helpers and errMessage — moved to @diagc/core/internal, which carries no semver promise. CORE_VERSION is removed.
+
+### Code Refactoring
+
+* **core:** @diagc/core is the author API; the rest moves to @diagc/core/internal ([#77](https://github.com/Ferroman/diagc/issues/77)) ([8d5e12f](https://github.com/Ferroman/diagc/commit/8d5e12f09c38ddf7be5b63955cfa594d149b99d1))
+
 ## [0.14.2](https://github.com/Ferroman/diagc/compare/v0.14.1...v0.14.2) (2026-10-07)
 
 
