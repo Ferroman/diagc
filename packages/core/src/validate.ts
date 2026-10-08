@@ -8,7 +8,6 @@ import {
   RELATION_LINES,
   RELATION_MARKERS,
   RELATION_SHAPES,
-  RESERVED_NODE_ID,
   SIDES,
   STRIDE,
   TEXT_ALIGNS,
@@ -20,6 +19,7 @@ import {
   type TextRun,
 } from './types';
 import { childrenOf } from './children';
+import { RESERVED_NODE_ID } from './shared-constants';
 import { isIsoDate } from './dates';
 import {
   FB_CATEGORY_TYPE,

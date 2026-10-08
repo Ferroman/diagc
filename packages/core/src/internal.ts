@@ -21,6 +21,7 @@
  */
 export { ejectSource } from './eject';
 export * from './types';
+export * from './shared-constants';
 export * from './mutate';
 export { commentsOf, hasNoteContent, nextCommentId, type ElementTarget } from './comments';
 export { isIsoDate } from './dates';
@@ -49,6 +50,7 @@ export {
   ZoneBuilder,
   type NodeOpts,
   type RelateOpts,
+  type ContainsOpts,
   type CommitOpts,
   type StageOpts,
   type MergeOpts,

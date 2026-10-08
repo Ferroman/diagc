@@ -16,21 +16,6 @@ export const RELATION_SHAPES = ['curved', 'straight', 'step'] as const;
 export const RELATION_LINES = ['solid', 'dashed', 'dotted'] as const;
 export const RELATION_MARKERS = ['arrow', 'dot', 'square', 'diamond', 'none'] as const;
 
-/** Default footprint for image nodes whose size is not known yet. Kept in
- * core so the editor and the renderer cannot drift apart. */
-export const DEFAULT_IMAGE_NODE_SIZE = { w: 160, h: 120 } as const;
-
-/** Sentinel id the renderer's elk wrapper uses for its synthetic layout root.
- * Kept in core so validation can refuse a model node that would collide with
- * it — the renderer and validate() must agree on the exact string. */
-export const RESERVED_NODE_ID = '__root__';
-
-/** Node types whose containment children cannot be re-homed when the container
- * dies — an orphaned activity lane or git commit fails validation until undone.
- * Deleting one of these cascades to its subtree; every other container severs
- * only. Kept in core so the editor UI and the command algebra agree. */
-export const CASCADE_DELETE_TYPES = ['activity-frame', 'branch'] as const;
-
 export interface Column {
   name: string;
   /** SQL-ish type shown right-aligned in the row, e.g. 'uuid', 'int', 'text' */
@@ -440,9 +425,6 @@ export interface Drawings {
   version: 1;
   planes: Record<string, Stroke[]>;
 }
-
-/** Pen width when a stroke names none. In core so editor and renderer cannot drift. */
-export const DEFAULT_STROKE_WIDTH = 3;
 
 export const BUILTIN_NOTATIONS = [
   'causal-loop',

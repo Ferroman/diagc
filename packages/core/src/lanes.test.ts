@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { bestLaneOrder, model } from './index';
+import { bestLaneOrder, model } from './internal';
 
 /** a frame with the given lanes, one action per lane, and links between lanes */
 function frame(lanes: string[], links: [string, string][]) {
