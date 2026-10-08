@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { CORE_VERSION } from './index';
+import * as publicApi from './index';
+import * as internalApi from './internal';
 
-describe('workspace smoke', () => {
-  it('runs tests against core package source', () => {
-    expect(CORE_VERSION).toBe(1);
+describe('@diagc/core entry points', () => {
+  it('hands out the same objects from both entries', () => {
+    for (const [name, value] of Object.entries(publicApi)) {
+      expect(internalApi[name as keyof typeof internalApi], name).toBe(value);
+    }
   });
 });
