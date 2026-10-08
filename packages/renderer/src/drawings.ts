@@ -1,4 +1,4 @@
-import { DEFAULT_STROKE_WIDTH, type Stroke } from '@diagc/core';
+import { DEFAULT_STROKE_WIDTH, type Stroke } from '@diagc/core/internal';
 
 /** SVG `d` for a flat point list. Midpoint-quadratic smoothing: each interior
  * point is a control point and the curve passes through segment midpoints, which

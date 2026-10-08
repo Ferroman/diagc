@@ -7,7 +7,7 @@ import {
   PLAN_TEAM_TYPE,
   type DiagramModel,
   type EditorCommand,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { PLAN_LAYOUT, planX } from '@diagc/renderer';
 import {
   addActor,

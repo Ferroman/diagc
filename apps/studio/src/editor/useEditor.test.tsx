@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { emptyDrawings, emptyLayout, model, type EditorState } from '@diagc/core';
+import { emptyDrawings, emptyLayout, model, type EditorState } from '@diagc/core/internal';
 import { useEditor } from './useEditor';
 
 function state(): EditorState {

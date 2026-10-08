@@ -32,6 +32,27 @@ export default ts.config(
     },
   },
   {
+    // Inside this repository, core is imported from '@diagc/core/internal'. The root
+    // entry is the author API that .diagram.ts files and the docs use, and semver
+    // covers exactly that, so nothing else may lean on it. Diagram sources (test
+    // fixtures, the starters build:dist stages) are author code and keep the root.
+    files: ['packages/**/*.{ts,tsx}', 'apps/**/*.{ts,tsx}'],
+    ignores: ['**/*.diagram.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@diagc/core',
+              message: "Import from '@diagc/core/internal' inside this repository; '@diagc/core' is the author API.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // Size limits, so no component quietly grows into a god component. Existing
     // violations are listed in eslint-suppressions.json, which only shrinks (see
     // CONTRIBUTING.md § Size limits). Blank and comment lines do not count.

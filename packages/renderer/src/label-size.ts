@@ -1,4 +1,4 @@
-import type { FontScale } from '@diagc/core';
+import type { FontScale } from '@diagc/core/internal';
 
 export const MIN_LABEL_WIDTH = 120;
 export const MAX_LABEL_WIDTH = 260;

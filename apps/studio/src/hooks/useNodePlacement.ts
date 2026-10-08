@@ -9,7 +9,7 @@ import {
   type DiagramNode,
   type EditorCommand,
   type NotationId,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import type { DiagramSelection, LayoutApi } from '@diagc/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import { readImageSize, uploadAsset } from '../editor/images';

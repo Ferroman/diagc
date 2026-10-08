@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model, type LayoutOverlay } from '@diagc/core';
+import { model, type LayoutOverlay } from '@diagc/core/internal';
 import { unfoldedOf, withSavedPositions, withPlaneManual } from './savedPositions';
 
 function makeModel() {

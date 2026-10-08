@@ -19,7 +19,7 @@ import {
   type NotationId,
   type Polarity,
   type RelationStyle,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { commentBadgeProps, type AnnotationCounts } from './comment-badge';
 import {
   bowPath,

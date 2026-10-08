@@ -1,4 +1,4 @@
-import type { CompiledView, ViewNode } from '@diagc/core';
+import type { CompiledView, ViewNode } from '@diagc/core/internal';
 import { containerPad } from './layout-graph';
 
 /**

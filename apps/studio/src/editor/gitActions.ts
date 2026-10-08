@@ -1,4 +1,4 @@
-import { gitGraph, latestCommit, nextCommitId, type DiagramModel, type EditorCommand } from '@diagc/core';
+import { gitGraph, latestCommit, nextCommitId, type DiagramModel, type EditorCommand } from '@diagc/core/internal';
 
 /**
  * A commit appended to `laneId` — node, containment and the link from the

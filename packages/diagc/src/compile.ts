@@ -10,7 +10,7 @@ import {
   validate,
   type DiagramModel,
   type IncludeResolver,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { resolveInclude } from './includes';
 import { snapshotSession } from './snapshots';
 

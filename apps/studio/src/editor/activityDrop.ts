@@ -1,4 +1,4 @@
-import { resolveContainmentPlane, type DiagramModel } from '@diagc/core';
+import { resolveContainmentPlane, type DiagramModel } from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT } from '@diagc/renderer';
 
 type Point = { x: number; y: number };

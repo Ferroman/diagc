@@ -22,7 +22,7 @@ import {
   type LegendSection,
   type ViewNode,
   threatSummary,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { typeColor } from './build-data';
 import { DEFAULT_KIND_STYLES, DEFAULT_TYPE_STYLES, type KindStyle, type Registry, type TypeStyle } from './registry';
 

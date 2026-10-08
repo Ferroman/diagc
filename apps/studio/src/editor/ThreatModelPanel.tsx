@@ -9,7 +9,7 @@ import {
   type DiagramModel,
   type Threat,
   type ThreatTarget,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import type { DiagramSelection } from '@diagc/renderer';
 import { DockSection } from '../DockSection';
 

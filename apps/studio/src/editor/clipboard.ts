@@ -8,7 +8,7 @@ import {
   type DiagramRelation,
   type EditorCommand,
   type LayoutOverlay,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { homeActivityParent } from './activityDrop';
 
 /** The marker a pasted string must carry; anything else on the clipboard is

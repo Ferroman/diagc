@@ -7,7 +7,7 @@ import {
   type DiagramModel,
   type DiagramPlane,
   type EditorCommand,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { getHost } from '../host';
 import { PlaneSwitcher } from './PlaneSwitcher';
 import { DockSection } from '../DockSection';

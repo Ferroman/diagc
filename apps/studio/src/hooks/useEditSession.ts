@@ -7,7 +7,7 @@ import {
   type RefObject,
   type SetStateAction,
 } from 'react';
-import { errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagc/core';
+import { errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagc/core/internal';
 import type { LayoutApi } from '@diagc/renderer';
 import type { LoadedArtifact } from '../artifacts';
 import { useEditor } from '../editor/useEditor';

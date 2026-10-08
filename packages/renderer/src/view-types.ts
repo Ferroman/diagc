@@ -14,7 +14,7 @@ import type {
   TextRun,
   ThreatStatus,
   ThreatTarget,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import type { IconRegistry } from '@diagc/icons';
 import type { MutableRefObject } from 'react';
 import type { AlignMode } from './arrange';

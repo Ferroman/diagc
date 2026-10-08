@@ -1,4 +1,4 @@
-import type { DiagramModel, EditorCommand } from '@diagc/core';
+import type { DiagramModel, EditorCommand } from '@diagc/core/internal';
 
 /**
  * Commands for a connect gesture that starts on a db-table column handle: an

@@ -7,7 +7,7 @@ import {
   type DiagramModel,
   type EditorCommand,
   type Valence,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 
 /**
  * "And then what?" — a consequence of `fromId`, already wired to it. ONE batch,

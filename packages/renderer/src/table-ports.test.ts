@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Position } from '@xyflow/react';
-import { compileView, type DiagramModel } from '@diagc/core';
+import { compileView, type DiagramModel } from '@diagc/core/internal';
 import { TABLE_HEADER_H, TABLE_ROW_H, tableSize, rowCenterY, anchorToRow, withShownTableRows } from './table-ports';
 
 describe('table-ports', () => {

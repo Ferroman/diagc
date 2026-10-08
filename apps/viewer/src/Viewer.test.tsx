@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { dayOf, isoOf, layoutPlaneKey, model, type DiagramModel } from '@diagc/core';
+import { dayOf, isoOf, layoutPlaneKey, model, type DiagramModel } from '@diagc/core/internal';
 import { darkTheme, lightTheme, THEME_STORAGE_KEY, todayIso } from '@diagc/renderer';
 import { handshakeReady, legendPadding, Viewer, type ViewerData } from './Viewer';
 

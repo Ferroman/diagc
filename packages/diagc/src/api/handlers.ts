@@ -9,7 +9,7 @@ import {
   isLayoutOverlay,
   validate,
   type DiagramModel,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { writeFileAtomic } from '../atomic-write';
 import { EjectError, ejectDiagram } from '../eject';
 import { resolveInclude } from '../includes';

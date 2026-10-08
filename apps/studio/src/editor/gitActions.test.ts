@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model, type DiagramModel } from '@diagc/core';
+import { model, type DiagramModel } from '@diagc/core/internal';
 import { appendCommit } from './gitActions';
 
 /** master: master-1 → master-2; nightly: nightly-1 (from master-1); dev: empty */

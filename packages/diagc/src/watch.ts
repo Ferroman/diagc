@@ -1,5 +1,5 @@
 import { watch as chokidarWatch } from 'chokidar';
-import { errMessage, type IncludeResolver } from '@diagc/core';
+import { errMessage, type IncludeResolver } from '@diagc/core/internal';
 import { compileFile } from './compile';
 
 export type WatchEvent = { file: string; ok: true; artifact: string } | { file: string; ok: false; error: string };

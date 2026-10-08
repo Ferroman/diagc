@@ -1,4 +1,4 @@
-import type { Column, ViewNode } from '@diagc/core';
+import type { Column, ViewNode } from '@diagc/core/internal';
 import { Position } from '@xyflow/react';
 import type { SizeHint } from './layout-graph';
 

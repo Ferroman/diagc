@@ -9,7 +9,7 @@ import {
   type DiffMarks,
   type Drawings,
   type LayoutOverlay,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import {
   applyTheme,
   darkTheme,

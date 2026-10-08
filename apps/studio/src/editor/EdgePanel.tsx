@@ -11,7 +11,7 @@ import {
   type NotationId,
   type Polarity,
   type RelationStyle,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { getHost } from '../host';
 import { CommentsSection } from './CommentsSection';
 import { ColorRow, OptionRow } from './pickers';

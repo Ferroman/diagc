@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, FB_CAUSE_OF_KIND, model, type CompiledView, type DiagramModel } from '@diagc/core';
+import { compileView, FB_CAUSE_OF_KIND, model, type CompiledView, type DiagramModel } from '@diagc/core/internal';
 import { textWidth } from './box-size';
 import {
   BONE_PALETTE,

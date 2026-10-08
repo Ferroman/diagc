@@ -1,4 +1,4 @@
-import { buildHierarchy, type CompiledView, type DiagramModel, type Size, type ViewNode } from '@diagc/core';
+import { buildHierarchy, type CompiledView, type DiagramModel, type Size, type ViewNode } from '@diagc/core/internal';
 import type { NodeGeometry } from './layout';
 
 /**

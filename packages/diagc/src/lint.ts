@@ -1,4 +1,4 @@
-import { diagramWarnings, errMessage, type ValidationIssue } from '@diagc/core';
+import { diagramWarnings, errMessage, type ValidationIssue } from '@diagc/core/internal';
 import { LoadError, loadModel, type LoadOptions } from './compile';
 
 /** One line of `diagc lint` output. An `error` is what fails a compile too; a

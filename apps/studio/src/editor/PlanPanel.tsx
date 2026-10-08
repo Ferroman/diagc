@@ -1,5 +1,11 @@
 import { useMemo, useState } from 'react';
-import { PLAN_PERSON_TYPE, PLAN_TEAM_TYPE, PLAN_ZONE_TYPE, type DiagramModel, type EditorCommand } from '@diagc/core';
+import {
+  PLAN_PERSON_TYPE,
+  PLAN_TEAM_TYPE,
+  PLAN_ZONE_TYPE,
+  type DiagramModel,
+  type EditorCommand,
+} from '@diagc/core/internal';
 import { planGraphCached, type DiagramSelection } from '@diagc/renderer';
 import { DockSection } from '../DockSection';
 import { addActor, addEvent, addZone } from './planActions';

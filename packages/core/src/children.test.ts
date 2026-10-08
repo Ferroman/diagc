@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { allowedParentTypes, childrenOf, compileView, countAnchored, model } from './index';
+import { allowedParentTypes, childrenOf, compileView, countAnchored, model } from './internal';
 
 describe('childrenOf', () => {
   it('indexes containment edges by parent', () => {

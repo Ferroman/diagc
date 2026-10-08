@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model } from '@diagc/core';
+import { compileView, model } from '@diagc/core/internal';
 import {
   liftEdges,
   layoutOptionsFor,

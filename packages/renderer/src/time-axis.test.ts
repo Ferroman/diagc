@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayOf } from '@diagc/core';
+import { dayOf } from '@diagc/core/internal';
 import { PLAN_LAYOUT, planX } from './plan-layout';
 import { isoWeek, timeAxis, todayIso, weekday } from './time-axis';
 

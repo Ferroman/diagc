@@ -8,7 +8,7 @@ import {
   type DiagramModel,
   type EditorCommand,
   type LayoutOverlay,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import {
   CLIPBOARD_FORMAT,
   PASTE_STEP,

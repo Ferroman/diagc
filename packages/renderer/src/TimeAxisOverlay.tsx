@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNodes, ViewportPortal } from '@xyflow/react';
-import { atOf, dayOf, isPlanEvent, type DiagramModel } from '@diagc/core';
+import { atOf, dayOf, isPlanEvent, type DiagramModel } from '@diagc/core/internal';
 import { absoluteRects } from './loops';
 import { PLAN_LAYOUT, planGraphCached, planX } from './plan-layout';
 import { MARGIN_AFTER, MARGIN_BEFORE, timeAxis } from './time-axis';

@@ -9,7 +9,7 @@ import {
   type DiagramModel,
   type EditorCommand,
   type EditorState,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { GitPanel } from './GitPanel';
 
 /** master: 1.0; nightly: n1 (from 1.0) */

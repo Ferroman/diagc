@@ -2,7 +2,7 @@
 import { render } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { dayOf, isoOf, model } from '@diagc/core';
+import { dayOf, isoOf, model } from '@diagc/core/internal';
 import { PLAN_LAYOUT, planX } from './plan-layout';
 import { MARGIN_AFTER, MARGIN_BEFORE } from './time-axis';
 

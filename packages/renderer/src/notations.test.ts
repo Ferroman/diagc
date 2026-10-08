@@ -6,7 +6,7 @@ import {
   NOTATION_NODE_TYPES,
   NOTATION_RELATION_KINDS,
   RELATION_KINDS,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { BONE_PALETTE, fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import { NOTATION_PROFILES, notationProfile, planBadges, TM_BOUNDARY_COLOR } from './notations';

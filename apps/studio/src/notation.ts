@@ -1,1 +1,1 @@
-export { activeNotation } from '@diagc/core';
+export { activeNotation } from '@diagc/core/internal';

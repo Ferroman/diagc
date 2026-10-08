@@ -5,7 +5,7 @@
 // Styled by styles.css (`.dg-lev-*`), which DiagramView imports, so any host
 // that draws a diagram has the rules.
 import { useMemo, type ReactNode } from 'react';
-import type { DiagramModel } from '@diagc/core';
+import type { DiagramModel } from '@diagc/core/internal';
 import { analyzeLeverage, analyzeDependency, type LeverageSign } from './leverage';
 import type { LoopEdgeInput } from './loops';
 

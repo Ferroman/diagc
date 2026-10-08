@@ -1,4 +1,4 @@
-import type { CompiledView, DiagramModel, ViewNode } from '@diagc/core';
+import type { CompiledView, DiagramModel, ViewNode } from '@diagc/core/internal';
 
 /** geometry constants for activity frames; the studio's ActivityPanel reads
  * these for its cascade placement, so they live on the package surface */

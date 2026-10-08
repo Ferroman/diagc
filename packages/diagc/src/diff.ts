@@ -12,7 +12,7 @@ import {
   type Drawings,
   type LayoutOverlay,
   type ModelDiff,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { loadModel } from './compile';
 import { inlineAssets } from './publish/publish';
 import { stampHtml } from './publish/html';

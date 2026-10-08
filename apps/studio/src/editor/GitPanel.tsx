@@ -8,7 +8,7 @@ import {
   type DiagramModel,
   type DiagramNode,
   type EditorCommand,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import type { DiagramSelection } from '@diagc/renderer';
 import { appendCommit } from './gitActions';
 import { ColorRow } from './pickers';

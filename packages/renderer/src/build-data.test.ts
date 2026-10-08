@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import type { DiagramNode, NotationId, ViewEdge, ViewNode } from '@diagc/core';
+import type { DiagramNode, NotationId, ViewEdge, ViewNode } from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
 import {
   buildEdgeData,

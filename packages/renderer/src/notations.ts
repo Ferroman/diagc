@@ -22,7 +22,7 @@ import {
   type PlanRole,
   type Size,
   type ViewEdge,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
 import type { LayoutResult } from './layout';

@@ -1,4 +1,4 @@
-import { CASCADE_DELETE_TYPES, subtreeOf, type DiagramModel, type EditorCommand } from '@diagc/core';
+import { CASCADE_DELETE_TYPES, subtreeOf, type DiagramModel, type EditorCommand } from '@diagc/core/internal';
 
 /** Translate a canvas delete gesture (Backspace/Delete on the selection) into
  * one editor command, or null when nothing in the selection still exists.

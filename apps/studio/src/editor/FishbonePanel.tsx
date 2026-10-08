@@ -9,7 +9,7 @@ import {
   validate,
   type DiagramModel,
   type EditorCommand,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import type { DiagramSelection } from '@diagc/renderer';
 import { addChild, addEffect, isSubCause, seedCategories } from './fishboneActions';
 import { DockSection } from '../DockSection';

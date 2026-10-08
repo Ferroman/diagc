@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { validate, type EditorCommand, type EditorState } from '@diagc/core';
+import { validate, type EditorCommand, type EditorState } from '@diagc/core/internal';
 import {
   dispatch as reduce,
   isDirty,

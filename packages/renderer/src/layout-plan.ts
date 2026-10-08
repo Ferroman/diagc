@@ -1,4 +1,4 @@
-import type { CompiledView, ViewNode } from '@diagc/core';
+import type { CompiledView, ViewNode } from '@diagc/core/internal';
 
 /**
  * Which parts of a view can be arranged independently of everything else.

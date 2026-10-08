@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNodes, ViewportPortal } from '@xyflow/react';
-import { latestCommit, mergedAway, type DiagramModel } from '@diagc/core';
+import { latestCommit, mergedAway, type DiagramModel } from '@diagc/core/internal';
 import { GIT_LAYOUT, gitGraphCached, gitNodeColors } from './git-layout';
 import { absoluteRects } from './loops';
 

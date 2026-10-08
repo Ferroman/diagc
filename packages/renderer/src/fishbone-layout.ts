@@ -10,7 +10,7 @@ import {
   type FishboneTree,
   type ViewEdge,
   type ViewNode,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { textWidth } from './box-size';
 import { LANE_PALETTE } from './git-layout';
 import type { EdgePoint, LayoutResult, NodeGeometry } from './layout';

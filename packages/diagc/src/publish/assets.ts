@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { DiagramModel, DiagramNode } from '@diagc/core';
+import type { DiagramModel, DiagramNode } from '@diagc/core/internal';
 
 const MIME: Record<string, string> = {
   svg: 'image/svg+xml',

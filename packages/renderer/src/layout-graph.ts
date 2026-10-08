@@ -5,7 +5,7 @@ import {
   type LayoutSettings,
   type ViewEdge,
   type ViewNode,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT } from './activity-frame';
 import { EDGE_LABEL_MAX_CHARS } from './label-size';
 

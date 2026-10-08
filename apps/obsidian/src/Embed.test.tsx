@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { model } from '@diagc/core';
+import { model } from '@diagc/core/internal';
 import { darkTheme, lightTheme } from '@diagc/renderer';
 import { Embed } from './Embed';
 import type { EmbedSpec } from './fence';

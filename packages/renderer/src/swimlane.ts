@@ -1,4 +1,4 @@
-import type { CompiledView, LayoutSettings, ViewNode } from '@diagc/core';
+import type { CompiledView, LayoutSettings, ViewNode } from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT } from './activity-frame';
 import { containerPad, edgeLabelText, FALLBACK_DIRECTION } from './layout-graph';
 import { routeEndSides } from './edge-geometry';

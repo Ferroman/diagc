@@ -7,7 +7,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { PLAN_ROLES, type PlanRole } from '@diagc/core';
+import { PLAN_ROLES, type PlanRole } from '@diagc/core/internal';
 import { ROLE_LABEL, type NodeBadge } from './notations';
 import type { EditingApi } from './view-types';
 

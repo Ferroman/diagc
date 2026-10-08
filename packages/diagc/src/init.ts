@@ -2,7 +2,7 @@ import { existsSync, statSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import fg from 'fast-glob';
-import { errMessage, type IncludeResolver } from '@diagc/core';
+import { errMessage, type IncludeResolver } from '@diagc/core/internal';
 import { isSafeName } from './api/handlers';
 import { compileFile } from './compile';
 import { readStarter, UnknownStarterError } from './starters';

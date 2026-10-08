@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { LegendSection } from '@diagc/core';
+import type { LegendSection } from '@diagc/core/internal';
 import type { IconRegistry } from '@diagc/icons';
 import { END_SHAPES, LINE_MARKERS } from './DiagramEdge';
 import type { LegendMark, LegendRow, LegendSwatch } from './legendRows';

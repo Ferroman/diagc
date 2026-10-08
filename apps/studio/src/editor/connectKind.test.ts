@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TM_BOUNDARY_TYPE, TM_ENTITY_TYPE, TM_FLOW_KIND, TM_PROCESS_TYPE, model } from '@diagc/core';
+import { TM_BOUNDARY_TYPE, TM_ENTITY_TYPE, TM_FLOW_KIND, TM_PROCESS_TYPE, model } from '@diagc/core/internal';
 
 import { connectKind } from './connectKind';
 

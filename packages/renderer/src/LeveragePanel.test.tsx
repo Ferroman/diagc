@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { model } from '@diagc/core';
+import { model } from '@diagc/core/internal';
 import type { LoopEdgeInput } from './loops';
 import { LeveragePanel } from './LeveragePanel';
 

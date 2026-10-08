@@ -1,5 +1,5 @@
 import { marked } from 'marked';
-import type { DiagramModel } from '@diagc/core';
+import type { DiagramModel } from '@diagc/core/internal';
 import type { DiagramSelection } from '@diagc/renderer';
 
 function MetaTable({ metadata }: { metadata: Record<string, unknown> }) {

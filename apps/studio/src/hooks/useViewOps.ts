@@ -7,7 +7,7 @@ import {
   type DiagramPlane,
   type LayoutOverlay,
   type LayoutSettings,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import type { DiagramSelection, LeverageFocus } from '@diagc/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import { getHost } from '../host';

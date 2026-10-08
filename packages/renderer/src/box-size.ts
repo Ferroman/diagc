@@ -5,7 +5,7 @@ import {
   type DiagramNode,
   type FontScale,
   type ViewNode,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import type { Registry, ShapeId, TypeStyle } from './registry';
 import type { SizeHint } from './layout-graph';
 import { typeSubtitle } from './type-subtitle';

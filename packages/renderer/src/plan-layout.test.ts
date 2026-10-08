@@ -7,7 +7,7 @@ import {
   model,
   type CompiledView,
   type DiagramModel,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { PLAN_LAYOUT, planLayout, planX } from './plan-layout';
 
 const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT, HEADER_H, ROSTER_GAP } = PLAN_LAYOUT;
