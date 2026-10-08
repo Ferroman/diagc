@@ -23,7 +23,7 @@ import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
-import { errMessage } from '@diagc/core';
+import { errMessage } from '@diagc/core/internal';
 import { compileFile } from './compile';
 import { compareDiagramSets, formatDiffSummary, loadDiagramSet, writeDiffPages } from './diff';
 import { checkoutDiagrams, type CheckedOutRef } from './git-ref';

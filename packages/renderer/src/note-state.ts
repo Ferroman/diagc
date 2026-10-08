@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { ThreatTarget } from '@diagc/core';
+import type { ThreatTarget } from '@diagc/core/internal';
 import type { Point } from './note-place';
 
 /**

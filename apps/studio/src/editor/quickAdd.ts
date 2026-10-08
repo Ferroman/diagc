@@ -25,7 +25,7 @@ import {
   type DiagramNode,
   type EditorCommand,
   type NotationId,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import type { QuickAddSide } from '@diagc/renderer';
 import { createNodeAt, placeTags } from '../create-node';
 import { connectKind } from './connectKind';

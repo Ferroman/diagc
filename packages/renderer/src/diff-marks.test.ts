@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DiagramModel } from '@diagc/core';
+import type { DiagramModel } from '@diagc/core/internal';
 import { diffEdgeStatus, diffNodeClasses, withDiffClass } from './diff-marks';
 
 const model: DiagramModel = {

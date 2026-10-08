@@ -1,4 +1,4 @@
-import { layoutPlaneKey, type DiagramModel, type LayoutOverlay, type LayoutSettings } from '@diagc/core';
+import { layoutPlaneKey, type DiagramModel, type LayoutOverlay, type LayoutSettings } from '@diagc/core/internal';
 
 /**
  * Merge a settings patch into one plane's preview. A field set to `undefined`

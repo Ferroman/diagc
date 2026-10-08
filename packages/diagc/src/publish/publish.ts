@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { DiagramModel, LayoutOverlay, Drawings } from '@diagc/core';
-import { errMessage, isDrawings } from '@diagc/core';
+import type { DiagramModel, LayoutOverlay, Drawings } from '@diagc/core/internal';
+import { errMessage, isDrawings } from '@diagc/core/internal';
 import { classifyAssetRef, rewriteAssetRefs, safeAssetPath } from './assets';
 import { buildGallery } from './gallery';
 import { discoverDiagrams } from './discover';

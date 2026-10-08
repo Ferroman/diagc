@@ -1,4 +1,4 @@
-import type { DiagramModel, DiffMarks, DiffStatus } from '@diagc/core';
+import type { DiagramModel, DiffMarks, DiffStatus } from '@diagc/core/internal';
 
 /** A box's diff class: its own status, or `inside` for a container holding a
  * change somewhere below it — at rest a diagram is folded, and a change three

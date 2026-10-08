@@ -21,7 +21,7 @@ import {
   type PlanGraph,
   type PlanRole,
   type PlanSpan,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { PLAN_LAYOUT, planX } from '@diagc/renderer';
 
 const { DAY, TITLE_H } = PLAN_LAYOUT;

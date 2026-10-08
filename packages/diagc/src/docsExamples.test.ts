@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { isLayoutOverlay } from '@diagc/core';
+import { isLayoutOverlay } from '@diagc/core/internal';
 import { findHome } from './home';
 
 // A test of the repo's docs, kept in this package for two reasons: it is the one package

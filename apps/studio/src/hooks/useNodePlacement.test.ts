@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type DiagramModel, type EditorCommand } from '@diagc/core';
+import { type DiagramModel, type EditorCommand } from '@diagc/core/internal';
 import type { LayoutApi } from '@diagc/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import type { LibraryEntry } from '../library/types';

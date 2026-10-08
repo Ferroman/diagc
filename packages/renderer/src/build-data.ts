@@ -30,8 +30,8 @@ import type {
   ThreatTarget,
   ViewEdge,
   ViewNode,
-} from '@diagc/core';
-import { runsToPlainText, threatSummary, withHiddenColumns } from '@diagc/core';
+} from '@diagc/core/internal';
+import { runsToPlainText, threatSummary, withHiddenColumns } from '@diagc/core/internal';
 import type { IconRegistry } from '@diagc/icons';
 import type { AnnotationCounts } from './comment-badge';
 import type { EdgePoint } from './layout';

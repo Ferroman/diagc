@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { compileView, model, type DiagramModel, type LayoutOverlay, type Size } from '@diagc/core';
+import { compileView, model, type DiagramModel, type LayoutOverlay, type Size } from '@diagc/core/internal';
 import * as layoutModule from './layout';
 import type { NodeGeometry } from './layout';
 import { notationProfile, type NotationProfile } from './notations';

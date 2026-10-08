@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { layoutPlaneKey, NEW_THREAT_TITLE, validate, type DiagramModel, type NotePlacement } from '@diagc/core';
+import {
+  layoutPlaneKey,
+  NEW_THREAT_TITLE,
+  validate,
+  type DiagramModel,
+  type NotePlacement,
+} from '@diagc/core/internal';
 import { App } from '../App';
 import { defaultHost, setHost } from '../host';
 

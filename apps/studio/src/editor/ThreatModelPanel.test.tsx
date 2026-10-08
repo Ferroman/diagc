@@ -9,7 +9,7 @@ import {
   TM_PROCESS_TYPE,
   TM_STORE_TYPE,
   type DiagramModel,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import type { DiagramSelection } from '@diagc/renderer';
 import { ThreatModelPanel } from './ThreatModelPanel';
 

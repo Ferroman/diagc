@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import type { DiagramModel, EditorCommand, FontScale, NotationId, TextAlign } from '@diagc/core';
+import type { DiagramModel, EditorCommand, FontScale, NotationId, TextAlign } from '@diagc/core/internal';
 import {
   allowedParentTypes,
   CASCADE_DELETE_TYPES,
@@ -9,7 +9,7 @@ import {
   PLAN_TYPES,
   TM_NOTATION,
   strideFor,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { BUILTIN_ICON_IDS } from '@diagc/icons';
 import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { CommentsSection } from './CommentsSection';

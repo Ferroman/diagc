@@ -6,7 +6,7 @@ import {
   type DiagramModel,
   type Drawings,
   type LayoutOverlay,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { applyTheme, darkTheme, DiagramView, isKnownStyle, lightTheme } from '@diagc/renderer';
 import { createIconRegistry } from '@diagc/icons';
 import type { HostAdapter } from '@diagc/studio/src/host';

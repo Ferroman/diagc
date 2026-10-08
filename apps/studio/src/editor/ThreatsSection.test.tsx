@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import type { EditorCommand, StrideCategory, Threat } from '@diagc/core';
+import type { EditorCommand, StrideCategory, Threat } from '@diagc/core/internal';
 import { ThreatsSection } from './ThreatsSection';
 
 const threat = (id: string, over: Partial<Threat> = {}): Threat => ({

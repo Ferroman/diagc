@@ -1,4 +1,4 @@
-import type { DiagramModel, EditorCommand } from '@diagc/core';
+import type { DiagramModel, EditorCommand } from '@diagc/core/internal';
 import type { DiagramSelection } from '@diagc/renderer';
 
 /** The toolbar swatch row's color target: the selected node, or the selected

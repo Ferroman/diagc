@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DiagramModel } from '@diagc/core';
+import type { DiagramModel } from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT } from '@diagc/renderer';
 import { activityDropPosition, homeActivityParent } from './activityDrop';
 

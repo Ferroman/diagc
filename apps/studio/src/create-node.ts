@@ -1,4 +1,4 @@
-import { uniqueNodeId, type DiagramModel } from '@diagc/core';
+import { uniqueNodeId, type DiagramModel } from '@diagc/core/internal';
 
 /**
  * The per-placement identity + placement-scoping decided once for an add-node

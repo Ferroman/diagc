@@ -12,7 +12,7 @@ import {
   type EditorCommand,
   type FishbonePreset,
   type FishboneTree,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 
 /** The depth rule: a sub-cause (the third level below the effect) cannot take
  * children — `fishboneTree` has already worked out where `id` hangs, so this

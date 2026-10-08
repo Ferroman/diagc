@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { EditorCommand, Link } from '@diagc/core';
+import type { EditorCommand, Link } from '@diagc/core/internal';
 
 interface LinksSectionProps {
   nodeId: string;

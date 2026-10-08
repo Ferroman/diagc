@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { DEFAULT_STROKE_WIDTH, type Stroke } from '@diagc/core';
+import { DEFAULT_STROKE_WIDTH, type Stroke } from '@diagc/core/internal';
 import { usePen, type PenHandlers } from './usePen';
 import { useLaser } from './useLaser';
 import type { DrawTool, PenSettings } from './view-types';

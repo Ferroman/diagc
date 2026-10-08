@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { IncludeError, type DiagramModel, type IncludeResolver, type IncludeSource } from '@diagc/core';
+import { IncludeError, type DiagramModel, type IncludeResolver, type IncludeSource } from '@diagc/core/internal';
 
 export type SnapshotMode = 'locked' | 'update';
 

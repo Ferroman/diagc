@@ -1,4 +1,4 @@
-import { isoOf, type PlanSpan } from '@diagc/core';
+import { isoOf, type PlanSpan } from '@diagc/core/internal';
 import { PLAN_LAYOUT, planX } from './plan-layout';
 
 export interface AxisBand {

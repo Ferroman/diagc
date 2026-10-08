@@ -13,7 +13,7 @@ import {
   type ThreatSeverity,
   type ThreatStatus,
   type ThreatTarget,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 
 interface ThreatsSectionProps {
   target: ThreatTarget;

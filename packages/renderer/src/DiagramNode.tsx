@@ -16,7 +16,7 @@ import {
   type TextAlign,
   type TextRun,
   type ThreatTarget,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import type { IconRegistry } from '@diagc/icons';
 import type { Registry, TypeStyle } from './registry';
 import { commentBadgeProps, type AnnotationCounts } from './comment-badge';

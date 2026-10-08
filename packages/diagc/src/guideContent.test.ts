@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { BUILTIN_NOTATIONS } from '@diagc/core';
+import { BUILTIN_NOTATIONS } from '@diagc/core/internal';
 import { ALL_TOPIC, guideTopics, renderGuide, type GuideContext } from './guide';
 import { cliVersion, findHome, homePaths } from './home';
 import { IGNORED } from './init';

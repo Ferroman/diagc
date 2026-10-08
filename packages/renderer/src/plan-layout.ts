@@ -12,7 +12,7 @@ import {
   type DiagramNode,
   type PlanGraph,
   type ViewNode,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import type { LayoutResult, NodeGeometry } from './layout';
 
 /** The schedule's fixed geometry. `DAY` is the scale (px per calendar day);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model, type CompiledView, type DiagramModel, type ViewNode } from '@diagc/core';
+import { compileView, model, type CompiledView, type DiagramModel, type ViewNode } from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT as L } from './activity-frame';
 import { layoutView, type NodeGeometry } from './layout';
 import { bandLanes, hoistLanes, rebaseRoutes } from './swimlane';

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import type { DiagramModel, IncludeResolver } from '@diagc/core';
+import type { DiagramModel, IncludeResolver } from '@diagc/core/internal';
 import { compileFile, executeDiagramTs, LoadError, positionIn } from './compile';
 
 async function exists(p: string): Promise<boolean> {

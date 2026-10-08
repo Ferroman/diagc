@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import type { Drawings, LayoutOverlay } from '@diagc/core';
+import type { Drawings, LayoutOverlay } from '@diagc/core/internal';
 import { loadArtifacts, type ApiDiagram, type LoadedArtifact } from '../artifacts';
 import { getHost } from '../host';
 

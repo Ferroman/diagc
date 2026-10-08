@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import type { DiagramModel } from '@diagc/core';
+import type { DiagramModel } from '@diagc/core/internal';
 import {
   compareDiagramSets,
   describeDiff,

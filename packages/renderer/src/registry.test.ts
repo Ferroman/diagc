@@ -7,7 +7,7 @@ import {
   TM_FLOW_KIND,
   TM_PROCESS_TYPE,
   TM_STORE_TYPE,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { BUILTIN_ICON_IDS, createIconRegistry } from '@diagc/icons';
 import { createKindRegistry, createTypeRegistry, DEFAULT_TYPE_STYLES } from './registry';
 

@@ -1,4 +1,4 @@
-import { SOURCE_URL } from '@diagc/core';
+import { SOURCE_URL } from '@diagc/core/internal';
 
 export const DG_DATA_SENTINEL = '"__DG_DIAGRAM_DATA__"';
 

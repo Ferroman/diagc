@@ -1,4 +1,4 @@
-import { normalizeRuns, runsToPlainText, type TextRun } from '@diagc/core';
+import { normalizeRuns, runsToPlainText, type TextRun } from '@diagc/core/internal';
 
 export const plainText = runsToPlainText;
 

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { DiagramModel, IncludeSource } from '@diagc/core';
+import type { DiagramModel, IncludeSource } from '@diagc/core/internal';
 
 const isHttp = (s: string): boolean => /^https?:\/\//.test(s);
 

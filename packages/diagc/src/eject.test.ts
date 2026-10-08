@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ejectSource, type DiagramModel } from '@diagc/core';
+import { ejectSource, type DiagramModel } from '@diagc/core/internal';
 import { diffPaths, ejectDiagram } from './eject';
 
 const coreEntry = fileURLToPath(new URL('../../core/src/index.ts', import.meta.url));

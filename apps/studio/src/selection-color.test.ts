@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { model } from '@diagc/core';
+import { model } from '@diagc/core/internal';
 import { computeSelectionColor } from './selection-color';
 
 function m() {

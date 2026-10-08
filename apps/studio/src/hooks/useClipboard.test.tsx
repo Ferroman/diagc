@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { emptyDrawings, emptyLayout, type DiagramModel, type EditorCommand } from '@diagc/core';
+import { emptyDrawings, emptyLayout, type DiagramModel, type EditorCommand } from '@diagc/core/internal';
 import type { DiagramSelection } from '@diagc/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import { CLIPBOARD_FORMAT, PASTE_STEP } from '../editor/clipboard';

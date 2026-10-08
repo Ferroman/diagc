@@ -2,7 +2,14 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getViewportForBounds } from '@xyflow/react';
-import { dayOf, layoutPlaneKey, model, type DiagramModel, type LayoutOverlay, type ThreatTarget } from '@diagc/core';
+import {
+  dayOf,
+  layoutPlaneKey,
+  model,
+  type DiagramModel,
+  type LayoutOverlay,
+  type ThreatTarget,
+} from '@diagc/core/internal';
 import { DiagramView, LIBRARY_ENTRY_DND_TYPE, type CanvasCommands, type LayoutApi } from './DiagramView';
 import { ACTIVITY_LAYOUT } from './activity-frame';
 import { FISHBONE_LAYOUT } from './fishbone-layout';

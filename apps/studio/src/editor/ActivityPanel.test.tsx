@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { applyCommand, emptyDrawings, emptyLayout, model, type DiagramModel } from '@diagc/core';
+import { applyCommand, emptyDrawings, emptyLayout, model, type DiagramModel } from '@diagc/core/internal';
 import { ActivityPanel, activityContext, moveLaneCommand, reorderLanesCommand } from './ActivityPanel';
 
 /** frame f, no lanes */

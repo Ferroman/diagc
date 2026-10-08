@@ -35,7 +35,7 @@ import {
   type Threat,
   type ThreatTarget,
   type ViewNode,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
 import { ACTIVITY_CHROME_TYPES, FORCED_SIZE_SHAPES, LAYOUT_SIZED_TYPES } from './box-size';
 import { Breadcrumbs } from './Breadcrumbs';

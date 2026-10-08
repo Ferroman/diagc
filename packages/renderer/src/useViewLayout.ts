@@ -10,7 +10,7 @@ import {
   type LayoutOverlay,
   type LayoutSettings,
   type ViewNode,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { arrangeActivityFrames, withLaneOrder } from './activity-frame';
 import { withBoxSizes } from './box-size';
 import { fitContainers, type ContainerFit, type Shift } from './fit-containers';

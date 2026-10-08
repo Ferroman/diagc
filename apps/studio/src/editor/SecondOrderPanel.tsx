@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { validate, isSecondOrderNode, type DiagramModel, type EditorCommand, type Valence } from '@diagc/core';
+import { validate, isSecondOrderNode, type DiagramModel, type EditorCommand, type Valence } from '@diagc/core/internal';
 import type { DiagramSelection } from '@diagc/renderer';
 import { addDecision, thenWhat } from './secondOrderActions';
 import { DockSection } from '../DockSection';

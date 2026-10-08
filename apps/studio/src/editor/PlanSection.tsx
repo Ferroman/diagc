@@ -9,7 +9,7 @@ import {
   type DiagramNode,
   type EditorCommand,
   type PlanRole,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { setRole } from './planActions';
 
 const ROLE_TITLE: Record<PlanRole, string> = { owns: 'Owner', executes: 'Executor', checks: 'Checker' };

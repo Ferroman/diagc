@@ -50,7 +50,7 @@ import {
   type TextRun,
   type ThreatStatus,
   type ThreatTarget,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 import { activeNotation } from './notation';
 import { getHost } from './host';
 import { useDiagramBoot } from './hooks/useDiagramBoot';

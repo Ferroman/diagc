@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { compileView, type DiagramModel } from '@diagc/core';
+import { compileView, type DiagramModel } from '@diagc/core/internal';
 import { combinePolarities, type LoopEdgeInput } from './loops';
 import { EMPTY_ID_SET, type LoopHighlight } from './loop-highlight';
 import type { NotationProfile } from './notations';

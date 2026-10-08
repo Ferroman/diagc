@@ -5,7 +5,7 @@ import {
   type DiagramModel,
   type Drawings,
   type LayoutOverlay,
-} from '@diagc/core';
+} from '@diagc/core/internal';
 
 export interface LoadedArtifact {
   name: string;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model } from '@diagc/core';
+import { compileView, model } from '@diagc/core/internal';
 import { removeOverlaps, separate } from './overlap';
 import { CONTAINER_PAD } from './layout-graph';
 
