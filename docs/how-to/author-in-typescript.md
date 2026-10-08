@@ -22,6 +22,10 @@ Compile one file instead of all of them:
 diagc compile .diagrams/src/shop.diagram.ts
 ```
 
+## What you can import
+
+Import from `@diagc/core`: `model()` and the builder it returns, the model types (`DiagramModel` and the rest), and `validate()`. From 1.0 on, those change only in a major release. `@diagc/core/internal` is diagc's own plumbing and changes in any release.
+
 ## Give a node a look
 
 `type` and `icon` are free-form strings resolved by the renderer's registries. Unknown values draw as a plain box, silently.

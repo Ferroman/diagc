@@ -124,6 +124,10 @@ but blame then fails in any checkout without that file, such as an older commit.
   with tests, then UI wiring — not ad-hoc mutation in a component.
 - **`packages/core` depends on nothing.** No React, no filesystem. That boundary is the
   one structural rule worth preserving: the model does not know it is going to be drawn.
+- **Import core from `@diagc/core/internal`** inside this repository. `@diagc/core` is
+  the author API — the builder, the model types and `validate()` — and semver covers
+  exactly that, so new exports go to the internal entry unless authors need them.
+  ESLint enforces the import rule.
 - **Generated files are generated.** `apps/studio/src/library/packs.aws.ts` and
   `apps/studio/public/library/**` come from the scripts in `scripts/` — edit the script,
   not its output.
