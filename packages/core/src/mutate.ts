@@ -506,7 +506,9 @@ export function addContainment(
   if (beside === undefined) return { ...m, containment: [...m.containment, edge] };
   // Children read in declaration order, so the slot in the flat array IS the
   // sibling order — insert next to the sibling's own membership.
-  const at = m.containment.findIndex((e) => e.parent === parent && e.child === beside.sibling && e.plane === canon);
+  const at = m.containment.findIndex(
+    (e) => e.parent === parent && e.child === beside.sibling && (e.plane ?? defaultPlane) === key,
+  );
   if (at === -1) throw new CommandError(`'${beside.sibling}' is not a child of '${parent}'`);
   const i = beside.side === 'before' ? at : at + 1;
   return { ...m, containment: [...m.containment.slice(0, i), edge, ...m.containment.slice(i)] };
