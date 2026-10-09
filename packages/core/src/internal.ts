@@ -31,7 +31,7 @@ export * from './mutate/threats-and-comments';
 export * from './mutate/diagram';
 export { CommandError } from './command-error';
 export * from './planes';
-export { commentsOf, hasNoteContent, nextCommentId } from './comments';
+export { hasNoteContent, nextCommentId } from './comments';
 export * from './elements';
 export { isIsoDate } from './dates';
 export { normalizeRuns, runsToPlainText } from './text';
@@ -96,8 +96,8 @@ export { activeNotation, compileView, presetLayers } from './view/compile';
 export { buildHierarchy, type HierarchyIndex } from './view/hierarchy';
 export { soleRelation } from './view/edges';
 export { relationLayer } from './view/layers';
-export { scopeToRoot, EXTERNAL_STUB_PREFIX, type ScopedModel } from './view/scope';
-export { estimateSizes, LEAF_SIZE, CONTAINER_PADDING, CONTAINER_HEADER } from './view/size';
+export { scopeToRoot, type ScopedModel } from './view/scope';
+export { LEAF_SIZE } from './view/size';
 export type { BoxSize, CompiledView, LodState, NodeViewState, ViewEdge, ViewNode, ViewportState } from './view/types';
 export type { Point, Size } from './geometry';
 export {
@@ -110,9 +110,8 @@ export {
   type EditorCommand,
   type EditorState,
 } from './commands/index';
-export { composeIncludes, IncludeError, MAX_INCLUDE_DEPTH, type IncludeResolver, type IncludeSource } from './compose';
+export { composeIncludes, IncludeError, type IncludeResolver, type IncludeSource } from './compose';
 export {
-  GIT_KINDS,
   GIT_NOTATION,
   GIT_STAGE_TYPE,
   gapOf,
@@ -184,12 +183,8 @@ export {
   type ThreatRow,
 } from './notations/threat-model/threat-model';
 export {
-  DEPLOY_NOTATION,
   DEPLOY_ZONE_TYPES,
   DEPLOY_NODE_TYPES,
-  DEPLOY_TYPES,
-  isDeploymentNode,
-  isDeployZone,
   type DeployZoneType,
   type DeployNodeType,
 } from './notations/deployment/deployment';

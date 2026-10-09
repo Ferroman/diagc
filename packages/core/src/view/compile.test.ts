@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { acmeModel } from './acme.fixture';
 import { compileView } from './compile';
-import { LEAF_SIZE, CONTAINER_PADDING, CONTAINER_HEADER } from '../internal';
+import { LEAF_SIZE, CONTAINER_PADDING, CONTAINER_HEADER } from './size';
 
 const ids = (nodes: { id: string }[]) => nodes.map((n) => n.id);
 const FULL_FOCUS = ['platform', 'communication', 'identity', 'billing', 'shared-postgres'];
