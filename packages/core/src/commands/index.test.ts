@@ -1,18 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { model } from './builder';
-import {
-  applyCommand,
-  applyCommandWithResult,
-  emptyLayout,
-  openingPins,
-  withEdgeLabelPlacements,
-  type EditorState,
-} from './commands';
-import { emptyDrawings } from './drawings';
-import { CommandError } from './command-error';
-import { layoutPlaneKey } from './planes';
-import { TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from './threat-model';
-import type { DiagramModel, LayoutOverlay } from './types';
+import { model } from '../builder';
+import { applyCommand, applyCommandWithResult, emptyLayout, openingPins, type EditorState } from './index';
+import { withEdgeLabelPlacements } from './layout-pruning';
+import { emptyDrawings } from '../drawings';
+import { CommandError } from '../command-error';
+import { layoutPlaneKey } from '../planes';
+import { TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from '../threat-model';
+import type { DiagramModel, LayoutOverlay } from '../types';
 
 function state(): EditorState {
   const m = model('t');

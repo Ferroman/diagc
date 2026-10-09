@@ -155,7 +155,7 @@
       "count": 1
     }
   },
-  "packages/core/src/commands.ts": {
+  "packages/core/src/commands/index.ts": {
     "complexity": {
       "count": 1
     },

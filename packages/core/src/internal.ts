@@ -110,11 +110,10 @@ export {
   applyCommandWithResult,
   emptyLayout,
   openingPins,
-  withEdgeLabelPlacements,
-  withUnfolded,
   type EditorCommand,
   type EditorState,
-} from './commands';
+} from './commands/index';
+export { withEdgeLabelPlacements, withUnfolded } from './commands/layout-pruning';
 export { composeIncludes, IncludeError, MAX_INCLUDE_DEPTH, type IncludeResolver, type IncludeSource } from './compose';
 export {
   GIT_KINDS,
