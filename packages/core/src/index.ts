@@ -59,6 +59,8 @@ export {
 } from './builder';
 export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue } from './validate';
 export type * from './types';
+// The geometry the model types use (LayoutOverlay's saved positions and sizes).
+export type { Point, Size } from './geometry';
 // The value lists the model types are built from (`Side` is `(typeof SIDES)[number]`).
 export {
   TEXT_ALIGNS,

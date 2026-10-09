@@ -94,10 +94,12 @@ export { NODE_TYPES, NOTATION_NODE_TYPES, NOTATION_RELATION_KINDS, RELATION_KIND
 export { visibleColumns, withHiddenColumns } from './columns';
 export { activeNotation, compileView, presetLayers } from './view/compile';
 export { buildHierarchy, type HierarchyIndex } from './view/hierarchy';
+export { soleRelation } from './view/edges';
 export { relationLayer } from './view/layers';
 export { scopeToRoot, EXTERNAL_STUB_PREFIX, type ScopedModel } from './view/scope';
 export { estimateSizes, LEAF_SIZE, CONTAINER_PADDING, CONTAINER_HEADER } from './view/size';
-export type { CompiledView, LodState, NodeViewState, Size, ViewEdge, ViewNode, ViewportState } from './view/types';
+export type { BoxSize, CompiledView, LodState, NodeViewState, ViewEdge, ViewNode, ViewportState } from './view/types';
+export type { Point, Size } from './geometry';
 export {
   applyCommand,
   applyCommandWithResult,

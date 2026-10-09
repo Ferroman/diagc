@@ -60,6 +60,7 @@ import {
   type ThreatPatch,
 } from './mutate';
 import { defined } from './util';
+import type { Point } from './geometry';
 
 export interface EditorState {
   model: DiagramModel;
@@ -133,7 +134,7 @@ export type EditorCommand =
   | { type: 'set-size'; nodeId: string; w: number; h: number }
   | { type: 'clear-position'; plane?: string; nodeId: string }
   | { type: 'clear-positions'; plane?: string }
-  | { type: 'set-positions'; plane?: string; positions: Record<string, { x: number; y: number }> }
+  | { type: 'set-positions'; plane?: string; positions: Record<string, Point> }
   | { type: 'set-plane-layout'; plane?: string; manual: boolean }
   /** replace the list of containers the plane opens with unfolded
    * (LayoutOverlay.unfolded); `[]` clears it */
@@ -151,7 +152,7 @@ export type EditorCommand =
   /** several commands as one step: applied in order, all or nothing, one undo entry */
   | { type: 'batch'; commands: EditorCommand[] };
 
-function setPos(layout: LayoutOverlay, key: string, nodeId: string, pos?: { x: number; y: number }): LayoutOverlay {
+function setPos(layout: LayoutOverlay, key: string, nodeId: string, pos?: Point): LayoutOverlay {
   const plane = { ...(layout.planes[key] ?? {}) };
   if (pos === undefined) delete plane[nodeId];
   else plane[nodeId] = pos;

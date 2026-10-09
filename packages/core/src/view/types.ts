@@ -24,7 +24,8 @@ export interface ViewportState {
   root?: string;
 }
 
-export interface Size {
+/** A box's width and height in the drawn view, in flow pixels. */
+export interface BoxSize {
   width: number;
   height: number;
 }

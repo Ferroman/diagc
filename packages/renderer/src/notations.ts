@@ -20,7 +20,7 @@ import {
   type NotationId,
   type Polarity,
   type PlanRole,
-  type Size,
+  type BoxSize,
   type ViewEdge,
 } from '@diagc/core/internal';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
@@ -62,7 +62,7 @@ export interface NotationProfile {
     view: CompiledView,
     model: DiagramModel,
     plane: string | undefined,
-    sizeHints?: ReadonlyMap<string, Size>,
+    sizeHints?: ReadonlyMap<string, BoxSize>,
     positions?: Record<string, { x: number; y: number }>,
   ) => LayoutResult;
   /** the arrangement honours saved positions for some of its nodes and must be
@@ -85,7 +85,7 @@ export interface NotationProfile {
   related?: (model: DiagramModel, plane: string | undefined, id: string) => readonly string[];
   node?: {
     typelessAsText?: boolean;
-    leafSize?: (n: DiagramNode) => Size | undefined;
+    leafSize?: (n: DiagramNode) => BoxSize | undefined;
     /** containers that never fold: the view pins them expanded whatever the
      * viewer's pins say (a git lane is a row, not a box with an inside) */
     alwaysExpanded?: (n: DiagramNode) => boolean;

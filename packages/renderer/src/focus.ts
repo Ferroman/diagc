@@ -1,4 +1,10 @@
-import { buildHierarchy, type CompiledView, type DiagramModel, type Size, type ViewNode } from '@diagc/core/internal';
+import {
+  buildHierarchy,
+  type CompiledView,
+  type DiagramModel,
+  type BoxSize,
+  type ViewNode,
+} from '@diagc/core/internal';
 import type { NodeGeometry } from './layout';
 
 /**
@@ -38,7 +44,7 @@ export interface FocusInput {
   /** viewport min dimension in px */
   vmin: number;
   /** best-known EXPANDED extent per container (measured, else estimated) */
-  extents: Map<string, Size>;
+  extents: Map<string, BoxSize>;
   prevFocus: string[];
 }
 

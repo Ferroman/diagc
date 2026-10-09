@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model, type DiagramModel, type Size } from '@diagc/core/internal';
+import { compileView, model, type DiagramModel, type BoxSize } from '@diagc/core/internal';
 import { COLLAPSED_SIZE, type NodeGeometry } from './layout';
 import { computeFocusChain, focusForVisible, FOCUS_ENTER_FRACTION, FOCUS_EXIT_FRACTION } from './focus';
 
@@ -28,7 +28,7 @@ function makeModel(): DiagramModel {
   return m.toJSON();
 }
 
-const extents = new Map<string, Size>([
+const extents = new Map<string, BoxSize>([
   ['root', { width: 1000, height: 600 }],
   ['sys', { width: 400, height: 300 }],
   ['other', { width: 400, height: 300 }],

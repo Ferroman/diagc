@@ -1,3 +1,5 @@
+import type { Point, Size } from './geometry';
+
 export interface TextRun {
   text: string;
   bold?: boolean;
@@ -355,10 +357,10 @@ export interface NotePlacement {
 
 export interface LayoutOverlay {
   version: 1;
-  planes: Record<string, Record<string, { x: number; y: number }>>;
+  planes: Record<string, Record<string, Point>>;
   /** editor-resized node footprints (image nodes); plane-independent — a
    * node's size is the same on every plane, unlike its position */
-  sizes?: Record<string, { w: number; h: number }>;
+  sizes?: Record<string, Size>;
   /** planes switched to manual layout (automatic layout off); keyed like
    * `planes` (via layoutPlaneKey). Absent/omitted ⇒ automatic layout. */
   manual?: Record<string, true>;
