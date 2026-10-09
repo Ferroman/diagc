@@ -304,6 +304,15 @@ describe('mutate', () => {
       // default here), which must not match an edge tagged 'plan'
       expect(removeContainment(json, 'q', 'e').containment).toEqual(json.containment);
     });
+
+    it('a new edge can go beside it', () => {
+      const m = planModel();
+      const withNode = { ...m, nodes: [...m.nodes, { id: 'n', name: 'N' }] };
+      expect(addContainment(withNode, 'q', 'n', undefined, { sibling: 'e', side: 'after' }).containment).toEqual([
+        { parent: 'q', child: 'e', plane: 'plan' },
+        { parent: 'q', child: 'n' },
+      ]);
+    });
   });
 
   it('deletePlane of the first plane removes untagged containment', () => {

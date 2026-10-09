@@ -811,3 +811,38 @@ describe('typeColors on graft', () => {
     expect(m.notation).toBe('c4');
   });
 });
+
+describe('composeIncludes: a child whose first plane borrows', () => {
+  // 'main' is first and borrows 'flow': the child's own view draws only the
+  // 'flow' edge, so p > old is on main's unused containment.
+  const child = doc('svc', {
+    nodes: [
+      { id: 'p', name: 'P' },
+      { id: 'old', name: 'Old' },
+      { id: 'new', name: 'New' },
+    ],
+    containment: [
+      { parent: 'p', child: 'old' },
+      { parent: 'p', child: 'new', plane: 'flow' },
+    ],
+    planes: [
+      { id: 'main', name: 'Main', containmentOf: 'flow' },
+      { id: 'flow', name: 'Flow' },
+    ],
+  });
+
+  it("grafts the containment the child's own view draws", async () => {
+    const umbrella = doc('arch', { nodes: [{ id: 'inc', name: 'Svc', include: 'svc' }] });
+    const { model: m } = await composeIncludes(umbrella, 'mem:arch', memory({ svc: child }));
+    expect(m.containment).toContainEqual({ parent: 'inc/p', child: 'inc/new' });
+    expect(m.containment).not.toContainEqual({ parent: 'inc/p', child: 'inc/old' });
+    expect(m.containment).toContainEqual({ parent: 'inc', child: 'inc/old' });
+  });
+
+  it('carries an untagged row on the first plane, as the child reads it', async () => {
+    const umbrella = doc('arch', { nodes: [{ id: 'inc', name: 'Svc', include: 'svc', includePlanes: true }] });
+    const { model: m } = await composeIncludes(umbrella, 'mem:arch', memory({ svc: child }));
+    expect(m.containment).toContainEqual({ parent: 'inc/p', child: 'inc/old', plane: 'inc/main' });
+    expect(m.containment).not.toContainEqual({ parent: 'inc/p', child: 'inc/old', plane: 'inc/flow' });
+  });
+});

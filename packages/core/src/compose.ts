@@ -100,6 +100,12 @@ async function expand(
   return out;
 }
 
+/** The plane an untagged edge is on: the first declared, as the view reads it,
+ * even when that plane borrows another's containment. */
+function defaultPlaneOf(m: DiagramModel): string | undefined {
+  return m.planes[0]?.id;
+}
+
 /** merge `child`'s content into `host` under `into`, namespaced by its id.
  * Same-id layers unify with the host's; see the note inside. */
 function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): DiagramModel {
@@ -110,7 +116,7 @@ function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): Diag
       `Include '${into.id}': plane '${into.includePlane}' not found in the included diagram`,
     );
   }
-  const defaultPlane = resolveContainmentPlane(child, undefined);
+  const defaultPlane = defaultPlaneOf(child);
   // the structural plane: the named one (resolved through containmentOf) or the default
   const structural = resolveContainmentPlane(child, into.includePlane);
 

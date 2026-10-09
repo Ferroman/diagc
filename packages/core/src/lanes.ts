@@ -22,7 +22,9 @@ const MAX_PERMUTED_LANES = 8;
  */
 export function bestLaneOrder(m: DiagramModel, frameId: string, plane?: string): string[] {
   const planeId = resolveContainmentPlane(m, plane);
-  const base = resolveContainmentPlane(m, undefined);
+  // An untagged edge is on the first-declared plane, as the view reads it, even
+  // when that plane borrows another's containment.
+  const base = (m.planes ?? [])[0]?.id;
   const edges = m.containment.filter((e) => (e.plane ?? base) === planeId);
   const typeOf = new Map(m.nodes.map((n) => [n.id, n.type]));
   const lanes = edges

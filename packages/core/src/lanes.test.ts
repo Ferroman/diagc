@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { bestLaneOrder, model } from './internal';
+import { bestLaneOrder, buildHierarchy, model, type DiagramModel } from './internal';
 
 /** a frame with the given lanes, one action per lane, and links between lanes */
 function frame(lanes: string[], links: [string, string][]) {
@@ -69,5 +69,29 @@ describe('bestLaneOrder', () => {
     expect(bestLaneOrder(frame(['a', 'b'], [['a', 'b']]), 'f')).toEqual(['a', 'b']);
     const nine = ['l1', 'l2', 'l3', 'l4', 'l5', 'l6', 'l7', 'l8', 'l9'];
     expect(bestLaneOrder(frame(nine, [['l1', 'l9']]), 'f')).toEqual(nine);
+  });
+
+  it('reads the lanes the view draws when the first plane borrows its containment', () => {
+    // 'main' is first and borrows 'flow', so the untagged edges sit on main's own
+    // containment, which no view draws; only the 'flow' edges are drawn.
+    const lane = (id: string) => ({ id, name: id, type: 'activity-lane' });
+    const m: DiagramModel = {
+      version: 1,
+      id: 't',
+      name: 't',
+      nodes: [{ id: 'f', name: 'f', type: 'activity-frame' }, ...['a', 'b', 'c', 'x', 'y', 'z'].map(lane)],
+      containment: [
+        ...['x', 'y', 'z'].map((child) => ({ parent: 'f', child })),
+        ...['a', 'b', 'c'].map((child) => ({ parent: 'f', child, plane: 'flow' })),
+      ],
+      relations: [],
+      layers: [],
+      planes: [
+        { id: 'main', name: 'Main', containmentOf: 'flow' },
+        { id: 'flow', name: 'Flow' },
+      ],
+    };
+    expect(buildHierarchy(m).childrenOf.get('f')).toEqual(['a', 'b', 'c']);
+    expect([...bestLaneOrder(m, 'f')].sort()).toEqual(['a', 'b', 'c']);
   });
 });
