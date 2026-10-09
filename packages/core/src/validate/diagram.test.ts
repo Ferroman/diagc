@@ -111,3 +111,22 @@ describe('legend validation', () => {
     expect(validate(json)).toEqual([]);
   });
 });
+
+describe('a null legend', () => {
+  it('is reported as not an object instead of throwing', () => {
+    const m = {
+      version: 1,
+      id: 'm',
+      name: 'M',
+      nodes: [],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+      legend: null,
+    };
+    expect(validate(m as unknown as DiagramModel)).toEqual([
+      { code: 'invalid-legend', message: 'Legend must be an object' },
+    ]);
+  });
+});

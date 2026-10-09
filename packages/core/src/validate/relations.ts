@@ -95,10 +95,17 @@ function checkStyleValues(ctx: Ctx, r: DiagramRelation, s: RelationStyle): void 
   if (s.animated !== undefined && typeof s.animated !== 'boolean') bad(`animated '${String(s.animated)}'`);
 }
 
-/** an FK's columns must be columns of the tables it joins */
+/** an FK's columns must be columns of the tables it joins. A table whose
+ * `columns` is malformed has its own issue; here it simply lacks the column. */
 function checkColumnRefs({ m, issues }: Ctx, r: DiagramRelation): void {
-  const colsOf = (id: string) => m.nodes.find((n) => n.id === id)?.columns ?? [];
-  if (r.fromColumn !== undefined && !colsOf(r.from).some((c) => c.name === r.fromColumn)) {
+  const hasColumn = (id: string, name: string): boolean => {
+    const columns: unknown = m.nodes.find((n) => n.id === id)?.columns;
+    return (
+      Array.isArray(columns) &&
+      columns.some((c) => typeof c === 'object' && c !== null && (c as { name?: unknown }).name === name)
+    );
+  };
+  if (r.fromColumn !== undefined && !hasColumn(r.from, r.fromColumn)) {
     report(
       issues,
       'unknown-column',
@@ -106,7 +113,7 @@ function checkColumnRefs({ m, issues }: Ctx, r: DiagramRelation): void {
       r.id,
     );
   }
-  if (r.toColumn !== undefined && !colsOf(r.to).some((c) => c.name === r.toColumn)) {
+  if (r.toColumn !== undefined && !hasColumn(r.to, r.toColumn)) {
     report(issues, 'unknown-column', `Relation '${r.id}' toColumn '${r.toColumn}' is not a column of '${r.to}'`, r.id);
   }
 }

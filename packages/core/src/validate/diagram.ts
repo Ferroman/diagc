@@ -25,7 +25,7 @@ export function validateLegend(ctx: Ctx): void {
   const { m, issues } = ctx;
   const l = m.legend;
   if (l === undefined) return;
-  if (typeof l !== 'object' || Array.isArray(l)) {
+  if (typeof l !== 'object' || l === null || Array.isArray(l)) {
     issues.push({ code: 'invalid-legend', message: 'Legend must be an object' });
     return;
   }

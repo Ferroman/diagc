@@ -241,3 +241,19 @@ describe('the order relation issues come in', () => {
     ]);
   });
 });
+
+describe('an fk on a malformed table', () => {
+  it('reports a column it cannot find there instead of throwing', () => {
+    // the table's own issue says what is wrong with its columns; the fk gets
+    // unknown-column, as it would on a table without that column
+    const m = emptyModel();
+    m.nodes = [
+      { id: 'a', name: 'a', columns: 'x' },
+      { id: 'b', name: 'b', columns: [null, { name: 'id' }] },
+    ] as unknown as DiagramModel['nodes'];
+    m.relations = [{ id: 'r', from: 'a', to: 'b', kind: 'fk', fromColumn: 'id', toColumn: 'id' }];
+    expect(validate(m).filter((i) => i.code === 'unknown-column')).toEqual([
+      { code: 'unknown-column', message: "Relation 'r' fromColumn 'id' is not a column of 'a'", ref: 'r' },
+    ]);
+  });
+});
