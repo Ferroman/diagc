@@ -1,4 +1,5 @@
 import type { DiagramModel } from './types';
+import { defined } from './util';
 
 /** The notation id a plane (or the model) declares to be drawn as a fish. */
 export const FISHBONE_NOTATION = 'fishbone' as const;
@@ -116,7 +117,7 @@ export function fishboneTree(model: DiagramModel): FishboneTree {
     }
   }
   return {
-    ...(effect !== undefined ? { effect } : {}),
+    ...defined({ effect }),
     categories,
     unattached: nodes.map((n) => n.id).filter((id) => !placed.has(id)),
   };

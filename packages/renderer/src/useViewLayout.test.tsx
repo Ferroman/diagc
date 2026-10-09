@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { compileView, model, type DiagramModel, type LayoutOverlay, type Size } from '@diagc/core/internal';
+import { compileView, model, type DiagramModel, type LayoutOverlay, type BoxSize } from '@diagc/core/internal';
 import * as layoutModule from './layout';
 import type { NodeGeometry } from './layout';
 import { notationProfile, type NotationProfile } from './notations';
@@ -30,7 +30,7 @@ const GEOMETRY = new Map<string, NodeGeometry>([
  * stub that has a `layout` but never wants saved positions. */
 function notationLayoutProfile(
   spy?: (
-    hints: ReadonlyMap<string, Size> | undefined,
+    hints: ReadonlyMap<string, BoxSize> | undefined,
     positions: Record<string, { x: number; y: number }> | undefined,
   ) => void,
   readsPositions = true,

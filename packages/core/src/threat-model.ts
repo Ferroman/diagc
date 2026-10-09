@@ -9,7 +9,9 @@ import {
   type Threat,
   type ThreatStatus,
 } from './types';
-import { containmentPlaneOf } from './view/hierarchy';
+import { containmentOn, containmentPlaneOf } from './planes';
+import { defined } from './util';
+import { elementKey, findElement, type ElementRef } from './elements';
 
 /** The notation id a plane (or the model) declares to be drawn as a STRIDE
  * data-flow diagram. */
@@ -47,19 +49,11 @@ export const STRIDE_NAMES: Record<StrideCategory, string> = {
  * titled?" is one comparison rather than a per-host convention. */
 export const NEW_THREAT_TITLE = 'New threat';
 
-/** which element a threat command or register row refers to */
-export type ThreatTarget = { node: string } | { relation: string };
-
-/** The overlay key a threat target is filed under (`LayoutOverlay.notes`). Node
- * and relation ids are separate namespaces — nothing stops a node and a relation
- * sharing an id — so one flat map needs the prefix. */
-export const threatTargetKey = (t: ThreatTarget): string => ('node' in t ? `node:${t.node}` : `relation:${t.relation}`);
-
 /** The element's threat list — `[]` when it carries none, undefined when there
  * is no such element. The two are different answers: a note is drawn for the
  * first case's element and the second is a dangling reference. */
-export function threatsOf(m: DiagramModel, t: ThreatTarget): readonly Threat[] | undefined {
-  const el = 'node' in t ? m.nodes.find((n) => n.id === t.node) : m.relations.find((r) => r.id === t.relation);
+export function threatsOf(m: DiagramModel, t: ElementRef): readonly Threat[] | undefined {
+  const el = findElement(m, t);
   return el === undefined ? undefined : (el.threats ?? []);
 }
 
@@ -79,7 +73,7 @@ export interface Crossing {
 }
 
 export interface ThreatRow {
-  target: ThreatTarget;
+  target: ElementRef;
   /** the element's display name — a flow reads `from → to (label)` */
   name: string;
   threat: Threat;
@@ -103,11 +97,8 @@ export function strideFor(typeOrKind: string | undefined): readonly StrideCatego
 /** child → parents on the plane a view of `plane` uses (containmentOf resolved;
  * an untagged edge belongs to the first-declared plane), declaration order kept */
 function planeParents(m: DiagramModel, plane: string | undefined): Map<string, string[]> {
-  const active = containmentPlaneOf(m, plane);
-  const defaultPlane = m.planes?.[0]?.id;
   const parents = new Map<string, string[]>();
-  for (const e of m.containment) {
-    if ((e.plane ?? defaultPlane) !== active) continue;
+  for (const e of containmentOn(m, containmentPlaneOf(m, plane))) {
     parents.set(e.child, [...(parents.get(e.child) ?? []), e.parent]);
   }
   return parents;
@@ -155,7 +146,7 @@ export function crossings(m: DiagramModel, plane: string | undefined): ReadonlyM
     if (from === to) continue;
     // an absent side means "outside every boundary" — omitted rather than
     // `undefined` so a serialized Crossing stays minimal
-    out.set(r.id, { ...(from !== undefined ? { from } : {}), ...(to !== undefined ? { to } : {}) });
+    out.set(r.id, defined({ from, to }));
   }
   return out;
 }
@@ -217,12 +208,12 @@ export function allNotesOpen(model: DiagramModel, layout: LayoutOverlay, planeKe
   for (const n of model.nodes) {
     if ((n.threats?.length ?? 0) === 0) continue;
     any = true;
-    if (bucket?.[threatTargetKey({ node: n.id })]?.open !== true) return false;
+    if (bucket?.[elementKey({ node: n.id })]?.open !== true) return false;
   }
   for (const r of model.relations) {
     if ((r.threats?.length ?? 0) === 0) continue;
     any = true;
-    if (bucket?.[threatTargetKey({ relation: r.id })]?.open !== true) return false;
+    if (bucket?.[elementKey({ relation: r.id })]?.open !== true) return false;
   }
   return any;
 }

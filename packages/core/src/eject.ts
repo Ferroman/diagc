@@ -110,7 +110,7 @@ export function tsLiteral(value: unknown, indent: number): string {
     if (inline.length <= INLINE_LIMIT && !inline.includes('\n')) return inline;
     return `{\n${entries.map((e) => `${inner}${e},`).join('\n')}\n${pad}}`;
   }
-  // null is handled above — it round-trips: pruneUndefined (builder.ts) strips
+  // null is handled above — it round-trips: the builder's defined() strips
   // only `undefined`, so a null survives the object spread and deep-equal
   // holds. undefined never round-trips (JSON has no undefined), so it still
   // throws here; a caller that can legitimately produce it (e.g. a missing

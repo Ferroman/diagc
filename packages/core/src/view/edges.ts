@@ -119,3 +119,9 @@ export function resolveEdges(m: DiagramModel, tree: ViewTree, activeLayers?: str
     return edge;
   });
 }
+
+/** The one relation behind a drawn edge; undefined when the edge stands for several,
+ * which is why an aggregate carries no per-relation style, labels or note. */
+export function soleRelation(edge: ViewEdge): DiagramRelation | undefined {
+  return edge.constituents.length === 1 ? edge.constituents[0] : undefined;
+}

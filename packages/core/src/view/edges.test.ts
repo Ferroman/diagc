@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { model } from '../builder';
 import { buildHierarchy } from './hierarchy';
 import { buildViewTree } from './tree';
-import { resolveEdges } from './edges';
-import type { DiagramModel } from '../types';
+import { resolveEdges, soleRelation } from './edges';
+import type { DiagramModel, DiagramRelation } from '../types';
 import type { LodState } from './types';
 
 function fixture(): DiagramModel {
@@ -328,4 +328,14 @@ describe('resolveEdges: layerRules', () => {
     const ids = resolveEdges(j, buildViewTree(j, h, {}), ['http']).map((e) => e.id);
     expect(ids.sort()).toEqual(['a=>b:', 'a=>db:', 'a=>db:http', 'b=>a:', 'b=>db:'].sort());
   });
+});
+
+describe('soleRelation', () => {
+  const r = (id: string): DiagramRelation => ({ id, from: 'a', to: 'b', kind: 'uses' });
+  const edge = (constituents: DiagramRelation[]) => ({ id: 'e', from: 'a', to: 'b', kind: 'uses', constituents });
+
+  it('is the one relation behind an edge', () => expect(soleRelation(edge([r('r1')]))).toEqual(r('r1')));
+  it('is undefined for an edge that stands for several', () =>
+    expect(soleRelation(edge([r('r1'), r('r2')]))).toBeUndefined());
+  it('is undefined for an edge with none', () => expect(soleRelation(edge([]))).toBeUndefined());
 });

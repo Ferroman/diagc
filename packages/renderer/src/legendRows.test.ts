@@ -187,7 +187,7 @@ describe('legendRows', () => {
   it('keeps the layer row of a plane that borrows another plane for containment', () => {
     const m = borrowingPlanes();
     // compileView resolves node visibility against the DONOR plane (see
-    // resolveContainmentPlane), so this arrow IS drawn on the flow plane.
+    // containmentPlaneOf), so this arrow IS drawn on the flow plane.
     expect(compileView(m, { plane: 'flow' }).edges.map((e) => e.kind)).toEqual(['flow']);
     // Scoping the key by the VIEWPORT plane instead found no visible endpoints
     // and dropped the row: a tinted overlay on screen with no key and no switch.

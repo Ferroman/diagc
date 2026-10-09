@@ -1,6 +1,7 @@
 import { isIsoDate } from './dates';
 import type { DiagramModel, DiagramNode } from './types';
 import { buildHierarchy } from './view/hierarchy';
+import { defined } from './util';
 
 /** The notation id a plane (or the model) declares to be drawn as a schedule:
  * a calendar left to right, zones as bars, events as diamonds, actors (people
@@ -194,8 +195,7 @@ export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
     actors,
     parent,
     children,
-    ...(range !== undefined ? { range } : {}),
-    ...(origin !== undefined ? { origin } : {}),
+    ...defined({ range, origin }),
   };
 }
 

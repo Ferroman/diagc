@@ -49,7 +49,7 @@ import {
   type Stroke,
   type TextRun,
   type ThreatStatus,
-  type ThreatTarget,
+  type ElementRef,
 } from '@diagc/core/internal';
 import { activeNotation } from './notation';
 import { getHost } from './host';
@@ -198,10 +198,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // A threat added from the canvas (an element's empty badge, a note's +) opens
   // its title on the note — the same nonce-keyed handshake as labelRequest, so
   // adding a second threat to the same element still re-arms the request.
-  const [threatRequest, setThreatRequest] = useState<{ target: ThreatTarget; id: string; nonce: number } | undefined>(
+  const [threatRequest, setThreatRequest] = useState<{ target: ElementRef; id: string; nonce: number } | undefined>(
     undefined,
   );
-  const requestThreatEdit = (target: ThreatTarget, id: string) =>
+  const requestThreatEdit = (target: ElementRef, id: string) =>
     setThreatRequest((r) => ({ target, id, nonce: (r?.nonce ?? 0) + 1 }));
   // The canvas multi-selection (Shift+click / marquee), mirrored from the
   // renderer. Drives the ⊞ Group chip and the selection glow. Deduped by
@@ -331,7 +331,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // the dock's Layout & style section, which serves both modes.
   const algorithmLocked = notationProfile(notation).partitionOf !== undefined;
   // A borrowing plane's node membership resolves to its base plane
-  // (compileView/resolveContainmentPlane), so tagging node.plane with the
+  // (compileView/containmentPlaneOf), so tagging node.plane with the
   // borrowing plane's own id would mismatch and the node would silently
   // vanish. Stage 1 disables plane-scoped membership editing there — new
   // nodes are added shared instead (see createNodeAt).
@@ -529,7 +529,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // Threat notes on the canvas. The note only reports gestures — which threat
   // to add, what a title became — and the host owns the model, exactly as it
   // does for quick add: the renderer never invents an id or a category.
-  const addThreatOn = (target: ThreatTarget) => {
+  const addThreatOn = (target: ElementRef) => {
     // peek(): the synchronous session, so a second + right after the first
     // commit sees the threat that commit added and picks the next free id.
     const m = editor.peek()?.state.model;
@@ -564,7 +564,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     });
     requestThreatEdit(target, id); // …and open it for typing, where it was added
   };
-  const retitleThreat = (target: ThreatTarget, id: string, title: string) => {
+  const retitleThreat = (target: ElementRef, id: string, title: string) => {
     const m = editor.peek()?.state.model;
     const current = m !== undefined ? threatsOf(m, target)?.find((t) => t.id === id) : undefined;
     if (current === undefined) return;
@@ -579,9 +579,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     }
     if (title !== current.title) editor.dispatch({ type: 'update-threat', target, id, patch: { title } });
   };
-  const setThreatStatus = (target: ThreatTarget, id: string, status: ThreatStatus) =>
+  const setThreatStatus = (target: ElementRef, id: string, status: ThreatStatus) =>
     editor.dispatch({ type: 'update-threat', target, id, patch: { status } });
-  const editThreatText = (target: ThreatTarget, id: string, field: 'description' | 'mitigation', text: string) => {
+  const editThreatText = (target: ElementRef, id: string, field: 'description' | 'mitigation', text: string) => {
     const m = editor.peek()?.state.model;
     const current = m !== undefined ? threatsOf(m, target)?.find((t) => t.id === id) : undefined;
     if (current === undefined) return;
@@ -1333,9 +1333,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         edit: {
                           ...(labelRequest !== undefined ? { editLabelRequest: labelRequest } : {}),
                           ...(threatRequest !== undefined ? { editThreatRequest: threatRequest } : {}),
-                          onNoteMoved: (target: ThreatTarget, offset: { dx: number; dy: number }) =>
+                          onNoteMoved: (target: ElementRef, offset: { dx: number; dy: number }) =>
                             editor.dispatch({ type: 'set-note-offset', target, offset, ...planeOpt }),
-                          onToggleNote: (target: ThreatTarget, open: boolean) =>
+                          onToggleNote: (target: ElementRef, open: boolean) =>
                             editor.dispatch({ type: 'set-note-open', target, open, ...planeOpt }),
                           onAddThreat: addThreatOn,
                           onRetitleThreat: retitleThreat,

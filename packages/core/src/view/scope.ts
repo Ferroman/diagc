@@ -1,5 +1,6 @@
 import type { DiagramModel, DiagramRelation } from '../types';
 import type { HierarchyIndex } from './hierarchy';
+import { defined } from '../util';
 
 /** Reserved id prefix for external stub nodes (the off-frame node a boundary-
  *  crossing edge points to in an isolated drill view). The `__ext__:` prefix keeps it from
@@ -94,12 +95,14 @@ export function scopeToRoot(m: DiagramModel, h: HierarchyIndex, root: string): S
     nodes.push({
       id: stubId,
       name: src?.name ?? rep,
-      ...(src?.type !== undefined ? { type: src.type } : {}),
-      ...(src?.icon !== undefined ? { icon: src.icon } : {}),
-      ...(src?.image !== undefined ? { image: src.image } : {}),
-      ...(src?.shape !== undefined ? { shape: src.shape } : {}),
-      ...(src?.color !== undefined ? { color: src.color } : {}),
-      ...(src?.textColor !== undefined ? { textColor: src.textColor } : {}),
+      ...defined({
+        type: src?.type,
+        icon: src?.icon,
+        image: src?.image,
+        shape: src?.shape,
+        color: src?.color,
+        textColor: src?.textColor,
+      }),
     });
   }
   const containment = m.containment

@@ -1,17 +1,10 @@
 import type { DiagramModel, DiagramNode } from '../types';
+import { containmentOn, containmentPlaneOf } from '../planes';
 
 export interface HierarchyIndex {
   parentsOf: Map<string, string[]>;
   childrenOf: Map<string, string[]>;
   roots: string[];
-}
-
-/** Which plane's containment edges a view of `planeId` uses (resolves
- *  `containmentOf`, one hop — chains are a validation error). */
-export function containmentPlaneOf(m: DiagramModel, planeId?: string): string | undefined {
-  const planes = m.planes ?? [];
-  const plane = planeId !== undefined ? planes.find((p) => p.id === planeId) : planes[0];
-  return plane?.containmentOf ?? plane?.id;
 }
 
 /**
@@ -47,10 +40,9 @@ export function containmentPlaneOf(m: DiagramModel, planeId?: string): string | 
  */
 export function buildHierarchy(m: DiagramModel, plane?: string, activeLayers?: ReadonlySet<string>): HierarchyIndex {
   const planes = m.planes ?? [];
-  const defaultPlane = planes[0]?.id;
-  // `?? plane` keeps an unknown plane id behaving as it always did (an empty
-  // view) instead of falling back to every containment edge in the model.
-  const active = containmentPlaneOf(m, plane) ?? plane ?? defaultPlane;
+  // `?? plane` keeps an unknown plane id an empty view instead of falling back to
+  // every containment edge in the model.
+  const active = containmentPlaneOf(m, plane) ?? plane;
   const viewDef = plane !== undefined ? planes.find((p) => p.id === plane) : planes[0];
   const donorDef = active !== undefined ? planes.find((p) => p.id === active) : undefined;
   const hides = new Set(viewDef?.hides ?? donorDef?.hides ?? []);
@@ -58,8 +50,7 @@ export function buildHierarchy(m: DiagramModel, plane?: string, activeLayers?: R
 
   // This plane's containment BEFORE any visibility filtering: the cascade has to
   // see the edges that point into a hidden box to know what it contained.
-  const planeEdges =
-    active === undefined ? m.containment : m.containment.filter((e) => (e.plane ?? defaultPlane) === active);
+  const planeEdges = active === undefined ? m.containment : containmentOn(m, active);
 
   // The `hidesTree` closure. Only `hidesTree` ids SEED it, but a parent hidden
   // either way counts as hidden when deciding whether a child has any visible

@@ -1,19 +1,19 @@
 import type { HierarchyIndex } from './hierarchy';
-import type { Size } from './types';
+import type { BoxSize } from './types';
 
-export const LEAF_SIZE: Size = { width: 160, height: 80 };
+export const LEAF_SIZE: BoxSize = { width: 160, height: 80 };
 export const CONTAINER_PADDING = 24;
 export const CONTAINER_HEADER = 32;
 
 /** Rough intrinsic (world-unit) sizes for LOD decisions; Plan 3 swaps in
  * renderer-measured sizes through the same Map shape. */
-export function estimateSizes(h: HierarchyIndex): Map<string, Size> {
-  const sizes = new Map<string, Size>();
-  const visit = (id: string): Size => {
+export function estimateSizes(h: HierarchyIndex): Map<string, BoxSize> {
+  const sizes = new Map<string, BoxSize>();
+  const visit = (id: string): BoxSize => {
     const memo = sizes.get(id);
     if (memo) return memo;
     const kids = h.childrenOf.get(id) ?? [];
-    let size: Size;
+    let size: BoxSize;
     if (kids.length === 0) {
       size = { ...LEAF_SIZE };
     } else {

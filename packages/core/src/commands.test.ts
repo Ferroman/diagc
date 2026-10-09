@@ -4,13 +4,13 @@ import {
   applyCommand,
   applyCommandWithResult,
   emptyLayout,
-  layoutPlaneKey,
   openingPins,
   withEdgeLabelPlacements,
   type EditorState,
 } from './commands';
 import { emptyDrawings } from './drawings';
-import { CommandError } from './mutate';
+import { CommandError } from './command-error';
+import { layoutPlaneKey } from './planes';
 import { TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from './threat-model';
 import type { DiagramModel, LayoutOverlay } from './types';
 

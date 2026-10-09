@@ -8,7 +8,7 @@ import {
   validate,
   type DiagramModel,
   type Threat,
-  type ThreatTarget,
+  type ElementRef,
 } from '@diagc/core/internal';
 import type { DiagramSelection } from '@diagc/renderer';
 import { DockSection } from '../DockSection';
@@ -30,7 +30,7 @@ interface Group {
   threats: Threat[];
 }
 
-const selectionFor = (target: ThreatTarget): DiagramSelection =>
+const selectionFor = (target: ElementRef): DiagramSelection =>
   'node' in target ? { kind: 'node', id: target.node } : { kind: 'edge', id: target.relation };
 
 /** `[T] MITM · high · open` — severity is optional and then left out; an unset

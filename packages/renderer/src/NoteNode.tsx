@@ -3,12 +3,12 @@ import {
   isOpen,
   nextThreatStatus,
   STRIDE_NAMES,
-  threatTargetKey,
+  elementKey,
   type Comment,
   type Link,
   type Threat,
   type ThreatStatus,
-  type ThreatTarget,
+  type ElementRef,
 } from '@diagc/core/internal';
 import { InlineName } from './DiagramNode';
 import { NOTE_WIDTH, STATUS_WORD, type Point } from './note-place';
@@ -21,7 +21,7 @@ export { NOTE_WIDTH };
  * note derivation). The threats are the model's own objects (identity), so a
  * bubble re-renders exactly when its element's list does. */
 export interface NoteData {
-  target: ThreatTarget;
+  target: ElementRef;
   /** the element's display name — the header, so a bubble dragged away from
    * its element still says what it is about */
   name: string;
@@ -41,13 +41,13 @@ export interface NoteData {
   editing: boolean;
   /** the row whose title the host wants open for typing (a just-added threat) */
   editingId?: string;
-  onAddThreat?: (target: ThreatTarget) => void;
+  onAddThreat?: (target: ElementRef) => void;
   /** `''` = the field was escaped or emptied — the host decides (a threat still
    * carrying the placeholder title is removed, a named one keeps its name) */
-  onRetitleThreat?: (target: ThreatTarget, id: string, title: string) => void;
-  onSetThreatStatus?: (target: ThreatTarget, id: string, status: ThreatStatus) => void;
+  onRetitleThreat?: (target: ElementRef, id: string, title: string) => void;
+  onSetThreatStatus?: (target: ElementRef, id: string, status: ThreatStatus) => void;
   /** `''` = clear the field */
-  onEditThreatText?: (target: ThreatTarget, id: string, field: 'description' | 'mitigation', text: string) => void;
+  onEditThreatText?: (target: ElementRef, id: string, field: 'description' | 'mitigation', text: string) => void;
   /** the host-opened row closed (commit or cancel) */
   onEndEdit?: () => void;
 }
@@ -119,7 +119,7 @@ export function NoteNode({
         )
       : null;
   return (
-    <div className="dg-note" data-target={threatTargetKey(data.target)} style={{ width: NOTE_WIDTH }}>
+    <div className="dg-note" data-target={elementKey(data.target)} style={{ width: NOTE_WIDTH }}>
       {tail !== null && (
         <svg className="dg-note-tail" data-side={tail.side} aria-hidden="true">
           {/* open path: the fill closes it across the base, the stroke draws

@@ -1,7 +1,7 @@
 import {
   childrenOf,
   layoutPlaneKey,
-  resolveContainmentPlane,
+  containmentPlaneOf,
   uniqueNodeId,
   type DiagramModel,
   type DiagramNode,
@@ -47,8 +47,8 @@ export interface ClipboardPayload {
 
 /** The containment edges a view of `plane` reads (untagged = first-declared plane). */
 function edgesOn(model: DiagramModel, plane: string | undefined) {
-  const active = resolveContainmentPlane(model, plane);
-  const base = resolveContainmentPlane(model, undefined);
+  const active = containmentPlaneOf(model, plane);
+  const base = containmentPlaneOf(model, undefined);
   return model.containment.filter((e) => (e.plane ?? base) === active);
 }
 

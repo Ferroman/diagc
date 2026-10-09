@@ -1,5 +1,5 @@
 import type { DiagramModel } from './types';
-import { resolveContainmentPlane } from './view/compile';
+import { containmentOn, containmentPlaneOf } from './planes';
 
 /** Past this many lanes, trying every order is too slow to do on a click. */
 const MAX_PERMUTED_LANES = 8;
@@ -21,11 +21,7 @@ const MAX_PERMUTED_LANES = 8;
  * one when absent); members are counted through regions and any other nesting.
  */
 export function bestLaneOrder(m: DiagramModel, frameId: string, plane?: string): string[] {
-  const planeId = resolveContainmentPlane(m, plane);
-  // An untagged edge is on the first-declared plane, as the view reads it, even
-  // when that plane borrows another's containment.
-  const base = (m.planes ?? [])[0]?.id;
-  const edges = m.containment.filter((e) => (e.plane ?? base) === planeId);
+  const edges = containmentOn(m, containmentPlaneOf(m, plane));
   const typeOf = new Map(m.nodes.map((n) => [n.id, n.type]));
   const lanes = edges
     .filter((e) => e.parent === frameId && typeOf.get(e.child) === 'activity-lane')

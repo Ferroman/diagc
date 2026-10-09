@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   bestLaneOrder,
-  resolveContainmentPlane,
+  containmentPlaneOf,
   uniqueNodeId,
   type DiagramModel,
   type DiagramNode,
@@ -103,7 +103,7 @@ export function activityContext(
   planeId: string | undefined,
 ): ActivityContext | undefined {
   const byId = new Map(model.nodes.map((n) => [n.id, n]));
-  const defaultPlane = resolveContainmentPlane(model, undefined);
+  const defaultPlane = containmentPlaneOf(model, undefined);
   const parentOf = new Map<string, string>();
   for (const e of model.containment) {
     if ((e.plane ?? defaultPlane) === planeId && !parentOf.has(e.child)) parentOf.set(e.child, e.parent);
@@ -135,13 +135,13 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
   const [laneColor, setLaneColor] = useState('');
   const [elementName, setElementName] = useState('');
 
-  const planeId = resolveContainmentPlane(model, plane);
+  const planeId = containmentPlaneOf(model, plane);
   const context = activityContext(model, selection, planeId);
   if (context === undefined) return null;
   const { frame, target } = context;
   const withPlane = planeId !== undefined ? { plane: planeId } : {};
 
-  const inPlane = model.containment.filter((e) => (e.plane ?? resolveContainmentPlane(model, undefined)) === planeId);
+  const inPlane = model.containment.filter((e) => (e.plane ?? containmentPlaneOf(model, undefined)) === planeId);
   const L = ACTIVITY_LAYOUT;
   const cascadeIn = (parentId: string) => {
     const childCount = inPlane.filter((e) => e.parent === parentId).length;

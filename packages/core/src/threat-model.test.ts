@@ -15,7 +15,6 @@ import {
   threatRegister,
   threatsOf,
   threatSummary,
-  threatTargetKey,
   TM_BOUNDARY_TYPE,
   TM_ENTITY_TYPE,
   TM_FLOW_KIND,
@@ -23,6 +22,7 @@ import {
   TM_PROCESS_TYPE,
   TM_STORE_TYPE,
 } from './threat-model';
+import { elementKey } from './elements';
 
 // Built by hand, not through the builder, so this file stays green on its own.
 const base = (): DiagramModel => ({
@@ -188,11 +188,11 @@ describe('threatRegister', () => {
   });
 });
 
-describe('threatTargetKey / threatsOf / nextThreatId', () => {
+describe('elementKey / threatsOf / nextThreatId', () => {
   it('keys node and relation targets in separate namespaces', () => {
     // one flat map holds both, and a node and a relation may share an id
-    expect(threatTargetKey({ node: 'a' })).toBe('node:a');
-    expect(threatTargetKey({ relation: 'a' })).toBe('relation:a');
+    expect(elementKey({ node: 'a' })).toBe('node:a');
+    expect(elementKey({ relation: 'a' })).toBe('relation:a');
   });
 
   it('reads an element’s threats, undefined for a missing element', () => {

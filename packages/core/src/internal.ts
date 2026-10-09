@@ -23,7 +23,10 @@ export { ejectSource } from './eject';
 export * from './types';
 export * from './shared-constants';
 export * from './mutate';
-export { commentsOf, hasNoteContent, nextCommentId, type ElementTarget } from './comments';
+export { CommandError } from './command-error';
+export * from './planes';
+export { commentsOf, hasNoteContent, nextCommentId } from './comments';
+export * from './elements';
 export { isIsoDate } from './dates';
 export { normalizeRuns, runsToPlainText } from './text';
 export { relationLabels } from './labels';
@@ -73,7 +76,7 @@ export {
 } from './validate';
 export { isDrawings, isLayoutOverlay } from './guards';
 export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrokeId } from './drawings';
-export { errMessage, SOURCE_URL } from './util';
+export { defined, errMessage, SOURCE_URL, type Defined } from './util';
 export { allowedParentTypes, childrenOf, countAnchored } from './children';
 export { bestLaneOrder } from './lanes';
 export { lintModel, type LintCode, type LintFinding } from './lint';
@@ -89,17 +92,18 @@ export {
 } from './diff';
 export { NODE_TYPES, NOTATION_NODE_TYPES, NOTATION_RELATION_KINDS, RELATION_KINDS } from './vocabulary';
 export { visibleColumns, withHiddenColumns } from './columns';
-export { activeNotation, compileView, presetLayers, resolveContainmentPlane } from './view/compile';
+export { activeNotation, compileView, presetLayers } from './view/compile';
 export { buildHierarchy, type HierarchyIndex } from './view/hierarchy';
+export { soleRelation } from './view/edges';
 export { relationLayer } from './view/layers';
 export { scopeToRoot, EXTERNAL_STUB_PREFIX, type ScopedModel } from './view/scope';
 export { estimateSizes, LEAF_SIZE, CONTAINER_PADDING, CONTAINER_HEADER } from './view/size';
-export type { CompiledView, LodState, NodeViewState, Size, ViewEdge, ViewNode, ViewportState } from './view/types';
+export type { BoxSize, CompiledView, LodState, NodeViewState, ViewEdge, ViewNode, ViewportState } from './view/types';
+export type { Point, Size } from './geometry';
 export {
   applyCommand,
   applyCommandWithResult,
   emptyLayout,
-  layoutPlaneKey,
   openingPins,
   withEdgeLabelPlacements,
   withUnfolded,
@@ -172,12 +176,10 @@ export {
   crossingLabel,
   threatRegister,
   threatSummary,
-  threatTargetKey,
   threatsOf,
   nextThreatId,
   nextThreatStatus,
   allNotesOpen,
-  type ThreatTarget,
   type Crossing,
   type ThreatRow,
 } from './threat-model';

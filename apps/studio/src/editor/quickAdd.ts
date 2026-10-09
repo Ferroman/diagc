@@ -19,7 +19,7 @@ import {
   isThreatModelNode,
   isoOf,
   latestCommit,
-  resolveContainmentPlane,
+  containmentPlaneOf,
   spanOf,
   type DiagramModel,
   type DiagramNode,
@@ -178,7 +178,7 @@ function gitLaneToGrow(model: DiagramModel, source: DiagramNode, plane: string |
 /** The containment edges a view of `plane` reads: those on the plane it resolves
  * to, an untagged edge belonging to the first-declared plane. */
 function containmentOn(model: DiagramModel, plane: string | undefined): DiagramModel['containment'] {
-  const active = resolveContainmentPlane(model, plane);
+  const active = containmentPlaneOf(model, plane);
   const defaultPlane = model.planes?.[0]?.id;
   return model.containment.filter((e) => (e.plane ?? defaultPlane) === active);
 }

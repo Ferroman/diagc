@@ -52,7 +52,7 @@ describe('withSavedPositions', () => {
   });
 
   it('resolves an absent plane the way the compiler does — the first declared one', () => {
-    // Not 'default': layoutPlaneKey defers to resolveContainmentPlane, so a model
+    // Not 'default': layoutPlaneKey defers to containmentPlaneOf, so a model
     // that declares planes keys under its first, exactly as compileView renders it.
     const out = withSavedPositions(undefined, makeModel(), undefined, { a: { x: 7, y: 8 } });
     expect(Object.keys(out.planes)).toEqual(['alt']);

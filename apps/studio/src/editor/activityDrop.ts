@@ -1,4 +1,4 @@
-import { resolveContainmentPlane, type DiagramModel } from '@diagc/core/internal';
+import { containmentPlaneOf, type DiagramModel } from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT } from '@diagc/renderer';
 
 type Point = { x: number; y: number };
@@ -11,8 +11,8 @@ const ACTIVITY_HOMES = new Set(['activity-lane', 'activity-region']);
 const ACTIVITY_CHROME = new Set(['activity-frame', ...ACTIVITY_HOMES]);
 
 const parentsIn = (model: DiagramModel, plane: string | undefined) => {
-  const planeId = resolveContainmentPlane(model, plane);
-  const base = resolveContainmentPlane(model, undefined);
+  const planeId = containmentPlaneOf(model, plane);
+  const base = containmentPlaneOf(model, undefined);
   return model.containment.filter((e) => (e.plane ?? base) === planeId);
 };
 

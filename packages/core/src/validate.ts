@@ -19,6 +19,7 @@ import {
   type TextRun,
 } from './types';
 import { childrenOf } from './children';
+import { defaultPlaneOf, isOnPlane, notationPlane } from './planes';
 import { RESERVED_NODE_ID } from './shared-constants';
 import { isIsoDate } from './dates';
 import {
@@ -572,11 +573,10 @@ function validateComments(ctx: Ctx): void {
 /** Containment cycles are checked per plane — an edge pair spanning two planes
  * is legal. Emits one `containment-cycle` issue per offending plane. */
 function validateCycles(ctx: Ctx): void {
-  const { m, issues, planes } = ctx;
-  const defaultPlane = planes[0]?.id;
+  const { m, issues } = ctx;
   const byPlane = new Map<string | undefined, DiagramModel['containment']>();
   for (const e of m.containment) {
-    const key = e.plane ?? defaultPlane;
+    const key = e.plane ?? defaultPlaneOf(m);
     byPlane.set(key, [...(byPlane.get(key) ?? []), e]);
   }
   for (const [plane, edges] of byPlane) {
@@ -605,9 +605,9 @@ function validateCycles(ctx: Ctx): void {
  */
 function validateGit(ctx: Ctx): void {
   const { issues, m } = ctx;
-  const plane = ctx.planes.find((p) => (p.notation ?? m.notation) === GIT_NOTATION);
-  const modelLevel = plane === undefined && ctx.planes.length === 0 && m.notation === GIT_NOTATION;
-  if (plane === undefined && !modelLevel) return;
+  const where = notationPlane(m, GIT_NOTATION);
+  if (where === undefined) return;
+  const { plane } = where;
   const g = gitGraph(m, plane?.id);
   const typeOf = new Map(m.nodes.map((n) => [n.id, n.type]));
   const isCommit = (id: string): boolean => typeOf.get(id) === 'commit';
@@ -740,11 +740,10 @@ function reportContained(
   message: (child: string, parent: string) => string,
 ): void {
   const { issues, m } = ctx;
-  const defaultPlane = ctx.planes[0]?.id;
-  const active = plane?.id ?? defaultPlane;
+  const active = plane?.id ?? defaultPlaneOf(m);
   const reported = new Set<string>();
   for (const e of m.containment) {
-    if ((e.plane ?? defaultPlane) !== active || !ids.has(e.child) || reported.has(e.child)) continue;
+    if (!isOnPlane(e, active, m) || !ids.has(e.child) || reported.has(e.child)) continue;
     reported.add(e.child);
     report(issues, code, message(e.child, e.parent), e.child);
   }
@@ -759,9 +758,9 @@ function reportContained(
  */
 function validateSecondOrder(ctx: Ctx): void {
   const { issues, m } = ctx;
-  const plane = ctx.planes.find((p) => (p.notation ?? m.notation) === SECOND_ORDER_NOTATION);
-  const modelLevel = plane === undefined && ctx.planes.length === 0 && m.notation === SECOND_ORDER_NOTATION;
-  if (plane === undefined && !modelLevel) return;
+  const where = notationPlane(m, SECOND_ORDER_NOTATION);
+  if (where === undefined) return;
+  const { plane } = where;
 
   const soIds = new Set(m.nodes.filter(isSecondOrderNode).map((n) => n.id));
   // An empty diagram — or one holding only non-second-order nodes, e.g. a
@@ -817,9 +816,9 @@ function validateSecondOrder(ctx: Ctx): void {
  */
 function validateFishbone(ctx: Ctx): void {
   const { issues, warnings, m } = ctx;
-  const plane = ctx.planes.find((p) => (p.notation ?? m.notation) === FISHBONE_NOTATION);
-  const modelLevel = plane === undefined && ctx.planes.length === 0 && m.notation === FISHBONE_NOTATION;
-  if (plane === undefined && !modelLevel) return;
+  const where = notationPlane(m, FISHBONE_NOTATION);
+  if (where === undefined) return;
+  const { plane } = where;
 
   const fb = m.nodes.filter(isFishboneNode);
   // An empty diagram — or one holding only a stray comment — is where every
@@ -911,9 +910,7 @@ function validateFishbone(ctx: Ctx): void {
  */
 function validateThreatModel(ctx: Ctx): void {
   const { issues, m } = ctx;
-  const plane = ctx.planes.find((p) => (p.notation ?? m.notation) === TM_NOTATION);
-  const modelLevel = plane === undefined && ctx.planes.length === 0 && m.notation === TM_NOTATION;
-  if (plane === undefined && !modelLevel) return;
+  if (notationPlane(m, TM_NOTATION) === undefined) return;
   const boundaries = new Set(m.nodes.filter((n) => n.type === TM_BOUNDARY_TYPE).map((n) => n.id));
   for (const r of m.relations) {
     if (r.kind !== TM_FLOW_KIND) continue;
@@ -971,7 +968,8 @@ function validatePlan(ctx: Ctx): void {
       dateOr(n, 'at');
     }
   }
-  const plane = ctx.planes.find((p) => (p.notation ?? m.notation) === PLAN_NOTATION);
+  const where = notationPlane(m, PLAN_NOTATION);
+  const plane = where?.plane;
   const byId = new Map(m.nodes.map((n) => [n.id, n] as const));
   // `planGraph` is a full `buildHierarchy`, and this function runs on EVERY
   // model — validateGit and validateFishbone return before their derivations,
@@ -996,8 +994,7 @@ function validatePlan(ctx: Ctx): void {
       }
     }
   }
-  const modelLevel = plane === undefined && ctx.planes.length === 0 && m.notation === PLAN_NOTATION;
-  if (plane === undefined && !modelLevel) return;
+  if (where === undefined) return;
   for (const r of m.relations) {
     if (!isPlanRole(r.kind)) continue;
     if (!ctx.nodeIds.has(r.from) || !ctx.nodeIds.has(r.to)) continue; // dangling ends are validateRelations' finding

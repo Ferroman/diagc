@@ -20,7 +20,7 @@ export interface CreateNodeOptions {
   plane: string | undefined;
   /** whether the active plane borrows another plane's containment. A borrowing
    * plane's membership resolves to its base plane (compileView /
-   * resolveContainmentPlane), so tagging a node with the borrowing plane's own
+   * containmentPlaneOf), so tagging a node with the borrowing plane's own
    * id would mismatch and the node would silently vanish — new nodes are added
    * shared instead (see the per-plane-views design doc). */
   borrowsContainment: boolean;

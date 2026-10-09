@@ -8,14 +8,14 @@ import {
   PLAN_EVENT_TYPE,
   PLAN_NOTATION,
   TM_NOTATION,
-  threatTargetKey,
+  elementKey,
   type Column,
   type FontScale,
   type NotationId,
   type PlanRole,
   type TextAlign,
   type TextRun,
-  type ThreatTarget,
+  type ElementRef,
 } from '@diagc/core/internal';
 import type { IconRegistry } from '@diagc/icons';
 import type { Registry, TypeStyle } from './registry';
@@ -117,7 +117,7 @@ export interface DiagramNodeData {
   onSetRole?: (zoneId: string, actorId: string, role: PlanRole | null) => void;
   /** edit: open a new threat row on this element's note (see
    * EditingApi.onAddThreat). Absent in view mode; drives the empty badge. */
-  onAddThreat?: (target: ThreatTarget) => void;
+  onAddThreat?: (target: ElementRef) => void;
   /** notation chips — the plan's roles — drawn in the badge row */
   badges?: NodeBadge[];
   /** with onResize: the notation resizes this node on x only, from either
@@ -368,7 +368,7 @@ export function ThreatBadge({ id, data }: { id: string; data: DiagramNodeData })
       </span>
     );
   }
-  const open = notes.isOpen(threatTargetKey({ node: id }));
+  const open = notes.isOpen(elementKey({ node: id }));
   return (
     <button
       type="button"
@@ -409,7 +409,7 @@ export function CommentBadge({ id, data }: { id: string; data: DiagramNodeData }
       </span>
     );
   }
-  const open = notes.isOpen(threatTargetKey({ node: id }));
+  const open = notes.isOpen(elementKey({ node: id }));
   return (
     <button
       type="button"

@@ -59,6 +59,8 @@ export {
 } from './builder';
 export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue } from './validate';
 export type * from './types';
+// The geometry the model types use (LayoutOverlay's saved positions and sizes).
+export type { Point, Size } from './geometry';
 // The value lists the model types are built from (`Side` is `(typeof SIDES)[number]`).
 export {
   TEXT_ALIGNS,
@@ -76,9 +78,9 @@ export {
   BUILTIN_NOTATIONS,
 } from './types';
 // Types that public signatures mention (ModelBuilder.addThreat / addComment,
-// ConsequenceOpts, FishboneBuilder, ValidationIssue.code).
-export type { ElementTarget } from './comments';
+// ConsequenceOpts, FishboneBuilder, ValidationIssue.code). ThreatTarget and
+// ElementTarget are ElementRef's deprecated 1.0 names.
+export type { ElementRef, ElementTarget, ThreatTarget } from './elements';
 export type { FishbonePreset } from './fishbone';
 export type { LintCode } from './lint';
-export type { ThreatTarget } from './threat-model';
 export type { Valence } from './second-order';

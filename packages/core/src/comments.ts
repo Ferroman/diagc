@@ -1,15 +1,10 @@
-import type { ThreatTarget } from './threat-model';
+import { findElement, type ElementRef } from './elements';
 import type { Comment, DiagramModel } from './types';
-
-/** Which element a comment command or a bubble refers to. The same two-way key
- * threats use (`threatTargetKey` files both under `LayoutOverlay.notes`): an
- * element has ONE bubble, whatever it holds. */
-export type ElementTarget = ThreatTarget;
 
 /** The element's comment list — `[]` when it carries none, undefined when there
  * is no such element (the two are different answers; see threatsOf). */
-export function commentsOf(m: DiagramModel, t: ElementTarget): readonly Comment[] | undefined {
-  const el = 'node' in t ? m.nodes.find((n) => n.id === t.node) : m.relations.find((r) => r.id === t.relation);
+export function commentsOf(m: DiagramModel, t: ElementRef): readonly Comment[] | undefined {
+  const el = findElement(m, t);
   return el === undefined ? undefined : (el.comments ?? []);
 }
 
