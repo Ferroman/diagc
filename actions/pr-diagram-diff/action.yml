@@ -3,7 +3,7 @@
 #
 #   - uses: actions/checkout@v7
 #     with: { fetch-depth: 2 }      # the PR's merge commit and its base parent
-#   - uses: Ferroman/diagc/actions/pr-diagram-diff@v1.1.0 # x-release-please-version
+#   - uses: Ferroman/diagc/actions/pr-diagram-diff@v1.1.1 # x-release-please-version
 #
 # The job needs `contents: write` (the pictures are pushed to `assets-branch`, since a
 # comment can only show images that live at a URL) and `pull-requests: write`.

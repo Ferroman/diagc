@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/Ferroman/diagc/compare/v1.1.0...v1.1.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* **core:** malformed columns report invalid-columns and no longer make validation throw ([#86](https://github.com/Ferroman/diagc/issues/86)) ([4b974c4](https://github.com/Ferroman/diagc/commit/4b974c48e546f3b7dae99bec792718d6e2780374))
+
 ## [1.1.0](https://github.com/Ferroman/diagc/compare/v1.0.1...v1.1.0) (2026-10-09)
 
 
