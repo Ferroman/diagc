@@ -53,9 +53,9 @@ export interface NodeOpts {
   columns?: Column[];
   /** STRIDE findings (see DiagramNode.threats) */
   threats?: Threat[];
-  /** remarks shown in this node's bubble (see DiagramNode.comments) */
+  /** remarks shown in this node's note (see DiagramNode.comments) */
   comments?: Comment[];
-  /** resources this node points at, listed in its bubble (see DiagramNode.links) */
+  /** resources this node points at, listed in its note (see DiagramNode.links) */
   links?: Link[];
 }
 
@@ -79,7 +79,7 @@ export interface RelateOpts {
   toColumn?: string;
   /** STRIDE findings (see DiagramRelation.threats) */
   threats?: Threat[];
-  /** remarks shown in this relation's bubble (see DiagramRelation.comments) */
+  /** remarks shown in this relation's note (see DiagramRelation.comments) */
   comments?: Comment[];
 }
 
@@ -122,13 +122,13 @@ export class NodeRef {
     return this;
   }
 
-  /** A remark on this element, shown in its bubble. */
+  /** A remark on this element, shown in its note. */
   comment(text: string, opts: CommentOpts = {}): this {
     this.builder.addComment({ node: this.id }, text, opts);
     return this;
   }
 
-  /** A resource this element points at, listed in its bubble. */
+  /** A resource this element points at, listed in its note. */
   link(label: string, url: string): this {
     this.builder.addLink(this.id, { label, url });
     return this;

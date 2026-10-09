@@ -143,10 +143,9 @@ const NODE_OPT_KEYS = [
 ] as const;
 
 // Drift guard: a field added to DiagramNode without a matching entry above
-// fails this line at `pnpm typecheck` — a future model field silently
-// dropped by the emitter used to surface only as a runtime verify mismatch
-// (or, pre-I2b, a crash) at eject time. `id` is emitted explicitly, ahead of
-// the opts object, so it is excluded here.
+// fails this line at `pnpm typecheck`, rather than being dropped by the emitter
+// and found only when eject's round trip fails to verify. `id` is emitted
+// explicitly, ahead of the opts object, so it is excluded here.
 const _nodeOptCoverage: SameKeys<Exclude<keyof DiagramNode, 'id'>, (typeof NODE_OPT_KEYS)[number]> = true;
 void _nodeOptCoverage;
 

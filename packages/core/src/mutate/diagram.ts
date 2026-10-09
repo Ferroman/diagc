@@ -1,9 +1,9 @@
 import { BUILTIN_NOTATIONS, type DiagramLegend, type DiagramModel } from '../types';
 import { CommandError } from '../command-error';
 
-/** Pin the diagram's visual style preset id, or clear it with null (the
+/** Set the diagram style (a style preset id), or clear it with null (the
  * app-level preference applies again). Unknown ids are intentionally
- * accepted — the renderer treats them as unpinned. */
+ * accepted — the renderer draws as if none were set. */
 export function setDiagramStyle(model: DiagramModel, style: string | null): DiagramModel {
   if (style === null) {
     const { style: _dropped, ...rest } = model;

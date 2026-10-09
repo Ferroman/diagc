@@ -48,9 +48,8 @@ export function compileView(model: DiagramModel, viewport: ViewportState): Compi
   // A plane's `layers` are the DEFAULT, not a floor: `activeLayers` undefined
   // means the host has no opinion, so the plane's presets apply; an array — even
   // an empty one — is the host's own choice and replaces them. Unioning the two
-  // (what this did until the layer switch existed) made a preset layer
-  // impossible to turn off, so a host with toggles seeds its state from
-  // `plane.layers` and owns it from then on.
+  // would make a preset layer impossible to turn off, so a host with toggles
+  // seeds its state from `plane.layers` and owns it from then on.
   const activeLayers = viewport.activeLayers ?? plane?.layers ?? [];
   const activeLayerSet = new Set(activeLayers);
   // The plane being viewed, not its containment donor: buildHierarchy resolves

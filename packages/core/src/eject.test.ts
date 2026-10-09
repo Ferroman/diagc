@@ -275,7 +275,7 @@ describe('ejectSource', () => {
       return { from: from!, to: to!, kind: kindMatch![1]!, id: idMatch?.[1] };
     });
 
-    // Replay through the actual builder (Task 1), in emitted order.
+    // Replay through the actual builder, in emitted order.
     const replay = buildModel('t');
     const refs = new Map(['a', 'b', 'c'].map((id) => [id, replay.node(id)]));
     for (const call of parsed) {

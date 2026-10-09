@@ -273,10 +273,10 @@ describe('model commands', () => {
       layout: emptyLayout(),
       drawings: emptyDrawings(),
     };
-    const pinned = apply(state, { type: 'set-diagram-style', style: 'blueprint' });
-    expect(pinned.model.style).toBe('blueprint');
-    expect(pinned.layout).toBe(state.layout); // layout untouched
-    const cleared = apply(pinned, { type: 'set-diagram-style', style: null });
+    const styled = apply(state, { type: 'set-diagram-style', style: 'blueprint' });
+    expect(styled.model.style).toBe('blueprint');
+    expect(styled.layout).toBe(state.layout); // layout untouched
+    const cleared = apply(styled, { type: 'set-diagram-style', style: null });
     expect('style' in cleared.model).toBe(false);
   });
 

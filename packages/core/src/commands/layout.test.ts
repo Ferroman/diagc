@@ -112,7 +112,7 @@ describe('layout commands', () => {
   });
 });
 
-describe('threat notes (layout-only)', () => {
+describe('notes (layout-only)', () => {
   /** the builder's synthesized id for the single a->b flow */
   const flowId = 'a->b#0';
 
@@ -162,7 +162,7 @@ describe('threat notes (layout-only)', () => {
     const s1 = apply(before, { type: 'set-note-open', target: { node: 'a' }, open: true });
     expect(s1.layout.notes).toEqual({ [key]: { 'node:a': { dx: 0, dy: 0, open: true } } });
     expect(s1.model).toBe(before.model);
-    // closing a bubble that was never dragged leaves no trace in the file
+    // closing a note that was never dragged leaves no trace in the file
     expect(apply(s1, { type: 'set-note-open', target: { node: 'a' }, open: false }).layout.notes).toBeUndefined();
   });
 
@@ -174,7 +174,7 @@ describe('threat notes (layout-only)', () => {
     s = apply(s, { type: 'set-note-open', target: { node: 'a' }, open: false });
     expect(s.layout.notes?.[key]?.['node:a']).toEqual({ dx: 10, dy: 5 }); // closed: reopens where it was left
     s = apply(s, { type: 'set-note-open', target: { node: 'a' }, open: true });
-    // `null` = back to the automatic spot; the bubble stays open
+    // `null` = back to the automatic spot; the note stays open
     s = apply(s, { type: 'set-note-offset', target: { node: 'a' }, offset: null });
     expect(s.layout.notes?.[key]?.['node:a']).toEqual({ dx: 0, dy: 0, open: true });
   });
@@ -224,7 +224,7 @@ describe('threat notes (layout-only)', () => {
     const deleted = apply(s2, { type: 'delete-node', id: 'a' });
     expect(deleted.layout.notes?.[key]?.['node:a']).toBeUndefined();
 
-    // an untouched overlay keeps its identity (no needless re-render / re-save)
+    // an untouched layout overlay keeps its identity (no needless re-render / re-save)
     const same = apply(s2, { type: 'rename-node', id: 'a', name: 'A2' });
     expect(same.layout).toBe(s2.layout);
   });

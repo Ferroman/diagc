@@ -10,10 +10,10 @@ export function commentsOf(model: DiagramModel, t: ElementRef): readonly Comment
 }
 
 /**
- * Whether an element gets a note bubble: threats, comments or links. The
- * renderer derives bubbles from this and layout hygiene keeps note entries by
- * it — the two must never disagree, or an edit silently drops a bubble's saved
- * place (which is what happened when they did). Structurally typed rather than
+ * Whether an element gets a note: threats, comments or links. The renderer
+ * draws notes from this and layout pruning keeps note entries by it — the two
+ * must never disagree, or an edit silently drops a note's saved place.
+ * Structurally typed rather than
  * taking `DiagramNode | DiagramRelation`, so a relation (which carries no
  * `links`) answers the same question without a second predicate.
  */

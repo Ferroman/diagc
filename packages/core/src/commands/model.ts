@@ -117,7 +117,7 @@ function handleAddNode(state: EditorState, command: Of<'add-node'>): CommandResu
 
 function handleDeleteNode(state: EditorState, command: Of<'delete-node'>): CommandResult {
   // Cascade destroys the whole containment subtree (notation containers whose
-  // children cannot be re-homed), so the layout hygiene must cover every doomed
+  // children cannot be re-homed), so the layout pruning must cover every doomed
   // id, not just the root.
   const cascade = command.cascade === true;
   const doomed = cascade ? subtreeOf(state.model, command.id) : new Set([command.id]);
@@ -152,7 +152,7 @@ function handleAddRelation(state: EditorState, command: Of<'add-relation'>): Com
 
 function handleDeleteLayer(state: EditorState, command: Of<'delete-layer'>): CommandResult {
   // Destructive delete removes the layer's tagged nodes, so drop their layout
-  // too — the same node-pruning hygiene as delete-node.
+  // too — the same node pruning as delete-node.
   const doomed = new Set(state.model.nodes.filter((n) => n.layer === command.id).map((n) => n.id));
   return {
     state: {

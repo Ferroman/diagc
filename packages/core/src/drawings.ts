@@ -17,7 +17,7 @@ export function addStroke(d: Drawings, key: string, stroke: Stroke): Drawings {
   return { ...d, planes: { ...d.planes, [key]: [...bucket, stroke] } };
 }
 
-/** An emptied bucket is dropped, mirroring set-layout-settings hygiene, so
+/** An emptied bucket is dropped, as set-layout-settings does, so
  * "does this plane have drawings?" stays a plain key lookup. */
 export function deleteStroke(drawings: Drawings, key: string, id: string): Drawings {
   const bucket = drawings.planes[key];
@@ -27,7 +27,7 @@ export function deleteStroke(drawings: Drawings, key: string, id: string): Drawi
   return { ...drawings, planes: kept.length > 0 ? { ...rest, [key]: kept } : rest };
 }
 
-/** Mirror hygiene for delete-plane. Returns the input unchanged when the
+/** Layout pruning for delete-plane. Returns the input unchanged when the
  * plane had no bucket, so unrelated state stays referentially stable. */
 export function pruneDrawingsPlane(d: Drawings, plane: string): Drawings {
   if (!(plane in d.planes)) return d;

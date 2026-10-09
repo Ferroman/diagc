@@ -63,8 +63,8 @@ describe('viewer label placements (LayoutOverlay.edgeLabels)', () => {
   });
 });
 
-describe('note hygiene counts comments and links as bubble content', () => {
-  /** the three reasons a bubble exists, one per node: a comment, a threat and a
+describe('note pruning counts comments and links as note content', () => {
+  /** the three reasons a note exists, one per node: a comment, a threat and a
    * link. Every one of them has a saved placement, so a prune that only knew
    * about threats would be caught here twice over. */
   function mixedState(): EditorState {
@@ -107,7 +107,7 @@ describe('note hygiene counts comments and links as bubble content', () => {
     });
     expect(edited.layout.notes?.[key]?.['node:a']).toEqual({ dx: 40, dy: -20, open: true });
     expect(edited.layout.notes?.[key]?.['relation:r']).toEqual({ dx: 5, dy: 6, open: true });
-    // nothing died, so the overlay keeps its identity — the same contract the
+    // nothing died, so the layout overlay keeps its identity — the same contract the
     // threat-only case above pins
     const renamed = apply(s, { type: 'rename-node', id: 'a', name: 'A2' });
     expect(renamed.layout).toBe(s.layout);
@@ -115,7 +115,7 @@ describe('note hygiene counts comments and links as bubble content', () => {
     expect(detailed.layout.notes?.[key]?.['node:c']).toEqual({ dx: 3, dy: 4, open: true });
   });
 
-  it('prunes a bubble once its last comment or link goes', () => {
+  it('prunes a note once its last comment or link goes', () => {
     const s = mixedState();
     const key = layoutPlaneKey(s.model);
     const noComment = apply(s, { type: 'remove-comment', target: { node: 'a' }, id: 'c1' });

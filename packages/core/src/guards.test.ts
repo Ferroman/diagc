@@ -4,7 +4,7 @@ import { isDrawings, isLayoutOverlay } from './guards';
 const base = { version: 1, planes: { default: { a: { x: 1, y: 2 } } } };
 
 describe('isLayoutOverlay', () => {
-  it('accepts a minimal version-1 overlay', () => {
+  it('accepts a minimal version-1 layout overlay', () => {
     expect(isLayoutOverlay({ version: 1, planes: {} })).toBe(true);
     expect(isLayoutOverlay(base)).toBe(true);
   });
@@ -130,7 +130,7 @@ describe('isLayoutOverlay — settings', () => {
 describe('isDrawings', () => {
   const stroke = { id: 'k1', points: [1, 2, 3, 4] };
 
-  it('accepts an empty overlay and a bucket of well-formed strokes', () => {
+  it('accepts an empty drawings sidecar and a bucket of well-formed strokes', () => {
     expect(isDrawings({ version: 1, planes: {} })).toBe(true);
     expect(isDrawings({ version: 1, planes: { default: [stroke] } })).toBe(true);
     expect(isDrawings({ version: 1, planes: { arch: [{ ...stroke, color: '#d9a520', width: 4 }] } })).toBe(true);

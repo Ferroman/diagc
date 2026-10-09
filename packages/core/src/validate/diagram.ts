@@ -1,8 +1,8 @@
 import { BUILTIN_NOTATIONS, LEGEND_POSITIONS, LEGEND_SECTIONS } from '../types';
 import { report, type Ctx } from './context';
 
-/** Diagram-level style: pinned style must be a non-empty string. Unknown ids are
- * intentionally legal — the renderer treats them as unpinned. Also the
+/** The diagram style must be a non-empty string. Unknown ids are
+ * intentionally legal — the renderer draws as if none were set. Also the
  * model-level `notation`, unlike style, must be one of BUILTIN_NOTATIONS —
  * it is a closed vocabulary the renderer keys a `Record` on, not an open
  * preset id. */

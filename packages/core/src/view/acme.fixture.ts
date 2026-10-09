@@ -1,8 +1,8 @@
 import { model } from '../builder/index';
 import type { DiagramModel } from '../types';
 
-/** Test-only fixture (originally mirrored .diagrams/src/examples/acme.diagram.ts; the demo
- * has since evolved — this stays frozen as the view-compiler acceptance topology). */
+/** Test-only fixture: the view compiler's acceptance topology. It is written out
+ * here rather than read from the acme example, which changes with the examples. */
 export function acmeModel(): DiagramModel {
   const m = model('acme', { name: 'Acme SaaS' });
   m.layer('hosting', { name: 'Hosting', tint: '#7c3aed' });

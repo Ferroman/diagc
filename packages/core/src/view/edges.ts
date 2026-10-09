@@ -68,7 +68,7 @@ function groupRelations(
     if (from === undefined || to === undefined) continue;
     const isOriginalSelfLoop = r.from === r.to;
     if (from === to && !(isOriginalSelfLoop && tree.byId.has(r.from))) continue;
-    const key = `${from}=>${to}:${layer ?? ''}${pinKey(r, from, to)}`;
+    const key = `${from}=>${to}:${layer ?? ''}${fixedSidesKey(r, from, to)}`;
     const group = groups.get(key) ?? { from, to, layer, rels: [] };
     group.rels.push(r);
     groups.set(key, group);
@@ -76,12 +76,12 @@ function groupRelations(
   return groups;
 }
 
-// Two arrows between the same pair pinned to *different* border sides are
+// Two arrows between the same pair fixed to *different* border sides are
 // visually distinct, so keep them apart (like opposite directions already
-// are). Pins only count when the relation attaches directly to the anchor —
-// a relation rolled up to a container was pinned on its child, not the
-// container, so it must still aggregate into the one boundary edge.
-function pinKey(r: DiagramRelation, from: string, to: string): string {
+// are). Fixed sides only count when the relation attaches directly to the
+// anchor — a relation rolled up to a container had its side fixed on its child,
+// not the container, so it must still aggregate into the one boundary edge.
+function fixedSidesKey(r: DiagramRelation, from: string, to: string): string {
   const direct = from === r.from && to === r.to;
   const fromSide = direct ? r.style?.fromSide : undefined;
   const toSide = direct ? r.style?.toSide : undefined;

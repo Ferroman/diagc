@@ -15,7 +15,7 @@ export class FlowRef {
     return this;
   }
 
-  /** A remark on this flow, shown in its bubble. */
+  /** A remark on this flow, shown in its note. */
   comment(text: string, opts: CommentOpts = {}): this {
     this.m.addComment({ relation: this.id }, text, opts);
     return this;

@@ -16,7 +16,7 @@ export interface HierarchyIndex {
  * all-shared for models without planes.
  *
  * A plane with `containmentOf` borrows the donor's containment edges, and
- * `node.plane` scopes are matched against the DONOR (a node pinned to the
+ * `node.plane` scopes are matched against the DONOR (a node scoped to the
  * borrowing plane is not in the donor's hierarchy — see the how-to). `hides` and
  * `hidesTree` are the exception: they are visibility choices, not structure, so
  * each is the borrower's own when it declares that field, and the donor's when it
@@ -35,7 +35,7 @@ export interface HierarchyIndex {
  * A node tagged with a transparent-sheet `layer` is visible only while that layer
  * is active; untagged nodes are the always-on base sheet. `activeLayers` omitted =
  * no layer filtering (every layer treated as on). Layers deliberately do NOT
- * cascade: a layer is an overlay you flip, and its children keep their own
+ * cascade: a layer is a sheet you flip, and its children keep their own
  * visibility, so a layered box still promotes its interior when it is off.
  */
 export function buildHierarchy(

@@ -185,7 +185,7 @@ export function threatSummary(threats: readonly Threat[] | undefined): { open: n
   return { open: list.filter(isOpen).length, total: list.length };
 }
 
-/** the status a bubble's chip advances to on a click: the THREAT_STATUSES
+/** the status a note's status chip advances to on a click: the THREAT_STATUSES
  * order, wrapping — an absent status is `open`, as isOpen reads it */
 export function nextThreatStatus(t: Threat): ThreatStatus {
   const i = THREAT_STATUSES.indexOf(t.status ?? 'open');
@@ -193,7 +193,7 @@ export function nextThreatStatus(t: Threat): ThreatStatus {
 }
 
 /**
- * Whether every threat-bearing element in the model has an open bubble on
+ * Whether every threat-bearing element in the model has an open note on
  * `planeKey` — the studio's `Notes` chip reads pressed exactly then, so a
  * press always does the thing the picture is missing (opens the rest, or
  * closes all). Model-wide, like set-notes-open: the chip and the command must

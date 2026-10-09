@@ -141,7 +141,7 @@ describe('resolveEdges', () => {
     expect(edges.find((e) => e.id === 'a=>b:')?.polarity).toBeUndefined();
   });
 
-  it('keeps same-direction relations pinned to different connection points separate', () => {
+  it('keeps same-direction relations fixed to different sides separate', () => {
     const m = model('s');
     const a = m.node('a', { type: 'service' });
     const b = m.node('b', { type: 'service' });
@@ -153,7 +153,7 @@ describe('resolveEdges', () => {
     const edges = resolveEdges(j, buildViewTree(j, buildHierarchy(j), {}));
     const ab = edges.filter((e) => e.from === 'a' && e.to === 'b');
     expect(ab).toHaveLength(2);
-    // each stays a sole-constituent edge that keeps its own pinned side
+    // each stays a sole-constituent edge that keeps its own fixed side
     expect(ab.every((e) => e.constituents.length === 1)).toBe(true);
     expect(ab.map((e) => e.style?.fromSide).sort()).toEqual(['right', 'top']);
   });

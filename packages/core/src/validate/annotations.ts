@@ -54,7 +54,7 @@ export function validateThreats(ctx: Ctx): void {
 
 /** `comments` (nodes and relations) and `links` (nodes) are generic fields:
  * checked for shape wherever they appear, the element as `ref` — the same
- * contract as validateThreats, for the same reason (the bubble reads them
+ * contract as validateThreats, for the same reason (the note reads them
  * unguarded). */
 export function validateComments(ctx: Ctx): void {
   const { issues, model } = ctx;
