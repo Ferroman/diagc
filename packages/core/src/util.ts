@@ -28,3 +28,20 @@ export function defined<T extends object>(obj: T): Defined<T> {
   for (const [key, value] of Object.entries(obj)) if (value !== undefined) out[key] = value;
   return out as Defined<T>;
 }
+
+/** `${prefix}${n}` for the first `n` from `first` up that `taken` does not hold. A
+ * scan rather than a counter: ids stay short and readable, and a deleted id is
+ * handed out again instead of the numbers climbing forever. */
+export function nextFreeId(prefix: string, taken: ReadonlySet<string>, first = 1): string {
+  for (let n = first; ; n++) if (!taken.has(`${prefix}${n}`)) return `${prefix}${n}`;
+}
+
+/**
+ * `true` when `A` and `B` are the same set of keys, else `false`: a list kept
+ * beside an interface asserts `const _x: SameKeys<…> = true` and stops compiling
+ * the day a field is added to one and not the other. Each side is wrapped in a
+ * tuple so the check does not distribute over the union, where a missing member
+ * would still compile: distributed, `'a' | 'b'` against `'a'` gives `true | false`,
+ * which is `boolean`, and `= true` is a valid `boolean`.
+ */
+export type SameKeys<A extends string, B extends string> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;

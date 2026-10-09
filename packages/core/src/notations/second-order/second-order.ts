@@ -43,7 +43,7 @@ export interface ConsequenceOrders {
 
 /**
  * Which band each decision and consequence belongs to. This is the ONE place
- * that answers it, so the layout's partitions, the band overlay, the studio
+ * that answers it, so the layout's partitions, the order-band canvas overlay, the studio
  * panel and validation cannot disagree.
  *
  * The order is the LONGEST path from a decision: every cause then sits in an

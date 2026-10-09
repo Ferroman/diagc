@@ -7,7 +7,7 @@ const k1 = { id: 'k1', points: [0, 0, 10, 10] };
 const k2 = { id: 'k2', points: [5, 5] };
 
 describe('drawings helpers', () => {
-  it('emptyDrawings is a version-1 overlay with no buckets', () => {
+  it('emptyDrawings is a version-1 drawings sidecar with no buckets', () => {
     expect(emptyDrawings()).toEqual({ version: 1, planes: {} });
   });
 

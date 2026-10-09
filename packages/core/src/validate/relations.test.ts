@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { model } from '../builder/index';
 import { validate } from './index';
 import type { DiagramModel } from '../types';
-
-function emptyModel(): DiagramModel {
-  return { version: 1, id: 'm', name: 'm', nodes: [], containment: [], relations: [], layers: [], planes: [] };
-}
+import { emptyModel } from './models.fixture';
 
 describe('relation checks', () => {
   it('flags duplicate relation ids', () => {

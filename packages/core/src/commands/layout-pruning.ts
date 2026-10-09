@@ -8,7 +8,7 @@ import { defined } from '../util';
 
 /**
  * Drop every node position and unfolded entry (across all planes) and every
- * size entry whose id satisfies `drop` — the shared "layout hygiene" contract for commands that
+ * size entry whose id satisfies `drop` — the layout pruning shared by the commands that
  * destroy nodes (delete-node, and delete-layer's cascade). Identity is preserved
  * as aggressively as possible: an untouched plane bucket keeps its reference,
  * and if nothing at all is dropped the input `layout` is returned unchanged, so
@@ -44,9 +44,9 @@ export function prunePositions(layout: LayoutOverlay, drop: (nodeId: string) => 
 /**
  * `layout` with the plane's unfolded list replaced. Sorted and de-duplicated so
  * the file does not churn with the order boxes were clicked in; an emptied list
- * is dropped and an emptied map omitted entirely (the set-plane-layout hygiene).
- * Exported because the studio's view-mode save builds the same overlay without
- * a command.
+ * is dropped and an emptied map omitted entirely, as set-plane-layout does.
+ * Exported because the studio's view-mode save builds the same layout overlay
+ * without a command.
  */
 export function withUnfolded(layout: LayoutOverlay, key: string, ids: readonly string[]): LayoutOverlay {
   const { unfolded: current = {}, ...rest } = layout;
@@ -59,7 +59,7 @@ export function withUnfolded(layout: LayoutOverlay, key: string, ids: readonly s
 /**
  * `layout` with viewer label placements merged into the plane's bucket (see
  * LayoutOverlay.edgeLabels). Exported because the studio's view-mode save
- * builds the overlay without a command.
+ * builds the layout overlay without a command.
  */
 export function withEdgeLabelPlacements(
   layout: LayoutOverlay,
@@ -76,9 +76,9 @@ export function withEdgeLabelPlacements(
 /**
  * `layout` with one plane's note bucket replaced, normalised: an entry at the
  * automatic spot that is not open (`{ dx: 0, dy: 0 }`) says nothing and is
- * dropped, then an emptied bucket and an emptied map are omitted — the
- * set-plane-layout hygiene, so a bubble dragged back and closed leaves no
- * trace in the file.
+ * dropped, then an emptied bucket and an emptied map are omitted, as
+ * set-plane-layout does, so a note dragged back and closed leaves no trace in
+ * the file.
  */
 export function withNoteBucket(
   layout: LayoutOverlay,
@@ -116,12 +116,12 @@ export function withOpen(p: NotePlacement, open: boolean): NotePlacement {
 }
 
 /**
- * Mirror hygiene for `notes` after a command changed the model: a note exists
+ * Layout pruning for `notes` after a command changed the model: a note exists
  * only while its element has something to show, so an offset for an element
  * that lost its last threat/comment/link — or was deleted — is dead data.
- * `hasNoteContent` is the renderer's own test for drawing a bubble; reusing it
+ * `hasNoteContent` is the renderer's own test for drawing a note; reusing it
  * is what stops a command that merely rewrote `nodes` (a rename, an edited
- * comment) from throwing away a live bubble's saved place. Identity is kept
+ * comment) from throwing away a live note's saved place. Identity is kept
  * when nothing is dropped, like pruneEdgeLabels.
  */
 export function pruneNotes(layout: LayoutOverlay, before: DiagramModel, after: DiagramModel): LayoutOverlay {
@@ -143,7 +143,7 @@ export function pruneNotes(layout: LayoutOverlay, before: DiagramModel, after: D
 }
 
 /**
- * Mirror hygiene for `edgeLabels` after a command changed the relations: drop
+ * Layout pruning for `edgeLabels` after a command changed the relations: drop
  * the placement of a label that no longer exists (its relation or the label
  * itself is gone), and of one whose position the command just set in the MODEL
  * — a viewer's override must never shadow the document the author is editing,
@@ -151,8 +151,8 @@ export function pruneNotes(layout: LayoutOverlay, before: DiagramModel, after: D
  */
 export function pruneEdgeLabels(layout: LayoutOverlay, before: DiagramModel, after: DiagramModel): LayoutOverlay {
   if (layout.edgeLabels === undefined || before.relations === after.relations) return layout;
-  const labelsOf = (m: DiagramModel) =>
-    new Map(m.relations.map((r) => [r.id, new Map(relationLabels(r).map((l) => [l.id, l] as const))] as const));
+  const labelsOf = (model: DiagramModel) =>
+    new Map(model.relations.map((r) => [r.id, new Map(relationLabels(r).map((l) => [l.id, l] as const))] as const));
   const was = labelsOf(before);
   const now = labelsOf(after);
   let changed = false;
@@ -179,10 +179,9 @@ export function pruneEdgeLabels(layout: LayoutOverlay, before: DiagramModel, aft
 
 /**
  * Drop every layout structure keyed by `plane` — its positions bucket, manual
- * flag, layout settings, unfolded list, label placements and threat-bubble
- * entries (the "mirror hygiene" for deleting a plane). An
- * emptied `manual`/`settings` map is omitted entirely, mirroring
- * set-plane-layout / set-layout-settings. Returns the input `layout` unchanged
+ * flag, layout settings, unfolded list, label placements and note entries: the
+ * layout pruning for a deleted plane. An emptied `manual`/`settings` map is
+ * omitted entirely, as set-plane-layout and set-layout-settings do. Returns the input `layout` unchanged
  * when `plane` had no layout state at all.
  */
 export function prunePlaneLayout(layout: LayoutOverlay, plane: string): LayoutOverlay {

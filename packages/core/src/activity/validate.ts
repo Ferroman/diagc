@@ -9,10 +9,10 @@ import { ACTIVITY_FRAME_TYPE, ACTIVITY_LANE_TYPE, ACTIVITY_REGION_TYPE } from '.
  * loose leaf elements (palette drops not yet homed) are legal.
  */
 export function validateActivity(ctx: Ctx): void {
-  const { issues, m } = ctx;
-  const typeOf = new Map(m.nodes.map((n) => [n.id, n.type]));
+  const { issues, model } = ctx;
+  const typeOf = new Map(model.nodes.map((n) => [n.id, n.type]));
   const parentsOf = new Map<string, string[]>();
-  for (const e of m.containment) {
+  for (const e of model.containment) {
     // dangling ids are validateContainment's finding — don't double-report
     if (!ctx.nodeIds.has(e.parent) || !ctx.nodeIds.has(e.child)) continue;
     if (typeOf.get(e.parent) === ACTIVITY_FRAME_TYPE && typeOf.get(e.child) !== ACTIVITY_LANE_TYPE) {
@@ -28,7 +28,7 @@ export function validateActivity(ctx: Ctx): void {
       parentsOf.set(e.child, [...(parentsOf.get(e.child) ?? []), e.parent]);
     }
   }
-  for (const n of m.nodes) {
+  for (const n of model.nodes) {
     if (n.type === ACTIVITY_LANE_TYPE) {
       const ps = parentsOf.get(n.id) ?? [];
       if (ps.length === 0) {

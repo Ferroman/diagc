@@ -3,11 +3,31 @@ import { EDGE_LABEL_SIDES, type Drawings, type LayoutOverlay } from './types';
 /** Structural guard for a LayoutOverlay, shared by the studio server (before
  * persisting a layout) and the client (before trusting a loaded one). Checks
  * shape only — not referential integrity against a model. */
-export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
-  if (typeof u !== 'object' || u === null) return false;
-  const layout = u as { version?: unknown; planes?: unknown; sizes?: unknown };
-  if (layout.version !== 1 || typeof layout.planes !== 'object' || layout.planes === null) return false;
-  const planesOk = Object.values(layout.planes).every(
+export function isLayoutOverlay(value: unknown): value is LayoutOverlay {
+  if (typeof value !== 'object' || value === null) return false;
+  const layout = value as Record<string, unknown>;
+  return (
+    layout['version'] === 1 &&
+    planesOk(layout['planes']) &&
+    sizesOk(layout['sizes']) &&
+    unfoldedOk(layout['unfolded']) &&
+    edgeLabelsOk(layout['edgeLabels']) &&
+    notesOk(layout['notes']) &&
+    manualOk(layout['manual']) &&
+    settingsOk(layout['settings']) &&
+    exportOk(layout['export'])
+  );
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const finiteNum = (v: unknown): boolean => typeof v === 'number' && Number.isFinite(v);
+const dim = (v: unknown): boolean => typeof v === 'number' && Number.isFinite(v) && v > 0;
+
+/** plane key -> node id -> a saved position */
+const planesOk = (planes: unknown): boolean =>
+  typeof planes === 'object' &&
+  planes !== null &&
+  Object.values(planes).every(
     (plane) =>
       typeof plane === 'object' &&
       plane !== null &&
@@ -19,91 +39,81 @@ export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
           typeof (p as { y?: unknown }).y === 'number',
       ),
   );
-  if (!planesOk) return false;
-  const dim = (v: unknown): boolean => typeof v === 'number' && Number.isFinite(v) && v > 0;
-  const sizesOk =
-    layout.sizes === undefined ||
-    (typeof layout.sizes === 'object' &&
-      layout.sizes !== null &&
-      Object.values(layout.sizes).every(
-        (s) => typeof s === 'object' && s !== null && dim((s as { w?: unknown }).w) && dim((s as { h?: unknown }).h),
-      ));
-  if (!sizesOk) return false;
-  const unfolded = (u as { unfolded?: unknown }).unfolded;
-  const unfoldedOk =
-    unfolded === undefined ||
-    (typeof unfolded === 'object' &&
-      unfolded !== null &&
-      !Array.isArray(unfolded) &&
-      Object.values(unfolded).every((ids) => Array.isArray(ids) && ids.every((id) => typeof id === 'string')));
-  if (!unfoldedOk) return false;
-  const edgeLabels = (u as { edgeLabels?: unknown }).edgeLabels;
-  const isRecord = (v: unknown): v is Record<string, unknown> =>
-    typeof v === 'object' && v !== null && !Array.isArray(v);
-  const placementOk = (v: unknown): boolean =>
-    isRecord(v) &&
-    typeof v['t'] === 'number' &&
-    Number.isFinite(v['t']) &&
-    (v['side'] === undefined || (EDGE_LABEL_SIDES as readonly unknown[]).includes(v['side']));
-  const edgeLabelsOk =
-    edgeLabels === undefined ||
-    (isRecord(edgeLabels) &&
-      Object.values(edgeLabels).every(
-        (plane) =>
-          isRecord(plane) &&
-          Object.values(plane).every((rel) => isRecord(rel) && Object.values(rel).every(placementOk)),
-      ));
-  if (!edgeLabelsOk) return false;
-  // A note offset is drawn straight into a transform, so a NaN or an Infinity
-  // here is a note the reader can never find again — finiteness is checked, not
-  // just the type.
-  const finiteNum = (v: unknown): boolean => typeof v === 'number' && Number.isFinite(v);
-  const notes = (u as { notes?: unknown }).notes;
-  const notesOk =
-    notes === undefined ||
-    (isRecord(notes) &&
-      Object.values(notes).every(
-        (plane) =>
-          isRecord(plane) &&
-          Object.values(plane).every(
-            (o) =>
-              isRecord(o) &&
-              finiteNum(o['dx']) &&
-              finiteNum(o['dy']) &&
-              // `true` or absent: a stored `false` would be a second spelling of "closed"
-              (o['open'] === undefined || o['open'] === true),
-          ),
-      ));
-  if (!notesOk) return false;
-  // `manual` spells "automatic" by omission, so `true` is its only stored value
-  // (the `open` reasoning above). `settings` is checked for shape only — each
-  // plane's entry an object, its fields unread — so a sidecar from an older or
-  // newer version, with a setting retired or added, still loads: failing here
-  // would cost the reader every saved position, not just one unfamiliar field.
-  const manual = (u as { manual?: unknown }).manual;
-  const manualOk = manual === undefined || (isRecord(manual) && Object.values(manual).every((v) => v === true));
-  if (!manualOk) return false;
-  const settings = (u as { settings?: unknown }).settings;
-  const settingsOk = settings === undefined || (isRecord(settings) && Object.values(settings).every(isRecord));
-  if (!settingsOk) return false;
-  // `export` is export-only presentation (see LayoutOverlay): an object whose
-  // only field today is a list of node ids. Validate it structurally so a typo
-  // is a 400 from the studio's save endpoint rather than a silently ignored
-  // block — an unreadable PNG is a hard defect to trace back to a layout file.
-  const exp = (u as { export?: unknown }).export;
+
+const sizesOk = (sizes: unknown): boolean =>
+  sizes === undefined ||
+  (typeof sizes === 'object' &&
+    sizes !== null &&
+    Object.values(sizes).every(
+      (s) => typeof s === 'object' && s !== null && dim((s as { w?: unknown }).w) && dim((s as { h?: unknown }).h),
+    ));
+
+const unfoldedOk = (unfolded: unknown): boolean =>
+  unfolded === undefined ||
+  (isRecord(unfolded) &&
+    Object.values(unfolded).every((ids) => Array.isArray(ids) && ids.every((id) => typeof id === 'string')));
+
+const placementOk = (v: unknown): boolean =>
+  isRecord(v) &&
+  typeof v['t'] === 'number' &&
+  Number.isFinite(v['t']) &&
+  (v['side'] === undefined || (EDGE_LABEL_SIDES as readonly unknown[]).includes(v['side']));
+
+const edgeLabelsOk = (edgeLabels: unknown): boolean =>
+  edgeLabels === undefined ||
+  (isRecord(edgeLabels) &&
+    Object.values(edgeLabels).every(
+      (plane) =>
+        isRecord(plane) && Object.values(plane).every((rel) => isRecord(rel) && Object.values(rel).every(placementOk)),
+    ));
+
+// A note offset is drawn straight into a transform, so a NaN or an Infinity
+// here is a note the reader can never find again — finiteness is checked, not
+// just the type.
+const notesOk = (notes: unknown): boolean =>
+  notes === undefined ||
+  (isRecord(notes) &&
+    Object.values(notes).every(
+      (plane) =>
+        isRecord(plane) &&
+        Object.values(plane).every(
+          (o) =>
+            isRecord(o) &&
+            finiteNum(o['dx']) &&
+            finiteNum(o['dy']) &&
+            // `true` or absent: a stored `false` would be a second spelling of "closed"
+            (o['open'] === undefined || o['open'] === true),
+        ),
+    ));
+
+// `manual` spells "automatic" by omission, so `true` is its only stored value
+// (the `open` reasoning above). `settings` is checked for shape only — each
+// plane's entry an object, its fields unread — so a sidecar from an older or
+// newer version, with a setting retired or added, still loads: failing here
+// would cost the reader every saved position, not just one unfamiliar field.
+const manualOk = (manual: unknown): boolean =>
+  manual === undefined || (isRecord(manual) && Object.values(manual).every((v) => v === true));
+const settingsOk = (settings: unknown): boolean =>
+  settings === undefined || (isRecord(settings) && Object.values(settings).every(isRecord));
+
+// `export` is export-only presentation (see LayoutOverlay): an object whose
+// only field today is a list of node ids. Validate it structurally so a typo
+// is a 400 from the studio's save endpoint rather than a silently ignored
+// block — an unreadable PNG is a hard defect to trace back to a layout file.
+const exportOk = (exp: unknown): boolean => {
   if (exp === undefined) return true;
-  if (typeof exp !== 'object' || exp === null || Array.isArray(exp)) return false;
-  const collapsed = (exp as { collapsed?: unknown }).collapsed;
+  if (!isRecord(exp)) return false;
+  const collapsed = exp['collapsed'];
   return collapsed === undefined || (Array.isArray(collapsed) && collapsed.every((id) => typeof id === 'string'));
-}
+};
 
 /** Structural guard for a drawings sidecar — the same contract as
  * isLayoutOverlay: shape only, shared by the save route and the client loader.
  * Every rule here is one the renderer relies on without re-checking (even point
  * count, finite numbers, positive width). */
-export function isDrawings(u: unknown): u is Drawings {
-  if (typeof u !== 'object' || u === null) return false;
-  const d = u as { version?: unknown; planes?: unknown };
+export function isDrawings(value: unknown): value is Drawings {
+  if (typeof value !== 'object' || value === null) return false;
+  const d = value as { version?: unknown; planes?: unknown };
   if (d.version !== 1 || typeof d.planes !== 'object' || d.planes === null) return false;
   const finite = (n: unknown): boolean => typeof n === 'number' && Number.isFinite(n);
   return Object.values(d.planes).every(

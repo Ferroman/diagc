@@ -18,10 +18,10 @@ export type LayoutCommand =
    * (LayoutOverlay.unfolded); `[]` clears it */
   | { type: 'set-unfolded'; plane?: string; ids: string[] }
   | { type: 'set-layout-settings'; plane?: string; patch: Partial<LayoutSettings> }
-  /** a threat note was dragged: its offset from the automatic anchor, or null to
+  /** a note was dragged: its offset from the automatic anchor, or null to
    * let it sit beside its element again. Layout-only — the threats stay put. */
   | { type: 'set-note-offset'; target: ElementRef; plane?: string; offset: { dx: number; dy: number } | null }
-  /** open or close one element's threat bubble in this picture (saved, so the export shows it) */
+  /** open or close one element's note in this picture (saved, so the export shows it) */
   | { type: 'set-note-open'; target: ElementRef; plane?: string; open: boolean }
   /** every element in the model that carries a threat, at once — the `Notes` chip */
   | { type: 'set-notes-open'; plane?: string; open: boolean };
@@ -37,10 +37,10 @@ export const emptyLayout = (): LayoutOverlay => ({ version: 1, planes: {} });
  */
 export function openingPins(
   layout: LayoutOverlay | undefined,
-  m: DiagramModel,
+  model: DiagramModel,
   plane?: string,
 ): Record<string, 'expanded' | 'collapsed'> {
-  const ids = layout?.unfolded?.[layoutPlaneKey(m, plane)] ?? [];
+  const ids = layout?.unfolded?.[layoutPlaneKey(model, plane)] ?? [];
   return Object.fromEntries(ids.map((id) => [id, 'expanded' as const]));
 }
 
@@ -75,7 +75,7 @@ function handleSetPlaneLayout(state: EditorState, command: Of<'set-plane-layout'
 function handleSetLayoutSettings(state: EditorState, command: Of<'set-layout-settings'>): CommandResult {
   // Merge the patch into this plane's settings; a field explicitly set to
   // undefined clears it. An emptied bucket is dropped, and an emptied
-  // settings map is omitted entirely (mirrors set-plane-layout hygiene).
+  // settings map is omitted entirely, as set-plane-layout does.
   const key = layoutPlaneKey(state.model, command.plane);
   const merged: Record<string, unknown> = { ...(state.layout.settings?.[key] ?? {}) };
   for (const [k, v] of Object.entries(command.patch)) {
@@ -125,7 +125,7 @@ export const LAYOUT_HANDLERS: Handlers<LayoutCommand> = {
   'set-unfolded': (state, { plane, ids }) =>
     withLayout(state, withUnfolded(state.layout, layoutPlaneKey(state.model, plane), ids)),
   'set-layout-settings': handleSetLayoutSettings,
-  // `null` = back to the automatic spot; whether the bubble is open is a
+  // `null` = back to the automatic spot; whether the note is open is a
   // separate fact and survives the move
   'set-note-offset': (state, { target, plane, offset }) =>
     withLayout(

@@ -13,41 +13,41 @@ import { PLAN_NOTATION, atOf, dayOf, isPlanEvent, isPlanRole, isPlanZone, planGr
  * relation kind somebody chose.
  */
 export function validatePlan(ctx: Ctx): void {
-  const { m } = ctx;
+  const { model } = ctx;
   checkDates(ctx);
-  const where = notationPlane(m, PLAN_NOTATION);
-  const byId = new Map(m.nodes.map((n) => [n.id, n] as const));
+  const where = notationPlane(model, PLAN_NOTATION);
+  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   // `planGraph` is a full `buildHierarchy`, and this function runs on EVERY
   // model — validateGit and validateFishbone return before their derivations,
   // but this one cannot, because dates are checked whatever the notation. So
   // the graph is paid for only where there is something to nest; the date
   // check above and the role-target check below never touch it.
-  if (m.nodes.some((n) => isPlanZone(n) || isPlanEvent(n))) checkNesting(ctx, where?.plane?.id, byId);
+  if (model.nodes.some((n) => isPlanZone(n) || isPlanEvent(n))) checkNesting(ctx, where?.plane?.id, byId);
   if (where === undefined) return;
   checkRoleTargets(ctx, byId);
 }
 
 /** a zone has a real start and end, in order; an event a real `at` */
 function checkDates(ctx: Ctx): void {
-  const { issues, m } = ctx;
-  const dateOr = (n: DiagramNode, key: 'start' | 'end' | 'at'): number | undefined => {
-    const raw = n.metadata?.[key];
+  const { issues, model } = ctx;
+  const dateOr = (node: DiagramNode, key: 'start' | 'end' | 'at'): number | undefined => {
+    const raw = node.metadata?.[key];
     if (raw === undefined) {
-      report(issues, 'plan-missing', `'${n.id}' (${n.type}) has no '${key}' date`, n.id);
+      report(issues, 'plan-missing', `'${node.id}' (${node.type}) has no '${key}' date`, node.id);
       return undefined;
     }
     if (!isIsoDate(raw)) {
       report(
         issues,
         'plan-date',
-        `'${n.id}': '${key}' must be a real YYYY-MM-DD date, got ${JSON.stringify(raw)}`,
-        n.id,
+        `'${node.id}': '${key}' must be a real YYYY-MM-DD date, got ${JSON.stringify(raw)}`,
+        node.id,
       );
       return undefined;
     }
     return dayOf(raw);
   };
-  for (const n of m.nodes) {
+  for (const n of model.nodes) {
     if (isPlanZone(n)) {
       const start = dateOr(n, 'start');
       const end = dateOr(n, 'end');
@@ -67,8 +67,8 @@ function checkDates(ctx: Ctx): void {
 
 /** a contained zone or event lies within its zone's span, on the plan's containment */
 function checkNesting(ctx: Ctx, plane: string | undefined, byId: ReadonlyMap<string, DiagramNode>): void {
-  const { issues, m } = ctx;
-  const g = planGraph(m, plane);
+  const { issues, model } = ctx;
+  const g = planGraph(model, plane);
   for (const [child, parentId] of g.parent) {
     const outer = spanOf(byId.get(parentId)!);
     const node = byId.get(child)!;
@@ -88,8 +88,8 @@ function checkNesting(ctx: Ctx, plane: string | undefined, byId: ReadonlyMap<str
 
 /** under the plan notation, a role relation points at a zone */
 function checkRoleTargets(ctx: Ctx, byId: ReadonlyMap<string, DiagramNode>): void {
-  const { issues, m } = ctx;
-  for (const r of m.relations) {
+  const { issues, model } = ctx;
+  for (const r of model.relations) {
     if (!isPlanRole(r.kind)) continue;
     if (!ctx.nodeIds.has(r.from) || !ctx.nodeIds.has(r.to)) continue; // dangling ends are validateRelations' finding
     const target = byId.get(r.to);

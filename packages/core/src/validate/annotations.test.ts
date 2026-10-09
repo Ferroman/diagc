@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { validate } from './index';
 import type { Comment, DiagramModel, DiagramNode, DiagramRelation, Link } from '../types';
-
-function emptyModel(): DiagramModel {
-  return { version: 1, id: 'm', name: 'm', nodes: [], containment: [], relations: [], layers: [], planes: [] };
-}
+import { emptyModel } from './models.fixture';
 
 describe('threats', () => {
   const withThreats = (threats: unknown, where: 'node' | 'relation' = 'node'): DiagramModel => ({

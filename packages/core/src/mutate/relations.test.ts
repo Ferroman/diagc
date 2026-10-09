@@ -67,7 +67,7 @@ describe('relation mutations', () => {
     expect(untouchedRel.label).toBe('events');
   });
 
-  it('creates a relation pre-pinned to the gesture sides via opts.style', () => {
+  it('creates a relation with the gesture’s fixed sides via opts.style', () => {
     const { model: m, id } = addRelation(base(), 'a', 'b', {
       kind: 'reads',
       style: { fromSide: 'right', toSide: 'top' },

@@ -10,7 +10,7 @@ import {
   type ThreatStatus,
 } from '../../types';
 import { containmentOn, containmentPlaneOf } from '../../planes';
-import { defined } from '../../util';
+import { defined, nextFreeId } from '../../util';
 import { elementKey, findElement, type ElementRef } from '../../elements';
 
 /** The notation id a plane (or the model) declares to be drawn as a STRIDE
@@ -52,18 +52,15 @@ export const NEW_THREAT_TITLE = 'New threat';
 /** The element's threat list — `[]` when it carries none, undefined when there
  * is no such element. The two are different answers: a note is drawn for the
  * first case's element and the second is a dangling reference. */
-export function threatsOf(m: DiagramModel, t: ElementRef): readonly Threat[] | undefined {
-  const el = findElement(m, t);
+export function threatsOf(model: DiagramModel, t: ElementRef): readonly Threat[] | undefined {
+  const el = findElement(model, t);
   return el === undefined ? undefined : (el.threats ?? []);
 }
 
 /** First free `t<n>`. Ids are scoped to their element, so a removed `t2` is
  * handed out again rather than the counter climbing forever. */
 export function nextThreatId(threats: readonly Threat[]): string {
-  const taken = new Set(threats.map((t) => t.id));
-  let n = 1;
-  while (taken.has(`t${n}`)) n += 1;
-  return `t${n}`;
+  return nextFreeId('t', new Set(threats.map((t) => t.id)));
 }
 
 /** the boundaries a relation's ends sit in; an absent side is "outside every boundary" */
@@ -96,9 +93,9 @@ export function strideFor(typeOrKind: string | undefined): readonly StrideCatego
 
 /** child → parents on the plane a view of `plane` uses (containmentOf resolved;
  * an untagged edge belongs to the first-declared plane), declaration order kept */
-function planeParents(m: DiagramModel, plane: string | undefined): Map<string, string[]> {
+function planeParents(model: DiagramModel, plane: string | undefined): Map<string, string[]> {
   const parents = new Map<string, string[]>();
-  for (const e of containmentOn(m, containmentPlaneOf(m, plane))) {
+  for (const e of containmentOn(model, containmentPlaneOf(model, plane))) {
     parents.set(e.child, [...(parents.get(e.child) ?? []), e.parent]);
   }
   return parents;
@@ -124,23 +121,23 @@ function nearestBoundary(
 /** The nearest trust boundary above `nodeId` on the viewed plane, or undefined
  * outside every boundary. Containment is a DAG; the first parent by declaration
  * order is the one followed — the same pick a reader makes from the drawing. */
-export function boundaryOf(m: DiagramModel, plane: string | undefined, nodeId: string): string | undefined {
-  return nearestBoundary(planeParents(m, plane), new Map(m.nodes.map((n) => [n.id, n.type])), nodeId);
+export function boundaryOf(model: DiagramModel, plane: string | undefined, nodeId: string): string | undefined {
+  return nearestBoundary(planeParents(model, plane), new Map(model.nodes.map((n) => [n.id, n.type])), nodeId);
 }
 
 /** Every relation whose two ends sit in different boundaries — the flows STRIDE
  * cares about. Derived from containment, not authored, and not filtered by kind:
  * a boundary crossing is a fact about the drawing, whatever the arrow means. */
-export function crossings(m: DiagramModel, plane: string | undefined): ReadonlyMap<string, Crossing> {
-  const parents = planeParents(m, plane);
-  const typeOf = new Map(m.nodes.map((n) => [n.id, n.type]));
+export function crossings(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, Crossing> {
+  const parents = planeParents(model, plane);
+  const typeOf = new Map(model.nodes.map((n) => [n.id, n.type]));
   const cache = new Map<string, string | undefined>();
   const bOf = (id: string): string | undefined => {
     if (!cache.has(id)) cache.set(id, nearestBoundary(parents, typeOf, id));
     return cache.get(id);
   };
   const out = new Map<string, Crossing>();
-  for (const r of m.relations) {
+  for (const r of model.relations) {
     const from = bOf(r.from);
     const to = bOf(r.to);
     if (from === to) continue;
@@ -154,8 +151,8 @@ export function crossings(m: DiagramModel, plane: string | undefined): ReadonlyM
 /** One end of a crossing, as a reader sees it: *outside* where the end sits in
  * no boundary at all, otherwise the boundary node's name — or, for an id no node
  * carries, the id itself, so a broken model still says which one it means. */
-export function boundaryName(m: DiagramModel, id: string | undefined): string {
-  return id === undefined ? 'outside' : (m.nodes.find((n) => n.id === id)?.name ?? id);
+export function boundaryName(model: DiagramModel, id: string | undefined): string {
+  return id === undefined ? 'outside' : (model.nodes.find((n) => n.id === id)?.name ?? id);
 }
 
 /** `DMZ ⇢ Backend`: a crossing read between the two BOUNDARIES its ends sit in.
@@ -163,18 +160,18 @@ export function boundaryName(m: DiagramModel, id: string | undefined): string {
  * names the elements, this one names the trust zones the flow leaves and enters.
  * Formatted here rather than at each call site so the studio panel and the
  * published table cannot word the same fact differently. */
-export function crossingLabel(m: DiagramModel, crossing: Crossing): string {
-  return `${boundaryName(m, crossing.from)} ⇢ ${boundaryName(m, crossing.to)}`;
+export function crossingLabel(model: DiagramModel, crossing: Crossing): string {
+  return `${boundaryName(model, crossing.from)} ⇢ ${boundaryName(model, crossing.to)}`;
 }
 
 /** The register: every threat in the model, nodes first then relations, each in
  * declaration order — the one order the studio list and the published table share. */
-export function threatRegister(m: DiagramModel): ThreatRow[] {
+export function threatRegister(model: DiagramModel): ThreatRow[] {
   const rows: ThreatRow[] = [];
-  for (const n of m.nodes)
+  for (const n of model.nodes)
     for (const threat of n.threats ?? []) rows.push({ target: { node: n.id }, name: n.name, threat });
-  const nameOf = (id: string): string => m.nodes.find((n) => n.id === id)?.name ?? id;
-  for (const r of m.relations) {
+  const nameOf = (id: string): string => model.nodes.find((n) => n.id === id)?.name ?? id;
+  for (const r of model.relations) {
     if (r.threats === undefined || r.threats.length === 0) continue;
     const label = relationLabels(r)[0]?.text;
     const name = `${nameOf(r.from)} → ${nameOf(r.to)}${label !== undefined && label !== '' ? ` (${label})` : ''}`;
@@ -188,7 +185,7 @@ export function threatSummary(threats: readonly Threat[] | undefined): { open: n
   return { open: list.filter(isOpen).length, total: list.length };
 }
 
-/** the status a bubble's chip advances to on a click: the THREAT_STATUSES
+/** the status a note's status chip advances to on a click: the THREAT_STATUSES
  * order, wrapping — an absent status is `open`, as isOpen reads it */
 export function nextThreatStatus(t: Threat): ThreatStatus {
   const i = THREAT_STATUSES.indexOf(t.status ?? 'open');
@@ -196,7 +193,7 @@ export function nextThreatStatus(t: Threat): ThreatStatus {
 }
 
 /**
- * Whether every threat-bearing element in the model has an open bubble on
+ * Whether every threat-bearing element in the model has an open note on
  * `planeKey` — the studio's `Notes` chip reads pressed exactly then, so a
  * press always does the thing the picture is missing (opens the rest, or
  * closes all). Model-wide, like set-notes-open: the chip and the command must

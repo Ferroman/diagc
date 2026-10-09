@@ -28,8 +28,8 @@ const NOTATION_VALIDATORS: readonly ((ctx: Ctx) => void)[] = [
   validatePlan,
 ];
 
-export function validate(m: DiagramModel): ValidationIssue[] {
-  return check(m).issues;
+export function validate(model: DiagramModel): ValidationIssue[] {
+  return check(model).issues;
 }
 
 /**
@@ -37,16 +37,16 @@ export function validate(m: DiagramModel): ValidationIssue[] {
  * open: the model is sound and draws, just not the way it was likely meant
  * (a fishbone cause that reaches no bone). Same issue shape as validate().
  */
-export function diagramWarnings(m: DiagramModel): ValidationIssue[] {
-  return [...check(m).warnings, ...lintModel(m)];
+export function diagramWarnings(model: DiagramModel): ValidationIssue[] {
+  return [...check(model).warnings, ...lintModel(model)];
 }
 
-function check(m: DiagramModel): Ctx {
+function check(model: DiagramModel): Ctx {
   const ctx: Ctx = {
     issues: [],
     warnings: [],
-    m,
-    planes: m.planes ?? [],
+    model,
+    planes: model.planes ?? [],
     nodeIds: new Set<string>(),
     layerIds: new Set<string>(),
     planeIds: new Set<string>(),

@@ -1,22 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validate } from './index';
-import type { DiagramModel } from '../types';
-
-function emptyModel(): DiagramModel {
-  return { version: 1, id: 'm', name: 'm', nodes: [], containment: [], relations: [], layers: [], planes: [] };
-}
-
-const raw = (over: Partial<DiagramModel>): DiagramModel => ({
-  version: 1,
-  id: 'x',
-  name: 'x',
-  nodes: [],
-  containment: [],
-  relations: [],
-  layers: [],
-  planes: [],
-  ...over,
-});
+import { emptyModel, raw } from './models.fixture';
 
 describe('structure checks', () => {
   it('flags duplicate layer ids', () => {

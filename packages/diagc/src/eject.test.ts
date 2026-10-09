@@ -126,8 +126,9 @@ describe('ejectDiagram', () => {
 });
 
 // One small, valid model per feature family, each ejected and compared against
-// the recompiled artifact. Shapes are copied from packages/core/src/validate.test.ts's
-// passing git-graph and activity cases so validation is not the thing under test.
+// the recompiled artifact. Shapes are copied from the passing cases in
+// packages/core/src/notations/git-graph/validate.test.ts and
+// packages/core/src/activity/validate.test.ts, so validation is not the thing under test.
 const GIT_MODEL: DiagramModel = {
   version: 1,
   id: 'git-sample',

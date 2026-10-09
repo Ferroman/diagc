@@ -70,7 +70,7 @@ export interface CompiledView {
   roots: ViewNode[];
   /** the arrows to DRAW (filtered by active layers / plane) */
   edges: ViewEdge[];
-  /** the arrows to LAYOUT BY (all layers + base) — stable across overlay
+  /** the arrows to LAYOUT BY (all layers + base) — stable across layer
    * toggles and structure-sharing planes, so boxes never jump */
   layoutEdges: ViewEdge[];
   lod: LodState;

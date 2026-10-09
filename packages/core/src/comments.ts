@@ -1,18 +1,19 @@
 import { findElement, type ElementRef } from './elements';
 import type { Comment, DiagramModel } from './types';
+import { nextFreeId } from './util';
 
 /** The element's comment list — `[]` when it carries none, undefined when there
  * is no such element (the two are different answers; see threatsOf). */
-export function commentsOf(m: DiagramModel, t: ElementRef): readonly Comment[] | undefined {
-  const el = findElement(m, t);
+export function commentsOf(model: DiagramModel, t: ElementRef): readonly Comment[] | undefined {
+  const el = findElement(model, t);
   return el === undefined ? undefined : (el.comments ?? []);
 }
 
 /**
- * Whether an element gets a note bubble: threats, comments or links. The
- * renderer derives bubbles from this and layout hygiene keeps note entries by
- * it — the two must never disagree, or an edit silently drops a bubble's saved
- * place (which is what happened when they did). Structurally typed rather than
+ * Whether an element gets a note: threats, comments or links. The renderer
+ * draws notes from this and layout pruning keeps note entries by it — the two
+ * must never disagree, or an edit silently drops a note's saved place.
+ * Structurally typed rather than
  * taking `DiagramNode | DiagramRelation`, so a relation (which carries no
  * `links`) answers the same question without a second predicate.
  */
@@ -26,8 +27,5 @@ export function hasNoteContent(el: {
 
 /** First free `c<n>` — scoped to the element, like threat ids. */
 export function nextCommentId(comments: readonly Comment[]): string {
-  const taken = new Set(comments.map((c) => c.id));
-  let n = 1;
-  while (taken.has(`c${n}`)) n += 1;
-  return `c${n}`;
+  return nextFreeId('c', new Set(comments.map((c) => c.id)));
 }

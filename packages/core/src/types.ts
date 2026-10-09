@@ -71,9 +71,9 @@ export interface DiagramNode {
   technology?: string;
   /** STRIDE findings against this node (see Threat) */
   threats?: Threat[];
-  /** remarks shown in the element's bubble (see Comment) */
+  /** remarks shown in the element's note (see Comment) */
   comments?: Comment[];
-  /** resources listed in the element's bubble (see Link) */
+  /** resources listed in the element's note (see Link) */
   links?: Link[];
   description?: string;
   /** rich multiline label; when present, name === rich.map(r => r.text).join('') */
@@ -189,7 +189,7 @@ export interface Threat {
 
 /** A remark on an element: what was said, by whom, when. Generic like
  * `threats` — any node or relation in any notation can carry a list. Shown in
- * the element's bubble on the canvas; never affects layout. */
+ * the element's note on the canvas; never affects layout. */
 export interface Comment {
   /** unique within its element's list (`c1`, `c2`, … when synthesized) */
   id: string;
@@ -201,7 +201,7 @@ export interface Comment {
 }
 
 /** A resource an element points at, beyond the single navigation `link`: a
- * ticket, a design doc, a repo. Listed in the element's bubble. */
+ * ticket, a design doc, a repo. Listed in the element's note. */
 export interface Link {
   label: string;
   url: string;
@@ -218,7 +218,7 @@ export interface DiagramRelation {
   labels?: EdgeLabel[];
   /** STRIDE findings against this flow (see Threat) */
   threats?: Threat[];
-  /** remarks shown in the relation's bubble (see Comment) */
+  /** remarks shown in the relation's note (see Comment) */
   comments?: Comment[];
   style?: RelationStyle;
   description?: string;
@@ -278,7 +278,7 @@ export interface DiagramModel {
   version: 1;
   id: string;
   name: string;
-  /** id of a renderer style preset pinned by this diagram (travels with the
+  /** the diagram style: a renderer style preset id (travels with the
    * file); unknown ids are legal — the renderer falls back to the app-level
    * preference */
   style?: string;
@@ -346,7 +346,7 @@ export interface EdgeLabelPlacement {
   side?: EdgeLabelSide;
 }
 
-/** a threat bubble's saved state — see LayoutOverlay.notes. `open` is only
+/** a note's saved state — see LayoutOverlay.notes. `open` is only
  * ever `true`: "closed" is spelled by omitting it, as `manual` spells
  * "automatic", so there is one way to write each state. */
 export interface NotePlacement {
@@ -383,10 +383,10 @@ export interface LayoutOverlay {
    * model file the studio may write. Editing a label's position in the model
    * drops the entry (see applyCommand), so the document never loses to it. */
   edgeLabels?: Record<string, Record<string, Record<string, EdgeLabelPlacement>>>;
-  /** one threat bubble's state in this picture: where it was dragged (an offset
+  /** one note's state in this picture: where it was dragged (an offset
    * from its automatic anchor beside the element) and whether it is open.
    * Absent entry = automatic spot, closed. The threat text itself stays on the
-   * element; this is only "how I left the bubble in this picture", the
+   * element; this is only "how I left the note in this picture", the
    * `edgeLabels` reasoning. Keyed like `planes`, then by `elementKey`. */
   notes?: Record<string, Record<string, NotePlacement>>;
   /** how the PNG export should differ from the interactive page. Ignored by the
@@ -405,8 +405,8 @@ export interface LayoutOverlay {
 }
 
 /** One freehand stroke from the studio's pen. Coordinates are ABSOLUTE flow
- * coordinates at the top level of the diagram (never drilled): a stroke is an
- * overlay on the canvas, not a property of a node, so a re-layout can slide
+ * coordinates at the top level of the diagram (never drilled): a stroke lies
+ * over the canvas, not on a node, so a re-layout can slide
  * boxes out from under it — the accepted trade for "draw anywhere". */
 export interface Stroke {
   id: string;

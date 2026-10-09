@@ -6,9 +6,9 @@ import { defined } from '../util';
 import { addNode } from './nodes';
 import { requireNode } from './shared';
 
-function wouldCycle(m: DiagramModel, parent: string, child: string, plane?: string): boolean {
+function wouldCycle(model: DiagramModel, parent: string, child: string, plane?: string): boolean {
   // Children index over this plane's edges, plus the candidate edge being added.
-  const children = childrenOf(containmentOn(m, plane ?? defaultPlaneOf(m)));
+  const children = childrenOf(containmentOn(model, plane ?? defaultPlaneOf(model)));
   children.set(parent, [...(children.get(parent) ?? []), child]);
   // child must not reach parent
   const stack = [child];
@@ -30,28 +30,30 @@ function wouldCycle(m: DiagramModel, parent: string, child: string, plane?: stri
  * since child order is containment order.
  */
 export function addContainment(
-  m: DiagramModel,
+  model: DiagramModel,
   edge: ContainmentEdge,
   beside?: { sibling: string; side: 'before' | 'after' },
 ): DiagramModel {
   const { parent, child, plane } = edge;
-  requireNode(m, parent);
-  requireNode(m, child);
+  requireNode(model, parent);
+  requireNode(model, child);
   if (parent === child) throw new CommandError(`Node '${parent}' cannot contain itself`);
-  const canon = canonicalPlane(m, plane);
-  const key = canon ?? defaultPlaneOf(m);
-  if (m.containment.some((e) => e.parent === parent && e.child === child && isOnPlane(e, key, m))) return m;
-  if (wouldCycle(m, parent, child, canon)) {
+  const canon = canonicalPlane(model, plane);
+  const key = canon ?? defaultPlaneOf(model);
+  if (model.containment.some((e) => e.parent === parent && e.child === child && isOnPlane(e, key, model))) return model;
+  if (wouldCycle(model, parent, child, canon)) {
     throw new CommandError(`'${parent}' > '${child}' would create a containment cycle`);
   }
   const added = { parent, child, ...defined({ plane: canon }) };
-  if (beside === undefined) return { ...m, containment: [...m.containment, added] };
+  if (beside === undefined) return { ...model, containment: [...model.containment, added] };
   // Children read in declaration order, so the slot in the flat array IS the
   // sibling order — insert next to the sibling's own membership.
-  const at = m.containment.findIndex((e) => e.parent === parent && e.child === beside.sibling && isOnPlane(e, key, m));
+  const at = model.containment.findIndex(
+    (e) => e.parent === parent && e.child === beside.sibling && isOnPlane(e, key, model),
+  );
   if (at === -1) throw new CommandError(`'${beside.sibling}' is not a child of '${parent}'`);
   const i = beside.side === 'before' ? at : at + 1;
-  return { ...m, containment: [...m.containment.slice(0, i), added, ...m.containment.slice(i)] };
+  return { ...model, containment: [...model.containment.slice(0, i), added, ...model.containment.slice(i)] };
 }
 
 /**
@@ -62,12 +64,12 @@ export function addContainment(
  * escapes (the intermediate is a local value, never returned).
  */
 export function groupNodes(
-  m: DiagramModel,
+  model: DiagramModel,
   node: DiagramNode,
   memberIds: readonly string[],
   plane?: string,
 ): DiagramModel {
-  let next = addNode(m, node);
+  let next = addNode(model, node);
   for (const child of memberIds) {
     next = addContainment(next, { parent: node.id, child, plane });
   }
@@ -75,12 +77,14 @@ export function groupNodes(
 }
 
 /** Remove `edge` from the plane it names (resolved as addContainment resolves it). */
-export function removeContainment(m: DiagramModel, edge: ContainmentEdge): DiagramModel {
+export function removeContainment(model: DiagramModel, edge: ContainmentEdge): DiagramModel {
   const { parent, child, plane } = edge;
-  const key = canonicalPlane(m, plane) ?? defaultPlaneOf(m);
+  const key = canonicalPlane(model, plane) ?? defaultPlaneOf(model);
   return {
-    ...m,
-    containment: m.containment.filter((e) => !(e.parent === parent && e.child === child && isOnPlane(e, key, m))),
+    ...model,
+    containment: model.containment.filter(
+      (e) => !(e.parent === parent && e.child === child && isOnPlane(e, key, model)),
+    ),
   };
 }
 
@@ -91,15 +95,15 @@ export function removeContainment(m: DiagramModel, edge: ContainmentEdge): Diagr
  * frame's lanes are restacked. Entries under other parents keep their places.
  * At either end the model comes back unchanged (same reference).
  */
-export function moveChild(m: DiagramModel, edge: ContainmentEdge, offset: -1 | 1): DiagramModel {
+export function moveChild(model: DiagramModel, edge: ContainmentEdge, offset: -1 | 1): DiagramModel {
   const { parent, child, plane } = edge;
-  const key = canonicalPlane(m, plane) ?? defaultPlaneOf(m);
-  const siblings = m.containment.flatMap((e, i) => (e.parent === parent && isOnPlane(e, key, m) ? [i] : []));
-  const at = siblings.findIndex((i) => m.containment[i]!.child === child);
+  const key = canonicalPlane(model, plane) ?? defaultPlaneOf(model);
+  const siblings = model.containment.flatMap((e, i) => (e.parent === parent && isOnPlane(e, key, model) ? [i] : []));
+  const at = siblings.findIndex((i) => model.containment[i]!.child === child);
   if (at === -1) throw new CommandError(`'${parent}' does not contain '${child}'`);
   const other = siblings[at + offset];
-  if (other === undefined) return m;
-  const containment = [...m.containment];
+  if (other === undefined) return model;
+  const containment = [...model.containment];
   [containment[siblings[at]!], containment[other]] = [containment[other]!, containment[siblings[at]!]!];
-  return { ...m, containment };
+  return { ...model, containment };
 }

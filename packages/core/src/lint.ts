@@ -37,17 +37,20 @@ const REPEATED_GLYPHS = new Set<string>([
   ACTIVITY_DECISION_TYPE,
 ]);
 
-export function lintModel(m: DiagramModel): LintFinding[] {
+export function lintModel(model: DiagramModel): LintFinding[] {
   const out: LintFinding[] = [];
   const add = (code: LintCode, message: string, ref?: string): void => {
     out.push(ref === undefined ? { code, message } : { code, message, ref });
   };
   // Every plane's hierarchy with no layer filter: what each view CAN show.
-  const views = (m.planes ?? []).length > 0 ? m.planes!.map((p) => buildHierarchy(m, p.id)) : [buildHierarchy(m)];
-  duplicateNames(m, views, add);
-  vocabulary(m, add);
-  unused(m, add);
-  undrawn(m, views, add);
+  const views =
+    (model.planes ?? []).length > 0 ? model.planes!.map((p) => buildHierarchy(model, p.id)) : [buildHierarchy(model)];
+  duplicateNames(model, views, add);
+  vocabulary(model, add);
+  unusedLayers(model, add);
+  emptyPlanes(model, add);
+  unusedLegendItems(model, add);
+  undrawn(model, views, add);
   return out;
 }
 
@@ -56,8 +59,8 @@ type Add = (code: LintCode, message: string, ref?: string) => void;
 /** Two siblings of one type and one name are usually one thing declared twice.
  * Only siblings, since two included services may each have their own 'Database',
  * and only one type, since a git branch and the stage over it share a name. */
-function duplicateNames(m: DiagramModel, views: HierarchyIndex[], add: Add): void {
-  const byId = new Map(m.nodes.map((n) => [n.id, n]));
+function duplicateNames(model: DiagramModel, views: HierarchyIndex[], add: Add): void {
+  const byId = new Map(model.nodes.map((n) => [n.id, n]));
   const reported = new Set<string>();
   const check = (ids: readonly string[]): void => {
     const seen = new Map<string, DiagramNode>();
@@ -84,23 +87,23 @@ function duplicateNames(m: DiagramModel, views: HierarchyIndex[], add: Add): voi
 }
 
 /** Notations the diagram draws in anywhere: the model's and each plane's. */
-function notationsOf(m: DiagramModel): string[] {
-  return [m.notation, ...(m.planes ?? []).map((p) => p.notation)].filter((x): x is string => x !== undefined);
+function notationsOf(model: DiagramModel): string[] {
+  return [model.notation, ...(model.planes ?? []).map((p) => p.notation)].filter((x): x is string => x !== undefined);
 }
 
-function vocabulary(m: DiagramModel, add: Add): void {
-  const notations = notationsOf(m) as (keyof typeof NOTATION_NODE_TYPES)[];
+function vocabulary(model: DiagramModel, add: Add): void {
+  const notations = notationsOf(model) as (keyof typeof NOTATION_NODE_TYPES)[];
   const types = new Set([...NODE_TYPES, ...notations.flatMap((n) => NOTATION_NODE_TYPES[n] ?? [])]);
   const kinds = new Set([...RELATION_KINDS, ...notations.flatMap((n) => NOTATION_RELATION_KINDS[n] ?? [])]);
   const reported = new Set<string>();
-  for (const n of m.nodes) {
+  for (const n of model.nodes) {
     // a picture or a silhouette draws itself; its type is a label, not a shape
     if (n.type === undefined || types.has(n.type) || n.image !== undefined || n.shape !== undefined) continue;
     if (reported.has(`t:${n.type}`)) continue;
     reported.add(`t:${n.type}`);
     add('unknown-type', `'${n.id}' has type '${n.type}', which draws as a plain box${hint(n.type, types)}`, n.id);
   }
-  for (const r of m.relations) {
+  for (const r of model.relations) {
     if (kinds.has(r.kind) || reported.has(`k:${r.kind}`)) continue;
     reported.add(`k:${r.kind}`);
     add('unknown-kind', `'${r.id}' has kind '${r.kind}', which draws as a plain arrow${hint(r.kind, kinds)}`, r.id);
@@ -137,23 +140,23 @@ function distance(a: string, b: string): number {
   return prev[b.length]!;
 }
 
-/** Declarations nothing uses: a layer no node, row, relation or rule is on; a
- * plane identical to a flat view of the shared nodes; a legend row for a type or
- * kind the diagram never draws. */
-function unused(m: DiagramModel, add: Add): void {
+/** A layer no node, row, relation or rule is on. */
+function unusedLayers(model: DiagramModel, add: Add): void {
   const layersUsed = new Set<string>();
-  for (const n of m.nodes) {
+  for (const n of model.nodes) {
     if (n.layer !== undefined) layersUsed.add(n.layer);
     for (const c of listOf(n.columns)) if (c.layer !== undefined) layersUsed.add(c.layer);
   }
-  for (const r of m.relations) if (r.layer !== undefined) layersUsed.add(r.layer);
-  for (const rule of m.layerRules ?? []) layersUsed.add(rule.layer);
-  for (const l of m.layers) {
+  for (const r of model.relations) if (r.layer !== undefined) layersUsed.add(r.layer);
+  for (const rule of model.layerRules ?? []) layersUsed.add(rule.layer);
+  for (const l of model.layers) {
     if (!layersUsed.has(l.id)) add('unused-layer', `Layer '${l.id}' has nothing on it`, l.id);
   }
+}
 
-  const planes = m.planes ?? [];
-  for (const p of planes) {
+/** A plane identical to a flat view of the shared nodes. */
+function emptyPlanes(model: DiagramModel, add: Add): void {
+  for (const p of model.planes ?? []) {
     const shaped =
       p.containmentOf !== undefined ||
       p.notation !== undefined ||
@@ -161,8 +164,8 @@ function unused(m: DiagramModel, add: Add): void {
       (p.layers ?? []).length > 0 ||
       (p.hides ?? []).length > 0 ||
       (p.hidesTree ?? []).length > 0 ||
-      m.containment.some((e) => isOnPlane(e, p.id, m)) ||
-      m.nodes.some((n) => n.plane === p.id);
+      model.containment.some((e) => isOnPlane(e, p.id, model)) ||
+      model.nodes.some((n) => n.plane === p.id);
     if (!shaped)
       add(
         'empty-plane',
@@ -170,10 +173,13 @@ function unused(m: DiagramModel, add: Add): void {
         p.id,
       );
   }
+}
 
-  const types = new Set(m.nodes.map((n) => n.type));
-  const kinds = new Set(m.relations.map((r) => r.kind));
-  for (const item of listOf(m.legend?.items)) {
+/** A legend row for a type or kind the diagram never draws. */
+function unusedLegendItems(model: DiagramModel, add: Add): void {
+  const types = new Set(model.nodes.map((n) => n.type));
+  const kinds = new Set(model.relations.map((r) => r.kind));
+  for (const item of listOf(model.legend?.items)) {
     if (item.type !== undefined && !types.has(item.type)) {
       add('unused-legend-item', `Legend row '${item.label}' describes type '${item.type}', which no node has`);
     }
@@ -193,14 +199,14 @@ function listOf<T extends object>(list: readonly T[] | undefined): readonly T[] 
 /** A node no plane shows (scoped to a plane that borrows another's hierarchy,
  * hidden everywhere) and a relation whose ends never share a view: both are in
  * the file and nowhere in the picture. */
-function undrawn(m: DiagramModel, views: HierarchyIndex[], add: Add): void {
+function undrawn(model: DiagramModel, views: HierarchyIndex[], add: Add): void {
   const shown = (id: string, h: HierarchyIndex): boolean => h.parentsOf.has(id);
-  for (const n of m.nodes) {
+  for (const n of model.nodes) {
     if (!views.some((h) => shown(n.id, h)))
       add('undrawn-node', `'${n.id}' is in no plane's view, so it is never drawn`, n.id);
   }
-  const anywhere = new Set(m.nodes.filter((n) => views.some((h) => shown(n.id, h))).map((n) => n.id));
-  for (const r of m.relations) {
+  const anywhere = new Set(model.nodes.filter((n) => views.some((h) => shown(n.id, h))).map((n) => n.id));
+  for (const r of model.relations) {
     // a relation to an undrawn node is that node's finding, not a second one
     if (!anywhere.has(r.from) || !anywhere.has(r.to)) continue;
     if (!views.some((h) => shown(r.from, h) && shown(r.to, h))) {

@@ -10,26 +10,26 @@ import { SECOND_ORDER_NOTATION, SO_DECISION_TYPE, consequenceOrders, isSecondOrd
  * author should hear about is an issue here.
  */
 export function validateSecondOrder(ctx: Ctx): void {
-  const { issues, m } = ctx;
-  const where = notationPlane(m, SECOND_ORDER_NOTATION);
+  const { issues, model } = ctx;
+  const where = notationPlane(model, SECOND_ORDER_NOTATION);
   if (where === undefined) return;
   const { plane } = where;
 
-  const soIds = new Set(m.nodes.filter(isSecondOrderNode).map((n) => n.id));
+  const soIds = new Set(model.nodes.filter(isSecondOrderNode).map((n) => n.id));
   // An empty diagram — or one holding only non-second-order nodes, e.g. a
   // stray comment — is where every second-order diagram starts, and the
   // studio never opens a model that already has issues: this must wait for
   // there to be a second-order node to judge before it can want a decision
   // among them.
-  if (soIds.size > 0 && !m.nodes.some((n) => n.type === SO_DECISION_TYPE)) {
+  if (soIds.size > 0 && !model.nodes.some((n) => n.type === SO_DECISION_TYPE)) {
     report(
       issues,
       'so-no-decision',
       'A second-order diagram needs at least one decision (a node of type so-decision)',
-      plane?.id ?? m.id,
+      plane?.id ?? model.id,
     );
   }
-  const { cycle, unreachable } = consequenceOrders(m);
+  const { cycle, unreachable } = consequenceOrders(model);
   if (cycle !== undefined) {
     report(
       issues,

@@ -32,92 +32,112 @@ function combinePolarity(rels: readonly DiagramRelation[]): Polarity | undefined
  */
 const AGG_LABEL_BUDGET = 32;
 
-export function resolveEdges(m: DiagramModel, tree: ViewTree, activeLayers?: string[], includeBase = true): ViewEdge[] {
-  const active = new Set(activeLayers ?? []);
-  const tintOf = new Map(m.layers.map((l) => [l.id, l.tint]));
+/** Relations that draw as one arrow: the same two anchors, layer and fixed sides. */
+interface Group {
+  from: string;
+  to: string;
+  layer?: string;
+  rels: DiagramRelation[];
+}
+
+export function resolveEdges(
+  model: DiagramModel,
+  tree: ViewTree,
+  activeLayers?: string[],
+  includeBase = true,
+): ViewEdge[] {
+  const tintOf = new Map(model.layers.map((l) => [l.id, l.tint]));
+  const groups = groupRelations(model, tree, new Set(activeLayers ?? []), includeBase);
+  return [...groups.entries()].map(([key, g]) => toViewEdge(key, g, tintOf));
+}
+
+function groupRelations(
+  model: DiagramModel,
+  tree: ViewTree,
+  active: ReadonlySet<string>,
+  includeBase: boolean,
+): Map<string, Group> {
   const anchorFor = (id: string): string | undefined => (tree.byId.has(id) ? id : tree.anchorOf.get(id));
-  // Effective layer: the relation's own, else what `layerRules` assigns.
-  const layerOf = (r: DiagramRelation): string | undefined => relationLayer(m, r);
-
-  interface Group {
-    from: string;
-    to: string;
-    layer?: string;
-    rels: DiagramRelation[];
-  }
   const groups = new Map<string, Group>();
-
-  for (const r of m.relations) {
-    const layer = layerOf(r);
+  for (const r of model.relations) {
+    // Effective layer: the relation's own, else what `layerRules` assigns.
+    const layer = relationLayer(model, r);
     if (layer === undefined ? !includeBase : !active.has(layer)) continue;
     const from = anchorFor(r.from);
     const to = anchorFor(r.to);
     if (from === undefined || to === undefined) continue;
     const isOriginalSelfLoop = r.from === r.to;
     if (from === to && !(isOriginalSelfLoop && tree.byId.has(r.from))) continue;
-    // Two arrows between the same pair pinned to *different* border sides are
-    // visually distinct, so keep them apart (like opposite directions already
-    // are). Pins only count when the relation attaches directly to the anchor —
-    // a relation rolled up to a container was pinned on its child, not the
-    // container, so it must still aggregate into the one boundary edge.
-    const direct = from === r.from && to === r.to;
-    const fromSide = direct ? r.style?.fromSide : undefined;
-    const toSide = direct ? r.style?.toSide : undefined;
-    const pinKey = fromSide !== undefined || toSide !== undefined ? `:${fromSide ?? ''}>${toSide ?? ''}` : '';
-    const key = `${from}=>${to}:${layer ?? ''}${pinKey}`;
+    const key = `${from}=>${to}:${layer ?? ''}${fixedSidesKey(r, from, to)}`;
     const group = groups.get(key) ?? { from, to, layer, rels: [] };
     group.rels.push(r);
     groups.set(key, group);
   }
+  return groups;
+}
 
-  return [...groups.entries()].map(([key, g]) => {
-    const kinds = new Set(g.rels.map((r) => r.kind));
-    const single = g.rels.length === 1 ? g.rels[0] : undefined;
-    const edge: ViewEdge = {
-      id: key,
-      from: g.from,
-      to: g.to,
-      kind: kinds.size === 1 ? g.rels[0]!.kind : 'mixed',
-      constituents: g.rels,
-    };
-    if (single !== undefined) {
-      const labels = relationLabels(single);
-      if (labels.length > 0) edge.labels = labels;
-    } else {
-      // Multi-relation aggregate: name the constituents while that is still
-      // cheaper to read than counting them, and count them once it is not.
-      const seen = new Set<string>();
-      const distinct: string[] = [];
-      for (const r of g.rels) {
-        for (const l of relationLabels(r)) {
-          const t = l.text.trim();
-          if (t !== '' && !seen.has(t)) {
-            seen.add(t);
-            distinct.push(t);
-          }
-        }
+// Two arrows between the same pair fixed to *different* border sides are
+// visually distinct, so keep them apart (like opposite directions already
+// are). Fixed sides only count when the relation attaches directly to the
+// anchor — a relation rolled up to a container had its side fixed on its child,
+// not the container, so it must still aggregate into the one boundary edge.
+function fixedSidesKey(r: DiagramRelation, from: string, to: string): string {
+  const direct = from === r.from && to === r.to;
+  const fromSide = direct ? r.style?.fromSide : undefined;
+  const toSide = direct ? r.style?.toSide : undefined;
+  return fromSide !== undefined || toSide !== undefined ? `:${fromSide ?? ''}>${toSide ?? ''}` : '';
+}
+
+function toViewEdge(key: string, g: Group, tintOf: ReadonlyMap<string, string | undefined>): ViewEdge {
+  const kinds = new Set(g.rels.map((r) => r.kind));
+  const single = g.rels.length === 1 ? g.rels[0] : undefined;
+  const edge: ViewEdge = {
+    id: key,
+    from: g.from,
+    to: g.to,
+    kind: kinds.size === 1 ? g.rels[0]!.kind : 'mixed',
+    constituents: g.rels,
+  };
+  if (single !== undefined) {
+    const labels = relationLabels(single);
+    if (labels.length > 0) edge.labels = labels;
+  } else {
+    edge.label = aggregateLabel(g.rels);
+  }
+  if (single?.style !== undefined) edge.style = single.style;
+  const polarity = combinePolarity(g.rels);
+  if (polarity !== undefined) edge.polarity = polarity;
+  if (single?.delay !== undefined) edge.delay = single.delay;
+  if (g.layer !== undefined) {
+    edge.layer = g.layer;
+    const tint = tintOf.get(g.layer);
+    if (tint !== undefined) edge.tint = tint;
+  }
+  return edge;
+}
+
+/** A multi-relation aggregate's label: the constituents' names while that is
+ * still cheaper to read than counting them, and the count once it is not. */
+function aggregateLabel(rels: readonly DiagramRelation[]): string {
+  const seen = new Set<string>();
+  const distinct: string[] = [];
+  for (const r of rels) {
+    for (const l of relationLabels(r)) {
+      const t = l.text.trim();
+      if (t !== '' && !seen.has(t)) {
+        seen.add(t);
+        distinct.push(t);
       }
-      const joined = distinct.join(' / ');
-      // ONE distinct label is the edge's own meaning however long it is (the
-      // renderer ellipsises it), so it always survives; several only earn their
-      // width while the join stays inside AGG_LABEL_BUDGET. An aggregate here
-      // always holds at least two relations, so the plural is always right.
-      edge.label =
-        distinct.length === 1 || (distinct.length > 1 && joined.length <= AGG_LABEL_BUDGET)
-          ? joined
-          : `${g.rels.length} relations`;
     }
-    if (single?.style !== undefined) edge.style = single.style;
-    const polarity = combinePolarity(g.rels);
-    if (polarity !== undefined) edge.polarity = polarity;
-    if (single?.delay !== undefined) edge.delay = single.delay;
-    if (g.layer !== undefined) {
-      edge.layer = g.layer;
-      const tint = tintOf.get(g.layer);
-      if (tint !== undefined) edge.tint = tint;
-    }
-    return edge;
-  });
+  }
+  const joined = distinct.join(' / ');
+  // ONE distinct label is the edge's own meaning however long it is (the
+  // renderer ellipsises it), so it always survives; several only earn their
+  // width while the join stays inside AGG_LABEL_BUDGET. An aggregate here
+  // always holds at least two relations, so the plural is always right.
+  return distinct.length === 1 || (distinct.length > 1 && joined.length <= AGG_LABEL_BUDGET)
+    ? joined
+    : `${rels.length} relations`;
 }
 
 /** The one relation behind a drawn edge; undefined when the edge stands for several,

@@ -127,10 +127,12 @@ but blame then fails in any checkout without that file, such as an older commit.
   constants and derivations (`<id>.ts`), its rules (`validate.ts`) and its builder
   (`builder.ts`), each with tests. To register one, add its id to `BUILTIN_NOTATIONS`
   (`types.ts`), its rules to `NOTATION_VALIDATORS` (`validate/index.ts`) and, if it has a
-  builder, an `m.<name>()` method to `ModelBuilder`; the node types and relation kinds
-  the renderer draws go in `vocabulary.ts`. A notation builder imports `ModelBuilder` as
-  a type only, or the package fails as it loads. Activity is not a notation (its frames
-  work under any), so its types, rules and builder are in `packages/core/src/activity/`.
+  builder, an `m.<name>()` method to `ModelBuilder`, with its classes and option types
+  exported from `builder/index.ts`, `index.ts` and `internal.ts`; the node types and
+  relation kinds the renderer draws go in `vocabulary.ts`. A notation builder imports
+  `ModelBuilder` as a type only, or the package fails as it loads. Activity is not a
+  notation (its frames work under any), so its types, rules and builder are in
+  `packages/core/src/activity/`.
 - **`packages/core` depends on nothing.** No React, no filesystem. That boundary is the
   one structural rule worth preserving: the model does not know it is going to be drawn.
 - **Import core from `@diagc/core/internal`** inside this repository. `@diagc/core` is

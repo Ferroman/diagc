@@ -1,6 +1,6 @@
 import { isIsoDate } from '../../dates';
 import type { DiagramModel, DiagramNode } from '../../types';
-import { buildHierarchy } from '../../view/hierarchy';
+import { buildHierarchy, type HierarchyIndex } from '../../view/hierarchy';
 import { defined } from '../../util';
 
 /** The notation id a plane (or the model) declares to be drawn as a schedule:
@@ -65,10 +65,10 @@ export interface PlanSpan {
  * missing, malformed or reversed — each of those is a validation finding
  * (`plan-missing`, `plan-date`, `plan-span`); here it just means "nothing to
  * draw". */
-export function spanOf(n: DiagramNode): PlanSpan | undefined {
-  if (!isPlanZone(n)) return undefined;
-  const start = dayOf(n.metadata?.start);
-  const end = dayOf(n.metadata?.end);
+export function spanOf(node: DiagramNode): PlanSpan | undefined {
+  if (!isPlanZone(node)) return undefined;
+  const start = dayOf(node.metadata?.start);
+  const end = dayOf(node.metadata?.end);
   return start === undefined || end === undefined || end < start ? undefined : { start, end };
 }
 
@@ -136,11 +136,32 @@ export interface PlanGraph {
  */
 export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
-  const h = buildHierarchy(model, plane);
+  const hierarchy = buildHierarchy(model, plane);
+  const { zones, events } = zonesAndEvents(model, hierarchy);
+  const zoneSet = new Set(zones);
+  const parent = new Map<string, string>();
+  for (const [id, parents] of hierarchy.parentsOf) {
+    const zoneParent = parents.find((p) => zoneSet.has(p));
+    if (zoneParent !== undefined) parent.set(id, zoneParent);
+  }
+  const range = rangeOf(zones, events, byId);
+  const origin = range === undefined ? undefined : dayOf(`${isoOf(range.start).slice(0, 4)}-01-01`);
+  return {
+    zones,
+    events,
+    actors: actorsOf(model, zoneSet, byId),
+    parent,
+    children: childrenByZone(hierarchy, zones, parent, byId),
+    ...defined({ range, origin }),
+  };
+}
+
+/** The zones and events visible on the plane, in declaration order. */
+function zonesAndEvents(model: DiagramModel, hierarchy: HierarchyIndex): { zones: string[]; events: string[] } {
   // buildHierarchy seeds parentsOf (to []) for every visible node, so this is
   // exactly "is this node visible on the plane", including shared nodes with
   // no containment there (they surface as roots, not as absent).
-  const visible = (id: string): boolean => h.parentsOf.has(id);
+  const visible = (id: string): boolean => hierarchy.parentsOf.has(id);
   const zones: string[] = [];
   const events: string[] = [];
   for (const n of model.nodes) {
@@ -148,20 +169,23 @@ export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
     if (isPlanZone(n)) zones.push(n.id);
     else if (isPlanEvent(n)) events.push(n.id);
   }
-  const zoneSet = new Set(zones);
-  const parent = new Map<string, string>();
-  for (const [id, parents] of h.parentsOf) {
-    const zoneParent = parents.find((p) => zoneSet.has(p));
-    if (zoneParent !== undefined) parent.set(id, zoneParent);
-  }
-  // Per zone, its h.childrenOf list keeps that zone's own containment-edge
-  // order; filtering by `parent.get(c) === z` drops a child here when another
-  // zone earlier in ITS OWN edge order already claimed it, leaving each DAG
-  // child in exactly the one zone `parent` (and the view) picked for it.
+  return { zones, events };
+}
+
+// Per zone, its hierarchy.childrenOf list keeps that zone's own containment-edge
+// order; filtering by `parent.get(c) === z` drops a child here when another
+// zone earlier in ITS OWN edge order already claimed it, leaving each DAG
+// child in exactly the one zone `parent` (and the view) picked for it.
+function childrenByZone(
+  hierarchy: HierarchyIndex,
+  zones: readonly string[],
+  parent: ReadonlyMap<string, string>,
+  byId: ReadonlyMap<string, DiagramNode>,
+): Map<string, PlanChildren> {
   const children = new Map<string, PlanChildren>();
   for (const z of zones) {
     const split: PlanChildren = { zones: [], events: [], others: [] };
-    for (const c of h.childrenOf.get(z) ?? []) {
+    for (const c of hierarchy.childrenOf.get(z) ?? []) {
       if (parent.get(c) !== z) continue;
       const node = byId.get(c);
       if (node === undefined) continue;
@@ -171,10 +195,24 @@ export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
     }
     children.set(z, split);
   }
+  return children;
+}
+
+/** Every actor holding a role in a visible zone, in declaration order, once each. */
+function actorsOf(model: DiagramModel, zoneSet: ReadonlySet<string>, byId: ReadonlyMap<string, DiagramNode>): string[] {
   const actors: string[] = [];
   for (const r of model.relations) {
     if (isPlanRole(r.kind) && zoneSet.has(r.to) && !actors.includes(r.from) && byId.has(r.from)) actors.push(r.from);
   }
+  return actors;
+}
+
+/** The earliest start or date and the latest end or date; undefined when nothing is dated. */
+function rangeOf(
+  zones: readonly string[],
+  events: readonly string[],
+  byId: ReadonlyMap<string, DiagramNode>,
+): PlanSpan | undefined {
   let range: PlanSpan | undefined;
   const widen = (start: number, end: number): void => {
     range =
@@ -188,23 +226,15 @@ export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
     const at = atOf(byId.get(e)!);
     if (at !== undefined) widen(at, at);
   }
-  const origin = range === undefined ? undefined : dayOf(`${isoOf(range.start).slice(0, 4)}-01-01`);
-  return {
-    zones,
-    events,
-    actors,
-    parent,
-    children,
-    ...defined({ range, origin }),
-  };
+  return range;
 }
 
 /** `id` plus every descendant zone and event, pre-order — what moves with a
  * zone. Borrowed nodes are not listed: their place is their row. */
-export function planSubtree(g: PlanGraph, id: string): string[] {
+export function planSubtree(graph: PlanGraph, id: string): string[] {
   const out: string[] = [id];
   const walk = (z: string): void => {
-    const c = g.children.get(z);
+    const c = graph.children.get(z);
     if (c === undefined) return;
     for (const child of c.zones) {
       out.push(child);

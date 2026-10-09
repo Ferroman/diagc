@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { validate } from '../../validate/index';
 import type { DiagramModel } from '../../types';
-
-function emptyModel(): DiagramModel {
-  return { version: 1, id: 'm', name: 'm', nodes: [], containment: [], relations: [], layers: [], planes: [] };
-}
+import { emptyModel } from '../../validate/models.fixture';
 
 describe('validate: git graph', () => {
   /** master: m1 → m2; nightly: n1 (from m1) → n2 (merges t1); team: t1 (from n1) */

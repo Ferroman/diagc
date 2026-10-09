@@ -21,9 +21,9 @@ const MAX_PERMUTED_LANES = 8;
  * Returns the lane ids in the suggested order, on the given plane (the default
  * one when absent); members are counted through regions and any other nesting.
  */
-export function bestLaneOrder(m: DiagramModel, frameId: string, plane?: string): string[] {
-  const edges = containmentOn(m, containmentPlaneOf(m, plane));
-  const typeOf = new Map(m.nodes.map((n) => [n.id, n.type]));
+export function bestLaneOrder(model: DiagramModel, frameId: string, plane?: string): string[] {
+  const edges = containmentOn(model, containmentPlaneOf(model, plane));
+  const typeOf = new Map(model.nodes.map((n) => [n.id, n.type]));
   const lanes = edges
     .filter((e) => e.parent === frameId && typeOf.get(e.child) === ACTIVITY_LANE_TYPE)
     .map((e) => e.child);
@@ -45,7 +45,7 @@ export function bestLaneOrder(m: DiagramModel, frameId: string, plane?: string):
 
   // links between two different lanes, as a weight per lane pair
   const weight = lanes.map(() => lanes.map(() => 0));
-  for (const r of m.relations) {
+  for (const r of model.relations) {
     const a = laneOf.get(r.from);
     const b = laneOf.get(r.to);
     if (a === undefined || b === undefined || a === b) continue;

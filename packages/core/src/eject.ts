@@ -1,13 +1,5 @@
 import type { DiagramLayer, DiagramModel, DiagramNode, DiagramPlane, DiagramRelation } from './types';
-
-/**
- * Two-directional, non-distributive key-set equality check (mirrors
- * NodeKeyCoverage in mutate/nodes.ts): wrapping each side in a tuple `[...]`
- * defeats TS's distributive conditional types over a union, which would
- * otherwise let one missing/extra member hide behind the others in the
- * union (`true | never` normalizes to `true`).
- */
-type SameKeys<A extends string, B extends string> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+import type { SameKeys } from './util';
 
 /** JS reserved words plus the two bindings the emitted file itself declares. */
 const RESERVED = new Set([
@@ -151,10 +143,9 @@ const NODE_OPT_KEYS = [
 ] as const;
 
 // Drift guard: a field added to DiagramNode without a matching entry above
-// fails this line at `pnpm typecheck` — a future model field silently
-// dropped by the emitter used to surface only as a runtime verify mismatch
-// (or, pre-I2b, a crash) at eject time. `id` is emitted explicitly, ahead of
-// the opts object, so it is excluded here.
+// fails this line at `pnpm typecheck`, rather than being dropped by the emitter
+// and found only when eject's round trip fails to verify. `id` is emitted
+// explicitly, ahead of the opts object, so it is excluded here.
 const _nodeOptCoverage: SameKeys<Exclude<keyof DiagramNode, 'id'>, (typeof NODE_OPT_KEYS)[number]> = true;
 void _nodeOptCoverage;
 
@@ -208,7 +199,7 @@ function opts(entries: [string, unknown][]): string {
   return `, {\n${rendered.map((r) => `  ${r},`).join('\n')}\n}`;
 }
 
-function nodeOpts(n: DiagramNode): [string, unknown][] {
+function nodeOpts(node: DiagramNode): [string, unknown][] {
   const out: [string, unknown][] = [];
   for (const k of NODE_OPT_KEYS) {
     if (k === 'name') {
@@ -217,10 +208,10 @@ function nodeOpts(n: DiagramNode): [string, unknown][] {
       // typically. Emit without a name opt rather than pushing `undefined`;
       // the builder then rebuilds `name: id`, and the deep-compare refuses
       // honestly instead of the emitter crashing.
-      if (n.name !== undefined && n.name !== n.id) out.push(['name', n.name]);
+      if (node.name !== undefined && node.name !== node.id) out.push(['name', node.name]);
       continue;
     }
-    const v = (n as unknown as Record<string, unknown>)[k];
+    const v = (node as unknown as Record<string, unknown>)[k];
     if (v !== undefined) out.push([k, v]);
   }
   return out;
