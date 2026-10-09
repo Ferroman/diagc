@@ -154,7 +154,7 @@ had drifted on. When you touch code that still uses a retired name, rename it.
 | A node's stored coordinates | **saved position** | `pinned` for positions, `QuickAddPlacement.pinned` |
 | Style named in the model | **diagram style** | `pinnedStyle` |
 | Relation end fixed to one side of its node | **fixed side** | "pinned side", `PinDot` |
-| A node or relation that can carry notes | **element** (type to come: `ElementRef`) | `ThreatTarget` for anything that is not a threat |
+| A node or relation that can carry notes | **element** (`ElementRef`, keyed by `elementKey`) | `ThreatTarget`, `ElementTarget` (deprecated aliases kept for the 1.0 API), `threatTargetKey` |
 | Threats listed for an element, or for the page | **threat register** | — |
 | `<name>.layout.json` / `<name>.drawings.json` beside a diagram | **sidecar** (the file); the layout file holds the **layout overlay** (`LayoutOverlay`), the drawings file `Drawings` | bare "overlay" for the sidecar |
 | Keeping layout entries in step with the model when ids are deleted | **layout pruning** (`prune*`) | "mirror", "mirror hygiene" |

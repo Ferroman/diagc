@@ -8,7 +8,7 @@ import {
   model,
   type DiagramModel,
   type LayoutOverlay,
-  type ThreatTarget,
+  type ElementRef,
 } from '@diagc/core/internal';
 import { DiagramView, LIBRARY_ENTRY_DND_TYPE, type CanvasCommands, type LayoutApi } from './DiagramView';
 import { ACTIVITY_LAYOUT } from './activity-frame';
@@ -2367,7 +2367,7 @@ describe('threat notes', () => {
     const edit = {
       onAddThreat,
       onRetitleThreat,
-      editThreatRequest: { target: { node: 'web' } as ThreatTarget, id: 't1', nonce: 1 },
+      editThreatRequest: { target: { node: 'web' } as ElementRef, id: 't1', nonce: 1 },
     };
     const { container } = render(<DiagramView model={threatened} layout={allOpen()} mode="edit" edit={edit} />);
     const input = (await screen.findByLabelText('Rename threat')) as HTMLInputElement;

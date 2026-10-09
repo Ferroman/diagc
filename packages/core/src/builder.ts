@@ -19,7 +19,8 @@ import type {
   TextRun,
   Threat,
 } from './types';
-import { nextCommentId, type ElementTarget } from './comments';
+import { nextCommentId } from './comments';
+import { findElement, isNodeRef, type ElementRef } from './elements';
 import {
   FB_CATEGORY_TYPE,
   FB_CAUSE_OF_KIND,
@@ -38,7 +39,6 @@ import {
   TM_NOTATION,
   TM_PROCESS_TYPE,
   TM_STORE_TYPE,
-  type ThreatTarget,
 } from './threat-model';
 import { DiagramValidationError, validate } from './validate';
 import {
@@ -744,14 +744,11 @@ export class ModelBuilder {
 
   /** internal — appends a threat to the node or relation `target` names; used by
    * NodeRef.threat() and FlowRef.threat() */
-  addThreat(target: ThreatTarget, opts: ThreatOpts): void {
-    const element =
-      'node' in target
-        ? this.nodes.find((n) => n.id === target.node)
-        : this.relations.find((r) => r.id === target.relation);
+  addThreat(target: ElementRef, opts: ThreatOpts): void {
+    const element = findElement({ nodes: this.nodes, relations: this.relations }, target);
     if (element === undefined) {
       throw new Error(
-        'node' in target
+        isNodeRef(target)
           ? `threat(): unknown node '${target.node}'`
           : `threat(): unknown relation '${target.relation}'`,
       );
@@ -770,14 +767,11 @@ export class ModelBuilder {
 
   /** internal — appends a comment to the node or relation `target` names; used by
    * NodeRef.comment() and FlowRef.comment() */
-  addComment(target: ElementTarget, text: string, opts: CommentOpts): void {
-    const element =
-      'node' in target
-        ? this.nodes.find((n) => n.id === target.node)
-        : this.relations.find((r) => r.id === target.relation);
+  addComment(target: ElementRef, text: string, opts: CommentOpts): void {
+    const element = findElement({ nodes: this.nodes, relations: this.relations }, target);
     if (element === undefined) {
       throw new Error(
-        'node' in target
+        isNodeRef(target)
           ? `comment(): unknown node '${target.node}'`
           : `comment(): unknown relation '${target.relation}'`,
       );

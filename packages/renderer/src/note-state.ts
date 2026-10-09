@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { ThreatTarget } from '@diagc/core/internal';
+import type { ElementRef } from '@diagc/core/internal';
 import type { Point } from './note-place';
 
 /**
@@ -11,9 +11,9 @@ import type { Point } from './note-place';
  * bubbles on this canvas (a host passing notes={false}); badges stay passive.
  */
 export interface NoteState {
-  /** `key` is threatTargetKey(target) */
+  /** `key` is elementKey(target) */
   isOpen: (key: string) => boolean;
-  toggle: (target: ThreatTarget) => void;
+  toggle: (target: ElementRef) => void;
   /** where a flow's chip is drawn, in flow coordinates, the unit direction it
    * was pushed off its line, and the line itself sampled end to end — reported
    * by the edge, which alone knows its routed curve, so the relation's bubble

@@ -13,7 +13,7 @@ import type {
   Stroke,
   TextRun,
   ThreatStatus,
-  ThreatTarget,
+  ElementRef,
 } from '@diagc/core/internal';
 import type { IconRegistry } from '@diagc/icons';
 import type { MutableRefObject } from 'react';
@@ -320,20 +320,20 @@ export interface EditingApi {
     run: (id: string, side?: QuickAddSide) => void;
   };
   /** a threat note was dragged: its new offset from the automatic anchor */
-  onNoteMoved?: (target: ThreatTarget, offset: { dx: number; dy: number }) => void;
+  onNoteMoved?: (target: ElementRef, offset: { dx: number; dy: number }) => void;
   /** the empty badge/chip or a note's `+`: add a threat on this element. The
    * host adds it and answers with `editThreatRequest` so its title opens. */
-  onAddThreat?: (target: ThreatTarget) => void;
+  onAddThreat?: (target: ElementRef) => void;
   /** a threat title was committed on its note; `''` = escaped or emptied */
-  onRetitleThreat?: (target: ThreatTarget, id: string, title: string) => void;
+  onRetitleThreat?: (target: ElementRef, id: string, title: string) => void;
   /** open this threat's title on its note — the `editLabelRequest` contract, nonce-keyed */
-  editThreatRequest?: { target: ThreatTarget; id: string; nonce: number };
+  editThreatRequest?: { target: ElementRef; id: string; nonce: number };
   /** the badge/chip was clicked in edit mode: save this element's bubble as open or closed */
-  onToggleNote?: (target: ThreatTarget, open: boolean) => void;
+  onToggleNote?: (target: ElementRef, open: boolean) => void;
   /** a bubble's status chip was clicked: the threat's next status */
-  onSetThreatStatus?: (target: ThreatTarget, id: string, status: ThreatStatus) => void;
+  onSetThreatStatus?: (target: ElementRef, id: string, status: ThreatStatus) => void;
   /** a bubble's description/mitigation field was committed; `''` clears it */
-  onEditThreatText?: (target: ThreatTarget, id: string, field: 'description' | 'mitigation', text: string) => void;
+  onEditThreatText?: (target: ElementRef, id: string, field: 'description' | 'mitigation', text: string) => void;
   /** Backspace/Delete pressed with a canvas selection: `nodeIds` are the
    * selected nodes, `relationIds` the constituent relations of any selected
    * edges. Wiring this is what enables the delete key at all — without it

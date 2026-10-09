@@ -15,7 +15,7 @@ import type {
   TextRun,
   Threat,
 } from './types';
-import { threatTargetKey, type ThreatTarget } from './threat-model';
+import { elementKey, type ElementRef } from './elements';
 import { hasNoteContent } from './comments';
 import { layoutPlaneKey } from './planes';
 import { CommandError } from './command-error';
@@ -103,14 +103,14 @@ export type EditorCommand =
   | { type: 'set-node-rich'; id: string; runs: TextRun[] }
   | { type: 'set-table-columns'; id: string; columns: Column[] }
   /** STRIDE findings ride on the node/relation they are about, so the three
-   * threat commands take a {@link ThreatTarget} instead of a bare id. */
-  | { type: 'add-threat'; target: ThreatTarget; threat: Threat }
-  | { type: 'update-threat'; target: ThreatTarget; id: string; patch: ThreatPatch }
-  | { type: 'remove-threat'; target: ThreatTarget; id: string }
+   * threat commands take a {@link ElementRef} instead of a bare id. */
+  | { type: 'add-threat'; target: ElementRef; threat: Threat }
+  | { type: 'update-threat'; target: ElementRef; id: string; patch: ThreatPatch }
+  | { type: 'remove-threat'; target: ElementRef; id: string }
   /** Comments ride on the element too — same target type as the threat trio. */
-  | { type: 'add-comment'; target: ThreatTarget; comment: Comment }
-  | { type: 'update-comment'; target: ThreatTarget; id: string; patch: CommentPatch }
-  | { type: 'remove-comment'; target: ThreatTarget; id: string }
+  | { type: 'add-comment'; target: ElementRef; comment: Comment }
+  | { type: 'update-comment'; target: ElementRef; id: string; patch: CommentPatch }
+  | { type: 'remove-comment'; target: ElementRef; id: string }
   | { type: 'set-node-plane-hidden'; nodeId: string; plane: string; hidden: boolean }
   | { type: 'set-diagram-style'; style: string | null }
   | { type: 'set-diagram-notation'; notation: string | null }
@@ -141,9 +141,9 @@ export type EditorCommand =
   | { type: 'set-layout-settings'; plane?: string; patch: Partial<LayoutSettings> }
   /** a threat note was dragged: its offset from the automatic anchor, or null to
    * let it sit beside its element again. Layout-only — the threats stay put. */
-  | { type: 'set-note-offset'; target: ThreatTarget; plane?: string; offset: { dx: number; dy: number } | null }
+  | { type: 'set-note-offset'; target: ElementRef; plane?: string; offset: { dx: number; dy: number } | null }
   /** open or close one element's threat bubble in this picture (saved, so the export shows it) */
-  | { type: 'set-note-open'; target: ThreatTarget; plane?: string; open: boolean }
+  | { type: 'set-note-open'; target: ElementRef; plane?: string; open: boolean }
   /** every element in the model that carries a threat, at once — the `Notes` chip */
   | { type: 'set-notes-open'; plane?: string; open: boolean }
   | { type: 'add-stroke'; plane?: string; stroke: Stroke }
@@ -248,10 +248,10 @@ function withNoteBucket(layout: LayoutOverlay, key: string, bucket: Record<strin
 function withNote(
   layout: LayoutOverlay,
   key: string,
-  target: ThreatTarget,
+  target: ElementRef,
   f: (current: NotePlacement) => NotePlacement,
 ): LayoutOverlay {
-  const tk = threatTargetKey(target);
+  const tk = elementKey(target);
   const bucket = { ...(layout.notes?.[key] ?? {}) };
   bucket[tk] = f(bucket[tk] ?? { dx: 0, dy: 0 });
   return withNoteBucket(layout, key, bucket);
@@ -276,8 +276,8 @@ function pruneNotes(layout: LayoutOverlay, before: DiagramModel, after: DiagramM
   if (layout.notes === undefined || (before.nodes === after.nodes && before.relations === after.relations))
     return layout;
   const alive = new Set<string>();
-  for (const n of after.nodes) if (hasNoteContent(n)) alive.add(threatTargetKey({ node: n.id }));
-  for (const r of after.relations) if (hasNoteContent(r)) alive.add(threatTargetKey({ relation: r.id }));
+  for (const n of after.nodes) if (hasNoteContent(n)) alive.add(elementKey({ node: n.id }));
+  for (const r of after.relations) if (hasNoteContent(r)) alive.add(elementKey({ relation: r.id }));
   let changed = false;
   const planes: NonNullable<LayoutOverlay['notes']> = {};
   for (const [key, bucket] of Object.entries(layout.notes)) {
@@ -550,12 +550,12 @@ function applyModelLayout(state: ModelLayout, command: EditorCommand): ModelLayo
       // core; allNotesOpen counts the same set, so the chip cannot disagree.
       const key = layoutPlaneKey(model, command.plane);
       const bucket = { ...(layout.notes?.[key] ?? {}) };
-      const targets: ThreatTarget[] = [
+      const targets: ElementRef[] = [
         ...model.nodes.filter((n) => (n.threats?.length ?? 0) > 0).map((n) => ({ node: n.id })),
         ...model.relations.filter((r) => (r.threats?.length ?? 0) > 0).map((r) => ({ relation: r.id })),
       ];
       for (const t of targets) {
-        const tk = threatTargetKey(t);
+        const tk = elementKey(t);
         bucket[tk] = withOpen(bucket[tk] ?? { dx: 0, dy: 0 }, command.open);
       }
       return { model, layout: withNoteBucket(layout, key, bucket) };

@@ -12,7 +12,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import {
   TM_NOTATION,
-  threatTargetKey,
+  elementKey,
   type Column,
   type EdgeLabel,
   type EdgeLabelSide,
@@ -851,7 +851,7 @@ export function DiagramEdge({
           {notes !== null && data?.threatRelation !== undefined ? (
             (() => {
               const relation = data.threatRelation;
-              const open = notes.isOpen(threatTargetKey({ relation }));
+              const open = notes.isOpen(elementKey({ relation }));
               return (
                 <button
                   type="button"
@@ -895,7 +895,7 @@ export function DiagramEdge({
           {notes !== null && data?.threatRelation !== undefined ? (
             (() => {
               const relation = data.threatRelation;
-              const open = notes.isOpen(threatTargetKey({ relation }));
+              const open = notes.isOpen(elementKey({ relation }));
               return (
                 <button
                   type="button"

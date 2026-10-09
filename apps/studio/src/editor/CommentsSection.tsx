@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { nextCommentId, type Comment, type EditorCommand, type ElementTarget } from '@diagc/core/internal';
+import { nextCommentId, type Comment, type EditorCommand, type ElementRef } from '@diagc/core/internal';
 
 interface CommentsSectionProps {
-  target: ElementTarget;
+  target: ElementRef;
   comments: readonly Comment[];
   onCommand: (command: EditorCommand) => void;
 }
@@ -12,7 +12,7 @@ function CommentRow({
   comment,
   onCommand,
 }: {
-  target: ElementTarget;
+  target: ElementRef;
   comment: Comment;
   onCommand: (c: EditorCommand) => void;
 }) {

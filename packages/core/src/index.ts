@@ -76,9 +76,9 @@ export {
   BUILTIN_NOTATIONS,
 } from './types';
 // Types that public signatures mention (ModelBuilder.addThreat / addComment,
-// ConsequenceOpts, FishboneBuilder, ValidationIssue.code).
-export type { ElementTarget } from './comments';
+// ConsequenceOpts, FishboneBuilder, ValidationIssue.code). ThreatTarget and
+// ElementTarget are ElementRef's deprecated 1.0 names.
+export type { ElementRef, ElementTarget, ThreatTarget } from './elements';
 export type { FishbonePreset } from './fishbone';
 export type { LintCode } from './lint';
-export type { ThreatTarget } from './threat-model';
 export type { Valence } from './second-order';

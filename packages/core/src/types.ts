@@ -385,7 +385,7 @@ export interface LayoutOverlay {
    * from its automatic anchor beside the element) and whether it is open.
    * Absent entry = automatic spot, closed. The threat text itself stays on the
    * element; this is only "how I left the bubble in this picture", the
-   * `edgeLabels` reasoning. Keyed like `planes`, then by `threatTargetKey`. */
+   * `edgeLabels` reasoning. Keyed like `planes`, then by `elementKey`. */
   notes?: Record<string, Record<string, NotePlacement>>;
   /** how the PNG export should differ from the interactive page. Ignored by the
    * interactive page, which opens as `unfolded` says and lets the reader

@@ -23,7 +23,7 @@ import {
 import { normalizeRuns, runsToPlainText } from './text';
 import { childrenOf } from './children';
 import { isIsoDate } from './dates';
-import type { ThreatTarget } from './threat-model';
+import { isNodeRef, type ElementRef } from './elements';
 import { CommandError } from './command-error';
 import { canonicalPlane, containmentOn, defaultPlaneOf, isOnPlane } from './planes';
 import { defined } from './util';
@@ -318,7 +318,7 @@ type ListItem<K extends ElementList> = ElementLists[K];
 
 function mapList<K extends ElementList>(
   m: DiagramModel,
-  target: ThreatTarget,
+  target: ElementRef,
   key: K,
   fn: (items: readonly ListItem<K>[]) => ListItem<K>[],
 ): DiagramModel {
@@ -336,25 +336,22 @@ function mapList<K extends ElementList>(
       return (list.length === 0 ? rest : { ...rest, [key]: list }) as T;
     });
   };
-  return 'node' in target
+  return isNodeRef(target)
     ? { ...m, nodes: next(m.nodes, target.node, 'node') }
     : { ...m, relations: next(m.relations, target.relation, 'relation') };
 }
 
-const mapThreats = (
-  m: DiagramModel,
-  target: ThreatTarget,
-  fn: (threats: readonly Threat[]) => Threat[],
-): DiagramModel => mapList(m, target, 'threats', fn);
+const mapThreats = (m: DiagramModel, target: ElementRef, fn: (threats: readonly Threat[]) => Threat[]): DiagramModel =>
+  mapList(m, target, 'threats', fn);
 
-export function addThreat(m: DiagramModel, target: ThreatTarget, threat: Threat): DiagramModel {
+export function addThreat(m: DiagramModel, target: ElementRef, threat: Threat): DiagramModel {
   return mapThreats(m, target, (threats) => {
     if (threats.some((t) => t.id === threat.id)) throw new CommandError(`Duplicate threat id '${threat.id}'`);
     return [...threats, threat];
   });
 }
 
-export function updateThreat(m: DiagramModel, target: ThreatTarget, id: string, patch: ThreatPatch): DiagramModel {
+export function updateThreat(m: DiagramModel, target: ElementRef, id: string, patch: ThreatPatch): DiagramModel {
   return mapThreats(m, target, (threats) => {
     if (!threats.some((t) => t.id === id)) throw new CommandError(`Unknown threat '${id}'`);
     return threats.map((t) => {
@@ -370,7 +367,7 @@ export function updateThreat(m: DiagramModel, target: ThreatTarget, id: string, 
   });
 }
 
-export function removeThreat(m: DiagramModel, target: ThreatTarget, id: string): DiagramModel {
+export function removeThreat(m: DiagramModel, target: ElementRef, id: string): DiagramModel {
   return mapThreats(m, target, (threats) => {
     if (!threats.some((t) => t.id === id)) throw new CommandError(`Unknown threat '${id}'`);
     return threats.filter((t) => t.id !== id);
@@ -403,7 +400,7 @@ const checkCommentDate = (at: string | null | undefined): void => {
     throw new CommandError(`Comment date '${at}' is not a YYYY-MM-DD date`);
 };
 
-export function addComment(m: DiagramModel, target: ThreatTarget, comment: Comment): DiagramModel {
+export function addComment(m: DiagramModel, target: ElementRef, comment: Comment): DiagramModel {
   checkCommentDate(comment.at);
   return mapList(m, target, 'comments', (comments) => {
     if (comments.some((c) => c.id === comment.id)) throw new CommandError(`Duplicate comment id '${comment.id}'`);
@@ -411,7 +408,7 @@ export function addComment(m: DiagramModel, target: ThreatTarget, comment: Comme
   });
 }
 
-export function updateComment(m: DiagramModel, target: ThreatTarget, id: string, patch: CommentPatch): DiagramModel {
+export function updateComment(m: DiagramModel, target: ElementRef, id: string, patch: CommentPatch): DiagramModel {
   checkCommentDate(patch.at);
   return mapList(m, target, 'comments', (comments) => {
     if (!comments.some((c) => c.id === id)) throw new CommandError(`Unknown comment '${id}'`);
@@ -425,7 +422,7 @@ export function updateComment(m: DiagramModel, target: ThreatTarget, id: string,
   });
 }
 
-export function removeComment(m: DiagramModel, target: ThreatTarget, id: string): DiagramModel {
+export function removeComment(m: DiagramModel, target: ElementRef, id: string): DiagramModel {
   return mapList(m, target, 'comments', (comments) => {
     if (!comments.some((c) => c.id === id)) throw new CommandError(`Unknown comment '${id}'`);
     return comments.filter((c) => c.id !== id);

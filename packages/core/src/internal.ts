@@ -25,7 +25,8 @@ export * from './shared-constants';
 export * from './mutate';
 export { CommandError } from './command-error';
 export * from './planes';
-export { commentsOf, hasNoteContent, nextCommentId, type ElementTarget } from './comments';
+export { commentsOf, hasNoteContent, nextCommentId } from './comments';
+export * from './elements';
 export { isIsoDate } from './dates';
 export { normalizeRuns, runsToPlainText } from './text';
 export { relationLabels } from './labels';
@@ -173,12 +174,10 @@ export {
   crossingLabel,
   threatRegister,
   threatSummary,
-  threatTargetKey,
   threatsOf,
   nextThreatId,
   nextThreatStatus,
   allNotesOpen,
-  type ThreatTarget,
   type Crossing,
   type ThreatRow,
 } from './threat-model';

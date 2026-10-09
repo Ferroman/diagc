@@ -1,11 +1,11 @@
 import type { Node, XYPosition } from '@xyflow/react';
-import type { ThreatTarget } from '@diagc/core/internal';
+import type { ElementRef } from '@diagc/core/internal';
 import type { NoteData } from './NoteNode';
 import type { Positions } from './useNudge';
 
 /** one note the gesture moved, as the host wants to hear about it */
 export interface NoteMove {
-  target: ThreatTarget;
+  target: ElementRef;
   offset: { dx: number; dy: number };
 }
 

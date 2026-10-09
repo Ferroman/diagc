@@ -12,11 +12,11 @@ import {
   type ThreatPatch,
   type ThreatSeverity,
   type ThreatStatus,
-  type ThreatTarget,
+  type ElementRef,
 } from '@diagc/core/internal';
 
 interface ThreatsSectionProps {
-  target: ThreatTarget;
+  target: ElementRef;
   threats: readonly Threat[];
   /** STRIDE categories that apply to this element (strideFor) — listed first */
   applicable: readonly StrideCategory[];
@@ -62,7 +62,7 @@ function ThreatRow({
   applicable,
   onCommand,
 }: {
-  target: ThreatTarget;
+  target: ElementRef;
   threat: Threat;
   applicable: readonly StrideCategory[];
   onCommand: (command: EditorCommand) => void;

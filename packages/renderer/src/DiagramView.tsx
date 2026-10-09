@@ -24,7 +24,7 @@ import {
   GIT_STAGE_TYPE,
   hasNoteContent,
   layoutPlaneKey,
-  threatTargetKey,
+  elementKey,
   TM_NOTATION,
   type Comment,
   type DiagramNode,
@@ -33,7 +33,7 @@ import {
   type Link,
   type Stroke,
   type Threat,
-  type ThreatTarget,
+  type ElementRef,
   type ViewNode,
 } from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
@@ -191,7 +191,7 @@ function Inner(props: DiagramViewProps) {
   // In-place label editing target (edit mode double-click): a node's name or a
   // single-relation edge's label.
   const [labelEdit, setLabelEdit] = useState<{ kind: 'node' | 'edge'; id: string } | null>(null);
-  // The threat row a note is holding open for typing, keyed by threatTargetKey
+  // The threat row a note is holding open for typing, keyed by elementKey
   // (which note) + threat id (which row). Declared here beside labelEdit — the
   // effect just below writes it and the note derivation far down reads it —
   // rather than next to that derivation, so nothing references it before it exists.
@@ -357,7 +357,7 @@ function Inner(props: DiagramViewProps) {
   useEffect(() => {
     if (!editing || threatRequest === undefined || threatRequest.nonce === consumedThreatNonceRef.current) return;
     consumedThreatNonceRef.current = threatRequest.nonce;
-    setNoteEdit({ key: threatTargetKey(threatRequest.target), id: threatRequest.id });
+    setNoteEdit({ key: elementKey(threatRequest.target), id: threatRequest.id });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the nonce alone, as editLabelRequest is
   }, [threatRequest?.nonce]);
 
@@ -905,7 +905,7 @@ function Inner(props: DiagramViewProps) {
         : {
             isOpen: (key) => openNotes.has(key),
             toggle: (target) => {
-              const key = threatTargetKey(target);
+              const key = elementKey(target);
               const next = !openNotes.has(key);
               if (editing && onToggleNote !== undefined) onToggleNote(target, next);
               else setNoteOverrides((prev) => new Map(prev).set(key, next));
@@ -942,7 +942,7 @@ function Inner(props: DiagramViewProps) {
     }
     const out: Node[] = [];
     const push = (
-      target: ThreatTarget,
+      target: ElementRef,
       name: string,
       threats: readonly Threat[],
       comments: readonly Comment[],
@@ -955,7 +955,7 @@ function Inner(props: DiagramViewProps) {
       /** a flow: the side of the line its chip sits on */
       away?: Point,
     ) => {
-      const key = threatTargetKey(target);
+      const key = elementKey(target);
       if (!openNotes.has(key)) return;
       // The offer to start a register belongs where threats do: an element that
       // already has one, or a threat model's canvas — the gate ThreatBadge and

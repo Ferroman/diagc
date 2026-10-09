@@ -27,7 +27,7 @@ import type {
   NotationId,
   PlanRole,
   TextRun,
-  ThreatTarget,
+  ElementRef,
   ViewEdge,
   ViewNode,
 } from '@diagc/core/internal';
@@ -90,7 +90,7 @@ export interface NodeDataContext {
    * note. Threaded whole (the node passes its own id at click time); the badge
    * decides for itself whether to offer it, since only a threat model's canvas
    * should carry the affordance. */
-  onAddThreat?: (target: ThreatTarget) => void;
+  onAddThreat?: (target: ElementRef) => void;
   stylePreset?: StylePreset;
   notation?: NotationId;
 }
@@ -105,7 +105,7 @@ export interface EdgeDataContext {
   onSetEdgeSide?: (relationId: string, end: 'from' | 'to', side: import('./floating').Side | null) => void;
   /** see EditingApi.onAddThreat; bound to the edge's sole relation below, so
    * the chip in the renderer calls it with nothing */
-  onAddThreat?: (target: ThreatTarget) => void;
+  onAddThreat?: (target: ElementRef) => void;
   /** the sole-relation id currently showing endpoint pin dots (null = none) */
   pinEdgeRel: string | null;
   /** a correlated double-click asked to add a label on a specific edge */
