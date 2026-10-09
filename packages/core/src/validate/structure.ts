@@ -7,12 +7,12 @@ import { report, type Ctx } from './context';
  * rule is the one place a layer can be referenced without a node or relation
  * carrying it, so it is checked here, right after the layers are known). */
 export function validateLayers(ctx: Ctx): void {
-  const { m, issues, layerIds } = ctx;
-  for (const l of m.layers) {
+  const { model, issues, layerIds } = ctx;
+  for (const l of model.layers) {
     if (layerIds.has(l.id)) report(issues, 'duplicate-layer', `Duplicate layer id '${l.id}'`, l.id);
     layerIds.add(l.id);
   }
-  (m.layerRules ?? []).forEach((rule, i) => {
+  (model.layerRules ?? []).forEach((rule, i) => {
     if (!layerIds.has(rule.layer)) {
       report(issues, 'unknown-layer', `layerRules[${i}] references unknown layer '${rule.layer}'`);
     }
@@ -62,8 +62,8 @@ export function validatePlanes(ctx: Ctx): void {
 
 /** plane.hides and plane.hidesTree must reference existing, shared nodes. */
 export function validatePlaneHides(ctx: Ctx): void {
-  const { m, issues, nodeIds, planes } = ctx;
-  const scopedPlaneOf = new Map(m.nodes.map((n) => [n.id, n.plane]));
+  const { model, issues, nodeIds, planes } = ctx;
+  const scopedPlaneOf = new Map(model.nodes.map((n) => [n.id, n.plane]));
   for (const p of planes) {
     for (const id of [...(p.hides ?? []), ...(p.hidesTree ?? [])]) {
       if (!nodeIds.has(id)) {
@@ -83,8 +83,8 @@ export function validatePlaneHides(ctx: Ctx): void {
 /** Containment edges: endpoints must exist; a plane-tagged edge must reference a
  * declared plane (and there must be planes at all). */
 export function validateContainment(ctx: Ctx): void {
-  const { m, issues, nodeIds, planeIds, planes } = ctx;
-  for (const e of m.containment) {
+  const { model, issues, nodeIds, planeIds, planes } = ctx;
+  for (const e of model.containment) {
     for (const end of [e.parent, e.child]) {
       if (!nodeIds.has(end)) {
         report(issues, 'dangling-endpoint', `Containment references unknown node '${end}'`, end);
@@ -113,10 +113,10 @@ export function validateContainment(ctx: Ctx): void {
 /** Containment cycles are checked per plane — an edge pair spanning two planes
  * is legal. Emits one `containment-cycle` issue per offending plane. */
 export function validateCycles(ctx: Ctx): void {
-  const { m, issues } = ctx;
+  const { model, issues } = ctx;
   const byPlane = new Map<string | undefined, DiagramModel['containment']>();
-  for (const e of m.containment) {
-    const key = e.plane ?? defaultPlaneOf(m);
+  for (const e of model.containment) {
+    const key = e.plane ?? defaultPlaneOf(model);
     byPlane.set(key, [...(byPlane.get(key) ?? []), e]);
   }
   for (const [plane, edges] of byPlane) {

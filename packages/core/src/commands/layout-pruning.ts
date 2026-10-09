@@ -151,8 +151,8 @@ export function pruneNotes(layout: LayoutOverlay, before: DiagramModel, after: D
  */
 export function pruneEdgeLabels(layout: LayoutOverlay, before: DiagramModel, after: DiagramModel): LayoutOverlay {
   if (layout.edgeLabels === undefined || before.relations === after.relations) return layout;
-  const labelsOf = (m: DiagramModel) =>
-    new Map(m.relations.map((r) => [r.id, new Map(relationLabels(r).map((l) => [l.id, l] as const))] as const));
+  const labelsOf = (model: DiagramModel) =>
+    new Map(model.relations.map((r) => [r.id, new Map(relationLabels(r).map((l) => [l.id, l] as const))] as const));
   const was = labelsOf(before);
   const now = labelsOf(after);
   let changed = false;

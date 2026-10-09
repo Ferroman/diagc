@@ -11,14 +11,14 @@ export interface ViewTree {
   hostOf: Map<string, string | null>;
 }
 
-export function buildViewTree(m: DiagramModel, h: HierarchyIndex, lod: LodState): ViewTree {
+export function buildViewTree(model: DiagramModel, hierarchy: HierarchyIndex, lod: LodState): ViewTree {
   const stateOf = (id: string): NodeViewState =>
-    (h.childrenOf.get(id) ?? []).length === 0 ? 'leaf' : (lod[id] ?? 'collapsed');
+    (hierarchy.childrenOf.get(id) ?? []).length === 0 ? 'leaf' : (lod[id] ?? 'collapsed');
 
   const visible = new Set<string>();
   const hostOf = new Map<string, string | null>();
   const promoted = new Set<string>();
-  for (const r of h.roots) {
+  for (const r of hierarchy.roots) {
     visible.add(r);
     hostOf.set(r, null);
   }
@@ -28,7 +28,7 @@ export function buildViewTree(m: DiagramModel, h: HierarchyIndex, lod: LodState)
     if (hit) return hit;
     const acc = new Set<string>();
     memo.set(id, acc); // pre-set guards diamond re-entry (containment is a DAG)
-    for (const p of h.parentsOf.get(id) ?? []) {
+    for (const p of hierarchy.parentsOf.get(id) ?? []) {
       if (visible.has(p)) acc.add(p);
       else for (const a of absorbersOf(p, memo)) acc.add(a);
     }
@@ -62,9 +62,9 @@ export function buildViewTree(m: DiagramModel, h: HierarchyIndex, lod: LodState)
     let placed = true;
     while (placed) {
       placed = false;
-      for (const n of m.nodes) {
+      for (const n of model.nodes) {
         if (visible.has(n.id)) continue;
-        const host = (h.parentsOf.get(n.id) ?? []).find((p) => visible.has(p) && stateOf(p) === 'expanded');
+        const host = (hierarchy.parentsOf.get(n.id) ?? []).find((p) => visible.has(p) && stateOf(p) === 'expanded');
         if (host !== undefined) {
           visible.add(n.id);
           hostOf.set(n.id, host);
@@ -73,18 +73,18 @@ export function buildViewTree(m: DiagramModel, h: HierarchyIndex, lod: LodState)
       }
     }
     const memo = new Map<string, Set<string>>();
-    const candidates = m.nodes.filter((n) => !visible.has(n.id) && absorbersOf(n.id, memo).size >= 2);
+    const candidates = model.nodes.filter((n) => !visible.has(n.id) && absorbersOf(n.id, memo).size >= 2);
     if (candidates.length === 0) break;
     const candidateIds = new Set(candidates.map((n) => n.id));
     const hasCandidateAncestor = (id: string): boolean => {
       const seen = new Set<string>();
-      const stack = [...(h.parentsOf.get(id) ?? [])];
+      const stack = [...(hierarchy.parentsOf.get(id) ?? [])];
       while (stack.length > 0) {
         const p = stack.pop();
         if (p === undefined || seen.has(p)) continue;
         seen.add(p);
         if (candidateIds.has(p)) return true;
-        if (!visible.has(p)) stack.push(...(h.parentsOf.get(p) ?? []));
+        if (!visible.has(p)) stack.push(...(hierarchy.parentsOf.get(p) ?? []));
       }
       return false;
     };
@@ -99,7 +99,7 @@ export function buildViewTree(m: DiagramModel, h: HierarchyIndex, lod: LodState)
   // Anchors for hidden nodes (unique by construction: >=2 would have promoted).
   const anchorOf = new Map<string, string>();
   const finalMemo = new Map<string, Set<string>>();
-  for (const n of m.nodes) {
+  for (const n of model.nodes) {
     if (visible.has(n.id)) continue;
     const [anchor] = absorbersOf(n.id, finalMemo);
     if (anchor !== undefined) anchorOf.set(n.id, anchor);
@@ -107,7 +107,7 @@ export function buildViewTree(m: DiagramModel, h: HierarchyIndex, lod: LodState)
 
   // Assemble ViewNodes in model order.
   const byId = new Map<string, ViewNode>();
-  for (const n of m.nodes) {
+  for (const n of model.nodes) {
     if (!visible.has(n.id)) continue;
     byId.set(n.id, {
       id: n.id,
@@ -126,19 +126,19 @@ export function buildViewTree(m: DiagramModel, h: HierarchyIndex, lod: LodState)
     if (host === null) roots.push(vn);
     else byId.get(host)?.children.push(vn);
   };
-  for (const n of m.nodes) {
+  for (const n of model.nodes) {
     const vn = byId.get(n.id);
     if (vn && !promoted.has(n.id)) placeInto(vn);
   }
-  for (const n of m.nodes) {
+  for (const n of model.nodes) {
     const vn = byId.get(n.id);
     if (vn && promoted.has(n.id)) placeInto(vn);
   }
 
   // Shared markers: visible parents that are not the placement host.
-  for (const n of m.nodes) {
+  for (const n of model.nodes) {
     if (!byId.has(n.id)) continue;
-    const parents = h.parentsOf.get(n.id) ?? [];
+    const parents = hierarchy.parentsOf.get(n.id) ?? [];
     if (parents.length < 2) continue;
     for (const p of parents) {
       if (p !== hostOf.get(n.id) && byId.has(p)) byId.get(p)?.sharedMembers.push(n.id);

@@ -208,7 +208,7 @@ function opts(entries: [string, unknown][]): string {
   return `, {\n${rendered.map((r) => `  ${r},`).join('\n')}\n}`;
 }
 
-function nodeOpts(n: DiagramNode): [string, unknown][] {
+function nodeOpts(node: DiagramNode): [string, unknown][] {
   const out: [string, unknown][] = [];
   for (const k of NODE_OPT_KEYS) {
     if (k === 'name') {
@@ -217,10 +217,10 @@ function nodeOpts(n: DiagramNode): [string, unknown][] {
       // typically. Emit without a name opt rather than pushing `undefined`;
       // the builder then rebuilds `name: id`, and the deep-compare refuses
       // honestly instead of the emitter crashing.
-      if (n.name !== undefined && n.name !== n.id) out.push(['name', n.name]);
+      if (node.name !== undefined && node.name !== node.id) out.push(['name', node.name]);
       continue;
     }
-    const v = (n as unknown as Record<string, unknown>)[k];
+    const v = (node as unknown as Record<string, unknown>)[k];
     if (v !== undefined) out.push([k, v]);
   }
   return out;

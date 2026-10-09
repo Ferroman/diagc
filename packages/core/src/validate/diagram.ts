@@ -7,23 +7,23 @@ import { report, type Ctx } from './context';
  * it is a closed vocabulary the renderer keys a `Record` on, not an open
  * preset id. */
 export function validateModelStyle(ctx: Ctx): void {
-  const { m, issues } = ctx;
-  if (m.style !== undefined && (typeof m.style !== 'string' || m.style === '')) {
+  const { model, issues } = ctx;
+  if (model.style !== undefined && (typeof model.style !== 'string' || model.style === '')) {
     report(issues, 'invalid-style', 'Diagram style must be a non-empty string');
   }
   if (
-    m.notation !== undefined &&
-    (typeof m.notation !== 'string' || !(BUILTIN_NOTATIONS as readonly string[]).includes(m.notation))
+    model.notation !== undefined &&
+    (typeof model.notation !== 'string' || !(BUILTIN_NOTATIONS as readonly string[]).includes(model.notation))
   ) {
-    report(issues, 'unknown-notation', `Diagram has unknown notation '${String(m.notation)}'`, m.id);
+    report(issues, 'unknown-notation', `Diagram has unknown notation '${String(model.notation)}'`, model.id);
   }
 }
 
 /** Legend checks. Registry ids (`item.type` / `item.kind`) are deliberately NOT
  * validated — unknown ids are legal everywhere else and fall back silently. */
 export function validateLegend(ctx: Ctx): void {
-  const { m, issues } = ctx;
-  const l = m.legend;
+  const { model, issues } = ctx;
+  const l = model.legend;
   if (l === undefined) return;
   if (typeof l !== 'object' || l === null || Array.isArray(l)) {
     issues.push({ code: 'invalid-legend', message: 'Legend must be an object' });

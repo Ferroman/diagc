@@ -55,8 +55,8 @@ export interface GitGraph {
 
 /** `metadata.gap` as a count of empty columns: a non-negative integer, or a
  * string of digits (the studio's generic metadata editor stores strings). */
-export function gapOf(n: DiagramNode): number {
-  const raw = n.metadata?.['gap'];
+export function gapOf(node: DiagramNode): number {
+  const raw = node.metadata?.['gap'];
   if (typeof raw === 'number') return Number.isInteger(raw) && raw >= 0 ? raw : 0;
   if (typeof raw === 'string' && /^\d+$/.test(raw)) return Number(raw);
   return 0;
@@ -124,11 +124,11 @@ export function nextCommitId(model: DiagramModel, laneId: string): string {
 }
 
 /** The lane's rightmost commit (max column; ties go to the later declared). */
-export function latestCommit(g: GitGraph, laneId: string): DiagramNode | undefined {
-  const lane = g.lanes.find((l) => l.id === laneId);
+export function latestCommit(graph: GitGraph, laneId: string): DiagramNode | undefined {
+  const lane = graph.lanes.find((l) => l.id === laneId);
   let best: DiagramNode | undefined;
   for (const c of lane?.commits ?? []) {
-    if (best === undefined || (g.columns.get(c.id) ?? 0) >= (g.columns.get(best.id) ?? 0)) best = c;
+    if (best === undefined || (graph.columns.get(c.id) ?? 0) >= (graph.columns.get(best.id) ?? 0)) best = c;
   }
   return best;
 }

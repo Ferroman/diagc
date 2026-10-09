@@ -12,9 +12,9 @@ import { report, type Ctx } from './context';
 /** Relations: duplicate ids, endpoints, layer refs, polarity/delay types, labels,
  * per-relation style overrides, and FK column references. */
 export function validateRelations(ctx: Ctx): void {
-  const { m, issues } = ctx;
+  const { model, issues } = ctx;
   const relationIds = new Set<string>();
-  for (const r of m.relations) {
+  for (const r of model.relations) {
     if (relationIds.has(r.id)) report(issues, 'duplicate-relation', `Duplicate relation id '${r.id}'`, r.id);
     relationIds.add(r.id);
     checkRefsAndFlags(ctx, r);
@@ -28,31 +28,46 @@ export function validateRelations(ctx: Ctx): void {
 }
 
 /** endpoints and layer must exist; polarity and delay are typed */
-function checkRefsAndFlags(ctx: Ctx, r: DiagramRelation): void {
+function checkRefsAndFlags(ctx: Ctx, relation: DiagramRelation): void {
   const { issues, nodeIds, layerIds } = ctx;
-  for (const end of [r.from, r.to]) {
+  for (const end of [relation.from, relation.to]) {
     if (!nodeIds.has(end)) {
-      report(issues, 'dangling-endpoint', `Relation '${r.id}' references unknown node '${end}'`, r.id);
+      report(issues, 'dangling-endpoint', `Relation '${relation.id}' references unknown node '${end}'`, relation.id);
     }
   }
-  if (r.layer !== undefined && !layerIds.has(r.layer)) {
-    report(issues, 'unknown-layer', `Relation '${r.id}' references unknown layer '${r.layer}'`, r.id);
+  if (relation.layer !== undefined && !layerIds.has(relation.layer)) {
+    report(
+      issues,
+      'unknown-layer',
+      `Relation '${relation.id}' references unknown layer '${relation.layer}'`,
+      relation.id,
+    );
   }
-  if (r.polarity !== undefined && r.polarity !== '+' && r.polarity !== '-') {
-    report(issues, 'invalid-polarity', `Relation '${r.id}' has invalid polarity '${String(r.polarity)}'`, r.id);
+  if (relation.polarity !== undefined && relation.polarity !== '+' && relation.polarity !== '-') {
+    report(
+      issues,
+      'invalid-polarity',
+      `Relation '${relation.id}' has invalid polarity '${String(relation.polarity)}'`,
+      relation.id,
+    );
   }
-  if (r.delay !== undefined && typeof r.delay !== 'boolean') {
-    report(issues, 'invalid-delay', `Relation '${r.id}' has invalid delay '${String(r.delay)}'`, r.id);
+  if (relation.delay !== undefined && typeof relation.delay !== 'boolean') {
+    report(
+      issues,
+      'invalid-delay',
+      `Relation '${relation.id}' has invalid delay '${String(relation.delay)}'`,
+      relation.id,
+    );
   }
 }
 
-function checkLabels({ issues }: Ctx, r: DiagramRelation): void {
-  if (r.labels === undefined) return;
+function checkLabels({ issues }: Ctx, relation: DiagramRelation): void {
+  if (relation.labels === undefined) return;
   const badLabel = (what: string) =>
-    report(issues, 'invalid-edge-label', `Relation '${r.id}' has invalid label ${what}`, r.id);
-  if (!Array.isArray(r.labels)) badLabel('list');
+    report(issues, 'invalid-edge-label', `Relation '${relation.id}' has invalid label ${what}`, relation.id);
+  if (!Array.isArray(relation.labels)) badLabel('list');
   else
-    for (const [i, lb] of r.labels.entries()) {
+    for (const [i, lb] of relation.labels.entries()) {
       if (typeof lb?.text !== 'string') badLabel(`text at ${i}`);
       if (lb?.t !== undefined && !(typeof lb.t === 'number' && Number.isFinite(lb.t) && lb.t >= 0 && lb.t <= 1))
         badLabel(`t at ${i}`);
@@ -67,53 +82,63 @@ const badStyle =
     report(issues, 'invalid-style', `Relation '${r.id}' has invalid style ${what}`, r.id);
 
 /** the style fields that name one of a fixed set: shape, line, end marker, fixed sides */
-function checkStyleChoices(ctx: Ctx, r: DiagramRelation, s: RelationStyle): void {
-  const bad = badStyle(ctx, r);
-  if (s.shape !== undefined && !(RELATION_SHAPES as readonly string[]).includes(s.shape))
-    bad(`shape '${String(s.shape)}'`);
-  if (s.line !== undefined && !(RELATION_LINES as readonly string[]).includes(s.line)) bad(`line '${String(s.line)}'`);
-  if (s.end !== undefined && !(RELATION_MARKERS as readonly string[]).includes(s.end)) bad(`end '${String(s.end)}'`);
+function checkStyleChoices(ctx: Ctx, relation: DiagramRelation, style: RelationStyle): void {
+  const bad = badStyle(ctx, relation);
+  if (style.shape !== undefined && !(RELATION_SHAPES as readonly string[]).includes(style.shape))
+    bad(`shape '${String(style.shape)}'`);
+  if (style.line !== undefined && !(RELATION_LINES as readonly string[]).includes(style.line))
+    bad(`line '${String(style.line)}'`);
+  if (style.end !== undefined && !(RELATION_MARKERS as readonly string[]).includes(style.end))
+    bad(`end '${String(style.end)}'`);
   for (const [key, v] of [
-    ['fromSide', s.fromSide],
-    ['toSide', s.toSide],
+    ['fromSide', style.fromSide],
+    ['toSide', style.toSide],
   ] as const) {
     if (v !== undefined && !(SIDES as readonly string[]).includes(v)) bad(`${key} '${String(v)}'`);
   }
 }
 
 /** the style fields that hold a value: width, curvature, color, animated */
-function checkStyleValues(ctx: Ctx, r: DiagramRelation, s: RelationStyle): void {
-  const bad = badStyle(ctx, r);
-  if (s.width !== undefined && !(typeof s.width === 'number' && Number.isFinite(s.width) && s.width > 0))
-    bad(`width '${String(s.width)}'`);
+function checkStyleValues(ctx: Ctx, relation: DiagramRelation, style: RelationStyle): void {
+  const bad = badStyle(ctx, relation);
   if (
-    s.curvature !== undefined &&
-    !(typeof s.curvature === 'number' && Number.isFinite(s.curvature) && s.curvature > 0)
+    style.width !== undefined &&
+    !(typeof style.width === 'number' && Number.isFinite(style.width) && style.width > 0)
   )
-    bad(`curvature '${String(s.curvature)}'`);
-  if (s.color !== undefined && typeof s.color !== 'string') bad(`color '${String(s.color)}'`);
-  if (s.animated !== undefined && typeof s.animated !== 'boolean') bad(`animated '${String(s.animated)}'`);
+    bad(`width '${String(style.width)}'`);
+  if (
+    style.curvature !== undefined &&
+    !(typeof style.curvature === 'number' && Number.isFinite(style.curvature) && style.curvature > 0)
+  )
+    bad(`curvature '${String(style.curvature)}'`);
+  if (style.color !== undefined && typeof style.color !== 'string') bad(`color '${String(style.color)}'`);
+  if (style.animated !== undefined && typeof style.animated !== 'boolean') bad(`animated '${String(style.animated)}'`);
 }
 
 /** an FK's columns must be columns of the tables it joins. A table whose
  * `columns` is malformed has its own issue; here it simply lacks the column. */
-function checkColumnRefs({ m, issues }: Ctx, r: DiagramRelation): void {
+function checkColumnRefs({ model, issues }: Ctx, relation: DiagramRelation): void {
   const hasColumn = (id: string, name: string): boolean => {
-    const columns: unknown = m.nodes.find((n) => n.id === id)?.columns;
+    const columns: unknown = model.nodes.find((n) => n.id === id)?.columns;
     return (
       Array.isArray(columns) &&
       columns.some((c) => typeof c === 'object' && c !== null && (c as { name?: unknown }).name === name)
     );
   };
-  if (r.fromColumn !== undefined && !hasColumn(r.from, r.fromColumn)) {
+  if (relation.fromColumn !== undefined && !hasColumn(relation.from, relation.fromColumn)) {
     report(
       issues,
       'unknown-column',
-      `Relation '${r.id}' fromColumn '${r.fromColumn}' is not a column of '${r.from}'`,
-      r.id,
+      `Relation '${relation.id}' fromColumn '${relation.fromColumn}' is not a column of '${relation.from}'`,
+      relation.id,
     );
   }
-  if (r.toColumn !== undefined && !hasColumn(r.to, r.toColumn)) {
-    report(issues, 'unknown-column', `Relation '${r.id}' toColumn '${r.toColumn}' is not a column of '${r.to}'`, r.id);
+  if (relation.toColumn !== undefined && !hasColumn(relation.to, relation.toColumn)) {
+    report(
+      issues,
+      'unknown-column',
+      `Relation '${relation.id}' toColumn '${relation.toColumn}' is not a column of '${relation.to}'`,
+      relation.id,
+    );
   }
 }

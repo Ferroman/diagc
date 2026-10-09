@@ -2,8 +2,8 @@
 import type { DiagramModel, DiagramNode, DiagramPlane } from '../types';
 import { CommandError } from '../command-error';
 
-export const requireNode = (m: DiagramModel, id: string): DiagramNode => {
-  const n = m.nodes.find((x) => x.id === id);
+export const requireNode = (model: DiagramModel, id: string): DiagramNode => {
+  const n = model.nodes.find((x) => x.id === id);
   if (n === undefined) throw new CommandError(`Unknown node '${id}'`);
   return n;
 };

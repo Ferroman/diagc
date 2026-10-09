@@ -7,12 +7,12 @@ export const CONTAINER_HEADER = 32;
 
 /** Rough intrinsic (world-unit) sizes for LOD decisions; Plan 3 swaps in
  * renderer-measured sizes through the same Map shape. */
-export function estimateSizes(h: HierarchyIndex): Map<string, BoxSize> {
+export function estimateSizes(hierarchy: HierarchyIndex): Map<string, BoxSize> {
   const sizes = new Map<string, BoxSize>();
   const visit = (id: string): BoxSize => {
     const memo = sizes.get(id);
     if (memo) return memo;
-    const kids = h.childrenOf.get(id) ?? [];
+    const kids = hierarchy.childrenOf.get(id) ?? [];
     let size: BoxSize;
     if (kids.length === 0) {
       size = { ...LEAF_SIZE };
@@ -30,6 +30,6 @@ export function estimateSizes(h: HierarchyIndex): Map<string, BoxSize> {
     sizes.set(id, size);
     return size;
   };
-  for (const id of h.parentsOf.keys()) visit(id);
+  for (const id of hierarchy.parentsOf.keys()) visit(id);
   return sizes;
 }

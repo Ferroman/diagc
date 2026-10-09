@@ -8,25 +8,25 @@ import {
 import { CommandError } from '../command-error';
 import { prunePlaneLists, requireNode } from './shared';
 
-export function upsertLayer(m: DiagramModel, layer: DiagramLayer): DiagramModel {
-  const exists = m.layers.some((l) => l.id === layer.id);
+export function upsertLayer(model: DiagramModel, layer: DiagramLayer): DiagramModel {
+  const exists = model.layers.some((l) => l.id === layer.id);
   return {
-    ...m,
-    layers: exists ? m.layers.map((l) => (l.id === layer.id ? layer : l)) : [...m.layers, layer],
+    ...model,
+    layers: exists ? model.layers.map((l) => (l.id === layer.id ? layer : l)) : [...model.layers, layer],
   };
 }
 
-export function deleteLayer(m: DiagramModel, id: string): DiagramModel {
-  if (!m.layers.some((l) => l.id === id)) throw new CommandError(`Unknown layer '${id}'`);
+export function deleteLayer(model: DiagramModel, id: string): DiagramModel {
+  if (!model.layers.some((l) => l.id === id)) throw new CommandError(`Unknown layer '${id}'`);
   // Destructive: remove the layer's tagged nodes + relations. Cascade like
   // deleteNode — a destroyed node's containment is severed (untagged children
   // survive top-level) and relations touching it are dropped.
-  const doomed = new Set(m.nodes.filter((n) => n.layer === id).map((n) => n.id));
+  const doomed = new Set(model.nodes.filter((n) => n.layer === id).map((n) => n.id));
   // A tagged column goes with its layer too, and so does a relation anchored to
   // it: that relation is the column's foreign key, and without the row it would
   // fail validation as an unknown-column.
   const doomedColumns = new Set<string>();
-  const nodes = m.nodes
+  const nodes = model.nodes
     .filter((n) => n.layer !== id)
     .map((n) => {
       if (!n.columns?.some((c) => c.layer === id)) return n;
@@ -37,16 +37,16 @@ export function deleteLayer(m: DiagramModel, id: string): DiagramModel {
     (r.fromColumn !== undefined && doomedColumns.has(`${r.from}\u0000${r.fromColumn}`)) ||
     (r.toColumn !== undefined && doomedColumns.has(`${r.to}\u0000${r.toColumn}`));
   return {
-    ...m,
-    layers: m.layers.filter((l) => l.id !== id),
+    ...model,
+    layers: model.layers.filter((l) => l.id !== id),
     nodes,
-    relations: m.relations.filter(
+    relations: model.relations.filter(
       (r) => r.layer !== id && !doomed.has(r.from) && !doomed.has(r.to) && !anchoredToDoomed(r),
     ),
-    containment: m.containment.filter((e) => !doomed.has(e.parent) && !doomed.has(e.child)),
+    containment: model.containment.filter((e) => !doomed.has(e.parent) && !doomed.has(e.child)),
     // The layer leaves every plane's preset list, and its destroyed nodes every
     // hides/hidesTree (a stale entry fails `unknown-hidden-node` on the next save).
-    planes: prunePlaneLists(m.planes ?? [], {
+    planes: prunePlaneLists(model.planes ?? [], {
       layers: (l) => l === id,
       hides: (h) => doomed.has(h),
       hidesTree: (h) => doomed.has(h),
@@ -54,15 +54,15 @@ export function deleteLayer(m: DiagramModel, id: string): DiagramModel {
   };
 }
 
-export function mergeLayers(m: DiagramModel, sourceIds: string[], targetId?: string): DiagramModel {
-  if (targetId !== undefined && !m.layers.some((l) => l.id === targetId)) {
+export function mergeLayers(model: DiagramModel, sourceIds: string[], targetId?: string): DiagramModel {
+  if (targetId !== undefined && !model.layers.some((l) => l.id === targetId)) {
     throw new CommandError(`Unknown layer '${targetId}'`);
   }
   for (const id of sourceIds) {
-    if (!m.layers.some((l) => l.id === id)) throw new CommandError(`Unknown layer '${id}'`);
+    if (!model.layers.some((l) => l.id === id)) throw new CommandError(`Unknown layer '${id}'`);
     if (id === targetId) throw new CommandError('Cannot merge a layer into itself');
   }
-  if (sourceIds.length === 0) return m;
+  if (sourceIds.length === 0) return model;
   const sources = new Set(sourceIds);
   // Retag a source-tagged node/relation onto the target, or drop the tag
   // entirely when merging to the base sheet (targetId omitted).
@@ -75,15 +75,15 @@ export function mergeLayers(m: DiagramModel, sourceIds: string[], targetId?: str
     return { ...x, layer: targetId };
   };
   return {
-    ...m,
-    layers: m.layers.filter((l) => !sources.has(l.id)),
-    nodes: m.nodes.map((n) => {
+    ...model,
+    layers: model.layers.filter((l) => !sources.has(l.id)),
+    nodes: model.nodes.map((n) => {
       const node = retag(n);
       if (!node.columns?.some((c) => c.layer !== undefined && sources.has(c.layer))) return node;
       return { ...node, columns: node.columns.map(retag) };
     }),
-    relations: m.relations.map(retag),
-    planes: (m.planes ?? []).map((p) => {
+    relations: model.relations.map(retag),
+    planes: (model.planes ?? []).map((p) => {
       if (p.layers === undefined) return p;
       const layers =
         targetId === undefined
@@ -94,7 +94,7 @@ export function mergeLayers(m: DiagramModel, sourceIds: string[], targetId?: str
   };
 }
 
-export function upsertPlane(m: DiagramModel, plane: DiagramPlane): DiagramModel {
+export function upsertPlane(model: DiagramModel, plane: DiagramPlane): DiagramModel {
   if (plane.notation !== undefined && !(BUILTIN_NOTATIONS as readonly string[]).includes(plane.notation)) {
     throw new CommandError(`Unknown notation '${plane.notation}'`);
   }
@@ -102,7 +102,7 @@ export function upsertPlane(m: DiagramModel, plane: DiagramPlane): DiagramModel 
     if (plane.containmentOf === plane.id) {
       throw new CommandError(`Plane '${plane.id}' cannot borrow containment from itself`);
     }
-    const target = (m.planes ?? []).find((p) => p.id === plane.containmentOf);
+    const target = (model.planes ?? []).find((p) => p.id === plane.containmentOf);
     if (target === undefined) {
       throw new CommandError(`Unknown plane '${plane.containmentOf}'`);
     }
@@ -110,19 +110,24 @@ export function upsertPlane(m: DiagramModel, plane: DiagramPlane): DiagramModel 
       throw new CommandError(`Plane '${plane.containmentOf}' itself borrows containment — chains are not allowed`);
     }
   }
-  const planes = m.planes ?? [];
+  const planes = model.planes ?? [];
   const exists = planes.some((p) => p.id === plane.id);
-  return { ...m, planes: exists ? planes.map((p) => (p.id === plane.id ? plane : p)) : [...planes, plane] };
+  return { ...model, planes: exists ? planes.map((p) => (p.id === plane.id ? plane : p)) : [...planes, plane] };
 }
 
 /** Add/remove a shared node from a plane's `hides`. A node already scoped to a
  * plane is view-local, so hiding it is a no-op (validation flags a stray one). */
-export function setNodePlaneHidden(m: DiagramModel, nodeId: string, planeId: string, hidden: boolean): DiagramModel {
-  const node = requireNode(m, nodeId);
-  if (hidden && node.plane !== undefined) return m;
+export function setNodePlaneHidden(
+  model: DiagramModel,
+  nodeId: string,
+  planeId: string,
+  hidden: boolean,
+): DiagramModel {
+  const node = requireNode(model, nodeId);
+  if (hidden && node.plane !== undefined) return model;
   return {
-    ...m,
-    planes: (m.planes ?? []).map((p) => {
+    ...model,
+    planes: (model.planes ?? []).map((p) => {
       if (p.id !== planeId) return p;
       const set = new Set(p.hides ?? []);
       if (hidden) set.add(nodeId);
@@ -133,8 +138,8 @@ export function setNodePlaneHidden(m: DiagramModel, nodeId: string, planeId: str
   };
 }
 
-export function deletePlane(m: DiagramModel, id: string): DiagramModel {
-  const planes = m.planes ?? [];
+export function deletePlane(model: DiagramModel, id: string): DiagramModel {
+  const planes = model.planes ?? [];
   if (!planes.some((p) => p.id === id)) throw new CommandError(`Unknown plane '${id}'`);
   const borrower = planes.find((p) => p.containmentOf === id);
   if (borrower !== undefined) {
@@ -144,8 +149,8 @@ export function deletePlane(m: DiagramModel, id: string): DiagramModel {
   // structure doesn't silently migrate to whichever plane becomes first next.
   const isFirst = planes[0]?.id === id;
   return {
-    ...m,
+    ...model,
     planes: planes.filter((p) => p.id !== id),
-    containment: m.containment.filter((e) => e.plane !== id && !(isFirst && e.plane === undefined)),
+    containment: model.containment.filter((e) => e.plane !== id && !(isFirst && e.plane === undefined)),
   };
 }

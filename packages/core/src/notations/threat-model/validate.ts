@@ -11,10 +11,10 @@ import { TM_BOUNDARY_TYPE, TM_FLOW_KIND, TM_NOTATION } from './threat-model';
  * says nothing.
  */
 export function validateThreatModel(ctx: Ctx): void {
-  const { issues, m } = ctx;
-  if (notationPlane(m, TM_NOTATION) === undefined) return;
-  const boundaries = new Set(m.nodes.filter((n) => n.type === TM_BOUNDARY_TYPE).map((n) => n.id));
-  for (const r of m.relations) {
+  const { issues, model } = ctx;
+  if (notationPlane(model, TM_NOTATION) === undefined) return;
+  const boundaries = new Set(model.nodes.filter((n) => n.type === TM_BOUNDARY_TYPE).map((n) => n.id));
+  for (const r of model.relations) {
     if (r.kind !== TM_FLOW_KIND) continue;
     const end = boundaries.has(r.from) ? r.from : boundaries.has(r.to) ? r.to : undefined;
     if (end !== undefined)

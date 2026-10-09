@@ -5,7 +5,7 @@ import { report, type Ctx } from './context';
 /** `threats` is a generic field (any notation): each entry is checked for shape
  * wherever it appears, one issue per fault, the element as `ref`. */
 export function validateThreats(ctx: Ctx): void {
-  const { issues, m } = ctx;
+  const { issues, model } = ctx;
   const check = (ref: string, threats: unknown): void => {
     if (threats === undefined) return;
     // Shape before contents: a hand-edited file can put anything here, and the
@@ -48,8 +48,8 @@ export function validateThreats(ctx: Ctx): void {
         );
     }
   };
-  for (const n of m.nodes) check(n.id, n.threats);
-  for (const r of m.relations) check(r.id, r.threats);
+  for (const n of model.nodes) check(n.id, n.threats);
+  for (const r of model.relations) check(r.id, r.threats);
 }
 
 /** `comments` (nodes and relations) and `links` (nodes) are generic fields:
@@ -57,7 +57,7 @@ export function validateThreats(ctx: Ctx): void {
  * contract as validateThreats, for the same reason (the bubble reads them
  * unguarded). */
 export function validateComments(ctx: Ctx): void {
-  const { issues, m } = ctx;
+  const { issues, model } = ctx;
   const comments = (ref: string, list: unknown): void => {
     if (list === undefined) return;
     if (!Array.isArray(list) || list.some((c) => c === null || typeof c !== 'object')) {
@@ -87,9 +87,9 @@ export function validateComments(ctx: Ctx): void {
         report(issues, 'invalid-links', `A link on '${ref}' needs a non-empty label and url`, ref);
     }
   };
-  for (const n of m.nodes) {
+  for (const n of model.nodes) {
     comments(n.id, n.comments);
     links(n.id, n.links);
   }
-  for (const r of m.relations) comments(r.id, r.comments);
+  for (const r of model.relations) comments(r.id, r.comments);
 }

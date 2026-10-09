@@ -3,9 +3,9 @@ import { EDGE_LABEL_SIDES, type Drawings, type LayoutOverlay } from './types';
 /** Structural guard for a LayoutOverlay, shared by the studio server (before
  * persisting a layout) and the client (before trusting a loaded one). Checks
  * shape only — not referential integrity against a model. */
-export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
-  if (typeof u !== 'object' || u === null) return false;
-  const layout = u as { version?: unknown; planes?: unknown; sizes?: unknown };
+export function isLayoutOverlay(value: unknown): value is LayoutOverlay {
+  if (typeof value !== 'object' || value === null) return false;
+  const layout = value as { version?: unknown; planes?: unknown; sizes?: unknown };
   if (layout.version !== 1 || typeof layout.planes !== 'object' || layout.planes === null) return false;
   const planesOk = Object.values(layout.planes).every(
     (plane) =>
@@ -29,7 +29,7 @@ export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
         (s) => typeof s === 'object' && s !== null && dim((s as { w?: unknown }).w) && dim((s as { h?: unknown }).h),
       ));
   if (!sizesOk) return false;
-  const unfolded = (u as { unfolded?: unknown }).unfolded;
+  const unfolded = (value as { unfolded?: unknown }).unfolded;
   const unfoldedOk =
     unfolded === undefined ||
     (typeof unfolded === 'object' &&
@@ -37,7 +37,7 @@ export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
       !Array.isArray(unfolded) &&
       Object.values(unfolded).every((ids) => Array.isArray(ids) && ids.every((id) => typeof id === 'string')));
   if (!unfoldedOk) return false;
-  const edgeLabels = (u as { edgeLabels?: unknown }).edgeLabels;
+  const edgeLabels = (value as { edgeLabels?: unknown }).edgeLabels;
   const isRecord = (v: unknown): v is Record<string, unknown> =>
     typeof v === 'object' && v !== null && !Array.isArray(v);
   const placementOk = (v: unknown): boolean =>
@@ -58,7 +58,7 @@ export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
   // here is a note the reader can never find again — finiteness is checked, not
   // just the type.
   const finiteNum = (v: unknown): boolean => typeof v === 'number' && Number.isFinite(v);
-  const notes = (u as { notes?: unknown }).notes;
+  const notes = (value as { notes?: unknown }).notes;
   const notesOk =
     notes === undefined ||
     (isRecord(notes) &&
@@ -80,17 +80,17 @@ export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
   // plane's entry an object, its fields unread — so a sidecar from an older or
   // newer version, with a setting retired or added, still loads: failing here
   // would cost the reader every saved position, not just one unfamiliar field.
-  const manual = (u as { manual?: unknown }).manual;
+  const manual = (value as { manual?: unknown }).manual;
   const manualOk = manual === undefined || (isRecord(manual) && Object.values(manual).every((v) => v === true));
   if (!manualOk) return false;
-  const settings = (u as { settings?: unknown }).settings;
+  const settings = (value as { settings?: unknown }).settings;
   const settingsOk = settings === undefined || (isRecord(settings) && Object.values(settings).every(isRecord));
   if (!settingsOk) return false;
   // `export` is export-only presentation (see LayoutOverlay): an object whose
   // only field today is a list of node ids. Validate it structurally so a typo
   // is a 400 from the studio's save endpoint rather than a silently ignored
   // block — an unreadable PNG is a hard defect to trace back to a layout file.
-  const exp = (u as { export?: unknown }).export;
+  const exp = (value as { export?: unknown }).export;
   if (exp === undefined) return true;
   if (typeof exp !== 'object' || exp === null || Array.isArray(exp)) return false;
   const collapsed = (exp as { collapsed?: unknown }).collapsed;
@@ -101,9 +101,9 @@ export function isLayoutOverlay(u: unknown): u is LayoutOverlay {
  * isLayoutOverlay: shape only, shared by the save route and the client loader.
  * Every rule here is one the renderer relies on without re-checking (even point
  * count, finite numbers, positive width). */
-export function isDrawings(u: unknown): u is Drawings {
-  if (typeof u !== 'object' || u === null) return false;
-  const d = u as { version?: unknown; planes?: unknown };
+export function isDrawings(value: unknown): value is Drawings {
+  if (typeof value !== 'object' || value === null) return false;
+  const d = value as { version?: unknown; planes?: unknown };
   if (d.version !== 1 || typeof d.planes !== 'object' || d.planes === null) return false;
   const finite = (n: unknown): boolean => typeof n === 'number' && Number.isFinite(n);
   return Object.values(d.planes).every(

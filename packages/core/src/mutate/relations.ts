@@ -15,20 +15,20 @@ export interface RelationOptsInput {
 }
 
 export function addRelation(
-  m: DiagramModel,
+  model: DiagramModel,
   from: string,
   to: string,
   opts: RelationOptsInput,
 ): { model: DiagramModel; id: string } {
-  requireNode(m, from);
-  requireNode(m, to);
-  if (opts.layer !== undefined && !m.layers.some((l) => l.id === opts.layer)) {
+  requireNode(model, from);
+  requireNode(model, to);
+  if (opts.layer !== undefined && !model.layers.some((l) => l.id === opts.layer)) {
     throw new CommandError(`Unknown layer '${opts.layer}'`);
   }
   // First free suffix — counting existing pairs collides after a middle delete
   // (delete `a->b#0`, then adding again would reuse `#1`).
   let i = 0;
-  while (m.relations.some((r) => r.id === `${from}->${to}#${i}`)) i++;
+  while (model.relations.some((r) => r.id === `${from}->${to}#${i}`)) i++;
   const id = `${from}->${to}#${i}`;
   const { kind, ...rest } = opts;
   const relation = {
@@ -38,7 +38,7 @@ export function addRelation(
     kind,
     ...Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined)),
   };
-  return { model: { ...m, relations: [...m.relations, relation] }, id };
+  return { model: { ...model, relations: [...model.relations, relation] }, id };
 }
 
 export interface RelationPatch {
@@ -85,19 +85,19 @@ type RelationKeyCoverage = [RelationNullableKeys] extends [RelationNullableKey]
 const _assertRelationKeyCoverage: RelationKeyCoverage = true;
 void _assertRelationKeyCoverage;
 
-export function updateRelation(m: DiagramModel, id: string, patch: RelationPatch): DiagramModel {
-  if (!m.relations.some((r) => r.id === id)) throw new CommandError(`Unknown relation '${id}'`);
-  if (patch.layer != null && !m.layers.some((l) => l.id === patch.layer)) {
+export function updateRelation(model: DiagramModel, id: string, patch: RelationPatch): DiagramModel {
+  if (!model.relations.some((r) => r.id === id)) throw new CommandError(`Unknown relation '${id}'`);
+  if (patch.layer != null && !model.layers.some((l) => l.id === patch.layer)) {
     throw new CommandError(`Unknown layer '${patch.layer}'`);
   }
   for (const end of [patch.from, patch.to]) {
-    if (end !== undefined && !m.nodes.some((n) => n.id === end)) {
+    if (end !== undefined && !model.nodes.some((n) => n.id === end)) {
       throw new CommandError(`Unknown node '${end}'`);
     }
   }
   return {
-    ...m,
-    relations: m.relations.map((r) => {
+    ...model,
+    relations: model.relations.map((r) => {
       if (r.id !== id) return r;
       let next = { ...r };
       if (patch.from !== undefined) next.from = patch.from;
@@ -118,7 +118,7 @@ export function updateRelation(m: DiagramModel, id: string, patch: RelationPatch
   };
 }
 
-export function deleteRelation(m: DiagramModel, id: string): DiagramModel {
-  if (!m.relations.some((r) => r.id === id)) throw new CommandError(`Unknown relation '${id}'`);
-  return { ...m, relations: m.relations.filter((r) => r.id !== id) };
+export function deleteRelation(model: DiagramModel, id: string): DiagramModel {
+  if (!model.relations.some((r) => r.id === id)) throw new CommandError(`Unknown relation '${id}'`);
+  return { ...model, relations: model.relations.filter((r) => r.id !== id) };
 }

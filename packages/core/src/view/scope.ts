@@ -24,21 +24,21 @@ export interface ScopedModel {
  * database" stays visible as class → ⟨Database⟩, and a sibling of the root stands
  * for itself rather than collapsing into the ancestor both sides share).
  */
-export function scopeToRoot(m: DiagramModel, h: HierarchyIndex, root: string): ScopedModel {
+export function scopeToRoot(model: DiagramModel, hierarchy: HierarchyIndex, root: string): ScopedModel {
   const sub = new Set<string>();
-  const stack = [...(h.childrenOf.get(root) ?? [])];
+  const stack = [...(hierarchy.childrenOf.get(root) ?? [])];
   while (stack.length > 0) {
     const id = stack.pop()!;
     if (sub.has(id)) continue;
     sub.add(id);
-    stack.push(...(h.childrenOf.get(id) ?? []));
+    stack.push(...(hierarchy.childrenOf.get(id) ?? []));
   }
 
   // the drill root and everything containing it (first-parent chain) — a stub
   // representing a box that CONTAINS the frame would say nothing about the edge
   const rootAncestors = new Set<string>([root]);
   for (let cur = root; ;) {
-    const p = (h.parentsOf.get(cur) ?? [])[0];
+    const p = (hierarchy.parentsOf.get(cur) ?? [])[0];
     if (p === undefined || rootAncestors.has(p)) break;
     rootAncestors.add(p);
     cur = p;
@@ -52,14 +52,14 @@ export function scopeToRoot(m: DiagramModel, h: HierarchyIndex, root: string): S
     const seen = new Set<string>([id]);
     let cur = id;
     for (;;) {
-      const p = (h.parentsOf.get(cur) ?? [])[0];
+      const p = (hierarchy.parentsOf.get(cur) ?? [])[0];
       if (p === undefined || rootAncestors.has(p) || seen.has(p)) return cur;
       seen.add(p);
       cur = p;
     }
   };
 
-  const nodeOf = new Map(m.nodes.map((n) => [n.id, n]));
+  const nodeOf = new Map(model.nodes.map((n) => [n.id, n]));
   const externals = new Map<string, string>();
   const stubFor = (offFrame: string): string | undefined => {
     const rep = repOf(offFrame);
@@ -70,7 +70,7 @@ export function scopeToRoot(m: DiagramModel, h: HierarchyIndex, root: string): S
   };
 
   const relations: DiagramRelation[] = [];
-  for (const r of m.relations) {
+  for (const r of model.relations) {
     const fromIn = sub.has(r.from);
     const toIn = sub.has(r.to);
     if (fromIn && toIn) {
@@ -87,7 +87,7 @@ export function scopeToRoot(m: DiagramModel, h: HierarchyIndex, root: string): S
   // The subtree is already within one resolved plane; the synthetic model is
   // plane-less, so strip each node's `plane` scope (else buildHierarchy would
   // filter a plane-scoped node out when no plane is active).
-  const nodes = m.nodes.filter((n) => sub.has(n.id)).map(({ plane: _plane, ...rest }) => rest);
+  const nodes = model.nodes.filter((n) => sub.has(n.id)).map(({ plane: _plane, ...rest }) => rest);
   // a stub keeps the represented node's visual identity (type/shape/color/icon)
   // so it renders like the original entity; the renderer adds the ghost look
   for (const [stubId, rep] of externals) {
@@ -105,12 +105,12 @@ export function scopeToRoot(m: DiagramModel, h: HierarchyIndex, root: string): S
       }),
     });
   }
-  const containment = m.containment
+  const containment = model.containment
     .filter((e) => sub.has(e.parent) && sub.has(e.child))
     .map(({ plane: _plane, ...rest }) => rest);
 
   // Drill happens within one already-resolved plane; the synthetic model is
   // plane-less so buildHierarchy uses its raw containment (root's children +
   // stubs are the parentless roots).
-  return { model: { ...m, nodes, containment, relations, planes: [] }, externals };
+  return { model: { ...model, nodes, containment, relations, planes: [] }, externals };
 }

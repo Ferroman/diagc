@@ -42,8 +42,8 @@ export function activeNotation(
   return id !== undefined && (BUILTIN_NOTATIONS as readonly string[]).includes(id) ? (id as NotationId) : undefined;
 }
 
-export function compileView(m: DiagramModel, viewport: ViewportState): CompiledView {
-  const planes = m.planes ?? [];
+export function compileView(model: DiagramModel, viewport: ViewportState): CompiledView {
+  const planes = model.planes ?? [];
   const plane = viewport.plane !== undefined ? planes.find((p) => p.id === viewport.plane) : planes[0];
   // A plane's `layers` are the DEFAULT, not a floor: `activeLayers` undefined
   // means the host has no opinion, so the plane's presets apply; an array — even
@@ -55,13 +55,13 @@ export function compileView(m: DiagramModel, viewport: ViewportState): CompiledV
   const activeLayerSet = new Set(activeLayers);
   // The plane being viewed, not its containment donor: buildHierarchy resolves
   // `containmentOf` itself, and needs the viewed plane to read its `hides`.
-  const hierarchy = buildHierarchy(m, viewport.plane, activeLayerSet);
+  const hierarchy = buildHierarchy(model, viewport.plane, activeLayerSet);
 
   // Isolated drill view: swap in a model scoped to root's interior (+ external
   // stubs), then run the standard pipeline over it so LOD, promotion and edge
   // aggregation all work unchanged.
   if (viewport.root !== undefined && hierarchy.childrenOf.has(viewport.root)) {
-    const scoped = scopeToRoot(m, hierarchy, viewport.root);
+    const scoped = scopeToRoot(model, hierarchy, viewport.root);
     const sh = buildHierarchy(scoped.model, undefined, activeLayerSet);
     const lod = computeLod({ hierarchy: sh, focus: viewport.focus, pins: viewport.pins });
     const tree = buildViewTree(scoped.model, sh, lod);
@@ -81,13 +81,13 @@ export function compileView(m: DiagramModel, viewport: ViewportState): CompiledV
   }
 
   const lod = computeLod({ hierarchy, focus: viewport.focus, pins: viewport.pins });
-  const tree = buildViewTree(m, hierarchy, lod);
+  const tree = buildViewTree(model, hierarchy, lod);
   filterColumns(tree.byId.values(), activeLayerSet);
-  const edges = resolveEdges(m, tree, activeLayers, plane?.baseRelations ?? true);
+  const edges = resolveEdges(model, tree, activeLayers, plane?.baseRelations ?? true);
   const layoutEdges = resolveEdges(
-    m,
+    model,
     tree,
-    m.layers.map((l) => l.id),
+    model.layers.map((l) => l.id),
     true,
   );
   return { roots: tree.roots, edges, layoutEdges, lod };

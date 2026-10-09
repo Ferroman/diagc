@@ -27,12 +27,12 @@ import {
  * mid-edit (and unopenable once on disk).
  */
 export function validateFishbone(ctx: Ctx): void {
-  const { issues, m } = ctx;
-  const where = notationPlane(m, FISHBONE_NOTATION);
+  const { issues, model } = ctx;
+  const where = notationPlane(model, FISHBONE_NOTATION);
   if (where === undefined) return;
   const { plane } = where;
 
-  const fb = m.nodes.filter(isFishboneNode);
+  const fb = model.nodes.filter(isFishboneNode);
   // An empty diagram — or one holding only a stray comment — is where every
   // fishbone diagram starts, and the studio never opens a model that already
   // has issues: the head is only wanted once there is something to hang on it.
@@ -43,7 +43,7 @@ export function validateFishbone(ctx: Ctx): void {
       issues,
       'fb-no-effect',
       'A fishbone diagram needs an effect (a node of type fb-effect) at its head',
-      plane?.id ?? m.id,
+      plane?.id ?? model.id,
     );
   }
   for (const extra of effects.slice(1)) {
@@ -62,11 +62,11 @@ export function validateFishbone(ctx: Ctx): void {
 /** One issue for each fishbone node the tree leaves off the fish, naming why (see
  * validateFishbone for the order the reasons are tried in). */
 function checkPlacements(ctx: Ctx, fb: readonly DiagramNode[]): void {
-  const { issues, warnings, m } = ctx;
+  const { issues, warnings, model } = ctx;
   // The same parent pick fishboneTree makes — shared, so the rule can't drift between the two.
   const typeOf = new Map(fb.map((n) => [n.id, n.type]));
-  const parentOf = fishboneParents(m);
-  const tree = fishboneTree(m);
+  const parentOf = fishboneParents(model);
+  const tree = fishboneTree(model);
   const { onFish, subIds } = onTheFish(tree);
   for (const n of fb) {
     const parent = parentOf.get(n.id);

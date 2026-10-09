@@ -14,12 +14,12 @@ import { GIT_NOTATION, GIT_STAGE_TYPE, gitGraph, isGitKind, stageCommit, type Gi
  * git planes per model is deferred.
  */
 export function validateGit(ctx: Ctx): void {
-  const { issues, m } = ctx;
-  const where = notationPlane(m, GIT_NOTATION);
+  const { issues, model } = ctx;
+  const where = notationPlane(model, GIT_NOTATION);
   if (where === undefined) return;
   const { plane } = where;
-  const g = gitGraph(m, plane?.id);
-  const typeOf = new Map(m.nodes.map((n) => [n.id, n.type]));
+  const g = gitGraph(model, plane?.id);
+  const typeOf = new Map(model.nodes.map((n) => [n.id, n.type]));
   const isCommit = (id: string): boolean => typeOf.get(id) === 'commit';
   for (const [id, p] of checkLinks(ctx, g, isCommit)) {
     if (p.commit > 1) report(issues, 'git-parents', `Commit '${id}' has more than one incoming commit link`, id);
@@ -43,12 +43,12 @@ export function validateGit(ctx: Ctx): void {
  * across lanes. Returns each commit's count of incoming commit and branch links. */
 function checkLinks(
   ctx: Ctx,
-  g: GitGraph,
+  graph: GitGraph,
   isCommit: (id: string) => boolean,
 ): Map<string, { commit: number; branch: number }> {
-  const { issues, m } = ctx;
+  const { issues, model } = ctx;
   const parents = new Map<string, { commit: number; branch: number }>();
-  for (const r of m.relations) {
+  for (const r of model.relations) {
     if (!isGitKind(r.kind)) continue;
     // dangling endpoints are validateRelations' finding — don't double-report
     if (!ctx.nodeIds.has(r.from) || !ctx.nodeIds.has(r.to)) continue;
@@ -56,8 +56,8 @@ function checkLinks(
       report(issues, 'git-link-endpoints', `Relation '${r.id}' (${r.kind}) must join two commit nodes`, r.id);
       continue;
     }
-    const a = g.laneOf.get(r.from);
-    const b = g.laneOf.get(r.to);
+    const a = graph.laneOf.get(r.from);
+    const b = graph.laneOf.get(r.to);
     if (a === undefined || b === undefined) continue; // reported per commit below
     const sameLane = a === b;
     if (r.kind === 'commit' && !sameLane) {
@@ -78,8 +78,8 @@ function checkLinks(
 }
 
 /** a stage spans commits: its `from` is required, and both ends must be commits */
-function checkStages({ issues, m }: Ctx, isCommit: (id: string) => boolean): void {
-  for (const n of m.nodes) {
+function checkStages({ issues, model }: Ctx, isCommit: (id: string) => boolean): void {
+  for (const n of model.nodes) {
     if (n.type !== GIT_STAGE_TYPE) continue;
     const from = stageCommit(n, 'from');
     if (from === undefined) {
@@ -94,8 +94,8 @@ function checkStages({ issues, m }: Ctx, isCommit: (id: string) => boolean): voi
 }
 
 /** a commit's `gap` is a count of empty columns */
-function checkGaps({ issues, m }: Ctx): void {
-  for (const n of m.nodes) {
+function checkGaps({ issues, model }: Ctx): void {
+  for (const n of model.nodes) {
     if (n.type !== 'commit') continue;
     const raw = n.metadata?.['gap'];
     if (raw === undefined) continue;

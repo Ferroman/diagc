@@ -65,10 +65,10 @@ export interface PlanSpan {
  * missing, malformed or reversed — each of those is a validation finding
  * (`plan-missing`, `plan-date`, `plan-span`); here it just means "nothing to
  * draw". */
-export function spanOf(n: DiagramNode): PlanSpan | undefined {
-  if (!isPlanZone(n)) return undefined;
-  const start = dayOf(n.metadata?.start);
-  const end = dayOf(n.metadata?.end);
+export function spanOf(node: DiagramNode): PlanSpan | undefined {
+  if (!isPlanZone(node)) return undefined;
+  const start = dayOf(node.metadata?.start);
+  const end = dayOf(node.metadata?.end);
   return start === undefined || end === undefined || end < start ? undefined : { start, end };
 }
 
@@ -201,10 +201,10 @@ export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
 
 /** `id` plus every descendant zone and event, pre-order — what moves with a
  * zone. Borrowed nodes are not listed: their place is their row. */
-export function planSubtree(g: PlanGraph, id: string): string[] {
+export function planSubtree(graph: PlanGraph, id: string): string[] {
   const out: string[] = [id];
   const walk = (z: string): void => {
-    const c = g.children.get(z);
+    const c = graph.children.get(z);
     if (c === undefined) return;
     for (const child of c.zones) {
       out.push(child);

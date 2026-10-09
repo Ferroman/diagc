@@ -101,7 +101,7 @@ export interface Ctx {
   issues: ValidationIssue[];
   /** notices that never block a save or a compile (see diagramWarnings) */
   warnings: ValidationIssue[];
-  m: DiagramModel;
+  model: DiagramModel;
   planes: DiagramPlane[];
   nodeIds: Set<string>;
   layerIds: Set<string>;
@@ -118,11 +118,11 @@ export function reportContained(
   ids: ReadonlySet<string>,
   issue: { code: Code; message: (child: string, parent: string) => string },
 ): void {
-  const { issues, m } = ctx;
-  const active = plane?.id ?? defaultPlaneOf(m);
+  const { issues, model } = ctx;
+  const active = plane?.id ?? defaultPlaneOf(model);
   const reported = new Set<string>();
-  for (const e of m.containment) {
-    if (!isOnPlane(e, active, m) || !ids.has(e.child) || reported.has(e.child)) continue;
+  for (const e of model.containment) {
+    if (!isOnPlane(e, active, model) || !ids.has(e.child) || reported.has(e.child)) continue;
     reported.add(e.child);
     report(issues, issue.code, issue.message(e.child, e.parent), e.child);
   }

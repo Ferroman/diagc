@@ -62,10 +62,10 @@ function changedFields(before: object, after: object, skip: ReadonlySet<string>)
 }
 
 /** each node's containers, as `plane:parent` (default plane spelled out) */
-function parentsByNode(m: DiagramModel): Map<string, string> {
-  const defaultPlane = defaultPlaneOf(m) ?? '';
+function parentsByNode(model: DiagramModel): Map<string, string> {
+  const defaultPlane = defaultPlaneOf(model) ?? '';
   const sets = new Map<string, string[]>();
-  for (const e of m.containment) {
+  for (const e of model.containment) {
     const list = sets.get(e.child) ?? [];
     list.push(`${e.plane ?? defaultPlane}:${e.parent}`);
     sets.set(e.child, list);
@@ -138,33 +138,33 @@ export function diffModels(before: DiagramModel, after: DiagramModel): ModelDiff
   };
 }
 
-export function isEmptyDiff(d: ModelDiff): boolean {
+export function isEmptyDiff(diff: ModelDiff): boolean {
   return (
-    d.nodes.added.length +
-      d.nodes.removed.length +
-      d.nodes.changed.length +
-      d.relations.added.length +
-      d.relations.removed.length +
-      d.relations.changed.length +
-      d.layers.added.length +
-      d.layers.removed.length +
-      d.planes.added.length +
-      d.planes.removed.length ===
+    diff.nodes.added.length +
+      diff.nodes.removed.length +
+      diff.nodes.changed.length +
+      diff.relations.added.length +
+      diff.relations.removed.length +
+      diff.relations.changed.length +
+      diff.layers.added.length +
+      diff.layers.removed.length +
+      diff.planes.added.length +
+      diff.planes.removed.length ===
     0
   );
 }
 
-export function diffMarks(d: ModelDiff, side: 'before' | 'after'): DiffMarks {
+export function diffMarks(diff: ModelDiff, side: 'before' | 'after'): DiffMarks {
   const nodes: Record<string, DiffStatus> = {};
   const relations: Record<string, DiffStatus> = {};
-  for (const n of d.nodes.changed) nodes[n.id] = 'changed';
-  for (const r of d.relations.changed) relations[side === 'before' ? r.before : r.after] = 'changed';
+  for (const n of diff.nodes.changed) nodes[n.id] = 'changed';
+  for (const r of diff.relations.changed) relations[side === 'before' ? r.before : r.after] = 'changed';
   if (side === 'before') {
-    for (const n of d.nodes.removed) nodes[n.id] = 'removed';
-    for (const r of d.relations.removed) relations[r.id] = 'removed';
+    for (const n of diff.nodes.removed) nodes[n.id] = 'removed';
+    for (const r of diff.relations.removed) relations[r.id] = 'removed';
   } else {
-    for (const n of d.nodes.added) nodes[n.id] = 'added';
-    for (const r of d.relations.added) relations[r.id] = 'added';
+    for (const n of diff.nodes.added) nodes[n.id] = 'added';
+    for (const r of diff.relations.added) relations[r.id] = 'added';
   }
   return { nodes, relations };
 }

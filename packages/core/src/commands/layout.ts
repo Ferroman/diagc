@@ -37,10 +37,10 @@ export const emptyLayout = (): LayoutOverlay => ({ version: 1, planes: {} });
  */
 export function openingPins(
   layout: LayoutOverlay | undefined,
-  m: DiagramModel,
+  model: DiagramModel,
   plane?: string,
 ): Record<string, 'expanded' | 'collapsed'> {
-  const ids = layout?.unfolded?.[layoutPlaneKey(m, plane)] ?? [];
+  const ids = layout?.unfolded?.[layoutPlaneKey(model, plane)] ?? [];
   return Object.fromEntries(ids.map((id) => [id, 'expanded' as const]));
 }
 

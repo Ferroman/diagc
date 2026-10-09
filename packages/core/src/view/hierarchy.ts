@@ -38,11 +38,15 @@ export interface HierarchyIndex {
  * cascade: a layer is an overlay you flip, and its children keep their own
  * visibility, so a layered box still promotes its interior when it is off.
  */
-export function buildHierarchy(m: DiagramModel, plane?: string, activeLayers?: ReadonlySet<string>): HierarchyIndex {
-  const planes = m.planes ?? [];
+export function buildHierarchy(
+  model: DiagramModel,
+  plane?: string,
+  activeLayers?: ReadonlySet<string>,
+): HierarchyIndex {
+  const planes = model.planes ?? [];
   // `?? plane` keeps an unknown plane id an empty view instead of falling back to
   // every containment edge in the model.
-  const active = containmentPlaneOf(m, plane) ?? plane;
+  const active = containmentPlaneOf(model, plane) ?? plane;
   const viewDef = plane !== undefined ? planes.find((p) => p.id === plane) : planes[0];
   const donorDef = active !== undefined ? planes.find((p) => p.id === active) : undefined;
   const hides = new Set(viewDef?.hides ?? donorDef?.hides ?? []);
@@ -50,7 +54,7 @@ export function buildHierarchy(m: DiagramModel, plane?: string, activeLayers?: R
 
   // This plane's containment BEFORE any visibility filtering: the cascade has to
   // see the edges that point into a hidden box to know what it contained.
-  const planeEdges = active === undefined ? m.containment : containmentOn(m, active);
+  const planeEdges = active === undefined ? model.containment : containmentOn(model, active);
 
   // The `hidesTree` closure. Only `hidesTree` ids SEED it, but a parent hidden
   // either way counts as hidden when deciding whether a child has any visible
@@ -58,7 +62,7 @@ export function buildHierarchy(m: DiagramModel, plane?: string, activeLayers?: R
   // `hides` (validation reports that as `redundant-hide`), so it must not seed
   // the closure either. Derived hiding applies to every node, scoped ones
   // included — "nothing visible contains me any more".
-  const scopedIds = new Set(m.nodes.filter((n) => n.plane !== undefined).map((n) => n.id));
+  const scopedIds = new Set(model.nodes.filter((n) => n.plane !== undefined).map((n) => n.id));
   const shared = (id: string): boolean => !scopedIds.has(id);
   const hidden = new Set([...hides, ...hidesTree].filter(shared));
   const parentsAll = new Map<string, string[]>();
@@ -87,7 +91,7 @@ export function buildHierarchy(m: DiagramModel, plane?: string, activeLayers?: R
     n.layer === undefined || activeLayers === undefined || activeLayers.has(n.layer);
   const isVisible = (n: DiagramNode): boolean =>
     (n.plane === undefined || n.plane === active) && !hidden.has(n.id) && layerOn(n);
-  const visible = new Set(m.nodes.filter(isVisible).map((n) => n.id));
+  const visible = new Set(model.nodes.filter(isVisible).map((n) => n.id));
 
   const edges = planeEdges.filter((e) => visible.has(e.parent) && visible.has(e.child));
 
@@ -101,6 +105,8 @@ export function buildHierarchy(m: DiagramModel, plane?: string, activeLayers?: R
     childrenOf.get(e.parent)?.push(e.child);
     parentsOf.get(e.child)?.push(e.parent);
   }
-  const roots = m.nodes.filter((n) => visible.has(n.id) && (parentsOf.get(n.id)?.length ?? 0) === 0).map((n) => n.id);
+  const roots = model.nodes
+    .filter((n) => visible.has(n.id) && (parentsOf.get(n.id)?.length ?? 0) === 0)
+    .map((n) => n.id);
   return { parentsOf, childrenOf, roots };
 }

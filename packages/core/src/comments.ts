@@ -3,8 +3,8 @@ import type { Comment, DiagramModel } from './types';
 
 /** The element's comment list — `[]` when it carries none, undefined when there
  * is no such element (the two are different answers; see threatsOf). */
-export function commentsOf(m: DiagramModel, t: ElementRef): readonly Comment[] | undefined {
-  const el = findElement(m, t);
+export function commentsOf(model: DiagramModel, t: ElementRef): readonly Comment[] | undefined {
+  const el = findElement(model, t);
   return el === undefined ? undefined : (el.comments ?? []);
 }
 
