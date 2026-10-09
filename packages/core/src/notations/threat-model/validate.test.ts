@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { validate } from '../../validate/index';
 import type { DiagramModel } from '../../types';
-
-function emptyModel(): DiagramModel {
-  return { version: 1, id: 'm', name: 'm', nodes: [], containment: [], relations: [], layers: [], planes: [] };
-}
+import { emptyModel } from '../../validate/models.fixture';
 
 describe('threat-model notation', () => {
   it('forbids a data flow on a boundary, only where the notation is active', () => {

@@ -58,7 +58,7 @@ function checkLinks(
     }
     const a = graph.laneOf.get(r.from);
     const b = graph.laneOf.get(r.to);
-    if (a === undefined || b === undefined) continue; // reported per commit below
+    if (a === undefined || b === undefined) continue; // validateGit reports a commit outside every lane
     const sameLane = a === b;
     if (r.kind === 'commit' && !sameLane) {
       report(issues, 'git-commit-lane', `Relation '${r.id}' (commit) must stay within one lane`, r.id);

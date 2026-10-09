@@ -321,7 +321,7 @@ describe('positionIn', () => {
   it('reads the first frame that is inside the file', () => {
     const stack = [
       'TypeError: x',
-      '    at ModelBuilder.fishbone (/repo/packages/core/src/builder.ts:972:10)',
+      '    at ModelBuilder.fishbone (/repo/packages/core/src/builder/model-builder.ts:244:10)',
       '    at /work/twice.diagram.ts:4:3',
       '    at /work/twice.diagram.ts:9:1',
     ].join('\n');
