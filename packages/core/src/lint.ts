@@ -47,7 +47,9 @@ export function lintModel(model: DiagramModel): LintFinding[] {
     (model.planes ?? []).length > 0 ? model.planes!.map((p) => buildHierarchy(model, p.id)) : [buildHierarchy(model)];
   duplicateNames(model, views, add);
   vocabulary(model, add);
-  unused(model, add);
+  unusedLayers(model, add);
+  emptyPlanes(model, add);
+  unusedLegendItems(model, add);
   undrawn(model, views, add);
   return out;
 }
@@ -138,10 +140,8 @@ function distance(a: string, b: string): number {
   return prev[b.length]!;
 }
 
-/** Declarations nothing uses: a layer no node, row, relation or rule is on; a
- * plane identical to a flat view of the shared nodes; a legend row for a type or
- * kind the diagram never draws. */
-function unused(model: DiagramModel, add: Add): void {
+/** A layer no node, row, relation or rule is on. */
+function unusedLayers(model: DiagramModel, add: Add): void {
   const layersUsed = new Set<string>();
   for (const n of model.nodes) {
     if (n.layer !== undefined) layersUsed.add(n.layer);
@@ -152,9 +152,11 @@ function unused(model: DiagramModel, add: Add): void {
   for (const l of model.layers) {
     if (!layersUsed.has(l.id)) add('unused-layer', `Layer '${l.id}' has nothing on it`, l.id);
   }
+}
 
-  const planes = model.planes ?? [];
-  for (const p of planes) {
+/** A plane identical to a flat view of the shared nodes. */
+function emptyPlanes(model: DiagramModel, add: Add): void {
+  for (const p of model.planes ?? []) {
     const shaped =
       p.containmentOf !== undefined ||
       p.notation !== undefined ||
@@ -171,7 +173,10 @@ function unused(model: DiagramModel, add: Add): void {
         p.id,
       );
   }
+}
 
+/** A legend row for a type or kind the diagram never draws. */
+function unusedLegendItems(model: DiagramModel, add: Add): void {
   const types = new Set(model.nodes.map((n) => n.type));
   const kinds = new Set(model.relations.map((r) => r.kind));
   for (const item of listOf(model.legend?.items)) {

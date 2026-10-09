@@ -152,41 +152,6 @@
       "count": 1
     }
   },
-  "packages/core/src/guards.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
-  "packages/core/src/lint.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
-  "packages/core/src/notations/plan/plan.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
-  "packages/core/src/view/edges.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
-  "packages/core/src/view/hierarchy.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
-  "packages/core/src/view/scope.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
-  "packages/core/src/view/tree.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "packages/diagc/src/api/handlers.ts": {
     "complexity": {
       "count": 1
