@@ -1,4 +1,5 @@
 import type { DiagramModel } from './types';
+import { ACTIVITY_FRAME_TYPE } from './activity/activity';
 
 export type LayoutDirection = 'DOWN' | 'RIGHT' | 'LEFT' | 'UP';
 
@@ -20,5 +21,5 @@ export type LayoutDirection = 'DOWN' | 'RIGHT' | 'LEFT' | 'UP';
  * picker shows the default as selected) cannot drift.
  */
 export function defaultLayoutDirection(model: Pick<DiagramModel, 'nodes'>): LayoutDirection {
-  return model.nodes.some((n) => n.type === 'activity-frame') ? 'RIGHT' : 'DOWN';
+  return model.nodes.some((n) => n.type === ACTIVITY_FRAME_TYPE) ? 'RIGHT' : 'DOWN';
 }

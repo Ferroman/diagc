@@ -1,5 +1,6 @@
 import type { DiagramModel } from './types';
 import { containmentOn, containmentPlaneOf } from './planes';
+import { ACTIVITY_LANE_TYPE } from './activity/activity';
 
 /** Past this many lanes, trying every order is too slow to do on a click. */
 const MAX_PERMUTED_LANES = 8;
@@ -24,7 +25,7 @@ export function bestLaneOrder(m: DiagramModel, frameId: string, plane?: string):
   const edges = containmentOn(m, containmentPlaneOf(m, plane));
   const typeOf = new Map(m.nodes.map((n) => [n.id, n.type]));
   const lanes = edges
-    .filter((e) => e.parent === frameId && typeOf.get(e.child) === 'activity-lane')
+    .filter((e) => e.parent === frameId && typeOf.get(e.child) === ACTIVITY_LANE_TYPE)
     .map((e) => e.child);
   if (lanes.length < 3 || lanes.length > MAX_PERMUTED_LANES) return lanes;
 

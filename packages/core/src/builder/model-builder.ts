@@ -27,6 +27,7 @@ import { SecondOrderBuilder } from '../notations/second-order/builder';
 import { ThreatModelBuilder } from '../notations/threat-model/builder';
 import { TM_NOTATION } from '../notations/threat-model/threat-model';
 import { NodeRef, type CommentOpts, type NodeOpts, type RelateOpts, type ThreatOpts } from './node-ref';
+import { ACTIVITY_FRAME_TYPE } from '../activity/activity';
 
 export class ModelBuilder {
   private nodes: DiagramNode[] = [];
@@ -282,7 +283,7 @@ export class ModelBuilder {
    * call is one frame; frames are ordinary containers on whatever plane the
    * model uses (no notation, no plane creation). */
   activity(id: string, opts: { name?: string } = {}): ActivityBuilder {
-    this.node(id, { type: 'activity-frame', ...defined({ name: opts.name }) });
+    this.node(id, { type: ACTIVITY_FRAME_TYPE, ...defined({ name: opts.name }) });
     return new ActivityBuilder(id, this);
   }
 

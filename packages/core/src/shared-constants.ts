@@ -2,6 +2,8 @@
 // from types.ts because the author API exports every name in types.ts; these are
 // internal.
 
+import { ACTIVITY_FRAME_TYPE } from './activity/activity';
+
 /** Default footprint for image nodes whose size is not known yet. Kept in
  * core so the editor and the renderer cannot drift apart. */
 export const DEFAULT_IMAGE_NODE_SIZE = { w: 160, h: 120 } as const;
@@ -15,7 +17,7 @@ export const RESERVED_NODE_ID = '__root__';
  * dies — an orphaned activity lane or git commit fails validation until undone.
  * Deleting one of these cascades to its subtree; every other container severs
  * only. Kept in core so the editor UI and the command algebra agree. */
-export const CASCADE_DELETE_TYPES = ['activity-frame', 'branch'] as const;
+export const CASCADE_DELETE_TYPES = [ACTIVITY_FRAME_TYPE, 'branch'] as const;
 
 /** Pen width when a stroke names none. In core so editor and renderer cannot drift. */
 export const DEFAULT_STROKE_WIDTH = 3;

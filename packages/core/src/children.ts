@@ -1,5 +1,12 @@
 import type { DiagramModel } from './types';
 import type { CompiledView, ViewNode } from './view/types';
+import {
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_LANE_TYPE,
+  ACTIVITY_REGION_TYPE,
+  isActivityChrome,
+  isActivityType,
+} from './activity/activity';
 
 /**
  * Build a parent → children index over a set of containment edges. Shared by the
@@ -54,12 +61,12 @@ export function countAnchored(model: DiagramModel, view: CompiledView): Map<stri
  * model the canvas draws as a stray box.
  */
 export function allowedParentTypes(type: string | undefined): ReadonlySet<string> | undefined {
-  if (type === 'activity-lane') return ACTIVITY_LANE_PARENTS;
-  if (type === 'activity-region') return ACTIVITY_REGION_PARENTS;
-  if (type !== undefined && type.startsWith('activity-') && type !== 'activity-frame') return ACTIVITY_FLOW_PARENTS;
+  if (type === ACTIVITY_LANE_TYPE) return ACTIVITY_LANE_PARENTS;
+  if (type === ACTIVITY_REGION_TYPE) return ACTIVITY_REGION_PARENTS;
+  if (isActivityType(type) && !isActivityChrome(type)) return ACTIVITY_FLOW_PARENTS;
   return undefined;
 }
 
-const ACTIVITY_LANE_PARENTS: ReadonlySet<string> = new Set(['activity-frame']);
-const ACTIVITY_REGION_PARENTS: ReadonlySet<string> = new Set(['activity-lane']);
-const ACTIVITY_FLOW_PARENTS: ReadonlySet<string> = new Set(['activity-lane', 'activity-region']);
+const ACTIVITY_LANE_PARENTS: ReadonlySet<string> = new Set([ACTIVITY_FRAME_TYPE]);
+const ACTIVITY_REGION_PARENTS: ReadonlySet<string> = new Set([ACTIVITY_LANE_TYPE]);
+const ACTIVITY_FLOW_PARENTS: ReadonlySet<string> = new Set([ACTIVITY_LANE_TYPE, ACTIVITY_REGION_TYPE]);

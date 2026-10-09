@@ -1,5 +1,6 @@
 import { GIT_STAGE_TYPE } from './notations/git-graph/git-graph';
 import type { BUILTIN_NOTATIONS } from './types';
+import { ACTIVITY_TYPES } from './activity/activity';
 
 /**
  * The node types and relation kinds the renderer draws with a style of its own.
@@ -62,18 +63,7 @@ export const NODE_TYPES: readonly string[] = [
   'aws-az',
   'aws-subnet-public',
   'aws-subnet-private',
-  'activity-frame',
-  'activity-lane',
-  'activity-region',
-  'activity-action',
-  'activity-decision',
-  'activity-bar',
-  'activity-start',
-  'activity-end',
-  'activity-send',
-  'activity-receive',
-  'activity-object',
-  'activity-note',
+  ...ACTIVITY_TYPES,
   'so-decision',
   'so-consequence-positive',
   'so-consequence-negative',

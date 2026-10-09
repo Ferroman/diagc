@@ -22,6 +22,7 @@
 export { ejectSource } from './eject';
 export * from './types';
 export * from './shared-constants';
+export * from './activity/activity';
 export * from './mutate/nodes';
 export * from './mutate/containment';
 export * from './mutate/relations';

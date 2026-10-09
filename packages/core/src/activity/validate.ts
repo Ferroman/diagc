@@ -1,4 +1,5 @@
 import { report, type Ctx } from '../validate/context';
+import { ACTIVITY_FRAME_TYPE, ACTIVITY_LANE_TYPE, ACTIVITY_REGION_TYPE } from './activity';
 
 /**
  * Activity-diagram structure, keyed purely on node types — no plane or
@@ -14,7 +15,7 @@ export function validateActivity(ctx: Ctx): void {
   for (const e of m.containment) {
     // dangling ids are validateContainment's finding — don't double-report
     if (!ctx.nodeIds.has(e.parent) || !ctx.nodeIds.has(e.child)) continue;
-    if (typeOf.get(e.parent) === 'activity-frame' && typeOf.get(e.child) !== 'activity-lane') {
+    if (typeOf.get(e.parent) === ACTIVITY_FRAME_TYPE && typeOf.get(e.child) !== ACTIVITY_LANE_TYPE) {
       report(
         issues,
         'activity-frame-children',
@@ -23,25 +24,25 @@ export function validateActivity(ctx: Ctx): void {
       );
     }
     const ct = typeOf.get(e.child);
-    if (ct === 'activity-lane' || ct === 'activity-region') {
+    if (ct === ACTIVITY_LANE_TYPE || ct === ACTIVITY_REGION_TYPE) {
       parentsOf.set(e.child, [...(parentsOf.get(e.child) ?? []), e.parent]);
     }
   }
   for (const n of m.nodes) {
-    if (n.type === 'activity-lane') {
+    if (n.type === ACTIVITY_LANE_TYPE) {
       const ps = parentsOf.get(n.id) ?? [];
       if (ps.length === 0) {
         report(issues, 'activity-lane-parent', `Activity lane '${n.id}' must be contained by an activity-frame`, n.id);
       }
       for (const p of ps) {
-        if (typeOf.get(p) !== 'activity-frame') {
+        if (typeOf.get(p) !== ACTIVITY_FRAME_TYPE) {
           report(issues, 'activity-lane-parent', `Activity lane '${n.id}' has non-frame parent '${p}'`, n.id);
         }
       }
-    } else if (n.type === 'activity-region') {
+    } else if (n.type === ACTIVITY_REGION_TYPE) {
       // a loose region is legal (mid-edit); only a WRONG parent is a defect
       for (const p of parentsOf.get(n.id) ?? []) {
-        if (typeOf.get(p) !== 'activity-lane') {
+        if (typeOf.get(p) !== ACTIVITY_LANE_TYPE) {
           report(
             issues,
             'activity-region-parent',
