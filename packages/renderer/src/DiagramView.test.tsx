@@ -2594,7 +2594,7 @@ describe('plan notation', () => {
     await waitFor(() => expect(onNodesMoved).toHaveBeenCalled());
     const [positions, deltas] = onNodesMoved.mock.calls[0]!;
     // the arranged x is `dep`'s date, laid out from the plan's origin (1 Jan of
-    // the range's start year — see PlanGraph.origin, packages/core/src/plan.ts)
+    // the range's start year — see PlanGraph.origin, packages/core/src/notations/plan/plan.ts)
     const arrangedX = PLAN_LAYOUT.DAY * (dayOf('2026-02-02')! - dayOf('2026-01-01')!);
     expect(deltas.dep.dx).toBeCloseTo(positions.dep.x - arrangedX);
     expect(deltas.dep.dx).toBeCloseTo(NUDGE_STEP);

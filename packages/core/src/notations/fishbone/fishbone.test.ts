@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BUILTIN_NOTATIONS, type DiagramModel, type DiagramNode, type DiagramRelation } from './types';
+import { BUILTIN_NOTATIONS, type DiagramModel, type DiagramNode, type DiagramRelation } from '../../types';
 import {
   FB_CATEGORY_TYPE,
   FB_CAUSE_TYPE,

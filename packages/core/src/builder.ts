@@ -29,9 +29,14 @@ import {
   FISHBONE_PRESETS,
   presetId,
   type FishbonePreset,
-} from './fishbone';
-import { GIT_STAGE_TYPE } from './git';
-import { SO_DECISION_TYPE, SO_LEADS_TO_KIND, consequenceTypeOf, type Valence } from './second-order';
+} from './notations/fishbone/fishbone';
+import { GIT_STAGE_TYPE } from './notations/git-graph/git-graph';
+import {
+  SO_DECISION_TYPE,
+  SO_LEADS_TO_KIND,
+  consequenceTypeOf,
+  type Valence,
+} from './notations/second-order/second-order';
 import {
   TM_BOUNDARY_TYPE,
   TM_ENTITY_TYPE,
@@ -39,7 +44,7 @@ import {
   TM_NOTATION,
   TM_PROCESS_TYPE,
   TM_STORE_TYPE,
-} from './threat-model';
+} from './notations/threat-model/threat-model';
 import { DiagramValidationError, validate } from './validate';
 import {
   PLAN_EVENT_TYPE,
@@ -48,7 +53,7 @@ import {
   PLAN_TEAM_TYPE,
   PLAN_ZONE_TYPE,
   type PlanRole,
-} from './plan';
+} from './notations/plan/plan';
 import { defined } from './util';
 
 export interface NodeOpts {

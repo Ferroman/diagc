@@ -7,7 +7,7 @@ import {
   isDeployZone,
   isDeploymentNode,
 } from './deployment';
-import { BUILTIN_NOTATIONS } from './types';
+import { BUILTIN_NOTATIONS } from '../../types';
 
 describe('deployment vocabulary', () => {
   it('is a builtin notation', () => {

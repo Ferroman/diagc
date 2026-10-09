@@ -1,5 +1,5 @@
-import type { DiagramModel } from './types';
-import { defined } from './util';
+import type { DiagramModel } from '../../types';
+import { defined } from '../../util';
 
 /** The notation id a plane (or the model) declares to be drawn as a fish. */
 export const FISHBONE_NOTATION = 'fishbone' as const;

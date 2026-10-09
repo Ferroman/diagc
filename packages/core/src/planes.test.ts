@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CommandError } from './command-error';
-import { FISHBONE_NOTATION } from './fishbone';
-import { GIT_NOTATION } from './git';
+import { FISHBONE_NOTATION } from './notations/fishbone/fishbone';
+import { GIT_NOTATION } from './notations/git-graph/git-graph';
 import {
   canonicalPlane,
   containmentOn,

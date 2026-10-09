@@ -1,4 +1,4 @@
-import type { DiagramModel } from './types';
+import type { DiagramModel } from '../../types';
 
 /** The notation id a plane (or the model) declares to be drawn as a consequence tree. */
 export const SECOND_ORDER_NOTATION = 'second-order' as const;

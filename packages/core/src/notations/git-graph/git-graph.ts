@@ -1,5 +1,5 @@
-import type { DiagramModel, DiagramNode, DiagramRelation } from './types';
-import { containmentOn, containmentPlaneOf } from './planes';
+import type { DiagramModel, DiagramNode, DiagramRelation } from '../../types';
+import { containmentOn, containmentPlaneOf } from '../../planes';
 
 /** The notation id a plane declares to be drawn as a git graph. */
 export const GIT_NOTATION = 'git-graph' as const;

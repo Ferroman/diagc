@@ -1,4 +1,4 @@
-import { relationLabels } from './labels';
+import { relationLabels } from '../../labels';
 import {
   STRIDE,
   THREAT_STATUSES,
@@ -8,10 +8,10 @@ import {
   type StrideCategory,
   type Threat,
   type ThreatStatus,
-} from './types';
-import { containmentOn, containmentPlaneOf } from './planes';
-import { defined } from './util';
-import { elementKey, findElement, type ElementRef } from './elements';
+} from '../../types';
+import { containmentOn, containmentPlaneOf } from '../../planes';
+import { defined } from '../../util';
+import { elementKey, findElement, type ElementRef } from '../../elements';
 
 /** The notation id a plane (or the model) declares to be drawn as a STRIDE
  * data-flow diagram. */

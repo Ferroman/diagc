@@ -30,11 +30,25 @@ import {
   fishboneParents,
   fishboneTree,
   isFishboneNode,
-} from './fishbone';
-import { GIT_NOTATION, GIT_STAGE_TYPE, gitGraph, isGitKind, stageCommit } from './git';
-import { PLAN_NOTATION, atOf, dayOf, isPlanEvent, isPlanRole, isPlanZone, planGraph, spanOf } from './plan';
-import { SECOND_ORDER_NOTATION, SO_DECISION_TYPE, consequenceOrders, isSecondOrderNode } from './second-order';
-import { TM_BOUNDARY_TYPE, TM_FLOW_KIND, TM_NOTATION } from './threat-model';
+} from './notations/fishbone/fishbone';
+import { GIT_NOTATION, GIT_STAGE_TYPE, gitGraph, isGitKind, stageCommit } from './notations/git-graph/git-graph';
+import {
+  PLAN_NOTATION,
+  atOf,
+  dayOf,
+  isPlanEvent,
+  isPlanRole,
+  isPlanZone,
+  planGraph,
+  spanOf,
+} from './notations/plan/plan';
+import {
+  SECOND_ORDER_NOTATION,
+  SO_DECISION_TYPE,
+  consequenceOrders,
+  isSecondOrderNode,
+} from './notations/second-order/second-order';
+import { TM_BOUNDARY_TYPE, TM_FLOW_KIND, TM_NOTATION } from './notations/threat-model/threat-model';
 
 export interface ValidationIssue {
   code:

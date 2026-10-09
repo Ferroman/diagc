@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model } from './builder';
+import { model } from '../../builder';
 import {
   PLAN_ACTOR_TYPES,
   PLAN_EVENT_TYPE,
@@ -15,7 +15,7 @@ import {
   rolesOf,
   spanOf,
 } from './plan';
-import type { DiagramNode } from './types';
+import type { DiagramNode } from '../../types';
 
 const zone = (metadata: Record<string, unknown>): DiagramNode => ({
   id: 'z',

@@ -173,7 +173,7 @@ export type ThreatSeverity = (typeof THREAT_SEVERITIES)[number];
 /** One STRIDE finding against the element that carries it. Threats live ON
  * the node or relation (not in a model-wide list) so they follow it through
  * delete, undo, `include` namespacing and eject without any cascade code;
- * the register is derived (see threat-model.ts). */
+ * the register is derived (see notations/threat-model/threat-model.ts). */
 export interface Threat {
   /** unique within its element's list (`t1`, `t2`, … when synthesized) */
   id: string;

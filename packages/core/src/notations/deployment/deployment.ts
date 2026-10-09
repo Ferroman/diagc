@@ -1,4 +1,4 @@
-import type { DiagramNode } from './types';
+import type { DiagramNode } from '../../types';
 
 /** The notation id a plane (or the model) declares to be drawn as a deployment
  * diagram: where software runs, and the networks and zones around it. */

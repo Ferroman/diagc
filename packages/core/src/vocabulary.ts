@@ -1,4 +1,4 @@
-import { GIT_STAGE_TYPE } from './git';
+import { GIT_STAGE_TYPE } from './notations/git-graph/git-graph';
 import type { BUILTIN_NOTATIONS } from './types';
 
 /**

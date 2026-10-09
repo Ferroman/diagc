@@ -81,6 +81,6 @@ export {
 // ConsequenceOpts, FishboneBuilder, ValidationIssue.code). ThreatTarget and
 // ElementTarget are ElementRef's deprecated 1.0 names.
 export type { ElementRef, ElementTarget, ThreatTarget } from './elements';
-export type { FishbonePreset } from './fishbone';
+export type { FishbonePreset } from './notations/fishbone/fishbone';
 export type { LintCode } from './lint';
-export type { Valence } from './second-order';
+export type { Valence } from './notations/second-order/second-order';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BUILTIN_NOTATIONS, STRIDE, type DiagramModel, type LayoutOverlay } from './types';
+import { BUILTIN_NOTATIONS, STRIDE, type DiagramModel, type LayoutOverlay } from '../../types';
 import {
   allNotesOpen,
   boundaryName,
@@ -22,7 +22,7 @@ import {
   TM_PROCESS_TYPE,
   TM_STORE_TYPE,
 } from './threat-model';
-import { elementKey } from './elements';
+import { elementKey } from '../../elements';
 
 // Built by hand, not through the builder, so this file stays green on its own.
 const base = (): DiagramModel => ({

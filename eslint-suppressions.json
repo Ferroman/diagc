@@ -165,7 +165,7 @@
       "count": 1
     }
   },
-  "packages/core/src/plan.ts": {
+  "packages/core/src/notations/plan/plan.ts": {
     "complexity": {
       "count": 1
     }

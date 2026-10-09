@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BUILTIN_NOTATIONS, type DiagramModel, type DiagramNode, type DiagramRelation } from './types';
+import { BUILTIN_NOTATIONS, type DiagramModel, type DiagramNode, type DiagramRelation } from '../../types';
 import { consequenceOrders, consequenceTypeOf, isSecondOrderNode, valenceOf } from './second-order';
 
 const node = (id: string, type?: string): DiagramNode => ({ id, name: id, ...(type !== undefined ? { type } : {}) });

@@ -4,7 +4,7 @@ import { applyCommand, emptyLayout, type EditorCommand, type EditorState } from 
 import { emptyDrawings } from '../drawings';
 import { CommandError } from '../command-error';
 import { layoutPlaneKey } from '../planes';
-import { TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from '../threat-model';
+import { TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from '../notations/threat-model/threat-model';
 import type { DiagramModel } from '../types';
 
 /** The state a command leaves; most tests need nothing else. */

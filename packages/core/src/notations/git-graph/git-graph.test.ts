@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { BUILTIN_NOTATIONS, type DiagramModel, type DiagramNode, type DiagramRelation } from './types';
-import { model } from './builder';
-import { GIT_KINDS, GIT_NOTATION, gapOf, gitGraph, isGitKind, latestCommit, mergedAway, nextCommitId } from './git';
-import { validate } from './validate';
+import { BUILTIN_NOTATIONS, type DiagramModel, type DiagramNode, type DiagramRelation } from '../../types';
+import { model } from '../../builder';
+import {
+  GIT_KINDS,
+  GIT_NOTATION,
+  gapOf,
+  gitGraph,
+  isGitKind,
+  latestCommit,
+  mergedAway,
+  nextCommitId,
+} from './git-graph';
+import { validate } from '../../validate';
 
 const commit = (id: string, extra: Partial<DiagramNode> = {}): DiagramNode => ({
   id,
