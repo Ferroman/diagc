@@ -22,7 +22,12 @@
 export { ejectSource } from './eject';
 export * from './types';
 export * from './shared-constants';
-export * from './mutate';
+export * from './mutate/nodes';
+export * from './mutate/containment';
+export * from './mutate/relations';
+export * from './mutate/layers-and-planes';
+export * from './mutate/threats-and-comments';
+export * from './mutate/diagram';
 export { CommandError } from './command-error';
 export * from './planes';
 export { commentsOf, hasNoteContent, nextCommentId } from './comments';

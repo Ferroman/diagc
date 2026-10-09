@@ -22,43 +22,44 @@ import { CommandError } from './command-error';
 import { addStroke, deleteStroke, pruneDrawingsPlane } from './drawings';
 import { relationLabels } from './labels';
 import {
-  addComment,
-  addContainment,
   addNode,
-  addRelation,
-  addThreat,
-  deleteLayer,
   deleteNode,
-  deletePlane,
-  deleteRelation,
-  groupNodes,
-  mergeLayers,
-  removeComment,
-  moveChild,
-  removeContainment,
-  removeThreat,
   renameNode,
-  setDiagramLegend,
-  setDiagramNotation,
-  setDiagramStyle,
   setNodeDetails,
-  setNodePlaneHidden,
   setNodeRich,
   setPlanDates,
   setTableColumns,
   subtreeOf,
-  updateComment,
-  updateRelation,
-  updateThreat,
-  upsertLayer,
-  upsertPlane,
-  type CommentPatch,
   type NodeDetails,
   type PlanDates,
+} from './mutate/nodes';
+import { addContainment, groupNodes, moveChild, removeContainment } from './mutate/containment';
+import {
+  addRelation,
+  deleteRelation,
+  updateRelation,
   type RelationOptsInput,
   type RelationPatch,
+} from './mutate/relations';
+import {
+  deleteLayer,
+  deletePlane,
+  mergeLayers,
+  setNodePlaneHidden,
+  upsertLayer,
+  upsertPlane,
+} from './mutate/layers-and-planes';
+import {
+  addComment,
+  addThreat,
+  removeComment,
+  removeThreat,
+  updateComment,
+  updateThreat,
+  type CommentPatch,
   type ThreatPatch,
-} from './mutate';
+} from './mutate/threats-and-comments';
+import { setDiagramLegend, setDiagramNotation, setDiagramStyle } from './mutate/diagram';
 import { defined } from './util';
 import type { Point } from './geometry';
 

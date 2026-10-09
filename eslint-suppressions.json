@@ -173,11 +173,6 @@
       "count": 1
     }
   },
-  "packages/core/src/mutate.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
   "packages/core/src/plan.ts": {
     "complexity": {
       "count": 1

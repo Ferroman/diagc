@@ -354,8 +354,8 @@ function currentParents(model: DiagramModel, plane: string | undefined, id: stri
  * `plane` is the studio's own active plane — possibly undefined, when the
  * viewer is on the default one — passed straight through to the
  * remove-containment/add-containment commands below; core resolves it
- * (mutate.ts's canonicalPlane and its now plane-comparison-resolved
- * addContainment/removeContainment), so this function does not need to know
+ * (canonicalPlane, and addContainment/removeContainment compare with
+ * isOnPlane), so this function does not need to know
  * whether the plan happens to be the first-declared (default) plane or not.
  */
 export function assign(
