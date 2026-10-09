@@ -2,6 +2,7 @@ import type { DiagramModel, DiagramNode } from './types';
 import { buildHierarchy, type HierarchyIndex } from './view/hierarchy';
 import { NODE_TYPES, NOTATION_NODE_TYPES, NOTATION_RELATION_KINDS, RELATION_KINDS } from './vocabulary';
 import { isOnPlane } from './planes';
+import { ACTIVITY_BAR_TYPE, ACTIVITY_DECISION_TYPE, ACTIVITY_END_TYPE, ACTIVITY_START_TYPE } from './activity/activity';
 
 /**
  * Findings for a model that validates but probably does not say what its author
@@ -29,7 +30,12 @@ export type LintCode =
 
 /** Shapes a diagram repeats on purpose: every activity has its start dot, and
  * forks, merges and ends are anonymous or share one caption. */
-const REPEATED_GLYPHS = new Set(['activity-start', 'activity-end', 'activity-bar', 'activity-decision']);
+const REPEATED_GLYPHS = new Set<string>([
+  ACTIVITY_START_TYPE,
+  ACTIVITY_END_TYPE,
+  ACTIVITY_BAR_TYPE,
+  ACTIVITY_DECISION_TYPE,
+]);
 
 export function lintModel(m: DiagramModel): LintFinding[] {
   const out: LintFinding[] = [];

@@ -147,10 +147,7 @@
       "count": 1
     }
   },
-  "packages/core/src/builder.ts": {
-    "max-lines": {
-      "count": 1
-    },
+  "packages/core/src/builder/model-builder.ts": {
     "max-params": {
       "count": 1
     }
@@ -165,22 +162,8 @@
       "count": 1
     }
   },
-  "packages/core/src/plan.ts": {
+  "packages/core/src/notations/plan/plan.ts": {
     "complexity": {
-      "count": 1
-    }
-  },
-  "packages/core/src/validate.ts": {
-    "complexity": {
-      "count": 5
-    },
-    "max-depth": {
-      "count": 6
-    },
-    "max-lines": {
-      "count": 1
-    },
-    "max-params": {
       "count": 1
     }
   },

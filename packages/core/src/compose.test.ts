@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { composeIncludes, IncludeError, MAX_INCLUDE_DEPTH, type IncludeResolver } from './compose';
-import { validate } from './validate';
+import { validate } from './validate/index';
 import type { DiagramModel } from './types';
 
 const doc = (id: string, partial: Partial<DiagramModel>): DiagramModel => ({

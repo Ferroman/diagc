@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model } from '../builder';
+import { model } from '../builder/index';
 import { compileView } from './compile';
 import { EXTERNAL_STUB_PREFIX } from './scope';
 import type { DiagramModel } from '../types';

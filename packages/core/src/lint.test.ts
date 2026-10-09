@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { lintModel } from './lint';
 import type { DiagramModel } from './types';
-import { diagramWarnings } from './validate';
+import { diagramWarnings } from './validate/index';
 
 const base = (over: Partial<DiagramModel> = {}): DiagramModel => ({
   version: 1,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { model } from '../builder';
-import { validate } from '../validate';
+import { model } from '../builder/index';
+import { validate } from '../validate/index';
 import { addContainment } from './containment';
 import {
   deleteLayer,

@@ -122,7 +122,7 @@ function quoted(s: string): string {
   return tsLiteral(s, 0);
 }
 
-/** NodeOpts emission order — mirrors the interface declaration in builder.ts. */
+/** NodeOpts emission order — mirrors the interface declaration in builder/node-ref.ts. */
 const NODE_OPT_KEYS = [
   'type',
   'name',
@@ -159,7 +159,7 @@ const _nodeOptCoverage: SameKeys<Exclude<keyof DiagramNode, 'id'>, (typeof NODE_
 void _nodeOptCoverage;
 
 /** RelateOpts emission order (after the always-first `kind` and conditional `id`)
- * — mirrors the interface declaration in builder.ts. */
+ * — mirrors the interface declaration in builder/node-ref.ts. */
 const RELATE_OPT_KEYS = [
   'label',
   'labels',

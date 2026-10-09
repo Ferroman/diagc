@@ -56,8 +56,8 @@ export {
   type ElementOpts,
   type ZoneOpts,
   type EventOpts,
-} from './builder';
-export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue } from './validate';
+} from './builder/index';
+export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue } from './validate/index';
 export type * from './types';
 // The geometry the model types use (LayoutOverlay's saved positions and sizes).
 export type { Point, Size } from './geometry';
@@ -81,6 +81,6 @@ export {
 // ConsequenceOpts, FishboneBuilder, ValidationIssue.code). ThreatTarget and
 // ElementTarget are ElementRef's deprecated 1.0 names.
 export type { ElementRef, ElementTarget, ThreatTarget } from './elements';
-export type { FishbonePreset } from './fishbone';
+export type { FishbonePreset } from './notations/fishbone/fishbone';
 export type { LintCode } from './lint';
-export type { Valence } from './second-order';
+export type { Valence } from './notations/second-order/second-order';

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { model } from '../builder';
+import { model } from '../builder/index';
 import { applyCommand, emptyLayout, openingPins, type EditorCommand, type EditorState } from './index';
 import { emptyDrawings } from '../drawings';
 import { layoutPlaneKey } from '../planes';
-import { TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from '../threat-model';
+import { TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from '../notations/threat-model/threat-model';
 
 /** The state a command leaves; most tests need nothing else. */
 const apply = (state: EditorState, command: EditorCommand): EditorState => applyCommand(state, command).state;

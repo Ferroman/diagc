@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { model } from '../builder';
-import { validate } from '../validate';
+import { model } from '../builder/index';
+import { validate } from '../validate/index';
 import { addContainment, groupNodes, moveChild, removeContainment } from './containment';
 import { upsertPlane } from './layers-and-planes';
 import { CommandError } from '../command-error';
@@ -114,7 +114,7 @@ describe('containment mutations', () => {
       // 'plan' declared SECOND here (after 'arch'), so it is not the default —
       // the builder still tags its containment with 'plan' regardless (the
       // plan plane names its own edges "so the plan need not be the first
-      // plane declared" — builder.ts's own ZoneBuilder doc comment)
+      // plane declared" — ZoneBuilder's own doc comment)
       const m2 = model('two');
       m2.plane('arch');
       const p = m2.plan();

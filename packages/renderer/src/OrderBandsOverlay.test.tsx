@@ -31,7 +31,7 @@ describe('OrderBandsOverlay', () => {
   });
   it('draws nothing for a graph it cannot number (a loop)', () => {
     // The builder's own toJSON() rejects a consequence loop at validation time
-    // (see validate.ts's 'so-cycle' check), so an unnumberable graph has to be
+    // (the second-order 'so-cycle' check), so an unnumberable graph has to be
     // built as a raw model here — the same idiom second-order.test.ts uses to
     // exercise consequenceOrders' cycle handling directly.
     const m: DiagramModel = {

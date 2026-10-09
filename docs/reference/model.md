@@ -1,6 +1,6 @@
 # Model reference
 
-Every field of a compiled diagram, and every way the compiler can reject one. Source of truth: `packages/core/src/types.ts` and `packages/core/src/validate.ts`.
+Every field of a compiled diagram, and every way the compiler can reject one. Source of truth: `packages/core/src/types.ts`, `packages/core/src/validate/`, and each notation's `validate.ts` under `packages/core/src/notations/` (activity's under `packages/core/src/activity/`).
 
 For *why* the model is shaped like this, see [What is in a model](../explanation/the-model.md).
 

@@ -55,7 +55,7 @@ export function buildHierarchy(m: DiagramModel, plane?: string, activeLayers?: R
   // The `hidesTree` closure. Only `hidesTree` ids SEED it, but a parent hidden
   // either way counts as hidden when deciding whether a child has any visible
   // parent left. Ids of plane-scoped nodes are dropped: such a node ignores
-  // `hides` (validate.ts reports that as `redundant-hide`), so it must not seed
+  // `hides` (validation reports that as `redundant-hide`), so it must not seed
   // the closure either. Derived hiding applies to every node, scoped ones
   // included — "nothing visible contains me any more".
   const scopedIds = new Set(m.nodes.filter((n) => n.plane !== undefined).map((n) => n.id));

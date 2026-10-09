@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model } from '../builder';
+import { model } from '../builder/index';
 import { setDiagramLegend, setDiagramNotation, setDiagramStyle } from './diagram';
 import { CommandError } from '../command-error';
 import type { DiagramModel } from '../types';

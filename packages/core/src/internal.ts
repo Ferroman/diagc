@@ -22,6 +22,7 @@
 export { ejectSource } from './eject';
 export * from './types';
 export * from './shared-constants';
+export * from './activity/activity';
 export * from './mutate/nodes';
 export * from './mutate/containment';
 export * from './mutate/relations';
@@ -70,15 +71,9 @@ export {
   type ElementOpts,
   type ZoneOpts,
   type EventOpts,
-} from './builder';
-export {
-  validate,
-  diagramWarnings,
-  DiagramValidationError,
-  IMAGE_REF,
-  LIBRARY_IMAGE_REF,
-  type ValidationIssue,
-} from './validate';
+} from './builder/index';
+export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue } from './validate/index';
+export { IMAGE_REF, LIBRARY_IMAGE_REF } from './validate/nodes';
 export { isDrawings, isLayoutOverlay } from './guards';
 export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrokeId } from './drawings';
 export { defined, errMessage, SOURCE_URL, type Defined } from './util';
@@ -131,7 +126,7 @@ export {
   type GitKind,
   type GitLane,
   type GitStage,
-} from './git';
+} from './notations/git-graph/git-graph';
 export {
   SECOND_ORDER_NOTATION,
   SO_CONSEQUENCE_TYPES,
@@ -143,7 +138,7 @@ export {
   valenceOf,
   type ConsequenceOrders,
   type Valence,
-} from './second-order';
+} from './notations/second-order/second-order';
 export {
   FB_CATEGORY_TYPE,
   FB_CAUSE_OF_KIND,
@@ -161,7 +156,7 @@ export {
   type FishboneCause,
   type FishbonePreset,
   type FishboneTree,
-} from './fishbone';
+} from './notations/fishbone/fishbone';
 export {
   TM_NOTATION,
   TM_ENTITY_TYPE,
@@ -187,7 +182,7 @@ export {
   allNotesOpen,
   type Crossing,
   type ThreatRow,
-} from './threat-model';
+} from './notations/threat-model/threat-model';
 export {
   DEPLOY_NOTATION,
   DEPLOY_ZONE_TYPES,
@@ -197,7 +192,7 @@ export {
   isDeployZone,
   type DeployZoneType,
   type DeployNodeType,
-} from './deployment';
+} from './notations/deployment/deployment';
 export {
   PLAN_NOTATION,
   PLAN_ZONE_TYPE,
@@ -223,4 +218,4 @@ export {
   type PlanRoles,
   type PlanGraph,
   type PlanChildren,
-} from './plan';
+} from './notations/plan/plan';
