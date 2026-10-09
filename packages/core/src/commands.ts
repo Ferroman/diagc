@@ -382,7 +382,7 @@ function applyModelLayout(state: ModelLayout, command: EditorCommand): ModelLayo
             : after !== undefined
               ? { sibling: after, side: 'after' as const }
               : undefined;
-        next = addContainment(next, id, command.node.id, plane, beside);
+        next = addContainment(next, { parent: id, child: command.node.id, plane }, beside);
       }
       return { model: next, layout };
     }
@@ -427,11 +427,11 @@ function applyModelLayout(state: ModelLayout, command: EditorCommand): ModelLayo
       };
     }
     case 'add-containment':
-      return { model: addContainment(model, command.parent, command.child, command.plane), layout };
+      return { model: addContainment(model, command), layout };
     case 'remove-containment':
-      return { model: removeContainment(model, command.parent, command.child, command.plane), layout };
+      return { model: removeContainment(model, command), layout };
     case 'move-child':
-      return { model: moveChild(model, command.parent, command.child, command.offset, command.plane), layout };
+      return { model: moveChild(model, command, command.offset), layout };
     case 'group-nodes': {
       const grouped = groupNodes(model, command.node, command.memberIds, command.plane);
       // The members were positioned as top-level nodes; once nested, those

@@ -89,14 +89,14 @@ describe('mutate', () => {
   });
 
   it('containment add/remove respects planes and rejects cycles', () => {
-    let m = addContainment(base(), 'sys', 'a', 'infra'); // same pair, other plane: ok
+    let m = addContainment(base(), { parent: 'sys', child: 'a', plane: 'infra' }); // same pair, other plane: ok
     expect(m.containment.filter((e) => e.parent === 'sys' && e.child === 'a')).toHaveLength(2);
-    m = addContainment(m, 'sys', 'a'); // dedupe in default plane
+    m = addContainment(m, { parent: 'sys', child: 'a' }); // dedupe in default plane
     expect(m.containment.filter((e) => e.parent === 'sys' && e.child === 'a' && e.plane === undefined)).toHaveLength(1);
-    expect(() => addContainment(m, 'a', 'sys')).toThrowError(CommandError); // arch cycle
-    const m2 = addContainment(base(), 'a', 'sys', 'infra'); // opposite direction in another plane: legal
+    expect(() => addContainment(m, { parent: 'a', child: 'sys' })).toThrowError(CommandError); // arch cycle
+    const m2 = addContainment(base(), { parent: 'a', child: 'sys', plane: 'infra' }); // opposite direction in another plane: legal
     expect(validate(m2)).toEqual([]);
-    const m3 = removeContainment(base(), 'sys', 'a');
+    const m3 = removeContainment(base(), { parent: 'sys', child: 'a' });
     expect(m3.containment.some((e) => e.child === 'a' && e.plane === undefined)).toBe(false);
   });
 
@@ -236,17 +236,17 @@ describe('mutate', () => {
 
   it('canonicalizes plane args in containment helpers', () => {
     // explicit first-plane id dedupes against the untagged edge
-    const dedup = addContainment(base(), 'sys', 'a', 'arch');
+    const dedup = addContainment(base(), { parent: 'sys', child: 'a', plane: 'arch' });
     expect(dedup.containment.filter((e) => e.parent === 'sys' && e.child === 'a')).toHaveLength(1);
     expect(dedup.containment.find((e) => e.parent === 'sys' && e.child === 'a')?.plane).toBeUndefined();
 
     // a borrowed plane (containmentOf the first plane) lands on the base plane
     const borrowed = upsertPlane(base(), { id: 'flow-view', name: 'Flow', containmentOf: 'arch' });
-    const onBorrow = addContainment(borrowed, 'a', 'b', 'flow-view');
+    const onBorrow = addContainment(borrowed, { parent: 'a', child: 'b', plane: 'flow-view' });
     expect(onBorrow.containment.find((e) => e.parent === 'a' && e.child === 'b')?.plane).toBeUndefined();
 
     // removeContainment with the first-plane id removes the untagged edge
-    const removed = removeContainment(base(), 'sys', 'a', 'arch');
+    const removed = removeContainment(base(), { parent: 'sys', child: 'a', plane: 'arch' });
     expect(removed.containment.some((e) => e.parent === 'sys' && e.child === 'a')).toBe(false);
   });
 
@@ -274,18 +274,18 @@ describe('mutate', () => {
     it('is removed by a command carrying the default plane id', () => {
       const m = planModel();
       expect(m.containment).toEqual([{ parent: 'q', child: 'e', plane: 'plan' }]);
-      expect(removeContainment(m, 'q', 'e', 'plan').containment).toEqual([]);
+      expect(removeContainment(m, { parent: 'q', child: 'e', plane: 'plan' }).containment).toEqual([]);
     });
 
     it('is removed by a command carrying no plane at all', () => {
       const m = planModel();
-      expect(removeContainment(m, 'q', 'e').containment).toEqual([]);
+      expect(removeContainment(m, { parent: 'q', child: 'e' }).containment).toEqual([]);
     });
 
     it('adding the same edge again, in either form, is a no-op — no duplicate', () => {
       const m = planModel();
-      expect(addContainment(m, 'q', 'e', 'plan').containment).toEqual(m.containment);
-      expect(addContainment(m, 'q', 'e').containment).toEqual(m.containment);
+      expect(addContainment(m, { parent: 'q', child: 'e', plane: 'plan' }).containment).toEqual(m.containment);
+      expect(addContainment(m, { parent: 'q', child: 'e' }).containment).toEqual(m.containment);
     });
 
     it('an edge on a non-default plane is untouched by a default-plane remove', () => {
@@ -302,13 +302,15 @@ describe('mutate', () => {
       expect(json.containment).toEqual([{ parent: 'q', child: 'e', plane: 'plan' }]);
       // no plane on the command → canon resolves to 'arch' (the actual
       // default here), which must not match an edge tagged 'plan'
-      expect(removeContainment(json, 'q', 'e').containment).toEqual(json.containment);
+      expect(removeContainment(json, { parent: 'q', child: 'e' }).containment).toEqual(json.containment);
     });
 
     it('a new edge can go beside it', () => {
       const m = planModel();
       const withNode = { ...m, nodes: [...m.nodes, { id: 'n', name: 'N' }] };
-      expect(addContainment(withNode, 'q', 'n', undefined, { sibling: 'e', side: 'after' }).containment).toEqual([
+      expect(
+        addContainment(withNode, { parent: 'q', child: 'n' }, { sibling: 'e', side: 'after' }).containment,
+      ).toEqual([
         { parent: 'q', child: 'e', plane: 'plan' },
         { parent: 'q', child: 'n' },
       ]);
@@ -334,7 +336,7 @@ describe('mutate', () => {
     expect(m.planes.at(-1)?.id).toBe('flow-view');
     expect(() => deletePlane(m, 'arch')).toThrowError(CommandError); // borrowed
     m = deletePlane(m, 'flow-view');
-    m = addContainment(m, 'sys', 'a', 'infra');
+    m = addContainment(m, { parent: 'sys', child: 'a', plane: 'infra' });
     m = deletePlane(m, 'infra');
     expect(m.containment.every((e) => e.plane !== 'infra')).toBe(true);
     expect(validate(m)).toEqual([]);
@@ -1044,14 +1046,14 @@ describe('moveChild', () => {
   const order = (m: DiagramModel) => m.containment.filter((e) => e.parent === 'f').map((e) => e.child);
 
   it('swaps a child with the sibling before or after it', () => {
-    expect(order(moveChild(lanes(), 'f', 'b', -1))).toEqual(['b', 'a', 'c']);
-    expect(order(moveChild(lanes(), 'f', 'b', 1))).toEqual(['a', 'c', 'b']);
+    expect(order(moveChild(lanes(), { parent: 'f', child: 'b' }, -1))).toEqual(['b', 'a', 'c']);
+    expect(order(moveChild(lanes(), { parent: 'f', child: 'b' }, 1))).toEqual(['a', 'c', 'b']);
   });
 
   it('leaves the model untouched at either end', () => {
     const m = lanes();
-    expect(moveChild(m, 'f', 'a', -1)).toBe(m);
-    expect(moveChild(m, 'f', 'c', 1)).toBe(m);
+    expect(moveChild(m, { parent: 'f', child: 'a' }, -1)).toBe(m);
+    expect(moveChild(m, { parent: 'f', child: 'c' }, 1)).toBe(m);
   });
 
   it('skips containment entries under other parents', () => {
@@ -1060,7 +1062,7 @@ describe('moveChild', () => {
     const containment = [...m.containment];
     const bAt = containment.findIndex((e) => e.parent === 'f' && e.child === 'b');
     containment.splice(bAt, 0, { parent: 'x', child: 'y' });
-    const moved = moveChild({ ...m, containment }, 'f', 'b', -1);
+    const moved = moveChild({ ...m, containment }, { parent: 'f', child: 'b' }, -1);
     expect(order(moved)).toEqual(['b', 'a', 'c']);
     expect(moved.containment).toContainEqual({ parent: 'x', child: 'y' });
   });
@@ -1076,7 +1078,7 @@ describe('moveChild', () => {
       { parent: 'p', child: 'b', plane: 'infra' },
       { parent: 'p', child: 'b' },
     ];
-    const moved = moveChild({ ...json, containment }, 'p', 'b', -1);
+    const moved = moveChild({ ...json, containment }, { parent: 'p', child: 'b' }, -1);
     expect(moved.containment).toEqual([
       { parent: 'p', child: 'b' },
       { parent: 'p', child: 'b', plane: 'infra' },
@@ -1085,6 +1087,6 @@ describe('moveChild', () => {
   });
 
   it('rejects a child the parent does not contain', () => {
-    expect(() => moveChild(lanes(), 'f', 'zz', 1)).toThrow(CommandError);
+    expect(() => moveChild(lanes(), { parent: 'f', child: 'zz' }, 1)).toThrow(CommandError);
   });
 });

@@ -176,9 +176,6 @@
   "packages/core/src/mutate.ts": {
     "max-lines": {
       "count": 1
-    },
-    "max-params": {
-      "count": 2
     }
   },
   "packages/core/src/plan.ts": {

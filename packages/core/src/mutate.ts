@@ -2,6 +2,7 @@ import {
   BUILTIN_NOTATIONS,
   type Column,
   type Comment,
+  type ContainmentEdge,
   type DiagramLayer,
   type DiagramLegend,
   type DiagramModel,
@@ -446,13 +447,18 @@ function wouldCycle(m: DiagramModel, parent: string, child: string, plane?: stri
   return false;
 }
 
+/**
+ * Nest `edge.child` under `edge.parent`. `edge.plane` names the plane as a view
+ * does: a borrowing plane writes to its donor, and the default plane is written
+ * untagged (canonicalPlane). `beside` slots the new membership next to a sibling,
+ * since child order is containment order.
+ */
 export function addContainment(
   m: DiagramModel,
-  parent: string,
-  child: string,
-  plane?: string,
+  edge: ContainmentEdge,
   beside?: { sibling: string; side: 'before' | 'after' },
 ): DiagramModel {
+  const { parent, child, plane } = edge;
   requireNode(m, parent);
   requireNode(m, child);
   if (parent === child) throw new CommandError(`Node '${parent}' cannot contain itself`);
@@ -462,14 +468,14 @@ export function addContainment(
   if (wouldCycle(m, parent, child, canon)) {
     throw new CommandError(`'${parent}' > '${child}' would create a containment cycle`);
   }
-  const edge = { parent, child, ...defined({ plane: canon }) };
-  if (beside === undefined) return { ...m, containment: [...m.containment, edge] };
+  const added = { parent, child, ...defined({ plane: canon }) };
+  if (beside === undefined) return { ...m, containment: [...m.containment, added] };
   // Children read in declaration order, so the slot in the flat array IS the
   // sibling order — insert next to the sibling's own membership.
   const at = m.containment.findIndex((e) => e.parent === parent && e.child === beside.sibling && isOnPlane(e, key, m));
   if (at === -1) throw new CommandError(`'${beside.sibling}' is not a child of '${parent}'`);
   const i = beside.side === 'before' ? at : at + 1;
-  return { ...m, containment: [...m.containment.slice(0, i), edge, ...m.containment.slice(i)] };
+  return { ...m, containment: [...m.containment.slice(0, i), added, ...m.containment.slice(i)] };
 }
 
 /**
@@ -487,12 +493,14 @@ export function groupNodes(
 ): DiagramModel {
   let next = addNode(m, node);
   for (const child of memberIds) {
-    next = addContainment(next, node.id, child, plane);
+    next = addContainment(next, { parent: node.id, child, plane });
   }
   return next;
 }
 
-export function removeContainment(m: DiagramModel, parent: string, child: string, plane?: string): DiagramModel {
+/** Remove `edge` from the plane it names (resolved as addContainment resolves it). */
+export function removeContainment(m: DiagramModel, edge: ContainmentEdge): DiagramModel {
+  const { parent, child, plane } = edge;
   const key = canonicalPlane(m, plane) ?? defaultPlaneOf(m);
   return {
     ...m,
@@ -501,19 +509,14 @@ export function removeContainment(m: DiagramModel, parent: string, child: string
 }
 
 /**
- * Swap `child`'s containment entry with the previous (`offset` -1) or next (+1)
- * entry under the same parent in the same plane. Sibling order IS containment
+ * Swap the containment entry `edge` names with the previous (`offset` -1) or next
+ * (+1) entry under the same parent in the same plane. Sibling order IS containment
  * array order (buildHierarchy reads it as-is), so this is how an activity
  * frame's lanes are restacked. Entries under other parents keep their places.
  * At either end the model comes back unchanged (same reference).
  */
-export function moveChild(
-  m: DiagramModel,
-  parent: string,
-  child: string,
-  offset: -1 | 1,
-  plane?: string,
-): DiagramModel {
+export function moveChild(m: DiagramModel, edge: ContainmentEdge, offset: -1 | 1): DiagramModel {
+  const { parent, child, plane } = edge;
   const key = canonicalPlane(m, plane) ?? defaultPlaneOf(m);
   const siblings = m.containment.flatMap((e, i) => (e.parent === parent && isOnPlane(e, key, m) ? [i] : []));
   const at = siblings.findIndex((i) => m.containment[i]!.child === child);
