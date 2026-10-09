@@ -155,14 +155,6 @@
       "count": 1
     }
   },
-  "packages/core/src/commands/index.ts": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "packages/core/src/guards.ts": {
     "complexity": {
       "count": 1

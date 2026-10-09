@@ -107,13 +107,14 @@ export type { BoxSize, CompiledView, LodState, NodeViewState, ViewEdge, ViewNode
 export type { Point, Size } from './geometry';
 export {
   applyCommand,
-  applyCommandWithResult,
   emptyLayout,
   openingPins,
+  withEdgeLabelPlacements,
+  withUnfolded,
+  type CommandResult,
   type EditorCommand,
   type EditorState,
 } from './commands/index';
-export { withEdgeLabelPlacements, withUnfolded } from './commands/layout-pruning';
 export { composeIncludes, IncludeError, MAX_INCLUDE_DEPTH, type IncludeResolver, type IncludeSource } from './compose';
 export {
   GIT_KINDS,

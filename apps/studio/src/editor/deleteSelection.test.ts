@@ -17,7 +17,7 @@ const testModel = (): DiagramModel => {
 const apply = (m: DiagramModel, sel: { nodeIds: string[]; relationIds: string[] }): DiagramModel => {
   const cmd = deleteSelectionCommand(m, sel);
   expect(cmd).not.toBeNull();
-  return applyCommand({ model: m, layout: emptyLayout(), drawings: emptyDrawings() }, cmd!).model;
+  return applyCommand({ model: m, layout: emptyLayout(), drawings: emptyDrawings() }, cmd!).state.model;
 };
 
 describe('deleteSelectionCommand', () => {

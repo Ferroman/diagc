@@ -142,7 +142,7 @@ describe('GitPanel', () => {
     m.nodes.push({ id: 'qa', name: 'QA', type: 'branch' });
     let state: EditorState = { model: m, layout: emptyLayout(), drawings: emptyDrawings() };
     const onCommand = vi.fn((cmd: EditorCommand) => {
-      state = applyCommand(state, cmd);
+      state = applyCommand(state, cmd).state;
     });
     const onSelect = vi.fn();
     const { rerender } = render(

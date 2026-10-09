@@ -269,7 +269,7 @@ describe('Tidy lane order', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tidy lane order' }));
     const command = onCommand.mock.calls[0]![0];
     const after = order(
-      applyCommand({ model: apart(), layout: emptyLayout(), drawings: emptyDrawings() }, command).model,
+      applyCommand({ model: apart(), layout: emptyLayout(), drawings: emptyDrawings() }, command).state.model,
     );
     expect(Math.abs(after.indexOf('a') - after.indexOf('c'))).toBe(1);
   });
@@ -298,7 +298,7 @@ describe('moveLaneCommand', () => {
     const command = moveLaneCommand('f', 'a', offset, undefined);
     if (command === null) return null;
     return order(
-      applyCommand({ model: threeLanes(), layout: emptyLayout(), drawings: emptyDrawings() }, command).model,
+      applyCommand({ model: threeLanes(), layout: emptyLayout(), drawings: emptyDrawings() }, command).state.model,
     );
   };
 

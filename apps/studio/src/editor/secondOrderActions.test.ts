@@ -24,7 +24,7 @@ describe('thenWhat', () => {
     let m = base();
     for (const v of ['+', '0'] as const) {
       const out = thenWhat(m, 'd', v)!;
-      m = applyCommand({ model: m, layout: emptyLayout(), drawings: emptyDrawings() }, out.command).model;
+      m = applyCommand({ model: m, layout: emptyLayout(), drawings: emptyDrawings() }, out.command).state.model;
     }
     expect(m.nodes.map((n) => n.id)).toEqual(['d', 'consequence', 'consequence-2']);
     expect(validate(m)).toEqual([]);
