@@ -147,10 +147,7 @@
       "count": 1
     }
   },
-  "packages/core/src/builder.ts": {
-    "max-lines": {
-      "count": 1
-    },
+  "packages/core/src/builder/model-builder.ts": {
     "max-params": {
       "count": 1
     }

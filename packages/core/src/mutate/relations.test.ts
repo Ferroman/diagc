@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model } from '../builder';
+import { model } from '../builder/index';
 import { relationLabels } from '../labels';
 import { validate } from '../validate/index';
 import { addRelation, deleteRelation, updateRelation } from './relations';

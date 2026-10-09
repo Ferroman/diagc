@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_NOTATIONS, type DiagramModel, type DiagramNode, type DiagramRelation } from '../../types';
-import { model } from '../../builder';
+import { model } from '../../builder/index';
 import {
   GIT_KINDS,
   GIT_NOTATION,

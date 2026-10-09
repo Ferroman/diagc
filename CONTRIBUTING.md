@@ -123,6 +123,14 @@ but blame then fails in any checkout without that file, such as an older commit.
 - **New editing capability means a new `EditorCommand`:** its union member and handler in
   `packages/core/src/commands/` (`model.ts`, `layout.ts` or `drawings.ts`), the mutation it
   calls, tests, then UI wiring — not ad-hoc mutation in a component.
+- **A notation's core code is one folder,** `packages/core/src/notations/<id>/`: its
+  constants and derivations (`<id>.ts`), its rules (`validate.ts`) and its builder
+  (`builder.ts`), each with tests. To register one, add its id to `BUILTIN_NOTATIONS`
+  (`types.ts`), its rules to `NOTATION_VALIDATORS` (`validate/index.ts`) and, if it has a
+  builder, an `m.<name>()` method to `ModelBuilder`; the node types and relation kinds
+  the renderer draws go in `vocabulary.ts`. A notation builder imports `ModelBuilder` as
+  a type only, or the package fails as it loads. Activity is not a notation (its frames
+  work under any), so its types, rules and builder are in `packages/core/src/activity/`.
 - **`packages/core` depends on nothing.** No React, no filesystem. That boundary is the
   one structural rule worth preserving: the model does not know it is going to be drawn.
 - **Import core from `@diagc/core/internal`** inside this repository. `@diagc/core` is

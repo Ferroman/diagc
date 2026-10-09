@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DiagramModel, DiagramNode } from './types';
 import { ejectSource, identifiersFor, tsLiteral } from './eject';
-import { model as buildModel } from './builder';
+import { model as buildModel } from './builder/index';
 
 describe('identifiersFor', () => {
   it('camelCases separators and preserves simple ids', () => {

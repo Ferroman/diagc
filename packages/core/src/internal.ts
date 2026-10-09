@@ -70,7 +70,7 @@ export {
   type ElementOpts,
   type ZoneOpts,
   type EventOpts,
-} from './builder';
+} from './builder/index';
 export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue } from './validate/index';
 export { IMAGE_REF, LIBRARY_IMAGE_REF } from './validate/nodes';
 export { isDrawings, isLayoutOverlay } from './guards';

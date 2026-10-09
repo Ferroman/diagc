@@ -1,4 +1,4 @@
-import { model } from '../builder';
+import { model } from '../builder/index';
 import type { DiagramModel } from '../types';
 
 /** Test-only fixture (originally mirrored .diagrams/src/examples/acme.diagram.ts; the demo

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model } from '../builder';
+import { model } from '../builder/index';
 import { buildHierarchy } from './hierarchy';
 import { estimateSizes, LEAF_SIZE } from './size';
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model } from '../builder';
+import { model } from '../builder/index';
 import { validate } from '../validate/index';
 import { addNode, deleteNode, renameNode, setNodeDetails, setNodeRich, setTableColumns, uniqueNodeId } from './nodes';
 import { setNodePlaneHidden } from './layers-and-planes';

@@ -2,7 +2,7 @@
 
 The TypeScript DSL exported by `@diagc/core`. Every method returns something chainable, and `toJSON()` validates.
 
-Source of truth: `packages/core/src/builder.ts`.
+Source of truth: `packages/core/src/builder/`, with each notation's builder in `packages/core/src/notations/<notation>/builder.ts` and the activity builder in `packages/core/src/activity/builder.ts`.
 
 ```ts
 import { model } from '@diagc/core';
