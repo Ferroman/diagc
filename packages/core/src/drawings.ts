@@ -1,4 +1,4 @@
-import { CommandError } from './mutate';
+import { CommandError } from './command-error';
 import type { Drawings, Stroke } from './types';
 
 export const emptyDrawings = (): Drawings => ({ version: 1, planes: {} });

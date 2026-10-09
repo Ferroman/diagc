@@ -23,6 +23,8 @@ export { ejectSource } from './eject';
 export * from './types';
 export * from './shared-constants';
 export * from './mutate';
+export { CommandError } from './command-error';
+export * from './planes';
 export { commentsOf, hasNoteContent, nextCommentId, type ElementTarget } from './comments';
 export { isIsoDate } from './dates';
 export { normalizeRuns, runsToPlainText } from './text';
@@ -89,7 +91,7 @@ export {
 } from './diff';
 export { NODE_TYPES, NOTATION_NODE_TYPES, NOTATION_RELATION_KINDS, RELATION_KINDS } from './vocabulary';
 export { visibleColumns, withHiddenColumns } from './columns';
-export { activeNotation, compileView, presetLayers, resolveContainmentPlane } from './view/compile';
+export { activeNotation, compileView, presetLayers } from './view/compile';
 export { buildHierarchy, type HierarchyIndex } from './view/hierarchy';
 export { relationLayer } from './view/layers';
 export { scopeToRoot, EXTERNAL_STUB_PREFIX, type ScopedModel } from './view/scope';
@@ -99,7 +101,6 @@ export {
   applyCommand,
   applyCommandWithResult,
   emptyLayout,
-  layoutPlaneKey,
   openingPins,
   withEdgeLabelPlacements,
   withUnfolded,

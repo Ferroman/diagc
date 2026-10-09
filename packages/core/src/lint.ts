@@ -1,6 +1,7 @@
 import type { DiagramModel, DiagramNode } from './types';
 import { buildHierarchy, type HierarchyIndex } from './view/hierarchy';
 import { NODE_TYPES, NOTATION_NODE_TYPES, NOTATION_RELATION_KINDS, RELATION_KINDS } from './vocabulary';
+import { isOnPlane } from './planes';
 
 /**
  * Findings for a model that validates but probably does not say what its author
@@ -146,7 +147,6 @@ function unused(m: DiagramModel, add: Add): void {
   }
 
   const planes = m.planes ?? [];
-  const defaultPlane = planes[0]?.id;
   for (const p of planes) {
     const shaped =
       p.containmentOf !== undefined ||
@@ -155,7 +155,7 @@ function unused(m: DiagramModel, add: Add): void {
       (p.layers ?? []).length > 0 ||
       (p.hides ?? []).length > 0 ||
       (p.hidesTree ?? []).length > 0 ||
-      m.containment.some((e) => (e.plane ?? defaultPlane) === p.id) ||
+      m.containment.some((e) => isOnPlane(e, p.id, m)) ||
       m.nodes.some((n) => n.plane === p.id);
     if (!shaped)
       add(

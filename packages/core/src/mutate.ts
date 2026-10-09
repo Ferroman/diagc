@@ -24,13 +24,8 @@ import { normalizeRuns, runsToPlainText } from './text';
 import { childrenOf } from './children';
 import { isIsoDate } from './dates';
 import type { ThreatTarget } from './threat-model';
-
-export class CommandError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'CommandError';
-  }
-}
+import { CommandError } from './command-error';
+import { canonicalPlane, containmentOn, defaultPlaneOf, isOnPlane } from './planes';
 
 const requireNode = (m: DiagramModel, id: string): DiagramNode => {
   const n = m.nodes.find((x) => x.id === id);
@@ -437,10 +432,8 @@ export function removeComment(m: DiagramModel, target: ThreatTarget, id: string)
 }
 
 function wouldCycle(m: DiagramModel, parent: string, child: string, plane?: string): boolean {
-  const defaultPlane = (m.planes ?? [])[0]?.id;
-  const key = plane ?? defaultPlane;
   // Children index over this plane's edges, plus the candidate edge being added.
-  const children = childrenOf(m.containment.filter((e) => (e.plane ?? defaultPlane) === key));
+  const children = childrenOf(containmentOn(m, plane ?? defaultPlaneOf(m)));
   children.set(parent, [...(children.get(parent) ?? []), child]);
   // child must not reach parent
   const stack = [child];
@@ -455,31 +448,6 @@ function wouldCycle(m: DiagramModel, parent: string, child: string, plane?: stri
   return false;
 }
 
-/**
- * Resolve a plane argument to its canonical containment form: undefined stays
- * undefined; a declared plane resolves its `containmentOf` borrow (one hop) and,
- * if that lands on the first-declared (default) plane, collapses to `undefined`
- * so a NEW edge is always written in the untagged base form. Throws on unknowns.
- *
- * That collapse is a write-time convention only — an existing edge can still
- * carry an explicit tag for the default plane (the builder DSL always names
- * a plan's own plane on its containment, "so the plan need not be the first
- * plane declared", even when it happens to be first — ZoneBuilder). A caller
- * comparing against this function's result must therefore resolve THAT side
- * too (`e.plane ?? defaultPlane`, the same normalisation `wouldCycle` above
- * already does for its own read), not compare `e.plane` against `canon`
- * directly, or a builder-tagged default-plane edge never matches a command
- * that (correctly) canonicalizes to `undefined`.
- */
-function canonicalPlane(m: DiagramModel, plane?: string): string | undefined {
-  if (plane === undefined) return undefined;
-  const planes = m.planes ?? [];
-  const p = planes.find((x) => x.id === plane);
-  if (p === undefined) throw new CommandError(`Unknown plane '${plane}'`);
-  const resolved = p.containmentOf ?? p.id;
-  return resolved === planes[0]?.id ? undefined : resolved;
-}
-
 export function addContainment(
   m: DiagramModel,
   parent: string,
@@ -491,14 +459,8 @@ export function addContainment(
   requireNode(m, child);
   if (parent === child) throw new CommandError(`Node '${parent}' cannot contain itself`);
   const canon = canonicalPlane(m, plane);
-  // Resolved on both sides (see canonicalPlane's comment): an edge already in
-  // the model may carry an explicit tag for what is, today, the default
-  // plane (the builder DSL always tags a plan's containment), which a bare
-  // `e.plane === canon` would miss.
-  const defaultPlane = (m.planes ?? [])[0]?.id;
-  const key = canon ?? defaultPlane;
-  if (m.containment.some((e) => e.parent === parent && e.child === child && (e.plane ?? defaultPlane) === key))
-    return m;
+  const key = canon ?? defaultPlaneOf(m);
+  if (m.containment.some((e) => e.parent === parent && e.child === child && isOnPlane(e, key, m))) return m;
   if (wouldCycle(m, parent, child, canon)) {
     throw new CommandError(`'${parent}' > '${child}' would create a containment cycle`);
   }
@@ -506,9 +468,7 @@ export function addContainment(
   if (beside === undefined) return { ...m, containment: [...m.containment, edge] };
   // Children read in declaration order, so the slot in the flat array IS the
   // sibling order — insert next to the sibling's own membership.
-  const at = m.containment.findIndex(
-    (e) => e.parent === parent && e.child === beside.sibling && (e.plane ?? defaultPlane) === key,
-  );
+  const at = m.containment.findIndex((e) => e.parent === parent && e.child === beside.sibling && isOnPlane(e, key, m));
   if (at === -1) throw new CommandError(`'${beside.sibling}' is not a child of '${parent}'`);
   const i = beside.side === 'before' ? at : at + 1;
   return { ...m, containment: [...m.containment.slice(0, i), edge, ...m.containment.slice(i)] };
@@ -535,16 +495,10 @@ export function groupNodes(
 }
 
 export function removeContainment(m: DiagramModel, parent: string, child: string, plane?: string): DiagramModel {
-  const canon = canonicalPlane(m, plane);
-  // Same resolved-both-sides comparison as addContainment's duplicate check —
-  // see canonicalPlane's comment.
-  const defaultPlane = (m.planes ?? [])[0]?.id;
-  const key = canon ?? defaultPlane;
+  const key = canonicalPlane(m, plane) ?? defaultPlaneOf(m);
   return {
     ...m,
-    containment: m.containment.filter(
-      (e) => !(e.parent === parent && e.child === child && (e.plane ?? defaultPlane) === key),
-    ),
+    containment: m.containment.filter((e) => !(e.parent === parent && e.child === child && isOnPlane(e, key, m))),
   };
 }
 
@@ -562,11 +516,8 @@ export function moveChild(
   offset: -1 | 1,
   plane?: string,
 ): DiagramModel {
-  const defaultPlane = (m.planes ?? [])[0]?.id;
-  const key = canonicalPlane(m, plane) ?? defaultPlane;
-  const siblings = m.containment.flatMap((e, i) =>
-    e.parent === parent && (e.plane ?? defaultPlane) === key ? [i] : [],
-  );
+  const key = canonicalPlane(m, plane) ?? defaultPlaneOf(m);
+  const siblings = m.containment.flatMap((e, i) => (e.parent === parent && isOnPlane(e, key, m) ? [i] : []));
   const at = siblings.findIndex((i) => m.containment[i]!.child === child);
   if (at === -1) throw new CommandError(`'${parent}' does not contain '${child}'`);
   const other = siblings[at + offset];

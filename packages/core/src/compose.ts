@@ -1,6 +1,6 @@
 import type { ContainmentEdge, DiagramModel, DiagramNode, DiagramPlane, DiagramRelation } from './types';
 import { validate } from './validate';
-import { resolveContainmentPlane } from './view/compile';
+import { containmentOn, containmentPlaneOf, defaultPlaneOf } from './planes';
 import { errMessage } from './util';
 
 export interface IncludeSource {
@@ -100,12 +100,6 @@ async function expand(
   return out;
 }
 
-/** The plane an untagged edge is on: the first declared, as the view reads it,
- * even when that plane borrows another's containment. */
-function defaultPlaneOf(m: DiagramModel): string | undefined {
-  return m.planes[0]?.id;
-}
-
 /** merge `child`'s content into `host` under `into`, namespaced by its id.
  * Same-id layers unify with the host's; see the note inside. */
 function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): DiagramModel {
@@ -116,9 +110,8 @@ function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): Diag
       `Include '${into.id}': plane '${into.includePlane}' not found in the included diagram`,
     );
   }
-  const defaultPlane = defaultPlaneOf(child);
   // the structural plane: the named one (resolved through containmentOf) or the default
-  const structural = resolveContainmentPlane(child, into.includePlane);
+  const structural = containmentPlaneOf(child, into.includePlane);
 
   // Layers: an included layer whose id the host already declares merges into the
   // host's layer (host name/tint win, no duplicate row); every other layer is
@@ -137,9 +130,10 @@ function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): Diag
 
   // only the selected plane's structure comes along, imported untagged (default:
   // the include's default plane, reproducing today's behavior unchanged)
-  const containment: ContainmentEdge[] = child.containment
-    .filter((e) => (e.plane ?? defaultPlane) === structural)
-    .map((e) => ({ parent: p(e.parent), child: p(e.child) }));
+  const containment: ContainmentEdge[] = containmentOn(child, structural).map((e) => ({
+    parent: p(e.parent),
+    child: p(e.child),
+  }));
 
   // included roots (parentless in the selected plane) hang under the include node
   const hasParent = new Set(containment.map((e) => e.child));
@@ -180,7 +174,7 @@ function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): Diag
         });
       }
       for (const e of child.containment) {
-        const plane = e.plane ?? defaultPlane;
+        const plane = e.plane ?? defaultPlaneOf(child);
         if (plane === undefined) continue;
         carriedContainment.push({ parent: p(e.parent), child: p(e.child), plane: p(plane) });
       }
@@ -195,13 +189,12 @@ function graft(host: DiagramModel, into: DiagramNode, child: DiagramModel): Diag
 
   // If carried planes are landing on a host that declares none of its own, the
   // FIRST carried plane would take `planes[0]` — the model's DEFAULT view.
-  // Untagged containment resolves to `planes[0]` too (buildHierarchy/gitGraph:
-  // `defaultPlane = planes[0]?.id`, matched via `(e.plane ?? defaultPlane) ===
-  // active`), so an unguarded carry would both silently retarget the default
-  // view onto the carried plane's content and leak the host's own untagged
-  // rows into it — and corrupt a further include's structural resolution the
-  // same way, since ITS `defaultPlane` would then resolve to the carried plane
-  // instead of the host's real structure. Synthesizing an explicit host base
+  // Untagged containment resolves to `planes[0]` too (isOnPlane), so an
+  // unguarded carry would both silently retarget the default view onto the
+  // carried plane's content and leak the host's own untagged rows into it — and
+  // corrupt a further include's structural resolution the same way, since ITS
+  // default plane would then be the carried plane instead of the host's real
+  // structure. Synthesizing an explicit host base
   // plane ahead of the carried ones keeps `planes[0]` a plain view of untagged
   // content, exactly like a plane-less host today; carried planes start at
   // index 1+ and see only their own tagged rows. A later sibling include's

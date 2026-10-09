@@ -1,4 +1,5 @@
 import type { DiagramModel, DiagramNode, DiagramRelation } from './types';
+import { defaultPlaneOf } from './planes';
 
 /**
  * What changed between two versions of one diagram, by meaning only: nodes,
@@ -62,7 +63,7 @@ function changedFields(before: object, after: object, skip: ReadonlySet<string>)
 
 /** each node's containers, as `plane:parent` (default plane spelled out) */
 function parentsByNode(m: DiagramModel): Map<string, string> {
-  const defaultPlane = m.planes[0]?.id ?? '';
+  const defaultPlane = defaultPlaneOf(m) ?? '';
   const sets = new Map<string, string[]>();
   for (const e of m.containment) {
     const list = sets.get(e.child) ?? [];

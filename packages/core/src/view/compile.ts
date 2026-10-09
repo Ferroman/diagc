@@ -1,18 +1,11 @@
 import { BUILTIN_NOTATIONS, type DiagramModel, type DiagramPlane, type NotationId } from '../types';
-import { buildHierarchy, containmentPlaneOf } from './hierarchy';
+import { buildHierarchy } from './hierarchy';
 import { computeLod } from './lod';
 import { buildViewTree } from './tree';
 import { resolveEdges } from './edges';
 import { scopeToRoot } from './scope';
 import { visibleColumns } from '../columns';
 import type { CompiledView, ViewNode, ViewportState } from './types';
-
-/** which plane's containment edges a view of `planeId` uses (resolves containmentOf).
- *  Kept here as the name the layout overlay is keyed by (see `layoutPlaneKey`);
- *  the resolution itself lives with the hierarchy, which also needs it. */
-export function resolveContainmentPlane(m: DiagramModel, planeId?: string): string | undefined {
-  return containmentPlaneOf(m, planeId);
-}
 
 /**
  * The layers a host's own layer switch should START from: the plane's presets,

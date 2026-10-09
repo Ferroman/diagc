@@ -7,7 +7,6 @@ import {
   addNode,
   addRelation,
   addThreat,
-  CommandError,
   deleteLayer,
   deleteNode,
   deletePlane,
@@ -31,6 +30,7 @@ import {
   deleteRelation,
   setTableColumns,
 } from './mutate';
+import { CommandError } from './command-error';
 import type { Column, DiagramModel, Threat } from './types';
 
 function base(): DiagramModel {

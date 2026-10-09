@@ -9,7 +9,7 @@ import {
   type Threat,
   type ThreatStatus,
 } from './types';
-import { containmentPlaneOf } from './view/hierarchy';
+import { containmentOn, containmentPlaneOf } from './planes';
 
 /** The notation id a plane (or the model) declares to be drawn as a STRIDE
  * data-flow diagram. */
@@ -103,11 +103,8 @@ export function strideFor(typeOrKind: string | undefined): readonly StrideCatego
 /** child → parents on the plane a view of `plane` uses (containmentOf resolved;
  * an untagged edge belongs to the first-declared plane), declaration order kept */
 function planeParents(m: DiagramModel, plane: string | undefined): Map<string, string[]> {
-  const active = containmentPlaneOf(m, plane);
-  const defaultPlane = m.planes?.[0]?.id;
   const parents = new Map<string, string[]>();
-  for (const e of m.containment) {
-    if ((e.plane ?? defaultPlane) !== active) continue;
+  for (const e of containmentOn(m, containmentPlaneOf(m, plane))) {
     parents.set(e.child, [...(parents.get(e.child) ?? []), e.parent]);
   }
   return parents;

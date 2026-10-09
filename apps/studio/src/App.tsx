@@ -331,7 +331,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // the dock's Layout & style section, which serves both modes.
   const algorithmLocked = notationProfile(notation).partitionOf !== undefined;
   // A borrowing plane's node membership resolves to its base plane
-  // (compileView/resolveContainmentPlane), so tagging node.plane with the
+  // (compileView/containmentPlaneOf), so tagging node.plane with the
   // borrowing plane's own id would mismatch and the node would silently
   // vanish. Stage 1 disables plane-scoped membership editing there — new
   // nodes are added shared instead (see createNodeAt).

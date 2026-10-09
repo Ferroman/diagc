@@ -17,7 +17,8 @@ import type {
 } from './types';
 import { threatTargetKey, type ThreatTarget } from './threat-model';
 import { hasNoteContent } from './comments';
-import { resolveContainmentPlane } from './view/compile';
+import { layoutPlaneKey } from './planes';
+import { CommandError } from './command-error';
 import { addStroke, deleteStroke, pruneDrawingsPlane } from './drawings';
 import { relationLabels } from './labels';
 import {
@@ -26,7 +27,6 @@ import {
   addNode,
   addRelation,
   addThreat,
-  CommandError,
   deleteLayer,
   deleteNode,
   deletePlane,
@@ -73,10 +73,6 @@ export interface EditorState {
 type ModelLayout = Pick<EditorState, 'model' | 'layout'>;
 
 export const emptyLayout = (): LayoutOverlay => ({ version: 1, planes: {} });
-
-export function layoutPlaneKey(m: DiagramModel, plane?: string): string {
-  return resolveContainmentPlane(m, plane) ?? 'default';
-}
 
 /**
  * The pins a plane opens with: its saved `unfolded` containers, in the shape

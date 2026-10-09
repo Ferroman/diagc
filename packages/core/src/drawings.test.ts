@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrokeId } from './drawings';
-import { CommandError } from './mutate';
+import { CommandError } from './command-error';
 import type { Drawings } from './types';
 
 const k1 = { id: 'k1', points: [0, 0, 10, 10] };

@@ -1,5 +1,5 @@
 import type { DiagramModel, DiagramNode, DiagramRelation } from './types';
-import { containmentPlaneOf } from './view/hierarchy';
+import { containmentOn, containmentPlaneOf } from './planes';
 
 /** The notation id a plane declares to be drawn as a git graph. */
 export const GIT_NOTATION = 'git-graph' as const;
@@ -77,10 +77,7 @@ export function mergedAway(model: DiagramModel, commitId: string): boolean {
  * as an error here (validation does that from `cycleEdges`).
  */
 export function gitGraph(model: DiagramModel, plane?: string): GitGraph {
-  const planes = model.planes ?? [];
-  const defaultPlane = planes[0]?.id;
-  const active = containmentPlaneOf(model, plane) ?? plane ?? defaultPlane;
-  const edges = model.containment.filter((e) => (e.plane ?? defaultPlane) === active);
+  const edges = containmentOn(model, containmentPlaneOf(model, plane) ?? plane);
   const byId = new Map(model.nodes.map((n) => [n.id, n]));
   const index = new Map(model.nodes.map((n, i) => [n.id, i]));
   const declared = (a: DiagramNode, b: DiagramNode): number => index.get(a.id)! - index.get(b.id)!;
