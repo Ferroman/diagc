@@ -1,5 +1,6 @@
 import type { DiagramModel, EdgeLabel, Polarity, RelationStyle } from '../types';
 import { CommandError } from '../command-error';
+import { nextFreeId, type SameKeys } from '../util';
 import { applyNullable, requireNode } from './shared';
 
 export interface RelationOptsInput {
@@ -27,9 +28,7 @@ export function addRelation(
   }
   // First free suffix — counting existing pairs collides after a middle delete
   // (delete `a->b#0`, then adding again would reuse `#1`).
-  let i = 0;
-  while (model.relations.some((r) => r.id === `${from}->${to}#${i}`)) i++;
-  const id = `${from}->${to}#${i}`;
+  const id = nextFreeId(`${from}->${to}#`, new Set(model.relations.map((r) => r.id)), 0);
   const { kind, ...rest } = opts;
   const relation = {
     id,
@@ -77,12 +76,7 @@ type RelationNullableKey = (typeof RELATION_NULLABLE_KEYS)[number];
 // RelationPatch must be listed here or this const becomes `false` and fails to
 // compile (the non-nullable `from`/`to`/`kind` are intentionally excluded).
 type RelationNullableKeys = Exclude<keyof RelationPatch, 'from' | 'to' | 'kind'>;
-type RelationKeyCoverage = [RelationNullableKeys] extends [RelationNullableKey]
-  ? [RelationNullableKey] extends [RelationNullableKeys]
-    ? true
-    : false
-  : false;
-const _assertRelationKeyCoverage: RelationKeyCoverage = true;
+const _assertRelationKeyCoverage: SameKeys<RelationNullableKeys, RelationNullableKey> = true;
 void _assertRelationKeyCoverage;
 
 export function updateRelation(model: DiagramModel, id: string, patch: RelationPatch): DiagramModel {

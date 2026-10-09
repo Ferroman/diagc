@@ -1,13 +1,5 @@
 import type { DiagramLayer, DiagramModel, DiagramNode, DiagramPlane, DiagramRelation } from './types';
-
-/**
- * Two-directional, non-distributive key-set equality check (mirrors
- * NodeKeyCoverage in mutate/nodes.ts): wrapping each side in a tuple `[...]`
- * defeats TS's distributive conditional types over a union, which would
- * otherwise let one missing/extra member hide behind the others in the
- * union (`true | never` normalizes to `true`).
- */
-type SameKeys<A extends string, B extends string> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+import type { SameKeys } from './util';
 
 /** JS reserved words plus the two bindings the emitted file itself declares. */
 const RESERVED = new Set([

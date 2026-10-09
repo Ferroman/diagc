@@ -1,5 +1,6 @@
 import type { DiagramModel, DiagramNode, DiagramRelation } from '../../types';
 import { containmentOn, containmentPlaneOf } from '../../planes';
+import { nextFreeId } from '../../util';
 
 /** The notation id a plane declares to be drawn as a git graph. */
 export const GIT_NOTATION = 'git-graph' as const;
@@ -53,13 +54,18 @@ export interface GitGraph {
   stages: GitStage[];
 }
 
-/** `metadata.gap` as a count of empty columns: a non-negative integer, or a
- * string of digits (the studio's generic metadata editor stores strings). */
-export function gapOf(node: DiagramNode): number {
-  const raw = node.metadata?.['gap'];
-  if (typeof raw === 'number') return Number.isInteger(raw) && raw >= 0 ? raw : 0;
+/** A commit's `metadata.gap` as a count of empty columns: a non-negative integer,
+ * or a string of digits (the studio's generic metadata editor stores strings).
+ * Undefined for anything else, which validation reports as `git-gap`. */
+export function parseGap(raw: unknown): number | undefined {
+  if (typeof raw === 'number') return Number.isInteger(raw) && raw >= 0 ? raw : undefined;
   if (typeof raw === 'string' && /^\d+$/.test(raw)) return Number(raw);
-  return 0;
+  return undefined;
+}
+
+/** The commit's gap; 0 when it has none or a malformed one. */
+export function gapOf(node: DiagramNode): number {
+  return parseGap(node.metadata?.['gap']) ?? 0;
 }
 
 /** true when the commit's segment ended in a merge (it has an outgoing `merge`). */
@@ -116,11 +122,7 @@ export function gitGraph(model: DiagramModel, plane?: string): GitGraph {
  * unique even after deletions. Shared by the Git panel and the canvas `+` so
  * a commit is named the same whichever created it. */
 export function nextCommitId(model: DiagramModel, laneId: string): string {
-  const taken = new Set(model.nodes.map((n) => n.id));
-  for (let n = 1; ; n++) {
-    const id = `${laneId}-${n}`;
-    if (!taken.has(id)) return id;
-  }
+  return nextFreeId(`${laneId}-`, new Set(model.nodes.map((n) => n.id)));
 }
 
 /** The lane's rightmost commit (max column; ties go to the later declared). */

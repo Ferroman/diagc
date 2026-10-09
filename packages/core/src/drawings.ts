@@ -1,5 +1,6 @@
 import { CommandError } from './command-error';
 import type { Drawings, Stroke } from './types';
+import { nextFreeId } from './util';
 
 export const emptyDrawings = (): Drawings => ({ version: 1, planes: {} });
 
@@ -7,10 +8,7 @@ export const emptyDrawings = (): Drawings => ({ version: 1, planes: {} });
  * rather than a random id: stroke ids only need to be unique within one file,
  * and a counter keeps the sidecar diff readable and the tests mock-free. */
 export function uniqueStrokeId(drawings: Drawings, key: string): string {
-  const taken = new Set((drawings.planes[key] ?? []).map((s) => s.id));
-  for (let i = 1; ; i++) {
-    if (!taken.has(`k${i}`)) return `k${i}`;
-  }
+  return nextFreeId('k', new Set((drawings.planes[key] ?? []).map((s) => s.id)));
 }
 
 export function addStroke(d: Drawings, key: string, stroke: Stroke): Drawings {

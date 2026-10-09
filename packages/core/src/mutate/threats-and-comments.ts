@@ -2,6 +2,7 @@ import type { Comment, DiagramModel, StrideCategory, Threat, ThreatSeverity, Thr
 import { isIsoDate } from '../dates';
 import { isNodeRef, type ElementRef } from '../elements';
 import { CommandError } from '../command-error';
+import type { SameKeys } from '../util';
 import { applyNullable } from './shared';
 
 /** Patch for update-threat: `null` clears an optional field. `category` and
@@ -24,12 +25,7 @@ type ThreatNullableKey = (typeof THREAT_NULLABLE_KEYS)[number];
 // null-clearable field on ThreatPatch must be listed above or this const
 // becomes `false` and fails to compile.
 type ThreatNullableKeys = Exclude<keyof ThreatPatch, 'category' | 'title'>;
-type ThreatKeyCoverage = [ThreatNullableKeys] extends [ThreatNullableKey]
-  ? [ThreatNullableKey] extends [ThreatNullableKeys]
-    ? true
-    : false
-  : false;
-const _assertThreatKeyCoverage: ThreatKeyCoverage = true;
+const _assertThreatKeyCoverage: SameKeys<ThreatNullableKeys, ThreatNullableKey> = true;
 void _assertThreatKeyCoverage;
 
 /** The two per-element lists that commands edit in place: threats and
@@ -116,12 +112,7 @@ export interface CommentPatch {
 const COMMENT_NULLABLE_KEYS = ['by', 'at'] as const;
 type CommentNullableKey = (typeof COMMENT_NULLABLE_KEYS)[number];
 type CommentNullableKeys = Exclude<keyof CommentPatch, 'text'>;
-type CommentKeyCoverage = [CommentNullableKeys] extends [CommentNullableKey]
-  ? [CommentNullableKey] extends [CommentNullableKeys]
-    ? true
-    : false
-  : false;
-const _assertCommentKeyCoverage: CommentKeyCoverage = true;
+const _assertCommentKeyCoverage: SameKeys<CommentNullableKeys, CommentNullableKey> = true;
 void _assertCommentKeyCoverage;
 
 /** A date the studio's date input could not have produced is refused here, not

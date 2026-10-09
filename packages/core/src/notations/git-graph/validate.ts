@@ -1,6 +1,6 @@
 import { notationPlane } from '../../planes';
 import { report, type Ctx } from '../../validate/context';
-import { GIT_NOTATION, GIT_STAGE_TYPE, gitGraph, isGitKind, stageCommit, type GitGraph } from './git-graph';
+import { GIT_NOTATION, GIT_STAGE_TYPE, gitGraph, isGitKind, parseGap, stageCommit, type GitGraph } from './git-graph';
 
 /**
  * Git-graph conventions, applied wherever RENDERING would activate the git
@@ -98,9 +98,8 @@ function checkGaps({ issues, model }: Ctx): void {
   for (const n of model.nodes) {
     if (n.type !== 'commit') continue;
     const raw = n.metadata?.['gap'];
-    if (raw === undefined) continue;
-    const ok =
-      (typeof raw === 'number' && Number.isInteger(raw) && raw >= 0) || (typeof raw === 'string' && /^\d+$/.test(raw));
-    if (!ok) report(issues, 'git-gap', `Commit '${n.id}' has invalid gap '${String(raw)}'`, n.id);
+    if (raw !== undefined && parseGap(raw) === undefined) {
+      report(issues, 'git-gap', `Commit '${n.id}' has invalid gap '${String(raw)}'`, n.id);
+    }
   }
 }

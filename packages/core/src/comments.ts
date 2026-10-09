@@ -1,5 +1,6 @@
 import { findElement, type ElementRef } from './elements';
 import type { Comment, DiagramModel } from './types';
+import { nextFreeId } from './util';
 
 /** The element's comment list — `[]` when it carries none, undefined when there
  * is no such element (the two are different answers; see threatsOf). */
@@ -26,8 +27,5 @@ export function hasNoteContent(el: {
 
 /** First free `c<n>` — scoped to the element, like threat ids. */
 export function nextCommentId(comments: readonly Comment[]): string {
-  const taken = new Set(comments.map((c) => c.id));
-  let n = 1;
-  while (taken.has(`c${n}`)) n += 1;
-  return `c${n}`;
+  return nextFreeId('c', new Set(comments.map((c) => c.id)));
 }

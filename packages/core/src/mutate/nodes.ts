@@ -3,6 +3,7 @@ import { normalizeRuns, runsToPlainText } from '../text';
 import { childrenOf } from '../children';
 import { isIsoDate } from '../dates';
 import { CommandError } from '../command-error';
+import { nextFreeId, type SameKeys } from '../util';
 import { applyNullable, prunePlaneHides, requireNode } from './shared';
 
 export function uniqueNodeId(model: DiagramModel, base: string): string {
@@ -12,10 +13,7 @@ export function uniqueNodeId(model: DiagramModel, base: string): string {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '') || 'node';
   const taken = new Set(model.nodes.map((n) => n.id));
-  if (!taken.has(slug)) return slug;
-  for (let i = 2; ; i++) {
-    if (!taken.has(`${slug}-${i}`)) return `${slug}-${i}`;
-  }
+  return taken.has(slug) ? nextFreeId(`${slug}-`, taken, 2) : slug;
 }
 
 export function addNode(model: DiagramModel, node: DiagramNode): DiagramModel {
@@ -91,16 +89,9 @@ const NODE_DETAIL_KEYS = [
 ] as const;
 type NodeDetailKey = (typeof NODE_DETAIL_KEYS)[number];
 
-// Compile-time guarantee that the whitelist is EXACTLY the interface's keys:
-// add a field to NodeDetails without listing it here and `_assertNodeKeyCoverage`
-// becomes `false`, failing this const — the silent drift a hand-written chain
-// used to permit. `void` reads the const so noUnusedLocals doesn't flag it.
-type NodeKeyCoverage = [keyof NodeDetails] extends [NodeDetailKey]
-  ? [NodeDetailKey] extends [keyof NodeDetails]
-    ? true
-    : false
-  : false;
-const _assertNodeKeyCoverage: NodeKeyCoverage = true;
+// The whitelist is exactly the interface's keys: a field added to NodeDetails and
+// not listed here fails this line. `void` reads the const for noUnusedLocals.
+const _assertNodeKeyCoverage: SameKeys<keyof NodeDetails, NodeDetailKey> = true;
 void _assertNodeKeyCoverage;
 
 export function setNodeDetails(model: DiagramModel, id: string, details: NodeDetails): DiagramModel {

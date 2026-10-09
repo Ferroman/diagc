@@ -10,6 +10,7 @@ import {
   latestCommit,
   mergedAway,
   nextCommitId,
+  parseGap,
 } from './git-graph';
 import { validate } from '../../validate/index';
 
@@ -201,5 +202,12 @@ describe('git stages', () => {
     json.nodes.push({ id: 'bare', name: 'Bare', type: 'git-stage' });
     const issues = validate(json).filter((i) => i.code === 'git-stage-span');
     expect(issues.map((i) => i.ref).sort()).toEqual(['bare', 'lost']);
+  });
+});
+
+describe('parseGap', () => {
+  it('reads a non-negative integer or a string of digits, and nothing else', () => {
+    expect([0, 3, '2', '007'].map(parseGap)).toEqual([0, 3, 2, 7]);
+    expect([-1, 1.5, '1.5', ' 2', '', null, true, undefined].map(parseGap)).toEqual(Array(8).fill(undefined));
   });
 });

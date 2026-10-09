@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import { defined } from './util';
+import { defined, nextFreeId, type SameKeys } from './util';
 
 describe('defined', () => {
   it('drops the keys whose value is undefined', () => {
@@ -26,5 +26,23 @@ describe('defined', () => {
     expectTypeOf(out.id).toEqualTypeOf<string>();
     expectTypeOf(out.name).toEqualTypeOf<string | undefined>();
     expectTypeOf(out).toExtend<{ id: string; name?: string }>();
+  });
+});
+
+describe('nextFreeId', () => {
+  it('takes the first number from `first` up that is not taken', () => {
+    expect(nextFreeId('c', new Set())).toBe('c1');
+    expect(nextFreeId('c', new Set(['c1', 'c2', 'c4']))).toBe('c3');
+    expect(nextFreeId('a->b#', new Set(['a->b#0']), 0)).toBe('a->b#1');
+    expect(nextFreeId('db-', new Set(['db-2']), 2)).toBe('db-3');
+  });
+});
+
+describe('SameKeys', () => {
+  it('is true only when both sides name the same keys', () => {
+    expectTypeOf<SameKeys<'a' | 'b', 'b' | 'a'>>().toEqualTypeOf<true>();
+    // a member missing on either side is not hidden by the others in the union
+    expectTypeOf<SameKeys<'a' | 'b', 'a'>>().toEqualTypeOf<false>();
+    expectTypeOf<SameKeys<'a', 'a' | 'b'>>().toEqualTypeOf<false>();
   });
 });

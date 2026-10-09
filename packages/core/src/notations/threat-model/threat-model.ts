@@ -10,7 +10,7 @@ import {
   type ThreatStatus,
 } from '../../types';
 import { containmentOn, containmentPlaneOf } from '../../planes';
-import { defined } from '../../util';
+import { defined, nextFreeId } from '../../util';
 import { elementKey, findElement, type ElementRef } from '../../elements';
 
 /** The notation id a plane (or the model) declares to be drawn as a STRIDE
@@ -60,10 +60,7 @@ export function threatsOf(model: DiagramModel, t: ElementRef): readonly Threat[]
 /** First free `t<n>`. Ids are scoped to their element, so a removed `t2` is
  * handed out again rather than the counter climbing forever. */
 export function nextThreatId(threats: readonly Threat[]): string {
-  const taken = new Set(threats.map((t) => t.id));
-  let n = 1;
-  while (taken.has(`t${n}`)) n += 1;
-  return `t${n}`;
+  return nextFreeId('t', new Set(threats.map((t) => t.id)));
 }
 
 /** the boundaries a relation's ends sit in; an absent side is "outside every boundary" */

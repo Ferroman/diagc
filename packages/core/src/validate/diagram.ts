@@ -26,41 +26,41 @@ export function validateLegend(ctx: Ctx): void {
   const l = model.legend;
   if (l === undefined) return;
   if (typeof l !== 'object' || l === null || Array.isArray(l)) {
-    issues.push({ code: 'invalid-legend', message: 'Legend must be an object' });
+    report(issues, 'invalid-legend', 'Legend must be an object');
     return;
   }
   if (l.title !== undefined && (typeof l.title !== 'string' || l.title === '')) {
-    issues.push({ code: 'invalid-legend', message: `Legend has invalid title '${String(l.title)}'` });
+    report(issues, 'invalid-legend', `Legend has invalid title '${String(l.title)}'`);
   }
   if (l.position !== undefined && !(LEGEND_POSITIONS as readonly string[]).includes(l.position)) {
-    issues.push({ code: 'invalid-legend', message: `Legend has unknown position '${String(l.position)}'` });
+    report(issues, 'invalid-legend', `Legend has unknown position '${String(l.position)}'`);
   }
   if (l.show !== undefined) {
     if (!Array.isArray(l.show)) {
-      issues.push({ code: 'invalid-legend', message: 'Legend show must be a list' });
+      report(issues, 'invalid-legend', 'Legend show must be a list');
     } else {
       for (const s of l.show) {
         if (!(LEGEND_SECTIONS as readonly string[]).includes(s)) {
-          issues.push({ code: 'invalid-legend', message: `Legend has unknown section '${String(s)}'` });
+          report(issues, 'invalid-legend', `Legend has unknown section '${String(s)}'`);
         }
       }
     }
   }
   if (l.items !== undefined) {
     if (!Array.isArray(l.items)) {
-      issues.push({ code: 'invalid-legend', message: 'Legend items must be a list' });
+      report(issues, 'invalid-legend', 'Legend items must be a list');
       return;
     }
     l.items.forEach((item, i) => {
       if (item === null || typeof item !== 'object') {
-        issues.push({ code: 'invalid-legend', message: `Legend item ${i} must be an object` });
+        report(issues, 'invalid-legend', `Legend item ${i} must be an object`);
         return;
       }
       if (typeof item.label !== 'string' || item.label === '') {
-        issues.push({ code: 'invalid-legend', message: `Legend item ${i} needs a non-empty label` });
+        report(issues, 'invalid-legend', `Legend item ${i} needs a non-empty label`);
       }
       if (item.color !== undefined && typeof item.color !== 'string') {
-        issues.push({ code: 'invalid-legend', message: `Legend item ${i} has invalid color '${String(item.color)}'` });
+        report(issues, 'invalid-legend', `Legend item ${i} has invalid color '${String(item.color)}'`);
       }
     });
   }
