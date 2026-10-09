@@ -185,3 +185,59 @@ describe('table columns + fk validation', () => {
     expect(validate(m).filter((i) => i.code === 'duplicate-column' || i.code === 'unknown-column')).toEqual([]);
   });
 });
+
+describe('the order relation issues come in', () => {
+  it('reports each relation in turn, its faults in a fixed order', () => {
+    // every relation-level fault at once: the order is what `diagc lint` prints
+    const m = emptyModel();
+    m.nodes = [{ id: 'b', name: 'b', columns: [{ name: 'id' }] }];
+    m.relations = [
+      {
+        id: 'r',
+        from: 'b',
+        to: 'ghost',
+        kind: 'x',
+        layer: 'nope',
+        polarity: '*',
+        delay: 'yes',
+        labels: [{ text: 1, t: 2, side: 'x' }],
+        style: {
+          shape: 'x',
+          line: 'x',
+          end: 'x',
+          fromSide: 'x',
+          toSide: 'x',
+          width: 0,
+          curvature: -1,
+          color: 1,
+          animated: 'x',
+        },
+        fromColumn: 'nope',
+        toColumn: 'nope',
+      },
+      { id: 'r', from: 'b', to: 'b', kind: 'x', labels: 'x', fromColumn: 'id' },
+    ] as unknown as DiagramModel['relations'];
+    expect(validate(m).map((i) => [i.code, i.message])).toEqual([
+      ['dangling-endpoint', "Relation 'r' references unknown node 'ghost'"],
+      ['unknown-layer', "Relation 'r' references unknown layer 'nope'"],
+      ['invalid-polarity', "Relation 'r' has invalid polarity '*'"],
+      ['invalid-delay', "Relation 'r' has invalid delay 'yes'"],
+      ['invalid-edge-label', "Relation 'r' has invalid label text at 0"],
+      ['invalid-edge-label', "Relation 'r' has invalid label t at 0"],
+      ['invalid-edge-label', "Relation 'r' has invalid label side at 0"],
+      ['invalid-style', "Relation 'r' has invalid style shape 'x'"],
+      ['invalid-style', "Relation 'r' has invalid style line 'x'"],
+      ['invalid-style', "Relation 'r' has invalid style end 'x'"],
+      ['invalid-style', "Relation 'r' has invalid style fromSide 'x'"],
+      ['invalid-style', "Relation 'r' has invalid style toSide 'x'"],
+      ['invalid-style', "Relation 'r' has invalid style width '0'"],
+      ['invalid-style', "Relation 'r' has invalid style curvature '-1'"],
+      ['invalid-style', "Relation 'r' has invalid style color '1'"],
+      ['invalid-style', "Relation 'r' has invalid style animated 'x'"],
+      ['unknown-column', "Relation 'r' fromColumn 'nope' is not a column of 'b'"],
+      ['unknown-column', "Relation 'r' toColumn 'nope' is not a column of 'ghost'"],
+      ['duplicate-relation', "Duplicate relation id 'r'"],
+      ['invalid-edge-label', "Relation 'r' has invalid label list"],
+    ]);
+  });
+});

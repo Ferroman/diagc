@@ -243,3 +243,62 @@ describe('node technology validation', () => {
     expect(validate(m)).toContainEqual(expect.objectContaining({ code: 'invalid-style', ref: 'n1' }));
   });
 });
+
+describe('the order node issues come in', () => {
+  it('reports each node in turn, its faults in a fixed order', () => {
+    // every node-level fault at once: the order is what `diagc lint` prints
+    const m = raw({
+      nodes: [
+        {
+          id: '__root__',
+          name: 'r',
+          color: 1,
+          textColor: 1,
+          technology: 1,
+          rich: [{ text: 1 }],
+          textAlign: 'middle',
+          fontScale: 'huge',
+          image: 'a b.png',
+          shape: 'a b.svg',
+          link: ' ',
+          key: 'k',
+          include: '',
+          includePlane: '',
+          includePlanes: 'yes',
+          plane: 'nope',
+          layer: 'nope',
+          columns: [null, { name: 'c' }, { name: 'c', layer: 'nope' }],
+        },
+        { id: '__root__', name: 'dup', key: 'k', includePlane: 'p', includePlanes: true, columns: 'x' },
+        { id: 'b', name: 'b', key: 'Bad Key' },
+      ] as unknown as DiagramNode[],
+    });
+    expect(validate(m).map((i) => [i.code, i.message])).toEqual([
+      ['reserved-node-id', "Node id '__root__' is reserved for the layout root"],
+      ['invalid-style', "Node '__root__' has invalid color '1'"],
+      ['invalid-style', "Node '__root__' has invalid textColor '1'"],
+      ['invalid-style', "Node '__root__' has invalid technology '1'"],
+      ['invalid-rich', "Node '__root__' has invalid rich text"],
+      ['invalid-align', "Node '__root__' has invalid textAlign 'middle'"],
+      ['invalid-font-scale', "Node '__root__' has invalid fontScale 'huge'"],
+      ['invalid-image', "Node '__root__' has invalid image ref 'a b.png'"],
+      ['invalid-shape', "Node '__root__' has invalid shape ref 'a b.svg'"],
+      ['invalid-link', "Node '__root__' has invalid link"],
+      ['invalid-include', "Node '__root__' has invalid include ''"],
+      ['invalid-include', "Node '__root__' has invalid includePlane ''"],
+      ['invalid-include', "Node '__root__' has invalid includePlanes 'yes'"],
+      ['unknown-plane', "Node '__root__' belongs to unknown plane 'nope'"],
+      ['unknown-layer', "Node '__root__' references unknown layer 'nope'"],
+      ['duplicate-column', "Node '__root__' has an invalid column"],
+      ['duplicate-column', "Node '__root__' has duplicate column 'c'"],
+      ['unknown-layer', "Column '__root__.c' references unknown layer 'nope'"],
+      ['duplicate-node', "Duplicate node id '__root__'"],
+      ['reserved-node-id', "Node id '__root__' is reserved for the layout root"],
+      ['duplicate-key', "Nodes '__root__' and '__root__' share key 'k' in one diagram"],
+      ['invalid-include', "Node '__root__' has includePlane without include"],
+      ['invalid-include', "Node '__root__' has includePlanes without include"],
+      ['duplicate-column', "Node '__root__' columns must be a list"],
+      ['invalid-key', "Node 'b' has invalid key 'Bad Key'"],
+    ]);
+  });
+});

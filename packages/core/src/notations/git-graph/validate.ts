@@ -1,6 +1,6 @@
 import { notationPlane } from '../../planes';
 import { report, type Ctx } from '../../validate/context';
-import { GIT_NOTATION, GIT_STAGE_TYPE, gitGraph, isGitKind, stageCommit } from './git-graph';
+import { GIT_NOTATION, GIT_STAGE_TYPE, gitGraph, isGitKind, stageCommit, type GitGraph } from './git-graph';
 
 /**
  * Git-graph conventions, applied wherever RENDERING would activate the git
@@ -21,6 +21,32 @@ export function validateGit(ctx: Ctx): void {
   const g = gitGraph(m, plane?.id);
   const typeOf = new Map(m.nodes.map((n) => [n.id, n.type]));
   const isCommit = (id: string): boolean => typeOf.get(id) === 'commit';
+  for (const [id, p] of checkLinks(ctx, g, isCommit)) {
+    if (p.commit > 1) report(issues, 'git-parents', `Commit '${id}' has more than one incoming commit link`, id);
+    if (p.branch > 1) report(issues, 'git-parents', `Commit '${id}' has more than one incoming branch link`, id);
+  }
+  const cut = g.cycleEdges[0];
+  if (cut !== undefined) report(issues, 'git-cycle', `Git links form a cycle (cut at relation '${cut}')`, cut);
+  for (const s of g.strays) {
+    report(
+      issues,
+      'git-commit-outside-lane',
+      `Commit '${s.id}' is not contained by a branch${plane !== undefined ? ` on plane '${plane.id}'` : ''}`,
+      s.id,
+    );
+  }
+  checkStages(ctx, isCommit);
+  checkGaps(ctx);
+}
+
+/** Each git link joins two commits, a `commit` link within a lane and the others
+ * across lanes. Returns each commit's count of incoming commit and branch links. */
+function checkLinks(
+  ctx: Ctx,
+  g: GitGraph,
+  isCommit: (id: string) => boolean,
+): Map<string, { commit: number; branch: number }> {
+  const { issues, m } = ctx;
   const parents = new Map<string, { commit: number; branch: number }>();
   for (const r of m.relations) {
     if (!isGitKind(r.kind)) continue;
@@ -48,20 +74,11 @@ export function validateGit(ctx: Ctx): void {
       parents.set(r.to, p);
     }
   }
-  for (const [id, p] of parents) {
-    if (p.commit > 1) report(issues, 'git-parents', `Commit '${id}' has more than one incoming commit link`, id);
-    if (p.branch > 1) report(issues, 'git-parents', `Commit '${id}' has more than one incoming branch link`, id);
-  }
-  const cut = g.cycleEdges[0];
-  if (cut !== undefined) report(issues, 'git-cycle', `Git links form a cycle (cut at relation '${cut}')`, cut);
-  for (const s of g.strays) {
-    report(
-      issues,
-      'git-commit-outside-lane',
-      `Commit '${s.id}' is not contained by a branch${plane !== undefined ? ` on plane '${plane.id}'` : ''}`,
-      s.id,
-    );
-  }
+  return parents;
+}
+
+/** a stage spans commits: its `from` is required, and both ends must be commits */
+function checkStages({ issues, m }: Ctx, isCommit: (id: string) => boolean): void {
   for (const n of m.nodes) {
     if (n.type !== GIT_STAGE_TYPE) continue;
     const from = stageCommit(n, 'from');
@@ -74,6 +91,10 @@ export function validateGit(ctx: Ctx): void {
         report(issues, 'git-stage-span', `Stage '${n.id}' spans '${id}', which is not a commit`, n.id);
     }
   }
+}
+
+/** a commit's `gap` is a count of empty columns */
+function checkGaps({ issues, m }: Ctx): void {
   for (const n of m.nodes) {
     if (n.type !== 'commit') continue;
     const raw = n.metadata?.['gap'];

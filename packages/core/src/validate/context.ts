@@ -108,15 +108,14 @@ export interface Ctx {
 }
 
 /** Every containment edge on the active plane whose child is one of `ids` gets ONE
- * issue (`code`, `message(child, parent)`): the notation's arrangement and a group
- * want the same rectangle, so nothing in `ids` may be grouped. Untagged containment
- * belongs to the default plane. */
+ * issue (`issue.code`, `issue.message(child, parent)`): the notation's arrangement
+ * and a group want the same rectangle, so nothing in `ids` may be grouped. Untagged
+ * containment belongs to the default plane. */
 export function reportContained(
   ctx: Ctx,
   plane: DiagramPlane | undefined,
   ids: ReadonlySet<string>,
-  code: Code,
-  message: (child: string, parent: string) => string,
+  issue: { code: Code; message: (child: string, parent: string) => string },
 ): void {
   const { issues, m } = ctx;
   const active = plane?.id ?? defaultPlaneOf(m);
@@ -124,6 +123,6 @@ export function reportContained(
   for (const e of m.containment) {
     if (!isOnPlane(e, active, m) || !ids.has(e.child) || reported.has(e.child)) continue;
     reported.add(e.child);
-    report(issues, code, message(e.child, e.parent), e.child);
+    report(issues, issue.code, issue.message(e.child, e.parent), e.child);
   }
 }

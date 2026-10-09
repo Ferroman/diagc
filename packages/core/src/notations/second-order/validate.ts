@@ -43,12 +43,9 @@ export function validateSecondOrder(ctx: Ctx): void {
   }
   // Bands and groups want the same rectangle; a group spanning two bands has no
   // sensible picture.
-  reportContained(
-    ctx,
-    plane,
-    soIds,
-    'so-contained',
-    (child, parent) =>
+  reportContained(ctx, plane, soIds, {
+    code: 'so-contained',
+    message: (child, parent) =>
       `'${child}' sits inside '${parent}'; decisions and consequences cannot be grouped in a second-order diagram`,
-  );
+  });
 }

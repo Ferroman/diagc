@@ -13,6 +13,22 @@ import { PLAN_NOTATION, atOf, dayOf, isPlanEvent, isPlanRole, isPlanZone, planGr
  * relation kind somebody chose.
  */
 export function validatePlan(ctx: Ctx): void {
+  const { m } = ctx;
+  checkDates(ctx);
+  const where = notationPlane(m, PLAN_NOTATION);
+  const byId = new Map(m.nodes.map((n) => [n.id, n] as const));
+  // `planGraph` is a full `buildHierarchy`, and this function runs on EVERY
+  // model — validateGit and validateFishbone return before their derivations,
+  // but this one cannot, because dates are checked whatever the notation. So
+  // the graph is paid for only where there is something to nest; the date
+  // check above and the role-target check below never touch it.
+  if (m.nodes.some((n) => isPlanZone(n) || isPlanEvent(n))) checkNesting(ctx, where?.plane?.id, byId);
+  if (where === undefined) return;
+  checkRoleTargets(ctx, byId);
+}
+
+/** a zone has a real start and end, in order; an event a real `at` */
+function checkDates(ctx: Ctx): void {
   const { issues, m } = ctx;
   const dateOr = (n: DiagramNode, key: 'start' | 'end' | 'at'): number | undefined => {
     const raw = n.metadata?.[key];
@@ -47,33 +63,32 @@ export function validatePlan(ctx: Ctx): void {
       dateOr(n, 'at');
     }
   }
-  const where = notationPlane(m, PLAN_NOTATION);
-  const plane = where?.plane;
-  const byId = new Map(m.nodes.map((n) => [n.id, n] as const));
-  // `planGraph` is a full `buildHierarchy`, and this function runs on EVERY
-  // model — validateGit and validateFishbone return before their derivations,
-  // but this one cannot, because dates are checked whatever the notation. So
-  // the graph is paid for only where there is something to nest; the date loop
-  // above and the role-target loop below never touch it.
-  if (m.nodes.some((n) => isPlanZone(n) || isPlanEvent(n))) {
-    const g = planGraph(m, plane?.id);
-    for (const [child, parentId] of g.parent) {
-      const outer = spanOf(byId.get(parentId)!);
-      const node = byId.get(child)!;
-      if (outer === undefined) continue;
-      const inner = spanOf(node) ?? (atOf(node) !== undefined ? { start: atOf(node)!, end: atOf(node)! } : undefined);
-      if (inner === undefined) continue;
-      if (inner.start < outer.start || inner.end > outer.end) {
-        report(
-          issues,
-          'plan-nested',
-          `'${child}' lies outside its zone '${parentId}' (${String(byId.get(parentId)!.metadata?.start)} … ${String(byId.get(parentId)!.metadata?.end)})`,
-          child,
-        );
-      }
+}
+
+/** a contained zone or event lies within its zone's span, on the plan's containment */
+function checkNesting(ctx: Ctx, plane: string | undefined, byId: ReadonlyMap<string, DiagramNode>): void {
+  const { issues, m } = ctx;
+  const g = planGraph(m, plane);
+  for (const [child, parentId] of g.parent) {
+    const outer = spanOf(byId.get(parentId)!);
+    const node = byId.get(child)!;
+    if (outer === undefined) continue;
+    const inner = spanOf(node) ?? (atOf(node) !== undefined ? { start: atOf(node)!, end: atOf(node)! } : undefined);
+    if (inner === undefined) continue;
+    if (inner.start < outer.start || inner.end > outer.end) {
+      report(
+        issues,
+        'plan-nested',
+        `'${child}' lies outside its zone '${parentId}' (${String(byId.get(parentId)!.metadata?.start)} … ${String(byId.get(parentId)!.metadata?.end)})`,
+        child,
+      );
     }
   }
-  if (where === undefined) return;
+}
+
+/** under the plan notation, a role relation points at a zone */
+function checkRoleTargets(ctx: Ctx, byId: ReadonlyMap<string, DiagramNode>): void {
+  const { issues, m } = ctx;
   for (const r of m.relations) {
     if (!isPlanRole(r.kind)) continue;
     if (!ctx.nodeIds.has(r.from) || !ctx.nodeIds.has(r.to)) continue; // dangling ends are validateRelations' finding

@@ -1,3 +1,4 @@
+import type { DiagramNode } from '../../types';
 import { notationPlane } from '../../planes';
 import { report, reportContained, type Ctx } from '../../validate/context';
 import {
@@ -8,6 +9,7 @@ import {
   fishboneParents,
   fishboneTree,
   isFishboneNode,
+  type FishboneTree,
 } from './fishbone';
 
 /**
@@ -25,7 +27,7 @@ import {
  * mid-edit (and unopenable once on disk).
  */
 export function validateFishbone(ctx: Ctx): void {
-  const { issues, warnings, m } = ctx;
+  const { issues, m } = ctx;
   const where = notationPlane(m, FISHBONE_NOTATION);
   if (where === undefined) return;
   const { plane } = where;
@@ -48,22 +50,24 @@ export function validateFishbone(ctx: Ctx): void {
     report(issues, 'fb-many-effects', `'${extra.id}' is a second effect; a fishbone diagram has one head`, extra.id);
   }
 
+  checkPlacements(ctx, fb);
+  // The fish and a group want the same rectangle.
+  const fbIds = new Set(fb.map((n) => n.id));
+  reportContained(ctx, plane, fbIds, {
+    code: 'fb-contained',
+    message: (child, parent) => `'${child}' sits inside '${parent}'; nothing on a fishbone diagram can be grouped`,
+  });
+}
+
+/** One issue for each fishbone node the tree leaves off the fish, naming why (see
+ * validateFishbone for the order the reasons are tried in). */
+function checkPlacements(ctx: Ctx, fb: readonly DiagramNode[]): void {
+  const { issues, warnings, m } = ctx;
   // The same parent pick fishboneTree makes — shared, so the rule can't drift between the two.
   const typeOf = new Map(fb.map((n) => [n.id, n.type]));
   const parentOf = fishboneParents(m);
   const tree = fishboneTree(m);
-  const onFish = new Set<string>(tree.effect !== undefined ? [tree.effect] : []);
-  const subIds = new Set<string>();
-  for (const c of tree.categories) {
-    onFish.add(c.id);
-    for (const cause of c.causes) {
-      onFish.add(cause.id);
-      for (const s of cause.subs) {
-        onFish.add(s);
-        subIds.add(s);
-      }
-    }
-  }
+  const { onFish, subIds } = onTheFish(tree);
   for (const n of fb) {
     const parent = parentOf.get(n.id);
     if (n.type === FB_EFFECT_TYPE) {
@@ -99,13 +103,21 @@ export function validateFishbone(ctx: Ctx): void {
       report(warnings, 'fb-unattached', `'${n.id}' does not reach the effect`, n.id);
     }
   }
-  // The fish and a group want the same rectangle.
-  const fbIds = new Set(fb.map((n) => n.id));
-  reportContained(
-    ctx,
-    plane,
-    fbIds,
-    'fb-contained',
-    (child, parent) => `'${child}' sits inside '${parent}'; nothing on a fishbone diagram can be grouped`,
-  );
+}
+
+/** every node the tree hangs on the fish, and the sub-causes among them */
+function onTheFish(tree: FishboneTree): { onFish: Set<string>; subIds: Set<string> } {
+  const onFish = new Set<string>(tree.effect !== undefined ? [tree.effect] : []);
+  const subIds = new Set<string>();
+  for (const c of tree.categories) {
+    onFish.add(c.id);
+    for (const cause of c.causes) {
+      onFish.add(cause.id);
+      for (const s of cause.subs) {
+        onFish.add(s);
+        subIds.add(s);
+      }
+    }
+  }
+  return { onFish, subIds };
 }
