@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/Ferroman/diagc/compare/v1.0.1...v1.1.0) (2026-10-09)
+
+
+### Features
+
+* **core:** ElementRef, Point and Size in the author API, and one copy of core's shared helpers ([#81](https://github.com/Ferroman/diagc/issues/81)) ([e85f8b5](https://github.com/Ferroman/diagc/commit/e85f8b521feb85b3ea7331b93b7c6eb46a2c253a))
+
 ## [1.0.1](https://github.com/Ferroman/diagc/compare/v1.0.0...v1.0.1) (2026-10-09)
 
 
