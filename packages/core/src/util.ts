@@ -40,8 +40,8 @@ export function nextFreeId(prefix: string, taken: ReadonlySet<string>, first = 1
  * `true` when `A` and `B` are the same set of keys, else `false`: a list kept
  * beside an interface asserts `const _x: SameKeys<…> = true` and stops compiling
  * the day a field is added to one and not the other. Each side is wrapped in a
- * tuple so the check does not distribute over the union, where one missing member
- * would hide behind the others (`true | false` is `boolean`, which `true` is not
- * assignable from, but `true | never` is `true`).
+ * tuple so the check does not distribute over the union, where a missing member
+ * would still compile: distributed, `'a' | 'b'` against `'a'` gives `true | false`,
+ * which is `boolean`, and `= true` is a valid `boolean`.
  */
 export type SameKeys<A extends string, B extends string> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
