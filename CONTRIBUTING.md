@@ -120,8 +120,9 @@ but blame then fails in any checkout without that file, such as an older commit.
 - **Comments explain why, not what.** Several dependency arrays and render-phase refs in
   `DiagramView`, `useEditor` and `useDeepLink` encode fixed race conditions — read the
   surrounding comment before changing one.
-- **New editing capability means a new `EditorCommand`** in `packages/core/src/commands.ts`
-  with tests, then UI wiring — not ad-hoc mutation in a component.
+- **New editing capability means a new `EditorCommand`:** its union member and handler in
+  `packages/core/src/commands/` (`model.ts`, `layout.ts` or `drawings.ts`), the mutation it
+  calls, tests, then UI wiring — not ad-hoc mutation in a component.
 - **`packages/core` depends on nothing.** No React, no filesystem. That boundary is the
   one structural rule worth preserving: the model does not know it is going to be drawn.
 - **Import core from `@diagc/core/internal`** inside this repository. `@diagc/core` is

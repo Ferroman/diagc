@@ -1,4 +1,4 @@
-import { applyCommandWithResult, CommandError, type EditorCommand, type EditorState } from '@diagc/core/internal';
+import { applyCommand, CommandError, type EditorCommand, type EditorState } from '@diagc/core/internal';
 
 export interface HistoryEntry {
   command: EditorCommand;
@@ -29,7 +29,7 @@ export function dispatch(s: EditorSession, command: EditorCommand): EditorSessio
   if (command.type === 'batch' && command.commands.length === 0) return s;
   try {
     const hadPlanes = (s.state.model.planes ?? []).length > 0;
-    const { state, relationId } = applyCommandWithResult(s.state, command);
+    const { state, relationId } = applyCommand(s.state, command);
     let nextState = state;
     // obligation: plane-less model gains its first plane -> migrate 'default' buckets
     // (positions AND drawings: both sidecars key by the same plane id). Keyed on the
@@ -59,7 +59,7 @@ export function dispatch(s: EditorSession, command: EditorCommand): EditorSessio
     const past = [...s.past, { command, stateBefore: s.state }].slice(-HISTORY_CAP);
     // lastRelationId exists solely so App.tsx can select the edge a canvas
     // connect gesture just drew — it must fire only for that exact gesture
-    // shape (a bare add-relation), never for a batch. applyCommandWithResult
+    // shape (a bare add-relation), never for a batch. applyCommand
     // surfaces relationId for any relation-ending batch too (by design, for
     // programmatic callers), but a panel like GitPanel that ends its own
     // batch in add-relation and then calls onSelect itself would otherwise

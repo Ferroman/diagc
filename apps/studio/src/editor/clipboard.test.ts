@@ -72,7 +72,7 @@ const layoutWith = (planes: LayoutOverlay['planes'], sizes?: LayoutOverlay['size
 
 /** apply a paste for real: the batch must go through the command algebra whole */
 const applied = (m: DiagramModel, command: EditorCommand, layout = emptyLayout()) =>
-  applyCommand({ model: m, layout, drawings: emptyDrawings() }, command);
+  applyCommand({ model: m, layout, drawings: emptyDrawings() }, command).state;
 
 describe('copySelection', () => {
   it('takes the selected node with everything inside it, and only the relations wholly inside', () => {

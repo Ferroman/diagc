@@ -2,7 +2,7 @@ import type { DiagramLayer, DiagramModel, DiagramNode, DiagramPlane, DiagramRela
 
 /**
  * Two-directional, non-distributive key-set equality check (mirrors
- * NodeKeyCoverage in mutate.ts): wrapping each side in a tuple `[...]`
+ * NodeKeyCoverage in mutate/nodes.ts): wrapping each side in a tuple `[...]`
  * defeats TS's distributive conditional types over a union, which would
  * otherwise let one missing/extra member hide behind the others in the
  * union (`true | never` normalizes to `true`).
