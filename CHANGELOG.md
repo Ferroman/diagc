@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/Ferroman/diagc/compare/v1.0.0...v1.0.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* **core:** lanes, includes and add-beside read containment the way the view does ([#80](https://github.com/Ferroman/diagc/issues/80)) ([07c71d7](https://github.com/Ferroman/diagc/commit/07c71d7adb61a58cc2ef27d859111ed7424fd073))
+
 ## [1.0.0](https://github.com/Ferroman/diagc/compare/v0.14.2...v1.0.0) (2026-10-08)
 
 
