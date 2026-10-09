@@ -10,6 +10,7 @@ import {
   type ThreatStatus,
 } from './types';
 import { containmentOn, containmentPlaneOf } from './planes';
+import { defined } from './util';
 
 /** The notation id a plane (or the model) declares to be drawn as a STRIDE
  * data-flow diagram. */
@@ -152,7 +153,7 @@ export function crossings(m: DiagramModel, plane: string | undefined): ReadonlyM
     if (from === to) continue;
     // an absent side means "outside every boundary" — omitted rather than
     // `undefined` so a serialized Crossing stays minimal
-    out.set(r.id, { ...(from !== undefined ? { from } : {}), ...(to !== undefined ? { to } : {}) });
+    out.set(r.id, defined({ from, to }));
   }
   return out;
 }

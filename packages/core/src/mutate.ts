@@ -26,6 +26,7 @@ import { isIsoDate } from './dates';
 import type { ThreatTarget } from './threat-model';
 import { CommandError } from './command-error';
 import { canonicalPlane, containmentOn, defaultPlaneOf, isOnPlane } from './planes';
+import { defined } from './util';
 
 const requireNode = (m: DiagramModel, id: string): DiagramNode => {
   const n = m.nodes.find((x) => x.id === id);
@@ -464,7 +465,7 @@ export function addContainment(
   if (wouldCycle(m, parent, child, canon)) {
     throw new CommandError(`'${parent}' > '${child}' would create a containment cycle`);
   }
-  const edge = { parent, child, ...(canon !== undefined ? { plane: canon } : {}) };
+  const edge = { parent, child, ...defined({ plane: canon }) };
   if (beside === undefined) return { ...m, containment: [...m.containment, edge] };
   // Children read in declaration order, so the slot in the flat array IS the
   // sibling order — insert next to the sibling's own membership.

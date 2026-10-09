@@ -49,6 +49,7 @@ import {
   PLAN_ZONE_TYPE,
   type PlanRole,
 } from './plan';
+import { defined } from './util';
 
 export interface NodeOpts {
   type?: string;
@@ -238,7 +239,7 @@ export class BranchRef extends NodeRef {
     this.m.node(id, {
       type: 'commit',
       name: opts.tag ?? '',
-      ...(opts.color !== undefined ? { color: opts.color } : {}),
+      ...defined({ color: opts.color }),
       ...(opts.gap !== undefined && opts.gap > 0 ? { metadata: { gap: opts.gap } } : {}),
     });
     this.m.addContainment(this.id, id);
@@ -266,8 +267,7 @@ export class GitGraphBuilder {
   stage(id: string, opts: StageOpts): NodeRef {
     return this.m.node(id, {
       type: GIT_STAGE_TYPE,
-      ...(opts.name !== undefined ? { name: opts.name } : {}),
-      ...(opts.color !== undefined ? { color: opts.color } : {}),
+      ...defined({ name: opts.name, color: opts.color }),
       metadata: { from: opts.from.id, ...(opts.to !== undefined ? { to: opts.to.id } : {}) },
     });
   }
@@ -275,8 +275,7 @@ export class GitGraphBuilder {
   branch(id: string, opts: { name?: string; color?: string } = {}): BranchRef {
     this.m.node(id, {
       type: 'branch',
-      ...(opts.name !== undefined ? { name: opts.name } : {}),
-      ...(opts.color !== undefined ? { color: opts.color } : {}),
+      ...defined({ name: opts.name, color: opts.color }),
     });
     return new BranchRef(id, this.m);
   }
@@ -304,7 +303,7 @@ export class ConsequenceRef extends NodeRef {
   /** what follows from this: a new consequence, and the arrow that leads to it */
   then(id: string, name?: string, opts: ConsequenceOpts = {}): ConsequenceRef {
     const { valence, label, ...rest } = opts;
-    this.m.node(id, { type: consequenceTypeOf(valence ?? '0'), ...(name !== undefined ? { name } : {}), ...rest });
+    this.m.node(id, { type: consequenceTypeOf(valence ?? '0'), ...defined({ name }), ...rest });
     const ref = new ConsequenceRef(id, this.m);
     this.leadsTo(ref, label !== undefined ? { label } : {});
     return ref;
@@ -312,7 +311,7 @@ export class ConsequenceRef extends NodeRef {
 
   /** join two branches: this also leads to a consequence declared elsewhere */
   leadsTo(to: NodeRef, opts: { label?: string } = {}): this {
-    this.m.relate(this, to, { kind: SO_LEADS_TO_KIND, ...(opts.label !== undefined ? { label: opts.label } : {}) });
+    this.m.relate(this, to, { kind: SO_LEADS_TO_KIND, ...defined({ label: opts.label }) });
     return this;
   }
 }
@@ -321,7 +320,7 @@ export class SecondOrderBuilder {
   constructor(private readonly m: ModelBuilder) {}
   /** the root of a tree; several decisions share one set of bands */
   decision(id: string, name?: string, opts: Omit<ConsequenceOpts, 'valence' | 'label'> = {}): ConsequenceRef {
-    this.m.node(id, { type: SO_DECISION_TYPE, ...(name !== undefined ? { name } : {}), ...opts });
+    this.m.node(id, { type: SO_DECISION_TYPE, ...defined({ name }), ...opts });
     return new ConsequenceRef(id, this.m);
   }
 }
@@ -350,7 +349,7 @@ export class CauseRef extends NodeRef {
         `fishbone: '${id}' would be a fourth level below the effect; three levels (category, cause, sub-cause) is the limit`,
       );
     }
-    this.m.node(id, { type: FB_CAUSE_TYPE, ...(name !== undefined ? { name } : {}), ...opts });
+    this.m.node(id, { type: FB_CAUSE_TYPE, ...defined({ name }), ...opts });
     const ref = new CauseRef(id, this.m, 3);
     this.m.relate(ref, this, { kind: FB_CAUSE_OF_KIND });
     return ref;
@@ -367,7 +366,7 @@ export class CategoryRef extends NodeRef {
 
   /** a cause on this bone, and the arrow from it to here */
   cause(id: string, name?: string, opts: FishboneOpts = {}): CauseRef {
-    this.m.node(id, { type: FB_CAUSE_TYPE, ...(name !== undefined ? { name } : {}), ...opts });
+    this.m.node(id, { type: FB_CAUSE_TYPE, ...defined({ name }), ...opts });
     const ref = new CauseRef(id, this.m, 2);
     this.m.relate(ref, this, { kind: FB_CAUSE_OF_KIND });
     return ref;
@@ -382,7 +381,7 @@ export class FishboneBuilder {
 
   /** a major bone, and the arrow from it to the effect */
   category(id: string, name?: string, opts: FishboneOpts = {}): CategoryRef {
-    this.m.node(id, { type: FB_CATEGORY_TYPE, ...(name !== undefined ? { name } : {}), ...opts });
+    this.m.node(id, { type: FB_CATEGORY_TYPE, ...defined({ name }), ...opts });
     const ref = new CategoryRef(id, this.m);
     this.m.relate(ref, this.effect, { kind: FB_CAUSE_OF_KIND });
     return ref;
@@ -429,7 +428,7 @@ export class ThreatModelBuilder {
   constructor(private readonly m: ModelBuilder) {}
 
   private element(type: string, id: string, name: string | undefined, opts: ElementOpts): NodeRef {
-    return this.m.node(id, { type, ...(name !== undefined ? { name } : {}), ...opts });
+    return this.m.node(id, { type, ...defined({ name }), ...opts });
   }
 
   /** an external entity: a user, a third party, anything outside the system */
@@ -552,7 +551,7 @@ export class PlanBuilder {
     return this.m.node(id, {
       type: PLAN_PERSON_TYPE,
       plane: this.plane,
-      ...(name !== undefined ? { name } : {}),
+      ...defined({ name }),
       ...opts,
     });
   }
@@ -562,7 +561,7 @@ export class PlanBuilder {
     return this.m.node(id, {
       type: PLAN_TEAM_TYPE,
       plane: this.plane,
-      ...(name !== undefined ? { name } : {}),
+      ...defined({ name }),
       ...opts,
     });
   }
@@ -593,7 +592,7 @@ export abstract class ActivityScope extends NodeRef {
   }
 
   protected element(id: string, type: string, name: string, opts: ActivityElementOpts = {}): NodeRef {
-    const ref = this.m.node(id, { type, name, ...(opts.color !== undefined ? { color: opts.color } : {}) });
+    const ref = this.m.node(id, { type, name, ...defined({ color: opts.color }) });
     this.m.addContainment(this.id, id);
     return ref;
   }
@@ -653,23 +652,22 @@ export class ActivityBuilder extends NodeRef {
   lane(id: string, opts: { name?: string; color?: string } = {}): LaneRef {
     this.b.node(id, {
       type: 'activity-lane',
-      ...(opts.name !== undefined ? { name: opts.name } : {}),
-      ...(opts.color !== undefined ? { color: opts.color } : {}),
+      ...defined({ name: opts.name, color: opts.color }),
     });
     this.b.addContainment(this.id, id);
     return new LaneRef(id, this.b);
   }
 
   flow(from: NodeRef, to: NodeRef, label?: string): this {
-    this.b.relate(from, to, { kind: 'control', ...(label !== undefined ? { label } : {}) });
+    this.b.relate(from, to, { kind: 'control', ...defined({ label }) });
     return this;
   }
   objectFlow(from: NodeRef, to: NodeRef, label?: string): this {
-    this.b.relate(from, to, { kind: 'object-flow', ...(label !== undefined ? { label } : {}) });
+    this.b.relate(from, to, { kind: 'object-flow', ...defined({ label }) });
     return this;
   }
   interrupt(from: NodeRef, to: NodeRef, label?: string): this {
-    this.b.relate(from, to, { kind: 'interrupt', ...(label !== undefined ? { label } : {}) });
+    this.b.relate(from, to, { kind: 'interrupt', ...defined({ label }) });
     return this;
   }
   noteLink(note: NodeRef, target: NodeRef): this {
@@ -703,7 +701,7 @@ export class ModelBuilder {
 
   node(id: string, opts: NodeOpts = {}): NodeRef {
     const { name, ...rest } = opts;
-    this.nodes.push({ id, name: name ?? id, ...pruneUndefined(rest) });
+    this.nodes.push({ id, name: name ?? id, ...defined(rest) });
     return new NodeRef(id, this);
   }
 
@@ -741,7 +739,7 @@ export class ModelBuilder {
   /** internal — used by NodeRef */
   addContainment(parent: string, child: string, plane?: string): void {
     const exists = this.containment.some((e) => e.parent === parent && e.child === child && e.plane === plane);
-    if (!exists) this.containment.push({ parent, child, ...pruneUndefined({ plane }) });
+    if (!exists) this.containment.push({ parent, child, ...defined({ plane }) });
   }
 
   /** internal — appends a threat to the node or relation `target` names; used by
@@ -763,7 +761,7 @@ export class ModelBuilder {
     // Synthesized from the list's length, not a model-wide counter: an id only
     // has to be unique within its own element (see Threat.id), so two elements'
     // first findings are both `t1` and neither shifts when the other changes.
-    const threat: Threat = { id: id ?? `t${threats.length + 1}`, category, title, ...pruneUndefined(rest) };
+    const threat: Threat = { id: id ?? `t${threats.length + 1}`, category, title, ...defined(rest) };
     if (threats.some((t) => t.id === threat.id)) {
       throw new Error(`threat(): duplicate threat id '${threat.id}' on '${element.id}'`);
     }
@@ -787,7 +785,7 @@ export class ModelBuilder {
     const comments = element.comments ?? [];
     const { id, ...rest } = opts;
     // per-element ids, as threats: two elements' first comments are both c1
-    const comment: Comment = { id: id ?? nextCommentId(comments), text, ...pruneUndefined(rest) };
+    const comment: Comment = { id: id ?? nextCommentId(comments), text, ...defined(rest) };
     if (comments.some((c) => c.id === comment.id)) {
       throw new Error(`comment(): duplicate comment id '${comment.id}' on '${element.id}'`);
     }
@@ -819,13 +817,13 @@ export class ModelBuilder {
       from: from.id,
       to: to.id,
       kind,
-      ...pruneUndefined(rest),
+      ...defined(rest),
     });
     return relationId;
   }
 
   layer(id: string, opts: { name?: string; tint?: string } = {}): this {
-    this.layers.push({ id, name: opts.name ?? id, ...pruneUndefined({ tint: opts.tint }) });
+    this.layers.push({ id, name: opts.name ?? id, ...defined({ tint: opts.tint }) });
     return this;
   }
 
@@ -844,7 +842,7 @@ export class ModelBuilder {
     this.planes.push({
       id,
       name: opts.name ?? id,
-      ...pruneUndefined({
+      ...defined({
         containmentOf: opts.containmentOf,
         layers: opts.layers,
         baseRelations: opts.baseRelations,
@@ -902,7 +900,7 @@ export class ModelBuilder {
     const { plane, planeName, ...rest } = opts;
     if (plane !== undefined) this.plane(plane, { name: planeName ?? 'Causes', notation: 'fishbone' });
     else this.notation('fishbone');
-    const effect = this.node(id, { type: FB_EFFECT_TYPE, ...(name !== undefined ? { name } : {}), ...rest });
+    const effect = this.node(id, { type: FB_EFFECT_TYPE, ...defined({ name }), ...rest });
     this.fb = new FishboneBuilder(this, effect);
     return this.fb;
   }
@@ -938,7 +936,7 @@ export class ModelBuilder {
    * call is one frame; frames are ordinary containers on whatever plane the
    * model uses (no notation, no plane creation). */
   activity(id: string, opts: { name?: string } = {}): ActivityBuilder {
-    this.node(id, { type: 'activity-frame', ...(opts.name !== undefined ? { name: opts.name } : {}) });
+    this.node(id, { type: 'activity-frame', ...defined({ name: opts.name }) });
     return new ActivityBuilder(id, this);
   }
 
@@ -987,11 +985,13 @@ export class ModelBuilder {
       relations: this.relations,
       layers: this.layers,
       planes: this.planes,
-      ...(this.legendConfig !== undefined ? { legend: this.legendConfig } : {}),
-      ...(this.typeColorMap !== undefined ? { typeColors: this.typeColorMap } : {}),
-      ...(this.layerRuleList !== undefined ? { layerRules: this.layerRuleList } : {}),
-      ...(this.modelNotation !== undefined ? { notation: this.modelNotation } : {}),
-      ...(this.modelStyle !== undefined ? { style: this.modelStyle } : {}),
+      ...defined({
+        legend: this.legendConfig,
+        typeColors: this.typeColorMap,
+        layerRules: this.layerRuleList,
+        notation: this.modelNotation,
+        style: this.modelStyle,
+      }),
     };
     const issues = validate(json);
     if (issues.length > 0) throw new DiagramValidationError(issues);
@@ -1001,8 +1001,4 @@ export class ModelBuilder {
 
 export function model(id: string, opts: { name?: string } = {}): ModelBuilder {
   return new ModelBuilder(id, opts.name ?? id);
-}
-
-function pruneUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
-  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>;
 }

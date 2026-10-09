@@ -59,6 +59,7 @@ import {
   type RelationPatch,
   type ThreatPatch,
 } from './mutate';
+import { defined } from './util';
 
 export interface EditorState {
   model: DiagramModel;
@@ -189,7 +190,7 @@ function prunePositions(layout: LayoutOverlay, drop: (nodeId: string) => boolean
     if (kept.length !== ids.length) next = withUnfolded(next, key, kept);
   }
   if (!changed && next === layout) return layout;
-  return { ...next, planes, ...(sizes !== undefined ? { sizes } : {}) };
+  return { ...next, planes, ...defined({ sizes }) };
 }
 
 /**

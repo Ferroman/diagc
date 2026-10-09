@@ -75,7 +75,7 @@ export {
 } from './validate';
 export { isDrawings, isLayoutOverlay } from './guards';
 export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrokeId } from './drawings';
-export { errMessage, SOURCE_URL } from './util';
+export { defined, errMessage, SOURCE_URL, type Defined } from './util';
 export { allowedParentTypes, childrenOf, countAnchored } from './children';
 export { bestLaneOrder } from './lanes';
 export { lintModel, type LintCode, type LintFinding } from './lint';
