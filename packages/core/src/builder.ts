@@ -45,7 +45,7 @@ import {
   TM_PROCESS_TYPE,
   TM_STORE_TYPE,
 } from './notations/threat-model/threat-model';
-import { DiagramValidationError, validate } from './validate';
+import { DiagramValidationError, validate } from './validate/index';
 import {
   PLAN_EVENT_TYPE,
   PLAN_NOTATION,

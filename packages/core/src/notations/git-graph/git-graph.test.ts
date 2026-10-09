@@ -11,7 +11,7 @@ import {
   mergedAway,
   nextCommitId,
 } from './git-graph';
-import { validate } from '../../validate';
+import { validate } from '../../validate/index';
 
 const commit = (id: string, extra: Partial<DiagramNode> = {}): DiagramNode => ({
   id,

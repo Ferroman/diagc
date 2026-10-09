@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { model } from '../builder';
-import { validate } from '../validate';
+import { validate } from '../validate/index';
 import { activeNotation, compileView, presetLayers } from './compile';
 import type { DiagramModel } from '../types';
 

@@ -61,7 +61,7 @@ export interface FishboneTree {
  * node — any kind, so restyling an arrow can never drop a cause off its bone.
  * Self-loops are skipped, and a relation whose ends aren't both fishbone
  * nodes doesn't count as a parent pick. Shared by fishboneTree and
- * validateFishbone (validate.ts) so the rule is defined exactly once.
+ * validateFishbone so the rule is defined exactly once.
  */
 export function fishboneParents(model: DiagramModel): ReadonlyMap<string, string> {
   const typeOf = new Map(model.nodes.filter(isFishboneNode).map((n) => [n.id, n.type]));

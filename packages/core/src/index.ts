@@ -57,7 +57,7 @@ export {
   type ZoneOpts,
   type EventOpts,
 } from './builder';
-export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue } from './validate';
+export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue } from './validate/index';
 export type * from './types';
 // The geometry the model types use (LayoutOverlay's saved positions and sizes).
 export type { Point, Size } from './geometry';

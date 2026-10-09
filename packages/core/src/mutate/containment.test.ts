@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { model } from '../builder';
-import { validate } from '../validate';
+import { validate } from '../validate/index';
 import { addContainment, groupNodes, moveChild, removeContainment } from './containment';
 import { upsertPlane } from './layers-and-planes';
 import { CommandError } from '../command-error';

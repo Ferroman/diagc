@@ -165,23 +165,45 @@
       "count": 1
     }
   },
+  "packages/core/src/notations/fishbone/validate.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/core/src/notations/git-graph/validate.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
   "packages/core/src/notations/plan/plan.ts": {
     "complexity": {
       "count": 1
     }
   },
-  "packages/core/src/validate.ts": {
+  "packages/core/src/notations/plan/validate.ts": {
     "complexity": {
-      "count": 5
-    },
-    "max-depth": {
-      "count": 6
-    },
-    "max-lines": {
       "count": 1
-    },
+    }
+  },
+  "packages/core/src/validate/context.ts": {
     "max-params": {
       "count": 1
+    }
+  },
+  "packages/core/src/validate/nodes.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 3
+    }
+  },
+  "packages/core/src/validate/relations.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 3
     }
   },
   "packages/core/src/view/edges.ts": {

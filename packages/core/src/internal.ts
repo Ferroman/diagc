@@ -71,14 +71,8 @@ export {
   type ZoneOpts,
   type EventOpts,
 } from './builder';
-export {
-  validate,
-  diagramWarnings,
-  DiagramValidationError,
-  IMAGE_REF,
-  LIBRARY_IMAGE_REF,
-  type ValidationIssue,
-} from './validate';
+export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue } from './validate/index';
+export { IMAGE_REF, LIBRARY_IMAGE_REF } from './validate/nodes';
 export { isDrawings, isLayoutOverlay } from './guards';
 export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrokeId } from './drawings';
 export { defined, errMessage, SOURCE_URL, type Defined } from './util';

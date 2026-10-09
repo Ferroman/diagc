@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FlowRef, model, NodeRef } from './builder';
-import { validate } from './validate';
+import { validate } from './validate/index';
 
 describe('builder: nodes and containment', () => {
   it('builds nodes with free-form types', () => {

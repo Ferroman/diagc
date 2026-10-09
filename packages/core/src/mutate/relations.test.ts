@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { model } from '../builder';
 import { relationLabels } from '../labels';
-import { validate } from '../validate';
+import { validate } from '../validate/index';
 import { addRelation, deleteRelation, updateRelation } from './relations';
 import { CommandError } from '../command-error';
 import type { DiagramModel } from '../types';

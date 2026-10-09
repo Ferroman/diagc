@@ -1,5 +1,5 @@
 import type { ContainmentEdge, DiagramModel, DiagramNode, DiagramPlane, DiagramRelation } from './types';
-import { validate } from './validate';
+import { validate } from './validate/index';
 import { containmentOn, containmentPlaneOf, defaultPlaneOf } from './planes';
 import { errMessage } from './util';
 
