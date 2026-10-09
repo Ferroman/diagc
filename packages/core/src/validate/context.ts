@@ -34,6 +34,7 @@ export interface ValidationIssue {
     | 'invalid-font-scale'
     | 'invalid-edge-label'
     | 'duplicate-column'
+    | 'invalid-columns'
     | 'unknown-column'
     | 'git-link-endpoints'
     | 'git-commit-lane'

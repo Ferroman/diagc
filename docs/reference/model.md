@@ -451,7 +451,7 @@ A column's `fk` flag prints the `FK` marker and nothing else: what routes the ed
 
 A column with a `layer` is drawn only while that layer is active, and the table shrinks by its row while it is not. Its layer gets a legend row like any other, even when no node or relation uses it. An edge anchored to a hidden row floats to the table's middle, so put an `fk` relation on the same layer as its column. Deleting the layer deletes its rows and the relations anchored to them; merging it retags them.
 
-`duplicate-column` is checked on any node that has `columns`, and `unknown-column` on any relation naming a `fromColumn` or `toColumn` — whatever the node's `type` or the relation's `kind`. See [Draw an ER diagram](../how-to/draw-an-er-diagram.md).
+`duplicate-column` and `invalid-columns` are checked on any node that has `columns`, and `unknown-column` on any relation naming a `fromColumn` or `toColumn` — whatever the node's `type` or the relation's `kind`. See [Draw an ER diagram](../how-to/draw-an-er-diagram.md).
 
 ## Validation codes
 
@@ -466,7 +466,8 @@ The compiler prints them, and the notation's panel lists them.
 | `duplicate-plane` | Two planes share an id. |
 | `duplicate-relation` | Two relations share an id. |
 | `duplicate-key` | Two nodes declare the same `key`. |
-| `duplicate-column` | Two columns in one table share a name — or `columns` is malformed: not a list, or an entry without a string `name`. |
+| `duplicate-column` | Two columns in one table share a name. |
+| `invalid-columns` | `columns` is malformed: not a list, or an entry without a string `name`. |
 | `containment-cycle` | A node contains itself, transitively, within a plane. |
 | `dangling-endpoint` | A relation names a node that does not exist. |
 | `unknown-layer` | A `layer` does not match any declared layer. |

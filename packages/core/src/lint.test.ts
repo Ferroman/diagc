@@ -209,3 +209,21 @@ describe('diagramWarnings', () => {
     expect(diagramWarnings(m).map((w) => w.code)).toEqual(['unused-layer']);
   });
 });
+
+describe('a model validation refuses', () => {
+  // diagramWarnings is public, so it can meet a model nobody validated; what is
+  // malformed is validation's to report, and lint reads past it
+  it('gets its findings without throwing on a malformed column or legend item', () => {
+    const m = base({
+      nodes: [
+        { id: 'a', name: 'A', type: 'service', columns: [null] },
+        { id: 'b', name: 'B', type: 'database', columns: 5 },
+      ] as unknown as DiagramModel['nodes'],
+      legend: { items: [null, { label: 'Queue', type: 'queue' }] } as unknown as DiagramModel['legend'],
+    });
+    expect(lintModel(m)).toEqual([
+      { code: 'unused-legend-item', message: "Legend row 'Queue' describes type 'queue', which no node has" },
+    ]);
+    expect(lintModel(base({ legend: { items: 5 } as unknown as DiagramModel['legend'] }))).toEqual([]);
+  });
+});

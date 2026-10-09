@@ -144,7 +144,7 @@ function unused(m: DiagramModel, add: Add): void {
   const layersUsed = new Set<string>();
   for (const n of m.nodes) {
     if (n.layer !== undefined) layersUsed.add(n.layer);
-    for (const c of n.columns ?? []) if (c.layer !== undefined) layersUsed.add(c.layer);
+    for (const c of listOf(n.columns)) if (c.layer !== undefined) layersUsed.add(c.layer);
   }
   for (const r of m.relations) if (r.layer !== undefined) layersUsed.add(r.layer);
   for (const rule of m.layerRules ?? []) layersUsed.add(rule.layer);
@@ -173,7 +173,7 @@ function unused(m: DiagramModel, add: Add): void {
 
   const types = new Set(m.nodes.map((n) => n.type));
   const kinds = new Set(m.relations.map((r) => r.kind));
-  for (const item of m.legend?.items ?? []) {
+  for (const item of listOf(m.legend?.items)) {
     if (item.type !== undefined && !types.has(item.type)) {
       add('unused-legend-item', `Legend row '${item.label}' describes type '${item.type}', which no node has`);
     }
@@ -181,6 +181,13 @@ function unused(m: DiagramModel, add: Add): void {
       add('unused-legend-item', `Legend row '${item.label}' describes kind '${item.kind}', which no relation has`);
     }
   }
+}
+
+/** The objects in a list from the model. Lint also runs on models validation
+ * refuses (`diagramWarnings` is public), where a list can be something else or
+ * hold `null`; that is validation's to report, so lint reads past it. */
+function listOf<T extends object>(list: readonly T[] | undefined): readonly T[] {
+  return Array.isArray(list) ? list.filter((x: T | null) => typeof x === 'object' && x !== null) : [];
 }
 
 /** A node no plane shows (scoped to a plane that borrows another's hierarchy,

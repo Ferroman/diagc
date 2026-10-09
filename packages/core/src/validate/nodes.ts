@@ -145,13 +145,13 @@ function checkColumns(ctx: Ctx, n: DiagramNode): void {
   const { issues } = ctx;
   if (n.columns === undefined) return;
   if (!Array.isArray(n.columns)) {
-    report(issues, 'duplicate-column', `Node '${n.id}' columns must be a list`, n.id);
+    report(issues, 'invalid-columns', `Node '${n.id}' columns must be a list`, n.id);
     return;
   }
   const seen = new Set<string>();
   for (const c of n.columns) {
     if (c === null || typeof c !== 'object' || typeof (c as { name?: unknown }).name !== 'string') {
-      report(issues, 'duplicate-column', `Node '${n.id}' has an invalid column`, n.id);
+      report(issues, 'invalid-columns', `Node '${n.id}' has an invalid column`, n.id);
       continue;
     }
     if (seen.has(c.name)) {
