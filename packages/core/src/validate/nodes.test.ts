@@ -289,7 +289,7 @@ describe('the order node issues come in', () => {
       ['invalid-include', "Node '__root__' has invalid includePlanes 'yes'"],
       ['unknown-plane', "Node '__root__' belongs to unknown plane 'nope'"],
       ['unknown-layer', "Node '__root__' references unknown layer 'nope'"],
-      ['duplicate-column', "Node '__root__' has an invalid column"],
+      ['invalid-columns', "Node '__root__' has an invalid column"],
       ['duplicate-column', "Node '__root__' has duplicate column 'c'"],
       ['unknown-layer', "Column '__root__.c' references unknown layer 'nope'"],
       ['duplicate-node', "Duplicate node id '__root__'"],
@@ -297,8 +297,24 @@ describe('the order node issues come in', () => {
       ['duplicate-key', "Nodes '__root__' and '__root__' share key 'k' in one diagram"],
       ['invalid-include', "Node '__root__' has includePlane without include"],
       ['invalid-include', "Node '__root__' has includePlanes without include"],
-      ['duplicate-column', "Node '__root__' columns must be a list"],
+      ['invalid-columns', "Node '__root__' columns must be a list"],
       ['invalid-key', "Node 'b' has invalid key 'Bad Key'"],
+    ]);
+  });
+});
+
+describe('malformed columns', () => {
+  it('are invalid-columns; duplicate-column is only for a repeated name', () => {
+    const m = raw({
+      nodes: [
+        { id: 'a', name: 'a', columns: 'x' },
+        { id: 'b', name: 'b', columns: [null, { name: 'c' }, { name: 'c' }] },
+      ] as unknown as DiagramNode[],
+    });
+    expect(validate(m).map((i) => [i.code, i.message])).toEqual([
+      ['invalid-columns', "Node 'a' columns must be a list"],
+      ['invalid-columns', "Node 'b' has an invalid column"],
+      ['duplicate-column', "Node 'b' has duplicate column 'c'"],
     ]);
   });
 });
