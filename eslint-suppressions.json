@@ -270,20 +270,6 @@
       "count": 1
     }
   },
-  "packages/renderer/src/node/DiagramNode.tsx": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "max-params": {
-      "count": 1
-    }
-  },
   "packages/renderer/src/node/TableNode.tsx": {
     "max-lines-per-function": {
       "count": 1

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { Column } from '@diagc/core/internal';
-import { LinkBadge, QuickAddButton, type DiagramNodeData } from './DiagramNode';
+import { LinkBadge, QuickAddButton } from './chrome';
+import type { DiagramNodeData } from './DiagramNode';
 import { TABLE_HEADER_H, TABLE_ROW_H } from './table-ports';
 
 const COMMON_TYPES = [

@@ -106,7 +106,7 @@ function labelFor(recipe: Recipe, source: DiagramNode): string {
 /** Bands, frames and interruptible regions: the Activity panel's own furniture,
  * drawn as strips rather than boxes. A lane is the one that grows — the renderer
  * hangs a `+` on each of its horizontal edges for a new band above or below; a
- * frame and a region get none (see DiagramNode's activity branches). */
+ * frame and a region get none (see the renderer's ActivityBandBody and ActivityRegionBody). */
 const ACTIVITY_CHROME = new Set(['activity-lane', 'activity-frame', 'activity-region']);
 
 function recipeFor(

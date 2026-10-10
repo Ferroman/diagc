@@ -11,8 +11,6 @@ import {
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import {
-  TM_NOTATION,
-  elementKey,
   type Column,
   type EdgeLabel,
   type EdgeLabelSide,
@@ -42,6 +40,7 @@ import { getEdgeParams, sideFromPosition } from './floating';
 import { CAPTION_HEIGHT, glyphCaptionSize } from '../node/label-size';
 import { LoopHighlightContext } from '../loops/loop-highlight';
 import { NoteStateContext } from '../notes/note-state';
+import { AddThreatButton, NoteBadge } from '../notes/NoteBadge';
 import { notationProfile } from '../notations';
 import type { DiagramNodeData } from '../node/DiagramNode';
 import type { KindStyle, Registry } from '../registry';
@@ -477,10 +476,10 @@ export function DiagramEdge({
   const threatBadge = threats !== undefined ? threatBadgeProps(threats) : undefined;
   // Where there is nothing to count yet, the same spot offers the flow's first
   // threat instead — the offer the node badge makes (see ThreatBadge), gated
-  // the same way: a host listening (edit mode) on a threat model's canvas.
+  // the same way: a host listening (edit mode) where the notation offers threats.
   // Exactly one of the two ever draws, so they share one frame.
   const addThreat =
-    threats === undefined && data?.onAddThreat !== undefined && data.notation === TM_NOTATION
+    threats === undefined && data?.onAddThreat !== undefined && profile.offersThreats === true
       ? data.onAddThreat
       : undefined;
   const threatFrame = threats !== undefined || addThreat !== undefined ? markFrame(curve, 0.75) : undefined;
@@ -506,6 +505,9 @@ export function DiagramEdge({
   // Which notes this canvas has open, and the switch the counting badge is —
   // null on a canvas that draws none, where the badge stays passive.
   const notes = useContext(NoteStateContext);
+  // Whose note the flow's badges switch: its sole relation's. A bundle names
+  // no relation, so its badges stay the passive count.
+  const noteTarget = data?.threatRelation !== undefined ? { relation: data.threatRelation } : undefined;
   // Where the relation's note hangs off, reported up: the threat badge when
   // there is one (it was first), else the comment badge — whichever badge this
   // relation actually has. Only this component knows the routed curve. The
@@ -848,86 +850,31 @@ export function DiagramEdge({
               saying WHICH flow it belongs to is where it happens to sit. The
               value is the view-edge id (`from=>to:layer`), stable across
               re-layouts; state/text/title come from the shared derivation the
-              node badge uses, so the two cannot drift apart in what they say.
-              A sole-relation flow on a note-drawing canvas gets the toggle
-              button the node badge gets; a bundle keeps the passive count. */}
-          {notes !== null && data?.threatRelation !== undefined ? (
-            (() => {
-              const relation = data.threatRelation;
-              const open = notes.isOpen(elementKey({ relation }));
-              return (
-                <button
-                  type="button"
-                  className="dg-threat-badge dg-edge-threat nodrag nopan"
-                  data-edge={id}
-                  data-state={threatBadge.state}
-                  title={threatBadge.title}
-                  aria-expanded={open}
-                  aria-label={`${threatBadge.title} — ${open ? 'hide' : 'show'}`}
-                  style={{ transform: threatTransform }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    notes.toggle({ relation });
-                  }}
-                >
-                  {threatBadge.text}
-                </button>
-              );
-            })()
-          ) : (
-            <span
-              className="dg-threat-badge dg-edge-threat"
-              data-edge={id}
-              data-state={threatBadge.state}
-              title={threatBadge.title}
-              style={{ transform: threatTransform }}
-            >
-              {threatBadge.text}
-            </span>
-          )}
+              node badge uses, so the two cannot drift apart in what they say. */}
+          <NoteBadge
+            className="dg-threat-badge dg-edge-threat"
+            target={noteTarget}
+            edge={id}
+            state={threatBadge.state}
+            title={threatBadge.title}
+            text={threatBadge.text}
+            style={{ transform: threatTransform }}
+          />
         </EdgeLabelRenderer>
       )}
       {commentFrame !== undefined && commentBadge !== undefined && (
         <EdgeLabelRenderer>
-          {/* Same portal, same `data-edge` reasoning as the threat badge above.
-              A sole-relation flow on a note-drawing canvas gets the toggle
-              button the node badge gets; a bundle keeps the passive count —
-              mirrors the threat badge's own "sole relation" test exactly, so
-              the two badges never disagree about which flows get a switch. */}
-          {notes !== null && data?.threatRelation !== undefined ? (
-            (() => {
-              const relation = data.threatRelation;
-              const open = notes.isOpen(elementKey({ relation }));
-              return (
-                <button
-                  type="button"
-                  className="dg-comment-badge dg-edge-comment nodrag nopan"
-                  data-edge={id}
-                  title={commentBadge.title}
-                  aria-expanded={open}
-                  aria-label={`${commentBadge.title} — ${open ? 'hide' : 'show'}`}
-                  style={{ transform: commentTransform }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    notes.toggle({ relation });
-                  }}
-                >
-                  {commentBadge.text}
-                </button>
-              );
-            })()
-          ) : (
-            <span
-              className="dg-comment-badge dg-edge-comment"
-              data-edge={id}
-              title={commentBadge.title}
-              style={{ transform: commentTransform }}
-            >
-              {commentBadge.text}
-            </span>
-          )}
+          {/* Same portal, same `data-edge` reasoning as the threat badge above,
+              and the same noteTarget, so the two badges never disagree about
+              which flows get a switch. */}
+          <NoteBadge
+            className="dg-comment-badge dg-edge-comment"
+            target={noteTarget}
+            edge={id}
+            title={commentBadge.title}
+            text={commentBadge.text}
+            style={{ transform: commentTransform }}
+          />
         </EdgeLabelRenderer>
       )}
       {threatFrame !== undefined && addThreat !== undefined && (
@@ -937,22 +884,13 @@ export function DiagramEdge({
               flow it belongs to. Unlike that badge this one is clickable, so it
               needs pointer events back (the base badge rule turns them off —
               see styles.css) and must keep the press from starting a drag. */}
-          <button
-            type="button"
+          <AddThreatButton
             className="dg-threat-badge dg-edge-threat nodrag nopan"
-            data-edge={id}
-            data-state="empty"
-            aria-label="Add a threat"
-            title="Add a threat"
+            edge={id}
+            state="empty"
             style={{ transform: threatTransform }}
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              addThreat();
-            }}
-          >
-            +
-          </button>
+            onAdd={addThreat}
+          />
         </EdgeLabelRenderer>
       )}
     </>

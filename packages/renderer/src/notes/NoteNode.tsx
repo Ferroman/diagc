@@ -11,7 +11,8 @@ import {
   type ThreatStatus,
   type ElementRef,
 } from '@diagc/core/internal';
-import { InlineName } from '../node/DiagramNode';
+import { InlineName } from '../node/InlineName';
+import { AddThreatButton } from './NoteBadge';
 import { NOTE_WIDTH, STATUS_WORD } from './note-place';
 import { tailGeometry } from './note-tail';
 import { threatBadgeProps } from './threat-badge';
@@ -285,7 +286,7 @@ export function NoteNode({
               // no host to intercept the click, so `javascript:` in a shared
               // diagram would otherwise run in the page's own origin — the
               // same test guards every other author-supplied url the repo
-              // follows (DiagramNode's LinkBadge, the studio's openLink, the
+              // follows (the node's LinkBadge, the studio's openLink, the
               // published gallery). Anything else still reaches a host that
               // resolves its own refs (an Obsidian link), and does nothing
               // where there is none.
@@ -316,20 +317,11 @@ export function NoteNode({
         </section>
       )}
       {data.editing && data.onAddThreat !== undefined && (
-        <button
-          type="button"
+        <AddThreatButton
           className="dg-note-add nodrag nopan"
-          aria-label="Add a threat"
-          title="Add a threat"
-          onMouseDown={stop}
+          onAdd={() => data.onAddThreat?.(data.target)}
           onPointerDown={stop}
-          onClick={(e) => {
-            e.stopPropagation();
-            data.onAddThreat?.(data.target);
-          }}
-        >
-          +
-        </button>
+        />
       )}
     </div>
   );

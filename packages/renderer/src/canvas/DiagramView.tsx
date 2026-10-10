@@ -22,7 +22,6 @@ import {
   compileView,
   countAnchored,
   DEFAULT_STROKE_WIDTH,
-  GIT_NOTATION,
   GIT_STAGE_TYPE,
   hasNoteContent,
   isActivityBand,
@@ -31,7 +30,6 @@ import {
   layoutPlaneKey,
   elementKey,
   soleRelation,
-  TM_NOTATION,
   type Comment,
   type DiagramNode,
   type EdgeLabelPlacement,
@@ -844,7 +842,7 @@ function Inner(props: DiagramViewProps) {
                     (FORCED_SIZE_SHAPES.has(typeRegistry.resolve(n.node.type).shape) ||
                       isActivityChrome(n.node.type) ||
                       LAYOUT_SIZED_TYPES.has(n.node.type) ||
-                      (profile.id === GIT_NOTATION && n.node.type === 'branch'))
+                      profile.node?.isLane?.(n.node.type) === true)
                   ? { style: { width: geo.width, height: geo.height } }
                   : // An ordinary box keeps its CSS sizing, but never narrower than
                     // the box elk laid out (box-size.ts estimates it): routes and
@@ -954,7 +952,7 @@ function Inner(props: DiagramViewProps) {
       // is, so without this a remark on a plain C4 box would offer to threat-
       // model it. The height estimate reads the same boolean, or it would
       // reserve ADD_ROW for a button that never draws.
-      const offerThreat = editing && (threats.length > 0 || props.notation === TM_NOTATION);
+      const offerThreat = editing && (threats.length > 0 || profile.offersThreats === true);
       const size = { width: NOTE_WIDTH, height: estimateNoteHeight(name, threats, offerThreat, comments, links) };
       const p = notePlacements?.[key];
       // {0,0} is "automatic" — `set-note-offset null` writes it, and the
@@ -1054,8 +1052,9 @@ function Inner(props: DiagramViewProps) {
     // props.onOpenLink may be fresh closures per host render — the same trade
     // nodeDataCtx makes, and for the same reason: a stale callback would edit
     // the wrong document, or open a link through a host that is no longer there.
-    // props.notation is here because the threat offer is gated on it (see
+    // profile is here because the threat offer is gated on it (see
     // offerThreat): switching to a threat-model plane has to redraw the notes.
+    // It is memoized on props.notation, so it changes exactly when that does.
   }, [
     noNotes,
     openNotes,
@@ -1069,7 +1068,7 @@ function Inner(props: DiagramViewProps) {
     edit?.onSetThreatStatus,
     edit?.onEditThreatText,
     props.onOpenLink,
-    props.notation,
+    profile,
     noteEdit,
     nameOf,
     typeRegistry,
@@ -1078,7 +1077,7 @@ function Inner(props: DiagramViewProps) {
   // it has already seen, so a note must never precede the box it rides on.
   //
   // A diff picture's marks ride on React Flow's wrapper class, so every node
-  // shape gets them without each render branch knowing. `inside` only on a
+  // shape gets them without each node body knowing. `inside` only on a
   // folded box: an open one shows the changed child itself.
   const diffMarks = props.diffMarks;
   const diffClasses = useMemo(

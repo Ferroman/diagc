@@ -12,10 +12,10 @@ import { ROLE_LABEL, type NodeChip } from '../notations';
 import type { EditingApi } from '../canvas/view-types';
 
 /**
- * A plan role chip, in edit mode: the same pill DiagramNode always drew, now a
- * button that opens a short menu — the other two roles, then Remove — and
+ * A plan role chip, in edit mode: the same pill NodeChips draws in view mode,
+ * now a button that opens a short menu — the other two roles, then Remove — and
  * turns the choice into one EditingApi.onSetRole call. `className` is handed
- * in whole (DiagramNode computes the base classes plus the reciprocal
+ * in whole (NodeChips computes the base classes plus the reciprocal
  * `dg-role-chip-active` modifier the same way for both the span and this), so
  * the button inherits the exact look the span had; only `nodrag` is added
  * here, for the reason below.
@@ -36,15 +36,11 @@ import type { EditingApi } from '../canvas/view-types';
 export function RoleChipMenu({
   chip,
   className,
-  role,
-  actorId,
   zoneId,
   onSetRole,
 }: {
   chip: NodeChip;
   className: string;
-  role: PlanRole;
-  actorId: string;
   zoneId: string;
   onSetRole: EditingApi['onSetRole'] & {};
 }) {
@@ -84,12 +80,12 @@ export function RoleChipMenu({
 
   // Every role but this chip's own, in PLAN_ROLES order, then Remove last.
   const items: { id: string; label: string; next: PlanRole | null }[] = [
-    ...PLAN_ROLES.filter((r) => r !== role).map((r) => ({ id: r, label: ROLE_LABEL[r].title, next: r })),
+    ...PLAN_ROLES.filter((r) => r !== chip.role).map((r) => ({ id: r, label: ROLE_LABEL[r].title, next: r })),
     { id: 'remove', label: 'Remove', next: null },
   ];
 
   const choose = (next: PlanRole | null) => {
-    onSetRole(zoneId, actorId, next);
+    onSetRole(zoneId, chip.refId, next);
     close(true);
   };
 

@@ -108,7 +108,7 @@ export interface DiagramViewProps {
   pins?: Record<string, 'expanded' | 'collapsed'>;
   /** a linked node's badge was clicked (see DiagramNode.link) — the host
    * resolves it (e.g. the Obsidian plugin opens a [[wikilink]] note); absent
-   * falls back to DiagramNode's own best-effort (new-tab for http(s) links). */
+   * falls back to LinkBadge's own best-effort (new-tab for http(s) links). */
   onOpenLink?: (link: string) => void;
   /** a container's fold chip (or a CLD group's disclosure toggle) was clicked.
    * `next` is the state to land in: the view knows what is on screen, the host

@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   compileView,
+  GIT_STAGE_TYPE,
   model,
   NODE_TYPES,
   NOTATION_NODE_TYPES,
   NOTATION_RELATION_KINDS,
+  PLAN_PERSON_TYPE,
+  PLAN_TEAM_TYPE,
+  PLAN_ZONE_TYPE,
   RELATION_KINDS,
 } from '@diagc/core/internal';
 import { BONE_PALETTE, fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './layout/fishbone-layout';
@@ -227,9 +231,9 @@ describe('plan profile', () => {
   it("planChips: one chip per role in owns/executes/checks order, first name, full title, the person's colour", () => {
     const chips = planChips(roadmap(), 'plan');
     expect(chips.get('z')).toEqual([
-      { key: 'owns:alice', text: 'O·Alice', title: 'Owner: Alice Ng', color: '#c33' },
-      { key: 'executes:bob', text: 'E·Bob', title: 'Executor: Bob' },
-      { key: 'checks:alice', text: 'C·Alice', title: 'Checker: Alice Ng', color: '#c33' },
+      { role: 'owns', refId: 'alice', text: 'O·Alice', title: 'Owner: Alice Ng', color: '#c33' },
+      { role: 'executes', refId: 'bob', text: 'E·Bob', title: 'Executor: Bob' },
+      { role: 'checks', refId: 'alice', text: 'C·Alice', title: 'Checker: Alice Ng', color: '#c33' },
     ]);
     expect(chips.has('bare')).toBe(false);
     expect(notationProfile('plan').node?.chips).toBe(planChips);
@@ -241,7 +245,7 @@ describe('plan profile', () => {
     p.zone('z', { start: '2026-01-05', end: '2026-01-09' }).owner(platform);
     const chips = planChips(m.toJSON(), 'plan');
     expect(chips.get('z')).toEqual([
-      { key: 'owns:platform', text: 'O·Platform', title: 'Owner: Platform Team', color: '#2f6fed' },
+      { role: 'owns', refId: 'platform', text: 'O·Platform', title: 'Owner: Platform Team', color: '#2f6fed' },
     ]);
   });
   it('registers the plan types and role kinds with legend labels', () => {
@@ -329,5 +333,34 @@ describe("core's vocabulary", () => {
       expect([id, types.sort()]).toEqual([id, [...(NOTATION_NODE_TYPES[key] ?? [])].sort()]);
       expect([id, kinds.sort()]).toEqual([id, [...(NOTATION_RELATION_KINDS[key] ?? [])].sort()]);
     }
+  });
+});
+
+describe('notation capabilities', () => {
+  // The renderer reads these flags instead of comparing notation ids, so each
+  // capability belongs to exactly the notations listed here.
+  const holders = (has: (p: (typeof NOTATION_PROFILES)[keyof typeof NOTATION_PROFILES]) => boolean) =>
+    Object.values(NOTATION_PROFILES)
+      .filter(has)
+      .map((p) => p.id);
+
+  it('only the threat model offers a first threat on the canvas', () => {
+    expect(holders((p) => p.offersThreats === true)).toEqual(['threat-model']);
+  });
+  it("only the plan's chips are roles with a menu", () => {
+    expect(holders((p) => p.node?.roleChips === true)).toEqual(['plan']);
+  });
+  it("the plan's people and teams are its actors, and nothing else is anywhere", () => {
+    expect(holders((p) => p.node?.actorOutline !== undefined)).toEqual(['plan']);
+    const actor = notationProfile('plan').node!.actorOutline!;
+    expect([PLAN_PERSON_TYPE, PLAN_TEAM_TYPE, PLAN_ZONE_TYPE, 'c4-person'].filter(actor)).toEqual([
+      PLAN_PERSON_TYPE,
+      PLAN_TEAM_TYPE,
+    ]);
+  });
+  it('a git branch is a lane, and nothing else is anywhere', () => {
+    expect(holders((p) => p.node?.isLane !== undefined)).toEqual(['git-graph']);
+    const lane = notationProfile('git-graph').node!.isLane!;
+    expect(['branch', 'commit', GIT_STAGE_TYPE].filter(lane)).toEqual(['branch']);
   });
 });

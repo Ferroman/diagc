@@ -5,6 +5,7 @@ import {
   FISHBONE_NOTATION,
   GIT_NOTATION,
   GIT_STAGE_TYPE,
+  PLAN_ACTOR_TYPES,
   PLAN_EVENT_TYPE,
   PLAN_NOTATION,
   PLAN_ROLES,
@@ -35,10 +36,13 @@ import type { LayoutResult } from './layout/layout';
 import { PLAN_LAYOUT, planGraphCached, planLayout } from './layout/plan-layout';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
 
-/** A small chip in a node's badge row (the plan's role chips are the only
- * producer today, but the shape is generic — any notation could grow one). */
+/** A small chip in a node's badge row: one of the plan's role chips, the only
+ * producer today. */
 export interface NodeChip {
-  key: string;
+  /** the role the referenced node holds on this one */
+  role: PlanRole;
+  /** the node the chip stands for: the actor holding the role */
+  refId: string;
   text: string;
   title: string;
   color?: string;
@@ -89,6 +93,10 @@ export interface NotationProfile {
    * below) — selecting an actor would otherwise dim every zone it holds a
    * role on, the opposite of what a reader wants. */
   related?: (model: DiagramModel, plane: string | undefined, id: string) => readonly string[];
+  /** the canvas offers an element's first threat: the empty threat badge on a
+   * node or a flow, and a note's add row. Elsewhere a threat is added in the
+   * panel; a badge on every box of a C4 diagram would be noise. */
+  offersThreats?: boolean;
   node?: {
     typelessAsText?: boolean;
     leafSize?: (n: DiagramNode) => BoxSize | undefined;
@@ -101,6 +109,15 @@ export interface NotationProfile {
     /** small chips in a node's badge row (the plan's role chips); keyed by
      * node id, one derivation per model like colorOf */
     chips?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, NodeChip[]>;
+    /** a role chip opens a menu that changes or removes the role, in edit mode */
+    roleChips?: boolean;
+    /** types outlined in their own colour when the selection's neighbourhood
+     * takes them in: the plan's people and teams. A type check alone would
+     * mark a C4 person on a plane that has never heard of roles. */
+    actorOutline?: (type: string) => boolean;
+    /** types drawn as a lane, a full-width row rather than a box, with or
+     * without children: a git branch. An empty one compiles as a leaf. */
+    isLane?: (type: string) => boolean;
     /** 'x' = the studio offers left/right resize handles on this node;
      * undefined = no notation resizer */
     resizable?: (n: DiagramNode) => 'x' | undefined;
@@ -165,6 +182,7 @@ const GIT: NotationProfile = {
   layout: gitLayout,
   node: {
     alwaysExpanded: (n) => n.type === 'branch',
+    isLane: (type) => type === 'branch',
     leafSize: (n) => (n.type === 'commit' ? { width: GIT_LAYOUT.DIAMETER, height: GIT_LAYOUT.DIAMETER } : undefined),
     colorOf: gitNodeColors,
   },
@@ -242,7 +260,7 @@ const SECOND_ORDER: NotationProfile = {
 // ---- Fishbone ---------------------------------------------------------------
 // The notation owns the arrangement (as git-graph does): the fish's shape IS
 // its structure, so elk has nothing to decide. Bones take their category's
-// colour; the head and cause looks are DiagramNode's own branches.
+// colour; the head and cause looks are their own node bodies (node/bodies/).
 const FISHBONE: NotationProfile = {
   id: FISHBONE_NOTATION,
   className: 'dg-notation-fb',
@@ -268,6 +286,7 @@ function boundaryColors(model: DiagramModel): ReadonlyMap<string, string> {
 const THREAT_MODEL: NotationProfile = {
   id: TM_NOTATION,
   className: 'dg-notation-tm',
+  offersThreats: true,
   node: { colorOf: boundaryColors },
 };
 
@@ -330,7 +349,8 @@ export function planChips(model: DiagramModel, plane: string | undefined): Reado
         if (actor === undefined) continue;
         const first = actor.name.trim().split(/\s+/)[0] ?? actor.id;
         chips.push({
-          key: `${role}:${actorId}`,
+          role,
+          refId: actorId,
           text: `${ROLE_LABEL[role].initial}·${first}`,
           title: `${ROLE_LABEL[role].title}: ${actor.name}`,
           color: actor.color,
@@ -374,6 +394,8 @@ const PLAN: NotationProfile = {
     alwaysExpanded: (n) => n.type === PLAN_ZONE_TYPE,
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
     chips: planChips,
+    roleChips: true,
+    actorOutline: (type) => PLAN_ACTOR_TYPES.has(type),
     resizable: (n) => (n.type === PLAN_ZONE_TYPE ? 'x' : undefined),
     // A zone receives a drop (an actor's role, a plain node's containment).
     // isPlanZone, not a nested-only check: a root zone's Y is free and can
