@@ -2206,9 +2206,9 @@ path.dg-loop-badge-circle {
 /* ---- plan: zones, events, chips ------------------------------------------ */
 /* a zone is a solid bar with a thick left edge; its tint comes from the node's
    own colour through the inline accent every root already carries, so the rule
-   only reshapes the box. The group and the leaf branch share it because a zone
+   only reshapes the box. The group and the box bodies share it because a zone
    is a leaf until it has rows.
-   --dg-node-accent-tint here sets accentStyle()'s hook (DiagramNode.tsx) ON
+   --dg-node-accent-tint here sets accentStyle()'s hook (node/node-look.tsx) ON
    THIS ELEMENT: the inline style it carries reads that var at paint time, so
    only a zone root gets ThemeTokens.planZoneTint's theme-tuned strength —
    every other accented node still falls back to accentStyle()'s own literal
@@ -2340,12 +2340,12 @@ button.dg-role-chip {
   box-shadow: inset 0 0 0 1px var(--dg-border);
   outline: none;
 }
-/* the reciprocal mark DiagramNode sets on a node's root: a zone lit by the
+/* the reciprocal mark planHit sets on a node's root: a zone lit by the
    selected actor's chip, or an actor lit by the selected zone's roles —
    --dg-hit is set inline to that chip's colour (falling back to --dg-accent
    when the chip carries none), so the outline always matches the chip.
    Scoped under the plan notation's own class — defence in depth alongside
-   DiagramNode's own gate (profile.node.actorOutline), since `[data-plan-hit]` alone would
+   planHit's own gate (profile.node.actorOutline), since `[data-plan-hit]` alone would
    otherwise be a bare attribute selector reaching any plane. */
 .dg-notation-plan [data-plan-hit] {
   outline: 2px solid var(--dg-hit);

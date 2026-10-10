@@ -260,7 +260,7 @@ const SECOND_ORDER: NotationProfile = {
 // ---- Fishbone ---------------------------------------------------------------
 // The notation owns the arrangement (as git-graph does): the fish's shape IS
 // its structure, so elk has nothing to decide. Bones take their category's
-// colour; the head and cause looks are DiagramNode's own branches.
+// colour; the head and cause looks are their own node bodies (node/bodies/).
 const FISHBONE: NotationProfile = {
   id: FISHBONE_NOTATION,
   className: 'dg-notation-fb',

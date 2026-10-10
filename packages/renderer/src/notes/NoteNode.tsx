@@ -286,7 +286,7 @@ export function NoteNode({
               // no host to intercept the click, so `javascript:` in a shared
               // diagram would otherwise run in the page's own origin — the
               // same test guards every other author-supplied url the repo
-              // follows (DiagramNode's LinkBadge, the studio's openLink, the
+              // follows (the node's LinkBadge, the studio's openLink, the
               // published gallery). Anything else still reaches a host that
               // resolves its own refs (an Obsidian link), and does nothing
               // where there is none.

@@ -146,7 +146,7 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   'aws-subnet-private': { shape: 'box', cornerBadge: true, label: '' },
   // ---- Activity diagram (UML) ------------------------------------------------
   // Shapes `box` used by frame/lane/region are never drawn — they render as
-  // chrome branches in DiagramNode, but TypeStyle.shape is required.
+  // their own node bodies (node/bodies/), but TypeStyle.shape is required.
   'activity-frame': { shape: 'box', alwaysExpanded: true },
   'activity-lane': { shape: 'box', alwaysExpanded: true },
   'activity-region': { shape: 'box', dashed: true, alwaysExpanded: true, legendLabel: 'Interruptible region' },
@@ -203,7 +203,7 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   'so-consequence-negative': { shape: 'rounded', icon: 'minus', label: '' },
   'so-consequence-neutral': { shape: 'rounded', icon: 'dot', label: '' },
   // ---- Fishbone (Ishikawa) ----------------------------------------------------
-  // The head and a cause have their own looks (DiagramNode's fb branches +
+  // The head and a cause have their own looks (their fishbone bodies +
   // styles.css); a category is the plain box in its bone colour, which arrives
   // through the notation profile's colorOf. `label: ''` keeps the raw type id
   // off the box.

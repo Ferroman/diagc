@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { FB_CAUSE_TYPE, FB_EFFECT_TYPE } from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
 import { createTypeRegistry } from '../registry';
-import { notationProfile, TM_BOUNDARY_COLOR } from '../notations';
+import { notationProfile, TM_BOUNDARY_COLOR, type NodeChip } from '../notations';
 import { DiagramNode, type DiagramNodeData } from './DiagramNode';
 import { NoteStateContext, type NoteState } from '../notes/note-state';
 import { LoopHighlightContext, noopLoopHighlight } from '../loops/loop-highlight';
@@ -1478,32 +1478,40 @@ describe('plan chips and x-resize', () => {
     const chip = container.querySelector('.dg-role-chip');
     expect(chip?.tagName).toBe('BUTTON');
   });
-  it('marks the chip of the selected actor, and no chip of another actor whose id ends like it', () => {
-    const chips = [
-      { role: 'owns' as const, refId: 'team:b', text: 'O·Team', title: 'Owner: Team' },
-      { role: 'executes' as const, refId: 'b', text: 'E·Bob', title: 'Executor: Bob' },
-    ];
-    const { container } = render(
-      <ReactFlowProvider>
-        <LoopHighlightContext.Provider value={{ ...noopLoopHighlight, focusId: 'b' }}>
-          <DiagramNode
-            id="z"
-            data={{
-              label: 'zone',
-              typeId: 'plan-zone',
-              state: 'leaf',
-              promoted: false,
-              sharedMembers: [],
-              hiddenCount: 0,
-              typeRegistry: createTypeRegistry(),
-              icons: createIconRegistry(),
-              chips,
-            }}
-          />
-        </LoopHighlightContext.Provider>
-      </ReactFlowProvider>,
-    );
-    expect([...container.querySelectorAll('.dg-role-chip-active')].map((c) => c.textContent)).toEqual(['E·Bob']);
+  it("marks the selected actor's chip and outlines the zone in its colour, never for an actor whose id ends like it", () => {
+    const team = { role: 'owns' as const, refId: 'team:b', text: 'O·Team', title: 'Owner: Team', color: '#c33' };
+    const bob = { role: 'executes' as const, refId: 'b', text: 'E·Bob', title: 'Executor: Bob' };
+    const zone = (chips: NodeChip[]) => {
+      const { container } = render(
+        <ReactFlowProvider>
+          <LoopHighlightContext.Provider value={{ ...noopLoopHighlight, focusId: 'b' }}>
+            <DiagramNode
+              id="z"
+              data={{
+                label: 'zone',
+                typeId: 'plan-zone',
+                state: 'leaf',
+                promoted: false,
+                sharedMembers: [],
+                hiddenCount: 0,
+                typeRegistry: createTypeRegistry(),
+                icons: createIconRegistry(),
+                chips,
+              }}
+            />
+          </LoopHighlightContext.Provider>
+        </ReactFlowProvider>,
+      );
+      const root = container.querySelector<HTMLElement>('.dg-node')!;
+      const out = {
+        active: [...container.querySelectorAll('.dg-role-chip-active')].map((c) => c.textContent),
+        hit: root.hasAttribute('data-plan-hit') ? root.style.getPropertyValue('--dg-hit') : null,
+      };
+      cleanup();
+      return out;
+    };
+    expect(zone([team, bob])).toEqual({ active: ['E·Bob'], hit: 'var(--dg-accent)' });
+    expect(zone([team])).toEqual({ active: [], hit: null });
   });
   it('without onSetRole (view mode) the chip stays the span it was', () => {
     const chips = [{ role: 'executes' as const, refId: 'b', text: 'E·Bob', title: 'Executor: Bob' }];

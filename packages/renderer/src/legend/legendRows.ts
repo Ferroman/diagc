@@ -90,7 +90,7 @@ export interface LegendInput {
 const DEFAULT_SECTIONS: readonly LegendSection[] = ['layers', 'kinds', 'marks'];
 
 /** Shapes the canvas draws in a fixed neutral stroke whatever the accent says
- * (DiagramNode's `neutralGlyph`), so their swatch must not take one either. */
+ * (BoxBody's `neutralGlyph`), so their swatch must not take one either. */
 const NEUTRAL_GLYPHS: ReadonlySet<string> = new Set(['bar', 'start-dot', 'end-bullseye']);
 
 /** Registry key order first (an authored, meaningful order), then unknown ids

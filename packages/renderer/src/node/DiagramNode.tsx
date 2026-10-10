@@ -89,7 +89,7 @@ export interface DiagramNodeData {
    * opposite of the one on screen. */
   onToggleExpand?: (id: string, next: 'expanded' | 'collapsed') => void;
   /** the link badge was clicked; absent falls back to a best-effort
-   * new-tab open for http(s) links (see the badge's onClick below) */
+   * new-tab open for http(s) links (see LinkBadge in chrome.tsx) */
   onOpenLink?: (link: string) => void;
   /** edit: the `+` offer for this node (see EditingApi.quickAdd); absent in
    * view mode or when the host has no recipe */

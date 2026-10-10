@@ -106,7 +106,7 @@ function EntryPreview({ entry, assetBase }: { entry: LibraryEntry; assetBase: st
   }
   if (entry.template.shape !== undefined) {
     // Preview a shape entry as its silhouette, tinted like the placed node (mask,
-    // same as DiagramNode's .dg-shape-fill) rather than a plain color swatch.
+    // same as the renderer's SilhouetteBody .dg-shape-fill) rather than a plain color swatch.
     const url = `url("${entryThumbUrl(assetBase, entry.template.shape)}")`;
     return (
       <span
