@@ -7,11 +7,11 @@ import {
   NOTATION_RELATION_KINDS,
   RELATION_KINDS,
 } from '@diagc/core/internal';
-import { BONE_PALETTE, fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
-import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
+import { BONE_PALETTE, fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './layout/fishbone-layout';
+import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './layout/git-layout';
 import { NOTATION_PROFILES, notationProfile, planBadges, TM_BOUNDARY_COLOR } from './notations';
 import { createKindRegistry, createTypeRegistry, DEFAULT_KIND_STYLES, DEFAULT_TYPE_STYLES } from './registry';
-import { planLayout, PLAN_LAYOUT } from './plan-layout';
+import { planLayout, PLAN_LAYOUT } from './layout/plan-layout';
 
 describe('notationProfile', () => {
   it('returns the default profile when no id is given', () => {

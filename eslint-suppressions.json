@@ -173,32 +173,7 @@
       "count": 1
     }
   },
-  "packages/renderer/src/DiagramEdge.tsx": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/DiagramNode.tsx": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "max-params": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/DiagramView.tsx": {
+  "packages/renderer/src/canvas/DiagramView.tsx": {
     "complexity": {
       "count": 6
     },
@@ -212,45 +187,46 @@
       "count": 1
     }
   },
-  "packages/renderer/src/LeveragePanel.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/NoteNode.tsx": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/TableNode.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/build-data.ts": {
+  "packages/renderer/src/canvas/build-data.ts": {
     "complexity": {
       "count": 3
     }
   },
-  "packages/renderer/src/edge-geometry.ts": {
-    "max-params": {
-      "count": 6
-    }
-  },
-  "packages/renderer/src/fishbone-layout.ts": {
+  "packages/renderer/src/canvas/useViewLayout.ts": {
+    "complexity": {
+      "count": 1
+    },
     "max-lines-per-function": {
       "count": 1
     }
   },
-  "packages/renderer/src/fit-containers.ts": {
+  "packages/renderer/src/edge/DiagramEdge.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/edge/edge-geometry.ts": {
+    "max-params": {
+      "count": 6
+    }
+  },
+  "packages/renderer/src/layout/fishbone-layout.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/layout/fit-containers.ts": {
     "max-params": {
       "count": 1
     }
   },
-  "packages/renderer/src/lane-router.ts": {
+  "packages/renderer/src/layout/lane-router.ts": {
     "complexity": {
       "count": 2
     },
@@ -261,18 +237,55 @@
       "count": 4
     }
   },
-  "packages/renderer/src/layout-graph.ts": {
+  "packages/renderer/src/layout/layout-graph.ts": {
     "complexity": {
       "count": 1
     }
   },
-  "packages/renderer/src/layout.ts": {
+  "packages/renderer/src/layout/layout.ts": {
     "complexity": {
       "count": 1
     }
   },
-  "packages/renderer/src/leverage.ts": {
+  "packages/renderer/src/layout/plan-layout.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/layout/swimlane.ts": {
+    "max-params": {
+      "count": 3
+    }
+  },
+  "packages/renderer/src/loops/LeveragePanel.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/loops/leverage.ts": {
     "max-depth": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/node/DiagramNode.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    }
+  },
+  "packages/renderer/src/node/TableNode.tsx": {
+    "max-lines-per-function": {
       "count": 1
     }
   },
@@ -281,35 +294,22 @@
       "count": 1
     }
   },
-  "packages/renderer/src/note-place.ts": {
-    "max-params": {
-      "count": 2
-    }
-  },
-  "packages/renderer/src/plan-layout.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "max-params": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/sketch.ts": {
-    "max-params": {
-      "count": 2
-    }
-  },
-  "packages/renderer/src/swimlane.ts": {
-    "max-params": {
-      "count": 3
-    }
-  },
-  "packages/renderer/src/useViewLayout.ts": {
+  "packages/renderer/src/notes/NoteNode.tsx": {
     "complexity": {
       "count": 1
     },
     "max-lines-per-function": {
       "count": 1
+    }
+  },
+  "packages/renderer/src/notes/note-place.ts": {
+    "max-params": {
+      "count": 2
+    }
+  },
+  "packages/renderer/src/sketch/sketch.ts": {
+    "max-params": {
+      "count": 2
     }
   }
 }

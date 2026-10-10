@@ -23,10 +23,10 @@ import {
   type BoxSize,
   type ViewEdge,
 } from '@diagc/core/internal';
-import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './fishbone-layout';
-import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './git-layout';
-import type { LayoutResult } from './layout';
-import { PLAN_LAYOUT, planGraphCached, planLayout } from './plan-layout';
+import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './layout/fishbone-layout';
+import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './layout/git-layout';
+import type { LayoutResult } from './layout/layout';
+import { PLAN_LAYOUT, planGraphCached, planLayout } from './layout/plan-layout';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
 
 /** A small chip in a node's badge row (the plan's role chips are the only

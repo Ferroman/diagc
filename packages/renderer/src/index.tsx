@@ -1,10 +1,10 @@
 export const RENDERER_VERSION = 1;
 export * from './theme';
 export * from './registry';
-export { DiagramNode, type DiagramNodeData } from './DiagramNode';
-export { DiagramEdge, type DiagramEdgeData } from './DiagramEdge';
-export { RichLabelEditor } from './RichLabelEditor';
-export { estimateLabelSize, MAX_LABEL_WIDTH, MIN_LABEL_WIDTH } from './label-size';
+export { DiagramNode, type DiagramNodeData } from './node/DiagramNode';
+export { DiagramEdge, type DiagramEdgeData } from './edge/DiagramEdge';
+export { RichLabelEditor } from './node/RichLabelEditor';
+export { estimateLabelSize, MAX_LABEL_WIDTH, MIN_LABEL_WIDTH } from './node/label-size';
 export {
   layoutView,
   layoutOptionsFor,
@@ -13,17 +13,17 @@ export {
   type EdgePoint,
   type LayoutResult,
   type LayoutExtras,
-} from './layout';
+} from './layout/layout';
 export {
   computeFocusChain,
   FOCUS_ENTER_FRACTION,
   FOCUS_EXIT_FRACTION,
   FOCUS_EXIT_MARGIN,
   type FocusInput,
-} from './focus';
-export { connectionSides, getEdgeParams, type EdgeParams, type FloatingNode, type Side } from './floating';
+} from './canvas/focus';
+export { connectionSides, getEdgeParams, type EdgeParams, type FloatingNode, type Side } from './edge/floating';
 export { NOTATION_PROFILES, notationProfile, planBadges, type NodeBadge, type NotationProfile } from './notations';
-export { isKnownStyle, STYLE_PRESETS, stylePreset, type RoughStyle, type StylePreset } from './stylePresets';
+export { isKnownStyle, STYLE_PRESETS, stylePreset, type RoughStyle, type StylePreset } from './sketch/stylePresets';
 export {
   findLoops,
   placeLoopLabels,
@@ -36,8 +36,8 @@ export {
   type NodeRect,
   type LoopLabelPlacement,
   type PlaceOptions,
-} from './loops';
-export { LoopLabelLayer, type LoopLabelLayerProps } from './LoopLabelLayer';
+} from './loops/loops';
+export { LoopLabelLayer, type LoopLabelLayerProps } from './loops/LoopLabelLayer';
 export {
   GIT_LAYOUT,
   LANE_PALETTE,
@@ -46,11 +46,11 @@ export {
   gitLayout,
   gitNodeColors,
   gitRoute,
-} from './git-layout';
-export { PLAN_LAYOUT, planGraphCached, planLayout, planX } from './plan-layout';
-export { GitLanesOverlay, type GitLanesOverlayProps } from './GitLanesOverlay';
-export { timeAxis, todayIso, type TimeAxis, type AxisBand } from './time-axis';
-export { ACTIVITY_LAYOUT, arrangeActivityFrames } from './activity-frame';
+} from './layout/git-layout';
+export { PLAN_LAYOUT, planGraphCached, planLayout, planX } from './layout/plan-layout';
+export { GitLanesOverlay, type GitLanesOverlayProps } from './overlays/GitLanesOverlay';
+export { timeAxis, todayIso, type TimeAxis, type AxisBand } from './overlays/time-axis';
+export { ACTIVITY_LAYOUT, arrangeActivityFrames } from './layout/activity-frame';
 export {
   analyzeLeverage,
   analyzeDependency,
@@ -61,8 +61,8 @@ export {
   type LeverageSign,
   type DependencyReport,
   type DependencyDirection,
-} from './leverage';
-export { LeveragePanel, type LeveragePanelProps, type LeverageFocus } from './LeveragePanel';
+} from './loops/leverage';
+export { LeveragePanel, type LeveragePanelProps, type LeverageFocus } from './loops/LeveragePanel';
 export {
   DiagramView,
   DEFAULT_ON_NODE_META_KEYS,
@@ -75,15 +75,15 @@ export {
   type EditingApi,
   type LayoutApi,
   type PenSettings,
-} from './DiagramView';
-export type { QuickAddSide } from './view-types';
-export { useNudge, NUDGE_STEP, NUDGE_SHIFT_FACTOR, NUDGE_IDLE_MS, type NudgeInput } from './useNudge';
-export { DrawingsLayer, type DrawingsLayerProps } from './DrawingsLayer';
-export { strokePath, simplifyStroke, strokesBounds } from './drawings';
-export { Legend, type LegendProps } from './Legend';
-export { legendRows, type LegendInput, type LegendRow, type LegendSwatch } from './legendRows';
-export type { Box } from './box';
-export type { EdgeLabelMoves } from './build-data';
-export { computeGuides, snapDragChanges, GUIDE_THRESHOLD_PX, type Guide, type GuideSnap } from './guides';
-export { alignBoxes, distributeBoxes, dropDescendants, type AlignMode, type Delta } from './arrange';
-export { SelectionToolbar, type SelectionToolbarProps } from './SelectionToolbar';
+} from './canvas/DiagramView';
+export type { QuickAddSide } from './canvas/view-types';
+export { useNudge, NUDGE_STEP, NUDGE_SHIFT_FACTOR, NUDGE_IDLE_MS, type NudgeInput } from './canvas/useNudge';
+export { DrawingsLayer, type DrawingsLayerProps } from './drawings/DrawingsLayer';
+export { strokePath, simplifyStroke, strokesBounds } from './drawings/drawings';
+export { Legend, type LegendProps } from './legend/Legend';
+export { legendRows, type LegendInput, type LegendRow, type LegendSwatch } from './legend/legendRows';
+export type { Box } from './canvas/box';
+export type { EdgeLabelMoves } from './canvas/build-data';
+export { computeGuides, snapDragChanges, GUIDE_THRESHOLD_PX, type Guide, type GuideSnap } from './canvas/guides';
+export { alignBoxes, distributeBoxes, dropDescendants, type AlignMode, type Delta } from './canvas/arrange';
+export { SelectionToolbar, type SelectionToolbarProps } from './canvas/SelectionToolbar';
