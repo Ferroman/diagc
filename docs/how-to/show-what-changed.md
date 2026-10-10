@@ -80,7 +80,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-      - uses: Ferroman/diagc/actions/pr-diagram-diff@v1.1.1 # x-release-please-version
+      - uses: Ferroman/diagc/actions/pr-diagram-diff@v1.1.2 # x-release-please-version
 ```
 
 What it does on each push:
@@ -93,7 +93,7 @@ The interactive pages are attached to the run as the `diagram-diff` artifact.
 
 | Input | Default | |
 | --- | --- | --- |
-| `diagc` | `npx --yes @diagc/cli@latest` | how to run the CLI; pin it (`npx --yes @diagc/cli@1.1.1`) to keep the pictures from changing with a release <!-- x-release-please-version --> |
+| `diagc` | `npx --yes @diagc/cli@latest` | how to run the CLI; pin it (`npx --yes @diagc/cli@1.1.2`) to keep the pictures from changing with a release <!-- x-release-please-version --> |
 | `assets-branch` | `diagc-diff-assets` | where the pictures go |
 | `working-directory` | `.` | the directory holding `.diagrams/` |
 | `token` | `github.token` | needs the two permissions above |

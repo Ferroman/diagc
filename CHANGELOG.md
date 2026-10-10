@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/Ferroman/diagc/compare/v1.1.1...v1.1.2) (2026-10-10)
+
+
+### Bug Fixes
+
+* **renderer:** a glyph keeps its size when its name has a line break ([#89](https://github.com/Ferroman/diagc/issues/89)) ([1418ab0](https://github.com/Ferroman/diagc/commit/1418ab0e1a7ce6700646aa14782ce59c69ef2a8b))
+
 ## [1.1.1](https://github.com/Ferroman/diagc/compare/v1.1.0...v1.1.1) (2026-10-09)
 
 
