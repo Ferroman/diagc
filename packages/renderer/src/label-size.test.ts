@@ -30,4 +30,8 @@ describe('glyphCaptionSize', () => {
     expect(s.width).toBe(180);
     expect(s.height).toBe(3 * 16 + 3);
   });
+
+  it('starts a new line at each line break in the name', () => {
+    expect(glyphCaptionSize('Approved\nby finance?')).toEqual({ width: 85, height: 2 * 16 + 3 });
+  });
 });
