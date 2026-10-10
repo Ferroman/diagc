@@ -1077,7 +1077,7 @@ function Inner(props: DiagramViewProps) {
   // it has already seen, so a note must never precede the box it rides on.
   //
   // A diff picture's marks ride on React Flow's wrapper class, so every node
-  // shape gets them without each render branch knowing. `inside` only on a
+  // shape gets them without each node body knowing. `inside` only on a
   // folded box: an open one shows the changed child itself.
   const diffMarks = props.diffMarks;
   const diffClasses = useMemo(

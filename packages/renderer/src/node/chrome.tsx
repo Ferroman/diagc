@@ -128,3 +128,31 @@ export function QuickAddButton({
     </button>
   );
 }
+
+/** A part of the chrome a body may draw (see NodeChrome). */
+export type ChromePart = 'link' | 'threat' | 'comment' | 'quickAdd' | 'handles';
+
+/** The chrome a body uses, always in this order: the link badge, the threat
+ * and comment badges, the quick-add button, the connect handles. A body that
+ * draws something between two parts uses two of these. */
+export function NodeChrome({
+  id,
+  data,
+  selected,
+  uses,
+}: {
+  id: string;
+  data: DiagramNodeData;
+  selected: boolean | undefined;
+  uses: readonly ChromePart[];
+}): ReactElement {
+  return (
+    <>
+      {uses.includes('link') && <LinkBadge data={data} />}
+      {uses.includes('threat') && <ThreatBadge id={id} data={data} />}
+      {uses.includes('comment') && <CommentBadge id={id} data={data} />}
+      {uses.includes('quickAdd') && <QuickAddButton id={id} data={data} selected={selected} />}
+      {uses.includes('handles') && sideHandles}
+    </>
+  );
+}
