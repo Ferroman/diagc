@@ -267,6 +267,18 @@ export function routeCurve(points: readonly Point[]): EdgeCurve {
   };
 }
 
+/** point + local frame (unit tangent/normal) at `t` along the clean path, for
+ * positioning marks and badges without touching the (possibly sketch-roughened)
+ * rendered path. */
+export function markFrame(curve: EdgeCurve, t: number) {
+  const point = curve.point(t);
+  const tangent = curve.tangent(t);
+  const normal = { x: -tangent.y, y: tangent.x };
+  return { point, tangent, normal };
+}
+
+export type MarkFrame = ReturnType<typeof markFrame>;
+
 /** The sampled t on `curve` nearest to `point`, plus the signed perpendicular
  * distance there (positive = screen-up side of the line). */
 export function nearestOnCurve(curve: EdgeCurve, point: Point, samples = 40): { t: number; perp: number } {

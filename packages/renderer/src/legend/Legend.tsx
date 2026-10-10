@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BoxSize, LegendSection } from '@diagc/core/internal';
 import type { IconRegistry } from '@diagc/icons';
-import { END_SHAPES, LINE_MARKERS } from '../edge/DiagramEdge';
+import { END_SHAPES, LINE_MARKERS } from '../edge/EdgeMarkerDefs';
 import type { LegendMark, LegendRow, LegendSwatch } from './legendRows';
 import { outlineInk } from '../node/outline-ink';
 import type { KindStyle, TypeStyle } from '../registry';

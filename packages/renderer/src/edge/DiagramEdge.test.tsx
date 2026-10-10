@@ -16,9 +16,9 @@ vi.mock('@xyflow/react', async (importOriginal) => {
   };
 });
 import { createKindRegistry } from '../registry';
-import { badgePosition, DiagramEdge, markFrame, type DiagramEdgeData } from './DiagramEdge';
+import { badgePosition, DiagramEdge, type DiagramEdgeData } from './DiagramEdge';
 import { NoteStateContext, type NoteState } from '../notes/note-state';
-import { edgePoint, shapeCurve } from './edge-geometry';
+import { edgePoint, markFrame, shapeCurve } from './edge-geometry';
 import { notationProfile } from '../notations';
 import { stylePreset } from '../sketch/stylePresets';
 import { CAPTION_HEIGHT } from '../node/label-size';

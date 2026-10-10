@@ -9,7 +9,6 @@ import {
   type EdgeProps,
 } from '@xyflow/react';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactElement } from 'react';
 import {
   type Column,
   type EdgeLabel,
@@ -24,6 +23,7 @@ import { commentBadgeProps, type AnnotationCounts } from '../notes/comment-badge
 import {
   bowPath,
   DEFAULT_CURVATURE,
+  markFrame,
   nearestOnCurve,
   nearestOnRoute,
   roundedRoute,
@@ -35,8 +35,13 @@ import {
   type BowSide,
   type EdgeCurve,
   type EdgeShape,
+  type MarkFrame,
 } from './edge-geometry';
-import { getEdgeParams, sideFromPosition } from './floating';
+import { EdgeMarkerDefs } from './EdgeMarkerDefs';
+import { EdgeMarks } from './EdgeMarks';
+import { edgeStroke, strokeStyle } from './edge-stroke';
+import { FixedSideDots } from './FixedSideDots';
+import { getEdgeParams } from './floating';
 import { CAPTION_HEIGHT, glyphCaptionSize } from '../node/label-size';
 import { LoopHighlightContext } from '../loops/loop-highlight';
 import { NoteStateContext } from '../notes/note-state';
@@ -138,50 +143,12 @@ type Props = Pick<
   'id' | 'source' | 'target' | 'sourceX' | 'sourceY' | 'targetX' | 'targetY' | 'sourcePosition' | 'targetPosition'
 > & { data?: DiagramEdgeData };
 
-/** marker geometry per end style, in a 0..10 viewBox (refY 5). Exported for the
- * legend, whose connection swatches must end the way the arrows they describe do. */
-export const END_SHAPES: Record<string, { refX: number; el: ReactElement } | undefined> = {
-  arrow: { refX: 9, el: <path d="M0,0 L10,5 L0,10 z" /> },
-  dot: { refX: 5, el: <circle cx="5" cy="5" r="4" /> },
-  square: { refX: 5, el: <rect x="1.2" y="1.2" width="7.6" height="7.6" /> },
-  diamond: { refX: 5, el: <path d="M5,0 L10,5 L5,10 L0,5 z" /> },
-  // Anchored at its open end (x = 10), not its apex: the foot's three toes touch the
-  // table and the apex sits out on the line. Anchored at the apex, the whole shape fell
-  // on the node's side of the vertex, under the table that paints over it.
-  crowsfoot: { refX: 10, el: <path d="M10,1 L0,5 L10,9 M0,5 L10,5" fill="none" /> },
-  one: { refX: 8, el: <path d="M5,1 L5,9" fill="none" /> },
-  // explicit "no head" for kind styles (a bare unknown id also draws none)
-  none: undefined,
-};
-
-/** line-based (unfilled) end shapes: these need the marker to carry a `stroke`
- * so their strokes actually draw. Filled shapes (arrow/dot/…) must NOT get a
- * stroke, or they render an unwanted same-color outline (regression guard). */
-export const LINE_MARKERS = new Set(['crowsfoot', 'one']);
-
-/** fixed-side dot radius (px) */
-const FIXED_SIDE_DOT_R = 5;
-/** how far a fixed-side dot sits off the edge line, along the perpendicular (px) — kept
- * clear of React Flow's endpoint reconnect grab zone so click-to-fix and
- * drag-to-reattach don't fight over the same pixels */
-const FIXED_SIDE_DOT_OFFSET = 16;
-
-/** how far the polarity glyph sits off the path, along the normal (px) */
-const POLARITY_OFFSET = 12;
 /** how far the threat badge sits off the path, along the normal (px) */
 const THREAT_OFFSET = 10;
 /** how many segments a threat-carrying flow's line is sampled into for the
  * notes' placement — a note is far wider than one step, so it cannot lie
  * across the line between two samples */
 const LINE_SAMPLES = 24;
-/** delay mark: half-length of each hash line, along the normal (px) */
-const DELAY_HALF_LEN = 6;
-/** delay mark: how far apart the two hash lines sit, along the tangent (px) */
-const DELAY_GAP = 3;
-
-/** interrupt zigzag: half-length of the lightning jog along the tangent (px) */
-const ZIGZAG_HALF = 12;
-
 /** perpendicular offset for top/bottom positioned labels (px) */
 const LABEL_OFFSET = 14;
 
@@ -227,19 +194,6 @@ function labelXY(curve: EdgeCurve, t: number, side: EdgeLabelSide): Point {
   const s = side === 'top' ? 1 : -1;
   return { x: lp.x + s * LABEL_OFFSET * nx, y: lp.y + s * LABEL_OFFSET * ny };
 }
-
-/** point + local frame (unit tangent/normal) at `t` along the clean path, for
- * positioning CLD marks without touching the (possibly sketch-roughened)
- * rendered path. Exported with {@link badgePosition} so a test can say where a
- * badge is expected rather than restating the arithmetic. */
-export function markFrame(curve: EdgeCurve, t: number) {
-  const point = curve.point(t);
-  const tangent = curve.tangent(t);
-  const normal = { x: -tangent.y, y: tangent.x };
-  return { point, tangent, normal };
-}
-
-type MarkFrame = ReturnType<typeof markFrame>;
 
 /** Where a badge sits: its frame's point, pushed off the line along the normal.
  * One helper for both badges (threat at t = 0.75, comment at t = 0.25), because
@@ -419,6 +373,8 @@ export function DiagramEdge({
     [path, labelX, labelY] = getBezierPath({ ...pathParams, ...(curvature !== undefined ? { curvature } : {}) });
   }
 
+  const look = edgeStroke(id, data, profile);
+
   // Sketch theme: replace the clean path with a seeded rough stroke (stable per
   // edge id, memoized so it doesn't re-wobble each render). Label position and
   // marker still use the clean path's endpoints.
@@ -426,46 +382,6 @@ export function DiagramEdge({
     () => (data?.stylePreset?.rough !== undefined ? sketchEdge(path, seedFrom(id), data.stylePreset.rough) : path),
     [data?.stylePreset, path, id],
   );
-
-  // Precedence: per-relation override > layer tint > notation colour > notation
-  // polarity > kind registry > defaults. The notation colour (e.g. a git link's
-  // lane) sits below the tint for the same reason polarity does — an explicit
-  // authored grouping should never go inert because a notation also wants a say.
-  const kind: KindStyle = data?.kindRegistry.resolve(data.kind) ?? {};
-  const polarityColor = data?.polarity !== undefined ? profile.edge?.polarityColors?.[data.polarity] : undefined;
-  const stroke = rel?.color ?? data?.tint ?? data?.notationColor ?? polarityColor ?? 'var(--dg-edge)';
-  const strokeWidth = rel?.width ?? kind.width ?? 1.5;
-  const line = rel?.line ?? (kind.dashed === true ? 'dashed' : 'solid');
-  const animated = rel?.animated ?? kind.animated === true;
-  const dashArray =
-    line === 'dashed'
-      ? '6 4'
-      : line === 'dotted'
-        ? `0.1 ${Math.max(5, strokeWidth * 3)}`
-        : animated
-          ? '6 4'
-          : undefined;
-
-  const kindStart = kind.startMarker;
-  const end = rel?.end ?? kind.endMarker ?? 'arrow';
-  const endShape = END_SHAPES[end];
-  const startShape = kindStart !== undefined ? END_SHAPES[kindStart] : undefined;
-  // svg ids must be unique per document; edge ids contain '=>' etc., so sanitize
-  const markerId = `dg-end-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-  const startMarkerId = `dg-start-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-  const markerSize = 10 + strokeWidth * 2;
-
-  // CLD polarity/delay marks: gated on the notation profile *and* the edge
-  // actually carrying the datum; computed from the clean path params (like
-  // the label/marker above) so they track the arrow rather than a sketch
-  // roughening. Rendered beside the END_SHAPES marker, never replacing it.
-  const showMarks = profile.edge?.marks === true;
-  const polarityFrame = showMarks && data?.polarity !== undefined ? markFrame(curve, 0.82) : undefined;
-  const delayFrame = showMarks && data?.delay === true ? markFrame(curve, 0.5) : undefined;
-
-  // UML interrupt flow: a lightning jog at the midpoint. Gated on the KIND
-  // style (not the notation profile) — activity edges appear on any canvas.
-  const zigzagFrame = kind.zigzag === true ? markFrame(curve, 0.5) : undefined;
 
   // Threat badge: gated on the edge carrying threats, not on the notation — a
   // flow can be threat-modelled on any plane. An empty register is not a clean
@@ -554,43 +470,6 @@ export function DiagramEdge({
         ? 'dg-loop-edge-dim'
         : 'dg-focus-edge-dim';
 
-  // Fixed-side dots: only for the active sole-relation edge whose host wired
-  // the side callback (edit mode). Each dot toggles its end between floating and
-  // frozen-at-the-current-facing-side; positioned off the line so it doesn't
-  // steal React Flow's reconnect grab.
-  const onSetSide = data?.onSetSide;
-  const showFixedSideDots =
-    onSetSide !== undefined && data?.fixedSideDotsShown === true && (data?.constituentCount ?? 0) === 1;
-  const fixedSideDots = showFixedSideDots
-    ? (() => {
-        const dx = p.tx - p.sx;
-        const dy = p.ty - p.sy;
-        const len = Math.hypot(dx, dy) || 1;
-        const ox = (-dy / len) * FIXED_SIDE_DOT_OFFSET;
-        const oy = (dx / len) * FIXED_SIDE_DOT_OFFSET;
-        const fromSideFixed = rel?.fromSide !== undefined;
-        const toSideFixed = rel?.toSide !== undefined;
-        return (
-          <>
-            <FixedSideDot
-              end="from"
-              cx={p.sx + ox}
-              cy={p.sy + oy}
-              fixed={fromSideFixed}
-              onToggle={() => onSetSide('from', fromSideFixed ? null : sideFromPosition(p.sourcePos))}
-            />
-            <FixedSideDot
-              end="to"
-              cx={p.tx + ox}
-              cy={p.ty + oy}
-              fixed={toSideFixed}
-              onToggle={() => onSetSide('to', toSideFixed ? null : sideFromPosition(p.targetPos))}
-            />
-          </>
-        );
-      })()
-    : null;
-
   // Project a screen point onto the *effective* (rendered) shape — the label
   // render already keys off `effectiveShape`/`bowSide`, and so must the
   // click/drag projection, or a placed label would slide off a bowed CLD edge.
@@ -611,54 +490,13 @@ export function DiagramEdge({
   return (
     <>
       <g className={loopEdgeClass}>
-        {endShape !== undefined && (
-          <defs>
-            <marker
-              id={markerId}
-              viewBox="0 0 10 10"
-              refX={endShape.refX}
-              refY="5"
-              markerWidth={markerSize}
-              markerHeight={markerSize}
-              markerUnits="userSpaceOnUse"
-              orient="auto-start-reverse"
-              fill={stroke}
-              {...(LINE_MARKERS.has(end) ? { stroke, strokeWidth: 1.2 } : {})}
-            >
-              {endShape.el}
-            </marker>
-          </defs>
-        )}
-        {startShape !== undefined && (
-          <defs>
-            <marker
-              id={startMarkerId}
-              viewBox="0 0 10 10"
-              refX={startShape.refX}
-              refY="5"
-              markerWidth={markerSize}
-              markerHeight={markerSize}
-              markerUnits="userSpaceOnUse"
-              orient="auto-start-reverse"
-              fill={stroke}
-              {...(kindStart !== undefined && LINE_MARKERS.has(kindStart) ? { stroke, strokeWidth: 1.2 } : {})}
-            >
-              {startShape.el}
-            </marker>
-          </defs>
-        )}
+        <EdgeMarkerDefs end={look.end} start={look.start} stroke={look.stroke} size={look.markerSize} />
         <BaseEdge
           id={id}
           path={renderPath}
-          {...(endShape !== undefined ? { markerEnd: `url(#${markerId})` } : {})}
-          {...(startShape !== undefined ? { markerStart: `url(#${startMarkerId})` } : {})}
-          style={{
-            stroke,
-            strokeWidth,
-            ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
-            ...(line === 'dotted' ? { strokeLinecap: 'round' as const } : {}),
-            ...(animated ? { animation: 'dg-flow 0.7s linear infinite' } : {}),
-          }}
+          {...(look.end !== undefined ? { markerEnd: `url(#${look.end.id})` } : {})}
+          {...(look.start !== undefined ? { markerStart: `url(#${look.start.id})` } : {})}
+          style={strokeStyle(look)}
         />
         {/* transparent hit-path: widens the hover/title target. Adding a label is
           no longer triggered here (a real double-click's first click remounts the
@@ -669,60 +507,9 @@ export function DiagramEdge({
             data?.labels === undefined && data?.label !== undefined ? ` — ${data.label}` : ''
           }`}</title>
         </path>
-        {polarityFrame !== undefined && data?.polarity !== undefined && (
-          <text
-            className="dg-polarity"
-            x={polarityFrame.point.x + polarityFrame.normal.x * POLARITY_OFFSET}
-            y={polarityFrame.point.y + polarityFrame.normal.y * POLARITY_OFFSET}
-            textAnchor="middle"
-            dominantBaseline="central"
-            /* The glyph annotates the line, so it takes the line's colour — but
-             only where the notation colours by sign; elsewhere it stays text-
-             coloured as before. Inline style, not a `fill` attribute: the
-             stylesheet's `.dg-polarity { fill }` outranks presentation attrs. */
-            style={polarityColor !== undefined ? { fill: stroke } : undefined}
-          >
-            {data.polarity === '-' ? '−' : '+'}
-          </text>
-        )}
-        {delayFrame !== undefined && (
-          <g className="dg-delay">
-            {[-DELAY_GAP, DELAY_GAP].map((gap) => {
-              const cx = delayFrame.point.x + delayFrame.tangent.x * gap;
-              const cy = delayFrame.point.y + delayFrame.tangent.y * gap;
-              return (
-                <line
-                  key={gap}
-                  x1={cx - delayFrame.normal.x * DELAY_HALF_LEN}
-                  y1={cy - delayFrame.normal.y * DELAY_HALF_LEN}
-                  x2={cx + delayFrame.normal.x * DELAY_HALF_LEN}
-                  y2={cy + delayFrame.normal.y * DELAY_HALF_LEN}
-                />
-              );
-            })}
-          </g>
-        )}
-        {zigzagFrame !== undefined && (
-          <polyline
-            className="dg-edge-zigzag"
-            points={[
-              [-ZIGZAG_HALF, 4],
-              [2, -2],
-              [-2, 2],
-              [ZIGZAG_HALF, -4],
-            ]
-              .map(([a, b]) => {
-                const { point, tangent, normal } = zigzagFrame;
-                return `${point.x + a! * tangent.x + b! * normal.x},${point.y + a! * tangent.y + b! * normal.y}`;
-              })
-              .join(' ')}
-            fill="none"
-            strokeWidth={1.75}
-            stroke={stroke}
-          />
-        )}
+        {data !== undefined && <EdgeMarks curve={curve} data={data} profile={profile} look={look} />}
       </g>
-      {fixedSideDots}
+      {data !== undefined && <FixedSideDots ends={p} data={data} />}
       {/* The joined label of a bundled arrow. An HTML element in the label layer, not
           React Flow's SVG `label`: that one lives inside this edge's own <svg>,
           so every edge painted later drew its line straight across the text. It
@@ -894,39 +681,6 @@ export function DiagramEdge({
         </EdgeLabelRenderer>
       )}
     </>
-  );
-}
-
-function FixedSideDot({
-  end,
-  cx,
-  cy,
-  fixed,
-  onToggle,
-}: {
-  end: 'from' | 'to';
-  cx: number;
-  cy: number;
-  fixed: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <circle
-      className={`dg-edge-pin${fixed ? ' pinned' : ''}`}
-      data-end={end}
-      cx={cx}
-      cy={cy}
-      r={FIXED_SIDE_DOT_R}
-      role="button"
-      aria-label={`${fixed ? 'Unpin' : 'Pin'} ${end === 'from' ? 'source' : 'target'} end`}
-      // stop pointerdown too, or React Flow treats the press as a canvas
-      // interaction and clears the edge selection out from under the dot
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => {
-        e.stopPropagation();
-        onToggle();
-      }}
-    />
   );
 }
 
