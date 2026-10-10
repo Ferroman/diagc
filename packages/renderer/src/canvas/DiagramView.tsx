@@ -14,7 +14,6 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
-  compileView,
   countAnchored,
   DEFAULT_STROKE_WIDTH,
   GIT_STAGE_TYPE,
@@ -22,9 +21,6 @@ import {
   isNodeRef,
   layoutPlaneKey,
   soleRelation,
-  type DiagramNode,
-  type EdgeLabelPlacement,
-  type EdgeLabelSide,
   type Point,
   type Stroke,
   type ViewNode,
@@ -32,13 +28,7 @@ import {
 import { createIconRegistry } from '@diagc/icons';
 import { FORCED_SIZE_SHAPES, LAYOUT_SIZED_TYPES } from '../layout/box-size';
 import { Breadcrumbs } from './Breadcrumbs';
-import {
-  buildEdgeDataCached,
-  buildNodeDataCached,
-  type EdgeDataContext,
-  type EdgeLabelMoves,
-  type NodeDataContext,
-} from './build-data';
+import { buildEdgeDataCached, buildNodeDataCached, type EdgeDataContext, type NodeDataContext } from './build-data';
 import { edgeTypes, nodeTypes, toRfEdge, toRfNode } from './adapter';
 import type { NoteData } from '../notes/NoteNode';
 import { isNoteId } from '../notes/derive-note-nodes';
@@ -52,13 +42,14 @@ import { SelectionToolbar } from './SelectionToolbar';
 import { Legend } from '../legend/Legend';
 import { LoopLabelLayer } from '../loops/LoopLabelLayer';
 import { LoopHighlightContext } from '../loops/loop-highlight';
-import { notationProfile } from '../notations';
 import { OrderBandsOverlay } from '../overlays/OrderBandsOverlay';
-import { createKindRegistry, createTypeRegistry } from '../registry';
 import { stylePreset } from '../sketch/stylePresets';
 import { TimeAxisOverlay } from '../overlays/TimeAxisOverlay';
 import { useCanvasGestures } from '../drawings/useCanvasGestures';
 import { useClickCorrelation } from './useClickCorrelation';
+import { useCompiledView } from './useCompiledView';
+import { useNotation } from './useNotation';
+import { useViewModeMoves } from './useViewModeMoves';
 import { useDrillNavigation } from './useDrillNavigation';
 import { useLegendState } from '../legend/useLegendState';
 import { useLoopOverlay } from '../loops/useLoopOverlay';
@@ -103,15 +94,8 @@ function Inner(props: DiagramViewProps) {
   // host without an `edit` object disables every mutation path structurally.
   const edit = props.edit;
   const preset = useMemo(() => stylePreset(props.styleId), [props.styleId]);
-  const profile = useMemo(() => notationProfile(props.notation), [props.notation]);
-  const typeRegistry = useMemo(
-    () => props.typeRegistry ?? createTypeRegistry(profile.typeStyles),
-    [props.typeRegistry, profile],
-  );
-  const kindRegistry = useMemo(
-    () => props.kindRegistry ?? createKindRegistry(profile.kindStyles),
-    [props.kindRegistry, profile],
-  );
+  const notation = useNotation(props);
+  const { profile, typeRegistry, kindRegistry, nodeColors, nodeChips } = notation;
   const icons = useMemo(() => props.icons ?? createIconRegistry(), [props.icons]);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
@@ -145,24 +129,10 @@ function Inner(props: DiagramViewProps) {
     const fp = reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY });
     setAddLabelAt({ edgeId, x: fp.x, y: fp.y });
   };
-  // A notation container that is always expanded (e.g. a git lane) is a row, not
-  // a box with an inside — the guard enterNode applies before drilling (see
-  // useDrillNavigation). Lives here because it closes over the registries.
-  const isAlwaysExpanded = useCallback(
-    (id: string) => {
-      const node = props.model.nodes.find((n) => n.id === id);
-      return (
-        node !== undefined &&
-        (profile.node?.alwaysExpanded?.(node) === true ||
-          (node.type !== undefined && typeRegistry.resolve(node.type).alwaysExpanded === true))
-      );
-    },
-    [props.model.nodes, profile, typeRegistry],
-  );
   // The drill trail plus the render-phase navigation sync (new model / plane
   // switch / model edit / host-driven path). It adjusts state DURING render, so
   // it has to run before anything that reads focus/drillRoot/enteredPath —
-  // notably the compileView memo below.
+  // notably useCompiledView.
   const nav = useDrillNavigation({
     model: props.model,
     plane: props.plane,
@@ -180,7 +150,7 @@ function Inner(props: DiagramViewProps) {
       setNoteEdit(null);
       setNoteOverrides(new Map());
     },
-    isAlwaysExpanded,
+    isAlwaysExpanded: notation.isAlwaysExpanded,
   });
   const { enteredPath, drillRoot, focus, enterNode, exitTo, pendingRootFitRef } = nav;
 
@@ -222,63 +192,7 @@ function Inner(props: DiagramViewProps) {
   });
   const { laserOn, setLaserOn, penActive, eraserActive, gestureCaptured, pen, laser, gestureHandlers } = gestures;
 
-  // A notation may declare containers that never fold (git lanes are rows, not
-  // boxes with an inside): they are pinned expanded over whatever the host's
-  // pins say. The host's own pins still feed the chips, so nothing else changes.
-  const effectivePins = useMemo(() => {
-    const always = profile.node?.alwaysExpanded;
-    const typeAlways = (n: DiagramNode) => n.type !== undefined && typeRegistry.resolve(n.type).alwaysExpanded === true;
-    const pinned = props.model.nodes.filter((n) => always?.(n) === true || typeAlways(n));
-    if (pinned.length === 0) return props.pins; // referential stability: nothing to add
-    const pins: Record<string, 'expanded' | 'collapsed'> = { ...(props.pins ?? {}) };
-    for (const n of pinned) pins[n.id] = 'expanded';
-    return pins;
-  }, [profile, props.pins, props.model.nodes, typeRegistry]);
-
-  const compiled = useMemo(() => {
-    const raw = compileView(props.model, {
-      // drilled → `root` drives visibility; otherwise `focus` (pins + the plane
-      // sheet-flip). Identical for view and edit — only affordances differ.
-      focus: drillRoot !== undefined ? undefined : focus,
-      pins: effectivePins,
-      activeLayers: props.activeLayers,
-      plane: props.plane,
-      root: drillRoot,
-    });
-    // A notation may keep some relation kinds off the canvas (plan roles become
-    // chips). Only the DRAWN set is filtered: layoutEdges keep every relation,
-    // the same rule that keeps a layer toggle from moving a box.
-    const hidden = profile.edge?.hidden;
-    if (hidden === undefined || !raw.edges.some((e) => hidden(e.kind))) return raw;
-    return { ...raw, edges: raw.edges.filter((e) => !hidden(e.kind)) };
-  }, [props.model, props.plane, focus, drillRoot, effectivePins, props.activeLayers, profile]);
-  // Render-phase ref, same pattern as strokesRef above: useLayoutApi's
-  // snapshotPositions needs compiled.externals to drop stub ids,
-  // but that effect only re-runs on [layoutApiRef, reactFlow] — so it reads
-  // `compiled` through a ref kept current every render instead of depending on it.
-  const compiledRef = useRef(compiled);
-  compiledRef.current = compiled;
-
-  // remember what is on screen — the plane-switch mapping reads this
-  useEffect(() => {
-    const ids: string[] = [];
-    const walk = (n: ViewNode) => {
-      ids.push(n.id);
-      n.children.forEach(walk);
-    };
-    compiled.roots.forEach(walk);
-    visibleRef.current = ids;
-  }, [compiled]);
-
-  // Up here rather than beside `edgeColors`, because the legend needs it too: a
-  // trust boundary's swatch is red for the same reason its box is.
-  const nodeColors = useMemo(
-    () => profile.node?.colorOf?.(props.model, props.plane),
-    [profile, props.model, props.plane],
-  );
-  // Small chips in a node's badge row (the plan's role chips), derived the same
-  // way as nodeColors: id-keyed, one derivation per model/plane.
-  const nodeChips = useMemo(() => profile.node?.chips?.(props.model, props.plane), [profile, props.model, props.plane]);
+  const { compiled, compiledRef } = useCompiledView({ props, profile, typeRegistry, focus, drillRoot, visibleRef });
 
   const legend = useLegendState({
     model: props.model,
@@ -295,67 +209,7 @@ function Inner(props: DiagramViewProps) {
   });
   const { legendConfig, showLegend, setShowLegend, setLegendSize, legendRowList, legendReserveRef } = legend;
 
-  // Alt-held enables ephemeral node dragging in view mode. A blur listener
-  // releases a stuck Alt (e.g. after Alt+Tab).
-  const [altHeld, setAltHeld] = useState(false);
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'Alt') setAltHeld(true);
-    };
-    const up = (e: KeyboardEvent) => {
-      if (e.key === 'Alt') setAltHeld(false);
-    };
-    const clear = () => setAltHeld(false);
-    window.addEventListener('keydown', down);
-    window.addEventListener('keyup', up);
-    window.addEventListener('blur', clear);
-    return () => {
-      window.removeEventListener('keydown', down);
-      window.removeEventListener('keyup', up);
-      window.removeEventListener('blur', clear);
-    };
-  }, []);
-
-  // Ephemeral view-mode drag positions for the active plane; cleared on a plane
-  // switch, model reload, or edit-mode toggle (edit persists positions via the
-  // saved overlay, so a returning view must start from that, not a stale drag).
-  const [viewPositions, setViewPositions] = useState<Record<string, Point>>({});
-  useEffect(() => {
-    setViewPositions({});
-  }, [props.model, props.plane, editing]);
-  // Edge labels slid in view mode (Alt+drag a label): the same throwaway class
-  // of state as the box drags above, reset by the same events and offered to
-  // the host the same way (relation id → label id → placement).
-  const [viewLabelMoves, setViewLabelMoves] = useState<EdgeLabelMoves>({});
-  useEffect(() => {
-    setViewLabelMoves({});
-  }, [props.model, props.plane, editing]);
-  const { onViewLabelMovesChange } = props;
-  useEffect(() => {
-    onViewLabelMovesChange?.(viewLabelMoves);
-  }, [viewLabelMoves, onViewLabelMovesChange]);
-  const moveViewLabel = useCallback(
-    (relationId: string, labelId: string, t: number, side: EdgeLabelSide) =>
-      setViewLabelMoves((m) => ({
-        ...m,
-        [relationId]: { ...m[relationId], [labelId]: side === 'center' ? { t } : { t, side } },
-      })),
-    [],
-  );
-  // What is drawn: the saved placements for this plane (a viewer may set those
-  // aside together with the saved positions), with this session's moves on top.
-  // Editing reads only the saved ones — there a label drag edits the document.
-  const labelMoves = useMemo((): EdgeLabelMoves | undefined => {
-    const saved =
-      !editing && props.ignoreSavedPositions === true
-        ? undefined
-        : props.layout?.edgeLabels?.[layoutPlaneKey(props.model, props.plane)];
-    if (editing || Object.keys(viewLabelMoves).length === 0) return saved;
-    const merged: Record<string, Record<string, EdgeLabelPlacement>> = { ...saved };
-    for (const [relationId, labels] of Object.entries(viewLabelMoves))
-      merged[relationId] = { ...merged[relationId], ...labels };
-    return merged;
-  }, [editing, props.ignoreSavedPositions, props.layout, props.model, props.plane, viewLabelMoves]);
+  const { altHeld, viewPositions, setViewPositions, labelMoves, moveViewLabel } = useViewModeMoves({ props, editing });
 
   // Multi-selection report. The prop is read through a ref and deduped by
   // contents: React Flow's SelectionListener has the callback in its effect
@@ -376,14 +230,6 @@ function Inner(props: DiagramViewProps) {
     selectOnAppearRef.current = null;
     onMultiSelectRef.current?.(ids);
   }, []);
-  // Surface them upward so a host can offer to persist them. Driven off the state
-  // rather than the drag handler, so the resets above are reported too — a host
-  // that kept showing a "save" affordance after a plane switch would be offering
-  // to write positions the viewer can no longer see.
-  const { onViewPositionsChange } = props;
-  useEffect(() => {
-    onViewPositionsChange?.(viewPositions);
-  }, [viewPositions, onViewPositionsChange]);
 
   // Both feed the node data below AND the layout's box-size estimate (a folded
   // container's count badge and a node's meta badges take real width), so they
@@ -419,7 +265,7 @@ function Inner(props: DiagramViewProps) {
     settledFor,
     flowDirection,
   } = viewLayout;
-  // Render-phase ref, same pattern and reason as compiledRef above: commitMoves
+  // Render-phase ref, same pattern and reason as useCompiledView's compiledRef: commitMoves
   // (useCommitMoves) needs the ARRANGED geometry to compute a move's displacement,
   // but its dependency list is hand-managed and must not grow with every
   // re-layout, so it reads arrangedGeometry through a ref kept current every
@@ -498,7 +344,7 @@ function Inner(props: DiagramViewProps) {
   // Notation colour hooks: a node/edge takes its lane's (or otherwise the
   // notation's) colour where it sets none itself. Absent notation = absent map,
   // so an unrelated diagram's build-data pass never sees a `nodeColors` field.
-  // (`nodeColors` itself is computed above the legend, which keys with it.)
+  // (`nodeColors` is useNotation's: the legend keys with it too.)
   const edgeColors = useMemo(() => {
     const colorOf = profile.edge?.colorOf;
     if (colorOf === undefined) return undefined;

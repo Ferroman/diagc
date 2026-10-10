@@ -72,7 +72,7 @@ export interface LegendInput {
   /** node id → the notation's accent (the profile's `colorOf`), exactly what the
    *  canvas is given — without it a trust boundary's swatch is grey beside red boxes */
   nodeColors?: ReadonlyMap<string, string>;
-  /** already notation-composed by the caller (see DiagramView) */
+  /** already notation-composed by the caller (see useNotation) */
   typeRegistry: Registry<TypeStyle>;
   kindRegistry: Registry<KindStyle>;
   config: DiagramLegend;
