@@ -299,7 +299,10 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     [input.profile, saved],
   );
 
-  const laidView = useMemo(() => withLaneOrder(input.compiled, input.model), [input.compiled, input.model]);
+  const laidView = useMemo(
+    () => withLaneOrder(input.compiled, input.model, input.plane),
+    [input.compiled, input.model, input.plane],
+  );
   const [geometry, setGeometry] = useState<Map<string, NodeGeometry> | null>(null);
   const geometryRef = useRef<Map<string, NodeGeometry> | null>(null);
   geometryRef.current = geometry;
@@ -398,8 +401,13 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // dragging a node inside a lane grows the band on the next frame.
   const arrangedGeometry = useMemo(
     () =>
-      fitted === null ? null : arrangeActivityFrames(fitted.geometry, input.compiled, input.model, input.layout?.sizes),
-    [fitted, input.compiled, input.model, input.layout],
+      fitted === null
+        ? null
+        : arrangeActivityFrames(fitted.geometry, input.compiled, input.model, {
+            plane: input.plane,
+            sizes: input.layout?.sizes,
+          }),
+    [fitted, input.compiled, input.model, input.plane, input.layout],
   );
 
   // Routes are elk's (or the notation's own), computed for the arrangement the

@@ -1,4 +1,10 @@
-import type { CompiledView, DiagramModel, ViewNode } from '@diagc/core/internal';
+import {
+  containmentOn,
+  containmentPlaneOf,
+  type CompiledView,
+  type DiagramModel,
+  type ViewNode,
+} from '@diagc/core/internal';
 
 /** geometry constants for activity frames; the studio's ActivityPanel reads
  * these for its cascade placement, so they live on the package surface */
@@ -32,11 +38,13 @@ interface Geo {
 /**
  * Band order is containment order: the studio restacks a lane (move-child) or
  * slots a new one beside its neighbour by reordering containment, while the view
- * tree lists children in NODE order, which still says creation order.
+ * tree lists children in NODE order, which still says creation order. Only the
+ * viewed plane's containment counts: another plane may stack the same lanes in
+ * another order.
  */
-function laneRank(model: DiagramModel): (frame: string, lane: string) => number {
+function laneRank(model: DiagramModel, plane: string | undefined): (frame: string, lane: string) => number {
   const rank = new Map<string, number>();
-  model.containment.forEach((e, i) => {
+  containmentOn(model, containmentPlaneOf(model, plane)).forEach((e, i) => {
     const key = `${e.parent}\u0000${e.child}`;
     if (!rank.has(key)) rank.set(key, i);
   });
@@ -50,9 +58,9 @@ function laneRank(model: DiagramModel): (frame: string, lane: string) => number 
  * whole lanes under the routes the first one drew, and every link floats. The
  * same object back when no frame needs it (it is a layout cache key).
  */
-export function withLaneOrder(view: CompiledView, model: DiagramModel): CompiledView {
+export function withLaneOrder(view: CompiledView, model: DiagramModel, plane: string | undefined): CompiledView {
   if (!model.nodes.some((n) => n.type === 'activity-frame')) return view;
-  const rankIn = laneRank(model);
+  const rankIn = laneRank(model, plane);
   let changed = false;
   const visit = (n: ViewNode): ViewNode => {
     let children = n.children.map(visit);
@@ -68,18 +76,25 @@ export function withLaneOrder(view: CompiledView, model: DiagramModel): Compiled
   return changed ? { ...view, roots } : view;
 }
 
+export interface BandOptions {
+  /** the plane the view was compiled for; its containment orders the lanes */
+  plane?: string;
+  /** saved overlay sizes, which act as minimums */
+  sizes?: Record<string, { w: number; h: number }>;
+}
+
 export function arrangeActivityFrames<T extends Geo>(
   geometry: ReadonlyMap<string, T>,
   view: CompiledView,
   model: DiagramModel,
-  sizes?: Record<string, { w: number; h: number }>,
+  { plane, sizes }: BandOptions = {},
 ): ReadonlyMap<string, T> {
   if (!model.nodes.some((n) => n.type === 'activity-frame')) return geometry;
   const typeOf = new Map(model.nodes.map((n) => [n.id, n.type]));
   const out = new Map(geometry);
   const L = ACTIVITY_LAYOUT;
 
-  const rankIn = laneRank(model);
+  const rankIn = laneRank(model, plane);
 
   const arrange = (frame: ViewNode): void => {
     const lanes = frame.children

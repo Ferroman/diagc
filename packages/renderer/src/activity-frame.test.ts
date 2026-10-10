@@ -22,8 +22,23 @@ const model = (extraLaneKids: { id: string; parent: string }[] = []): DiagramMod
   planes: [],
 });
 
-const view = (m: DiagramModel) =>
-  compileView(m, { pins: Object.fromEntries(m.nodes.map((n) => [n.id, 'expanded' as const])) });
+const view = (m: DiagramModel, plane?: string) =>
+  compileView(m, { pins: Object.fromEntries(m.nodes.map((n) => [n.id, 'expanded' as const])), plane });
+
+/** the same frame on two planes, its lanes stacked l1, l2 on `a` and l2, l1 on `b` */
+const twoPlanes = (): DiagramModel => ({
+  ...model(),
+  containment: [
+    { parent: 'f', child: 'l1' },
+    { parent: 'f', child: 'l2' },
+    { parent: 'f', child: 'l2', plane: 'b' },
+    { parent: 'f', child: 'l1', plane: 'b' },
+  ],
+  planes: [
+    { id: 'a', name: 'A' },
+    { id: 'b', name: 'B' },
+  ],
+});
 
 const geo = (entries: [string, { x: number; y: number; width: number; height: number }][]) => new Map(entries);
 
@@ -100,10 +115,24 @@ describe('arrangeActivityFrames', () => {
       ['l1', { x: 0, y: 0, width: 1, height: 1 }],
       ['l2', { x: 0, y: 0, width: 1, height: 1 }],
     ]);
-    const out = arrangeActivityFrames(g, view(m), m, { l1: { w: 900, h: 400 } });
+    const out = arrangeActivityFrames(g, view(m), m, { sizes: { l1: { w: 900, h: 400 } } });
     expect(out.get('l1')).toEqual({ x: L.TITLE_STRIP_W, y: 0, width: 900, height: 400 });
     expect(out.get('l2')).toEqual({ x: L.TITLE_STRIP_W, y: 400, width: 900, height: L.LANE_MIN_H });
     expect(out.get('f')).toEqual({ x: 0, y: 0, width: L.TITLE_STRIP_W + 900, height: 520 });
+  });
+
+  it("stacks bands in the viewed plane's containment order", () => {
+    const m = twoPlanes();
+    const g = geo([
+      ['f', { x: 0, y: 0, width: 1, height: 1 }],
+      ['l1', { x: 0, y: 0, width: 1, height: 1 }],
+      ['l2', { x: 0, y: 0, width: 1, height: 1 }],
+    ]);
+    const onB = arrangeActivityFrames(g, view(m, 'b'), m, { plane: 'b' });
+    expect(onB.get('l2')?.y).toBe(0);
+    expect(onB.get('l1')?.y).toBe(L.LANE_MIN_H);
+    const onA = arrangeActivityFrames(g, view(m, 'a'), m, { plane: 'a' });
+    expect(onA.get('l1')?.y).toBe(0);
   });
 
   it('arranges two frames independently', () => {
@@ -185,12 +214,27 @@ describe('withLaneOrder', () => {
     const reordered = { ...m, containment: [m.containment[1]!, m.containment[0]!] };
     const v = view(reordered);
     expect(v.roots[0]!.children.map((c) => c.id)).toEqual(['l1', 'l2']); // the view tree: node order
-    expect(withLaneOrder(v, reordered).roots[0]!.children.map((c) => c.id)).toEqual(['l2', 'l1']);
+    expect(withLaneOrder(v, reordered, undefined).roots[0]!.children.map((c) => c.id)).toEqual(['l2', 'l1']);
+  });
+
+  it("hands the layout the viewed plane's order when two planes stack the lanes differently", () => {
+    const m = twoPlanes();
+    expect(withLaneOrder(view(m, 'b'), m, 'b').roots[0]!.children.map((c) => c.id)).toEqual(['l2', 'l1']);
+    expect(withLaneOrder(view(m, 'a'), m, 'a').roots[0]!.children.map((c) => c.id)).toEqual(['l1', 'l2']);
+  });
+
+  it('orders a borrowing plane by the containment it borrows', () => {
+    const m = twoPlanes();
+    const borrowing = { ...m, planes: [...m.planes, { id: 'c', name: 'C', containmentOf: 'b' }] };
+    expect(withLaneOrder(view(borrowing, 'c'), borrowing, 'c').roots[0]!.children.map((c) => c.id)).toEqual([
+      'l2',
+      'l1',
+    ]);
   });
 
   it('returns the same view when the order already agrees (it is a cache key)', () => {
     const v = view(model());
-    expect(withLaneOrder(v, model())).toBe(v);
+    expect(withLaneOrder(v, model(), undefined)).toBe(v);
   });
 });
 
