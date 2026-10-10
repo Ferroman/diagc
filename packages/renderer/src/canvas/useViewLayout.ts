@@ -141,7 +141,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
       const name = style.captionBelow === true ? (n.name ?? '').trim() : '';
       m.set(n.id, {
         ...(s !== undefined ? { width: s.w, height: s.h } : ds),
-        ...(name !== '' ? { caption: glyphCaptionSize(name) } : {}),
+        caption: name !== '' ? glyphCaptionSize(name) : undefined,
       });
     }
     for (const n of input.model.nodes) {
@@ -163,7 +163,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
       m.set(n.id, {
         ...base,
         width: Math.max(base.width, captionWidth(caption)),
-        ...(caption !== '' ? { reserveBottom: CAPTION_HEIGHT } : {}),
+        reserveBottom: caption !== '' ? CAPTION_HEIGHT : undefined,
       });
     }
     // Shape (silhouette) nodes honor their stored size like image nodes; without
@@ -221,7 +221,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
               typeRegistry: input.typeRegistry,
               metaKeys: input.metaKeys,
               hiddenCounts: input.hiddenCounts,
-              ...(input.profile.node?.leafSize !== undefined ? { leafSize: input.profile.node.leafSize } : {}),
+              leafSize: input.profile.node?.leafSize,
             }),
         fixedSizes,
       ),

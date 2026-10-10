@@ -222,9 +222,9 @@ function kindRows(input: LegendInput): LegendRow[] {
       swatch: {
         draw: 'line' as const,
         style,
-        ...(tint !== undefined ? { color: tint } : {}),
+        color: tint,
       },
-      ...(style.legendLabel !== undefined ? { vocabulary: true as const } : {}),
+      vocabulary: style.legendLabel !== undefined ? (true as const) : undefined,
     };
   });
 }
@@ -234,8 +234,8 @@ function typeRows(input: LegendInput): LegendRow[] {
   // the type agrees on one, resolved by the same chain the canvas uses.
   const accents = new Map<string, string | undefined>();
   const colors = {
-    ...(input.nodeColors !== undefined ? { nodeColors: input.nodeColors } : {}),
-    ...(input.model.typeColors !== undefined ? { typeColors: input.model.typeColors } : {}),
+    nodeColors: input.nodeColors,
+    typeColors: input.model.typeColors,
   };
   const walk = (nodes: ViewNode[]): void => {
     for (const v of nodes) {
@@ -264,10 +264,10 @@ function typeRows(input: LegendInput): LegendRow[] {
       swatch: {
         draw: 'shape' as const,
         style,
-        ...(accent !== undefined ? { color: accent } : {}),
-        ...(style.icon !== undefined ? { icon: style.icon } : {}),
+        color: accent,
+        icon: style.icon,
       },
-      ...(style.legendLabel !== undefined ? { vocabulary: true as const } : {}),
+      vocabulary: style.legendLabel !== undefined ? (true as const) : undefined,
     };
   });
 }
@@ -326,7 +326,7 @@ function swatchOf(item: LegendItem, input: LegendInput): LegendSwatch | undefine
     return {
       draw: 'line',
       style: input.kindRegistry.resolve(item.kind),
-      ...(item.color !== undefined ? { color: item.color } : {}),
+      color: item.color,
     };
   }
   if (item.type !== undefined) {
@@ -335,8 +335,8 @@ function swatchOf(item: LegendItem, input: LegendInput): LegendSwatch | undefine
     return {
       draw: 'shape',
       style,
-      ...(item.color !== undefined ? { color: item.color } : {}),
-      ...(icon !== undefined ? { icon } : {}),
+      color: item.color,
+      icon,
     };
   }
   if (item.color !== undefined) return { draw: 'chip', color: item.color };
@@ -408,7 +408,7 @@ export function legendRows(input: LegendInput): LegendRow[] {
       id: `items:${i}`,
       section: 'items',
       label: item.label,
-      ...(swatch !== undefined ? { swatch } : {}),
+      swatch,
     });
   });
   return [...derived, ...extras];

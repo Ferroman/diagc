@@ -48,15 +48,15 @@ export function useLegendState(input: LegendStateInput): LegendState {
     const rows = legendRows({
       model: input.model,
       compiled: input.compiled,
-      ...(activePlane !== undefined ? { plane: activePlane } : {}),
+      plane: activePlane,
       // Drilled in, only the root's interior is on screen; the key has to
       // be scoped the same way or it explains things nothing draws.
-      ...(input.drillRoot !== undefined ? { root: input.drillRoot } : {}),
+      root: input.drillRoot,
       // Passed through undefined-and-all: the legend resolves plane
       // presets the same way compileView does, and `?? []` here would
       // tell it "no layers on" on a page that draws the presets.
-      ...(input.activeLayers !== undefined ? { activeLayers: input.activeLayers } : {}),
-      ...(input.nodeColors !== undefined ? { nodeColors: input.nodeColors } : {}),
+      activeLayers: input.activeLayers,
+      nodeColors: input.nodeColors,
       typeRegistry: input.typeRegistry,
       kindRegistry: input.kindRegistry,
       config: legendConfig ?? UNDECLARED,
@@ -65,7 +65,7 @@ export function useLegendState(input: LegendStateInput): LegendState {
       canToggleLayers: input.canToggleLayers,
       // Only when this plane has ink: no strokes means no toggle to show,
       // exactly the condition the control button already uses.
-      ...(input.strokes.length > 0 ? { drawings: { active: input.drawingsVisible } } : {}),
+      drawings: input.strokes.length > 0 ? { active: input.drawingsVisible } : undefined,
     });
     // A diagram that never asked for a legend gets none — unless it is drawn in
     // shapes and line ends that say nothing about themselves (a start dot, a DFD

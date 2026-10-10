@@ -132,8 +132,8 @@ export function RoleChipMenu({
         title={chip.title}
         aria-haspopup="menu"
         aria-expanded={open}
-        {...(open ? { 'aria-controls': menuId } : {})}
-        {...(chip.color !== undefined ? { style: { '--dg-chip': chip.color } as CSSProperties } : {})}
+        aria-controls={open ? menuId : undefined}
+        style={chip.color !== undefined ? ({ '--dg-chip': chip.color } as CSSProperties) : undefined}
         // Stops the mousedown/click from reaching the canvas underneath (which
         // would select/deselect the zone the chip sits on) — the same
         // stopPropagation pair QuickAddButton uses for the same reason.

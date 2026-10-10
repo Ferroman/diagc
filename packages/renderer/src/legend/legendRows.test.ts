@@ -457,7 +457,9 @@ describe('notation vocabulary', () => {
     const red = rows(tm, { nodeColors: new Map([['dmz', '#c62828']]) }).find((r) => r.id === 'types:tm-boundary');
     expect(red?.swatch).toMatchObject({ draw: 'shape', color: '#c62828' });
     // no agreed colour, no claim
-    expect(rows(tm).find((r) => r.id === 'types:tm-boundary')?.swatch).not.toHaveProperty('color');
+    const plain = rows(tm).find((r) => r.id === 'types:tm-boundary')?.swatch;
+    expect(plain?.draw).toBe('shape');
+    expect(plain?.draw === 'shape' ? plain.color : null).toBeUndefined();
     const byType = rows({ ...tm, typeColors: { 'tm-process': '#1565c0' } }).find((r) => r.id === 'types:tm-process');
     expect(byType?.swatch).toMatchObject({ color: '#1565c0' });
   });

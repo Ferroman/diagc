@@ -68,7 +68,7 @@ export function SketchShape({
         <path
           className="dg-sketch-fill"
           d={paths.fill}
-          {...(fillColor !== undefined ? { style: { fill: fillColor } } : {})}
+          style={fillColor !== undefined ? { fill: fillColor } : undefined}
         />
       )}
       {hatched && paths.hatch !== '' && (
@@ -78,14 +78,14 @@ export function SketchShape({
           style={{
             strokeWidth: rough.fillWeight ?? 1,
             opacity: rough.hatchOpacity ?? DEFAULT_HATCH_OPACITY,
-            ...(strokeColor !== undefined ? { stroke: strokeColor } : {}),
+            stroke: strokeColor,
           }}
         />
       )}
       <path
         className="dg-sketch-stroke"
         d={paths.stroke}
-        style={{ strokeWidth: rough.strokeWidth, ...(strokeColor !== undefined ? { stroke: strokeColor } : {}) }}
+        style={{ strokeWidth: rough.strokeWidth, stroke: strokeColor }}
       />
     </svg>
   );

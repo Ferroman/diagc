@@ -1,16 +1,13 @@
 // Pure builders for the data channel React Flow carries into the custom
-// DiagramNode/DiagramEdge components. DiagramView previously constructed these
-// inline with ~18 conditional spreads per node (typo-fragile, and every node's
-// `data` object was rebuilt every render — defeating memoization). Extracting
-// the builders makes them unit-testable and lets the view memoize the built
-// data: the cache below returns the SAME data object while every ctx input is
-// referentially/primitive-identical, so a re-render that changes nothing a node
-// reads reuses the previous object instead of churning the whole tree.
+// DiagramNode/DiagramEdge components. Built here, the data is unit-testable and
+// the view can memoize it: the cache below returns the SAME data object while
+// every ctx input is referentially/primitive-identical, so a re-render that
+// changes nothing a node reads reuses the previous object instead of churning
+// the whole tree.
 //
 // Stability caveat (why full stability is impractical here): the editing host
 // (apps/studio) passes inline closures for most callbacks, so their identity
-// changes on every App render and the ctx comparison misses — exactly as the
-// pre-refactor code recomputed derivedNodes on those renders. The cache's win
+// changes on every App render and the ctx comparison misses. The cache's win
 // is the renders where the ctx inputs genuinely didn't change (view-only
 // re-renders, geometry updates after layout settles), which reuse the same data
 // objects instead of rebuilding them.
@@ -179,72 +176,63 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     metaBadges,
     typeRegistry: ctx.typeRegistry,
     icons: ctx.icons,
-    ...(n.node.type !== undefined ? { typeId: n.node.type } : {}),
-    ...(n.node.icon !== undefined ? { icon: n.node.icon } : {}),
-    ...(typeColor(n, ctx) !== undefined ? { color: typeColor(n, ctx) } : {}),
-    ...(n.node.textColor !== undefined ? { textColor: n.node.textColor } : {}),
-    ...(n.node.technology !== undefined ? { technology: n.node.technology } : {}),
-    ...(n.node.rich !== undefined ? { rich: n.node.rich } : {}),
-    ...(n.node.textAlign !== undefined ? { textAlign: n.node.textAlign } : {}),
-    ...(n.node.fontScale !== undefined ? { fontScale: n.node.fontScale } : {}),
-    ...(ctx.onToggleExpand !== undefined ? { onToggleExpand: ctx.onToggleExpand } : {}),
-    ...(n.state !== 'leaf' ? { onEnterNode: ctx.onEnterNode } : {}),
-    ...(n.external !== undefined ? { external: true } : {}),
-    ...(ctx.labelEditingId === n.id
-      ? {
-          labelEditing: true,
-          onLabelCommit: (value: string | null) => {
-            ctx.endLabelEdit?.();
-            const name = value?.trim() ?? '';
-            if (name !== '' && name !== n.node.name) ctx.onRenameNode?.(n.id, name);
-          },
-          onRichCommit: (runs: TextRun[] | null) => {
-            ctx.endLabelEdit?.();
-            if (runs !== null && runsToPlainText(runs).trim() !== '') ctx.onSetNodeRich?.(n.id, runs);
-          },
-        }
-      : {}),
-    ...(n.node.image !== undefined
-      ? {
-          image: n.node.image,
-          ...(ctx.assetBase !== undefined ? { assetBase: ctx.assetBase } : {}),
-          ...(ctx.libraryBase !== undefined ? { libraryBase: ctx.libraryBase } : {}),
-          ...(ctx.editing && ctx.onResize !== undefined ? { onResize: ctx.onResize } : {}),
-        }
-      : {}),
-    ...(n.node.shape !== undefined
-      ? {
-          shape: n.node.shape,
-          ...(ctx.assetBase !== undefined ? { assetBase: ctx.assetBase } : {}),
-          ...(ctx.libraryBase !== undefined ? { libraryBase: ctx.libraryBase } : {}),
-        }
-      : {}),
-    ...(n.node.link !== undefined
-      ? { link: n.node.link, ...(ctx.onOpenLink !== undefined ? { onOpenLink: ctx.onOpenLink } : {}) }
-      : {}),
-    ...(n.node.columns !== undefined ? { columns: n.columns ?? n.node.columns } : {}),
-    // The table edits only the rows it draws; the rows an inactive layer hides
-    // are put back around the edit, or saving would delete them.
-    ...(ctx.editing && n.node.type === 'db-table' && ctx.onSetTableColumns !== undefined
-      ? {
-          onColumnsChange: (columns: Column[]) => {
-            const all = n.node.columns ?? [];
-            ctx.onSetTableColumns?.(n.id, withHiddenColumns(all, n.columns ?? all, columns));
-          },
-        }
-      : {}),
-    ...(ctx.editing && ctx.quickAdd !== undefined ? { quickAdd: ctx.quickAdd } : {}),
-    ...(ctx.editing && ctx.onSetRole !== undefined ? { onSetRole: ctx.onSetRole } : {}),
-    ...(ctx.editing && ctx.onAddThreat !== undefined ? { onAddThreat: ctx.onAddThreat } : {}),
-    ...(ctx.stylePreset !== undefined ? { stylePreset: ctx.stylePreset } : {}),
-    ...(ctx.notation !== undefined ? { notation: ctx.notation } : {}),
-    ...(threats.total > 0 ? { threats } : {}),
-    ...(annotations !== undefined ? { annotations } : {}),
-    ...(ctx.nodeBadges?.get(n.id) !== undefined ? { badges: ctx.nodeBadges.get(n.id) } : {}),
-    ...(ctx.editing && ctx.onResize !== undefined && ctx.resizable?.(n.node) === 'x'
-      ? { resizeAxis: 'x' as const, onResize: ctx.onResize }
-      : {}),
+    typeId: n.node.type,
+    icon: n.node.icon,
+    color: typeColor(n, ctx),
+    textColor: n.node.textColor,
+    technology: n.node.technology,
+    rich: n.node.rich,
+    textAlign: n.node.textAlign,
+    fontScale: n.node.fontScale,
+    onToggleExpand: ctx.onToggleExpand,
+    onEnterNode: n.state !== 'leaf' ? ctx.onEnterNode : undefined,
+    external: n.external !== undefined,
+    image: n.node.image,
+    shape: n.node.shape,
+    link: n.node.link,
+    columns: n.columns ?? n.node.columns,
+    quickAdd: ctx.editing ? ctx.quickAdd : undefined,
+    onSetRole: ctx.editing ? ctx.onSetRole : undefined,
+    onAddThreat: ctx.editing ? ctx.onAddThreat : undefined,
+    stylePreset: ctx.stylePreset,
+    notation: ctx.notation,
+    threats: threats.total > 0 ? threats : undefined,
+    annotations,
+    badges: ctx.nodeBadges?.get(n.id),
   };
+  if (ctx.labelEditingId === n.id) {
+    data.labelEditing = true;
+    data.onLabelCommit = (value: string | null) => {
+      ctx.endLabelEdit?.();
+      const name = value?.trim() ?? '';
+      if (name !== '' && name !== n.node.name) ctx.onRenameNode?.(n.id, name);
+    };
+    data.onRichCommit = (runs: TextRun[] | null) => {
+      ctx.endLabelEdit?.();
+      if (runs !== null && runsToPlainText(runs).trim() !== '') ctx.onSetNodeRich?.(n.id, runs);
+    };
+  }
+  // an image or a shape's mask is fetched from the asset or library folder
+  if (n.node.image !== undefined || n.node.shape !== undefined) {
+    data.assetBase = ctx.assetBase;
+    data.libraryBase = ctx.libraryBase;
+  }
+  if (n.node.link !== undefined) data.onOpenLink = ctx.onOpenLink;
+  // The table edits only the rows it draws; the rows an inactive layer hides
+  // are put back around the edit, or saving would delete them.
+  if (ctx.editing && n.node.type === 'db-table' && ctx.onSetTableColumns !== undefined) {
+    data.onColumnsChange = (columns: Column[]) => {
+      const all = n.node.columns ?? [];
+      ctx.onSetTableColumns?.(n.id, withHiddenColumns(all, n.columns ?? all, columns));
+    };
+  }
+  if (ctx.editing && ctx.onResize !== undefined) {
+    if (n.node.image !== undefined) data.onResize = ctx.onResize;
+    if (ctx.resizable?.(n.node) === 'x') {
+      data.resizeAxis = 'x';
+      data.onResize = ctx.onResize;
+    }
+  }
   return data;
 }
 
@@ -257,9 +245,7 @@ function placedLabels(e: ViewEdge, moves: EdgeLabelMoves | undefined): EdgeLabel
   if (moved === undefined) return labels;
   return labels.map((l) => {
     const to = moved[l.id];
-    if (to === undefined) return l;
-    const { side: _side, ...rest } = l;
-    return { ...rest, t: to.t, ...(to.side !== undefined ? { side: to.side } : {}) };
+    return to === undefined ? l : { ...l, t: to.t, side: to.side };
   });
 }
 
@@ -284,17 +270,17 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     kind: e.kind,
     constituentCount: e.constituents.length,
     kindRegistry: ctx.kindRegistry,
-    ...(e.label !== undefined ? { label: e.label } : {}),
-    ...(e.labels !== undefined ? { labels: placedLabels(e, ctx.labelMoves) } : {}),
-    ...(e.tint !== undefined ? { tint: e.tint } : {}),
-    ...(e.style !== undefined ? { relStyle: e.style } : {}),
-    ...(ctx.stylePreset !== undefined ? { stylePreset: ctx.stylePreset } : {}),
-    ...(ctx.notation !== undefined ? { notation: ctx.notation } : {}),
-    ...(e.polarity !== undefined ? { polarity: e.polarity } : {}),
-    ...(e.delay !== undefined ? { delay: e.delay } : {}),
-    ...(notationColor !== undefined ? { notationColor } : {}),
-    ...(threats.total > 0 ? { threats } : {}),
-    ...(annotations !== undefined ? { annotations } : {}),
+    label: e.label,
+    labels: e.labels !== undefined ? placedLabels(e, ctx.labelMoves) : undefined,
+    tint: e.tint,
+    relStyle: e.style,
+    stylePreset: ctx.stylePreset,
+    notation: ctx.notation,
+    polarity: e.polarity,
+    delay: e.delay,
+    notationColor,
+    threats: threats.total > 0 ? threats : undefined,
+    annotations,
   };
   const relation = soleRelation(e);
   // Both modes: the counting chip toggles this relation's bubble in view mode

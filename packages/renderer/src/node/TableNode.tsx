@@ -71,7 +71,7 @@ export function TableNode({
   return (
     <div
       className={`dg-node dg-table${editing ? ' dg-table-edit' : ''}`}
-      {...(data.color !== undefined ? { style: { borderColor: data.color } } : {})}
+      style={data.color !== undefined ? { borderColor: data.color } : undefined}
     >
       <div className="dg-table-header" style={{ height: TABLE_HEADER_H }}>
         {titleEditor ?? <span className="dg-table-title">{data.label}</span>}

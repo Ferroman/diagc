@@ -209,7 +209,7 @@ const sketchOf = (
       height={height}
       preset={data.stylePreset}
       fill={fill}
-      {...(data.color !== undefined ? { color: fill === 'none' ? outlineInk(data.color) : data.color } : {})}
+      color={data.color === undefined ? undefined : fill === 'none' ? outlineInk(data.color) : data.color}
     />
   ) : null;
 
@@ -462,7 +462,7 @@ export function QuickAddButton({
       className="dg-quick-add nodrag"
       title={side === 'before' ? label : `${label} (Tab)`}
       aria-label={label}
-      {...(side !== undefined ? { 'data-side': side } : {})}
+      data-side={side}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();
@@ -480,8 +480,8 @@ export function QuickAddButton({
 function BoxLabel({ data }: { data: DiagramNodeData }): import('react').ReactElement {
   const style: CSSProperties = {
     whiteSpace: 'pre-wrap',
-    ...(data.textColor !== undefined ? { color: data.textColor } : {}),
-    ...(data.textAlign !== undefined ? { textAlign: data.textAlign } : {}),
+    color: data.textColor,
+    textAlign: data.textAlign,
   };
   if (data.rich !== undefined) {
     return (
@@ -600,12 +600,7 @@ export function DiagramNode({
     // for it: hand the rename field over, or double-click and a dropped Table stencil
     // would flip `labelEditing` with nothing on screen to type into.
     return (
-      <TableNode
-        id={id}
-        data={data}
-        selected={selected}
-        {...(data.labelEditing === true ? { titleEditor: name } : {})}
-      />
+      <TableNode id={id} data={data} selected={selected} titleEditor={data.labelEditing === true ? name : undefined} />
     );
   }
 
@@ -616,12 +611,12 @@ export function DiagramNode({
     return (
       <div
         className={`dg-node dg-circle-node${ghostClass}${loopClass}`}
-        {...(data.stylePreset?.rough !== undefined ? {} : { style: accentStyle(data.color) })}
+        style={data.stylePreset?.rough !== undefined ? undefined : accentStyle(data.color)}
         {...ghostTitle}
       >
         {sketchOf(data, 'circle', id, width, height)}
         {(data.label !== '' || data.labelEditing === true) && (
-          <span className="dg-commit-tag" {...(tagColor !== undefined ? { style: { color: tagColor } } : {})}>
+          <span className="dg-commit-tag" style={tagColor !== undefined ? { color: tagColor } : undefined}>
             {name}
           </span>
         )}
@@ -639,8 +634,8 @@ export function DiagramNode({
     return (
       <div
         className={`dg-node dg-event-node${ghostClass}${loopClass}`}
-        {...(data.stylePreset?.rough !== undefined || data.color === undefined ? {} : { style: { color: data.color } })}
-        {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
+        style={data.stylePreset?.rough !== undefined || data.color === undefined ? undefined : { color: data.color }}
+        data-type={data.typeId}
         {...ghostTitle}
       >
         {sketchOf(data, 'diamond', id, width, height)}
@@ -664,7 +659,7 @@ export function DiagramNode({
           aria-hidden="true"
           style={{ WebkitMaskImage: maskUrl, maskImage: maskUrl, background: data.color ?? 'var(--dg-shape-default)' }}
         />
-        <div className="dg-shape-label" {...(labelColor !== undefined ? { style: { color: labelColor } } : {})}>
+        <div className="dg-shape-label" style={labelColor !== undefined ? { color: labelColor } : undefined}>
           {ghostArrow}
           {name}
           {typeLabel !== undefined && typeLabel !== '' ? <span className="dg-type">{typeLabel}</span> : null}
@@ -697,7 +692,7 @@ export function DiagramNode({
           className={`dg-node dg-image-node${ghostClass}${loopClass}`}
           // icon nodes stay transparent (no accent fill/border); the frame shows on
           // hover/selection via CSS. textColor still tints the caption.
-          {...(data.textColor !== undefined ? { style: { color: data.textColor } } : {})}
+          style={data.textColor !== undefined ? { color: data.textColor } : undefined}
           {...ghostTitle}
         >
           <img
@@ -763,7 +758,7 @@ export function DiagramNode({
             key={b.key}
             className={chipClass}
             title={b.title}
-            {...(b.color !== undefined ? { style: { '--dg-chip': b.color } as CSSProperties } : {})}
+            style={b.color !== undefined ? ({ '--dg-chip': b.color } as CSSProperties) : undefined}
           >
             {b.text}
           </span>
@@ -844,9 +839,9 @@ export function DiagramNode({
       <div className={`dg-lane${loopClass}`}>
         <span
           className="dg-lane-label"
-          {...(data.color !== undefined
-            ? { style: { ...accentStyle(data.color), color: data.textColor ?? data.color } }
-            : {})}
+          style={
+            data.color !== undefined ? { ...accentStyle(data.color), color: data.textColor ?? data.color } : undefined
+          }
         >
           {name}
         </span>
@@ -878,7 +873,7 @@ export function DiagramNode({
     return (
       <div
         className={`dg-fb-cause${loopClass}`}
-        {...(data.textColor !== undefined ? { style: { color: data.textColor } } : {})}
+        style={data.textColor !== undefined ? { color: data.textColor } : undefined}
       >
         {name}
         <QuickAddButton id={id} data={data} selected={selected} />
@@ -894,11 +889,11 @@ export function DiagramNode({
     return (
       <div
         className={`dg-git-stage${loopClass}`}
-        {...(data.color !== undefined ? { style: { '--dg-stage': data.color } as CSSProperties } : {})}
+        style={data.color !== undefined ? ({ '--dg-stage': data.color } as CSSProperties) : undefined}
       >
         <span
           className="dg-git-stage-name"
-          {...(data.textColor !== undefined ? { style: { color: data.textColor } } : {})}
+          style={data.textColor !== undefined ? { color: data.textColor } : undefined}
         >
           {name}
         </span>
@@ -914,7 +909,7 @@ export function DiagramNode({
     return (
       <div
         className={`${isFrame ? 'dg-activity-frame' : 'dg-activity-lane'}${loopClass}`}
-        {...(data.color !== undefined ? { style: { '--dg-act-accent': data.color } as CSSProperties } : {})}
+        style={data.color !== undefined ? ({ '--dg-act-accent': data.color } as CSSProperties) : undefined}
       >
         <span className="dg-activity-strip">
           <span className="dg-activity-name">{name}</span>
@@ -973,20 +968,18 @@ export function DiagramNode({
     return (
       <div
         className={`dg-group${style.dashed === true ? ' dg-dashed' : ''}${groupOutline ? ' dg-group-outline' : ''}${corner ? ' dg-group-corner' : ''}${loopClass}`}
-        {...(data.stylePreset?.rough !== undefined
-          ? hitStyle !== undefined
-            ? { style: hitStyle }
-            : {}
-          : {
-              style: {
+        style={
+          data.stylePreset?.rough !== undefined
+            ? hitStyle
+            : {
                 ...(groupInk !== undefined
                   ? { borderColor: groupInk, color: data.textColor ?? groupInk }
                   : accentStyle(data.color)),
                 ...(data.textColor !== undefined ? { color: data.textColor } : {}),
                 ...hitStyle,
-              },
-            })}
-        {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
+              }
+        }
+        data-type={data.typeId}
         {...hitAttrs}
         {...dropTargetAttrs}
       >
@@ -1025,7 +1018,7 @@ export function DiagramNode({
       ? {
           background: style.fill,
           borderColor: style.fill,
-          ...(style.textOn !== undefined ? { color: style.textOn } : {}),
+          color: style.textOn,
         }
       : undefined;
   const boxAccent: CSSProperties = {
@@ -1046,12 +1039,12 @@ export function DiagramNode({
           ? `dg-node dg-text-node${ghostClass}${loopClass}`
           : `dg-node dg-shape-${style.shape}${style.dashed === true ? ' dg-dashed' : ''}${outline ? ' dg-c4-outline' : ''}${solid !== undefined && data.stylePreset?.rough === undefined ? ' dg-solid' : ''}${ghostClass}${loopClass}`
       }
-      {...(data.stylePreset?.rough !== undefined || isTypelessText || neutralGlyph
-        ? hitStyle !== undefined
-          ? { style: hitStyle }
-          : {}
-        : { style: { ...boxAccent, ...hitStyle } })}
-      {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
+      style={
+        data.stylePreset?.rough !== undefined || isTypelessText || neutralGlyph
+          ? hitStyle
+          : { ...boxAccent, ...hitStyle }
+      }
+      data-type={data.typeId}
       {...hitAttrs}
       {...dropTargetAttrs}
       {...ghostTitle}

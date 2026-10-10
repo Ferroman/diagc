@@ -286,10 +286,7 @@ export function DiagramEdge({
   const rel = data?.relStyle;
   const p =
     measured && sourceNode !== undefined && targetNode !== undefined
-      ? getEdgeParams(sourceNode, targetNode, {
-          ...(rel?.fromSide !== undefined ? { sourceSide: rel.fromSide } : {}),
-          ...(rel?.toSide !== undefined ? { targetSide: rel.toSide } : {}),
-        })
+      ? getEdgeParams(sourceNode, targetNode, { sourceSide: rel?.fromSide, targetSide: rel?.toSide })
       : { sx: sourceX, sy: sourceY, tx: targetX, ty: targetY, sourcePos: sourcePosition, targetPos: targetPosition };
 
   // Row-port anchoring: for FK edges into/out of db-table nodes, pin the y of
@@ -675,7 +672,7 @@ export function DiagramEdge({
              only where the notation colours by sign; elsewhere it stays text-
              coloured as before. Inline style, not a `fill` attribute: the
              stylesheet's `.dg-polarity { fill }` outranks presentation attrs. */
-            {...(polarityColor !== undefined ? { style: { fill: stroke } } : {})}
+            style={polarityColor !== undefined ? { fill: stroke } : undefined}
           >
             {data.polarity === '-' ? '−' : '+'}
           </text>

@@ -3,14 +3,16 @@ import type { Edge, EdgeTypes, Node, NodeTypes } from '@xyflow/react';
 import { DiagramEdge, type DiagramEdgeData } from '../edge/DiagramEdge';
 import { DiagramNode, type DiagramNodeData } from '../node/DiagramNode';
 import { NoteNode, type NoteData } from '../notes/NoteNode';
-import type { Point } from '@diagc/core/internal';
+import { defined, type Point } from '@diagc/core/internal';
 
 // The single boundary where React Flow v12's typing is widened. v12 types
 // nodeTypes/edgeTypes as components taking full NodeProps/EdgeProps while our
 // components take narrower props, and the `data` channel is a generic Record
 // while we carry our own DiagramNodeData/DiagramEdgeData. All the unsafe
 // `as unknown as` casts live here so reviewers can audit the whole boundary in
-// one commented location.
+// one commented location. The objects built here belong to React Flow, which
+// keeps them and merges its own changes in, so an unset field is left out
+// rather than set to undefined.
 export const nodeTypes = { diagram: DiagramNode, note: NoteNode } as unknown as NodeTypes;
 export const edgeTypes = { diagram: DiagramEdge } as unknown as EdgeTypes;
 
@@ -35,20 +37,8 @@ export interface RfNodeInput {
 }
 
 /** Build a React Flow node, widening our typed data channel at the boundary. */
-export function toRfNode(input: RfNodeInput): Node {
-  return {
-    id: input.id,
-    type: 'diagram',
-    position: input.position,
-    data: input.data as unknown as Record<string, unknown>,
-    ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
-    ...(input.extent !== undefined ? { extent: input.extent } : {}),
-    ...(input.expandParent !== undefined ? { expandParent: input.expandParent } : {}),
-    ...(input.style !== undefined ? { style: input.style } : {}),
-    ...(input.zIndex !== undefined ? { zIndex: input.zIndex } : {}),
-    ...(input.draggable !== undefined ? { draggable: input.draggable } : {}),
-    ...(input.className !== undefined ? { className: input.className } : {}),
-  };
+export function toRfNode({ data, ...props }: RfNodeInput): Node {
+  return { ...defined(props), type: 'diagram', data: data as unknown as Record<string, unknown> };
 }
 
 /** a threat note's React Flow node (see NoteNode) — the same widening as toRfNode */
@@ -59,14 +49,11 @@ export interface RfNoteInput {
   parentId?: string;
   draggable: boolean;
 }
-export function toRfNoteNode(input: RfNoteInput): Node {
+export function toRfNoteNode({ data, ...props }: RfNoteInput): Node {
   return {
-    id: input.id,
+    ...defined(props),
     type: 'note',
-    position: input.position,
-    data: input.data as unknown as Record<string, unknown>,
-    ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
-    draggable: input.draggable,
+    data: data as unknown as Record<string, unknown>,
     selectable: false,
     // above the boxes it annotates, below nothing that matters
     zIndex: 2,
@@ -85,14 +72,6 @@ export interface RfEdgeInput {
 }
 
 /** Build a React Flow edge, widening our typed data channel at the boundary. */
-export function toRfEdge(input: RfEdgeInput): Edge {
-  return {
-    id: input.id,
-    source: input.source,
-    target: input.target,
-    type: 'diagram',
-    ...(input.reconnectable !== undefined ? { reconnectable: input.reconnectable } : {}),
-    ...(input.className !== undefined ? { className: input.className } : {}),
-    data: input.data as unknown as Record<string, unknown>,
-  };
+export function toRfEdge({ data, ...props }: RfEdgeInput): Edge {
+  return { ...defined(props), type: 'diagram', data: data as unknown as Record<string, unknown> };
 }

@@ -363,7 +363,7 @@ async function arrangeLevel(level: LevelPlan, ctx: PlanContext): Promise<Block> 
       : ctx.settings?.aspectRatio;
   const packed = packBoxes(parts, {
     gap: componentGap(ctx.settings, looseBoxesOnly),
-    ...(aspect !== undefined ? { aspect } : {}),
+    aspect,
   });
   const out: Block = {
     width: packed.width,
@@ -526,8 +526,8 @@ async function layoutSingleRun(
     // the flat graph restructures nothing, so its `lifted` is false by
     // construction — read it rather than assume it
     const built = buildGraph(view, sizeOverrides, attempt.settings, {
-      ...(attempt.flat ? { flat: true } : {}),
-      ...(partitions !== undefined ? { partitions } : {}),
+      flat: attempt.flat,
+      partitions,
     });
     try {
       laid = (await elk.layout(built.graph)) as ElkShape;

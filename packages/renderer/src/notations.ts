@@ -332,7 +332,7 @@ export function planBadges(model: DiagramModel, plane: string | undefined): Read
           key: `${role}:${actorId}`,
           text: `${ROLE_LABEL[role].initial}·${first}`,
           title: `${ROLE_LABEL[role].title}: ${actor.name}`,
-          ...(actor.color !== undefined ? { color: actor.color } : {}),
+          color: actor.color,
         });
       }
     }

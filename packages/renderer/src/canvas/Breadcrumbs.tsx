@@ -33,7 +33,7 @@ export function Breadcrumbs({ path, nameOf, onCrumb }: BreadcrumbsProps) {
               <button
                 type="button"
                 className={`dg-crumb${current ? ' dg-crumb-current' : ''}`}
-                {...(current ? { 'aria-current': 'page' as const } : {})}
+                aria-current={current ? 'page' : undefined}
                 onClick={() => onCrumb(id)}
               >
                 {nameOf(id)}

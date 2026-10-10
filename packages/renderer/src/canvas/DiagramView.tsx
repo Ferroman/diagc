@@ -421,8 +421,8 @@ function Inner(props: DiagramViewProps) {
       focus: drillRoot !== undefined ? undefined : focus,
       pins: effectivePins,
       activeLayers: props.activeLayers,
-      ...(props.plane !== undefined ? { plane: props.plane } : {}),
-      ...(drillRoot !== undefined ? { root: drillRoot } : {}),
+      plane: props.plane,
+      root: drillRoot,
     });
     // A notation may keep some relation kinds off the canvas (plan roles become
     // chips). Only the DRAWN set is filtered: layoutEdges keep every relation,
@@ -473,7 +473,7 @@ function Inner(props: DiagramViewProps) {
     canToggleLayers: props.onToggleLayer !== undefined,
     strokes,
     drawingsVisible,
-    ...(nodeColors !== undefined ? { nodeColors } : {}),
+    nodeColors,
   });
   const { legendConfig, showLegend, setShowLegend, setLegendSize, legendRowList, legendReserveRef } = legend;
 
@@ -723,7 +723,7 @@ function Inner(props: DiagramViewProps) {
       hiddenCounts,
       typeRegistry,
       icons,
-      ...(props.model.typeColors !== undefined ? { typeColors: props.model.typeColors } : {}),
+      typeColors: props.model.typeColors,
       onOpenLink: props.onOpenLink,
       onToggleExpand: props.onToggleExpand,
       onEnterNode: enterNode,
@@ -741,9 +741,9 @@ function Inner(props: DiagramViewProps) {
       onAddThreat: edit?.onAddThreat,
       stylePreset: preset.rough !== undefined ? preset : undefined,
       notation: props.notation,
-      ...(nodeColors !== undefined ? { nodeColors } : {}),
-      ...(nodeBadges !== undefined ? { nodeBadges } : {}),
-      ...(profile.node?.resizable !== undefined ? { resizable: profile.node.resizable } : {}),
+      nodeColors,
+      nodeBadges,
+      resizable: profile.node?.resizable,
     }),
     [
       metaKeys,
@@ -780,12 +780,13 @@ function Inner(props: DiagramViewProps) {
       const geo = arrangedGeometry.get(n.id);
       if (geo === undefined) return;
       const data = buildNodeDataCached(n, nodeDataCtx);
+      const dragLocked = fixed.has(n.id) && profile.node?.draggableWhenFixed?.(n.node) !== true;
       out.push(
         toRfNode({
           id: n.id,
           position: { x: geo.x, y: geo.y },
           data,
-          ...(parent !== undefined ? { parentId: parent } : {}),
+          parentId: parent,
           // A node the notation fixed (a fishbone's) takes no drag in either
           // mode — not even the pixel of jitter in a click, which React Flow
           // counts as one and which used to save a pin at the spot the node
@@ -800,9 +801,8 @@ function Inner(props: DiagramViewProps) {
           // plan zone's or event's displacement is read as days): it drags,
           // and `fixed` still keeps the overlay from ever storing a position
           // for it.
-          ...(fixed.has(n.id) && profile.node?.draggableWhenFixed?.(n.node) !== true
-            ? { draggable: false as const, ...(editing ? { className: 'nopan' } : {}) }
-            : {}),
+          draggable: dragLocked ? false : undefined,
+          className: dragLocked && editing ? 'nopan' : undefined,
           // Membership is edited in the node panel, not by dragging away, so a
           // child never leaves its box — the box gives way instead, live while
           // dragging (React Flow's expandParent) and for good once dropped (the
@@ -992,12 +992,12 @@ function Inner(props: DiagramViewProps) {
         anchor: { x: badge.x - shift.x, y: badge.y - shift.y },
         badge,
         editing,
-        ...(noteEdit !== null && noteEdit.key === key ? { editingId: noteEdit.id } : {}),
-        ...(offerThreat && edit?.onAddThreat !== undefined ? { onAddThreat: edit.onAddThreat } : {}),
-        ...(editing && edit?.onRetitleThreat !== undefined ? { onRetitleThreat: edit.onRetitleThreat } : {}),
-        ...(editing && edit?.onSetThreatStatus !== undefined ? { onSetThreatStatus: edit.onSetThreatStatus } : {}),
-        ...(editing && edit?.onEditThreatText !== undefined ? { onEditThreatText: edit.onEditThreatText } : {}),
-        ...(props.onOpenLink !== undefined ? { onOpenLink: props.onOpenLink } : {}),
+        editingId: noteEdit !== null && noteEdit.key === key ? noteEdit.id : undefined,
+        onAddThreat: offerThreat ? edit?.onAddThreat : undefined,
+        onRetitleThreat: editing ? edit?.onRetitleThreat : undefined,
+        onSetThreatStatus: editing ? edit?.onSetThreatStatus : undefined,
+        onEditThreatText: editing ? edit?.onEditThreatText : undefined,
+        onOpenLink: props.onOpenLink,
         onEndEdit: () => setNoteEdit(null),
       };
       out.push(
@@ -1005,7 +1005,7 @@ function Inner(props: DiagramViewProps) {
           id: NOTE_PREFIX + key,
           position: { x: at.x - shift.x, y: at.y - shift.y },
           data,
-          ...(parentId !== undefined ? { parentId } : {}),
+          parentId,
           draggable: editing,
         }),
       );
@@ -1449,16 +1449,16 @@ function Inner(props: DiagramViewProps) {
       onPendingAddConsumed: () => setAddLabelAt(null),
       stylePreset: preset.rough !== undefined ? preset : undefined,
       notation: props.notation,
-      ...(routing !== undefined ? { routing } : {}),
+      routing,
       routes,
       laidAt,
       labelSpots,
-      ...(labelMoves !== undefined ? { labelMoves } : {}),
+      labelMoves,
       // Movable only where the move can go somewhere: a host that listens for
       // it (the studio's Save positions chip). The published page and the PNG
       // export pass no listener, so their labels stay put.
-      ...(!editing && props.onViewLabelMovesChange !== undefined ? { onViewMoveEdgeLabel: moveViewLabel } : {}),
-      ...(edgeColors !== undefined ? { edgeColors } : {}),
+      onViewMoveEdgeLabel: !editing && props.onViewLabelMovesChange !== undefined ? moveViewLabel : undefined,
+      edgeColors,
     }),
     [
       kindRegistry,
@@ -1498,7 +1498,7 @@ function Inner(props: DiagramViewProps) {
         target: e.to,
         data,
         reconnectable: editing && relation !== undefined,
-        ...(diffClass !== undefined ? { className: diffClass } : {}),
+        className: diffClass,
       });
     });
   }, [compiled, placedGeometry, edgeDataCtx, editing, diffMarks]);
@@ -1635,7 +1635,7 @@ function Inner(props: DiagramViewProps) {
             {
               width: '100%',
               height: '100%',
-              ...(preset.fontFamily !== undefined ? { '--dg-style-font': preset.fontFamily } : {}),
+              '--dg-style-font': preset.fontFamily,
               ...(preset.cssVars ?? {}),
             } as CSSProperties
           }
@@ -1955,7 +1955,7 @@ function Inner(props: DiagramViewProps) {
               props.onSelect?.({
                 kind: 'edge',
                 id: edge.id,
-                ...(viewEdge !== undefined ? { constituentIds: viewEdge.constituents.map((c) => c.id) } : {}),
+                constituentIds: viewEdge?.constituents.map((c) => c.id),
               });
               // Double-click-to-add: detect the SECOND click of a double-click from
               // click events (the browser's `dblclick` is unreliable once the first
@@ -2055,7 +2055,7 @@ function Inner(props: DiagramViewProps) {
                   : {
                       points: pen.live,
                       width: penSettings?.width ?? DEFAULT_STROKE_WIDTH,
-                      ...(penSettings?.color !== undefined ? { color: penSettings.color } : {}),
+                      color: penSettings?.color,
                     }
               }
               visible={drawingsVisible && drillRoot === undefined}
@@ -2077,14 +2077,14 @@ function Inner(props: DiagramViewProps) {
               <Panel position={legendConfig?.position ?? 'bottom-right'}>
                 <Legend
                   rows={legendRowList}
-                  {...(legendConfig?.title !== undefined ? { title: legendConfig.title } : {})}
+                  title={legendConfig?.title}
                   interactive={props.chrome !== false}
-                  {...(props.onToggleLayer !== undefined ? { onToggleLayer: props.onToggleLayer } : {})}
+                  onToggleLayer={props.onToggleLayer}
                   // Same derivation as `interactive` above: Legend decides "is this
                   // row a button" from the handler alone, so a chrome-less host (the
                   // PNG export) must get no handler — or the export would carry a
                   // focusable control nothing can press.
-                  {...(props.chrome !== false ? { onToggleDrawings: () => setDrawingsVisible((v) => !v) } : {})}
+                  onToggleDrawings={props.chrome !== false ? () => setDrawingsVisible((v) => !v) : undefined}
                   icons={icons}
                   onMeasure={setLegendSize}
                 />
@@ -2165,11 +2165,7 @@ function Inner(props: DiagramViewProps) {
               </Controls>
             )}
             {showLoops && loopEdges !== null && placedGeometry !== null && (
-              <LoopLabelLayer
-                edges={loopEdges}
-                {...(preset.rough !== undefined ? { rough: preset.rough } : {})}
-                nodeFilter={editing ? null : selectedNode}
-              />
+              <LoopLabelLayer edges={loopEdges} rough={preset.rough} nodeFilter={editing ? null : selectedNode} />
             )}
             {profile.overlay === 'git-lanes' && placedGeometry !== null && (
               <GitLanesOverlay model={props.model} plane={props.plane} />

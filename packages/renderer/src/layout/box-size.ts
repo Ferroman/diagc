@@ -202,12 +202,12 @@ function boxInputOf(n: ViewNode, ctx: BoxSizeContext): BoxSizeInput {
     .map(String);
   return {
     name,
-    ...(node.fontScale !== undefined ? { fontScale: node.fontScale } : {}),
+    fontScale: node.fontScale,
     hasIcon: node.icon !== undefined || style?.icon !== undefined || node.image !== undefined,
     subtitle: node.type !== undefined ? typeSubtitle(style?.label ?? node.type, node.technology) : '',
     metaBadges,
-    ...(style !== undefined ? { shape: style.shape } : {}),
-    ...(style?.outline === true ? { outline: true } : {}),
+    shape: style?.shape,
+    outline: style?.outline,
   };
 }
 

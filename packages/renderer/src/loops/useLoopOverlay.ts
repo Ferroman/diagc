@@ -37,7 +37,7 @@ export function useLoopOverlay(input: LoopOverlayInput): LoopOverlay {
       cld
         ? input.compiled.edges.map((e) => {
             const pol = combinePolarities(e.constituents.map((c) => c.polarity));
-            return { id: e.id, from: e.from, to: e.to, ...(pol !== undefined ? { polarity: pol } : {}) };
+            return { id: e.id, from: e.from, to: e.to, polarity: pol };
           })
         : null,
     [input.compiled, cld],

@@ -344,7 +344,7 @@ export function routeBandedEdges(
           y: ay,
           width: g.width,
           height: g.height,
-          ...(caption !== undefined ? { caption } : {}),
+          caption,
         });
       }
       n.children.forEach((c) => place(c, ax, ay));
@@ -366,8 +366,8 @@ export function routeBandedEdges(
         id: e.id,
         from: e.from,
         to: e.to,
-        ...(e.style?.fromSide !== undefined ? { fromSide: e.style.fromSide } : {}),
-        ...(e.style?.toSide !== undefined ? { toSide: e.style.toSide } : {}),
+        fromSide: e.style?.fromSide,
+        toSide: e.style?.toSide,
         hasLabel: edgeLabelText(e).trim() !== '',
       }))
       // elk's surviving routes stand, unless they break a pin (DiagramEdge
