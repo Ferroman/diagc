@@ -158,6 +158,59 @@ describe('resolveEdges', () => {
     expect(ab.map((e) => e.style?.fromSide).sort()).toEqual(['right', 'top']);
   });
 
+  it('a relation rolled up to a container leaves its fixed sides on its own nodes', () => {
+    const m = model('s');
+    const box = m.node('box', { type: 'system' });
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    box.contains(a);
+    m.relate(a, b, { kind: 'reads', style: { fromSide: 'right', toSide: 'left', shape: 'straight' } });
+    const j = m.toJSON();
+    const edges = resolveEdges(j, buildViewTree(j, buildHierarchy(j), {}));
+    // `box` is folded, so the edge runs box -> b: the sides were fixed on `a`, the
+    // line's own look still carries
+    expect(edges.find((e) => e.from === 'box' && e.to === 'b')?.style).toEqual({ shape: 'straight' });
+  });
+
+  it('a rolled-up relation that fixed nothing but its sides carries no style', () => {
+    const m = model('s');
+    const box = m.node('box', { type: 'system' });
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    box.contains(a);
+    m.relate(a, b, { kind: 'reads', style: { fromSide: 'right' } });
+    const j = m.toJSON();
+    const edges = resolveEdges(j, buildViewTree(j, buildHierarchy(j), {}));
+    expect(edges.find((e) => e.from === 'box' && e.to === 'b')?.style).toBeUndefined();
+  });
+
+  it('a relation rolled up at its target end alone leaves its sides too', () => {
+    const m = model('s');
+    const box = m.node('box', { type: 'system' });
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    box.contains(a);
+    m.relate(b, a, { kind: 'reads', style: { fromSide: 'top', toSide: 'left' } });
+    const j = m.toJSON();
+    const edges = resolveEdges(j, buildViewTree(j, buildHierarchy(j), {}));
+    expect(edges.find((e) => e.from === 'b' && e.to === 'box')?.style).toBeUndefined();
+  });
+
+  it('rolls relations with different fixed sides up into one container edge with no style', () => {
+    const m = model('s');
+    const box = m.node('box', { type: 'system' });
+    const a1 = m.node('a1', { type: 'service' });
+    const a2 = m.node('a2', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    box.contains(a1, a2);
+    m.relate(a1, b, { kind: 'reads', style: { fromSide: 'top' } });
+    m.relate(a2, b, { kind: 'reads', style: { fromSide: 'bottom' } });
+    const j = m.toJSON();
+    const edges = resolveEdges(j, buildViewTree(j, buildHierarchy(j), {})).filter((e) => e.from === 'box');
+    expect(edges).toHaveLength(1);
+    expect(edges[0]!.style).toBeUndefined();
+  });
+
   it('still aggregates same-direction relations that share connection points (or float)', () => {
     const m = model('s');
     const a = m.node('a', { type: 'service' });
