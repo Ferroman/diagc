@@ -1514,3 +1514,20 @@ describe('plan chips and x-resize', () => {
     expect(unnamed.container.querySelector('.dg-event-tag')).toBeNull();
   });
 });
+
+describe('the drop-target outline', () => {
+  it('marks a group or a box under a drag that could land on it, and no other body', () => {
+    const marked = (partial: Partial<DiagramNodeData>) => {
+      const { container } = renderNode({ ...partial, dropTarget: true });
+      const hit = container.querySelector('[data-drop-target]') !== null;
+      cleanup();
+      return hit;
+    };
+    expect(marked({ typeId: 'service' })).toBe(true);
+    expect(marked({ typeId: 'service', state: 'expanded' })).toBe(true);
+    expect(marked({ typeId: 'service', image: 'abc.png' })).toBe(false);
+    expect(marked({ typeId: FB_CAUSE_TYPE })).toBe(false);
+    const { container } = renderNode({ typeId: 'service' });
+    expect(container.querySelector('[data-drop-target]')).toBeNull();
+  });
+});
