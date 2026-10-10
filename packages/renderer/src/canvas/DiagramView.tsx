@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
-  applyNodeChanges,
   Background,
   ConnectionMode,
   ControlButton,
   Controls,
-  getViewportForBounds,
   Panel,
   ReactFlow,
   ReactFlowProvider,
@@ -13,38 +11,27 @@ import {
   type Edge,
   type EdgeChange,
   type Node,
-  type NodeChange,
-  type OnNodeDrag,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
-  ACTIVITY_LANE_TYPE,
   compileView,
   countAnchored,
   DEFAULT_STROKE_WIDTH,
   GIT_STAGE_TYPE,
-  hasNoteContent,
-  isActivityBand,
   isActivityChrome,
   isNodeRef,
   layoutPlaneKey,
-  elementKey,
   soleRelation,
-  type Comment,
   type DiagramNode,
   type EdgeLabelPlacement,
   type EdgeLabelSide,
-  type Link,
   type Point,
   type Stroke,
-  type Threat,
-  type ElementRef,
   type ViewNode,
 } from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
 import { FORCED_SIZE_SHAPES, LAYOUT_SIZED_TYPES } from '../layout/box-size';
 import { Breadcrumbs } from './Breadcrumbs';
-import { overhangBounds, unionBounds } from './content-bounds';
 import {
   buildEdgeDataCached,
   buildNodeDataCached,
@@ -52,30 +39,14 @@ import {
   type EdgeLabelMoves,
   type NodeDataContext,
 } from './build-data';
-import { edgeTypes, nodeTypes, toRfEdge, toRfNode, toRfNoteNode } from './adapter';
-import { strokesBounds } from '../drawings/drawings';
-import { captureCanvas, exportFrame } from './export-image';
-import { NOTE_WIDTH, type NoteData } from '../notes/NoteNode';
-import { splitNoteDrag } from '../notes/note-drag';
-import {
-  badgeCenter,
-  estimateNoteHeight,
-  lineObstacles,
-  obstaclesOf,
-  placeNote,
-  type BadgeKind,
-  type Rect,
-} from '../notes/note-place';
-import { NoteStateContext, type NoteState } from '../notes/note-state';
+import { edgeTypes, nodeTypes, toRfEdge, toRfNode } from './adapter';
+import type { NoteData } from '../notes/NoteNode';
+import { isNoteId } from '../notes/derive-note-nodes';
+import { NoteStateContext } from '../notes/note-state';
 import { DrawingsLayer } from '../drawings/DrawingsLayer';
-import { withoutMeasuredExpansion } from './expand-parent';
-import { savedPositions } from '../layout/fit-containers';
 import { reconnectSide } from '../edge/floating';
-import { laneDropOffset } from '../layout/activity-frame';
 import { GitLanesOverlay } from '../overlays/GitLanesOverlay';
-import { alignBoxes, distributeBoxes, dropDescendants, type Delta } from './arrange';
-import type { Box } from './box';
-import { GUIDE_THRESHOLD_PX, snapDragFrame, type Guide, type SnapMemo } from './guides';
+import { alignBoxes, distributeBoxes } from './arrange';
 import { GuidesLayer } from './GuidesLayer';
 import { SelectionToolbar } from './SelectionToolbar';
 import { Legend } from '../legend/Legend';
@@ -83,7 +54,6 @@ import { LoopLabelLayer } from '../loops/LoopLabelLayer';
 import { LoopHighlightContext } from '../loops/loop-highlight';
 import { notationProfile } from '../notations';
 import { OrderBandsOverlay } from '../overlays/OrderBandsOverlay';
-import { dropTargetAt, type DropRect } from './plan-drop';
 import { createKindRegistry, createTypeRegistry } from '../registry';
 import { stylePreset } from '../sketch/stylePresets';
 import { TimeAxisOverlay } from '../overlays/TimeAxisOverlay';
@@ -92,8 +62,15 @@ import { useClickCorrelation } from './useClickCorrelation';
 import { useDrillNavigation } from './useDrillNavigation';
 import { useLegendState } from '../legend/useLegendState';
 import { useLoopOverlay } from '../loops/useLoopOverlay';
-import { NUDGE_STEP, useNudge, type Positions } from './useNudge';
 import { useViewLayout } from './useViewLayout';
+import { useEditRequests } from './useEditRequests';
+import { useCommitMoves } from './useCommitMoves';
+import { useNodeDragging } from './useNodeDragging';
+import { useNudgeAndArrange } from './useNudgeAndArrange';
+import { MAX_ZOOM, MIN_ZOOM, useLayoutApi } from './useLayoutApi';
+import { noSelection, soleSelection } from './node-copy';
+import { useNoteNodes } from './useNoteNodes';
+import { useNoteSession } from './useNoteSession';
 import { LaserLayer } from '../drawings/LaserLayer';
 import type { DiagramNodeData } from '../node/DiagramNode';
 import { diffEdgeStatus, diffNodeClasses, withDiffClass } from './diff-marks';
@@ -109,12 +86,6 @@ import {
   type DiagramViewProps,
 } from './view-types';
 
-// Zoom limits, shared by the <ReactFlow> element and the getViewportForBounds
-// call in `fitView` below — the same numbers have to bound both, or a fit could
-// compute a zoom the canvas then clamps and land off-frame.
-const MIN_ZOOM = 0.02;
-const MAX_ZOOM = 4;
-
 const imageFilesOf = (list: FileList | null | undefined): File[] =>
   [...(list ?? [])].filter((f) => f.type.startsWith('image/'));
 
@@ -124,42 +95,6 @@ const imageFilesOf = (list: FileList | null | undefined): File[] =>
  * nesting target — kept in one named helper so the coupling is explicit. */
 const droppedOnNodeId = (e: { clientX: number; clientY: number }): string | undefined =>
   document.elementFromPoint(e.clientX, e.clientY)?.closest('.react-flow__node')?.getAttribute('data-id') ?? undefined;
-
-/** `id` becomes the sole selection on React Flow's copy of the nodes. Every node
- * whose flag already reads right keeps its identity, so this costs one re-render
- * of at most two boxes. */
-const soleSelection = (nodes: Node[], id: string): Node[] =>
-  nodes.map((n) => ((n.selected === true) === (n.id === id) ? n : { ...n, selected: n.id === id }));
-
-/** nothing is selected on React Flow's copy; already-clear nodes keep their identity */
-const noSelection = (nodes: Node[]): Node[] => nodes.map((n) => (n.selected === true ? { ...n, selected: false } : n));
-
-/** `id` (or none) carries `data.dropTarget: true` on React Flow's copy — the
- * drag-over outline a notation's drop target draws (DiagramNode's
- * data-drop-target). Same identity-preserving shape as soleSelection above,
- * but on `data`: unlike `selected` it is not a field React Flow itself knows,
- * so DiagramNode reads it off the node data channel like any other notation
- * hook. */
-const withDropTarget = (nodes: Node[], id: string | undefined): Node[] =>
-  nodes.map((n) => {
-    const has = (n.data as { dropTarget?: boolean }).dropTarget === true;
-    const want = n.id === id;
-    return has === want ? n : { ...n, data: { ...n.data, dropTarget: want } };
-  });
-
-/** Client coordinates off a React Flow drag event. React Flow types the event
- * `MouseEvent | TouchEvent` (a drag CAN start from a touch), so `.clientX` is
- * narrowed rather than assumed — same reasoning as droppedOnNodeId's shape
- * above, just for the union React Flow itself hands back here. */
-const clientPointOf = (e: MouseEvent | TouchEvent): Point =>
-  'clientX' in e ? { x: e.clientX, y: e.clientY } : { x: e.touches[0]?.clientX ?? 0, y: e.touches[0]?.clientY ?? 0 };
-
-/** The note node id prefix. An id-based test for the filters that only need to
- * *exclude* notes from an id list; anything that READS the note data channel
- * gates on `node.type === 'note'` instead, because a model node is free to
- * carry an id that starts with `note:` and it would arrive here with box data. */
-const NOTE_PREFIX = 'note:';
-const isNoteId = (id: string): boolean => id.startsWith(NOTE_PREFIX);
 
 function Inner(props: DiagramViewProps) {
   const reactFlow = useReactFlow();
@@ -183,40 +118,9 @@ function Inner(props: DiagramViewProps) {
   // In-place label editing target (edit mode double-click): a node's name or a
   // single-relation edge's label.
   const [labelEdit, setLabelEdit] = useState<{ kind: 'node' | 'edge'; id: string } | null>(null);
-  // The threat row a note is holding open for typing, keyed by elementKey
-  // (which note) + threat id (which row). Declared here beside labelEdit — the
-  // effect just below writes it and the note derivation far down reads it —
-  // rather than next to that derivation, so nothing references it before it exists.
-  const [noteEdit, setNoteEdit] = useState<{ key: string; id: string } | null>(null);
-  // Notes toggled in THIS session without a host to save through (view mode,
-  // the viewer): key → open. Layered over the overlay's saved `open` flags. In
-  // edit mode the badge goes to the host instead, and entering edit mode clears
-  // this map (below) so edit mode shows exactly what the export will.
-  const [noteOverrides, setNoteOverrides] = useState<ReadonlyMap<string, boolean>>(() => new Map());
-  // Where each threat-carrying flow's counting badge is drawn (relation id →
-  // flow coordinates, the side of the line it sits on, and the line itself),
-  // reported by the edges (NoteState.placeBadge): a flow's note hangs off its
-  // badge, every note keeps off the line, and both sit on the routed curve
-  // only the edge knows. Entries outlive their edges — a hidden flow draws no
-  // note, and a returning one reports again — so nothing prunes it; the
-  // derivation reads only the flows it draws.
-  const [badgeSpots, setBadgeSpots] = useState<ReadonlyMap<string, { at: Point; away: Point; line: readonly Point[] }>>(
-    () => new Map(),
-  );
-  const placeBadge = useCallback((relation: string, at: Point, away: Point, line: readonly Point[]) => {
-    setBadgeSpots((prev) => {
-      const was = prev.get(relation);
-      const same =
-        was !== undefined &&
-        was.at.x === at.x &&
-        was.at.y === at.y &&
-        was.away.x === away.x &&
-        was.away.y === away.y &&
-        was.line.length === line.length &&
-        was.line.every((p, i) => p.x === line[i]!.x && p.y === line[i]!.y);
-      return same ? prev : new Map(prev).set(relation, { at, away, line });
-    });
-  }, []);
+  const editing = props.mode === 'edit';
+  const notes = useNoteSession(editing, props.model.id);
+  const { setNoteEdit, setNoteOverrides } = notes;
   const visibleRef = useRef<string[]>([]);
   // Which end a reconnect drag grabbed ('source'/'target'), captured on start so
   // onReconnect can tell a same-node side change from a move to another node.
@@ -280,78 +184,9 @@ function Inner(props: DiagramViewProps) {
   });
   const { enteredPath, drillRoot, focus, enterNode, exitTo, pendingRootFitRef } = nav;
 
-  const editing = props.mode === 'edit';
-
-  // Edit mode shows the saved state. A toggle
-  // made while reading would otherwise mask the state the badge is about to
-  // save, and the first click in edit mode would appear to do nothing.
-  useEffect(() => {
-    if (editing) setNoteOverrides(new Map());
-  }, [editing]);
-
-  // ...and on a switch to another diagram. The keys are per model (`node:web`
-  // names an element of THIS one, and the next diagram is free to reuse the
-  // id), but nothing else clears them on that path: useDrillNavigation resets
-  // itself on a new model WITHOUT going through onPlaneSwitch, and the studio
-  // does not re-key <DiagramView>. A toggle made while reading diagram A would
-  // otherwise open — or hide — a colliding note on diagram B.
-  useEffect(() => {
-    setNoteOverrides(new Map());
-  }, [props.model.id]);
-
-  // Open a node's name for a host-driven rename that did not originate from a
-  // canvas gesture (a panel button creating a node "outside" the canvas, e.g.
-  // second-order's "And then what?"). Mirrors onCreateAt's own in-place rename.
-  const labelRequest = edit?.editLabelRequest;
-  // The last nonce this effect actually acted on. Needed because `edit` — and
-  // the request riding on it — disappears while merely viewing (mode toggles
-  // off), so `labelRequest?.nonce` itself goes nonce -> undefined -> the SAME
-  // nonce on the way back into edit mode. "the nonce changed" would then be
-  // true again on re-entry with no new user action, replaying a stale (maybe
-  // deleted, maybe no-longer-selected) rename. The ref is deliberately left
-  // untouched while the request is absent (view mode) — only a genuinely new
-  // nonce, seen while editing, is allowed to open the box.
-  const consumedLabelNonceRef = useRef<number | undefined>(undefined);
   // A requested node that React Flow's copy does not hold yet, waiting for the
-  // resync below to hand it the selection (see the effect).
+  // resync below to hand it the selection (see useEditRequests).
   const selectOnAppearRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!editing || labelRequest === undefined || labelRequest.nonce === consumedLabelNonceRef.current) return;
-    consumedLabelNonceRef.current = labelRequest.nonce;
-    setLabelEdit({ kind: 'node', id: labelRequest.id });
-    // ...and make it React Flow's sole selection. The host's own select() never
-    // reaches React Flow's copy of the nodes, and the selection ring, the image
-    // resizer and the quick-add button all render off THAT flag — so without this the
-    // button would stay on the node the add came from and a `+`, type, `+` chain
-    // would fan siblings off one source instead of walking down the chain. A
-    // label request is by definition "this is the node you are working on now".
-    // A request almost always names a node the host has JUST created, and elk
-    // lays out asynchronously: React Flow's copy reaches it only once it turns
-    // up in derivedNodes. So select it here when this render already has it,
-    // and otherwise leave a claim the resync useLayoutEffect takes the moment
-    // the node lands — deselecting the source now would only flash an empty
-    // selection in between.
-    if (derivedNodes.some((n) => n.id === labelRequest.id)) {
-      setRfNodes((prev) => soleSelection(prev, labelRequest.id));
-    } else {
-      selectOnAppearRef.current = labelRequest.id;
-    }
-    // keyed on the nonce alone: the id may repeat, the request may not
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [labelRequest?.nonce]);
-
-  // The same contract one level down: the host just added a threat and wants
-  // its (empty) title open on the note. No selection claim to leave here — the
-  // note is not selectable, and it appears in the same render as the threat it
-  // draws, so there is nothing to wait for.
-  const threatRequest = edit?.editThreatRequest;
-  const consumedThreatNonceRef = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    if (!editing || threatRequest === undefined || threatRequest.nonce === consumedThreatNonceRef.current) return;
-    consumedThreatNonceRef.current = threatRequest.nonce;
-    setNoteEdit({ key: elementKey(threatRequest.target), id: threatRequest.id });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the nonce alone, as editLabelRequest is
-  }, [threatRequest?.nonce]);
 
   const nameOf = useMemo(() => new Map(props.model.nodes.map((n) => [n.id, n.name])), [props.model]);
 
@@ -361,8 +196,8 @@ function Inner(props: DiagramViewProps) {
     () => props.drawings?.planes[layoutPlaneKey(props.model, props.plane)] ?? [],
     [props.drawings, props.model, props.plane],
   );
-  // Render-phase ref (same pattern as useDrillNavigation's enteredPathRef): the layoutApiRef effect
-  // below keeps deps of just [layoutApiRef, reactFlow], so it reads the ink
+  // Render-phase ref (same pattern as useDrillNavigation's enteredPathRef): useLayoutApi's
+  // effect keeps deps of just [layoutApiRef, reactFlow], so it reads the ink
   // through a ref rather than re-installing the api object on every stroke.
   const strokesRef = useRef<readonly Stroke[]>([]);
   strokesRef.current = strokes;
@@ -417,8 +252,8 @@ function Inner(props: DiagramViewProps) {
     if (hidden === undefined || !raw.edges.some((e) => hidden(e.kind))) return raw;
     return { ...raw, edges: raw.edges.filter((e) => !hidden(e.kind)) };
   }, [props.model, props.plane, focus, drillRoot, effectivePins, props.activeLayers, profile]);
-  // Render-phase ref, same pattern as strokesRef below: the layoutApiRef effect's
-  // snapshotPositions (further down) needs compiled.externals to drop stub ids,
+  // Render-phase ref, same pattern as strokesRef above: useLayoutApi's
+  // snapshotPositions needs compiled.externals to drop stub ids,
   // but that effect only re-runs on [layoutApiRef, reactFlow] — so it reads
   // `compiled` through a ref kept current every render instead of depending on it.
   const compiledRef = useRef(compiled);
@@ -541,28 +376,6 @@ function Inner(props: DiagramViewProps) {
     selectOnAppearRef.current = null;
     onMultiSelectRef.current?.(ids);
   }, []);
-  // Alignment guides drawn while a single node is dragged (see snapDragChanges);
-  // cleared every frame that yields no lines, which includes drop (the final
-  // frame carries dragging: false).
-  const [guides, setGuides] = useState<Guide[]>([]);
-  const snapMemoRef = useRef<SnapMemo | null>(null);
-  // A drag is in flight. While one is, NO node glides (see `.dg-dragging` in
-  // styles.css): the dragged node's container grows and its siblings are
-  // re-expressed every frame, and a 200ms transition on those would leave the
-  // box trailing the child it is supposed to hold — and React Flow measuring a
-  // half-grown box, which it then grows from.
-  const [dragging, setDragging] = useState(false);
-  // The same fact, readable inside onNodesChange in the very task the gesture
-  // starts in (the state above lands a render later).
-  const draggingRef = useRef(false);
-  // The drop target the pointer is over during a single-node drag (see
-  // dropTargetFor below). A ref, not a state pair: the re-render that draws
-  // the outline is already driven by the setRfNodes call beside every write
-  // to this ref (same identity-preserving patch soleSelection makes for a
-  // click's selection), and the stop handler needs to read/clear it in the
-  // same task the last drag frame set it in, same reason as draggingRef.
-  const dropTargetRef = useRef<string | undefined>(undefined);
-
   // Surface them upward so a host can offer to persist them. Driven off the state
   // rather than the drag handler, so the resets above are reported too — a host
   // that kept showing a "save" affordance after a plane switch would be offering
@@ -607,7 +420,7 @@ function Inner(props: DiagramViewProps) {
     flowDirection,
   } = viewLayout;
   // Render-phase ref, same pattern and reason as compiledRef above: commitMoves
-  // (further down) needs the ARRANGED geometry to compute a move's displacement,
+  // (useCommitMoves) needs the ARRANGED geometry to compute a move's displacement,
   // but its dependency list is hand-managed and must not grow with every
   // re-layout, so it reads arrangedGeometry through a ref kept current every
   // render instead.
@@ -865,214 +678,21 @@ function Inner(props: DiagramViewProps) {
     return out;
   }, [compiled, arrangedGeometry, nodeDataCtx, editing, typeRegistry, profile, fixed]);
 
-  // Notes: one synthetic node per element that carries threats, comments
-  // or links. Derived from the ARRANGED geometry (so a note follows its element
-  // through drags and container growth) and never handed to elk — adding a
-  // threat must not move a single box. A box's note is parented like the box
-  // (parent-relative, rides inside the container); a flow's note is top-level.
-  // Each hangs off its badge: an unmoved note takes the first spot next to
-  // the badge that covers nothing (note-place.ts), a dragged one sits at badge
-  // + its saved offset.
-  const planeKey = layoutPlaneKey(props.model, props.plane);
-  const noNotes = props.notes === false;
-  const notePlacements = props.layout?.notes?.[planeKey];
-  // The open set: saved flags, then this session's toggles on top.
-  const openNotes = useMemo(() => {
-    const open = new Set<string>();
-    for (const [key, p] of Object.entries(notePlacements ?? {})) if (p.open === true) open.add(key);
-    for (const [key, isOpen] of noteOverrides) {
-      if (isOpen) open.add(key);
-      else open.delete(key);
-    }
-    return open;
-  }, [notePlacements, noteOverrides]);
-  const onToggleNote = edit?.onToggleNote;
-  const noteState = useMemo<NoteState | null>(
-    () =>
-      noNotes
-        ? null
-        : {
-            isOpen: (key) => openNotes.has(key),
-            toggle: (target) => {
-              const key = elementKey(target);
-              const next = !openNotes.has(key);
-              if (editing && onToggleNote !== undefined) onToggleNote(target, next);
-              else setNoteOverrides((prev) => new Map(prev).set(key, next));
-            },
-            placeBadge,
-          },
-    [noNotes, openNotes, editing, onToggleNote, placeBadge],
-  );
-  const noteNodes = useMemo((): Node[] => {
-    if (noNotes || openNotes.size === 0 || arrangedGeometry === null) return [];
-    // Absolute boxes: the placement runs in one space for every element and
-    // every obstacle (arrangedGeometry is parent-relative), and a flow's badge
-    // is reported in flow coordinates.
-    const abs = new Map<string, Rect>();
-    const obstacles: Rect[] = [];
-    const walkAbs = (n: ViewNode, ox: number, oy: number) => {
-      const g = arrangedGeometry.get(n.id);
-      if (g === undefined) return;
-      const rect = { x: g.x + ox, y: g.y + oy, width: g.width, height: g.height };
-      abs.set(n.id, rect);
-      // an expanded container is hollow (its members' notes belong inside);
-      // everything else is a box a note must not cover
-      obstacles.push(...obstaclesOf([{ rect, kind: n.state === 'expanded' ? 'group' : 'box' }]));
-      n.children.forEach((c) => walkAbs(c, g.x + ox, g.y + oy));
-    };
-    compiled.roots.forEach((r) => walkAbs(r, 0, 0));
-    // The lines of the flows that show a badge — one carrying threats or
-    // comments (see EdgeNoteBadges) — so no note lies across one. Other lines and
-    // edge labels are not obstacles: a note may cover them.
-    for (const e of compiled.edges) {
-      const r = soleRelation(e);
-      const spot = r !== undefined ? badgeSpots.get(r.id) : undefined;
-      if (spot !== undefined) obstacles.push(...lineObstacles(spot.line));
-    }
-    const out: Node[] = [];
-    const push = (
-      target: ElementRef,
-      name: string,
-      threats: readonly Threat[],
-      comments: readonly Comment[],
-      links: readonly Link[],
-      /** the badge's centre, absolute */
-      badge: Point,
-      /** the element's box, absolute; null for a flow */
-      element: Rect | null,
-      parentId?: string,
-      /** a flow: the side of the line its badge sits on */
-      away?: Point,
-    ) => {
-      const key = elementKey(target);
-      if (!openNotes.has(key)) return;
-      // The offer to start a register belongs where threats do: an element that
-      // already has one, or a threat model's canvas — the gate ThreatBadge and
-      // both studio panels apply. A host wires onAddThreat whatever the diagram
-      // is, so without this a remark on a plain C4 box would offer to threat-
-      // model it. The height estimate reads the same boolean, or it would
-      // reserve ADD_ROW for a button that never draws.
-      const offerThreat = editing && (threats.length > 0 || profile.offersThreats === true);
-      const size = { width: NOTE_WIDTH, height: estimateNoteHeight(name, threats, offerThreat, comments, links) };
-      const p = notePlacements?.[key];
-      // {0,0} is "automatic" — `set-note-offset null` writes it, and the
-      // normaliser drops it — so a saved offset is anything else
-      const at =
-        p !== undefined && (p.dx !== 0 || p.dy !== 0)
-          ? { x: badge.x + p.dx, y: badge.y + p.dy }
-          : placeNote(badge, element, size, obstacles, away);
-      // earlier notes are obstacles to later ones (model order), so two
-      // open notes never stack
-      obstacles.push({ ...at, ...size });
-      // back to the parent's frame: a box's note is parented like the box
-      const shift = (parentId !== undefined ? abs.get(parentId) : undefined) ?? { x: 0, y: 0 };
-      const data: NoteData = {
-        target,
-        name,
-        threats,
-        comments,
-        links,
-        anchor: { x: badge.x - shift.x, y: badge.y - shift.y },
-        badge,
-        editing,
-        editingId: noteEdit !== null && noteEdit.key === key ? noteEdit.id : undefined,
-        onAddThreat: offerThreat ? edit?.onAddThreat : undefined,
-        onRetitleThreat: editing ? edit?.onRetitleThreat : undefined,
-        onSetThreatStatus: editing ? edit?.onSetThreatStatus : undefined,
-        onEditThreatText: editing ? edit?.onEditThreatText : undefined,
-        onOpenLink: props.onOpenLink,
-        onEndEdit: () => setNoteEdit(null),
-      };
-      out.push(
-        toRfNoteNode({
-          id: NOTE_PREFIX + key,
-          position: { x: at.x - shift.x, y: at.y - shift.y },
-          data,
-          parentId,
-          draggable: editing,
-        }),
-      );
-    };
-    // How the badge sits on this element — the stylesheet's three placements
-    // (see badgeCenter): in the header band of an expanded container, tucked
-    // into an ellipse, over the corner of anything else.
-    const badgeKindOf = (n: ViewNode): BadgeKind => {
-      if (n.state === 'expanded') return 'group';
-      const shape = n.node.type !== undefined ? typeRegistry.resolve(n.node.type).shape : undefined;
-      return shape === 'ellipse' ? 'ellipse' : 'box';
-    };
-    const walk = (n: ViewNode, parent?: string) => {
-      const rect = abs.get(n.id);
-      if (rect === undefined) return;
-      const threats = n.node.threats ?? [];
-      const comments = n.node.comments ?? [];
-      const links = n.node.links ?? [];
-      // An external stub stands in for an off-frame node (drill views): its
-      // threats/comments/links belong to the view that really draws it, or the
-      // same note would appear twice, in two coordinate frames. What counts as
-      // content is core's own predicate — the one layout hygiene prunes by, so
-      // a note drawn here always keeps its saved place (see pruneNotes).
-      if (n.external === undefined && hasNoteContent(n.node))
-        push({ node: n.id }, n.node.name, threats, comments, links, badgeCenter(rect, badgeKindOf(n)), rect, parent);
-      n.children.forEach((c) => walk(c, n.id));
-    };
-    compiled.roots.forEach((r) => walk(r));
-    // compiled.edges is the DRAWN set, so a layer-hidden flow takes its note
-    // with it. An aggregated edge gets none: its threats and comments belong to
-    // particular relations, and a note on the bundle could not say which.
-    // (A relation carries no `links` field, so a flow's note never lists any.)
-    for (const e of compiled.edges) {
-      const r = soleRelation(e);
-      if (r === undefined || !hasNoteContent(r)) continue;
-      const a = abs.get(e.from);
-      const b = abs.get(e.to);
-      if (a === undefined || b === undefined) continue;
-      // The badge's spot arrives from the edge a frame after it first draws;
-      // until then the straight-line midpoint of the two ends stands in.
-      const badgeSpot = badgeSpots.get(r.id);
-      const at = badgeSpot?.at ?? {
-        x: (a.x + a.width / 2 + b.x + b.width / 2) / 2,
-        y: (a.y + a.height / 2 + b.y + b.height / 2) / 2,
-      };
-      const label = r.label !== undefined && r.label !== '' ? ` (${r.label})` : '';
-      push(
-        { relation: r.id },
-        `${nameOf.get(r.from) ?? r.from} → ${nameOf.get(r.to) ?? r.to}${label}`,
-        r.threats ?? [],
-        r.comments ?? [],
-        [],
-        at,
-        null,
-        undefined,
-        badgeSpot?.away,
-      );
-    }
-    return out;
-    // edit?.onAddThreat / onRetitleThreat / onSetThreatStatus / onEditThreatText /
-    // props.onOpenLink may be fresh closures per host render — the same trade
-    // nodeDataCtx makes, and for the same reason: a stale callback would edit
-    // the wrong document, or open a link through a host that is no longer there.
-    // profile is here because the threat offer is gated on it (see
-    // offerThreat): switching to a threat-model plane has to redraw the notes.
-    // It is memoized on props.notation, so it changes exactly when that does.
-  }, [
-    noNotes,
-    openNotes,
-    arrangedGeometry,
-    compiled,
-    notePlacements,
-    badgeSpots,
+  const { noteState, noteNodes } = useNoteNodes({
+    model: props.model,
+    plane: props.plane,
+    notes: props.notes,
+    layout: props.layout,
+    session: notes,
     editing,
-    edit?.onAddThreat,
-    edit?.onRetitleThreat,
-    edit?.onSetThreatStatus,
-    edit?.onEditThreatText,
-    props.onOpenLink,
+    edit,
+    onOpenLink: props.onOpenLink,
+    compiled,
+    arrangedGeometry,
     profile,
-    noteEdit,
     nameOf,
     typeRegistry,
-  ]);
+  });
   // Boxes first, notes after: React Flow resolves `parentId` against the nodes
   // it has already seen, so a note must never precede the box it rides on.
   //
@@ -1101,7 +721,7 @@ function Inner(props: DiagramViewProps) {
     return noteNodes.length === 0 ? boxes : [...boxes, ...noteNodes];
   }, [derivedNodes, noteNodes, diffClasses]);
   // Render-phase ref (the arrangedRef/rfNodesRef pattern): a snap-back reset
-  // (onNodeDragStop below) needs each node's LAID position — the same source
+  // (useNodeDragging's onNodeDragStop) needs each node's LAID position — the same source
   // the resync effect further down reads when it copies allNodes into rfNodes
   // — read synchronously at drop time, not a render later.
   const allNodesRef = useRef(allNodes);
@@ -1115,195 +735,56 @@ function Inner(props: DiagramViewProps) {
   const [rfNodes, setRfNodes] = useState<Node[]>([]);
   const rfNodesRef = useRef<Node[]>([]);
   rfNodesRef.current = rfNodes;
-  // Every way a box can move — a drag, a multi-node drag, an arrow-key nudge,
-  // an align/distribute — ends here, so the two modes' persistence paths are
-  // decided in exactly one place: edit mode hands the batch to the host (one
-  // undo step), view mode keeps it as throwaway drag state the host may offer
-  // to save (onViewPositionsChange → the studio's Save positions chip).
-  //
-  // `onScreen` is what React Flow holds (parent-relative, against the parent's
-  // origin as drawn). What gets saved is relative to the parent's UNSHIFTED
-  // origin — they differ once a container has grown left/up around a child
-  // (fit-containers.ts), or is doing so right now under expandParent.
-  const commitMoves = useCallback(
-    (onScreen: Positions) => {
-      if (Object.keys(onScreen).length === 0) return;
-      const typeOf = (id: string) =>
-        (rfNodesRef.current.find((n) => n.id === id)?.data as { typeId?: string } | undefined)?.typeId;
-      const positions = savedPositions(
-        onScreen,
-        rfNodesRef.current,
-        containerBasesRef.current,
-        containerShiftsRef.current,
-        // an activity lane is banded at a fixed spot (arrangeActivityFrames)
-        (parentId) => isActivityBand(typeOf(parentId)),
-      );
-      // displacement from the ARRANGED spot (parent-relative on both sides):
-      // a notation that derives positions reads this, not the position
-      const arranged = arrangedRef.current;
-      const deltas = Object.fromEntries(
-        Object.entries(positions).map(([id, pos]) => {
-          const g = arranged?.get(id);
-          return [id, g === undefined ? { dx: 0, dy: 0 } : { dx: pos.x - g.x, dy: pos.y - g.y }];
-        }),
-      );
-      if (editing) {
-        if (edit?.onNodesMoved !== undefined) edit.onNodesMoved(positions, deltas);
-        else for (const [id, pos] of Object.entries(positions)) edit?.onNodeMoved?.(id, pos);
-      } else {
-        setViewPositions((p) => ({ ...p, ...positions }));
-      }
-    },
-    [editing, edit],
-  );
-  // The deepest drop target (profile.node.dropTarget) under `point` for a
-  // SINGLE dragged box, or undefined. Read by both onNodeDrag (the drag-over
-  // outline) and onNodeDragStop (the actual report), so the two can never
-  // disagree about what counts as a hit.
-  //
-  // Eligibility (which box may be reported at all) is the notation's own
-  // call, not derived from layout facts: `profile.node.canDrop` — a zone's or
-  // an event's drag already means something else (planMoves reads it as a
-  // date change) whether or not it happens to land on another zone's rect
-  // (root zones are free on y and can overlap a sibling's bar just as readily
-  // as a nested zone crosses its own parent's — Global ruling: zones/events
-  // are never dropped into anything), while an actor or a plain box is
-  // exactly what a zone receives — nested or not, which is what `fixed` (a
-  // layout fact, not a statement of intent) got wrong here before.
-  const dropTargetFor = (draggedId: string, point: Point): string | undefined => {
-    const dropTarget = profile.node?.dropTarget;
-    if (dropTarget === undefined) return undefined;
-    const draggedNode = props.model.nodes.find((n) => n.id === draggedId);
-    if (draggedNode === undefined || profile.node?.canDrop?.(draggedNode) !== true) return undefined;
-
-    // exclude = the dragged node, its containment descendants and its
-    // current parent, all read off React Flow's OWN parentId chain
-    // (rfNodesRef.current) — the same source commitMoves' own helper
-    // (savedPositions, fit-containers.ts) walks for a node's ancestor chain,
-    // so a folded or borrowed hierarchy never disagrees with what is drawn.
-    const nodes = rfNodesRef.current;
-    const exclude = new Set<string>([draggedId]);
-    const parentId = nodes.find((n) => n.id === draggedId)?.parentId;
-    if (parentId !== undefined) exclude.add(parentId);
-    const childrenOfRf = new Map<string, string[]>();
-    for (const n of nodes) {
-      if (n.parentId === undefined) continue;
-      childrenOfRf.set(n.parentId, [...(childrenOfRf.get(n.parentId) ?? []), n.id]);
-    }
-    const queue = [...(childrenOfRf.get(draggedId) ?? [])];
-    for (let i = 0; i < queue.length; i++) {
-      const id = queue[i]!;
-      if (exclude.has(id)) continue;
-      exclude.add(id);
-      queue.push(...(childrenOfRf.get(id) ?? []));
-    }
-    // The outline is a promise: it says "let go here and something happens".
-    // `related` is the notation's own statement of what this node is already
-    // connected to without a drawn edge (for a plan actor: the zones it
-    // already holds a role on, planRelated) — the studio's `assign` returns
-    // undefined for exactly that pair, so offering the outline there would be
-    // a promise the drop breaks silently.
-    for (const id of profile.related?.(props.model, props.plane, draggedId) ?? []) exclude.add(id);
-
-    const rects: DropRect[] = [];
-    for (const n of props.model.nodes) {
-      if (!dropTarget(n)) continue;
-      const internal = reactFlow.getInternalNode(n.id);
-      const abs = internal?.internals.positionAbsolute;
-      const w = internal?.measured?.width;
-      const h = internal?.measured?.height;
-      if (abs === undefined || w === undefined || h === undefined) continue;
-      rects.push({ id: n.id, x: abs.x, y: abs.y, w, h });
-    }
-    return dropTargetAt(point, rects, exclude);
-  };
-  // Whether the drop gesture is live at all on this render — the same test
-  // onNodeDragStop below inlines for the drop itself, kept here as its own
-  // name because the drag-over OUTLINE additionally needs it before a single
-  // pointer frame has happened, to decide whether to hand React Flow a
-  // handler at all (see the spread below).
-  const dropEnabled = editing && edit?.onDropInto !== undefined && profile.node?.dropTarget !== undefined;
-  // The drag-over outline (data-drop-target, DiagramNode): single-node drags
-  // only (a selection drag is always a move — see onNodeDragStop). Recomputed
-  // every frame but only PATCHED into the node copy when the target actually
-  // changes, the same one-or-two-boxes-touched shape as soleSelection. Handed
-  // to <ReactFlow> only when dropEnabled (see the spread below), not wired
-  // unconditionally: XYDrag.updateNodes only builds its per-frame
-  // getEventHandlerParams() call when onDrag/onNodeDrag/onSelectionDrag is
-  // present, so a notation without the feature — six of the seven today —
-  // must not hand one over, or every drag on every plane pays a frame of
-  // work it never asked for.
-  const onDragFrame: OnNodeDrag = (e, node, nodes) => {
-    const target =
-      nodes.length === 1 ? dropTargetFor(node.id, reactFlow.screenToFlowPosition(clientPointOf(e))) : undefined;
-    if (target === dropTargetRef.current) return;
-    dropTargetRef.current = target;
-    setRfNodes((prev) => withDropTarget(prev, target));
-  };
-  // Arrow keys (see useNudge). The step follows the snap grid when one is on,
-  // so a nudge lands on the same grid a drag would.
-  const nudge = useNudge({
-    enabled: !chromeless && !gestureCaptured,
-    step: props.snapGrid ?? NUDGE_STEP,
-    nodesRef: rfNodesRef,
-    applyMoves: (moves) =>
-      setRfNodes((nds) =>
-        applyNodeChanges(
-          Object.entries(moves).map(([id, position]) => ({ type: 'position' as const, id, position })),
-          nds,
-        ),
-      ),
-    commit: commitMoves,
+  useEditRequests({
+    editing,
+    edit,
+    derivedNodes,
+    setLabelEdit,
+    setNoteEdit,
+    setRfNodes,
+    selectOnAppearRef,
   });
-  // What align/distribute act on: the selection minus the nodes nothing may move
-  // (see `draggable` above). They are neither moved nor lined up against, so
-  // two fish nodes are no selection to arrange and the toolbar stays away.
-  const selectedIds = useMemo(
-    () => rfNodes.filter((n) => n.selected === true && n.draggable !== false).map((n) => n.id),
-    [rfNodes],
-  );
-  // Arrange buttons need somewhere for the result to land: edit mode has the
-  // host's command pipeline; view mode only the host's Save positions offer,
-  // so the published viewer (which passes neither) never shows them.
-  const canArrange = !chromeless && !gestureCaptured && (editing || props.onViewPositionsChange !== undefined);
-  const arrangeSelection = (fn: (boxes: Box[]) => Record<string, Delta>) => {
-    nudge.flush(); // a pending keyboard burst must land before this batch
-    const byId = new Map(rfNodesRef.current.map((n) => [n.id, n] as const));
-    const ids = dropDescendants(selectedIds, (id) => byId.get(id)?.parentId);
-    const boxes: Box[] = [];
-    for (const id of ids) {
-      const n = byId.get(id);
-      const abs = reactFlow.getInternalNode(id)?.internals.positionAbsolute;
-      const w = n?.measured?.width;
-      const h = n?.measured?.height;
-      if (n === undefined || abs === undefined || w === undefined || h === undefined) continue;
-      boxes.push({ id, x: abs.x, y: abs.y, w, h });
-    }
-    const positions: Positions = {};
-    for (const [id, d] of Object.entries(fn(boxes))) {
-      const n = byId.get(id)!;
-      positions[id] = { x: n.position.x + d.dx, y: n.position.y + d.dy };
-    }
-    if (Object.keys(positions).length === 0) return;
-    // Move at once: the commit re-derives the same positions a frame later,
-    // but only if the host's onNodesMoved is synchronous — React 18 then
-    // batches that re-derivation with this setRfNodes into one render. An
-    // async host would let the resync useLayoutEffect run in between and
-    // briefly snap the boxes back to their pre-arrange positions.
-    setRfNodes((nds) =>
-      applyNodeChanges(
-        Object.entries(positions).map(([id, position]) => ({ type: 'position' as const, id, position })),
-        nds,
-      ),
-    );
-    commitMoves(positions);
-  };
+  const commitMoves = useCommitMoves({
+    editing,
+    edit,
+    rfNodesRef,
+    containerBasesRef,
+    containerShiftsRef,
+    arrangedRef,
+    setViewPositions,
+  });
+  const { nudge, selectedIds, canArrange, arrangeSelection } = useNudgeAndArrange({
+    editing,
+    chromeless,
+    gestureCaptured,
+    savesViewPositions: props.onViewPositionsChange !== undefined,
+    snapGrid: props.snapGrid,
+    reactFlow,
+    rfNodes,
+    rfNodesRef,
+    setRfNodes,
+    commitMoves,
+  });
+  const drag = useNodeDragging({
+    editing,
+    edit,
+    model: props.model,
+    plane: props.plane,
+    profile,
+    reactFlow,
+    rfNodesRef,
+    setRfNodes,
+    allNodesRef,
+    arrangedRef,
+    flushNudge: nudge.flush,
+    commitMoves,
+  });
   // Resync must not wipe flags React Flow owns on its copy — selection drives
   // the image-node resizer, and a selection click itself re-renders the app,
   // recomputing derivedNodes in the same tick.
   useLayoutEffect(() => {
     // ...except a claim left by a label request whose node had not been laid out
-    // yet (see that effect above): the first resync that carries the node hands
+    // yet (see useEditRequests): the first resync that carries the node hands
     // it the selection, so the ring and the quick-add button land on the box the caret
     // is in. Read before the updater so the ref is cleared exactly once.
     // The claim is still checked against the BOXES: a label request always names
@@ -1328,93 +809,16 @@ function Inner(props: DiagramViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nudge.pendingRef is a stable useRef identity read through .current; derivedNodes is left out because allNodes is derived from it and changes with it (depending on both would only run this twice)
   }, [allNodes]);
 
-  // Populate the host's imperative layout ref (auto-layout toggle). Functions
-  // read refs so the api object stays stable while always returning current data.
-  useEffect(() => {
-    const ref = props.layoutApiRef;
-    if (ref === undefined) return;
-    ref.current = {
-      // External stubs (compiled.externals) are placeholders for an off-frame
-      // node while drilled — not real nodes in the model — so writing their
-      // `__ext__:` ids into the layout overlay would corrupt it for every
-      // other view of the same plane. Drop them from the snapshot. Notes
-      // go the same way: a note's place is an offset in `layout.notes`, so a
-      // freeze that wrote its `note:` id into `layout.planes` would save a
-      // phantom box there for good.
-      snapshotPositions: () =>
-        Object.fromEntries(
-          rfNodesRef.current
-            .filter((n) => !(compiledRef.current.externals?.has(n.id) ?? false) && !isNoteId(n.id))
-            .map((n) => [n.id, { x: n.position.x, y: n.position.y }]),
-        ),
-      autoPositions: () =>
-        geometryRef.current === null
-          ? {}
-          : Object.fromEntries([...geometryRef.current].map(([id, g]) => [id, { x: g.x, y: g.y }])),
-      viewportCenter: () => {
-        const rect = wrapperRef.current?.getBoundingClientRect();
-        return rect === undefined
-          ? undefined
-          : reactFlow.screenToFlowPosition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-      },
-      nodeBounds: (id) => {
-        const n = reactFlow.getInternalNode(id);
-        if (n === undefined) return undefined;
-        return { ...n.internals.positionAbsolute, width: n.measured.width ?? 0, height: n.measured.height ?? 0 };
-      },
-      contentBounds: () => {
-        const nodes = reactFlow.getNodes();
-        const nodeBounds = nodes.length === 0 ? undefined : reactFlow.getNodesBounds(nodes);
-        // Union: neither a scribble outside the boxes nor anything drawn past
-        // them — a bowed edge, a loop badge, an icon's caption (see
-        // overhangBounds) — may be cropped from the PNG.
-        return unionBounds([
-          nodeBounds,
-          strokesBounds(strokesRef.current),
-          overhangBounds(wrapperRef.current, (p) => reactFlow.screenToFlowPosition(p, { snapToGrid: false })),
-        ]);
-      },
-      fitView: (padding = 0.06) => {
-        const pad =
-          typeof padding === 'number'
-            ? padding
-            : Object.fromEntries(Object.entries(padding).map(([k, v]) => [k, `${v}px`]));
-        // Fit the CONTENT box (nodes ∪ strokes), not React Flow's node-only
-        // fitView. Same getViewportForBounds underneath, over bounds taken from
-        // the same node lookup fitView reads (the instance getNodesBounds, which
-        // resolves a child's parent-relative position to an absolute one), so a
-        // stroke-less diagram lands on the viewport fitView would have chosen.
-        const bounds = ref.current?.contentBounds();
-        const rect = wrapperRef.current?.getBoundingClientRect();
-        if (bounds !== undefined && rect !== undefined && rect.width > 0 && rect.height > 0) {
-          void reactFlow.setViewport(getViewportForBounds(bounds, rect.width, rect.height, MIN_ZOOM, MAX_ZOOM, pad));
-          return;
-        }
-        void reactFlow.fitView({ padding: pad });
-      },
-      legendReserve: () => legendReserveRef.current,
-      exportPng: async (opts) => {
-        const el = wrapperRef.current?.querySelector<HTMLElement>('.react-flow');
-        const bounds = ref.current?.contentBounds();
-        if (el === null || el === undefined || bounds === undefined) return null;
-        const frame = exportFrame(bounds, opts);
-        const before = reactFlow.getViewport();
-        // Move the content to 1:1 inside a frame cut to its size, let the
-        // viewport-driven layers (drawings, canvas overlays) catch up, then clone.
-        await reactFlow.setViewport(frame.viewport);
-        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-        try {
-          return await captureCanvas(el, frame);
-        } finally {
-          void reactFlow.setViewport(before);
-        }
-      },
-    };
-    return () => {
-      ref.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- legendReserveRef and geometryRef come from hooks, so the rule cannot see they are stable useRef identities read through .current (rfNodesRef/strokesRef are local refs the rule already exempts)
-  }, [props.layoutApiRef, reactFlow]);
+  useLayoutApi({
+    layoutApiRef: props.layoutApiRef,
+    reactFlow,
+    rfNodesRef,
+    compiledRef,
+    geometryRef,
+    wrapperRef,
+    strokesRef,
+    legendReserveRef,
+  });
 
   // The per-edge data channel inputs, as one object the cached builder keys
   // its identity on (see build-data.ts) — same stability contract as the node
@@ -1610,7 +1014,7 @@ function Inner(props: DiagramViewProps) {
       <NoteStateContext.Provider value={noteState}>
         <div
           ref={wrapperRef}
-          className={`dg-canvas${props.chrome === false ? ' dg-no-chrome' : ''}${editing ? ' dg-mode-edit' : ''}${!editing && altHeld ? ' dg-alt-move' : ''}${dragging ? ' dg-dragging' : ''}${
+          className={`dg-canvas${props.chrome === false ? ' dg-no-chrome' : ''}${editing ? ' dg-mode-edit' : ''}${!editing && altHeld ? ' dg-alt-move' : ''}${drag.dragging ? ' dg-dragging' : ''}${
             preset.id !== 'clean' ? ` dg-style-${preset.id}` : ''
           }${preset.rough !== undefined ? ' dg-style-rough' : ''}${preset.fontFamily !== undefined ? ' dg-style-font' : ''}${
             profile.className !== undefined ? ' ' + profile.className : ''
@@ -1776,155 +1180,7 @@ function Inner(props: DiagramViewProps) {
             onReconnectEnd={() => {
               reconnectEndRef.current = null;
             }}
-            // 'remove' stays out: element existence belongs to the model. The
-            // delete key reaches the host through onDelete below instead — letting
-            // React Flow remove locally would only ghost-delete until the next
-            // model rebuild resurrected the elements.
-            //
-            // Guides: a single dragged node snaps to its siblings' edges and
-            // centres (see snapDragChanges). Grid snapping already happened inside
-            // React Flow's drag handler, so a guide in reach beats the grid.
-            onNodesChange={(changes: NodeChange[]) => {
-              const snapped = snapDragFrame(
-                changes,
-                {
-                  nodes: rfNodesRef.current,
-                  absoluteOf: (id) => reactFlow.getInternalNode(id)?.internals.positionAbsolute,
-                },
-                GUIDE_THRESHOLD_PX / reactFlow.getZoom(),
-                snapMemoRef,
-              );
-              setGuides((g) => (g.length === 0 && snapped.lines.length === 0 ? g : snapped.lines));
-              // 'remove' stays out (see above); so does an expandParent expansion
-              // that was not asked for by a drag (see expand-parent.ts).
-              const kept = withoutMeasuredExpansion(snapped.changes, draggingRef.current).filter(
-                (c) => c.type !== 'remove',
-              );
-              // Advanced in step with the state, not left to the next render: a
-              // gesture's last change and onNodeDragStop arrive in the same task,
-              // and the commit below reads the final on-screen positions from here.
-              rfNodesRef.current = applyNodeChanges(kept, rfNodesRef.current);
-              setRfNodes((nds) => applyNodeChanges(kept, nds));
-            }}
-            // A pointer drag must not race a pending keyboard burst.
-            onNodeDragStart={() => {
-              nudge.flush();
-              draggingRef.current = true;
-              setDragging(true);
-            }}
-            // onDragFrame (defined above, next to dropEnabled) is spread in, not
-            // just conditionally invoked from inside an always-present handler —
-            // React Flow's own `onDrag || onNodeDrag || onSelectionDrag` presence
-            // check (XYDrag.updateNodes) needs the KEY missing, not merely a
-            // no-op function sitting behind it, or it still does the per-frame
-            // work of building drag params to hand a no-op.
-            {...(dropEnabled ? { onNodeDrag: onDragFrame } : {})}
-            // React Flow hands over every node the gesture moved (a selection drags
-            // as one), so a multi-node drag lands as a single batch.
-            //
-            // Positions come from OUR node copy, not from the event: for a child
-            // with expandParent the event carries XYDrag's raw position, which is
-            // neither clamped to the (moving) parent nor guide-snapped.
-            onNodeDragStop={(e, _node, nodes) => {
-              draggingRef.current = false;
-              setDragging(false);
-              // Clear the drag-over outline regardless of outcome — both copies,
-              // same reason onNodesChange keeps the ref in step: commitMoves
-              // below reads rfNodesRef synchronously, in this same task.
-              if (dropTargetRef.current !== undefined) {
-                dropTargetRef.current = undefined;
-                rfNodesRef.current = withDropTarget(rfNodesRef.current, undefined);
-                setRfNodes((prev) => withDropTarget(prev, undefined));
-              }
-              const now = new Map(rfNodesRef.current.map((n) => [n.id, n.position] as const));
-              // The arithmetic (and why notes and boxes land in different places)
-              // lives in note-drag.ts, where it is testable without a pointer.
-              const { notes, boxes } = splitNoteDrag(nodes, now);
-              for (const n of notes) edit?.onNoteMoved?.(n.target, n.offset);
-
-              // A single dragged box may be a DROP instead of a move: reported
-              // to the host and kept out of commitMoves. Multi-node drags are
-              // always moves (see the plan's rulings) — dropTargetFor is only
-              // ever asked about ONE box here, same as the outline above.
-              const skip = new Set<string>();
-              const boxIds = Object.keys(boxes);
-              if (boxIds.length === 1 && edit?.onDropInto !== undefined && profile.node?.dropTarget !== undefined) {
-                const id = boxIds[0]!;
-                const targetId = dropTargetFor(id, reactFlow.screenToFlowPosition(clientPointOf(e)));
-                const draggedAbs =
-                  targetId !== undefined ? reactFlow.getInternalNode(id)?.internals.positionAbsolute : undefined;
-                const targetAbs =
-                  targetId !== undefined ? reactFlow.getInternalNode(targetId)?.internals.positionAbsolute : undefined;
-                if (targetId !== undefined && draggedAbs !== undefined && targetAbs !== undefined) {
-                  edit.onDropInto(id, targetId, { x: draggedAbs.x - targetAbs.x, y: draggedAbs.y - targetAbs.y });
-                  skip.add(id);
-                }
-              }
-
-              // Snap back: a node the notation drags only to be dropped (the
-              // plan's actors) is never reported as moved — reset to the spot
-              // the layout laid it at, whether or not this gesture reported a
-              // drop (an actor always returns to the roster after a drag).
-              const resets: Positions = {};
-              const snapsBack = profile.node?.snapsBack;
-              if (snapsBack !== undefined) {
-                for (const id of boxIds) {
-                  const modelNode = props.model.nodes.find((n) => n.id === id);
-                  if (modelNode === undefined || !snapsBack(modelNode)) continue;
-                  skip.add(id);
-                  const pos = allNodesRef.current.find((n) => n.id === id)?.position;
-                  if (pos !== undefined) resets[id] = pos;
-                }
-              }
-
-              // An activity lane has no position of its own — its band is stacked
-              // from containment order (arrangeActivityFrames) — so dragging one
-              // is a reorder: where its middle lands among its sibling bands says
-              // how many slots it moves. It snaps back into a band either way;
-              // the reorder, if any, restacks the frame on the model change.
-              if (boxIds.length === 1 && edit?.onMoveLane !== undefined) {
-                const id = boxIds[0]!;
-                const rf = rfNodesRef.current.find((n) => n.id === id);
-                const frameId = rf?.parentId;
-                if (
-                  rf !== undefined &&
-                  frameId !== undefined &&
-                  (rf.data as { typeId?: string }).typeId === ACTIVITY_LANE_TYPE
-                ) {
-                  const arranged = arrangedRef.current;
-                  const lanes = rfNodesRef.current
-                    .filter(
-                      (n) => n.parentId === frameId && (n.data as { typeId?: string }).typeId === ACTIVITY_LANE_TYPE,
-                    )
-                    .flatMap((n) => {
-                      const g = arranged?.get(n.id);
-                      return g === undefined ? [] : [{ id: n.id, y: g.y, height: g.height }];
-                    });
-                  const offset = laneDropOffset(lanes, id, rf.position.y);
-                  skip.add(id);
-                  const pos = allNodesRef.current.find((n) => n.id === id)?.position;
-                  if (pos !== undefined) resets[id] = pos;
-                  if (offset !== 0) edit.onMoveLane(frameId, id, offset);
-                }
-              }
-
-              if (Object.keys(resets).length > 0) {
-                const changes = Object.entries(resets).map(([id, position]) => ({
-                  type: 'position' as const,
-                  id,
-                  position,
-                }));
-                rfNodesRef.current = applyNodeChanges(changes, rfNodesRef.current);
-                setRfNodes((nds) => applyNodeChanges(changes, nds));
-              }
-
-              // commitMoves early-returns on an empty map, so a note-only (or
-              // fully reported/snapped-back) drag never reaches the host's move
-              // pipeline at all.
-              commitMoves(
-                skip.size === 0 ? boxes : Object.fromEntries(Object.entries(boxes).filter(([id]) => !skip.has(id))),
-              );
-            }}
+            {...drag.handlers}
             onConnect={(conn) => {
               if (conn.source !== null && conn.target !== null)
                 edit?.onConnect?.(conn.source, conn.target, conn.sourceHandle, conn.targetHandle);
@@ -2047,7 +1303,7 @@ function Inner(props: DiagramViewProps) {
               onErase={(id) => edit?.onDeleteStroke?.(id)}
             />
             <LaserLayer trails={laser.trails} live={laser.live} />
-            <GuidesLayer lines={guides} />
+            <GuidesLayer lines={drag.guides} />
             {canArrange && (
               <SelectionToolbar
                 ids={selectedIds}

@@ -3310,3 +3310,163 @@ describe('DiagramView theme switch', () => {
     expect(screen.queryByLabelText(/Switch to (dark|light) theme/)).toBeNull();
   });
 });
+
+describe('what a drag reports when it ends on a lane or a note', () => {
+  type RfNode = { id: string; position: { x: number; y: number }; data: Record<string, unknown> };
+  const nodeOf = (id: string): RfNode => dragCapture.instance.getNodes().find((n: RfNode) => n.id === id);
+
+  /** the node exists and has been measured — safe to read positions off */
+  const settle = (container: HTMLElement, id: string) =>
+    waitFor(() => {
+      if (container.querySelector(`.react-flow__node[data-id="${id}"]`) === null) throw new Error(`${id} not yet`);
+      if (dragCapture.instance?.getInternalNode(id)?.internals.positionAbsolute === undefined)
+        throw new Error(`${id} not measured`);
+    });
+
+  /** one gesture through DiagramView's own handlers: every node in `to` moves
+   * there, then the drag stops with `to`'s first node as the one under the pointer */
+  async function drag(to: Record<string, { x: number; y: number }>) {
+    const ids = Object.keys(to);
+    act(() =>
+      dragCapture.props['onNodesChange'](ids.map((id) => ({ type: 'position', id, position: to[id], dragging: true }))),
+    );
+    const nodes = await waitFor(() =>
+      ids.map((id) => {
+        const n = nodeOf(id);
+        if (n === undefined || n.position.x !== to[id]!.x || n.position.y !== to[id]!.y)
+          throw new Error('not applied yet');
+        return n;
+      }),
+    );
+    act(() => dragCapture.props['onNodeDragStop']({ clientX: 0, clientY: 0 }, nodes[0], nodes));
+  }
+
+  /** a frame with two lanes, each holding one action */
+  function laneModel() {
+    const m = model('lanes');
+    const act = m.activity('flow');
+    act.lane('a', { name: 'A' }).action('act1', 'Do it');
+    act.lane('b', { name: 'B' }).action('act2', 'Then this');
+    return m.toJSON();
+  }
+
+  it('a lane dropped below its neighbour reports the reorder, returns to its band, and is no move', async () => {
+    const onNodesMoved = vi.fn();
+    const onMoveLane = vi.fn();
+    const { container } = render(<DiagramView model={laneModel()} mode="edit" edit={{ onNodesMoved, onMoveLane }} />);
+    await settle(container, 'a');
+    await settle(container, 'b');
+    const before = nodeOf('a').position;
+    await drag({ a: { x: before.x, y: nodeOf('b').position.y + 1000 } });
+
+    expect(onMoveLane).toHaveBeenCalledTimes(1);
+    expect(onMoveLane).toHaveBeenCalledWith('flow', 'a', 1);
+    expect(onNodesMoved).not.toHaveBeenCalled();
+    expect(nodeOf('a').position).toEqual(before);
+  });
+
+  it('a lane nudged within its own band reports nothing and returns to it', async () => {
+    const onNodesMoved = vi.fn();
+    const onMoveLane = vi.fn();
+    const { container } = render(<DiagramView model={laneModel()} mode="edit" edit={{ onNodesMoved, onMoveLane }} />);
+    await settle(container, 'a');
+    const before = nodeOf('a').position;
+    await drag({ a: { x: before.x + 7, y: before.y + 3 } });
+
+    expect(onMoveLane).not.toHaveBeenCalled();
+    expect(onNodesMoved).not.toHaveBeenCalled();
+    expect(nodeOf('a').position).toEqual(before);
+  });
+
+  it('a note dragged with a box reports its offset from its anchor first, and only the box as a move', async () => {
+    // The box is the boundary, which no line touches: moving an end of the
+    // threatened flow would move its badge, and every note is placed afresh
+    // from the badges mid-gesture.
+    const calls: string[] = [];
+    const onNoteMoved = vi.fn(() => calls.push('note'));
+    const onNodesMoved = vi.fn(() => calls.push('move'));
+    const alone: DiagramModel = { ...threatened, containment: [] };
+    const { container } = render(
+      <DiagramView model={alone} layout={allOpen()} mode="edit" edit={{ onNoteMoved, onNodesMoved }} />,
+    );
+    await settle(container, 'note:node:web');
+    await settle(container, 'dmz');
+    const note = nodeOf('note:node:web');
+    const anchor = note.data['anchor'] as { x: number; y: number };
+    const dmz = nodeOf('dmz').position;
+    const noteTo = { x: note.position.x + 30.4, y: note.position.y + 20.6 };
+    const dmzTo = { x: dmz.x + 40, y: dmz.y };
+    await drag({ 'note:node:web': noteTo, dmz: dmzTo });
+
+    expect(onNoteMoved).toHaveBeenCalledTimes(1);
+    expect(onNoteMoved).toHaveBeenCalledWith(
+      { node: 'web' },
+      { dx: Math.round(noteTo.x - anchor.x), dy: Math.round(noteTo.y - anchor.y) },
+    );
+    expect(onNodesMoved).toHaveBeenCalledTimes(1);
+    expect(onNodesMoved).toHaveBeenCalledWith({ dmz: dmzTo }, { dmz: { dx: 40, dy: 0 } });
+    expect(calls).toEqual(['note', 'move']);
+  });
+});
+
+describe('a rename request for a node the layout has not placed yet', () => {
+  it('keeps the selection where it is until the node lands, then selects it with its name open', async () => {
+    // The host adds a node and asks for its name in one render; the layout
+    // reaches it later, so the request leaves a claim the resync takes.
+    const m = containerEndpointModel();
+    const { rerender } = render(<DiagramView model={m} mode="edit" pins={{ sys: 'expanded' }} edit={{}} />);
+    fireEvent.click((await screen.findByText('gw')).closest('.react-flow__node') as HTMLElement);
+    await waitFor(() => expect(document.querySelector('.react-flow__node[data-id="gw"].selected')).not.toBeNull());
+
+    const added: DiagramModel = { ...m, nodes: [...m.nodes, { id: 'fresh', name: 'fresh', type: 'service' }] };
+    rerender(
+      <DiagramView
+        model={added}
+        mode="edit"
+        pins={{ sys: 'expanded' }}
+        edit={{ editLabelRequest: { id: 'fresh', nonce: 1 } }}
+      />,
+    );
+    expect(document.querySelector('.react-flow__node[data-id="fresh"]')).toBeNull();
+    expect(document.querySelector('.react-flow__node[data-id="gw"].selected')).not.toBeNull();
+
+    await waitFor(() => expect(document.querySelector('.react-flow__node[data-id="fresh"].selected')).not.toBeNull());
+    expect(document.querySelector('.react-flow__node[data-id="gw"].selected')).toBeNull();
+    expect((await screen.findByLabelText('Edit text')).textContent).toBe('fresh');
+  });
+});
+
+describe('align right after an arrow key', () => {
+  it('lands the pending nudge first, then the aligned batch', async () => {
+    const onNodesMoved = vi.fn();
+    const cmdRef: { current: CanvasCommands | null } = { current: null };
+    const m = model('t-align-after-nudge');
+    m.node('a', { name: 'A' });
+    m.node('b', { name: 'B' });
+    const json = m.toJSON();
+    // b saved down and to the right of a, so aligning left has something to move
+    const layout: LayoutOverlay = {
+      version: 1,
+      planes: { [layoutPlaneKey(json, undefined)]: { a: { x: 0, y: 0 }, b: { x: 300, y: 200 } } },
+    };
+    render(<DiagramView model={json} layout={layout} mode="edit" edit={{ onNodesMoved }} canvasCommandsRef={cmdRef} />);
+    const a = await screen.findByText('A');
+    fireEvent.click(a);
+    fireEvent.keyDown(window, { key: 'Shift', code: 'ShiftLeft' });
+    fireEvent.click(screen.getByText('B'), { shiftKey: true });
+    fireEvent.keyUp(window, { key: 'Shift', code: 'ShiftLeft' });
+    await waitFor(() => expect(document.querySelectorAll('.react-flow__node.selected').length).toBe(2));
+
+    fireEvent.keyDown(a, { key: 'ArrowDown' });
+    expect(onNodesMoved).not.toHaveBeenCalled(); // the nudge waits out its idle window
+    let acted = false;
+    act(() => {
+      acted = cmdRef.current!.align('left');
+    });
+    expect(acted).toBe(true);
+    expect(onNodesMoved).toHaveBeenCalledTimes(2);
+    const [nudged, nudgeDeltas] = onNodesMoved.mock.calls[0]! as [object, Record<string, { dx: number; dy: number }>];
+    expect(Object.keys(nudged).sort()).toEqual(['a', 'b']);
+    expect(nudgeDeltas['a']).toEqual({ dx: 0, dy: NUDGE_STEP });
+  });
+});

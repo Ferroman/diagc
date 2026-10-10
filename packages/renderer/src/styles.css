@@ -2352,7 +2352,7 @@ button.dg-role-chip {
   outline-offset: 2px;
 }
 /* a drop target while a single actor/plain-node drag hovers it (data-drop-target,
-   set from DiagramView's per-frame hit test) — dashed, not solid, so a target in
+   set from useNodeDragging's per-frame hit test) — dashed, not solid, so a target in
    waiting reads differently from the selected actor's solid hit mark above. */
 .dg-notation-plan [data-drop-target] {
   outline: 2px dashed var(--dg-accent);

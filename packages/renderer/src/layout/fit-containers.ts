@@ -40,7 +40,7 @@ const EPSILON = 0.5;
  * against the new origin — nothing moves on screen — and the move is reported
  * in `shifts`: a saved child position is relative to the container's UNSHIFTED
  * origin, and whoever turns an on-screen position back into a saved one has to
- * undo it (see DiagramView's commitMoves).
+ * undo it (see useCommitMoves).
  *
  * `skip` names containers some other pass owns (activity lanes and frames are
  * banded by arrangeActivityFrames).

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { dropTargetAt, type DropRect } from './plan-drop';
+import type { Node } from '@xyflow/react';
+import { dropExclusions, dropTargetAt, type DropRect } from './plan-drop';
 
 const NONE: ReadonlySet<string> = new Set();
 
@@ -28,5 +29,23 @@ describe('dropTargetAt', () => {
 
   it('no containing rect returns undefined', () => {
     expect(dropTargetAt({ x: 500, y: 500 }, [parent, child], NONE)).toBeUndefined();
+  });
+});
+
+describe('dropExclusions', () => {
+  // zone a holds task, which holds sub, which holds leaf; zone b is unrelated
+  const node = (id: string, parentId?: string): Node => ({ id, position: { x: 0, y: 0 }, data: {}, parentId });
+  const nodes = [node('a'), node('task', 'a'), node('sub', 'task'), node('leaf', 'sub'), node('b'), node('other', 'a')];
+
+  it('excludes the dragged box, its parent and every descendant, but not a sibling', () => {
+    expect([...dropExclusions(nodes, 'task', [])].sort()).toEqual(['a', 'leaf', 'sub', 'task']);
+  });
+
+  it('adds what the notation says the box is related to already', () => {
+    expect(dropExclusions(nodes, 'task', ['b']).has('b')).toBe(true);
+  });
+
+  it('excludes only itself for a top-level box with no children', () => {
+    expect([...dropExclusions(nodes, 'b', [])]).toEqual(['b']);
   });
 });

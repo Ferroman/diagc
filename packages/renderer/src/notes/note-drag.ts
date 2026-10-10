@@ -19,7 +19,7 @@ export interface NoteMove {
  * phantom node there — nothing in the model answers to a `note:` id.
  *
  * Both spaces are the same: a note is parented like the element it annotates
- * (see DiagramView's note derivation), so its position and its anchor are both
+ * (see deriveNoteNodes), so its position and its anchor are both
  * parent-relative and the difference is the offset, whatever container the
  * element sits in. Rounded because the overlay is a hand-editable file and a
  * pointer gesture has no business writing 37.000000000001 into it.
