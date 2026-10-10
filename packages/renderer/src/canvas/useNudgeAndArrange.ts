@@ -1,6 +1,6 @@
 import { useMemo, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { applyNodeChanges, type Node, type ReactFlowInstance } from '@xyflow/react';
-import { dropDescendants, type Delta } from './arrange';
+import { alignBoxes, distributeBoxes, dropDescendants, type AlignMode, type Delta } from './arrange';
 import type { Box } from './box';
 import { NUDGE_STEP, useNudge, type Positions } from './useNudge';
 
@@ -26,6 +26,10 @@ export interface NudgeAndArrange {
   selectedIds: string[];
   canArrange: boolean;
   arrangeSelection: (fn: (boxes: Box[]) => Record<string, Delta>) => void;
+  /** line the selection up (the toolbar's and the host's command) */
+  alignSelection: (mode: AlignMode) => void;
+  /** space the selection evenly */
+  distributeSelection: (axis: 'x' | 'y') => void;
 }
 
 /** The arrow keys, and align/distribute over the selection. */
@@ -90,5 +94,7 @@ export function useNudgeAndArrange(input: NudgeAndArrangeInput): NudgeAndArrange
     );
     commitMoves(positions);
   };
-  return { nudge, selectedIds, canArrange, arrangeSelection };
+  const alignSelection = (mode: AlignMode) => arrangeSelection((boxes) => alignBoxes(boxes, mode));
+  const distributeSelection = (axis: 'x' | 'y') => arrangeSelection((boxes) => distributeBoxes(boxes, axis));
+  return { nudge, selectedIds, canArrange, arrangeSelection, alignSelection, distributeSelection };
 }

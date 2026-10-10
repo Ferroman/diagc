@@ -1,14 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import {
-  Background,
-  ConnectionMode,
-  ControlButton,
-  Controls,
-  Panel,
-  ReactFlow,
-  ReactFlowProvider,
-  useReactFlow,
-} from '@xyflow/react';
+import { Background, ConnectionMode, Panel, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
   countAnchored,
@@ -23,19 +14,18 @@ import { Breadcrumbs } from './Breadcrumbs';
 import { edgeTypes, nodeTypes } from './adapter';
 import { NoteStateContext } from '../notes/note-state';
 import { DrawingsLayer } from '../drawings/DrawingsLayer';
-import { GitLanesOverlay } from '../overlays/GitLanesOverlay';
-import { alignBoxes, distributeBoxes } from './arrange';
 import { GuidesLayer } from './GuidesLayer';
 import { SelectionToolbar } from './SelectionToolbar';
 import { Legend } from '../legend/Legend';
-import { LoopLabelLayer } from '../loops/LoopLabelLayer';
 import { LoopHighlightContext } from '../loops/loop-highlight';
-import { OrderBandsOverlay } from '../overlays/OrderBandsOverlay';
 import { stylePreset } from '../sketch/stylePresets';
-import { TimeAxisOverlay } from '../overlays/TimeAxisOverlay';
 import { useCanvasGestures } from '../drawings/useCanvasGestures';
 import { useCanvasClicks } from './useCanvasClicks';
 import { useDropAndPaste } from './useDropAndPaste';
+import { canvasToggles, toggleOf } from './canvas-toggles';
+import { useCanvasCommands } from './useCanvasCommands';
+import { CanvasControls } from './CanvasControls';
+import { CanvasOverlays } from './CanvasOverlays';
 import { useCompiledView } from './useCompiledView';
 import { useNotation } from './useNotation';
 import { useViewModeMoves } from './useViewModeMoves';
@@ -58,12 +48,7 @@ import '../styles.css';
 import '@fontsource/kalam/400.css';
 import '@fontsource/kalam/700.css';
 
-import {
-  DEFAULT_ON_NODE_META_KEYS,
-  type CanvasCommands,
-  type CanvasKeyHint,
-  type DiagramViewProps,
-} from './view-types';
+import { DEFAULT_ON_NODE_META_KEYS, type DiagramViewProps } from './view-types';
 
 function Inner(props: DiagramViewProps) {
   const reactFlow = useReactFlow();
@@ -295,7 +280,7 @@ function Inner(props: DiagramViewProps) {
     arrangedRef,
     setViewPositions,
   });
-  const { nudge, selectedIds, canArrange, arrangeSelection } = useNudgeAndArrange({
+  const arrange = useNudgeAndArrange({
     editing,
     chromeless,
     gestureCaptured,
@@ -307,6 +292,7 @@ function Inner(props: DiagramViewProps) {
     setRfNodes,
     commitMoves,
   });
+  const { nudge, selectedIds, canArrange } = arrange;
   const drag = useNodeDragging({
     editing,
     edit,
@@ -380,76 +366,24 @@ function Inner(props: DiagramViewProps) {
     loopHighlight,
   });
 
-  // The host's keyboard (see DiagramViewProps.canvasCommandsRef). Rebuilt and
-  // re-assigned on every commit rather than read through refs like the layout
-  // api: every entry closes over this render's state (is there a legend? how
-  // many boxes are selected?), and an assignment per render is cheaper than
-  // mirroring ten values into refs to keep one object stable.
-  const canvasCommands: CanvasCommands = {
-    toggleLaser: () => {
-      setLaserOn((v) => !v);
-      return true;
-    },
-    toggleDim: () => {
-      setFocusConnected((v) => !v);
-      return true;
-    },
-    toggleLegend: () => {
-      if (legendRowList.length === 0) return false;
-      setShowLegend((v) => !v);
-      return true;
-    },
-    toggleDrawings: () => {
-      if (strokes.length === 0 || drillRoot !== undefined) return false;
-      setDrawingsVisible((v) => !v);
-      return true;
-    },
-    toggleLoops: () => {
-      if (!cld) return false;
-      // same order as the button: hiding removes the badges you'd click to un-highlight
-      if (showLoops) loopHighlight.clear();
-      setShowLoops((v) => !v);
-      return true;
-    },
-    zoomIn: () => {
-      void reactFlow.zoomIn();
-      return true;
-    },
-    zoomOut: () => {
-      void reactFlow.zoomOut();
-      return true;
-    },
-    fitView: () => {
-      const api = props.layoutApiRef?.current;
-      if (api !== undefined && api !== null) api.fitView();
-      else void reactFlow.fitView();
-      return true;
-    },
-    // The counts are SelectionToolbar's own: it shows itself from two boxes and
-    // enables Distribute from three.
-    align: (mode) => {
-      if (!canArrange || selectedIds.length < 2) return false;
-      arrangeSelection((boxes) => alignBoxes(boxes, mode));
-      return true;
-    },
-    distribute: (axis) => {
-      if (!canArrange || selectedIds.length < 3) return false;
-      arrangeSelection((boxes) => distributeBoxes(boxes, axis));
-      return true;
-    },
-  };
-  useEffect(() => {
-    const ref = props.canvasCommandsRef;
-    if (ref === undefined) return;
-    ref.current = canvasCommands;
-    return () => {
-      ref.current = null;
-    };
+  const toggles = canvasToggles({
+    dim: [focusConnected, setFocusConnected],
+    laser: [laserOn, setLaserOn],
+    drawings: [drawingsVisible, setDrawingsVisible],
+    legend: [showLegend, setShowLegend],
+    loops: [showLoops, setShowLoops],
+    drawingsOffered: strokes.length > 0 && drillRoot === undefined,
+    legendOffered: legendRowList.length > 0,
+    loopsOffered: cld,
+    clearLoopHighlight: loopHighlight.clear,
   });
-  const keyHint = (k: CanvasKeyHint): string => {
-    const h = props.keyHints?.[k] ?? (k === 'laser' && props.builtinKeys !== false ? 'L' : undefined);
-    return h !== undefined && h !== '' ? ` (${h})` : '';
-  };
+  useCanvasCommands({
+    canvasCommandsRef: props.canvasCommandsRef,
+    layoutApiRef: props.layoutApiRef,
+    reactFlow,
+    toggles,
+    arrange,
+  });
 
   return (
     <LoopHighlightContext.Provider value={loopHighlight}>
@@ -533,8 +467,8 @@ function Inner(props: DiagramViewProps) {
             {canArrange && (
               <SelectionToolbar
                 ids={selectedIds}
-                onAlign={(mode) => arrangeSelection((boxes) => alignBoxes(boxes, mode))}
-                onDistribute={(axis) => arrangeSelection((boxes) => distributeBoxes(boxes, axis))}
+                onAlign={arrange.alignSelection}
+                onDistribute={arrange.distributeSelection}
               />
             )}
             <Breadcrumbs path={enteredPath} nameOf={(id) => nameOf.get(id) ?? id} onCrumb={exitTo} />
@@ -550,98 +484,32 @@ function Inner(props: DiagramViewProps) {
                   // row a button" from the handler alone, so a chrome-less host (the
                   // PNG export) must get no handler — or the export would carry a
                   // focusable control nothing can press.
-                  onToggleDrawings={props.chrome !== false ? () => setDrawingsVisible((v) => !v) : undefined}
+                  onToggleDrawings={props.chrome !== false ? toggleOf(toggles, 'drawings').flip : undefined}
                   icons={icons}
                   onMeasure={setLegendSize}
                 />
               </Panel>
             )}
             {props.chrome !== false && (
-              <Controls>
-                <ControlButton
-                  className={`dg-focus-toggle${focusConnected ? '' : ' dg-focus-toggle-off'}`}
-                  title={`${focusConnected ? 'Stop dimming unconnected on select' : 'Dim unconnected on select'}${keyHint('dim')}`}
-                  aria-label={focusConnected ? 'Stop dimming unconnected on select' : 'Dim unconnected on select'}
-                  aria-pressed={focusConnected}
-                  onClick={() => setFocusConnected((v) => !v)}
-                >
-                  ◎
-                </ControlButton>
-                <ControlButton
-                  className={`dg-laser-toggle${laserOn ? ' dg-laser-toggle-on' : ''}`}
-                  title={`${laserOn ? 'Laser pointer off' : 'Laser pointer'}${keyHint('laser')}`}
-                  aria-label="Laser pointer"
-                  aria-pressed={laserOn}
-                  onClick={() => setLaserOn((v) => !v)}
-                >
-                  ◉
-                </ControlButton>
-                {/* Gated on the drill root for the same reason the layer is: drilled in,
-              every stroke is hidden, so a switch that flips an invisible layer is
-              a control with nothing to show for it. */}
-                {strokes.length > 0 && drillRoot === undefined && (
-                  <ControlButton
-                    className={`dg-drawings-toggle${drawingsVisible ? '' : ' dg-drawings-toggle-off'}`}
-                    title={`${drawingsVisible ? 'Hide drawings' : 'Show drawings'}${keyHint('drawings')}`}
-                    aria-label={drawingsVisible ? 'Hide drawings' : 'Show drawings'}
-                    aria-pressed={drawingsVisible}
-                    onClick={() => setDrawingsVisible((v) => !v)}
-                  >
-                    ✎
-                  </ControlButton>
-                )}
-                {legendRowList.length > 0 && (
-                  <ControlButton
-                    className={`dg-legend-toggle-btn${showLegend ? '' : ' dg-legend-toggle-btn-off'}`}
-                    title={`${showLegend ? 'Hide legend' : 'Show legend'}${keyHint('legend')}`}
-                    aria-label={showLegend ? 'Hide legend' : 'Show legend'}
-                    aria-pressed={showLegend}
-                    onClick={() => setShowLegend((v) => !v)}
-                  >
-                    ▤
-                  </ControlButton>
-                )}
-                {cld && (
-                  <ControlButton
-                    className={`dg-loop-toggle${showLoops ? '' : ' dg-loop-toggle-off'}`}
-                    title={`${showLoops ? 'Hide loop badges' : 'Show loop badges'}${keyHint('loops')}`}
-                    aria-label={showLoops ? 'Hide loop badges' : 'Show loop badges'}
-                    aria-pressed={showLoops}
-                    onClick={() => {
-                      // hiding removes the badges you'd click to un-highlight, so drop
-                      // any active loop highlight on the way out
-                      if (showLoops) loopHighlight.clear();
-                      setShowLoops((v) => !v);
-                    }}
-                  >
-                    ↻
-                  </ControlButton>
-                )}
-                {/* Last in the cluster: it is the host's switch, not a property of the drawing. */}
-                {props.onToggleTheme !== undefined && (
-                  <ControlButton
-                    className="dg-theme-toggle"
-                    title={props.colorMode === 'dark' ? 'Light theme' : 'Dark theme'}
-                    aria-label={props.colorMode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-                    onClick={props.onToggleTheme}
-                  >
-                    {props.colorMode === 'dark' ? '☀' : '☾'}
-                  </ControlButton>
-                )}
-              </Controls>
+              <CanvasControls
+                toggles={toggles}
+                keyHints={props.keyHints}
+                builtinKeys={props.builtinKeys}
+                colorMode={props.colorMode}
+                onToggleTheme={props.onToggleTheme}
+              />
             )}
-            {showLoops && loopEdges !== null && placedGeometry !== null && (
-              <LoopLabelLayer edges={loopEdges} rough={preset.rough} nodeFilter={editing ? null : selectedNode} />
-            )}
-            {profile.canvasOverlay === 'git-lanes' && placedGeometry !== null && (
-              <GitLanesOverlay model={props.model} plane={props.plane} />
-            )}
-            {profile.canvasOverlay === 'order-bands' && placedGeometry !== null && (
-              <OrderBandsOverlay model={props.model} direction={flowDirection} />
-            )}
-            {profile.canvasOverlay === 'time-axis' && placedGeometry !== null && (
-              <TimeAxisOverlay model={props.model} plane={props.plane} today={props.today} />
-            )}
+            <CanvasOverlays
+              model={props.model}
+              plane={props.plane}
+              overlay={profile.canvasOverlay}
+              placed={placedGeometry !== null}
+              flowDirection={flowDirection}
+              today={props.today}
+              loopEdges={showLoops ? loopEdges : null}
+              rough={preset.rough}
+              loopNodeFilter={editing ? null : selectedNode}
+            />
           </ReactFlow>
         </div>
       </NoteStateContext.Provider>
