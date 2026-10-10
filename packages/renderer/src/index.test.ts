@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import * as entry from './index';
 
 describe('@diagc/renderer', () => {
-  // The values the studio, the viewer and the Obsidian plugin import. A name
-  // joins when an app imports it and leaves when the last one stops; the types
-  // they import are checked by typechecking the apps.
-  it('exports the values the apps import', () => {
+  // The values the studio, the viewer and the Obsidian plugin import, and the
+  // kind registry the renderer reference page builds. The types the apps import
+  // are checked by typechecking the apps; what the docs import, by
+  // packages/diagc/src/rendererApi.test.ts.
+  it('exports the values the apps and the docs import', () => {
     expect(Object.keys(entry).sort()).toEqual([
       'ACTIVITY_LAYOUT',
       'DEFAULT_TYPE_STYLES',
@@ -16,6 +17,7 @@ describe('@diagc/renderer', () => {
       'STYLE_PRESETS',
       'THEME_STORAGE_KEY',
       'applyTheme',
+      'createKindRegistry',
       'createTypeRegistry',
       'darkTheme',
       'isKnownStyle',

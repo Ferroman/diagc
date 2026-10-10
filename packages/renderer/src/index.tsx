@@ -1,7 +1,8 @@
-// What the apps import, and nothing else: the package is private, so a name no
-// app imports has no reader. A test imports from the module itself.
-export { applyTheme, darkTheme, lightTheme, THEME_STORAGE_KEY } from './theme';
-export { createTypeRegistry, DEFAULT_TYPE_STYLES } from './registry';
+// What the apps import and docs/reference/renderer.md shows, and nothing else: the
+// package is private, so a name neither uses has no reader. A test imports from
+// the module itself.
+export { applyTheme, darkTheme, lightTheme, THEME_STORAGE_KEY, type ThemeTokens } from './theme';
+export { createKindRegistry, createTypeRegistry, DEFAULT_TYPE_STYLES } from './registry';
 export { notationProfile } from './notations';
 export { DiagramView } from './canvas/DiagramView';
 export {
