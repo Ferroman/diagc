@@ -358,7 +358,10 @@ function Inner(props: DiagramViewProps) {
 
   // The per-node data channel inputs, as one object the cached builder keys
   // its identity on (see build-data.ts): while every field is referentially
-  // unchanged, the cached data objects are reused instead of rebuilt.
+  // unchanged, the cached data objects are reused instead of rebuilt. So the
+  // callbacks placed in it are stable: a fresh arrow per memo run would rebuild
+  // every node's data whenever an input the builder does not compare changed.
+  const endLabelEdit = useCallback(() => setLabelEdit(null), []);
   const nodeDataCtx = useMemo<NodeDataContext>(
     () => ({
       metaKeys,
@@ -371,7 +374,7 @@ function Inner(props: DiagramViewProps) {
       onEnterNode: enterNode,
       editing,
       labelEditingId: labelEdit?.kind === 'node' ? labelEdit.id : undefined,
-      endLabelEdit: () => setLabelEdit(null),
+      endLabelEdit,
       onRenameNode: edit?.onRenameNode,
       onSetNodeRich: edit?.onSetNodeRich,
       assetBase: props.assetBase,
@@ -398,6 +401,7 @@ function Inner(props: DiagramViewProps) {
       enterNode,
       editing,
       labelEdit,
+      endLabelEdit,
       edit?.onRenameNode,
       edit?.onSetNodeRich,
       props.assetBase,
@@ -668,7 +672,8 @@ function Inner(props: DiagramViewProps) {
 
   // The per-edge data channel inputs, as one object the cached builder keys
   // its identity on (see build-data.ts) — same stability contract as the node
-  // ctx above.
+  // ctx above, stable callbacks included.
+  const clearAddLabel = useCallback(() => setAddLabelAt(null), []);
   const edgeDataCtx = useMemo<EdgeDataContext>(
     () => ({
       kindRegistry,
@@ -680,7 +685,7 @@ function Inner(props: DiagramViewProps) {
       onAddThreat: edit?.onAddThreat,
       fixedSideRelation,
       pendingAdd: addLabelAt,
-      onPendingAddConsumed: () => setAddLabelAt(null),
+      onPendingAddConsumed: clearAddLabel,
       stylePreset: preset.rough !== undefined ? preset : undefined,
       notation: props.notation,
       routing,
@@ -704,6 +709,7 @@ function Inner(props: DiagramViewProps) {
       edit?.onAddThreat,
       fixedSideRelation,
       addLabelAt,
+      clearAddLabel,
       preset,
       props.notation,
       routing,

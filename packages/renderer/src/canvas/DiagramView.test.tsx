@@ -3660,3 +3660,21 @@ describe('what the canvas wrapper claims', () => {
     expect(gw.isConnected).toBe(true);
   });
 });
+
+describe('the data the canvas hands its nodes and edges', () => {
+  it('a style switch that leaves the hand-drawn look off keeps every node and edge data object', async () => {
+    const json = containerEndpointModel();
+    const { container, rerender } = render(<DiagramView model={json} mode="edit" edit={{}} styleId="clean" />);
+    await waitFor(() => expect(container.querySelector('.react-flow__edge')).not.toBeNull());
+    const dataOf = (key: 'nodes' | 'edges') =>
+      new Map((dragCapture.props[key] as { id: string; data: unknown }[]).map((x) => [x.id, x.data]));
+    const nodes = dataOf('nodes');
+    const edges = dataOf('edges');
+
+    rerender(<DiagramView model={json} mode="edit" edit={{}} styleId="blueprint" />);
+    expect(container.querySelector('.dg-canvas.dg-style-blueprint')).not.toBeNull();
+    expect(dataOf('nodes').size).toBe(nodes.size);
+    for (const [id, data] of dataOf('nodes')) expect(data).toBe(nodes.get(id));
+    for (const [id, data] of dataOf('edges')) expect(data).toBe(edges.get(id));
+  });
+});

@@ -604,6 +604,24 @@ describe('cached builder identity', () => {
     expect(buildNodeDataCached(n, linkCtx)).not.toBe(third);
   });
 
+  it('hits for a new context object whose every compared field is unchanged', () => {
+    const n = viewNode();
+    const ctx = nodeCtx({ endLabelEdit: () => {}, typeColors: { service: '#1565c0' } });
+    expect(buildNodeDataCached(n, { ...ctx })).toBe(buildNodeDataCached(n, ctx));
+    const e = viewEdge();
+    const ectx = edgeCtx({ editing: true, onPendingAddConsumed: () => {} });
+    expect(buildEdgeDataCached(e, { ...ectx })).toBe(buildEdgeDataCached(e, ectx));
+  });
+
+  it('keys the node cache on typeColors, which the colour reads', () => {
+    const n = viewNode();
+    const ctx = nodeCtx({ typeColors: { service: '#1565c0' } });
+    const blue = buildNodeDataCached(n, ctx);
+    const red = buildNodeDataCached(n, { ...ctx, typeColors: { service: '#c62828' } });
+    expect(red).not.toBe(blue);
+    expect(red.color).toBe('#c62828');
+  });
+
   it('reuses the edge data object while ctx inputs are unchanged', () => {
     const e = viewEdge();
     const ctx = edgeCtx({ editing: true });
