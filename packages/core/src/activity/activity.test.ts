@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { NODE_TYPES } from '../vocabulary';
-import { ACTIVITY_TYPES, isActivityChrome, isActivityType } from './activity';
+import { ACTIVITY_TYPES, isActivityBand, isActivityChrome, isActivityType } from './activity';
 
 describe('activity node types', () => {
   it('are all in the node vocabulary, in one run, frame first', () => {
@@ -13,6 +13,12 @@ describe('activity node types', () => {
     expect(ACTIVITY_TYPES.filter(isActivityChrome)).toEqual(['activity-frame', 'activity-lane', 'activity-region']);
     expect(isActivityChrome(undefined)).toBe(false);
     expect(isActivityChrome('branch')).toBe(false);
+  });
+
+  it('call the frame and a lane a band, and a region not', () => {
+    expect(ACTIVITY_TYPES.filter(isActivityBand)).toEqual(['activity-frame', 'activity-lane']);
+    expect(isActivityBand(undefined)).toBe(false);
+    expect(isActivityBand('branch')).toBe(false);
   });
 
   it('count any activity- type as one, a future one included', () => {

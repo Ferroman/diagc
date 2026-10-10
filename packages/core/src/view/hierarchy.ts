@@ -1,5 +1,5 @@
 import type { ContainmentEdge, DiagramModel, DiagramNode } from '../types';
-import { containmentOn, containmentPlaneOf } from '../planes';
+import { containmentOn, containmentPlaneOf, viewedPlane } from '../planes';
 
 export interface HierarchyIndex {
   parentsOf: Map<string, string[]>;
@@ -68,7 +68,7 @@ interface HideLists {
  * the plane does not declare it. */
 function hideLists(model: DiagramModel, plane: string | undefined, active: string | undefined): HideLists {
   const planes = model.planes ?? [];
-  const viewDef = plane !== undefined ? planes.find((p) => p.id === plane) : planes[0];
+  const viewDef = viewedPlane(planes, plane);
   const donorDef = active !== undefined ? planes.find((p) => p.id === active) : undefined;
   return {
     hides: new Set(viewDef?.hides ?? donorDef?.hides ?? []),

@@ -43,5 +43,10 @@ export const ACTIVITY_CHROME_TYPES: ReadonlySet<string> = new Set([
 export const isActivityChrome = (type: string | undefined): boolean =>
   type !== undefined && ACTIVITY_CHROME_TYPES.has(type);
 
+/** The chrome laid out as bands: the frame and the lanes it stacks. A region is
+ * chrome but not a band; it sits inside a lane. */
+export const isActivityBand = (type: string | undefined): boolean =>
+  type === ACTIVITY_FRAME_TYPE || type === ACTIVITY_LANE_TYPE;
+
 /** any type in the `activity-` namespace, a type this version does not know included */
 export const isActivityType = (type: string | undefined): boolean => type !== undefined && type.startsWith('activity-');

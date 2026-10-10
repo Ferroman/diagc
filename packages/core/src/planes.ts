@@ -10,13 +10,19 @@ export function defaultPlaneOf(model: DiagramModel): string | undefined {
   return (model.planes ?? [])[0]?.id;
 }
 
+/** The plane a view of `planeId` shows: the named plane, or the default plane when
+ * none is named. Undefined for an unknown id or a model without planes. Its
+ * containment may be another plane's (containmentPlaneOf). */
+export function viewedPlane(planes: readonly DiagramPlane[], planeId?: string): DiagramPlane | undefined {
+  return planeId !== undefined ? planes.find((p) => p.id === planeId) : planes[0];
+}
+
 /** Which plane's containment a view of `planeId` reads: the plane's own, or its
  * donor's when it borrows (`containmentOf`, one hop; chains are a validation
  * error). Omitted = the default plane. Undefined for an unknown id or a model
  * without planes. */
 export function containmentPlaneOf(model: DiagramModel, planeId?: string): string | undefined {
-  const planes = model.planes ?? [];
-  const plane = planeId !== undefined ? planes.find((p) => p.id === planeId) : planes[0];
+  const plane = viewedPlane(model.planes ?? [], planeId);
   return plane?.containmentOf ?? plane?.id;
 }
 

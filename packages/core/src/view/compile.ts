@@ -1,4 +1,5 @@
 import { BUILTIN_NOTATIONS, type DiagramModel, type DiagramPlane, type NotationId } from '../types';
+import { viewedPlane } from '../planes';
 import { buildHierarchy } from './hierarchy';
 import { computeLod } from './lod';
 import { buildViewTree } from './tree';
@@ -20,8 +21,7 @@ import type { CompiledView, ViewNode, ViewportState } from './types';
  * being re-applied underneath the user on every compile.
  */
 export function presetLayers(planes: readonly DiagramPlane[], plane?: string): string[] {
-  const p = plane !== undefined ? planes.find((x) => x.id === plane) : planes[0];
-  return [...(p?.layers ?? [])];
+  return [...(viewedPlane(planes, plane)?.layers ?? [])];
 }
 
 /**
@@ -37,14 +37,12 @@ export function activeNotation(
   plane?: string,
   fallback?: string,
 ): NotationId | undefined {
-  const p = plane !== undefined ? planes.find((x) => x.id === plane) : planes[0];
-  const id = p?.notation ?? fallback;
+  const id = viewedPlane(planes, plane)?.notation ?? fallback;
   return id !== undefined && (BUILTIN_NOTATIONS as readonly string[]).includes(id) ? (id as NotationId) : undefined;
 }
 
 export function compileView(model: DiagramModel, viewport: ViewportState): CompiledView {
-  const planes = model.planes ?? [];
-  const plane = viewport.plane !== undefined ? planes.find((p) => p.id === viewport.plane) : planes[0];
+  const plane = viewedPlane(model.planes ?? [], viewport.plane);
   // A plane's `layers` are the DEFAULT, not a floor: `activeLayers` undefined
   // means the host has no opinion, so the plane's presets apply; an array — even
   // an empty one — is the host's own choice and replaces them. Unioning the two
