@@ -86,7 +86,7 @@ export interface DiagramEdgeData {
    * re-float). */
   onSetSide?: (end: 'from' | 'to', side: Side | null) => void;
   /** this edge is the active fixed-side target — show its fixed-side dots.
-   * Driven by DiagramView's relation-keyed selection (not React Flow's edge
+   * Driven by useFlowEdges' relation-keyed selection (not React Flow's edge
    * `selected`, whose id changes when a side is fixed or freed). */
   fixedSideDotsShown?: boolean;
   /** edit mode, sole-relation edges only: open a new threat row on this flow's

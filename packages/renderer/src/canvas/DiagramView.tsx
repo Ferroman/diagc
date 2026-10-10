@@ -8,8 +8,6 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
-  type Edge,
-  type EdgeChange,
   type Node,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -25,8 +23,7 @@ import {
 } from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
 import { Breadcrumbs } from './Breadcrumbs';
-import { buildEdgeDataCached, type EdgeDataContext } from './build-data';
-import { edgeTypes, nodeTypes, toRfEdge } from './adapter';
+import { edgeTypes, nodeTypes } from './adapter';
 import type { NoteData } from '../notes/NoteNode';
 import { isNoteId } from '../notes/derive-note-nodes';
 import { NoteStateContext } from '../notes/note-state';
@@ -60,9 +57,9 @@ import { noSelection, soleSelection } from './node-copy';
 import { useNoteNodes } from './useNoteNodes';
 import { useFlowNodes, type LabelEdit } from './useFlowNodes';
 import { useNodeResync } from './useNodeResync';
+import { useFlowEdges } from './useFlowEdges';
 import { useNoteSession } from './useNoteSession';
 import { LaserLayer } from '../drawings/LaserLayer';
-import { diffEdgeStatus, withDiffClass } from './diff-marks';
 import '../styles.css';
 import '@fontsource/kalam/400.css';
 import '@fontsource/kalam/700.css';
@@ -107,26 +104,11 @@ function Inner(props: DiagramViewProps) {
   // Which end a reconnect drag grabbed ('source'/'target'), captured on start so
   // onReconnect can tell a same-node side change from a move to another node.
   const reconnectEndRef = useRef<'source' | 'target' | null>(null);
-  // The sole-relation id of the edge currently showing fixed-side dots. Keyed
-  // by the stable *relation* id, not the view-edge id (which changes whenever a
-  // side is fixed or freed — fixed sides are baked into the aggregation key), so
-  // the dots survive it instead of vanishing with the old id.
-  const [fixedSideRelation, setFixedSideRelation] = useState<string | null>(null);
   // Double-click-to-enter / double-click-to-add-label are detected from click
   // events (see useClickCorrelation): the correlation protocol, its window
   // predicate, and the pane fall-through guards all live in that one hook so
   // the "exact complement" invariant is enforced in a single place.
   const corr = useClickCorrelation();
-  const [addLabelAt, setAddLabelAt] = useState<{ edgeId: string; x: number; y: number } | null>(null);
-  // Open the in-place add-label editor on `edgeId` at the event point. Called from
-  // the SECOND click of an edge double-click — detected via click events, NOT the
-  // browser's `dblclick` (that only fires reliably for an instant double-click;
-  // once the first click remounts the edges layer and the second lands on the
-  // pane, a human-timed double-click often never produces a `dblclick`).
-  const requestAddLabel = (edgeId: string, e: { clientX: number; clientY: number }) => {
-    const fp = reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY });
-    setAddLabelAt({ edgeId, x: fp.x, y: fp.y });
-  };
   // The drill trail plus the render-phase navigation sync (new model / plane
   // switch / model edit / host-driven path). It adjusts state DURING render, so
   // it has to run before anything that reads focus/drillRoot/enteredPath —
@@ -207,7 +189,8 @@ function Inner(props: DiagramViewProps) {
   });
   const { legendConfig, showLegend, setShowLegend, setLegendSize, legendRowList, legendReserveRef } = legend;
 
-  const { altHeld, viewPositions, setViewPositions, labelMoves, moveViewLabel } = useViewModeMoves({ props, editing });
+  const moves = useViewModeMoves({ props, editing });
+  const { altHeld, viewPositions, setViewPositions } = moves;
 
   // Multi-selection report. The prop is read through a ref and deduped by
   // contents: React Flow's SelectionListener has the callback in its effect
@@ -250,18 +233,7 @@ function Inner(props: DiagramViewProps) {
     ignoreSavedPositions: props.ignoreSavedPositions,
     viewPositions,
   });
-  const {
-    geometryRef,
-    routes,
-    placedGeometry,
-    arrangedGeometry,
-    containerShifts,
-    routing,
-    laidAt,
-    labelSpots,
-    settledFor,
-    flowDirection,
-  } = viewLayout;
+  const { geometryRef, placedGeometry, arrangedGeometry, containerShifts, settledFor, flowDirection } = viewLayout;
   // Render-phase ref, same pattern and reason as useCompiledView's compiledRef: commitMoves
   // (useCommitMoves) needs the ARRANGED geometry to compute a move's displacement,
   // but its dependency list is hand-managed and must not grow with every
@@ -337,21 +309,6 @@ function Inner(props: DiagramViewProps) {
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
   }, [editing, onImageFiles, reactFlow]);
-
-  // Notation colour hooks: a node/edge takes its lane's (or otherwise the
-  // notation's) colour where it sets none itself. Absent notation = absent map,
-  // so an unrelated diagram's build-data pass never sees a `nodeColors` field.
-  // (`nodeColors` is useNotation's: the legend keys with it too.)
-  const edgeColors = useMemo(() => {
-    const colorOf = profile.edge?.colorOf;
-    if (colorOf === undefined) return undefined;
-    const m = new Map<string, string>();
-    for (const e of compiled.edges) {
-      const c = colorOf(e, props.model, props.plane);
-      if (c !== undefined) m.set(e.id, c);
-    }
-    return m;
-  }, [profile, compiled, props.model, props.plane]);
 
   const { noteState, noteNodes } = useNoteNodes({
     model: props.model,
@@ -441,102 +398,24 @@ function Inner(props: DiagramViewProps) {
     legendReserveRef,
   });
 
-  // The per-edge data channel inputs, as one object the cached builder keys
-  // its identity on (see build-data.ts) — same stability contract as the node
-  // ctx above, stable callbacks included.
-  const clearAddLabel = useCallback(() => setAddLabelAt(null), []);
-  const edgeDataCtx = useMemo<EdgeDataContext>(
-    () => ({
-      kindRegistry,
-      editing,
-      onAddEdgeLabel: edit?.onAddEdgeLabel,
-      onEditEdgeLabel: edit?.onEditEdgeLabel,
-      onMoveEdgeLabel: edit?.onMoveEdgeLabel,
-      onSetEdgeSide: edit?.onSetEdgeSide,
-      onAddThreat: edit?.onAddThreat,
-      fixedSideRelation,
-      pendingAdd: addLabelAt,
-      onPendingAddConsumed: clearAddLabel,
-      stylePreset: preset.rough !== undefined ? preset : undefined,
-      notation: props.notation,
-      routing,
-      routes,
-      laidAt,
-      labelSpots,
-      labelMoves,
-      // Movable only where the move can go somewhere: a host that listens for
-      // it (the studio's Save positions chip). The published page and the PNG
-      // export pass no listener, so their labels stay put.
-      onViewMoveEdgeLabel: !editing && props.onViewLabelMovesChange !== undefined ? moveViewLabel : undefined,
-      edgeColors,
-    }),
-    [
-      kindRegistry,
-      editing,
-      edit?.onAddEdgeLabel,
-      edit?.onEditEdgeLabel,
-      edit?.onMoveEdgeLabel,
-      edit?.onSetEdgeSide,
-      edit?.onAddThreat,
-      fixedSideRelation,
-      addLabelAt,
-      clearAddLabel,
-      preset,
-      props.notation,
-      routing,
-      routes,
-      laidAt,
-      labelSpots,
-      labelMoves,
-      props.onViewLabelMovesChange,
-      moveViewLabel,
-      edgeColors,
-    ],
-  );
-
-  const { diffMarks } = props;
-  const edges = useMemo((): Edge[] => {
-    if (placedGeometry === null) return [];
-    return compiled.edges.map((e) => {
-      const data = buildEdgeDataCached(e, edgeDataCtx);
-      const relation = soleRelation(e);
-      const diffClass = withDiffClass(
-        undefined,
-        diffMarks !== undefined ? diffEdgeStatus(e.constituents, diffMarks) : undefined,
-      );
-      return toRfEdge({
-        id: e.id,
-        source: e.from,
-        target: e.to,
-        data,
-        reconnectable: editing && relation !== undefined,
-        className: diffClass,
-      });
-    });
-  }, [compiled, placedGeometry, edgeDataCtx, editing, diffMarks]);
-
-  // Edge selection is React Flow's own, but the edges are controlled: its
-  // select changes reach the canvas only through this set. Without it no edge
-  // ever reads `selected`, and the delete key (which acts on the selected
-  // elements) silently skips every clicked link. Kept apart from `edges` so a
-  // click restamps one flag instead of rebuilding every edge's data.
-  const [selectedEdgeIds, setSelectedEdgeIds] = useState<ReadonlySet<string>>(() => new Set());
-  const rfEdges = useMemo(
-    () =>
-      selectedEdgeIds.size === 0 ? edges : edges.map((e) => (selectedEdgeIds.has(e.id) ? { ...e, selected: true } : e)),
-    [edges, selectedEdgeIds],
-  );
-  const onEdgesChange = (changes: EdgeChange[]) => {
-    const selects = changes.filter((c) => c.type === 'select');
-    if (selects.length === 0) return;
-    setSelectedEdgeIds((prev) => {
-      const next = new Set(prev);
-      for (const c of selects) {
-        if (c.selected) next.add(c.id);
-        else next.delete(c.id);
-      }
-      return next.size === prev.size && [...next].every((id) => prev.has(id)) ? prev : next;
-    });
+  const { rfEdges, onEdgesChange, setFixedSideRelation, setAddLabelAt } = useFlowEdges({
+    props,
+    editing,
+    edit,
+    notation,
+    preset,
+    compiled,
+    layout: viewLayout,
+    moves,
+  });
+  // Open the in-place add-label editor on `edgeId` at the event point. Called from
+  // the SECOND click of an edge double-click — detected via click events, NOT the
+  // browser's `dblclick` (that only fires reliably for an instant double-click;
+  // once the first click remounts the edges layer and the second lands on the
+  // pane, a human-timed double-click often never produces a `dblclick`).
+  const requestAddLabel = (edgeId: string, e: { clientX: number; clientY: number }) => {
+    const fp = reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    setAddLabelAt({ edgeId, x: fp.x, y: fp.y });
   };
 
   const loops = useLoopOverlay({
