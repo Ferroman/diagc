@@ -175,7 +175,7 @@
   },
   "packages/renderer/src/canvas/DiagramView.tsx": {
     "complexity": {
-      "count": 4
+      "count": 2
     },
     "max-lines": {
       "count": 1

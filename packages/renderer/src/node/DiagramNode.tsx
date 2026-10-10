@@ -108,7 +108,7 @@ export interface DiagramNodeData {
   resizeAxis?: 'x';
   /** this node is the drop target under the pointer during a single-node
    * drag that could land on it (see EditingApi.onDropInto) — draws the
-   * notation's drag-over outline. Like `selected`, but on `data`: DiagramView
+   * notation's drag-over outline. Like `selected`, but on `data`: useNodeDragging
    * patches it directly onto React Flow's node copy rather than deriving it
    * through the cached node-data builder (see withDropTarget). */
   dropTarget?: boolean;

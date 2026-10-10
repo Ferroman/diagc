@@ -13,7 +13,7 @@ export interface NudgeInput {
   nodesRef: MutableRefObject<Node[]>;
   /** move the nodes on screen right away (React Flow position changes) */
   applyMoves: (moves: Positions) => void;
-  /** persist a burst of moves — DiagramView's commit funnel */
+  /** persist a burst of moves — the commit every move ends in (useCommitMoves) */
   commit: (positions: Positions) => void;
 }
 
