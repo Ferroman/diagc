@@ -21,7 +21,61 @@ const styledModel = () => {
   return b.toJSON();
 };
 
+/** a relation on the `ops` layer, which the `main` plane turns on by default, and
+ * an untagged one, which always shows */
+const presetModel = () => {
+  const b = model('demo');
+  b.layer('ops', { name: 'Ops' });
+  b.plane('main', { name: 'Main', layers: ['ops'] });
+  const a = b.node('a', { name: 'Alpha', type: 'service' });
+  const c = b.node('c', { name: 'Gamma', type: 'service' });
+  b.relate(a, c, { kind: 'sync', layer: 'ops', label: 'pages on-call' });
+  b.relate(c, a, { kind: 'sync', label: 'calls back' });
+  return b.toJSON();
+};
+
+/** two planes, each turning on its own layer by default */
+const twoPresetModel = () => {
+  const b = model('demo');
+  b.layer('ops', { name: 'Ops' });
+  b.layer('audit', { name: 'Audit' });
+  b.plane('main', { name: 'Main', layers: ['ops'] });
+  b.plane('review', { name: 'Review', layers: ['audit'] });
+  const a = b.node('a', { name: 'Alpha', type: 'service' });
+  const c = b.node('c', { name: 'Gamma', type: 'service' });
+  b.relate(a, c, { kind: 'sync', layer: 'ops', label: 'pages on-call' });
+  b.relate(c, a, { kind: 'sync', layer: 'audit', label: 'logs access' });
+  return b.toJSON();
+};
+
+/** a container holding one service, on the model's only plane */
+const containedModel = () => {
+  const b = model('demo');
+  b.plane('main', { name: 'Main' });
+  b.node('sys', { name: 'Shop', type: 'system' }).contains(b.node('a', { name: 'Alpha', type: 'service' }));
+  return b.toJSON();
+};
+
+const planModel = () => {
+  const b = model('demo');
+  const p = b.plan();
+  p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' });
+  return b.toJSON();
+};
+
 const spec: EmbedSpec = { name: 'demo', height: 300 };
+
+const embedOf = (body: unknown, over: Partial<EmbedSpec> = {}) => (
+  <Embed
+    spec={{ ...spec, ...over }}
+    apiFetch={vi.fn(async () => new Response(JSON.stringify(body), { status: 200 }))}
+    openLink={vi.fn()}
+    assetBase=""
+    libraryBase=""
+    onOpenStudio={vi.fn()}
+    theme="light"
+  />
+);
 
 // Embed imports nothing from 'obsidian' — the 'obsidian' package ships types
 // only (package.json `"main": ""`), so any test that pulled it in at runtime
@@ -184,5 +238,43 @@ describe('Embed', () => {
     expect(canvas!.className).toContain('dg-style-sketch');
     expect(canvas!.className).toContain('dg-style-rough');
     expect(canvas!.className).toContain('dg-notation-git');
+  });
+});
+
+describe('Embed opens the way the published page does', () => {
+  it("turns on the plane's preset layers when the fence names none", async () => {
+    render(embedOf({ model: presetModel() }));
+    expect(await screen.findByText('pages on-call')).toBeDefined();
+  });
+
+  it("keeps the fence's own layers when it names them", async () => {
+    render(embedOf({ model: presetModel() }, { layers: [] }));
+    // the untagged relation is drawn, so the edges are in; the tagged one is not
+    await screen.findByText('calls back');
+    expect(screen.queryByText('pages on-call')).toBeNull();
+  });
+
+  it("turns on the named plane's own preset layers", async () => {
+    render(embedOf({ model: twoPresetModel() }, { plane: 'review' }));
+    expect(await screen.findByText('logs access')).toBeDefined();
+    expect(screen.queryByText('pages on-call')).toBeNull();
+  });
+
+  it('opens the default plane when the fence names one the model lacks', async () => {
+    render(embedOf({ model: containedModel() }, { plane: 'nope' }));
+    expect(await screen.findByText('Shop')).toBeDefined();
+    // the default plane's containment holds: the box rests folded, its child inside
+    expect(screen.queryByText('Alpha')).toBeNull();
+  });
+
+  it("draws the plan's today line at the reader's date", async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 0, 20));
+    try {
+      const { container } = render(embedOf({ model: planModel() }));
+      await waitFor(() => expect(container.querySelector('.dg-time-axis-today')).not.toBeNull());
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
