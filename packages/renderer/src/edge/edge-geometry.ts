@@ -383,7 +383,7 @@ export function roundedRoute(points: readonly Point[], radius: number): string {
 /**
  * Straighten the hairline jogs out of an orthogonal route.
  *
- * Where an edge crosses a container wall elk pins it to a port on that wall,
+ * Where an edge crosses a container wall elk attaches it to a port on that wall,
  * and the port's coordinate is rounded separately from the leg arriving at it:
  * the route comes back with a sidestep of a few px in the middle of an otherwise
  * straight run, which draws as a visible kink. A leg shorter than `tolerance`

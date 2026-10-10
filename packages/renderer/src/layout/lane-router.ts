@@ -37,7 +37,7 @@ export interface RouterEdge {
   id: string;
   from: string;
   to: string;
-  /** a pinned end, honoured: the route leaves and arrives on that side */
+  /** a fixed end, honoured: the route leaves and arrives on that side */
   fromSide?: HSide | VSide;
   toSide?: HSide | VSide;
   hasLabel?: boolean;
@@ -133,7 +133,7 @@ function simplify(pts: Point[]): Point[] {
   return out;
 }
 
-/** the middle of the longest horizontal run (where a label chip reads best) */
+/** the middle of the longest horizontal run (where a label reads best) */
 function labelSpotOf(pts: readonly Point[]): Point {
   let best: Point = { x: (pts[0]!.x + pts[pts.length - 1]!.x) / 2, y: (pts[0]!.y + pts[pts.length - 1]!.y) / 2 };
   let len = -1;
@@ -182,9 +182,9 @@ function endPoint(box: RouterBox, side: HSide | VSide): Point {
 }
 
 /**
- * A link pinned to a top or bottom side (the author's choice — the router does
+ * A link fixed to a top or bottom side (the author's choice — the router does
  * not second-guess it): one bend where the two runs meet if both are clear,
- * else out to a corridor in the pinned direction and over to the gap beside the
+ * else out to a corridor in the fixed side's direction and over to the gap beside the
  * other end. No spreading — these are rare, and an undefined result floats.
  */
 function routeVerticalEnds(

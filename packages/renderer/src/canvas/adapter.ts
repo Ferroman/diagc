@@ -41,7 +41,7 @@ export function toRfNode({ data, ...props }: RfNodeInput): Node {
   return { ...defined(props), type: 'diagram', data: data as unknown as Record<string, unknown> };
 }
 
-/** a threat note's React Flow node (see NoteNode) — the same widening as toRfNode */
+/** a note's React Flow node (see NoteNode) — the same widening as toRfNode */
 export interface RfNoteInput {
   id: string;
   position: Point;

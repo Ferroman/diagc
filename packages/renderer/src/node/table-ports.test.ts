@@ -12,7 +12,7 @@ describe('table-ports', () => {
     expect(rowCenterY(0)).toBe(TABLE_HEADER_H + TABLE_ROW_H / 2);
     expect(rowCenterY(2)).toBe(TABLE_HEADER_H + 2 * TABLE_ROW_H + TABLE_ROW_H / 2);
   });
-  it('anchorToRow pins y to the column row on a left/right face', () => {
+  it('anchorToRow holds y to the column row on a left/right face', () => {
     const node = { x: 100, y: 200, width: 180, height: 200, columns: [{ name: 'id' }, { name: 'ref' }] };
     const a = anchorToRow({ x: 100, y: 260, pos: Position.Left }, node, 'ref');
     expect(a).toEqual({ x: 100, y: 200 + rowCenterY(1), pos: Position.Left });

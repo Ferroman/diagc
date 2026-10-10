@@ -190,7 +190,7 @@ describe('legendRows', () => {
     // containmentPlaneOf), so this arrow IS drawn on the flow plane.
     expect(compileView(m, { plane: 'flow' }).edges.map((e) => e.kind)).toEqual(['flow']);
     // Scoping the key by the VIEWPORT plane instead found no visible endpoints
-    // and dropped the row: a tinted overlay on screen with no key and no switch.
+    // and dropped the row: a tinted layer on screen with no key and no switch.
     expect(rows(m, { plane: planeOf(m, 'flow') }).find((x) => x.layer === 'data-flow')).toMatchObject({
       label: 'Data flow',
       active: true,

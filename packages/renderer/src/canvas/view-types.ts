@@ -49,9 +49,9 @@ export const LIBRARY_ENTRY_DND_TYPE = 'application/x-dg-library-entry';
 export type QuickAddSide = 'before' | 'after';
 
 export interface LayoutApi {
-  /** current on-screen positions (elk output with pins applied), parent-relative */
+  /** current on-screen positions (elk output with saved positions applied), parent-relative */
   snapshotPositions: () => Record<string, Point>;
-  /** raw elk positions ignoring pins, parent-relative (a fresh auto arrangement) */
+  /** raw elk positions ignoring saved positions, parent-relative (a fresh auto arrangement) */
   autoPositions: () => Record<string, Point>;
   /** viewport center in flow coordinates, or undefined if the canvas isn't mounted */
   viewportCenter: () => Point | undefined;
@@ -65,9 +65,9 @@ export interface LayoutApi {
   contentBounds: () => { x: number; y: number; width: number; height: number } | undefined;
   /** fit that content box (nodes ∪ drawings) into the current viewport (re-run
    * after the frame is resized).
-   * A per-side padding object reserves space for an overlay such as the legend. */
+   * A per-side padding object reserves space for a panel such as the legend. */
   fitView: (padding?: number | { top?: number; right?: number; bottom?: number; left?: number }) => void;
-  /** px reserved by the legend overlay on its own edge, or null when none is
+  /** px reserved by the legend panel on its own edge, or null when none is
    * shown — the export handshake grows the capture frame by this. */
   legendReserve: () => { side: 'top' | 'right' | 'bottom' | 'left'; px: number } | null;
   /** the canvas as drawn — folds, layers, theme, drawings — rendered to a PNG at
@@ -216,9 +216,9 @@ export interface DiagramViewProps {
   /** false hides the interactive control cluster. The PNG export sets it so a
    * committed image is the diagram alone, with no zoom widget baked into it. */
   chrome?: boolean;
-  /** false draws no threat bubbles at all and leaves the badges passive counts —
+  /** false draws no notes at all and leaves the badges passive counts —
    * a host that wants none, whatever the overlay says. Default true, which is
-   * not "all of them": a bubble draws only while its element's is open. */
+   * not "all of them": a note draws only while its element's is open. */
   notes?: boolean;
   /** visual style preset id (see stylePresets.ts); unknown/absent = clean */
   styleId?: string;
@@ -237,7 +237,7 @@ export interface DiagramViewProps {
  * host can opt into just the affordances it wants. */
 export interface EditingApi {
   /** a connect gesture completed between two nodes. New relations float by
-   * default (no pinned sides) — the caller pins later via onSetEdgeSide/reconnect. */
+   * default (no fixed sides) — the caller fixes them later via onSetEdgeSide/reconnect. */
   onConnect?: (from: string, to: string, sourceHandle?: string | null, targetHandle?: string | null) => void;
   /** a node drag ended; pos is parent-relative */
   onNodeMoved?: (id: string, pos: Point) => void;
@@ -274,8 +274,8 @@ export interface EditingApi {
   /** sole-relation edges: a label was dragged to a new `t`/`side`. */
   onMoveEdgeLabel?: (relationId: string, labelId: string, t: number, side: EdgeLabelSide) => void;
   /** an edge endpoint was dragged. `endSide` (when present) tells the caller
-   * how the *dragged* end's pin changed — dropped on a new node re-floats it
-   * (side: null); re-dropped on the same node pins it to that side. The other
+   * how the *dragged* end's fixed side changed — dropped on a new node re-floats it
+   * (side: null); re-dropped on the same node fixes it to that side. The other
    * end is left untouched. */
   onReconnect?: (
     relationId: string,
@@ -283,7 +283,7 @@ export interface EditingApi {
     to: string,
     endSide?: { end: 'from' | 'to'; side: Side | null },
   ) => void;
-  /** a pin dot on a sole-relation edge toggled an endpoint — freeze it at
+  /** a fixed-side dot on a sole-relation edge toggled an endpoint — freeze it at
    * `side`, or re-float it with `side: null`. */
   onSetEdgeSide?: (relationId: string, end: 'from' | 'to', side: Side | null) => void;
   /** a db-table node's columns were added/edited/removed/reordered in
@@ -317,20 +317,20 @@ export interface EditingApi {
     label: (id: string, side?: QuickAddSide) => string | undefined;
     run: (id: string, side?: QuickAddSide) => void;
   };
-  /** a threat note was dragged: its new offset from the automatic anchor */
+  /** a note was dragged: its new offset from the automatic anchor */
   onNoteMoved?: (target: ElementRef, offset: { dx: number; dy: number }) => void;
-  /** the empty badge/chip or a note's `+`: add a threat on this element. The
+  /** the empty badge or a note's `+`: add a threat on this element. The
    * host adds it and answers with `editThreatRequest` so its title opens. */
   onAddThreat?: (target: ElementRef) => void;
   /** a threat title was committed on its note; `''` = escaped or emptied */
   onRetitleThreat?: (target: ElementRef, id: string, title: string) => void;
   /** open this threat's title on its note — the `editLabelRequest` contract, nonce-keyed */
   editThreatRequest?: { target: ElementRef; id: string; nonce: number };
-  /** the badge/chip was clicked in edit mode: save this element's bubble as open or closed */
+  /** the badge was clicked in edit mode: save this element's note as open or closed */
   onToggleNote?: (target: ElementRef, open: boolean) => void;
-  /** a bubble's status chip was clicked: the threat's next status */
+  /** a note's status chip was clicked: the threat's next status */
   onSetThreatStatus?: (target: ElementRef, id: string, status: ThreatStatus) => void;
-  /** a bubble's description/mitigation field was committed; `''` clears it */
+  /** a note's description/mitigation field was committed; `''` clears it */
   onEditThreatText?: (target: ElementRef, id: string, field: 'description' | 'mitigation', text: string) => void;
   /** Backspace/Delete pressed with a canvas selection: `nodeIds` are the
    * selected nodes, `relationIds` the constituent relations of any selected

@@ -61,7 +61,7 @@ export const LAYOUT_SIZED_TYPES: ReadonlySet<string> = new Set([...FISHBONE_TYPE
  * `.dg-meta-badge`, `.dg-count`); the per-character widths are averages for the
  * system-ui stack, rounded UP so a miss leaves a little air rather than an
  * overlap. Anything sized some other way — images, silhouettes, glyphs, tables,
- * multiline/rich labels, notation chips — has its own hint in `useViewLayout`
+ * multiline/rich labels, text nodes — has its own hint in `useViewLayout`
  * and never comes through here.
  */
 export interface BoxSizeInput {
@@ -184,8 +184,8 @@ export interface BoxSizeContext {
   metaKeys: readonly string[];
   /** hidden-descendant count per folded container — the number in its badge */
   hiddenCounts: ReadonlyMap<string, number>;
-  /** the notation's own leaf footprint (a CLD text chip); a folded typeless
-   * node is drawn as the same chip, so it takes the same size */
+  /** the notation's own leaf footprint (a CLD text node); a folded typeless
+   * node is drawn as the same text, so it takes the same size */
   leafSize?: (n: DiagramNode) => BoxSize | undefined;
 }
 

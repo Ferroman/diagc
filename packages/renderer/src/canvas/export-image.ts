@@ -41,7 +41,7 @@ export function exportFrame(bounds: Bounds, opts: { padding?: number; pixelRatio
 }
 
 /** Chrome that is the canvas's furniture, not the diagram: the corner controls,
- * the minimap, overlay panels, connection handles and resize grips — and the dot
+ * the minimap, panels, connection handles and resize grips — and the dot
  * grid, which the clone keeps at the on-screen canvas size, so in a frame cut to
  * the whole diagram it stopped partway across (the frame's own background colour
  * fills it instead). */

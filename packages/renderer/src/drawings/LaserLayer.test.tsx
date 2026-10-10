@@ -40,7 +40,7 @@ describe('LaserLayer', () => {
     expect(group?.querySelector('path.dg-laser-core')?.getAttribute('d')).toBe('M 1 1 L 2 2');
   });
 
-  it('is an empty, pointer-transparent overlay when idle', () => {
+  it('is an empty, pointer-transparent layer when idle', () => {
     const { container } = mount(<LaserLayer trails={[]} live={null} />);
     const svg = container.querySelector('svg.dg-laser');
     expect(svg?.getAttribute('aria-hidden')).toBe('true');

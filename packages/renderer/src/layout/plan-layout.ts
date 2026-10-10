@@ -39,7 +39,7 @@ export const PLAN_LAYOUT = {
  * against (nothing to wrap by, so wrap by count instead) */
 const ROSTER_WRAP_COUNT = 6;
 
-// Per (model, plane), as gitGraphCached: the layout, the header overlay and
+// Per (model, plane), as gitGraphCached: the layout, the time-axis header and
 // the chips all read the graph, and each model identity is one derivation.
 const graphCache = new WeakMap<DiagramModel, Map<string | undefined, PlanGraph>>();
 export function planGraphCached(model: DiagramModel, plane: string | undefined): PlanGraph {

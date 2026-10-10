@@ -66,7 +66,7 @@ export interface ThemeTokens {
  * entry means "follow the system". The CLI's generated pages and the landing site use the
  * same key (packages/diagc/src/publish/pageTheme.ts, site/site.js), which is what makes one
  * choice cover every page on a host. They cannot import this one, so
- * packages/diagc/src/themeKey.test.ts pins the three together. */
+ * packages/diagc/src/themeKey.test.ts checks the three together. */
 export const THEME_STORAGE_KEY = 'diagc-theme';
 
 export const lightTheme: ThemeTokens = {

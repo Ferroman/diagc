@@ -312,7 +312,7 @@ function spacingOptionsOf(options: Record<string, string>): Record<string, strin
 }
 
 // Edge-label footprint fed into elk so it reserves room and neighbours don't
-// overlap the label. Approximate: the drawn label is a ~10px-font chip, so a
+// overlap the label. Approximate: the drawn label is set in a ~10px font, so a
 // per-char width plus horizontal padding lands close to the real box.
 const EDGE_LABEL_CHAR = 6;
 const EDGE_LABEL_PAD = 12;
@@ -328,7 +328,7 @@ export function edgeLabelText(e: ViewEdge): string {
 }
 
 // A label rides ON its edge: elk makes the label box a stop on the route and
-// runs the line through its centre, where the chip then masks it. Left to its
+// runs the line through its centre, where the label then masks it. Left to its
 // default elk parks the box BESIDE the line, and a label floating in the gap
 // between two parallel arrows reads as belonging to either.
 const INLINE_LABEL = { 'elk.edgeLabels.inline': 'true' };
@@ -336,7 +336,7 @@ const INLINE_LABEL = { 'elk.edgeLabels.inline': 'true' };
 function edgeLabelBox(text: string): BoxSize | undefined {
   const t = text.trim();
   if (t === '') return undefined;
-  // the chip is ellipsised at EDGE_LABEL_MAX_CHARS, so no more room than that
+  // the label is ellipsised at EDGE_LABEL_MAX_CHARS, so no more room than that
   const chars = Math.min([...t].length, EDGE_LABEL_MAX_CHARS);
   return { width: Math.round(chars * EDGE_LABEL_CHAR + EDGE_LABEL_PAD), height: EDGE_LABEL_HEIGHT };
 }
@@ -383,7 +383,7 @@ export function buildGraph(
     ...layoutOptionsFor(settings),
     ...(substitute !== undefined ? { 'elk.padding': NO_PADDING } : {}),
     // A notation that derives an ORDER for its nodes (second-order thinking)
-    // pins each to it: partition k is laid out strictly before k+1, so a node
+    // holds each to it: partition k is laid out strictly before k+1, so a node
     // cannot sink toward the only thing it feeds. Root nodes only — a partition
     // is relative to the graph that owns the node.
     ...(partitions !== undefined ? { 'elk.partitioning.activate': 'true' } : {}),
@@ -392,7 +392,7 @@ export function buildGraph(
   // elk's default cycle breaking reverses whichever edges its degree heuristic
   // picks, and on a flow with a retry loop that is often the loop's way IN — the
   // start then lands mid-picture and the flow runs backwards from it. Depth-first
-  // from the sources reverses the loop's way BACK instead; pinning the start to
+  // from the sources reverses the loop's way BACK instead; holding the start to
   // the first layer keeps it at the left edge whatever else is a source. elk
   // reads the strategy off each graph that owns the nodes, not off the root, so
   // the containers carry it too (below) — on the root alone it changed nothing.

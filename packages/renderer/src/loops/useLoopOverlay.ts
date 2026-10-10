@@ -28,7 +28,7 @@ export interface LoopOverlay {
 }
 
 export function useLoopOverlay(input: LoopOverlayInput): LoopOverlay {
-  // Causal-loop-diagram overlay: the R/B feedback-loop badges. Derived from the
+  // The causal-loop diagram's canvas overlay: the R/B feedback-loop badges. Derived from the
   // drawn edges (aggregated where relations parallel), not the raw model, so it
   // stays in sync with layer/plane filtering the same way the arrows do.
   const cld = input.profile.canvasOverlay === 'loop-labels';
@@ -49,7 +49,7 @@ export function useLoopOverlay(input: LoopOverlayInput): LoopOverlay {
     onCldEdges?.(loopEdges ?? []);
   }, [loopEdges, onCldEdges]);
 
-  // Declutter switch for the CLD overlay: badges can pile up (a busy loop graph
+  // Declutter switch for the CLD's canvas overlay: badges can pile up (a busy loop graph
   // has dozens), so a canvas control hides them all. Default shown, ephemeral —
   // survives plane switches (Inner stays mounted) but resets on reload.
   const [showLoops, setShowLoops] = useState(true);

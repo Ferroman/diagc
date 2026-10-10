@@ -119,7 +119,7 @@ describe('routeLaneEdges', () => {
     expect(verticalX('ab')).not.toBe(verticalX('cd'));
   });
 
-  it('honours a left/right pin', () => {
+  it('honours a left/right fixed side', () => {
     const { routes } = routeLaneEdges({
       boxes: [box('a', 300, 0), box('b', 0, 200)],
       corridors: [],
@@ -130,7 +130,7 @@ describe('routeLaneEdges', () => {
     expect(back[back.length - 1]).toEqual({ x: 100, y: 220 });
   });
 
-  it('leaves a bottom pin from under the caption, then turns into the target', () => {
+  it('leaves a bottom fixed side from under the caption, then turns into the target', () => {
     const glyph = box('g', 0, 0, 40, 40, { width: 160, height: 20 });
     const { routes } = routeLaneEdges({
       boxes: [glyph, box('b', 200, 100)],
@@ -158,7 +158,7 @@ describe('routeLaneEdges', () => {
     expect(hits(r, k)).toBe(false);
   });
 
-  it('floats a pinned link it cannot route', () => {
+  it('floats a link with fixed sides it cannot route', () => {
     const { routes } = routeLaneEdges({
       boxes: [box('a', 0, 0), box('b', 0, 200)],
       corridors: [],

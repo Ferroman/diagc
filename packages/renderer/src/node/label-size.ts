@@ -64,7 +64,7 @@ export function glyphCaptionSize(text: string): BoxSize {
 }
 
 /**
- * How many characters an edge's single label chip may show. ~24 characters is
+ * How many characters an edge's single label may show. ~24 characters is
  * about the width of two folded boxes at platform altitude; past that one arrow's
  * text starts covering its neighbours, and on a view with hundreds of arrows that
  * is the difference between a diagram and a wall of words.

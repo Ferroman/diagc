@@ -759,7 +759,7 @@ describe('DiagramView', () => {
     await screen.findByText('Code');
     await waitFor(() => expect(apiRef.current?.snapshotPositions()['c']).toBeDefined());
     const laid = apiRef.current!.snapshotPositions();
-    // the pin a jittery click used to leave behind, and one on the stray
+    // the position a jittery click used to leave behind, and one on the stray
     rerender(
       <DiagramView
         model={m}
@@ -1026,10 +1026,11 @@ describe('DiagramView', () => {
     expect(editor.textContent).toBe('api');
   });
 
-  it("editLabelRequest also moves React Flow's selection — the ring and the `+` chip follow the node being named", async () => {
-    // The host's select() only touches the host's own state; the chip, the ring
-    // and the resizer render off React Flow's `selected` flag. Without the move,
-    // a `+`/Tab chain would keep offering the chip on the source node.
+  it("editLabelRequest also moves React Flow's selection — the ring and the quick-add button follow the node being named", async () => {
+    // The host's select() only touches the host's own state; the quick-add
+    // button, the ring and the resizer render off React Flow's `selected` flag.
+    // Without the move, a `+`/Tab chain would keep offering the button on the
+    // source node.
     const m = containerEndpointModel();
     const { rerender } = render(<DiagramView model={m} mode="edit" pins={{ sys: 'expanded' }} edit={{}} />);
     fireEvent.click((await screen.findByText('gw')).closest('.react-flow__node') as HTMLElement);
@@ -1570,7 +1571,7 @@ describe('freehand drawings', () => {
       apiRef.current!.fitView();
       await expectTransform(getViewportForBounds(bounds, 800, 600, 0.02, 4, 0.06));
 
-      // The per-side form reserves px for an overlay (the legend handshake), so
+      // The per-side form reserves px for a panel (the legend handshake), so
       // it must reach getViewportForBounds as px padding, not a fraction.
       apiRef.current!.fitView({ top: 12 });
       const padded = getViewportForBounds(bounds, 800, 600, 0.02, 4, { top: '12px' });
@@ -1700,7 +1701,7 @@ describe('git-graph notation', () => {
     return m.toJSON();
   }
 
-  it('lays lanes out as unfoldable bands with commit circles, routed links and the tails overlay', async () => {
+  it('lays lanes out as unfoldable bands with commit circles, routed links and the lane tails', async () => {
     const m = gitModel();
     // a host pin to collapse a lane must lose: a lane is a row, not a box
     const { container } = render(
@@ -1861,7 +1862,7 @@ describe('git-graph notation', () => {
     expect(empty?.style.width).toBe(full?.style.width);
   });
 
-  it("pins a dragged lane's descendant commits too, so their routed links fall back", async () => {
+  it("saves positions for a dragged lane's descendant commits too, so their routed links fall back", async () => {
     // master: 1.0 -> 2.0 (its own commit link); nightly: n1 -> n2 (from 1.0, its
     // own commit link) — an independent lane whose link never touches master.
     const m = model('g3');
@@ -1892,7 +1893,7 @@ describe('git-graph notation', () => {
       '[data-testid="rf__edge-nightly-1=>nightly-2:"] path.react-flow__edge-path',
     );
     expect(nightlyLink).not.toBeNull();
-    // master's lane is dragged (pinned) — its commits move with it, so their
+    // master's lane is dragged (saved) — its commits move with it, so their
     // precomputed route is stale: falls back to a floating (bezier, 'C') path.
     expect(masterLink.getAttribute('d') ?? '').toContain('C');
     // nightly is untouched — still on its precomputed routed (non-bezier) path.
@@ -2083,7 +2084,7 @@ const xyOf = (el: HTMLElement): { x: number; y: number } => {
   return { x: Number(m[1]), y: Number(m[2]) };
 };
 
-/** size the note wrappers like real bubbles for one test (jsdom measures every
+/** size the note wrappers like real notes for one test (jsdom measures every
  * element 800×600 — see test-setup.ts); returns the undo */
 const measureNotes = (width: number, height: number): (() => void) => {
   const proto = window.HTMLElement.prototype;
@@ -2109,7 +2110,7 @@ const measureNotes = (width: number, height: number): (() => void) => {
   return () => Object.defineProperties(proto, was);
 };
 
-/** an overlay with `web`'s and the flow's bubbles open (the fixture's two threatened elements) */
+/** an overlay with `web`'s and the flow's notes open (the fixture's two threatened elements) */
 const allOpen = (extra: Record<string, { dx: number; dy: number }> = {}) => {
   const key = layoutPlaneKey(threatened, undefined);
   return {
@@ -2124,7 +2125,7 @@ const allOpen = (extra: Record<string, { dx: number; dy: number }> = {}) => {
   };
 };
 
-describe('threat notes', () => {
+describe('notes', () => {
   it('derives a note per threatened element, none for a clean one, and never over the element', async () => {
     const { container } = render(<DiagramView model={threatened} layout={allOpen()} pins={{ dmz: 'expanded' }} />);
     const note = await rfNode(container, 'note:node:web');
@@ -2132,7 +2133,7 @@ describe('threat notes', () => {
     expect(note.textContent).toContain('Spoofed session');
     expect(container.querySelector('.react-flow__node[data-id="note:relation:f"]')).not.toBeNull();
     expect(container.querySelector('.react-flow__node[data-id="note:node:db"]')).toBeNull();
-    // Inside the boundary there is no free spot the bubble's size (the header
+    // Inside the boundary there is no free spot the note's size (the header
     // band takes "above"), so it lands on the least-covering one — still next
     // to `web`, never on it: wholly above or wholly left of the element.
     const element = xyOf(await rfNode(container, 'web'));
@@ -2170,7 +2171,7 @@ describe('threat notes', () => {
         },
       ],
     };
-    // every bubble in play is OPEN here, the bundle's constituents included, so
+    // every note in play is OPEN here, the bundle's constituents included, so
     // the missing note below cannot be "closed by default" wearing a disguise
     const key = layoutPlaneKey(model, undefined);
     const layout = {
@@ -2222,7 +2223,7 @@ describe('threat notes', () => {
     expect(container.querySelector('button.dg-threat-badge[data-state="open"]')).toBeNull();
   });
 
-  it('view mode: the badge opens a bubble for the session and closes it again', async () => {
+  it('view mode: the badge opens a note for the session and closes it again', async () => {
     const { container } = render(<DiagramView model={threatened} pins={{ dmz: 'expanded' }} />);
     const web = await rfNode(container, 'web');
     const badge = within(web).getByRole('button', { name: '1 open of 1 threat — show' });
@@ -2233,14 +2234,14 @@ describe('threat notes', () => {
     await waitFor(() => expect(container.querySelector('[data-id="note:node:web"]')).toBeNull());
   });
 
-  it('view mode: a flow’s chip toggles its relation’s bubble', async () => {
+  it('view mode: a flow’s badge toggles its relation’s note', async () => {
     const { container } = render(<DiagramView model={threatened} />);
-    const chip = await waitFor(() => {
+    const badge = await waitFor(() => {
       const el = container.querySelector('button.dg-edge-threat[data-state="open"]');
-      if (el === null) throw new Error('no chip');
+      if (el === null) throw new Error('no badge');
       return el as HTMLElement;
     });
-    fireEvent.click(chip);
+    fireEvent.click(badge);
     await rfNode(container, 'note:relation:f');
   });
 
@@ -2256,9 +2257,9 @@ describe('threat notes', () => {
     expect(container.querySelector('[data-id="note:node:web"]')).toBeNull();
   });
 
-  it('view mode: the badge closes a bubble the layout saved open, for the session', async () => {
+  it('view mode: the badge closes a note the layout saved open, for the session', async () => {
     // The other direction of the session override: an override of `false` has
-    // to beat a saved `open: true`, or a reader could never put down a bubble
+    // to beat a saved `open: true`, or a reader could never put down a note
     // the author left open.
     const { container } = render(<DiagramView model={threatened} layout={allOpen()} pins={{ dmz: 'expanded' }} />);
     await rfNode(container, 'note:node:web');
@@ -2291,21 +2292,21 @@ describe('threat notes', () => {
     await waitFor(() => expect(container.querySelector('[data-id="note:node:web"]')).toBeNull());
   });
 
-  it('a flow’s bubble hangs off its chip and its tail points there — from above by default, from below once dragged under it', async () => {
-    // The chip sits on the routed curve, which only the edge knows: it reports
-    // the spot up and the bubble anchors to it. jsdom measures every node
-    // 800×600 (test-setup) and a bubble that size would swallow its own badge
-    // and draw no tail, so size the note wrappers like real bubbles here.
+  it('a flow’s note hangs off its badge and its tail points there — from above by default, from below once dragged under it', async () => {
+    // The badge sits on the routed curve, which only the edge knows: it reports
+    // the spot up and the note anchors to it. jsdom measures every node
+    // 800×600 (test-setup) and a note that size would swallow its own badge
+    // and draw no tail, so size the note wrappers like real notes here.
     const restore = measureNotes(NOTE_WIDTH, 80);
     try {
       const a = render(<DiagramView model={threatened} layout={allOpen()} />);
-      const chip = await waitFor(() => {
+      const badge = await waitFor(() => {
         const el = a.container.querySelector('button.dg-edge-threat') as HTMLElement | null;
-        if (el === null) throw new Error('no chip');
+        if (el === null) throw new Error('no badge');
         return xyOf(el);
       });
       // Which spot is free depends on the layout (web sits right above the
-      // flow); what must hold is that the tail's tip lands on the chip's rim.
+      // flow); what must hold is that the tail's tip lands on the badge's rim.
       await waitFor(() => {
         const note = a.container.querySelector('.react-flow__node[data-id="note:relation:f"]') as HTMLElement | null;
         if (note === null) throw new Error('no note');
@@ -2314,11 +2315,11 @@ describe('threat notes', () => {
         const m = /L(-?[\d.]+) (-?[\d.]+) L/.exec(d);
         if (m === null) throw new Error(`no tail yet: ${d}`);
         const tip = { x: at.x + Number(m[1]), y: at.y + Number(m[2]) };
-        expect(Math.hypot(tip.x - chip.x, tip.y - chip.y)).toBeCloseTo(BADGE_R + 2, 3);
-        // and clear of the chip's pill: no candidate puts the bubble over it
+        expect(Math.hypot(tip.x - badge.x, tip.y - badge.y)).toBeCloseTo(BADGE_R + 2, 3);
+        // and clear of the badge's pill: no candidate puts the note over it
         expect(
           at.y + estimateNoteHeight('Web app → Orders DB', threatened.relations[0]!.threats!, false) <=
-            chip.y - BADGE_R || at.x + NOTE_WIDTH <= chip.x - BADGE_R,
+            badge.y - BADGE_R || at.x + NOTE_WIDTH <= badge.x - BADGE_R,
         ).toBe(true);
       });
       a.unmount();
@@ -2326,7 +2327,7 @@ describe('threat notes', () => {
       await waitFor(() => {
         const note = b.container.querySelector('.react-flow__node[data-id="note:relation:f"]') as HTMLElement | null;
         if (note === null) throw new Error('no note');
-        expect(xyOf(note)).toEqual({ x: chip.x - 110, y: chip.y + 60 });
+        expect(xyOf(note)).toEqual({ x: badge.x - 110, y: badge.y + 60 });
         expect(note.querySelector('.dg-note-tail')?.getAttribute('data-side')).toBe('top');
       });
     } finally {
@@ -2335,8 +2336,8 @@ describe('threat notes', () => {
   });
 
   it('a saved offset is measured from the badge, whatever the automatic spot would have been', async () => {
-    // Relative to the badge, not to the automatic placement: a dragged bubble
-    // stays put when a neighbour moves or another bubble opens and the
+    // Relative to the badge, not to the automatic placement: a dragged note
+    // stays put when a neighbour moves or another note opens and the
     // automatic spot would have changed. Parented like its element, so the
     // offset holds inside a container too.
     const { container } = render(
@@ -2399,7 +2400,7 @@ describe('threat notes', () => {
   });
 
   it('edit mode: an element with no threats yet offers the first one on the canvas', async () => {
-    // The badge and the chip are the only way in for an element that has no
+    // A node's badge and a flow's are the only way in for an element that has no
     // note yet, so the hook has to reach BOTH data channels (node and edge) —
     // this is what covers that threading end to end. `db` carries no threats
     // and neither does the second flow, so both draw the `+` state.
@@ -2417,18 +2418,18 @@ describe('threat notes', () => {
     const db = await rfNode(container, 'db');
     fireEvent.click(within(db).getByRole('button', { name: 'Add a threat' }));
     expect(onAddThreat).toHaveBeenCalledWith({ node: 'db' });
-    // the flow's chip rides the label portal, not the edge's own svg, so it is
+    // the flow's badge rides the label portal, not the edge's own svg, so it is
     // queried from the canvas rather than scoped to an edge wrapper
-    const chip = await waitFor(() => {
+    const badge = await waitFor(() => {
       const el = container.querySelector('button.dg-edge-threat[data-state="empty"]');
-      if (el === null) throw new Error('no empty flow chip');
+      if (el === null) throw new Error('no empty flow badge');
       return el as HTMLElement;
     });
-    fireEvent.click(chip);
+    fireEvent.click(badge);
     expect(onAddThreat).toHaveBeenCalledWith({ relation: 'g' });
   });
 
-  it('a note click moves React Flow’s own selection too — the ring, the chip and Backspace follow', async () => {
+  it('a note click moves React Flow’s own selection too — the ring, the quick-add button and Backspace follow', async () => {
     // The note is not selectable, so React Flow's flag would otherwise stay on
     // whatever box was clicked before. deleteKeyCode/onDelete read THAT flag:
     // without the move, Backspace deletes the previous box while the panel
@@ -2509,21 +2510,21 @@ describe('comment notes', () => {
       },
     },
   });
-  it('derives a bubble for a commented node, a linked node and a commented relation, none for a bare one', async () => {
+  it('derives a note for a commented node, a linked node and a commented relation, none for a bare one', async () => {
     const { container } = render(<DiagramView model={commented} layout={open()} />);
     expect((await rfNode(container, 'note:node:a')).textContent).toContain('Remark on A');
     expect((await rfNode(container, 'note:node:b')).textContent).toContain('Doc');
     expect((await rfNode(container, 'note:relation:r')).textContent).toContain('Remark on r');
     expect(container.querySelector('.react-flow__node[data-id="note:node:c"]')).toBeNull();
   });
-  it('the comment badge opens the bubble in view mode', async () => {
+  it('the comment badge opens the note in view mode', async () => {
     const { container } = render(<DiagramView model={commented} />);
     await rfNode(container, 'a');
     expect(container.querySelector('.react-flow__node[data-id="note:node:a"]')).toBeNull();
     fireEvent.click(container.querySelector('.react-flow__node[data-id="a"] button.dg-comment-badge')!);
     expect(await rfNode(container, 'note:node:a')).not.toBeNull();
   });
-  it('offers no threat on a comment-only bubble unless the canvas is a threat model', async () => {
+  it('offers no threat on a comment-only note unless the canvas is a threat model', async () => {
     // The studio wires onAddThreat whatever the diagram is, so the gate has to
     // live here: a remark on a plain C4 box must not sprout a threat register
     // (nor have estimateNoteHeight reserve the row for one). The same gate
@@ -2542,7 +2543,7 @@ describe('comment notes', () => {
     );
     expect((await rfNode(tm.container, 'note:node:a')).querySelector('.dg-note-add')).not.toBeNull();
   });
-  it("hands the host's onOpenLink to the bubble", async () => {
+  it("hands the host's onOpenLink to the note", async () => {
     const onOpenLink = vi.fn();
     const { container } = render(<DiagramView model={commented} layout={open()} onOpenLink={onOpenLink} />);
     fireEvent.click((await rfNode(container, 'note:node:b')).querySelector('a.dg-note-link')!);

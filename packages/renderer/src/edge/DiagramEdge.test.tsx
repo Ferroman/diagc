@@ -77,22 +77,22 @@ describe('DiagramEdge', () => {
     expect(style).toContain('stroke-dasharray');
   });
 
-  it('renders a label chip when label present', () => {
+  it('renders a label when label present', () => {
     const { getByText } = renderEdge({ label: '3', constituentCount: 3 });
     expect(getByText('3')).toBeDefined();
   });
 
-  it('draws the bundled-arrow chip in the HTML label layer, above every edge, not inside its own svg', () => {
+  it('draws a bundled arrow’s label in the HTML label layer, above every edge, not inside its own svg', () => {
     // React Flow's SVG `label` lives in the edge's own <svg>: any edge painted
     // later ran its line straight across the text.
     const long = 'publishes employee.tenure.recalculated to the mesh';
     const { container, getByText } = renderEdge({ label: long, constituentCount: 3 });
-    const chip = getByText(long);
-    expect(chip.className).toContain('dg-edge-chip');
-    expect(chip.className).toContain('dg-edge-label'); // shares the CSS ellipsis
-    expect(container.querySelector('svg')!.contains(chip)).toBe(false);
+    const label = getByText(long);
+    expect(label.className).toContain('dg-edge-chip');
+    expect(label.className).toContain('dg-edge-label'); // shares the CSS ellipsis
+    expect(container.querySelector('svg')!.contains(label)).toBe(false);
     expect(container.querySelector('.react-flow__edge-text')).toBeNull();
-    // the full text also rides the hover title of the hit-path under the chip
+    // the full text also rides the hover title of the hit-path under the label
     expect(container.querySelector('title')?.textContent).toContain(long);
   });
 
@@ -317,31 +317,31 @@ describe('DiagramEdge', () => {
     expect(crispD).toBe(cleanD); // un-roughened, identical to the crisp baseline
   });
 
-  describe('endpoint pin dots', () => {
-    it('renders two pin dots for an active single-relation edge with an onSetSide callback', () => {
+  describe('fixed-side dots', () => {
+    it('renders two fixed-side dots for an active single-relation edge with an onSetSide callback', () => {
       const onSetSide = vi.fn();
       const { container } = renderEdge({ onSetSide, fixedSideDotsShown: true });
       expect(container.querySelectorAll('.dg-edge-pin')).toHaveLength(2);
     });
 
-    it('renders no pin dots when the edge is not the active pin target', () => {
+    it('renders no fixed-side dots when the edge is not the active fixed-side target', () => {
       const onSetSide = vi.fn();
       const { container } = renderEdge({ onSetSide, fixedSideDotsShown: false });
       expect(container.querySelector('.dg-edge-pin')).toBeNull();
     });
 
-    it('renders no pin dots without an onSetSide callback (view mode / aggregated)', () => {
+    it('renders no fixed-side dots without an onSetSide callback (view mode / aggregated)', () => {
       const { container } = renderEdge({ fixedSideDotsShown: true });
       expect(container.querySelector('.dg-edge-pin')).toBeNull();
     });
 
-    it('renders no pin dots for an aggregated (multi-relation) edge', () => {
+    it('renders no fixed-side dots for an aggregated (multi-relation) edge', () => {
       const onSetSide = vi.fn();
       const { container } = renderEdge({ onSetSide, fixedSideDotsShown: true, constituentCount: 2 });
       expect(container.querySelector('.dg-edge-pin')).toBeNull();
     });
 
-    it('marks a dot pinned when that end has a fixed side, hollow otherwise', () => {
+    it('marks a dot fixed when that end has a fixed side, hollow otherwise', () => {
       const onSetSide = vi.fn();
       const { container } = renderEdge({ onSetSide, fixedSideDotsShown: true, relStyle: { fromSide: 'bottom' } });
       const from = container.querySelector('.dg-edge-pin[data-end="from"]');
@@ -350,7 +350,7 @@ describe('DiagramEdge', () => {
       expect(to?.classList.contains('pinned')).toBe(false);
     });
 
-    it('pins a floating end to the side it currently faces when its dot is clicked', () => {
+    it('fixes a floating end to the side it currently faces when its dot is clicked', () => {
       const onSetSide = vi.fn();
       // default facing: source Bottom, target Top
       const { container } = renderEdge({ onSetSide, fixedSideDotsShown: true });
@@ -360,7 +360,7 @@ describe('DiagramEdge', () => {
       expect(onSetSide).toHaveBeenCalledWith('to', 'top');
     });
 
-    it('unpins a pinned end when its dot is clicked', () => {
+    it('frees a fixed end when its dot is clicked', () => {
       const onSetSide = vi.fn();
       const { container } = renderEdge({ onSetSide, fixedSideDotsShown: true, relStyle: { toSide: 'top' } });
       fireEvent.click(container.querySelector('.dg-edge-pin[data-end="to"]')!);
@@ -648,32 +648,32 @@ describe('DiagramEdge', () => {
   });
 
   describe('threat badge', () => {
-    it('chips a flow with its open threat count, in the HTML label layer', () => {
+    it('badges a flow with its open threat count, in the HTML label layer', () => {
       const { baseElement, container } = renderEdge({ kind: 'data-flow', threats: { open: 1, total: 1 } });
-      const chip = baseElement.querySelector('.dg-edge-threat') as HTMLElement;
-      expect(chip).not.toBeNull();
+      const badge = baseElement.querySelector('.dg-edge-threat') as HTMLElement;
+      expect(badge).not.toBeNull();
       // shares the node badge's look, so one CSS rule owns both
-      expect(chip.className).toContain('dg-threat-badge');
-      expect(chip.getAttribute('data-state')).toBe('open');
-      expect(chip.textContent).toBe('1');
-      expect(chip.getAttribute('title')).toBe('1 open of 1 threat');
-      // The chip sits in React Flow's single label portal with every other
+      expect(badge.className).toContain('dg-threat-badge');
+      expect(badge.getAttribute('data-state')).toBe('open');
+      expect(badge.textContent).toBe('1');
+      expect(badge.getAttribute('title')).toBe('1 open of 1 threat');
+      // The badge sits in React Flow's single label portal with every other
       // edge's, so it carries its own edge id: without it, nothing in the DOM
-      // says which flow a chip belongs to (the e2e suite pairs by this).
-      expect(chip.getAttribute('data-edge')).toBe('e1');
-      // the chip belongs to the label layer, not this edge's own svg (where a
+      // says which flow a badge belongs to (the e2e suite pairs by this).
+      expect(badge.getAttribute('data-edge')).toBe('e1');
+      // the badge belongs to the label layer, not this edge's own svg (where a
       // later-painted edge would draw its line straight through it)
-      expect(container.querySelector('svg')!.contains(chip)).toBe(false);
+      expect(container.querySelector('svg')!.contains(badge)).toBe(false);
     });
 
-    it('turns the chip into a tick once every threat on the flow is handled', () => {
+    it('turns the badge into a tick once every threat on the flow is handled', () => {
       const { baseElement } = renderEdge({ kind: 'data-flow', threats: { open: 0, total: 2 } });
-      const chip = baseElement.querySelector('.dg-edge-threat') as HTMLElement;
-      expect(chip.getAttribute('data-state')).toBe('handled');
-      expect(chip.textContent).toBe('✓');
+      const badge = baseElement.querySelector('.dg-edge-threat') as HTMLElement;
+      expect(badge.getAttribute('data-state')).toBe('handled');
+      expect(badge.textContent).toBe('✓');
     });
 
-    it('chips nothing on a flow that carries no threats', () => {
+    it('badges nothing on a flow that carries no threats', () => {
       const { baseElement, unmount } = renderEdge({ kind: 'data-flow' });
       expect(baseElement.querySelector('.dg-edge-threat')).toBeNull();
       unmount();
@@ -684,20 +684,20 @@ describe('DiagramEdge', () => {
     });
 
     it('offers "Add a threat" on an unthreatened flow in edit mode, and reports the click', () => {
-      // buildEdgeData binds the sole relation, so the chip's callback takes no
-      // arguments — what this proves is that the chip is a button and fires it.
+      // buildEdgeData binds the sole relation, so the badge's callback takes no
+      // arguments — what this proves is that the badge is a button and fires it.
       const onAddThreat = vi.fn();
       const { baseElement } = renderEdge({ kind: 'data-flow', notation: 'threat-model', onAddThreat });
-      const chip = baseElement.querySelector('button.dg-edge-threat[data-state="empty"]') as HTMLButtonElement;
-      expect(chip).not.toBeNull();
-      expect(chip.className).toContain('dg-threat-badge');
-      expect(chip.textContent).toBe('+');
-      expect(chip.getAttribute('aria-label')).toBe('Add a threat');
-      expect(chip.getAttribute('title')).toBe('Add a threat');
-      // it rides the shared label portal like the counting chip, so it carries
+      const badge = baseElement.querySelector('button.dg-edge-threat[data-state="empty"]') as HTMLButtonElement;
+      expect(badge).not.toBeNull();
+      expect(badge.className).toContain('dg-threat-badge');
+      expect(badge.textContent).toBe('+');
+      expect(badge.getAttribute('aria-label')).toBe('Add a threat');
+      expect(badge.getAttribute('title')).toBe('Add a threat');
+      // it rides the shared label portal like the counting badge, so it carries
       // the edge id too — nothing else in that flat layer says whose it is
-      expect(chip.getAttribute('data-edge')).toBe('e1');
-      fireEvent.click(chip);
+      expect(badge.getAttribute('data-edge')).toBe('e1');
+      fireEvent.click(badge);
       expect(onAddThreat).toHaveBeenCalledTimes(1);
     });
 
@@ -709,7 +709,7 @@ describe('DiagramEdge', () => {
       expect(elsewhere.baseElement.querySelector('.dg-edge-threat')).toBeNull();
     });
 
-    it('keeps the counting chip passive once the flow carries a threat', () => {
+    it('keeps the counting badge passive once the flow carries a threat', () => {
       const { baseElement } = renderEdge({
         kind: 'data-flow',
         notation: 'threat-model',
@@ -719,16 +719,16 @@ describe('DiagramEdge', () => {
       expect(baseElement.querySelector('.dg-edge-threat')?.tagName).toBe('SPAN');
     });
 
-    it('under a NoteStateContext a sole-relation chip toggles its relation’s bubble; a bundle’s stays passive', () => {
+    it('under a NoteStateContext a sole-relation badge toggles its relation’s note; a bundle’s stays passive', () => {
       const toggle = vi.fn();
       const state: NoteState = { isOpen: (key) => key === 'relation:r1', toggle, placeBadge: vi.fn() };
       const wrap = (ui: React.ReactElement) =>
         render(<NoteStateContext.Provider value={state}>{ui}</NoteStateContext.Provider>);
       const sole = wrap(edgeElement({ kind: 'data-flow', threats: { open: 1, total: 1 }, threatRelation: 'r1' }));
-      const chip = sole.baseElement.querySelector('button.dg-edge-threat') as HTMLButtonElement;
-      expect(chip.getAttribute('aria-expanded')).toBe('true');
-      expect(chip.getAttribute('aria-label')).toBe('1 open of 1 threat — hide');
-      fireEvent.click(chip);
+      const badge = sole.baseElement.querySelector('button.dg-edge-threat') as HTMLButtonElement;
+      expect(badge.getAttribute('aria-expanded')).toBe('true');
+      expect(badge.getAttribute('aria-label')).toBe('1 open of 1 threat — hide');
+      fireEvent.click(badge);
       expect(toggle).toHaveBeenCalledWith({ relation: 'r1' });
       sole.unmount();
       const bundle = wrap(edgeElement({ kind: 'data-flow', threats: { open: 1, total: 2 }, constituentCount: 2 }));
@@ -736,17 +736,17 @@ describe('DiagramEdge', () => {
       expect(bundle.baseElement.querySelector('span.dg-edge-threat')).not.toBeNull();
     });
 
-    it('reports where its chip is drawn, so the relation’s bubble can hang off it; a bundle reports nothing', () => {
+    it('reports where its badge is drawn, so the relation’s note can hang off it; a bundle reports nothing', () => {
       const placeBadge = vi.fn();
       const state: NoteState = { isOpen: () => false, toggle: vi.fn(), placeBadge };
       const wrap = (ui: React.ReactElement) =>
         render(<NoteStateContext.Provider value={state}>{ui}</NoteStateContext.Provider>);
       const sole = wrap(edgeElement({ kind: 'data-flow', threats: { open: 1, total: 1 }, threatRelation: 'r1' }));
-      // the spot is the chip's own transform — the two cannot disagree
-      const chip = sole.baseElement.querySelector('button.dg-edge-threat') as HTMLElement;
-      const m = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(chip.style.transform)!;
+      // the spot is the badge's own transform — the two cannot disagree
+      const badge = sole.baseElement.querySelector('button.dg-edge-threat') as HTMLElement;
+      const m = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(badge.style.transform)!;
       // ...the side it was pushed to, a unit vector, and the line itself,
-      // sampled end to end so the bubble can keep off it
+      // sampled end to end so the note can keep off it
       expect(placeBadge).toHaveBeenCalledWith(
         'r1',
         { x: Number(m[1]), y: Number(m[2]) },
@@ -766,19 +766,19 @@ describe('DiagramEdge', () => {
     });
   });
 
-  describe('comment chip', () => {
-    it('draws a passive chip with the count, tagged with the edge id, on a plain canvas', () => {
+  describe('comment badge', () => {
+    it('draws a passive badge with the count, tagged with the edge id, on a plain canvas', () => {
       const { baseElement, container } = renderEdge({ kind: 'data-flow', annotations: { comments: 2, links: 0 } });
-      const chip = baseElement.querySelector('.dg-comment-badge.dg-edge-comment') as HTMLElement;
-      expect(chip.tagName).toBe('SPAN');
-      expect(chip.getAttribute('data-edge')).toBe('e1');
-      expect(chip.textContent).toBe('2');
-      // the chip belongs to the label layer, not this edge's own svg — same
-      // reasoning the threat chip's equivalent assertion states
-      expect(container.querySelector('svg')!.contains(chip)).toBe(false);
+      const badge = baseElement.querySelector('.dg-comment-badge.dg-edge-comment') as HTMLElement;
+      expect(badge.tagName).toBe('SPAN');
+      expect(badge.getAttribute('data-edge')).toBe('e1');
+      expect(badge.textContent).toBe('2');
+      // the badge belongs to the label layer, not this edge's own svg — same
+      // reasoning the threat badge's equivalent assertion states
+      expect(container.querySelector('svg')!.contains(badge)).toBe(false);
     });
 
-    it("toggles the sole relation's bubble on a bubble-drawing canvas, and reports its spot when there is no threat chip", () => {
+    it("toggles the sole relation's note on a note-drawing canvas, and reports its spot when there is no threat badge", () => {
       const toggle = vi.fn();
       const placeBadge = vi.fn();
       const state: NoteState = { isOpen: () => false, toggle, placeBadge };
@@ -787,13 +787,13 @@ describe('DiagramEdge', () => {
       const { baseElement } = wrap(
         edgeElement({ kind: 'data-flow', annotations: { comments: 1, links: 0 }, threatRelation: 'r1' }),
       );
-      const chip = baseElement.querySelector('button.dg-comment-badge') as HTMLButtonElement;
-      fireEvent.click(chip);
+      const badge = baseElement.querySelector('button.dg-comment-badge') as HTMLButtonElement;
+      fireEvent.click(badge);
       expect(toggle).toHaveBeenCalledWith({ relation: 'r1' });
-      // no threat chip on this edge, so the comment chip is the one that
-      // reports where the relation's bubble should hang — and it reports its
+      // no threat badge on this edge, so the comment badge is the one that
+      // reports where the relation's note should hang — and it reports its
       // OWN spot: the t = 0.25 frame offset along the normal, not the threat
-      // chip's t = 0.75. The curve is the one the component builds for an
+      // badge's t = 0.75. The curve is the one the component builds for an
       // unmeasured, unrouted, notation-less edge (see DiagramEdge).
       const curve = shapeCurve(
         'curved',
@@ -812,7 +812,7 @@ describe('DiagramEdge', () => {
       expect(badgePosition(frame)).not.toEqual(badgePosition(markFrame(curve, 0.75)));
     });
 
-    it('a bundle keeps a passive chip', () => {
+    it('a bundle keeps a passive badge', () => {
       const state: NoteState = { isOpen: () => false, toggle: vi.fn(), placeBadge: vi.fn() };
       const { baseElement } = render(
         <NoteStateContext.Provider value={state}>

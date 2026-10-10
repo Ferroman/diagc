@@ -72,7 +72,7 @@ export interface LayoutResult {
    * which is elk's answer and git-graph's (a floated commit link still reads). */
   fixed?: ReadonlySet<string>;
   /** nodes whose x the notation derives (a plan zone's x IS its start date):
-   * the overlay may place them on y only. A weaker pin than `fixed`. */
+   * the overlay may place them on y only. A weaker hold than `fixed`. */
   lockedX?: ReadonlySet<string>;
 }
 

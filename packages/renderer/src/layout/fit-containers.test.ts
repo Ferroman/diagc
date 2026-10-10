@@ -148,7 +148,7 @@ describe('savedPositions', () => {
     expect(saved['a']!.y).toBeCloseTo(36, 9);
   });
 
-  it('pins a child to the wall of a parent whose origin is fixed', () => {
+  it('holds a child against the wall of a parent whose origin is fixed', () => {
     const live = nodes.map((n) => (n.id === 'sys' ? { ...n, position: { x: 16.3 - 50, y: 36.7 } } : n));
     expect(savedPositions({ a: { x: 0, y: 36 } }, live, bases, new Map(), (id) => id === 'sys')['a']!.x).toBe(0);
   });

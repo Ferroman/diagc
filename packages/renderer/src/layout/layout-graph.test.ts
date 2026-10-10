@@ -137,11 +137,11 @@ describe('buildGraph', () => {
     expect(left.layoutOptions!['elk.padding']).toContain('top=36.0');
   });
 
-  it('asks elk to seat a label ON its edge, in a box no wider than the chip is drawn', () => {
+  it('asks elk to seat a label ON its edge, in a box no wider than the label is drawn', () => {
     // elk's default parks the label box beside the line, where between two
     // parallel arrows it reads as belonging to either. The box is capped at the
-    // chip's own ellipsis budget: a sentence-long label reserved a layer as wide
-    // as the sentence for a chip that shows 24 characters of it.
+    // label's own ellipsis budget: a sentence-long label reserved a layer as wide
+    // as the sentence for a label that shows 24 characters of it.
     const m = model('lbl');
     const a = m.node('a', { type: 'service' });
     const b = m.node('b', { type: 'service' });
@@ -252,10 +252,10 @@ describe('buildGraph', () => {
       ['a', 1],
       ['b', 2],
     ]);
-    const pinned = buildGraph(view, undefined, undefined, { partitions: orders }).graph;
-    expect(pinned.layoutOptions!['elk.partitioning.activate']).toBe('true');
+    const partitioned = buildGraph(view, undefined, undefined, { partitions: orders }).graph;
+    expect(partitioned.layoutOptions!['elk.partitioning.activate']).toBe('true');
     expect(
-      Object.fromEntries(pinned.children!.map((c) => [c.id, c.layoutOptions?.['elk.partitioning.partition']])),
+      Object.fromEntries(partitioned.children!.map((c) => [c.id, c.layoutOptions?.['elk.partitioning.partition']])),
     ).toEqual({ d: '0', a: '1', b: '2' });
   });
 });
@@ -358,7 +358,7 @@ describe('buildGraph on an activity', () => {
     expect(find(graph, 'l')?.layoutOptions?.['elk.layered.cycleBreaking.strategy']).toBe('DEPTH_FIRST');
   });
 
-  it('pins the start node to the first layer', () => {
+  it('puts the start node in the first layer', () => {
     const { graph } = buildGraph(activity(), undefined, { direction: 'RIGHT' });
     expect(find(graph, 's')?.layoutOptions?.['elk.layered.layering.layerConstraint']).toBe('FIRST');
     expect(find(graph, 'act')?.layoutOptions).toBeUndefined();

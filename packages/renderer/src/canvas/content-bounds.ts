@@ -34,7 +34,7 @@ export function unionBounds(members: readonly (Bounds | undefined)[]): Bounds | 
  * Unmeasurable elements (all-zero rects: jsdom, or not laid out yet) are
  * skipped, so callers fall back to the node bounds exactly as before.
  *
- * The plan's time-axis header is an overlay, not a node, so its frame rect is
+ * The plan's time-axis header is a canvas overlay, not a node, so its frame rect is
  * what reaches the export bounds.
  */
 const OVERHANG_SELECTOR =

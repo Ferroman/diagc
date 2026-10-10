@@ -202,17 +202,17 @@ function Inner(props: DiagramViewProps) {
   // effect just below writes it and the note derivation far down reads it —
   // rather than next to that derivation, so nothing references it before it exists.
   const [noteEdit, setNoteEdit] = useState<{ key: string; id: string } | null>(null);
-  // Bubbles toggled in THIS session without a host to save through (view mode,
+  // Notes toggled in THIS session without a host to save through (view mode,
   // the viewer): key → open. Layered over the overlay's saved `open` flags. In
   // edit mode the badge goes to the host instead, and entering edit mode clears
   // this map (below) so edit mode shows exactly what the export will.
   const [noteOverrides, setNoteOverrides] = useState<ReadonlyMap<string, boolean>>(() => new Map());
-  // Where each threat-carrying flow's counting chip is drawn (relation id →
+  // Where each threat-carrying flow's counting badge is drawn (relation id →
   // flow coordinates, the side of the line it sits on, and the line itself),
-  // reported by the edges (NoteState.placeBadge): a flow's bubble hangs off its
-  // chip, every bubble keeps off the line, and both sit on the routed curve
+  // reported by the edges (NoteState.placeBadge): a flow's note hangs off its
+  // badge, every note keeps off the line, and both sit on the routed curve
   // only the edge knows. Entries outlive their edges — a hidden flow draws no
-  // bubble, and a returning one reports again — so nothing prunes it; the
+  // note, and a returning one reports again — so nothing prunes it; the
   // derivation reads only the flows it draws.
   const [badgeSpots, setBadgeSpots] = useState<ReadonlyMap<string, { at: Point; away: Point; line: readonly Point[] }>>(
     () => new Map(),
@@ -235,10 +235,10 @@ function Inner(props: DiagramViewProps) {
   // Which end a reconnect drag grabbed ('source'/'target'), captured on start so
   // onReconnect can tell a same-node side change from a move to another node.
   const reconnectEndRef = useRef<'source' | 'target' | null>(null);
-  // The sole-relation id of the edge currently showing endpoint pin dots. Keyed
+  // The sole-relation id of the edge currently showing fixed-side dots. Keyed
   // by the stable *relation* id, not the view-edge id (which changes whenever a
-  // pin toggles — pins are baked into the aggregation key), so the dots survive
-  // pin/unpin instead of vanishing with the old id.
+  // side is fixed or freed — fixed sides are baked into the aggregation key), so
+  // the dots survive it instead of vanishing with the old id.
   const [fixedSideRelation, setFixedSideRelation] = useState<string | null>(null);
   // Double-click-to-enter / double-click-to-add-label are detected from click
   // events (see useClickCorrelation): the correlation protocol, its window
@@ -282,8 +282,8 @@ function Inner(props: DiagramViewProps) {
     // a fresh arrow each render is fine: the hook only calls this from the
     // plane-switch branch, it never depends on its identity. Both open editors
     // go: each is keyed to something the new plane may not draw at all (a node,
-    // a threat note), and a field left open would reopen on the way back —
-    // and the session's bubble toggles, which were about elements this plane
+    // a note), and a field left open would reopen on the way back —
+    // and the session's note toggles, which were about elements this plane
     // may not draw.
     onPlaneSwitch: () => {
       setLabelEdit(null);
@@ -296,7 +296,7 @@ function Inner(props: DiagramViewProps) {
 
   const editing = props.mode === 'edit';
 
-  // Decision 4 of the bubbles spec: edit mode shows the saved state. A toggle
+  // Edit mode shows the saved state. A toggle
   // made while reading would otherwise mask the state the badge is about to
   // save, and the first click in edit mode would appear to do nothing.
   useEffect(() => {
@@ -308,7 +308,7 @@ function Inner(props: DiagramViewProps) {
   // id), but nothing else clears them on that path: useDrillNavigation resets
   // itself on a new model WITHOUT going through onPlaneSwitch, and the studio
   // does not re-key <DiagramView>. A toggle made while reading diagram A would
-  // otherwise open — or hide — a colliding bubble on diagram B.
+  // otherwise open — or hide — a colliding note on diagram B.
   useEffect(() => {
     setNoteOverrides(new Map());
   }, [props.model.id]);
@@ -335,8 +335,8 @@ function Inner(props: DiagramViewProps) {
     setLabelEdit({ kind: 'node', id: labelRequest.id });
     // ...and make it React Flow's sole selection. The host's own select() never
     // reaches React Flow's copy of the nodes, and the selection ring, the image
-    // resizer and the `+` chip all render off THAT flag — so without this the
-    // chip would stay on the node the add came from and a `+`, type, `+` chain
+    // resizer and the quick-add button all render off THAT flag — so without this the
+    // button would stay on the node the add came from and a `+`, type, `+` chain
     // would fan siblings off one source instead of walking down the chain. A
     // label request is by definition "this is the node you are working on now".
     // A request almost always names a node the host has JUST created, and elk
@@ -786,7 +786,7 @@ function Inner(props: DiagramViewProps) {
           parentId: parent,
           // A node the notation fixed (a fishbone's) takes no drag in either
           // mode — not even the pixel of jitter in a click, which React Flow
-          // counts as one and which used to save a pin at the spot the node
+          // counts as one and which used to save a position at the spot the node
           // already stood on: invisible until the fish next changed shape and
           // left the node behind with its lines floating. Still selectable —
           // which needs `nopan` back: React Flow drops it from a non-draggable
@@ -841,7 +841,7 @@ function Inner(props: DiagramViewProps) {
                   // (width/height: 100%). Without an explicit inline size here, that
                   // wrapper collapses to its border-only intrinsic size, so the
                   // layout's diameter must be applied explicitly, same as image/shape
-                  // leaves above. Ordinary boxes and CLD text chips must NOT go
+                  // leaves above. Ordinary boxes and CLD text nodes must NOT go
                   // through this branch — forcing sizes there would change their
                   // existing CSS-driven sizing. …and a fishbone leaf, whose layout
                   // sizes it (see LAYOUT_SIZED_TYPES). An EMPTY git lane is the
@@ -865,7 +865,7 @@ function Inner(props: DiagramViewProps) {
                     // A FLOOR, not a width — a label the estimate undershot still
                     // grows the box rather than wrapping inside it. Only where
                     // elk placed the node from such an estimate: a notation's own
-                    // layout spaces its boxes off LEAF_SIZE, and a CLD chip is
+                    // layout spaces its boxes off LEAF_SIZE, and a CLD text node is
                     // deliberately free of the box minimum.
                     profile.layout === undefined &&
                       !(profile.node?.typelessAsText === true && n.node.type === undefined)
@@ -879,12 +879,12 @@ function Inner(props: DiagramViewProps) {
     return out;
   }, [compiled, arrangedGeometry, nodeDataCtx, editing, typeRegistry, profile, fixed]);
 
-  // Threat notes: one synthetic node per element that carries threats, comments
+  // Notes: one synthetic node per element that carries threats, comments
   // or links. Derived from the ARRANGED geometry (so a note follows its element
   // through drags and container growth) and never handed to elk — adding a
   // threat must not move a single box. A box's note is parented like the box
   // (parent-relative, rides inside the container); a flow's note is top-level.
-  // Each hangs off its badge: an unmoved bubble takes the first spot next to
+  // Each hangs off its badge: an unmoved note takes the first spot next to
   // the badge that covers nothing (note-place.ts), a dragged one sits at badge
   // + its saved offset.
   const planeKey = layoutPlaneKey(props.model, props.plane);
@@ -920,7 +920,7 @@ function Inner(props: DiagramViewProps) {
   const noteNodes = useMemo((): Node[] => {
     if (noNotes || openNotes.size === 0 || arrangedGeometry === null) return [];
     // Absolute boxes: the placement runs in one space for every element and
-    // every obstacle (arrangedGeometry is parent-relative), and a flow's chip
+    // every obstacle (arrangedGeometry is parent-relative), and a flow's badge
     // is reported in flow coordinates.
     const abs = new Map<string, Rect>();
     const obstacles: Rect[] = [];
@@ -929,8 +929,8 @@ function Inner(props: DiagramViewProps) {
       if (g === undefined) return;
       const rect = { x: g.x + ox, y: g.y + oy, width: g.width, height: g.height };
       abs.set(n.id, rect);
-      // an expanded container is hollow (its members' bubbles belong inside);
-      // everything else is a box a bubble must not cover
+      // an expanded container is hollow (its members' notes belong inside);
+      // everything else is a box a note must not cover
       obstacles.push(...obstaclesOf([{ rect, kind: n.state === 'expanded' ? 'group' : 'box' }]));
       n.children.forEach((c) => walkAbs(c, g.x + ox, g.y + oy));
     };
@@ -955,7 +955,7 @@ function Inner(props: DiagramViewProps) {
       /** the element's box, absolute; null for a flow */
       element: Rect | null,
       parentId?: string,
-      /** a flow: the side of the line its chip sits on */
+      /** a flow: the side of the line its badge sits on */
       away?: Point,
     ) => {
       const key = elementKey(target);
@@ -975,8 +975,8 @@ function Inner(props: DiagramViewProps) {
         p !== undefined && (p.dx !== 0 || p.dy !== 0)
           ? { x: badge.x + p.dx, y: badge.y + p.dy }
           : placeNote(badge, element, size, obstacles, away);
-      // earlier bubbles are obstacles to later ones (model order), so two
-      // open bubbles never stack
+      // earlier notes are obstacles to later ones (model order), so two
+      // open notes never stack
       obstacles.push({ ...at, ...size });
       // back to the parent's frame: a box's note is parented like the box
       const shift = (parentId !== undefined ? abs.get(parentId) : undefined) ?? { x: 0, y: 0 };
@@ -1025,7 +1025,7 @@ function Inner(props: DiagramViewProps) {
       // threats/comments/links belong to the view that really draws it, or the
       // same note would appear twice, in two coordinate frames. What counts as
       // content is core's own predicate — the one layout hygiene prunes by, so
-      // a bubble drawn here always keeps its saved place (see pruneNotes).
+      // a note drawn here always keeps its saved place (see pruneNotes).
       if (n.external === undefined && hasNoteContent(n.node))
         push({ node: n.id }, n.node.name, threats, comments, links, badgeCenter(rect, badgeKindOf(n)), rect, parent);
       n.children.forEach((c) => walk(c, n.id));
@@ -1034,17 +1034,17 @@ function Inner(props: DiagramViewProps) {
     // compiled.edges is the DRAWN set, so a layer-hidden flow takes its note
     // with it. An aggregated edge gets none: its threats and comments belong to
     // particular relations, and a note on the bundle could not say which.
-    // (A relation carries no `links` field, so a flow's bubble never lists any.)
+    // (A relation carries no `links` field, so a flow's note never lists any.)
     for (const e of compiled.edges) {
       const r = soleRelation(e);
       if (r === undefined || !hasNoteContent(r)) continue;
       const a = abs.get(e.from);
       const b = abs.get(e.to);
       if (a === undefined || b === undefined) continue;
-      // The chip's spot arrives from the edge a frame after it first draws;
+      // The badge's spot arrives from the edge a frame after it first draws;
       // until then the straight-line midpoint of the two ends stands in.
-      const chip = badgeSpots.get(r.id);
-      const at = chip?.at ?? {
+      const badgeSpot = badgeSpots.get(r.id);
+      const at = badgeSpot?.at ?? {
         x: (a.x + a.width / 2 + b.x + b.width / 2) / 2,
         y: (a.y + a.height / 2 + b.y + b.height / 2) / 2,
       };
@@ -1058,7 +1058,7 @@ function Inner(props: DiagramViewProps) {
         at,
         null,
         undefined,
-        chip?.away,
+        badgeSpot?.away,
       );
     }
     return out;
@@ -1067,7 +1067,7 @@ function Inner(props: DiagramViewProps) {
     // nodeDataCtx makes, and for the same reason: a stale callback would edit
     // the wrong document, or open a link through a host that is no longer there.
     // props.notation is here because the threat offer is gated on it (see
-    // offerThreat): switching to a threat-model plane has to redraw the bubbles.
+    // offerThreat): switching to a threat-model plane has to redraw the notes.
   }, [
     noNotes,
     openNotes,
@@ -1317,7 +1317,7 @@ function Inner(props: DiagramViewProps) {
   useLayoutEffect(() => {
     // ...except a claim left by a label request whose node had not been laid out
     // yet (see that effect above): the first resync that carries the node hands
-    // it the selection, so the ring and the `+` chip land on the box the caret
+    // it the selection, so the ring and the quick-add button land on the box the caret
     // is in. Read before the updater so the ref is cleared exactly once.
     // The claim is still checked against the BOXES: a label request always names
     // a model node, and a note is never one of them.
@@ -1350,9 +1350,9 @@ function Inner(props: DiagramViewProps) {
       // External stubs (compiled.externals) are placeholders for an off-frame
       // node while drilled — not real nodes in the model — so writing their
       // `__ext__:` ids into the layout overlay would corrupt it for every
-      // other view of the same plane. Drop them from the snapshot. Threat notes
+      // other view of the same plane. Drop them from the snapshot. Notes
       // go the same way: a note's place is an offset in `layout.notes`, so a
-      // freeze that wrote its `note:` id into `layout.planes` would pin a
+      // freeze that wrote its `note:` id into `layout.planes` would save a
       // phantom box there for good.
       snapshotPositions: () =>
         Object.fromEntries(
@@ -1413,7 +1413,7 @@ function Inner(props: DiagramViewProps) {
         const frame = exportFrame(bounds, opts);
         const before = reactFlow.getViewport();
         // Move the content to 1:1 inside a frame cut to its size, let the
-        // viewport-driven layers (drawings, overlays) catch up, then clone.
+        // viewport-driven layers (drawings, canvas overlays) catch up, then clone.
         await reactFlow.setViewport(frame.viewport);
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         try {
@@ -1617,7 +1617,7 @@ function Inner(props: DiagramViewProps) {
 
   return (
     <LoopHighlightContext.Provider value={loopHighlight}>
-      {/* the badges and chips inside read this to know whether their bubble is
+      {/* the badges inside read this to know whether their note is
         open and how to flip it — one provider around the whole canvas, the
         LoopHighlightContext precedent */}
       <NoteStateContext.Provider value={noteState}>
@@ -1652,7 +1652,7 @@ function Inner(props: DiagramViewProps) {
                 : '';
             if (entryId !== undefined && entryId !== '') {
               e.preventDefault();
-              // A drop that landed on a threat note is a drop on open canvas: a
+              // A drop that landed on a note is a drop on open canvas: a
               // `note:` id names no model node, and the host writes this straight
               // through as a containment parent.
               const hit = droppedOnNodeId(e);
@@ -1691,7 +1691,7 @@ function Inner(props: DiagramViewProps) {
               corr.clearEdgeClick(); // a node click breaks any pending edge-add correlation
               // A note is about an element: clicking it selects THAT (the note is
               // not selectable itself — see toRfNoteNode). The relation branch
-              // repeats what onEdgeClick does *here*: the host selection, the pin
+              // repeats what onEdgeClick does *here*: the host selection, the fixed-side
               // dots, and clearing React Flow's node selection. What it cannot
               // carry is React Flow's OWN edge selection — that is set inside React
               // Flow's edge click handler, which a node click never runs — so an
@@ -1708,7 +1708,7 @@ function Inner(props: DiagramViewProps) {
                   setSelectedNode(target.node);
                   // ...and move React Flow's OWN selection with it. The note is not
                   // selectable, so the flag would otherwise stay on whatever box was
-                  // clicked before — and the ring, the image resizer, the `+` chip
+                  // clicked before — and the ring, the image resizer, the quick-add button
                   // and deleteKeyCode/onDelete all render off THAT flag (the same
                   // hazard the editLabelRequest effect documents). Without this,
                   // Backspace would delete the previous box while the panel shows
@@ -1944,7 +1944,7 @@ function Inner(props: DiagramViewProps) {
             }}
             onEdgeClick={(e, edge) => {
               const viewEdge = compiled.edges.find((x) => x.id === edge.id);
-              // pin dots follow the sole relation (edit mode, single-relation edges)
+              // fixed-side dots follow the sole relation (edit mode, single-relation edges)
               const soleRel = viewEdge !== undefined ? soleRelation(viewEdge)?.id : undefined;
               setFixedSideRelation(editing && soleRel !== undefined ? soleRel : null);
               setSelectedNode(null);

@@ -2,7 +2,7 @@ import type { Point } from '@diagc/core/internal';
 
 // Pure causal-loop (feedback loop) detection and R/B label placement.
 // No React/xyflow imports — this module is plain graph math, shared by the
-// loop-label overlay (LoopLabelLayer) and exercised directly in tests.
+// loop-label canvas overlay (LoopLabelLayer) and exercised directly in tests.
 
 export type Polarity = '+' | '-';
 
@@ -15,7 +15,7 @@ export interface LoopEdgeInput {
 
 /** the polarity shared by every given constituent polarity, iff all are
  * defined and agree; any missing polarity or any disagreement yields undefined
- * ("unknown"). Shared by the loop overlay (DiagramView aggregates each drawn
+ * ("unknown"). Shared by the loop labels (DiagramView aggregates each drawn
  * edge's constituent relations), the loop detector's arc collapse, and the
  * leverage analysis — so all three provably agree on what "unknown" means. */
 export function combinePolarities(polarities: readonly (Polarity | undefined)[]): Polarity | undefined {

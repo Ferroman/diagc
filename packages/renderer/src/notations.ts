@@ -128,6 +128,7 @@ export interface NotationProfile {
     /** relation kinds the view never draws as edges (the legend skips them too) */
     hidden?: (kind: string) => boolean;
   };
+  /** what the notation draws above the diagram */
   canvasOverlay?: 'loop-labels' | 'git-lanes' | 'order-bands' | 'time-axis';
 }
 

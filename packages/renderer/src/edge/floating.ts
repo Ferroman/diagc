@@ -71,9 +71,9 @@ const asSide = (handle: string | null | undefined): Side | undefined =>
     ? (handle as Side)
     : undefined;
 
-/** Pins for the sides a connect gesture actually used, so a new relation
+/** Fixed sides for the sides a connect gesture actually used, so a new relation
  * attaches where the user dragged instead of re-floating to the facing sides.
- * An end with no (or an unrecognized) handle id stays unpinned. */
+ * An end with no (or an unrecognized) handle id stays floating. */
 export function connectionSides(conn: { sourceHandle?: string | null; targetHandle?: string | null }): {
   fromSide?: Side;
   toSide?: Side;
@@ -94,7 +94,7 @@ const SIDE_POSITION: Record<Side, Position> = {
 };
 
 /** the Side a React Flow Position denotes (Position values already carry the
- * side strings; this keeps the mapping typed for callers pinning to the side an
+ * side strings; this keeps the mapping typed for callers fixing an end to the side an
  * endpoint currently faces) */
 export function sideFromPosition(pos: Position): Side {
   switch (pos) {
@@ -110,9 +110,9 @@ export function sideFromPosition(pos: Position): Side {
 }
 
 /**
- * Decide how a reconnect drag changes the dragged endpoint's pin. Dropping an
+ * Decide how a reconnect drag changes the dragged endpoint's fixed side. Dropping an
  * end on a *different* node re-floats it (side cleared); re-dropping it on the
- * *same* node pins it to the side the loose-mode gesture snapped to. `draggedEnd`
+ * *same* node fixes it to the side the loose-mode gesture snapped to. `draggedEnd`
  * comes from onReconnectStart ('source'/'target'); when it's unknown we infer
  * the moved end from the node diff (which can't detect same-node side changes).
  * Returns undefined when nothing meaningful moved.
@@ -135,7 +135,7 @@ export function reconnectSide(
   return undefined;
 }
 
-/** midpoint of a node border side (for pinned connection points) */
+/** midpoint of a node border side (for fixed connection points) */
 function sideAnchor(node: FloatingNode, side: Side): Point {
   const r = rectOf(node);
   switch (side) {
@@ -153,7 +153,7 @@ function sideAnchor(node: FloatingNode, side: Side): Point {
 /**
  * Excalidraw-style floating anchors: each edge leaves/enters through the point
  * where the center-to-center line crosses the node border, whichever side that
- * is, instead of fixed top/bottom handles. A pinned side overrides the
+ * is, instead of fixed top/bottom handles. A fixed side overrides the
  * automatic choice for that endpoint.
  */
 export function getEdgeParams(

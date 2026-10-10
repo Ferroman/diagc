@@ -39,7 +39,7 @@ describe('getEdgeParams', () => {
     expect(backward.targetPos).toBe(Position.Right);
   });
 
-  it('honors pinned sides over the automatic facing side', () => {
+  it('honors fixed sides over the automatic facing side', () => {
     const a = box(0, 0);
     const b = box(300, 0);
     const p = getEdgeParams(a, b, { sourceSide: 'top', targetSide: 'bottom' });
@@ -60,7 +60,7 @@ describe('getEdgeParams', () => {
 });
 
 describe('connectionSides', () => {
-  it('maps the gesture handles to pinned sides', () => {
+  it('maps the gesture handles to fixed sides', () => {
     expect(connectionSides({ sourceHandle: 'right', targetHandle: 'top' })).toEqual({
       fromSide: 'right',
       toSide: 'top',
@@ -91,7 +91,7 @@ describe('reconnectSide', () => {
     expect(reconnectSide('source', conn, rel)).toEqual({ end: 'from', side: null });
   });
 
-  it('pins the source end to the dragged side when re-dropped on the same node', () => {
+  it('fixes the source end to the dragged side when re-dropped on the same node', () => {
     const conn = { source: 'a', target: 'b', sourceHandle: 'left', targetHandle: 'top' };
     expect(reconnectSide('source', conn, rel)).toEqual({ end: 'from', side: 'left' });
   });
@@ -101,7 +101,7 @@ describe('reconnectSide', () => {
     expect(reconnectSide('target', conn, rel)).toEqual({ end: 'to', side: null });
   });
 
-  it('pins the target end to the dragged side when re-dropped on the same node', () => {
+  it('fixes the target end to the dragged side when re-dropped on the same node', () => {
     const conn = { source: 'a', target: 'b', sourceHandle: 'right', targetHandle: 'top' };
     expect(reconnectSide('target', conn, rel)).toEqual({ end: 'to', side: 'top' });
   });

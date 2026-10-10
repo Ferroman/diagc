@@ -8,7 +8,7 @@ export interface BreadcrumbsProps {
   onCrumb: (id: string | null) => void;
 }
 
-/** The nested-zoom trail. Rendered as a React Flow overlay panel; each crumb pops
+/** The nested-zoom trail. Rendered in a React Flow panel; each crumb pops
  *  the view back out to that frame (the last crumb is the current frame). */
 export function Breadcrumbs({ path, nameOf, onCrumb }: BreadcrumbsProps) {
   if (path.length === 0) return null;

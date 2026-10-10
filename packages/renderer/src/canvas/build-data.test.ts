@@ -443,7 +443,7 @@ describe('buildEdgeData', () => {
     expect(buildEdgeData(bundle, edgeCtx()).threatRelation).toBeUndefined();
   });
 
-  it('wires pin dots to the active sole relation and the side callback', () => {
+  it('wires fixed-side dots to the active sole relation and the side callback', () => {
     const onSetSide = vi.fn();
     const d = buildEdgeData(viewEdge(), edgeCtx({ editing: true, fixedSideRelation: 'r1', onSetEdgeSide: onSetSide }));
     expect(d.fixedSideDotsShown).toBe(true);
@@ -456,8 +456,8 @@ describe('buildEdgeData', () => {
     ).toBeUndefined();
   });
 
-  it('offers no pin dots on an edge rolled up to a container', () => {
-    // `a` sits in the folded `box`: a side pinned here would land on `a`, where
+  it('offers no fixed-side dots on an edge rolled up to a container', () => {
+    // `a` sits in the folded `box`: a side fixed here would land on `a`, where
     // this edge does not draw it
     const rolledUp = viewEdge({ from: 'box' });
     const d = buildEdgeData(rolledUp, edgeCtx({ editing: true, fixedSideRelation: 'r1', onSetEdgeSide: vi.fn() }));
@@ -574,7 +574,7 @@ describe('buildEdgeData', () => {
 
   it('keys the edge cache on onAddThreat', () => {
     // same reason as the node ctx: a swapped callback must rebuild, or the
-    // chip keeps calling the host's previous one
+    // badge keeps calling the host's previous one
     const e = viewEdge();
     const ctx = edgeCtx({ editing: true, onAddThreat: vi.fn() });
     const first = buildEdgeDataCached(e, { ...ctx });

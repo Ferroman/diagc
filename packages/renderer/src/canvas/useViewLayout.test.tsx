@@ -268,7 +268,7 @@ describe('useViewLayout', () => {
         fixed: new Set(['box']),
       }),
     };
-    // both nodes carry a stale pin (a fish dragged before nodes were fixed)
+    // both nodes carry a stale saved position (a fish dragged before nodes were fixed)
     const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 400, y: 50 }, img: { x: 70, y: 7 } } } };
     const viewPositions = { box: { x: 999, y: 9 } };
     const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
@@ -277,7 +277,7 @@ describe('useViewLayout', () => {
     await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
     expect(result.current.fixed.has('box')).toBe(true);
     expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 0 });
-    expect(result.current.placedGeometry?.get('img')).toMatchObject({ x: 70, y: 7 }); // not fixed: its pin still counts
+    expect(result.current.placedGeometry?.get('img')).toMatchObject({ x: 70, y: 7 }); // not fixed: its saved position still counts
     rerender(inputFor(m, { profile, layout, viewPositions, editing: true }));
     expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 0 });
   });

@@ -10,7 +10,7 @@ export interface LaserLayerProps {
 }
 
 /**
- * The laser pointer overlay: a second flow-space SVG above the drawings layer
+ * The laser pointer layer: a second flow-space SVG above the drawings layer
  * (z-index 5 vs 4), transformed by the viewport so a trail stays on what it
  * pointed at when the presenter pans mid-fade. Every trail is a halo + core
  * pair in screen-constant widths (see styles.css); finished trails carry the

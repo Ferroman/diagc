@@ -121,7 +121,7 @@ function LoopBadge({
   );
 }
 
-/** overlay of R/B/? feedback-loop badges over the causal-loop-diagram canvas
+/** canvas overlay of R/B/? feedback-loop badges over the causal-loop-diagram canvas
  * (must be mounted inside <ReactFlow> — it reads node positions via the store) */
 export function LoopLabelLayer({ edges, rough, nodeFilter }: LoopLabelLayerProps) {
   const { loops } = useMemo(() => findLoops(edges), [edges]);

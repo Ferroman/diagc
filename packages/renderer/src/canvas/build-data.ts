@@ -107,9 +107,9 @@ export interface EdgeDataContext {
   onMoveEdgeLabel?: (relationId: string, labelId: string, t: number, side: EdgeLabelSide) => void;
   onSetEdgeSide?: (relationId: string, end: 'from' | 'to', side: import('../edge/floating').Side | null) => void;
   /** see EditingApi.onAddThreat; bound to the edge's sole relation below, so
-   * the chip in the renderer calls it with nothing */
+   * the badge in the renderer calls it with nothing */
   onAddThreat?: (target: ElementRef) => void;
-  /** the sole-relation id currently showing endpoint pin dots (null = none) */
+  /** the sole-relation id currently showing fixed-side dots (null = none) */
   fixedSideRelation: string | null;
   /** a correlated double-click asked to add a label on a specific edge */
   pendingAdd: { edgeId: string; x: number; y: number } | null;
@@ -263,7 +263,7 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     { open: 0, total: 0 },
   );
   // A bundled arrow's badge counts every constituent's comments, as the threat
-  // chip does — or a comment would vanish the moment two flows merged.
+  // badge does — or a comment would vanish the moment two flows merged.
   const comments = e.constituents.reduce((acc, c) => acc + (c.comments?.length ?? 0), 0);
   const annotations: AnnotationCounts | undefined = comments > 0 ? { comments, links: 0 } : undefined;
   const data: DiagramEdgeData = {
@@ -283,7 +283,7 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     annotations,
   };
   const relation = soleRelation(e);
-  // Both modes: the counting chip toggles this relation's bubble in view mode
+  // Both modes: the counting badge toggles this relation's note in view mode
   // too (the canvas's own session state), so the id has to travel regardless
   // of `editing`. A string, so the cached-data comparison stays a field check.
   if (relation !== undefined) data.threatRelation = relation.id;
@@ -312,7 +312,7 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     data.movableLabels = true;
     data.onMoveLabel = (labelId, t, side) => ctx.onViewMoveEdgeLabel?.(relation.id, labelId, t, side);
   }
-  // A side is fixed on the relation's own node, so the pin dots stay off an edge
+  // A side is fixed on the relation's own node, so the fixed-side dots stay off an edge
   // rolled up to a container: a side set there would land where this edge does
   // not draw it.
   if (

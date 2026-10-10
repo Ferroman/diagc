@@ -46,7 +46,7 @@ describe('notationProfile', () => {
     expect(notationProfile('bogus' as never).id).toBe('default');
   });
 
-  it('the git-graph profile supplies the layout, forces lanes open, colours by lane and draws the tails overlay', () => {
+  it('the git-graph profile supplies the layout, forces lanes open, colours by lane and draws the lane tails', () => {
     const p = notationProfile('git-graph');
     expect(p.className).toBe('dg-notation-git');
     expect(p.layout).toBe(gitLayout);
@@ -97,7 +97,7 @@ describe('default algorithm', () => {
 
 describe('second-order profile', () => {
   const p = notationProfile('second-order');
-  it('draws the order-bands overlay, partitioning nodes by consequence order', () => {
+  it('draws the order bands, partitioning nodes by consequence order', () => {
     expect(notationProfile('second-order').canvasOverlay).toBe('order-bands');
     expect(notationProfile('second-order').partitionOf).toBeDefined();
   });

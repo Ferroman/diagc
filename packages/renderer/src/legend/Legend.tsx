@@ -65,7 +65,7 @@ function LineSwatch({ style, color }: { style: KindStyle; color: string }) {
 
 /** One drawing per `ShapeId`, in a 24×16 box. A shape with no branch here would be
  * keyed as a plain box, which on an activity diagram is every row saying the same
- * thing — Legend.test pins that each shape gets its own. */
+ * thing — Legend.test checks that each shape gets its own. */
 function ShapeGlyph({ s, stroke }: { s: TypeStyle; stroke: string }) {
   const outline = { fill: 'var(--dg-surface)', stroke, strokeDasharray: s.dashed === true ? '4 3' : undefined };
   switch (s.shape) {

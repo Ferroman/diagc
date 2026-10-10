@@ -35,7 +35,7 @@ const extents = new Map<string, BoxSize>([
 ]);
 const vmin = 800;
 
-/** everything collapsed: root renders as a single chip at (100, 100) */
+/** everything collapsed: root renders as a single box at (100, 100) */
 function collapsedSetup() {
   const view = compileView(makeModel(), {});
   const geometry = new Map<string, NodeGeometry>([
@@ -45,7 +45,7 @@ function collapsedSetup() {
   return { view, geometry };
 }
 
-/** root expanded: chips for sys/other inside it (parent-relative positions) */
+/** root expanded: boxes for sys/other inside it (parent-relative positions) */
 function expandedSetup() {
   const view = compileView(makeModel(), { focus: ['root'] });
   const geometry = new Map<string, NodeGeometry>([
@@ -57,12 +57,12 @@ function expandedSetup() {
 }
 
 describe('computeFocusChain', () => {
-  it('focuses the container chip under the viewport center once big enough', () => {
+  it('focuses the container box under the viewport center once big enough', () => {
     const { view, geometry } = collapsedSetup();
     const chain = computeFocusChain({
       view,
       geometry,
-      center: { x: 150, y: 130 }, // over root's chip
+      center: { x: 150, y: 130 }, // over root's box
       zoom: (FOCUS_ENTER_FRACTION * vmin) / 1000 + 0.01, // root would fill ~45% of viewport
       vmin,
       extents,
@@ -84,12 +84,12 @@ describe('computeFocusChain', () => {
     ).toEqual([]);
   });
 
-  it('descends into the child chip under the center when the parent is expanded', () => {
+  it('descends into the child box under the center when the parent is expanded', () => {
     const { view, geometry } = expandedSetup();
     const chain = computeFocusChain({
       view,
       geometry,
-      center: { x: 150, y: 180 }, // inside root, over sys's chip at absolute (120..320, 140..228)
+      center: { x: 150, y: 180 }, // inside root, over sys's box at absolute (120..320, 140..228)
       zoom: 1,
       vmin,
       extents,

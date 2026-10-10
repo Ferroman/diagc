@@ -119,7 +119,7 @@ describe('onCldEdges', () => {
     const onCldEdges = vi.fn();
     render(<DiagramView model={cldTriangle('+')} onCldEdges={onCldEdges} />);
     await screen.findByText('a');
-    // called (with an empty graph) but never with edges — non-CLD has no overlay
+    // called (with an empty graph) but never with edges — non-CLD has no canvas overlay
     for (const call of onCldEdges.mock.calls) expect(call[0]).toHaveLength(0);
   });
 });

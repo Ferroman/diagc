@@ -288,7 +288,7 @@ export function rebaseRoutes(
  * them: every link between lanes, and any whose shifted elk path ran into a
  * box) — orthogonally, through the column gaps and lane pad strips the banded
  * frame keeps clear (lane-router.ts). A link the router cannot place, or one
- * pinned to a top/bottom side, keeps floating as before.
+ * fixed to a top/bottom side, keeps floating as before.
  */
 export function routeBandedEdges(
   routes: Map<string, Point[]>,
@@ -370,7 +370,7 @@ export function routeBandedEdges(
         toSide: e.style?.toSide,
         hasLabel: edgeLabelText(e).trim() !== '',
       }))
-      // elk's surviving routes stand, unless they break a pin (DiagramEdge
+      // elk's surviving routes stand, unless they break a fixed side (DiagramEdge
       // would then float them): those are routed here, honouring it
       .filter((e) => {
         const kept = routes.get(e.id);

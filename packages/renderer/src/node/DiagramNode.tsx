@@ -80,7 +80,7 @@ export interface DiagramNodeData {
   stylePreset?: StylePreset;
   /** active visual language (e.g. 'causal-loop'); selects the notation profile (see notations.ts) that drives typeless-as-text rendering and other look overrides */
   notation?: NotationId;
-  /** drill-view external stub: a ghost chip standing in for an off-frame node an
+  /** drill-view external stub: a ghost standing in for an off-frame node an
    * edge points to. Clicking it navigates there. */
   external?: boolean;
   /** ER-table rows (db-table nodes) */
@@ -240,7 +240,7 @@ function XResizer({ id, data, selected }: { id: string; data: DiagramNodeData; s
   );
 }
 
-/** The one inline-rename field. Exported because a threat note renames rows with
+/** The one inline-rename field. Exported because a note renames rows with
  * the same gesture and the same commit contract (`null` = cancelled) — a second
  * copy would be a second set of Enter/blur/Escape rules to keep in step. */
 export function InlineName({
@@ -356,15 +356,15 @@ export function ThreatBadge({ id, data }: { id: string; data: DiagramNodeData })
     );
   }
   // state/text/title come from the shared derivation so this badge and the
-  // flow's chip cannot drift apart in what they say (see threat-badge.ts).
+  // flow's badge cannot drift apart in what they say (see threat-badge.ts).
   const { state, text, title } = threatBadgeProps(t);
-  // With a canvas that draws bubbles (NoteStateContext provided), the badge is
-  // the switch for this element's bubble — in BOTH modes; view mode's toggles
+  // With a canvas that draws notes (NoteStateContext provided), the badge is
+  // the switch for this element's note — in BOTH modes; view mode's toggles
   // are the canvas's own session state. Without one (a host that never draws
-  // bubbles, a bare DiagramNode) it stays the passive count it always was.
+  // notes, a bare DiagramNode) it stays the passive count it always was.
   // An external stub takes the same passive branch: it stands in for a node
   // this drill view does not draw, and the note derivation skips externals for
-  // exactly that reason — the bubble belongs to the view that draws the node,
+  // exactly that reason — the note belongs to the view that draws the node,
   // so a switch here would flip a state nothing on this canvas can show.
   if (notes === null || data.external === true) {
     return (
@@ -403,9 +403,9 @@ export function CommentBadge({ id, data }: { id: string; data: DiagramNodeData }
   const badge = data.annotations !== undefined ? commentBadgeProps(data.annotations) : undefined;
   if (badge === undefined) return null;
   // text/title come from the shared derivation so this badge and the flow's
-  // chip cannot drift apart in what they say (see comment-badge.ts).
+  // badge cannot drift apart in what they say (see comment-badge.ts).
   const { text, title } = badge;
-  // Passive without a bubble-drawing canvas, and on an external stub — the
+  // Passive without a note-drawing canvas, and on an external stub — the
   // same two cases ThreatBadge explains.
   if (notes === null || data.external === true) {
     return (
@@ -571,7 +571,7 @@ export function DiagramNode({
   const hitAttrs = hitColor !== undefined ? { 'data-plan-hit': true } : {};
   // The drag-over outline (see DiagramNodeData.dropTarget / EditingApi.onDropInto).
   const dropTargetAttrs = data.dropTarget === true ? { 'data-drop-target': true } : {};
-  // Tab inside an open label editor is the same offer the `+` chip makes, so it
+  // Tab inside an open label editor is the same offer the quick-add button makes, so it
   // is wired from the same channel: commit, then add. `run` is a no-op when the
   // node has no recipe, so no separate label gate is needed here.
   const quickAdd = data.quickAdd;
@@ -832,8 +832,8 @@ export function DiagramNode({
     // A lane is a row, not a box: no border, no fill, none of the fold/enter/pin
     // chrome (the notation keeps it expanded). Its name sits in a tinted box at
     // the band's right end — the reference's "Master / Nightly" labels. Width
-    // and inset mirror GIT_LAYOUT.LABEL_W / MARGIN in styles.css. The `+`
-    // (append a commit) takes the chip's default spot, just past the row's
+    // and inset mirror GIT_LAYOUT.LABEL_W / MARGIN in styles.css. The quick-add
+    // button (append a commit) keeps its default spot, just past the row's
     // right end — beside the name, where the lane is grabbed.
     return (
       <div className={`dg-lane${loopClass}`}>
@@ -854,7 +854,7 @@ export function DiagramNode({
   if (data.typeId === FB_EFFECT_TYPE) {
     // The effect IS the spine: fishboneLayout sizes this node across the whole
     // fish, the line fills it and the head box sits at its right end (the
-    // git-lane trick — no overlay needed). Flex lets the line take whatever the
+    // git-lane trick — no canvas overlay needed). Flex lets the line take whatever the
     // box leaves, so nothing here needs to know the box's width.
     return (
       <div className={`dg-fb-head${loopClass}`}>

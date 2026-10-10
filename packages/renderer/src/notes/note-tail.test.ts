@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { tailGeometry } from './note-tail';
 
-// a 220×80 bubble; the badge is given in the bubble's own space (0,0 = top-left)
+// a 220×80 note; the badge is given in the note's own space (0,0 = top-left)
 const size = { width: 220, height: 80 };
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -32,7 +32,7 @@ describe('tailGeometry', () => {
     expect(tailGeometry({ x: 234, y: 94 }, size)?.side).toBe('bottom');
   });
 
-  it('draws nothing for a badge under the bubble, or one too close for a tail to show', () => {
+  it('draws nothing for a badge under the note, or one too close for a tail to show', () => {
     expect(tailGeometry({ x: 100, y: 40 }, size)).toBeNull();
     expect(tailGeometry({ x: 222, y: 40 }, size)).toBeNull();
   });

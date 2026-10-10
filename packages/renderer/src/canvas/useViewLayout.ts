@@ -118,7 +118,7 @@ export const SHARP_CORNER = 8;
 
 export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // Per-node size hints: the notation profile can seed a leaf size (e.g. CLD's
-  // typeless nodes rendered as text chips); image nodes then overwrite with
+  // typeless nodes rendered as text nodes); image nodes then overwrite with
   // their own footprint (overlay-resized if present, else a fixed default —
   // the studio seeds real dimensions at creation).
   const sizeHints = useMemo(() => {
@@ -365,7 +365,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   const placedGeometry = useMemo(() => {
     if (geometry === null) return geometry;
     // A fixed node reads no position from anywhere. Filtered HERE, not only at
-    // the gesture: a pin can predate the rule (a fish dragged before its nodes
+    // the gesture: a saved position can predate the rule (a fish dragged before its nodes
     // were fixed), or arrive with a node that was placed as a stray and hung on
     // the fish afterwards — either would leave it behind when the fish next
     // changes shape, its lines floating in to a box they were never drawn to.
