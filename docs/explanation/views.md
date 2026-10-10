@@ -80,7 +80,7 @@ Layers are **off by default**. Untagged relations always show; a tagged one appe
 - **A plane's `layers` are a default, not a union.** A host that owns a layer switch passes its own `activeLayers`, and a present array — *even an empty one* — replaces the presets rather than adding to them, so a preset layer can be switched off. Such a host must seed its state with `presetLayers(model.planes, plane)` when the view opens and on every plane change; otherwise the diagram opens with its own overlays off. (Unioning them, which is what this did until the switch existed, made a preset layer permanently unturn-off-able.)
 - **PNG export unfolds everything.** The image is a flat overview, not the folded resting state. A diagram that reads well folded can be dense as a PNG.
 - **Pins are viewer state, not model state.** They are not saved to the diagram file.
-- **Automatic follow-the-viewport zoom exists but is off.** `computeFocusChain` is implemented and parked; navigation is by double-click.
+- **Automatic follow-the-viewport zoom is not built.** Navigation is by double-click.
 
 ## Read next
 
