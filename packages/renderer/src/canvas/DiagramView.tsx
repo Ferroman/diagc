@@ -27,7 +27,6 @@ import {
   isActivityChrome,
   isNodeRef,
   layoutPlaneKey,
-  elementKey,
   soleRelation,
   type DiagramNode,
   type EdgeLabelPlacement,
@@ -81,6 +80,8 @@ import { useLegendState } from '../legend/useLegendState';
 import { useLoopOverlay } from '../loops/useLoopOverlay';
 import { NUDGE_STEP, useNudge, type Positions } from './useNudge';
 import { useViewLayout } from './useViewLayout';
+import { useEditRequests } from './useEditRequests';
+import { noSelection, soleSelection, withDropTarget } from './node-copy';
 import { useNoteNodes } from './useNoteNodes';
 import { useNoteSession } from './useNoteSession';
 import { LaserLayer } from '../drawings/LaserLayer';
@@ -113,28 +114,6 @@ const imageFilesOf = (list: FileList | null | undefined): File[] =>
  * nesting target — kept in one named helper so the coupling is explicit. */
 const droppedOnNodeId = (e: { clientX: number; clientY: number }): string | undefined =>
   document.elementFromPoint(e.clientX, e.clientY)?.closest('.react-flow__node')?.getAttribute('data-id') ?? undefined;
-
-/** `id` becomes the sole selection on React Flow's copy of the nodes. Every node
- * whose flag already reads right keeps its identity, so this costs one re-render
- * of at most two boxes. */
-const soleSelection = (nodes: Node[], id: string): Node[] =>
-  nodes.map((n) => ((n.selected === true) === (n.id === id) ? n : { ...n, selected: n.id === id }));
-
-/** nothing is selected on React Flow's copy; already-clear nodes keep their identity */
-const noSelection = (nodes: Node[]): Node[] => nodes.map((n) => (n.selected === true ? { ...n, selected: false } : n));
-
-/** `id` (or none) carries `data.dropTarget: true` on React Flow's copy — the
- * drag-over outline a notation's drop target draws (DiagramNode's
- * data-drop-target). Same identity-preserving shape as soleSelection above,
- * but on `data`: unlike `selected` it is not a field React Flow itself knows,
- * so DiagramNode reads it off the node data channel like any other notation
- * hook. */
-const withDropTarget = (nodes: Node[], id: string | undefined): Node[] =>
-  nodes.map((n) => {
-    const has = (n.data as { dropTarget?: boolean }).dropTarget === true;
-    const want = n.id === id;
-    return has === want ? n : { ...n, data: { ...n.data, dropTarget: want } };
-  });
 
 /** Client coordinates off a React Flow drag event. React Flow types the event
  * `MouseEvent | TouchEvent` (a drag CAN start from a touch), so `.clientX` is
@@ -231,59 +210,9 @@ function Inner(props: DiagramViewProps) {
   });
   const { enteredPath, drillRoot, focus, enterNode, exitTo, pendingRootFitRef } = nav;
 
-  // Open a node's name for a host-driven rename that did not originate from a
-  // canvas gesture (a panel button creating a node "outside" the canvas, e.g.
-  // second-order's "And then what?"). Mirrors onCreateAt's own in-place rename.
-  const labelRequest = edit?.editLabelRequest;
-  // The last nonce this effect actually acted on. Needed because `edit` — and
-  // the request riding on it — disappears while merely viewing (mode toggles
-  // off), so `labelRequest?.nonce` itself goes nonce -> undefined -> the SAME
-  // nonce on the way back into edit mode. "the nonce changed" would then be
-  // true again on re-entry with no new user action, replaying a stale (maybe
-  // deleted, maybe no-longer-selected) rename. The ref is deliberately left
-  // untouched while the request is absent (view mode) — only a genuinely new
-  // nonce, seen while editing, is allowed to open the box.
-  const consumedLabelNonceRef = useRef<number | undefined>(undefined);
   // A requested node that React Flow's copy does not hold yet, waiting for the
-  // resync below to hand it the selection (see the effect).
+  // resync below to hand it the selection (see useEditRequests).
   const selectOnAppearRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!editing || labelRequest === undefined || labelRequest.nonce === consumedLabelNonceRef.current) return;
-    consumedLabelNonceRef.current = labelRequest.nonce;
-    setLabelEdit({ kind: 'node', id: labelRequest.id });
-    // ...and make it React Flow's sole selection. The host's own select() never
-    // reaches React Flow's copy of the nodes, and the selection ring, the image
-    // resizer and the quick-add button all render off THAT flag — so without this the
-    // button would stay on the node the add came from and a `+`, type, `+` chain
-    // would fan siblings off one source instead of walking down the chain. A
-    // label request is by definition "this is the node you are working on now".
-    // A request almost always names a node the host has JUST created, and elk
-    // lays out asynchronously: React Flow's copy reaches it only once it turns
-    // up in derivedNodes. So select it here when this render already has it,
-    // and otherwise leave a claim the resync useLayoutEffect takes the moment
-    // the node lands — deselecting the source now would only flash an empty
-    // selection in between.
-    if (derivedNodes.some((n) => n.id === labelRequest.id)) {
-      setRfNodes((prev) => soleSelection(prev, labelRequest.id));
-    } else {
-      selectOnAppearRef.current = labelRequest.id;
-    }
-    // keyed on the nonce alone: the id may repeat, the request may not
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [labelRequest?.nonce]);
-
-  // The same contract one level down: the host just added a threat and wants
-  // its (empty) title open on the note. No selection claim to leave here — the
-  // note is not selectable, and it appears in the same render as the threat it
-  // draws, so there is nothing to wait for.
-  const threatRequest = edit?.editThreatRequest;
-  const consumedThreatNonceRef = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    if (!editing || threatRequest === undefined || threatRequest.nonce === consumedThreatNonceRef.current) return;
-    consumedThreatNonceRef.current = threatRequest.nonce;
-    setNoteEdit({ key: elementKey(threatRequest.target), id: threatRequest.id });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the nonce alone, as editLabelRequest is
-  }, [threatRequest?.nonce]);
 
   const nameOf = useMemo(() => new Map(props.model.nodes.map((n) => [n.id, n.name])), [props.model]);
 
@@ -854,6 +783,15 @@ function Inner(props: DiagramViewProps) {
   const [rfNodes, setRfNodes] = useState<Node[]>([]);
   const rfNodesRef = useRef<Node[]>([]);
   rfNodesRef.current = rfNodes;
+  useEditRequests({
+    editing,
+    edit,
+    derivedNodes,
+    setLabelEdit,
+    setNoteEdit,
+    setRfNodes,
+    selectOnAppearRef,
+  });
   // Every way a box can move — a drag, a multi-node drag, an arrow-key nudge,
   // an align/distribute — ends here, so the two modes' persistence paths are
   // decided in exactly one place: edit mode hands the batch to the host (one
