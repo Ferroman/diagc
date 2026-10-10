@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   Background,
   ConnectionMode,
@@ -16,8 +16,6 @@ import '@xyflow/react/dist/style.css';
 import {
   countAnchored,
   DEFAULT_STROKE_WIDTH,
-  GIT_STAGE_TYPE,
-  isActivityChrome,
   isNodeRef,
   layoutPlaneKey,
   soleRelation,
@@ -26,10 +24,9 @@ import {
   type ViewNode,
 } from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
-import { FORCED_SIZE_SHAPES, LAYOUT_SIZED_TYPES } from '../layout/box-size';
 import { Breadcrumbs } from './Breadcrumbs';
-import { buildEdgeDataCached, buildNodeDataCached, type EdgeDataContext, type NodeDataContext } from './build-data';
-import { edgeTypes, nodeTypes, toRfEdge, toRfNode } from './adapter';
+import { buildEdgeDataCached, type EdgeDataContext } from './build-data';
+import { edgeTypes, nodeTypes, toRfEdge } from './adapter';
 import type { NoteData } from '../notes/NoteNode';
 import { isNoteId } from '../notes/derive-note-nodes';
 import { NoteStateContext } from '../notes/note-state';
@@ -61,10 +58,11 @@ import { useNudgeAndArrange } from './useNudgeAndArrange';
 import { MAX_ZOOM, MIN_ZOOM, useLayoutApi } from './useLayoutApi';
 import { noSelection, soleSelection } from './node-copy';
 import { useNoteNodes } from './useNoteNodes';
+import { useFlowNodes, type LabelEdit } from './useFlowNodes';
+import { useNodeResync } from './useNodeResync';
 import { useNoteSession } from './useNoteSession';
 import { LaserLayer } from '../drawings/LaserLayer';
-import type { DiagramNodeData } from '../node/DiagramNode';
-import { diffEdgeStatus, diffNodeClasses, withDiffClass } from './diff-marks';
+import { diffEdgeStatus, withDiffClass } from './diff-marks';
 import '../styles.css';
 import '@fontsource/kalam/400.css';
 import '@fontsource/kalam/700.css';
@@ -95,13 +93,13 @@ function Inner(props: DiagramViewProps) {
   const edit = props.edit;
   const preset = useMemo(() => stylePreset(props.styleId), [props.styleId]);
   const notation = useNotation(props);
-  const { profile, typeRegistry, kindRegistry, nodeColors, nodeChips } = notation;
+  const { profile, typeRegistry, kindRegistry, nodeColors } = notation;
   const icons = useMemo(() => props.icons ?? createIconRegistry(), [props.icons]);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   // In-place label editing target (edit mode double-click): a node's name or a
   // single-relation edge's label.
-  const [labelEdit, setLabelEdit] = useState<{ kind: 'node' | 'edge'; id: string } | null>(null);
+  const [labelEdit, setLabelEdit] = useState<LabelEdit | null>(null);
   const editing = props.mode === 'edit';
   const notes = useNoteSession(editing, props.model.id);
   const { setNoteEdit, setNoteOverrides } = notes;
@@ -154,8 +152,8 @@ function Inner(props: DiagramViewProps) {
   });
   const { enteredPath, drillRoot, focus, enterNode, exitTo, pendingRootFitRef } = nav;
 
-  // A requested node that React Flow's copy does not hold yet, waiting for the
-  // resync below to hand it the selection (see useEditRequests).
+  // A requested node that React Flow's copy does not hold yet, waiting for
+  // useNodeResync to hand it the selection (see useEditRequests).
   const selectOnAppearRef = useRef<string | null>(null);
 
   const nameOf = useMemo(() => new Map(props.model.nodes.map((n) => [n.id, n.name])), [props.model]);
@@ -261,7 +259,6 @@ function Inner(props: DiagramViewProps) {
     routing,
     laidAt,
     labelSpots,
-    fixed,
     settledFor,
     flowDirection,
   } = viewLayout;
@@ -356,178 +353,6 @@ function Inner(props: DiagramViewProps) {
     return m;
   }, [profile, compiled, props.model, props.plane]);
 
-  // The per-node data channel inputs, as one object the cached builder keys
-  // its identity on (see build-data.ts): while every field is referentially
-  // unchanged, the cached data objects are reused instead of rebuilt. So the
-  // callbacks placed in it are stable: a fresh arrow per memo run would rebuild
-  // every node's data whenever an input the builder does not compare changed.
-  const endLabelEdit = useCallback(() => setLabelEdit(null), []);
-  const nodeDataCtx = useMemo<NodeDataContext>(
-    () => ({
-      metaKeys,
-      hiddenCounts,
-      typeRegistry,
-      icons,
-      typeColors: props.model.typeColors,
-      onOpenLink: props.onOpenLink,
-      onToggleExpand: props.onToggleExpand,
-      onEnterNode: enterNode,
-      editing,
-      labelEditingId: labelEdit?.kind === 'node' ? labelEdit.id : undefined,
-      endLabelEdit,
-      onRenameNode: edit?.onRenameNode,
-      onSetNodeRich: edit?.onSetNodeRich,
-      assetBase: props.assetBase,
-      libraryBase: props.libraryBase,
-      onResize: edit?.onResize,
-      onSetTableColumns: edit?.onSetTableColumns,
-      quickAdd: edit?.quickAdd,
-      onSetRole: edit?.onSetRole,
-      onAddThreat: edit?.onAddThreat,
-      stylePreset: preset.rough !== undefined ? preset : undefined,
-      notation: props.notation,
-      nodeColors,
-      nodeChips,
-      resizable: profile.node?.resizable,
-    }),
-    [
-      metaKeys,
-      hiddenCounts,
-      typeRegistry,
-      icons,
-      props.model.typeColors,
-      props.onOpenLink,
-      props.onToggleExpand,
-      enterNode,
-      editing,
-      labelEdit,
-      endLabelEdit,
-      edit?.onRenameNode,
-      edit?.onSetNodeRich,
-      props.assetBase,
-      props.libraryBase,
-      edit?.onResize,
-      edit?.onSetTableColumns,
-      edit?.quickAdd,
-      edit?.onSetRole,
-      edit?.onAddThreat,
-      preset,
-      props.notation,
-      nodeColors,
-      nodeChips,
-      profile,
-    ],
-  );
-
-  const derivedNodes = useMemo((): Node[] => {
-    if (arrangedGeometry === null) return [];
-    const out: Node[] = [];
-    const walk = (n: ViewNode, parent?: string) => {
-      const geo = arrangedGeometry.get(n.id);
-      if (geo === undefined) return;
-      const data = buildNodeDataCached(n, nodeDataCtx);
-      const dragLocked = fixed.has(n.id) && profile.node?.draggableWhenFixed?.(n.node) !== true;
-      out.push(
-        toRfNode({
-          id: n.id,
-          position: { x: geo.x, y: geo.y },
-          data,
-          parentId: parent,
-          // A node the notation fixed (a fishbone's) takes no drag in either
-          // mode — not even the pixel of jitter in a click, which React Flow
-          // counts as one and which used to save a position at the spot the node
-          // already stood on: invisible until the fish next changed shape and
-          // left the node behind with its lines floating. Still selectable —
-          // which needs `nopan` back: React Flow drops it from a non-draggable
-          // node, a press on one then pans the canvas, and a pan of one pixel
-          // swallows the click. Edit mode only: in view mode every node pans
-          // that way, and the effect spans the whole spine.
-          //
-          // A notation may except a node whose drag still means something (a
-          // plan zone's or event's displacement is read as days): it drags,
-          // and `fixed` still keeps the overlay from ever storing a position
-          // for it.
-          draggable: dragLocked ? false : undefined,
-          className: dragLocked && editing ? 'nopan' : undefined,
-          // Membership is edited in the node panel, not by dragging away, so a
-          // child never leaves its box — the box gives way instead, live while
-          // dragging (React Flow's expandParent) and for good once dropped (the
-          // fit pass in useViewLayout). Both modes: an Alt-drag in view mode
-          // used to carry the child straight out through the wall. A notation
-          // that owns the arrangement sizes its own rows, so there the old
-          // edit-mode clamp stays.
-          //
-          // ...unless the node is one this drag may DROP into a different
-          // parent (dropTargetFor/onDropInto): a plan's plain node or actor,
-          // already nested in a zone, still counts as droppable, and both
-          // `extent: 'parent'` and `expandParent` would stop it ever reaching
-          // a neighbouring zone — the clamp reads it as a reparent attempt to
-          // resist, the drop feature reads the same gesture as the point. No
-          // notation today combines a droppable node with `expandParent`
-          // (only the plan sets `dropTarget`/`canDrop`, and the plan owns its
-          // layout, so it only ever reaches the `extent` branch below) — the
-          // `expandParent` omission is here anyway so a future notation that
-          // did combine them would not grow the wrong box mid-drag toward a
-          // sibling's.
-          ...(parent === undefined ||
-          (profile.node?.dropTarget !== undefined && profile.node?.canDrop?.(n.node) === true)
-            ? {}
-            : profile.layout === undefined
-              ? { expandParent: true }
-              : editing
-                ? { extent: 'parent' as const }
-                : {}),
-          ...(n.state === 'expanded'
-            ? { style: { width: geo.width, height: geo.height }, zIndex: -1 }
-            : n.node.type === GIT_STAGE_TYPE
-              ? // a stage frame is sized by the git layout and sits BEHIND the lanes it spans
-                { style: { width: geo.width, height: geo.height }, zIndex: -2 }
-              : (n.node.image !== undefined || n.node.shape !== undefined) && n.state === 'leaf'
-                ? { style: { width: geo.width, height: geo.height } }
-                : // A circle leaf (e.g. a git commit) has no CSS-natural size the way
-                  // an ordinary box does — .dg-circle-node zeroes out the base node's
-                  // min-width/padding and is sized entirely by its RF wrapper
-                  // (width/height: 100%). Without an explicit inline size here, that
-                  // wrapper collapses to its border-only intrinsic size, so the
-                  // layout's diameter must be applied explicitly, same as image/shape
-                  // leaves above. Ordinary boxes and CLD text nodes must NOT go
-                  // through this branch — forcing sizes there would change their
-                  // existing CSS-driven sizing. …and a fishbone leaf, whose layout
-                  // sizes it (see LAYOUT_SIZED_TYPES). An EMPTY git lane is the
-                  // activity-chrome case again: no commits, so compiled 'leaf',
-                  // while .dg-lane is width/height:100% of its wrapper — without
-                  // gitLayout's band size it is 0×0 and React Flow never shows it
-                  // (a node stays `visibility: hidden` until it measures). Keyed on
-                  // the notation, not the type: a branch-typed leaf anywhere else
-                  // is an ordinary box.
-                  n.state === 'leaf' &&
-                    n.node.type !== undefined &&
-                    (FORCED_SIZE_SHAPES.has(typeRegistry.resolve(n.node.type).shape) ||
-                      isActivityChrome(n.node.type) ||
-                      LAYOUT_SIZED_TYPES.has(n.node.type) ||
-                      profile.node?.isLane?.(n.node.type) === true)
-                  ? { style: { width: geo.width, height: geo.height } }
-                  : // An ordinary box keeps its CSS sizing, but never narrower than
-                    // the box elk laid out (box-size.ts estimates it): routes and
-                    // gaps are computed against that box, so a narrower drawn one
-                    // leaves an orthogonal arrow starting in mid-air beside it.
-                    // A FLOOR, not a width — a label the estimate undershot still
-                    // grows the box rather than wrapping inside it. Only where
-                    // elk placed the node from such an estimate: a notation's own
-                    // layout spaces its boxes off LEAF_SIZE, and a CLD text node is
-                    // deliberately free of the box minimum.
-                    profile.layout === undefined &&
-                      !(profile.node?.typelessAsText === true && n.node.type === undefined)
-                    ? { style: { minWidth: geo.width } }
-                    : {}),
-        }),
-      );
-      n.children.forEach((c) => walk(c, n.id));
-    };
-    compiled.roots.forEach((r) => walk(r));
-    return out;
-  }, [compiled, arrangedGeometry, nodeDataCtx, editing, typeRegistry, profile, fixed]);
-
   const { noteState, noteNodes } = useNoteNodes({
     model: props.model,
     plane: props.plane,
@@ -543,48 +368,22 @@ function Inner(props: DiagramViewProps) {
     nameOf,
     typeRegistry,
   });
-  // Boxes first, notes after: React Flow resolves `parentId` against the nodes
-  // it has already seen, so a note must never precede the box it rides on.
-  //
-  // A diff picture's marks ride on React Flow's wrapper class, so every node
-  // shape gets them without each node body knowing. `inside` only on a
-  // folded box: an open one shows the changed child itself.
-  const diffMarks = props.diffMarks;
-  const diffClasses = useMemo(
-    () => (diffMarks !== undefined ? diffNodeClasses(props.model, diffMarks) : null),
-    [diffMarks, props.model],
-  );
-  const allNodes = useMemo(() => {
-    const boxes =
-      diffClasses === null
-        ? derivedNodes
-        : derivedNodes.map((n) => {
-            const status = diffClasses.get(n.id);
-            if (
-              status === undefined ||
-              (status === 'inside' && (n.data as unknown as DiagramNodeData).state === 'expanded')
-            )
-              return n;
-            const className = withDiffClass(n.className, status);
-            return className !== undefined ? { ...n, className } : n;
-          });
-    return noteNodes.length === 0 ? boxes : [...boxes, ...noteNodes];
-  }, [derivedNodes, noteNodes, diffClasses]);
-  // Render-phase ref (the arrangedRef/rfNodesRef pattern): a snap-back reset
-  // (useNodeDragging's onNodeDragStop) needs each node's LAID position — the same source
-  // the resync effect further down reads when it copies allNodes into rfNodes
-  // — read synchronously at drop time, not a render later.
-  const allNodesRef = useRef(allNodes);
-  allNodesRef.current = allNodes;
-
-  // React Flow owns a copy of the nodes and we apply its changes (drag positions,
-  // measured dimensions, selection) with applyNodeChanges — the v12-recommended
-  // shape. Fully controlled nodes (the previous design) re-created every node
-  // object per drag frame, re-rendering all nodes and flickering under drag.
-  // useLayoutEffect so a derived-node change never paints a stale frame first.
-  const [rfNodes, setRfNodes] = useState<Node[]>([]);
-  const rfNodesRef = useRef<Node[]>([]);
-  rfNodesRef.current = rfNodes;
+  const { derivedNodes, allNodes, allNodesRef, rfNodes, setRfNodes, rfNodesRef } = useFlowNodes({
+    props,
+    editing,
+    edit,
+    notation,
+    icons,
+    preset,
+    compiled,
+    layout: viewLayout,
+    hiddenCounts,
+    metaKeys,
+    labelEdit,
+    setLabelEdit,
+    enterNode,
+    noteNodes,
+  });
   useEditRequests({
     editing,
     edit,
@@ -629,35 +428,7 @@ function Inner(props: DiagramViewProps) {
     flushNudge: nudge.flush,
     commitMoves,
   });
-  // Resync must not wipe flags React Flow owns on its copy — selection drives
-  // the image-node resizer, and a selection click itself re-renders the app,
-  // recomputing derivedNodes in the same tick.
-  useLayoutEffect(() => {
-    // ...except a claim left by a label request whose node had not been laid out
-    // yet (see useEditRequests): the first resync that carries the node hands
-    // it the selection, so the ring and the quick-add button land on the box the caret
-    // is in. Read before the updater so the ref is cleared exactly once.
-    // The claim is still checked against the BOXES: a label request always names
-    // a model node, and a note is never one of them.
-    const claim = selectOnAppearRef.current;
-    const claimed = claim !== null && derivedNodes.some((n) => n.id === claim) ? claim : null;
-    if (claimed !== null) selectOnAppearRef.current = null;
-    setRfNodes((prev) => {
-      const selected =
-        claimed !== null ? new Set([claimed]) : new Set(prev.filter((n) => n.selected === true).map((n) => n.id));
-      // A nudge not yet committed must not be undone by a resync in its idle
-      // window: keep the pending position, exactly as the selection is kept.
-      const pending = nudge.pendingRef.current;
-      if (selected.size === 0 && Object.keys(pending).length === 0) return allNodes;
-      return allNodes.map((n) => {
-        const p = pending[n.id];
-        const s = selected.has(n.id);
-        if (!s && p === undefined) return n;
-        return { ...n, ...(s ? { selected: true } : {}), ...(p !== undefined ? { position: p } : {}) };
-      });
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- nudge.pendingRef is a stable useRef identity read through .current; derivedNodes is left out because allNodes is derived from it and changes with it (depending on both would only run this twice)
-  }, [allNodes]);
+  useNodeResync({ allNodes, derivedNodes, setRfNodes, selectOnAppearRef, pendingRef: nudge.pendingRef });
 
   useLayoutApi({
     layoutApiRef: props.layoutApiRef,
@@ -723,6 +494,7 @@ function Inner(props: DiagramViewProps) {
     ],
   );
 
+  const { diffMarks } = props;
   const edges = useMemo((): Edge[] => {
     if (placedGeometry === null) return [];
     return compiled.edges.map((e) => {

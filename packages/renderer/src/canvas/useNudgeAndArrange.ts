@@ -47,7 +47,7 @@ export function useNudgeAndArrange(input: NudgeAndArrangeInput): NudgeAndArrange
     commit: commitMoves,
   });
   // What align/distribute act on: the selection minus the nodes nothing may move
-  // (see `draggable` in DiagramView's derivedNodes). They are neither moved nor
+  // (see `draggable` in nodeFrameProps). They are neither moved nor
   // lined up against, so two fish nodes are no selection to arrange and the
   // toolbar stays away.
   const selectedIds = useMemo(
@@ -80,7 +80,7 @@ export function useNudgeAndArrange(input: NudgeAndArrangeInput): NudgeAndArrange
     // Move at once: the commit re-derives the same positions a frame later,
     // but only if the host's onNodesMoved is synchronous — React 18 then
     // batches that re-derivation with this setRfNodes into one render. An
-    // async host would let the resync useLayoutEffect run in between and
+    // async host would let useNodeResync's layout effect run in between and
     // briefly snap the boxes back to their pre-arrange positions.
     setRfNodes((nds) =>
       applyNodeChanges(

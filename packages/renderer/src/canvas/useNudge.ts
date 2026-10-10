@@ -46,8 +46,8 @@ const inField = (el: Element | null): boolean => {
  * Moves apply to the React Flow copy at once and are persisted as ONE batch
  * after a short idle — a held key is one undo step, not thirty — or sooner
  * when a pointer drag starts, focus leaves the node, or the canvas unmounts.
- * `pendingRef` exposes the not-yet-committed positions so DiagramView's
- * derived-node resync can keep them on screen until the commit lands.
+ * `pendingRef` exposes the not-yet-committed positions so useNodeResync
+ * can keep them on screen until the commit lands.
  *
  * A modifier held with the arrow (Alt/Ctrl/Cmd+←/→/↑/↓ — Back, word-jump, …)
  * is claimed with `stopPropagation()` alone, no `preventDefault()` and no
@@ -89,7 +89,7 @@ export function useNudge(input: NudgeInput) {
       if (inField(target)) return;
       if ((target?.closest('.react-flow__node, .react-flow__nodesselection-rect') ?? null) === null) return;
       // What a drag may not move, a key may not either: a notation fixes some
-      // nodes in place (LayoutResult.fixed — a fishbone's) and DiagramView marks
+      // nodes in place (LayoutResult.fixed — a fishbone's) and nodeFrameProps marks
       // them `draggable: false`. A selection of nothing else is no selection.
       const selected = nodesRef.current.filter((n) => n.selected === true && n.draggable !== false);
       if (selected.length === 0) return;

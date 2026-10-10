@@ -121,7 +121,7 @@ export function useNoteNodes(input: NoteNodesInput): NoteNodes {
     });
     // edit?.onAddThreat / onRetitleThreat / onSetThreatStatus / onEditThreatText /
     // onOpenLink may be fresh closures per host render — the same trade
-    // nodeDataCtx makes, and for the same reason: a stale callback would edit
+    // useFlowNodes' nodeDataCtx makes, and for the same reason: a stale callback would edit
     // the wrong document, or open a link through a host that is no longer there.
     // profile is here because the threat offer is gated on it (see
     // deriveNoteNodes): switching to a threat-model plane has to redraw the notes.
