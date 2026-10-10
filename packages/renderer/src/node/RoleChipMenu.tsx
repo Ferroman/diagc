@@ -36,15 +36,11 @@ import type { EditingApi } from '../canvas/view-types';
 export function RoleChipMenu({
   chip,
   className,
-  role,
-  actorId,
   zoneId,
   onSetRole,
 }: {
   chip: NodeChip;
   className: string;
-  role: PlanRole;
-  actorId: string;
   zoneId: string;
   onSetRole: EditingApi['onSetRole'] & {};
 }) {
@@ -84,12 +80,12 @@ export function RoleChipMenu({
 
   // Every role but this chip's own, in PLAN_ROLES order, then Remove last.
   const items: { id: string; label: string; next: PlanRole | null }[] = [
-    ...PLAN_ROLES.filter((r) => r !== role).map((r) => ({ id: r, label: ROLE_LABEL[r].title, next: r })),
+    ...PLAN_ROLES.filter((r) => r !== chip.role).map((r) => ({ id: r, label: ROLE_LABEL[r].title, next: r })),
     { id: 'remove', label: 'Remove', next: null },
   ];
 
   const choose = (next: PlanRole | null) => {
-    onSetRole(zoneId, actorId, next);
+    onSetRole(zoneId, chip.refId, next);
     close(true);
   };
 

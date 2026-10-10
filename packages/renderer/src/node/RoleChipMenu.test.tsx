@@ -4,21 +4,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import type { NodeChip } from '../notations';
 import { RoleChipMenu } from './RoleChipMenu';
 
-const chip: NodeChip = { key: 'executes:bob', text: 'E·Bob', title: 'Executor: Bob' };
+const chip: NodeChip = { role: 'executes', refId: 'bob', text: 'E·Bob', title: 'Executor: Bob' };
 
 const trigger = () => screen.getByRole('button', { name: 'E·Bob' });
 
 function renderMenu(onSetRole = vi.fn()) {
-  render(
-    <RoleChipMenu
-      chip={chip}
-      className="dg-badge dg-role-chip"
-      role="executes"
-      actorId="bob"
-      zoneId="build"
-      onSetRole={onSetRole}
-    />,
-  );
+  render(<RoleChipMenu chip={chip} className="dg-badge dg-role-chip" zoneId="build" onSetRole={onSetRole} />);
   return onSetRole;
 }
 
@@ -94,14 +85,7 @@ describe('RoleChipMenu', () => {
     const onParentClick = vi.fn();
     render(
       <div onClick={onParentClick}>
-        <RoleChipMenu
-          chip={chip}
-          className="dg-badge dg-role-chip"
-          role="executes"
-          actorId="bob"
-          zoneId="build"
-          onSetRole={vi.fn()}
-        />
+        <RoleChipMenu chip={chip} className="dg-badge dg-role-chip" zoneId="build" onSetRole={vi.fn()} />
       </div>,
     );
     const btn = trigger();

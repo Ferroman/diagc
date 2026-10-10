@@ -316,7 +316,7 @@ describe('buildNodeData', () => {
   });
 
   it("threads the profile's chips and resize axis into node data", () => {
-    const chips = new Map([['z', [{ key: 'owns:a', text: 'O·A', title: 'Owner: A' }]]]);
+    const chips = new Map([['z', [{ role: 'owns' as const, refId: 'a', text: 'O·A', title: 'Owner: A' }]]]);
     const zone = viewNode({ id: 'z', node: { id: 'z', name: 'Z', type: 'plan-zone' } });
     const other = viewNode({ id: 'o', node: { id: 'o', name: 'O', type: 'service' } });
     const ctx = {
@@ -340,7 +340,7 @@ describe('buildNodeData', () => {
 
   it('keys the cache on nodeChips and resizable, like the other notation-derived maps', () => {
     const zone = viewNode({ id: 'z', node: { id: 'z', name: 'Z', type: 'plan-zone' } });
-    const chips = new Map([['z', [{ key: 'owns:a', text: 'O·A', title: 'Owner: A' }]]]);
+    const chips = new Map([['z', [{ role: 'owns' as const, refId: 'a', text: 'O·A', title: 'Owner: A' }]]]);
     const resizable = (n: DiagramNode) => (n.type === 'plan-zone' ? ('x' as const) : undefined);
     const ctx = nodeCtx({ editing: true, onResize: vi.fn(), nodeChips: chips, resizable });
     const a = buildNodeDataCached(zone, { ...ctx });

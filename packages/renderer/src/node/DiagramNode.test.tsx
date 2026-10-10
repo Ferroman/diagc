@@ -8,6 +8,7 @@ import { createTypeRegistry } from '../registry';
 import { notationProfile, TM_BOUNDARY_COLOR } from '../notations';
 import { DiagramNode, type DiagramNodeData } from './DiagramNode';
 import { NoteStateContext, type NoteState } from '../notes/note-state';
+import { LoopHighlightContext, noopLoopHighlight } from '../loops/loop-highlight';
 import { PLAN_LAYOUT } from '../layout/plan-layout';
 import { stylePreset } from '../sketch/stylePresets';
 import { seedFrom, sketchNode } from '../sketch/sketch';
@@ -1457,8 +1458,8 @@ describe('QuickAddButton', () => {
 describe('plan chips and x-resize', () => {
   it('renders role chips in the badge row with their titles and colours, on leaves and groups', () => {
     const chips = [
-      { key: 'owns:a', text: 'O·Alice', title: 'Owner: Alice Ng', color: '#c33' },
-      { key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' },
+      { role: 'owns' as const, refId: 'a', text: 'O·Alice', title: 'Owner: Alice Ng', color: '#c33' },
+      { role: 'executes' as const, refId: 'b', text: 'E·Bob', title: 'Executor: Bob' },
     ];
     const leaf = renderNode({ typeId: 'plan-zone', chips });
     const drawn = leaf.container.querySelectorAll('.dg-role-chip');
@@ -1472,13 +1473,40 @@ describe('plan chips and x-resize', () => {
     expect(group.container.querySelector('.dg-group')?.getAttribute('data-type')).toBe('plan-zone');
   });
   it('with onSetRole in data on the plan notation, the chip is a button', () => {
-    const chips = [{ key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' }];
+    const chips = [{ role: 'executes' as const, refId: 'b', text: 'E·Bob', title: 'Executor: Bob' }];
     const { container } = renderNode({ typeId: 'plan-zone', notation: 'plan', chips, onSetRole: vi.fn() });
     const chip = container.querySelector('.dg-role-chip');
     expect(chip?.tagName).toBe('BUTTON');
   });
+  it('marks the chip of the selected actor, and no chip of another actor whose id ends like it', () => {
+    const chips = [
+      { role: 'owns' as const, refId: 'team:b', text: 'O·Team', title: 'Owner: Team' },
+      { role: 'executes' as const, refId: 'b', text: 'E·Bob', title: 'Executor: Bob' },
+    ];
+    const { container } = render(
+      <ReactFlowProvider>
+        <LoopHighlightContext.Provider value={{ ...noopLoopHighlight, focusId: 'b' }}>
+          <DiagramNode
+            id="z"
+            data={{
+              label: 'zone',
+              typeId: 'plan-zone',
+              state: 'leaf',
+              promoted: false,
+              sharedMembers: [],
+              hiddenCount: 0,
+              typeRegistry: createTypeRegistry(),
+              icons: createIconRegistry(),
+              chips,
+            }}
+          />
+        </LoopHighlightContext.Provider>
+      </ReactFlowProvider>,
+    );
+    expect([...container.querySelectorAll('.dg-role-chip-active')].map((c) => c.textContent)).toEqual(['E·Bob']);
+  });
   it('without onSetRole (view mode) the chip stays the span it was', () => {
-    const chips = [{ key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' }];
+    const chips = [{ role: 'executes' as const, refId: 'b', text: 'E·Bob', title: 'Executor: Bob' }];
     const { container } = renderNode({ typeId: 'plan-zone', notation: 'plan', chips });
     const chip = container.querySelector('.dg-role-chip');
     expect(chip?.tagName).toBe('SPAN');

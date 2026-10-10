@@ -11,7 +11,6 @@ import {
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import {
-  TM_NOTATION,
   elementKey,
   type Column,
   type EdgeLabel,
@@ -477,10 +476,10 @@ export function DiagramEdge({
   const threatBadge = threats !== undefined ? threatBadgeProps(threats) : undefined;
   // Where there is nothing to count yet, the same spot offers the flow's first
   // threat instead — the offer the node badge makes (see ThreatBadge), gated
-  // the same way: a host listening (edit mode) on a threat model's canvas.
+  // the same way: a host listening (edit mode) where the notation offers threats.
   // Exactly one of the two ever draws, so they share one frame.
   const addThreat =
-    threats === undefined && data?.onAddThreat !== undefined && data.notation === TM_NOTATION
+    threats === undefined && data?.onAddThreat !== undefined && profile.offersThreats === true
       ? data.onAddThreat
       : undefined;
   const threatFrame = threats !== undefined || addThreat !== undefined ? markFrame(curve, 0.75) : undefined;

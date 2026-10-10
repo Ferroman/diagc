@@ -5,13 +5,9 @@ import {
   ACTIVITY_REGION_TYPE,
   FB_CAUSE_TYPE,
   FB_EFFECT_TYPE,
-  GIT_NOTATION,
   GIT_STAGE_TYPE,
   isActivityBand,
-  PLAN_ACTOR_TYPES,
   PLAN_EVENT_TYPE,
-  PLAN_NOTATION,
-  TM_NOTATION,
   elementKey,
   type Column,
   type FontScale,
@@ -333,8 +329,8 @@ export function ThreatBadge({ id, data }: { id: string; data: DiagramNodeData })
   if (t === undefined || t.total === 0) {
     // Edit mode on a threat model: the first threat is one click away on the
     // canvas, so the register can be written without opening the panel. Only
-    // there — a badge on every box of a C4 diagram would be noise.
-    if (data.onAddThreat === undefined || data.notation !== TM_NOTATION) return null;
+    // where the notation offers threats (profile.offersThreats).
+    if (data.onAddThreat === undefined || notationProfile(data.notation).offersThreats !== true) return null;
     const add = data.onAddThreat;
     return (
       <button
@@ -534,7 +530,7 @@ export function DiagramNode({
   // so the view compiler marks it 'leaf' — but it is still a lane row (the
   // notation keeps every lane, empty or not, drawn full-width by gitLayout),
   // not an ordinary leaf box.
-  const isLane = profile.id === GIT_NOTATION && data.typeId === 'branch';
+  const isLane = data.typeId !== undefined && profile.node?.isLane?.(data.typeId) === true;
   const highlight = useContext(LoopHighlightContext);
   // 'loop': members glow, rest strong-dim. 'focus': members stay normal, rest light-dim.
   const loopClass = !highlight.active
@@ -554,13 +550,9 @@ export function DiagramNode({
   // `loopClass`'s dim set directly: a zone's chip is the ground truth for
   // which actor lit it up, and an actor's own accent is its own to carry.
   const focusId = highlight.focusId;
-  const activeChip = focusId !== null ? data.chips?.find((c) => c.key.endsWith(`:${focusId}`)) : undefined;
-  // Gated on the plan notation itself (as isLane gates on git-graph above):
-  // `person`/`team` are ordinary registry types any diagram can use, so an
-  // unscoped type check would mark a C4 person one edge from the selection
-  // on a plane that has never heard of roles.
-  const isPlanActorType =
-    profile.id === PLAN_NOTATION && data.typeId !== undefined && PLAN_ACTOR_TYPES.has(data.typeId);
+  const activeChip = focusId !== null ? data.chips?.find((c) => c.refId === focusId) : undefined;
+  // The notation says which types are actors (profile.node.actorOutline).
+  const isPlanActorType = data.typeId !== undefined && profile.node?.actorOutline?.(data.typeId) === true;
   const hitColor =
     activeChip !== undefined
       ? (activeChip.color ?? 'var(--dg-accent)')
@@ -730,32 +722,16 @@ export function DiagramNode({
         </span>
       )}
       {data.chips?.map((chip) => {
-        const chipClass = `dg-badge dg-role-chip${focusId !== null && chip.key.endsWith(`:${focusId}`) ? ' dg-role-chip-active' : ''}`;
-        // Edit mode, plan notation only: the chip opens a menu instead of
-        // sitting inert. `profile.id` gates it (as isPlanActorType does above)
-        // so a foreign notation's chip — none exist today, but the shape is
-        // generic — never grows a plan-shaped menu by accident. `chip.key` is
-        // always `${role}:${actorId}` (see planChips), so the first colon
-        // splits it back into the two.
-        if (data.onSetRole !== undefined && profile.id === PLAN_NOTATION) {
-          const sep = chip.key.indexOf(':');
-          const role = chip.key.slice(0, sep) as PlanRole;
-          const actorId = chip.key.slice(sep + 1);
-          return (
-            <RoleChipMenu
-              key={chip.key}
-              chip={chip}
-              className={chipClass}
-              role={role}
-              actorId={actorId}
-              zoneId={id}
-              onSetRole={data.onSetRole}
-            />
-          );
+        const chipClass = `dg-badge dg-role-chip${focusId !== null && chip.refId === focusId ? ' dg-role-chip-active' : ''}`;
+        const key = `${chip.role}:${chip.refId}`;
+        // Edit mode, where the notation's chips are roles: the chip opens a
+        // menu instead of sitting inert.
+        if (data.onSetRole !== undefined && profile.node?.roleChips === true) {
+          return <RoleChipMenu key={key} chip={chip} className={chipClass} zoneId={id} onSetRole={data.onSetRole} />;
         }
         return (
           <span
-            key={chip.key}
+            key={key}
             className={chipClass}
             title={chip.title}
             style={chip.color !== undefined ? ({ '--dg-chip': chip.color } as CSSProperties) : undefined}

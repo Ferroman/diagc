@@ -2345,7 +2345,7 @@ button.dg-role-chip {
    --dg-hit is set inline to that chip's colour (falling back to --dg-accent
    when the chip carries none), so the outline always matches the chip.
    Scoped under the plan notation's own class — defence in depth alongside
-   DiagramNode's own profile.id gate, since `[data-plan-hit]` alone would
+   DiagramNode's own gate (profile.node.actorOutline), since `[data-plan-hit]` alone would
    otherwise be a bare attribute selector reaching any plane. */
 .dg-notation-plan [data-plan-hit] {
   outline: 2px solid var(--dg-hit);
