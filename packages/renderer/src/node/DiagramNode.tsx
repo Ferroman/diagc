@@ -27,7 +27,7 @@ import type { Registry, TypeStyle } from '../registry';
 import { commentBadgeProps, type AnnotationCounts } from '../notes/comment-badge';
 import { LoopHighlightContext } from '../loops/loop-highlight';
 import { NoteStateContext } from '../notes/note-state';
-import { notationProfile, type NodeBadge } from '../notations';
+import { notationProfile, type NodeChip } from '../notations';
 import { PLAN_LAYOUT } from '../layout/plan-layout';
 import { RichLabelEditor } from './RichLabelEditor';
 import { RoleChipMenu } from './RoleChipMenu';
@@ -124,7 +124,7 @@ export interface DiagramNodeData {
    * EditingApi.onAddThreat). Absent in view mode; drives the empty badge. */
   onAddThreat?: (target: ElementRef) => void;
   /** notation chips — the plan's roles — drawn in the badge row */
-  badges?: NodeBadge[];
+  chips?: NodeChip[];
   /** with onResize: the notation resizes this node on x only, from either
    * side (a zone's width is its dates) */
   resizeAxis?: 'x';
@@ -548,13 +548,13 @@ export function DiagramNode({
         : ' dg-focus-node-dim';
   // The plan's reciprocal mark, on top of the dim above: a zone whose role
   // chip matches the selected actor gets an outline in that chip's colour
-  // (the badge carries the actor's own colour already — see planBadges);
+  // (the badge carries the actor's own colour already — see planChips);
   // going the other way, an actor that `related` put in a selected zone's
   // neighbourhood gets the same outline in ITS OWN colour. Neither reads
-  // `loopClass`'s dim set directly: a zone's badge is the ground truth for
+  // `loopClass`'s dim set directly: a zone's chip is the ground truth for
   // which actor lit it up, and an actor's own accent is its own to carry.
   const focusId = highlight.focusId;
-  const activeBadge = focusId !== null ? data.badges?.find((b) => b.key.endsWith(`:${focusId}`)) : undefined;
+  const activeChip = focusId !== null ? data.chips?.find((c) => c.key.endsWith(`:${focusId}`)) : undefined;
   // Gated on the plan notation itself (as isLane gates on git-graph above):
   // `person`/`team` are ordinary registry types any diagram can use, so an
   // unscoped type check would mark a C4 person one edge from the selection
@@ -562,8 +562,8 @@ export function DiagramNode({
   const isPlanActorType =
     profile.id === PLAN_NOTATION && data.typeId !== undefined && PLAN_ACTOR_TYPES.has(data.typeId);
   const hitColor =
-    activeBadge !== undefined
-      ? (activeBadge.color ?? 'var(--dg-accent)')
+    activeChip !== undefined
+      ? (activeChip.color ?? 'var(--dg-accent)')
       : focusId !== null && isPlanActorType && id !== focusId && highlight.nodes.has(id)
         ? (data.color ?? 'var(--dg-accent)')
         : undefined;
@@ -729,22 +729,22 @@ export function DiagramNode({
           ⚭ {data.sharedMembers.length}
         </span>
       )}
-      {data.badges?.map((b) => {
-        const chipClass = `dg-badge dg-role-chip${focusId !== null && b.key.endsWith(`:${focusId}`) ? ' dg-role-chip-active' : ''}`;
+      {data.chips?.map((chip) => {
+        const chipClass = `dg-badge dg-role-chip${focusId !== null && chip.key.endsWith(`:${focusId}`) ? ' dg-role-chip-active' : ''}`;
         // Edit mode, plan notation only: the chip opens a menu instead of
         // sitting inert. `profile.id` gates it (as isPlanActorType does above)
-        // so a foreign notation's badge — none exist today, but the shape is
-        // generic — never grows a plan-shaped menu by accident. `b.key` is
-        // always `${role}:${actorId}` (see planBadges), so the first colon
+        // so a foreign notation's chip — none exist today, but the shape is
+        // generic — never grows a plan-shaped menu by accident. `chip.key` is
+        // always `${role}:${actorId}` (see planChips), so the first colon
         // splits it back into the two.
         if (data.onSetRole !== undefined && profile.id === PLAN_NOTATION) {
-          const sep = b.key.indexOf(':');
-          const role = b.key.slice(0, sep) as PlanRole;
-          const actorId = b.key.slice(sep + 1);
+          const sep = chip.key.indexOf(':');
+          const role = chip.key.slice(0, sep) as PlanRole;
+          const actorId = chip.key.slice(sep + 1);
           return (
             <RoleChipMenu
-              key={b.key}
-              chip={b}
+              key={chip.key}
+              chip={chip}
               className={chipClass}
               role={role}
               actorId={actorId}
@@ -755,12 +755,12 @@ export function DiagramNode({
         }
         return (
           <span
-            key={b.key}
+            key={chip.key}
             className={chipClass}
-            title={b.title}
-            style={b.color !== undefined ? ({ '--dg-chip': b.color } as CSSProperties) : undefined}
+            title={chip.title}
+            style={chip.color !== undefined ? ({ '--dg-chip': chip.color } as CSSProperties) : undefined}
           >
-            {b.text}
+            {chip.text}
           </span>
         );
       })}

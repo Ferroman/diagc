@@ -72,7 +72,7 @@ import { NoteStateContext, type NoteState } from '../notes/note-state';
 import { DrawingsLayer } from '../drawings/DrawingsLayer';
 import { withoutMeasuredExpansion } from './expand-parent';
 import { savedPositions } from '../layout/fit-containers';
-import { reconnectPin } from '../edge/floating';
+import { reconnectSide } from '../edge/floating';
 import { laneDropOffset } from '../layout/activity-frame';
 import { GitLanesOverlay } from '../overlays/GitLanesOverlay';
 import { alignBoxes, distributeBoxes, dropDescendants, type Delta } from './arrange';
@@ -209,16 +209,16 @@ function Inner(props: DiagramViewProps) {
   const [noteOverrides, setNoteOverrides] = useState<ReadonlyMap<string, boolean>>(() => new Map());
   // Where each threat-carrying flow's counting chip is drawn (relation id →
   // flow coordinates, the side of the line it sits on, and the line itself),
-  // reported by the edges (NoteState.placeChip): a flow's bubble hangs off its
+  // reported by the edges (NoteState.placeBadge): a flow's bubble hangs off its
   // chip, every bubble keeps off the line, and both sit on the routed curve
   // only the edge knows. Entries outlive their edges — a hidden flow draws no
   // bubble, and a returning one reports again — so nothing prunes it; the
   // derivation reads only the flows it draws.
-  const [chipSpots, setChipSpots] = useState<ReadonlyMap<string, { at: Point; away: Point; line: readonly Point[] }>>(
+  const [badgeSpots, setBadgeSpots] = useState<ReadonlyMap<string, { at: Point; away: Point; line: readonly Point[] }>>(
     () => new Map(),
   );
-  const placeChip = useCallback((relation: string, at: Point, away: Point, line: readonly Point[]) => {
-    setChipSpots((prev) => {
+  const placeBadge = useCallback((relation: string, at: Point, away: Point, line: readonly Point[]) => {
+    setBadgeSpots((prev) => {
       const was = prev.get(relation);
       const same =
         was !== undefined &&
@@ -239,7 +239,7 @@ function Inner(props: DiagramViewProps) {
   // by the stable *relation* id, not the view-edge id (which changes whenever a
   // pin toggles — pins are baked into the aggregation key), so the dots survive
   // pin/unpin instead of vanishing with the old id.
-  const [pinEdgeRel, setPinEdgeRel] = useState<string | null>(null);
+  const [fixedSideRelation, setFixedSideRelation] = useState<string | null>(null);
   // Double-click-to-enter / double-click-to-add-label are detected from click
   // events (see useClickCorrelation): the correlation protocol, its window
   // predicate, and the pane fall-through guards all live in that one hook so
@@ -457,10 +457,7 @@ function Inner(props: DiagramViewProps) {
   );
   // Small chips in a node's badge row (the plan's role chips), derived the same
   // way as nodeColors: id-keyed, one derivation per model/plane.
-  const nodeBadges = useMemo(
-    () => profile.node?.badges?.(props.model, props.plane),
-    [profile, props.model, props.plane],
-  );
+  const nodeChips = useMemo(() => profile.node?.chips?.(props.model, props.plane), [profile, props.model, props.plane]);
 
   const legend = useLegendState({
     model: props.model,
@@ -742,7 +739,7 @@ function Inner(props: DiagramViewProps) {
       stylePreset: preset.rough !== undefined ? preset : undefined,
       notation: props.notation,
       nodeColors,
-      nodeBadges,
+      nodeChips,
       resizable: profile.node?.resizable,
     }),
     [
@@ -768,7 +765,7 @@ function Inner(props: DiagramViewProps) {
       preset,
       props.notation,
       nodeColors,
-      nodeBadges,
+      nodeChips,
       profile,
     ],
   );
@@ -916,9 +913,9 @@ function Inner(props: DiagramViewProps) {
               if (editing && onToggleNote !== undefined) onToggleNote(target, next);
               else setNoteOverrides((prev) => new Map(prev).set(key, next));
             },
-            placeChip,
+            placeBadge,
           },
-    [noNotes, openNotes, editing, onToggleNote, placeChip],
+    [noNotes, openNotes, editing, onToggleNote, placeBadge],
   );
   const noteNodes = useMemo((): Node[] => {
     if (noNotes || openNotes.size === 0 || arrangedGeometry === null) return [];
@@ -943,7 +940,7 @@ function Inner(props: DiagramViewProps) {
     // edge labels are not obstacles: a note may cover them.
     for (const e of compiled.edges) {
       const r = soleRelation(e);
-      const spot = r !== undefined ? chipSpots.get(r.id) : undefined;
+      const spot = r !== undefined ? badgeSpots.get(r.id) : undefined;
       if (spot !== undefined) obstacles.push(...lineObstacles(spot.line));
     }
     const out: Node[] = [];
@@ -1046,7 +1043,7 @@ function Inner(props: DiagramViewProps) {
       if (a === undefined || b === undefined) continue;
       // The chip's spot arrives from the edge a frame after it first draws;
       // until then the straight-line midpoint of the two ends stands in.
-      const chip = chipSpots.get(r.id);
+      const chip = badgeSpots.get(r.id);
       const at = chip?.at ?? {
         x: (a.x + a.width / 2 + b.x + b.width / 2) / 2,
         y: (a.y + a.height / 2 + b.y + b.height / 2) / 2,
@@ -1077,7 +1074,7 @@ function Inner(props: DiagramViewProps) {
     arrangedGeometry,
     compiled,
     notePlacements,
-    chipSpots,
+    badgeSpots,
     editing,
     edit?.onAddThreat,
     edit?.onRetitleThreat,
@@ -1444,7 +1441,7 @@ function Inner(props: DiagramViewProps) {
       onMoveEdgeLabel: edit?.onMoveEdgeLabel,
       onSetEdgeSide: edit?.onSetEdgeSide,
       onAddThreat: edit?.onAddThreat,
-      pinEdgeRel,
+      fixedSideRelation,
       pendingAdd: addLabelAt,
       onPendingAddConsumed: () => setAddLabelAt(null),
       stylePreset: preset.rough !== undefined ? preset : undefined,
@@ -1468,7 +1465,7 @@ function Inner(props: DiagramViewProps) {
       edit?.onMoveEdgeLabel,
       edit?.onSetEdgeSide,
       edit?.onAddThreat,
-      pinEdgeRel,
+      fixedSideRelation,
       addLabelAt,
       preset,
       props.notation,
@@ -1690,7 +1687,7 @@ function Inner(props: DiagramViewProps) {
             colorMode={props.colorMode ?? 'light'}
             connectionMode={ConnectionMode.Loose}
             onNodeClick={(e, node) => {
-              setPinEdgeRel(null);
+              setFixedSideRelation(null);
               corr.clearEdgeClick(); // a node click breaks any pending edge-add correlation
               // A note is about an element: clicking it selects THAT (the note is
               // not selectable itself — see toRfNoteNode). The relation branch
@@ -1721,7 +1718,7 @@ function Inner(props: DiagramViewProps) {
                 } else {
                   const ve = compiled.edges.find((x) => soleRelation(x)?.id === target.relation);
                   if (ve !== undefined) {
-                    if (editing) setPinEdgeRel(target.relation);
+                    if (editing) setFixedSideRelation(target.relation);
                     setSelectedNode(null);
                     // The same hazard, with no box to move to. onEdgeClick is safe
                     // for free — React Flow clears the node selection when its own
@@ -1777,7 +1774,7 @@ function Inner(props: DiagramViewProps) {
               const viewEdge = compiled.edges.find((x) => x.id === oldEdge.id);
               const relation = viewEdge !== undefined ? soleRelation(viewEdge) : undefined;
               if (relation === undefined) return;
-              const endPin = reconnectPin(
+              const endSide = reconnectSide(
                 reconnectEndRef.current,
                 {
                   source: conn.source,
@@ -1787,7 +1784,7 @@ function Inner(props: DiagramViewProps) {
                 },
                 relation,
               );
-              edit?.onReconnect?.(relation.id, conn.source, conn.target, endPin);
+              edit?.onReconnect?.(relation.id, conn.source, conn.target, endSide);
             }}
             onReconnectEnd={() => {
               reconnectEndRef.current = null;
@@ -1949,7 +1946,7 @@ function Inner(props: DiagramViewProps) {
               const viewEdge = compiled.edges.find((x) => x.id === edge.id);
               // pin dots follow the sole relation (edit mode, single-relation edges)
               const soleRel = viewEdge !== undefined ? soleRelation(viewEdge)?.id : undefined;
-              setPinEdgeRel(editing && soleRel !== undefined ? soleRel : null);
+              setFixedSideRelation(editing && soleRel !== undefined ? soleRel : null);
               setSelectedNode(null);
               corr.clearNodeClick(); // an edge click breaks any pending node double-click
               props.onSelect?.({
@@ -1999,7 +1996,7 @@ function Inner(props: DiagramViewProps) {
                   void reactFlow.fitView({ padding: 0.1, duration: 500 });
                 }
               } else {
-                setPinEdgeRel(null);
+                setFixedSideRelation(null);
                 corr.clearAll(); // a pane deselect breaks both pending correlations
                 setSelectedNode(null);
                 props.onSelect?.(null);
@@ -2167,13 +2164,13 @@ function Inner(props: DiagramViewProps) {
             {showLoops && loopEdges !== null && placedGeometry !== null && (
               <LoopLabelLayer edges={loopEdges} rough={preset.rough} nodeFilter={editing ? null : selectedNode} />
             )}
-            {profile.overlay === 'git-lanes' && placedGeometry !== null && (
+            {profile.canvasOverlay === 'git-lanes' && placedGeometry !== null && (
               <GitLanesOverlay model={props.model} plane={props.plane} />
             )}
-            {profile.overlay === 'order-bands' && placedGeometry !== null && (
+            {profile.canvasOverlay === 'order-bands' && placedGeometry !== null && (
               <OrderBandsOverlay model={props.model} direction={flowDirection} />
             )}
-            {profile.overlay === 'time-axis' && placedGeometry !== null && (
+            {profile.canvasOverlay === 'time-axis' && placedGeometry !== null && (
               <TimeAxisOverlay model={props.model} plane={props.plane} today={props.today} />
             )}
           </ReactFlow>

@@ -117,7 +117,7 @@ export function sideFromPosition(pos: Position): Side {
  * the moved end from the node diff (which can't detect same-node side changes).
  * Returns undefined when nothing meaningful moved.
  */
-export function reconnectPin(
+export function reconnectSide(
   draggedEnd: 'source' | 'target' | null,
   conn: { source: string; target: string; sourceHandle?: string | null; targetHandle?: string | null },
   rel: { from: string; to: string },
@@ -159,16 +159,16 @@ function sideAnchor(node: FloatingNode, side: Side): Point {
 export function getEdgeParams(
   source: FloatingNode,
   target: FloatingNode,
-  pins?: { sourceSide?: Side; targetSide?: Side },
+  sides?: { sourceSide?: Side; targetSide?: Side },
 ): EdgeParams {
-  const s = pins?.sourceSide !== undefined ? sideAnchor(source, pins.sourceSide) : intersect(source, target);
-  const t = pins?.targetSide !== undefined ? sideAnchor(target, pins.targetSide) : intersect(target, source);
+  const s = sides?.sourceSide !== undefined ? sideAnchor(source, sides.sourceSide) : intersect(source, target);
+  const t = sides?.targetSide !== undefined ? sideAnchor(target, sides.targetSide) : intersect(target, source);
   return {
     sx: s.x,
     sy: s.y,
     tx: t.x,
     ty: t.y,
-    sourcePos: pins?.sourceSide !== undefined ? SIDE_POSITION[pins.sourceSide] : sideOf(source, s),
-    targetPos: pins?.targetSide !== undefined ? SIDE_POSITION[pins.targetSide] : sideOf(target, t),
+    sourcePos: sides?.sourceSide !== undefined ? SIDE_POSITION[sides.sourceSide] : sideOf(source, s),
+    targetPos: sides?.targetSide !== undefined ? SIDE_POSITION[sides.targetSide] : sideOf(target, t),
   };
 }

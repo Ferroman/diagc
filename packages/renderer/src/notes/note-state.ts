@@ -18,7 +18,7 @@ export interface NoteState {
    * by the edge, which alone knows its routed curve, so the relation's bubble
    * can hang off the chip on the side away from the line and every bubble can
    * keep off the line. Stable across renders; a repeat is a no-op. */
-  placeChip: (relation: string, at: Point, away: Point, line: readonly Point[]) => void;
+  placeBadge: (relation: string, at: Point, away: Point, line: readonly Point[]) => void;
 }
 
 export const NoteStateContext = createContext<NoteState | null>(null);

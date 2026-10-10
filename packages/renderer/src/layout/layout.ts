@@ -123,14 +123,14 @@ function signature(
               `${id}:${s.width}x${s.height}${s.reserveBottom !== undefined ? `+${s.reserveBottom}` : ''}${s.caption !== undefined ? `_${s.caption.width}x${s.caption.height}` : ''}`,
           )
           .join('|')}`;
-  const pinned =
+  const partitionKey =
     partitions === undefined || partitions.size === 0
       ? ''
       : `%${[...partitions.entries()]
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([id, p]) => `${id}:${p}`)
           .join('|')}`;
-  return `${nodes.join('|')}#${edges}${sized}${settingsKey(settings)}${pinned}`;
+  return `${nodes.join('|')}#${edges}${sized}${settingsKey(settings)}${partitionKey}`;
 }
 
 export async function layoutView(

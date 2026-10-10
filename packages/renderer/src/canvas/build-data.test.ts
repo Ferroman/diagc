@@ -47,7 +47,7 @@ const viewEdge = (over: Partial<ViewEdge> = {}): ViewEdge => ({
 const edgeCtx = (over: Partial<EdgeDataContext> = {}): EdgeDataContext => ({
   kindRegistry,
   editing: false,
-  pinEdgeRel: null,
+  fixedSideRelation: null,
   pendingAdd: null,
   routes: new Map(),
   laidAt: new Map(),
@@ -315,39 +315,39 @@ describe('buildNodeData', () => {
     expect(buildNodeDataCached(n, { ...ctx, onAddThreat: vi.fn() })).not.toBe(a);
   });
 
-  it("threads the profile's badges and resize axis into node data", () => {
-    const badges = new Map([['z', [{ key: 'owns:a', text: 'O·A', title: 'Owner: A' }]]]);
+  it("threads the profile's chips and resize axis into node data", () => {
+    const chips = new Map([['z', [{ key: 'owns:a', text: 'O·A', title: 'Owner: A' }]]]);
     const zone = viewNode({ id: 'z', node: { id: 'z', name: 'Z', type: 'plan-zone' } });
     const other = viewNode({ id: 'o', node: { id: 'o', name: 'O', type: 'service' } });
     const ctx = {
       ...nodeCtx(),
       editing: true,
       onResize: vi.fn(),
-      nodeBadges: badges,
+      nodeChips: chips,
       resizable: (n: DiagramNode) => (n.type === 'plan-zone' ? ('x' as const) : undefined),
     };
     const z = buildNodeData(zone, ctx);
-    expect(z.badges).toEqual(badges.get('z'));
+    expect(z.chips).toEqual(chips.get('z'));
     expect(z.resizeAxis).toBe('x');
     expect(z.onResize).toBe(ctx.onResize);
     const o = buildNodeData(other, ctx);
-    expect(o.badges).toBeUndefined();
+    expect(o.chips).toBeUndefined();
     expect(o.resizeAxis).toBeUndefined();
     expect(o.onResize).toBeUndefined();
     // view mode: no handles
     expect(buildNodeData(zone, { ...ctx, editing: false }).resizeAxis).toBeUndefined();
   });
 
-  it('keys the cache on nodeBadges and resizable, like the other notation-derived maps', () => {
+  it('keys the cache on nodeChips and resizable, like the other notation-derived maps', () => {
     const zone = viewNode({ id: 'z', node: { id: 'z', name: 'Z', type: 'plan-zone' } });
-    const badges = new Map([['z', [{ key: 'owns:a', text: 'O·A', title: 'Owner: A' }]]]);
+    const chips = new Map([['z', [{ key: 'owns:a', text: 'O·A', title: 'Owner: A' }]]]);
     const resizable = (n: DiagramNode) => (n.type === 'plan-zone' ? ('x' as const) : undefined);
-    const ctx = nodeCtx({ editing: true, onResize: vi.fn(), nodeBadges: badges, resizable });
+    const ctx = nodeCtx({ editing: true, onResize: vi.fn(), nodeChips: chips, resizable });
     const a = buildNodeDataCached(zone, { ...ctx });
     expect(buildNodeDataCached(zone, { ...ctx })).toBe(a);
     // a same-content but different Map is a new derivation (the profile ran
     // again on a changed model) — must not keep the stale chips
-    expect(buildNodeDataCached(zone, { ...ctx, nodeBadges: new Map(badges) })).not.toBe(a);
+    expect(buildNodeDataCached(zone, { ...ctx, nodeChips: new Map(chips) })).not.toBe(a);
     // a different resizable function must not keep offering the old node's answer
     expect(buildNodeDataCached(zone, { ...ctx, resizable: (n: DiagramNode) => resizable(n) })).not.toBe(a);
   });
@@ -445,13 +445,14 @@ describe('buildEdgeData', () => {
 
   it('wires pin dots to the active sole relation and the side callback', () => {
     const onSetSide = vi.fn();
-    const d = buildEdgeData(viewEdge(), edgeCtx({ editing: true, pinEdgeRel: 'r1', onSetEdgeSide: onSetSide }));
-    expect(d.pinsActive).toBe(true);
+    const d = buildEdgeData(viewEdge(), edgeCtx({ editing: true, fixedSideRelation: 'r1', onSetEdgeSide: onSetSide }));
+    expect(d.fixedSideDotsShown).toBe(true);
     d.onSetSide?.('from', 'top');
     expect(onSetSide).toHaveBeenCalledWith('r1', 'from', 'top');
     // a different active relation leaves the dots off
     expect(
-      buildEdgeData(viewEdge(), edgeCtx({ editing: true, pinEdgeRel: 'other', onSetEdgeSide: onSetSide })).pinsActive,
+      buildEdgeData(viewEdge(), edgeCtx({ editing: true, fixedSideRelation: 'other', onSetEdgeSide: onSetSide }))
+        .fixedSideDotsShown,
     ).toBeUndefined();
   });
 
@@ -459,9 +460,9 @@ describe('buildEdgeData', () => {
     // `a` sits in the folded `box`: a side pinned here would land on `a`, where
     // this edge does not draw it
     const rolledUp = viewEdge({ from: 'box' });
-    const d = buildEdgeData(rolledUp, edgeCtx({ editing: true, pinEdgeRel: 'r1', onSetEdgeSide: vi.fn() }));
+    const d = buildEdgeData(rolledUp, edgeCtx({ editing: true, fixedSideRelation: 'r1', onSetEdgeSide: vi.fn() }));
     expect(d.onSetSide).toBeUndefined();
-    expect(d.pinsActive).toBeUndefined();
+    expect(d.fixedSideDotsShown).toBeUndefined();
   });
 
   it('threads pendingAdd to the requested edge and clears it via the consumed callback', () => {
@@ -608,7 +609,7 @@ describe('cached builder identity', () => {
     const ctx = edgeCtx({ editing: true });
     const first = buildEdgeDataCached(e, ctx);
     expect(buildEdgeDataCached(e, ctx)).toBe(first);
-    const changed = buildEdgeDataCached(e, edgeCtx({ editing: true, pinEdgeRel: 'r1' }));
+    const changed = buildEdgeDataCached(e, edgeCtx({ editing: true, fixedSideRelation: 'r1' }));
     expect(changed).not.toBe(first);
   });
 });

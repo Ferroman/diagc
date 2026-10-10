@@ -322,7 +322,7 @@ export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
   // ---- Plan (schedule) --------------------------------------------------------
   // Roles, person → zone. Registered so the legend, the studio's kind picker
   // and validation know them; the plan profile never draws them as edges (they
-  // become chips on the zone — see planBadges).
+  // become chips on the zone — see planChips).
   owns: { legendLabel: 'Owns' },
   executes: { legendLabel: 'Executes' },
   checks: { legendLabel: 'Checks' },

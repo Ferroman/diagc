@@ -21,7 +21,7 @@ export {
   type FocusInput,
 } from './canvas/focus';
 export { connectionSides, getEdgeParams, type EdgeParams, type FloatingNode, type Side } from './edge/floating';
-export { NOTATION_PROFILES, notationProfile, planBadges, type NodeBadge, type NotationProfile } from './notations';
+export { NOTATION_PROFILES, notationProfile, planChips, type NodeChip, type NotationProfile } from './notations';
 export { isKnownStyle, STYLE_PRESETS, stylePreset, type RoughStyle, type StylePreset } from './sketch/stylePresets';
 export {
   findLoops,

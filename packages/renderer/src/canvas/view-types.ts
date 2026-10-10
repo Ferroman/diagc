@@ -273,7 +273,7 @@ export interface EditingApi {
   onEditEdgeLabel?: (relationId: string, labelId: string, text: string) => void;
   /** sole-relation edges: a label was dragged to a new `t`/`side`. */
   onMoveEdgeLabel?: (relationId: string, labelId: string, t: number, side: EdgeLabelSide) => void;
-  /** an edge endpoint was dragged. `endPin` (when present) tells the caller
+  /** an edge endpoint was dragged. `endSide` (when present) tells the caller
    * how the *dragged* end's pin changed — dropped on a new node re-floats it
    * (side: null); re-dropped on the same node pins it to that side. The other
    * end is left untouched. */
@@ -281,7 +281,7 @@ export interface EditingApi {
     relationId: string,
     from: string,
     to: string,
-    endPin?: { end: 'from' | 'to'; side: Side | null },
+    endSide?: { end: 'from' | 'to'; side: Side | null },
   ) => void;
   /** a pin dot on a sole-relation edge toggled an endpoint — freeze it at
    * `side`, or re-float it with `side: null`. */

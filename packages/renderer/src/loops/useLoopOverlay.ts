@@ -31,7 +31,7 @@ export function useLoopOverlay(input: LoopOverlayInput): LoopOverlay {
   // Causal-loop-diagram overlay: the R/B feedback-loop badges. Derived from the
   // drawn edges (aggregated where relations parallel), not the raw model, so it
   // stays in sync with layer/plane filtering the same way the arrows do.
-  const cld = input.profile.overlay === 'loop-labels';
+  const cld = input.profile.canvasOverlay === 'loop-labels';
   const loopEdges = useMemo(
     (): LoopEdgeInput[] | null =>
       cld

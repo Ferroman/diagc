@@ -1074,7 +1074,7 @@ describe('threat-model looks', () => {
   it('under a NoteStateContext the badge is a toggle button that reports its bubble state and flips it', () => {
     const toggle = vi.fn();
     // renderNode renders id="n1", so the open key is node:n1
-    const state: NoteState = { isOpen: (key) => key === 'node:n1', toggle, placeChip: vi.fn() };
+    const state: NoteState = { isOpen: (key) => key === 'node:n1', toggle, placeBadge: vi.fn() };
     const data: DiagramNodeData = {
       label: 'Verify',
       typeId: 'tm-process',
@@ -1117,7 +1117,7 @@ describe('threat-model looks', () => {
     // The stub stands in for a node this drill view does not draw, and the
     // note derivation skips externals. A switch here would flip a state
     // nothing on this canvas can show.
-    const state: NoteState = { isOpen: () => false, toggle: vi.fn(), placeChip: vi.fn() };
+    const state: NoteState = { isOpen: () => false, toggle: vi.fn(), placeBadge: vi.fn() };
     const data: DiagramNodeData = {
       label: 'Verify',
       typeId: 'tm-process',
@@ -1296,7 +1296,7 @@ describe('CommentBadge', () => {
   it('is the bubble switch on a bubble-drawing canvas', () => {
     const toggle = vi.fn();
     // renderNode renders id="n1", so the toggle target is node:n1
-    const state: NoteState = { isOpen: () => false, toggle, placeChip: vi.fn() };
+    const state: NoteState = { isOpen: () => false, toggle, placeBadge: vi.fn() };
     const data: DiagramNodeData = {
       label: 'users',
       typeId: 'table',
@@ -1456,30 +1456,30 @@ describe('QuickAddButton', () => {
 
 describe('plan chips and x-resize', () => {
   it('renders role chips in the badge row with their titles and colours, on leaves and groups', () => {
-    const badges = [
+    const chips = [
       { key: 'owns:a', text: 'O·Alice', title: 'Owner: Alice Ng', color: '#c33' },
       { key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' },
     ];
-    const leaf = renderNode({ typeId: 'plan-zone', badges });
-    const chips = leaf.container.querySelectorAll('.dg-role-chip');
-    expect([...chips].map((c) => c.textContent)).toEqual(['O·Alice', 'E·Bob']);
-    expect(chips[0]!.getAttribute('title')).toBe('Owner: Alice Ng');
-    expect((chips[0] as HTMLElement).style.getPropertyValue('--dg-chip')).toBe('#c33');
+    const leaf = renderNode({ typeId: 'plan-zone', chips });
+    const drawn = leaf.container.querySelectorAll('.dg-role-chip');
+    expect([...drawn].map((c) => c.textContent)).toEqual(['O·Alice', 'E·Bob']);
+    expect(drawn[0]!.getAttribute('title')).toBe('Owner: Alice Ng');
+    expect((drawn[0] as HTMLElement).style.getPropertyValue('--dg-chip')).toBe('#c33');
     expect(leaf.container.querySelector('.dg-node')?.getAttribute('data-type')).toBe('plan-zone');
     cleanup();
-    const group = renderNode({ typeId: 'plan-zone', state: 'expanded', badges });
+    const group = renderNode({ typeId: 'plan-zone', state: 'expanded', chips });
     expect(group.container.querySelectorAll('.dg-group .dg-role-chip')).toHaveLength(2);
     expect(group.container.querySelector('.dg-group')?.getAttribute('data-type')).toBe('plan-zone');
   });
   it('with onSetRole in data on the plan notation, the chip is a button', () => {
-    const badges = [{ key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' }];
-    const { container } = renderNode({ typeId: 'plan-zone', notation: 'plan', badges, onSetRole: vi.fn() });
+    const chips = [{ key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' }];
+    const { container } = renderNode({ typeId: 'plan-zone', notation: 'plan', chips, onSetRole: vi.fn() });
     const chip = container.querySelector('.dg-role-chip');
     expect(chip?.tagName).toBe('BUTTON');
   });
   it('without onSetRole (view mode) the chip stays the span it was', () => {
-    const badges = [{ key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' }];
-    const { container } = renderNode({ typeId: 'plan-zone', notation: 'plan', badges });
+    const chips = [{ key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' }];
+    const { container } = renderNode({ typeId: 'plan-zone', notation: 'plan', chips });
     const chip = container.querySelector('.dg-role-chip');
     expect(chip?.tagName).toBe('SPAN');
   });

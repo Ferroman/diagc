@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import type { NodeBadge } from '../notations';
+import type { NodeChip } from '../notations';
 import { RoleChipMenu } from './RoleChipMenu';
 
-const chip: NodeBadge = { key: 'executes:bob', text: 'E·Bob', title: 'Executor: Bob' };
+const chip: NodeChip = { key: 'executes:bob', text: 'E·Bob', title: 'Executor: Bob' };
 
 const trigger = () => screen.getByRole('button', { name: 'E·Bob' });
 

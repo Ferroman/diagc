@@ -37,7 +37,7 @@ import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry'
 
 /** A small chip in a node's badge row (the plan's role chips are the only
  * producer today, but the shape is generic — any notation could grow one). */
-export interface NodeBadge {
+export interface NodeChip {
   key: string;
   text: string;
   title: string;
@@ -100,7 +100,7 @@ export interface NotationProfile {
     colorOf?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, string>;
     /** small chips in a node's badge row (the plan's role chips); keyed by
      * node id, one derivation per model like colorOf */
-    badges?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, NodeBadge[]>;
+    chips?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, NodeChip[]>;
     /** 'x' = the studio offers left/right resize handles on this node;
      * undefined = no notation resizer */
     resizable?: (n: DiagramNode) => 'x' | undefined;
@@ -128,7 +128,7 @@ export interface NotationProfile {
     /** relation kinds the view never draws as edges (the legend skips them too) */
     hidden?: (kind: string) => boolean;
   };
-  overlay?: 'loop-labels' | 'git-lanes' | 'order-bands' | 'time-axis';
+  canvasOverlay?: 'loop-labels' | 'git-lanes' | 'order-bands' | 'time-axis';
 }
 
 const CLD: NotationProfile = {
@@ -148,7 +148,7 @@ const CLD: NotationProfile = {
     bowed: true,
     polarityColors: { '+': 'var(--dg-polarity-positive)', '-': 'var(--dg-polarity-negative)' },
   },
-  overlay: 'loop-labels',
+  canvasOverlay: 'loop-labels',
 };
 
 const GIT: NotationProfile = {
@@ -168,7 +168,7 @@ const GIT: NotationProfile = {
     colorOf: gitNodeColors,
   },
   edge: { colorOf: gitEdgeColor },
-  overlay: 'git-lanes',
+  canvasOverlay: 'git-lanes',
 };
 
 // ---- C4 (https://c4model.com) ---------------------------------------------
@@ -235,7 +235,7 @@ const SECOND_ORDER: NotationProfile = {
   className: 'dg-notation-so',
   partitionOf: (model) => consequenceOrders(model).orders,
   node: { colorOf: valenceColors },
-  overlay: 'order-bands',
+  canvasOverlay: 'order-bands',
 };
 
 // ---- Fishbone ---------------------------------------------------------------
@@ -317,12 +317,12 @@ export const ROLE_LABEL: Record<PlanRole, { initial: string; title: string }> = 
 /** Role chips per zone, in owns / executes / checks order: `O·Alice` (first
  * word of the name), titled `Owner: Alice Ng`, in the actor's colour. Reads
  * the relation's `from` node whatever its type — a person or a team, alike. */
-export function planBadges(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, NodeBadge[]> {
+export function planChips(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, NodeChip[]> {
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
-  const out = new Map<string, NodeBadge[]>();
+  const out = new Map<string, NodeChip[]>();
   for (const id of planGraphCached(model, plane).zones) {
     const roles = rolesOf(model, id);
-    const chips: NodeBadge[] = [];
+    const chips: NodeChip[] = [];
     for (const role of PLAN_ROLES) {
       for (const actorId of roles[role]) {
         const actor = byId.get(actorId);
@@ -372,7 +372,7 @@ const PLAN: NotationProfile = {
   node: {
     alwaysExpanded: (n) => n.type === PLAN_ZONE_TYPE,
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
-    badges: planBadges,
+    chips: planChips,
     resizable: (n) => (n.type === PLAN_ZONE_TYPE ? 'x' : undefined),
     // A zone receives a drop (an actor's role, a plain node's containment).
     // isPlanZone, not a nested-only check: a root zone's Y is free and can
@@ -391,7 +391,7 @@ const PLAN: NotationProfile = {
     draggableWhenFixed: () => true,
   },
   edge: { hidden: isPlanRole },
-  overlay: 'time-axis',
+  canvasOverlay: 'time-axis',
 };
 
 // Record<NotationId, ...> keying means adding a notation id to BUILTIN_NOTATIONS

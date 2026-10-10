@@ -477,7 +477,7 @@ export function buildGraph(
     };
   };
 
-  const pinned = (shape: ElkShape): ElkShape => {
+  const withPartition = (shape: ElkShape): ElkShape => {
     const p = partitions?.get(shape.id);
     return p === undefined
       ? shape
@@ -489,7 +489,7 @@ export function buildGraph(
   // relations it stands for get no room, and may overlap nearby boxes.
   // built before the edges are — `toNode` is what fills `emitted`, and what
   // discovers container-owned edges for the `lifted` flag below
-  const children = (substitute?.roots ?? view.roots).map((n) => pinned(toNode(n)));
+  const children = (substitute?.roots ?? view.roots).map((n) => withPartition(toNode(n)));
 
   const reversed = new Set<string>();
 

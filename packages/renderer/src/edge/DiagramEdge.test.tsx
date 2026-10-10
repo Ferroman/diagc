@@ -16,7 +16,7 @@ vi.mock('@xyflow/react', async (importOriginal) => {
   };
 });
 import { createKindRegistry } from '../registry';
-import { chipPosition, DiagramEdge, markFrame, type DiagramEdgeData } from './DiagramEdge';
+import { badgePosition, DiagramEdge, markFrame, type DiagramEdgeData } from './DiagramEdge';
 import { NoteStateContext, type NoteState } from '../notes/note-state';
 import { edgePoint, shapeCurve } from './edge-geometry';
 import { notationProfile } from '../notations';
@@ -320,30 +320,30 @@ describe('DiagramEdge', () => {
   describe('endpoint pin dots', () => {
     it('renders two pin dots for an active single-relation edge with an onSetSide callback', () => {
       const onSetSide = vi.fn();
-      const { container } = renderEdge({ onSetSide, pinsActive: true });
+      const { container } = renderEdge({ onSetSide, fixedSideDotsShown: true });
       expect(container.querySelectorAll('.dg-edge-pin')).toHaveLength(2);
     });
 
     it('renders no pin dots when the edge is not the active pin target', () => {
       const onSetSide = vi.fn();
-      const { container } = renderEdge({ onSetSide, pinsActive: false });
+      const { container } = renderEdge({ onSetSide, fixedSideDotsShown: false });
       expect(container.querySelector('.dg-edge-pin')).toBeNull();
     });
 
     it('renders no pin dots without an onSetSide callback (view mode / aggregated)', () => {
-      const { container } = renderEdge({ pinsActive: true });
+      const { container } = renderEdge({ fixedSideDotsShown: true });
       expect(container.querySelector('.dg-edge-pin')).toBeNull();
     });
 
     it('renders no pin dots for an aggregated (multi-relation) edge', () => {
       const onSetSide = vi.fn();
-      const { container } = renderEdge({ onSetSide, pinsActive: true, constituentCount: 2 });
+      const { container } = renderEdge({ onSetSide, fixedSideDotsShown: true, constituentCount: 2 });
       expect(container.querySelector('.dg-edge-pin')).toBeNull();
     });
 
     it('marks a dot pinned when that end has a fixed side, hollow otherwise', () => {
       const onSetSide = vi.fn();
-      const { container } = renderEdge({ onSetSide, pinsActive: true, relStyle: { fromSide: 'bottom' } });
+      const { container } = renderEdge({ onSetSide, fixedSideDotsShown: true, relStyle: { fromSide: 'bottom' } });
       const from = container.querySelector('.dg-edge-pin[data-end="from"]');
       const to = container.querySelector('.dg-edge-pin[data-end="to"]');
       expect(from?.classList.contains('pinned')).toBe(true);
@@ -353,7 +353,7 @@ describe('DiagramEdge', () => {
     it('pins a floating end to the side it currently faces when its dot is clicked', () => {
       const onSetSide = vi.fn();
       // default facing: source Bottom, target Top
-      const { container } = renderEdge({ onSetSide, pinsActive: true });
+      const { container } = renderEdge({ onSetSide, fixedSideDotsShown: true });
       fireEvent.click(container.querySelector('.dg-edge-pin[data-end="from"]')!);
       expect(onSetSide).toHaveBeenCalledWith('from', 'bottom');
       fireEvent.click(container.querySelector('.dg-edge-pin[data-end="to"]')!);
@@ -362,7 +362,7 @@ describe('DiagramEdge', () => {
 
     it('unpins a pinned end when its dot is clicked', () => {
       const onSetSide = vi.fn();
-      const { container } = renderEdge({ onSetSide, pinsActive: true, relStyle: { toSide: 'top' } });
+      const { container } = renderEdge({ onSetSide, fixedSideDotsShown: true, relStyle: { toSide: 'top' } });
       fireEvent.click(container.querySelector('.dg-edge-pin[data-end="to"]')!);
       expect(onSetSide).toHaveBeenCalledWith('to', null);
     });
@@ -721,7 +721,7 @@ describe('DiagramEdge', () => {
 
     it('under a NoteStateContext a sole-relation chip toggles its relation’s bubble; a bundle’s stays passive', () => {
       const toggle = vi.fn();
-      const state: NoteState = { isOpen: (key) => key === 'relation:r1', toggle, placeChip: vi.fn() };
+      const state: NoteState = { isOpen: (key) => key === 'relation:r1', toggle, placeBadge: vi.fn() };
       const wrap = (ui: React.ReactElement) =>
         render(<NoteStateContext.Provider value={state}>{ui}</NoteStateContext.Provider>);
       const sole = wrap(edgeElement({ kind: 'data-flow', threats: { open: 1, total: 1 }, threatRelation: 'r1' }));
@@ -737,8 +737,8 @@ describe('DiagramEdge', () => {
     });
 
     it('reports where its chip is drawn, so the relation’s bubble can hang off it; a bundle reports nothing', () => {
-      const placeChip = vi.fn();
-      const state: NoteState = { isOpen: () => false, toggle: vi.fn(), placeChip };
+      const placeBadge = vi.fn();
+      const state: NoteState = { isOpen: () => false, toggle: vi.fn(), placeBadge };
       const wrap = (ui: React.ReactElement) =>
         render(<NoteStateContext.Provider value={state}>{ui}</NoteStateContext.Provider>);
       const sole = wrap(edgeElement({ kind: 'data-flow', threats: { open: 1, total: 1 }, threatRelation: 'r1' }));
@@ -747,22 +747,22 @@ describe('DiagramEdge', () => {
       const m = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(chip.style.transform)!;
       // ...the side it was pushed to, a unit vector, and the line itself,
       // sampled end to end so the bubble can keep off it
-      expect(placeChip).toHaveBeenCalledWith(
+      expect(placeBadge).toHaveBeenCalledWith(
         'r1',
         { x: Number(m[1]), y: Number(m[2]) },
         expect.anything(),
         expect.anything(),
       );
-      const away = placeChip.mock.calls[0]![2] as { x: number; y: number };
+      const away = placeBadge.mock.calls[0]![2] as { x: number; y: number };
       expect(Math.hypot(away.x, away.y)).toBeCloseTo(1, 5);
-      const line = placeChip.mock.calls[0]![3] as { x: number; y: number }[];
+      const line = placeBadge.mock.calls[0]![3] as { x: number; y: number }[];
       expect(line.length).toBeGreaterThan(10);
       expect(line[0]).toEqual({ x: 0, y: 0 });
       expect(line[line.length - 1]).toEqual({ x: 100, y: 100 });
       sole.unmount();
-      placeChip.mockClear();
+      placeBadge.mockClear();
       wrap(edgeElement({ kind: 'data-flow', threats: { open: 1, total: 2 }, constituentCount: 2 }));
-      expect(placeChip).not.toHaveBeenCalled();
+      expect(placeBadge).not.toHaveBeenCalled();
     });
   });
 
@@ -780,8 +780,8 @@ describe('DiagramEdge', () => {
 
     it("toggles the sole relation's bubble on a bubble-drawing canvas, and reports its spot when there is no threat chip", () => {
       const toggle = vi.fn();
-      const placeChip = vi.fn();
-      const state: NoteState = { isOpen: () => false, toggle, placeChip };
+      const placeBadge = vi.fn();
+      const state: NoteState = { isOpen: () => false, toggle, placeBadge };
       const wrap = (ui: React.ReactElement) =>
         render(<NoteStateContext.Provider value={state}>{ui}</NoteStateContext.Provider>);
       const { baseElement } = wrap(
@@ -808,12 +808,12 @@ describe('DiagramEdge', () => {
         notationProfile(undefined).edgeCurvature,
       );
       const frame = markFrame(curve, 0.25);
-      expect(placeChip).toHaveBeenCalledWith('r1', chipPosition(frame), frame.normal, expect.anything());
-      expect(chipPosition(frame)).not.toEqual(chipPosition(markFrame(curve, 0.75)));
+      expect(placeBadge).toHaveBeenCalledWith('r1', badgePosition(frame), frame.normal, expect.anything());
+      expect(badgePosition(frame)).not.toEqual(badgePosition(markFrame(curve, 0.75)));
     });
 
     it('a bundle keeps a passive chip', () => {
-      const state: NoteState = { isOpen: () => false, toggle: vi.fn(), placeChip: vi.fn() };
+      const state: NoteState = { isOpen: () => false, toggle: vi.fn(), placeBadge: vi.fn() };
       const { baseElement } = render(
         <NoteStateContext.Provider value={state}>
           {edgeElement({ kind: 'data-flow', annotations: { comments: 1, links: 0 }, constituentCount: 2 })}

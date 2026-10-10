@@ -39,7 +39,7 @@ import {
 import type { IconRegistry } from '@diagc/icons';
 import type { AnnotationCounts } from '../notes/comment-badge';
 import type { EdgeRouting } from './useViewLayout';
-import type { NodeBadge } from '../notations';
+import type { NodeChip } from '../notations';
 import type { KindStyle, Registry, TypeStyle } from '../registry';
 import type { StylePreset } from '../sketch/stylePresets';
 import type { DiagramEdgeData } from '../edge/DiagramEdge';
@@ -57,9 +57,9 @@ export interface NodeDataContext {
   /** notation-resolved accent per node id (e.g. a commit's lane colour); below
    * the node's own colour, above typeColors */
   nodeColors?: ReadonlyMap<string, string>;
-  /** the notation's chips per node id (profile.node.badges), one derivation
+  /** the notation's chips per node id (profile.node.chips), one derivation
    * per model like nodeColors; absent = no notation chips */
-  nodeBadges?: ReadonlyMap<string, NodeBadge[]>;
+  nodeChips?: ReadonlyMap<string, NodeChip[]>;
   /** profile.node.resizable: which nodes get the notation's x-only handles */
   resizable?: (n: DiagramNode) => 'x' | undefined;
   icons: IconRegistry;
@@ -110,7 +110,7 @@ export interface EdgeDataContext {
    * the chip in the renderer calls it with nothing */
   onAddThreat?: (target: ElementRef) => void;
   /** the sole-relation id currently showing endpoint pin dots (null = none) */
-  pinEdgeRel: string | null;
+  fixedSideRelation: string | null;
   /** a correlated double-click asked to add a label on a specific edge */
   pendingAdd: { edgeId: string; x: number; y: number } | null;
   onPendingAddConsumed?: () => void;
@@ -198,7 +198,7 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     notation: ctx.notation,
     threats: threats.total > 0 ? threats : undefined,
     annotations,
-    badges: ctx.nodeBadges?.get(n.id),
+    chips: ctx.nodeChips?.get(n.id),
   };
   if (ctx.labelEditingId === n.id) {
     data.labelEditing = true;
@@ -322,7 +322,7 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     ctx.onSetEdgeSide !== undefined
   ) {
     data.onSetSide = (end, side) => ctx.onSetEdgeSide?.(relation.id, end, side);
-    if (relation.id === ctx.pinEdgeRel) data.pinsActive = true;
+    if (relation.id === ctx.fixedSideRelation) data.fixedSideDotsShown = true;
   }
   if (ctx.editing && relation !== undefined && ctx.pendingAdd?.edgeId === e.id) {
     // a correlated double-click asked to add a label on this edge — the
@@ -391,7 +391,7 @@ function sameNodeCtx(a: NodeDataContext, b: NodeDataContext): boolean {
     a.stylePreset === b.stylePreset &&
     a.notation === b.notation &&
     a.nodeColors === b.nodeColors &&
-    a.nodeBadges === b.nodeBadges &&
+    a.nodeChips === b.nodeChips &&
     a.resizable === b.resizable
   );
 }
@@ -405,7 +405,7 @@ function sameEdgeCtx(a: EdgeDataContext, b: EdgeDataContext): boolean {
     a.onMoveEdgeLabel === b.onMoveEdgeLabel &&
     a.onSetEdgeSide === b.onSetEdgeSide &&
     a.onAddThreat === b.onAddThreat &&
-    a.pinEdgeRel === b.pinEdgeRel &&
+    a.fixedSideRelation === b.fixedSideRelation &&
     a.pendingAdd === b.pendingAdd &&
     a.onPendingAddConsumed === b.onPendingAddConsumed &&
     a.stylePreset === b.stylePreset &&
