@@ -124,7 +124,7 @@ const distanceTo = (p: Point, r: Rect): number => {
  * flow's note keeps to its badge's side of the line — and off the labels
  * that sit on the line — whenever it can (the line itself is among the
  * obstacles, see lineObstacles). All coordinates share one space — the caller
- * decides which. Deterministic and pure: run in model order with earlier
+ * decides which. Deterministic and pure: run in view-tree order with earlier
  * notes among the obstacles, two open notes never stack.
  */
 export function placeNote(

@@ -15,7 +15,7 @@ export interface LoopEdgeInput {
 
 /** the polarity shared by every given constituent polarity, iff all are
  * defined and agree; any missing polarity or any disagreement yields undefined
- * ("unknown"). Shared by the loop labels (DiagramView aggregates each drawn
+ * ("unknown"). Shared by the loop labels (useLoopOverlay aggregates each drawn
  * edge's constituent relations), the loop detector's arc collapse, and the
  * leverage analysis — so all three provably agree on what "unknown" means. */
 export function combinePolarities(polarities: readonly (Polarity | undefined)[]): Polarity | undefined {

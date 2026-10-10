@@ -141,7 +141,7 @@ function absoluteBoxes(
   return { abs, obstacles };
 }
 
-/** The boxes' notes, in model order. */
+/** The boxes' notes, in view-tree order. */
 function elementRequests(
   roots: readonly ViewNode[],
   abs: ReadonlyMap<string, Rect>,
@@ -221,7 +221,7 @@ function flowRequests(
 }
 
 /** One open note, placed and turned into its node; undefined for a closed one.
- * Each placed note joins `obstacles`, so a later one (model order) never stacks
+ * Each placed note joins `obstacles`, so a later one (view-tree order) never stacks
  * on it. */
 function placeNoteNode(
   request: NoteRequest,

@@ -53,7 +53,7 @@ export function useDrillNavigation(input: DrillNavigationInput): DrillNavigation
     onEnteredPathChange?.(enteredPath);
   }, [enteredPath, onEnteredPathChange]);
   // A pending "fit the whole view" (a drill, an exit to the bird's-eye, a
-  // different diagram), applied by DiagramView's post-layout fit effect.
+  // different diagram), applied by useRootFit once the layout lands.
   const pendingRootFitRef = useRef<RootFit | null>(null);
 
   // The snapshot the reducer compares against, rebuilt on demand from this

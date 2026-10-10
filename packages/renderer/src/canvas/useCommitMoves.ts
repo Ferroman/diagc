@@ -61,7 +61,7 @@ export function useCommitMoves(input: CommitMovesInput): (onScreen: Positions) =
         setViewPositions((p) => ({ ...p, ...positions }));
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the four refs and setViewPositions are stable useRef/useState identities from DiagramView, read at gesture time
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the four refs and setViewPositions are stable useRef/useState identities from DiagramView's hooks, read at gesture time
     [editing, edit],
   );
 }

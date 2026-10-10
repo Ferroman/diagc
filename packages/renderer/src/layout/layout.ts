@@ -490,7 +490,7 @@ async function layoutSingleRun(
   // A rejected pick must degrade rather than freeze the canvas, so the attempts
   // below run in escalating order of concession and EVERY one of them is
   // guarded. The last is the default algorithm, which lays out anything we can
-  // build — without it a doomed pick left `layoutView` rejecting, DiagramView's
+  // build — without it a doomed pick left `layoutView` rejecting, useViewLayout's
   // `.then` never ran, and the stale arrangement stayed on screen looking like
   // the control had simply done nothing.
   //

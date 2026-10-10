@@ -125,7 +125,7 @@ export function useNoteNodes(input: NoteNodesInput): NoteNodes {
     // the wrong document, or open a link through a host that is no longer there.
     // profile is here because the threat offer is gated on it (see
     // deriveNoteNodes): switching to a threat-model plane has to redraw the notes.
-    // It is memoized on props.notation, so it changes exactly when that does.
+    // useNotation memoizes it on the notation prop, so it changes exactly when that does.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setNoteEdit is a stable useState identity from useNoteSession
   }, [
     noNotes,

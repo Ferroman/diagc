@@ -8,6 +8,14 @@ export interface LiveStroke {
   width: number;
 }
 
+/** the stroke under the pen, drawn with the pen's settings; none between strokes */
+export function liveStroke(
+  points: number[] | null,
+  pen: { color?: string; width: number } | undefined,
+): LiveStroke | null {
+  return points === null ? null : { points, width: pen?.width ?? DEFAULT_STROKE_WIDTH, color: pen?.color };
+}
+
 export interface DrawingsLayerProps {
   strokes: readonly Stroke[];
   /** the stroke under the pen right now, drawn by the same layer so preview and result cannot differ */

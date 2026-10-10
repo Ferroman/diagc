@@ -1,73 +1,75 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { Background, ConnectionMode, Panel, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
+import { useMemo, useRef, useState } from 'react';
+import { Background, ConnectionMode, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import {
-  countAnchored,
-  DEFAULT_STROKE_WIDTH,
-  layoutPlaneKey,
-  type Point,
-  type Stroke,
-  type ViewNode,
-} from '@diagc/core/internal';
+import { countAnchored } from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
 import { Breadcrumbs } from './Breadcrumbs';
 import { edgeTypes, nodeTypes } from './adapter';
 import { NoteStateContext } from '../notes/note-state';
-import { DrawingsLayer } from '../drawings/DrawingsLayer';
+import { DrawingsLayer, liveStroke } from '../drawings/DrawingsLayer';
+import { LaserLayer } from '../drawings/LaserLayer';
+import { useCanvasGestures } from '../drawings/useCanvasGestures';
+import { useDrawings } from '../drawings/useDrawings';
 import { GuidesLayer } from './GuidesLayer';
 import { SelectionToolbar } from './SelectionToolbar';
-import { Legend } from '../legend/Legend';
+import { LegendPanel } from '../legend/LegendPanel';
+import { useLegendState } from '../legend/useLegendState';
 import { LoopHighlightContext } from '../loops/loop-highlight';
+import { useLoopOverlay } from '../loops/useLoopOverlay';
 import { stylePreset } from '../sketch/stylePresets';
-import { useCanvasGestures } from '../drawings/useCanvasGestures';
-import { useCanvasClicks } from './useCanvasClicks';
-import { useDropAndPaste } from './useDropAndPaste';
+import { canvasClassName, canvasStyle } from './canvas-frame';
 import { canvasToggles, toggleOf } from './canvas-toggles';
-import { useCanvasCommands } from './useCanvasCommands';
 import { CanvasControls } from './CanvasControls';
 import { CanvasOverlays } from './CanvasOverlays';
-import { useCompiledView } from './useCompiledView';
-import { useNotation } from './useNotation';
-import { useViewModeMoves } from './useViewModeMoves';
-import { useDrillNavigation } from './useDrillNavigation';
-import { useLegendState } from '../legend/useLegendState';
-import { useLoopOverlay } from '../loops/useLoopOverlay';
-import { useViewLayout } from './useViewLayout';
-import { useEditRequests } from './useEditRequests';
+import { useCanvasClicks } from './useCanvasClicks';
+import { useCanvasCommands } from './useCanvasCommands';
 import { useCommitMoves } from './useCommitMoves';
-import { useNodeDragging } from './useNodeDragging';
-import { useNudgeAndArrange } from './useNudgeAndArrange';
-import { MAX_ZOOM, MIN_ZOOM, useLayoutApi } from './useLayoutApi';
-import { useNoteNodes } from './useNoteNodes';
-import { useFlowNodes, type LabelEdit } from './useFlowNodes';
-import { useNodeResync } from './useNodeResync';
+import { useCompiledView } from './useCompiledView';
+import { useDrillNavigation } from './useDrillNavigation';
+import { useDropAndPaste } from './useDropAndPaste';
+import { useEditRequests } from './useEditRequests';
 import { useFlowEdges } from './useFlowEdges';
+import { useFlowNodes, type LabelEdit } from './useFlowNodes';
+import { MAX_ZOOM, MIN_ZOOM, useLayoutApi } from './useLayoutApi';
+import { useMoveFrames } from './useMoveFrames';
+import { useNodeDragging } from './useNodeDragging';
+import { useNodeResync } from './useNodeResync';
+import { useNoteNodes } from './useNoteNodes';
 import { useNoteSession } from './useNoteSession';
-import { LaserLayer } from '../drawings/LaserLayer';
+import { useNotation } from './useNotation';
+import { useNudgeAndArrange } from './useNudgeAndArrange';
+import { useRootFit } from './useRootFit';
+import { useViewLayout } from './useViewLayout';
+import { useViewModeMoves } from './useViewModeMoves';
 import '../styles.css';
 import '@fontsource/kalam/400.css';
 import '@fontsource/kalam/700.css';
 
 import { DEFAULT_ON_NODE_META_KEYS, type DiagramViewProps } from './view-types';
 
+/**
+ * The canvas: the hooks in the order their effects must register, then React
+ * Flow. Each hook names what it reads from the props; what one hook makes,
+ * the next takes as an input.
+ */
 function Inner(props: DiagramViewProps) {
   const reactFlow = useReactFlow();
   // The edit-mode callbacks travel as one optional object (see EditingApi); the
-  // affordance gate `editing` below derives from `mode` alone, so a read-only
-  // host without an `edit` object disables every mutation path structurally.
+  // affordance gate `editing` derives from `mode` alone, so a read-only host
+  // without an `edit` object disables every mutation path structurally.
   const edit = props.edit;
+  const editing = props.mode === 'edit';
+  const chromeless = props.chrome === false;
   const preset = useMemo(() => stylePreset(props.styleId), [props.styleId]);
-  const notation = useNotation(props);
-  const { profile, typeRegistry, kindRegistry, nodeColors } = notation;
   const icons = useMemo(() => props.icons ?? createIconRegistry(), [props.icons]);
+  const notation = useNotation(props);
+  const { profile, typeRegistry } = notation;
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   // In-place label editing target (edit mode double-click): a node's name or a
   // single-relation edge's label.
   const [labelEdit, setLabelEdit] = useState<LabelEdit | null>(null);
-  const editing = props.mode === 'edit';
-  const notes = useNoteSession(editing, props.model.id);
-  const { setNoteEdit, setNoteOverrides } = notes;
+  const noteSession = useNoteSession(editing, props.model.id);
   const visibleRef = useRef<string[]>([]);
   // The drill trail plus the render-phase navigation sync (new model / plane
   // switch / model edit / host-driven path). It adjusts state DURING render, so
@@ -87,38 +89,18 @@ function Inner(props: DiagramViewProps) {
     // may not draw.
     onPlaneSwitch: () => {
       setLabelEdit(null);
-      setNoteEdit(null);
-      setNoteOverrides(new Map());
+      noteSession.setNoteEdit(null);
+      noteSession.setNoteOverrides(new Map());
     },
     isAlwaysExpanded: notation.isAlwaysExpanded,
   });
-  const { enteredPath, drillRoot, focus, enterNode, exitTo, pendingRootFitRef } = nav;
+  const { drillRoot, enterNode } = nav;
 
   // A requested node that React Flow's copy does not hold yet, waiting for
   // useNodeResync to hand it the selection (see useEditRequests).
   const selectOnAppearRef = useRef<string | null>(null);
-
   const nameOf = useMemo(() => new Map(props.model.nodes.map((n) => [n.id, n.name])), [props.model]);
-
-  // The active plane's strokes. Keyed like layout.planes, so a borrowing plane
-  // shares its donor's bucket exactly as it shares positions.
-  const strokes = useMemo(
-    () => props.drawings?.planes[layoutPlaneKey(props.model, props.plane)] ?? [],
-    [props.drawings, props.model, props.plane],
-  );
-  // Render-phase ref (same pattern as useDrillNavigation's enteredPathRef): useLayoutApi's
-  // effect keeps deps of just [layoutApiRef, reactFlow], so it reads the ink
-  // through a ref rather than re-installing the api object on every stroke.
-  const strokesRef = useRef<readonly Stroke[]>([]);
-  strokesRef.current = strokes;
-  // Tracing-paper switch: viewer state, on by default (an author drew it to be
-  // seen), reset per diagram like pins. Never saved.
-  const [drawingsVisible, setDrawingsVisible] = useState(true);
-  useEffect(() => {
-    setDrawingsVisible(true);
-  }, [props.model.id]);
-  const chromeless = props.chrome === false;
-  const { pen: penSettings } = props;
+  const ink = useDrawings(props);
   const gestures = useCanvasGestures({
     editing,
     tool: props.tool,
@@ -130,10 +112,15 @@ function Inner(props: DiagramViewProps) {
     onAddStroke: edit?.onAddStroke,
     toFlow: reactFlow.screenToFlowPosition,
   });
-  const { laserOn, setLaserOn, penActive, eraserActive, gestureCaptured, pen, laser, gestureHandlers } = gestures;
-
-  const { compiled, compiledRef } = useCompiledView({ props, profile, typeRegistry, focus, drillRoot, visibleRef });
-
+  const { gestureCaptured } = gestures;
+  const { compiled, compiledRef } = useCompiledView({
+    props,
+    profile,
+    typeRegistry,
+    focus: nav.focus,
+    drillRoot,
+    visibleRef,
+  });
   const legend = useLegendState({
     model: props.model,
     plane: props.plane,
@@ -141,23 +128,19 @@ function Inner(props: DiagramViewProps) {
     drillRoot,
     activeLayers: props.activeLayers,
     typeRegistry,
-    kindRegistry,
+    kindRegistry: notation.kindRegistry,
     canToggleLayers: props.onToggleLayer !== undefined,
-    strokes,
-    drawingsVisible,
-    nodeColors,
+    strokes: ink.strokes,
+    drawingsVisible: ink.drawingsVisible,
+    nodeColors: notation.nodeColors,
   });
-  const { legendConfig, showLegend, setShowLegend, setLegendSize, legendRowList, legendReserveRef } = legend;
-
   const moves = useViewModeMoves({ props, editing });
-  const { altHeld, viewPositions, setViewPositions } = moves;
 
-  // Both feed the node data below AND the layout's box-size estimate (a folded
+  // Both feed the node data AND the layout's box-size estimate (a folded
   // container's count badge and a node's meta badges take real width), so they
   // are derived ahead of the geometry pipeline.
   const hiddenCounts = useMemo(() => countAnchored(props.model, compiled), [props.model, compiled]);
   const metaKeys = props.onNodeMetaKeys ?? DEFAULT_ON_NODE_META_KEYS;
-
   // The geometry pipeline (size hints → elk/notation layout → overlay-applied
   // and band-arranged geometry): see useViewLayout.
   const viewLayout = useViewLayout({
@@ -171,82 +154,28 @@ function Inner(props: DiagramViewProps) {
     hiddenCounts,
     editing,
     ignoreSavedPositions: props.ignoreSavedPositions,
-    viewPositions,
+    viewPositions: moves.viewPositions,
   });
-  const { geometryRef, placedGeometry, arrangedGeometry, containerShifts, settledFor, flowDirection } = viewLayout;
-  // Render-phase ref, same pattern and reason as useCompiledView's compiledRef: commitMoves
-  // (useCommitMoves) needs the ARRANGED geometry to compute a move's displacement,
-  // but its dependency list is hand-managed and must not grow with every
-  // re-layout, so it reads arrangedGeometry through a ref kept current every
-  // render instead.
-  const arrangedRef = useRef(arrangedGeometry);
-  arrangedRef.current = arrangedGeometry;
-
-  // Where each open container's origin sits BEFORE the fit pass shifted it, in
-  // absolute flow coordinates — the frame a child's saved position is relative
-  // to (see fit-containers.ts). Summed root-first, the same order commitMoves
-  // sums the on-screen chain, so with no shift the two are the same float and
-  // a saved position is exactly the on-screen one.
-  const containerBases = useMemo(() => {
-    const bases = new Map<string, Point>();
-    if (arrangedGeometry === null) return bases;
-    const walk = (n: ViewNode, ox: number, oy: number) => {
-      const g = arrangedGeometry.get(n.id);
-      if (g === undefined) return;
-      const x = ox + g.x;
-      const y = oy + g.y;
-      if (n.children.length === 0) return;
-      const shift = containerShifts.get(n.id);
-      bases.set(n.id, { x: x - (shift?.dx ?? 0), y: y - (shift?.dy ?? 0) });
-      n.children.forEach((c) => walk(c, x, y));
-    };
-    compiled.roots.forEach((r) => walk(r, 0, 0));
-    return bases;
-  }, [compiled, arrangedGeometry, containerShifts]);
-  // Render-phase refs (the strokesRef pattern): commitMoves reads them at
-  // gesture time and must not change identity with every re-layout.
-  const containerBasesRef = useRef(containerBases);
-  containerBasesRef.current = containerBases;
-  const containerShiftsRef = useRef(containerShifts);
-  containerShiftsRef.current = containerShifts;
-
-  // A drill (enter/exit) or a different diagram swaps the whole scene, so once
-  // it re-layouts, fit the new view: a glide into a level of the same diagram, a
-  // jump to where a first open would land for another one (see RootFit).
-  //
-  // "Once it re-layouts" is `settledFor`, not `arrangedGeometry !== null`: the
-  // last arrangement is kept while the next is computed, so the render that
-  // swaps the scene already holds a non-null one — the OLD scene's. Where the
-  // two share ids (a drill always does; so does a diagram and the copy that was
-  // added to) that is a complete-looking, already-measured set of boxes, React
-  // Flow resolves the fit against it on the spot, and the real arrangement then
-  // lands under a camera framing the wrong thing.
-  useEffect(() => {
-    const fit = pendingRootFitRef.current;
-    if (fit === null || arrangedGeometry === null || settledFor !== compiled) return;
-    pendingRootFitRef.current = null;
-    void reactFlow.fitView(fit === 'glide' ? { padding: 0.15, duration: 500 } : undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- pendingRootFitRef is a stable useRef identity (owned by useDrillNavigation) read through .current
-  }, [compiled, arrangedGeometry, settledFor, reactFlow]);
-
+  const frames = useMoveFrames(compiled, viewLayout.arrangedGeometry, viewLayout.containerShifts);
+  useRootFit({ pendingRootFitRef: nav.pendingRootFitRef, compiled, layout: viewLayout, reactFlow });
   const drop = useDropAndPaste({ editing, edit, reactFlow, wrapperRef });
 
-  const { noteState, noteNodes } = useNoteNodes({
+  const notes = useNoteNodes({
     model: props.model,
     plane: props.plane,
     notes: props.notes,
     layout: props.layout,
-    session: notes,
+    session: noteSession,
     editing,
     edit,
     onOpenLink: props.onOpenLink,
     compiled,
-    arrangedGeometry,
+    arrangedGeometry: viewLayout.arrangedGeometry,
     profile,
     nameOf,
     typeRegistry,
   });
-  const { derivedNodes, allNodes, allNodesRef, rfNodes, setRfNodes, rfNodesRef } = useFlowNodes({
+  const flow = useFlowNodes({
     props,
     editing,
     edit,
@@ -260,25 +189,17 @@ function Inner(props: DiagramViewProps) {
     labelEdit,
     setLabelEdit,
     enterNode,
-    noteNodes,
+    noteNodes: notes.noteNodes,
   });
-  useEditRequests({
-    editing,
-    edit,
-    derivedNodes,
-    setLabelEdit,
-    setNoteEdit,
-    setRfNodes,
-    selectOnAppearRef,
-  });
+  const { derivedNodes, setRfNodes, rfNodesRef } = flow;
+  const { setNoteEdit } = noteSession;
+  useEditRequests({ editing, edit, derivedNodes, setLabelEdit, setNoteEdit, setRfNodes, selectOnAppearRef });
   const commitMoves = useCommitMoves({
     editing,
     edit,
     rfNodesRef,
-    containerBasesRef,
-    containerShiftsRef,
-    arrangedRef,
-    setViewPositions,
+    ...frames,
+    setViewPositions: moves.setViewPositions,
   });
   const arrange = useNudgeAndArrange({
     editing,
@@ -287,12 +208,12 @@ function Inner(props: DiagramViewProps) {
     savesViewPositions: props.onViewPositionsChange !== undefined,
     snapGrid: props.snapGrid,
     reactFlow,
-    rfNodes,
+    rfNodes: flow.rfNodes,
     rfNodesRef,
     setRfNodes,
     commitMoves,
   });
-  const { nudge, selectedIds, canArrange } = arrange;
+  const { nudge } = arrange;
   const drag = useNodeDragging({
     editing,
     edit,
@@ -302,34 +223,23 @@ function Inner(props: DiagramViewProps) {
     reactFlow,
     rfNodesRef,
     setRfNodes,
-    allNodesRef,
-    arrangedRef,
+    allNodesRef: flow.allNodesRef,
+    arrangedRef: frames.arrangedRef,
     flushNudge: nudge.flush,
     commitMoves,
   });
-  useNodeResync({ allNodes, derivedNodes, setRfNodes, selectOnAppearRef, pendingRef: nudge.pendingRef });
-
+  useNodeResync({ allNodes: flow.allNodes, derivedNodes, setRfNodes, selectOnAppearRef, pendingRef: nudge.pendingRef });
   useLayoutApi({
     layoutApiRef: props.layoutApiRef,
     reactFlow,
     rfNodesRef,
     compiledRef,
-    geometryRef,
+    geometryRef: viewLayout.geometryRef,
     wrapperRef,
-    strokesRef,
-    legendReserveRef,
+    strokesRef: ink.strokesRef,
+    legendReserveRef: legend.legendReserveRef,
   });
-
-  const { rfEdges, onEdgesChange, setFixedSideRelation, setAddLabelAt } = useFlowEdges({
-    props,
-    editing,
-    edit,
-    notation,
-    preset,
-    compiled,
-    layout: viewLayout,
-    moves,
-  });
+  const edges = useFlowEdges({ props, editing, edit, notation, preset, compiled, layout: viewLayout, moves });
 
   const loops = useLoopOverlay({
     profile,
@@ -339,17 +249,7 @@ function Inner(props: DiagramViewProps) {
     externalHighlight: props.externalHighlight,
     onCldEdges: props.onCldEdges,
   });
-  const {
-    cld,
-    loopEdges,
-    showLoops,
-    setShowLoops,
-    selectedNode,
-    setSelectedNode,
-    focusConnected,
-    setFocusConnected,
-    loopHighlight,
-  } = loops;
+  const { loopHighlight } = loops;
   const clicks = useCanvasClicks({
     props,
     editing,
@@ -360,21 +260,20 @@ function Inner(props: DiagramViewProps) {
     setLabelEdit,
     setRfNodes,
     selectOnAppearRef,
-    setFixedSideRelation,
-    setAddLabelAt,
-    setSelectedNode,
+    setFixedSideRelation: edges.setFixedSideRelation,
+    setAddLabelAt: edges.setAddLabelAt,
+    setSelectedNode: loops.setSelectedNode,
     loopHighlight,
   });
-
   const toggles = canvasToggles({
-    dim: [focusConnected, setFocusConnected],
-    laser: [laserOn, setLaserOn],
-    drawings: [drawingsVisible, setDrawingsVisible],
-    legend: [showLegend, setShowLegend],
-    loops: [showLoops, setShowLoops],
-    drawingsOffered: strokes.length > 0 && drillRoot === undefined,
-    legendOffered: legendRowList.length > 0,
-    loopsOffered: cld,
+    dim: [loops.focusConnected, loops.setFocusConnected],
+    laser: [gestures.laserOn, gestures.setLaserOn],
+    drawings: [ink.drawingsVisible, ink.setDrawingsVisible],
+    legend: [legend.showLegend, legend.setShowLegend],
+    loops: [loops.showLoops, loops.setShowLoops],
+    drawingsOffered: ink.strokes.length > 0 && drillRoot === undefined,
+    legendOffered: legend.legendRowList.length > 0,
+    loopsOffered: loops.cld,
     clearLoopHighlight: loopHighlight.clear,
   });
   useCanvasCommands({
@@ -385,37 +284,37 @@ function Inner(props: DiagramViewProps) {
     arrange,
   });
 
+  const { pen, laser } = gestures;
   return (
     <LoopHighlightContext.Provider value={loopHighlight}>
       {/* the badges inside read this to know whether their note is
         open and how to flip it — one provider around the whole canvas, the
         LoopHighlightContext precedent */}
-      <NoteStateContext.Provider value={noteState}>
+      <NoteStateContext.Provider value={notes.noteState}>
         <div
           ref={wrapperRef}
-          className={`dg-canvas${props.chrome === false ? ' dg-no-chrome' : ''}${editing ? ' dg-mode-edit' : ''}${!editing && altHeld ? ' dg-alt-move' : ''}${drag.dragging ? ' dg-dragging' : ''}${
-            preset.id !== 'clean' ? ` dg-style-${preset.id}` : ''
-          }${preset.rough !== undefined ? ' dg-style-rough' : ''}${preset.fontFamily !== undefined ? ' dg-style-font' : ''}${
-            profile.className !== undefined ? ' ' + profile.className : ''
-          }${penActive ? ' dg-tool-pen' : ''}${eraserActive ? ' dg-tool-eraser' : ''}${laserOn ? ' dg-tool-laser' : ''}`}
-          style={
-            {
-              width: '100%',
-              height: '100%',
-              '--dg-style-font': preset.fontFamily,
-              ...(preset.cssVars ?? {}),
-            } as CSSProperties
-          }
+          className={canvasClassName({
+            chromeless,
+            editing,
+            altHeld: moves.altHeld,
+            dragging: drag.dragging,
+            preset,
+            notationClass: profile.className,
+            penActive: gestures.penActive,
+            eraserActive: gestures.eraserActive,
+            laserOn: gestures.laserOn,
+          })}
+          style={canvasStyle(preset)}
           onDragOver={drop.onDragOver}
           onDrop={drop.onDrop}
           onKeyDownCapture={nudge.onKeyDownCapture}
           onBlurCapture={nudge.onBlurCapture}
-          {...gestureHandlers}
+          {...gestures.gestureHandlers}
         >
           <ReactFlow
-            nodes={rfNodes}
-            edges={rfEdges}
-            onEdgesChange={onEdgesChange}
+            nodes={flow.rfNodes}
+            edges={edges.rfEdges}
+            onEdgesChange={edges.onEdgesChange}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             colorMode={props.colorMode ?? 'light'}
@@ -441,56 +340,37 @@ function Inner(props: DiagramViewProps) {
             // otherwise move it.
             panOnDrag={!gestureCaptured}
             elementsSelectable={!gestureCaptured}
-            nodesDraggable={(editing || altHeld) && !gestureCaptured}
+            nodesDraggable={(editing || moves.altHeld) && !gestureCaptured}
             nodesConnectable={editing && !gestureCaptured}
             proOptions={{ hideAttribution: true }}
           >
             {/* With snapping on the dots ARE the grid, so a dropped box visibly lands on one. */}
             <Background {...(props.snapGrid !== undefined ? { gap: props.snapGrid, className: 'dg-grid-on' } : {})} />
             <DrawingsLayer
-              strokes={strokes}
-              live={
-                pen.live === null
-                  ? null
-                  : {
-                      points: pen.live,
-                      width: penSettings?.width ?? DEFAULT_STROKE_WIDTH,
-                      color: penSettings?.color,
-                    }
-              }
-              visible={drawingsVisible && drillRoot === undefined}
-              erasing={eraserActive}
+              strokes={ink.strokes}
+              live={liveStroke(pen.live, props.pen)}
+              visible={ink.drawingsVisible && drillRoot === undefined}
+              erasing={gestures.eraserActive}
               onErase={(id) => edit?.onDeleteStroke?.(id)}
             />
             <LaserLayer trails={laser.trails} live={laser.live} />
             <GuidesLayer lines={drag.guides} />
-            {canArrange && (
+            {arrange.canArrange && (
               <SelectionToolbar
-                ids={selectedIds}
+                ids={arrange.selectedIds}
                 onAlign={arrange.alignSelection}
                 onDistribute={arrange.distributeSelection}
               />
             )}
-            <Breadcrumbs path={enteredPath} nameOf={(id) => nameOf.get(id) ?? id} onCrumb={exitTo} />
-            {showLegend && legendRowList.length > 0 && (
-              // LegendPosition is a subset of React Flow's PanelPosition — no cast needed.
-              <Panel position={legendConfig?.position ?? 'bottom-right'}>
-                <Legend
-                  rows={legendRowList}
-                  title={legendConfig?.title}
-                  interactive={props.chrome !== false}
-                  onToggleLayer={props.onToggleLayer}
-                  // Same derivation as `interactive` above: Legend decides "is this
-                  // row a button" from the handler alone, so a chrome-less host (the
-                  // PNG export) must get no handler — or the export would carry a
-                  // focusable control nothing can press.
-                  onToggleDrawings={props.chrome !== false ? toggleOf(toggles, 'drawings').flip : undefined}
-                  icons={icons}
-                  onMeasure={setLegendSize}
-                />
-              </Panel>
-            )}
-            {props.chrome !== false && (
+            <Breadcrumbs path={nav.enteredPath} nameOf={(id) => nameOf.get(id) ?? id} onCrumb={nav.exitTo} />
+            <LegendPanel
+              legend={legend}
+              interactive={!chromeless}
+              onToggleLayer={props.onToggleLayer}
+              onToggleDrawings={toggleOf(toggles, 'drawings').flip}
+              icons={icons}
+            />
+            {!chromeless && (
               <CanvasControls
                 toggles={toggles}
                 keyHints={props.keyHints}
@@ -503,12 +383,12 @@ function Inner(props: DiagramViewProps) {
               model={props.model}
               plane={props.plane}
               overlay={profile.canvasOverlay}
-              placed={placedGeometry !== null}
-              flowDirection={flowDirection}
+              placed={viewLayout.placedGeometry !== null}
+              flowDirection={viewLayout.flowDirection}
               today={props.today}
-              loopEdges={showLoops ? loopEdges : null}
+              loopEdges={loops.showLoops ? loops.loopEdges : null}
               rough={preset.rough}
-              loopNodeFilter={editing ? null : selectedNode}
+              loopNodeFilter={editing ? null : loops.selectedNode}
             />
           </ReactFlow>
         </div>
