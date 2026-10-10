@@ -16,7 +16,8 @@ vi.mock('@xyflow/react', async (importOriginal) => {
   };
 });
 import { createKindRegistry } from '../registry';
-import { badgePosition, DiagramEdge, type DiagramEdgeData } from './DiagramEdge';
+import { DiagramEdge, type DiagramEdgeData } from './DiagramEdge';
+import { badgePosition } from './EdgeNoteBadges';
 import { NoteStateContext, type NoteState } from '../notes/note-state';
 import { edgePoint, markFrame, shapeCurve } from './edge-geometry';
 import { notationProfile } from '../notations';
@@ -795,7 +796,7 @@ describe('DiagramEdge', () => {
       // reports where the relation's note should hang — and it reports its
       // OWN spot: the t = 0.25 frame offset along the normal, not the threat
       // badge's t = 0.75. The curve is the one the component builds for an
-      // unmeasured, unrouted, notation-less edge (see DiagramEdge).
+      // unmeasured, unrouted, notation-less edge (see useEdgePath).
       const curve = shapeCurve(
         'curved',
         {

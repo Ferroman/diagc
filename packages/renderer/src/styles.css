@@ -2073,7 +2073,7 @@ path.dg-loop-badge-circle {
   box-shadow: 0 0 0 2px var(--dg-accent);
 }
 
-/* view mode, Alt held: an edge label slides along its edge (see DiagramEdge) */
+/* view mode, Alt held: an edge label slides along its edge (see EdgeLabels) */
 .dg-alt-move .dg-edge-label {
   cursor: grab;
 }

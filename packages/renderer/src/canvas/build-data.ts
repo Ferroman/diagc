@@ -122,7 +122,7 @@ export interface EdgeDataContext {
   routes: ReadonlyMap<string, Point[]>;
   /** where the layout put each node (absolute top-left): an edge carries its
    * endpoints' spots along, and draws its route only while both still stand
-   * there (DiagramEdge) — a moved node's route points at where it used to be */
+   * there (useEdgePath) — a moved node's route points at where it used to be */
   laidAt: ReadonlyMap<string, Point>;
   /** elk's reserved spot (centre) for a labelled edge's label */
   labelSpots: ReadonlyMap<string, Point>;
@@ -291,9 +291,9 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
   if (relation?.fromColumn !== undefined) data.fromColumn = relation.fromColumn;
   if (relation?.toColumn !== undefined) data.toColumn = relation.toColumn;
   if (ctx.editing && relation !== undefined) {
-    // The geometry owner (DiagramEdge) drives label add/edit/drag because it
-    // holds the path params; here we just bind the callbacks to this edge's
-    // sole relation id.
+    // The edge's labels (EdgeLabels) drive add/edit/drag because they hold
+    // the drawn curve; here we just bind the callbacks to this edge's sole
+    // relation id.
     data.editableLabels = true;
     data.onAddLabel = (text, t, side) => ctx.onAddEdgeLabel?.(relation.id, text, t, side);
     data.onEditLabel = (labelId, text) => ctx.onEditEdgeLabel?.(relation.id, labelId, text);

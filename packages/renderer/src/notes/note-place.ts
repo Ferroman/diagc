@@ -87,7 +87,7 @@ export function obstaclesOf(elements: readonly { rect: Rect; kind: 'box' | 'grou
 
 /**
  * A flow's routed line as obstacles: one small square per sampled point (the
- * edge samples its own curve — see DiagramEdge). A note is far wider than
+ * edge samples its own curve — see EdgeNoteBadges). A note is far wider than
  * the sampling step, so one that lay across the line would always cover a dot.
  */
 export function lineObstacles(line: readonly Point[]): Rect[] {

@@ -170,7 +170,7 @@ export function layoutOptionsFor(settings?: LayoutSettings): Record<string, stri
   if (algorithm === 'stress') opts['elk.stress.desiredEdgeLength'] = String(STRESS_EDGE_LENGTH);
 
   // Always orthogonal, whichever way the edges are then DRAWN (soft or sharp
-  // corners, see DiagramEdge): it is layered's own default, so naming it moves
+  // corners, see useEdgePath): it is layered's own default, so naming it moves
   // nothing, and it is the one router elk applies consistently — asked for
   // SPLINES or POLYLINE it still hands back right-angled waypoints for every
   // edge that crosses a container wall.

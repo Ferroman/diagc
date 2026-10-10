@@ -57,7 +57,7 @@ export interface ViewLayout {
   routing: EdgeRouting | undefined;
   /** where the LAYOUT put each node (absolute top-left), before any saved
    * position, drag or band pass moved it: a route is only good while both of
-   * its endpoints still stand there (see DiagramEdge) */
+   * its endpoints still stand there (see useEdgePath) */
   laidAt: ReadonlyMap<string, Point>;
   /** elk's reserved spot (centre) for each labelled edge's label */
   labelSpots: ReadonlyMap<string, Point>;
@@ -410,7 +410,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // that was dragged — leaves its edges' routes pointing at where it used to be.
   // Rather than enumerate those causes, record where the layout put every node
   // and let each edge compare: it draws its route only while both endpoints
-  // still stand there, and floats otherwise (DiagramEdge). That also holds
+  // still stand there, and floats otherwise (useEdgePath). That also holds
   // mid-drag, before anything is committed.
   const laidAt = useMemo(() => {
     const at = new Map<string, Point>();

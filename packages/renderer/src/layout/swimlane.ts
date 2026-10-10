@@ -360,7 +360,7 @@ export function routeBandedEdges(
     const inFrame = new Set(boxes.map((b) => b.id));
     const edges: RouterEdge[] = original.layoutEdges
       .filter((e) => hoist.touched.has(e.id) && inFrame.has(e.from) && inFrame.has(e.to))
-      // A fixed side counts where the drawn edge carries one, as DiagramEdge reads
+      // A fixed side counts where the drawn edge carries one, as useEdgePath reads
       // it: core leaves a rolled-up relation's sides on its own nodes.
       .map((e) => ({
         id: e.id,
@@ -370,7 +370,7 @@ export function routeBandedEdges(
         toSide: e.style?.toSide,
         hasLabel: edgeLabelText(e).trim() !== '',
       }))
-      // elk's surviving routes stand, unless they break a fixed side (DiagramEdge
+      // elk's surviving routes stand, unless they break a fixed side (useEdgePath
       // would then float them): those are routed here, honouring it
       .filter((e) => {
         const kept = routes.get(e.id);

@@ -141,7 +141,7 @@ function chordTangent(params: EdgePathParams): Point {
 }
 
 /**
- * Point at parameter `t` along an edge, matching how `DiagramEdge` would
+ * Point at parameter `t` along an edge, matching how `useEdgePath` would
  * actually render it for the same `shape`/`curvature`. For `'curved'` this
  * evaluates the exact cubic Bézier `getBezierPath` builds (see
  * `bezierControlPoints`); for `'bow'` it evaluates the symmetric bow (see
@@ -198,7 +198,7 @@ export function edgeTangent(
 }
 
 // ---------------------------------------------------------------------------
-// A drawn edge as something to place things ALONG. `DiagramEdge` draws either a
+// A drawn edge as something to place things ALONG. `useEdgePath` draws either a
 // floating shape (above) or a route through laid-out waypoints (below); labels,
 // CLD marks and the label drag only need "the point and direction at t", so both
 // are wrapped behind one small interface.

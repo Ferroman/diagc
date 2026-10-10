@@ -494,7 +494,7 @@ describe('buildEdgeData', () => {
     const routed = buildEdgeData(viewEdge(), ctx);
     expect(routed.route).toBe(route);
     expect(routed.routeCorner).toBe(28);
-    // the edge decides at draw time whether the route still stands (DiagramEdge)
+    // the edge decides at draw time whether the route still stands (useEdgePath)
     expect(routed.routeFrom).toEqual({ x: 1, y: 2 });
     expect(routed.routeTo).toEqual({ x: 3, y: 4 });
     expect(routed.labelSpot).toEqual({ x: 5, y: 5 });
