@@ -19,8 +19,8 @@ import { threatBadgeProps } from './threat-badge';
 
 export { NOTE_WIDTH };
 
-/** the data channel of a note — one per OPEN element (see DiagramView's
- * note derivation). The threats are the model's own objects (identity), so a
+/** the data channel of a note — one per OPEN element (see
+ * deriveNoteNodes). The threats are the model's own objects (identity), so a
  * note re-renders exactly when its element's list does. */
 export interface NoteData {
   target: ElementRef;

@@ -23,22 +23,17 @@ import {
   countAnchored,
   DEFAULT_STROKE_WIDTH,
   GIT_STAGE_TYPE,
-  hasNoteContent,
   isActivityBand,
   isActivityChrome,
   isNodeRef,
   layoutPlaneKey,
   elementKey,
   soleRelation,
-  type Comment,
   type DiagramNode,
   type EdgeLabelPlacement,
   type EdgeLabelSide,
-  type Link,
   type Point,
   type Stroke,
-  type Threat,
-  type ElementRef,
   type ViewNode,
 } from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
@@ -52,21 +47,13 @@ import {
   type EdgeLabelMoves,
   type NodeDataContext,
 } from './build-data';
-import { edgeTypes, nodeTypes, toRfEdge, toRfNode, toRfNoteNode } from './adapter';
+import { edgeTypes, nodeTypes, toRfEdge, toRfNode } from './adapter';
 import { strokesBounds } from '../drawings/drawings';
 import { captureCanvas, exportFrame } from './export-image';
-import { NOTE_WIDTH, type NoteData } from '../notes/NoteNode';
+import type { NoteData } from '../notes/NoteNode';
+import { isNoteId } from '../notes/derive-note-nodes';
 import { splitNoteDrag } from '../notes/note-drag';
-import {
-  badgeCenter,
-  estimateNoteHeight,
-  lineObstacles,
-  obstaclesOf,
-  placeNote,
-  type BadgeKind,
-  type Rect,
-} from '../notes/note-place';
-import { NoteStateContext, type NoteState } from '../notes/note-state';
+import { NoteStateContext } from '../notes/note-state';
 import { DrawingsLayer } from '../drawings/DrawingsLayer';
 import { withoutMeasuredExpansion } from './expand-parent';
 import { savedPositions } from '../layout/fit-containers';
@@ -94,6 +81,8 @@ import { useLegendState } from '../legend/useLegendState';
 import { useLoopOverlay } from '../loops/useLoopOverlay';
 import { NUDGE_STEP, useNudge, type Positions } from './useNudge';
 import { useViewLayout } from './useViewLayout';
+import { useNoteNodes } from './useNoteNodes';
+import { useNoteSession } from './useNoteSession';
 import { LaserLayer } from '../drawings/LaserLayer';
 import type { DiagramNodeData } from '../node/DiagramNode';
 import { diffEdgeStatus, diffNodeClasses, withDiffClass } from './diff-marks';
@@ -154,13 +143,6 @@ const withDropTarget = (nodes: Node[], id: string | undefined): Node[] =>
 const clientPointOf = (e: MouseEvent | TouchEvent): Point =>
   'clientX' in e ? { x: e.clientX, y: e.clientY } : { x: e.touches[0]?.clientX ?? 0, y: e.touches[0]?.clientY ?? 0 };
 
-/** The note node id prefix. An id-based test for the filters that only need to
- * *exclude* notes from an id list; anything that READS the note data channel
- * gates on `node.type === 'note'` instead, because a model node is free to
- * carry an id that starts with `note:` and it would arrive here with box data. */
-const NOTE_PREFIX = 'note:';
-const isNoteId = (id: string): boolean => id.startsWith(NOTE_PREFIX);
-
 function Inner(props: DiagramViewProps) {
   const reactFlow = useReactFlow();
   // The edit-mode callbacks travel as one optional object (see EditingApi); the
@@ -183,40 +165,9 @@ function Inner(props: DiagramViewProps) {
   // In-place label editing target (edit mode double-click): a node's name or a
   // single-relation edge's label.
   const [labelEdit, setLabelEdit] = useState<{ kind: 'node' | 'edge'; id: string } | null>(null);
-  // The threat row a note is holding open for typing, keyed by elementKey
-  // (which note) + threat id (which row). Declared here beside labelEdit — the
-  // effect just below writes it and the note derivation far down reads it —
-  // rather than next to that derivation, so nothing references it before it exists.
-  const [noteEdit, setNoteEdit] = useState<{ key: string; id: string } | null>(null);
-  // Notes toggled in THIS session without a host to save through (view mode,
-  // the viewer): key → open. Layered over the overlay's saved `open` flags. In
-  // edit mode the badge goes to the host instead, and entering edit mode clears
-  // this map (below) so edit mode shows exactly what the export will.
-  const [noteOverrides, setNoteOverrides] = useState<ReadonlyMap<string, boolean>>(() => new Map());
-  // Where each threat-carrying flow's counting badge is drawn (relation id →
-  // flow coordinates, the side of the line it sits on, and the line itself),
-  // reported by the edges (NoteState.placeBadge): a flow's note hangs off its
-  // badge, every note keeps off the line, and both sit on the routed curve
-  // only the edge knows. Entries outlive their edges — a hidden flow draws no
-  // note, and a returning one reports again — so nothing prunes it; the
-  // derivation reads only the flows it draws.
-  const [badgeSpots, setBadgeSpots] = useState<ReadonlyMap<string, { at: Point; away: Point; line: readonly Point[] }>>(
-    () => new Map(),
-  );
-  const placeBadge = useCallback((relation: string, at: Point, away: Point, line: readonly Point[]) => {
-    setBadgeSpots((prev) => {
-      const was = prev.get(relation);
-      const same =
-        was !== undefined &&
-        was.at.x === at.x &&
-        was.at.y === at.y &&
-        was.away.x === away.x &&
-        was.away.y === away.y &&
-        was.line.length === line.length &&
-        was.line.every((p, i) => p.x === line[i]!.x && p.y === line[i]!.y);
-      return same ? prev : new Map(prev).set(relation, { at, away, line });
-    });
-  }, []);
+  const editing = props.mode === 'edit';
+  const notes = useNoteSession(editing, props.model.id);
+  const { setNoteEdit, setNoteOverrides } = notes;
   const visibleRef = useRef<string[]>([]);
   // Which end a reconnect drag grabbed ('source'/'target'), captured on start so
   // onReconnect can tell a same-node side change from a move to another node.
@@ -279,25 +230,6 @@ function Inner(props: DiagramViewProps) {
     isAlwaysExpanded,
   });
   const { enteredPath, drillRoot, focus, enterNode, exitTo, pendingRootFitRef } = nav;
-
-  const editing = props.mode === 'edit';
-
-  // Edit mode shows the saved state. A toggle
-  // made while reading would otherwise mask the state the badge is about to
-  // save, and the first click in edit mode would appear to do nothing.
-  useEffect(() => {
-    if (editing) setNoteOverrides(new Map());
-  }, [editing]);
-
-  // ...and on a switch to another diagram. The keys are per model (`node:web`
-  // names an element of THIS one, and the next diagram is free to reuse the
-  // id), but nothing else clears them on that path: useDrillNavigation resets
-  // itself on a new model WITHOUT going through onPlaneSwitch, and the studio
-  // does not re-key <DiagramView>. A toggle made while reading diagram A would
-  // otherwise open — or hide — a colliding note on diagram B.
-  useEffect(() => {
-    setNoteOverrides(new Map());
-  }, [props.model.id]);
 
   // Open a node's name for a host-driven rename that did not originate from a
   // canvas gesture (a panel button creating a node "outside" the canvas, e.g.
@@ -865,214 +797,21 @@ function Inner(props: DiagramViewProps) {
     return out;
   }, [compiled, arrangedGeometry, nodeDataCtx, editing, typeRegistry, profile, fixed]);
 
-  // Notes: one synthetic node per element that carries threats, comments
-  // or links. Derived from the ARRANGED geometry (so a note follows its element
-  // through drags and container growth) and never handed to elk — adding a
-  // threat must not move a single box. A box's note is parented like the box
-  // (parent-relative, rides inside the container); a flow's note is top-level.
-  // Each hangs off its badge: an unmoved note takes the first spot next to
-  // the badge that covers nothing (note-place.ts), a dragged one sits at badge
-  // + its saved offset.
-  const planeKey = layoutPlaneKey(props.model, props.plane);
-  const noNotes = props.notes === false;
-  const notePlacements = props.layout?.notes?.[planeKey];
-  // The open set: saved flags, then this session's toggles on top.
-  const openNotes = useMemo(() => {
-    const open = new Set<string>();
-    for (const [key, p] of Object.entries(notePlacements ?? {})) if (p.open === true) open.add(key);
-    for (const [key, isOpen] of noteOverrides) {
-      if (isOpen) open.add(key);
-      else open.delete(key);
-    }
-    return open;
-  }, [notePlacements, noteOverrides]);
-  const onToggleNote = edit?.onToggleNote;
-  const noteState = useMemo<NoteState | null>(
-    () =>
-      noNotes
-        ? null
-        : {
-            isOpen: (key) => openNotes.has(key),
-            toggle: (target) => {
-              const key = elementKey(target);
-              const next = !openNotes.has(key);
-              if (editing && onToggleNote !== undefined) onToggleNote(target, next);
-              else setNoteOverrides((prev) => new Map(prev).set(key, next));
-            },
-            placeBadge,
-          },
-    [noNotes, openNotes, editing, onToggleNote, placeBadge],
-  );
-  const noteNodes = useMemo((): Node[] => {
-    if (noNotes || openNotes.size === 0 || arrangedGeometry === null) return [];
-    // Absolute boxes: the placement runs in one space for every element and
-    // every obstacle (arrangedGeometry is parent-relative), and a flow's badge
-    // is reported in flow coordinates.
-    const abs = new Map<string, Rect>();
-    const obstacles: Rect[] = [];
-    const walkAbs = (n: ViewNode, ox: number, oy: number) => {
-      const g = arrangedGeometry.get(n.id);
-      if (g === undefined) return;
-      const rect = { x: g.x + ox, y: g.y + oy, width: g.width, height: g.height };
-      abs.set(n.id, rect);
-      // an expanded container is hollow (its members' notes belong inside);
-      // everything else is a box a note must not cover
-      obstacles.push(...obstaclesOf([{ rect, kind: n.state === 'expanded' ? 'group' : 'box' }]));
-      n.children.forEach((c) => walkAbs(c, g.x + ox, g.y + oy));
-    };
-    compiled.roots.forEach((r) => walkAbs(r, 0, 0));
-    // The lines of the flows that show a badge — one carrying threats or
-    // comments (see EdgeNoteBadges) — so no note lies across one. Other lines and
-    // edge labels are not obstacles: a note may cover them.
-    for (const e of compiled.edges) {
-      const r = soleRelation(e);
-      const spot = r !== undefined ? badgeSpots.get(r.id) : undefined;
-      if (spot !== undefined) obstacles.push(...lineObstacles(spot.line));
-    }
-    const out: Node[] = [];
-    const push = (
-      target: ElementRef,
-      name: string,
-      threats: readonly Threat[],
-      comments: readonly Comment[],
-      links: readonly Link[],
-      /** the badge's centre, absolute */
-      badge: Point,
-      /** the element's box, absolute; null for a flow */
-      element: Rect | null,
-      parentId?: string,
-      /** a flow: the side of the line its badge sits on */
-      away?: Point,
-    ) => {
-      const key = elementKey(target);
-      if (!openNotes.has(key)) return;
-      // The offer to start a register belongs where threats do: an element that
-      // already has one, or a threat model's canvas — the gate ThreatBadge and
-      // both studio panels apply. A host wires onAddThreat whatever the diagram
-      // is, so without this a remark on a plain C4 box would offer to threat-
-      // model it. The height estimate reads the same boolean, or it would
-      // reserve ADD_ROW for a button that never draws.
-      const offerThreat = editing && (threats.length > 0 || profile.offersThreats === true);
-      const size = { width: NOTE_WIDTH, height: estimateNoteHeight(name, threats, offerThreat, comments, links) };
-      const p = notePlacements?.[key];
-      // {0,0} is "automatic" — `set-note-offset null` writes it, and the
-      // normaliser drops it — so a saved offset is anything else
-      const at =
-        p !== undefined && (p.dx !== 0 || p.dy !== 0)
-          ? { x: badge.x + p.dx, y: badge.y + p.dy }
-          : placeNote(badge, element, size, obstacles, away);
-      // earlier notes are obstacles to later ones (model order), so two
-      // open notes never stack
-      obstacles.push({ ...at, ...size });
-      // back to the parent's frame: a box's note is parented like the box
-      const shift = (parentId !== undefined ? abs.get(parentId) : undefined) ?? { x: 0, y: 0 };
-      const data: NoteData = {
-        target,
-        name,
-        threats,
-        comments,
-        links,
-        anchor: { x: badge.x - shift.x, y: badge.y - shift.y },
-        badge,
-        editing,
-        editingId: noteEdit !== null && noteEdit.key === key ? noteEdit.id : undefined,
-        onAddThreat: offerThreat ? edit?.onAddThreat : undefined,
-        onRetitleThreat: editing ? edit?.onRetitleThreat : undefined,
-        onSetThreatStatus: editing ? edit?.onSetThreatStatus : undefined,
-        onEditThreatText: editing ? edit?.onEditThreatText : undefined,
-        onOpenLink: props.onOpenLink,
-        onEndEdit: () => setNoteEdit(null),
-      };
-      out.push(
-        toRfNoteNode({
-          id: NOTE_PREFIX + key,
-          position: { x: at.x - shift.x, y: at.y - shift.y },
-          data,
-          parentId,
-          draggable: editing,
-        }),
-      );
-    };
-    // How the badge sits on this element — the stylesheet's three placements
-    // (see badgeCenter): in the header band of an expanded container, tucked
-    // into an ellipse, over the corner of anything else.
-    const badgeKindOf = (n: ViewNode): BadgeKind => {
-      if (n.state === 'expanded') return 'group';
-      const shape = n.node.type !== undefined ? typeRegistry.resolve(n.node.type).shape : undefined;
-      return shape === 'ellipse' ? 'ellipse' : 'box';
-    };
-    const walk = (n: ViewNode, parent?: string) => {
-      const rect = abs.get(n.id);
-      if (rect === undefined) return;
-      const threats = n.node.threats ?? [];
-      const comments = n.node.comments ?? [];
-      const links = n.node.links ?? [];
-      // An external stub stands in for an off-frame node (drill views): its
-      // threats/comments/links belong to the view that really draws it, or the
-      // same note would appear twice, in two coordinate frames. What counts as
-      // content is core's own predicate — the one layout hygiene prunes by, so
-      // a note drawn here always keeps its saved place (see pruneNotes).
-      if (n.external === undefined && hasNoteContent(n.node))
-        push({ node: n.id }, n.node.name, threats, comments, links, badgeCenter(rect, badgeKindOf(n)), rect, parent);
-      n.children.forEach((c) => walk(c, n.id));
-    };
-    compiled.roots.forEach((r) => walk(r));
-    // compiled.edges is the DRAWN set, so a layer-hidden flow takes its note
-    // with it. An aggregated edge gets none: its threats and comments belong to
-    // particular relations, and a note on the bundle could not say which.
-    // (A relation carries no `links` field, so a flow's note never lists any.)
-    for (const e of compiled.edges) {
-      const r = soleRelation(e);
-      if (r === undefined || !hasNoteContent(r)) continue;
-      const a = abs.get(e.from);
-      const b = abs.get(e.to);
-      if (a === undefined || b === undefined) continue;
-      // The badge's spot arrives from the edge a frame after it first draws;
-      // until then the straight-line midpoint of the two ends stands in.
-      const badgeSpot = badgeSpots.get(r.id);
-      const at = badgeSpot?.at ?? {
-        x: (a.x + a.width / 2 + b.x + b.width / 2) / 2,
-        y: (a.y + a.height / 2 + b.y + b.height / 2) / 2,
-      };
-      const label = r.label !== undefined && r.label !== '' ? ` (${r.label})` : '';
-      push(
-        { relation: r.id },
-        `${nameOf.get(r.from) ?? r.from} → ${nameOf.get(r.to) ?? r.to}${label}`,
-        r.threats ?? [],
-        r.comments ?? [],
-        [],
-        at,
-        null,
-        undefined,
-        badgeSpot?.away,
-      );
-    }
-    return out;
-    // edit?.onAddThreat / onRetitleThreat / onSetThreatStatus / onEditThreatText /
-    // props.onOpenLink may be fresh closures per host render — the same trade
-    // nodeDataCtx makes, and for the same reason: a stale callback would edit
-    // the wrong document, or open a link through a host that is no longer there.
-    // profile is here because the threat offer is gated on it (see
-    // offerThreat): switching to a threat-model plane has to redraw the notes.
-    // It is memoized on props.notation, so it changes exactly when that does.
-  }, [
-    noNotes,
-    openNotes,
-    arrangedGeometry,
-    compiled,
-    notePlacements,
-    badgeSpots,
+  const { noteState, noteNodes } = useNoteNodes({
+    model: props.model,
+    plane: props.plane,
+    notes: props.notes,
+    layout: props.layout,
+    session: notes,
     editing,
-    edit?.onAddThreat,
-    edit?.onRetitleThreat,
-    edit?.onSetThreatStatus,
-    edit?.onEditThreatText,
-    props.onOpenLink,
+    edit,
+    onOpenLink: props.onOpenLink,
+    compiled,
+    arrangedGeometry,
     profile,
-    noteEdit,
     nameOf,
     typeRegistry,
-  ]);
+  });
   // Boxes first, notes after: React Flow resolves `parentId` against the nodes
   // it has already seen, so a note must never precede the box it rides on.
   //
