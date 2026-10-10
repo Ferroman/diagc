@@ -44,7 +44,7 @@ export interface LibraryView {
 
 export const EMPTY_LIBRARY_VIEW: LibraryView = { query: '', toggled: {}, groupToggled: {} };
 
-// Mirrors the renderer's own assetUrl (DiagramNode.tsx): a bundled '/library/…'
+// Mirrors the renderer's own assetUrl (node/node-look.tsx): a bundled '/library/…'
 // ref is served verbatim on hosts with a static server behind that path, but the
 // Obsidian host has none — <img src> there must be an app://... resource URL, so
 // getHost().libraryBase (set only by that host) substitutes the prefix. Other

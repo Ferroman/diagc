@@ -11,7 +11,8 @@ import {
   type ThreatStatus,
   type ElementRef,
 } from '@diagc/core/internal';
-import { InlineName } from '../node/DiagramNode';
+import { InlineName } from '../node/InlineName';
+import { AddThreatButton } from './NoteBadge';
 import { NOTE_WIDTH, STATUS_WORD } from './note-place';
 import { tailGeometry } from './note-tail';
 import { threatBadgeProps } from './threat-badge';
@@ -316,20 +317,11 @@ export function NoteNode({
         </section>
       )}
       {data.editing && data.onAddThreat !== undefined && (
-        <button
-          type="button"
+        <AddThreatButton
           className="dg-note-add nodrag nopan"
-          aria-label="Add a threat"
-          title="Add a threat"
-          onMouseDown={stop}
+          onAdd={() => data.onAddThreat?.(data.target)}
           onPointerDown={stop}
-          onClick={(e) => {
-            e.stopPropagation();
-            data.onAddThreat?.(data.target);
-          }}
-        >
-          +
-        </button>
+        />
       )}
     </div>
   );

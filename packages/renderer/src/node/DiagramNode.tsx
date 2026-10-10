@@ -1,5 +1,5 @@
-import { useContext, useRef, type CSSProperties } from 'react';
-import { Handle, NodeResizeControl, NodeResizer, Position } from '@xyflow/react';
+import { useContext, type CSSProperties } from 'react';
+import { NodeResizer } from '@xyflow/react';
 import {
   ACTIVITY_FRAME_TYPE,
   ACTIVITY_REGION_TYPE,
@@ -8,7 +8,6 @@ import {
   GIT_STAGE_TYPE,
   isActivityBand,
   PLAN_EVENT_TYPE,
-  elementKey,
   type Column,
   type FontScale,
   type NotationId,
@@ -20,22 +19,20 @@ import {
 } from '@diagc/core/internal';
 import type { IconRegistry } from '@diagc/icons';
 import type { Registry, TypeStyle } from '../registry';
-import { commentBadgeProps, type AnnotationCounts } from '../notes/comment-badge';
+import type { AnnotationCounts } from '../notes/comment-badge';
 import { LoopHighlightContext } from '../loops/loop-highlight';
-import { NoteStateContext } from '../notes/note-state';
 import { notationProfile, type NodeChip } from '../notations';
-import { PLAN_LAYOUT } from '../layout/plan-layout';
 import { RichLabelEditor } from './RichLabelEditor';
-import { RoleChipMenu } from './RoleChipMenu';
 import { runsToDisplay } from './richtext';
 import { outlineInk } from './outline-ink';
-import { SketchShape, type SketchFill } from '../sketch/SketchShape';
 import { TableNode } from './TableNode';
 import type { StylePreset } from '../sketch/stylePresets';
-import type { SketchShapeKind } from '../sketch/sketch';
-import { threatBadgeProps } from '../notes/threat-badge';
 import { typeSubtitle } from './type-subtitle';
-import type { EditingApi, QuickAddSide } from '../canvas/view-types';
+import type { EditingApi } from '../canvas/view-types';
+import { CommentBadge, LinkBadge, QuickAddButton, sideHandles, ThreatBadge } from './chrome';
+import { InlineName } from './InlineName';
+import { accentStyle, assetUrl, isCausalGroup, sketchOf, XResizer } from './node-look';
+import { FoldChip, NodeChips } from './NodeChips';
 
 export interface DiagramNodeData {
   // --- rendering: identity, look, label ----------------------------------
@@ -132,344 +129,7 @@ export interface DiagramNodeData {
   dropTarget?: boolean;
 }
 
-// One connect point per side, all type="source": with the canvas in loose
-// connection mode a drag can start and end on any of them, so the gesture's
-// start node is always the relation's `from` (direction follows the drag).
-const sideHandles = (
-  <>
-    <Handle id="top" type="source" position={Position.Top} className="dg-handle" />
-    <Handle id="right" type="source" position={Position.Right} className="dg-handle" />
-    <Handle id="bottom" type="source" position={Position.Bottom} className="dg-handle" />
-    <Handle id="left" type="source" position={Position.Left} className="dg-handle" />
-  </>
-);
-
-/** accent-colored border + subtle same-color fill; undefined color = registry
- * look. --dg-node-accent-tint is a HOOK, not a theme token of its own: no
- * theme sets it globally, so it is undefined almost everywhere and the
- * literal 14% fallback — today's one shared look, unchanged in both themes —
- * is what every ordinary accented node gets. A notation opts a root INTO a
- * theme-tuned strength by setting the var on that root's own selector in
- * styles.css (today only the plan zone does, via ThemeTokens.planZoneTint);
- * this function stays ignorant of which notation, if any, did that. */
-function accentStyle(color: string | undefined): CSSProperties | undefined {
-  if (color === undefined) return undefined;
-  return {
-    borderColor: color,
-    background: `color-mix(in srgb, ${color} var(--dg-node-accent-tint, 14%), var(--dg-node-fill))`,
-  };
-}
-
-const sketchKind = (shape: string): SketchShapeKind =>
-  shape === 'circle' ||
-  shape === 'cylinder' ||
-  shape === 'hexagon' ||
-  shape === 'bubble' ||
-  shape === 'person' ||
-  shape === 'diamond' ||
-  shape === 'bar' ||
-  shape === 'start-dot' ||
-  shape === 'end-bullseye' ||
-  shape === 'send-signal' ||
-  shape === 'receive-signal' ||
-  shape === 'note' ||
-  shape === 'ellipse' ||
-  shape === 'store'
-    ? (shape as SketchShapeKind)
-    : 'box';
-
-/** Resolve a node image ref to a URL. '/library/…' refs are bundled icons: served
- * verbatim where a static server exposes them, or re-prefixed with libraryBase in
- * hosts without one (the Obsidian plugin). Other absolute refs pass through; a
- * bare content-hash ref is served from assetBase (user-uploaded assets). */
-const assetUrl = (assetBase: string | undefined, libraryBase: string | undefined, ref: string): string => {
-  if (libraryBase !== undefined && ref.startsWith('/library/')) {
-    return `${libraryBase}${ref.slice('/library/'.length)}`;
-  }
-  return ref.startsWith('/') || /^https?:/.test(ref) ? ref : `${assetBase ?? ''}${ref}`;
-};
-
-const sketchOf = (
-  data: DiagramNodeData,
-  shape: string,
-  id: string,
-  width?: number,
-  height?: number,
-  fill: SketchFill = 'preset',
-): import('react').ReactElement | null =>
-  data.stylePreset?.rough !== undefined && width !== undefined && height !== undefined && width > 0 && height > 0 ? (
-    <SketchShape
-      id={id}
-      kind={sketchKind(shape)}
-      width={width}
-      height={height}
-      preset={data.stylePreset}
-      fill={fill}
-      color={data.color === undefined ? undefined : fill === 'none' ? outlineInk(data.color) : data.color}
-    />
-  ) : null;
-
-/** The notation's x-only handles (a plan zone): left and right, never a
- * corner — height is the layout's. minWidth is one day, the smallest span. */
-function XResizer({ id, data, selected }: { id: string; data: DiagramNodeData; selected: boolean | undefined }) {
-  if (data.resizeAxis !== 'x' || data.onResize === undefined || selected !== true) return null;
-  const onResize = data.onResize;
-  const end = (_e: unknown, p: { x: number; y: number; width: number; height: number }) =>
-    onResize(id, p.width, p.height, { x: p.x, y: p.y });
-  return (
-    <>
-      <NodeResizeControl
-        position="left"
-        resizeDirection="horizontal"
-        minWidth={PLAN_LAYOUT.DAY}
-        className="dg-x-resize"
-        onResizeEnd={end}
-      />
-      <NodeResizeControl
-        position="right"
-        resizeDirection="horizontal"
-        minWidth={PLAN_LAYOUT.DAY}
-        className="dg-x-resize"
-        onResizeEnd={end}
-      />
-    </>
-  );
-}
-
-/** The one inline-rename field. Exported because a note renames rows with
- * the same gesture and the same commit contract (`null` = cancelled) — a second
- * copy would be a second set of Enter/blur/Escape rules to keep in step. */
-export function InlineName({
-  label,
-  onCommit,
-  onTab,
-  ariaLabel = 'Rename',
-}: {
-  label: string;
-  onCommit?: (value: string | null) => void;
-  /** Tab inside the box: the quick add to chain once the name is committed */
-  onTab?: () => void;
-  /** what the field renames, for screen readers and for the tests that find it */
-  ariaLabel?: string;
-}) {
-  const done = useRef(false); // Enter commits then blurs — don't commit twice
-  const finish = (value: string | null) => {
-    if (done.current) return;
-    done.current = true;
-    onCommit?.(value);
-  };
-  return (
-    <input
-      className="dg-label-input nodrag nopan"
-      aria-label={ariaLabel}
-      defaultValue={label}
-      autoFocus
-      onFocus={(e) => e.target.select()}
-      onBlur={(e) => finish(e.target.value)}
-      onKeyDown={(e) => {
-        e.stopPropagation();
-        if (e.key === 'Enter') finish((e.target as HTMLInputElement).value);
-        else if (e.key === 'Escape') finish(null);
-        else if (e.key === 'Tab' && !e.shiftKey) {
-          // Tab means "this one is named, give me the next": commit BEFORE the
-          // add so the host builds it on the renamed model, then chain. The
-          // default would only move focus out of the canvas — the keydown guard
-          // never sees this key while an <input> has it. Shift+Tab keeps the
-          // default (blur commits, focus walks back), so a name can still be
-          // left without extending anything.
-          e.preventDefault();
-          finish((e.target as HTMLInputElement).value);
-          onTab?.();
-        }
-      }}
-      onDoubleClick={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-    />
-  );
-}
-
 const fontScaleClass = (fs?: FontScale): string => (fs === 'sm' ? ' dg-fs-sm' : fs === 'lg' ? ' dg-fs-lg' : '');
-
-/** Corner badge for a node whose model carries `link` (see DiagramNodeData.link) —
- * shared by every render branch below (and by TableNode, which imports it) so the
- * click semantics live in exactly one place instead of a copy per shape. Renders
- * nothing when the node has no link. */
-export function LinkBadge({ data }: { data: DiagramNodeData }): import('react').ReactElement | null {
-  if (data.link === undefined) return null;
-  const link = data.link;
-  return (
-    <button
-      type="button"
-      className="dg-link-badge"
-      title={link}
-      aria-label={`Open ${link}`}
-      onClick={(e) => {
-        // The badge is the navigation affordance; a plain node click keeps
-        // meaning "select", so the canvas must never see this one.
-        e.stopPropagation();
-        if (data.onOpenLink !== undefined) data.onOpenLink(link);
-        else if (/^https?:/.test(link)) window.open(link, '_blank', 'noopener');
-      }}
-    >
-      🔗
-    </button>
-  );
-}
-
-/** The open-threat count (red) or a green tick once every threat is handled.
- * Stays in exports (no .dg-no-chrome rule): the PNG is where a reviewer sees
- * at a glance what is still open. Where there is nothing to count yet, the same
- * corner offers the first threat instead — chrome, so THAT state is dropped
- * from exports. */
-export function ThreatBadge({ id, data }: { id: string; data: DiagramNodeData }): import('react').ReactElement | null {
-  // Read before the early returns below: hooks cannot be conditional, and a
-  // node with no threats takes one of them.
-  const notes = useContext(NoteStateContext);
-  const t = data.threats;
-  if (t === undefined || t.total === 0) {
-    // Edit mode on a threat model: the first threat is one click away on the
-    // canvas, so the register can be written without opening the panel. Only
-    // where the notation offers threats (profile.offersThreats).
-    if (data.onAddThreat === undefined || notationProfile(data.notation).offersThreats !== true) return null;
-    const add = data.onAddThreat;
-    return (
-      <button
-        type="button"
-        className="dg-threat-badge nodrag"
-        data-state="empty"
-        aria-label="Add a threat"
-        title="Add a threat"
-        // The canvas must read neither the press as the start of a drag nor
-        // the click as "select" — the same contract QuickAddButton states.
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={(e) => {
-          e.stopPropagation();
-          add({ node: id });
-        }}
-      >
-        +
-      </button>
-    );
-  }
-  // state/text/title come from the shared derivation so this badge and the
-  // flow's badge cannot drift apart in what they say (see threat-badge.ts).
-  const { state, text, title } = threatBadgeProps(t);
-  // With a canvas that draws notes (NoteStateContext provided), the badge is
-  // the switch for this element's note — in BOTH modes; view mode's toggles
-  // are the canvas's own session state. Without one (a host that never draws
-  // notes, a bare DiagramNode) it stays the passive count it always was.
-  // An external stub takes the same passive branch: it stands in for a node
-  // this drill view does not draw, and the note derivation skips externals for
-  // exactly that reason — the note belongs to the view that draws the node,
-  // so a switch here would flip a state nothing on this canvas can show.
-  if (notes === null || data.external === true) {
-    return (
-      <span className="dg-threat-badge" data-state={state} title={title}>
-        {text}
-      </span>
-    );
-  }
-  const open = notes.isOpen(elementKey({ node: id }));
-  return (
-    <button
-      type="button"
-      className="dg-threat-badge nodrag"
-      data-state={state}
-      title={title}
-      aria-expanded={open}
-      aria-label={`${title} — ${open ? 'hide' : 'show'}`}
-      // neither a drag start nor a node click — the empty state's contract
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => {
-        e.stopPropagation();
-        notes.toggle({ node: id });
-      }}
-    >
-      {text}
-    </button>
-  );
-}
-
-/** The comment count (or a link glyph) at the opposite corner from the threat
- * badge. Stays in exports like the threat count: a reviewer reading the PNG
- * should see that there is something to read. Never offers a `+` — comments
- * are written in the panel. */
-export function CommentBadge({ id, data }: { id: string; data: DiagramNodeData }): import('react').ReactElement | null {
-  const notes = useContext(NoteStateContext);
-  const badge = data.annotations !== undefined ? commentBadgeProps(data.annotations) : undefined;
-  if (badge === undefined) return null;
-  // text/title come from the shared derivation so this badge and the flow's
-  // badge cannot drift apart in what they say (see comment-badge.ts).
-  const { text, title } = badge;
-  // Passive without a note-drawing canvas, and on an external stub — the
-  // same two cases ThreatBadge explains.
-  if (notes === null || data.external === true) {
-    return (
-      <span className="dg-comment-badge" title={title}>
-        {text}
-      </span>
-    );
-  }
-  const open = notes.isOpen(elementKey({ node: id }));
-  return (
-    <button
-      type="button"
-      className="dg-comment-badge nodrag"
-      title={title}
-      aria-expanded={open}
-      aria-label={`${title} — ${open ? 'hide' : 'show'}`}
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => {
-        e.stopPropagation();
-        notes.toggle({ node: id });
-      }}
-    >
-      {text}
-    </button>
-  );
-}
-
-/** The `+` a selected node offers in edit mode: what the host would add on it
- * (a cause on a bone, a flow to a new process, a connected sibling …), named
- * so the offer is legible before the click. Selected-only, so a busy diagram
- * shows one `+`, and mouse events stop here: the canvas must not read the
- * click as "select" nor the press as the start of a drag. Not exported to
- * PNGs (.dg-no-chrome). Keyboard users have Tab, the same action. */
-export function QuickAddButton({
-  id,
-  data,
-  selected,
-  side,
-}: {
-  id: string;
-  data: DiagramNodeData;
-  selected: boolean | undefined;
-  /** an edge-anchored offer (activity lanes: one above, one below); only the
-   * lower one shares Tab's action, so only it names the key */
-  side?: QuickAddSide;
-}): import('react').ReactElement | null {
-  if (selected !== true || data.quickAdd === undefined) return null;
-  const label = data.quickAdd.label(id, side);
-  if (label === undefined) return null;
-  const run = data.quickAdd.run;
-  return (
-    <button
-      type="button"
-      className="dg-quick-add nodrag"
-      title={side === 'before' ? label : `${label} (Tab)`}
-      aria-label={label}
-      data-side={side}
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => {
-        e.stopPropagation();
-        if (side === undefined) run(id);
-        else run(id, side);
-      }}
-    >
-      +
-    </button>
-  );
-}
 
 /** The box label body: rich runs when present, else plain name — with pre-wrap
  * and alignment. Used only on box paths (image caption / group header stay plain). */
@@ -524,9 +184,8 @@ export function DiagramNode({
       : data.typeId !== undefined
         ? data.icons.resolve(style.icon ?? '')
         : undefined;
-  const isContainer = data.state !== 'leaf';
-  const isCldGroup = profile.node?.typelessAsText === true && data.typeId === undefined && isContainer;
-  // Not gated on isContainer: a branch with no commits yet has no children,
+  const isCldGroup = isCausalGroup(data, profile);
+  // Not gated on the node having members: a branch with no commits yet has no children,
   // so the view compiler marks it 'leaf' — but it is still a lane row (the
   // notation keeps every lane, empty or not, drawn full-width by gitLayout),
   // not an ordinary leaf box.
@@ -606,7 +265,7 @@ export function DiagramNode({
         style={data.stylePreset?.rough !== undefined ? undefined : accentStyle(data.color)}
         {...ghostTitle}
       >
-        {sketchOf(data, 'circle', id, width, height)}
+        {sketchOf(data, 'circle', { id, width, height })}
         {(data.label !== '' || data.labelEditing === true) && (
           <span className="dg-commit-tag" style={tagColor !== undefined ? { color: tagColor } : undefined}>
             {name}
@@ -630,7 +289,7 @@ export function DiagramNode({
         data-type={data.typeId}
         {...ghostTitle}
       >
-        {sketchOf(data, 'diamond', id, width, height)}
+        {sketchOf(data, 'diamond', { id, width, height })}
         {(data.label !== '' || data.labelEditing === true) && <span className="dg-event-tag">{name}</span>}
         <LinkBadge data={data} />
         <CommentBadge id={id} data={data} />
@@ -705,94 +364,7 @@ export function DiagramNode({
     );
   }
 
-  const badges = (
-    <span className="dg-badges">
-      {data.promoted && (
-        <span className="dg-badge" data-testid="promoted-marker" title="Promoted shared node">
-          ▲
-        </span>
-      )}
-      {data.sharedMembers.length > 0 && (
-        <span
-          className="dg-badge"
-          data-testid="shared-badge"
-          title={`Shared members: ${data.sharedMembers.join(', ')}`}
-        >
-          ⚭ {data.sharedMembers.length}
-        </span>
-      )}
-      {data.chips?.map((chip) => {
-        const chipClass = `dg-badge dg-role-chip${focusId !== null && chip.refId === focusId ? ' dg-role-chip-active' : ''}`;
-        const key = `${chip.role}:${chip.refId}`;
-        // Edit mode, where the notation's chips are roles: the chip opens a
-        // menu instead of sitting inert.
-        if (data.onSetRole !== undefined && profile.node?.roleChips === true) {
-          return <RoleChipMenu key={key} chip={chip} className={chipClass} zoneId={id} onSetRole={data.onSetRole} />;
-        }
-        return (
-          <span
-            key={key}
-            className={chipClass}
-            title={chip.title}
-            style={chip.color !== undefined ? ({ '--dg-chip': chip.color } as CSSProperties) : undefined}
-          >
-            {chip.text}
-          </span>
-        );
-      })}
-      {isContainer && !isCldGroup && data.onEnterNode !== undefined && (
-        <button
-          type="button"
-          className="dg-enter"
-          data-testid="enter-chip"
-          title="Enter — zoom into this node as its own diagram"
-          aria-label="Enter node"
-          onClick={(e) => {
-            e.stopPropagation();
-            data.onEnterNode?.(id);
-          }}
-        >
-          ⤢
-        </button>
-      )}
-      {isContainer && !isCldGroup && (
-        // A plain fold toggle: the glyph says what the box IS (open/shut) and a
-        // click flips it. The host is told the state to land in, because only
-        // the view knows the current one — a container can be open through
-        // focus with no pin at all, and a blind flip of the pin would then be
-        // a click that changes nothing.
-        <button
-          type="button"
-          className="dg-fold"
-          data-testid="fold-chip"
-          title={data.state === 'expanded' ? 'Collapse' : 'Expand'}
-          aria-label={data.state === 'expanded' ? 'Collapse' : 'Expand'}
-          aria-expanded={data.state === 'expanded'}
-          onClick={(e) => {
-            e.stopPropagation();
-            data.onToggleExpand?.(id, data.state === 'expanded' ? 'collapsed' : 'expanded');
-          }}
-        >
-          {data.state === 'expanded' ? '▾' : '▸'}
-        </button>
-      )}
-      {isCldGroup && (
-        <button
-          type="button"
-          className="dg-disclose"
-          data-testid="disclose-chip"
-          title={data.state === 'expanded' ? 'Collapse group' : 'Expand group'}
-          aria-label={data.state === 'expanded' ? 'Collapse group' : 'Expand group'}
-          onClick={(e) => {
-            e.stopPropagation();
-            data.onToggleExpand?.(id, data.state === 'expanded' ? 'collapsed' : 'expanded');
-          }}
-        >
-          {data.state === 'expanded' ? '▾' : '▸'}
-        </button>
-      )}
-    </span>
-  );
+  const badges = <NodeChips id={id} data={data} profile={profile} focusId={focusId} />;
   const metaBadges =
     data.metaBadges !== undefined && data.metaBadges.length > 0 ? (
       <span className="dg-meta">
@@ -916,19 +488,7 @@ export function DiagramNode({
       <div className={`dg-cld-group${loopClass}`}>
         <span className="dg-group-tag">
           <span className="dg-label">{data.label}</span>
-          <button
-            type="button"
-            className="dg-disclose"
-            data-testid="disclose-chip"
-            title="Collapse group"
-            aria-label="Collapse group"
-            onClick={(e) => {
-              e.stopPropagation();
-              data.onToggleExpand?.(id, 'collapsed');
-            }}
-          >
-            ▾
-          </button>
+          <FoldChip id={id} data={data} group />
         </span>
         {sideHandles}
       </div>
@@ -962,7 +522,7 @@ export function DiagramNode({
         <XResizer id={id} data={data} selected={selected} />
         {/* never the preset's own fill: this box is where the children and their
             edges are drawn (see SketchFill) — and an outline group stays a line */}
-        {sketchOf(data, style.shape, id, width, height, groupOutline ? 'none' : 'wash')}
+        {sketchOf(data, style.shape, { id, width, height }, groupOutline ? 'none' : 'wash')}
         <ThreatBadge id={id} data={data} />
         <CommentBadge id={id} data={data} />
         <QuickAddButton id={id} data={data} selected={selected} />
@@ -1026,7 +586,7 @@ export function DiagramNode({
       {...ghostTitle}
     >
       <XResizer id={id} data={data} selected={selected} />
-      {!isTypelessText && sketchOf(data, style.shape, id, width, height)}
+      {!isTypelessText && sketchOf(data, style.shape, { id, width, height })}
       {style.shape === 'diamond' && data.stylePreset?.rough === undefined && (
         // A clip-path cut the border off every diagonal edge, leaving the diamond
         // drawn by its fill alone — near the canvas colour in the light theme. The
