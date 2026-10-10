@@ -136,6 +136,56 @@ describe('useViewLayout', () => {
     expect(hints.get('decide')).toEqual({ width: 60, height: 60, caption: { width: 85, height: 35 } });
   });
 
+  it("bands an activity frame's lanes in the viewed plane's order", async () => {
+    const m: DiagramModel = {
+      version: 1,
+      id: 'd',
+      name: 'd',
+      nodes: [
+        { id: 'f', name: 'F', type: 'activity-frame' },
+        { id: 'l1', name: 'L1', type: 'activity-lane' },
+        { id: 'l2', name: 'L2', type: 'activity-lane' },
+      ],
+      // l1 above l2 on the default plane `a`, l2 above l1 on `b`
+      containment: [
+        { parent: 'f', child: 'l1' },
+        { parent: 'f', child: 'l2' },
+        { parent: 'f', child: 'l2', plane: 'b' },
+        { parent: 'f', child: 'l1', plane: 'b' },
+      ],
+      relations: [],
+      layers: [],
+      planes: [
+        { id: 'a', name: 'A' },
+        { id: 'b', name: 'B' },
+      ],
+    };
+    const box = { x: 0, y: 0, width: 1, height: 1 };
+    const profile: NotationProfile = {
+      id: 'default',
+      layout: () => ({
+        geometry: new Map([
+          ['f', box],
+          ['l1', box],
+          ['l2', box],
+        ]),
+        routes: new Map(),
+        labelSpots: new Map(),
+        algorithm: 'notation',
+      }),
+    };
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, {
+        profile,
+        plane: 'b',
+        compiled: compileView(m, { plane: 'b', pins: { f: 'expanded' } }),
+      }),
+    });
+    await waitFor(() => expect(result.current.arrangedGeometry).not.toBeNull());
+    expect(result.current.arrangedGeometry!.get('l2')?.y).toBe(0);
+    expect(result.current.arrangedGeometry!.get('l1')?.y).toBeGreaterThan(0);
+  });
+
   it('sizes ordinary boxes from their content and folded containers as folded boxes', async () => {
     const m = model('boxes');
     m.node('long', { name: 'avoid direct/sync  communication' });
