@@ -31,7 +31,7 @@ import type {
   ViewEdge,
   ViewNode,
 } from '@diagc/core/internal';
-import { runsToPlainText, threatSummary, withHiddenColumns } from '@diagc/core/internal';
+import { attachesDirectly, runsToPlainText, threatSummary, withHiddenColumns } from '@diagc/core/internal';
 import type { IconRegistry } from '@diagc/icons';
 import type { AnnotationCounts } from './comment-badge';
 import type { EdgePoint } from './layout';
@@ -319,7 +319,15 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     data.movableLabels = true;
     data.onMoveLabel = (labelId, t, side) => ctx.onViewMoveEdgeLabel?.(soleRelation.id, labelId, t, side);
   }
-  if (ctx.editing && soleRelation !== undefined && ctx.onSetEdgeSide !== undefined) {
+  // A side is fixed on the relation's own node, so the pin dots stay off an edge
+  // rolled up to a container: a side set there would land where this edge does
+  // not draw it.
+  if (
+    ctx.editing &&
+    soleRelation !== undefined &&
+    attachesDirectly(soleRelation, e.from, e.to) &&
+    ctx.onSetEdgeSide !== undefined
+  ) {
     data.onSetSide = (end, side) => ctx.onSetEdgeSide?.(soleRelation.id, end, side);
     if (soleRelation.id === ctx.pinEdgeRel) data.pinsActive = true;
   }

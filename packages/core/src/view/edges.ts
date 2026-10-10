@@ -90,7 +90,7 @@ function fixedSidesKey(r: DiagramRelation, from: string, to: string): string {
 
 /** Whether `r` is drawn end to end between `from` and `to`, rather than rolled up
  * to a container at either end. */
-function attachesDirectly(r: DiagramRelation, from: string, to: string): boolean {
+export function attachesDirectly(r: DiagramRelation, from: string, to: string): boolean {
   return from === r.from && to === r.to;
 }
 
