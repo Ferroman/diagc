@@ -106,6 +106,36 @@ describe('useViewLayout', () => {
     expect(hints.get('img')).toEqual({ width: 239, height: 64, reserveBottom: 20 });
   });
 
+  it('a glyph keeps its registry size when its name has a line break; the caption takes the lines', async () => {
+    const spy = vi.fn();
+    const m = model('glyphs');
+    m.node('decide', { type: 'activity-decision', name: 'Approved\nby finance?' });
+    m.node('auth', { type: 'tm-process', name: 'Auth\nservice' });
+    const json = m.toJSON();
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(json, { profile: notationLayoutProfile(spy) }),
+    });
+    await waitFor(() => expect(result.current.geometry).not.toBeNull());
+    const hints = spy.mock.calls[0]?.[0] as ReadonlyMap<string, unknown>;
+    // the registry's 48x48 diamond and 150x90 ellipse, not a label-sized box
+    expect(hints.get('decide')).toEqual({ width: 48, height: 48, caption: { width: 85, height: 35 } });
+    expect(hints.get('auth')).toEqual({ width: 150, height: 90 });
+  });
+
+  it("a glyph's saved size still wins, and its caption still counts every line", async () => {
+    const spy = vi.fn();
+    const m = model('glyphs');
+    m.node('decide', { type: 'activity-decision', name: 'Approved\nby finance?' });
+    const json = m.toJSON();
+    const layout: LayoutOverlay = { version: 1, planes: {}, sizes: { decide: { w: 60, h: 60 } } };
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(json, { profile: notationLayoutProfile(spy), layout }),
+    });
+    await waitFor(() => expect(result.current.geometry).not.toBeNull());
+    const hints = spy.mock.calls[0]?.[0] as ReadonlyMap<string, unknown>;
+    expect(hints.get('decide')).toEqual({ width: 60, height: 60, caption: { width: 85, height: 35 } });
+  });
+
   it('sizes ordinary boxes from their content and folded containers as folded boxes', async () => {
     const m = model('boxes');
     m.node('long', { name: 'avoid direct/sync  communication' });
