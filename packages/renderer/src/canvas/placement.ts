@@ -1,12 +1,14 @@
+import type { Point } from '@diagc/core/internal';
+
 /**
  * Return a copy of `base` with x/y replaced by `positions` for any matching id
  * (width/height and any other fields preserved). Ids absent from `base` are
  * ignored. Returns `base` unchanged (same reference) when `positions` is empty.
  * Never mutates `base`.
  */
-export function overlayPositions<T extends { x: number; y: number }>(
+export function overlayPositions<T extends Point>(
   base: Map<string, T>,
-  positions: Record<string, { x: number; y: number }>,
+  positions: Record<string, Point>,
 ): Map<string, T> {
   if (Object.keys(positions).length === 0) return base;
   const out = new Map(base);

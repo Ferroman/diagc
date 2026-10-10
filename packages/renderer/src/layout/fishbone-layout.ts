@@ -2,18 +2,21 @@ import {
   FB_CATEGORY_TYPE,
   FB_CAUSE_TYPE,
   FB_EFFECT_TYPE,
+  FISHBONE_NOTATION,
   LEAF_SIZE,
   fishboneTree,
+  type BoxSize,
   type CompiledView,
   type DiagramModel,
   type FishboneCategory,
   type FishboneTree,
+  type Point,
   type ViewEdge,
   type ViewNode,
 } from '@diagc/core/internal';
 import { textWidth } from './box-size';
 import { LANE_PALETTE } from './git-layout';
-import type { EdgePoint, LayoutResult, NodeGeometry } from './layout';
+import type { LayoutResult, NodeGeometry } from './layout';
 
 /** Flow-pixel constants of the fish. Tuned against real renders; tests derive
  * their expectations from these, never from literals. */
@@ -146,7 +149,7 @@ export function fishboneLayout(
   view: CompiledView,
   model: DiagramModel,
   _plane: string | undefined,
-  sizeHints?: ReadonlyMap<string, { width: number; height: number }>,
+  sizeHints?: ReadonlyMap<string, BoxSize>,
 ): LayoutResult {
   const {
     BONE_K,
@@ -170,7 +173,7 @@ export function fishboneLayout(
   } = FISHBONE_LAYOUT;
   const tree = fishboneTreeCached(model);
   const geometry = new Map<string, NodeGeometry>();
-  const routes = new Map<string, EdgePoint[]>();
+  const routes = new Map<string, Point[]>();
   const nameOf = new Map(model.nodes.map((n) => [n.id, n.name]));
   const measure = (id: string): number => Math.ceil(textWidth(nameOf.get(id) ?? '', FONT_PX));
   const textW = (id: string): number => measure(id) + 2 * TEXT_PAD;
@@ -262,7 +265,7 @@ export function fishboneLayout(
     const join = columnLeft + Math.max(...col.map((s) => -s.left));
     const right = join + Math.max(...col.map((s) => s.right));
     for (const s of col) {
-      const at = (p: SidePoint): EdgePoint => ({ x: join + p.x, y: s.above ? spineY - p.h : spineY + p.h });
+      const at = (p: SidePoint): Point => ({ x: join + p.x, y: s.above ? spineY - p.h : spineY + p.h });
       for (const t of s.texts) {
         geometry.set(t.id, {
           x: join + t.x,
@@ -302,7 +305,7 @@ export function fishboneLayout(
   // an in-progress edit never throws and nothing vanishes.
   const rowY = (effect !== undefined ? bottom : 0) + MARGIN;
   let cursor: number = MARGIN;
-  const straySize = (n: ViewNode): { width: number; height: number } =>
+  const straySize = (n: ViewNode): BoxSize =>
     sizeHints?.get(n.id) ??
     (n.node.type === FB_CAUSE_TYPE
       ? { width: textW(n.id), height: TEXT_H }
@@ -321,5 +324,5 @@ export function fishboneLayout(
   };
   view.roots.forEach(placeLoose);
 
-  return { geometry, routes, labelSpots: new Map(), algorithm: 'fishbone', fixed };
+  return { geometry, routes, labelSpots: new Map(), algorithm: FISHBONE_NOTATION, fixed };
 }

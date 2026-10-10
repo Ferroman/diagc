@@ -3,6 +3,7 @@ import {
   type CompiledView,
   type DiagramModel,
   type BoxSize,
+  type Point,
   type ViewNode,
 } from '@diagc/core/internal';
 import type { NodeGeometry } from '../layout/layout';
@@ -39,7 +40,7 @@ export interface FocusInput {
   view: CompiledView;
   geometry: Map<string, NodeGeometry>;
   /** viewport center in world coordinates */
-  center: { x: number; y: number };
+  center: Point;
   zoom: number;
   /** viewport min dimension in px */
   vmin: number;

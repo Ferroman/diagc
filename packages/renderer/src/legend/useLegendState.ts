@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
-import { compileView, type DiagramModel, type Stroke } from '@diagc/core/internal';
+import { compileView, viewedPlane, type BoxSize, type DiagramModel, type Stroke } from '@diagc/core/internal';
 import { legendRows, type LegendRow } from './legendRows';
 import type { KindStyle, Registry, TypeStyle } from '../registry';
 
@@ -22,7 +22,7 @@ export interface LegendState {
   legendConfig: DiagramModel['legend'];
   showLegend: boolean;
   setShowLegend: Dispatch<SetStateAction<boolean>>;
-  setLegendSize: Dispatch<SetStateAction<{ width: number; height: number } | null>>;
+  setLegendSize: Dispatch<SetStateAction<BoxSize | null>>;
   legendRowList: LegendRow[];
   legendReserveRef: MutableRefObject<{ side: 'top' | 'right' | 'bottom' | 'left'; px: number } | null>;
 }
@@ -36,17 +36,14 @@ export function useLegendState(input: LegendStateInput): LegendState {
   // and therefore a button, but starts hidden — which is also what keeps it out of
   // an export, where nothing can press that button.
   const [showLegend, setShowLegend] = useState(input.model.legend !== undefined);
-  const [legendSize, setLegendSize] = useState<{ width: number; height: number } | null>(null);
+  const [legendSize, setLegendSize] = useState<BoxSize | null>(null);
   const legendConfig = input.model.legend;
   // Switching diagrams must re-seed from the new model, or a local override
   // leaks across: hide the legend on diagram A, open B, and B's key is missing.
   useEffect(() => {
     setShowLegend(legendConfig !== undefined);
   }, [input.model.id, legendConfig]);
-  const activePlane = useMemo(
-    () => input.model.planes.find((p) => p.id === (input.plane ?? input.model.planes[0]?.id)),
-    [input.model.planes, input.plane],
-  );
+  const activePlane = useMemo(() => viewedPlane(input.model.planes, input.plane), [input.model.planes, input.plane]);
   const legendRowList = useMemo(() => {
     const rows = legendRows({
       model: input.model,

@@ -1,7 +1,9 @@
 import {
   FISHBONE_TYPES,
+  isActivityChrome,
   PLAN_ZONE_TYPE,
   runsToPlainText,
+  type BoxSize,
   type DiagramNode,
   type FontScale,
   type ViewNode,
@@ -26,13 +28,6 @@ export const FORCED_SIZE_SHAPES: ReadonlySet<string> = new Set([
   'end-bullseye',
   'ellipse',
   'store',
-]);
-/** activity chrome renders width/height:100% of its wrapper — an EMPTY lane or
- * frame is compiled 'leaf' and would otherwise collapse to 0×0 */
-export const ACTIVITY_CHROME_TYPES: ReadonlySet<string> = new Set([
-  'activity-frame',
-  'activity-lane',
-  'activity-region',
 ]);
 /** leaves a notation's own layout sizes exactly — the head spans the spine, a
  * cause is text on a line whose route ends at the text's edge: a CSS-natural
@@ -150,7 +145,7 @@ export function textWidth(text: string, px: number): number {
   return (em / 1000) * px;
 }
 
-export function estimateBoxSize(input: BoxSizeInput): { width: number; height: number } {
+export function estimateBoxSize(input: BoxSizeInput): BoxSize {
   const label = LABEL[input.fontScale ?? 'md'];
   // the row is a flex line with a 6px gap, and always ends in the (possibly
   // empty) badges span — so one gap trails the label even on a bare box
@@ -183,8 +178,6 @@ export function estimateBoxSize(input: BoxSizeInput): { width: number; height: n
   };
 }
 
-type Size = { width: number; height: number };
-
 export interface BoxSizeContext {
   typeRegistry: Registry<TypeStyle>;
   /** the metadata keys drawn as badges on the node (DiagramView's `onNodeMetaKeys`) */
@@ -193,7 +186,7 @@ export interface BoxSizeContext {
   hiddenCounts: ReadonlyMap<string, number>;
   /** the notation's own leaf footprint (a CLD text chip); a folded typeless
    * node is drawn as the same chip, so it takes the same size */
-  leafSize?: (n: DiagramNode) => Size | undefined;
+  leafSize?: (n: DiagramNode) => BoxSize | undefined;
 }
 
 function boxInputOf(n: ViewNode, ctx: BoxSizeContext): BoxSizeInput {
@@ -251,7 +244,9 @@ export function withBoxSizes(
     }
     if (n.node.shape !== undefined) return;
     const style = n.node.type !== undefined ? ctx.typeRegistry.resolve(n.node.type) : undefined;
-    if (n.node.type !== undefined && ACTIVITY_CHROME_TYPES.has(n.node.type)) return;
+    // activity chrome renders width/height:100% of its wrapper — an EMPTY lane or
+    // frame is compiled 'leaf' and would otherwise collapse to 0×0
+    if (isActivityChrome(n.node.type)) return;
     if (style !== undefined && FORCED_SIZE_SHAPES.has(style.shape)) return;
     const hinted = out.get(n.id);
     if (hinted === undefined) {

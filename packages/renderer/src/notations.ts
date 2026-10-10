@@ -1,23 +1,29 @@
 import {
   consequenceOrders,
+  DEPLOY_NOTATION,
   DEPLOY_ZONE_TYPES,
+  FISHBONE_NOTATION,
+  GIT_NOTATION,
   GIT_STAGE_TYPE,
   PLAN_EVENT_TYPE,
   PLAN_NOTATION,
   PLAN_ROLES,
   PLAN_ZONE_TYPE,
+  SECOND_ORDER_NOTATION,
   TM_BOUNDARY_TYPE,
   isPlanActor,
   isPlanEvent,
   isPlanRole,
   isPlanZone,
   rolesOf,
+  TM_NOTATION,
   valenceOf,
   type CompiledView,
   type DeployZoneType,
   type DiagramModel,
   type DiagramNode,
   type NotationId,
+  type Point,
   type Polarity,
   type PlanRole,
   type BoxSize,
@@ -63,7 +69,7 @@ export interface NotationProfile {
     model: DiagramModel,
     plane: string | undefined,
     sizeHints?: ReadonlyMap<string, BoxSize>,
-    positions?: Record<string, { x: number; y: number }>,
+    positions?: Record<string, Point>,
   ) => LayoutResult;
   /** the arrangement honours saved positions for some of its nodes and must be
    * re-run when they change; without it the layout never sees them and a drag
@@ -146,7 +152,7 @@ const CLD: NotationProfile = {
 };
 
 const GIT: NotationProfile = {
-  id: 'git-graph',
+  id: GIT_NOTATION,
   className: 'dg-notation-git',
   typeStyles: { commit: { shape: 'circle' }, branch: { shape: 'box' }, [GIT_STAGE_TYPE]: { shape: 'box', label: '' } },
   // Links are lane lines and connectors, not arrows: dashed, no heads.
@@ -225,7 +231,7 @@ function valenceColors(model: DiagramModel): ReadonlyMap<string, string> {
 }
 
 const SECOND_ORDER: NotationProfile = {
-  id: 'second-order',
+  id: SECOND_ORDER_NOTATION,
   className: 'dg-notation-so',
   partitionOf: (model) => consequenceOrders(model).orders,
   node: { colorOf: valenceColors },
@@ -237,7 +243,7 @@ const SECOND_ORDER: NotationProfile = {
 // its structure, so elk has nothing to decide. Bones take their category's
 // colour; the head and cause looks are DiagramNode's own branches.
 const FISHBONE: NotationProfile = {
-  id: 'fishbone',
+  id: FISHBONE_NOTATION,
   className: 'dg-notation-fb',
   layout: fishboneLayout,
   node: { colorOf: fishboneNodeColors },
@@ -259,7 +265,7 @@ function boundaryColors(model: DiagramModel): ReadonlyMap<string, string> {
 }
 
 const THREAT_MODEL: NotationProfile = {
-  id: 'threat-model',
+  id: TM_NOTATION,
   className: 'dg-notation-tm',
   node: { colorOf: boundaryColors },
 };
@@ -288,7 +294,7 @@ function zoneColors(model: DiagramModel): ReadonlyMap<string, string> {
 }
 
 const DEPLOYMENT: NotationProfile = {
-  id: 'deployment',
+  id: DEPLOY_NOTATION,
   className: 'dg-notation-deploy',
   typeStyles: {
     'c4-deployment-node': { ...DEFAULT_TYPE_STYLES['c4-deployment-node']!, icon: 'server', dashed: false },
@@ -392,13 +398,13 @@ const PLAN: NotationProfile = {
 // forces a compile error here until its profile is added — intended.
 export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
   'causal-loop': CLD,
-  'git-graph': GIT,
+  [GIT_NOTATION]: GIT,
   c4: C4,
-  'second-order': SECOND_ORDER,
-  fishbone: FISHBONE,
-  'threat-model': THREAT_MODEL,
-  plan: PLAN,
-  deployment: DEPLOYMENT,
+  [SECOND_ORDER_NOTATION]: SECOND_ORDER,
+  [FISHBONE_NOTATION]: FISHBONE,
+  [TM_NOTATION]: THREAT_MODEL,
+  [PLAN_NOTATION]: PLAN,
+  [DEPLOY_NOTATION]: DEPLOYMENT,
 };
 
 const DEFAULT_PROFILE: NotationProfile = { id: 'default' };

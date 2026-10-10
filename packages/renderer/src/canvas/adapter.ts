@@ -3,6 +3,7 @@ import type { Edge, EdgeTypes, Node, NodeTypes } from '@xyflow/react';
 import { DiagramEdge, type DiagramEdgeData } from '../edge/DiagramEdge';
 import { DiagramNode, type DiagramNodeData } from '../node/DiagramNode';
 import { NoteNode, type NoteData } from '../notes/NoteNode';
+import type { Point } from '@diagc/core/internal';
 
 // The single boundary where React Flow v12's typing is widened. v12 types
 // nodeTypes/edgeTypes as components taking full NodeProps/EdgeProps while our
@@ -16,7 +17,7 @@ export const edgeTypes = { diagram: DiagramEdge } as unknown as EdgeTypes;
 /** what the derived-nodes memo needs to hand React Flow besides the typed data */
 export interface RfNodeInput {
   id: string;
-  position: { x: number; y: number };
+  position: Point;
   data: DiagramNodeData;
   parentId?: string;
   /** child drags clamp inside the parent box (membership is edited in the panel) */
@@ -53,7 +54,7 @@ export function toRfNode(input: RfNodeInput): Node {
 /** a threat note's React Flow node (see NoteNode) — the same widening as toRfNode */
 export interface RfNoteInput {
   id: string;
-  position: { x: number; y: number };
+  position: Point;
   data: NoteData;
   parentId?: string;
   draggable: boolean;

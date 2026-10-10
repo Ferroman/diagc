@@ -1,4 +1,4 @@
-import type { FontScale } from '@diagc/core/internal';
+import type { BoxSize, FontScale } from '@diagc/core/internal';
 
 export const MIN_LABEL_WIDTH = 120;
 export const MAX_LABEL_WIDTH = 260;
@@ -13,7 +13,7 @@ const METRICS: Record<FontScale, { char: number; line: number }> = {
 /** Deterministic (no-DOM) box size for a multiline label, fed into elk so it
  * reserves height and neighbors don't overlap. Approximate — the real DOM shares
  * the CSS, so it lands close. */
-export function estimateLabelSize(text: string, fontScale: FontScale = 'md'): { width: number; height: number } {
+export function estimateLabelSize(text: string, fontScale: FontScale = 'md'): BoxSize {
   const { char, line } = METRICS[fontScale];
   const maxText = MAX_LABEL_WIDTH - PAD_X;
   let lineCount = 0;
@@ -52,7 +52,7 @@ const GLYPH_CAPTION_LINE = 16;
 /** Deterministic (no-DOM) box of an activity glyph's caption: each line as wide
  * as its text, wrapping at the CSS max-width, plus the 3px margin above them. A
  * line break in the name starts a new line, as it does on the canvas. */
-export function glyphCaptionSize(text: string): { width: number; height: number } {
+export function glyphCaptionSize(text: string): BoxSize {
   let width = 0;
   let lines = 0;
   for (const line of text.split('\n')) {

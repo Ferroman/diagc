@@ -1,4 +1,5 @@
 import { PLAN_LAYOUT } from './layout/plan-layout';
+import type { BoxSize } from '@diagc/core/internal';
 
 export type ShapeId =
   | 'box'
@@ -36,7 +37,7 @@ export interface TypeStyle {
   /** default leaf w/h when neither the model nor the layout overlay sizes the
    * node — how fixed-geometry glyphs (dots, bars, diamonds) get real footprints
    * from the DSL, where no palette template runs */
-  defaultSize?: { width: number; height: number };
+  defaultSize?: BoxSize;
   /** expanded containers of this type draw their `image` as a square badge
    * flush in the top-left corner (the AWS group convention) instead of the
    * padded header thumbnail; leaves keep the typed-box look rather than the

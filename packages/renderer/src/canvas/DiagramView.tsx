@@ -18,26 +18,33 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
+  ACTIVITY_LANE_TYPE,
   compileView,
   countAnchored,
   DEFAULT_STROKE_WIDTH,
+  GIT_NOTATION,
   GIT_STAGE_TYPE,
   hasNoteContent,
+  isActivityBand,
+  isActivityChrome,
+  isNodeRef,
   layoutPlaneKey,
   elementKey,
+  soleRelation,
   TM_NOTATION,
   type Comment,
   type DiagramNode,
   type EdgeLabelPlacement,
   type EdgeLabelSide,
   type Link,
+  type Point,
   type Stroke,
   type Threat,
   type ElementRef,
   type ViewNode,
 } from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
-import { ACTIVITY_CHROME_TYPES, FORCED_SIZE_SHAPES, LAYOUT_SIZED_TYPES } from '../layout/box-size';
+import { FORCED_SIZE_SHAPES, LAYOUT_SIZED_TYPES } from '../layout/box-size';
 import { Breadcrumbs } from './Breadcrumbs';
 import { overhangBounds, unionBounds } from './content-bounds';
 import {
@@ -59,7 +66,6 @@ import {
   obstaclesOf,
   placeNote,
   type BadgeKind,
-  type Point,
   type Rect,
 } from '../notes/note-place';
 import { NoteStateContext, type NoteState } from '../notes/note-state';
@@ -159,7 +165,7 @@ const withDropTarget = (nodes: Node[], id: string | undefined): Node[] =>
  * `MouseEvent | TouchEvent` (a drag CAN start from a touch), so `.clientX` is
  * narrowed rather than assumed — same reasoning as droppedOnNodeId's shape
  * above, just for the union React Flow itself hands back here. */
-const clientPointOf = (e: MouseEvent | TouchEvent): { x: number; y: number } =>
+const clientPointOf = (e: MouseEvent | TouchEvent): Point =>
   'clientX' in e ? { x: e.clientX, y: e.clientY } : { x: e.touches[0]?.clientX ?? 0, y: e.touches[0]?.clientY ?? 0 };
 
 /** The note node id prefix. An id-based test for the filters that only need to
@@ -495,7 +501,7 @@ function Inner(props: DiagramViewProps) {
   // Ephemeral view-mode drag positions for the active plane; cleared on a plane
   // switch, model reload, or edit-mode toggle (edit persists positions via the
   // saved overlay, so a returning view must start from that, not a stale drag).
-  const [viewPositions, setViewPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [viewPositions, setViewPositions] = useState<Record<string, Point>>({});
   useEffect(() => {
     setViewPositions({});
   }, [props.model, props.plane, editing]);
@@ -631,7 +637,7 @@ function Inner(props: DiagramViewProps) {
   // sums the on-screen chain, so with no shift the two are the same float and
   // a saved position is exactly the on-screen one.
   const containerBases = useMemo(() => {
-    const bases = new Map<string, { x: number; y: number }>();
+    const bases = new Map<string, Point>();
     if (arrangedGeometry === null) return bases;
     const walk = (n: ViewNode, ox: number, oy: number) => {
       const g = arrangedGeometry.get(n.id);
@@ -851,9 +857,9 @@ function Inner(props: DiagramViewProps) {
                   n.state === 'leaf' &&
                     n.node.type !== undefined &&
                     (FORCED_SIZE_SHAPES.has(typeRegistry.resolve(n.node.type).shape) ||
-                      ACTIVITY_CHROME_TYPES.has(n.node.type) ||
+                      isActivityChrome(n.node.type) ||
                       LAYOUT_SIZED_TYPES.has(n.node.type) ||
-                      (profile.id === 'git-graph' && n.node.type === 'branch'))
+                      (profile.id === GIT_NOTATION && n.node.type === 'branch'))
                   ? { style: { width: geo.width, height: geo.height } }
                   : // An ordinary box keeps its CSS sizing, but never narrower than
                     // the box elk laid out (box-size.ts estimates it): routes and
@@ -936,7 +942,7 @@ function Inner(props: DiagramViewProps) {
     // comments (see DiagramEdge) — so no note lies across one. Other lines and
     // edge labels are not obstacles: a note may cover them.
     for (const e of compiled.edges) {
-      const r = e.constituents.length === 1 ? e.constituents[0] : undefined;
+      const r = soleRelation(e);
       const spot = r !== undefined ? chipSpots.get(r.id) : undefined;
       if (spot !== undefined) obstacles.push(...lineObstacles(spot.line));
     }
@@ -1033,7 +1039,7 @@ function Inner(props: DiagramViewProps) {
     // particular relations, and a note on the bundle could not say which.
     // (A relation carries no `links` field, so a flow's bubble never lists any.)
     for (const e of compiled.edges) {
-      const r = e.constituents.length === 1 ? e.constituents[0] : undefined;
+      const r = soleRelation(e);
       if (r === undefined || !hasNoteContent(r)) continue;
       const a = abs.get(e.from);
       const b = abs.get(e.to);
@@ -1146,7 +1152,7 @@ function Inner(props: DiagramViewProps) {
         containerBasesRef.current,
         containerShiftsRef.current,
         // an activity lane is banded at a fixed spot (arrangeActivityFrames)
-        (parentId) => typeOf(parentId) === 'activity-lane' || typeOf(parentId) === 'activity-frame',
+        (parentId) => isActivityBand(typeOf(parentId)),
       );
       // displacement from the ARRANGED spot (parent-relative on both sides):
       // a notation that derives positions reads this, not the position
@@ -1180,7 +1186,7 @@ function Inner(props: DiagramViewProps) {
   // are never dropped into anything), while an actor or a plain box is
   // exactly what a zone receives — nested or not, which is what `fixed` (a
   // layout fact, not a statement of intent) got wrong here before.
-  const dropTargetFor = (draggedId: string, point: { x: number; y: number }): string | undefined => {
+  const dropTargetFor = (draggedId: string, point: Point): string | undefined => {
     const dropTarget = profile.node?.dropTarget;
     if (dropTarget === undefined) return undefined;
     const draggedNode = props.model.nodes.find((n) => n.id === draggedId);
@@ -1481,7 +1487,7 @@ function Inner(props: DiagramViewProps) {
     if (placedGeometry === null) return [];
     return compiled.edges.map((e) => {
       const data = buildEdgeDataCached(e, edgeDataCtx);
-      const soleRelation = e.constituents.length === 1 ? e.constituents[0] : undefined;
+      const relation = soleRelation(e);
       const diffClass = withDiffClass(
         undefined,
         diffMarks !== undefined ? diffEdgeStatus(e.constituents, diffMarks) : undefined,
@@ -1491,7 +1497,7 @@ function Inner(props: DiagramViewProps) {
         source: e.from,
         target: e.to,
         data,
-        reconnectable: editing && soleRelation !== undefined,
+        reconnectable: editing && relation !== undefined,
         ...(diffClass !== undefined ? { className: diffClass } : {}),
       });
     });
@@ -1701,7 +1707,7 @@ function Inner(props: DiagramViewProps) {
               if (node.type === 'note') {
                 corr.clearNodeClick();
                 const target = (node.data as unknown as NoteData).target;
-                if ('node' in target) {
+                if (isNodeRef(target)) {
                   setSelectedNode(target.node);
                   // ...and move React Flow's OWN selection with it. The note is not
                   // selectable, so the flag would otherwise stay on whatever box was
@@ -1713,9 +1719,7 @@ function Inner(props: DiagramViewProps) {
                   setRfNodes((prev) => soleSelection(prev, target.node));
                   props.onSelect?.({ kind: 'node', id: target.node });
                 } else {
-                  const ve = compiled.edges.find(
-                    (x) => x.constituents.length === 1 && x.constituents[0]?.id === target.relation,
-                  );
+                  const ve = compiled.edges.find((x) => soleRelation(x)?.id === target.relation);
                   if (ve !== undefined) {
                     if (editing) setPinEdgeRel(target.relation);
                     setSelectedNode(null);
@@ -1771,7 +1775,7 @@ function Inner(props: DiagramViewProps) {
             onReconnect={(oldEdge, conn) => {
               if (!editing || conn.source === null || conn.target === null) return;
               const viewEdge = compiled.edges.find((x) => x.id === oldEdge.id);
-              const relation = viewEdge?.constituents.length === 1 ? viewEdge.constituents[0] : undefined;
+              const relation = viewEdge !== undefined ? soleRelation(viewEdge) : undefined;
               if (relation === undefined) return;
               const endPin = reconnectPin(
                 reconnectEndRef.current,
@@ -1901,11 +1905,13 @@ function Inner(props: DiagramViewProps) {
                 if (
                   rf !== undefined &&
                   frameId !== undefined &&
-                  (rf.data as { typeId?: string }).typeId === 'activity-lane'
+                  (rf.data as { typeId?: string }).typeId === ACTIVITY_LANE_TYPE
                 ) {
                   const arranged = arrangedRef.current;
                   const lanes = rfNodesRef.current
-                    .filter((n) => n.parentId === frameId && (n.data as { typeId?: string }).typeId === 'activity-lane')
+                    .filter(
+                      (n) => n.parentId === frameId && (n.data as { typeId?: string }).typeId === ACTIVITY_LANE_TYPE,
+                    )
                     .flatMap((n) => {
                       const g = arranged?.get(n.id);
                       return g === undefined ? [] : [{ id: n.id, y: g.y, height: g.height }];
@@ -1942,7 +1948,7 @@ function Inner(props: DiagramViewProps) {
             onEdgeClick={(e, edge) => {
               const viewEdge = compiled.edges.find((x) => x.id === edge.id);
               // pin dots follow the sole relation (edit mode, single-relation edges)
-              const soleRel = viewEdge?.constituents.length === 1 ? viewEdge.constituents[0]?.id : undefined;
+              const soleRel = viewEdge !== undefined ? soleRelation(viewEdge)?.id : undefined;
               setPinEdgeRel(editing && soleRel !== undefined ? soleRel : null);
               setSelectedNode(null);
               corr.clearNodeClick(); // an edge click breaks any pending node double-click

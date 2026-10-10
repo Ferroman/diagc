@@ -10,7 +10,6 @@ export {
   layoutOptionsFor,
   COLLAPSED_SIZE,
   type NodeGeometry,
-  type EdgePoint,
   type LayoutResult,
   type LayoutExtras,
 } from './layout/layout';

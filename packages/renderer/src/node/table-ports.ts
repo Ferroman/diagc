@@ -1,4 +1,4 @@
-import type { Column, ViewNode } from '@diagc/core/internal';
+import type { BoxSize, Column, ViewNode } from '@diagc/core/internal';
 import { Position } from '@xyflow/react';
 import type { SizeHint } from '../layout/layout-graph';
 
@@ -13,7 +13,7 @@ const MIN_TABLE_W = 160;
 const MAX_TABLE_W = 340;
 
 /** Deterministic (no-DOM) intrinsic size for an ER table, fed into elk. */
-export function tableSize(columns: Column[], title = ''): { width: number; height: number } {
+export function tableSize(columns: Column[], title = ''): BoxSize {
   const rowW = (c: Column) => MARKER_W + c.name.length * CHAR_W + TYPE_GAP + (c.type?.length ?? 0) * CHAR_W;
   const body = columns.reduce((max, c) => Math.max(max, rowW(c)), 0);
   const head = title.length * CHAR_W;

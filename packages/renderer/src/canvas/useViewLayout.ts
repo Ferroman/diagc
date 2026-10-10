@@ -3,19 +3,21 @@ import {
   compileView,
   DEFAULT_IMAGE_NODE_SIZE,
   defaultLayoutDirection,
+  isActivityBand,
   layoutPlaneKey,
   runsToPlainText,
   type DiagramModel,
   type LayoutDirection,
   type LayoutOverlay,
   type LayoutSettings,
+  type Point,
   type ViewNode,
 } from '@diagc/core/internal';
 import { arrangeActivityFrames, withLaneOrder } from '../layout/activity-frame';
 import { FORCED_SIZE_SHAPES, withBoxSizes } from '../layout/box-size';
 import { fitContainers, type ContainerFit, type Shift } from '../layout/fit-containers';
 import { CAPTION_HEIGHT, captionWidth, estimateLabelSize, glyphCaptionSize } from '../node/label-size';
-import { layoutView, type EdgePoint, type NodeGeometry } from '../layout/layout';
+import { layoutView, type NodeGeometry } from '../layout/layout';
 import { containerPad, DEFAULT_ALGORITHM, FALLBACK_DIRECTION, type SizeHint } from '../layout/layout-graph';
 import type { NotationProfile } from '../notations';
 import { overlayPositions } from './placement';
@@ -35,13 +37,13 @@ export interface ViewLayoutInput {
   hiddenCounts: ReadonlyMap<string, number>;
   editing: boolean;
   ignoreSavedPositions: boolean | undefined;
-  viewPositions: Record<string, { x: number; y: number }>;
+  viewPositions: Record<string, Point>;
 }
 
 export interface ViewLayout {
   geometry: Map<string, NodeGeometry> | null;
   geometryRef: MutableRefObject<Map<string, NodeGeometry> | null>;
-  routes: Map<string, EdgePoint[]>;
+  routes: Map<string, Point[]>;
   placedGeometry: Map<string, NodeGeometry> | null;
   // `arrangeActivityFrames` hands back a ReadonlyMap (it returns its input
   // unchanged when the plane has no activity frames), so the band pass narrows
@@ -56,9 +58,9 @@ export interface ViewLayout {
   /** where the LAYOUT put each node (absolute top-left), before any saved
    * position, drag or band pass moved it: a route is only good while both of
    * its endpoints still stand there (see DiagramEdge) */
-  laidAt: ReadonlyMap<string, EdgePoint>;
+  laidAt: ReadonlyMap<string, Point>;
   /** elk's reserved spot (centre) for each labelled edge's label */
-  labelSpots: ReadonlyMap<string, EdgePoint>;
+  labelSpots: ReadonlyMap<string, Point>;
   /** nodes the notation's layout fixed in place (LayoutResult.fixed): drawn
    * where they were laid whatever was saved, and not to be offered a move */
   fixed: ReadonlySet<string>;
@@ -79,15 +81,12 @@ export interface ViewLayout {
 }
 
 const NO_SHIFTS: ReadonlyMap<string, Shift> = new Map();
-const NO_SPOTS: ReadonlyMap<string, EdgePoint> = new Map();
+const NO_SPOTS: ReadonlyMap<string, Point> = new Map();
 const NONE_FIXED: ReadonlySet<string> = new Set();
 
 /** `positions` without the fixed ids; the same object back when none applies,
  * so the memo below keeps its identity on the planes that fix nothing */
-function movable(
-  positions: Record<string, { x: number; y: number }>,
-  fixed: ReadonlySet<string>,
-): Record<string, { x: number; y: number }> {
+function movable(positions: Record<string, Point>, fixed: ReadonlySet<string>): Record<string, Point> {
   if (fixed.size === 0 || !Object.keys(positions).some((id) => fixed.has(id))) return positions;
   return Object.fromEntries(Object.entries(positions).filter(([id]) => !fixed.has(id)));
 }
@@ -95,10 +94,10 @@ function movable(
 /** `positions` with the x of every locked id replaced by the arranged x, so
  * overlayPositions can apply them as usual and only y takes effect. */
 function yOnly(
-  positions: Record<string, { x: number; y: number }>,
+  positions: Record<string, Point>,
   lockedX: ReadonlySet<string>,
   arranged: ReadonlyMap<string, { x: number }>,
-): Record<string, { x: number; y: number }> {
+): Record<string, Point> {
   if (lockedX.size === 0 || !Object.keys(positions).some((id) => lockedX.has(id))) return positions;
   return Object.fromEntries(
     Object.entries(positions).map(([id, pos]) => {
@@ -308,8 +307,8 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   geometryRef.current = geometry;
   // elk-routed absolute edge waypoints (only populated when edgeRouting is
   // 'orthogonal'); consumed by the edges memo, falling back to floating paths.
-  const [routes, setRoutes] = useState<Map<string, EdgePoint[]>>(() => new Map());
-  const [labelSpots, setLabelSpots] = useState<ReadonlyMap<string, EdgePoint>>(NO_SPOTS);
+  const [routes, setRoutes] = useState<Map<string, Point[]>>(() => new Map());
+  const [labelSpots, setLabelSpots] = useState<ReadonlyMap<string, Point>>(NO_SPOTS);
   const [fixed, setFixed] = useState<ReadonlySet<string>>(NONE_FIXED);
   const [lockedX, setLockedX] = useState<ReadonlySet<string>>(NONE_FIXED);
   const [settledFor, setSettledFor] = useState<ViewLayout['settledFor']>(null);
@@ -388,12 +387,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   const fitted = useMemo((): ContainerFit<NodeGeometry> | null => {
     if (placedGeometry === null) return null;
     if (input.profile.layout !== undefined) return { geometry: placedGeometry, shifts: NO_SHIFTS };
-    return fitContainers(
-      placedGeometry,
-      input.compiled.roots,
-      containerPad,
-      (n) => n.node.type === 'activity-lane' || n.node.type === 'activity-frame',
-    );
+    return fitContainers(placedGeometry, input.compiled.roots, containerPad, (n) => isActivityBand(n.node.type));
   }, [placedGeometry, input.compiled, input.profile]);
 
   // Activity frames: normalize lanes into full-width stacked bands. Applied to
@@ -419,7 +413,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // still stand there, and floats otherwise (DiagramEdge). That also holds
   // mid-drag, before anything is committed.
   const laidAt = useMemo(() => {
-    const at = new Map<string, EdgePoint>();
+    const at = new Map<string, Point>();
     if (geometry === null) return at;
     const walk = (n: ViewNode, ox: number, oy: number) => {
       const g = geometry.get(n.id);

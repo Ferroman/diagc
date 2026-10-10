@@ -1,8 +1,11 @@
 import {
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_LANE_TYPE,
   containmentOn,
   containmentPlaneOf,
   type CompiledView,
   type DiagramModel,
+  type Size,
   type ViewNode,
 } from '@diagc/core/internal';
 
@@ -59,12 +62,12 @@ function laneRank(model: DiagramModel, plane: string | undefined): (frame: strin
  * same object back when no frame needs it (it is a layout cache key).
  */
 export function withLaneOrder(view: CompiledView, model: DiagramModel, plane: string | undefined): CompiledView {
-  if (!model.nodes.some((n) => n.type === 'activity-frame')) return view;
+  if (!model.nodes.some((n) => n.type === ACTIVITY_FRAME_TYPE)) return view;
   const rankIn = laneRank(model, plane);
   let changed = false;
   const visit = (n: ViewNode): ViewNode => {
     let children = n.children.map(visit);
-    if (n.node.type === 'activity-frame') {
+    if (n.node.type === ACTIVITY_FRAME_TYPE) {
       const sorted = [...children].sort((a, b) => rankIn(n.id, a.id) - rankIn(n.id, b.id));
       if (sorted.some((c, i) => c !== children[i])) children = sorted;
     }
@@ -80,7 +83,7 @@ export interface BandOptions {
   /** the plane the view was compiled for; its containment orders the lanes */
   plane?: string;
   /** saved overlay sizes, which act as minimums */
-  sizes?: Record<string, { w: number; h: number }>;
+  sizes?: Record<string, Size>;
 }
 
 export function arrangeActivityFrames<T extends Geo>(
@@ -89,7 +92,7 @@ export function arrangeActivityFrames<T extends Geo>(
   model: DiagramModel,
   { plane, sizes }: BandOptions = {},
 ): ReadonlyMap<string, T> {
-  if (!model.nodes.some((n) => n.type === 'activity-frame')) return geometry;
+  if (!model.nodes.some((n) => n.type === ACTIVITY_FRAME_TYPE)) return geometry;
   const typeOf = new Map(model.nodes.map((n) => [n.id, n.type]));
   const out = new Map(geometry);
   const L = ACTIVITY_LAYOUT;
@@ -98,7 +101,7 @@ export function arrangeActivityFrames<T extends Geo>(
 
   const arrange = (frame: ViewNode): void => {
     const lanes = frame.children
-      .filter((c) => typeOf.get(c.id) === 'activity-lane' && out.has(c.id))
+      .filter((c) => typeOf.get(c.id) === ACTIVITY_LANE_TYPE && out.has(c.id))
       .sort((a, b) => rankIn(frame.id, a.id) - rankIn(frame.id, b.id));
     if (lanes.length === 0) {
       // No bands yet (a frame straight off the palette, or one whose last lane
@@ -142,7 +145,7 @@ export function arrangeActivityFrames<T extends Geo>(
   };
 
   const walk = (n: ViewNode): void => {
-    if (typeOf.get(n.id) === 'activity-frame' && out.has(n.id)) arrange(n);
+    if (typeOf.get(n.id) === ACTIVITY_FRAME_TYPE && out.has(n.id)) arrange(n);
     n.children.forEach(walk);
   };
   view.roots.forEach(walk);

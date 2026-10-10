@@ -1,3 +1,5 @@
+import type { Point } from '@diagc/core/internal';
+
 export interface Bounds {
   x: number;
   y: number;
@@ -40,7 +42,7 @@ const OVERHANG_SELECTOR =
 
 export function overhangBounds(
   root: ParentNode | null | undefined,
-  toFlow: (screen: { x: number; y: number }) => { x: number; y: number },
+  toFlow: (screen: Point) => Point,
 ): Bounds | undefined {
   if (root === null || root === undefined) return undefined;
   const rects: Bounds[] = [];

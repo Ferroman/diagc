@@ -1,3 +1,5 @@
+import type { Point } from '@diagc/core/internal';
+
 // Pure causal-loop (feedback loop) detection and R/B label placement.
 // No React/xyflow imports — this module is plain graph math, shared by the
 // loop-label overlay (LoopLabelLayer) and exercised directly in tests.
@@ -218,11 +220,6 @@ export interface PlaceOptions {
   obstacles?: readonly NodeRect[];
 }
 
-interface Point {
-  x: number;
-  y: number;
-}
-
 const rectCenter = (r: NodeRect): Point => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
 
 // Deterministic candidate positions fanning out from the centroid: the centroid
@@ -335,7 +332,7 @@ export function placeLoopLabels(
 export function absoluteRects(
   nodes: readonly {
     id: string;
-    position: { x: number; y: number };
+    position: Point;
     parentId?: string;
     measured?: { width?: number; height?: number };
   }[],

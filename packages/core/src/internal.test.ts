@@ -13,7 +13,6 @@ describe('the internal entry point', () => {
       'EXTERNAL_STUB_PREFIX',
       'MAX_INCLUDE_DEPTH',
       'GIT_KINDS',
-      'DEPLOY_NOTATION',
       'DEPLOY_TYPES',
       'isDeploymentNode',
       'isDeployZone',

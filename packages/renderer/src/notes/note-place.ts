@@ -1,4 +1,4 @@
-import type { ThreatStatus } from '@diagc/core/internal';
+import type { BoxSize, Point, ThreatStatus } from '@diagc/core/internal';
 import type { NodeGeometry } from '../layout/layout';
 
 export type Rect = NodeGeometry;
@@ -17,11 +17,6 @@ export const STATUS_WORD: Record<ThreatStatus, string> = {
   accepted: 'accepted',
   'not-applicable': 'n/a',
 };
-export interface Point {
-  x: number;
-  y: number;
-}
-
 /** how the badge sits on an element — the three placements styles.css gives
  * `.dg-threat-badge`, mirrored here because the bubble has to know where its
  * tail is going before anything is measured */
@@ -135,7 +130,7 @@ const distanceTo = (p: Point, r: Rect): number => {
 export function placeNote(
   badge: Point,
   element: Rect | null,
-  size: { width: number; height: number },
+  size: BoxSize,
   obstacles: readonly Rect[],
   away?: Point,
 ): Point {

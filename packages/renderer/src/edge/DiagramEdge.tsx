@@ -17,6 +17,7 @@ import {
   type EdgeLabel,
   type EdgeLabelSide,
   type NotationId,
+  type Point,
   type Polarity,
   type RelationStyle,
 } from '@diagc/core/internal';
@@ -35,7 +36,6 @@ import {
   type BowSide,
   type EdgeCurve,
   type EdgeShape,
-  type Point,
 } from './edge-geometry';
 import { getEdgeParams, sideFromPosition, type Side } from './floating';
 import { CAPTION_HEIGHT, glyphCaptionSize } from '../node/label-size';
@@ -106,7 +106,7 @@ export interface DiagramEdgeData {
    * DiagramView correlates the double-click to a preceding edge click, because the
    * native dblclick never lands on the edge itself (the first click remounts the
    * edges layer, so the second click falls through to the pane). */
-  pendingAdd?: { x: number; y: number };
+  pendingAdd?: Point;
   onPendingAddConsumed?: () => void;
   /** commit an edited label; empty text signals removal to the host */
   onEditLabel?: (labelId: string, text: string) => void;

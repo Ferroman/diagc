@@ -6,12 +6,13 @@ import {
   elementKey,
   type Comment,
   type Link,
+  type Point,
   type Threat,
   type ThreatStatus,
   type ElementRef,
 } from '@diagc/core/internal';
 import { InlineName } from '../node/DiagramNode';
-import { NOTE_WIDTH, STATUS_WORD, type Point } from './note-place';
+import { NOTE_WIDTH, STATUS_WORD } from './note-place';
 import { tailGeometry } from './note-tail';
 import { threatBadgeProps } from './threat-badge';
 

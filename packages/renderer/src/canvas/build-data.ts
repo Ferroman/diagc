@@ -26,15 +26,21 @@ import type {
   EdgeLabelSide,
   NotationId,
   PlanRole,
+  Point,
   TextRun,
   ElementRef,
   ViewEdge,
   ViewNode,
 } from '@diagc/core/internal';
-import { attachesDirectly, runsToPlainText, threatSummary, withHiddenColumns } from '@diagc/core/internal';
+import {
+  attachesDirectly,
+  runsToPlainText,
+  soleRelation,
+  threatSummary,
+  withHiddenColumns,
+} from '@diagc/core/internal';
 import type { IconRegistry } from '@diagc/icons';
 import type { AnnotationCounts } from '../notes/comment-badge';
-import type { EdgePoint } from '../layout/layout';
 import type { EdgeRouting } from './useViewLayout';
 import type { NodeBadge } from '../notations';
 import type { KindStyle, Registry, TypeStyle } from '../registry';
@@ -75,7 +81,7 @@ export interface NodeDataContext {
   /** URL prefix substituted for a leading '/library/' on bundled-icon refs
    * (see DiagramNodeData.libraryBase) */
   libraryBase?: string;
-  onResize?: (id: string, w: number, h: number, pos: { x: number; y: number }) => void;
+  onResize?: (id: string, w: number, h: number, pos: Point) => void;
   onSetTableColumns?: (id: string, columns: Column[]) => void;
   /** see EditingApi.quickAdd; threaded as one object, read lazily by the
    * selected node only — never computed per node at build time. sameNodeCtx
@@ -115,13 +121,13 @@ export interface EdgeDataContext {
   notation?: NotationId;
   /** how the active plane draws routed edges; undefined = every edge floats */
   routing?: EdgeRouting;
-  routes: ReadonlyMap<string, EdgePoint[]>;
+  routes: ReadonlyMap<string, Point[]>;
   /** where the layout put each node (absolute top-left): an edge carries its
    * endpoints' spots along, and draws its route only while both still stand
    * there (DiagramEdge) — a moved node's route points at where it used to be */
-  laidAt: ReadonlyMap<string, EdgePoint>;
+  laidAt: ReadonlyMap<string, Point>;
   /** elk's reserved spot (centre) for a labelled edge's label */
-  labelSpots: ReadonlyMap<string, EdgePoint>;
+  labelSpots: ReadonlyMap<string, Point>;
   /** where labels were slid to on this plane (saved overlay + view-mode
    * drags): relation id → label id → placement; overrides the label's own */
   labelMoves?: EdgeLabelMoves;
@@ -246,7 +252,8 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
  * same array back when nothing was moved, so the data cache stays warm. */
 function placedLabels(e: ViewEdge, moves: EdgeLabelMoves | undefined): EdgeLabel[] {
   const labels = e.labels ?? [];
-  const moved = e.constituents.length === 1 ? moves?.[e.constituents[0]!.id] : undefined;
+  const relation = soleRelation(e);
+  const moved = relation !== undefined ? moves?.[relation.id] : undefined;
   if (moved === undefined) return labels;
   return labels.map((l) => {
     const to = moved[l.id];
@@ -289,49 +296,49 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     ...(threats.total > 0 ? { threats } : {}),
     ...(annotations !== undefined ? { annotations } : {}),
   };
-  const soleRelation = e.constituents.length === 1 ? e.constituents[0] : undefined;
+  const relation = soleRelation(e);
   // Both modes: the counting chip toggles this relation's bubble in view mode
   // too (the canvas's own session state), so the id has to travel regardless
   // of `editing`. A string, so the cached-data comparison stays a field check.
-  if (soleRelation !== undefined) data.threatRelation = soleRelation.id;
-  if (soleRelation?.fromColumn !== undefined) data.fromColumn = soleRelation.fromColumn;
-  if (soleRelation?.toColumn !== undefined) data.toColumn = soleRelation.toColumn;
-  if (ctx.editing && soleRelation !== undefined) {
+  if (relation !== undefined) data.threatRelation = relation.id;
+  if (relation?.fromColumn !== undefined) data.fromColumn = relation.fromColumn;
+  if (relation?.toColumn !== undefined) data.toColumn = relation.toColumn;
+  if (ctx.editing && relation !== undefined) {
     // The geometry owner (DiagramEdge) drives label add/edit/drag because it
     // holds the path params; here we just bind the callbacks to this edge's
     // sole relation id.
     data.editableLabels = true;
-    data.onAddLabel = (text, t, side) => ctx.onAddEdgeLabel?.(soleRelation.id, text, t, side);
-    data.onEditLabel = (labelId, text) => ctx.onEditEdgeLabel?.(soleRelation.id, labelId, text);
-    data.onMoveLabel = (labelId, t, side) => ctx.onMoveEdgeLabel?.(soleRelation.id, labelId, t, side);
+    data.onAddLabel = (text, t, side) => ctx.onAddEdgeLabel?.(relation.id, text, t, side);
+    data.onEditLabel = (labelId, text) => ctx.onEditEdgeLabel?.(relation.id, labelId, text);
+    data.onMoveLabel = (labelId, t, side) => ctx.onMoveEdgeLabel?.(relation.id, labelId, t, side);
     // A threat hangs off a relation, not off the drawn arrow: the target is
     // bound here, where the constituent is known. A bundled arrow names no
     // single relation, so it gets no offer at all (this block is sole-relation
     // only) — the panel is where a bundle's threats are written.
     if (ctx.onAddThreat !== undefined) {
       const add = ctx.onAddThreat;
-      data.onAddThreat = () => add({ relation: soleRelation.id });
+      data.onAddThreat = () => add({ relation: relation.id });
     }
   }
-  if (!ctx.editing && soleRelation !== undefined && ctx.onViewMoveEdgeLabel !== undefined) {
+  if (!ctx.editing && relation !== undefined && ctx.onViewMoveEdgeLabel !== undefined) {
     // View mode: a label can be slid along its edge with Alt held (the same
     // modifier that unlocks dragging a box); the move is the host's to keep.
     data.movableLabels = true;
-    data.onMoveLabel = (labelId, t, side) => ctx.onViewMoveEdgeLabel?.(soleRelation.id, labelId, t, side);
+    data.onMoveLabel = (labelId, t, side) => ctx.onViewMoveEdgeLabel?.(relation.id, labelId, t, side);
   }
   // A side is fixed on the relation's own node, so the pin dots stay off an edge
   // rolled up to a container: a side set there would land where this edge does
   // not draw it.
   if (
     ctx.editing &&
-    soleRelation !== undefined &&
-    attachesDirectly(soleRelation, e.from, e.to) &&
+    relation !== undefined &&
+    attachesDirectly(relation, e.from, e.to) &&
     ctx.onSetEdgeSide !== undefined
   ) {
-    data.onSetSide = (end, side) => ctx.onSetEdgeSide?.(soleRelation.id, end, side);
-    if (soleRelation.id === ctx.pinEdgeRel) data.pinsActive = true;
+    data.onSetSide = (end, side) => ctx.onSetEdgeSide?.(relation.id, end, side);
+    if (relation.id === ctx.pinEdgeRel) data.pinsActive = true;
   }
-  if (ctx.editing && soleRelation !== undefined && ctx.pendingAdd?.edgeId === e.id) {
+  if (ctx.editing && relation !== undefined && ctx.pendingAdd?.edgeId === e.id) {
     // a correlated double-click asked to add a label on this edge — the
     // renderer projects the point and renders the new-label editor (kept until
     // the user commits/cancels; survives the edges-layer remount)

@@ -183,6 +183,7 @@ export {
   type ThreatRow,
 } from './notations/threat-model/threat-model';
 export {
+  DEPLOY_NOTATION,
   DEPLOY_ZONE_TYPES,
   DEPLOY_NODE_TYPES,
   type DeployZoneType,

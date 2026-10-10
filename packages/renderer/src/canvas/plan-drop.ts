@@ -1,3 +1,5 @@
+import type { Point } from '@diagc/core/internal';
+
 /** A drop-target candidate's absolute box, in flow coordinates — what
  * DiagramView builds from `reactFlow.getInternalNode(id)?.internals` for
  * every node the active notation names a target (`profile.node.dropTarget`). */
@@ -17,7 +19,7 @@ export interface DropRect {
  * drag is one jsdom cannot drive (see DiagramView.test.tsx).
  */
 export function dropTargetAt(
-  point: { x: number; y: number },
+  point: Point,
   rects: readonly DropRect[],
   exclude: ReadonlySet<string>,
 ): string | undefined {

@@ -1,5 +1,6 @@
 import type { Node, NodeChange } from '@xyflow/react';
 import type { Box } from './box';
+import type { BoxSize, Point } from '@diagc/core/internal';
 
 /** a guide to draw, absolute flow coordinates: a vertical line at x=`at`
  * (axis 'x') or a horizontal one at y=`at` (axis 'y'), spanning from..to */
@@ -78,12 +79,12 @@ export interface NodeBoxSource {
   /** React Flow's node copy: parentId, measured sizes */
   nodes: readonly Node[];
   /** a node's absolute position (React Flow internals), or undefined if unknown */
-  absoluteOf: (id: string) => { x: number; y: number } | undefined;
+  absoluteOf: (id: string) => Point | undefined;
 }
 
 type PositionChange = Extract<NodeChange, { type: 'position' }>;
 
-const sizeOf = (n: Node | undefined): { width: number; height: number } | undefined => {
+const sizeOf = (n: Node | undefined): BoxSize | undefined => {
   if (n === undefined) return undefined;
   const w = n.measured?.width ?? (typeof n.style?.width === 'number' ? n.style.width : undefined);
   const h = n.measured?.height ?? (typeof n.style?.height === 'number' ? n.style.height : undefined);

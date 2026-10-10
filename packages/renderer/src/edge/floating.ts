@@ -1,5 +1,5 @@
 import { Position } from '@xyflow/react';
-import { SIDES, type Side } from '@diagc/core/internal';
+import { SIDES, type Point, type Side } from '@diagc/core/internal';
 
 // Re-export: floating.ts is the renderer's established source for the Side
 // type (index.tsx and callers import it from here) — keep that path working.
@@ -7,7 +7,7 @@ export type { Side };
 
 /** the subset of an InternalNode the floating computation needs */
 export interface FloatingNode {
-  internals: { positionAbsolute: { x: number; y: number } };
+  internals: { positionAbsolute: Point };
   measured?: { width?: number; height?: number };
 }
 
@@ -32,7 +32,7 @@ const rectOf = (n: FloatingNode) => ({
  * Standard React Flow floating-edges math (rect treated via the diamond
  * transform); guards keep zero-sized (unmeasured) nodes from dividing by zero.
  */
-function intersect(node: FloatingNode, other: FloatingNode): { x: number; y: number } {
+function intersect(node: FloatingNode, other: FloatingNode): Point {
   const a = rectOf(node);
   const b = rectOf(other);
   const w = a.width / 2 || 1;
@@ -51,7 +51,7 @@ function intersect(node: FloatingNode, other: FloatingNode): { x: number; y: num
 }
 
 /** which side of `node` the point sits on (for bezier control direction) */
-function sideOf(node: FloatingNode, point: { x: number; y: number }): Position {
+function sideOf(node: FloatingNode, point: Point): Position {
   const r = rectOf(node);
   const nx = Math.round(r.x);
   const ny = Math.round(r.y);
@@ -136,7 +136,7 @@ export function reconnectPin(
 }
 
 /** midpoint of a node border side (for pinned connection points) */
-function sideAnchor(node: FloatingNode, side: Side): { x: number; y: number } {
+function sideAnchor(node: FloatingNode, side: Side): Point {
   const r = rectOf(node);
   switch (side) {
     case 'top':

@@ -1,4 +1,5 @@
 import { Position } from '@xyflow/react';
+import type { Point } from '@diagc/core/internal';
 
 /** pure geometry inputs shared with `getBezierPath`/`getStraightPath`/`getSmoothStepPath` */
 export interface EdgePathParams {
@@ -15,11 +16,6 @@ export type EdgeShape = 'straight' | 'curved' | 'step' | 'bow';
 /** which side of the travel direction a bow bulges toward; 'left' = the default
  * left-of-travel normal, 'right' = the mirror (same arrow direction, other side) */
 export type BowSide = 'left' | 'right';
-
-export interface Point {
-  x: number;
-  y: number;
-}
 
 // xyflow's default when a bezier edge doesn't specify `curvature` (see
 // `getBezierPath` in @xyflow/system) — mirrored here so an unset curvature

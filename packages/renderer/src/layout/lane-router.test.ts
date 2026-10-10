@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { columnGaps, obstacleOf, routeLaneEdges, type Point, type RouterBox } from './lane-router';
+import { columnGaps, obstacleOf, routeLaneEdges, type RouterBox } from './lane-router';
+import type { Point } from '@diagc/core/internal';
 
 const box = (
   id: string,

@@ -1,3 +1,5 @@
+import type { BoxSize, Point } from '@diagc/core/internal';
+
 /**
  * Orthogonal routes for the links inside a banded activity frame.
  *
@@ -18,11 +20,6 @@
  * Pure geometry in absolute flow coordinates; no elk, no DOM.
  */
 
-export interface Point {
-  x: number;
-  y: number;
-}
-
 export interface RouterBox {
   id: string;
   x: number;
@@ -30,7 +27,7 @@ export interface RouterBox {
   width: number;
   height: number;
   /** a caption hung under the box (activity glyph name): an obstacle too */
-  caption?: { width: number; height: number };
+  caption?: BoxSize;
 }
 
 export type HSide = 'left' | 'right';

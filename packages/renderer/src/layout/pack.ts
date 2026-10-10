@@ -1,3 +1,5 @@
+import type { BoxSize } from '@diagc/core/internal';
+
 /**
  * Pack independent boxes — the connected components of one layout level — toward
  * a target aspect ratio. Look-alike boxes (same height: loose leaves, icons)
@@ -13,11 +15,6 @@
  *
  * Pure and deterministic: the same boxes always pack the same way.
  */
-export interface BoxSize {
-  width: number;
-  height: number;
-}
-
 export interface PackedBox extends BoxSize {
   x: number;
   y: number;

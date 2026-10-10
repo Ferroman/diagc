@@ -2,8 +2,10 @@ import ELK from 'elkjs/lib/elk.bundled.js';
 import {
   LEAF_SIZE,
   RESERVED_NODE_ID,
+  type BoxSize,
   type CompiledView,
   type LayoutSettings,
+  type Point,
   type ViewNode,
 } from '@diagc/core/internal';
 import {
@@ -36,11 +38,6 @@ export interface NodeGeometry {
   height: number;
 }
 
-export interface EdgePoint {
-  x: number;
-  y: number;
-}
-
 export interface LayoutExtras {
   /** node id → layer partition, from a notation that derives an order for its
    * nodes (NotationProfile.partitionOf). Forces ONE layered run: component
@@ -57,11 +54,11 @@ export interface LayoutResult {
    * `lifted` flag) and the algorithm routes at all: always for `layered`, and
    * for the others only when `edgeRouting: 'orthogonal'` asks. Otherwise empty,
    * and the renderer floats its edges. */
-  routes: Map<string, EdgePoint[]>;
+  routes: Map<string, Point[]>;
   /** where elk put each labelled edge's label (its CENTRE, absolute), keyed like
    * `routes`. elk reserves that spot — nothing else is routed through it — which
    * the midpoint of the line cannot promise. Absent for an unlabelled edge. */
-  labelSpots: Map<string, EdgePoint>;
+  labelSpots: Map<string, Point>;
   /** The algorithm this arrangement was actually produced with. Differs from the
    * requested one when that one could not lay the graph out at all (see
    * `layoutView`), so a caller can say so instead of presenting the fallback as
@@ -155,7 +152,7 @@ export async function layoutView(
     (await layoutSingleRun(laid, sizeOverrides, settings, partitions));
   releaseReserved(laid, sizeOverrides, result.geometry);
   if (hoist !== undefined) {
-    const captions = new Map<string, { width: number; height: number }>();
+    const captions = new Map<string, BoxSize>();
     for (const [id, s] of sizeOverrides ?? []) if (s.caption !== undefined) captions.set(id, s.caption);
     const below = new Map([...captions].map(([id, c]) => [id, c.height] as const));
     const moved = bandLanes(result.geometry, hoist, view, settings?.spacing ?? 40, below);
@@ -197,13 +194,13 @@ function collectLaid(
   reversed?: ReadonlySet<string>,
 ): {
   geometry: Map<string, NodeGeometry>;
-  routes: Map<string, EdgePoint[]>;
-  labelSpots: Map<string, EdgePoint>;
-  origins: Map<string, { x: number; y: number }>;
+  routes: Map<string, Point[]>;
+  labelSpots: Map<string, Point>;
+  origins: Map<string, Point>;
 } {
   const geometry = new Map<string, NodeGeometry>();
-  const routes = new Map<string, EdgePoint[]>();
-  const labelSpots = new Map<string, EdgePoint>();
+  const routes = new Map<string, Point[]>();
+  const labelSpots = new Map<string, Point>();
   // Node x/y stay parent-relative (React Flow positions children under parentId).
   // Edge sections need lifting into absolute space (what the renderer draws
   // edges in), but NOT by the origin of the node the edge sits on: under
@@ -213,7 +210,7 @@ function collectLaid(
   // the root, where the flat graph put it. So walk once recording every node's
   // absolute origin, then translate each route by its container's origin,
   // falling back to the declaring node's for an edge elk left in place.
-  const origins = new Map<string, { x: number; y: number }>();
+  const origins = new Map<string, Point>();
   const routed: { e: ElkRoutedEdge; ownX: number; ownY: number }[] = [];
   const collect = (n: ElkShape, absX: number, absY: number) => {
     const ax = absX + (n.x ?? 0);
@@ -257,8 +254,8 @@ interface Block {
   /** ids positioned against the block origin — the ones a move must shift */
   top: string[];
   geometry: Map<string, NodeGeometry>;
-  routes: Map<string, EdgePoint[]>;
-  labelSpots: Map<string, EdgePoint>;
+  routes: Map<string, Point[]>;
+  labelSpots: Map<string, Point>;
 }
 
 /** Thrown when elk rejects a planned sub-graph: `layoutView` then falls back to
@@ -391,7 +388,7 @@ async function arrangeLevel(level: LevelPlan, ctx: PlanContext): Promise<Block> 
  * planned level below is already a fixed-size box. */
 async function arrangeGroup(nodes: readonly ViewNode[], ctx: PlanContext): Promise<Block> {
   // Resolve the planned levels inside this group first — elk needs their sizes.
-  const prelaid = new Map<string, { width: number; height: number }>();
+  const prelaid = new Map<string, BoxSize>();
   const packs = new Map<string, { id: string; width: number; height: number; members: ReadonlySet<string> }>();
   const inner = new Map<string, Block>(); // keyed by the box standing in for it: a container id, or a pack id
   const pads = new Map<string, Pad>(); // a separately arranged container's own padding

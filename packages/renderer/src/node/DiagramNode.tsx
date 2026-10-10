@@ -1,9 +1,13 @@
 import { useContext, useRef, type CSSProperties } from 'react';
 import { Handle, NodeResizeControl, NodeResizer, Position } from '@xyflow/react';
 import {
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_REGION_TYPE,
   FB_CAUSE_TYPE,
   FB_EFFECT_TYPE,
+  GIT_NOTATION,
   GIT_STAGE_TYPE,
+  isActivityBand,
   PLAN_ACTOR_TYPES,
   PLAN_EVENT_TYPE,
   PLAN_NOTATION,
@@ -13,6 +17,7 @@ import {
   type FontScale,
   type NotationId,
   type PlanRole,
+  type Point,
   type TextAlign,
   type TextRun,
   type ElementRef,
@@ -98,7 +103,7 @@ export interface DiagramNodeData {
   /** commit the in-place edit; null = cancelled */
   onLabelCommit?: (value: string | null) => void;
   /** edit: persist a resize (wired only for image nodes in edit mode) */
-  onResize?: (id: string, w: number, h: number, pos: { x: number; y: number }) => void;
+  onResize?: (id: string, w: number, h: number, pos: Point) => void;
   /** edit mode (db-table): commit a replacement columns array */
   onColumnsChange?: (columns: Column[]) => void;
   /** the fold chip and the CLD group's disclosure toggle (both modes; the
@@ -529,7 +534,7 @@ export function DiagramNode({
   // so the view compiler marks it 'leaf' — but it is still a lane row (the
   // notation keeps every lane, empty or not, drawn full-width by gitLayout),
   // not an ordinary leaf box.
-  const isLane = profile.id === 'git-graph' && data.typeId === 'branch';
+  const isLane = profile.id === GIT_NOTATION && data.typeId === 'branch';
   const highlight = useContext(LoopHighlightContext);
   // 'loop': members glow, rest strong-dim. 'focus': members stay normal, rest light-dim.
   const loopClass = !highlight.active
@@ -904,8 +909,8 @@ export function DiagramNode({
   // Activity chrome keys on the type, not container state: an empty lane or
   // frame has no children, compiles as 'leaf', and must still render as a
   // band/frame — never as an ordinary leaf box (the git empty-lane lesson).
-  if (data.typeId === 'activity-lane' || data.typeId === 'activity-frame') {
-    const isFrame = data.typeId === 'activity-frame';
+  if (isActivityBand(data.typeId)) {
+    const isFrame = data.typeId === ACTIVITY_FRAME_TYPE;
     return (
       <div
         className={`${isFrame ? 'dg-activity-frame' : 'dg-activity-lane'}${loopClass}`}
@@ -924,7 +929,7 @@ export function DiagramNode({
       </div>
     );
   }
-  if (data.typeId === 'activity-region') {
+  if (data.typeId === ACTIVITY_REGION_TYPE) {
     return (
       <div className={`dg-activity-region${loopClass}`}>
         {(data.label !== '' || data.labelEditing === true) && <span className="dg-activity-region-name">{name}</span>}

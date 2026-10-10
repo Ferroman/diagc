@@ -1,4 +1,12 @@
-import type { CompiledView, LayoutSettings, ViewNode } from '@diagc/core/internal';
+import {
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_LANE_TYPE,
+  type BoxSize,
+  type CompiledView,
+  type LayoutSettings,
+  type Point,
+  type ViewNode,
+} from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT } from './activity-frame';
 import { containerPad, edgeLabelText, FALLBACK_DIRECTION } from './layout-graph';
 import { routeEndSides } from '../edge/edge-geometry';
@@ -55,11 +63,11 @@ export function hoistLanes(view: CompiledView, settings: LayoutSettings | undefi
   const laneIds = new Set<string>();
 
   const eligible = (n: ViewNode): boolean =>
-    n.node.type === 'activity-frame' &&
+    n.node.type === ACTIVITY_FRAME_TYPE &&
     n.state === 'expanded' &&
     n.children.length > 0 &&
     // an empty lane is a leaf; a folded one would hide members elk must place
-    n.children.every((c) => c.node.type === 'activity-lane' && c.state !== 'collapsed');
+    n.children.every((c) => c.node.type === ACTIVITY_LANE_TYPE && c.state !== 'collapsed');
 
   const rewrite = (n: ViewNode): ViewNode => {
     if (eligible(n)) {
@@ -130,7 +138,7 @@ export function bandLanes<T extends Geo>(
         laneNode !== undefined
           ? containerPad(laneNode)
           : { top: L.PAD, left: L.LANE_STRIP_W + L.PAD, bottom: L.PAD, right: L.PAD };
-      const placed = new Map<string, { x: number; y: number }>();
+      const placed = new Map<string, Point>();
       const inLane = lane.members
         .filter((id) => geometry.has(id))
         .sort((a, b) => geometry.get(a)!.y - geometry.get(b)!.y);
@@ -168,11 +176,6 @@ export function bandLanes<T extends Geo>(
     geometry.set(frameId, { ...frameGeo, width: L.TITLE_STRIP_W + width, height: y });
   }
   return moved;
-}
-
-interface Point {
-  x: number;
-  y: number;
 }
 
 /** Does the segment a→b pass through the rectangle's interior? (Liang–Barsky clip,
@@ -293,7 +296,7 @@ export function routeBandedEdges(
   hoist: LaneHoist,
   original: CompiledView,
   geometry: ReadonlyMap<string, Geo>,
-  captions?: ReadonlyMap<string, { width: number; height: number }>,
+  captions?: ReadonlyMap<string, BoxSize>,
 ): void {
   const L = ACTIVITY_LAYOUT;
   for (const frameId of hoist.frames.keys()) {

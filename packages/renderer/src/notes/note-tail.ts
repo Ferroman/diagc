@@ -1,4 +1,5 @@
-import { BADGE_R, type Point } from './note-place';
+import { BADGE_R } from './note-place';
+import type { BoxSize, Point } from '@diagc/core/internal';
 
 export type NoteSide = 'left' | 'right' | 'top' | 'bottom';
 
@@ -30,7 +31,7 @@ const MIN_LEN = 4;
  * rounded corners, and stops at the pill's rim. Null when the badge is under
  * the bubble (dragged over it) or too close for a tail to read.
  */
-export function tailGeometry(badge: Point, size: { width: number; height: number }): NoteTail | null {
+export function tailGeometry(badge: Point, size: BoxSize): NoteTail | null {
   const { width: w, height: h } = size;
   const gaps: { side: NoteSide; gap: number }[] = [
     { side: 'top', gap: -badge.y },

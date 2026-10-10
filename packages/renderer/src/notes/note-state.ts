@@ -1,6 +1,5 @@
 import { createContext } from 'react';
-import type { ElementRef } from '@diagc/core/internal';
-import type { Point } from './note-place';
+import type { ElementRef, Point } from '@diagc/core/internal';
 
 /**
  * Which threat bubbles are open, and the switch that flips one — read by the

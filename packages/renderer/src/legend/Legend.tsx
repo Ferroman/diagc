@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { LegendSection } from '@diagc/core/internal';
+import type { BoxSize, LegendSection } from '@diagc/core/internal';
 import type { IconRegistry } from '@diagc/icons';
 import { END_SHAPES, LINE_MARKERS } from '../edge/DiagramEdge';
 import type { LegendMark, LegendRow, LegendSwatch } from './legendRows';
@@ -217,7 +217,7 @@ export interface LegendProps {
   /** resolves `icon` on a shape swatch; without it no glyph is drawn */
   icons?: IconRegistry;
   /** reports the rendered size so the host can reserve space in an export */
-  onMeasure?: (size: { width: number; height: number }) => void;
+  onMeasure?: (size: BoxSize) => void;
 }
 
 export function Legend({
@@ -231,7 +231,7 @@ export function Legend({
 }: LegendProps) {
   const [collapsed, setCollapsed] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const lastSize = useRef<{ width: number; height: number } | null>(null);
+  const lastSize = useRef<BoxSize | null>(null);
 
   useEffect(() => {
     if (onMeasure === undefined || ref.current === null) return;
