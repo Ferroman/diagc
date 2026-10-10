@@ -6,7 +6,6 @@ import {
   edgeTangent,
   nearestOnCurve,
   nearestOnRoute,
-  nearestT,
   roundedRoute,
   routeCurve,
   routeEndSides,
@@ -175,25 +174,6 @@ describe('edgePoint / edgeTangent — bow', () => {
   });
 });
 
-describe('nearestT', () => {
-  it('finds the midpoint of a straight edge and a signed perpendicular', () => {
-    const params = {
-      sourceX: 0,
-      sourceY: 0,
-      targetX: 100,
-      targetY: 0,
-      sourcePosition: Position.Right,
-      targetPosition: Position.Left,
-    };
-    const at = nearestT('straight', params, undefined, { x: 50, y: 0 });
-    expect(at.t).toBeCloseTo(0.5, 1);
-    const above = nearestT('straight', params, undefined, { x: 50, y: -20 });
-    expect(above.perp).toBeGreaterThan(0); // above the line
-    const below = nearestT('straight', params, undefined, { x: 50, y: 20 });
-    expect(below.perp).toBeLessThan(0);
-  });
-});
-
 describe('bowPath', () => {
   it('returns an SVG cubic path string from source to target', () => {
     const path = bowPath(facing, 0.55);
@@ -253,9 +233,11 @@ describe('nearestOnCurve', () => {
     expect(nearestOnCurve(routeCurve(Z), { x: 50, y: 25 }, 200).perp).toBeCloseTo(-15, 5);
   });
 
-  it('agrees with nearestT on a floating shape', () => {
-    const viaCurve = nearestOnCurve(shapeCurve('straight', horizontal, undefined), { x: 40, y: -12 });
-    expect(viaCurve).toEqual(nearestT('straight', horizontal, undefined, { x: 40, y: -12 }));
+  it('finds the middle of a straight floating edge, above or below it', () => {
+    const curve = shapeCurve('straight', horizontal, undefined);
+    expect(nearestOnCurve(curve, { x: 50, y: 0 }).t).toBeCloseTo(0.5, 1);
+    expect(nearestOnCurve(curve, { x: 50, y: -20 }).perp).toBeGreaterThan(0); // above the line
+    expect(nearestOnCurve(curve, { x: 50, y: 20 }).perp).toBeLessThan(0);
   });
 });
 

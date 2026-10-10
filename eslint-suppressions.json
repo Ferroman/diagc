@@ -213,7 +213,7 @@
   },
   "packages/renderer/src/edge/edge-geometry.ts": {
     "max-params": {
-      "count": 6
+      "count": 5
     }
   },
   "packages/renderer/src/layout/fishbone-layout.ts": {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { editorHtmlToRuns, runsToDisplay, runsToEditorHtml, plainText } from './richtext';
+import { editorHtmlToRuns, runsToDisplay, runsToEditorHtml } from './richtext';
 
 const parse = (html: string) => {
   const el = document.createElement('div');
@@ -47,9 +47,8 @@ describe('editorHtmlToRuns', () => {
   });
 });
 
-describe('runsToDisplay / plainText', () => {
-  it('projects runs to display rows and plain text', () => {
+describe('runsToDisplay', () => {
+  it('projects runs to display rows', () => {
     expect(runsToDisplay([{ text: 'a', bold: true }])).toEqual([{ key: 0, text: 'a', bold: true, italic: false }]);
-    expect(plainText([{ text: 'a' }, { text: 'b' }])).toBe('ab');
   });
 });

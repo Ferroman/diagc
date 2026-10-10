@@ -11,6 +11,7 @@ import type {
   NotationId,
   PlanRole,
   Point,
+  Side,
   Stroke,
   TextRun,
   ThreatStatus,
@@ -20,7 +21,6 @@ import type { IconRegistry } from '@diagc/icons';
 import type { MutableRefObject } from 'react';
 import type { AlignMode } from './arrange';
 import type { EdgeLabelMoves } from './build-data';
-import type { Side } from '../edge/floating';
 import type { LoopEdgeInput } from '../loops/loops';
 import type { KindStyle, Registry, TypeStyle } from '../registry';
 

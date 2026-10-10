@@ -103,18 +103,6 @@ import '../styles.css';
 import '@fontsource/kalam/400.css';
 import '@fontsource/kalam/700.css';
 
-export {
-  DEFAULT_ON_NODE_META_KEYS,
-  LIBRARY_ENTRY_DND_TYPE,
-  type CanvasCommands,
-  type CanvasKeyHint,
-  type DiagramSelection,
-  type DiagramViewProps,
-  type DrawTool,
-  type EditingApi,
-  type LayoutApi,
-  type PenSettings,
-} from './view-types';
 import {
   DEFAULT_ON_NODE_META_KEYS,
   LIBRARY_ENTRY_DND_TYPE,

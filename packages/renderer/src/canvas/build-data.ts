@@ -24,6 +24,7 @@ import type {
   NotationId,
   PlanRole,
   Point,
+  Side,
   TextRun,
   ElementRef,
   ViewEdge,
@@ -105,7 +106,7 @@ export interface EdgeDataContext {
   onAddEdgeLabel?: (relationId: string, text: string, t: number, side: EdgeLabelSide) => void;
   onEditEdgeLabel?: (relationId: string, labelId: string, text: string) => void;
   onMoveEdgeLabel?: (relationId: string, labelId: string, t: number, side: EdgeLabelSide) => void;
-  onSetEdgeSide?: (relationId: string, end: 'from' | 'to', side: import('../edge/floating').Side | null) => void;
+  onSetEdgeSide?: (relationId: string, end: 'from' | 'to', side: Side | null) => void;
   /** see EditingApi.onAddThreat; bound to the edge's sole relation below, so
    * the badge in the renderer calls it with nothing */
   onAddThreat?: (target: ElementRef) => void;

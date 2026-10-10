@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Position } from '@xyflow/react';
-import { connectionSides, getEdgeParams, reconnectSide, sideFromPosition, type FloatingNode } from './floating';
+import { getEdgeParams, reconnectSide, sideFromPosition, type FloatingNode } from './floating';
 
 const box = (x: number, y: number, width = 100, height = 50): FloatingNode => ({
   internals: { positionAbsolute: { x, y } },
@@ -56,20 +56,6 @@ describe('getEdgeParams', () => {
     const b = box(10, 10);
     const p = getEdgeParams(a, b);
     for (const v of [p.sx, p.sy, p.tx, p.ty]) expect(Number.isFinite(v)).toBe(true);
-  });
-});
-
-describe('connectionSides', () => {
-  it('maps the gesture handles to fixed sides', () => {
-    expect(connectionSides({ sourceHandle: 'right', targetHandle: 'top' })).toEqual({
-      fromSide: 'right',
-      toSide: 'top',
-    });
-  });
-
-  it('omits an end whose handle is missing or unknown', () => {
-    expect(connectionSides({ sourceHandle: null, targetHandle: 'weird' })).toEqual({});
-    expect(connectionSides({ sourceHandle: 'left' })).toEqual({ fromSide: 'left' });
   });
 });
 

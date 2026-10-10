@@ -20,6 +20,7 @@ import {
   type Point,
   type Polarity,
   type RelationStyle,
+  type Side,
 } from '@diagc/core/internal';
 import { commentBadgeProps, type AnnotationCounts } from '../notes/comment-badge';
 import {
@@ -37,7 +38,7 @@ import {
   type EdgeCurve,
   type EdgeShape,
 } from './edge-geometry';
-import { getEdgeParams, sideFromPosition, type Side } from './floating';
+import { getEdgeParams, sideFromPosition } from './floating';
 import { CAPTION_HEIGHT, glyphCaptionSize } from '../node/label-size';
 import { LoopHighlightContext } from '../loops/loop-highlight';
 import { NoteStateContext } from '../notes/note-state';

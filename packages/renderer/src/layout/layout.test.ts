@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, consequenceOrders, model, type CompiledView, type ViewNode } from '@diagc/core/internal';
-import { COLLAPSED_SIZE, layoutOptionsFor, layoutView, type NodeGeometry } from './layout';
+import { COLLAPSED_SIZE, layoutOptionsFor } from './layout-graph';
+import { layoutView, type NodeGeometry } from './layout';
 import { buildGraph } from './layout-graph';
 
 function makeModel() {

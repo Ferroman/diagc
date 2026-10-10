@@ -28,9 +28,6 @@ import { packBoxes } from './pack';
 import { removeOverlaps } from './overlap';
 import { bandLanes, hoistLanes, rebaseRoutes, routeBandedEdges } from './swimlane';
 
-// Re-exported so `index.tsx` and existing importers keep their import path.
-export { COLLAPSED_SIZE, layoutOptionsFor } from './layout-graph';
-
 export interface NodeGeometry {
   x: number;
   y: number;

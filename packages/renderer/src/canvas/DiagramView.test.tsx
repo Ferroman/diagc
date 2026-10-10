@@ -10,7 +10,8 @@ import {
   type LayoutOverlay,
   type ElementRef,
 } from '@diagc/core/internal';
-import { DiagramView, LIBRARY_ENTRY_DND_TYPE, type CanvasCommands, type LayoutApi } from './DiagramView';
+import { DiagramView } from './DiagramView';
+import { LIBRARY_ENTRY_DND_TYPE, type CanvasCommands, type LayoutApi } from './view-types';
 import { ACTIVITY_LAYOUT } from '../layout/activity-frame';
 import { FISHBONE_LAYOUT } from '../layout/fishbone-layout';
 import { GIT_LAYOUT } from '../layout/git-layout';

@@ -197,42 +197,6 @@ export function edgeTangent(
   return chordTangent(params);
 }
 
-/**
- * Nearest parameter `t` on the path to `point` (sampled over t∈[0,1]), plus the
- * signed perpendicular distance at that t — positive = above the line (screen-up
- * normal), negative = below. Mirrors edgePoint/edgeTangent's shape handling.
- */
-export function nearestT(
-  shape: EdgeShape,
-  params: EdgePathParams,
-  curvature: number | undefined,
-  point: Point,
-  side: BowSide = 'left',
-): { t: number; perp: number } {
-  const N = 40;
-  let bestT = 0.5;
-  let bestD = Infinity;
-  for (let i = 0; i <= N; i++) {
-    const t = i / N;
-    const p = edgePoint(shape, params, curvature, t, side);
-    const d = (p.x - point.x) ** 2 + (p.y - point.y) ** 2;
-    if (d < bestD) {
-      bestD = d;
-      bestT = t;
-    }
-  }
-  const p = edgePoint(shape, params, curvature, bestT, side);
-  const tan = edgeTangent(shape, params, curvature, bestT, side);
-  let nx = -tan.y;
-  let ny = tan.x;
-  if (ny > 0) {
-    nx = -nx;
-    ny = -ny;
-  } // up-pointing normal
-  const perp = (point.x - p.x) * nx + (point.y - p.y) * ny;
-  return { t: bestT, perp };
-}
-
 // ---------------------------------------------------------------------------
 // A drawn edge as something to place things ALONG. `DiagramEdge` draws either a
 // floating shape (above) or a route through laid-out waypoints (below); labels,
@@ -303,8 +267,8 @@ export function routeCurve(points: readonly Point[]): EdgeCurve {
   };
 }
 
-/** `nearestT` for any EdgeCurve: nearest sampled t to `point`, plus the signed
- * perpendicular distance there (positive = screen-up side of the line). */
+/** The sampled t on `curve` nearest to `point`, plus the signed perpendicular
+ * distance there (positive = screen-up side of the line). */
 export function nearestOnCurve(curve: EdgeCurve, point: Point, samples = 40): { t: number; perp: number } {
   let bestT = 0.5;
   let bestD = Infinity;

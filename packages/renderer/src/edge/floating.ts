@@ -1,10 +1,6 @@
 import { Position } from '@xyflow/react';
 import { SIDES, type Point, type Side } from '@diagc/core/internal';
 
-// Re-export: floating.ts is the renderer's established source for the Side
-// type (index.tsx and callers import it from here) — keep that path working.
-export type { Side };
-
 /** the subset of an InternalNode the floating computation needs */
 export interface FloatingNode {
   internals: { positionAbsolute: Point };
@@ -70,21 +66,6 @@ const asSide = (handle: string | null | undefined): Side | undefined =>
   handle !== null && handle !== undefined && (SIDES as readonly string[]).includes(handle)
     ? (handle as Side)
     : undefined;
-
-/** Fixed sides for the sides a connect gesture actually used, so a new relation
- * attaches where the user dragged instead of re-floating to the facing sides.
- * An end with no (or an unrecognized) handle id stays floating. */
-export function connectionSides(conn: { sourceHandle?: string | null; targetHandle?: string | null }): {
-  fromSide?: Side;
-  toSide?: Side;
-} {
-  const fromSide = asSide(conn.sourceHandle);
-  const toSide = asSide(conn.targetHandle);
-  return {
-    ...(fromSide !== undefined ? { fromSide } : {}),
-    ...(toSide !== undefined ? { toSide } : {}),
-  };
-}
 
 const SIDE_POSITION: Record<Side, Position> = {
   top: Position.Top,
