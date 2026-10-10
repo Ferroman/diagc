@@ -1,4 +1,12 @@
-import type { CompiledView, LayoutSettings, ViewNode } from '@diagc/core/internal';
+import {
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_LANE_TYPE,
+  type BoxSize,
+  type CompiledView,
+  type LayoutSettings,
+  type Point,
+  type ViewNode,
+} from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT } from './activity-frame';
 import { containerPad, edgeLabelText, FALLBACK_DIRECTION } from './layout-graph';
 import { routeEndSides } from '../edge/edge-geometry';
@@ -55,11 +63,11 @@ export function hoistLanes(view: CompiledView, settings: LayoutSettings | undefi
   const laneIds = new Set<string>();
 
   const eligible = (n: ViewNode): boolean =>
-    n.node.type === 'activity-frame' &&
+    n.node.type === ACTIVITY_FRAME_TYPE &&
     n.state === 'expanded' &&
     n.children.length > 0 &&
     // an empty lane is a leaf; a folded one would hide members elk must place
-    n.children.every((c) => c.node.type === 'activity-lane' && c.state !== 'collapsed');
+    n.children.every((c) => c.node.type === ACTIVITY_LANE_TYPE && c.state !== 'collapsed');
 
   const rewrite = (n: ViewNode): ViewNode => {
     if (eligible(n)) {
@@ -130,7 +138,7 @@ export function bandLanes<T extends Geo>(
         laneNode !== undefined
           ? containerPad(laneNode)
           : { top: L.PAD, left: L.LANE_STRIP_W + L.PAD, bottom: L.PAD, right: L.PAD };
-      const placed = new Map<string, { x: number; y: number }>();
+      const placed = new Map<string, Point>();
       const inLane = lane.members
         .filter((id) => geometry.has(id))
         .sort((a, b) => geometry.get(a)!.y - geometry.get(b)!.y);
@@ -168,11 +176,6 @@ export function bandLanes<T extends Geo>(
     geometry.set(frameId, { ...frameGeo, width: L.TITLE_STRIP_W + width, height: y });
   }
   return moved;
-}
-
-interface Point {
-  x: number;
-  y: number;
 }
 
 /** Does the segment a→b pass through the rectangle's interior? (Liang–Barsky clip,
@@ -285,7 +288,7 @@ export function rebaseRoutes(
  * them: every link between lanes, and any whose shifted elk path ran into a
  * box) — orthogonally, through the column gaps and lane pad strips the banded
  * frame keeps clear (lane-router.ts). A link the router cannot place, or one
- * pinned to a top/bottom side, keeps floating as before.
+ * fixed to a top/bottom side, keeps floating as before.
  */
 export function routeBandedEdges(
   routes: Map<string, Point[]>,
@@ -293,7 +296,7 @@ export function routeBandedEdges(
   hoist: LaneHoist,
   original: CompiledView,
   geometry: ReadonlyMap<string, Geo>,
-  captions?: ReadonlyMap<string, { width: number; height: number }>,
+  captions?: ReadonlyMap<string, BoxSize>,
 ): void {
   const L = ACTIVITY_LAYOUT;
   for (const frameId of hoist.frames.keys()) {
@@ -341,7 +344,7 @@ export function routeBandedEdges(
           y: ay,
           width: g.width,
           height: g.height,
-          ...(caption !== undefined ? { caption } : {}),
+          caption,
         });
       }
       n.children.forEach((c) => place(c, ax, ay));
@@ -363,11 +366,11 @@ export function routeBandedEdges(
         id: e.id,
         from: e.from,
         to: e.to,
-        ...(e.style?.fromSide !== undefined ? { fromSide: e.style.fromSide } : {}),
-        ...(e.style?.toSide !== undefined ? { toSide: e.style.toSide } : {}),
+        fromSide: e.style?.fromSide,
+        toSide: e.style?.toSide,
         hasLabel: edgeLabelText(e).trim() !== '',
       }))
-      // elk's surviving routes stand, unless they break a pin (DiagramEdge
+      // elk's surviving routes stand, unless they break a fixed side (DiagramEdge
       // would then float them): those are routed here, honouring it
       .filter((e) => {
         const kept = routes.get(e.id);

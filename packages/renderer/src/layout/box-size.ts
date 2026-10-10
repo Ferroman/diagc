@@ -1,7 +1,9 @@
 import {
   FISHBONE_TYPES,
+  isActivityChrome,
   PLAN_ZONE_TYPE,
   runsToPlainText,
+  type BoxSize,
   type DiagramNode,
   type FontScale,
   type ViewNode,
@@ -26,13 +28,6 @@ export const FORCED_SIZE_SHAPES: ReadonlySet<string> = new Set([
   'end-bullseye',
   'ellipse',
   'store',
-]);
-/** activity chrome renders width/height:100% of its wrapper — an EMPTY lane or
- * frame is compiled 'leaf' and would otherwise collapse to 0×0 */
-export const ACTIVITY_CHROME_TYPES: ReadonlySet<string> = new Set([
-  'activity-frame',
-  'activity-lane',
-  'activity-region',
 ]);
 /** leaves a notation's own layout sizes exactly — the head spans the spine, a
  * cause is text on a line whose route ends at the text's edge: a CSS-natural
@@ -66,7 +61,7 @@ export const LAYOUT_SIZED_TYPES: ReadonlySet<string> = new Set([...FISHBONE_TYPE
  * `.dg-meta-badge`, `.dg-count`); the per-character widths are averages for the
  * system-ui stack, rounded UP so a miss leaves a little air rather than an
  * overlap. Anything sized some other way — images, silhouettes, glyphs, tables,
- * multiline/rich labels, notation chips — has its own hint in `useViewLayout`
+ * multiline/rich labels, text nodes — has its own hint in `useViewLayout`
  * and never comes through here.
  */
 export interface BoxSizeInput {
@@ -150,7 +145,7 @@ export function textWidth(text: string, px: number): number {
   return (em / 1000) * px;
 }
 
-export function estimateBoxSize(input: BoxSizeInput): { width: number; height: number } {
+export function estimateBoxSize(input: BoxSizeInput): BoxSize {
   const label = LABEL[input.fontScale ?? 'md'];
   // the row is a flex line with a 6px gap, and always ends in the (possibly
   // empty) badges span — so one gap trails the label even on a bare box
@@ -183,17 +178,15 @@ export function estimateBoxSize(input: BoxSizeInput): { width: number; height: n
   };
 }
 
-type Size = { width: number; height: number };
-
 export interface BoxSizeContext {
   typeRegistry: Registry<TypeStyle>;
   /** the metadata keys drawn as badges on the node (DiagramView's `onNodeMetaKeys`) */
   metaKeys: readonly string[];
   /** hidden-descendant count per folded container — the number in its badge */
   hiddenCounts: ReadonlyMap<string, number>;
-  /** the notation's own leaf footprint (a CLD text chip); a folded typeless
-   * node is drawn as the same chip, so it takes the same size */
-  leafSize?: (n: DiagramNode) => Size | undefined;
+  /** the notation's own leaf footprint (a CLD text node); a folded typeless
+   * node is drawn as the same text, so it takes the same size */
+  leafSize?: (n: DiagramNode) => BoxSize | undefined;
 }
 
 function boxInputOf(n: ViewNode, ctx: BoxSizeContext): BoxSizeInput {
@@ -209,12 +202,12 @@ function boxInputOf(n: ViewNode, ctx: BoxSizeContext): BoxSizeInput {
     .map(String);
   return {
     name,
-    ...(node.fontScale !== undefined ? { fontScale: node.fontScale } : {}),
+    fontScale: node.fontScale,
     hasIcon: node.icon !== undefined || style?.icon !== undefined || node.image !== undefined,
     subtitle: node.type !== undefined ? typeSubtitle(style?.label ?? node.type, node.technology) : '',
     metaBadges,
-    ...(style !== undefined ? { shape: style.shape } : {}),
-    ...(style?.outline === true ? { outline: true } : {}),
+    shape: style?.shape,
+    outline: style?.outline,
   };
 }
 
@@ -251,7 +244,9 @@ export function withBoxSizes(
     }
     if (n.node.shape !== undefined) return;
     const style = n.node.type !== undefined ? ctx.typeRegistry.resolve(n.node.type) : undefined;
-    if (n.node.type !== undefined && ACTIVITY_CHROME_TYPES.has(n.node.type)) return;
+    // activity chrome renders width/height:100% of its wrapper — an EMPTY lane or
+    // frame is compiled 'leaf' and would otherwise collapse to 0×0
+    if (isActivityChrome(n.node.type)) return;
     if (style !== undefined && FORCED_SIZE_SHAPES.has(style.shape)) return;
     const hinted = out.get(n.id);
     if (hinted === undefined) {

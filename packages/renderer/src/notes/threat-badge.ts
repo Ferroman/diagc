@@ -16,7 +16,7 @@ export interface ThreatBadgeProps {
 
 /**
  * What a threat badge *says*, derived once for the two places that draw one: a
- * node's corner badge (`DiagramNode`) and a flow's chip (`DiagramEdge`). Only
+ * node's corner badge (`DiagramNode`) and a flow's badge (`DiagramEdge`). Only
  * the derivation is shared — the two elements live in different layers (the
  * node's own box, React Flow's edge-label portal) and stay where they are.
  *

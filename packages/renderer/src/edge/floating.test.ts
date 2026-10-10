@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Position } from '@xyflow/react';
-import { connectionSides, getEdgeParams, reconnectPin, sideFromPosition, type FloatingNode } from './floating';
+import { getEdgeParams, reconnectSide, sideFromPosition, type FloatingNode } from './floating';
 
 const box = (x: number, y: number, width = 100, height = 50): FloatingNode => ({
   internals: { positionAbsolute: { x, y } },
@@ -39,7 +39,7 @@ describe('getEdgeParams', () => {
     expect(backward.targetPos).toBe(Position.Right);
   });
 
-  it('honors pinned sides over the automatic facing side', () => {
+  it('honors fixed sides over the automatic facing side', () => {
     const a = box(0, 0);
     const b = box(300, 0);
     const p = getEdgeParams(a, b, { sourceSide: 'top', targetSide: 'bottom' });
@@ -59,20 +59,6 @@ describe('getEdgeParams', () => {
   });
 });
 
-describe('connectionSides', () => {
-  it('maps the gesture handles to pinned sides', () => {
-    expect(connectionSides({ sourceHandle: 'right', targetHandle: 'top' })).toEqual({
-      fromSide: 'right',
-      toSide: 'top',
-    });
-  });
-
-  it('omits an end whose handle is missing or unknown', () => {
-    expect(connectionSides({ sourceHandle: null, targetHandle: 'weird' })).toEqual({});
-    expect(connectionSides({ sourceHandle: 'left' })).toEqual({ fromSide: 'left' });
-  });
-});
-
 describe('sideFromPosition', () => {
   it('maps each React Flow Position to its Side string', () => {
     expect(sideFromPosition(Position.Top)).toBe('top');
@@ -82,37 +68,37 @@ describe('sideFromPosition', () => {
   });
 });
 
-describe('reconnectPin', () => {
+describe('reconnectSide', () => {
   const rel = { from: 'a', to: 'b' };
 
   it('floats the source end when it is dragged onto a different node', () => {
     // dropped on node c; loose mode still snaps a handle, which we ignore
     const conn = { source: 'c', target: 'b', sourceHandle: 'left', targetHandle: 'top' };
-    expect(reconnectPin('source', conn, rel)).toEqual({ end: 'from', side: null });
+    expect(reconnectSide('source', conn, rel)).toEqual({ end: 'from', side: null });
   });
 
-  it('pins the source end to the dragged side when re-dropped on the same node', () => {
+  it('fixes the source end to the dragged side when re-dropped on the same node', () => {
     const conn = { source: 'a', target: 'b', sourceHandle: 'left', targetHandle: 'top' };
-    expect(reconnectPin('source', conn, rel)).toEqual({ end: 'from', side: 'left' });
+    expect(reconnectSide('source', conn, rel)).toEqual({ end: 'from', side: 'left' });
   });
 
   it('floats the target end when it is dragged onto a different node', () => {
     const conn = { source: 'a', target: 'c', sourceHandle: 'right', targetHandle: 'bottom' };
-    expect(reconnectPin('target', conn, rel)).toEqual({ end: 'to', side: null });
+    expect(reconnectSide('target', conn, rel)).toEqual({ end: 'to', side: null });
   });
 
-  it('pins the target end to the dragged side when re-dropped on the same node', () => {
+  it('fixes the target end to the dragged side when re-dropped on the same node', () => {
     const conn = { source: 'a', target: 'b', sourceHandle: 'right', targetHandle: 'top' };
-    expect(reconnectPin('target', conn, rel)).toEqual({ end: 'to', side: 'top' });
+    expect(reconnectSide('target', conn, rel)).toEqual({ end: 'to', side: 'top' });
   });
 
   it('infers the moved end from the node diff when the dragged end is unknown', () => {
     const conn = { source: 'c', target: 'b', sourceHandle: 'left', targetHandle: 'top' };
-    expect(reconnectPin(null, conn, rel)).toEqual({ end: 'from', side: null });
+    expect(reconnectSide(null, conn, rel)).toEqual({ end: 'from', side: null });
   });
 
   it('returns undefined when nothing moved and the dragged end is unknown', () => {
     const conn = { source: 'a', target: 'b', sourceHandle: 'left', targetHandle: 'top' };
-    expect(reconnectPin(null, conn, rel)).toBeUndefined();
+    expect(reconnectSide(null, conn, rel)).toBeUndefined();
   });
 });

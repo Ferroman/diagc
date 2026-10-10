@@ -106,9 +106,11 @@ function LoopBadge({
             className="dg-loop-badge-arc"
             d={ARC_PATH}
             markerEnd={`url(#${markerId})`}
-            {...(placement.direction === 'ccw'
-              ? { style: { transform: 'scale(-1,1)', transformOrigin: `${CENTER}px ${CENTER}px` } }
-              : {})}
+            style={
+              placement.direction === 'ccw'
+                ? { transform: 'scale(-1,1)', transformOrigin: `${CENTER}px ${CENTER}px` }
+                : undefined
+            }
           />
         )}
         <text x={CENTER} y={CENTER} textAnchor="middle" dominantBaseline="central">
@@ -119,7 +121,7 @@ function LoopBadge({
   );
 }
 
-/** overlay of R/B/? feedback-loop badges over the causal-loop-diagram canvas
+/** canvas overlay of R/B/? feedback-loop badges over the causal-loop-diagram canvas
  * (must be mounted inside <ReactFlow> — it reads node positions via the store) */
 export function LoopLabelLayer({ edges, rough, nodeFilter }: LoopLabelLayerProps) {
   const { loops } = useMemo(() => findLoops(edges), [edges]);
@@ -162,7 +164,7 @@ export function LoopLabelLayer({ edges, rough, nodeFilter }: LoopLabelLayerProps
               rough={rough}
               active={highlight.activeKey === p.key}
               dimmed={highlight.active && highlight.activeKey !== p.key}
-              {...(loop !== undefined ? { onSelect: () => highlight.toggle(p.key, loop.nodes, loop.edgeIds) } : {})}
+              onSelect={loop !== undefined ? () => highlight.toggle(p.key, loop.nodes, loop.edgeIds) : undefined}
             />
           );
         })}

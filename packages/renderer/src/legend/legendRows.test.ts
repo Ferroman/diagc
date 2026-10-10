@@ -190,7 +190,7 @@ describe('legendRows', () => {
     // containmentPlaneOf), so this arrow IS drawn on the flow plane.
     expect(compileView(m, { plane: 'flow' }).edges.map((e) => e.kind)).toEqual(['flow']);
     // Scoping the key by the VIEWPORT plane instead found no visible endpoints
-    // and dropped the row: a tinted overlay on screen with no key and no switch.
+    // and dropped the row: a tinted layer on screen with no key and no switch.
     expect(rows(m, { plane: planeOf(m, 'flow') }).find((x) => x.layer === 'data-flow')).toMatchObject({
       label: 'Data flow',
       active: true,
@@ -457,7 +457,9 @@ describe('notation vocabulary', () => {
     const red = rows(tm, { nodeColors: new Map([['dmz', '#c62828']]) }).find((r) => r.id === 'types:tm-boundary');
     expect(red?.swatch).toMatchObject({ draw: 'shape', color: '#c62828' });
     // no agreed colour, no claim
-    expect(rows(tm).find((r) => r.id === 'types:tm-boundary')?.swatch).not.toHaveProperty('color');
+    const plain = rows(tm).find((r) => r.id === 'types:tm-boundary')?.swatch;
+    expect(plain?.draw).toBe('shape');
+    expect(plain?.draw === 'shape' ? plain.color : null).toBeUndefined();
     const byType = rows({ ...tm, typeColors: { 'tm-process': '#1565c0' } }).find((r) => r.id === 'types:tm-process');
     expect(byType?.swatch).toMatchObject({ color: '#1565c0' });
   });

@@ -10,6 +10,8 @@ import type {
   LayoutOverlay,
   NotationId,
   PlanRole,
+  Point,
+  Side,
   Stroke,
   TextRun,
   ThreatStatus,
@@ -19,7 +21,6 @@ import type { IconRegistry } from '@diagc/icons';
 import type { MutableRefObject } from 'react';
 import type { AlignMode } from './arrange';
 import type { EdgeLabelMoves } from './build-data';
-import type { Side } from '../edge/floating';
 import type { LoopEdgeInput } from '../loops/loops';
 import type { KindStyle, Registry, TypeStyle } from '../registry';
 
@@ -48,12 +49,12 @@ export const LIBRARY_ENTRY_DND_TYPE = 'application/x-dg-library-entry';
 export type QuickAddSide = 'before' | 'after';
 
 export interface LayoutApi {
-  /** current on-screen positions (elk output with pins applied), parent-relative */
-  snapshotPositions: () => Record<string, { x: number; y: number }>;
-  /** raw elk positions ignoring pins, parent-relative (a fresh auto arrangement) */
-  autoPositions: () => Record<string, { x: number; y: number }>;
+  /** current on-screen positions (elk output with saved positions applied), parent-relative */
+  snapshotPositions: () => Record<string, Point>;
+  /** raw elk positions ignoring saved positions, parent-relative (a fresh auto arrangement) */
+  autoPositions: () => Record<string, Point>;
   /** viewport center in flow coordinates, or undefined if the canvas isn't mounted */
-  viewportCenter: () => { x: number; y: number } | undefined;
+  viewportCenter: () => Point | undefined;
   /** a rendered node's box in flow coordinates (absolute, not parent-relative),
    * or undefined when it is not on the canvas — how a host turns a drop point
    * into a position inside the container it landed on */
@@ -64,9 +65,9 @@ export interface LayoutApi {
   contentBounds: () => { x: number; y: number; width: number; height: number } | undefined;
   /** fit that content box (nodes ∪ drawings) into the current viewport (re-run
    * after the frame is resized).
-   * A per-side padding object reserves space for an overlay such as the legend. */
+   * A per-side padding object reserves space for a panel such as the legend. */
   fitView: (padding?: number | { top?: number; right?: number; bottom?: number; left?: number }) => void;
-  /** px reserved by the legend overlay on its own edge, or null when none is
+  /** px reserved by the legend panel on its own edge, or null when none is
    * shown — the export handshake grows the capture frame by this. */
   legendReserve: () => { side: 'top' | 'right' | 'bottom' | 'left'; px: number } | null;
   /** the canvas as drawn — folds, layers, theme, drawings — rendered to a PNG at
@@ -175,7 +176,7 @@ export interface DiagramViewProps {
    * model. The renderer keeps treating them as throwaway state, so a host that
    * ignores this prop behaves exactly as before. Reports `{}` when the drags are
    * dropped (plane switch, model reload, edit-mode toggle). */
-  onViewPositionsChange?: (positions: Record<string, { x: number; y: number }>) => void;
+  onViewPositionsChange?: (positions: Record<string, Point>) => void;
   /** view mode: the edge labels the viewer slid along their edges (Alt+drag a
    * label), relation id → label id → placement. The same contract as
    * onViewPositionsChange: throwaway state the host may persist (to the
@@ -215,9 +216,9 @@ export interface DiagramViewProps {
   /** false hides the interactive control cluster. The PNG export sets it so a
    * committed image is the diagram alone, with no zoom widget baked into it. */
   chrome?: boolean;
-  /** false draws no threat bubbles at all and leaves the badges passive counts —
+  /** false draws no notes at all and leaves the badges passive counts —
    * a host that wants none, whatever the overlay says. Default true, which is
-   * not "all of them": a bubble draws only while its element's is open. */
+   * not "all of them": a note draws only while its element's is open. */
   notes?: boolean;
   /** visual style preset id (see stylePresets.ts); unknown/absent = clean */
   styleId?: string;
@@ -236,10 +237,10 @@ export interface DiagramViewProps {
  * host can opt into just the affordances it wants. */
 export interface EditingApi {
   /** a connect gesture completed between two nodes. New relations float by
-   * default (no pinned sides) — the caller pins later via onSetEdgeSide/reconnect. */
+   * default (no fixed sides) — the caller fixes them later via onSetEdgeSide/reconnect. */
   onConnect?: (from: string, to: string, sourceHandle?: string | null, targetHandle?: string | null) => void;
   /** a node drag ended; pos is parent-relative */
-  onNodeMoved?: (id: string, pos: { x: number; y: number }) => void;
+  onNodeMoved?: (id: string, pos: Point) => void;
   /** one or more nodes moved together — a drag of a selection, an arrow-key
    * burst, an align/distribute. Parent-relative, keyed by node id. Commit as
    * ONE undo step. When absent the renderer falls back to onNodeMoved per id,
@@ -247,15 +248,12 @@ export interface EditingApi {
    * `deltas` is each node's displacement from where the layout arranged it,
    * parent-relative — what a notation that derives positions (a plan's dates)
    * reads instead of the position. */
-  onNodesMoved?: (
-    positions: Record<string, { x: number; y: number }>,
-    deltas: Record<string, { dx: number; dy: number }>,
-  ) => void;
+  onNodesMoved?: (positions: Record<string, Point>, deltas: Record<string, { dx: number; dy: number }>) => void;
   /** a single dragged box was let go over a drop target (profile.node.dropTarget)
    * that is neither in its own subtree nor its current parent. `rel` is the
    * dragged box's top-left relative to the target's top-left, in flow units.
    * Reported INSTEAD of a move for that box. */
-  onDropInto?: (id: string, targetId: string, rel: { x: number; y: number }) => void;
+  onDropInto?: (id: string, targetId: string, rel: Point) => void;
   /** an activity lane was dragged and let go `offset` band slots away from its
    * own (negative = up). Reported INSTEAD of a move: bands are stacked from
    * containment order, so the lane snaps back into a band either way. */
@@ -275,17 +273,17 @@ export interface EditingApi {
   onEditEdgeLabel?: (relationId: string, labelId: string, text: string) => void;
   /** sole-relation edges: a label was dragged to a new `t`/`side`. */
   onMoveEdgeLabel?: (relationId: string, labelId: string, t: number, side: EdgeLabelSide) => void;
-  /** an edge endpoint was dragged. `endPin` (when present) tells the caller
-   * how the *dragged* end's pin changed — dropped on a new node re-floats it
-   * (side: null); re-dropped on the same node pins it to that side. The other
+  /** an edge endpoint was dragged. `endSide` (when present) tells the caller
+   * how the *dragged* end's fixed side changed — dropped on a new node re-floats it
+   * (side: null); re-dropped on the same node fixes it to that side. The other
    * end is left untouched. */
   onReconnect?: (
     relationId: string,
     from: string,
     to: string,
-    endPin?: { end: 'from' | 'to'; side: Side | null },
+    endSide?: { end: 'from' | 'to'; side: Side | null },
   ) => void;
-  /** a pin dot on a sole-relation edge toggled an endpoint — freeze it at
+  /** a fixed-side dot on a sole-relation edge toggled an endpoint — freeze it at
    * `side`, or re-float it with `side: null`. */
   onSetEdgeSide?: (relationId: string, end: 'from' | 'to', side: Side | null) => void;
   /** a db-table node's columns were added/edited/removed/reordered in
@@ -294,17 +292,17 @@ export interface EditingApi {
   /** an image node was resized (dimensions belong in the layout overlay);
    * pos is the node's post-resize parent-relative position — resizing from a
    * top or left handle shifts the origin, same space as onNodeMoved's pos */
-  onResize?: (id: string, w: number, h: number, pos: { x: number; y: number }) => void;
+  onResize?: (id: string, w: number, h: number, pos: Point) => void;
   /** image files arrived via drop or paste; position is in flow
    * coordinates (drop point, or the viewport center for paste) */
-  onImageFiles?: (files: File[], position?: { x: number; y: number }) => void;
+  onImageFiles?: (files: File[], position?: Point) => void;
   /** a library entry (its id) was dragged from a palette and dropped on
    * the canvas; position is the drop point in flow coordinates */
-  onDropLibraryEntry?: (entryId: string, position: { x: number; y: number }, targetNodeId?: string) => void;
+  onDropLibraryEntry?: (entryId: string, position: Point, targetNodeId?: string) => void;
   /** a double-click on empty canvas — create a node at this flow point.
    * May return the new node's id, which immediately opens it in canvas
    * in-place rename mode (mirrors double-clicking an existing node to rename it). */
-  onCreateAt?: (pos: { x: number; y: number }) => string | void;
+  onCreateAt?: (pos: Point) => string | void;
   /** Open this node's name for in-place editing — for hosts that create a node
    * from OUTSIDE the canvas (a panel button, a key) and want the caret in it, as
    * `onCreateAt`'s returned id does for a canvas double-click. Re-armed by a new
@@ -319,20 +317,20 @@ export interface EditingApi {
     label: (id: string, side?: QuickAddSide) => string | undefined;
     run: (id: string, side?: QuickAddSide) => void;
   };
-  /** a threat note was dragged: its new offset from the automatic anchor */
+  /** a note was dragged: its new offset from the automatic anchor */
   onNoteMoved?: (target: ElementRef, offset: { dx: number; dy: number }) => void;
-  /** the empty badge/chip or a note's `+`: add a threat on this element. The
+  /** the empty badge or a note's `+`: add a threat on this element. The
    * host adds it and answers with `editThreatRequest` so its title opens. */
   onAddThreat?: (target: ElementRef) => void;
   /** a threat title was committed on its note; `''` = escaped or emptied */
   onRetitleThreat?: (target: ElementRef, id: string, title: string) => void;
   /** open this threat's title on its note — the `editLabelRequest` contract, nonce-keyed */
   editThreatRequest?: { target: ElementRef; id: string; nonce: number };
-  /** the badge/chip was clicked in edit mode: save this element's bubble as open or closed */
+  /** the badge was clicked in edit mode: save this element's note as open or closed */
   onToggleNote?: (target: ElementRef, open: boolean) => void;
-  /** a bubble's status chip was clicked: the threat's next status */
+  /** a note's status chip was clicked: the threat's next status */
   onSetThreatStatus?: (target: ElementRef, id: string, status: ThreatStatus) => void;
-  /** a bubble's description/mitigation field was committed; `''` clears it */
+  /** a note's description/mitigation field was committed; `''` clears it */
   onEditThreatText?: (target: ElementRef, id: string, field: 'description' | 'mitigation', text: string) => void;
   /** Backspace/Delete pressed with a canvas selection: `nodeIds` are the
    * selected nodes, `relationIds` the constituent relations of any selected

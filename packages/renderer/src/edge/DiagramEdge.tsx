@@ -17,8 +17,10 @@ import {
   type EdgeLabel,
   type EdgeLabelSide,
   type NotationId,
+  type Point,
   type Polarity,
   type RelationStyle,
+  type Side,
 } from '@diagc/core/internal';
 import { commentBadgeProps, type AnnotationCounts } from '../notes/comment-badge';
 import {
@@ -35,9 +37,8 @@ import {
   type BowSide,
   type EdgeCurve,
   type EdgeShape,
-  type Point,
 } from './edge-geometry';
-import { getEdgeParams, sideFromPosition, type Side } from './floating';
+import { getEdgeParams, sideFromPosition } from './floating';
 import { CAPTION_HEIGHT, glyphCaptionSize } from '../node/label-size';
 import { LoopHighlightContext } from '../loops/loop-highlight';
 import { NoteStateContext } from '../notes/note-state';
@@ -106,7 +107,7 @@ export interface DiagramEdgeData {
    * DiagramView correlates the double-click to a preceding edge click, because the
    * native dblclick never lands on the edge itself (the first click remounts the
    * edges layer, so the second click falls through to the pane). */
-  pendingAdd?: { x: number; y: number };
+  pendingAdd?: Point;
   onPendingAddConsumed?: () => void;
   /** commit an edited label; empty text signals removal to the host */
   onEditLabel?: (labelId: string, text: string) => void;
@@ -115,21 +116,21 @@ export interface DiagramEdgeData {
   /** view mode: labels slide along the edge while Alt is held (the modifier
    * that unlocks dragging there); add/edit stay edit-mode only */
   movableLabels?: boolean;
-  /** edit mode, sole-relation edges only: pin/unpin an endpoint. The renderer
+  /** edit mode, sole-relation edges only: fix or free an endpoint's side. The renderer
    * knows the live facing side, so it passes the side to freeze at (or null to
    * re-float). */
   onSetSide?: (end: 'from' | 'to', side: Side | null) => void;
-  /** this edge is the active pin-editing target — show its endpoint pin dots.
+  /** this edge is the active fixed-side target — show its fixed-side dots.
    * Driven by DiagramView's relation-keyed selection (not React Flow's edge
-   * `selected`, whose id changes when a pin toggles). */
-  pinsActive?: boolean;
+   * `selected`, whose id changes when a side is fixed or freed). */
+  fixedSideDotsShown?: boolean;
   /** edit mode, sole-relation edges only: open a new threat row on this flow's
    * note (see EditingApi.onAddThreat). buildEdgeData has already bound the
-   * relation, so the chip calls it with nothing. */
+   * relation, so the badge calls it with nothing. */
   onAddThreat?: () => void;
   /** the sole relation this edge draws, when it draws exactly one — what the
-   * counting chip toggles the bubble of. A bundle names none: its threats
-   * belong to particular relations and no bubble exists for the bundle. */
+   * counting badge toggles the note of. A bundle names none: its threats
+   * belong to particular relations and no note exists for the bundle. */
   threatRelation?: string;
 }
 
@@ -159,19 +160,19 @@ export const END_SHAPES: Record<string, { refX: number; el: ReactElement } | und
  * stroke, or they render an unwanted same-color outline (regression guard). */
 export const LINE_MARKERS = new Set(['crowsfoot', 'one']);
 
-/** endpoint pin dot radius (px) */
-const PIN_R = 5;
-/** how far a pin dot sits off the edge line, along the perpendicular (px) — kept
- * clear of React Flow's endpoint reconnect grab zone so click-to-pin and
+/** fixed-side dot radius (px) */
+const FIXED_SIDE_DOT_R = 5;
+/** how far a fixed-side dot sits off the edge line, along the perpendicular (px) — kept
+ * clear of React Flow's endpoint reconnect grab zone so click-to-fix and
  * drag-to-reattach don't fight over the same pixels */
-const PIN_OFFSET = 16;
+const FIXED_SIDE_DOT_OFFSET = 16;
 
 /** how far the polarity glyph sits off the path, along the normal (px) */
 const POLARITY_OFFSET = 12;
-/** how far the threat chip sits off the path, along the normal (px) */
+/** how far the threat badge sits off the path, along the normal (px) */
 const THREAT_OFFSET = 10;
 /** how many segments a threat-carrying flow's line is sampled into for the
- * bubbles' placement — a bubble is far wider than one step, so it cannot lie
+ * notes' placement — a note is far wider than one step, so it cannot lie
  * across the line between two samples */
 const LINE_SAMPLES = 24;
 /** delay mark: half-length of each hash line, along the normal (px) */
@@ -230,8 +231,8 @@ function labelXY(curve: EdgeCurve, t: number, side: EdgeLabelSide): Point {
 
 /** point + local frame (unit tangent/normal) at `t` along the clean path, for
  * positioning CLD marks without touching the (possibly sketch-roughened)
- * rendered path. Exported with {@link chipPosition} so a test can say where a
- * chip is expected rather than restating the arithmetic. */
+ * rendered path. Exported with {@link badgePosition} so a test can say where a
+ * badge is expected rather than restating the arithmetic. */
 export function markFrame(curve: EdgeCurve, t: number) {
   const point = curve.point(t);
   const tangent = curve.tangent(t);
@@ -241,11 +242,11 @@ export function markFrame(curve: EdgeCurve, t: number) {
 
 type MarkFrame = ReturnType<typeof markFrame>;
 
-/** Where a chip sits: its frame's point, pushed off the line along the normal.
- * One helper for both chips (threat at t = 0.75, comment at t = 0.25), because
- * the reported bubble anchor is read back off whichever of the two is drawing —
- * two copies of this sum could disagree and hang a bubble off nothing. */
-export const chipPosition = (f: MarkFrame): Point => ({
+/** Where a badge sits: its frame's point, pushed off the line along the normal.
+ * One helper for both badges (threat at t = 0.75, comment at t = 0.25), because
+ * the reported note anchor is read back off whichever of the two is drawing —
+ * two copies of this sum could disagree and hang a note off nothing. */
+export const badgePosition = (f: MarkFrame): Point => ({
   x: f.point.x + f.normal.x * THREAT_OFFSET,
   y: f.point.y + f.normal.y * THREAT_OFFSET,
 });
@@ -286,13 +287,10 @@ export function DiagramEdge({
   const rel = data?.relStyle;
   const p =
     measured && sourceNode !== undefined && targetNode !== undefined
-      ? getEdgeParams(sourceNode, targetNode, {
-          ...(rel?.fromSide !== undefined ? { sourceSide: rel.fromSide } : {}),
-          ...(rel?.toSide !== undefined ? { targetSide: rel.toSide } : {}),
-        })
+      ? getEdgeParams(sourceNode, targetNode, { sourceSide: rel?.fromSide, targetSide: rel?.toSide })
       : { sx: sourceX, sy: sourceY, tx: targetX, ty: targetY, sourcePos: sourcePosition, targetPos: targetPosition };
 
-  // Row-port anchoring: for FK edges into/out of db-table nodes, pin the y of
+  // Row-port anchoring: for FK edges into/out of db-table nodes, hold the y of
   // each endpoint to the referenced column's row (x stays on the facing
   // left/right border — anchorToRow is a no-op for top/bottom faces or an
   // unknown column, so non-table endpoints float exactly as before).
@@ -362,9 +360,9 @@ export function DiagramEdge({
   // the layout put them — a saved position, a drag in flight, a nudge or a
   // moved ancestor all leave the route pointing at where the node used to be,
   // and the edge floats instead. What the author fixed by hand also floats: a
-  // per-relation shape, a table-row anchor, and a pinned side the route does
-  // not happen to use (elk knows none of these). A pin the route DOES honour —
-  // the common case, since a connect gesture pins whatever sides faced each
+  // per-relation shape, a table-row anchor, and a fixed side the route does
+  // not happen to use (elk knows none of these). A fixed side the route DOES honour —
+  // the common case, since a connect gesture fixes whatever sides faced each
   // other — costs nothing, so such an edge still gets its route.
   const stands = (n: typeof sourceNode, at: Point | undefined): boolean =>
     n !== undefined &&
@@ -470,7 +468,7 @@ export function DiagramEdge({
   // style (not the notation profile) — activity edges appear on any canvas.
   const zigzagFrame = kind.zigzag === true ? markFrame(curve, 0.5) : undefined;
 
-  // Threat chip: gated on the edge carrying threats, not on the notation — a
+  // Threat badge: gated on the edge carrying threats, not on the notation — a
   // flow can be threat-modelled on any plane. An empty register is not a clean
   // bill of health, so `total === 0` draws nothing — the same rule ThreatBadge
   // states for a node. At t = 0.75 rather than the midpoint, so a centred flow
@@ -486,41 +484,45 @@ export function DiagramEdge({
       ? data.onAddThreat
       : undefined;
   const threatFrame = threats !== undefined || addThreat !== undefined ? markFrame(curve, 0.75) : undefined;
-  const threatChip = threatFrame === undefined ? undefined : chipPosition(threatFrame);
+  const threatBadgeAt = threatFrame === undefined ? undefined : badgePosition(threatFrame);
   const threatTransform =
-    threatChip === undefined ? undefined : `translate(-50%, -50%) translate(${threatChip.x}px, ${threatChip.y}px)`;
+    threatBadgeAt === undefined
+      ? undefined
+      : `translate(-50%, -50%) translate(${threatBadgeAt.x}px, ${threatBadgeAt.y}px)`;
 
-  // Comment chip: at t = 0.25, the other side of the label from the threat
-  // chip, so a flow that has both shows both. Same passive/toggle split.
+  // Comment badge: at t = 0.25, the other side of the label from the threat
+  // badge, so a flow that has both shows both. Same passive/toggle split.
   const commentBadge = data?.annotations !== undefined ? commentBadgeProps(data.annotations) : undefined;
   const commentFrame = commentBadge !== undefined ? markFrame(curve, 0.25) : undefined;
-  const commentChip = commentFrame === undefined ? undefined : chipPosition(commentFrame);
+  const commentBadgeAt = commentFrame === undefined ? undefined : badgePosition(commentFrame);
   const commentTransform =
-    commentChip === undefined ? undefined : `translate(-50%, -50%) translate(${commentChip.x}px, ${commentChip.y}px)`;
+    commentBadgeAt === undefined
+      ? undefined
+      : `translate(-50%, -50%) translate(${commentBadgeAt.x}px, ${commentBadgeAt.y}px)`;
 
   // Loop highlight: when a loop badge is active, glow this edge if it's a member,
   // otherwise dim it. Wraps the whole edge (path + marks + marker) as one group.
   const highlight = useContext(LoopHighlightContext);
-  // Which bubbles this canvas has open, and the switch the counting chip is —
-  // null on a canvas that draws none, where the chip stays passive.
+  // Which notes this canvas has open, and the switch the counting badge is —
+  // null on a canvas that draws none, where the badge stays passive.
   const notes = useContext(NoteStateContext);
-  // Where the relation's bubble hangs off, reported up: the threat chip when
-  // there is one (it was first), else the comment chip — whichever chip this
+  // Where the relation's note hangs off, reported up: the threat badge when
+  // there is one (it was first), else the comment badge — whichever badge this
   // relation actually has. Only this component knows the routed curve. The
-  // same numbers the reporting chip's own transform is written from, so the
-  // two cannot disagree. A bundle names no relation and both chips are
+  // same numbers the reporting badge's own transform is written from, so the
+  // two cannot disagree. A bundle names no relation and both badges are
   // passive, so it reports nothing.
-  // The line goes with it, sampled end to end, so the bubbles can keep off
+  // The line goes with it, sampled end to end, so the notes can keep off
   // it. The curve is rebuilt every render, so the samples are keyed by their
   // rounded coordinates: the effect re-reports only when the line moved.
-  const chipRelation = threats !== undefined || commentBadge !== undefined ? data?.threatRelation : undefined;
-  const anchorX = threats !== undefined ? threatChip?.x : commentChip?.x;
-  const anchorY = threats !== undefined ? threatChip?.y : commentChip?.y;
+  const badgeRelation = threats !== undefined || commentBadge !== undefined ? data?.threatRelation : undefined;
+  const anchorX = threats !== undefined ? threatBadgeAt?.x : commentBadgeAt?.x;
+  const anchorY = threats !== undefined ? threatBadgeAt?.y : commentBadgeAt?.y;
   const anchorNx = threats !== undefined ? threatFrame?.normal.x : commentFrame?.normal.x;
   const anchorNy = threats !== undefined ? threatFrame?.normal.y : commentFrame?.normal.y;
   const lineRef = useRef<Point[]>([]);
   let lineKey = '';
-  if (notes !== null && chipRelation !== undefined) {
+  if (notes !== null && badgeRelation !== undefined) {
     lineRef.current = Array.from({ length: LINE_SAMPLES + 1 }, (_, k) => {
       const p = curve.point(k / LINE_SAMPLES);
       return { x: Math.round(p.x), y: Math.round(p.y) };
@@ -530,15 +532,15 @@ export function DiagramEdge({
   useEffect(() => {
     if (
       notes !== null &&
-      chipRelation !== undefined &&
+      badgeRelation !== undefined &&
       anchorX !== undefined &&
       anchorY !== undefined &&
       anchorNx !== undefined &&
       anchorNy !== undefined
     )
-      notes.placeChip(chipRelation, { x: anchorX, y: anchorY }, { x: anchorNx, y: anchorNy }, lineRef.current);
+      notes.placeBadge(badgeRelation, { x: anchorX, y: anchorY }, { x: anchorNx, y: anchorNy }, lineRef.current);
     // lineKey stands in for lineRef.current, which is rebuilt every render
-  }, [notes, chipRelation, anchorX, anchorY, anchorNx, anchorNy, lineKey]);
+  }, [notes, badgeRelation, anchorX, anchorY, anchorNx, anchorNy, lineKey]);
   // 'loop': members glow, rest strong-dim. 'focus': members stay normal, rest light-dim.
   const loopEdgeClass = !highlight.active
     ? undefined
@@ -550,36 +552,37 @@ export function DiagramEdge({
         ? 'dg-loop-edge-dim'
         : 'dg-focus-edge-dim';
 
-  // Endpoint pin dots: only for the active sole-relation edge whose host wired
-  // the pin callback (edit mode). Each dot toggles its end between floating and
+  // Fixed-side dots: only for the active sole-relation edge whose host wired
+  // the side callback (edit mode). Each dot toggles its end between floating and
   // frozen-at-the-current-facing-side; positioned off the line so it doesn't
   // steal React Flow's reconnect grab.
   const onSetSide = data?.onSetSide;
-  const showPins = onSetSide !== undefined && data?.pinsActive === true && (data?.constituentCount ?? 0) === 1;
-  const pinDots = showPins
+  const showFixedSideDots =
+    onSetSide !== undefined && data?.fixedSideDotsShown === true && (data?.constituentCount ?? 0) === 1;
+  const fixedSideDots = showFixedSideDots
     ? (() => {
         const dx = p.tx - p.sx;
         const dy = p.ty - p.sy;
         const len = Math.hypot(dx, dy) || 1;
-        const ox = (-dy / len) * PIN_OFFSET;
-        const oy = (dx / len) * PIN_OFFSET;
-        const fromPinned = rel?.fromSide !== undefined;
-        const toPinned = rel?.toSide !== undefined;
+        const ox = (-dy / len) * FIXED_SIDE_DOT_OFFSET;
+        const oy = (dx / len) * FIXED_SIDE_DOT_OFFSET;
+        const fromSideFixed = rel?.fromSide !== undefined;
+        const toSideFixed = rel?.toSide !== undefined;
         return (
           <>
-            <PinDot
+            <FixedSideDot
               end="from"
               cx={p.sx + ox}
               cy={p.sy + oy}
-              pinned={fromPinned}
-              onToggle={() => onSetSide('from', fromPinned ? null : sideFromPosition(p.sourcePos))}
+              fixed={fromSideFixed}
+              onToggle={() => onSetSide('from', fromSideFixed ? null : sideFromPosition(p.sourcePos))}
             />
-            <PinDot
+            <FixedSideDot
               end="to"
               cx={p.tx + ox}
               cy={p.ty + oy}
-              pinned={toPinned}
-              onToggle={() => onSetSide('to', toPinned ? null : sideFromPosition(p.targetPos))}
+              fixed={toSideFixed}
+              onToggle={() => onSetSide('to', toSideFixed ? null : sideFromPosition(p.targetPos))}
             />
           </>
         );
@@ -675,7 +678,7 @@ export function DiagramEdge({
              only where the notation colours by sign; elsewhere it stays text-
              coloured as before. Inline style, not a `fill` attribute: the
              stylesheet's `.dg-polarity { fill }` outranks presentation attrs. */
-            {...(polarityColor !== undefined ? { style: { fill: stroke } } : {})}
+            style={polarityColor !== undefined ? { fill: stroke } : undefined}
           >
             {data.polarity === '-' ? '−' : '+'}
           </text>
@@ -717,8 +720,8 @@ export function DiagramEdge({
           />
         )}
       </g>
-      {pinDots}
-      {/* The joined label of a bundled arrow. An HTML chip in the label layer, not
+      {fixedSideDots}
+      {/* The joined label of a bundled arrow. An HTML element in the label layer, not
           React Flow's SVG `label`: that one lives inside this edge's own <svg>,
           so every edge painted later drew its line straight across the text. It
           takes no pointer events — the press falls through to the hit-path under
@@ -839,14 +842,14 @@ export function DiagramEdge({
         })()}
       {threatFrame !== undefined && threatBadge !== undefined && (
         <EdgeLabelRenderer>
-          {/* `data-edge`: every chip goes into React Flow's single
+          {/* `data-edge`: every badge goes into React Flow's single
               EdgeLabelRenderer portal — one flat layer of absolutely positioned
-              elements — so without the edge id on the chip itself the only thing
+              elements — so without the edge id on the badge itself the only thing
               saying WHICH flow it belongs to is where it happens to sit. The
               value is the view-edge id (`from=>to:layer`), stable across
               re-layouts; state/text/title come from the shared derivation the
               node badge uses, so the two cannot drift apart in what they say.
-              A sole-relation flow on a bubble-drawing canvas gets the toggle
+              A sole-relation flow on a note-drawing canvas gets the toggle
               button the node badge gets; a bundle keeps the passive count. */}
           {notes !== null && data?.threatRelation !== undefined ? (
             (() => {
@@ -887,11 +890,11 @@ export function DiagramEdge({
       )}
       {commentFrame !== undefined && commentBadge !== undefined && (
         <EdgeLabelRenderer>
-          {/* Same portal, same `data-edge` reasoning as the threat chip above.
-              A sole-relation flow on a bubble-drawing canvas gets the toggle
+          {/* Same portal, same `data-edge` reasoning as the threat badge above.
+              A sole-relation flow on a note-drawing canvas gets the toggle
               button the node badge gets; a bundle keeps the passive count —
-              mirrors the threat chip's own "sole relation" test exactly, so
-              the two chips never disagree about which flows get a switch. */}
+              mirrors the threat badge's own "sole relation" test exactly, so
+              the two badges never disagree about which flows get a switch. */}
           {notes !== null && data?.threatRelation !== undefined ? (
             (() => {
               const relation = data.threatRelation;
@@ -929,9 +932,9 @@ export function DiagramEdge({
       )}
       {threatFrame !== undefined && addThreat !== undefined && (
         <EdgeLabelRenderer>
-          {/* `data-edge` for the same reason the counting chip carries it: the
-              label portal is one flat layer, so the chip itself must say which
-              flow it belongs to. Unlike that chip this one is clickable, so it
+          {/* `data-edge` for the same reason the counting badge carries it: the
+              label portal is one flat layer, so the badge itself must say which
+              flow it belongs to. Unlike that badge this one is clickable, so it
               needs pointer events back (the base badge rule turns them off —
               see styles.css) and must keep the press from starting a drag. */}
           <button
@@ -956,28 +959,28 @@ export function DiagramEdge({
   );
 }
 
-function PinDot({
+function FixedSideDot({
   end,
   cx,
   cy,
-  pinned,
+  fixed,
   onToggle,
 }: {
   end: 'from' | 'to';
   cx: number;
   cy: number;
-  pinned: boolean;
+  fixed: boolean;
   onToggle: () => void;
 }) {
   return (
     <circle
-      className={`dg-edge-pin${pinned ? ' pinned' : ''}`}
+      className={`dg-edge-pin${fixed ? ' pinned' : ''}`}
       data-end={end}
       cx={cx}
       cy={cy}
-      r={PIN_R}
+      r={FIXED_SIDE_DOT_R}
       role="button"
-      aria-label={`${pinned ? 'Unpin' : 'Pin'} ${end === 'from' ? 'source' : 'target'} end`}
+      aria-label={`${fixed ? 'Unpin' : 'Pin'} ${end === 'from' ? 'source' : 'target'} end`}
       // stop pointerdown too, or React Flow treats the press as a canvas
       // interaction and clears the edge selection out from under the dot
       onPointerDown={(e) => e.stopPropagation()}

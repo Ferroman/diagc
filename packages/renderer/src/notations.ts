@@ -1,23 +1,29 @@
 import {
   consequenceOrders,
+  DEPLOY_NOTATION,
   DEPLOY_ZONE_TYPES,
+  FISHBONE_NOTATION,
+  GIT_NOTATION,
   GIT_STAGE_TYPE,
   PLAN_EVENT_TYPE,
   PLAN_NOTATION,
   PLAN_ROLES,
   PLAN_ZONE_TYPE,
+  SECOND_ORDER_NOTATION,
   TM_BOUNDARY_TYPE,
   isPlanActor,
   isPlanEvent,
   isPlanRole,
   isPlanZone,
   rolesOf,
+  TM_NOTATION,
   valenceOf,
   type CompiledView,
   type DeployZoneType,
   type DiagramModel,
   type DiagramNode,
   type NotationId,
+  type Point,
   type Polarity,
   type PlanRole,
   type BoxSize,
@@ -31,7 +37,7 @@ import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry'
 
 /** A small chip in a node's badge row (the plan's role chips are the only
  * producer today, but the shape is generic — any notation could grow one). */
-export interface NodeBadge {
+export interface NodeChip {
   key: string;
   text: string;
   title: string;
@@ -63,7 +69,7 @@ export interface NotationProfile {
     model: DiagramModel,
     plane: string | undefined,
     sizeHints?: ReadonlyMap<string, BoxSize>,
-    positions?: Record<string, { x: number; y: number }>,
+    positions?: Record<string, Point>,
   ) => LayoutResult;
   /** the arrangement honours saved positions for some of its nodes and must be
    * re-run when they change; without it the layout never sees them and a drag
@@ -94,7 +100,7 @@ export interface NotationProfile {
     colorOf?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, string>;
     /** small chips in a node's badge row (the plan's role chips); keyed by
      * node id, one derivation per model like colorOf */
-    badges?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, NodeBadge[]>;
+    chips?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, NodeChip[]>;
     /** 'x' = the studio offers left/right resize handles on this node;
      * undefined = no notation resizer */
     resizable?: (n: DiagramNode) => 'x' | undefined;
@@ -122,7 +128,8 @@ export interface NotationProfile {
     /** relation kinds the view never draws as edges (the legend skips them too) */
     hidden?: (kind: string) => boolean;
   };
-  overlay?: 'loop-labels' | 'git-lanes' | 'order-bands' | 'time-axis';
+  /** what the notation draws above the diagram */
+  canvasOverlay?: 'loop-labels' | 'git-lanes' | 'order-bands' | 'time-axis';
 }
 
 const CLD: NotationProfile = {
@@ -142,11 +149,11 @@ const CLD: NotationProfile = {
     bowed: true,
     polarityColors: { '+': 'var(--dg-polarity-positive)', '-': 'var(--dg-polarity-negative)' },
   },
-  overlay: 'loop-labels',
+  canvasOverlay: 'loop-labels',
 };
 
 const GIT: NotationProfile = {
-  id: 'git-graph',
+  id: GIT_NOTATION,
   className: 'dg-notation-git',
   typeStyles: { commit: { shape: 'circle' }, branch: { shape: 'box' }, [GIT_STAGE_TYPE]: { shape: 'box', label: '' } },
   // Links are lane lines and connectors, not arrows: dashed, no heads.
@@ -162,7 +169,7 @@ const GIT: NotationProfile = {
     colorOf: gitNodeColors,
   },
   edge: { colorOf: gitEdgeColor },
-  overlay: 'git-lanes',
+  canvasOverlay: 'git-lanes',
 };
 
 // ---- C4 (https://c4model.com) ---------------------------------------------
@@ -225,11 +232,11 @@ function valenceColors(model: DiagramModel): ReadonlyMap<string, string> {
 }
 
 const SECOND_ORDER: NotationProfile = {
-  id: 'second-order',
+  id: SECOND_ORDER_NOTATION,
   className: 'dg-notation-so',
   partitionOf: (model) => consequenceOrders(model).orders,
   node: { colorOf: valenceColors },
-  overlay: 'order-bands',
+  canvasOverlay: 'order-bands',
 };
 
 // ---- Fishbone ---------------------------------------------------------------
@@ -237,7 +244,7 @@ const SECOND_ORDER: NotationProfile = {
 // its structure, so elk has nothing to decide. Bones take their category's
 // colour; the head and cause looks are DiagramNode's own branches.
 const FISHBONE: NotationProfile = {
-  id: 'fishbone',
+  id: FISHBONE_NOTATION,
   className: 'dg-notation-fb',
   layout: fishboneLayout,
   node: { colorOf: fishboneNodeColors },
@@ -259,7 +266,7 @@ function boundaryColors(model: DiagramModel): ReadonlyMap<string, string> {
 }
 
 const THREAT_MODEL: NotationProfile = {
-  id: 'threat-model',
+  id: TM_NOTATION,
   className: 'dg-notation-tm',
   node: { colorOf: boundaryColors },
 };
@@ -288,7 +295,7 @@ function zoneColors(model: DiagramModel): ReadonlyMap<string, string> {
 }
 
 const DEPLOYMENT: NotationProfile = {
-  id: 'deployment',
+  id: DEPLOY_NOTATION,
   className: 'dg-notation-deploy',
   typeStyles: {
     'c4-deployment-node': { ...DEFAULT_TYPE_STYLES['c4-deployment-node']!, icon: 'server', dashed: false },
@@ -311,12 +318,12 @@ export const ROLE_LABEL: Record<PlanRole, { initial: string; title: string }> = 
 /** Role chips per zone, in owns / executes / checks order: `O·Alice` (first
  * word of the name), titled `Owner: Alice Ng`, in the actor's colour. Reads
  * the relation's `from` node whatever its type — a person or a team, alike. */
-export function planBadges(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, NodeBadge[]> {
+export function planChips(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, NodeChip[]> {
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
-  const out = new Map<string, NodeBadge[]>();
+  const out = new Map<string, NodeChip[]>();
   for (const id of planGraphCached(model, plane).zones) {
     const roles = rolesOf(model, id);
-    const chips: NodeBadge[] = [];
+    const chips: NodeChip[] = [];
     for (const role of PLAN_ROLES) {
       for (const actorId of roles[role]) {
         const actor = byId.get(actorId);
@@ -326,7 +333,7 @@ export function planBadges(model: DiagramModel, plane: string | undefined): Read
           key: `${role}:${actorId}`,
           text: `${ROLE_LABEL[role].initial}·${first}`,
           title: `${ROLE_LABEL[role].title}: ${actor.name}`,
-          ...(actor.color !== undefined ? { color: actor.color } : {}),
+          color: actor.color,
         });
       }
     }
@@ -366,7 +373,7 @@ const PLAN: NotationProfile = {
   node: {
     alwaysExpanded: (n) => n.type === PLAN_ZONE_TYPE,
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
-    badges: planBadges,
+    chips: planChips,
     resizable: (n) => (n.type === PLAN_ZONE_TYPE ? 'x' : undefined),
     // A zone receives a drop (an actor's role, a plain node's containment).
     // isPlanZone, not a nested-only check: a root zone's Y is free and can
@@ -385,20 +392,20 @@ const PLAN: NotationProfile = {
     draggableWhenFixed: () => true,
   },
   edge: { hidden: isPlanRole },
-  overlay: 'time-axis',
+  canvasOverlay: 'time-axis',
 };
 
 // Record<NotationId, ...> keying means adding a notation id to BUILTIN_NOTATIONS
 // forces a compile error here until its profile is added — intended.
 export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
   'causal-loop': CLD,
-  'git-graph': GIT,
+  [GIT_NOTATION]: GIT,
   c4: C4,
-  'second-order': SECOND_ORDER,
-  fishbone: FISHBONE,
-  'threat-model': THREAT_MODEL,
-  plan: PLAN,
-  deployment: DEPLOYMENT,
+  [SECOND_ORDER_NOTATION]: SECOND_ORDER,
+  [FISHBONE_NOTATION]: FISHBONE,
+  [TM_NOTATION]: THREAT_MODEL,
+  [PLAN_NOTATION]: PLAN,
+  [DEPLOY_NOTATION]: DEPLOYMENT,
 };
 
 const DEFAULT_PROFILE: NotationProfile = { id: 'default' };

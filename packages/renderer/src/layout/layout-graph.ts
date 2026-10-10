@@ -1,6 +1,10 @@
 import {
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_LANE_TYPE,
+  ACTIVITY_START_TYPE,
   LEAF_SIZE,
   RESERVED_NODE_ID,
+  type BoxSize,
   type CompiledView,
   type LayoutSettings,
   type ViewEdge,
@@ -34,11 +38,11 @@ export interface SizeHint {
    * to elk as an outside node label, so neighbours, routes and the layer gap
    * keep off the text while the box itself keeps its drawn size — unlike
    * `reserveBottom`, which also works sideways only by widening the box. */
-  caption?: { width: number; height: number };
+  caption?: BoxSize;
 }
 
 /** The box elk lays out for a hinted node: drawn size plus the reserved strip. */
-export function footprint(size: SizeHint): { width: number; height: number } {
+export function footprint(size: SizeHint): BoxSize {
   return { width: size.width, height: size.height + (size.reserveBottom ?? 0) };
 }
 
@@ -261,8 +265,8 @@ const FRAME_PAD: Pad = { top: 0, left: ACTIVITY_LAYOUT.TITLE_STRIP_W, bottom: 0,
  * because `layoutView` embeds separately arranged insides by hand and must leave
  * exactly the room elk would. */
 export function containerPad(n: ViewNode): Pad {
-  if (n.node.type === 'activity-lane') return LANE_PAD;
-  if (n.node.type === 'activity-frame') return FRAME_PAD;
+  if (n.node.type === ACTIVITY_LANE_TYPE) return LANE_PAD;
+  if (n.node.type === ACTIVITY_FRAME_TYPE) return FRAME_PAD;
   return CONTAINER_PAD;
 }
 
@@ -295,7 +299,7 @@ export interface GraphSubstitutions {
   roots: readonly ViewNode[];
   /** unfolded containers whose whole inside was arranged separately: emitted as
    * leaves of this (padding-inclusive) size */
-  prelaid: ReadonlyMap<string, { width: number; height: number }>;
+  prelaid: ReadonlyMap<string, BoxSize>;
   /** per container: the children standing apart from its connected part,
    * replaced by ONE synthetic leaf the size of their packed block */
   packs: ReadonlyMap<string, { id: string; width: number; height: number; members: ReadonlySet<string> }>;
@@ -308,7 +312,7 @@ function spacingOptionsOf(options: Record<string, string>): Record<string, strin
 }
 
 // Edge-label footprint fed into elk so it reserves room and neighbours don't
-// overlap the label. Approximate: the drawn label is a ~10px-font chip, so a
+// overlap the label. Approximate: the drawn label is set in a ~10px font, so a
 // per-char width plus horizontal padding lands close to the real box.
 const EDGE_LABEL_CHAR = 6;
 const EDGE_LABEL_PAD = 12;
@@ -324,25 +328,24 @@ export function edgeLabelText(e: ViewEdge): string {
 }
 
 // A label rides ON its edge: elk makes the label box a stop on the route and
-// runs the line through its centre, where the chip then masks it. Left to its
+// runs the line through its centre, where the label then masks it. Left to its
 // default elk parks the box BESIDE the line, and a label floating in the gap
 // between two parallel arrows reads as belonging to either.
 const INLINE_LABEL = { 'elk.edgeLabels.inline': 'true' };
 
-function edgeLabelBox(text: string): { width: number; height: number } | undefined {
+function edgeLabelBox(text: string): BoxSize | undefined {
   const t = text.trim();
   if (t === '') return undefined;
-  // the chip is ellipsised at EDGE_LABEL_MAX_CHARS, so no more room than that
+  // the label is ellipsised at EDGE_LABEL_MAX_CHARS, so no more room than that
   const chars = Math.min([...t].length, EDGE_LABEL_MAX_CHARS);
   return { width: Math.round(chars * EDGE_LABEL_CHAR + EDGE_LABEL_PAD), height: EDGE_LABEL_HEIGHT };
 }
 
-const ACTIVITY_START = 'activity-start';
 const CAPTION_BELOW = { 'elk.nodeLabels.placement': 'OUTSIDE V_BOTTOM H_CENTER' };
 const NOTE_LINK = 'note-link';
 
 function hasActivityStart(view: CompiledView): boolean {
-  const walk = (n: ViewNode): boolean => n.node.type === ACTIVITY_START || n.children.some(walk);
+  const walk = (n: ViewNode): boolean => n.node.type === ACTIVITY_START_TYPE || n.children.some(walk);
   return view.roots.some(walk);
 }
 
@@ -380,7 +383,7 @@ export function buildGraph(
     ...layoutOptionsFor(settings),
     ...(substitute !== undefined ? { 'elk.padding': NO_PADDING } : {}),
     // A notation that derives an ORDER for its nodes (second-order thinking)
-    // pins each to it: partition k is laid out strictly before k+1, so a node
+    // holds each to it: partition k is laid out strictly before k+1, so a node
     // cannot sink toward the only thing it feeds. Root nodes only — a partition
     // is relative to the graph that owns the node.
     ...(partitions !== undefined ? { 'elk.partitioning.activate': 'true' } : {}),
@@ -389,7 +392,7 @@ export function buildGraph(
   // elk's default cycle breaking reverses whichever edges its degree heuristic
   // picks, and on a flow with a retry loop that is often the loop's way IN — the
   // start then lands mid-picture and the flow runs backwards from it. Depth-first
-  // from the sources reverses the loop's way BACK instead; pinning the start to
+  // from the sources reverses the loop's way BACK instead; holding the start to
   // the first layer keeps it at the left edge whatever else is a source. elk
   // reads the strategy off each graph that owns the nodes, not off the root, so
   // the containers carry it too (below) — on the root alone it changed nothing.
@@ -468,13 +471,13 @@ export function buildGraph(
       ...footprint(sizes?.get(n.id) ?? LEAF_SIZE),
       // like an edge label, elk reserves the box only when `text` is non-empty
       ...(caption !== undefined ? { labels: [{ ...caption, text: 'caption', layoutOptions: CAPTION_BELOW }] } : {}),
-      ...(activity && n.node.type === ACTIVITY_START
+      ...(activity && n.node.type === ACTIVITY_START_TYPE
         ? { layoutOptions: { 'elk.layered.layering.layerConstraint': 'FIRST' } }
         : {}),
     };
   };
 
-  const pinned = (shape: ElkShape): ElkShape => {
+  const withPartition = (shape: ElkShape): ElkShape => {
     const p = partitions?.get(shape.id);
     return p === undefined
       ? shape
@@ -486,7 +489,7 @@ export function buildGraph(
   // relations it stands for get no room, and may overlap nearby boxes.
   // built before the edges are — `toNode` is what fills `emitted`, and what
   // discovers container-owned edges for the `lifted` flag below
-  const children = (substitute?.roots ?? view.roots).map((n) => pinned(toNode(n)));
+  const children = (substitute?.roots ?? view.roots).map((n) => withPartition(toNode(n)));
 
   const reversed = new Set<string>();
 

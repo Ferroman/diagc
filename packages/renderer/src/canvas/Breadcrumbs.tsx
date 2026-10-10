@@ -8,7 +8,7 @@ export interface BreadcrumbsProps {
   onCrumb: (id: string | null) => void;
 }
 
-/** The nested-zoom trail. Rendered as a React Flow overlay panel; each crumb pops
+/** The nested-zoom trail. Rendered in a React Flow panel; each crumb pops
  *  the view back out to that frame (the last crumb is the current frame). */
 export function Breadcrumbs({ path, nameOf, onCrumb }: BreadcrumbsProps) {
   if (path.length === 0) return null;
@@ -33,7 +33,7 @@ export function Breadcrumbs({ path, nameOf, onCrumb }: BreadcrumbsProps) {
               <button
                 type="button"
                 className={`dg-crumb${current ? ' dg-crumb-current' : ''}`}
-                {...(current ? { 'aria-current': 'page' as const } : {})}
+                aria-current={current ? 'page' : undefined}
                 onClick={() => onCrumb(id)}
               >
                 {nameOf(id)}

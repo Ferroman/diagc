@@ -1,18 +1,19 @@
-import { BADGE_R, type Point } from './note-place';
+import { BADGE_R } from './note-place';
+import type { BoxSize, Point } from '@diagc/core/internal';
 
 export type NoteSide = 'left' | 'right' | 'top' | 'bottom';
 
-/** a tail, in the bubble's own space (0,0 = its top-left): two base points on
- * the bubble's side and the tip that points at the badge */
+/** a tail, in the note's own space (0,0 = its top-left): two base points on
+ * the note's side and the tip that points at the badge */
 export interface NoteTail {
   side: NoteSide;
   base: readonly [Point, Point];
   tip: Point;
 }
 
-/** half the tail's width where it leaves the bubble */
+/** half the tail's width where it leaves the note */
 const BASE_HALF = 7;
-/** the base stays this far from the bubble's corners (border-radius 10px) */
+/** the base stays this far from the note's corners (border-radius 10px) */
 const CORNER = 12;
 /** the base sits this far inside the border, so the tail's fill paints over
  * the border line and the two merge */
@@ -24,13 +25,13 @@ const TIP_GAP = BADGE_R + 2;
 const MIN_LEN = 4;
 
 /**
- * The tail from a bubble of `size` to `badge`. It leaves from the side with
+ * The tail from a note of `size` to `badge`. It leaves from the side with
  * the most room toward the badge — vertical sides win a tie, a hanging tail
  * being the comic default — at the point across from the badge, kept off the
  * rounded corners, and stops at the pill's rim. Null when the badge is under
- * the bubble (dragged over it) or too close for a tail to read.
+ * the note (dragged over it) or too close for a tail to read.
  */
-export function tailGeometry(badge: Point, size: { width: number; height: number }): NoteTail | null {
+export function tailGeometry(badge: Point, size: BoxSize): NoteTail | null {
   const { width: w, height: h } = size;
   const gaps: { side: NoteSide; gap: number }[] = [
     { side: 'top', gap: -badge.y },

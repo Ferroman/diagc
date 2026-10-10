@@ -2,13 +2,12 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { model } from '@diagc/core/internal';
-import { RENDERER_VERSION } from './index';
 import { DiagramView } from './canvas/DiagramView';
 
 describe('renderer testing environment', () => {
   it('renders React into jsdom', () => {
-    render(<div data-testid="probe">v{RENDERER_VERSION}</div>);
-    expect(screen.getByTestId('probe').textContent).toBe('v1');
+    render(<div data-testid="probe">ok</div>);
+    expect(screen.getByTestId('probe').textContent).toBe('ok');
   });
 
   it('renders a two-table FK diagram', async () => {

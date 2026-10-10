@@ -1,13 +1,9 @@
 import { Position } from '@xyflow/react';
-import { SIDES, type Side } from '@diagc/core/internal';
-
-// Re-export: floating.ts is the renderer's established source for the Side
-// type (index.tsx and callers import it from here) — keep that path working.
-export type { Side };
+import { SIDES, type Point, type Side } from '@diagc/core/internal';
 
 /** the subset of an InternalNode the floating computation needs */
 export interface FloatingNode {
-  internals: { positionAbsolute: { x: number; y: number } };
+  internals: { positionAbsolute: Point };
   measured?: { width?: number; height?: number };
 }
 
@@ -32,7 +28,7 @@ const rectOf = (n: FloatingNode) => ({
  * Standard React Flow floating-edges math (rect treated via the diamond
  * transform); guards keep zero-sized (unmeasured) nodes from dividing by zero.
  */
-function intersect(node: FloatingNode, other: FloatingNode): { x: number; y: number } {
+function intersect(node: FloatingNode, other: FloatingNode): Point {
   const a = rectOf(node);
   const b = rectOf(other);
   const w = a.width / 2 || 1;
@@ -51,7 +47,7 @@ function intersect(node: FloatingNode, other: FloatingNode): { x: number; y: num
 }
 
 /** which side of `node` the point sits on (for bezier control direction) */
-function sideOf(node: FloatingNode, point: { x: number; y: number }): Position {
+function sideOf(node: FloatingNode, point: Point): Position {
   const r = rectOf(node);
   const nx = Math.round(r.x);
   const ny = Math.round(r.y);
@@ -71,21 +67,6 @@ const asSide = (handle: string | null | undefined): Side | undefined =>
     ? (handle as Side)
     : undefined;
 
-/** Pins for the sides a connect gesture actually used, so a new relation
- * attaches where the user dragged instead of re-floating to the facing sides.
- * An end with no (or an unrecognized) handle id stays unpinned. */
-export function connectionSides(conn: { sourceHandle?: string | null; targetHandle?: string | null }): {
-  fromSide?: Side;
-  toSide?: Side;
-} {
-  const fromSide = asSide(conn.sourceHandle);
-  const toSide = asSide(conn.targetHandle);
-  return {
-    ...(fromSide !== undefined ? { fromSide } : {}),
-    ...(toSide !== undefined ? { toSide } : {}),
-  };
-}
-
 const SIDE_POSITION: Record<Side, Position> = {
   top: Position.Top,
   right: Position.Right,
@@ -94,7 +75,7 @@ const SIDE_POSITION: Record<Side, Position> = {
 };
 
 /** the Side a React Flow Position denotes (Position values already carry the
- * side strings; this keeps the mapping typed for callers pinning to the side an
+ * side strings; this keeps the mapping typed for callers fixing an end to the side an
  * endpoint currently faces) */
 export function sideFromPosition(pos: Position): Side {
   switch (pos) {
@@ -110,14 +91,14 @@ export function sideFromPosition(pos: Position): Side {
 }
 
 /**
- * Decide how a reconnect drag changes the dragged endpoint's pin. Dropping an
+ * Decide how a reconnect drag changes the dragged endpoint's fixed side. Dropping an
  * end on a *different* node re-floats it (side cleared); re-dropping it on the
- * *same* node pins it to the side the loose-mode gesture snapped to. `draggedEnd`
+ * *same* node fixes it to the side the loose-mode gesture snapped to. `draggedEnd`
  * comes from onReconnectStart ('source'/'target'); when it's unknown we infer
  * the moved end from the node diff (which can't detect same-node side changes).
  * Returns undefined when nothing meaningful moved.
  */
-export function reconnectPin(
+export function reconnectSide(
   draggedEnd: 'source' | 'target' | null,
   conn: { source: string; target: string; sourceHandle?: string | null; targetHandle?: string | null },
   rel: { from: string; to: string },
@@ -135,8 +116,8 @@ export function reconnectPin(
   return undefined;
 }
 
-/** midpoint of a node border side (for pinned connection points) */
-function sideAnchor(node: FloatingNode, side: Side): { x: number; y: number } {
+/** midpoint of a node border side (for fixed connection points) */
+function sideAnchor(node: FloatingNode, side: Side): Point {
   const r = rectOf(node);
   switch (side) {
     case 'top':
@@ -153,22 +134,22 @@ function sideAnchor(node: FloatingNode, side: Side): { x: number; y: number } {
 /**
  * Excalidraw-style floating anchors: each edge leaves/enters through the point
  * where the center-to-center line crosses the node border, whichever side that
- * is, instead of fixed top/bottom handles. A pinned side overrides the
+ * is, instead of fixed top/bottom handles. A fixed side overrides the
  * automatic choice for that endpoint.
  */
 export function getEdgeParams(
   source: FloatingNode,
   target: FloatingNode,
-  pins?: { sourceSide?: Side; targetSide?: Side },
+  sides?: { sourceSide?: Side; targetSide?: Side },
 ): EdgeParams {
-  const s = pins?.sourceSide !== undefined ? sideAnchor(source, pins.sourceSide) : intersect(source, target);
-  const t = pins?.targetSide !== undefined ? sideAnchor(target, pins.targetSide) : intersect(target, source);
+  const s = sides?.sourceSide !== undefined ? sideAnchor(source, sides.sourceSide) : intersect(source, target);
+  const t = sides?.targetSide !== undefined ? sideAnchor(target, sides.targetSide) : intersect(target, source);
   return {
     sx: s.x,
     sy: s.y,
     tx: t.x,
     ty: t.y,
-    sourcePos: pins?.sourceSide !== undefined ? SIDE_POSITION[pins.sourceSide] : sideOf(source, s),
-    targetPos: pins?.targetSide !== undefined ? SIDE_POSITION[pins.targetSide] : sideOf(target, t),
+    sourcePos: sides?.sourceSide !== undefined ? SIDE_POSITION[sides.sourceSide] : sideOf(source, s),
+    targetPos: sides?.targetSide !== undefined ? SIDE_POSITION[sides.targetSide] : sideOf(target, t),
   };
 }

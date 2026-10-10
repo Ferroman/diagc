@@ -1,6 +1,4 @@
-import { normalizeRuns, runsToPlainText, type TextRun } from '@diagc/core/internal';
-
-export const plainText = runsToPlainText;
+import { normalizeRuns, type TextRun } from '@diagc/core/internal';
 
 const escapeHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 

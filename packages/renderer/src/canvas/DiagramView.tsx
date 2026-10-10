@@ -18,26 +18,33 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
+  ACTIVITY_LANE_TYPE,
   compileView,
   countAnchored,
   DEFAULT_STROKE_WIDTH,
+  GIT_NOTATION,
   GIT_STAGE_TYPE,
   hasNoteContent,
+  isActivityBand,
+  isActivityChrome,
+  isNodeRef,
   layoutPlaneKey,
   elementKey,
+  soleRelation,
   TM_NOTATION,
   type Comment,
   type DiagramNode,
   type EdgeLabelPlacement,
   type EdgeLabelSide,
   type Link,
+  type Point,
   type Stroke,
   type Threat,
   type ElementRef,
   type ViewNode,
 } from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
-import { ACTIVITY_CHROME_TYPES, FORCED_SIZE_SHAPES, LAYOUT_SIZED_TYPES } from '../layout/box-size';
+import { FORCED_SIZE_SHAPES, LAYOUT_SIZED_TYPES } from '../layout/box-size';
 import { Breadcrumbs } from './Breadcrumbs';
 import { overhangBounds, unionBounds } from './content-bounds';
 import {
@@ -59,14 +66,13 @@ import {
   obstaclesOf,
   placeNote,
   type BadgeKind,
-  type Point,
   type Rect,
 } from '../notes/note-place';
 import { NoteStateContext, type NoteState } from '../notes/note-state';
 import { DrawingsLayer } from '../drawings/DrawingsLayer';
 import { withoutMeasuredExpansion } from './expand-parent';
 import { savedPositions } from '../layout/fit-containers';
-import { reconnectPin } from '../edge/floating';
+import { reconnectSide } from '../edge/floating';
 import { laneDropOffset } from '../layout/activity-frame';
 import { GitLanesOverlay } from '../overlays/GitLanesOverlay';
 import { alignBoxes, distributeBoxes, dropDescendants, type Delta } from './arrange';
@@ -97,18 +103,6 @@ import '../styles.css';
 import '@fontsource/kalam/400.css';
 import '@fontsource/kalam/700.css';
 
-export {
-  DEFAULT_ON_NODE_META_KEYS,
-  LIBRARY_ENTRY_DND_TYPE,
-  type CanvasCommands,
-  type CanvasKeyHint,
-  type DiagramSelection,
-  type DiagramViewProps,
-  type DrawTool,
-  type EditingApi,
-  type LayoutApi,
-  type PenSettings,
-} from './view-types';
 import {
   DEFAULT_ON_NODE_META_KEYS,
   LIBRARY_ENTRY_DND_TYPE,
@@ -159,7 +153,7 @@ const withDropTarget = (nodes: Node[], id: string | undefined): Node[] =>
  * `MouseEvent | TouchEvent` (a drag CAN start from a touch), so `.clientX` is
  * narrowed rather than assumed — same reasoning as droppedOnNodeId's shape
  * above, just for the union React Flow itself hands back here. */
-const clientPointOf = (e: MouseEvent | TouchEvent): { x: number; y: number } =>
+const clientPointOf = (e: MouseEvent | TouchEvent): Point =>
   'clientX' in e ? { x: e.clientX, y: e.clientY } : { x: e.touches[0]?.clientX ?? 0, y: e.touches[0]?.clientY ?? 0 };
 
 /** The note node id prefix. An id-based test for the filters that only need to
@@ -196,23 +190,23 @@ function Inner(props: DiagramViewProps) {
   // effect just below writes it and the note derivation far down reads it —
   // rather than next to that derivation, so nothing references it before it exists.
   const [noteEdit, setNoteEdit] = useState<{ key: string; id: string } | null>(null);
-  // Bubbles toggled in THIS session without a host to save through (view mode,
+  // Notes toggled in THIS session without a host to save through (view mode,
   // the viewer): key → open. Layered over the overlay's saved `open` flags. In
   // edit mode the badge goes to the host instead, and entering edit mode clears
   // this map (below) so edit mode shows exactly what the export will.
   const [noteOverrides, setNoteOverrides] = useState<ReadonlyMap<string, boolean>>(() => new Map());
-  // Where each threat-carrying flow's counting chip is drawn (relation id →
+  // Where each threat-carrying flow's counting badge is drawn (relation id →
   // flow coordinates, the side of the line it sits on, and the line itself),
-  // reported by the edges (NoteState.placeChip): a flow's bubble hangs off its
-  // chip, every bubble keeps off the line, and both sit on the routed curve
+  // reported by the edges (NoteState.placeBadge): a flow's note hangs off its
+  // badge, every note keeps off the line, and both sit on the routed curve
   // only the edge knows. Entries outlive their edges — a hidden flow draws no
-  // bubble, and a returning one reports again — so nothing prunes it; the
+  // note, and a returning one reports again — so nothing prunes it; the
   // derivation reads only the flows it draws.
-  const [chipSpots, setChipSpots] = useState<ReadonlyMap<string, { at: Point; away: Point; line: readonly Point[] }>>(
+  const [badgeSpots, setBadgeSpots] = useState<ReadonlyMap<string, { at: Point; away: Point; line: readonly Point[] }>>(
     () => new Map(),
   );
-  const placeChip = useCallback((relation: string, at: Point, away: Point, line: readonly Point[]) => {
-    setChipSpots((prev) => {
+  const placeBadge = useCallback((relation: string, at: Point, away: Point, line: readonly Point[]) => {
+    setBadgeSpots((prev) => {
       const was = prev.get(relation);
       const same =
         was !== undefined &&
@@ -229,11 +223,11 @@ function Inner(props: DiagramViewProps) {
   // Which end a reconnect drag grabbed ('source'/'target'), captured on start so
   // onReconnect can tell a same-node side change from a move to another node.
   const reconnectEndRef = useRef<'source' | 'target' | null>(null);
-  // The sole-relation id of the edge currently showing endpoint pin dots. Keyed
+  // The sole-relation id of the edge currently showing fixed-side dots. Keyed
   // by the stable *relation* id, not the view-edge id (which changes whenever a
-  // pin toggles — pins are baked into the aggregation key), so the dots survive
-  // pin/unpin instead of vanishing with the old id.
-  const [pinEdgeRel, setPinEdgeRel] = useState<string | null>(null);
+  // side is fixed or freed — fixed sides are baked into the aggregation key), so
+  // the dots survive it instead of vanishing with the old id.
+  const [fixedSideRelation, setFixedSideRelation] = useState<string | null>(null);
   // Double-click-to-enter / double-click-to-add-label are detected from click
   // events (see useClickCorrelation): the correlation protocol, its window
   // predicate, and the pane fall-through guards all live in that one hook so
@@ -276,8 +270,8 @@ function Inner(props: DiagramViewProps) {
     // a fresh arrow each render is fine: the hook only calls this from the
     // plane-switch branch, it never depends on its identity. Both open editors
     // go: each is keyed to something the new plane may not draw at all (a node,
-    // a threat note), and a field left open would reopen on the way back —
-    // and the session's bubble toggles, which were about elements this plane
+    // a note), and a field left open would reopen on the way back —
+    // and the session's note toggles, which were about elements this plane
     // may not draw.
     onPlaneSwitch: () => {
       setLabelEdit(null);
@@ -290,7 +284,7 @@ function Inner(props: DiagramViewProps) {
 
   const editing = props.mode === 'edit';
 
-  // Decision 4 of the bubbles spec: edit mode shows the saved state. A toggle
+  // Edit mode shows the saved state. A toggle
   // made while reading would otherwise mask the state the badge is about to
   // save, and the first click in edit mode would appear to do nothing.
   useEffect(() => {
@@ -302,7 +296,7 @@ function Inner(props: DiagramViewProps) {
   // id), but nothing else clears them on that path: useDrillNavigation resets
   // itself on a new model WITHOUT going through onPlaneSwitch, and the studio
   // does not re-key <DiagramView>. A toggle made while reading diagram A would
-  // otherwise open — or hide — a colliding bubble on diagram B.
+  // otherwise open — or hide — a colliding note on diagram B.
   useEffect(() => {
     setNoteOverrides(new Map());
   }, [props.model.id]);
@@ -329,8 +323,8 @@ function Inner(props: DiagramViewProps) {
     setLabelEdit({ kind: 'node', id: labelRequest.id });
     // ...and make it React Flow's sole selection. The host's own select() never
     // reaches React Flow's copy of the nodes, and the selection ring, the image
-    // resizer and the `+` chip all render off THAT flag — so without this the
-    // chip would stay on the node the add came from and a `+`, type, `+` chain
+    // resizer and the quick-add button all render off THAT flag — so without this the
+    // button would stay on the node the add came from and a `+`, type, `+` chain
     // would fan siblings off one source instead of walking down the chain. A
     // label request is by definition "this is the node you are working on now".
     // A request almost always names a node the host has JUST created, and elk
@@ -415,8 +409,8 @@ function Inner(props: DiagramViewProps) {
       focus: drillRoot !== undefined ? undefined : focus,
       pins: effectivePins,
       activeLayers: props.activeLayers,
-      ...(props.plane !== undefined ? { plane: props.plane } : {}),
-      ...(drillRoot !== undefined ? { root: drillRoot } : {}),
+      plane: props.plane,
+      root: drillRoot,
     });
     // A notation may keep some relation kinds off the canvas (plan roles become
     // chips). Only the DRAWN set is filtered: layoutEdges keep every relation,
@@ -451,10 +445,7 @@ function Inner(props: DiagramViewProps) {
   );
   // Small chips in a node's badge row (the plan's role chips), derived the same
   // way as nodeColors: id-keyed, one derivation per model/plane.
-  const nodeBadges = useMemo(
-    () => profile.node?.badges?.(props.model, props.plane),
-    [profile, props.model, props.plane],
-  );
+  const nodeChips = useMemo(() => profile.node?.chips?.(props.model, props.plane), [profile, props.model, props.plane]);
 
   const legend = useLegendState({
     model: props.model,
@@ -467,7 +458,7 @@ function Inner(props: DiagramViewProps) {
     canToggleLayers: props.onToggleLayer !== undefined,
     strokes,
     drawingsVisible,
-    ...(nodeColors !== undefined ? { nodeColors } : {}),
+    nodeColors,
   });
   const { legendConfig, showLegend, setShowLegend, setLegendSize, legendRowList, legendReserveRef } = legend;
 
@@ -495,7 +486,7 @@ function Inner(props: DiagramViewProps) {
   // Ephemeral view-mode drag positions for the active plane; cleared on a plane
   // switch, model reload, or edit-mode toggle (edit persists positions via the
   // saved overlay, so a returning view must start from that, not a stale drag).
-  const [viewPositions, setViewPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [viewPositions, setViewPositions] = useState<Record<string, Point>>({});
   useEffect(() => {
     setViewPositions({});
   }, [props.model, props.plane, editing]);
@@ -631,7 +622,7 @@ function Inner(props: DiagramViewProps) {
   // sums the on-screen chain, so with no shift the two are the same float and
   // a saved position is exactly the on-screen one.
   const containerBases = useMemo(() => {
-    const bases = new Map<string, { x: number; y: number }>();
+    const bases = new Map<string, Point>();
     if (arrangedGeometry === null) return bases;
     const walk = (n: ViewNode, ox: number, oy: number) => {
       const g = arrangedGeometry.get(n.id);
@@ -717,7 +708,7 @@ function Inner(props: DiagramViewProps) {
       hiddenCounts,
       typeRegistry,
       icons,
-      ...(props.model.typeColors !== undefined ? { typeColors: props.model.typeColors } : {}),
+      typeColors: props.model.typeColors,
       onOpenLink: props.onOpenLink,
       onToggleExpand: props.onToggleExpand,
       onEnterNode: enterNode,
@@ -735,9 +726,9 @@ function Inner(props: DiagramViewProps) {
       onAddThreat: edit?.onAddThreat,
       stylePreset: preset.rough !== undefined ? preset : undefined,
       notation: props.notation,
-      ...(nodeColors !== undefined ? { nodeColors } : {}),
-      ...(nodeBadges !== undefined ? { nodeBadges } : {}),
-      ...(profile.node?.resizable !== undefined ? { resizable: profile.node.resizable } : {}),
+      nodeColors,
+      nodeChips,
+      resizable: profile.node?.resizable,
     }),
     [
       metaKeys,
@@ -762,7 +753,7 @@ function Inner(props: DiagramViewProps) {
       preset,
       props.notation,
       nodeColors,
-      nodeBadges,
+      nodeChips,
       profile,
     ],
   );
@@ -774,15 +765,16 @@ function Inner(props: DiagramViewProps) {
       const geo = arrangedGeometry.get(n.id);
       if (geo === undefined) return;
       const data = buildNodeDataCached(n, nodeDataCtx);
+      const dragLocked = fixed.has(n.id) && profile.node?.draggableWhenFixed?.(n.node) !== true;
       out.push(
         toRfNode({
           id: n.id,
           position: { x: geo.x, y: geo.y },
           data,
-          ...(parent !== undefined ? { parentId: parent } : {}),
+          parentId: parent,
           // A node the notation fixed (a fishbone's) takes no drag in either
           // mode — not even the pixel of jitter in a click, which React Flow
-          // counts as one and which used to save a pin at the spot the node
+          // counts as one and which used to save a position at the spot the node
           // already stood on: invisible until the fish next changed shape and
           // left the node behind with its lines floating. Still selectable —
           // which needs `nopan` back: React Flow drops it from a non-draggable
@@ -794,9 +786,8 @@ function Inner(props: DiagramViewProps) {
           // plan zone's or event's displacement is read as days): it drags,
           // and `fixed` still keeps the overlay from ever storing a position
           // for it.
-          ...(fixed.has(n.id) && profile.node?.draggableWhenFixed?.(n.node) !== true
-            ? { draggable: false as const, ...(editing ? { className: 'nopan' } : {}) }
-            : {}),
+          draggable: dragLocked ? false : undefined,
+          className: dragLocked && editing ? 'nopan' : undefined,
           // Membership is edited in the node panel, not by dragging away, so a
           // child never leaves its box — the box gives way instead, live while
           // dragging (React Flow's expandParent) and for good once dropped (the
@@ -838,7 +829,7 @@ function Inner(props: DiagramViewProps) {
                   // (width/height: 100%). Without an explicit inline size here, that
                   // wrapper collapses to its border-only intrinsic size, so the
                   // layout's diameter must be applied explicitly, same as image/shape
-                  // leaves above. Ordinary boxes and CLD text chips must NOT go
+                  // leaves above. Ordinary boxes and CLD text nodes must NOT go
                   // through this branch — forcing sizes there would change their
                   // existing CSS-driven sizing. …and a fishbone leaf, whose layout
                   // sizes it (see LAYOUT_SIZED_TYPES). An EMPTY git lane is the
@@ -851,9 +842,9 @@ function Inner(props: DiagramViewProps) {
                   n.state === 'leaf' &&
                     n.node.type !== undefined &&
                     (FORCED_SIZE_SHAPES.has(typeRegistry.resolve(n.node.type).shape) ||
-                      ACTIVITY_CHROME_TYPES.has(n.node.type) ||
+                      isActivityChrome(n.node.type) ||
                       LAYOUT_SIZED_TYPES.has(n.node.type) ||
-                      (profile.id === 'git-graph' && n.node.type === 'branch'))
+                      (profile.id === GIT_NOTATION && n.node.type === 'branch'))
                   ? { style: { width: geo.width, height: geo.height } }
                   : // An ordinary box keeps its CSS sizing, but never narrower than
                     // the box elk laid out (box-size.ts estimates it): routes and
@@ -862,7 +853,7 @@ function Inner(props: DiagramViewProps) {
                     // A FLOOR, not a width — a label the estimate undershot still
                     // grows the box rather than wrapping inside it. Only where
                     // elk placed the node from such an estimate: a notation's own
-                    // layout spaces its boxes off LEAF_SIZE, and a CLD chip is
+                    // layout spaces its boxes off LEAF_SIZE, and a CLD text node is
                     // deliberately free of the box minimum.
                     profile.layout === undefined &&
                       !(profile.node?.typelessAsText === true && n.node.type === undefined)
@@ -876,12 +867,12 @@ function Inner(props: DiagramViewProps) {
     return out;
   }, [compiled, arrangedGeometry, nodeDataCtx, editing, typeRegistry, profile, fixed]);
 
-  // Threat notes: one synthetic node per element that carries threats, comments
+  // Notes: one synthetic node per element that carries threats, comments
   // or links. Derived from the ARRANGED geometry (so a note follows its element
   // through drags and container growth) and never handed to elk — adding a
   // threat must not move a single box. A box's note is parented like the box
   // (parent-relative, rides inside the container); a flow's note is top-level.
-  // Each hangs off its badge: an unmoved bubble takes the first spot next to
+  // Each hangs off its badge: an unmoved note takes the first spot next to
   // the badge that covers nothing (note-place.ts), a dragged one sits at badge
   // + its saved offset.
   const planeKey = layoutPlaneKey(props.model, props.plane);
@@ -910,14 +901,14 @@ function Inner(props: DiagramViewProps) {
               if (editing && onToggleNote !== undefined) onToggleNote(target, next);
               else setNoteOverrides((prev) => new Map(prev).set(key, next));
             },
-            placeChip,
+            placeBadge,
           },
-    [noNotes, openNotes, editing, onToggleNote, placeChip],
+    [noNotes, openNotes, editing, onToggleNote, placeBadge],
   );
   const noteNodes = useMemo((): Node[] => {
     if (noNotes || openNotes.size === 0 || arrangedGeometry === null) return [];
     // Absolute boxes: the placement runs in one space for every element and
-    // every obstacle (arrangedGeometry is parent-relative), and a flow's chip
+    // every obstacle (arrangedGeometry is parent-relative), and a flow's badge
     // is reported in flow coordinates.
     const abs = new Map<string, Rect>();
     const obstacles: Rect[] = [];
@@ -926,8 +917,8 @@ function Inner(props: DiagramViewProps) {
       if (g === undefined) return;
       const rect = { x: g.x + ox, y: g.y + oy, width: g.width, height: g.height };
       abs.set(n.id, rect);
-      // an expanded container is hollow (its members' bubbles belong inside);
-      // everything else is a box a bubble must not cover
+      // an expanded container is hollow (its members' notes belong inside);
+      // everything else is a box a note must not cover
       obstacles.push(...obstaclesOf([{ rect, kind: n.state === 'expanded' ? 'group' : 'box' }]));
       n.children.forEach((c) => walkAbs(c, g.x + ox, g.y + oy));
     };
@@ -936,8 +927,8 @@ function Inner(props: DiagramViewProps) {
     // comments (see DiagramEdge) — so no note lies across one. Other lines and
     // edge labels are not obstacles: a note may cover them.
     for (const e of compiled.edges) {
-      const r = e.constituents.length === 1 ? e.constituents[0] : undefined;
-      const spot = r !== undefined ? chipSpots.get(r.id) : undefined;
+      const r = soleRelation(e);
+      const spot = r !== undefined ? badgeSpots.get(r.id) : undefined;
       if (spot !== undefined) obstacles.push(...lineObstacles(spot.line));
     }
     const out: Node[] = [];
@@ -952,7 +943,7 @@ function Inner(props: DiagramViewProps) {
       /** the element's box, absolute; null for a flow */
       element: Rect | null,
       parentId?: string,
-      /** a flow: the side of the line its chip sits on */
+      /** a flow: the side of the line its badge sits on */
       away?: Point,
     ) => {
       const key = elementKey(target);
@@ -972,8 +963,8 @@ function Inner(props: DiagramViewProps) {
         p !== undefined && (p.dx !== 0 || p.dy !== 0)
           ? { x: badge.x + p.dx, y: badge.y + p.dy }
           : placeNote(badge, element, size, obstacles, away);
-      // earlier bubbles are obstacles to later ones (model order), so two
-      // open bubbles never stack
+      // earlier notes are obstacles to later ones (model order), so two
+      // open notes never stack
       obstacles.push({ ...at, ...size });
       // back to the parent's frame: a box's note is parented like the box
       const shift = (parentId !== undefined ? abs.get(parentId) : undefined) ?? { x: 0, y: 0 };
@@ -986,12 +977,12 @@ function Inner(props: DiagramViewProps) {
         anchor: { x: badge.x - shift.x, y: badge.y - shift.y },
         badge,
         editing,
-        ...(noteEdit !== null && noteEdit.key === key ? { editingId: noteEdit.id } : {}),
-        ...(offerThreat && edit?.onAddThreat !== undefined ? { onAddThreat: edit.onAddThreat } : {}),
-        ...(editing && edit?.onRetitleThreat !== undefined ? { onRetitleThreat: edit.onRetitleThreat } : {}),
-        ...(editing && edit?.onSetThreatStatus !== undefined ? { onSetThreatStatus: edit.onSetThreatStatus } : {}),
-        ...(editing && edit?.onEditThreatText !== undefined ? { onEditThreatText: edit.onEditThreatText } : {}),
-        ...(props.onOpenLink !== undefined ? { onOpenLink: props.onOpenLink } : {}),
+        editingId: noteEdit !== null && noteEdit.key === key ? noteEdit.id : undefined,
+        onAddThreat: offerThreat ? edit?.onAddThreat : undefined,
+        onRetitleThreat: editing ? edit?.onRetitleThreat : undefined,
+        onSetThreatStatus: editing ? edit?.onSetThreatStatus : undefined,
+        onEditThreatText: editing ? edit?.onEditThreatText : undefined,
+        onOpenLink: props.onOpenLink,
         onEndEdit: () => setNoteEdit(null),
       };
       out.push(
@@ -999,7 +990,7 @@ function Inner(props: DiagramViewProps) {
           id: NOTE_PREFIX + key,
           position: { x: at.x - shift.x, y: at.y - shift.y },
           data,
-          ...(parentId !== undefined ? { parentId } : {}),
+          parentId,
           draggable: editing,
         }),
       );
@@ -1022,7 +1013,7 @@ function Inner(props: DiagramViewProps) {
       // threats/comments/links belong to the view that really draws it, or the
       // same note would appear twice, in two coordinate frames. What counts as
       // content is core's own predicate — the one layout hygiene prunes by, so
-      // a bubble drawn here always keeps its saved place (see pruneNotes).
+      // a note drawn here always keeps its saved place (see pruneNotes).
       if (n.external === undefined && hasNoteContent(n.node))
         push({ node: n.id }, n.node.name, threats, comments, links, badgeCenter(rect, badgeKindOf(n)), rect, parent);
       n.children.forEach((c) => walk(c, n.id));
@@ -1031,17 +1022,17 @@ function Inner(props: DiagramViewProps) {
     // compiled.edges is the DRAWN set, so a layer-hidden flow takes its note
     // with it. An aggregated edge gets none: its threats and comments belong to
     // particular relations, and a note on the bundle could not say which.
-    // (A relation carries no `links` field, so a flow's bubble never lists any.)
+    // (A relation carries no `links` field, so a flow's note never lists any.)
     for (const e of compiled.edges) {
-      const r = e.constituents.length === 1 ? e.constituents[0] : undefined;
+      const r = soleRelation(e);
       if (r === undefined || !hasNoteContent(r)) continue;
       const a = abs.get(e.from);
       const b = abs.get(e.to);
       if (a === undefined || b === undefined) continue;
-      // The chip's spot arrives from the edge a frame after it first draws;
+      // The badge's spot arrives from the edge a frame after it first draws;
       // until then the straight-line midpoint of the two ends stands in.
-      const chip = chipSpots.get(r.id);
-      const at = chip?.at ?? {
+      const badgeSpot = badgeSpots.get(r.id);
+      const at = badgeSpot?.at ?? {
         x: (a.x + a.width / 2 + b.x + b.width / 2) / 2,
         y: (a.y + a.height / 2 + b.y + b.height / 2) / 2,
       };
@@ -1055,7 +1046,7 @@ function Inner(props: DiagramViewProps) {
         at,
         null,
         undefined,
-        chip?.away,
+        badgeSpot?.away,
       );
     }
     return out;
@@ -1064,14 +1055,14 @@ function Inner(props: DiagramViewProps) {
     // nodeDataCtx makes, and for the same reason: a stale callback would edit
     // the wrong document, or open a link through a host that is no longer there.
     // props.notation is here because the threat offer is gated on it (see
-    // offerThreat): switching to a threat-model plane has to redraw the bubbles.
+    // offerThreat): switching to a threat-model plane has to redraw the notes.
   }, [
     noNotes,
     openNotes,
     arrangedGeometry,
     compiled,
     notePlacements,
-    chipSpots,
+    badgeSpots,
     editing,
     edit?.onAddThreat,
     edit?.onRetitleThreat,
@@ -1146,7 +1137,7 @@ function Inner(props: DiagramViewProps) {
         containerBasesRef.current,
         containerShiftsRef.current,
         // an activity lane is banded at a fixed spot (arrangeActivityFrames)
-        (parentId) => typeOf(parentId) === 'activity-lane' || typeOf(parentId) === 'activity-frame',
+        (parentId) => isActivityBand(typeOf(parentId)),
       );
       // displacement from the ARRANGED spot (parent-relative on both sides):
       // a notation that derives positions reads this, not the position
@@ -1180,7 +1171,7 @@ function Inner(props: DiagramViewProps) {
   // are never dropped into anything), while an actor or a plain box is
   // exactly what a zone receives — nested or not, which is what `fixed` (a
   // layout fact, not a statement of intent) got wrong here before.
-  const dropTargetFor = (draggedId: string, point: { x: number; y: number }): string | undefined => {
+  const dropTargetFor = (draggedId: string, point: Point): string | undefined => {
     const dropTarget = profile.node?.dropTarget;
     if (dropTarget === undefined) return undefined;
     const draggedNode = props.model.nodes.find((n) => n.id === draggedId);
@@ -1314,7 +1305,7 @@ function Inner(props: DiagramViewProps) {
   useLayoutEffect(() => {
     // ...except a claim left by a label request whose node had not been laid out
     // yet (see that effect above): the first resync that carries the node hands
-    // it the selection, so the ring and the `+` chip land on the box the caret
+    // it the selection, so the ring and the quick-add button land on the box the caret
     // is in. Read before the updater so the ref is cleared exactly once.
     // The claim is still checked against the BOXES: a label request always names
     // a model node, and a note is never one of them.
@@ -1347,9 +1338,9 @@ function Inner(props: DiagramViewProps) {
       // External stubs (compiled.externals) are placeholders for an off-frame
       // node while drilled — not real nodes in the model — so writing their
       // `__ext__:` ids into the layout overlay would corrupt it for every
-      // other view of the same plane. Drop them from the snapshot. Threat notes
+      // other view of the same plane. Drop them from the snapshot. Notes
       // go the same way: a note's place is an offset in `layout.notes`, so a
-      // freeze that wrote its `note:` id into `layout.planes` would pin a
+      // freeze that wrote its `note:` id into `layout.planes` would save a
       // phantom box there for good.
       snapshotPositions: () =>
         Object.fromEntries(
@@ -1410,7 +1401,7 @@ function Inner(props: DiagramViewProps) {
         const frame = exportFrame(bounds, opts);
         const before = reactFlow.getViewport();
         // Move the content to 1:1 inside a frame cut to its size, let the
-        // viewport-driven layers (drawings, overlays) catch up, then clone.
+        // viewport-driven layers (drawings, canvas overlays) catch up, then clone.
         await reactFlow.setViewport(frame.viewport);
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         try {
@@ -1438,21 +1429,21 @@ function Inner(props: DiagramViewProps) {
       onMoveEdgeLabel: edit?.onMoveEdgeLabel,
       onSetEdgeSide: edit?.onSetEdgeSide,
       onAddThreat: edit?.onAddThreat,
-      pinEdgeRel,
+      fixedSideRelation,
       pendingAdd: addLabelAt,
       onPendingAddConsumed: () => setAddLabelAt(null),
       stylePreset: preset.rough !== undefined ? preset : undefined,
       notation: props.notation,
-      ...(routing !== undefined ? { routing } : {}),
+      routing,
       routes,
       laidAt,
       labelSpots,
-      ...(labelMoves !== undefined ? { labelMoves } : {}),
+      labelMoves,
       // Movable only where the move can go somewhere: a host that listens for
       // it (the studio's Save positions chip). The published page and the PNG
       // export pass no listener, so their labels stay put.
-      ...(!editing && props.onViewLabelMovesChange !== undefined ? { onViewMoveEdgeLabel: moveViewLabel } : {}),
-      ...(edgeColors !== undefined ? { edgeColors } : {}),
+      onViewMoveEdgeLabel: !editing && props.onViewLabelMovesChange !== undefined ? moveViewLabel : undefined,
+      edgeColors,
     }),
     [
       kindRegistry,
@@ -1462,7 +1453,7 @@ function Inner(props: DiagramViewProps) {
       edit?.onMoveEdgeLabel,
       edit?.onSetEdgeSide,
       edit?.onAddThreat,
-      pinEdgeRel,
+      fixedSideRelation,
       addLabelAt,
       preset,
       props.notation,
@@ -1481,7 +1472,7 @@ function Inner(props: DiagramViewProps) {
     if (placedGeometry === null) return [];
     return compiled.edges.map((e) => {
       const data = buildEdgeDataCached(e, edgeDataCtx);
-      const soleRelation = e.constituents.length === 1 ? e.constituents[0] : undefined;
+      const relation = soleRelation(e);
       const diffClass = withDiffClass(
         undefined,
         diffMarks !== undefined ? diffEdgeStatus(e.constituents, diffMarks) : undefined,
@@ -1491,8 +1482,8 @@ function Inner(props: DiagramViewProps) {
         source: e.from,
         target: e.to,
         data,
-        reconnectable: editing && soleRelation !== undefined,
-        ...(diffClass !== undefined ? { className: diffClass } : {}),
+        reconnectable: editing && relation !== undefined,
+        className: diffClass,
       });
     });
   }, [compiled, placedGeometry, edgeDataCtx, editing, diffMarks]);
@@ -1614,7 +1605,7 @@ function Inner(props: DiagramViewProps) {
 
   return (
     <LoopHighlightContext.Provider value={loopHighlight}>
-      {/* the badges and chips inside read this to know whether their bubble is
+      {/* the badges inside read this to know whether their note is
         open and how to flip it — one provider around the whole canvas, the
         LoopHighlightContext precedent */}
       <NoteStateContext.Provider value={noteState}>
@@ -1629,7 +1620,7 @@ function Inner(props: DiagramViewProps) {
             {
               width: '100%',
               height: '100%',
-              ...(preset.fontFamily !== undefined ? { '--dg-style-font': preset.fontFamily } : {}),
+              '--dg-style-font': preset.fontFamily,
               ...(preset.cssVars ?? {}),
             } as CSSProperties
           }
@@ -1649,7 +1640,7 @@ function Inner(props: DiagramViewProps) {
                 : '';
             if (entryId !== undefined && entryId !== '') {
               e.preventDefault();
-              // A drop that landed on a threat note is a drop on open canvas: a
+              // A drop that landed on a note is a drop on open canvas: a
               // `note:` id names no model node, and the host writes this straight
               // through as a containment parent.
               const hit = droppedOnNodeId(e);
@@ -1684,11 +1675,11 @@ function Inner(props: DiagramViewProps) {
             colorMode={props.colorMode ?? 'light'}
             connectionMode={ConnectionMode.Loose}
             onNodeClick={(e, node) => {
-              setPinEdgeRel(null);
+              setFixedSideRelation(null);
               corr.clearEdgeClick(); // a node click breaks any pending edge-add correlation
               // A note is about an element: clicking it selects THAT (the note is
               // not selectable itself — see toRfNoteNode). The relation branch
-              // repeats what onEdgeClick does *here*: the host selection, the pin
+              // repeats what onEdgeClick does *here*: the host selection, the fixed-side
               // dots, and clearing React Flow's node selection. What it cannot
               // carry is React Flow's OWN edge selection — that is set inside React
               // Flow's edge click handler, which a node click never runs — so an
@@ -1701,11 +1692,11 @@ function Inner(props: DiagramViewProps) {
               if (node.type === 'note') {
                 corr.clearNodeClick();
                 const target = (node.data as unknown as NoteData).target;
-                if ('node' in target) {
+                if (isNodeRef(target)) {
                   setSelectedNode(target.node);
                   // ...and move React Flow's OWN selection with it. The note is not
                   // selectable, so the flag would otherwise stay on whatever box was
-                  // clicked before — and the ring, the image resizer, the `+` chip
+                  // clicked before — and the ring, the image resizer, the quick-add button
                   // and deleteKeyCode/onDelete all render off THAT flag (the same
                   // hazard the editLabelRequest effect documents). Without this,
                   // Backspace would delete the previous box while the panel shows
@@ -1713,11 +1704,9 @@ function Inner(props: DiagramViewProps) {
                   setRfNodes((prev) => soleSelection(prev, target.node));
                   props.onSelect?.({ kind: 'node', id: target.node });
                 } else {
-                  const ve = compiled.edges.find(
-                    (x) => x.constituents.length === 1 && x.constituents[0]?.id === target.relation,
-                  );
+                  const ve = compiled.edges.find((x) => soleRelation(x)?.id === target.relation);
                   if (ve !== undefined) {
-                    if (editing) setPinEdgeRel(target.relation);
+                    if (editing) setFixedSideRelation(target.relation);
                     setSelectedNode(null);
                     // The same hazard, with no box to move to. onEdgeClick is safe
                     // for free — React Flow clears the node selection when its own
@@ -1771,9 +1760,9 @@ function Inner(props: DiagramViewProps) {
             onReconnect={(oldEdge, conn) => {
               if (!editing || conn.source === null || conn.target === null) return;
               const viewEdge = compiled.edges.find((x) => x.id === oldEdge.id);
-              const relation = viewEdge?.constituents.length === 1 ? viewEdge.constituents[0] : undefined;
+              const relation = viewEdge !== undefined ? soleRelation(viewEdge) : undefined;
               if (relation === undefined) return;
-              const endPin = reconnectPin(
+              const endSide = reconnectSide(
                 reconnectEndRef.current,
                 {
                   source: conn.source,
@@ -1783,7 +1772,7 @@ function Inner(props: DiagramViewProps) {
                 },
                 relation,
               );
-              edit?.onReconnect?.(relation.id, conn.source, conn.target, endPin);
+              edit?.onReconnect?.(relation.id, conn.source, conn.target, endSide);
             }}
             onReconnectEnd={() => {
               reconnectEndRef.current = null;
@@ -1901,11 +1890,13 @@ function Inner(props: DiagramViewProps) {
                 if (
                   rf !== undefined &&
                   frameId !== undefined &&
-                  (rf.data as { typeId?: string }).typeId === 'activity-lane'
+                  (rf.data as { typeId?: string }).typeId === ACTIVITY_LANE_TYPE
                 ) {
                   const arranged = arrangedRef.current;
                   const lanes = rfNodesRef.current
-                    .filter((n) => n.parentId === frameId && (n.data as { typeId?: string }).typeId === 'activity-lane')
+                    .filter(
+                      (n) => n.parentId === frameId && (n.data as { typeId?: string }).typeId === ACTIVITY_LANE_TYPE,
+                    )
                     .flatMap((n) => {
                       const g = arranged?.get(n.id);
                       return g === undefined ? [] : [{ id: n.id, y: g.y, height: g.height }];
@@ -1941,15 +1932,15 @@ function Inner(props: DiagramViewProps) {
             }}
             onEdgeClick={(e, edge) => {
               const viewEdge = compiled.edges.find((x) => x.id === edge.id);
-              // pin dots follow the sole relation (edit mode, single-relation edges)
-              const soleRel = viewEdge?.constituents.length === 1 ? viewEdge.constituents[0]?.id : undefined;
-              setPinEdgeRel(editing && soleRel !== undefined ? soleRel : null);
+              // fixed-side dots follow the sole relation (edit mode, single-relation edges)
+              const soleRel = viewEdge !== undefined ? soleRelation(viewEdge)?.id : undefined;
+              setFixedSideRelation(editing && soleRel !== undefined ? soleRel : null);
               setSelectedNode(null);
               corr.clearNodeClick(); // an edge click breaks any pending node double-click
               props.onSelect?.({
                 kind: 'edge',
                 id: edge.id,
-                ...(viewEdge !== undefined ? { constituentIds: viewEdge.constituents.map((c) => c.id) } : {}),
+                constituentIds: viewEdge?.constituents.map((c) => c.id),
               });
               // Double-click-to-add: detect the SECOND click of a double-click from
               // click events (the browser's `dblclick` is unreliable once the first
@@ -1993,7 +1984,7 @@ function Inner(props: DiagramViewProps) {
                   void reactFlow.fitView({ padding: 0.1, duration: 500 });
                 }
               } else {
-                setPinEdgeRel(null);
+                setFixedSideRelation(null);
                 corr.clearAll(); // a pane deselect breaks both pending correlations
                 setSelectedNode(null);
                 props.onSelect?.(null);
@@ -2049,7 +2040,7 @@ function Inner(props: DiagramViewProps) {
                   : {
                       points: pen.live,
                       width: penSettings?.width ?? DEFAULT_STROKE_WIDTH,
-                      ...(penSettings?.color !== undefined ? { color: penSettings.color } : {}),
+                      color: penSettings?.color,
                     }
               }
               visible={drawingsVisible && drillRoot === undefined}
@@ -2071,14 +2062,14 @@ function Inner(props: DiagramViewProps) {
               <Panel position={legendConfig?.position ?? 'bottom-right'}>
                 <Legend
                   rows={legendRowList}
-                  {...(legendConfig?.title !== undefined ? { title: legendConfig.title } : {})}
+                  title={legendConfig?.title}
                   interactive={props.chrome !== false}
-                  {...(props.onToggleLayer !== undefined ? { onToggleLayer: props.onToggleLayer } : {})}
+                  onToggleLayer={props.onToggleLayer}
                   // Same derivation as `interactive` above: Legend decides "is this
                   // row a button" from the handler alone, so a chrome-less host (the
                   // PNG export) must get no handler — or the export would carry a
                   // focusable control nothing can press.
-                  {...(props.chrome !== false ? { onToggleDrawings: () => setDrawingsVisible((v) => !v) } : {})}
+                  onToggleDrawings={props.chrome !== false ? () => setDrawingsVisible((v) => !v) : undefined}
                   icons={icons}
                   onMeasure={setLegendSize}
                 />
@@ -2159,19 +2150,15 @@ function Inner(props: DiagramViewProps) {
               </Controls>
             )}
             {showLoops && loopEdges !== null && placedGeometry !== null && (
-              <LoopLabelLayer
-                edges={loopEdges}
-                {...(preset.rough !== undefined ? { rough: preset.rough } : {})}
-                nodeFilter={editing ? null : selectedNode}
-              />
+              <LoopLabelLayer edges={loopEdges} rough={preset.rough} nodeFilter={editing ? null : selectedNode} />
             )}
-            {profile.overlay === 'git-lanes' && placedGeometry !== null && (
+            {profile.canvasOverlay === 'git-lanes' && placedGeometry !== null && (
               <GitLanesOverlay model={props.model} plane={props.plane} />
             )}
-            {profile.overlay === 'order-bands' && placedGeometry !== null && (
+            {profile.canvasOverlay === 'order-bands' && placedGeometry !== null && (
               <OrderBandsOverlay model={props.model} direction={flowDirection} />
             )}
-            {profile.overlay === 'time-axis' && placedGeometry !== null && (
+            {profile.canvasOverlay === 'time-axis' && placedGeometry !== null && (
               <TimeAxisOverlay model={props.model} plane={props.plane} today={props.today} />
             )}
           </ReactFlow>

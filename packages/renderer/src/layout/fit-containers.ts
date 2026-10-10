@@ -1,4 +1,4 @@
-import type { ViewNode } from '@diagc/core/internal';
+import type { Point, ViewNode } from '@diagc/core/internal';
 import type { Pad } from './layout-graph';
 
 interface Geo {
@@ -107,11 +107,11 @@ export function fitContainers<T extends Geo>(
  * @param ownShift the node's own shift, when it is a grown container
  */
 export function savedPosition(
-  onScreen: { x: number; y: number },
-  parentNow: { x: number; y: number },
-  parentBase: { x: number; y: number },
+  onScreen: Point,
+  parentNow: Point,
+  parentBase: Point,
   ownShift: Shift | undefined,
-): { x: number; y: number } {
+): Point {
   return {
     x: onScreen.x + (parentNow.x - parentBase.x) - (ownShift?.dx ?? 0),
     y: onScreen.y + (parentNow.y - parentBase.y) - (ownShift?.dy ?? 0),
@@ -121,7 +121,7 @@ export function savedPosition(
 interface ScreenNode {
   id: string;
   parentId?: string | undefined;
-  position: { x: number; y: number };
+  position: Point;
 }
 
 const ORIGIN = { x: 0, y: 0 };
@@ -141,20 +141,20 @@ const ORIGIN = { x: 0, y: 0 };
  * upward, so a child dropped past that wall is saved on it instead.
  */
 export function savedPositions(
-  onScreen: Readonly<Record<string, { x: number; y: number }>>,
+  onScreen: Readonly<Record<string, Point>>,
   nodes: readonly ScreenNode[],
-  bases: ReadonlyMap<string, { x: number; y: number }>,
+  bases: ReadonlyMap<string, Point>,
   shifts: ReadonlyMap<string, Shift>,
   fixedOrigin: (parentId: string) => boolean = () => false,
-): Record<string, { x: number; y: number }> {
+): Record<string, Point> {
   const byId = new Map(nodes.map((n) => [n.id, n] as const));
-  const absoluteOf = (id: string | undefined): { x: number; y: number } => {
+  const absoluteOf = (id: string | undefined): Point => {
     const n = id === undefined ? undefined : byId.get(id);
     if (n === undefined) return ORIGIN;
     const p = absoluteOf(n.parentId);
     return { x: p.x + n.position.x, y: p.y + n.position.y };
   };
-  const out: Record<string, { x: number; y: number }> = {};
+  const out: Record<string, Point> = {};
   for (const [id, pos] of Object.entries(onScreen)) {
     const parentId = byId.get(id)?.parentId;
     const parentNow = absoluteOf(parentId);

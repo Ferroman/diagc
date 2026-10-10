@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, type FocusEvent, type KeyboardEvent, type MutableRefObject } from 'react';
 import type { Node } from '@xyflow/react';
+import type { Point } from '@diagc/core/internal';
 
-export type Positions = Record<string, { x: number; y: number }>;
+export type Positions = Record<string, Point>;
 
 export interface NudgeInput {
   /** off for the chrome-less export (no one at the keyboard) and while the pen/laser owns the canvas */
@@ -20,7 +21,7 @@ export const NUDGE_STEP = 5;
 export const NUDGE_SHIFT_FACTOR = 4;
 export const NUDGE_IDLE_MS = 300;
 
-const ARROWS: Record<string, { x: number; y: number }> = {
+const ARROWS: Record<string, Point> = {
   ArrowUp: { x: 0, y: -1 },
   ArrowDown: { x: 0, y: 1 },
   ArrowLeft: { x: -1, y: 0 },

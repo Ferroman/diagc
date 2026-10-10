@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { simplifyStroke } from './drawings';
+import type { Point } from '@diagc/core/internal';
 
 type Handler = (e: ReactPointerEvent<HTMLElement>) => void;
 
@@ -13,7 +14,7 @@ export interface PenHandlers {
 export interface PenOptions {
   enabled: boolean;
   /** screen → flow coordinates (reactFlow.screenToFlowPosition) */
-  toFlow: (p: { x: number; y: number }) => { x: number; y: number };
+  toFlow: (p: Point) => Point;
   /** one finished stroke: rounded flow points, simplified unless `simplify` is false */
   onStroke: (points: number[]) => void;
   /** RDP-simplify the finished stroke (default true). The pen wants it — the

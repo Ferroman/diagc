@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { PLAN_ROLES, type PlanRole } from '@diagc/core/internal';
-import { ROLE_LABEL, type NodeBadge } from '../notations';
+import { ROLE_LABEL, type NodeChip } from '../notations';
 import type { EditingApi } from '../canvas/view-types';
 
 /**
@@ -41,7 +41,7 @@ export function RoleChipMenu({
   zoneId,
   onSetRole,
 }: {
-  chip: NodeBadge;
+  chip: NodeChip;
   className: string;
   role: PlanRole;
   actorId: string;
@@ -132,8 +132,8 @@ export function RoleChipMenu({
         title={chip.title}
         aria-haspopup="menu"
         aria-expanded={open}
-        {...(open ? { 'aria-controls': menuId } : {})}
-        {...(chip.color !== undefined ? { style: { '--dg-chip': chip.color } as CSSProperties } : {})}
+        aria-controls={open ? menuId : undefined}
+        style={chip.color !== undefined ? ({ '--dg-chip': chip.color } as CSSProperties) : undefined}
         // Stops the mousedown/click from reaching the canvas underneath (which
         // would select/deselect the zone the chip sits on) — the same
         // stopPropagation pair QuickAddButton uses for the same reason.

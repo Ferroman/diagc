@@ -1,4 +1,4 @@
-import type { LayoutDirection } from '@diagc/core/internal';
+import type { LayoutDirection, Point } from '@diagc/core/internal';
 
 export interface BandRect {
   x: number;
@@ -9,7 +9,7 @@ export interface BandRect {
 export interface OrderBand extends BandRect {
   order: number;
   /** where the header text starts (left/top of the band, inside it) */
-  header: { x: number; y: number };
+  header: Point;
 }
 
 /** Half of the default gap between two layers (layout-graph's nodeNode, 40):

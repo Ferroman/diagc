@@ -5,12 +5,15 @@ import {
   isPlanActor,
   isPlanEvent,
   isPlanZone,
+  PLAN_NOTATION,
   planGraph,
   spanOf,
+  type BoxSize,
   type CompiledView,
   type DiagramModel,
   type DiagramNode,
   type PlanGraph,
+  type Point,
   type ViewNode,
 } from '@diagc/core/internal';
 import type { LayoutResult, NodeGeometry } from './layout';
@@ -36,9 +39,7 @@ export const PLAN_LAYOUT = {
  * against (nothing to wrap by, so wrap by count instead) */
 const ROSTER_WRAP_COUNT = 6;
 
-type Size = { width: number; height: number };
-
-// Per (model, plane), as gitGraphCached: the layout, the header overlay and
+// Per (model, plane), as gitGraphCached: the layout, the time-axis header and
 // the chips all read the graph, and each model identity is one derivation.
 const graphCache = new WeakMap<DiagramModel, Map<string | undefined, PlanGraph>>();
 export function planGraphCached(model: DiagramModel, plane: string | undefined): PlanGraph {
@@ -74,8 +75,8 @@ export function planLayout(
   view: CompiledView,
   model: DiagramModel,
   plane: string | undefined,
-  sizeHints?: ReadonlyMap<string, Size>,
-  positions?: Record<string, { x: number; y: number }>,
+  sizeHints?: ReadonlyMap<string, BoxSize>,
+  positions?: Record<string, Point>,
 ): LayoutResult {
   const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT, HEADER_H, ROSTER_GAP } = PLAN_LAYOUT;
   const g = planGraphCached(model, plane);
@@ -92,7 +93,7 @@ export function planLayout(
     n.children.forEach(walk);
   };
   view.roots.forEach(walk);
-  const hint = (id: string): Size => sizeHints?.get(id) ?? LEAF_SIZE;
+  const hint = (id: string): BoxSize => sizeHints?.get(id) ?? LEAF_SIZE;
   const node = (id: string): DiagramNode => byId.get(id)!;
   /** Where a zone's bar begins. `spanOf` gives up on a reversed or malformed
    * span — a validation finding (`plan-span`, `plan-date`) the save reports —
@@ -106,7 +107,7 @@ export function planLayout(
     ids.filter((id) => shown.has(id)).sort((a, b) => startOf(a) - startOf(b));
 
   /** lays out a zone's interior (children parent-relative) and returns its size */
-  const layZone = (id: string): Size => {
+  const layZone = (id: string): BoxSize => {
     const span = spanOf(node(id));
     const start = anchorOf(node(id));
     const width = span === undefined ? DAY : (span.end - span.start + 1) * DAY;
@@ -211,8 +212,8 @@ export function planLayout(
     (id, i, all) => rootSet.has(id) && all.indexOf(id) === i,
   );
   const rosterWidth = g.range !== undefined ? planX(g.range.end + 1, origin) : undefined;
-  const rosterRows: { id: string; size: Size }[][] = [];
-  let rosterRow: { id: string; size: Size }[] = [];
+  const rosterRows: { id: string; size: BoxSize }[][] = [];
+  let rosterRow: { id: string; size: BoxSize }[] = [];
   let rowRight = 0;
   for (const id of roster) {
     const size = hint(id);
@@ -250,5 +251,5 @@ export function planLayout(
     geometry.set(id, { x: sx, y, ...size });
     sx += size.width + ROW_GAP;
   }
-  return { geometry, routes: new Map(), labelSpots: new Map(), algorithm: 'plan', fixed, lockedX };
+  return { geometry, routes: new Map(), labelSpots: new Map(), algorithm: PLAN_NOTATION, fixed, lockedX };
 }

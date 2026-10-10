@@ -198,13 +198,13 @@ describe('withBoxSizes', () => {
     expect(sizes.get('s')).toEqual({ width: 150, height: 56 });
   });
 
-  it('uses the notation chip size for a folded typeless node when the profile has one', () => {
+  it('uses the notation’s text-node size for a folded typeless node when the profile has one', () => {
     const m = model('x');
     const g = m.node('g', { name: 'Group' });
     g.contains(m.node('k', { name: 'kid' }));
-    const chip = { width: 140, height: 48 };
-    const sizes = withBoxSizes(compileView(m.toJSON(), {}).roots, new Map(), { ...ctx, leafSize: () => chip });
-    expect(sizes.get('g')).toEqual(chip);
+    const textNode = { width: 140, height: 48 };
+    const sizes = withBoxSizes(compileView(m.toJSON(), {}).roots, new Map(), { ...ctx, leafSize: () => textNode });
+    expect(sizes.get('g')).toEqual(textNode);
   });
 });
 

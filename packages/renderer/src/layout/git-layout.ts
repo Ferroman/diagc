@@ -1,14 +1,17 @@
 import {
+  GIT_NOTATION,
   gitGraph,
   isGitKind,
   LEAF_SIZE,
+  type BoxSize,
   type CompiledView,
   type DiagramModel,
   type GitGraph,
+  type Point,
   type ViewEdge,
   type ViewNode,
 } from '@diagc/core/internal';
-import type { EdgePoint, LayoutResult, NodeGeometry } from './layout';
+import type { LayoutResult, NodeGeometry } from './layout';
 
 /** Flow-pixel constants of the git arrangement. Tuned against real renders;
  * tests derive their expectations from these, never from literals. */
@@ -86,7 +89,7 @@ export function gitEdgeColor(e: ViewEdge, model: DiagramModel, plane: string | u
 }
 
 /** Orthogonal waypoints between two circle centres, by direction. */
-export function gitRoute(s: EdgePoint, t: EdgePoint, col: number): EdgePoint[] {
+export function gitRoute(s: Point, t: Point, col: number): Point[] {
   if (t.y === s.y || t.x <= s.x) return [s, t];
   if (t.y > s.y) return [s, { x: s.x, y: t.y }, t];
   const x = t.x - col / 2;
@@ -103,13 +106,13 @@ export function gitLayout(
   view: CompiledView,
   model: DiagramModel,
   plane: string | undefined,
-  sizeHints?: ReadonlyMap<string, { width: number; height: number }>,
+  sizeHints?: ReadonlyMap<string, BoxSize>,
 ): LayoutResult {
   const { COL, LANE, DIAMETER, LABEL_W, MARGIN, TAIL_GAP, STAGE_HEADER, STAGE_PAD } = GIT_LAYOUT;
   const g = gitGraphCached(model, plane);
   const geometry = new Map<string, NodeGeometry>();
-  const routes = new Map<string, EdgePoint[]>();
-  const centres = new Map<string, EdgePoint>();
+  const routes = new Map<string, Point[]>();
+  const centres = new Map<string, Point>();
 
   // Only what the view shows is placed: a folded lane has no commits in the
   // tree, a layer-hidden node is absent, and elk output follows the same rule.
@@ -183,5 +186,5 @@ export function gitLayout(
     if (s === undefined || t === undefined) continue;
     routes.set(e.id, gitRoute(s, t, COL));
   }
-  return { geometry, routes, labelSpots: new Map(), algorithm: 'git-graph' };
+  return { geometry, routes, labelSpots: new Map(), algorithm: GIT_NOTATION };
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePen, type PenHandlers } from './usePen';
+import type { Point } from '@diagc/core/internal';
 
 /** How long a released laser trail stays on screen (the CSS fade in
  * styles.css runs for the same duration — keep the two in step). */
@@ -14,7 +15,7 @@ export interface LaserTrail {
 export interface LaserOptions {
   enabled: boolean;
   /** screen → flow coordinates (reactFlow.screenToFlowPosition) */
-  toFlow: (p: { x: number; y: number }) => { x: number; y: number };
+  toFlow: (p: Point) => Point;
 }
 
 /**

@@ -1,3 +1,5 @@
+import type { Point } from '@diagc/core/internal';
+
 export interface Bounds {
   x: number;
   y: number;
@@ -32,7 +34,7 @@ export function unionBounds(members: readonly (Bounds | undefined)[]): Bounds | 
  * Unmeasurable elements (all-zero rects: jsdom, or not laid out yet) are
  * skipped, so callers fall back to the node bounds exactly as before.
  *
- * The plan's time-axis header is an overlay, not a node, so its frame rect is
+ * The plan's time-axis header is a canvas overlay, not a node, so its frame rect is
  * what reaches the export bounds.
  */
 const OVERHANG_SELECTOR =
@@ -40,7 +42,7 @@ const OVERHANG_SELECTOR =
 
 export function overhangBounds(
   root: ParentNode | null | undefined,
-  toFlow: (screen: { x: number; y: number }) => { x: number; y: number },
+  toFlow: (screen: Point) => Point,
 ): Bounds | undefined {
   if (root === null || root === undefined) return undefined;
   const rects: Bounds[] = [];

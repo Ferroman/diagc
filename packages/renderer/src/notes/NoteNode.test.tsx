@@ -32,18 +32,18 @@ const draw = (data: NoteData) =>
   );
 const rowsOf = (container: HTMLElement) => Array.from(container.querySelectorAll<HTMLElement>('.dg-note-row'));
 
-describe('NoteNode — the bubble', () => {
-  it('is a bubble of NOTE_WIDTH headed by name and open / total', () => {
+describe('NoteNode — the note', () => {
+  it('is a note of NOTE_WIDTH headed by name and open / total', () => {
     const { container } = draw(base);
-    const bubble = container.querySelector('.dg-note') as HTMLElement;
-    expect(bubble.style.width).toBe(`${NOTE_WIDTH}px`);
-    expect(bubble.querySelector('.dg-note-name')?.textContent).toBe('Web app');
-    expect(bubble.querySelector('.dg-note-count')?.textContent).toBe('1 / 2');
-    expect(bubble.querySelector('.dg-note-count')?.getAttribute('data-state')).toBe('open');
+    const note = container.querySelector('.dg-note') as HTMLElement;
+    expect(note.style.width).toBe(`${NOTE_WIDTH}px`);
+    expect(note.querySelector('.dg-note-name')?.textContent).toBe('Web app');
+    expect(note.querySelector('.dg-note-count')?.textContent).toBe('1 / 2');
+    expect(note.querySelector('.dg-note-count')?.getAttribute('data-state')).toBe('open');
   });
 
   it('draws its tail toward the badge once React Flow has measured it, from the side facing the badge', () => {
-    // the bubble sits at (100, 100) absolute, 220×80; the badge is below-right of it
+    // the note sits at (100, 100) absolute, 220×80; the badge is below-right of it
     const { container } = render(
       <ReactFlowProvider>
         <NoteNode
@@ -62,7 +62,7 @@ describe('NoteNode — the bubble', () => {
     expect(tail.querySelector('path')?.getAttribute('d')).toMatch(/^M[^Z]*$/);
   });
 
-  it('draws no tail before it is measured, nor with the badge under the bubble', () => {
+  it('draws no tail before it is measured, nor with the badge under the note', () => {
     const unmeasured = render(
       <ReactFlowProvider>
         <NoteNode
@@ -224,7 +224,7 @@ describe('NoteNode — the bubble', () => {
     fireEvent.mouseDown(within(handled!).getByRole('button', { name: 'Show details' }));
     fireEvent.click(within(handled!).getByRole('button', { name: 'Show details' }));
     // a mousedown in a field must not reach the canvas, or React Flow starts
-    // dragging the bubble out from under the caret
+    // dragging the note out from under the caret
     fireEvent.mouseDown(screen.getByLabelText('Description'));
     fireEvent.doubleClick(container.querySelectorAll('.dg-note-title')[0]!);
     fireEvent.mouseDown(screen.getByLabelText('Rename threat'));

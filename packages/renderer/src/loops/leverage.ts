@@ -1,6 +1,6 @@
 // Pure structural "leverage point" analysis for a causal-loop variable.
 // No React/xyflow — plain signed-digraph math over the same LoopEdgeInput[] the
-// loop overlay uses (so highlighted ids match what the canvas draws). Given a
+// loop labels use (so highlighted ids match what the canvas draws). Given a
 // target variable it reports: the feedback loops it sits in, the upstream
 // drivers that reach it (with net polarity), and the hubs that recur across its
 // loops. Structural only — a CLD has no numbers, so no simulation.
@@ -47,7 +47,7 @@ export interface LeverageReport {
 
 // A collapsed arc between an ordered node pair (parallel edges merged); polarity
 // is defined iff every contributing edge agrees, else undefined (unknown) — the
-// same rule the loop overlay uses (see combinePolarities).
+// same rule the loop labels use (see combinePolarities).
 interface Arc {
   from: string;
   to: string;

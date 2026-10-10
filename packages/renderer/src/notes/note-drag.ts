@@ -15,7 +15,7 @@ export interface NoteMove {
  * React Flow hands over every node a gesture touched (a selection drags as
  * one), and the two kinds land in different places: a box's new position is a
  * position, a note's is an OFFSET from the anchor its element gives it, saved
- * on its own key. Writing a note's position into the box overlay would pin a
+ * on its own key. Writing a note's position into the box overlay would save a
  * phantom node there — nothing in the model answers to a `note:` id.
  *
  * Both spaces are the same: a note is parented like the element it annotates

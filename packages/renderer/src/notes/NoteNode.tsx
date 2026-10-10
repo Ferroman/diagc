@@ -6,23 +6,24 @@ import {
   elementKey,
   type Comment,
   type Link,
+  type Point,
   type Threat,
   type ThreatStatus,
   type ElementRef,
 } from '@diagc/core/internal';
 import { InlineName } from '../node/DiagramNode';
-import { NOTE_WIDTH, STATUS_WORD, type Point } from './note-place';
+import { NOTE_WIDTH, STATUS_WORD } from './note-place';
 import { tailGeometry } from './note-tail';
 import { threatBadgeProps } from './threat-badge';
 
 export { NOTE_WIDTH };
 
-/** the data channel of a threat bubble — one per OPEN element (see DiagramView's
+/** the data channel of a note — one per OPEN element (see DiagramView's
  * note derivation). The threats are the model's own objects (identity), so a
- * bubble re-renders exactly when its element's list does. */
+ * note re-renders exactly when its element's list does. */
 export interface NoteData {
   target: ElementRef;
-  /** the element's display name — the header, so a bubble dragged away from
+  /** the element's display name — the header, so a note dragged away from
    * its element still says what it is about */
   name: string;
   threats: readonly Threat[];
@@ -30,7 +31,7 @@ export interface NoteData {
   links: readonly Link[];
   /** see DiagramViewProps.onOpenLink — a host that resolves links itself (Obsidian) */
   onOpenLink?: (link: string) => void;
-  /** the badge's centre in the same (parent-relative) space as the bubble's
+  /** the badge's centre in the same (parent-relative) space as the note's
    * position — what the saved offset is measured from (see note-drag.ts) */
   anchor: Point;
   /** the same badge centre in ABSOLUTE flow coordinates — what the tail points
@@ -55,7 +56,7 @@ export interface NoteData {
 const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
 
 /**
- * A speech bubble beside an element: its threats, readable at a glance and
+ * A note beside an element, drawn as a speech bubble: its threats, readable at a glance and
  * exported with the picture, with title, status and details writable in place.
  * Content, not chrome — only its controls and fields disappear under
  * .dg-no-chrome. A React Flow node so drag, z-order and export come for free;
@@ -64,7 +65,7 @@ const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
  * replaced fixed a pale fill under the theme's text colour and was unreadable
  * in the dark theme.
  *
- * The tail is an SVG drawn from the bubble's live position and measured size
+ * The tail is an SVG drawn from the note's live position and measured size
  * (React Flow's own props), so it tracks a drag frame by frame; it is absent
  * until the first measure, one frame.
  */
@@ -82,7 +83,7 @@ export function NoteNode({
   width?: number;
   height?: number;
 }): import('react').ReactElement {
-  // Which row this bubble opened by itself (double-click). The host's editingId
+  // Which row this note opened by itself (double-click). The host's editingId
   // is the other way in, and a local edit wins while it is open so a stale
   // host row cannot fight the one under the cursor.
   const [localEdit, setLocalEdit] = useState<string | null>(null);
@@ -109,7 +110,7 @@ export function NoteNode({
       else next.add(id);
       return next;
     });
-  // The badge in the bubble's own space. Unmeasured (the first frame) draws
+  // The badge in the note's own space. Unmeasured (the first frame) draws
   // no tail rather than one aimed from a guessed size.
   const tail =
     width !== undefined && height !== undefined && width > 0 && height > 0
@@ -125,7 +126,7 @@ export function NoteNode({
           {/* open path: the fill closes it across the base, the stroke draws
               only the two long sides — and the base sits inside the border,
               so the fill covers the border line and the tail merges with the
-              box, the way a drawn bubble does */}
+              box, the way a drawn speech bubble does */}
           <path
             d={`M${tail.base[0].x} ${tail.base[0].y} L${tail.tip.x} ${tail.tip.y} L${tail.base[1].x} ${tail.base[1].y}`}
           />
@@ -134,7 +135,7 @@ export function NoteNode({
       <div className="dg-note-head">
         <span className="dg-note-name">{data.name}</span>
         {/* the header reads `open / total`, not the badge's single number: a
-            bubble has the room, and the denominator is what says how much of
+            note has the room, and the denominator is what says how much of
             the element has been thought about. Threat-less (comment/link-only)
             elements show no header at all — there is no count to give. */}
         {data.threats.length > 0 && (

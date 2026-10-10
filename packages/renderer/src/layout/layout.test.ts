@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, consequenceOrders, model, type CompiledView, type ViewNode } from '@diagc/core/internal';
-import { COLLAPSED_SIZE, layoutOptionsFor, layoutView, type NodeGeometry } from './layout';
+import { COLLAPSED_SIZE, layoutOptionsFor } from './layout-graph';
+import { layoutView, type NodeGeometry } from './layout';
 import { buildGraph } from './layout-graph';
 
 function makeModel() {
@@ -119,7 +120,7 @@ describe('layoutView', () => {
     expect(second).toBe(first);
   });
 
-  it('overlay toggles do not move boxes — layout is keyed on the full relation set', async () => {
+  it('layer toggles do not move boxes — layout is keyed on the full relation set', async () => {
     const m = model('ov');
     m.layer('flow', { name: 'flow' });
     const a = m.node('a', { type: 'service' });
@@ -343,18 +344,18 @@ describe('layoutView', () => {
     const view = compileView(json, {});
     const { orders } = consequenceOrders(json);
 
-    const pinned = await layoutView(view, undefined, undefined, { partitions: orders });
-    const rowOf = (id: string) => pinned.geometry.get(id)!.y;
+    const partitioned = await layoutView(view, undefined, undefined, { partitions: orders });
+    const rowOf = (id: string) => partitioned.geometry.get(id)!.y;
     for (const [id, order] of orders) {
       for (const [other, otherOrder] of orders) {
         if (order === otherOrder) expect(rowOf(id), `${id} and ${other}`).toBe(rowOf(other));
         if (order < otherOrder) expect(rowOf(id), `${id} above ${other}`).toBeLessThan(rowOf(other));
       }
     }
-    expect(pinned.routes.size).toBe(view.layoutEdges.length); // still routed
+    expect(partitioned.routes.size).toBe(view.layoutEdges.length); // still routed
 
     const plain = await layoutView(view);
-    expect(plain).not.toBe(pinned); // the partitions are part of the cache key
+    expect(plain).not.toBe(partitioned); // the partitions are part of the cache key
     // ...and without them `b` leaves its band-mate `c` to sit by `z`
     expect(plain.geometry.get('b')!.y).not.toBe(plain.geometry.get('c')!.y);
   });

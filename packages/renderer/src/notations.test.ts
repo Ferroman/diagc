@@ -9,7 +9,7 @@ import {
 } from '@diagc/core/internal';
 import { BONE_PALETTE, fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './layout/fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './layout/git-layout';
-import { NOTATION_PROFILES, notationProfile, planBadges, TM_BOUNDARY_COLOR } from './notations';
+import { NOTATION_PROFILES, notationProfile, planChips, TM_BOUNDARY_COLOR } from './notations';
 import { createKindRegistry, createTypeRegistry, DEFAULT_KIND_STYLES, DEFAULT_TYPE_STYLES } from './registry';
 import { planLayout, PLAN_LAYOUT } from './layout/plan-layout';
 
@@ -25,7 +25,7 @@ describe('notationProfile', () => {
     expect(profile.edgeCurvature).toBe(0.55);
     expect(profile.edge?.marks).toBe(true);
     expect(profile.edge?.bowed).toBe(true);
-    expect(profile.overlay).toBe('loop-labels');
+    expect(profile.canvasOverlay).toBe('loop-labels');
   });
 
   it('colours causal-loop links by polarity, from theme tokens', () => {
@@ -46,7 +46,7 @@ describe('notationProfile', () => {
     expect(notationProfile('bogus' as never).id).toBe('default');
   });
 
-  it('the git-graph profile supplies the layout, forces lanes open, colours by lane and draws the tails overlay', () => {
+  it('the git-graph profile supplies the layout, forces lanes open, colours by lane and draws the lane tails', () => {
     const p = notationProfile('git-graph');
     expect(p.className).toBe('dg-notation-git');
     expect(p.layout).toBe(gitLayout);
@@ -69,7 +69,7 @@ describe('notationProfile', () => {
     expect(p.node?.leafSize?.({ id: 'x', name: 'x', type: 'service' })).toBeUndefined();
     expect(p.node?.colorOf).toBe(gitNodeColors);
     expect(p.edge?.colorOf).toBe(gitEdgeColor);
-    expect(p.overlay).toBe('git-lanes');
+    expect(p.canvasOverlay).toBe('git-lanes');
     expect(NOTATION_PROFILES['git-graph']).toBe(p);
   });
 
@@ -97,8 +97,8 @@ describe('default algorithm', () => {
 
 describe('second-order profile', () => {
   const p = notationProfile('second-order');
-  it('draws the order-bands overlay, partitioning nodes by consequence order', () => {
-    expect(notationProfile('second-order').overlay).toBe('order-bands');
+  it('draws the order bands, partitioning nodes by consequence order', () => {
+    expect(notationProfile('second-order').canvasOverlay).toBe('order-bands');
     expect(notationProfile('second-order').partitionOf).toBeDefined();
   });
   it('tints consequences by valence from the theme polarity tokens, and leaves the rest alone', () => {
@@ -122,7 +122,7 @@ describe('fishbone profile', () => {
     expect(p.layout).toBe(fishboneLayout);
     expect(p.node?.colorOf).toBe(fishboneNodeColors);
     expect(p.edge?.colorOf).toBe(fishboneEdgeColor);
-    expect(p.overlay).toBeUndefined();
+    expect(p.canvasOverlay).toBeUndefined();
     expect(p.partitionOf).toBeUndefined();
   });
   it('colours the first category from the palette, and its bone edge to match', () => {
@@ -145,7 +145,7 @@ describe('threat-model profile', () => {
     expect(p.className).toBe('dg-notation-tm');
     expect(p.layout).toBeUndefined();
     expect(p.partitionOf).toBeUndefined();
-    expect(p.overlay).toBeUndefined();
+    expect(p.canvasOverlay).toBeUndefined();
     expect(NOTATION_PROFILES['threat-model']).toBe(p);
   });
 
@@ -168,7 +168,7 @@ describe('deployment profile', () => {
     expect(p.className).toBe('dg-notation-deploy');
     expect(p.layout).toBeUndefined();
     expect(p.partitionOf).toBeUndefined();
-    expect(p.overlay).toBeUndefined();
+    expect(p.canvasOverlay).toBeUndefined();
     expect(NOTATION_PROFILES.deployment).toBe(p);
   });
 
@@ -211,7 +211,7 @@ describe('plan profile', () => {
   it('owns the layout and the header, pins zones open, sizes events, hides the role kinds', () => {
     const p = notationProfile('plan');
     expect(p.layout).toBe(planLayout);
-    expect(p.overlay).toBe('time-axis');
+    expect(p.canvasOverlay).toBe('time-axis');
     expect(p.className).toBe('dg-notation-plan');
     expect(p.node?.alwaysExpanded?.({ id: 'z', name: 'Z', type: 'plan-zone' })).toBe(true);
     expect(p.node?.alwaysExpanded?.({ id: 'e', name: 'E', type: 'plan-event' })).toBe(false);
@@ -224,22 +224,22 @@ describe('plan profile', () => {
     for (const k of ['owns', 'executes', 'checks']) expect(p.edge?.hidden?.(k)).toBe(true);
     expect(p.edge?.hidden?.('sync')).toBe(false);
   });
-  it("planBadges: one chip per role in owns/executes/checks order, first name, full title, the person's colour", () => {
-    const chips = planBadges(roadmap(), 'plan');
+  it("planChips: one chip per role in owns/executes/checks order, first name, full title, the person's colour", () => {
+    const chips = planChips(roadmap(), 'plan');
     expect(chips.get('z')).toEqual([
       { key: 'owns:alice', text: 'O·Alice', title: 'Owner: Alice Ng', color: '#c33' },
       { key: 'executes:bob', text: 'E·Bob', title: 'Executor: Bob' },
       { key: 'checks:alice', text: 'C·Alice', title: 'Checker: Alice Ng', color: '#c33' },
     ]);
     expect(chips.has('bare')).toBe(false);
-    expect(notationProfile('plan').node?.badges).toBe(planBadges);
+    expect(notationProfile('plan').node?.chips).toBe(planChips);
   });
-  it('planBadges: a team holds a role exactly like a person, same chip shape', () => {
+  it('planChips: a team holds a role exactly like a person, same chip shape', () => {
     const m = model('t');
     const p = m.plan();
     const platform = p.team('platform', 'Platform Team', { color: '#2f6fed' });
     p.zone('z', { start: '2026-01-05', end: '2026-01-09' }).owner(platform);
-    const chips = planBadges(m.toJSON(), 'plan');
+    const chips = planChips(m.toJSON(), 'plan');
     expect(chips.get('z')).toEqual([
       { key: 'owns:platform', text: 'O·Platform', title: 'Owner: Platform Team', color: '#2f6fed' },
     ]);
@@ -258,7 +258,7 @@ describe('plan profile', () => {
   it('every other profile leaves the new hooks unset', () => {
     for (const id of ['causal-loop', 'git-graph', 'c4', 'second-order', 'fishbone', 'threat-model'] as const) {
       const p = notationProfile(id);
-      expect(p.node?.badges).toBeUndefined();
+      expect(p.node?.chips).toBeUndefined();
       expect(p.node?.resizable).toBeUndefined();
       expect(p.edge?.hidden).toBeUndefined();
     }

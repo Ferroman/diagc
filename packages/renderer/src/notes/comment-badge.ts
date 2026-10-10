@@ -15,7 +15,7 @@ export interface CommentBadgeProps {
 
 /**
  * What a comment badge says, derived once for the node's corner badge and the
- * edge's chip (the threat-badge.ts arrangement, for the same reason: the two
+ * edge's badge (the threat-badge.ts arrangement, for the same reason: the two
  * must never disagree). Nothing to say → no badge, unlike the threat badge's
  * `+` — a comment is written in the panel, not on the canvas.
  */

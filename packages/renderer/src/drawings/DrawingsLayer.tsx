@@ -23,7 +23,7 @@ export interface DrawingsLayerProps {
 const HIT_MIN_SCREEN_PX = 12;
 
 /**
- * The freehand overlay: one SVG in FLOW coordinates, transformed by the
+ * The freehand layer: one SVG in FLOW coordinates, transformed by the
  * viewport like React Flow's own layers. Rendered as a child of <ReactFlow>, so
  * it sits above the renderer (nodes included — it is tracing paper) and below
  * the panels. `pointer-events: none` on the svg keeps nodes clickable; only the

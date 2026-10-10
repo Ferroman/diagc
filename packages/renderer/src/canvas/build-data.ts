@@ -1,16 +1,13 @@
 // Pure builders for the data channel React Flow carries into the custom
-// DiagramNode/DiagramEdge components. DiagramView previously constructed these
-// inline with ~18 conditional spreads per node (typo-fragile, and every node's
-// `data` object was rebuilt every render — defeating memoization). Extracting
-// the builders makes them unit-testable and lets the view memoize the built
-// data: the cache below returns the SAME data object while every ctx input is
-// referentially/primitive-identical, so a re-render that changes nothing a node
-// reads reuses the previous object instead of churning the whole tree.
+// DiagramNode/DiagramEdge components. Built here, the data is unit-testable and
+// the view can memoize it: the cache below returns the SAME data object while
+// every ctx input is referentially/primitive-identical, so a re-render that
+// changes nothing a node reads reuses the previous object instead of churning
+// the whole tree.
 //
 // Stability caveat (why full stability is impractical here): the editing host
 // (apps/studio) passes inline closures for most callbacks, so their identity
-// changes on every App render and the ctx comparison misses — exactly as the
-// pre-refactor code recomputed derivedNodes on those renders. The cache's win
+// changes on every App render and the ctx comparison misses. The cache's win
 // is the renders where the ctx inputs genuinely didn't change (view-only
 // re-renders, geometry updates after layout settles), which reuse the same data
 // objects instead of rebuilding them.
@@ -26,17 +23,24 @@ import type {
   EdgeLabelSide,
   NotationId,
   PlanRole,
+  Point,
+  Side,
   TextRun,
   ElementRef,
   ViewEdge,
   ViewNode,
 } from '@diagc/core/internal';
-import { attachesDirectly, runsToPlainText, threatSummary, withHiddenColumns } from '@diagc/core/internal';
+import {
+  attachesDirectly,
+  runsToPlainText,
+  soleRelation,
+  threatSummary,
+  withHiddenColumns,
+} from '@diagc/core/internal';
 import type { IconRegistry } from '@diagc/icons';
 import type { AnnotationCounts } from '../notes/comment-badge';
-import type { EdgePoint } from '../layout/layout';
 import type { EdgeRouting } from './useViewLayout';
-import type { NodeBadge } from '../notations';
+import type { NodeChip } from '../notations';
 import type { KindStyle, Registry, TypeStyle } from '../registry';
 import type { StylePreset } from '../sketch/stylePresets';
 import type { DiagramEdgeData } from '../edge/DiagramEdge';
@@ -54,9 +58,9 @@ export interface NodeDataContext {
   /** notation-resolved accent per node id (e.g. a commit's lane colour); below
    * the node's own colour, above typeColors */
   nodeColors?: ReadonlyMap<string, string>;
-  /** the notation's chips per node id (profile.node.badges), one derivation
+  /** the notation's chips per node id (profile.node.chips), one derivation
    * per model like nodeColors; absent = no notation chips */
-  nodeBadges?: ReadonlyMap<string, NodeBadge[]>;
+  nodeChips?: ReadonlyMap<string, NodeChip[]>;
   /** profile.node.resizable: which nodes get the notation's x-only handles */
   resizable?: (n: DiagramNode) => 'x' | undefined;
   icons: IconRegistry;
@@ -75,7 +79,7 @@ export interface NodeDataContext {
   /** URL prefix substituted for a leading '/library/' on bundled-icon refs
    * (see DiagramNodeData.libraryBase) */
   libraryBase?: string;
-  onResize?: (id: string, w: number, h: number, pos: { x: number; y: number }) => void;
+  onResize?: (id: string, w: number, h: number, pos: Point) => void;
   onSetTableColumns?: (id: string, columns: Column[]) => void;
   /** see EditingApi.quickAdd; threaded as one object, read lazily by the
    * selected node only — never computed per node at build time. sameNodeCtx
@@ -102,12 +106,12 @@ export interface EdgeDataContext {
   onAddEdgeLabel?: (relationId: string, text: string, t: number, side: EdgeLabelSide) => void;
   onEditEdgeLabel?: (relationId: string, labelId: string, text: string) => void;
   onMoveEdgeLabel?: (relationId: string, labelId: string, t: number, side: EdgeLabelSide) => void;
-  onSetEdgeSide?: (relationId: string, end: 'from' | 'to', side: import('../edge/floating').Side | null) => void;
+  onSetEdgeSide?: (relationId: string, end: 'from' | 'to', side: Side | null) => void;
   /** see EditingApi.onAddThreat; bound to the edge's sole relation below, so
-   * the chip in the renderer calls it with nothing */
+   * the badge in the renderer calls it with nothing */
   onAddThreat?: (target: ElementRef) => void;
-  /** the sole-relation id currently showing endpoint pin dots (null = none) */
-  pinEdgeRel: string | null;
+  /** the sole-relation id currently showing fixed-side dots (null = none) */
+  fixedSideRelation: string | null;
   /** a correlated double-click asked to add a label on a specific edge */
   pendingAdd: { edgeId: string; x: number; y: number } | null;
   onPendingAddConsumed?: () => void;
@@ -115,13 +119,13 @@ export interface EdgeDataContext {
   notation?: NotationId;
   /** how the active plane draws routed edges; undefined = every edge floats */
   routing?: EdgeRouting;
-  routes: ReadonlyMap<string, EdgePoint[]>;
+  routes: ReadonlyMap<string, Point[]>;
   /** where the layout put each node (absolute top-left): an edge carries its
    * endpoints' spots along, and draws its route only while both still stand
    * there (DiagramEdge) — a moved node's route points at where it used to be */
-  laidAt: ReadonlyMap<string, EdgePoint>;
+  laidAt: ReadonlyMap<string, Point>;
   /** elk's reserved spot (centre) for a labelled edge's label */
-  labelSpots: ReadonlyMap<string, EdgePoint>;
+  labelSpots: ReadonlyMap<string, Point>;
   /** where labels were slid to on this plane (saved overlay + view-mode
    * drags): relation id → label id → placement; overrides the label's own */
   labelMoves?: EdgeLabelMoves;
@@ -173,72 +177,63 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     metaBadges,
     typeRegistry: ctx.typeRegistry,
     icons: ctx.icons,
-    ...(n.node.type !== undefined ? { typeId: n.node.type } : {}),
-    ...(n.node.icon !== undefined ? { icon: n.node.icon } : {}),
-    ...(typeColor(n, ctx) !== undefined ? { color: typeColor(n, ctx) } : {}),
-    ...(n.node.textColor !== undefined ? { textColor: n.node.textColor } : {}),
-    ...(n.node.technology !== undefined ? { technology: n.node.technology } : {}),
-    ...(n.node.rich !== undefined ? { rich: n.node.rich } : {}),
-    ...(n.node.textAlign !== undefined ? { textAlign: n.node.textAlign } : {}),
-    ...(n.node.fontScale !== undefined ? { fontScale: n.node.fontScale } : {}),
-    ...(ctx.onToggleExpand !== undefined ? { onToggleExpand: ctx.onToggleExpand } : {}),
-    ...(n.state !== 'leaf' ? { onEnterNode: ctx.onEnterNode } : {}),
-    ...(n.external !== undefined ? { external: true } : {}),
-    ...(ctx.labelEditingId === n.id
-      ? {
-          labelEditing: true,
-          onLabelCommit: (value: string | null) => {
-            ctx.endLabelEdit?.();
-            const name = value?.trim() ?? '';
-            if (name !== '' && name !== n.node.name) ctx.onRenameNode?.(n.id, name);
-          },
-          onRichCommit: (runs: TextRun[] | null) => {
-            ctx.endLabelEdit?.();
-            if (runs !== null && runsToPlainText(runs).trim() !== '') ctx.onSetNodeRich?.(n.id, runs);
-          },
-        }
-      : {}),
-    ...(n.node.image !== undefined
-      ? {
-          image: n.node.image,
-          ...(ctx.assetBase !== undefined ? { assetBase: ctx.assetBase } : {}),
-          ...(ctx.libraryBase !== undefined ? { libraryBase: ctx.libraryBase } : {}),
-          ...(ctx.editing && ctx.onResize !== undefined ? { onResize: ctx.onResize } : {}),
-        }
-      : {}),
-    ...(n.node.shape !== undefined
-      ? {
-          shape: n.node.shape,
-          ...(ctx.assetBase !== undefined ? { assetBase: ctx.assetBase } : {}),
-          ...(ctx.libraryBase !== undefined ? { libraryBase: ctx.libraryBase } : {}),
-        }
-      : {}),
-    ...(n.node.link !== undefined
-      ? { link: n.node.link, ...(ctx.onOpenLink !== undefined ? { onOpenLink: ctx.onOpenLink } : {}) }
-      : {}),
-    ...(n.node.columns !== undefined ? { columns: n.columns ?? n.node.columns } : {}),
-    // The table edits only the rows it draws; the rows an inactive layer hides
-    // are put back around the edit, or saving would delete them.
-    ...(ctx.editing && n.node.type === 'db-table' && ctx.onSetTableColumns !== undefined
-      ? {
-          onColumnsChange: (columns: Column[]) => {
-            const all = n.node.columns ?? [];
-            ctx.onSetTableColumns?.(n.id, withHiddenColumns(all, n.columns ?? all, columns));
-          },
-        }
-      : {}),
-    ...(ctx.editing && ctx.quickAdd !== undefined ? { quickAdd: ctx.quickAdd } : {}),
-    ...(ctx.editing && ctx.onSetRole !== undefined ? { onSetRole: ctx.onSetRole } : {}),
-    ...(ctx.editing && ctx.onAddThreat !== undefined ? { onAddThreat: ctx.onAddThreat } : {}),
-    ...(ctx.stylePreset !== undefined ? { stylePreset: ctx.stylePreset } : {}),
-    ...(ctx.notation !== undefined ? { notation: ctx.notation } : {}),
-    ...(threats.total > 0 ? { threats } : {}),
-    ...(annotations !== undefined ? { annotations } : {}),
-    ...(ctx.nodeBadges?.get(n.id) !== undefined ? { badges: ctx.nodeBadges.get(n.id) } : {}),
-    ...(ctx.editing && ctx.onResize !== undefined && ctx.resizable?.(n.node) === 'x'
-      ? { resizeAxis: 'x' as const, onResize: ctx.onResize }
-      : {}),
+    typeId: n.node.type,
+    icon: n.node.icon,
+    color: typeColor(n, ctx),
+    textColor: n.node.textColor,
+    technology: n.node.technology,
+    rich: n.node.rich,
+    textAlign: n.node.textAlign,
+    fontScale: n.node.fontScale,
+    onToggleExpand: ctx.onToggleExpand,
+    onEnterNode: n.state !== 'leaf' ? ctx.onEnterNode : undefined,
+    external: n.external !== undefined,
+    image: n.node.image,
+    shape: n.node.shape,
+    link: n.node.link,
+    columns: n.columns ?? n.node.columns,
+    quickAdd: ctx.editing ? ctx.quickAdd : undefined,
+    onSetRole: ctx.editing ? ctx.onSetRole : undefined,
+    onAddThreat: ctx.editing ? ctx.onAddThreat : undefined,
+    stylePreset: ctx.stylePreset,
+    notation: ctx.notation,
+    threats: threats.total > 0 ? threats : undefined,
+    annotations,
+    chips: ctx.nodeChips?.get(n.id),
   };
+  if (ctx.labelEditingId === n.id) {
+    data.labelEditing = true;
+    data.onLabelCommit = (value: string | null) => {
+      ctx.endLabelEdit?.();
+      const name = value?.trim() ?? '';
+      if (name !== '' && name !== n.node.name) ctx.onRenameNode?.(n.id, name);
+    };
+    data.onRichCommit = (runs: TextRun[] | null) => {
+      ctx.endLabelEdit?.();
+      if (runs !== null && runsToPlainText(runs).trim() !== '') ctx.onSetNodeRich?.(n.id, runs);
+    };
+  }
+  // an image or a shape's mask is fetched from the asset or library folder
+  if (n.node.image !== undefined || n.node.shape !== undefined) {
+    data.assetBase = ctx.assetBase;
+    data.libraryBase = ctx.libraryBase;
+  }
+  if (n.node.link !== undefined) data.onOpenLink = ctx.onOpenLink;
+  // The table edits only the rows it draws; the rows an inactive layer hides
+  // are put back around the edit, or saving would delete them.
+  if (ctx.editing && n.node.type === 'db-table' && ctx.onSetTableColumns !== undefined) {
+    data.onColumnsChange = (columns: Column[]) => {
+      const all = n.node.columns ?? [];
+      ctx.onSetTableColumns?.(n.id, withHiddenColumns(all, n.columns ?? all, columns));
+    };
+  }
+  if (ctx.editing && ctx.onResize !== undefined) {
+    if (n.node.image !== undefined) data.onResize = ctx.onResize;
+    if (ctx.resizable?.(n.node) === 'x') {
+      data.resizeAxis = 'x';
+      data.onResize = ctx.onResize;
+    }
+  }
   return data;
 }
 
@@ -246,13 +241,12 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
  * same array back when nothing was moved, so the data cache stays warm. */
 function placedLabels(e: ViewEdge, moves: EdgeLabelMoves | undefined): EdgeLabel[] {
   const labels = e.labels ?? [];
-  const moved = e.constituents.length === 1 ? moves?.[e.constituents[0]!.id] : undefined;
+  const relation = soleRelation(e);
+  const moved = relation !== undefined ? moves?.[relation.id] : undefined;
   if (moved === undefined) return labels;
   return labels.map((l) => {
     const to = moved[l.id];
-    if (to === undefined) return l;
-    const { side: _side, ...rest } = l;
-    return { ...rest, t: to.t, ...(to.side !== undefined ? { side: to.side } : {}) };
+    return to === undefined ? l : { ...l, t: to.t, side: to.side };
   });
 }
 
@@ -270,68 +264,68 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     { open: 0, total: 0 },
   );
   // A bundled arrow's badge counts every constituent's comments, as the threat
-  // chip does — or a comment would vanish the moment two flows merged.
+  // badge does — or a comment would vanish the moment two flows merged.
   const comments = e.constituents.reduce((acc, c) => acc + (c.comments?.length ?? 0), 0);
   const annotations: AnnotationCounts | undefined = comments > 0 ? { comments, links: 0 } : undefined;
   const data: DiagramEdgeData = {
     kind: e.kind,
     constituentCount: e.constituents.length,
     kindRegistry: ctx.kindRegistry,
-    ...(e.label !== undefined ? { label: e.label } : {}),
-    ...(e.labels !== undefined ? { labels: placedLabels(e, ctx.labelMoves) } : {}),
-    ...(e.tint !== undefined ? { tint: e.tint } : {}),
-    ...(e.style !== undefined ? { relStyle: e.style } : {}),
-    ...(ctx.stylePreset !== undefined ? { stylePreset: ctx.stylePreset } : {}),
-    ...(ctx.notation !== undefined ? { notation: ctx.notation } : {}),
-    ...(e.polarity !== undefined ? { polarity: e.polarity } : {}),
-    ...(e.delay !== undefined ? { delay: e.delay } : {}),
-    ...(notationColor !== undefined ? { notationColor } : {}),
-    ...(threats.total > 0 ? { threats } : {}),
-    ...(annotations !== undefined ? { annotations } : {}),
+    label: e.label,
+    labels: e.labels !== undefined ? placedLabels(e, ctx.labelMoves) : undefined,
+    tint: e.tint,
+    relStyle: e.style,
+    stylePreset: ctx.stylePreset,
+    notation: ctx.notation,
+    polarity: e.polarity,
+    delay: e.delay,
+    notationColor,
+    threats: threats.total > 0 ? threats : undefined,
+    annotations,
   };
-  const soleRelation = e.constituents.length === 1 ? e.constituents[0] : undefined;
-  // Both modes: the counting chip toggles this relation's bubble in view mode
+  const relation = soleRelation(e);
+  // Both modes: the counting badge toggles this relation's note in view mode
   // too (the canvas's own session state), so the id has to travel regardless
   // of `editing`. A string, so the cached-data comparison stays a field check.
-  if (soleRelation !== undefined) data.threatRelation = soleRelation.id;
-  if (soleRelation?.fromColumn !== undefined) data.fromColumn = soleRelation.fromColumn;
-  if (soleRelation?.toColumn !== undefined) data.toColumn = soleRelation.toColumn;
-  if (ctx.editing && soleRelation !== undefined) {
+  if (relation !== undefined) data.threatRelation = relation.id;
+  if (relation?.fromColumn !== undefined) data.fromColumn = relation.fromColumn;
+  if (relation?.toColumn !== undefined) data.toColumn = relation.toColumn;
+  if (ctx.editing && relation !== undefined) {
     // The geometry owner (DiagramEdge) drives label add/edit/drag because it
     // holds the path params; here we just bind the callbacks to this edge's
     // sole relation id.
     data.editableLabels = true;
-    data.onAddLabel = (text, t, side) => ctx.onAddEdgeLabel?.(soleRelation.id, text, t, side);
-    data.onEditLabel = (labelId, text) => ctx.onEditEdgeLabel?.(soleRelation.id, labelId, text);
-    data.onMoveLabel = (labelId, t, side) => ctx.onMoveEdgeLabel?.(soleRelation.id, labelId, t, side);
+    data.onAddLabel = (text, t, side) => ctx.onAddEdgeLabel?.(relation.id, text, t, side);
+    data.onEditLabel = (labelId, text) => ctx.onEditEdgeLabel?.(relation.id, labelId, text);
+    data.onMoveLabel = (labelId, t, side) => ctx.onMoveEdgeLabel?.(relation.id, labelId, t, side);
     // A threat hangs off a relation, not off the drawn arrow: the target is
     // bound here, where the constituent is known. A bundled arrow names no
     // single relation, so it gets no offer at all (this block is sole-relation
     // only) — the panel is where a bundle's threats are written.
     if (ctx.onAddThreat !== undefined) {
       const add = ctx.onAddThreat;
-      data.onAddThreat = () => add({ relation: soleRelation.id });
+      data.onAddThreat = () => add({ relation: relation.id });
     }
   }
-  if (!ctx.editing && soleRelation !== undefined && ctx.onViewMoveEdgeLabel !== undefined) {
+  if (!ctx.editing && relation !== undefined && ctx.onViewMoveEdgeLabel !== undefined) {
     // View mode: a label can be slid along its edge with Alt held (the same
     // modifier that unlocks dragging a box); the move is the host's to keep.
     data.movableLabels = true;
-    data.onMoveLabel = (labelId, t, side) => ctx.onViewMoveEdgeLabel?.(soleRelation.id, labelId, t, side);
+    data.onMoveLabel = (labelId, t, side) => ctx.onViewMoveEdgeLabel?.(relation.id, labelId, t, side);
   }
-  // A side is fixed on the relation's own node, so the pin dots stay off an edge
+  // A side is fixed on the relation's own node, so the fixed-side dots stay off an edge
   // rolled up to a container: a side set there would land where this edge does
   // not draw it.
   if (
     ctx.editing &&
-    soleRelation !== undefined &&
-    attachesDirectly(soleRelation, e.from, e.to) &&
+    relation !== undefined &&
+    attachesDirectly(relation, e.from, e.to) &&
     ctx.onSetEdgeSide !== undefined
   ) {
-    data.onSetSide = (end, side) => ctx.onSetEdgeSide?.(soleRelation.id, end, side);
-    if (soleRelation.id === ctx.pinEdgeRel) data.pinsActive = true;
+    data.onSetSide = (end, side) => ctx.onSetEdgeSide?.(relation.id, end, side);
+    if (relation.id === ctx.fixedSideRelation) data.fixedSideDotsShown = true;
   }
-  if (ctx.editing && soleRelation !== undefined && ctx.pendingAdd?.edgeId === e.id) {
+  if (ctx.editing && relation !== undefined && ctx.pendingAdd?.edgeId === e.id) {
     // a correlated double-click asked to add a label on this edge — the
     // renderer projects the point and renders the new-label editor (kept until
     // the user commits/cancels; survives the edges-layer remount)
@@ -398,7 +392,7 @@ function sameNodeCtx(a: NodeDataContext, b: NodeDataContext): boolean {
     a.stylePreset === b.stylePreset &&
     a.notation === b.notation &&
     a.nodeColors === b.nodeColors &&
-    a.nodeBadges === b.nodeBadges &&
+    a.nodeChips === b.nodeChips &&
     a.resizable === b.resizable
   );
 }
@@ -412,7 +406,7 @@ function sameEdgeCtx(a: EdgeDataContext, b: EdgeDataContext): boolean {
     a.onMoveEdgeLabel === b.onMoveEdgeLabel &&
     a.onSetEdgeSide === b.onSetEdgeSide &&
     a.onAddThreat === b.onAddThreat &&
-    a.pinEdgeRel === b.pinEdgeRel &&
+    a.fixedSideRelation === b.fixedSideRelation &&
     a.pendingAdd === b.pendingAdd &&
     a.onPendingAddConsumed === b.onPendingAddConsumed &&
     a.stylePreset === b.stylePreset &&

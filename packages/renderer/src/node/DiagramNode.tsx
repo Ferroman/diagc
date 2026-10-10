@@ -1,9 +1,13 @@
 import { useContext, useRef, type CSSProperties } from 'react';
 import { Handle, NodeResizeControl, NodeResizer, Position } from '@xyflow/react';
 import {
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_REGION_TYPE,
   FB_CAUSE_TYPE,
   FB_EFFECT_TYPE,
+  GIT_NOTATION,
   GIT_STAGE_TYPE,
+  isActivityBand,
   PLAN_ACTOR_TYPES,
   PLAN_EVENT_TYPE,
   PLAN_NOTATION,
@@ -13,6 +17,7 @@ import {
   type FontScale,
   type NotationId,
   type PlanRole,
+  type Point,
   type TextAlign,
   type TextRun,
   type ElementRef,
@@ -22,7 +27,7 @@ import type { Registry, TypeStyle } from '../registry';
 import { commentBadgeProps, type AnnotationCounts } from '../notes/comment-badge';
 import { LoopHighlightContext } from '../loops/loop-highlight';
 import { NoteStateContext } from '../notes/note-state';
-import { notationProfile, type NodeBadge } from '../notations';
+import { notationProfile, type NodeChip } from '../notations';
 import { PLAN_LAYOUT } from '../layout/plan-layout';
 import { RichLabelEditor } from './RichLabelEditor';
 import { RoleChipMenu } from './RoleChipMenu';
@@ -75,7 +80,7 @@ export interface DiagramNodeData {
   stylePreset?: StylePreset;
   /** active visual language (e.g. 'causal-loop'); selects the notation profile (see notations.ts) that drives typeless-as-text rendering and other look overrides */
   notation?: NotationId;
-  /** drill-view external stub: a ghost chip standing in for an off-frame node an
+  /** drill-view external stub: a ghost standing in for an off-frame node an
    * edge points to. Clicking it navigates there. */
   external?: boolean;
   /** ER-table rows (db-table nodes) */
@@ -98,7 +103,7 @@ export interface DiagramNodeData {
   /** commit the in-place edit; null = cancelled */
   onLabelCommit?: (value: string | null) => void;
   /** edit: persist a resize (wired only for image nodes in edit mode) */
-  onResize?: (id: string, w: number, h: number, pos: { x: number; y: number }) => void;
+  onResize?: (id: string, w: number, h: number, pos: Point) => void;
   /** edit mode (db-table): commit a replacement columns array */
   onColumnsChange?: (columns: Column[]) => void;
   /** the fold chip and the CLD group's disclosure toggle (both modes; the
@@ -119,7 +124,7 @@ export interface DiagramNodeData {
    * EditingApi.onAddThreat). Absent in view mode; drives the empty badge. */
   onAddThreat?: (target: ElementRef) => void;
   /** notation chips — the plan's roles — drawn in the badge row */
-  badges?: NodeBadge[];
+  chips?: NodeChip[];
   /** with onResize: the notation resizes this node on x only, from either
    * side (a zone's width is its dates) */
   resizeAxis?: 'x';
@@ -204,7 +209,7 @@ const sketchOf = (
       height={height}
       preset={data.stylePreset}
       fill={fill}
-      {...(data.color !== undefined ? { color: fill === 'none' ? outlineInk(data.color) : data.color } : {})}
+      color={data.color === undefined ? undefined : fill === 'none' ? outlineInk(data.color) : data.color}
     />
   ) : null;
 
@@ -235,7 +240,7 @@ function XResizer({ id, data, selected }: { id: string; data: DiagramNodeData; s
   );
 }
 
-/** The one inline-rename field. Exported because a threat note renames rows with
+/** The one inline-rename field. Exported because a note renames rows with
  * the same gesture and the same commit contract (`null` = cancelled) — a second
  * copy would be a second set of Enter/blur/Escape rules to keep in step. */
 export function InlineName({
@@ -351,15 +356,15 @@ export function ThreatBadge({ id, data }: { id: string; data: DiagramNodeData })
     );
   }
   // state/text/title come from the shared derivation so this badge and the
-  // flow's chip cannot drift apart in what they say (see threat-badge.ts).
+  // flow's badge cannot drift apart in what they say (see threat-badge.ts).
   const { state, text, title } = threatBadgeProps(t);
-  // With a canvas that draws bubbles (NoteStateContext provided), the badge is
-  // the switch for this element's bubble — in BOTH modes; view mode's toggles
+  // With a canvas that draws notes (NoteStateContext provided), the badge is
+  // the switch for this element's note — in BOTH modes; view mode's toggles
   // are the canvas's own session state. Without one (a host that never draws
-  // bubbles, a bare DiagramNode) it stays the passive count it always was.
+  // notes, a bare DiagramNode) it stays the passive count it always was.
   // An external stub takes the same passive branch: it stands in for a node
   // this drill view does not draw, and the note derivation skips externals for
-  // exactly that reason — the bubble belongs to the view that draws the node,
+  // exactly that reason — the note belongs to the view that draws the node,
   // so a switch here would flip a state nothing on this canvas can show.
   if (notes === null || data.external === true) {
     return (
@@ -398,9 +403,9 @@ export function CommentBadge({ id, data }: { id: string; data: DiagramNodeData }
   const badge = data.annotations !== undefined ? commentBadgeProps(data.annotations) : undefined;
   if (badge === undefined) return null;
   // text/title come from the shared derivation so this badge and the flow's
-  // chip cannot drift apart in what they say (see comment-badge.ts).
+  // badge cannot drift apart in what they say (see comment-badge.ts).
   const { text, title } = badge;
-  // Passive without a bubble-drawing canvas, and on an external stub — the
+  // Passive without a note-drawing canvas, and on an external stub — the
   // same two cases ThreatBadge explains.
   if (notes === null || data.external === true) {
     return (
@@ -457,7 +462,7 @@ export function QuickAddButton({
       className="dg-quick-add nodrag"
       title={side === 'before' ? label : `${label} (Tab)`}
       aria-label={label}
-      {...(side !== undefined ? { 'data-side': side } : {})}
+      data-side={side}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();
@@ -475,8 +480,8 @@ export function QuickAddButton({
 function BoxLabel({ data }: { data: DiagramNodeData }): import('react').ReactElement {
   const style: CSSProperties = {
     whiteSpace: 'pre-wrap',
-    ...(data.textColor !== undefined ? { color: data.textColor } : {}),
-    ...(data.textAlign !== undefined ? { textAlign: data.textAlign } : {}),
+    color: data.textColor,
+    textAlign: data.textAlign,
   };
   if (data.rich !== undefined) {
     return (
@@ -529,7 +534,7 @@ export function DiagramNode({
   // so the view compiler marks it 'leaf' — but it is still a lane row (the
   // notation keeps every lane, empty or not, drawn full-width by gitLayout),
   // not an ordinary leaf box.
-  const isLane = profile.id === 'git-graph' && data.typeId === 'branch';
+  const isLane = profile.id === GIT_NOTATION && data.typeId === 'branch';
   const highlight = useContext(LoopHighlightContext);
   // 'loop': members glow, rest strong-dim. 'focus': members stay normal, rest light-dim.
   const loopClass = !highlight.active
@@ -543,13 +548,13 @@ export function DiagramNode({
         : ' dg-focus-node-dim';
   // The plan's reciprocal mark, on top of the dim above: a zone whose role
   // chip matches the selected actor gets an outline in that chip's colour
-  // (the badge carries the actor's own colour already — see planBadges);
+  // (the badge carries the actor's own colour already — see planChips);
   // going the other way, an actor that `related` put in a selected zone's
   // neighbourhood gets the same outline in ITS OWN colour. Neither reads
-  // `loopClass`'s dim set directly: a zone's badge is the ground truth for
+  // `loopClass`'s dim set directly: a zone's chip is the ground truth for
   // which actor lit it up, and an actor's own accent is its own to carry.
   const focusId = highlight.focusId;
-  const activeBadge = focusId !== null ? data.badges?.find((b) => b.key.endsWith(`:${focusId}`)) : undefined;
+  const activeChip = focusId !== null ? data.chips?.find((c) => c.key.endsWith(`:${focusId}`)) : undefined;
   // Gated on the plan notation itself (as isLane gates on git-graph above):
   // `person`/`team` are ordinary registry types any diagram can use, so an
   // unscoped type check would mark a C4 person one edge from the selection
@@ -557,8 +562,8 @@ export function DiagramNode({
   const isPlanActorType =
     profile.id === PLAN_NOTATION && data.typeId !== undefined && PLAN_ACTOR_TYPES.has(data.typeId);
   const hitColor =
-    activeBadge !== undefined
-      ? (activeBadge.color ?? 'var(--dg-accent)')
+    activeChip !== undefined
+      ? (activeChip.color ?? 'var(--dg-accent)')
       : focusId !== null && isPlanActorType && id !== focusId && highlight.nodes.has(id)
         ? (data.color ?? 'var(--dg-accent)')
         : undefined;
@@ -566,7 +571,7 @@ export function DiagramNode({
   const hitAttrs = hitColor !== undefined ? { 'data-plan-hit': true } : {};
   // The drag-over outline (see DiagramNodeData.dropTarget / EditingApi.onDropInto).
   const dropTargetAttrs = data.dropTarget === true ? { 'data-drop-target': true } : {};
-  // Tab inside an open label editor is the same offer the `+` chip makes, so it
+  // Tab inside an open label editor is the same offer the quick-add button makes, so it
   // is wired from the same channel: commit, then add. `run` is a no-op when the
   // node has no recipe, so no separate label gate is needed here.
   const quickAdd = data.quickAdd;
@@ -595,12 +600,7 @@ export function DiagramNode({
     // for it: hand the rename field over, or double-click and a dropped Table stencil
     // would flip `labelEditing` with nothing on screen to type into.
     return (
-      <TableNode
-        id={id}
-        data={data}
-        selected={selected}
-        {...(data.labelEditing === true ? { titleEditor: name } : {})}
-      />
+      <TableNode id={id} data={data} selected={selected} titleEditor={data.labelEditing === true ? name : undefined} />
     );
   }
 
@@ -611,12 +611,12 @@ export function DiagramNode({
     return (
       <div
         className={`dg-node dg-circle-node${ghostClass}${loopClass}`}
-        {...(data.stylePreset?.rough !== undefined ? {} : { style: accentStyle(data.color) })}
+        style={data.stylePreset?.rough !== undefined ? undefined : accentStyle(data.color)}
         {...ghostTitle}
       >
         {sketchOf(data, 'circle', id, width, height)}
         {(data.label !== '' || data.labelEditing === true) && (
-          <span className="dg-commit-tag" {...(tagColor !== undefined ? { style: { color: tagColor } } : {})}>
+          <span className="dg-commit-tag" style={tagColor !== undefined ? { color: tagColor } : undefined}>
             {name}
           </span>
         )}
@@ -634,8 +634,8 @@ export function DiagramNode({
     return (
       <div
         className={`dg-node dg-event-node${ghostClass}${loopClass}`}
-        {...(data.stylePreset?.rough !== undefined || data.color === undefined ? {} : { style: { color: data.color } })}
-        {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
+        style={data.stylePreset?.rough !== undefined || data.color === undefined ? undefined : { color: data.color }}
+        data-type={data.typeId}
         {...ghostTitle}
       >
         {sketchOf(data, 'diamond', id, width, height)}
@@ -659,7 +659,7 @@ export function DiagramNode({
           aria-hidden="true"
           style={{ WebkitMaskImage: maskUrl, maskImage: maskUrl, background: data.color ?? 'var(--dg-shape-default)' }}
         />
-        <div className="dg-shape-label" {...(labelColor !== undefined ? { style: { color: labelColor } } : {})}>
+        <div className="dg-shape-label" style={labelColor !== undefined ? { color: labelColor } : undefined}>
           {ghostArrow}
           {name}
           {typeLabel !== undefined && typeLabel !== '' ? <span className="dg-type">{typeLabel}</span> : null}
@@ -692,7 +692,7 @@ export function DiagramNode({
           className={`dg-node dg-image-node${ghostClass}${loopClass}`}
           // icon nodes stay transparent (no accent fill/border); the frame shows on
           // hover/selection via CSS. textColor still tints the caption.
-          {...(data.textColor !== undefined ? { style: { color: data.textColor } } : {})}
+          style={data.textColor !== undefined ? { color: data.textColor } : undefined}
           {...ghostTitle}
         >
           <img
@@ -729,22 +729,22 @@ export function DiagramNode({
           ⚭ {data.sharedMembers.length}
         </span>
       )}
-      {data.badges?.map((b) => {
-        const chipClass = `dg-badge dg-role-chip${focusId !== null && b.key.endsWith(`:${focusId}`) ? ' dg-role-chip-active' : ''}`;
+      {data.chips?.map((chip) => {
+        const chipClass = `dg-badge dg-role-chip${focusId !== null && chip.key.endsWith(`:${focusId}`) ? ' dg-role-chip-active' : ''}`;
         // Edit mode, plan notation only: the chip opens a menu instead of
         // sitting inert. `profile.id` gates it (as isPlanActorType does above)
-        // so a foreign notation's badge — none exist today, but the shape is
-        // generic — never grows a plan-shaped menu by accident. `b.key` is
-        // always `${role}:${actorId}` (see planBadges), so the first colon
+        // so a foreign notation's chip — none exist today, but the shape is
+        // generic — never grows a plan-shaped menu by accident. `chip.key` is
+        // always `${role}:${actorId}` (see planChips), so the first colon
         // splits it back into the two.
         if (data.onSetRole !== undefined && profile.id === PLAN_NOTATION) {
-          const sep = b.key.indexOf(':');
-          const role = b.key.slice(0, sep) as PlanRole;
-          const actorId = b.key.slice(sep + 1);
+          const sep = chip.key.indexOf(':');
+          const role = chip.key.slice(0, sep) as PlanRole;
+          const actorId = chip.key.slice(sep + 1);
           return (
             <RoleChipMenu
-              key={b.key}
-              chip={b}
+              key={chip.key}
+              chip={chip}
               className={chipClass}
               role={role}
               actorId={actorId}
@@ -755,12 +755,12 @@ export function DiagramNode({
         }
         return (
           <span
-            key={b.key}
+            key={chip.key}
             className={chipClass}
-            title={b.title}
-            {...(b.color !== undefined ? { style: { '--dg-chip': b.color } as CSSProperties } : {})}
+            title={chip.title}
+            style={chip.color !== undefined ? ({ '--dg-chip': chip.color } as CSSProperties) : undefined}
           >
-            {b.text}
+            {chip.text}
           </span>
         );
       })}
@@ -832,16 +832,16 @@ export function DiagramNode({
     // A lane is a row, not a box: no border, no fill, none of the fold/enter/pin
     // chrome (the notation keeps it expanded). Its name sits in a tinted box at
     // the band's right end — the reference's "Master / Nightly" labels. Width
-    // and inset mirror GIT_LAYOUT.LABEL_W / MARGIN in styles.css. The `+`
-    // (append a commit) takes the chip's default spot, just past the row's
+    // and inset mirror GIT_LAYOUT.LABEL_W / MARGIN in styles.css. The quick-add
+    // button (append a commit) keeps its default spot, just past the row's
     // right end — beside the name, where the lane is grabbed.
     return (
       <div className={`dg-lane${loopClass}`}>
         <span
           className="dg-lane-label"
-          {...(data.color !== undefined
-            ? { style: { ...accentStyle(data.color), color: data.textColor ?? data.color } }
-            : {})}
+          style={
+            data.color !== undefined ? { ...accentStyle(data.color), color: data.textColor ?? data.color } : undefined
+          }
         >
           {name}
         </span>
@@ -854,7 +854,7 @@ export function DiagramNode({
   if (data.typeId === FB_EFFECT_TYPE) {
     // The effect IS the spine: fishboneLayout sizes this node across the whole
     // fish, the line fills it and the head box sits at its right end (the
-    // git-lane trick — no overlay needed). Flex lets the line take whatever the
+    // git-lane trick — no canvas overlay needed). Flex lets the line take whatever the
     // box leaves, so nothing here needs to know the box's width.
     return (
       <div className={`dg-fb-head${loopClass}`}>
@@ -873,7 +873,7 @@ export function DiagramNode({
     return (
       <div
         className={`dg-fb-cause${loopClass}`}
-        {...(data.textColor !== undefined ? { style: { color: data.textColor } } : {})}
+        style={data.textColor !== undefined ? { color: data.textColor } : undefined}
       >
         {name}
         <QuickAddButton id={id} data={data} selected={selected} />
@@ -889,11 +889,11 @@ export function DiagramNode({
     return (
       <div
         className={`dg-git-stage${loopClass}`}
-        {...(data.color !== undefined ? { style: { '--dg-stage': data.color } as CSSProperties } : {})}
+        style={data.color !== undefined ? ({ '--dg-stage': data.color } as CSSProperties) : undefined}
       >
         <span
           className="dg-git-stage-name"
-          {...(data.textColor !== undefined ? { style: { color: data.textColor } } : {})}
+          style={data.textColor !== undefined ? { color: data.textColor } : undefined}
         >
           {name}
         </span>
@@ -904,12 +904,12 @@ export function DiagramNode({
   // Activity chrome keys on the type, not container state: an empty lane or
   // frame has no children, compiles as 'leaf', and must still render as a
   // band/frame — never as an ordinary leaf box (the git empty-lane lesson).
-  if (data.typeId === 'activity-lane' || data.typeId === 'activity-frame') {
-    const isFrame = data.typeId === 'activity-frame';
+  if (isActivityBand(data.typeId)) {
+    const isFrame = data.typeId === ACTIVITY_FRAME_TYPE;
     return (
       <div
         className={`${isFrame ? 'dg-activity-frame' : 'dg-activity-lane'}${loopClass}`}
-        {...(data.color !== undefined ? { style: { '--dg-act-accent': data.color } as CSSProperties } : {})}
+        style={data.color !== undefined ? ({ '--dg-act-accent': data.color } as CSSProperties) : undefined}
       >
         <span className="dg-activity-strip">
           <span className="dg-activity-name">{name}</span>
@@ -924,7 +924,7 @@ export function DiagramNode({
       </div>
     );
   }
-  if (data.typeId === 'activity-region') {
+  if (data.typeId === ACTIVITY_REGION_TYPE) {
     return (
       <div className={`dg-activity-region${loopClass}`}>
         {(data.label !== '' || data.labelEditing === true) && <span className="dg-activity-region-name">{name}</span>}
@@ -968,20 +968,18 @@ export function DiagramNode({
     return (
       <div
         className={`dg-group${style.dashed === true ? ' dg-dashed' : ''}${groupOutline ? ' dg-group-outline' : ''}${corner ? ' dg-group-corner' : ''}${loopClass}`}
-        {...(data.stylePreset?.rough !== undefined
-          ? hitStyle !== undefined
-            ? { style: hitStyle }
-            : {}
-          : {
-              style: {
+        style={
+          data.stylePreset?.rough !== undefined
+            ? hitStyle
+            : {
                 ...(groupInk !== undefined
                   ? { borderColor: groupInk, color: data.textColor ?? groupInk }
                   : accentStyle(data.color)),
                 ...(data.textColor !== undefined ? { color: data.textColor } : {}),
                 ...hitStyle,
-              },
-            })}
-        {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
+              }
+        }
+        data-type={data.typeId}
         {...hitAttrs}
         {...dropTargetAttrs}
       >
@@ -1020,7 +1018,7 @@ export function DiagramNode({
       ? {
           background: style.fill,
           borderColor: style.fill,
-          ...(style.textOn !== undefined ? { color: style.textOn } : {}),
+          color: style.textOn,
         }
       : undefined;
   const boxAccent: CSSProperties = {
@@ -1041,12 +1039,12 @@ export function DiagramNode({
           ? `dg-node dg-text-node${ghostClass}${loopClass}`
           : `dg-node dg-shape-${style.shape}${style.dashed === true ? ' dg-dashed' : ''}${outline ? ' dg-c4-outline' : ''}${solid !== undefined && data.stylePreset?.rough === undefined ? ' dg-solid' : ''}${ghostClass}${loopClass}`
       }
-      {...(data.stylePreset?.rough !== undefined || isTypelessText || neutralGlyph
-        ? hitStyle !== undefined
-          ? { style: hitStyle }
-          : {}
-        : { style: { ...boxAccent, ...hitStyle } })}
-      {...(data.typeId !== undefined ? { 'data-type': data.typeId } : {})}
+      style={
+        data.stylePreset?.rough !== undefined || isTypelessText || neutralGlyph
+          ? hitStyle
+          : { ...boxAccent, ...hitStyle }
+      }
+      data-type={data.typeId}
       {...hitAttrs}
       {...dropTargetAttrs}
       {...ghostTitle}

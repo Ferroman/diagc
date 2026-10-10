@@ -10,6 +10,7 @@ import {
   isOnPlane,
   layoutPlaneKey,
   notationPlane,
+  viewedPlane,
 } from './planes';
 import type { DiagramModel, DiagramPlane } from './types';
 
@@ -30,6 +31,14 @@ const flow: DiagramPlane = { id: 'flow', name: 'Flow', containmentOf: 'arch' };
 describe('defaultPlaneOf', () => {
   it('is the first plane declared', () => expect(defaultPlaneOf(doc([arch, infra]))).toBe('arch'));
   it('is undefined without planes', () => expect(defaultPlaneOf(doc([]))).toBeUndefined());
+});
+
+describe('viewedPlane', () => {
+  it('is the named plane', () => expect(viewedPlane([arch, infra], 'infra')).toBe(infra));
+  it('is the first plane when none is named', () => expect(viewedPlane([arch, infra])).toBe(arch));
+  it('is the plane itself when it borrows containment', () => expect(viewedPlane([arch, flow], 'flow')).toBe(flow));
+  it('is undefined for an unknown plane', () => expect(viewedPlane([arch], 'nope')).toBeUndefined());
+  it('is undefined without planes', () => expect(viewedPlane([])).toBeUndefined());
 });
 
 describe('containmentPlaneOf', () => {

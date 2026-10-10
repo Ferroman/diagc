@@ -26,7 +26,7 @@ describe('placeNote', () => {
   it('opens above and to the left of the badge when that is free, clear of the element by NOTE_GAP', () => {
     const at = placeNote(badge, box, { width: W, height: 80 }, obstaclesOf([{ rect: box, kind: 'box' }]));
     expect(at.y + 80).toBe(box.y - NOTE_GAP);
-    // the bubble's right edge reaches just past the badge, so the tail is short
+    // the note's right edge reaches just past the badge, so the tail is short
     expect(at.x + W).toBeGreaterThan(badge.x);
     expect(at.x + W).toBeLessThan(badge.x + 40);
   });
@@ -45,7 +45,7 @@ describe('placeNote', () => {
 
   it('slides a spot outward, in steps, until it clears — before covering anything', () => {
     // above, below and right are walled off; to the left a post stands where
-    // the bubble's near end would first land, and one slide further out clears it
+    // the note's near end would first land, and one slide further out clears it
     const obstacles = obstaclesOf([
       { rect: box, kind: 'box' },
       { rect: { x: -1000, y: -1000, width: 3000, height: 1270 }, kind: 'box' }, // above, down to y=270
@@ -60,7 +60,7 @@ describe('placeNote', () => {
 
   it('when nothing near is free, covers as little as it can rather than going far', () => {
     // hemmed in on every side, deeper than a slide can reach — the
-    // least-covering candidate wins, and the bubble still sits next to its
+    // least-covering candidate wins, and the note still sits next to its
     // element
     const obstacles = obstaclesOf([
       { rect: box, kind: 'box' },
@@ -75,7 +75,7 @@ describe('placeNote', () => {
     expect(at).toEqual({ x: badge.x - 24, y: box.y - NOTE_GAP - 80 });
   });
 
-  it('a container blocks only its header band and border — a bubble inside it is free', () => {
+  it('a container blocks only its header band and border — a note inside it is free', () => {
     const group: Rect = { x: 100, y: 100, width: 600, height: 500 };
     const inner: Rect = { x: 400, y: 300, width: 120, height: 60 };
     const obstacles = obstaclesOf([
@@ -89,40 +89,40 @@ describe('placeNote', () => {
     expect(at.y + 80).toBe(inner.y - NOTE_GAP);
   });
 
-  it('a flow chip has no box: the bubble hangs off the chip itself', () => {
-    const chip = { x: 500, y: 500 };
-    const at = placeNote(chip, null, { width: W, height: 60 }, []);
-    // above the chip's pill, right edge just past it
-    expect(at.y + 60).toBe(chip.y - 9 - NOTE_GAP);
-    expect(at.x + W).toBeGreaterThan(chip.x);
+  it('a flow badge has no box: the note hangs off the badge itself', () => {
+    const badge = { x: 500, y: 500 };
+    const at = placeNote(badge, null, { width: W, height: 60 }, []);
+    // above the badge's pill, right edge just past it
+    expect(at.y + 60).toBe(badge.y - 9 - NOTE_GAP);
+    expect(at.x + W).toBeGreaterThan(badge.x);
   });
 
-  it('a flow’s bubble prefers the side its chip is on — away from the line, where the labels are', () => {
-    const chip = { x: 500, y: 500 };
+  it('a flow’s note prefers the side its badge is on — away from the line, where the labels are', () => {
+    const badge = { x: 500, y: 500 };
     const span = Array.from({ length: 25 }, (_, k) => k * (1000 / 24));
-    // a vertical flow at x=490, chip offset to the right of it
+    // a vertical flow at x=490, badge offset to the right of it
     const vertical = lineObstacles(span.map((y) => ({ x: 490, y })));
-    const right = placeNote(chip, null, { width: W, height: 60 }, vertical, { x: 1, y: 0 });
-    expect(right.x).toBe(chip.x + 9 + NOTE_GAP);
-    // a horizontal flow at y=490, chip below it
+    const right = placeNote(badge, null, { width: W, height: 60 }, vertical, { x: 1, y: 0 });
+    expect(right.x).toBe(badge.x + 9 + NOTE_GAP);
+    // a horizontal flow at y=490, badge below it
     const horizontal = lineObstacles(span.map((x) => ({ x, y: 490 })));
-    const below = placeNote(chip, null, { width: W, height: 60 }, horizontal, { x: 0, y: 1 });
-    expect(below.y).toBe(chip.y + 9 + NOTE_GAP);
+    const below = placeNote(badge, null, { width: W, height: 60 }, horizontal, { x: 0, y: 1 });
+    expect(below.y).toBe(badge.y + 9 + NOTE_GAP);
   });
 
-  it('a flow’s line, sampled into dots, is an obstacle like any box — the bubble lands beside it, not across it', () => {
-    // a vertical flow at x=490 from y=0 to 1000, chip pushed right of it; a
-    // wall fills the right side from just past where a bubble above the chip
-    // would end (chip.x + 24), so "above" is clear of the wall — and across
-    // the line. With the line in the way the bubble goes wholly left of it.
-    const chip = { x: 500, y: 500 };
+  it('a flow’s line, sampled into dots, is an obstacle like any box — the note lands beside it, not across it', () => {
+    // a vertical flow at x=490 from y=0 to 1000, badge pushed right of it; a
+    // wall fills the right side from just past where a note above the badge
+    // would end (badge.x + 24), so "above" is clear of the wall — and across
+    // the line. With the line in the way the note goes wholly left of it.
+    const badge = { x: 500, y: 500 };
     const line = Array.from({ length: 25 }, (_, k) => ({ x: 490, y: k * (1000 / 24) }));
     const wall: Rect = { x: 530, y: 0, width: 2000, height: 2000 };
-    const at = placeNote(chip, null, { width: W, height: 60 }, [wall, ...lineObstacles(line)], { x: 1, y: 0 });
+    const at = placeNote(badge, null, { width: W, height: 60 }, [wall, ...lineObstacles(line)], { x: 1, y: 0 });
     expect(at.x + W).toBeLessThanOrEqual(490 - 4);
   });
 
-  it('other open bubbles are obstacles too: two elements stacked do not share a spot', () => {
+  it('other open notes are obstacles too: two elements stacked do not share a spot', () => {
     const other: Rect = { x: 300, y: 300 - NOTE_GAP - 80, width: W, height: 80 };
     const obstacles = [...obstaclesOf([{ rect: box, kind: 'box' }]), other];
     const at = placeNote(badge, box, { width: W, height: 80 }, obstacles);
@@ -142,7 +142,7 @@ describe('estimateNoteHeight', () => {
 
   it('a long status word and a details button narrow the title column, so the same title wraps more', () => {
     // "Card details logged by the CDN": two lines beside `open`, three beside
-    // `mitigated` with the ▸ that details bring — what the bubble really drew
+    // `mitigated` with the ▸ that details bring — what the note really drew
     const title = 'Card details logged by the CDN';
     const open = estimateNoteHeight('Web app', [{ title }], false);
     const handled = estimateNoteHeight('Web app', [{ title, status: 'mitigated', description: 'x' }], false);
@@ -163,7 +163,7 @@ describe('estimateNoteHeight with comments and links', () => {
   });
 });
 
-/** overlapping area of a bubble at `at` with a rect */
+/** overlapping area of a note at `at` with a rect */
 function overlap(at: { x: number; y: number }, w: number, h: number, r: Rect): number {
   const x = Math.max(0, Math.min(at.x + w, r.x + r.width) - Math.max(at.x, r.x));
   const y = Math.max(0, Math.min(at.y + h, r.y + r.height) - Math.max(at.y, r.y));

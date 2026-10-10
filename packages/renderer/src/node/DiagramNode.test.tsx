@@ -108,12 +108,12 @@ describe('DiagramNode', () => {
     expect(screen.getByTestId('shared-badge').textContent).toContain('2');
   });
 
-  it('renders an external stub through the normal type-aware path as a ghost (dashed, ↗), not a generic chip', () => {
+  it('renders an external stub through the normal type-aware path as a ghost (dashed, ↗), not a generic box', () => {
     const { container } = renderNode({ external: true, typeId: 'table', icon: 'postgres' });
     // same visual as the original entity: cylinder shape class + icon survive
     expect(container.querySelector('.dg-shape-cylinder')).not.toBeNull();
     expect(container.querySelector('svg.lucide')).not.toBeNull();
-    // ghost treatment replaces the old generic chip
+    // the ghost treatment, not a generic box
     expect(container.querySelector('.dg-ghost')).not.toBeNull();
     expect(container.querySelector('.dg-external')).toBeNull();
     expect(container.querySelector('.dg-external-arrow')?.textContent).toContain('↗');
@@ -985,7 +985,7 @@ describe('git graph nodes', () => {
     expect(screen.queryByTestId('fold-chip')).toBeNull();
   });
 
-  it('a selected commit and a selected lane carry the `+`, each pinned to its own wrapper; a stage stays bare', () => {
+  it('a selected commit and a selected lane carry the `+`, each tied to its own wrapper; a stage stays bare', () => {
     const offer = { label: () => 'Add a commit', run: vi.fn() };
     const commit = renderNode(base({ typeId: 'commit', label: '', quickAdd: offer }), true);
     expect(commit.container.querySelector('.dg-circle-node > .dg-quick-add')).toBe(
@@ -1067,14 +1067,14 @@ describe('threat-model looks', () => {
     const badge = container.querySelector('.dg-threat-badge') as HTMLElement;
     expect(badge.getAttribute('data-state')).toBe('handled');
     expect(badge.textContent).toBe('✓');
-    // one threat, singular — the same derivation the edge chip uses
+    // one threat, singular — the same derivation the edge badge uses
     expect(badge.getAttribute('title')).toBe('0 open of 1 threat');
   });
 
-  it('under a NoteStateContext the badge is a toggle button that reports its bubble state and flips it', () => {
+  it('under a NoteStateContext the badge is a toggle button that reports its note state and flips it', () => {
     const toggle = vi.fn();
     // renderNode renders id="n1", so the open key is node:n1
-    const state: NoteState = { isOpen: (key) => key === 'node:n1', toggle, placeChip: vi.fn() };
+    const state: NoteState = { isOpen: (key) => key === 'node:n1', toggle, placeBadge: vi.fn() };
     const data: DiagramNodeData = {
       label: 'Verify',
       typeId: 'tm-process',
@@ -1113,11 +1113,11 @@ describe('threat-model looks', () => {
     expect(container.querySelector('span.dg-threat-badge')).not.toBeNull();
   });
 
-  it('an external stub keeps the passive span even under a provider — its bubble is another view’s', () => {
+  it('an external stub keeps the passive span even under a provider — its note is another view’s', () => {
     // The stub stands in for a node this drill view does not draw, and the
     // note derivation skips externals. A switch here would flip a state
     // nothing on this canvas can show.
-    const state: NoteState = { isOpen: () => false, toggle: vi.fn(), placeChip: vi.fn() };
+    const state: NoteState = { isOpen: () => false, toggle: vi.fn(), placeBadge: vi.fn() };
     const data: DiagramNodeData = {
       label: 'Verify',
       typeId: 'tm-process',
@@ -1271,7 +1271,7 @@ describe('empty threat badge', () => {
 });
 
 describe('CommentBadge', () => {
-  it('draws nothing without annotations, a passive count without a bubble-drawing canvas', () => {
+  it('draws nothing without annotations, a passive count without a note-drawing canvas', () => {
     expect(renderNode({ annotations: undefined }).container.querySelector('.dg-comment-badge')).toBeNull();
     const { container } = renderNode({ annotations: { comments: 2, links: 1 } });
     const badge = container.querySelector('.dg-comment-badge') as HTMLElement;
@@ -1293,10 +1293,10 @@ describe('CommentBadge', () => {
     expect(container.querySelector('.dg-group > .dg-comment-badge')?.textContent).toBe('1');
   });
 
-  it('is the bubble switch on a bubble-drawing canvas', () => {
+  it('is the note switch on a note-drawing canvas', () => {
     const toggle = vi.fn();
     // renderNode renders id="n1", so the toggle target is node:n1
-    const state: NoteState = { isOpen: () => false, toggle, placeChip: vi.fn() };
+    const state: NoteState = { isOpen: () => false, toggle, placeBadge: vi.fn() };
     const data: DiagramNodeData = {
       label: 'users',
       typeId: 'table',
@@ -1371,7 +1371,7 @@ describe('QuickAddButton', () => {
   });
 
   it('reaches the fishbone head, a cause, a group, a table, a shape and an image', () => {
-    // Each case pins the chip to ITS branch's wrapper: asserting only that some
+    // Each case ties the quick-add button to ITS branch's wrapper: asserting only that some
     // `+` exists would still pass if a gate stopped matching and the node fell
     // through to the generic box path.
     for (const { sel, ...partial } of [
@@ -1456,30 +1456,30 @@ describe('QuickAddButton', () => {
 
 describe('plan chips and x-resize', () => {
   it('renders role chips in the badge row with their titles and colours, on leaves and groups', () => {
-    const badges = [
+    const chips = [
       { key: 'owns:a', text: 'O·Alice', title: 'Owner: Alice Ng', color: '#c33' },
       { key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' },
     ];
-    const leaf = renderNode({ typeId: 'plan-zone', badges });
-    const chips = leaf.container.querySelectorAll('.dg-role-chip');
-    expect([...chips].map((c) => c.textContent)).toEqual(['O·Alice', 'E·Bob']);
-    expect(chips[0]!.getAttribute('title')).toBe('Owner: Alice Ng');
-    expect((chips[0] as HTMLElement).style.getPropertyValue('--dg-chip')).toBe('#c33');
+    const leaf = renderNode({ typeId: 'plan-zone', chips });
+    const drawn = leaf.container.querySelectorAll('.dg-role-chip');
+    expect([...drawn].map((c) => c.textContent)).toEqual(['O·Alice', 'E·Bob']);
+    expect(drawn[0]!.getAttribute('title')).toBe('Owner: Alice Ng');
+    expect((drawn[0] as HTMLElement).style.getPropertyValue('--dg-chip')).toBe('#c33');
     expect(leaf.container.querySelector('.dg-node')?.getAttribute('data-type')).toBe('plan-zone');
     cleanup();
-    const group = renderNode({ typeId: 'plan-zone', state: 'expanded', badges });
+    const group = renderNode({ typeId: 'plan-zone', state: 'expanded', chips });
     expect(group.container.querySelectorAll('.dg-group .dg-role-chip')).toHaveLength(2);
     expect(group.container.querySelector('.dg-group')?.getAttribute('data-type')).toBe('plan-zone');
   });
   it('with onSetRole in data on the plan notation, the chip is a button', () => {
-    const badges = [{ key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' }];
-    const { container } = renderNode({ typeId: 'plan-zone', notation: 'plan', badges, onSetRole: vi.fn() });
+    const chips = [{ key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' }];
+    const { container } = renderNode({ typeId: 'plan-zone', notation: 'plan', chips, onSetRole: vi.fn() });
     const chip = container.querySelector('.dg-role-chip');
     expect(chip?.tagName).toBe('BUTTON');
   });
   it('without onSetRole (view mode) the chip stays the span it was', () => {
-    const badges = [{ key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' }];
-    const { container } = renderNode({ typeId: 'plan-zone', notation: 'plan', badges });
+    const chips = [{ key: 'executes:b', text: 'E·Bob', title: 'Executor: Bob' }];
+    const { container } = renderNode({ typeId: 'plan-zone', notation: 'plan', chips });
     const chip = container.querySelector('.dg-role-chip');
     expect(chip?.tagName).toBe('SPAN');
   });

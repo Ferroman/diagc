@@ -1,10 +1,10 @@
-import type { ThreatStatus } from '@diagc/core/internal';
+import type { BoxSize, Point, ThreatStatus } from '@diagc/core/internal';
 import type { NodeGeometry } from '../layout/layout';
 
 export type Rect = NodeGeometry;
 
-/** the bubble's width, in flow px. One constant, applied by NoteNode as an
- * inline style, so the placement and the box agree on how wide "the bubble"
+/** the note's width, in flow px. One constant, applied by NoteNode as an
+ * inline style, so the placement and the box agree on how wide "the note"
  * is; the stylesheet sets no width. Lives here, not in NoteNode.tsx, because
  * the height estimate below needs it and NoteNode imports this module. */
 export const NOTE_WIDTH = 220;
@@ -17,36 +17,31 @@ export const STATUS_WORD: Record<ThreatStatus, string> = {
   accepted: 'accepted',
   'not-applicable': 'n/a',
 };
-export interface Point {
-  x: number;
-  y: number;
-}
-
 /** how the badge sits on an element — the three placements styles.css gives
- * `.dg-threat-badge`, mirrored here because the bubble has to know where its
+ * `.dg-threat-badge`, mirrored here because the note has to know where its
  * tail is going before anything is measured */
 export type BadgeKind = 'box' | 'ellipse' | 'group';
 
 /** the counting badge is an 18px pill; its centre is what the tail points at */
 export const BADGE_R = 9;
-/** clearance between a bubble and the element (or pill) it hangs off */
+/** clearance between a note and the element (or pill) it hangs off */
 export const NOTE_GAP = 14;
-/** how far a bubble's edge reaches past the badge, so the tail base lands on
- * the bubble's side next to the badge rather than at a corner */
+/** how far a note's edge reaches past the badge, so the tail base lands on
+ * the note's side next to the badge rather than at a corner */
 const TAIL_ROOM = 24;
 /** a candidate spot farther than this from the badge (edge to centre) is "too
  * far": covering something nearby beats a clear spot the eye has to hunt for */
 const NEAR = 240;
 /** how far a taken spot is pushed outward, step by step, before the next
- * spot is tried at all — a bubble 40px further out still reads as beside its
+ * spot is tried at all — a note 40px further out still reads as beside its
  * element, where one on the far side of it may not */
 const SLIDES = [0, 20, 40, 60, 80, 100, 120];
 /** a flow's line as an obstacle: a dot this big at each sampled point — the
  * only shape an axis-aligned obstacle list can give a line at any angle */
 const LINE_DOT = 8;
-/** a container's header band — the title row a bubble must not sit on */
+/** a container's header band — the title row a note must not sit on */
 const GROUP_HEADER = 28;
-/** a container's border, as a strip a bubble must not straddle */
+/** a container's border, as a strip a note must not straddle */
 const GROUP_BORDER = 2;
 
 /**
@@ -68,10 +63,10 @@ export function badgeCenter(rect: Rect, kind: BadgeKind): Point {
 }
 
 /**
- * The rectangles a bubble must keep off. A leaf (or a folded container) is its
+ * The rectangles a note must keep off. A leaf (or a folded container) is its
  * whole box. An expanded container is transparent inside — that is where its
- * members' bubbles belong — so only its header band and its four border strips
- * count, which also steers a bubble to sit wholly inside or wholly outside
+ * members' notes belong — so only its header band and its four border strips
+ * count, which also steers a note to sit wholly inside or wholly outside
  * rather than across the line.
  */
 export function obstaclesOf(elements: readonly { rect: Rect; kind: 'box' | 'group' }[]): Rect[] {
@@ -92,7 +87,7 @@ export function obstaclesOf(elements: readonly { rect: Rect; kind: 'box' | 'grou
 
 /**
  * A flow's routed line as obstacles: one small square per sampled point (the
- * edge samples its own curve — see DiagramEdge). A bubble is far wider than
+ * edge samples its own curve — see DiagramEdge). A note is far wider than
  * the sampling step, so one that lay across the line would always cover a dot.
  */
 export function lineObstacles(line: readonly Point[]): Rect[] {
@@ -113,29 +108,29 @@ const distanceTo = (p: Point, r: Rect): number => {
 };
 
 /**
- * Where a bubble opens: the first free spot next to its badge, in a fixed
+ * Where a note opens: the first free spot next to its badge, in a fixed
  * order — above-left of the badge (the comic default), above-right, then to
- * the left and right of the element with the bubble's top near the badge,
+ * the left and right of the element with the note's top near the badge,
  * then below, then left/right with its bottom near the badge — each spot
  * slid outward in steps (SLIDES) until it clears. "Free" means it covers no
  * obstacle. When nothing near is free, the least-covering near spot wins: a
- * bubble that hides part of a neighbour is still read next to the element it
+ * note that hides part of a neighbour is still read next to the element it
  * is about, and one sent off to open space is not.
  *
  * `element` is the box the badge sits on (its bounding box for an ellipse),
- * or null for a flow's chip, which has no box beyond its own pill. `away`,
- * when given, is the unit direction the chip was pushed off its line: every
+ * or null for a flow's badge, which has no box beyond its own pill. `away`,
+ * when given, is the unit direction the badge was pushed off its line: every
  * spot on that side is tried, at every slide, before any on the other, so a
- * flow's bubble keeps to its chip's side of the line — and off the labels
+ * flow's note keeps to its badge's side of the line — and off the labels
  * that sit on the line — whenever it can (the line itself is among the
  * obstacles, see lineObstacles). All coordinates share one space — the caller
  * decides which. Deterministic and pure: run in model order with earlier
- * bubbles among the obstacles, two open bubbles never stack.
+ * notes among the obstacles, two open notes never stack.
  */
 export function placeNote(
   badge: Point,
   element: Rect | null,
-  size: { width: number; height: number },
+  size: BoxSize,
   obstacles: readonly Rect[],
   away?: Point,
 ): Point {
@@ -185,9 +180,9 @@ export function placeNote(
   return best ?? spots[0]!.at;
 }
 
-/** the bubble's padding, top and bottom (see .dg-note) */
+/** the note's padding, top and bottom (see .dg-note) */
 const PAD = 16;
-/** the bubble's padding, left and right (see .dg-note) */
+/** the note's padding, left and right (see .dg-note) */
 const PAD_X = 10;
 /** one line of 12px text at line-height 1.35 */
 const LINE = 16;
@@ -214,7 +209,7 @@ const SECTION = 6 + 6 + 14;
 const META = 13;
 
 /**
- * A bubble's height before it is measured, from the text it will show — what
+ * A note's height before it is measured, from the text it will show — what
  * the placement collides with. An estimate on purpose: the real height arrives
  * a frame later and changes when a row's details open, and a placement that
  * followed it would jump under the pointer. Wrapping is guessed from glyph
@@ -238,7 +233,7 @@ export function estimateNoteHeight(
     height += lines(t.title, width, CHAR) * LINE + ROW_PAD;
   }
   // A section is a title line plus its items; a comment's `by · at` is one
-  // more small line. Text wraps across the bubble's full inner width.
+  // more small line. Text wraps across the note's full inner width.
   if (comments.length > 0) {
     height += SECTION;
     for (const c of comments)

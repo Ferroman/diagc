@@ -1,25 +1,24 @@
 import { createContext } from 'react';
-import type { ElementRef } from '@diagc/core/internal';
-import type { Point } from './note-place';
+import type { ElementRef, Point } from '@diagc/core/internal';
 
 /**
- * Which threat bubbles are open, and the switch that flips one — read by the
- * node badge (DiagramNode) and the flow chip (DiagramEdge), provided by
+ * Which notes are open, and the switch that flips one — read by the
+ * node badge (DiagramNode) and the flow badge (DiagramEdge), provided by
  * DiagramView around the whole canvas (the LoopHighlightContext precedent).
  * A context rather than a field on the node data: a toggle then re-renders
  * the badges that read it and rebuilds no node data at all. `null` = no
- * bubbles on this canvas (a host passing notes={false}); badges stay passive.
+ * notes on this canvas (a host passing notes={false}); badges stay passive.
  */
 export interface NoteState {
   /** `key` is elementKey(target) */
   isOpen: (key: string) => boolean;
   toggle: (target: ElementRef) => void;
-  /** where a flow's chip is drawn, in flow coordinates, the unit direction it
+  /** where a flow's badge is drawn, in flow coordinates, the unit direction it
    * was pushed off its line, and the line itself sampled end to end — reported
-   * by the edge, which alone knows its routed curve, so the relation's bubble
-   * can hang off the chip on the side away from the line and every bubble can
+   * by the edge, which alone knows its routed curve, so the relation's note
+   * can hang off the badge on the side away from the line and every note can
    * keep off the line. Stable across renders; a repeat is a no-op. */
-  placeChip: (relation: string, at: Point, away: Point, line: readonly Point[]) => void;
+  placeBadge: (relation: string, at: Point, away: Point, line: readonly Point[]) => void;
 }
 
 export const NoteStateContext = createContext<NoteState | null>(null);

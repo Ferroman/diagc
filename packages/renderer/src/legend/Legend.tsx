@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { LegendSection } from '@diagc/core/internal';
+import type { BoxSize, LegendSection } from '@diagc/core/internal';
 import type { IconRegistry } from '@diagc/icons';
 import { END_SHAPES, LINE_MARKERS } from '../edge/DiagramEdge';
 import type { LegendMark, LegendRow, LegendSwatch } from './legendRows';
@@ -53,15 +53,7 @@ function LineSwatch({ style, color }: { style: KindStyle; color: string }) {
   const x2 = endShape !== undefined && !LINE_MARKERS.has(end) ? 23 - (endShape.refX - 2) * MARKER_SCALE : 23;
   return (
     <svg className="dg-legend-swatch" viewBox="0 0 24 12" width="24" height="12" aria-hidden="true">
-      <line
-        x1="1"
-        y1="6"
-        x2={x2}
-        y2="6"
-        stroke={color}
-        strokeWidth={width}
-        {...(dash !== undefined ? { strokeDasharray: dash } : {})}
-      />
+      <line x1="1" y1="6" x2={x2} y2="6" stroke={color} strokeWidth={width} strokeDasharray={dash} />
       {style.zigzag === true && (
         <polyline points="8,9 12.5,4.5 10.5,7.5 15,3" fill="none" stroke={color} strokeWidth={1.25} />
       )}
@@ -73,9 +65,9 @@ function LineSwatch({ style, color }: { style: KindStyle; color: string }) {
 
 /** One drawing per `ShapeId`, in a 24×16 box. A shape with no branch here would be
  * keyed as a plain box, which on an activity diagram is every row saying the same
- * thing — Legend.test pins that each shape gets its own. */
+ * thing — Legend.test checks that each shape gets its own. */
 function ShapeGlyph({ s, stroke }: { s: TypeStyle; stroke: string }) {
-  const outline = { fill: 'var(--dg-surface)', stroke, ...(s.dashed === true ? { strokeDasharray: '4 3' } : {}) };
+  const outline = { fill: 'var(--dg-surface)', stroke, strokeDasharray: s.dashed === true ? '4 3' : undefined };
   switch (s.shape) {
     case 'cylinder':
       return (
@@ -217,7 +209,7 @@ export interface LegendProps {
   /** resolves `icon` on a shape swatch; without it no glyph is drawn */
   icons?: IconRegistry;
   /** reports the rendered size so the host can reserve space in an export */
-  onMeasure?: (size: { width: number; height: number }) => void;
+  onMeasure?: (size: BoxSize) => void;
 }
 
 export function Legend({
@@ -231,7 +223,7 @@ export function Legend({
 }: LegendProps) {
   const [collapsed, setCollapsed] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const lastSize = useRef<{ width: number; height: number } | null>(null);
+  const lastSize = useRef<BoxSize | null>(null);
 
   useEffect(() => {
     if (onMeasure === undefined || ref.current === null) return;
@@ -275,12 +267,7 @@ export function Legend({
             <div className="dg-legend-section" key={section}>
               <div className="dg-legend-section-title">{SECTION_LABELS[section]}</div>
               {rs.map((r) => {
-                const swatch = (
-                  <Swatch
-                    {...(r.swatch !== undefined ? { swatch: r.swatch } : {})}
-                    {...(icons !== undefined ? { icons } : {})}
-                  />
-                );
+                const swatch = <Swatch swatch={r.swatch} icons={icons} />;
                 const layer = r.layer;
                 if (r.drawings === true && onToggleDrawings !== undefined) {
                   return (

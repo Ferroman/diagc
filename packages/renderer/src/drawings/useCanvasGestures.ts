@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { DEFAULT_STROKE_WIDTH, type Stroke } from '@diagc/core/internal';
+import { DEFAULT_STROKE_WIDTH, type Point, type Stroke } from '@diagc/core/internal';
 import { usePen, type PenHandlers } from './usePen';
 import { useLaser } from './useLaser';
 import type { DrawTool, PenSettings } from '../canvas/view-types';
@@ -13,7 +13,7 @@ export interface CanvasGesturesInput {
   modelId: string; // props.model.id — the laser reset key
   pen: PenSettings | undefined; // props.pen
   onAddStroke: ((stroke: Omit<Stroke, 'id'>) => void) | undefined; // edit?.onAddStroke
-  toFlow: (p: { x: number; y: number }) => { x: number; y: number }; // reactFlow.screenToFlowPosition
+  toFlow: (p: Point) => Point; // reactFlow.screenToFlowPosition
 }
 
 export interface CanvasGestures {
