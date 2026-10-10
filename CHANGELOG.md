@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.3](https://github.com/Ferroman/diagc/compare/v1.1.2...v1.1.3) (2026-10-10)
+
+
+### Bug Fixes
+
+* **core:** a rolled-up relation leaves its fixed sides on its own nodes ([#91](https://github.com/Ferroman/diagc/issues/91)) ([d6af9cf](https://github.com/Ferroman/diagc/commit/d6af9cf022f802c640e7c14a307794556ea2c584))
+* **obsidian:** embeds open with the plane's preset layers, a known plane and today ([#92](https://github.com/Ferroman/diagc/issues/92)) ([42e74fc](https://github.com/Ferroman/diagc/commit/42e74fcab6e300a39d80d0c346d2cdbedd9a1cd3))
+* **renderer:** activity lanes stack in the viewed plane's order ([#90](https://github.com/Ferroman/diagc/issues/90)) ([86e0858](https://github.com/Ferroman/diagc/commit/86e0858565174cbf78a18a7df9926a60bd5f1a77))
+
 ## [1.1.2](https://github.com/Ferroman/diagc/compare/v1.1.1...v1.1.2) (2026-10-10)
 
 
