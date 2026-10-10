@@ -357,21 +357,16 @@ export function routeBandedEdges(
     const inFrame = new Set(boxes.map((b) => b.id));
     const edges: RouterEdge[] = original.layoutEdges
       .filter((e) => hoist.touched.has(e.id) && inFrame.has(e.from) && inFrame.has(e.to))
-      .map((e) => {
-        // a pin only counts on a relation drawn end to end, as DiagramEdge reads it
-        const sole =
-          e.constituents.length === 1 && e.constituents[0]!.from === e.from && e.constituents[0]!.to === e.to
-            ? e.constituents[0]!
-            : undefined;
-        return {
-          id: e.id,
-          from: e.from,
-          to: e.to,
-          ...(sole?.style?.fromSide !== undefined ? { fromSide: sole.style.fromSide } : {}),
-          ...(sole?.style?.toSide !== undefined ? { toSide: sole.style.toSide } : {}),
-          hasLabel: edgeLabelText(e).trim() !== '',
-        };
-      })
+      // A fixed side counts where the drawn edge carries one, as DiagramEdge reads
+      // it: core leaves a rolled-up relation's sides on its own nodes.
+      .map((e) => ({
+        id: e.id,
+        from: e.from,
+        to: e.to,
+        ...(e.style?.fromSide !== undefined ? { fromSide: e.style.fromSide } : {}),
+        ...(e.style?.toSide !== undefined ? { toSide: e.style.toSide } : {}),
+        hasLabel: edgeLabelText(e).trim() !== '',
+      }))
       // elk's surviving routes stand, unless they break a pin (DiagramEdge
       // would then float them): those are routed here, honouring it
       .filter((e) => {

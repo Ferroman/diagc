@@ -94,7 +94,7 @@ export { NODE_TYPES, NOTATION_NODE_TYPES, NOTATION_RELATION_KINDS, RELATION_KIND
 export { visibleColumns, withHiddenColumns } from './columns';
 export { activeNotation, compileView, presetLayers } from './view/compile';
 export { buildHierarchy, type HierarchyIndex } from './view/hierarchy';
-export { soleRelation } from './view/edges';
+export { attachesDirectly, soleRelation } from './view/edges';
 export { relationLayer } from './view/layers';
 export { scopeToRoot, type ScopedModel } from './view/scope';
 export { LEAF_SIZE } from './view/size';

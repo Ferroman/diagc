@@ -1,6 +1,6 @@
 import { relationLabels } from '../labels';
 import { relationLayer } from './layers';
-import type { DiagramModel, DiagramRelation, Polarity } from '../types';
+import type { DiagramModel, DiagramRelation, Polarity, RelationStyle } from '../types';
 import type { ViewTree } from './tree';
 import type { ViewEdge } from './types';
 
@@ -82,10 +82,25 @@ function groupRelations(
 // anchor — a relation rolled up to a container had its side fixed on its child,
 // not the container, so it must still aggregate into the one boundary edge.
 function fixedSidesKey(r: DiagramRelation, from: string, to: string): string {
-  const direct = from === r.from && to === r.to;
+  const direct = attachesDirectly(r, from, to);
   const fromSide = direct ? r.style?.fromSide : undefined;
   const toSide = direct ? r.style?.toSide : undefined;
   return fromSide !== undefined || toSide !== undefined ? `:${fromSide ?? ''}>${toSide ?? ''}` : '';
+}
+
+/** Whether `r` is drawn end to end between `from` and `to`, rather than rolled up
+ * to a container at either end. */
+export function attachesDirectly(r: DiagramRelation, from: string, to: string): boolean {
+  return from === r.from && to === r.to;
+}
+
+/** The style a relation's drawn edge carries: all of it when the relation is drawn
+ * end to end; without its fixed sides when it was rolled up, because those were
+ * fixed on its own nodes, not on the container that now stands in for them. */
+function edgeStyle(r: DiagramRelation, from: string, to: string): RelationStyle | undefined {
+  if (r.style === undefined || attachesDirectly(r, from, to)) return r.style;
+  const { fromSide: _fromSide, toSide: _toSide, ...rest } = r.style;
+  return Object.keys(rest).length > 0 ? rest : undefined;
 }
 
 function toViewEdge(key: string, g: Group, tintOf: ReadonlyMap<string, string | undefined>): ViewEdge {
@@ -104,7 +119,8 @@ function toViewEdge(key: string, g: Group, tintOf: ReadonlyMap<string, string | 
   } else {
     edge.label = aggregateLabel(g.rels);
   }
-  if (single?.style !== undefined) edge.style = single.style;
+  const style = single !== undefined ? edgeStyle(single, g.from, g.to) : undefined;
+  if (style !== undefined) edge.style = style;
   const polarity = combinePolarity(g.rels);
   if (polarity !== undefined) edge.polarity = polarity;
   if (single?.delay !== undefined) edge.delay = single.delay;

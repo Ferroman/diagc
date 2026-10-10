@@ -455,6 +455,15 @@ describe('buildEdgeData', () => {
     ).toBeUndefined();
   });
 
+  it('offers no pin dots on an edge rolled up to a container', () => {
+    // `a` sits in the folded `box`: a side pinned here would land on `a`, where
+    // this edge does not draw it
+    const rolledUp = viewEdge({ from: 'box' });
+    const d = buildEdgeData(rolledUp, edgeCtx({ editing: true, pinEdgeRel: 'r1', onSetEdgeSide: vi.fn() }));
+    expect(d.onSetSide).toBeUndefined();
+    expect(d.pinsActive).toBeUndefined();
+  });
+
   it('threads pendingAdd to the requested edge and clears it via the consumed callback', () => {
     const consume = vi.fn();
     const ctx = edgeCtx({ editing: true, pendingAdd: { edgeId: 'e1', x: 5, y: 6 }, onPendingAddConsumed: consume });
