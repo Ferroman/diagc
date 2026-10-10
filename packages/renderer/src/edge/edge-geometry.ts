@@ -141,7 +141,7 @@ function chordTangent(params: EdgePathParams): Point {
 }
 
 /**
- * Point at parameter `t` along an edge, matching how `DiagramEdge` would
+ * Point at parameter `t` along an edge, matching how `useEdgePath` would
  * actually render it for the same `shape`/`curvature`. For `'curved'` this
  * evaluates the exact cubic Bézier `getBezierPath` builds (see
  * `bezierControlPoints`); for `'bow'` it evaluates the symmetric bow (see
@@ -198,7 +198,7 @@ export function edgeTangent(
 }
 
 // ---------------------------------------------------------------------------
-// A drawn edge as something to place things ALONG. `DiagramEdge` draws either a
+// A drawn edge as something to place things ALONG. `useEdgePath` draws either a
 // floating shape (above) or a route through laid-out waypoints (below); labels,
 // CLD marks and the label drag only need "the point and direction at t", so both
 // are wrapped behind one small interface.
@@ -266,6 +266,18 @@ export function routeCurve(points: readonly Point[]): EdgeCurve {
     },
   };
 }
+
+/** point + local frame (unit tangent/normal) at `t` along the clean path, for
+ * positioning marks and badges without touching the (possibly sketch-roughened)
+ * rendered path. */
+export function markFrame(curve: EdgeCurve, t: number) {
+  const point = curve.point(t);
+  const tangent = curve.tangent(t);
+  const normal = { x: -tangent.y, y: tangent.x };
+  return { point, tangent, normal };
+}
+
+export type MarkFrame = ReturnType<typeof markFrame>;
 
 /** The sampled t on `curve` nearest to `point`, plus the signed perpendicular
  * distance there (positive = screen-up side of the line). */

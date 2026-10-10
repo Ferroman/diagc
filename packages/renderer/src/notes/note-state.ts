@@ -3,7 +3,7 @@ import type { ElementRef, Point } from '@diagc/core/internal';
 
 /**
  * Which notes are open, and the switch that flips one — read by the
- * node badge (DiagramNode) and the flow badge (DiagramEdge), provided by
+ * node badge (DiagramNode) and the flow badge (EdgeNoteBadges), provided by
  * DiagramView around the whole canvas (the LoopHighlightContext precedent).
  * A context rather than a field on the node data: a toggle then re-renders
  * the badges that read it and rebuilds no node data at all. `null` = no

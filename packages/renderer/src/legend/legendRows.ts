@@ -192,7 +192,7 @@ function layerRows(input: LegendInput): LegendRow[] {
 
 function kindRows(input: LegendInput): LegendRow[] {
   // The canvas strokes an edge with `rel.color ?? tint ?? var(--dg-edge)`
-  // (DiagramEdge), and `KindStyle` carries no colour at all — so a swatch built
+  // (edge-stroke.ts), and `KindStyle` carries no colour at all — so a swatch built
   // from the registry alone renders grey next to a blue layer arrow. Lift the
   // tint when every drawn edge of the kind agrees on one; when they disagree, or
   // any is on the untinted base sheet, leave it unset rather than guess.

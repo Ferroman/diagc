@@ -922,7 +922,7 @@ function Inner(props: DiagramViewProps) {
     };
     compiled.roots.forEach((r) => walkAbs(r, 0, 0));
     // The lines of the flows that show a badge — one carrying threats or
-    // comments (see DiagramEdge) — so no note lies across one. Other lines and
+    // comments (see EdgeNoteBadges) — so no note lies across one. Other lines and
     // edge labels are not obstacles: a note may cover them.
     for (const e of compiled.edges) {
       const r = soleRelation(e);

@@ -63,7 +63,7 @@ export interface KindStyle {
   dashed?: boolean;
   animated?: boolean;
   width?: number;
-  /** marker name (see DiagramEdge END_SHAPES) at the source end; e.g. 'crowsfoot' */
+  /** marker name (see EdgeMarkerDefs END_SHAPES) at the source end; e.g. 'crowsfoot' */
   startMarker?: string;
   /** marker name at the target end; overrides the default 'arrow' */
   endMarker?: string;

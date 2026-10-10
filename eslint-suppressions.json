@@ -200,17 +200,6 @@
       "count": 1
     }
   },
-  "packages/renderer/src/edge/DiagramEdge.tsx": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "packages/renderer/src/edge/edge-geometry.ts": {
     "max-params": {
       "count": 5
