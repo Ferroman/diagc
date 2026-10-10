@@ -12,7 +12,7 @@ import {
   type ViewNode,
 } from '@diagc/core/internal';
 import { arrangeActivityFrames, withLaneOrder } from './activity-frame';
-import { withBoxSizes } from './box-size';
+import { FORCED_SIZE_SHAPES, withBoxSizes } from './box-size';
 import { fitContainers, type ContainerFit, type Shift } from './fit-containers';
 import { CAPTION_HEIGHT, captionWidth, estimateLabelSize, glyphCaptionSize } from './label-size';
 import { layoutView, type EdgePoint, type NodeGeometry } from './layout';
@@ -176,9 +176,12 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     }
     // Multiline/rich leaf box labels: reserve an estimated footprint so elk
     // doesn't overlap neighbors around a taller-than-default box. Image/shape
-    // nodes keep their own sizing above, and an explicit resize always wins.
+    // nodes keep their own sizing above, and an explicit resize always wins. A
+    // glyph is drawn at the size it is given, not around its label (a diamond,
+    // a bar, a process ellipse), so a line break in its name must not resize it.
     for (const n of input.model.nodes) {
       if (n.image !== undefined || n.shape !== undefined) continue;
+      if (n.type !== undefined && FORCED_SIZE_SHAPES.has(input.typeRegistry.resolve(n.type).shape)) continue;
       const plain = n.rich !== undefined ? runsToPlainText(n.rich) : n.name;
       if (n.rich === undefined && !plain.includes('\n')) continue; // single-line plain = default LEAF_SIZE
       if (input.layout?.sizes?.[n.id] !== undefined) continue; // explicit resize wins

@@ -49,12 +49,18 @@ export function captionWidth(text: string): number {
 const GLYPH_CAPTION_MAX_W = 180;
 const GLYPH_CAPTION_LINE = 16;
 
-/** Deterministic (no-DOM) box of an activity glyph's caption: one line as wide
- * as the text, wrapping at the CSS max-width, plus the 3px margin above it. */
+/** Deterministic (no-DOM) box of an activity glyph's caption: each line as wide
+ * as its text, wrapping at the CSS max-width, plus the 3px margin above them. A
+ * line break in the name starts a new line, as it does on the canvas. */
 export function glyphCaptionSize(text: string): { width: number; height: number } {
-  const one = captionWidth(text);
-  const lines = Math.max(1, Math.ceil(one / GLYPH_CAPTION_MAX_W));
-  return { width: Math.min(one, GLYPH_CAPTION_MAX_W), height: lines * GLYPH_CAPTION_LINE + 3 };
+  let width = 0;
+  let lines = 0;
+  for (const line of text.split('\n')) {
+    const one = captionWidth(line);
+    width = Math.max(width, Math.min(one, GLYPH_CAPTION_MAX_W));
+    lines += Math.max(1, Math.ceil(one / GLYPH_CAPTION_MAX_W));
+  }
+  return { width, height: lines * GLYPH_CAPTION_LINE + 3 };
 }
 
 /**
