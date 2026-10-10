@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
-  applyNodeChanges,
   Background,
   ConnectionMode,
   ControlButton,
   Controls,
-  getViewportForBounds,
   Panel,
   ReactFlow,
   ReactFlowProvider,
@@ -34,7 +32,6 @@ import {
 import { createIconRegistry } from '@diagc/icons';
 import { FORCED_SIZE_SHAPES, LAYOUT_SIZED_TYPES } from '../layout/box-size';
 import { Breadcrumbs } from './Breadcrumbs';
-import { overhangBounds, unionBounds } from './content-bounds';
 import {
   buildEdgeDataCached,
   buildNodeDataCached,
@@ -43,16 +40,13 @@ import {
   type NodeDataContext,
 } from './build-data';
 import { edgeTypes, nodeTypes, toRfEdge, toRfNode } from './adapter';
-import { strokesBounds } from '../drawings/drawings';
-import { captureCanvas, exportFrame } from './export-image';
 import type { NoteData } from '../notes/NoteNode';
 import { isNoteId } from '../notes/derive-note-nodes';
 import { NoteStateContext } from '../notes/note-state';
 import { DrawingsLayer } from '../drawings/DrawingsLayer';
 import { reconnectSide } from '../edge/floating';
 import { GitLanesOverlay } from '../overlays/GitLanesOverlay';
-import { alignBoxes, distributeBoxes, dropDescendants, type Delta } from './arrange';
-import type { Box } from './box';
+import { alignBoxes, distributeBoxes } from './arrange';
 import { GuidesLayer } from './GuidesLayer';
 import { SelectionToolbar } from './SelectionToolbar';
 import { Legend } from '../legend/Legend';
@@ -68,11 +62,12 @@ import { useClickCorrelation } from './useClickCorrelation';
 import { useDrillNavigation } from './useDrillNavigation';
 import { useLegendState } from '../legend/useLegendState';
 import { useLoopOverlay } from '../loops/useLoopOverlay';
-import { NUDGE_STEP, useNudge, type Positions } from './useNudge';
 import { useViewLayout } from './useViewLayout';
 import { useEditRequests } from './useEditRequests';
 import { useCommitMoves } from './useCommitMoves';
 import { useNodeDragging } from './useNodeDragging';
+import { useNudgeAndArrange } from './useNudgeAndArrange';
+import { MAX_ZOOM, MIN_ZOOM, useLayoutApi } from './useLayoutApi';
 import { noSelection, soleSelection } from './node-copy';
 import { useNoteNodes } from './useNoteNodes';
 import { useNoteSession } from './useNoteSession';
@@ -90,12 +85,6 @@ import {
   type CanvasKeyHint,
   type DiagramViewProps,
 } from './view-types';
-
-// Zoom limits, shared by the <ReactFlow> element and the getViewportForBounds
-// call in `fitView` below — the same numbers have to bound both, or a fit could
-// compute a zoom the canvas then clamps and land off-frame.
-const MIN_ZOOM = 0.02;
-const MAX_ZOOM = 4;
 
 const imageFilesOf = (list: FileList | null | undefined): File[] =>
   [...(list ?? [])].filter((f) => f.type.startsWith('image/'));
@@ -207,8 +196,8 @@ function Inner(props: DiagramViewProps) {
     () => props.drawings?.planes[layoutPlaneKey(props.model, props.plane)] ?? [],
     [props.drawings, props.model, props.plane],
   );
-  // Render-phase ref (same pattern as useDrillNavigation's enteredPathRef): the layoutApiRef effect
-  // below keeps deps of just [layoutApiRef, reactFlow], so it reads the ink
+  // Render-phase ref (same pattern as useDrillNavigation's enteredPathRef): useLayoutApi's
+  // effect keeps deps of just [layoutApiRef, reactFlow], so it reads the ink
   // through a ref rather than re-installing the api object on every stroke.
   const strokesRef = useRef<readonly Stroke[]>([]);
   strokesRef.current = strokes;
@@ -263,8 +252,8 @@ function Inner(props: DiagramViewProps) {
     if (hidden === undefined || !raw.edges.some((e) => hidden(e.kind))) return raw;
     return { ...raw, edges: raw.edges.filter((e) => !hidden(e.kind)) };
   }, [props.model, props.plane, focus, drillRoot, effectivePins, props.activeLayers, profile]);
-  // Render-phase ref, same pattern as strokesRef below: the layoutApiRef effect's
-  // snapshotPositions (further down) needs compiled.externals to drop stub ids,
+  // Render-phase ref, same pattern as strokesRef above: useLayoutApi's
+  // snapshotPositions needs compiled.externals to drop stub ids,
   // but that effect only re-runs on [layoutApiRef, reactFlow] — so it reads
   // `compiled` through a ref kept current every render instead of depending on it.
   const compiledRef = useRef(compiled);
@@ -431,7 +420,7 @@ function Inner(props: DiagramViewProps) {
     flowDirection,
   } = viewLayout;
   // Render-phase ref, same pattern and reason as compiledRef above: commitMoves
-  // (further down) needs the ARRANGED geometry to compute a move's displacement,
+  // (useCommitMoves) needs the ARRANGED geometry to compute a move's displacement,
   // but its dependency list is hand-managed and must not grow with every
   // re-layout, so it reads arrangedGeometry through a ref kept current every
   // render instead.
@@ -732,7 +721,7 @@ function Inner(props: DiagramViewProps) {
     return noteNodes.length === 0 ? boxes : [...boxes, ...noteNodes];
   }, [derivedNodes, noteNodes, diffClasses]);
   // Render-phase ref (the arrangedRef/rfNodesRef pattern): a snap-back reset
-  // (onNodeDragStop below) needs each node's LAID position — the same source
+  // (useNodeDragging's onNodeDragStop) needs each node's LAID position — the same source
   // the resync effect further down reads when it copies allNodes into rfNodes
   // — read synchronously at drop time, not a render later.
   const allNodesRef = useRef(allNodes);
@@ -764,20 +753,17 @@ function Inner(props: DiagramViewProps) {
     arrangedRef,
     setViewPositions,
   });
-  // Arrow keys (see useNudge). The step follows the snap grid when one is on,
-  // so a nudge lands on the same grid a drag would.
-  const nudge = useNudge({
-    enabled: !chromeless && !gestureCaptured,
-    step: props.snapGrid ?? NUDGE_STEP,
-    nodesRef: rfNodesRef,
-    applyMoves: (moves) =>
-      setRfNodes((nds) =>
-        applyNodeChanges(
-          Object.entries(moves).map(([id, position]) => ({ type: 'position' as const, id, position })),
-          nds,
-        ),
-      ),
-    commit: commitMoves,
+  const { nudge, selectedIds, canArrange, arrangeSelection } = useNudgeAndArrange({
+    editing,
+    chromeless,
+    gestureCaptured,
+    savesViewPositions: props.onViewPositionsChange !== undefined,
+    snapGrid: props.snapGrid,
+    reactFlow,
+    rfNodes,
+    rfNodesRef,
+    setRfNodes,
+    commitMoves,
   });
   const drag = useNodeDragging({
     editing,
@@ -793,55 +779,12 @@ function Inner(props: DiagramViewProps) {
     flushNudge: nudge.flush,
     commitMoves,
   });
-  // What align/distribute act on: the selection minus the nodes nothing may move
-  // (see `draggable` above). They are neither moved nor lined up against, so
-  // two fish nodes are no selection to arrange and the toolbar stays away.
-  const selectedIds = useMemo(
-    () => rfNodes.filter((n) => n.selected === true && n.draggable !== false).map((n) => n.id),
-    [rfNodes],
-  );
-  // Arrange buttons need somewhere for the result to land: edit mode has the
-  // host's command pipeline; view mode only the host's Save positions offer,
-  // so the published viewer (which passes neither) never shows them.
-  const canArrange = !chromeless && !gestureCaptured && (editing || props.onViewPositionsChange !== undefined);
-  const arrangeSelection = (fn: (boxes: Box[]) => Record<string, Delta>) => {
-    nudge.flush(); // a pending keyboard burst must land before this batch
-    const byId = new Map(rfNodesRef.current.map((n) => [n.id, n] as const));
-    const ids = dropDescendants(selectedIds, (id) => byId.get(id)?.parentId);
-    const boxes: Box[] = [];
-    for (const id of ids) {
-      const n = byId.get(id);
-      const abs = reactFlow.getInternalNode(id)?.internals.positionAbsolute;
-      const w = n?.measured?.width;
-      const h = n?.measured?.height;
-      if (n === undefined || abs === undefined || w === undefined || h === undefined) continue;
-      boxes.push({ id, x: abs.x, y: abs.y, w, h });
-    }
-    const positions: Positions = {};
-    for (const [id, d] of Object.entries(fn(boxes))) {
-      const n = byId.get(id)!;
-      positions[id] = { x: n.position.x + d.dx, y: n.position.y + d.dy };
-    }
-    if (Object.keys(positions).length === 0) return;
-    // Move at once: the commit re-derives the same positions a frame later,
-    // but only if the host's onNodesMoved is synchronous — React 18 then
-    // batches that re-derivation with this setRfNodes into one render. An
-    // async host would let the resync useLayoutEffect run in between and
-    // briefly snap the boxes back to their pre-arrange positions.
-    setRfNodes((nds) =>
-      applyNodeChanges(
-        Object.entries(positions).map(([id, position]) => ({ type: 'position' as const, id, position })),
-        nds,
-      ),
-    );
-    commitMoves(positions);
-  };
   // Resync must not wipe flags React Flow owns on its copy — selection drives
   // the image-node resizer, and a selection click itself re-renders the app,
   // recomputing derivedNodes in the same tick.
   useLayoutEffect(() => {
     // ...except a claim left by a label request whose node had not been laid out
-    // yet (see that effect above): the first resync that carries the node hands
+    // yet (see useEditRequests): the first resync that carries the node hands
     // it the selection, so the ring and the quick-add button land on the box the caret
     // is in. Read before the updater so the ref is cleared exactly once.
     // The claim is still checked against the BOXES: a label request always names
@@ -866,93 +809,16 @@ function Inner(props: DiagramViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nudge.pendingRef is a stable useRef identity read through .current; derivedNodes is left out because allNodes is derived from it and changes with it (depending on both would only run this twice)
   }, [allNodes]);
 
-  // Populate the host's imperative layout ref (auto-layout toggle). Functions
-  // read refs so the api object stays stable while always returning current data.
-  useEffect(() => {
-    const ref = props.layoutApiRef;
-    if (ref === undefined) return;
-    ref.current = {
-      // External stubs (compiled.externals) are placeholders for an off-frame
-      // node while drilled — not real nodes in the model — so writing their
-      // `__ext__:` ids into the layout overlay would corrupt it for every
-      // other view of the same plane. Drop them from the snapshot. Notes
-      // go the same way: a note's place is an offset in `layout.notes`, so a
-      // freeze that wrote its `note:` id into `layout.planes` would save a
-      // phantom box there for good.
-      snapshotPositions: () =>
-        Object.fromEntries(
-          rfNodesRef.current
-            .filter((n) => !(compiledRef.current.externals?.has(n.id) ?? false) && !isNoteId(n.id))
-            .map((n) => [n.id, { x: n.position.x, y: n.position.y }]),
-        ),
-      autoPositions: () =>
-        geometryRef.current === null
-          ? {}
-          : Object.fromEntries([...geometryRef.current].map(([id, g]) => [id, { x: g.x, y: g.y }])),
-      viewportCenter: () => {
-        const rect = wrapperRef.current?.getBoundingClientRect();
-        return rect === undefined
-          ? undefined
-          : reactFlow.screenToFlowPosition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-      },
-      nodeBounds: (id) => {
-        const n = reactFlow.getInternalNode(id);
-        if (n === undefined) return undefined;
-        return { ...n.internals.positionAbsolute, width: n.measured.width ?? 0, height: n.measured.height ?? 0 };
-      },
-      contentBounds: () => {
-        const nodes = reactFlow.getNodes();
-        const nodeBounds = nodes.length === 0 ? undefined : reactFlow.getNodesBounds(nodes);
-        // Union: neither a scribble outside the boxes nor anything drawn past
-        // them — a bowed edge, a loop badge, an icon's caption (see
-        // overhangBounds) — may be cropped from the PNG.
-        return unionBounds([
-          nodeBounds,
-          strokesBounds(strokesRef.current),
-          overhangBounds(wrapperRef.current, (p) => reactFlow.screenToFlowPosition(p, { snapToGrid: false })),
-        ]);
-      },
-      fitView: (padding = 0.06) => {
-        const pad =
-          typeof padding === 'number'
-            ? padding
-            : Object.fromEntries(Object.entries(padding).map(([k, v]) => [k, `${v}px`]));
-        // Fit the CONTENT box (nodes ∪ strokes), not React Flow's node-only
-        // fitView. Same getViewportForBounds underneath, over bounds taken from
-        // the same node lookup fitView reads (the instance getNodesBounds, which
-        // resolves a child's parent-relative position to an absolute one), so a
-        // stroke-less diagram lands on the viewport fitView would have chosen.
-        const bounds = ref.current?.contentBounds();
-        const rect = wrapperRef.current?.getBoundingClientRect();
-        if (bounds !== undefined && rect !== undefined && rect.width > 0 && rect.height > 0) {
-          void reactFlow.setViewport(getViewportForBounds(bounds, rect.width, rect.height, MIN_ZOOM, MAX_ZOOM, pad));
-          return;
-        }
-        void reactFlow.fitView({ padding: pad });
-      },
-      legendReserve: () => legendReserveRef.current,
-      exportPng: async (opts) => {
-        const el = wrapperRef.current?.querySelector<HTMLElement>('.react-flow');
-        const bounds = ref.current?.contentBounds();
-        if (el === null || el === undefined || bounds === undefined) return null;
-        const frame = exportFrame(bounds, opts);
-        const before = reactFlow.getViewport();
-        // Move the content to 1:1 inside a frame cut to its size, let the
-        // viewport-driven layers (drawings, canvas overlays) catch up, then clone.
-        await reactFlow.setViewport(frame.viewport);
-        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-        try {
-          return await captureCanvas(el, frame);
-        } finally {
-          void reactFlow.setViewport(before);
-        }
-      },
-    };
-    return () => {
-      ref.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- legendReserveRef and geometryRef come from hooks, so the rule cannot see they are stable useRef identities read through .current (rfNodesRef/strokesRef are local refs the rule already exempts)
-  }, [props.layoutApiRef, reactFlow]);
+  useLayoutApi({
+    layoutApiRef: props.layoutApiRef,
+    reactFlow,
+    rfNodesRef,
+    compiledRef,
+    geometryRef,
+    wrapperRef,
+    strokesRef,
+    legendReserveRef,
+  });
 
   // The per-edge data channel inputs, as one object the cached builder keys
   // its identity on (see build-data.ts) — same stability contract as the node
