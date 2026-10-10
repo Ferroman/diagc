@@ -1,4 +1,4 @@
-import { PLAN_LAYOUT } from './plan-layout';
+import { PLAN_LAYOUT } from './layout/plan-layout';
 
 export type ShapeId =
   | 'box'

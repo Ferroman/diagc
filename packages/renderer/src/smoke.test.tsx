@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { model } from '@diagc/core/internal';
 import { RENDERER_VERSION } from './index';
-import { DiagramView } from './DiagramView';
+import { DiagramView } from './canvas/DiagramView';
 
 describe('renderer testing environment', () => {
   it('renders React into jsdom', () => {

@@ -1,0 +1,458 @@
+// @vitest-environment jsdom
+import { renderHook, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { compileView, model, type DiagramModel, type LayoutOverlay, type BoxSize } from '@diagc/core/internal';
+import * as layoutModule from '../layout/layout';
+import type { NodeGeometry } from '../layout/layout';
+import { notationProfile, type NotationProfile } from '../notations';
+import { createTypeRegistry } from '../registry';
+import { useViewLayout, type ViewLayoutInput } from './useViewLayout';
+
+/** flat: an image node and a plain service, one edge between them */
+function fixture(): DiagramModel {
+  const m = model('lay');
+  const img = m.node('img');
+  const box = m.node('box', { type: 'service' });
+  m.relate(img, box, { kind: 'sync' });
+  const json = m.toJSON();
+  json.nodes = json.nodes.map((n) => (n.id === 'img' ? { ...n, image: 'pic.png' } : n));
+  return json;
+}
+
+const GEOMETRY = new Map<string, NodeGeometry>([
+  ['img', { x: 0, y: 0, width: 10, height: 10 }],
+  ['box', { x: 50, y: 0, width: 10, height: 10 }],
+]);
+
+/** notation-owned arrangement: synchronous, deterministic, no elk involved.
+ * `readsPositions` mirrors `NotationProfile.layoutReadsPositions` (default
+ * `true`, like the plan profile) — pass `false` for a git-graph/fishbone-like
+ * stub that has a `layout` but never wants saved positions. */
+function notationLayoutProfile(
+  spy?: (
+    hints: ReadonlyMap<string, BoxSize> | undefined,
+    positions: Record<string, { x: number; y: number }> | undefined,
+  ) => void,
+  readsPositions = true,
+): NotationProfile {
+  return {
+    id: 'default',
+    layout: (_view, _m, _plane, sizeHints, positions) => {
+      spy?.(sizeHints, positions);
+      return { geometry: GEOMETRY, routes: new Map(), labelSpots: new Map(), algorithm: 'notation' };
+    },
+    ...(readsPositions ? { layoutReadsPositions: true } : {}),
+  };
+}
+
+function inputFor(m: DiagramModel, over: Partial<ViewLayoutInput> = {}): ViewLayoutInput {
+  return {
+    model: m,
+    plane: undefined,
+    layout: undefined,
+    compiled: compileView(m, {}),
+    profile: notationLayoutProfile(),
+    typeRegistry: createTypeRegistry(),
+    metaKeys: [],
+    hiddenCounts: new Map(),
+    editing: false,
+    ignoreSavedPositions: undefined,
+    viewPositions: {},
+    ...over,
+  };
+}
+
+describe('useViewLayout', () => {
+  it('runs the notation-owned arrangement and hands it size hints (image default size)', async () => {
+    const spy = vi.fn();
+    const m = fixture();
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile: notationLayoutProfile(spy) }),
+    });
+    await waitFor(() => expect(result.current.geometry).not.toBeNull());
+    expect(result.current.geometry).toBe(GEOMETRY);
+    expect(result.current.geometryRef.current).toBe(GEOMETRY);
+    const hints = spy.mock.calls[0]?.[0] as ReadonlyMap<string, { width: number; height: number }>;
+    expect(hints.get('img')).toEqual({ width: 160, height: 120, reserveBottom: 20 }); // DEFAULT_IMAGE_NODE_SIZE
+    expect(hints.get('box')).toBeUndefined(); // single-line plain leaf keeps the default
+  });
+
+  it('an explicit overlay resize wins over the image default in the hints', async () => {
+    const spy = vi.fn();
+    const m = fixture();
+    const layout: LayoutOverlay = { version: 1, planes: {}, sizes: { img: { w: 300, h: 200 } } };
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile: notationLayoutProfile(spy), layout }),
+    });
+    await waitFor(() => expect(result.current.geometry).not.toBeNull());
+    const hints = spy.mock.calls[0]?.[0] as ReadonlyMap<string, { width: number; height: number }>;
+    expect(hints.get('img')).toEqual({ width: 300, height: 200, reserveBottom: 20 });
+  });
+
+  it("reserves an image node's caption width so long names cannot collide", async () => {
+    const spy = vi.fn();
+    const m = fixture();
+    m.nodes = m.nodes.map((n) => (n.id === 'img' ? { ...n, name: 'Amazon Elastic Kubernetes Service' } : n));
+    const layout: LayoutOverlay = { version: 1, planes: {}, sizes: { img: { w: 64, h: 64 } } };
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile: notationLayoutProfile(spy), layout }),
+    });
+    await waitFor(() => expect(result.current.geometry).not.toBeNull());
+    const hints = spy.mock.calls[0]?.[0] as ReadonlyMap<string, { width: number; height: number }>;
+    // 33 chars at ~7px + padding; the icon body keeps its 64px height and
+    // letterboxes horizontally (object-fit: contain), so only width grows. The
+    // caption's HEIGHT rides along as a layout-only reserve: the strip below the
+    // box stays free, the box itself is still drawn 64 tall.
+    expect(hints.get('img')).toEqual({ width: 239, height: 64, reserveBottom: 20 });
+  });
+
+  it('a glyph keeps its registry size when its name has a line break; the caption takes the lines', async () => {
+    const spy = vi.fn();
+    const m = model('glyphs');
+    m.node('decide', { type: 'activity-decision', name: 'Approved\nby finance?' });
+    m.node('auth', { type: 'tm-process', name: 'Auth\nservice' });
+    const json = m.toJSON();
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(json, { profile: notationLayoutProfile(spy) }),
+    });
+    await waitFor(() => expect(result.current.geometry).not.toBeNull());
+    const hints = spy.mock.calls[0]?.[0] as ReadonlyMap<string, unknown>;
+    // the registry's 48x48 diamond and 150x90 ellipse, not a label-sized box
+    expect(hints.get('decide')).toEqual({ width: 48, height: 48, caption: { width: 85, height: 35 } });
+    expect(hints.get('auth')).toEqual({ width: 150, height: 90 });
+  });
+
+  it("a glyph's saved size still wins, and its caption still counts every line", async () => {
+    const spy = vi.fn();
+    const m = model('glyphs');
+    m.node('decide', { type: 'activity-decision', name: 'Approved\nby finance?' });
+    const json = m.toJSON();
+    const layout: LayoutOverlay = { version: 1, planes: {}, sizes: { decide: { w: 60, h: 60 } } };
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(json, { profile: notationLayoutProfile(spy), layout }),
+    });
+    await waitFor(() => expect(result.current.geometry).not.toBeNull());
+    const hints = spy.mock.calls[0]?.[0] as ReadonlyMap<string, unknown>;
+    expect(hints.get('decide')).toEqual({ width: 60, height: 60, caption: { width: 85, height: 35 } });
+  });
+
+  it("bands an activity frame's lanes in the viewed plane's order", async () => {
+    const m: DiagramModel = {
+      version: 1,
+      id: 'd',
+      name: 'd',
+      nodes: [
+        { id: 'f', name: 'F', type: 'activity-frame' },
+        { id: 'l1', name: 'L1', type: 'activity-lane' },
+        { id: 'l2', name: 'L2', type: 'activity-lane' },
+      ],
+      // l1 above l2 on the default plane `a`, l2 above l1 on `b`
+      containment: [
+        { parent: 'f', child: 'l1' },
+        { parent: 'f', child: 'l2' },
+        { parent: 'f', child: 'l2', plane: 'b' },
+        { parent: 'f', child: 'l1', plane: 'b' },
+      ],
+      relations: [],
+      layers: [],
+      planes: [
+        { id: 'a', name: 'A' },
+        { id: 'b', name: 'B' },
+      ],
+    };
+    const box = { x: 0, y: 0, width: 1, height: 1 };
+    const profile: NotationProfile = {
+      id: 'default',
+      layout: () => ({
+        geometry: new Map([
+          ['f', box],
+          ['l1', box],
+          ['l2', box],
+        ]),
+        routes: new Map(),
+        labelSpots: new Map(),
+        algorithm: 'notation',
+      }),
+    };
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, {
+        profile,
+        plane: 'b',
+        compiled: compileView(m, { plane: 'b', pins: { f: 'expanded' } }),
+      }),
+    });
+    await waitFor(() => expect(result.current.arrangedGeometry).not.toBeNull());
+    expect(result.current.arrangedGeometry!.get('l2')?.y).toBe(0);
+    expect(result.current.arrangedGeometry!.get('l1')?.y).toBeGreaterThan(0);
+  });
+
+  it('sizes ordinary boxes from their content and folded containers as folded boxes', async () => {
+    const m = model('boxes');
+    m.node('long', { name: 'avoid direct/sync  communication' });
+    m.node('sys', { type: 'system', name: 'Shop' }).contains(m.node('inner', { type: 'service' }));
+    const json = m.toJSON();
+    const folded = compileView(json, {});
+    const spy = vi.spyOn(layoutModule, 'layoutView');
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(json, {
+        profile: { id: 'default' },
+        compiled: folded,
+        hiddenCounts: new Map([['sys', 1]]),
+      }),
+    });
+    await waitFor(() => expect(result.current.geometry).not.toBeNull());
+    const sizes = spy.mock.calls[0]![1]!;
+    // wider than the 160px every leaf used to be given, and as short as the DOM box
+    expect(sizes.get('long')!.width).toBeGreaterThan(200);
+    expect(sizes.get('long')!.height).toBe(34);
+    // folded: a titled box with its count badge, not the old fixed 200x88
+    expect(sizes.get('sys')!.height).toBe(50);
+    expect(sizes.has('inner')).toBe(false);
+    spy.mockRestore();
+  });
+
+  it("runs the notation's default algorithm unless the sidecar names one, layered included", async () => {
+    const m = fixture();
+    const settingsOf = async (layout?: LayoutOverlay) => {
+      const spy = vi.spyOn(layoutModule, 'layoutView');
+      const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+        initialProps: inputFor(m, {
+          profile: notationProfile('causal-loop'),
+          ...(layout !== undefined ? { layout } : {}),
+        }),
+      });
+      await waitFor(() => expect(result.current.geometry).not.toBeNull());
+      const settings = spy.mock.calls[0]![2];
+      spy.mockRestore();
+      return settings;
+    };
+    expect((await settingsOf())?.algorithm).toBe('stress');
+    const layered: LayoutOverlay = { version: 1, planes: {}, settings: { default: { algorithm: 'layered' } } };
+    expect((await settingsOf(layered))?.algorithm).toBe('layered');
+  });
+
+  it('substitutes saved overlay positions for viewers, unless the viewer set them aside', async () => {
+    const m = fixture();
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 400, y: 50 } } } };
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { layout }),
+    });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 400, y: 50 });
+    rerender(inputFor(m, { layout, ignoreSavedPositions: true }));
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 0 }); // elk placement kept
+  });
+
+  it('a view-mode drag outranks the saved position; editing reads only the document', async () => {
+    const m = fixture();
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 400, y: 50 } } } };
+    const viewPositions = { box: { x: 999, y: 9 } };
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { layout, viewPositions }),
+    });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 999, y: 9 });
+    rerender(inputFor(m, { layout, viewPositions, editing: true }));
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 400, y: 50 });
+  });
+
+  it('a node the notation FIXED stays where it was laid: no saved position or view drag moves it', async () => {
+    const m = fixture();
+    const profile: NotationProfile = {
+      id: 'default',
+      layout: () => ({
+        geometry: GEOMETRY,
+        routes: new Map(),
+        labelSpots: new Map(),
+        algorithm: 'notation',
+        fixed: new Set(['box']),
+      }),
+    };
+    // both nodes carry a stale pin (a fish dragged before nodes were fixed)
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 400, y: 50 }, img: { x: 70, y: 7 } } } };
+    const viewPositions = { box: { x: 999, y: 9 } };
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile, layout, viewPositions }),
+    });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    expect(result.current.fixed.has('box')).toBe(true);
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 0 });
+    expect(result.current.placedGeometry?.get('img')).toMatchObject({ x: 70, y: 7 }); // not fixed: its pin still counts
+    rerender(inputFor(m, { profile, layout, viewPositions, editing: true }));
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 0 });
+  });
+
+  it('a node the notation LOCKED on x takes only y from a saved position or a view drag', async () => {
+    const m = fixture();
+    const profile: NotationProfile = {
+      id: 'default',
+      layout: () => ({
+        geometry: GEOMETRY,
+        routes: new Map(),
+        labelSpots: new Map(),
+        algorithm: 'notation',
+        lockedX: new Set(['box']),
+      }),
+    };
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 400, y: 50 } } } };
+    const viewPositions = { box: { x: 999, y: 9 } };
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile, layout, viewPositions }),
+    });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    expect(result.current.lockedX.has('box')).toBe(true);
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 9 }); // arranged x, dragged y
+    rerender(inputFor(m, { profile, layout, viewPositions, editing: true }));
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 50 }); // arranged x, saved y
+  });
+
+  it('fixes nothing when the layout names nothing (elk, git-graph)', async () => {
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), { initialProps: inputFor(fixture()) });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    expect(result.current.fixed.size).toBe(0);
+  });
+
+  it("a layout with layoutReadsPositions (the plan's) receives the plane's saved positions, gated the same way as the overlay", async () => {
+    const spy = vi.fn();
+    const m = fixture();
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 40, y: 5 } } } };
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile: notationLayoutProfile(spy), layout }),
+    });
+    await waitFor(() => expect(result.current.geometry).not.toBeNull());
+    expect(spy.mock.calls[0]?.[1]).toEqual({ box: { x: 40, y: 5 } });
+    // a viewer who asked to ignore saved positions gets none, same as the overlay path
+    rerender(inputFor(m, { profile: notationLayoutProfile(spy), layout, ignoreSavedPositions: true }));
+    await waitFor(() => expect(spy.mock.calls.length).toBeGreaterThan(1));
+    expect(spy.mock.calls[spy.mock.calls.length - 1]?.[1]).toEqual({});
+  });
+
+  it("a layout WITHOUT layoutReadsPositions (git-graph's, fishbone's) never receives positions, and does not re-run for a change that only affects them", async () => {
+    const spy = vi.fn();
+    const profile = notationLayoutProfile(spy, false);
+    const m = fixture();
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 40, y: 5 } } } };
+    // one props object, reused (not rebuilt through inputFor) for the rerender:
+    // every field but ignoreSavedPositions stays the exact same reference, so
+    // `sizes` — which already depends on `input.layout`/`typeRegistry` for
+    // reasons unrelated to positions — cannot itself force a re-run and
+    // confound what this test checks.
+    const initial = inputFor(m, { profile, layout });
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), { initialProps: initial });
+    await waitFor(() => expect(result.current.geometry).not.toBeNull());
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0]?.[1]).toBeUndefined();
+    rerender({ ...initial, ignoreSavedPositions: true });
+    await new Promise((r) => setTimeout(r, 20));
+    // `layoutPositions` was already a stable `undefined` (no flag) before and
+    // after, and nothing else this layout's effect depends on moved — a
+    // gitLayout/fishboneLayout-shaped profile must not run again over this
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("never hands positions to elk: an elk plane's layoutView call carries no positions argument", async () => {
+    const elkSpy = vi.spyOn(layoutModule, 'layoutView');
+    const m = fixture();
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 40, y: 5 } } } };
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile: notationProfile(), layout }),
+    });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    expect(elkSpy).toHaveBeenCalled();
+    // layoutView's signature (compiled, sizes, settings, options?) never grows a
+    // fifth "positions" argument — only a notation that owns its arrangement
+    // reads saved positions, and it bypasses layoutView entirely.
+    expect(elkSpy.mock.calls[0]).toHaveLength(4);
+    elkSpy.mockRestore();
+  });
+
+  it('names the scene its arrangement belongs to — the old one, until the new layout lands', async () => {
+    // Layout is asynchronous and the last arrangement is kept meanwhile, so for
+    // a moment after the scene changes `arrangedGeometry` is non-null and WRONG.
+    // Whoever must wait for the scene's own layout (a fit) compares this.
+    const a = inputFor(fixture());
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), { initialProps: a });
+    expect(result.current.settledFor).toBeNull();
+    await waitFor(() => expect(result.current.settledFor).toBe(a.compiled));
+    const other = fixture();
+    other.id = 'elsewhere';
+    const b = inputFor(other);
+    rerender(b);
+    expect(result.current.arrangedGeometry).not.toBeNull();
+    expect(result.current.settledFor).toBe(a.compiled);
+    await waitFor(() => expect(result.current.settledFor).toBe(b.compiled));
+  });
+
+  it('a layout that throws still settles, so nothing waiting on the scene waits forever', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const broken: NotationProfile = {
+        id: 'default',
+        layout: () => {
+          throw new Error('no arrangement');
+        },
+      };
+      const input = inputFor(fixture(), { profile: broken });
+      const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), { initialProps: input });
+      await waitFor(() => expect(result.current.settledFor).toBe(input.compiled));
+      expect(result.current.arrangedGeometry).toBeNull();
+      expect(error).toHaveBeenCalled();
+    } finally {
+      error.mockRestore();
+    }
+  });
+
+  it('layered planes route with soft corners, orthogonal planes with tight ones; bowed notations float', () => {
+    const m = fixture();
+    const routingOf = (over: Partial<ViewLayoutInput>) =>
+      renderHook((p: ViewLayoutInput) => useViewLayout(p), { initialProps: inputFor(m, over) }).result.current.routing;
+    expect(routingOf({ profile: notationProfile() })).toEqual({ corner: 28 });
+    const orthogonal: LayoutOverlay = { version: 1, planes: {}, settings: { default: { edgeRouting: 'orthogonal' } } };
+    expect(routingOf({ profile: notationProfile(), layout: orthogonal })).toEqual({ corner: 8 });
+    // a causal-loop arc IS the notation — elk's right angles would replace it
+    expect(routingOf({ profile: notationProfile('causal-loop') })).toBeUndefined();
+    // nothing but layered routes unless asked to
+    const force: LayoutOverlay = { version: 1, planes: {}, settings: { default: { algorithm: 'force' } } };
+    expect(routingOf({ profile: notationProfile(), layout: force })).toBeUndefined();
+    // a notation's own layout: its routes are the drawing
+    expect(routingOf({})).toEqual({ corner: 8 });
+  });
+
+  it('records where the LAYOUT put each node, in absolute coordinates, whatever was saved on top', async () => {
+    const m = model('abs');
+    m.node('sys', { type: 'system' }).contains(m.node('kid', { type: 'service' }));
+    const json = m.toJSON();
+    const geometry = new Map<string, NodeGeometry>([
+      ['sys', { x: 100, y: 50, width: 300, height: 200 }],
+      ['kid', { x: 16, y: 36, width: 142, height: 50 }],
+    ]);
+    const profile: NotationProfile = {
+      id: 'default',
+      layout: () => ({ geometry, routes: new Map(), labelSpots: new Map(), algorithm: 'notation' }),
+    };
+    const layout: LayoutOverlay = { version: 1, planes: { default: { sys: { x: 900, y: 900 } } } };
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(json, { profile, layout, compiled: compileView(json, { pins: { sys: 'expanded' } }) }),
+    });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    expect(result.current.placedGeometry?.get('sys')).toMatchObject({ x: 900, y: 900 }); // drawn where it was saved
+    expect(result.current.laidAt.get('sys')).toEqual({ x: 100, y: 50 }); // routed against where it was LAID
+    expect(result.current.laidAt.get('kid')).toEqual({ x: 116, y: 86 });
+  });
+
+  it('runs a partitioned notation through layered whatever algorithm the sidecar names, and reports the flow direction', async () => {
+    const m = model('so');
+    m.secondOrder().decision('d').then('a').then('b');
+    const json = m.toJSON();
+    const force: LayoutOverlay = { version: 1, planes: {}, settings: { default: { algorithm: 'force' } } };
+    const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(json, { profile: notationProfile('second-order'), layout: force }),
+    });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    const g = result.current.placedGeometry!;
+    expect(g.get('d')!.y).toBeLessThan(g.get('a')!.y);
+    expect(g.get('a')!.y).toBeLessThan(g.get('b')!.y);
+    expect(result.current.routing).toEqual({ corner: 28 }); // layered's soft routes, not force's floating edges
+    expect(result.current.flowDirection).toBe('DOWN');
+  });
+});
