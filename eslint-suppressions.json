@@ -188,18 +188,8 @@
       "count": 5
     }
   },
-  "packages/renderer/src/layout/fit-containers.ts": {
-    "max-params": {
-      "count": 1
-    }
-  },
   "packages/renderer/src/loops/LeveragePanel.tsx": {
     "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/loops/leverage.ts": {
-    "max-depth": {
       "count": 1
     }
   },

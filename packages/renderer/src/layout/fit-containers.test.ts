@@ -137,23 +137,29 @@ describe('savedPositions', () => {
   ]);
 
   it('saves the on-screen position bit for bit when no container has shifted', () => {
-    expect(savedPositions({ a: { x: 70.25, y: 41.5 } }, nodes, bases, new Map())).toEqual({ a: { x: 70.25, y: 41.5 } });
+    expect(savedPositions({ a: { x: 70.25, y: 41.5 } }, nodes, { bases, shifts: new Map() })).toEqual({
+      a: { x: 70.25, y: 41.5 },
+    });
   });
 
   it('measures a child against where its parent WAS when the parent has moved mid-gesture', () => {
     // React Flow's expandParent slid `sys` 50 left and re-expressed the child
     const live = nodes.map((n) => (n.id === 'sys' ? { ...n, position: { x: 16.3 - 50, y: 36.7 } } : n));
-    const saved = savedPositions({ a: { x: 0, y: 36 } }, live, bases, new Map());
+    const saved = savedPositions({ a: { x: 0, y: 36 } }, live, { bases, shifts: new Map() });
     expect(saved['a']!.x).toBeCloseTo(-50, 9);
     expect(saved['a']!.y).toBeCloseTo(36, 9);
   });
 
   it('holds a child against the wall of a parent whose origin is fixed', () => {
     const live = nodes.map((n) => (n.id === 'sys' ? { ...n, position: { x: 16.3 - 50, y: 36.7 } } : n));
-    expect(savedPositions({ a: { x: 0, y: 36 } }, live, bases, new Map(), (id) => id === 'sys')['a']!.x).toBe(0);
+    expect(
+      savedPositions({ a: { x: 0, y: 36 } }, live, { bases, shifts: new Map() }, (id) => id === 'sys')['a']!.x,
+    ).toBe(0);
   });
 
   it('a top-level node is saved as drawn', () => {
-    expect(savedPositions({ outer: { x: 5, y: 6 } }, nodes, bases, new Map())).toEqual({ outer: { x: 5, y: 6 } });
+    expect(savedPositions({ outer: { x: 5, y: 6 } }, nodes, { bases, shifts: new Map() })).toEqual({
+      outer: { x: 5, y: 6 },
+    });
   });
 });

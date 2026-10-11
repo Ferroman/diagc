@@ -40,8 +40,7 @@ export function useCommitMoves(input: CommitMovesInput): (onScreen: Positions) =
       const positions = savedPositions(
         onScreen,
         rfNodesRef.current,
-        containerBasesRef.current,
-        containerShiftsRef.current,
+        { bases: containerBasesRef.current, shifts: containerShiftsRef.current },
         // an activity lane is banded at a fixed spot (arrangeActivityFrames)
         (parentId) => isActivityBand(typeOf(parentId)),
       );
