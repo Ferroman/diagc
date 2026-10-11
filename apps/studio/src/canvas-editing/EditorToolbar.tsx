@@ -7,7 +7,7 @@ interface EditorToolbarProps {
   editor: EditorApi;
   /** leave edit mode (confirm-discard handled by the caller) */
   onExit: () => void;
-  /** persist the current diagram + layout (App owns the save flow) */
+  /** persist the current diagram + layout (the edit session owns the save flow) */
   onSave: () => void;
   /** a save (auto or manual) is currently in flight */
   saving?: boolean;
