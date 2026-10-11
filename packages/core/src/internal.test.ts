@@ -19,4 +19,9 @@ describe('the internal entry point', () => {
     ];
     expect(testOnly.filter((name) => name in internal)).toEqual([]);
   });
+
+  it('carries the helpers the studio shares with core', () => {
+    const studio = ['CAUSAL_LOOP_NOTATION', 'borrowsContainment', 'nextFreeId', 'uniqueSlug'];
+    expect(studio.filter((name) => !(name in internal))).toEqual([]);
+  });
 });

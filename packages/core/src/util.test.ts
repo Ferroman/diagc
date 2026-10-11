@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import { defined, nextFreeId, type SameKeys } from './util';
+import { defined, nextFreeId, uniqueSlug, type SameKeys } from './util';
 
 describe('defined', () => {
   it('drops the keys whose value is undefined', () => {
@@ -35,6 +35,45 @@ describe('nextFreeId', () => {
     expect(nextFreeId('c', new Set(['c1', 'c2', 'c4']))).toBe('c3');
     expect(nextFreeId('a->b#', new Set(['a->b#0']), 0)).toBe('a->b#1');
     expect(nextFreeId('db-', new Set(['db-2']), 2)).toBe('db-3');
+  });
+});
+
+describe('uniqueSlug', () => {
+  const none = new Set<string>();
+
+  it('lower-cases the name and joins its words with hyphens', () => {
+    expect(uniqueSlug('Cloud Run', none, 'x')).toBe('cloud-run');
+    expect(uniqueSlug('ABC_def', none, 'x')).toBe('abc-def');
+    expect(uniqueSlug('Layer 2', none, 'x')).toBe('layer-2');
+  });
+
+  it('turns each run of punctuation into one hyphen and trims them at the ends', () => {
+    expect(uniqueSlug('  --Hello,   World!--  ', none, 'x')).toBe('hello-world');
+    expect(uniqueSlug('a.b/c', none, 'x')).toBe('a-b-c');
+  });
+
+  it('keeps only ASCII letters and digits', () => {
+    expect(uniqueSlug('Café Ünïcode', none, 'x')).toBe('caf-n-code');
+    // the dotted capital I lower-cases to i plus a combining dot
+    expect(uniqueSlug('İstanbul', none, 'x')).toBe('i-stanbul');
+  });
+
+  it('falls back when nothing is left of the name', () => {
+    expect(uniqueSlug('', none, 'layer')).toBe('layer');
+    expect(uniqueSlug('***', none, 'layer')).toBe('layer');
+    expect(uniqueSlug('日本', none, 'icon')).toBe('icon');
+  });
+
+  it('numbers a collision from 2, taking the first free number', () => {
+    expect(uniqueSlug('Cloud Run', new Set(['cloud-run']), 'x')).toBe('cloud-run-2');
+    expect(uniqueSlug('Cloud Run', new Set(['cloud-run', 'cloud-run-2', 'cloud-run-4']), 'x')).toBe('cloud-run-3');
+    expect(uniqueSlug('Cloud Run', new Set(['cloud-run-2']), 'x')).toBe('cloud-run');
+    expect(uniqueSlug('Layer 2', new Set(['layer-2']), 'x')).toBe('layer-2-2');
+  });
+
+  it('numbers a colliding fallback the same way', () => {
+    expect(uniqueSlug('***', new Set(['cat']), 'cat')).toBe('cat-2');
+    expect(uniqueSlug('', new Set(['cat', 'cat-2']), 'cat')).toBe('cat-3');
   });
 });
 

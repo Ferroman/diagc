@@ -3,17 +3,11 @@ import { normalizeRuns, runsToPlainText } from '../text';
 import { childrenOf } from '../children';
 import { isIsoDate } from '../dates';
 import { CommandError } from '../command-error';
-import { nextFreeId, type SameKeys } from '../util';
+import { uniqueSlug, type SameKeys } from '../util';
 import { applyNullable, prunePlaneHides, requireNode } from './shared';
 
 export function uniqueNodeId(model: DiagramModel, base: string): string {
-  const slug =
-    base
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'node';
-  const taken = new Set(model.nodes.map((n) => n.id));
-  return taken.has(slug) ? nextFreeId(`${slug}-`, taken, 2) : slug;
+  return uniqueSlug(base, new Set(model.nodes.map((n) => n.id)), 'node');
 }
 
 export function addNode(model: DiagramModel, node: DiagramNode): DiagramModel {
