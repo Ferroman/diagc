@@ -22,6 +22,7 @@ import { ThreatsSection } from './ThreatsSection';
 import { BUNDLED_LIBRARY } from '../library/packs';
 import { studioNotation } from '../notations';
 import { carriesThreats, threatsOffered } from './threatsOffered';
+import { useDraftField } from './useDraftField';
 
 // Registry defaults surfaced as datalist hints; free text is still accepted.
 // Read from the registries themselves so a new type or icon shows up here
@@ -119,18 +120,6 @@ export function NodePanel({
   const planeName = (id: string | undefined) =>
     id === undefined ? 'default' : (model.planes.find((p) => p.id === id)?.name ?? id);
 
-  // Local in-progress values. The panel is remounted (key={nodeId}) on selection
-  // change, so these initializers reseed from the freshly-selected node; the
-  // effects below additionally resync a field whenever the model's value for it
-  // changes underneath us (Undo/Redo being the everyday case), so a later blur
-  // never diff-commits a stale local value over the external change.
-  const [name, setName] = useState(node?.name ?? '');
-  const [type, setType] = useState(node?.type ?? '');
-  const [icon, setIcon] = useState(node?.icon ?? '');
-  const [shape, setShape] = useState(node?.shape ?? '');
-  const [technology, setTechnology] = useState(node?.technology ?? '');
-  const [link, setLink] = useState(node?.link ?? '');
-  const [description, setDescription] = useState(node?.description ?? '');
   // Stable per-row ids so React keys survive reordering/mid-row removal; the
   // counter is a ref so it is not reset by re-renders. Lazy initializers keep it
   // from advancing on every render.
@@ -168,39 +157,23 @@ export function NodePanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The panel is remounted (key={nodeId}) on selection change, so each draft
+  // seeds from the freshly selected node, and follows the model's value when it
+  // changes underneath (see useDraftField). Their resyncs run after the two
+  // effects above, then the metadata rows'.
+  const [name, setName] = useDraftField(node?.name, 'keep');
+  const [type, setType] = useDraftField(node?.type);
+  const [icon, setIcon] = useDraftField(node?.icon);
+  const [shape, setShape] = useDraftField(node?.shape);
+  const [technology, setTechnology] = useDraftField(node?.technology);
+  const [link, setLink] = useDraftField(node?.link);
+  const [description, setDescription] = useDraftField(node?.description);
+
   // Single-user editor: an external model change (e.g. Undo) wins over any
-  // in-progress typing. The metadata effect keys on the node's metadata object
-  // identity, which structural sharing preserves across unrelated edits, so it
-  // only reseeds the rows when the metadata actually changes.
-  const modelName = node?.name;
-  const modelType = node?.type;
-  const modelIcon = node?.icon;
-  const modelShape = node?.shape;
-  const modelTechnology = node?.technology;
-  const modelLink = node?.link;
-  const modelDescription = node?.description;
+  // in-progress typing. The effect keys on the node's metadata object identity,
+  // which structural sharing preserves across unrelated edits, so it only
+  // reseeds the rows when the metadata actually changes.
   const modelMetadata = node?.metadata;
-  useEffect(() => {
-    if (modelName !== undefined) setName(modelName);
-  }, [modelName]);
-  useEffect(() => {
-    setType(modelType ?? '');
-  }, [modelType]);
-  useEffect(() => {
-    setIcon(modelIcon ?? '');
-  }, [modelIcon]);
-  useEffect(() => {
-    setShape(modelShape ?? '');
-  }, [modelShape]);
-  useEffect(() => {
-    setTechnology(modelTechnology ?? '');
-  }, [modelTechnology]);
-  useEffect(() => {
-    setLink(modelLink ?? '');
-  }, [modelLink]);
-  useEffect(() => {
-    setDescription(modelDescription ?? '');
-  }, [modelDescription]);
   useEffect(() => {
     setRows(seedRows(modelMetadata));
     // seedRows is a stable render-local closure over the ref; effect keys on the

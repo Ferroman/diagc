@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   crossings,
   relationLabels,
@@ -18,6 +18,7 @@ import { commitOnEnter } from './commitOnEnter';
 import { ColorRow, OptionRow } from './pickers';
 import { ThreatsSection } from './ThreatsSection';
 import { carriesThreats, threatsOffered } from './threatsOffered';
+import { useDraftField } from './useDraftField';
 
 /** a fresh, relation-unique label id (l1, l2, … skipping ids already in use) */
 const nextLabelId = (labels: EdgeLabel[]): string => {
@@ -74,8 +75,7 @@ function LabelRow({
   index: number;
   onCommand: (command: EditorCommand) => void;
 }) {
-  const [text, setText] = useState(label.text);
-  useEffect(() => setText(label.text), [label.text]);
+  const [text, setText] = useDraftField(label.text);
 
   const dispatch = (next: EdgeLabel[]) =>
     onCommand({ type: 'update-relation', id: relationId, patch: { labels: next.length > 0 ? next : null } });
@@ -148,28 +148,14 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation,
   // because hooks cannot sit behind one.
   const planeCrossings = useMemo(() => crossings(model, activePlane), [model, activePlane]);
 
-  // Remounted (key={relationId}) when the edited relation changes, so these
-  // initializers reseed; the effects below additionally resync a field whenever
-  // the model's value for it changes underneath us (Undo/Redo being the everyday
-  // case) so a later blur never diff-commits a stale local value.
-  const [kind, setKind] = useState(relation?.kind ?? '');
-  const [layer, setLayer] = useState(relation?.layer ?? '');
-  const [description, setDescription] = useState(relation?.description ?? '');
+  // Remounted (key={relationId}) when the edited relation changes, so each
+  // draft seeds from the freshly selected relation, and follows the model's
+  // value when it changes underneath (see useDraftField).
+  const [kind, setKind] = useDraftField(relation?.kind, 'keep');
+  const [layer, setLayer] = useDraftField(relation?.layer);
+  const [description, setDescription] = useDraftField(relation?.description);
   // Text of a not-yet-added label; null = the Add-label row is closed.
   const [draft, setDraft] = useState<string | null>(null);
-
-  const modelKind = relation?.kind;
-  const modelLayer = relation?.layer;
-  const modelDescription = relation?.description;
-  useEffect(() => {
-    if (modelKind !== undefined) setKind(modelKind);
-  }, [modelKind]);
-  useEffect(() => {
-    setLayer(modelLayer ?? '');
-  }, [modelLayer]);
-  useEffect(() => {
-    setDescription(modelDescription ?? '');
-  }, [modelDescription]);
 
   if (relation === undefined) {
     return <p className="muted">Relation not found.</p>;
