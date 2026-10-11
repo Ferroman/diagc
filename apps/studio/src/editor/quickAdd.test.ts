@@ -195,6 +195,30 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
     expect(quickAddLabel(j, 'inner', cld)).toBe('Add a connected node');
   });
 
+  it('activity chrome is the same on a threat-model or plan plane: a frame and a region offer nothing, a lane its band', () => {
+    const m = model('chrome-anywhere');
+    const flow = m.activity('flow');
+    flow.lane('a', { name: 'A' }).region('retry', 'Retry');
+    const j = m.toJSON();
+    for (const notation of ['threat-model', 'plan'] as const) {
+      const c = ctx({ notation });
+      for (const id of ['flow', 'retry']) {
+        expect(quickAddLabel(j, id, c), `${notation} ${id}`).toBeUndefined();
+        expect(quickAdd(j, id, c), `${notation} ${id}`).toBeUndefined();
+      }
+      expect(quickAddLabel(j, 'a', c, 'before')).toBe('Add a lane above');
+      expect(quickAddLabel(j, 'a', c)).toBe('Add a lane below');
+      const below = quickAdd(j, 'a', c)!;
+      expect(batchOf(below.command)).toEqual([
+        {
+          type: 'add-node',
+          node: { id: below.id, name: '', type: 'activity-lane' },
+          parent: { id: 'flow', after: 'a' },
+        },
+      ]);
+    }
+  });
+
   it('an activity lane adds a sibling band above or below itself; Tab adds below', () => {
     const m = model('act');
     const flow = m.activity('flow');
