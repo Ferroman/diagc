@@ -1,3 +1,4 @@
+import type { Size } from '@diagc/core/internal';
 import { getHost } from '../host';
 
 export const MAX_IMAGE_EDGE = 240;
@@ -23,7 +24,7 @@ export const MIN_IMAGE_EDGE = 40;
  * Chromium can't decode SVG blobs with it) — the caller falls back to the default.
  * createImageBitmap over an Image element: no object URLs to revoke, and it fails
  * fast instead of hanging in DOMs that never fire load/error events. */
-export async function readImageSize(file: File): Promise<{ w: number; h: number } | null> {
+export async function readImageSize(file: File): Promise<Size | null> {
   if (typeof createImageBitmap !== 'function') return null;
   try {
     const bmp = await createImageBitmap(file);

@@ -26,12 +26,15 @@ import {
   isThreatModelNode,
   isoOf,
   latestCommit,
+  containmentOn,
   containmentPlaneOf,
   spanOf,
   type DiagramModel,
   type DiagramNode,
   type EditorCommand,
   type NotationId,
+  type Point,
+  type Size,
 } from '@diagc/core/internal';
 import type { QuickAddSide } from '@diagc/renderer';
 import { createNodeAt, placeTags } from './create-node';
@@ -155,7 +158,10 @@ function recipeFor(
       // A causal-loop group carries no chip either (the invariant above): the
       // notation draws an open one as a bare name tag and arranges its members
       // itself, so "add a connected node" would have nowhere to put the result.
-      if (ctx.notation === CAUSAL_LOOP_NOTATION && childrenOf(containmentOn(model, ctx.plane)).has(source.id))
+      if (
+        ctx.notation === CAUSAL_LOOP_NOTATION &&
+        childrenOf(containmentOn(model, containmentPlaneOf(model, ctx.plane))).has(source.id)
+      )
         return undefined;
       return 'sibling';
   }
@@ -178,19 +184,11 @@ function gitLaneToGrow(model: DiagramModel, source: DiagramNode, plane: string |
   return lane !== undefined && latestCommit(g, lane)?.id === source.id ? lane : undefined;
 }
 
-/** The containment edges a view of `plane` reads: those on the plane it resolves
- * to, an untagged edge belonging to the first-declared plane. */
-function containmentOn(model: DiagramModel, plane: string | undefined): DiagramModel['containment'] {
-  const active = containmentPlaneOf(model, plane);
-  const defaultPlane = model.planes?.[0]?.id;
-  return model.containment.filter((e) => (e.plane ?? defaultPlane) === active);
-}
-
-/** The source's parent on that plane — the first declared, the pick a reader
- * makes from the drawing (the threat model's `boundaryOf` follows the same
- * rule). */
+/** The source's parent in the containment a view of `plane` reads — the first
+ * declared, the pick a reader makes from the drawing (the threat model's
+ * `boundaryOf` follows the same rule). */
 function parentIn(model: DiagramModel, plane: string | undefined, id: string): string | undefined {
-  return containmentOn(model, plane).find((e) => e.child === id)?.parent;
+  return containmentOn(model, containmentPlaneOf(model, plane)).find((e) => e.child === id)?.parent;
 }
 
 /** The tooltip alone — the cheap half, called per render of the selected node. */
@@ -404,11 +402,11 @@ export interface QuickAddPlacement {
   pinned: boolean;
   /** the source's on-screen position, parent-relative (LayoutApi.snapshotPositions);
    * undefined when it is not rendered */
-  source: { x: number; y: number } | undefined;
+  source: Point | undefined;
   /** the source's footprint width: its saved size, else LEAF_SIZE.width */
   width: number;
   /** the source's saved box size (layout.sizes), when it has one */
-  size?: { w: number; h: number };
+  size?: Size;
   plane: string | undefined;
 }
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { uniqueSlug } from '@diagc/core/internal';
 import { BUNDLED_LIBRARY } from './packs';
-import { mergeLibrary, uniqueLibraryId } from './entry';
+import { mergeLibrary } from './entry';
 import { loadUserLibrary, saveUserLibrary } from './library-api';
 import type { Library, LibraryEntry } from './types';
 
@@ -36,7 +37,7 @@ export function useLibrary(): UseLibrary {
     (name: string) => {
       const cur = userRef.current;
       const taken = new Set(mergeLibrary(BUNDLED_LIBRARY, cur).categories.map((c) => c.id));
-      const id = uniqueLibraryId(name, taken, 'category');
+      const id = uniqueSlug(name, taken, 'category');
       commit({ ...cur, categories: [...cur.categories, { id, name: name.trim() || id }] });
     },
     [commit],

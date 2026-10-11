@@ -1,10 +1,11 @@
-import { useEffect, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import {
   BUILTIN_NOTATIONS,
   FISHBONE_NOTATION,
   PLAN_NOTATION,
   SECOND_ORDER_NOTATION,
   TM_NOTATION,
+  uniqueSlug,
   type DiagramLayer,
   type DiagramModel,
   type DiagramPlane,
@@ -13,6 +14,7 @@ import {
 import { getHost } from '../host';
 import { PlaneSwitcher } from './PlaneSwitcher';
 import { DockSection } from '../dock/DockSection';
+import { commitOnEnter } from '../inspector/commitOnEnter';
 
 interface LayersPlanesPanelProps {
   model: DiagramModel;
@@ -59,29 +61,6 @@ const NOTATION_LABELS: Record<string, string> = {
 // Derives a display label from a notation id ('causal-loop' -> 'Causal loop').
 const notationLabel = (id: string): string =>
   NOTATION_LABELS[id] ?? id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');
-
-const commitOnEnter = (e: KeyboardEvent, run: () => void) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    run();
-  }
-};
-
-const slugify = (s: string, fallback: string): string =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || fallback;
-
-// Core's uniqueNodeId only scans nodes; layer/plane id-spaces need their own
-// uniqueness against the relevant id set, so slug + suffix here.
-const uniqueId = (name: string, taken: Set<string>, fallback: string): string => {
-  const slug = slugify(name, fallback);
-  if (!taken.has(slug)) return slug;
-  for (let i = 2; ; i++) {
-    if (!taken.has(`${slug}-${i}`)) return `${slug}-${i}`;
-  }
-};
 
 const sameStrs = (a: string[], b: string[]): boolean =>
   a.length === b.length && [...a].sort().join('\0') === [...b].sort().join('\0');
@@ -202,14 +181,15 @@ export function LayersPlanesPanel({
   const addLayer = () => {
     const name = newLayerName.trim();
     if (name === '') return;
-    const id = uniqueId(name, new Set(model.layers.map((l) => l.id)), 'layer');
+    // layers and planes are id spaces of their own, apart from the nodes uniqueNodeId scans
+    const id = uniqueSlug(name, new Set(model.layers.map((l) => l.id)), 'layer');
     onCommand({ type: 'upsert-layer', layer: { id, name } });
     setNewLayerName('');
   };
   const addPlane = () => {
     const name = newPlaneName.trim();
     if (name === '') return;
-    const id = uniqueId(name, new Set(model.planes.map((p) => p.id)), 'plane');
+    const id = uniqueSlug(name, new Set(model.planes.map((p) => p.id)), 'plane');
     onCommand({ type: 'upsert-plane', plane: { id, name } });
     setNewPlaneName('');
   };

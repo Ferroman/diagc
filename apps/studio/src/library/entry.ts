@@ -59,16 +59,3 @@ export function mergeLibrary(builtin: Library, user: Library): Library {
   ];
   return { categories, entries };
 }
-
-/** Slug + numeric suffix, unique against `taken`. */
-export function uniqueLibraryId(name: string, taken: ReadonlySet<string>, fallback: string): string {
-  const slug =
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || fallback;
-  if (!taken.has(slug)) return slug;
-  let i = 2;
-  while (taken.has(`${slug}-${i}`)) i++;
-  return `${slug}-${i}`;
-}

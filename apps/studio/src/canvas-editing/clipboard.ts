@@ -12,6 +12,8 @@ import {
   type DiagramRelation,
   type EditorCommand,
   type LayoutOverlay,
+  type Point,
+  type Size,
 } from '@diagc/core/internal';
 import { homeActivityParent } from '../activity/activityDrop';
 
@@ -23,8 +25,6 @@ export const CLIPBOARD_FORMAT = 'diagc/clipboard@1';
 /** px each successive paste of the same copy steps down-right, so pastes never
  * land exactly on top of the originals or of each other */
 export const PASTE_STEP = 24;
-
-type Point = { x: number; y: number };
 
 /**
  * What a copy carries: plain model fragments under their ORIGINAL ids, so the
@@ -44,7 +44,7 @@ export interface ClipboardPayload {
   /** parent-relative positions on the copied plane, where there were any */
   positions: Record<string, Point>;
   /** saved box sizes */
-  sizes: Record<string, { w: number; h: number }>;
+  sizes: Record<string, Size>;
 }
 
 /** The containment edges a view of `plane` reads (untagged = first-declared plane). */
@@ -82,7 +82,7 @@ export function copySelection(
   const nodes = model.nodes.filter((n) => picked.has(n.id));
   const saved = layout?.planes[layoutPlaneKey(model, plane)] ?? {};
   const positions: Record<string, Point> = {};
-  const sizes: Record<string, { w: number; h: number }> = {};
+  const sizes: Record<string, Size> = {};
   for (const n of nodes) {
     const p = saved[n.id] ?? onScreen[n.id];
     if (p !== undefined) positions[n.id] = { x: p.x, y: p.y };

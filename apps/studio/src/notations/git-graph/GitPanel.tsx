@@ -24,7 +24,10 @@ interface GitPanelProps {
   onSelect: (id: string) => void;
 }
 
-const parseGap = (raw: string): number => {
+// The Gap field's text as a whole number of empty columns, 0 for anything else.
+// Not core's parseGap, which reads stored metadata: this one takes what `Number`
+// takes, so a typed "2.0" is a gap of 2, and writes a number core reads back.
+const gapInput = (raw: string): number => {
   const n = Number(raw);
   return Number.isInteger(n) && n > 0 ? n : 0;
 };
@@ -75,7 +78,7 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
 
   const addCommit = () => {
     if (targetLane === '') return;
-    const { id, command } = appendCommit(model, plane, targetLane, { tag: tag.trim(), gap: parseGap(gap) });
+    const { id, command } = appendCommit(model, plane, targetLane, { tag: tag.trim(), gap: gapInput(gap) });
     onCommand(command);
     setTag('');
     setGap('0');
@@ -126,7 +129,7 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
   const setSelectedGap = (raw: string) => {
     if (selected === undefined) return;
     const { gap: _drop, ...rest } = selected.metadata ?? {};
-    const n = parseGap(raw);
+    const n = gapInput(raw);
     const metadata = n > 0 ? { ...rest, gap: n } : rest;
     onCommand({
       type: 'set-node-details',

@@ -1,14 +1,10 @@
+import type { BoxSize } from '@diagc/core/internal';
 import type { Library, LibraryEntry } from './types';
 
 // UML activity stencil. Lanes and regions are STRUCTURAL — they are created
 // from the ActivityPanel (which parents them correctly in one batch), never
 // dropped loose from the palette.
-const entry = (
-  id: string,
-  name: string,
-  keywords: string[],
-  size?: { width: number; height: number },
-): LibraryEntry => ({
+const entry = (id: string, name: string, keywords: string[], size?: BoxSize): LibraryEntry => ({
   id,
   category: 'activity',
   name,

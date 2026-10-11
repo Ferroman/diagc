@@ -19,7 +19,9 @@ import {
   type Side,
 } from '@diagc/renderer';
 import {
+  activeNotation,
   allNotesOpen,
+  borrowsContainment,
   CAUSAL_LOOP_NOTATION,
   DEFAULT_STROKE_WIDTH,
   emptyDrawings,
@@ -41,6 +43,7 @@ import {
   strideFor,
   threatsOf,
   TM_NOTATION,
+  uniqueSlug,
   uniqueStrokeId,
   type Column,
   type DiagramModel,
@@ -49,13 +52,13 @@ import {
   type LayoutOverlay,
   type LayoutSettings,
   type PlanRole,
+  type Point,
   type RelationStyle,
   type Stroke,
   type TextRun,
   type ThreatStatus,
   type ElementRef,
 } from '@diagc/core/internal';
-import { activeNotation } from './notation';
 import { getHost } from './host';
 import { useDiagramBoot } from './diagrams/useDiagramBoot';
 import { useDeepLink } from './diagrams/useDeepLink';
@@ -93,7 +96,6 @@ import { clampDockWidth } from './dock/dockWidth';
 import { Sidebar } from './inspector/Sidebar';
 import { EMPTY_LIBRARY_VIEW, LibraryPanel } from './library/LibraryPanel';
 import { useLibrary } from './library/useLibrary';
-import { uniqueLibraryId } from './library/entry';
 import { deleteSelectionCommand } from './canvas-editing/deleteSelection';
 import { connectKind } from './notations/threat-model/connectKind';
 import { fkConnectionCommands } from './canvas-editing/tableConnect';
@@ -180,7 +182,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // Unlike the layout preview these CAN be persisted — coordinates were never
   // part of the model, so saving them is legitimate even for a read-only
   // TS-authored diagram, whose sidecar `diagc compile` never rewrites.
-  const [movedPositions, setMovedPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [movedPositions, setMovedPositions] = useState<Record<string, Point>>({});
   // Edge labels slid along their edges in view mode (Alt+drag a label): the
   // same class of state, saved by the same chip into the overlay's `edgeLabels`.
   const [movedLabels, setMovedLabels] = useState<EdgeLabelMoves>({});
@@ -339,9 +341,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // A borrowing plane's node membership resolves to its base plane
   // (compileView/containmentPlaneOf), so tagging node.plane with the
   // borrowing plane's own id would mismatch and the node would silently
-  // vanish. Stage 1 disables plane-scoped membership editing there — new
-  // nodes are added shared instead (see createNodeAt).
-  const activePlaneBorrowsContainment = planes.find((p) => p.id === activePlane)?.containmentOf !== undefined;
+  // vanish. Plane-scoped membership editing is off there — new nodes are
+  // added shared instead (see createNodeAt).
+  const activePlaneBorrowsContainment = model !== undefined && borrowsContainment(model, activePlane);
 
   // Seed the layer switch from the plane's presets when a diagram arrives on
   // screen. A plane's `layers` are a DEFAULT the user then owns (see
@@ -661,7 +663,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const importLibraryIcon = async (categoryId: string, file: File) => {
     try {
       const image = await uploadAsset(file);
-      const id = uniqueLibraryId(file.name, new Set(lib.library.entries.map((e) => e.id)), 'icon');
+      const id = uniqueSlug(file.name, new Set(lib.library.entries.map((e) => e.id)), 'icon');
       const name = file.name.replace(/\.[^.]*$/, '') || 'icon';
       lib.addEntry({ id, category: categoryId, name, template: { type: 'image', image, width: 64, height: 64 } });
     } catch (e) {
@@ -675,7 +677,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const importLibraryShape = async (categoryId: string, file: File) => {
     try {
       const shape = await uploadAsset(file);
-      const id = uniqueLibraryId(file.name, new Set(lib.library.entries.map((e) => e.id)), 'shape');
+      const id = uniqueSlug(file.name, new Set(lib.library.entries.map((e) => e.id)), 'shape');
       const name = file.name.replace(/\.[^.]*$/, '') || 'shape';
       lib.addEntry({ id, category: categoryId, name, template: { shape } });
     } catch (e) {
@@ -1363,7 +1365,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                             run: runQuickAdd,
                           },
                           onNodesMoved: (
-                            positions: Record<string, { x: number; y: number }>,
+                            positions: Record<string, Point>,
                             deltas: Record<string, { dx: number; dy: number }>,
                           ) => {
                             // on a plan plane a move is a date change; the layout owns x
@@ -1380,7 +1382,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                               ...(activePlane !== undefined ? { plane: activePlane } : {}),
                             });
                           },
-                          onDropInto: (id: string, targetId: string, rel: { x: number; y: number }) => {
+                          onDropInto: (id: string, targetId: string, rel: Point) => {
                             // on a plan plane a drop assigns a role or re-homes the node instead of an ordinary move
                             if (notation === PLAN_NOTATION && model !== undefined) {
                               const command = assign(model, activePlane, id, targetId, rel);
@@ -1398,11 +1400,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                             const command = setActorRole(model, zoneId, actorId, role);
                             if (command !== undefined) editor.dispatch(command);
                           },
-                          onCreateAt: (pos: { x: number; y: number }) => createAt(pos),
-                          onImageFiles: (files: File[], position?: { x: number; y: number }) =>
-                            void addImages(files, position),
+                          onCreateAt: (pos: Point) => createAt(pos),
+                          onImageFiles: (files: File[], position?: Point) => void addImages(files, position),
                           onDropLibraryEntry: dropLibraryEntry,
-                          onResize: (id: string, w: number, h: number, pos: { x: number; y: number }) => {
+                          onResize: (id: string, w: number, h: number, pos: Point) => {
                             if (notation === PLAN_NOTATION && model !== undefined) {
                               // the lookup scans every node, so it stays inside the
                               // guard: every other notation resizes without it

@@ -6,12 +6,13 @@ import {
   containmentPlaneOf,
   isActivityChrome,
   isActivityType,
+  type BoxSize,
   type DiagramModel,
+  type Point,
 } from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT } from '@diagc/renderer';
 
-type Point = { x: number; y: number };
-type Bounds = { x: number; y: number; width: number; height: number };
+type Bounds = Point & BoxSize;
 
 /** Containers inside an activity frame that elements are placed into. */
 const ACTIVITY_HOMES: ReadonlySet<string> = new Set([ACTIVITY_LANE_TYPE, ACTIVITY_REGION_TYPE]);
@@ -75,7 +76,7 @@ export function activityDropPosition(
   model: DiagramModel,
   parentId: string | undefined,
   point: Point,
-  size: { width: number; height: number },
+  size: BoxSize,
   boundsOf: (id: string) => Bounds | undefined,
 ): Point | undefined {
   if (parentId === undefined) return undefined;

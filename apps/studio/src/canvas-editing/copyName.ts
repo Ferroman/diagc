@@ -1,3 +1,5 @@
+import { nextFreeId } from '@diagc/core/internal';
+
 // A copy's name is the source's root plus `-copy`, then `-copy-2`, `-copy-3`, …
 // The trailing marker is stripped from the source first, so duplicating a copy
 // bumps the number rather than stacking suffixes (`x-copy-copy` reads as a
@@ -12,11 +14,8 @@ const COPY_SUFFIX = /-copy(-\d+)?$/;
  * a read-only artifact is just as fatal as one with an editable source.
  */
 export function nextCopyName(base: string, taken: ReadonlySet<string>): string {
-  const root = base.replace(COPY_SUFFIX, '');
+  const first = `${base.replace(COPY_SUFFIX, '')}-copy`;
   // `-copy` is the unnumbered first copy; numbering starts at 2 so the pair
   // reads as "the copy" and "the second copy".
-  for (let n = 1; ; n++) {
-    const candidate = n === 1 ? `${root}-copy` : `${root}-copy-${n}`;
-    if (!taken.has(candidate)) return candidate;
-  }
+  return taken.has(first) ? nextFreeId(`${first}-`, taken, 2) : first;
 }

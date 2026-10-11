@@ -1,3 +1,4 @@
+import type { Point } from '@diagc/core/internal';
 import { getHost } from '../host';
 import { useKeyHint } from '../hotkeys/HotkeysContext';
 import type { EditorApi } from '../session/useEditor';
@@ -5,7 +6,7 @@ import type { EditorApi } from '../session/useEditor';
 interface RelayoutInput {
   autoLayout: boolean;
   activePlane: string | undefined;
-  getAutoPositions: () => Record<string, { x: number; y: number }>;
+  getAutoPositions: () => Record<string, Point>;
 }
 
 /** Re-layout the active plane: clear its pins under automatic layout, re-pin a

@@ -11,6 +11,7 @@ import {
   type DiagramNode,
   type EditorCommand,
   type NotationId,
+  type Point,
 } from '@diagc/core/internal';
 import type { DiagramSelection, LayoutApi } from '@diagc/renderer';
 import type { EditorApi } from '../session/useEditor';
@@ -62,15 +63,15 @@ export interface NodePlacement {
   /** Whiteboard-style add (Library Add button / N key). */
   addNode: () => void;
   /** Empty-canvas double-click create; returns the new node id for in-canvas rename. */
-  createAt: (pos: { x: number; y: number }) => string | undefined;
+  createAt: (pos: Point) => string | undefined;
   /** Place a library entry (click = under the selection; drop = at the point). */
-  placeFromLibrary: (entry: LibraryEntry, opts?: { parentId?: string; position?: { x: number; y: number } }) => void;
+  placeFromLibrary: (entry: LibraryEntry, opts?: { parentId?: string; position?: Point }) => void;
   /** Restyle the selected node to match a library card. */
   applyFromLibrary: (entry: LibraryEntry) => void;
   /** A palette entry dragged onto the canvas. */
-  dropLibraryEntry: (entryId: string, position: { x: number; y: number }, targetNodeId?: string) => void;
+  dropLibraryEntry: (entryId: string, position: Point, targetNodeId?: string) => void;
   /** Drop/paste/picker: upload files and create image nodes. */
-  addImages: (files: File[], position?: { x: number; y: number }) => Promise<void>;
+  addImages: (files: File[], position?: Point) => Promise<void>;
 }
 
 /**
@@ -144,7 +145,7 @@ export function useNodePlacement({
   // type). Returning the id lets DiagramView open it in canvas in-place rename
   // mode — the sole rename affordance here, so no setRenameId (a panel autofocus
   // would race the canvas editor across DiagramView's async layout timing).
-  const createAt = (pos: { x: number; y: number }) => {
+  const createAt = (pos: Point) => {
     const m = editor.session?.state.model;
     if (m === undefined) return;
     const place = createNodeAt(m, {
@@ -183,7 +184,7 @@ export function useNodePlacement({
   // Add node; drag-to-place passes the drop point, so the node lands there
   // top-level instead — or, dropped on a node, nests under it (at the drop point
   // when that node is an activity lane or region, elk-placed otherwise).
-  const placeFromLibrary = (entry: LibraryEntry, opts?: { parentId?: string; position?: { x: number; y: number } }) => {
+  const placeFromLibrary = (entry: LibraryEntry, opts?: { parentId?: string; position?: Point }) => {
     const m = editor.session?.state.model;
     if (m === undefined) return;
     const kind = entry.template.image !== undefined || entry.template.shape !== undefined ? 'icon' : 'node';
@@ -309,7 +310,7 @@ export function useNodePlacement({
 
   // A palette entry dragged onto the canvas: look it up and place it at the drop point,
   // or nest it under the node it landed on.
-  const dropLibraryEntry = (entryId: string, position: { x: number; y: number }, targetNodeId?: string) => {
+  const dropLibraryEntry = (entryId: string, position: Point, targetNodeId?: string) => {
     const entry = lib.library.entries.find((e) => e.id === entryId);
     if (entry === undefined) return;
     placeFromLibrary(entry, { position, ...(targetNodeId !== undefined ? { parentId: targetNodeId } : {}) });
@@ -317,7 +318,7 @@ export function useNodePlacement({
 
   // Drop/paste/picker all land here: upload, then create an image node (sized
   // from the file, positioned at the drop point when there is one).
-  const addImages = async (files: File[], position?: { x: number; y: number }) => {
+  const addImages = async (files: File[], position?: Point) => {
     const issues: { message: string }[] = [];
     for (const file of files) {
       try {

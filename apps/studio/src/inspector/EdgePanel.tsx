@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   CAUSAL_LOOP_NOTATION,
   crossings,
@@ -15,6 +15,7 @@ import {
 } from '@diagc/core/internal';
 import { getHost } from '../host';
 import { CommentsSection } from './CommentsSection';
+import { commitOnEnter } from './commitOnEnter';
 import { ColorRow, OptionRow } from './pickers';
 import { ThreatsSection } from './ThreatsSection';
 
@@ -54,13 +55,6 @@ interface EdgePanelProps {
   /** the viewed plane — the containment a boundary crossing is derived from */
   activePlane?: string;
 }
-
-const commitOnEnter = (e: KeyboardEvent, run: () => void) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    run();
-  }
-};
 
 // One editable row of the labels list: text (commit on blur/Enter; empty text
 // removes the label), a top/center/bottom side toggle, and a remove button. All

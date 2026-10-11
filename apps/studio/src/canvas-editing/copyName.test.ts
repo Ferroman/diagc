@@ -17,6 +17,11 @@ describe('nextCopyName', () => {
     expect(nextCopyName('sketch', taken)).toBe('sketch-copy-4');
   });
 
+  it('takes the first free name, a gap among the numbers or the unnumbered copy', () => {
+    expect(nextCopyName('sketch', new Set(['sketch', 'sketch-copy', 'sketch-copy-3']))).toBe('sketch-copy-2');
+    expect(nextCopyName('sketch', new Set(['sketch', 'sketch-copy-2']))).toBe('sketch-copy');
+  });
+
   it('bumps the number instead of stacking suffixes on a copy of a copy', () => {
     expect(nextCopyName('sketch-copy', new Set(['sketch', 'sketch-copy']))).toBe('sketch-copy-2');
   });

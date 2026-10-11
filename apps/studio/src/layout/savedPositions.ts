@@ -5,6 +5,7 @@ import {
   type DiagramModel,
   type EdgeLabelPlacement,
   type LayoutOverlay,
+  type Point,
 } from '@diagc/core/internal';
 
 /**
@@ -39,7 +40,7 @@ export function withSavedPositions(
   layout: LayoutOverlay | undefined,
   model: DiagramModel,
   plane: string | undefined,
-  moved: Record<string, { x: number; y: number }>,
+  moved: Record<string, Point>,
   unfolded?: readonly string[],
   labels: Readonly<Record<string, Readonly<Record<string, EdgeLabelPlacement>>>> = {},
 ): LayoutOverlay {
@@ -82,7 +83,7 @@ export function withPlaneManual(
   layout: LayoutOverlay | undefined,
   model: DiagramModel,
   plane: string | undefined,
-  snapshot: Record<string, { x: number; y: number }> | null,
+  snapshot: Record<string, Point> | null,
   unfolded?: readonly string[],
   labels: Readonly<Record<string, Readonly<Record<string, EdgeLabelPlacement>>>> = {},
 ): LayoutOverlay {
