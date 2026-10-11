@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DiagramModel } from '@diagc/core/internal';
+import { buildHierarchy, type DiagramModel } from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT } from '@diagc/renderer';
 import { activityDropPosition, homeActivityParent } from './activityDrop';
 
@@ -89,6 +89,40 @@ describe('homeActivityParent', () => {
     };
     expect(homeActivityParent(m, 'p', 'empty')).toBe('l1');
     expect(homeActivityParent(m, 'p', 'f')).toBeUndefined();
+  });
+
+  it('reads untagged containment on the first plane even when it borrows, as the canvas does', () => {
+    // The untagged edges are on `p`, whose own containment no view reads.
+    const m: DiagramModel = {
+      ...model(),
+      planes: [
+        { id: 'p', name: 'P', containmentOf: 'base' },
+        { id: 'base', name: 'Base' },
+      ],
+      containment: [...model().containment, { parent: 'empty', child: 'l1', plane: 'base' }],
+    };
+    for (const plane of [undefined, 'p', 'base']) {
+      // the canvas: f holds no lanes, empty holds l1
+      expect(buildHierarchy(m, plane).childrenOf.get('f')).toEqual([]);
+      expect(homeActivityParent(m, plane, 'f')).toBeUndefined();
+      expect(homeActivityParent(m, plane, 'empty')).toBe('l1');
+      expect(homeActivityParent(m, plane, 'act')).toBe('act');
+    }
+  });
+
+  it('reads untagged lanes through a borrow of the first plane', () => {
+    const m: DiagramModel = {
+      ...model(),
+      planes: [
+        { id: 'base', name: 'Base' },
+        { id: 'p', name: 'P', containmentOf: 'base' },
+      ],
+    };
+    for (const plane of [undefined, 'p', 'base']) {
+      expect(buildHierarchy(m, plane).childrenOf.get('f')).toEqual(['l1', 'l2']);
+      expect(homeActivityParent(m, plane, 'f')).toBe('l1');
+      expect(homeActivityParent(m, plane, 'act')).toBe('l1');
+    }
   });
 });
 
