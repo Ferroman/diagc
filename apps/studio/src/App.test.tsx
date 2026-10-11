@@ -1,7 +1,23 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { DiagramView } from '@diagc/renderer';
 import { App } from './App';
+
+// The props App last passed DiagramView. A connect is a React Flow drag jsdom
+// cannot drive, so the connect-gesture case below calls the `edit` callbacks
+// the canvas would. The wrapper renders the real view, so every other case in
+// this file runs through it unaffected.
+const viewCapture = vi.hoisted(() => ({ props: null as Parameters<typeof DiagramView>[0] | null }));
+vi.mock('@diagc/renderer', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@diagc/renderer')>();
+  const Actual = actual.DiagramView;
+  function CapturingDiagramView(props: Parameters<typeof DiagramView>[0]) {
+    viewCapture.props = props;
+    return <Actual {...props} />;
+  }
+  return { ...actual, DiagramView: CapturingDiagramView };
+});
 
 // Mirrors the fixture shape in editor/shell.test.tsx: two diagrams, no planes,
 // so the layout preview resolves to the 'default' key throughout. `drillModel`
@@ -426,6 +442,62 @@ describe('drilled-in canvas tools', () => {
     await waitFor(() => expect(document.querySelector('.react-flow__node')).not.toBeNull());
     const freeze = (await screen.findByRole('button', { name: /freeze layout/i })) as HTMLButtonElement;
     expect(freeze.disabled).toBe(true);
+  });
+});
+
+describe('connect gesture', () => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/');
+    localStorage.clear();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url === '/api/diagrams') {
+          return new Response(
+            JSON.stringify({ diagrams: [{ name: 'pair', model: pairModel, issues: [], editable: true }] }),
+            { status: 200 },
+          );
+        }
+        if (url === '/api/layouts') return new Response(JSON.stringify({ layouts: {} }), { status: 200 });
+        if (url === '/api/drawings') return new Response(JSON.stringify({ drawings: {} }), { status: 200 });
+        if (
+          url === '/api/diagrams/pair' &&
+          (init === undefined || init.method === undefined || init.method === 'GET')
+        ) {
+          return new Response(JSON.stringify({ model: pairModel }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }),
+    );
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  const edit = () => {
+    const api = viewCapture.props?.edit;
+    if (api === undefined) throw new Error('DiagramView has no edit callbacks: not in edit mode');
+    return api;
+  };
+  // The edge panel's own control: present exactly while a relation is selected.
+  const edgePanelOpen = () => screen.queryByRole('button', { name: /add label/i }) !== null;
+
+  it('selects the relation a connect draws, even when its id repeats a deleted one', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
+    await screen.findByRole('button', { name: /^save$/i });
+
+    act(() => edit().onConnect?.('p', 'q'));
+    await waitFor(() => expect(edgePanelOpen()).toBe(true));
+
+    // The canvas Delete key: the relation goes, and so does the selection.
+    act(() => edit().onDeleteSelection?.({ nodeIds: [], relationIds: ['p->q#0'] }));
+    await waitFor(() => expect(edgePanelOpen()).toBe(false));
+
+    // Drawn again, the relation is minted the same id, p->q#0.
+    act(() => edit().onConnect?.('p', 'q'));
+    await waitFor(() => expect(edgePanelOpen()).toBe(true));
   });
 });
 

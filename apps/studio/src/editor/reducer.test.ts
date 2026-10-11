@@ -47,11 +47,32 @@ describe('editor reducer', () => {
     expect(s.past).toHaveLength(HISTORY_CAP);
   });
 
-  it('add-relation records lastRelationId', () => {
+  it('add-relation records lastRelation', () => {
     let s = startSession('draft', state());
     s = dispatch(s, { type: 'add-relation', from: 'sys', to: 'a', opts: { kind: 'sync' } });
-    expect(s.lastRelationId).toBe('sys->a#0');
+    expect(s.lastRelation?.id).toBe('sys->a#0');
     expect(s.state.model.relations.at(-1)?.id).toBe('sys->a#0');
+  });
+
+  it('a relation drawn again after a delete is a new lastRelation, though its id repeats', () => {
+    let s = startSession('draft', state());
+    s = dispatch(s, { type: 'add-relation', from: 'sys', to: 'a', opts: { kind: 'sync' } });
+    const first = s.lastRelation;
+    s = dispatch(s, { type: 'delete-relation', id: 'sys->a#0' });
+    expect(s.lastRelation).toBe(first);
+    s = dispatch(s, { type: 'add-relation', from: 'sys', to: 'a', opts: { kind: 'sync' } });
+    expect(s.lastRelation?.id).toBe('sys->a#0');
+    expect(s.lastRelation?.nonce).not.toBe(first?.nonce);
+  });
+
+  it('undo and redo leave lastRelation as it was, so neither reads as a new connect', () => {
+    let s = startSession('draft', state());
+    s = dispatch(s, { type: 'add-relation', from: 'sys', to: 'a', opts: { kind: 'sync' } });
+    const drawn = s.lastRelation;
+    s = undo(s);
+    expect(s.lastRelation).toBe(drawn);
+    s = redo(s);
+    expect(s.lastRelation).toBe(drawn);
   });
 
   it('first plane migrates the default overlay bucket', () => {
@@ -119,12 +140,12 @@ describe('editor reducer', () => {
       ],
     });
     expect(s.past).toHaveLength(1);
-    // A batch never sets lastRelationId, even one ending in add-relation: that
+    // A batch never sets lastRelation, even one ending in add-relation: that
     // field exists solely to let App.tsx select the edge a canvas connect
     // gesture just drew, and a batch is never a connect gesture (e.g. the Git
     // panel's own batches end in add-relation but must not steal selection
     // away from the panel's own onSelect).
-    expect(s.lastRelationId).toBeUndefined();
+    expect(s.lastRelation).toBeUndefined();
     s = undo(s);
     expect(s.state.model.nodes.some((n) => n.id === 'db')).toBe(false);
     expect(s.state.model.relations).toHaveLength(0);
@@ -133,9 +154,9 @@ describe('editor reducer', () => {
     expect(isDirty(s)).toBe(false);
   });
 
-  it('a bare add-relation dispatch still sets lastRelationId (unlike a batch)', () => {
+  it('a bare add-relation dispatch still sets lastRelation (unlike a batch)', () => {
     let s = startSession('draft', state());
     s = dispatch(s, { type: 'add-relation', from: 'a', to: 'sys', opts: { kind: 'sync' } });
-    expect(s.lastRelationId).toBe(s.state.model.relations[0]?.id);
+    expect(s.lastRelation?.id).toBe(s.state.model.relations[0]?.id);
   });
 });

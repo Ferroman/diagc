@@ -428,11 +428,14 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     });
   };
 
-  // Select the relation a connect gesture just created (Task 3/4 render its panel).
-  const lastRel = session?.lastRelationId;
+  // Select the relation a connect gesture just created, which opens its panel.
+  // Keyed on the { id, nonce } object, not the id: the reducer replaces it on
+  // every connect and nowhere else, and a relation drawn again after a delete
+  // repeats its id but not its nonce.
+  const lastRel = session?.lastRelation;
   useEffect(() => {
     if (editing && lastRel !== undefined) {
-      setSelection({ kind: 'edge', id: lastRel });
+      setSelection({ kind: 'edge', id: lastRel.id });
       setRenameId(null);
     }
   }, [editing, lastRel]);
