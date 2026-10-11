@@ -307,7 +307,7 @@ function embed(outer: Block, inner: Block, at: { dx: number; dy: number; absX: n
  * The layered layout with independent parts arranged separately and packed
  * (layout-plan.ts says which, pack.ts how). Returns `undefined` when there is
  * nothing to pack — the common, fully connected diagram — or when elk rejects a
- * sub-graph, and `layoutView` then runs the single graph exactly as before.
+ * sub-graph, and `layoutView` then runs the single graph.
  */
 async function layoutPlanned(
   view: CompiledView,
@@ -523,8 +523,9 @@ function findShape(root: ElkShape, id: string): ElkShape | undefined {
   return undefined;
 }
 
-/** The whole view as ONE elk graph: the path a diagram takes when nothing in it
- * stands apart, or when elk rejects a planned sub-graph. */
+/** The whole view as ONE elk graph: the path for every algorithm but layered, for
+ * a partitioned run, and for a layered view where nothing stands apart or elk
+ * rejects a planned sub-graph. */
 async function layoutSingleRun(
   view: CompiledView,
   sizeOverrides: ReadonlyMap<string, SizeHint> | undefined,

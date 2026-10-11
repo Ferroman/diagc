@@ -31,7 +31,7 @@ export interface LevelPlan {
 
 export interface LayoutPlan {
   /** level owner (`null` = the root graph) → its plan. Only levels with
-   * something to pack appear: an absent level is laid out exactly as before. */
+   * something to pack appear: an absent level stays in its parent's elk run. */
   levels: Map<string | null, LevelPlan>;
 }
 

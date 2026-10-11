@@ -20,7 +20,7 @@ import type { Notation } from './useNotation';
 import type { ViewLayout } from './useViewLayout';
 import type { DiagramViewProps, EditingApi } from './view-types';
 
-/** the node whose name is open for typing in place */
+/** the node name or edge label open for typing in place */
 export type LabelEdit = { kind: 'node' | 'edge'; id: string };
 
 export interface FlowNodesInput {

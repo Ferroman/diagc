@@ -69,7 +69,8 @@ export function useCompiledView(input: CompiledViewInput): CompiledViewState {
     };
     compiled.roots.forEach(walk);
     visibleRef.current = ids;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- visibleRef is a stable useRef identity from DiagramView, written through .current
+    /* eslint-disable-next-line react-hooks/exhaustive-deps --
+       visibleRef is a stable useRef identity from DiagramView, written through .current */
   }, [compiled]);
 
   return { compiled, compiledRef };

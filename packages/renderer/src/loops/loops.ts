@@ -298,10 +298,8 @@ export function placeLoopLabels(
     const memberRects = loop.nodes.map((id) => rects.get(id)).filter((r): r is NodeRect => r !== undefined);
     const centers = memberRects.map(rectCenter);
 
-    // The interior of the loop. This used to be a corner of the loop's first
-    // node, because under the layered layout every loop spanned the diagram and
-    // all centroids bunched at its middle; the causal-loop default is now
-    // stress, which draws a loop as a ring, so the centroid sits inside it.
+    // The interior of the loop: the members' centroid. The causal-loop default
+    // layout, stress, draws a loop as a ring, so the centroid sits inside it.
     if (centers.length === 0) continue;
     const cx = centers.reduce((sum, c) => sum + c.x, 0) / centers.length;
     const cy = centers.reduce((sum, c) => sum + c.y, 0) / centers.length;

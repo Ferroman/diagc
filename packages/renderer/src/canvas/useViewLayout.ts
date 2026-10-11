@@ -259,7 +259,10 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
 }
 
 export function useViewLayout(input: ViewLayoutInput): ViewLayout {
-  // Per-node size hints, before the view state is known (size-hints.ts).
+  // Per-node size hints, before the view state is known (size-hints.ts). Keyed
+  // on the whole overlay, so a committed drag recomputes them and the layout run
+  // follows: layoutView's cache spares elk the work, and a notation's own layout
+  // runs again.
   const sizeHints = useMemo(
     () =>
       sizeHintsOf(input.model, {
@@ -282,7 +285,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // render must not re-run elk each render.
   const metaKeysKey = input.metaKeys.join('\u0000');
   // The sizes map alone, not the whole overlay: a position drag rebuilds the
-  // overlay but keeps its `sizes`, and must not re-run elk.
+  // overlay but keeps its `sizes`.
   const fixedSizes = input.layout?.sizes;
   const sizes = useMemo(
     () =>
@@ -332,11 +335,11 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     [input.profile, input.model, input.plane],
   );
 
-  // The plane's saved positions (parent-relative for a nested node), gated
-  // exactly as placedGeometry always applied them: a viewer who asked to
-  // ignore them sees none, editing always reads the document. Hoisted out of
-  // placedGeometry (below) so a notation that owns its arrangement can read
-  // the same value — see `layoutPositions` next.
+  // The plane's saved positions (parent-relative for a nested node), gated as
+  // placedGeometry applies them: a viewer who asked to ignore them sees none,
+  // editing always reads the document. Kept apart from placedGeometry (below)
+  // so a notation that owns its arrangement can read the same value — see
+  // `layoutPositions` next.
   const saved = useMemo(() => {
     if (!input.editing && input.ignoreSavedPositions === true) return {};
     const key = layoutPlaneKey(input.model, input.plane);
@@ -347,8 +350,8 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // `saved` only when the profile opts in with `layoutReadsPositions` (the plan
   // does: it clamps a zone child's saved spot on read — see plan-layout.ts),
   // else a STABLE `undefined` — same object identity, the JS primitive, every
-  // render — so adding this to the effect's deps below can never make a layout
-  // that does NOT read positions (elk, but also git-graph's and fishbone's own
+  // render — so this entry in the effect's deps below never, by itself, makes a
+  // layout that does NOT read positions (elk, but also git-graph's and fishbone's own
   // arrangements, which never look at `positions`) re-run just because a drag
   // rebuilt `input.layout` (and, with it, `saved`); see the `layoutSettings`
   // rationale above for the sibling problem this mirrors. Gating on the flag
@@ -431,10 +434,6 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // mid-drag, before anything is committed.
   const laidAt = useMemo(() => laidAtOf(geometry, input.compiled.roots), [geometry, input.compiled]);
 
-  // Which planes draw routes at all. A notation's own layout: its routes ARE
-  // the drawing (a git link has no floating form worth showing). Otherwise
-  // `layered` routes every edge, and a notation that bows its edges (causal
-  // loops: the arc is the notation) keeps floating them.
   const routing = useMemo(
     () => routingOf(input.profile, layoutSettings, runSettings),
     [input.profile, layoutSettings, runSettings],

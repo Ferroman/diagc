@@ -576,7 +576,7 @@ export function buildGraph(
   //    to a sub-layout run that elk does not route across levels; or
   //  - an endpoint was RAISED to an ancestor. Two containers joined by a single
   //    leaf-to-leaf edge produce no container-owned edges at all, yet the root
-  //    edge now runs container-to-container — its waypoints stop at the two
+  //    edge then runs container-to-container — its waypoints stop at the two
   //    container borders, nowhere near the leaves the renderer connects.
   //
   // Neither happens on the flat path, nor on a nested run over a view whose

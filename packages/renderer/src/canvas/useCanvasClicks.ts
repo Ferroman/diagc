@@ -86,7 +86,8 @@ export function useCanvasClicks(input: CanvasClicksInput): ClickHandlers {
     // own consumption reaches here too, but only after it has been cleared.)
     selectOnAppearRef.current = null;
     onMultiSelectRef.current?.(ids);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectOnAppearRef is a stable useRef identity from DiagramView, written through .current
+    /* eslint-disable-next-line react-hooks/exhaustive-deps --
+       selectOnAppearRef is a stable useRef identity from DiagramView, written through .current */
   }, []);
 
   const onNodeClick = (e: MouseEvent, node: Node) => {

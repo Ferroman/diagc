@@ -33,6 +33,7 @@ export function useRootFit(input: RootFitInput): void {
     if (fit === null || arrangedGeometry === null || settledFor !== compiled) return;
     pendingRootFitRef.current = null;
     void reactFlow.fitView(fit === 'glide' ? { padding: 0.15, duration: 500 } : undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- pendingRootFitRef is a stable useRef identity (owned by useDrillNavigation) read through .current
+    /* eslint-disable-next-line react-hooks/exhaustive-deps --
+       pendingRootFitRef is a stable useRef identity (owned by useDrillNavigation) read through .current */
   }, [compiled, arrangedGeometry, settledFor, reactFlow]);
 }

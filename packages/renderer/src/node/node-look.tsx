@@ -13,10 +13,10 @@ import type { DiagramNodeData } from './DiagramNode';
 /** accent-colored border + subtle same-color fill; undefined color = registry
  * look. --dg-node-accent-tint is a HOOK, not a theme token of its own: no
  * theme sets it globally, so it is undefined almost everywhere and the
- * literal 14% fallback — today's one shared look, unchanged in both themes —
- * is what every ordinary accented node gets. A notation opts a root INTO a
+ * literal 14% fallback, one look in both themes, is what every ordinary
+ * accented node gets. A notation opts a root INTO a
  * theme-tuned strength by setting the var on that root's own selector in
- * styles.css (today only the plan zone does, via ThemeTokens.planZoneTint);
+ * styles.css (the plan zone does, via ThemeTokens.planZoneTint);
  * this function stays ignorant of which notation, if any, did that. */
 export function accentStyle(color: string | undefined): CSSProperties | undefined {
   if (color === undefined) return undefined;

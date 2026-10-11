@@ -127,8 +127,7 @@ export function useNodeDragging(input: NodeDraggingInput): NodeDragging {
   // to <ReactFlow> only when dropEnabled (see `handlers` below), not wired
   // unconditionally: XYDrag.updateNodes only builds its per-frame
   // getEventHandlerParams() call when onDrag/onNodeDrag/onSelectionDrag is
-  // present, so a notation without the feature — six of the seven today —
-  // must not hand one over, or every drag on every plane pays a frame of
+  // present, so a notation without the feature must not hand one over, or every drag on every plane pays a frame of
   // work it never asked for.
   const onDragFrame: OnNodeDrag = (e, node, nodes) => {
     const target =

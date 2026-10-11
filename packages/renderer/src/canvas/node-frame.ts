@@ -52,7 +52,8 @@ export function nodeFrameProps(
  * Flow's expandParent) and for good once dropped (the fit pass in
  * useViewLayout). Both modes: an Alt-drag in view mode would otherwise carry the child
  * straight out through the wall. A notation that owns the arrangement sizes its
- * own rows, so there the old edit-mode clamp stays.
+ * own rows, so there a child is clamped inside its box instead
+ * (`extent: 'parent'`), in edit mode only.
  *
  * ...unless the node is one this drag may DROP into a different parent
  * (useNodeDragging's dropTargetFor, onDropInto): a plan's plain node or actor,

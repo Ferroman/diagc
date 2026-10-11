@@ -26,7 +26,10 @@ export function GroupBody({ id, data, selected, width, height, profile, parts }:
   const corner = style.cornerBadge === true;
   return (
     <div
-      className={`dg-group${style.dashed === true ? ' dg-dashed' : ''}${groupOutline ? ' dg-group-outline' : ''}${corner ? ' dg-group-corner' : ''}${loopClass}`}
+      className={
+        `dg-group${style.dashed === true ? ' dg-dashed' : ''}${groupOutline ? ' dg-group-outline' : ''}` +
+        `${corner ? ' dg-group-corner' : ''}${loopClass}`
+      }
       style={
         data.stylePreset?.rough !== undefined
           ? hitStyle

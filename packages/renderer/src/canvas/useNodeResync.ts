@@ -48,6 +48,9 @@ export function useNodeResync(input: NodeResyncInput): void {
         return { ...n, ...(s ? { selected: true } : {}), ...(p !== undefined ? { position: p } : {}) };
       });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- pendingRef and selectOnAppearRef are stable useRef identities read through .current, and setRfNodes a stable useState setter, all from DiagramView's hooks; derivedNodes is left out because allNodes is derived from it and changes with it (depending on both would only run this twice)
+    /* eslint-disable-next-line react-hooks/exhaustive-deps --
+       pendingRef and selectOnAppearRef are stable useRef identities read through .current, and setRfNodes a
+       stable useState setter, all from DiagramView's hooks; derivedNodes is left out because allNodes is
+       derived from it and changes with it (depending on both would only run this twice) */
   }, [allNodes]);
 }

@@ -170,8 +170,8 @@ function layerRows(input: LegendInput): LegendRow[] {
   const relevant = relevantLayerIds(input);
   // Exactly compileView's rule, and it must stay exactly it: an absent
   // `activeLayers` falls back to the plane's presets, a present one (even empty)
-  // replaces them. This used to union the two, which is how a layer the plane
-  // presets came up ON in the key while the host's own switch reported it off.
+  // replaces them. A union of the two would show a layer the plane presets ON
+  // in the key while the host's own switch reports it off.
   const active = new Set(input.activeLayers ?? input.plane?.layers ?? []);
   const out: LegendRow[] = [];
   for (const l of input.model.layers) {

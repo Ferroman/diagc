@@ -2,8 +2,8 @@
  * title straight on the canvas, with no fill of the node's own behind them. So
  * a colour written for a white page can vanish on the dark canvas, and the
  * theme says how much of it survives: --dg-outline-ink (ThemeTokens.outlineInk)
- * is the share kept, the rest mixed toward --dg-text. Light keeps all of it,
- * which is today's look unchanged. The literal 100% covers a host that applies
+ * is the share kept, the rest mixed toward --dg-text. Light keeps all of it.
+ * The literal 100% covers a host that applies
  * no theme.
  * A theme token is left alone — a deployment zone's `var(--dg-deploy-…)` is
  * already the theme's colour, with a dark value of its own, and a second lift

@@ -43,26 +43,27 @@ export const LAYOUT_SIZED_TYPES: ReadonlySet<string> = new Set([...FISHBONE_TYPE
  * DiagramNode that React Flow sizes from its CSS rather than from an inline
  * width/height.
  *
- * Why this exists: elk used to be told every such leaf was `LEAF_SIZE` (160x80)
- * and every folded container `COLLAPSED_SIZE` (200x88), while the DOM draws
- * 142x34 for an untyped box, 142x50 for a typed one, ~150x50 for a folded
- * container — and keeps widening past 160 with the label, because a box label
+ * Why this exists: the layout's own sizes, `LEAF_SIZE` (160x80) for a leaf and
+ * `COLLAPSED_SIZE` (200x88) for a folded container, are far from what the DOM
+ * draws: 142x34 for an untyped box, 142x50 for a typed one, ~150x50 for a
+ * folded container — and wider past 160 with the label, because a box label
  * never wraps. Measured in headless Chrome over the published pages, that gap
- * was the single largest source of bad automatic layouts:
+ * is the single largest source of bad automatic layouts when elk is told the
+ * layout's sizes:
  *
- *  - a label longer than ~20 characters overflowed its reserved 160px and sat
+ *  - a label longer than ~20 characters overflows its reserved 160px and sits
  *    on top of its neighbour;
- *  - every box floated at the top of a slot more than twice its height, so
- *    rows looked twice as loose as the spacing setting said, containers carried
- *    a band of dead space along the bottom, and edges elk had centred on the
- *    slot arrived off-centre on the box.
+ *  - every box floats at the top of a slot more than twice its height, so
+ *    rows look twice as loose as the spacing setting says, containers carry
+ *    a band of dead space along the bottom, and edges elk centred on the
+ *    slot arrive off-centre on the box.
  *
  * The constants mirror styles.css (`.dg-node`, `.dg-node-row`, `.dg-type`,
  * `.dg-meta-badge`, `.dg-count`); the per-character widths are averages for the
  * system-ui stack, rounded UP so a miss leaves a little air rather than an
  * overlap. Anything sized some other way — images, silhouettes, glyphs, tables,
- * multiline/rich labels, text nodes — has its own hint in `useViewLayout`
- * and never comes through here.
+ * multiline/rich labels, text nodes — has its own hint (size-hints.ts) and
+ * never comes through here.
  */
 export interface BoxSizeInput {
   /** the single-line plain label */

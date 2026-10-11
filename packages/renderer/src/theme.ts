@@ -100,11 +100,11 @@ export const lightTheme: ThemeTokens = {
   planZoneTint: '14%',
   planAxisBand: '4%',
   planAxisGrid: '8%',
-  planAxisTick: '#d9dde3', // == lightTheme.border, the old literal the rule read
-  planAxisMonthLabel: '#66737f', // == lightTheme.textMuted, the old shared rule
+  planAxisTick: '#d9dde3', // == lightTheme.border
+  planAxisMonthLabel: '#66737f', // == lightTheme.textMuted
   planAxisWeekLabel: '#66737f',
   roleChipFill: '12%',
-  roleChipText: '100%', // pure chip colour, unmixed — the old raw `--dg-chip` read
+  roleChipText: '100%', // pure chip colour, unmixed
   deployEnvironment: '#3d4b5c',
   deployRegion: '#2563eb',
   deployZone: '#5b6b7c',
