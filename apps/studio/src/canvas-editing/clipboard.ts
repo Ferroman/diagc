@@ -1,5 +1,8 @@
 import {
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_LANE_TYPE,
   childrenOf,
+  isActivityChrome,
   layoutPlaneKey,
   containmentOn,
   containmentPlaneOf,
@@ -16,8 +19,6 @@ import { homeActivityParent } from '../activity/activityDrop';
  * someone else's text and is left alone. Versioned so a later shape can refuse
  * (or migrate) an older copy instead of misreading it. */
 export const CLIPBOARD_FORMAT = 'diagc/clipboard@1';
-
-const ACTIVITY_CHROME = new Set(['activity-frame', 'activity-lane', 'activity-region']);
 
 /** px each successive paste of the same copy steps down-right, so pastes never
  * land exactly on top of the originals or of each other */
@@ -168,7 +169,7 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
   // Where the tops go, before activity re-homing.
   const selected = exists(ctx.selected) ? ctx.selected : undefined;
   // something with children here, or activity chrome (an empty lane is still a lane)
-  const isContainer = (id: string) => edges.some((e) => e.parent === id) || ACTIVITY_CHROME.has(typeOf(id) ?? '');
+  const isContainer = (id: string) => edges.some((e) => e.parent === id) || isActivityChrome(typeOf(id));
   const targetFor = (root: { parent?: string }): string | undefined => {
     if (selected !== undefined && !copied.has(selected)) return isContainer(selected) ? selected : hereParent(selected);
     if (selected !== undefined) return hereParent(selected); // pasting over the copy itself: beside it
@@ -177,7 +178,7 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
   // the frame at or above `id` — the only home a lane has
   const frameOf = (id: string | undefined): string | undefined => {
     for (let cur = id, guard = 0; cur !== undefined && guard < 64; cur = hereParent(cur), guard++) {
-      if (typeOf(cur) === 'activity-frame') return cur;
+      if (typeOf(cur) === ACTIVITY_FRAME_TYPE) return cur;
     }
     return undefined;
   };
@@ -212,7 +213,7 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
   for (const r of payload.roots) {
     const raw = targetFor(r);
     const type = payload.nodes.find((n) => n.id === r.id)?.type;
-    rootParent.set(r.id, type === 'activity-lane' ? frameOf(raw) : homeActivityParent(model, ctx.plane, raw));
+    rootParent.set(r.id, type === ACTIVITY_LANE_TYPE ? frameOf(raw) : homeActivityParent(model, ctx.plane, raw));
   }
   const innerParent = new Map(payload.containment.map((e) => [e.child, e.parent]));
   // Parents before children: payload.nodes keeps model order, which need not

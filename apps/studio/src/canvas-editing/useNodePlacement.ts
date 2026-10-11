@@ -1,5 +1,7 @@
 import type { RefObject } from 'react';
 import {
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_LANE_TYPE,
   DEFAULT_IMAGE_NODE_SIZE,
   LEAF_SIZE,
   PLAN_NOTATION,
@@ -221,14 +223,14 @@ export function useNodePlacement({
       ...(seeded !== undefined ? { metadata: seeded } : {}),
     };
     const add = { type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) } as const;
-    if (node.type === 'activity-frame') {
+    if (node.type === ACTIVITY_FRAME_TYPE) {
       // A frame is only ever drawn as its lanes, and the Activity panel's Add
       // lane is out of sight until the frame is selected: arrive with the first
       // band so there is somewhere to drop into. One batch, one undo.
       const lane: DiagramNode = {
         id: uniqueNodeId(m, 'Lane 1'),
         name: 'Lane 1',
-        type: 'activity-lane',
+        type: ACTIVITY_LANE_TYPE,
         ...placeTags(place, penLayer),
       };
       const lanePlane = activePlane !== undefined ? { plane: activePlane } : {};

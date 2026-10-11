@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import {
+  CAUSAL_LOOP_NOTATION,
   crossings,
   relationLabels,
   strideFor,
@@ -142,7 +143,7 @@ interface RelationFormProps {
 function RelationForm({ model, relationId, onCommand, onBack, onClose, notation, activePlane }: RelationFormProps) {
   const relation = model.relations.find((r) => r.id === relationId);
   const nodeName = (id: string) => model.nodes.find((n) => n.id === id)?.name ?? id;
-  const isCld = notation === 'causal-loop';
+  const isCld = notation === CAUSAL_LOOP_NOTATION;
   // Every crossing on the plane in one pass (the map is shared by all relations,
   // so it is cheaper than asking per relation) — before the early return below,
   // because hooks cannot sit behind one.

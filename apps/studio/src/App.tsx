@@ -20,11 +20,14 @@ import {
 } from '@diagc/renderer';
 import {
   allNotesOpen,
+  CAUSAL_LOOP_NOTATION,
   DEFAULT_STROKE_WIDTH,
   emptyDrawings,
   emptyLayout,
   errMessage,
   defaultLayoutDirection,
+  FISHBONE_NOTATION,
+  GIT_NOTATION,
   isPlanZone,
   layoutPlaneKey,
   LEAF_SIZE,
@@ -33,6 +36,7 @@ import {
   openingPins,
   PLAN_NOTATION,
   presetLayers,
+  SECOND_ORDER_NOTATION,
   SOURCE_URL,
   strideFor,
   threatsOf,
@@ -1273,7 +1277,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                       />
                     }
                   />
-                ) : notation === 'causal-loop' &&
+                ) : notation === CAUSAL_LOOP_NOTATION &&
                   selection?.kind === 'node' &&
                   model.nodes.some((n) => n.id === selection.id) ? (
                   <LeveragePanel
@@ -1542,7 +1546,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                 maxWidth={DOCK_MAX}
                 onWidthChange={setRightWidth}
               >
-                {editing && notation === 'git-graph' && (
+                {editing && notation === GIT_NOTATION && (
                   <GitPanel
                     model={model}
                     plane={activePlane}
@@ -1561,7 +1565,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                     today={today}
                   />
                 )}
-                {editing && notation === 'second-order' && (
+                {editing && notation === SECOND_ORDER_NOTATION && (
                   <SecondOrderPanel
                     model={model}
                     selection={selection}
@@ -1571,7 +1575,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                     onCreated={requestLabelEdit}
                   />
                 )}
-                {editing && notation === 'fishbone' && (
+                {editing && notation === FISHBONE_NOTATION && (
                   <FishbonePanel
                     model={model}
                     selection={selection}

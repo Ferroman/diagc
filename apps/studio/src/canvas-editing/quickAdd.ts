@@ -1,9 +1,15 @@
 import {
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_LANE_TYPE,
+  CAUSAL_LOOP_NOTATION,
   FB_CAUSE_TYPE,
   FB_EFFECT_TYPE,
+  FISHBONE_NOTATION,
+  GIT_NOTATION,
   PLAN_EVENT_TYPE,
   PLAN_NOTATION,
   PLAN_ZONE_TYPE,
+  SECOND_ORDER_NOTATION,
   TM_BOUNDARY_TYPE,
   TM_FLOW_KIND,
   TM_NOTATION,
@@ -12,6 +18,7 @@ import {
   childrenOf,
   fishboneTree,
   gitGraph,
+  isActivityChrome,
   isFishboneNode,
   isPlanEvent,
   isPlanZone,
@@ -103,12 +110,6 @@ function labelFor(recipe: Recipe, source: DiagramNode): string {
   return recipe === 'plan-next' ? (isPlanZone(source) ? 'Add the next zone' : 'Add the next event') : LABELS[recipe];
 }
 
-/** Bands, frames and interruptible regions: the Activity panel's own furniture,
- * drawn as strips rather than boxes. A lane is the one that grows — the renderer
- * hangs a `+` on each of its horizontal edges for a new band above or below; a
- * frame and a region get none (see the renderer's ActivityBandBody and ActivityRegionBody). */
-const ACTIVITY_CHROME = new Set(['activity-lane', 'activity-frame', 'activity-region']);
-
 function recipeFor(
   model: DiagramModel,
   source: DiagramNode,
@@ -117,27 +118,27 @@ function recipeFor(
 ): Recipe | undefined {
   // A lane is a band of its frame whatever the notation, and only a lane
   // actually in a frame can have a sibling band.
-  if (source.type === 'activity-lane') {
+  if (source.type === ACTIVITY_LANE_TYPE) {
     const frame = parentIn(model, ctx.plane, source.id);
-    if (frame === undefined || model.nodes.find((n) => n.id === frame)?.type !== 'activity-frame') return undefined;
+    if (frame === undefined || model.nodes.find((n) => n.id === frame)?.type !== ACTIVITY_FRAME_TYPE) return undefined;
     return side === 'before' ? 'lane-above' : 'lane-below';
   }
   // The invariant: `+` and Tab are one action, so a node the renderer refuses
   // to decorate offers nothing to Tab either. The rest of the activity chrome
   // (a frame, a region) never carries a chip, on any notation's plane, so it
   // is settled before a notation's recipe can claim it.
-  if (source.type !== undefined && ACTIVITY_CHROME.has(source.type)) return undefined;
+  if (isActivityChrome(source.type)) return undefined;
   if (side !== undefined) return undefined;
   switch (ctx.notation) {
-    case 'fishbone':
+    case FISHBONE_NOTATION:
       if (!isFishboneNode(source)) return undefined;
       if (source.type === FB_EFFECT_TYPE) return 'fb-category';
       // three levels below the effect is the limit (addChild's rule, read once)
       if (source.type === FB_CAUSE_TYPE && isSubCause(fishboneTree(model), source.id)) return undefined;
       return 'fb-cause';
-    case 'second-order':
+    case SECOND_ORDER_NOTATION:
       return isSecondOrderNode(source) ? 'so-then' : undefined;
-    case 'git-graph':
+    case GIT_NOTATION:
       return gitLaneToGrow(model, source, ctx.plane) === undefined ? undefined : 'git-commit';
     case TM_NOTATION:
       if (source.type === TM_BOUNDARY_TYPE) return 'tm-inside';
@@ -154,7 +155,7 @@ function recipeFor(
       // A causal-loop group carries no chip either (the invariant above): the
       // notation draws an open one as a bare name tag and arranges its members
       // itself, so "add a connected node" would have nowhere to put the result.
-      if (ctx.notation === 'causal-loop' && childrenOf(containmentOn(model, ctx.plane)).has(source.id))
+      if (ctx.notation === CAUSAL_LOOP_NOTATION && childrenOf(containmentOn(model, ctx.plane)).has(source.id))
         return undefined;
       return 'sibling';
   }
@@ -246,7 +247,7 @@ export function quickAdd(
       const node: DiagramNode = {
         id: place.id,
         name: '',
-        type: 'activity-lane',
+        type: ACTIVITY_LANE_TYPE,
         ...placeTags(place, ctx.penLayer),
       };
       const slot = recipe === 'lane-above' ? { before: sourceId } : { after: sourceId };
