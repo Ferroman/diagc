@@ -1,7 +1,15 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { model } from '@diagc/core/internal';
+import {
+  applyCommand,
+  emptyDrawings,
+  emptyLayout,
+  model,
+  PLAN_NOTATION,
+  type EditorCommand,
+} from '@diagc/core/internal';
+import type { DiagramSelection } from '@diagc/renderer';
 import { INDENT, PlanPanel } from './PlanPanel';
 
 function plan() {
@@ -107,5 +115,34 @@ describe('PlanPanel', () => {
     });
     expect(onSelect).toHaveBeenLastCalledWith('platform-team');
     expect((name as HTMLInputElement).value).toBe('');
+  });
+  it('on a plane that borrows its containment, the zone and the event it adds are listed', () => {
+    // `sched` draws `base`'s containment as a plan; the panel reads the plan graph through it
+    let m = model('b').plane('base').plane('sched', { containmentOf: 'base', notation: PLAN_NOTATION }).toJSON();
+    let selection: DiagramSelection | null = null;
+    const onCommand = (command: EditorCommand) => {
+      m = applyCommand({ model: m, layout: emptyLayout(), drawings: emptyDrawings() }, command).state.model;
+    };
+    const onSelect = (id: string) => {
+      selection = { kind: 'node', id };
+    };
+    const panel = () => (
+      <PlanPanel
+        model={m}
+        plane="sched"
+        selection={selection}
+        onCommand={onCommand}
+        onSelect={onSelect}
+        today="2026-05-04"
+      />
+    );
+    const { rerender } = render(panel());
+    fireEvent.click(screen.getByRole('button', { name: 'Add zone' }));
+    rerender(panel());
+    expect((screen.getByLabelText('Start Zone') as HTMLInputElement).value).toBe('2026-05-04');
+    // the new zone is selected, so the event nests under it
+    fireEvent.click(screen.getByRole('button', { name: 'Add event' }));
+    rerender(panel());
+    expect((screen.getByLabelText('At Event') as HTMLInputElement).value).toBe('2026-05-04');
   });
 });

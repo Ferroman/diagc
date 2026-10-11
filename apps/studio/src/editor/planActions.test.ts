@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyCommand,
+  buildHierarchy,
   dayOf,
+  emptyDrawings,
+  emptyLayout,
   isoOf,
   model,
+  PLAN_NOTATION,
   PLAN_PERSON_TYPE,
   PLAN_TEAM_TYPE,
+  planGraph,
   type DiagramModel,
   type EditorCommand,
 } from '@diagc/core/internal';
@@ -301,6 +307,28 @@ describe('quick-adds', () => {
       id: 'platform',
       command: { type: 'add-node', node: { id: 'platform', name: 'Platform', type: 'team', plane: 'plan' } },
     });
+  });
+  it('on a plane that borrows its containment, a zone, an event and a person added there show there', () => {
+    // `sched` draws `base`'s containment as a plan, so the view matches a node's
+    // `plane` against `base`: a node tagged `sched` would show on no canvas
+    let m = model('b').plane('base').plane('sched', { containmentOf: 'base', notation: PLAN_NOTATION }).toJSON();
+    const apply = (made: { command: EditorCommand; id: string }): string => {
+      m = applyCommand({ model: m, layout: emptyLayout(), drawings: emptyDrawings() }, made.command).state.model;
+      return made.id;
+    };
+    const zone = apply(addZone(m, 'sched', { today: '2026-05-04' }));
+    const event = apply(addEvent(m, 'sched', { selected: zone, today: '2026-05-04' }));
+    const person = apply(addActor(m, 'sched', PLAN_PERSON_TYPE, 'Bob Lee'));
+    const shown = buildHierarchy(m, 'sched').parentsOf;
+    expect([zone, event, person].filter((id) => shown.has(id))).toEqual([zone, event, person]);
+    expect(planGraph(m, 'sched').parent.get(event)).toBe(zone);
+  });
+  it('a plan plane that borrows nothing tags what it adds with itself, first-declared or not', () => {
+    const m = model('p').plane('base').plane('sched', { notation: PLAN_NOTATION }).toJSON();
+    const today = '2026-05-04';
+    expect(addZone(m, 'sched', { today }).command).toMatchObject({ node: { plane: 'sched' } });
+    expect(addEvent(m, 'sched', { today }).command).toMatchObject({ node: { plane: 'sched' } });
+    expect(addActor(m, 'sched', PLAN_PERSON_TYPE, 'Bob Lee').command).toMatchObject({ node: { plane: 'sched' } });
   });
   it("setRole replaces the role's relation, or removes it", () => {
     const m = roadmap();
