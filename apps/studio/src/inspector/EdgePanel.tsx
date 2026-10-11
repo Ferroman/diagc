@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  CAUSAL_LOOP_NOTATION,
   crossings,
   relationLabels,
   strideFor,
@@ -14,6 +15,7 @@ import {
 } from '@diagc/core/internal';
 import { getHost } from '../host';
 import { CommentsSection } from './CommentsSection';
+import { commitOnEnter } from './commitOnEnter';
 import { ColorRow, OptionRow } from './pickers';
 import { ThreatsSection } from './ThreatsSection';
 
@@ -53,13 +55,6 @@ interface EdgePanelProps {
   /** the viewed plane — the containment a boundary crossing is derived from */
   activePlane?: string;
 }
-
-const commitOnEnter = (e: KeyboardEvent, run: () => void) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    run();
-  }
-};
 
 // One editable row of the labels list: text (commit on blur/Enter; empty text
 // removes the label), a top/center/bottom side toggle, and a remove button. All
@@ -142,7 +137,7 @@ interface RelationFormProps {
 function RelationForm({ model, relationId, onCommand, onBack, onClose, notation, activePlane }: RelationFormProps) {
   const relation = model.relations.find((r) => r.id === relationId);
   const nodeName = (id: string) => model.nodes.find((n) => n.id === id)?.name ?? id;
-  const isCld = notation === 'causal-loop';
+  const isCld = notation === CAUSAL_LOOP_NOTATION;
   // Every crossing on the plane in one pass (the map is shared by all relations,
   // so it is cheaper than asking per relation) — before the early return below,
   // because hooks cannot sit behind one.
@@ -313,7 +308,7 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation,
           target={{ relation: relationId }}
           threats={relation.threats ?? []}
           applicable={strideFor(relation.kind)}
-          {...(crossing !== undefined ? { crossing } : {})}
+          crossing={crossing}
           onCommand={onCommand}
         />
       )}
@@ -497,9 +492,9 @@ export function EdgePanel({ model, constituentIds, onCommand, onClose, notation,
           relationId={activeId}
           onCommand={onCommand}
           onClose={onClose}
-          {...(notation !== undefined ? { notation } : {})}
-          {...(activePlane !== undefined ? { activePlane } : {})}
-          {...(single ? {} : { onBack: () => setSelectedId(null) })}
+          notation={notation}
+          activePlane={activePlane}
+          onBack={single ? undefined : () => setSelectedId(null)}
         />
       ) : relations.length === 0 ? (
         <p className="muted">No relations.</p>

@@ -1,9 +1,15 @@
 import {
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_LANE_TYPE,
+  CAUSAL_LOOP_NOTATION,
   FB_CAUSE_TYPE,
   FB_EFFECT_TYPE,
+  FISHBONE_NOTATION,
+  GIT_NOTATION,
   PLAN_EVENT_TYPE,
   PLAN_NOTATION,
   PLAN_ZONE_TYPE,
+  SECOND_ORDER_NOTATION,
   TM_BOUNDARY_TYPE,
   TM_FLOW_KIND,
   TM_NOTATION,
@@ -12,6 +18,7 @@ import {
   childrenOf,
   fishboneTree,
   gitGraph,
+  isActivityChrome,
   isFishboneNode,
   isPlanEvent,
   isPlanZone,
@@ -19,12 +26,16 @@ import {
   isThreatModelNode,
   isoOf,
   latestCommit,
+  containmentOn,
   containmentPlaneOf,
+  defined,
   spanOf,
   type DiagramModel,
   type DiagramNode,
   type EditorCommand,
   type NotationId,
+  type Point,
+  type Size,
 } from '@diagc/core/internal';
 import type { QuickAddSide } from '@diagc/renderer';
 import { createNodeAt, placeTags } from './create-node';
@@ -103,12 +114,6 @@ function labelFor(recipe: Recipe, source: DiagramNode): string {
   return recipe === 'plan-next' ? (isPlanZone(source) ? 'Add the next zone' : 'Add the next event') : LABELS[recipe];
 }
 
-/** Bands, frames and interruptible regions: the Activity panel's own furniture,
- * drawn as strips rather than boxes. A lane is the one that grows — the renderer
- * hangs a `+` on each of its horizontal edges for a new band above or below; a
- * frame and a region get none (see the renderer's ActivityBandBody and ActivityRegionBody). */
-const ACTIVITY_CHROME = new Set(['activity-lane', 'activity-frame', 'activity-region']);
-
 function recipeFor(
   model: DiagramModel,
   source: DiagramNode,
@@ -117,27 +122,27 @@ function recipeFor(
 ): Recipe | undefined {
   // A lane is a band of its frame whatever the notation, and only a lane
   // actually in a frame can have a sibling band.
-  if (source.type === 'activity-lane') {
+  if (source.type === ACTIVITY_LANE_TYPE) {
     const frame = parentIn(model, ctx.plane, source.id);
-    if (frame === undefined || model.nodes.find((n) => n.id === frame)?.type !== 'activity-frame') return undefined;
+    if (frame === undefined || model.nodes.find((n) => n.id === frame)?.type !== ACTIVITY_FRAME_TYPE) return undefined;
     return side === 'before' ? 'lane-above' : 'lane-below';
   }
   // The invariant: `+` and Tab are one action, so a node the renderer refuses
   // to decorate offers nothing to Tab either. The rest of the activity chrome
   // (a frame, a region) never carries a chip, on any notation's plane, so it
   // is settled before a notation's recipe can claim it.
-  if (source.type !== undefined && ACTIVITY_CHROME.has(source.type)) return undefined;
+  if (isActivityChrome(source.type)) return undefined;
   if (side !== undefined) return undefined;
   switch (ctx.notation) {
-    case 'fishbone':
+    case FISHBONE_NOTATION:
       if (!isFishboneNode(source)) return undefined;
       if (source.type === FB_EFFECT_TYPE) return 'fb-category';
       // three levels below the effect is the limit (addChild's rule, read once)
       if (source.type === FB_CAUSE_TYPE && isSubCause(fishboneTree(model), source.id)) return undefined;
       return 'fb-cause';
-    case 'second-order':
+    case SECOND_ORDER_NOTATION:
       return isSecondOrderNode(source) ? 'so-then' : undefined;
-    case 'git-graph':
+    case GIT_NOTATION:
       return gitLaneToGrow(model, source, ctx.plane) === undefined ? undefined : 'git-commit';
     case TM_NOTATION:
       if (source.type === TM_BOUNDARY_TYPE) return 'tm-inside';
@@ -154,7 +159,10 @@ function recipeFor(
       // A causal-loop group carries no chip either (the invariant above): the
       // notation draws an open one as a bare name tag and arranges its members
       // itself, so "add a connected node" would have nowhere to put the result.
-      if (ctx.notation === 'causal-loop' && childrenOf(containmentOn(model, ctx.plane)).has(source.id))
+      if (
+        ctx.notation === CAUSAL_LOOP_NOTATION &&
+        childrenOf(containmentOn(model, containmentPlaneOf(model, ctx.plane))).has(source.id)
+      )
         return undefined;
       return 'sibling';
   }
@@ -177,19 +185,11 @@ function gitLaneToGrow(model: DiagramModel, source: DiagramNode, plane: string |
   return lane !== undefined && latestCommit(g, lane)?.id === source.id ? lane : undefined;
 }
 
-/** The containment edges a view of `plane` reads: those on the plane it resolves
- * to, an untagged edge belonging to the first-declared plane. */
-function containmentOn(model: DiagramModel, plane: string | undefined): DiagramModel['containment'] {
-  const active = containmentPlaneOf(model, plane);
-  const defaultPlane = model.planes?.[0]?.id;
-  return model.containment.filter((e) => (e.plane ?? defaultPlane) === active);
-}
-
-/** The source's parent on that plane — the first declared, the pick a reader
- * makes from the drawing (the threat model's `boundaryOf` follows the same
- * rule). */
+/** The source's parent in the containment a view of `plane` reads — the first
+ * declared, the pick a reader makes from the drawing (the threat model's
+ * `boundaryOf` follows the same rule). */
 function parentIn(model: DiagramModel, plane: string | undefined, id: string): string | undefined {
-  return containmentOn(model, plane).find((e) => e.child === id)?.parent;
+  return containmentOn(model, containmentPlaneOf(model, plane)).find((e) => e.child === id)?.parent;
 }
 
 /** The tooltip alone — the cheap half, called per render of the selected node. */
@@ -246,7 +246,7 @@ export function quickAdd(
       const node: DiagramNode = {
         id: place.id,
         name: '',
-        type: 'activity-lane',
+        type: ACTIVITY_LANE_TYPE,
         ...placeTags(place, ctx.penLayer),
       };
       const slot = recipe === 'lane-above' ? { before: sourceId } : { after: sourceId };
@@ -273,7 +273,7 @@ export function quickAdd(
         beside: false,
         command: {
           type: 'batch',
-          commands: [{ type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) }],
+          commands: [{ type: 'add-node', node, ...defined({ parent: place.parent }) }],
         },
       };
     }
@@ -303,13 +303,13 @@ export function quickAdd(
       });
       // A successor copies the source's look, the same channels a sibling
       // does — a row of tinted zones stays tinted.
-      const look: Partial<DiagramNode> = {
-        ...(source.color !== undefined ? { color: source.color } : {}),
-        ...(source.shape !== undefined ? { shape: source.shape } : {}),
-        ...(source.image !== undefined ? { image: source.image } : {}),
-        ...(source.icon !== undefined ? { icon: source.icon } : {}),
-        ...(source.textColor !== undefined ? { textColor: source.textColor } : {}),
-      };
+      const look: Partial<DiagramNode> = defined({
+        color: source.color,
+        shape: source.shape,
+        image: source.image,
+        icon: source.icon,
+        textColor: source.textColor,
+      });
       const node: DiagramNode = {
         id: place.id,
         name: '',
@@ -328,15 +328,15 @@ export function quickAdd(
         command: {
           type: 'batch',
           commands: [
-            { type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) },
+            { type: 'add-node', node, ...defined({ parent: place.parent }) },
             {
               type: 'add-relation',
               from: sourceId,
               to: place.id,
-              opts: {
+              opts: defined({
                 kind: connectKind(ctx.notation, model, sourceId, place.id),
-                ...(ctx.penLayer !== null ? { layer: ctx.penLayer } : {}),
-              },
+                layer: ctx.penLayer ?? undefined,
+              }),
             },
           ],
         },
@@ -360,17 +360,17 @@ export function quickAdd(
       const look: Partial<DiagramNode> =
         recipe !== 'sibling'
           ? {}
-          : {
-              ...(source.color !== undefined ? { color: source.color } : {}),
-              ...(source.shape !== undefined ? { shape: source.shape } : {}),
-              ...(source.image !== undefined ? { image: source.image } : {}),
-              ...(source.icon !== undefined ? { icon: source.icon } : {}),
-              ...(source.textColor !== undefined ? { textColor: source.textColor } : {}),
-            };
+          : defined({
+              color: source.color,
+              shape: source.shape,
+              image: source.image,
+              icon: source.icon,
+              textColor: source.textColor,
+            });
       const node: DiagramNode = {
         id: place.id,
         name: '',
-        ...(type !== undefined ? { type } : {}),
+        ...defined({ type }),
         ...look,
         ...placeTags(place, ctx.penLayer),
       };
@@ -383,12 +383,12 @@ export function quickAdd(
         command: {
           type: 'batch',
           commands: [
-            { type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) },
+            { type: 'add-node', node, ...defined({ parent: place.parent }) },
             {
               type: 'add-relation',
               from: sourceId,
               to: place.id,
-              opts: { kind, ...(ctx.penLayer !== null ? { layer: ctx.penLayer } : {}) },
+              opts: defined({ kind, layer: ctx.penLayer ?? undefined }),
             },
           ],
         },
@@ -398,16 +398,16 @@ export function quickAdd(
 }
 
 export interface QuickAddPlacement {
-  /** elk will not place the node (manual plane) or the source is pinned on
-   * this plane — either way the new node must be told where to sit */
-  pinned: boolean;
+  /** elk will not place the node (manual plane) or the source has a saved
+   * position on this plane — either way the new node must be told where to sit */
+  needsPosition: boolean;
   /** the source's on-screen position, parent-relative (LayoutApi.snapshotPositions);
    * undefined when it is not rendered */
-  source: { x: number; y: number } | undefined;
+  source: Point | undefined;
   /** the source's footprint width: its saved size, else LEAF_SIZE.width */
   width: number;
   /** the source's saved box size (layout.sizes), when it has one */
-  size?: { w: number; h: number };
+  size?: Size;
   plane: string | undefined;
 }
 
@@ -416,10 +416,10 @@ export interface QuickAddPlacement {
  * and at the source's size when the source was given one.
  *
  * The position is added only when one is needed at all — in an automatic plane
- * with an unpinned source, elk places the connected node itself, and pinning it
- * there would be the one box the next arrangement cannot move (addNode's
- * manual-plane rule, plus the pinned-source case so a node added beside a
- * hand-placed one stays beside it). Positions are parent-relative on both sides,
+ * with a source that has no saved position, elk places the connected node
+ * itself, and saving one for it there would make it the one box the next
+ * arrangement cannot move (addNode's manual-plane rule, plus the saved-source
+ * case so a node added beside a hand-placed one stays beside it). Positions are parent-relative on both sides,
  * so the rule holds for siblings inside a container.
  *
  * The size is not tied to that: sizes live outside any plane and a resized
@@ -430,13 +430,13 @@ export interface QuickAddPlacement {
  */
 export function quickAddPlaced(out: QuickAdd, p: QuickAddPlacement): EditorCommand {
   const extra: EditorCommand[] = [];
-  if (out.beside && p.pinned && p.source !== undefined) {
+  if (out.beside && p.needsPosition && p.source !== undefined) {
     extra.push({
       type: 'set-position',
       nodeId: out.id,
       x: p.source.x + p.width + QUICK_ADD_GAP,
       y: p.source.y,
-      ...(p.plane !== undefined ? { plane: p.plane } : {}),
+      ...defined({ plane: p.plane }),
     });
   }
   if (out.beside && p.size !== undefined) {

@@ -1,5 +1,9 @@
 import {
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_LANE_TYPE,
   childrenOf,
+  defined,
+  isActivityChrome,
   layoutPlaneKey,
   containmentOn,
   containmentPlaneOf,
@@ -9,6 +13,8 @@ import {
   type DiagramRelation,
   type EditorCommand,
   type LayoutOverlay,
+  type Point,
+  type Size,
 } from '@diagc/core/internal';
 import { homeActivityParent } from '../activity/activityDrop';
 
@@ -17,13 +23,9 @@ import { homeActivityParent } from '../activity/activityDrop';
  * (or migrate) an older copy instead of misreading it. */
 export const CLIPBOARD_FORMAT = 'diagc/clipboard@1';
 
-const ACTIVITY_CHROME = new Set(['activity-frame', 'activity-lane', 'activity-region']);
-
 /** px each successive paste of the same copy steps down-right, so pastes never
  * land exactly on top of the originals or of each other */
 export const PASTE_STEP = 24;
-
-type Point = { x: number; y: number };
 
 /**
  * What a copy carries: plain model fragments under their ORIGINAL ids, so the
@@ -43,7 +45,7 @@ export interface ClipboardPayload {
   /** parent-relative positions on the copied plane, where there were any */
   positions: Record<string, Point>;
   /** saved box sizes */
-  sizes: Record<string, { w: number; h: number }>;
+  sizes: Record<string, Size>;
 }
 
 /** The containment edges a view of `plane` reads (untagged = first-declared plane). */
@@ -81,7 +83,7 @@ export function copySelection(
   const nodes = model.nodes.filter((n) => picked.has(n.id));
   const saved = layout?.planes[layoutPlaneKey(model, plane)] ?? {};
   const positions: Record<string, Point> = {};
-  const sizes: Record<string, { w: number; h: number }> = {};
+  const sizes: Record<string, Size> = {};
   for (const n of nodes) {
     const p = saved[n.id] ?? onScreen[n.id];
     if (p !== undefined) positions[n.id] = { x: p.x, y: p.y };
@@ -168,7 +170,7 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
   // Where the tops go, before activity re-homing.
   const selected = exists(ctx.selected) ? ctx.selected : undefined;
   // something with children here, or activity chrome (an empty lane is still a lane)
-  const isContainer = (id: string) => edges.some((e) => e.parent === id) || ACTIVITY_CHROME.has(typeOf(id) ?? '');
+  const isContainer = (id: string) => edges.some((e) => e.parent === id) || isActivityChrome(typeOf(id));
   const targetFor = (root: { parent?: string }): string | undefined => {
     if (selected !== undefined && !copied.has(selected)) return isContainer(selected) ? selected : hereParent(selected);
     if (selected !== undefined) return hereParent(selected); // pasting over the copy itself: beside it
@@ -177,7 +179,7 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
   // the frame at or above `id` — the only home a lane has
   const frameOf = (id: string | undefined): string | undefined => {
     for (let cur = id, guard = 0; cur !== undefined && guard < 64; cur = hereParent(cur), guard++) {
-      if (typeOf(cur) === 'activity-frame') return cur;
+      if (typeOf(cur) === ACTIVITY_FRAME_TYPE) return cur;
     }
     return undefined;
   };
@@ -192,7 +194,7 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
   }
   const layers = new Set(model.layers.map((l) => l.id));
   const scopedPlane = ctx.plane !== undefined && !ctx.borrowsContainment ? ctx.plane : undefined;
-  const planeOpt = ctx.plane !== undefined ? { plane: ctx.plane } : {};
+  const planeOpt = defined({ plane: ctx.plane });
   const fresh = (n: DiagramNode): DiagramNode => {
     // `key` is cross-diagram identity: a copy sharing it would MERGE with its
     // original on compose. Plane and layer are re-scoped to where it lands.
@@ -201,8 +203,7 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
     return {
       ...rest,
       id: idMap.get(n.id)!,
-      ...(scopedPlane !== undefined ? { plane: scopedPlane } : {}),
-      ...(onLayer !== undefined ? { layer: onLayer } : {}),
+      ...defined({ plane: scopedPlane, layer: onLayer }),
     };
   };
 
@@ -212,7 +213,7 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
   for (const r of payload.roots) {
     const raw = targetFor(r);
     const type = payload.nodes.find((n) => n.id === r.id)?.type;
-    rootParent.set(r.id, type === 'activity-lane' ? frameOf(raw) : homeActivityParent(model, ctx.plane, raw));
+    rootParent.set(r.id, type === ACTIVITY_LANE_TYPE ? frameOf(raw) : homeActivityParent(model, ctx.plane, raw));
   }
   const innerParent = new Map(payload.containment.map((e) => [e.child, e.parent]));
   // Parents before children: payload.nodes keeps model order, which need not
@@ -249,14 +250,16 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
       to,
       opts: {
         kind: r.kind,
-        ...(r.label !== undefined ? { label: r.label } : {}),
-        ...(onLayer !== undefined ? { layer: onLayer } : {}),
-        ...(r.description !== undefined ? { description: r.description } : {}),
-        ...(r.style !== undefined ? { style: r.style } : {}),
-        ...(r.polarity !== undefined ? { polarity: r.polarity } : {}),
-        ...(r.delay !== undefined ? { delay: r.delay } : {}),
-        ...(r.fromColumn !== undefined ? { fromColumn: r.fromColumn } : {}),
-        ...(r.toColumn !== undefined ? { toColumn: r.toColumn } : {}),
+        ...defined({
+          label: r.label,
+          layer: onLayer,
+          description: r.description,
+          style: r.style,
+          polarity: r.polarity,
+          delay: r.delay,
+          fromColumn: r.fromColumn,
+          toColumn: r.toColumn,
+        }),
       },
     });
     if (r.labels !== undefined) {

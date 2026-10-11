@@ -81,7 +81,7 @@ export function MenuButton({
         title={label}
         aria-haspopup="menu"
         aria-expanded={open}
-        {...(open ? { 'aria-controls': menuId } : {})}
+        aria-controls={open ? menuId : undefined}
         onClick={() => (open ? close(true) : setOpen(true))}
       >
         {children}
@@ -94,7 +94,7 @@ export function MenuButton({
               type="button"
               role="menuitem"
               className="menu-button-item"
-              {...(item.title !== undefined ? { title: item.title } : {})}
+              title={item.title}
               onClick={() => {
                 close(true);
                 item.onSelect();

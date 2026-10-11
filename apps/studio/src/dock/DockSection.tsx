@@ -46,7 +46,7 @@ export function DockSection({
           aria-expanded={!folded}
           // A folded section unmounts its panel, and aria-controls must not
           // point at an id that is not in the document.
-          {...(folded ? {} : { 'aria-controls': panelId })}
+          aria-controls={folded ? undefined : panelId}
           onClick={() => setFolded((v) => !v)}
         >
           <span className="dock-section-caret" aria-hidden="true">

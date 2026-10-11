@@ -3,6 +3,7 @@ import { CommandError } from './command-error';
 import { FISHBONE_NOTATION } from './notations/fishbone/fishbone';
 import { GIT_NOTATION } from './notations/git-graph/git-graph';
 import {
+  borrowsContainment,
   canonicalPlane,
   containmentOn,
   containmentPlaneOf,
@@ -48,6 +49,16 @@ describe('containmentPlaneOf', () => {
   it('reads the default plane when none is named', () => expect(containmentPlaneOf(doc([flow, arch]))).toBe('arch'));
   it('is undefined for an unknown plane', () => expect(containmentPlaneOf(doc([arch]), 'nope')).toBeUndefined());
   it('is undefined without planes', () => expect(containmentPlaneOf(doc([]))).toBeUndefined());
+});
+
+describe('borrowsContainment', () => {
+  it('is true for a named plane that borrows', () => expect(borrowsContainment(doc([arch, flow]), 'flow')).toBe(true));
+  it('is false for a named plane with its own containment', () =>
+    expect(borrowsContainment(doc([arch, flow]), 'arch')).toBe(false));
+  it('is false when no plane is named, even if the default plane borrows', () =>
+    expect(borrowsContainment(doc([flow, arch]), undefined)).toBe(false));
+  it('is false for an unknown plane', () => expect(borrowsContainment(doc([arch, flow]), 'nope')).toBe(false));
+  it('is false without planes', () => expect(borrowsContainment(doc([]), 'flow')).toBe(false));
 });
 
 describe('isOnPlane and containmentOn', () => {

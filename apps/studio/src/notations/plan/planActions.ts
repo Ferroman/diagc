@@ -6,6 +6,7 @@ import {
   atOf,
   buildHierarchy,
   dayOf,
+  defined,
   isPlanActor,
   isPlanEvent,
   isPlanRole,
@@ -21,6 +22,7 @@ import {
   type PlanGraph,
   type PlanRole,
   type PlanSpan,
+  type Point,
 } from '@diagc/core/internal';
 import { PLAN_LAYOUT, planX } from '@diagc/renderer';
 
@@ -34,7 +36,7 @@ export interface MoveDelta {
 }
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
-const planeOpt = (plane: string | undefined) => (plane !== undefined ? { plane } : {});
+const planeOpt = (plane: string | undefined) => defined({ plane });
 /** The plane a quick-added node is tagged with: the active plane, unless it borrows
  * another's containment. The view matches a node's `plane` against the plane whose
  * containment it reads, so a node tagged with the borrowing plane's own id would show
@@ -103,7 +105,7 @@ const shiftEvent = (id: string, at: number, days: number): EditorCommand => ({
 export function planMoves(
   model: DiagramModel,
   plane: string | undefined,
-  positions: Record<string, { x: number; y: number }>,
+  positions: Record<string, Point>,
   deltas: Record<string, MoveDelta>,
 ): EditorCommand | undefined {
   const g = planGraph(model, plane);
@@ -370,7 +372,7 @@ export function assign(
   plane: string | undefined,
   id: string,
   zoneId: string,
-  rel: { x: number; y: number },
+  rel: Point,
 ): EditorCommand | undefined {
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const node = byId.get(id);

@@ -120,7 +120,7 @@ describe('withPlaneManual', () => {
     settings: { alt: { direction: 'DOWN' } },
   };
 
-  it('pins the snapshot over existing positions and sets the flag for the plane', () => {
+  it('saves the snapshot over existing positions and sets the flag for the plane', () => {
     const out = withPlaneManual(saved, makeModel(), 'alt', { a: { x: 5, y: 6 }, b: { x: 7, y: 8 } });
     expect(out.planes['alt']).toEqual({ a: { x: 5, y: 6 }, b: { x: 7, y: 8 } });
     expect(out.manual).toEqual({ alt: true });

@@ -1,11 +1,7 @@
+import type { BoxSize } from '@diagc/core/internal';
 import type { Library, LibraryEntry } from './types';
 
-const entry = (
-  id: string,
-  name: string,
-  keywords: string[],
-  size?: { width: number; height: number },
-): LibraryEntry => ({
+const entry = (id: string, name: string, keywords: string[], size?: BoxSize): LibraryEntry => ({
   id,
   category: 'threat-model',
   name,

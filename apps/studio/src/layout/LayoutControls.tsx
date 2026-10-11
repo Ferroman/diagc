@@ -49,7 +49,7 @@ export interface LayoutControlsProps {
    * defaultLayoutDirection) — shown as the selected option, stored as
    * `undefined`. Absent ⇒ down, the default for every model but an activity one. */
   defaultDirection?: LayoutDirection;
-  /** the notation pins the algorithm (elk partitions are layered-only): the
+  /** the notation fixes the algorithm (elk partitions are layered-only): the
    * picker is withheld, everything else stays adjustable */
   algorithmLocked?: boolean;
   /** the algorithm this notation runs when the settings name none (a causal

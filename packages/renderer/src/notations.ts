@@ -1,4 +1,5 @@
 import {
+  CAUSAL_LOOP_NOTATION,
   consequenceOrders,
   DEPLOY_NOTATION,
   DEPLOY_ZONE_TYPES,
@@ -142,7 +143,7 @@ export interface NotationProfile {
 }
 
 const CLD: NotationProfile = {
-  id: 'causal-loop',
+  id: CAUSAL_LOOP_NOTATION,
   className: 'dg-notation-cld',
   edgeCurvature: 0.55,
   // A loop is the thing a CLD shows, and layered draws every cycle as a line
@@ -412,7 +413,7 @@ const PLAN: NotationProfile = {
 // Record<NotationId, ...> keying means adding a notation id to BUILTIN_NOTATIONS
 // forces a compile error here until its profile is added — intended.
 export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
-  'causal-loop': CLD,
+  [CAUSAL_LOOP_NOTATION]: CLD,
   [GIT_NOTATION]: GIT,
   c4: C4,
   [SECOND_ORDER_NOTATION]: SECOND_ORDER,

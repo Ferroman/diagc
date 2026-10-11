@@ -1,4 +1,11 @@
-import { gitGraph, latestCommit, nextCommitId, type DiagramModel, type EditorCommand } from '@diagc/core/internal';
+import {
+  defined,
+  gitGraph,
+  latestCommit,
+  nextCommitId,
+  type DiagramModel,
+  type EditorCommand,
+} from '@diagc/core/internal';
 
 /**
  * A commit appended to `laneId` — node, containment and the link from the
@@ -30,7 +37,7 @@ export function appendCommit(
         {
           type: 'add-node',
           node: { id, name: opts.tag ?? '', type: 'commit', ...(gap > 0 ? { metadata: { gap } } : {}) },
-          parent: { id: laneId, ...(planeId !== undefined ? { plane: planeId } : {}) },
+          parent: defined({ id: laneId, plane: planeId }),
         },
         ...(latest !== undefined
           ? [{ type: 'add-relation' as const, from: latest.id, to: id, opts: { kind: 'commit' } }]

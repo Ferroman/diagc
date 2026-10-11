@@ -26,6 +26,14 @@ export function containmentPlaneOf(model: DiagramModel, planeId?: string): strin
   return plane?.containmentOf ?? plane?.id;
 }
 
+/** Whether the plane named `planeId` borrows another plane's containment
+ * (`containmentOf`). False when no plane is named, even if the default plane
+ * borrows, and for an unknown id: the studio asks it to decide whether a new node
+ * may be tagged with the named plane, and only a named plane can be. */
+export function borrowsContainment(model: DiagramModel, planeId: string | undefined): boolean {
+  return (model.planes ?? []).find((p) => p.id === planeId)?.containmentOf !== undefined;
+}
+
 /** Whether `edge` is on the plane `key`. An edge that names the default plane is on
  * it just like an untagged one: the builder names a plan's own plane on its
  * containment even when that plane is first, so the plan need not be declared first. */

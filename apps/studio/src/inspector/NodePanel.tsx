@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import type { DiagramModel, EditorCommand, FontScale, NotationId, TextAlign } from '@diagc/core/internal';
+import { useEffect, useRef, useState } from 'react';
+import type { DiagramModel, EditorCommand, FontScale, NotationId, Point, TextAlign } from '@diagc/core/internal';
 import {
   allowedParentTypes,
+  borrowsContainment,
   CASCADE_DELETE_TYPES,
+  defined,
   IMAGE_REF,
   LIBRARY_IMAGE_REF,
   PLAN_NOTATION,
@@ -13,6 +15,7 @@ import {
 import { BUILTIN_ICON_IDS } from '@diagc/icons';
 import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { CommentsSection } from './CommentsSection';
+import { commitOnEnter } from './commitOnEnter';
 import { LinksSection } from './LinksSection';
 import { ColorRow, OptionRow } from './pickers';
 import { seedOnRetype } from '../notations/plan/planActions';
@@ -46,13 +49,13 @@ interface NodePanelProps {
   model: DiagramModel;
   nodeId: string;
   activePlane: string | undefined;
-  /** node has a pinned position in the active plane's layout bucket */
-  hasPin?: boolean;
-  /** the node's pinned position in the active plane (parent-relative flow px) */
-  pinned?: { x: number; y: number };
-  /** where the node sits on screen when it is NOT pinned — the inputs'
+  /** node has a saved position in the active plane's layout bucket */
+  hasSavedPosition?: boolean;
+  /** the node's saved position in the active plane (parent-relative flow px) */
+  savedPosition?: Point;
+  /** where the node sits on screen when it has NO saved position — the inputs'
    * placeholder, so typing a coordinate starts from something real */
-  live?: { x: number; y: number };
+  live?: Point;
   /** focus + select the name input on mount (a node was just added) */
   autoFocusName?: boolean;
   /** active plane's notation; gates the Threats section (threat-model) */
@@ -74,13 +77,6 @@ interface NodePanelProps {
 // mid-rename still contribute its original entry, so an unrelated commit (e.g.
 // ✕-deleting a sibling row) never silently drops the row being renamed.
 type MetaRow = { id: number; key: string; value: string; originalKey?: string };
-
-const commitOnEnter = (e: KeyboardEvent, run: () => void) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    run();
-  }
-};
 
 const rowsToMetadata = (rows: MetaRow[]): Record<string, string> => {
   const obj: Record<string, string> = {};
@@ -107,8 +103,8 @@ export function NodePanel({
   model,
   nodeId,
   activePlane,
-  hasPin = false,
-  pinned,
+  hasSavedPosition = false,
+  savedPosition,
   live,
   autoFocusName = false,
   notation,
@@ -151,13 +147,13 @@ export function NodePanel({
   const [addParent, setAddParent] = useState('');
   const [addPlane, setAddPlane] = useState('');
 
-  // Position inputs mirror the pin; a re-pin from a drag re-seeds them.
-  const [posX, setPosX] = useState(pinned !== undefined ? String(pinned.x) : '');
-  const [posY, setPosY] = useState(pinned !== undefined ? String(pinned.y) : '');
+  // Position inputs mirror the saved position; a drag that saves a new one re-seeds them.
+  const [posX, setPosX] = useState(savedPosition !== undefined ? String(savedPosition.x) : '');
+  const [posY, setPosY] = useState(savedPosition !== undefined ? String(savedPosition.y) : '');
   useEffect(() => {
-    setPosX(pinned !== undefined ? String(pinned.x) : '');
-    setPosY(pinned !== undefined ? String(pinned.y) : '');
-  }, [pinned?.x, pinned?.y]); // eslint-disable-line react-hooks/exhaustive-deps -- the two coordinates are the whole identity
+    setPosX(savedPosition !== undefined ? String(savedPosition.x) : '');
+    setPosY(savedPosition !== undefined ? String(savedPosition.y) : '');
+  }, [savedPosition?.x, savedPosition?.y]); // eslint-disable-line react-hooks/exhaustive-deps -- the two coordinates are the whole identity
 
   // Just-added node: put the caret straight into the name, text selected, so
   // typing replaces the placeholder. The panel remounts per node (key=nodeId),
@@ -322,7 +318,7 @@ export function NodePanel({
       type: 'remove-containment',
       parent,
       child: nodeId,
-      ...(plane !== undefined ? { plane } : {}),
+      ...defined({ plane }),
     });
 
   const addMembership = () => {
@@ -350,16 +346,15 @@ export function NodePanel({
     onDeleted();
   };
 
-  const clearPin = () =>
-    onCommand({ type: 'clear-position', nodeId, ...(activePlane !== undefined ? { plane: activePlane } : {}) });
+  const clearSavedPosition = () => onCommand({ type: 'clear-position', nodeId, ...defined({ plane: activePlane }) });
 
   const commitPosition = () => {
-    if (posX.trim() === '' || posY.trim() === '') return; // half a coordinate pins nothing
+    if (posX.trim() === '' || posY.trim() === '') return; // half a coordinate saves nothing
     const x = Number(posX);
     const y = Number(posY);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    if (pinned !== undefined && pinned.x === x && pinned.y === y) return;
-    onCommand({ type: 'set-position', nodeId, x, y, ...(activePlane !== undefined ? { plane: activePlane } : {}) });
+    if (savedPosition !== undefined && savedPosition.x === x && savedPosition.y === y) return;
+    onCommand({ type: 'set-position', nodeId, x, y, ...defined({ plane: activePlane }) });
   };
 
   return (
@@ -428,7 +423,7 @@ export function NodePanel({
         </label>
       )}
 
-      {activePlane !== undefined && model.planes.find((p) => p.id === activePlane)?.containmentOf === undefined && (
+      {activePlane !== undefined && !borrowsContainment(model, activePlane) && (
         <>
           <label className="field">
             <span>Scope</span>
@@ -597,8 +592,8 @@ export function NodePanel({
               onKeyDown={(e) => commitOnEnter(e, commitPosition)}
             />
           </label>
-          {hasPin && (
-            <button className="chip" onClick={clearPin}>
+          {hasSavedPosition && (
+            <button className="chip" onClick={clearSavedPosition}>
               Clear pinned position
             </button>
           )}

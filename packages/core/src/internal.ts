@@ -76,7 +76,7 @@ export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue
 export { IMAGE_REF, LIBRARY_IMAGE_REF } from './validate/nodes';
 export { isDrawings, isLayoutOverlay } from './guards';
 export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrokeId } from './drawings';
-export { defined, errMessage, SOURCE_URL, type Defined, type SameKeys } from './util';
+export { defined, errMessage, nextFreeId, SOURCE_URL, uniqueSlug, type Defined, type SameKeys } from './util';
 export { allowedParentTypes, childrenOf, countAnchored } from './children';
 export { bestLaneOrder } from './lanes';
 export { lintModel, type LintCode, type LintFinding } from './lint';
@@ -182,6 +182,7 @@ export {
   type Crossing,
   type ThreatRow,
 } from './notations/threat-model/threat-model';
+export { CAUSAL_LOOP_NOTATION } from './notations/causal-loop/causal-loop';
 export {
   DEPLOY_NOTATION,
   DEPLOY_ZONE_TYPES,

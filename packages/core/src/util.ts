@@ -36,6 +36,19 @@ export function nextFreeId(prefix: string, taken: ReadonlySet<string>, first = 1
   for (let n = first; ; n++) if (!taken.has(`${prefix}${n}`)) return `${prefix}${n}`;
 }
 
+/** An id made from `name` that `taken` does not hold: lower case, each run of
+ * characters outside `a-z0-9` one hyphen, none at either end, or `fallback` when
+ * nothing is left; then `-2`, `-3`… on a collision. Ids stay ASCII so they read
+ * the same in a URL, a file name and a `.diagram.ts` source. */
+export function uniqueSlug(name: string, taken: ReadonlySet<string>, fallback: string): string {
+  const slug =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || fallback;
+  return taken.has(slug) ? nextFreeId(`${slug}-`, taken, 2) : slug;
+}
+
 /**
  * `true` when `A` and `B` are the same set of keys, else `false`: a list kept
  * beside an interface asserts `const _x: SameKeys<…> = true` and stops compiling

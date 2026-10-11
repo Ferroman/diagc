@@ -196,7 +196,7 @@ export function HotkeysDialog({
                                 {...(clash.length > 0
                                   ? { title: `Also bound to ${labels(clash)}`, 'data-conflict': '' }
                                   : {})}
-                                {...(isRecording(a.id, i) ? { 'data-recording': '' } : {})}
+                                data-recording={isRecording(a.id, i) ? '' : undefined}
                                 onClick={() => startRecording({ id: a.id, index: i })}
                               >
                                 {isRecording(a.id, i) ? 'Press a key…' : fmt(c)}
@@ -224,7 +224,7 @@ export function HotkeysDialog({
                           type="button"
                           className="hotkey-chip hotkey-add"
                           aria-label={`Add a key for ${a.label}`}
-                          {...(isRecording(a.id, chords.length) ? { 'data-recording': '' } : {})}
+                          data-recording={isRecording(a.id, chords.length) ? '' : undefined}
                           onClick={() => startRecording({ id: a.id, index: chords.length })}
                         >
                           {isRecording(a.id, chords.length) ? 'Press a key…' : '+'}

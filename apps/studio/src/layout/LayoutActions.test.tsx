@@ -66,7 +66,7 @@ describe('EditLayoutActions', () => {
     expect(editor.dispatch).not.toHaveBeenCalled();
   });
 
-  it('re-layout in manual mode re-pins the fresh arrangement instead of clearing', async () => {
+  it('re-layout in manual mode saves the fresh arrangement instead of clearing', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const editor = fakeEditor();
     renderActions(editor, 'arch', { autoLayout: false, getAutoPositions: () => ({ a: { x: 9, y: 9 } }) });

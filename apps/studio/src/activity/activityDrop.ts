@@ -1,14 +1,21 @@
-import { containmentOn, containmentPlaneOf, type DiagramModel } from '@diagc/core/internal';
+import {
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_LANE_TYPE,
+  ACTIVITY_REGION_TYPE,
+  containmentOn,
+  containmentPlaneOf,
+  isActivityChrome,
+  isActivityType,
+  type BoxSize,
+  type DiagramModel,
+  type Point,
+} from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT } from '@diagc/renderer';
 
-type Point = { x: number; y: number };
-type Bounds = { x: number; y: number; width: number; height: number };
+type Bounds = Point & BoxSize;
 
 /** Containers inside an activity frame that elements are placed into. */
-const ACTIVITY_HOMES = new Set(['activity-lane', 'activity-region']);
-/** The frame's own furniture: never a home for a dropped glyph, and never
- * climbed past (a frame in a lane is not ours to re-home). */
-const ACTIVITY_CHROME = new Set(['activity-frame', ...ACTIVITY_HOMES]);
+const ACTIVITY_HOMES: ReadonlySet<string> = new Set([ACTIVITY_LANE_TYPE, ACTIVITY_REGION_TYPE]);
 
 const parentsIn = (model: DiagramModel, plane: string | undefined) =>
   containmentOn(model, containmentPlaneOf(model, plane));
@@ -35,12 +42,14 @@ export function homeActivityParent(
   if (targetId === undefined) return undefined;
   const typeOf = (id: string) => model.nodes.find((n) => n.id === id)?.type;
   const type = typeOf(targetId);
-  if (type === undefined || !type.startsWith('activity-')) return targetId;
+  if (!isActivityType(type)) return targetId;
   const edges = parentsIn(model, plane);
 
-  if (type === 'activity-frame') {
+  if (type === ACTIVITY_FRAME_TYPE) {
     // declaration order is band order (arrangeActivityFrames)
-    const lanes = edges.filter((e) => e.parent === targetId && typeOf(e.child) === 'activity-lane').map((e) => e.child);
+    const lanes = edges
+      .filter((e) => e.parent === targetId && typeOf(e.child) === ACTIVITY_LANE_TYPE)
+      .map((e) => e.child);
     if (lanes.length === 0) return undefined;
     if (point === undefined || boundsOf === undefined) return lanes[0];
     for (const lane of lanes) {
@@ -49,7 +58,9 @@ export function homeActivityParent(
     }
     return lanes[lanes.length - 1];
   }
-  if (ACTIVITY_CHROME.has(type)) return targetId;
+  // the frame's own furniture: never a home for a dropped glyph, and never
+  // climbed past (a frame in a lane is not ours to re-home)
+  if (isActivityChrome(type)) return targetId;
   // a glyph: climb to the band or region it sits in
   const parent = edges.find((e) => e.child === targetId)?.parent;
   return parent !== undefined && ACTIVITY_HOMES.has(typeOf(parent) ?? '') ? parent : targetId;
@@ -65,7 +76,7 @@ export function activityDropPosition(
   model: DiagramModel,
   parentId: string | undefined,
   point: Point,
-  size: { width: number; height: number },
+  size: BoxSize,
   boundsOf: (id: string) => Bounds | undefined,
 ): Point | undefined {
   if (parentId === undefined) return undefined;
@@ -73,7 +84,7 @@ export function activityDropPosition(
   if (type === undefined || !ACTIVITY_HOMES.has(type)) return undefined;
   const b = boundsOf(parentId);
   if (b === undefined) return undefined;
-  const minX = type === 'activity-lane' ? ACTIVITY_LAYOUT.LANE_STRIP_W : 0;
+  const minX = type === ACTIVITY_LANE_TYPE ? ACTIVITY_LAYOUT.LANE_STRIP_W : 0;
   return {
     x: Math.max(minX, Math.round(point.x - b.x - size.width / 2)),
     y: Math.max(0, Math.round(point.y - b.y - size.height / 2)),

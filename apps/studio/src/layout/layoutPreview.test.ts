@@ -41,7 +41,7 @@ describe('withLayoutPreview', () => {
   });
 
   it('the preview WINS on a field the sidecar also sets', () => {
-    // Spread order, not composition: `saved` pins direction: DOWN, so if the
+    // Spread order, not composition: `saved` sets direction: DOWN, so if the
     // sidecar spread last the picker would be inert on exactly the diagrams
     // that hand-wrote a setting. Same field on both sides is the only way to
     // observe it — the test above sets two different ones.

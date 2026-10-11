@@ -1,4 +1,4 @@
-import { uniqueNodeId, type DiagramModel } from '@diagc/core/internal';
+import { defined, uniqueNodeId, type DiagramModel } from '@diagc/core/internal';
 
 /**
  * The per-placement identity + placement-scoping decided once for an add-node
@@ -42,10 +42,7 @@ export interface CreateNodeOptions {
 export function createNodeAt(model: DiagramModel, opts: CreateNodeOptions): CreateNodePlace {
   const scoped = opts.plane !== undefined && !opts.borrowsContainment;
   const id = uniqueNodeId(model, opts.kind);
-  const parent =
-    opts.parentId !== undefined
-      ? { id: opts.parentId, ...(opts.plane !== undefined ? { plane: opts.plane } : {}) }
-      : undefined;
+  const parent = opts.parentId !== undefined ? defined({ id: opts.parentId, plane: opts.plane }) : undefined;
   return { id, parent, scopedPlane: scoped ? opts.plane : undefined };
 }
 
@@ -55,8 +52,5 @@ export function createNodeAt(model: DiagramModel, opts: CreateNodeOptions): Crea
  * Spreading this into a node object keeps the plane/pen scoping in one place.
  */
 export function placeTags(place: CreateNodePlace, penLayer: string | null): { plane?: string; layer?: string } {
-  return {
-    ...(place.scopedPlane !== undefined ? { plane: place.scopedPlane } : {}),
-    ...(penLayer !== null ? { layer: penLayer } : {}),
-  };
+  return defined({ plane: place.scopedPlane, layer: penLayer ?? undefined });
 }

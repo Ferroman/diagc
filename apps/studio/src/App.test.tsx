@@ -287,7 +287,7 @@ describe('view-mode layout preview', () => {
     expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull();
   });
 
-  it('Freeze layout pins a snapshot with the manual flag; a second click clears the flag only; a pending drag survives thaw but not freeze', async () => {
+  it('Freeze layout saves a snapshot with the manual flag; a second click clears the flag only; a pending drag survives thaw but not freeze', async () => {
     render(<App />);
     // the snapshot reads React Flow's node copy — wait for the canvas to have one
     await waitFor(() => expect(document.querySelector('.react-flow__node')).not.toBeNull());

@@ -1,5 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import {
+  CAUSAL_LOOP_NOTATION,
+  defined,
   openingPins,
   presetLayers,
   uniqueNodeId,
@@ -7,6 +9,7 @@ import {
   type DiagramPlane,
   type LayoutOverlay,
   type LayoutSettings,
+  type NotationId,
 } from '@diagc/core/internal';
 import type { DiagramSelection, LeverageFocus } from '@diagc/renderer';
 import type { EditorApi } from '../session/useEditor';
@@ -23,7 +26,7 @@ export interface UseViewOpsOptions {
   selection: DiagramSelection | null;
   groupSel: string[];
   editing: boolean;
-  notation: string | undefined;
+  notation: NotationId | undefined;
   activePlane: string | undefined;
   activePlaneBorrowsContainment: boolean;
   planes: DiagramPlane[];
@@ -85,10 +88,10 @@ export function useViewOps({
 }: UseViewOpsOptions): ViewOps {
   // Selection moves anywhere but the pending-rename node → the rename moment is
   // over. What it deliberately does NOT touch is the inspector tab: the dock
-  // keeps the one the user chose, because a canvas click while the Library was
-  // open used to flip to Properties and cost a trip back to the palette for
-  // every node placed or container selected. Only the toolbar add (which renames
-  // in the Properties Name field) and re-entering edit mode set the tab.
+  // keeps the one the user chose, because a canvas click that flipped the
+  // Library to Properties would cost a trip back to the palette for every node
+  // placed or container selected. Only the toolbar add (which renames in the
+  // Properties Name field) and re-entering edit mode set the tab.
   const select = (sel: DiagramSelection | null) => {
     setSelection(sel);
     setLeverageFocus(null); // a new selection drops any leverage-row highlight
@@ -101,7 +104,7 @@ export function useViewOps({
   // currently-selected variable. Toggle off if it's the same one; ignore self
   // or clicks outside a valid CLD single-node selection.
   const compareSelect = (id: string) => {
-    if (editing || notation !== 'causal-loop' || selection?.kind !== 'node' || id === selection.id) return;
+    if (editing || notation !== CAUSAL_LOOP_NOTATION || selection?.kind !== 'node' || id === selection.id) return;
     setLeverageFocus(null);
     setCompareId((cur) => (cur === id ? null : id));
   };
@@ -167,7 +170,7 @@ export function useViewOps({
       editor.dispatch({
         type: 'set-unfolded',
         ids: unfoldedOf({ ...pins, [id]: next }),
-        ...(activePlane !== undefined ? { plane: activePlane } : {}),
+        ...defined({ plane: activePlane }),
       });
     }
   };

@@ -1,6 +1,9 @@
 import type { RefObject } from 'react';
 import {
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_LANE_TYPE,
   DEFAULT_IMAGE_NODE_SIZE,
+  defined,
   LEAF_SIZE,
   PLAN_NOTATION,
   errMessage,
@@ -9,6 +12,7 @@ import {
   type DiagramNode,
   type EditorCommand,
   type NotationId,
+  type Point,
 } from '@diagc/core/internal';
 import type { DiagramSelection, LayoutApi } from '@diagc/renderer';
 import type { EditorApi } from '../session/useEditor';
@@ -60,15 +64,15 @@ export interface NodePlacement {
   /** Whiteboard-style add (Library Add button / N key). */
   addNode: () => void;
   /** Empty-canvas double-click create; returns the new node id for in-canvas rename. */
-  createAt: (pos: { x: number; y: number }) => string | undefined;
+  createAt: (pos: Point) => string | undefined;
   /** Place a library entry (click = under the selection; drop = at the point). */
-  placeFromLibrary: (entry: LibraryEntry, opts?: { parentId?: string; position?: { x: number; y: number } }) => void;
+  placeFromLibrary: (entry: LibraryEntry, opts?: { parentId?: string; position?: Point }) => void;
   /** Restyle the selected node to match a library card. */
   applyFromLibrary: (entry: LibraryEntry) => void;
   /** A palette entry dragged onto the canvas. */
-  dropLibraryEntry: (entryId: string, position: { x: number; y: number }, targetNodeId?: string) => void;
+  dropLibraryEntry: (entryId: string, position: Point, targetNodeId?: string) => void;
   /** Drop/paste/picker: upload files and create image nodes. */
-  addImages: (files: File[], position?: { x: number; y: number }) => Promise<void>;
+  addImages: (files: File[], position?: Point) => Promise<void>;
 }
 
 /**
@@ -111,14 +115,14 @@ export function useNodePlacement({
     editor.dispatch({
       type: 'add-node',
       node: { id: place.id, name: place.id, ...placeTags(place, penLayer) },
-      ...(place.parent !== undefined ? { parent: place.parent } : {}),
+      ...defined({ parent: place.parent }),
     });
     // In manual layout elk won't place the new node, so drop it at the viewport
     // center so it lands in view instead of at the origin. viewportCenter() is
     // an absolute flow coordinate, only correct for a root node — a child added
     // under a container is left for a one-time elk placement within its parent
     // (same deferral the feature already applies to container children), then
-    // draggable to pin.
+    // dragged to a saved position.
     if (activePlaneManual && place.parent === undefined) {
       const c = layoutApiRef.current?.viewportCenter();
       if (c !== undefined)
@@ -127,7 +131,7 @@ export function useNodePlacement({
           nodeId: place.id,
           x: c.x - LEAF_SIZE.width / 2,
           y: c.y - LEAF_SIZE.height / 2,
-          ...(activePlane !== undefined ? { plane: activePlane } : {}),
+          ...defined({ plane: activePlane }),
         });
     }
     // Add node lives on the Library tab now; flip to Properties so the new node's
@@ -142,7 +146,7 @@ export function useNodePlacement({
   // type). Returning the id lets DiagramView open it in canvas in-place rename
   // mode — the sole rename affordance here, so no setRenameId (a panel autofocus
   // would race the canvas editor across DiagramView's async layout timing).
-  const createAt = (pos: { x: number; y: number }) => {
+  const createAt = (pos: Point) => {
     const m = editor.session?.state.model;
     if (m === undefined) return;
     const place = createNodeAt(m, {
@@ -154,7 +158,7 @@ export function useNodePlacement({
     editor.dispatch({
       type: 'add-node',
       node: { id: place.id, name: place.id, ...placeTags(place, penLayer) },
-      ...(place.parent !== undefined ? { parent: place.parent } : {}),
+      ...defined({ parent: place.parent }),
     });
     // Top-level create lands at the exact double-click point; a node nested into
     // the drilled level is elk-placed inside its parent instead.
@@ -164,7 +168,7 @@ export function useNodePlacement({
         nodeId: place.id,
         x: pos.x - LEAF_SIZE.width / 2,
         y: pos.y - LEAF_SIZE.height / 2,
-        ...(activePlane !== undefined ? { plane: activePlane } : {}),
+        ...defined({ plane: activePlane }),
       });
     }
     setSelection({ kind: 'node', id: place.id });
@@ -181,7 +185,7 @@ export function useNodePlacement({
   // Add node; drag-to-place passes the drop point, so the node lands there
   // top-level instead — or, dropped on a node, nests under it (at the drop point
   // when that node is an activity lane or region, elk-placed otherwise).
-  const placeFromLibrary = (entry: LibraryEntry, opts?: { parentId?: string; position?: { x: number; y: number } }) => {
+  const placeFromLibrary = (entry: LibraryEntry, opts?: { parentId?: string; position?: Point }) => {
     const m = editor.session?.state.model;
     if (m === undefined) return;
     const kind = entry.template.image !== undefined || entry.template.shape !== undefined ? 'icon' : 'node';
@@ -210,28 +214,25 @@ export function useNodePlacement({
       m,
       activePlane,
       entry.template.type,
-      {
-        ...(opts?.position !== undefined && notation === PLAN_NOTATION ? { x: opts.position.x } : {}),
-        ...(parentId !== undefined ? { parentId } : {}),
-      },
+      defined({ x: notation === PLAN_NOTATION ? opts?.position?.x : undefined, parentId }),
       today,
     );
     const node = {
       ...entryToNode(entry, place.id, placeTags(place, penLayer)),
-      ...(seeded !== undefined ? { metadata: seeded } : {}),
+      ...defined({ metadata: seeded }),
     };
-    const add = { type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) } as const;
-    if (node.type === 'activity-frame') {
+    const add = { type: 'add-node', node, ...defined({ parent: place.parent }) } as const;
+    if (node.type === ACTIVITY_FRAME_TYPE) {
       // A frame is only ever drawn as its lanes, and the Activity panel's Add
       // lane is out of sight until the frame is selected: arrive with the first
       // band so there is somewhere to drop into. One batch, one undo.
       const lane: DiagramNode = {
         id: uniqueNodeId(m, 'Lane 1'),
         name: 'Lane 1',
-        type: 'activity-lane',
+        type: ACTIVITY_LANE_TYPE,
         ...placeTags(place, penLayer),
       };
-      const lanePlane = activePlane !== undefined ? { plane: activePlane } : {};
+      const lanePlane = defined({ plane: activePlane });
       editor.dispatch({
         type: 'batch',
         commands: [add, { type: 'add-node', node: lane, parent: { id: place.id, ...lanePlane } }],
@@ -255,7 +256,7 @@ export function useNodePlacement({
         type: 'set-position',
         nodeId: place.id,
         ...local,
-        ...(activePlane !== undefined ? { plane: activePlane } : {}),
+        ...defined({ plane: activePlane }),
       });
     }
     if (place.parent === undefined && opts?.position !== undefined) {
@@ -264,7 +265,7 @@ export function useNodePlacement({
         nodeId: place.id,
         x: opts.position.x - w / 2,
         y: opts.position.y - h / 2,
-        ...(activePlane !== undefined ? { plane: activePlane } : {}),
+        ...defined({ plane: activePlane }),
       });
     }
     setSelection({ kind: 'node', id: place.id });
@@ -307,15 +308,15 @@ export function useNodePlacement({
 
   // A palette entry dragged onto the canvas: look it up and place it at the drop point,
   // or nest it under the node it landed on.
-  const dropLibraryEntry = (entryId: string, position: { x: number; y: number }, targetNodeId?: string) => {
+  const dropLibraryEntry = (entryId: string, position: Point, targetNodeId?: string) => {
     const entry = lib.library.entries.find((e) => e.id === entryId);
     if (entry === undefined) return;
-    placeFromLibrary(entry, { position, ...(targetNodeId !== undefined ? { parentId: targetNodeId } : {}) });
+    placeFromLibrary(entry, { position, parentId: targetNodeId });
   };
 
   // Drop/paste/picker all land here: upload, then create an image node (sized
   // from the file, positioned at the drop point when there is one).
-  const addImages = async (files: File[], position?: { x: number; y: number }) => {
+  const addImages = async (files: File[], position?: Point) => {
     const issues: { message: string }[] = [];
     for (const file of files) {
       try {
@@ -355,7 +356,7 @@ export function useNodePlacement({
             nodeId: place.id,
             x: position.x - size.w / 2,
             y: position.y - size.h / 2,
-            ...(activePlane !== undefined ? { plane: activePlane } : {}),
+            ...defined({ plane: activePlane }),
           });
         }
         setSelection({ kind: 'node', id: place.id });

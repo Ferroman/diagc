@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { entryToNode, entryToNodeDetails, mergeLibrary, searchLibrary, uniqueLibraryId } from './entry';
+import { entryToNode, entryToNodeDetails, mergeLibrary, searchLibrary } from './entry';
 import type { Library, LibraryEntry } from './types';
 
 const person: LibraryEntry = {
@@ -142,14 +142,6 @@ describe('mergeLibrary', () => {
     expect(merged.categories.find((c) => c.id === 'aws')?.name).toBe('AWS'); // builtin wins
     expect(merged.entries.map((e) => e.id)).toEqual(['c4-person', 'aws-lambda', 'gcp-bq']); // shadow + orphan dropped
     expect(merged.entries.find((e) => e.id === 'aws-lambda')?.name).toBe('Lambda'); // builtin wins
-  });
-});
-
-describe('uniqueLibraryId', () => {
-  it('slugifies and suffixes on collision', () => {
-    expect(uniqueLibraryId('Cloud Run', new Set(), 'cat')).toBe('cloud-run');
-    expect(uniqueLibraryId('Cloud Run', new Set(['cloud-run']), 'cat')).toBe('cloud-run-2');
-    expect(uniqueLibraryId('***', new Set(['cat']), 'cat')).toBe('cat-2');
   });
 });
 

@@ -244,7 +244,7 @@ describe('planResize', () => {
       id: 'build',
       dates: { start: '2026-01-05' },
     });
-    // q1's left edge is pinned by design's start (Jan 5) and its right edge by build's end (Mar 27): both already at the clamp
+    // q1's left edge is held by design's start (Jan 5) and its right edge by build's end (Mar 27): both already at the clamp
     expect(planResize(roadmap(), 'plan', 'q1', planX(d('2026-01-12'), origin), 100)).toBeUndefined();
     expect(planResize(roadmap(), 'plan', 'q1', planX(d('2026-01-05'), origin), 10 * DAY)).toBeUndefined();
     // build already ends at q1's end: stretching it further changes nothing

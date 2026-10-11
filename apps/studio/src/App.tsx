@@ -19,12 +19,18 @@ import {
   type Side,
 } from '@diagc/renderer';
 import {
+  activeNotation,
   allNotesOpen,
+  borrowsContainment,
+  CAUSAL_LOOP_NOTATION,
   DEFAULT_STROKE_WIDTH,
   emptyDrawings,
   emptyLayout,
   errMessage,
   defaultLayoutDirection,
+  defined,
+  FISHBONE_NOTATION,
+  GIT_NOTATION,
   isPlanZone,
   layoutPlaneKey,
   LEAF_SIZE,
@@ -33,10 +39,12 @@ import {
   openingPins,
   PLAN_NOTATION,
   presetLayers,
+  SECOND_ORDER_NOTATION,
   SOURCE_URL,
   strideFor,
   threatsOf,
   TM_NOTATION,
+  uniqueSlug,
   uniqueStrokeId,
   type Column,
   type DiagramModel,
@@ -45,13 +53,13 @@ import {
   type LayoutOverlay,
   type LayoutSettings,
   type PlanRole,
+  type Point,
   type RelationStyle,
   type Stroke,
   type TextRun,
   type ThreatStatus,
   type ElementRef,
 } from '@diagc/core/internal';
-import { activeNotation } from './notation';
 import { getHost } from './host';
 import { useDiagramBoot } from './diagrams/useDiagramBoot';
 import { useDeepLink } from './diagrams/useDeepLink';
@@ -89,7 +97,6 @@ import { clampDockWidth } from './dock/dockWidth';
 import { Sidebar } from './inspector/Sidebar';
 import { EMPTY_LIBRARY_VIEW, LibraryPanel } from './library/LibraryPanel';
 import { useLibrary } from './library/useLibrary';
-import { uniqueLibraryId } from './library/entry';
 import { deleteSelectionCommand } from './canvas-editing/deleteSelection';
 import { connectKind } from './notations/threat-model/connectKind';
 import { fkConnectionCommands } from './canvas-editing/tableConnect';
@@ -131,10 +138,10 @@ const readClampedWidth = (raw: string | null, min: number, max: number): number 
 const applyTargetFor = (
   model: DiagramModel,
   selection: DiagramSelection | null,
-): { applyTarget: { id: string; name: string } } | undefined => {
+): { id: string; name: string } | undefined => {
   if (selection?.kind !== 'node') return undefined;
   const n = model.nodes.find((x) => x.id === selection.id);
-  return n !== undefined ? { applyTarget: { id: n.id, name: n.name || n.id } } : undefined;
+  return n !== undefined ? { id: n.id, name: n.name || n.id } : undefined;
 };
 
 /** `initialTheme` lets a host seed the color scheme (the Obsidian pane passes
@@ -176,7 +183,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // Unlike the layout preview these CAN be persisted — coordinates were never
   // part of the model, so saving them is legitimate even for a read-only
   // TS-authored diagram, whose sidecar `diagc compile` never rewrites.
-  const [movedPositions, setMovedPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [movedPositions, setMovedPositions] = useState<Record<string, Point>>({});
   // Edge labels slid along their edges in view mode (Alt+drag a label): the
   // same class of state, saved by the same chip into the overlay's `edgeLabels`.
   const [movedLabels, setMovedLabels] = useState<EdgeLabelMoves>({});
@@ -222,8 +229,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const [leverageFocus, setLeverageFocus] = useState<LeverageFocus | null>(null);
   const [leftTab, setLeftTab] = useState<InspectorTab>('properties');
   // The Library tab's search and open sections, here rather than in the panel:
-  // the inspector mounts only its active tab, and a canvas click switches it to
-  // Properties, so panel-local state reset on every return to the Library.
+  // the inspector mounts only its active tab, so panel-local state would reset
+  // on every trip to Properties and back.
   const libraryView = useState(EMPTY_LIBRARY_VIEW);
   // The dock collapse states persist with an on-disk format that predates this
   // hook ('collapsed'/'expanded'), so both reader and serializer use it.
@@ -313,9 +320,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const model = editing ? session?.state.model : current?.model;
   const layout = editing ? session?.state.layout : current?.layout;
   const drawings = editing ? session?.state.drawings : current?.drawings;
-  // A diagram-pinned style (known preset only) outranks the app preference;
-  // unknown pinned ids behave as unpinned so retired presets never wedge a file.
-  const pinnedStyle = model?.style !== undefined && isKnownStyle(model.style) ? model.style : undefined;
+  // The diagram's style (a known preset only) outranks the app preference; an
+  // unknown style id counts as none, so a retired preset never wedges a file.
+  const diagramStyle = model?.style !== undefined && isKnownStyle(model.style) ? model.style : undefined;
   const planes = model?.planes ?? [];
   // undefined = the base/default view (no plane overlay). Kept distinct from
   // planes[0] so the Default chip stays reachable once planes exist — but the
@@ -335,9 +342,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // A borrowing plane's node membership resolves to its base plane
   // (compileView/containmentPlaneOf), so tagging node.plane with the
   // borrowing plane's own id would mismatch and the node would silently
-  // vanish. Stage 1 disables plane-scoped membership editing there — new
-  // nodes are added shared instead (see createNodeAt).
-  const activePlaneBorrowsContainment = planes.find((p) => p.id === activePlane)?.containmentOf !== undefined;
+  // vanish. Plane-scoped membership editing is off there — new nodes are
+  // added shared instead (see createNodeAt).
+  const activePlaneBorrowsContainment = model !== undefined && borrowsContainment(model, activePlane);
 
   // Seed the layer switch from the plane's presets when a diagram arrives on
   // screen. A plane's `layers` are a DEFAULT the user then owns (see
@@ -385,10 +392,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // drops us back to the base sheet without any explicit reset).
   const penLayer = activeLayer !== null && (model?.layers ?? []).some((l) => l.id === activeLayer) ? activeLayer : null;
 
-  // Set (or clear, with side=null) one endpoint's pinned side on a relation,
+  // Set (or clear, with side=null) one endpoint's fixed side on a relation,
   // merged into its existing style so other overrides survive; returns the next
   // style object, or null when nothing remains (drops the style entirely). Shared
-  // by the pin dots (onSetEdgeSide) and reconnect-drag pinning.
+  // by the fixed-side dots (onSetEdgeSide) and a reconnect drag that fixes a side.
   const styleWithSide = (relationId: string, end: 'from' | 'to', side: Side | null): RelationStyle | null => {
     const style: RelationStyle = { ...model?.relations.find((r) => r.id === relationId)?.style };
     const key = end === 'from' ? 'fromSide' : 'toSide';
@@ -492,7 +499,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // consequence, a flow to a new process, a connected sibling anywhere else)
   // and open it for typing, the way the notation panels' own buttons do.
   // Placement: a sibling goes beside its source only when elk would not place
-  // it (manual plane) or the source is pinned — see quickAddPlaced.
+  // it (manual plane) or the source has a saved position — see quickAddPlaced.
   // Reports whether it acted so the hotkeys dispatcher only swallows Tab's
   // default focus move when there was something to extend (see useHotkeys).
   const quickAddCtx: QuickAddContext = {
@@ -515,10 +522,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     const size = layout?.sizes?.[id];
     editor.dispatch(
       quickAddPlaced(out, {
-        pinned: activePlaneManual || layout?.planes[key]?.[id] !== undefined,
+        needsPosition: activePlaneManual || layout?.planes[key]?.[id] !== undefined,
         source: layoutApiRef.current?.snapshotPositions()[id],
         width: size?.w ?? LEAF_SIZE.width,
-        ...(size !== undefined ? { size } : {}),
+        size,
         plane: activePlane,
       }),
     );
@@ -530,7 +537,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // The plane every plane-scoped command below is filed under; the base view
   // (undefined) sends no `plane` at all, which the commands read as "the
   // resolved default" (see layoutPlaneKey).
-  const planeOpt = activePlane !== undefined ? { plane: activePlane } : {};
+  const planeOpt = defined({ plane: activePlane });
 
   // Threat notes on the canvas. The note only reports gestures — which threat
   // to add, what a title became — and the host owns the model, exactly as it
@@ -657,7 +664,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const importLibraryIcon = async (categoryId: string, file: File) => {
     try {
       const image = await uploadAsset(file);
-      const id = uniqueLibraryId(file.name, new Set(lib.library.entries.map((e) => e.id)), 'icon');
+      const id = uniqueSlug(file.name, new Set(lib.library.entries.map((e) => e.id)), 'icon');
       const name = file.name.replace(/\.[^.]*$/, '') || 'icon';
       lib.addEntry({ id, category: categoryId, name, template: { type: 'image', image, width: 64, height: 64 } });
     } catch (e) {
@@ -671,7 +678,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const importLibraryShape = async (categoryId: string, file: File) => {
     try {
       const shape = await uploadAsset(file);
-      const id = uniqueLibraryId(file.name, new Set(lib.library.entries.map((e) => e.id)), 'shape');
+      const id = uniqueSlug(file.name, new Set(lib.library.entries.map((e) => e.id)), 'shape');
       const name = file.name.replace(/\.[^.]*$/, '') || 'shape';
       lib.addEntry({ id, category: categoryId, name, template: { shape } });
     } catch (e) {
@@ -707,8 +714,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
 
   // Flip the active plane between automatic and manual layout. Turning auto Off
   // freezes the current on-screen positions (so nothing jumps) then sets the
-  // manual flag; turning it On just clears the flag (non-destructive — the pins
-  // stay, but automatic layout resumes driving the arrangement).
+  // manual flag; turning it On just clears the flag (non-destructive — the saved
+  // positions stay, but automatic layout resumes driving the arrangement).
   const toggleAutoLayout = () => {
     if (editor.session?.state.model === undefined) return;
     if (activePlaneManual) {
@@ -730,7 +737,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     editor.dispatch({
       type: 'set-layout-settings',
       patch,
-      ...(activePlane !== undefined ? { plane: activePlane } : {}),
+      ...planeOpt,
     });
   };
 
@@ -854,10 +861,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const selectionColor =
     editing && model !== undefined ? computeSelectionColor(model, selection, editor.dispatch) : null;
 
-  // The node panel's position inputs, computed once here instead of twice in
-  // the JSX below (hasPin used to run this same lookup a second time via an
-  // IIFE just to get pinned/live) — same lookups, same values, one place.
-  const pinned =
+  // The node panel's position inputs: the selected node's saved position on
+  // this plane, and where it sits on screen.
+  const savedPosition =
     selection?.kind === 'node' && model !== undefined
       ? layout?.planes[layoutPlaneKey(model, activePlane)]?.[selection.id]
       : undefined;
@@ -1232,11 +1238,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           model={model}
                           nodeId={selection.id}
                           activePlane={activePlane}
-                          hasPin={pinned !== undefined}
-                          {...(pinned !== undefined ? { pinned } : {})}
-                          {...(live !== undefined ? { live } : {})}
+                          hasSavedPosition={savedPosition !== undefined}
+                          savedPosition={savedPosition}
+                          live={live}
                           autoFocusName={selection.id === renameId}
-                          {...(notation !== undefined ? { notation } : {})}
+                          notation={notation}
                           today={today}
                           onCommand={editor.dispatch}
                           onClose={() => select(null)}
@@ -1249,8 +1255,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           constituentIds={selection.constituentIds ?? [selection.id]}
                           onCommand={editor.dispatch}
                           onClose={() => select(null)}
-                          {...(notation !== undefined ? { notation } : {})}
-                          {...(activePlane !== undefined ? { activePlane } : {})}
+                          notation={notation}
+                          activePlane={activePlane}
                         />
                       ) : (
                         <Sidebar model={model} selection={selection} />
@@ -1261,7 +1267,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         library={lib.library}
                         onPlace={placeFromLibrary}
                         onApply={applyFromLibrary}
-                        {...(applyTargetFor(model, selection) ?? {})}
+                        applyTarget={applyTargetFor(model, selection)}
                         onAddNode={addNode}
                         onAddImages={(files) => void addImages(files)}
                         onAddCategory={lib.addCategory}
@@ -1273,7 +1279,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                       />
                     }
                   />
-                ) : notation === 'causal-loop' &&
+                ) : notation === CAUSAL_LOOP_NOTATION &&
                   selection?.kind === 'node' &&
                   model.nodes.some((n) => n.id === selection.id) ? (
                   <LeveragePanel
@@ -1309,10 +1315,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   onCompareSelect={compareSelect}
                   colorMode={theme}
                   assetBase={getHost().assetBase}
-                  {...(getHost().libraryBase !== undefined ? { libraryBase: getHost().libraryBase } : {})}
+                  libraryBase={getHost().libraryBase}
                   onOpenLink={(l) => getHost().openLink(l)}
-                  styleId={pinnedStyle ?? style}
-                  {...(snap ? { snapGrid: SNAP_GRID } : {})}
+                  styleId={diagramStyle ?? style}
+                  snapGrid={snap ? SNAP_GRID : undefined}
                   onCldEdges={handleCldEdges}
                   onViewPositionsChange={setMovedPositions}
                   onViewLabelMovesChange={setMovedLabels}
@@ -1331,9 +1337,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           ? { nodes: [selection.id, compareId], edges: [] }
                           : null))
                   }
-                  {...(notation !== undefined ? { notation } : {})}
-                  {...(viewLayout !== undefined ? { layout: viewLayout } : {})}
-                  {...(drawings !== undefined ? { drawings } : {})}
+                  notation={notation}
+                  layout={viewLayout}
+                  drawings={drawings}
                   {...(editing
                     ? {
                         mode: 'edit' as const,
@@ -1343,8 +1349,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         // (the read-only path passes `mode` without it — the view/edit
                         // split is then structural, not by convention).
                         edit: {
-                          ...(labelRequest !== undefined ? { editLabelRequest: labelRequest } : {}),
-                          ...(threatRequest !== undefined ? { editThreatRequest: threatRequest } : {}),
+                          editLabelRequest: labelRequest,
+                          editThreatRequest: threatRequest,
                           onNoteMoved: (target: ElementRef, offset: { dx: number; dy: number }) =>
                             editor.dispatch({ type: 'set-note-offset', target, offset, ...planeOpt }),
                           onToggleNote: (target: ElementRef, open: boolean) =>
@@ -1359,7 +1365,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                             run: runQuickAdd,
                           },
                           onNodesMoved: (
-                            positions: Record<string, { x: number; y: number }>,
+                            positions: Record<string, Point>,
                             deltas: Record<string, { dx: number; dy: number }>,
                           ) => {
                             // on a plan plane a move is a date change; the layout owns x
@@ -1373,10 +1379,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                             editor.dispatch({
                               type: 'set-positions',
                               positions,
-                              ...(activePlane !== undefined ? { plane: activePlane } : {}),
+                              ...planeOpt,
                             });
                           },
-                          onDropInto: (id: string, targetId: string, rel: { x: number; y: number }) => {
+                          onDropInto: (id: string, targetId: string, rel: Point) => {
                             // on a plan plane a drop assigns a role or re-homes the node instead of an ordinary move
                             if (notation === PLAN_NOTATION && model !== undefined) {
                               const command = assign(model, activePlane, id, targetId, rel);
@@ -1394,11 +1400,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                             const command = setActorRole(model, zoneId, actorId, role);
                             if (command !== undefined) editor.dispatch(command);
                           },
-                          onCreateAt: (pos: { x: number; y: number }) => createAt(pos),
-                          onImageFiles: (files: File[], position?: { x: number; y: number }) =>
-                            void addImages(files, position),
+                          onCreateAt: (pos: Point) => createAt(pos),
+                          onImageFiles: (files: File[], position?: Point) => void addImages(files, position),
                           onDropLibraryEntry: dropLibraryEntry,
-                          onResize: (id: string, w: number, h: number, pos: { x: number; y: number }) => {
+                          onResize: (id: string, w: number, h: number, pos: Point) => {
                             if (notation === PLAN_NOTATION && model !== undefined) {
                               // the lookup scans every node, so it stays inside the
                               // guard: every other notation resizes without it
@@ -1411,7 +1416,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                               }
                             }
                             editor.dispatch({ type: 'set-size', nodeId: id, w, h });
-                            // top/left-handle resizes shift the node origin — pin the
+                            // top/left-handle resizes shift the node origin — save the
                             // post-resize position too, or the next resync snaps it
                             // back by the size delta.
                             editor.dispatch({
@@ -1419,15 +1424,15 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                               nodeId: id,
                               x: pos.x,
                               y: pos.y,
-                              ...(activePlane !== undefined ? { plane: activePlane } : {}),
+                              ...planeOpt,
                             });
                           },
                           onConnect: (from: string, to: string, sourceHandle?: string | null) => {
                             // Dragging from a table column's row handle creates an fk
                             // relation (+ flags the column) instead of the default float
-                            // edge. float by default: no pinned sides, so the new edge
-                            // tracks the facing borders. Pin later via a pin dot or the
-                            // panel. The edge lands on the active sheet (the pen), like
+                            // edge. float by default: no fixed sides, so the new edge
+                            // tracks the facing borders. Fix one later with a fixed-side
+                            // dot or the panel. The edge lands on the active sheet (the pen), like
                             // nodes. The kind otherwise comes from the notation and the
                             // two endpoints (connectKind) — a threat model's flows must be
                             // data-flow to be read as flows at all, unless an end is a
@@ -1451,10 +1456,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                               type: 'add-relation',
                               from,
                               to,
-                              opts: {
-                                kind: connectKind(notation, m, from, to),
-                                ...(penLayer !== null ? { layer: penLayer } : {}),
-                              },
+                              opts: defined({ kind: connectKind(notation, m, from, to), layer: penLayer ?? undefined }),
                             });
                           },
                           onDeleteSelection: (sel: { nodeIds: string[]; relationIds: string[] }) => {
@@ -1479,18 +1481,18 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                             relationId: string,
                             from: string,
                             to: string,
-                            endPin?: { end: 'from' | 'to'; side: Side | null },
+                            fixedSide?: { end: 'from' | 'to'; side: Side | null },
                           ) =>
                             // move the endpoint(s); the dragged end floats (new node) or
-                            // pins to the side it was dropped on (same node)
+                            // is fixed to the side it was dropped on (same node)
                             editor.dispatch({
                               type: 'update-relation',
                               id: relationId,
                               patch: {
                                 from,
                                 to,
-                                ...(endPin !== undefined
-                                  ? { style: styleWithSide(relationId, endPin.end, endPin.side) }
+                                ...(fixedSide !== undefined
+                                  ? { style: styleWithSide(relationId, fixedSide.end, fixedSide.side) }
                                   : {}),
                               },
                             }),
@@ -1509,14 +1511,14 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                             editor.dispatch({
                               type: 'add-stroke',
                               stroke: { id: uniqueStrokeId(d, layoutPlaneKey(m, activePlane)), ...stroke },
-                              ...(activePlane !== undefined ? { plane: activePlane } : {}),
+                              ...planeOpt,
                             });
                           },
                           onDeleteStroke: (id: string) =>
                             editor.dispatch({
                               type: 'delete-stroke',
                               id,
-                              ...(activePlane !== undefined ? { plane: activePlane } : {}),
+                              ...planeOpt,
                             }),
                         },
                       }
@@ -1542,7 +1544,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                 maxWidth={DOCK_MAX}
                 onWidthChange={setRightWidth}
               >
-                {editing && notation === 'git-graph' && (
+                {editing && notation === GIT_NOTATION && (
                   <GitPanel
                     model={model}
                     plane={activePlane}
@@ -1561,21 +1563,21 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                     today={today}
                   />
                 )}
-                {editing && notation === 'second-order' && (
+                {editing && notation === SECOND_ORDER_NOTATION && (
                   <SecondOrderPanel
                     model={model}
                     selection={selection}
-                    {...(activePlane !== undefined && !activePlaneBorrowsContainment ? { plane: activePlane } : {})}
+                    plane={activePlaneBorrowsContainment ? undefined : activePlane}
                     onCommand={editor.dispatch}
                     onSelect={(id) => select({ kind: 'node', id })}
                     onCreated={requestLabelEdit}
                   />
                 )}
-                {editing && notation === 'fishbone' && (
+                {editing && notation === FISHBONE_NOTATION && (
                   <FishbonePanel
                     model={model}
                     selection={selection}
-                    {...(activePlane !== undefined && !activePlaneBorrowsContainment ? { plane: activePlane } : {})}
+                    plane={activePlaneBorrowsContainment ? undefined : activePlane}
                     onCommand={editor.dispatch}
                     onSelect={(id) => select({ kind: 'node', id })}
                     onCreated={requestLabelEdit}
@@ -1585,13 +1587,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   reads the model — the register and the crossings still to
                   review are as much use on a read-only .diagram.ts threat model
                   as on an editable one. */}
-                {notation === TM_NOTATION && (
-                  <ThreatModelPanel
-                    model={model}
-                    {...(activePlane !== undefined ? { plane: activePlane } : {})}
-                    onSelect={select}
-                  />
-                )}
+                {notation === TM_NOTATION && <ThreatModelPanel model={model} plane={activePlane} onSelect={select} />}
                 {editing && (
                   <ActivityPanel
                     model={model}
@@ -1615,9 +1611,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           onChange: editing ? setLayoutSettings : previewLayoutSettings,
                           defaultDirection: defaultLayoutDirection(model),
                           algorithmLocked,
-                          ...(notationProfile(notation).defaultAlgorithm !== undefined
-                            ? { defaultAlgorithm: notationProfile(notation).defaultAlgorithm }
-                            : {}),
+                          defaultAlgorithm: notationProfile(notation).defaultAlgorithm,
                         }
                   }
                   styleControl={
@@ -1626,7 +1620,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         className="chip-select"
                         aria-label="Diagram style"
                         title="Diagram style (saved with the diagram)"
-                        value={pinnedStyle ?? ''}
+                        value={diagramStyle ?? ''}
                         onChange={(e) =>
                           editor.dispatch({
                             type: 'set-diagram-style',
@@ -1645,10 +1639,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                       <select
                         className="chip-select"
                         aria-label="Style"
-                        title={pinnedStyle !== undefined ? 'Set by diagram' : 'Visual style'}
+                        title={diagramStyle !== undefined ? 'Set by diagram' : 'Visual style'}
                         /* clamp: garbage in localStorage would otherwise render a blank select */
-                        value={pinnedStyle ?? (isKnownStyle(style) ? style : 'clean')}
-                        disabled={pinnedStyle !== undefined}
+                        value={diagramStyle ?? (isKnownStyle(style) ? style : 'clean')}
+                        disabled={diagramStyle !== undefined}
                         onChange={(e) => setStyle(e.target.value)}
                       >
                         {STYLE_PRESETS.map((p) => (

@@ -748,7 +748,7 @@ describe('editor shell', () => {
     await waitFor(() => expect(container.querySelector('.dg-style-rough')).toBeNull());
   });
 
-  it('a diagram-pinned style wins over the app preference and disables the picker', async () => {
+  it('the diagram style wins over the app preference and disables the picker', async () => {
     vi.stubGlobal(
       'fetch',
       stubFetch([{ name: 'sketch', model: { ...goodModel, style: 'sketch' }, issues: [], editable: true }]),
@@ -761,7 +761,7 @@ describe('editor shell', () => {
     expect(select.title).toBe('Set by diagram');
   });
 
-  it('an unknown pinned style behaves as unpinned (app preference applies)', async () => {
+  it('an unknown diagram style counts as none (app preference applies)', async () => {
     localStorage.setItem('diagc.style', 'sketch');
     vi.stubGlobal(
       'fetch',
@@ -772,7 +772,7 @@ describe('editor shell', () => {
     expect((screen.getByRole('combobox', { name: 'Style' }) as HTMLSelectElement).disabled).toBe(false);
   });
 
-  it('edit mode: picking a style pins it on the diagram and autosaves it', async () => {
+  it('edit mode: picking a style sets the diagram style and autosaves it', async () => {
     const { container } = render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: /edit/i }));
     const select = (await screen.findByRole('combobox', { name: 'Diagram style' })) as HTMLSelectElement;
@@ -787,7 +787,7 @@ describe('editor shell', () => {
       const body = JSON.parse((post![1] as RequestInit).body as string) as { style?: string };
       expect(body.style).toBe('hand-drawn');
     });
-    // pinning is a normal command: undo clears it
+    // setting it is a normal command: undo clears it
     fireEvent.click(screen.getByRole('button', { name: /undo/i }));
     await waitFor(() => expect(container.querySelector('.dg-style-hand-drawn')).toBeNull());
     expect(select.value).toBe('');

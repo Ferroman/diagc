@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useEffect, useState } from 'react';
 import {
   nextThreatId,
   STRIDE,
@@ -14,6 +14,7 @@ import {
   type ThreatStatus,
   type ElementRef,
 } from '@diagc/core/internal';
+import { commitOnEnter } from './commitOnEnter';
 
 interface ThreatsSectionProps {
   target: ElementRef;
@@ -26,13 +27,6 @@ interface ThreatsSectionProps {
 }
 
 const categoryLabel = (c: StrideCategory) => `${c} · ${STRIDE_NAMES[c]}`;
-
-const commitOnEnter = (e: KeyboardEvent, run: () => void) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    run();
-  }
-};
 
 /** Every STRIDE category, the ones the element's own type invites first (the
  * STRIDE-per-element table) and the rest behind a disabled separator: the

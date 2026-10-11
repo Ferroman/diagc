@@ -46,6 +46,19 @@ describe('LayersPlanesPanel', () => {
     });
   });
 
+  it('numbers a taken slug and falls back to the kind for a name with none', () => {
+    const onCommand = vi.fn();
+    render(<LayersPlanesPanel model={testModel()} onCommand={onCommand} />);
+    fireEvent.change(screen.getByLabelText('New layer name'), { target: { value: 'OPS!' } });
+    fireEvent.click(screen.getByRole('button', { name: /add layer/i }));
+    fireEvent.change(screen.getByLabelText('New plane name'), { target: { value: ' 日本 ' } });
+    fireEvent.click(screen.getByRole('button', { name: /add plane/i }));
+    expect(onCommand.mock.calls).toEqual([
+      [{ type: 'upsert-layer', layer: { id: 'ops-2', name: 'OPS!' } }],
+      [{ type: 'upsert-plane', plane: { id: 'plane', name: '日本' } }],
+    ]);
+  });
+
   it('sets a layer tint as upsert-layer', () => {
     const onCommand = vi.fn();
     render(<LayersPlanesPanel model={testModel()} onCommand={onCommand} />);
@@ -305,7 +318,7 @@ describe('LayersPlanesPanel', () => {
     expect(screen.queryByRole('checkbox', { name: 'Legend' })).toBeNull();
   });
 
-  it('the Notation select pins the model notation and clearing removes it', () => {
+  it('the Notation select sets the model notation and clearing removes it', () => {
     const onCommand = vi.fn();
     const m = model('d');
     m.node('a');

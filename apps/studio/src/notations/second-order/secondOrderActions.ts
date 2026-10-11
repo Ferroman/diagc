@@ -2,6 +2,7 @@ import {
   SO_DECISION_TYPE,
   SO_LEADS_TO_KIND,
   consequenceTypeOf,
+  defined,
   isSecondOrderNode,
   uniqueNodeId,
   type DiagramModel,
@@ -36,7 +37,7 @@ export function thenWhat(
             id,
             name: '',
             type: consequenceTypeOf(valence),
-            ...(from.plane !== undefined ? { plane: from.plane } : {}),
+            ...defined({ plane: from.plane }),
           },
         },
         { type: 'add-relation', from: fromId, to: id, opts: { kind: SO_LEADS_TO_KIND } },
@@ -53,7 +54,7 @@ export function addDecision(model: DiagramModel, plane?: string): { command: Edi
     id,
     command: {
       type: 'add-node',
-      node: { id, name: '', type: SO_DECISION_TYPE, ...(plane !== undefined ? { plane } : {}) },
+      node: { id, name: '', type: SO_DECISION_TYPE, ...defined({ plane }) },
     },
   };
 }

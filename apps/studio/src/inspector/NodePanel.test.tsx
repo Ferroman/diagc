@@ -438,14 +438,14 @@ describe('NodePanel', () => {
     expect(onCommand).not.toHaveBeenCalled();
   });
 
-  it('clears a pinned position for the active plane when pinned', () => {
+  it('clears the saved position for the active plane when there is one', () => {
     const onCommand = vi.fn();
     render(
       <NodePanel
         model={testModel()}
         nodeId="a"
         activePlane="flow"
-        hasPin
+        hasSavedPosition
         onCommand={onCommand}
         onClose={noop}
         onDeleted={noop}
@@ -455,7 +455,7 @@ describe('NodePanel', () => {
     expect(onCommand).toHaveBeenCalledWith({ type: 'clear-position', nodeId: 'a', plane: 'flow' });
   });
 
-  it('hides the clear-pin button when the node is not pinned', () => {
+  it('hides the clear button when the node has no saved position', () => {
     render(
       <NodePanel
         model={testModel()}
@@ -572,15 +572,15 @@ describe('NodePanel', () => {
     expect(onCommand).toHaveBeenCalledWith({ type: 'set-node-details', id: 'a', details: { fontScale: 'lg' } });
   });
 
-  it('shows the pinned position and commits an edited coordinate as set-position', () => {
+  it('shows the saved position and commits an edited coordinate as set-position', () => {
     const onCommand = vi.fn();
     render(
       <NodePanel
         model={testModel()}
         nodeId="a"
         activePlane="flow"
-        hasPin
-        pinned={{ x: 40, y: 60 }}
+        hasSavedPosition
+        savedPosition={{ x: 40, y: 60 }}
         onCommand={onCommand}
         onClose={noop}
         onDeleted={noop}
@@ -594,7 +594,7 @@ describe('NodePanel', () => {
     expect(onCommand).toHaveBeenCalledWith({ type: 'set-position', nodeId: 'a', x: 100, y: 60, plane: 'flow' });
   });
 
-  it('an unpinned node shows the live position as a placeholder and pins on commit', () => {
+  it('a node with no saved position shows the live one as a placeholder and saves on commit', () => {
     const onCommand = vi.fn();
     render(
       <NodePanel

@@ -1,4 +1,4 @@
-import type { DiagramModel, EditorCommand } from '@diagc/core/internal';
+import { defined, type DiagramModel, type EditorCommand } from '@diagc/core/internal';
 
 /**
  * Commands for a connect gesture that starts on a db-table column handle: an
@@ -27,8 +27,7 @@ export function fkConnectionCommands(
       opts: {
         kind: 'fk',
         fromColumn: col.name,
-        ...(toPk !== undefined ? { toColumn: toPk } : {}),
-        ...(opts?.layer !== undefined ? { layer: opts.layer } : {}),
+        ...defined({ toColumn: toPk, layer: opts?.layer }),
       },
     },
   ];

@@ -1,8 +1,21 @@
 import { useState } from 'react';
 import {
+  ACTIVITY_ACTION_TYPE,
+  ACTIVITY_BAR_TYPE,
+  ACTIVITY_DECISION_TYPE,
+  ACTIVITY_END_TYPE,
+  ACTIVITY_FRAME_TYPE,
+  ACTIVITY_LANE_TYPE,
+  ACTIVITY_NOTE_TYPE,
+  ACTIVITY_OBJECT_TYPE,
+  ACTIVITY_RECEIVE_TYPE,
+  ACTIVITY_REGION_TYPE,
+  ACTIVITY_SEND_TYPE,
+  ACTIVITY_START_TYPE,
   bestLaneOrder,
   containmentOn,
   containmentPlaneOf,
+  defined,
   isOnPlane,
   uniqueNodeId,
   type DiagramModel,
@@ -24,15 +37,15 @@ interface ActivityPanelProps {
 
 /** quick-add vocabulary: accessible label + created type + default name */
 const ELEMENTS = [
-  { type: 'activity-action', label: 'Add action', defaultName: 'Action' },
-  { type: 'activity-decision', label: 'Add decision', defaultName: '' },
-  { type: 'activity-bar', label: 'Add bar', defaultName: '' },
-  { type: 'activity-start', label: 'Add start', defaultName: '' },
-  { type: 'activity-end', label: 'Add end', defaultName: '' },
-  { type: 'activity-send', label: 'Add send signal', defaultName: 'Signal' },
-  { type: 'activity-receive', label: 'Add receive signal', defaultName: 'Signal' },
-  { type: 'activity-object', label: 'Add object', defaultName: 'Object' },
-  { type: 'activity-note', label: 'Add note', defaultName: 'Note' },
+  { type: ACTIVITY_ACTION_TYPE, label: 'Add action', defaultName: 'Action' },
+  { type: ACTIVITY_DECISION_TYPE, label: 'Add decision', defaultName: '' },
+  { type: ACTIVITY_BAR_TYPE, label: 'Add bar', defaultName: '' },
+  { type: ACTIVITY_START_TYPE, label: 'Add start', defaultName: '' },
+  { type: ACTIVITY_END_TYPE, label: 'Add end', defaultName: '' },
+  { type: ACTIVITY_SEND_TYPE, label: 'Add send signal', defaultName: 'Signal' },
+  { type: ACTIVITY_RECEIVE_TYPE, label: 'Add receive signal', defaultName: 'Signal' },
+  { type: ACTIVITY_OBJECT_TYPE, label: 'Add object', defaultName: 'Object' },
+  { type: ACTIVITY_NOTE_TYPE, label: 'Add note', defaultName: 'Note' },
 ] as const;
 
 /**
@@ -56,7 +69,7 @@ export function reorderLanesCommand(
         parent: frameId,
         child: lane,
         offset: -1,
-        ...(plane !== undefined ? { plane } : {}),
+        ...defined({ plane }),
       });
       [order[at - 1], order[at]] = [order[at]!, order[at - 1]!];
     }
@@ -80,7 +93,7 @@ export function moveLaneCommand(
     parent: frameId,
     child: laneId,
     offset: offset < 0 ? -1 : 1,
-    ...(plane !== undefined ? { plane } : {}),
+    ...defined({ plane }),
   };
   const n = Math.abs(offset);
   return n === 1 ? step : { type: 'batch', commands: Array.from({ length: n }, () => step) };
@@ -114,12 +127,12 @@ export function activityContext(
     const seen = new Set<string>();
     for (let n = byId.get(selection.id); n !== undefined && !seen.has(n.id); n = byId.get(parentOf.get(n.id) ?? '')) {
       seen.add(n.id);
-      if (n.type === 'activity-frame') return { frame: n, ...(target !== undefined ? { target } : {}) };
-      if (target === undefined && (n.type === 'activity-lane' || n.type === 'activity-region')) target = n;
+      if (n.type === ACTIVITY_FRAME_TYPE) return { frame: n, target };
+      if (target === undefined && (n.type === ACTIVITY_LANE_TYPE || n.type === ACTIVITY_REGION_TYPE)) target = n;
     }
   }
   const frames = model.nodes.filter(
-    (n) => n.type === 'activity-frame' && (n.plane === undefined || n.plane === planeId),
+    (n) => n.type === ACTIVITY_FRAME_TYPE && (n.plane === undefined || n.plane === planeId),
   );
   return frames.length === 1 ? { frame: frames[0]! } : undefined;
 }
@@ -140,7 +153,7 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
   const context = activityContext(model, selection, planeId);
   if (context === undefined) return null;
   const { frame, target } = context;
-  const withPlane = planeId !== undefined ? { plane: planeId } : {};
+  const withPlane = defined({ plane: planeId });
 
   const inPlane = containmentOn(model, planeId);
   const L = ACTIVITY_LAYOUT;
@@ -155,7 +168,7 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
   const lanes = inPlane
     .filter((e) => e.parent === frame.id)
     .map((e) => byId.get(e.child))
-    .filter((n): n is DiagramNode => n?.type === 'activity-lane');
+    .filter((n): n is DiagramNode => n?.type === ACTIVITY_LANE_TYPE);
   const selectedId = selection?.kind === 'node' ? selection.id : undefined;
   const moveLane = (laneId: string, offset: -1 | 1) => {
     onCommand({ type: 'move-child', parent: frame.id, child: laneId, offset, ...withPlane });
@@ -189,7 +202,7 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
       {
         id: uniqueNodeId(model, name),
         name,
-        type: 'activity-lane',
+        type: ACTIVITY_LANE_TYPE,
         ...(laneColor !== '' ? { color: laneColor } : {}),
       },
       frame.id,
@@ -299,8 +312,8 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
                 {el.label}
               </button>
             ))}
-            {target.type === 'activity-lane' && (
-              <button type="button" className="chip" onClick={() => addElement('activity-region', 'Region')}>
+            {target.type === ACTIVITY_LANE_TYPE && (
+              <button type="button" className="chip" onClick={() => addElement(ACTIVITY_REGION_TYPE, 'Region')}>
                 Add region
               </button>
             )}

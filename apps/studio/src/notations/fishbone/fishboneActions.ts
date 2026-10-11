@@ -4,6 +4,7 @@ import {
   FB_CAUSE_TYPE,
   FB_EFFECT_TYPE,
   FISHBONE_PRESETS,
+  defined,
   fishboneTree,
   isFishboneNode,
   presetId,
@@ -30,7 +31,7 @@ export function addEffect(model: DiagramModel, plane?: string): { command: Edito
     id,
     command: {
       type: 'add-node',
-      node: { id, name: '', type: FB_EFFECT_TYPE, ...(plane !== undefined ? { plane } : {}) },
+      node: { id, name: '', type: FB_EFFECT_TYPE, ...defined({ plane }) },
     },
   };
 }
@@ -61,7 +62,7 @@ export function addChild(model: DiagramModel, parentId: string): { command: Edit
       commands: [
         {
           type: 'add-node',
-          node: { id, name: '', type, ...(parent.plane !== undefined ? { plane: parent.plane } : {}) },
+          node: { id, name: '', type, ...defined({ plane: parent.plane }) },
         },
         { type: 'add-relation', from: id, to: parentId, opts: { kind: FB_CAUSE_OF_KIND } },
       ],
@@ -87,7 +88,7 @@ export function seedCategories(
     ids.push(id);
     commands.push({
       type: 'add-node',
-      node: { id, name, type: FB_CATEGORY_TYPE, ...(effect.plane !== undefined ? { plane: effect.plane } : {}) },
+      node: { id, name, type: FB_CATEGORY_TYPE, ...defined({ plane: effect.plane }) },
     });
     commands.push({ type: 'add-relation', from: id, to: effectId, opts: { kind: FB_CAUSE_OF_KIND } });
   }
