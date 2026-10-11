@@ -31,13 +31,14 @@ export interface UseNodePlacementOptions {
   editor: EditorApi;
   /** viewport center/auto-position reads for manual-layout placement */
   layoutApiRef: RefObject<LayoutApi | null>;
-  /** App-owned selection/rename/tab/bookkeeping setters */
-  setSelection: (sel: DiagramSelection | null) => void;
-  setRenameId: (id: string | null) => void;
+  /** select the node just made (the canvas selection's), and also focus its
+   * Name field in the Properties panel */
+  selectNode: (id: string) => void;
+  selectNodeForRename: (id: string) => void;
   /** the left dock's inspector tab */
   selectTab: (tab: InspectorTab) => void;
   /** open the canvas label editor on a node created outside a canvas gesture
-   * (App's nonce-keyed editLabelRequest) — library placement names in place
+   * (the canvas selection's nonce-keyed editLabelRequest) — library placement names in place
    * so the Library tab never has to give way to Properties */
   requestLabelEdit: (id: string) => void;
   /** the edit session's issue banner: an upload that failed */
@@ -87,8 +88,8 @@ export interface NodePlacement {
 export function useNodePlacement({
   editor,
   layoutApiRef,
-  setSelection,
-  setRenameId,
+  selectNode,
+  selectNodeForRename,
   selectTab,
   requestLabelEdit,
   reportIssues,
@@ -139,14 +140,13 @@ export function useNodePlacement({
     // Add node lives on the Library tab now; flip to Properties so the new node's
     // Name field autofocuses (preserves the whiteboard-add rename flow).
     selectTab('properties');
-    setSelection({ kind: 'node', id: place.id });
-    setRenameId(place.id);
+    selectNodeForRename(place.id);
   };
 
   // Double-click on empty canvas: drop a typeless node centered on that flow
   // point and open its name for renaming (mirrors the toolbar add, minus the
   // type). Returning the id lets DiagramView open it in canvas in-place rename
-  // mode — the sole rename affordance here, so no setRenameId (a panel autofocus
+  // mode — the sole rename affordance here, so no selectNodeForRename (a panel autofocus
   // would race the canvas editor across DiagramView's async layout timing).
   const createAt = (pos: Point) => {
     const m = editor.session?.state.model;
@@ -173,7 +173,7 @@ export function useNodePlacement({
         ...defined({ plane: activePlane }),
       });
     }
-    setSelection({ kind: 'node', id: place.id });
+    selectNode(place.id);
     return place.id;
   };
 
@@ -270,7 +270,7 @@ export function useNodePlacement({
         ...defined({ plane: activePlane }),
       });
     }
-    setSelection({ kind: 'node', id: place.id });
+    selectNode(place.id);
     requestLabelEdit(place.id);
   };
 
@@ -361,7 +361,7 @@ export function useNodePlacement({
             ...defined({ plane: activePlane }),
           });
         }
-        setSelection({ kind: 'node', id: place.id });
+        selectNode(place.id);
       } catch (e) {
         issues.push({ message: errMessage(e) });
       }
