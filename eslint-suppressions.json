@@ -178,11 +178,6 @@
       "count": 1
     }
   },
-  "packages/renderer/src/canvas/build-data.ts": {
-    "complexity": {
-      "count": 3
-    }
-  },
   "packages/renderer/src/loops/LeveragePanel.tsx": {
     "max-lines-per-function": {
       "count": 1
