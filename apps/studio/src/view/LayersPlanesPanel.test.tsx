@@ -354,4 +354,24 @@ describe('LayersPlanesPanel', () => {
     const option = screen.getByRole('option', { name: 'Threat model (STRIDE)' }) as HTMLOptionElement;
     expect(option.value).toBe('threat-model');
   });
+
+  it("labels every notation alike in the diagram's select and each plane's", () => {
+    // Breaks if a notation's label changes or goes missing from either select.
+    render(<LayersPlanesPanel model={testModel()} onCommand={vi.fn()} mode="edit" />);
+    const options = (label: string) =>
+      [...(screen.getByRole('combobox', { name: label }) as HTMLSelectElement).options].map((o) => [o.value, o.text]);
+    const want = [
+      ['', 'default look'],
+      ['causal-loop', 'Causal loop'],
+      ['git-graph', 'Git graph'],
+      ['c4', 'C4'],
+      ['second-order', 'Second-order thinking'],
+      ['fishbone', 'Fishbone (cause and effect)'],
+      ['threat-model', 'Threat model (STRIDE)'],
+      ['plan', 'Plan (schedule)'],
+      ['deployment', 'Deployment'],
+    ];
+    expect(options('Notation')).toEqual(want);
+    expect(options('Notation Flow')).toEqual(want);
+  });
 });
