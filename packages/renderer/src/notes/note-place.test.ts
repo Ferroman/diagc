@@ -163,6 +163,61 @@ describe('estimateNoteHeight with comments and links', () => {
   });
 });
 
+describe('estimateNoteHeight, line by line', () => {
+  // A one-line name is the 16px padding, a 16px line and the 6px gap under it:
+  // 38px before anything else.
+  it("wraps a comment across the note's inner width, under a section title", () => {
+    // 30 glyphs at 6.2px = 186px: one line in the 200px between the side paddings
+    expect(estimateNoteHeight('A', [], false, [{ text: 'x'.repeat(30) }], [])).toBe(38 + 26 + 16 + 5);
+  });
+
+  it('gives each link a line and its row padding, under a section title', () => {
+    expect(estimateNoteHeight('A', [], false, [], [{ label: 'L' }, { label: 'M' }])).toBe(38 + 26 + 2 * (16 + 5));
+  });
+
+  it("narrows a row's title column for the details button in edit mode, and for mitigation text alone", () => {
+    // 20 glyphs at 6.2px = 124px: one line beside `open` (138.6px), two once the
+    // button takes its 22px (116.6px)
+    const title = 't'.repeat(20);
+    expect(estimateNoteHeight('A', [{ title }], true)).toBe(38 + 2 * 16 + 5 + 24);
+    expect(estimateNoteHeight('A', [{ title, mitigation: 'm' }], false)).toBe(38 + 2 * 16 + 5);
+    expect(estimateNoteHeight('A', [{ title }], false)).toBe(38 + 16 + 5);
+  });
+});
+
+describe('placeNote, the edge cases', () => {
+  it('keeps to near spots: a covered one beside the badge beats a free one far across a big element', () => {
+    const big: Rect = { x: 0, y: 0, width: 600, height: 400 };
+    const at = badgeCenter(big, 'box');
+    // everything above and left of the element is taken; the spot right of it,
+    // 600px from the badge, is free
+    const taken: Rect = { x: -1000, y: -1000, width: 1000, height: 1000 };
+    // above-right of the badge covers the least of it: a 21px strip
+    expect(placeNote(at, big, { width: W, height: 80 }, [taken])).toEqual({ x: at.x - 24, y: -NOTE_GAP - 80 });
+  });
+
+  it('takes the first spot when every near spot is covered alike', () => {
+    const everything: Rect = { x: -2000, y: -2000, width: 4000, height: 4000 };
+    expect(placeNote(badge, box, { width: W, height: 80 }, [everything])).toEqual({
+      x: badge.x + 24 - W,
+      y: box.y - NOTE_GAP - 80,
+    });
+  });
+
+  it('falls back to the first spot when no spot is near the badge at all', () => {
+    const huge: Rect = { x: 0, y: 0, width: 2000, height: 2000 };
+    const middle = { x: 1000, y: 1000 };
+    expect(placeNote(middle, huge, { width: W, height: 80 }, [])).toEqual({ x: 1000 + 24 - W, y: -NOTE_GAP - 80 });
+  });
+
+  it("counts a spot centred on the badge's line as the far side", () => {
+    // a 48px note: the two spots above the badge are centred on it, along `away`
+    // neither ahead nor behind, so the free spot right of the pill comes first
+    const at = { x: 100, y: 100 };
+    expect(placeNote(at, null, { width: 48, height: 30 }, [], { x: 1, y: 0 })).toEqual({ x: 123, y: 76 });
+  });
+});
+
 /** overlapping area of a note at `at` with a rect */
 function overlap(at: { x: number; y: number }, w: number, h: number, r: Rect): number {
   const x = Math.max(0, Math.min(at.x + w, r.x + r.width) - Math.max(at.x, r.x));

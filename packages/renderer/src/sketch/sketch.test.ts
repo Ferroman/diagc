@@ -118,6 +118,24 @@ describe('sketchCircle', () => {
     expect(sketchCircle(30, 30, 40, 7, SOLID)).toEqual(sketchCircle(30, 30, 40, 7, SOLID));
     expect(sketchCircle(30, 30, 40, 7, SOLID).stroke).not.toBe(sketchCircle(30, 30, 40, 8, SOLID).stroke);
   });
+
+  it('draws round its centre: x across, y down', () => {
+    const points = (d: string) => [...d.matchAll(/(-?[\d.]+)[ ,](-?[\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+    const at = points(sketchCircle(30, 90, 40, 7, SOLID).stroke);
+    const mean = (i: number) => at.reduce((sum, p) => sum + p[i]!, 0) / at.length;
+    expect(Math.abs(mean(0) - 30)).toBeLessThan(5);
+    expect(Math.abs(mean(1) - 90)).toBeLessThan(5);
+  });
+
+  it('draws a circle under 2px across at 2px', () => {
+    expect(sketchCircle(30, 30, 0, 7, SOLID)).toEqual(sketchCircle(30, 30, 2, 7, SOLID));
+  });
+});
+
+describe('sketchNode size floor', () => {
+  it('draws a box under 2px a side at 2px', () => {
+    expect(sketchNode('box', 0, 0, 1, SOLID)).toEqual(sketchNode('box', 2, 2, 1, SOLID));
+  });
 });
 
 describe('fill styles', () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Position } from '@xyflow/react';
 import {
   bowPath,
+  DEFAULT_CURVATURE,
   edgePoint,
   edgeTangent,
   nearestOnCurve,
@@ -171,6 +172,79 @@ describe('edgePoint / edgeTangent — bow', () => {
     expect(right.y).toBeCloseTo(-left.y, 5);
     // endpoints are unchanged by the flip
     expect(edgePoint('bow', facing, 0.55, 0, 'right')).toEqual(edgePoint('bow', facing, 0.55, 0, 'left'));
+  });
+});
+
+describe('edgePoint / edgeTangent, point by point', () => {
+  // Handles that face away from the other end, so curvature sets how far each
+  // control reaches: at curvature 0.5 a 16px wrong-way gap gives 0.5·25·√16 = 50.
+  // The right-hand source's control is (50, 0); the top-facing target's, half of
+  // the 64px it already faces the right way, is (−16, 32).
+  const rightToTop: EdgePathParams = {
+    sourceX: 0,
+    sourceY: 0,
+    targetX: -16,
+    targetY: 64,
+    sourcePosition: Position.Right,
+    targetPosition: Position.Top,
+  };
+  // The same scene turned a quarter: bottom-facing source, left-facing target.
+  const bottomToLeft: EdgePathParams = {
+    sourceX: 0,
+    sourceY: 0,
+    targetX: 64,
+    targetY: -16,
+    sourcePosition: Position.Bottom,
+    targetPosition: Position.Left,
+  };
+
+  it('puts a curve at t = 0.25 where its two controls say', () => {
+    // B(0.25) = (27·p0 + 27·p1 + 9·p2 + p3) / 64
+    expect(edgePoint('curved', rightToTop, 0.5, 0.25)).toEqual({ x: 18.59375, y: 5.5 });
+    expect(edgePoint('curved', bottomToLeft, 0.5, 0.25)).toEqual({ x: 5.5, y: 18.59375 });
+  });
+
+  it("aims a curve's tangent at t = 0.25 along its derivative", () => {
+    // B'(0.25) = 1.6875·(p1 − p0) + 1.125·(p2 − p1) + 0.1875·(p3 − p2) = (10.125, 42)
+    const len = Math.hypot(10.125, 42);
+    const tan = edgeTangent('curved', rightToTop, 0.5, 0.25);
+    expect(tan.x).toBeCloseTo(10.125 / len, 12);
+    expect(tan.y).toBeCloseTo(42 / len, 12);
+  });
+
+  it("reads an unset curvature as xyflow's default, for the point and the tangent", () => {
+    expect(edgePoint('curved', rightToTop, undefined, 0.25)).toEqual(
+      edgePoint('curved', rightToTop, DEFAULT_CURVATURE, 0.25),
+    );
+    expect(edgeTangent('curved', rightToTop, undefined, 0.25)).toEqual(
+      edgeTangent('curved', rightToTop, DEFAULT_CURVATURE, 0.25),
+    );
+    // a chord long enough that the default bows past the bow's 24px floor
+    const long: EdgePathParams = { ...horizontal, targetX: 400 };
+    expect(edgeTangent('bow', long, undefined, 0.25)).toEqual(edgeTangent('bow', long, DEFAULT_CURVATURE, 0.25));
+  });
+
+  it('falls back to the chord where a curve has no direction of its own', () => {
+    // the right-hand handle points straight down the 0px it has to cover, so
+    // its control sits on the source and B'(0) is zero
+    const below: EdgePathParams = { ...rightToTop, targetX: 0, targetY: 100, targetPosition: Position.Left };
+    expect(edgeTangent('curved', below, undefined, 0)).toEqual({ x: 0, y: 1 });
+  });
+
+  it("mirrors a bow's tangent across a horizontal chord when side is 'right'", () => {
+    const long: EdgePathParams = { ...horizontal, targetX: 400 };
+    const left = edgeTangent('bow', long, 0.55, 0.25, 'left');
+    const right = edgeTangent('bow', long, 0.55, 0.25, 'right');
+    expect(right.x).toBeCloseTo(left.x, 12);
+    expect(right.y).toBeCloseTo(-left.y, 12);
+    expect(left.y).not.toBe(0);
+  });
+
+  it("hands a bow's side to the curve's point and tangent", () => {
+    const curve = shapeCurve('bow', horizontal, 0.55, 'right');
+    expect(curve.point(0.25)).toEqual(edgePoint('bow', horizontal, 0.55, 0.25, 'right'));
+    expect(curve.tangent(0.25)).toEqual(edgeTangent('bow', horizontal, 0.55, 0.25, 'right'));
+    expect(curve.point(0.25)).not.toEqual(edgePoint('bow', horizontal, 0.55, 0.25, 'left'));
   });
 });
 

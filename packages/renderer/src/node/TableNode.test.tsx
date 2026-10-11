@@ -127,3 +127,80 @@ describe('TableNode edit mode', () => {
     expect(spy.mock.calls[0]![0].length).toBe(data().columns!.length - 1);
   });
 });
+
+describe('TableNode — the rows, one by one', () => {
+  const editData = (onColumnsChange: DiagramNodeData['onColumnsChange']): DiagramNodeData => ({
+    ...data(),
+    onColumnsChange,
+  });
+  const draw = (d: DiagramNodeData) =>
+    render(
+      <ReactFlowProvider>
+        <DiagramNode id="t" data={d} />
+      </ReactFlowProvider>,
+    );
+  const names = (columns: { name: string }[]) => columns.map((c) => c.name);
+
+  it('moves a row up or down, and offers neither move past the ends', () => {
+    const spy = vi.fn();
+    const { container } = draw(editData(spy));
+    const up = container.querySelectorAll<HTMLButtonElement>('[aria-label="Move up"]');
+    const down = container.querySelectorAll<HTMLButtonElement>('[aria-label="Move down"]');
+    expect([...up].map((b) => b.disabled)).toEqual([true, false, false]);
+    expect([...down].map((b) => b.disabled)).toEqual([false, false, true]);
+    fireEvent.click(down[0]!);
+    expect(names(spy.mock.calls[0]![0])).toEqual(['access_level', 'id', 'email']);
+    fireEvent.click(up[2]!);
+    expect(names(spy.mock.calls[1]![0])).toEqual(['id', 'email', 'access_level']);
+  });
+
+  it('deletes the row whose ✕ was clicked', () => {
+    const spy = vi.fn();
+    const { container } = draw(editData(spy));
+    fireEvent.click(container.querySelectorAll('.dg-table-del')[1]!);
+    expect(names(spy.mock.calls[0]![0])).toEqual(['id', 'email']);
+  });
+
+  it('names an added column apart from one already called column', () => {
+    const spy = vi.fn();
+    const { getByText } = draw({ ...editData(spy), columns: [{ name: 'column' }] });
+    fireEvent.click(getByText(/add column/));
+    expect(names(spy.mock.calls[0]![0])).toEqual(['column', 'column_2']);
+  });
+
+  it("shows each row's type in its field, with the common types as suggestions", () => {
+    const { container } = draw(editData(vi.fn()));
+    const type = container.querySelector<HTMLInputElement>('.dg-table-type-input')!;
+    expect(type.value).toBe('uuid');
+    const list = container.querySelector(`datalist#${type.getAttribute('list')}`);
+    expect(list?.querySelectorAll('option').length).toBe(10);
+  });
+
+  it('marks a plain column ○ in edit mode, and a key column by its class in read mode', () => {
+    const editing = draw(editData(vi.fn()));
+    expect(editing.container.querySelectorAll('.dg-table-badge')[2]!.textContent).toBe('○');
+    editing.unmount();
+    const reading = draw(data());
+    expect(reading.container.querySelector('.dg-pk')?.textContent).toBe('id');
+  });
+
+  it("names a row's handle by its column in edit mode too", () => {
+    const { container } = draw(editData(vi.fn()));
+    expect(container.querySelector('[data-handleid="email"]')).not.toBeNull();
+  });
+
+  it('keeps a name field, and the focus in it, while its column is renamed', () => {
+    const spy = vi.fn();
+    const view = draw(editData(spy));
+    const field = view.container.querySelectorAll<HTMLInputElement>('.dg-table-name-input')[2]!;
+    field.focus();
+    const renamed = data().columns!.map((c, i) => (i === 2 ? { ...c, name: 'email2' } : c));
+    view.rerender(
+      <ReactFlowProvider>
+        <DiagramNode id="t" data={{ ...editData(spy), columns: renamed }} />
+      </ReactFlowProvider>,
+    );
+    expect(view.container.querySelectorAll('.dg-table-name-input')[2]).toBe(field);
+    expect(document.activeElement).toBe(field);
+  });
+});
