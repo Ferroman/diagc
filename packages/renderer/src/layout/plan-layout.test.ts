@@ -49,7 +49,7 @@ const days = (a: string, b: string) => dayOf(b)! - dayOf(a)! + 1;
 
 describe('planLayout', () => {
   it('places top-level zones by date on x, stacked by start on y, and locks their x', () => {
-    const r = planLayout(view(roadmap()), roadmap(), 'plan');
+    const r = planLayout({ view: view(roadmap()), model: roadmap(), plane: 'plan' });
     const q1 = r.geometry.get('q1')!;
     const later = r.geometry.get('later')!;
     expect(q1.x).toBe(planX(dayOf('2026-01-05')!, origin));
@@ -66,7 +66,7 @@ describe('planLayout', () => {
   });
 
   it('gives a titled zone a title strip, one row per child zone in start order, parent-relative x, and PAD below', () => {
-    const r = planLayout(view(roadmap()), roadmap(), 'plan');
+    const r = planLayout({ view: view(roadmap()), model: roadmap(), plane: 'plan' });
     const design = r.geometry.get('design')!;
     const build = r.geometry.get('build')!;
     expect(design).toMatchObject({ x: 0, y: TITLE_H, width: days('2026-01-05', '2026-01-30') * DAY, height: BAR_H });
@@ -78,7 +78,7 @@ describe('planLayout', () => {
 
   it('wraps borrowed nodes into rows under the title strip and puts a zone event in the strip', () => {
     const m = roadmap();
-    const r = planLayout(view(m), m, 'plan');
+    const r = planLayout({ view: view(m), model: m, plane: 'plan' });
     const build = r.geometry.get('build')!;
     const api = r.geometry.get('api')!;
     const db = r.geometry.get('db')!;
@@ -107,7 +107,7 @@ describe('planLayout', () => {
     const api = m.node('api', { type: 'service' });
     zoneB.contains(api);
     zoneA.contains(api);
-    const r = planLayout(view(m.toJSON()), m.toJSON(), 'plan');
+    const r = planLayout({ view: view(m.toJSON()), model: m.toJSON(), plane: 'plan' });
     expect(r.geometry.get('api')).toMatchObject({
       x: PAD,
       y: TITLE_H,
@@ -125,7 +125,7 @@ describe('planLayout', () => {
     const nodes = ['a', 'b', 'c'].map((id) => m.node(id, { type: 'service' }));
     z.contains(...nodes);
     const hints = new Map(nodes.map((n) => [n.id, { width: 40, height: 20 }]));
-    const r = planLayout(view(m.toJSON()), m.toJSON(), 'plan', hints);
+    const r = planLayout({ view: view(m.toJSON()), model: m.toJSON(), plane: 'plan', sizeHints: hints });
     expect(r.geometry.get('a')).toMatchObject({ x: PAD, y: TITLE_H }); // 12 … 52
     expect(r.geometry.get('b')).toMatchObject({ x: PAD + 40 + ROW_GAP, y: TITLE_H }); // 60 … 100 ≤ 108: same row
     expect(r.geometry.get('c')).toMatchObject({ x: PAD, y: TITLE_H + 20 + ROW_GAP }); // 108 … 148 > 108: next row
@@ -139,7 +139,7 @@ describe('planLayout', () => {
     // in), y is well below the title strip (no clamp needed, but deep enough
     // that only the positioned child's bottom, not the flow's, sets the height)
     const positions = { api: { x: width + 500, y: 300 } };
-    const r = planLayout(view(m), m, 'plan', undefined, positions);
+    const r = planLayout({ view: view(m), model: m, plane: 'plan', positions });
     const api = r.geometry.get('api')!;
     expect(api).toMatchObject({ x: width - LEAF_SIZE.width, y: 300, width: LEAF_SIZE.width, height: LEAF_SIZE.height });
     // db is the only node left to flow: it takes api's old (first) slot, not a second one
@@ -151,27 +151,37 @@ describe('planLayout', () => {
   it('clamps a positioned "other" inside the bar: x to [0, width - its width], y to at least the title strip', () => {
     const m = roadmap();
     const width = days('2026-02-02', '2026-03-27') * DAY;
-    const negative = planLayout(view(m), m, 'plan', undefined, { api: { x: -50, y: 0 } });
+    const negative = planLayout({ view: view(m), model: m, plane: 'plan', positions: { api: { x: -50, y: 0 } } });
     expect(negative.geometry.get('api')).toMatchObject({ x: 0, y: TITLE_H });
-    const overRight = planLayout(view(m), m, 'plan', undefined, { api: { x: width + 1000, y: TITLE_H } });
+    const overRight = planLayout({
+      view: view(m),
+      model: m,
+      plane: 'plan',
+      positions: { api: { x: width + 1000, y: TITLE_H } },
+    });
     expect(overRight.geometry.get('api')).toMatchObject({ x: width - LEAF_SIZE.width, y: TITLE_H });
   });
 
   it('ignores a saved position for anything but an "other": a nested zone, an event, a person', () => {
     const m = roadmap();
-    const plain = planLayout(view(m), m, 'plan');
-    const positioned = planLayout(view(m), m, 'plan', undefined, {
-      design: { x: 999, y: 999 },
-      m1: { x: 999, y: 999 },
-      alice: { x: 999, y: 999 },
+    const plain = planLayout({ view: view(m), model: m, plane: 'plan' });
+    const positioned = planLayout({
+      view: view(m),
+      model: m,
+      plane: 'plan',
+      positions: {
+        design: { x: 999, y: 999 },
+        m1: { x: 999, y: 999 },
+        alice: { x: 999, y: 999 },
+      },
     });
     for (const id of ['design', 'm1', 'alice']) expect(positioned.geometry.get(id)).toEqual(plain.geometry.get(id));
   });
 
   it('is byte-identical to today when there are no saved child positions', () => {
     const m = roadmap();
-    const withoutArg = planLayout(view(m), m, 'plan');
-    const withEmptyMap = planLayout(view(m), m, 'plan', undefined, {});
+    const withoutArg = planLayout({ view: view(m), model: m, plane: 'plan' });
+    const withEmptyMap = planLayout({ view: view(m), model: m, plane: 'plan', positions: {} });
     expect(withEmptyMap.geometry).toEqual(withoutArg.geometry);
     expect(withEmptyMap.fixed).toEqual(withoutArg.fixed);
   });
@@ -180,13 +190,13 @@ describe('planLayout', () => {
     const m = model('e');
     const p = m.plan();
     p.zone('z', { start: '2026-01-01', end: '2026-01-10' }).event('e', { at: '2026-01-03' });
-    const r = planLayout(view(m.toJSON()), m.toJSON(), 'plan');
+    const r = planLayout({ view: view(m.toJSON()), model: m.toJSON(), plane: 'plan' });
     expect(r.geometry.get('z')!.height).toBe(TITLE_H);
   });
 
   it('puts root events on the header baseline and people in a fixed roster strip above it', () => {
     const m = roadmap();
-    const r = planLayout(view(m), m, 'plan');
+    const r = planLayout({ view: view(m), model: m, plane: 'plan' });
     expect(r.geometry.get('kickoff')).toEqual({
       x: planX(dayOf('2026-01-05')!, origin) + DAY / 2 - EVENT / 2,
       y: -HEADER_H / 2 - EVENT / 2,
@@ -211,7 +221,7 @@ describe('planLayout', () => {
     const bob = p.person('bob', 'Bob');
     const chen = p.person('chen', 'Chen');
     const hints = new Map([alice, bob, chen].map((n) => [n.id, { width: 40, height: 20 }]));
-    const r = planLayout(view(m.toJSON()), m.toJSON(), 'plan', hints);
+    const r = planLayout({ view: view(m.toJSON()), model: m.toJSON(), plane: 'plan', sizeHints: hints });
     // alice + bob: 40 + 24 + 40 = 104 ≤ 120, same row; + chen: 104 + 24 + 40 = 168 > 120, wraps
     const a = r.geometry.get('alice')!;
     const b = r.geometry.get('bob')!;
@@ -232,7 +242,7 @@ describe('planLayout', () => {
     const p = m.plan();
     const people = Array.from({ length: 7 }, (_, i) => p.person(`p${i}`, `P${i}`));
     void people;
-    const r = planLayout(view(m.toJSON()), m.toJSON(), 'plan');
+    const r = planLayout({ view: view(m.toJSON()), model: m.toJSON(), plane: 'plan' });
     // the overflow row (just the 7th person) was formed last, so it sits
     // closest to the header; the first six sit one row further up
     const lastRowY = -HEADER_H - ROSTER_GAP - LEAF_SIZE.height;
@@ -253,7 +263,7 @@ describe('planLayout', () => {
     const pins = Object.fromEntries(
       m.nodes.filter((n) => n.type === PLAN_ZONE_TYPE).map((n) => [n.id, 'expanded' as const]),
     );
-    const r = planLayout(compileView(m, { plane: 'plan', pins, activeLayers: [] }), m, 'plan');
+    const r = planLayout({ view: compileView(m, { plane: 'plan', pins, activeLayers: [] }), model: m, plane: 'plan' });
     expect(r.geometry.has('later')).toBe(false);
     const q1 = r.geometry.get('q1')!;
     expect(r.geometry.get('stray')).toMatchObject({ x: 0, y: q1.y + q1.height + ROW_GAP });
@@ -272,7 +282,7 @@ describe('planLayout', () => {
     // studio does: in the live model, between the keystroke and the save
     const json = m.toJSON();
     json.nodes.find((n) => n.id === 'bad')!.metadata!.end = '2026-02-01';
-    const r = planLayout(view(json), json, 'plan');
+    const r = planLayout({ view: view(json), model: json, plane: 'plan' });
     expect(r.geometry.get('bad')).toMatchObject({ x: planX(dayOf('2026-03-02')!, origin), width: DAY });
     // and it still sorts after `ok`, by its own start rather than the origin
     expect(r.geometry.get('bad')!.y).toBeGreaterThan(r.geometry.get('ok')!.y);
@@ -281,7 +291,7 @@ describe('planLayout', () => {
   it('draws an empty plan as nothing, with no origin to trip on', () => {
     const m = model('empty');
     m.plan();
-    const r = planLayout(view(m.toJSON()), m.toJSON(), 'plan');
+    const r = planLayout({ view: view(m.toJSON()), model: m.toJSON(), plane: 'plan' });
     expect(r.geometry.size).toBe(0);
     expect(r.lockedX?.size ?? 0).toBe(0);
   });

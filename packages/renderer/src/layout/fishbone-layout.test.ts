@@ -71,7 +71,7 @@ const lineA = Math.max(MIN_LINE, SUB_INSET + (w('sub one') + SUB_GAP) + (w('sub 
 describe('fishboneLayout', () => {
   it('stacks causes down the bone from the category box, the bone reaching the spine', () => {
     const m = fish();
-    const r = fishboneLayout(view(m), m, undefined);
+    const r = fishboneLayout({ view: view(m), model: m, plane: undefined });
     expect(r.algorithm).toBe('fishbone');
     const H2 = ROW + ROW; // c2: one bare cause
     const spineY = MARGIN + LABEL_H + H1; // c1 is the taller top side (c3 is bare: H = 2·ROW)
@@ -111,7 +111,7 @@ describe('fishboneLayout', () => {
 
   it('puts sub-cause texts in the row away from the spine, spaced along the cause line', () => {
     const m = fish();
-    const r = fishboneLayout(view(m), m, undefined);
+    const r = fishboneLayout({ view: view(m), model: m, plane: undefined });
     const a = r.geometry.get('a')!;
     const a1 = r.geometry.get('a1')!;
     const a2 = r.geometry.get('a2')!;
@@ -129,7 +129,7 @@ describe('fishboneLayout', () => {
   it('routes each bone, line and tick to where its parent passes, arrowhead end last', () => {
     const m = fish();
     const v = view(m);
-    const r = fishboneLayout(v, m, undefined);
+    const r = fishboneLayout({ view: v, model: m, plane: undefined });
     const spineY = MARGIN + LABEL_H + H1;
     const c1 = r.geometry.get('c1')!;
     const join1 = c1.x + LABEL_W / 2 + BONE_K * H1;
@@ -151,7 +151,7 @@ describe('fishboneLayout', () => {
 
   it('lays columns left to right and spans the effect across the spine into the head', () => {
     const m = fish();
-    const r = fishboneLayout(view(m), m, undefined);
+    const r = fishboneLayout({ view: view(m), model: m, plane: undefined });
     const spineY = MARGIN + LABEL_H + H1;
     const c3 = r.geometry.get('c3')!;
     const H3 = 2 * ROW;
@@ -184,7 +184,7 @@ describe('fishboneLayout', () => {
     const fb = m.fishbone('e', name);
     fb.category('c', 'Code').cause('a', 'A cause');
     const j = m.toJSON();
-    const r = fishboneLayout(view(j), j, undefined);
+    const r = fishboneLayout({ view: view(j), model: j, plane: undefined });
     const c = r.geometry.get('c')!;
     const H = 2 * ROW; // one bare cause
     const join = c.x + LABEL_W / 2 + BONE_K * H;
@@ -196,7 +196,7 @@ describe('fishboneLayout', () => {
     const m = model('f');
     m.fishbone('e', 'Effect');
     const j = m.toJSON();
-    const r = fishboneLayout(view(j), j, undefined);
+    const r = fishboneLayout({ view: view(j), model: j, plane: undefined });
     const headW = Math.max(HEAD_MIN_W, Math.ceil(textWidth('Effect', HEAD_FONT_PX)) + 2 * HEAD_PAD);
     expect(r.geometry.get('e')).toEqual({ x: MARGIN, y: MARGIN, width: HEAD_GAP + headW, height: HEAD_H });
     expect(r.routes.size).toBe(0);
@@ -208,7 +208,7 @@ describe('fishboneLayout', () => {
       ...m,
       nodes: [...m.nodes, { id: 'loose', name: 'Loose cause', type: 'fb-cause' }, { id: 'note', name: 'A note' }],
     };
-    const r = fishboneLayout(view(j), j, undefined);
+    const r = fishboneLayout({ view: view(j), model: j, plane: undefined });
     const c2 = r.geometry.get('c2')!; // the only bottom side: its box's bottom edge is the fish's
     const rowY = c2.y + LABEL_H + MARGIN;
     near(r.geometry.get('loose'), { x: MARGIN, y: rowY, width: w('Loose cause'), height: TEXT_H });
@@ -218,7 +218,7 @@ describe('fishboneLayout', () => {
       nodes: j.nodes.filter((n) => n.id !== 'e'),
       relations: j.relations.filter((x) => x.to !== 'e'),
     };
-    const h = fishboneLayout(view(headless), headless, undefined);
+    const h = fishboneLayout({ view: view(headless), model: headless, plane: undefined });
     expect(h.geometry.size).toBe(headless.nodes.length);
     expect(h.routes.size).toBe(0);
     expect(r.geometry.get('loose')!.y).toBeGreaterThan(c2.y); // and with a head, the row is under the fish
@@ -230,7 +230,7 @@ describe('fishboneLayout', () => {
       ...m,
       nodes: [...m.nodes, { id: 'loose', name: 'Loose cause', type: 'fb-cause' }, { id: 'note', name: 'A note' }],
     };
-    const r = fishboneLayout(view(j), j, undefined);
+    const r = fishboneLayout({ view: view(j), model: j, plane: undefined });
     // a bone ends on the SPINE and a cause line on its BONE, not on a box: no
     // node of the fish can move without its lines pointing at nothing
     expect([...(r.fixed ?? [])].sort()).toEqual(['a', 'a1', 'a2', 'b', 'c1', 'c2', 'c3', 'd', 'e']);
@@ -243,7 +243,7 @@ describe('fishboneLayout', () => {
       nodes: m.nodes.filter((n) => n.id !== 'e'),
       relations: m.relations.filter((x) => x.to !== 'e'),
     };
-    expect(fishboneLayout(view(headless), headless, undefined).fixed?.size ?? 0).toBe(0);
+    expect(fishboneLayout({ view: view(headless), model: headless, plane: undefined }).fixed?.size ?? 0).toBe(0);
   });
 
   it('sizes a stray from its size hint when given one, and from its type fallback otherwise', () => {
@@ -256,7 +256,12 @@ describe('fishboneLayout', () => {
         { id: 'other', name: 'Other cause', type: 'fb-cause' },
       ],
     };
-    const hinted = fishboneLayout(view(j), j, undefined, new Map([['loose', { width: 200, height: 50 }]]));
+    const hinted = fishboneLayout({
+      view: view(j),
+      model: j,
+      plane: undefined,
+      sizeHints: new Map([['loose', { width: 200, height: 50 }]]),
+    });
     expect(hinted.geometry.get('loose')).toMatchObject({ width: 200, height: 50 });
     // the un-hinted stray still gets the type fallback (a bare cause's own size)
     expect(hinted.geometry.get('other')).toMatchObject({ width: w('Other cause'), height: TEXT_H });
@@ -304,8 +309,8 @@ describe('fishboneLayout and layer visibility', () => {
     expect(off.edges.some((e) => e.from === 'a' && e.to === 'c1')).toBe(false);
     expect(on.edges.some((e) => e.from === 'a' && e.to === 'c1')).toBe(true);
     // ...but never what is laid out.
-    const rOff = fishboneLayout(off, m, undefined);
-    const rOn = fishboneLayout(on, m, undefined);
+    const rOff = fishboneLayout({ view: off, model: m, plane: undefined });
+    const rOn = fishboneLayout({ view: on, model: m, plane: undefined });
     expect(rOff.geometry).toEqual(rOn.geometry);
     const edgeOff = off.layoutEdges.find((e) => e.from === 'a' && e.to === 'c1')!;
     const edgeOn = on.layoutEdges.find((e) => e.from === 'a' && e.to === 'c1')!;
@@ -325,7 +330,7 @@ describe('fishboneLayout and layer visibility', () => {
       layers: [...base.layers, { id: 'hidden', name: 'Hidden' }],
     };
     const v = compileView(m, { plane: m.planes[0]?.id, activeLayers: [] });
-    const r = fishboneLayout(v, m, undefined);
+    const r = fishboneLayout({ view: v, model: m, plane: undefined });
     expect(r.geometry.has('c2')).toBe(false);
     expect(r.geometry.has('d')).toBe(false);
     const H3 = 2 * ROW; // c3 is a bare bone, same height whichever side it lands on

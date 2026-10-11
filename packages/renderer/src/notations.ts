@@ -19,12 +19,10 @@ import {
   rolesOf,
   TM_NOTATION,
   valenceOf,
-  type CompiledView,
   type DeployZoneType,
   type DiagramModel,
   type DiagramNode,
   type NotationId,
-  type Point,
   type Polarity,
   type PlanRole,
   type BoxSize,
@@ -32,7 +30,7 @@ import {
 } from '@diagc/core/internal';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './layout/fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './layout/git-layout';
-import type { LayoutResult } from './layout/layout';
+import type { LayoutResult, NotationLayoutInput } from './layout/layout';
 import { PLAN_LAYOUT, planGraphCached, planLayout } from './layout/plan-layout';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
 
@@ -68,13 +66,7 @@ export interface NotationProfile {
    * this function when `layoutReadsPositions` says so below; every other
    * layout (elk, git-graph's, fishbone's) gets a stable `undefined` instead
    * (see useViewLayout's `layoutPositions`). */
-  layout?: (
-    view: CompiledView,
-    model: DiagramModel,
-    plane: string | undefined,
-    sizeHints?: ReadonlyMap<string, BoxSize>,
-    positions?: Record<string, Point>,
-  ) => LayoutResult;
+  layout?: (input: NotationLayoutInput) => LayoutResult;
   /** the arrangement honours saved positions for some of its nodes and must be
    * re-run when they change; without it the layout never sees them and a drag
    * never re-arranges. Most notation layouts (git-graph, fishbone) ignore
@@ -408,9 +400,9 @@ const PLAN: NotationProfile = {
     // An actor is dragged only to be dropped on a zone; it never keeps the
     // position a drag left it at — the roster is a list, not a seating chart.
     snapsBack: isPlanActor,
-    // Everything fixed drags now, actors included: an actor drags only to be
+    // Everything fixed drags, actors included: an actor drags only to be
     // dropped (drop-to-assign) and always snaps back after (see snapsBack
-    // above) — it used to be excluded here because that gesture didn't exist.
+    // above).
     draggableWhenFixed: () => true,
   },
   edge: { hidden: isPlanRole },

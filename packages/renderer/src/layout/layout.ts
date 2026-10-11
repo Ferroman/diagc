@@ -4,6 +4,7 @@ import {
   RESERVED_NODE_ID,
   type BoxSize,
   type CompiledView,
+  type DiagramModel,
   type LayoutSettings,
   type Point,
   type ViewNode,
@@ -28,6 +29,17 @@ import { planLayout, type LayoutPlan, type LevelPlan } from './layout-plan';
 import { packBoxes } from './pack';
 import { removeOverlaps } from './overlap';
 import { bandLanes, hoistLanes, rebaseRoutes, routeBandedEdges } from './swimlane';
+
+/** What a notation's own arrangement is handed (NotationProfile.layout). */
+export interface NotationLayoutInput {
+  view: CompiledView;
+  model: DiagramModel;
+  plane: string | undefined;
+  sizeHints?: ReadonlyMap<string, BoxSize>;
+  /** the plane's saved, parent-relative positions, for an arrangement that
+   * reads them (see NotationProfile.layoutReadsPositions) */
+  positions?: Record<string, Point>;
+}
 
 export interface NodeGeometry {
   x: number;

@@ -38,7 +38,7 @@ const centre = (c: number, i: number) => ({ x: MARGIN + DIAMETER / 2 + c * COL, 
 describe('gitLayout', () => {
   it('stacks lanes as full-width bands and places commits by column, lane-relative', () => {
     const m = graph();
-    const r = gitLayout(view(m), m, m.planes[0]?.id);
+    const r = gitLayout({ view: view(m), model: m, plane: m.planes[0]?.id });
     expect(r.algorithm).toBe('git-graph');
     const width = MARGIN + 7 * COL + TAIL_GAP + LABEL_W + MARGIN; // columns 0..6
     expect(r.geometry.get('master')).toEqual({ x: 0, y: MARGIN, width, height: LANE });
@@ -56,7 +56,7 @@ describe('gitLayout', () => {
   it('routes every git link by direction: drop at the source going down, climb before the target going up', () => {
     const m = graph();
     const v = view(m);
-    const r = gitLayout(v, m, m.planes[0]?.id);
+    const r = gitLayout({ view: v, model: m, plane: m.planes[0]?.id });
     const s10 = centre(0, 0);
     const n1 = centre(1, 2);
     const n2 = centre(2, 2);
@@ -74,7 +74,12 @@ describe('gitLayout', () => {
   it('parks strays and non-branch roots in a row beneath the lanes', () => {
     const m = graph();
     m.nodes.push({ id: 'loose', name: '', type: 'commit' }, { id: 'note', name: 'Why', type: 'comment' });
-    const r = gitLayout(view(m), m, m.planes[0]?.id, new Map([['note', { width: 120, height: 40 }]]));
+    const r = gitLayout({
+      view: view(m),
+      model: m,
+      plane: m.planes[0]?.id,
+      sizeHints: new Map([['note', { width: 120, height: 40 }]]),
+    });
     const rowY = MARGIN + 3 * LANE + MARGIN;
     expect(r.geometry.get('loose')).toEqual({ x: MARGIN, y: rowY, width: DIAMETER, height: DIAMETER });
     expect(r.geometry.get('note')).toEqual({ x: MARGIN + DIAMETER + COL, y: rowY, width: 120, height: 40 });
@@ -83,7 +88,7 @@ describe('gitLayout', () => {
   it('a commit the view does not show gets no geometry and no route', () => {
     const m = graph();
     const v = compileView(m, { plane: m.planes[0]?.id }); // no pins: lanes rest folded, commits are not in the view
-    const r = gitLayout(v, m, m.planes[0]?.id);
+    const r = gitLayout({ view: v, model: m, plane: m.planes[0]?.id });
     expect(r.geometry.has('master')).toBe(true);
     expect(r.geometry.has('master-1')).toBe(false);
     expect(r.routes.size).toBe(0);
@@ -108,7 +113,7 @@ describe('gitLayout stages', () => {
 
   it('frames each stage across every lane, over exactly the columns it spans', () => {
     const m = staged();
-    const r = gitLayout(view(m), m, m.planes[0]?.id);
+    const r = gitLayout({ view: view(m), model: m, plane: m.planes[0]?.id });
     const frame = (fromCol: number, toCol: number) => ({
       x: MARGIN + DIAMETER / 2 + fromCol * COL - COL / 2,
       y: MARGIN,
@@ -121,11 +126,11 @@ describe('gitLayout stages', () => {
 
   it('makes room for the stage titles above the first lane — and only when a stage is drawn', () => {
     const m = staged();
-    const withStages = gitLayout(view(m), m, m.planes[0]?.id);
+    const withStages = gitLayout({ view: view(m), model: m, plane: m.planes[0]?.id });
     expect(withStages.geometry.get('master')!.y).toBe(MARGIN + STAGE_HEADER);
     expect(withStages.geometry.get('nightly')!.y).toBe(MARGIN + STAGE_HEADER + 2 * LANE);
     // routes follow the lanes down
-    const plain = gitLayout(view(graph()), graph(), undefined);
+    const plain = gitLayout({ view: view(graph()), model: graph(), plane: undefined });
     const e = view(m).layoutEdges[0]!;
     expect(withStages.routes.get(e.id)![0]!.y).toBe(plain.routes.get(e.id)![0]!.y + STAGE_HEADER);
     expect(plain.geometry.get('master')!.y).toBe(MARGIN);
@@ -133,7 +138,7 @@ describe('gitLayout stages', () => {
 
   it('never parks a stage in the spare row with the loose nodes', () => {
     const m = staged();
-    const r = gitLayout(view(m), m, m.planes[0]?.id);
+    const r = gitLayout({ view: view(m), model: m, plane: m.planes[0]?.id });
     const spareRowY = MARGIN + STAGE_HEADER + 3 * LANE + MARGIN;
     expect(r.geometry.get('work')!.y).toBeLessThan(spareRowY);
   });

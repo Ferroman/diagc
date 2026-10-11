@@ -196,20 +196,7 @@
       "count": 5
     }
   },
-  "packages/renderer/src/layout/fishbone-layout.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "packages/renderer/src/layout/fit-containers.ts": {
-    "max-params": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/layout/plan-layout.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    },
     "max-params": {
       "count": 1
     }
@@ -226,11 +213,6 @@
   },
   "packages/renderer/src/node/TableNode.tsx": {
     "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/notations.ts": {
-    "max-params": {
       "count": 1
     }
   },

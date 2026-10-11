@@ -319,7 +319,15 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     const notationLayout = input.profile.layout;
     const arrange =
       notationLayout !== undefined
-        ? Promise.resolve().then(() => notationLayout(input.compiled, input.model, input.plane, sizes, layoutPositions))
+        ? Promise.resolve().then(() =>
+            notationLayout({
+              view: input.compiled,
+              model: input.model,
+              plane: input.plane,
+              sizeHints: sizes,
+              positions: layoutPositions,
+            }),
+          )
         : layoutView(laidView, sizes, runSettings, partitions !== undefined ? { partitions } : undefined);
     void arrange
       .then((r) => {

@@ -32,13 +32,6 @@ interface Geo {
 }
 
 /**
- * Normalize every activity frame in the view into full-width stacked lane
- * bands. Geometry is parent-relative (React Flow nesting): lanes' x/y/w/h and
- * frames' w/h are overridden; frame x/y and all children stay untouched —
- * lanes grow around content, content never moves. Saved overlay sizes act as
- * minimums. Pure and cheap: runs on every placedGeometry recompute.
- */
-/**
  * Band order is containment order: the studio restacks a lane (move-child) or
  * slots a new one beside its neighbour by reordering containment, while the view
  * tree lists children in NODE order, which still says creation order. Only the
@@ -86,6 +79,13 @@ export interface BandOptions {
   sizes?: Record<string, Size>;
 }
 
+/**
+ * Normalize every activity frame in the view into full-width stacked lane
+ * bands. Geometry is parent-relative (React Flow nesting): lanes' x/y/w/h and
+ * frames' w/h are overridden; frame x/y and all children stay untouched —
+ * lanes grow around content, content never moves. Saved overlay sizes act as
+ * minimums. Pure and cheap: runs on every placedGeometry recompute.
+ */
 export function arrangeActivityFrames<T extends Geo>(
   geometry: ReadonlyMap<string, T>,
   view: CompiledView,
@@ -95,7 +95,7 @@ export function arrangeActivityFrames<T extends Geo>(
   if (!model.nodes.some((n) => n.type === ACTIVITY_FRAME_TYPE)) return geometry;
   const typeOf = new Map(model.nodes.map((n) => [n.id, n.type]));
   const out = new Map(geometry);
-  const L = ACTIVITY_LAYOUT;
+  const { TITLE_STRIP_W, LANE_MIN_W, LANE_MIN_H, PAD } = ACTIVITY_LAYOUT;
 
   const rankIn = laneRank(model, plane);
 
@@ -111,16 +111,16 @@ export function arrangeActivityFrames<T extends Geo>(
       const fg = out.get(frame.id)!;
       out.set(frame.id, {
         ...fg,
-        width: Math.max(fg.width, L.TITLE_STRIP_W + L.LANE_MIN_W),
-        height: Math.max(fg.height, L.LANE_MIN_H),
+        width: Math.max(fg.width, TITLE_STRIP_W + LANE_MIN_W),
+        height: Math.max(fg.height, LANE_MIN_H),
       });
       return;
     }
     const heights: number[] = [];
-    // L.LANE_MIN_W's type is the literal `320` (from ACTIVITY_LAYOUT's `as const`),
+    // LANE_MIN_W's type is the literal `320` (from ACTIVITY_LAYOUT's `as const`),
     // which does not widen through a plain `let` initializer — annotate so the
     // reassignment below (a plain `number`) type-checks.
-    let commonW: number = L.LANE_MIN_W;
+    let commonW: number = LANE_MIN_W;
     for (const lane of lanes) {
       let right = 0;
       let bottom = 0;
@@ -131,17 +131,17 @@ export function arrangeActivityFrames<T extends Geo>(
         bottom = Math.max(bottom, g.y + g.height);
       }
       const saved = sizes?.[lane.id];
-      heights.push(Math.max(L.LANE_MIN_H, bottom + L.PAD, saved?.h ?? 0));
-      commonW = Math.max(commonW, right + L.PAD, saved?.w ?? 0);
+      heights.push(Math.max(LANE_MIN_H, bottom + PAD, saved?.h ?? 0));
+      commonW = Math.max(commonW, right + PAD, saved?.w ?? 0);
     }
     let y = 0;
     lanes.forEach((lane, i) => {
       const g = out.get(lane.id)!;
-      out.set(lane.id, { ...g, x: L.TITLE_STRIP_W, y, width: commonW, height: heights[i]! });
+      out.set(lane.id, { ...g, x: TITLE_STRIP_W, y, width: commonW, height: heights[i]! });
       y += heights[i]!;
     });
     const fg = out.get(frame.id)!;
-    out.set(frame.id, { ...fg, width: L.TITLE_STRIP_W + commonW, height: y });
+    out.set(frame.id, { ...fg, width: TITLE_STRIP_W + commonW, height: y });
   };
 
   const walk = (n: ViewNode): void => {

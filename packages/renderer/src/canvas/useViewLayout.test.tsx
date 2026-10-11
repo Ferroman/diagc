@@ -37,7 +37,7 @@ function notationLayoutProfile(
 ): NotationProfile {
   return {
     id: 'default',
-    layout: (_view, _m, _plane, sizeHints, positions) => {
+    layout: ({ sizeHints, positions }) => {
       spy?.(sizeHints, positions);
       return { geometry: GEOMETRY, routes: new Map(), labelSpots: new Map(), algorithm: 'notation' };
     },
