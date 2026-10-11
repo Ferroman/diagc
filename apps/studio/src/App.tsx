@@ -28,6 +28,7 @@ import {
   emptyLayout,
   errMessage,
   defaultLayoutDirection,
+  defined,
   FISHBONE_NOTATION,
   GIT_NOTATION,
   isPlanZone,
@@ -137,10 +138,10 @@ const readClampedWidth = (raw: string | null, min: number, max: number): number 
 const applyTargetFor = (
   model: DiagramModel,
   selection: DiagramSelection | null,
-): { applyTarget: { id: string; name: string } } | undefined => {
+): { id: string; name: string } | undefined => {
   if (selection?.kind !== 'node') return undefined;
   const n = model.nodes.find((x) => x.id === selection.id);
-  return n !== undefined ? { applyTarget: { id: n.id, name: n.name || n.id } } : undefined;
+  return n !== undefined ? { id: n.id, name: n.name || n.id } : undefined;
 };
 
 /** `initialTheme` lets a host seed the color scheme (the Obsidian pane passes
@@ -524,7 +525,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
         pinned: activePlaneManual || layout?.planes[key]?.[id] !== undefined,
         source: layoutApiRef.current?.snapshotPositions()[id],
         width: size?.w ?? LEAF_SIZE.width,
-        ...(size !== undefined ? { size } : {}),
+        size,
         plane: activePlane,
       }),
     );
@@ -536,7 +537,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // The plane every plane-scoped command below is filed under; the base view
   // (undefined) sends no `plane` at all, which the commands read as "the
   // resolved default" (see layoutPlaneKey).
-  const planeOpt = activePlane !== undefined ? { plane: activePlane } : {};
+  const planeOpt = defined({ plane: activePlane });
 
   // Threat notes on the canvas. The note only reports gestures — which threat
   // to add, what a title became — and the host owns the model, exactly as it
@@ -736,7 +737,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     editor.dispatch({
       type: 'set-layout-settings',
       patch,
-      ...(activePlane !== undefined ? { plane: activePlane } : {}),
+      ...planeOpt,
     });
   };
 
@@ -1239,10 +1240,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           nodeId={selection.id}
                           activePlane={activePlane}
                           hasPin={pinned !== undefined}
-                          {...(pinned !== undefined ? { pinned } : {})}
-                          {...(live !== undefined ? { live } : {})}
+                          pinned={pinned}
+                          live={live}
                           autoFocusName={selection.id === renameId}
-                          {...(notation !== undefined ? { notation } : {})}
+                          notation={notation}
                           today={today}
                           onCommand={editor.dispatch}
                           onClose={() => select(null)}
@@ -1255,8 +1256,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           constituentIds={selection.constituentIds ?? [selection.id]}
                           onCommand={editor.dispatch}
                           onClose={() => select(null)}
-                          {...(notation !== undefined ? { notation } : {})}
-                          {...(activePlane !== undefined ? { activePlane } : {})}
+                          notation={notation}
+                          activePlane={activePlane}
                         />
                       ) : (
                         <Sidebar model={model} selection={selection} />
@@ -1267,7 +1268,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         library={lib.library}
                         onPlace={placeFromLibrary}
                         onApply={applyFromLibrary}
-                        {...(applyTargetFor(model, selection) ?? {})}
+                        applyTarget={applyTargetFor(model, selection)}
                         onAddNode={addNode}
                         onAddImages={(files) => void addImages(files)}
                         onAddCategory={lib.addCategory}
@@ -1315,10 +1316,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   onCompareSelect={compareSelect}
                   colorMode={theme}
                   assetBase={getHost().assetBase}
-                  {...(getHost().libraryBase !== undefined ? { libraryBase: getHost().libraryBase } : {})}
+                  libraryBase={getHost().libraryBase}
                   onOpenLink={(l) => getHost().openLink(l)}
                   styleId={pinnedStyle ?? style}
-                  {...(snap ? { snapGrid: SNAP_GRID } : {})}
+                  snapGrid={snap ? SNAP_GRID : undefined}
                   onCldEdges={handleCldEdges}
                   onViewPositionsChange={setMovedPositions}
                   onViewLabelMovesChange={setMovedLabels}
@@ -1337,9 +1338,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           ? { nodes: [selection.id, compareId], edges: [] }
                           : null))
                   }
-                  {...(notation !== undefined ? { notation } : {})}
-                  {...(viewLayout !== undefined ? { layout: viewLayout } : {})}
-                  {...(drawings !== undefined ? { drawings } : {})}
+                  notation={notation}
+                  layout={viewLayout}
+                  drawings={drawings}
                   {...(editing
                     ? {
                         mode: 'edit' as const,
@@ -1349,8 +1350,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         // (the read-only path passes `mode` without it — the view/edit
                         // split is then structural, not by convention).
                         edit: {
-                          ...(labelRequest !== undefined ? { editLabelRequest: labelRequest } : {}),
-                          ...(threatRequest !== undefined ? { editThreatRequest: threatRequest } : {}),
+                          editLabelRequest: labelRequest,
+                          editThreatRequest: threatRequest,
                           onNoteMoved: (target: ElementRef, offset: { dx: number; dy: number }) =>
                             editor.dispatch({ type: 'set-note-offset', target, offset, ...planeOpt }),
                           onToggleNote: (target: ElementRef, open: boolean) =>
@@ -1379,7 +1380,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                             editor.dispatch({
                               type: 'set-positions',
                               positions,
-                              ...(activePlane !== undefined ? { plane: activePlane } : {}),
+                              ...planeOpt,
                             });
                           },
                           onDropInto: (id: string, targetId: string, rel: Point) => {
@@ -1424,7 +1425,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                               nodeId: id,
                               x: pos.x,
                               y: pos.y,
-                              ...(activePlane !== undefined ? { plane: activePlane } : {}),
+                              ...planeOpt,
                             });
                           },
                           onConnect: (from: string, to: string, sourceHandle?: string | null) => {
@@ -1456,10 +1457,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                               type: 'add-relation',
                               from,
                               to,
-                              opts: {
-                                kind: connectKind(notation, m, from, to),
-                                ...(penLayer !== null ? { layer: penLayer } : {}),
-                              },
+                              opts: defined({ kind: connectKind(notation, m, from, to), layer: penLayer ?? undefined }),
                             });
                           },
                           onDeleteSelection: (sel: { nodeIds: string[]; relationIds: string[] }) => {
@@ -1514,14 +1512,14 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                             editor.dispatch({
                               type: 'add-stroke',
                               stroke: { id: uniqueStrokeId(d, layoutPlaneKey(m, activePlane)), ...stroke },
-                              ...(activePlane !== undefined ? { plane: activePlane } : {}),
+                              ...planeOpt,
                             });
                           },
                           onDeleteStroke: (id: string) =>
                             editor.dispatch({
                               type: 'delete-stroke',
                               id,
-                              ...(activePlane !== undefined ? { plane: activePlane } : {}),
+                              ...planeOpt,
                             }),
                         },
                       }
@@ -1570,7 +1568,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   <SecondOrderPanel
                     model={model}
                     selection={selection}
-                    {...(activePlane !== undefined && !activePlaneBorrowsContainment ? { plane: activePlane } : {})}
+                    plane={activePlaneBorrowsContainment ? undefined : activePlane}
                     onCommand={editor.dispatch}
                     onSelect={(id) => select({ kind: 'node', id })}
                     onCreated={requestLabelEdit}
@@ -1580,7 +1578,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   <FishbonePanel
                     model={model}
                     selection={selection}
-                    {...(activePlane !== undefined && !activePlaneBorrowsContainment ? { plane: activePlane } : {})}
+                    plane={activePlaneBorrowsContainment ? undefined : activePlane}
                     onCommand={editor.dispatch}
                     onSelect={(id) => select({ kind: 'node', id })}
                     onCreated={requestLabelEdit}
@@ -1590,13 +1588,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   reads the model — the register and the crossings still to
                   review are as much use on a read-only .diagram.ts threat model
                   as on an editable one. */}
-                {notation === TM_NOTATION && (
-                  <ThreatModelPanel
-                    model={model}
-                    {...(activePlane !== undefined ? { plane: activePlane } : {})}
-                    onSelect={select}
-                  />
-                )}
+                {notation === TM_NOTATION && <ThreatModelPanel model={model} plane={activePlane} onSelect={select} />}
                 {editing && (
                   <ActivityPanel
                     model={model}
@@ -1620,9 +1612,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           onChange: editing ? setLayoutSettings : previewLayoutSettings,
                           defaultDirection: defaultLayoutDirection(model),
                           algorithmLocked,
-                          ...(notationProfile(notation).defaultAlgorithm !== undefined
-                            ? { defaultAlgorithm: notationProfile(notation).defaultAlgorithm }
-                            : {}),
+                          defaultAlgorithm: notationProfile(notation).defaultAlgorithm,
                         }
                   }
                   styleControl={

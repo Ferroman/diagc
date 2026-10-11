@@ -28,6 +28,7 @@ import {
   latestCommit,
   containmentOn,
   containmentPlaneOf,
+  defined,
   spanOf,
   type DiagramModel,
   type DiagramNode,
@@ -272,7 +273,7 @@ export function quickAdd(
         beside: false,
         command: {
           type: 'batch',
-          commands: [{ type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) }],
+          commands: [{ type: 'add-node', node, ...defined({ parent: place.parent }) }],
         },
       };
     }
@@ -302,13 +303,13 @@ export function quickAdd(
       });
       // A successor copies the source's look, the same channels a sibling
       // does — a row of tinted zones stays tinted.
-      const look: Partial<DiagramNode> = {
-        ...(source.color !== undefined ? { color: source.color } : {}),
-        ...(source.shape !== undefined ? { shape: source.shape } : {}),
-        ...(source.image !== undefined ? { image: source.image } : {}),
-        ...(source.icon !== undefined ? { icon: source.icon } : {}),
-        ...(source.textColor !== undefined ? { textColor: source.textColor } : {}),
-      };
+      const look: Partial<DiagramNode> = defined({
+        color: source.color,
+        shape: source.shape,
+        image: source.image,
+        icon: source.icon,
+        textColor: source.textColor,
+      });
       const node: DiagramNode = {
         id: place.id,
         name: '',
@@ -327,15 +328,15 @@ export function quickAdd(
         command: {
           type: 'batch',
           commands: [
-            { type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) },
+            { type: 'add-node', node, ...defined({ parent: place.parent }) },
             {
               type: 'add-relation',
               from: sourceId,
               to: place.id,
-              opts: {
+              opts: defined({
                 kind: connectKind(ctx.notation, model, sourceId, place.id),
-                ...(ctx.penLayer !== null ? { layer: ctx.penLayer } : {}),
-              },
+                layer: ctx.penLayer ?? undefined,
+              }),
             },
           ],
         },
@@ -359,17 +360,17 @@ export function quickAdd(
       const look: Partial<DiagramNode> =
         recipe !== 'sibling'
           ? {}
-          : {
-              ...(source.color !== undefined ? { color: source.color } : {}),
-              ...(source.shape !== undefined ? { shape: source.shape } : {}),
-              ...(source.image !== undefined ? { image: source.image } : {}),
-              ...(source.icon !== undefined ? { icon: source.icon } : {}),
-              ...(source.textColor !== undefined ? { textColor: source.textColor } : {}),
-            };
+          : defined({
+              color: source.color,
+              shape: source.shape,
+              image: source.image,
+              icon: source.icon,
+              textColor: source.textColor,
+            });
       const node: DiagramNode = {
         id: place.id,
         name: '',
-        ...(type !== undefined ? { type } : {}),
+        ...defined({ type }),
         ...look,
         ...placeTags(place, ctx.penLayer),
       };
@@ -382,12 +383,12 @@ export function quickAdd(
         command: {
           type: 'batch',
           commands: [
-            { type: 'add-node', node, ...(place.parent !== undefined ? { parent: place.parent } : {}) },
+            { type: 'add-node', node, ...defined({ parent: place.parent }) },
             {
               type: 'add-relation',
               from: sourceId,
               to: place.id,
-              opts: { kind, ...(ctx.penLayer !== null ? { layer: ctx.penLayer } : {}) },
+              opts: defined({ kind, layer: ctx.penLayer ?? undefined }),
             },
           ],
         },
@@ -435,7 +436,7 @@ export function quickAddPlaced(out: QuickAdd, p: QuickAddPlacement): EditorComma
       nodeId: out.id,
       x: p.source.x + p.width + QUICK_ADD_GAP,
       y: p.source.y,
-      ...(p.plane !== undefined ? { plane: p.plane } : {}),
+      ...defined({ plane: p.plane }),
     });
   }
   if (out.beside && p.size !== undefined) {

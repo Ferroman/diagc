@@ -4,6 +4,7 @@ import {
   allowedParentTypes,
   borrowsContainment,
   CASCADE_DELETE_TYPES,
+  defined,
   IMAGE_REF,
   LIBRARY_IMAGE_REF,
   PLAN_NOTATION,
@@ -317,7 +318,7 @@ export function NodePanel({
       type: 'remove-containment',
       parent,
       child: nodeId,
-      ...(plane !== undefined ? { plane } : {}),
+      ...defined({ plane }),
     });
 
   const addMembership = () => {
@@ -345,8 +346,7 @@ export function NodePanel({
     onDeleted();
   };
 
-  const clearPin = () =>
-    onCommand({ type: 'clear-position', nodeId, ...(activePlane !== undefined ? { plane: activePlane } : {}) });
+  const clearPin = () => onCommand({ type: 'clear-position', nodeId, ...defined({ plane: activePlane }) });
 
   const commitPosition = () => {
     if (posX.trim() === '' || posY.trim() === '') return; // half a coordinate pins nothing
@@ -354,7 +354,7 @@ export function NodePanel({
     const y = Number(posY);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
     if (pinned !== undefined && pinned.x === x && pinned.y === y) return;
-    onCommand({ type: 'set-position', nodeId, x, y, ...(activePlane !== undefined ? { plane: activePlane } : {}) });
+    onCommand({ type: 'set-position', nodeId, x, y, ...defined({ plane: activePlane }) });
   };
 
   return (

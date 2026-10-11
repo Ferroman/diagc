@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import {
   CAUSAL_LOOP_NOTATION,
+  defined,
   openingPins,
   presetLayers,
   uniqueNodeId,
@@ -169,7 +170,7 @@ export function useViewOps({
       editor.dispatch({
         type: 'set-unfolded',
         ids: unfoldedOf({ ...pins, [id]: next }),
-        ...(activePlane !== undefined ? { plane: activePlane } : {}),
+        ...defined({ plane: activePlane }),
       });
     }
   };

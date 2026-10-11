@@ -1,20 +1,22 @@
-import type { DiagramNode, NodeDetails } from '@diagc/core/internal';
+import { defined, type DiagramNode, type NodeDetails } from '@diagc/core/internal';
 import type { Library, LibraryEntry } from './types';
 
 /** Build the node a placed entry produces: template fields + identity/scoping.
- * Undefined fields are omitted (no `type: undefined` keys — exactOptionalPropertyTypes). */
+ * Undefined fields are left out rather than written as `type: undefined`. */
 export function entryToNode(entry: LibraryEntry, id: string, opts?: { plane?: string; layer?: string }): DiagramNode {
   const t = entry.template;
   return {
     id,
     name: entry.name,
-    ...(t.type !== undefined ? { type: t.type } : {}),
-    ...(t.color !== undefined ? { color: t.color } : {}),
-    ...(t.image !== undefined ? { image: t.image } : {}),
-    ...(t.shape !== undefined ? { shape: t.shape } : {}),
-    ...(t.columns !== undefined ? { columns: t.columns } : {}),
-    ...(opts?.plane !== undefined ? { plane: opts.plane } : {}),
-    ...(opts?.layer !== undefined ? { layer: opts.layer } : {}),
+    ...defined({
+      type: t.type,
+      color: t.color,
+      image: t.image,
+      shape: t.shape,
+      columns: t.columns,
+      plane: opts?.plane,
+      layer: opts?.layer,
+    }),
   };
 }
 

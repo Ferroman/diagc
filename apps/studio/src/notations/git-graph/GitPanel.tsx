@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  defined,
   gapOf,
   gitGraph,
   latestCommit,
@@ -42,7 +43,7 @@ const gapInput = (raw: string): number => {
 export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPanelProps) {
   const g = gitGraph(model, plane);
   const planeId = plane ?? model.planes[0]?.id;
-  const parent = (laneId: string) => ({ id: laneId, ...(planeId !== undefined ? { plane: planeId } : {}) });
+  const parent = (laneId: string) => defined({ id: laneId, plane: planeId });
 
   const [laneName, setLaneName] = useState('');
   const [laneColor, setLaneColor] = useState('');

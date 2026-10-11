@@ -308,7 +308,7 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation,
           target={{ relation: relationId }}
           threats={relation.threats ?? []}
           applicable={strideFor(relation.kind)}
-          {...(crossing !== undefined ? { crossing } : {})}
+          crossing={crossing}
           onCommand={onCommand}
         />
       )}
@@ -492,9 +492,9 @@ export function EdgePanel({ model, constituentIds, onCommand, onClose, notation,
           relationId={activeId}
           onCommand={onCommand}
           onClose={onClose}
-          {...(notation !== undefined ? { notation } : {})}
-          {...(activePlane !== undefined ? { activePlane } : {})}
-          {...(single ? {} : { onBack: () => setSelectedId(null) })}
+          notation={notation}
+          activePlane={activePlane}
+          onBack={single ? undefined : () => setSelectedId(null)}
         />
       ) : relations.length === 0 ? (
         <p className="muted">No relations.</p>

@@ -1,4 +1,4 @@
-import type { Point } from '@diagc/core/internal';
+import { defined, type Point } from '@diagc/core/internal';
 import { getHost } from '../host';
 import { useKeyHint } from '../hotkeys/HotkeysContext';
 import type { EditorApi } from '../session/useEditor';
@@ -13,7 +13,7 @@ interface RelayoutInput {
  *  fresh arrangement under manual. Exported because the button and the hotkey
  *  must be the same function — confirm and all. */
 export async function relayoutPlane(editor: EditorApi, o: RelayoutInput): Promise<void> {
-  const planeOpt = o.activePlane !== undefined ? { plane: o.activePlane } : {};
+  const planeOpt = defined({ plane: o.activePlane });
   if (o.autoLayout) {
     if (!(await getHost().confirmDialog('Clear all pinned positions on this plane and re-layout?'))) return;
     editor.dispatch({ type: 'clear-positions', ...planeOpt });

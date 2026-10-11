@@ -80,11 +80,7 @@ export function PlanPanel({ model, plane, selection, onCommand, onSelect, today 
             );
           })}
         </ul>
-        <button
-          type="button"
-          className="chip"
-          onClick={() => run(addZone(model, plane, { ...(selected !== undefined ? { selected } : {}), today }))}
-        >
+        <button type="button" className="chip" onClick={() => run(addZone(model, plane, { selected, today }))}>
           Add zone
         </button>
       </section>
@@ -104,11 +100,7 @@ export function PlanPanel({ model, plane, selection, onCommand, onSelect, today 
             );
           })}
         </ul>
-        <button
-          type="button"
-          className="chip"
-          onClick={() => run(addEvent(model, plane, { ...(selected !== undefined ? { selected } : {}), today }))}
-        >
+        <button type="button" className="chip" onClick={() => run(addEvent(model, plane, { selected, today }))}>
           Add event
         </button>
       </section>

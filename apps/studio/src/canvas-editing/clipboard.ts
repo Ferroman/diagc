@@ -2,6 +2,7 @@ import {
   ACTIVITY_FRAME_TYPE,
   ACTIVITY_LANE_TYPE,
   childrenOf,
+  defined,
   isActivityChrome,
   layoutPlaneKey,
   containmentOn,
@@ -193,7 +194,7 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
   }
   const layers = new Set(model.layers.map((l) => l.id));
   const scopedPlane = ctx.plane !== undefined && !ctx.borrowsContainment ? ctx.plane : undefined;
-  const planeOpt = ctx.plane !== undefined ? { plane: ctx.plane } : {};
+  const planeOpt = defined({ plane: ctx.plane });
   const fresh = (n: DiagramNode): DiagramNode => {
     // `key` is cross-diagram identity: a copy sharing it would MERGE with its
     // original on compose. Plane and layer are re-scoped to where it lands.
@@ -202,8 +203,7 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
     return {
       ...rest,
       id: idMap.get(n.id)!,
-      ...(scopedPlane !== undefined ? { plane: scopedPlane } : {}),
-      ...(onLayer !== undefined ? { layer: onLayer } : {}),
+      ...defined({ plane: scopedPlane, layer: onLayer }),
     };
   };
 
@@ -250,14 +250,16 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
       to,
       opts: {
         kind: r.kind,
-        ...(r.label !== undefined ? { label: r.label } : {}),
-        ...(onLayer !== undefined ? { layer: onLayer } : {}),
-        ...(r.description !== undefined ? { description: r.description } : {}),
-        ...(r.style !== undefined ? { style: r.style } : {}),
-        ...(r.polarity !== undefined ? { polarity: r.polarity } : {}),
-        ...(r.delay !== undefined ? { delay: r.delay } : {}),
-        ...(r.fromColumn !== undefined ? { fromColumn: r.fromColumn } : {}),
-        ...(r.toColumn !== undefined ? { toColumn: r.toColumn } : {}),
+        ...defined({
+          label: r.label,
+          layer: onLayer,
+          description: r.description,
+          style: r.style,
+          polarity: r.polarity,
+          delay: r.delay,
+          fromColumn: r.fromColumn,
+          toColumn: r.toColumn,
+        }),
       },
     });
     if (r.labels !== undefined) {

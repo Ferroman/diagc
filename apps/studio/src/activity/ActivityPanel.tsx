@@ -15,6 +15,7 @@ import {
   bestLaneOrder,
   containmentOn,
   containmentPlaneOf,
+  defined,
   isOnPlane,
   uniqueNodeId,
   type DiagramModel,
@@ -68,7 +69,7 @@ export function reorderLanesCommand(
         parent: frameId,
         child: lane,
         offset: -1,
-        ...(plane !== undefined ? { plane } : {}),
+        ...defined({ plane }),
       });
       [order[at - 1], order[at]] = [order[at]!, order[at - 1]!];
     }
@@ -92,7 +93,7 @@ export function moveLaneCommand(
     parent: frameId,
     child: laneId,
     offset: offset < 0 ? -1 : 1,
-    ...(plane !== undefined ? { plane } : {}),
+    ...defined({ plane }),
   };
   const n = Math.abs(offset);
   return n === 1 ? step : { type: 'batch', commands: Array.from({ length: n }, () => step) };
@@ -126,7 +127,7 @@ export function activityContext(
     const seen = new Set<string>();
     for (let n = byId.get(selection.id); n !== undefined && !seen.has(n.id); n = byId.get(parentOf.get(n.id) ?? '')) {
       seen.add(n.id);
-      if (n.type === ACTIVITY_FRAME_TYPE) return { frame: n, ...(target !== undefined ? { target } : {}) };
+      if (n.type === ACTIVITY_FRAME_TYPE) return { frame: n, target };
       if (target === undefined && (n.type === ACTIVITY_LANE_TYPE || n.type === ACTIVITY_REGION_TYPE)) target = n;
     }
   }
@@ -152,7 +153,7 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
   const context = activityContext(model, selection, planeId);
   if (context === undefined) return null;
   const { frame, target } = context;
-  const withPlane = planeId !== undefined ? { plane: planeId } : {};
+  const withPlane = defined({ plane: planeId });
 
   const inPlane = containmentOn(model, planeId);
   const L = ACTIVITY_LAYOUT;

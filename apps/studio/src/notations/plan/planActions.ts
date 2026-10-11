@@ -6,6 +6,7 @@ import {
   atOf,
   buildHierarchy,
   dayOf,
+  defined,
   isPlanActor,
   isPlanEvent,
   isPlanRole,
@@ -35,7 +36,7 @@ export interface MoveDelta {
 }
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
-const planeOpt = (plane: string | undefined) => (plane !== undefined ? { plane } : {});
+const planeOpt = (plane: string | undefined) => defined({ plane });
 /** The plane a quick-added node is tagged with: the active plane, unless it borrows
  * another's containment. The view matches a node's `plane` against the plane whose
  * containment it reads, so a node tagged with the borrowing plane's own id would show

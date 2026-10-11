@@ -172,7 +172,7 @@ export function DiagramPicker({
             aria-expanded="true"
             aria-controls={`${uid}-list`}
             aria-autocomplete="list"
-            {...(active !== undefined ? { 'aria-activedescendant': optionId(active) } : {})}
+            aria-activedescendant={active !== undefined ? optionId(active) : undefined}
             placeholder="Search diagrams…"
             value={query}
             onChange={(e) => {

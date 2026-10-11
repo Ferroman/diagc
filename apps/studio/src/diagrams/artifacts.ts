@@ -1,4 +1,5 @@
 import {
+  defined,
   isDrawings,
   isLayoutOverlay,
   validate,
@@ -38,7 +39,7 @@ export function loadArtifacts(
     // treated as absent rather than crashing the client.
     const rawLayout = layouts[d.name];
     const layout = isLayoutOverlay(rawLayout) ? rawLayout : undefined;
-    const withLayout = layout !== undefined ? { layout } : {};
+    const withLayout = defined({ layout });
     // Same trust rule as the layout: the server only parses, the guard decides.
     const rawDrawings = drawings[d.name];
     const withDrawings = isDrawings(rawDrawings) ? { drawings: rawDrawings } : {};
