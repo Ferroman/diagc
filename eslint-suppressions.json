@@ -206,17 +206,6 @@
       "count": 1
     }
   },
-  "packages/renderer/src/layout/lane-router.ts": {
-    "complexity": {
-      "count": 2
-    },
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "max-params": {
-      "count": 4
-    }
-  },
   "packages/renderer/src/layout/layout-graph.ts": {
     "complexity": {
       "count": 1
