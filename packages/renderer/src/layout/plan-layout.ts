@@ -151,7 +151,7 @@ function layZone(run: PlanRun, id: string): BoxSize {
     posBottom = Math.max(posBottom ?? 0, cy + size.height);
   }
   // the remaining "others" flow left to right inside the padding, wrapping
-  // like text, around any positioned ones
+  // like text, as though the positioned ones were not there
   let x = PAD;
   let rowH = 0;
   for (const c of flowed) {

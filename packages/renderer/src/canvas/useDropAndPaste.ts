@@ -48,7 +48,8 @@ export function useDropAndPaste(input: DropAndPasteInput): DropAndPaste {
     };
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- wrapperRef is a stable useRef identity from DiagramView, read through .current
+    /* eslint-disable-next-line react-hooks/exhaustive-deps --
+       wrapperRef is a stable useRef identity from DiagramView, read through .current */
   }, [editing, onImageFiles, reactFlow]);
 
   const onDragOver = (e: DragEvent<HTMLDivElement>) => {

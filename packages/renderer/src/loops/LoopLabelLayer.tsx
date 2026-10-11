@@ -43,7 +43,10 @@ function LoopBadge({
   onSelect?: () => void;
 }) {
   const sketchPaths = useMemo(
-    () => (rough !== undefined ? sketchCircle(CENTER, CENTER, CIRCLE_R * 2, seedFrom(placement.key), rough) : null),
+    () =>
+      rough !== undefined
+        ? sketchCircle({ x: CENTER, y: CENTER }, CIRCLE_R * 2, { style: rough, seed: seedFrom(placement.key) })
+        : null,
     [placement.key, rough],
   );
   const label = placement.kind === 'unknown' ? '?' : placement.kind;

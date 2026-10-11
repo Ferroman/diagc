@@ -13,7 +13,7 @@ import type { EditingApi } from '../canvas/view-types';
 
 /**
  * A plan role chip, in edit mode: the same pill NodeChips draws in view mode,
- * now a button that opens a short menu — the other two roles, then Remove — and
+ * here a button that opens a short menu — the other two roles, then Remove — and
  * turns the choice into one EditingApi.onSetRole call. `className` is handed
  * in whole (NodeChips computes the base classes plus the reciprocal
  * `dg-role-chip-active` modifier the same way for both the span and this), so
@@ -30,7 +30,7 @@ import type { EditingApi } from '../canvas/view-types';
  * ancestor — the trigger carries it, but the menu's ITEMS, rendered inside
  * the node, would not, so a mousedown that moved even a pixel before mouseup
  * would drag the zone and swallow the click. Portalling to the body escapes
- * both: it is no longer inside the node's stacking context, and `nodrag
+ * both: it is outside the node's stacking context, and `nodrag
  * nopan` on the portalled container covers every item under it.
  */
 export function RoleChipMenu({
@@ -62,7 +62,7 @@ export function RoleChipMenu({
     menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     const onDown = (e: MouseEvent) => {
       const target = e.target as Node;
-      // The menu is portalled to <body> below, so it is no longer a DOM
+      // The menu is portalled to <body> below, so it is not a DOM
       // descendant of `rootRef` — react's tree says it is a child, the DOM's
       // does not. Without also checking `menuRef` here, a mousedown on any
       // item would read as "outside" and close the menu (see close(false)
@@ -147,7 +147,7 @@ export function RoleChipMenu({
           <div
             id={menuId}
             ref={menuRef}
-            // nodrag nopan: portalled out of the node, so these no longer
+            // nodrag nopan: portalled out of the node, so these do not
             // ride along on an ancestor the way the trigger's do — every item
             // below needs both, or the same drag-starts-instead-of-a-click
             // failure the class doc comment above describes.

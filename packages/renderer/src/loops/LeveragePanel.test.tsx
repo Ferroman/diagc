@@ -71,6 +71,24 @@ describe('LeveragePanel', () => {
     expect(onFocus).toHaveBeenLastCalledWith(null);
   });
 
+  it('keeps a clicked row, and the keyboard focus on it, when the panel re-renders lit', () => {
+    const { container, rerender } = renderPanel();
+    const row = container.querySelector<HTMLButtonElement>('[data-focus="drv:a"]')!;
+    row.focus();
+    rerender(
+      <LeveragePanel
+        model={emptyModel}
+        edges={edges}
+        target="t"
+        activeFocusKey="drv:a"
+        onFocus={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+    expect(container.querySelector('[data-focus="drv:a"]')).toBe(row);
+    expect(document.activeElement).toBe(row);
+  });
+
   it('focuses a hub on the union of the target loops that contain it', () => {
     const { container, onFocus } = renderPanel();
     fireEvent.click(container.querySelector('[data-focus="hub:a"]')!);
@@ -153,5 +171,72 @@ describe('LeveragePanel', () => {
       compareId: 'z',
     });
     expect(getByText(/No causal path/)).toBeDefined();
+  });
+});
+
+describe('LeveragePanel — row by row', () => {
+  const loop = (a: string, b: string, signed = true): LoopEdgeInput[] => [
+    { id: `${a}${b}`, from: a, to: b, ...(signed ? { polarity: '+' as const } : {}) },
+    { id: `${b}${a}`, from: b, to: a, polarity: '+' },
+  ];
+
+  it('marks the lit row active, and only that one', () => {
+    const { container } = renderPanel({ activeFocusKey: 'drv:a' });
+    expect(container.querySelector('[data-focus="drv:a"]')?.classList.contains('active')).toBe(true);
+    expect(container.querySelectorAll('.dg-lev-row.active').length).toBe(1);
+  });
+
+  it('lights a hub across every loop it is in, past a shorter loop it is not', () => {
+    // t↔x is the shortest loop; the hub h is in the two three-variable loops
+    const shared: LoopEdgeInput[] = [
+      ...loop('t', 'x'),
+      { id: 'th', from: 't', to: 'h', polarity: '+' },
+      { id: 'hz', from: 'h', to: 'z', polarity: '+' },
+      { id: 'zt', from: 'z', to: 't', polarity: '+' },
+      { id: 'hy', from: 'h', to: 'y', polarity: '+' },
+      { id: 'yt', from: 'y', to: 't', polarity: '+' },
+    ];
+    const { container, onFocus } = renderPanel({ edges: shared });
+    fireEvent.click(container.querySelector('[data-focus="hub:h"]')!);
+    const focus = onFocus.mock.calls[0]![0] as { nodes: string[]; edges: string[] };
+    expect([...focus.nodes].sort()).toEqual(['h', 't', 'y', 'z']);
+    expect([...focus.edges].sort()).toEqual(['hy', 'hz', 'th', 'yt', 'zt']);
+  });
+
+  it('caps the loops at ten, the drivers at eight and the hubs at eight, and says how many more', () => {
+    // t↔v1…v11: eleven loops; d1…d9 → t: nine more drivers; each h_i in two loops
+    const many: LoopEdgeInput[] = [
+      ...Array.from({ length: 11 }, (_, i) => loop('t', `v${i}`)).flat(),
+      ...Array.from({ length: 9 }, (_, i) => ({ id: `d${i}`, from: `d${i}`, to: 't', polarity: '+' as const })),
+    ];
+    const { container, getByText } = renderPanel({ edges: many });
+    expect(container.querySelectorAll('[data-focus^="loop:"]').length).toBe(10);
+    expect(getByText('+1 more (shortest shown)')).toBeDefined();
+    expect(container.querySelectorAll('[data-focus^="drv:"]').length).toBe(8);
+    expect(getByText(`+${20 - 8} more`)).toBeDefined();
+    const hubby: LoopEdgeInput[] = Array.from({ length: 9 }, (_, i) => [
+      ...loop('t', `h${i}`),
+      { id: `h${i}w`, from: `h${i}`, to: `w${i}`, polarity: '+' as const },
+      { id: `w${i}t`, from: `w${i}`, to: 't', polarity: '+' as const },
+    ]).flat();
+    const hubs = renderPanel({ edges: hubby });
+    expect(hubs.container.querySelectorAll('[data-focus^="hub:"]').length).toBe(8);
+  });
+
+  it("says 'loop' for a driver in one loop", () => {
+    const { container } = renderPanel();
+    const a = container.querySelector('[data-focus="drv:a"]')!.textContent!;
+    expect(a).toContain('· in 1 loop');
+    expect(a).not.toContain('loops');
+  });
+
+  it('compares nothing when the comparison is the variable itself', () => {
+    const { container } = renderPanel({ compareId: 't' });
+    expect(container.textContent).not.toContain('Dependency');
+  });
+
+  it('calls a loop with an unsigned link unknown, not a brake', () => {
+    const { container } = renderPanel({ edges: loop('t', 'u', false) });
+    expect(container.querySelector('[data-focus^="loop:"]')?.textContent).toBe('unknown unknown · 2 vars');
   });
 });

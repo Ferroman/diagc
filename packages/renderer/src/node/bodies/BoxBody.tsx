@@ -73,7 +73,7 @@ function boxLook(
   const ink = style.outline === true && data.color !== undefined ? outlineInk(data.color) : undefined;
   const outline = ink !== undefined;
   // Registry solid look (e.g. the C4 profile): applies only when nothing more
-  // specific colours the node — an explicit color keeps today's accent path.
+  // specific colours the node — an explicit color keeps the accent path.
   const solid =
     data.color === undefined && style.fill !== undefined
       ? {
@@ -83,7 +83,9 @@ function boxLook(
         }
       : undefined;
   return {
-    className: `dg-node dg-shape-${style.shape}${style.dashed === true ? ' dg-dashed' : ''}${outline ? ' dg-c4-outline' : ''}${solid !== undefined && data.stylePreset?.rough === undefined ? ' dg-solid' : ''}`,
+    className:
+      `dg-node dg-shape-${style.shape}${style.dashed === true ? ' dg-dashed' : ''}${outline ? ' dg-c4-outline' : ''}` +
+      `${solid !== undefined && data.stylePreset?.rough === undefined ? ' dg-solid' : ''}`,
     accent: {
       ...(solid ?? (ink !== undefined ? { borderColor: ink, color: ink } : accentStyle(data.color))),
       // an explicit text color overrides the default (which follows the accent on C4 boxes)

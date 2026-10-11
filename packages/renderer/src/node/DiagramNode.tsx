@@ -56,7 +56,8 @@ export interface DiagramNodeData {
   libraryBase?: string;
   /** style preset with rough params — render hand-drawn chrome (absent = crisp) */
   stylePreset?: StylePreset;
-  /** active visual language (e.g. 'causal-loop'); selects the notation profile (see notations.ts) that drives typeless-as-text rendering and other look overrides */
+  /** active visual language (e.g. 'causal-loop'); selects the notation profile (see
+   * notations.ts) that drives typeless-as-text rendering and other look overrides */
   notation?: NotationId;
   /** drill-view external stub: a ghost standing in for an off-frame node an
    * edge points to. Clicking it navigates there. */

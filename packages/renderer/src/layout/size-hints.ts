@@ -96,6 +96,8 @@ const defaultSizeRule: Rule = (n, ctx) => {
 /** the notation's leaf size (a causal-loop variable drawn as text) */
 const notationRule: Rule = (n, ctx) => ctx.profile.node?.leafSize?.(n);
 
+const RULES: readonly Rule[] = [tableRule, labelRule, shapeRule, imageRule, defaultSizeRule, notationRule];
+
 /**
  * The size elk is told for one node before its view state is known (withBoxSizes
  * lays the box estimates over these per view). The first rule that applies wins,
@@ -104,7 +106,7 @@ const notationRule: Rule = (n, ctx) => ctx.profile.node?.leafSize?.(n);
  * leaf size.
  */
 export function sizeHintFor(n: DiagramNode, ctx: SizeHintContext): SizeHint | undefined {
-  for (const rule of [tableRule, labelRule, shapeRule, imageRule, defaultSizeRule, notationRule]) {
+  for (const rule of RULES) {
     const hint = rule(n, ctx);
     if (hint !== undefined) return hint;
   }

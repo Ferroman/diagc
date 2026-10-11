@@ -30,11 +30,14 @@ export interface DiagramEdgeData {
   kindRegistry: Registry<KindStyle>;
   /** style preset with rough params — roughen the stroke (absent = crisp) */
   stylePreset?: StylePreset;
-  /** active visual language (e.g. 'causal-loop'); selects the notation profile (see notations.ts) that drives notation-specific rendering (CLD marks/text nodes) */
+  /** active visual language (e.g. 'causal-loop'); selects the notation profile (see
+   * notations.ts) that drives notation-specific rendering (CLD marks/text nodes) */
   notation?: NotationId;
-  /** causal-loop-diagram polarity of the sole constituent; drives the +/− mark rendered beside the edge when the notation profile enables marks */
+  /** causal-loop-diagram polarity of the sole constituent; drives the +/− mark rendered
+   * beside the edge when the notation profile enables marks */
   polarity?: Polarity;
-  /** causal-loop-diagram delay marker of the sole constituent; drives the hash-mark rendered on the edge when the notation profile enables marks */
+  /** causal-loop-diagram delay marker of the sole constituent; drives the hash-mark
+   * rendered on the edge when the notation profile enables marks */
   delay?: boolean;
   /** open/total STRIDE threats on the element; absent when it carries none
    * (summed over every constituent — see buildEdgeData) */

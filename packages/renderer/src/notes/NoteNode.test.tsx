@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { describe, expect, it, vi } from 'vitest';
 import { NOTE_WIDTH, NoteNode, type NoteData } from './NoteNode';
+import { threatBadgeProps } from './threat-badge';
 
 const base: NoteData = {
   target: { node: 'a' },
@@ -328,5 +329,75 @@ describe('NoteNode — comments and links', () => {
     expect(container.querySelector('.dg-note-count')).not.toBeNull();
     expect(container.querySelectorAll('.dg-note-row').length).toBe(base.threats.length);
     expect(container.querySelectorAll('.dg-note-comment').length).toBe(1);
+  });
+});
+
+describe('NoteNode — who may do what', () => {
+  it("lets the row opened here win over the host's", () => {
+    const { container } = draw({ ...base, editing: true, editingId: 't2', onRetitleThreat: vi.fn() });
+    fireEvent.doubleClick(container.querySelectorAll('.dg-note-title')[0]!);
+    expect((screen.getByLabelText('Rename threat') as HTMLInputElement).value).toBe('Spoofed session');
+  });
+
+  it('hands the host a trimmed title', () => {
+    const onRetitleThreat = vi.fn();
+    const { container } = draw({ ...base, editing: true, onRetitleThreat });
+    fireEvent.doubleClick(container.querySelectorAll('.dg-note-title')[0]!);
+    const input = screen.getByLabelText('Rename threat');
+    fireEvent.change(input, { target: { value: '  Session fixation  ' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onRetitleThreat).toHaveBeenCalledWith({ node: 'a' }, 't1', 'Session fixation');
+  });
+
+  it('opens no title for typing in view mode, nor once editing starts', () => {
+    const viewing = draw({ ...base, onRetitleThreat: vi.fn() });
+    fireEvent.doubleClick(viewing.container.querySelectorAll('.dg-note-title')[0]!);
+    expect(screen.queryByLabelText('Rename threat')).toBeNull();
+    viewing.rerender(
+      <ReactFlowProvider>
+        <NoteNode id="note:node:a" data={{ ...base, editing: true, onRetitleThreat: vi.fn() }} />
+      </ReactFlowProvider>,
+    );
+    expect(screen.queryByLabelText('Rename threat')).toBeNull();
+  });
+
+  it('offers a status button, the + and the detail fields only in edit mode and where the host listens', () => {
+    const listening = {
+      onSetThreatStatus: vi.fn(),
+      onAddThreat: vi.fn(),
+      onEditThreatText: vi.fn(),
+    };
+    const viewing = draw({ ...base, ...listening });
+    expect(viewing.container.querySelector('button.dg-note-status')).toBeNull();
+    expect(viewing.container.querySelector('.dg-note-add')).toBeNull();
+    viewing.unmount();
+    const deaf = draw({ ...base, editing: true });
+    expect(deaf.container.querySelector('button.dg-note-status')).toBeNull();
+    fireEvent.click(deaf.container.querySelectorAll('.dg-note-expand')[1]!);
+    expect(deaf.container.querySelector('textarea')).toBeNull();
+    expect(deaf.container.querySelector('.dg-note-details')?.textContent).toContain('chmod 600');
+  });
+
+  it('draws no tail while React Flow reports a zero size', () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <NoteNode
+          id="note:node:a"
+          data={{ ...base, badge: { x: 340, y: 200 } }}
+          positionAbsoluteX={100}
+          positionAbsoluteY={100}
+          width={0}
+          height={0}
+        />
+      </ReactFlowProvider>,
+    );
+    expect(container.querySelector('.dg-note-tail')).toBeNull();
+  });
+
+  it("titles the count with the badge's own wording", () => {
+    const { container } = draw(base);
+    expect(container.querySelector('.dg-note-count')?.getAttribute('title')).toBe(
+      threatBadgeProps({ open: 1, total: 2 }).title,
+    );
   });
 });

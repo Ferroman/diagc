@@ -76,7 +76,7 @@ export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue
 export { IMAGE_REF, LIBRARY_IMAGE_REF } from './validate/nodes';
 export { isDrawings, isLayoutOverlay } from './guards';
 export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrokeId } from './drawings';
-export { defined, errMessage, SOURCE_URL, type Defined } from './util';
+export { defined, errMessage, SOURCE_URL, type Defined, type SameKeys } from './util';
 export { allowedParentTypes, childrenOf, countAnchored } from './children';
 export { bestLaneOrder } from './lanes';
 export { lintModel, type LintCode, type LintFinding } from './lint';

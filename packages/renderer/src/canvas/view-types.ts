@@ -173,8 +173,8 @@ export interface DiagramViewProps {
    * (parent-relative, keyed by node id — the layout overlay's own shape). The
    * host may persist them to the layout sidecar, which is safe even for a
    * read-only TS-authored diagram because coordinates were never part of the
-   * model. The renderer keeps treating them as throwaway state, so a host that
-   * ignores this prop behaves exactly as before. Reports `{}` when the drags are
+   * model. The renderer keeps treating them as throwaway state, so a host is
+   * free to ignore this prop. Reports `{}` when the drags are
    * dropped (plane switch, model reload, edit-mode toggle). */
   onViewPositionsChange?: (positions: Record<string, Point>) => void;
   /** view mode: the edge labels the viewer slid along their edges (Alt+drag a

@@ -558,7 +558,7 @@ describe('DiagramEdge', () => {
       // away from it.
       const params = { ...facingCoords, ...facingPositions };
       const curvature = 0.55; // profile.edgeCurvature for 'causal-loop', no relStyle override here
-      const expected = edgePoint('bow', params, curvature, 0.5, 'left');
+      const expected = edgePoint({ shape: 'bow', params: params, curvature: curvature, side: 'left' }, 0.5);
       expect(Math.abs(expected.y - facingCoords.sourceY)).toBeGreaterThan(5); // sanity: bow really moves off the chord
 
       const { baseElement } = renderFacing({
@@ -797,9 +797,9 @@ describe('DiagramEdge', () => {
       // OWN spot: the t = 0.25 frame offset along the normal, not the threat
       // badge's t = 0.75. The curve is the one the component builds for an
       // unmeasured, unrouted, notation-less edge (see useEdgePath).
-      const curve = shapeCurve(
-        'curved',
-        {
+      const curve = shapeCurve({
+        shape: 'curved',
+        params: {
           sourceX: 0,
           sourceY: 0,
           targetX: 100,
@@ -807,8 +807,8 @@ describe('DiagramEdge', () => {
           sourcePosition: Position.Bottom,
           targetPosition: Position.Top,
         },
-        notationProfile(undefined).edgeCurvature,
-      );
+        curvature: notationProfile(undefined).edgeCurvature,
+      });
       const frame = markFrame(curve, 0.25);
       expect(placeBadge).toHaveBeenCalledWith('r1', badgePosition(frame), frame.normal, expect.anything());
       expect(badgePosition(frame)).not.toEqual(badgePosition(markFrame(curve, 0.75)));

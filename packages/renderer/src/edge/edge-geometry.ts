@@ -33,27 +33,31 @@ function calculateControlOffset(distance: number, curvature: number): number {
   return curvature * 25 * Math.sqrt(-distance);
 }
 
-// Mirrors @xyflow/system's `getControlWithCurvature` exactly.
-function getControlWithCurvature(pos: Position, x1: number, y1: number, x2: number, y2: number, c: number): Point {
+// Mirrors @xyflow/system's `getControlWithCurvature` exactly: the control for
+// the handle at `from`, facing `pos`, on a curve that runs to `to`.
+function getControlWithCurvature(pos: Position, from: Point, to: Point, c: number): Point {
   switch (pos) {
     case Position.Left:
-      return { x: x1 - calculateControlOffset(x1 - x2, c), y: y1 };
+      return { x: from.x - calculateControlOffset(from.x - to.x, c), y: from.y };
     case Position.Right:
-      return { x: x1 + calculateControlOffset(x2 - x1, c), y: y1 };
+      return { x: from.x + calculateControlOffset(to.x - from.x, c), y: from.y };
     case Position.Top:
-      return { x: x1, y: y1 - calculateControlOffset(y1 - y2, c) };
+      return { x: from.x, y: from.y - calculateControlOffset(from.y - to.y, c) };
     case Position.Bottom:
     default:
-      return { x: x1, y: y1 + calculateControlOffset(y2 - y1, c) };
+      return { x: from.x, y: from.y + calculateControlOffset(to.y - from.y, c) };
   }
 }
 
+/** a cubic Bézier's four points: the two ends and the two controls between them */
+type Cubic = [Point, Point, Point, Point];
+
 /** the four control points xyflow's `getBezierPath` would build for this curvature */
-function bezierControlPoints(params: EdgePathParams, curvature: number): [Point, Point, Point, Point] {
+function bezierControlPoints(params: EdgePathParams, curvature: number): Cubic {
   const p0: Point = { x: params.sourceX, y: params.sourceY };
   const p3: Point = { x: params.targetX, y: params.targetY };
-  const p1 = getControlWithCurvature(params.sourcePosition, p0.x, p0.y, p3.x, p3.y, curvature);
-  const p2 = getControlWithCurvature(params.targetPosition, p3.x, p3.y, p0.x, p0.y, curvature);
+  const p1 = getControlWithCurvature(params.sourcePosition, p0, p3, curvature);
+  const p2 = getControlWithCurvature(params.targetPosition, p3, p0, curvature);
   return [p0, p1, p2, p3];
 }
 
@@ -75,11 +79,7 @@ const BOW_MAX_OFFSET = 160;
  * direction, an edge and its reverse bow to opposite sides and visually
  * separate instead of overlapping.
  */
-function bowControlPoints(
-  params: EdgePathParams,
-  curvature: number,
-  side: BowSide = 'left',
-): [Point, Point, Point, Point] {
+function bowControlPoints(params: EdgePathParams, curvature: number, side: BowSide = 'left'): Cubic {
   const p0: Point = { x: params.sourceX, y: params.sourceY };
   const p3: Point = { x: params.targetX, y: params.targetY };
   const dx = p3.x - p0.x;
@@ -109,7 +109,7 @@ export function bowPath(params: EdgePathParams, curvature: number, side: BowSide
   return `M${p0.x},${p0.y} C${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`;
 }
 
-function cubicPoint(p0: Point, p1: Point, p2: Point, p3: Point, t: number): Point {
+function cubicPoint([p0, p1, p2, p3]: Cubic, t: number): Point {
   const mt = 1 - t;
   const a = mt * mt * mt;
   const b = 3 * mt * mt * t;
@@ -122,7 +122,7 @@ function cubicPoint(p0: Point, p1: Point, p2: Point, p3: Point, t: number): Poin
 }
 
 /** B'(t): derivative of the cubic Bézier defined by p0..p3 */
-function cubicDerivative(p0: Point, p1: Point, p2: Point, p3: Point, t: number): Point {
+function cubicDerivative([p0, p1, p2, p3]: Cubic, t: number): Point {
   const mt = 1 - t;
   const a = 3 * mt * mt;
   const b = 6 * mt * t;
@@ -140,6 +140,22 @@ function chordTangent(params: EdgePathParams): Point {
   return len === 0 ? { x: 0, y: 0 } : { x: dx / len, y: dy / len };
 }
 
+/** A floating edge's line: its shape and ends, how far a curve bends (unset:
+ * xyflow's default), and which side of its travel a bow bulges to. */
+export interface EdgeSpec {
+  shape: EdgeShape;
+  params: EdgePathParams;
+  curvature: number | undefined;
+  side?: BowSide;
+}
+
+/** the cubic a curved or bowed edge draws; undefined for a straight or step line */
+function cubicOf({ shape, params, curvature, side = 'left' }: EdgeSpec): Cubic | undefined {
+  if (shape === 'curved') return bezierControlPoints(params, curvature ?? DEFAULT_CURVATURE);
+  if (shape === 'bow') return bowControlPoints(params, curvature ?? DEFAULT_CURVATURE, side);
+  return undefined;
+}
+
 /**
  * Point at parameter `t` along an edge, matching how `useEdgePath` would
  * actually render it for the same `shape`/`curvature`. For `'curved'` this
@@ -147,23 +163,12 @@ function chordTangent(params: EdgePathParams): Point {
  * `bezierControlPoints`); for `'bow'` it evaluates the symmetric bow (see
  * `bowControlPoints`/`bowPath`); no DOM, no `getPointAtLength`.
  */
-export function edgePoint(
-  shape: EdgeShape,
-  params: EdgePathParams,
-  curvature: number | undefined,
-  t: number,
-  side: BowSide = 'left',
-): Point {
-  if (shape === 'curved') {
-    const [p0, p1, p2, p3] = bezierControlPoints(params, curvature ?? DEFAULT_CURVATURE);
-    return cubicPoint(p0, p1, p2, p3, t);
-  }
-  if (shape === 'bow') {
-    const [p0, p1, p2, p3] = bowControlPoints(params, curvature ?? DEFAULT_CURVATURE, side);
-    return cubicPoint(p0, p1, p2, p3, t);
-  }
+export function edgePoint(spec: EdgeSpec, t: number): Point {
+  const cubic = cubicOf(spec);
+  if (cubic !== undefined) return cubicPoint(cubic, t);
   // 'straight' and 'step' (documented approximation: the step path's corners
   // aren't modeled — callers only need the chord midpoint at t=0.5).
+  const { params } = spec;
   return {
     x: params.sourceX + (params.targetX - params.sourceX) * t,
     y: params.sourceY + (params.targetY - params.sourceY) * t,
@@ -172,29 +177,15 @@ export function edgePoint(
 
 /**
  * Unit tangent at parameter `t`, matching `edgePoint`'s shape handling.
- * For `'curved'` this is `B'(t)` normalized; for `'straight'`/`'step'` it's
- * the constant chord direction.
+ * For `'curved'` and `'bow'` this is `B'(t)` normalized; for
+ * `'straight'`/`'step'` it's the constant chord direction.
  */
-export function edgeTangent(
-  shape: EdgeShape,
-  params: EdgePathParams,
-  curvature: number | undefined,
-  t: number,
-  side: BowSide = 'left',
-): Point {
-  if (shape === 'curved') {
-    const [p0, p1, p2, p3] = bezierControlPoints(params, curvature ?? DEFAULT_CURVATURE);
-    const d = cubicDerivative(p0, p1, p2, p3, t);
-    const len = Math.hypot(d.x, d.y);
-    return len === 0 ? chordTangent(params) : { x: d.x / len, y: d.y / len };
-  }
-  if (shape === 'bow') {
-    const [p0, p1, p2, p3] = bowControlPoints(params, curvature ?? DEFAULT_CURVATURE, side);
-    const d = cubicDerivative(p0, p1, p2, p3, t);
-    const len = Math.hypot(d.x, d.y);
-    return len === 0 ? chordTangent(params) : { x: d.x / len, y: d.y / len };
-  }
-  return chordTangent(params);
+export function edgeTangent(spec: EdgeSpec, t: number): Point {
+  const cubic = cubicOf(spec);
+  if (cubic === undefined) return chordTangent(spec.params);
+  const d = cubicDerivative(cubic, t);
+  const len = Math.hypot(d.x, d.y);
+  return len === 0 ? chordTangent(spec.params) : { x: d.x / len, y: d.y / len };
 }
 
 // ---------------------------------------------------------------------------
@@ -210,15 +201,10 @@ export interface EdgeCurve {
 }
 
 /** the floating shapes, as an EdgeCurve (see edgePoint / edgeTangent) */
-export function shapeCurve(
-  shape: EdgeShape,
-  params: EdgePathParams,
-  curvature: number | undefined,
-  side: BowSide = 'left',
-): EdgeCurve {
+export function shapeCurve(spec: EdgeSpec): EdgeCurve {
   return {
-    point: (t) => edgePoint(shape, params, curvature, t, side),
-    tangent: (t) => edgeTangent(shape, params, curvature, t, side),
+    point: (t) => edgePoint(spec, t),
+    tangent: (t) => edgeTangent(spec, t),
   };
 }
 

@@ -177,43 +177,5 @@
     "max-lines-per-function": {
       "count": 1
     }
-  },
-  "packages/renderer/src/canvas/build-data.ts": {
-    "complexity": {
-      "count": 3
-    }
-  },
-  "packages/renderer/src/edge/edge-geometry.ts": {
-    "max-params": {
-      "count": 5
-    }
-  },
-  "packages/renderer/src/loops/LeveragePanel.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/node/TableNode.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/notes/NoteNode.tsx": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/notes/note-place.ts": {
-    "max-params": {
-      "count": 2
-    }
-  },
-  "packages/renderer/src/sketch/sketch.ts": {
-    "max-params": {
-      "count": 2
-    }
   }
 }

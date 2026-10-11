@@ -52,7 +52,10 @@ export function useEdgePath(
   // edge id, memoized so it doesn't re-wobble each render). Label position and
   // marker still use the clean path's endpoints.
   const renderPath = useMemo(
-    () => (data?.stylePreset?.rough !== undefined ? sketchEdge(path, seedFrom(id), data.stylePreset.rough) : path),
+    () =>
+      data?.stylePreset?.rough !== undefined
+        ? sketchEdge(path, { style: data.stylePreset.rough, seed: seedFrom(id) })
+        : path,
     [data?.stylePreset, path, id],
   );
   return { path, renderPath, curve, label, labelSpot };
@@ -130,7 +133,7 @@ function floatingPath(
   const bowed = profile.edge?.bowed === true && shape === 'curved';
   const bowSide: BowSide = rel?.bow ?? 'left';
   const effectiveShape: EdgeShape = bowed ? 'bow' : shape;
-  const curve = shapeCurve(effectiveShape, params, curvature, bowSide);
+  const curve = shapeCurve({ shape: effectiveShape, params, curvature, side: bowSide });
   let path: string;
   let labelX: number;
   let labelY: number;

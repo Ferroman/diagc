@@ -32,7 +32,7 @@ export function unionBounds(members: readonly (Bounds | undefined)[]): Bounds | 
  * actually drawn and mapped back through the viewport transform.
  *
  * Unmeasurable elements (all-zero rects: jsdom, or not laid out yet) are
- * skipped, so callers fall back to the node bounds exactly as before.
+ * skipped, and callers fall back to the node bounds.
  *
  * The plan's time-axis header is a canvas overlay, not a node, so its frame rect is
  * what reaches the export bounds.

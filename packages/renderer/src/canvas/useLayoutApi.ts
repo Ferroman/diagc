@@ -116,6 +116,8 @@ export function useLayoutApi(input: LayoutApiInput): void {
     return () => {
       ref.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- every ref here comes from DiagramView or its hooks, so the rule cannot see they are stable useRef identities read through .current
+    /* eslint-disable-next-line react-hooks/exhaustive-deps --
+       every ref here comes from DiagramView or its hooks, so the rule cannot see they are stable useRef
+       identities read through .current */
   }, [layoutApiRef, reactFlow]);
 }

@@ -72,9 +72,9 @@ export function useDrillNavigation(input: DrillNavigationInput): DrillNavigation
   // and the reducer classifies the transition it was — so the four paths
   // (new model / plane switch / model edit / host-driven path) are visible as
   // data. Dispatching during render is the same sanctioned pattern the queues
-  // below already rely on: the new snapshot applies on the re-render, and the
-  // stale `sync.seen` read by later branches in THIS render is exactly what
-  // the old mutable keyRef provided.
+  // below already rely on: the new snapshot applies on the re-render, and later
+  // branches in THIS render still read the stale `sync.seen`, which is the
+  // transition they classify against.
   const [sync, syncSeen] = useReducer(syncReducer, undefined, () => ({ seen: seenKey(), transition: 'none' as const }));
   // The drill trail as it will actually be after this render's queued
   // setEnteredPath calls — the state variable itself is stale once one of the

@@ -2140,7 +2140,7 @@ describe('notes', () => {
     // to `web`, never on it: wholly above or wholly left of the element.
     const element = xyOf(await rfNode(container, 'web'));
     const at = xyOf(note);
-    const height = estimateNoteHeight('Web app', threatened.nodes[0]!.threats!, false);
+    const height = estimateNoteHeight({ name: 'Web app', threats: threatened.nodes[0]!.threats! }, false);
     expect(at.y + height <= element.y - NOTE_GAP || at.x + NOTE_WIDTH <= element.x - NOTE_GAP).toBe(true);
   });
 
@@ -2153,7 +2153,9 @@ describe('notes', () => {
     const element = xyOf(await rfNode(container, 'web'));
     // a tm-process is an ellipse: the badge is tucked in, not on the corner
     const badge = badgeCenter({ ...element, width: 0, height: 0 }, 'ellipse');
-    expect(note.y + estimateNoteHeight('Web app', alone.nodes[0]!.threats!, false)).toBe(element.y - NOTE_GAP);
+    expect(note.y + estimateNoteHeight({ name: 'Web app', threats: alone.nodes[0]!.threats! }, false)).toBe(
+      element.y - NOTE_GAP,
+    );
     expect(note.x + NOTE_WIDTH).toBe(badge.x + 24);
   });
 
@@ -2320,7 +2322,8 @@ describe('notes', () => {
         expect(Math.hypot(tip.x - badge.x, tip.y - badge.y)).toBeCloseTo(BADGE_R + 2, 3);
         // and clear of the badge's pill: no candidate puts the note over it
         expect(
-          at.y + estimateNoteHeight('Web app → Orders DB', threatened.relations[0]!.threats!, false) <=
+          at.y +
+            estimateNoteHeight({ name: 'Web app → Orders DB', threats: threatened.relations[0]!.threats! }, false) <=
             badge.y - BADGE_R || at.x + NOTE_WIDTH <= badge.x - BADGE_R,
         ).toBe(true);
       });

@@ -65,7 +65,7 @@ const isHorizontal = (settings: LayoutSettings | undefined): boolean => {
 };
 
 /** The view with every eligible activity frame's lanes dissolved, or `undefined`
- * when there is none (the view is then laid out exactly as before). */
+ * when there is none (the view is then laid out as it stands). */
 export function hoistLanes(view: CompiledView, settings: LayoutSettings | undefined): LaneHoist | undefined {
   if (!isHorizontal(settings)) return undefined;
   const frames = new Map<string, HoistedFrame>();
@@ -221,7 +221,7 @@ function crosses(a: Point, b: Point, r: Geo): boolean {
  * when both of its ends moved by the same offset (so the path still starts and
  * ends on them) and the shifted path runs through no other box — the banding put
  * other lanes' nodes where elk's route never looked. Everything else is dropped,
- * and the renderer floats it: an edge between lanes always, as it always has.
+ * an edge between lanes always, and left to routeBandedEdges.
  */
 export function rebaseRoutes(
   { result: { geometry, routes, labelSpots }, hoist, original }: Banding,
@@ -291,7 +291,7 @@ export function rebaseRoutes(
  * them: every link between lanes, and any whose shifted elk path ran into a
  * box) — orthogonally, through the column gaps and lane pad strips the banded
  * frame keeps clear (lane-router.ts). A link the router cannot place, or one
- * fixed to a top/bottom side, keeps floating as before.
+ * fixed to a top/bottom side, keeps floating.
  */
 export function routeBandedEdges(
   { result: { geometry, routes, labelSpots }, hoist, original }: Banding,

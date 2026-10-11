@@ -239,14 +239,14 @@ function placeNoteNode(
   // model it. The height estimate reads the same boolean, or it would
   // reserve ADD_ROW for a button that never draws.
   const offerThreat = editing && (threats.length > 0 || input.offersThreats);
-  const size = { width: NOTE_WIDTH, height: estimateNoteHeight(name, threats, offerThreat, comments, links) };
+  const size = { width: NOTE_WIDTH, height: estimateNoteHeight({ name, threats, comments, links }, offerThreat) };
   const p = input.placements?.[key];
   // {0,0} is "automatic" — `set-note-offset null` writes it, and the
   // normaliser drops it — so a saved offset is anything else
   const at =
     p !== undefined && (p.dx !== 0 || p.dy !== 0)
       ? { x: badge.x + p.dx, y: badge.y + p.dy }
-      : placeNote(badge, element, size, space.obstacles, away);
+      : placeNote({ badge, element, size, away }, space.obstacles);
   space.obstacles.push({ ...at, ...size });
   // back to the parent's frame: a box's note is parented like the box
   const shift = (parentId !== undefined ? space.abs.get(parentId) : undefined) ?? { x: 0, y: 0 };

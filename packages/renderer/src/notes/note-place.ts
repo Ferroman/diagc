@@ -107,6 +107,15 @@ const distanceTo = (p: Point, r: Rect): number => {
   return Math.hypot(dx, dy);
 };
 
+/** A note to place: the badge it hangs off, the box that badge sits on, the
+ * note's size, and for a flow's note the side of the line to keep to. */
+export interface NoteToPlace {
+  badge: Point;
+  element: Rect | null;
+  size: BoxSize;
+  away?: Point;
+}
+
 /**
  * Where a note opens: the first free spot next to its badge, in a fixed
  * order — above-left of the badge (the comic default), above-right, then to
@@ -127,13 +136,8 @@ const distanceTo = (p: Point, r: Rect): number => {
  * decides which. Deterministic and pure: run in view-tree order with earlier
  * notes among the obstacles, two open notes never stack.
  */
-export function placeNote(
-  badge: Point,
-  element: Rect | null,
-  size: BoxSize,
-  obstacles: readonly Rect[],
-  away?: Point,
-): Point {
+export function placeNote(note: NoteToPlace, obstacles: readonly Rect[]): Point {
+  const { badge, element, size, away } = note;
   const e = element ?? { x: badge.x - BADGE_R, y: badge.y - BADGE_R, width: 2 * BADGE_R, height: 2 * BADGE_R };
   const { width: w, height: h } = size;
   const above = e.y - NOTE_GAP - h;
@@ -208,6 +212,14 @@ const SECTION = 6 + 6 + 14;
 /** a comment's `by · at` line, below its text (see .dg-note-meta) */
 const META = 13;
 
+/** What a note shows: the element's name, then its threats, comments and links. */
+export interface NoteContent {
+  name: string;
+  threats: readonly { title: string; status?: ThreatStatus; description?: string; mitigation?: string }[];
+  comments?: readonly { text: string; by?: string; at?: string }[];
+  links?: readonly { label: string }[];
+}
+
 /**
  * A note's height before it is measured, from the text it will show — what
  * the placement collides with. An estimate on purpose: the real height arrives
@@ -217,13 +229,8 @@ const META = 13;
  * details button take a share of the title's column; expanded details are not
  * counted.
  */
-export function estimateNoteHeight(
-  name: string,
-  threats: readonly { title: string; status?: ThreatStatus; description?: string; mitigation?: string }[],
-  editing: boolean,
-  comments: readonly { text: string; by?: string; at?: string }[] = [],
-  links: readonly { label: string }[] = [],
-): number {
+export function estimateNoteHeight(content: NoteContent, editing: boolean): number {
+  const { name, threats, comments = [], links = [] } = content;
   const lines = (text: string, width: number, glyph: number) => Math.max(1, Math.ceil((text.length * glyph) / width));
   let height = PAD + lines(name, NAME_WIDTH, CHAR) * LINE + HEAD_GAP;
   for (const t of threats) {

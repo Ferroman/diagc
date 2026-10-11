@@ -11,6 +11,7 @@ import {
   type NodeDataContext,
 } from './build-data';
 import { createKindRegistry, createTypeRegistry } from '../registry';
+import { stylePreset } from '../sketch/stylePresets';
 
 const typeRegistry = createTypeRegistry();
 const kindRegistry = createKindRegistry();
@@ -65,6 +66,10 @@ describe('buildNodeData', () => {
     expect(d.metaBadges).toEqual(['react']);
     expect(d.typeRegistry).toBe(typeRegistry);
     expect(d.icons).toBe(icons);
+  });
+
+  it('shows no badge for a metadata key set to null, though the view asks for it', () => {
+    expect(buildNodeData(viewNode(), nodeCtx({ metaKeys: ['skip', 'framework'] })).metaBadges).toEqual(['react']);
   });
 
   it('applies optional spreads only when the model carries the field', () => {
@@ -517,6 +522,13 @@ describe('buildEdgeData', () => {
         edgeCtx({ routing: { corner: 8 }, routes: new Map([['e1', route]]), laidAt: new Map([['a', { x: 1, y: 2 }]]) }),
       ).route,
     ).toBeUndefined();
+    // nor for a route of a single point, which draws nothing
+    expect(
+      buildEdgeData(
+        viewEdge(),
+        edgeCtx({ routing: { corner: 8 }, routes: new Map([['e1', route.slice(0, 1)]]), laidAt }),
+      ).route,
+    ).toBeUndefined();
   });
 
   it("lays a slid placement over a sole relation's own label position", () => {
@@ -631,6 +643,74 @@ describe('cached builder identity', () => {
     expect(changed).not.toBe(first);
   });
 });
+describe('the data caches compare every context field', () => {
+  // One context per field, differing from the base in that field alone, by a
+  // fresh value of its own kind. A field the comparison skipped would hand back
+  // the data built for the base. Keyed by the interface, so a new field needs a
+  // line here too.
+  const nodeVariants: Record<keyof NodeDataContext, Partial<NodeDataContext>> = {
+    metaKeys: { metaKeys: ['framework'] },
+    hiddenCounts: { hiddenCounts: new Map() },
+    typeRegistry: { typeRegistry: createTypeRegistry() },
+    typeColors: { typeColors: {} },
+    nodeColors: { nodeColors: new Map() },
+    nodeChips: { nodeChips: new Map() },
+    resizable: { resizable: () => undefined },
+    icons: { icons: createIconRegistry() },
+    onOpenLink: { onOpenLink: () => {} },
+    onToggleExpand: { onToggleExpand: () => {} },
+    onEnterNode: { onEnterNode: () => {} },
+    editing: { editing: true },
+    labelEditingId: { labelEditingId: 'n2' },
+    endLabelEdit: { endLabelEdit: () => {} },
+    onRenameNode: { onRenameNode: () => {} },
+    onSetNodeRich: { onSetNodeRich: () => {} },
+    assetBase: { assetBase: '/assets/' },
+    libraryBase: { libraryBase: '/library/' },
+    onResize: { onResize: () => {} },
+    onSetTableColumns: { onSetTableColumns: () => {} },
+    quickAdd: { quickAdd: { label: () => undefined, run: () => {} } },
+    onSetRole: { onSetRole: () => {} },
+    onAddThreat: { onAddThreat: () => {} },
+    stylePreset: { stylePreset: stylePreset('sketch') },
+    notation: { notation: 'causal-loop' },
+  };
+  it.each(Object.entries(nodeVariants))('rebuilds the node data when only %s changes', (_field, over) => {
+    const n = viewNode();
+    const base = nodeCtx();
+    const before = buildNodeDataCached(n, base);
+    expect(buildNodeDataCached(n, { ...base, ...over })).not.toBe(before);
+  });
+
+  const edgeVariants: Record<keyof EdgeDataContext, Partial<EdgeDataContext>> = {
+    kindRegistry: { kindRegistry: createKindRegistry() },
+    editing: { editing: true },
+    onAddEdgeLabel: { onAddEdgeLabel: () => {} },
+    onEditEdgeLabel: { onEditEdgeLabel: () => {} },
+    onMoveEdgeLabel: { onMoveEdgeLabel: () => {} },
+    onSetEdgeSide: { onSetEdgeSide: () => {} },
+    onAddThreat: { onAddThreat: () => {} },
+    fixedSideRelation: { fixedSideRelation: 'r2' },
+    pendingAdd: { pendingAdd: { edgeId: 'e2', x: 0, y: 0 } },
+    onPendingAddConsumed: { onPendingAddConsumed: () => {} },
+    stylePreset: { stylePreset: stylePreset('sketch') },
+    notation: { notation: 'causal-loop' },
+    routing: { routing: { corner: 4 } },
+    routes: { routes: new Map() },
+    laidAt: { laidAt: new Map() },
+    labelSpots: { labelSpots: new Map() },
+    labelMoves: { labelMoves: {} },
+    onViewMoveEdgeLabel: { onViewMoveEdgeLabel: () => {} },
+    edgeColors: { edgeColors: new Map() },
+  };
+  it.each(Object.entries(edgeVariants))('rebuilds the edge data when only %s changes', (_field, over) => {
+    const e = viewEdge();
+    const base = edgeCtx();
+    const before = buildEdgeDataCached(e, base);
+    expect(buildEdgeDataCached(e, { ...base, ...over })).not.toBe(before);
+  });
+});
+
 describe('buildNodeData: typeColors fallback', () => {
   it("uses the type's colour when the node declares none", () => {
     const d = buildNodeData(viewNode(), nodeCtx({ typeColors: { service: '#1565c0' } }));
