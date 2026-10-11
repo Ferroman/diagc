@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyCommand,
+  buildHierarchy,
   emptyDrawings,
   emptyLayout,
   model,
@@ -260,5 +261,61 @@ describe('pasteCommand', () => {
   it('is null for an empty payload', () => {
     const p = { ...copySelection(system(), undefined, undefined, ['web'])!, nodes: [], roots: [] };
     expect(pasteCommand(system(), p, ctx())).toBeNull();
+  });
+});
+
+describe('copy and paste on planes', () => {
+  // system()'s containment is untagged, so it is on whichever plane is declared first.
+  const withPlanes = (planes: DiagramModel['planes']): DiagramModel => ({ ...system(), planes });
+  /** `a` is first and borrows: sys ⊃ {api, db} is on `a`, whose own containment no view reads */
+  const borrowingFirst = () =>
+    withPlanes([
+      { id: 'a', name: 'A', containmentOf: 'b' },
+      { id: 'b', name: 'B' },
+    ]);
+  /** `b` is first: sys ⊃ {api, db} is on `b`, and `a` reads it too */
+  const borrowingSecond = () =>
+    withPlanes([
+      { id: 'b', name: 'B' },
+      { id: 'a', name: 'A', containmentOf: 'b' },
+    ]);
+  const parentOfRoot = (m: DiagramModel, out: { command: EditorCommand; roots: string[] }) =>
+    applied(m, out.command).model.containment.find((e) => e.child === out.roots[0])?.parent;
+
+  it('copies the hierarchy the canvas draws when the first plane borrows', () => {
+    const m = borrowingFirst();
+    for (const plane of [undefined, 'a', 'b']) {
+      // the canvas: sys holds nothing, api and db are top-level boxes
+      expect(buildHierarchy(m, plane).childrenOf.get('sys')).toEqual([]);
+      const sys = copySelection(m, undefined, plane, ['sys'])!;
+      expect(sys.nodes.map((n) => n.id)).toEqual(['sys']);
+      expect(sys.containment).toEqual([]);
+      expect(copySelection(m, undefined, plane, ['api'])!.roots).toEqual([{ id: 'api' }]);
+    }
+  });
+
+  it('pastes by the hierarchy the canvas draws when the first plane borrows', () => {
+    const m = borrowingFirst();
+    const web = copySelection(m, undefined, undefined, ['web'])!;
+    for (const plane of [undefined, 'a', 'b']) {
+      const pastePlane = { plane, borrowsContainment: plane === 'a' };
+      // beside a top-level leaf → top level; sys has no children, so beside it too
+      expect(parentOfRoot(m, pasteCommand(m, web, ctx({ ...pastePlane, selected: 'api' }))!)).toBeUndefined();
+      expect(parentOfRoot(m, pasteCommand(m, web, ctx({ ...pastePlane, selected: 'sys' }))!)).toBeUndefined();
+    }
+  });
+
+  it('reads untagged containment on a first plane that does not borrow, and through a borrow of it', () => {
+    const m = borrowingSecond();
+    for (const plane of [undefined, 'a', 'b']) {
+      expect(buildHierarchy(m, plane).childrenOf.get('sys')).toEqual(['api', 'db']);
+      expect(copySelection(m, undefined, plane, ['sys'])!.nodes.map((n) => n.id)).toEqual(['sys', 'api', 'db']);
+      expect(copySelection(m, undefined, plane, ['api'])!.roots).toEqual([{ id: 'api', parent: 'sys' }]);
+      const web = copySelection(m, undefined, plane, ['web'])!;
+      // beside api and into sys both land in sys
+      const pastePlane = { plane, borrowsContainment: plane === 'a' };
+      expect(parentOfRoot(m, pasteCommand(m, web, ctx({ ...pastePlane, selected: 'api' }))!)).toBe('sys');
+      expect(parentOfRoot(m, pasteCommand(m, web, ctx({ ...pastePlane, selected: 'sys' }))!)).toBe('sys');
+    }
   });
 });

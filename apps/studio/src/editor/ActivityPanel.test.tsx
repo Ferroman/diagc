@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { applyCommand, emptyDrawings, emptyLayout, model, type DiagramModel } from '@diagc/core/internal';
+import {
+  applyCommand,
+  buildHierarchy,
+  emptyDrawings,
+  emptyLayout,
+  model,
+  type DiagramModel,
+} from '@diagc/core/internal';
 import { ActivityPanel, activityContext, moveLaneCommand, reorderLanesCommand } from './ActivityPanel';
 
 /** frame f, no lanes */
@@ -54,10 +61,10 @@ function threeLanes(): DiagramModel {
   return m.toJSON();
 }
 
-const setup = (selection: { kind: 'node' | 'edge'; id: string } | null, m: DiagramModel) => {
+const setup = (selection: { kind: 'node' | 'edge'; id: string } | null, m: DiagramModel, plane?: string) => {
   const onCommand = vi.fn();
   const onSelect = vi.fn();
-  render(<ActivityPanel model={m} plane={undefined} selection={selection} onCommand={onCommand} onSelect={onSelect} />);
+  render(<ActivityPanel model={m} plane={plane} selection={selection} onCommand={onCommand} onSelect={onSelect} />);
   return { onCommand, onSelect };
 };
 
@@ -337,5 +344,69 @@ describe('activityContext', () => {
     m.activity('f2');
     expect(activityContext(m.toJSON(), null, undefined)).toBeUndefined();
     expect(activityContext(m.toJSON(), { kind: 'node', id: 'f2' }, undefined)?.frame.id).toBe('f2');
+  });
+});
+
+describe('on planes', () => {
+  // frameLaneActionModel()'s containment is untagged, so it is on whichever plane is declared first.
+  const withPlanes = (planes: DiagramModel['planes']): DiagramModel => ({ ...frameLaneActionModel(), planes });
+  /** `p` is first and borrows: f ⊃ l ⊃ ship is on `p`, whose own containment no view reads */
+  const borrowingFirst = () =>
+    withPlanes([
+      { id: 'p', name: 'P', containmentOf: 'base' },
+      { id: 'base', name: 'Base' },
+    ]);
+  /** `base` is first: f ⊃ l ⊃ ship is on `base`, and `p` reads it too */
+  const borrowingSecond = () =>
+    withPlanes([
+      { id: 'base', name: 'Base' },
+      { id: 'p', name: 'P', containmentOf: 'base' },
+    ]);
+  const addLane = () => {
+    fireEvent.change(screen.getByLabelText('New lane name'), { target: { value: 'Ops' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add lane' }));
+  };
+
+  it('lists lanes and cascades by the hierarchy the canvas draws when the first plane borrows', () => {
+    const m = borrowingFirst();
+    // the canvas: f holds no lanes
+    expect(buildHierarchy(m, 'p').childrenOf.get('f')).toEqual([]);
+    const { onCommand } = setup({ kind: 'node', id: 'f' }, m, 'p');
+    expect(screen.getByText('No lanes yet. Add the first one below.')).toBeDefined();
+    addLane();
+    expect(onCommand.mock.calls[0]![0].commands[1]).toEqual({
+      type: 'set-position',
+      nodeId: 'ops',
+      x: 52,
+      y: 24,
+      plane: 'base',
+    });
+  });
+
+  it('finds no lane around an element the canvas draws outside one when the first plane borrows', () => {
+    const m = borrowingFirst();
+    expect(buildHierarchy(m, 'base').parentsOf.get('ship')).toEqual([]);
+    expect(activityContext(m, { kind: 'node', id: 'ship' }, 'base')).toEqual({
+      frame: m.nodes.find((n) => n.id === 'f'),
+    });
+  });
+
+  it('reads untagged lanes through a borrow of the first plane', () => {
+    const m = borrowingSecond();
+    expect(buildHierarchy(m, 'p').childrenOf.get('f')).toEqual(['l']);
+    const { onCommand } = setup({ kind: 'node', id: 'f' }, m, 'p');
+    expect(screen.getByRole('list', { name: 'Lanes' }).textContent).toContain('Warehouse');
+    addLane();
+    expect(onCommand.mock.calls[0]![0].commands[1]).toEqual({
+      type: 'set-position',
+      nodeId: 'ops',
+      x: 28 + 24 + 24,
+      y: 24 + 16,
+      plane: 'base',
+    });
+    expect(activityContext(m, { kind: 'node', id: 'ship' }, 'base')).toMatchObject({
+      frame: { id: 'f' },
+      target: { id: 'l' },
+    });
   });
 });
