@@ -27,16 +27,22 @@ vi.mock('@diagc/renderer', async (importOriginal) => {
 // wrapper, so a case can read the plane a panel was given and call its callbacks.
 const panels = vi.hoisted(() => {
   const props: Record<string, Record<string, unknown>> = {};
+  // how often each panel mounted: a remount leaves the markup and the render
+  // count as they were, so only this sees it (and the panel state it drops)
+  const mounts: Record<string, number> = {};
   const recording = async (actual: Record<string, unknown>, name: string) => {
-    const { createElement } = await import('react');
+    const { createElement, useEffect } = await import('react');
     const Real = actual[name] as (p: Record<string, unknown>) => ReactNode;
     const Recording = (p: Record<string, unknown>) => {
       props[name] = p;
+      useEffect(() => {
+        mounts[name] = (mounts[name] ?? 0) + 1;
+      }, []);
       return createElement(Real, p);
     };
     return { ...actual, [name]: Recording };
   };
-  return { props, recording };
+  return { props, mounts, recording };
 });
 vi.mock('./notations/git-graph/GitPanel', async (o) => panels.recording(await o(), 'GitPanel'));
 vi.mock('./notations/plan/PlanPanel', async (o) => panels.recording(await o(), 'PlanPanel'));
@@ -80,6 +86,7 @@ beforeEach(() => {
   localStorage.clear();
   viewCapture.props = null;
   for (const k of Object.keys(panels.props)) delete panels.props[k];
+  for (const k of Object.keys(panels.mounts)) delete panels.mounts[k];
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -152,6 +159,43 @@ describe('the right dock per notation', () => {
     fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
     await screen.findByRole('button', { name: 'Done' });
     expect(rightDock()).toEqual(['Threat model', 'Activity', ...CHROME]);
+  });
+});
+
+describe("a notation panel's mount", () => {
+  it('the threat model panel stays mounted from view mode into edit mode and back', async () => {
+    // Breaks if the dock puts the notation's panel in a different slot (or
+    // under a different key) in edit mode than in view mode.
+    await mountView(diagram('threat-model'));
+    expect(panels.mounts['ThreatModelPanel']).toBe(1);
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    await screen.findByRole('button', { name: 'Done' });
+    expect(rightDock()).toEqual(['Threat model', ...CHROME]);
+    expect(panels.mounts['ThreatModelPanel']).toBe(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    await screen.findByRole('button', { name: /^edit$/i });
+    expect(panels.mounts['ThreatModelPanel']).toBe(1);
+  });
+
+  it('the plan panel keeps a typed draft across a switch between two plan planes', async () => {
+    // Breaks if the dock keys or wraps the notation's panel by plane, which
+    // would remount it and drop what was typed.
+    const planes = [
+      { id: 'p1', name: 'p1', notation: 'plan' },
+      { id: 'p2', name: 'p2', notation: 'plan' },
+    ];
+    await mountEdit(diagram(undefined, { planes }));
+    const showPlane = async (name: string) => {
+      fireEvent.click(within(screen.getByRole('group', { name: 'Active plane' })).getByRole('button', { name }));
+      await waitFor(() => expect(viewCapture.props?.plane).toBe(name));
+    };
+    const draft = () => within(screen.getByRole('complementary', { name: 'Plan' })).getAllByRole('textbox')[0]!;
+    await showPlane('p1');
+    expect(panels.mounts['PlanPanel']).toBe(1);
+    fireEvent.change(draft(), { target: { value: 'draft-person' } });
+    await showPlane('p2');
+    expect(panels.mounts['PlanPanel']).toBe(1);
+    expect((draft() as HTMLInputElement).value).toBe('draft-person');
   });
 });
 
