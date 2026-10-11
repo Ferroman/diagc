@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.4](https://github.com/Ferroman/diagc/compare/v1.1.3...v1.1.4) (2026-10-11)
+
+
+### Bug Fixes
+
+* **studio:** a diagram reached through the browser history opens on its own planes ([#106](https://github.com/Ferroman/diagc/issues/106)) ([8b77c3f](https://github.com/Ferroman/diagc/commit/8b77c3fa39a054fec6082a0f43ab3ee563254e65))
+* **studio:** a failed save says why ([#104](https://github.com/Ferroman/diagc/issues/104)) ([3e6f85c](https://github.com/Ferroman/diagc/commit/3e6f85cc80983250e81ae6399dfec99ea1ac4691))
+* **studio:** a plan zone or event from the library gets its dates on any plane ([#108](https://github.com/Ferroman/diagc/issues/108)) ([f043521](https://github.com/Ferroman/diagc/commit/f04352165632be7c43be2826d780d4efd6429481))
+* **studio:** a relation drawn again after a delete is selected ([#110](https://github.com/Ferroman/diagc/issues/110)) ([8a91881](https://github.com/Ferroman/diagc/commit/8a9188174f7185ba2dee43871b5b0ed5e39d6a08))
+* **studio:** copy, paste and activity placement read containment by core's plane rule ([#111](https://github.com/Ferroman/diagc/issues/111)) ([1ad0cd1](https://github.com/Ferroman/diagc/commit/1ad0cd1132aa1dd9be1cc1ae714a6b3c73d7855d))
+* **studio:** leaving edit mode during a save keeps the last edit ([#105](https://github.com/Ferroman/diagc/issues/105)) ([82bce50](https://github.com/Ferroman/diagc/commit/82bce504a7a907153a6c72cfe4d55bfef1634177))
+* **studio:** Tab on an activity frame or region adds nothing on any notation ([#109](https://github.com/Ferroman/diagc/issues/109)) ([814832b](https://github.com/Ferroman/diagc/commit/814832b98cfab20e68ecde6c9b8385ec6338cd1a))
+* **studio:** the Plan panel adds to the plane it shows ([#107](https://github.com/Ferroman/diagc/issues/107)) ([b765f13](https://github.com/Ferroman/diagc/commit/b765f1324c73bb76616bf0aa578b5d81afddf000))
+
 ## [1.1.3](https://github.com/Ferroman/diagc/compare/v1.1.2...v1.1.3) (2026-10-10)
 
 
