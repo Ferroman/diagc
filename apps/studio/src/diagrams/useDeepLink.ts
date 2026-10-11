@@ -39,8 +39,8 @@ export interface UseDeepLinkOptions {
   /** Opening another diagram starts its view over, as the picker does: the
    * hash carries no plane, pins or selection, and one diagram's plane id names
    * nothing in the next. A ref like leaveEditRef, and also because App builds
-   * the view ops after this hook, from the model `selected` picks. Owned by
-   * useViewOps, plumbed in here. */
+   * the view navigation after this hook, from the model `selected` picks.
+   * Owned by useViewNavigation, plumbed in here. */
   resetViewRef: RefObject<() => void>;
 }
 

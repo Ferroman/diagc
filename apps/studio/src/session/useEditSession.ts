@@ -20,8 +20,8 @@ export interface UseEditSessionOptions {
    *  save's) shadow the persisted artifact, so view mode shows the latest edits
    *  immediately, bypassing the persisted-artifact round-trip. */
   store: Pick<DiagramStore, 'putDraft' | 'replaceDraftModel'>;
-  /** App-owned: reset the left inspector to its default tab on leave (re-entry
-   *  then starts on Properties). */
+  /** The dock's: reset the left inspector to its default tab on leave
+   *  (re-entry then starts on Properties). */
   resetInspector: () => void;
   /** App-owned, shared with useDeepLink: a cross-diagram hashchange must close
    *  any open edit session first (like every other diagram-switch path). The

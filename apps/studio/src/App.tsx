@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef } from 'react';
 import {
   DiagramView,
   isKnownStyle,
@@ -8,16 +8,11 @@ import {
   todayIso,
   type CanvasCommands,
   type DiagramSelection,
-  type EdgeLabelMoves,
   type QuickAddSide,
   type Side,
 } from '@diagc/renderer';
 import {
-  activeNotation,
   allNotesOpen,
-  borrowsContainment,
-  emptyDrawings,
-  emptyLayout,
   errMessage,
   defaultLayoutDirection,
   defined,
@@ -25,8 +20,6 @@ import {
   LEAF_SIZE,
   NEW_THREAT_TITLE,
   nextThreatId,
-  openingPins,
-  presetLayers,
   SOURCE_URL,
   strideFor,
   threatsOf,
@@ -35,9 +28,7 @@ import {
   uniqueStrokeId,
   type Column,
   type DiagramModel,
-  type Drawings,
   type EdgeLabelSide,
-  type LayoutOverlay,
   type LayoutSettings,
   type PlanRole,
   type Point,
@@ -55,8 +46,10 @@ import { SNAP_GRID, useViewerPrefs } from './useViewerPrefs';
 import { useClipboard } from './canvas-editing/useClipboard';
 import { useNodePlacement } from './canvas-editing/useNodePlacement';
 import { useDiagramActions } from './diagrams/useDiagramActions';
-import { useViewOps } from './view/useViewOps';
+import { useViewNavigation } from './view/useViewNavigation';
 import { useCanvasSelection } from './view/useCanvasSelection';
+import { useViewArrangement } from './layout/useViewArrangement';
+import { useDiagramView } from './diagrams/useDiagramView';
 import { useCausalLoopAnalysis } from './notations/causal-loop/useCausalLoopAnalysis';
 import { edgeLabelsOf, addEdgeLabel, editEdgeLabel, moveEdgeLabel } from './canvas-editing/edge-labels';
 import { computeSelectionColor } from './view/selection-color';
@@ -66,8 +59,6 @@ import { EditorToolbar } from './canvas-editing/EditorToolbar';
 import { EditLayoutActions, relayoutPlane } from './layout/LayoutActions';
 import { LayoutPanel } from './layout/LayoutPanel';
 import { MenuButton, type MenuItem } from './MenuButton';
-import { mergePreview, withLayoutPreview } from './layout/layoutPreview';
-import { unfoldedOf, withPlaneManual, withSavedPositions } from './layout/savedPositions';
 import { uploadAsset } from './canvas-editing/images';
 import { NodePanel } from './inspector/NodePanel';
 import { EdgePanel } from './inspector/EdgePanel';
@@ -118,30 +109,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const canvasCommandsRef = useRef<CanvasCommands | null>(null);
   const pickerToggleRef = useRef<(() => void) | null>(null);
   const hotkeyHandlers = useRef<Handlers>({});
-  const [plane, setPlane] = useState<string | undefined>(undefined);
-  const [activeLayers, setActiveLayers] = useState<string[]>([]);
-  // The "pen": the transparent sheet new nodes/edges land on (null = base sheet).
-  const [activeLayer, setActiveLayer] = useState<string | null>(null);
-  const [pins, setPins] = useState<Record<string, 'expanded' | 'collapsed'>>({});
-  // A viewer's momentary layout choice, keyed by resolved containment plane like
-  // the persisted settings are. Never written to the sidecar: like focus, it is
-  // viewer state.
-  const [layoutPreview, setLayoutPreview] = useState<Record<string, LayoutSettings>>({});
-  // Boxes moved by hand in view mode (alt-drag), not yet written to the sidecar.
-  // Unlike the layout preview these CAN be persisted — coordinates were never
-  // part of the model, so saving them is legitimate even for a read-only
-  // TS-authored diagram, whose sidecar `diagc compile` never rewrites.
-  const [movedPositions, setMovedPositions] = useState<Record<string, Point>>({});
-  // Edge labels slid along their edges in view mode (Alt+drag a label): the
-  // same class of state, saved by the same chip into the overlay's `edgeLabels`.
-  const [movedLabels, setMovedLabels] = useState<EdgeLabelMoves>({});
-  const [savingPositions, setSavingPositions] = useState(false);
-  // Hand back a hand-positioned plane to the layout algorithm for this view only.
-  // Saved coordinates otherwise beat every algorithm, so a diagram that has been
-  // placed by hand stops responding to the picker entirely. Viewer state, like
-  // pins and the layout preview: never written, and dropped when the diagram
-  // changes so one diagram's choice cannot silently govern the next.
-  const [autoArrange, setAutoArrange] = useState(false);
   const dock = useDockLayout();
   const { leftTab, selectTab, libraryView } = dock;
   const lib = useLibrary();
@@ -157,27 +124,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const dl = useDeepLink({ names, booted, leaveEditRef, resetViewRef });
   const { selected, enteredPath, handleEnteredPathChange } = dl;
   const drillRoot = enteredPath.length > 0 ? enteredPath[enteredPath.length - 1] : undefined;
-  // Live mirror of `selected` for enterEditFromSource's in-flight fetch to check
-  // against once it resolves (same ref-mirror pattern as useDeepLink's urlNowRef) —
-  // a callback captures `selected` at click time, but the async gap means the
-  // user may have switched diagrams before the response arrives.
-  const selectedRef = useRef(selected);
-  selectedRef.current = selected;
-
-  // Auto-arrange is scoped to the diagram it was switched on for, so one
-  // diagram's choice cannot silently rearrange the next one you open.
-  useEffect(() => {
-    setAutoArrange(false);
-  }, [selected]);
-
-  // The preview is diagram-scoped viewer state; every path that changes which
-  // diagram is selected — the picker, a hashchange deep link, or the stale-name
-  // fallback (all in useDeepLink) — must drop it here, or a leftover preview
-  // keyed 'default' (a key every diagram resolves to) would silently re-lay out
-  // the next diagram.
-  useEffect(() => {
-    setLayoutPreview({});
-  }, [selected]);
 
   const edit = useEditSession({
     store: boot,
@@ -187,22 +133,46 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const { editing, editor, layoutApiRef, saveIssues, reportIssues, saving, doSave, enterEdit, leaveEdit } = edit;
   const { tool, penColor, penWidth, setTool, setPen, drawWith } = useDrawTool({ editing, selected, enteredPath });
 
-  const current = artifacts[selected];
-  const session = editor.session;
-  const model = editing ? session?.state.model : current?.model;
-  const layout = editing ? session?.state.layout : current?.layout;
-  const drawings = editing ? session?.state.drawings : current?.drawings;
+  // Three hooks here hand a callback to a hook declared after them, because that
+  // hook reads their values: entering edit and a view reset drop the
+  // arrangement's layout preview, and a selection move drops the loop
+  // analysis's focus. The callbacks run only from events and effects, by which
+  // time this render has declared `arrangement` and `loops`.
+  const { current, session, model, layout, drawings, enterEditFromSource } = useDiagramView({
+    artifacts,
+    selected,
+    editing,
+    editor,
+    enterEdit,
+    reportIssues,
+    dropLayoutPreview: () => arrangement.dropPreview(),
+  });
   // The diagram's style (a known preset only) outranks the app preference; an
   // unknown style id counts as none, so a retired preset never wedges a file.
   const diagramStyle = model?.style !== undefined && isKnownStyle(model.style) ? model.style : undefined;
-  const planes = model?.planes ?? [];
-  // undefined = the base/default view (no plane overlay). Kept distinct from
-  // planes[0] so the Default chip stays reachable once planes exist — but the
-  // default view's containment IS the first plane's, so it takes that plane's
-  // notation too (activeNotation falls back to planes[0]), matching the
-  // published page.
-  const activePlane = plane;
-  const notation = activeNotation(planes, activePlane, model?.notation);
+
+  const canvasSelection = useCanvasSelection({
+    editing,
+    lastRelation: session?.lastRelation,
+    onSelect: () => loops.dropFocus(),
+  });
+  const { selection, renameId, groupSel, select, multiSelect, requestLabelEdit, requestThreatEdit } = canvasSelection;
+
+  // Plane, layer and fold navigation (plane switching, pen sheets, view reset).
+  const nav = useViewNavigation({
+    model,
+    layout,
+    editing,
+    editor,
+    selected,
+    select,
+    onReset: () => arrangement.dropPreview(),
+  });
+  const { activePlane, notation, activePlaneBorrowsContainment, activePlaneManual, penLayer } = nav;
+  const { activeLayers, pins, switchPlane, activateLayer, toggleLayer, mergeSelectedLayers, toggleExpand, resetView } =
+    nav;
+  resetViewRef.current = resetView;
+
   // what the notation adds: its dock panel, the gestures it reads its own way,
   // the kind a connect draws, the loop analysis (see notations/types)
   const studioProfile = studioNotation(notation);
@@ -214,58 +184,12 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // algorithm picker would only ever offer a choice the run ignores. Reaches
   // the dock's Layout & style section, which serves both modes.
   const algorithmLocked = notationProfile(notation).partitionOf !== undefined;
-  // A borrowing plane's node membership resolves to its base plane
-  // (compileView/containmentPlaneOf), so tagging node.plane with the
-  // borrowing plane's own id would mismatch and the node would silently
-  // vanish. Plane-scoped membership editing is off there — new nodes are
-  // added shared instead (see createNodeAt).
-  const activePlaneBorrowsContainment = model !== undefined && borrowsContainment(model, activePlane);
-
-  // Seed the layer switch from the plane's presets when a diagram arrives on
-  // screen. A plane's `layers` are a DEFAULT the user then owns (see
-  // presetLayers): compileView no longer unions them in on every compile, so
-  // without a seed a diagram opens with its own overlays off. Keyed on the
-  // diagram, not on `model` — editing rebuilds the model on every keystroke, and
-  // re-seeding there would undo the user's own toggles mid-edit. A plane change
-  // does not re-seed here either; switchPlane owns that transition.
-  const seededDiagram = useRef<string | null>(null);
-  useEffect(() => {
-    if (model === undefined || seededDiagram.current === selected) return;
-    seededDiagram.current = selected;
-    setActiveLayers(presetLayers(model.planes, plane));
-    // Same seed as the exporter: a diagram whose layout names groups in
-    // `export.collapsed` opens with exactly those folded here too. Without it the
-    // studio drew a picture the published image never shows — the author would
-    // fold by hand to see what they were shipping, or (worse) not notice that a
-    // box is folded in the image at all. Empty list, empty pins: unchanged.
-    // On top of that, the boxes the layout was SAVED with open (`unfolded`):
-    // hand-placed interiors only show while their container is open.
-    const folded = layout?.export?.collapsed ?? [];
-    setPins({
-      ...Object.fromEntries(folded.map((id) => [id, 'collapsed' as const])),
-      ...openingPins(layout, model, plane),
-    });
-  }, [selected, model, plane, layout]);
-
-  // Whether the active plane is in manual (frozen) layout — its manual flag is
-  // set in the layout sidecar. Drives the toolbar toggle and new-node placement.
-  const activePlaneManual = model !== undefined && layout?.manual?.[layoutPlaneKey(model, activePlane)] === true;
-
-  // Edit mode reads the session's own overlay untouched — layout settings there
-  // are commands on the undo stack. View mode overlays the ephemeral preview.
-  const viewLayout = useMemo(
-    () => (editing ? layout : withLayoutPreview(layout, model, activePlane, layoutPreview)),
-    [editing, layout, model, activePlane, layoutPreview],
-  );
-
-  // The active plane's automatic-layout settings (algorithm/direction/spacing/
-  // edge routing); empty ⇒ tuned defaults. Drives the layout picker in both modes.
-  const activePlaneSettings: LayoutSettings =
-    (model !== undefined ? viewLayout?.settings?.[layoutPlaneKey(model, activePlane)] : undefined) ?? {};
-
-  // The pen, clamped to a layer that still exists (deleting the active layer
-  // drops us back to the base sheet without any explicit reset).
-  const penLayer = activeLayer !== null && (model?.layers ?? []).some((l) => l.id === activeLayer) ? activeLayer : null;
+  const loops = useCausalLoopAnalysis({
+    editing,
+    loopAnalysis: studioProfile.loopAnalysis === true,
+    selection,
+    groupSel,
+  });
 
   // Set (or clear, with side=null) one endpoint's fixed side on a relation,
   // merged into its existing style so other overrides survive; returns the next
@@ -311,43 +235,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
       patch: { labels: moveEdgeLabel(cur, labelId, t, side) },
     });
   };
-
-  // What is selected, and the loop analysis that reads it. `loops` is declared
-  // after the selection it reads; select runs only from events and effects, by
-  // which time this render has made it.
-  const canvasSelection = useCanvasSelection({
-    editing,
-    lastRelation: session?.lastRelation,
-    onSelect: () => loops.dropFocus(),
-  });
-  const { selection, renameId, groupSel, select, multiSelect, requestLabelEdit, requestThreatEdit } = canvasSelection;
-  const loops = useCausalLoopAnalysis({
-    editing,
-    loopAnalysis: studioProfile.loopAnalysis === true,
-    selection,
-    groupSel,
-  });
-
-  // Plane, layer and fold navigation (plane switching, pen sheets, view reset).
-  const view = useViewOps({
-    editor,
-    model,
-    editing,
-    activePlane,
-    planes,
-    activeLayer,
-    activeLayers,
-    select,
-    setPlane,
-    setPins,
-    layout,
-    pins,
-    setLayoutPreview,
-    setActiveLayers,
-    setActiveLayer,
-  });
-  const { switchPlane, activateLayer, toggleLayer, mergeSelectedLayers, toggleExpand, resetView } = view;
-  resetViewRef.current = resetView;
 
   // Ctrl/⌘+C / Ctrl/⌘+V on the canvas (edit mode): the selection, with what it
   // contains, through the system clipboard — see canvas-editing/useClipboard.
@@ -564,32 +451,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     }
   };
 
-  // Edit sessions start from the raw source on disk, never the boot model —
-  // the boot model is composed for umbrellas, and a session seeded from it
-  // would save grafted content into the source.
-  const enterEditFromSource = async () => {
-    const target = selected;
-    try {
-      const res = await getHost().apiFetch(`/api/diagrams/${target}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = (await res.json()) as { model: DiagramModel; layout?: LayoutOverlay; drawings?: Drawings };
-      // The user may have switched diagrams (picker or hashchange) while this
-      // fetch was in flight — entering edit on `target` now would open a session
-      // on the diagram the header no longer shows, so a stale response is
-      // dropped instead of touching any state for a diagram that isn't selected.
-      if (selectedRef.current !== target) return;
-      // Edit mode reads the session's own overlay, not the preview — drop it here
-      // (mirroring resetView() on the diagram picker) so Save + Done doesn't come
-      // back to a stale preview masking what was saved. Only on success: a
-      // failed fetch leaves the preview exactly as the old synchronous code did.
-      setLayoutPreview({});
-      enterEdit(target, body.model, body.layout ?? emptyLayout(), body.drawings ?? emptyDrawings());
-    } catch (e) {
-      if (selectedRef.current !== target) return;
-      reportIssues([{ message: `Could not load '${target}' for editing: ${errMessage(e)}` }]);
-    }
-  };
-
   // Flip the active plane between automatic and manual layout. Turning auto Off
   // freezes the current on-screen positions (so nothing jumps) then sets the
   // manual flag; turning it On just clears the flag (non-destructive — the saved
@@ -619,121 +480,25 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     });
   };
 
-  // Write an overlay to `<name>.layout.json` and fold it into the in-memory copy
-  // on success, so it survives a plane switch (which drops the renderer's
-  // ephemeral drags) without a reload. Explicit, never automatic — unlike the
-  // edit session's autosave, this runs in view mode on diagrams the studio does
-  // not own, so committing positions to a repo file stays a deliberate act.
-  // Both view-mode chips (Save positions, Freeze layout) end here. It never
-  // rejects: the chips call it as `void`, so a failure becomes a banner issue
-  // and a false return, which keeps their pending drags for a retry.
-  // The store's operations are built each render; reading the newest through a
-  // ref keeps postLayout changing only with `selected`.
-  const putLayoutRef = useRef(boot.putLayout);
-  putLayoutRef.current = boot.putLayout;
-  const postLayout = useCallback(
-    async (next: LayoutOverlay): Promise<boolean> => {
-      setSavingPositions(true);
-      try {
-        const res = await getHost().apiFetch(`/api/layouts/${selected}`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(next),
-        });
-        if (!res.ok) {
-          // A proxy or crashed server can answer with a body that is not JSON.
-          const body = (await res.json().catch(() => null)) as { issues?: { message: string }[] } | null;
-          reportIssues(body?.issues ?? [{ message: 'Could not save layout' }]);
-          return false;
-        }
-        putLayoutRef.current(selected, next);
-        reportIssues(null);
-        return true;
-      } catch (e) {
-        reportIssues([{ message: errMessage(e) }]);
-        return false;
-      } finally {
-        setSavingPositions(false);
-      }
-    },
-    [selected, reportIssues],
-  );
-
-  // While editing, the open boxes are recorded in the session's overlay (see
-  // toggleExpand), so undo/redo can change them underneath the canvas: follow.
-  // Only a CHANGE while editing counts — entering edit mode must not fold away
-  // what the viewer had open just because it was never saved.
-  const savedUnfoldedKey =
-    model !== undefined ? (layout?.unfolded?.[layoutPlaneKey(model, activePlane)] ?? []).join('\u0000') : '';
-  const lastSavedUnfolded = useRef<string | null>(null);
-  useEffect(() => {
-    const was = lastSavedUnfolded.current;
-    lastSavedUnfolded.current = editing ? savedUnfoldedKey : null;
-    if (!editing || was === null || was === savedUnfoldedKey || model === undefined) return;
-    setPins((p) => (unfoldedOf(p).join('\u0000') === savedUnfoldedKey ? p : openingPins(layout, model, activePlane)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the saved list's CONTENT; layout/model/plane are read at that moment
-  }, [editing, savedUnfoldedKey]);
-
-  // Which boxes are open is saved WITH the positions (see withSavedPositions),
-  // so the chip also has something to save when only a fold changed.
-  const unfoldedNow = useMemo(() => unfoldedOf(pins), [pins]);
-  const foldsUnsaved = model !== undefined && unfoldedNow.join('\u0000') !== savedUnfoldedKey;
-
-  const unsavedView = Object.keys(movedPositions).length > 0 || Object.keys(movedLabels).length > 0 || foldsUnsaved;
-
-  const savePositions = useCallback(async () => {
-    if (model === undefined || !unsavedView) return;
-    const ok = await postLayout(
-      withSavedPositions(layout, model, activePlane, movedPositions, unfoldedNow, movedLabels),
-    );
-    // The posted body folds movedPositions into the saved overlay, so on success
-    // those drags are no longer unsaved — clear the chip. A failed post must
-    // leave it up (postLayout surfaces saveIssues) so the user can retry.
-    if (ok) {
-      setMovedPositions({});
-      setMovedLabels({});
-    }
-  }, [model, movedPositions, movedLabels, unsavedView, unfoldedNow, layout, activePlane, postLayout]);
-
-  // The view-mode manual switch. Freezing snapshots every on-screen position
-  // (React Flow's parent-relative copy — the overlay's own space, unsaved drags
-  // included) so nothing jumps, then sets the flag; thawing only clears the
-  // flag. Same semantics as the edit toolbar's toggle, minus the undo stack —
-  // see withPlaneManual for what the flag does and does not do.
-  const toggleFreeze = useCallback(async () => {
-    if (model === undefined) return;
-    const freezing = !activePlaneManual;
-    const snapshot = freezing ? (layoutApiRef.current?.snapshotPositions() ?? {}) : null;
-    const ok = await postLayout(
-      withPlaneManual(
-        layout,
-        model,
-        activePlane,
-        snapshot,
-        freezing ? unfoldedNow : undefined,
-        freezing ? movedLabels : {},
-      ),
-    );
-    // Freezing's body IS the current on-screen snapshot, so any pending
-    // view-mode drags it covers are now saved too — clear the chip. Thawing's
-    // body carries no positions at all, so pending drags stay pending; they
-    // must NOT be discarded just because the plane went back to automatic.
-    if (ok && freezing) {
-      setMovedPositions({});
-      setMovedLabels({});
-    }
-  }, [model, layout, activePlane, activePlaneManual, layoutApiRef, postLayout, unfoldedNow, movedLabels]);
-
-  // View mode never persists: merge into the ephemeral preview instead of
-  // dispatching a command.
-  const previewLayoutSettings = useCallback(
-    (patch: Partial<LayoutSettings>) => {
-      if (model === undefined) return;
-      const key = layoutPlaneKey(model, activePlane);
-      setLayoutPreview((p) => mergePreview(p, key, patch));
-    },
-    [model, activePlane],
-  );
+  // How the diagram is arranged in view mode, and the chips that save it.
+  const arrangement = useViewArrangement({
+    model,
+    layout,
+    editing,
+    selected,
+    activePlane,
+    activePlaneManual,
+    pins,
+    savedUnfoldedKey: nav.savedUnfoldedKey,
+    layoutApiRef,
+    putLayout: boot.putLayout,
+    reportIssues,
+  });
+  const { viewLayout, savingPositions, autoArrange, unsavedView, savePositions, toggleFreeze } = arrangement;
+  // The active plane's automatic-layout settings (algorithm/direction/spacing/
+  // edge routing); empty ⇒ tuned defaults. Drives the layout picker in both modes.
+  const activePlaneSettings: LayoutSettings =
+    (model !== undefined ? viewLayout?.settings?.[layoutPlaneKey(model, activePlane)] : undefined) ?? {};
 
   // Global color target: the selected node, or the selected single-relation
   // edge — drives the toolbar swatch row (select object -> click color).
@@ -808,7 +573,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     'canvas.loops': canvasCmd((c) => c.toggleLoops()),
     'view.freeze': on(viewChips && !savingPositions && enteredPath.length === 0, () => void toggleFreeze()),
     'view.save-positions': on(viewChips && unsavedView && !savingPositions, () => void savePositions()),
-    'view.auto-arrange': on(viewChips && hasSavedPositions, () => setAutoArrange((v) => !v)),
+    'view.auto-arrange': on(viewChips && hasSavedPositions, arrangement.toggleAutoArrange),
 
     'arrange.align-left': canvasCmd((c) => c.align('left')),
     'arrange.align-center': canvasCmd((c) => c.align('centerX')),
@@ -1179,8 +944,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   styleId={diagramStyle ?? style}
                   snapGrid={snap ? SNAP_GRID : undefined}
                   onCldEdges={loops.handleCldEdges}
-                  onViewPositionsChange={setMovedPositions}
-                  onViewLabelMovesChange={setMovedLabels}
+                  onViewPositionsChange={arrangement.setMovedPositions}
+                  onViewLabelMovesChange={arrangement.setMovedLabels}
                   layoutApiRef={layoutApiRef}
                   canvasCommandsRef={canvasCommandsRef}
                   builtinKeys={false}
@@ -1416,7 +1181,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                       ? null
                       : {
                           settings: activePlaneSettings,
-                          onChange: editing ? setLayoutSettings : previewLayoutSettings,
+                          onChange: editing ? setLayoutSettings : arrangement.previewLayoutSettings,
                           defaultDirection: defaultLayoutDirection(model),
                           algorithmLocked,
                           defaultAlgorithm: notationProfile(notation).defaultAlgorithm,
@@ -1471,17 +1236,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                       getAutoPositions={() => layoutApiRef.current?.autoPositions() ?? {}}
                     />
                   )}
-                  {!editing && layoutPreview[layoutPlaneKey(model, activePlane)] !== undefined && (
+                  {!editing && arrangement.planePreviewed && (
                     <button
                       className="chip"
                       title="Drop the preview and go back to this diagram's own layout settings"
-                      onClick={() =>
-                        setLayoutPreview((p) => {
-                          const next = { ...p };
-                          delete next[layoutPlaneKey(model, activePlane)];
-                          return next;
-                        })
-                      }
+                      onClick={arrangement.dropPlanePreview}
                     >
                       Reset layout
                     </button>
@@ -1496,7 +1255,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           ? 'Ignoring this diagram’s saved positions, so the layout algorithm arranges every node. Click to put them back.'
                           : 'This plane has saved positions, which override the layout algorithm. Click to arrange those nodes automatically instead (nothing is written).'
                       }${hint('view.auto-arrange')}`}
-                      onClick={() => setAutoArrange((v) => !v)}
+                      onClick={arrangement.toggleAutoArrange}
                     >
                       Auto-arrange
                     </button>
