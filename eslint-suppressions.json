@@ -206,16 +206,6 @@
       "count": 1
     }
   },
-  "packages/renderer/src/layout/layout-graph.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/layout/layout.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "packages/renderer/src/layout/plan-layout.ts": {
     "max-lines-per-function": {
       "count": 1
