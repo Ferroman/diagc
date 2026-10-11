@@ -1,16 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { type DiagramModel, type EditorCommand } from '@diagc/core/internal';
-import type { LayoutApi } from '@diagc/renderer';
+import {
+  applyCommand,
+  emptyDrawings,
+  emptyLayout,
+  validate,
+  type DiagramModel,
+  type EditorCommand,
+} from '@diagc/core/internal';
+import { PLAN_LAYOUT, type LayoutApi } from '@diagc/renderer';
 import type { EditorApi } from '../editor/useEditor';
 import type { LibraryEntry } from '../library/types';
 import type { UseLibrary } from '../library/useLibrary';
-import { useNodePlacement } from './useNodePlacement';
+import { useNodePlacement, type UseNodePlacementOptions } from './useNodePlacement';
 
 /**
  * Like `useViewOps`, `useNodePlacement` calls no React hook of its own — it is a
  * factory of closures over what it is handed — so it runs without a renderer.
- * These cover the activity-diagram placement rules; the commands dispatched are
- * the observable.
+ * These cover the activity-diagram placement rules and the dates a plan zone or
+ * event arrives with; the commands dispatched are the observable.
  */
 const activity = (): DiagramModel => ({
   version: 1,
@@ -43,6 +50,8 @@ const entries: LibraryEntry[] = [
     template: { type: 'activity-start', width: 24, height: 24 },
   },
   { id: 'activity-action', category: 'activity', name: 'Action', keywords: [], template: { type: 'activity-action' } },
+  { id: 'plan-zone', category: 'plan', name: 'Zone', keywords: [], template: { type: 'plan-zone' } },
+  { id: 'plan-event', category: 'plan', name: 'Event', keywords: [], template: { type: 'plan-event' } },
 ];
 
 // frame at (100,100): l1 banded at y 100–220, l2 at 220–340
@@ -52,7 +61,10 @@ const bounds: Record<string, { x: number; y: number; width: number; height: numb
   l2: { x: 128, y: 220, width: 320, height: 120 },
 };
 
-function harness(m: DiagramModel, selection: string | null = null) {
+/** the active plane and its notation; omitted, the default plane with no notation */
+type PlaneContext = Partial<Pick<UseNodePlacementOptions, 'activePlane' | 'notation'>>;
+
+function harness(m: DiagramModel, selection: string | null = null, plane: PlaneContext = {}) {
   const dispatched: EditorCommand[] = [];
   const session = { state: { model: m } } as unknown as NonNullable<EditorApi['session']>;
   const editor = {
@@ -81,6 +93,7 @@ function harness(m: DiagramModel, selection: string | null = null) {
     model: m,
     lib: { library: { categories: [], entries } } as unknown as UseLibrary,
     today: '2026-01-01',
+    ...plane,
   });
   return { placement, dispatched };
 }
@@ -129,5 +142,84 @@ describe('useNodePlacement — activity diagrams', () => {
     placement.dropLibraryEntry('activity-action', { x: 10, y: 10 }, 'box');
     expect(addsOf(dispatched)[0]!.parent).toEqual({ id: 'box' });
     expect(positionsOf(dispatched)).toEqual([]);
+  });
+});
+
+// No plane declares the plan notation. `design` (Jan 5 – Jan 30) is a dated
+// zone a drop can land on; it also gives the default plane a plan origin
+// (Jan 1), which a drop point could be misread against.
+const offPlan = (): DiagramModel => ({
+  version: 1,
+  id: 'd',
+  name: 'd',
+  nodes: [
+    { id: 'design', name: 'Design', type: 'plan-zone', metadata: { start: '2026-01-05', end: '2026-01-30' } },
+    { id: 'api', name: 'API', type: 'service' },
+  ],
+  containment: [],
+  relations: [],
+  layers: [],
+  planes: [],
+});
+
+/** the model the dispatched commands leave behind */
+function applied(m: DiagramModel, cs: EditorCommand[]): DiagramModel {
+  let state = { model: m, layout: emptyLayout(), drawings: emptyDrawings() };
+  for (const c of cs) state = applyCommand(state, c).state;
+  return state.model;
+}
+
+const metadataOf = (cs: EditorCommand[]) =>
+  (addsOf(cs)[0] as Extract<EditorCommand, { type: 'add-node' }>).node.metadata;
+
+// Sixty days past the Jan 1 origin on a plan plane's time axis: March 2.
+const SIXTY_DAYS = { x: 60 * PLAN_LAYOUT.DAY, y: 0 };
+
+describe('useNodePlacement — plan zones and events off a plan plane', () => {
+  it('core checks their dates on any plane, so an undated one blocks the save', () => {
+    const undated = offPlan();
+    undated.nodes.push({ id: 'z', name: 'Z', type: 'plan-zone' }, { id: 'e', name: 'E', type: 'plan-event' });
+    expect(validate(undated).map((i) => `${i.code} ${i.message}`)).toEqual([
+      "plan-missing 'z' (plan-zone) has no 'start' date",
+      "plan-missing 'z' (plan-zone) has no 'end' date",
+      "plan-missing 'e' (plan-event) has no 'at' date",
+    ]);
+  });
+
+  it('click-to-place seeds a Zone or an Event from today, and the result validates', () => {
+    for (const [id, dates] of [
+      ['plan-zone', { start: '2026-01-01', end: '2026-01-14' }],
+      ['plan-event', { at: '2026-01-01' }],
+    ] as const) {
+      const { placement, dispatched } = harness(offPlan());
+      placement.placeFromLibrary(entries.find((e) => e.id === id)!);
+      expect(metadataOf(dispatched)).toEqual(dates);
+      expect(validate(applied(offPlan(), dispatched))).toEqual([]);
+    }
+  });
+
+  it('a drop seeds inside the zone it lands on, else from today, never from the drop point', () => {
+    const onZone = harness(offPlan());
+    onZone.placement.dropLibraryEntry('plan-zone', SIXTY_DAYS, 'design');
+    expect(metadataOf(onZone.dispatched)).toEqual({ start: '2026-01-05', end: '2026-01-18' });
+    expect(validate(applied(offPlan(), onZone.dispatched))).toEqual([]);
+
+    const bare = harness(offPlan());
+    bare.placement.dropLibraryEntry('plan-event', SIXTY_DAYS);
+    expect(metadataOf(bare.dispatched)).toEqual({ at: '2026-01-01' });
+    expect(validate(applied(offPlan(), bare.dispatched))).toEqual([]);
+  });
+
+  it('on a plan plane a drop lands on the day under the pointer', () => {
+    const plan: DiagramModel = { ...offPlan(), planes: [{ id: 'plan', name: 'Plan', notation: 'plan' }] };
+    const { placement, dispatched } = harness(plan, null, { activePlane: 'plan', notation: 'plan' });
+    placement.dropLibraryEntry('plan-event', SIXTY_DAYS);
+    expect(metadataOf(dispatched)).toEqual({ at: '2026-03-02' });
+  });
+
+  it('any other entry arrives without dates', () => {
+    const { placement, dispatched } = harness(offPlan());
+    placement.dropLibraryEntry('activity-action', SIXTY_DAYS);
+    expect(metadataOf(dispatched)).toBeUndefined();
   });
 });
