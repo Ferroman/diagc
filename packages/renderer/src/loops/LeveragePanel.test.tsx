@@ -71,6 +71,24 @@ describe('LeveragePanel', () => {
     expect(onFocus).toHaveBeenLastCalledWith(null);
   });
 
+  it('keeps a clicked row, and the keyboard focus on it, when the panel re-renders lit', () => {
+    const { container, rerender } = renderPanel();
+    const row = container.querySelector<HTMLButtonElement>('[data-focus="drv:a"]')!;
+    row.focus();
+    rerender(
+      <LeveragePanel
+        model={emptyModel}
+        edges={edges}
+        target="t"
+        activeFocusKey="drv:a"
+        onFocus={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+    expect(container.querySelector('[data-focus="drv:a"]')).toBe(row);
+    expect(document.activeElement).toBe(row);
+  });
+
   it('focuses a hub on the union of the target loops that contain it', () => {
     const { container, onFocus } = renderPanel();
     fireEvent.click(container.querySelector('[data-focus="hub:a"]')!);
