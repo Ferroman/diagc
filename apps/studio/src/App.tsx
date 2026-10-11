@@ -108,7 +108,7 @@ const applyTargetFor = (
  * in-app toggle owns the state from mount on. */
 export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark' } = {}) {
   const boot = useDiagramBoot();
-  const { artifacts, names, booted, ownedNames, setOwnedNames, setDrafts, setLoaded, setSources, canDesign } = boot;
+  const { artifacts, names, booted, ownedNames, canDesign } = boot;
 
   const { theme, toggleTheme, style, setStyle, snap, toggleSnap } = useViewerPrefs(initialTheme);
   const hotkeyPrefs = useHotkeyPrefs();
@@ -187,7 +187,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const resetViewRef = useRef<() => void>(() => {});
 
   const dl = useDeepLink({ names, booted, leaveEditRef, resetViewRef });
-  const { selected, setSelected, enteredPath, setEnteredPath, handleEnteredPathChange } = dl;
+  const { selected, enteredPath, handleEnteredPathChange } = dl;
   const drillRoot = enteredPath.length > 0 ? enteredPath[enteredPath.length - 1] : undefined;
   // Live mirror of `selected` for enterEditFromSource's in-flight fetch to check
   // against once it resolves (same ref-mirror pattern as useDeepLink's urlNowRef) —
@@ -212,12 +212,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   }, [selected]);
 
   const edit = useEditSession({
-    setDrafts,
+    store: boot,
     resetInspector: () => selectTab('properties'), // re-entering edit starts on Properties
     leaveEditRef,
   });
-  const { editing, setEditing, editor, layoutApiRef, saveIssues, setSaveIssues, saving, doSave, enterEdit, leaveEdit } =
-    edit;
+  const { editing, editor, layoutApiRef, saveIssues, reportIssues, saving, doSave, enterEdit, leaveEdit } = edit;
   const { tool, penColor, penWidth, setTool, setPen, drawWith } = useDrawTool({ editing, selected, enteredPath });
 
   const current = artifacts[selected];
@@ -527,16 +526,12 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     current,
     names,
     ownedNames,
-    setOwnedNames,
-    setDrafts,
-    setLoaded,
-    setSources,
-    setSelected,
-    setEnteredPath,
-    setEditing,
+    store: boot,
+    selectDiagram: dl.selectDiagram,
+    renameSelected: dl.renameSelected,
+    startEditing: edit.startEditing,
     leaveEdit,
     resetView,
-    editor,
   });
 
   // Everything that creates a node: whiteboard add, canvas create, library
@@ -548,7 +543,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     setRenameId,
     selectTab,
     requestLabelEdit,
-    setSaveIssues,
+    reportIssues,
     activePlane,
     activePlaneBorrowsContainment,
     activePlaneManual,
@@ -571,7 +566,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
       const name = file.name.replace(/\.[^.]*$/, '') || 'icon';
       lib.addEntry({ id, category: categoryId, name, template: { type: 'image', image, width: 64, height: 64 } });
     } catch (e) {
-      setSaveIssues([{ message: errMessage(e) }]);
+      reportIssues([{ message: errMessage(e) }]);
     }
   };
 
@@ -585,7 +580,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
       const name = file.name.replace(/\.[^.]*$/, '') || 'shape';
       lib.addEntry({ id, category: categoryId, name, template: { shape } });
     } catch (e) {
-      setSaveIssues([{ message: errMessage(e) }]);
+      reportIssues([{ message: errMessage(e) }]);
     }
   };
 
@@ -611,7 +606,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
       enterEdit(target, body.model, body.layout ?? emptyLayout(), body.drawings ?? emptyDrawings());
     } catch (e) {
       if (selectedRef.current !== target) return;
-      setSaveIssues([{ message: `Could not load '${target}' for editing: ${errMessage(e)}` }]);
+      reportIssues([{ message: `Could not load '${target}' for editing: ${errMessage(e)}` }]);
     }
   };
 
@@ -652,6 +647,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // Both view-mode chips (Save positions, Freeze layout) end here. It never
   // rejects: the chips call it as `void`, so a failure becomes a banner issue
   // and a false return, which keeps their pending drags for a retry.
+  // The store's operations are built each render; reading the newest through a
+  // ref keeps postLayout changing only with `selected`.
+  const putLayoutRef = useRef(boot.putLayout);
+  putLayoutRef.current = boot.putLayout;
   const postLayout = useCallback(
     async (next: LayoutOverlay): Promise<boolean> => {
       setSavingPositions(true);
@@ -664,23 +663,20 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
         if (!res.ok) {
           // A proxy or crashed server can answer with a body that is not JSON.
           const body = (await res.json().catch(() => null)) as { issues?: { message: string }[] } | null;
-          setSaveIssues(body?.issues ?? [{ message: 'Could not save layout' }]);
+          reportIssues(body?.issues ?? [{ message: 'Could not save layout' }]);
           return false;
         }
-        setLoaded((cur) => {
-          const entry = cur[selected];
-          return entry === undefined ? cur : { ...cur, [selected]: { ...entry, layout: next } };
-        });
-        setSaveIssues(null);
+        putLayoutRef.current(selected, next);
+        reportIssues(null);
         return true;
       } catch (e) {
-        setSaveIssues([{ message: errMessage(e) }]);
+        reportIssues([{ message: errMessage(e) }]);
         return false;
       } finally {
         setSavingPositions(false);
       }
     },
-    [selected, setLoaded, setSaveIssues],
+    [selected, reportIssues],
   );
 
   // While editing, the open boxes are recorded in the session's overlay (see
@@ -928,8 +924,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             selected={selected}
             onSelect={(name) => {
               if (!leaveEdit()) return;
-              setSelected(name);
-              setEnteredPath([]);
+              dl.selectDiagram(name);
               resetView();
             }}
             toggleRef={pickerToggleRef}

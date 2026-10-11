@@ -83,7 +83,7 @@ function harness(m: DiagramModel, selection: string | null = null, plane: PlaneC
     setRenameId: noop,
     selectTab: noop,
     requestLabelEdit: noop,
-    setSaveIssues: noop,
+    reportIssues: noop,
     activePlane: undefined,
     activePlaneBorrowsContainment: false,
     activePlaneManual: false,

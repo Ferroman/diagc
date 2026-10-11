@@ -40,7 +40,8 @@ export interface UseNodePlacementOptions {
    * (App's nonce-keyed editLabelRequest) — library placement names in place
    * so the Library tab never has to give way to Properties */
   requestLabelEdit: (id: string) => void;
-  setSaveIssues: (issues: { message: string }[] | null) => void;
+  /** the edit session's issue banner: an upload that failed */
+  reportIssues: (issues: { message: string }[] | null) => void;
   /** active plane + whether it borrows containment (drives plane scoping) */
   activePlane: string | undefined;
   activePlaneBorrowsContainment: boolean;
@@ -90,7 +91,7 @@ export function useNodePlacement({
   setRenameId,
   selectTab,
   requestLabelEdit,
-  setSaveIssues,
+  reportIssues,
   activePlane,
   activePlaneBorrowsContainment,
   activePlaneManual,
@@ -366,7 +367,7 @@ export function useNodePlacement({
       }
     }
     // One banner for the whole batch — per-file writes would overwrite each other.
-    if (issues.length > 0) setSaveIssues(issues);
+    if (issues.length > 0) reportIssues(issues);
   };
 
   return { addNode, createAt, placeFromLibrary, applyFromLibrary, dropLibraryEntry, addImages };

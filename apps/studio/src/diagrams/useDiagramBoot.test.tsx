@@ -84,16 +84,68 @@ describe('useDiagramBoot', () => {
     expect(offline.result.current.canDesign).toBe(false);
   });
 
-  // Breaks if the shadowing order changes: a source read from disk outranks the
-  // boot model, and a draft (the newest in-memory edits) outranks both.
-  it('lets sources shadow the boot models and drafts shadow both', async () => {
+  // Breaks if a draft (the newest in-memory edits, or a diagram just written)
+  // stops outranking the boot model, or a new draft stops being listed.
+  it('lets a draft shadow the boot model', async () => {
     serve();
     const { result } = renderHook(() => useDiagramBoot());
     await waitFor(() => expect(result.current.booted).toBe(true));
-    act(() => result.current.setSources((s) => ({ ...s, zeta: art('zeta', 'source'), beta: art('beta', 'source') })));
-    expect(result.current.artifacts['zeta']?.model?.id).toBe('source');
-    act(() => result.current.setDrafts((d) => ({ ...d, zeta: art('zeta', 'draft') })));
+    act(() => result.current.putDraft('zeta', art('zeta', 'draft')));
+    act(() => result.current.putDraft('beta', art('beta', 'draft')));
     expect(result.current.artifacts['zeta']?.model?.id).toBe('draft');
     expect(result.current.names).toEqual(['alpha', 'beta', 'zeta']);
+  });
+
+  // Breaks if a rename misses a store (the diagram would keep its old name under
+  // the draft or the boot copy), keeps the model's old id, or leaves ownership
+  // under the old name.
+  it('moves a renamed diagram in every store, ownership included', async () => {
+    serve();
+    const { result } = renderHook(() => useDiagramBoot());
+    await waitFor(() => expect(result.current.booted).toBe(true));
+    act(() => result.current.putDraft('zeta', art('zeta', 'zeta')));
+    act(() => result.current.rename('zeta', 'omega'));
+    expect(result.current.names).toEqual(['alpha', 'omega']);
+    expect(result.current.loaded['omega']?.model).toMatchObject({ id: 'omega', name: 'omega' });
+    expect(result.current.drafts['omega']?.model).toMatchObject({ id: 'omega', name: 'omega' });
+    expect(result.current.loaded['omega']?.layout).toEqual(layout);
+    expect([...result.current.ownedNames]).toEqual(['omega']);
+  });
+
+  // Breaks if a saved layout stops reaching the boot copy (a plane switch would
+  // drop it until a reload), or lands under a name that was never loaded.
+  it('folds a saved layout into the boot copy of a loaded diagram only', async () => {
+    serve();
+    const { result } = renderHook(() => useDiagramBoot());
+    await waitFor(() => expect(result.current.booted).toBe(true));
+    const saved: LayoutOverlay = { version: 1, planes: {}, manual: { default: true } };
+    act(() => result.current.putLayout('alpha', saved));
+    act(() => result.current.putLayout('nowhere', saved));
+    expect(result.current.artifacts['alpha']?.layout).toBe(saved);
+    expect(result.current.names).toEqual(['alpha', 'zeta']);
+  });
+
+  // Breaks if a re-composed model creates a draft where there was none (a
+  // finished session that never saved would suddenly shadow the boot model).
+  it('swaps the model of an existing draft only', async () => {
+    serve();
+    const { result } = renderHook(() => useDiagramBoot());
+    await waitFor(() => expect(result.current.booted).toBe(true));
+    act(() => result.current.replaceDraftModel('zeta', model('composed')));
+    expect(result.current.drafts).toEqual({});
+    act(() => result.current.putDraft('zeta', { ...art('zeta', 'raw'), layout }));
+    act(() => result.current.replaceDraftModel('zeta', model('composed')));
+    expect(result.current.drafts['zeta']).toEqual({ name: 'zeta', model: model('composed'), layout, issues: [] });
+  });
+
+  // Breaks if owning or giving up a name touches any other.
+  it('marks names owned and gives them up one at a time', async () => {
+    serve();
+    const { result } = renderHook(() => useDiagramBoot());
+    await waitFor(() => expect(result.current.booted).toBe(true));
+    act(() => result.current.markOwned('alpha'));
+    expect([...result.current.ownedNames].sort()).toEqual(['alpha', 'zeta']);
+    act(() => result.current.disown('zeta'));
+    expect([...result.current.ownedNames]).toEqual(['alpha']);
   });
 });

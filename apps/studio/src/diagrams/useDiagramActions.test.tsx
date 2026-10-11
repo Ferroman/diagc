@@ -11,7 +11,6 @@ import {
   type LayoutOverlay,
 } from '@diagc/core/internal';
 import { defaultHost, setHost, type HostAdapter } from '../host';
-import type { EditorApi } from '../session/useEditor';
 import { useDeepLink } from './useDeepLink';
 import { useDiagramActions } from './useDiagramActions';
 import { useDiagramBoot } from './useDiagramBoot';
@@ -95,23 +94,21 @@ async function mount(opts: { editing?: boolean; leave?: boolean } = {}) {
     const resetViewRef = useRef<() => void>(() => {});
     const dl = useDeepLink({ names: boot.names, booted: boot.booted, leaveEditRef, resetViewRef });
     const [editing, setEditing] = useState(opts.editing ?? false);
-    const editor = { start: (name: string, state: EditorState) => void started.push([name, state]) } as EditorApi;
     const actions = useDiagramActions({
       editing,
       selected: dl.selected,
       current: boot.artifacts[dl.selected],
       names: boot.names,
       ownedNames: boot.ownedNames,
-      setOwnedNames: boot.setOwnedNames,
-      setDrafts: boot.setDrafts,
-      setLoaded: boot.setLoaded,
-      setSources: boot.setSources,
-      setSelected: dl.setSelected,
-      setEnteredPath: dl.setEnteredPath,
-      setEditing,
+      store: boot,
+      selectDiagram: dl.selectDiagram,
+      renameSelected: dl.renameSelected,
+      startEditing: (name, state) => {
+        started.push([name, state]);
+        setEditing(true);
+      },
       leaveEdit,
       resetView,
-      editor,
     });
     return { boot, dl, editing, actions };
   });
@@ -292,7 +289,7 @@ describe('useDiagramActions: Duplicate', () => {
   // a copy writes sidecars its source never had.
   it('copies a read-only diagram from its compiled model, writing no empty sidecars', async () => {
     const t = await mount();
-    act(() => t.now.dl.setSelected('two'));
+    act(() => t.now.dl.selectDiagram('two'));
     await t.run((a) => a.duplicateDiagram());
     const copied = { ...model('two', ['z']), id: 'two-copy', name: 'two-copy' };
     expect(requests).toEqual([{ method: 'POST', url: '/api/diagrams/two-copy', body: copied }]);

@@ -27,9 +27,6 @@ function Harness({
     <div>
       <span data-testid="selected">{dl.selected}</span>
       <span data-testid="path">{dl.enteredPath.join('/')}</span>
-      <button onClick={() => dl.setSelected('two')}>select-two</button>
-      <button onClick={() => dl.setEnteredPath(['sys'])}>drill-sys</button>
-      <button onClick={() => dl.setEnteredPath([])}>clear-path</button>
       <button onClick={() => dl.handleEnteredPathChange(['sys'])}>report-sys</button>
     </div>
   );
@@ -132,7 +129,7 @@ describe('useDeepLink', () => {
   it('updates the hash when the drill path changes', () => {
     render(<Harness names={NAMES} booted />);
     act(() => {
-      screen.getByText('drill-sys').click();
+      screen.getByText('report-sys').click();
     });
     expect(window.location.hash).toBe('#/sketch/sys');
   });
@@ -154,10 +151,34 @@ describe('useDeepLink', () => {
     act(() => memory.navigate('#/b'));
     expect(screen.getByTestId('selected').textContent).toBe('b');
 
-    act(() => dl!.setSelected('a'));
+    act(() => dl!.selectDiagram('a'));
     expect(memory.get().endsWith('#/a')).toBe(true);
 
     // never touched the real window at all
     expect(window.location.hash).toBe('');
+  });
+
+  // Breaks if opening a diagram keeps the drill trail of the one before (its
+  // container ids name nothing in the next).
+  it('opens another diagram at its top level', () => {
+    let dl: DeepLink | undefined;
+    window.location.hash = '#/sketch/sys';
+    render(<Harness names={NAMES} booted onDeepLink={(d) => (dl = d)} />);
+    act(() => dl!.selectDiagram('two'));
+    expect(screen.getByTestId('selected').textContent).toBe('two');
+    expect(dl!.enteredPath).toEqual([]);
+  });
+
+  // Breaks if a rename drops the drill trail, or hands it back as the same array
+  // (DiagramView re-applies a trail only on a new reference).
+  it('follows a rename with the same trail as a new array', () => {
+    let dl: DeepLink | undefined;
+    window.location.hash = '#/sketch/sys';
+    render(<Harness names={[...NAMES, 'renamed']} booted onDeepLink={(d) => (dl = d)} />);
+    const trail = dl!.enteredPath;
+    act(() => dl!.renameSelected('renamed'));
+    expect(screen.getByTestId('selected').textContent).toBe('renamed');
+    expect(dl!.enteredPath).toEqual(['sys']);
+    expect(dl!.enteredPath).not.toBe(trail);
   });
 });
