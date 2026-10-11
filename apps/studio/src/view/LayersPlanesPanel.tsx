@@ -1,10 +1,6 @@
 import { useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import {
   BUILTIN_NOTATIONS,
-  FISHBONE_NOTATION,
-  PLAN_NOTATION,
-  SECOND_ORDER_NOTATION,
-  TM_NOTATION,
   uniqueSlug,
   type DiagramLayer,
   type DiagramModel,
@@ -15,6 +11,7 @@ import { getHost } from '../host';
 import { PlaneSwitcher } from './PlaneSwitcher';
 import { DockSection } from '../dock/DockSection';
 import { commitOnEnter } from '../inspector/commitOnEnter';
+import { notationLabel } from '../notations';
 
 interface LayersPlanesPanelProps {
   model: DiagramModel;
@@ -49,18 +46,6 @@ type PlaneRow = {
   layers: string[];
   notation: string;
 };
-
-const NOTATION_LABELS: Record<string, string> = {
-  [SECOND_ORDER_NOTATION]: 'Second-order thinking',
-  [FISHBONE_NOTATION]: 'Fishbone (cause and effect)',
-  // the notation is the STRIDE data-flow diagram; 'Threat model' alone would
-  // read as a category rather than the method the plane is drawn in
-  [TM_NOTATION]: 'Threat model (STRIDE)',
-  [PLAN_NOTATION]: 'Plan (schedule)',
-};
-// Derives a display label from a notation id ('causal-loop' -> 'Causal loop').
-const notationLabel = (id: string): string =>
-  NOTATION_LABELS[id] ?? id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');
 
 const sameStrs = (a: string[], b: string[]): boolean =>
   a.length === b.length && [...a].sort().join('\0') === [...b].sort().join('\0');

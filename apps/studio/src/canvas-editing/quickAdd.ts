@@ -39,7 +39,7 @@ import {
 } from '@diagc/core/internal';
 import type { QuickAddSide } from '@diagc/renderer';
 import { createNodeAt, placeTags } from './create-node';
-import { connectKind } from '../notations/threat-model/connectKind';
+import { connectKind } from '../notations';
 import { addChild, isSubCause } from '../notations/fishbone/fishboneActions';
 import { appendCommit } from '../notations/git-graph/gitActions';
 import { thenWhat } from '../notations/second-order/secondOrderActions';

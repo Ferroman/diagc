@@ -6,6 +6,7 @@ import {
   PLAN_NOTATION,
   SECOND_ORDER_NOTATION,
   TM_NOTATION,
+  type DiagramModel,
   type NotationId,
 } from '@diagc/core/internal';
 import { CAUSAL_LOOP } from './causal-loop/profile';
@@ -40,3 +41,12 @@ export const studioNotation = (id?: NotationId): StudioNotationProfile =>
  * id ('causal-loop' → 'Causal loop'). */
 export const notationLabel = (id: NotationId): string =>
   STUDIO_NOTATIONS[id].label ?? id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');
+
+/** The relation kind a connect gesture, or a quick add that connects, draws
+ * between two nodes: the notation's own rule, else `sync`. */
+export const connectKind = (
+  notation: NotationId | undefined,
+  model: DiagramModel | undefined,
+  from: string,
+  to: string,
+): string => studioNotation(notation).connectKind?.(model, from, to) ?? 'sync';

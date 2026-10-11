@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  CAUSAL_LOOP_NOTATION,
   crossings,
   relationLabels,
   strideFor,
-  TM_NOTATION,
   type DiagramModel,
   type EdgeLabel,
   type EdgeLabelSide,
@@ -13,11 +11,13 @@ import {
   type Polarity,
   type RelationStyle,
 } from '@diagc/core/internal';
+import { notationProfile } from '@diagc/renderer';
 import { getHost } from '../host';
 import { CommentsSection } from './CommentsSection';
 import { commitOnEnter } from './commitOnEnter';
 import { ColorRow, OptionRow } from './pickers';
 import { ThreatsSection } from './ThreatsSection';
+import { carriesThreats, threatsOffered } from './threatsOffered';
 
 /** a fresh, relation-unique label id (l1, l2, … skipping ids already in use) */
 const nextLabelId = (labels: EdgeLabel[]): string => {
@@ -50,7 +50,7 @@ interface EdgePanelProps {
   constituentIds: string[];
   onCommand: (command: EditorCommand) => void;
   onClose: () => void;
-  /** active plane's notation; gates CLD-specific controls (polarity/delay/curvature/flip curve) */
+  /** active plane's notation; gates the polarity, delay, curvature and flip-curve controls */
   notation?: NotationId;
   /** the viewed plane — the containment a boundary crossing is derived from */
   activePlane?: string;
@@ -128,7 +128,7 @@ interface RelationFormProps {
   /** back to the list (multi-constituent edges); absent for a single relation */
   onBack?: () => void;
   onClose: () => void;
-  /** active plane's notation; gates CLD-specific controls (polarity/delay/curvature/flip curve) */
+  /** active plane's notation; gates the polarity, delay, curvature and flip-curve controls */
   notation?: NotationId;
   /** the viewed plane — the containment a boundary crossing is derived from */
   activePlane?: string;
@@ -137,7 +137,12 @@ interface RelationFormProps {
 function RelationForm({ model, relationId, onCommand, onBack, onClose, notation, activePlane }: RelationFormProps) {
   const relation = model.relations.find((r) => r.id === relationId);
   const nodeName = (id: string) => model.nodes.find((n) => n.id === id)?.name ?? id;
-  const isCld = notation === CAUSAL_LOOP_NOTATION;
+  // A control shows where the notation draws what it edits: polarity and
+  // delay where the renderer draws a relation's marks, curvature and the flip
+  // where it bows the line.
+  const edgeLook = notationProfile(notation).edge;
+  const marks = edgeLook?.marks === true;
+  const bowed = edgeLook?.bowed === true;
   // Every crossing on the plane in one pass (the map is shared by all relations,
   // so it is cheaper than asking per relation) — before the early return below,
   // because hooks cannot sit behind one.
@@ -303,7 +308,7 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation,
       {/* Threats are a generic field, so the section is offered on the notation
        * — but a relation that already carries threats keeps it whatever the
        * plane is drawn as, or turning the notation off would strand them. */}
-      {(notation === TM_NOTATION || (relation.threats?.length ?? 0) > 0) && (
+      {threatsOffered(notation, carriesThreats(relation)) && (
         <ThreatsSection
           target={{ relation: relationId }}
           threats={relation.threats ?? []}
@@ -327,7 +332,7 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation,
         </select>
       </label>
 
-      {isCld && (
+      {marks && (
         <>
           <OptionRow
             label="Polarity"
@@ -363,7 +368,7 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation,
           ]}
           onChange={(v) => commitStyle({ shape: v === '' ? undefined : v })}
         />
-        {isCld && (
+        {bowed && (
           <>
             <OptionRow
               label="Curvature"

@@ -1,4 +1,4 @@
-import { TM_BOUNDARY_TYPE, TM_FLOW_KIND, TM_NOTATION, type DiagramModel, type NotationId } from '@diagc/core/internal';
+import { TM_BOUNDARY_TYPE, TM_FLOW_KIND, type DiagramModel } from '@diagc/core/internal';
 
 /**
  * The relation kind a plain canvas connect gesture creates on a threat model.
@@ -22,14 +22,4 @@ import { TM_BOUNDARY_TYPE, TM_FLOW_KIND, TM_NOTATION, type DiagramModel, type No
 export function flowKind(model: DiagramModel | undefined, from: string, to: string): string {
   const isBoundary = (id: string) => model?.nodes.find((n) => n.id === id)?.type === TM_BOUNDARY_TYPE;
   return isBoundary(from) || isBoundary(to) ? 'sync' : TM_FLOW_KIND;
-}
-
-/** The relation kind a plain canvas connect gesture creates under `notation`: the threat model's flow, else `sync`. */
-export function connectKind(
-  notation: NotationId | undefined,
-  model: DiagramModel | undefined,
-  from: string,
-  to: string,
-): string {
-  return notation === TM_NOTATION ? flowKind(model, from, to) : 'sync';
 }

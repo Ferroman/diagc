@@ -1,6 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
 import {
-  CAUSAL_LOOP_NOTATION,
   defined,
   openingPins,
   presetLayers,
@@ -16,6 +15,7 @@ import type { EditorApi } from '../session/useEditor';
 import { getHost } from '../host';
 import { remapVisibleLayers } from './layerMerge';
 import { unfoldedOf } from '../layout/savedPositions';
+import { studioNotation } from '../notations';
 
 export interface UseViewOpsOptions {
   editor: EditorApi;
@@ -100,11 +100,12 @@ export function useViewOps({
     setRenameId((r) => (r !== null && sel?.kind === 'node' && sel.id === r ? r : null));
   };
 
-  // ctrl-click a second node in the causal-loop view → compare it with the
-  // currently-selected variable. Toggle off if it's the same one; ignore self
-  // or clicks outside a valid CLD single-node selection.
+  // ctrl-click a second node where the notation analyses loops (a causal loop)
+  // → compare it with the currently-selected variable. Toggle off if it's the
+  // same one; ignore self or clicks outside a single-node selection.
   const compareSelect = (id: string) => {
-    if (editing || notation !== CAUSAL_LOOP_NOTATION || selection?.kind !== 'node' || id === selection.id) return;
+    if (editing || studioNotation(notation).loopAnalysis !== true || selection?.kind !== 'node' || id === selection.id)
+      return;
     setLeverageFocus(null);
     setCompareId((cur) => (cur === id ? null : id));
   };

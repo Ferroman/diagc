@@ -22,28 +22,21 @@ import {
   activeNotation,
   allNotesOpen,
   borrowsContainment,
-  CAUSAL_LOOP_NOTATION,
   DEFAULT_STROKE_WIDTH,
   emptyDrawings,
   emptyLayout,
   errMessage,
   defaultLayoutDirection,
   defined,
-  FISHBONE_NOTATION,
-  GIT_NOTATION,
-  isPlanZone,
   layoutPlaneKey,
   LEAF_SIZE,
   NEW_THREAT_TITLE,
   nextThreatId,
   openingPins,
-  PLAN_NOTATION,
   presetLayers,
-  SECOND_ORDER_NOTATION,
   SOURCE_URL,
   strideFor,
   threatsOf,
-  TM_NOTATION,
   uniqueSlug,
   uniqueStrokeId,
   type Column,
@@ -83,13 +76,11 @@ import { uploadAsset } from './canvas-editing/images';
 import { NodePanel } from './inspector/NodePanel';
 import { EdgePanel } from './inspector/EdgePanel';
 import { LayersPlanesPanel } from './view/LayersPlanesPanel';
-import { GitPanel } from './notations/git-graph/GitPanel';
-import { ActivityPanel, moveLaneCommand } from './activity/ActivityPanel';
-import { SecondOrderPanel } from './notations/second-order/SecondOrderPanel';
-import { FishbonePanel } from './notations/fishbone/FishbonePanel';
-import { ThreatModelPanel } from './notations/threat-model/ThreatModelPanel';
-import { PlanPanel } from './notations/plan/PlanPanel';
-import { assign, planMoves, planResize, setActorRole } from './notations/plan/planActions';
+import { moveLaneCommand } from './activity/ActivityPanel';
+import { setActorRole } from './notations/plan/planActions';
+import { connectKind, studioNotation } from './notations';
+import { dockPanels } from './dock/features';
+import { anyCarriesThreats, threatsOffered } from './inspector/threatsOffered';
 import { quickAdd, quickAddLabel, quickAddPlaced, type QuickAddContext } from './canvas-editing/quickAdd';
 import { InspectorTabs, type InspectorTab } from './inspector/InspectorTabs';
 import { Dock } from './dock/Dock';
@@ -98,7 +89,6 @@ import { Sidebar } from './inspector/Sidebar';
 import { EMPTY_LIBRARY_VIEW, LibraryPanel } from './library/LibraryPanel';
 import { useLibrary } from './library/useLibrary';
 import { deleteSelectionCommand } from './canvas-editing/deleteSelection';
-import { connectKind } from './notations/threat-model/connectKind';
 import { fkConnectionCommands } from './canvas-editing/tableConnect';
 import type { ActionId } from './hotkeys/actions';
 import { isMac } from './hotkeys/chord';
@@ -331,6 +321,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // published page.
   const activePlane = plane;
   const notation = activeNotation(planes, activePlane, model?.notation);
+  // what the notation adds: its dock panel, the gestures it reads its own way,
+  // the kind a connect draws, the loop analysis (see notations/types)
+  const studioProfile = studioNotation(notation);
   // the host's calendar date: a plan plane's today line, and where a quick-add
   // or a library drop with no other anchor lands.
   const today = todayIso();
@@ -607,14 +600,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // the set-notes-open rule), so a press always does what the picture lacks.
   const allOpen =
     model !== undefined && layout !== undefined && allNotesOpen(model, layout, layoutPlaneKey(model, activePlane));
-  // `some` rather than threatRegister(): this runs every render and only needs
-  // to know whether ONE threat exists, not to build (and name) every row.
-  const anyThreats =
-    model !== undefined &&
-    (model.nodes.some((n) => (n.threats?.length ?? 0) > 0) ||
-      model.relations.some((r) => (r.threats?.length ?? 0) > 0));
+  const anyThreats = model !== undefined && anyCarriesThreats(model);
   // Only a diagram that has threats (or is meant to grow them) gets the chip.
-  const hasThreats = model !== undefined && (notation === TM_NOTATION || anyThreats);
+  const hasThreats = model !== undefined && threatsOffered(notation, anyThreats);
 
   // Diagram lifecycle: create + rename + duplicate (the flows that re-key the
   // artifact store).
@@ -1279,7 +1267,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                       />
                     }
                   />
-                ) : notation === CAUSAL_LOOP_NOTATION &&
+                ) : studioProfile.loopAnalysis === true &&
                   selection?.kind === 'node' &&
                   model.nodes.some((n) => n.id === selection.id) ? (
                   <LeveragePanel
@@ -1368,11 +1356,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                             positions: Record<string, Point>,
                             deltas: Record<string, { dx: number; dy: number }>,
                           ) => {
-                            // on a plan plane a move is a date change; the layout owns x
-                            if (notation === PLAN_NOTATION && model !== undefined) {
-                              // undefined when the gesture changed no date (a sub-day nudge):
-                              // nothing to dispatch, nothing for undo to remember
-                              const command = planMoves(model, activePlane, positions, deltas);
+                            // a notation that reads a move its own way (the plan: as
+                            // dates) consumes it, even when it changed nothing
+                            const nodesMoved = studioProfile.gestures?.nodesMoved;
+                            if (nodesMoved !== undefined && model !== undefined) {
+                              const command = nodesMoved({ model, plane: activePlane, positions, deltas });
                               if (command !== undefined) editor.dispatch(command);
                               return;
                             }
@@ -1383,9 +1371,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                             });
                           },
                           onDropInto: (id: string, targetId: string, rel: Point) => {
-                            // on a plan plane a drop assigns a role or re-homes the node instead of an ordinary move
-                            if (notation === PLAN_NOTATION && model !== undefined) {
-                              const command = assign(model, activePlane, id, targetId, rel);
+                            // only a notation with drop targets (the plan) reads a drop
+                            const dropInto = studioProfile.gestures?.dropInto;
+                            if (dropInto !== undefined && model !== undefined) {
+                              const command = dropInto({ model, plane: activePlane, id, targetId, rel });
                               if (command !== undefined) editor.dispatch(command);
                             }
                           },
@@ -1393,8 +1382,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                             const command = moveLaneCommand(frameId, laneId, offset, activePlane);
                             if (command !== null) editor.dispatch(command);
                           },
-                          // the chip only ever renders on a plan plane (DiagramNode gates it
-                          // on the notation itself), so no notation check is needed here
+                          // the chip only ever renders where the renderer's profile draws
+                          // role chips (the plan), so no notation is asked here
                           onSetRole: (zoneId: string, actorId: string, role: PlanRole | null) => {
                             if (model === undefined) return;
                             const command = setActorRole(model, zoneId, actorId, role);
@@ -1404,13 +1393,12 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           onImageFiles: (files: File[], position?: Point) => void addImages(files, position),
                           onDropLibraryEntry: dropLibraryEntry,
                           onResize: (id: string, w: number, h: number, pos: Point) => {
-                            if (notation === PLAN_NOTATION && model !== undefined) {
-                              // the lookup scans every node, so it stays inside the
-                              // guard: every other notation resizes without it
-                              const node = model.nodes.find((n) => n.id === id);
-                              if (node !== undefined && isPlanZone(node)) {
-                                // a zone's width is its dates: no size is ever saved for it
-                                const command = planResize(model, activePlane, id, pos.x, w);
+                            // a notation may read a resize its own way (the plan: a zone's
+                            // dates), and hands back a node it does not
+                            const resize = studioProfile.gestures?.resize;
+                            if (resize !== undefined && model !== undefined) {
+                              const command = resize({ model, plane: activePlane, id, w, h, pos });
+                              if (command !== 'generic') {
                                 if (command !== undefined) editor.dispatch(command);
                                 return;
                               }
@@ -1544,59 +1532,17 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                 maxWidth={DOCK_MAX}
                 onWidthChange={setRightWidth}
               >
-                {editing && notation === GIT_NOTATION && (
-                  <GitPanel
-                    model={model}
-                    plane={activePlane}
-                    selection={selection}
-                    onCommand={editor.dispatch}
-                    onSelect={(id) => select({ kind: 'node', id })}
-                  />
-                )}
-                {editing && notation === PLAN_NOTATION && (
-                  <PlanPanel
-                    model={model}
-                    plane={activePlane}
-                    selection={selection}
-                    onCommand={editor.dispatch}
-                    onSelect={(id) => select({ kind: 'node', id })}
-                    today={today}
-                  />
-                )}
-                {editing && notation === SECOND_ORDER_NOTATION && (
-                  <SecondOrderPanel
-                    model={model}
-                    selection={selection}
-                    plane={activePlaneBorrowsContainment ? undefined : activePlane}
-                    onCommand={editor.dispatch}
-                    onSelect={(id) => select({ kind: 'node', id })}
-                    onCreated={requestLabelEdit}
-                  />
-                )}
-                {editing && notation === FISHBONE_NOTATION && (
-                  <FishbonePanel
-                    model={model}
-                    selection={selection}
-                    plane={activePlaneBorrowsContainment ? undefined : activePlane}
-                    onCommand={editor.dispatch}
-                    onSelect={(id) => select({ kind: 'node', id })}
-                    onCreated={requestLabelEdit}
-                  />
-                )}
-                {/* No `editing` gate, unlike its siblings above: this panel only
-                  reads the model — the register and the crossings still to
-                  review are as much use on a read-only .diagram.ts threat model
-                  as on an editable one. */}
-                {notation === TM_NOTATION && <ThreatModelPanel model={model} plane={activePlane} onSelect={select} />}
-                {editing && (
-                  <ActivityPanel
-                    model={model}
-                    plane={activePlane}
-                    selection={selection}
-                    onCommand={editor.dispatch}
-                    onSelect={(id) => select({ kind: 'node', id })}
-                  />
-                )}
+                {dockPanels(studioProfile.dock, {
+                  model,
+                  editing,
+                  viewPlane: activePlane,
+                  scopePlane: activePlaneBorrowsContainment ? undefined : activePlane,
+                  selection,
+                  today,
+                  onCommand: editor.dispatch,
+                  select,
+                  requestLabelEdit,
+                })}
                 {/* How this plane is arranged and drawn — everything the topbar and
                   the editor toolbar used to carry about layout. The pickers go
                   when the notation arranges the plane itself (git graph,

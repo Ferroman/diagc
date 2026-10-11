@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { BUILTIN_NOTATIONS, model, type DiagramModel } from '@diagc/core/internal';
-import { notationLabel, studioNotation, STUDIO_NOTATIONS } from './index';
+import { BUILTIN_NOTATIONS, TM_FLOW_KIND, model, type DiagramModel } from '@diagc/core/internal';
+import { connectKind, notationLabel, studioNotation, STUDIO_NOTATIONS } from './index';
 import type { NotationDockContext } from './types';
 
 const empty: DiagramModel = model('d').toJSON();
@@ -74,5 +74,38 @@ describe('STUDIO_NOTATIONS', () => {
   ] as const)('%s renders its own panel', (id, landmark) => {
     render(<>{STUDIO_NOTATIONS[id].dock!.render(ctx())}</>);
     expect(screen.getByRole('complementary', { name: landmark })).toBeDefined();
+  });
+});
+
+describe('connectKind', () => {
+  /** customer (entity) and web (process) loose, both inside the dmz boundary */
+  const tm = (() => {
+    const m = model('tm');
+    const b = m.threatModel();
+    b.boundary('dmz', 'DMZ').contains(b.entity('user', 'Customer'), b.process('web', 'Web app'));
+    return m.toJSON();
+  })();
+  /** two zones on the plan plane; roles come from the panel, never from a canvas connect */
+  const plan = (() => {
+    const m = model('sched');
+    const p = m.plan();
+    p.zone('a', { name: 'A', start: '2026-01-05', end: '2026-01-09' });
+    p.zone('b', { name: 'B', start: '2026-01-12', end: '2026-01-16' });
+    return m.toJSON();
+  })();
+
+  it("asks the threat model's rule on a threat model", () => {
+    expect(connectKind('threat-model', tm, 'user', 'web')).toBe(TM_FLOW_KIND);
+    expect(connectKind('threat-model', tm, 'dmz', 'web')).toBe('sync');
+  });
+
+  it('keeps the plain sync default everywhere else', () => {
+    // No notation, and the two notations that derive their structure from the
+    // topology rather than the kind — neither may change behaviour here.
+    expect(connectKind(undefined, tm, 'user', 'web')).toBe('sync');
+    expect(connectKind('fishbone', tm, 'user', 'web')).toBe('sync');
+    expect(connectKind('second-order', tm, 'user', 'web')).toBe('sync');
+    expect(connectKind('c4', tm, 'user', 'web')).toBe('sync');
+    expect(connectKind('plan', plan, 'a', 'b')).toBe('sync');
   });
 });

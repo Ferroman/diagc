@@ -5,7 +5,6 @@ import {
   DEFAULT_IMAGE_NODE_SIZE,
   defined,
   LEAF_SIZE,
-  PLAN_NOTATION,
   errMessage,
   uniqueNodeId,
   type DiagramModel,
@@ -24,6 +23,7 @@ import type { UseLibrary } from '../library/useLibrary';
 import { defaultParentId } from './newNodeParent';
 import { createNodeAt, placeTags } from './create-node';
 import { activityDropPosition, homeActivityParent } from '../activity/activityDrop';
+import { studioNotation } from '../notations';
 import type { InspectorTab } from '../inspector/InspectorTabs';
 
 export interface UseNodePlacementOptions {
@@ -54,7 +54,7 @@ export interface UseNodePlacementOptions {
   /** the render-bound model (edit mode: the session's) — used by applyFromLibrary */
   model: DiagramModel | undefined;
   lib: UseLibrary;
-  /** the active plane's notation — on a plan plane a dropped zone/event's dates follow the drop point */
+  /** the active plane's notation — where it draws x as days, a dropped zone/event's dates follow the drop point */
   notation?: NotationId;
   /** the host's date, YYYY-MM-DD: where a seeded drop lands with no other anchor */
   today: string;
@@ -208,13 +208,13 @@ export function useNodePlacement({
     });
     // The Zone/Event templates carry no dates of their own, and validation
     // checks a zone's or event's dates on any plane, so every placement seeds
-    // them. Only a plan plane draws x as days, so only there does the drop
+    // them. Only a notation that draws x as days (the plan) lets the drop
     // point pick the day.
     const seeded = seedDates(
       m,
       activePlane,
       entry.template.type,
-      defined({ x: notation === PLAN_NOTATION ? opts?.position?.x : undefined, parentId }),
+      defined({ x: studioNotation(notation).datesFromDropPoint === true ? opts?.position?.x : undefined, parentId }),
       today,
     );
     const node = {
