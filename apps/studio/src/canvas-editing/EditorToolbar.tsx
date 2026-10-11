@@ -65,6 +65,83 @@ function ColorRow({
   );
 }
 
+/** Select, Pen and Eraser; the drawing tools are off while drilled in, and say why. */
+function ToolGroup({
+  tool,
+  onSetTool,
+  drawingDisabled,
+  hint,
+}: Pick<EditorToolbarProps, 'tool' | 'onSetTool' | 'drawingDisabled'> & { hint: ReturnType<typeof useKeyHint> }) {
+  return (
+    <span className="tool-group" role="group" aria-label="Canvas tool">
+      {(
+        [
+          ['select', 'Select', `Select and move${hint('tool.select')} — Esc also gets you here`],
+          [
+            'pen',
+            'Pen',
+            drawingDisabled
+              ? 'Drawings are shown at the top level only — leave the drilled view to draw'
+              : `Draw freehand${hint('tool.pen')}`,
+          ],
+          [
+            'eraser',
+            'Eraser',
+            drawingDisabled
+              ? 'Drawings are shown at the top level only — leave the drilled view to erase'
+              : `Click a stroke to erase it${hint('tool.eraser')}`,
+          ],
+        ] as const
+      ).map(([id, label, title]) => (
+        <button
+          key={id}
+          type="button"
+          className={`chip${tool === id ? ' active' : ''}`}
+          aria-pressed={tool === id}
+          title={title}
+          disabled={id !== 'select' && drawingDisabled}
+          onClick={() => onSetTool(id)}
+        >
+          {label}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+/** What the pen draws with: its colour and its width. */
+function PenOptions({ pen, onSetPen }: Pick<EditorToolbarProps, 'pen' | 'onSetPen'>) {
+  return (
+    <>
+      <ColorRow
+        label="Pen color"
+        autoTitle="Auto (theme ink)"
+        value={pen.color}
+        onChange={(c) => onSetPen({ color: c })}
+      />
+      <span className="tool-group" role="group" aria-label="Pen width">
+        {(
+          [
+            [2, 'Thin'],
+            [3, 'Medium'],
+            [6, 'Thick'],
+          ] as const
+        ).map(([w, label]) => (
+          <button
+            key={w}
+            type="button"
+            className={`chip${pen.width === w ? ' active' : ''}`}
+            aria-pressed={pen.width === w}
+            onClick={() => onSetPen({ width: w })}
+          >
+            {label}
+          </button>
+        ))}
+      </span>
+    </>
+  );
+}
+
 /**
  * Edit mode's tool row: leave, pick a canvas tool, undo / redo / save, colour
  * the selection. The layout pickers and commands that used to ride here are in
@@ -94,68 +171,8 @@ export function EditorToolbar({
         Done
       </button>
       <span className="sep" />
-      <span className="tool-group" role="group" aria-label="Canvas tool">
-        {(
-          [
-            ['select', 'Select', `Select and move${hint('tool.select')} — Esc also gets you here`],
-            [
-              'pen',
-              'Pen',
-              drawingDisabled
-                ? 'Drawings are shown at the top level only — leave the drilled view to draw'
-                : `Draw freehand${hint('tool.pen')}`,
-            ],
-            [
-              'eraser',
-              'Eraser',
-              drawingDisabled
-                ? 'Drawings are shown at the top level only — leave the drilled view to erase'
-                : `Click a stroke to erase it${hint('tool.eraser')}`,
-            ],
-          ] as const
-        ).map(([id, label, title]) => (
-          <button
-            key={id}
-            type="button"
-            className={`chip${tool === id ? ' active' : ''}`}
-            aria-pressed={tool === id}
-            title={title}
-            disabled={id !== 'select' && drawingDisabled}
-            onClick={() => onSetTool(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </span>
-      {tool === 'pen' && (
-        <>
-          <ColorRow
-            label="Pen color"
-            autoTitle="Auto (theme ink)"
-            value={pen.color}
-            onChange={(c) => onSetPen({ color: c })}
-          />
-          <span className="tool-group" role="group" aria-label="Pen width">
-            {(
-              [
-                [2, 'Thin'],
-                [3, 'Medium'],
-                [6, 'Thick'],
-              ] as const
-            ).map(([w, label]) => (
-              <button
-                key={w}
-                type="button"
-                className={`chip${pen.width === w ? ' active' : ''}`}
-                aria-pressed={pen.width === w}
-                onClick={() => onSetPen({ width: w })}
-              >
-                {label}
-              </button>
-            ))}
-          </span>
-        </>
-      )}
+      <ToolGroup tool={tool} onSetTool={onSetTool} drawingDisabled={drawingDisabled} hint={hint} />
+      {tool === 'pen' && <PenOptions pen={pen} onSetPen={onSetPen} />}
       <span className="sep" />
       <button
         className="chip"

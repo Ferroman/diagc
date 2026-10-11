@@ -9,11 +9,6 @@
       "count": 2
     }
   },
-  "apps/studio/src/canvas-editing/EditorToolbar.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "apps/studio/src/canvas-editing/clipboard.ts": {
     "complexity": {
       "count": 1
@@ -35,28 +30,8 @@
       "count": 1
     }
   },
-  "apps/studio/src/diagrams/DiagramPicker.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "apps/studio/src/dock/Dock.tsx": {
-    "complexity": {
-      "count": 1
-    }
-  },
-  "apps/studio/src/hotkeys/HotkeysDialog.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "apps/studio/src/layout/savedPositions.ts": {
     "max-params": {
-      "count": 2
-    }
-  },
-  "apps/studio/src/library/LibraryPanel.tsx": {
-    "max-lines-per-function": {
       "count": 2
     }
   },

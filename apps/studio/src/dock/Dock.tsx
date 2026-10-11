@@ -57,21 +57,6 @@ export function Dock({
     window.addEventListener('pointerup', onUp);
   };
 
-  // Chevron points toward where the panel goes when collapsed.
-  const glyph = collapsed ? (side === 'right' ? '⟨' : '⟩') : side === 'right' ? '⟩' : '⟨';
-  const toggle = (
-    <button
-      type="button"
-      className="dock-toggle"
-      aria-label={collapsed ? 'Expand panel' : 'Collapse panel'}
-      aria-expanded={!collapsed}
-      title={collapsed ? 'Expand panel' : 'Collapse panel'}
-      onClick={onToggle}
-    >
-      <span aria-hidden="true">{glyph}</span>
-      {collapsed && hasContent && <span className="dock-dot" aria-hidden="true" />}
-    </button>
-  );
   const handle =
     !collapsed && width !== undefined && onWidthChange !== undefined ? (
       <div
@@ -91,9 +76,38 @@ export function Dock({
     <div className={`dock dock-${side}${collapsed ? ' collapsed' : ''}`}>
       {side === 'left' && body}
       {side === 'right' && handle}
-      {toggle}
+      <DockToggle side={side} collapsed={collapsed} hasContent={hasContent} onToggle={onToggle} />
       {side === 'left' && handle}
       {side === 'right' && body}
     </div>
+  );
+}
+
+/** The dock's collapse toggle; a dot while collapsed says something is inside. */
+function DockToggle({
+  side,
+  collapsed,
+  hasContent,
+  onToggle,
+}: {
+  side: 'left' | 'right';
+  collapsed: boolean;
+  hasContent: boolean;
+  onToggle: () => void;
+}) {
+  // Chevron points toward where the panel goes when collapsed.
+  const glyph = collapsed ? (side === 'right' ? '⟨' : '⟩') : side === 'right' ? '⟩' : '⟨';
+  return (
+    <button
+      type="button"
+      className="dock-toggle"
+      aria-label={collapsed ? 'Expand panel' : 'Collapse panel'}
+      aria-expanded={!collapsed}
+      title={collapsed ? 'Expand panel' : 'Collapse panel'}
+      onClick={onToggle}
+    >
+      <span aria-hidden="true">{glyph}</span>
+      {collapsed && hasContent && <span className="dock-dot" aria-hidden="true" />}
+    </button>
   );
 }

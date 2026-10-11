@@ -3,7 +3,7 @@ import { createIconRegistry } from '@diagc/icons';
 import { createTypeRegistry, LIBRARY_ENTRY_DND_TYPE } from '@diagc/renderer';
 import { getHost } from '../host';
 import { searchLibrary } from './entry';
-import type { Library, LibraryCategory, LibraryEntry } from './types';
+import type { Library, LibraryCategory as Category, LibraryEntry } from './types';
 
 // Same registries the canvas resolves against, so a card previews the stencil it
 // will actually place. Built once — they are static defaults.
@@ -73,9 +73,9 @@ const GROUP_AUTO_COLLAPSE_ABOVE = 64;
 /** The panel's render order: categories in library order, with runs that share
  * a `group` label folded into one block (first appearance fixes the block's
  * position). Ungrouped categories become singleton blocks. */
-function groupBlocks(categories: LibraryCategory[]): { group?: string; cats: LibraryCategory[] }[] {
-  const out: { group?: string; cats: LibraryCategory[] }[] = [];
-  const byGroup = new Map<string, { group: string; cats: LibraryCategory[] }>();
+function groupBlocks(categories: Category[]): { group?: string; cats: Category[] }[] {
+  const out: { group?: string; cats: Category[] }[] = [];
+  const byGroup = new Map<string, { group: string; cats: Category[] }>();
   for (const c of categories) {
     if (c.group === undefined) {
       out.push({ cats: [c] });
@@ -139,6 +139,71 @@ function EntryPreview({ entry, assetBase }: { entry: LibraryEntry; assetBase: st
   );
 }
 
+/** Add a blank node, or image nodes from files. */
+function LibraryActions({ onAddNode, onAddImages }: Pick<LibraryPanelProps, 'onAddNode' | 'onAddImages'>) {
+  if (onAddNode === undefined && onAddImages === undefined) return null;
+  return (
+    <div className="lib-actions">
+      {onAddNode !== undefined && (
+        <button type="button" className="chip" onClick={onAddNode}>
+          Add node
+        </button>
+      )}
+      {onAddImages !== undefined && (
+        <label className="chip icon-btn" title="Add image">
+          Add image
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            aria-label="Add image"
+            onChange={(e) => {
+              const files = [...(e.target.files ?? [])];
+              if (files.length > 0) onAddImages(files);
+              e.target.value = ''; // re-selecting the same file must fire again
+            }}
+          />
+        </label>
+      )}
+    </div>
+  );
+}
+
+/** What a card click does while a node is selected: place a new node, or restyle that one. */
+function ApplyToggle({
+  applying,
+  targetName,
+  onMode,
+}: {
+  applying: boolean;
+  targetName: string;
+  onMode: (mode: 'place' | 'apply') => void;
+}) {
+  return (
+    <div className="lib-apply-toggle" role="group" aria-label="Card click action">
+      <button
+        type="button"
+        className={`chip${applying ? '' : ' active'}`}
+        aria-pressed={!applying}
+        title="Clicking a card adds a new node"
+        onClick={() => onMode('place')}
+      >
+        Place new
+      </button>
+      <button
+        type="button"
+        className={`chip${applying ? ' active' : ''}`}
+        aria-pressed={applying}
+        title={`Clicking a card restyles ${targetName} to match it`}
+        onClick={() => onMode('apply')}
+      >
+        Apply to {targetName}
+      </button>
+    </div>
+  );
+}
+
 export function LibraryPanel({
   library,
   onPlace,
@@ -189,59 +254,22 @@ export function LibraryPanel({
     setNewCategory('');
   };
 
+  const shelf: Shelf = {
+    byCategory,
+    searching,
+    view: { query, toggled, groupToggled },
+    setView,
+    card: { applying, applyTarget, onPlace, onApply, assetBase },
+    authoring: { onImportIcon, onImportShape, onDeleteCategory },
+  };
+
   return (
     <aside className="sidebar lib-panel">
       <div className="panel-head">
         <h3>Library</h3>
       </div>
-      {(onAddNode !== undefined || onAddImages !== undefined) && (
-        <div className="lib-actions">
-          {onAddNode !== undefined && (
-            <button type="button" className="chip" onClick={onAddNode}>
-              Add node
-            </button>
-          )}
-          {onAddImages !== undefined && (
-            <label className="chip icon-btn" title="Add image">
-              Add image
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                hidden
-                aria-label="Add image"
-                onChange={(e) => {
-                  const files = [...(e.target.files ?? [])];
-                  if (files.length > 0) onAddImages(files);
-                  e.target.value = ''; // re-selecting the same file must fire again
-                }}
-              />
-            </label>
-          )}
-        </div>
-      )}
-      {canApply && (
-        <div className="lib-apply-toggle" role="group" aria-label="Card click action">
-          <button
-            type="button"
-            className={`chip${applying ? '' : ' active'}`}
-            aria-pressed={!applying}
-            title="Clicking a card adds a new node"
-            onClick={() => setMode('place')}
-          >
-            Place new
-          </button>
-          <button
-            type="button"
-            className={`chip${applying ? ' active' : ''}`}
-            aria-pressed={applying}
-            title={`Clicking a card restyles ${applyTarget!.name} to match it`}
-            onClick={() => setMode('apply')}
-          >
-            Apply to {applyTarget!.name}
-          </button>
-        </div>
-      )}
+      <LibraryActions onAddNode={onAddNode} onAddImages={onAddImages} />
+      {canApply && <ApplyToggle applying={applying} targetName={applyTarget!.name} onMode={setMode} />}
       <input
         className="lib-search"
         type="search"
@@ -250,144 +278,13 @@ export function LibraryPanel({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
-      {blocks.map((block) => {
-        const renderCategory = (cat: LibraryCategory) => {
-          const entries = byCategory.get(cat.id) ?? [];
-          // hide an empty builtin section while searching, but keep an empty user
-          // category visible so you can import into it
-          if (entries.length === 0 && (searching || cat.builtin === true)) return null;
-          // A search expands the sections that matched, so hits are never hidden
-          // behind a collapsed header — unless you closed that one yourself.
-          const open = toggled[cat.id] ?? (searching || entries.length <= AUTO_COLLAPSE_ABOVE);
-          return (
-            <section key={cat.id} className="lib-category">
-              <div className="lib-cat-head">
-                <h4 className="lib-cat-name">
-                  <button
-                    type="button"
-                    className="lib-cat-toggle"
-                    // Name is the section, state is aria-expanded; the visible
-                    // count stays out of the name so it doesn't read as "AWS40".
-                    aria-label={cat.name}
-                    aria-expanded={open}
-                    title={`${open ? 'Collapse' : 'Expand'} ${cat.name}`}
-                    onClick={() => setView((v) => ({ ...v, toggled: { ...v.toggled, [cat.id]: !open } }))}
-                  >
-                    <span className="lib-cat-caret" aria-hidden="true">
-                      {open ? '▾' : '▸'}
-                    </span>
-                    <span className="lib-cat-label">{cat.name}</span>
-                    <span className="lib-cat-count">{entries.length}</span>
-                  </button>
-                </h4>
-                {cat.builtin !== true && (
-                  <span className="lib-cat-actions">
-                    {onImportIcon !== undefined && (
-                      <label className="chip icon-btn" title={`Import icon into ${cat.name}`}>
-                        Icon
-                        <input
-                          type="file"
-                          accept="image/*"
-                          hidden
-                          aria-label={`Import icon into ${cat.name}`}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file !== undefined) onImportIcon(cat.id, file);
-                            e.target.value = '';
-                          }}
-                        />
-                      </label>
-                    )}
-                    {onImportShape !== undefined && (
-                      <label className="chip icon-btn" title={`Import shape into ${cat.name}`}>
-                        Shape
-                        <input
-                          type="file"
-                          accept=".svg,image/svg+xml"
-                          hidden
-                          aria-label={`Import shape into ${cat.name}`}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file !== undefined) onImportShape(cat.id, file);
-                            e.target.value = '';
-                          }}
-                        />
-                      </label>
-                    )}
-                    {onDeleteCategory !== undefined && (
-                      <button
-                        type="button"
-                        className="chip icon-btn"
-                        aria-label={`Delete category ${cat.name}`}
-                        title={`Delete category ${cat.name}`}
-                        onClick={() =>
-                          void getHost()
-                            .confirmDialog(`Delete category '${cat.name}' and its imported icons?`)
-                            .then((ok) => {
-                              if (ok) onDeleteCategory(cat.id);
-                            })
-                        }
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </span>
-                )}
-              </div>
-              {open && (
-                <div className="lib-grid">
-                  {entries.map((entry) => (
-                    <button
-                      key={entry.id}
-                      type="button"
-                      className="lib-entry"
-                      aria-label={applying ? `Apply ${entry.name}` : `Place ${entry.name}`}
-                      title={applying ? `Apply ${entry.name} to ${applyTarget!.name}` : `Place ${entry.name}`}
-                      draggable
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData(LIBRARY_ENTRY_DND_TYPE, entry.id);
-                        e.dataTransfer.effectAllowed = 'copy';
-                      }}
-                      onClick={() => (applying ? onApply!(entry) : onPlace(entry))}
-                    >
-                      <EntryPreview entry={entry} assetBase={assetBase} />
-                      <span className="lib-entry-name">{entry.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </section>
-          );
-        };
-        if (block.group === undefined) return renderCategory(block.cats[0]!);
-        const label = block.group;
-        const total = block.cats.reduce((n, c) => n + (byCategory.get(c.id) ?? []).length, 0);
-        // While searching, a group with no hits anywhere inside hides whole —
-        // its member sections would all render null, so the header must too.
-        if (total === 0 && searching) return null;
-        const open = groupToggled[label] ?? (searching || total <= GROUP_AUTO_COLLAPSE_ABOVE);
-        return (
-          <section key={`group:${label}`} className="lib-group">
-            <h4 className="lib-cat-name lib-group-name">
-              <button
-                type="button"
-                className="lib-cat-toggle"
-                aria-label={label}
-                aria-expanded={open}
-                title={`${open ? 'Collapse' : 'Expand'} ${label}`}
-                onClick={() => setView((v) => ({ ...v, groupToggled: { ...v.groupToggled, [label]: !open } }))}
-              >
-                <span className="lib-cat-caret" aria-hidden="true">
-                  {open ? '▾' : '▸'}
-                </span>
-                <span className="lib-cat-label">{label}</span>
-                <span className="lib-cat-count">{total}</span>
-              </button>
-            </h4>
-            {open && <div className="lib-group-body">{block.cats.map(renderCategory)}</div>}
-          </section>
-        );
-      })}
+      {blocks.map((block) =>
+        block.group === undefined ? (
+          <LibraryCategory key={block.cats[0]!.id} category={block.cats[0]!} shelf={shelf} />
+        ) : (
+          <LibraryGroup key={`group:${block.group}`} label={block.group} categories={block.cats} shelf={shelf} />
+        ),
+      )}
       {onAddCategory !== undefined && (
         <div className="add-member">
           <input
@@ -408,5 +305,191 @@ export function LibraryPanel({
         </div>
       )}
     </aside>
+  );
+}
+
+/** What a section needs from the panel: the search's hits, the open/closed
+ * choices, what a card click does, and what a user category offers. */
+interface Shelf {
+  byCategory: Map<string, LibraryEntry[]>;
+  searching: boolean;
+  view: LibraryView;
+  setView: Dispatch<SetStateAction<LibraryView>>;
+  card: CardAction;
+  authoring: Pick<LibraryPanelProps, 'onImportIcon' | 'onImportShape' | 'onDeleteCategory'>;
+}
+
+/** A card click places a new node, or (Apply mode) restyles the selection. */
+interface CardAction {
+  applying: boolean;
+  applyTarget: LibraryPanelProps['applyTarget'];
+  onPlace: (entry: LibraryEntry) => void;
+  onApply: LibraryPanelProps['onApply'];
+  assetBase: string;
+}
+
+/** One entry: its preview and name; a click places or applies it, a drag carries its id to the canvas. */
+function LibraryCard({
+  entry,
+  card: { applying, applyTarget, onPlace, onApply, assetBase },
+}: {
+  entry: LibraryEntry;
+  card: CardAction;
+}) {
+  return (
+    <button
+      type="button"
+      className="lib-entry"
+      aria-label={applying ? `Apply ${entry.name}` : `Place ${entry.name}`}
+      title={applying ? `Apply ${entry.name} to ${applyTarget!.name}` : `Place ${entry.name}`}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(LIBRARY_ENTRY_DND_TYPE, entry.id);
+        e.dataTransfer.effectAllowed = 'copy';
+      }}
+      onClick={() => (applying ? onApply!(entry) : onPlace(entry))}
+    >
+      <EntryPreview entry={entry} assetBase={assetBase} />
+      <span className="lib-entry-name">{entry.name}</span>
+    </button>
+  );
+}
+
+/** A user category's own actions: import an icon or a shape into it, or delete it. */
+function CategoryActions({ category: cat, authoring }: { category: Category; authoring: Shelf['authoring'] }) {
+  const { onImportIcon, onImportShape, onDeleteCategory } = authoring;
+  return (
+    <span className="lib-cat-actions">
+      {onImportIcon !== undefined && (
+        <label className="chip icon-btn" title={`Import icon into ${cat.name}`}>
+          Icon
+          <input
+            type="file"
+            accept="image/*"
+            hidden
+            aria-label={`Import icon into ${cat.name}`}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file !== undefined) onImportIcon(cat.id, file);
+              e.target.value = '';
+            }}
+          />
+        </label>
+      )}
+      {onImportShape !== undefined && (
+        <label className="chip icon-btn" title={`Import shape into ${cat.name}`}>
+          Shape
+          <input
+            type="file"
+            accept=".svg,image/svg+xml"
+            hidden
+            aria-label={`Import shape into ${cat.name}`}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file !== undefined) onImportShape(cat.id, file);
+              e.target.value = '';
+            }}
+          />
+        </label>
+      )}
+      {onDeleteCategory !== undefined && (
+        <button
+          type="button"
+          className="chip icon-btn"
+          aria-label={`Delete category ${cat.name}`}
+          title={`Delete category ${cat.name}`}
+          onClick={() =>
+            void getHost()
+              .confirmDialog(`Delete category '${cat.name}' and its imported icons?`)
+              .then((ok) => {
+                if (ok) onDeleteCategory(cat.id);
+              })
+          }
+        >
+          ✕
+        </button>
+      )}
+    </span>
+  );
+}
+
+/** One category: a header that folds it, a user category's actions, and its cards. */
+function LibraryCategory({ category: cat, shelf }: { category: Category; shelf: Shelf }) {
+  const { byCategory, searching, view, setView } = shelf;
+  const entries = byCategory.get(cat.id) ?? [];
+  // hide an empty builtin section while searching, but keep an empty user
+  // category visible so you can import into it
+  if (entries.length === 0 && (searching || cat.builtin === true)) return null;
+  // A search expands the sections that matched, so hits are never hidden
+  // behind a collapsed header — unless you closed that one yourself.
+  const open = view.toggled[cat.id] ?? (searching || entries.length <= AUTO_COLLAPSE_ABOVE);
+  return (
+    <section className="lib-category">
+      <div className="lib-cat-head">
+        <h4 className="lib-cat-name">
+          <button
+            type="button"
+            className="lib-cat-toggle"
+            // Name is the section, state is aria-expanded; the visible
+            // count stays out of the name so it doesn't read as "AWS40".
+            aria-label={cat.name}
+            aria-expanded={open}
+            title={`${open ? 'Collapse' : 'Expand'} ${cat.name}`}
+            onClick={() => setView((v) => ({ ...v, toggled: { ...v.toggled, [cat.id]: !open } }))}
+          >
+            <span className="lib-cat-caret" aria-hidden="true">
+              {open ? '▾' : '▸'}
+            </span>
+            <span className="lib-cat-label">{cat.name}</span>
+            <span className="lib-cat-count">{entries.length}</span>
+          </button>
+        </h4>
+        {cat.builtin !== true && <CategoryActions category={cat} authoring={shelf.authoring} />}
+      </div>
+      {open && (
+        <div className="lib-grid">
+          {entries.map((entry) => (
+            <LibraryCard key={entry.id} entry={entry} card={shelf.card} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Categories that share a group label, folded under one header. */
+function LibraryGroup({ label, categories, shelf }: { label: string; categories: Category[]; shelf: Shelf }) {
+  const { byCategory, searching, view, setView } = shelf;
+  const total = categories.reduce((n, c) => n + (byCategory.get(c.id) ?? []).length, 0);
+  // While searching, a group with no hits anywhere inside hides whole —
+  // its member sections would all render null, so the header must too.
+  if (total === 0 && searching) return null;
+  const open = view.groupToggled[label] ?? (searching || total <= GROUP_AUTO_COLLAPSE_ABOVE);
+  return (
+    <section className="lib-group">
+      <h4 className="lib-cat-name lib-group-name">
+        <button
+          type="button"
+          className="lib-cat-toggle"
+          aria-label={label}
+          aria-expanded={open}
+          title={`${open ? 'Collapse' : 'Expand'} ${label}`}
+          onClick={() => setView((v) => ({ ...v, groupToggled: { ...v.groupToggled, [label]: !open } }))}
+        >
+          <span className="lib-cat-caret" aria-hidden="true">
+            {open ? '▾' : '▸'}
+          </span>
+          <span className="lib-cat-label">{label}</span>
+          <span className="lib-cat-count">{total}</span>
+        </button>
+      </h4>
+      {open && (
+        <div className="lib-group-body">
+          {categories.map((cat) => (
+            <LibraryCategory key={cat.id} category={cat} shelf={shelf} />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
