@@ -51,11 +51,6 @@
       "count": 1
     }
   },
-  "apps/studio/src/diagrams/useDiagramActions.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "apps/studio/src/dock/Dock.tsx": {
     "complexity": {
       "count": 1

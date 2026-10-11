@@ -1,19 +1,36 @@
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import type { Drawings, LayoutOverlay } from '@diagc/core/internal';
+import { useEffect, useMemo, useState } from 'react';
+import type { DiagramModel, Drawings, LayoutOverlay } from '@diagc/core/internal';
 import { loadArtifacts, type ApiDiagram, type LoadedArtifact } from './artifacts';
 import { getHost } from '../host';
 
-export interface DiagramBoot {
+/** What the studio writes into the artifact store; everything else only reads it. */
+export interface DiagramStore {
+  /** Move a renamed diagram to its new name in every store, ownership included. */
+  rename: (from: string, to: string) => void;
+  /** Shadow `name` with an in-memory artifact: a session's newest edits, or a
+   * diagram the studio has just written. */
+  putDraft: (name: string, artifact: LoadedArtifact) => void;
+  /** Swap a draft's model for one read back from the server (an umbrella
+   * re-composed); with no draft under `name` nothing changes. */
+  replaceDraftModel: (name: string, model: DiagramModel) => void;
+  /** Fold a layout just written to `<name>.layout.json` into the boot copy, so it
+   * survives a plane switch (which drops the renderer's own drags) without a
+   * reload. */
+  putLayout: (name: string, layout: LayoutOverlay) => void;
+  /** the studio now holds `name`'s JSON source (it created or copied it) */
+  markOwned: (name: string) => void;
+  /** `name` is no longer the studio's to edit (ejected to TypeScript) */
+  disown: (name: string) => void;
+}
+
+export interface DiagramBoot extends DiagramStore {
   /** render-ready models fetched from the dev API (replaces the old build-time glob) */
   loaded: Record<string, LoadedArtifact>;
-  setLoaded: Dispatch<SetStateAction<Record<string, LoadedArtifact>>>;
   /** Designer-owned diagrams read straight from their source (shadow content) */
   sources: Record<string, LoadedArtifact>;
-  setSources: Dispatch<SetStateAction<Record<string, LoadedArtifact>>>;
   /** Latest in-memory edits/new diagrams, shadowing the persisted artifacts
    * until a save/reload round-trip makes them authoritative. */
   drafts: Record<string, LoadedArtifact>;
-  setDrafts: Dispatch<SetStateAction<Record<string, LoadedArtifact>>>;
   /** loaded ∪ sources ∪ drafts — the full artifact set the UI browses */
   artifacts: Record<string, LoadedArtifact>;
   /** sorted diagram names */
@@ -23,7 +40,6 @@ export interface DiagramBoot {
   booted: boolean;
   /** names the dev middleware owns (creatable/savable/renamable by the studio) */
   ownedNames: Set<string>;
-  setOwnedNames: Dispatch<SetStateAction<Set<string>>>;
   /** the dev middleware answered → diagrams can be created/saved at all. Static
    * builds (no middleware) stay pure viewers with no New button. */
   canDesign: boolean;
@@ -84,18 +100,64 @@ export function useDiagramBoot(): DiagramBoot {
     };
   }, []);
 
+  const rename = (from: string, to: string) => {
+    const move = (rec: Record<string, LoadedArtifact>): Record<string, LoadedArtifact> => {
+      const art = rec[from];
+      if (art === undefined) return rec;
+      const { [from]: _drop, ...rest } = rec;
+      return {
+        ...rest,
+        [to]: {
+          ...art,
+          name: to,
+          ...(art.model !== undefined ? { model: { ...art.model, id: to, name: to } } : {}),
+        },
+      };
+    };
+    // `loaded` (the boot API's models) holds a diagram's content in the common
+    // case — `sources`/`drafts` are only populated by prior save/rename activity —
+    // so a rename shadow-moves in all three, or a diagram whose content still
+    // lives in `loaded` would keep its old key and vanish from `names` under the
+    // new one (the fallback-selection effect would then bounce the selection
+    // back to the first remaining name).
+    setLoaded(move);
+    setSources(move);
+    setDrafts(move);
+    setOwnedNames((s) => {
+      const next = new Set(s);
+      next.delete(from);
+      next.add(to);
+      return next;
+    });
+  };
+
   return {
     loaded,
-    setLoaded,
     sources,
-    setSources,
     drafts,
-    setDrafts,
     artifacts,
     names,
     booted,
     ownedNames,
-    setOwnedNames,
     canDesign,
+    rename,
+    putDraft: (name, artifact) => setDrafts((d) => ({ ...d, [name]: artifact })),
+    replaceDraftModel: (name, model) =>
+      setDrafts((d) => {
+        const cur = d[name];
+        return cur === undefined ? d : { ...d, [name]: { ...cur, model } };
+      }),
+    putLayout: (name, layout) =>
+      setLoaded((cur) => {
+        const entry = cur[name];
+        return entry === undefined ? cur : { ...cur, [name]: { ...entry, layout } };
+      }),
+    markOwned: (name) => setOwnedNames((s) => new Set(s).add(name)),
+    disown: (name) =>
+      setOwnedNames((s) => {
+        const next = new Set(s);
+        next.delete(name);
+        return next;
+      }),
   };
 }

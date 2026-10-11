@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { getHost } from '../host';
 import { formatHash, parseHash, type UrlState } from './urlState';
 import { usePersistedState } from '../usePersistedState';
@@ -16,9 +16,13 @@ const isStrictPrefix = (a: string[], b: string[]) => a.length < b.length && a.ev
 
 export interface DeepLink {
   selected: string;
-  setSelected: Dispatch<SetStateAction<string>>;
   enteredPath: string[];
-  setEnteredPath: Dispatch<SetStateAction<string[]>>;
+  /** Open `name` at its top level. The caller resets the view, as every path
+   * that opens another diagram does. */
+  selectDiagram: (name: string) => void;
+  /** The open diagram now goes by `name`: select it under that name and keep
+   * the drill trail. */
+  renameSelected: (name: string) => void;
   /** DiagramView's drill-trail report: settles the applied URL's validity and
    * records the new path. The sole authority for clearing `appliedUrlRef`. */
   handleEnteredPathChange: (path: string[]) => void;
@@ -157,5 +161,21 @@ export function useDeepLink({ names, booted, leaveEditRef, resetViewRef }: UseDe
     return getHost().urlState.subscribe(onExternal);
   }, [leaveEditRef, resetViewRef, setSelected, setEnteredPath]);
 
-  return { selected, setSelected, enteredPath, setEnteredPath, handleEnteredPathChange };
+  return {
+    selected,
+    enteredPath,
+    selectDiagram: (name) => {
+      setSelected(name);
+      setEnteredPath([]);
+    },
+    renameSelected: (name) => {
+      setSelected(name);
+      // Fresh array reference, same contents: the renamed model's changed id
+      // makes DiagramView reset its trail, and only a reference-new enteredPath
+      // prop makes its host-sync branch re-apply the still-valid trail (the
+      // renderer handles a same-render model switch + prop arrival correctly).
+      setEnteredPath((p) => [...p]);
+    },
+    handleEnteredPathChange,
+  };
 }

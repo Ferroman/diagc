@@ -34,12 +34,14 @@ export interface UseNodePlacementOptions {
   /** App-owned selection/rename/tab/bookkeeping setters */
   setSelection: (sel: DiagramSelection | null) => void;
   setRenameId: (id: string | null) => void;
-  setLeftTab: (tab: InspectorTab) => void;
+  /** the left dock's inspector tab */
+  selectTab: (tab: InspectorTab) => void;
   /** open the canvas label editor on a node created outside a canvas gesture
    * (App's nonce-keyed editLabelRequest) — library placement names in place
    * so the Library tab never has to give way to Properties */
   requestLabelEdit: (id: string) => void;
-  setSaveIssues: (issues: { message: string }[] | null) => void;
+  /** the edit session's issue banner: an upload that failed */
+  reportIssues: (issues: { message: string }[] | null) => void;
   /** active plane + whether it borrows containment (drives plane scoping) */
   activePlane: string | undefined;
   activePlaneBorrowsContainment: boolean;
@@ -87,9 +89,9 @@ export function useNodePlacement({
   layoutApiRef,
   setSelection,
   setRenameId,
-  setLeftTab,
+  selectTab,
   requestLabelEdit,
-  setSaveIssues,
+  reportIssues,
   activePlane,
   activePlaneBorrowsContainment,
   activePlaneManual,
@@ -136,7 +138,7 @@ export function useNodePlacement({
     }
     // Add node lives on the Library tab now; flip to Properties so the new node's
     // Name field autofocuses (preserves the whiteboard-add rename flow).
-    setLeftTab('properties');
+    selectTab('properties');
     setSelection({ kind: 'node', id: place.id });
     setRenameId(place.id);
   };
@@ -365,7 +367,7 @@ export function useNodePlacement({
       }
     }
     // One banner for the whole batch — per-file writes would overwrite each other.
-    if (issues.length > 0) setSaveIssues(issues);
+    if (issues.length > 0) reportIssues(issues);
   };
 
   return { addNode, createAt, placeFromLibrary, applyFromLibrary, dropLibraryEntry, addImages };

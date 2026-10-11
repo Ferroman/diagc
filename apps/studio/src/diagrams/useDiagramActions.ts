@@ -1,7 +1,8 @@
-import type { Dispatch, SetStateAction } from 'react';
 import { emptyDrawings, emptyLayout, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagc/core/internal';
 import type { LoadedArtifact } from './artifacts';
-import type { EditorApi } from '../session/useEditor';
+import type { DiagramStore } from './useDiagramBoot';
+import type { DeepLink } from './useDeepLink';
+import type { EditSession } from '../session/useEditSession';
 import { nextCopyName } from '../canvas-editing/copyName';
 import { groupOf } from './diagramGroups';
 import { getHost } from '../host';
@@ -24,16 +25,12 @@ export interface UseDiagramActionsOptions {
   current: LoadedArtifact | undefined;
   names: string[];
   ownedNames: Set<string>;
-  setOwnedNames: Dispatch<SetStateAction<Set<string>>>;
-  setDrafts: Dispatch<SetStateAction<Record<string, LoadedArtifact>>>;
-  setLoaded: Dispatch<SetStateAction<Record<string, LoadedArtifact>>>;
-  setSources: Dispatch<SetStateAction<Record<string, LoadedArtifact>>>;
-  setSelected: Dispatch<SetStateAction<string>>;
-  setEnteredPath: Dispatch<SetStateAction<string[]>>;
-  setEditing: Dispatch<SetStateAction<boolean>>;
+  store: Pick<DiagramStore, 'rename' | 'putDraft' | 'markOwned' | 'disown'>;
+  selectDiagram: DeepLink['selectDiagram'];
+  renameSelected: DeepLink['renameSelected'];
+  startEditing: EditSession['startEditing'];
   leaveEdit: () => boolean;
   resetView: () => void;
-  editor: EditorApi;
 }
 
 export interface DiagramActions {
@@ -58,16 +55,12 @@ export function useDiagramActions({
   current,
   names,
   ownedNames,
-  setOwnedNames,
-  setDrafts,
-  setLoaded,
-  setSources,
-  setSelected,
-  setEnteredPath,
-  setEditing,
+  store,
+  selectDiagram,
+  renameSelected,
+  startEditing,
   leaveEdit,
   resetView,
-  editor,
 }: UseDiagramActionsOptions): DiagramActions {
   const newDiagram = async () => {
     if (!leaveEdit()) return;
@@ -94,13 +87,11 @@ export function useDiagramActions({
       getHost().notify(`Could not create '${raw}'`);
       return;
     }
-    setDrafts((d) => ({ ...d, [raw]: { name: raw, model: m, issues: [] } }));
-    setOwnedNames((s) => new Set(s).add(raw));
-    setSelected(raw);
-    setEnteredPath([]);
+    store.putDraft(raw, { name: raw, model: m, issues: [] });
+    store.markOwned(raw);
+    selectDiagram(raw);
     resetView();
-    editor.start(raw, { model: m, layout: emptyLayout(), drawings: emptyDrawings() });
-    setEditing(true);
+    startEditing(raw, { model: m, layout: emptyLayout(), drawings: emptyDrawings() });
   };
 
   const renameDiagram = async () => {
@@ -120,42 +111,12 @@ export function useDiagramActions({
       getHost().notify(`Could not rename '${selected}'`);
       return;
     }
-    const move = (rec: Record<string, LoadedArtifact>): Record<string, LoadedArtifact> => {
-      const art = rec[selected];
-      if (art === undefined) return rec;
-      const { [selected]: _drop, ...rest } = rec;
-      return {
-        ...rest,
-        [raw]: {
-          ...art,
-          name: raw,
-          ...(art.model !== undefined ? { model: { ...art.model, id: raw, name: raw } } : {}),
-        },
-      };
-    };
-    // `loaded` (the boot API's models) now holds a diagram's content in the
-    // common case — `sources`/`drafts` are only populated by prior save/rename
-    // activity — so the rename must shadow-move in all three, or a diagram whose
-    // content still lives in `loaded` would keep its old key and vanish from
-    // `names` under the new one (the fallback-selection effect would then bounce
-    // `selected` back to the first remaining name).
-    setLoaded(move);
-    setSources(move);
-    setDrafts(move);
-    setOwnedNames((s) => {
-      const next = new Set(s);
-      next.delete(selected);
-      next.add(raw);
-      return next;
-    });
-    setSelected(raw);
-    // Fresh array reference, same contents: the renamed model's changed id makes
-    // DiagramView reset its trail, and only a reference-new enteredPath prop
-    // makes its host-sync branch re-apply the still-valid trail (the renderer
-    // handles a same-render model switch + prop arrival correctly). These state
-    // updates all land in one commit (automatic batching), so the re-seed
-    // arrives together with the renamed artifact.
-    setEnteredPath((p) => [...p]);
+    // The store's move and the selection's land in one commit (automatic
+    // batching), so the selection never names a diagram the store does not
+    // hold yet, and DiagramView's re-seed arrives together with the renamed
+    // artifact.
+    store.rename(selected, raw);
+    renameSelected(raw);
   };
 
   // A read-only diagram is TS-authored, and what the studio holds for it is the
@@ -210,16 +171,11 @@ export function useDiagramActions({
     // carries both, so the first Save writes them.
     if (layout !== undefined) await post('layouts', finalLayout);
     if (drawings !== undefined) await post('drawings', finalDrawings);
-    setDrafts((d) => ({
-      ...d,
-      [copy]: { name: copy, model: copied, layout: finalLayout, drawings: finalDrawings, issues: [] },
-    }));
-    setOwnedNames((s) => new Set(s).add(copy));
-    setSelected(copy);
-    setEnteredPath([]);
+    store.putDraft(copy, { name: copy, model: copied, layout: finalLayout, drawings: finalDrawings, issues: [] });
+    store.markOwned(copy);
+    selectDiagram(copy);
     resetView();
-    editor.start(copy, { model: copied, layout: finalLayout, drawings: finalDrawings });
-    setEditing(true);
+    startEditing(copy, { model: copied, layout: finalLayout, drawings: finalDrawings });
   };
 
   // Promotion is server-verified (the generated TS must rebuild the identical
@@ -236,11 +192,7 @@ export function useDiagramActions({
       getHost().notify(`Could not eject '${selected}'`);
       return;
     }
-    setOwnedNames((s) => {
-      const next = new Set(s);
-      next.delete(selected);
-      return next;
-    });
+    store.disown(selected);
   };
 
   return { newDiagram, renameDiagram, duplicateDiagram, ejectDiagram };

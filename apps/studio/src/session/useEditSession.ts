@@ -1,24 +1,25 @@
+import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import {
-  useEffect,
-  useRef,
-  useState,
-  type Dispatch,
-  type MutableRefObject,
-  type RefObject,
-  type SetStateAction,
-} from 'react';
-import { errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagc/core/internal';
+  errMessage,
+  type DiagramModel,
+  type Drawings,
+  type EditorState,
+  type LayoutOverlay,
+} from '@diagc/core/internal';
 import type { LayoutApi } from '@diagc/renderer';
-import type { LoadedArtifact } from '../diagrams/artifacts';
+import type { DiagramStore } from '../diagrams/useDiagramBoot';
 import { isDirty, type EditorSession } from './reducer';
 import { useEditor } from './useEditor';
 import { getHost } from '../host';
 
+/** what a save or a load reported, for the banner (null = nothing to report) */
+export type SaveIssues = { message: string }[] | null;
+
 export interface UseEditSessionOptions {
-  /** App-owned artifact store: shadow a finished session's model+layout (and a
-   *  successful save's) so view mode shows the latest edits immediately,
-   *  bypassing the persisted-artifact round-trip. */
-  setDrafts: Dispatch<SetStateAction<Record<string, LoadedArtifact>>>;
+  /** The artifact store: a finished session's model+layout (and a successful
+   *  save's) shadow the persisted artifact, so view mode shows the latest edits
+   *  immediately, bypassing the persisted-artifact round-trip. */
+  store: Pick<DiagramStore, 'putDraft' | 'replaceDraftModel'>;
   /** App-owned: reset the left inspector to its default tab on leave (re-entry
    *  then starts on Properties). */
   resetInspector: () => void;
@@ -31,21 +32,27 @@ export interface UseEditSessionOptions {
 
 export interface EditSession {
   editing: boolean;
-  setEditing: Dispatch<SetStateAction<boolean>>;
   editor: ReturnType<typeof useEditor>;
   /** Populated by DiagramView in edit mode: reads current/auto positions and
    * the viewport center for the auto-layout toggle and manual new-node
    * placement. */
   layoutApiRef: MutableRefObject<LayoutApi | null>;
   /** save issues surfaced by the save flow (null = none) */
-  saveIssues: { message: string }[] | null;
-  setSaveIssues: Dispatch<SetStateAction<{ message: string }[] | null>>;
+  saveIssues: SaveIssues;
+  /** Put issues in the banner, or clear it with null. Shared with the flows
+   *  outside a session that can fail (a layout save, an edit's raw-source load,
+   *  an upload); the toolbar shows the banner while editing, App otherwise. */
+  reportIssues: (issues: SaveIssues) => void;
   saving: boolean;
   /** Single save path shared by the toolbar button and Ctrl/Cmd+S. Resolves
    * true when the save actually landed on disk. */
   doSave: () => Promise<boolean>;
   /** Begin an edit session over `name`'s model+layout+drawings. */
   enterEdit: (name: string, model: DiagramModel, layout: LayoutOverlay, drawings: Drawings) => void;
+  /** Begin an edit session on a diagram the caller has just written (New,
+   *  Duplicate). Unlike enterEdit it leaves the banner and the record of saves
+   *  made this session as they are. */
+  startEditing: (name: string, state: EditorState) => void;
   /** End the edit session (shadowing drafts + flushing a final save), returning
    * true when the caller may proceed (it always can today; the return keeps the
    * "confirm-discard handled by the caller" contract). */
@@ -60,9 +67,9 @@ export interface EditSession {
  * (hotkeys/useHotkeys), and App binds this session's undo/redo/save there. A
  * second listener here would run every one of them twice.
  */
-export function useEditSession({ setDrafts, resetInspector, leaveEditRef }: UseEditSessionOptions): EditSession {
+export function useEditSession({ store, resetInspector, leaveEditRef }: UseEditSessionOptions): EditSession {
   const [editing, setEditing] = useState(false);
-  const [saveIssues, setSaveIssues] = useState<{ message: string }[] | null>(null);
+  const [saveIssues, setSaveIssues] = useState<SaveIssues>(null);
   const [saving, setSaving] = useState(false);
   const editor = useEditor();
   // The save in flight, if any. A synchronous re-entrancy guard (overlapping
@@ -90,10 +97,7 @@ export function useEditSession({ setDrafts, resetInspector, leaveEditRef }: UseE
       const res = await getHost().apiFetch(`/api/diagrams/${name}/composed`);
       if (!res.ok) return;
       const { model } = (await res.json()) as { model: DiagramModel };
-      setDrafts((d) => {
-        const cur = d[name];
-        return cur === undefined ? d : { ...d, [name]: { ...cur, model } };
-      });
+      store.replaceDraftModel(name, model);
     } catch {
       /* keep the raw shadow */
     }
@@ -115,10 +119,13 @@ export function useEditSession({ setDrafts, resetInspector, leaveEditRef }: UseE
       // which this snapshot may predate.
       if (editor.peek() !== null) {
         const { name, state } = snapshot;
-        setDrafts((d) => ({
-          ...d,
-          [name]: { name, model: state.model, layout: state.layout, drawings: state.drawings, issues: [] },
-        }));
+        store.putDraft(name, {
+          name,
+          model: state.model,
+          layout: state.layout,
+          drawings: state.drawings,
+          issues: [],
+        });
         sessionSavedRef.current = true;
       }
       return true;
@@ -147,16 +154,13 @@ export function useEditSession({ setDrafts, resetInspector, leaveEditRef }: UseE
     const snap = editor.session;
     const hasIncludes = snap !== null && snap.state.model.nodes.some((n) => n.include !== undefined);
     if (editor.dirty && snap !== null) {
-      setDrafts((d) => ({
-        ...d,
-        [snap.name]: {
-          name: snap.name,
-          model: snap.state.model,
-          layout: snap.state.layout,
-          drawings: snap.state.drawings,
-          issues: [],
-        },
-      }));
+      store.putDraft(snap.name, {
+        name: snap.name,
+        model: snap.state.model,
+        layout: snap.state.layout,
+        drawings: snap.state.drawings,
+        issues: [],
+      });
       // A save still in flight posts an older snapshot and blocks this one:
       // wait it out, landed or not, then post the newest edits.
       const flush = (): Promise<boolean> => savingRef.current?.then(flush) ?? doSave(snap);
@@ -185,6 +189,11 @@ export function useEditSession({ setDrafts, resetInspector, leaveEditRef }: UseE
     setEditing(true);
   };
 
+  const startEditing = (name: string, state: EditorState) => {
+    editor.start(name, state);
+    setEditing(true);
+  };
+
   // Autosave: a short debounce after the last edit. `session` changes identity on
   // every dispatch, so each edit reschedules; once a save clears `dirty`, the
   // effect re-runs and stops. A failed save still surfaces in the banner — undo
@@ -197,14 +206,14 @@ export function useEditSession({ setDrafts, resetInspector, leaveEditRef }: UseE
 
   return {
     editing,
-    setEditing,
     editor,
     layoutApiRef,
     saveIssues,
-    setSaveIssues,
+    reportIssues: setSaveIssues,
     saving,
     doSave,
     enterEdit,
+    startEditing,
     leaveEdit,
   };
 }
