@@ -104,6 +104,51 @@ describe('useEditor.save', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  // A proxy or crashed server answers with HTML, not the API's JSON envelope.
+  // Only the named sidecar's POST fails; the others succeed.
+  it.each([
+    ['diagrams', 'Save failed'],
+    ['layouts', 'Layout save failed'],
+  ])('reports an error body from /api/%s that is not JSON as "%s"', async (kind, message) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url.startsWith(`/api/${kind}/`)
+          ? new Response('<html>502 Bad Gateway</html>', { status: 502 })
+          : new Response('{}', { status: 200 }),
+      ),
+    );
+    const { result } = renderHook(() => useEditor());
+    act(() => {
+      result.current.start('draft', state());
+    });
+
+    let res: { ok: boolean; issues?: { message: string }[] } | undefined;
+    await act(async () => {
+      res = await result.current.save();
+    });
+
+    expect(res).toEqual({ ok: false, issues: [{ message }] });
+  });
+
+  it("returns the server's issues from a JSON error body", async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ issues: [{ message: 'node a: bad type' }] }), { status: 400 })),
+    );
+    const { result } = renderHook(() => useEditor());
+    act(() => {
+      result.current.start('draft', state());
+    });
+
+    let res: { ok: boolean; issues?: { message: string }[] } | undefined;
+    await act(async () => {
+      res = await result.current.save();
+    });
+
+    expect(res).toEqual({ ok: false, issues: [{ message: 'node a: bad type' }] });
+  });
+
   it('posts drawings only when they changed since the last save', async () => {
     const fetchMock = vi.fn();
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });

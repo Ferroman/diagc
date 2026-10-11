@@ -733,7 +733,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // ephemeral drags) without a reload. Explicit, never automatic — unlike the
   // edit session's autosave, this runs in view mode on diagrams the studio does
   // not own, so committing positions to a repo file stays a deliberate act.
-  // Both view-mode chips (Save positions, Freeze layout) end here.
+  // Both view-mode chips (Save positions, Freeze layout) end here. It never
+  // rejects: the chips call it as `void`, so a failure becomes a banner issue
+  // and a false return, which keeps their pending drags for a retry.
   const postLayout = useCallback(
     async (next: LayoutOverlay): Promise<boolean> => {
       setSavingPositions(true);
@@ -744,8 +746,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
           body: JSON.stringify(next),
         });
         if (!res.ok) {
-          const body = (await res.json()) as { issues?: { message: string }[] };
-          setSaveIssues(body.issues ?? [{ message: 'Could not save layout' }]);
+          // A proxy or crashed server can answer with a body that is not JSON.
+          const body = (await res.json().catch(() => null)) as { issues?: { message: string }[] } | null;
+          setSaveIssues(body?.issues ?? [{ message: 'Could not save layout' }]);
           return false;
         }
         setLoaded((cur) => {
@@ -754,6 +757,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
         });
         setSaveIssues(null);
         return true;
+      } catch (e) {
+        setSaveIssues([{ message: errMessage(e) }]);
+        return false;
       } finally {
         setSavingPositions(false);
       }
@@ -1184,9 +1190,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             </ul>
           </div>
         )}
-        {/* enterEditFromSource's catch path sets saveIssues without ever setting
-          editing — the toolbar's own banner (below) only renders while editing,
-          so a raw-source fetch failure needs its own view-mode surface. */}
+        {/* enterEditFromSource's catch path and a failed position save set
+          saveIssues without ever setting editing — the toolbar's own banner
+          (below) only renders while editing, so view mode needs its own surface. */}
         {!editing && saveIssues !== null && saveIssues.length > 0 && (
           <div className="banner error">
             <ul>

@@ -58,7 +58,10 @@ export function useEditor(): EditorApi {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
       });
-      return res.ok ? null : ((await res.json()) as { issues?: { message: string }[] });
+      if (res.ok) return null;
+      // An error body that is not JSON (a proxy's HTML page) still reports the
+      // failed save below, not the parse error.
+      return ((await res.json().catch(() => null)) ?? {}) as { issues?: { message: string }[] };
     };
     const modelErr = await post('diagrams', snapshot.state.model);
     if (modelErr !== null) return { ok: false, issues: modelErr.issues ?? [{ message: 'Save failed' }] };
