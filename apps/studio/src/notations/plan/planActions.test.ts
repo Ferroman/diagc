@@ -209,6 +209,28 @@ describe('planMoves', () => {
   });
 });
 
+describe('planMoves, every kind in one gesture', () => {
+  // breaks if the per-kind steps reorder the batch (gesture order, parents
+  // before children) or a command's fields, or one kind starts or stops
+  // taking part: a zone with its subtree, a dateless root zone, an event, a
+  // nested other child, a stray, an actor
+  it('answers one batch in a fixed order', () => {
+    const m = roadmap();
+    m.nodes.push(
+      { id: 'fresh', name: 'Fresh', type: 'plan-zone', plane: 'plan' },
+      { id: 'other', name: 'Other', type: 'service' },
+      { id: 'stray', name: 'Stray', type: 'service', plane: 'plan' },
+    );
+    m.containment.push({ parent: 'build', child: 'other', plane: 'plan' });
+    const ids = ['kickoff', 'stray', 'alice', 'build', 'q1', 'fresh', 'other', 'solo', 'm1'];
+    const positions = Object.fromEntries(ids.map((id, i) => [id, { x: 3 * DAY + i, y: TITLE_H + 10 * i - 50 }]));
+    const deltas = Object.fromEntries(ids.map((id, i) => [id, { dx: ((i % 3) + 1) * DAY + 2, dy: 5 }]));
+    expect(JSON.stringify(planMoves(m, 'plan', positions, deltas))).toMatchInlineSnapshot(
+      `"{"type":"batch","commands":[{"type":"set-plan-dates","id":"q1","dates":{"start":"2026-01-07","end":"2026-03-29"}},{"type":"set-plan-dates","id":"design","dates":{"start":"2026-01-07","end":"2026-02-01"}},{"type":"set-plan-dates","id":"build","dates":{"start":"2026-02-04","end":"2026-03-29"}},{"type":"set-plan-dates","id":"m1","dates":{"at":"2026-03-04"}},{"type":"set-position","nodeId":"q1","x":120,"y":30,"plane":"plan"},{"type":"set-plan-dates","id":"kickoff","dates":{"at":"2026-01-06"}},{"type":"set-position","nodeId":"stray","x":61,"y":0,"plane":"plan"},{"type":"set-plan-dates","id":"fresh","dates":{"start":"2026-01-04","end":"2026-01-17"}},{"type":"set-position","nodeId":"fresh","x":60,"y":40,"plane":"plan"},{"type":"set-position","nodeId":"other","x":66,"y":50,"plane":"plan"},{"type":"set-plan-dates","id":"solo","dates":{"start":"2026-04-03","end":"2026-04-12"}},{"type":"set-position","nodeId":"solo","x":1840,"y":60,"plane":"plan"}]}"`,
+    );
+  });
+});
+
 describe('planResize', () => {
   it('right handle: end follows the width, inclusive', () => {
     const c = planResize(roadmap(), 'plan', 'design', 0, 30 * DAY);

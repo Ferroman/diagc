@@ -319,3 +319,59 @@ describe('copy and paste on planes', () => {
     }
   });
 });
+
+describe('the exact payload and batch', () => {
+  /** every field a paste carries: a plane, a pen, sizes, positions, a relation with all its options and labels */
+  function rich(): { model: DiagramModel; layout: LayoutOverlay } {
+    const base = system();
+    return {
+      model: {
+        ...base,
+        relations: [
+          {
+            id: 'api->db#0',
+            from: 'api',
+            to: 'db',
+            kind: 'uses',
+            label: 'reads',
+            layer: 'gone',
+            description: 'd',
+            style: { line: 'dashed' },
+            polarity: '+',
+            delay: true,
+            fromColumn: 'a',
+            toColumn: 'b',
+            labels: [{ id: 'l1', text: 'x', t: 0.4 }],
+          },
+          { id: 'db->api#0', from: 'db', to: 'api', kind: 'replies', layer: 'ops' },
+        ],
+        planes: [{ id: 'p', name: 'P' }],
+      },
+      layout: layoutWith(
+        { p: { sys: { x: 10, y: 20 }, db: { x: 3, y: 4 } } },
+        { sys: { w: 300, h: 200 }, db: { w: 50, h: 40 } },
+      ),
+    };
+  }
+
+  // breaks if the copy reorders its fields, nodes, containment, roots, positions or sizes
+  it('copies in a fixed order', () => {
+    const { model: m, layout } = rich();
+    const p = copySelection(m, layout, 'p', ['sys'], { api: { x: 1, y: 2 } })!;
+    expect(JSON.stringify(p)).toMatchInlineSnapshot(
+      `"{"format":"diagc/clipboard@1","nodes":[{"id":"sys","name":"System","type":"system"},{"id":"api","name":"API","type":"service","key":"svc-api","layer":"ops"},{"id":"db","name":"DB","type":"database"}],"containment":[{"parent":"sys","child":"api"},{"parent":"sys","child":"db"}],"roots":[{"id":"sys"}],"relations":[{"id":"api->db#0","from":"api","to":"db","kind":"uses","label":"reads","layer":"gone","description":"d","style":{"line":"dashed"},"polarity":"+","delay":true,"fromColumn":"a","toColumn":"b","labels":[{"id":"l1","text":"x","t":0.4}]},{"id":"db->api#0","from":"db","to":"api","kind":"replies","layer":"ops"}],"positions":{"sys":{"x":10,"y":20},"api":{"x":1,"y":2},"db":{"x":3,"y":4}},"sizes":{"sys":{"w":300,"h":200},"db":{"w":50,"h":40}}}"`,
+    );
+  });
+
+  // breaks if the paste reorders its commands (nodes, then memberships, then
+  // positions and sizes node by node, then relations) or a command's fields,
+  // which the saved files carry in the same order
+  it('pastes one batch in a fixed order', () => {
+    const { model: m, layout } = rich();
+    const p = copySelection(m, layout, 'p', ['sys'], { api: { x: 1, y: 2 } })!;
+    const out = pasteCommand(m, p, ctx({ plane: 'p', penLayer: 'ops', repeat: 1 }))!;
+    expect(JSON.stringify(out)).toMatchInlineSnapshot(
+      `"{"command":{"type":"batch","commands":[{"type":"add-node","node":{"id":"sys-2","name":"System","type":"system","plane":"p","layer":"ops"}},{"type":"add-node","node":{"id":"api-2","name":"API","type":"service","plane":"p","layer":"ops"}},{"type":"add-node","node":{"id":"db-2","name":"DB","type":"database","plane":"p","layer":"ops"}},{"type":"add-containment","parent":"sys-2","child":"api-2","plane":"p"},{"type":"add-containment","parent":"sys-2","child":"db-2","plane":"p"},{"type":"set-position","nodeId":"sys-2","x":58,"y":68,"plane":"p"},{"type":"set-size","nodeId":"sys-2","w":300,"h":200},{"type":"set-position","nodeId":"api-2","x":1,"y":2,"plane":"p"},{"type":"set-position","nodeId":"db-2","x":3,"y":4,"plane":"p"},{"type":"set-size","nodeId":"db-2","w":50,"h":40},{"type":"add-relation","from":"api-2","to":"db-2","opts":{"kind":"uses","label":"reads","layer":"ops","description":"d","style":{"line":"dashed"},"polarity":"+","delay":true,"fromColumn":"a","toColumn":"b"}},{"type":"update-relation","id":"api-2->db-2#0","patch":{"labels":[{"id":"l1","text":"x","t":0.4}]}},{"type":"add-relation","from":"db-2","to":"api-2","opts":{"kind":"replies","layer":"ops"}}]},"roots":["sys-2"]}"`,
+    );
+  });
+});
