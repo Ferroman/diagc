@@ -200,10 +200,5 @@
     "max-lines-per-function": {
       "count": 1
     }
-  },
-  "packages/renderer/src/notes/note-place.ts": {
-    "max-params": {
-      "count": 2
-    }
   }
 }

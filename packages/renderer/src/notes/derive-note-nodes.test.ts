@@ -76,7 +76,7 @@ const absBox = (nodes: ReturnType<typeof deriveNoteNodes>, id: string): Rect => 
   const n = byId(nodes, id);
   const parent = n.parentId !== undefined ? geometry.get(n.parentId)! : { x: 0, y: 0 };
   const d = dataOf(n);
-  const height = estimateNoteHeight(d.name, d.threats, d.onAddThreat !== undefined, d.comments, d.links);
+  const height = estimateNoteHeight(d, d.onAddThreat !== undefined);
   return { x: n.position.x + parent.x, y: n.position.y + parent.y, width: NOTE_WIDTH, height };
 };
 const overlaps = (a: Rect, b: Rect) =>
