@@ -1,50 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
-import type { DiagramModel, EditorCommand, FontScale, NotationId, Point, TextAlign } from '@diagc/core/internal';
 import {
-  allowedParentTypes,
-  borrowsContainment,
-  CASCADE_DELETE_TYPES,
-  defined,
-  IMAGE_REF,
-  LIBRARY_IMAGE_REF,
   PLAN_TYPES,
   strideFor,
+  type DiagramModel,
+  type DiagramNode,
+  type EditorCommand,
+  type NotationId,
+  type Point,
 } from '@diagc/core/internal';
-import { BUILTIN_ICON_IDS } from '@diagc/icons';
-import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { CommentsSection } from './CommentsSection';
-import { commitOnEnter } from './commitOnEnter';
 import { LinksSection } from './LinksSection';
-import { ColorRow, OptionRow } from './pickers';
-import { seedOnRetype } from '../notations/plan/planActions';
+import { DetailFields, IdentityFields, LookFields, PlacementFields } from './NodeFields';
+import {
+  ActionsSection,
+  MembershipsSection,
+  MetadataSection,
+  planeName,
+  PositionSection,
+  useMetadataDraft,
+  usePositionDraft,
+} from './NodeSections';
 import { PlanSection } from '../notations/plan/PlanSection';
 import { ThreatsSection } from './ThreatsSection';
-import { BUNDLED_LIBRARY } from '../library/packs';
 import { studioNotation } from '../notations';
 import { carriesThreats, threatsOffered } from './threatsOffered';
 import { useDraftField } from './useDraftField';
-
-// Registry defaults surfaced as datalist hints; free text is still accepted.
-// Read from the registries themselves so a new type or icon shows up here
-// without a second, hand-maintained copy drifting out of sync.
-const TYPE_SUGGESTIONS = Object.keys(DEFAULT_TYPE_STYLES);
-const ICON_SUGGESTIONS = [...BUILTIN_ICON_IDS];
-// Silhouette refs bundled with the studio's library packs (deduped). Free text
-// is still accepted — any content-hash asset or /library/… ref is valid.
-const SHAPE_SUGGESTIONS = [
-  ...new Set(BUNDLED_LIBRARY.entries.map((e) => e.template.shape).filter((s): s is string => s !== undefined)),
-];
-
-const ALIGN_OPTIONS: { value: TextAlign | ''; title: string; glyph: string }[] = [
-  { value: '', title: 'Left (default)', glyph: '⇤' },
-  { value: 'center', title: 'Center', glyph: '≡' },
-  { value: 'right', title: 'Right', glyph: '⇥' },
-];
-const SIZE_OPTIONS: { value: FontScale | ''; title: string; glyph: string }[] = [
-  { value: 'sm', title: 'Small', glyph: 'S' },
-  { value: '', title: 'Normal (default)', glyph: 'M' },
-  { value: 'lg', title: 'Large', glyph: 'L' },
-];
 
 interface NodePanelProps {
   model: DiagramModel;
@@ -74,32 +54,16 @@ interface NodePanelProps {
   onDeleted: () => void;
 }
 
-// `originalKey` is the model key a seeded row was hydrated from (undefined for
-// rows added in-session). It lets a row that has its key transiently blanked
-// mid-rename still contribute its original entry, so an unrelated commit (e.g.
-// ✕-deleting a sibling row) never silently drops the row being renamed.
-type MetaRow = { id: number; key: string; value: string; originalKey?: string };
-
-const rowsToMetadata = (rows: MetaRow[]): Record<string, string> => {
-  const obj: Record<string, string> = {};
-  for (const row of rows) {
-    const trimmed = row.key.trim();
-    // A blank key means the user is mid-rename; fall back to the row's original
-    // key so the entry survives commits triggered by other rows.
-    const effectiveKey = trimmed !== '' ? trimmed : row.originalKey;
-    if (effectiveKey === undefined || effectiveKey === '') continue;
-    obj[effectiveKey] = row.value;
-  }
-  return obj;
-};
-
-// Rows are string-valued; the model's metadata may hold non-string values, so
-// compare on their String() form — the same normalization used to seed rows.
-const metadataEquals = (rowMeta: Record<string, string>, modelMeta: Record<string, unknown>): boolean => {
-  const keys = Object.keys(rowMeta);
-  if (keys.length !== Object.keys(modelMeta).length) return false;
-  return keys.every((k) => k in modelMeta && String(modelMeta[k]) === rowMeta[k]);
-};
+/** The Plan section is offered on the notation, and kept on a node that already
+ * carries dates so switching the plane's look strands nothing. Every date key
+ * counts, `end` included — half a span is reachable (clear Start here, or
+ * hand-edit the source) and is exactly the state the section exists to finish. */
+const offersPlanDates = (notation: NotationId | undefined, node: DiagramNode): boolean =>
+  (studioNotation(notation).planSection === true ||
+    node.metadata?.start !== undefined ||
+    node.metadata?.end !== undefined ||
+    node.metadata?.at !== undefined) &&
+  PLAN_TYPES.has(node.type ?? '');
 
 export function NodePanel({
   model,
@@ -116,34 +80,12 @@ export function NodePanel({
   onDeleted,
 }: NodePanelProps) {
   const node = model.nodes.find((n) => n.id === nodeId);
-  const nodeName = (id: string) => model.nodes.find((n) => n.id === id)?.name ?? id;
-  const planeName = (id: string | undefined) =>
-    id === undefined ? 'default' : (model.planes.find((p) => p.id === id)?.name ?? id);
 
-  // Stable per-row ids so React keys survive reordering/mid-row removal; the
-  // counter is a ref so it is not reset by re-renders. Lazy initializers keep it
-  // from advancing on every render.
-  const rowId = useRef(0);
-  const seedRows = (metadata: Record<string, unknown> | undefined): MetaRow[] =>
-    Object.entries(metadata ?? {}).map(([key, value]) => ({
-      id: rowId.current++,
-      key,
-      value: String(value),
-      originalKey: key,
-    }));
-  const [rows, setRows] = useState<MetaRow[]>(() => seedRows(node?.metadata));
-  const [newKey, setNewKey] = useState('');
-  const [newValue, setNewValue] = useState('');
-  const [addParent, setAddParent] = useState('');
-  const [addPlane, setAddPlane] = useState('');
-
-  // Position inputs mirror the saved position; a drag that saves a new one re-seeds them.
-  const [posX, setPosX] = useState(savedPosition !== undefined ? String(savedPosition.x) : '');
-  const [posY, setPosY] = useState(savedPosition !== undefined ? String(savedPosition.y) : '');
-  useEffect(() => {
-    setPosX(savedPosition !== undefined ? String(savedPosition.x) : '');
-    setPosY(savedPosition !== undefined ? String(savedPosition.y) : '');
-  }, [savedPosition?.x, savedPosition?.y]); // eslint-disable-line react-hooks/exhaustive-deps -- the two coordinates are the whole identity
+  // The panel holds every draft, so each lives exactly as long as the panel
+  // (remounted per node, key={nodeId}) whatever its section does. The effects
+  // run in this order: the position inputs', the name's focus, each text box's
+  // resync (see useDraftField), the metadata rows'.
+  const position = usePositionDraft(savedPosition);
 
   // Just-added node: put the caret straight into the name, text selected, so
   // typing replaces the placeholder. The panel remounts per node (key=nodeId),
@@ -157,179 +99,20 @@ export function NodePanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The panel is remounted (key={nodeId}) on selection change, so each draft
-  // seeds from the freshly selected node, and follows the model's value when it
-  // changes underneath (see useDraftField). Their resyncs run after the two
-  // effects above, then the metadata rows'.
-  const [name, setName] = useDraftField(node?.name, 'keep');
-  const [type, setType] = useDraftField(node?.type);
-  const [icon, setIcon] = useDraftField(node?.icon);
-  const [shape, setShape] = useDraftField(node?.shape);
-  const [technology, setTechnology] = useDraftField(node?.technology);
-  const [link, setLink] = useDraftField(node?.link);
-  const [description, setDescription] = useDraftField(node?.description);
-
-  // Single-user editor: an external model change (e.g. Undo) wins over any
-  // in-progress typing. The effect keys on the node's metadata object identity,
-  // which structural sharing preserves across unrelated edits, so it only
-  // reseeds the rows when the metadata actually changes.
-  const modelMetadata = node?.metadata;
-  useEffect(() => {
-    setRows(seedRows(modelMetadata));
-    // seedRows is a stable render-local closure over the ref; effect keys on the
-    // metadata object identity (structural sharing preserves it across unrelated edits).
-  }, [modelMetadata]);
+  const name = useDraftField(node?.name, 'keep');
+  const type = useDraftField(node?.type);
+  const icon = useDraftField(node?.icon);
+  const shape = useDraftField(node?.shape);
+  const technology = useDraftField(node?.technology);
+  const link = useDraftField(node?.link);
+  const description = useDraftField(node?.description);
+  const metadata = useMetadataDraft(node?.metadata);
+  const addParent = useState('');
+  const addPlane = useState('');
 
   if (node === undefined) {
     return <aside className="sidebar muted">Node not found.</aside>;
   }
-
-  const memberships = model.containment.filter((e) => e.child === nodeId);
-  // Activity elements only make sense in their notation's containers (a lane in
-  // a frame, an action in a lane), so the picker offers those alone.
-  const parentTypes = allowedParentTypes(node.type);
-  const parentOptions = model.nodes.filter(
-    (n) => n.id !== nodeId && (parentTypes === undefined || parentTypes.has(n.type ?? '')),
-  );
-  const isGroup = model.containment.some((c) => c.parent === nodeId);
-
-  const commitName = () => {
-    const trimmed = name.trim();
-    if (trimmed === '') {
-      setName(node.name);
-      return;
-    }
-    if (trimmed !== node.name) onCommand({ type: 'rename-node', id: nodeId, name: trimmed });
-  };
-  const commitType = () => {
-    const trimmed = type.trim();
-    if (trimmed === (node.type ?? '')) return;
-    const typeCmd: EditorCommand = {
-      type: 'set-node-details',
-      id: nodeId,
-      details: { type: trimmed === '' ? null : trimmed },
-    };
-    // Retyping into plan-zone/plan-event with no dates would otherwise fail
-    // save with plan-missing — seed them the way a canvas drop does, batched
-    // with the retype so undo reverts both together.
-    const dateCmd = today !== undefined ? seedOnRetype(model, activePlane, nodeId, trimmed, today) : undefined;
-    onCommand(dateCmd === undefined ? typeCmd : { type: 'batch', commands: [typeCmd, dateCmd] });
-  };
-  const commitIcon = () => {
-    if (icon !== (node.icon ?? ''))
-      onCommand({ type: 'set-node-details', id: nodeId, details: { icon: icon === '' ? null : icon } });
-  };
-  const commitShape = () => {
-    const trimmed = shape.trim();
-    if (trimmed === (node.shape ?? '')) return;
-    if (trimmed !== '' && !IMAGE_REF.test(trimmed) && !LIBRARY_IMAGE_REF.test(trimmed)) {
-      // Invalid ref: revert rather than let it wedge the validate-before-save gate.
-      setShape(node.shape ?? '');
-      return;
-    }
-    onCommand({ type: 'set-node-details', id: nodeId, details: { shape: trimmed === '' ? null : trimmed } });
-  };
-  const commitTechnology = () => {
-    if (technology !== (node.technology ?? ''))
-      onCommand({
-        type: 'set-node-details',
-        id: nodeId,
-        details: { technology: technology === '' ? null : technology },
-      });
-  };
-  const commitLink = () => {
-    if (link !== (node.link ?? ''))
-      onCommand({
-        type: 'set-node-details',
-        id: nodeId,
-        details: { link: link.trim() === '' ? null : link.trim() },
-      });
-  };
-  const commitDescription = () => {
-    if (description !== (node.description ?? ''))
-      onCommand({
-        type: 'set-node-details',
-        id: nodeId,
-        details: { description: description === '' ? null : description },
-      });
-  };
-
-  const commitMetadata = (next: MetaRow[]) => {
-    // A row whose key is blanked mid-rename contributes its original key+value via
-    // rowsToMetadata, so the built object equals the model and the change guard
-    // below skips the dispatch — nothing is dropped. A real edit (rename, ✕-delete,
-    // value change) changes the object and commits. Deletion is only ever the row's ✕.
-    const metadata = rowsToMetadata(next);
-    // No-op guard: identical to the model's metadata → skip to avoid identity churn.
-    if (metadataEquals(metadata, node.metadata ?? {})) return;
-    onCommand({
-      type: 'set-node-details',
-      id: nodeId,
-      details: { metadata: Object.keys(metadata).length > 0 ? metadata : null },
-    });
-  };
-
-  const editRow = (id: number, patch: Partial<MetaRow>) =>
-    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-
-  const removeRow = (id: number) => {
-    const next = rows.filter((r) => r.id !== id);
-    setRows(next);
-    commitMetadata(next);
-  };
-
-  const addRow = () => {
-    if (newKey.trim() === '') return;
-    const next = [...rows, { id: rowId.current++, key: newKey.trim(), value: newValue }];
-    setRows(next);
-    setNewKey('');
-    setNewValue('');
-    commitMetadata(next);
-  };
-
-  const removeMembership = (parent: string, plane: string | undefined) =>
-    onCommand({
-      type: 'remove-containment',
-      parent,
-      child: nodeId,
-      ...defined({ plane }),
-    });
-
-  const addMembership = () => {
-    if (addParent === '') return;
-    onCommand({
-      type: 'add-containment',
-      parent: addParent,
-      child: nodeId,
-      ...(addPlane !== '' ? { plane: addPlane } : {}),
-    });
-    setAddParent('');
-    setAddPlane('');
-  };
-
-  const deleteNode = () => {
-    // Frames and branches take their un-re-homeable children with them;
-    // every other container severs only (and Ungroup always severs).
-    const cascade = (CASCADE_DELETE_TYPES as readonly string[]).includes(node.type ?? '');
-    onCommand({ type: 'delete-node', id: nodeId, ...(cascade ? { cascade: true } : {}) });
-    onDeleted();
-  };
-
-  const ungroup = () => {
-    onCommand({ type: 'delete-node', id: nodeId });
-    onDeleted();
-  };
-
-  const clearSavedPosition = () => onCommand({ type: 'clear-position', nodeId, ...defined({ plane: activePlane }) });
-
-  const commitPosition = () => {
-    if (posX.trim() === '' || posY.trim() === '') return; // half a coordinate saves nothing
-    const x = Number(posX);
-    const y = Number(posY);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    if (savedPosition !== undefined && savedPosition.x === x && savedPosition.y === y) return;
-    onCommand({ type: 'set-position', nodeId, x, y, ...defined({ plane: activePlane }) });
-  };
 
   return (
     <aside className="sidebar node-panel">
@@ -340,292 +123,35 @@ export function NodePanel({
         </button>
       </div>
       <p className="muted">
-        <code>{node.id}</code> · plane <code>{planeName(activePlane)}</code>
+        <code>{node.id}</code> · plane <code>{planeName(model, activePlane)}</code>
       </p>
-      <label className="field">
-        <span>Name</span>
-        {/* multiline: Enter inserts a line break (default), blur commits */}
-        <textarea
-          ref={nameInputRef}
-          className="name-input"
-          aria-label="Name"
-          rows={Math.max(1, name.split('\n').length)}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={commitName}
-        />
-      </label>
-
-      <label className="field">
-        <span>Type</span>
-        <input
-          aria-label="Type"
-          list="node-type-suggestions"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          onBlur={commitType}
-          onKeyDown={(e) => commitOnEnter(e, commitType)}
-        />
-        <datalist id="node-type-suggestions">
-          {TYPE_SUGGESTIONS.map((t) => (
-            <option key={t} value={t} />
-          ))}
-        </datalist>
-      </label>
-
-      {model.layers.length > 0 && (
-        <label className="field">
-          <span>Layer</span>
-          <select
-            aria-label="Layer"
-            value={node.layer ?? ''}
-            onChange={(e) =>
-              onCommand({
-                type: 'set-node-details',
-                id: nodeId,
-                details: { layer: e.target.value === '' ? null : e.target.value },
-              })
-            }
-          >
-            <option value="">base sheet</option>
-            {model.layers.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
-      {activePlane !== undefined && !borrowsContainment(model, activePlane) && (
-        <>
-          <label className="field">
-            <span>Scope</span>
-            <select
-              aria-label="Scope"
-              value={node.plane === activePlane ? 'local' : 'shared'}
-              onChange={(e) =>
-                onCommand({
-                  type: 'set-node-details',
-                  id: nodeId,
-                  details: { plane: e.target.value === 'local' ? activePlane : null },
-                })
-              }
-            >
-              <option value="shared">Shared (all planes)</option>
-              <option value="local">This plane only</option>
-            </select>
-          </label>
-          {node.plane === undefined && (
-            <label className="field">
-              <span>Hidden here</span>
-              <input
-                type="checkbox"
-                aria-label="Hidden here"
-                checked={(model.planes.find((p) => p.id === activePlane)?.hides ?? []).includes(nodeId)}
-                onChange={(e) =>
-                  onCommand({
-                    type: 'set-node-plane-hidden',
-                    nodeId,
-                    plane: activePlane,
-                    hidden: e.target.checked,
-                  })
-                }
-              />
-            </label>
-          )}
-        </>
-      )}
-
-      <ColorRow
-        value={node.color ?? ''}
-        onChange={(v) => onCommand({ type: 'set-node-details', id: nodeId, details: { color: v === '' ? null : v } })}
+      <IdentityFields
+        model={model}
+        node={node}
+        activePlane={activePlane}
+        today={today}
+        name={name}
+        type={type}
+        nameInputRef={nameInputRef}
+        onCommand={onCommand}
       />
-
-      <ColorRow
-        label="Text color"
-        value={node.textColor ?? ''}
-        onChange={(v) =>
-          onCommand({ type: 'set-node-details', id: nodeId, details: { textColor: v === '' ? null : v } })
-        }
-      />
-
-      <OptionRow
-        label="Align"
-        value={node.textAlign ?? ''}
-        options={ALIGN_OPTIONS}
-        onChange={(v) =>
-          onCommand({ type: 'set-node-details', id: nodeId, details: { textAlign: v === '' ? null : v } })
-        }
-      />
-      <OptionRow
-        label="Size"
-        value={node.fontScale ?? ''}
-        options={SIZE_OPTIONS}
-        onChange={(v) =>
-          onCommand({ type: 'set-node-details', id: nodeId, details: { fontScale: v === '' ? null : v } })
-        }
-      />
-
-      <label className="field">
-        <span>Icon</span>
-        <input
-          aria-label="Icon"
-          list="node-icon-suggestions"
-          value={icon}
-          onChange={(e) => setIcon(e.target.value)}
-          onBlur={commitIcon}
-          onKeyDown={(e) => commitOnEnter(e, commitIcon)}
-        />
-        <datalist id="node-icon-suggestions">
-          {ICON_SUGGESTIONS.map((i) => (
-            <option key={i} value={i} />
-          ))}
-        </datalist>
-      </label>
-
-      <label className="field">
-        <span>Shape</span>
-        <input
-          aria-label="Shape"
-          list="node-shape-suggestions"
-          value={shape}
-          onChange={(e) => setShape(e.target.value)}
-          onBlur={commitShape}
-          onKeyDown={(e) => commitOnEnter(e, commitShape)}
-        />
-        <datalist id="node-shape-suggestions">
-          {SHAPE_SUGGESTIONS.map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
-      </label>
-
-      <label className="field">
-        <span>Technology</span>
-        <input
-          aria-label="Technology"
-          value={technology}
-          onChange={(e) => setTechnology(e.target.value)}
-          onBlur={commitTechnology}
-          onKeyDown={(e) => commitOnEnter(e, commitTechnology)}
-        />
-      </label>
-
-      <label className="field">
-        <span>Link</span>
-        <input
-          aria-label="Link"
-          placeholder="https://… or [[Note]]"
-          value={link}
-          onChange={(e) => setLink(e.target.value)}
-          onBlur={commitLink}
-          onKeyDown={(e) => commitOnEnter(e, commitLink)}
-        />
-      </label>
-
-      <label className="field">
-        <span>Description</span>
-        <textarea
-          aria-label="Description"
-          rows={3}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          onBlur={commitDescription}
-        />
-      </label>
+      <PlacementFields model={model} node={node} activePlane={activePlane} onCommand={onCommand} />
+      <LookFields node={node} icon={icon} shape={shape} onCommand={onCommand} />
+      <DetailFields node={node} technology={technology} link={link} description={description} onCommand={onCommand} />
 
       <LinksSection nodeId={node.id} links={node.links ?? []} onCommand={onCommand} />
 
-      <section className="panel-section">
-        <h3>Position</h3>
-        <div className="member-row">
-          <label className="field">
-            <span>X</span>
-            <input
-              type="number"
-              aria-label="X"
-              step="any"
-              value={posX}
-              placeholder={live !== undefined ? String(Math.round(live.x)) : 'auto'}
-              onChange={(e) => setPosX(e.target.value)}
-              onBlur={commitPosition}
-              onKeyDown={(e) => commitOnEnter(e, commitPosition)}
-            />
-          </label>
-          <label className="field">
-            <span>Y</span>
-            <input
-              type="number"
-              aria-label="Y"
-              step="any"
-              value={posY}
-              placeholder={live !== undefined ? String(Math.round(live.y)) : 'auto'}
-              onChange={(e) => setPosY(e.target.value)}
-              onBlur={commitPosition}
-              onKeyDown={(e) => commitOnEnter(e, commitPosition)}
-            />
-          </label>
-          {hasSavedPosition && (
-            <button className="chip" onClick={clearSavedPosition}>
-              Clear pinned position
-            </button>
-          )}
-        </div>
-        <p className="muted">Parent-relative px. Empty = placed by the layout algorithm.</p>
-      </section>
+      <PositionSection
+        node={node}
+        activePlane={activePlane}
+        hasSavedPosition={hasSavedPosition}
+        savedPosition={savedPosition}
+        live={live}
+        position={position}
+        onCommand={onCommand}
+      />
 
-      <section className="panel-section">
-        <h3>Metadata</h3>
-        {rows.map((row, i) => (
-          <div key={row.id} className="kv-row">
-            <input
-              aria-label={`Metadata key ${i + 1}`}
-              className="kv-key"
-              value={row.key}
-              onChange={(e) => editRow(row.id, { key: e.target.value })}
-              onBlur={() => commitMetadata(rows)}
-              onKeyDown={(e) => commitOnEnter(e, () => commitMetadata(rows))}
-            />
-            <input
-              aria-label={`Metadata value ${i + 1}`}
-              className="kv-value"
-              value={row.value}
-              onChange={(e) => editRow(row.id, { value: e.target.value })}
-              onBlur={() => commitMetadata(rows)}
-              onKeyDown={(e) => commitOnEnter(e, () => commitMetadata(rows))}
-            />
-            <button
-              className="chip icon-btn"
-              aria-label={`Remove metadata ${row.key}`}
-              onClick={() => removeRow(row.id)}
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-        <div className="kv-row">
-          <input
-            aria-label="New metadata key"
-            className="kv-key"
-            placeholder="key"
-            value={newKey}
-            onChange={(e) => setNewKey(e.target.value)}
-            onKeyDown={(e) => commitOnEnter(e, addRow)}
-          />
-          <input
-            aria-label="New metadata value"
-            className="kv-value"
-            placeholder="value"
-            value={newValue}
-            onChange={(e) => setNewValue(e.target.value)}
-            onKeyDown={(e) => commitOnEnter(e, addRow)}
-          />
-          <button className="chip" onClick={addRow}>
-            Add metadata
-          </button>
-        </div>
-      </section>
+      <MetadataSection node={node} draft={metadata} onCommand={onCommand} />
 
       {/* Threats are a generic field, so the section is offered on the notation
        * — but a node that already carries threats keeps it whatever the plane
@@ -641,67 +167,11 @@ export function NodePanel({
 
       <CommentsSection target={{ node: node.id }} comments={node.comments ?? []} onCommand={onCommand} />
 
-      {/* Same rule as threats: offered on the notation, kept on a node that
-       * already carries dates so switching the plane's look strands nothing.
-       * Every date key counts, `end` included — half a span is reachable (clear
-       * Start here, or hand-edit the source) and is exactly the state the
-       * section exists to finish. */}
-      {(studioNotation(notation).planSection === true ||
-        node.metadata?.start !== undefined ||
-        node.metadata?.end !== undefined ||
-        node.metadata?.at !== undefined) &&
-        PLAN_TYPES.has(node.type ?? '') && <PlanSection model={model} node={node} onCommand={onCommand} />}
+      {offersPlanDates(notation, node) && <PlanSection model={model} node={node} onCommand={onCommand} />}
 
-      <section className="panel-section">
-        <h3>Memberships</h3>
-        {memberships.length === 0 && <p className="muted">No containers.</p>}
-        {memberships.map((e) => (
-          <div key={`${e.parent}:${e.plane ?? ''}`} className="member-row">
-            <span>
-              {nodeName(e.parent)} <span className="muted">({planeName(e.plane)})</span>
-            </span>
-            <button
-              className="chip icon-btn"
-              aria-label={`Remove from ${nodeName(e.parent)}`}
-              onClick={() => removeMembership(e.parent, e.plane)}
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-        <div className="member-row add-member">
-          <select aria-label="Add parent" value={addParent} onChange={(e) => setAddParent(e.target.value)}>
-            <option value="">Choose parent…</option>
-            {parentOptions.map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.name}
-              </option>
-            ))}
-          </select>
-          <select aria-label="Add plane" value={addPlane} onChange={(e) => setAddPlane(e.target.value)}>
-            <option value="">default</option>
-            {model.planes.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <button className="chip" onClick={addMembership} disabled={addParent === ''}>
-            Add
-          </button>
-        </div>
-      </section>
+      <MembershipsSection model={model} node={node} parent={addParent} plane={addPlane} onCommand={onCommand} />
 
-      <section className="panel-section">
-        {isGroup && (
-          <button className="chip" onClick={ungroup}>
-            Ungroup
-          </button>
-        )}
-        <button className="chip danger" onClick={deleteNode}>
-          Delete node
-        </button>
-      </section>
+      <ActionsSection model={model} node={node} onCommand={onCommand} onDeleted={onDeleted} />
     </aside>
   );
 }

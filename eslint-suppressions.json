@@ -55,25 +55,6 @@
       "count": 1
     }
   },
-  "apps/studio/src/inspector/EdgePanel.tsx": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "apps/studio/src/inspector/NodePanel.tsx": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "apps/studio/src/layout/savedPositions.ts": {
     "max-params": {
       "count": 2

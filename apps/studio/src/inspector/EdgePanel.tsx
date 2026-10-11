@@ -1,49 +1,12 @@
 import { useMemo, useState } from 'react';
-import {
-  crossings,
-  relationLabels,
-  strideFor,
-  type DiagramModel,
-  type EdgeLabel,
-  type EdgeLabelSide,
-  type EditorCommand,
-  type NotationId,
-  type Polarity,
-  type RelationStyle,
-} from '@diagc/core/internal';
+import { crossings, strideFor, type DiagramModel, type EditorCommand, type NotationId } from '@diagc/core/internal';
 import { notationProfile } from '@diagc/renderer';
 import { getHost } from '../host';
 import { CommentsSection } from './CommentsSection';
-import { commitOnEnter } from './commitOnEnter';
-import { ColorRow, OptionRow } from './pickers';
+import { DescriptionField, KindField, LabelsSection, LayerField, MarkFields, StyleSection } from './RelationFields';
 import { ThreatsSection } from './ThreatsSection';
 import { carriesThreats, threatsOffered } from './threatsOffered';
 import { useDraftField } from './useDraftField';
-
-/** a fresh, relation-unique label id (l1, l2, … skipping ids already in use) */
-const nextLabelId = (labels: EdgeLabel[]): string => {
-  let n = 1;
-  while (labels.some((l) => l.id === `l${n}`)) n++;
-  return `l${n}`;
-};
-
-const SIDE_LABEL_OPTIONS: { value: EdgeLabelSide; title: string; glyph: string }[] = [
-  { value: 'top', title: 'top', glyph: '↑' },
-  { value: 'center', title: 'center', glyph: '⊙' },
-  { value: 'bottom', title: 'bottom', glyph: '↓' },
-];
-
-// Registry defaults surfaced as datalist hints; free text is still accepted.
-const KIND_SUGGESTIONS = ['sync', 'async', 'reads', 'writes', 'hosted-on', 'flow'];
-
-type Side = NonNullable<RelationStyle['fromSide']>;
-const SIDE_OPTIONS: { value: Side | ''; title: string; glyph: string }[] = [
-  { value: '', title: 'auto (facing side)', glyph: '⊙' },
-  { value: 'top', title: 'top', glyph: '↑' },
-  { value: 'right', title: 'right', glyph: '→' },
-  { value: 'bottom', title: 'bottom', glyph: '↓' },
-  { value: 'left', title: 'left', glyph: '←' },
-];
 
 interface EdgePanelProps {
   model: DiagramModel;
@@ -55,70 +18,6 @@ interface EdgePanelProps {
   notation?: NotationId;
   /** the viewed plane — the containment a boundary crossing is derived from */
   activePlane?: string;
-}
-
-// One editable row of the labels list: text (commit on blur/Enter; empty text
-// removes the label), a top/center/bottom side toggle, and a remove button. All
-// three recompute the whole labels array off `labels` (relationLabels(relation),
-// which bridges a legacy `label`) and dispatch update-relation { labels } — so a
-// legacy-`label` relation upgrades to `labels` on its first edit here.
-function LabelRow({
-  relationId,
-  labels,
-  label,
-  index,
-  onCommand,
-}: {
-  relationId: string;
-  labels: EdgeLabel[];
-  label: EdgeLabel;
-  index: number;
-  onCommand: (command: EditorCommand) => void;
-}) {
-  const [text, setText] = useDraftField(label.text);
-
-  const dispatch = (next: EdgeLabel[]) =>
-    onCommand({ type: 'update-relation', id: relationId, patch: { labels: next.length > 0 ? next : null } });
-  const commitText = () => {
-    if (text === label.text) return;
-    dispatch(
-      text.trim() === ''
-        ? labels.filter((l) => l.id !== label.id)
-        : labels.map((l) => (l.id === label.id ? { ...l, text } : l)),
-    );
-  };
-  const setSide = (side: EdgeLabelSide) => dispatch(labels.map((l) => (l.id === label.id ? { ...l, side } : l)));
-  const remove = () => dispatch(labels.filter((l) => l.id !== label.id));
-
-  const n = index + 1;
-  return (
-    <div className="edge-label-row">
-      <input
-        aria-label={`Label ${n} text`}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={commitText}
-        onKeyDown={(e) => commitOnEnter(e, commitText)}
-      />
-      <OptionRow
-        label={`Label ${n} side`}
-        value={label.side ?? 'center'}
-        options={SIDE_LABEL_OPTIONS}
-        onChange={(v) => {
-          if (v !== '') setSide(v);
-        }}
-      />
-      <button
-        type="button"
-        className="chip icon-btn"
-        aria-label={`Remove label ${n}`}
-        title="Remove label"
-        onClick={remove}
-      >
-        ✕
-      </button>
-    </div>
-  );
 }
 
 interface RelationFormProps {
@@ -150,56 +49,18 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation,
 
   // Remounted (key={relationId}) when the edited relation changes, so each
   // draft seeds from the freshly selected relation, and follows the model's
-  // value when it changes underneath (see useDraftField).
-  const [kind, setKind] = useDraftField(relation?.kind, 'keep');
-  const [layer, setLayer] = useDraftField(relation?.layer);
-  const [description, setDescription] = useDraftField(relation?.description);
+  // value when it changes underneath (see useDraftField). The form holds the
+  // drafts, so each lives as long as the form whatever its section does.
+  const kind = useDraftField(relation?.kind, 'keep');
+  const layer = useDraftField(relation?.layer);
+  const description = useDraftField(relation?.description);
   // Text of a not-yet-added label; null = the Add-label row is closed.
-  const [draft, setDraft] = useState<string | null>(null);
+  const labelDraft = useState<string | null>(null);
 
   if (relation === undefined) {
     return <p className="muted">Relation not found.</p>;
   }
 
-  // Effective labels (bridges a legacy `label` string into one centered label).
-  const labels = relationLabels(relation);
-  const commitDraft = () => {
-    const text = (draft ?? '').trim();
-    if (text !== '') {
-      onCommand({
-        type: 'update-relation',
-        id: relationId,
-        patch: { labels: [...labels, { id: nextLabelId(labels), text, t: 0.5, side: 'center' }] },
-      });
-    }
-    setDraft(null);
-  };
-
-  const commitKind = () => {
-    const trimmed = kind.trim();
-    if (trimmed === '') {
-      setKind(relation.kind);
-      return;
-    }
-    if (trimmed !== relation.kind) onCommand({ type: 'update-relation', id: relationId, patch: { kind: trimmed } });
-  };
-  const commitLayer = (value: string) => {
-    setLayer(value);
-    if (value !== (relation.layer ?? ''))
-      onCommand({ type: 'update-relation', id: relationId, patch: { layer: value === '' ? null : value } });
-  };
-  const commitPolarity = (v: Polarity | '') =>
-    onCommand({ type: 'update-relation', id: relationId, patch: { polarity: v === '' ? null : v } });
-  const commitDelay = (v: 'on' | '') =>
-    onCommand({ type: 'update-relation', id: relationId, patch: { delay: v === '' ? null : true } });
-  const commitDescription = () => {
-    if (description !== (relation.description ?? ''))
-      onCommand({
-        type: 'update-relation',
-        id: relationId,
-        patch: { description: description === '' ? null : description },
-      });
-  };
   const deleteRelation = async () => {
     if (!(await getHost().confirmDialog(`Delete relation '${nodeName(relation.from)} → ${nodeName(relation.to)}'?`)))
       return;
@@ -219,22 +80,6 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation,
           ...(crossed.to !== undefined ? { toName: nodeName(crossed.to) } : {}),
         };
 
-  // Style controls commit immediately (excalidraw-style): merge the change into
-  // the relation's style; when everything is back at defaults, drop the object.
-  const style = relation.style ?? {};
-  const commitStyle = (patch: { [K in keyof RelationStyle]: RelationStyle[K] | undefined }) => {
-    const next: RelationStyle = { ...style };
-    for (const [k, v] of Object.entries(patch)) {
-      if (v === undefined) delete next[k as keyof RelationStyle];
-      else (next as Record<string, unknown>)[k] = v;
-    }
-    onCommand({
-      type: 'update-relation',
-      id: relationId,
-      patch: { style: Object.keys(next).length > 0 ? next : null },
-    });
-  };
-
   return (
     <>
       {onBack !== undefined && (
@@ -246,50 +91,9 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation,
         <code>{nodeName(relation.from)}</code> → <code>{nodeName(relation.to)}</code>
       </p>
 
-      <label className="field">
-        <span>Kind</span>
-        <input
-          aria-label="Kind"
-          list="relation-kind-suggestions"
-          value={kind}
-          onChange={(e) => setKind(e.target.value)}
-          onBlur={commitKind}
-          onKeyDown={(e) => commitOnEnter(e, commitKind)}
-        />
-        <datalist id="relation-kind-suggestions">
-          {KIND_SUGGESTIONS.map((k) => (
-            <option key={k} value={k} />
-          ))}
-        </datalist>
-      </label>
+      <KindField relation={relation} kind={kind} onCommand={onCommand} />
 
-      <section className="panel-section edge-labels">
-        <h3>Labels</h3>
-        {labels.map((label, i) => (
-          <LabelRow
-            key={label.id}
-            relationId={relationId}
-            labels={labels}
-            label={label}
-            index={i}
-            onCommand={onCommand}
-          />
-        ))}
-        {draft !== null && (
-          <div className="edge-label-row">
-            <input
-              aria-label="New label text"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commitDraft}
-              onKeyDown={(e) => commitOnEnter(e, commitDraft)}
-            />
-          </div>
-        )}
-        <button type="button" className="chip" onClick={() => setDraft('')}>
-          Add label
-        </button>
-      </section>
+      <LabelsSection relation={relation} draft={labelDraft} onCommand={onCommand} />
 
       {/* Threats are a generic field, so the section is offered on the notation
        * — but a relation that already carries threats keeps it whatever the
@@ -306,149 +110,13 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation,
 
       <CommentsSection target={{ relation: relationId }} comments={relation.comments ?? []} onCommand={onCommand} />
 
-      <label className="field">
-        <span>Layer</span>
-        <select aria-label="Layer" value={layer} onChange={(e) => commitLayer(e.target.value)}>
-          <option value="">none</option>
-          {model.layers.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <LayerField relation={relation} layers={model.layers} layer={layer} onCommand={onCommand} />
 
-      {marks && (
-        <>
-          <OptionRow
-            label="Polarity"
-            value={relation.polarity ?? ''}
-            options={[
-              { value: '', title: '∅', glyph: '∅' },
-              { value: '+', title: '+', glyph: '+' },
-              { value: '-', title: '−', glyph: '−' },
-            ]}
-            onChange={commitPolarity}
-          />
-          <OptionRow
-            label="Delay"
-            value={relation.delay === true ? 'on' : ''}
-            options={[
-              { value: '', title: '·', glyph: '·' },
-              { value: 'on', title: '‖', glyph: '‖' },
-            ]}
-            onChange={commitDelay}
-          />
-        </>
-      )}
+      {marks && <MarkFields relation={relation} onCommand={onCommand} />}
 
-      <section className="panel-section">
-        <h3>Style</h3>
-        <OptionRow
-          label="Shape"
-          value={style.shape ?? ''}
-          options={[
-            { value: '', title: 'curved (default)', glyph: '⌒' },
-            { value: 'straight', title: 'straight', glyph: '╱' },
-            { value: 'step', title: 'step', glyph: '𝖫' },
-          ]}
-          onChange={(v) => commitStyle({ shape: v === '' ? undefined : v })}
-        />
-        {bowed && (
-          <>
-            <OptionRow
-              label="Curvature"
-              value={style.curvature !== undefined ? (String(style.curvature) as '0.4' | '0.8') : ''}
-              options={[
-                { value: '', title: 'default', glyph: '⌒' },
-                { value: '0.4', title: '0.4', glyph: '0.4' },
-                { value: '0.8', title: '0.8', glyph: '0.8' },
-              ]}
-              onChange={(v) => commitStyle({ curvature: v === '' ? undefined : Number(v) })}
-            />
-            <div className="field">
-              <span>Curve</span>
-              <button
-                type="button"
-                className={`chip${style.bow === 'right' ? ' active' : ''}`}
-                aria-pressed={style.bow === 'right'}
-                title="Flip which side the arc bulges (arrow direction unchanged)"
-                onClick={() => commitStyle({ bow: style.bow === 'right' ? undefined : 'right' })}
-              >
-                Flip curve
-              </button>
-            </div>
-          </>
-        )}
-        <ColorRow value={style.color ?? ''} onChange={(v) => commitStyle({ color: v === '' ? undefined : v })} />
-        <OptionRow
-          label="Thickness"
-          value={style.width !== undefined ? (String(style.width) as '1' | '2.5' | '4') : ''}
-          options={[
-            { value: '', title: 'default', glyph: <span className="w-line" style={{ height: 1.5 }} /> },
-            { value: '1', title: 'thin', glyph: <span className="w-line" style={{ height: 1 }} /> },
-            { value: '2.5', title: 'bold', glyph: <span className="w-line" style={{ height: 3 }} /> },
-            { value: '4', title: 'heavy', glyph: <span className="w-line" style={{ height: 5 }} /> },
-          ]}
-          onChange={(v) => commitStyle({ width: v === '' ? undefined : Number(v) })}
-        />
-        <OptionRow
-          label="Line"
-          value={style.line ?? ''}
-          options={[
-            { value: '', title: 'default', glyph: '—' },
-            { value: 'solid', title: 'solid', glyph: '━' },
-            { value: 'dashed', title: 'dashed', glyph: '╌' },
-            { value: 'dotted', title: 'dotted', glyph: '⋯' },
-          ]}
-          onChange={(v) => commitStyle({ line: v === '' ? undefined : v })}
-        />
-        <OptionRow
-          label="Arrow end"
-          value={style.end ?? ''}
-          options={[
-            { value: '', title: 'arrow (default)', glyph: '➤' },
-            { value: 'dot', title: 'dot', glyph: '●' },
-            { value: 'square', title: 'square', glyph: '■' },
-            { value: 'diamond', title: 'diamond', glyph: '◆' },
-            { value: 'none', title: 'none', glyph: '∅' },
-          ]}
-          onChange={(v) => commitStyle({ end: v === '' ? undefined : v })}
-        />
-        <OptionRow
-          label="From side"
-          value={style.fromSide ?? ''}
-          options={SIDE_OPTIONS}
-          onChange={(v) => commitStyle({ fromSide: v === '' ? undefined : v })}
-        />
-        <OptionRow
-          label="To side"
-          value={style.toSide ?? ''}
-          options={SIDE_OPTIONS}
-          onChange={(v) => commitStyle({ toSide: v === '' ? undefined : v })}
-        />
-        <OptionRow
-          label="Animated"
-          value={style.animated === undefined ? '' : style.animated ? 'on' : 'off'}
-          options={[
-            { value: '', title: 'default', glyph: '·' },
-            { value: 'on', title: 'on', glyph: '▶' },
-            { value: 'off', title: 'off', glyph: '■' },
-          ]}
-          onChange={(v) => commitStyle({ animated: v === '' ? undefined : v === 'on' })}
-        />
-      </section>
+      <StyleSection relation={relation} bowed={bowed} onCommand={onCommand} />
 
-      <label className="field">
-        <span>Description</span>
-        <textarea
-          aria-label="Description"
-          rows={3}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          onBlur={commitDescription}
-        />
-      </label>
+      <DescriptionField relation={relation} description={description} onCommand={onCommand} />
 
       <section className="panel-section">
         <button className="chip danger" onClick={() => void deleteRelation()}>
