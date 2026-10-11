@@ -39,4 +39,22 @@ describe('LinksSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove link 1' }));
     expect(onCommand).toHaveBeenLastCalledWith({ type: 'set-node-details', id: 'a', details: { links: null } });
   });
+
+  // breaks if a link's label or url box resyncs on the other's change (losing
+  // what is typed), or stops following its own stored value
+  it.each([
+    ['label', 'Link 1 label'],
+    ['url', 'Link 1 url'],
+  ] as const)('the %s keeps a draft through the other field changing, and takes its own new value', (key, label) => {
+    const ui = (link: { label: string; url: string }) => <LinksSection nodeId="a" links={[link]} onCommand={vi.fn()} />;
+    const stored = { label: 'Doc', url: 'https://d' };
+    const { rerender } = render(ui(stored));
+    const box = () => screen.getByLabelText(label) as HTMLInputElement;
+    fireEvent.change(box(), { target: { value: 'typed' } });
+    const other = key === 'label' ? { url: 'https://e' } : { label: 'Spec' };
+    rerender(ui({ ...stored, ...other }));
+    expect(box().value).toBe('typed');
+    rerender(ui({ ...stored, ...other, [key]: 'stored' }));
+    expect(box().value).toBe('stored');
+  });
 });

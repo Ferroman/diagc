@@ -269,6 +269,22 @@ describe('LibraryPanel apply-to-selection', () => {
   });
 });
 
+// breaks if Apply mode outlives a change of target, or is dropped by a
+// re-render that keeps the same target
+describe('LibraryPanel apply mode', () => {
+  it('returns to Place when the selection moves to another node, not on a re-render', () => {
+    const ui = (target: { id: string; name: string }) => (
+      <LibraryPanel library={library} onPlace={vi.fn()} onApply={vi.fn()} applyTarget={target} />
+    );
+    const { rerender } = render(ui({ id: 'x', name: 'X' }));
+    fireEvent.click(screen.getByRole('button', { name: /apply to X/i }));
+    rerender(ui({ id: 'x', name: 'X renamed' }));
+    expect(screen.getByRole('button', { name: /apply Lambda/i })).toBeTruthy();
+    rerender(ui({ id: 'y', name: 'Y' }));
+    expect(screen.getByRole('button', { name: /place Lambda/i })).toBeTruthy();
+  });
+});
+
 describe('LibraryPanel authoring', () => {
   const cbs = () => ({ onAddCategory: vi.fn(), onDeleteCategory: vi.fn(), onImportIcon: vi.fn() });
 

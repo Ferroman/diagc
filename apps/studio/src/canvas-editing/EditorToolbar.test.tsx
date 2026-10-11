@@ -147,4 +147,61 @@ describe('EditorToolbar', () => {
     expect(pen.disabled).toBe(true);
     expect(pen.title).toContain('top level');
   });
+
+  // breaks if Undo, Redo or the save status stop reading the editor, or the
+  // buttons stop following canUndo / canRedo / dirty
+  it('undoes and redoes through the editor, and says where the save stands', () => {
+    const editor = fakeEditor({ canUndo: true, canRedo: false, dirty: true });
+    const { rerender } = renderToolbar(editor);
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(editor.undo).toHaveBeenCalledTimes(1);
+    expect((screen.getByRole('button', { name: 'Redo' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText('Unsaved…')).toBeTruthy();
+    const ui = (saving: boolean, e: EditorApi) => (
+      <EditorToolbar
+        editor={e}
+        onExit={noop}
+        onSave={noop}
+        saving={saving}
+        saveIssues={null}
+        selectionColor={null}
+        tool="select"
+        onSetTool={noop}
+        pen={{ color: '', width: 3 }}
+        onSetPen={noop}
+        drawingDisabled={false}
+      />
+    );
+    rerender(ui(true, editor));
+    expect(screen.getByText('Saving…')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
+    const clean = fakeEditor({ canRedo: true });
+    rerender(ui(false, clean));
+    expect(screen.getByText('Saved')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Redo' }));
+    expect(clean.redo).toHaveBeenCalledTimes(1);
+  });
+
+  // breaks if the selection's colour row or the editor's error stop showing
+  it("offers the selection's colour and shows the editor's error", () => {
+    const onChange = vi.fn();
+    render(
+      <EditorToolbar
+        editor={fakeEditor({ session: { error: 'Bad move' } as EditorApi['session'] })}
+        onExit={noop}
+        onSave={noop}
+        saveIssues={null}
+        selectionColor={{ value: '', onChange }}
+        tool="select"
+        onSetTool={noop}
+        pen={{ color: '', width: 3 }}
+        onSetPen={noop}
+        drawingDisabled={false}
+      />,
+    );
+    const row = screen.getByRole('group', { name: 'Selection color' });
+    fireEvent.click(row.querySelectorAll('button')[1]!);
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Bad move')).toBeTruthy();
+  });
 });

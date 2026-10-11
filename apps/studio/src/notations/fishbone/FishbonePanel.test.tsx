@@ -117,4 +117,13 @@ describe('FishbonePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /'loose' does not reach the effect/ }));
     expect(onSelect).toHaveBeenCalledWith('loose');
   });
+
+  // breaks if an issue whose ref names no node becomes a button, or the
+  // issues list loses its class or gains a label it never had
+  it('renders an issue with no node behind it as text, in an unlabelled list', () => {
+    setup({ ...empty(), nodes: [{ id: 'c', name: 'Code', type: 'fb-category' }] });
+    const list = document.querySelector('ul.so-issues')!;
+    expect(list.getAttribute('aria-label')).toBeNull();
+    expect(screen.getByText(/needs an effect/).tagName).toBe('SPAN');
+  });
 });
