@@ -37,7 +37,7 @@ function notationLayoutProfile(
 ): NotationProfile {
   return {
     id: 'default',
-    layout: (_view, _m, _plane, sizeHints, positions) => {
+    layout: ({ sizeHints, positions }) => {
       spy?.(sizeHints, positions);
       return { geometry: GEOMETRY, routes: new Map(), labelSpots: new Map(), algorithm: 'notation' };
     },
@@ -411,6 +411,8 @@ describe('useViewLayout', () => {
     expect(routingOf({ profile: notationProfile(), layout: orthogonal })).toEqual({ corner: 8 });
     // a causal-loop arc IS the notation — elk's right angles would replace it
     expect(routingOf({ profile: notationProfile('causal-loop') })).toBeUndefined();
+    const layered: LayoutOverlay = { version: 1, planes: {}, settings: { default: { algorithm: 'layered' } } };
+    expect(routingOf({ profile: notationProfile('causal-loop'), layout: layered })).toBeUndefined();
     // nothing but layered routes unless asked to
     const force: LayoutOverlay = { version: 1, planes: {}, settings: { default: { algorithm: 'force' } } };
     expect(routingOf({ profile: notationProfile(), layout: force })).toBeUndefined();

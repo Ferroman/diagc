@@ -183,61 +183,9 @@
       "count": 3
     }
   },
-  "packages/renderer/src/canvas/useViewLayout.ts": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "packages/renderer/src/edge/edge-geometry.ts": {
     "max-params": {
       "count": 5
-    }
-  },
-  "packages/renderer/src/layout/fishbone-layout.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/layout/fit-containers.ts": {
-    "max-params": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/layout/lane-router.ts": {
-    "complexity": {
-      "count": 2
-    },
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "max-params": {
-      "count": 4
-    }
-  },
-  "packages/renderer/src/layout/layout-graph.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/layout/layout.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/layout/plan-layout.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "max-params": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/layout/swimlane.ts": {
-    "max-params": {
-      "count": 3
     }
   },
   "packages/renderer/src/loops/LeveragePanel.tsx": {
@@ -245,18 +193,8 @@
       "count": 1
     }
   },
-  "packages/renderer/src/loops/leverage.ts": {
-    "max-depth": {
-      "count": 1
-    }
-  },
   "packages/renderer/src/node/TableNode.tsx": {
     "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/renderer/src/notations.ts": {
-    "max-params": {
       "count": 1
     }
   },

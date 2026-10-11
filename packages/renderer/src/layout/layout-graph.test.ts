@@ -110,6 +110,16 @@ describe('layoutOptionsFor hierarchy handling', () => {
   });
 });
 
+describe('layoutOptionsFor spacing', () => {
+  it('hands elk the spacing the sidecar names, as written, and 40 only when it names none', () => {
+    expect(layoutOptionsFor()['elk.spacing.nodeNode']).toBe('40');
+    expect(layoutOptionsFor({ spacing: 70 })['elk.spacing.nodeNode']).toBe('70');
+    // The sidecar check does not type `spacing`, so a hand-written null gets
+    // this far; elk cannot read it and falls back to its own default.
+    expect(layoutOptionsFor({ spacing: null as unknown as number })['elk.spacing.nodeNode']).toBe('null');
+  });
+});
+
 describe('buildGraph', () => {
   it('leaves the flat path alone: all edges at the root, no algorithm on containers', () => {
     const { graph: g } = buildGraph(expanded(), undefined, undefined);

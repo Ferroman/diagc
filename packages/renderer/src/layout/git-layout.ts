@@ -3,15 +3,13 @@ import {
   gitGraph,
   isGitKind,
   LEAF_SIZE,
-  type BoxSize,
-  type CompiledView,
   type DiagramModel,
   type GitGraph,
   type Point,
   type ViewEdge,
   type ViewNode,
 } from '@diagc/core/internal';
-import type { LayoutResult, NodeGeometry } from './layout';
+import type { LayoutResult, NodeGeometry, NotationLayoutInput } from './layout';
 
 /** Flow-pixel constants of the git arrangement. Tuned against real renders;
  * tests derive their expectations from these, never from literals. */
@@ -47,12 +45,12 @@ export function gitGraphCached(model: DiagramModel, plane: string | undefined): 
     byPlane = new Map();
     graphCache.set(model, byPlane);
   }
-  let g = byPlane.get(plane);
-  if (g === undefined) {
-    g = gitGraph(model, plane);
-    byPlane.set(plane, g);
+  let graph = byPlane.get(plane);
+  if (graph === undefined) {
+    graph = gitGraph(model, plane);
+    byPlane.set(plane, graph);
   }
-  return g;
+  return graph;
 }
 
 const colorCache = new WeakMap<GitGraph, Map<string, string>>();
@@ -60,17 +58,17 @@ const colorCache = new WeakMap<GitGraph, Map<string, string>>();
 /** lane id → colour, commit id → its own colour else its lane's. Lanes: own
  * `color`, else the model's `typeColors` for `branch`, else the palette. */
 export function gitNodeColors(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, string> {
-  const g = gitGraphCached(model, plane);
-  const hit = colorCache.get(g);
+  const graph = gitGraphCached(model, plane);
+  const hit = colorCache.get(graph);
   if (hit !== undefined) return hit;
   const byType = model.typeColors?.['branch'] ?? model.typeColors?.['*'];
   const colors = new Map<string, string>();
-  g.lanes.forEach((lane, i) => {
+  graph.lanes.forEach((lane, i) => {
     const laneColor = lane.node.color ?? byType ?? LANE_PALETTE[i % LANE_PALETTE.length]!;
     colors.set(lane.id, laneColor);
     for (const c of lane.commits) colors.set(c.id, c.color ?? laneColor);
   });
-  colorCache.set(g, colors);
+  colorCache.set(graph, colors);
   return colors;
 }
 
@@ -79,11 +77,11 @@ export function gitNodeColors(model: DiagramModel, plane: string | undefined): R
  * colour, a trunk merging down into a lane takes that lane's. */
 export function gitEdgeColor(e: ViewEdge, model: DiagramModel, plane: string | undefined): string | undefined {
   if (!isGitKind(e.kind)) return undefined;
-  const g = gitGraphCached(model, plane);
-  const from = g.laneOf.get(e.from);
-  const to = g.laneOf.get(e.to);
+  const graph = gitGraphCached(model, plane);
+  const from = graph.laneOf.get(e.from);
+  const to = graph.laneOf.get(e.to);
   if (from === undefined || to === undefined) return undefined;
-  const index = (id: string): number => g.lanes.findIndex((l) => l.id === id);
+  const index = (id: string): number => graph.lanes.findIndex((l) => l.id === id);
   const lane = e.kind === 'branch' ? to : e.kind === 'commit' ? from : index(from) >= index(to) ? from : to;
   return gitNodeColors(model, plane).get(lane);
 }
@@ -102,14 +100,9 @@ export function gitRoute(s: Point, t: Point, col: number): Point[] {
  * replaces elk for a git-graph plane (see NotationProfile.layout). Geometry is
  * parent-relative like elk output; routes are absolute like elk's.
  */
-export function gitLayout(
-  view: CompiledView,
-  model: DiagramModel,
-  plane: string | undefined,
-  sizeHints?: ReadonlyMap<string, BoxSize>,
-): LayoutResult {
+export function gitLayout({ view, model, plane, sizeHints }: NotationLayoutInput): LayoutResult {
   const { COL, LANE, DIAMETER, LABEL_W, MARGIN, TAIL_GAP, STAGE_HEADER, STAGE_PAD } = GIT_LAYOUT;
-  const g = gitGraphCached(model, plane);
+  const graph = gitGraphCached(model, plane);
   const geometry = new Map<string, NodeGeometry>();
   const routes = new Map<string, Point[]>();
   const centres = new Map<string, Point>();
@@ -124,14 +117,14 @@ export function gitLayout(
   view.roots.forEach(walk);
 
   let maxCol = -1;
-  for (const [id, c] of g.columns) if (shown.has(id)) maxCol = Math.max(maxCol, c);
+  for (const [id, c] of graph.columns) if (shown.has(id)) maxCol = Math.max(maxCol, c);
   const width = MARGIN + (maxCol + 1) * COL + TAIL_GAP + LABEL_W + MARGIN;
-  const columnX = (id: string): number => MARGIN + DIAMETER / 2 + (g.columns.get(id) ?? 0) * COL;
+  const columnX = (id: string): number => MARGIN + DIAMETER / 2 + (graph.columns.get(id) ?? 0) * COL;
 
-  const lanes = g.lanes.filter((l) => shown.has(l.id));
+  const lanes = graph.lanes.filter((l) => shown.has(l.id));
   // Stages: frames across every lane, one column-span each, titled in a band
   // above the first lane (the tags of that lane's commits hang just below it).
-  const stages = g.stages.filter((s) => shown.has(s.id));
+  const stages = graph.stages.filter((s) => shown.has(s.id));
   const top = MARGIN + (stages.length > 0 ? STAGE_HEADER : 0);
   for (const s of stages) {
     const left = MARGIN + DIAMETER / 2 + s.fromCol * COL - COL / 2;
@@ -160,7 +153,7 @@ export function gitLayout(
   // not widen through a plain `let` initializer — annotate so later reassignment
   // with plain `number` results type-checks.
   let cursor: number = MARGIN;
-  for (const s of g.strays) {
+  for (const s of graph.strays) {
     if (!shown.has(s.id)) continue;
     const cx = columnX(s.id);
     geometry.set(s.id, { x: cx - DIAMETER / 2, y: rowY, width: DIAMETER, height: DIAMETER });

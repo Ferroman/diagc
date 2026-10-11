@@ -98,6 +98,37 @@ interface SignedReach {
   pathTo: (from: string) => { nodes: string[]; edgeIds: string[] };
 }
 
+/** What the reverse search has found so far: each reached node's distance to
+ * the target, the net signs of its shortest paths, and its first hop on one. */
+interface Reach {
+  dist: Map<string, number>;
+  signs: Map<string, Set<PathSign>>;
+  nextHop: Map<string, { node: string; edgeIds: string[] }>;
+}
+
+/** Offer `arc`'s driver a path through `node`, one hop further from the target:
+ * a shorter path replaces what the driver had, an equally short one adds its
+ * signs. True when the driver is newly reached, or reached shorter, so it joins
+ * the next frontier. */
+function relax(reach: Reach, arc: Arc, node: string): boolean {
+  const driver = arc.from;
+  const cand = reach.dist.get(node)! + 1;
+  const best = reach.dist.get(driver);
+  const contributed = new Set<PathSign>();
+  for (const s of reach.signs.get(node)!) contributed.add(combine(arc.polarity, s));
+  if (best === undefined || cand < best) {
+    reach.dist.set(driver, cand);
+    reach.signs.set(driver, contributed);
+    reach.nextHop.set(driver, { node, edgeIds: arc.edgeIds });
+    return true;
+  }
+  if (cand === best) {
+    const set = reach.signs.get(driver)!;
+    for (const s of contributed) set.add(s);
+  }
+  return false;
+}
+
 /**
  * Reverse BFS from `target` over collapsed arcs: for every node that can reach
  * `target`, its shortest distance, the set of net signs accumulated along the
@@ -112,35 +143,23 @@ function reverseSignedBFS(arcs: readonly Arc[], target: string): SignedReach {
     else list.push(arc);
   }
 
-  const dist = new Map<string, number>([[target, 0]]);
-  const signs = new Map<string, Set<PathSign>>([[target, new Set<PathSign>(['+'])]]);
-  const nextHop = new Map<string, { node: string; edgeIds: string[] }>();
+  const reach: Reach = {
+    dist: new Map([[target, 0]]),
+    signs: new Map([[target, new Set<PathSign>(['+'])]]),
+    nextHop: new Map(),
+  };
   let frontier = [target];
   while (frontier.length > 0) {
     const next: string[] = [];
     for (const node of frontier) {
-      const d = dist.get(node)!;
-      const downstream = signs.get(node)!;
       for (const arc of preds.get(node) ?? []) {
-        const p = arc.from;
-        if (p === target) continue; // the target is not its own driver
-        const cand = d + 1;
-        const best = dist.get(p);
-        const contributed = new Set<PathSign>();
-        for (const s of downstream) contributed.add(combine(arc.polarity, s));
-        if (best === undefined || cand < best) {
-          dist.set(p, cand);
-          signs.set(p, contributed);
-          nextHop.set(p, { node, edgeIds: arc.edgeIds });
-          next.push(p);
-        } else if (cand === best) {
-          const set = signs.get(p)!;
-          for (const s of contributed) set.add(s);
-        }
+        if (arc.from === target) continue; // the target is not its own driver
+        if (relax(reach, arc, node)) next.push(arc.from);
       }
     }
     frontier = next;
   }
+  const { dist, signs, nextHop } = reach;
 
   const pathTo = (from: string): { nodes: string[]; edgeIds: string[] } => {
     const nodes = [from];

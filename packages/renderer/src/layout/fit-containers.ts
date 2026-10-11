@@ -19,6 +19,13 @@ export interface ContainerFit<T> {
   shifts: ReadonlyMap<string, Shift>;
 }
 
+/** Where the containers stood when the geometry was derived: each one's
+ * unshifted absolute origin, and how far the fit pass moved it. */
+export interface ContainerFrames {
+  bases: ReadonlyMap<string, Point>;
+  shifts: ReadonlyMap<string, Shift>;
+}
+
 const NO_SHIFTS: ReadonlyMap<string, Shift> = new Map();
 
 // elk's coordinates are fractional; a child sitting a hair past the padding
@@ -130,8 +137,8 @@ const ORIGIN = { x: 0, y: 0 };
  * `savedPosition` for a batch of moved nodes, given the canvas's current node
  * list (parent-relative, as React Flow holds it).
  *
- * `bases` is each container's unshifted absolute origin as of the last derive;
- * a parent missing from it (nothing derived yet) counts as unshifted. The
+ * `frames.bases` is each container's unshifted absolute origin as of the last
+ * derive; a parent missing from it (nothing derived yet) counts as unshifted. The
  * parent's CURRENT origin is summed from `nodes`, root first — the same order
  * `bases` was summed in, so an unshifted parent cancels to exactly zero and the
  * on-screen position is saved bit for bit.
@@ -143,8 +150,7 @@ const ORIGIN = { x: 0, y: 0 };
 export function savedPositions(
   onScreen: Readonly<Record<string, Point>>,
   nodes: readonly ScreenNode[],
-  bases: ReadonlyMap<string, Point>,
-  shifts: ReadonlyMap<string, Shift>,
+  { bases, shifts }: ContainerFrames,
   fixedOrigin: (parentId: string) => boolean = () => false,
 ): Record<string, Point> {
   const byId = new Map(nodes.map((n) => [n.id, n] as const));

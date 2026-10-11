@@ -580,6 +580,31 @@ describe('layoutView packs independent parts', () => {
     expect(at.get('a')!.x).toBe(at.get('c')!.x);
   });
 
+  it("arranges a lone container's inside apart and keeps every child inside it", async () => {
+    const m = model('lone');
+    const kids = Array.from({ length: 8 }, (_, i) => m.node(`k${i}`, { type: 'service' }));
+    m.node('box', { type: 'system' }).contains(...kids);
+    const { geometry } = await layoutView(compileView(m.toJSON(), { focus: ['box'] }));
+    const g = geometry.get('box')!;
+    for (const k of kids) {
+      const at = geometry.get(k.id)!;
+      expect(at.x).toBeGreaterThanOrEqual(16);
+      expect(at.y).toBeGreaterThanOrEqual(36); // below the title band
+      expect(at.x + at.width).toBeLessThanOrEqual(g.width - 16 + 0.5);
+      expect(at.y + at.height).toBeLessThanOrEqual(g.height - 16 + 0.5);
+    }
+  });
+
+  it('packs a folded container among loose boxes at its folded size', async () => {
+    const m = model('folded');
+    const loose = ['a', 'b', 'c'].map((id) => m.node(id, { type: 'service' }));
+    const folded = m.node('f', { type: 'system' });
+    folded.contains(m.node('x', { type: 'service' }));
+    m.node('outer', { type: 'system' }).contains(...loose, folded);
+    const { geometry } = await layoutView(compileView(m.toJSON(), { focus: ['outer'] }));
+    expect(geometry.get('f')).toMatchObject({ width: COLLAPSED_SIZE.width, height: COLLAPSED_SIZE.height });
+  });
+
   it('packs the inside of a container no edge crosses, and sizes it to fit with its header room', async () => {
     const m = model('closed');
     const kids = Array.from({ length: 8 }, (_, i) => m.node(`k${i}`, { type: 'service' }));

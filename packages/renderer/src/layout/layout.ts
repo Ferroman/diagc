@@ -4,6 +4,7 @@ import {
   RESERVED_NODE_ID,
   type BoxSize,
   type CompiledView,
+  type DiagramModel,
   type LayoutSettings,
   type Point,
   type ViewNode,
@@ -14,6 +15,7 @@ import {
   componentGap,
   containerPad,
   DEFAULT_ALGORITHM,
+  DEFAULT_SPACING,
   edgeLabelText,
   FALLBACK_DIRECTION,
   footprint,
@@ -27,6 +29,17 @@ import { planLayout, type LayoutPlan, type LevelPlan } from './layout-plan';
 import { packBoxes } from './pack';
 import { removeOverlaps } from './overlap';
 import { bandLanes, hoistLanes, rebaseRoutes, routeBandedEdges } from './swimlane';
+
+/** What a notation's own arrangement is handed (NotationProfile.layout). */
+export interface NotationLayoutInput {
+  view: CompiledView;
+  model: DiagramModel;
+  plane: string | undefined;
+  sizeHints?: ReadonlyMap<string, BoxSize>;
+  /** the plane's saved, parent-relative positions, for an arrangement that
+   * reads them (see NotationProfile.layoutReadsPositions) */
+  positions?: Record<string, Point>;
+}
 
 export interface NodeGeometry {
   x: number;
@@ -90,6 +103,12 @@ function settingsKey(settings?: LayoutSettings): string {
   return `!${parts.join(',')}`;
 }
 
+function sizeKey(id: string, s: SizeHint): string {
+  const reserve = s.reserveBottom !== undefined ? `+${s.reserveBottom}` : '';
+  const caption = s.caption !== undefined ? `_${s.caption.width}x${s.caption.height}` : '';
+  return `${id}:${s.width}x${s.height}${reserve}${caption}`;
+}
+
 function signature(
   view: CompiledView,
   sizes?: ReadonlyMap<string, SizeHint>,
@@ -115,10 +134,7 @@ function signature(
       ? ''
       : `@${[...sizes.entries()]
           .sort(([a], [b]) => a.localeCompare(b))
-          .map(
-            ([id, s]) =>
-              `${id}:${s.width}x${s.height}${s.reserveBottom !== undefined ? `+${s.reserveBottom}` : ''}${s.caption !== undefined ? `_${s.caption.width}x${s.caption.height}` : ''}`,
-          )
+          .map(([id, s]) => sizeKey(id, s))
           .join('|')}`;
   const partitionKey =
     partitions === undefined || partitions.size === 0
@@ -152,9 +168,10 @@ export async function layoutView(
     const captions = new Map<string, BoxSize>();
     for (const [id, s] of sizeOverrides ?? []) if (s.caption !== undefined) captions.set(id, s.caption);
     const below = new Map([...captions].map(([id, c]) => [id, c.height] as const));
-    const moved = bandLanes(result.geometry, hoist, view, settings?.spacing ?? 40, below);
-    rebaseRoutes(result.routes, result.labelSpots, hoist, view, result.geometry, moved);
-    routeBandedEdges(result.routes, result.labelSpots, hoist, view, result.geometry, captions);
+    const banding = { result, hoist, original: view };
+    const moved = bandLanes(banding, settings?.spacing ?? DEFAULT_SPACING, below);
+    rebaseRoutes(banding, moved);
+    routeBandedEdges(banding, captions);
   }
   if (cache.size >= CACHE_CAP) {
     const oldest = cache.keys().next().value;
@@ -381,14 +398,22 @@ async function arrangeLevel(level: LevelPlan, ctx: PlanContext): Promise<Block> 
   return out;
 }
 
-/** Arrange one connected group of siblings: a single elk run, in which every
- * planned level below is already a fixed-size box. */
-async function arrangeGroup(nodes: readonly ViewNode[], ctx: PlanContext): Promise<Block> {
-  // Resolve the planned levels inside this group first — elk needs their sizes.
-  const prelaid = new Map<string, BoxSize>();
-  const packs = new Map<string, { id: string; width: number; height: number; members: ReadonlySet<string> }>();
-  const inner = new Map<string, Block>(); // keyed by the box standing in for it: a container id, or a pack id
-  const pads = new Map<string, Pad>(); // a separately arranged container's own padding
+/** The planned levels inside one group, arranged ahead of its elk run: what that
+ * run must treat as fixed-size boxes, and the blocks to embed once it is done. */
+interface ResolvedLevels {
+  /** unfolded containers whose whole inside was arranged apart, at their padded size */
+  prelaid: Map<string, BoxSize>;
+  /** per container: the children standing apart from its connected part, as one packed leaf */
+  packs: Map<string, { id: string; width: number; height: number; members: ReadonlySet<string> }>;
+  /** the arranged blocks, keyed by the box standing in for each: a container id, or a pack id */
+  inner: Map<string, Block>;
+  /** a separately arranged container's own padding */
+  pads: Map<string, Pad>;
+}
+
+/** Arrange every planned level inside `nodes` first — elk needs their sizes. */
+async function resolveLevels(nodes: readonly ViewNode[], ctx: PlanContext): Promise<ResolvedLevels> {
+  const levels: ResolvedLevels = { prelaid: new Map(), packs: new Map(), inner: new Map(), pads: new Map() };
   const resolve = async (n: ViewNode): Promise<void> => {
     if (n.state !== 'expanded') return;
     const level = ctx.plan.levels.get(n.id);
@@ -399,64 +424,54 @@ async function arrangeGroup(nodes: readonly ViewNode[], ctx: PlanContext): Promi
     const block = await arrangeLevel(level, ctx);
     if (level.attached.length === 0) {
       const pad = containerPad(n);
-      prelaid.set(n.id, { width: block.width + pad.left + pad.right, height: block.height + pad.top + pad.bottom });
-      pads.set(n.id, pad);
-      inner.set(n.id, block);
+      levels.prelaid.set(n.id, {
+        width: block.width + pad.left + pad.right,
+        height: block.height + pad.top + pad.bottom,
+      });
+      levels.pads.set(n.id, pad);
+      levels.inner.set(n.id, block);
       return;
     }
     let id = `${RESERVED_NODE_ID}pack:${n.id}`;
     while (ctx.taken.has(id)) id += '_';
     ctx.taken.add(id);
-    packs.set(n.id, { id, width: block.width, height: block.height, members: new Set(block.top) });
-    inner.set(id, block);
+    levels.packs.set(n.id, { id, width: block.width, height: block.height, members: new Set(block.top) });
+    levels.inner.set(id, block);
     for (const c of level.attached) await resolve(c);
   };
   for (const n of nodes) await resolve(n);
+  return levels;
+}
 
-  // A lone box needs no elk: a leaf or folded container is its size, a
-  // separately arranged container is its inside plus the padding.
-  if (nodes.length === 1 && (nodes[0]!.state !== 'expanded' || prelaid.has(nodes[0]!.id))) {
-    const n = nodes[0]!;
-    const hint = ctx.sizes?.get(n.id);
-    const size =
-      prelaid.get(n.id) ?? (n.state === 'collapsed' ? (hint ?? COLLAPSED_SIZE) : footprint(hint ?? LEAF_SIZE));
-    const out: Block = {
-      width: size.width,
-      height: size.height,
-      top: [n.id],
-      geometry: new Map([[n.id, { x: 0, y: 0, width: size.width, height: size.height }]]),
-      routes: new Map(),
-      labelSpots: new Map(),
-    };
-    const block = inner.get(n.id);
-    const pad = pads.get(n.id);
-    if (block !== undefined && pad !== undefined)
-      embed(out, block, { dx: pad.left, dy: pad.top, absX: pad.left, absY: pad.top });
-    return out;
-  }
-
-  const substitute: GraphSubstitutions = { roots: nodes, prelaid, packs };
-  const built = buildGraph(ctx.view, ctx.sizes, ctx.settings, { substitute });
-  let laid: ElkShape;
-  try {
-    laid = (await elk.layout(built.graph)) as ElkShape;
-  } catch (e) {
-    throw new ElkRejected(String(e));
-  }
-  const synthetic = new Set([...packs.values()].map((p) => p.id));
-  // planning is layered-only, and layered always routes
-  const { geometry, routes, labelSpots, origins } = collectLaid(laid, !built.lifted, synthetic, built.reversed);
+/** A lone box needs no elk: a leaf or folded container is its size, a separately
+ * arranged container is its inside plus the padding. Undefined for an unfolded
+ * container elk must still arrange. */
+function loneBox(node: ViewNode, ctx: PlanContext, levels: ResolvedLevels): Block | undefined {
+  const prelaid = levels.prelaid.get(node.id);
+  if (node.state === 'expanded' && prelaid === undefined) return undefined;
+  const hint = ctx.sizes?.get(node.id);
+  const size = prelaid ?? (node.state === 'collapsed' ? (hint ?? COLLAPSED_SIZE) : footprint(hint ?? LEAF_SIZE));
   const out: Block = {
-    width: laid.width ?? 0,
-    height: laid.height ?? 0,
-    top: nodes.map((n) => n.id),
-    geometry,
-    routes,
-    labelSpots,
+    width: size.width,
+    height: size.height,
+    top: [node.id],
+    geometry: new Map([[node.id, { x: 0, y: 0, width: size.width, height: size.height }]]),
+    routes: new Map(),
+    labelSpots: new Map(),
   };
-  for (const [standIn, block] of inner) {
+  const block = levels.inner.get(node.id);
+  const pad = levels.pads.get(node.id);
+  if (block !== undefined && pad !== undefined)
+    embed(out, block, { dx: pad.left, dy: pad.top, absX: pad.left, absY: pad.top });
+  return out;
+}
+
+/** Put every block arranged ahead of the run into the run's output, where elk
+ * placed the box standing in for it. */
+function embedInner(out: Block, laid: ElkShape, origins: ReadonlyMap<string, Point>, levels: ResolvedLevels): void {
+  for (const [standIn, block] of levels.inner) {
     const abs = origins.get(standIn) ?? { x: 0, y: 0 };
-    const pad = pads.get(standIn);
+    const pad = levels.pads.get(standIn);
     if (pad !== undefined) {
       // the inside of a container: against the container, past its padding
       embed(out, block, { dx: pad.left, dy: pad.top, absX: abs.x + pad.left, absY: abs.y + pad.top });
@@ -467,6 +482,35 @@ async function arrangeGroup(nodes: readonly ViewNode[], ctx: PlanContext): Promi
       embed(out, block, { dx: leaf?.x ?? 0, dy: leaf?.y ?? 0, absX: abs.x, absY: abs.y });
     }
   }
+}
+
+/** Arrange one connected group of siblings: a single elk run, in which every
+ * planned level below is already a fixed-size box. */
+async function arrangeGroup(nodes: readonly ViewNode[], ctx: PlanContext): Promise<Block> {
+  const levels = await resolveLevels(nodes, ctx);
+  const lone = nodes.length === 1 ? loneBox(nodes[0]!, ctx, levels) : undefined;
+  if (lone !== undefined) return lone;
+
+  const substitute: GraphSubstitutions = { roots: nodes, prelaid: levels.prelaid, packs: levels.packs };
+  const built = buildGraph(ctx.view, ctx.sizes, ctx.settings, { substitute });
+  let laid: ElkShape;
+  try {
+    laid = (await elk.layout(built.graph)) as ElkShape;
+  } catch (e) {
+    throw new ElkRejected(String(e));
+  }
+  const synthetic = new Set([...levels.packs.values()].map((p) => p.id));
+  // planning is layered-only, and layered always routes
+  const { geometry, routes, labelSpots, origins } = collectLaid(laid, !built.lifted, synthetic, built.reversed);
+  const out: Block = {
+    width: laid.width ?? 0,
+    height: laid.height ?? 0,
+    top: nodes.map((n) => n.id),
+    geometry,
+    routes,
+    labelSpots,
+  };
+  embedInner(out, laid, origins, levels);
   return out;
 }
 
@@ -479,8 +523,8 @@ function findShape(root: ElkShape, id: string): ElkShape | undefined {
   return undefined;
 }
 
-/** The whole view as ONE elk graph — the path every diagram took before
- * planning existed, and still takes when nothing in it stands apart. */
+/** The whole view as ONE elk graph: the path a diagram takes when nothing in it
+ * stands apart, or when elk rejects a planned sub-graph. */
 async function layoutSingleRun(
   view: CompiledView,
   sizeOverrides: ReadonlyMap<string, SizeHint> | undefined,
@@ -490,15 +534,14 @@ async function layoutSingleRun(
   // A rejected pick must degrade rather than freeze the canvas, so the attempts
   // below run in escalating order of concession and EVERY one of them is
   // guarded. The last is the default algorithm, which lays out anything we can
-  // build — without it a doomed pick left `layoutView` rejecting, useViewLayout's
-  // `.then` never ran, and the stale arrangement stayed on screen looking like
-  // the control had simply done nothing.
+  // build — without it a doomed pick would leave `layoutView` rejecting,
+  // useViewLayout's `.then` would never run, and the stale arrangement would
+  // stay on screen looking like the control had simply done nothing.
   //
-  // Retrying flat is not merely "what non-layered algorithms received before":
-  // before edge-lifting they received an EMPTY edge set, which is why radial
-  // appeared to work. Handed the real edges it rejects the lifted graph ("not a
-  // tree") and then overflows the stack on the flat one, so on a real nested
-  // diagram both of its attempts fail and only the default rescues it.
+  // Radial shows why the flat retry is not enough on its own: it rejects the
+  // lifted graph ("not a tree") and then overflows the stack on the flat one, so
+  // on a real nested diagram both of its attempts fail and only the default
+  // rescues it.
   //
   // buildGraph stays OUTSIDE the try: a bug in our own graph builder (e.g.
   // liftEdges) must surface rather than silently demote us to the next attempt.
@@ -545,14 +588,14 @@ async function layoutSingleRun(
   // draws — so curved beziers are the honest fallback there.
   // The key is whether lifting ACTUALLY happened, not which algorithm was
   // picked: a container-free diagram lifts nothing, so force and stress keep
-  // their routes exactly as they did before edge-lifting existed.
+  // their routes there.
   // `layered` always routes (orthogonally — see layoutOptionsFor); the others
   // only place nodes unless orthogonal routing was asked of them.
   const wantRoutes = !lifted && (algorithm === DEFAULT_ALGORITHM || settings?.edgeRouting === 'orthogonal');
   const { geometry, routes, labelSpots } = collectLaid(laid, wantRoutes, undefined, reversed);
   // stress places points, not boxes (overlap.ts); a route elk drew between the
-  // old spots no longer meets the boxes, so the edges float instead
-  if (algorithm === 'stress' && removeOverlaps(view, geometry, settings?.spacing ?? 40)) {
+  // spots before the boxes were pushed apart misses them, so the edges float instead
+  if (algorithm === 'stress' && removeOverlaps(view, geometry, settings?.spacing ?? DEFAULT_SPACING)) {
     routes.clear();
     labelSpots.clear();
   }

@@ -50,6 +50,15 @@ export interface LaneHoist {
   touched: Set<string>;
 }
 
+/** What the banding passes work on, built once per layout: elk's arrangement of
+ * the hoisted view, whose maps each pass edits in place, the hoist, and the view
+ * as compiled, lanes and all. */
+export interface Banding<T extends Geo = Geo> {
+  result: { geometry: Map<string, T>; routes: Map<string, Point[]>; labelSpots: Map<string, Point> };
+  hoist: LaneHoist;
+  original: CompiledView;
+}
+
 const isHorizontal = (settings: LayoutSettings | undefined): boolean => {
   const d = settings?.direction ?? FALLBACK_DIRECTION;
   return d === 'RIGHT' || d === 'LEFT';
@@ -108,16 +117,14 @@ export function hoistLanes(view: CompiledView, settings: LayoutSettings | undefi
  * close up to `gap`. Deeper nodes are parent-relative to a member and stay put.
  */
 export function bandLanes<T extends Geo>(
-  geometry: Map<string, T>,
-  hoist: LaneHoist,
-  original: CompiledView,
+  { result: { geometry }, hoist, original }: Banding<T>,
   gap: number,
   /** px hanging below a member's box (an activity glyph's caption): counted in
    * the band's height and in the run closing, so the text stays inside its lane */
   below?: ReadonlyMap<string, number>,
 ): Map<string, { dx: number; dy: number }> {
   const moved = new Map<string, { dx: number; dy: number }>();
-  const L = ACTIVITY_LAYOUT;
+  const { LANE_MIN_W, LANE_MIN_H, LANE_STRIP_W, TITLE_STRIP_W, PAD } = ACTIVITY_LAYOUT;
   const byId = new Map<string, ViewNode>();
   const index = (n: ViewNode) => {
     byId.set(n.id, n);
@@ -131,13 +138,13 @@ export function bandLanes<T extends Geo>(
     const members = frame.lanes.flatMap((l) => l.members).filter((id) => geometry.has(id));
     const minX = Math.min(...members.map((id) => geometry.get(id)!.x));
 
-    let width: number = L.LANE_MIN_W;
+    let width: number = LANE_MIN_W;
     const bands = frame.lanes.map((lane) => {
       const laneNode = byId.get(lane.id);
       const pad =
         laneNode !== undefined
           ? containerPad(laneNode)
-          : { top: L.PAD, left: L.LANE_STRIP_W + L.PAD, bottom: L.PAD, right: L.PAD };
+          : { top: PAD, left: LANE_STRIP_W + PAD, bottom: PAD, right: PAD };
       const placed = new Map<string, Point>();
       const inLane = lane.members
         .filter((id) => geometry.has(id))
@@ -158,7 +165,7 @@ export function bandLanes<T extends Geo>(
         right = Math.max(right, x + g.width);
       }
       width = Math.max(width, right + pad.right);
-      return { lane, placed, height: Math.max(L.LANE_MIN_H, bottom + pad.bottom) };
+      return { lane, placed, height: Math.max(LANE_MIN_H, bottom + pad.bottom) };
     });
 
     let y = 0;
@@ -166,14 +173,14 @@ export function bandLanes<T extends Geo>(
       for (const [id, at] of band.placed) {
         const was = geometry.get(id)!;
         // frame-relative before (elk's) and after (the lane's origin plus the spot in it)
-        moved.set(id, { dx: L.TITLE_STRIP_W + at.x - was.x, dy: y + at.y - was.y });
+        moved.set(id, { dx: TITLE_STRIP_W + at.x - was.x, dy: y + at.y - was.y });
         geometry.set(id, { ...was, x: at.x, y: at.y });
       }
       const prior = geometry.get(band.lane.id);
-      geometry.set(band.lane.id, { ...(prior ?? frameGeo), x: L.TITLE_STRIP_W, y, width, height: band.height });
+      geometry.set(band.lane.id, { ...(prior ?? frameGeo), x: TITLE_STRIP_W, y, width, height: band.height });
       y += band.height;
     }
-    geometry.set(frameId, { ...frameGeo, width: L.TITLE_STRIP_W + width, height: y });
+    geometry.set(frameId, { ...frameGeo, width: TITLE_STRIP_W + width, height: y });
   }
   return moved;
 }
@@ -217,11 +224,7 @@ function crosses(a: Point, b: Point, r: Geo): boolean {
  * and the renderer floats it: an edge between lanes always, as it always has.
  */
 export function rebaseRoutes(
-  routes: Map<string, Point[]>,
-  labelSpots: Map<string, Point>,
-  hoist: LaneHoist,
-  original: CompiledView,
-  geometry: ReadonlyMap<string, Geo>,
+  { result: { geometry, routes, labelSpots }, hoist, original }: Banding,
   moved: ReadonlyMap<string, { dx: number; dy: number }>,
 ): void {
   const parent = new Map<string, string | null>();
@@ -291,14 +294,10 @@ export function rebaseRoutes(
  * fixed to a top/bottom side, keeps floating as before.
  */
 export function routeBandedEdges(
-  routes: Map<string, Point[]>,
-  labelSpots: Map<string, Point>,
-  hoist: LaneHoist,
-  original: CompiledView,
-  geometry: ReadonlyMap<string, Geo>,
+  { result: { geometry, routes, labelSpots }, hoist, original }: Banding,
   captions?: ReadonlyMap<string, BoxSize>,
 ): void {
-  const L = ACTIVITY_LAYOUT;
+  const { PAD } = ACTIVITY_LAYOUT;
   for (const frameId of hoist.frames.keys()) {
     const boxes: RouterBox[] = [];
     const corridors: number[] = [];
@@ -353,7 +352,7 @@ export function routeBandedEdges(
       const lg = geometry.get(lane.id);
       if (lg === undefined) continue;
       // the pad strips along a lane's top and bottom hold no member
-      corridors.push(fy + lg.y + L.PAD / 2, fy + lg.y + lg.height - L.PAD / 2);
+      corridors.push(fy + lg.y + PAD / 2, fy + lg.y + lg.height - PAD / 2);
       lane.children.forEach((c) => place(c, fx + lg.x, fy + lg.y));
     }
 

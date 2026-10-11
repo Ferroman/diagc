@@ -95,17 +95,21 @@ export const FALLBACK_DIRECTION = 'DOWN';
  * build, which is what makes it usable as `layoutView`'s last-resort attempt. */
 export const DEFAULT_ALGORITHM = 'layered';
 
+/** elk's node-to-node spacing, in px, when the plane's settings name none. The
+ * layer gap and the gap between packed blocks follow it. */
+export const DEFAULT_SPACING = 40;
+
+/** stress's ideal edge length, in px */
+export const STRESS_EDGE_LENGTH = 240;
+
 /**
  * Algorithms that read edges but cannot see through a container wall, so they
  * need per-level lifted edges and a per-container algorithm option.
  *
  * `layered` is absent because it implements INCLUDE_CHILDREN itself and does it
  * better; `rectpacking` because it ignores edges by design. Lifting measurably
- * degrades both — see the design note's table.
+ * degrades both.
  */
-/** stress's ideal edge length, in px */
-export const STRESS_EDGE_LENGTH = 240;
-
 export const NESTED_LAYOUT_ALGORITHMS = new Set(['force', 'stress', 'mrtree', 'radial']);
 
 export function usesNestedLayout(settings?: LayoutSettings): boolean {
@@ -121,11 +125,11 @@ export function usesNestedLayout(settings?: LayoutSettings): boolean {
 export function layoutOptionsFor(settings?: LayoutSettings): Record<string, string> {
   const algorithm = settings?.algorithm ?? DEFAULT_ALGORITHM;
   const spacing = settings?.spacing;
-  const nodeNode = spacing !== undefined ? String(spacing) : '40';
-  // Layers sit as far apart as the boxes within one. It used to be 1.5x, which
-  // read as loose once boxes took their real (34–50px tall) size — and elk pays
-  // the between-layers gap TWICE around every labelled edge, whose label takes
-  // a layer of its own, so the extra half was mostly spent on air around labels.
+  const nodeNode = String(spacing !== undefined ? spacing : DEFAULT_SPACING);
+  // Layers sit as far apart as the boxes within one: a wider layer gap reads as
+  // loose at the boxes' real (34–50px tall) size, and elk pays it TWICE around
+  // every labelled edge, whose label takes a layer of its own, so any extra is
+  // mostly spent on air around labels.
   const betweenLayers = nodeNode;
 
   const opts: Record<string, string> = {
@@ -155,8 +159,8 @@ export function layoutOptionsFor(settings?: LayoutSettings): Record<string, stri
     opts['elk.layered.nodePlacement.bk.fixedAlignment'] = 'BALANCED';
     // Wrapping is a layered concept (the other algorithms have no layers to
     // wrap). Opt-in per plane: a default would move every existing diagram
-    // and the committed docs PNGs. MULTI_EDGE was the only strategy that
-    // reined a long chain in (spec § Spike evidence); SINGLE_EDGE barely moved.
+    // and the committed docs PNGs. MULTI_EDGE is the strategy that reins a
+    // long chain in; SINGLE_EDGE barely moves it.
     if (settings?.aspectRatio !== undefined) {
       opts['elk.layered.wrapping.strategy'] = 'MULTI_EDGE';
       opts['elk.aspectRatio'] = String(settings.aspectRatio);
@@ -284,7 +288,7 @@ const NO_PADDING = elkPadding({ top: 0, left: 0, bottom: 0, right: 0 });
  * plain node spacing, and so matches a same-layer stack elk drew right beside it.
  */
 export function componentGap(settings: LayoutSettings | undefined, looseBoxesOnly: boolean): number {
-  const node = settings?.spacing ?? 40;
+  const node = settings?.spacing ?? DEFAULT_SPACING;
   return looseBoxesOnly ? node : Math.round(node * 1.2);
 }
 
@@ -349,6 +353,156 @@ function hasActivityStart(view: CompiledView): boolean {
   return view.roots.some(walk);
 }
 
+/** What every node of one elk graph is emitted with: the build's choices, made once. */
+interface GraphBuild {
+  sizes: ReadonlyMap<string, SizeHint> | undefined;
+  substitute: GraphSubstitutions | undefined;
+  /** the lifted edges per owning container, on the nested path only */
+  byOwner: Map<string | null, LiftedEdge[]> | undefined;
+  /** what every container carries, before its own padding */
+  sharedContainerOptions: Record<string, string>;
+  /** an activity laid out from its start node (see `buildGraph`) */
+  activity: boolean;
+  /** every id this graph emits — an edge survives substitution only when both of
+   * its endpoints did (the rest live inside a block arranged elsewhere) */
+  emitted: Set<string>;
+  /** set once a container is handed edges of its own */
+  attachedToContainer: boolean;
+}
+
+// Padding is applied AFTER the spread so the container-specific value wins:
+// `layoutOptionsFor` never emits `elk.padding` today, but if it ever did, a
+// container would silently lose its 36px header room and the title would
+// overlap its children. elk is indifferent to key order.
+const containerOptions = (build: GraphBuild, n: ViewNode): Record<string, string> => ({
+  ...build.sharedContainerOptions,
+  'elk.padding': elkPadding(containerPad(n)),
+});
+
+function toNode(build: GraphBuild, n: ViewNode): ElkShape {
+  build.emitted.add(n.id);
+  const prelaid = build.substitute?.prelaid.get(n.id);
+  if (prelaid !== undefined) return { id: n.id, width: prelaid.width, height: prelaid.height };
+  const pack = build.substitute?.packs.get(n.id);
+  if (pack !== undefined) {
+    return {
+      id: n.id,
+      children: [
+        ...n.children.filter((c) => !pack.members.has(c.id)).map((c) => toNode(build, c)),
+        { id: pack.id, width: pack.width, height: pack.height },
+      ],
+      layoutOptions: containerOptions(build, n),
+    };
+  }
+  if (n.state === 'expanded') {
+    const own = build.byOwner?.get(n.id);
+    const hasOwn = own !== undefined && own.length > 0;
+    if (hasOwn) build.attachedToContainer = true;
+    return {
+      id: n.id,
+      children: n.children.map((c) => toNode(build, c)),
+      layoutOptions: containerOptions(build, n),
+      ...(hasOwn ? { edges: own } : {}),
+    };
+  }
+  // A folded container is a titled box, never its leaf form (an image override
+  // only makes sense for a leaf, where the picture IS the body) — so a size
+  // reaching here for one must be a FOLDED-box size. `withBoxSizes` guarantees
+  // that for the view path by replacing any leaf hint on a folded node;
+  // `COLLAPSED_SIZE` is the fallback for callers that pass no sizes at all.
+  if (n.state === 'collapsed') {
+    const folded = build.sizes?.get(n.id) ?? COLLAPSED_SIZE;
+    return { id: n.id, width: folded.width, height: folded.height };
+  }
+  return leafShape(build, n);
+}
+
+function leafShape(build: GraphBuild, n: ViewNode): ElkShape {
+  const caption = build.sizes?.get(n.id)?.caption;
+  return {
+    id: n.id,
+    ...footprint(build.sizes?.get(n.id) ?? LEAF_SIZE),
+    // like an edge label, elk reserves the box only when `text` is non-empty
+    ...(caption !== undefined ? { labels: [{ ...caption, text: 'caption', layoutOptions: CAPTION_BELOW }] } : {}),
+    ...(build.activity && n.node.type === ACTIVITY_START_TYPE
+      ? { layoutOptions: { 'elk.layered.layering.layerConstraint': 'FIRST' } }
+      : {}),
+  };
+}
+
+function withPartition(shape: ElkShape, partitions: ReadonlyMap<string, number> | undefined): ElkShape {
+  const p = partitions?.get(shape.id);
+  return p === undefined
+    ? shape
+    : { ...shape, layoutOptions: { ...shape.layoutOptions, 'elk.partitioning.partition': String(p) } };
+}
+
+/** The flat path's edges, all on the root, each with its label's footprint. An
+ * edge reaches a substituted graph only when both of its endpoints did. */
+function flatEdges(view: CompiledView, build: GraphBuild, reversed: Set<string>): ElkEdge[] {
+  return view.layoutEdges
+    .filter(
+      (e) =>
+        e.from !== e.to && (build.substitute === undefined || (build.emitted.has(e.from) && build.emitted.has(e.to))),
+    )
+    .map((e) => {
+      const text = edgeLabelText(e).trim();
+      const box = edgeLabelBox(text);
+      // A note points AT what it annotates, which makes every note a source:
+      // layered put them all in the first layer beside the start node, and a
+      // wide one pushed the start off the left edge. Laid out the other way
+      // round, a note lands beside its target; the route is turned back on
+      // collection (`reversed`), so the drawn edge still runs note → target.
+      const flip = build.activity && e.kind === NOTE_LINK;
+      if (flip) reversed.add(e.id);
+      return {
+        id: e.id,
+        sources: [flip ? e.to : e.from],
+        targets: [flip ? e.from : e.to],
+        ...(box !== undefined ? { labels: [{ ...box, text, layoutOptions: INLINE_LABEL }] } : {}),
+      };
+    });
+}
+
+/** Does a root edge run between other nodes than the relation it stands for? */
+function raisesEndpoint(view: CompiledView, rootEdges: readonly ElkEdge[]): boolean {
+  const original = new Map(view.layoutEdges.map((e) => [e.id, e] as const));
+  return rootEdges.some((e) => {
+    const o = original.get(e.id);
+    return o === undefined || e.sources[0] !== o.from || e.targets[0] !== o.to;
+  });
+}
+
+/** The root's options: the plane's, then what this build adds. */
+function rootOptionsOf(
+  settings: LayoutSettings | undefined,
+  substitute: GraphSubstitutions | undefined,
+  partitions: ReadonlyMap<string, number> | undefined,
+): Record<string, string> {
+  return {
+    ...layoutOptionsFor(settings),
+    // A substituted graph is a block to embed, not a canvas: elk's default 12px
+    // root padding would become a stray margin around every embedded block.
+    ...(substitute !== undefined ? { 'elk.padding': NO_PADDING } : {}),
+    // A notation that derives an ORDER for its nodes (second-order thinking)
+    // holds each to it: partition k is laid out strictly before k+1, so a node
+    // cannot sink toward the only thing it feeds. Root nodes only — a partition
+    // is relative to the graph that owns the node.
+    ...(partitions !== undefined ? { 'elk.partitioning.activate': 'true' } : {}),
+  };
+}
+
+// An activity is read from its start node, so that is where layering begins.
+// elk's default cycle breaking reverses whichever edges its degree heuristic
+// picks, and on a flow with a retry loop that is often the loop's way IN — the
+// start then lands mid-picture and the flow runs backwards from it. Depth-first
+// from the sources reverses the loop's way BACK instead; holding the start to
+// the first layer keeps it at the left edge whatever else is a source. elk
+// reads the strategy off each graph that owns the nodes, not off the root, so
+// the containers carry it too (`buildGraph`); on the root alone it changes nothing.
+const runsFromStart = (view: CompiledView, settings: LayoutSettings | undefined): boolean =>
+  (settings?.algorithm ?? DEFAULT_ALGORITHM) === DEFAULT_ALGORITHM && hasActivityStart(view);
+
 /**
  * The elk input graph.
  *
@@ -377,30 +531,11 @@ export function buildGraph(
 ): { graph: ElkShape; lifted: boolean; reversed: ReadonlySet<string> } {
   const substitute = opts?.substitute;
   const partitions = opts?.partitions !== undefined && opts.partitions.size > 0 ? opts.partitions : undefined;
-  // A substituted graph is a block to embed, not a canvas: elk's default 12px
-  // root padding would become a stray margin around every embedded block.
-  const rootOptions: Record<string, string> = {
-    ...layoutOptionsFor(settings),
-    ...(substitute !== undefined ? { 'elk.padding': NO_PADDING } : {}),
-    // A notation that derives an ORDER for its nodes (second-order thinking)
-    // holds each to it: partition k is laid out strictly before k+1, so a node
-    // cannot sink toward the only thing it feeds. Root nodes only — a partition
-    // is relative to the graph that owns the node.
-    ...(partitions !== undefined ? { 'elk.partitioning.activate': 'true' } : {}),
-  };
-  // An activity is read from its start node, so that is where layering begins.
-  // elk's default cycle breaking reverses whichever edges its degree heuristic
-  // picks, and on a flow with a retry loop that is often the loop's way IN — the
-  // start then lands mid-picture and the flow runs backwards from it. Depth-first
-  // from the sources reverses the loop's way BACK instead; holding the start to
-  // the first layer keeps it at the left edge whatever else is a source. elk
-  // reads the strategy off each graph that owns the nodes, not off the root, so
-  // the containers carry it too (below) — on the root alone it changed nothing.
-  const activity = (settings?.algorithm ?? DEFAULT_ALGORITHM) === DEFAULT_ALGORITHM && hasActivityStart(view);
+  const rootOptions = rootOptionsOf(settings, substitute, partitions);
+  const activity = runsFromStart(view, settings);
   const cycleBreaking: Record<string, string> = activity ? { 'elk.layered.cycleBreaking.strategy': 'DEPTH_FIRST' } : {};
   Object.assign(rootOptions, cycleBreaking);
   const nested = usesNestedLayout(settings) && opts?.flat !== true;
-  const byOwner = nested ? liftEdges(view) : undefined;
 
   // On the nested path each level is a separate layout run and inherits
   // nothing, so a container needs the full option set.
@@ -408,112 +543,31 @@ export function buildGraph(
   // On the flat path INCLUDE_CHILDREN makes the whole tree ONE run, and the
   // run-wide knobs (algorithm, direction, crossing/placement strategy) do come
   // from the root. Spacing does not: elk reads every `*.spacing.*` option per
-  // graph, off the node that owns that graph, so a bare container laid its
-  // interior out at elk's 20/20 defaults while the root used 40/60 — and a
-  // plane's `spacing` setting only ever moved the top level. So a flat-path
+  // graph, off the node that owns that graph, so a bare container would lay its
+  // interior out at elk's 20/20 defaults while the root used 40/60, and a
+  // plane's `spacing` setting would move only the top level. So a flat-path
   // container carries the spacing subset, and nothing else: an `elk.algorithm`
   // here would end the hierarchical run at this container.
-  //
-  // Padding is applied AFTER the spread so the container-specific value wins:
-  // `layoutOptionsFor` never emits `elk.padding` today, but if it ever did, a
-  // container would silently lose its 36px header room and the title would
-  // overlap its children. elk is indifferent to key order.
-  const sharedContainerOptions = nested ? rootOptions : { ...spacingOptionsOf(rootOptions), ...cycleBreaking };
-  const containerOptions = (n: ViewNode): Record<string, string> => ({
-    ...sharedContainerOptions,
-    'elk.padding': elkPadding(containerPad(n)),
-  });
-
-  let attachedToContainer = false;
-
-  // every id this graph emits — an edge survives substitution only when both of
-  // its endpoints did (the rest live inside a block arranged elsewhere)
-  const emitted = new Set<string>();
-
-  const toNode = (n: ViewNode): ElkShape => {
-    emitted.add(n.id);
-    const prelaid = substitute?.prelaid.get(n.id);
-    if (prelaid !== undefined) return { id: n.id, width: prelaid.width, height: prelaid.height };
-    const pack = substitute?.packs.get(n.id);
-    if (pack !== undefined) {
-      return {
-        id: n.id,
-        children: [
-          ...n.children.filter((c) => !pack.members.has(c.id)).map(toNode),
-          { id: pack.id, width: pack.width, height: pack.height },
-        ],
-        layoutOptions: containerOptions(n),
-      };
-    }
-    if (n.state === 'expanded') {
-      const own = byOwner?.get(n.id);
-      const hasOwn = own !== undefined && own.length > 0;
-      if (hasOwn) attachedToContainer = true;
-      return {
-        id: n.id,
-        children: n.children.map(toNode),
-        layoutOptions: containerOptions(n),
-        ...(hasOwn ? { edges: own } : {}),
-      };
-    }
-    // A folded container is a titled box, never its leaf form (an image override
-    // only makes sense for a leaf, where the picture IS the body) — so a size
-    // reaching here for one must be a FOLDED-box size. `withBoxSizes` guarantees
-    // that for the view path by replacing any leaf hint on a folded node;
-    // `COLLAPSED_SIZE` is the fallback for callers that pass no sizes at all.
-    if (n.state === 'collapsed') {
-      const folded = sizes?.get(n.id) ?? COLLAPSED_SIZE;
-      return { id: n.id, width: folded.width, height: folded.height };
-    }
-    const caption = sizes?.get(n.id)?.caption;
-    return {
-      id: n.id,
-      ...footprint(sizes?.get(n.id) ?? LEAF_SIZE),
-      // like an edge label, elk reserves the box only when `text` is non-empty
-      ...(caption !== undefined ? { labels: [{ ...caption, text: 'caption', layoutOptions: CAPTION_BELOW }] } : {}),
-      ...(activity && n.node.type === ACTIVITY_START_TYPE
-        ? { layoutOptions: { 'elk.layered.layering.layerConstraint': 'FIRST' } }
-        : {}),
-    };
+  const build: GraphBuild = {
+    sizes,
+    substitute,
+    byOwner: nested ? liftEdges(view) : undefined,
+    sharedContainerOptions: nested ? rootOptions : { ...spacingOptionsOf(rootOptions), ...cycleBreaking },
+    activity,
+    emitted: new Set(),
+    attachedToContainer: false,
   };
 
-  const withPartition = (shape: ElkShape): ElkShape => {
-    const p = partitions?.get(shape.id);
-    return p === undefined
-      ? shape
-      : { ...shape, layoutOptions: { ...shape.layoutOptions, 'elk.partitioning.partition': String(p) } };
-  };
+  // built before the edges are — `toNode` is what fills `emitted`, and what
+  // discovers container-owned edges for the `lifted` flag below
+  const children = (substitute?.roots ?? view.roots).map((n) => withPartition(toNode(build, n), partitions));
+
+  const reversed = new Set<string>();
   // Lifted edges carry no label box. A raised edge stands for every relation
   // between two subtrees, so no single label belongs to it, and elk's force and
   // stress do not reserve label space the way layered does: the labels of the
   // relations it stands for get no room, and may overlap nearby boxes.
-  // built before the edges are — `toNode` is what fills `emitted`, and what
-  // discovers container-owned edges for the `lifted` flag below
-  const children = (substitute?.roots ?? view.roots).map((n) => withPartition(toNode(n)));
-
-  const reversed = new Set<string>();
-
-  const rootEdges: ElkEdge[] = nested
-    ? (byOwner?.get(null) ?? [])
-    : view.layoutEdges
-        .filter((e) => e.from !== e.to && (substitute === undefined || (emitted.has(e.from) && emitted.has(e.to))))
-        .map((e) => {
-          const text = edgeLabelText(e).trim();
-          const box = edgeLabelBox(text);
-          // A note points AT what it annotates, which makes every note a source:
-          // layered put them all in the first layer beside the start node, and a
-          // wide one pushed the start off the left edge. Laid out the other way
-          // round, a note lands beside its target; the route is turned back on
-          // collection (`reversed`), so the drawn edge still runs note → target.
-          const flip = activity && e.kind === NOTE_LINK;
-          if (flip) reversed.add(e.id);
-          return {
-            id: e.id,
-            sources: [flip ? e.to : e.from],
-            targets: [flip ? e.from : e.to],
-            ...(box !== undefined ? { labels: [{ ...box, text, layoutOptions: INLINE_LABEL }] } : {}),
-          };
-        });
+  const rootEdges: ElkEdge[] = nested ? (build.byOwner?.get(null) ?? []) : flatEdges(view, build, reversed);
 
   // Did this build restructure the edge set, so that elk's output sections stop
   // describing the edges the renderer draws? Two ways it can:
@@ -528,14 +582,7 @@ export function buildGraph(
   // Neither happens on the flat path, nor on a nested run over a view whose
   // containers no edge touches (a container-free diagram being the obvious
   // case), and there the sections are honest and worth keeping.
-  const raisesEndpoint = (): boolean => {
-    const original = new Map(view.layoutEdges.map((e) => [e.id, e] as const));
-    return rootEdges.some((e) => {
-      const o = original.get(e.id);
-      return o === undefined || e.sources[0] !== o.from || e.targets[0] !== o.to;
-    });
-  };
-  const lifted = attachedToContainer || (nested && raisesEndpoint());
+  const lifted = build.attachedToContainer || (nested && raisesEndpoint(view, rootEdges));
 
   return {
     graph: {

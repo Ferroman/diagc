@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import {
   compileView,
-  DEFAULT_IMAGE_NODE_SIZE,
   defaultLayoutDirection,
   isActivityBand,
   layoutPlaneKey,
-  runsToPlainText,
   type DiagramModel,
   type LayoutDirection,
   type LayoutOverlay,
@@ -14,14 +12,14 @@ import {
   type ViewNode,
 } from '@diagc/core/internal';
 import { arrangeActivityFrames, withLaneOrder } from '../layout/activity-frame';
-import { FORCED_SIZE_SHAPES, withBoxSizes } from '../layout/box-size';
+import { withBoxSizes } from '../layout/box-size';
 import { fitContainers, type ContainerFit, type Shift } from '../layout/fit-containers';
-import { CAPTION_HEIGHT, captionWidth, estimateLabelSize, glyphCaptionSize } from '../node/label-size';
 import { layoutView, type NodeGeometry } from '../layout/layout';
 import { containerPad, DEFAULT_ALGORITHM, FALLBACK_DIRECTION, type SizeHint } from '../layout/layout-graph';
+import { sizeHintsOf } from '../layout/size-hints';
 import type { NotationProfile } from '../notations';
 import { overlayPositions } from './placement';
-import { tableSize, withShownTableRows } from '../node/table-ports';
+import { withShownTableRows } from '../node/table-ports';
 import type { Registry, TypeStyle } from '../registry';
 
 export interface ViewLayoutInput {
@@ -47,7 +45,7 @@ export interface ViewLayout {
   placedGeometry: Map<string, NodeGeometry> | null;
   // `arrangeActivityFrames` hands back a ReadonlyMap (it returns its input
   // unchanged when the plane has no activity frames), so the band pass narrows
-  // the mutability here — same type `Inner` inferred before the extraction.
+  // the mutability here, to the type `Inner` reads.
   arrangedGeometry: ReadonlyMap<string, NodeGeometry> | null;
   /** containers whose origin the fit pass moved (they grew left/up around a
    * hand-placed child) — what a saved position has to be corrected by; see
@@ -116,86 +114,161 @@ export interface EdgeRouting {
 export const SOFT_CORNER = 28;
 export const SHARP_CORNER = 8;
 
+/** What the layout runs with: the plane's settings, with the model's default
+ * direction and the notation's algorithm resolved in where they name none. A
+ * partitioned notation runs layered whatever the settings name: partitions are a
+ * layered feature, another algorithm would ignore them, and the bands would be
+ * drawn over an arrangement that knows nothing of them. */
+function runSettingsOf(
+  layoutSettings: LayoutSettings | undefined,
+  notation: { modelDirection: LayoutDirection; partitioned: boolean; notationAlgorithm: string | undefined },
+): LayoutSettings | undefined {
+  const { modelDirection, partitioned, notationAlgorithm } = notation;
+  const directed =
+    layoutSettings?.direction !== undefined || modelDirection === FALLBACK_DIRECTION
+      ? layoutSettings
+      : { ...layoutSettings, direction: modelDirection };
+  const resolved =
+    notationAlgorithm === undefined || directed?.algorithm !== undefined
+      ? directed
+      : { ...directed, algorithm: notationAlgorithm };
+  if (!partitioned || resolved?.algorithm === undefined) return resolved;
+  const { algorithm: _layeredOnly, ...rest } = resolved;
+  return rest;
+}
+
+/** where the layout put every node, absolute top-left */
+function laidAtOf(geometry: ReadonlyMap<string, NodeGeometry> | null, roots: readonly ViewNode[]): Map<string, Point> {
+  const at = new Map<string, Point>();
+  if (geometry === null) return at;
+  const walk = (n: ViewNode, ox: number, oy: number) => {
+    const g = geometry.get(n.id);
+    if (g === undefined) return;
+    at.set(n.id, { x: ox + g.x, y: oy + g.y });
+    n.children.forEach((c) => walk(c, ox + g.x, oy + g.y));
+  };
+  roots.forEach((r) => walk(r, 0, 0));
+  return at;
+}
+
+/** Which planes draw routes at all. A notation's own layout: its routes ARE the
+ * drawing (a git link has no floating form worth showing). Otherwise `layered`
+ * routes every edge, and a notation that bows its edges (causal loops: the arc
+ * is the notation) keeps floating them. */
+function routingOf(
+  profile: NotationProfile,
+  layoutSettings: LayoutSettings | undefined,
+  runSettings: LayoutSettings | undefined,
+): EdgeRouting | undefined {
+  if (profile.layout !== undefined) return { corner: SHARP_CORNER };
+  if (layoutSettings?.edgeRouting === 'orthogonal') return { corner: SHARP_CORNER };
+  if (profile.edge?.bowed === true) return undefined;
+  return (runSettings?.algorithm ?? DEFAULT_ALGORITHM) === DEFAULT_ALGORITHM ? { corner: SOFT_CORNER } : undefined;
+}
+
+interface LayoutRunInput {
+  compiled: ReturnType<typeof compileView>;
+  /** the view elk lays out (lanes in band order) */
+  laidView: ReturnType<typeof compileView>;
+  sizes: ReadonlyMap<string, SizeHint>;
+  runSettings: LayoutSettings | undefined;
+  profile: NotationProfile;
+  model: DiagramModel;
+  plane: string | undefined;
+  partitions: ReadonlyMap<string, number> | undefined;
+  layoutPositions: Record<string, Point> | undefined;
+}
+
+type LayoutRun = Pick<
+  ViewLayout,
+  'geometry' | 'geometryRef' | 'routes' | 'labelSpots' | 'fixed' | 'lockedX' | 'settledFor'
+>;
+
+/** The asynchronous layout run, and what its last finished run produced. */
+function useLayoutRun(run: LayoutRunInput): LayoutRun {
+  const [geometry, setGeometry] = useState<Map<string, NodeGeometry> | null>(null);
+  const geometryRef = useRef<Map<string, NodeGeometry> | null>(null);
+  geometryRef.current = geometry;
+  // elk-routed absolute edge waypoints (only populated when edgeRouting is
+  // 'orthogonal'); consumed by the edges memo, falling back to floating paths.
+  const [routes, setRoutes] = useState<Map<string, Point[]>>(() => new Map());
+  const [labelSpots, setLabelSpots] = useState<ReadonlyMap<string, Point>>(NO_SPOTS);
+  const [fixed, setFixed] = useState<ReadonlySet<string>>(NONE_FIXED);
+  const [lockedX, setLockedX] = useState<ReadonlySet<string>>(NONE_FIXED);
+  const [settledFor, setSettledFor] = useState<ViewLayout['settledFor']>(null);
+  useEffect(() => {
+    let live = true;
+    // A notation that owns the arrangement bypasses elk entirely; wrapped in a
+    // resolved promise so both paths share the .then/.catch below.
+    const notationLayout = run.profile.layout;
+    const arrange =
+      notationLayout !== undefined
+        ? Promise.resolve().then(() =>
+            notationLayout({
+              view: run.compiled,
+              model: run.model,
+              plane: run.plane,
+              sizeHints: run.sizes,
+              positions: run.layoutPositions,
+            }),
+          )
+        : layoutView(
+            run.laidView,
+            run.sizes,
+            run.runSettings,
+            run.partitions !== undefined ? { partitions: run.partitions } : undefined,
+          );
+    void arrange
+      .then((r) => {
+        if (!live) return;
+        setGeometry((old) => (old === r.geometry ? old : r.geometry));
+        setRoutes(r.routes);
+        setLabelSpots(r.labelSpots);
+        setFixed(r.fixed ?? NONE_FIXED);
+        setLockedX(r.lockedX ?? NONE_FIXED);
+        setSettledFor(run.compiled);
+      })
+      // layoutView degrades to the default algorithm rather than rejecting, so
+      // getting here via that path means even the degraded attempt failed. A
+      // notation's own layout (e.g. git-graph's) has no such fallback — any
+      // throw it raises lands here directly. Either way, keep the last
+      // arrangement (there is nothing better to draw) but say so — an
+      // unhandled rejection here reads on screen as the layout control
+      // silently doing nothing.
+      .catch((e: unknown) => {
+        if (!live) return;
+        console.error('layout failed; keeping the previous arrangement', e);
+        setSettledFor(run.compiled);
+      });
+    return () => {
+      live = false;
+    };
+  }, [
+    run.compiled,
+    run.laidView,
+    run.sizes,
+    run.runSettings,
+    run.profile,
+    run.model,
+    run.plane,
+    run.partitions,
+    run.layoutPositions,
+  ]);
+
+  return { geometry, geometryRef, routes, labelSpots, fixed, lockedX, settledFor };
+}
+
 export function useViewLayout(input: ViewLayoutInput): ViewLayout {
-  // Per-node size hints: the notation profile can seed a leaf size (e.g. CLD's
-  // typeless nodes rendered as text nodes); image nodes then overwrite with
-  // their own footprint (overlay-resized if present, else a fixed default —
-  // the studio seeds real dimensions at creation).
-  const sizeHints = useMemo(() => {
-    const m = new Map<string, SizeHint>();
-    for (const n of input.model.nodes) {
-      const hint = input.profile.node?.leafSize?.(n);
-      if (hint !== undefined) m.set(n.id, hint);
-    }
-    // Registry-declared default sizes (activity dots/bars/diamonds): how
-    // fixed-geometry glyphs get real footprints from the DSL, where no palette
-    // template seeded dimensions. An explicit resize (overlay sizes) wins.
-    for (const n of input.model.nodes) {
-      if (n.type === undefined) continue;
-      const style = input.typeRegistry.resolve(n.type);
-      const ds = style.defaultSize;
-      if (ds === undefined) continue;
-      const s = input.layout?.sizes?.[n.id];
-      // A named glyph's caption hangs below it, wider than the diamond or dot
-      // it names: elk is told about it, or neighbours and arrows run through it.
-      const name = style.captionBelow === true ? (n.name ?? '').trim() : '';
-      m.set(n.id, {
-        ...(s !== undefined ? { width: s.w, height: s.h } : ds),
-        caption: name !== '' ? glyphCaptionSize(name) : undefined,
-      });
-    }
-    for (const n of input.model.nodes) {
-      if (n.image === undefined) continue;
-      // cornerBadge types draw the image as container chrome and the label
-      // inside the box — no spilling caption to reserve room for
-      if (n.type !== undefined && input.typeRegistry.resolve(n.type).cornerBadge === true) continue;
-      const s = input.layout?.sizes?.[n.id];
-      const base =
-        s !== undefined
-          ? { width: s.w, height: s.h }
-          : { width: DEFAULT_IMAGE_NODE_SIZE.w, height: DEFAULT_IMAGE_NODE_SIZE.h };
-      // Reserve the caption's width (it hangs below, centered, one line): the
-      // icon letterboxes inside the wider box (object-fit: contain), so this
-      // widens the footprint without distorting the artwork. Its HEIGHT cannot
-      // be had the same way — a taller box would shrink the icon — so that strip
-      // is reserved in the layout only and never drawn (SizeHint.reserveBottom).
-      const caption = n.name ?? n.id;
-      m.set(n.id, {
-        ...base,
-        width: Math.max(base.width, captionWidth(caption)),
-        reserveBottom: caption !== '' ? CAPTION_HEIGHT : undefined,
-      });
-    }
-    // Shape (silhouette) nodes honor their stored size like image nodes; without
-    // one they fall through to the label-based estimate.
-    for (const n of input.model.nodes) {
-      if (n.shape === undefined) continue;
-      const s = input.layout?.sizes?.[n.id];
-      if (s !== undefined) m.set(n.id, { width: s.w, height: s.h });
-    }
-    // Multiline/rich leaf box labels: reserve an estimated footprint so elk
-    // doesn't overlap neighbors around a taller-than-default box. Image/shape
-    // nodes keep their own sizing above, and an explicit resize always wins. A
-    // glyph is drawn at the size it is given, not around its label (a diamond,
-    // a bar, a process ellipse), so a line break in its name must not resize it.
-    for (const n of input.model.nodes) {
-      if (n.image !== undefined || n.shape !== undefined) continue;
-      if (n.type !== undefined && FORCED_SIZE_SHAPES.has(input.typeRegistry.resolve(n.type).shape)) continue;
-      const plain = n.rich !== undefined ? runsToPlainText(n.rich) : n.name;
-      if (n.rich === undefined && !plain.includes('\n')) continue; // single-line plain = default LEAF_SIZE
-      if (input.layout?.sizes?.[n.id] !== undefined) continue; // explicit resize wins
-      m.set(n.id, estimateLabelSize(plain, n.fontScale));
-    }
-    // db-table nodes: reserve the intrinsic footprint for the header + all rows
-    // so elk lays out the full table, not a default box. Explicit resize wins.
-    // Rows a column layer hides are subtracted per view (withShownTableRows).
-    for (const n of input.model.nodes) {
-      if (n.type !== 'db-table' || n.columns === undefined) continue;
-      if (input.layout?.sizes?.[n.id] !== undefined) continue; // explicit resize wins
-      m.set(n.id, tableSize(n.columns, n.name));
-    }
-    return m;
-  }, [input.model, input.layout, input.profile, input.typeRegistry]);
+  // Per-node size hints, before the view state is known (size-hints.ts).
+  const sizeHints = useMemo(
+    () =>
+      sizeHintsOf(input.model, {
+        profile: input.profile,
+        typeRegistry: input.typeRegistry,
+        sizes: input.layout?.sizes,
+      }),
+    [input.model, input.layout, input.profile, input.typeRegistry],
+  );
 
   // The model-keyed hints above cannot know a node's VIEW state, and an ordinary
   // box's footprint depends on it (a folded container is a titled box with a
@@ -245,23 +318,11 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // itself re-run the layout.
   const modelDirection = defaultLayoutDirection(input.model);
   const partitioned = input.profile.partitionOf !== undefined;
-  // the notation's algorithm where the sidecar names none (a CLD's stress)
   const notationAlgorithm = input.profile.defaultAlgorithm;
-  const runSettings = useMemo((): LayoutSettings | undefined => {
-    const directed =
-      layoutSettings?.direction !== undefined || modelDirection === FALLBACK_DIRECTION
-        ? layoutSettings
-        : { ...layoutSettings, direction: modelDirection };
-    const resolved =
-      notationAlgorithm === undefined || directed?.algorithm !== undefined
-        ? directed
-        : { ...directed, algorithm: notationAlgorithm };
-    // partitions are a layered feature: another algorithm would ignore them and
-    // the bands would be drawn over an arrangement that knows nothing of them
-    if (!partitioned || resolved?.algorithm === undefined) return resolved;
-    const { algorithm: _layeredOnly, ...rest } = resolved;
-    return rest;
-  }, [layoutSettings, modelDirection, partitioned, notationAlgorithm]);
+  const runSettings = useMemo(
+    () => runSettingsOf(layoutSettings, { modelDirection, partitioned, notationAlgorithm }),
+    [layoutSettings, modelDirection, partitioned, notationAlgorithm],
+  );
 
   // What a partitioned notation derives for its nodes (second-order thinking's
   // consequence order): forces one layered run so every band lines up, whatever
@@ -302,61 +363,17 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     () => withLaneOrder(input.compiled, input.model, input.plane),
     [input.compiled, input.model, input.plane],
   );
-  const [geometry, setGeometry] = useState<Map<string, NodeGeometry> | null>(null);
-  const geometryRef = useRef<Map<string, NodeGeometry> | null>(null);
-  geometryRef.current = geometry;
-  // elk-routed absolute edge waypoints (only populated when edgeRouting is
-  // 'orthogonal'); consumed by the edges memo, falling back to floating paths.
-  const [routes, setRoutes] = useState<Map<string, Point[]>>(() => new Map());
-  const [labelSpots, setLabelSpots] = useState<ReadonlyMap<string, Point>>(NO_SPOTS);
-  const [fixed, setFixed] = useState<ReadonlySet<string>>(NONE_FIXED);
-  const [lockedX, setLockedX] = useState<ReadonlySet<string>>(NONE_FIXED);
-  const [settledFor, setSettledFor] = useState<ViewLayout['settledFor']>(null);
-  useEffect(() => {
-    let live = true;
-    // A notation that owns the arrangement bypasses elk entirely; wrapped in a
-    // resolved promise so both paths share the .then/.catch below.
-    const notationLayout = input.profile.layout;
-    const arrange =
-      notationLayout !== undefined
-        ? Promise.resolve().then(() => notationLayout(input.compiled, input.model, input.plane, sizes, layoutPositions))
-        : layoutView(laidView, sizes, runSettings, partitions !== undefined ? { partitions } : undefined);
-    void arrange
-      .then((r) => {
-        if (!live) return;
-        setGeometry((old) => (old === r.geometry ? old : r.geometry));
-        setRoutes(r.routes);
-        setLabelSpots(r.labelSpots);
-        setFixed(r.fixed ?? NONE_FIXED);
-        setLockedX(r.lockedX ?? NONE_FIXED);
-        setSettledFor(input.compiled);
-      })
-      // layoutView degrades to the default algorithm rather than rejecting, so
-      // getting here via that path means even the degraded attempt failed. A
-      // notation's own layout (e.g. git-graph's) has no such fallback — any
-      // throw it raises lands here directly. Either way, keep the last
-      // arrangement (there is nothing better to draw) but say so — an
-      // unhandled rejection here reads on screen as the layout control
-      // silently doing nothing.
-      .catch((e: unknown) => {
-        if (!live) return;
-        console.error('layout failed; keeping the previous arrangement', e);
-        setSettledFor(input.compiled);
-      });
-    return () => {
-      live = false;
-    };
-  }, [
-    input.compiled,
+  const { geometry, geometryRef, routes, labelSpots, fixed, lockedX, settledFor } = useLayoutRun({
+    compiled: input.compiled,
     laidView,
     sizes,
     runSettings,
-    input.profile,
-    input.model,
-    input.plane,
+    profile: input.profile,
+    model: input.model,
+    plane: input.plane,
     partitions,
     layoutPositions,
-  ]);
+  });
 
   // Overlay-applied geometry: elk output with any layout-overlay positions for
   // the active plane substituted in (width/height stay elk's). Derived so the
@@ -407,34 +424,21 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // Routes are elk's (or the notation's own), computed for the arrangement the
   // LAYOUT produced. Anything that moves a node afterwards — a saved position,
   // a view-mode drag, a nudge in flight, the activity band pass, an ancestor
-  // that was dragged — leaves its edges' routes pointing at where it used to be.
+  // that was dragged — leaves its edges' routes pointing at its laid spot.
   // Rather than enumerate those causes, record where the layout put every node
   // and let each edge compare: it draws its route only while both endpoints
   // still stand there, and floats otherwise (useEdgePath). That also holds
   // mid-drag, before anything is committed.
-  const laidAt = useMemo(() => {
-    const at = new Map<string, Point>();
-    if (geometry === null) return at;
-    const walk = (n: ViewNode, ox: number, oy: number) => {
-      const g = geometry.get(n.id);
-      if (g === undefined) return;
-      at.set(n.id, { x: ox + g.x, y: oy + g.y });
-      n.children.forEach((c) => walk(c, ox + g.x, oy + g.y));
-    };
-    input.compiled.roots.forEach((r) => walk(r, 0, 0));
-    return at;
-  }, [geometry, input.compiled]);
+  const laidAt = useMemo(() => laidAtOf(geometry, input.compiled.roots), [geometry, input.compiled]);
 
   // Which planes draw routes at all. A notation's own layout: its routes ARE
   // the drawing (a git link has no floating form worth showing). Otherwise
   // `layered` routes every edge, and a notation that bows its edges (causal
   // loops: the arc is the notation) keeps floating them.
-  const routing = useMemo((): EdgeRouting | undefined => {
-    if (input.profile.layout !== undefined) return { corner: SHARP_CORNER };
-    if (layoutSettings?.edgeRouting === 'orthogonal') return { corner: SHARP_CORNER };
-    if (input.profile.edge?.bowed === true) return undefined;
-    return (runSettings?.algorithm ?? DEFAULT_ALGORITHM) === DEFAULT_ALGORITHM ? { corner: SOFT_CORNER } : undefined;
-  }, [input.profile, layoutSettings, runSettings]);
+  const routing = useMemo(
+    () => routingOf(input.profile, layoutSettings, runSettings),
+    [input.profile, layoutSettings, runSettings],
+  );
 
   return {
     geometry,
