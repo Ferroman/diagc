@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useRef } from 'react';
 import { defaultHost, setHost } from '../host';
 import { useDeepLink, type DeepLink } from './useDeepLink';
@@ -11,13 +11,17 @@ function Harness({
   names,
   booted,
   onDeepLink,
+  resetView = () => {},
 }: {
   names: string[];
   booted: boolean;
   onDeepLink?: (dl: DeepLink) => void;
+  resetView?: () => void;
 }) {
   const leaveEditRef = useRef<() => boolean>(() => true);
-  const dl = useDeepLink({ names, booted, leaveEditRef });
+  const resetViewRef = useRef(resetView);
+  resetViewRef.current = resetView;
+  const dl = useDeepLink({ names, booted, leaveEditRef, resetViewRef });
   onDeepLink?.(dl);
   return (
     <div>
@@ -102,6 +106,27 @@ describe('useDeepLink', () => {
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
     expect(screen.getByTestId('path').textContent).toBe('sys');
+  });
+
+  it('starts the view over when another diagram opens, but not on a drill step', () => {
+    const resetView = vi.fn();
+    localStorage.setItem('diagc.selected', 'gone');
+    render(<Harness names={NAMES} booted resetView={resetView} />);
+    // the stale name falls back to the first diagram
+    expect(screen.getByTestId('selected').textContent).toBe('sketch');
+    expect(resetView).toHaveBeenCalledTimes(1);
+    act(() => {
+      window.location.hash = '#/sketch/sys';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    expect(screen.getByTestId('path').textContent).toBe('sys');
+    expect(resetView).toHaveBeenCalledTimes(1);
+    act(() => {
+      window.location.hash = '#/two';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    expect(screen.getByTestId('selected').textContent).toBe('two');
+    expect(resetView).toHaveBeenCalledTimes(2);
   });
 
   it('updates the hash when the drill path changes', () => {

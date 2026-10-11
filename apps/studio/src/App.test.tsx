@@ -185,9 +185,8 @@ describe('view-mode layout preview', () => {
     fireEvent.change(algorithm, { target: { value: 'force' } });
     expect(await screen.findByRole('button', { name: /reset layout/i })).toBeDefined();
 
-    // 'default' is a key every diagram resolves to (unlike the pin/plane state
-    // that leaks on this same path today), so a stray preview here would
-    // silently re-lay out whatever diagram comes up next.
+    // 'default' is a key every diagram resolves to, so a stray preview here
+    // would silently re-lay out whatever diagram comes up next.
     window.location.hash = '#/two';
     fireEvent(window, new HashChangeEvent('hashchange'));
 

@@ -32,6 +32,12 @@ export interface UseDeepLinkOptions {
    * subscribed hashchange listener can't capture a fresh closure. Owned by
    * useEditSession, plumbed in here. */
   leaveEditRef: RefObject<() => boolean>;
+  /** Opening another diagram starts its view over, as the picker does: the
+   * hash carries no plane, pins or selection, and one diagram's plane id names
+   * nothing in the next. A ref like leaveEditRef, and also because App builds
+   * the view ops after this hook, from the model `selected` picks. Owned by
+   * useViewOps, plumbed in here. */
+  resetViewRef: RefObject<() => void>;
 }
 
 /**
@@ -41,7 +47,7 @@ export interface UseDeepLinkOptions {
  * entry). The three interacting effects + `appliedUrlRef` have survived several
  * race-condition fixes — preserve their ordering exactly.
  */
-export function useDeepLink({ names, booted, leaveEditRef }: UseDeepLinkOptions): DeepLink {
+export function useDeepLink({ names, booted, leaveEditRef, resetViewRef }: UseDeepLinkOptions): DeepLink {
   // Deep link: the hash names the diagram + drill path (#/<diagram>/<id>/…).
   // Parsed once at mount; it outranks the localStorage memory, and stale parts
   // are corrected (replace, not push) once sources have loaded.
@@ -89,8 +95,9 @@ export function useDeepLink({ names, booted, leaveEditRef }: UseDeepLinkOptions)
     if (booted && !names.includes(selected)) {
       setSelected(names[0] ?? '');
       setEnteredPath([]);
+      resetViewRef.current();
     }
-  }, [booted, names, selected, setSelected, setEnteredPath]);
+  }, [booted, names, selected, setSelected, setEnteredPath, resetViewRef]);
 
   // URL writer: keep the hash in step with (selected, enteredPath). User
   // navigation pushes (Back = drill out); corrections — no/malformed hash,
@@ -144,9 +151,11 @@ export function useDeepLink({ names, booted, leaveEditRef }: UseDeepLinkOptions)
       }
       setSelected(parsed.diagram);
       setEnteredPath(parsed.path);
+      // Another diagram opens on a fresh view; a drill step keeps the plane.
+      if (parsed.diagram !== now.selected) resetViewRef.current();
     };
     return getHost().urlState.subscribe(onExternal);
-  }, [leaveEditRef, setSelected, setEnteredPath]);
+  }, [leaveEditRef, resetViewRef, setSelected, setEnteredPath]);
 
   return { selected, setSelected, enteredPath, setEnteredPath, handleEnteredPathChange };
 }
