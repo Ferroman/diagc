@@ -10,22 +10,43 @@
       "count": 1
     }
   },
-  "apps/studio/src/DiagramPicker.tsx": {
+  "apps/studio/src/activity/ActivityPanel.tsx": {
     "max-lines-per-function": {
       "count": 1
     }
   },
-  "apps/studio/src/Dock.tsx": {
+  "apps/studio/src/activity/activityDrop.ts": {
+    "max-params": {
+      "count": 2
+    }
+  },
+  "apps/studio/src/canvas-editing/EditorToolbar.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/canvas-editing/clipboard.ts": {
     "complexity": {
       "count": 1
+    },
+    "max-params": {
+      "count": 1
     }
   },
-  "apps/studio/src/editor/ActivityPanel.tsx": {
+  "apps/studio/src/canvas-editing/quickAdd.ts": {
+    "complexity": {
+      "count": 2
+    },
     "max-lines-per-function": {
       "count": 1
     }
   },
-  "apps/studio/src/editor/EdgePanel.tsx": {
+  "apps/studio/src/canvas-editing/tableConnect.ts": {
+    "max-params": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/canvas-editing/useNodePlacement.ts": {
     "complexity": {
       "count": 1
     },
@@ -33,22 +54,35 @@
       "count": 1
     }
   },
-  "apps/studio/src/editor/EditorToolbar.tsx": {
+  "apps/studio/src/diagrams/DiagramPicker.tsx": {
     "max-lines-per-function": {
       "count": 1
     }
   },
-  "apps/studio/src/editor/GitPanel.tsx": {
+  "apps/studio/src/diagrams/useDiagramActions.ts": {
     "max-lines-per-function": {
       "count": 1
     }
   },
-  "apps/studio/src/editor/LayersPlanesPanel.tsx": {
+  "apps/studio/src/dock/Dock.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/hotkeys/HotkeysDialog.tsx": {
     "max-lines-per-function": {
       "count": 1
     }
   },
-  "apps/studio/src/editor/NodePanel.tsx": {
+  "apps/studio/src/inspector/EdgePanel.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/studio/src/inspector/NodePanel.tsx": {
     "complexity": {
       "count": 1
     },
@@ -59,54 +93,9 @@
       "count": 1
     }
   },
-  "apps/studio/src/editor/activityDrop.ts": {
+  "apps/studio/src/layout/savedPositions.ts": {
     "max-params": {
       "count": 2
-    }
-  },
-  "apps/studio/src/editor/clipboard.ts": {
-    "complexity": {
-      "count": 1
-    },
-    "max-params": {
-      "count": 1
-    }
-  },
-  "apps/studio/src/editor/planActions.ts": {
-    "complexity": {
-      "count": 1
-    },
-    "max-depth": {
-      "count": 1
-    },
-    "max-params": {
-      "count": 4
-    }
-  },
-  "apps/studio/src/editor/quickAdd.ts": {
-    "complexity": {
-      "count": 2
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "apps/studio/src/hooks/useDiagramActions.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "apps/studio/src/hooks/useNodePlacement.ts": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "apps/studio/src/hotkeys/HotkeysDialog.tsx": {
-    "max-lines-per-function": {
-      "count": 1
     }
   },
   "apps/studio/src/library/LibraryPanel.tsx": {
@@ -129,13 +118,24 @@
       "count": 1
     }
   },
-  "apps/studio/src/savedPositions.ts": {
-    "max-params": {
-      "count": 2
+  "apps/studio/src/notations/git-graph/GitPanel.tsx": {
+    "max-lines-per-function": {
+      "count": 1
     }
   },
-  "apps/studio/src/tableConnect.ts": {
+  "apps/studio/src/notations/plan/planActions.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 1
+    },
     "max-params": {
+      "count": 4
+    }
+  },
+  "apps/studio/src/view/LayersPlanesPanel.tsx": {
+    "max-lines-per-function": {
       "count": 1
     }
   },

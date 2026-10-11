@@ -1,4 +1,4 @@
-// Injected per window, not a React context: two call sites (editor/images.ts,
+// Injected per window, not a React context: two call sites (canvas-editing/images.ts,
 // library/library-api.ts) are plain module functions that cannot useContext, and
 // the studio is a singleton per window in both hosts (web + Obsidian), so a
 // context would only add threading with nothing to show for it. The default

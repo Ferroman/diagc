@@ -53,46 +53,46 @@ import {
 } from '@diagc/core/internal';
 import { activeNotation } from './notation';
 import { getHost } from './host';
-import { useDiagramBoot } from './hooks/useDiagramBoot';
-import { useDeepLink } from './hooks/useDeepLink';
-import { useEditSession } from './hooks/useEditSession';
-import { usePersistedState } from './hooks/usePersistedState';
-import { useClipboard } from './hooks/useClipboard';
-import { useNodePlacement } from './hooks/useNodePlacement';
-import { useDiagramActions } from './hooks/useDiagramActions';
-import { useViewOps } from './hooks/useViewOps';
-import { edgeLabelsOf, addEdgeLabel, editEdgeLabel, moveEdgeLabel } from './edge-labels';
-import { computeSelectionColor } from './selection-color';
-import { DiagramPicker } from './DiagramPicker';
-import { downloadPng } from './downloadPng';
-import { EditorToolbar } from './editor/EditorToolbar';
-import { EditLayoutActions, relayoutPlane } from './editor/LayoutActions';
-import { LayoutPanel } from './LayoutPanel';
+import { useDiagramBoot } from './diagrams/useDiagramBoot';
+import { useDeepLink } from './diagrams/useDeepLink';
+import { useEditSession } from './session/useEditSession';
+import { usePersistedState } from './usePersistedState';
+import { useClipboard } from './canvas-editing/useClipboard';
+import { useNodePlacement } from './canvas-editing/useNodePlacement';
+import { useDiagramActions } from './diagrams/useDiagramActions';
+import { useViewOps } from './view/useViewOps';
+import { edgeLabelsOf, addEdgeLabel, editEdgeLabel, moveEdgeLabel } from './canvas-editing/edge-labels';
+import { computeSelectionColor } from './view/selection-color';
+import { DiagramPicker } from './diagrams/DiagramPicker';
+import { downloadPng } from './diagrams/downloadPng';
+import { EditorToolbar } from './canvas-editing/EditorToolbar';
+import { EditLayoutActions, relayoutPlane } from './layout/LayoutActions';
+import { LayoutPanel } from './layout/LayoutPanel';
 import { MenuButton, type MenuItem } from './MenuButton';
-import { mergePreview, withLayoutPreview } from './layoutPreview';
-import { unfoldedOf, withPlaneManual, withSavedPositions } from './savedPositions';
-import { uploadAsset } from './editor/images';
-import { NodePanel } from './editor/NodePanel';
-import { EdgePanel } from './editor/EdgePanel';
-import { LayersPlanesPanel } from './editor/LayersPlanesPanel';
-import { GitPanel } from './editor/GitPanel';
-import { ActivityPanel, moveLaneCommand } from './editor/ActivityPanel';
-import { SecondOrderPanel } from './editor/SecondOrderPanel';
-import { FishbonePanel } from './editor/FishbonePanel';
-import { ThreatModelPanel } from './editor/ThreatModelPanel';
-import { PlanPanel } from './editor/PlanPanel';
-import { assign, planMoves, planResize, setActorRole } from './editor/planActions';
-import { quickAdd, quickAddLabel, quickAddPlaced, type QuickAddContext } from './editor/quickAdd';
-import { InspectorTabs, type InspectorTab } from './editor/InspectorTabs';
-import { Dock } from './Dock';
-import { clampDockWidth } from './dockWidth';
-import { Sidebar } from './Sidebar';
+import { mergePreview, withLayoutPreview } from './layout/layoutPreview';
+import { unfoldedOf, withPlaneManual, withSavedPositions } from './layout/savedPositions';
+import { uploadAsset } from './canvas-editing/images';
+import { NodePanel } from './inspector/NodePanel';
+import { EdgePanel } from './inspector/EdgePanel';
+import { LayersPlanesPanel } from './view/LayersPlanesPanel';
+import { GitPanel } from './notations/git-graph/GitPanel';
+import { ActivityPanel, moveLaneCommand } from './activity/ActivityPanel';
+import { SecondOrderPanel } from './notations/second-order/SecondOrderPanel';
+import { FishbonePanel } from './notations/fishbone/FishbonePanel';
+import { ThreatModelPanel } from './notations/threat-model/ThreatModelPanel';
+import { PlanPanel } from './notations/plan/PlanPanel';
+import { assign, planMoves, planResize, setActorRole } from './notations/plan/planActions';
+import { quickAdd, quickAddLabel, quickAddPlaced, type QuickAddContext } from './canvas-editing/quickAdd';
+import { InspectorTabs, type InspectorTab } from './inspector/InspectorTabs';
+import { Dock } from './dock/Dock';
+import { clampDockWidth } from './dock/dockWidth';
+import { Sidebar } from './inspector/Sidebar';
 import { EMPTY_LIBRARY_VIEW, LibraryPanel } from './library/LibraryPanel';
 import { useLibrary } from './library/useLibrary';
 import { uniqueLibraryId } from './library/entry';
-import { deleteSelectionCommand } from './editor/deleteSelection';
-import { connectKind } from './editor/connectKind';
-import { fkConnectionCommands } from './tableConnect';
+import { deleteSelectionCommand } from './canvas-editing/deleteSelection';
+import { connectKind } from './notations/threat-model/connectKind';
+import { fkConnectionCommands } from './canvas-editing/tableConnect';
 import type { ActionId } from './hotkeys/actions';
 import { isMac } from './hotkeys/chord';
 import { HotkeysContext, keyHint, keyName } from './hotkeys/HotkeysContext';
@@ -472,7 +472,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   resetViewRef.current = resetView;
 
   // Ctrl/⌘+C / Ctrl/⌘+V on the canvas (edit mode): the selection, with what it
-  // contains, through the system clipboard — see hooks/useClipboard.
+  // contains, through the system clipboard — see canvas-editing/useClipboard.
   useClipboard({
     editing,
     editor,
