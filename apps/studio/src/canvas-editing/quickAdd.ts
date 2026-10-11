@@ -1,195 +1,81 @@
 import {
-  ACTIVITY_FRAME_TYPE,
-  ACTIVITY_LANE_TYPE,
-  CAUSAL_LOOP_NOTATION,
-  FB_CAUSE_TYPE,
-  FB_EFFECT_TYPE,
-  FISHBONE_NOTATION,
-  GIT_NOTATION,
-  PLAN_EVENT_TYPE,
-  PLAN_NOTATION,
-  PLAN_ZONE_TYPE,
-  SECOND_ORDER_NOTATION,
-  TM_BOUNDARY_TYPE,
-  TM_FLOW_KIND,
-  TM_NOTATION,
-  TM_PROCESS_TYPE,
-  atOf,
-  childrenOf,
-  fishboneTree,
-  gitGraph,
-  isActivityChrome,
-  isFishboneNode,
-  isPlanEvent,
-  isPlanZone,
-  isSecondOrderNode,
-  isThreatModelNode,
-  isoOf,
-  latestCommit,
-  containmentOn,
-  containmentPlaneOf,
   defined,
-  spanOf,
   type DiagramModel,
   type DiagramNode,
   type EditorCommand,
-  type NotationId,
   type Point,
   type Size,
 } from '@diagc/core/internal';
 import type { QuickAddSide } from '@diagc/renderer';
+import { activityQuickAdd } from '../activity/quickAdd';
+import { connectKind, studioNotation } from '../notations';
 import { createNodeAt, placeTags } from './create-node';
-import { connectKind } from '../notations/threat-model/connectKind';
-import { addChild, isSubCause } from '../notations/fishbone/fishboneActions';
-import { appendCommit } from '../notations/git-graph/gitActions';
-import { thenWhat } from '../notations/second-order/secondOrderActions';
+import {
+  addConnected,
+  lookOf,
+  parentIn,
+  type QuickAdd,
+  type QuickAddContext,
+  type QuickAddRecipe,
+  type QuickAddSource,
+} from './quickAddRecipe';
+
+export type { QuickAdd, QuickAddContext } from './quickAddRecipe';
 
 /** px between a source and the node `+` puts beside it (see quickAddPlaced) */
 export const QUICK_ADD_GAP = 40;
 
-export interface QuickAddContext {
-  notation: NotationId | undefined;
-  /** the active plane, when it keeps nodes of its own (createNodeAt's scoping) */
-  plane: string | undefined;
-  borrowsContainment: boolean;
-  /** the pen layer new nodes and relations land on (null = base sheet) */
-  penLayer: string | null;
-}
-
-export interface QuickAdd {
-  /** what the `+` says it will do — the button's accessible name */
-  label: string;
-  /** one batch: node + relation (or node + containment); one undo step */
-  command: EditorCommand;
-  /** the new node's id, for selection and the label editor */
-  id: string;
-  /** true when the node is a sibling that can be placed beside its source;
-   * false for the recipes whose notation lays the node out (fish, bands) or
-   * that nest it (a process inside a boundary) */
-  beside: boolean;
+/** The generic `+`: a connected sibling in the source's container. It copies
+ * the source's type and look, so a row of Persons stays a row of Persons and a
+ * row of Lambdas a row of Lambdas, instead of a stencil followed by a default
+ * box, and its relation is the kind the connect gesture would draw. */
+function sibling(src: QuickAddSource): QuickAddRecipe {
+  const { model, source, ctx } = src;
+  return {
+    label: 'Add a connected node',
+    build: () => {
+      const place = createNodeAt(model, {
+        kind: 'node',
+        plane: ctx.plane,
+        borrowsContainment: ctx.borrowsContainment,
+        parentId: parentIn(model, ctx.plane, source.id),
+      });
+      const node: DiagramNode = {
+        id: place.id,
+        name: '',
+        ...defined({ type: source.type }),
+        ...lookOf(source),
+        ...placeTags(place, ctx.penLayer),
+      };
+      return { id: place.id, beside: true, command: addConnected(src, node, place, src.kindTo(place.id)) };
+    },
+  };
 }
 
 /**
- * The recipes `+` (and Tab) know. One classifier feeds both the label and the
- * command so the button can never promise one thing and dispatch another.
- *
- * Fishbone and second-order own their trees: a node that is not of their types
- * (a comment on the fish) gets nothing, because the tree would ignore whatever
- * hung on it. A threat model is a plain graph with typed elements, so a stray
- * node there falls to the generic sibling. A git graph grows at a lane's tip
- * (see gitLaneToGrow); branching and merging need a target lane the chip
- * cannot ask for, so they stay in the Git panel. A plan zone or event grows
- * its own successor (plan-next) rather than an undated sibling that would
- * fail `plan-missing` on save; any other plan node (a person, a borrowed
- * container) keeps the generic sibling.
+ * The recipe `+` (and Tab) offers on a source, in a fixed order: the activity's
+ * rules (keyed by node type, on any plane); then nothing for a `side`, which
+ * only a lane's `+` has; then the notation's own recipes; then the generic
+ * sibling.
  */
-type Recipe =
-  | 'fb-category'
-  | 'fb-cause'
-  | 'so-then'
-  | 'tm-flow'
-  | 'tm-inside'
-  | 'git-commit'
-  | 'plan-next'
-  | 'lane-above'
-  | 'lane-below'
-  | 'sibling';
-
-const LABELS: Record<Exclude<Recipe, 'plan-next'>, string> = {
-  'fb-category': 'Add a category',
-  'fb-cause': 'Add a cause',
-  'so-then': 'And then what?',
-  'tm-flow': 'Add a flow to a new process',
-  'tm-inside': 'Add a process inside',
-  'git-commit': 'Add a commit',
-  'lane-above': 'Add a lane above',
-  'lane-below': 'Add a lane below',
-  sibling: 'Add a connected node',
-};
-
-/** `+`'s accessible name for a recipe. Every recipe has one fixed label except
- * `plan-next`, whose text depends on what "next" means for the source — a
- * zone's successor bar or an event's successor diamond. */
-function labelFor(recipe: Recipe, source: DiagramNode): string {
-  return recipe === 'plan-next' ? (isPlanZone(source) ? 'Add the next zone' : 'Add the next event') : LABELS[recipe];
-}
-
 function recipeFor(
   model: DiagramModel,
   source: DiagramNode,
   ctx: QuickAddContext,
   side?: QuickAddSide,
-): Recipe | undefined {
-  // A lane is a band of its frame whatever the notation, and only a lane
-  // actually in a frame can have a sibling band.
-  if (source.type === ACTIVITY_LANE_TYPE) {
-    const frame = parentIn(model, ctx.plane, source.id);
-    if (frame === undefined || model.nodes.find((n) => n.id === frame)?.type !== ACTIVITY_FRAME_TYPE) return undefined;
-    return side === 'before' ? 'lane-above' : 'lane-below';
-  }
-  // The invariant: `+` and Tab are one action, so a node the renderer refuses
-  // to decorate offers nothing to Tab either. The rest of the activity chrome
-  // (a frame, a region) never carries a chip, on any notation's plane, so it
-  // is settled before a notation's recipe can claim it.
-  if (isActivityChrome(source.type)) return undefined;
+): QuickAddRecipe | undefined {
+  const src: QuickAddSource = {
+    model,
+    source,
+    ctx,
+    kindTo: (to) => connectKind(ctx.notation, model, source.id, to),
+  };
+  const activity = activityQuickAdd(src, side);
+  if (activity !== undefined) return activity === 'none' ? undefined : activity;
   if (side !== undefined) return undefined;
-  switch (ctx.notation) {
-    case FISHBONE_NOTATION:
-      if (!isFishboneNode(source)) return undefined;
-      if (source.type === FB_EFFECT_TYPE) return 'fb-category';
-      // three levels below the effect is the limit (addChild's rule, read once)
-      if (source.type === FB_CAUSE_TYPE && isSubCause(fishboneTree(model), source.id)) return undefined;
-      return 'fb-cause';
-    case SECOND_ORDER_NOTATION:
-      return isSecondOrderNode(source) ? 'so-then' : undefined;
-    case GIT_NOTATION:
-      return gitLaneToGrow(model, source, ctx.plane) === undefined ? undefined : 'git-commit';
-    case TM_NOTATION:
-      if (source.type === TM_BOUNDARY_TYPE) return 'tm-inside';
-      return isThreatModelNode(source) ? 'tm-flow' : 'sibling';
-    case PLAN_NOTATION:
-      // A zone or event with no usable dates offers nothing — plan-next reads
-      // `spanOf`/`atOf` below and has no fallback anchor to grow a successor
-      // from. Anything else on a plan plane (a person, a borrowed container)
-      // is an ordinary sibling.
-      if (isPlanZone(source)) return spanOf(source) === undefined ? undefined : 'plan-next';
-      if (isPlanEvent(source)) return atOf(source) === undefined ? undefined : 'plan-next';
-      return 'sibling';
-    default:
-      // A causal-loop group carries no chip either (the invariant above): the
-      // notation draws an open one as a bare name tag and arranges its members
-      // itself, so "add a connected node" would have nowhere to put the result.
-      if (
-        ctx.notation === CAUSAL_LOOP_NOTATION &&
-        childrenOf(containmentOn(model, containmentPlaneOf(model, ctx.plane))).has(source.id)
-      )
-        return undefined;
-      return 'sibling';
-  }
-}
-
-/**
- * The lane a `+` on `source` appends to: the lane itself, or the commit at a
- * lane's tip. Only the tip, because a second child of one commit on the same
- * lane is a fork — which git draws as a branch, the panel's job — and the
- * layout would stack the two circles in one column (computeColumns has no
- * collision check). A mid-lane or stray commit therefore offers nothing, and
- * so does anything that is neither lane nor commit (a stage frame, a comment).
- * `gitGraph` is the panel's own lane/tip answer, so the two cannot disagree.
- */
-function gitLaneToGrow(model: DiagramModel, source: DiagramNode, plane: string | undefined): string | undefined {
-  if (source.type === 'branch') return source.id;
-  if (source.type !== 'commit') return undefined;
-  const g = gitGraph(model, plane);
-  const lane = g.laneOf.get(source.id);
-  return lane !== undefined && latestCommit(g, lane)?.id === source.id ? lane : undefined;
-}
-
-/** The source's parent in the containment a view of `plane` reads — the first
- * declared, the pick a reader makes from the drawing (the threat model's
- * `boundaryOf` follows the same rule). */
-function parentIn(model: DiagramModel, plane: string | undefined, id: string): string | undefined {
-  return containmentOn(model, containmentPlaneOf(model, plane)).find((e) => e.child === id)?.parent;
+  const own = studioNotation(ctx.notation).quickAdd?.(src);
+  if (own !== undefined) return own === 'none' ? undefined : own;
+  return sibling(src);
 }
 
 /** The tooltip alone — the cheap half, called per render of the selected node. */
@@ -200,9 +86,7 @@ export function quickAddLabel(
   side?: QuickAddSide,
 ): string | undefined {
   const source = model.nodes.find((n) => n.id === sourceId);
-  if (source === undefined) return undefined;
-  const recipe = recipeFor(model, source, ctx, side);
-  return recipe === undefined ? undefined : labelFor(recipe, source);
+  return source === undefined ? undefined : recipeFor(model, source, ctx, side)?.label;
 }
 
 /** What the `+` on `sourceId` creates, or undefined when nothing applies. */
@@ -213,188 +97,9 @@ export function quickAdd(
   side?: QuickAddSide,
 ): QuickAdd | undefined {
   const source = model.nodes.find((n) => n.id === sourceId);
-  if (source === undefined) return undefined;
-  const recipe = recipeFor(model, source, ctx, side);
-  if (recipe === undefined) return undefined;
-  const label = labelFor(recipe, source);
-  switch (recipe) {
-    case 'fb-category':
-    case 'fb-cause': {
-      const out = addChild(model, sourceId);
-      return out === null ? undefined : { label, beside: false, ...out };
-    }
-    case 'so-then': {
-      const out = thenWhat(model, sourceId, '0');
-      return out === null ? undefined : { label, beside: false, ...out };
-    }
-    case 'git-commit': {
-      const lane = gitLaneToGrow(model, source, ctx.plane);
-      return lane === undefined ? undefined : { label, beside: false, ...appendCommit(model, ctx.plane, lane) };
-    }
-    case 'lane-above':
-    case 'lane-below': {
-      // A new band in the same frame, slotted next to the source: lanes stack
-      // in declaration order (arrangeActivityFrames), so the containment slot
-      // IS the position — no set-position to write.
-      const frame = parentIn(model, ctx.plane, sourceId)!;
-      const place = createNodeAt(model, {
-        kind: 'lane',
-        plane: ctx.plane,
-        borrowsContainment: ctx.borrowsContainment,
-        parentId: frame,
-      });
-      const node: DiagramNode = {
-        id: place.id,
-        name: '',
-        type: ACTIVITY_LANE_TYPE,
-        ...placeTags(place, ctx.penLayer),
-      };
-      const slot = recipe === 'lane-above' ? { before: sourceId } : { after: sourceId };
-      return {
-        label,
-        id: place.id,
-        beside: false,
-        command: { type: 'batch', commands: [{ type: 'add-node', node, parent: { ...place.parent!, ...slot } }] },
-      };
-    }
-    case 'tm-inside': {
-      // a boundary is containment, never a flow endpoint: the process goes in,
-      // with no relation (a data-flow touching a boundary fails validation)
-      const place = createNodeAt(model, {
-        kind: 'process',
-        plane: ctx.plane,
-        borrowsContainment: ctx.borrowsContainment,
-        parentId: sourceId,
-      });
-      const node: DiagramNode = { id: place.id, name: '', type: TM_PROCESS_TYPE, ...placeTags(place, ctx.penLayer) };
-      return {
-        label,
-        id: place.id,
-        beside: false,
-        command: {
-          type: 'batch',
-          commands: [{ type: 'add-node', node, ...defined({ parent: place.parent }) }],
-        },
-      };
-    }
-    case 'plan-next': {
-      // The successor's parent is the source's own — a nested zone's next
-      // zone/event stays inside the same outer zone, a root's stays a root.
-      const parentId = parentIn(model, ctx.plane, sourceId);
-      const outer = parentId !== undefined ? spanOf(model.nodes.find((n) => n.id === parentId)!) : undefined;
-      const zone = isPlanZone(source);
-      const metadata = zone
-        ? (() => {
-            const s = spanOf(source)!; // recipeFor only offers plan-next for a usable span
-            const len = s.end - s.start + 1;
-            const start = outer !== undefined ? Math.min(s.end + 1, outer.end) : s.end + 1;
-            const end = outer !== undefined ? Math.min(start + len - 1, outer.end) : start + len - 1;
-            return { start: isoOf(start), end: isoOf(end) };
-          })()
-        : (() => {
-            const next = atOf(source)! + 7; // recipeFor only offers plan-next for a usable `at`
-            return { at: isoOf(outer !== undefined ? Math.min(next, outer.end) : next) };
-          })();
-      const place = createNodeAt(model, {
-        kind: zone ? 'zone' : 'event',
-        plane: ctx.plane,
-        borrowsContainment: ctx.borrowsContainment,
-        parentId,
-      });
-      // A successor copies the source's look, the same channels a sibling
-      // does — a row of tinted zones stays tinted.
-      const look: Partial<DiagramNode> = defined({
-        color: source.color,
-        shape: source.shape,
-        image: source.image,
-        icon: source.icon,
-        textColor: source.textColor,
-      });
-      const node: DiagramNode = {
-        id: place.id,
-        name: '',
-        type: zone ? PLAN_ZONE_TYPE : PLAN_EVENT_TYPE,
-        ...look,
-        metadata,
-        ...placeTags(place, ctx.penLayer),
-      };
-      return {
-        label,
-        id: place.id,
-        // the source's row: date-locked x is ignored for a root zone/event,
-        // but the y is what keeps the successor beside it rather than under
-        // the roster; a nested successor is arranged by the layout anyway.
-        beside: true,
-        command: {
-          type: 'batch',
-          commands: [
-            { type: 'add-node', node, ...defined({ parent: place.parent }) },
-            {
-              type: 'add-relation',
-              from: sourceId,
-              to: place.id,
-              opts: defined({
-                kind: connectKind(ctx.notation, model, sourceId, place.id),
-                layer: ctx.penLayer ?? undefined,
-              }),
-            },
-          ],
-        },
-      };
-    }
-    case 'tm-flow':
-    case 'sibling': {
-      const place = createNodeAt(model, {
-        kind: recipe === 'tm-flow' ? 'process' : 'node',
-        plane: ctx.plane,
-        borrowsContainment: ctx.borrowsContainment,
-        parentId: parentIn(model, ctx.plane, sourceId),
-      });
-      // A sibling copies every look channel the source carries — type, colour,
-      // silhouette, image, icon, text colour (see core's DiagramNode) — so a row
-      // of Persons stays a row of Persons and a row of Lambdas a row of Lambdas,
-      // instead of a stencil followed by a default box. Only the fields that are
-      // actually set are copied, the way `color` alone used to be. A flow's far
-      // end is a process instead: the element a data flow usually lands on.
-      const type = recipe === 'tm-flow' ? TM_PROCESS_TYPE : source.type;
-      const look: Partial<DiagramNode> =
-        recipe !== 'sibling'
-          ? {}
-          : defined({
-              color: source.color,
-              shape: source.shape,
-              image: source.image,
-              icon: source.icon,
-              textColor: source.textColor,
-            });
-      const node: DiagramNode = {
-        id: place.id,
-        name: '',
-        ...defined({ type }),
-        ...look,
-        ...placeTags(place, ctx.penLayer),
-      };
-      // the same kind the connect gesture would draw between these two
-      const kind = recipe === 'tm-flow' ? TM_FLOW_KIND : connectKind(ctx.notation, model, sourceId, place.id);
-      return {
-        label,
-        id: place.id,
-        beside: true,
-        command: {
-          type: 'batch',
-          commands: [
-            { type: 'add-node', node, ...defined({ parent: place.parent }) },
-            {
-              type: 'add-relation',
-              from: sourceId,
-              to: place.id,
-              opts: defined({ kind, layer: ctx.penLayer ?? undefined }),
-            },
-          ],
-        },
-      };
-    }
-  }
+  const recipe = source === undefined ? undefined : recipeFor(model, source, ctx, side);
+  const out = recipe?.build();
+  return recipe === undefined || out === undefined ? undefined : { label: recipe.label, ...out };
 }
 
 export interface QuickAddPlacement {

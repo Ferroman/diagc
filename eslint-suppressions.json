@@ -33,14 +33,6 @@
       "count": 1
     }
   },
-  "apps/studio/src/canvas-editing/quickAdd.ts": {
-    "complexity": {
-      "count": 2
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "apps/studio/src/canvas-editing/tableConnect.ts": {
     "max-params": {
       "count": 1

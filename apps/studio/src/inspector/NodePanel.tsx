@@ -7,9 +7,7 @@ import {
   defined,
   IMAGE_REF,
   LIBRARY_IMAGE_REF,
-  PLAN_NOTATION,
   PLAN_TYPES,
-  TM_NOTATION,
   strideFor,
 } from '@diagc/core/internal';
 import { BUILTIN_ICON_IDS } from '@diagc/icons';
@@ -22,6 +20,8 @@ import { seedOnRetype } from '../notations/plan/planActions';
 import { PlanSection } from '../notations/plan/PlanSection';
 import { ThreatsSection } from './ThreatsSection';
 import { BUNDLED_LIBRARY } from '../library/packs';
+import { studioNotation } from '../notations';
+import { carriesThreats, threatsOffered } from './threatsOffered';
 
 // Registry defaults surfaced as datalist hints; free text is still accepted.
 // Read from the registries themselves so a new type or icon shows up here
@@ -58,7 +58,7 @@ interface NodePanelProps {
   live?: Point;
   /** focus + select the name input on mount (a node was just added) */
   autoFocusName?: boolean;
-  /** active plane's notation; gates the Threats section (threat-model) */
+  /** active plane's notation; gates the Threats and Plan sections (see threatsOffered, `planSection`) */
   notation?: NotationId;
   /** the host's date, YYYY-MM-DD: seeds a Type-field retype into plan-zone/
    * plan-event with dates the way a canvas drop would (seedOnRetype); omitted
@@ -656,7 +656,7 @@ export function NodePanel({
       {/* Threats are a generic field, so the section is offered on the notation
        * — but a node that already carries threats keeps it whatever the plane
        * is drawn as, or turning the notation off would strand them. */}
-      {(notation === TM_NOTATION || (node.threats?.length ?? 0) > 0) && (
+      {threatsOffered(notation, carriesThreats(node)) && (
         <ThreatsSection
           target={{ node: node.id }}
           threats={node.threats ?? []}
@@ -672,7 +672,7 @@ export function NodePanel({
        * Every date key counts, `end` included — half a span is reachable (clear
        * Start here, or hand-edit the source) and is exactly the state the
        * section exists to finish. */}
-      {(notation === PLAN_NOTATION ||
+      {(studioNotation(notation).planSection === true ||
         node.metadata?.start !== undefined ||
         node.metadata?.end !== undefined ||
         node.metadata?.at !== undefined) &&
