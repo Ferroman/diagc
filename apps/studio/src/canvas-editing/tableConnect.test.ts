@@ -24,7 +24,7 @@ const model = (): DiagramModel => ({
 
 describe('fkConnectionCommands', () => {
   it('turns a column-origin connect into an fk relation + fk flag', () => {
-    const cmds = fkConnectionCommands(model(), 'account_role', 'accounts', 'account_id');
+    const cmds = fkConnectionCommands(model(), { from: 'account_role', to: 'accounts', sourceHandle: 'account_id' });
     expect(cmds).not.toBeNull();
     expect(cmds![0]).toMatchObject({
       type: 'add-relation',
@@ -37,13 +37,13 @@ describe('fkConnectionCommands', () => {
     expect(flagged.fk).toBe(true);
   });
   it('returns null when the source is not a db-table column', () => {
-    expect(fkConnectionCommands(model(), 'svc', 'accounts', null)).toBeNull();
-    expect(fkConnectionCommands(model(), 'account_role', 'accounts', 'nope')).toBeNull();
+    expect(fkConnectionCommands(model(), { from: 'svc', to: 'accounts', sourceHandle: null })).toBeNull();
+    expect(fkConnectionCommands(model(), { from: 'account_role', to: 'accounts', sourceHandle: 'nope' })).toBeNull();
   });
   it('omits the fk-flag command when the column is already fk', () => {
     const m = model();
     (m.nodes[0]!.columns![1] as any).fk = true;
-    const cmds = fkConnectionCommands(m, 'account_role', 'accounts', 'account_id');
+    const cmds = fkConnectionCommands(m, { from: 'account_role', to: 'accounts', sourceHandle: 'account_id' });
     expect(cmds!.length).toBe(1);
   });
 });

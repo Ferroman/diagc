@@ -195,13 +195,11 @@ export function useNodePlacement({
     // current drilled level, or top-level when not drilled. Inside an activity
     // frame the target is re-homed to a lane (only lanes may sit in a frame).
     const boundsOf = (id: string) => layoutApiRef.current?.nodeBounds(id);
-    const parentId = homeActivityParent(
-      m,
-      activePlane,
-      opts?.parentId ?? (opts?.position === undefined ? defaultParentId(selection, drillRoot) : drillRoot),
-      opts?.position,
+    const parentId = homeActivityParent(m, activePlane, {
+      targetId: opts?.parentId ?? (opts?.position === undefined ? defaultParentId(selection, drillRoot) : drillRoot),
+      point: opts?.position,
       boundsOf,
-    );
+    });
     const place = createNodeAt(m, {
       kind,
       plane: activePlane,
@@ -250,7 +248,7 @@ export function useNodePlacement({
     const local =
       opts?.position === undefined
         ? undefined
-        : activityDropPosition(m, place.parent?.id, opts.position, { width: w, height: h }, boundsOf);
+        : activityDropPosition(m, place.parent?.id, { point: opts.position, size: { width: w, height: h }, boundsOf });
     if (local !== undefined) {
       editor.dispatch({
         type: 'set-position',

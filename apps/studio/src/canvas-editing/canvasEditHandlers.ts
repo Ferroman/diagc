@@ -338,9 +338,7 @@ export function connectAndDeleteHandlers({ editor, penLayer, notation, select }:
       // trust boundary, which no flow may touch.
       const m = editor.session?.state.model;
       const cmds =
-        m !== undefined
-          ? fkConnectionCommands(m, from, to, sourceHandle, penLayer !== null ? { layer: penLayer } : undefined)
-          : null;
+        m !== undefined ? fkConnectionCommands(m, { from, to, sourceHandle, layer: penLayer ?? undefined }) : null;
       if (cmds !== null) {
         for (const c of cmds) editor.dispatch(c);
         return;

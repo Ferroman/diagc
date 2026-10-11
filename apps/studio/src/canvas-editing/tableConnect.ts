@@ -9,10 +9,19 @@ import { defined, type DiagramModel, type EditorCommand } from '@diagc/core/inte
  */
 export function fkConnectionCommands(
   model: DiagramModel,
-  from: string,
-  to: string,
-  sourceHandle: string | null | undefined,
-  opts?: { layer?: string },
+  {
+    from,
+    to,
+    sourceHandle,
+    layer,
+  }: {
+    from: string;
+    to: string;
+    /** the handle the drag started on: a column's name on a db-table */
+    sourceHandle: string | null | undefined;
+    /** the pen layer the relation lands on */
+    layer?: string;
+  },
 ): EditorCommand[] | null {
   const src = model.nodes.find((n) => n.id === from);
   if (src?.type !== 'db-table' || src.columns === undefined) return null;
@@ -27,7 +36,7 @@ export function fkConnectionCommands(
       opts: {
         kind: 'fk',
         fromColumn: col.name,
-        ...defined({ toColumn: toPk, layer: opts?.layer }),
+        ...defined({ toColumn: toPk, layer }),
       },
     },
   ];

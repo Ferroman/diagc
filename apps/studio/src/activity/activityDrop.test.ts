@@ -40,42 +40,44 @@ const boundsOf = (id: string) => bounds[id];
 
 describe('homeActivityParent', () => {
   it('passes a missing or non-activity target straight through', () => {
-    expect(homeActivityParent(model(), undefined, undefined)).toBeUndefined();
-    expect(homeActivityParent(model(), undefined, 'box')).toBe('box');
+    expect(homeActivityParent(model(), undefined, { targetId: undefined })).toBeUndefined();
+    expect(homeActivityParent(model(), undefined, { targetId: 'box' })).toBe('box');
   });
 
   it('sends a frame drop to the lane whose band holds the pointer', () => {
     const m = model();
-    expect(homeActivityParent(m, undefined, 'f', { x: 110, y: 150 }, boundsOf)).toBe('l1');
-    expect(homeActivityParent(m, undefined, 'f', { x: 110, y: 300 }, boundsOf)).toBe('l2');
+    expect(homeActivityParent(m, undefined, { targetId: 'f', point: { x: 110, y: 150 }, boundsOf })).toBe('l1');
+    expect(homeActivityParent(m, undefined, { targetId: 'f', point: { x: 110, y: 300 }, boundsOf })).toBe('l2');
   });
 
   it('clamps a frame drop outside every band to the nearest end lane', () => {
     const m = model();
-    expect(homeActivityParent(m, undefined, 'f', { x: 110, y: 50 }, boundsOf)).toBe('l1');
-    expect(homeActivityParent(m, undefined, 'f', { x: 110, y: 999 }, boundsOf)).toBe('l2');
+    expect(homeActivityParent(m, undefined, { targetId: 'f', point: { x: 110, y: 50 }, boundsOf })).toBe('l1');
+    expect(homeActivityParent(m, undefined, { targetId: 'f', point: { x: 110, y: 999 }, boundsOf })).toBe('l2');
   });
 
   it('sends a pointless frame placement (click-to-place) to the first lane', () => {
-    expect(homeActivityParent(model(), undefined, 'f')).toBe('l1');
+    expect(homeActivityParent(model(), undefined, { targetId: 'f' })).toBe('l1');
   });
 
   it('puts a node aimed at a lane-less frame at top level rather than inside it', () => {
-    expect(homeActivityParent(model(), undefined, 'empty', { x: 0, y: 0 }, boundsOf)).toBeUndefined();
+    expect(
+      homeActivityParent(model(), undefined, { targetId: 'empty', point: { x: 0, y: 0 }, boundsOf }),
+    ).toBeUndefined();
   });
 
   it('keeps lanes and regions as their own homes', () => {
-    expect(homeActivityParent(model(), undefined, 'l2')).toBe('l2');
-    expect(homeActivityParent(model(), undefined, 'r')).toBe('r');
+    expect(homeActivityParent(model(), undefined, { targetId: 'l2' })).toBe('l2');
+    expect(homeActivityParent(model(), undefined, { targetId: 'r' })).toBe('r');
   });
 
   it('climbs from a glyph to the lane or region holding it', () => {
-    expect(homeActivityParent(model(), undefined, 'act')).toBe('l1');
-    expect(homeActivityParent(model(), undefined, 'inR')).toBe('r');
+    expect(homeActivityParent(model(), undefined, { targetId: 'act' })).toBe('l1');
+    expect(homeActivityParent(model(), undefined, { targetId: 'inR' })).toBe('r');
   });
 
   it('leaves a glyph that sits in no lane as the target', () => {
-    expect(homeActivityParent(model(), undefined, 'stray')).toBe('stray');
+    expect(homeActivityParent(model(), undefined, { targetId: 'stray' })).toBe('stray');
   });
 
   it('reads lanes from the active plane only', () => {
@@ -87,8 +89,8 @@ describe('homeActivityParent', () => {
       ],
       containment: [...model().containment, { parent: 'empty', child: 'l1', plane: 'p' }],
     };
-    expect(homeActivityParent(m, 'p', 'empty')).toBe('l1');
-    expect(homeActivityParent(m, 'p', 'f')).toBeUndefined();
+    expect(homeActivityParent(m, 'p', { targetId: 'empty' })).toBe('l1');
+    expect(homeActivityParent(m, 'p', { targetId: 'f' })).toBeUndefined();
   });
 
   it('reads untagged containment on the first plane even when it borrows, as the canvas does', () => {
@@ -104,9 +106,9 @@ describe('homeActivityParent', () => {
     for (const plane of [undefined, 'p', 'base']) {
       // the canvas: f holds no lanes, empty holds l1
       expect(buildHierarchy(m, plane).childrenOf.get('f')).toEqual([]);
-      expect(homeActivityParent(m, plane, 'f')).toBeUndefined();
-      expect(homeActivityParent(m, plane, 'empty')).toBe('l1');
-      expect(homeActivityParent(m, plane, 'act')).toBe('act');
+      expect(homeActivityParent(m, plane, { targetId: 'f' })).toBeUndefined();
+      expect(homeActivityParent(m, plane, { targetId: 'empty' })).toBe('l1');
+      expect(homeActivityParent(m, plane, { targetId: 'act' })).toBe('act');
     }
   });
 
@@ -120,8 +122,8 @@ describe('homeActivityParent', () => {
     };
     for (const plane of [undefined, 'p', 'base']) {
       expect(buildHierarchy(m, plane).childrenOf.get('f')).toEqual(['l1', 'l2']);
-      expect(homeActivityParent(m, plane, 'f')).toBe('l1');
-      expect(homeActivityParent(m, plane, 'act')).toBe('l1');
+      expect(homeActivityParent(m, plane, { targetId: 'f' })).toBe('l1');
+      expect(homeActivityParent(m, plane, { targetId: 'act' })).toBe('l1');
     }
   });
 });
@@ -130,23 +132,28 @@ describe('activityDropPosition', () => {
   const size = { width: 24, height: 24 };
 
   it('centers the node on the drop point, relative to the lane', () => {
-    expect(activityDropPosition(model(), 'l2', { x: 300, y: 300 }, size, boundsOf)).toEqual({ x: 160, y: 68 });
+    expect(activityDropPosition(model(), 'l2', { point: { x: 300, y: 300 }, size, boundsOf })).toEqual({
+      x: 160,
+      y: 68,
+    });
   });
 
   it('keeps a lane drop clear of the lane label strip and the top edge', () => {
-    expect(activityDropPosition(model(), 'l1', { x: 130, y: 95 }, size, boundsOf)).toEqual({
+    expect(activityDropPosition(model(), 'l1', { point: { x: 130, y: 95 }, size, boundsOf })).toEqual({
       x: ACTIVITY_LAYOUT.LANE_STRIP_W,
       y: 0,
     });
   });
 
   it('positions inside a region too, with no label strip to avoid', () => {
-    expect(activityDropPosition(model(), 'r', { x: 205, y: 300 }, size, boundsOf)).toEqual({ x: 0, y: 28 });
+    expect(activityDropPosition(model(), 'r', { point: { x: 205, y: 300 }, size, boundsOf })).toEqual({ x: 0, y: 28 });
   });
 
   it('declines a non-activity parent, a missing parent, or one not on the canvas', () => {
-    expect(activityDropPosition(model(), 'box', { x: 0, y: 0 }, size, boundsOf)).toBeUndefined();
-    expect(activityDropPosition(model(), undefined, { x: 0, y: 0 }, size, boundsOf)).toBeUndefined();
-    expect(activityDropPosition(model(), 'l1', { x: 0, y: 0 }, size, () => undefined)).toBeUndefined();
+    expect(activityDropPosition(model(), 'box', { point: { x: 0, y: 0 }, size, boundsOf })).toBeUndefined();
+    expect(activityDropPosition(model(), undefined, { point: { x: 0, y: 0 }, size, boundsOf })).toBeUndefined();
+    expect(
+      activityDropPosition(model(), 'l1', { point: { x: 0, y: 0 }, size, boundsOf: () => undefined }),
+    ).toBeUndefined();
   });
 });

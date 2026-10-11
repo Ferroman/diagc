@@ -12,11 +12,11 @@ import {
   type DiagramNode,
   type DiagramRelation,
   type EditorCommand,
-  type LayoutOverlay,
   type Point,
   type Size,
 } from '@diagc/core/internal';
 import { homeActivityParent } from '../activity/activityDrop';
+import type { PlaneLayout } from '../layout/savedPositions';
 
 /** The marker a pasted string must carry; anything else on the clipboard is
  * someone else's text and is left alone. Versioned so a later shape can refuse
@@ -60,9 +60,7 @@ function edgesOn(model: DiagramModel, plane: string | undefined) {
  * the copy must say where things were.
  */
 export function copySelection(
-  model: DiagramModel,
-  layout: LayoutOverlay | undefined,
-  plane: string | undefined,
+  { model, layout, plane }: PlaneLayout,
   ids: readonly string[],
   onScreen: Record<string, Point> = {},
 ): ClipboardPayload | null {
@@ -160,6 +158,53 @@ export interface PasteResult {
  */
 export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx: PasteContext): PasteResult | null {
   if (payload.nodes.length === 0) return null;
+  const idMap = freshIds(model, payload);
+  const rootParent = homesOf(model, payload, ctx);
+  const layers = new Set(model.layers.map((l) => l.id));
+  // a layer that exists here is kept, any other gives way to the pen
+  const onLayer = (layer: string | undefined) =>
+    layer !== undefined && layers.has(layer) ? layer : (ctx.penLayer ?? undefined);
+  const scopedPlane = ctx.plane !== undefined && !ctx.borrowsContainment ? ctx.plane : undefined;
+  const planeOpt = defined({ plane: ctx.plane });
+  const fresh = (n: DiagramNode): DiagramNode => {
+    // `key` is cross-diagram identity: a copy sharing it would MERGE with its
+    // original on compose. Plane and layer are re-scoped to where it lands.
+    const { key: _key, plane: _plane, layer, ...rest } = n;
+    return { ...rest, id: idMap.get(n.id)!, ...defined({ plane: scopedPlane, layer: onLayer(layer) }) };
+  };
+
+  const rootIds = new Set(payload.roots.map((r) => r.id));
+  const innerParent = new Map(payload.containment.map((e) => [e.child, e.parent]));
+  const commands: EditorCommand[] = [];
+  // Parents before children: payload.nodes keeps model order, which need not
+  // put a container first, so add every node, then every membership.
+  for (const n of payload.nodes) commands.push({ type: 'add-node', node: fresh(n) });
+  for (const n of payload.nodes) {
+    const parent = rootIds.has(n.id) ? rootParent.get(n.id) : idMap.get(innerParent.get(n.id) ?? '');
+    if (parent !== undefined) {
+      commands.push({ type: 'add-containment', parent, child: idMap.get(n.id)!, ...planeOpt });
+    }
+  }
+  commands.push(...placeCommands(payload, idMap, { step: PASTE_STEP * (ctx.repeat + 1), rootIds, planeOpt }));
+  commands.push(...relationCommands(payload, idMap, onLayer));
+  return { command: { type: 'batch', commands }, roots: payload.roots.map((r) => idMap.get(r.id)!) };
+}
+
+/** Fresh ids, reserved as they are taken so two copies of one id in a paste stay apart. */
+function freshIds(model: DiagramModel, payload: ClipboardPayload): Map<string, string> {
+  const taken: DiagramModel = { ...model, nodes: [...model.nodes] };
+  const idMap = new Map<string, string>();
+  for (const n of payload.nodes) {
+    const id = uniqueNodeId(taken, n.id);
+    idMap.set(n.id, id);
+    taken.nodes.push({ id, name: '' });
+  }
+  return idMap;
+}
+
+/** Where each pasted top goes, by its original id: the selection's rule (see
+ * pasteCommand), then the activity re-homing. */
+function homesOf(model: DiagramModel, payload: ClipboardPayload, ctx: PasteContext): Map<string, string | undefined> {
   const typeOf = (id: string | undefined) =>
     id === undefined ? undefined : model.nodes.find((n) => n.id === id)?.type;
   const exists = (id: string | undefined) => id !== undefined && model.nodes.some((n) => n.id === id);
@@ -184,48 +229,26 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
     return undefined;
   };
 
-  // Fresh ids, reserved as we go so two copies of one id in a paste stay apart.
-  const taken: DiagramModel = { ...model, nodes: [...model.nodes] };
-  const idMap = new Map<string, string>();
-  for (const n of payload.nodes) {
-    const id = uniqueNodeId(taken, n.id);
-    idMap.set(n.id, id);
-    taken.nodes.push({ id, name: '' });
-  }
-  const layers = new Set(model.layers.map((l) => l.id));
-  const scopedPlane = ctx.plane !== undefined && !ctx.borrowsContainment ? ctx.plane : undefined;
-  const planeOpt = defined({ plane: ctx.plane });
-  const fresh = (n: DiagramNode): DiagramNode => {
-    // `key` is cross-diagram identity: a copy sharing it would MERGE with its
-    // original on compose. Plane and layer are re-scoped to where it lands.
-    const { key: _key, plane: _plane, layer, ...rest } = n;
-    const onLayer = layer !== undefined && layers.has(layer) ? layer : (ctx.penLayer ?? undefined);
-    return {
-      ...rest,
-      id: idMap.get(n.id)!,
-      ...defined({ plane: scopedPlane, layer: onLayer }),
-    };
-  };
-
-  const commands: EditorCommand[] = [];
-  const rootIds = new Set(payload.roots.map((r) => r.id));
   const rootParent = new Map<string, string | undefined>();
   for (const r of payload.roots) {
     const raw = targetFor(r);
     const type = payload.nodes.find((n) => n.id === r.id)?.type;
-    rootParent.set(r.id, type === ACTIVITY_LANE_TYPE ? frameOf(raw) : homeActivityParent(model, ctx.plane, raw));
+    rootParent.set(
+      r.id,
+      type === ACTIVITY_LANE_TYPE ? frameOf(raw) : homeActivityParent(model, ctx.plane, { targetId: raw }),
+    );
   }
-  const innerParent = new Map(payload.containment.map((e) => [e.child, e.parent]));
-  // Parents before children: payload.nodes keeps model order, which need not
-  // put a container first, so add every node, then every membership.
-  for (const n of payload.nodes) commands.push({ type: 'add-node', node: fresh(n) });
-  for (const n of payload.nodes) {
-    const parent = rootIds.has(n.id) ? rootParent.get(n.id) : idMap.get(innerParent.get(n.id) ?? '');
-    if (parent !== undefined) {
-      commands.push({ type: 'add-containment', parent, child: idMap.get(n.id)!, ...planeOpt });
-    }
-  }
-  const step = PASTE_STEP * (ctx.repeat + 1);
+  return rootParent;
+}
+
+/** Each node's saved position and size, node by node: a top steps `step`
+ * down-right of where it was, a nested node keeps its parent-relative spot. */
+function placeCommands(
+  payload: ClipboardPayload,
+  idMap: Map<string, string>,
+  { step, rootIds, planeOpt }: { step: number; rootIds: Set<string>; planeOpt: { plane?: string } },
+): EditorCommand[] {
+  const commands: EditorCommand[] = [];
   for (const n of payload.nodes) {
     const p = payload.positions[n.id];
     if (p !== undefined) {
@@ -235,6 +258,16 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
     const s = payload.sizes[n.id];
     if (s !== undefined) commands.push({ type: 'set-size', nodeId: idMap.get(n.id)!, w: s.w, h: s.h });
   }
+  return commands;
+}
+
+/** The copied relations between the fresh ids, with their labels. */
+function relationCommands(
+  payload: ClipboardPayload,
+  idMap: Map<string, string>,
+  onLayer: (layer: string | undefined) => string | undefined,
+): EditorCommand[] {
+  const commands: EditorCommand[] = [];
   // Relations: add-relation mints `from->to#i`; every endpoint is brand new, so
   // the i for each pair is just how many of that pair came before in this paste.
   const pairs = new Map<string, number>();
@@ -243,7 +276,6 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
     const to = idMap.get(r.to)!;
     const i = pairs.get(`${from}->${to}`) ?? 0;
     pairs.set(`${from}->${to}`, i + 1);
-    const onLayer = r.layer !== undefined && layers.has(r.layer) ? r.layer : (ctx.penLayer ?? undefined);
     commands.push({
       type: 'add-relation',
       from,
@@ -252,7 +284,7 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
         kind: r.kind,
         ...defined({
           label: r.label,
-          layer: onLayer,
+          layer: onLayer(r.layer),
           description: r.description,
           style: r.style,
           polarity: r.polarity,
@@ -266,5 +298,5 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
       commands.push({ type: 'update-relation', id: `${from}->${to}#${i}`, patch: { labels: r.labels } });
     }
   }
-  return { command: { type: 'batch', commands }, roots: payload.roots.map((r) => idMap.get(r.id)!) };
+  return commands;
 }

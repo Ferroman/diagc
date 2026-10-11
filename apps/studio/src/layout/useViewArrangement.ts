@@ -166,7 +166,7 @@ export function useViewArrangement({
   const savePositions = useCallback(async () => {
     if (model === undefined || !unsavedView) return;
     const ok = await postLayout(
-      withSavedPositions(layout, model, activePlane, movedPositions, unfoldedNow, movedLabels),
+      withSavedPositions({ layout, model, plane: activePlane }, movedPositions, unfoldedNow, movedLabels),
     );
     // The posted body folds movedPositions into the saved overlay, so on success
     // those drags are no longer unsaved — clear the chip. A failed post must
@@ -188,9 +188,7 @@ export function useViewArrangement({
     const snapshot = freezing ? (layoutApiRef.current?.snapshotPositions() ?? {}) : null;
     const ok = await postLayout(
       withPlaneManual(
-        layout,
-        model,
-        activePlane,
+        { layout, model, plane: activePlane },
         snapshot,
         freezing ? unfoldedNow : undefined,
         freezing ? movedLabels : {},

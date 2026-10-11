@@ -4,35 +4,12 @@
       "count": 1
     }
   },
-  "apps/studio/src/activity/activityDrop.ts": {
-    "max-params": {
-      "count": 2
-    }
-  },
-  "apps/studio/src/canvas-editing/clipboard.ts": {
-    "complexity": {
-      "count": 1
-    },
-    "max-params": {
-      "count": 1
-    }
-  },
-  "apps/studio/src/canvas-editing/tableConnect.ts": {
-    "max-params": {
-      "count": 1
-    }
-  },
   "apps/studio/src/canvas-editing/useNodePlacement.ts": {
     "complexity": {
       "count": 1
     },
     "max-lines-per-function": {
       "count": 1
-    }
-  },
-  "apps/studio/src/layout/savedPositions.ts": {
-    "max-params": {
-      "count": 2
     }
   },
   "apps/studio/src/library/packs.aws-containers.ts": {
