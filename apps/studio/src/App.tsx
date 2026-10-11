@@ -249,11 +249,13 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
 
   // Read through a ref by a once-subscribed listener, and assigned on every
   // render: leaveEditRef is the hashchange listener's cross-diagram edit close
-  // (useDeepLink). The keyboard no longer needs any — see the hotkeys block
-  // above the JSX, which runs after everything it calls exists.
+  // and resetViewRef its view reset (both useDeepLink). The keyboard needs
+  // none — see the hotkeys block above the JSX, which runs after everything it
+  // calls exists.
   const leaveEditRef = useRef<() => boolean>(() => true);
+  const resetViewRef = useRef<() => void>(() => {});
 
-  const dl = useDeepLink({ names, booted, leaveEditRef });
+  const dl = useDeepLink({ names, booted, leaveEditRef, resetViewRef });
   const { selected, setSelected, enteredPath, setEnteredPath, handleEnteredPathChange } = dl;
   const drillRoot = enteredPath.length > 0 ? enteredPath[enteredPath.length - 1] : undefined;
   // Live mirror of `selected` for enterEditFromSource's in-flight fetch to check
@@ -272,8 +274,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // The preview is diagram-scoped viewer state; every path that changes which
   // diagram is selected — the picker, a hashchange deep link, or the stale-name
   // fallback (all in useDeepLink) — must drop it here, or a leftover preview
-  // keyed 'default' (a key every diagram resolves to, unlike the plane/pin
-  // state it leaks alongside today) would silently re-lay out the next diagram.
+  // keyed 'default' (a key every diagram resolves to) would silently re-lay out
+  // the next diagram.
   useEffect(() => {
     setLayoutPreview({});
   }, [selected]);
@@ -464,6 +466,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     setActiveLayer,
   });
   const { select, switchPlane, activateLayer, toggleLayer, mergeSelectedLayers, toggleExpand, resetView } = view;
+  resetViewRef.current = resetView;
 
   // Ctrl/⌘+C / Ctrl/⌘+V on the canvas (edit mode): the selection, with what it
   // contains, through the system clipboard — see hooks/useClipboard.

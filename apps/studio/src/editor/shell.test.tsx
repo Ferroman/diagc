@@ -1280,6 +1280,66 @@ describe('editor shell', () => {
     expect(window.location.hash).toBe('#/renamed/sys');
   });
 
+  it('keeps the plane when the diagram is renamed', async () => {
+    // A rename reopens the same diagram under a new name, so its view stays put.
+    const planed = { ...goodModel, planes: [{ id: 'infra', name: 'Infra' }] };
+    vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: planed, issues: [], editable: true }]));
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Infra' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Infra' }).className).toContain('active'));
+    vi.spyOn(window, 'prompt').mockReturnValue('renamed');
+    await pickDiagramAction('Rename');
+    await screen.findByRole('button', { name: 'Diagram: renamed' });
+    expect(screen.getByRole('button', { name: 'Infra' }).className).toContain('active');
+    expect(screen.getByRole('button', { name: 'Default' }).className).not.toContain('active');
+  });
+
+  it('opens a diagram reached through Back/Forward on its own planes, with nothing selected', async () => {
+    // The hash names a diagram and a drill path, never a plane or a selection:
+    // alpha's `logical` plane and its selected node mean nothing on beta.
+    const alpha = {
+      ...twoModel,
+      id: 'alpha',
+      name: 'alpha',
+      nodes: [{ id: 'svc', name: 'svc', type: 'service' }],
+      planes: [
+        { id: 'base', name: 'Base' },
+        { id: 'logical', name: 'Logical' },
+      ],
+    };
+    const beta = { ...goodModel, id: 'beta', name: 'beta', planes: [{ id: 'deploy', name: 'Deploy' }] };
+    vi.stubGlobal(
+      'fetch',
+      stubFetch([
+        { name: 'alpha', model: alpha, issues: [], editable: true },
+        { name: 'beta', model: beta, issues: [], editable: true },
+      ]),
+    );
+    render(<App />);
+    // alpha → beta through the picker, then Back to alpha.
+    fireEvent.click(await screen.findByRole('button', { name: 'Diagram: alpha' }));
+    fireEvent.click(screen.getByRole('option', { name: 'beta' }));
+    await waitFor(() => expect(window.location.hash).toBe('#/beta'));
+    window.location.hash = '#/alpha'; // what Back restores
+    fireEvent(window, new HashChangeEvent('hashchange'));
+    await screen.findByRole('button', { name: 'Diagram: alpha' });
+    // On alpha: switch to its `logical` plane, then select a node.
+    fireEvent.click(await screen.findByRole('button', { name: 'Logical' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Logical' }).className).toContain('active'));
+    fireEvent.click(await canvas().findByText('svc'));
+    await waitFor(() => expect(screen.queryByText('Select a node or edge for details.')).toBeNull());
+    // Forward to beta: it opens on its default view (its first plane's
+    // containment, so `a` stays inside the folded `sys`) with nothing selected.
+    window.location.hash = '#/beta';
+    fireEvent(window, new HashChangeEvent('hashchange'));
+    await screen.findByRole('button', { name: 'Diagram: beta' });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Default' }).className).toContain('active'));
+    expect(screen.getByRole('button', { name: 'Deploy' }).className).not.toContain('active');
+    expect(screen.getByText('Select a node or edge for details.')).toBeDefined();
+    expect(await canvas().findByText('sys')).toBeDefined();
+    expect(canvas().queryByText('a')).toBeNull();
+  });
+
   it('leaves edit mode when a hashchange switches diagrams', async () => {
     // Both diagrams owned so the Edit button can reappear for 'two' after the
     // hashchange closes the edit session on 'sketch'.
