@@ -317,6 +317,58 @@ describe('view-mode layout preview', () => {
     expect(screen.getByRole('button', { name: /save positions/i })).toBeDefined();
   });
 
+  // A failed view-mode layout write lands in the view-mode banner and leaves the
+  // "Save positions" chip up for a retry. Only the layouts POST fails; boot and
+  // every other request keep the shared stub's answers.
+  const failLayoutPost = (respond: () => Promise<Response>) => {
+    const fetchMock = fetch as ReturnType<typeof vi.fn>;
+    const shared = fetchMock.getMockImplementation() as (url: string, init?: RequestInit) => Promise<Response>;
+    fetchMock.mockImplementation((url: string, init?: RequestInit) =>
+      String(url).startsWith('/api/layouts/') && init?.method === 'POST' ? respond() : shared(url, init),
+    );
+  };
+
+  const savePositionsAfterDrag = async () => {
+    await waitFor(() => expect(document.querySelector('.react-flow__node')).not.toBeNull());
+    const node = await screen.findByText('a');
+    fireEvent.click(node);
+    await waitFor(() => expect(document.querySelector('.react-flow__node.selected')).not.toBeNull());
+    fireEvent.keyDown(node, { key: 'ArrowRight' });
+    fireEvent.click(await screen.findByRole('button', { name: /save positions/i }, { timeout: 2000 }));
+    await waitFor(() => expect(layoutPosts()).toEqual(['/api/layouts/sketch']));
+  };
+
+  it('Save positions reports a rejected request in the banner and keeps the chip', async () => {
+    failLayoutPost(async () => {
+      throw new TypeError('Failed to fetch');
+    });
+    render(<App />);
+    await savePositionsAfterDrag();
+
+    expect(await screen.findByText('Failed to fetch')).toBeDefined();
+    expect(screen.getByRole('button', { name: /save positions/i })).toBeDefined();
+  });
+
+  it('Save positions reports an error body that is not JSON as a failed layout save', async () => {
+    failLayoutPost(async () => new Response('<html>502 Bad Gateway</html>', { status: 502 }));
+    render(<App />);
+    await savePositionsAfterDrag();
+
+    expect(await screen.findByText('Could not save layout')).toBeDefined();
+    expect(screen.getByRole('button', { name: /save positions/i })).toBeDefined();
+  });
+
+  it("Save positions shows the server's issues from a JSON error body", async () => {
+    failLayoutPost(
+      async () => new Response(JSON.stringify({ issues: [{ message: 'layout: bad plane key' }] }), { status: 400 }),
+    );
+    render(<App />);
+    await savePositionsAfterDrag();
+
+    expect(await screen.findByText('layout: bad plane key')).toBeDefined();
+    expect(screen.getByRole('button', { name: /save positions/i })).toBeDefined();
+  });
+
   it('the Snap chip toggles and persists as a viewer preference', async () => {
     render(<App />);
     const chip = await screen.findByRole('button', { name: /snap/i });
