@@ -330,13 +330,14 @@ function routeOrPlan(ctx: RouterContext, link: Link): { route: Point[] } | Plan 
   }
   const start = endPoint(link.a, outSide);
   const end = endPoint(link.b, inSide);
-  // side by side on one row with nothing between: a straight line
+  // side by side on one row with nothing between: a straight line. The ends may
+  // sit up to a pixel apart, so the row checked is the source's.
   if (
     outSide === 'right' &&
     inSide === 'left' &&
     Math.abs(start.y - end.y) < 1 &&
     end.x > start.x &&
-    isClear(ctx, start, end, new Set([link.a.id, link.b.id]))
+    isClear(ctx, start, { x: end.x, y: start.y }, new Set([link.a.id, link.b.id]))
   ) {
     return { route: [start, end] };
   }

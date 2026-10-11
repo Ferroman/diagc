@@ -256,6 +256,19 @@ describe('routeLaneEdges, point by point', () => {
     });
     expect(labelSpots.get('e')).toEqual({ x: 150, y: 20 });
   });
+
+  it("draws a straight line between ends under a pixel apart, clear along the source's row", () => {
+    const { routes, labelSpots } = routeLaneEdges({
+      boxes: [box('a', 0, 0), box('k', 150, 26.3, 50, 20), box('b', 300, 0.6)],
+      corridors: [],
+      edges: [{ id: 'e', from: 'a', to: 'b', hasLabel: true }],
+    });
+    expect(routes.get('e')).toEqual([
+      { x: 100, y: 20 },
+      { x: 300, y: 20 + 0.6 },
+    ]);
+    expect(labelSpots.get('e')).toEqual({ x: 200, y: (20 + 20 + 0.6) / 2 });
+  });
 });
 
 describe('routeLaneEdges, a fixed top or bottom end', () => {
