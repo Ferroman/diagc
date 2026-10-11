@@ -26,7 +26,7 @@ import {
 import type { DiagramSelection, DiagramView, LayoutApi, QuickAddSide } from '@diagc/renderer';
 import type { EditorApi } from '../session/useEditor';
 import { getHost } from '../host';
-import { moveLaneCommand } from '../activity/ActivityPanel';
+import { moveLaneCommand } from '../activity/activityLanes';
 import { setActorRole } from '../notations/plan/planActions';
 import { connectKind } from '../notations';
 import type { StudioNotationProfile } from '../notations/types';

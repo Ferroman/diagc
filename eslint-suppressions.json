@@ -4,11 +4,6 @@
       "count": 1
     }
   },
-  "apps/studio/src/activity/ActivityPanel.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "apps/studio/src/activity/activityDrop.ts": {
     "max-params": {
       "count": 2
@@ -80,11 +75,6 @@
       "count": 1
     }
   },
-  "apps/studio/src/notations/git-graph/GitPanel.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "apps/studio/src/notations/plan/planActions.ts": {
     "complexity": {
       "count": 1
@@ -94,11 +84,6 @@
     },
     "max-params": {
       "count": 4
-    }
-  },
-  "apps/studio/src/view/LayersPlanesPanel.tsx": {
-    "max-lines-per-function": {
-      "count": 1
     }
   },
   "apps/viewer/src/Viewer.tsx": {
