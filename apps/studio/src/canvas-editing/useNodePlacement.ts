@@ -122,7 +122,7 @@ export function useNodePlacement({
     // an absolute flow coordinate, only correct for a root node — a child added
     // under a container is left for a one-time elk placement within its parent
     // (same deferral the feature already applies to container children), then
-    // draggable to pin.
+    // dragged to a saved position.
     if (activePlaneManual && place.parent === undefined) {
       const c = layoutApiRef.current?.viewportCenter();
       if (c !== undefined)

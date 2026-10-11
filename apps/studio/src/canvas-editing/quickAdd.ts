@@ -398,9 +398,9 @@ export function quickAdd(
 }
 
 export interface QuickAddPlacement {
-  /** elk will not place the node (manual plane) or the source is pinned on
-   * this plane — either way the new node must be told where to sit */
-  pinned: boolean;
+  /** elk will not place the node (manual plane) or the source has a saved
+   * position on this plane — either way the new node must be told where to sit */
+  needsPosition: boolean;
   /** the source's on-screen position, parent-relative (LayoutApi.snapshotPositions);
    * undefined when it is not rendered */
   source: Point | undefined;
@@ -416,10 +416,10 @@ export interface QuickAddPlacement {
  * and at the source's size when the source was given one.
  *
  * The position is added only when one is needed at all — in an automatic plane
- * with an unpinned source, elk places the connected node itself, and pinning it
- * there would be the one box the next arrangement cannot move (addNode's
- * manual-plane rule, plus the pinned-source case so a node added beside a
- * hand-placed one stays beside it). Positions are parent-relative on both sides,
+ * with a source that has no saved position, elk places the connected node
+ * itself, and saving one for it there would make it the one box the next
+ * arrangement cannot move (addNode's manual-plane rule, plus the saved-source
+ * case so a node added beside a hand-placed one stays beside it). Positions are parent-relative on both sides,
  * so the rule holds for siblings inside a container.
  *
  * The size is not tied to that: sizes live outside any plane and a resized
@@ -430,7 +430,7 @@ export interface QuickAddPlacement {
  */
 export function quickAddPlaced(out: QuickAdd, p: QuickAddPlacement): EditorCommand {
   const extra: EditorCommand[] = [];
-  if (out.beside && p.pinned && p.source !== undefined) {
+  if (out.beside && p.needsPosition && p.source !== undefined) {
     extra.push({
       type: 'set-position',
       nodeId: out.id,

@@ -63,14 +63,15 @@ export const unfoldedOf = (pins: Record<string, 'expanded' | 'collapsed'>): stri
     .sort();
 
 /**
- * Switch a plane's manual-layout flag, optionally pinning a snapshot of every
+ * Switch a plane's manual-layout flag, optionally saving a snapshot of every
  * node's current position at the same time — the view-mode `Freeze layout`
  * chip. This IS the deliberate act `withSavedPositions` refuses to take.
  *
  * What the flag means: the renderer never reads it (elk runs on every frame;
  * saved positions simply win over its output). It tells the studio to stop
- * offering the plane to the algorithm and to pin nodes it creates — so a node
- * added to the source later still gets an automatic position until it is moved.
+ * offering the plane to the algorithm and to save a position for each node it
+ * creates — so a node added to the source later still gets an automatic
+ * position until it is moved.
  *
  * `snapshot` non-null: merge those positions into the plane and set the flag;
  * `unfolded` rides along exactly as in `withSavedPositions` (a frozen picture

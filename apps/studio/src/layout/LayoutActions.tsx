@@ -9,8 +9,8 @@ interface RelayoutInput {
   getAutoPositions: () => Record<string, Point>;
 }
 
-/** Re-layout the active plane: clear its pins under automatic layout, re-pin a
- *  fresh arrangement under manual. Exported because the button and the hotkey
+/** Re-layout the active plane: clear its saved positions under automatic
+ *  layout, save a fresh arrangement under manual. Exported because the button and the hotkey
  *  must be the same function — confirm and all. */
 export async function relayoutPlane(editor: EditorApi, o: RelayoutInput): Promise<void> {
   const planeOpt = defined({ plane: o.activePlane });
@@ -27,7 +27,7 @@ export async function relayoutPlane(editor: EditorApi, o: RelayoutInput): Promis
  * Edit mode's two layout commands, shown in the dock's Layout & style section
  * beside the settings they act on. They sat in the editor toolbar until that row
  * was cut back to the tools; unlike the pickers they stay when a notation owns
- * the arrangement — pinning and re-running still mean something there.
+ * the arrangement — saving positions and re-running still mean something there.
  */
 export function EditLayoutActions({
   editor,

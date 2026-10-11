@@ -229,8 +229,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const [leverageFocus, setLeverageFocus] = useState<LeverageFocus | null>(null);
   const [leftTab, setLeftTab] = useState<InspectorTab>('properties');
   // The Library tab's search and open sections, here rather than in the panel:
-  // the inspector mounts only its active tab, and a canvas click switches it to
-  // Properties, so panel-local state reset on every return to the Library.
+  // the inspector mounts only its active tab, so panel-local state would reset
+  // on every trip to Properties and back.
   const libraryView = useState(EMPTY_LIBRARY_VIEW);
   // The dock collapse states persist with an on-disk format that predates this
   // hook ('collapsed'/'expanded'), so both reader and serializer use it.
@@ -320,9 +320,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const model = editing ? session?.state.model : current?.model;
   const layout = editing ? session?.state.layout : current?.layout;
   const drawings = editing ? session?.state.drawings : current?.drawings;
-  // A diagram-pinned style (known preset only) outranks the app preference;
-  // unknown pinned ids behave as unpinned so retired presets never wedge a file.
-  const pinnedStyle = model?.style !== undefined && isKnownStyle(model.style) ? model.style : undefined;
+  // The diagram's style (a known preset only) outranks the app preference; an
+  // unknown style id counts as none, so a retired preset never wedges a file.
+  const diagramStyle = model?.style !== undefined && isKnownStyle(model.style) ? model.style : undefined;
   const planes = model?.planes ?? [];
   // undefined = the base/default view (no plane overlay). Kept distinct from
   // planes[0] so the Default chip stays reachable once planes exist — but the
@@ -392,10 +392,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // drops us back to the base sheet without any explicit reset).
   const penLayer = activeLayer !== null && (model?.layers ?? []).some((l) => l.id === activeLayer) ? activeLayer : null;
 
-  // Set (or clear, with side=null) one endpoint's pinned side on a relation,
+  // Set (or clear, with side=null) one endpoint's fixed side on a relation,
   // merged into its existing style so other overrides survive; returns the next
   // style object, or null when nothing remains (drops the style entirely). Shared
-  // by the pin dots (onSetEdgeSide) and reconnect-drag pinning.
+  // by the fixed-side dots (onSetEdgeSide) and a reconnect drag that fixes a side.
   const styleWithSide = (relationId: string, end: 'from' | 'to', side: Side | null): RelationStyle | null => {
     const style: RelationStyle = { ...model?.relations.find((r) => r.id === relationId)?.style };
     const key = end === 'from' ? 'fromSide' : 'toSide';
@@ -499,7 +499,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // consequence, a flow to a new process, a connected sibling anywhere else)
   // and open it for typing, the way the notation panels' own buttons do.
   // Placement: a sibling goes beside its source only when elk would not place
-  // it (manual plane) or the source is pinned — see quickAddPlaced.
+  // it (manual plane) or the source has a saved position — see quickAddPlaced.
   // Reports whether it acted so the hotkeys dispatcher only swallows Tab's
   // default focus move when there was something to extend (see useHotkeys).
   const quickAddCtx: QuickAddContext = {
@@ -522,7 +522,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     const size = layout?.sizes?.[id];
     editor.dispatch(
       quickAddPlaced(out, {
-        pinned: activePlaneManual || layout?.planes[key]?.[id] !== undefined,
+        needsPosition: activePlaneManual || layout?.planes[key]?.[id] !== undefined,
         source: layoutApiRef.current?.snapshotPositions()[id],
         width: size?.w ?? LEAF_SIZE.width,
         size,
@@ -714,8 +714,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
 
   // Flip the active plane between automatic and manual layout. Turning auto Off
   // freezes the current on-screen positions (so nothing jumps) then sets the
-  // manual flag; turning it On just clears the flag (non-destructive — the pins
-  // stay, but automatic layout resumes driving the arrangement).
+  // manual flag; turning it On just clears the flag (non-destructive — the saved
+  // positions stay, but automatic layout resumes driving the arrangement).
   const toggleAutoLayout = () => {
     if (editor.session?.state.model === undefined) return;
     if (activePlaneManual) {
@@ -861,10 +861,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const selectionColor =
     editing && model !== undefined ? computeSelectionColor(model, selection, editor.dispatch) : null;
 
-  // The node panel's position inputs, computed once here instead of twice in
-  // the JSX below (hasPin used to run this same lookup a second time via an
-  // IIFE just to get pinned/live) — same lookups, same values, one place.
-  const pinned =
+  // The node panel's position inputs: the selected node's saved position on
+  // this plane, and where it sits on screen.
+  const savedPosition =
     selection?.kind === 'node' && model !== undefined
       ? layout?.planes[layoutPlaneKey(model, activePlane)]?.[selection.id]
       : undefined;
@@ -1239,8 +1238,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           model={model}
                           nodeId={selection.id}
                           activePlane={activePlane}
-                          hasPin={pinned !== undefined}
-                          pinned={pinned}
+                          hasSavedPosition={savedPosition !== undefined}
+                          savedPosition={savedPosition}
                           live={live}
                           autoFocusName={selection.id === renameId}
                           notation={notation}
@@ -1318,7 +1317,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   assetBase={getHost().assetBase}
                   libraryBase={getHost().libraryBase}
                   onOpenLink={(l) => getHost().openLink(l)}
-                  styleId={pinnedStyle ?? style}
+                  styleId={diagramStyle ?? style}
                   snapGrid={snap ? SNAP_GRID : undefined}
                   onCldEdges={handleCldEdges}
                   onViewPositionsChange={setMovedPositions}
@@ -1417,7 +1416,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                               }
                             }
                             editor.dispatch({ type: 'set-size', nodeId: id, w, h });
-                            // top/left-handle resizes shift the node origin — pin the
+                            // top/left-handle resizes shift the node origin — save the
                             // post-resize position too, or the next resync snaps it
                             // back by the size delta.
                             editor.dispatch({
@@ -1431,9 +1430,9 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                           onConnect: (from: string, to: string, sourceHandle?: string | null) => {
                             // Dragging from a table column's row handle creates an fk
                             // relation (+ flags the column) instead of the default float
-                            // edge. float by default: no pinned sides, so the new edge
-                            // tracks the facing borders. Pin later via a pin dot or the
-                            // panel. The edge lands on the active sheet (the pen), like
+                            // edge. float by default: no fixed sides, so the new edge
+                            // tracks the facing borders. Fix one later with a fixed-side
+                            // dot or the panel. The edge lands on the active sheet (the pen), like
                             // nodes. The kind otherwise comes from the notation and the
                             // two endpoints (connectKind) — a threat model's flows must be
                             // data-flow to be read as flows at all, unless an end is a
@@ -1482,18 +1481,18 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                             relationId: string,
                             from: string,
                             to: string,
-                            endPin?: { end: 'from' | 'to'; side: Side | null },
+                            fixedSide?: { end: 'from' | 'to'; side: Side | null },
                           ) =>
                             // move the endpoint(s); the dragged end floats (new node) or
-                            // pins to the side it was dropped on (same node)
+                            // is fixed to the side it was dropped on (same node)
                             editor.dispatch({
                               type: 'update-relation',
                               id: relationId,
                               patch: {
                                 from,
                                 to,
-                                ...(endPin !== undefined
-                                  ? { style: styleWithSide(relationId, endPin.end, endPin.side) }
+                                ...(fixedSide !== undefined
+                                  ? { style: styleWithSide(relationId, fixedSide.end, fixedSide.side) }
                                   : {}),
                               },
                             }),
@@ -1621,7 +1620,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         className="chip-select"
                         aria-label="Diagram style"
                         title="Diagram style (saved with the diagram)"
-                        value={pinnedStyle ?? ''}
+                        value={diagramStyle ?? ''}
                         onChange={(e) =>
                           editor.dispatch({
                             type: 'set-diagram-style',
@@ -1640,10 +1639,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                       <select
                         className="chip-select"
                         aria-label="Style"
-                        title={pinnedStyle !== undefined ? 'Set by diagram' : 'Visual style'}
+                        title={diagramStyle !== undefined ? 'Set by diagram' : 'Visual style'}
                         /* clamp: garbage in localStorage would otherwise render a blank select */
-                        value={pinnedStyle ?? (isKnownStyle(style) ? style : 'clean')}
-                        disabled={pinnedStyle !== undefined}
+                        value={diagramStyle ?? (isKnownStyle(style) ? style : 'clean')}
+                        disabled={diagramStyle !== undefined}
                         onChange={(e) => setStyle(e.target.value)}
                       >
                         {STYLE_PRESETS.map((p) => (

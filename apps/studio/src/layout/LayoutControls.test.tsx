@@ -119,7 +119,7 @@ describe('LayoutControls', () => {
   });
 
   it("still runs layered-only controls when the locked notation's sidecar names a different algorithm", () => {
-    // Second-order pins the run to layered regardless of what a stale/foreign
+    // Second-order locks the run to layered regardless of what a stale/foreign
     // sidecar says (elk partitions are layered-only) — the direction/wrap
     // controls must reflect that forced algorithm, not the unused setting.
     render(<LayoutControls settings={{ algorithm: 'force' }} onChange={() => {}} algorithmLocked />);

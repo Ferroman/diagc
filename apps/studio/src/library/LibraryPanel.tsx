@@ -26,8 +26,8 @@ interface LibraryPanelProps {
   onImportShape?: (categoryId: string, file: File) => void;
   assetBase?: string;
   /** The search and open/closed sections, held by the host so they outlive this
-   * panel: the inspector mounts only its active tab, and every canvas click flips
-   * it to Properties. Omitted, the panel keeps them itself (and forgets them on
+   * panel: the inspector mounts only its active tab, so switching to Properties
+   * unmounts it. Omitted, the panel keeps them itself (and forgets them on
    * unmount). */
   viewState?: [LibraryView, Dispatch<SetStateAction<LibraryView>>];
 }

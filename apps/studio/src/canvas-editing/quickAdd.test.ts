@@ -399,8 +399,8 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
 describe('quickAddPlaced', () => {
   const out = () => quickAdd(plain(), 'b', ctx())!;
 
-  it('appends a set-position to the right of a pinned source, in the same batch', () => {
-    const cmd = quickAddPlaced(out(), { pinned: true, source: { x: 100, y: 50 }, width: 160, plane: 'p' });
+  it('appends a set-position to the right of a source with a saved position, in the same batch', () => {
+    const cmd = quickAddPlaced(out(), { needsPosition: true, source: { x: 100, y: 50 }, width: 160, plane: 'p' });
     const cmds = batchOf(cmd);
     expect(cmds).toHaveLength(3);
     expect(cmds[2]).toEqual({
@@ -412,30 +412,46 @@ describe('quickAddPlaced', () => {
     });
   });
 
-  it('omits the plane when there is none, and does nothing for an unpinned or unrendered source or a notation recipe', () => {
+  it('omits the plane when there is none, and does nothing when no position is needed, for an unrendered source or a notation recipe', () => {
     const o = out();
-    const cmds = batchOf(quickAddPlaced(o, { pinned: true, source: { x: 0, y: 0 }, width: 10, plane: undefined }));
+    const cmds = batchOf(
+      quickAddPlaced(o, { needsPosition: true, source: { x: 0, y: 0 }, width: 10, plane: undefined }),
+    );
     expect(cmds[2]).toEqual({ type: 'set-position', nodeId: o.id, x: 10 + QUICK_ADD_GAP, y: 0 });
-    expect(quickAddPlaced(o, { pinned: false, source: { x: 0, y: 0 }, width: 10, plane: undefined })).toBe(o.command);
-    expect(quickAddPlaced(o, { pinned: true, source: undefined, width: 10, plane: undefined })).toBe(o.command);
+    expect(quickAddPlaced(o, { needsPosition: false, source: { x: 0, y: 0 }, width: 10, plane: undefined })).toBe(
+      o.command,
+    );
+    expect(quickAddPlaced(o, { needsPosition: true, source: undefined, width: 10, plane: undefined })).toBe(o.command);
     const bone = quickAdd(fish(), 'code', ctx({ notation: 'fishbone' }))!;
-    expect(quickAddPlaced(bone, { pinned: true, source: { x: 0, y: 0 }, width: 10, plane: undefined })).toBe(
+    expect(quickAddPlaced(bone, { needsPosition: true, source: { x: 0, y: 0 }, width: 10, plane: undefined })).toBe(
       bone.command,
     );
   });
 
   it('appends a set-size from the source, whether or not a position is needed — and never on a notation recipe', () => {
     const o = out();
-    // unpinned: elk still owns the arrangement, but a resized source must breed
+    // no position needed: elk still owns the arrangement, but a resized source must breed
     // a same-sized sibling, so the size rides alone
     const alone = batchOf(
-      quickAddPlaced(o, { pinned: false, source: undefined, width: 64, size: { w: 64, h: 64 }, plane: undefined }),
+      quickAddPlaced(o, {
+        needsPosition: false,
+        source: undefined,
+        width: 64,
+        size: { w: 64, h: 64 },
+        plane: undefined,
+      }),
     );
     expect(alone).toHaveLength(3);
     expect(alone[2]).toEqual({ type: 'set-size', nodeId: o.id, w: 64, h: 64 });
-    // pinned: position first, then size — both in the one undo step
+    // a position needed: position first, then size — both in the one undo step
     const both = batchOf(
-      quickAddPlaced(o, { pinned: true, source: { x: 0, y: 0 }, width: 64, size: { w: 64, h: 64 }, plane: undefined }),
+      quickAddPlaced(o, {
+        needsPosition: true,
+        source: { x: 0, y: 0 },
+        width: 64,
+        size: { w: 64, h: 64 },
+        plane: undefined,
+      }),
     );
     expect(both).toHaveLength(4);
     expect(both[2]).toMatchObject({ type: 'set-position' });
@@ -444,7 +460,7 @@ describe('quickAddPlaced', () => {
     const bone = quickAdd(fish(), 'code', ctx({ notation: 'fishbone' }))!;
     expect(
       quickAddPlaced(bone, {
-        pinned: true,
+        needsPosition: true,
         source: { x: 0, y: 0 },
         width: 64,
         size: { w: 64, h: 64 },

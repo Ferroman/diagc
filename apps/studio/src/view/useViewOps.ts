@@ -88,10 +88,10 @@ export function useViewOps({
 }: UseViewOpsOptions): ViewOps {
   // Selection moves anywhere but the pending-rename node → the rename moment is
   // over. What it deliberately does NOT touch is the inspector tab: the dock
-  // keeps the one the user chose, because a canvas click while the Library was
-  // open used to flip to Properties and cost a trip back to the palette for
-  // every node placed or container selected. Only the toolbar add (which renames
-  // in the Properties Name field) and re-entering edit mode set the tab.
+  // keeps the one the user chose, because a canvas click that flipped the
+  // Library to Properties would cost a trip back to the palette for every node
+  // placed or container selected. Only the toolbar add (which renames in the
+  // Properties Name field) and re-entering edit mode set the tab.
   const select = (sel: DiagramSelection | null) => {
     setSelection(sel);
     setLeverageFocus(null); // a new selection drops any leverage-row highlight

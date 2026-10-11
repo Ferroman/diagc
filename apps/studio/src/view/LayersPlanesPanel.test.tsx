@@ -318,7 +318,7 @@ describe('LayersPlanesPanel', () => {
     expect(screen.queryByRole('checkbox', { name: 'Legend' })).toBeNull();
   });
 
-  it('the Notation select pins the model notation and clearing removes it', () => {
+  it('the Notation select sets the model notation and clearing removes it', () => {
     const onCommand = vi.fn();
     const m = model('d');
     m.node('a');

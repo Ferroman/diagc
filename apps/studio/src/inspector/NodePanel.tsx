@@ -49,11 +49,11 @@ interface NodePanelProps {
   model: DiagramModel;
   nodeId: string;
   activePlane: string | undefined;
-  /** node has a pinned position in the active plane's layout bucket */
-  hasPin?: boolean;
-  /** the node's pinned position in the active plane (parent-relative flow px) */
-  pinned?: Point;
-  /** where the node sits on screen when it is NOT pinned — the inputs'
+  /** node has a saved position in the active plane's layout bucket */
+  hasSavedPosition?: boolean;
+  /** the node's saved position in the active plane (parent-relative flow px) */
+  savedPosition?: Point;
+  /** where the node sits on screen when it has NO saved position — the inputs'
    * placeholder, so typing a coordinate starts from something real */
   live?: Point;
   /** focus + select the name input on mount (a node was just added) */
@@ -103,8 +103,8 @@ export function NodePanel({
   model,
   nodeId,
   activePlane,
-  hasPin = false,
-  pinned,
+  hasSavedPosition = false,
+  savedPosition,
   live,
   autoFocusName = false,
   notation,
@@ -147,13 +147,13 @@ export function NodePanel({
   const [addParent, setAddParent] = useState('');
   const [addPlane, setAddPlane] = useState('');
 
-  // Position inputs mirror the pin; a re-pin from a drag re-seeds them.
-  const [posX, setPosX] = useState(pinned !== undefined ? String(pinned.x) : '');
-  const [posY, setPosY] = useState(pinned !== undefined ? String(pinned.y) : '');
+  // Position inputs mirror the saved position; a drag that saves a new one re-seeds them.
+  const [posX, setPosX] = useState(savedPosition !== undefined ? String(savedPosition.x) : '');
+  const [posY, setPosY] = useState(savedPosition !== undefined ? String(savedPosition.y) : '');
   useEffect(() => {
-    setPosX(pinned !== undefined ? String(pinned.x) : '');
-    setPosY(pinned !== undefined ? String(pinned.y) : '');
-  }, [pinned?.x, pinned?.y]); // eslint-disable-line react-hooks/exhaustive-deps -- the two coordinates are the whole identity
+    setPosX(savedPosition !== undefined ? String(savedPosition.x) : '');
+    setPosY(savedPosition !== undefined ? String(savedPosition.y) : '');
+  }, [savedPosition?.x, savedPosition?.y]); // eslint-disable-line react-hooks/exhaustive-deps -- the two coordinates are the whole identity
 
   // Just-added node: put the caret straight into the name, text selected, so
   // typing replaces the placeholder. The panel remounts per node (key=nodeId),
@@ -346,14 +346,14 @@ export function NodePanel({
     onDeleted();
   };
 
-  const clearPin = () => onCommand({ type: 'clear-position', nodeId, ...defined({ plane: activePlane }) });
+  const clearSavedPosition = () => onCommand({ type: 'clear-position', nodeId, ...defined({ plane: activePlane }) });
 
   const commitPosition = () => {
-    if (posX.trim() === '' || posY.trim() === '') return; // half a coordinate pins nothing
+    if (posX.trim() === '' || posY.trim() === '') return; // half a coordinate saves nothing
     const x = Number(posX);
     const y = Number(posY);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    if (pinned !== undefined && pinned.x === x && pinned.y === y) return;
+    if (savedPosition !== undefined && savedPosition.x === x && savedPosition.y === y) return;
     onCommand({ type: 'set-position', nodeId, x, y, ...defined({ plane: activePlane }) });
   };
 
@@ -592,8 +592,8 @@ export function NodePanel({
               onKeyDown={(e) => commitOnEnter(e, commitPosition)}
             />
           </label>
-          {hasPin && (
-            <button className="chip" onClick={clearPin}>
+          {hasSavedPosition && (
+            <button className="chip" onClick={clearSavedPosition}>
               Clear pinned position
             </button>
           )}
