@@ -1,4 +1,5 @@
 import type { StudioNotationProfile } from '../types';
+import { secondOrderQuickAdd } from './quickAdd';
 import { SecondOrderPanel } from './SecondOrderPanel';
 
 export const SECOND_ORDER: StudioNotationProfile = {
@@ -16,4 +17,5 @@ export const SECOND_ORDER: StudioNotationProfile = {
       />
     ),
   },
+  quickAdd: secondOrderQuickAdd,
 };

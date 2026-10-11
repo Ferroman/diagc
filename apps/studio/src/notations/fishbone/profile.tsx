@@ -1,5 +1,6 @@
 import type { StudioNotationProfile } from '../types';
 import { FishbonePanel } from './FishbonePanel';
+import { fishboneQuickAdd } from './quickAdd';
 
 export const FISHBONE: StudioNotationProfile = {
   label: 'Fishbone (cause and effect)',
@@ -16,4 +17,5 @@ export const FISHBONE: StudioNotationProfile = {
       />
     ),
   },
+  quickAdd: fishboneQuickAdd,
 };

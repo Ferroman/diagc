@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { DiagramModel, EditorCommand, Point } from '@diagc/core/internal';
 import type { DiagramSelection } from '@diagc/renderer';
+import type { QuickAddRecipes } from '../canvas-editing/quickAddRecipe';
 
 /** What a dock panel is rendered with: a notation's own, or a feature's (see DOCK_FEATURES). */
 export interface NotationDockContext {
@@ -83,6 +84,9 @@ export interface StudioNotationProfile {
   gestures?: NotationGestures;
   /** the relation kind a connect gesture or a connected quick add draws; absent, `sync` */
   connectKind?: (model: DiagramModel | undefined, from: string, to: string) => string;
+  /** what `+` and Tab add on a node, asked after the activity's rules and
+   * before the generic sibling */
+  quickAdd?: QuickAddRecipes;
   /** x is a date on the notation's planes, so a zone or event placed by a drop
    * takes its day from the drop point (elsewhere it is still seeded, from its
    * parent or today) */

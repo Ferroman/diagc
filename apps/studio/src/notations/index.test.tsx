@@ -24,13 +24,13 @@ describe('STUDIO_NOTATIONS', () => {
   it('says what each notation adds, and nothing for the stencil notations', () => {
     const fields = Object.fromEntries(Object.entries(STUDIO_NOTATIONS).map(([id, p]) => [id, Object.keys(p).sort()]));
     expect(fields).toEqual({
-      'causal-loop': ['loopAnalysis'],
-      'git-graph': ['dock'],
+      'causal-loop': ['loopAnalysis', 'quickAdd'],
+      'git-graph': ['dock', 'quickAdd'],
       c4: [],
-      'second-order': ['dock', 'label'],
-      fishbone: ['dock', 'label'],
-      'threat-model': ['connectKind', 'dock', 'label'],
-      plan: ['datesFromDropPoint', 'dock', 'gestures', 'label', 'planSection'],
+      'second-order': ['dock', 'label', 'quickAdd'],
+      fishbone: ['dock', 'label', 'quickAdd'],
+      'threat-model': ['connectKind', 'dock', 'label', 'quickAdd'],
+      plan: ['datesFromDropPoint', 'dock', 'gestures', 'label', 'planSection', 'quickAdd'],
       deployment: [],
     });
   });

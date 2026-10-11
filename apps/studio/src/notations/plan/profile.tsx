@@ -2,6 +2,7 @@ import { isPlanZone } from '@diagc/core/internal';
 import type { StudioNotationProfile } from '../types';
 import { assign, planMoves, planResize } from './planActions';
 import { PlanPanel } from './PlanPanel';
+import { planQuickAdd } from './quickAdd';
 
 export const PLAN: StudioNotationProfile = {
   label: 'Plan (schedule)',
@@ -32,6 +33,7 @@ export const PLAN: StudioNotationProfile = {
       return planResize(model, plane, id, pos.x, w);
     },
   },
+  quickAdd: planQuickAdd,
   datesFromDropPoint: true,
   planSection: true,
 };

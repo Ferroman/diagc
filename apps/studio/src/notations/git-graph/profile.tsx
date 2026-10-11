@@ -1,5 +1,6 @@
 import type { StudioNotationProfile } from '../types';
 import { GitPanel } from './GitPanel';
+import { gitGraphQuickAdd } from './quickAdd';
 
 export const GIT_GRAPH: StudioNotationProfile = {
   dock: {
@@ -14,4 +15,5 @@ export const GIT_GRAPH: StudioNotationProfile = {
       />
     ),
   },
+  quickAdd: gitGraphQuickAdd,
 };

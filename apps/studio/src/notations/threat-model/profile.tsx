@@ -1,5 +1,6 @@
 import type { StudioNotationProfile } from '../types';
 import { flowKind } from './connectKind';
+import { threatModelQuickAdd } from './quickAdd';
 import { ThreatModelPanel } from './ThreatModelPanel';
 
 export const THREAT_MODEL: StudioNotationProfile = {
@@ -14,4 +15,5 @@ export const THREAT_MODEL: StudioNotationProfile = {
     render: (ctx) => <ThreatModelPanel model={ctx.model} plane={ctx.viewPlane} onSelect={ctx.select} />,
   },
   connectKind: flowKind,
+  quickAdd: threatModelQuickAdd,
 };
