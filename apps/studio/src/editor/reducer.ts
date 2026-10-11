@@ -11,7 +11,9 @@ export interface EditorSession {
   savedState: EditorState;
   past: HistoryEntry[];
   future: HistoryEntry[];
-  lastRelationId?: string;
+  /** The relation the last bare add-relation drew. Nonce-keyed, because a
+   * relation drawn again after a delete is minted the same id. */
+  lastRelation?: { id: string; nonce: number };
   error?: string;
 }
 
@@ -57,7 +59,7 @@ export function dispatch(s: EditorSession, command: EditorCommand): EditorSessio
       }
     }
     const past = [...s.past, { command, stateBefore: s.state }].slice(-HISTORY_CAP);
-    // lastRelationId exists solely so App.tsx can select the edge a canvas
+    // lastRelation exists solely so App.tsx can select the edge a canvas
     // connect gesture just drew — it must fire only for that exact gesture
     // shape (a bare add-relation), never for a batch. applyCommand
     // surfaces relationId for any relation-ending batch too (by design, for
@@ -65,13 +67,17 @@ export function dispatch(s: EditorSession, command: EditorCommand): EditorSessio
     // batch in add-relation and then calls onSelect itself would otherwise
     // have that selection clobbered one tick later by the connect-gesture
     // effect. Keyed on `command.type`, not on whether relationId came back.
+    // Only a dispatch mints a new one: undo and redo carry it over unchanged,
+    // so neither reads as a connect.
     const surfacesRelationId = command.type === 'add-relation';
     return {
       ...s,
       state: nextState,
       past,
       future: [],
-      ...(surfacesRelationId && relationId !== undefined ? { lastRelationId: relationId } : {}),
+      ...(surfacesRelationId && relationId !== undefined
+        ? { lastRelation: { id: relationId, nonce: (s.lastRelation?.nonce ?? 0) + 1 } }
+        : {}),
       error: undefined,
     };
   } catch (e) {
