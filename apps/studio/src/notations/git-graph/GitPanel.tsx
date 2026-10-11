@@ -6,24 +6,16 @@ import {
   latestCommit,
   nextCommitId,
   uniqueNodeId,
-  type DiagramModel,
   type DiagramNode,
-  type EditorCommand,
 } from '@diagc/core/internal';
-import type { DiagramSelection } from '@diagc/renderer';
 import { appendCommit } from './gitActions';
 import { ColorRow } from '../../inspector/pickers';
 import { DockSection } from '../../dock/DockSection';
+import type { NotationPanelProps } from '../types';
 
-interface GitPanelProps {
-  model: DiagramModel;
-  /** the active plane (undefined = default view = the first plane) */
-  plane: string | undefined;
-  selection: DiagramSelection | null;
-  onCommand: (command: EditorCommand) => void;
-  /** select the commit an action just created */
-  onSelect: (id: string) => void;
-}
+/** `viewPlane` undefined is the default view, the first plane; `onSelect`
+ * selects the commit an action just created. */
+type GitPanelProps = Pick<NotationPanelProps, 'model' | 'viewPlane' | 'selection' | 'onCommand' | 'onSelect'>;
 
 // The Gap field's text as a whole number of empty columns, 0 for anything else.
 // Not core's parseGap, which reads stored metadata: this one takes what `Number`
@@ -40,9 +32,9 @@ const gapInput = (raw: string): number => {
  * lane, a link to a node that is not there yet). "Add commit" is
  * `appendCommit`, the same action the canvas `+` runs.
  */
-export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPanelProps) {
-  const g = gitGraph(model, plane);
-  const planeId = plane ?? model.planes[0]?.id;
+export function GitPanel({ model, viewPlane, selection, onCommand, onSelect }: GitPanelProps) {
+  const g = gitGraph(model, viewPlane);
+  const planeId = viewPlane ?? model.planes[0]?.id;
   const parent = (laneId: string) => defined({ id: laneId, plane: planeId });
 
   const [laneName, setLaneName] = useState('');
@@ -79,7 +71,7 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
 
   const addCommit = () => {
     if (targetLane === '') return;
-    const { id, command } = appendCommit(model, plane, targetLane, { tag: tag.trim(), gap: gapInput(gap) });
+    const { id, command } = appendCommit(model, viewPlane, targetLane, { tag: tag.trim(), gap: gapInput(gap) });
     onCommand(command);
     setTag('');
     setGap('0');

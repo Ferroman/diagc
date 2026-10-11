@@ -30,7 +30,7 @@ function setup(m: DiagramModel, selection: { kind: 'node'; id: string } | null =
     <FishbonePanel
       model={m}
       selection={selection}
-      {...(plane !== undefined ? { plane } : {})}
+      {...(plane !== undefined ? { scopePlane: plane } : {})}
       onCommand={onCommand}
       onSelect={onSelect}
       onCreated={onCreated}

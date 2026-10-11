@@ -64,7 +64,7 @@ function threeLanes(): DiagramModel {
 const setup = (selection: { kind: 'node' | 'edge'; id: string } | null, m: DiagramModel, plane?: string) => {
   const onCommand = vi.fn();
   const onSelect = vi.fn();
-  render(<ActivityPanel model={m} plane={plane} selection={selection} onCommand={onCommand} onSelect={onSelect} />);
+  render(<ActivityPanel model={m} viewPlane={plane} selection={selection} onCommand={onCommand} onSelect={onSelect} />);
   return { onCommand, onSelect };
 };
 
@@ -227,7 +227,7 @@ describe('ActivityPanel', () => {
     const { container } = render(
       <ActivityPanel
         model={m.toJSON()}
-        plane={undefined}
+        viewPlane={undefined}
         selection={{ kind: 'node', id: 'svc' }}
         onCommand={vi.fn()}
         onSelect={vi.fn()}

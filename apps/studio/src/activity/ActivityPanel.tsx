@@ -26,14 +26,9 @@ import { ACTIVITY_LAYOUT } from '@diagc/renderer';
 import type { DiagramSelection } from '@diagc/renderer';
 import { ColorRow } from '../inspector/pickers';
 import { DockSection } from '../dock/DockSection';
+import type { NotationPanelProps } from '../notations/types';
 
-interface ActivityPanelProps {
-  model: DiagramModel;
-  plane: string | undefined;
-  selection: DiagramSelection | null;
-  onCommand: (command: EditorCommand) => void;
-  onSelect: (id: string) => void;
-}
+type ActivityPanelProps = Pick<NotationPanelProps, 'model' | 'viewPlane' | 'selection' | 'onCommand' | 'onSelect'>;
 
 /** quick-add vocabulary: accessible label + created type + default name */
 const ELEMENTS = [
@@ -144,12 +139,12 @@ export function activityContext(
  * inside its scope, so the model never passes through a state validation would
  * refuse — no drag-into-container needed.
  */
-export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: ActivityPanelProps) {
+export function ActivityPanel({ model, viewPlane, selection, onCommand, onSelect }: ActivityPanelProps) {
   const [laneName, setLaneName] = useState('');
   const [laneColor, setLaneColor] = useState('');
   const [elementName, setElementName] = useState('');
 
-  const planeId = containmentPlaneOf(model, plane);
+  const planeId = containmentPlaneOf(model, viewPlane);
   const context = activityContext(model, selection, planeId);
   if (context === undefined) return null;
   const { frame, target } = context;
@@ -179,7 +174,7 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
   const tidy = reorderLanesCommand(
     frame.id,
     lanes.map((l) => l.id),
-    bestLaneOrder(model, frame.id, plane),
+    bestLaneOrder(model, frame.id, viewPlane),
     planeId,
   );
 

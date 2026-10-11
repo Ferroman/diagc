@@ -6,20 +6,21 @@ import {
   threatRegister,
   threatSummary,
   validate,
-  type DiagramModel,
   type Threat,
   type ElementRef,
 } from '@diagc/core/internal';
 import type { DiagramSelection } from '@diagc/renderer';
 import { DockSection } from '../../dock/DockSection';
+import { IssueList } from '../IssueList';
+import type { NotationPanelProps } from '../types';
 
-interface ThreatModelPanelProps {
-  model: DiagramModel;
-  /** the viewed plane — a boundary is containment, so which flows cross one is
-   * a fact about the plane being drawn (see crossings) */
-  plane?: string;
-  onSelect: (selection: DiagramSelection) => void;
-}
+/** `viewPlane`: a boundary is containment, so which flows cross one is a fact
+ * about the plane being drawn (see crossings). The panel selects elements of
+ * either kind, so its `onSelect` takes a selection. */
+type ThreatModelPanelProps = Pick<NotationPanelProps, 'model'> &
+  Partial<Pick<NotationPanelProps, 'viewPlane'>> & {
+    onSelect: (selection: DiagramSelection) => void;
+  };
 
 /** every threat on one element, in declaration order */
 interface Group {
@@ -45,8 +46,8 @@ const threatLine = (t: Threat): string =>
  * reads and selects; adding or editing a threat stays in the Threats section of
  * the node/edge inspector, which is where the element already is.
  */
-export function ThreatModelPanel({ model, plane, onSelect }: ThreatModelPanelProps) {
-  const cross = useMemo(() => crossings(model, plane), [model, plane]);
+export function ThreatModelPanel({ model, viewPlane, onSelect }: ThreatModelPanelProps) {
+  const cross = useMemo(() => crossings(model, viewPlane), [model, viewPlane]);
   // A crossing with no threat at all is the gap worth surfacing; one with only
   // mitigated threats has been reviewed, so it drops off this list.
   const review = useMemo(
@@ -137,36 +138,9 @@ export function ThreatModelPanel({ model, plane, onSelect }: ThreatModelPanelPro
           })
         )}
       </section>
-      {issues.length > 0 && (
-        <ul className="so-issues" aria-label="Issues">
-          {issues.map((i, index) => {
-            const ref = i.ref;
-            // A threat issue names the element that carries it, a tm- one the
-            // flow; anything else has nothing on canvas to select, so it renders
-            // as text rather than a dead button. Several bad threats on one
-            // element share a code and a ref, so the key needs the index.
-            const target: DiagramSelection | undefined =
-              ref === undefined
-                ? undefined
-                : model.nodes.some((n) => n.id === ref)
-                  ? { kind: 'node', id: ref }
-                  : model.relations.some((r) => r.id === ref)
-                    ? { kind: 'edge', id: ref }
-                    : undefined;
-            return (
-              <li key={`${i.code}:${ref ?? ''}:${index}`}>
-                {target !== undefined ? (
-                  <button type="button" onClick={() => onSelect(target)}>
-                    {i.message}
-                  </button>
-                ) : (
-                  <span>{i.message}</span>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      {/* A threat issue names the element that carries it, a tm- one the flow.
+       * Several bad threats on one element share a code and a ref. */}
+      <IssueList model={model} issues={issues} selects="elements" onSelect={onSelect} label="Issues" keyByIndex />
     </DockSection>
   );
 }

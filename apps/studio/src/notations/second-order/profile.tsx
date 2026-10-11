@@ -10,7 +10,7 @@ export const SECOND_ORDER: StudioNotationProfile = {
       <SecondOrderPanel
         model={ctx.model}
         selection={ctx.selection}
-        plane={ctx.scopePlane}
+        scopePlane={ctx.scopePlane}
         onCommand={ctx.onCommand}
         onSelect={(id) => ctx.select({ kind: 'node', id })}
         onCreated={ctx.requestLabelEdit}

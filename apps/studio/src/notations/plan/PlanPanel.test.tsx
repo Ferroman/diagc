@@ -34,7 +34,7 @@ const setup = (selection: { kind: 'node' | 'edge'; id: string } | null = null, m
   render(
     <PlanPanel
       model={m}
-      plane="plan"
+      viewPlane="plan"
       selection={selection}
       onCommand={onCommand}
       onSelect={onSelect}
@@ -129,7 +129,7 @@ describe('PlanPanel', () => {
     const panel = () => (
       <PlanPanel
         model={m}
-        plane="sched"
+        viewPlane="sched"
         selection={selection}
         onCommand={onCommand}
         onSelect={onSelect}

@@ -14,7 +14,7 @@ export const DOCK_FEATURES: readonly (DockEntry & { id: string })[] = [
     render: (ctx) => (
       <ActivityPanel
         model={ctx.model}
-        plane={ctx.viewPlane}
+        viewPlane={ctx.viewPlane}
         selection={ctx.selection}
         onCommand={ctx.onCommand}
         onSelect={(id) => ctx.select({ kind: 'node', id })}

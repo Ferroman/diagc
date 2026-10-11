@@ -70,7 +70,7 @@ const empty = (): DiagramModel => ({
 
 function setup(m: DiagramModel, plane?: string) {
   const onSelect = vi.fn<(s: DiagramSelection) => void>();
-  render(<ThreatModelPanel model={m} {...(plane !== undefined ? { plane } : {})} onSelect={onSelect} />);
+  render(<ThreatModelPanel model={m} {...(plane !== undefined ? { viewPlane: plane } : {})} onSelect={onSelect} />);
   return { onSelect };
 }
 
