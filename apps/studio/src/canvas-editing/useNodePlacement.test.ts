@@ -14,8 +14,8 @@ import type { UseLibrary } from '../library/useLibrary';
 import { useNodePlacement, type UseNodePlacementOptions } from './useNodePlacement';
 
 /**
- * Like `useViewOps`, `useNodePlacement` calls no React hook of its own — it is a
- * factory of closures over what it is handed — so it runs without a renderer.
+ * `useNodePlacement` calls no React hook of its own — it is a factory of
+ * closures over what it is handed — so it runs without a renderer.
  * These cover the activity-diagram placement rules and the dates a plan zone or
  * event arrives with; the commands dispatched are the observable.
  */

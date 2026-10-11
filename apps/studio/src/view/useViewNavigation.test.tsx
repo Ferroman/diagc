@@ -85,6 +85,19 @@ describe('useViewNavigation: following the saved folds while editing', () => {
     expect(t.now.pins).toEqual({ sys: 'expanded' });
   });
 
+  // Breaks if the saved list catching up with the user's own toggle (the
+  // recorded set-unfolded landing) re-seeds the folds: openingPins knows only
+  // the saved open boxes, so a box folded by hand would open again.
+  it('keeps the pins when the saved list catches up with a toggle', () => {
+    const t = mount(twoPlanes(), { editing: true, layout: folds([]) });
+    act(() => t.now.toggleExpand('x', 'collapsed'));
+    act(() => t.now.toggleExpand('sys', 'expanded'));
+    const pins = t.now.pins;
+    t.rerender({ editing: true, layout: folds(['sys']) });
+    expect(t.now.pins).toBe(pins);
+    expect(t.now.pins).toEqual({ x: 'collapsed', sys: 'expanded' });
+  });
+
   // Breaks if entering edit mode folds away what the viewer had open (the
   // saved list differs from the pins, but nothing changed while editing).
   it('leaves the folds alone on entering edit mode', () => {
