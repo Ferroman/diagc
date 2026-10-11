@@ -130,7 +130,7 @@ function floatingPath(
   const bowed = profile.edge?.bowed === true && shape === 'curved';
   const bowSide: BowSide = rel?.bow ?? 'left';
   const effectiveShape: EdgeShape = bowed ? 'bow' : shape;
-  const curve = shapeCurve(effectiveShape, params, curvature, bowSide);
+  const curve = shapeCurve({ shape: effectiveShape, params, curvature, side: bowSide });
   let path: string;
   let labelX: number;
   let labelY: number;

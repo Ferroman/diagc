@@ -183,11 +183,6 @@
       "count": 3
     }
   },
-  "packages/renderer/src/edge/edge-geometry.ts": {
-    "max-params": {
-      "count": 5
-    }
-  },
   "packages/renderer/src/loops/LeveragePanel.tsx": {
     "max-lines-per-function": {
       "count": 1

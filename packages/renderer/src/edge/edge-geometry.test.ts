@@ -27,19 +27,19 @@ const horizontal: EdgePathParams = {
 
 describe('edgePoint / edgeTangent — straight', () => {
   it('starts at the source at t=0', () => {
-    expect(edgePoint('straight', horizontal, undefined, 0)).toEqual({ x: 0, y: 0 });
+    expect(edgePoint({ shape: 'straight', params: horizontal, curvature: undefined }, 0)).toEqual({ x: 0, y: 0 });
   });
 
   it('ends at the target at t=1', () => {
-    expect(edgePoint('straight', horizontal, undefined, 1)).toEqual({ x: 100, y: 0 });
+    expect(edgePoint({ shape: 'straight', params: horizontal, curvature: undefined }, 1)).toEqual({ x: 100, y: 0 });
   });
 
   it('sits at the midpoint at t=0.5', () => {
-    expect(edgePoint('straight', horizontal, undefined, 0.5)).toEqual({ x: 50, y: 0 });
+    expect(edgePoint({ shape: 'straight', params: horizontal, curvature: undefined }, 0.5)).toEqual({ x: 50, y: 0 });
   });
 
   it('has a unit tangent pointing source→target', () => {
-    const tan = edgeTangent('straight', horizontal, undefined, 0.5);
+    const tan = edgeTangent({ shape: 'straight', params: horizontal, curvature: undefined }, 0.5);
     expect(tan.x).toBeCloseTo(1, 5);
     expect(tan.y).toBeCloseTo(0, 5);
     expect(Math.hypot(tan.x, tan.y)).toBeCloseTo(1, 5);
@@ -63,17 +63,17 @@ const loopback: EdgePathParams = {
 
 describe('edgePoint / edgeTangent — curved', () => {
   it('starts exactly at the source at t=0', () => {
-    expect(edgePoint('curved', loopback, 0.55, 0)).toEqual({ x: 0, y: 0 });
+    expect(edgePoint({ shape: 'curved', params: loopback, curvature: 0.55 }, 0)).toEqual({ x: 0, y: 0 });
   });
 
   it('ends exactly at the target at t=1', () => {
-    expect(edgePoint('curved', loopback, 0.55, 1)).toEqual({ x: 100, y: 0 });
+    expect(edgePoint({ shape: 'curved', params: loopback, curvature: 0.55 }, 1)).toEqual({ x: 100, y: 0 });
   });
 
   it('bows off the straight chord more as curvature increases', () => {
     const straightMid = { x: 50, y: 0 }; // lerp(source, target, 0.5)
     const bowAt = (curvature: number) => {
-      const p = edgePoint('curved', loopback, curvature, 0.5);
+      const p = edgePoint({ shape: 'curved', params: loopback, curvature: curvature }, 0.5);
       return Math.hypot(p.x - straightMid.x, p.y - straightMid.y);
     };
     const low = bowAt(0.1);
@@ -83,7 +83,7 @@ describe('edgePoint / edgeTangent — curved', () => {
   });
 
   it('the tangent at the midpoint is a unit vector', () => {
-    const tan = edgeTangent('curved', loopback, 0.55, 0.5);
+    const tan = edgeTangent({ shape: 'curved', params: loopback, curvature: 0.55 }, 0.5);
     expect(Math.hypot(tan.x, tan.y)).toBeCloseTo(1, 5);
   });
 });
@@ -114,26 +114,26 @@ function perpDistance(p: { x: number; y: number }, a: { x: number; y: number }, 
 
 describe('edgePoint / edgeTangent — bow', () => {
   it('starts exactly at the source at t=0', () => {
-    const p = edgePoint('bow', facing, 0.55, 0);
+    const p = edgePoint({ shape: 'bow', params: facing, curvature: 0.55 }, 0);
     expect(p.x).toBeCloseTo(0, 5);
     expect(p.y).toBeCloseTo(0, 5);
   });
 
   it('ends exactly at the target at t=1', () => {
-    const p = edgePoint('bow', facing, 0.55, 1);
+    const p = edgePoint({ shape: 'bow', params: facing, curvature: 0.55 }, 1);
     expect(p.x).toBeCloseTo(100, 5);
     expect(p.y).toBeCloseTo(0, 5);
   });
 
   it('bows off the straight chord at the midpoint', () => {
-    const mid = edgePoint('bow', facing, 0.55, 0.5);
+    const mid = edgePoint({ shape: 'bow', params: facing, curvature: 0.55 }, 0.5);
     const dist = perpDistance(mid, { x: facing.sourceX, y: facing.sourceY }, { x: facing.targetX, y: facing.targetY });
     expect(dist).toBeGreaterThan(0);
   });
 
   it('grows the bow as curvature increases', () => {
     const distAt = (curvature: number) => {
-      const mid = edgePoint('bow', facing, curvature, 0.5);
+      const mid = edgePoint({ shape: 'bow', params: facing, curvature: curvature }, 0.5);
       return perpDistance(mid, { x: facing.sourceX, y: facing.sourceY }, { x: facing.targetX, y: facing.targetY });
     };
     const low = distAt(0.5);
@@ -149,8 +149,8 @@ describe('edgePoint / edgeTangent — bow', () => {
       targetX: facing.sourceX,
       targetY: facing.sourceY,
     };
-    const forwardMid = edgePoint('bow', facing, 0.55, 0.5);
-    const reversedMid = edgePoint('bow', reversed, 0.55, 0.5);
+    const forwardMid = edgePoint({ shape: 'bow', params: facing, curvature: 0.55 }, 0.5);
+    const reversedMid = edgePoint({ shape: 'bow', params: reversed, curvature: 0.55 }, 0.5);
     // same chord, opposite travel direction → offsets land on opposite sides
     expect(Math.sign(forwardMid.y)).not.toBe(0);
     expect(Math.sign(reversedMid.y)).toBe(-Math.sign(forwardMid.y));
@@ -158,7 +158,7 @@ describe('edgePoint / edgeTangent — bow', () => {
 
   it('degenerates to a point when source and target coincide (no NaN)', () => {
     const coincident: EdgePathParams = { ...facing, targetX: facing.sourceX, targetY: facing.sourceY };
-    const mid = edgePoint('bow', coincident, 0.55, 0.5);
+    const mid = edgePoint({ shape: 'bow', params: coincident, curvature: 0.55 }, 0.5);
     expect(mid.x).toBeCloseTo(facing.sourceX, 5);
     expect(mid.y).toBeCloseTo(facing.sourceY, 5);
   });
@@ -166,12 +166,14 @@ describe('edgePoint / edgeTangent — bow', () => {
   it('flips the bulge to the opposite side of the chord when side="right"', () => {
     // Same edge direction, only the bulge side changes: the perpendicular
     // offset mirrors across the chord (equal magnitude, opposite sign).
-    const left = edgePoint('bow', facing, 0.55, 0.5, 'left');
-    const right = edgePoint('bow', facing, 0.55, 0.5, 'right');
+    const left = edgePoint({ shape: 'bow', params: facing, curvature: 0.55, side: 'left' }, 0.5);
+    const right = edgePoint({ shape: 'bow', params: facing, curvature: 0.55, side: 'right' }, 0.5);
     expect(Math.sign(left.y)).not.toBe(0);
     expect(right.y).toBeCloseTo(-left.y, 5);
     // endpoints are unchanged by the flip
-    expect(edgePoint('bow', facing, 0.55, 0, 'right')).toEqual(edgePoint('bow', facing, 0.55, 0, 'left'));
+    expect(edgePoint({ shape: 'bow', params: facing, curvature: 0.55, side: 'right' }, 0)).toEqual(
+      edgePoint({ shape: 'bow', params: facing, curvature: 0.55, side: 'left' }, 0),
+    );
   });
 });
 
@@ -200,51 +202,59 @@ describe('edgePoint / edgeTangent, point by point', () => {
 
   it('puts a curve at t = 0.25 where its two controls say', () => {
     // B(0.25) = (27·p0 + 27·p1 + 9·p2 + p3) / 64
-    expect(edgePoint('curved', rightToTop, 0.5, 0.25)).toEqual({ x: 18.59375, y: 5.5 });
-    expect(edgePoint('curved', bottomToLeft, 0.5, 0.25)).toEqual({ x: 5.5, y: 18.59375 });
+    expect(edgePoint({ shape: 'curved', params: rightToTop, curvature: 0.5 }, 0.25)).toEqual({ x: 18.59375, y: 5.5 });
+    expect(edgePoint({ shape: 'curved', params: bottomToLeft, curvature: 0.5 }, 0.25)).toEqual({ x: 5.5, y: 18.59375 });
   });
 
   it("aims a curve's tangent at t = 0.25 along its derivative", () => {
     // B'(0.25) = 1.6875·(p1 − p0) + 1.125·(p2 − p1) + 0.1875·(p3 − p2) = (10.125, 42)
     const len = Math.hypot(10.125, 42);
-    const tan = edgeTangent('curved', rightToTop, 0.5, 0.25);
+    const tan = edgeTangent({ shape: 'curved', params: rightToTop, curvature: 0.5 }, 0.25);
     expect(tan.x).toBeCloseTo(10.125 / len, 12);
     expect(tan.y).toBeCloseTo(42 / len, 12);
   });
 
   it("reads an unset curvature as xyflow's default, for the point and the tangent", () => {
-    expect(edgePoint('curved', rightToTop, undefined, 0.25)).toEqual(
-      edgePoint('curved', rightToTop, DEFAULT_CURVATURE, 0.25),
+    expect(edgePoint({ shape: 'curved', params: rightToTop, curvature: undefined }, 0.25)).toEqual(
+      edgePoint({ shape: 'curved', params: rightToTop, curvature: DEFAULT_CURVATURE }, 0.25),
     );
-    expect(edgeTangent('curved', rightToTop, undefined, 0.25)).toEqual(
-      edgeTangent('curved', rightToTop, DEFAULT_CURVATURE, 0.25),
+    expect(edgeTangent({ shape: 'curved', params: rightToTop, curvature: undefined }, 0.25)).toEqual(
+      edgeTangent({ shape: 'curved', params: rightToTop, curvature: DEFAULT_CURVATURE }, 0.25),
     );
     // a chord long enough that the default bows past the bow's 24px floor
     const long: EdgePathParams = { ...horizontal, targetX: 400 };
-    expect(edgeTangent('bow', long, undefined, 0.25)).toEqual(edgeTangent('bow', long, DEFAULT_CURVATURE, 0.25));
+    expect(edgeTangent({ shape: 'bow', params: long, curvature: undefined }, 0.25)).toEqual(
+      edgeTangent({ shape: 'bow', params: long, curvature: DEFAULT_CURVATURE }, 0.25),
+    );
   });
 
   it('falls back to the chord where a curve has no direction of its own', () => {
     // the right-hand handle points straight down the 0px it has to cover, so
     // its control sits on the source and B'(0) is zero
     const below: EdgePathParams = { ...rightToTop, targetX: 0, targetY: 100, targetPosition: Position.Left };
-    expect(edgeTangent('curved', below, undefined, 0)).toEqual({ x: 0, y: 1 });
+    expect(edgeTangent({ shape: 'curved', params: below, curvature: undefined }, 0)).toEqual({ x: 0, y: 1 });
   });
 
   it("mirrors a bow's tangent across a horizontal chord when side is 'right'", () => {
     const long: EdgePathParams = { ...horizontal, targetX: 400 };
-    const left = edgeTangent('bow', long, 0.55, 0.25, 'left');
-    const right = edgeTangent('bow', long, 0.55, 0.25, 'right');
+    const left = edgeTangent({ shape: 'bow', params: long, curvature: 0.55, side: 'left' }, 0.25);
+    const right = edgeTangent({ shape: 'bow', params: long, curvature: 0.55, side: 'right' }, 0.25);
     expect(right.x).toBeCloseTo(left.x, 12);
     expect(right.y).toBeCloseTo(-left.y, 12);
     expect(left.y).not.toBe(0);
   });
 
   it("hands a bow's side to the curve's point and tangent", () => {
-    const curve = shapeCurve('bow', horizontal, 0.55, 'right');
-    expect(curve.point(0.25)).toEqual(edgePoint('bow', horizontal, 0.55, 0.25, 'right'));
-    expect(curve.tangent(0.25)).toEqual(edgeTangent('bow', horizontal, 0.55, 0.25, 'right'));
-    expect(curve.point(0.25)).not.toEqual(edgePoint('bow', horizontal, 0.55, 0.25, 'left'));
+    const curve = shapeCurve({ shape: 'bow', params: horizontal, curvature: 0.55, side: 'right' });
+    expect(curve.point(0.25)).toEqual(
+      edgePoint({ shape: 'bow', params: horizontal, curvature: 0.55, side: 'right' }, 0.25),
+    );
+    expect(curve.tangent(0.25)).toEqual(
+      edgeTangent({ shape: 'bow', params: horizontal, curvature: 0.55, side: 'right' }, 0.25),
+    );
+    expect(curve.point(0.25)).not.toEqual(
+      edgePoint({ shape: 'bow', params: horizontal, curvature: 0.55, side: 'left' }, 0.25),
+    );
   });
 });
 
@@ -308,7 +318,7 @@ describe('nearestOnCurve', () => {
   });
 
   it('finds the middle of a straight floating edge, above or below it', () => {
-    const curve = shapeCurve('straight', horizontal, undefined);
+    const curve = shapeCurve({ shape: 'straight', params: horizontal, curvature: undefined });
     expect(nearestOnCurve(curve, { x: 50, y: 0 }).t).toBeCloseTo(0.5, 1);
     expect(nearestOnCurve(curve, { x: 50, y: -20 }).perp).toBeGreaterThan(0); // above the line
     expect(nearestOnCurve(curve, { x: 50, y: 20 }).perp).toBeLessThan(0);
