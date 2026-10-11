@@ -122,6 +122,11 @@ function recipeFor(
     if (frame === undefined || model.nodes.find((n) => n.id === frame)?.type !== 'activity-frame') return undefined;
     return side === 'before' ? 'lane-above' : 'lane-below';
   }
+  // The invariant: `+` and Tab are one action, so a node the renderer refuses
+  // to decorate offers nothing to Tab either. The rest of the activity chrome
+  // (a frame, a region) never carries a chip, on any notation's plane, so it
+  // is settled before a notation's recipe can claim it.
+  if (source.type !== undefined && ACTIVITY_CHROME.has(source.type)) return undefined;
   if (side !== undefined) return undefined;
   switch (ctx.notation) {
     case 'fishbone':
@@ -146,12 +151,9 @@ function recipeFor(
       if (isPlanEvent(source)) return atOf(source) === undefined ? undefined : 'plan-next';
       return 'sibling';
     default:
-      // The invariant: `+` and Tab are one action, so a node the renderer
-      // refuses to decorate offers nothing to Tab either. Activity chrome never
-      // carries a chip, and neither does a causal-loop group — the notation
-      // draws an open one as a bare name tag and arranges its members itself,
-      // so "add a connected node" would have nowhere to put the result.
-      if (source.type !== undefined && ACTIVITY_CHROME.has(source.type)) return undefined;
+      // A causal-loop group carries no chip either (the invariant above): the
+      // notation draws an open one as a bare name tag and arranges its members
+      // itself, so "add a connected node" would have nowhere to put the result.
       if (ctx.notation === 'causal-loop' && childrenOf(containmentOn(model, ctx.plane)).has(source.id))
         return undefined;
       return 'sibling';
