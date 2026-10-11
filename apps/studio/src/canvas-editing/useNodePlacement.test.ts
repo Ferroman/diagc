@@ -81,7 +81,7 @@ function harness(m: DiagramModel, selection: string | null = null, plane: PlaneC
     layoutApiRef: { current: layoutApi },
     setSelection: noop,
     setRenameId: noop,
-    setLeftTab: noop,
+    selectTab: noop,
     requestLabelEdit: noop,
     setSaveIssues: noop,
     activePlane: undefined,

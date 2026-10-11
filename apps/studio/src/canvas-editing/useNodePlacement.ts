@@ -34,7 +34,8 @@ export interface UseNodePlacementOptions {
   /** App-owned selection/rename/tab/bookkeeping setters */
   setSelection: (sel: DiagramSelection | null) => void;
   setRenameId: (id: string | null) => void;
-  setLeftTab: (tab: InspectorTab) => void;
+  /** the left dock's inspector tab */
+  selectTab: (tab: InspectorTab) => void;
   /** open the canvas label editor on a node created outside a canvas gesture
    * (App's nonce-keyed editLabelRequest) — library placement names in place
    * so the Library tab never has to give way to Properties */
@@ -87,7 +88,7 @@ export function useNodePlacement({
   layoutApiRef,
   setSelection,
   setRenameId,
-  setLeftTab,
+  selectTab,
   requestLabelEdit,
   setSaveIssues,
   activePlane,
@@ -136,7 +137,7 @@ export function useNodePlacement({
     }
     // Add node lives on the Library tab now; flip to Properties so the new node's
     // Name field autofocuses (preserves the whiteboard-add rename flow).
-    setLeftTab('properties');
+    selectTab('properties');
     setSelection({ kind: 'node', id: place.id });
     setRenameId(place.id);
   };

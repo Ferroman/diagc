@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  applyTheme,
-  darkTheme,
   DiagramView,
   isKnownStyle,
-  lightTheme,
   LeveragePanel,
   notationProfile,
   STYLE_PRESETS,
   todayIso,
   type CanvasCommands,
   type DiagramSelection,
-  type DrawTool,
   type EdgeLabelMoves,
   type LeverageFocus,
   type LoopEdgeInput,
@@ -22,7 +18,6 @@ import {
   activeNotation,
   allNotesOpen,
   borrowsContainment,
-  DEFAULT_STROKE_WIDTH,
   emptyDrawings,
   emptyLayout,
   errMessage,
@@ -57,7 +52,7 @@ import { getHost } from './host';
 import { useDiagramBoot } from './diagrams/useDiagramBoot';
 import { useDeepLink } from './diagrams/useDeepLink';
 import { useEditSession } from './session/useEditSession';
-import { usePersistedState } from './usePersistedState';
+import { SNAP_GRID, useViewerPrefs } from './useViewerPrefs';
 import { useClipboard } from './canvas-editing/useClipboard';
 import { useNodePlacement } from './canvas-editing/useNodePlacement';
 import { useDiagramActions } from './diagrams/useDiagramActions';
@@ -82,46 +77,20 @@ import { connectKind, studioNotation } from './notations';
 import { dockPanels } from './dock/features';
 import { anyCarriesThreats, threatsOffered } from './inspector/threatsOffered';
 import { quickAdd, quickAddLabel, quickAddPlaced, type QuickAddContext } from './canvas-editing/quickAdd';
-import { InspectorTabs, type InspectorTab } from './inspector/InspectorTabs';
+import { InspectorTabs } from './inspector/InspectorTabs';
 import { Dock } from './dock/Dock';
-import { clampDockWidth } from './dock/dockWidth';
+import { DOCK_MAX, LEFT_MIN, RIGHT_MIN, useDockLayout } from './dock/useDockLayout';
 import { Sidebar } from './inspector/Sidebar';
-import { EMPTY_LIBRARY_VIEW, LibraryPanel } from './library/LibraryPanel';
+import { LibraryPanel } from './library/LibraryPanel';
 import { useLibrary } from './library/useLibrary';
 import { deleteSelectionCommand } from './canvas-editing/deleteSelection';
 import { fkConnectionCommands } from './canvas-editing/tableConnect';
 import type { ActionId } from './hotkeys/actions';
-import { isMac } from './hotkeys/chord';
 import { HotkeysContext, keyHint, keyName } from './hotkeys/HotkeysContext';
 import { HotkeysDialog } from './hotkeys/HotkeysDialog';
-import { HOTKEYS_KEY, parseOverrides, resolveKeymap, type Overrides } from './hotkeys/keymap';
+import { useHotkeyPrefs } from './hotkeys/useHotkeyPrefs';
 import { useHotkeys, type Handlers } from './hotkeys/useHotkeys';
-
-const STYLE_KEY = 'diagc.style';
-// Snap-to-grid is a viewer preference (how one edits), not a property of the
-// diagram, so it lives beside the style preset rather than in the sidecar.
-const SNAP_KEY = 'diagc.snap';
-const SNAP_GRID = 10;
-// The right details dock defaults open, but a collapse is remembered so it stays
-// out of the way across reloads once dismissed.
-const RIGHT_DOCK_KEY = 'diagc.rightDock';
-const LEFT_DOCK_KEY = 'diagc.leftDock';
-const LEFT_WIDTH_KEY = 'diagc.leftDockWidth';
-const RIGHT_WIDTH_KEY = 'diagc.rightDockWidth';
-const DOCK_MAX = 560;
-const LEFT_MIN = 220;
-const RIGHT_MIN = 240;
-const LEFT_DEFAULT = 300;
-const RIGHT_DEFAULT = 320;
-
-// The dock widths persist clamped; a garbage/non-numeric stored value falls back
-// to the default (readDockWidth semantics), so the persisted reader returns null
-// for such values and usePersistedState applies its fallback.
-const readClampedWidth = (raw: string | null, min: number, max: number): number | null => {
-  if (raw === null) return null;
-  const n = Number(raw);
-  return Number.isFinite(n) ? clampDockWidth(n, min, max) : null;
-};
+import { useDrawTool } from './canvas-editing/useDrawTool';
 
 // The Apply-target for a selected node (LibraryPanel restyle toggle); undefined
 // when nothing is selected (hides the toggle).
@@ -141,22 +110,10 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const boot = useDiagramBoot();
   const { artifacts, names, booted, ownedNames, setOwnedNames, setDrafts, setLoaded, setSources, canDesign } = boot;
 
-  const [theme, setTheme] = useState<'light' | 'dark'>(initialTheme);
-  const [style, setStyle] = usePersistedState<string>(STYLE_KEY, 'clean', (raw) => raw);
-  const [snap, setSnap] = usePersistedState<boolean>(SNAP_KEY, false, (raw) => (raw === null ? null : raw === 'true'));
-  // Keyboard shortcuts: viewer state like the theme — only what the user changed
-  // is stored, so a default added later still reaches them (see hotkeys/keymap).
-  const [hotkeyOverrides, setHotkeyOverrides] = usePersistedState<Overrides>(
-    HOTKEYS_KEY,
-    {},
-    parseOverrides,
-    JSON.stringify,
-  );
-  const keymap = useMemo(() => resolveKeymap(hotkeyOverrides), [hotkeyOverrides]);
-  const [hotkeysOpen, setHotkeysOpen] = useState(false);
-  const mac = useMemo(isMac, []);
+  const { theme, toggleTheme, style, setStyle, snap, toggleSnap } = useViewerPrefs(initialTheme);
+  const hotkeyPrefs = useHotkeyPrefs();
+  const { keymap, mac } = hotkeyPrefs;
   const appRef = useRef<HTMLDivElement>(null);
-  const gearRef = useRef<HTMLButtonElement>(null);
   const canvasCommandsRef = useRef<CanvasCommands | null>(null);
   const pickerToggleRef = useRef<(() => void) | null>(null);
   const hotkeyHandlers = useRef<Handlers>({});
@@ -217,31 +174,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const [cldEdges, setCldEdges] = useState<LoopEdgeInput[]>([]);
   const handleCldEdges = useCallback((edges: LoopEdgeInput[]) => setCldEdges(edges), []);
   const [leverageFocus, setLeverageFocus] = useState<LeverageFocus | null>(null);
-  const [leftTab, setLeftTab] = useState<InspectorTab>('properties');
-  // The Library tab's search and open sections, here rather than in the panel:
-  // the inspector mounts only its active tab, so panel-local state would reset
-  // on every trip to Properties and back.
-  const libraryView = useState(EMPTY_LIBRARY_VIEW);
-  // The dock collapse states persist with an on-disk format that predates this
-  // hook ('collapsed'/'expanded'), so both reader and serializer use it.
-  const [leftCollapsed, setLeftCollapsed] = usePersistedState<boolean>(
-    LEFT_DOCK_KEY,
-    false,
-    (raw) => raw === 'collapsed',
-    (v) => (v ? 'collapsed' : 'expanded'),
-  );
-  const [rightCollapsed, setRightCollapsed] = usePersistedState<boolean>(
-    RIGHT_DOCK_KEY,
-    false,
-    (raw) => raw === 'collapsed',
-    (v) => (v ? 'collapsed' : 'expanded'),
-  );
-  const [leftWidth, setLeftWidth] = usePersistedState<number>(LEFT_WIDTH_KEY, LEFT_DEFAULT, (raw) =>
-    readClampedWidth(raw, LEFT_MIN, DOCK_MAX),
-  );
-  const [rightWidth, setRightWidth] = usePersistedState<number>(RIGHT_WIDTH_KEY, RIGHT_DEFAULT, (raw) =>
-    readClampedWidth(raw, RIGHT_MIN, DOCK_MAX),
-  );
+  const dock = useDockLayout();
+  const { leftTab, selectTab, libraryView } = dock;
   const lib = useLibrary();
 
   // Read through a ref by a once-subscribed listener, and assigned on every
@@ -277,33 +211,14 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     setLayoutPreview({});
   }, [selected]);
 
-  // Canvas tool + pen settings. Viewer state: never saved, reset to Select on
-  // leaving edit mode or switching diagram so a pen never lingers invisibly.
-  const [tool, setTool] = useState<DrawTool>('select');
-  const [penColor, setPenColor] = useState('');
-  const [penWidth, setPenWidth] = useState<number>(DEFAULT_STROKE_WIDTH);
   const edit = useEditSession({
     setDrafts,
-    resetInspector: () => setLeftTab('properties'), // re-entering edit starts on Properties
+    resetInspector: () => selectTab('properties'), // re-entering edit starts on Properties
     leaveEditRef,
   });
   const { editing, setEditing, editor, layoutApiRef, saveIssues, setSaveIssues, saving, doSave, enterEdit, leaveEdit } =
     edit;
-
-  // Leaving edit mode or switching diagram drops the pen (see the tool state
-  // above): Pen/Eraser only exist in edit mode, and a tool that survived either
-  // transition would keep swallowing canvas clicks with nothing to draw on.
-  // Drilling in resets too — drawings are a top-level layer, so the toolbar
-  // disables both tools there and the state must follow, or the UI would show
-  // Pen pressed on a canvas that cannot draw.
-  useEffect(() => {
-    if (!editing || enteredPath.length > 0) setTool('select');
-  }, [editing, selected, enteredPath]);
-
-  useEffect(() => {
-    applyTheme(document.documentElement, theme === 'dark' ? darkTheme : lightTheme);
-    document.documentElement.dataset['theme'] = theme;
-  }, [theme]);
+  const { tool, penColor, penWidth, setTool, setPen, drawWith } = useDrawTool({ editing, selected, enteredPath });
 
   const current = artifacts[selected];
   const session = editor.session;
@@ -631,7 +546,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     layoutApiRef,
     setSelection,
     setRenameId,
-    setLeftTab,
+    selectTab,
     requestLabelEdit,
     setSaveIssues,
     activePlane,
@@ -872,15 +787,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     model !== undefined && Object.keys(layout?.planes[layoutPlaneKey(model, activePlane)] ?? {}).length > 0;
   const canvasCmd = (run: (c: CanvasCommands) => boolean) =>
     on(model !== undefined, () => (canvasCommandsRef.current !== null ? run(canvasCommandsRef.current) : false));
-  // Pen/Eraser are refused while drilled in, matching the toolbar chips, which
-  // are disabled there (drawings are a top-level layer): a chip that reads pressed
-  // while disabled, and a pen that springs to life the moment you drill back out,
-  // is a first-hour contradiction. Select always gets through.
-  const drawTool = (t: DrawTool) => () => {
-    if (enteredPath.length > 0) return false;
-    setTool(t);
-    return true;
-  };
   hotkeyHandlers.current = {
     'diagram.picker': () => pickerToggleRef.current?.(),
     'diagram.toggle-edit': on(model !== undefined && owned, () => void (editing ? leaveEdit() : enterEditFromSource())),
@@ -910,11 +816,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     ),
 
     'tool.select': on(editing, () => setTool('select')),
-    'tool.pen': on(editing, drawTool('pen')),
-    'tool.eraser': on(editing, drawTool('eraser')),
-    'pen.thin': on(editing && tool === 'pen', () => setPenWidth(2)),
-    'pen.medium': on(editing && tool === 'pen', () => setPenWidth(3)),
-    'pen.thick': on(editing && tool === 'pen', () => setPenWidth(6)),
+    'tool.pen': on(editing, drawWith('pen')),
+    'tool.eraser': on(editing, drawWith('eraser')),
+    'pen.thin': on(editing && tool === 'pen', () => setPen({ width: 2 })),
+    'pen.medium': on(editing && tool === 'pen', () => setPen({ width: 3 })),
+    'pen.thick': on(editing && tool === 'pen', () => setPen({ width: 6 })),
 
     'canvas.fit': canvasCmd((c) => c.fitView()),
     'canvas.zoom-in': canvasCmd((c) => c.zoomIn()),
@@ -937,27 +843,20 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     'arrange.distribute-x': canvasCmd((c) => c.distribute('x')),
     'arrange.distribute-y': canvasCmd((c) => c.distribute('y')),
 
-    'window.left-dock': on(model !== undefined, () => setLeftCollapsed((v) => !v)),
-    'window.right-dock': on(model !== undefined, () => setRightCollapsed((v) => !v)),
-    // a tab nobody can see is no answer to "show me Properties": open the dock too
-    'window.inspector-properties': on(editing, () => {
-      setLeftTab('properties');
-      setLeftCollapsed(false);
-    }),
-    'window.inspector-library': on(editing, () => {
-      setLeftTab('library');
-      setLeftCollapsed(false);
-    }),
-    'window.theme': () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')),
-    'window.snap': () => setSnap((v) => !v),
-    'window.hotkeys': () => setHotkeysOpen(true),
+    'window.left-dock': on(model !== undefined, dock.toggleLeft),
+    'window.right-dock': on(model !== undefined, dock.toggleRight),
+    'window.inspector-properties': on(editing, () => dock.showInspectorTab('properties')),
+    'window.inspector-library': on(editing, () => dock.showInspectorTab('library')),
+    'window.theme': toggleTheme,
+    'window.snap': toggleSnap,
+    'window.hotkeys': hotkeyPrefs.openDialog,
   };
   useHotkeys({
     rootRef: appRef,
     keymap,
     mode: editing ? 'edit' : 'view',
     handlersRef: hotkeyHandlers,
-    suspended: hotkeysOpen,
+    suspended: hotkeyPrefs.dialogOpen,
     mac,
   });
   const hint = (id: ActionId) => keyHint(keymap, id, mac);
@@ -1109,7 +1008,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                 ? `Snapping to a ${SNAP_GRID}px grid. Click to place boxes freely.`
                 : `Snap dragged boxes to a ${SNAP_GRID}px grid; arrow keys step by it too.`
             }${hint('window.snap')}`}
-            onClick={() => setSnap((v) => !v)}
+            onClick={toggleSnap}
           >
             ⋮⋮
           </button>
@@ -1118,17 +1017,17 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             className="chip icon"
             aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
             title={`${theme === 'dark' ? 'Light theme' : 'Dark theme'}${hint('window.theme')}`}
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            onClick={toggleTheme}
           >
             {theme === 'dark' ? '☀' : '☾'}
           </button>
           <button
-            ref={gearRef}
+            ref={hotkeyPrefs.gearRef}
             type="button"
             className="chip icon"
             aria-label="Keyboard shortcuts"
             title={`Keyboard shortcuts${hint('window.hotkeys')}`}
-            onClick={() => setHotkeysOpen(true)}
+            onClick={hotkeyPrefs.openDialog}
           >
             ⚙
           </button>
@@ -1157,10 +1056,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             tool={tool}
             onSetTool={setTool}
             pen={{ color: penColor, width: penWidth }}
-            onSetPen={(patch) => {
-              if (patch.color !== undefined) setPenColor(patch.color);
-              if (patch.width !== undefined) setPenWidth(patch.width);
-            }}
+            onSetPen={setPen}
             drawingDisabled={enteredPath.length > 0}
           />
         )}
@@ -1207,18 +1103,18 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             <>
               <Dock
                 side="left"
-                collapsed={leftCollapsed}
-                onToggle={() => setLeftCollapsed((v) => !v)}
+                collapsed={dock.leftCollapsed}
+                onToggle={dock.toggleLeft}
                 hasContent={editing ? true : selection !== null}
-                width={leftWidth}
+                width={dock.leftWidth}
                 minWidth={LEFT_MIN}
                 maxWidth={DOCK_MAX}
-                onWidthChange={setLeftWidth}
+                onWidthChange={dock.setLeftWidth}
               >
                 {editing ? (
                   <InspectorTabs
                     activeTab={leftTab}
-                    onTabChange={setLeftTab}
+                    onTabChange={selectTab}
                     properties={
                       selection?.kind === 'node' && model.nodes.some((n) => n.id === selection.id) ? (
                         <NodePanel
@@ -1524,13 +1420,13 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
               </div>
               <Dock
                 side="right"
-                collapsed={rightCollapsed}
-                onToggle={() => setRightCollapsed((v) => !v)}
+                collapsed={dock.rightCollapsed}
+                onToggle={dock.toggleRight}
                 hasContent
-                width={rightWidth}
+                width={dock.rightWidth}
                 minWidth={RIGHT_MIN}
                 maxWidth={DOCK_MAX}
-                onWidthChange={setRightWidth}
+                onWidthChange={dock.setRightWidth}
               >
                 {dockPanels(studioProfile.dock, {
                   model,
@@ -1678,14 +1574,11 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
             </>
           )}
         </main>
-        {hotkeysOpen && (
+        {hotkeyPrefs.dialogOpen && (
           <HotkeysDialog
-            overrides={hotkeyOverrides}
-            onChange={setHotkeyOverrides}
-            onClose={() => {
-              setHotkeysOpen(false);
-              gearRef.current?.focus(); // back where the keyboard user came from
-            }}
+            overrides={hotkeyPrefs.overrides}
+            onChange={hotkeyPrefs.setOverrides}
+            onClose={hotkeyPrefs.closeDialog}
             mac={mac}
           />
         )}
