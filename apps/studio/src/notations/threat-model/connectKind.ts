@@ -1,7 +1,7 @@
 import { TM_BOUNDARY_TYPE, TM_FLOW_KIND, TM_NOTATION, type DiagramModel, type NotationId } from '@diagc/core/internal';
 
 /**
- * The relation kind a plain canvas connect gesture creates under `notation`.
+ * The relation kind a plain canvas connect gesture creates on a threat model.
  *
  * Only the threat model reads the kind: `strideFor` offers a flow's own STRIDE
  * categories (T · I · D) first for `data-flow` alone, and the tm-flow-boundary
@@ -19,13 +19,17 @@ import { TM_BOUNDARY_TYPE, TM_FLOW_KIND, TM_NOTATION, type DiagramModel, type No
  * gesture degrades to a plain `sync`: still wrong to draw, but a relation the
  * author can see, re-kind or delete rather than a wedged save.
  */
+export function flowKind(model: DiagramModel | undefined, from: string, to: string): string {
+  const isBoundary = (id: string) => model?.nodes.find((n) => n.id === id)?.type === TM_BOUNDARY_TYPE;
+  return isBoundary(from) || isBoundary(to) ? 'sync' : TM_FLOW_KIND;
+}
+
+/** The relation kind a plain canvas connect gesture creates under `notation`: the threat model's flow, else `sync`. */
 export function connectKind(
   notation: NotationId | undefined,
   model: DiagramModel | undefined,
   from: string,
   to: string,
 ): string {
-  if (notation !== TM_NOTATION) return 'sync';
-  const isBoundary = (id: string) => model?.nodes.find((n) => n.id === id)?.type === TM_BOUNDARY_TYPE;
-  return isBoundary(from) || isBoundary(to) ? 'sync' : TM_FLOW_KIND;
+  return notation === TM_NOTATION ? flowKind(model, from, to) : 'sync';
 }
