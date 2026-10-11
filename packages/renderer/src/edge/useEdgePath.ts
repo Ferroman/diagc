@@ -52,7 +52,10 @@ export function useEdgePath(
   // edge id, memoized so it doesn't re-wobble each render). Label position and
   // marker still use the clean path's endpoints.
   const renderPath = useMemo(
-    () => (data?.stylePreset?.rough !== undefined ? sketchEdge(path, seedFrom(id), data.stylePreset.rough) : path),
+    () =>
+      data?.stylePreset?.rough !== undefined
+        ? sketchEdge(path, { style: data.stylePreset.rough, seed: seedFrom(id) })
+        : path,
     [data?.stylePreset, path, id],
   );
   return { path, renderPath, curve, label, labelSpot };

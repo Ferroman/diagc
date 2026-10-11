@@ -853,8 +853,13 @@ describe('activity diagram nodes', () => {
     // the path identity is what proves the mapping.
     const renderedPath = svg!.querySelector('.dg-sketch-stroke')?.getAttribute('d') ?? '';
     const rough = stylePreset('sketch').rough!;
-    const diamondPath = sketchNode('diamond', 48, 48, seedFrom('n1'), rough, 0).stroke;
-    const boxPath = sketchNode('box', 48, 48, seedFrom('n1'), rough, 0).stroke;
+    const diamondPath = sketchNode(
+      'diamond',
+      { width: 48, height: 48 },
+      { style: rough, seed: seedFrom('n1') },
+      0,
+    ).stroke;
+    const boxPath = sketchNode('box', { width: 48, height: 48 }, { style: rough, seed: seedFrom('n1') }, 0).stroke;
     expect(renderedPath).toBe(diamondPath);
     expect(renderedPath).not.toBe(boxPath);
   });
@@ -1155,16 +1160,24 @@ describe('threat-model looks', () => {
       height: 90,
     });
     const processPath = process.container.querySelector('.dg-sketch-stroke')?.getAttribute('d') ?? '';
-    expect(processPath).toBe(sketchNode('ellipse', 150, 90, seedFrom('n1'), rough, 0).stroke);
-    expect(processPath).not.toBe(sketchNode('box', 150, 90, seedFrom('n1'), rough, 0).stroke);
+    expect(processPath).toBe(
+      sketchNode('ellipse', { width: 150, height: 90 }, { style: rough, seed: seedFrom('n1') }, 0).stroke,
+    );
+    expect(processPath).not.toBe(
+      sketchNode('box', { width: 150, height: 90 }, { style: rough, seed: seedFrom('n1') }, 0).stroke,
+    );
     cleanup();
     const store = renderNode({ typeId: 'tm-store', stylePreset: stylePreset('sketch') }, undefined, {
       width: 150,
       height: 56,
     });
     const storePath = store.container.querySelector('.dg-sketch-stroke')?.getAttribute('d') ?? '';
-    expect(storePath).toBe(sketchNode('store', 150, 56, seedFrom('n1'), rough, 0).stroke);
-    expect(storePath).not.toBe(sketchNode('box', 150, 56, seedFrom('n1'), rough, 0).stroke);
+    expect(storePath).toBe(
+      sketchNode('store', { width: 150, height: 56 }, { style: rough, seed: seedFrom('n1') }, 0).stroke,
+    );
+    expect(storePath).not.toBe(
+      sketchNode('box', { width: 150, height: 56 }, { style: rough, seed: seedFrom('n1') }, 0).stroke,
+    );
   });
 
   it('badges nothing on an element that carries no threats', () => {

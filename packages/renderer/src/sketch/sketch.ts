@@ -1,5 +1,6 @@
 import rough from 'roughjs';
 import type { Options } from 'roughjs/bin/core';
+import type { BoxSize, Point } from '@diagc/core/internal';
 import type { RoughStyle } from './stylePresets';
 
 // One generator for the whole app; it holds no per-drawing state (seed is passed
@@ -51,13 +52,20 @@ export function seedFrom(id: string): number {
   return h >>> 0 || 1;
 }
 
+/** what a shape is drawn with: the hand-drawn style, and the seed that keeps
+ * one node's or edge's wobble the same on every render (see seedFrom) */
+export interface SketchPen {
+  style: RoughStyle;
+  seed: number;
+}
+
 interface PathInfo {
   d: string;
   stroke: string;
   fill?: string;
 }
 
-const toOptions = (style: RoughStyle, seed: number): Options => ({
+const toOptions = ({ style, seed }: SketchPen): Options => ({
   roughness: style.roughness,
   bowing: style.bowing,
   strokeWidth: style.strokeWidth,
@@ -140,17 +148,10 @@ function bubblePath(w: number, h: number, r: number): string {
   });
 }
 
-export function sketchNode(
-  kind: SketchShapeKind,
-  width: number,
-  height: number,
-  seed: number,
-  style: RoughStyle,
-  cornerRadius = 0,
-): SketchPaths {
-  const w = Math.max(2, width);
-  const h = Math.max(2, height);
-  const o = toOptions(style, seed);
+export function sketchNode(kind: SketchShapeKind, size: BoxSize, pen: SketchPen, cornerRadius = 0): SketchPaths {
+  const w = Math.max(2, size.width);
+  const h = Math.max(2, size.height);
+  const o = toOptions(pen);
   const drawables =
     kind === 'circle'
       ? [gen.circle(w / 2, h / 2, Math.min(w, h) - 2, o)]
@@ -249,16 +250,16 @@ export function sketchNode(
   return partition(drawables.flatMap((d) => gen.toPaths(d) as PathInfo[]));
 }
 
-export function sketchCircle(cx: number, cy: number, diameter: number, seed: number, style: RoughStyle): SketchPaths {
+export function sketchCircle(centre: Point, diameter: number, pen: SketchPen): SketchPaths {
   const d = Math.max(2, diameter);
-  return partition(gen.toPaths(gen.circle(cx, cy, d, toOptions(style, seed))) as PathInfo[]);
+  return partition(gen.toPaths(gen.circle(centre.x, centre.y, d, toOptions(pen))) as PathInfo[]);
 }
 
-export function sketchEdge(path: string, seed: number, style: RoughStyle): string {
+export function sketchEdge(path: string, pen: SketchPen): string {
   // A single stroke pass: rough draws each line as two overlapping passes by
   // default, which on a long curved edge (e.g. a CLD bow) run visibly parallel
   // and read as two separate edges. Nodes keep the default two-pass look.
-  const o = { ...toOptions(style, seed), fill: undefined, disableMultiStroke: true };
+  const o = { ...toOptions(pen), fill: undefined, disableMultiStroke: true };
   const infos = gen.toPaths(gen.path(path, o)) as PathInfo[];
   const d = infos
     .filter((i) => i.stroke === STROKE_SENTINEL)

@@ -205,10 +205,5 @@
     "max-params": {
       "count": 2
     }
-  },
-  "packages/renderer/src/sketch/sketch.ts": {
-    "max-params": {
-      "count": 2
-    }
   }
 }

@@ -47,8 +47,9 @@ export function SketchShape({
     // The solid pass is the polygon under everything. Same seed, and rough draws
     // the outline before it fills, so both passes wobble the same outline and the
     // polygon sits exactly under the hatched pass's stroke.
-    const solid = sketchNode(kind, width, height, seed, { ...rough, fillStyle: 'solid' }, radius);
-    return hatched ? { ...sketchNode(kind, width, height, seed, rough, radius), fill: solid.fill } : solid;
+    const size = { width, height };
+    const solid = sketchNode(kind, size, { style: { ...rough, fillStyle: 'solid' }, seed }, radius);
+    return hatched ? { ...sketchNode(kind, size, { style: rough, seed }, radius), fill: solid.fill } : solid;
   }, [kind, width, height, seed, rough, hatched, preset.cornerRadius]);
   if (paths === null || rough === undefined) return null;
   const mix = preset.colorMix ?? DEFAULT_MIX;
