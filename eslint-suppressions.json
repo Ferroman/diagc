@@ -182,10 +182,5 @@
     "max-lines-per-function": {
       "count": 1
     }
-  },
-  "packages/renderer/src/node/TableNode.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
   }
 }
