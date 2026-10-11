@@ -802,3 +802,80 @@ describe('Viewer theme', () => {
     expect(screen.getByRole('button', { name: 'Full platform' }).style.color).toBe('var(--dg-text-muted)');
   });
 });
+
+/** a box and its child on two planes; a layout can save the box open on one of them */
+const twoPlaneFolds = (): DiagramModel => ({
+  version: 1,
+  id: 'folds',
+  name: 'folds',
+  layers: [],
+  planes: [
+    { id: 'main', name: 'Main' },
+    { id: 'alt', name: 'Alt' },
+  ],
+  nodes: [
+    { id: 'box', name: 'Box', type: 'system' },
+    { id: 'inner', name: 'Inner', type: 'service' },
+  ],
+  containment: [
+    { parent: 'box', child: 'inner' },
+    { parent: 'box', child: 'inner', plane: 'alt' },
+  ],
+  relations: [],
+});
+
+describe("Viewer — the reader's own view", () => {
+  const panel = () => screen.queryByRole('complementary', { name: 'Leverage' });
+  const variable = (container: HTMLElement, id: string) =>
+    container.querySelector(`.react-flow__node[data-id="${id}"]`) as HTMLElement;
+
+  it("draws the model's own style", async () => {
+    const b = model('styled');
+    b.node('a', { name: 'Alpha', type: 'service' });
+    b.style('sketch');
+    const { container } = render(<Viewer data={{ model: b.toJSON() }} />);
+    expect(await screen.findByText('Alpha')).toBeDefined();
+    expect(container.querySelector('.dg-canvas')?.className).toContain('dg-style-sketch');
+  });
+
+  it('opens and folds a group from its chip, for the session', async () => {
+    render(<Viewer data={{ model: nested() }} />);
+    expect(await screen.findByText('Box')).toBeDefined();
+    expect(screen.queryByText('Inner')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Expand' }));
+    expect(await screen.findByText('Inner')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse' }));
+    await waitFor(() => expect(screen.queryByText('Inner')).toBeNull());
+  });
+
+  it('opens each plane the way the layout saved it', async () => {
+    const folds = twoPlaneFolds();
+    const layout = { version: 1 as const, planes: {}, unfolded: { [layoutPlaneKey(folds, 'alt')]: ['box'] } };
+    render(<Viewer data={{ model: folds, layout }} />);
+    expect(await screen.findByText('Box')).toBeDefined();
+    expect(screen.queryByText('Inner')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Alt' }));
+    expect(await screen.findByText('Inner')).toBeDefined();
+  });
+
+  it('drills into a group and back out', async () => {
+    render(<Viewer data={{ model: nested() }} />);
+    fireEvent.click(await screen.findByLabelText('Enter node'));
+    expect(await screen.findByLabelText('Nested zoom breadcrumb')).toBeDefined();
+    expect(await screen.findByText('Inner')).toBeDefined();
+  });
+
+  it('does not bring a closed report back when the reader returns to its plane', async () => {
+    const { container } = render(<Viewer data={{ model: causalSecond() }} />);
+    expect(await screen.findByText('Throughput')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Flow' }));
+    await waitFor(() => expect(container.querySelector('.dg-canvas.dg-notation-cld')).not.toBeNull());
+    fireEvent.click(variable(container, 't'));
+    await waitFor(() => expect(panel()).not.toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'Boxes' }));
+    await waitFor(() => expect(panel()).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'Flow' }));
+    await waitFor(() => expect(container.querySelector('.dg-canvas.dg-notation-cld')).not.toBeNull());
+    expect(panel()).toBeNull();
+  });
+});
