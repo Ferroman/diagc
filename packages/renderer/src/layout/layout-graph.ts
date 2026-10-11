@@ -124,7 +124,8 @@ export function usesNestedLayout(settings?: LayoutSettings): boolean {
  */
 export function layoutOptionsFor(settings?: LayoutSettings): Record<string, string> {
   const algorithm = settings?.algorithm ?? DEFAULT_ALGORITHM;
-  const nodeNode = String(settings?.spacing ?? DEFAULT_SPACING);
+  const spacing = settings?.spacing;
+  const nodeNode = String(spacing !== undefined ? spacing : DEFAULT_SPACING);
   // Layers sit as far apart as the boxes within one: a wider layer gap reads as
   // loose at the boxes' real (34–50px tall) size, and elk pays it TWICE around
   // every labelled edge, whose label takes a layer of its own, so any extra is
