@@ -10,6 +10,7 @@ import {
 import { errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagc/core/internal';
 import type { LayoutApi } from '@diagc/renderer';
 import type { LoadedArtifact } from '../artifacts';
+import { isDirty, type EditorSession } from '../editor/reducer';
 import { useEditor } from '../editor/useEditor';
 import { getHost } from '../host';
 
@@ -64,9 +65,10 @@ export function useEditSession({ setDrafts, resetInspector, leaveEditRef }: UseE
   const [saveIssues, setSaveIssues] = useState<{ message: string }[] | null>(null);
   const [saving, setSaving] = useState(false);
   const editor = useEditor();
-  // Synchronous re-entrancy guard: overlapping autosaves would double-POST.
-  // Edits landing mid-save stay dirty and are picked up by the next tick.
-  const savingRef = useRef(false);
+  // The save in flight, if any. A synchronous re-entrancy guard (overlapping
+  // autosaves would double-POST; edits landing mid-save stay dirty and are
+  // picked up by the next tick), and what leaveEdit's final flush waits out.
+  const savingRef = useRef<Promise<boolean> | null>(null);
   // Kept in a ref so the autosave timer always calls the latest doSave without
   // rescheduling on every render.
   const doSaveRef = useRef<() => void>(() => {});
@@ -101,19 +103,17 @@ export function useEditSession({ setDrafts, resetInspector, leaveEditRef }: UseE
   // issues (validation/HTTP/throw) uniformly and, on success, shadows the
   // compiled artifact with exactly what was saved so leaving edit shows it —
   // the creation-time draft (empty model) no longer wins forever.
-  const doSave = async (): Promise<boolean> => {
-    if (!editor.dirty || savingRef.current) return false;
-    savingRef.current = true;
-    setSaving(true);
-    const snapshot = editor.session;
+  const saveSnapshot = async (snapshot: EditorSession): Promise<boolean> => {
     try {
-      const res = await editor.save();
+      const res = await editor.save(snapshot);
       if (!res.ok) {
         setSaveIssues(res.issues ?? [{ message: 'Save failed' }]);
         return false;
       }
       setSaveIssues(null);
-      if (snapshot !== null) {
+      // Once the session has ended, leaveEdit has shadowed its newest edits,
+      // which this snapshot may predate.
+      if (editor.peek() !== null) {
         const { name, state } = snapshot;
         setDrafts((d) => ({
           ...d,
@@ -125,10 +125,17 @@ export function useEditSession({ setDrafts, resetInspector, leaveEditRef }: UseE
     } catch (e) {
       setSaveIssues([{ message: errMessage(e) }]);
       return false;
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
     }
+  };
+  const doSave = (snapshot = editor.peek()): Promise<boolean> => {
+    if (snapshot === null || !isDirty(snapshot) || savingRef.current !== null) return Promise.resolve(false);
+    setSaving(true);
+    const pending = saveSnapshot(snapshot).finally(() => {
+      savingRef.current = null;
+      setSaving(false);
+    });
+    savingRef.current = pending;
+    return pending;
   };
   doSaveRef.current = () => void doSave();
 
@@ -150,7 +157,10 @@ export function useEditSession({ setDrafts, resetInspector, leaveEditRef }: UseE
           issues: [],
         },
       }));
-      void doSave().then((ok) => {
+      // A save still in flight posts an older snapshot and blocks this one:
+      // wait it out, landed or not, then post the newest edits.
+      const flush = (): Promise<boolean> => savingRef.current?.then(flush) ?? doSave(snap);
+      void flush().then((ok) => {
         // Re-compose only once the final flush moved the file.
         if (ok && hasIncludes) void refreshComposed(snap.name);
       });

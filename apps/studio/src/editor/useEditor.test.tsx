@@ -176,6 +176,31 @@ describe('useEditor.save', () => {
     expect(call).toBeDefined();
     expect(String(call?.[1]?.body)).toContain('"k1"');
   });
+
+  it('posts the session it is given, even one that has stopped', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetchMock);
+    const { result } = renderHook(() => useEditor());
+    act(() => {
+      result.current.start('draft', state());
+    });
+    act(() => {
+      result.current.dispatch({ type: 'rename-node', id: 'a', name: 'Alpha' });
+    });
+    const stopped = result.current.peek()!;
+    act(() => {
+      result.current.stop();
+    });
+    let res: { ok: boolean } | undefined;
+    await act(async () => {
+      res = await result.current.save(stopped);
+    });
+    expect(res?.ok).toBe(true);
+    const call = fetchMock.mock.calls.find((c) => String(c[0]) === '/api/diagrams/draft');
+    expect(String(call?.[1]?.body)).toContain('Alpha');
+    expect(result.current.session).toBeNull(); // nothing to mark saved
+  });
 });
 
 describe('useEditor.peek', () => {
