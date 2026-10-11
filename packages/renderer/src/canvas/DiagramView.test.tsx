@@ -6,6 +6,7 @@ import {
   dayOf,
   layoutPlaneKey,
   model,
+  relationLabels,
   type DiagramModel,
   type LayoutOverlay,
   type ElementRef,
@@ -3468,5 +3469,212 @@ describe('align right after an arrow key', () => {
     const [nudged, nudgeDeltas] = onNodesMoved.mock.calls[0]! as [object, Record<string, { dx: number; dy: number }>];
     expect(Object.keys(nudged).sort()).toEqual(['a', 'b']);
     expect(nudgeDeltas['a']).toEqual({ dx: 0, dy: NUDGE_STEP });
+    // ...then align moves b alone, onto a's left edge, from where the nudge left it
+    const [aligned] = onNodesMoved.mock.calls[1]! as [Record<string, { x: number; y: number }>];
+    const at = nudged as Record<string, { x: number; y: number }>;
+    expect(aligned).toEqual({ b: { x: at['a']!.x, y: at['b']!.y } });
+  });
+});
+
+describe('what a click on the canvas reports', () => {
+  const firstEdge = async (container: HTMLElement): Promise<HTMLElement> =>
+    waitFor(() => {
+      const el = container.querySelector('.react-flow__edge') as HTMLElement | null;
+      if (el === null) throw new Error('edge not rendered');
+      return el;
+    });
+
+  it('edit mode: an edge click shows its fixed-side dots, and a pane click hides them', async () => {
+    const { container } = render(
+      <DiagramView model={containerEndpointModel()} mode="edit" edit={{ onSetEdgeSide: vi.fn() }} />,
+    );
+    fireEvent.click(await firstEdge(container));
+    await waitFor(() => expect(container.querySelectorAll('.dg-edge-pin').length).toBe(2));
+    // far from the edge click, so it is no second click of a double-click
+    fireEvent.click(container.querySelector('.react-flow__pane') as HTMLElement, { clientX: 500, clientY: 500 });
+    await waitFor(() => expect(container.querySelectorAll('.dg-edge-pin').length).toBe(0));
+  });
+
+  it("edit mode: a click on a flow's note selects the flow, shows its dots and leaves no box selected", async () => {
+    const onSelect = vi.fn();
+    const { container } = render(
+      <DiagramView
+        model={threatened}
+        layout={allOpen()}
+        mode="edit"
+        edit={{ onSetEdgeSide: vi.fn() }}
+        onSelect={onSelect}
+      />,
+    );
+    fireEvent.click(await rfNode(container, 'db'));
+    await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="db"].selected')).not.toBeNull());
+    fireEvent.click(await rfNode(container, 'note:relation:f'));
+    expect(onSelect).toHaveBeenLastCalledWith({ kind: 'edge', id: expect.any(String), constituentIds: ['f'] });
+    await waitFor(() => expect(container.querySelectorAll('.dg-edge-pin').length).toBe(2));
+    expect(container.querySelector('.react-flow__node.selected')).toBeNull();
+  });
+
+  it('a click on a stub drills to the node it stands in for', async () => {
+    const onEnteredPathChange = vi.fn();
+    render(<DiagramView model={promotedEndpointModel()} onEnteredPathChange={onEnteredPathChange} />);
+    const a = await screen.findByText('A');
+    fireEvent.click(a, { clientX: 10, clientY: 10 });
+    fireEvent.click(await screen.findByText('A'), { clientX: 10, clientY: 10, detail: 2 });
+    await waitFor(() => expect(onEnteredPathChange).toHaveBeenLastCalledWith(['A']));
+    fireEvent.click(await screen.findByText('B'));
+    await waitFor(() => expect(onEnteredPathChange).toHaveBeenLastCalledWith(['B']));
+    expect(await screen.findByText('b1')).toBeDefined();
+  });
+
+  it('edit mode: a reconnect reports the end the drag grabbed, and forgets it once the drag ends', async () => {
+    const onReconnect = vi.fn();
+    const json = containerEndpointModel();
+    const relation = json.relations[0]!;
+    const { container } = render(<DiagramView model={json} mode="edit" edit={{ onReconnect }} />);
+    await firstEdge(container);
+    const edge = dragCapture.props['edges'][0];
+    const sameEnds = { source: relation.from, target: relation.to, sourceHandle: null, targetHandle: 'left' };
+    act(() => {
+      dragCapture.props['onReconnectStart']({}, edge, 'target');
+      dragCapture.props['onReconnect'](edge, sameEnds);
+      dragCapture.props['onReconnectEnd']();
+    });
+    expect(onReconnect).toHaveBeenCalledWith(relation.id, relation.from, relation.to, { end: 'to', side: 'left' });
+    // with no end grabbed, the same drop moves nothing it can name
+    act(() => dragCapture.props['onReconnect'](edge, sameEnds));
+    expect(onReconnect).toHaveBeenLastCalledWith(relation.id, relation.from, relation.to, undefined);
+  });
+
+  it('edit mode: a connect reports both ends and their handles', async () => {
+    const onConnect = vi.fn();
+    const { container } = render(<DiagramView model={containerEndpointModel()} mode="edit" edit={{ onConnect }} />);
+    await firstEdge(container);
+    act(() =>
+      dragCapture.props['onConnect']({ source: 'gw', target: 'api', sourceHandle: 'right', targetHandle: null }),
+    );
+    expect(onConnect).toHaveBeenCalledWith('gw', 'api', 'right', null);
+  });
+});
+
+describe('the corner cluster', () => {
+  it('keeps the markup of every switch, the theme switch included', async () => {
+    const m = model('t-cluster');
+    const a = m.node('a');
+    const b = m.node('b');
+    const c = m.node('c');
+    m.relate(a, b, { kind: 'influences', polarity: '+' });
+    m.relate(b, c, { kind: 'influences', polarity: '+' });
+    m.relate(c, a, { kind: 'influences', polarity: '-' });
+    const drawings = { version: 1 as const, planes: { default: [{ id: 'k1', points: [0, 0, 40, 40] }] } };
+    const { container } = render(
+      <DiagramView
+        model={{ ...m.toJSON(), legend: {} }}
+        notation="causal-loop"
+        drawings={drawings}
+        keyHints={{ dim: 'D', legend: 'K' }}
+        colorMode="dark"
+        onToggleTheme={() => {}}
+      />,
+    );
+    const cluster = await waitFor(() => {
+      const el = container.querySelector('.react-flow__controls');
+      if (el === null || el.querySelector('.dg-loop-toggle') === null) throw new Error('cluster not complete');
+      return el;
+    });
+    expect(cluster.outerHTML).toMatchInlineSnapshot(
+      `"<div class="react-flow__panel react-flow__controls vertical bottom left" data-testid="rf__controls" aria-label="Control Panel"><button type="button" class="react-flow__controls-button react-flow__controls-zoomin" title="Zoom In" aria-label="Zoom In"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M32 18.133H18.133V32h-4.266V18.133H0v-4.266h13.867V0h4.266v13.867H32z"></path></svg></button><button type="button" class="react-flow__controls-button react-flow__controls-zoomout" title="Zoom Out" aria-label="Zoom Out"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 5"><path d="M0 0h32v4.2H0z"></path></svg></button><button type="button" class="react-flow__controls-button react-flow__controls-fitview" title="Fit View" aria-label="Fit View"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 30"><path d="M3.692 4.63c0-.53.4-.938.939-.938h5.215V0H4.708C2.13 0 0 2.054 0 4.63v5.216h3.692V4.631zM27.354 0h-5.2v3.692h5.17c.53 0 .984.4.984.939v5.215H32V4.631A4.624 4.624 0 0027.354 0zm.954 24.83c0 .532-.4.94-.939.94h-5.215v3.768h5.215c2.577 0 4.631-2.13 4.631-4.707v-5.139h-3.692v5.139zm-23.677.94c-.531 0-.939-.4-.939-.94v-5.138H0v5.139c0 2.577 2.13 4.707 4.708 4.707h5.138V25.77H4.631z"></path></svg></button><button type="button" class="react-flow__controls-button react-flow__controls-interactive" title="Toggle Interactivity" aria-label="Toggle Interactivity"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 32"><path d="M21.333 10.667H19.81V7.619C19.81 3.429 16.38 0 12.19 0c-4.114 1.828-1.37 2.133.305 2.438 1.676.305 4.42 2.59 4.42 5.181v3.048H3.047A3.056 3.056 0 000 13.714v15.238A3.056 3.056 0 003.048 32h18.285a3.056 3.056 0 003.048-3.048V13.714a3.056 3.056 0 00-3.048-3.047zM12.19 24.533a3.056 3.056 0 01-3.047-3.047 3.056 3.056 0 013.047-3.048 3.056 3.056 0 013.048 3.048 3.056 3.056 0 01-3.048 3.047z"></path></svg></button><button type="button" class="react-flow__controls-button dg-focus-toggle" title="Stop dimming unconnected on select (D)" aria-label="Stop dimming unconnected on select" aria-pressed="true">◎</button><button type="button" class="react-flow__controls-button dg-laser-toggle" title="Laser pointer (L)" aria-label="Laser pointer" aria-pressed="false">◉</button><button type="button" class="react-flow__controls-button dg-drawings-toggle" title="Hide drawings" aria-label="Hide drawings" aria-pressed="true">✎</button><button type="button" class="react-flow__controls-button dg-legend-toggle-btn" title="Hide legend (K)" aria-label="Hide legend" aria-pressed="true">▤</button><button type="button" class="react-flow__controls-button dg-loop-toggle" title="Hide loop badges" aria-label="Hide loop badges" aria-pressed="true">↻</button><button type="button" class="react-flow__controls-button dg-theme-toggle" title="Light theme" aria-label="Switch to light theme">☀</button></div>"`,
+    );
+  });
+});
+
+describe('moves view mode keeps for the session', () => {
+  it('Alt held lets view mode drag the nodes, and a blur lets go', async () => {
+    const { container } = render(<DiagramView model={containerEndpointModel()} />);
+    await screen.findByText('gw');
+    const canvas = container.querySelector('.dg-canvas') as HTMLElement;
+    expect(dragCapture.props['nodesDraggable']).toBe(false);
+    fireEvent.keyDown(window, { key: 'Alt' });
+    await waitFor(() => expect(canvas.classList.contains('dg-alt-move')).toBe(true));
+    expect(dragCapture.props['nodesDraggable']).toBe(true);
+    fireEvent.blur(window);
+    await waitFor(() => expect(canvas.classList.contains('dg-alt-move')).toBe(false));
+    expect(dragCapture.props['nodesDraggable']).toBe(false);
+  });
+
+  it('a label slid in view mode draws over its saved spot and is reported, until edit mode drops it', async () => {
+    const onViewLabelMovesChange = vi.fn();
+    const json = containerEndpointModel();
+    const relation = json.relations[0]!;
+    const labelId = relationLabels(relation)[0]!.id;
+    const layout: LayoutOverlay = {
+      version: 1,
+      planes: {},
+      edgeLabels: { [layoutPlaneKey(json, undefined)]: { [relation.id]: { [labelId]: { t: 0.8 } } } },
+    };
+    const props = { model: json, layout, onViewLabelMovesChange };
+    const { container, rerender } = render(<DiagramView {...props} />);
+    const labelT = () => dragCapture.props['edges'][0].data.labels[0].t as number;
+    await waitFor(() => expect(container.querySelector('.react-flow__edge')).not.toBeNull());
+    expect(labelT()).toBe(0.8);
+    expect(onViewLabelMovesChange).toHaveBeenLastCalledWith({});
+
+    act(() => dragCapture.props['edges'][0].data.onMoveLabel(labelId, 0.25, 'top'));
+    await waitFor(() => expect(labelT()).toBe(0.25));
+    expect(onViewLabelMovesChange).toHaveBeenLastCalledWith({
+      [relation.id]: { [labelId]: { t: 0.25, side: 'top' } },
+    });
+
+    rerender(<DiagramView {...props} mode="edit" edit={{}} />);
+    await waitFor(() => expect(onViewLabelMovesChange).toHaveBeenLastCalledWith({}));
+    expect(labelT()).toBe(0.8);
+  });
+});
+
+describe('what the canvas wrapper claims', () => {
+  const dragOverWith = (canvas: HTMLElement, types: string[]): boolean =>
+    fireEvent.dragOver(canvas, { dataTransfer: { types } });
+
+  it('edit mode claims a palette entry dragged over the canvas; view mode and a host without a drop do not', async () => {
+    const entry = [LIBRARY_ENTRY_DND_TYPE];
+    const edit = { onDropLibraryEntry: vi.fn() };
+    const { container, rerender } = render(<DiagramView model={containerEndpointModel()} mode="edit" edit={edit} />);
+    await screen.findByText('gw');
+    const canvas = container.querySelector('.dg-canvas') as HTMLElement;
+    expect(dragOverWith(canvas, entry)).toBe(false);
+    expect(dragOverWith(canvas, ['Files'])).toBe(true);
+    rerender(<DiagramView model={containerEndpointModel()} edit={edit} />);
+    expect(dragOverWith(canvas, entry)).toBe(true);
+    rerender(<DiagramView model={containerEndpointModel()} mode="edit" edit={{}} />);
+    expect(dragOverWith(canvas, entry)).toBe(true);
+  });
+
+  it('marks the canvas while a node drag is under way', async () => {
+    const { container } = render(<DiagramView model={containerEndpointModel()} mode="edit" edit={{}} />);
+    const gw = await rfNode(container, 'gw');
+    const canvas = container.querySelector('.dg-canvas') as HTMLElement;
+    const node = dragCapture.instance.getNode('gw');
+    act(() => dragCapture.props['onNodeDragStart']({}, node, [node]));
+    expect(canvas.classList.contains('dg-dragging')).toBe(true);
+    act(() => dragCapture.props['onNodeDragStop']({ clientX: 0, clientY: 0 }, node, [node]));
+    expect(canvas.classList.contains('dg-dragging')).toBe(false);
+    expect(gw.isConnected).toBe(true);
+  });
+});
+
+describe('the data the canvas hands its nodes and edges', () => {
+  it('a style switch that leaves the hand-drawn look off keeps every node and edge data object', async () => {
+    const json = containerEndpointModel();
+    const { container, rerender } = render(<DiagramView model={json} mode="edit" edit={{}} styleId="clean" />);
+    await waitFor(() => expect(container.querySelector('.react-flow__edge')).not.toBeNull());
+    const dataOf = (key: 'nodes' | 'edges') =>
+      new Map((dragCapture.props[key] as { id: string; data: unknown }[]).map((x) => [x.id, x.data]));
+    const nodes = dataOf('nodes');
+    const edges = dataOf('edges');
+
+    rerender(<DiagramView model={json} mode="edit" edit={{}} styleId="blueprint" />);
+    expect(container.querySelector('.dg-canvas.dg-style-blueprint')).not.toBeNull();
+    expect(dataOf('nodes').size).toBe(nodes.size);
+    for (const [id, data] of dataOf('nodes')) expect(data).toBe(nodes.get(id));
+    for (const [id, data] of dataOf('edges')) expect(data).toBe(edges.get(id));
   });
 });

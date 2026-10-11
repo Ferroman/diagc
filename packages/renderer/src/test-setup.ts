@@ -55,7 +55,7 @@ if (typeof window !== 'undefined') {
   window.DragEvent = window.DragEvent ?? (DragEventStub as unknown as typeof DragEvent);
   window.ResizeObserver = window.ResizeObserver ?? (ResizeObserverStub as unknown as typeof ResizeObserver);
   // jsdom has no layout engine, so it doesn't implement elementFromPoint at all (not even
-  // as a stub) — DiagramView's library-entry drop resolves the drop-target node through it,
+  // as a stub) — useDropAndPaste's library-entry drop resolves the drop-target node through it,
   // so it must exist (and be spy-able) under test. Default to "nothing there" (matches real
   // browsers when the point is outside the viewport); tests that care mock a real return.
   window.document.elementFromPoint = window.document.elementFromPoint ?? ((): Element | null => null);

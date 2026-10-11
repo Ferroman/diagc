@@ -14,7 +14,7 @@ import type { EditingApi } from './view-types';
 
 /** Client coordinates off a React Flow drag event. React Flow types the event
  * `MouseEvent | TouchEvent` (a drag CAN start from a touch), so `.clientX` is
- * narrowed rather than assumed — same reasoning as DiagramView's
+ * narrowed rather than assumed — same reasoning as useDropAndPaste's
  * droppedOnNodeId, just for the union React Flow itself hands back here. */
 const clientPointOf = (e: MouseEvent | TouchEvent): Point =>
   'clientX' in e ? { x: e.clientX, y: e.clientY } : { x: e.touches[0]?.clientX ?? 0, y: e.touches[0]?.clientY ?? 0 };
@@ -223,7 +223,7 @@ export function useNodeDragging(input: NodeDraggingInput): NodeDragging {
   };
 
   // 'remove' stays out: element existence belongs to the model. The delete
-  // key reaches the host through DiagramView's onDelete instead — letting
+  // key reaches the host through useCanvasClicks' onDelete instead — letting
   // React Flow remove locally would only ghost-delete until the next model
   // rebuild resurrected the elements.
   //

@@ -3,7 +3,8 @@ import { fireEvent, render } from '@testing-library/react';
 import { ReactFlowProvider } from '@xyflow/react';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { DrawingsLayer } from './DrawingsLayer';
+import { DEFAULT_STROKE_WIDTH } from '@diagc/core/internal';
+import { DrawingsLayer, liveStroke } from './DrawingsLayer';
 
 const strokes = [
   { id: 'k1', points: [0, 0, 10, 10] },
@@ -56,5 +57,20 @@ describe('DrawingsLayer', () => {
     expect(hits[1]?.getAttribute('stroke-width')).toBe('12');
     fireEvent.click(hits[1] as Element);
     expect(onErase).toHaveBeenCalledWith('k2');
+  });
+});
+
+describe('liveStroke', () => {
+  it('draws nothing between strokes', () => {
+    expect(liveStroke(null, { width: 4, color: '#f00' })).toBeNull();
+  });
+
+  it("draws the stroke under the pen with the pen's width and colour, or the default width and the theme's ink", () => {
+    expect(liveStroke([0, 0, 5, 5], { width: 4, color: '#f00' })).toEqual({
+      points: [0, 0, 5, 5],
+      width: 4,
+      color: '#f00',
+    });
+    expect(liveStroke([0, 0], undefined)).toEqual({ points: [0, 0], width: DEFAULT_STROKE_WIDTH, color: undefined });
   });
 });

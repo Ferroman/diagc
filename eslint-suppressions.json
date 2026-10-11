@@ -174,12 +174,6 @@
     }
   },
   "packages/renderer/src/canvas/DiagramView.tsx": {
-    "complexity": {
-      "count": 2
-    },
-    "max-lines": {
-      "count": 1
-    },
     "max-lines-per-function": {
       "count": 1
     }

@@ -69,7 +69,7 @@ export interface DiagramEdgeData {
   onAddLabel?: (text: string, t: number, side: EdgeLabelSide) => void;
   /** edit: a double-click landed on this edge (flow coords) — open the add-label
    * editor here; the renderer projects the point and clears via onPendingAddConsumed.
-   * DiagramView correlates the double-click to a preceding edge click, because the
+   * useCanvasClicks correlates the double-click to a preceding edge click, because the
    * native dblclick never lands on the edge itself (the first click remounts the
    * edges layer, so the second click falls through to the pane). */
   pendingAdd?: Point;
@@ -86,7 +86,7 @@ export interface DiagramEdgeData {
    * re-float). */
   onSetSide?: (end: 'from' | 'to', side: Side | null) => void;
   /** this edge is the active fixed-side target — show its fixed-side dots.
-   * Driven by DiagramView's relation-keyed selection (not React Flow's edge
+   * Driven by useFlowEdges' relation-keyed selection (not React Flow's edge
    * `selected`, whose id changes when a side is fixed or freed). */
   fixedSideDotsShown?: boolean;
   /** edit mode, sole-relation edges only: open a new threat row on this flow's
@@ -139,7 +139,7 @@ export function DiagramEdge({
         />
         {/* transparent hit-path: widens the hover/title target. A double-click here
           adds no label: a real double-click's first click remounts the edges layer,
-          so the native dblclick never lands on the edge. DiagramView detects the
+          so the native dblclick never lands on the edge. useCanvasClicks detects the
           double-click from click events and threads `pendingAdd`. */}
         <path d={path} fill="none" stroke="transparent" strokeWidth={14}>
           <title>{hoverTitle(data)}</title>

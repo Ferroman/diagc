@@ -61,7 +61,7 @@ const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
  * exported with the picture, with title, status and details writable in place.
  * Content, not chrome — only its controls and fields disappear under
  * .dg-no-chrome. A React Flow node so drag, z-order and export come for free;
- * never selectable, so a click selects the element it is about (DiagramView
+ * never selectable, so a click selects the element it is about (useCanvasClicks
  * routes it). Drawn in the theme's node colours (see .dg-note): the sticky it
  * replaced fixed a pale fill under the theme's text colour and was unreadable
  * in the dark theme.

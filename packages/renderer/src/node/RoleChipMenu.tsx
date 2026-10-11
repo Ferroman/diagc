@@ -23,7 +23,7 @@ import type { EditingApi } from '../canvas/view-types';
  * The menu itself is portalled to `document.body`, the same move
  * `RichLabelEditor.tsx`'s toolbar already makes and for the same two
  * reasons: a zone WITH children sits in its own stacking context
- * (DiagramView's derivedNodes gives an expanded node `zIndex: -1`), so a menu
+ * (nodeFrameProps gives an expanded node `zIndex: -1`), so a menu
  * painted inside the node would draw underneath that zone's own nested bars
  * rather than over them; and React Flow's XYDrag starts a node drag from a
  * mousedown anywhere on the node that lacks `.nodrag` on itself or an

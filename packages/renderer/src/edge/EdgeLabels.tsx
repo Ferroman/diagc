@@ -56,7 +56,7 @@ export function EdgeLabels({
   /** elk's reserved spot, while the route stands */
   labelSpot: Point | undefined;
 }): ReactElement {
-  // The label being edited in place. A brand-new one is DiagramView's
+  // The label being edited in place. A brand-new one is useFlowEdges'
   // `pendingAdd`, drawn by NewLabelEditor.
   const [edit, setEdit] = useState<{
     labelId: string | null;
@@ -188,7 +188,7 @@ function useLabelSlide(data: DiagramEdgeData, curve: EdgeCurve) {
   return { drag, handlers };
 }
 
-/** New-label editor. Derived from data.pendingAdd (a DiagramView state) rather
+/** New-label editor. Derived from data.pendingAdd (useFlowEdges' state) rather
  * than local state, because a double-click selects the edge and remounts the
  * edges layer — local editor state would be destroyed by that remount, but a
  * remounted edge still receives pendingAdd and re-derives the editor. The

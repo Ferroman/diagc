@@ -31,7 +31,7 @@ export interface TypeStyle {
    * (instead of the subtle tint), matching the standard C4 stencil */
   outline?: boolean;
   /** containers of this type never fold under semantic zoom (a lane is a band,
-   * not a box with an inside); DiagramView pins them expanded alongside the
+   * not a box with an inside); useCompiledView pins them expanded alongside the
    * notation profile's node.alwaysExpanded hook */
   alwaysExpanded?: boolean;
   /** default leaf w/h when neither the model nor the layout overlay sizes the
@@ -218,8 +218,8 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   // git lane carry it: a trust boundary is a line drawn AROUND things, never a
   // drill level. Folded it would re-anchor every crossing flow to the boundary
   // box and hide the very elements those crossings are about — the picture would
-  // lose the thing it exists to show. DiagramView folds registry `alwaysExpanded`
-  // into `effectivePins` and blocks drilling into it.
+  // lose the thing it exists to show. useCompiledView folds registry `alwaysExpanded`
+  // into `effectivePins`, and useNotation's isAlwaysExpanded blocks drilling into it.
   // ---- Deployment -------------------------------------------------------------
   // Zones are containers; what a node sits inside is the information. A zone's
   // header prints only its name and icon, so each carries a legendLabel. Outline

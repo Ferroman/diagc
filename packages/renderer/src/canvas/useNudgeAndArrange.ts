@@ -1,6 +1,6 @@
 import { useMemo, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { applyNodeChanges, type Node, type ReactFlowInstance } from '@xyflow/react';
-import { dropDescendants, type Delta } from './arrange';
+import { alignBoxes, distributeBoxes, dropDescendants, type AlignMode, type Delta } from './arrange';
 import type { Box } from './box';
 import { NUDGE_STEP, useNudge, type Positions } from './useNudge';
 
@@ -26,6 +26,10 @@ export interface NudgeAndArrange {
   selectedIds: string[];
   canArrange: boolean;
   arrangeSelection: (fn: (boxes: Box[]) => Record<string, Delta>) => void;
+  /** line the selection up (the toolbar's and the host's command) */
+  alignSelection: (mode: AlignMode) => void;
+  /** space the selection evenly */
+  distributeSelection: (axis: 'x' | 'y') => void;
 }
 
 /** The arrow keys, and align/distribute over the selection. */
@@ -47,7 +51,7 @@ export function useNudgeAndArrange(input: NudgeAndArrangeInput): NudgeAndArrange
     commit: commitMoves,
   });
   // What align/distribute act on: the selection minus the nodes nothing may move
-  // (see `draggable` in DiagramView's derivedNodes). They are neither moved nor
+  // (see `draggable` in nodeFrameProps). They are neither moved nor
   // lined up against, so two fish nodes are no selection to arrange and the
   // toolbar stays away.
   const selectedIds = useMemo(
@@ -80,7 +84,7 @@ export function useNudgeAndArrange(input: NudgeAndArrangeInput): NudgeAndArrange
     // Move at once: the commit re-derives the same positions a frame later,
     // but only if the host's onNodesMoved is synchronous — React 18 then
     // batches that re-derivation with this setRfNodes into one render. An
-    // async host would let the resync useLayoutEffect run in between and
+    // async host would let useNodeResync's layout effect run in between and
     // briefly snap the boxes back to their pre-arrange positions.
     setRfNodes((nds) =>
       applyNodeChanges(
@@ -90,5 +94,7 @@ export function useNudgeAndArrange(input: NudgeAndArrangeInput): NudgeAndArrange
     );
     commitMoves(positions);
   };
-  return { nudge, selectedIds, canArrange, arrangeSelection };
+  const alignSelection = (mode: AlignMode) => arrangeSelection((boxes) => alignBoxes(boxes, mode));
+  const distributeSelection = (axis: 'x' | 'y') => arrangeSelection((boxes) => distributeBoxes(boxes, axis));
+  return { nudge, selectedIds, canArrange, arrangeSelection, alignSelection, distributeSelection };
 }

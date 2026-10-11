@@ -374,6 +374,7 @@ function sameNodeCtx(a: NodeDataContext, b: NodeDataContext): boolean {
     a.hiddenCounts === b.hiddenCounts &&
     a.typeRegistry === b.typeRegistry &&
     a.icons === b.icons &&
+    a.typeColors === b.typeColors &&
     a.onOpenLink === b.onOpenLink &&
     a.onToggleExpand === b.onToggleExpand &&
     a.onEnterNode === b.onEnterNode &&

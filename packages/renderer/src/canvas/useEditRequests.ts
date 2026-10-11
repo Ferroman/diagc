@@ -13,7 +13,7 @@ export interface EditRequestsInput {
   setLabelEdit: (edit: { kind: 'node'; id: string }) => void;
   setNoteEdit: Dispatch<SetStateAction<NoteRow | null>>;
   setRfNodes: Dispatch<SetStateAction<Node[]>>;
-  /** where a requested node not laid out yet waits for the resync to select it */
+  /** where a requested node not laid out yet waits for useNodeResync to select it */
   selectOnAppearRef: MutableRefObject<string | null>;
 }
 
@@ -47,7 +47,7 @@ export function useEditRequests(input: EditRequestsInput): void {
     // A request almost always names a node the host has JUST created, and elk
     // lays out asynchronously: React Flow's copy reaches it only once it turns
     // up in derivedNodes. So select it here when this render already has it,
-    // and otherwise leave a claim the resync useLayoutEffect takes the moment
+    // and otherwise leave a claim useNodeResync takes the moment
     // the node lands — deselecting the source now would only flash an empty
     // selection in between.
     if (derivedNodes.some((n) => n.id === labelRequest.id)) {
