@@ -3,19 +3,15 @@ import {
   defined,
   openingPins,
   presetLayers,
-  uniqueNodeId,
   type DiagramModel,
   type DiagramPlane,
   type LayoutOverlay,
   type LayoutSettings,
-  type NotationId,
 } from '@diagc/core/internal';
-import type { DiagramSelection, LeverageFocus } from '@diagc/renderer';
+import type { DiagramSelection } from '@diagc/renderer';
 import type { EditorApi } from '../session/useEditor';
-import { getHost } from '../host';
 import { remapVisibleLayers } from './layerMerge';
 import { unfoldedOf } from '../layout/savedPositions';
-import { studioNotation } from '../notations';
 
 export interface UseViewOpsOptions {
   editor: EditorApi;
@@ -23,19 +19,13 @@ export interface UseViewOpsOptions {
   /** the overlay on screen — where a plane's saved `unfolded` list is read from */
   layout: LayoutOverlay | undefined;
   pins: Record<string, 'expanded' | 'collapsed'>;
-  selection: DiagramSelection | null;
-  groupSel: string[];
   editing: boolean;
-  notation: NotationId | undefined;
   activePlane: string | undefined;
-  activePlaneBorrowsContainment: boolean;
   planes: DiagramPlane[];
   activeLayer: string | null;
   activeLayers: string[];
-  setSelection: Dispatch<SetStateAction<DiagramSelection | null>>;
-  setRenameId: Dispatch<SetStateAction<string | null>>;
-  setLeverageFocus: Dispatch<SetStateAction<LeverageFocus | null>>;
-  setCompareId: Dispatch<SetStateAction<string | null>>;
+  /** the canvas selection's: a plane change or a reset clears it */
+  select: (sel: DiagramSelection | null) => void;
   setPlane: Dispatch<SetStateAction<string | undefined>>;
   setPins: Dispatch<SetStateAction<Record<string, 'expanded' | 'collapsed'>>>;
   setLayoutPreview: Dispatch<SetStateAction<Record<string, LayoutSettings>>>;
@@ -44,9 +34,6 @@ export interface UseViewOpsOptions {
 }
 
 export interface ViewOps {
-  select: (sel: DiagramSelection | null) => void;
-  compareSelect: (id: string) => void;
-  groupSelected: () => Promise<void>;
   switchPlane: (id: string) => void;
   activateLayer: (id: string | null) => void;
   mergeSelectedLayers: (sources: string[], target?: string) => void;
@@ -56,77 +43,27 @@ export interface ViewOps {
 }
 
 /**
- * View/navigation domain: selection, CLD compare/group, plane switching, layer
- * pens, pin disclosure and full view reset. These transitions mostly re-derive
- * from (selection, plane, activeLayers, pins); keeping them in one hook makes
- * the shared bookkeeping (e.g. every selection move clears rename/compare/group
- * state) visible in one place.
+ * View/navigation domain: plane switching, layer pens, pin disclosure and full
+ * view reset. These transitions mostly re-derive from (plane, activeLayers,
+ * pins).
  */
 export function useViewOps({
   editor,
   model,
   layout,
   pins,
-  selection,
-  groupSel,
   editing,
-  notation,
   activePlane,
-  activePlaneBorrowsContainment,
   planes,
   activeLayer,
   activeLayers,
-  setSelection,
-  setRenameId,
-  setLeverageFocus,
-  setCompareId,
+  select,
   setPlane,
   setPins,
   setLayoutPreview,
   setActiveLayers,
   setActiveLayer,
 }: UseViewOpsOptions): ViewOps {
-  // Selection moves anywhere but the pending-rename node → the rename moment is
-  // over. What it deliberately does NOT touch is the inspector tab: the dock
-  // keeps the one the user chose, because a canvas click that flipped the
-  // Library to Properties would cost a trip back to the palette for every node
-  // placed or container selected. Only the toolbar add (which renames in the
-  // Properties Name field) and re-entering edit mode set the tab.
-  const select = (sel: DiagramSelection | null) => {
-    setSelection(sel);
-    setLeverageFocus(null); // a new selection drops any leverage-row highlight
-    setCompareId(null); // …and any active dependency comparison
-    // the multi-selection mirrors the canvas (App.multiSelect) — it is not cleared here
-    setRenameId((r) => (r !== null && sel?.kind === 'node' && sel.id === r ? r : null));
-  };
-
-  // ctrl-click a second node where the notation analyses loops (a causal loop)
-  // → compare it with the currently-selected variable. Toggle off if it's the
-  // same one; ignore self or clicks outside a single-node selection.
-  const compareSelect = (id: string) => {
-    if (editing || studioNotation(notation).loopAnalysis !== true || selection?.kind !== 'node' || id === selection.id)
-      return;
-    setLeverageFocus(null);
-    setCompareId((cur) => (cur === id ? null : id));
-  };
-
-  // Wrap the shift-selected variables in a new abstract variable, scoped to the
-  // active plane so (in the causal-loop view) it stays out of the base view.
-  const groupSelected = async () => {
-    if (groupSel.length < 2 || model === undefined) return;
-    const name = (await getHost().promptText('Group name:', 'group'))?.trim();
-    if (name === undefined || name === '') return;
-    const id = uniqueNodeId(model, name);
-    const scoped = activePlane !== undefined && !activePlaneBorrowsContainment;
-    editor.dispatch({
-      type: 'group-nodes',
-      node: { id, name, ...(scoped ? { plane: activePlane } : {}) },
-      memberIds: groupSel,
-      ...(scoped ? { plane: activePlane } : {}),
-    });
-    setSelection({ kind: 'node', id });
-  };
-
   // A plane change re-seeds the layer switch from the new plane's presets, and the
   // user owns it from there (see presetLayers / ViewportState.activeLayers): a
   // plane's `layers` are a starting point, not a floor the compiler re-imposes.
@@ -195,9 +132,6 @@ export function useViewOps({
   };
 
   return {
-    select,
-    compareSelect,
-    groupSelected,
     switchPlane,
     activateLayer,
     mergeSelectedLayers,

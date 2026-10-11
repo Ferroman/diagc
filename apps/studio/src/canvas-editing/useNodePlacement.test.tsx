@@ -73,8 +73,8 @@ describe('useNodePlacement.applyFromLibrary', () => {
       useNodePlacement({
         editor: stubEditor(dispatch),
         layoutApiRef: useRef<LayoutApi | null>(null),
-        setSelection: noop,
-        setRenameId: noop,
+        selectNode: noop,
+        selectNodeForRename: noop,
         selectTab: noop,
         requestLabelEdit: noop,
         reportIssues: noop,
@@ -122,8 +122,8 @@ describe('useNodePlacement.applyFromLibrary', () => {
       useNodePlacement({
         editor: stubEditor(dispatch),
         layoutApiRef: useRef<LayoutApi | null>(null),
-        setSelection: noop,
-        setRenameId: noop,
+        selectNode: noop,
+        selectNodeForRename: noop,
         selectTab: noop,
         requestLabelEdit: noop,
         reportIssues: noop,

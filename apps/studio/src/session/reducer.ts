@@ -59,8 +59,8 @@ export function dispatch(s: EditorSession, command: EditorCommand): EditorSessio
       }
     }
     const past = [...s.past, { command, stateBefore: s.state }].slice(-HISTORY_CAP);
-    // lastRelation exists solely so App.tsx can select the edge a canvas
-    // connect gesture just drew — it must fire only for that exact gesture
+    // lastRelation exists solely so useCanvasSelection can select the edge a
+    // canvas connect gesture just drew — it must fire only for that exact gesture
     // shape (a bare add-relation), never for a batch. applyCommand
     // surfaces relationId for any relation-ending batch too (by design, for
     // programmatic callers), but a panel like GitPanel that ends its own

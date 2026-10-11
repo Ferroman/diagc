@@ -79,8 +79,8 @@ function harness(m: DiagramModel, selection: string | null = null, plane: PlaneC
   const placement = useNodePlacement({
     editor,
     layoutApiRef: { current: layoutApi },
-    setSelection: noop,
-    setRenameId: noop,
+    selectNode: noop,
+    selectNodeForRename: noop,
     selectTab: noop,
     requestLabelEdit: noop,
     reportIssues: noop,

@@ -9,8 +9,6 @@ import {
   type CanvasCommands,
   type DiagramSelection,
   type EdgeLabelMoves,
-  type LeverageFocus,
-  type LoopEdgeInput,
   type QuickAddSide,
   type Side,
 } from '@diagc/renderer';
@@ -32,6 +30,7 @@ import {
   SOURCE_URL,
   strideFor,
   threatsOf,
+  uniqueNodeId,
   uniqueSlug,
   uniqueStrokeId,
   type Column,
@@ -57,6 +56,8 @@ import { useClipboard } from './canvas-editing/useClipboard';
 import { useNodePlacement } from './canvas-editing/useNodePlacement';
 import { useDiagramActions } from './diagrams/useDiagramActions';
 import { useViewOps } from './view/useViewOps';
+import { useCanvasSelection } from './view/useCanvasSelection';
+import { useCausalLoopAnalysis } from './notations/causal-loop/useCausalLoopAnalysis';
 import { edgeLabelsOf, addEdgeLabel, editEdgeLabel, moveEdgeLabel } from './canvas-editing/edge-labels';
 import { computeSelectionColor } from './view/selection-color';
 import { DiagramPicker } from './diagrams/DiagramPicker';
@@ -141,39 +142,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // pins and the layout preview: never written, and dropped when the diagram
   // changes so one diagram's choice cannot silently govern the next.
   const [autoArrange, setAutoArrange] = useState(false);
-  const [selection, setSelection] = useState<DiagramSelection | null>(null);
-  const [renameId, setRenameId] = useState<string | null>(null);
-  // A node created OUTSIDE the canvas (a panel button, e.g. second-order's "And
-  // then what?") that should open for rename, same as onCreateAt's canvas
-  // gesture does. Nonce-keyed (see EditingApi.editLabelRequest) so asking again
-  // for the same id still re-arms the effect.
-  const [labelRequest, setLabelRequest] = useState<{ id: string; nonce: number } | undefined>(undefined);
-  const requestLabelEdit = (id: string) => setLabelRequest((r) => ({ id, nonce: (r?.nonce ?? 0) + 1 }));
-  // A threat added from the canvas (an element's empty badge, a note's +) opens
-  // its title on the note — the same nonce-keyed handshake as labelRequest, so
-  // adding a second threat to the same element still re-arms the request.
-  const [threatRequest, setThreatRequest] = useState<{ target: ElementRef; id: string; nonce: number } | undefined>(
-    undefined,
-  );
-  const requestThreatEdit = (target: ElementRef, id: string) =>
-    setThreatRequest((r) => ({ target, id, nonce: (r?.nonce ?? 0) + 1 }));
-  // The canvas multi-selection (Shift+click / marquee), mirrored from the
-  // renderer. Drives the ⊞ Group chip and the selection glow. Deduped by
-  // contents so a re-report of the same set never re-renders the app.
-  const [groupSel, setGroupSel] = useState<string[]>([]);
-  const multiSelect = useCallback(
-    (ids: string[]) =>
-      setGroupSel((cur) => (cur.length === ids.length && cur.every((id, i) => id === ids[i]) ? cur : ids)),
-    [],
-  );
-  // CLD dependency: the ctrl-clicked second variable to compare with the
-  // selected one (null = no comparison active).
-  const [compareId, setCompareId] = useState<string | null>(null);
-  // CLD leverage analysis: the compiled signed graph surfaced by DiagramView,
-  // and the report row currently driving the canvas highlight.
-  const [cldEdges, setCldEdges] = useState<LoopEdgeInput[]>([]);
-  const handleCldEdges = useCallback((edges: LoopEdgeInput[]) => setCldEdges(edges), []);
-  const [leverageFocus, setLeverageFocus] = useState<LeverageFocus | null>(null);
   const dock = useDockLayout();
   const { leftTab, selectTab, libraryView } = dock;
   const lib = useLibrary();
@@ -344,36 +312,32 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     });
   };
 
-  // Select the relation a connect gesture just created, which opens its panel.
-  // Keyed on the { id, nonce } object, not the id: the reducer replaces it on
-  // every connect and nowhere else, and a relation drawn again after a delete
-  // repeats its id but not its nonce.
-  const lastRel = session?.lastRelation;
-  useEffect(() => {
-    if (editing && lastRel !== undefined) {
-      setSelection({ kind: 'edge', id: lastRel.id });
-      setRenameId(null);
-    }
-  }, [editing, lastRel]);
+  // What is selected, and the loop analysis that reads it. `loops` is declared
+  // after the selection it reads; select runs only from events and effects, by
+  // which time this render has made it.
+  const canvasSelection = useCanvasSelection({
+    editing,
+    lastRelation: session?.lastRelation,
+    onSelect: () => loops.dropFocus(),
+  });
+  const { selection, renameId, groupSel, select, multiSelect, requestLabelEdit, requestThreatEdit } = canvasSelection;
+  const loops = useCausalLoopAnalysis({
+    editing,
+    loopAnalysis: studioProfile.loopAnalysis === true,
+    selection,
+    groupSel,
+  });
 
-  // Selection, view/plane/layer/pin navigation (select, compare/group, plane
-  // switching, pen sheets, view reset).
+  // Plane, layer and fold navigation (plane switching, pen sheets, view reset).
   const view = useViewOps({
     editor,
     model,
-    selection,
-    groupSel,
     editing,
-    notation,
     activePlane,
-    activePlaneBorrowsContainment,
     planes,
     activeLayer,
     activeLayers,
-    setSelection,
-    setRenameId,
-    setLeverageFocus,
-    setCompareId,
+    select,
     setPlane,
     setPins,
     layout,
@@ -382,7 +346,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     setActiveLayers,
     setActiveLayer,
   });
-  const { select, switchPlane, activateLayer, toggleLayer, mergeSelectedLayers, toggleExpand, resetView } = view;
+  const { switchPlane, activateLayer, toggleLayer, mergeSelectedLayers, toggleExpand, resetView } = view;
   resetViewRef.current = resetView;
 
   // Ctrl/⌘+C / Ctrl/⌘+V on the canvas (edit mode): the selection, with what it
@@ -399,7 +363,23 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     multiSelection: groupSel,
     select,
   });
-  const { compareSelect, groupSelected } = view;
+
+  // Wrap the shift-selected variables in a new abstract variable, scoped to the
+  // active plane so (in the causal-loop view) it stays out of the base view.
+  const groupSelected = async () => {
+    if (groupSel.length < 2 || model === undefined) return;
+    const name = (await getHost().promptText('Group name:', 'group'))?.trim();
+    if (name === undefined || name === '') return;
+    const id = uniqueNodeId(model, name);
+    const scoped = activePlane !== undefined && !activePlaneBorrowsContainment;
+    editor.dispatch({
+      type: 'group-nodes',
+      node: { id, name, ...(scoped ? { plane: activePlane } : {}) },
+      memberIds: groupSel,
+      ...(scoped ? { plane: activePlane } : {}),
+    });
+    canvasSelection.selectNode(id);
+  };
 
   // The `+` on a selected node and the Tab key are one action: add the node
   // the notation expects on the selection (a category / cause on a fish, a
@@ -539,8 +519,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const placement = useNodePlacement({
     editor,
     layoutApiRef,
-    setSelection,
-    setRenameId,
+    selectNode: canvasSelection.selectNode,
+    selectNodeForRename: canvasSelection.selectNodeForRename,
     selectTab,
     requestLabelEdit,
     reportIssues,
@@ -1164,13 +1144,13 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   <LeveragePanel
                     key={selection.id}
                     model={model}
-                    edges={cldEdges}
+                    edges={loops.cldEdges}
                     target={selection.id}
-                    activeFocusKey={leverageFocus?.key ?? null}
-                    onFocus={setLeverageFocus}
+                    activeFocusKey={loops.leverageFocus?.key ?? null}
+                    onFocus={loops.focusLeverage}
                     onClose={() => select(null)}
-                    compareId={compareId}
-                    onClearCompare={() => setCompareId(null)}
+                    compareId={loops.compareId}
+                    onClearCompare={loops.clearCompare}
                   />
                 ) : selection !== null ? (
                   <Sidebar model={model} selection={selection} />
@@ -1191,14 +1171,14 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   onMultiSelect={multiSelect}
                   onEnteredPathChange={handleEnteredPathChange}
                   enteredPath={enteredPath}
-                  onCompareSelect={compareSelect}
+                  onCompareSelect={loops.compareSelect}
                   colorMode={theme}
                   assetBase={getHost().assetBase}
                   libraryBase={getHost().libraryBase}
                   onOpenLink={(l) => getHost().openLink(l)}
                   styleId={diagramStyle ?? style}
                   snapGrid={snap ? SNAP_GRID : undefined}
-                  onCldEdges={handleCldEdges}
+                  onCldEdges={loops.handleCldEdges}
                   onViewPositionsChange={setMovedPositions}
                   onViewLabelMovesChange={setMovedLabels}
                   layoutApiRef={layoutApiRef}
@@ -1206,16 +1186,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                   builtinKeys={false}
                   keyHints={canvasKeyHints}
                   ignoreSavedPositions={autoArrange}
-                  externalHighlight={
-                    editing
-                      ? groupSel.length >= 2
-                        ? { nodes: groupSel, edges: [] }
-                        : null
-                      : (leverageFocus ??
-                        (compareId !== null && selection?.kind === 'node'
-                          ? { nodes: [selection.id, compareId], edges: [] }
-                          : null))
-                  }
+                  externalHighlight={loops.externalHighlight}
                   notation={notation}
                   layout={viewLayout}
                   drawings={drawings}
@@ -1228,8 +1199,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
                         // (the read-only path passes `mode` without it — the view/edit
                         // split is then structural, not by convention).
                         edit: {
-                          editLabelRequest: labelRequest,
-                          editThreatRequest: threatRequest,
+                          editLabelRequest: canvasSelection.labelRequest,
+                          editThreatRequest: canvasSelection.threatRequest,
                           onNoteMoved: (target: ElementRef, offset: { dx: number; dy: number }) =>
                             editor.dispatch({ type: 'set-note-offset', target, offset, ...planeOpt }),
                           onToggleNote: (target: ElementRef, open: boolean) =>
