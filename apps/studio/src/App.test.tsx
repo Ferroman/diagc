@@ -19,7 +19,7 @@ vi.mock('@diagc/renderer', async (importOriginal) => {
   return { ...actual, DiagramView: CapturingDiagramView };
 });
 
-// Mirrors the fixture shape in editor/shell.test.tsx: two diagrams, no planes,
+// Mirrors the fixture shape in shell.test.tsx: two diagrams, no planes,
 // so the layout preview resolves to the 'default' key throughout. `drillModel`
 // adds the one thing the others lack — a container to drill into — so a deep
 // link can put the app in the drilled state the pen is refused in.

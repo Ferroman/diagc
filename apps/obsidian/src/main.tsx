@@ -22,7 +22,7 @@ import { Plugin, PluginSettingTab, Setting, type App } from 'obsidian';
 import { DEFAULT_SETTINGS, normalizeSettings, type DiagcSettings } from './settings';
 import { StudioView, VIEW_TYPE_STUDIO } from './view';
 import { DiagramEmbedChild } from './embed-child';
-import { formatHash } from '@diagc/studio/src/urlState';
+import { formatHash } from '@diagc/studio/src/diagrams/urlState';
 // Imported from the start so `dist/main.css` exists after every build — the
 // esbuild config renames it to `styles.css`, which Obsidian requires present.
 import '@diagc/studio/src/app.css';
