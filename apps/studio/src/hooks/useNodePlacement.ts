@@ -50,7 +50,7 @@ export interface UseNodePlacementOptions {
   /** the render-bound model (edit mode: the session's) — used by applyFromLibrary */
   model: DiagramModel | undefined;
   lib: UseLibrary;
-  /** the active plane's notation — a plan plane seeds a dropped zone/event's dates */
+  /** the active plane's notation — on a plan plane a dropped zone/event's dates follow the drop point */
   notation?: NotationId;
   /** the host's date, YYYY-MM-DD: where a seeded drop lands with no other anchor */
   today: string;
@@ -202,21 +202,20 @@ export function useNodePlacement({
       borrowsContainment: activePlaneBorrowsContainment,
       parentId,
     });
-    // A plan plane's Zone/Event templates carry no dates of their own — a
-    // library-dropped one is dateless (and invalid) without a seed here.
-    const seeded =
-      notation === PLAN_NOTATION
-        ? seedDates(
-            m,
-            activePlane,
-            entry.template.type,
-            {
-              ...(opts?.position !== undefined ? { x: opts.position.x } : {}),
-              ...(parentId !== undefined ? { parentId } : {}),
-            },
-            today,
-          )
-        : undefined;
+    // The Zone/Event templates carry no dates of their own, and validation
+    // checks a zone's or event's dates on any plane, so every placement seeds
+    // them. Only a plan plane draws x as days, so only there does the drop
+    // point pick the day.
+    const seeded = seedDates(
+      m,
+      activePlane,
+      entry.template.type,
+      {
+        ...(opts?.position !== undefined && notation === PLAN_NOTATION ? { x: opts.position.x } : {}),
+        ...(parentId !== undefined ? { parentId } : {}),
+      },
+      today,
+    );
     const node = {
       ...entryToNode(entry, place.id, placeTags(place, penLayer)),
       ...(seeded !== undefined ? { metadata: seeded } : {}),
