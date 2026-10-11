@@ -169,7 +169,10 @@ describe('bandLanes', () => {
       ['c', box(400, 440)],
       ['d', box(600, 200)],
     ]);
-    const moved = bandLanes(g, hoist, v, 40);
+    const moved = bandLanes(
+      { result: { geometry: g, routes: new Map(), labelSpots: new Map() }, hoist, original: v },
+      40,
+    );
     const pad = { top: L.PAD, left: L.LANE_STRIP_W + L.PAD };
     expect(g.get('a')).toMatchObject({ x: pad.left, y: pad.top });
     expect(g.get('c')).toMatchObject({ x: 400 - 28 + pad.left, y: pad.top + 40 + 40 });
@@ -202,11 +205,7 @@ describe('rebaseRoutes', () => {
     const geometry = new Map<string, NodeGeometry>([['f', { x: 0, y: 0, width: 999, height: 999 }]]);
     const same = { dx: 5, dy: 7 };
     rebaseRoutes(
-      routes,
-      spots,
-      hoist,
-      v,
-      geometry,
+      { result: { geometry, routes, labelSpots: spots }, hoist, original: v },
       new Map([
         ['a', same],
         ['b', same],
@@ -232,11 +231,7 @@ describe('rebaseRoutes', () => {
     ]);
     const geometry = new Map<string, NodeGeometry>([['f', { x: 0, y: 0, width: 999, height: 999 }]]);
     rebaseRoutes(
-      routes,
-      new Map(),
-      hoist,
-      v,
-      geometry,
+      { result: { geometry, routes, labelSpots: new Map() }, hoist, original: v },
       new Map([
         ['a', { dx: 0, dy: 0 }],
         ['b', { dx: 0, dy: 90 }],
@@ -263,11 +258,7 @@ describe('rebaseRoutes', () => {
     ]);
     const still = { dx: 0, dy: 0 };
     rebaseRoutes(
-      routes,
-      new Map(),
-      hoist,
-      v,
-      geometry,
+      { result: { geometry, routes, labelSpots: new Map() }, hoist, original: v },
       new Map([
         ['a', still],
         ['b', still],

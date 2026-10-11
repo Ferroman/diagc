@@ -152,9 +152,10 @@ export async function layoutView(
     const captions = new Map<string, BoxSize>();
     for (const [id, s] of sizeOverrides ?? []) if (s.caption !== undefined) captions.set(id, s.caption);
     const below = new Map([...captions].map(([id, c]) => [id, c.height] as const));
-    const moved = bandLanes(result.geometry, hoist, view, settings?.spacing ?? 40, below);
-    rebaseRoutes(result.routes, result.labelSpots, hoist, view, result.geometry, moved);
-    routeBandedEdges(result.routes, result.labelSpots, hoist, view, result.geometry, captions);
+    const banding = { result, hoist, original: view };
+    const moved = bandLanes(banding, settings?.spacing ?? 40, below);
+    rebaseRoutes(banding, moved);
+    routeBandedEdges(banding, captions);
   }
   if (cache.size >= CACHE_CAP) {
     const oldest = cache.keys().next().value;
