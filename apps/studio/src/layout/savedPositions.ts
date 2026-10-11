@@ -106,3 +106,10 @@ export function withPlaneManual(
   );
   return unfolded === undefined ? frozen : withUnfolded(frozen, key, unfolded);
 }
+
+/** The plane on screen has saved positions: what Auto-arrange sets aside. */
+export const hasSavedPositions = (
+  model: DiagramModel | undefined,
+  layout: LayoutOverlay | undefined,
+  plane: string | undefined,
+): boolean => model !== undefined && Object.keys(layout?.planes[layoutPlaneKey(model, plane)] ?? {}).length > 0;

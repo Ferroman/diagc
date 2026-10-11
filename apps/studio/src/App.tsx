@@ -34,9 +34,9 @@ import { useCausalLoopAnalysis } from './notations/causal-loop/useCausalLoopAnal
 import { DiagramPicker } from './diagrams/DiagramPicker';
 import { downloadPng } from './diagrams/downloadPng';
 import { EditorToolbar } from './canvas-editing/EditorToolbar';
-import { EditLayoutActions, relayoutPlane } from './layout/LayoutActions';
+import { EditLayoutActions } from './layout/LayoutActions';
 import { LayoutPanel } from './layout/LayoutPanel';
-import { MenuButton, type MenuItem } from './MenuButton';
+import { MenuButton } from './MenuButton';
 import { uploadAsset } from './canvas-editing/images';
 import { NodePanel } from './inspector/NodePanel';
 import { EdgePanel } from './inspector/EdgePanel';
@@ -54,6 +54,9 @@ import { HotkeysContext, keyHint, keyName } from './hotkeys/HotkeysContext';
 import { HotkeysDialog } from './hotkeys/HotkeysDialog';
 import { useHotkeyPrefs } from './hotkeys/useHotkeyPrefs';
 import { useHotkeys, type Handlers } from './hotkeys/useHotkeys';
+import { buildHotkeyHandlers } from './hotkeys/buildHotkeyHandlers';
+import { diagramMenuItems } from './diagrams/diagramMenuItems';
+import { hasSavedPositions } from './layout/savedPositions';
 import { useDrawTool } from './canvas-editing/useDrawTool';
 
 // The Apply-target for a selected node (LibraryPanel restyle toggle); undefined
@@ -74,7 +77,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   const boot = useDiagramBoot();
   const { artifacts, names, booted, ownedNames, canDesign } = boot;
 
-  const { theme, toggleTheme, style, setStyle, snap, toggleSnap } = useViewerPrefs(initialTheme);
+  const prefs = useViewerPrefs(initialTheme);
+  const { theme, toggleTheme, style, setStyle, snap, toggleSnap } = prefs;
   const hotkeyPrefs = useHotkeyPrefs();
   const { keymap, mac } = hotkeyPrefs;
   const appRef = useRef<HTMLDivElement>(null);
@@ -103,7 +107,8 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     leaveEditRef,
   });
   const { editing, editor, layoutApiRef, saveIssues, reportIssues, saving, doSave, enterEdit, leaveEdit } = edit;
-  const { tool, penColor, penWidth, setTool, setPen, drawWith } = useDrawTool({ editing, selected, enteredPath });
+  const draw = useDrawTool({ editing, selected, enteredPath });
+  const { tool, penColor, penWidth, setTool, setPen } = draw;
 
   // Three hooks here hand a callback to a hook declared after them, because that
   // hook reads their values: entering edit and a view reset drop the
@@ -269,79 +274,30 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
       : undefined;
 
   // What each hotkey does right now (hotkeys/useHotkeys reads this ref on every
-  // key). The rule: a handler is present exactly while its button would be shown
-  // and enabled, so a key can never do what the UI would refuse — and a key with
-  // no handler keeps whatever meaning the browser gives it. Placed last because it
-  // draws on nearly everything above.
-  const on = <T,>(cond: boolean, fn: T): T | undefined => (cond ? fn : undefined);
+  // key; see buildHotkeyHandlers for the rule). Placed last because it draws on
+  // nearly everything above.
   const owned = ownedNames.has(selected);
-  const viewChips = !editing && model !== undefined;
-  const hasSavedPositions =
-    model !== undefined && Object.keys(layout?.planes[layoutPlaneKey(model, activePlane)] ?? {}).length > 0;
-  const canvasCmd = (run: (c: CanvasCommands) => boolean) =>
-    on(model !== undefined, () => (canvasCommandsRef.current !== null ? run(canvasCommandsRef.current) : false));
-  hotkeyHandlers.current = {
-    'diagram.picker': () => pickerToggleRef.current?.(),
-    'diagram.toggle-edit': on(model !== undefined && owned, () => void (editing ? leaveEdit() : enterEditFromSource())),
-    'diagram.rename': on(canDesign && !editing && owned, () => void actions.renameDiagram()),
-    'diagram.new': on(canDesign, () => void actions.newDiagram()),
-    'diagram.duplicate': on(canDesign && viewChips, () => void actions.duplicateDiagram()),
-    'diagram.eject': on(canDesign && !editing && owned, () => void actions.ejectDiagram()),
-
-    'edit.add-node': on(editing, () => addNode()),
-    'edit.add-child': on(editing, () => (selection?.kind === 'node' ? canvasEditing.runQuickAdd(selection.id) : false)),
-    'edit.undo': on(editing, () => editor.undo()),
-    'edit.redo': on(editing, () => editor.redo()),
-    'edit.save': on(editing, () => void doSave()),
-    'edit.group': on(editing && groupSel.length >= 2, () => void canvasEditing.groupSelected()),
-    'edit.relayout': on(
-      editing,
-      () =>
-        void relayoutPlane(editor, {
-          autoLayout: !activePlaneManual,
-          activePlane,
-          getAutoPositions: () => layoutApiRef.current?.autoPositions() ?? {},
-        }),
-    ),
-    'edit.toggle-auto-layout': on(editing, canvasEditing.toggleAutoLayout),
-    'edit.toggle-notes': on(editing && notes.offered && notes.anyThreats, notes.toggleAll),
-
-    'tool.select': on(editing, () => setTool('select')),
-    'tool.pen': on(editing, drawWith('pen')),
-    'tool.eraser': on(editing, drawWith('eraser')),
-    'pen.thin': on(editing && tool === 'pen', () => setPen({ width: 2 })),
-    'pen.medium': on(editing && tool === 'pen', () => setPen({ width: 3 })),
-    'pen.thick': on(editing && tool === 'pen', () => setPen({ width: 6 })),
-
-    'canvas.fit': canvasCmd((c) => c.fitView()),
-    'canvas.zoom-in': canvasCmd((c) => c.zoomIn()),
-    'canvas.zoom-out': canvasCmd((c) => c.zoomOut()),
-    'canvas.laser': canvasCmd((c) => c.toggleLaser()),
-    'canvas.legend': canvasCmd((c) => c.toggleLegend()),
-    'canvas.dim': canvasCmd((c) => c.toggleDim()),
-    'canvas.drawings': canvasCmd((c) => c.toggleDrawings()),
-    'canvas.loops': canvasCmd((c) => c.toggleLoops()),
-    'view.freeze': on(viewChips && !savingPositions && enteredPath.length === 0, () => void toggleFreeze()),
-    'view.save-positions': on(viewChips && unsavedView && !savingPositions, () => void savePositions()),
-    'view.auto-arrange': on(viewChips && hasSavedPositions, arrangement.toggleAutoArrange),
-
-    'arrange.align-left': canvasCmd((c) => c.align('left')),
-    'arrange.align-center': canvasCmd((c) => c.align('centerX')),
-    'arrange.align-right': canvasCmd((c) => c.align('right')),
-    'arrange.align-top': canvasCmd((c) => c.align('top')),
-    'arrange.align-middle': canvasCmd((c) => c.align('middle')),
-    'arrange.align-bottom': canvasCmd((c) => c.align('bottom')),
-    'arrange.distribute-x': canvasCmd((c) => c.distribute('x')),
-    'arrange.distribute-y': canvasCmd((c) => c.distribute('y')),
-
-    'window.left-dock': on(model !== undefined, dock.toggleLeft),
-    'window.right-dock': on(model !== undefined, dock.toggleRight),
-    'window.inspector-properties': on(editing, () => dock.showInspectorTab('properties')),
-    'window.inspector-library': on(editing, () => dock.showInspectorTab('library')),
-    'window.theme': toggleTheme,
-    'window.snap': toggleSnap,
-    'window.hotkeys': hotkeyPrefs.openDialog,
-  };
+  hotkeyHandlers.current = buildHotkeyHandlers({
+    hasModel: model !== undefined,
+    owned,
+    canDesign,
+    editing,
+    drilled: enteredPath.length > 0,
+    hasSavedPositions: hasSavedPositions(model, layout, activePlane),
+    session: edit,
+    enterEditFromSource,
+    actions,
+    selection: canvasSelection,
+    canvasEditing,
+    nav,
+    draw,
+    arrangement,
+    dock,
+    prefs,
+    openHotkeysDialog: hotkeyPrefs.openDialog,
+    pickerToggleRef,
+    canvasCommandsRef,
+  });
   useHotkeys({
     rootRef: appRef,
     keymap,
@@ -351,47 +307,13 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     mac,
   });
   const hint = (id: ActionId) => keyHint(keymap, id, mac);
-  // The topbar's ⋯ menu. Each row keeps the condition its chip had: a diagram
-  // compiled from TypeScript has no source here to rename or eject, only a
-  // model to copy.
-  const diagramMenu: MenuItem[] = [
-    ...(owned
-      ? [
-          {
-            id: 'rename',
-            label: 'Rename',
-            title: `Rename this diagram${hint('diagram.rename')}`,
-            onSelect: () => void actions.renameDiagram(),
-          },
-        ]
-      : []),
-    ...(model !== undefined
-      ? [
-          {
-            id: 'export-png',
-            label: 'Export PNG',
-            title: 'Save the canvas as drawn — folds, layers, theme and drawings — as a PNG image',
-            onSelect: () => void downloadPng(layoutApiRef.current, selected ?? ''),
-          },
-          {
-            id: 'duplicate',
-            label: 'Duplicate',
-            title: `Copy this diagram — layout and all — to a new editable one and open it${hint('diagram.duplicate')}`,
-            onSelect: () => void actions.duplicateDiagram(),
-          },
-        ]
-      : []),
-    ...(owned
-      ? [
-          {
-            id: 'eject',
-            label: 'Eject',
-            title: `Promote this diagram to a TypeScript source — it becomes read-only here${hint('diagram.eject')}`,
-            onSelect: () => void actions.ejectDiagram(),
-          },
-        ]
-      : []),
-  ];
+  const diagramMenu = diagramMenuItems({
+    owned,
+    hasModel: model !== undefined,
+    hint,
+    actions,
+    exportPng: () => void downloadPng(layoutApiRef.current, selected ?? ''),
+  });
   const hotkeysContext = useMemo(() => ({ keymap, mac }), [keymap, mac]);
   const canvasKeyHints = useMemo(
     () => ({

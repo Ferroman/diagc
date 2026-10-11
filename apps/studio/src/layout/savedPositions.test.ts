@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { model, type LayoutOverlay } from '@diagc/core/internal';
-import { unfoldedOf, withSavedPositions, withPlaneManual } from './savedPositions';
+import { hasSavedPositions, unfoldedOf, withSavedPositions, withPlaneManual } from './savedPositions';
 
 function makeModel() {
   const m = model('p');
@@ -151,5 +151,18 @@ describe('withPlaneManual', () => {
     plain.node('a', { type: 'service' });
     const out = withPlaneManual(undefined, plain.toJSON(), undefined, { a: { x: 7, y: 8 } });
     expect(out).toEqual({ version: 1, planes: { default: { a: { x: 7, y: 8 } } }, manual: { default: true } });
+  });
+});
+
+describe('hasSavedPositions', () => {
+  it("reads the plane on screen's own bucket, and nothing before a diagram is there", () => {
+    // Breaks if Auto-arrange is offered off another plane's positions, or with no diagram.
+    const layout: LayoutOverlay = { version: 1, planes: { alt: { a: { x: 1, y: 2 } } } };
+    expect(hasSavedPositions(makeModel(), layout, 'alt')).toBe(true);
+    expect(
+      hasSavedPositions(makeModel(), { version: 1, planes: { alt: {}, other: { a: { x: 1, y: 2 } } } }, 'alt'),
+    ).toBe(false);
+    expect(hasSavedPositions(makeModel(), undefined, 'alt')).toBe(false);
+    expect(hasSavedPositions(undefined, layout, 'alt')).toBe(false);
   });
 });
