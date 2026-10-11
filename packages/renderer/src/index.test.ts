@@ -26,6 +26,7 @@ describe('@diagc/renderer', () => {
       'planGraphCached',
       'planX',
       'todayIso',
+      'useReaderView',
     ]);
   });
 });

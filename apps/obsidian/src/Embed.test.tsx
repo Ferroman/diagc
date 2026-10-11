@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { model } from '@diagc/core/internal';
+import { layoutPlaneKey, model, type DiagramModel } from '@diagc/core/internal';
 import { darkTheme, lightTheme } from '@diagc/renderer';
 import { Embed } from './Embed';
 import type { EmbedSpec } from './fence';
@@ -276,5 +276,123 @@ describe('Embed opens the way the published page does', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+/** a box and its child on two planes; a layout can save the box open on one of them */
+const twoPlaneFolds = (): DiagramModel => ({
+  version: 1,
+  id: 'folds',
+  name: 'folds',
+  layers: [],
+  planes: [
+    { id: 'main', name: 'Main' },
+    { id: 'alt', name: 'Alt' },
+  ],
+  nodes: [
+    { id: 'box', name: 'Box', type: 'system' },
+    { id: 'inner', name: 'Inner', type: 'service' },
+  ],
+  containment: [
+    { parent: 'box', child: 'inner' },
+    { parent: 'box', child: 'inner', plane: 'alt' },
+  ],
+  relations: [],
+});
+
+/** two planes: the first hides Zeta, the second draws it in its own notation */
+const twoPlanes = () => {
+  const b = model('planed');
+  b.node('a', { name: 'Alpha', type: 'service' });
+  b.node('z', { name: 'Zeta', type: 'service' });
+  b.plane('landscape', { name: 'Landscape', hides: ['z'] });
+  b.plane('full', { name: 'Full platform', notation: 'causal-loop' });
+  return b.toJSON();
+};
+
+/** the preset model with its layers listed in the legend, where they toggle */
+const legendModel = () => ({ ...presetModel(), legend: { show: ['layers' as const] } });
+
+/** a threat model with one threatened element */
+const noted: DiagramModel = {
+  version: 1,
+  id: 'noted',
+  name: 'noted',
+  notation: 'threat-model',
+  layers: [],
+  planes: [],
+  nodes: [
+    {
+      id: 'web',
+      name: 'Web app',
+      type: 'tm-process',
+      threats: [{ id: 't1', category: 'S', title: 'Spoofed session' }],
+    },
+  ],
+  containment: [],
+  relations: [],
+};
+
+describe("Embed — the reader's own view", () => {
+  it('opens a group the layout saved open', async () => {
+    const contained = containedModel();
+    const layout = { version: 1, planes: {}, unfolded: { [layoutPlaneKey(contained, undefined)]: ['sys'] } };
+    render(embedOf({ model: contained, layout }));
+    expect(await screen.findByText('Alpha')).toBeDefined();
+  });
+
+  it("opens the fence plane's own saved folds", async () => {
+    const folds = twoPlaneFolds();
+    const layout = { version: 1, planes: {}, unfolded: { [layoutPlaneKey(folds, 'alt')]: ['box'] } };
+    render(embedOf({ model: folds, layout }, { plane: 'alt' }));
+    expect(await screen.findByText('Inner')).toBeDefined();
+  });
+
+  it('opens and folds a group from its chip, for as long as the note is open', async () => {
+    render(embedOf({ model: containedModel() }));
+    expect(await screen.findByText('Shop')).toBeDefined();
+    expect(screen.queryByText('Alpha')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Expand' }));
+    expect(await screen.findByText('Alpha')).toBeDefined();
+  });
+
+  it('switches a layer from the legend', async () => {
+    render(embedOf({ model: legendModel() }));
+    expect(await screen.findByText('pages on-call')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /Ops/ }));
+    await waitFor(() => expect(screen.queryByText('pages on-call')).toBeNull());
+  });
+
+  it("opens drilled into the fence's root", async () => {
+    render(embedOf({ model: containedModel() }, { root: 'sys' }));
+    expect(await screen.findByLabelText('Nested zoom breadcrumb')).toBeDefined();
+    expect(await screen.findByText('Alpha')).toBeDefined();
+  });
+
+  it('drills into a group', async () => {
+    render(embedOf({ model: containedModel() }));
+    fireEvent.click(await screen.findByLabelText('Enter node'));
+    expect(await screen.findByLabelText('Nested zoom breadcrumb')).toBeDefined();
+    expect(await screen.findByText('Alpha')).toBeDefined();
+  });
+
+  it("draws the fence's plane, in that plane's notation", async () => {
+    const { container } = render(embedOf({ model: twoPlanes() }, { plane: 'full' }));
+    expect(await screen.findByText('Zeta')).toBeDefined();
+    expect(container.querySelector('.dg-canvas.dg-notation-cld')).not.toBeNull();
+  });
+
+  it('draws the bubbles the layout left open', async () => {
+    const layout = {
+      version: 1,
+      planes: {},
+      notes: { [layoutPlaneKey(noted, undefined)]: { 'node:web': { dx: 0, dy: 0, open: true } } },
+    };
+    const { container } = render(embedOf({ model: noted, layout }));
+    await waitFor(() => {
+      const note = container.querySelector('.react-flow__node[data-id="note:node:web"] .dg-note');
+      if (note === null) throw new Error('no bubble rendered');
+      expect(note.textContent).toContain('Spoofed session');
+    });
   });
 });

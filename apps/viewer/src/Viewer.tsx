@@ -1,9 +1,6 @@
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  activeNotation,
-  openingPins,
-  presetLayers,
   type DiagramModel,
   type DiagramPlane,
   type DiffMarks,
@@ -14,10 +11,9 @@ import {
   applyTheme,
   darkTheme,
   DiagramView,
-  isKnownStyle,
   LeveragePanel,
   lightTheme,
-  todayIso,
+  useReaderView,
   type DiagramSelection,
   type LayoutApi,
   type LeverageFocus,
@@ -93,20 +89,20 @@ export function handshakeReady(
 }
 
 /**
- * Which plane the page draws, or undefined for "whatever DiagramView defaults
- * to" (the model's first plane). Export mode ignores the reader's pick: the
- * committed PNG is defined as the first plane, and pages are published with the
- * first plane as the resting view.
+ * The folds an export opens with: every container open, so the snapshot is a
+ * complete overview. The one exception is `layout.export.collapsed`: a view too
+ * big to unfold (hundreds of leaves) names the groups to keep folded for the
+ * image. Folding is deliberate: a folded box still anchors its hidden children's
+ * edges, so the relations survive the fold.
  */
-export function activePlaneId(
-  planes: readonly DiagramPlane[],
-  picked: string | undefined,
-  expandAll: boolean,
-): string | undefined {
-  if (expandAll) return undefined;
-  // A pick that no longer names a plane (stale state after the model changed)
-  // falls back to the default rather than compiling an empty view.
-  return planes.some((p) => p.id === picked) ? picked : undefined;
+function exportFolds(model: DiagramModel, layout: LayoutOverlay | undefined): Record<string, 'expanded' | 'collapsed'> {
+  const folded = new Set(layout?.export?.collapsed ?? []);
+  return Object.fromEntries(
+    [...new Set(model.containment.map((c) => c.parent))].map((id) => [
+      id,
+      folded.has(id) ? ('collapsed' as const) : ('expanded' as const),
+    ]),
+  );
 }
 
 /** A picker is only worth its pixels when there is a choice to make. */
@@ -213,27 +209,26 @@ export function PlanePicker({
 }
 
 export function Viewer({ data, expandAll = false }: { data: ViewerData | null; expandAll?: boolean }) {
-  // Export snapshots want a complete overview, so seed every container group as
-  // expanded; interactive pages open the way the layout was SAVED (`unfolded`:
-  // a hand-placed interior is only visible while its container is open) and
-  // otherwise folded, so viewers explore.
-  // The one exception is `layout.export.collapsed`: a view too big to unfold
-  // (hundreds of leaves) names the groups to keep folded for the image, and
-  // those seed as collapsed instead. Folding is deliberate — a folded box still
-  // anchors its hidden children's edges, so the relations survive the fold.
-  const [pins, setPins] = useState<Record<string, 'expanded' | 'collapsed'>>(() => {
-    if (data === null || typeof data !== 'object' || (data as ViewerData).model == null) return {};
-    const d = data as ViewerData;
-    if (!expandAll) return openingPins(d.layout, d.model);
-    const folded = new Set(d.layout?.export?.collapsed ?? []);
-    return Object.fromEntries(
-      [...new Set(d.model.containment.map((c) => c.parent))].map((id) => [
-        id,
-        folded.has(id) ? ('collapsed' as const) : ('expanded' as const),
-      ]),
-    );
+  const model =
+    data !== null && typeof data === 'object' && (data as ViewerData).model != null
+      ? (data as ViewerData).model
+      : undefined;
+  const layout = model !== undefined ? (data as ViewerData).layout : undefined;
+  // The page opens on the model's first plane (what the PNG shows) with that
+  // plane's preset layers, unfolded where the layout was SAVED open (a
+  // hand-placed interior is only visible while its container is open) and
+  // folded elsewhere, so readers explore. An export opens everything instead.
+  const {
+    props: readerProps,
+    plane,
+    notation,
+    setPlane,
+  } = useReaderView({
+    model,
+    layout,
+    exportMode: expandAll,
+    ...(expandAll && model !== undefined ? { opening: { pins: exportFolds(model, layout) } } : {}),
   });
-  const [enteredPath, setEnteredPath] = useState<string[]>([]);
   // The causal-loop reading aids, all viewer state and none of it saved: the
   // clicked variable the report is about, the ctrl-clicked one to compare it
   // with, the report row the canvas is glowing, and the signed graph the canvas
@@ -253,19 +248,6 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
     setCompareId(id);
     setFocus(null);
   }, []);
-  // The plane the reader picked; undefined until they pick one, so the page
-  // opens on the model's first plane (what the PNG shows).
-  const [picked, setPicked] = useState<string | undefined>(undefined);
-  // The layers the reader has ON. Seeded from the presets of the plane the page
-  // opens on, and owned by the reader from then on: a plane's `layers` are a
-  // DEFAULT, not a floor the compiler re-imposes (see ViewportState.activeLayers).
-  // Export mode never reads this — it passes no `activeLayers` at all, so the PNG
-  // compiles straight from the presets, exactly as it did before the toggles.
-  const [layers, setLayers] = useState<string[]>(() =>
-    data === null || typeof data !== 'object' || (data as ViewerData).model == null
-      ? []
-      : presetLayers((data as ViewerData).model.planes),
-  );
   const apiRef = useRef<LayoutApi | null>(null);
 
   // Which theme, and the reader's switch where they have one (see theme.ts for the
@@ -334,18 +316,6 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
     };
   }, [expandAll]);
 
-  const model =
-    data !== null && typeof data === 'object' && (data as ViewerData).model != null
-      ? (data as ViewerData).model
-      : undefined;
-  // Which plane is drawn: the reader's pick on an interactive page, and always
-  // the model's first plane in export mode. `undefined` leaves DiagramView on
-  // its own default, which IS the first plane.
-  const plane = model !== undefined ? activePlaneId(model.planes, picked, expandAll) : undefined;
-  // Mirror the drawn plane's notation so the visual language follows the plane
-  // the reader is on — the studio resolves it the same way, so an editable
-  // diagram and its published page always agree.
-  const notation = model !== undefined ? activeNotation(model.planes, plane, model.notation) : undefined;
   // The report is about a variable on the causal-loop view being drawn — a
   // box clicked on another plane, or a selection the model no longer has, gets
   // none. Derived ahead of the fallback return below because the re-fit effect
@@ -367,58 +337,33 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
     apiRef.current?.fitView();
   }, [reportOpen]);
 
-  if (model === undefined) {
+  if (model === undefined || readerProps === undefined) {
     return <div style={{ padding: 24 }}>No diagram to display.</div>;
   }
-  const { layout, drawings, diff } = data as ViewerData;
-  const styleId = model.style !== undefined && isKnownStyle(model.style) ? model.style : 'clean';
-  const toggleExpand = (id: string, next: 'expanded' | 'collapsed') => setPins((p) => ({ ...p, [id]: next }));
-  // A plane change re-seeds the layer switch from the new plane's presets, so the
-  // reader's choice on one viewpoint never silently governs another — the studio
-  // does the same on switchPlane.
-  // The folds follow for the same reason: each plane opens as IT was saved.
+  const { drawings, diff } = data as ViewerData;
   const pickPlane = (id: string) => {
-    setPicked(id);
-    setLayers(presetLayers(model.planes, id));
-    setPins(openingPins(layout, model, id));
+    setPlane(id);
     // The canvas clears its own selection on a recompile; the report follows,
     // or a switch back to the causal plane would revive a stale one.
     onSelect(null);
   };
-  const toggleLayer = (id: string) => setLayers((ls) => (ls.includes(id) ? ls.filter((l) => l !== id) : [...ls, id]));
   const view = (
     <DiagramView
-      model={model}
-      pins={pins}
-      onToggleExpand={toggleExpand}
-      enteredPath={enteredPath}
-      onEnteredPathChange={setEnteredPath}
+      {...readerProps}
       colorMode={theme}
       {...(toggleTheme !== undefined ? { onToggleTheme: toggleTheme } : {})}
       // Export mode is a one-shot screenshot: no one clicks the controls, and
       // they would be baked into the committed PNG.
       chrome={!expandAll}
       assetBase=""
-      styleId={styleId}
       icons={icons}
       layoutApiRef={apiRef}
-      // The layer switch: `onToggleLayer` is what turns the legend's LAYERS rows
-      // into buttons (Legend.tsx) and what makes an off layer visible as a greyed
-      // row at all (legend.ts `canToggleLayers`). Export mode passes neither, so
-      // the image keeps inert rows and presets-only compilation.
-      {...(expandAll ? {} : { activeLayers: layers, onToggleLayer: toggleLayer })}
       // The leverage report's hooks: which variable was clicked, which to compare
       // it with, the compiled signed graph, and the row to glow. Export mode
       // passes none — nothing is clicked in a screenshot.
       {...(leverage ? { onSelect, onCompareSelect, onCldEdges: setCldEdges, externalHighlight: focus } : {})}
-      {...(plane !== undefined ? { plane } : {})}
-      {...(notation !== undefined ? { notation } : {})}
-      {...(layout !== undefined ? { layout } : {})}
       {...(drawings !== undefined ? { drawings } : {})}
       {...(diff !== undefined ? { diffMarks: diff.marks } : {})}
-      // the page shows where today is; a PNG must not bake in a line that is
-      // wrong tomorrow, so the export render passes none
-      today={expandAll ? null : todayIso()}
     />
   );
   const picker = showsPlanePicker(model.planes, expandAll);

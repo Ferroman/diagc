@@ -1,14 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  activeNotation,
-  errMessage,
-  openingPins,
-  presetLayers,
-  type DiagramModel,
-  type Drawings,
-  type LayoutOverlay,
-} from '@diagc/core/internal';
-import { applyTheme, darkTheme, DiagramView, isKnownStyle, lightTheme, todayIso } from '@diagc/renderer';
+import { errMessage, type DiagramModel, type Drawings, type LayoutOverlay } from '@diagc/core/internal';
+import { applyTheme, darkTheme, DiagramView, lightTheme, useReaderView } from '@diagc/renderer';
 import { createIconRegistry } from '@diagc/icons';
 import type { HostAdapter } from '@diagc/studio/src/host';
 import type { EmbedSpec } from './fence';
@@ -21,13 +13,6 @@ interface EmbedResponse {
   model: DiagramModel;
   layout?: LayoutOverlay;
   drawings?: Drawings;
-}
-
-/** The fence's `plane:` when the model has that plane, else the default plane, as
- * the published page treats a stale pick. An unknown plane holds no containment,
- * so the view would draw every node loose. */
-function knownPlane(model: DiagramModel, plane: string | undefined): string | undefined {
-  return model.planes.some((p) => p.id === plane) ? plane : undefined;
 }
 
 type EmbedState =
@@ -89,14 +74,17 @@ export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpen
     if (rootRef.current !== null) applyTheme(rootRef.current, theme === 'dark' ? darkTheme : lightTheme);
   }, [state.status, theme]);
 
-  // Same shape as Viewer.tsx's interactive page: folded unless the layout was
-  // saved with boxes open, owned by the reader, never written back — an embed is
-  // a read-only window.
-  const [pins, setPins] = useState<Record<string, 'expanded' | 'collapsed'>>({});
-  // Seeded once the model lands: the fence's `layers:` line when it has one, else
-  // the plane's preset layers, as the published page opens. Owned by the reader
-  // from there — a fence's layers are a default, not a floor (mirrors Viewer.tsx).
-  const [activeLayers, setActiveLayers] = useState<string[]>([]);
+  // The published page's reader view, opened where the fence says: its `plane:`
+  // (the default plane when the model lacks it), its `layers:` (else the plane's
+  // presets) and its `root:` (already drilled in, like a deep link). Seeded once
+  // the model lands, owned by the reader from there, never written back: an
+  // embed is a read-only window.
+  const loaded = state.status === 'loaded' ? state.data : undefined;
+  const { props: readerProps } = useReaderView({
+    model: loaded?.model,
+    layout: loaded?.layout,
+    opening: { plane: spec.plane, layers: spec.layers, root: spec.root },
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -110,14 +98,7 @@ export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpen
           throw new Error(body?.issues?.[0]?.message ?? `Failed to load '${spec.name}' (${res.status})`);
         }
         if (body?.model === undefined) throw new Error(`Malformed response for '${spec.name}'`);
-        if (!cancelled) {
-          const data = body as EmbedResponse;
-          setState({ status: 'loaded', data });
-          const plane = knownPlane(data.model, spec.plane);
-          // open the way the layout was saved (see Viewer.tsx); the reader owns it from there
-          setPins(openingPins(data.layout, data.model, plane));
-          setActiveLayers(spec.layers ?? presetLayers(data.model.planes, plane));
-        }
+        if (!cancelled) setState({ status: 'loaded', data: body as EmbedResponse });
       } catch (e) {
         if (!cancelled) setState({ status: 'error', message: errMessage(e) });
       }
@@ -127,50 +108,21 @@ export function Embed({ spec, apiFetch, openLink, assetBase, libraryBase, onOpen
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- spec.plane and spec.layers are read when the response lands; a change to them alone does not refetch
   }, [apiFetch, spec.name]);
 
-  const toggleExpand = (id: string, next: 'expanded' | 'collapsed') => setPins((p) => ({ ...p, [id]: next }));
-  const toggleLayer = (id: string) =>
-    setActiveLayers((ls) => (ls.includes(id) ? ls.filter((l) => l !== id) : [...ls, id]));
-  // `root:` opens the embed already drilled into that node, matching a deep
-  // link; omitted entirely opens at the bird's-eye (DiagramView's default).
-  const [enteredPath, setEnteredPath] = useState<string[]>(spec.root !== undefined ? [spec.root] : []);
-
-  if (state.status === 'loading') return null;
   if (state.status === 'error') return <div className="dg-embed-error">{state.message}</div>;
-
-  const { model } = state.data;
-  // Mirror Viewer.tsx: an embed that drops these two structurally
-  // mis-renders any diagram authored with a non-default style or a notation
-  // profile (git graph, activity, …) — the fetched model already carries
-  // both, so there is no excuse for the embed to fall back silently.
-  const styleId = model.style !== undefined && isKnownStyle(model.style) ? model.style : undefined;
-  const plane = knownPlane(model, spec.plane);
-  const notation = activeNotation(model.planes, plane, model.notation);
+  if (readerProps === undefined) return null;
 
   return (
     <div ref={rootRef} className="dg-obsidian-root dg-embed" style={{ height: spec.height }}>
       <DiagramView
-        model={model}
-        pins={pins}
-        onToggleExpand={toggleExpand}
-        enteredPath={enteredPath}
-        onEnteredPathChange={setEnteredPath}
+        {...readerProps}
         colorMode={theme}
         assetBase={assetBase}
         libraryBase={libraryBase}
         onOpenLink={openLink}
         icons={icons}
-        activeLayers={activeLayers}
-        onToggleLayer={toggleLayer}
-        // the reader's date: a plan in a note shows where today is, as its page does
-        today={todayIso()}
-        {...(plane !== undefined ? { plane } : {})}
-        {...(styleId !== undefined ? { styleId } : {})}
-        {...(notation !== undefined ? { notation } : {})}
-        {...(state.data.layout !== undefined ? { layout: state.data.layout } : {})}
-        {...(state.data.drawings !== undefined ? { drawings: state.data.drawings } : {})}
+        {...(loaded?.drawings !== undefined ? { drawings: loaded.drawings } : {})}
       />
       <button type="button" className="dg-embed-open" onClick={onOpenStudio}>
         Open in studio
