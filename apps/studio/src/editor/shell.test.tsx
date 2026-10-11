@@ -500,6 +500,85 @@ describe('editor shell', () => {
     });
   });
 
+  describe('leaving edit mode while a save is in flight', () => {
+    // Every model POST waits until the case settles it, so a leave can land
+    // mid-save; all other traffic goes to the usual stub.
+    const held: ((res: Response) => void)[] = [];
+    beforeEach(() => {
+      held.length = 0;
+      const stub = stubFetch([
+        { name: 'sketch', model: goodModel, issues: [], editable: true },
+        { name: 'two', model: twoModel, issues: [], editable: false },
+      ]);
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, init?: RequestInit) =>
+          url === '/api/diagrams/sketch' && init?.method === 'POST'
+            ? new Promise<Response>((resolve) => held.push(resolve))
+            : stub(url, init),
+        ),
+      );
+    });
+    const ok = () => new Response(JSON.stringify({ ok: true }), { status: 200 });
+    const posts = (url: string) =>
+      (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (c) => String(c[0]) === url && (c[1] as RequestInit | undefined)?.method === 'POST',
+      );
+    // The name each model POST gave the added node, oldest first.
+    const postedNames = () =>
+      posts('/api/diagrams/sketch').map(
+        (c) =>
+          (JSON.parse((c[1] as RequestInit).body as string) as DiagramModel).nodes.find((n) => n.id === 'node')?.name,
+      );
+    // Edit A (add a node) and let autosave start posting it, then edit B (rename
+    // the node) while that POST is still out.
+    const renameDuringSave = async () => {
+      render(<App />);
+      fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
+      fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
+      fireEvent.click(await screen.findByRole('button', { name: /add node/i }));
+      await waitFor(() => expect(postedNames()).toEqual(['node']));
+      const name = screen.getByLabelText('Name');
+      fireEvent.change(name, { target: { value: 'renamed' } });
+      fireEvent.blur(name);
+      expect(await canvas().findByText('renamed')).toBeDefined();
+    };
+
+    it('posts the last edit once that save settles, and keeps showing it', async () => {
+      await renameDuringSave();
+      fireEvent.click(screen.getByRole('button', { name: /done/i }));
+      held[0]!(ok());
+      await waitFor(() => expect(postedNames()).toEqual(['node', 'renamed']));
+      // The settled save carried the older snapshot; view mode keeps the rename.
+      expect(canvas().queryByText('node')).toBeNull();
+      expect(canvas().getAllByText('renamed').length).toBeGreaterThan(0);
+      held[1]!(ok());
+      await waitFor(() => expect(posts('/api/layouts/sketch')).toHaveLength(2));
+    });
+
+    it('still posts the last edit when that save fails', async () => {
+      await renameDuringSave();
+      fireEvent.click(screen.getByRole('button', { name: /done/i }));
+      held[0]!(new Response(JSON.stringify({ issues: [{ message: 'disk on fire' }] }), { status: 500 }));
+      // The failure surfaces, and the rename goes out anyway: it carries the
+      // failed edit too, being the whole model.
+      await waitFor(() => expect(postedNames()).toEqual(['node', 'renamed']));
+      expect(screen.getByText(/disk on fire/i)).toBeDefined();
+      held[1]!(ok());
+      await waitFor(() => expect(screen.queryByText(/disk on fire/i)).toBeNull());
+      expect(canvas().getAllByText('renamed').length).toBeGreaterThan(0);
+    });
+
+    it('posts the last edit when a hashchange switches diagrams', async () => {
+      await renameDuringSave();
+      window.location.hash = '#/two';
+      fireEvent(window, new HashChangeEvent('hashchange'));
+      expect(await canvas().findByText('zed')).toBeDefined();
+      held[0]!(ok());
+      await waitFor(() => expect(postedNames()).toEqual(['node', 'renamed']));
+    });
+  });
+
   it('keeps the default (base) view reachable after a plane is added', async () => {
     // Regression: with planes present the switcher used to force plane[0], so the
     // base/no-plane view (and its plain look) became unreachable. A Default chip
