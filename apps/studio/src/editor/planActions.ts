@@ -35,6 +35,13 @@ export interface MoveDelta {
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 const planeOpt = (plane: string | undefined) => (plane !== undefined ? { plane } : {});
+/** The plane a quick-added node is tagged with: the active plane, unless it borrows
+ * another's containment. The view matches a node's `plane` against the plane whose
+ * containment it reads, so a node tagged with the borrowing plane's own id would show
+ * on no canvas; it is added shared instead, as createNodeAt adds one. Its containment
+ * edge keeps the active plane, which core resolves to the donor (canonicalPlane). */
+const nodePlaneOpt = (model: DiagramModel, plane: string | undefined) =>
+  planeOpt(model.planes.find((p) => p.id === plane)?.containmentOf === undefined ? plane : undefined);
 
 /** a zone's parent span, when it is nested */
 function parentSpan(g: PlanGraph, byId: Map<string, DiagramNode>, id: string): PlanSpan | undefined {
@@ -246,7 +253,7 @@ export function addZone(
         id,
         name: 'Zone',
         type: PLAN_ZONE_TYPE,
-        ...planeOpt(plane),
+        ...nodePlaneOpt(model, plane),
         metadata: { start: isoOf(start), end: isoOf(end) },
       },
       ...(parent !== undefined ? { parent: { id: parent.id, ...planeOpt(plane) } } : {}),
@@ -268,7 +275,7 @@ export function addEvent(
     id,
     command: {
       type: 'add-node',
-      node: { id, name: 'Event', type: PLAN_EVENT_TYPE, ...planeOpt(plane), metadata: { at: isoOf(at) } },
+      node: { id, name: 'Event', type: PLAN_EVENT_TYPE, ...nodePlaneOpt(model, plane), metadata: { at: isoOf(at) } },
       ...(parent !== undefined ? { parent: { id: parent.id, ...planeOpt(plane) } } : {}),
     },
   };
@@ -283,7 +290,7 @@ export function addActor(
   name: string,
 ): { command: EditorCommand; id: string } {
   const id = uniqueNodeId(model, name);
-  return { id, command: { type: 'add-node', node: { id, name, type, ...planeOpt(plane) } } };
+  return { id, command: { type: 'add-node', node: { id, name, type, ...nodePlaneOpt(model, plane) } } };
 }
 
 /** The panel offers one person per role per zone (the model allows more, from
