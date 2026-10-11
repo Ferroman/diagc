@@ -81,6 +81,129 @@ const shiftEvent = (id: string, at: number, days: number): EditorCommand => ({
   dates: { at: isoOf(at + days) },
 });
 
+/** The plan plane an action works on, and the host's date (YYYY-MM-DD): where
+ * a date with no other anchor lands. */
+export interface PlanContext {
+  model: DiagramModel;
+  plane: string | undefined;
+  today: string;
+}
+
+/** What a gesture on the plan plane works on; none lands on today. */
+export type PlanPlane = Pick<PlanContext, 'model' | 'plane'>;
+
+/** The plane's arrangement, read once per gesture. */
+interface MoveScene {
+  g: PlanGraph;
+  byId: Map<string, DiagramNode>;
+  /** the day x = 0 stands for */
+  origin: number;
+  plane: string | undefined;
+}
+
+/** One node of the gesture: where it was let go, how far it went, and its parent zone's span. */
+interface Move {
+  id: string;
+  node: DiagramNode;
+  pos: Point;
+  delta: MoveDelta;
+  outer: PlanSpan | undefined;
+}
+
+/** A zone with no usable span yet: the drop itself supplies two weeks of dates
+ * at `pos.x`, clamped into the parent's span when nested; a root zone still
+ * gets the position it would normally get, so its y sticks. */
+function datelessZoneMove({ g, origin, plane }: MoveScene, { id, pos, outer }: Move): EditorCommand[] {
+  const base = outer?.start ?? origin;
+  let start = base + Math.round(pos.x / DAY);
+  let end = start + ZONE_DAYS - 1;
+  if (outer !== undefined) {
+    start = clamp(start, outer.start, outer.end);
+    end = clamp(end, outer.start, outer.end);
+  }
+  const out: EditorCommand[] = [{ type: 'set-plan-dates', id, dates: { start: isoOf(start), end: isoOf(end) } }];
+  if (!g.parent.has(id)) {
+    out.push({
+      type: 'set-position',
+      nodeId: id,
+      x: planX(start, origin),
+      y: Math.max(0, pos.y),
+      ...planeOpt(plane),
+    });
+  }
+  return out;
+}
+
+/** Every zone and event in `id`'s subtree shifted by `days`, each marked as moved. */
+function shiftSubtree({ g, byId }: MoveScene, id: string, days: number, shifted: Set<string>): EditorCommand[] {
+  const out: EditorCommand[] = [];
+  for (const sub of planSubtree(g, id)) {
+    const n = byId.get(sub)!;
+    const s = spanOf(n);
+    const at = atOf(n);
+    if (s !== undefined) out.push(shiftZone(sub, s, days));
+    else if (at !== undefined) out.push(shiftEvent(sub, at, days));
+    shifted.add(sub);
+  }
+  return out;
+}
+
+/** A zone moved by whole days with its subtree, clamped inside its parent; a
+ * root zone also gets its derived x written back and its y clamped below the header. */
+function zoneMove(scene: MoveScene, move: Move, shifted: Set<string>): EditorCommand[] {
+  const span = spanOf(move.node);
+  if (span === undefined) return datelessZoneMove(scene, move);
+  const { g, origin, plane } = scene;
+  const { id, pos, delta, outer } = move;
+  const out: EditorCommand[] = [];
+  let days = Math.round(delta.dx / DAY);
+  if (outer !== undefined) days = clamp(days, outer.start - span.start, outer.end - span.end);
+  if (days !== 0) out.push(...shiftSubtree(scene, id, days, shifted));
+  // "is this top-level" comes from the GRAPH, not from `outer === undefined`:
+  // a nested zone whose parent's dates are unusable has no parent SPAN
+  // either, and writing it a position only litters the layout file with a
+  // coordinate the arrangement overrides anyway.
+  if (!g.parent.has(id)) {
+    out.push({
+      type: 'set-position',
+      nodeId: id,
+      x: planX(span.start + days, origin),
+      y: Math.max(0, pos.y),
+      ...planeOpt(plane),
+    });
+  }
+  return out;
+}
+
+/** An event moved by whole days, clamped inside its zone. */
+function eventMove({ id, node, delta, outer }: Move): EditorCommand[] {
+  const at = atOf(node);
+  if (at === undefined) return [];
+  let days = Math.round(delta.dx / DAY);
+  if (outer !== undefined) days = clamp(days, outer.start - at, outer.end - at);
+  return days !== 0 ? [shiftEvent(id, at, days)] : [];
+}
+
+/**
+ * Any other node keeps the spot it was dropped on. Two cases share this. A
+ * stray — a node the plane shows that no zone holds — is unclamped: planLayout
+ * parks it under the chart and deliberately leaves it loose, so its drop is the
+ * only statement of where it goes; without this the box snapped back. A zone's
+ * "other" child (free-form placement — see planLayout) IS clamped, the same
+ * floor the layout clamps its saved position by on read — `g.parent.has(id)` is
+ * what tells the two apart, the same test the zone move uses.
+ */
+function freeMove({ g, plane }: MoveScene, { id, pos }: Move): EditorCommand {
+  const nested = g.parent.has(id);
+  return {
+    type: 'set-position',
+    nodeId: id,
+    x: nested ? Math.max(0, pos.x) : pos.x,
+    y: nested ? Math.max(TITLE_H, pos.y) : pos.y,
+    ...planeOpt(plane),
+  };
+}
+
 /**
  * A drag on the plan plane, as dates. dx is the displacement from the ARRANGED
  * spot, so a zone moved by seven days' worth of pixels moves seven days
@@ -93,14 +216,10 @@ const shiftEvent = (id: string, at: number, days: number): EditorCommand => ({
  * and a root zone still gets the `set-position` it would normally get, so its
  * y sticks. People never move: the roster is a list, and a person is refused
  * outright here (planLayout also marks it `fixed`, so no gesture reaches it
- * anyway). The final arm now serves two cases: a stray — a node the plane
- * shows that no zone holds, NOT `fixed`, so it keeps the exact spot it was
- * dropped on — and a zone's "other" child (a borrowed container, a plain box:
- * see planLayout's free-form placement), clamped to the same floor the
- * layout clamps its OWN saved position by on read (x ≥ 0, y ≥ TITLE_H; the
- * right/bottom edge needs the child's width, which this function doesn't
- * have, so that clamp stays the layout's, not this write's). Returns
- * undefined when the gesture changes nothing, so a no-op never reaches undo.
+ * anyway). Any other node — a stray, or a zone's "other" child — keeps its
+ * drop point, clamped to the layout's floor when nested (see freeMove).
+ * Returns undefined when the gesture changes nothing, so a no-op never reaches
+ * undo.
  */
 export function planMoves(
   model: DiagramModel,
@@ -110,7 +229,7 @@ export function planMoves(
 ): EditorCommand | undefined {
   const g = planGraph(model, plane);
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
-  const origin = g.origin ?? 0;
+  const scene: MoveScene = { g, byId, origin: g.origin ?? 0, plane };
   const out: EditorCommand[] = [];
   const shifted = new Set<string>();
   // parents before children (a child inside a moved parent's subtree is done);
@@ -121,80 +240,13 @@ export function planMoves(
     const pos = positions[id];
     const delta = deltas[id];
     if (node === undefined || pos === undefined || delta === undefined || shifted.has(id)) continue;
-    const outer = parentSpan(g, byId, id);
-    if (isPlanZone(node)) {
-      const span = spanOf(node);
-      if (span === undefined) {
-        const base = outer?.start ?? origin;
-        let start = base + Math.round(pos.x / DAY);
-        let end = start + ZONE_DAYS - 1;
-        if (outer !== undefined) {
-          start = clamp(start, outer.start, outer.end);
-          end = clamp(end, outer.start, outer.end);
-        }
-        out.push({ type: 'set-plan-dates', id, dates: { start: isoOf(start), end: isoOf(end) } });
-        if (!g.parent.has(id)) {
-          out.push({
-            type: 'set-position',
-            nodeId: id,
-            x: planX(start, origin),
-            y: Math.max(0, pos.y),
-            ...planeOpt(plane),
-          });
-        }
-        continue;
-      }
-      let days = Math.round(delta.dx / DAY);
-      if (outer !== undefined) days = clamp(days, outer.start - span.start, outer.end - span.end);
-      if (days !== 0) {
-        for (const sub of planSubtree(g, id)) {
-          const n = byId.get(sub)!;
-          const s = spanOf(n);
-          const at = atOf(n);
-          if (s !== undefined) out.push(shiftZone(sub, s, days));
-          else if (at !== undefined) out.push(shiftEvent(sub, at, days));
-          shifted.add(sub);
-        }
-      }
-      // "is this top-level" comes from the GRAPH, not from `outer === undefined`:
-      // a nested zone whose parent's dates are unusable has no parent SPAN
-      // either, and writing it a position only litters the layout file with a
-      // coordinate the arrangement overrides anyway.
-      if (!g.parent.has(id)) {
-        out.push({
-          type: 'set-position',
-          nodeId: id,
-          x: planX(span.start + days, origin),
-          y: Math.max(0, pos.y),
-          ...planeOpt(plane),
-        });
-      }
-    } else if (isPlanEvent(node)) {
-      const at = atOf(node);
-      if (at === undefined) continue;
-      let days = Math.round(delta.dx / DAY);
-      if (outer !== undefined) days = clamp(days, outer.start - at, outer.end - at);
-      if (days !== 0) out.push(shiftEvent(id, at, days));
-    } else if (!isPlanActor(node)) {
-      // Two cases share this arm. A stray — a node the plane shows that no
-      // zone holds — is unclamped: planLayout parks it under the chart and
-      // deliberately leaves it loose, so its drop is the only statement of
-      // where it goes; without this the box snapped back. A zone's "other"
-      // child (free-form placement — see planLayout) IS clamped, the same floor the
-      // layout clamps its saved position by on read — `g.parent.has(id)` is
-      // what tells the two apart, the same test the zone branch above uses.
-      // An actor is excluded HERE, not left to the layout's `fixed` set: the
-      // roster is a list, and "an actor never moves" is this function's own
-      // contract, not a fact it borrows from whoever arranged the canvas.
-      const nested = g.parent.has(id);
-      out.push({
-        type: 'set-position',
-        nodeId: id,
-        x: nested ? Math.max(0, pos.x) : pos.x,
-        y: nested ? Math.max(TITLE_H, pos.y) : pos.y,
-        ...planeOpt(plane),
-      });
-    }
+    const move: Move = { id, node, pos, delta, outer: parentSpan(g, byId, id) };
+    if (isPlanZone(node)) out.push(...zoneMove(scene, move, shifted));
+    else if (isPlanEvent(node)) out.push(...eventMove(move));
+    // An actor is excluded HERE, not left to the layout's `fixed` set: the
+    // roster is a list, and "an actor never moves" is this function's own
+    // contract, not a fact it borrows from whoever arranged the canvas.
+    else if (!isPlanActor(node)) out.push(freeMove(scene, move));
   }
   return out.length === 0 ? undefined : { type: 'batch', commands: out };
 }
@@ -206,13 +258,7 @@ export function planMoves(
  * are clamped to the parent's span and the children's, so a gesture can never
  * produce a `plan-*` error. No size is ever saved for a zone.
  */
-export function planResize(
-  model: DiagramModel,
-  plane: string | undefined,
-  id: string,
-  x: number,
-  w: number,
-): EditorCommand | undefined {
+export function planResize({ model, plane }: PlanPlane, id: string, x: number, w: number): EditorCommand | undefined {
   const g = planGraph(model, plane);
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const node = byId.get(id);
@@ -367,13 +413,7 @@ function currentParents(model: DiagramModel, plane: string | undefined, id: stri
  * isOnPlane), so this function does not need to know
  * whether the plan happens to be the first-declared (default) plane or not.
  */
-export function assign(
-  model: DiagramModel,
-  plane: string | undefined,
-  id: string,
-  zoneId: string,
-  rel: Point,
-): EditorCommand | undefined {
+export function assign({ model, plane }: PlanPlane, id: string, zoneId: string, rel: Point): EditorCommand | undefined {
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const node = byId.get(id);
   const zone = byId.get(zoneId);
@@ -402,11 +442,9 @@ export function assign(
  * drop point is known and the plan has an origin, at the parent's start when
  * dropped on a zone, else today. */
 export function seedDates(
-  model: DiagramModel,
-  plane: string | undefined,
+  { model, plane, today }: PlanContext,
   type: string | undefined,
   at: { x?: number; parentId?: string },
-  today: string,
 ): Record<string, string> | undefined {
   if (type !== PLAN_ZONE_TYPE && type !== PLAN_EVENT_TYPE) return undefined;
   const g = planGraph(model, plane);
@@ -441,13 +479,8 @@ export function seedDates(
  * checked by applying `type` to a clone and asking spanOf/atOf, since the
  * node's own `type` field has not changed yet at the point this runs).
  */
-export function seedOnRetype(
-  model: DiagramModel,
-  plane: string | undefined,
-  id: string,
-  type: string | undefined,
-  today: string,
-): EditorCommand | undefined {
+export function seedOnRetype(ctx: PlanContext, id: string, type: string | undefined): EditorCommand | undefined {
+  const { model, plane } = ctx;
   if (type !== PLAN_ZONE_TYPE && type !== PLAN_EVENT_TYPE) return undefined;
   const node = model.nodes.find((n) => n.id === id);
   if (node === undefined) return undefined;
@@ -455,6 +488,6 @@ export function seedOnRetype(
     type === PLAN_ZONE_TYPE ? spanOf({ ...node, type }) !== undefined : atOf({ ...node, type }) !== undefined;
   if (already) return undefined;
   const parentId = planGraph(model, plane).parent.get(id);
-  const dates = seedDates(model, plane, type, { parentId }, today);
+  const dates = seedDates(ctx, type, { parentId });
   return dates === undefined ? undefined : { type: 'set-plan-dates', id, dates };
 }

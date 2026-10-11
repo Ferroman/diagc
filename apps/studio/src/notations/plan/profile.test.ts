@@ -42,7 +42,7 @@ describe("the plan's gestures", () => {
   it('reads a drop into a zone as a role, the way assign does', () => {
     const model = schedule();
     const drop = { model, plane: 'plan', id: 'alice', targetId: 'build', rel: { x: 4, y: 4 } };
-    expect(gestures.dropInto!(drop)).toEqual(assign(model, 'plan', 'alice', 'build', drop.rel));
+    expect(gestures.dropInto!(drop)).toEqual(assign({ model, plane: 'plan' }, 'alice', 'build', drop.rel));
     expect(gestures.dropInto!(drop)).toEqual({
       type: 'add-relation',
       from: 'alice',
@@ -54,7 +54,9 @@ describe("the plan's gestures", () => {
   it('resizes a zone as dates, and hands any other node back to the generic resize', () => {
     const model = schedule();
     const resize = { model, plane: 'plan', w: 10 * DAY, h: 40, pos: { x: 0, y: 0 } };
-    expect(gestures.resize!({ ...resize, id: 'build' })).toEqual(planResize(model, 'plan', 'build', 0, 10 * DAY));
+    expect(gestures.resize!({ ...resize, id: 'build' })).toEqual(
+      planResize({ model, plane: 'plan' }, 'build', 0, 10 * DAY),
+    );
     expect(gestures.resize!({ ...resize, id: 'build' })).toMatchObject({ type: 'set-plan-dates', id: 'build' });
     expect(gestures.resize!({ ...resize, id: 'm1' })).toBe('generic');
     expect(gestures.resize!({ ...resize, id: 'box' })).toBe('generic');

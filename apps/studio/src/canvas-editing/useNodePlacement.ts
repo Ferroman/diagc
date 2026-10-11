@@ -213,11 +213,9 @@ export function useNodePlacement({
     // them. Only a notation that draws x as days (the plan) lets the drop
     // point pick the day.
     const seeded = seedDates(
-      m,
-      activePlane,
+      { model: m, plane: activePlane, today },
       entry.template.type,
       defined({ x: studioNotation(notation).datesFromDropPoint === true ? opts?.position?.x : undefined, parentId }),
-      today,
     );
     const node = {
       ...entryToNode(entry, place.id, placeTags(place, penLayer)),
@@ -293,7 +291,7 @@ export function useNodePlacement({
     // changes no containment of its own.
     const dateCmd =
       model !== undefined && typeof details.type === 'string'
-        ? seedOnRetype(model, activePlane, id, details.type, today)
+        ? seedOnRetype({ model, plane: activePlane, today }, id, details.type)
         : undefined;
     editor.dispatch(dateCmd === undefined ? typeCmd : { type: 'batch', commands: [typeCmd, dateCmd] });
     if (entry.template.width !== undefined && entry.template.height !== undefined) {
