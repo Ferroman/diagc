@@ -17,14 +17,6 @@
       "count": 1
     }
   },
-  "packages/diagc/src/api/handlers.ts": {
-    "complexity": {
-      "count": 1
-    },
-    "max-depth": {
-      "count": 1
-    }
-  },
   "packages/diagc/src/cli.ts": {
     "complexity": {
       "count": 2

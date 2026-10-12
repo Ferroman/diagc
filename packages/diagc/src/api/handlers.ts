@@ -93,35 +93,41 @@ export async function listDiagramModels(diagramsDir: string, artifactsDir: strin
     } catch {
       issues.push({ message: `Could not read model for '${name}'` });
     }
-    if (isSource && hasIncludes(model)) {
-      try {
-        const { model: composed, warnings } = await composeIncludes(
-          model as DiagramModel,
-          path.resolve(file),
-          lockedResolver(diagramsDir),
-        );
-        // compileFile refuses an invalid composed result outright, because the
-        // renderer assumes a validated model — an id collision
-        // between an umbrella-declared node and a namespaced include can pass
-        // composeIncludes (which only grafts) while still being invalid, so
-        // this must be checked here too, not just on compile.
-        const validationIssues = validate(composed);
-        if (validationIssues.length > 0) {
-          // fall back to the raw model (include nodes as placeholders); it
-          // still renders, unlike the unsound composed result
-          issues.push(...validationIssues);
-        } else {
-          model = composed;
-          for (const w of warnings) issues.push({ message: w });
-        }
-      } catch (e) {
-        // the raw model still renders (include nodes as placeholders); say why
-        issues.push({ message: `Includes not expanded: ${errMessage(e)}` });
-      }
-    }
+    if (isSource && hasIncludes(model)) model = await composedForList(model as DiagramModel, file, diagramsDir, issues);
     diagrams.push({ name, model, issues, editable });
   }
   return { status: 200, body: { diagrams } };
+}
+
+/** `model` with its includes expanded for the list, or `model` itself when they
+ * cannot be, with what went wrong added to `issues`. */
+async function composedForList(
+  model: DiagramModel,
+  file: string,
+  diagramsDir: string,
+  issues: { message: string }[],
+): Promise<DiagramModel> {
+  try {
+    const { model: composed, warnings } = await composeIncludes(model, path.resolve(file), lockedResolver(diagramsDir));
+    // compileFile refuses an invalid composed result outright, because the
+    // renderer assumes a validated model — an id collision
+    // between an umbrella-declared node and a namespaced include can pass
+    // composeIncludes (which only grafts) while still being invalid, so
+    // this must be checked here too, not just on compile.
+    const validationIssues = validate(composed);
+    if (validationIssues.length > 0) {
+      // fall back to the raw model (include nodes as placeholders); it
+      // still renders, unlike the unsound composed result
+      issues.push(...validationIssues);
+      return model;
+    }
+    for (const w of warnings) issues.push({ message: w });
+    return composed;
+  } catch (e) {
+    // the raw model still renders (include nodes as placeholders); say why
+    issues.push({ message: `Includes not expanded: ${errMessage(e)}` });
+    return model;
+  }
 }
 
 /** All layout overlays under `diagramsDir`, keyed by diagram name. Corrupt
@@ -198,7 +204,7 @@ export async function readComposedDiagram(diagramsDir: string, name: string): Pr
   if (!hasIncludes(model)) return { status: 200, body: { model } };
   try {
     const { model: composed, warnings } = await composeIncludes(model, path.resolve(file), lockedResolver(diagramsDir));
-    // Same soundness check as listDiagramModels: a composed model that fails
+    // Same soundness check as composedForList: a composed model that fails
     // validation must never reach the renderer, so refuse it like a failed
     // compose instead of returning 200 with an unsound model.
     const issues = validate(composed);
@@ -388,6 +394,57 @@ export async function readLibrary(diagramsDir: string): Promise<HandlerResult> {
 const TEMPLATE_STRING_KEYS = new Set(['type', 'color', 'image', 'shape']);
 const TEMPLATE_NUMBER_KEYS = new Set(['width', 'height']);
 
+/** The categories' ids, or why they cannot be saved: each needs a string id and
+ * name, and no id may come twice. */
+function checkCategories(categories: unknown[]): { ids: Set<string> } | { problem: string } {
+  const ids = new Set<string>();
+  for (const c of categories) {
+    const cat = c as { id?: unknown; name?: unknown };
+    if (typeof cat.id !== 'string' || typeof cat.name !== 'string') {
+      return { problem: 'Category needs string id and name' };
+    }
+    if (ids.has(cat.id)) return { problem: `Duplicate category '${cat.id}'` };
+    ids.add(cat.id);
+  }
+  return { ids };
+}
+
+/** Why the entries cannot be saved, or undefined. Each entry is checked whole before
+ * the next: its fields, its category, its id, then its template. */
+function checkEntries(entries: unknown[], categoryIds: ReadonlySet<string>): string | undefined {
+  const ids = new Set<string>();
+  for (const e of entries) {
+    const entry = e as { id?: unknown; category?: unknown; name?: unknown; template?: unknown };
+    if (typeof entry.id !== 'string' || typeof entry.name !== 'string' || typeof entry.category !== 'string') {
+      return 'Entry needs string id, name, category';
+    }
+    if (!categoryIds.has(entry.category)) {
+      return `Entry '${entry.id}' references unknown category '${entry.category}'`;
+    }
+    if (ids.has(entry.id)) return `Duplicate entry '${entry.id}'`;
+    ids.add(entry.id);
+    const problem = checkTemplate(entry.id, entry.template);
+    if (problem !== undefined) return problem;
+  }
+  return undefined;
+}
+
+/** Why entry `id`'s template cannot be saved, or undefined: it is an object whose
+ * every field is a presentation channel of the right type. */
+function checkTemplate(id: string, template: unknown): string | undefined {
+  const t = template as Record<string, unknown> | null;
+  if (t === null || typeof t !== 'object' || Array.isArray(t)) return `Entry '${id}' missing template`;
+  for (const [k, v] of Object.entries(t)) {
+    const ok = TEMPLATE_STRING_KEYS.has(k)
+      ? typeof v === 'string'
+      : TEMPLATE_NUMBER_KEYS.has(k)
+        ? typeof v === 'number'
+        : false;
+    if (!ok) return `Entry '${id}' has invalid template field '${k}'`;
+  }
+  return undefined;
+}
+
 /** Persist the whole user library. Validates internal consistency only — bundled
  * packs are merged client-side and never written here. */
 export async function saveLibrary(diagramsDir: string, payload: unknown): Promise<HandlerResult> {
@@ -395,39 +452,10 @@ export async function saveLibrary(diagramsDir: string, payload: unknown): Promis
   if (p === null || !Array.isArray(p.categories) || !Array.isArray(p.entries)) {
     return refuse(400, 'Not a library { categories, entries }');
   }
-  const catIds = new Set<string>();
-  for (const c of p.categories) {
-    const cat = c as { id?: unknown; name?: unknown };
-    if (typeof cat.id !== 'string' || typeof cat.name !== 'string') {
-      return refuse(400, 'Category needs string id and name');
-    }
-    if (catIds.has(cat.id)) return refuse(400, `Duplicate category '${cat.id}'`);
-    catIds.add(cat.id);
-  }
-  const entryIds = new Set<string>();
-  for (const e of p.entries) {
-    const entry = e as { id?: unknown; category?: unknown; name?: unknown; template?: unknown };
-    if (typeof entry.id !== 'string' || typeof entry.name !== 'string' || typeof entry.category !== 'string') {
-      return refuse(400, 'Entry needs string id, name, category');
-    }
-    if (!catIds.has(entry.category)) {
-      return refuse(400, `Entry '${entry.id}' references unknown category '${entry.category}'`);
-    }
-    if (entryIds.has(entry.id)) return refuse(400, `Duplicate entry '${entry.id}'`);
-    entryIds.add(entry.id);
-    const t = entry.template as Record<string, unknown> | null;
-    if (t === null || typeof t !== 'object' || Array.isArray(t)) {
-      return refuse(400, `Entry '${entry.id}' missing template`);
-    }
-    for (const [k, v] of Object.entries(t)) {
-      const ok = TEMPLATE_STRING_KEYS.has(k)
-        ? typeof v === 'string'
-        : TEMPLATE_NUMBER_KEYS.has(k)
-          ? typeof v === 'number'
-          : false;
-      if (!ok) return refuse(400, `Entry '${entry.id}' has invalid template field '${k}'`);
-    }
-  }
+  const categories = checkCategories(p.categories);
+  if ('problem' in categories) return refuse(400, categories.problem);
+  const problem = checkEntries(p.entries, categories.ids);
+  if (problem !== undefined) return refuse(400, problem);
   const target = path.join(diagramsDir, 'library.json');
   await mkdir(path.dirname(target), { recursive: true });
   await writeFileAtomic(target, `${JSON.stringify(payload, null, 2)}\n`);
