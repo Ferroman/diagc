@@ -116,6 +116,22 @@ describe('checkoutDiagrams', () => {
   });
 });
 
+describe('loadDiagramSet', () => {
+  it('compares a diagram whose sidecars cannot be read, without them, and names each', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'diagc-diff-set-'));
+    put(dir, 'src/shop.diagram.json', v1);
+    put(dir, 'src/shop.layout.json', '{');
+    put(dir, 'src/shop.drawings.json', { version: 1 });
+    const set = await loadDiagramSet('wip', dir);
+    expect(set.errors.size).toBe(0);
+    expect(set.versions.get('shop')).toEqual({ model: v1 });
+    expect(set.warnings).toEqual([
+      expect.stringMatching(/^shop\.layout\.json at wip: does not parse \(.+\) — compared and drawn without it$/),
+      'shop.drawings.json at wip: not a drawings overlay — compared and drawn without it',
+    ]);
+  });
+});
+
 describe('compareDiagramSets', () => {
   it('pairs diagrams by name: changed, removed, added', async () => {
     const diffs = compareDiagramSets(await setAt('v1'), await setAt('v2'));
@@ -138,6 +154,7 @@ describe('compareDiagramSets', () => {
       diagramsDir: '',
       versions: new Map(),
       errors: new Map([['shop', 'bad json']]),
+      warnings: [],
     };
     const [d] = compareDiagramSets(await setAt('v1'), broken, ['shop']);
     expect(d).toMatchObject({ status: 'error', error: 'does not compile at wip: bad json' });
@@ -267,5 +284,46 @@ describe('writeDiffPages', () => {
     });
     expect(res.images).toEqual([]);
     expect(readFileSync(res.summary, 'utf8')).toContain('| [before](shop.before.html) | [after](shop.after.html) |');
+  });
+
+  it('shows a diagram it could not compare on the index, as the summary does', async () => {
+    const before = await setAt('v1');
+    const after = await setAt('v2');
+    after.errors.set('broken', 'bad json');
+    const out = mkdtempSync(path.join(tmpdir(), 'diagc-diff-out-'));
+    const shellPath = path.join(out, 'shell.html');
+    writeFileSync(shellPath, DG_DATA_SENTINEL);
+    const res = await writeDiffPages(compareDiagramSets(before, after), {
+      outDir: out,
+      shellPath,
+      libraryDir: out,
+      before,
+      after,
+    });
+    expect(readFileSync(res.index, 'utf8')).toContain(
+      '<section><h2>broken</h2><p>Not compared: does not compile at v2: bad json</p></section>',
+    );
+    expect(readFileSync(res.summary, 'utf8')).toContain('## broken\n\nNot compared: does not compile at v2: bad json');
+  });
+
+  it('names a sidecar it left out on the index and in the summary', async () => {
+    const before = await setAt('v1');
+    const dir = mkdtempSync(path.join(tmpdir(), 'diagc-diff-set-'));
+    put(dir, 'src/shop.diagram.json', v2);
+    put(dir, 'src/shop.layout.json', '{');
+    const after = await loadDiagramSet('wip', dir);
+    const out = mkdtempSync(path.join(tmpdir(), 'diagc-diff-out-'));
+    const shellPath = path.join(out, 'shell.html');
+    writeFileSync(shellPath, DG_DATA_SENTINEL);
+    const res = await writeDiffPages(compareDiagramSets(before, after, ['shop']), {
+      outDir: out,
+      shellPath,
+      libraryDir: out,
+      before,
+      after,
+    });
+    const warning = /shop\.layout\.json at wip: does not parse \(.+\) — compared and drawn without it/;
+    expect(readFileSync(res.index, 'utf8')).toMatch(warning);
+    expect(readFileSync(res.summary, 'utf8')).toMatch(new RegExp(`^> ${warning.source}$`, 'm'));
   });
 });
