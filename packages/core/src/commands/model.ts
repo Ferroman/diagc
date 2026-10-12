@@ -35,6 +35,7 @@ import {
 import {
   deleteLayer,
   deletePlane,
+  nodesOfPlane,
   mergeLayers,
   setNodePlaneHidden,
   upsertLayer,
@@ -165,11 +166,13 @@ function handleDeleteLayer(state: EditorState, command: Of<'delete-layer'>): Com
 
 function handleDeletePlane(state: EditorState, command: Of<'delete-plane'>): CommandResult {
   // Everything the layout and the drawings file kept for the plane goes with it;
-  // both sidecars key their buckets by plane id.
+  // both sidecars key their buckets by plane id. The plane's own nodes go from every
+  // bucket: a borrowing plane's positions live in its donor's.
+  const own = nodesOfPlane(state.model, command.id);
   return {
     state: {
       model: deletePlane(state.model, command.id),
-      layout: prunePlaneLayout(state.layout, command.id),
+      layout: prunePositions(prunePlaneLayout(state.layout, command.id), (id) => own.has(id)),
       drawings: pruneDrawingsPlane(state.drawings, command.id),
     },
   };

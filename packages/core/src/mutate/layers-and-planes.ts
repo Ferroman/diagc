@@ -138,6 +138,11 @@ export function setNodePlaneHidden(
   };
 }
 
+/** The nodes only this plane has (`node.plane` names it). */
+export function nodesOfPlane(model: DiagramModel, id: string): Set<string> {
+  return new Set(model.nodes.filter((n) => n.plane === id).map((n) => n.id));
+}
+
 export function deletePlane(model: DiagramModel, id: string): DiagramModel {
   const planes = model.planes ?? [];
   if (!planes.some((p) => p.id === id)) throw new CommandError(`Unknown plane '${id}'`);
@@ -147,13 +152,19 @@ export function deletePlane(model: DiagramModel, id: string): DiagramModel {
   }
   // The first-declared plane owns the untagged (base) edges; drop them with it so
   // structure doesn't silently migrate to whichever plane becomes first next. The
-  // relations drawn only on this plane go too: they are its structure as much as its
-  // containment is, and a relation left naming a missing plane would not validate.
+  // nodes and relations only this plane has go too, with the edges that touch those
+  // nodes, as deleting a node takes them: they are its structure as much as its
+  // containment is, and one left naming a missing plane would not validate.
   const isFirst = planes[0]?.id === id;
+  const own = nodesOfPlane(model, id);
+  const touchesOwn = (a: string, b: string) => own.has(a) || own.has(b);
   return {
     ...model,
+    nodes: model.nodes.filter((n) => !own.has(n.id)),
     planes: planes.filter((p) => p.id !== id),
-    containment: model.containment.filter((e) => e.plane !== id && !(isFirst && e.plane === undefined)),
-    relations: model.relations.filter((r) => r.plane !== id),
+    containment: model.containment.filter(
+      (e) => e.plane !== id && !(isFirst && e.plane === undefined) && !touchesOwn(e.parent, e.child),
+    ),
+    relations: model.relations.filter((r) => r.plane !== id && !touchesOwn(r.from, r.to)),
   };
 }
