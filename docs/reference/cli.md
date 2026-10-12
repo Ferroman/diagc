@@ -130,10 +130,10 @@ diagc publish --link https://github.com/you/repo
 ```
 
 - `.diagrams/html/<name>.html` — self-contained interactive pages, every asset inlined as a data URI.
-- `.diagrams/html/index.html` — a gallery linking them, grouped by source folder; a card shows the model's name and the diagram's path.
+- `.diagrams/html/index.html` — a gallery linking the pages, grouped by source folder; a card shows the model's name, the diagram's path, and the PNG rendered with its page.
 - `.diagrams/static/<name>.png` — flat images, unless `--no-images`.
 
-`files...` here filters by diagram **name**, not path.
+`files...` here filters by diagram **name**, not path. The gallery keeps the other diagrams, linking the pages an earlier run wrote.
 
 **`--link <url>` puts one link in the index header**, shown as the address it goes to — the project's repository, say. It must be an `http(s)` URL; anything else exits `1` before anything is compiled. Diagram pages never carry it: a published page belongs to its diagram and has no chrome of its publisher's.
 
