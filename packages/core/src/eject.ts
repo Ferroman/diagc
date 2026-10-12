@@ -157,6 +157,7 @@ const RELATE_OPT_KEYS = [
   'style',
   'description',
   'layer',
+  'plane',
   'polarity',
   'delay',
   'fromColumn',

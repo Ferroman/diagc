@@ -71,6 +71,8 @@ export interface RelateOpts {
   style?: RelationStyle;
   description?: string;
   layer?: string;
+  /** draw the relation only on this plane (see DiagramRelation.plane) */
+  plane?: string;
   polarity?: Polarity;
   delay?: boolean;
   /** FK column on the source table (see DiagramRelation.fromColumn) */
