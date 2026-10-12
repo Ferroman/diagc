@@ -1,8 +1,10 @@
+import { createHash } from 'node:crypto';
 import { chmod, mkdtemp, readFile, readdir, writeFile, mkdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
+import { validate, type DiagramModel } from '@diagc/core/internal';
 import {
   ejectDiagramSource,
   isSafeName,
@@ -19,7 +21,10 @@ import {
   saveDrawings,
   saveLayout,
   saveLibrary,
+  walkDiagramJson,
   walkFiles,
+  type DiagramEntry,
+  type HandlerResult,
 } from './handlers';
 import * as handlers from './handlers';
 import { runRoute } from './dispatch';
@@ -718,5 +723,577 @@ describe('library handlers', () => {
       entries: [{ id: 'e', category: 'c', name: 'E', template: { width: 'big' } }],
     };
     expect((await saveLibrary(dir, badField)).status).toBe(400);
+  });
+});
+
+// What a host sends for each answer, key order included: the hosts serialise a
+// handler's body as it is, so a reordered key or a reworded refusal is a change a
+// client sees.
+const wire = (res: { status: number; body: unknown }): string => `${res.status} ${JSON.stringify(res.body)}`;
+/** The one-message refusal the handlers answer with. */
+const refusal = (status: number, message: string): string => wire({ status, body: { issues: [{ message }] } });
+const tempDir = () => mkdtemp(path.join(tmpdir(), 'designer-pins-'));
+/** What a save writes: the payload as sent, two-space indented, with a closing newline. */
+const saved = (payload: unknown): string => `${JSON.stringify(payload, null, 2)}\n`;
+
+describe('the handlers module', () => {
+  it('exports the handlers the hosts call, the name rule and the asset limit, and nothing else', () => {
+    expect(Object.keys(handlers).sort()).toEqual([
+      'MAX_ASSET_BYTES',
+      'ejectDiagramSource',
+      'isSafeName',
+      'listDiagramModels',
+      'listDrawings',
+      'listLayouts',
+      'readAsset',
+      'readComposedDiagram',
+      'readDiagram',
+      'readLibrary',
+      'renameDiagram',
+      'saveAsset',
+      'saveDiagram',
+      'saveDrawings',
+      'saveLayout',
+      'saveLibrary',
+      'walkDiagramJson',
+      'walkFiles',
+    ]);
+    expect(handlers.MAX_ASSET_BYTES).toBe(5 * 1024 * 1024);
+  });
+
+  it('exports the result and the list entry as types', () => {
+    expectTypeOf<HandlerResult>().toEqualTypeOf<{ status: number; body: unknown }>();
+    expectTypeOf<DiagramEntry>().toEqualTypeOf<{
+      name: string;
+      model: DiagramModel | null;
+      issues: { message: string }[];
+      editable: boolean;
+    }>();
+    expectTypeOf(readAsset).returns.resolves.toEqualTypeOf<HandlerResult & { bytes?: Buffer; contentType?: string }>();
+  });
+
+  it('walkDiagramJson lists the JSON sources by name, folders included', async () => {
+    const dir = await tempDir();
+    await mkdir(path.join(dir, 'team'), { recursive: true });
+    await writeFile(path.join(dir, 'a.diagram.json'), '{}');
+    await writeFile(path.join(dir, 'b.diagram.ts'), '');
+    await writeFile(path.join(dir, 'team', 'c.diagram.json'), '{}');
+    expect((await walkDiagramJson(dir)).sort()).toEqual(['a', 'team/c']);
+    expect(await walkDiagramJson(path.join(dir, 'nope'))).toEqual([]);
+  });
+});
+
+describe('diagram answers', () => {
+  it('readDiagram: the name, then the source; the layout and the drawings after the model, each only when readable', async () => {
+    const dir = await tempDir();
+    await writeFile(path.join(dir, 'Bad.diagram.json'), JSON.stringify(goodModel));
+    expect(wire(await readDiagram(dir, 'Bad'))).toBe(refusal(400, "Unsafe name 'Bad'"));
+    expect(wire(await readDiagram(dir, 'nope'))).toBe(refusal(404, "No diagram source 'nope'"));
+    await writeFile(path.join(dir, 'corrupt.diagram.json'), '{');
+    expect(wire(await readDiagram(dir, 'corrupt'))).toBe(refusal(404, "No diagram source 'corrupt'"));
+    const layout = { version: 1, planes: {} };
+    const drawings = { version: 1, planes: {} };
+    await writeFile(path.join(dir, 'sketch.diagram.json'), JSON.stringify(goodModel));
+    await writeFile(path.join(dir, 'sketch.drawings.json'), JSON.stringify(drawings));
+    await writeFile(path.join(dir, 'sketch.layout.json'), JSON.stringify(layout));
+    expect(wire(await readDiagram(dir, 'sketch'))).toBe(
+      wire({ status: 200, body: { model: goodModel, layout, drawings } }),
+    );
+    await writeFile(path.join(dir, 'sketch.layout.json'), '{');
+    expect(wire(await readDiagram(dir, 'sketch'))).toBe(wire({ status: 200, body: { model: goodModel, drawings } }));
+  });
+
+  it('readComposedDiagram: the name, then the source; a source with no includes passes through unvalidated', async () => {
+    const dir = await tempDir();
+    await writeFile(path.join(dir, 'Bad.diagram.json'), JSON.stringify(goodModel));
+    expect(wire(await readComposedDiagram(dir, 'Bad'))).toBe(refusal(400, "Unsafe name 'Bad'"));
+    expect(wire(await readComposedDiagram(dir, 'nope'))).toBe(refusal(404, "No diagram source 'nope'"));
+    await writeFile(path.join(dir, 'corrupt.diagram.json'), '{');
+    expect(wire(await readComposedDiagram(dir, 'corrupt'))).toBe(refusal(404, "No diagram source 'corrupt'"));
+    const invalid = { ...goodModel, relations: [{ id: 'r', from: 'a', to: 'ghost', kind: 'k' }] };
+    await writeFile(path.join(dir, 'invalid.diagram.json'), JSON.stringify(invalid));
+    expect(wire(await readComposedDiagram(dir, 'invalid'))).toBe(wire({ status: 200, body: { model: invalid } }));
+  });
+
+  it('readComposedDiagram answers the composed model, its warnings after it only when there are some', async () => {
+    const dir = await tempDir();
+    const child = {
+      ...goodModel,
+      id: 'child',
+      name: 'child',
+      nodes: [{ id: 'x', name: 'X', type: 'service', key: 'k' }],
+    };
+    const include = { id: 'u', name: 'U', type: 'system', include: './child.diagram.json' };
+    await writeFile(path.join(dir, 'child.diagram.json'), JSON.stringify(child));
+    await writeFile(path.join(dir, 'quiet.diagram.json'), JSON.stringify({ ...goodModel, nodes: [include] }));
+    await writeFile(
+      path.join(dir, 'noisy.diagram.json'),
+      JSON.stringify({ ...goodModel, nodes: [{ id: 'x', name: 'X', type: 'database', key: 'k' }, include] }),
+    );
+    const quiet = await readComposedDiagram(dir, 'quiet');
+    expect(quiet.status).toBe(200);
+    expect(Object.keys(quiet.body as object)).toEqual(['model']);
+    const noisy = await readComposedDiagram(dir, 'noisy');
+    expect(noisy.status).toBe(200);
+    expect(Object.keys(noisy.body as object)).toEqual(['model', 'warnings']);
+    expect((noisy.body as { warnings: string[] }).warnings).toEqual([expect.stringMatching(/'k'/)]);
+  });
+
+  it('saveDiagram: the name, then a .diagram.ts twin, then the shape, then validation', async () => {
+    const dir = await tempDir();
+    await writeFile(path.join(dir, 'Bad.diagram.ts'), '');
+    await writeFile(path.join(dir, 'owned.diagram.ts'), '');
+    expect(wire(await saveDiagram(dir, 'Bad', null))).toBe(refusal(400, "Unsafe name 'Bad'"));
+    expect(wire(await saveDiagram(dir, 'owned', null))).toBe(
+      refusal(409, `'owned' is already TypeScript-owned (${path.join(dir, 'owned.diagram.ts')})`),
+    );
+    for (const payload of [null, [], 'x', { ...goodModel, version: 2 }, { ...goodModel, planes: {} }]) {
+      expect(wire(await saveDiagram(dir, 'x', payload))).toBe(refusal(400, 'Not a version-1 diagram model'));
+    }
+    const invalid = { ...goodModel, relations: [{ id: 'r', from: 'a', to: 'ghost', kind: 'k' }] };
+    expect(wire(await saveDiagram(dir, 'x', invalid))).toBe(
+      wire({ status: 400, body: { issues: validate(invalid as DiagramModel) } }),
+    );
+    await expect(readdir(dir)).resolves.toEqual(expect.not.arrayContaining(['x.diagram.json']));
+    expect(wire(await saveDiagram(dir, 'team/x', goodModel))).toBe(wire({ status: 200, body: { ok: true } }));
+    expect(await readFile(path.join(dir, 'team', 'x.diagram.json'), 'utf8')).toBe(saved(goodModel));
+  });
+
+  it('renameDiagram: the names, then the same name, the source, the target, a .diagram.ts twin, the parse', async () => {
+    const dir = await tempDir();
+    await writeFile(path.join(dir, 'corrupt.diagram.json'), '{');
+    await writeFile(path.join(dir, 'taken.diagram.json'), JSON.stringify(goodModel));
+    await writeFile(path.join(dir, 'taken.diagram.ts'), '');
+    await writeFile(path.join(dir, 'owned.diagram.ts'), '');
+    // the source name is checked first, then the target's
+    expect(wire(await renameDiagram(dir, 'Bad', 'Worse'))).toBe(refusal(400, "Unsafe name 'Bad'"));
+    expect(wire(await renameDiagram(dir, 'nope', 'Worse'))).toBe(refusal(400, "Unsafe name 'Worse'"));
+    expect(wire(await renameDiagram(dir, 'nope', 'nope'))).toBe(refusal(400, 'New name is the same as the old'));
+    expect(wire(await renameDiagram(dir, 'nope', 'taken'))).toBe(refusal(404, "No diagram source 'nope'"));
+    expect(wire(await renameDiagram(dir, 'corrupt', 'taken'))).toBe(
+      refusal(409, "A diagram named 'taken' already exists"),
+    );
+    expect(wire(await renameDiagram(dir, 'corrupt', 'owned'))).toBe(
+      refusal(409, `'owned' is already TypeScript-owned (${path.join(dir, 'owned.diagram.ts')})`),
+    );
+    expect(wire(await renameDiagram(dir, 'corrupt', 'free'))).toBe(refusal(400, "Corrupt diagram source 'corrupt'"));
+    expect((await readdir(dir)).sort()).toEqual([
+      'corrupt.diagram.json',
+      'owned.diagram.ts',
+      'taken.diagram.json',
+      'taken.diagram.ts',
+    ]);
+  });
+
+  it('renameDiagram writes the source with its keys in their order, the id and a default title changed', async () => {
+    const dir = await tempDir();
+    // name before version and id, an unknown key last: the order the file had
+    const source = (id: string) => ({ name: id, version: 1, id, nodes: [], extra: { b: 1, a: 2 } });
+    await writeFile(path.join(dir, 'shop.diagram.json'), JSON.stringify(source('shop')));
+    expect(wire(await renameDiagram(dir, 'shop', 'team/cart'))).toBe(wire({ status: 200, body: { ok: true } }));
+    expect(await readFile(path.join(dir, 'team', 'cart.diagram.json'), 'utf8')).toBe(saved(source('team/cart')));
+    expect((await readdir(dir)).sort()).toEqual(['team']);
+  });
+
+  it('ejectDiagramSource: the name, then eject’s own refusals, each to its status', async () => {
+    const root = await tempDir();
+    const src = path.join(root, 'src');
+    const art = path.join(root, 'art');
+    await mkdir(src, { recursive: true });
+    await writeFile(path.join(src, 'Bad.diagram.json'), JSON.stringify(goodModel));
+    expect(wire(await ejectDiagramSource(src, art, 'Bad'))).toBe(refusal(400, "Unsafe name 'Bad'"));
+    // a .diagram.ts answers before a missing JSON source
+    await writeFile(path.join(src, 'owned.diagram.ts'), '');
+    expect(wire(await ejectDiagramSource(src, art, 'owned'))).toBe(
+      refusal(409, `'owned' is already TypeScript-owned (${path.join(src, 'owned.diagram.ts')})`),
+    );
+    expect(wire(await ejectDiagramSource(src, art, 'nope'))).toBe(
+      refusal(404, `no diagram 'nope' (${path.join(src, 'nope.diagram.json')})`),
+    );
+    await writeFile(path.join(src, 'corrupt.diagram.json'), '{');
+    const corrupt = await ejectDiagramSource(src, art, 'corrupt');
+    expect(corrupt.status).toBe(400);
+    expect(wire(corrupt)).toMatch(/^400 \{"issues":\[\{"message":"'corrupt' is not valid JSON: /);
+    await writeFile(
+      path.join(src, 'invalid.diagram.json'),
+      JSON.stringify({ ...goodModel, relations: [{ id: 'r', from: 'a', to: 'ghost', kind: 'k' }] }),
+    );
+    const invalid = await ejectDiagramSource(src, art, 'invalid');
+    expect(invalid.status).toBe(400);
+    expect(wire(invalid)).toMatch(
+      /^400 \{"issues":\[\{"message":"'invalid' fails validation; fix it before ejecting:\\n/,
+    );
+  });
+});
+
+describe('listDiagramModels entries', () => {
+  const rawModel = (id: string, nodes: unknown[] = []) => ({ ...goodModel, id, name: id, nodes });
+
+  it('lists name, model, issues and editable, in that order, sorted by name, a source over its artifact', async () => {
+    const root = await tempDir();
+    const src = path.join(root, 'src');
+    const art = path.join(root, 'art');
+    await mkdir(path.join(src, 'team'), { recursive: true });
+    await mkdir(art, { recursive: true });
+    await writeFile(path.join(src, 'team', 'b.diagram.json'), JSON.stringify(rawModel('b')));
+    await writeFile(path.join(art, 'team'), '');
+    await writeFile(path.join(art, 'a.diagram.json'), JSON.stringify(rawModel('a')));
+    await writeFile(path.join(art, 'c.diagram.json'), JSON.stringify(rawModel('c-artifact')));
+    await writeFile(path.join(src, 'c.diagram.json'), JSON.stringify(rawModel('c')));
+    expect(wire(await listDiagramModels(src, art))).toBe(
+      wire({
+        status: 200,
+        body: {
+          diagrams: [
+            { name: 'a', model: rawModel('a'), issues: [], editable: false },
+            { name: 'c', model: rawModel('c'), issues: [], editable: true },
+            { name: 'team/b', model: rawModel('b'), issues: [], editable: true },
+          ],
+        },
+      }),
+    );
+  });
+
+  it('says why a source is read-only before saying it could not be read', async () => {
+    const root = await tempDir();
+    await writeFile(path.join(root, 'Bad.diagram.json'), '{');
+    expect(wire(await listDiagramModels(root, path.join(root, 'art')))).toBe(
+      wire({
+        status: 200,
+        body: {
+          diagrams: [
+            {
+              name: 'Bad',
+              model: null,
+              issues: [
+                {
+                  message:
+                    "'Bad' is read-only here: the studio saves names of lowercase letters, digits, '-' and '/', none ending in /rename, /eject or /composed. Rename the file to edit it.",
+                },
+                { message: "Could not read model for 'Bad'" },
+              ],
+              editable: false,
+            },
+          ],
+        },
+      }),
+    );
+  });
+
+  it('composes a read-only source too, but never an artifact, and leaves a model with no node list alone', async () => {
+    const root = await tempDir();
+    const src = path.join(root, 'src');
+    const art = path.join(root, 'art');
+    await mkdir(src, { recursive: true });
+    await mkdir(art, { recursive: true });
+    const include = { id: 'u', name: 'U', type: 'system', include: './child.diagram.json' };
+    await writeFile(path.join(src, 'child.diagram.json'), JSON.stringify(rawModel('child', [{ id: 'x', name: 'X' }])));
+    await writeFile(path.join(src, 'Up.diagram.json'), JSON.stringify(rawModel('up', [include])));
+    await writeFile(path.join(art, 'child.diagram.json'), JSON.stringify(rawModel('child')));
+    await writeFile(path.join(art, 'built.diagram.json'), JSON.stringify(rawModel('built', [include])));
+    await writeFile(path.join(src, 'odd.diagram.json'), JSON.stringify({ nodes: 'none' }));
+    const { diagrams } = (await listDiagramModels(src, art)).body as { diagrams: DiagramEntry[] };
+    const byName = Object.fromEntries(diagrams.map((d) => [d.name, d]));
+    expect(byName['Up']!.model!.nodes.map((n) => n.id)).toEqual(['u', 'u/x']);
+    expect(byName['Up']!.issues).toHaveLength(1);
+    expect(byName['built']!.model).toEqual(rawModel('built', [include]));
+    expect(byName['built']!.issues).toEqual([]);
+    expect(byName['odd']).toEqual({ name: 'odd', model: { nodes: 'none' }, issues: [], editable: true });
+  });
+
+  it('lists a compose warning after the read-only issue, and a failed compose as one issue', async () => {
+    const root = await tempDir();
+    const include = { id: 'u', name: 'U', type: 'system', include: './child.diagram.json' };
+    await writeFile(
+      path.join(root, 'child.diagram.json'),
+      JSON.stringify(rawModel('child', [{ id: 'x', name: 'X', type: 'service', key: 'k' }])),
+    );
+    await writeFile(
+      path.join(root, 'Up.diagram.json'),
+      JSON.stringify(rawModel('up', [{ id: 'x', name: 'X', type: 'database', key: 'k' }, include])),
+    );
+    await writeFile(
+      path.join(root, 'gone.diagram.json'),
+      JSON.stringify(rawModel('gone', [{ ...include, include: './missing.diagram.json' }])),
+    );
+    const { diagrams } = (await listDiagramModels(root, path.join(root, 'art'))).body as { diagrams: DiagramEntry[] };
+    const byName = Object.fromEntries(diagrams.map((d) => [d.name, d]));
+    expect(byName['Up']!.issues).toEqual([
+      { message: expect.stringMatching(/^'Up' is read-only here/) },
+      { message: expect.stringMatching(/'k'/) },
+    ]);
+    expect(byName['gone']!.model).toEqual(rawModel('gone', [{ ...include, include: './missing.diagram.json' }]));
+    expect(byName['gone']!.issues).toEqual([{ message: expect.stringMatching(/^Includes not expanded: .*missing/) }]);
+  });
+});
+
+describe('remote includes in the studio', () => {
+  // The lock and the vendored copies sit in the folder above the sources, the
+  // `.diagrams` root; the studio reads them and never fetches.
+  const url = 'https://example.invalid/child.diagram.json';
+  const childModel = {
+    ...goodModel,
+    id: 'child',
+    name: 'child',
+    nodes: [{ id: 'inner', name: 'Inner', type: 'service' }],
+  };
+  const umbrella = {
+    ...goodModel,
+    id: 'umbrella',
+    name: 'umbrella',
+    nodes: [{ id: 'remote', name: 'Remote', type: 'system', include: url }],
+  };
+  async function project(vendored: boolean): Promise<{ src: string; art: string }> {
+    const root = await tempDir();
+    const src = path.join(root, 'src');
+    await mkdir(src, { recursive: true });
+    await writeFile(path.join(src, 'umbrella.diagram.json'), JSON.stringify(umbrella));
+    if (vendored) {
+      const text = `${JSON.stringify(childModel, null, 2)}\n`;
+      const sha256 = createHash('sha256').update(text).digest('hex');
+      await mkdir(path.join(root, 'includes'), { recursive: true });
+      await writeFile(path.join(root, 'includes', 'child.diagram.json'), text);
+      await writeFile(
+        path.join(root, 'includes.lock.json'),
+        JSON.stringify({ version: 1, includes: { [url]: { file: 'includes/child.diagram.json', sha256 } } }),
+      );
+    }
+    return { src, art: path.join(root, 'art') };
+  }
+  const notSnapshotted = (from: string) =>
+    `Include '${url}' (from ${from}): Include '${url}' is not snapshotted — run 'diagc compile --update-includes' and commit .diagrams/includes/ + .diagrams/includes.lock.json`;
+
+  it('an include the lock does not hold is an issue in the list and a 409 on the composed read', async () => {
+    const { src, art } = await project(false);
+    const { diagrams } = (await listDiagramModels(src, art)).body as { diagrams: DiagramEntry[] };
+    expect(diagrams).toEqual([
+      {
+        name: 'umbrella',
+        model: umbrella,
+        issues: [{ message: `Includes not expanded: ${notSnapshotted(path.join(src, 'umbrella.diagram.json'))}` }],
+        editable: true,
+      },
+    ]);
+    expect(wire(await readComposedDiagram(src, 'umbrella'))).toBe(
+      refusal(409, notSnapshotted(path.join(src, 'umbrella.diagram.json'))),
+    );
+  });
+
+  it('a vendored include is read from the lock beside the sources’ folder', async () => {
+    const { src, art } = await project(true);
+    const { diagrams } = (await listDiagramModels(src, art)).body as { diagrams: DiagramEntry[] };
+    expect(diagrams[0]!.issues).toEqual([]);
+    expect(diagrams[0]!.model!.nodes.map((n) => n.id)).toEqual(['remote', 'remote/inner']);
+    const composed = await readComposedDiagram(src, 'umbrella');
+    expect(composed.status).toBe(200);
+    expect((composed.body as { model: DiagramModel }).model.nodes.map((n) => n.id)).toEqual(['remote', 'remote/inner']);
+  });
+
+  it('eject compiles through the same lock, and a failing compile after the swap is thrown, not answered', async () => {
+    const vendored = await project(true);
+    expect(wire(await ejectDiagramSource(vendored.src, vendored.art, 'umbrella'))).toBe(
+      wire({ status: 200, body: { ok: true } }),
+    );
+    const artifact = JSON.parse(
+      await readFile(path.join(vendored.art, 'umbrella.diagram.json'), 'utf8'),
+    ) as DiagramModel;
+    expect(artifact.nodes.map((n) => n.id)).toEqual(['remote', 'remote/inner']);
+    const bare = await project(false);
+    await expect(ejectDiagramSource(bare.src, bare.art, 'umbrella')).rejects.toThrow(
+      notSnapshotted(path.join(bare.src, 'umbrella.diagram.ts')),
+    );
+  });
+});
+
+describe('sidecar answers', () => {
+  it('saveLayout: the name, then the shape; writes the overlay as sent', async () => {
+    const dir = await tempDir();
+    expect(wire(await saveLayout(dir, 'Bad', null))).toBe(refusal(400, "Unsafe name 'Bad'"));
+    for (const payload of [null, {}, { version: 2, planes: {} }]) {
+      expect(wire(await saveLayout(dir, 'x', payload))).toBe(refusal(400, 'Not a version-1 layout overlay'));
+    }
+    const layout = { version: 1, planes: { default: { a: { x: 1, y: 2 } } } };
+    expect(wire(await saveLayout(dir, 'team/x', layout))).toBe(wire({ status: 200, body: { ok: true } }));
+    expect(await readFile(path.join(dir, 'team', 'x.layout.json'), 'utf8')).toBe(saved(layout));
+  });
+
+  it('saveDrawings: the name, then the shape; writes the strokes as sent, and no file for none', async () => {
+    const dir = await tempDir();
+    expect(wire(await saveDrawings(dir, 'Bad', null))).toBe(refusal(400, "Unsafe name 'Bad'"));
+    for (const payload of [null, {}, { version: 2, planes: {} }]) {
+      expect(wire(await saveDrawings(dir, 'x', payload))).toBe(refusal(400, 'Not a version-1 drawings overlay'));
+    }
+    expect(wire(await saveDrawings(dir, 'team/x', { version: 1, planes: { a: [] } }))).toBe(
+      wire({ status: 200, body: { ok: true } }),
+    );
+    expect(await readdir(dir)).toEqual([]);
+    const drawings = { version: 1, planes: { a: [], b: [{ id: 'k', points: [1, 2] }] } };
+    expect(wire(await saveDrawings(dir, 'team/x', drawings))).toBe(wire({ status: 200, body: { ok: true } }));
+    expect(await readFile(path.join(dir, 'team', 'x.drawings.json'), 'utf8')).toBe(saved(drawings));
+  });
+
+  it('listLayouts and listDrawings key each readable sidecar by its diagram name, folders included', async () => {
+    const dir = await tempDir();
+    await mkdir(path.join(dir, 'team'), { recursive: true });
+    await writeFile(path.join(dir, 'team', 'a.layout.json'), '{"version":1,"planes":{}}');
+    await writeFile(path.join(dir, 'bad.layout.json'), '{');
+    await writeFile(path.join(dir, 'team', 'a.drawings.json'), '{"version":1,"planes":{}}');
+    await writeFile(path.join(dir, 'bad.drawings.json'), '{');
+    expect(wire(await listLayouts(dir))).toBe('200 {"layouts":{"team/a":{"version":1,"planes":{}}}}');
+    expect(wire(await listDrawings(dir))).toBe('200 {"drawings":{"team/a":{"version":1,"planes":{}}}}');
+    expect(wire(await listLayouts(path.join(dir, 'nope')))).toBe('200 {"layouts":{}}');
+    expect(wire(await listDrawings(path.join(dir, 'nope')))).toBe('200 {"drawings":{}}');
+  });
+});
+
+describe('library answers', () => {
+  const cat = { id: 'c', name: 'C' };
+  const entry = (extra: Record<string, unknown> = {}) => ({
+    id: 'e',
+    category: 'c',
+    name: 'E',
+    template: { color: '#000' },
+    ...extra,
+  });
+  const lib = (categories: unknown[], entries: unknown[]) => ({ categories, entries });
+  const answer = async (payload: unknown) => wire(await saveLibrary(await tempDir(), payload));
+
+  it('refuses what is not a library', async () => {
+    for (const payload of [
+      null,
+      {},
+      [],
+      { categories: [] },
+      { categories: {}, entries: [] },
+      { categories: [], entries: 'x' },
+    ]) {
+      expect(await answer(payload)).toBe(refusal(400, 'Not a library { categories, entries }'));
+    }
+  });
+
+  it('checks every category, its fields before its id, before any entry', async () => {
+    expect(await answer(lib([cat, { id: 'c' }], [{}]))).toBe(refusal(400, 'Category needs string id and name'));
+    expect(await answer(lib([{ id: 1, name: 'x' }], []))).toBe(refusal(400, 'Category needs string id and name'));
+    expect(await answer(lib([cat, cat], [{}]))).toBe(refusal(400, "Duplicate category 'c'"));
+  });
+
+  it('checks each entry in turn: its fields, its category, its id, then its template', async () => {
+    for (const bad of [{ id: 1 }, { name: null }, { category: undefined }]) {
+      expect(await answer(lib([cat], [entry(bad)]))).toBe(refusal(400, 'Entry needs string id, name, category'));
+    }
+    expect(await answer(lib([cat], [entry(), entry({ category: 'nope', template: null })]))).toBe(
+      refusal(400, "Entry 'e' references unknown category 'nope'"),
+    );
+    expect(await answer(lib([cat], [entry(), entry({ template: null })]))).toBe(refusal(400, "Duplicate entry 'e'"));
+    for (const template of [null, undefined, [], 'x', 3]) {
+      expect(await answer(lib([cat], [entry({ template })]))).toBe(refusal(400, "Entry 'e' missing template"));
+    }
+    expect(await answer(lib([cat], [entry({ template: { color: '#000', width: '1', size: 2 } })]))).toBe(
+      refusal(400, "Entry 'e' has invalid template field 'width'"),
+    );
+    for (const template of [
+      { type: 1 },
+      { color: null },
+      { image: 2 },
+      { shape: {} },
+      { height: '2' },
+      { icon: 'x' },
+    ]) {
+      const key = Object.keys(template)[0];
+      expect(await answer(lib([cat], [entry({ template })]))).toBe(
+        refusal(400, `Entry 'e' has invalid template field '${key}'`),
+      );
+    }
+  });
+
+  it("answers the first entry's template before the second entry's id", async () => {
+    expect(await answer(lib([cat], [entry({ template: { size: 1 } }), entry()]))).toBe(
+      refusal(400, "Entry 'e' has invalid template field 'size'"),
+    );
+  });
+
+  it('throws, rather than answering, on a category or an entry that is null', async () => {
+    const dir = await tempDir();
+    await expect(saveLibrary(dir, lib([null], []))).rejects.toThrow("Cannot read properties of null (reading 'id')");
+    await expect(saveLibrary(dir, lib([cat], [null]))).rejects.toThrow("Cannot read properties of null (reading 'id')");
+  });
+
+  it('writes the library as sent, and reads a missing or corrupt file as an empty one', async () => {
+    const dir = await tempDir();
+    expect(wire(await readLibrary(dir))).toBe('200 {"categories":[],"entries":[]}');
+    const full = {
+      entries: [entry({ template: { type: 't', color: 'c', image: 'i', shape: 's', width: 1, height: 2 } })],
+      categories: [cat],
+      extra: true,
+    };
+    expect(wire(await saveLibrary(dir, full))).toBe(wire({ status: 200, body: { ok: true } }));
+    expect(await readFile(path.join(dir, 'library.json'), 'utf8')).toBe(saved(full));
+    expect(wire(await readLibrary(dir))).toBe(wire({ status: 200, body: full }));
+    await writeFile(path.join(dir, 'library.json'), '{');
+    expect(wire(await readLibrary(dir))).toBe('200 {"categories":[],"entries":[]}');
+  });
+});
+
+describe('asset answers', () => {
+  const MB5 = 5 * 1024 * 1024;
+  const hashName = (bytes: Buffer, ext: string) =>
+    `${createHash('sha256').update(bytes).digest('hex').slice(0, 12)}.${ext}`;
+
+  it('saveAsset: the type, then the size', async () => {
+    const dir = await tempDir();
+    expect(wire(await saveAsset(dir, 'application/pdf', Buffer.alloc(0)))).toBe(
+      refusal(400, "Unsupported image type 'application/pdf'"),
+    );
+    expect(wire(await saveAsset(dir, '', Buffer.from('x')))).toBe(refusal(400, "Unsupported image type ''"));
+    expect(wire(await saveAsset(dir, 'IMAGE/PNG', Buffer.from('x')))).toBe(
+      refusal(400, "Unsupported image type 'IMAGE/PNG'"),
+    );
+    for (const bytes of [Buffer.alloc(0), Buffer.alloc(MB5 + 1)]) {
+      expect(wire(await saveAsset(dir, 'image/png', bytes))).toBe(refusal(400, 'Image must be 1 byte to 5 MB'));
+    }
+    expect((await saveAsset(dir, 'image/png', Buffer.alloc(MB5))).status).toBe(200);
+  });
+
+  it('saveAsset names the bytes by their hash and type, and leaves a stored file as it is', async () => {
+    const dir = await tempDir();
+    const bytes = Buffer.from('picture');
+    const types: [string, string][] = [
+      ['image/png', 'png'],
+      ['image/jpeg', 'jpg'],
+      ['image/svg+xml', 'svg'],
+      ['image/webp', 'webp'],
+      ['image/gif', 'gif'],
+      [' image/gif ; charset=binary', 'gif'],
+    ];
+    for (const [type, ext] of types) {
+      expect(wire(await saveAsset(dir, type, bytes))).toBe(wire({ status: 200, body: { name: hashName(bytes, ext) } }));
+    }
+    await writeFile(path.join(dir, 'assets', hashName(bytes, 'png')), 'other');
+    await saveAsset(dir, 'image/png', bytes);
+    expect(await readFile(path.join(dir, 'assets', hashName(bytes, 'png')), 'utf8')).toBe('other');
+  });
+
+  it('readAsset: the name, then the file; the type from the extension', async () => {
+    const dir = await tempDir();
+    for (const name of ['x.exe', 'UPPER.png', 'a-b.png', '../a.png']) {
+      expect(wire(await readAsset(dir, name))).toBe(refusal(400, `Unsafe asset name '${name}'`));
+    }
+    expect(wire(await readAsset(dir, 'abc.png'))).toBe(refusal(404, "No asset 'abc.png'"));
+    await mkdir(path.join(dir, 'assets'), { recursive: true });
+    const bytes = Buffer.from('picture');
+    const types: [string, string][] = [
+      ['png', 'image/png'],
+      ['jpg', 'image/jpeg'],
+      ['jpeg', 'image/jpeg'],
+      ['svg', 'image/svg+xml'],
+      ['webp', 'image/webp'],
+      ['gif', 'image/gif'],
+    ];
+    for (const [ext, contentType] of types) {
+      await writeFile(path.join(dir, 'assets', `abc.${ext}`), bytes);
+      const read = await readAsset(dir, `abc.${ext}`);
+      expect(read).toEqual({ status: 200, body: null, bytes, contentType });
+      expect(Object.keys(read)).toEqual(['status', 'body', 'bytes', 'contentType']);
+    }
   });
 });
