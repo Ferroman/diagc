@@ -185,6 +185,34 @@ describe('lintModel', () => {
       ]);
     });
 
+    it("flags a relation whose own plane does not show both its ends, and only that plane's view counts", () => {
+      const planes = [
+        { id: 'p1', name: 'P1' },
+        { id: 'p2', name: 'P2' },
+      ];
+      const nodes = [
+        ...base().nodes,
+        { id: 'c', name: 'C', type: 'service', plane: 'p1' },
+        { id: 'd', name: 'D', type: 'service', plane: 'p2' },
+      ];
+      const m = base({
+        planes,
+        nodes,
+        relations: [
+          { id: 'r', from: 'a', to: 'c', kind: 'sync', plane: 'p2' },
+          { id: 's', from: 'a', to: 'c', kind: 'sync', plane: 'p1' },
+          { id: 't', from: 'a', to: 'b', kind: 'sync', plane: 'p2' },
+        ],
+      });
+      expect(lintModel(m)).toEqual([
+        {
+          code: 'undrawn-relation',
+          message: "'r' is on plane 'p2', which does not show 'a' and 'c' together",
+          ref: 'r',
+        },
+      ]);
+    });
+
     it('flags a relation whose ends never share a view', () => {
       const m = base({
         planes: [

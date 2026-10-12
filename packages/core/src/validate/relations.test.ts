@@ -32,6 +32,22 @@ describe('relation checks', () => {
     ]);
   });
 
+  it('flags a relation scoped to an undeclared plane, accepts a declared one', () => {
+    const m = emptyModel();
+    m.nodes = [
+      { id: 'a', name: 'a', type: 't' },
+      { id: 'b', name: 'b', type: 't' },
+    ];
+    m.planes = [{ id: 'target', name: 'Target' }];
+    m.relations = [
+      { id: 'r', from: 'a', to: 'b', kind: 'k', plane: 'nope' },
+      { id: 's', from: 'a', to: 'b', kind: 'k', plane: 'target' },
+    ];
+    expect(validate(m)).toEqual([
+      { code: 'unknown-plane', message: "Relation 'r' belongs to unknown plane 'nope'", ref: 'r' },
+    ]);
+  });
+
   it('flags invalid relation style values, accepts valid ones', () => {
     const good = model('ok');
     const a = good.node('a', { type: 'svc' });
