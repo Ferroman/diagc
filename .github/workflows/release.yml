@@ -80,14 +80,16 @@ jobs:
 
       # Core first, and the CLI only once npm serves that core. The CLI depends on this exact
       # version of core, so the other way round `npm i @diagc/cli@latest` fails (ETARGET) for
-      # the minutes npm takes to process core's upload. `--prefer-online` asks the registry,
-      # not npm's cache. A version already on npm is skipped, so a manual run finishes a
-      # release that stopped half way.
+      # the minutes npm takes to process core's upload. npm lists a version minutes before its
+      # tarball downloads, so served waits for both. `--prefer-online` asks the registry, not
+      # npm's cache. A version already listed is skipped, so a manual run finishes a release
+      # that stopped half way.
       - name: Publish @diagc/core, then @diagc/cli
         run: |
           v=$(node -p "require('./package.json').version")
-          served() { [ "$(npm view --prefer-online "$1@$v" version 2>/dev/null)" = "$v" ]; }
-          publish() { if served "$1"; then echo "$1@$v is already on npm"; else npm publish "$2" --access public; fi; }
+          listed() { [ "$(npm view --prefer-online "$1@$v" version 2>/dev/null)" = "$v" ]; }
+          served() { listed "$1" && curl -sfI -o /dev/null "$(npm view --prefer-online "$1@$v" dist.tarball)"; }
+          publish() { if listed "$1"; then echo "$1@$v is already on npm"; else npm publish "$2" --access public; fi; }
           publish @diagc/core "$RUNNER_TEMP/tarballs/diagc-core-$v.tgz"
           for _ in $(seq 60); do served @diagc/core && break; sleep 10; done
           served @diagc/core || { echo "npm does not serve @diagc/core@$v after 10 minutes" >&2; exit 1; }
