@@ -66,7 +66,7 @@ Two consequences that surprise people:
 - **A node with no containment in the active plane does not vanish — it becomes a root**, an empty box floating beside the others, with its relations intact. To scope a view, hide it instead: `hides` on the plane, or `plane` on the node ([Keep a plane clean](../how-to/use-planes-and-layers.md#keep-a-plane-clean)).
 - **Switching planes keeps your place.** The groups containing whatever you were looking at open automatically in the new plane.
 
-`containmentOf` lets a plane borrow another's structure instead of declaring its own, which is how you get "the data-flow view *of* the architecture" in one line.
+`containmentOf` lets a plane borrow another's structure instead of declaring its own, which is how you get "the data-flow view *of* the architecture" in one line. A relation can belong to one plane too (`plane` on the relation): it is drawn only while that plane is in view, which is how a target-state plane carries the arrows the current state does not have.
 
 ### Layers
 

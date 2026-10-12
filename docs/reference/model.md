@@ -98,6 +98,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `style` | `RelationStyle?` | Per-relation visual overrides. |
 | `description` | `string?` | |
 | `layer` | `string?` | Must match a declared layer id. |
+| `plane` | `string?` | Draw the relation only while this plane is the one viewed. Omit to draw it on every plane where both ends show. Matched against the viewed plane itself, so a plane that borrows another's containment (`containmentOf`) can carry arrows of its own. Must match a declared plane id. |
 | `polarity` | `'+' \| '-'?` | Causal-loop diagrams only. Colours the link green (`+`) or red (`-`) unless `style.color` or a layer tint says otherwise. |
 | `delay` | `boolean?` | Causal-loop diagrams only. |
 | `fromColumn` | `string?` | FK column on `from`; anchors the edge to that row. |
@@ -540,7 +541,7 @@ Also returned by `diagramWarnings()`, so `compile` prints them and [`diagc lint`
 | `empty-plane` | A plane with no containment, scoped nodes, `containmentOf`, hides, layers, `baseRelations` or notation of its own: it shows every shared node flat. |
 | `unused-legend-item` | A legend row describing a `type` no node has or a `kind` no relation has. |
 | `undrawn-node` | A node that no plane's view includes (for example one scoped to a plane that borrows another's containment). |
-| `undrawn-relation` | A relation between two drawn nodes that no plane shows together. |
+| `undrawn-relation` | A relation between two drawn nodes that no plane shows together — or, for a relation with `plane`, that its own plane does not show together. |
 
 ## Registry defaults
 

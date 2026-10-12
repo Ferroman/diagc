@@ -34,7 +34,7 @@ More node options:
 | `metadata` | Free-form key and value data. |
 | `plane`, `layer` | Show the node in one plane only, or put it on a layer. |
 
-More relation options: `layer`, `description`, `id`.
+More relation options: `layer`, `plane` (drawn on that plane only), `description`, `id`.
 
 ## Types and kinds
 
