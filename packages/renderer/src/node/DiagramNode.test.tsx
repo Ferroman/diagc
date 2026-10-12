@@ -662,6 +662,33 @@ describe('DiagramNode', () => {
     expect(box.style.color).toBe('rgb(255, 136, 0)');
   });
 
+  // A group takes no colour from the palette, but one it was given — by its
+  // author or its notation — has to survive a look that draws the frame itself.
+  it("under a palette preset a coloured group names its colour as --dg-hue, in the theme's share", () => {
+    const typeRegistry = createTypeRegistry({ grp: { shape: 'box' } });
+    const { container } = renderNode({
+      state: 'expanded',
+      typeId: 'grp',
+      color: '#c62828',
+      hue: '#c62828',
+      typeRegistry,
+    });
+    const group = container.querySelector('.dg-group') as HTMLElement;
+    expect(group.style.getPropertyValue('--dg-hue')).toBe(outlineInk('#c62828'));
+  });
+
+  it("a group's --dg-hue is never its type's palette colour", () => {
+    const typeRegistry = createTypeRegistry({ grp: { shape: 'box' } });
+    const { container } = renderNode({ state: 'expanded', typeId: 'grp', hue: '#3b82f6', typeRegistry });
+    expect((container.querySelector('.dg-group') as HTMLElement).style.getPropertyValue('--dg-hue')).toBe('');
+  });
+
+  it('a coloured group carries no --dg-hue outside a palette preset', () => {
+    const typeRegistry = createTypeRegistry({ grp: { shape: 'box' } });
+    const { container } = renderNode({ state: 'expanded', typeId: 'grp', color: '#c62828', typeRegistry });
+    expect((container.querySelector('.dg-group') as HTMLElement).style.getPropertyValue('--dg-hue')).toBe('');
+  });
+
   it('renders a shape node as a masked silhouette with the label, not an image', () => {
     const { container } = renderNode({
       label: 'Actor',
@@ -864,6 +891,21 @@ describe('activity diagram nodes', () => {
       height: 48,
     });
     expect(container.querySelector('.dg-diamond-glyph polygon')?.getAttribute('stroke')).toBe('#ff0000');
+  });
+
+  // The diamond's box is unpainted in the stylesheet, which an inline background
+  // outranks: left on the box, the tint shows as a square behind the diamond.
+  it.each([
+    ['its own colour', { color: '#ff0000' }],
+    ["a palette preset's hue", { hue: '#ff0000' }],
+  ])('paints a decision in %s on the polygon alone, never on the box behind it', (_name, colour) => {
+    const { container } = renderNode({ typeId: 'activity-decision', ...colour }, undefined, { width: 48, height: 48 });
+    const box = container.querySelector('.dg-shape-diamond') as HTMLElement;
+    expect(box.style.background).toBe('');
+    expect(box.style.borderColor).toBe('');
+    const polygon = container.querySelector('.dg-diamond-glyph polygon');
+    expect(polygon?.getAttribute('stroke')).toBe('#ff0000');
+    expect(polygon?.getAttribute('fill')).toContain('#ff0000');
   });
 
   it('renders activity-decision in rough mode with a sketch shape svg', () => {

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { NodeChrome } from '../chrome';
 import {
   accentStyle,
@@ -24,6 +25,14 @@ export function GroupBody({ id, data, selected, width, height, profile, parts }:
   const groupInk = style.outline === true && data.color !== undefined ? outlineInk(data.color) : undefined;
   const groupOutline = groupInk !== undefined;
   const corner = style.cornerBadge === true;
+  // Under a palette preset (a hue is set) the look may draw the frame itself
+  // (presets.css), so the group's colour goes along as --dg-hue. Its own colour
+  // only: the palette's is for boxes. And in the theme's share, since a frame
+  // the look draws is a line on the canvas whatever the type.
+  const hue =
+    data.hue !== undefined && data.color !== undefined
+      ? ({ '--dg-hue': outlineInk(data.color) } as CSSProperties)
+      : undefined;
   return (
     <div
       className={
@@ -37,6 +46,7 @@ export function GroupBody({ id, data, selected, width, height, profile, parts }:
               ...(groupInk !== undefined
                 ? { borderColor: groupInk, color: data.textColor ?? groupInk }
                 : accentStyle(data.color)),
+              ...hue,
               ...(data.textColor !== undefined ? { color: data.textColor } : {}),
               ...hitStyle,
             }

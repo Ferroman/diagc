@@ -45,6 +45,11 @@ describe('stylePreset registry', () => {
       ).toBe(true);
     }
   });
+  // fonts.css bundles each face under a name of its own (`diagc …`), so a look
+  // never claims a family name the page around it may be using.
+  it('asks for a bundled face first in every fonted look', () => {
+    for (const id of NEWER) expect(stylePreset(id).fontFamily, id).toMatch(/^'diagc [^']+', /);
+  });
   it('colours types where the look is built on it, from hex palettes of at least six', () => {
     const palettes = STYLE_PRESETS.filter((p) => p.palette !== undefined).map((p) => p.id);
     expect(palettes).toEqual(['pastel', 'cards', 'neon', 'terminal', 'ascii', 'dos']);

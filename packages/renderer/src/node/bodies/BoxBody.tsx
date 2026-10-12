@@ -41,7 +41,7 @@ export function BoxBody(props: BodyProps) {
       style={
         data.stylePreset?.rough !== undefined || isTypelessText || look.neutralGlyph
           ? hitStyle
-          : { ...look.accent, ...hitStyle }
+          : { ...boxPaint(style.shape, look.accent), ...hitStyle }
       }
       data-type={data.typeId}
       {...hitAttrs}
@@ -123,6 +123,18 @@ function huedLook(data: DiagramNodeData, style: TypeStyle, hue: string): BoxLook
     } as CSSProperties,
     neutralGlyph: isNeutralGlyph(style.shape),
   };
+}
+
+/** What of the accent the box itself carries. A diamond's box stays unpainted
+ * (styles.css) and its polygon takes the fill and the stroke, so both are kept
+ * off the box: an inline background outranks the stylesheet and would show as
+ * a square behind the diamond. */
+function boxPaint(shape: string, accent: CSSProperties): CSSProperties {
+  if (shape !== 'diamond') return accent;
+  const kept = { ...accent };
+  delete kept.background;
+  delete kept.borderColor;
+  return kept;
 }
 
 /** A clip-path cut the border off every diagonal edge, leaving the diamond

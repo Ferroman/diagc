@@ -48,7 +48,8 @@ The ids `style` takes. The studio's **Style** row offers the same list.
 `pastel`, `cards`, `neon`, `terminal`, `ascii` and `dos` colour boxes by type. Each node type takes the next colour of
 the preset's palette, in order of first appearance, the types of boxes that contain nothing first. Types a notation fills
 alike share a colour, so every kind of C4 container is one colour. A node's own `color`, the notation's colour and
-`typeColors` still win, as in every preset. A PNG export of a preset that follows the theme is light.
+`typeColors` still win, as in every preset. A group takes no colour from the palette and keeps one of its own. A PNG
+export of a preset that follows the theme is light.
 
 ## `DiagramNode`
 

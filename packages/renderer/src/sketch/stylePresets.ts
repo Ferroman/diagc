@@ -138,8 +138,10 @@ const MARKER: StylePreset = {
   colorMix: { fill: 28, stroke: 100 },
 };
 
-const INTER = "'Inter', system-ui, sans-serif";
-const MONO = "'JetBrains Mono', ui-monospace, monospace";
+// fonts.css bundles each face under a name of its own; the family's name
+// follows, for the glyphs the Latin cut lacks where the reader has the font.
+const INTER = "'diagc Inter', 'Inter', system-ui, sans-serif";
+const MONO = "'diagc JetBrains Mono', 'JetBrains Mono', ui-monospace, monospace";
 
 /** Type colours for the looks that follow light and dark: mid-tones, which the
  * looks mix toward the surface (washes) or the text (glyphs), so one list reads
@@ -186,7 +188,7 @@ const LAYERED: StylePreset = {
 const NEON: StylePreset = {
   id: 'neon',
   label: 'Neon',
-  fontFamily: "'Chakra Petch', system-ui, sans-serif",
+  fontFamily: "'diagc Chakra Petch', 'Chakra Petch', system-ui, sans-serif",
   // tube colours: cyan, magenta, yellow, green, orange, violet, red
   palette: ['#00e5ff', '#ff2bd6', '#f2ff3d', '#5cff7a', '#ff9d2b', '#b18cff', '#ff4d6d'],
   grid: 'lines',
