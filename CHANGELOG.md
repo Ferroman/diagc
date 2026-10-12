@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0](https://github.com/Ferroman/diagc/compare/v1.1.7...v1.2.0) (2026-10-12)
+
+
+### Features
+
+* a relation can be drawn on one plane only ([#150](https://github.com/Ferroman/diagc/issues/150)) ([d133445](https://github.com/Ferroman/diagc/commit/d133445371ad05e5e5d138a6fb98a2fba8250ddc))
+* **diagc:** publish a picture of every plane ([#149](https://github.com/Ferroman/diagc/issues/149)) ([5a81260](https://github.com/Ferroman/diagc/commit/5a812602a24b59ea72aadd3ff613e675cbc4dc9b))
+
+
+### Bug Fixes
+
+* a folded box counts each hidden node once, on the plane in view ([#148](https://github.com/Ferroman/diagc/issues/148)) ([c359608](https://github.com/Ferroman/diagc/commit/c359608c632512558de4f53b41616e8bdf573d40))
+* a node scoped to a borrowing plane shows there; deleting a plane deletes its own nodes ([#151](https://github.com/Ferroman/diagc/issues/151)) ([f5bb3ef](https://github.com/Ferroman/diagc/commit/f5bb3efdc582aa46f81d56f61f4b300ae267fcf1))
+* **core:** a merged edge keeps the line style its relations share ([#147](https://github.com/Ferroman/diagc/issues/147)) ([e6fa012](https://github.com/Ferroman/diagc/commit/e6fa0125e6733755db42adfc9bd95d6f80b16553))
+
 ## [1.1.7](https://github.com/Ferroman/diagc/compare/v1.1.6...v1.1.7) (2026-10-12)
 
 
