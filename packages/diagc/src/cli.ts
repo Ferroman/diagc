@@ -19,12 +19,17 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { existsSync, statSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import fg from 'fast-glob';
 import { errMessage } from '@diagc/core/internal';
+import type { Context } from './cli/command';
+import { processIo } from './cli/io';
 import { checkTaken, parseArgv, UsageError, type ParsedArgv } from './cli/parse';
+import { compile } from './commands/compile';
+import { lint } from './commands/lint';
+import { warnNoSources } from './commands/shared';
+import { watch } from './commands/watch';
 import { compileFile } from './compile';
 import {
   compareDiagramSets,
@@ -36,14 +41,13 @@ import {
 } from './diff/index';
 import { checkoutDiagrams, type CheckedOutRef } from './git-ref';
 import { ejectDiagram } from './eject';
-import { formatLintReport, lintFile, type LintReport } from './lint';
 import { runGuide } from './guide';
 import { cliVersion, findHome, homePaths } from './home';
 import { runInit } from './init';
 import { resolveInclude } from './includes';
 import { diagramName } from './names';
 import { snapshotSession } from './snapshots';
-import { formatCompileEvent, startWatch } from './watch';
+import { formatCompileEvent } from './watch';
 import { discoverDiagrams } from './publish/discover';
 import { globSorted } from './glob';
 import { publishDiagrams, type PublishOptions } from './publish/publish';
@@ -123,14 +127,6 @@ function flatArgs({ command, positionals, flags }: ParsedArgv): Args {
   };
 }
 
-const SOURCES = '.diagrams/src/**/*.diagram.{ts,json}';
-
-/** The one message a repository with no diagrams gets, on stderr: `lint --json`'s
- * stdout stays an array and the exit codes hold, so CI without diagrams passes. */
-function warnNoSources(dir = '.diagrams/src'): void {
-  console.error(`No diagrams under ${dir} — run 'diagc init' to create one.`);
-}
-
 /** Each sidecar diff left out of its pictures, on stderr so `--json` stays parseable. */
 function warnLeftOut(...sets: DiagramSet[]): void {
   for (const set of sets) for (const w of set.warnings) console.error(w);
@@ -174,9 +170,10 @@ async function exit(code: number): Promise<never> {
 }
 
 async function main() {
+  let parsed: ParsedArgv;
   let args: Args;
   try {
-    const parsed = parseArgv(process.argv.slice(2));
+    parsed = parseArgv(process.argv.slice(2));
     checkTaken(parsed, TAKES);
     args = flatArgs(parsed);
   } catch (e) {
@@ -195,65 +192,14 @@ async function main() {
   // own separate always-locked session below instead of sharing this one.
   const snap = snapshotSession(resolveInclude, '.diagrams', args.updateIncludes ? 'update' : 'locked');
 
+  const ctx: Context = { io: processIo, usage: USAGE, home, snapshots: snap };
+
   if (args.command === 'compile') {
-    const files = args.files.length > 0 ? args.files : await globSorted(SOURCES);
-    if (args.files.length === 0 && files.length === 0) warnNoSources();
-    let failed = false;
-    for (const file of files) {
-      try {
-        const artifact = await compileFile(file, args.out, {
-          rootDir: '.diagrams/src',
-          coreEntry: home.coreEntry,
-          resolver: snap.resolver,
-        });
-        console.log(formatCompileEvent({ file, ok: true, artifact }));
-      } catch (e) {
-        failed = true;
-        console.error(formatCompileEvent({ file, ok: false, error: errMessage(e) }));
-      }
-    }
-    // A source that fails before include resolution (e.g. a pre-compose
-    // validation error) never touches its remote URLs, so pruning here would
-    // drop their still-valid lock entries and vendored files right along with
-    // the genuinely stale ones — skip the prune until every file compiles clean.
-    if (args.updateIncludes && args.files.length === 0 && !failed) await snap.prune();
-    return exit(failed ? 1 : 0);
+    return exit(await compile.run(parsed, ctx));
   } else if (args.command === 'lint') {
-    const files = args.files.length > 0 ? args.files : await globSorted(SOURCES);
-    if (args.files.length === 0 && files.length === 0) warnNoSources();
-    const reports: LintReport[] = [];
-    for (const file of files) {
-      reports.push(
-        ...(await lintFile(file, { rootDir: '.diagrams/src', coreEntry: home.coreEntry, resolver: snap.resolver })),
-      );
-    }
-    if (args.json) console.log(JSON.stringify(reports, null, 2));
-    else for (const r of reports) console.log(formatLintReport(r));
-    return exit(reports.length > 0 ? 1 : 0);
+    return exit(await lint.run(parsed, ctx));
   } else if (args.command === 'watch') {
-    // Always locked, and --update-includes is refused here: watch is a long-running
-    // live loop with no point at which "refetch and rewrite the lock" makes
-    // sense, so it has its own session rather than the shared one (mirrors
-    // studio.ts's own hardcoded 'locked' session).
-    const dir = args.files[0] ?? '.diagrams/src';
-    // A directory that does not exist holds no diagrams either; a file is left alone.
-    if (
-      !existsSync(dir) ||
-      (statSync(dir).isDirectory() && (await fg('**/*.diagram.{ts,json}', { cwd: dir })).length === 0)
-    )
-      warnNoSources(dir);
-    const watchSnap = snapshotSession(resolveInclude, '.diagrams', 'locked');
-    startWatch(dir, args.out, {
-      coreEntry: home.coreEntry,
-      resolver: watchSnap.resolver,
-      onEvent: (e) => {
-        // Success goes to stdout, failure to stderr, so the streams stay parsed
-        // separately by anyone piping them.
-        if (e.ok) console.log(formatCompileEvent(e));
-        else console.error(formatCompileEvent(e));
-      },
-    });
-    console.log(`Watching ${dir} for *.diagram.{ts,json} changes...`);
+    return exit(await watch.run(parsed, ctx));
   } else if (args.command === 'publish') {
     if (!existsSync(home.viewerShell)) {
       // Only a checkout can be missing it; an installed package ships the shell,
@@ -269,7 +215,7 @@ async function main() {
     const dirs = publishDirs(args);
     // Compile first so artifacts reflect current sources (TS + include expansion).
     const sources = await globSorted('**/*.diagram.{ts,json}', { cwd: dirs.srcDir, absolute: true });
-    if (sources.length === 0) warnNoSources(dirs.srcDir);
+    if (sources.length === 0) warnNoSources(processIo, dirs.srcDir);
     let failed = false;
     for (const f of sources) {
       try {
