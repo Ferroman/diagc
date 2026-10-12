@@ -422,4 +422,32 @@ describe('diagc diff, through the real CLI', () => {
     expect(nope.stderr).toContain("diagc: no diagram 'nope'");
     expect(nope.stdout).toBe('');
   }, 60_000);
+
+  it('compares a diagram whose layout does not parse, and says so on stderr', () => {
+    const dir = fresh(true);
+    const git = (...args: string[]) =>
+      execFileSync(
+        'git',
+        ['-c', 'user.email=t@example.com', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...args],
+        {
+          cwd: dir,
+          stdio: 'pipe',
+        },
+      );
+    const shop = path.join(dir, '.diagrams', 'src', 'shop.diagram.json');
+    writeFileSync(shop, JSON.stringify(diagram('shop')));
+    git('init', '-q');
+    git('add', '-A');
+    git('commit', '-qm', 'shop');
+    writeFileSync(shop, JSON.stringify(diagram('shop', { nodes: [{ id: 'a', name: 'Renamed', type: 'service' }] })));
+    writeFileSync(path.join(dir, '.diagrams', 'src', 'shop.layout.json'), '{');
+
+    const r = run(['diff', 'HEAD', '--json', '--no-images'], dir);
+    expect(r.status).toBe(0);
+    const out = JSON.parse(r.stdout) as { diagrams: { name: string; status: string }[] };
+    expect(out.diagrams).toEqual([expect.objectContaining({ name: 'shop', status: 'changed' })]);
+    expect(r.stderr).toMatch(
+      /^shop\.layout\.json at working tree: does not parse \(.+\) — compared and drawn without it$/m,
+    );
+  }, 60_000);
 });

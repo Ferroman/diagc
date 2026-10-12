@@ -35,6 +35,8 @@ export interface DiagramSet {
   versions: Map<string, DiagramVersion>;
   /** diagrams whose source did not compile at this version, with why */
   errors: Map<string, string>;
+  /** sidecars left out of the pictures because they could not be read, each named */
+  warnings: string[];
 }
 
 export type DiagramDiffStatus = 'added' | 'removed' | 'changed' | 'unchanged' | 'error';
@@ -61,8 +63,20 @@ const EMPTY: DiagramModel = {
   planes: [],
 };
 
-async function readJson(file: string): Promise<unknown> {
-  return existsSync(file) ? (JSON.parse(await readFile(file, 'utf8')) as unknown) : undefined;
+/** A sidecar's JSON, nothing when there is no file, or why it is left out: it does
+ * not parse, or `shape` refuses it. */
+async function readSidecar(
+  file: string,
+  shape?: { fits: (v: unknown) => boolean; what: string },
+): Promise<{ value?: unknown; why?: string }> {
+  if (!existsSync(file)) return {};
+  let value: unknown;
+  try {
+    value = JSON.parse(await readFile(file, 'utf8'));
+  } catch (e) {
+    return { why: `does not parse (${errMessage(e)})` };
+  }
+  return shape === undefined || shape.fits(value) ? { value } : { why: `not ${shape.what}` };
 }
 
 /** Compile every source under `diagramsDir/src` in memory — nothing is written. */
@@ -70,26 +84,40 @@ export async function loadDiagramSet(label: string, diagramsDir: string, coreEnt
   const srcDir = path.join(diagramsDir, 'src');
   const versions = new Map<string, DiagramVersion>();
   const errors = new Map<string, string>();
+  const warnings: string[] = [];
   const files = existsSync(srcDir) ? await fg('**/*.diagram.{ts,json}', { cwd: srcDir }) : [];
   for (const rel of files.sort()) {
     const name = rel.replace(/\.diagram\.(ts|json)$/, '');
+    let model: DiagramModel;
     try {
-      const model = await loadModel(path.join(srcDir, rel), {
+      model = await loadModel(path.join(srcDir, rel), {
         rootDir: srcDir,
         ...(coreEntry !== undefined ? { coreEntry } : {}),
       });
-      const layout = (await readJson(path.join(srcDir, `${name}.layout.json`))) as LayoutOverlay | undefined;
-      const drawings = await readJson(path.join(srcDir, `${name}.drawings.json`));
-      versions.set(name, {
-        model,
-        ...(layout !== undefined ? { layout } : {}),
-        ...(drawings !== undefined && isDrawings(drawings) ? { drawings } : {}),
-      });
     } catch (e) {
       errors.set(name, errMessage(e));
+      continue;
     }
+    // A sidecar that cannot be read is left out of the picture and named, as publish
+    // does with malformed drawings: the model is still compared.
+    const layout = await readSidecar(path.join(srcDir, `${name}.layout.json`));
+    const drawings = await readSidecar(path.join(srcDir, `${name}.drawings.json`), {
+      fits: isDrawings,
+      what: 'a drawings overlay',
+    });
+    for (const [file, read] of [
+      [`${name}.layout.json`, layout],
+      [`${name}.drawings.json`, drawings],
+    ] as const) {
+      if (read.why !== undefined) warnings.push(`${file} at ${label}: ${read.why} — compared and drawn without it`);
+    }
+    versions.set(name, {
+      model,
+      ...(layout.value !== undefined ? { layout: layout.value as LayoutOverlay } : {}),
+      ...(drawings.value !== undefined ? { drawings: drawings.value as Drawings } : {}),
+    });
   }
-  return { label, diagramsDir, versions, errors };
+  return { label, diagramsDir, versions, errors, warnings };
 }
 
 /** Pair the two sets by name. `names` narrows the result to those diagrams. */
@@ -254,12 +282,10 @@ export async function writeDiffPages(diffs: readonly DiagramDiff[], opts: DiffPa
     files.set(d.name, entry);
   }
 
-  const from = opts.before.label;
-  const to = opts.after.label;
   const index = path.join(opts.outDir, 'index.html');
-  await writeFile(index, indexHtml(shown, files, from, to));
+  await writeFile(index, indexHtml(diffs, files, opts.before, opts.after));
   const summary = path.join(opts.outDir, 'summary.md');
-  await writeFile(summary, summaryMarkdown(diffs, files, from, to, opts.imageUrl));
+  await writeFile(summary, summaryMarkdown(diffs, files, opts.before, opts.after, opts.imageUrl));
   return { pages, images, index, summary };
 }
 
@@ -273,22 +299,32 @@ const OVERVIEW_DARK =
   '--bg:#12161b;--card:#1b222b;--border:#2d3743;--text:#e6ebf0;--muted:#a3afbb;--faint:#8b98a5;--add:#4ade80;--del:#f87171;--chg:#fbbf24';
 
 function indexHtml(
-  shown: readonly DiagramDiff[],
+  diffs: readonly DiagramDiff[],
   files: Map<string, { before?: string; after?: string }>,
-  from: string,
-  to: string,
+  before: DiagramSet,
+  after: DiagramSet,
 ): string {
+  const from = before.label;
+  const to = after.label;
   const side = (rel: string | undefined, label: string) =>
     rel === undefined
       ? `<div class="side empty"><h3>${escapeHtml(label)}</h3><p>not present</p></div>`
       : `<div class="side"><h3><a href="${escapeHtml(rel)}.html">${escapeHtml(label)}</a></h3><iframe src="${escapeHtml(rel)}.html?export=1" title="${escapeHtml(label)}"></iframe></div>`;
-  const sections = shown.map((d) => {
+  // A diagram that did not compile has no pictures, but is listed as the summary lists it.
+  const sections = diffs.flatMap((d) => {
+    if (d.status === 'unchanged') return [];
+    if (d.status === 'error')
+      return [`<section><h2>${escapeHtml(d.name)}</h2><p>Not compared: ${escapeHtml(d.error ?? '')}</p></section>`];
     const f = files.get(d.name) ?? {};
     const list = describeDiff(d)
       .map((l) => `<li class="${l[0] === '+' ? 'add' : l[0] === '-' ? 'del' : 'chg'}">${escapeHtml(l)}</li>`)
       .join('');
-    return `<section><h2>${escapeHtml(d.name)}</h2><ul>${list}</ul><div class="pair">${side(f.before, `Before · ${from}`)}${side(f.after, `After · ${to}`)}</div></section>`;
+    return [
+      `<section><h2>${escapeHtml(d.name)}</h2><ul>${list}</ul><div class="pair">${side(f.before, `Before · ${from}`)}${side(f.after, `After · ${to}`)}</div></section>`,
+    ];
   });
+  const warnings = [...before.warnings, ...after.warnings];
+  const notes = warnings.length === 0 ? '' : `<ul>${warnings.map((w) => `<li>${escapeHtml(w)}</li>`).join('')}</ul>\n`;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Diagram diff ${escapeHtml(from)} → ${escapeHtml(to)}</title>
@@ -308,7 +344,7 @@ ${themeCss(OVERVIEW_LIGHT, OVERVIEW_DARK)}
 </style></head><body>
 <header><h1>Diagram diff · ${escapeHtml(from)} → ${escapeHtml(to)}</h1>${THEME_SWITCH}</header>
 <p class="key"><span><i style="border-color:#16a34a"></i>added</span><span><i style="border-color:#dc2626;border-style:dashed"></i>removed</span><span><i style="border-color:#d97706"></i>changed</span><span><i style="border-color:#d97706;border-style:dashed"></i>holds a change (folded box, on the linked pages)</span></p>
-${sections.length > 0 ? sections.join('\n') : '<p>No diagram changed.</p>'}
+${notes}${sections.length > 0 ? sections.join('\n') : '<p>No diagram changed.</p>'}
 </body></html>
 `;
 }
@@ -316,12 +352,15 @@ ${sections.length > 0 ? sections.join('\n') : '<p>No diagram changed.</p>'}
 function summaryMarkdown(
   diffs: readonly DiagramDiff[],
   files: Map<string, { before?: string; after?: string; png: boolean }>,
-  from: string,
-  to: string,
+  before: DiagramSet,
+  after: DiagramSet,
   imageUrl: string | undefined,
 ): string {
+  const from = before.label;
+  const to = after.label;
   const png = (rel: string) => (imageUrl !== undefined ? imageUrl.split('{path}').join(`${rel}.png`) : `${rel}.png`);
   const out = [`# Diagram changes: ${from} → ${to}`, ''];
+  for (const w of [...before.warnings, ...after.warnings]) out.push(`> ${w}`, '');
   const shown = diffs.filter((d) => d.status !== 'unchanged');
   if (shown.length === 0) out.push('No diagram changed.', '');
   for (const d of shown) {

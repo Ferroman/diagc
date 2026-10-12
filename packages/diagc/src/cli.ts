@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
 import { errMessage } from '@diagc/core/internal';
 import { compileFile } from './compile';
-import { compareDiagramSets, formatDiffSummary, loadDiagramSet, writeDiffPages } from './diff';
+import { compareDiagramSets, formatDiffSummary, loadDiagramSet, writeDiffPages, type DiagramSet } from './diff';
 import { checkoutDiagrams, type CheckedOutRef } from './git-ref';
 import { ejectDiagram } from './eject';
 import { formatLintReport, lintFile, type LintReport } from './lint';
@@ -236,6 +236,11 @@ const SOURCES = '.diagrams/src/**/*.diagram.{ts,json}';
  * stdout stays an array and the exit codes hold, so CI without diagrams passes. */
 function warnNoSources(dir = '.diagrams/src'): void {
   console.error(`No diagrams under ${dir} — run 'diagc init' to create one.`);
+}
+
+/** Each sidecar diff left out of its pictures, on stderr so `--json` stays parseable. */
+function warnLeftOut(...sets: DiagramSet[]): void {
+  for (const set of sets) for (const w of set.warnings) console.error(w);
 }
 
 /** Where `publish` compiles to and builds pages from. One object for both steps, so
@@ -515,6 +520,7 @@ async function runDiff(args: Args, home: ReturnType<typeof homePaths>): Promise<
     const toLabel = args.labels?.[1] ?? to ?? 'working tree';
     const beforeSet = await loadDiagramSet(fromLabel, before.diagramsDir, home.coreEntry);
     const afterSet = await loadDiagramSet(toLabel, afterDir, home.coreEntry);
+    warnLeftOut(beforeSet, afterSet);
     const known = new Set([beforeSet, afterSet].flatMap((set) => [...set.versions.keys(), ...set.errors.keys()]));
     const names = diagramNames(args.files.slice(1), known);
     if (names === undefined) return 1;
