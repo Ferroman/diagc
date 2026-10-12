@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { findHome, homePaths } from './home';
+import { findChrome } from './publish/snapshot';
 
 // The real CLI through its development entry (tsx-registered, no build step),
 // run from directories of its own: these tests are about what a user sees in a
@@ -27,8 +28,12 @@ export function fresh(withSrc = false): string {
   return dir;
 }
 
-export function run(args: string[], cwd: string): { status: number | null; stdout: string; stderr: string } {
-  const r = spawnSync(process.execPath, [bin, ...args], { encoding: 'utf8', cwd });
+export function run(
+  args: string[],
+  cwd: string,
+  env: NodeJS.ProcessEnv = process.env,
+): { status: number | null; stdout: string; stderr: string } {
+  const r = spawnSync(process.execPath, [bin, ...args], { encoding: 'utf8', cwd, env });
   return { status: r.status, stdout: r.stdout, stderr: r.stderr };
 }
 
@@ -277,6 +282,41 @@ describe('diagc publish, through the real CLI', () => {
     expect(readFileSync(path.join(dir, '.diagrams', 'includes.lock.json'), 'utf8')).toBe(lock);
     expect(existsSync(path.join(dir, '.diagrams', vendored))).toBe(true);
   }, 60_000);
+
+  it("exits 1 when a source does not compile, after publishing the rest, with compile's failure line", () => {
+    const dir = fresh(true);
+    const src = path.join(dir, '.diagrams', 'src');
+    writeFileSync(path.join(src, 'good.diagram.json'), JSON.stringify(diagram('good')));
+    const broken = diagram('broken', { relations: [{ id: 'r', from: 'a', to: 'ghost', kind: 'uses' }] });
+    writeFileSync(path.join(src, 'broken.diagram.json'), JSON.stringify(broken));
+    const r = run(['publish', '--no-images'], dir);
+    expect(r.status).toBe(1);
+    expect(existsSync(path.join(dir, '.diagrams', 'html', 'good.html'))).toBe(true);
+    expect(r.stderr).toMatch(/^✗ .*broken\.diagram\.json\n[^]*\n\(keeping last good artifact\)$/m);
+  }, 60_000);
+
+  it('exits 1 when it skips a diagram', () => {
+    const dir = fresh(true);
+    const src = path.join(dir, '.diagrams', 'src');
+    writeFileSync(path.join(src, 'good.diagram.json'), JSON.stringify(diagram('good')));
+    writeFileSync(path.join(src, 'good.layout.json'), '{');
+    const r = run(['publish', '--no-images'], dir);
+    expect(r.stderr).toContain('skipping diagram "good"');
+    expect(r.status).toBe(1);
+  }, 60_000);
+
+  // Chrome at a default location is found whatever CHROME_PATH says.
+  it.skipIf(findChrome() !== undefined)(
+    'says on stderr that it found no Chrome',
+    () => {
+      const dir = fresh(true);
+      writeFileSync(path.join(dir, '.diagrams', 'src', 'good.diagram.json'), JSON.stringify(diagram('good')));
+      const r = run(['publish'], dir, { ...process.env, CHROME_PATH: path.join(dir, 'no-chrome') });
+      expect(r.stderr).toContain('No Chrome found');
+      expect(r.stdout).not.toContain('No Chrome found');
+    },
+    60_000,
+  );
 });
 
 describe('output through a pipe', () => {

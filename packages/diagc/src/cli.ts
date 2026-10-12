@@ -373,7 +373,7 @@ async function main() {
         });
       } catch (e) {
         failed = true;
-        console.error(`✗ ${f}\n${errMessage(e)}`);
+        console.error(formatCompileEvent({ file: f, ok: false, error: errMessage(e) }));
       }
     }
     // publish's glob above ignores args.files (that only scopes which rendered
@@ -385,7 +385,7 @@ async function main() {
     if (args.images) {
       const snapshot = await import('./publish/snapshot');
       if (snapshot.findChrome() === undefined) {
-        console.log('No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.');
+        console.error('No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.');
         images = false;
       } else {
         renderPng = snapshot.renderPng;
@@ -403,7 +403,7 @@ async function main() {
     console.log(`✓ ${res.pages.length} page(s) -> ${dirs.htmlDir}`);
     if (res.images.length > 0) console.log(`✓ ${res.images.length} image(s) -> ${dirs.staticDir}`);
     console.log(`✓ gallery -> ${res.gallery}`);
-    return exit(0);
+    return exit(failed || res.skipped.length > 0 ? 1 : 0);
   } else if (args.command === 'studio') {
     // Studio's own compile-watch loop always resolves includes locked (see
     // studio.ts) — same reasoning as watch above.

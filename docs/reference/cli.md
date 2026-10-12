@@ -135,11 +135,13 @@ diagc publish --link https://github.com/you/repo
 
 `files...` here filters by diagram **name**, not path. The gallery keeps the other diagrams, linking the pages an earlier run wrote.
 
+**Exit code:** `0` when every diagram is published; `1` when a source does not compile (`✗ <file>` and the error, as `compile` prints them) or a diagram is skipped (`publish: skipping diagram …`), after everything else is written.
+
 **`--link <url>` puts one link in the index header**, shown as the address it goes to — the project's repository, say. It must be an `http(s)` URL; anything else exits `1` before anything is compiled. Diagram pages never carry it: a published page belongs to its diagram and has no chrome of its publisher's.
 
 **Requires the viewer shell.** An installed `diagc` ships it. From a checkout you must build it once (`pnpm build:cli`); until then publish exits `1` with `viewer shell not built`.
 
-**PNG export needs a browser.** If none is found, publish prints `No Chrome found — writing HTML only` and continues without images. See `CHROME_PATH` below.
+**PNG export needs a browser.** If none is found, publish prints `No Chrome found — writing HTML only` on stderr and continues without images. See `CHROME_PATH` below.
 
 **Remote includes resolve locked**, same as `compile`; `diagc publish --update-includes` refreshes and re-pins them first. Publish always compiles the whole source tree regardless of `files...` (that only filters which pages are rendered below it), so an `--update-includes` run here prunes unreferenced entries whenever every source compiles — there is no scoped/unpruned form the way a filtered `compile` run has. A source that fails may never have reached its includes, so then nothing is pruned.
 
