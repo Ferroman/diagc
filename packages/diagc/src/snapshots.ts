@@ -3,11 +3,14 @@ import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { IncludeError, type DiagramModel, type IncludeResolver, type IncludeSource } from '@diagc/core/internal';
 import { resolveInclude } from './includes';
+import { RELATIVE_PATHS } from './paths';
 
 export type SnapshotMode = 'locked' | 'update';
 
-const LOCK_NAME = 'includes.lock.json';
-const VENDOR_DIR = 'includes';
+/** The lock's and the vendored snapshots' names in the `.diagrams` folder a session is
+ * given; the lock names each snapshot by its path from that folder. */
+const LOCK_NAME = path.posix.basename(RELATIVE_PATHS.lockFile);
+const VENDOR_DIR = path.posix.basename(RELATIVE_PATHS.includesDir);
 
 interface LockEntry {
   file: string;
@@ -79,7 +82,7 @@ export function snapshotSession(base: IncludeResolver, rootDir: string, mode: Sn
       if (entry === undefined) {
         throw new IncludeError(
           spec,
-          `Include '${url}' is not snapshotted — run 'diagc compile --update-includes' and commit .diagrams/${VENDOR_DIR}/ + .diagrams/${LOCK_NAME}`,
+          `Include '${url}' is not snapshotted — run 'diagc compile --update-includes' and commit ${RELATIVE_PATHS.includesDir}/ + ${RELATIVE_PATHS.lockFile}`,
         );
       }
       let text: string;

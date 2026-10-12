@@ -1,3 +1,5 @@
+import { RELATIVE_PATHS } from './paths';
+
 /** Words the studio API's action routes put after a diagram's name
  * (`/api/diagrams/<name>/rename`). A name ending in `/<word>` would be read as
  * that action on its folder, so it could be created and never saved. Alone, the
@@ -13,8 +15,11 @@ export function isSafeName(name: string): boolean {
   return slash < 0 || !ACTION_SEGMENTS.includes(name.slice(slash + 1));
 }
 
+const SRC_PREFIX = `${RELATIVE_PATHS.srcDir}/`;
+
 /** `shop.diagram.ts` and `.diagrams/src/shop` both mean `shop` — the trim `eject`
  * applies, so a name copied from a listing is not an "unsafe name". */
 export function diagramName(arg: string): string {
-  return arg.replace(/^\.diagrams\/src\//, '').replace(/\.diagram\.(ts|json)$/, '');
+  const name = arg.startsWith(SRC_PREFIX) ? arg.slice(SRC_PREFIX.length) : arg;
+  return name.replace(/\.diagram\.(ts|json)$/, '');
 }

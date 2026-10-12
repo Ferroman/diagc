@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { RELATIVE_PATHS } from './paths';
 
 const run = promisify(execFile);
 
@@ -31,7 +32,11 @@ export async function verifyRef(ref: string, cwd: string): Promise<string> {
  *
  * `diagramsDir` is relative to `cwd`, which may sit below the repository root.
  */
-export async function checkoutDiagrams(ref: string, cwd: string, diagramsDir = '.diagrams'): Promise<CheckedOutRef> {
+export async function checkoutDiagrams(
+  ref: string,
+  cwd: string,
+  diagramsDir = RELATIVE_PATHS.diagramsDir,
+): Promise<CheckedOutRef> {
   // Every git call below runs at the top level with a top-level path: from a
   // subdirectory, ls-tree and archive would read their paths relative to it.
   // Asked first, so a directory outside any repository hears that, not that its
