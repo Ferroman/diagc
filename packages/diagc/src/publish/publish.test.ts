@@ -250,6 +250,42 @@ describe('publishDiagrams', () => {
     }
   });
 
+  it('sends each of its warnings to warn when given one, and none to console.warn', async () => {
+    const f = await fixture();
+    const missing = model('missing');
+    missing.node('a', { name: 'A', image: 'deadbeef.png' });
+    await writeFile(path.join(f.artifacts, 'missing.diagram.json'), JSON.stringify(missing.toJSON()));
+    // an artifact compile did not write: its ref was never validated
+    const outside = { ...model('outside').toJSON(), nodes: [{ id: 'a', name: 'A', image: '/library/../../x.svg' }] };
+    await writeFile(path.join(f.artifacts, 'outside.diagram.json'), JSON.stringify(outside));
+    await writeFile(path.join(f.src, 'demo.drawings.json'), '{"strokes":"none"}');
+    await writeFile(path.join(f.artifacts, 'broken.diagram.json'), '{');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const lines: string[] = [];
+    try {
+      await publishDiagrams({
+        srcDir: f.src,
+        artifactsDir: f.artifacts,
+        htmlDir: f.html,
+        staticDir: f.stat,
+        shellPath: f.shell,
+        libraryDir: f.lib,
+        assetsDir: f.assets,
+        images: false,
+        warn: (line) => lines.push(line),
+      });
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+    expect(lines).toEqual([
+      expect.stringMatching(/^publish: skipping diagram "broken": /),
+      expect.stringMatching(/^publish: ignoring malformed drawings sidecar for diagram "demo" /),
+      `publish: could not read asset "deadbeef.png" for diagram "missing" (looked in ${path.join(f.assets, 'deadbeef.png')}); leaving ref as-is.`,
+      'publish: refusing out-of-root asset "/library/../../x.svg" for diagram "outside"; leaving ref as-is.',
+    ]);
+  });
+
   it('keeps the other diagrams in the gallery when it publishes some by name', async () => {
     const f = await fixture();
     const b2 = model('demo2', { name: 'Second demo' });

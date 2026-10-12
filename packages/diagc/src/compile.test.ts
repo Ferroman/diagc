@@ -64,12 +64,17 @@ describe('compileFile', () => {
       const artifact = await compileFile(src, path.join(dir, 'out'));
       expect(await exists(artifact)).toBe(true);
       expect(warn).toHaveBeenCalledWith(`${src}: 'loose' does not reach the effect`);
+      warn.mockClear();
+      const lines: string[] = [];
+      await compileFile(src, path.join(dir, 'out'), { warn: (line) => lines.push(line) });
+      expect(lines).toEqual([`${src}: 'loose' does not reach the effect`]);
+      expect(warn).not.toHaveBeenCalled();
     } finally {
       warn.mockRestore();
     }
   });
 
-  it('prints what composing the includes warns about, or hands it to onWarning', async () => {
+  it('prints what composing the includes warns about, to warn when given, or hands it to onWarning', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'diagc-'));
     const part = (id: string, type: string): DiagramModel => ({
       version: 1,
@@ -102,6 +107,12 @@ describe('compileFile', () => {
       const heard: string[] = [];
       await compileFile(src, path.join(dir, 'out'), { onWarning: (w) => heard.push(w) });
       expect(heard).toEqual([said]);
+      const lines: string[] = [];
+      await compileFile(src, path.join(dir, 'out'), { warn: (line) => lines.push(line) });
+      expect(lines).toEqual([`${src}: ${said}`]);
+      // a warning onWarning takes is not also a line
+      await compileFile(src, path.join(dir, 'out'), { onWarning: () => {}, warn: (line) => lines.push(line) });
+      expect(lines).toHaveLength(1);
       expect(warn).not.toHaveBeenCalled();
     } finally {
       warn.mockRestore();
