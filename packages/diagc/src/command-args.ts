@@ -1,9 +1,12 @@
 import type { Takes } from './cli/parse';
 import { compile } from './commands/compile';
 import { diff } from './commands/diff';
+import { eject } from './commands/eject';
+import { guide } from './commands/guide';
+import { init } from './commands/init';
 import { lint } from './commands/lint';
 import { publish } from './commands/publish';
-import { LOCKED } from './commands/shared';
+import { studio } from './commands/studio';
 import { watch } from './commands/watch';
 
 /** What each command takes: the flags the reference's flag table lists for it, and a
@@ -14,9 +17,9 @@ export const TAKES: Readonly<Record<string, Takes>> = {
   lint,
   watch,
   publish,
-  studio: { flags: [], positionals: { max: 0, what: 'no arguments' }, whyNot: LOCKED },
-  eject: { flags: ['--out'], positionals: { max: 1, what: 'one diagram name' }, whyNot: LOCKED },
+  studio,
+  eject,
   diff,
-  guide: { flags: [] },
-  init: { flags: ['--type', '--agents'] },
+  guide,
+  init,
 };
