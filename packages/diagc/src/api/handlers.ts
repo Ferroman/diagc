@@ -15,11 +15,9 @@ import { EjectError, ejectDiagram } from '../eject';
 import { resolveInclude } from '../includes';
 import { isSafeName } from '../names';
 import { snapshotSession } from '../snapshots';
+import { refuse, type HandlerResult } from './result';
 
-export interface HandlerResult {
-  status: number;
-  body: unknown;
-}
+export type { HandlerResult };
 
 // The name rule every route checks, for the hosts and tests that reach it here.
 export { isSafeName };
@@ -157,12 +155,12 @@ export async function listDrawings(diagramsDir: string): Promise<HandlerResult> 
 /** the JSON source (+ sibling layout and drawings) of a designer-owned diagram — the studio
  * reads these directly so it never depends on a compile watcher for its own files */
 export async function readDiagram(diagramsDir: string, name: string): Promise<HandlerResult> {
-  if (!isSafeName(name)) return { status: 400, body: { issues: [{ message: `Unsafe name '${name}'` }] } };
+  if (!isSafeName(name)) return refuse(400, `Unsafe name '${name}'`);
   let model: unknown;
   try {
     model = JSON.parse(await readFile(path.join(diagramsDir, `${name}.diagram.json`), 'utf8'));
   } catch {
-    return { status: 404, body: { issues: [{ message: `No diagram source '${name}'` }] } };
+    return refuse(404, `No diagram source '${name}'`);
   }
   let layout: unknown;
   try {
@@ -189,13 +187,13 @@ export async function readDiagram(diagramsDir: string, name: string): Promise<Ha
 /** Composed read of an editable source — the studio's view-refresh after a
  * save. Sources without includes pass through untouched. */
 export async function readComposedDiagram(diagramsDir: string, name: string): Promise<HandlerResult> {
-  if (!isSafeName(name)) return { status: 400, body: { issues: [{ message: `Unsafe name '${name}'` }] } };
+  if (!isSafeName(name)) return refuse(400, `Unsafe name '${name}'`);
   const file = path.join(diagramsDir, `${name}.diagram.json`);
   let model: DiagramModel;
   try {
     model = JSON.parse(await readFile(file, 'utf8')) as DiagramModel;
   } catch {
-    return { status: 404, body: { issues: [{ message: `No diagram source '${name}'` }] } };
+    return refuse(404, `No diagram source '${name}'`);
   }
   if (!hasIncludes(model)) return { status: 200, body: { model } };
   try {
@@ -207,7 +205,7 @@ export async function readComposedDiagram(diagramsDir: string, name: string): Pr
     if (issues.length > 0) return { status: 409, body: { issues } };
     return { status: 200, body: { model: composed, ...(warnings.length > 0 ? { warnings } : {}) } };
   } catch (e) {
-    return { status: 409, body: { issues: [{ message: errMessage(e) }] } };
+    return refuse(409, errMessage(e));
   }
 }
 
@@ -220,11 +218,11 @@ async function ownedByTs(diagramsDir: string, name: string): Promise<HandlerResu
   } catch {
     return undefined;
   }
-  return { status: 409, body: { issues: [{ message: `'${name}' is already TypeScript-owned (${tsPath})` }] } };
+  return refuse(409, `'${name}' is already TypeScript-owned (${tsPath})`);
 }
 
 export async function saveDiagram(diagramsDir: string, name: string, payload: unknown): Promise<HandlerResult> {
-  if (!isSafeName(name)) return { status: 400, body: { issues: [{ message: `Unsafe name '${name}'` }] } };
+  if (!isSafeName(name)) return refuse(400, `Unsafe name '${name}'`);
   const owned = await ownedByTs(diagramsDir, name);
   if (owned !== undefined) return owned;
   const p = payload as Record<string, unknown> | null;
@@ -237,7 +235,7 @@ export async function saveDiagram(diagramsDir: string, name: string, payload: un
     Array.isArray(p.layers) &&
     Array.isArray(p.planes);
   if (!arraysOk) {
-    return { status: 400, body: { issues: [{ message: 'Not a version-1 diagram model' }] } };
+    return refuse(400, 'Not a version-1 diagram model');
   }
   const issues = validate(payload as DiagramModel);
   if (issues.length > 0) return { status: 400, body: { issues } };
@@ -251,20 +249,20 @@ export async function saveDiagram(diagramsDir: string, name: string, payload: un
  * rewriting the model's id to match so the file stays self-consistent. */
 export async function renameDiagram(diagramsDir: string, from: string, to: string): Promise<HandlerResult> {
   if (!isSafeName(from) || !isSafeName(to)) {
-    return { status: 400, body: { issues: [{ message: `Unsafe name '${isSafeName(from) ? to : from}'` }] } };
+    return refuse(400, `Unsafe name '${isSafeName(from) ? to : from}'`);
   }
-  if (from === to) return { status: 400, body: { issues: [{ message: 'New name is the same as the old' }] } };
+  if (from === to) return refuse(400, 'New name is the same as the old');
   const fromDiagram = path.join(diagramsDir, `${from}.diagram.json`);
   const toDiagram = path.join(diagramsDir, `${to}.diagram.json`);
   let raw: string;
   try {
     raw = await readFile(fromDiagram, 'utf8');
   } catch {
-    return { status: 404, body: { issues: [{ message: `No diagram source '${from}'` }] } };
+    return refuse(404, `No diagram source '${from}'`);
   }
   try {
     await access(toDiagram);
-    return { status: 409, body: { issues: [{ message: `A diagram named '${to}' already exists` }] } };
+    return refuse(409, `A diagram named '${to}' already exists`);
   } catch {
     /* target free — proceed */
   }
@@ -274,7 +272,7 @@ export async function renameDiagram(diagramsDir: string, from: string, to: strin
   try {
     model = JSON.parse(raw) as Record<string, unknown>;
   } catch {
-    return { status: 400, body: { issues: [{ message: `Corrupt diagram source '${from}'` }] } };
+    return refuse(400, `Corrupt diagram source '${from}'`);
   }
   // The id follows the file. The name is the diagram's title, so it follows only
   // when it was the id, a title nobody set.
@@ -324,26 +322,25 @@ export async function ejectDiagramSource(
   artifactsDir: string,
   name: string,
 ): Promise<HandlerResult> {
-  if (!isSafeName(name)) return { status: 400, body: { issues: [{ message: `Unsafe name '${name}'` }] } };
+  if (!isSafeName(name)) return refuse(400, `Unsafe name '${name}'`);
   try {
     await ejectDiagram(diagramsDir, artifactsDir, name);
     return { status: 200, body: { ok: true } };
   } catch (e) {
     if (e instanceof EjectError) {
       const status = e.code === 'not-found' ? 404 : e.code === 'invalid' ? 400 : 409;
-      return { status, body: { issues: [{ message: e.message }] } };
+      return refuse(status, e.message);
     }
     throw e;
   }
 }
 
 export async function saveLayout(diagramsDir: string, name: string, payload: unknown): Promise<HandlerResult> {
-  if (!isSafeName(name)) return { status: 400, body: { issues: [{ message: `Unsafe name '${name}'` }] } };
+  if (!isSafeName(name)) return refuse(400, `Unsafe name '${name}'`);
   // Core's structural guard mirrors the old inline checks (version 1, nested
   // numeric x/y planes, optional positive-finite sizes) — one source of truth
   // shared with the client-side artifact loader.
-  if (!isLayoutOverlay(payload))
-    return { status: 400, body: { issues: [{ message: 'Not a version-1 layout overlay' }] } };
+  if (!isLayoutOverlay(payload)) return refuse(400, 'Not a version-1 layout overlay');
   const target = path.join(diagramsDir, `${name}.layout.json`);
   await mkdir(path.dirname(target), { recursive: true });
   await writeFileAtomic(target, `${JSON.stringify(payload, null, 2)}\n`);
@@ -355,8 +352,8 @@ export async function saveLayout(diagramsDir: string, name: string, payload: unk
  * must never grow an empty `<name>.drawings.json`, and erasing the last stroke
  * should leave the tree as it was. */
 export async function saveDrawings(diagramsDir: string, name: string, payload: unknown): Promise<HandlerResult> {
-  if (!isSafeName(name)) return { status: 400, body: { issues: [{ message: `Unsafe name '${name}'` }] } };
-  if (!isDrawings(payload)) return { status: 400, body: { issues: [{ message: 'Not a version-1 drawings overlay' }] } };
+  if (!isSafeName(name)) return refuse(400, `Unsafe name '${name}'`);
+  if (!isDrawings(payload)) return refuse(400, 'Not a version-1 drawings overlay');
   const target = path.join(diagramsDir, `${name}.drawings.json`);
   const hasStrokes = Object.values(payload.planes).some((bucket) => bucket.length > 0);
   if (!hasStrokes) {
@@ -396,35 +393,31 @@ const TEMPLATE_NUMBER_KEYS = new Set(['width', 'height']);
 export async function saveLibrary(diagramsDir: string, payload: unknown): Promise<HandlerResult> {
   const p = payload as { categories?: unknown; entries?: unknown } | null;
   if (p === null || !Array.isArray(p.categories) || !Array.isArray(p.entries)) {
-    return { status: 400, body: { issues: [{ message: 'Not a library { categories, entries }' }] } };
+    return refuse(400, 'Not a library { categories, entries }');
   }
   const catIds = new Set<string>();
   for (const c of p.categories) {
     const cat = c as { id?: unknown; name?: unknown };
     if (typeof cat.id !== 'string' || typeof cat.name !== 'string') {
-      return { status: 400, body: { issues: [{ message: 'Category needs string id and name' }] } };
+      return refuse(400, 'Category needs string id and name');
     }
-    if (catIds.has(cat.id)) return { status: 400, body: { issues: [{ message: `Duplicate category '${cat.id}'` }] } };
+    if (catIds.has(cat.id)) return refuse(400, `Duplicate category '${cat.id}'`);
     catIds.add(cat.id);
   }
   const entryIds = new Set<string>();
   for (const e of p.entries) {
     const entry = e as { id?: unknown; category?: unknown; name?: unknown; template?: unknown };
     if (typeof entry.id !== 'string' || typeof entry.name !== 'string' || typeof entry.category !== 'string') {
-      return { status: 400, body: { issues: [{ message: 'Entry needs string id, name, category' }] } };
+      return refuse(400, 'Entry needs string id, name, category');
     }
     if (!catIds.has(entry.category)) {
-      return {
-        status: 400,
-        body: { issues: [{ message: `Entry '${entry.id}' references unknown category '${entry.category}'` }] },
-      };
+      return refuse(400, `Entry '${entry.id}' references unknown category '${entry.category}'`);
     }
-    if (entryIds.has(entry.id))
-      return { status: 400, body: { issues: [{ message: `Duplicate entry '${entry.id}'` }] } };
+    if (entryIds.has(entry.id)) return refuse(400, `Duplicate entry '${entry.id}'`);
     entryIds.add(entry.id);
     const t = entry.template as Record<string, unknown> | null;
     if (t === null || typeof t !== 'object' || Array.isArray(t)) {
-      return { status: 400, body: { issues: [{ message: `Entry '${entry.id}' missing template` }] } };
+      return refuse(400, `Entry '${entry.id}' missing template`);
     }
     for (const [k, v] of Object.entries(t)) {
       const ok = TEMPLATE_STRING_KEYS.has(k)
@@ -432,11 +425,7 @@ export async function saveLibrary(diagramsDir: string, payload: unknown): Promis
         : TEMPLATE_NUMBER_KEYS.has(k)
           ? typeof v === 'number'
           : false;
-      if (!ok)
-        return {
-          status: 400,
-          body: { issues: [{ message: `Entry '${entry.id}' has invalid template field '${k}'` }] },
-        };
+      if (!ok) return refuse(400, `Entry '${entry.id}' has invalid template field '${k}'`);
     }
   }
   const target = path.join(diagramsDir, 'library.json');
@@ -461,13 +450,10 @@ export const MAX_ASSET_BYTES = 5 * 1024 * 1024;
 export async function saveAsset(diagramsDir: string, contentType: string, bytes: Buffer): Promise<HandlerResult> {
   const ext = ASSET_EXT[contentType.split(';')[0]?.trim() ?? ''];
   if (ext === undefined) {
-    return { status: 400, body: { issues: [{ message: `Unsupported image type '${contentType}'` }] } };
+    return refuse(400, `Unsupported image type '${contentType}'`);
   }
   if (bytes.length === 0 || bytes.length > MAX_ASSET_BYTES) {
-    return {
-      status: 400,
-      body: { issues: [{ message: `Image must be 1 byte to ${MAX_ASSET_BYTES / 1024 / 1024} MB` }] },
-    };
+    return refuse(400, `Image must be 1 byte to ${MAX_ASSET_BYTES / 1024 / 1024} MB`);
   }
   const name = `${createHash('sha256').update(bytes).digest('hex').slice(0, 12)}.${ext}`;
   const target = path.join(diagramsDir, 'assets', name);
@@ -484,7 +470,7 @@ export async function readAsset(
   diagramsDir: string,
   name: string,
 ): Promise<HandlerResult & { bytes?: Buffer; contentType?: string }> {
-  if (!IMAGE_REF.test(name)) return { status: 400, body: { issues: [{ message: `Unsafe asset name '${name}'` }] } };
+  if (!IMAGE_REF.test(name)) return refuse(400, `Unsafe asset name '${name}'`);
   try {
     const bytes = await readFile(path.join(diagramsDir, 'assets', name));
     const ext = name.split('.').at(-1) ?? '';
@@ -495,6 +481,6 @@ export async function readAsset(
       contentType: ASSET_TYPE[ext === 'jpeg' ? 'jpg' : ext] ?? 'application/octet-stream',
     };
   } catch {
-    return { status: 404, body: { issues: [{ message: `No asset '${name}'` }] } };
+    return refuse(404, `No asset '${name}'`);
   }
 }
