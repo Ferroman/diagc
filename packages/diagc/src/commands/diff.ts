@@ -12,7 +12,7 @@ import {
   type DiagramSet,
 } from '../diff/index';
 import { checkoutDiagrams, type CheckedOutRef } from '../git-ref';
-import { diagramNames } from './shared';
+import { diagramNames, pngRenderer } from './shared';
 
 /** `A..B` or `A` (against the working tree). */
 export function parseRange(range: string): { from: string; to?: string } {
@@ -76,13 +76,7 @@ export const diff: Command<'--out' | '--no-images' | '--json' | '--labels' | '--
         io.err('viewer shell not available — writing the summary only (see `diagc publish` for how to build it).');
         return 0;
       }
-      let renderPng: ((htmlPath: string, pngPath: string) => Promise<void>) | undefined;
-      if (flags['--no-images'] !== true) {
-        const snapshot = await import('../publish/snapshot');
-        if (snapshot.findChrome() === undefined)
-          io.err('No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.');
-        else renderPng = snapshot.renderPng;
-      }
+      const renderPng = await pngRenderer(io, flags['--no-images'] !== true);
       const outDir = flags['--out'] ?? diffOutDir(from, to);
       const res = await writeDiffPages(diffs, {
         outDir,

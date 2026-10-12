@@ -7,7 +7,7 @@ import { globSorted } from '../glob';
 import { discoverDiagrams } from '../publish/discover';
 import { publishDiagrams, type PublishOptions } from '../publish/publish';
 import { formatCompileEvent } from '../watch';
-import { ARTIFACTS_DIR, diagramNames, warnNoSources } from './shared';
+import { ARTIFACTS_DIR, diagramNames, pngRenderer, warnNoSources } from './shared';
 
 type PublishDirs = Pick<PublishOptions, 'srcDir' | 'artifactsDir' | 'htmlDir' | 'staticDir' | 'assetsDir'>;
 
@@ -73,22 +73,12 @@ export const publish: Command<'--out' | '--no-images' | '--link' | '--update-inc
     const discovered = await discoverDiagrams(dirs.artifactsDir, dirs.srcDir);
     const names = diagramNames(io, positionals, new Set(discovered.map((d) => d.name)));
     if (names === undefined) return 1;
-    let images = flags['--no-images'] !== true;
-    let renderPng: ((htmlPath: string, pngPath: string) => Promise<void>) | undefined;
-    if (images) {
-      const snapshot = await import('../publish/snapshot');
-      if (snapshot.findChrome() === undefined) {
-        io.err('No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.');
-        images = false;
-      } else {
-        renderPng = snapshot.renderPng;
-      }
-    }
+    const renderPng = await pngRenderer(io, flags['--no-images'] !== true);
     const res = await publishDiagrams({
       ...dirs,
       shellPath: home.viewerShell,
       libraryDir: home.libraryDir,
-      images,
+      images: renderPng !== undefined,
       names,
       ...(renderPng !== undefined ? { renderPng } : {}),
       ...(flags['--link'] !== undefined ? { link: flags['--link'] } : {}),

@@ -1,5 +1,6 @@
 import type { CliIo } from '../cli/io';
 import { diagramName } from '../names';
+import type { PublishOptions } from '../publish/publish';
 
 /** The sources compile and lint read when they are named none. */
 export const SOURCES = '.diagrams/src/**/*.diagram.{ts,json}';
@@ -24,4 +25,20 @@ export function diagramNames(io: CliIo, files: readonly string[], known: Readonl
   const unknown = names.filter((n) => !known.has(n));
   for (const n of unknown) io.err(`diagc: no diagram '${n}'`);
   return unknown.length === 0 ? names : undefined;
+}
+
+/** The PNG renderer, when images are wanted and a Chrome is found. Without a Chrome it
+ * says so on stderr, and the pages go out as HTML only. Playwright loads only when a
+ * picture is wanted. */
+export async function pngRenderer(
+  io: CliIo,
+  images: boolean,
+): Promise<NonNullable<PublishOptions['renderPng']> | undefined> {
+  if (!images) return undefined;
+  const snapshot = await import('../publish/snapshot');
+  if (snapshot.findChrome() === undefined) {
+    io.err('No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.');
+    return undefined;
+  }
+  return snapshot.renderPng;
 }
