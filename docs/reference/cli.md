@@ -31,7 +31,7 @@ From a checkout, `pnpm link --global` inside the repo gives you a `diagc` that r
 diagc <init|compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir] [--no-images] [--link url]
 ```
 
-An unknown command exits `1` with that usage line.
+An unknown command exits `1` with that usage line, and so does a flag or an argument the command does not take.
 
 ## Commands
 
@@ -116,7 +116,7 @@ diagc watch
 diagc watch .diagrams/src/team-a
 ```
 
-Takes an optional directory (default `.diagrams/src`). Writes to `--out`. On a failed recompile it prints the error and **keeps the last good artifact**, so the studio never blanks out mid-edit.
+Takes an optional directory (default `.diagrams/src`). Writes to `--out`. Remote includes resolve locked; `--update-includes` is refused. On a failed recompile it prints the error and **keeps the last good artifact**, so the studio never blanks out mid-edit.
 
 ### `publish`
 
@@ -162,7 +162,7 @@ Which server depends on how `diagc` was installed, and nothing else does:
 
 Both serve the same API from the same route table (`packages/diagc/src/api`), so saving, renaming, assets, and the shape library behave identically.
 
-Remote includes resolve locked here too, same as `compile` — there is no `--update-includes` flag on `studio` itself; run `diagc compile --update-includes` first if a lock entry is missing.
+Remote includes resolve locked here too, same as `compile` — `studio` refuses `--update-includes`; run `diagc compile --update-includes` first if a lock entry is missing.
 
 ### `eject`
 
@@ -193,8 +193,8 @@ See [Eject a diagram to TypeScript](../how-to/eject-to-typescript.md) for the st
 the crash-recovery note (a crash between writing the TS and deleting the JSON leaves both —
 recovery is deleting one).
 
-Like `studio`, `eject`'s post-swap recompile resolves remote includes locked, with no
-`--update-includes` flag of its own.
+Like `studio`, `eject`'s post-swap recompile resolves remote includes locked, and `eject`
+refuses `--update-includes`.
 
 ### `guide`
 
@@ -213,6 +213,8 @@ diagc guide all        # everything
 
 ## Flags
 
+A command takes only the flags its row lists; any other exits `1` with the usage, as an unknown flag does, naming the commands that take it.
+
 | Flag | Applies to | Default | Meaning |
 | --- | --- | --- | --- |
 | `--out <dir>` | `compile`, `watch`, `publish`, `eject`, `diff` | `.diagrams/.artifacts` (`diff`: `.diagrams/diff/<from>..<to>`) | Where artifacts are written — for `publish`, the artifacts only, its pages and images still go under `.diagrams/`; for `eject`, the dir its post-swap recompile writes into; for `diff`, its pages and images. |
@@ -225,7 +227,7 @@ diagc guide all        # everything
 | `--agents` | `init` | off | Write the coding-agent block into `AGENTS.md` / `CLAUDE.md`, and the Claude Code skill where there is a `.claude/` folder or a `CLAUDE.md`. |
 | `--update-includes` | `compile`, `publish` | off | Refetch every remote `include`, vendor it under `.diagrams/includes/`, and rewrite `.diagrams/includes.lock.json`. On `compile`, pruning entries the run didn't touch only happens with no `files...` given (a full-tree run); `publish` always compiles the whole tree, so its prune is unconditional. |
 
-Anything not recognised as a flag is collected as `files...`.
+Anything not recognised as a flag is collected as `files...`: any number for `compile`, `lint`, `publish`, `diff` and `guide`, one at most for `watch`, `eject` and `init`, none for `studio`.
 
 ## Environment variables
 
