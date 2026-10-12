@@ -17,14 +17,6 @@
       "count": 1
     }
   },
-  "packages/diagc/src/cli.ts": {
-    "complexity": {
-      "count": 2
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "packages/renderer/src/canvas/DiagramView.tsx": {
     "max-lines-per-function": {
       "count": 1

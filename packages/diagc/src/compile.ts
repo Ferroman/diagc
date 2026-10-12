@@ -119,8 +119,11 @@ export interface LoadOptions {
   coreEntry?: string;
   resolver?: IncludeResolver;
   /** what composing the includes warns about, one warning at a time; by default each
-   * is printed on stderr as `<file>: <warning>` */
+   * goes to `warn` as `<file>: <warning>` */
   onWarning?: (warning: string) => void;
+  /** where a warning goes, one line each: `console.warn` by default, so a caller with
+   * streams of its own (the CLI's) passes its stderr */
+  warn?: (line: string) => void;
 }
 
 /**
@@ -161,7 +164,7 @@ export async function loadModel(file: string, opts?: LoadOptions): Promise<Diagr
     const { model: composed, warnings } = await composeIncludes(model, path.resolve(file), resolver);
     for (const w of warnings) {
       if (opts?.onWarning !== undefined) opts.onWarning(w);
-      else console.warn(`${file}: ${w}`);
+      else (opts?.warn ?? console.warn)(`${file}: ${w}`);
     }
     model = composed;
     const issues = validate(model);
@@ -175,7 +178,7 @@ export async function compileFile(file: string, outDir: string, opts?: LoadOptio
   // Sound but probably not what was meant (a fishbone cause on no bone, a typo'd
   // type): say so, and compile anyway — the studio saves the same model without
   // complaint. `diagc lint` is the strict reading of the same list.
-  for (const w of diagramWarnings(model)) console.warn(`${file}: ${w.message}`);
+  for (const w of diagramWarnings(model)) (opts?.warn ?? console.warn)(`${file}: ${w.message}`);
 
   const base = path.basename(file).replace(/\.diagram\.(ts|json)$/, '');
   const artifactDir = path.join(outDir, relativeSubdir(file, opts?.rootDir));

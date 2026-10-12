@@ -21,6 +21,9 @@ export interface PublishOptions {
   renderPng?: (htmlPath: string, pngPath: string) => Promise<void>;
   /** an http(s) address for the gallery's header — never put on a diagram page */
   link?: string;
+  /** where a warning goes, one line each: `console.warn` by default, so a caller with
+   * streams of its own (the CLI's) passes its stderr */
+  warn?: (line: string) => void;
 }
 export interface PublishResult {
   pages: string[];
@@ -56,17 +59,18 @@ async function readMaybe(p: string): Promise<Buffer | undefined> {
  */
 export async function inlineAssets(
   model: DiagramModel,
-  dirs: { libraryDir: string; assetsDir: string },
+  opts: Pick<PublishOptions, 'libraryDir' | 'assetsDir' | 'warn'>,
   cache: Map<string, Buffer>,
   label: string,
 ): Promise<DiagramModel> {
+  const warn = opts.warn ?? console.warn;
   // Pre-read every inlinable ref so the rewrite can stay a pure sync function.
   for (const n of model.nodes) {
     for (const ref of [n.image, n.shape]) {
       if (ref === undefined || cache.has(ref)) continue;
       const kind = classifyAssetRef(ref);
       if (kind === 'skip') continue;
-      const base = kind === 'library' ? dirs.libraryDir : dirs.assetsDir;
+      const base = kind === 'library' ? opts.libraryDir : opts.assetsDir;
       const rel =
         kind === 'library'
           ? ref.slice('/library/'.length)
@@ -75,19 +79,19 @@ export async function inlineAssets(
             : ref;
       const filePath = safeAssetPath(base, rel);
       if (filePath === undefined) {
-        console.warn(`publish: refusing out-of-root asset "${ref}" for ${label}; leaving ref as-is.`);
+        warn(`publish: refusing out-of-root asset "${ref}" for ${label}; leaving ref as-is.`);
         continue;
       }
       const bytes = await readMaybe(filePath);
       if (bytes !== undefined) cache.set(ref, bytes);
-      else
-        console.warn(`publish: could not read asset "${ref}" for ${label} (looked in ${filePath}); leaving ref as-is.`);
+      else warn(`publish: could not read asset "${ref}" for ${label} (looked in ${filePath}); leaving ref as-is.`);
     }
   }
   return rewriteAssetRefs(model, (ref) => cache.get(ref));
 }
 
 export async function publishDiagrams(opts: PublishOptions): Promise<PublishResult> {
+  const warn = opts.warn ?? console.warn;
   const shell = await readFile(opts.shellPath, 'utf8');
   await mkdir(opts.htmlDir, { recursive: true });
   if (opts.images) await mkdir(opts.staticDir, { recursive: true });
@@ -122,7 +126,7 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
         const parsed = JSON.parse(await readFile(d.drawingsPath, 'utf8')) as unknown;
         if (isDrawings(parsed)) drawings = parsed;
         else
-          console.warn(
+          warn(
             `publish: ignoring malformed drawings sidecar for diagram "${d.name}" (${d.drawingsPath}); the page ships without ink.`,
           );
       }
@@ -140,7 +144,7 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
         images.push(pngPath);
       }
     } catch (e) {
-      console.warn(`publish: skipping diagram "${d.name}": ${errMessage(e)}`);
+      warn(`publish: skipping diagram "${d.name}": ${errMessage(e)}`);
       skipped.push(d.name);
       continue;
     }
