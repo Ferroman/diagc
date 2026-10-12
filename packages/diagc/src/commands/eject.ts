@@ -2,7 +2,8 @@ import { errMessage } from '@diagc/core/internal';
 import type { Command } from '../cli/command';
 import { ejectDiagram } from '../eject';
 import { diagramName } from '../names';
-import { ARTIFACTS_DIR, LOCKED } from './shared';
+import { RELATIVE_PATHS } from '../paths';
+import { LOCKED } from './shared';
 
 /** `diagc eject <name>`: a JSON diagram as a generated TypeScript source. */
 export const eject: Command<'--out'> = {
@@ -19,7 +20,7 @@ export const eject: Command<'--out'> = {
       return 1;
     }
     try {
-      const res = await ejectDiagram('.diagrams/src', flags['--out'] ?? ARTIFACTS_DIR, name, {
+      const res = await ejectDiagram(RELATIVE_PATHS.srcDir, flags['--out'] ?? RELATIVE_PATHS.artifactsDir, name, {
         coreEntry: home.coreEntry,
       });
       io.out(`✓ ${res.tsPath}`);

@@ -12,6 +12,7 @@ import {
   type DiagramSet,
 } from '../diff/index';
 import { checkoutDiagrams, type CheckedOutRef } from '../git-ref';
+import { RELATIVE_PATHS } from '../paths';
 import { diagramNames, pngRenderer } from './shared';
 
 /** `A..B` or `A` (against the working tree). */
@@ -28,7 +29,7 @@ export function parseRange(range: string): { from: string; to?: string } {
 /** A ref as a directory name: `v1.0..feature/x` -> `v1.0..feature-x`. */
 export function diffOutDir(from: string, to: string | undefined): string {
   const safe = (s: string) => s.replace(/[^A-Za-z0-9._-]+/g, '-');
-  return path.join('.diagrams', 'diff', `${safe(from)}..${to !== undefined ? safe(to) : 'working-tree'}`);
+  return path.join(RELATIVE_PATHS.diffDir, `${safe(from)}..${to !== undefined ? safe(to) : 'working-tree'}`);
 }
 
 /** Each sidecar diff left out of its pictures, on stderr so `--json` stays parseable. */
@@ -51,7 +52,7 @@ export const diff: Command<'--out' | '--no-images' | '--json' | '--labels' | '--
       const { from, to } = parseRange(range);
       const before = await checkoutDiagrams(from, process.cwd());
       checkouts.push(before);
-      let afterDir = '.diagrams';
+      let afterDir = RELATIVE_PATHS.diagramsDir;
       if (to !== undefined) {
         const after = await checkoutDiagrams(to, process.cwd());
         checkouts.push(after);

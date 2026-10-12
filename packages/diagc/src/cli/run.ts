@@ -11,6 +11,7 @@ import { studio } from '../commands/studio';
 import { watch } from '../commands/watch';
 import { findHome, homePaths } from '../home';
 import { resolveInclude } from '../includes';
+import { RELATIVE_PATHS } from '../paths';
 import { snapshotSession } from '../snapshots';
 import type { Command } from './command';
 import type { CliIo } from './io';
@@ -37,7 +38,7 @@ async function dispatch(parsed: ParsedArgv, io: CliIo, usage: string): Promise<n
   // Watch, the studio and eject resolve through locked resolvers of their own.
   const snapshots = snapshotSession(
     resolveInclude,
-    '.diagrams',
+    RELATIVE_PATHS.diagramsDir,
     parsed.flags['--update-includes'] === true ? 'update' : 'locked',
   );
   const command = Object.hasOwn(COMMANDS, parsed.command) ? COMMANDS[parsed.command] : undefined;
