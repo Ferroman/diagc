@@ -26,6 +26,7 @@ import {
 } from '@diagc/core/internal';
 import { typeColor } from '../canvas/build-data';
 import { DEFAULT_KIND_STYLES, DEFAULT_TYPE_STYLES, type KindStyle, type Registry, type TypeStyle } from '../registry';
+import { nodeHue, type TypeHues } from '../canvas/type-hues';
 
 /** `draw` is the discriminant — deliberately not `kind`, which already means
  * "relation kind" throughout this module. */
@@ -73,6 +74,8 @@ export interface LegendInput {
   /** node id → the notation's accent (the profile's `colorOf`), exactly what the
    *  canvas is given — without it a trust boundary's swatch is grey beside red boxes */
   nodeColors?: ReadonlyMap<string, string>;
+  /** a palette preset's colouring: a type row keys the hue the canvas draws its boxes in */
+  hues?: TypeHues;
   /** already notation-composed by the caller (see useNotation) */
   typeRegistry: Registry<TypeStyle>;
   kindRegistry: Registry<KindStyle>;
@@ -256,7 +259,11 @@ function typeRows(input: LegendInput): LegendRow[] {
   walk(input.compiled.roots);
   return orderByRegistry([...accents.keys()], Object.keys(DEFAULT_TYPE_STYLES)).map((t) => {
     const style = input.typeRegistry.resolve(t);
-    const accent = NEUTRAL_GLYPHS.has(style.shape) ? undefined : accents.get(t);
+    const accent = NEUTRAL_GLYPHS.has(style.shape)
+      ? undefined
+      : input.hues !== undefined
+        ? nodeHue(t, accents.get(t), input.hues)
+        : accents.get(t);
     // Some registry entries set `label: ''` to suppress the node's own subtitle
     // (the activity leaf shapes read fine unlabeled on the canvas) — that empty
     // string is not a legend caption, so an opt-in types legend must still fall

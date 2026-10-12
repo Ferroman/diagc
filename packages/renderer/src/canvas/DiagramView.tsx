@@ -136,6 +136,7 @@ function Inner(props: DiagramViewProps) {
     strokes: ink.strokes,
     drawingsVisible: ink.drawingsVisible,
     nodeColors: notation.nodeColors,
+    hues,
   });
   const moves = useViewModeMoves({ props, editing });
 

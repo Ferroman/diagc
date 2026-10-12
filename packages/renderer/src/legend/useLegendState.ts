@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { compileView, viewedPlane, type BoxSize, type DiagramModel, type Stroke } from '@diagc/core/internal';
 import { legendRows, type LegendRow } from './legendRows';
+import type { TypeHues } from '../canvas/type-hues';
 import type { KindStyle, Registry, TypeStyle } from '../registry';
 
 export interface LegendStateInput {
@@ -16,6 +17,8 @@ export interface LegendStateInput {
   drawingsVisible: boolean;
   /** the notation profile's node accents, as the canvas is given them */
   nodeColors?: ReadonlyMap<string, string>;
+  /** a palette preset's colouring of the model (see legendRows) */
+  hues?: TypeHues;
 }
 
 export interface LegendState {
@@ -57,6 +60,7 @@ export function useLegendState(input: LegendStateInput): LegendState {
       // tell it "no layers on" on a page that draws the presets.
       activeLayers: input.activeLayers,
       nodeColors: input.nodeColors,
+      hues: input.hues,
       typeRegistry: input.typeRegistry,
       kindRegistry: input.kindRegistry,
       config: legendConfig ?? UNDECLARED,
@@ -86,6 +90,7 @@ export function useLegendState(input: LegendStateInput): LegendState {
     input.strokes,
     input.drawingsVisible,
     input.nodeColors,
+    input.hues,
   ]);
   // Read through `legendReserveRef` (not the state above) by useLayoutApi's
   // effect, whose own deps are intentionally just [layoutApiRef, reactFlow]

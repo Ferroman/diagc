@@ -479,6 +479,15 @@ describe('notation vocabulary', () => {
     const byType = rows({ ...tm, typeColors: { 'tm-process': '#1565c0' } }).find((r) => r.id === 'types:tm-process');
     expect(byType?.swatch).toMatchObject({ color: '#1565c0' });
   });
+
+  it('under a palette preset keys each type in the colour the canvas gives it', () => {
+    const tm = threatModel();
+    const hues = { palette: ['#123456'], slots: new Map([['tm-process', 0]]) };
+    const row = rows(tm, { hues }).find((r) => r.id === 'types:tm-process');
+    expect(row?.swatch).toMatchObject({ draw: 'shape', color: '#123456' });
+    const red = rows(tm, { hues, nodeColors: new Map([['dmz', '#c62828']]) }).find((r) => r.id === 'types:tm-boundary');
+    expect(red?.swatch).toMatchObject({ color: '#c62828' });
+  });
 });
 
 describe('marks', () => {
