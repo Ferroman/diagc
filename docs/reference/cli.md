@@ -106,7 +106,7 @@ diagc diff v1.0..v2.0 checkout     # only these diagrams, by name
 - **For a comment elsewhere:** `--labels main,#12` names the two sides in place of the refs, and `--image-url 'https://host/pr-12/{path}'` makes `summary.md` link its images there (`{path}` is each PNG's path under the output directory). The [pull-request action](../how-to/show-what-changed.md#show-it-on-every-pull-request) uses both.
 - **Names:** after the range, as `eject` reads them (`shop`, `shop.diagram.json` or `.diagrams/src/shop.diagram.json`); one that matches no diagram at either side exits `1`.
 - **What counts:** nodes by id (any field, plus a move to another container), relations by id or else by endpoints and kind, layers and planes by id. Layout positions are not compared.
-- **Exit code:** `0` whether or not anything changed; `1` for a ref that does not exist, a name that matches no diagram, or a failure.
+- **Exit code:** `0` whether or not anything changed; `1` outside a git repository (`not a git repository`), for a ref that does not exist, a name that matches no diagram, or a failure.
 
 ### `watch`
 

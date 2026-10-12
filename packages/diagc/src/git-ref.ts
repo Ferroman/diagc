@@ -32,10 +32,25 @@ export async function verifyRef(ref: string, cwd: string): Promise<string> {
  * `diagramsDir` is relative to `cwd`, which may sit below the repository root.
  */
 export async function checkoutDiagrams(ref: string, cwd: string, diagramsDir = '.diagrams'): Promise<CheckedOutRef> {
-  const commit = await verifyRef(ref, cwd);
   // Every git call below runs at the top level with a top-level path: from a
   // subdirectory, ls-tree and archive would read their paths relative to it.
-  const { stdout: top } = await run('git', ['rev-parse', '--show-toplevel'], { cwd });
+  // Asked first, so a directory outside any repository hears that, not that its
+  // ref does not exist. Git fails this call the same way for other reasons (a bare
+  // repository, "dubious ownership" in a container), so those pass on git's own
+  // words; a git that did not run at all keeps its own error.
+  let top: string;
+  try {
+    ({ stdout: top } = await run('git', ['rev-parse', '--show-toplevel'], { cwd }));
+  } catch (e) {
+    const { code, stderr } = e as { code?: unknown; stderr?: unknown };
+    if (typeof code !== 'number') throw e;
+    const said = typeof stderr === 'string' ? stderr.trim() : '';
+    if (said === '' || /not a git repository/i.test(said)) {
+      throw new Error(`not a git repository (or any parent): ${cwd}`, { cause: e });
+    }
+    throw new Error(`git cannot read the repository at ${cwd}: ${said.replace(/^fatal: /, '')}`, { cause: e });
+  }
+  const commit = await verifyRef(ref, cwd);
   const { stdout: prefix } = await run('git', ['rev-parse', '--show-prefix'], { cwd });
   const repoPath = path.posix.normalize(path.posix.join(prefix.trim(), diagramsDir.split(path.sep).join('/')));
   if (repoPath.startsWith('..')) throw new Error(`${diagramsDir} is outside the repository`);
