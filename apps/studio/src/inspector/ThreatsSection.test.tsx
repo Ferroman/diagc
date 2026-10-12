@@ -147,8 +147,8 @@ describe('ThreatsSection', () => {
   });
 
   it('refreshes a row title changed underneath the panel, and then commits nothing', () => {
-    // The Undo case: the model moved while the box was on screen. Controlled
-    // with resync (EdgePanel's LabelRow) means the box follows it — and the
+    // The Undo case: the model moved while the box was on screen. A draft that
+    // resyncs (useDraftField) means the box follows it — and the
     // blur that comes after diffs the model's value against the model's value,
     // so no undo step of its own lands on top of the Undo.
     const { onCommand, rerender } = setup([threat('t1', { title: 'Old' })]);

@@ -285,7 +285,7 @@ export function useNodePlacement({
     const details = entryToNodeDetails(entry);
     const typeCmd: EditorCommand = { type: 'set-node-details', id, details };
     // A card can restyle the selection straight into plan-zone/plan-event —
-    // the same missing-dates trap as a Properties → Type retype (NodePanel's
+    // the same missing-dates trap as a Properties → Type retype (NodeFields'
     // commitType, the notation's OTHER no-drop-point retype path), fixed the
     // same way: seed via seedOnRetype and batch it with the retype so undo
     // reverts both together. Anchored on the node's EXISTING containment on

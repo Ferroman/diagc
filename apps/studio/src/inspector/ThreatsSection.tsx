@@ -68,14 +68,9 @@ function ThreatRow({
   const written = (threat.description ?? '') !== '' || (threat.mitigation ?? '') !== '';
   const patch = (p: ThreatPatch) => onCommand({ type: 'update-threat', target, id: threat.id, patch: p });
 
-  // Text fields are controlled with resync, exactly as EdgePanel's LabelRow:
-  // local state carries the keystrokes (so typing never fights the round-trip
-  // through the model), and an effect pushes any change made *underneath* the
-  // panel — an Undo above all — back into the box instead of leaving stale text
-  // on screen. The blur that follows such a refresh then diffs the model's value
-  // against the model's value and dispatches nothing, so an Undo is not
-  // immediately undone by the box it just refreshed. A commit that changes
-  // nothing must never land an undo step of its own, hence every one diffs first.
+  // Text fields keep a draft that a change underneath (an Undo above all)
+  // refreshes (useDraftField). A commit that changes nothing must never land an
+  // undo step of its own, hence every one diffs first.
   const [title, setTitle] = useDraftField(threat.title);
   const [description, setDescription] = useDraftField(threat.description);
   const [mitigation, setMitigation] = useDraftField(threat.mitigation);

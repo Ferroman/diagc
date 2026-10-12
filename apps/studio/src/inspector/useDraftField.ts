@@ -12,7 +12,8 @@ export type DraftField = [string, Dispatch<SetStateAction<string>>];
  *
  * The refresh is an effect keyed on the stored value exactly as it is stored,
  * not as the box shows it: absent to `''` is a change too. It runs after the
- * render that brought the new value, as every panel's own effect did.
+ * render that brought the new value, not during it: a render-phase resync would
+ * change when the panels commit.
  * `whenMissing: 'keep'` leaves the draft alone while the value is absent, for a
  * required field whose element is gone (a node's name, a relation's kind).
  */

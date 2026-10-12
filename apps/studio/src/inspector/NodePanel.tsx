@@ -46,8 +46,8 @@ interface NodePanelProps {
    * (e.g. a test harness with nothing plan-shaped to seed) just skips seeding.
    * Optional only so the panel's own tests can render without it — the
    * inspector dock (InspectorDock) always passes it, and a caller that forgets
-   * it loses seeding silently, with no error, since commitType's
-   * `today !== undefined` check just skips. */
+   * it loses seeding silently, with no error, since NodeFields' commitType
+   * skips on `today === undefined`. */
   today?: string;
   onCommand: (command: EditorCommand) => void;
   onClose: () => void;
