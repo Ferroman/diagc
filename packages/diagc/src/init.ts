@@ -5,6 +5,7 @@ import fg from 'fast-glob';
 import { errMessage, type IncludeResolver } from '@diagc/core/internal';
 import { diagramName, isSafeName } from './names';
 import { compileFile } from './compile';
+import { projectPaths, RELATIVE_PATHS } from './paths';
 import { readStarter, UnknownStarterError } from './starters';
 
 /** What `diagc init` works with. `cwd` is the directory being set up — the
@@ -34,10 +35,12 @@ export interface InitIo {
 
 export const DEFAULT_NAME = 'example';
 export const DEFAULT_TYPE = 'basic';
-const SRC_DIR = '.diagrams/src';
-const ARTIFACTS_DIR = '.diagrams/.artifacts';
 /** build output a repository should not commit; `init` adds what is missing */
-export const IGNORED: readonly string[] = ['.diagrams/.artifacts/', '.diagrams/html/', '.diagrams/diff/'];
+export const IGNORED: readonly string[] = [
+  RELATIVE_PATHS.artifactsDir,
+  RELATIVE_PATHS.htmlDir,
+  RELATIVE_PATHS.diffDir,
+].map((dir) => `${dir}/`);
 
 export const AGENTS_BEGIN = '<!-- diagc:begin -->';
 export const AGENTS_END = '<!-- diagc:end -->';
@@ -108,13 +111,13 @@ export function missingIgnores(existing: string, wanted: readonly string[] = IGN
 /** Step 1: the starter. Returns the file it wrote, or nothing when the step was
  * skipped. Every check comes before the write, so a refusal leaves no file. */
 async function starterStep(opts: InitOptions, io: InitIo): Promise<string | undefined> {
-  const srcDir = path.join(opts.cwd, SRC_DIR);
+  const { srcDir } = projectPaths(opts.cwd);
   if (opts.name === undefined && opts.type === undefined) {
     // A plain `diagc init` in a repository that already has diagrams is here for
     // the other steps (`--agents` after an upgrade): do not add an `example`.
     const existing = await fg('**/*.diagram.{ts,json}', { cwd: srcDir });
     if (existing.length > 0) {
-      io.out(skipped(SRC_DIR, `already has ${existing.length} diagram(s) — starter skipped`));
+      io.out(skipped(RELATIVE_PATHS.srcDir, `already has ${existing.length} diagram(s) — starter skipped`));
       return undefined;
     }
   }
@@ -142,14 +145,14 @@ async function starterStep(opts: InitOptions, io: InitIo): Promise<string | unde
   for (const ext of ['ts', 'json']) {
     if (existsSync(path.join(srcDir, `${name}.diagram.${ext}`))) {
       throw new InitError(
-        `${SRC_DIR}/${name}.diagram.${ext} already exists — pick another name, or run 'diagc init' with no name and no --type to leave it alone.`,
+        `${RELATIVE_PATHS.srcDir}/${name}.diagram.${ext} already exists — pick another name, or run 'diagc init' with no name and no --type to leave it alone.`,
       );
     }
   }
   const file = path.join(srcDir, `${name}.diagram.ts`);
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, source);
-  io.out(done(`${SRC_DIR}/${name}.diagram.ts`, `(${type} starter)`));
+  io.out(done(`${RELATIVE_PATHS.srcDir}/${name}.diagram.ts`, `(${type} starter)`));
   return file;
 }
 
@@ -229,10 +232,11 @@ async function skillStep(cwd: string, plan: SkillPlan | undefined, io: InitIo): 
 /** Step 5: compile what was written, so the user starts from a diagram that is
  * known to build and sees where the artifact went. */
 async function compileStep(file: string, opts: InitOptions, io: InitIo): Promise<void> {
+  const { srcDir, artifactsDir } = projectPaths(opts.cwd);
   let artifact: string;
   try {
-    artifact = await compileFile(file, path.join(opts.cwd, ARTIFACTS_DIR), {
-      rootDir: path.join(opts.cwd, SRC_DIR),
+    artifact = await compileFile(file, artifactsDir, {
+      rootDir: srcDir,
       coreEntry: opts.coreEntry,
       ...(opts.resolver !== undefined ? { resolver: opts.resolver } : {}),
     });

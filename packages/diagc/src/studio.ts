@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
-import path from 'node:path';
 import type { HomePaths } from './home';
+import { projectPaths } from './paths';
 import { startStudioServer } from './serve';
 import { lockedResolverFor } from './snapshots';
 import { formatCompileEvent, startWatch } from './watch';
@@ -15,9 +15,10 @@ export interface StudioEnv {
 
 /** Env that points the monorepo's studio Vite server at the target repo. */
 export function studioEnv(cwd: string): StudioEnv {
+  const { srcDir, artifactsDir } = projectPaths(cwd);
   return {
-    DIAGRAMS_DIR: path.join(cwd, '.diagrams', 'src'),
-    ARTIFACTS_DIR: path.join(cwd, '.diagrams', '.artifacts'),
+    DIAGRAMS_DIR: srcDir,
+    ARTIFACTS_DIR: artifactsDir,
     DIAGRAMS_CWD: cwd,
     DIAGRAMS_OPEN: '1',
   };
