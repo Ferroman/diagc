@@ -123,6 +123,20 @@ describe('designer api handlers', () => {
     expect((await readDiagram(dir, 'basket')).body).toMatchObject({ model: { id: 'basket', name: 'basket' } });
   });
 
+  it('refuses to rename or save onto a name a .diagram.ts source owns', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    await writeFile(path.join(dir, 'tsone.diagram.ts'), 'export default {};\n');
+    await saveDiagram(dir, 'shop', goodModel);
+    const renamed = await renameDiagram(dir, 'shop', 'tsone');
+    expect(renamed.status).toBe(409);
+    expect(JSON.stringify(renamed.body)).toContain("'tsone' is already TypeScript-owned");
+    expect((await readDiagram(dir, 'shop')).status).toBe(200);
+    const saved = await saveDiagram(dir, 'tsone', goodModel);
+    expect(saved.status).toBe(409);
+    expect(JSON.stringify(saved.body)).toContain("'tsone' is already TypeScript-owned");
+    await expect(readFile(path.join(dir, 'tsone.diagram.json'), 'utf8')).rejects.toThrow();
+  });
+
   it('renames a diagram with no layout file (layout absence is not an error)', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
     await saveDiagram(dir, 'solo', goodModel);
