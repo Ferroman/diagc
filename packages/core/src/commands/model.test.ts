@@ -6,6 +6,7 @@ import { CommandError } from '../command-error';
 import { layoutPlaneKey } from '../planes';
 import { TM_FLOW_KIND, TM_PROCESS_TYPE, TM_STORE_TYPE } from '../notations/threat-model/threat-model';
 import type { DiagramModel } from '../types';
+import { validate } from '../validate/index';
 
 /** The state a command leaves; most tests need nothing else. */
 const apply = (state: EditorState, command: EditorCommand): EditorState => applyCommand(state, command).state;
@@ -129,6 +130,27 @@ describe('model commands', () => {
     s = apply(s, { type: 'delete-plane', id: 'infra' });
     expect(s.layout.planes['infra']).toBeUndefined();
     expect(s.model.containment.some((e) => e.plane === 'infra')).toBe(false);
+  });
+
+  it('delete-plane deletes the nodes only it has, with their edges and saved positions', () => {
+    const m = model('t');
+    m.plane('current').plane('target', { containmentOf: 'current' });
+    const vpc = m.node('vpc', { type: 'system' });
+    const subnet = m.node('subnet', { type: 'service', plane: 'target' });
+    const app = m.node('app', { type: 'service' });
+    vpc.contains(subnet, app);
+    m.relate(app, subnet, { kind: 'sync' });
+    m.relate(app, vpc, { kind: 'sync' });
+    let s: EditorState = { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
+    // a borrowing plane's positions live in its donor's bucket
+    s = apply(s, { type: 'set-position', plane: 'target', nodeId: 'subnet', x: 1, y: 1 });
+    s = apply(s, { type: 'set-position', plane: 'target', nodeId: 'app', x: 2, y: 2 });
+    s = apply(s, { type: 'delete-plane', id: 'target' });
+    expect(s.model.nodes.map((n) => n.id)).toEqual(['vpc', 'app']);
+    expect(s.model.containment).toEqual([{ parent: 'vpc', child: 'app' }]);
+    expect(s.model.relations.map((r) => `${r.from}->${r.to}`)).toEqual(['app->vpc']);
+    expect(s.layout.planes[layoutPlaneKey(s.model, 'current')]).toEqual({ app: { x: 2, y: 2 } });
+    expect(validate(s.model)).toEqual([]);
   });
 
   it('delete-plane drops the deleted plane manual flag', () => {

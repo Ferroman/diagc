@@ -196,8 +196,8 @@ function listOf<T extends object>(list: readonly T[] | undefined): readonly T[] 
   return Array.isArray(list) ? list.filter((x: T | null) => typeof x === 'object' && x !== null) : [];
 }
 
-/** A node no plane shows (scoped to a plane that borrows another's hierarchy,
- * hidden everywhere) and a relation whose ends never share a view — for a
+/** A node no plane shows (hidden on every plane, say) and a relation whose ends
+ * never share a view — for a
  * relation scoped to a plane, that plane's view: all are in the file and nowhere
  * in the picture. `views` is one per declared plane, in order. */
 function undrawn(model: DiagramModel, views: HierarchyIndex[], add: Add): void {

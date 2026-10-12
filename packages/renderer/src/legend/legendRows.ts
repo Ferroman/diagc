@@ -118,7 +118,8 @@ function orderByRegistry(ids: string[], known: readonly string[]): string[] {
  *   `containmentOf` itself: filtering this model's containment by the borrowing
  *   plane's own id instead drops every node it has, and with them the layer rows
  *   for arrows that are, visibly, on screen. A `node.plane` scope is matched
- *   against the donor; `hides` is the borrower's own when it declares one.
+ *   against the donor and the borrower itself (`nodeScopeOn`); `hides` is the
+ *   borrower's own when it declares one.
  * - A drill view draws only the root's interior plus external stubs, so it is
  *   `scopeToRoot` that decides membership there.
  *

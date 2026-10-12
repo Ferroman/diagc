@@ -18,11 +18,10 @@ export interface CreateNodeOptions {
   kind: string;
   /** the active plane's id (undefined = Default/base view) */
   plane: string | undefined;
-  /** whether the active plane borrows another plane's containment. A borrowing
-   * plane's membership resolves to its base plane (compileView /
-   * containmentPlaneOf), so tagging a node with the borrowing plane's own
-   * id would mismatch and the node would silently vanish — new nodes are added
-   * shared instead (see the per-plane-views design doc). */
+  /** whether the active plane borrows another plane's containment. Such a plane
+   * is a view of its donor's structure, so a node drawn there joins that
+   * structure: it is added shared, and the inspector's Scope makes it the
+   * plane's own when that is what was meant. */
   borrowsContainment: boolean;
   /** the resolved parent id (defaultParentId output), if any */
   parentId: string | undefined;

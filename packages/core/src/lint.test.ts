@@ -172,17 +172,29 @@ describe('lintModel', () => {
     it('flags a node no plane shows, and only that node, not its relations', () => {
       const m = base({
         planes: [
-          { id: 'arch', name: 'Arch' },
+          // hidden by `arch`, and by `flow`, which borrows arch's hides with its containment
+          { id: 'arch', name: 'Arch', hides: ['ghost'] },
           { id: 'flow', name: 'Flow', containmentOf: 'arch' },
         ],
-        // scoped to a borrowing plane: matched against the donor, so never shown
-        nodes: [...base().nodes, { id: 'ghost', name: 'Ghost', type: 'service', plane: 'flow' }],
+        nodes: [...base().nodes, { id: 'ghost', name: 'Ghost', type: 'service' }],
         relations: [...base().relations, { id: 'r2', from: 'a', to: 'ghost', kind: 'sync' }],
         containment: [{ parent: 'a', child: 'b' }],
       });
       expect(lintModel(m)).toEqual([
         { code: 'undrawn-node', message: "'ghost' is in no plane's view, so it is never drawn", ref: 'ghost' },
       ]);
+    });
+
+    it('draws a node scoped to a plane that borrows its containment', () => {
+      const m = base({
+        planes: [
+          { id: 'arch', name: 'Arch' },
+          { id: 'flow', name: 'Flow', containmentOf: 'arch' },
+        ],
+        nodes: [...base().nodes, { id: 'extra', name: 'Extra', type: 'service', plane: 'flow' }],
+        containment: [{ parent: 'a', child: 'b' }],
+      });
+      expect(lintModel(m)).toEqual([]);
     });
 
     it("flags a relation whose own plane does not show both its ends, and only that plane's view counts", () => {

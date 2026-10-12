@@ -87,6 +87,31 @@ describe('LayersPlanesPanel', () => {
     await waitFor(() => expect(onCommand).toHaveBeenCalledWith({ type: 'delete-plane', id: 'flow' }));
   });
 
+  it('says what goes with a plane before deleting it', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const base = testModel();
+    const m: DiagramModel = {
+      ...base,
+      nodes: [
+        { id: 'a', name: 'A' },
+        { id: 'b', name: 'B', plane: 'flow' },
+        { id: 'c', name: 'C', plane: 'flow' },
+      ],
+      relations: [
+        { id: 'r1', from: 'a', to: 'b', kind: 'sync' },
+        { id: 'r2', from: 'a', to: 'a', kind: 'sync', plane: 'flow' },
+        { id: 'r3', from: 'a', to: 'a', kind: 'sync' },
+      ],
+    };
+    render(<LayersPlanesPanel model={m} onCommand={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /remove plane flow/i }));
+    await waitFor(() =>
+      expect(confirm).toHaveBeenCalledWith("Delete plane 'Flow'? Its 2 nodes and 2 relations go with it."),
+    );
+    fireEvent.click(screen.getByRole('button', { name: /remove plane architecture/i }));
+    await waitFor(() => expect(confirm).toHaveBeenLastCalledWith("Delete plane 'Architecture'?"));
+  });
+
   it('sets a plane notation via upsert-plane', () => {
     const onCommand = vi.fn();
     render(<LayersPlanesPanel model={testModel()} onCommand={onCommand} />);

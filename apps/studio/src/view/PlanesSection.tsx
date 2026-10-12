@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import {
   BUILTIN_NOTATIONS,
+  deletePlane,
   uniqueSlug,
   type DiagramLayer,
   type DiagramModel,
@@ -200,7 +201,7 @@ export function PlanesSection({
     setNewPlaneName('');
   };
   const removePlane = async (id: string, name: string) => {
-    if (!(await getHost().confirmDialog(`Delete plane '${name}'?`))) return;
+    if (!(await getHost().confirmDialog(deletePlaneQuestion(model, id, name)))) return;
     onCommand({ type: 'delete-plane', id });
   };
   const toggleRowLayer = (row: PlaneRow, layerId: string, on: boolean) =>
@@ -233,4 +234,25 @@ export function PlanesSection({
       </div>
     </section>
   );
+}
+
+const counted = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/** The question before a plane is deleted, naming what goes with it: the nodes
+ * and relations only it has. Asked of deletePlane itself, so it cannot disagree
+ * with what the command removes; a plane the command would refuse gets the plain
+ * question, and the command's own error after it. */
+function deletePlaneQuestion(model: DiagramModel, id: string, name: string): string {
+  const question = `Delete plane '${name}'?`;
+  let after: DiagramModel;
+  try {
+    after = deletePlane(model, id);
+  } catch {
+    return question;
+  }
+  const nodes = model.nodes.length - after.nodes.length;
+  const relations = model.relations.length - after.relations.length;
+  const parts = [nodes > 0 ? counted(nodes, 'node') : '', relations > 0 ? counted(relations, 'relation') : ''];
+  const goes = parts.filter((p) => p !== '').join(' and ');
+  return goes === '' ? question : `${question} Its ${goes} go${nodes + relations === 1 ? 'es' : ''} with it.`;
 }

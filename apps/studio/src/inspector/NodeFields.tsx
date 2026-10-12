@@ -121,8 +121,10 @@ export function IdentityFields({
   );
 }
 
-/** Where the node is drawn: its layer, and on a plane of its own containment,
- * whether it is that plane's alone and whether that plane hides it. */
+/** Where the node is drawn: its layer, whether it is the plane in view's alone,
+ * and, on a plane of its own containment, whether that plane hides it. A plane
+ * that borrows its containment borrows the hides with it, and a list written
+ * there would replace them, so hiding stays the donor's. */
 export function PlacementFields({
   model,
   node,
@@ -154,20 +156,26 @@ export function PlacementFields({
         </label>
       )}
 
-      {activePlane !== undefined && !borrowsContainment(model, activePlane) && (
+      {activePlane !== undefined && (
         <>
           <label className="field">
             <span>Scope</span>
             <select
               aria-label="Scope"
-              value={node.plane === activePlane ? 'local' : 'shared'}
+              value={node.plane === undefined ? 'shared' : node.plane === activePlane ? 'local' : 'elsewhere'}
               onChange={(e) => onCommand(details(node, { plane: e.target.value === 'local' ? activePlane : null }))}
             >
               <option value="shared">Shared (all planes)</option>
               <option value="local">This plane only</option>
+              {/* a borrowing plane also draws the nodes its donor has alone */}
+              {node.plane !== undefined && node.plane !== activePlane && (
+                <option value="elsewhere" disabled>
+                  {`${model.planes.find((p) => p.id === node.plane)?.name ?? node.plane} only`}
+                </option>
+              )}
             </select>
           </label>
-          {node.plane === undefined && (
+          {node.plane === undefined && !borrowsContainment(model, activePlane) && (
             <label className="field">
               <span>Hidden here</span>
               <input

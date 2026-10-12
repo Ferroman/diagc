@@ -134,7 +134,7 @@ The node appears only while the `ops` layer is active — same rule as relations
 m.node('k8s', { type: 'infra', name: 'K8s cluster', plane: 'infra' });
 ```
 
-The node exists only in that plane. Use this for containers that are meaningless elsewhere — but note it does **not** compose with `containmentOf`: a node pinned to `architecture` will not appear in a plane that merely borrows architecture's structure. For that case use `hides` on the other planes instead, which is what the worked example does.
+The node exists only in that plane, and in the planes that borrow its containment with `containmentOf`: those are views of its structure, so a node pinned to `architecture` also shows on a `flow` plane that borrows architecture's. A node pinned to a borrowing plane shows on that plane only — how a `target` plane borrowing `current`'s nesting adds the boxes the current state does not have. Use this for containers that are meaningless elsewhere; for a shared node one plane should leave out, use `hides` on that plane instead. Deleting a plane deletes the nodes pinned to it, with their containment and arrows.
 
 ### Restrict a relation to one plane
 
