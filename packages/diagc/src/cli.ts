@@ -24,6 +24,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
 import { errMessage } from '@diagc/core/internal';
+import { checkTaken, parseArgv, UsageError, type ParsedArgv } from './cli/parse';
 import { compileFile } from './compile';
 import {
   compareDiagramSets,
@@ -45,10 +46,9 @@ import { snapshotSession } from './snapshots';
 import { formatCompileEvent, startWatch } from './watch';
 import { discoverDiagrams } from './publish/discover';
 import { globSorted } from './glob';
-import { galleryLink } from './publish/gallery';
 import { publishDiagrams, type PublishOptions } from './publish/publish';
 import { runStudio } from './studio';
-import { ArgNotTakenError, checkCommandArgs } from './command-args';
+import { TAKES } from './command-args';
 
 const USAGE = `Usage: diagc <init|compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir]
 
@@ -83,7 +83,7 @@ Options:
   --help, -h      Show this help and exit
 `;
 
-export interface Args {
+interface Args {
   command: string;
   files: string[];
   out: string;
@@ -105,138 +105,22 @@ export interface Args {
   agents: boolean;
 }
 
-/** Parse argv into command + flags. Unknown flags (anything `--…` that is not
- * recognized) are an error rather than being silently treated as a file path,
- * so a typo surfaces loudly instead of quietly skewing the file set. */
-export function parseArgs(argv: string[]): Args {
-  let command = 'compile';
-  const files: string[] = [];
-  let out = '.diagrams/.artifacts';
-  let outGiven = false;
-  let images = true;
-  let updateIncludes = false;
-  let json = false;
-  let link: string | undefined;
-  let imageUrl: string | undefined;
-  let labels: [string, string] | undefined;
-  let type: string | undefined;
-  let agents = false;
-  let commandSeen = false;
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i]!;
-    if (arg === '--out') {
-      // No fallback to the default: a trailing --out would quietly write somewhere the
-      // user did not ask for, and a missing value would swallow the next flag as the dir.
-      const value = argv[i + 1];
-      if (value === undefined || value.startsWith('--'))
-        throw new BadFlagValueError('--out', 'needs a directory, e.g. --out build/artifacts');
-      out = value;
-      outGiven = true;
-      i++;
-      continue;
-    }
-    if (arg === '--no-images') {
-      images = false;
-      continue;
-    }
-    if (arg === '--update-includes') {
-      updateIncludes = true;
-      continue;
-    }
-    if (arg === '--json') {
-      json = true;
-      continue;
-    }
-    if (arg === '--type') {
-      // No fallback: a missing value would otherwise swallow the next flag as the type.
-      const value = argv[i + 1];
-      if (value === undefined || value.startsWith('--'))
-        throw new BadFlagValueError('--type', "needs a diagram type, e.g. --type c4 ('diagc guide' lists them)");
-      type = value;
-      i++;
-      continue;
-    }
-    if (arg === '--agents') {
-      agents = true;
-      continue;
-    }
-    if (arg === '--image-url') {
-      const value = argv[++i] ?? '';
-      if (!value.includes('{path}'))
-        throw new BadFlagValueError('--image-url', 'needs a {path} placeholder, e.g. https://host/pr-1/{path}');
-      imageUrl = value;
-      continue;
-    }
-    if (arg === '--labels') {
-      const parts = (argv[++i] ?? '').split(',');
-      if (parts.length !== 2 || parts.some((p) => p.trim() === ''))
-        throw new BadFlagValueError('--labels', 'takes two names, before and after: --labels main,#12');
-      labels = [parts[0]!.trim(), parts[1]!.trim()];
-      continue;
-    }
-    if (arg === '--link') {
-      // No fallback for a missing value: there is no default address, and the URL
-      // check is also what stops the next flag being swallowed as one.
-      const value = argv[++i] ?? '';
-      try {
-        galleryLink(value);
-      } catch (e) {
-        throw new BadFlagValueError('--link', errMessage(e));
-      }
-      link = value;
-      continue;
-    }
-    if (arg === '--help' || arg === '-h') throw new HelpRequested();
-    if (arg.startsWith('--')) throw new UnknownFlagError(arg);
-    // The first non-flag argument names the command; anything after it is a
-    // file path (flags may appear before or after the command).
-    if (!commandSeen) {
-      command = arg;
-      commandSeen = true;
-    } else {
-      files.push(arg);
-    }
-  }
+/** The arguments the commands below read, from argv as parsed. */
+function flatArgs({ command, positionals, flags }: ParsedArgv): Args {
   return {
     command,
-    files,
-    out,
-    outGiven,
-    images,
-    updateIncludes,
-    json,
-    agents,
-    ...(type !== undefined ? { type } : {}),
-    ...(link !== undefined ? { link } : {}),
-    ...(imageUrl !== undefined ? { imageUrl } : {}),
-    ...(labels !== undefined ? { labels } : {}),
+    files: positionals,
+    out: flags['--out'] ?? '.diagrams/.artifacts',
+    outGiven: flags['--out'] !== undefined,
+    images: flags['--no-images'] === undefined,
+    updateIncludes: flags['--update-includes'] === true,
+    json: flags['--json'] === true,
+    agents: flags['--agents'] === true,
+    ...(flags['--type'] !== undefined ? { type: flags['--type'] } : {}),
+    ...(flags['--link'] !== undefined ? { link: flags['--link'] } : {}),
+    ...(flags['--image-url'] !== undefined ? { imageUrl: flags['--image-url'] } : {}),
+    ...(flags['--labels'] !== undefined ? { labels: flags['--labels'] } : {}),
   };
-}
-
-/** Thrown by {@link parseArgs} for `--help`/`-h`; `main` prints usage and exits 0. */
-export class HelpRequested extends Error {
-  constructor() {
-    super('help requested');
-    this.name = 'HelpRequested';
-  }
-}
-
-/** Thrown by {@link parseArgs} for an unrecognized flag; `main` prints the
- * offending flag plus usage and exits 1. */
-export class UnknownFlagError extends Error {
-  constructor(flag: string) {
-    super(`Unknown flag '${flag}'`);
-    this.name = 'UnknownFlagError';
-  }
-}
-
-/** Thrown by {@link parseArgs} for a flag whose value is missing or unusable; `main`
- * reports it the same way as an unknown flag. */
-export class BadFlagValueError extends Error {
-  constructor(flag: string, why: string) {
-    super(`${flag}: ${why}`);
-    this.name = 'BadFlagValueError';
-  }
 }
 
 const SOURCES = '.diagrams/src/**/*.diagram.{ts,json}';
@@ -292,19 +176,17 @@ async function exit(code: number): Promise<never> {
 async function main() {
   let args: Args;
   try {
-    args = parseArgs(process.argv.slice(2));
-    checkCommandArgs(args);
+    const parsed = parseArgv(process.argv.slice(2));
+    checkTaken(parsed, TAKES);
+    args = flatArgs(parsed);
   } catch (e) {
-    if (e instanceof HelpRequested) {
-      console.log(USAGE);
-      return exit(0);
-    }
-    if (e instanceof UnknownFlagError || e instanceof BadFlagValueError || e instanceof ArgNotTakenError) {
+    if (!(e instanceof UsageError)) throw e;
+    if (e.exitCode === 0) console.log(USAGE);
+    else {
       console.error(`diagc: ${e.message}\n`);
       console.error(USAGE);
-      return exit(1);
     }
-    throw e;
+    return exit(e.exitCode);
   }
   const home = homePaths(findHome(fileURLToPath(import.meta.url)));
   // One session per CLI invocation, shared across every compile+publish in this
