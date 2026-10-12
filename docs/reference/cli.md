@@ -88,7 +88,7 @@ diagc lint .diagrams/src/acme.diagram.ts --json
 ```
 
 - **Input:** as `compile`. Nothing is written.
-- **Output:** one line per finding, `<file>: <severity> <code>: <message>`, or with `--json` one array of `{ file, severity, code, message, ref?, line?, column? }`. A source that does not compile reports its validation errors (severity `error`); one that does reports its warnings (severity `warning`): the [lint codes](model.md#lint-codes) plus the notation warnings `compile` prints. A source that throws while it runs is one `load` finding; when the stack places it, the text form reads `<file>:<line>:<column>: error load: <message>` and the JSON form carries `line` and `column`.
+- **Output:** one line per finding, `<file>: <severity> <code>: <message>`, or with `--json` one array of `{ file, severity, code, message, ref?, line?, column? }`. A source that does not compile reports its validation errors (severity `error`); one that does reports its warnings (severity `warning`): the [lint codes](model.md#lint-codes) plus the notation warnings `compile` prints. Either way, what composing its includes warns about (two includes giving one `key` different types) is a warning with code `include`. A source that throws while it runs is one `load` finding; when the stack places it, the text form reads `<file>:<line>:<column>: error load: <message>` and the JSON form carries `line` and `column`.
 - **Exit code:** `0` when there are no findings, `1` otherwise — so a script or an agent can loop until it is clean.
 
 ### `diff`

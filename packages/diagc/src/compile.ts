@@ -118,6 +118,9 @@ export interface LoadOptions {
   rootDir?: string;
   coreEntry?: string;
   resolver?: IncludeResolver;
+  /** what composing the includes warns about, one warning at a time; by default each
+   * is printed on stderr as `<file>: <warning>` */
+  onWarning?: (warning: string) => void;
 }
 
 /**
@@ -161,7 +164,10 @@ export async function loadModel(file: string, opts?: LoadOptions): Promise<Diagr
         ? snapshotSession(resolveInclude, path.dirname(path.resolve(opts.rootDir)), 'locked').resolver
         : resolveInclude);
     const { model: composed, warnings } = await composeIncludes(model, path.resolve(file), resolver);
-    for (const w of warnings) console.warn(`${file}: ${w}`);
+    for (const w of warnings) {
+      if (opts?.onWarning !== undefined) opts.onWarning(w);
+      else console.warn(`${file}: ${w}`);
+    }
     model = composed;
     const issues = validate(model);
     if (issues.length > 0) throw new DiagramValidationError(issues);
