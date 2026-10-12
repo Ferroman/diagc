@@ -43,6 +43,7 @@ import { useRootFit } from './useRootFit';
 import { useViewLayout } from './useViewLayout';
 import { useViewModeMoves } from './useViewModeMoves';
 import '../styles.css';
+import '../presets.css';
 import '@fontsource/kalam/400.css';
 import '@fontsource/kalam/700.css';
 import '../fonts.css';
