@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
 import { errMessage } from '@diagc/core/internal';
 import { compileFile } from './compile';
-import { compareDiagramSets, formatDiffSummary, loadDiagramSet, writeDiffPages, type DiagramSet } from './diff';
+import { compareDiagramSets, formatDiffSummary, loadDiagramSet, writeDiffPages, type DiagramSet } from './diff/index';
 import { checkoutDiagrams, type CheckedOutRef } from './git-ref';
 import { ejectDiagram } from './eject';
 import { formatLintReport, lintFile, type LintReport } from './lint';

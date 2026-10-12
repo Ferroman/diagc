@@ -1,11 +1,95 @@
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import type { DiagramModel, Drawings, LayoutOverlay } from '@diagc/core/internal';
-import type { DiagramSet } from '../src/diff';
+import { checkoutDiagrams, type CheckedOutRef } from '../src/git-ref';
+import { loadDiagramSet, type DiagramSet } from '../src/diff/load';
 
 // What the tests of diff share. It sits beside the fixtures and not in src/, which is
 // what the build ships.
 
 export function model(id: string, parts: Partial<DiagramModel>): DiagramModel {
   return { version: 1, id, name: id, nodes: [], containment: [], relations: [], layers: [], planes: [], ...parts };
+}
+
+export const v1 = model('shop', {
+  nodes: [
+    { id: 'web', name: 'Web', type: 'service' },
+    { id: 'api', name: 'API', type: 'service' },
+    { id: 'legacy', name: 'Legacy', type: 'service' },
+  ],
+  relations: [
+    { id: 'web->api#0', from: 'web', to: 'api', kind: 'sync' },
+    { id: 'web->legacy#0', from: 'web', to: 'legacy', kind: 'sync' },
+  ],
+});
+export const v2 = model('shop', {
+  nodes: [
+    { id: 'web', name: 'Web', type: 'service' },
+    { id: 'api', name: 'API gateway', type: 'service' },
+    { id: 'db', name: 'Orders DB', type: 'database' },
+  ],
+  relations: [
+    { id: 'web->api#0', from: 'web', to: 'api', kind: 'sync', label: 'HTTPS' },
+    { id: 'api->db#0', from: 'api', to: 'db', kind: 'reads' },
+  ],
+});
+const gone = model('gone', { nodes: [{ id: 'x', name: 'X' }] });
+const fresh = model('fresh', { nodes: [{ id: 'y', name: 'Y' }] });
+
+const git = (cwd: string, ...args: string[]) =>
+  execFileSync('git', ['-c', 'user.email=t@example.com', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...args], {
+    cwd,
+    stdio: 'pipe',
+  });
+
+export const put = (repo: string, rel: string, data: unknown) => {
+  const file = path.join(repo, rel);
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, typeof data === 'string' ? data : JSON.stringify(data));
+};
+
+/** A repository tagged v0 (no diagrams yet), v1 (shop, with a layout, and gone) and v2
+ * (shop changed, gone deleted, fresh added in a folder), and its checkouts. */
+export interface DiffRepo {
+  dir: string;
+  /** the diagrams at `ref`, labelled with it, from a checkout `cleanup` removes */
+  setAt: (ref: string) => Promise<DiagramSet>;
+  cleanup: () => Promise<void>;
+}
+
+export function diffRepo(): DiffRepo {
+  const dir = mkdtempSync(path.join(tmpdir(), 'diagc-diff-repo-'));
+  git(dir, 'init', '-q');
+  put(dir, 'README.md', 'no diagrams yet\n');
+  git(dir, 'add', '-A');
+  git(dir, 'commit', '-qm', 'empty');
+  git(dir, 'tag', 'v0');
+  put(dir, '.diagrams/src/shop.diagram.json', v1);
+  put(dir, '.diagrams/src/shop.layout.json', { version: 1, planes: {} });
+  put(dir, '.diagrams/src/gone.diagram.json', gone);
+  git(dir, 'add', '-A');
+  git(dir, 'commit', '-qm', 'v1');
+  git(dir, 'tag', 'v1');
+  put(dir, '.diagrams/src/shop.diagram.json', v2);
+  git(dir, 'rm', '-q', '.diagrams/src/gone.diagram.json');
+  put(dir, '.diagrams/src/new/fresh.diagram.json', fresh);
+  git(dir, 'add', '-A');
+  git(dir, 'commit', '-qm', 'v2');
+  git(dir, 'tag', 'v2');
+  const open: CheckedOutRef[] = [];
+  return {
+    dir,
+    setAt: async (ref) => {
+      const c = await checkoutDiagrams(ref, dir);
+      open.push(c);
+      return loadDiagramSet(ref, c.diagramsDir);
+    },
+    cleanup: async () => {
+      for (const c of open.splice(0)) await c.cleanup();
+    },
+  };
 }
 
 /** The `after` side's label: every character the overview escapes. */
@@ -80,3 +164,20 @@ export function everyStatus(diagramsDir = ''): { before: DiagramSet; after: Diag
     },
   };
 }
+
+/** `shop`'s change list in `everyStatus`. */
+export const SHOP_CHANGES = [
+  '+ Orders <DB> [database]',
+  '+ note',
+  '- Legacy [service]',
+  '- tmp',
+  '~ Web: type',
+  '~ API -> API gateway (renamed): description',
+  '+ API gateway -> Orders <DB> (reads: SQL)',
+  '- Web -> Legacy (sync)',
+  '~ Web -> API gateway (sync: HTTPS): label',
+  '+ layer new',
+  '- layer old',
+  '+ plane ops',
+  '- plane flow',
+];

@@ -1,195 +1,33 @@
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import type { DiagramModel } from '@diagc/core/internal';
+import { compareDiagramSets } from './compare';
+import { loadDiagramSet } from './load';
+import { writeDiffPages } from './pages';
+import { DG_DATA_SENTINEL, stampHtml } from '../publish/html';
+import { THEME_HEAD_SCRIPT, THEME_SWITCH, themeCss } from '../publish/pageTheme';
 import {
-  compareDiagramSets,
-  describeDiff,
-  formatDiffSummary,
-  loadDiagramSet,
-  writeDiffPages,
-  type DiagramSet,
-} from './diff';
-import { checkoutDiagrams, type CheckedOutRef } from './git-ref';
-import { DG_DATA_SENTINEL, stampHtml } from './publish/html';
-import { THEME_HEAD_SCRIPT, THEME_SWITCH, themeCss } from './publish/pageTheme';
-import { AFTER_LABEL, everyStatus, SHOP_DRAWINGS, SHOP_LAYOUT } from '../test-fixtures/diff';
+  diffRepo,
+  everyStatus,
+  put,
+  SHOP_CHANGES,
+  SHOP_DRAWINGS,
+  SHOP_LAYOUT,
+  v2,
+  type DiffRepo,
+} from '../../test-fixtures/diff';
 
-function model(id: string, parts: Partial<DiagramModel>): DiagramModel {
-  return { version: 1, id, name: id, nodes: [], containment: [], relations: [], layers: [], planes: [], ...parts };
-}
-
-const v1 = model('shop', {
-  nodes: [
-    { id: 'web', name: 'Web', type: 'service' },
-    { id: 'api', name: 'API', type: 'service' },
-    { id: 'legacy', name: 'Legacy', type: 'service' },
-  ],
-  relations: [
-    { id: 'web->api#0', from: 'web', to: 'api', kind: 'sync' },
-    { id: 'web->legacy#0', from: 'web', to: 'legacy', kind: 'sync' },
-  ],
-});
-const v2 = model('shop', {
-  nodes: [
-    { id: 'web', name: 'Web', type: 'service' },
-    { id: 'api', name: 'API gateway', type: 'service' },
-    { id: 'db', name: 'Orders DB', type: 'database' },
-  ],
-  relations: [
-    { id: 'web->api#0', from: 'web', to: 'api', kind: 'sync', label: 'HTTPS' },
-    { id: 'api->db#0', from: 'api', to: 'db', kind: 'reads' },
-  ],
-});
-const gone = model('gone', { nodes: [{ id: 'x', name: 'X' }] });
-const fresh = model('fresh', { nodes: [{ id: 'y', name: 'Y' }] });
-
-const git = (cwd: string, ...args: string[]) =>
-  execFileSync('git', ['-c', 'user.email=t@example.com', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...args], {
-    cwd,
-    stdio: 'pipe',
-  });
-const put = (repo: string, rel: string, data: unknown) => {
-  const file = path.join(repo, rel);
-  mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(file, typeof data === 'string' ? data : JSON.stringify(data));
-};
-
-// v1: shop + gone; v2: shop changed, gone deleted, fresh (in a folder) added.
-let repo: string;
+let repo: DiffRepo;
 beforeAll(() => {
-  repo = mkdtempSync(path.join(tmpdir(), 'diagc-diff-repo-'));
-  git(repo, 'init', '-q');
-  put(repo, 'README.md', 'no diagrams yet\n');
-  git(repo, 'add', '-A');
-  git(repo, 'commit', '-qm', 'empty');
-  git(repo, 'tag', 'v0');
-  put(repo, '.diagrams/src/shop.diagram.json', v1);
-  put(repo, '.diagrams/src/shop.layout.json', { version: 1, planes: {} });
-  put(repo, '.diagrams/src/gone.diagram.json', gone);
-  git(repo, 'add', '-A');
-  git(repo, 'commit', '-qm', 'v1');
-  git(repo, 'tag', 'v1');
-  put(repo, '.diagrams/src/shop.diagram.json', v2);
-  git(repo, 'rm', '-q', '.diagrams/src/gone.diagram.json');
-  put(repo, '.diagrams/src/new/fresh.diagram.json', fresh);
-  git(repo, 'add', '-A');
-  git(repo, 'commit', '-qm', 'v2');
-  git(repo, 'tag', 'v2');
+  repo = diffRepo();
 });
-
-const open: CheckedOutRef[] = [];
-afterEach(async () => {
-  for (const c of open.splice(0)) await c.cleanup();
-});
-async function setAt(ref: string, cwd = repo): Promise<DiagramSet> {
-  const c = await checkoutDiagrams(ref, cwd);
-  open.push(c);
-  return loadDiagramSet(ref, c.diagramsDir);
-}
-
-describe('checkoutDiagrams', () => {
-  it("extracts the ref's .diagrams tree and removes it on cleanup", async () => {
-    const c = await checkoutDiagrams('v1', repo);
-    expect(JSON.parse(readFileSync(path.join(c.diagramsDir, 'src/shop.diagram.json'), 'utf8'))).toEqual(v1);
-    expect(existsSync(path.join(c.diagramsDir, 'src/new'))).toBe(false);
-    await c.cleanup();
-    expect(existsSync(c.diagramsDir)).toBe(false);
-  });
-
-  it('finds .diagrams relative to a subdirectory of the repository', async () => {
-    const sub = path.join(repo, 'pkg');
-    mkdirSync(sub, { recursive: true });
-    const c = await checkoutDiagrams('v1', sub, '../.diagrams');
-    open.push(c);
-    expect(existsSync(path.join(c.diagramsDir, 'src/shop.diagram.json'))).toBe(true);
-  });
-
-  it('gives an empty set for a ref from before there were diagrams', async () => {
-    const set = await setAt('v0');
-    expect(set.versions.size).toBe(0);
-  });
-
-  it('refuses a ref that does not exist', async () => {
-    await expect(checkoutDiagrams('v9', repo)).rejects.toThrow("'v9' is not a commit, tag or branch");
-  });
-});
-
-describe('loadDiagramSet', () => {
-  it('compares a diagram whose sidecars cannot be read, without them, and names each', async () => {
-    const dir = mkdtempSync(path.join(tmpdir(), 'diagc-diff-set-'));
-    put(dir, 'src/shop.diagram.json', v1);
-    put(dir, 'src/shop.layout.json', '{');
-    put(dir, 'src/shop.drawings.json', { version: 1 });
-    const set = await loadDiagramSet('wip', dir);
-    expect(set.errors.size).toBe(0);
-    expect(set.versions.get('shop')).toEqual({ model: v1 });
-    expect(set.warnings).toEqual([
-      expect.stringMatching(/^shop\.layout\.json at wip: does not parse \(.+\) — compared and drawn without it$/),
-      'shop.drawings.json at wip: not a drawings overlay — compared and drawn without it',
-    ]);
-  });
-});
-
-describe('compareDiagramSets', () => {
-  it('pairs diagrams by name: changed, removed, added', async () => {
-    const diffs = compareDiagramSets(await setAt('v1'), await setAt('v2'));
-    expect(diffs.map((d) => [d.name, d.status])).toEqual([
-      ['gone', 'removed'],
-      ['new/fresh', 'added'],
-      ['shop', 'changed'],
-    ]);
-    expect(diffs.find((d) => d.name === 'shop')?.before?.layout).toEqual({ version: 1, planes: {} });
-  });
-
-  it('narrows to the named diagrams', async () => {
-    const diffs = compareDiagramSets(await setAt('v1'), await setAt('v2'), ['shop', 'nope']);
-    expect(diffs.map((d) => d.name)).toEqual(['shop']);
-  });
-
-  it('reports a diagram that does not compile on one side instead of diffing it', async () => {
-    const broken: DiagramSet = {
-      label: 'wip',
-      diagramsDir: '',
-      versions: new Map(),
-      errors: new Map([['shop', 'bad json']]),
-      warnings: [],
-    };
-    const [d] = compareDiagramSets(await setAt('v1'), broken, ['shop']);
-    expect(d).toMatchObject({ status: 'error', error: 'does not compile at wip: bad json' });
-  });
-});
-
-describe('describeDiff / formatDiffSummary', () => {
-  it('lists the changes by name, renames as old -> new', async () => {
-    const diffs = compareDiagramSets(await setAt('v1'), await setAt('v2'));
-    expect(describeDiff(diffs.find((d) => d.name === 'shop')!)).toEqual([
-      '+ Orders DB [database]',
-      '- Legacy [service]',
-      '~ API -> API gateway (renamed)',
-      '+ API gateway -> Orders DB (reads)',
-      '- Web -> Legacy (sync)',
-      '~ Web -> API gateway (sync: HTTPS): label',
-    ]);
-    const text = formatDiffSummary(diffs, 'v1', 'v2');
-    expect(text).toContain('diagc diff v1 -> v2');
-    expect(text).toContain('new/fresh:\n  + new diagram: fresh (1 nodes, 0 relations)');
-    expect(text).toContain('gone:\n  - diagram removed: gone');
-    expect(text.split('\n').at(-1)).toBe('3 diagram(s) changed, 0 unchanged');
-  });
-
-  it('says when nothing changed', async () => {
-    const diffs = compareDiagramSets(await setAt('v2'), await setAt('v2'));
-    expect(formatDiffSummary(diffs, 'v2', 'v2')).toMatch(/no diagram changed \(2 compared\)$/);
-  });
-});
+afterEach(() => repo.cleanup());
 
 describe('writeDiffPages', () => {
   it('writes a marked page (and image) per side, the side-by-side index and the ADR summary', async () => {
-    const before = await setAt('v1');
-    const after = await setAt('v2');
+    const before = await repo.setAt('v1');
+    const after = await repo.setAt('v2');
     const diffs = compareDiagramSets(before, after);
     const out = mkdtempSync(path.join(tmpdir(), 'diagc-diff-out-'));
     const shellPath = path.join(out, 'shell.html');
@@ -251,8 +89,8 @@ describe('writeDiffPages', () => {
   });
 
   it('points the summary images at --image-url when given', async () => {
-    const before = await setAt('v1');
-    const after = await setAt('v2');
+    const before = await repo.setAt('v1');
+    const after = await repo.setAt('v2');
     const out = mkdtempSync(path.join(tmpdir(), 'diagc-diff-out-'));
     const shellPath = path.join(out, 'shell.html');
     writeFileSync(shellPath, DG_DATA_SENTINEL);
@@ -271,8 +109,8 @@ describe('writeDiffPages', () => {
   });
 
   it('links the pages instead of images when no PNGs were rendered', async () => {
-    const before = await setAt('v1');
-    const after = await setAt('v2');
+    const before = await repo.setAt('v1');
+    const after = await repo.setAt('v2');
     const out = mkdtempSync(path.join(tmpdir(), 'diagc-diff-out-'));
     const shellPath = path.join(out, 'shell.html');
     writeFileSync(shellPath, DG_DATA_SENTINEL);
@@ -288,8 +126,8 @@ describe('writeDiffPages', () => {
   });
 
   it('shows a diagram it could not compare on the index, as the summary does', async () => {
-    const before = await setAt('v1');
-    const after = await setAt('v2');
+    const before = await repo.setAt('v1');
+    const after = await repo.setAt('v2');
     after.errors.set('broken', 'bad json');
     const out = mkdtempSync(path.join(tmpdir(), 'diagc-diff-out-'));
     const shellPath = path.join(out, 'shell.html');
@@ -308,7 +146,7 @@ describe('writeDiffPages', () => {
   });
 
   it('names a sidecar it left out on the index and in the summary', async () => {
-    const before = await setAt('v1');
+    const before = await repo.setAt('v1');
     const dir = mkdtempSync(path.join(tmpdir(), 'diagc-diff-set-'));
     put(dir, 'src/shop.diagram.json', v2);
     put(dir, 'src/shop.layout.json', '{');
@@ -329,62 +167,9 @@ describe('writeDiffPages', () => {
   });
 });
 
-// The whole output for two sides with a diagram of each status: each diff's keys, in
-// the order `--json` prints them; the text; the pages; and index.html and summary.md
-// byte for byte.
+// The whole output for two sides with a diagram of each status: the pages, and
+// index.html and summary.md byte for byte.
 describe('every status, whole', () => {
-  const SHOP_CHANGES = [
-    '+ Orders <DB> [database]',
-    '+ note',
-    '- Legacy [service]',
-    '- tmp',
-    '~ Web: type',
-    '~ API -> API gateway (renamed): description',
-    '+ API gateway -> Orders <DB> (reads: SQL)',
-    '- Web -> Legacy (sync)',
-    '~ Web -> API gateway (sync: HTTPS): label',
-    '+ layer new',
-    '- layer old',
-    '+ plane ops',
-    '- plane flow',
-  ];
-
-  it('builds each status with its keys in the order diff --json prints them', () => {
-    const { before, after } = everyStatus();
-    expect(compareDiagramSets(before, after).map((d) => [d.name, d.status, Object.keys(d)])).toEqual([
-      ['broken', 'error', ['name', 'status', 'error']],
-      ['gone', 'removed', ['name', 'status', 'before', 'diff']],
-      ['new/fresh', 'added', ['name', 'status', 'after', 'diff']],
-      ['same', 'unchanged', ['name', 'status', 'before', 'after', 'diff']],
-      ['shop', 'changed', ['name', 'status', 'before', 'after', 'diff']],
-    ]);
-  });
-
-  it('describes each diagram, and the text lists all but the unchanged', () => {
-    const { before, after } = everyStatus();
-    const diffs = compareDiagramSets(before, after);
-    expect(diffs.map((d) => [d.name, describeDiff(d)])).toEqual([
-      ['broken', []],
-      ['gone', ['- diagram removed: gone']],
-      ['new/fresh', ['+ new diagram: fresh (1 nodes, 0 relations)']],
-      ['same', []],
-      ['shop', SHOP_CHANGES],
-    ]);
-    expect(formatDiffSummary(diffs, 'v1', AFTER_LABEL)).toBe(
-      [
-        'diagc diff v1 -> feat/<x> & "y"',
-        '! broken: does not compile at feat/<x> & "y": bad <json>',
-        'gone:',
-        '  - diagram removed: gone',
-        'new/fresh:',
-        '  + new diagram: fresh (1 nodes, 0 relations)',
-        'shop:',
-        ...SHOP_CHANGES.map((l) => `  ${l}`),
-        '3 diagram(s) changed, 1 unchanged',
-      ].join('\n'),
-    );
-  });
-
   const SHELL = `<!doctype html><script id="dg-data" type="application/json">${DG_DATA_SENTINEL}</script>`;
   async function write(diffs: ReturnType<typeof compareDiagramSets>, sets: ReturnType<typeof everyStatus>, png = true) {
     const out = mkdtempSync(path.join(tmpdir(), 'diagc-diff-whole-'));
