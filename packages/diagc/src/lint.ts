@@ -27,11 +27,15 @@ const report = (
 });
 
 /** Every finding for one source: its validation errors when it does not load,
- * otherwise its warnings (core's lint included). */
+ * otherwise its warnings (core's lint included), and in both cases what composing
+ * its includes warned about. */
 export async function lintFile(file: string, opts?: LoadOptions): Promise<LintReport[]> {
+  // Findings rather than lines on stderr, so `--json` carries them and they fail the lint.
+  const included: LintReport[] = [];
+  const onWarning = (message: string) => included.push(report(file, 'warning', { code: 'include', message }));
   try {
-    const model = await loadModel(file, opts);
-    return diagramWarnings(model).map((w) => report(file, 'warning', w));
+    const model = await loadModel(file, { ...opts, onWarning });
+    return [...included, ...diagramWarnings(model).map((w) => report(file, 'warning', w))];
   } catch (e) {
     // By name, not instanceof: a builder diagram throws from jiti's own copy of core.
     if (
@@ -39,7 +43,7 @@ export async function lintFile(file: string, opts?: LoadOptions): Promise<LintRe
       e.name === 'DiagramValidationError' &&
       Array.isArray((e as { issues?: unknown }).issues)
     ) {
-      return (e as Error & { issues: ValidationIssue[] }).issues.map((i) => report(file, 'error', i));
+      return [...included, ...(e as Error & { issues: ValidationIssue[] }).issues.map((i) => report(file, 'error', i))];
     }
     if (e instanceof LoadError) {
       return [

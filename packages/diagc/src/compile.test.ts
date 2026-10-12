@@ -69,6 +69,45 @@ describe('compileFile', () => {
     }
   });
 
+  it('prints what composing the includes warns about, or hands it to onWarning', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'diagc-'));
+    const part = (id: string, type: string): DiagramModel => ({
+      version: 1,
+      id,
+      name: id,
+      nodes: [{ id: 'db', name: 'DB', type, key: 'shared-db' }],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    });
+    await writeFile(path.join(dir, 'a.diagram.json'), JSON.stringify(part('a', 'database')));
+    await writeFile(path.join(dir, 'b.diagram.json'), JSON.stringify(part('b', 'queue')));
+    const src = path.join(dir, 'u.diagram.json');
+    const umbrella: DiagramModel = {
+      ...part('u', 'system'),
+      nodes: [
+        { id: 'a', name: 'A', type: 'system', include: './a.diagram.json' },
+        { id: 'b', name: 'B', type: 'system', include: './b.diagram.json' },
+      ],
+    };
+    await writeFile(src, JSON.stringify(umbrella));
+    const said =
+      "Key 'shared-db': type 'queue' (node 'b/db') differs from type 'database' (node 'a/db') — using type 'database'";
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      await compileFile(src, path.join(dir, 'out'));
+      expect(warn).toHaveBeenCalledWith(`${src}: ${said}`);
+      warn.mockClear();
+      const heard: string[] = [];
+      await compileFile(src, path.join(dir, 'out'), { onWarning: (w) => heard.push(w) });
+      expect(heard).toEqual([said]);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it('rejects a file with no default export and writes no artifact', async () => {
     const out = await mkdtemp(path.join(tmpdir(), 'diagc-'));
     await expect(compileFile(path.join(fixtures, 'no-default.diagram.ts'), out)).rejects.toThrow(

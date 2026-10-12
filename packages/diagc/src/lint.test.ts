@@ -1,7 +1,7 @@
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { formatLintReport, lintFile } from './lint';
 
 const fixtures = path.resolve(import.meta.dirname, '../test-fixtures');
@@ -73,6 +73,49 @@ describe('lintFile', () => {
     expect(r).toMatchObject({ file, severity: 'error', code: 'load' });
     expect(r).not.toHaveProperty('line');
     expect(formatLintReport(r!)).toBe(`${file}: error load: ${r!.message}`);
+  });
+
+  it('reports what composing its includes warns about', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'diagc-lint-'));
+    const part = (id: string, type: string) => ({
+      version: 1,
+      id,
+      name: id,
+      nodes: [{ id: 'db', name: 'DB', type, key: 'shared-db' }],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    });
+    await writeFile(path.join(dir, 'a.diagram.json'), JSON.stringify(part('a', 'database')));
+    await writeFile(path.join(dir, 'b.diagram.json'), JSON.stringify(part('b', 'queue')));
+    const file = path.join(dir, 'u.diagram.json');
+    await writeFile(
+      file,
+      JSON.stringify({
+        ...part('u', 'system'),
+        nodes: [
+          { id: 'a', name: 'A', type: 'system', include: './a.diagram.json' },
+          { id: 'b', name: 'B', type: 'system', include: './b.diagram.json' },
+        ],
+      }),
+    );
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      expect(await lintFile(file)).toEqual([
+        {
+          file,
+          severity: 'warning',
+          code: 'include',
+          message:
+            "Key 'shared-db': type 'queue' (node 'b/db') differs from type 'database' (node 'a/db') — using type 'database'",
+        },
+      ]);
+      // a finding, not also a line on stderr
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
 
