@@ -12,3 +12,9 @@ export function isSafeName(name: string): boolean {
   const slash = name.lastIndexOf('/');
   return slash < 0 || !ACTION_SEGMENTS.includes(name.slice(slash + 1));
 }
+
+/** `shop.diagram.ts` and `.diagrams/src/shop` both mean `shop` — the trim `eject`
+ * applies, so a name copied from a listing is not an "unsafe name". */
+export function diagramName(arg: string): string {
+  return arg.replace(/^\.diagrams\/src\//, '').replace(/\.diagram\.(ts|json)$/, '');
+}

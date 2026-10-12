@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import fg from 'fast-glob';
 import { errMessage, type IncludeResolver } from '@diagc/core/internal';
-import { isSafeName } from './names';
+import { diagramName, isSafeName } from './names';
 import { compileFile } from './compile';
 import { readStarter, UnknownStarterError } from './starters';
 
@@ -94,12 +94,6 @@ export class InitError extends Error {
     super(message);
     this.name = 'InitError';
   }
-}
-
-/** `shop.diagram.ts` and `.diagrams/src/shop` both mean `shop` — the trim `eject`
- * applies, so a name copied from a listing is not an "unsafe name". */
-export function diagramName(arg: string): string {
-  return arg.replace(/^\.diagrams\/src\//, '').replace(/\.diagram\.(ts|json)$/, '');
 }
 
 /** Which of `wanted` a `.gitignore` text still lacks. A line counts after trimming,
