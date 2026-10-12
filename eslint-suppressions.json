@@ -4,21 +4,6 @@
       "count": 1
     }
   },
-  "apps/studio/src/library/packs.aws-containers.ts": {
-    "max-params": {
-      "count": 1
-    }
-  },
-  "apps/studio/src/library/packs.c4.ts": {
-    "max-params": {
-      "count": 1
-    }
-  },
-  "apps/studio/src/library/packs.ts": {
-    "max-params": {
-      "count": 1
-    }
-  },
   "apps/viewer/src/Viewer.tsx": {
     "complexity": {
       "count": 1

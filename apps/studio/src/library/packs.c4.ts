@@ -32,13 +32,21 @@ const C4 = {
   node: '#666666',
 } as const;
 
-const box = (category: string, id: string, name: string, color: string, keywords: string[]): LibraryEntry => ({
-  id,
-  category,
-  name,
-  keywords,
-  template: { type: id, color },
-});
+/** A box stencil of one C4 level: the entry's id is also its node type. */
+const boxIn =
+  (category: string) =>
+  (id: string, name: string, color: string, keywords: string[]): LibraryEntry => ({
+    id,
+    category,
+    name,
+    keywords,
+    template: { type: id, color },
+  });
+const context = boxIn('c4');
+const container = boxIn('c4-containers');
+const component = boxIn('c4-components');
+const deployment = boxIn('c4-deployment');
+const code = boxIn('c4-code');
 
 const person = (id: string, name: string, color: string, keywords: string[]): LibraryEntry => ({
   id,
@@ -60,82 +68,58 @@ const entries: LibraryEntry[] = [
   // ---- Context / System Landscape ----------------------------------------
   person('c4-person', 'Person', C4.person, ['actor', 'user', 'role', 'customer']),
   person('c4-person-external', 'External Person', C4.personExternal, ['actor', 'user', 'third party', 'outside']),
-  box('c4', 'c4-system', 'Software System', C4.system, ['system', 'app', 'product']),
-  box('c4', 'c4-system-external', 'External Software System', C4.systemExternal, [
+  context('c4-system', 'Software System', C4.system, ['system', 'app', 'product']),
+  context('c4-system-external', 'External Software System', C4.systemExternal, [
     'system',
     'third party',
     'saas',
     'outside',
   ]),
-  box('c4', 'c4-enterprise-boundary', 'Enterprise Boundary', C4.boundary, [
+  context('c4-enterprise-boundary', 'Enterprise Boundary', C4.boundary, [
     'boundary',
     'organisation',
     'organization',
     'landscape',
   ]),
-  box('c4', 'c4-system-boundary', 'System Boundary', C4.boundary, ['boundary', 'scope', 'context']),
-  box('c4', 'c4-group', 'Group', C4.group, ['boundary', 'grouping', 'domain', 'team']),
+  context('c4-system-boundary', 'System Boundary', C4.boundary, ['boundary', 'scope', 'context']),
+  context('c4-group', 'Group', C4.group, ['boundary', 'grouping', 'domain', 'team']),
 
   // ---- Container ----------------------------------------------------------
-  box('c4-containers', 'c4-container', 'Container', C4.container, ['service', 'app', 'process', 'deployable']),
-  box('c4-containers', 'c4-container-external', 'External Container', C4.containerExternal, [
-    'service',
-    'third party',
-    'outside',
-  ]),
-  box('c4-containers', 'c4-container-web', 'Web Application', C4.container, ['web', 'server', 'ssr', 'website']),
-  box('c4-containers', 'c4-container-spa', 'Single-Page Application', C4.container, [
-    'spa',
-    'browser',
-    'frontend',
-    'react',
-  ]),
-  box('c4-containers', 'c4-container-mobile', 'Mobile App', C4.container, ['ios', 'android', 'phone', 'client']),
-  box('c4-containers', 'c4-container-desktop', 'Desktop App', C4.container, ['client', 'native', 'electron']),
-  box('c4-containers', 'c4-container-api', 'API Application', C4.container, ['api', 'rest', 'graphql', 'backend']),
-  box('c4-containers', 'c4-container-function', 'Serverless Function', C4.container, ['lambda', 'faas', 'serverless']),
-  box('c4-containers', 'c4-container-cli', 'Console / CLI', C4.container, ['cli', 'terminal', 'job', 'script']),
-  box('c4-containers', 'c4-container-db', 'Database', C4.container, ['sql', 'postgres', 'store', 'rdbms']),
-  box('c4-containers', 'c4-container-blob', 'Blob Store', C4.container, ['object storage', 'files', 's3', 'bucket']),
-  box('c4-containers', 'c4-container-search', 'Search Index', C4.container, ['elasticsearch', 'opensearch', 'lucene']),
-  box('c4-containers', 'c4-container-queue', 'Message Bus', C4.container, ['queue', 'topic', 'kafka', 'events']),
-  box('c4-containers', 'c4-container-boundary', 'Container Boundary', C4.boundary, ['boundary', 'scope']),
+  container('c4-container', 'Container', C4.container, ['service', 'app', 'process', 'deployable']),
+  container('c4-container-external', 'External Container', C4.containerExternal, ['service', 'third party', 'outside']),
+  container('c4-container-web', 'Web Application', C4.container, ['web', 'server', 'ssr', 'website']),
+  container('c4-container-spa', 'Single-Page Application', C4.container, ['spa', 'browser', 'frontend', 'react']),
+  container('c4-container-mobile', 'Mobile App', C4.container, ['ios', 'android', 'phone', 'client']),
+  container('c4-container-desktop', 'Desktop App', C4.container, ['client', 'native', 'electron']),
+  container('c4-container-api', 'API Application', C4.container, ['api', 'rest', 'graphql', 'backend']),
+  container('c4-container-function', 'Serverless Function', C4.container, ['lambda', 'faas', 'serverless']),
+  container('c4-container-cli', 'Console / CLI', C4.container, ['cli', 'terminal', 'job', 'script']),
+  container('c4-container-db', 'Database', C4.container, ['sql', 'postgres', 'store', 'rdbms']),
+  container('c4-container-blob', 'Blob Store', C4.container, ['object storage', 'files', 's3', 'bucket']),
+  container('c4-container-search', 'Search Index', C4.container, ['elasticsearch', 'opensearch', 'lucene']),
+  container('c4-container-queue', 'Message Bus', C4.container, ['queue', 'topic', 'kafka', 'events']),
+  container('c4-container-boundary', 'Container Boundary', C4.boundary, ['boundary', 'scope']),
 
   // ---- Component ----------------------------------------------------------
-  box('c4-components', 'c4-component', 'Component', C4.component, ['module', 'class', 'package']),
-  box('c4-components', 'c4-component-external', 'External Component', C4.componentExternal, [
-    'module',
-    'library',
-    'third party',
-  ]),
-  box('c4-components', 'c4-component-db', 'Component Database', C4.component, ['repository', 'dao', 'store']),
-  box('c4-components', 'c4-component-queue', 'Component Queue', C4.component, ['buffer', 'channel', 'events']),
+  component('c4-component', 'Component', C4.component, ['module', 'class', 'package']),
+  component('c4-component-external', 'External Component', C4.componentExternal, ['module', 'library', 'third party']),
+  component('c4-component-db', 'Component Database', C4.component, ['repository', 'dao', 'store']),
+  component('c4-component-queue', 'Component Queue', C4.component, ['buffer', 'channel', 'events']),
 
   // ---- Deployment ---------------------------------------------------------
-  box('c4-deployment', 'c4-deployment-node', 'Deployment Node', C4.node, [
-    'environment',
-    'region',
-    'cluster',
-    'host',
-    'vm',
-  ]),
-  box('c4-deployment', 'c4-infrastructure-node', 'Infrastructure Node', C4.container, [
+  deployment('c4-deployment-node', 'Deployment Node', C4.node, ['environment', 'region', 'cluster', 'host', 'vm']),
+  deployment('c4-infrastructure-node', 'Infrastructure Node', C4.container, [
     'load balancer',
     'firewall',
     'dns',
     'router',
   ]),
-  box('c4-deployment', 'c4-container-instance', 'Container Instance', C4.container, [
-    'replica',
-    'pod',
-    'deployed',
-    'runtime',
-  ]),
+  deployment('c4-container-instance', 'Container Instance', C4.container, ['replica', 'pod', 'deployed', 'runtime']),
 
   // ---- Code ---------------------------------------------------------------
-  box('c4-code', 'c4-class', 'Class', C4.component, ['type', 'object', 'uml']),
-  box('c4-code', 'c4-interface', 'Interface', C4.component, ['protocol', 'contract', 'uml']),
-  box('c4-code', 'c4-enum', 'Enumeration', C4.component, ['enum', 'constants', 'uml']),
+  code('c4-class', 'Class', C4.component, ['type', 'object', 'uml']),
+  code('c4-interface', 'Interface', C4.component, ['protocol', 'contract', 'uml']),
+  code('c4-enum', 'Enumeration', C4.component, ['enum', 'constants', 'uml']),
 ];
 
 /** The C4 stencil, one category per C4 diagram level. */
