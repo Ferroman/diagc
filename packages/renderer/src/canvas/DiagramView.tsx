@@ -45,6 +45,7 @@ import { useViewModeMoves } from './useViewModeMoves';
 import '../styles.css';
 import '@fontsource/kalam/400.css';
 import '@fontsource/kalam/700.css';
+import '../fonts.css';
 
 import { DEFAULT_ON_NODE_META_KEYS, type DiagramViewProps } from './view-types';
 
