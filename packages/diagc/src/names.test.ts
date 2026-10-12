@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSafeName } from './names';
+import { diagramName, isSafeName } from './names';
 
 describe('isSafeName', () => {
   it('takes lowercase letters, digits and -, with / for a folder', () => {
@@ -29,5 +29,13 @@ describe('isSafeName', () => {
     expect(isSafeName('composed')).toBe(true);
     expect(isSafeName('rename/x')).toBe(true);
     expect(isSafeName('team/renamed')).toBe(true);
+  });
+});
+
+describe('diagramName', () => {
+  it('strips the source prefix and the diagram suffix, once', () => {
+    expect(diagramName('shop')).toBe('shop');
+    expect(diagramName('shop.diagram.ts')).toBe('shop');
+    expect(diagramName('.diagrams/src/team/app.diagram.json')).toBe('team/app');
   });
 });

@@ -2,9 +2,8 @@ import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import type { HomePaths } from './home';
-import { resolveInclude } from './includes';
 import { startStudioServer } from './serve';
-import { snapshotSession } from './snapshots';
+import { lockedResolverFor } from './snapshots';
 import { formatCompileEvent, startWatch } from './watch';
 
 export interface StudioEnv {
@@ -61,9 +60,9 @@ export async function runStudio(home: HomePaths, cwd: string): Promise<void> {
   // Studio's live watch-compile loop always resolves includes locked, same as
   // the one-shot `compile`/`watch` commands default to — the studio has no
   // `--update-includes` surface, so there is no other mode to offer here.
-  // rootDir is `<cwd>/.diagrams` (not process.cwd()'s `.diagrams`), matching
-  // env.DIAGRAMS_DIR/ARTIFACTS_DIR above: runStudio targets an arbitrary repo.
-  const { resolver } = snapshotSession(resolveInclude, path.join(cwd, '.diagrams'), 'locked');
+  // The lock is found from env.DIAGRAMS_DIR (not process.cwd()'s `.diagrams`),
+  // like the sources and artifacts: runStudio targets an arbitrary repo.
+  const resolver = lockedResolverFor(env.DIAGRAMS_DIR);
 
   const watcher = startWatch(env.DIAGRAMS_DIR, env.ARTIFACTS_DIR, {
     coreEntry: home.coreEntry,

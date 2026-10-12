@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { IncludeError, type DiagramModel, type IncludeResolver, type IncludeSource } from '@diagc/core/internal';
+import { resolveInclude } from './includes';
 
 export type SnapshotMode = 'locked' | 'update';
 
@@ -137,4 +138,18 @@ export function snapshotSession(base: IncludeResolver, rootDir: string, mode: Sn
   };
 
   return { resolver, prune };
+}
+
+/**
+ * The include resolver for every run that is not an update: a remote include comes
+ * from the lock and its vendored copy, never from the network. Only `compile` and
+ * `publish` with `--update-includes` fetch and rewrite the lock; the studio's reads,
+ * its watch loop, eject's recompile and a `loadModel` call given no resolver must not
+ * fetch or vendor on anyone's behalf, so an include the lock does not hold fails.
+ *
+ * `diagramsDir` is the sources' folder, `.diagrams/src`. The lock and the vendored
+ * includes sit in its parent, the `.diagrams` root, where an update run writes them.
+ */
+export function lockedResolverFor(diagramsDir: string): IncludeResolver {
+  return snapshotSession(resolveInclude, path.dirname(diagramsDir), 'locked').resolver;
 }

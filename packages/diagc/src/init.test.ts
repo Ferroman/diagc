@@ -11,7 +11,6 @@ import {
   DEFAULT_NAME,
   IGNORED,
   SKILL_PATH,
-  diagramName,
   missingIgnores,
   runInit,
   withAgentsBlock,
@@ -217,14 +216,6 @@ describe('.gitignore', () => {
     expect(missingIgnores('')).toEqual(IGNORED);
     expect(missingIgnores('  .diagrams/html/  \n/.diagrams/diff\n')).toEqual(['.diagrams/.artifacts/']);
     expect(missingIgnores('.diagrams/html/\r\n.diagrams/diff/\r\n.diagrams/.artifacts/\r\n')).toEqual([]);
-  });
-});
-
-describe('diagramName', () => {
-  it('strips the source prefix and the diagram suffix, once', () => {
-    expect(diagramName('shop')).toBe('shop');
-    expect(diagramName('shop.diagram.ts')).toBe('shop');
-    expect(diagramName('.diagrams/src/team/app.diagram.json')).toBe('team/app');
   });
 });
 

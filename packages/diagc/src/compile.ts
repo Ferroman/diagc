@@ -12,7 +12,7 @@ import {
   type IncludeResolver,
 } from '@diagc/core/internal';
 import { resolveInclude } from './includes';
-import { snapshotSession } from './snapshots';
+import { lockedResolverFor } from './snapshots';
 
 /**
  * Shape guard: with `{ default: true }` jiti returns the module NAMESPACE when
@@ -152,17 +152,12 @@ export async function loadModel(file: string, opts?: LoadOptions): Promise<Diagr
   if (sourceIssues.length > 0) throw new DiagramValidationError(sourceIssues);
 
   if (model.nodes.some((n) => n.include !== undefined)) {
-    // Default to a locked snapshot resolver rooted at rootDir's parent (the
-    // .diagrams root, same derivation as eject.ts): a call site that forgets
-    // to pass `resolver` must fail on an unsnapshotted remote include, not
-    // silently reintroduce live fetching. Local includes pass through either
-    // way; only without a rootDir to anchor the vendor dir does the raw
-    // resolver remain the fallback.
+    // Default to the locked resolver: a call site that forgets to pass `resolver`
+    // must fail on an unsnapshotted remote include, not silently reintroduce live
+    // fetching. Local includes pass through either way; only without a rootDir to
+    // anchor the vendor dir does the raw resolver remain the fallback.
     const resolver =
-      opts?.resolver ??
-      (opts?.rootDir !== undefined
-        ? snapshotSession(resolveInclude, path.dirname(path.resolve(opts.rootDir)), 'locked').resolver
-        : resolveInclude);
+      opts?.resolver ?? (opts?.rootDir !== undefined ? lockedResolverFor(path.resolve(opts.rootDir)) : resolveInclude);
     const { model: composed, warnings } = await composeIncludes(model, path.resolve(file), resolver);
     for (const w of warnings) {
       if (opts?.onWarning !== undefined) opts.onWarning(w);
