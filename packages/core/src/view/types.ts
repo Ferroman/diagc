@@ -74,6 +74,8 @@ export interface CompiledView {
    * toggles and structure-sharing planes, so boxes never jump */
   layoutEdges: ViewEdge[];
   lod: LodState;
+  /** hidden node id -> the one visible box that stands in for it on this plane */
+  anchorOf: ReadonlyMap<string, string>;
   /** drill view only: stub node id -> the real off-frame node it represents. */
   externals?: Map<string, string>;
 }

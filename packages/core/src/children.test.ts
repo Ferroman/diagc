@@ -35,7 +35,7 @@ describe('countAnchored', () => {
     // The diagram rests fully folded: outer renders as one box and the whole
     // mid › leaf › deep subtree hides beneath it. Hidden nodes are invisible in
     // the compiled view, so only visible roots get badges.
-    const counts = countAnchored(json, view);
+    const counts = countAnchored(view);
     expect(counts.get('outer')).toBe(3);
     expect(counts.get('other')).toBe(0);
     expect(counts.has('mid')).toBe(false);
@@ -46,7 +46,7 @@ describe('countAnchored', () => {
     const json = nested();
     const view = compileView(json, { pins: { outer: 'expanded' } });
     // outer opens → mid is revealed but stays collapsed, hiding leaf › deep
-    const counts = countAnchored(json, view);
+    const counts = countAnchored(view);
     expect(view.lod['outer']).toBe('expanded');
     expect(view.lod['mid']).toBe('collapsed');
     expect(counts.get('outer')).toBe(0);
@@ -56,11 +56,44 @@ describe('countAnchored', () => {
   it('counts zero when the whole subtree is revealed', () => {
     const json = nested();
     const view = compileView(json, { pins: { outer: 'expanded', mid: 'expanded', leaf: 'expanded' } });
-    const counts = countAnchored(json, view);
+    const counts = countAnchored(view);
     expect(counts.get('outer')).toBe(0);
     expect(counts.get('mid')).toBe(0);
     expect(counts.get('leaf')).toBe(0);
     expect(counts.get('deep')).toBe(0);
+  });
+
+  it('counts the plane being viewed, each hidden node once', () => {
+    const m = model('planes');
+    m.plane('current', { name: 'Current' });
+    m.plane('target', { name: 'Target' });
+    const env = m.node('env', { type: 'system' });
+    const vpc = m.node('vpc', { type: 'system' });
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    // the same nesting on both planes: two containment edges per child
+    for (const plane of ['current', 'target']) {
+      env.contains(vpc, { plane });
+      vpc.contains(a, { plane });
+      vpc.contains(b, { plane });
+    }
+    const json = m.toJSON();
+    const view = compileView(json, { plane: 'current' });
+    expect(countAnchored(view).get('env')).toBe(3);
+  });
+
+  it('counts a node reached through two hidden parents once', () => {
+    const m = model('dag');
+    const group = m.node('group', { type: 'system' });
+    const x = m.node('x', { type: 'system' });
+    const y = m.node('y', { type: 'system' });
+    const shared = m.node('shared', { type: 'service' });
+    group.contains(x, y);
+    x.contains(shared);
+    y.contains(shared);
+    const json = m.toJSON();
+    const view = compileView(json, {});
+    expect(countAnchored(view).get('group')).toBe(3);
   });
 
   it('ignores nodes hidden by plane/layer filtering (not just fold)', () => {
@@ -70,11 +103,11 @@ describe('countAnchored', () => {
     const hidden = m.node('hidden', { type: 'service', layer: 'off' });
     top.contains(hidden);
     const json = m.toJSON();
-    // layer 'off' is inactive → hidden is filtered from the view entirely, and
-    // the folded top hides it like any other unreachable descendant
+    // layer 'off' is inactive → hidden is filtered from the view entirely, so
+    // unfolding top would not show it, and the badge does not count it
     const view = compileView(json, { activeLayers: [] });
-    const counts = countAnchored(json, view);
-    expect(counts.get('top')).toBe(1);
+    const counts = countAnchored(view);
+    expect(counts.get('top')).toBe(0);
   });
 });
 describe('allowedParentTypes', () => {

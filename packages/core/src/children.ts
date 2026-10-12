@@ -24,32 +24,22 @@ export function childrenOf(edges: DiagramModel['containment']): Map<string, stri
 }
 
 /**
- * Per-node hidden-descendant counts over a compiled view, for the collapse
- * badge (`hiddenCount` on collapsed containers). A node's "hidden" set is
- * exactly the model nodes that are not visible in the compiled view; each is
- * attributed to the collapsed visible container that absorbed it. The compiled
- * view does not expose anchors, so this approximates by subtree size: for a
- * collapsed visible container, hidden descendants = reachable containment
- * descendants that are not visible. Uses the shared `childrenOf` containment
- * index — hierarchy knowledge lives in core, not the renderer.
+ * Per-node hidden counts over a compiled view, for the collapse badge
+ * (`hiddenCount` on collapsed containers): how many hidden nodes each visible
+ * box stands in for. Each hidden node counts once, for the one box that absorbed
+ * it on the plane being viewed — so another plane's containment, or a second
+ * path to the same node, adds nothing. A node the view filters out (an inactive
+ * layer, a plane's `hides`) is absorbed by no box, and unfolding would not show
+ * it either. Every visible node has an entry; one that absorbs nothing has 0.
  */
-export function countAnchored(model: DiagramModel, view: CompiledView): Map<string, number> {
-  const visible = new Set<string>();
+export function countAnchored(view: CompiledView): Map<string, number> {
+  const counts = new Map<string, number>();
   const walk = (n: ViewNode) => {
-    visible.add(n.id);
+    counts.set(n.id, 0);
     n.children.forEach(walk);
   };
   view.roots.forEach(walk);
-  const counts = new Map<string, number>();
-  const children = childrenOf(model.containment);
-  const countHidden = (id: string): number => {
-    let n = 0;
-    for (const c of children.get(id) ?? []) {
-      if (!visible.has(c)) n += 1 + countHidden(c);
-    }
-    return n;
-  };
-  for (const id of visible) counts.set(id, countHidden(id));
+  for (const anchor of view.anchorOf.values()) counts.set(anchor, (counts.get(anchor) ?? 0) + 1);
   return counts;
 }
 

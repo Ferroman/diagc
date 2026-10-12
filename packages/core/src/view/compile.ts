@@ -74,7 +74,7 @@ export function compileView(model: DiagramModel, viewport: ViewportState): Compi
       scoped.model.layers.map((l) => l.id),
       true,
     );
-    return { roots: tree.roots, edges, layoutEdges, lod, externals: scoped.externals };
+    return { roots: tree.roots, edges, layoutEdges, lod, anchorOf: tree.anchorOf, externals: scoped.externals };
   }
 
   const lod = computeLod({ hierarchy, focus: viewport.focus, pins: viewport.pins });
@@ -87,7 +87,7 @@ export function compileView(model: DiagramModel, viewport: ViewportState): Compi
     model.layers.map((l) => l.id),
     true,
   );
-  return { roots: tree.roots, edges, layoutEdges, lod };
+  return { roots: tree.roots, edges, layoutEdges, lod, anchorOf: tree.anchorOf };
 }
 
 /** Drops the rows of inactive column layers. Rows never take part in edge

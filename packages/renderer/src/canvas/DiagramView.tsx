@@ -139,7 +139,7 @@ function Inner(props: DiagramViewProps) {
   // Both feed the node data AND the layout's box-size estimate (a folded
   // container's count badge and a node's meta badges take real width), so they
   // are derived ahead of the geometry pipeline.
-  const hiddenCounts = useMemo(() => countAnchored(props.model, compiled), [props.model, compiled]);
+  const hiddenCounts = useMemo(() => countAnchored(compiled), [compiled]);
   const metaKeys = props.onNodeMetaKeys ?? DEFAULT_ON_NODE_META_KEYS;
   // The geometry pipeline (size hints → elk/notation layout → overlay-applied
   // and band-arranged geometry): see useViewLayout.
