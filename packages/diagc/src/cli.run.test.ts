@@ -1,6 +1,15 @@
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -494,4 +503,405 @@ describe('diagc diff, through the real CLI', () => {
       /^shop\.layout\.json at working tree: does not parse \(.+\) — compared and drawn without it$/m,
     );
   }, 60_000);
+});
+
+/** `git` in `dir`, with an identity and no signing, so a commit works anywhere. */
+function gitIn(dir: string): (...args: string[]) => void {
+  return (...args) => {
+    execFileSync(
+      'git',
+      ['-c', 'user.email=t@example.com', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...args],
+      {
+        cwd: dir,
+        stdio: 'pipe',
+      },
+    );
+  };
+}
+
+/** Each source under `dir/.diagrams/src`, by name. */
+function sources(dir: string, models: Record<string, Record<string, unknown>>): void {
+  for (const [name, model] of Object.entries(models)) {
+    const file = path.join(dir, '.diagrams', 'src', `${name}.diagram.json`);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify(model));
+  }
+}
+
+const DANGLING = { relations: [{ id: 'r', from: 'a', to: 'ghost', kind: 'uses' }] };
+const MISTYPED = { nodes: [{ id: 'a', name: 'A', type: 'servise' }] };
+
+describe('the usage, and which mistake is reported first', () => {
+  /** The usage text, as `--help` prints it: console.log adds the newline after it. */
+  let usage = '';
+  beforeAll(() => {
+    const r = run(['--help'], fresh());
+    expect([r.status, r.stderr]).toEqual([0, '']);
+    usage = r.stdout.slice(0, -1);
+  }, 30_000);
+
+  it('prints the usage on stdout and exits 0 for --help or -h anywhere before a mistake', () => {
+    expect(usage).toMatch(/^Usage: diagc <init\|compile\|lint\|watch\|publish\|studio\|eject\|diff\|guide> /);
+    expect(usage.endsWith('\n  --help, -h      Show this help and exit\n')).toBe(true);
+    const dir = fresh();
+    const helps = [
+      ['-h'],
+      ['compile', '--help'],
+      ['lint', 'a.diagram.ts', '--json', '-h'],
+      ['frob', '--help'],
+      ['--help', '--bogus'],
+      ['--json', '--help'],
+      ['studio', 'x', 'y', '-h'],
+      ['init', '--agents', '--help'],
+    ];
+    for (const argv of helps) {
+      const r = run(argv, dir);
+      expect([argv, r.status, r.stdout, r.stderr]).toEqual([argv, 0, `${usage}\n`, '']);
+    }
+    expect(readdirSync(dir)).toEqual([]);
+  }, 60_000);
+
+  it("refuses a flag as argv reads, then one the command does not take in the flag table's order, then an argument too many", () => {
+    const out = '--out: needs a directory, e.g. --out build/artifacts';
+    const type = "--type: needs a diagram type, e.g. --type c4 ('diagc guide' lists them)";
+    const labels = '--labels: takes two names, before and after: --labels main,#12';
+    const imageUrl = '--image-url: needs a {path} placeholder, e.g. https://host/pr-1/{path}';
+    const locked = '(it always resolves includes locked); compile and publish do.';
+    const outTakers = 'compile, watch, publish, eject and diff do.';
+    const refused: [string[], string][] = [
+      [['compile', '--frobnicate'], "Unknown flag '--frobnicate'"],
+      [['--bogus', '--help'], "Unknown flag '--bogus'"],
+      [['eject', '--bogus', '--update-includes'], "Unknown flag '--bogus'"],
+      [['eject', '--update-includes', '--bogus'], "Unknown flag '--bogus'"],
+      [['frob', '--bogus'], "Unknown flag '--bogus'"],
+      [['compile', '--out'], out],
+      [['compile', '--out', '--json'], out],
+      [['--out', '--help'], out],
+      [['init', '--type'], type],
+      [['init', '--type', '--agents'], type],
+      [['init', '--out', 'x', '--type'], type],
+      [['publish', '--link', 'ftp://example.com'], "--link: link must be an http(s) URL, got 'ftp://example.com'"],
+      [['publish', '--link'], "--link: link must be an http(s) URL, got ''"],
+      [['publish', '--link', '--no-images'], "--link: link must be an http(s) URL, got '--no-images'"],
+      [['init', '--link', 'nope'], "--link: link must be an http(s) URL, got 'nope'"],
+      [['diff', 'a', '--labels', 'a'], labels],
+      [['diff', 'a', '--labels', 'a,'], labels],
+      [['diff', '--labels', 'a', '--json'], labels],
+      [['diff', 'a', '--labels', '--help'], labels],
+      [['diff', 'a', '--image-url', 'https://x/'], imageUrl],
+      [['diff', 'a', '--image-url'], imageUrl],
+      [['--json'], 'compile does not take --json; lint and diff do.'],
+      [['compile', '--no-images'], 'compile does not take --no-images; publish and diff do.'],
+      [['compile', '--link', 'https://x.test'], 'compile does not take --link; publish does.'],
+      [['compile', '--agents'], 'compile does not take --agents; init does.'],
+      [['lint', '--type', 'c4', '--out', 'x'], `lint does not take --out; ${outTakers}`],
+      [['lint', '--image-url', 'https://x/{path}'], 'lint does not take --image-url; diff does.'],
+      [['publish', '--labels', 'a,b'], 'publish does not take --labels; diff does.'],
+      [['diff', 'v1', '--type', 'c4'], 'diff does not take --type; init does.'],
+      [['guide', '--agents', '--json'], 'guide does not take --json; lint and diff do.'],
+      [['guide', 'a', 'b', '--json'], 'guide does not take --json; lint and diff do.'],
+      [['init', 'a', 'b', '--out', 'x'], `init does not take --out; ${outTakers}`],
+      [['watch', '--update-includes'], `watch does not take --update-includes ${locked}`],
+      [['studio', '--update-includes'], `studio does not take --update-includes ${locked}`],
+      [['eject', 'a', 'b', '--update-includes'], `eject does not take --update-includes ${locked}`],
+      [['studio', 'x', '--out', 'o'], `studio does not take --out; ${outTakers}`],
+      [['studio', 'x'], "studio takes no arguments; 'x' is one too many."],
+      [['watch', 'a', 'b', '--out', 'o'], "watch takes one directory; 'b' is one too many."],
+      [['eject', 'a', 'b'], "eject takes one diagram name; 'b' is one too many."],
+    ];
+    const dir = fresh();
+    for (const [argv, message] of refused) {
+      const r = run(argv, dir);
+      expect([argv, r.status, r.stdout, r.stderr]).toEqual([argv, 1, '', `diagc: ${message}\n\n${usage}\n`]);
+    }
+    expect(readdirSync(dir)).toEqual([]);
+  }, 120_000);
+
+  it('leaves an unknown command to the dispatch, and a missing or extra argument to the command', () => {
+    const withUsage = (line: string) => `${line}\n${usage}\n`;
+    const answers: [string[], string][] = [
+      [['frob'], withUsage("diagc: Unknown command 'frob'.")],
+      [['frob', '--json', 'a', 'b'], withUsage("diagc: Unknown command 'frob'.")],
+      [['-x'], withUsage("diagc: Unknown command '-x'.")],
+      [['--out', 'o', 'frob'], withUsage("diagc: Unknown command 'frob'.")],
+      [['eject'], withUsage('diagc: eject needs a diagram name.')],
+      [['eject', '--out', 'o'], withUsage('diagc: eject needs a diagram name.')],
+      [['eject', '.diagrams/src/'], withUsage('diagc: eject needs a diagram name.')],
+      [['diff'], withUsage('diagc: diff needs a git ref (diff v1.0) or a range (diff v1.0..v2.0).')],
+      [
+        ['diff', '--json', '--no-images'],
+        withUsage('diagc: diff needs a git ref (diff v1.0) or a range (diff v1.0..v2.0).'),
+      ],
+      [['init', 'a', 'b'], 'diagc: init takes one name, got 2 — e.g. diagc init shop --type c4\n'],
+      [['guide', 'a', 'b'], "diagc: guide takes one topic, got 2 — run it once per topic, or 'diagc guide all'.\n"],
+    ];
+    const dir = fresh();
+    for (const [argv, stderr] of answers) {
+      const r = run(argv, dir);
+      expect([argv, r.status, r.stdout, r.stderr]).toEqual([argv, 1, '', stderr]);
+    }
+    expect(readdirSync(dir)).toEqual([]);
+  }, 60_000);
+});
+
+describe('what each command prints where, through the real CLI', () => {
+  it('compile: each artifact on stdout; each warning and failure on stderr, in path order; exit 1 on a failure', () => {
+    const dir = fresh();
+    sources(dir, { a: diagram('a'), b: diagram('b', MISTYPED), c: diagram('c', DANGLING) });
+    const r = run(['compile'], dir);
+    expect(r.status).toBe(1);
+    expect(r.stdout).toBe(
+      '✓ .diagrams/src/a.diagram.json -> .diagrams/.artifacts/a.diagram.json\n' +
+        '✓ .diagrams/src/b.diagram.json -> .diagrams/.artifacts/b.diagram.json\n',
+    );
+    expect(r.stderr).toBe(
+      ".diagrams/src/b.diagram.json: 'a' has type 'servise', which draws as a plain box (did you mean 'service'?)\n" +
+        '✗ .diagrams/src/c.diagram.json\n' +
+        "Invalid diagram model:\n  - Relation 'r' references unknown node 'ghost'\n(keeping last good artifact)\n",
+    );
+  }, 30_000);
+
+  it('compile: the named files only, into --out', () => {
+    const dir = fresh();
+    sources(dir, { a: diagram('a'), c: diagram('c', DANGLING) });
+    const r = run(['compile', '.diagrams/src/a.diagram.json', '--out', 'build'], dir);
+    expect([r.status, r.stdout, r.stderr]).toEqual([0, '✓ .diagrams/src/a.diagram.json -> build/a.diagram.json\n', '']);
+    expect(readdirSync(dir).sort()).toEqual(['.diagrams', 'build']);
+  }, 30_000);
+
+  it('compile: what composing includes warns about, on stderr after the file', () => {
+    const dir = fresh();
+    const part = (id: string, type: string) =>
+      diagram(id, { nodes: [{ id: 'db', name: 'DB', type, key: 'shared-db' }] });
+    sources(dir, {
+      'parts/a': part('a', 'database'),
+      'parts/b': part('b', 'queue'),
+      u: diagram('u', {
+        nodes: [
+          { id: 'a', name: 'A', type: 'system', include: './parts/a.diagram.json' },
+          { id: 'b', name: 'B', type: 'system', include: './parts/b.diagram.json' },
+        ],
+      }),
+    });
+    const r = run(['compile', '.diagrams/src/u.diagram.json'], dir);
+    expect([r.status, r.stdout, r.stderr]).toEqual([
+      0,
+      '✓ .diagrams/src/u.diagram.json -> .diagrams/.artifacts/u.diagram.json\n',
+      ".diagrams/src/u.diagram.json: Key 'shared-db': type 'queue' (node 'b/db') differs from type 'database' (node 'a/db') — using type 'database'\n",
+    ]);
+  }, 30_000);
+
+  it('--update-includes prunes the lock only after every source of the whole tree compiled', () => {
+    const lock = `${JSON.stringify(
+      {
+        version: 1,
+        includes: {
+          'https://example.com/old.diagram.json': { file: 'includes/old-00000000.diagram.json', sha256: '0' },
+        },
+      },
+      null,
+      2,
+    )}\n`;
+    const setUp = (models: Record<string, Record<string, unknown>>): string => {
+      const dir = fresh();
+      sources(dir, models);
+      mkdirSync(path.join(dir, '.diagrams', 'includes'));
+      writeFileSync(path.join(dir, '.diagrams', 'includes', 'old-00000000.diagram.json'), '{}\n');
+      writeFileSync(path.join(dir, '.diagrams', 'includes.lock.json'), lock);
+      return dir;
+    };
+    const kept = (dir: string) => [
+      readFileSync(path.join(dir, '.diagrams', 'includes.lock.json'), 'utf8'),
+      readdirSync(path.join(dir, '.diagrams', 'includes')),
+    ];
+
+    const named = setUp({ a: diagram('a') });
+    expect(run(['compile', '--update-includes', '.diagrams/src/a.diagram.json'], named).status).toBe(0);
+    expect(kept(named)).toEqual([lock, ['old-00000000.diagram.json']]);
+
+    const failing = setUp({ a: diagram('a'), c: diagram('c', DANGLING) });
+    expect(run(['compile', '--update-includes'], failing).status).toBe(1);
+    expect(kept(failing)).toEqual([lock, ['old-00000000.diagram.json']]);
+
+    const whole = setUp({ a: diagram('a') });
+    expect(run(['compile', '--update-includes'], whole).status).toBe(0);
+    const pruned = [`${JSON.stringify({ version: 1, includes: {} }, null, 2)}\n`, []];
+    expect(kept(whole)).toEqual(pruned);
+
+    // publish compiles the whole tree whatever names it is given, so a scoped run prunes too
+    const scoped = setUp({ a: diagram('a'), b: diagram('b') });
+    expect(run(['publish', '--update-includes', '--no-images', 'a'], scoped).status).toBe(0);
+    expect(kept(scoped)).toEqual(pruned);
+  }, 60_000);
+
+  it('lint: one line per finding on stdout, exit 1', () => {
+    const dir = fresh();
+    sources(dir, { a: diagram('a'), b: diagram('b', MISTYPED) });
+    const r = run(['lint'], dir);
+    expect([r.status, r.stdout, r.stderr]).toEqual([
+      1,
+      ".diagrams/src/b.diagram.json: warning unknown-type: 'a' has type 'servise', which draws as a plain box (did you mean 'service'?)\n",
+      '',
+    ]);
+    expect(run(['lint', '.diagrams/src/a.diagram.json'], dir)).toEqual({ status: 0, stdout: '', stderr: '' });
+  }, 30_000);
+
+  it("publish --no-images: the pages on stdout, each of publish's warnings on stderr", () => {
+    const dir = fresh();
+    sources(dir, {
+      a: diagram('a', { nodes: [{ id: 'a', name: 'A', type: 'service', image: 'deadbeef.png' }] }),
+      c: diagram('c'),
+      d: diagram('d'),
+    });
+    writeFileSync(path.join(dir, '.diagrams', 'src', 'c.drawings.json'), '{"strokes":"none"}');
+    writeFileSync(path.join(dir, '.diagrams', 'src', 'd.layout.json'), '{');
+    // An artifact with no source is published as it is: compile never sees its ref.
+    mkdirSync(path.join(dir, '.diagrams', '.artifacts'), { recursive: true });
+    const stale = diagram('b', { nodes: [{ id: 'a', name: 'A', type: 'service', image: '/library/../../x.svg' }] });
+    writeFileSync(path.join(dir, '.diagrams', '.artifacts', 'b.diagram.json'), JSON.stringify(stale));
+    const r = run(['publish', '--no-images'], dir);
+    const assets = path.join(realpathSync(dir), '.diagrams', 'src', 'assets');
+    expect([r.status, r.stdout, r.stderr]).toEqual([
+      1,
+      '✓ 3 page(s) -> .diagrams/html\n✓ gallery -> .diagrams/html/index.html\n',
+      `publish: could not read asset "deadbeef.png" for diagram "a" (looked in ${assets}/deadbeef.png); leaving ref as-is.\n` +
+        'publish: refusing out-of-root asset "/library/../../x.svg" for diagram "b"; leaving ref as-is.\n' +
+        'publish: ignoring malformed drawings sidecar for diagram "c" (.diagrams/src/c.drawings.json); the page ships without ink.\n' +
+        `publish: skipping diagram "d": Expected property name or '}' in JSON at position 1 (line 1 column 2)\n`,
+    ]);
+  }, 60_000);
+
+  it('publish --no-images: exit 0, and nothing on stderr, when every diagram is published', () => {
+    const dir = fresh();
+    sources(dir, { a: diagram('a'), 'team/b': diagram('b') });
+    const r = run(['publish', '--no-images', '--out', 'build'], dir);
+    expect([r.status, r.stdout, r.stderr]).toEqual([
+      0,
+      '✓ 2 page(s) -> .diagrams/html\n✓ gallery -> .diagrams/html/index.html\n',
+      '',
+    ]);
+    expect(existsSync(path.join(dir, 'build', 'team', 'b.diagram.json'))).toBe(true);
+    expect(existsSync(path.join(dir, '.diagrams', 'html', 'team', 'b.html'))).toBe(true);
+  }, 60_000);
+
+  it('eject: the TypeScript source on stdout, or why not on stderr', () => {
+    const dir = fresh();
+    sources(dir, { shop: diagram('shop') });
+    expect(run(['eject', 'shop', '--out', 'build'], dir)).toEqual({
+      status: 0,
+      stdout: '✓ .diagrams/src/shop.diagram.ts\n',
+      stderr: '',
+    });
+    expect(existsSync(path.join(dir, 'build', 'shop.diagram.json'))).toBe(true);
+    expect(run(['eject', 'nope'], dir)).toEqual({
+      status: 1,
+      stdout: '',
+      stderr: "no diagram 'nope' (.diagrams/src/nope.diagram.json)\n",
+    });
+    expect(run(['eject', '.diagrams/src/shop.diagram.ts'], dir)).toEqual({
+      status: 1,
+      stdout: '',
+      stderr: "'shop' is already TypeScript-owned (.diagrams/src/shop.diagram.ts)\n",
+    });
+  }, 60_000);
+
+  it("diff: the change list on stdout, the pages it wrote on stderr; git's and the range's errors on stderr", () => {
+    const dir = fresh();
+    sources(dir, { gone: diagram('gone'), shop: diagram('shop'), same: diagram('same') });
+    const git = gitIn(dir);
+    git('init', '-q');
+    git('add', '-A');
+    git('commit', '-qm', 'v1');
+    rmSync(path.join(dir, '.diagrams', 'src', 'gone.diagram.json'));
+    sources(dir, { shop: diagram('shop', { nodes: [{ id: 'a', name: 'B', type: 'service' }] }) });
+
+    const r = run(['diff', 'HEAD', '--no-images', '--labels', 'before,after'], dir);
+    expect([r.status, r.stdout, r.stderr]).toEqual([
+      0,
+      'diagc diff before -> after\ngone:\n  - diagram removed: gone\nshop:\n  ~ A -> B (renamed)\n2 diagram(s) changed, 1 unchanged\n',
+      '✓ 3 page(s) -> .diagrams/diff/HEAD..working-tree\n' +
+        '✓ side by side -> .diagrams/diff/HEAD..working-tree/index.html\n' +
+        '✓ for an ADR -> .diagrams/diff/HEAD..working-tree/summary.md\n',
+    ]);
+    expect(readdirSync(path.join(dir, '.diagrams', 'diff', 'HEAD..working-tree')).sort()).toEqual([
+      'gone.before.html',
+      'index.html',
+      'shop.after.html',
+      'shop.before.html',
+      'summary.md',
+    ]);
+
+    const errors: [string[], string][] = [
+      [
+        ['diff', 'HEAD..'],
+        "diagc: 'HEAD..' is not a range: write <from>..<to>, or one ref to compare with the working tree\n",
+      ],
+      [['diff', 'nope'], "diagc: 'nope' is not a commit, tag or branch in this repository\n"],
+      [['diff', 'HEAD', 'nope', 'shop'], "diagc: no diagram 'nope'\n"],
+    ];
+    for (const [argv, stderr] of errors)
+      expect([argv, run(argv, dir)]).toEqual([argv, { status: 1, stdout: '', stderr }]);
+    const nowhere = fresh();
+    expect(run(['diff', 'HEAD'], nowhere)).toEqual({
+      status: 1,
+      stdout: '',
+      stderr: `diagc: not a git repository (or any parent): ${realpathSync(nowhere)}\n`,
+    });
+  }, 60_000);
+
+  it('diff: nothing changed is a line on stdout, exit 0, and no pages', () => {
+    const dir = fresh();
+    sources(dir, { shop: diagram('shop') });
+    const git = gitIn(dir);
+    git('init', '-q');
+    git('add', '-A');
+    git('commit', '-qm', 'v1');
+    expect(run(['diff', 'HEAD'], dir)).toEqual({
+      status: 0,
+      stdout: 'diagc diff HEAD -> working tree\nno diagram changed (1 compared)\n',
+      stderr: '',
+    });
+    expect(existsSync(path.join(dir, '.diagrams', 'diff'))).toBe(false);
+  }, 60_000);
+
+  // Chrome at a default location is found whatever CHROME_PATH says.
+  it.skipIf(findChrome() !== undefined)(
+    'diff: says on stderr, before the pages, that it found no Chrome',
+    () => {
+      const dir = fresh();
+      sources(dir, { shop: diagram('shop') });
+      const git = gitIn(dir);
+      git('init', '-q');
+      git('add', '-A');
+      git('commit', '-qm', 'v1');
+      sources(dir, { shop: diagram('shop', { nodes: [{ id: 'a', name: 'B', type: 'service' }] }) });
+      const r = run(['diff', 'HEAD', '--out', 'review'], dir, {
+        ...process.env,
+        CHROME_PATH: path.join(dir, 'no-chrome'),
+      });
+      expect([r.status, r.stderr]).toEqual([
+        0,
+        'No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.\n' +
+          '✓ 2 page(s) -> review\n✓ side by side -> review/index.html\n✓ for an ADR -> review/summary.md\n',
+      ]);
+    },
+    60_000,
+  );
+
+  it('guide: the page on stdout; an unknown topic on stderr', () => {
+    const dir = fresh();
+    const r = run(['guide'], dir);
+    expect([r.status, r.stderr]).toEqual([0, '']);
+    expect(r.stdout).toMatch(/^# Writing diagc diagrams\n[^]*[^\n]\n$/);
+    const c4 = run(['guide', 'c4'], dir);
+    expect([c4.status, c4.stderr]).toEqual([0, '']);
+    expect(c4.stdout).not.toBe(r.stdout);
+    expect(run(['guide', 'nope'], dir)).toEqual({
+      status: 1,
+      stdout: '',
+      stderr:
+        "diagc: No guide topic 'nope'. Topics: all, activity, c4, causal-loop, deployment, er, fishbone, git-graph, plan, second-order, threat-model\n",
+    });
+    expect(readdirSync(dir)).toEqual([]);
+  }, 30_000);
 });
