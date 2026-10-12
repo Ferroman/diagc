@@ -99,4 +99,24 @@ describe('Dock', () => {
     // Left dock: canvas is on the right, so the handle follows the toggle.
     expect(lKids.indexOf('dock-resize')).toBeGreaterThan(lKids.indexOf('dock-toggle'));
   });
+
+  // breaks if the toggle's chevron, name or hint dot stop following the side
+  // and the collapsed state
+  it.each([
+    ['right', false, '⟩', 'Collapse panel'],
+    ['right', true, '⟨', 'Expand panel'],
+    ['left', false, '⟨', 'Collapse panel'],
+    ['left', true, '⟩', 'Expand panel'],
+  ] as const)('the %s dock (collapsed: %s) points %s and is named %s', (side, collapsed, glyph, name) => {
+    render(
+      <Dock side={side} collapsed={collapsed} onToggle={() => {}} hasContent>
+        <div>body</div>
+      </Dock>,
+    );
+    const toggle = screen.getByRole('button', { name });
+    expect(toggle.title).toBe(name);
+    expect(toggle.getAttribute('aria-expanded')).toBe(String(!collapsed));
+    expect(toggle.firstElementChild!.textContent).toBe(glyph);
+    expect(toggle.querySelector('.dock-dot') !== null).toBe(collapsed);
+  });
 });

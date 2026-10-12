@@ -74,7 +74,7 @@ describe('SecondOrderPanel', () => {
       <SecondOrderPanel
         model={tree()}
         selection={null}
-        plane="p"
+        scopePlane="p"
         onCommand={onCommand}
         onSelect={vi.fn()}
         onCreated={vi.fn()}

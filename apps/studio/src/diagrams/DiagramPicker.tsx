@@ -5,6 +5,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type MutableRefObject,
+  type RefObject,
 } from 'react';
 import { groupDiagrams, groupLabel, groupOf, leafOf } from './diagramGroups';
 import { usePersistedState } from '../usePersistedState';
@@ -135,33 +136,15 @@ export function DiagramPicker({
   const toggleGroup = (group: string) =>
     setCollapsed((c) => (c.includes(group) ? c.filter((g) => g !== group) : [...c, group]));
 
-  const selectedGroup = groupOf(selected);
   return (
     <div className="diagram-picker" ref={rootRef}>
-      <button
-        ref={triggerRef}
-        type="button"
-        className="diagram-picker-trigger"
-        // '' is real: an empty workspace, and the tick before boot promotes the
-        // selection out of it. A blank button would read as broken.
-        aria-label={`Diagram: ${selected === '' ? 'none' : selected}`}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        title={`Switch diagram${hint('diagram.picker')}`}
+      <PickerTrigger
+        triggerRef={triggerRef}
+        selected={selected}
+        open={open}
+        hint={hint}
         onClick={() => (open ? close(false) : openPicker())}
-      >
-        {selectedGroup !== '' && <span className="diagram-picker-folder">{groupLabel(selectedGroup)} / </span>}
-        {/* a span, not a bare text node: a narrow topbar ellipsises the name, and
-            text-overflow does nothing for a flex container's anonymous item */}
-        {selected === '' ? (
-          <span className="diagram-picker-folder">No diagram</span>
-        ) : (
-          <span className="diagram-picker-name">{leafOf(selected)}</span>
-        )}
-        <span className="diagram-picker-caret" aria-hidden="true">
-          ▾
-        </span>
-      </button>
+      />
       {open && (
         <div className="diagram-picker-pop">
           <input
@@ -181,60 +164,154 @@ export function DiagramPicker({
             }}
             onKeyDown={onKeyDown}
           />
-          <div className="diagram-picker-list" role="listbox" id={`${uid}-list`} aria-label="Diagrams" ref={listRef}>
-            {groups.length === 0 && <div className="diagram-picker-empty">No diagrams match</div>}
-            {groups.map((g) => {
-              const headerId = `${uid}-grp-${g.group}`;
-              const hidden = isCollapsed(g.group);
-              return (
-                <div
-                  key={g.group}
-                  role="group"
-                  {...(g.group === '' ? { 'aria-label': 'Ungrouped' } : { 'aria-labelledby': headerId })}
-                >
-                  {g.group !== '' && (
-                    <button
-                      type="button"
-                      id={headerId}
-                      className="diagram-picker-group"
-                      aria-expanded={!hidden}
-                      // Keep focus in the search box so the arrows keep working
-                      // after a header click.
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => toggleGroup(g.group)}
-                    >
-                      <span className="diagram-picker-caret" aria-hidden="true">
-                        {hidden ? '▸' : '▾'}
-                      </span>
-                      {groupLabel(g.group)}
-                      <span className="diagram-picker-count" aria-hidden="true">
-                        {g.names.length}
-                      </span>
-                    </button>
-                  )}
-                  {!hidden &&
-                    g.names.map((name) => (
-                      <div
-                        key={name}
-                        id={optionId(name)}
-                        role="option"
-                        aria-selected={name === selected}
-                        data-name={name}
-                        data-active={name === active}
-                        className={`diagram-picker-row${g.group !== '' ? ' nested' : ''}`}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onMouseMove={() => setCursor(name)}
-                        onClick={() => pick(name)}
-                      >
-                        {leafOf(name)}
-                      </div>
-                    ))}
-                </div>
-              );
-            })}
-          </div>
+          <PickerList
+            listRef={listRef}
+            uid={uid}
+            groups={groups}
+            hiddenOf={isCollapsed}
+            selected={selected}
+            active={active}
+            optionId={optionId}
+            onToggle={toggleGroup}
+            onCursor={setCursor}
+            onPick={pick}
+          />
         </div>
       )}
+    </div>
+  );
+}
+
+/** The topbar button naming the current diagram, with its folder. */
+function PickerTrigger({
+  triggerRef,
+  selected,
+  open,
+  hint,
+  onClick,
+}: {
+  triggerRef: RefObject<HTMLButtonElement | null>;
+  selected: string;
+  open: boolean;
+  hint: ReturnType<typeof useKeyHint>;
+  onClick: () => void;
+}) {
+  const selectedGroup = groupOf(selected);
+  return (
+    <button
+      ref={triggerRef}
+      type="button"
+      className="diagram-picker-trigger"
+      // '' is real: an empty workspace, and the tick before boot promotes the
+      // selection out of it. A blank button would read as broken.
+      aria-label={`Diagram: ${selected === '' ? 'none' : selected}`}
+      aria-haspopup="listbox"
+      aria-expanded={open}
+      title={`Switch diagram${hint('diagram.picker')}`}
+      onClick={onClick}
+    >
+      {selectedGroup !== '' && <span className="diagram-picker-folder">{groupLabel(selectedGroup)} / </span>}
+      {/* a span, not a bare text node: a narrow topbar ellipsises the name, and
+          text-overflow does nothing for a flex container's anonymous item */}
+      {selected === '' ? (
+        <span className="diagram-picker-folder">No diagram</span>
+      ) : (
+        <span className="diagram-picker-name">{leafOf(selected)}</span>
+      )}
+      <span className="diagram-picker-caret" aria-hidden="true">
+        ▾
+      </span>
+    </button>
+  );
+}
+
+/** One folder of the list: its header (which folds it) and its diagrams. */
+function PickerGroup({
+  group: g,
+  uid,
+  hidden,
+  selected,
+  active,
+  optionId,
+  onToggle,
+  onCursor,
+  onPick,
+}: {
+  group: ReturnType<typeof groupDiagrams>[number];
+  uid: string;
+  /** the folder is collapsed (and no search sees through it) */
+  hidden: boolean;
+  selected: string;
+  /** the row under the keyboard cursor */
+  active: string | undefined;
+  optionId: (name: string) => string;
+  onToggle: (group: string) => void;
+  onCursor: (name: string) => void;
+  onPick: (name: string) => void;
+}) {
+  const headerId = `${uid}-grp-${g.group}`;
+  return (
+    <div role="group" {...(g.group === '' ? { 'aria-label': 'Ungrouped' } : { 'aria-labelledby': headerId })}>
+      {g.group !== '' && (
+        <button
+          type="button"
+          id={headerId}
+          className="diagram-picker-group"
+          aria-expanded={!hidden}
+          // Keep focus in the search box so the arrows keep working
+          // after a header click.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onToggle(g.group)}
+        >
+          <span className="diagram-picker-caret" aria-hidden="true">
+            {hidden ? '▸' : '▾'}
+          </span>
+          {groupLabel(g.group)}
+          <span className="diagram-picker-count" aria-hidden="true">
+            {g.names.length}
+          </span>
+        </button>
+      )}
+      {!hidden &&
+        g.names.map((name) => (
+          <div
+            key={name}
+            id={optionId(name)}
+            role="option"
+            aria-selected={name === selected}
+            data-name={name}
+            data-active={name === active}
+            className={`diagram-picker-row${g.group !== '' ? ' nested' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
+            onMouseMove={() => onCursor(name)}
+            onClick={() => onPick(name)}
+          >
+            {leafOf(name)}
+          </div>
+        ))}
+    </div>
+  );
+}
+
+type GroupRowProps = Omit<Parameters<typeof PickerGroup>[0], 'group' | 'hidden'>;
+
+/** The listbox: every folder the search leaves, or a line saying none matches. */
+function PickerList({
+  listRef,
+  groups,
+  hiddenOf,
+  ...rows
+}: GroupRowProps & {
+  listRef: RefObject<HTMLDivElement | null>;
+  groups: ReturnType<typeof groupDiagrams>;
+  hiddenOf: (group: string) => boolean;
+}) {
+  return (
+    <div className="diagram-picker-list" role="listbox" id={`${rows.uid}-list`} aria-label="Diagrams" ref={listRef}>
+      {groups.length === 0 && <div className="diagram-picker-empty">No diagrams match</div>}
+      {groups.map((g) => (
+        <PickerGroup key={g.group} group={g} hidden={hiddenOf(g.group)} {...rows} />
+      ))}
     </div>
   );
 }

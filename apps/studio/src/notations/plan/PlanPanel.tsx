@@ -1,27 +1,17 @@
 import { useMemo, useState } from 'react';
-import {
-  PLAN_PERSON_TYPE,
-  PLAN_TEAM_TYPE,
-  PLAN_ZONE_TYPE,
-  type DiagramModel,
-  type EditorCommand,
-} from '@diagc/core/internal';
-import { planGraphCached, type DiagramSelection } from '@diagc/renderer';
+import { PLAN_PERSON_TYPE, PLAN_TEAM_TYPE, PLAN_ZONE_TYPE, type EditorCommand } from '@diagc/core/internal';
+import { planGraphCached } from '@diagc/renderer';
 import { DockSection } from '../../dock/DockSection';
+import type { NotationPanelProps } from '../types';
 import { addActor, addEvent, addZone } from './planActions';
 import { DateInput, RolePickers, roleCandidates } from './PlanSection';
 
-interface PlanPanelProps {
-  model: DiagramModel;
-  /** the active plane (undefined = default view = the first plane) */
-  plane: string | undefined;
-  selection: DiagramSelection | null;
-  onCommand: (command: EditorCommand) => void;
-  /** select the node an action just created, or a row's node */
-  onSelect: (id: string) => void;
-  /** the host's date, YYYY-MM-DD: where a quick-add lands when nothing is selected */
-  today: string;
-}
+/** `viewPlane` undefined is the default view, the first plane; `today` is where
+ * a quick-add lands when nothing is selected. */
+type PlanPanelProps = Pick<
+  NotationPanelProps,
+  'model' | 'viewPlane' | 'selection' | 'onCommand' | 'onSelect' | 'today'
+>;
 
 // exported so the test derives its expectation from this value rather than a magic pixel literal
 export const INDENT = 12;
@@ -33,10 +23,10 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '');
  * Dates dispatch on change; names are edited in Properties (one editor per
  * field), the row's name just selects.
  */
-export function PlanPanel({ model, plane, selection, onCommand, onSelect, today }: PlanPanelProps) {
+export function PlanPanel({ model, viewPlane, selection, onCommand, onSelect, today }: PlanPanelProps) {
   // the same derivation the canvas already paid for: planGraphCached keys on
   // (model, plane), so the panel and the layout share one graph per edit
-  const g = planGraphCached(model, plane);
+  const g = planGraphCached(model, viewPlane);
   // one whole-model scan per model, not one per zone row (RolePickers takes it)
   const candidates = useMemo(() => roleCandidates(model), [model]);
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
@@ -80,7 +70,7 @@ export function PlanPanel({ model, plane, selection, onCommand, onSelect, today 
             );
           })}
         </ul>
-        <button type="button" className="chip" onClick={() => run(addZone(model, plane, { selected, today }))}>
+        <button type="button" className="chip" onClick={() => run(addZone(model, viewPlane, { selected, today }))}>
           Add zone
         </button>
       </section>
@@ -100,7 +90,7 @@ export function PlanPanel({ model, plane, selection, onCommand, onSelect, today 
             );
           })}
         </ul>
-        <button type="button" className="chip" onClick={() => run(addEvent(model, plane, { selected, today }))}>
+        <button type="button" className="chip" onClick={() => run(addEvent(model, viewPlane, { selected, today }))}>
           Add event
         </button>
       </section>
@@ -118,7 +108,7 @@ export function PlanPanel({ model, plane, selection, onCommand, onSelect, today 
             className="chip"
             disabled={actorName.trim() === ''}
             onClick={() => {
-              run(addActor(model, plane, PLAN_PERSON_TYPE, actorName.trim()));
+              run(addActor(model, viewPlane, PLAN_PERSON_TYPE, actorName.trim()));
               setActorName('');
             }}
           >
@@ -129,7 +119,7 @@ export function PlanPanel({ model, plane, selection, onCommand, onSelect, today 
             className="chip"
             disabled={actorName.trim() === ''}
             onClick={() => {
-              run(addActor(model, plane, PLAN_TEAM_TYPE, actorName.trim()));
+              run(addActor(model, viewPlane, PLAN_TEAM_TYPE, actorName.trim()));
               setActorName('');
             }}
           >

@@ -11,7 +11,7 @@ export const PLAN: StudioNotationProfile = {
     render: (ctx) => (
       <PlanPanel
         model={ctx.model}
-        plane={ctx.viewPlane}
+        viewPlane={ctx.viewPlane}
         selection={ctx.selection}
         onCommand={ctx.onCommand}
         onSelect={(id) => ctx.select({ kind: 'node', id })}

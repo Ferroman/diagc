@@ -6,24 +6,17 @@ import {
   latestCommit,
   nextCommitId,
   uniqueNodeId,
-  type DiagramModel,
   type DiagramNode,
-  type EditorCommand,
 } from '@diagc/core/internal';
-import type { DiagramSelection } from '@diagc/renderer';
 import { appendCommit } from './gitActions';
 import { ColorRow } from '../../inspector/pickers';
 import { DockSection } from '../../dock/DockSection';
+import type { DraftField } from '../../inspector/useDraftField';
+import type { NotationPanelProps } from '../types';
 
-interface GitPanelProps {
-  model: DiagramModel;
-  /** the active plane (undefined = default view = the first plane) */
-  plane: string | undefined;
-  selection: DiagramSelection | null;
-  onCommand: (command: EditorCommand) => void;
-  /** select the commit an action just created */
-  onSelect: (id: string) => void;
-}
+/** `viewPlane` undefined is the default view, the first plane; `onSelect`
+ * selects the commit an action just created. */
+type GitPanelProps = Pick<NotationPanelProps, 'model' | 'viewPlane' | 'selection' | 'onCommand' | 'onSelect'>;
 
 // The Gap field's text as a whole number of empty columns, 0 for anything else.
 // Not core's parseGap, which reads stored metadata: this one takes what `Number`
@@ -40,9 +33,9 @@ const gapInput = (raw: string): number => {
  * lane, a link to a node that is not there yet). "Add commit" is
  * `appendCommit`, the same action the canvas `+` runs.
  */
-export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPanelProps) {
-  const g = gitGraph(model, plane);
-  const planeId = plane ?? model.planes[0]?.id;
+export function GitPanel({ model, viewPlane, selection, onCommand, onSelect }: GitPanelProps) {
+  const g = gitGraph(model, viewPlane);
+  const planeId = viewPlane ?? model.planes[0]?.id;
   const parent = (laneId: string) => defined({ id: laneId, plane: planeId });
 
   const [laneName, setLaneName] = useState('');
@@ -79,7 +72,7 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
 
   const addCommit = () => {
     if (targetLane === '') return;
-    const { id, command } = appendCommit(model, plane, targetLane, { tag: tag.trim(), gap: gapInput(gap) });
+    const { id, command } = appendCommit(model, viewPlane, targetLane, { tag: tag.trim(), gap: gapInput(gap) });
     onCommand(command);
     setTag('');
     setGap('0');
@@ -141,94 +134,176 @@ export function GitPanel({ model, plane, selection, onCommand, onSelect }: GitPa
 
   return (
     <DockSection id="git" title="Git" label="Git graph" className="sidebar git-panel">
-      <section className="panel-section">
-        <h3>Lanes</h3>
-        {g.lanes.length === 0 ? <p className="lp-caption">No lanes yet</p> : null}
-        <ul className="git-lanes">
-          {g.lanes.map((l) => (
-            <li key={l.id}>{l.node.name}</li>
-          ))}
-        </ul>
-        <input
-          aria-label="New lane name"
-          value={laneName}
-          onChange={(e) => setLaneName(e.target.value)}
-          placeholder="Lane name"
-        />
-        <ColorRow label="Lane color" value={laneColor} onChange={setLaneColor} />
-        <button type="button" className="chip" onClick={addLane} disabled={laneName.trim() === ''}>
-          Add lane
-        </button>
-      </section>
-      <section className="panel-section">
-        <h3>Commit</h3>
-        <select aria-label="Lane" value={targetLane} onChange={(e) => setCommitLane(e.target.value)}>
-          {g.lanes.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.node.name}
-            </option>
-          ))}
-        </select>
-        <input aria-label="Tag" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="Tag (optional)" />
-        <input aria-label="Gap" type="number" min={0} step={1} value={gap} onChange={(e) => setGap(e.target.value)} />
-        <button type="button" className="chip" onClick={addCommit} disabled={targetLane === ''}>
-          Add commit
-        </button>
-      </section>
+      <LanesSection lanes={g.lanes} name={[laneName, setLaneName]} color={[laneColor, setLaneColor]} onAdd={addLane} />
+      <CommitSection
+        lanes={g.lanes}
+        targetLane={targetLane}
+        onLane={setCommitLane}
+        tag={[tag, setTag]}
+        gap={[gap, setGap]}
+        onAdd={addCommit}
+      />
       {selected !== undefined && (
-        <section className="panel-section">
-          <h3>Selected commit{selected.name !== '' ? ` ${selected.name}` : ''}</h3>
-          <select
-            aria-label="Branch into lane"
-            value={branchLane !== '' ? branchLane : (otherLanes[0]?.id ?? '')}
-            onChange={(e) => setBranchLane(e.target.value)}
-          >
-            {otherLanes.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.node.name}
-              </option>
-            ))}
-          </select>
-          <button type="button" className="chip" onClick={branchInto} disabled={otherLanes.length === 0}>
-            Branch
-          </button>
-          <select
-            aria-label="Merge into lane"
-            value={mergeLane !== '' ? mergeLane : (otherLanes[0]?.id ?? '')}
-            onChange={(e) => setMergeLane(e.target.value)}
-          >
-            {otherLanes.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.node.name}
-              </option>
-            ))}
-          </select>
-          <input
-            aria-label="Merge tag"
-            value={mergeTag}
-            onChange={(e) => setMergeTag(e.target.value)}
-            placeholder="Tag (optional)"
-          />
-          <button type="button" className="chip" onClick={mergeInto} disabled={otherLanes.length === 0}>
-            Merge
-          </button>
-          <label className="lp-check">
-            Gap
-            {/* uncontrolled (defaultValue) so typing doesn't fight the parent's
-             * round-trip through the model; keyed on the commit so switching
-             * selection remounts it instead of keeping the old commit's value */}
-            <input
-              key={selected.id}
-              aria-label="Commit gap"
-              type="number"
-              min={0}
-              step={1}
-              defaultValue={String(gapOf(selected))}
-              onChange={(e) => setSelectedGap(e.target.value)}
-            />
-          </label>
-        </section>
+        <SelectedCommitSection
+          commit={selected}
+          otherLanes={otherLanes}
+          branchLane={[branchLane, setBranchLane]}
+          mergeLane={[mergeLane, setMergeLane]}
+          mergeTag={[mergeTag, setMergeTag]}
+          onBranch={branchInto}
+          onMerge={mergeInto}
+          onGap={setSelectedGap}
+        />
       )}
     </DockSection>
+  );
+}
+
+type Lane = ReturnType<typeof gitGraph>['lanes'][number];
+
+/** The lanes, top to bottom, and a row to add one with its colour. */
+function LanesSection({
+  lanes,
+  name: [laneName, setLaneName],
+  color: [laneColor, setLaneColor],
+  onAdd,
+}: {
+  lanes: readonly Lane[];
+  name: DraftField;
+  color: DraftField;
+  onAdd: () => void;
+}) {
+  return (
+    <section className="panel-section">
+      <h3>Lanes</h3>
+      {lanes.length === 0 ? <p className="lp-caption">No lanes yet</p> : null}
+      <ul className="git-lanes">
+        {lanes.map((l) => (
+          <li key={l.id}>{l.node.name}</li>
+        ))}
+      </ul>
+      <input
+        aria-label="New lane name"
+        value={laneName}
+        onChange={(e) => setLaneName(e.target.value)}
+        placeholder="Lane name"
+      />
+      <ColorRow label="Lane color" value={laneColor} onChange={setLaneColor} />
+      <button type="button" className="chip" onClick={onAdd} disabled={laneName.trim() === ''}>
+        Add lane
+      </button>
+    </section>
+  );
+}
+
+/** A new commit: the lane it goes on, an optional tag, and the gap before it. */
+function CommitSection({
+  lanes,
+  targetLane,
+  onLane,
+  tag: [tag, setTag],
+  gap: [gap, setGap],
+  onAdd,
+}: {
+  lanes: readonly Lane[];
+  targetLane: string;
+  onLane: (lane: string) => void;
+  tag: DraftField;
+  gap: DraftField;
+  onAdd: () => void;
+}) {
+  return (
+    <section className="panel-section">
+      <h3>Commit</h3>
+      <select aria-label="Lane" value={targetLane} onChange={(e) => onLane(e.target.value)}>
+        {lanes.map((l) => (
+          <option key={l.id} value={l.id}>
+            {l.node.name}
+          </option>
+        ))}
+      </select>
+      <input aria-label="Tag" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="Tag (optional)" />
+      <input aria-label="Gap" type="number" min={0} step={1} value={gap} onChange={(e) => setGap(e.target.value)} />
+      <button type="button" className="chip" onClick={onAdd} disabled={targetLane === ''}>
+        Add commit
+      </button>
+    </section>
+  );
+}
+
+/** What the selected commit can do: branch or merge into another lane, and its own gap. */
+function SelectedCommitSection({
+  commit,
+  otherLanes,
+  branchLane: [branchLane, setBranchLane],
+  mergeLane: [mergeLane, setMergeLane],
+  mergeTag: [mergeTag, setMergeTag],
+  onBranch,
+  onMerge,
+  onGap,
+}: {
+  commit: DiagramNode;
+  /** every lane but the commit's own */
+  otherLanes: readonly Lane[];
+  branchLane: DraftField;
+  mergeLane: DraftField;
+  mergeTag: DraftField;
+  onBranch: () => void;
+  onMerge: () => void;
+  onGap: (raw: string) => void;
+}) {
+  return (
+    <section className="panel-section">
+      <h3>Selected commit{commit.name !== '' ? ` ${commit.name}` : ''}</h3>
+      <select
+        aria-label="Branch into lane"
+        value={branchLane !== '' ? branchLane : (otherLanes[0]?.id ?? '')}
+        onChange={(e) => setBranchLane(e.target.value)}
+      >
+        {otherLanes.map((l) => (
+          <option key={l.id} value={l.id}>
+            {l.node.name}
+          </option>
+        ))}
+      </select>
+      <button type="button" className="chip" onClick={onBranch} disabled={otherLanes.length === 0}>
+        Branch
+      </button>
+      <select
+        aria-label="Merge into lane"
+        value={mergeLane !== '' ? mergeLane : (otherLanes[0]?.id ?? '')}
+        onChange={(e) => setMergeLane(e.target.value)}
+      >
+        {otherLanes.map((l) => (
+          <option key={l.id} value={l.id}>
+            {l.node.name}
+          </option>
+        ))}
+      </select>
+      <input
+        aria-label="Merge tag"
+        value={mergeTag}
+        onChange={(e) => setMergeTag(e.target.value)}
+        placeholder="Tag (optional)"
+      />
+      <button type="button" className="chip" onClick={onMerge} disabled={otherLanes.length === 0}>
+        Merge
+      </button>
+      <label className="lp-check">
+        Gap
+        {/* uncontrolled (defaultValue) so typing doesn't fight the parent's
+         * round-trip through the model; keyed on the commit so switching
+         * selection remounts it instead of keeping the old commit's value */}
+        <input
+          key={commit.id}
+          aria-label="Commit gap"
+          type="number"
+          min={0}
+          step={1}
+          defaultValue={String(gapOf(commit))}
+          onChange={(e) => onGap(e.target.value)}
+        />
+      </label>
+    </section>
   );
 }

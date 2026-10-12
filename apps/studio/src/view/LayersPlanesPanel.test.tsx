@@ -374,4 +374,53 @@ describe('LayersPlanesPanel', () => {
     expect(options('Notation')).toEqual(want);
     expect(options('Notation Flow')).toEqual(want);
   });
+
+  // breaks if a plane row's rename, base-relations toggle or default layers
+  // stop committing as upsert-plane with the row's other fields kept
+  it('renames a plane, toggles its base relations and its default layers as upsert-plane', () => {
+    const onCommand = vi.fn();
+    render(<LayersPlanesPanel model={testModel()} onCommand={onCommand} />);
+    const name = screen.getByLabelText('Plane name flow');
+    fireEvent.change(name, { target: { value: '  ' } });
+    fireEvent.blur(name);
+    expect(onCommand).not.toHaveBeenCalled();
+    expect((name as HTMLInputElement).value).toBe('Flow');
+    fireEvent.change(name, { target: { value: 'Runtime' } });
+    fireEvent.keyDown(name, { key: 'Enter' });
+    expect(onCommand).toHaveBeenLastCalledWith({ type: 'upsert-plane', plane: { id: 'flow', name: 'Runtime' } });
+    fireEvent.click(screen.getByLabelText('Base relations in Architecture'));
+    expect(onCommand).toHaveBeenLastCalledWith({
+      type: 'upsert-plane',
+      plane: { id: 'arch', name: 'Architecture', baseRelations: false },
+    });
+    fireEvent.click(screen.getByLabelText('Layer Ops in Architecture'));
+    expect(onCommand).toHaveBeenLastCalledWith({
+      type: 'upsert-plane',
+      plane: { id: 'arch', name: 'Architecture', layers: ['ops'], baseRelations: false },
+    });
+  });
+
+  // breaks if the layer rows re-seed on a planes change (or the plane rows on
+  // a layers change), losing a name being typed, or stop re-seeding on their own
+  it("keeps a typed row name through the other collection's change, and re-seeds on its own", () => {
+    const ui = (m: DiagramModel) => <LayersPlanesPanel model={m} onCommand={vi.fn()} />;
+    // one base, so each rerender below replaces exactly one collection
+    const base = testModel();
+    const { rerender } = render(ui(base));
+    const box = (label: string) => screen.getByLabelText(label) as HTMLInputElement;
+    fireEvent.change(box('Layer name ops'), { target: { value: 'typed layer' } });
+    fireEvent.change(box('Plane name flow'), { target: { value: 'typed plane' } });
+    fireEvent.change(box('New layer name'), { target: { value: 'new layer' } });
+    fireEvent.change(box('New plane name'), { target: { value: 'new plane' } });
+    const planes = [...base.planes, { id: 'more', name: 'More' }];
+    rerender(ui({ ...base, planes }));
+    expect(box('Layer name ops').value).toBe('typed layer');
+    expect(box('Plane name flow').value).toBe('Flow');
+    fireEvent.change(box('Plane name flow'), { target: { value: 'typed plane' } });
+    rerender(ui({ ...base, planes, layers: [{ id: 'ops', name: 'Ops 2' }] }));
+    expect(box('Layer name ops').value).toBe('Ops 2');
+    expect(box('Plane name flow').value).toBe('typed plane');
+    expect(box('New layer name').value).toBe('new layer');
+    expect(box('New plane name').value).toBe('new plane');
+  });
 });

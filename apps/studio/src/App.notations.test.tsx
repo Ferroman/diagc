@@ -218,7 +218,7 @@ describe('the props each notation panel gets', () => {
   };
 
   it('gives Git, Plan and Threat model the plane on screen, Second-order and Fishbone none on a borrowing plane', async () => {
-    // Breaks if a panel's `plane` flips between the view plane and the scope
+    // Breaks if a panel's plane flips between the view plane and the scope
     // plane: Second-order and Fishbone tag the nodes they add with it, and a
     // borrowing plane's own id would hide them.
     await mountEdit(diagram(undefined, { planes }));
@@ -234,23 +234,25 @@ describe('the props each notation panel gets', () => {
       tm: 'tm',
       'tm-b': 'tm-b',
     };
+    const scoped = new Set(['SecondOrderPanel', 'FishbonePanel']);
     for (const [id, , panel] of pairs) {
       for (const plane of [id, `${id}-b`]) {
         await showPlane(plane);
-        expect(panels.props[panel]?.['plane'], `${panel} on ${plane}`).toBe(want[plane]);
+        const prop = scoped.has(panel) ? 'scopePlane' : 'viewPlane';
+        expect(panels.props[panel]?.[prop], `${panel} on ${plane}`).toBe(want[plane]);
       }
     }
   });
 
-  it('passes each panel the props it takes today', async () => {
+  it('passes each panel the props it takes', async () => {
     // Breaks if a dock entry drops or adds a prop: the panels keep theirs.
     await mountEdit(diagram(undefined, { planes }));
     const keys: Record<string, string[]> = {
-      GitPanel: ['model', 'onCommand', 'onSelect', 'plane', 'selection'],
-      PlanPanel: ['model', 'onCommand', 'onSelect', 'plane', 'selection', 'today'],
-      SecondOrderPanel: ['model', 'onCommand', 'onCreated', 'onSelect', 'plane', 'selection'],
-      FishbonePanel: ['model', 'onCommand', 'onCreated', 'onSelect', 'plane', 'selection'],
-      ThreatModelPanel: ['model', 'onSelect', 'plane'],
+      GitPanel: ['model', 'onCommand', 'onSelect', 'selection', 'viewPlane'],
+      PlanPanel: ['model', 'onCommand', 'onSelect', 'selection', 'today', 'viewPlane'],
+      SecondOrderPanel: ['model', 'onCommand', 'onCreated', 'onSelect', 'scopePlane', 'selection'],
+      FishbonePanel: ['model', 'onCommand', 'onCreated', 'onSelect', 'scopePlane', 'selection'],
+      ThreatModelPanel: ['model', 'onSelect', 'viewPlane'],
     };
     for (const [id, , panel] of pairs) {
       await showPlane(id);

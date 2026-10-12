@@ -12,7 +12,7 @@ export const THREAT_MODEL: StudioNotationProfile = {
     // the model, and the register and the crossings still to review are as much
     // use on a read-only .diagram.ts threat model as on an editable one.
     modes: 'both',
-    render: (ctx) => <ThreatModelPanel model={ctx.model} plane={ctx.viewPlane} onSelect={ctx.select} />,
+    render: (ctx) => <ThreatModelPanel model={ctx.model} viewPlane={ctx.viewPlane} onSelect={ctx.select} />,
   },
   connectKind: flowKind,
   quickAdd: threatModelQuickAdd,

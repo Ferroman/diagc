@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
+import { Profiler, type ComponentProps } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { DiagramModel } from '@diagc/core/internal';
+import type { DiagramModel, DiagramNode } from '@diagc/core/internal';
 import { NodePanel } from './NodePanel';
 
 function testModel(): DiagramModel {
@@ -943,5 +944,197 @@ describe('NodePanel', () => {
     );
     expect(screen.getByRole('region', { name: 'Comments' })).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Links' })).toBeTruthy();
+  });
+
+  // What each text box keeps while it is being typed in, and what replaces it:
+  // a box follows its own stored value when that changes underneath it (an
+  // Undo above all) and keeps an unsaved draft through any other change.
+  describe('draft fields', () => {
+    const full: DiagramNode = {
+      id: 'a',
+      name: 'a',
+      type: 'service',
+      icon: 'server',
+      shape: '/library/shapes/person.svg',
+      technology: 'Go',
+      link: 'https://a',
+      description: 'about a',
+    };
+    const withNode = (node: DiagramNode | undefined): DiagramModel => {
+      const base = testModel();
+      return { ...base, nodes: node === undefined ? base.nodes.slice(1) : [node, ...base.nodes.slice(1)] };
+    };
+    const props = (model: DiagramModel): ComponentProps<typeof NodePanel> => ({
+      model,
+      nodeId: 'a',
+      activePlane: 'flow',
+      onCommand: vi.fn(),
+      onClose: noop,
+      onDeleted: noop,
+    });
+    const FIELDS = [
+      ['Name', 'name'],
+      ['Type', 'type'],
+      ['Icon', 'icon'],
+      ['Shape', 'shape'],
+      ['Technology', 'technology'],
+      ['Link', 'link'],
+      ['Description', 'description'],
+    ] as const;
+    const box = (label: string) => screen.getByLabelText<HTMLInputElement | HTMLTextAreaElement>(label);
+
+    // breaks if a field's resync keys on anything wider than its own stored
+    // value (the node, the model), or if it stops following that value
+    it.each(FIELDS)('%s keeps a draft through the other fields changing, and takes its own new value', (label, key) => {
+      const { rerender } = render(<NodePanel {...props(withNode(full))} />);
+      fireEvent.change(box(label), { target: { value: 'typed' } });
+      const others = Object.fromEntries(FIELDS.filter(([, k]) => k !== key).map(([, k]) => [k, `${full[k]}-2`]));
+      rerender(<NodePanel {...props(withNode({ ...full, ...others }))} />);
+      expect(box(label).value).toBe('typed');
+      for (const [other, k] of FIELDS) if (k !== key) expect(box(other).value).toBe(`${full[k]}-2`);
+      rerender(<NodePanel {...props(withNode({ ...full, ...others, [key]: 'stored' }))} />);
+      expect(box(label).value).toBe('stored');
+    });
+
+    // breaks if the resync keys on the value as the box shows it ('' for
+    // absent) instead of the stored one: absent → '' is a change too
+    it('an optional field resyncs when its stored value goes from absent to empty', () => {
+      const { description: _d, ...bare } = full;
+      const { rerender } = render(<NodePanel {...props(withNode(bare))} />);
+      fireEvent.change(box('Description'), { target: { value: 'typed' } });
+      rerender(<NodePanel {...props(withNode({ ...bare, description: '' }))} />);
+      expect(box('Description').value).toBe('');
+    });
+
+    // breaks if the name's resync clears the draft while the node is missing
+    // (one more commit) or stops following the name when the node returns
+    it('the name leaves its draft alone while the node is missing, and follows it back', () => {
+      let commits = 0;
+      const ui = (model: DiagramModel) => (
+        <Profiler id="panel" onRender={() => commits++}>
+          <NodePanel {...props(model)} />
+        </Profiler>
+      );
+      const { rerender } = render(ui(withNode({ id: 'a', name: 'a' })));
+      commits = 0;
+      rerender(ui(withNode(undefined)));
+      expect(screen.getByText('Node not found.')).toBeTruthy();
+      expect(commits).toBe(1);
+      rerender(ui(withNode({ id: 'a', name: 'back' })));
+      expect(box('Name').value).toBe('back');
+    });
+
+    // breaks if the position inputs stop re-seeding from a new saved position,
+    // or re-seed on a re-render that leaves the coordinates as they were
+    it('the position inputs keep a draft until the saved position moves', () => {
+      const ui = (saved: { x: number; y: number }) => (
+        <NodePanel {...props(withNode(full))} hasSavedPosition savedPosition={saved} />
+      );
+      const { rerender } = render(ui({ x: 1, y: 2 }));
+      fireEvent.change(box('X'), { target: { value: '50' } });
+      rerender(ui({ x: 1, y: 2 }));
+      expect(box('X').value).toBe('50');
+      rerender(ui({ x: 1, y: 3 }));
+      expect(box('X').value).toBe('1');
+      expect(box('Y').value).toBe('3');
+    });
+
+    // breaks if the metadata rows re-seed on a model change that keeps the
+    // node's metadata object, or stop re-seeding when it is replaced
+    it('the metadata rows keep a draft until the metadata itself changes', () => {
+      const metadata = { owner: 'ops' };
+      const { rerender } = render(<NodePanel {...props(withNode({ ...full, metadata }))} />);
+      fireEvent.change(box('Metadata value 1'), { target: { value: 'typed' } });
+      rerender(<NodePanel {...props(withNode({ ...full, name: 'renamed', metadata }))} />);
+      expect(box('Metadata value 1').value).toBe('typed');
+      rerender(<NodePanel {...props(withNode({ ...full, metadata: { owner: 'dev' } }))} />);
+      expect(box('Metadata value 1').value).toBe('dev');
+    });
+
+    // breaks if the new-row and add-membership drafts are dropped by a
+    // re-render or by a model change
+    it('the add-row boxes keep what is typed across model changes', () => {
+      const { rerender } = render(<NodePanel {...props(withNode(full))} />);
+      fireEvent.change(box('New metadata key'), { target: { value: 'k' } });
+      fireEvent.change(box('New metadata value'), { target: { value: 'v' } });
+      fireEvent.change(screen.getByLabelText('Add parent'), { target: { value: 'sys' } });
+      fireEvent.change(screen.getByLabelText('Add plane'), { target: { value: 'arch' } });
+      rerender(<NodePanel {...props(withNode({ ...full, name: 'renamed' }))} />);
+      expect(box('New metadata key').value).toBe('k');
+      expect(box('New metadata value').value).toBe('v');
+      expect((screen.getByLabelText('Add parent') as HTMLSelectElement).value).toBe('sys');
+      expect((screen.getByLabelText('Add plane') as HTMLSelectElement).value).toBe('arch');
+    });
+  });
+
+  // breaks if the name is focused on a re-render too, or not on mount
+  it('focuses and selects the name once, when mounted for a just-added node', () => {
+    const ui = (name: string) => (
+      <NodePanel
+        model={{ ...testModel(), nodes: [{ id: 'a', name }, ...testModel().nodes.slice(1)] }}
+        nodeId="a"
+        activePlane="flow"
+        autoFocusName
+        onCommand={vi.fn()}
+        onClose={noop}
+        onDeleted={noop}
+      />
+    );
+    const { rerender } = render(ui('a'));
+    const name = screen.getByLabelText<HTMLTextAreaElement>('Name');
+    expect(document.activeElement).toBe(name);
+    expect([name.selectionStart, name.selectionEnd]).toEqual([0, 1]);
+    name.blur();
+    rerender(ui('b'));
+    expect(document.activeElement).not.toBe(name);
+  });
+
+  // breaks if Scope or Hidden here dispatch another command shape
+  it('scopes the node to the plane, and hides a shared one there', () => {
+    const onCommand = vi.fn();
+    const ui = (model: DiagramModel) => (
+      <NodePanel model={model} nodeId="a" activePlane="flow" onCommand={onCommand} onClose={noop} onDeleted={noop} />
+    );
+    const { rerender } = render(ui(testModel()));
+    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'local' } });
+    expect(onCommand).toHaveBeenLastCalledWith({ type: 'set-node-details', id: 'a', details: { plane: 'flow' } });
+    fireEvent.click(screen.getByLabelText('Hidden here'));
+    expect(onCommand).toHaveBeenLastCalledWith({
+      type: 'set-node-plane-hidden',
+      nodeId: 'a',
+      plane: 'flow',
+      hidden: true,
+    });
+    const local = { ...testModel(), nodes: [{ id: 'a', name: 'a', plane: 'flow' }, ...testModel().nodes.slice(1)] };
+    rerender(ui(local));
+    expect(screen.queryByLabelText('Hidden here')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'shared' } });
+    expect(onCommand).toHaveBeenLastCalledWith({ type: 'set-node-details', id: 'a', details: { plane: null } });
+  });
+
+  // breaks if Add membership changes its command, or stops resetting its picks
+  it('adds a membership on the chosen plane, or untagged on the default, and resets the pickers', () => {
+    const onCommand = vi.fn();
+    render(
+      <NodePanel
+        model={testModel()}
+        nodeId="a"
+        activePlane="flow"
+        onCommand={onCommand}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
+    const add = screen.getByRole('button', { name: 'Add' }) as HTMLButtonElement;
+    expect(add.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText('Add parent'), { target: { value: 'sys' } });
+    fireEvent.change(screen.getByLabelText('Add plane'), { target: { value: 'arch' } });
+    fireEvent.click(add);
+    expect(onCommand).toHaveBeenLastCalledWith({ type: 'add-containment', parent: 'sys', child: 'a', plane: 'arch' });
+    expect((screen.getByLabelText('Add parent') as HTMLSelectElement).value).toBe('');
+    expect((screen.getByLabelText('Add plane') as HTMLSelectElement).value).toBe('');
+    fireEvent.change(screen.getByLabelText('Add parent'), { target: { value: 'sys' } });
+    fireEvent.click(add);
+    expect(onCommand).toHaveBeenLastCalledWith({ type: 'add-containment', parent: 'sys', child: 'a' });
   });
 });

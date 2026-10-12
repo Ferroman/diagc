@@ -7,30 +7,22 @@ import {
   fishboneTree,
   isFishboneNode,
   validate,
-  type DiagramModel,
   type EditorCommand,
 } from '@diagc/core/internal';
-import type { DiagramSelection } from '@diagc/renderer';
 import { addChild, addEffect, isSubCause, seedCategories } from './fishboneActions';
 import { DockSection } from '../../dock/DockSection';
+import { IssueList } from '../IssueList';
+import type { NotationPanelProps } from '../types';
 
-interface FishbonePanelProps {
-  model: DiagramModel;
-  selection: DiagramSelection | null;
-  /** the plane a new effect belongs to — the active plane, when it keeps nodes
-   * of its own (see createNodeAt); undefined adds a shared effect. */
-  plane?: string;
-  onCommand: (command: EditorCommand) => void;
-  onSelect: (id: string) => void;
-  /** a node this panel just created — the app opens its name for typing */
-  onCreated: (id: string) => void;
-}
+/** `scopePlane` is where a new effect belongs; absent, the effect is shared. */
+type FishbonePanelProps = Pick<NotationPanelProps, 'model' | 'selection' | 'onCommand' | 'onSelect' | 'onCreated'> &
+  Partial<Pick<NotationPanelProps, 'scopePlane'>>;
 
 const LIMIT_HINT = 'A sub-cause takes nothing: three levels below the effect is the limit.';
 
 /** The fishbone editing surface: the head, a starting set of bones, then one
  * child at a time under whatever is selected — and what validation objects to. */
-export function FishbonePanel({ model, selection, plane, onCommand, onSelect, onCreated }: FishbonePanelProps) {
+export function FishbonePanel({ model, selection, scopePlane, onCommand, onSelect, onCreated }: FishbonePanelProps) {
   const tree = useMemo(() => fishboneTree(model), [model]);
   // Errors and warnings in one list: a stray cause (a warning, so the diagram
   // still saves) is exactly what the author needs pointed at here.
@@ -57,7 +49,7 @@ export function FishbonePanel({ model, selection, plane, onCommand, onSelect, on
       {tree.effect === undefined ? (
         <>
           <p className="so-hint">Every fish starts with the effect at its head.</p>
-          <button type="button" onClick={() => created(addEffect(model, plane))}>
+          <button type="button" onClick={() => created(addEffect(model, scopePlane))}>
             Add an effect
           </button>
         </>
@@ -103,27 +95,7 @@ export function FishbonePanel({ model, selection, plane, onCommand, onSelect, on
           </p>
         </>
       )}
-      {issues.length > 0 && (
-        <ul className="so-issues">
-          {issues.map((i) => {
-            const ref = i.ref;
-            // fb-no-effect's ref is the plane or model id, not a node — nothing
-            // on canvas to select, so it renders as text, not a dead button.
-            const targetNode = ref !== undefined && model.nodes.some((n) => n.id === ref);
-            return (
-              <li key={`${i.code}:${ref ?? ''}`}>
-                {targetNode && ref !== undefined ? (
-                  <button type="button" onClick={() => onSelect(ref)}>
-                    {i.message}
-                  </button>
-                ) : (
-                  <span>{i.message}</span>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <IssueList model={model} issues={issues} selects="nodes" onSelect={(target) => onSelect(target.id)} />
     </DockSection>
   );
 }

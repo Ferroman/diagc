@@ -26,7 +26,7 @@ function gitModel(): DiagramModel {
 const setup = (selection: { kind: 'node' | 'edge'; id: string } | null = null, m = gitModel()) => {
   const onCommand = vi.fn();
   const onSelect = vi.fn();
-  render(<GitPanel model={m} plane="git-graph" selection={selection} onCommand={onCommand} onSelect={onSelect} />);
+  render(<GitPanel model={m} viewPlane="git-graph" selection={selection} onCommand={onCommand} onSelect={onSelect} />);
   return { onCommand, onSelect };
 };
 
@@ -148,7 +148,7 @@ describe('GitPanel', () => {
     const { rerender } = render(
       <GitPanel
         model={state.model}
-        plane="git-graph"
+        viewPlane="git-graph"
         selection={{ kind: 'node', id: 'master-1' }}
         onCommand={onCommand}
         onSelect={onSelect}
@@ -164,7 +164,7 @@ describe('GitPanel', () => {
     rerender(
       <GitPanel
         model={state.model}
-        plane="git-graph"
+        viewPlane="git-graph"
         selection={{ kind: 'node', id: 'qa-1' }}
         onCommand={onCommand}
         onSelect={onSelect}
@@ -192,7 +192,7 @@ describe('GitPanel', () => {
     const { rerender } = render(
       <GitPanel
         model={m}
-        plane="git-graph"
+        viewPlane="git-graph"
         selection={{ kind: 'node', id: 'master-1' }}
         onCommand={vi.fn()}
         onSelect={vi.fn()}
@@ -202,7 +202,7 @@ describe('GitPanel', () => {
     rerender(
       <GitPanel
         model={m}
-        plane="git-graph"
+        viewPlane="git-graph"
         selection={{ kind: 'node', id: 'nightly-1' }}
         onCommand={vi.fn()}
         onSelect={vi.fn()}

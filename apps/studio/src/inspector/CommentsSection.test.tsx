@@ -73,4 +73,35 @@ describe('CommentsSection', () => {
     rerender(<CommentsSection target={target} comments={[{ id: 'c1', text: 'two' }]} onCommand={vi.fn()} />);
     expect((screen.getByLabelText('Comment c1 text') as HTMLTextAreaElement).value).toBe('two');
   });
+
+  // breaks if a comment's text or author box resyncs on the other's change
+  // (losing what is typed), or stops following its own stored value
+  it.each([
+    ['text', 'Comment c1 text'],
+    ['by', 'Comment c1 author'],
+  ] as const)('the %s keeps a draft through the other field changing, and takes its own new value', (key, label) => {
+    const ui = (comment: { id: string; text: string; by?: string }) => (
+      <CommentsSection target={target} comments={[comment]} onCommand={vi.fn()} />
+    );
+    const stored = { id: 'c1', text: 'one', by: 'ann' };
+    const { rerender } = render(ui(stored));
+    const box = () => screen.getByLabelText(label) as HTMLInputElement | HTMLTextAreaElement;
+    fireEvent.change(box(), { target: { value: 'typed' } });
+    const other = key === 'text' ? { by: 'bob' } : { text: 'two' };
+    rerender(ui({ ...stored, ...other }));
+    expect(box().value).toBe('typed');
+    rerender(ui({ ...stored, ...other, [key]: 'stored' }));
+    expect(box().value).toBe('stored');
+  });
+
+  // breaks if the author box's resync keys on the shown value ('' for absent)
+  it('the author box resyncs when the stored author is removed', () => {
+    const ui = (comment: { id: string; text: string; by?: string }) => (
+      <CommentsSection target={target} comments={[comment]} onCommand={vi.fn()} />
+    );
+    const { rerender } = render(ui({ id: 'c1', text: 'one', by: 'ann' }));
+    fireEvent.change(screen.getByLabelText('Comment c1 author'), { target: { value: 'typed' } });
+    rerender(ui({ id: 'c1', text: 'one' }));
+    expect((screen.getByLabelText('Comment c1 author') as HTMLInputElement).value).toBe('');
+  });
 });

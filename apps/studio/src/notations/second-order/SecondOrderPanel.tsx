@@ -1,20 +1,13 @@
 import { useMemo } from 'react';
-import { validate, isSecondOrderNode, type DiagramModel, type EditorCommand, type Valence } from '@diagc/core/internal';
-import type { DiagramSelection } from '@diagc/renderer';
+import { validate, isSecondOrderNode, type EditorCommand, type Valence } from '@diagc/core/internal';
 import { addDecision, thenWhat } from './secondOrderActions';
 import { DockSection } from '../../dock/DockSection';
+import { IssueList } from '../IssueList';
+import type { NotationPanelProps } from '../types';
 
-interface SecondOrderPanelProps {
-  model: DiagramModel;
-  selection: DiagramSelection | null;
-  /** the plane new decisions belong to — the active plane, when it keeps nodes
-   * of its own (see createNodeAt); undefined adds a shared decision. */
-  plane?: string;
-  onCommand: (command: EditorCommand) => void;
-  onSelect: (id: string) => void;
-  /** a node this panel just created — the app opens its name for typing */
-  onCreated: (id: string) => void;
-}
+/** `scopePlane` is where a new decision belongs; absent, the decision is shared. */
+type SecondOrderPanelProps = Pick<NotationPanelProps, 'model' | 'selection' | 'onCommand' | 'onSelect' | 'onCreated'> &
+  Partial<Pick<NotationPanelProps, 'scopePlane'>>;
 
 const ANSWERS: { valence: Valence; label: string }[] = [
   { valence: '+', label: 'Good consequence' },
@@ -24,7 +17,14 @@ const ANSWERS: { valence: Valence; label: string }[] = [
 
 /** The second-order editing surface: grow the tree one "and then what?" at a
  * time, and see what validation objects to. */
-export function SecondOrderPanel({ model, selection, plane, onCommand, onSelect, onCreated }: SecondOrderPanelProps) {
+export function SecondOrderPanel({
+  model,
+  selection,
+  scopePlane,
+  onCommand,
+  onSelect,
+  onCreated,
+}: SecondOrderPanelProps) {
   const from =
     selection?.kind === 'node' ? model.nodes.find((n) => n.id === selection.id && isSecondOrderNode(n)) : undefined;
   const issues = useMemo(() => validate(model).filter((i) => i.code.startsWith('so-')), [model]);
@@ -56,30 +56,10 @@ export function SecondOrderPanel({ model, selection, plane, onCommand, onSelect,
         ))}
       </div>
       <p className="so-hint">Tab adds a neutral consequence to the selection.</p>
-      <button type="button" onClick={() => created(addDecision(model, plane))}>
+      <button type="button" onClick={() => created(addDecision(model, scopePlane))}>
         Add a decision
       </button>
-      {issues.length > 0 && (
-        <ul className="so-issues">
-          {issues.map((i) => {
-            const ref = i.ref;
-            // so-no-decision's ref is the plane or model id, not a node — there is
-            // nothing on canvas to select, so it renders as text, not a dead button.
-            const targetNode = ref !== undefined && model.nodes.some((n) => n.id === ref);
-            return (
-              <li key={`${i.code}:${ref ?? ''}`}>
-                {targetNode && ref !== undefined ? (
-                  <button type="button" onClick={() => onSelect(ref)}>
-                    {i.message}
-                  </button>
-                ) : (
-                  <span>{i.message}</span>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <IssueList model={model} issues={issues} selects="nodes" onSelect={(target) => onSelect(target.id)} />
     </DockSection>
   );
 }

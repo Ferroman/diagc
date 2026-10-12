@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { useDraftField } from './useDraftField';
 
 /** 7 hues × [light, base, dark]; the base (middle) column is the original preset set */
 export const SHADE_PALETTE: readonly (readonly [string, string, string])[] = [
@@ -73,11 +74,8 @@ export function ColorRow({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const [text, setText] = useState(value);
   const [open, setOpen] = useState(false);
-  useEffect(() => {
-    setText(value);
-  }, [value]);
+  const [text, setText] = useDraftField(value);
   const commitText = () => {
     const trimmed = text.trim();
     if (trimmed !== value) onChange(trimmed);

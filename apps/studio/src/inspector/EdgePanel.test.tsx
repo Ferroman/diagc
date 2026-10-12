@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
+import { Profiler, type ComponentProps } from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { DiagramModel } from '@diagc/core/internal';
+import type { DiagramModel, DiagramRelation } from '@diagc/core/internal';
 import { EdgePanel } from './EdgePanel';
 
 function testModel(): DiagramModel {
@@ -408,5 +409,120 @@ describe('EdgePanel', () => {
   it('offers Comments on a plain relation (unlike Threats, not gated on a notation)', () => {
     render(<EdgePanel model={testModel()} constituentIds={['a->b#0']} onCommand={vi.fn()} onClose={noop} />);
     expect(screen.getByRole('region', { name: 'Comments' })).toBeTruthy();
+  });
+
+  // What each text box keeps while it is being typed in, and what replaces it:
+  // a box follows its own stored value when that changes underneath it (an
+  // Undo above all) and keeps an unsaved draft through any other change.
+  describe('draft fields', () => {
+    const full: DiagramRelation = {
+      id: 'a->b#0',
+      from: 'a',
+      to: 'b',
+      kind: 'sync',
+      layer: 'ops',
+      description: 'about it',
+      labels: [{ id: 'l1', text: 'first', t: 0.5, side: 'center' }],
+    };
+    const withRelation = (relation: DiagramRelation | undefined): DiagramModel => ({
+      ...testModel(),
+      relations: relation === undefined ? [] : [relation],
+      layers: [
+        { id: 'ops', name: 'Ops' },
+        { id: 'dev', name: 'Dev' },
+      ],
+    });
+    const props = (model: DiagramModel): ComponentProps<typeof EdgePanel> => ({
+      model,
+      constituentIds: ['a->b#0'],
+      onCommand: vi.fn(),
+      onClose: noop,
+    });
+    const box = (label: string) => screen.getByLabelText<HTMLInputElement | HTMLTextAreaElement>(label);
+
+    // breaks if Kind's or Description's resync keys on anything wider than its
+    // own stored value, or stops following that value
+    it.each([
+      ['Kind', 'kind'],
+      ['Description', 'description'],
+    ] as const)('%s keeps a draft through the other fields changing, and takes its own new value', (label, key) => {
+      const { rerender } = render(<EdgePanel {...props(withRelation(full))} />);
+      fireEvent.change(box(label), { target: { value: 'typed' } });
+      const other = key === 'kind' ? { description: 'changed' } : { kind: 'async' };
+      rerender(<EdgePanel {...props(withRelation({ ...full, ...other, layer: 'dev' }))} />);
+      expect(box(label).value).toBe('typed');
+      rerender(<EdgePanel {...props(withRelation({ ...full, ...other, layer: 'dev', [key]: 'stored' }))} />);
+      expect(box(label).value).toBe('stored');
+    });
+
+    // breaks if the Layer select's resync keys on anything wider than the
+    // relation's layer (the select shows the picked layer until the model's moves)
+    it('Layer shows a pick until the stored layer changes', () => {
+      const { rerender } = render(<EdgePanel {...props(withRelation(full))} />);
+      fireEvent.change(box('Layer'), { target: { value: 'dev' } });
+      rerender(<EdgePanel {...props(withRelation({ ...full, kind: 'async' }))} />);
+      expect(box('Layer').value).toBe('dev');
+      const { layer: _l, ...noLayer } = full;
+      rerender(<EdgePanel {...props(withRelation(noLayer))} />);
+      expect(box('Layer').value).toBe('');
+    });
+
+    // breaks if the resync keys on the value as the box shows it ('' for
+    // absent) instead of the stored one: absent → '' is a change too
+    it('Description resyncs when its stored value goes from absent to empty', () => {
+      const { description: _d, ...bare } = full;
+      const { rerender } = render(<EdgePanel {...props(withRelation(bare))} />);
+      fireEvent.change(box('Description'), { target: { value: 'typed' } });
+      rerender(<EdgePanel {...props(withRelation({ ...bare, description: '' }))} />);
+      expect(box('Description').value).toBe('');
+    });
+
+    // breaks if Kind's resync clears the draft while the relation is missing
+    // (one more commit) or stops following it when the relation returns
+    it('Kind leaves its draft alone while the relation is missing, and follows it back', () => {
+      let commits = 0;
+      const ui = (model: DiagramModel) => (
+        <Profiler id="panel" onRender={() => commits++}>
+          <EdgePanel {...props(model)} />
+        </Profiler>
+      );
+      const { rerender } = render(ui(withRelation({ id: 'a->b#0', from: 'a', to: 'b', kind: 'sync' })));
+      commits = 0;
+      rerender(ui(withRelation(undefined)));
+      expect(screen.getByText('Relation not found.')).toBeTruthy();
+      expect(commits).toBe(1);
+      rerender(ui(withRelation({ id: 'a->b#0', from: 'a', to: 'b', kind: 'back' })));
+      expect(box('Kind').value).toBe('back');
+    });
+
+    // breaks if a label row's text stops following its stored text, or is
+    // reset by a change to the row's side
+    it("a label's text keeps a draft through its side changing, and takes its own new text", () => {
+      const { rerender } = render(<EdgePanel {...props(withRelation(full))} />);
+      fireEvent.change(box('Label 1 text'), { target: { value: 'typed' } });
+      const label = full.labels![0]!;
+      rerender(<EdgePanel {...props(withRelation({ ...full, labels: [{ ...label, side: 'top' }] }))} />);
+      expect(box('Label 1 text').value).toBe('typed');
+      rerender(<EdgePanel {...props(withRelation({ ...full, labels: [{ ...label, text: 'stored' }] }))} />);
+      expect(box('Label 1 text').value).toBe('stored');
+    });
+
+    // breaks if the Add-label row closes, or loses its text, on a model change
+    it('the new label row stays open with its text through a model change', () => {
+      const { rerender } = render(<EdgePanel {...props(withRelation(full))} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Add label' }));
+      fireEvent.change(box('New label text'), { target: { value: 'typed' } });
+      rerender(<EdgePanel {...props(withRelation({ ...full, kind: 'async' }))} />);
+      expect(box('New label text').value).toBe('typed');
+    });
+  });
+
+  // breaks if the form's back link stops returning to the list of a merged edge
+  it('goes back from a relation of a merged edge to the list', () => {
+    render(<EdgePanel model={testModel()} constituentIds={['a->b#0', 'a->b#1']} onCommand={vi.fn()} onClose={noop} />);
+    fireEvent.click(screen.getByRole('button', { name: /edit relation a->b#1/i }));
+    fireEvent.click(screen.getByRole('button', { name: '← All relations' }));
+    expect(screen.getByRole('button', { name: /edit relation a->b#0/i })).toBeTruthy();
+    expect(screen.queryByLabelText('Kind')).toBeNull();
   });
 });

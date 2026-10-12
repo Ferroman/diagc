@@ -69,4 +69,16 @@ describe('ColorRow', () => {
     openPalette();
     expect(screen.getByRole('button', { name: `Color ${dark}` }).className).toContain('active');
   });
+
+  // breaks if the colour's text box resyncs on a re-render that keeps the
+  // value (losing what is typed), or stops following a new value
+  it('keeps typed text until the value changes', () => {
+    const { rerender } = render(<ColorRow value="#111111" onChange={vi.fn()} />);
+    const box = () => screen.getByLabelText('Color value') as HTMLInputElement;
+    fireEvent.change(box(), { target: { value: 'typed' } });
+    rerender(<ColorRow value="#111111" onChange={vi.fn()} />);
+    expect(box().value).toBe('typed');
+    rerender(<ColorRow value="#222222" onChange={vi.fn()} />);
+    expect(box().value).toBe('#222222');
+  });
 });

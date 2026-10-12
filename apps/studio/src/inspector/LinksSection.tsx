@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { EditorCommand, Link } from '@diagc/core/internal';
+import { useDraftField } from './useDraftField';
 
 interface LinksSectionProps {
   nodeId: string;
@@ -18,10 +19,8 @@ function LinkRow({
   onChange: (l: Link) => void;
   onRemove: () => void;
 }) {
-  const [label, setLabel] = useState(link.label);
-  useEffect(() => setLabel(link.label), [link.label]);
-  const [url, setUrl] = useState(link.url);
-  useEffect(() => setUrl(link.url), [link.url]);
+  const [label, setLabel] = useDraftField(link.label);
+  const [url, setUrl] = useDraftField(link.url);
   const commit = () => {
     const next = { label: label.trim(), url: url.trim() };
     // both are required (validation); an emptied box snaps back

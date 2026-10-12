@@ -22,6 +22,26 @@ export interface NotationDockContext {
   requestLabelEdit: (id: string) => void;
 }
 
+/**
+ * What a dock panel takes, named once so `plane` never means two things: each
+ * panel picks the fields it reads, and its entry maps the dock context onto them.
+ */
+export interface NotationPanelProps {
+  model: DiagramModel;
+  /** the plane on screen */
+  viewPlane: string | undefined;
+  /** the plane a node the panel adds is tagged with (see NotationDockContext) */
+  scopePlane: string | undefined;
+  selection: DiagramSelection | null;
+  onCommand: (command: EditorCommand) => void;
+  /** select a node: one the panel just created, or a row's */
+  onSelect: (id: string) => void;
+  /** a node the panel just created — the app opens its name for typing */
+  onCreated: (id: string) => void;
+  /** the host's date, YYYY-MM-DD */
+  today: string;
+}
+
 /** A panel in the right dock. `edit` panels show only while editing; `both`
  * also in view mode, for a panel that only reads the model. */
 export interface DockEntry {

@@ -147,8 +147,8 @@ describe('ThreatsSection', () => {
   });
 
   it('refreshes a row title changed underneath the panel, and then commits nothing', () => {
-    // The Undo case: the model moved while the box was on screen. Controlled
-    // with resync (EdgePanel's LabelRow) means the box follows it — and the
+    // The Undo case: the model moved while the box was on screen. A draft that
+    // resyncs (useDraftField) means the box follows it — and the
     // blur that comes after diffs the model's value against the model's value,
     // so no undo step of its own lands on top of the Undo.
     const { onCommand, rerender } = setup([threat('t1', { title: 'Old' })]);
@@ -252,5 +252,28 @@ describe('ThreatsSection', () => {
   it('says nothing about crossings for an element that does not cross one', () => {
     setup([]);
     expect(screen.queryByText(/^Crosses:/)).toBeNull();
+  });
+
+  // breaks if a threat's text box resyncs on another field's change (losing
+  // what is typed), or stops following its own stored value
+  it.each([
+    ['title', 'Threat t1 title'],
+    ['description', 'Threat t1 description'],
+    ['mitigation', 'Threat t1 mitigation'],
+  ] as const)('the %s keeps a draft through the other fields changing, and takes its own new value', (key, label) => {
+    const stored = { title: 'T', description: 'D', mitigation: 'M' };
+    const { rerender } = setup([threat('t1', stored)]);
+    fireEvent.click(screen.getByLabelText('Threat t1 details'));
+    const box = () => screen.getByLabelText(label) as HTMLInputElement | HTMLTextAreaElement;
+    fireEvent.change(box(), { target: { value: 'typed' } });
+    const others = Object.fromEntries(
+      Object.entries(stored)
+        .filter(([k]) => k !== key)
+        .map(([k, v]) => [k, `${v}2`]),
+    );
+    rerender([threat('t1', { ...stored, ...others, severity: 'high' })]);
+    expect(box().value).toBe('typed');
+    rerender([threat('t1', { ...stored, ...others, [key]: 'stored' })]);
+    expect(box().value).toBe('stored');
   });
 });

@@ -4,7 +4,6 @@ import {
   ACTIVITY_BAR_TYPE,
   ACTIVITY_DECISION_TYPE,
   ACTIVITY_END_TYPE,
-  ACTIVITY_FRAME_TYPE,
   ACTIVITY_LANE_TYPE,
   ACTIVITY_NOTE_TYPE,
   ACTIVITY_OBJECT_TYPE,
@@ -16,24 +15,18 @@ import {
   containmentOn,
   containmentPlaneOf,
   defined,
-  isOnPlane,
   uniqueNodeId,
-  type DiagramModel,
   type DiagramNode,
   type EditorCommand,
 } from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT } from '@diagc/renderer';
-import type { DiagramSelection } from '@diagc/renderer';
 import { ColorRow } from '../inspector/pickers';
 import { DockSection } from '../dock/DockSection';
+import type { DraftField } from '../inspector/useDraftField';
+import { activityContext, reorderLanesCommand } from './activityLanes';
+import type { NotationPanelProps } from '../notations/types';
 
-interface ActivityPanelProps {
-  model: DiagramModel;
-  plane: string | undefined;
-  selection: DiagramSelection | null;
-  onCommand: (command: EditorCommand) => void;
-  onSelect: (id: string) => void;
-}
+type ActivityPanelProps = Pick<NotationPanelProps, 'model' | 'viewPlane' | 'selection' | 'onCommand' | 'onSelect'>;
 
 /** quick-add vocabulary: accessible label + created type + default name */
 const ELEMENTS = [
@@ -49,107 +42,18 @@ const ELEMENTS = [
 ] as const;
 
 /**
- * The move-child steps that restack a frame's lanes from `current` into
- * `target`, as one undo step — or null when the orders already agree. Each lane
- * in turn is walked up into its slot, so the batch replays exactly on the model
- * the panel saw.
- */
-export function reorderLanesCommand(
-  frameId: string,
-  current: readonly string[],
-  target: readonly string[],
-  plane: string | undefined,
-): EditorCommand | null {
-  const order = [...current];
-  const commands: EditorCommand[] = [];
-  target.forEach((lane, slot) => {
-    for (let at = order.indexOf(lane); at > slot; at--) {
-      commands.push({
-        type: 'move-child',
-        parent: frameId,
-        child: lane,
-        offset: -1,
-        ...defined({ plane }),
-      });
-      [order[at - 1], order[at]] = [order[at]!, order[at - 1]!];
-    }
-  });
-  if (commands.length === 0) return null;
-  return commands.length === 1 ? commands[0]! : { type: 'batch', commands };
-}
-
-/** A lane moved `offset` band slots (a canvas drag can cross several at once)
- * as one undo step: move-child steps a single slot, so it repeats. null for no
- * move at all. */
-export function moveLaneCommand(
-  frameId: string,
-  laneId: string,
-  offset: number,
-  plane: string | undefined,
-): EditorCommand | null {
-  if (offset === 0) return null;
-  const step: EditorCommand = {
-    type: 'move-child',
-    parent: frameId,
-    child: laneId,
-    offset: offset < 0 ? -1 : 1,
-    ...defined({ plane }),
-  };
-  const n = Math.abs(offset);
-  return n === 1 ? step : { type: 'batch', commands: Array.from({ length: n }, () => step) };
-}
-
-export interface ActivityContext {
-  frame: DiagramNode;
-  /** where an element quick-add lands: the selected lane or region, or the one
-   * around the selected element; undefined on the frame itself */
-  target?: DiagramNode;
-}
-
-/**
- * The frame the panel works on, and the lane or region it adds into. Anything
- * inside a frame resolves to it — an action as much as a lane — so the lanes stay
- * listed while you work on their contents. With nothing selected a diagram's only
- * frame is the one; with several, a selection has to say which.
- */
-export function activityContext(
-  model: DiagramModel,
-  selection: DiagramSelection | null,
-  planeId: string | undefined,
-): ActivityContext | undefined {
-  const byId = new Map(model.nodes.map((n) => [n.id, n]));
-  const parentOf = new Map<string, string>();
-  for (const e of model.containment) {
-    if (isOnPlane(e, planeId, model) && !parentOf.has(e.child)) parentOf.set(e.child, e.parent);
-  }
-  if (selection?.kind === 'node') {
-    let target: DiagramNode | undefined;
-    const seen = new Set<string>();
-    for (let n = byId.get(selection.id); n !== undefined && !seen.has(n.id); n = byId.get(parentOf.get(n.id) ?? '')) {
-      seen.add(n.id);
-      if (n.type === ACTIVITY_FRAME_TYPE) return { frame: n, target };
-      if (target === undefined && (n.type === ACTIVITY_LANE_TYPE || n.type === ACTIVITY_REGION_TYPE)) target = n;
-    }
-  }
-  const frames = model.nodes.filter(
-    (n) => n.type === ACTIVITY_FRAME_TYPE && (n.plane === undefined || n.plane === planeId),
-  );
-  return frames.length === 1 ? { frame: frames[0]! } : undefined;
-}
-
-/**
  * The activity-diagram editing surface: the frame's lanes as a list (select,
  * restack, add), then quick-adds for the steps inside one. Every add parents the
  * node correctly at creation and places it at a deterministic cascade spot
  * inside its scope, so the model never passes through a state validation would
  * refuse — no drag-into-container needed.
  */
-export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: ActivityPanelProps) {
+export function ActivityPanel({ model, viewPlane, selection, onCommand, onSelect }: ActivityPanelProps) {
   const [laneName, setLaneName] = useState('');
   const [laneColor, setLaneColor] = useState('');
   const [elementName, setElementName] = useState('');
 
-  const planeId = containmentPlaneOf(model, plane);
+  const planeId = containmentPlaneOf(model, viewPlane);
   const context = activityContext(model, selection, planeId);
   if (context === undefined) return null;
   const { frame, target } = context;
@@ -179,7 +83,7 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
   const tidy = reorderLanesCommand(
     frame.id,
     lanes.map((l) => l.id),
-    bestLaneOrder(model, frame.id, plane),
+    bestLaneOrder(model, frame.id, viewPlane),
     planeId,
   );
 
@@ -218,108 +122,170 @@ export function ActivityPanel({ model, plane, selection, onCommand, onSelect }: 
     setElementName('');
   };
 
-  const label = (n: DiagramNode) => (n.name !== '' ? n.name : n.id);
-
   return (
     <DockSection id="activity" title="Activity" label="Activity diagram" className="sidebar git-panel">
-      <section className="panel-section">
-        <h3>Lanes in {label(frame)}</h3>
-        {lanes.length === 0 ? (
-          <p className="lp-caption">No lanes yet. Add the first one below.</p>
-        ) : (
-          <ul className="activity-lanes" aria-label="Lanes">
-            {lanes.map((lane, i) => (
-              <li key={lane.id} aria-current={lane.id === selectedId || lane.id === target?.id ? 'true' : undefined}>
-                <span
-                  className="lane-dot"
-                  style={lane.color !== undefined ? { background: lane.color } : undefined}
-                  aria-hidden="true"
-                />
-                <button type="button" className="lane-name" title="Select this lane" onClick={() => onSelect(lane.id)}>
-                  {label(lane)}
-                </button>
-                <button
-                  type="button"
-                  className="picker-btn"
-                  aria-label={`Move ${label(lane)} up`}
-                  title="Move up"
-                  disabled={i === 0}
-                  onClick={() => moveLane(lane.id, -1)}
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className="picker-btn"
-                  aria-label={`Move ${label(lane)} down`}
-                  title="Move down"
-                  disabled={i === lanes.length - 1}
-                  onClick={() => moveLane(lane.id, 1)}
-                >
-                  ↓
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <form
-          className="field-row"
-          onSubmit={(e) => {
-            e.preventDefault();
-            addLane();
-          }}
-        >
-          <input
-            aria-label="New lane name"
-            value={laneName}
-            onChange={(e) => setLaneName(e.target.value)}
-            placeholder="New lane name"
-          />
-          <button type="submit" className="chip" disabled={laneName.trim() === ''}>
-            Add lane
-          </button>
-        </form>
-        <ColorRow label="Lane color" value={laneColor} onChange={setLaneColor} />
-        {lanes.length > 2 && (
-          <button
-            type="button"
-            className="chip"
-            onClick={() => tidy !== null && onCommand(tidy)}
-            disabled={tidy === null}
-            title="Restack the lanes so links cross as few other lanes as possible"
-          >
-            Tidy lane order
-          </button>
-        )}
-      </section>
-      <section className="panel-section">
-        <h3>Elements</h3>
-        {target === undefined ? (
-          <p className="lp-caption">
-            {lanes.length === 0 ? 'Add a lane, then its steps.' : 'Select a lane to add steps to it.'}
-          </p>
-        ) : (
-          <>
-            <p className="lp-caption">Adding to {label(target)}</p>
-            <input
-              aria-label="Element name"
-              value={elementName}
-              onChange={(e) => setElementName(e.target.value)}
-              placeholder="Name (optional)"
-            />
-            {ELEMENTS.map((el) => (
-              <button key={el.type} type="button" className="chip" onClick={() => addElement(el.type, el.defaultName)}>
-                {el.label}
-              </button>
-            ))}
-            {target.type === ACTIVITY_LANE_TYPE && (
-              <button type="button" className="chip" onClick={() => addElement(ACTIVITY_REGION_TYPE, 'Region')}>
-                Add region
-              </button>
-            )}
-          </>
-        )}
-      </section>
+      <LanesSection
+        frame={frame}
+        lanes={lanes}
+        current={(lane) => lane.id === selectedId || lane.id === target?.id}
+        name={[laneName, setLaneName]}
+        color={[laneColor, setLaneColor]}
+        tidy={tidy}
+        onSelect={onSelect}
+        onMove={moveLane}
+        onAdd={addLane}
+        onCommand={onCommand}
+      />
+      <ElementsSection
+        target={target}
+        hasLanes={lanes.length > 0}
+        name={[elementName, setElementName]}
+        onAdd={addElement}
+      />
     </DockSection>
+  );
+}
+
+const label = (n: DiagramNode) => (n.name !== '' ? n.name : n.id);
+
+/** The frame's lanes as a list (select, restack), a row to add one, and the tidy restack. */
+function LanesSection({
+  frame,
+  lanes,
+  current,
+  name: [laneName, setLaneName],
+  color: [laneColor, setLaneColor],
+  tidy,
+  onSelect,
+  onMove,
+  onAdd,
+  onCommand,
+}: {
+  frame: DiagramNode;
+  lanes: DiagramNode[];
+  /** the lane the selection is in, or is */
+  current: (lane: DiagramNode) => boolean;
+  name: DraftField;
+  color: DraftField;
+  /** the restack that crosses the fewest lanes, null when the order already is it */
+  tidy: EditorCommand | null;
+  onSelect: (id: string) => void;
+  onMove: (laneId: string, offset: -1 | 1) => void;
+  onAdd: () => void;
+  onCommand: (command: EditorCommand) => void;
+}) {
+  return (
+    <section className="panel-section">
+      <h3>Lanes in {label(frame)}</h3>
+      {lanes.length === 0 ? (
+        <p className="lp-caption">No lanes yet. Add the first one below.</p>
+      ) : (
+        <ul className="activity-lanes" aria-label="Lanes">
+          {lanes.map((lane, i) => (
+            <li key={lane.id} aria-current={current(lane) ? 'true' : undefined}>
+              <span
+                className="lane-dot"
+                style={lane.color !== undefined ? { background: lane.color } : undefined}
+                aria-hidden="true"
+              />
+              <button type="button" className="lane-name" title="Select this lane" onClick={() => onSelect(lane.id)}>
+                {label(lane)}
+              </button>
+              <button
+                type="button"
+                className="picker-btn"
+                aria-label={`Move ${label(lane)} up`}
+                title="Move up"
+                disabled={i === 0}
+                onClick={() => onMove(lane.id, -1)}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                className="picker-btn"
+                aria-label={`Move ${label(lane)} down`}
+                title="Move down"
+                disabled={i === lanes.length - 1}
+                onClick={() => onMove(lane.id, 1)}
+              >
+                ↓
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form
+        className="field-row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onAdd();
+        }}
+      >
+        <input
+          aria-label="New lane name"
+          value={laneName}
+          onChange={(e) => setLaneName(e.target.value)}
+          placeholder="New lane name"
+        />
+        <button type="submit" className="chip" disabled={laneName.trim() === ''}>
+          Add lane
+        </button>
+      </form>
+      <ColorRow label="Lane color" value={laneColor} onChange={setLaneColor} />
+      {lanes.length > 2 && (
+        <button
+          type="button"
+          className="chip"
+          onClick={() => tidy !== null && onCommand(tidy)}
+          disabled={tidy === null}
+          title="Restack the lanes so links cross as few other lanes as possible"
+        >
+          Tidy lane order
+        </button>
+      )}
+    </section>
+  );
+}
+
+/** Quick-adds for the steps inside the target lane or region. */
+function ElementsSection({
+  target,
+  hasLanes,
+  name: [elementName, setElementName],
+  onAdd,
+}: {
+  target: DiagramNode | undefined;
+  hasLanes: boolean;
+  name: DraftField;
+  onAdd: (type: string, defaultName: string) => void;
+}) {
+  return (
+    <section className="panel-section">
+      <h3>Elements</h3>
+      {target === undefined ? (
+        <p className="lp-caption">{hasLanes ? 'Select a lane to add steps to it.' : 'Add a lane, then its steps.'}</p>
+      ) : (
+        <>
+          <p className="lp-caption">Adding to {label(target)}</p>
+          <input
+            aria-label="Element name"
+            value={elementName}
+            onChange={(e) => setElementName(e.target.value)}
+            placeholder="Name (optional)"
+          />
+          {ELEMENTS.map((el) => (
+            <button key={el.type} type="button" className="chip" onClick={() => onAdd(el.type, el.defaultName)}>
+              {el.label}
+            </button>
+          ))}
+          {target.type === ACTIVITY_LANE_TYPE && (
+            <button type="button" className="chip" onClick={() => onAdd(ACTIVITY_REGION_TYPE, 'Region')}>
+              Add region
+            </button>
+          )}
+        </>
+      )}
+    </section>
   );
 }

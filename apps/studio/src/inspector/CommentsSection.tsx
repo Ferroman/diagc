@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { nextCommentId, type Comment, type EditorCommand, type ElementRef } from '@diagc/core/internal';
+import { useDraftField } from './useDraftField';
 
 interface CommentsSectionProps {
   target: ElementRef;
@@ -21,10 +22,8 @@ function CommentRow({
   // Controlled with resync, as ThreatRow: local state carries the keystrokes,
   // an effect follows a change made underneath the panel (Undo), and every
   // commit diffs first so nothing lands an undo step for no change.
-  const [text, setText] = useState(comment.text);
-  useEffect(() => setText(comment.text), [comment.text]);
-  const [by, setBy] = useState(comment.by ?? '');
-  useEffect(() => setBy(comment.by ?? ''), [comment.by]);
+  const [text, setText] = useDraftField(comment.text);
+  const [by, setBy] = useDraftField(comment.by);
 
   const commitText = () => {
     const trimmed = text.trim();
