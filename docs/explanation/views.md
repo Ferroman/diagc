@@ -44,7 +44,7 @@ The diagram rests fully folded: every group is one box. Double-click a group and
 
 The rule that makes this readable is that **siblings stay folded**. You are always reading one focused path of detail against a group-level overview, never a fully-exploded graph. The `▸`/`▾` chip on a group's header overrides the automatic decision for that container: it pins the group open or shut.
 
-When a container folds, relations that crossed its boundary do not vanish — they re-anchor to the box that absorbed the hidden endpoint. Several relations between the same visible pair then fold into **one** arrow. If those relations no longer share a single `kind`, the aggregate shows as `mixed`.
+When a container folds, relations that crossed its boundary do not vanish — they re-anchor to the box that absorbed the hidden endpoint. Several relations between the same visible pair then fold into **one** arrow. If those relations no longer share a single `kind`, the aggregate shows as `mixed`. It keeps each `style` property they all set alike — two dashed grey peerings stay one dashed grey line — and draws the rest in the kind's look.
 
 What that one arrow is labelled follows a width budget, because at platform altitude there are hundreds of them:
 

@@ -103,6 +103,20 @@ function edgeStyle(r: DiagramRelation, from: string, to: string): RelationStyle 
   return Object.keys(rest).length > 0 ? rest : undefined;
 }
 
+/** An aggregate's style: each property every constituent's drawn style sets to the
+ * same value, like the shared polarity. Two dashed grey peerings stay one dashed
+ * grey line; a property one relation leaves unset falls back to the kind's look,
+ * as it would on that relation's own edge. */
+function sharedStyle(rels: readonly DiagramRelation[], from: string, to: string): RelationStyle | undefined {
+  const [first, ...rest] = rels.map((r) => edgeStyle(r, from, to));
+  if (first === undefined) return undefined;
+  const shared: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(first)) {
+    if (rest.every((s) => s?.[key as keyof RelationStyle] === value)) shared[key] = value;
+  }
+  return Object.keys(shared).length > 0 ? (shared as RelationStyle) : undefined;
+}
+
 function toViewEdge(key: string, g: Group, tintOf: ReadonlyMap<string, string | undefined>): ViewEdge {
   const kinds = new Set(g.rels.map((r) => r.kind));
   const single = g.rels.length === 1 ? g.rels[0] : undefined;
@@ -119,7 +133,7 @@ function toViewEdge(key: string, g: Group, tintOf: ReadonlyMap<string, string | 
   } else {
     edge.label = aggregateLabel(g.rels);
   }
-  const style = single !== undefined ? edgeStyle(single, g.from, g.to) : undefined;
+  const style = single !== undefined ? edgeStyle(single, g.from, g.to) : sharedStyle(g.rels, g.from, g.to);
   if (style !== undefined) edge.style = style;
   const polarity = combinePolarity(g.rels);
   if (polarity !== undefined) edge.polarity = polarity;
@@ -157,7 +171,7 @@ function aggregateLabel(rels: readonly DiagramRelation[]): string {
 }
 
 /** The one relation behind a drawn edge; undefined when the edge stands for several,
- * which is why an aggregate carries no per-relation style, labels or note. */
+ * which is why an aggregate carries no per-relation labels or note. */
 export function soleRelation(edge: ViewEdge): DiagramRelation | undefined {
   return edge.constituents.length === 1 ? edge.constituents[0] : undefined;
 }
