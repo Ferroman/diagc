@@ -26,6 +26,8 @@ export interface PublishResult {
   pages: string[];
   images: string[];
   gallery: string;
+  /** the diagrams it warned it was skipping, by name */
+  skipped: string[];
 }
 
 /** The model's display name from its artifact, for a diagram this run did not read. */
@@ -101,6 +103,7 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
 
   const pages: string[] = [];
   const images: string[] = [];
+  const skipped: string[] = [];
   // diagram name → the model's display name, for the index cards
   const titles = new Map<string, string>();
   for (const d of chosen) {
@@ -138,6 +141,7 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
       }
     } catch (e) {
       console.warn(`publish: skipping diagram "${d.name}": ${errMessage(e)}`);
+      skipped.push(d.name);
       continue;
     }
   }
@@ -166,5 +170,5 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
   const galleryPath = path.join(opts.htmlDir, 'index.html');
   await writeFile(galleryPath, buildGallery(entries, opts.link !== undefined ? { link: opts.link } : {}));
 
-  return { pages, images, gallery: galleryPath };
+  return { pages, images, gallery: galleryPath, skipped };
 }

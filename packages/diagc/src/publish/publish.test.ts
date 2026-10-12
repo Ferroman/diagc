@@ -152,6 +152,7 @@ describe('publishDiagrams', () => {
     warnSpy.mockRestore();
 
     expect(res.pages).toEqual([path.join(f.html, 'demo.html')]);
+    expect(res.skipped).toEqual(['broken']);
     const gallery = await readFile(path.join(f.html, 'index.html'), 'utf8');
     expect(gallery).toContain('href="demo.html"');
     // the skipped diagram has no page, so it must not get a dead link in the gallery
