@@ -1,6 +1,8 @@
 import type { Takes } from './cli/parse';
 import { compile } from './commands/compile';
+import { diff } from './commands/diff';
 import { lint } from './commands/lint';
+import { publish } from './commands/publish';
 import { LOCKED } from './commands/shared';
 import { watch } from './commands/watch';
 
@@ -11,10 +13,10 @@ export const TAKES: Readonly<Record<string, Takes>> = {
   compile,
   lint,
   watch,
-  publish: { flags: ['--out', '--no-images', '--link', '--update-includes'] },
+  publish,
   studio: { flags: [], positionals: { max: 0, what: 'no arguments' }, whyNot: LOCKED },
   eject: { flags: ['--out'], positionals: { max: 1, what: 'one diagram name' }, whyNot: LOCKED },
-  diff: { flags: ['--out', '--no-images', '--json', '--labels', '--image-url'] },
+  diff,
   guide: { flags: [] },
   init: { flags: ['--type', '--agents'] },
 };

@@ -20,9 +20,6 @@
   "packages/diagc/src/cli.ts": {
     "complexity": {
       "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
     }
   },
   "packages/renderer/src/canvas/DiagramView.tsx": {

@@ -19,27 +19,16 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { existsSync } from 'node:fs';
-import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { errMessage } from '@diagc/core/internal';
 import type { Context } from './cli/command';
 import { processIo } from './cli/io';
 import { checkTaken, parseArgv, UsageError, type ParsedArgv } from './cli/parse';
 import { compile } from './commands/compile';
+import { diff } from './commands/diff';
 import { lint } from './commands/lint';
-import { warnNoSources } from './commands/shared';
+import { publish } from './commands/publish';
 import { watch } from './commands/watch';
-import { compileFile } from './compile';
-import {
-  compareDiagramSets,
-  formatDiffJson,
-  formatDiffSummary,
-  loadDiagramSet,
-  writeDiffPages,
-  type DiagramSet,
-} from './diff/index';
-import { checkoutDiagrams, type CheckedOutRef } from './git-ref';
 import { ejectDiagram } from './eject';
 import { runGuide } from './guide';
 import { cliVersion, findHome, homePaths } from './home';
@@ -47,10 +36,6 @@ import { runInit } from './init';
 import { resolveInclude } from './includes';
 import { diagramName } from './names';
 import { snapshotSession } from './snapshots';
-import { formatCompileEvent } from './watch';
-import { discoverDiagrams } from './publish/discover';
-import { globSorted } from './glob';
-import { publishDiagrams, type PublishOptions } from './publish/publish';
 import { runStudio } from './studio';
 import { TAKES } from './command-args';
 
@@ -127,38 +112,6 @@ function flatArgs({ command, positionals, flags }: ParsedArgv): Args {
   };
 }
 
-/** Each sidecar diff left out of its pictures, on stderr so `--json` stays parseable. */
-function warnLeftOut(...sets: DiagramSet[]): void {
-  for (const set of sets) for (const w of set.warnings) console.error(w);
-}
-
-/** Where `publish` compiles to and builds pages from. One object for both steps, so
- * the pages are always made from the artifacts this run just wrote. `--out` moves the
- * artifacts only: the pages and PNGs stay where `.gitignore`, the docs and the READMEs
- * that embed them expect to find them. */
-export function publishDirs(
-  args: Pick<Args, 'out'>,
-): Pick<PublishOptions, 'srcDir' | 'artifactsDir' | 'htmlDir' | 'staticDir' | 'assetsDir'> {
-  const srcDir = '.diagrams/src';
-  return {
-    srcDir,
-    artifactsDir: args.out,
-    htmlDir: '.diagrams/html',
-    staticDir: '.diagrams/static',
-    assetsDir: path.join(srcDir, 'assets'),
-  };
-}
-
-/** `files...` as diagram names, read as eject reads one (`.diagrams/src/shop.diagram.json`
- * is `shop`). A name that matches nothing in `known` is an error on stderr, and the
- * result is then undefined: an empty selection would look like nothing to do. */
-function diagramNames(files: readonly string[], known: ReadonlySet<string>): string[] | undefined {
-  const names = files.map(diagramName);
-  const unknown = names.filter((n) => !known.has(n));
-  for (const n of unknown) console.error(`diagc: no diagram '${n}'`);
-  return unknown.length === 0 ? names : undefined;
-}
-
 /** End the process once stdout and stderr have taken everything written to them:
  * `process.exit` straight after a write drops what a pipe has not accepted yet. A
  * zero-length write's callback runs after everything queued before it. It ends with
@@ -201,65 +154,7 @@ async function main() {
   } else if (args.command === 'watch') {
     return exit(await watch.run(parsed, ctx));
   } else if (args.command === 'publish') {
-    if (!existsSync(home.viewerShell)) {
-      // Only a checkout can be missing it; an installed package ships the shell,
-      // so there the message would send the reader off to build a repo they
-      // do not have.
-      console.error(
-        home.layout === 'monorepo'
-          ? 'viewer shell not built — run `pnpm --filter @diagc/viewer build` in the monorepo.'
-          : `viewer shell missing from this install (${home.viewerShell}) — reinstall diagc.`,
-      );
-      return exit(1);
-    }
-    const dirs = publishDirs(args);
-    // Compile first so artifacts reflect current sources (TS + include expansion).
-    const sources = await globSorted('**/*.diagram.{ts,json}', { cwd: dirs.srcDir, absolute: true });
-    if (sources.length === 0) warnNoSources(processIo, dirs.srcDir);
-    let failed = false;
-    for (const f of sources) {
-      try {
-        await compileFile(f, dirs.artifactsDir, {
-          rootDir: dirs.srcDir,
-          coreEntry: home.coreEntry,
-          resolver: snap.resolver,
-        });
-      } catch (e) {
-        failed = true;
-        console.error(formatCompileEvent({ file: f, ok: false, error: errMessage(e) }));
-      }
-    }
-    // publish's glob above ignores args.files (that only scopes which rendered
-    // pages come out below), so an update run here is always full-tree; like
-    // compile's, its prune waits until every source compiles.
-    if (args.updateIncludes && !failed) await snap.prune();
-    const discovered = await discoverDiagrams(dirs.artifactsDir, dirs.srcDir);
-    const names = diagramNames(args.files, new Set(discovered.map((d) => d.name)));
-    if (names === undefined) return exit(1);
-    let images = args.images;
-    let renderPng: ((htmlPath: string, pngPath: string) => Promise<void>) | undefined;
-    if (args.images) {
-      const snapshot = await import('./publish/snapshot');
-      if (snapshot.findChrome() === undefined) {
-        console.error('No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.');
-        images = false;
-      } else {
-        renderPng = snapshot.renderPng;
-      }
-    }
-    const res = await publishDiagrams({
-      ...dirs,
-      shellPath: home.viewerShell,
-      libraryDir: home.libraryDir,
-      images,
-      names,
-      ...(renderPng !== undefined ? { renderPng } : {}),
-      ...(args.link !== undefined ? { link: args.link } : {}),
-    });
-    console.log(`✓ ${res.pages.length} page(s) -> ${dirs.htmlDir}`);
-    if (res.images.length > 0) console.log(`✓ ${res.images.length} image(s) -> ${dirs.staticDir}`);
-    console.log(`✓ gallery -> ${res.gallery}`);
-    return exit(failed || res.skipped.length > 0 ? 1 : 0);
+    return exit(await publish.run(parsed, ctx));
   } else if (args.command === 'studio') {
     // Studio's own compile-watch loop always resolves includes locked (see
     // studio.ts) — same reasoning as watch above.
@@ -283,7 +178,7 @@ async function main() {
       return exit(1);
     }
   } else if (args.command === 'diff') {
-    return exit(await runDiff(args, home));
+    return exit(await diff.run(parsed, ctx));
   } else if (args.command === 'guide') {
     // exitCode and a return, not process.exit: the guide is tens of kilobytes and
     // is read through a pipe by an agent. Exiting while part of it is still
@@ -315,88 +210,6 @@ async function main() {
     console.error(`diagc: Unknown command '${args.command}'.`);
     console.error(USAGE);
     return exit(1);
-  }
-}
-
-/** `A..B` or `A` (against the working tree). */
-export function parseRange(range: string): { from: string; to?: string } {
-  const at = range.indexOf('..');
-  if (at === -1) return { from: range };
-  const from = range.slice(0, at);
-  const to = range.slice(at + 2);
-  if (from === '' || to === '' || to.startsWith('.'))
-    throw new Error(`'${range}' is not a range: write <from>..<to>, or one ref to compare with the working tree`);
-  return { from, to };
-}
-
-/** A ref as a directory name: `v1.0..feature/x` -> `v1.0..feature-x`. */
-export function diffOutDir(from: string, to: string | undefined): string {
-  const safe = (s: string) => s.replace(/[^A-Za-z0-9._-]+/g, '-');
-  return path.join('.diagrams', 'diff', `${safe(from)}..${to !== undefined ? safe(to) : 'working-tree'}`);
-}
-
-async function runDiff(args: Args, home: ReturnType<typeof homePaths>): Promise<number> {
-  const range = args.files[0];
-  if (range === undefined) {
-    console.error('diagc: diff needs a git ref (diff v1.0) or a range (diff v1.0..v2.0).');
-    console.error(USAGE);
-    return 1;
-  }
-  const checkouts: CheckedOutRef[] = [];
-  try {
-    const { from, to } = parseRange(range);
-    const before = await checkoutDiagrams(from, process.cwd());
-    checkouts.push(before);
-    let afterDir = '.diagrams';
-    if (to !== undefined) {
-      const after = await checkoutDiagrams(to, process.cwd());
-      checkouts.push(after);
-      afterDir = after.diagramsDir;
-    }
-    const fromLabel = args.labels?.[0] ?? from;
-    const toLabel = args.labels?.[1] ?? to ?? 'working tree';
-    const beforeSet = await loadDiagramSet(fromLabel, before.diagramsDir, home.coreEntry);
-    const afterSet = await loadDiagramSet(toLabel, afterDir, home.coreEntry);
-    warnLeftOut(beforeSet, afterSet);
-    const known = new Set([beforeSet, afterSet].flatMap((set) => [...set.versions.keys(), ...set.errors.keys()]));
-    const names = diagramNames(args.files.slice(1), known);
-    if (names === undefined) return 1;
-    const diffs = compareDiagramSets(beforeSet, afterSet, names);
-    console.log(args.json ? formatDiffJson(diffs, fromLabel, toLabel) : formatDiffSummary(diffs, fromLabel, toLabel));
-    if (!diffs.some((d) => d.status === 'added' || d.status === 'removed' || d.status === 'changed')) return 0;
-    if (!existsSync(home.viewerShell)) {
-      console.error('viewer shell not available — writing the summary only (see `diagc publish` for how to build it).');
-      return 0;
-    }
-    let renderPng: ((htmlPath: string, pngPath: string) => Promise<void>) | undefined;
-    if (args.images) {
-      const snapshot = await import('./publish/snapshot');
-      if (snapshot.findChrome() === undefined)
-        console.error('No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.');
-      else renderPng = snapshot.renderPng;
-    }
-    const outDir = args.outGiven ? args.out : diffOutDir(from, to);
-    const res = await writeDiffPages(diffs, {
-      outDir,
-      shellPath: home.viewerShell,
-      libraryDir: home.libraryDir,
-      before: beforeSet,
-      after: afterSet,
-      ...(renderPng !== undefined ? { renderPng } : {}),
-      ...(args.imageUrl !== undefined ? { imageUrl: args.imageUrl } : {}),
-    });
-    // stderr, so `--json` output stays parseable on stdout
-    console.error(
-      `✓ ${res.pages.length} page(s)${res.images.length > 0 ? `, ${res.images.length} image(s)` : ''} -> ${outDir}`,
-    );
-    console.error(`✓ side by side -> ${res.index}`);
-    console.error(`✓ for an ADR -> ${res.summary}`);
-    return 0;
-  } catch (e) {
-    console.error(`diagc: ${errMessage(e)}`);
-    return 1;
-  } finally {
-    for (const c of checkouts) await c.cleanup();
   }
 }
 
