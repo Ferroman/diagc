@@ -22,7 +22,7 @@ interface ActionShape {
 
 // The one list of what a key can do. The dispatcher, the settings dialog and the
 // reference docs all read this, so a new studio action becomes bindable by adding
-// a row here and a handler in App — nowhere else.
+// a row here and a handler in buildHotkeyHandlers — nowhere else.
 //
 // Deliberately absent: anything that takes an argument (a colour swatch, the
 // Style and layout selects, a plane, a layer, a dock section) and the gestures

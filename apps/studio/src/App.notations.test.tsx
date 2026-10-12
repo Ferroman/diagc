@@ -465,6 +465,16 @@ describe('the threat controls', () => {
     expect(undoArmed()).toBe(false);
   });
 
+  it('a click on the chip opens every note, and a second click closes them', async () => {
+    // Breaks if the chip hands its click event to the toggle, or the toggle
+    // stops doing what the picture lacks.
+    await mountEdit(diagram('c4', threatened));
+    fireEvent.click(notesChip()!);
+    await waitFor(() => expect(notesChip()?.getAttribute('aria-pressed')).toBe('true'));
+    fireEvent.click(notesChip()!);
+    await waitFor(() => expect(notesChip()?.getAttribute('aria-pressed')).toBe('false'));
+  });
+
   it.each(['c4', 'threat-model'])('%s with a threat: the chip is armed and the key opens every note', async (n) => {
     // Breaks if threats are offered on the notation alone, stranding an
     // element's threats when the notation changes.
