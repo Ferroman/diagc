@@ -80,6 +80,7 @@ export function useFlowEdges(input: FlowEdgesInput): FlowEdges {
       pendingAdd: addLabelAt,
       onPendingAddConsumed: clearAddLabel,
       stylePreset: preset.rough !== undefined ? preset : undefined,
+      edgeLook: preset.edges,
       notation: props.notation,
       routing,
       routes,

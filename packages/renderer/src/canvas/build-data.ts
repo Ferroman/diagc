@@ -44,7 +44,7 @@ import type { AnnotationCounts } from '../notes/comment-badge';
 import type { EdgeRouting } from './useViewLayout';
 import type { NodeChip } from '../notations';
 import type { KindStyle, Registry, TypeStyle } from '../registry';
-import type { StylePreset } from '../sketch/stylePresets';
+import type { EdgeLook, StylePreset } from '../sketch/stylePresets';
 import { nodeHue, type TypeHues } from './type-hues';
 import type { DiagramEdgeData } from '../edge/DiagramEdge';
 import type { DiagramNodeData } from '../node/DiagramNode';
@@ -121,6 +121,8 @@ export interface EdgeDataContext {
   pendingAdd: { edgeId: string; x: number; y: number } | null;
   onPendingAddConsumed?: () => void;
   stylePreset?: StylePreset;
+  /** the preset's own line drawing (StylePreset.edges) */
+  edgeLook?: EdgeLook;
   notation?: NotationId;
   /** how the active plane draws routed edges; undefined = every edge floats */
   routing?: EdgeRouting;
@@ -305,6 +307,7 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     tint: e.tint,
     relStyle: e.style,
     stylePreset: ctx.stylePreset,
+    edgeLook: ctx.edgeLook,
     notation: ctx.notation,
     polarity: e.polarity,
     delay: e.delay,
@@ -377,7 +380,8 @@ function addRoute(data: DiagramEdgeData, e: ViewEdge, ctx: EdgeDataContext, rout
   const to = ctx.laidAt.get(e.to);
   if (route === undefined || route.length < 2 || from === undefined || to === undefined) return;
   data.route = route;
-  data.routeCorner = routing.corner;
+  // a preset that bends its lines square (the text looks) overrides the plane's corner
+  data.routeCorner = ctx.edgeLook?.corner ?? routing.corner;
   data.routeFrom = from;
   data.routeTo = to;
   const spot = ctx.labelSpots.get(e.id);
@@ -449,6 +453,7 @@ const EDGE_CTX_FIELDS = [
   'pendingAdd',
   'onPendingAddConsumed',
   'stylePreset',
+  'edgeLook',
   'notation',
   'routing',
   'routes',

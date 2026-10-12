@@ -513,6 +513,29 @@ describe('buildEdgeData', () => {
     expect(routed.labelSpot).toEqual({ x: 5, y: 5 });
   });
 
+  it("carries the preset's edge look, and draws a route with its corner over the routing's", () => {
+    const ctx = edgeCtx({
+      routing: { corner: 28 },
+      edgeLook: { corner: 0 },
+      routes: new Map([
+        [
+          'e1',
+          [
+            { x: 0, y: 0 },
+            { x: 10, y: 10 },
+          ],
+        ],
+      ]),
+      laidAt: new Map([
+        ['a', { x: 1, y: 2 }],
+        ['b', { x: 3, y: 4 }],
+      ]),
+    });
+    const d = buildEdgeData(viewEdge(), ctx);
+    expect(d.edgeLook).toEqual({ corner: 0 });
+    expect(d.routeCorner).toBe(0);
+  });
+
   it('carries no route on a floating plane, without one for the edge, or for an endpoint the layout never placed', () => {
     const route = [
       { x: 0, y: 0 },
@@ -711,6 +734,7 @@ describe('the data caches compare every context field', () => {
     labelMoves: { labelMoves: {} },
     onViewMoveEdgeLabel: { onViewMoveEdgeLabel: () => {} },
     edgeColors: { edgeColors: new Map() },
+    edgeLook: { edgeLook: { corner: 0 } },
   };
   it.each(Object.entries(edgeVariants))('rebuilds the edge data when only %s changes', (_field, over) => {
     const e = viewEdge();

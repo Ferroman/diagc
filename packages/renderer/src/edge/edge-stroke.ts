@@ -3,7 +3,8 @@ import type { RelationStyle } from '@diagc/core/internal';
 import type { NotationProfile } from '../notations';
 import type { KindStyle } from '../registry';
 import type { DiagramEdgeData } from './DiagramEdge';
-import { END_SHAPES, type EdgeMarker } from './EdgeMarkerDefs';
+import type { EdgeLook } from '../sketch/stylePresets';
+import { END_SHAPES, OPEN_ARROW, type EdgeMarker } from './EdgeMarkerDefs';
 
 /** How an edge's line is drawn, and the markers on its ends. */
 export interface EdgeStroke {
@@ -34,8 +35,12 @@ export function edgeStroke(id: string, data: DiagramEdgeData | undefined, profil
     strokeWidth,
     line,
     animated,
-    dashArray: dashArrayOf(line, strokeWidth, animated),
-    ...markersOf(id, rel?.end ?? kind.endMarker ?? 'arrow', kind.startMarker),
+    dashArray: dashArrayOf(line, strokeWidth, animated, data?.edgeLook?.dash),
+    ...markersOf(
+      id,
+      { end: rel?.end ?? kind.endMarker ?? 'arrow', start: kind.startMarker },
+      data?.edgeLook?.openArrow,
+    ),
     markerSize: 10 + strokeWidth * 2,
   };
 }
@@ -64,26 +69,40 @@ function colourOf(
   return { stroke, polarityColor };
 }
 
-function dashArrayOf(line: EdgeStroke['line'], strokeWidth: number, animated: boolean): string | undefined {
+/** A preset's dashes stand in for solid and dashed lines only: a dotted line is
+ * already a row of dots, and an animated one marches on its own dash. */
+function dashArrayOf(
+  line: EdgeStroke['line'],
+  strokeWidth: number,
+  animated: boolean,
+  dash: EdgeLook['dash'],
+): string | undefined {
   return line === 'dashed'
-    ? '6 4'
+    ? (dash?.dashed ?? '6 4')
     : line === 'dotted'
       ? `0.1 ${Math.max(5, strokeWidth * 3)}`
       : animated
         ? '6 4'
-        : undefined;
+        : dash?.solid;
 }
 
-function markersOf(id: string, end: string, start: string | undefined): Pick<EdgeStroke, 'end' | 'start'> {
+function markersOf(
+  id: string,
+  ends: { end: string; start: string | undefined },
+  openArrow: boolean | undefined,
+): Pick<EdgeStroke, 'end' | 'start'> {
   // svg ids must be unique per document; edge ids contain '=>' etc., so sanitize
   const safeId = id.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const endShape = END_SHAPES[end];
-  const startShape = start !== undefined ? END_SHAPES[start] : undefined;
   return {
-    end: endShape !== undefined ? { id: `dg-end-${safeId}`, style: end, shape: endShape } : undefined,
-    start:
-      start !== undefined && startShape !== undefined
-        ? { id: `dg-start-${safeId}`, style: start, shape: startShape }
-        : undefined,
+    end: markerOf(`dg-end-${safeId}`, ends.end, openArrow),
+    start: markerOf(`dg-start-${safeId}`, ends.start, openArrow),
   };
+}
+
+/** One end's marker: its style's shape, the default arrow drawn open where the preset asks. */
+function markerOf(id: string, style: string | undefined, openArrow: boolean | undefined): EdgeMarker | undefined {
+  if (style === undefined) return undefined;
+  if (style === 'arrow' && openArrow === true) return { id, style: 'open-arrow', shape: OPEN_ARROW };
+  const shape = END_SHAPES[style];
+  return shape !== undefined ? { id, style, shape } : undefined;
 }
