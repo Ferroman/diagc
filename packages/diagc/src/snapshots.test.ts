@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { composeIncludes, type DiagramModel, type IncludeResolver } from '@diagc/core/internal';
-import { snapshotSession } from './snapshots';
+import { lockedResolverFor, snapshotSession } from './snapshots';
 
 const CHILD: DiagramModel = {
   version: 1,
@@ -317,5 +317,21 @@ describe('snapshotSession', () => {
     await locked.prune();
 
     expect(await readFile(lockPath, 'utf8')).toBe(before); // untouched by a locked-mode prune
+  });
+});
+
+describe('lockedResolverFor', () => {
+  it('reads the lock in the folder above the sources, re-reading it, and never fetches', async () => {
+    const rootDir = await tmpRoot();
+    const resolver = lockedResolverFor(path.join(rootDir, 'src'));
+    const from = path.join(rootDir, 'src', 'a.diagram.json');
+    // example.invalid cannot be fetched: a resolver that tried would fail on the
+    // network, not on the lock.
+    const url = 'https://example.invalid/c.diagram.json';
+    await expect(resolver(url, from)).rejects.toThrow(
+      `Include '${url}' is not snapshotted — run 'diagc compile --update-includes'`,
+    );
+    await snapshotSession(fakeBase, rootDir, 'update').resolver(url, from);
+    await expect(resolver(url, from)).resolves.toEqual({ model: CHILD, ref: url });
   });
 });

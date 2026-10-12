@@ -3,18 +3,10 @@ import path from 'node:path';
 import { composeIncludes, errMessage, validate, type DiagramModel } from '@diagc/core/internal';
 import { writeFileAtomic } from '../atomic-write';
 import { EjectError, ejectDiagram } from '../eject';
-import { resolveInclude } from '../includes';
 import { isSafeName } from '../names';
-import { snapshotSession } from '../snapshots';
+import { lockedResolverFor } from '../snapshots';
 import { walkDiagramJson } from './files';
 import { refuse, type HandlerResult } from './result';
-
-// path.dirname(diagramsDir) is the .diagrams root when diagramsDir is
-// .diagrams/src — the same rootDir a locked session uses elsewhere (eject.ts).
-// 'locked' because the boot/refresh path must never fetch or vendor a remote
-// include on a viewer's behalf — that only happens at `diagc compile`.
-const lockedResolver = (diagramsDir: string) =>
-  snapshotSession(resolveInclude, path.dirname(diagramsDir), 'locked').resolver;
 
 const hasIncludes = (m: DiagramModel | null): boolean =>
   m !== null && Array.isArray(m.nodes) && m.nodes.some((n) => n.include !== undefined);
@@ -68,7 +60,11 @@ async function composedForList(
   issues: { message: string }[],
 ): Promise<DiagramModel> {
   try {
-    const { model: composed, warnings } = await composeIncludes(model, path.resolve(file), lockedResolver(diagramsDir));
+    const { model: composed, warnings } = await composeIncludes(
+      model,
+      path.resolve(file),
+      lockedResolverFor(diagramsDir),
+    );
     // compileFile refuses an invalid composed result outright, because the
     // renderer assumes a validated model — an id collision
     // between an umbrella-declared node and a namespaced include can pass
@@ -135,7 +131,11 @@ export async function readComposedDiagram(diagramsDir: string, name: string): Pr
   }
   if (!hasIncludes(model)) return { status: 200, body: { model } };
   try {
-    const { model: composed, warnings } = await composeIncludes(model, path.resolve(file), lockedResolver(diagramsDir));
+    const { model: composed, warnings } = await composeIncludes(
+      model,
+      path.resolve(file),
+      lockedResolverFor(diagramsDir),
+    );
     // Same soundness check as composedForList: a composed model that fails
     // validation must never reach the renderer, so refuse it like a failed
     // compose instead of returning 200 with an unsound model.
