@@ -429,6 +429,44 @@ describe('diagc diff, through the real CLI', () => {
     expect(nope.stdout).toBe('');
   }, 60_000);
 
+  it('prints each status in --json with its own keys, in order', () => {
+    const dir = fresh(true);
+    const git = (...args: string[]) =>
+      execFileSync(
+        'git',
+        ['-c', 'user.email=t@example.com', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...args],
+        {
+          cwd: dir,
+          stdio: 'pipe',
+        },
+      );
+    const source = (name: string) => path.join(dir, '.diagrams', 'src', `${name}.diagram.json`);
+    for (const name of ['broken', 'gone', 'same', 'shop']) writeFileSync(source(name), JSON.stringify(diagram(name)));
+    git('init', '-q');
+    git('add', '-A');
+    git('commit', '-qm', 'v1');
+    writeFileSync(source('broken'), '{');
+    rmSync(source('gone'));
+    writeFileSync(source('fresh'), JSON.stringify(diagram('fresh')));
+    writeFileSync(
+      source('shop'),
+      JSON.stringify(diagram('shop', { nodes: [{ id: 'a', name: 'B', type: 'service' }] })),
+    );
+
+    const r = run(['diff', 'HEAD', '--json', '--no-images'], dir);
+    expect(r.status).toBe(0);
+    const out = JSON.parse(r.stdout) as { diagrams: { name: string; status: string }[] };
+    expect(r.stdout).toBe(`${JSON.stringify(out, null, 2)}\n`);
+    expect(Object.keys(out)).toEqual(['from', 'to', 'diagrams']);
+    expect(out.diagrams.map((d) => [d.name, d.status, Object.keys(d)])).toEqual([
+      ['broken', 'error', ['name', 'status', 'error']],
+      ['fresh', 'added', ['name', 'status', 'diff']],
+      ['gone', 'removed', ['name', 'status', 'diff']],
+      ['same', 'unchanged', ['name', 'status', 'diff']],
+      ['shop', 'changed', ['name', 'status', 'diff']],
+    ]);
+  }, 60_000);
+
   it('compares a diagram whose layout does not parse, and says so on stderr', () => {
     const dir = fresh(true);
     const git = (...args: string[]) =>
