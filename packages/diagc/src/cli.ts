@@ -319,10 +319,10 @@ async function main() {
     // sense, so it has its own session rather than the shared one (mirrors
     // studio.ts's own hardcoded 'locked' session).
     const dir = args.files[0] ?? '.diagrams/src';
+    // A directory that does not exist holds no diagrams either; a file is left alone.
     if (
-      existsSync(dir) &&
-      statSync(dir).isDirectory() &&
-      (await fg('**/*.diagram.{ts,json}', { cwd: dir })).length === 0
+      !existsSync(dir) ||
+      (statSync(dir).isDirectory() && (await fg('**/*.diagram.{ts,json}', { cwd: dir })).length === 0)
     )
       warnNoSources(dir);
     const watchSnap = snapshotSession(resolveInclude, '.diagrams', 'locked');

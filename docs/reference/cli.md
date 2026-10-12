@@ -116,7 +116,7 @@ diagc watch
 diagc watch .diagrams/src/team-a
 ```
 
-Takes an optional directory (default `.diagrams/src`). Writes to `--out`. Remote includes resolve locked; `--update-includes` is refused. On a failed recompile it prints the error and **keeps the last good artifact**, so the studio never blanks out mid-edit.
+Takes an optional directory (default `.diagrams/src`). Writes to `--out`. Remote includes resolve locked; `--update-includes` is refused. A directory with no diagrams in it, or one that does not exist, gets the `No diagrams under …` line on stderr, and watch keeps watching. On a failed recompile it prints the error and **keeps the last good artifact**, so the studio never blanks out mid-edit.
 
 ### `publish`
 

@@ -76,6 +76,28 @@ describe('with no sources', () => {
     expect(stderr.trim()).toBe(NO_SOURCES);
   }, 30_000);
 
+  it('watch says so when its directory does not exist', async () => {
+    const dir = fresh();
+    const child = spawn(process.execPath, [bin, 'watch', 'nowhere'], { cwd: dir });
+    const stderr = await new Promise<string>((resolve) => {
+      let buf = '';
+      const timer = setTimeout(() => resolve(buf), 20_000);
+      child.stderr.on('data', (d: Buffer) => {
+        buf += d.toString();
+        if (buf.includes('No diagrams under')) {
+          clearTimeout(timer);
+          resolve(buf);
+        }
+      });
+      // The check runs before the watcher starts: once it is watching, the line is due or never comes.
+      child.stdout.on('data', (d: Buffer) => {
+        if (d.toString().includes('Watching')) setTimeout(() => resolve(buf), 1_000);
+      });
+    });
+    child.kill();
+    expect(stderr.trim()).toBe("No diagrams under nowhere — run 'diagc init' to create one.");
+  }, 30_000);
+
   it('watch still accepts a single file instead of crashing on the source check', async () => {
     const dir = fresh(true);
     const model = {
