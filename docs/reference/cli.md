@@ -141,7 +141,7 @@ diagc publish --link https://github.com/you/repo
 
 **PNG export needs a browser.** If none is found, publish prints `No Chrome found — writing HTML only` and continues without images. See `CHROME_PATH` below.
 
-**Remote includes resolve locked**, same as `compile`; `diagc publish --update-includes` refreshes and re-pins them first. Publish always compiles the whole source tree regardless of `files...` (that only filters which pages are rendered below it), so an `--update-includes` run here always prunes unreferenced entries — there is no scoped/unpruned form the way a filtered `compile` run has.
+**Remote includes resolve locked**, same as `compile`; `diagc publish --update-includes` refreshes and re-pins them first. Publish always compiles the whole source tree regardless of `files...` (that only filters which pages are rendered below it), so an `--update-includes` run here prunes unreferenced entries whenever every source compiles — there is no scoped/unpruned form the way a filtered `compile` run has. A source that fails may never have reached its includes, so then nothing is pruned.
 
 ### `studio`
 
@@ -223,7 +223,7 @@ diagc guide all        # everything
 | `--json` | `lint`, `diff` | off | Print the findings (lint) or the changes (diff) as JSON. |
 | `--type <type>` | `init` | `basic` | Which starter to copy. |
 | `--agents` | `init` | off | Write the coding-agent block into `AGENTS.md` / `CLAUDE.md`, and the Claude Code skill where there is a `.claude/` folder or a `CLAUDE.md`. |
-| `--update-includes` | `compile`, `publish` | off | Refetch every remote `include`, vendor it under `.diagrams/includes/`, and rewrite `.diagrams/includes.lock.json`. On `compile`, pruning entries the run didn't touch only happens with no `files...` given (a full-tree run); `publish` always compiles the whole tree, so its prune is unconditional. |
+| `--update-includes` | `compile`, `publish` | off | Refetch every remote `include`, vendor it under `.diagrams/includes/`, and rewrite `.diagrams/includes.lock.json`. Entries the run didn't touch are pruned only when every source compiled, and on `compile` only with no `files...` given (a full-tree run); `publish` always compiles the whole tree. |
 
 Anything not recognised as a flag is collected as `files...`.
 
