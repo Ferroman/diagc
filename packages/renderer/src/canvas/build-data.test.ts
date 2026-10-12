@@ -245,6 +245,14 @@ describe('buildNodeData', () => {
     ).toBe('#type');
   });
 
+  it('gives a box its hue only under a palette preset: its accent, else its type colour', () => {
+    const hues = { palette: ['#111111'], slots: new Map([['service', 0]]) };
+    expect(buildNodeData(viewNode(), nodeCtx()).hue).toBeUndefined();
+    expect(buildNodeData(viewNode(), nodeCtx({ hues })).hue).toBe('#111111');
+    const red = viewNode({ node: { id: 'n1', name: 'One', type: 'service', color: '#c62828' } });
+    expect(buildNodeData(red, nodeCtx({ hues })).hue).toBe('#c62828');
+  });
+
   it("summarises the node's STRIDE threats, and says nothing when it carries none", () => {
     const threatened = viewNode({
       node: {
@@ -654,6 +662,7 @@ describe('the data caches compare every context field', () => {
     typeRegistry: { typeRegistry: createTypeRegistry() },
     typeColors: { typeColors: {} },
     nodeColors: { nodeColors: new Map() },
+    hues: { hues: { palette: ['#111111'], slots: new Map() } },
     nodeChips: { nodeChips: new Map() },
     resizable: { resizable: () => undefined },
     icons: { icons: createIconRegistry() },

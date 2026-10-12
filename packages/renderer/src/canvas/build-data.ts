@@ -45,6 +45,7 @@ import type { EdgeRouting } from './useViewLayout';
 import type { NodeChip } from '../notations';
 import type { KindStyle, Registry, TypeStyle } from '../registry';
 import type { StylePreset } from '../sketch/stylePresets';
+import { nodeHue, type TypeHues } from './type-hues';
 import type { DiagramEdgeData } from '../edge/DiagramEdge';
 import type { DiagramNodeData } from '../node/DiagramNode';
 
@@ -60,6 +61,8 @@ export interface NodeDataContext {
   /** notation-resolved accent per node id (e.g. a commit's lane colour); below
    * the node's own colour, above typeColors */
   nodeColors?: ReadonlyMap<string, string>;
+  /** a palette preset's colouring of the model; absent = no palette */
+  hues?: TypeHues;
   /** the notation's chips per node id (profile.node.chips), one derivation
    * per model like nodeColors; absent = no notation chips */
   nodeChips?: ReadonlyMap<string, NodeChip[]>;
@@ -177,6 +180,7 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
   // Counted here rather than in the component so the badge costs one pass over
   // the threats per data build, not one per render.
   const threats = threatSummary(n.node.threats);
+  const color = typeColor(n, ctx);
   const data: DiagramNodeData = {
     label: n.node.name,
     state: n.state,
@@ -188,7 +192,8 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     icons: ctx.icons,
     typeId: n.node.type,
     icon: n.node.icon,
-    color: typeColor(n, ctx),
+    color,
+    hue: ctx.hues !== undefined ? nodeHue(n.node.type, color, ctx.hues) : undefined,
     textColor: n.node.textColor,
     technology: n.node.technology,
     rich: n.node.rich,
@@ -426,6 +431,7 @@ const NODE_CTX_FIELDS = [
   'stylePreset',
   'notation',
   'nodeColors',
+  'hues',
   'nodeChips',
   'resizable',
 ] as const;

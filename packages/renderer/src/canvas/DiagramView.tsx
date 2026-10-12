@@ -17,6 +17,7 @@ import { useLegendState } from '../legend/useLegendState';
 import { LoopHighlightContext } from '../loops/loop-highlight';
 import { useLoopOverlay } from '../loops/useLoopOverlay';
 import { stylePreset } from '../sketch/stylePresets';
+import { typeHuesOf } from './type-hues';
 import { canvasClassName, canvasStyle } from './canvas-frame';
 import { canvasToggles, toggleOf } from './canvas-toggles';
 import { CanvasControls } from './CanvasControls';
@@ -64,6 +65,8 @@ function Inner(props: DiagramViewProps) {
   const icons = useMemo(() => props.icons ?? createIconRegistry(), [props.icons]);
   const notation = useNotation(props);
   const { profile, typeRegistry } = notation;
+  // A palette preset's colour for each node type, over the whole model (type-hues.ts)
+  const hues = useMemo(() => typeHuesOf(preset, props.model, typeRegistry), [preset, props.model, typeRegistry]);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   // In-place label editing target (edit mode double-click): a node's name or a
@@ -182,6 +185,7 @@ function Inner(props: DiagramViewProps) {
     notation,
     icons,
     preset,
+    hues,
     compiled,
     layout: viewLayout,
     hiddenCounts,

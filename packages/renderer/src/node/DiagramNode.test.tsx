@@ -638,6 +638,30 @@ describe('DiagramNode', () => {
     expect(box.style.background).toBe('rgb(17, 104, 189)'); // #1168bd, jsdom normalizes hex to rgb
   });
 
+  it('under a palette preset a card shape carries only its hue: no accent, no solid fill', () => {
+    const typeRegistry = createTypeRegistry({ 'c4-system': { shape: 'box', fill: '#1168bd', textOn: '#ffffff' } });
+    const { container } = renderNode({ label: 'Web App', typeId: 'c4-system', typeRegistry, hue: '#0000aa' });
+    const box = container.querySelector('.dg-node') as HTMLElement;
+    expect(box.style.getPropertyValue('--dg-hue')).toBe('#0000aa');
+    expect(box.style.getPropertyValue('--dg-hue-ink')).toBe('#fff');
+    expect(box.style.background).toBe('');
+    expect(box.style.borderColor).toBe('');
+    expect(box.className).not.toContain('dg-solid');
+  });
+
+  it('under a palette preset a glyph shape keeps the accent path, in the hue', () => {
+    const typeRegistry = createTypeRegistry({ proc: { shape: 'ellipse' } });
+    const { container } = renderNode({ label: 'p', typeId: 'proc', typeRegistry, hue: '#c62828' });
+    const box = container.querySelector('.dg-node') as HTMLElement;
+    expect(box.style.getPropertyValue('--dg-hue')).toBe('#c62828');
+    expect(box.style.borderColor).toBe('rgb(198, 40, 40)');
+  });
+
+  it('an explicit text colour still applies under a palette preset', () => {
+    const box = renderNode({ hue: '#111111', textColor: '#ff8800' }).container.querySelector('.dg-node') as HTMLElement;
+    expect(box.style.color).toBe('rgb(255, 136, 0)');
+  });
+
   it('renders a shape node as a masked silhouette with the label, not an image', () => {
     const { container } = renderNode({
       label: 'Actor',
