@@ -110,7 +110,10 @@ export function useDiagramBoot(): DiagramBoot {
         [to]: {
           ...art,
           name: to,
-          ...(art.model !== undefined ? { model: { ...art.model, id: to, name: to } } : {}),
+          // As the server renames: the id follows, the title only when it was the id.
+          ...(art.model !== undefined
+            ? { model: { ...art.model, id: to, name: art.model.name === art.model.id ? to : art.model.name } }
+            : {}),
         },
       };
     };

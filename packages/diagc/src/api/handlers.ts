@@ -234,7 +234,7 @@ export async function saveDiagram(diagramsDir: string, name: string, payload: un
 }
 
 /** Move a designer-owned diagram (and its sibling layout, if any) to a new name,
- * rewriting the model's internal id/name to match so the file stays self-consistent. */
+ * rewriting the model's id to match so the file stays self-consistent. */
 export async function renameDiagram(diagramsDir: string, from: string, to: string): Promise<HandlerResult> {
   if (!isSafeName(from) || !isSafeName(to)) {
     return { status: 400, body: { issues: [{ message: `Unsafe name '${isSafeName(from) ? to : from}'` }] } };
@@ -260,8 +260,10 @@ export async function renameDiagram(diagramsDir: string, from: string, to: strin
   } catch {
     return { status: 400, body: { issues: [{ message: `Corrupt diagram source '${from}'` }] } };
   }
+  // The id follows the file. The name is the diagram's title, so it follows only
+  // when it was the id, a title nobody set.
+  if (model['name'] === model['id']) model['name'] = to;
   model['id'] = to;
-  model['name'] = to;
   await mkdir(path.dirname(toDiagram), { recursive: true });
   await writeFileAtomic(toDiagram, `${JSON.stringify(model, null, 2)}\n`);
   await unlink(fromDiagram);
