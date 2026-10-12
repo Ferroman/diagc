@@ -211,8 +211,22 @@ export async function readComposedDiagram(diagramsDir: string, name: string): Pr
   }
 }
 
+/** A 409 when `<name>.diagram.ts` exists: that diagram is TypeScript's, and a JSON
+ * twin beside it would compile to the same artifact, the last compile winning. */
+async function ownedByTs(diagramsDir: string, name: string): Promise<HandlerResult | undefined> {
+  const tsPath = path.join(diagramsDir, `${name}.diagram.ts`);
+  try {
+    await access(tsPath);
+  } catch {
+    return undefined;
+  }
+  return { status: 409, body: { issues: [{ message: `'${name}' is already TypeScript-owned (${tsPath})` }] } };
+}
+
 export async function saveDiagram(diagramsDir: string, name: string, payload: unknown): Promise<HandlerResult> {
   if (!isSafeName(name)) return { status: 400, body: { issues: [{ message: `Unsafe name '${name}'` }] } };
+  const owned = await ownedByTs(diagramsDir, name);
+  if (owned !== undefined) return owned;
   const p = payload as Record<string, unknown> | null;
   const arraysOk =
     p !== null &&
@@ -254,6 +268,8 @@ export async function renameDiagram(diagramsDir: string, from: string, to: strin
   } catch {
     /* target free — proceed */
   }
+  const owned = await ownedByTs(diagramsDir, to);
+  if (owned !== undefined) return owned;
   let model: Record<string, unknown>;
   try {
     model = JSON.parse(raw) as Record<string, unknown>;
