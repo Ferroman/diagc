@@ -193,7 +193,9 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
   commands.push(...placeCommands(payload, idMap, { step: PASTE_STEP * (ctx.repeat + 1), rootIds, planeOpt }));
   // A relation drawn on one plane is drawn on the plane it lands on, a shared one
   // stays shared: borrowing planes included, as a relation matches the plane itself.
-  const onPlane = (plane: string | undefined) => (plane !== undefined ? ctx.plane : undefined);
+  // The Default view draws the first plane, so that is where it lands there.
+  const landing = viewedPlane(model.planes, ctx.plane)?.id;
+  const onPlane = (plane: string | undefined) => (plane !== undefined ? landing : undefined);
   commands.push(...relationCommands(payload, idMap, { onLayer, onPlane }));
   return { command: { type: 'batch', commands }, roots: payload.roots.map((r) => idMap.get(r.id)!) };
 }

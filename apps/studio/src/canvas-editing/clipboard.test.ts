@@ -358,6 +358,21 @@ describe("a relation's plane", () => {
     expect(validate(after)).toEqual([]);
   });
 
+  it('pastes a scoped relation scoped to the first plane on the Default view, which draws that plane', () => {
+    const base = system();
+    const m: DiagramModel = {
+      ...base,
+      planes: [
+        { id: 'current', name: 'Current' },
+        { id: 'target', name: 'Target', containmentOf: 'current' },
+      ],
+      relations: [{ ...base.relations[0]!, plane: 'current' }],
+    };
+    const payload = copySelection({ model: m, layout: undefined, plane: undefined }, ['sys'])!;
+    const after = applied(m, pasteCommand(m, payload, ctx({ plane: undefined }))!.command).model;
+    expect(after.relations.slice(m.relations.length).map((r) => r.plane)).toEqual(['current']);
+  });
+
   it("copies only the relations drawn on the plane in view, not another plane's", () => {
     const base = system();
     const m: DiagramModel = {
