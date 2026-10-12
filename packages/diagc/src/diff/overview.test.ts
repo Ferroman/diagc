@@ -1,6 +1,10 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { compareDiagramSets } from './compare';
-import { indexHtml } from './overview';
+import { DIFF_MARK_COLORS, indexHtml } from './overview';
+import { findHome } from '../home';
 import { THEME_HEAD_SCRIPT } from '../publish/pageTheme';
 import { everyStatus } from '../../test-fixtures/diff';
 
@@ -56,5 +60,26 @@ describe('indexHtml', () => {
     expect(html).toContain(THEME_HEAD_SCRIPT);
     expect(html).toContain(':root[data-theme=dark]');
     expect(html).toContain('id="dg-theme"');
+  });
+
+  it('keys each mark with the colour the pictures outline it in', () => {
+    expect(html).toContain(
+      `<p class="key"><span><i style="border-color:${DIFF_MARK_COLORS.added}"></i>added</span>` +
+        `<span><i style="border-color:${DIFF_MARK_COLORS.removed};border-style:dashed"></i>removed</span>` +
+        `<span><i style="border-color:${DIFF_MARK_COLORS.changed}"></i>changed</span>` +
+        `<span><i style="border-color:${DIFF_MARK_COLORS.changed};border-style:dashed"></i>holds a change`,
+    );
+  });
+});
+
+// Two copies of the mark colours, in two packages that cannot import each other: the
+// renderer's draws the pictures, the CLI's keys them on the overview.
+describe('the mark colours', () => {
+  it('are the ones the renderer outlines a change in', () => {
+    const root = findHome(fileURLToPath(import.meta.url)).root;
+    const css = readFileSync(path.join(root, 'packages', 'renderer', 'src', 'styles.css'), 'utf8');
+    for (const [status, color] of Object.entries(DIFF_MARK_COLORS)) {
+      expect(css).toContain(`--dg-diff-${status}: ${color};`);
+    }
   });
 });
