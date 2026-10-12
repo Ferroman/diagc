@@ -1,6 +1,7 @@
 import type { Command } from '../cli/command';
 import { formatLintReport, lintFile, type LintReport } from '../lint';
 import { globSorted } from '../glob';
+import { RELATIVE_PATHS } from '../paths';
 import { SOURCES, warnNoSources } from './shared';
 
 /** `diagc lint [files...] [--json]`: every finding, and exit 1 on any. */
@@ -13,7 +14,7 @@ export const lint: Command<'--json'> = {
     for (const file of files) {
       reports.push(
         ...(await lintFile(file, {
-          rootDir: '.diagrams/src',
+          rootDir: RELATIVE_PATHS.srcDir,
           coreEntry: home.coreEntry,
           resolver: snapshots.resolver,
         })),

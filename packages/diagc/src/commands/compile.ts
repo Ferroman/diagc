@@ -2,8 +2,9 @@ import { errMessage } from '@diagc/core/internal';
 import type { Command } from '../cli/command';
 import { compileFile } from '../compile';
 import { globSorted } from '../glob';
+import { RELATIVE_PATHS } from '../paths';
 import { formatCompileEvent } from '../watch';
-import { ARTIFACTS_DIR, SOURCES, warnNoSources } from './shared';
+import { SOURCES, warnNoSources } from './shared';
 
 /** `diagc compile [files...]`: the files named, or every source, into artifacts. */
 export const compile: Command<'--out' | '--update-includes'> = {
@@ -14,8 +15,8 @@ export const compile: Command<'--out' | '--update-includes'> = {
     let failed = false;
     for (const file of files) {
       try {
-        const artifact = await compileFile(file, flags['--out'] ?? ARTIFACTS_DIR, {
-          rootDir: '.diagrams/src',
+        const artifact = await compileFile(file, flags['--out'] ?? RELATIVE_PATHS.artifactsDir, {
+          rootDir: RELATIVE_PATHS.srcDir,
           coreEntry: home.coreEntry,
           resolver: snapshots.resolver,
           warn: io.err,

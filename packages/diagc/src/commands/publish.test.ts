@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { argsOf, captureIo, contextFor, DANGLING, diagram, inTempDir, writeSources } from '../../test-fixtures/cli';
@@ -36,6 +36,22 @@ describe('publish', () => {
       ]);
       expect(existsSync(path.join(dir, 'build', 'team', 'b.diagram.json'))).toBe(true);
       expect(existsSync(path.join(dir, '.diagrams', 'html', 'team', 'b.html'))).toBe(true);
+    });
+  });
+
+  it('says on stderr that .diagrams/src holds no diagrams, and writes the empty gallery into .diagrams/html', async () => {
+    await inTempDir(async (dir) => {
+      const io = captureIo();
+      expect(await publish.run(argsOf([], { '--no-images': true }), contextFor(io))).toBe(0);
+      expect([io.stdout, io.stderr]).toEqual([
+        '✓ 0 page(s) -> .diagrams/html\n✓ gallery -> .diagrams/html/index.html\n',
+        "No diagrams under .diagrams/src — run 'diagc init' to create one.\n",
+      ]);
+      expect(readdirSync(dir, { recursive: true }).sort()).toEqual([
+        '.diagrams',
+        '.diagrams/html',
+        '.diagrams/html/index.html',
+      ]);
     });
   });
 

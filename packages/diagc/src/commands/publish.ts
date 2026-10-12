@@ -1,13 +1,13 @@
 import { existsSync } from 'node:fs';
-import path from 'node:path';
 import { errMessage } from '@diagc/core/internal';
 import type { Command, Context } from '../cli/command';
 import { compileFile } from '../compile';
 import { globSorted } from '../glob';
+import { RELATIVE_PATHS } from '../paths';
 import { discoverDiagrams } from '../publish/discover';
 import { publishDiagrams, type PublishOptions } from '../publish/publish';
 import { formatCompileEvent } from '../watch';
-import { ARTIFACTS_DIR, diagramNames, pngRenderer, warnNoSources } from './shared';
+import { diagramNames, pngRenderer, warnNoSources } from './shared';
 
 type PublishDirs = Pick<PublishOptions, 'srcDir' | 'artifactsDir' | 'htmlDir' | 'staticDir' | 'assetsDir'>;
 
@@ -16,14 +16,8 @@ type PublishDirs = Pick<PublishOptions, 'srcDir' | 'artifactsDir' | 'htmlDir' | 
  * artifacts only: the pages and PNGs stay where `.gitignore`, the docs and the READMEs
  * that embed them expect to find them. */
 export function publishDirs(out: string): PublishDirs {
-  const srcDir = '.diagrams/src';
-  return {
-    srcDir,
-    artifactsDir: out,
-    htmlDir: '.diagrams/html',
-    staticDir: '.diagrams/static',
-    assetsDir: path.join(srcDir, 'assets'),
-  };
+  const { srcDir, htmlDir, staticDir, assetsDir } = RELATIVE_PATHS;
+  return { srcDir, artifactsDir: out, htmlDir, staticDir, assetsDir };
 }
 
 /** Compile every source first, so the pages reflect the sources as they are (TS and
@@ -64,7 +58,7 @@ export const publish: Command<'--out' | '--no-images' | '--link' | '--update-inc
       );
       return 1;
     }
-    const dirs = publishDirs(flags['--out'] ?? ARTIFACTS_DIR);
+    const dirs = publishDirs(flags['--out'] ?? RELATIVE_PATHS.artifactsDir);
     const failed = await compileSources(dirs, ctx);
     // publish compiles every source whatever names it is given (they only scope which
     // rendered pages come out below), so an update run here is always full-tree; like

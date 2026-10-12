@@ -32,6 +32,12 @@ describe('checkoutDiagrams', () => {
     }
   });
 
+  it('refuses a .diagrams above the repository, by the path it was given', async () => {
+    await expect(checkoutDiagrams('v1', repo.dir, '../.diagrams')).rejects.toThrow(
+      '../.diagrams is outside the repository',
+    );
+  });
+
   it('gives an empty set for a ref from before there were diagrams', async () => {
     const set = await repo.setAt('v0');
     expect(set.versions.size).toBe(0);

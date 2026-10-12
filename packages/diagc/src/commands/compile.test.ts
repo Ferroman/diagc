@@ -31,6 +31,25 @@ describe('compile', () => {
     });
   });
 
+  it('compiles every source under .diagrams/src, folders kept, into .diagrams/.artifacts, and nothing else', async () => {
+    await inTempDir(async (dir) => {
+      writeSources(dir, { 'team/app': diagram('app') });
+      writeFileSync(path.join(dir, 'stray.diagram.json'), JSON.stringify(diagram('stray')));
+      mkdirSync(path.join(dir, '.diagrams', 'includes'));
+      writeFileSync(path.join(dir, '.diagrams', 'includes', 'v.diagram.json'), JSON.stringify(diagram('v')));
+      const io = captureIo();
+      expect(await compile.run(argsOf(), contextFor(io))).toBe(0);
+      expect([io.stdout, io.stderr]).toEqual([
+        '✓ .diagrams/src/team/app.diagram.json -> .diagrams/.artifacts/team/app.diagram.json\n',
+        '',
+      ]);
+      expect(readdirSync(path.join(dir, '.diagrams', '.artifacts'), { recursive: true })).toEqual([
+        'team',
+        'team/app.diagram.json',
+      ]);
+    });
+  });
+
   it('compiles the files named, into --out', async () => {
     await inTempDir(async (dir) => {
       writeSources(dir, { a: diagram('a'), c: diagram('c', DANGLING) });

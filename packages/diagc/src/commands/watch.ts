@@ -1,9 +1,10 @@
 import { existsSync, statSync } from 'node:fs';
 import fg from 'fast-glob';
 import type { Command, CommandArgs, Context } from '../cli/command';
+import { RELATIVE_PATHS } from '../paths';
 import { lockedResolverFor } from '../snapshots';
 import { formatCompileEvent, startWatch } from '../watch';
-import { ARTIFACTS_DIR, LOCKED, warnNoSources } from './shared';
+import { LOCKED, warnNoSources } from './shared';
 
 /** Watch's start: the check for sources, the watcher, and the line that says it is
  * watching. Returns the watcher, which a test closes. */
@@ -11,7 +12,7 @@ export async function startWatching(
   { positionals, flags }: CommandArgs<'--out'>,
   { io, home }: Context,
 ): Promise<{ close(): Promise<void> }> {
-  const dir = positionals[0] ?? '.diagrams/src';
+  const dir = positionals[0] ?? RELATIVE_PATHS.srcDir;
   // A directory that does not exist holds no diagrams either; a file is left alone.
   if (
     !existsSync(dir) ||
@@ -22,9 +23,9 @@ export async function startWatching(
   // live loop with no point at which "refetch and rewrite the lock" makes
   // sense, so it resolves through a locked resolver of its own rather than the run's
   // session (as the studio's watch loop does).
-  const watcher = startWatch(dir, flags['--out'] ?? ARTIFACTS_DIR, {
+  const watcher = startWatch(dir, flags['--out'] ?? RELATIVE_PATHS.artifactsDir, {
     coreEntry: home.coreEntry,
-    resolver: lockedResolverFor('.diagrams/src'),
+    resolver: lockedResolverFor(RELATIVE_PATHS.srcDir),
     onEvent: (e) => {
       // Success goes to stdout, failure to stderr, so the streams stay parsed
       // separately by anyone piping them.
