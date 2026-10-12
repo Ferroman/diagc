@@ -77,18 +77,25 @@ export async function listDiagramModels(diagramsDir: string, artifactsDir: strin
   const all = [...new Set([...sourceNames, ...artifactNames])].sort();
   const diagrams: DiagramEntry[] = [];
   for (const name of all) {
-    const editable = sourceNames.has(name);
-    const file = editable
+    const isSource = sourceNames.has(name);
+    // Every read and save refuses a name isSafeName refuses, so such a source is shown but not offered for editing.
+    const editable = isSource && isSafeName(name);
+    const file = isSource
       ? path.join(diagramsDir, `${name}.diagram.json`)
       : path.join(artifactsDir, `${name}.diagram.json`);
     let model: DiagramModel | null = null;
     const issues: { message: string }[] = [];
+    if (isSource && !editable) {
+      issues.push({
+        message: `'${name}' is read-only here: the studio saves names of lowercase letters, digits, '-' and '/', none ending in /rename, /eject or /composed. Rename the file to edit it.`,
+      });
+    }
     try {
       model = JSON.parse(await readFile(file, 'utf8')) as DiagramModel;
     } catch {
       issues.push({ message: `Could not read model for '${name}'` });
     }
-    if (editable && hasIncludes(model)) {
+    if (isSource && hasIncludes(model)) {
       try {
         const { model: composed, warnings } = await composeIncludes(
           model as DiagramModel,
