@@ -86,8 +86,12 @@ describe('with no sources', () => {
         }
       });
     });
+    // Still running a second later: the command never hands main an exit code.
+    await new Promise((r) => setTimeout(r, 1000));
+    const ended = [child.exitCode, child.signalCode];
     child.kill();
     expect(stderr.trim()).toBe(NO_SOURCES);
+    expect(ended).toEqual([null, null]);
   }, 30_000);
 
   it('watch says so when its directory does not exist', async () => {
