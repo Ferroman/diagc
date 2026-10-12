@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { compareDiagramSets } from './compare';
-import { describeDiff, formatDiffSummary } from './describe';
+import { compareDiagramSets, type ComparedDiagram } from './compare';
+import { describeDiff, formatDiffJson, formatDiffSummary } from './describe';
 import { AFTER_LABEL, diffRepo, everyStatus, SHOP_CHANGES, type DiffRepo } from '../../test-fixtures/diff';
 
 let repo: DiffRepo;
@@ -55,5 +55,25 @@ describe('describeDiff / formatDiffSummary', () => {
         '3 diagram(s) changed, 1 unchanged',
       ].join('\n'),
     );
+  });
+
+  it('prints each diagram as JSON: its status, and its changes or why it was not compared', () => {
+    const { before, after } = everyStatus();
+    const diffs = compareDiagramSets(before, after);
+    const text = formatDiffJson(diffs, 'v1', AFTER_LABEL);
+    const json = JSON.parse(text) as { from: string; to: string; diagrams: Record<string, unknown>[] };
+    expect(text).toBe(JSON.stringify(json, null, 2));
+    expect(Object.keys(json)).toEqual(['from', 'to', 'diagrams']);
+    expect([json.from, json.to]).toEqual(['v1', AFTER_LABEL]);
+    expect(json.diagrams.map((d) => [d.name, d.status, Object.keys(d)])).toEqual([
+      ['broken', 'error', ['name', 'status', 'error']],
+      ['gone', 'removed', ['name', 'status', 'diff']],
+      ['new/fresh', 'added', ['name', 'status', 'diff']],
+      ['same', 'unchanged', ['name', 'status', 'diff']],
+      ['shop', 'changed', ['name', 'status', 'diff']],
+    ]);
+    expect(json.diagrams[0]!.error).toBe('does not compile at feat/<x> & "y": bad <json>');
+    const shop = diffs[4] as ComparedDiagram;
+    expect(json.diagrams[4]!.diff).toEqual(JSON.parse(JSON.stringify(shop.diff)));
   });
 });

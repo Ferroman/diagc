@@ -6,6 +6,7 @@ describe('the diff entry', () => {
     expect(Object.keys(diff).sort()).toEqual([
       'compareDiagramSets',
       'describeDiff',
+      'formatDiffJson',
       'formatDiffSummary',
       'loadDiagramSet',
       'writeDiffPages',

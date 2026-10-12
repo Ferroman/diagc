@@ -17,7 +17,7 @@ describe('compareDiagramSets', () => {
       ['new/fresh', 'added'],
       ['shop', 'changed'],
     ]);
-    expect(diffs.find((d) => d.name === 'shop')?.before?.layout).toEqual({ version: 1, planes: {} });
+    expect(diffs.find((d) => d.name === 'shop')).toMatchObject({ before: { layout: { version: 1, planes: {} } } });
   });
 
   it('narrows to the named diagrams', async () => {
@@ -37,7 +37,7 @@ describe('compareDiagramSets', () => {
     expect(d).toMatchObject({ status: 'error', error: 'does not compile at wip: bad json' });
   });
 
-  it('builds each status with its keys in the order diff --json prints them', () => {
+  it('gives each status what it carries', () => {
     const { before, after } = everyStatus();
     expect(compareDiagramSets(before, after).map((d) => [d.name, d.status, Object.keys(d)])).toEqual([
       ['broken', 'error', ['name', 'status', 'error']],

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { diffMarks } from '@diagc/core/internal';
 import { inlineAssets } from '../publish/publish';
 import { stampHtml } from '../publish/html';
-import type { DiagramDiff } from './compare';
+import type { DiagramDiff, UncomparedDiagram } from './compare';
 import type { DiagramSet } from './load';
 import { indexHtml } from './overview';
 import { summaryMarkdown } from './summary';
@@ -40,13 +40,17 @@ export async function writeDiffPages(diffs: readonly DiagramDiff[], opts: DiffPa
   const caches = { before: new Map<string, Buffer>(), after: new Map<string, Buffer>() };
   const pages: string[] = [];
   const images: string[] = [];
-  const shown = diffs.filter((d) => d.status === 'added' || d.status === 'removed' || d.status === 'changed');
+  const shown = diffs.filter(
+    (d): d is Exclude<DiagramDiff, UncomparedDiagram> =>
+      d.status === 'added' || d.status === 'removed' || d.status === 'changed',
+  );
   const files = new Map<string, { before?: string; after?: string; png: boolean }>();
 
   for (const d of shown) {
     const entry: { before?: string; after?: string; png: boolean } = { png: opts.renderPng !== undefined };
+    const versions = { before: 'before' in d ? d.before : undefined, after: 'after' in d ? d.after : undefined };
     for (const side of ['before', 'after'] as const) {
-      const v = d[side];
+      const v = versions[side];
       if (v === undefined) continue;
       const set = opts[side];
       const model = await inlineAssets(
@@ -64,7 +68,7 @@ export async function writeDiffPages(diffs: readonly DiagramDiff[], opts: DiffPa
           model,
           ...(v.layout !== undefined ? { layout: v.layout } : {}),
           ...(v.drawings !== undefined ? { drawings: v.drawings } : {}),
-          diff: { marks: diffMarks(d.diff!, side) },
+          diff: { marks: diffMarks(d.diff, side) },
         }),
       );
       pages.push(pagePath);

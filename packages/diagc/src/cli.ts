@@ -25,7 +25,14 @@ import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
 import { errMessage } from '@diagc/core/internal';
 import { compileFile } from './compile';
-import { compareDiagramSets, formatDiffSummary, loadDiagramSet, writeDiffPages, type DiagramSet } from './diff/index';
+import {
+  compareDiagramSets,
+  formatDiffJson,
+  formatDiffSummary,
+  loadDiagramSet,
+  writeDiffPages,
+  type DiagramSet,
+} from './diff/index';
 import { checkoutDiagrams, type CheckedOutRef } from './git-ref';
 import { ejectDiagram } from './eject';
 import { formatLintReport, lintFile, type LintReport } from './lint';
@@ -527,17 +534,7 @@ async function runDiff(args: Args, home: ReturnType<typeof homePaths>): Promise<
     const names = diagramNames(args.files.slice(1), known);
     if (names === undefined) return 1;
     const diffs = compareDiagramSets(beforeSet, afterSet, names);
-    if (args.json) {
-      console.log(
-        JSON.stringify(
-          { from: fromLabel, to: toLabel, diagrams: diffs.map(({ before: _b, after: _a, ...rest }) => rest) },
-          null,
-          2,
-        ),
-      );
-    } else {
-      console.log(formatDiffSummary(diffs, fromLabel, toLabel));
-    }
+    console.log(args.json ? formatDiffJson(diffs, fromLabel, toLabel) : formatDiffSummary(diffs, fromLabel, toLabel));
     if (!diffs.some((d) => d.status === 'added' || d.status === 'removed' || d.status === 'changed')) return 0;
     if (!existsSync(home.viewerShell)) {
       console.error('viewer shell not available — writing the summary only (see `diagc publish` for how to build it).');

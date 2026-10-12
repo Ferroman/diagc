@@ -1,18 +1,43 @@
 import { diffModels, isEmptyDiff, type DiagramModel, type ModelDiff } from '@diagc/core/internal';
 import type { DiagramSet, DiagramVersion } from './load';
 
-export type DiagramDiffStatus = 'added' | 'removed' | 'changed' | 'unchanged' | 'error';
+export type DiagramDiffStatus = DiagramDiff['status'];
 
-export interface DiagramDiff {
+/** A diagram only the later side has. Its `diff` is against an empty model, as a
+ * removed diagram's is, so the marks cover the whole picture the same way. */
+export interface AddedDiagram {
   name: string;
-  status: DiagramDiffStatus;
-  before?: DiagramVersion;
-  after?: DiagramVersion;
-  /** against an empty model for an added or removed diagram, so the marks
-   * cover the whole picture the same way */
-  diff?: ModelDiff;
-  error?: string;
+  status: 'added';
+  after: DiagramVersion;
+  diff: ModelDiff;
 }
+
+export interface RemovedDiagram {
+  name: string;
+  status: 'removed';
+  before: DiagramVersion;
+  diff: ModelDiff;
+}
+
+/** A diagram both sides have, changed or not. */
+export interface ComparedDiagram {
+  name: string;
+  status: 'changed' | 'unchanged';
+  before: DiagramVersion;
+  after: DiagramVersion;
+  diff: ModelDiff;
+}
+
+/** A diagram whose source did not compile on a side: there is nothing to compare, only
+ * why. */
+export interface UncomparedDiagram {
+  name: string;
+  status: 'error';
+  error: string;
+}
+
+/** One diagram across the two sides; its status says what it carries. */
+export type DiagramDiff = AddedDiagram | RemovedDiagram | ComparedDiagram | UncomparedDiagram;
 
 const EMPTY: DiagramModel = {
   version: 1,
