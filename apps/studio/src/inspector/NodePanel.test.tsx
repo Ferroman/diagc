@@ -488,19 +488,21 @@ describe('NodePanel', () => {
     expect(onDeleted).toHaveBeenCalled();
   });
 
-  it('hides the Scope and Hidden-here controls on a borrowed-containment plane', () => {
-    // A borrowing plane's membership resolves to its base plane, so editing
-    // plane-scoped membership there would write to the wrong plane id and
-    // silently vanish the node — Stage 1 disables the controls entirely.
+  it('scopes a node to a borrowed-containment plane, but offers no Hidden-here there', () => {
+    // A node scoped to a borrowing plane shows there; a `hides` list written on
+    // that plane would replace the one it borrows from its donor, so hiding stays
+    // the donor's.
     const base = testModel();
     const model: DiagramModel = {
       ...base,
       planes: [...base.planes, { id: 'borrow', name: 'Borrow', containmentOf: 'arch' }],
     };
+    const onCommand = vi.fn();
     render(
-      <NodePanel model={model} nodeId="a" activePlane="borrow" onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+      <NodePanel model={model} nodeId="a" activePlane="borrow" onCommand={onCommand} onClose={noop} onDeleted={noop} />,
     );
-    expect(screen.queryByLabelText('Scope')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'local' } });
+    expect(onCommand).toHaveBeenLastCalledWith({ type: 'set-node-details', id: 'a', details: { plane: 'borrow' } });
     expect(screen.queryByLabelText('Hidden here')).toBeNull();
   });
 

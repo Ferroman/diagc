@@ -615,11 +615,9 @@ describe('editor shell', () => {
   });
 
   it('adds a node as shared (not view-local) when the active plane borrows containment', async () => {
-    // A borrowing plane's membership is keyed to its base plane (compileView
-    // resolves containmentOf), so tagging node.plane with the borrowing
-    // plane's own id would mismatch and the node would vanish. Stage 1 guards
-    // this by adding shared instead — provable by the node also showing on
-    // Default (the base view), not just on the borrowing plane.
+    // A borrowing plane is a view of its donor's structure, so a node drawn
+    // there joins it, shared — provable by the node also showing on Default
+    // (the base view), not just on the borrowing plane.
     const planed = {
       ...goodModel,
       planes: [
@@ -634,8 +632,8 @@ describe('editor shell', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
     fireEvent.click(await screen.findByRole('button', { name: /add node/i }));
     expect(await canvas().findByText('node')).toBeDefined();
-    // Membership editing is disabled on a borrowing plane: no Scope control.
-    expect(screen.queryByLabelText('Scope')).toBeNull();
+    // shared, and Scope can still make it the plane's own
+    expect((screen.getByLabelText('Scope') as HTMLSelectElement).value).toBe('shared');
     fireEvent.click(screen.getByRole('button', { name: 'Default' }));
     expect(await canvas().findByText('node')).toBeDefined();
   });

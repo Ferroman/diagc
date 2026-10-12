@@ -20,10 +20,9 @@ describe('createNodeAt', () => {
     expect(place.parent).toBeUndefined();
   });
 
-  it('does NOT tag a node on a borrowing plane (shared instead, or it would vanish)', () => {
-    // Regression for the plane-tag consistency fix: tagging node.plane with a
-    // borrowing plane's own id would mismatch buildHierarchy's resolved
-    // containment plane and the node would silently vanish. Shared is correct.
+  it("does NOT tag a node on a borrowing plane: it joins the donor's structure, shared", () => {
+    // A borrowing plane is a view of its donor's structure; the inspector's Scope
+    // makes a node the plane's own when that is what was meant.
     const m = twoPlanes();
     const place = createNodeAt(m, { kind: 'node', plane: 'flow', borrowsContainment: true, parentId: undefined });
     expect(place.scopedPlane).toBeUndefined();

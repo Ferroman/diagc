@@ -85,11 +85,8 @@ export function useViewNavigation({
   // published page.
   const activePlane = plane;
   const notation = activeNotation(planes, activePlane, model?.notation);
-  // A borrowing plane's node membership resolves to its base plane
-  // (compileView/containmentPlaneOf), so tagging node.plane with the
-  // borrowing plane's own id would mismatch and the node would silently
-  // vanish. Plane-scoped membership editing is off there — new nodes are
-  // added shared instead (see createNodeAt).
+  // A borrowing plane is a view of its donor's structure, so a node drawn
+  // there is added shared and joins that structure (see createNodeAt).
   const activePlaneBorrowsContainment = model !== undefined && borrowsContainment(model, activePlane);
 
   // Seed the layer switch from the plane's presets when a diagram arrives on
