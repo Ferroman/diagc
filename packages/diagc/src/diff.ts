@@ -285,7 +285,10 @@ export async function writeDiffPages(diffs: readonly DiagramDiff[], opts: DiffPa
   const index = path.join(opts.outDir, 'index.html');
   await writeFile(index, indexHtml(diffs, files, opts.before, opts.after));
   const summary = path.join(opts.outDir, 'summary.md');
-  await writeFile(summary, summaryMarkdown(diffs, files, opts.before, opts.after, opts.imageUrl));
+  await writeFile(
+    summary,
+    summaryMarkdown({ diffs, files, before: opts.before, after: opts.after, imageUrl: opts.imageUrl }),
+  );
   return { pages, images, index, summary };
 }
 
@@ -349,13 +352,19 @@ ${notes}${sections.length > 0 ? sections.join('\n') : '<p>No diagram changed.</p
 `;
 }
 
-function summaryMarkdown(
-  diffs: readonly DiagramDiff[],
-  files: Map<string, { before?: string; after?: string; png: boolean }>,
-  before: DiagramSet,
-  after: DiagramSet,
-  imageUrl: string | undefined,
-): string {
+/** What `summary.md` is written from. */
+interface SummaryOptions {
+  diffs: readonly DiagramDiff[];
+  /** each shown diagram's pages by side, as paths under the output directory without
+   * the extension, and whether a PNG was rendered beside each */
+  files: Map<string, { before?: string; after?: string; png: boolean }>;
+  before: DiagramSet;
+  after: DiagramSet;
+  /** where the images are served from, as `DiffPagesOptions.imageUrl` */
+  imageUrl?: string;
+}
+
+function summaryMarkdown({ diffs, files, before, after, imageUrl }: SummaryOptions): string {
   const from = before.label;
   const to = after.label;
   const png = (rel: string) => (imageUrl !== undefined ? imageUrl.split('{path}').join(`${rel}.png`) : `${rel}.png`);

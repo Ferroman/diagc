@@ -25,11 +25,6 @@
       "count": 1
     }
   },
-  "packages/diagc/src/diff.ts": {
-    "max-params": {
-      "count": 1
-    }
-  },
   "packages/renderer/src/canvas/DiagramView.tsx": {
     "max-lines-per-function": {
       "count": 1
