@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -255,4 +255,65 @@ describe('diagc publish, through the real CLI', () => {
     expect(readFileSync(path.join(dir, '.diagrams', 'includes.lock.json'), 'utf8')).toBe(lock);
     expect(existsSync(path.join(dir, '.diagrams', vendored))).toBe(true);
   }, 60_000);
+});
+
+describe('output through a pipe', () => {
+  it('reaches a reader that starts late, whole', async () => {
+    const dir = fresh();
+    const git = (...args: string[]) =>
+      execFileSync(
+        'git',
+        ['-c', 'user.email=t@example.com', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...args],
+        {
+          cwd: dir,
+          stdio: 'pipe',
+        },
+      );
+    git('init', '-q');
+    writeFileSync(path.join(dir, 'README.md'), 'no diagrams yet\n');
+    git('add', '-A');
+    git('commit', '-qm', 'empty');
+    // About a megabyte of --json: far more than the pipe holds while nobody reads it.
+    const nodes = Array.from({ length: 3000 }, (_, i) => ({
+      id: `n${i}`,
+      name: `Node ${i}`,
+      type: 'service',
+      description: 'x'.repeat(300),
+    }));
+    mkdirSync(path.join(dir, '.diagrams', 'src'), { recursive: true });
+    writeFileSync(path.join(dir, '.diagrams', 'src', 'big.diagram.json'), JSON.stringify(diagram('big', { nodes })));
+
+    const child = spawn(process.execPath, [bin, 'diff', 'HEAD', '--json', '--no-images'], { cwd: dir });
+    const chunks: Buffer[] = [];
+    child.stdout.on('data', (d: Buffer) => chunks.push(d));
+    // Nothing is read until the CLI has printed its last line on stderr, or exited.
+    child.stdout.pause();
+    let stderr = '';
+    child.stderr.on('data', (d: Buffer) => {
+      stderr += d.toString();
+      if (/✓ for an ADR|viewer shell not available/.test(stderr)) child.stdout.resume();
+    });
+    child.on('exit', () => child.stdout.resume());
+    const code = await new Promise<number | null>((resolve) => child.on('close', resolve));
+
+    const out = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
+      diagrams: { name: string; diff: { nodes: { added: unknown[] } } }[];
+    };
+    expect(out.diagrams.map((d) => d.name)).toEqual(['big']);
+    expect(out.diagrams[0]!.diff.nodes.added).toHaveLength(3000);
+    expect(code).toBe(0);
+  }, 60_000);
+
+  it('does not wait for an open handle to close before exiting', () => {
+    const dir = fresh(true);
+    // A source that leaves a timer running in the CLI's own process.
+    writeFileSync(
+      path.join(dir, '.diagrams', 'src', 'x.diagram.ts'),
+      `setInterval(() => {}, 1000);\nexport default ${JSON.stringify(diagram('x'))};\n`,
+    );
+    const r = spawnSync(process.execPath, [bin, 'compile'], { encoding: 'utf8', cwd: dir, timeout: 20_000 });
+    expect(r.signal).toBeNull();
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain('✓');
+  }, 30_000);
 });

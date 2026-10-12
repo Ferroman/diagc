@@ -254,6 +254,16 @@ export function publishDirs(
   };
 }
 
+/** End the process once stdout and stderr have taken everything written to them:
+ * `process.exit` straight after a write drops what a pipe has not accepted yet. A
+ * zero-length write's callback runs after everything queued before it. It ends with
+ * `process.exit`, not `exitCode`, so an open handle (a keep-alive socket from a remote
+ * include, a Chrome process) cannot keep the CLI running. */
+async function exit(code: number): Promise<never> {
+  await Promise.all([process.stdout, process.stderr].map((s) => new Promise((done) => s.write('', done))));
+  process.exit(code);
+}
+
 async function main() {
   let args: Args;
   try {
@@ -262,12 +272,12 @@ async function main() {
   } catch (e) {
     if (e instanceof HelpRequested) {
       console.log(USAGE);
-      process.exit(0);
+      return exit(0);
     }
     if (e instanceof UnknownFlagError || e instanceof BadFlagValueError || e instanceof ArgNotTakenError) {
       console.error(`diagc: ${e.message}\n`);
       console.error(USAGE);
-      process.exit(1);
+      return exit(1);
     }
     throw e;
   }
@@ -300,7 +310,7 @@ async function main() {
     // drop their still-valid lock entries and vendored files right along with
     // the genuinely stale ones — skip the prune until every file compiles clean.
     if (args.updateIncludes && args.files.length === 0 && !failed) await snap.prune();
-    process.exit(failed ? 1 : 0);
+    return exit(failed ? 1 : 0);
   } else if (args.command === 'lint') {
     const files = args.files.length > 0 ? args.files : await fg(SOURCES);
     if (args.files.length === 0 && files.length === 0) warnNoSources();
@@ -312,7 +322,7 @@ async function main() {
     }
     if (args.json) console.log(JSON.stringify(reports, null, 2));
     else for (const r of reports) console.log(formatLintReport(r));
-    process.exit(reports.length > 0 ? 1 : 0);
+    return exit(reports.length > 0 ? 1 : 0);
   } else if (args.command === 'watch') {
     // Always locked, and --update-includes is refused here: watch is a long-running
     // live loop with no point at which "refetch and rewrite the lock" makes
@@ -347,7 +357,7 @@ async function main() {
           ? 'viewer shell not built — run `pnpm --filter @diagc/viewer build` in the monorepo.'
           : `viewer shell missing from this install (${home.viewerShell}) — reinstall diagc.`,
       );
-      process.exit(1);
+      return exit(1);
     }
     const dirs = publishDirs(args);
     // Compile first so artifacts reflect current sources (TS + include expansion).
@@ -393,7 +403,7 @@ async function main() {
     console.log(`✓ ${res.pages.length} page(s) -> ${dirs.htmlDir}`);
     if (res.images.length > 0) console.log(`✓ ${res.images.length} image(s) -> ${dirs.staticDir}`);
     console.log(`✓ gallery -> ${res.gallery}`);
-    process.exit(0);
+    return exit(0);
   } else if (args.command === 'studio') {
     // Studio's own compile-watch loop always resolves includes locked (see
     // studio.ts) — same reasoning as watch above.
@@ -406,18 +416,18 @@ async function main() {
     if (name === undefined || name === '') {
       console.error('diagc: eject needs a diagram name.');
       console.error(USAGE);
-      process.exit(1);
+      return exit(1);
     }
     try {
       const res = await ejectDiagram('.diagrams/src', args.out, name, { coreEntry: home.coreEntry });
       console.log(`✓ ${res.tsPath}`);
-      process.exit(0);
+      return exit(0);
     } catch (e) {
       console.error(errMessage(e));
-      process.exit(1);
+      return exit(1);
     }
   } else if (args.command === 'diff') {
-    process.exit(await runDiff(args, home));
+    return exit(await runDiff(args, home));
   } else if (args.command === 'guide') {
     // exitCode and a return, not process.exit: the guide is tens of kilobytes and
     // is read through a pipe by an agent. Exiting while part of it is still
@@ -431,7 +441,7 @@ async function main() {
   } else if (args.command === 'init') {
     if (args.files.length > 1) {
       console.error(`diagc: init takes one name, got ${args.files.length} — e.g. diagc init shop --type c4`);
-      process.exit(1);
+      return exit(1);
     }
     process.exitCode = await runInit({
       cwd: process.cwd(),
@@ -448,7 +458,7 @@ async function main() {
   } else {
     console.error(`diagc: Unknown command '${args.command}'.`);
     console.error(USAGE);
-    process.exit(1);
+    return exit(1);
   }
 }
 
@@ -542,5 +552,5 @@ async function runDiff(args: Args, home: ReturnType<typeof homePaths>): Promise<
 
 main().catch((e) => {
   console.error(errMessage(e));
-  process.exit(1);
+  return exit(1);
 });
