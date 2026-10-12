@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.1.7](https://github.com/Ferroman/diagc/compare/v1.1.6...v1.1.7) (2026-10-12)
+
+
+### Bug Fixes
+
+* **diagc:** compile, lint and publish go through diagrams in name order ([#140](https://github.com/Ferroman/diagc/issues/140)) ([c481b09](https://github.com/Ferroman/diagc/commit/c481b095b094d4fa58993ea164922b0aa778bad9))
+* **diagc:** diff outside a git repository says so ([#139](https://github.com/Ferroman/diagc/issues/139)) ([6e7a902](https://github.com/Ferroman/diagc/commit/6e7a9025a2d3e13f523bd1b914e6fa70616b42f9))
+* **diagc:** diff shows what it could not compare on every page ([#138](https://github.com/Ferroman/diagc/issues/138)) ([3f1c8f4](https://github.com/Ferroman/diagc/commit/3f1c8f472fb65d5c04d56cada5c628f288d1d0b4))
+* **diagc:** publish and diff take a diagram name as eject does, and refuse an unknown one ([#137](https://github.com/Ferroman/diagc/issues/137)) ([28a20ce](https://github.com/Ferroman/diagc/commit/28a20ce92ec9325cfb6330ddd41b7a7c5473a5f2))
+* **diagc:** publish exits 1 when a diagram fails, and says so on stderr ([#135](https://github.com/Ferroman/diagc/issues/135)) ([7115c30](https://github.com/Ferroman/diagc/commit/7115c3004bfd7ae4707dc83aacbd34e40c8e7c42))
+
 ## [1.1.6](https://github.com/Ferroman/diagc/compare/v1.1.5...v1.1.6) (2026-10-12)
 
 
