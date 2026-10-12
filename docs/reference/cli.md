@@ -104,8 +104,9 @@ diagc diff v1.0..v2.0 checkout     # only these diagrams, by name
 - **Input:** the `.diagrams/` tree at each ref, read with `git archive` (nothing is checked out), and every `*.diagram.{ts,json}` in it compiled in memory. Diagrams pair up by name.
 - **Output:** the change list on stdout (`+` added, `-` removed, `~` changed), or with `--json` one object `{ from, to, diagrams: [{ name, status, diff?, error? }] }`. When anything changed, it also writes to `.diagrams/diff/<from>..<to>/` (or `--out`): a page and a PNG per side of each changed diagram with the changes outlined, `index.html` with the two sides next to each other, and `summary.md` for an ADR. `--no-images` skips the PNGs; they also need Chrome, as `publish` does.
 - **For a comment elsewhere:** `--labels main,#12` names the two sides in place of the refs, and `--image-url 'https://host/pr-12/{path}'` makes `summary.md` link its images there (`{path}` is each PNG's path under the output directory). The [pull-request action](../how-to/show-what-changed.md#show-it-on-every-pull-request) uses both.
+- **Names:** after the range, as `eject` reads them (`shop`, `shop.diagram.json` or `.diagrams/src/shop.diagram.json`); one that matches no diagram at either side exits `1`.
 - **What counts:** nodes by id (any field, plus a move to another container), relations by id or else by endpoints and kind, layers and planes by id. Layout positions are not compared.
-- **Exit code:** `0` whether or not anything changed; `1` for a ref that does not exist or a failure.
+- **Exit code:** `0` whether or not anything changed; `1` for a ref that does not exist, a name that matches no diagram, or a failure.
 
 ### `watch`
 
@@ -133,7 +134,7 @@ diagc publish --link https://github.com/you/repo
 - `.diagrams/html/index.html` — a gallery linking the pages, grouped by source folder; a card shows the model's name, the diagram's path, and the PNG rendered with its page.
 - `.diagrams/static/<name>.png` — flat images, unless `--no-images`.
 
-`files...` here filters by diagram **name**, not path. The gallery keeps the other diagrams, linking the pages an earlier run wrote.
+`files...` here selects diagrams by **name**: a path under `.diagrams/src` works too, read as `eject` reads one. A name that matches no diagram exits `1` before any page is written. The gallery keeps the other diagrams, linking the pages an earlier run wrote.
 
 **Exit code:** `0` when every diagram is published; `1` when a source does not compile (`✗ <file>` and the error, as `compile` prints them) or a diagram is skipped (`publish: skipping diagram …`), after everything else is written.
 
