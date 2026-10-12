@@ -131,7 +131,7 @@ m.node('warn', {
 
 ## Pin a visual style
 
-Presets are `clean`, `sketch`, `hand-drawn`, `pencil`, `blueprint`, `marker`. Picking one in the studio header is a viewer preference and is not saved to the diagram.
+The presets are listed in [the model reference](../reference/model.md#style-presets). Picking one in the studio header is a viewer preference and is not saved to the diagram.
 
 To make a diagram *always* render hand-drawn, pin `style` on the model:
 
