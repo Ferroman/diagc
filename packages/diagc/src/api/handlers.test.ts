@@ -314,6 +314,31 @@ describe('listDiagramModels', () => {
     await rm(root, { recursive: true, force: true });
   });
 
+  it('lists a source whose name the API refuses as read-only, saying why, and still renders it', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'diagc-models-'));
+    const src = path.join(root, 'src');
+    await mkdir(src, { recursive: true });
+    const model = {
+      version: 1,
+      id: 'shop',
+      name: 'Shop',
+      nodes: [],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
+    await writeFile(path.join(src, 'My_Shop.diagram.json'), JSON.stringify(model));
+
+    const r = await listDiagramModels(src, path.join(root, 'art'));
+    const [entry] = (
+      r.body as { diagrams: { name: string; model: unknown; editable: boolean; issues: { message: string }[] }[] }
+    ).diagrams;
+    expect(entry).toMatchObject({ name: 'My_Shop', model, editable: false });
+    expect(entry!.issues).toEqual([{ message: expect.stringMatching(/'My_Shop'.*lowercase letters, digits/) }]);
+    await rm(root, { recursive: true, force: true });
+  });
+
   it('reports an issue (never throws) for a corrupt model file', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'diagc-models-'));
     const src = path.join(root, 'src');
