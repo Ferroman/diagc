@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { hueInk } from '../canvas/type-hues';
+import { darkTheme, themeToCssVars } from '../theme';
 import { asciiFrameVars } from './asciiFrames';
 import { isKnownStyle, STYLE_PRESETS, stylePreset } from './stylePresets';
 
@@ -56,10 +57,9 @@ describe('stylePreset registry', () => {
       ).toBe(true);
     }
   });
-  it('the fixed-colour looks paint the whole canvas in both themes, like blueprint', () => {
-    const tokens = ['--dg-canvas-bg', '--dg-bg', '--dg-surface', '--dg-text', '--dg-text-muted', '--dg-edge'];
+  it('the fixed-colour looks set every theme token and the canvas, so neither theme shows through', () => {
     for (const id of ['neon', 'terminal', 'dos']) {
-      for (const k of [...tokens, '--dg-node-fill', '--dg-node-stroke']) {
+      for (const k of [...Object.keys(themeToCssVars(darkTheme)), '--dg-canvas-bg']) {
         expect(stylePreset(id).cssVars?.[k], `${id} ${k}`).toBeDefined();
       }
     }

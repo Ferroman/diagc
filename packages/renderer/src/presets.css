@@ -14,7 +14,9 @@
 /* ---- Soft and Pastel: raised cards, hairline borders, filled group panels, pill tags ---- */
 :is(.dg-style-soft, .dg-style-pastel)
   :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person) {
+  /* the hairline is the cards' alone: activity bars and dots draw in --dg-node-stroke */
   border-width: 1px;
+  border-color: color-mix(in srgb, var(--dg-text) 9%, var(--dg-surface));
   padding: 10px 12px;
   box-shadow:
     0 1px 2px rgb(16 24 40 / 0.06),
@@ -109,6 +111,12 @@
 
 /* ---- Layered: no grid; groups are washes of one blue, translucent, so each
    level of nesting stacks on its parent's and reads deeper ---- */
+/* Chrome draws a canvas tile that holds one flat colour as a solid quad, and under
+   a translucent wash that quad comes out a shade off its rastered neighbours — a
+   faint square in the export. A gradient too slight to see keeps every tile rastered. */
+.dg-style-layered .react-flow {
+  background-image: linear-gradient(rgb(0 0 0 / 0), rgb(0 0 0 / 0.01));
+}
 .dg-style-layered
   :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person) {
   border-width: 1px;
@@ -145,6 +153,12 @@
   border-radius: 999px;
   box-shadow: 0 0 0 1px color-mix(in srgb, #3b82f6 14%, transparent);
   padding: 2px 8px;
+}
+
+/* The fixed-colour looks paint the legend's panel; its text inherits the page's
+   colour, which belongs to the theme the look ignores. */
+:is(.dg-style-neon, .dg-style-terminal, .dg-style-dos) .dg-legend {
+  color: var(--dg-text);
 }
 
 /* ---- Neon: a line grid, outlines glowing in the type's neon, cut corners
@@ -419,6 +433,25 @@
   :is(.dg-type, .dg-icon, .dg-meta-badge) {
   color: color-mix(in srgb, var(--dg-hue-ink, #000) 70%, var(--dg-hue, #aaaaaa));
   opacity: 1;
+}
+/* Every box is a light fill, so its text is black — the white --dg-text is for
+   what sits on the blue desktop (titles, labels, a causal loop's words). */
+.dg-style-dos :where(.dg-node:not(.dg-text-node)) {
+  color: #000;
+}
+.dg-style-dos :where(.dg-node:not(.dg-text-node)) .dg-type {
+  color: #0000aa;
+}
+/* A git lane's name: black on the grey every DOS box wears, the lane's colour kept
+   in its border (`!important` beats the inline lane tint and text colour). */
+.dg-style-dos .dg-lane-label {
+  background: #aaaaaa !important;
+  color: #000 !important;
+  box-shadow: 6px 5px 0 #000;
+}
+/* the legend's FK mark sits on the blue panel, not on a grey table */
+.dg-style-dos .dg-legend .dg-table-key {
+  color: #55ffff;
 }
 .dg-style-dos .dg-shape-person::before {
   content: '\263A';

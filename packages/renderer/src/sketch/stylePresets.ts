@@ -1,3 +1,4 @@
+import { darkTheme, themeToCssVars } from '../theme';
 import { asciiFrameVars } from './asciiFrames';
 
 /** Rough-engine drawing parameters (subset of roughjs Options we expose). */
@@ -148,15 +149,12 @@ const TINTS = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#f43f5e', '#06b6d4',
 /** An edge part-way from the text to the page: the newer looks keep lines quieter than boxes. */
 const quietEdge = (pct: number): string => `color-mix(in srgb, var(--dg-text) ${pct}%, var(--dg-bg))`;
 
-const SOFT: StylePreset = {
-  id: 'soft',
-  label: 'Soft',
-  fontFamily: INTER,
-  cssVars: {
-    '--dg-edge': quietEdge(38),
-    '--dg-node-stroke': 'color-mix(in srgb, var(--dg-text) 9%, var(--dg-surface))',
-  },
-};
+const SOFT: StylePreset = { id: 'soft', label: 'Soft', fontFamily: INTER, cssVars: { '--dg-edge': quietEdge(38) } };
+
+/** The fixed-colour looks start from the dark theme's whole token set — table,
+ * plan and deployment colours included — so nothing they leave alone falls back
+ * to the light page they are drawn on. */
+const DARK_BASE = themeToCssVars(darkTheme);
 
 const PASTEL: StylePreset = {
   id: 'pastel',
@@ -193,6 +191,7 @@ const NEON: StylePreset = {
   palette: ['#00e5ff', '#ff2bd6', '#f2ff3d', '#5cff7a', '#ff9d2b', '#b18cff', '#ff4d6d'],
   grid: 'lines',
   cssVars: {
+    ...DARK_BASE,
     '--dg-canvas-bg': '#07080f',
     '--dg-bg': '#07080f',
     '--dg-surface': '#0b0d17',
@@ -209,6 +208,13 @@ const NEON: StylePreset = {
     '--dg-badge-bg': '#ff2bd6',
     '--dg-badge-text': '#07080f',
     '--dg-ink': '#e8f9ff',
+    '--dg-table-header-bg': '#111a2e',
+    '--dg-table-header-text': '#e8f9ff',
+    '--dg-table-border': '#22d3ee',
+    '--dg-table-row-text': '#c6e6f2',
+    '--dg-table-type-text': '#86a4bb',
+    '--dg-table-pk': '#f2ff3d',
+    '--dg-table-fk': '#ff79e6',
   },
 };
 
@@ -220,6 +226,7 @@ const TERMINAL: StylePreset = {
   palette: ['#39ff88', '#5ef2ff', '#ffb000', '#ff79c6', '#bd93f9', '#ff5555', '#f1fa8c'],
   grid: 'none',
   cssVars: {
+    ...DARK_BASE,
     '--dg-canvas-bg': '#050805',
     '--dg-bg': '#050805',
     '--dg-surface': '#0a110b',
@@ -236,6 +243,13 @@ const TERMINAL: StylePreset = {
     '--dg-badge-bg': '#39ff88',
     '--dg-badge-text': '#050805',
     '--dg-ink': '#d4ffe2',
+    '--dg-table-header-bg': '#0f2414',
+    '--dg-table-header-text': '#d4ffe2',
+    '--dg-table-border': '#2fd16f',
+    '--dg-table-row-text': '#b9f5cb',
+    '--dg-table-type-text': '#6fbf8a',
+    '--dg-table-pk': '#ffb000',
+    '--dg-table-fk': '#5ef2ff',
   },
 };
 
@@ -257,10 +271,13 @@ const DOS: StylePreset = {
   palette: ['#aaaaaa', '#00aaaa', '#00aa00', '#55ffff', '#ffff55', '#55ff55', '#ff55ff', '#ff5555'],
   grid: 'none',
   edges: { corner: 0 },
+  // The surface is the desktop's blue (a legend, a menu, a loop badge are panels on
+  // the screen); the grey is the boxes' and the tables' own fill.
   cssVars: {
+    ...DARK_BASE,
     '--dg-canvas-bg': '#0000aa',
     '--dg-bg': '#0000aa',
-    '--dg-surface': '#aaaaaa',
+    '--dg-surface': '#0000aa',
     '--dg-node-fill': '#aaaaaa',
     '--dg-node-stroke': '#ffffff',
     '--dg-group-fill': 'transparent',
@@ -274,6 +291,13 @@ const DOS: StylePreset = {
     '--dg-badge-bg': '#ffff55',
     '--dg-badge-text': '#000000',
     '--dg-ink': '#ffffff',
+    '--dg-table-header-bg': '#00aaaa',
+    '--dg-table-header-text': '#000000',
+    '--dg-table-border': '#ffffff',
+    '--dg-table-row-text': '#000000',
+    '--dg-table-type-text': '#0000aa',
+    '--dg-table-pk': '#000000',
+    '--dg-table-fk': '#0000aa',
   },
 };
 
