@@ -133,7 +133,7 @@ diagc publish --link https://github.com/you/repo
 
 - `.diagrams/html/<name>.html` — self-contained interactive pages, every asset inlined as a data URI.
 - `.diagrams/html/index.html` — a gallery linking the pages, grouped by source folder; a card shows the model's name, the diagram's path, and the PNG rendered with its page.
-- `.diagrams/static/<name>.png` — flat images, unless `--no-images`.
+- `.diagrams/static/<name>.png` — flat images, unless `--no-images`: the first plane, every group open. Each further plane gets its own, `<name>.<plane>.png`, the plane id lower-cased with each run of other characters a `-` (`Target VPC` → `<name>.target-vpc.png`). A plane whose file would be another diagram's PNG gets none, with a warning.
 
 `files...` here selects diagrams by **name**: a path under `.diagrams/src` works too, read as `eject` reads one. A name that matches no diagram exits `1` before any page is written. The gallery keeps the other diagrams, linking the pages an earlier run wrote.
 

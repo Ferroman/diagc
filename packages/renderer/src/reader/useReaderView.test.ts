@@ -68,11 +68,23 @@ describe('useReaderView — the plane drawn', () => {
     expect(result.current.props?.activeLayers).toEqual(['ops']);
   });
 
-  it('draws the first plane in export mode, whatever the host names', () => {
+  // An export compiles from the drawn plane's preset layers (it passes no
+  // `activeLayers`), so the plane alone decides what the picture shows.
+  it("draws the host's plane in export mode, and takes no switch", () => {
     const { result } = reader({ model: planed(), exportMode: true, opening: { plane: 'alt' } });
-    expect(result.current.plane).toBeUndefined();
-    act(() => result.current.setPlane('alt'));
-    expect(result.current.plane).toBeUndefined();
+    expect(result.current.plane).toBe('alt');
+    expect(result.current.props?.plane).toBe('alt');
+    act(() => result.current.setPlane('main'));
+    expect(result.current.plane).toBe('alt');
+  });
+
+  it('draws the first plane in export mode when the host names none, or one the model lacks', () => {
+    for (const opening of [{}, { plane: 'nope' }]) {
+      const { result } = reader({ model: planed(), exportMode: true, opening });
+      expect(result.current.plane).toBeUndefined();
+      act(() => result.current.setPlane('alt'));
+      expect(result.current.plane).toBeUndefined();
+    }
   });
 
   it("switches planes, re-seeding the layers and folds from the new plane's", () => {

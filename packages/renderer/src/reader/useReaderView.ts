@@ -30,7 +30,7 @@ export interface ReaderViewOptions {
   /** the model, or undefined while the host is still loading it */
   model: DiagramModel | undefined;
   layout?: LayoutOverlay;
-  /** a one-shot screenshot: always the first plane, no layer switch, no today line */
+  /** a one-shot screenshot: the opening's plane (else the first), no switching, no today line */
   exportMode?: boolean;
   opening?: ReaderOpening;
 }
@@ -64,18 +64,17 @@ export interface ReaderView {
 }
 
 /**
- * Which plane a reader sees, or undefined for the model's first plane. Export
- * mode ignores the pick: the committed PNG is defined as the first plane. A pick
+ * Which plane a reader sees, or undefined for the model's first plane. A pick
  * that names no plane (an Obsidian fence's typo) falls back to the first plane
- * rather than compiling an empty view.
+ * rather than compiling an empty view. An export draws the plane it was opened
+ * on — the publisher takes one picture per plane — so `picked` is ignored there.
  */
-function activePlaneId(planes: readonly DiagramPlane[], picked: string | undefined, exportMode: boolean) {
-  if (exportMode) return undefined;
+function activePlaneId(planes: readonly DiagramPlane[], picked: string | undefined) {
   return planes.some((p) => p.id === picked) ? picked : undefined;
 }
 
 function openingState(model: DiagramModel, options: ReaderViewOptions): { pins: Pins; layers: string[] } {
-  const plane = activePlaneId(model.planes, options.opening?.plane, options.exportMode ?? false);
+  const plane = activePlaneId(model.planes, options.opening?.plane);
   return {
     pins: options.opening?.pins ?? openingPins(options.layout, model, plane),
     layers: options.opening?.layers ?? presetLayers(model.planes, plane),
@@ -109,7 +108,7 @@ export function useReaderView(options: ReaderViewOptions): ReaderView {
   }
 
   if (model === undefined) return { props: undefined, plane: undefined, notation: undefined, setPlane: () => {} };
-  const plane = activePlaneId(model.planes, picked, exportMode);
+  const plane = activePlaneId(model.planes, exportMode ? opening?.plane : picked);
   // The visual language follows the plane the reader is on; the studio resolves
   // it the same way, so an editable diagram and its published page agree.
   const notation = activeNotation(model.planes, plane, model.notation);
@@ -120,6 +119,7 @@ export function useReaderView(options: ReaderViewOptions): ReaderView {
   // reader's choice on one viewpoint never silently governs another; the studio
   // does the same on switchPlane.
   const setPlane = (id: string) => {
+    if (exportMode) return;
     setPicked(id);
     setLayers(presetLayers(model.planes, id));
     setPins(openingPins(layout, model, id));
