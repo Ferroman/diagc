@@ -9,9 +9,7 @@ import type { LibraryEntry } from './types';
 const ctr = (
   slug: string,
   name: string,
-  type: string,
-  color: string,
-  image?: string,
+  { type, color, image }: { type: string; color: string; image?: string },
   keywords: string[] = [],
 ): LibraryEntry => ({
   id: `aws-ctr-${slug}`,
@@ -23,17 +21,32 @@ const ctr = (
 
 /** One-drag styled boundary containers, listed ahead of the raw badge icons. */
 export const AWS_CONTAINER_ENTRIES: LibraryEntry[] = [
-  ctr('cloud', 'AWS Cloud container', 'aws-cloud', '#242F3E', 'aws-cloud'),
-  ctr('account', 'AWS Account container', 'aws-account', '#E7157B', 'aws-account'),
-  ctr('region', 'Region container', 'aws-region', '#00A4A6', 'region'),
-  ctr('az', 'Availability Zone container', 'aws-az', '#00A4A6', undefined, ['az']),
-  ctr('vpc', 'VPC container', 'aws-vpc', '#8C4FFF', 'virtual-private-cloud-vpc', ['virtual private cloud']),
-  ctr('subnet-public', 'Public Subnet container', 'aws-subnet-public', '#7AA116', 'public-subnet', ['subnet']),
-  ctr('subnet-private', 'Private Subnet container', 'aws-subnet-private', '#00A4A6', 'private-subnet', ['subnet']),
-  ctr('auto-scaling', 'Auto Scaling Group container', 'aws-auto-scaling-group', '#ED7100', 'auto-scaling-group', [
-    'asg',
+  ctr('cloud', 'AWS Cloud container', { type: 'aws-cloud', color: '#242F3E', image: 'aws-cloud' }),
+  ctr('account', 'AWS Account container', { type: 'aws-account', color: '#E7157B', image: 'aws-account' }),
+  ctr('region', 'Region container', { type: 'aws-region', color: '#00A4A6', image: 'region' }),
+  ctr('az', 'Availability Zone container', { type: 'aws-az', color: '#00A4A6' }, ['az']),
+  ctr('vpc', 'VPC container', { type: 'aws-vpc', color: '#8C4FFF', image: 'virtual-private-cloud-vpc' }, [
+    'virtual private cloud',
   ]),
+  ctr(
+    'subnet-public',
+    'Public Subnet container',
+    { type: 'aws-subnet-public', color: '#7AA116', image: 'public-subnet' },
+    ['subnet'],
+  ),
+  ctr(
+    'subnet-private',
+    'Private Subnet container',
+    { type: 'aws-subnet-private', color: '#00A4A6', image: 'private-subnet' },
+    ['subnet'],
+  ),
+  ctr(
+    'auto-scaling',
+    'Auto Scaling Group container',
+    { type: 'aws-auto-scaling-group', color: '#ED7100', image: 'auto-scaling-group' },
+    ['asg'],
+  ),
   // For everything without its own stencil (EKS cluster, node pool, …): pick
   // an icon and a color after placing — the type carries the container look.
-  ctr('generic', 'Generic Group container', 'aws-group', '#7D8998'),
+  ctr('generic', 'Generic Group container', { type: 'aws-group', color: '#7D8998' }),
 ];

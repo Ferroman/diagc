@@ -17,6 +17,14 @@ type Bounds = Point & BoxSize;
 /** Containers inside an activity frame that elements are placed into. */
 const ACTIVITY_HOMES: ReadonlySet<string> = new Set([ACTIVITY_LANE_TYPE, ACTIVITY_REGION_TYPE]);
 
+/** Where a placed node is aimed: the node it was dropped on or nests under,
+ * the drop point (absent for a click-to-place), and the boxes on the canvas. */
+export interface ActivityDrop {
+  targetId: string | undefined;
+  point?: Point;
+  boundsOf?: (id: string) => Bounds | undefined;
+}
+
 const parentsIn = (model: DiagramModel, plane: string | undefined) =>
   containmentOn(model, containmentPlaneOf(model, plane));
 
@@ -35,9 +43,7 @@ const parentsIn = (model: DiagramModel, plane: string | undefined) =>
 export function homeActivityParent(
   model: DiagramModel,
   plane: string | undefined,
-  targetId: string | undefined,
-  point?: Point,
-  boundsOf?: (id: string) => Bounds | undefined,
+  { targetId, point, boundsOf }: ActivityDrop,
 ): string | undefined {
   if (targetId === undefined) return undefined;
   const typeOf = (id: string) => model.nodes.find((n) => n.id === id)?.type;
@@ -75,9 +81,7 @@ export function homeActivityParent(
 export function activityDropPosition(
   model: DiagramModel,
   parentId: string | undefined,
-  point: Point,
-  size: BoxSize,
-  boundsOf: (id: string) => Bounds | undefined,
+  { point, size, boundsOf }: Required<Omit<ActivityDrop, 'targetId'>> & { size: BoxSize },
 ): Point | undefined {
   if (parentId === undefined) return undefined;
   const type = model.nodes.find((n) => n.id === parentId)?.type;

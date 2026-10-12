@@ -209,18 +209,40 @@ describe('planMoves', () => {
   });
 });
 
+describe('planMoves, every kind in one gesture', () => {
+  // breaks if the per-kind steps reorder the batch (gesture order, parents
+  // before children) or a command's fields, or one kind starts or stops
+  // taking part: a zone with its subtree, a dateless root zone, an event, a
+  // nested other child, a stray, an actor
+  it('answers one batch in a fixed order', () => {
+    const m = roadmap();
+    m.nodes.push(
+      { id: 'fresh', name: 'Fresh', type: 'plan-zone', plane: 'plan' },
+      { id: 'other', name: 'Other', type: 'service' },
+      { id: 'stray', name: 'Stray', type: 'service', plane: 'plan' },
+    );
+    m.containment.push({ parent: 'build', child: 'other', plane: 'plan' });
+    const ids = ['kickoff', 'stray', 'alice', 'build', 'q1', 'fresh', 'other', 'solo', 'm1'];
+    const positions = Object.fromEntries(ids.map((id, i) => [id, { x: 3 * DAY + i, y: TITLE_H + 10 * i - 50 }]));
+    const deltas = Object.fromEntries(ids.map((id, i) => [id, { dx: ((i % 3) + 1) * DAY + 2, dy: 5 }]));
+    expect(JSON.stringify(planMoves(m, 'plan', positions, deltas))).toMatchInlineSnapshot(
+      `"{"type":"batch","commands":[{"type":"set-plan-dates","id":"q1","dates":{"start":"2026-01-07","end":"2026-03-29"}},{"type":"set-plan-dates","id":"design","dates":{"start":"2026-01-07","end":"2026-02-01"}},{"type":"set-plan-dates","id":"build","dates":{"start":"2026-02-04","end":"2026-03-29"}},{"type":"set-plan-dates","id":"m1","dates":{"at":"2026-03-04"}},{"type":"set-position","nodeId":"q1","x":120,"y":30,"plane":"plan"},{"type":"set-plan-dates","id":"kickoff","dates":{"at":"2026-01-06"}},{"type":"set-position","nodeId":"stray","x":61,"y":0,"plane":"plan"},{"type":"set-plan-dates","id":"fresh","dates":{"start":"2026-01-04","end":"2026-01-17"}},{"type":"set-position","nodeId":"fresh","x":60,"y":40,"plane":"plan"},{"type":"set-position","nodeId":"other","x":66,"y":50,"plane":"plan"},{"type":"set-plan-dates","id":"solo","dates":{"start":"2026-04-03","end":"2026-04-12"}},{"type":"set-position","nodeId":"solo","x":1840,"y":60,"plane":"plan"}]}"`,
+    );
+  });
+});
+
 describe('planResize', () => {
   it('right handle: end follows the width, inclusive', () => {
-    const c = planResize(roadmap(), 'plan', 'design', 0, 30 * DAY);
+    const c = planResize({ model: roadmap(), plane: 'plan' }, 'design', 0, 30 * DAY);
     expect(c).toEqual({ type: 'set-plan-dates', id: 'design', dates: { end: shift('2026-01-05', 29) } });
   });
   it('left handle: start follows x, parent-relative for a nested zone, absolute for a root', () => {
-    expect(planResize(roadmap(), 'plan', 'build', 21 * DAY, 100)).toEqual({
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'build', 21 * DAY, 100)).toEqual({
       type: 'set-plan-dates',
       id: 'build',
       dates: { start: shift('2026-01-05', 21) },
     });
-    expect(planResize(roadmap(), 'plan', 'solo', planX(d('2026-04-03'), origin), 100)).toEqual({
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'solo', planX(d('2026-04-03'), origin), 100)).toEqual({
       type: 'set-plan-dates',
       id: 'solo',
       dates: { start: '2026-04-03' },
@@ -228,29 +250,31 @@ describe('planResize', () => {
   });
   it('clamps to the parent and to the children, and is a no-op when nothing changes', () => {
     // design's right edge cannot pass q1's end
-    expect(planResize(roadmap(), 'plan', 'design', 0, 200 * DAY)).toEqual({
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'design', 0, 200 * DAY)).toEqual({
       type: 'set-plan-dates',
       id: 'design',
       dates: { end: '2026-03-27' },
     });
     // build's left edge cannot pass m1 (Mar 2) — nor q1's start
-    expect(planResize(roadmap(), 'plan', 'build', 80 * DAY, 10)).toEqual({
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'build', 80 * DAY, 10)).toEqual({
       type: 'set-plan-dates',
       id: 'build',
       dates: { start: '2026-03-02' },
     });
-    expect(planResize(roadmap(), 'plan', 'build', -50 * DAY, 10)).toEqual({
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'build', -50 * DAY, 10)).toEqual({
       type: 'set-plan-dates',
       id: 'build',
       dates: { start: '2026-01-05' },
     });
     // q1's left edge is held by design's start (Jan 5) and its right edge by build's end (Mar 27): both already at the clamp
-    expect(planResize(roadmap(), 'plan', 'q1', planX(d('2026-01-12'), origin), 100)).toBeUndefined();
-    expect(planResize(roadmap(), 'plan', 'q1', planX(d('2026-01-05'), origin), 10 * DAY)).toBeUndefined();
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'q1', planX(d('2026-01-12'), origin), 100)).toBeUndefined();
+    expect(
+      planResize({ model: roadmap(), plane: 'plan' }, 'q1', planX(d('2026-01-05'), origin), 10 * DAY),
+    ).toBeUndefined();
     // build already ends at q1's end: stretching it further changes nothing
-    expect(planResize(roadmap(), 'plan', 'build', 28 * DAY, 200 * DAY)).toBeUndefined();
-    expect(planResize(roadmap(), 'plan', 'design', 0, 26 * DAY)).toBeUndefined();
-    expect(planResize(roadmap(), 'plan', 'alice', 0, 300)).toBeUndefined();
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'build', 28 * DAY, 200 * DAY)).toBeUndefined();
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'design', 0, 26 * DAY)).toBeUndefined();
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'alice', 0, 300)).toBeUndefined();
   });
 });
 
@@ -351,36 +375,44 @@ describe('quick-adds', () => {
   });
   it("seedDates: the pointer's day for a drop, the parent's start when nested, today otherwise", () => {
     const m = roadmap();
-    expect(seedDates(m, 'plan', 'plan-zone', { x: planX(d('2026-02-10'), origin) + 3 }, '2026-05-04')).toEqual({
+    expect(
+      seedDates({ model: m, plane: 'plan', today: '2026-05-04' }, 'plan-zone', {
+        x: planX(d('2026-02-10'), origin) + 3,
+      }),
+    ).toEqual({
       start: '2026-02-10',
       end: shift('2026-02-10', ZONE_DAYS - 1),
     });
-    expect(seedDates(m, 'plan', 'plan-event', { x: planX(d('2026-02-10'), origin) + DAY - 1 }, '2026-05-04')).toEqual({
+    expect(
+      seedDates({ model: m, plane: 'plan', today: '2026-05-04' }, 'plan-event', {
+        x: planX(d('2026-02-10'), origin) + DAY - 1,
+      }),
+    ).toEqual({
       at: '2026-02-10',
     });
-    expect(seedDates(m, 'plan', 'plan-zone', { parentId: 'design' }, '2026-05-04')).toEqual({
+    expect(seedDates({ model: m, plane: 'plan', today: '2026-05-04' }, 'plan-zone', { parentId: 'design' })).toEqual({
       start: '2026-01-05',
       end: '2026-01-18',
     });
-    expect(seedDates(m, 'plan', 'plan-event', {}, '2026-05-04')).toEqual({ at: '2026-05-04' });
+    expect(seedDates({ model: m, plane: 'plan', today: '2026-05-04' }, 'plan-event', {})).toEqual({ at: '2026-05-04' });
     const empty = model('e');
     empty.plan();
-    expect(seedDates(empty.toJSON(), 'plan', 'plan-zone', { x: 500 }, '2026-05-04')).toEqual({
+    expect(seedDates({ model: empty.toJSON(), plane: 'plan', today: '2026-05-04' }, 'plan-zone', { x: 500 })).toEqual({
       start: '2026-05-04',
       end: shift('2026-05-04', ZONE_DAYS - 1),
     });
-    expect(seedDates(m, 'plan', 'service', { x: 5 }, '2026-05-04')).toBeUndefined();
+    expect(seedDates({ model: m, plane: 'plan', today: '2026-05-04' }, 'service', { x: 5 })).toBeUndefined();
   });
   it('seedOnRetype: seeds a plain node retyped into a zone or event, clamped into an existing parent, keeps dates already there, and skips a non-plan type', () => {
     const top = roadmap();
     top.nodes.push({ id: 'blank', name: 'Blank' });
     // top-level: today .. today+13, no containment to anchor on
-    expect(seedOnRetype(top, 'plan', 'blank', 'plan-zone', '2026-05-04')).toEqual({
+    expect(seedOnRetype({ model: top, plane: 'plan', today: '2026-05-04' }, 'blank', 'plan-zone')).toEqual({
       type: 'set-plan-dates',
       id: 'blank',
       dates: { start: '2026-05-04', end: shift('2026-05-04', ZONE_DAYS - 1) },
     });
-    expect(seedOnRetype(top, 'plan', 'blank', 'plan-event', '2026-05-04')).toEqual({
+    expect(seedOnRetype({ model: top, plane: 'plan', today: '2026-05-04' }, 'blank', 'plan-event')).toEqual({
       type: 'set-plan-dates',
       id: 'blank',
       dates: { at: '2026-05-04' },
@@ -392,7 +424,7 @@ describe('quick-adds', () => {
     const nested = roadmap();
     nested.nodes.push({ id: 'blank', name: 'Blank' });
     nested.containment.push({ parent: 'design', child: 'blank', plane: 'plan' });
-    expect(seedOnRetype(nested, 'plan', 'blank', 'plan-zone', '2026-05-04')).toEqual({
+    expect(seedOnRetype({ model: nested, plane: 'plan', today: '2026-05-04' }, 'blank', 'plan-zone')).toEqual({
       type: 'set-plan-dates',
       id: 'blank',
       dates: { start: '2026-01-05', end: '2026-01-18' },
@@ -402,27 +434,27 @@ describe('quick-adds', () => {
     const dated = roadmap();
     dated.nodes.push({ id: 'z', name: 'Z', metadata: { start: '2026-01-01', end: '2026-01-05' } });
     dated.nodes.push({ id: 'e', name: 'E', metadata: { at: '2026-01-01' } });
-    expect(seedOnRetype(dated, 'plan', 'z', 'plan-zone', '2026-05-04')).toBeUndefined();
-    expect(seedOnRetype(dated, 'plan', 'e', 'plan-event', '2026-05-04')).toBeUndefined();
+    expect(seedOnRetype({ model: dated, plane: 'plan', today: '2026-05-04' }, 'z', 'plan-zone')).toBeUndefined();
+    expect(seedOnRetype({ model: dated, plane: 'plan', today: '2026-05-04' }, 'e', 'plan-event')).toBeUndefined();
     // a HALF-dated zone (start only) is not "already dated" — spanOf needs both
     dated.nodes.push({ id: 'half', name: 'Half', metadata: { start: '2026-01-01' } });
-    expect(seedOnRetype(dated, 'plan', 'half', 'plan-zone', '2026-05-04')).toEqual({
+    expect(seedOnRetype({ model: dated, plane: 'plan', today: '2026-05-04' }, 'half', 'plan-zone')).toEqual({
       type: 'set-plan-dates',
       id: 'half',
       dates: { start: '2026-05-04', end: shift('2026-05-04', ZONE_DAYS - 1) },
     });
 
     // not a plan type, or no target type at all: no command
-    expect(seedOnRetype(top, 'plan', 'blank', 'service', '2026-05-04')).toBeUndefined();
-    expect(seedOnRetype(top, 'plan', 'blank', undefined, '2026-05-04')).toBeUndefined();
+    expect(seedOnRetype({ model: top, plane: 'plan', today: '2026-05-04' }, 'blank', 'service')).toBeUndefined();
+    expect(seedOnRetype({ model: top, plane: 'plan', today: '2026-05-04' }, 'blank', undefined)).toBeUndefined();
     // unknown id: no command
-    expect(seedOnRetype(top, 'plan', 'nowhere', 'plan-zone', '2026-05-04')).toBeUndefined();
+    expect(seedOnRetype({ model: top, plane: 'plan', today: '2026-05-04' }, 'nowhere', 'plan-zone')).toBeUndefined();
   });
 });
 
 describe('assign', () => {
   it('an actor dropped on a zone it holds no role on gets executes', () => {
-    expect(assign(roadmap(), 'plan', 'alice', 'design', { x: 10, y: 20 })).toEqual({
+    expect(assign({ model: roadmap(), plane: 'plan' }, 'alice', 'design', { x: 10, y: 20 })).toEqual({
       type: 'add-relation',
       from: 'alice',
       to: 'design',
@@ -431,12 +463,12 @@ describe('assign', () => {
   });
   it('an actor that already holds a role on the zone is a no-op', () => {
     // alice already owns build (roadmap())
-    expect(assign(roadmap(), 'plan', 'alice', 'build', { x: 10, y: 20 })).toBeUndefined();
+    expect(assign({ model: roadmap(), plane: 'plan' }, 'alice', 'build', { x: 10, y: 20 })).toBeUndefined();
   });
   it('a team is an actor too', () => {
     const m = roadmap();
     m.nodes.push({ id: 'platform', name: 'Platform', type: 'team' });
-    expect(assign(m, 'plan', 'platform', 'design', { x: 0, y: 0 })).toEqual({
+    expect(assign({ model: m, plane: 'plan' }, 'platform', 'design', { x: 0, y: 0 })).toEqual({
       type: 'add-relation',
       from: 'platform',
       to: 'design',
@@ -446,7 +478,7 @@ describe('assign', () => {
   it('a plain node at the plane root dropped on a zone is contained there, no remove-containment', () => {
     const m = roadmap();
     m.nodes.push({ id: 'other', name: 'Other', type: 'service' });
-    const c = assign(m, 'plan', 'other', 'design', { x: 15, y: TITLE_H + 25 });
+    const c = assign({ model: m, plane: 'plan' }, 'other', 'design', { x: 15, y: TITLE_H + 25 });
     expect(c).toEqual({
       type: 'batch',
       commands: [
@@ -459,7 +491,7 @@ describe('assign', () => {
     const m = roadmap();
     m.nodes.push({ id: 'other', name: 'Other', type: 'service' });
     m.containment.push({ parent: 'build', child: 'other', plane: 'plan' });
-    const c = assign(m, 'plan', 'other', 'design', { x: 5, y: TITLE_H + 5 });
+    const c = assign({ model: m, plane: 'plan' }, 'other', 'design', { x: 5, y: TITLE_H + 5 });
     expect(c).toEqual({
       type: 'batch',
       commands: [
@@ -476,7 +508,7 @@ describe('assign', () => {
       { parent: 'design', child: 'other', plane: 'plan' },
       { parent: 'solo', child: 'other', plane: 'plan' },
     );
-    const c = assign(m, 'plan', 'other', 'build', { x: 5, y: TITLE_H + 5 });
+    const c = assign({ model: m, plane: 'plan' }, 'other', 'build', { x: 5, y: TITLE_H + 5 });
     expect(c).toEqual({
       type: 'batch',
       commands: [
@@ -491,15 +523,15 @@ describe('assign', () => {
     const m = roadmap();
     m.nodes.push({ id: 'other', name: 'Other', type: 'service' });
     m.containment.push({ parent: 'build', child: 'other', plane: 'plan' });
-    expect(assign(m, 'plan', 'other', 'build', { x: 5, y: 5 })).toBeUndefined();
+    expect(assign({ model: m, plane: 'plan' }, 'other', 'build', { x: 5, y: 5 })).toBeUndefined();
   });
   it('a zone dropped on a zone is a no-op', () => {
-    expect(assign(roadmap(), 'plan', 'design', 'build', { x: 0, y: 0 })).toBeUndefined();
+    expect(assign({ model: roadmap(), plane: 'plan' }, 'design', 'build', { x: 0, y: 0 })).toBeUndefined();
   });
   it('rel below the floor is clamped to (0, TITLE_H)', () => {
     const m = roadmap();
     m.nodes.push({ id: 'other', name: 'Other', type: 'service' });
-    const c = assign(m, 'plan', 'other', 'design', { x: -50, y: -50 });
+    const c = assign({ model: m, plane: 'plan' }, 'other', 'design', { x: -50, y: -50 });
     expect(c).toEqual({
       type: 'batch',
       commands: [

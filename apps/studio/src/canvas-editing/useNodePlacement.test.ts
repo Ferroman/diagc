@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   applyCommand,
   emptyDrawings,
@@ -12,6 +12,16 @@ import type { EditorApi } from '../session/useEditor';
 import type { LibraryEntry } from '../library/types';
 import type { UseLibrary } from '../library/useLibrary';
 import { useNodePlacement, type UseNodePlacementOptions } from './useNodePlacement';
+
+// The image import's two round trips, answered here: the upload names the asset
+// after the file (and refuses one called bad.png), the size is fixed.
+vi.mock('./images', () => ({
+  uploadAsset: async (file: File) => {
+    if (file.name === 'bad.png') throw new Error('too big');
+    return `asset-${file.name}`;
+  },
+  readImageSize: async () => ({ w: 120, h: 80 }),
+}));
 
 /**
  * `useNodePlacement` calls no React hook of its own — it is a factory of
@@ -221,5 +231,149 @@ describe('useNodePlacement — plan zones and events off a plan plane', () => {
     const { placement, dispatched } = harness(offPlan());
     placement.dropLibraryEntry('activity-action', SIXTY_DAYS);
     expect(metadataOf(dispatched)).toBeUndefined();
+  });
+});
+
+describe('useNodePlacement — every flow, command by command', () => {
+  /** the editor applies what is dispatched, so a flow that reads the model again sees its own adds */
+  function live(m: DiagramModel, over: Partial<UseNodePlacementOptions> = {}) {
+    const dispatched: EditorCommand[] = [];
+    let state = { model: m, layout: emptyLayout(), drawings: emptyDrawings() };
+    const session = () => ({ state }) as unknown as NonNullable<EditorApi['session']>;
+    const editor = {
+      get session() {
+        return session();
+      },
+      peek: session,
+      dispatch: (c: EditorCommand) => {
+        dispatched.push(c);
+        state = applyCommand(state, c).state;
+      },
+    } as unknown as EditorApi;
+    const calls: string[] = [];
+    const record = (name: string) => (arg: unknown) => void calls.push(`${name} ${JSON.stringify(arg)}`);
+    const layoutApi = {
+      nodeBounds: () => undefined,
+      viewportCenter: () => ({ x: 500, y: 300 }),
+    } as unknown as LayoutApi;
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- calls no React hook of its own
+    const placement = useNodePlacement({
+      editor,
+      layoutApiRef: { current: layoutApi },
+      selectNode: record('selectNode'),
+      selectNodeForRename: record('selectNodeForRename'),
+      selectTab: record('selectTab'),
+      requestLabelEdit: record('requestLabelEdit'),
+      reportIssues: record('reportIssues'),
+      activePlane: 'p',
+      activePlaneBorrowsContainment: false,
+      activePlaneManual: false,
+      penLayer: 'ink',
+      selection: null,
+      drillRoot: undefined,
+      model: m,
+      lib: { library: { categories: [], entries } } as unknown as UseLibrary,
+      today: '2026-01-01',
+      ...over,
+    });
+    return { placement, dispatched, calls };
+  }
+  const plain = (): DiagramModel => ({
+    version: 1,
+    id: 'd',
+    name: 'd',
+    nodes: [
+      { id: 'box', name: 'Box' },
+      { id: 'table', name: 'T', type: 'db-table', columns: [{ name: 'pk', pk: true }] },
+    ],
+    containment: [],
+    relations: [],
+    layers: [{ id: 'ink', name: 'Ink' }],
+    planes: [{ id: 'p', name: 'P' }],
+  });
+  const card: LibraryEntry = {
+    id: 'svc',
+    category: 'c',
+    name: 'Service',
+    keywords: [],
+    template: { type: 'service', color: '#123456', width: 100, height: 60, columns: [{ name: 'id' }] },
+  };
+
+  // breaks if an image is no longer added, sized and placed per file (the
+  // second one reading the model the first left), or the failures stop
+  // arriving as one banner
+  it('imports images one by one, and reports what failed once', async () => {
+    const { placement, dispatched, calls } = live(plain());
+    const file = (name: string) => new File(['x'], name, { type: 'image/png' });
+    await placement.addImages([file('a.png'), file('bad.png'), file('a.png')], { x: 200, y: 100 });
+    expect(JSON.stringify(dispatched)).toMatchInlineSnapshot(
+      `"[{"type":"add-node","node":{"id":"image","name":"a","type":"image","image":"asset-a.png","plane":"p","layer":"ink"}},{"type":"set-size","nodeId":"image","w":120,"h":80},{"type":"set-position","nodeId":"image","x":140,"y":60,"plane":"p"},{"type":"add-node","node":{"id":"image-2","name":"a","type":"image","image":"asset-a.png","plane":"p","layer":"ink"}},{"type":"set-size","nodeId":"image-2","w":120,"h":80},{"type":"set-position","nodeId":"image-2","x":140,"y":60,"plane":"p"}]"`,
+    );
+    expect(calls).toMatchInlineSnapshot(`
+      [
+        "selectNode "image"",
+        "selectNode "image-2"",
+        "reportIssues [{"message":"too big"}]",
+      ]
+    `);
+  });
+
+  // breaks if a card placed by a drop changes its node, its size, its spot,
+  // or stops opening its name on the canvas
+  it('places a card at the drop point, sized, and names it in place', () => {
+    const { placement, dispatched, calls } = live(plain());
+    placement.placeFromLibrary(card, { position: { x: 400, y: 300 } });
+    expect(JSON.stringify(dispatched)).toMatchInlineSnapshot(
+      `"[{"type":"add-node","node":{"id":"node","name":"Service","type":"service","color":"#123456","columns":[{"name":"id"}],"plane":"p","layer":"ink"}},{"type":"set-size","nodeId":"node","w":100,"h":60},{"type":"set-position","nodeId":"node","x":350,"y":270,"plane":"p"}]"`,
+    );
+    expect(calls).toMatchInlineSnapshot(`
+      [
+        "selectNode "node"",
+        "requestLabelEdit "node"",
+      ]
+    `);
+  });
+
+  // breaks if a restyle stops stamping a card's columns on a column-less node,
+  // or starts overwriting a table's own
+  it('restyles the selection, stamping columns only onto a node with none', () => {
+    const box = live(plain(), { selection: { kind: 'node', id: 'box' } });
+    box.placement.applyFromLibrary(card);
+    expect(JSON.stringify(box.dispatched)).toMatchInlineSnapshot(
+      `"[{"type":"set-node-details","id":"box","details":{"type":"service","color":"#123456","image":null,"shape":null}},{"type":"set-size","nodeId":"box","w":100,"h":60},{"type":"set-table-columns","id":"box","columns":[{"name":"id"}]}]"`,
+    );
+    const table = live(plain(), { selection: { kind: 'node', id: 'table' } });
+    table.placement.applyFromLibrary(card);
+    expect(table.dispatched.map((c) => c.type)).toEqual(['set-node-details', 'set-size']);
+  });
+
+  // breaks if Add node stops centering a root node on a manual plane, or stops
+  // handing its name to Properties
+  it('adds a node at the viewport centre on a manual plane, and opens its name in Properties', () => {
+    const { placement, dispatched, calls } = live(plain(), { activePlaneManual: true });
+    placement.addNode();
+    expect(JSON.stringify(dispatched)).toMatchInlineSnapshot(
+      `"[{"type":"add-node","node":{"id":"node","name":"node","plane":"p","layer":"ink"}},{"type":"set-position","nodeId":"node","x":420,"y":260,"plane":"p"}]"`,
+    );
+    expect(calls).toMatchInlineSnapshot(`
+      [
+        "selectTab "properties"",
+        "selectNodeForRename "node"",
+      ]
+    `);
+  });
+
+  // breaks if a double-click create stops landing on its point or answering its id
+  it('creates a node centred on a double-click, and answers its id', () => {
+    const { placement, dispatched, calls } = live(plain());
+    expect(placement.createAt({ x: 50, y: 60 })).toBe('node');
+    expect(JSON.stringify(dispatched)).toMatchInlineSnapshot(
+      `"[{"type":"add-node","node":{"id":"node","name":"node","plane":"p","layer":"ink"}},{"type":"set-position","nodeId":"node","x":-30,"y":20,"plane":"p"}]"`,
+    );
+    expect(calls).toMatchInlineSnapshot(`
+      [
+        "selectNode "node"",
+      ]
+    `);
   });
 });

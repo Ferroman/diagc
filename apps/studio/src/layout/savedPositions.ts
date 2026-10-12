@@ -8,6 +8,13 @@ import {
   type Point,
 } from '@diagc/core/internal';
 
+/** A diagram's saved layout overlay (none before its first save), and the plane a change is for. */
+export interface PlaneLayout {
+  layout: LayoutOverlay | undefined;
+  model: DiagramModel;
+  plane: string | undefined;
+}
+
 /**
  * Fold a viewer's hand-placed positions into the diagram's layout overlay, ready
  * to POST to `/api/layouts/<name>`.
@@ -37,9 +44,7 @@ import {
  * the nodes that have them while elk keeps arranging the rest.
  */
 export function withSavedPositions(
-  layout: LayoutOverlay | undefined,
-  model: DiagramModel,
-  plane: string | undefined,
+  { layout, model, plane }: PlaneLayout,
   moved: Record<string, Point>,
   unfolded?: readonly string[],
   labels: Readonly<Record<string, Readonly<Record<string, EdgeLabelPlacement>>>> = {},
@@ -81,9 +86,7 @@ export const unfoldedOf = (pins: Record<string, 'expanded' | 'collapsed'>): stri
  * map is dropped, mirroring `set-plane-layout` in core.
  */
 export function withPlaneManual(
-  layout: LayoutOverlay | undefined,
-  model: DiagramModel,
-  plane: string | undefined,
+  { layout, model, plane }: PlaneLayout,
   snapshot: Record<string, Point> | null,
   unfolded?: readonly string[],
   labels: Readonly<Record<string, Readonly<Record<string, EdgeLabelPlacement>>>> = {},

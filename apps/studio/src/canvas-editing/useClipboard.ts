@@ -63,7 +63,11 @@ export function useClipboard(opts: UseClipboardOptions): void {
       if (m === undefined) return;
       const ids = o.multiSelection.length > 0 ? o.multiSelection : o.selection?.kind === 'node' ? [o.selection.id] : [];
       const onScreen = o.activePlaneManual ? (o.layoutApiRef.current?.snapshotPositions() ?? {}) : {};
-      const payload = copySelection(m, o.editor.peek()?.state.layout, o.activePlane, ids, onScreen);
+      const payload = copySelection(
+        { model: m, layout: o.editor.peek()?.state.layout, plane: o.activePlane },
+        ids,
+        onScreen,
+      );
       if (payload === null) return;
       const text = serializeClipboard(payload);
       e.clipboardData.setData('text/plain', text);

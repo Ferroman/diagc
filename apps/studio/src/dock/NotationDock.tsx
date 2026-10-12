@@ -48,7 +48,18 @@ export function NotationDock(props: NotationDockProps) {
         select: selection.select,
         requestLabelEdit: selection.requestLabelEdit,
       })}
-      <LayoutSection {...props} />
+      <LayoutSection
+        model={model}
+        layout={props.layout}
+        editing={editing}
+        editor={editor}
+        nav={nav}
+        drilled={props.drilled}
+        arrangement={props.arrangement}
+        canvasEditing={props.canvasEditing}
+        prefs={props.prefs}
+        layoutApiRef={props.layoutApiRef}
+      />
       <LayersPlanesPanel
         model={model}
         onCommand={editor.dispatch}

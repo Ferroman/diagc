@@ -1,3 +1,4 @@
+import type { Size } from '@diagc/core/internal';
 import type { Library, LibraryCategory, LibraryEntry } from './types';
 import { ACTIVITY_PACK } from './packs.activity';
 import { AWS_PACK } from './packs.aws';
@@ -191,7 +192,7 @@ const techEntries: LibraryEntry[] = [
 
 // Tintable silhouette masks (see DiagramNode.shape) — the generic marks cloud
 // diagrams hang off the edges of the frame: people and the internet.
-const shapeMark = (slug: string, name: string, w: number, h: number, keywords: string[]): LibraryEntry => ({
+const shapeMark = (slug: string, name: string, { w, h }: Size, keywords: string[]): LibraryEntry => ({
   id: `shape-${slug}`,
   category: 'shapes',
   name,
@@ -202,9 +203,9 @@ const shapeMark = (slug: string, name: string, w: number, h: number, keywords: s
 const shapesCategories: LibraryCategory[] = [{ id: 'shapes', name: 'Shapes', builtin: true }];
 
 const shapesEntries: LibraryEntry[] = [
-  shapeMark('person', 'Person', 52, 62, ['user', 'actor', 'human']),
-  shapeMark('users', 'Users', 84, 62, ['users', 'people', 'group', 'actors', 'clients']),
-  shapeMark('internet', 'Internet', 64, 52, ['internet', 'cloud', 'www', 'network', 'external']),
+  shapeMark('person', 'Person', { w: 52, h: 62 }, ['user', 'actor', 'human']),
+  shapeMark('users', 'Users', { w: 84, h: 62 }, ['users', 'people', 'group', 'actors', 'clients']),
+  shapeMark('internet', 'Internet', { w: 64, h: 52 }, ['internet', 'cloud', 'www', 'network', 'external']),
 ];
 
 // Kubernetes community icons — the labeled heptagons k8s diagrams are drawn

@@ -42,7 +42,7 @@ export interface LayoutSectionProps {
  * none of them would do anything, in either mode.
  */
 export function LayoutSection(props: LayoutSectionProps) {
-  const { model, editing, editor, nav, arrangement, canvasEditing, layoutApiRef } = props;
+  const { model, layout, editing, editor, nav, drilled, arrangement, canvasEditing, prefs, layoutApiRef } = props;
   const { activePlane, notation } = nav;
   // The active plane's automatic-layout settings (algorithm/direction/spacing/
   // edge routing); empty ⇒ tuned defaults. Drives the layout picker in both modes.
@@ -64,7 +64,7 @@ export function LayoutSection(props: LayoutSectionProps) {
               defaultAlgorithm: notationProfile(notation).defaultAlgorithm,
             }
       }
-      styleControl={<StyleSelect {...props} />}
+      styleControl={<StyleSelect model={model} editing={editing} editor={editor} prefs={prefs} />}
     >
       {editing && (
         <EditLayoutActions
@@ -75,14 +75,21 @@ export function LayoutSection(props: LayoutSectionProps) {
           getAutoPositions={() => layoutApiRef.current?.autoPositions() ?? {}}
         />
       )}
-      {!editing && <ViewLayoutChips {...props} />}
+      {!editing && (
+        <ViewLayoutChips model={model} layout={layout} nav={nav} drilled={drilled} arrangement={arrangement} />
+      )}
     </LayoutPanel>
   );
 }
 
 /** The diagram's own style while editing (saved with it); the viewer's preference
  * in view mode, which a diagram's own style overrides. */
-function StyleSelect({ model, editing, editor, prefs }: LayoutSectionProps) {
+function StyleSelect({
+  model,
+  editing,
+  editor,
+  prefs,
+}: Pick<LayoutSectionProps, 'model' | 'editing' | 'editor' | 'prefs'>) {
   const diagramStyle = diagramStyleOf(model);
   return editing ? (
     <select
@@ -124,7 +131,13 @@ function StyleSelect({ model, editing, editor, prefs }: LayoutSectionProps) {
 }
 
 /** View mode's layout chips: drop a preview, set saved positions aside, freeze the plane. */
-function ViewLayoutChips({ model, layout, nav, drilled, arrangement }: LayoutSectionProps) {
+function ViewLayoutChips({
+  model,
+  layout,
+  nav,
+  drilled,
+  arrangement,
+}: Pick<LayoutSectionProps, 'model' | 'layout' | 'nav' | 'drilled' | 'arrangement'>) {
   const hint = useKeyHint();
   const { autoArrange, savingPositions } = arrangement;
   const { activePlaneManual } = nav;

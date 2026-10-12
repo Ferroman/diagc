@@ -78,7 +78,7 @@ const applied = (m: DiagramModel, command: EditorCommand, layout = emptyLayout()
 describe('copySelection', () => {
   it('takes the selected node with everything inside it, and only the relations wholly inside', () => {
     const m = system();
-    const p = copySelection(m, undefined, undefined, ['sys'])!;
+    const p = copySelection({ model: m, layout: undefined, plane: undefined }, ['sys'])!;
     expect(p.format).toBe(CLIPBOARD_FORMAT);
     expect(p.nodes.map((n) => n.id).sort()).toEqual(['api', 'db', 'sys']);
     expect(p.roots).toEqual([{ id: 'sys' }]);
@@ -93,26 +93,28 @@ describe('copySelection', () => {
   it("records a nested root's parent, and the saved positions and sizes", () => {
     const m = system();
     const layout = layoutWith({ default: { api: { x: 10, y: 20 } } }, { api: { w: 200, h: 90 } });
-    const p = copySelection(m, layout, undefined, ['api', 'nope'])!;
+    const p = copySelection({ model: m, layout, plane: undefined }, ['api', 'nope'])!;
     expect(p.roots).toEqual([{ id: 'api', parent: 'sys' }]);
     expect(p.positions).toEqual({ api: { x: 10, y: 20 } });
     expect(p.sizes).toEqual({ api: { w: 200, h: 90 } });
   });
 
   it('falls back to on-screen positions the overlay does not hold', () => {
-    const p = copySelection(system(), undefined, undefined, ['web'], { web: { x: 5, y: 6 } })!;
+    const p = copySelection({ model: system(), layout: undefined, plane: undefined }, ['web'], {
+      web: { x: 5, y: 6 },
+    })!;
     expect(p.positions).toEqual({ web: { x: 5, y: 6 } });
   });
 
   it('is null when nothing selected names a node', () => {
-    expect(copySelection(system(), undefined, undefined, ['nope'])).toBeNull();
-    expect(copySelection(system(), undefined, undefined, [])).toBeNull();
+    expect(copySelection({ model: system(), layout: undefined, plane: undefined }, ['nope'])).toBeNull();
+    expect(copySelection({ model: system(), layout: undefined, plane: undefined }, [])).toBeNull();
   });
 });
 
 describe('serializeClipboard / parseClipboard', () => {
   it('round-trips, and ignores text that is not ours', () => {
-    const p = copySelection(system(), undefined, undefined, ['web'])!;
+    const p = copySelection({ model: system(), layout: undefined, plane: undefined }, ['web'])!;
     expect(parseClipboard(serializeClipboard(p))).toEqual(p);
     expect(parseClipboard('hello')).toBeNull();
     expect(parseClipboard('{"format":"diagc/clipboard@1"')).toBeNull(); // truncated
@@ -123,7 +125,7 @@ describe('serializeClipboard / parseClipboard', () => {
 describe('pasteCommand', () => {
   it('duplicates a container in place: fresh ids, inner containment and relations rewired, one valid batch', () => {
     const m = system();
-    const p = copySelection(m, undefined, undefined, ['sys'])!;
+    const p = copySelection({ model: m, layout: undefined, plane: undefined }, ['sys'])!;
     const out = pasteCommand(m, p, ctx())!;
     expect(out.command.type).toBe('batch');
     const after = applied(m, out.command);
@@ -141,7 +143,7 @@ describe('pasteCommand', () => {
 
   it('drops the cross-diagram key, keeps a layer that exists and swaps one that does not for the pen', () => {
     const m = system();
-    const p = copySelection(m, undefined, undefined, ['api'])!;
+    const p = copySelection({ model: m, layout: undefined, plane: undefined }, ['api'])!;
     const here = pasteCommand(m, p, ctx())!;
     const node = applied(m, here.command).model.nodes.find((n) => n.id === here.roots[0])!;
     expect(node.key).toBeUndefined();
@@ -156,7 +158,7 @@ describe('pasteCommand', () => {
 
   it("with nothing selected, pastes under the originals' parent; into another diagram, at top level", () => {
     const m = system();
-    const p = copySelection(m, undefined, undefined, ['api'])!;
+    const p = copySelection({ model: m, layout: undefined, plane: undefined }, ['api'])!;
     const same = pasteCommand(m, p, ctx())!;
     expect(applied(m, same.command).model.containment).toContainEqual({ parent: 'sys', child: same.roots[0] });
     const other = empty();
@@ -166,7 +168,7 @@ describe('pasteCommand', () => {
 
   it('pastes into a selected container, or beside a selected leaf, or beside the copy itself', () => {
     const m = system();
-    const p = copySelection(m, undefined, undefined, ['web'])!;
+    const p = copySelection({ model: m, layout: undefined, plane: undefined }, ['web'])!;
     const into = pasteCommand(m, p, ctx({ selected: 'sys' }))!;
     expect(applied(m, into.command).model.containment).toContainEqual({ parent: 'sys', child: into.roots[0] });
     const beside = pasteCommand(m, p, ctx({ selected: 'db' }))!;
@@ -182,7 +184,7 @@ describe('pasteCommand', () => {
       { default: { sys: { x: 100, y: 50 }, api: { x: 8, y: 9 } } },
       { sys: { w: 400, h: 300 } },
     );
-    const p = copySelection(m, layout, undefined, ['sys'])!;
+    const p = copySelection({ model: m, layout, plane: undefined }, ['sys'])!;
     const first = pasteCommand(m, p, ctx())!;
     const second = pasteCommand(m, p, ctx({ repeat: 1 }))!;
     const pos = (c: EditorCommand, id: string) =>
@@ -205,7 +207,7 @@ describe('pasteCommand', () => {
         r.from === 'api' ? { ...r, labels: [{ id: 'l1', text: 'reads', t: 0.3 }] } : r,
       ),
     };
-    const p = copySelection(withLabels, undefined, undefined, ['sys'])!;
+    const p = copySelection({ model: withLabels, layout: undefined, plane: undefined }, ['sys'])!;
     const out = pasteCommand(withLabels, p, ctx())!;
     const after = applied(withLabels, out.command).model;
     const copies = after.relations.filter((r) => r.kind === 'uses');
@@ -222,7 +224,7 @@ describe('pasteCommand', () => {
         { id: 'api->db#1', from: 'api', to: 'db', kind: 'uses', labels: [{ id: 'l2', text: 'writes', t: 0.5 }] },
       ],
     };
-    const p = copySelection(doubled, undefined, undefined, ['sys'])!;
+    const p = copySelection({ model: doubled, layout: undefined, plane: undefined }, ['sys'])!;
     const after = applied(doubled, pasteCommand(doubled, p, ctx())!.command).model;
     expect(after.relations.filter((r) => r.kind === 'uses')).toHaveLength(4);
     expect(after.relations.at(-1)!.labels).toEqual([{ id: 'l2', text: 'writes', t: 0.5 }]);
@@ -240,7 +242,7 @@ describe('pasteCommand', () => {
 
     it('a copied action pasted onto the frame lands in a lane, never in the frame', () => {
       const m = flow();
-      const p = copySelection(m, undefined, undefined, ['ship'])!;
+      const p = copySelection({ model: m, layout: undefined, plane: undefined }, ['ship'])!;
       const out = pasteCommand(m, p, ctx({ selected: 'flow' }))!;
       const after = applied(m, out.command).model;
       expect(after.containment).toContainEqual({ parent: 'a', child: out.roots[0] });
@@ -249,7 +251,7 @@ describe('pasteCommand', () => {
 
     it('a copied lane (with its contents) lands in the frame, even with an action selected', () => {
       const m = flow();
-      const p = copySelection(m, undefined, undefined, ['a'])!;
+      const p = copySelection({ model: m, layout: undefined, plane: undefined }, ['a'])!;
       const out = pasteCommand(m, p, ctx({ selected: 'ship' }))!;
       const after = applied(m, out.command).model;
       expect(after.containment).toContainEqual({ parent: 'flow', child: out.roots[0] });
@@ -259,7 +261,11 @@ describe('pasteCommand', () => {
   });
 
   it('is null for an empty payload', () => {
-    const p = { ...copySelection(system(), undefined, undefined, ['web'])!, nodes: [], roots: [] };
+    const p = {
+      ...copySelection({ model: system(), layout: undefined, plane: undefined }, ['web'])!,
+      nodes: [],
+      roots: [],
+    };
     expect(pasteCommand(system(), p, ctx())).toBeNull();
   });
 });
@@ -287,16 +293,16 @@ describe('copy and paste on planes', () => {
     for (const plane of [undefined, 'a', 'b']) {
       // the canvas: sys holds nothing, api and db are top-level boxes
       expect(buildHierarchy(m, plane).childrenOf.get('sys')).toEqual([]);
-      const sys = copySelection(m, undefined, plane, ['sys'])!;
+      const sys = copySelection({ model: m, layout: undefined, plane }, ['sys'])!;
       expect(sys.nodes.map((n) => n.id)).toEqual(['sys']);
       expect(sys.containment).toEqual([]);
-      expect(copySelection(m, undefined, plane, ['api'])!.roots).toEqual([{ id: 'api' }]);
+      expect(copySelection({ model: m, layout: undefined, plane }, ['api'])!.roots).toEqual([{ id: 'api' }]);
     }
   });
 
   it('pastes by the hierarchy the canvas draws when the first plane borrows', () => {
     const m = borrowingFirst();
-    const web = copySelection(m, undefined, undefined, ['web'])!;
+    const web = copySelection({ model: m, layout: undefined, plane: undefined }, ['web'])!;
     for (const plane of [undefined, 'a', 'b']) {
       const pastePlane = { plane, borrowsContainment: plane === 'a' };
       // beside a top-level leaf → top level; sys has no children, so beside it too
@@ -309,13 +315,75 @@ describe('copy and paste on planes', () => {
     const m = borrowingSecond();
     for (const plane of [undefined, 'a', 'b']) {
       expect(buildHierarchy(m, plane).childrenOf.get('sys')).toEqual(['api', 'db']);
-      expect(copySelection(m, undefined, plane, ['sys'])!.nodes.map((n) => n.id)).toEqual(['sys', 'api', 'db']);
-      expect(copySelection(m, undefined, plane, ['api'])!.roots).toEqual([{ id: 'api', parent: 'sys' }]);
-      const web = copySelection(m, undefined, plane, ['web'])!;
+      expect(copySelection({ model: m, layout: undefined, plane }, ['sys'])!.nodes.map((n) => n.id)).toEqual([
+        'sys',
+        'api',
+        'db',
+      ]);
+      expect(copySelection({ model: m, layout: undefined, plane }, ['api'])!.roots).toEqual([
+        { id: 'api', parent: 'sys' },
+      ]);
+      const web = copySelection({ model: m, layout: undefined, plane }, ['web'])!;
       // beside api and into sys both land in sys
       const pastePlane = { plane, borrowsContainment: plane === 'a' };
       expect(parentOfRoot(m, pasteCommand(m, web, ctx({ ...pastePlane, selected: 'api' }))!)).toBe('sys');
       expect(parentOfRoot(m, pasteCommand(m, web, ctx({ ...pastePlane, selected: 'sys' }))!)).toBe('sys');
     }
+  });
+});
+
+describe('the exact payload and batch', () => {
+  /** every field a paste carries: a plane, a pen, sizes, positions, a relation with all its options and labels */
+  function rich(): { model: DiagramModel; layout: LayoutOverlay } {
+    const base = system();
+    return {
+      model: {
+        ...base,
+        relations: [
+          {
+            id: 'api->db#0',
+            from: 'api',
+            to: 'db',
+            kind: 'uses',
+            label: 'reads',
+            layer: 'gone',
+            description: 'd',
+            style: { line: 'dashed' },
+            polarity: '+',
+            delay: true,
+            fromColumn: 'a',
+            toColumn: 'b',
+            labels: [{ id: 'l1', text: 'x', t: 0.4 }],
+          },
+          { id: 'db->api#0', from: 'db', to: 'api', kind: 'replies', layer: 'ops' },
+        ],
+        planes: [{ id: 'p', name: 'P' }],
+      },
+      layout: layoutWith(
+        { p: { sys: { x: 10, y: 20 }, db: { x: 3, y: 4 } } },
+        { sys: { w: 300, h: 200 }, db: { w: 50, h: 40 } },
+      ),
+    };
+  }
+
+  // breaks if the copy reorders its fields, nodes, containment, roots, positions or sizes
+  it('copies in a fixed order', () => {
+    const { model: m, layout } = rich();
+    const p = copySelection({ model: m, layout, plane: 'p' }, ['sys'], { api: { x: 1, y: 2 } })!;
+    expect(JSON.stringify(p)).toMatchInlineSnapshot(
+      `"{"format":"diagc/clipboard@1","nodes":[{"id":"sys","name":"System","type":"system"},{"id":"api","name":"API","type":"service","key":"svc-api","layer":"ops"},{"id":"db","name":"DB","type":"database"}],"containment":[{"parent":"sys","child":"api"},{"parent":"sys","child":"db"}],"roots":[{"id":"sys"}],"relations":[{"id":"api->db#0","from":"api","to":"db","kind":"uses","label":"reads","layer":"gone","description":"d","style":{"line":"dashed"},"polarity":"+","delay":true,"fromColumn":"a","toColumn":"b","labels":[{"id":"l1","text":"x","t":0.4}]},{"id":"db->api#0","from":"db","to":"api","kind":"replies","layer":"ops"}],"positions":{"sys":{"x":10,"y":20},"api":{"x":1,"y":2},"db":{"x":3,"y":4}},"sizes":{"sys":{"w":300,"h":200},"db":{"w":50,"h":40}}}"`,
+    );
+  });
+
+  // breaks if the paste reorders its commands (nodes, then memberships, then
+  // positions and sizes node by node, then relations) or a command's fields,
+  // which the saved files carry in the same order
+  it('pastes one batch in a fixed order', () => {
+    const { model: m, layout } = rich();
+    const p = copySelection({ model: m, layout, plane: 'p' }, ['sys'], { api: { x: 1, y: 2 } })!;
+    const out = pasteCommand(m, p, ctx({ plane: 'p', penLayer: 'ops', repeat: 1 }))!;
+    expect(JSON.stringify(out)).toMatchInlineSnapshot(
+      `"{"command":{"type":"batch","commands":[{"type":"add-node","node":{"id":"sys-2","name":"System","type":"system","plane":"p","layer":"ops"}},{"type":"add-node","node":{"id":"api-2","name":"API","type":"service","plane":"p","layer":"ops"}},{"type":"add-node","node":{"id":"db-2","name":"DB","type":"database","plane":"p","layer":"ops"}},{"type":"add-containment","parent":"sys-2","child":"api-2","plane":"p"},{"type":"add-containment","parent":"sys-2","child":"db-2","plane":"p"},{"type":"set-position","nodeId":"sys-2","x":58,"y":68,"plane":"p"},{"type":"set-size","nodeId":"sys-2","w":300,"h":200},{"type":"set-position","nodeId":"api-2","x":1,"y":2,"plane":"p"},{"type":"set-position","nodeId":"db-2","x":3,"y":4,"plane":"p"},{"type":"set-size","nodeId":"db-2","w":50,"h":40},{"type":"add-relation","from":"api-2","to":"db-2","opts":{"kind":"uses","label":"reads","layer":"ops","description":"d","style":{"line":"dashed"},"polarity":"+","delay":true,"fromColumn":"a","toColumn":"b"}},{"type":"update-relation","id":"api-2->db-2#0","patch":{"labels":[{"id":"l1","text":"x","t":0.4}]}},{"type":"add-relation","from":"db-2","to":"api-2","opts":{"kind":"replies","layer":"ops"}}]},"roots":["sys-2"]}"`,
+    );
   });
 });

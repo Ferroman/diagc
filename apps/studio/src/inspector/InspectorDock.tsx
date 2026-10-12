@@ -57,8 +57,26 @@ export function InspectorDock(props: InspectorDockProps) {
         <InspectorTabs
           activeTab={dock.leftTab}
           onTabChange={dock.selectTab}
-          properties={<SelectionPanel {...props} />}
-          library={<LibraryTab {...props} />}
+          properties={
+            <SelectionPanel
+              model={model}
+              layout={props.layout}
+              selection={props.selection}
+              nav={props.nav}
+              today={props.today}
+              session={props.session}
+            />
+          }
+          library={
+            <LibraryTab
+              model={model}
+              selection={props.selection}
+              dock={dock}
+              lib={props.lib}
+              placement={props.placement}
+              session={props.session}
+            />
+          }
         />
       ) : props.loopAnalysis && selection?.kind === 'node' && model.nodes.some((n) => n.id === selection.id) ? (
         <LeveragePanel
@@ -82,7 +100,14 @@ export function InspectorDock(props: InspectorDockProps) {
 }
 
 /** The Properties tab: the selected node's or relation's panel, else its details. */
-function SelectionPanel({ model, layout, selection: canvas, nav, today, session }: InspectorDockProps) {
+function SelectionPanel({
+  model,
+  layout,
+  selection: canvas,
+  nav,
+  today,
+  session,
+}: Pick<InspectorDockProps, 'model' | 'layout' | 'selection' | 'nav' | 'today' | 'session'>) {
   const { selection, select } = canvas;
   const { activePlane, notation } = nav;
   const { editor, layoutApiRef } = session;
@@ -134,7 +159,14 @@ const applyTargetFor = (
 };
 
 /** The Library tab: the palette, and what adds to it. */
-function LibraryTab({ model, selection, dock, lib, placement, session }: InspectorDockProps) {
+function LibraryTab({
+  model,
+  selection,
+  dock,
+  lib,
+  placement,
+  session,
+}: Pick<InspectorDockProps, 'model' | 'selection' | 'dock' | 'lib' | 'placement' | 'session'>) {
   const { importLibraryIcon, importLibraryShape } = libraryImports(lib, session.reportIssues);
   return (
     <LibraryPanel

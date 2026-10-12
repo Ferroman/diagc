@@ -81,7 +81,8 @@ export function IdentityFields({
     // Retyping into plan-zone/plan-event with no dates would otherwise fail
     // save with plan-missing — seed them the way a canvas drop does, batched
     // with the retype so undo reverts both together.
-    const dateCmd = today !== undefined ? seedOnRetype(model, activePlane, node.id, trimmed, today) : undefined;
+    const dateCmd =
+      today !== undefined ? seedOnRetype({ model, plane: activePlane, today }, node.id, trimmed) : undefined;
     onCommand(dateCmd === undefined ? typeCmd : { type: 'batch', commands: [typeCmd, dateCmd] });
   };
   return (

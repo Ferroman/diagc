@@ -1,29 +1,13 @@
 import type { RefObject } from 'react';
-import {
-  ACTIVITY_FRAME_TYPE,
-  ACTIVITY_LANE_TYPE,
-  DEFAULT_IMAGE_NODE_SIZE,
-  defined,
-  LEAF_SIZE,
-  errMessage,
-  uniqueNodeId,
-  type DiagramModel,
-  type DiagramNode,
-  type EditorCommand,
-  type NotationId,
-  type Point,
-} from '@diagc/core/internal';
+import { defined, LEAF_SIZE, type DiagramModel, type NotationId, type Point } from '@diagc/core/internal';
 import type { DiagramSelection, LayoutApi } from '@diagc/renderer';
 import type { EditorApi } from '../session/useEditor';
-import { readImageSize, uploadAsset } from './images';
-import { seedDates, seedOnRetype } from '../notations/plan/planActions';
-import { entryToNode, entryToNodeDetails } from '../library/entry';
 import type { LibraryEntry } from '../library/types';
 import type { UseLibrary } from '../library/useLibrary';
 import { defaultParentId } from './newNodeParent';
 import { createNodeAt, placeTags } from './create-node';
-import { activityDropPosition, homeActivityParent } from '../activity/activityDrop';
-import { studioNotation } from '../notations';
+import { importImages } from './imageImport';
+import { applyLibraryEntry, placeLibraryEntry, type PlaceAt } from './libraryPlacement';
 import type { InspectorTab } from '../inspector/InspectorTabs';
 
 export interface UseNodePlacementOptions {
@@ -69,7 +53,7 @@ export interface NodePlacement {
   /** Empty-canvas double-click create; returns the new node id for in-canvas rename. */
   createAt: (pos: Point) => string | undefined;
   /** Place a library entry (click = under the selection; drop = at the point). */
-  placeFromLibrary: (entry: LibraryEntry, opts?: { parentId?: string; position?: Point }) => void;
+  placeFromLibrary: (entry: LibraryEntry, opts?: PlaceAt) => void;
   /** Restyle the selected node to match a library card. */
   applyFromLibrary: (entry: LibraryEntry) => void;
   /** A palette entry dragged onto the canvas. */
@@ -85,25 +69,21 @@ export interface NodePlacement {
  * Each flow shares the plane/pen scoping + parent resolution; only the node
  * payload, size/position handling and rename-focus differ per flow.
  */
-export function useNodePlacement({
-  editor,
-  layoutApiRef,
-  selectNode,
-  selectNodeForRename,
-  selectTab,
-  requestLabelEdit,
-  reportIssues,
-  activePlane,
-  activePlaneBorrowsContainment,
-  activePlaneManual,
-  penLayer,
-  selection,
-  drillRoot,
-  model,
-  lib,
-  notation,
-  today,
-}: UseNodePlacementOptions): NodePlacement {
+export function useNodePlacement(options: UseNodePlacementOptions): NodePlacement {
+  const {
+    editor,
+    layoutApiRef,
+    selectNode,
+    selectNodeForRename,
+    selectTab,
+    activePlane,
+    activePlaneBorrowsContainment,
+    activePlaneManual,
+    penLayer,
+    selection,
+    drillRoot,
+    lib,
+  } = options;
   // Whiteboard-style add: drop the node immediately (under the selected
   // container, if any) and put focus in its name field — no prompt.
   const addNode = () => {
@@ -177,136 +157,9 @@ export function useNodePlacement({
     return place.id;
   };
 
-  // Place a library entry as a node: mirrors addNode's id generation and
-  // plane/pen scoping, but stamps the entry's template instead of a blank node,
-  // sizes it when the template carries dimensions, and names in place on the
-  // canvas — the Properties Name field addNode focuses is not mounted while the
-  // Library tab is up, and placing leaves that tab open on purpose (you place
-  // several in a row).
-  // Click-to-place (no position) nests under the selected container, mirroring
-  // Add node; drag-to-place passes the drop point, so the node lands there
-  // top-level instead — or, dropped on a node, nests under it (at the drop point
-  // when that node is an activity lane or region, elk-placed otherwise).
-  const placeFromLibrary = (entry: LibraryEntry, opts?: { parentId?: string; position?: Point }) => {
-    const m = editor.session?.state.model;
-    if (m === undefined) return;
-    const kind = entry.template.image !== undefined || entry.template.shape !== undefined ? 'icon' : 'node';
-    // Drop-on-node or click-with-selection nests; a bare drop point lands in the
-    // current drilled level, or top-level when not drilled. Inside an activity
-    // frame the target is re-homed to a lane (only lanes may sit in a frame).
-    const boundsOf = (id: string) => layoutApiRef.current?.nodeBounds(id);
-    const parentId = homeActivityParent(
-      m,
-      activePlane,
-      opts?.parentId ?? (opts?.position === undefined ? defaultParentId(selection, drillRoot) : drillRoot),
-      opts?.position,
-      boundsOf,
-    );
-    const place = createNodeAt(m, {
-      kind,
-      plane: activePlane,
-      borrowsContainment: activePlaneBorrowsContainment,
-      parentId,
-    });
-    // The Zone/Event templates carry no dates of their own, and validation
-    // checks a zone's or event's dates on any plane, so every placement seeds
-    // them. Only a notation that draws x as days (the plan) lets the drop
-    // point pick the day.
-    const seeded = seedDates(
-      m,
-      activePlane,
-      entry.template.type,
-      defined({ x: studioNotation(notation).datesFromDropPoint === true ? opts?.position?.x : undefined, parentId }),
-      today,
-    );
-    const node = {
-      ...entryToNode(entry, place.id, placeTags(place, penLayer)),
-      ...defined({ metadata: seeded }),
-    };
-    const add = { type: 'add-node', node, ...defined({ parent: place.parent }) } as const;
-    if (node.type === ACTIVITY_FRAME_TYPE) {
-      // A frame is only ever drawn as its lanes, and the Activity panel's Add
-      // lane is out of sight until the frame is selected: arrive with the first
-      // band so there is somewhere to drop into. One batch, one undo.
-      const lane: DiagramNode = {
-        id: uniqueNodeId(m, 'Lane 1'),
-        name: 'Lane 1',
-        type: ACTIVITY_LANE_TYPE,
-        ...placeTags(place, penLayer),
-      };
-      const lanePlane = defined({ plane: activePlane });
-      editor.dispatch({
-        type: 'batch',
-        commands: [add, { type: 'add-node', node: lane, parent: { id: place.id, ...lanePlane } }],
-      });
-    } else {
-      editor.dispatch(add);
-    }
-    if (entry.template.width !== undefined && entry.template.height !== undefined) {
-      editor.dispatch({ type: 'set-size', nodeId: place.id, w: entry.template.width, h: entry.template.height });
-    }
-    const w = entry.template.width ?? LEAF_SIZE.width;
-    const h = entry.template.height ?? LEAF_SIZE.height;
-    // Dropped into a lane: land where the pointer let go, not wherever elk would
-    // put it — the band then grows around the node you placed.
-    const local =
-      opts?.position === undefined
-        ? undefined
-        : activityDropPosition(m, place.parent?.id, opts.position, { width: w, height: h }, boundsOf);
-    if (local !== undefined) {
-      editor.dispatch({
-        type: 'set-position',
-        nodeId: place.id,
-        ...local,
-        ...defined({ plane: activePlane }),
-      });
-    }
-    if (place.parent === undefined && opts?.position !== undefined) {
-      editor.dispatch({
-        type: 'set-position',
-        nodeId: place.id,
-        x: opts.position.x - w / 2,
-        y: opts.position.y - h / 2,
-        ...defined({ plane: activePlane }),
-      });
-    }
-    selectNode(place.id);
-    requestLabelEdit(place.id);
-  };
-
-  // Restyle the selected node to match a library card: overwrite its visual
-  // channels (type/color/image/shape) with the card's and adopt the card's
-  // footprint, leaving the node's identity, containment and relations intact.
-  // This is the "make this node look like that library entry" path (vs. placing
-  // a fresh node), so the target is the current selection, not a new id.
-  const applyFromLibrary = (entry: LibraryEntry) => {
-    if (selection?.kind !== 'node') return;
-    const id = selection.id;
-    const details = entryToNodeDetails(entry);
-    const typeCmd: EditorCommand = { type: 'set-node-details', id, details };
-    // A card can restyle the selection straight into plan-zone/plan-event —
-    // the same missing-dates trap as a Properties → Type retype (NodeFields'
-    // commitType, the notation's OTHER no-drop-point retype path), fixed the
-    // same way: seed via seedOnRetype and batch it with the retype so undo
-    // reverts both together. Anchored on the node's EXISTING containment on
-    // `activePlane` (seedOnRetype's own planGraph lookup), since restyling
-    // changes no containment of its own.
-    const dateCmd =
-      model !== undefined && typeof details.type === 'string'
-        ? seedOnRetype(model, activePlane, id, details.type, today)
-        : undefined;
-    editor.dispatch(dateCmd === undefined ? typeCmd : { type: 'batch', commands: [typeCmd, dateCmd] });
-    if (entry.template.width !== undefined && entry.template.height !== undefined) {
-      editor.dispatch({ type: 'set-size', nodeId: id, w: entry.template.width, h: entry.template.height });
-    }
-    // A seeded card (the Table entry) also stamps its columns — but only onto a
-    // column-less target, so restyling an existing table with the Table card
-    // keeps its columns instead of resetting them to the lone `id` seed.
-    const node = model?.nodes.find((n) => n.id === id);
-    if (entry.template.columns !== undefined && (node?.columns === undefined || node.columns.length === 0)) {
-      editor.dispatch({ type: 'set-table-columns', id, columns: entry.template.columns });
-    }
-  };
+  // A card from the palette: placed (libraryPlacement), or restyling the selection.
+  const placeFromLibrary = (entry: LibraryEntry, opts?: PlaceAt) => placeLibraryEntry(options, entry, opts);
+  const applyFromLibrary = (entry: LibraryEntry) => applyLibraryEntry(options, entry);
 
   // A palette entry dragged onto the canvas: look it up and place it at the drop point,
   // or nest it under the node it landed on.
@@ -316,59 +169,8 @@ export function useNodePlacement({
     placeFromLibrary(entry, { position, parentId: targetNodeId });
   };
 
-  // Drop/paste/picker all land here: upload, then create an image node (sized
-  // from the file, positioned at the drop point when there is one).
-  const addImages = async (files: File[], position?: Point) => {
-    const issues: { message: string }[] = [];
-    for (const file of files) {
-      try {
-        const name = await uploadAsset(file);
-        const size = (await readImageSize(file)) ?? DEFAULT_IMAGE_NODE_SIZE;
-        // peek(), not session: the render-bound session is stale inside this
-        // loop, so a second file would reuse the first file's node id. Read
-        // right before the dispatches (after all the awaits above) so the
-        // stale window is zero.
-        const m = editor.peek()?.state.model;
-        if (m === undefined) break;
-        // Plane-tag the image like any other added node: view-local on a
-        // non-borrowing active plane, shared otherwise (createNodeAt). This
-        // fixes the old inconsistency where the node was left shared while its
-        // set-position below was written to the plane's bucket — an image added
-        // on a plane used to leak into every view with an orphan position.
-        const place = createNodeAt(m, {
-          kind: 'image',
-          plane: activePlane,
-          borrowsContainment: activePlaneBorrowsContainment,
-          parentId: undefined,
-        });
-        editor.dispatch({
-          type: 'add-node',
-          node: {
-            id: place.id,
-            name: file.name.replace(/\.[^.]*$/, '') || place.id,
-            type: 'image',
-            image: name,
-            ...placeTags(place, penLayer),
-          },
-        });
-        editor.dispatch({ type: 'set-size', nodeId: place.id, w: size.w, h: size.h });
-        if (position !== undefined) {
-          editor.dispatch({
-            type: 'set-position',
-            nodeId: place.id,
-            x: position.x - size.w / 2,
-            y: position.y - size.h / 2,
-            ...defined({ plane: activePlane }),
-          });
-        }
-        selectNode(place.id);
-      } catch (e) {
-        issues.push({ message: errMessage(e) });
-      }
-    }
-    // One banner for the whole batch — per-file writes would overwrite each other.
-    if (issues.length > 0) reportIssues(issues);
-  };
+  // Drop/paste/picker all land here (imageImport).
+  const addImages = (files: File[], position?: Point) => importImages(options, files, position);
 
   return { addNode, createAt, placeFromLibrary, applyFromLibrary, dropLibraryEntry, addImages };
 }
