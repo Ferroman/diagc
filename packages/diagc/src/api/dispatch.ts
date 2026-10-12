@@ -46,6 +46,15 @@ function send(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
+function decodes(s: string): boolean {
+  try {
+    decodeURIComponent(s);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Run the matching route with plain values — no HTTP anywhere. undefined means
  * no route matched (the HTTP wrapper falls through to static serving; the
  * Obsidian host answers 404). Errors become envelopes; this boundary never
@@ -60,6 +69,11 @@ export async function runRoute(
   try {
     // matchRoute already proved the match; re-running exposes the captures.
     const match = request.url.match(route.pattern) as RegExpMatchArray;
+    // The routes decode their captures; one that cannot be decoded is the
+    // client's mistake, answered here rather than thrown as a server error.
+    if (!match.slice(1).every((c) => c === undefined || decodes(c))) {
+      return { status: 400, body: { issues: [{ message: 'Malformed name' }] } };
+    }
     let body: unknown = undefined;
     if (route.bodyMode === 'json') {
       try {

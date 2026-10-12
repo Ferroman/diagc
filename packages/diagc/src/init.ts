@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import fg from 'fast-glob';
 import { errMessage, type IncludeResolver } from '@diagc/core/internal';
-import { isSafeName } from './api/handlers';
+import { isSafeName } from './names';
 import { compileFile } from './compile';
 import { readStarter, UnknownStarterError } from './starters';
 
@@ -125,7 +125,7 @@ async function starterStep(opts: InitOptions, io: InitIo): Promise<string | unde
     }
   }
   const name = diagramName(opts.name ?? DEFAULT_NAME);
-  if (!isSafeName(name) || name.endsWith('/')) {
+  if (!isSafeName(name)) {
     throw new InitError(
       `'${name}' is not a diagram name — use lowercase letters, digits and '-', with '/' for a folder (shop, team/app).`,
     );

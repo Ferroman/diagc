@@ -54,9 +54,8 @@ async function newDiagram(o: UseDiagramActionsOptions): Promise<void> {
   const folder = groupOf(selected);
   const seed = folder === '' ? '' : `${folder}/`;
   const raw = (await getHost().promptText('New diagram name (lowercase, digits, - or /):', seed))?.trim();
-  // A trailing slash is a folder with no name in it — OK on the untouched
-  // seed. The server's isSafeName would accept it and write a nameless
-  // `.diagram.json`, so it is refused here.
+  // A trailing slash is a folder with no name in it, which is what the untouched
+  // seed is: the server would refuse it, so it quietly cancels here instead.
   if (raw === undefined || raw === '' || raw.endsWith('/')) return;
   if (names.includes(raw) || ownedNames.has(raw)) {
     getHost().notify(`A diagram named '${raw}' already exists.`);

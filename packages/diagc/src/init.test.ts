@@ -171,6 +171,12 @@ describe('runInit refuses, and writes nothing', () => {
     expect(tree()).toEqual([]);
   });
 
+  it('a last segment the studio API takes for itself', async () => {
+    expect(await runInit(opts({ name: 'team/rename' }), io)).toBe(1);
+    expect(err[0]).toMatch(/^diagc: 'team\/rename' is not a diagram name/);
+    expect(tree()).toEqual([]);
+  });
+
   it('an unknown type even when the default name is taken', async () => {
     await runInit(opts(), io);
     err = [];

@@ -164,11 +164,43 @@ describe('handleApiRequest', () => {
 
   it('turns a thrown handler error into a 500 envelope instead of rejecting', async () => {
     const root = await tempRoot();
-    // '%%' is malformed percent-encoding: decodeURIComponent throws inside the
+    // A file where the folder should be: the save's mkdir throws inside the
     // route handler, which the boundary must convert rather than propagate.
-    const r = await request(root, '/api/diagrams/%%');
+    await mkdir(path.join(root, 'diagrams'), { recursive: true });
+    await writeFile(path.join(root, 'diagrams', 'team'), 'not a folder');
+    const r = await request(root, '/api/diagrams/team/foo', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(goodModel),
+    });
     expect(r.status).toBe(500);
     expect(r.body).toHaveProperty('issues');
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('answers 400 to a name with malformed percent-encoding', async () => {
+    const root = await tempRoot();
+    const r = await request(root, '/api/diagrams/%%');
+    expect(r.status).toBe(400);
+    expect(JSON.stringify(r.body)).toContain('Malformed name');
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('refuses to save or rename to a name a route would shadow', async () => {
+    const root = await tempRoot();
+    const json = { method: 'POST', headers: { 'content-type': 'application/json' } };
+    // Encoded, the slash reaches the save route; the name would then be unreachable unencoded.
+    const saved = await request(root, '/api/diagrams/team%2Frename', { ...json, body: JSON.stringify(goodModel) });
+    expect(saved.status).toBe(400);
+    expect(await request(root, '/api/diagrams/a/', { ...json, body: JSON.stringify(goodModel) })).toMatchObject({
+      status: 400,
+    });
+    await request(root, '/api/diagrams/shop', { ...json, body: JSON.stringify(goodModel) });
+    const renamed = await request(root, '/api/diagrams/shop/rename', {
+      ...json,
+      body: JSON.stringify({ to: 'team/eject' }),
+    });
+    expect(renamed.status).toBe(400);
     await rm(root, { recursive: true, force: true });
   });
 
@@ -353,6 +385,14 @@ describe('runRoute', () => {
     const root = await tempRoot();
     const ctx = { diagramsDir: path.join(root, 'diagrams'), artifactsDir: path.join(root, 'artifacts') };
     expect(await runRoute({ method: 'GET', url: '/nope' }, ctx, handlers)).toBeUndefined();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('runRoute answers 400 to a capture that does not decode', async () => {
+    const root = await tempRoot();
+    const ctx = { diagramsDir: path.join(root, 'diagrams'), artifactsDir: path.join(root, 'artifacts') };
+    const r = await runRoute({ method: 'GET', url: '/api/diagrams/%E0%A4%A' }, ctx, handlers);
+    expect(r).toEqual({ status: 400, body: { issues: [{ message: 'Malformed name' }] } });
     await rm(root, { recursive: true, force: true });
   });
 

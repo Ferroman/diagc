@@ -13,6 +13,7 @@ import {
 import { writeFileAtomic } from '../atomic-write';
 import { EjectError, ejectDiagram } from '../eject';
 import { resolveInclude } from '../includes';
+import { isSafeName } from '../names';
 import { snapshotSession } from '../snapshots';
 
 export interface HandlerResult {
@@ -20,9 +21,8 @@ export interface HandlerResult {
   body: unknown;
 }
 
-export function isSafeName(name: string): boolean {
-  return /^[a-z0-9][a-z0-9/-]*$/.test(name) && !name.includes('..') && !name.includes('//');
-}
+// The name rule every route checks, for the hosts and tests that reach it here.
+export { isSafeName };
 
 // path.dirname(diagramsDir) is the .diagrams root when diagramsDir is
 // .diagrams/src — the same rootDir a locked session uses elsewhere (eject.ts).
