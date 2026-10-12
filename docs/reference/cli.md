@@ -62,7 +62,7 @@ diagc compile
 diagc compile .diagrams/src/acme.diagram.ts
 ```
 
-- **Input:** `files...` if given, otherwise everything matching `.diagrams/src/**/*.diagram.{ts,json}`.
+- **Input:** `files...` if given, otherwise everything matching `.diagrams/src/**/*.diagram.{ts,json}`, in path order (as `lint` and `publish` take them too).
 - **Output:** one `<name>.diagram.json` per source under `--out`. Subdirectories of `.diagrams/src/` are mirrored, so `src/team-a/app.diagram.ts` becomes `.artifacts/team-a/app.diagram.json`.
 - **Exit code:** `0` if every file compiled, `1` if any failed. Failures print `✗ <file>` and the error; other files still compile. A source that throws while it runs — a misspelled method, a builder call that refuses — is placed at `<file>:<line>:<column>`, the first stack frame inside that file.
 

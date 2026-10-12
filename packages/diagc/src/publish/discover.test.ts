@@ -27,4 +27,14 @@ describe('discoverDiagrams', () => {
     expect(found.find((f) => f.name === 'foo')?.drawingsPath).toBe(path.join(srcDir, 'foo.drawings.json'));
     expect(found.find((f) => f.name === 'bar')?.drawingsPath).toBeUndefined();
   });
+
+  it('lists the artifacts in path order, whatever order the file system gives', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'dg-'));
+    const artifactsDir = path.join(root, 'artifacts');
+    await mkdir(path.join(artifactsDir, 'a'), { recursive: true });
+    for (const rel of ['b.diagram.json', 'a/z.diagram.json', 'c.diagram.json'])
+      await writeFile(path.join(artifactsDir, rel), '{}');
+    const found = await discoverDiagrams(artifactsDir, path.join(root, 'src'));
+    expect(found.map((f) => f.name)).toEqual(['a/z', 'b', 'c']);
+  });
 });

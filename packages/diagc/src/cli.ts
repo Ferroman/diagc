@@ -36,6 +36,7 @@ import { resolveInclude } from './includes';
 import { snapshotSession } from './snapshots';
 import { formatCompileEvent, startWatch } from './watch';
 import { discoverDiagrams } from './publish/discover';
+import { globSorted } from './glob';
 import { galleryLink } from './publish/gallery';
 import { publishDiagrams, type PublishOptions } from './publish/publish';
 import { runStudio } from './studio';
@@ -300,7 +301,7 @@ async function main() {
   const snap = snapshotSession(resolveInclude, '.diagrams', args.updateIncludes ? 'update' : 'locked');
 
   if (args.command === 'compile') {
-    const files = args.files.length > 0 ? args.files : await fg(SOURCES);
+    const files = args.files.length > 0 ? args.files : await globSorted(SOURCES);
     if (args.files.length === 0 && files.length === 0) warnNoSources();
     let failed = false;
     for (const file of files) {
@@ -323,7 +324,7 @@ async function main() {
     if (args.updateIncludes && args.files.length === 0 && !failed) await snap.prune();
     return exit(failed ? 1 : 0);
   } else if (args.command === 'lint') {
-    const files = args.files.length > 0 ? args.files : await fg(SOURCES);
+    const files = args.files.length > 0 ? args.files : await globSorted(SOURCES);
     if (args.files.length === 0 && files.length === 0) warnNoSources();
     const reports: LintReport[] = [];
     for (const file of files) {
@@ -372,7 +373,7 @@ async function main() {
     }
     const dirs = publishDirs(args);
     // Compile first so artifacts reflect current sources (TS + include expansion).
-    const sources = await fg('**/*.diagram.{ts,json}', { cwd: dirs.srcDir, absolute: true });
+    const sources = await globSorted('**/*.diagram.{ts,json}', { cwd: dirs.srcDir, absolute: true });
     if (sources.length === 0) warnNoSources(dirs.srcDir);
     let failed = false;
     for (const f of sources) {

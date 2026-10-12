@@ -13,7 +13,8 @@ export interface DiscoveredDiagram {
  * with its layout and drawings sidecars from the source tree (artifacts carry
  * neither — compile never touches a sidecar). */
 export async function discoverDiagrams(artifactsDir: string, srcDir: string): Promise<DiscoveredDiagram[]> {
-  const files = await fg('**/*.diagram.json', { cwd: artifactsDir, absolute: true });
+  // In path order: fast-glob's follows the file system's, which changes from run to run.
+  const files = (await fg('**/*.diagram.json', { cwd: artifactsDir, absolute: true })).sort();
   const out: DiscoveredDiagram[] = [];
   const exists = async (p: string): Promise<boolean> => {
     try {

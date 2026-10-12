@@ -141,22 +141,28 @@ describe('with no sources', () => {
     expect(stdout).toContain('Watching .diagrams/src/x.diagram.json');
   }, 30_000);
 
-  it('does not say so when there is a source', () => {
+  it('does not say so when there is a source, and reports the sources in path order', () => {
     const dir = fresh(true);
     const model = {
       version: 1,
       id: 'x',
       name: 'X',
-      nodes: [{ id: 'a', name: 'A', type: 'service' }],
+      nodes: [{ id: 'a', name: 'A', type: 'servise' }],
       containment: [],
       relations: [],
       layers: [],
       planes: [],
     };
-    writeFileSync(path.join(dir, '.diagrams', 'src', 'x.diagram.json'), JSON.stringify(model));
+    mkdirSync(path.join(dir, '.diagrams', 'src', 'a'));
+    for (const rel of ['b', 'a/z', 'c'])
+      writeFileSync(path.join(dir, '.diagrams', 'src', `${rel}.diagram.json`), JSON.stringify(model));
     const r = run(['lint', '--json'], dir);
     expect(r.stderr).toBe('');
-    expect(r.stdout).toBe('[]\n');
+    expect((JSON.parse(r.stdout) as { file: string }[]).map((f) => f.file)).toEqual([
+      '.diagrams/src/a/z.diagram.json',
+      '.diagrams/src/b.diagram.json',
+      '.diagrams/src/c.diagram.json',
+    ]);
   }, 30_000);
 });
 
