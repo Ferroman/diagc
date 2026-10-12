@@ -121,6 +121,42 @@ describe('runInit, fresh', () => {
   });
 });
 
+describe('runInit, given its directory as a relative path', () => {
+  it('reads `.` as the current directory and `..` as its parent: the same lines and the same files', async () => {
+    const files = (root: string): string[] => readdirSync(root, { recursive: true }).map(String).sort();
+    /** runInit on `root` from `at`, and what it printed */
+    const runFrom = async (at: string, root: string): Promise<string[]> => {
+      const lines: string[] = [];
+      const was = process.cwd();
+      process.chdir(at);
+      try {
+        expect(
+          await runInit(opts({ cwd: root, name: 'team/shop' }), { out: (t) => void lines.push(t), err: io.err }),
+        ).toBe(0);
+      } finally {
+        process.chdir(was);
+      }
+      return lines;
+    };
+    const absolute = await runFrom(tmpdir(), cwd);
+    expect(absolute.join('\n')).toMatch(/^✓ \.diagrams\/src\/team\/shop\.diagram\.ts\s+\(basic starter\)$/m);
+    expect(absolute.join('\n')).toMatch(/^✓ compiled\s+-> \.diagrams\/\.artifacts\/team\/shop\.diagram\.json$/m);
+    const here = mkdtempSync(path.join(tmpdir(), 'diagc-init-here-'));
+    const parent = mkdtempSync(path.join(tmpdir(), 'diagc-init-parent-'));
+    try {
+      mkdirSync(path.join(parent, 'sub'));
+      expect(await runFrom(here, '.')).toEqual(absolute);
+      expect(await runFrom(path.join(parent, 'sub'), '..')).toEqual(absolute);
+      expect(files(here)).toEqual(files(cwd));
+      expect(files(parent)).toEqual(['sub', ...files(cwd)].sort());
+    } finally {
+      rmSync(here, { recursive: true, force: true });
+      rmSync(parent, { recursive: true, force: true });
+    }
+    expect(err).toEqual([]);
+  });
+});
+
 describe('runInit, again', () => {
   it('skips the starter when there is a diagram and neither name nor type was given', async () => {
     await runInit(opts(), io);

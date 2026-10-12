@@ -38,4 +38,13 @@ describe('diagramName', () => {
     expect(diagramName('shop.diagram.ts')).toBe('shop');
     expect(diagramName('.diagrams/src/team/app.diagram.json')).toBe('team/app');
   });
+
+  it('strips the prefix only where the argument starts with exactly `.diagrams/src/`', () => {
+    expect(diagramName('.diagrams/src/')).toBe('');
+    expect(diagramName('.diagrams/src')).toBe('.diagrams/src');
+    expect(diagramName('.diagrams/srcx/shop')).toBe('.diagrams/srcx/shop');
+    expect(diagramName('./.diagrams/src/shop.diagram.json')).toBe('./.diagrams/src/shop');
+    expect(diagramName('app/.diagrams/src/shop')).toBe('app/.diagrams/src/shop');
+    expect(diagramName('.diagrams/src/.diagrams/src/shop.diagram.ts')).toBe('.diagrams/src/shop');
+  });
 });

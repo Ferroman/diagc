@@ -63,6 +63,34 @@ describe('diff', () => {
     });
   });
 
+  it('compares the .diagrams of the directory it runs in, below the repository root, and writes its pages there', async () => {
+    await inTempDir(async (dir) => {
+      const pkg = path.join(dir, 'pkg');
+      writeSources(pkg, { shop: diagram('shop') });
+      writeSources(dir, { top: diagram('top') });
+      commitAll(dir);
+      writeSources(pkg, { shop: diagram('shop', { nodes: [{ id: 'a', name: 'B', type: 'service' }] }) });
+      process.chdir(pkg);
+      const io = captureIo();
+      expect(await diff.run(argsOf(['HEAD'], { '--no-images': true }), contextFor(io))).toBe(0);
+      expect(io.stdout).toBe(
+        'diagc diff HEAD -> working tree\nshop:\n  ~ A -> B (renamed)\n1 diagram(s) changed, 0 unchanged\n',
+      );
+      expect(io.stderr).toBe(
+        '✓ 2 page(s) -> .diagrams/diff/HEAD..working-tree\n' +
+          '✓ side by side -> .diagrams/diff/HEAD..working-tree/index.html\n' +
+          '✓ for an ADR -> .diagrams/diff/HEAD..working-tree/summary.md\n',
+      );
+      expect(readdirSync(path.join(pkg, '.diagrams', 'diff', 'HEAD..working-tree')).sort()).toEqual([
+        'index.html',
+        'shop.after.html',
+        'shop.before.html',
+        'summary.md',
+      ]);
+      expect(readdirSync(path.join(dir, '.diagrams'))).toEqual(['src']);
+    });
+  });
+
   it('prints only JSON on stdout with --json, and writes into --out', async () => {
     await inTempDir(async (dir) => {
       writeSources(dir, { shop: diagram('shop') });

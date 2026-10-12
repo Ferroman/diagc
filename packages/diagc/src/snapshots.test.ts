@@ -87,6 +87,17 @@ describe('snapshotSession', () => {
     expect(off.ref).toBe('https://x.test/c.diagram.json');
   });
 
+  it('update mode writes the lock and the vendored file in its folder, the lock naming the file relative to it', async () => {
+    const rootDir = await tmpRoot();
+    await snapshotSession(fakeBase, rootDir, 'update').resolver('https://x.test/c.diagram.json', '/tmp/a.ts');
+    const lock = JSON.parse(await readFile(path.join(rootDir, 'includes.lock.json'), 'utf8')) as {
+      includes: Record<string, { file: string }>;
+    };
+    const file = lock.includes['https://x.test/c.diagram.json']?.file ?? '';
+    expect(file).toMatch(/^includes\/c-[0-9a-f]{8}\.diagram\.json$/);
+    expect(await readFile(path.join(rootDir, file), 'utf8')).toBe(`${JSON.stringify(CHILD, null, 2)}\n`);
+  });
+
   it('a relative remote spec resolves against its fromRef before lookup', async () => {
     const rootDir = await tmpRoot();
     const fromRef = 'https://x.test/root.diagram.json';

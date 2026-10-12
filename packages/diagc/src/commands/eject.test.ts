@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { argsOf, captureIo, contextFor, diagram, inTempDir, writeSources } from '../../test-fixtures/cli';
@@ -14,6 +14,17 @@ describe('eject', () => {
       );
       expect([io.stdout, io.stderr]).toEqual(['✓ .diagrams/src/shop.diagram.ts\n', '']);
       expect(existsSync(path.join(dir, 'build', 'shop.diagram.json'))).toBe(true);
+    });
+  });
+
+  it('writes the source beside the JSON in .diagrams/src, and compiles it into .diagrams/.artifacts without --out', async () => {
+    await inTempDir(async (dir) => {
+      writeSources(dir, { 'team/shop': diagram('shop') });
+      const io = captureIo();
+      expect(await eject.run(argsOf(['team/shop']), contextFor(io))).toBe(0);
+      expect([io.stdout, io.stderr]).toEqual(['✓ .diagrams/src/team/shop.diagram.ts\n', '']);
+      expect(readdirSync(path.join(dir, '.diagrams', 'src', 'team'))).toEqual(['shop.diagram.ts']);
+      expect(existsSync(path.join(dir, '.diagrams', '.artifacts', 'team', 'shop.diagram.json'))).toBe(true);
     });
   });
 
