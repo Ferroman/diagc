@@ -18,7 +18,7 @@ import { LoopHighlightContext } from '../loops/loop-highlight';
 import { useLoopOverlay } from '../loops/useLoopOverlay';
 import { stylePreset } from '../sketch/stylePresets';
 import { typeHuesOf } from './type-hues';
-import { canvasClassName, canvasStyle } from './canvas-frame';
+import { canvasClassName, canvasGrid, canvasStyle } from './canvas-frame';
 import { canvasToggles, toggleOf } from './canvas-toggles';
 import { CanvasControls } from './CanvasControls';
 import { CanvasOverlays } from './CanvasOverlays';
@@ -290,6 +290,7 @@ function Inner(props: DiagramViewProps) {
   });
 
   const { pen, laser } = gestures;
+  const grid = canvasGrid(preset, props.snapGrid);
   return (
     <LoopHighlightContext.Provider value={loopHighlight}>
       {/* the badges inside read this to know whether their note is
@@ -349,8 +350,7 @@ function Inner(props: DiagramViewProps) {
             nodesConnectable={editing && !gestureCaptured}
             proOptions={{ hideAttribution: true }}
           >
-            {/* With snapping on the dots ARE the grid, so a dropped box visibly lands on one. */}
-            <Background {...(props.snapGrid !== undefined ? { gap: props.snapGrid, className: 'dg-grid-on' } : {})} />
+            {grid !== null && <Background {...grid} />}
             <DrawingsLayer
               strokes={ink.strokes}
               live={liveStroke(pen.live, props.pen)}

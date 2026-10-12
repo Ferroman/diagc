@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { stylePreset } from '../sketch/stylePresets';
-import { canvasClassName, canvasStyle, type CanvasFrameState } from './canvas-frame';
+import { canvasClassName, canvasGrid, canvasStyle, type CanvasFrameState } from './canvas-frame';
 
 const resting: CanvasFrameState = {
   chromeless: false,
@@ -56,5 +56,17 @@ describe('canvasStyle', () => {
 
   it('sets no font for a preset without one', () => {
     expect(canvasStyle(stylePreset('clean'))).toEqual({ width: '100%', height: '100%', '--dg-style-font': undefined });
+  });
+});
+
+describe('canvasGrid', () => {
+  it('shows the snap grid while snapping, whatever the preset', () => {
+    expect(canvasGrid({ id: 'x', label: 'X', grid: 'none' }, 16)).toEqual({ gap: 16, className: 'dg-grid-on' });
+  });
+
+  it("else draws the preset's grid: dots by default, lines, or none", () => {
+    expect(canvasGrid(stylePreset('clean'), undefined)).toEqual({});
+    expect(canvasGrid({ id: 'x', label: 'X', grid: 'lines' }, undefined)).toEqual({ variant: 'lines', gap: 32 });
+    expect(canvasGrid({ id: 'x', label: 'X', grid: 'none' }, undefined)).toBeNull();
   });
 });
