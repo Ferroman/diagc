@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useViewerPrefs } from './useViewerPrefs';
+import { diagramStyleOf, useViewerPrefs } from './useViewerPrefs';
 
 beforeEach(() => {
   localStorage.clear();
@@ -70,5 +70,27 @@ describe('useViewerPrefs', () => {
     act(() => result.current.toggleSnap());
     rerender();
     expect(result.current.setStyle).toBe(first);
+  });
+});
+
+describe('diagramStyleOf', () => {
+  // Breaks if a diagram's unknown style outranks the viewer's preference (a
+  // retired preset would wedge the file), or a known one stops outranking it.
+  it("is the diagram's own style when it names a known preset, else none", () => {
+    const model = (style?: string) => ({
+      version: 1 as const,
+      id: 'm',
+      name: 'm',
+      ...(style !== undefined ? { style } : {}),
+      nodes: [],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    });
+    expect(diagramStyleOf(model('clean'))).toBe('clean');
+    expect(diagramStyleOf(model('retired-preset'))).toBeUndefined();
+    expect(diagramStyleOf(model())).toBeUndefined();
+    expect(diagramStyleOf(undefined)).toBeUndefined();
   });
 });

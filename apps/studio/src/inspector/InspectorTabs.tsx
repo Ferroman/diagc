@@ -4,9 +4,10 @@ export type InspectorTab = 'properties' | 'library';
 
 /**
  * The left inspector dock's tab shell: a Properties tab (the current selection's
- * panel) and a Library tab (palette + add actions). Presentational — App owns the
- * bodies and the active-tab state, so canvas selection can force Properties while
- * placing from the Library stays put. Only the active body is mounted.
+ * panel) and a Library tab (palette + add actions). Presentational — the host
+ * (InspectorDock) renders the bodies and useDockLayout owns the active tab, so a
+ * flow can open Properties (entering edit mode, adding a node) while a canvas
+ * click leaves the tab where it is. Only the active body is mounted.
  */
 export function InspectorTabs({
   activeTab,

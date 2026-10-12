@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { applyTheme, darkTheme, lightTheme } from '@diagc/renderer';
+import type { DiagramModel } from '@diagc/core/internal';
+import { applyTheme, darkTheme, isKnownStyle, lightTheme } from '@diagc/renderer';
 import { usePersistedState } from './usePersistedState';
 
 const STYLE_KEY = 'diagc.style';
@@ -10,6 +11,12 @@ const SNAP_KEY = 'diagc.snap';
 export const SNAP_GRID = 10;
 
 export type Theme = 'light' | 'dark';
+
+/** The diagram's own style, which outranks the viewer's preference: a known
+ * preset only. An unknown style id counts as none, so a retired preset never
+ * wedges a file. */
+export const diagramStyleOf = (model: DiagramModel | undefined): string | undefined =>
+  model?.style !== undefined && isKnownStyle(model.style) ? model.style : undefined;
 
 export interface ViewerPrefs {
   theme: Theme;

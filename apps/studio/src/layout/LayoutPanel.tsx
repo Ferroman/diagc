@@ -13,8 +13,7 @@ import { LayoutControls, type LayoutControlsProps } from './LayoutControls';
  * section that stays open suits that better than a menu that closes.
  *
  * A layout shell, deliberately: what the settings mean, where they are stored
- * and which commands a mode offers stay with the host (App), as they did when
- * these were topbar chips.
+ * and which commands a mode offers stay with the host (LayoutSection).
  */
 export function LayoutPanel({
   controls,
