@@ -86,6 +86,7 @@ Duplicate parent/child/plane triples are ignored, so calling it twice is safe. A
 | `comments` | `Comment[]?` | Remarks, `id` and all. Prefer `FlowRef.comment()` — see [`ref.comment()`](#refcommenttext-opts--ref) — which synthesizes the id; a relation created bare through `m.relate` (no `FlowRef`) takes comments here. See [Model reference](model.md#comment). |
 | `description` | `string?` | |
 | `layer` | `string?` | Must match a declared layer. |
+| `plane` | `string?` | Draw the relation only on this plane — see [Restrict a relation to one plane](../how-to/use-planes-and-layers.md#restrict-a-relation-to-one-plane). |
 | `style` | `RelationStyle?` | See [Model reference](model.md#relationstyle). |
 | `polarity`, `delay` | `'+' \| '-'?`, `boolean?` | Causal-loop diagrams — see [Draw a causal-loop diagram](../how-to/draw-a-causal-loop-diagram.md). |
 | `fromColumn`, `toColumn` | `string?` | ER foreign keys — [`m.fk`](#mfkfrom-fromcolumn-to-tocolumn-opts--m) sets both. |

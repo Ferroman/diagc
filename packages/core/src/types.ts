@@ -223,6 +223,10 @@ export interface DiagramRelation {
   style?: RelationStyle;
   description?: string;
   layer?: string;
+  /** draw this relation only while this plane is the one viewed; omit = on every
+   *  plane where both ends show. Matched against the viewed plane itself, so a
+   *  plane that borrows another's containment can still have arrows of its own. */
+  plane?: string;
   /** causal-loop-diagram polarity: '+' = same-direction influence, '-' = opposing */
   polarity?: Polarity;
   /** causal-loop-diagram delay marker on the influence */

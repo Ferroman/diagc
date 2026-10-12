@@ -27,9 +27,9 @@ export function validateRelations(ctx: Ctx): void {
   }
 }
 
-/** endpoints and layer must exist; polarity and delay are typed */
+/** endpoints, layer and plane must exist; polarity and delay are typed */
 function checkRefsAndFlags(ctx: Ctx, relation: DiagramRelation): void {
-  const { issues, nodeIds, layerIds } = ctx;
+  const { issues, nodeIds, layerIds, planeIds } = ctx;
   for (const end of [relation.from, relation.to]) {
     if (!nodeIds.has(end)) {
       report(issues, 'dangling-endpoint', `Relation '${relation.id}' references unknown node '${end}'`, relation.id);
@@ -40,6 +40,14 @@ function checkRefsAndFlags(ctx: Ctx, relation: DiagramRelation): void {
       issues,
       'unknown-layer',
       `Relation '${relation.id}' references unknown layer '${relation.layer}'`,
+      relation.id,
+    );
+  }
+  if (relation.plane !== undefined && !planeIds.has(relation.plane)) {
+    report(
+      issues,
+      'unknown-plane',
+      `Relation '${relation.id}' belongs to unknown plane '${relation.plane}'`,
       relation.id,
     );
   }

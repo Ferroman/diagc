@@ -1,5 +1,5 @@
 import { CommandError } from './command-error';
-import type { ContainmentEdge, DiagramModel, DiagramPlane } from './types';
+import type { ContainmentEdge, DiagramModel, DiagramPlane, DiagramRelation } from './types';
 
 // Which plane a containment edge is on, and which plane's containment a view reads.
 // An untagged edge is on the default plane, the first one declared. A plane with
@@ -32,6 +32,21 @@ export function containmentPlaneOf(model: DiagramModel, planeId?: string): strin
  * may be tagged with the named plane, and only a named plane can be. */
 export function borrowsContainment(model: DiagramModel, planeId: string | undefined): boolean {
   return (model.planes ?? []).find((p) => p.id === planeId)?.containmentOf !== undefined;
+}
+
+/** Whether `relation` draws on the plane being viewed (`viewed`, an id): a shared
+ * relation everywhere, a scoped one only on its own plane. */
+export function relationOnPlane(relation: DiagramRelation, viewed: string | undefined): boolean {
+  return relation.plane === undefined || relation.plane === viewed;
+}
+
+/** Whether `relation` counts when the view of `viewed` is laid out. Planes reading
+ * the same containment share their positions (layoutPlaneKey), so each lays out
+ * with the others' scoped relations too, and switching between them moves no box. */
+export function relationLaysOutOn(model: DiagramModel, relation: DiagramRelation, viewed: string | undefined): boolean {
+  return (
+    relation.plane === undefined || containmentPlaneOf(model, relation.plane) === containmentPlaneOf(model, viewed)
+  );
 }
 
 /** Whether `edge` is on the plane `key`. An edge that names the default plane is on

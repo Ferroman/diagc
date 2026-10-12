@@ -332,6 +332,62 @@ describe('copy and paste on planes', () => {
   });
 });
 
+describe("a relation's plane", () => {
+  it('pastes a scoped relation scoped to the plane in view, and a shared one shared', () => {
+    const base = system();
+    const m: DiagramModel = {
+      ...base,
+      planes: [
+        { id: 'current', name: 'Current' },
+        { id: 'target', name: 'Target' },
+      ],
+      nodes: [...base.nodes, { id: 'cache', name: 'Cache', type: 'database' }],
+      containment: [...base.containment, { parent: 'sys', child: 'cache' }],
+      relations: [
+        { ...base.relations[0]!, plane: 'current' },
+        { id: 'api->cache#0', from: 'api', to: 'cache', kind: 'uses' },
+      ],
+    };
+    const payload = copySelection({ model: m, layout: undefined, plane: 'current' }, ['sys'])!;
+    const after = applied(m, pasteCommand(m, payload, ctx({ plane: 'target' }))!.command).model;
+    const pasted = after.relations.slice(m.relations.length);
+    expect(pasted.map((r) => [r.kind, r.plane])).toEqual([
+      ['uses', 'target'],
+      ['uses', undefined],
+    ]);
+    expect(validate(after)).toEqual([]);
+  });
+
+  it('pastes a scoped relation scoped to the first plane on the Default view, which draws that plane', () => {
+    const base = system();
+    const m: DiagramModel = {
+      ...base,
+      planes: [
+        { id: 'current', name: 'Current' },
+        { id: 'target', name: 'Target', containmentOf: 'current' },
+      ],
+      relations: [{ ...base.relations[0]!, plane: 'current' }],
+    };
+    const payload = copySelection({ model: m, layout: undefined, plane: undefined }, ['sys'])!;
+    const after = applied(m, pasteCommand(m, payload, ctx({ plane: undefined }))!.command).model;
+    expect(after.relations.slice(m.relations.length).map((r) => r.plane)).toEqual(['current']);
+  });
+
+  it("copies only the relations drawn on the plane in view, not another plane's", () => {
+    const base = system();
+    const m: DiagramModel = {
+      ...base,
+      planes: [
+        { id: 'current', name: 'Current' },
+        { id: 'target', name: 'Target', containmentOf: 'current' },
+      ],
+      relations: [{ ...base.relations[0]!, plane: 'target' }],
+    };
+    expect(copySelection({ model: m, layout: undefined, plane: 'current' }, ['sys'])!.relations).toEqual([]);
+    expect(copySelection({ model: m, layout: undefined, plane: 'target' }, ['sys'])!.relations).toHaveLength(1);
+  });
+});
+
 describe('the exact payload and batch', () => {
   /** every field a paste carries: a plane, a pen, sizes, positions, a relation with all its options and labels */
   function rich(): { model: DiagramModel; layout: LayoutOverlay } {

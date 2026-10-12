@@ -11,6 +11,7 @@
 import {
   buildHierarchy,
   relationLayer,
+  relationOnPlane,
   scopeToRoot,
   type CompiledView,
   type DiagramLegend,
@@ -131,18 +132,21 @@ function drawableSlice(input: LegendInput): {
 } {
   const m = input.model;
   const hierarchy = buildHierarchy(m, input.plane?.id);
+  // the plane compileView draws: the host's, else the first one
+  const viewed = input.plane?.id ?? m.planes[0]?.id;
+  const onPlane = (r: DiagramRelation) => relationOnPlane(r, viewed);
   if (input.root !== undefined && hierarchy.childrenOf.has(input.root)) {
     // Same guard and same call compileView's drill branch makes. A stub node
     // carries no `layer` (scopeToRoot copies only visual identity), so a layer
     // that tags nothing but an off-frame node correctly leaves the key: toggling
     // it here would change nothing on screen.
     const { model: scoped } = scopeToRoot(m, hierarchy, input.root);
-    return { nodes: scoped.nodes, relations: scoped.relations };
+    return { nodes: scoped.nodes, relations: scoped.relations.filter(onPlane) };
   }
   const visible = new Set(hierarchy.childrenOf.keys());
   return {
     nodes: m.nodes.filter((n) => visible.has(n.id)),
-    relations: m.relations.filter((r) => visible.has(r.from) && visible.has(r.to)),
+    relations: m.relations.filter((r) => onPlane(r) && visible.has(r.from) && visible.has(r.to)),
   };
 }
 

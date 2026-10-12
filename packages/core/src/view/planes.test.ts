@@ -266,3 +266,48 @@ describe('activeNotation', () => {
     expect(activeNotation([], undefined, 'nope')).toBeUndefined();
   });
 });
+
+describe('a relation scoped to a plane', () => {
+  /** `target` borrows `current`'s containment, `own` nests the same boxes itself;
+   * the second a->b relation exists only on `target` */
+  function scoped(): DiagramModel {
+    const m = model('scoped');
+    m.plane('current', { name: 'Current' });
+    m.plane('target', { name: 'Target', containmentOf: 'current' });
+    m.plane('own', { name: 'Own' });
+    const vpc = m.node('vpc', { type: 'system' });
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    vpc.contains(a, b);
+    vpc.contains(a, b, { plane: 'own' });
+    m.relate(a, b, { kind: 'sync' });
+    m.relate(a, b, { kind: 'peers' });
+    const json = m.toJSON();
+    return { ...json, relations: json.relations.map((r, i) => (i === 1 ? { ...r, plane: 'target' } : r)) };
+  }
+  const open = { vpc: 'expanded' } as const;
+  const kindsOf = (edges: { id: string; constituents: { kind: string }[] }[]) =>
+    edges.find((e) => e.id === 'a=>b:')?.constituents.map((r) => r.kind);
+
+  it('draws on its own plane, even one that borrows its containment', () => {
+    const view = compileView(scoped(), { plane: 'target', pins: open });
+    expect(kindsOf(view.edges)).toEqual(['sync', 'peers']);
+  });
+
+  it('does not draw on the plane it borrows from, but lays out there, so no box moves on a switch', () => {
+    const view = compileView(scoped(), { plane: 'current', pins: open });
+    expect(kindsOf(view.edges)).toEqual(['sync']);
+    expect(kindsOf(view.layoutEdges)).toEqual(['sync', 'peers']);
+  });
+
+  it('neither draws nor lays out on a plane with containment of its own', () => {
+    const view = compileView(scoped(), { plane: 'own', pins: open });
+    expect(kindsOf(view.edges)).toEqual(['sync']);
+    expect(kindsOf(view.layoutEdges)).toEqual(['sync']);
+  });
+
+  it('does not draw inside a drilled box on another plane', () => {
+    const view = compileView(scoped(), { plane: 'current', root: 'vpc' });
+    expect(kindsOf(view.edges)).toEqual(['sync']);
+  });
+});

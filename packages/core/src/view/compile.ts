@@ -1,5 +1,11 @@
-import { BUILTIN_NOTATIONS, type DiagramModel, type DiagramPlane, type NotationId } from '../types';
-import { viewedPlane } from '../planes';
+import {
+  BUILTIN_NOTATIONS,
+  type DiagramModel,
+  type DiagramPlane,
+  type DiagramRelation,
+  type NotationId,
+} from '../types';
+import { relationLaysOutOn, relationOnPlane, viewedPlane } from '../planes';
 import { buildHierarchy } from './hierarchy';
 import { computeLod } from './lod';
 import { buildViewTree } from './tree';
@@ -53,6 +59,11 @@ export function compileView(model: DiagramModel, viewport: ViewportState): Compi
   // The plane being viewed, not its containment donor: buildHierarchy resolves
   // `containmentOf` itself, and needs the viewed plane to read its `hides`.
   const hierarchy = buildHierarchy(model, viewport.plane, activeLayerSet);
+  // A relation scoped to a plane draws only there, and lays out on every plane that
+  // shares its positions. Both read the outer model's planes: the drill view's
+  // scoped model has none.
+  const drawn = (r: DiagramRelation) => relationOnPlane(r, plane?.id);
+  const laidOut = (r: DiagramRelation) => relationLaysOutOn(model, r, plane?.id);
 
   // Isolated drill view: swap in a model scoped to root's interior (+ external
   // stubs), then run the standard pipeline over it so LOD, promotion and edge
@@ -67,9 +78,9 @@ export function compileView(model: DiagramModel, viewport: ViewportState): Compi
       const vn = tree.byId.get(stubId);
       if (vn !== undefined) vn.external = rep;
     }
-    const edges = resolveEdges(scoped.model, tree, activeLayers, plane?.baseRelations ?? true);
+    const edges = resolveEdges(withRelations(scoped.model, drawn), tree, activeLayers, plane?.baseRelations ?? true);
     const layoutEdges = resolveEdges(
-      scoped.model,
+      withRelations(scoped.model, laidOut),
       tree,
       scoped.model.layers.map((l) => l.id),
       true,
@@ -80,14 +91,20 @@ export function compileView(model: DiagramModel, viewport: ViewportState): Compi
   const lod = computeLod({ hierarchy, focus: viewport.focus, pins: viewport.pins });
   const tree = buildViewTree(model, hierarchy, lod);
   filterColumns(tree.byId.values(), activeLayerSet);
-  const edges = resolveEdges(model, tree, activeLayers, plane?.baseRelations ?? true);
+  const edges = resolveEdges(withRelations(model, drawn), tree, activeLayers, plane?.baseRelations ?? true);
   const layoutEdges = resolveEdges(
-    model,
+    withRelations(model, laidOut),
     tree,
     model.layers.map((l) => l.id),
     true,
   );
   return { roots: tree.roots, edges, layoutEdges, lod, anchorOf: tree.anchorOf };
+}
+
+/** `model` with only the relations `keep` admits, as resolveEdges reads them. */
+function withRelations(model: DiagramModel, keep: (r: DiagramRelation) => boolean): DiagramModel {
+  const relations = model.relations.filter(keep);
+  return relations.length === model.relations.length ? model : { ...model, relations };
 }
 
 /** Drops the rows of inactive column layers. Rows never take part in edge

@@ -3,7 +3,15 @@ import { crossings, strideFor, type DiagramModel, type EditorCommand, type Notat
 import { notationProfile } from '@diagc/renderer';
 import { getHost } from '../host';
 import { CommentsSection } from './CommentsSection';
-import { DescriptionField, KindField, LabelsSection, LayerField, MarkFields, StyleSection } from './RelationFields';
+import {
+  DescriptionField,
+  KindField,
+  LabelsSection,
+  LayerField,
+  MarkFields,
+  ScopeField,
+  StyleSection,
+} from './RelationFields';
 import { ThreatsSection } from './ThreatsSection';
 import { carriesThreats, threatsOffered } from './threatsOffered';
 import { useDraftField } from './useDraftField';
@@ -111,6 +119,10 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation,
       <CommentsSection target={{ relation: relationId }} comments={relation.comments ?? []} onCommand={onCommand} />
 
       <LayerField relation={relation} layers={model.layers} layer={layer} onCommand={onCommand} />
+
+      {activePlane !== undefined && (
+        <ScopeField relation={relation} planes={model.planes} activePlane={activePlane} onCommand={onCommand} />
+      )}
 
       {marks && <MarkFields relation={relation} onCommand={onCommand} />}
 

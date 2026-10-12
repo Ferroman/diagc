@@ -146,11 +146,14 @@ export function deletePlane(model: DiagramModel, id: string): DiagramModel {
     throw new CommandError(`Plane '${borrower.id}' borrows containment from '${id}' — delete or repoint it first`);
   }
   // The first-declared plane owns the untagged (base) edges; drop them with it so
-  // structure doesn't silently migrate to whichever plane becomes first next.
+  // structure doesn't silently migrate to whichever plane becomes first next. The
+  // relations drawn only on this plane go too: they are its structure as much as its
+  // containment is, and a relation left naming a missing plane would not validate.
   const isFirst = planes[0]?.id === id;
   return {
     ...model,
     planes: planes.filter((p) => p.id !== id),
     containment: model.containment.filter((e) => e.plane !== id && !(isFirst && e.plane === undefined)),
+    relations: model.relations.filter((r) => r.plane !== id),
   };
 }

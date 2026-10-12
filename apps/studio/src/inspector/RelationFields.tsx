@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import {
   relationLabels,
   type DiagramLayer,
+  type DiagramPlane,
   type DiagramRelation,
   type EdgeLabel,
   type EdgeLabelSide,
@@ -225,6 +226,43 @@ export function LayerField({
             {l.name}
           </option>
         ))}
+      </select>
+    </label>
+  );
+}
+
+/** Which planes draw the relation: every one where both ends show, or only the
+ * plane in view. Offered while a plane is in view, borrowing ones too: a relation
+ * is matched against the plane itself, not its containment. One scoped elsewhere
+ * (selected from the issue list, say) is named for that plane, not called shared. */
+export function ScopeField({
+  relation,
+  planes,
+  activePlane,
+  onCommand,
+}: {
+  relation: DiagramRelation;
+  planes: readonly DiagramPlane[];
+  activePlane: string;
+  onCommand: Dispatcher;
+}) {
+  const elsewhere = relation.plane !== undefined && relation.plane !== activePlane ? relation.plane : undefined;
+  const value = relation.plane === undefined ? 'shared' : elsewhere === undefined ? 'local' : 'elsewhere';
+  return (
+    <label className="field">
+      <span>Scope</span>
+      <select
+        aria-label="Scope"
+        value={value}
+        onChange={(e) => onCommand(update(relation, { plane: e.target.value === 'local' ? activePlane : null }))}
+      >
+        <option value="shared">Shared (all planes)</option>
+        <option value="local">This plane only</option>
+        {elsewhere !== undefined && (
+          <option value="elsewhere" disabled>
+            {`${planes.find((p) => p.id === elsewhere)?.name ?? elsewhere} only`}
+          </option>
+        )}
       </select>
     </label>
   );

@@ -99,6 +99,22 @@ describe('legendRows', () => {
     expect(rows(m, { plane, activeLayers: ['hosting'] }).find((x) => x.layer === 'data-flow')?.active).toBe(false);
   });
 
+  it("lists a layer that only another plane's relation uses only on that plane", () => {
+    const m = model('scoped-layer');
+    m.layer('peering', { name: 'Peering' });
+    m.plane('current', { name: 'Current' });
+    m.plane('target', { name: 'Target' });
+    m.relate(m.node('a'), m.node('b'), { kind: 'peers', layer: 'peering', plane: 'target' });
+    const json = m.toJSON();
+    const layersOn = (plane?: string) =>
+      rows(json, plane !== undefined ? { plane: planeOf(json, plane) } : {})
+        .filter((x) => x.section === 'layers')
+        .map((x) => x.label);
+    expect(layersOn()).toEqual([]); // the first plane, `current`, by default
+    expect(layersOn('current')).toEqual([]);
+    expect(layersOn('target')).toEqual(['Peering']);
+  });
+
   it('drops inactive layers, but keeps active ones, when nothing can toggle them', () => {
     // A published page and an export both land here: the row would be greyed
     // with no way to un-grey it, so it is omitted rather than shown as noise.

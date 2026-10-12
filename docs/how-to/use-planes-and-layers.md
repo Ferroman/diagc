@@ -136,6 +136,14 @@ m.node('k8s', { type: 'infra', name: 'K8s cluster', plane: 'infra' });
 
 The node exists only in that plane. Use this for containers that are meaningless elsewhere — but note it does **not** compose with `containmentOf`: a node pinned to `architecture` will not appear in a plane that merely borrows architecture's structure. For that case use `hides` on the other planes instead, which is what the worked example does.
 
+### Restrict a relation to one plane
+
+```ts
+m.relate(internal, legacy, { kind: 'peers', label: 'peering', plane: 'target' });
+```
+
+The arrow is drawn only while `target` is the plane in view; a relation without `plane` is drawn on every plane where both of its ends show. It is matched against the plane in view itself, so a `target` plane with `containmentOf: 'current'` can carry the arrows the current state does not have. Planes that share a containment share their positions too, so each lays out with the others' scoped arrows, and switching between them moves no box. In the studio, a relation's **Scope** sets it, and deleting a plane deletes the relations drawn only on it.
+
 ### Keep a plane clean
 
 A node with no containment in the active plane does not disappear — it becomes a **root**, floating in as an empty box. Two ways to deal with it:
@@ -210,7 +218,7 @@ When you drag a node into a new parent, the containment edge is created **on the
 - **A borrowing plane inherits the donor's `hides` and `hidesTree`, and overrides either by declaring it** — `hidesTree: []` on the borrower keeps the detail the donor drops. That is how one model carries a stripped-down overview plane and a full one over the same hierarchy.
 - **A node with no containment in a plane becomes a root**, not a hidden node — an empty box, not an absence. Use `hides` or a node-level `plane`.
 - **`hides` promotes the interior, `hidesTree` removes it.** Hiding a box with `hides` lifts its children into its place; layers behave the same way, so a box on an inactive layer leaves its children floating as roots.
-- **Relations vanish with their endpoints.** If a node is not in the active plane, arrows touching it are not drawn.
+- **Relations vanish with their endpoints.** If a node is not in the active plane, arrows touching it are not drawn. A relation with `plane` is drawn only on that plane.
 - **Layers are off by default; a plane's `layers` are on by default** — including in exported PNGs, which have no switch at all. That is how the data-flow image above exists. On an interactive page or in the studio the presets are a **starting point, not a floor**: the switch is seeded from them when the view opens and on every plane change, and the reader can then turn any of them off. Turn one off and switch planes and back to get the presets again.
 - **`baseRelations: false` hides untagged relations only.** Relations on *other* layers still appear if those layers are on.
 - **Layer toggles never move boxes.** If yours do, something else changed — layout is computed from the full relation set on purpose.

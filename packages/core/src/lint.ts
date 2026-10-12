@@ -197,8 +197,9 @@ function listOf<T extends object>(list: readonly T[] | undefined): readonly T[] 
 }
 
 /** A node no plane shows (scoped to a plane that borrows another's hierarchy,
- * hidden everywhere) and a relation whose ends never share a view: both are in
- * the file and nowhere in the picture. */
+ * hidden everywhere) and a relation whose ends never share a view — for a
+ * relation scoped to a plane, that plane's view: all are in the file and nowhere
+ * in the picture. `views` is one per declared plane, in order. */
 function undrawn(model: DiagramModel, views: HierarchyIndex[], add: Add): void {
   const shown = (id: string, h: HierarchyIndex): boolean => h.parentsOf.has(id);
   for (const n of model.nodes) {
@@ -209,7 +210,17 @@ function undrawn(model: DiagramModel, views: HierarchyIndex[], add: Add): void {
   for (const r of model.relations) {
     // a relation to an undrawn node is that node's finding, not a second one
     if (!anywhere.has(r.from) || !anywhere.has(r.to)) continue;
-    if (!views.some((h) => shown(r.from, h) && shown(r.to, h))) {
+    const together = (h: HierarchyIndex | undefined) => h !== undefined && shown(r.from, h) && shown(r.to, h);
+    if (r.plane !== undefined) {
+      // an unknown plane is validation's to report
+      const own = (model.planes ?? []).findIndex((p) => p.id === r.plane);
+      if (own >= 0 && !together(views[own]))
+        add(
+          'undrawn-relation',
+          `'${r.id}' is on plane '${r.plane}', which does not show '${r.from}' and '${r.to}' together`,
+          r.id,
+        );
+    } else if (!views.some(together)) {
       add('undrawn-relation', `'${r.id}' joins '${r.from}' and '${r.to}', which no plane shows together`, r.id);
     }
   }

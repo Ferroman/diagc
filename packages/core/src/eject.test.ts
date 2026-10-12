@@ -288,6 +288,32 @@ describe('ejectSource', () => {
     expect(replayedIds).toEqual(m.relations.map((r) => r.id));
   });
 
+  it("emits a relation's plane, and replaying it through the builder rebuilds the model", () => {
+    const m: DiagramModel = {
+      version: 1,
+      id: 'vpcs',
+      name: 'vpcs',
+      nodes: [
+        { id: 'internal', name: 'internal' },
+        { id: 'legacy', name: 'legacy' },
+      ],
+      containment: [],
+      layers: [],
+      planes: [
+        { id: 'current', name: 'Current' },
+        { id: 'target', name: 'Target' },
+      ],
+      relations: [{ id: 'internal->legacy#0', from: 'internal', to: 'legacy', kind: 'peers', plane: 'target' }],
+    };
+    expect(ejectSource(m)).toContain("m.relate(internal, legacy, { kind: 'peers', plane: 'target' });");
+
+    const replay = buildModel('vpcs');
+    replay.plane('current', { name: 'Current' });
+    replay.plane('target', { name: 'Target' });
+    replay.relate(replay.node('internal'), replay.node('legacy'), { kind: 'peers', plane: 'target' });
+    expect(replay.toJSON()).toEqual(m);
+  });
+
   it('emits threats on both a node and a relation, and replaying those opts rebuilds the model', () => {
     const m: DiagramModel = {
       version: 1,
