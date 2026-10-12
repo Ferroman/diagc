@@ -7,12 +7,17 @@ export interface RelationOptsInput {
   kind: string;
   label?: string;
   layer?: string;
+  plane?: string;
   description?: string;
   style?: RelationStyle;
   polarity?: Polarity;
   delay?: boolean;
   fromColumn?: string;
   toColumn?: string;
+}
+
+function requirePlane(model: DiagramModel, plane: string | null | undefined): void {
+  if (plane != null && !model.planes.some((p) => p.id === plane)) throw new CommandError(`Unknown plane '${plane}'`);
 }
 
 export function addRelation(
@@ -26,6 +31,7 @@ export function addRelation(
   if (opts.layer !== undefined && !model.layers.some((l) => l.id === opts.layer)) {
     throw new CommandError(`Unknown layer '${opts.layer}'`);
   }
+  requirePlane(model, opts.plane);
   // First free suffix — counting existing pairs collides after a middle delete
   // (delete `a->b#0`, then adding again would reuse `#1`).
   const id = nextFreeId(`${from}->${to}#`, new Set(model.relations.map((r) => r.id)), 0);
@@ -48,6 +54,7 @@ export interface RelationPatch {
   label?: string | null;
   labels?: EdgeLabel[] | null;
   layer?: string | null;
+  plane?: string | null;
   description?: string | null;
   style?: RelationStyle | null;
   polarity?: Polarity | null;
@@ -63,6 +70,7 @@ const RELATION_NULLABLE_KEYS = [
   'label',
   'labels',
   'layer',
+  'plane',
   'description',
   'style',
   'polarity',
@@ -84,6 +92,7 @@ export function updateRelation(model: DiagramModel, id: string, patch: RelationP
   if (patch.layer != null && !model.layers.some((l) => l.id === patch.layer)) {
     throw new CommandError(`Unknown layer '${patch.layer}'`);
   }
+  requirePlane(model, patch.plane);
   for (const end of [patch.from, patch.to]) {
     if (end !== undefined && !model.nodes.some((n) => n.id === end)) {
       throw new CommandError(`Unknown node '${end}'`);

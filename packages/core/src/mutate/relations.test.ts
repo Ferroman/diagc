@@ -20,6 +20,16 @@ function base(): DiagramModel {
 }
 
 describe('relation mutations', () => {
+  it("sets, clears and checks a relation's plane", () => {
+    const { model: m, id } = addRelation(base(), 'a', 'b', { kind: 'peers', plane: 'infra' });
+    expect(m.relations.at(-1)?.plane).toBe('infra');
+    expect(() => addRelation(base(), 'a', 'b', { kind: 'peers', plane: 'nope' })).toThrowError(CommandError);
+    const shared = updateRelation(m, id, { plane: null });
+    expect(shared.relations.at(-1)).not.toHaveProperty('plane');
+    expect(updateRelation(shared, id, { plane: 'arch' }).relations.at(-1)?.plane).toBe('arch');
+    expect(() => updateRelation(shared, id, { plane: 'nope' })).toThrowError(CommandError);
+  });
+
   it('relations follow the builder id convention and patch with null-clears', () => {
     const { model: m, id } = addRelation(base(), 'a', 'b', { kind: 'reads' });
     expect(id).toBe('a->b#2'); // two a->b relations already exist

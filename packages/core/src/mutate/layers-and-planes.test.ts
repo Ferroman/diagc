@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { model } from '../builder/index';
 import { validate } from '../validate/index';
 import { addContainment } from './containment';
+import { addRelation } from './relations';
 import {
   deleteLayer,
   deletePlane,
@@ -36,6 +37,18 @@ describe('layer and plane mutations', () => {
   it('deletePlane of the first plane removes untagged containment', () => {
     const m = deletePlane(base(), 'arch');
     expect(m.containment).toEqual([]); // untagged sys>a and sys>b were owned by 'arch'
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('deletePlane takes the relations scoped to it and keeps the rest', () => {
+    let m = addRelation(base(), 'a', 'b', { kind: 'peers', plane: 'infra' }).model;
+    m = addRelation(m, 'a', 'b', { kind: 'audits', plane: 'arch' }).model;
+    m = deletePlane(m, 'infra');
+    expect(m.relations.map((r) => [r.kind, r.plane])).toEqual([
+      ['sync', undefined],
+      ['flow', undefined],
+      ['audits', 'arch'],
+    ]);
     expect(validate(m)).toEqual([]);
   });
 
