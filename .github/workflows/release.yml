@@ -77,4 +77,18 @@ jobs:
       # its dist, so nothing stale ships. The upload goes through npm because its
       # OIDC exchange is the reference one; pnpm's has broken between releases.
       - run: pnpm -r --filter @diagc/core --filter @diagc/cli exec pnpm pack --pack-destination "$RUNNER_TEMP/tarballs"
-      - run: for t in "$RUNNER_TEMP"/tarballs/*.tgz; do npm publish "$t" --access public; done
+
+      # Core first, and the CLI only once npm serves that core. The CLI depends on this exact
+      # version of core, so the other way round `npm i @diagc/cli@latest` fails (ETARGET) for
+      # the minutes npm takes to process core's upload. `--prefer-online` asks the registry,
+      # not npm's cache. A version already on npm is skipped, so a manual run finishes a
+      # release that stopped half way.
+      - name: Publish @diagc/core, then @diagc/cli
+        run: |
+          v=$(node -p "require('./package.json').version")
+          served() { [ "$(npm view --prefer-online "$1@$v" version 2>/dev/null)" = "$v" ]; }
+          publish() { if served "$1"; then echo "$1@$v is already on npm"; else npm publish "$2" --access public; fi; }
+          publish @diagc/core "$RUNNER_TEMP/tarballs/diagc-core-$v.tgz"
+          for _ in $(seq 60); do served @diagc/core && break; sleep 10; done
+          served @diagc/core || { echo "npm does not serve @diagc/core@$v after 10 minutes" >&2; exit 1; }
+          publish @diagc/cli "$RUNNER_TEMP/tarballs/diagc-cli-$v.tgz"
