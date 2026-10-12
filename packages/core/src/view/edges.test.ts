@@ -79,6 +79,43 @@ describe('resolveEdges', () => {
     expect(edges.find((e) => e.id === 'a=>b:')?.style).toBeUndefined();
   });
 
+  it('gives an aggregated edge the style every constituent shares', () => {
+    const m = model('s');
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    m.relate(a, b, { kind: 'peers', style: { line: 'dashed', color: '#888' } });
+    m.relate(a, b, { kind: 'peers', style: { line: 'dashed', color: '#888' } });
+    const j = m.toJSON();
+    const edges = resolveEdges(j, buildViewTree(j, buildHierarchy(j), {}));
+    expect(edges.find((e) => e.id === 'a=>b:')?.style).toEqual({ line: 'dashed', color: '#888' });
+  });
+
+  it('keeps only the style properties every constituent sets alike', () => {
+    const m = model('s');
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    m.relate(a, b, { kind: 'peers', style: { line: 'dashed', color: '#888', width: 2 } });
+    m.relate(a, b, { kind: 'peers', style: { line: 'dashed', color: '#f00' } });
+    const j = m.toJSON();
+    const edges = resolveEdges(j, buildViewTree(j, buildHierarchy(j), {}));
+    expect(edges.find((e) => e.id === 'a=>b:')?.style).toEqual({ line: 'dashed' });
+  });
+
+  it('keeps the shared style when relations roll up to a container, without their sides', () => {
+    const m = model('s');
+    const box = m.node('box', { type: 'system' });
+    const a1 = m.node('a1', { type: 'service' });
+    const a2 = m.node('a2', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    box.contains(a1, a2);
+    m.relate(a1, b, { kind: 'peers', style: { line: 'dashed', fromSide: 'top' } });
+    m.relate(a2, b, { kind: 'peers', style: { line: 'dashed', fromSide: 'top' } });
+    const j = m.toJSON();
+    const edges = resolveEdges(j, buildViewTree(j, buildHierarchy(j), {})).filter((e) => e.from === 'box');
+    expect(edges).toHaveLength(1);
+    expect(edges[0]!.style).toEqual({ line: 'dashed' });
+  });
+
   it("carries a sole constituent's labels and drops them on aggregated edges", () => {
     const m = model('s');
     const a = m.node('a', { type: 'service' });

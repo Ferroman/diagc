@@ -57,7 +57,7 @@ export interface ViewEdge {
   labels?: EdgeLabel[];
   layer?: string;
   tint?: string;
-  /** the sole constituent's per-relation style; aggregated edges have none */
+  /** the sole constituent's per-relation style, or the properties every constituent of an aggregate sets alike */
   style?: RelationStyle;
   /** CLD polarity: a single constituent's sign, or an aggregate's shared sign when every constituent agrees; absent when constituents disagree or any lacks a sign */
   polarity?: Polarity;
