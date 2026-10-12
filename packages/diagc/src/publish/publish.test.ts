@@ -248,4 +248,83 @@ describe('publishDiagrams', () => {
       warn.mockRestore();
     }
   });
+
+  it('keeps the other diagrams in the gallery when it publishes some by name', async () => {
+    const f = await fixture();
+    const b2 = model('demo2', { name: 'Second demo' });
+    b2.node('x', { name: 'X' });
+    await writeFile(path.join(f.artifacts, 'demo2.diagram.json'), JSON.stringify(b2.toJSON()));
+    const opts = {
+      srcDir: f.src,
+      artifactsDir: f.artifacts,
+      htmlDir: f.html,
+      staticDir: f.stat,
+      shellPath: f.shell,
+      libraryDir: f.lib,
+      assetsDir: f.assets,
+      images: false,
+    };
+    await publishDiagrams(opts);
+    await mkdir(f.stat, { recursive: true });
+    await writeFile(path.join(f.stat, 'demo2.png'), 'png');
+
+    const res = await publishDiagrams({ ...opts, names: ['demo'] });
+    expect(res.pages).toEqual([path.join(f.html, 'demo.html')]);
+    const gallery = await readFile(res.gallery, 'utf8');
+    expect(gallery).toContain('href="demo.html"');
+    expect(gallery).toContain('href="demo2.html"');
+    expect(gallery).toContain('Second demo');
+    expect(gallery).toContain('src="../static/demo2.png"');
+    expect(gallery).not.toContain('src="../static/demo.png"');
+  });
+
+  it('gives a diagram it publishes a thumbnail only for an image it rendered, and a card only for a page it wrote', async () => {
+    // What an earlier run left must not stand in for this run's work: the Pages workflow
+    // counts thumbnails to catch a run with no usable Chrome.
+    const f = await fixture();
+    await writeFile(path.join(f.artifacts, 'broken.diagram.json'), '{ not json');
+    await mkdir(f.stat, { recursive: true });
+    await writeFile(path.join(f.stat, 'demo.png'), 'a committed png');
+    await mkdir(f.html, { recursive: true });
+    await writeFile(path.join(f.html, 'broken.html'), 'a page from an earlier run');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const res = await publishDiagrams({
+        srcDir: f.src,
+        artifactsDir: f.artifacts,
+        htmlDir: f.html,
+        staticDir: f.stat,
+        shellPath: f.shell,
+        libraryDir: f.lib,
+        assetsDir: f.assets,
+        images: false,
+      });
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('skipping diagram "broken"'));
+      const gallery = await readFile(res.gallery, 'utf8');
+      expect(gallery).toContain('href="demo.html"');
+      expect(gallery).not.toContain('src="../static/demo.png"');
+      expect(gallery).not.toContain('broken.html');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('gives no card to a page left behind by a diagram that is gone', async () => {
+    const f = await fixture();
+    await mkdir(f.html, { recursive: true });
+    await writeFile(path.join(f.html, 'old.html'), 'a page from an earlier run');
+    const res = await publishDiagrams({
+      srcDir: f.src,
+      artifactsDir: f.artifacts,
+      htmlDir: f.html,
+      staticDir: f.stat,
+      shellPath: f.shell,
+      libraryDir: f.lib,
+      assetsDir: f.assets,
+      images: false,
+    });
+    const gallery = await readFile(res.gallery, 'utf8');
+    expect(gallery).toContain('href="demo.html"');
+    expect(gallery).not.toContain('old.html');
+  });
 });

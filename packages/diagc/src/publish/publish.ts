@@ -1,9 +1,10 @@
+import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { DiagramModel, LayoutOverlay, Drawings } from '@diagc/core/internal';
 import { errMessage, isDrawings } from '@diagc/core/internal';
 import { classifyAssetRef, rewriteAssetRefs, safeAssetPath } from './assets';
-import { buildGallery } from './gallery';
+import { buildGallery, type GalleryEntry } from './gallery';
 import { discoverDiagrams } from './discover';
 import { stampHtml } from './html';
 
@@ -25,6 +26,16 @@ export interface PublishResult {
   pages: string[];
   images: string[];
   gallery: string;
+}
+
+/** The model's display name from its artifact, for a diagram this run did not read. */
+async function titleOf(modelPath: string): Promise<string | undefined> {
+  try {
+    const name = (JSON.parse(await readFile(modelPath, 'utf8')) as { name?: unknown }).name;
+    return typeof name === 'string' ? name : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function readMaybe(p: string): Promise<Buffer | undefined> {
@@ -81,17 +92,18 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
 
   const cache = new Map<string, Buffer>();
 
-  let all = await discoverDiagrams(opts.artifactsDir, opts.srcDir);
+  const all = await discoverDiagrams(opts.artifactsDir, opts.srcDir);
+  let chosen = all;
   if (opts.names !== undefined && opts.names.length > 0) {
     const want = new Set(opts.names);
-    all = all.filter((d) => want.has(d.name));
+    chosen = all.filter((d) => want.has(d.name));
   }
 
   const pages: string[] = [];
   const images: string[] = [];
   // diagram name → the model's display name, for the index cards
   const titles = new Map<string, string>();
-  for (const d of all) {
+  for (const d of chosen) {
     try {
       const modelRaw = JSON.parse(await readFile(d.modelPath, 'utf8')) as DiagramModel;
       titles.set(d.name, modelRaw.name);
@@ -130,23 +142,29 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
     }
   }
 
-  // Only diagrams whose page was actually written belong in the gallery — a
-  // source that failed before its HTML wrote would otherwise get a dead link.
+  // A diagram this run published gets a card for the page it wrote now and a thumbnail
+  // for the image it rendered now: what an earlier run left must not stand in for it
+  // (the Pages workflow counts thumbnails to catch a run with no usable Chrome), and a
+  // diagram that failed gets no card. A run scoped by name leaves the other pages in
+  // place, so the index keeps those diagrams as they are on disk. A page whose diagram
+  // is not discovered (its artifact is gone) gets no card.
   const written = new Set(pages);
+  const rendered = new Set(images);
+  const inRun = new Set(chosen.map((d) => d.name));
+  const entries: GalleryEntry[] = [];
+  for (const d of all) {
+    const pagePath = path.join(opts.htmlDir, `${d.name}.html`);
+    const pngPath = path.join(opts.staticDir, `${d.name}.png`);
+    const thisRun = inRun.has(d.name);
+    if (!(thisRun ? written.has(pagePath) : existsSync(pagePath))) continue;
+    entries.push({
+      name: d.name,
+      title: titles.get(d.name) ?? (await titleOf(d.modelPath)) ?? d.name,
+      hasImage: thisRun ? rendered.has(pngPath) : existsSync(pngPath),
+    });
+  }
   const galleryPath = path.join(opts.htmlDir, 'index.html');
-  await writeFile(
-    galleryPath,
-    buildGallery(
-      all
-        .filter((d) => written.has(path.join(opts.htmlDir, `${d.name}.html`)))
-        .map((d) => ({
-          name: d.name,
-          title: titles.get(d.name) ?? d.name,
-          hasImage: images.includes(path.join(opts.staticDir, `${d.name}.png`)),
-        })),
-      opts.link !== undefined ? { link: opts.link } : {},
-    ),
-  );
+  await writeFile(galleryPath, buildGallery(entries, opts.link !== undefined ? { link: opts.link } : {}));
 
   return { pages, images, gallery: galleryPath };
 }
