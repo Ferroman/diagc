@@ -109,6 +109,18 @@ describe('designer api handlers', () => {
     expect((await readDiagram(dir, 'old')).status).toBe(404); // old name freed
   });
 
+  it("keeps a diagram's title across a rename; a title that was its id follows the new one", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    await saveDiagram(dir, 'shop', { ...goodModel, id: 'shop', name: 'Order Processing' });
+    expect((await renameDiagram(dir, 'shop', 'orders-v2')).status).toBe(200);
+    expect((await readDiagram(dir, 'orders-v2')).body).toMatchObject({
+      model: { id: 'orders-v2', name: 'Order Processing' },
+    });
+    await saveDiagram(dir, 'cart', { ...goodModel, id: 'cart', name: 'cart' });
+    expect((await renameDiagram(dir, 'cart', 'basket')).status).toBe(200);
+    expect((await readDiagram(dir, 'basket')).body).toMatchObject({ model: { id: 'basket', name: 'basket' } });
+  });
+
   it('renames a diagram with no layout file (layout absence is not an error)', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
     await saveDiagram(dir, 'solo', goodModel);

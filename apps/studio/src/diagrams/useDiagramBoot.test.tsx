@@ -112,6 +112,20 @@ describe('useDiagramBoot', () => {
     expect([...result.current.ownedNames]).toEqual(['omega']);
   });
 
+  // Breaks if a rename overwrites a title of the diagram's own with its new name,
+  // or stops moving a title that was only its id.
+  it("keeps a renamed diagram's title unless the title was its id", async () => {
+    serve();
+    const { result } = renderHook(() => useDiagramBoot());
+    await waitFor(() => expect(result.current.booted).toBe(true));
+    act(() =>
+      result.current.putDraft('zeta', { ...art('zeta', 'zeta'), model: { ...model('zeta'), name: 'Zeta API' } }),
+    );
+    act(() => result.current.rename('zeta', 'omega'));
+    expect(result.current.drafts['omega']?.model).toMatchObject({ id: 'omega', name: 'Zeta API' });
+    expect(result.current.loaded['omega']?.model).toMatchObject({ id: 'omega', name: 'omega' });
+  });
+
   // Breaks if a saved layout stops reaching the boot copy (a plane switch would
   // drop it until a reload), or lands under a name that was never loaded.
   it('folds a saved layout into the boot copy of a loaded diagram only', async () => {
