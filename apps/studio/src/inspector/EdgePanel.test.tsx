@@ -33,6 +33,62 @@ afterEach(() => {
 });
 
 describe('EdgePanel', () => {
+  describe("a relation's scope", () => {
+    const planed = (plane?: string): DiagramModel => {
+      const m = testModel();
+      return {
+        ...m,
+        planes: [
+          { id: 'current', name: 'Current' },
+          { id: 'target', name: 'Target' },
+        ],
+        relations: [{ ...m.relations[0]!, ...(plane !== undefined ? { plane } : {}) }],
+      };
+    };
+    const panel = (model: DiagramModel, activePlane: string | undefined, onCommand = vi.fn()) =>
+      render(
+        <EdgePanel
+          model={model}
+          constituentIds={['a->b#0']}
+          onCommand={onCommand}
+          onClose={noop}
+          activePlane={activePlane}
+        />,
+      );
+
+    it('scopes a shared relation to the plane in view, and shares it again', () => {
+      const onCommand = vi.fn();
+      const { rerender } = panel(planed(), 'target', onCommand);
+      const scope = screen.getByLabelText('Scope') as HTMLSelectElement;
+      expect(scope.value).toBe('shared');
+      fireEvent.change(scope, { target: { value: 'local' } });
+      expect(onCommand).toHaveBeenLastCalledWith({ type: 'update-relation', id: 'a->b#0', patch: { plane: 'target' } });
+      rerender(
+        <EdgePanel
+          model={planed('target')}
+          constituentIds={['a->b#0']}
+          onCommand={onCommand}
+          onClose={noop}
+          activePlane="target"
+        />,
+      );
+      expect((screen.getByLabelText('Scope') as HTMLSelectElement).value).toBe('local');
+      fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'shared' } });
+      expect(onCommand).toHaveBeenLastCalledWith({ type: 'update-relation', id: 'a->b#0', patch: { plane: null } });
+    });
+
+    it('names another plane a relation is scoped to, rather than calling it shared', () => {
+      panel(planed('current'), 'target');
+      const scope = screen.getByLabelText('Scope') as HTMLSelectElement;
+      expect(scope.selectedOptions[0]?.textContent).toBe('Current only');
+    });
+
+    it('offers no scope without a plane in view', () => {
+      panel(testModel(), undefined);
+      expect(screen.queryByLabelText('Scope')).toBeNull();
+    });
+  });
+
   it('commits a kind change on Enter as update-relation (single constituent)', () => {
     const onCommand = vi.fn();
     render(<EdgePanel model={testModel()} constituentIds={['a->b#0']} onCommand={onCommand} onClose={noop} />);

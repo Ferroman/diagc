@@ -7,7 +7,9 @@ import {
   layoutPlaneKey,
   containmentOn,
   containmentPlaneOf,
+  relationOnPlane,
   uniqueNodeId,
+  viewedPlane,
   type DiagramModel,
   type DiagramNode,
   type DiagramRelation,
@@ -100,7 +102,10 @@ export function copySelection(
         const parent = parentOf.get(n.id);
         return parent !== undefined ? { id: n.id, parent } : { id: n.id };
       }),
-    relations: model.relations.filter((r) => picked.has(r.from) && picked.has(r.to)),
+    // only what the plane in view draws: another plane's relation is not on screen
+    relations: model.relations.filter(
+      (r) => relationOnPlane(r, viewedPlane(model.planes, plane)?.id) && picked.has(r.from) && picked.has(r.to),
+    ),
     positions,
     sizes,
   };
@@ -186,7 +191,10 @@ export function pasteCommand(model: DiagramModel, payload: ClipboardPayload, ctx
     }
   }
   commands.push(...placeCommands(payload, idMap, { step: PASTE_STEP * (ctx.repeat + 1), rootIds, planeOpt }));
-  commands.push(...relationCommands(payload, idMap, onLayer));
+  // A relation drawn on one plane is drawn on the plane it lands on, a shared one
+  // stays shared: borrowing planes included, as a relation matches the plane itself.
+  const onPlane = (plane: string | undefined) => (plane !== undefined ? ctx.plane : undefined);
+  commands.push(...relationCommands(payload, idMap, { onLayer, onPlane }));
   return { command: { type: 'batch', commands }, roots: payload.roots.map((r) => idMap.get(r.id)!) };
 }
 
@@ -261,11 +269,17 @@ function placeCommands(
   return commands;
 }
 
+/** Where a pasted relation lands: its layer and its plane, each by its copy's own. */
+interface RelationPlacement {
+  onLayer: (layer: string | undefined) => string | undefined;
+  onPlane: (plane: string | undefined) => string | undefined;
+}
+
 /** The copied relations between the fresh ids, with their labels. */
 function relationCommands(
   payload: ClipboardPayload,
   idMap: Map<string, string>,
-  onLayer: (layer: string | undefined) => string | undefined,
+  { onLayer, onPlane }: RelationPlacement,
 ): EditorCommand[] {
   const commands: EditorCommand[] = [];
   // Relations: add-relation mints `from->to#i`; every endpoint is brand new, so
@@ -285,6 +299,7 @@ function relationCommands(
         ...defined({
           label: r.label,
           layer: onLayer(r.layer),
+          plane: onPlane(r.plane),
           description: r.description,
           style: r.style,
           polarity: r.polarity,
