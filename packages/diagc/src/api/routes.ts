@@ -96,8 +96,6 @@ export const ROUTES: Route[] = [
     pattern: /^\/api\/(diagrams|layouts|drawings)\/(.+)$/,
     bodyMode: 'json',
     handler: (h, c) => {
-      // decodeURIComponent throws on malformed percent-encoding — kept
-      // inside the boundary so a bad name yields 500, never a crash.
       const name = decodeURIComponent(c.match[2] ?? '');
       return c.match[1] === 'diagrams'
         ? h.saveDiagram(c.diagramsDir, name, c.body)

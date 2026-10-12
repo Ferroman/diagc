@@ -46,7 +46,7 @@ diagc init --agents             # point coding agents at the guide (AGENTS.md / 
 ```
 
 - **Steps, in order:** writes `.diagrams/src/<name>.diagram.ts` from the bundled starter for `--type`; appends whichever of `.diagrams/.artifacts/`, `.diagrams/html/` and `.diagrams/diff/` are missing from `.gitignore` (creating it if needed); with `--agents`, writes a short block into `AGENTS.md` and `CLAUDE.md` — whichever exist, or a new `AGENTS.md` — between `<!-- diagc:begin -->` and `<!-- diagc:end -->`, replacing it in place on a later run, and — where the repository has a `.claude/` folder or a `CLAUDE.md` — the Claude Code skill `.claude/skills/diagc/SKILL.md`, whose text between the same markers it replaces on a later run; compiles the starter; prints what to do next.
-- **Name:** `example` by default; a folder is allowed (`team/app`); lowercase letters, digits, `-` and `/`. `shop.diagram.ts` and `.diagrams/src/shop` mean `shop`.
+- **Name:** `example` by default; a folder is allowed (`team/app`); lowercase letters, digits, `-` and `/`. A diagram in a folder cannot be named `rename`, `eject` or `composed`: the studio would read `team/rename` as renaming `team`. `shop.diagram.ts` and `.diagrams/src/shop` mean `shop`.
 - **Type:** `basic` by default; the types are the diagram types `diagc guide` lists, plus `basic`. An unknown type lists them.
 - **Already set up:** with neither a name nor `--type`, and a diagram already under `.diagrams/src`, the starter step is skipped — `diagc init --agents` can run in any repository.
 - **Refuses, writing nothing:** a name whose `.diagram.ts` or `.diagram.json` exists, an unknown type, an unsafe name. Exit `1` with one line on stderr.
