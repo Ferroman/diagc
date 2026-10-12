@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.6](https://github.com/Ferroman/diagc/compare/v1.1.5...v1.1.6) (2026-10-12)
+
+
+### Bug Fixes
+
+* **diagc:** piped output is never cut short ([#131](https://github.com/Ferroman/diagc/issues/131)) ([e54454d](https://github.com/Ferroman/diagc/commit/e54454d6f1586857922fe1b9e8c5d448aec00ac4))
+* **diagc:** rename and save refuse a name a .diagram.ts source owns ([#132](https://github.com/Ferroman/diagc/issues/132)) ([0cb60c2](https://github.com/Ferroman/diagc/commit/0cb60c29fbe3fa38849f0a1ca4125bdf46edfc04))
+* **diagc:** watch says so when its directory does not exist ([#133](https://github.com/Ferroman/diagc/issues/133)) ([2a79cb4](https://github.com/Ferroman/diagc/commit/2a79cb467dab77f05179dc8d00c8a5485281e8db))
+
 ## [1.1.5](https://github.com/Ferroman/diagc/compare/v1.1.4...v1.1.5) (2026-10-12)
 
 
