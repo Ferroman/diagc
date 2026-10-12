@@ -311,3 +311,32 @@ describe('a relation scoped to a plane', () => {
     expect(kindsOf(view.edges)).toEqual(['sync']);
   });
 });
+
+describe('a node scoped to a plane', () => {
+  /** `target` borrows `current`'s containment; `subnet` exists only on `target`,
+   * `old` only on `current`, both nested in the shared `vpc` */
+  function scoped(): DiagramModel {
+    const m = model('scoped-nodes');
+    m.plane('current', { name: 'Current' });
+    m.plane('target', { name: 'Target', containmentOf: 'current' });
+    const vpc = m.node('vpc', { type: 'system' });
+    const subnet = m.node('subnet', { type: 'service', plane: 'target' });
+    const old = m.node('old', { type: 'service', plane: 'current' });
+    vpc.contains(subnet, old);
+    return m.toJSON();
+  }
+  const childrenOn = (plane: string) =>
+    compileView(scoped(), { plane, pins: { vpc: 'expanded' } }).roots[0]!.children.map((c) => c.id);
+
+  it('shows on its own plane, even one that borrows its containment', () => {
+    expect(childrenOn('target')).toContain('subnet');
+  });
+
+  it('does not show on the plane its plane borrows from', () => {
+    expect(childrenOn('current')).toEqual(['old']);
+  });
+
+  it("still shows on a plane that borrows its plane's containment", () => {
+    expect(childrenOn('target')).toEqual(['subnet', 'old']);
+  });
+});

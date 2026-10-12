@@ -10,14 +10,15 @@ export interface HierarchyIndex {
 /**
  * Containment indexes for one plane, over the plane's VISIBLE nodes only.
  * Visibility is explicit: a node is shared (`node.plane` unset) and shown unless
- * the plane hides it, or it is scoped to exactly this plane. Re-nesting via a
+ * the plane hides it, or it is scoped to this plane. Re-nesting via a
  * plane-tagged containment edge never changes membership. `plane` = the plane
  * being VIEWED; omitted = the model's default (first-declared) plane, or
  * all-shared for models without planes.
  *
- * A plane with `containmentOf` borrows the donor's containment edges, and
- * `node.plane` scopes are matched against the DONOR (a node scoped to the
- * borrowing plane is not in the donor's hierarchy — see the how-to). `hides` and
+ * A plane with `containmentOf` borrows the donor's containment edges, and shows
+ * the nodes scoped to the donor as well as its own: it is a view of the donor's
+ * structure, plus whatever exists only in that view. A node scoped to the
+ * borrowing plane is not on the donor. `hides` and
  * `hidesTree` are the exception: they are visibility choices, not structure, so
  * each is the borrower's own when it declares that field, and the donor's when it
  * does not (declare `hidesTree: []` to borrow a hierarchy and keep the detail the
@@ -46,6 +47,7 @@ export function buildHierarchy(
   // `?? plane` keeps an unknown plane id an empty view instead of falling back to
   // every containment edge in the model.
   const active = containmentPlaneOf(model, plane) ?? plane;
+  const viewed = viewedPlane(model.planes ?? [], plane)?.id ?? plane;
   // This plane's containment BEFORE any visibility filtering: the cascade has to
   // see the edges that point into a hidden box to know what it contained.
   const planeEdges = active === undefined ? model.containment : containmentOn(model, active);
@@ -54,7 +56,7 @@ export function buildHierarchy(
   const layerOn = (n: DiagramNode): boolean =>
     n.layer === undefined || activeLayers === undefined || activeLayers.has(n.layer);
   const isVisible = (n: DiagramNode): boolean =>
-    (n.plane === undefined || n.plane === active) && !hidden.has(n.id) && layerOn(n);
+    (n.plane === undefined || n.plane === active || n.plane === viewed) && !hidden.has(n.id) && layerOn(n);
   const visible = new Set(model.nodes.filter(isVisible).map((n) => n.id));
   return indexEdges(model, planeEdges, visible);
 }
