@@ -1,4 +1,4 @@
-import type { MutableRefObject } from 'react';
+import type { ComponentProps, MutableRefObject } from 'react';
 import type { DiagramModel, Drawings } from '@diagc/core/internal';
 import { DiagramView, type CanvasCommands, type LayoutApi } from '@diagc/renderer';
 import type { CanvasEditing } from '../canvas-editing/useCanvasEditing';
@@ -29,7 +29,7 @@ export interface StudioCanvasProps {
   layoutApiRef: MutableRefObject<LayoutApi | null>;
   canvasCommandsRef: MutableRefObject<CanvasCommands | null>;
   /** the canvas controls' key names, as the user has bound them */
-  keyHints: { laser: string; dim: string; legend: string; drawings: string; loops: string };
+  keyHints: NonNullable<ComponentProps<typeof DiagramView>['keyHints']>;
 }
 
 /** The canvas, in either mode, and the Group chip over it while a multi-selection can be grouped. */
