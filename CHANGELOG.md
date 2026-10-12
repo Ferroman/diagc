@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.5](https://github.com/Ferroman/diagc/compare/v1.1.4...v1.1.5) (2026-10-12)
+
+
+### Bug Fixes
+
+* **diagc:** a flag or an argument the command does not take is an error ([#129](https://github.com/Ferroman/diagc/issues/129)) ([d87c751](https://github.com/Ferroman/diagc/commit/d87c7518ca32fe8304704aa1fcfde87f89fad5eb))
+* **diagc:** a publish with a failing source keeps the include lock ([#122](https://github.com/Ferroman/diagc/issues/122)) ([9050063](https://github.com/Ferroman/diagc/commit/9050063ddda6c0267f44ee5c50696bd2e1ee56ee))
+* **diagc:** a rename that fails leaves the diagram where it was ([#128](https://github.com/Ferroman/diagc/issues/128)) ([f7781a5](https://github.com/Ferroman/diagc/commit/f7781a5c3c61a4e80a4f6f59b21873141c21dda8))
+* **diagc:** a scoped publish keeps the other diagrams in the gallery ([#123](https://github.com/Ferroman/diagc/issues/123)) ([1c2cb65](https://github.com/Ferroman/diagc/commit/1c2cb65ddc88eb6f1fa1a87281f595c495f237f4))
+* **diagc:** lint reports include warnings ([#124](https://github.com/Ferroman/diagc/issues/124)) ([37a60d2](https://github.com/Ferroman/diagc/commit/37a60d219bb315636dc3f7a536716b7fbb08ad7a))
+* **diagc:** rename keeps the diagram's title ([#127](https://github.com/Ferroman/diagc/issues/127)) ([bf82d15](https://github.com/Ferroman/diagc/commit/bf82d15e7a52359323fbace93b99f194c2458c39))
+* **diagc:** the API refuses a diagram name it cannot serve ([#125](https://github.com/Ferroman/diagc/issues/125)) ([24b079a](https://github.com/Ferroman/diagc/commit/24b079a719b40524d1429ce0563814501f4c3887))
+* **diagc:** the studio offers Edit only for a source it can save ([#126](https://github.com/Ferroman/diagc/issues/126)) ([f145d71](https://github.com/Ferroman/diagc/commit/f145d714e68904035fc5c89510b6898d5ac6ff6b))
+
 ## [1.1.4](https://github.com/Ferroman/diagc/compare/v1.1.3...v1.1.4) (2026-10-11)
 
 
