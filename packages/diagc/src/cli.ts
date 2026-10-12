@@ -19,24 +19,8 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { fileURLToPath } from 'node:url';
-import { errMessage } from '@diagc/core/internal';
-import type { Context } from './cli/command';
 import { processIo } from './cli/io';
-import { checkTaken, parseArgv, UsageError, type ParsedArgv } from './cli/parse';
-import { compile } from './commands/compile';
-import { diff } from './commands/diff';
-import { eject } from './commands/eject';
-import { guide } from './commands/guide';
-import { init } from './commands/init';
-import { lint } from './commands/lint';
-import { publish } from './commands/publish';
-import { studio } from './commands/studio';
-import { watch } from './commands/watch';
-import { findHome, homePaths } from './home';
-import { resolveInclude } from './includes';
-import { snapshotSession } from './snapshots';
-import { TAKES } from './command-args';
+import { run } from './cli/run';
 
 const USAGE = `Usage: diagc <init|compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir]
 
@@ -81,59 +65,9 @@ async function exit(code: number): Promise<never> {
   process.exit(code);
 }
 
-async function main() {
-  let parsed: ParsedArgv;
-  try {
-    parsed = parseArgv(process.argv.slice(2));
-    checkTaken(parsed, TAKES);
-  } catch (e) {
-    if (!(e instanceof UsageError)) throw e;
-    if (e.exitCode === 0) console.log(USAGE);
-    else {
-      console.error(`diagc: ${e.message}\n`);
-      console.error(USAGE);
-    }
-    return exit(e.exitCode);
-  }
-  const home = homePaths(findHome(fileURLToPath(import.meta.url)));
-  // One session per CLI invocation, shared across every compile+publish in this
-  // run: the in-memory lock + touched set must span the whole run for prune()
-  // to see everything a full-tree compile actually resolved. `watch` builds its
-  // own separate always-locked session below instead of sharing this one.
-  const snap = snapshotSession(
-    resolveInclude,
-    '.diagrams',
-    parsed.flags['--update-includes'] === true ? 'update' : 'locked',
-  );
-
-  const ctx: Context = { io: processIo, usage: USAGE, home, snapshots: snap };
-
-  if (parsed.command === 'compile') {
-    return exit(await compile.run(parsed, ctx));
-  } else if (parsed.command === 'lint') {
-    return exit(await lint.run(parsed, ctx));
-  } else if (parsed.command === 'watch') {
-    return exit(await watch.run(parsed, ctx));
-  } else if (parsed.command === 'publish') {
-    return exit(await publish.run(parsed, ctx));
-  } else if (parsed.command === 'studio') {
-    return exit(await studio.run(parsed, ctx));
-  } else if (parsed.command === 'eject') {
-    return exit(await eject.run(parsed, ctx));
-  } else if (parsed.command === 'diff') {
-    return exit(await diff.run(parsed, ctx));
-  } else if (parsed.command === 'guide') {
-    return exit(await guide.run(parsed, ctx));
-  } else if (parsed.command === 'init') {
-    return exit(await init.run(parsed, ctx));
-  } else {
-    console.error(`diagc: Unknown command '${parsed.command}'.`);
-    console.error(USAGE);
-    return exit(1);
-  }
+/** The binary: argv through the process's own streams, then exit with the code. */
+async function main(): Promise<never> {
+  return exit(await run(process.argv.slice(2), processIo, USAGE));
 }
 
-main().catch((e) => {
-  console.error(errMessage(e));
-  return exit(1);
-});
+void main();
