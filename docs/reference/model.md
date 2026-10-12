@@ -51,7 +51,7 @@ Style preset ids: `clean` (default), `sketch`, `hand-drawn`, `pencil`, `blueprin
 | `include` | `string?` | URL or path to another `*.diagram.json` composed under this node at compile time. |
 | `includePlane` | `string?` | Which of the included diagram's planes supplies the grafted structure (default: its default plane). Meaningful only beside `include`; an id the included diagram doesn't declare fails composition, not validation. |
 | `includePlanes` | `boolean?` | Carry every plane the included diagram declares over too — namespaced (`<include-id>/<plane-id>`, name `<Include>/<Plane>`), notation intact — so each is viewable standalone via the plane switcher. Additive to `includePlane`/the default graft, which is unaffected. Meaningful only beside `include`. |
-| `plane` | `string?` | Restrict the node to one plane. Omit to share it across all. |
+| `plane` | `string?` | Restrict the node to one plane — and to the planes that borrow that plane's containment (`containmentOf`), which are views of its structure. Omit to share it across all. Deleting the plane deletes the node. |
 | `layer` | `string?` | The node shows only while this layer is active. |
 | `columns` | `Column[]?` | ER-table rows; rendered when `type` is `db-table`. |
 
@@ -540,7 +540,7 @@ Also returned by `diagramWarnings()`, so `compile` prints them and [`diagc lint`
 | `unused-layer` | A layer that no node, table row, relation or `layerRules` entry is on. |
 | `empty-plane` | A plane with no containment, scoped nodes, `containmentOf`, hides, layers, `baseRelations` or notation of its own: it shows every shared node flat. |
 | `unused-legend-item` | A legend row describing a `type` no node has or a `kind` no relation has. |
-| `undrawn-node` | A node that no plane's view includes (for example one scoped to a plane that borrows another's containment). |
+| `undrawn-node` | A node that no plane's view includes (for example one every plane hides). |
 | `undrawn-relation` | A relation between two drawn nodes that no plane shows together — or, for a relation with `plane`, that its own plane does not show together. |
 
 ## Registry defaults
