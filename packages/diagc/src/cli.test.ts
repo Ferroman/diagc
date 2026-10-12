@@ -9,6 +9,7 @@ import {
   parseRange,
   publishDirs,
 } from './cli';
+import { checkCommandArgs } from './command-args';
 
 describe('parseArgs', () => {
   it('parses init with a name, --type and --agents, in any order', () => {
@@ -167,5 +168,42 @@ describe('diff arguments', () => {
   it('names the output directory after the range', () => {
     expect(diffOutDir('v1.0', 'feature/x')).toBe('.diagrams/diff/v1.0..feature-x');
     expect(diffOutDir('HEAD~3', undefined)).toBe('.diagrams/diff/HEAD-3..working-tree');
+  });
+});
+
+describe('parseArgs, then the check of what the command takes', () => {
+  const check = (argv: string[]) => () => checkCommandArgs(parseArgs(argv));
+
+  it('reads no command as compile', () => {
+    expect(check(['--json'])).toThrow('compile does not take --json; lint and diff do.');
+  });
+
+  it('takes every flag on every command the flag table lists it for', () => {
+    const takes: [string, string[]][] = [
+      ['--out x', ['compile', 'watch', 'publish', 'eject', 'diff']],
+      ['--no-images', ['publish', 'diff']],
+      ['--link https://x.test', ['publish']],
+      ['--labels a,b', ['diff']],
+      ['--image-url https://x.test/{path}', ['diff']],
+      ['--json', ['lint', 'diff']],
+      ['--type c4', ['init']],
+      ['--agents', ['init']],
+      ['--update-includes', ['compile', 'publish']],
+    ];
+    for (const [flag, commands] of takes) {
+      for (const command of commands) expect(check([command, ...flag.split(' ')])).not.toThrow();
+    }
+  });
+
+  it('takes the arguments each command reads', () => {
+    expect(check(['compile', 'a.diagram.ts', 'b.diagram.ts'])).not.toThrow();
+    expect(check(['lint', 'a.diagram.ts', 'b.diagram.ts'])).not.toThrow();
+    expect(check(['publish', 'shop', 'cart'])).not.toThrow();
+    expect(check(['watch', '.diagrams/src/team'])).not.toThrow();
+    expect(check(['eject', 'shop'])).not.toThrow();
+    expect(check(['diff', 'v1..v2', 'shop', 'cart'])).not.toThrow();
+    expect(check(['guide', 'c4'])).not.toThrow();
+    expect(check(['init', 'shop'])).not.toThrow();
+    expect(check(['studio'])).not.toThrow();
   });
 });

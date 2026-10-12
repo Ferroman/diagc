@@ -38,6 +38,7 @@ import { formatCompileEvent, startWatch } from './watch';
 import { galleryLink } from './publish/gallery';
 import { publishDiagrams, type PublishOptions } from './publish/publish';
 import { runStudio } from './studio';
+import { ArgNotTakenError, checkCommandArgs } from './command-args';
 
 const USAGE = `Usage: diagc <init|compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir]
 
@@ -72,7 +73,7 @@ Options:
   --help, -h      Show this help and exit
 `;
 
-interface Args {
+export interface Args {
   command: string;
   files: string[];
   out: string;
@@ -257,12 +258,13 @@ async function main() {
   let args: Args;
   try {
     args = parseArgs(process.argv.slice(2));
+    checkCommandArgs(args);
   } catch (e) {
     if (e instanceof HelpRequested) {
       console.log(USAGE);
       process.exit(0);
     }
-    if (e instanceof UnknownFlagError || e instanceof BadFlagValueError) {
+    if (e instanceof UnknownFlagError || e instanceof BadFlagValueError || e instanceof ArgNotTakenError) {
       console.error(`diagc: ${e.message}\n`);
       console.error(USAGE);
       process.exit(1);
@@ -312,11 +314,10 @@ async function main() {
     else for (const r of reports) console.log(formatLintReport(r));
     process.exit(reports.length > 0 ? 1 : 0);
   } else if (args.command === 'watch') {
-    // Always locked, independent of args.updateIncludes: watch is a long-running
+    // Always locked, and --update-includes is refused here: watch is a long-running
     // live loop with no point at which "refetch and rewrite the lock" makes
-    // sense, so it ignores the flag by design rather than inheriting the shared
-    // session's mode (mirrors studio.ts's own hardcoded 'locked' session).
-    if (args.updateIncludes) console.error('ignoring --update-includes: watch always runs locked');
+    // sense, so it has its own session rather than the shared one (mirrors
+    // studio.ts's own hardcoded 'locked' session).
     const dir = args.files[0] ?? '.diagrams/src';
     if (
       existsSync(dir) &&
@@ -396,13 +397,11 @@ async function main() {
   } else if (args.command === 'studio') {
     // Studio's own compile-watch loop always resolves includes locked (see
     // studio.ts) — same reasoning as watch above.
-    if (args.updateIncludes) console.error('ignoring --update-includes: studio always runs locked');
     await runStudio(home, process.cwd());
     return;
   } else if (args.command === 'eject') {
     // ejectDiagram's post-swap recompile always resolves includes locked (see
     // eject.ts) — same reasoning as watch above.
-    if (args.updateIncludes) console.error('ignoring --update-includes: eject always runs locked');
     const name = args.files[0] === undefined ? undefined : diagramName(args.files[0]);
     if (name === undefined || name === '') {
       console.error('diagc: eject needs a diagram name.');

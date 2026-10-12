@@ -177,6 +177,27 @@ describe('diagc init, through the real CLI', () => {
     expect(r.stderr).toMatch(/^diagc: init takes one name, got 2/);
   }, 30_000);
 
+  it('refuses a flag or an argument its command does not take, with the usage, writing nothing', () => {
+    const dir = fresh();
+    const refused: [string[], RegExp][] = [
+      [
+        ['init', 'shop', '--out', 'build'],
+        /^diagc: init does not take --out; compile, watch, publish, eject and diff do\.$/m,
+      ],
+      [['guide', '--json'], /^diagc: guide does not take --json; lint and diff do\.$/m],
+      [['lint', '--update-includes'], /^diagc: lint does not take --update-includes; compile and publish do\.$/m],
+      [['eject', 'shop', 'extra'], /^diagc: eject takes one diagram name; 'extra' is one too many\.$/m],
+    ];
+    for (const [argv, message] of refused) {
+      const r = run(argv, dir);
+      expect(r.status).toBe(1);
+      expect(r.stdout).toBe('');
+      expect(r.stderr).toMatch(message);
+      expect(r.stderr).toContain('Usage: diagc');
+    }
+    expect(readdirSync(dir)).toEqual([]);
+  }, 60_000);
+
   it('lists init in --help', () => {
     const r = run(['--help'], fresh());
     expect(r.stdout).toMatch(/^ {2}init /m);
