@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { DiagramModel, LayoutOverlay, Drawings } from '@diagc/core/internal';
-import { errMessage, isDrawings } from '@diagc/core/internal';
+import { errMessage, isDrawings, uniqueSlug } from '@diagc/core/internal';
 import { classifyAssetRef, rewriteAssetRefs, safeAssetPath } from './assets';
 import { buildGallery, type GalleryEntry } from './gallery';
 import { discoverDiagrams } from './discover';
@@ -18,7 +18,8 @@ export interface PublishOptions {
   assetsDir: string;
   images: boolean;
   names?: string[];
-  renderPng?: (htmlPath: string, pngPath: string) => Promise<void>;
+  /** takes `htmlPath`'s picture of `plane` (the first plane when absent) into `pngPath` */
+  renderPng?: (htmlPath: string, pngPath: string, plane?: string) => Promise<void>;
   /** an http(s) address for the gallery's header — never put on a diagram page */
   link?: string;
   /** where a warning goes, one line each: `console.warn` by default, so a caller with
@@ -90,6 +91,56 @@ export async function inlineAssets(
   return rewriteAssetRefs(model, (ref) => cache.get(ref));
 }
 
+/** One picture of a diagram: its plane (absent = the first) and what goes between
+ * the diagram's name and `.png`. */
+export interface PlanePicture {
+  plane?: string;
+  suffix: string;
+}
+
+/**
+ * The pictures publish takes of a model, one per plane. The first plane's is
+ * `<name>.png`, the picture docs and READMEs already link; each further plane's
+ * is `<name>.<slug>.png`, its id made safe for a file name by the one slug rule
+ * (`Target VPC` -> `target-vpc`; ids that slug alike get `-2`, `-3`…).
+ */
+export function planePictures(model: DiagramModel): PlanePicture[] {
+  const taken = new Set<string>();
+  const others = model.planes.slice(1).map((p) => {
+    const slug = uniqueSlug(p.id, taken, 'plane');
+    taken.add(slug);
+    return { plane: p.id, suffix: `.${slug}` };
+  });
+  return [{ suffix: '' }, ...others];
+}
+
+interface PictureRun {
+  render: NonNullable<PublishOptions['renderPng']>;
+  staticDir: string;
+  /** every diagram discovered, by name: a plane's picture must not take one's file */
+  diagrams: ReadonlySet<string>;
+  warn: (line: string) => void;
+}
+
+/** Takes a diagram's pictures from its page; the files it wrote. */
+async function renderPictures(name: string, model: DiagramModel, pagePath: string, run: PictureRun): Promise<string[]> {
+  const written: string[] = [];
+  for (const picture of planePictures(model)) {
+    const file = `${name}${picture.suffix}`;
+    if (picture.plane !== undefined && run.diagrams.has(file)) {
+      run.warn(
+        `publish: no picture of plane "${picture.plane}" of diagram "${name}": ${file}.png is diagram "${file}"'s.`,
+      );
+      continue;
+    }
+    const pngPath = path.join(run.staticDir, `${file}.png`);
+    await mkdir(path.dirname(pngPath), { recursive: true });
+    await run.render(pagePath, pngPath, picture.plane);
+    written.push(pngPath);
+  }
+  return written;
+}
+
 export async function publishDiagrams(opts: PublishOptions): Promise<PublishResult> {
   const warn = opts.warn ?? console.warn;
   const shell = await readFile(opts.shellPath, 'utf8');
@@ -99,6 +150,7 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
   const cache = new Map<string, Buffer>();
 
   const all = await discoverDiagrams(opts.artifactsDir, opts.srcDir);
+  const discovered = new Set(all.map((d) => d.name));
   let chosen = all;
   if (opts.names !== undefined && opts.names.length > 0) {
     const want = new Set(opts.names);
@@ -138,10 +190,8 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
       pages.push(pagePath);
 
       if (opts.images && opts.renderPng !== undefined) {
-        const pngPath = path.join(opts.staticDir, `${d.name}.png`);
-        await mkdir(path.dirname(pngPath), { recursive: true });
-        await opts.renderPng(pagePath, pngPath);
-        images.push(pngPath);
+        const run = { render: opts.renderPng, staticDir: opts.staticDir, diagrams: discovered, warn };
+        images.push(...(await renderPictures(d.name, modelRaw, pagePath, run)));
       }
     } catch (e) {
       warn(`publish: skipping diagram "${d.name}": ${errMessage(e)}`);

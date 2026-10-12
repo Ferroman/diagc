@@ -219,6 +219,13 @@ describe('Viewer plane picker', () => {
     expect(picker()).toBeNull();
     expect(screen.queryByText('Zeta')).toBeNull();
   });
+
+  it('draws the plane an export names, still without the picker', async () => {
+    const { container } = render(<Viewer data={{ model: twoPlanes() }} expandAll exportPlane="full" />);
+    expect(await screen.findByText('Zeta')).toBeDefined();
+    expect(picker()).toBeNull();
+    expect(container.querySelector('.dg-canvas.dg-notation-cld')).not.toBeNull();
+  });
 });
 
 /**

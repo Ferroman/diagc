@@ -22,7 +22,7 @@ Three outputs:
 | --- | --- | --- |
 | `.diagrams/html/<name>.html` | Self-contained interactive page — model, layout and every image inlined. No server needed. | no |
 | `.diagrams/html/index.html` | A gallery linking them all: one section per source folder, each card titled with its model's name. | no |
-| `.diagrams/static/<name>.png` | Flat image, sized to the diagram. | **yes** |
+| `.diagrams/static/<name>.png` | Flat image of the first plane, sized to the diagram. Each further plane gets `<name>.<plane>.png`. | **yes** |
 
 Freehand drawings (`<name>.drawings.json`) ship with the page and are included in the PNG; the export frame grows to fit a stroke drawn outside the boxes.
 
@@ -69,7 +69,7 @@ Checked automatically: `/usr/bin/google-chrome`, `/usr/bin/google-chrome-stable`
 
 `.diagrams/html/<name>.html` is a single file with everything inlined. Email it, drop it in Slack, open it from disk — it folds and unfolds exactly like the studio, it just cannot save.
 
-Pages with several planes get a plane picker at the top; the PNG always shows the first plane.
+Pages with several planes get a plane picker at the top. `<name>.png` shows the first plane; each other plane has its own PNG beside it.
 
 The page opens in the theme of the reader's system, light or dark. The `☾` / `☀` corner control switches it, and the browser remembers the choice for every published page on the same host. Switching back to the system's own theme forgets the choice, so the page follows the system again. The index page has the same switch.
 

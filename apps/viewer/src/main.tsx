@@ -37,11 +37,14 @@ function readData(): ViewerData | null {
 }
 
 // The publisher navigates to `<page>.html?export=1` for the screenshot, which
-// unfolds every group; a human opening the page plainly gets the folded view.
-const expandAll = new URLSearchParams(location.search).has('export');
+// unfolds every group, adding `&plane=<id>` for each plane after the first; a
+// human opening the page plainly gets the folded view.
+const params = new URLSearchParams(location.search);
+const expandAll = params.has('export');
+const exportPlane = expandAll ? (params.get('plane') ?? undefined) : undefined;
 
 const el = document.getElementById('root');
-if (el) createRoot(el).render(<Viewer data={readData()} expandAll={expandAll} />);
+if (el) createRoot(el).render(<Viewer data={readData()} expandAll={expandAll} exportPlane={exportPlane} />);
 
 // The export handshake (__DG_READY__ / __DG_BOUNDS__ / __DG_FIT__) is published
 // by the Viewer once React Flow has laid the graph out — it owns the layout API

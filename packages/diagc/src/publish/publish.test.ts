@@ -364,4 +364,75 @@ describe('publishDiagrams', () => {
     expect(gallery).toContain('href="demo.html"');
     expect(gallery).not.toContain('old.html');
   });
+
+  /** a diagram whose planes are named so their file names need making safe */
+  async function planed(f: Awaited<ReturnType<typeof fixture>>, name = 'planed') {
+    const b = model(name);
+    b.plane('current', { name: 'Current' });
+    b.plane('Target VPC', { name: 'Target' });
+    b.plane('../up', { name: 'Escape' });
+    b.node('x', { name: 'X' });
+    await writeFile(path.join(f.artifacts, `${name}.diagram.json`), JSON.stringify(b.toJSON()));
+  }
+
+  it('renders a picture of every plane: the first as <name>.png, each other as <name>.<plane slug>.png', async () => {
+    const f = await fixture();
+    await planed(f);
+    const calls: [string, string, string | undefined][] = [];
+    const res = await publishDiagrams({
+      srcDir: f.src,
+      artifactsDir: f.artifacts,
+      htmlDir: f.html,
+      staticDir: f.stat,
+      shellPath: f.shell,
+      libraryDir: f.lib,
+      assetsDir: f.assets,
+      images: true,
+      names: ['planed'],
+      renderPng: async (html, png, plane) => {
+        calls.push([path.relative(f.html, html), path.relative(f.stat, png), plane]);
+      },
+    });
+    expect(calls).toEqual([
+      ['planed.html', 'planed.png', undefined],
+      ['planed.html', 'planed.target-vpc.png', 'Target VPC'],
+      ['planed.html', 'planed.up.png', '../up'],
+    ]);
+    expect(res.images).toEqual(calls.map(([, png]) => path.join(f.stat, png)));
+  });
+
+  it("skips a plane's picture that would overwrite another diagram's, and says so", async () => {
+    const f = await fixture();
+    await planed(f);
+    const other = model('planed.target-vpc');
+    other.node('y', { name: 'Y' });
+    await writeFile(path.join(f.artifacts, 'planed.target-vpc.diagram.json'), JSON.stringify(other.toJSON()));
+    const pngs: string[] = [];
+    const warnings: string[] = [];
+    await publishDiagrams({
+      srcDir: f.src,
+      artifactsDir: f.artifacts,
+      htmlDir: f.html,
+      staticDir: f.stat,
+      shellPath: f.shell,
+      libraryDir: f.lib,
+      assetsDir: f.assets,
+      images: true,
+      names: ['planed', 'planed.target-vpc'],
+      renderPng: async (html, png, plane) => {
+        pngs.push(
+          `${path.relative(f.html, html)} -> ${path.relative(f.stat, png)}${plane !== undefined ? ` (${plane})` : ''}`,
+        );
+      },
+      warn: (line) => warnings.push(line),
+    });
+    expect(pngs).toEqual([
+      'planed.html -> planed.png',
+      'planed.html -> planed.up.png (../up)',
+      'planed.target-vpc.html -> planed.target-vpc.png',
+    ]);
+    expect(warnings).toEqual([
+      'publish: no picture of plane "Target VPC" of diagram "planed": planed.target-vpc.png is diagram "planed.target-vpc"\'s.',
+    ]);
+  });
 });

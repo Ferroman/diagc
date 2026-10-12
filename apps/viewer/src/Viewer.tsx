@@ -208,16 +208,26 @@ export function PlanePicker({
   );
 }
 
-export function Viewer({ data, expandAll = false }: { data: ViewerData | null; expandAll?: boolean }) {
+export function Viewer({
+  data,
+  expandAll = false,
+  exportPlane,
+}: {
+  data: ViewerData | null;
+  expandAll?: boolean;
+  /** the plane an export draws (`?plane=`); the first plane when absent */
+  exportPlane?: string;
+}) {
   const model =
     data !== null && typeof data === 'object' && (data as ViewerData).model != null
       ? (data as ViewerData).model
       : undefined;
   const layout = model !== undefined ? (data as ViewerData).layout : undefined;
-  // The page opens on the model's first plane (what the PNG shows) with that
+  // The page opens on the model's first plane (what `<name>.png` shows) with that
   // plane's preset layers, unfolded where the layout was SAVED open (a
   // hand-placed interior is only visible while its container is open) and
-  // folded elsewhere, so readers explore. An export opens everything instead.
+  // folded elsewhere, so readers explore. An export opens everything instead,
+  // on the plane the publisher asked for.
   const {
     props: readerProps,
     plane,
@@ -227,7 +237,9 @@ export function Viewer({ data, expandAll = false }: { data: ViewerData | null; e
     model,
     layout,
     exportMode: expandAll,
-    ...(expandAll && model !== undefined ? { opening: { pins: exportFolds(model, layout) } } : {}),
+    ...(expandAll && model !== undefined
+      ? { opening: { pins: exportFolds(model, layout), ...(exportPlane !== undefined ? { plane: exportPlane } : {}) } }
+      : {}),
   });
   // The causal-loop reading aids, all viewer state and none of it saved: the
   // clicked variable the report is about, the ctrl-clicked one to compare it

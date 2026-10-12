@@ -29,7 +29,14 @@ interface ExportWindow {
   __DG_FIT__?: (pad?: number) => void;
 }
 
-export async function renderPng(htmlPath: string, pngPath: string): Promise<void> {
+/** The page's export render: `?export=1` unfolds every group for a full overview,
+ * and `plane` names the plane to draw (the first when absent). */
+export function exportUrl(htmlPath: string, plane?: string): string {
+  const query = new URLSearchParams({ export: '1', ...(plane !== undefined ? { plane } : {}) });
+  return `${pathToFileURL(path.resolve(htmlPath)).href}?${query.toString()}`;
+}
+
+export async function renderPng(htmlPath: string, pngPath: string, plane?: string): Promise<void> {
   const executablePath = findChrome();
   if (executablePath === undefined) {
     throw new Error(
@@ -45,8 +52,7 @@ export async function renderPng(htmlPath: string, pngPath: string): Promise<void
       deviceScaleFactor: 2,
       colorScheme: 'light',
     });
-    // `?export=1` tells the viewer to unfold every group for a full overview.
-    await page.goto(`${pathToFileURL(path.resolve(htmlPath)).href}?export=1`);
+    await page.goto(exportUrl(htmlPath, plane));
     await page.waitForFunction(() => (window as unknown as ExportWindow).__DG_READY__ === true, null, {
       timeout: 15_000,
     });
