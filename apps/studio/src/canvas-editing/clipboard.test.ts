@@ -373,6 +373,23 @@ describe("a relation's plane", () => {
     expect(after.relations.slice(m.relations.length).map((r) => r.plane)).toEqual(['current']);
   });
 
+  it("copies only the nodes drawn on the plane in view, not another plane's", () => {
+    const base = system();
+    const m: DiagramModel = {
+      ...base,
+      planes: [
+        { id: 'current', name: 'Current' },
+        { id: 'target', name: 'Target', containmentOf: 'current' },
+      ],
+      nodes: [...base.nodes, { id: 'subnet', name: 'Subnet', plane: 'target' }],
+      containment: [...base.containment, { parent: 'sys', child: 'subnet' }],
+    };
+    const ids = (plane: string) =>
+      copySelection({ model: m, layout: undefined, plane }, ['sys'])!.nodes.map((n) => n.id);
+    expect(ids('current')).toEqual(['sys', 'api', 'db']);
+    expect(ids('target')).toEqual(['sys', 'api', 'db', 'subnet']);
+  });
+
   it("copies only the relations drawn on the plane in view, not another plane's", () => {
     const base = system();
     const m: DiagramModel = {

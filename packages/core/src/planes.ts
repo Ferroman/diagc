@@ -1,5 +1,5 @@
 import { CommandError } from './command-error';
-import type { ContainmentEdge, DiagramModel, DiagramPlane, DiagramRelation } from './types';
+import type { ContainmentEdge, DiagramModel, DiagramNode, DiagramPlane, DiagramRelation } from './types';
 
 // Which plane a containment edge is on, and which plane's containment a view reads.
 // An untagged edge is on the default plane, the first one declared. A plane with
@@ -32,6 +32,17 @@ export function containmentPlaneOf(model: DiagramModel, planeId?: string): strin
  * may be tagged with the named plane, and only a named plane can be. */
 export function borrowsContainment(model: DiagramModel, planeId: string | undefined): boolean {
   return (model.planes ?? []).find((p) => p.id === planeId)?.containmentOf !== undefined;
+}
+
+/** Which nodes the view of `plane` takes by their scope: a shared node, and one
+ * scoped to the plane itself or to the plane whose containment it reads — a
+ * borrowing plane is a view of its donor's structure, plus what only it has.
+ * Hiding and layers are the view's own (buildHierarchy). An unknown id takes
+ * the nodes scoped to that id, so it stays an empty view rather than all. */
+export function nodeScopeOn(model: DiagramModel, plane: string | undefined): (node: DiagramNode) => boolean {
+  const viewed = viewedPlane(model.planes ?? [], plane)?.id ?? plane;
+  const donor = containmentPlaneOf(model, plane) ?? plane;
+  return (node) => node.plane === undefined || node.plane === viewed || node.plane === donor;
 }
 
 /** Whether `relation` draws on the plane being viewed (`viewed`, an id): a shared

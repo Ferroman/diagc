@@ -7,6 +7,7 @@ import {
   layoutPlaneKey,
   containmentOn,
   containmentPlaneOf,
+  nodeScopeOn,
   relationOnPlane,
   uniqueNodeId,
   viewedPlane,
@@ -70,12 +71,14 @@ export function copySelection(
   const edges = edgesOn(model, plane);
   const parentOf = new Map(edges.map((e) => [e.child, e.parent]));
   // everything under the selection on THIS plane (another plane's hierarchy
-  // over the same nodes is not what the user is looking at)
+  // over the same nodes is not what the user is looking at), and only the nodes
+  // this plane draws: one another plane has alone is not on screen
   const kids = childrenOf(edges);
+  const inScope = nodeScopeOn(model, plane);
   const picked = new Set<string>();
   const stack = ids.filter((id) => byId.has(id));
   for (let cur = stack.pop(); cur !== undefined; cur = stack.pop()) {
-    if (picked.has(cur)) continue;
+    if (picked.has(cur) || !inScope(byId.get(cur)!)) continue;
     picked.add(cur);
     stack.push(...(kids.get(cur) ?? []));
   }

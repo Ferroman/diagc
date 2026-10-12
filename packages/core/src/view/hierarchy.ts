@@ -1,5 +1,5 @@
 import type { ContainmentEdge, DiagramModel, DiagramNode } from '../types';
-import { containmentOn, containmentPlaneOf, viewedPlane } from '../planes';
+import { containmentOn, containmentPlaneOf, nodeScopeOn, viewedPlane } from '../planes';
 
 export interface HierarchyIndex {
   parentsOf: Map<string, string[]>;
@@ -47,7 +47,7 @@ export function buildHierarchy(
   // `?? plane` keeps an unknown plane id an empty view instead of falling back to
   // every containment edge in the model.
   const active = containmentPlaneOf(model, plane) ?? plane;
-  const viewed = viewedPlane(model.planes ?? [], plane)?.id ?? plane;
+  const inScope = nodeScopeOn(model, plane);
   // This plane's containment BEFORE any visibility filtering: the cascade has to
   // see the edges that point into a hidden box to know what it contained.
   const planeEdges = active === undefined ? model.containment : containmentOn(model, active);
@@ -55,8 +55,7 @@ export function buildHierarchy(
 
   const layerOn = (n: DiagramNode): boolean =>
     n.layer === undefined || activeLayers === undefined || activeLayers.has(n.layer);
-  const isVisible = (n: DiagramNode): boolean =>
-    (n.plane === undefined || n.plane === active || n.plane === viewed) && !hidden.has(n.id) && layerOn(n);
+  const isVisible = (n: DiagramNode): boolean => inScope(n) && !hidden.has(n.id) && layerOn(n);
   const visible = new Set(model.nodes.filter(isVisible).map((n) => n.id));
   return indexEdges(model, planeEdges, visible);
 }

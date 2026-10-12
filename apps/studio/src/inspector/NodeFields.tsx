@@ -162,11 +162,17 @@ export function PlacementFields({
             <span>Scope</span>
             <select
               aria-label="Scope"
-              value={node.plane === activePlane ? 'local' : 'shared'}
+              value={node.plane === undefined ? 'shared' : node.plane === activePlane ? 'local' : 'elsewhere'}
               onChange={(e) => onCommand(details(node, { plane: e.target.value === 'local' ? activePlane : null }))}
             >
               <option value="shared">Shared (all planes)</option>
               <option value="local">This plane only</option>
+              {/* a borrowing plane also draws the nodes its donor has alone */}
+              {node.plane !== undefined && node.plane !== activePlane && (
+                <option value="elsewhere" disabled>
+                  {`${model.planes.find((p) => p.id === node.plane)?.name ?? node.plane} only`}
+                </option>
+              )}
             </select>
           </label>
           {node.plane === undefined && !borrowsContainment(model, activePlane) && (

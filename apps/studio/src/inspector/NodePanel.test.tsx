@@ -506,6 +506,20 @@ describe('NodePanel', () => {
     expect(screen.queryByLabelText('Hidden here')).toBeNull();
   });
 
+  it('names the donor plane of a node it borrows, rather than calling it shared', () => {
+    const base = testModel();
+    const model: DiagramModel = {
+      ...base,
+      planes: [...base.planes, { id: 'borrow', name: 'Borrow', containmentOf: 'arch' }],
+      nodes: base.nodes.map((n) => (n.id === 'a' ? { ...n, plane: 'arch' } : n)),
+    };
+    render(
+      <NodePanel model={model} nodeId="a" activePlane="borrow" onCommand={vi.fn()} onClose={noop} onDeleted={noop} />,
+    );
+    const scope = screen.getByLabelText('Scope') as HTMLSelectElement;
+    expect(scope.selectedOptions[0]?.textContent).toBe(`${model.planes.find((p) => p.id === 'arch')!.name} only`);
+  });
+
   it('clears the type to typeless when the Type field is emptied', () => {
     const onCommand = vi.fn();
     render(
