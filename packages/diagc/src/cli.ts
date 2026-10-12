@@ -35,6 +35,7 @@ import { diagramName, runInit } from './init';
 import { resolveInclude } from './includes';
 import { snapshotSession } from './snapshots';
 import { formatCompileEvent, startWatch } from './watch';
+import { discoverDiagrams } from './publish/discover';
 import { galleryLink } from './publish/gallery';
 import { publishDiagrams, type PublishOptions } from './publish/publish';
 import { runStudio } from './studio';
@@ -254,6 +255,16 @@ export function publishDirs(
   };
 }
 
+/** `files...` as diagram names, read as eject reads one (`.diagrams/src/shop.diagram.json`
+ * is `shop`). A name that matches nothing in `known` is an error on stderr, and the
+ * result is then undefined: an empty selection would look like nothing to do. */
+function diagramNames(files: readonly string[], known: ReadonlySet<string>): string[] | undefined {
+  const names = files.map(diagramName);
+  const unknown = names.filter((n) => !known.has(n));
+  for (const n of unknown) console.error(`diagc: no diagram '${n}'`);
+  return unknown.length === 0 ? names : undefined;
+}
+
 /** End the process once stdout and stderr have taken everything written to them:
  * `process.exit` straight after a write drops what a pipe has not accepted yet. A
  * zero-length write's callback runs after everything queued before it. It ends with
@@ -380,6 +391,9 @@ async function main() {
     // pages come out below), so an update run here is always full-tree; like
     // compile's, its prune waits until every source compiles.
     if (args.updateIncludes && !failed) await snap.prune();
+    const discovered = await discoverDiagrams(dirs.artifactsDir, dirs.srcDir);
+    const names = diagramNames(args.files, new Set(discovered.map((d) => d.name)));
+    if (names === undefined) return exit(1);
     let images = args.images;
     let renderPng: ((htmlPath: string, pngPath: string) => Promise<void>) | undefined;
     if (args.images) {
@@ -396,7 +410,7 @@ async function main() {
       shellPath: home.viewerShell,
       libraryDir: home.libraryDir,
       images,
-      names: args.files,
+      names,
       ...(renderPng !== undefined ? { renderPng } : {}),
       ...(args.link !== undefined ? { link: args.link } : {}),
     });
@@ -501,7 +515,10 @@ async function runDiff(args: Args, home: ReturnType<typeof homePaths>): Promise<
     const toLabel = args.labels?.[1] ?? to ?? 'working tree';
     const beforeSet = await loadDiagramSet(fromLabel, before.diagramsDir, home.coreEntry);
     const afterSet = await loadDiagramSet(toLabel, afterDir, home.coreEntry);
-    const diffs = compareDiagramSets(beforeSet, afterSet, args.files.slice(1));
+    const known = new Set([beforeSet, afterSet].flatMap((set) => [...set.versions.keys(), ...set.errors.keys()]));
+    const names = diagramNames(args.files.slice(1), known);
+    if (names === undefined) return 1;
+    const diffs = compareDiagramSets(beforeSet, afterSet, names);
     if (args.json) {
       console.log(
         JSON.stringify(

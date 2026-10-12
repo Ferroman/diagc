@@ -305,6 +305,19 @@ describe('diagc publish, through the real CLI', () => {
     expect(r.status).toBe(1);
   }, 60_000);
 
+  it('takes a diagram as a path, as eject does, and refuses a name that is no diagram', () => {
+    const dir = fresh(true);
+    writeFileSync(path.join(dir, '.diagrams', 'src', 'shop.diagram.json'), JSON.stringify(diagram('shop')));
+    const r = run(['publish', '.diagrams/src/shop.diagram.json', '--no-images'], dir);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain('✓ 1 page(s)');
+    expect(existsSync(path.join(dir, '.diagrams', 'html', 'shop.html'))).toBe(true);
+
+    const nope = run(['publish', 'nope', '--no-images'], dir);
+    expect(nope.status).toBe(1);
+    expect(nope.stderr).toContain("diagc: no diagram 'nope'");
+  }, 60_000);
+
   // Chrome at a default location is found whatever CHROME_PATH says.
   it.skipIf(findChrome() !== undefined)(
     'says on stderr that it found no Chrome',
@@ -378,4 +391,35 @@ describe('output through a pipe', () => {
     expect(r.status).toBe(0);
     expect(r.stdout).toContain('✓');
   }, 30_000);
+});
+
+describe('diagc diff, through the real CLI', () => {
+  it('takes a diagram as a file name, and refuses a name that is no diagram', () => {
+    const dir = fresh(true);
+    const git = (...args: string[]) =>
+      execFileSync(
+        'git',
+        ['-c', 'user.email=t@example.com', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...args],
+        {
+          cwd: dir,
+          stdio: 'pipe',
+        },
+      );
+    const shop = path.join(dir, '.diagrams', 'src', 'shop.diagram.json');
+    writeFileSync(shop, JSON.stringify(diagram('shop')));
+    git('init', '-q');
+    git('add', '-A');
+    git('commit', '-qm', 'shop');
+    writeFileSync(shop, JSON.stringify(diagram('shop', { nodes: [{ id: 'a', name: 'Renamed', type: 'service' }] })));
+
+    const r = run(['diff', 'HEAD', 'shop.diagram.json', '--json', '--no-images'], dir);
+    expect(r.status).toBe(0);
+    const out = JSON.parse(r.stdout) as { diagrams: { name: string; status: string }[] };
+    expect(out.diagrams).toEqual([expect.objectContaining({ name: 'shop', status: 'changed' })]);
+
+    const nope = run(['diff', 'HEAD', 'nope', '--json', '--no-images'], dir);
+    expect(nope.status).toBe(1);
+    expect(nope.stderr).toContain("diagc: no diagram 'nope'");
+    expect(nope.stdout).toBe('');
+  }, 60_000);
 });
