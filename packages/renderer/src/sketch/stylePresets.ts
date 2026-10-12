@@ -15,6 +15,16 @@ export interface RoughStyle {
   hatchOpacity?: number;
 }
 
+/** A preset's own line drawing (the text looks bend square and draw lines as characters). */
+export interface EdgeLook {
+  /** corner radius of a routed line in px, in place of the layout's (0 = square bends) */
+  corner?: number;
+  /** stroke-dasharray per line style, in place of the default */
+  dash?: Partial<Record<'solid' | 'dashed', string>>;
+  /** the default arrow head drawn open (a stroked `>`) rather than filled */
+  openArrow?: boolean;
+}
+
 /** A named visual style: pure data read by the rough engine, node/edge
  * chrome, and canvas CSS. Mirrors the notation-profile pattern
  * (notations.ts) — adding a preset here is the whole job. */
@@ -34,6 +44,13 @@ export interface StylePreset {
   colorMix?: { fill: number; stroke: number };
   /** canvas-level CSS custom property overrides (--dg-* only) */
   cssVars?: Record<string, string>;
+  /** colours for node types, in slot order: present = the preset colours boxes
+   *  by type (canvas/type-hues.ts) and draws each box from its `--dg-hue` */
+  palette?: readonly string[];
+  /** how the preset draws lines, where it departs from the default */
+  edges?: EdgeLook;
+  /** the canvas grid: absent = React Flow's dots */
+  grid?: 'lines' | 'none';
 }
 
 const CLEAN: StylePreset = { id: 'clean', label: 'Clean' };
