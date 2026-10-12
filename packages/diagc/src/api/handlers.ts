@@ -265,20 +265,40 @@ export async function renameDiagram(diagramsDir: string, from: string, to: strin
   if (model['name'] === model['id']) model['name'] = to;
   model['id'] = to;
   await mkdir(path.dirname(toDiagram), { recursive: true });
-  await writeFileAtomic(toDiagram, `${JSON.stringify(model, null, 2)}\n`);
-  await unlink(fromDiagram);
-  // Carry the layout over when it exists; its absence is not an error.
+  // Sidecars first, the source last, so the old name keeps its source until every
+  // other step has worked. A failure undoes the steps before it, in reverse, and
+  // the error answers 500.
+  const moved: [string, string][] = [];
+  let written = false;
   try {
-    await rename(path.join(diagramsDir, `${from}.layout.json`), path.join(diagramsDir, `${to}.layout.json`));
-  } catch {
-    /* no layout to move */
-  }
-  try {
-    await rename(path.join(diagramsDir, `${from}.drawings.json`), path.join(diagramsDir, `${to}.drawings.json`));
-  } catch {
-    /* no drawings to move */
+    for (const sidecar of ['layout', 'drawings']) {
+      const move: [string, string] = [
+        path.join(diagramsDir, `${from}.${sidecar}.json`),
+        path.join(diagramsDir, `${to}.${sidecar}.json`),
+      ];
+      if (await moveIfPresent(...move)) moved.push(move);
+    }
+    await writeFileAtomic(toDiagram, `${JSON.stringify(model, null, 2)}\n`);
+    written = true;
+    await unlink(fromDiagram);
+  } catch (e) {
+    if (written) await unlink(toDiagram).catch(() => {});
+    for (const [src, dst] of moved.reverse()) await rename(dst, src).catch(() => {});
+    throw e;
   }
   return { status: 200, body: { ok: true } };
+}
+
+/** `rename(src, dst)`, false when there is no `src` to move: a diagram need not have
+ * a sidecar. Any other failure throws. */
+async function moveIfPresent(src: string, dst: string): Promise<boolean> {
+  try {
+    await rename(src, dst);
+    return true;
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw e;
+  }
 }
 
 /** Promote a JSON-owned diagram to a generated `.diagram.ts`. See `ejectDiagram`

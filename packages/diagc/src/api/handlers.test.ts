@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, readdir, writeFile, mkdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -21,6 +21,8 @@ import {
   saveLibrary,
   walkFiles,
 } from './handlers';
+import * as handlers from './handlers';
+import { runRoute } from './dispatch';
 
 const goodModel = {
   version: 1,
@@ -228,6 +230,89 @@ describe('designer api handlers', () => {
     expect((await renameDiagram(dir, 'old', 'new')).status).toBe(200);
     expect((await readDiagram(dir, 'new')).body).toEqual({ model: { ...goodModel, id: 'new', name: 'new' }, drawings });
     await expect(readFile(path.join(dir, 'old.drawings.json'), 'utf8')).rejects.toThrow();
+  });
+});
+
+describe('a rename that fails', () => {
+  /** Every file under `dir`, with its content: what a failed rename must leave as it was. */
+  async function files(dir: string): Promise<Record<string, string>> {
+    const out: Record<string, string> = {};
+    for (const e of await readdir(dir, { recursive: true, withFileTypes: true })) {
+      if (e.isFile())
+        out[path.relative(dir, path.join(e.parentPath, e.name))] = await readFile(
+          path.join(e.parentPath, e.name),
+          'utf8',
+        );
+    }
+    return out;
+  }
+  /** A diagram with both sidecars under `name`. */
+  async function diagramAt(dir: string, name: string): Promise<void> {
+    await saveDiagram(dir, name, goodModel);
+    await saveLayout(dir, name, { version: 1, planes: { default: { a: { x: 1, y: 2 } } } });
+    await saveDrawings(dir, name, { version: 1, planes: { default: [{ id: 'k1', points: [1, 2] }] } });
+  }
+  const renameVia = async (dir: string, from: string, to: string) =>
+    (await runRoute(
+      { method: 'POST', url: `/api/diagrams/${from}/rename`, body: Buffer.from(JSON.stringify({ to })) },
+      { diagramsDir: dir, artifactsDir: path.join(dir, 'art') },
+      handlers,
+    ))!.status;
+
+  it('leaves everything under the old name when a sidecar cannot move', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    await diagramAt(dir, 'shop');
+    // The layout moves first; a folder in the drawings' way stops the second move.
+    await mkdir(path.join(dir, 'orders.drawings.json'));
+    await writeFile(path.join(dir, 'orders.drawings.json', 'keep'), '');
+    const before = await files(dir);
+    expect(await renameVia(dir, 'shop', 'orders')).toBe(500);
+    expect(await files(dir)).toEqual(before);
+  });
+
+  it('leaves everything under the old name when a sidecar cannot leave its folder', async () => {
+    // root ignores the write bit, so nothing would fail
+    if (process.getuid?.() === 0) return;
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    await diagramAt(dir, 'team/shop');
+    const before = await files(dir);
+    await chmod(path.join(dir, 'team'), 0o555);
+    try {
+      expect(await renameVia(dir, 'team/shop', 'shop')).toBe(500);
+    } finally {
+      await chmod(path.join(dir, 'team'), 0o755);
+    }
+    expect(await files(dir)).toEqual(before);
+  });
+
+  it('leaves everything under the old name when the old source cannot be deleted', async () => {
+    if (process.getuid?.() === 0) return;
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    // No sidecars, so the first step that fails is the delete.
+    await saveDiagram(dir, 'team/shop', goodModel);
+    const before = await files(dir);
+    await chmod(path.join(dir, 'team'), 0o555);
+    try {
+      expect(await renameVia(dir, 'team/shop', 'shop')).toBe(500);
+    } finally {
+      await chmod(path.join(dir, 'team'), 0o755);
+    }
+    expect(await files(dir)).toEqual(before);
+  });
+
+  it('leaves everything under the old name when the new folder cannot be written', async () => {
+    if (process.getuid?.() === 0) return;
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    await diagramAt(dir, 'shop');
+    await mkdir(path.join(dir, 'team'));
+    const before = await files(dir);
+    await chmod(path.join(dir, 'team'), 0o555);
+    try {
+      expect(await renameVia(dir, 'shop', 'team/shop')).toBe(500);
+    } finally {
+      await chmod(path.join(dir, 'team'), 0o755);
+    }
+    expect(await files(dir)).toEqual(before);
   });
 });
 
