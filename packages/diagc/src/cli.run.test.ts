@@ -1,15 +1,17 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
-import { findHome } from './home';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { findHome, homePaths } from './home';
 
 // The real CLI through its development entry (tsx-registered, no build step),
 // run from directories of its own: these tests are about what a user sees in a
 // repository that is not this one.
-const bin = path.join(findHome(fileURLToPath(import.meta.url)).root, 'bin', 'diagc.mjs');
+const home = findHome(fileURLToPath(import.meta.url));
+const bin = path.join(home.root, 'bin', 'diagc.mjs');
 const NO_SOURCES = "No diagrams under .diagrams/src — run 'diagc init' to create one.";
 
 const dirs: string[] = [];
@@ -181,4 +183,55 @@ describe('diagc init, through the real CLI', () => {
     expect(r.stdout).toMatch(/^ {2}--type <type>/m);
     expect(r.stdout).toMatch(/^ {2}--agents/m);
   }, 30_000);
+});
+
+/** A diagram source: one service node, with the given extra fields. */
+function diagram(id: string, extra: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    version: 1,
+    id,
+    name: id,
+    nodes: [{ id: 'a', name: 'A', type: 'service' }],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+    ...extra,
+  };
+}
+
+describe('diagc publish, through the real CLI', () => {
+  // publish stops at once without the viewer shell, and CI runs the tests before
+  // `pnpm build:dist` builds it, so a checkout that lacks it builds it here (about a second).
+  beforeAll(() => {
+    if (existsSync(homePaths(home).viewerShell)) return;
+    const r = spawnSync('pnpm', ['build:cli'], { cwd: home.root, encoding: 'utf8' });
+    if (r.status !== 0) throw new Error(`pnpm build:cli failed:\n${r.stderr}`);
+  }, 120_000);
+
+  it('keeps the include lock when a source fails before its includes resolve', () => {
+    const dir = fresh(true);
+    const url = 'https://example.com/svc.diagram.json';
+    const text = `${JSON.stringify(diagram('svc'), null, 2)}\n`;
+    const vendored = 'includes/svc-00000000.diagram.json';
+    const lock = `${JSON.stringify(
+      { version: 1, includes: { [url]: { file: vendored, sha256: createHash('sha256').update(text).digest('hex') } } },
+      null,
+      2,
+    )}\n`;
+    mkdirSync(path.join(dir, '.diagrams', 'includes'));
+    writeFileSync(path.join(dir, '.diagrams', vendored), text);
+    writeFileSync(path.join(dir, '.diagrams', 'includes.lock.json'), lock);
+    // The dangling relation fails validation before the include is resolved.
+    const umbrella = diagram('umbrella', {
+      nodes: [{ id: 'svc', name: 'Svc', include: url }],
+      relations: [{ id: 'r', from: 'svc', to: 'ghost', kind: 'uses' }],
+    });
+    writeFileSync(path.join(dir, '.diagrams', 'src', 'umbrella.diagram.json'), JSON.stringify(umbrella));
+    const r = run(['publish', '--update-includes', '--no-images'], dir);
+    expect(r.stdout).toContain('✓ gallery'); // past the viewer shell check
+    expect(r.stderr).toContain('umbrella.diagram.json');
+    expect(readFileSync(path.join(dir, '.diagrams', 'includes.lock.json'), 'utf8')).toBe(lock);
+    expect(existsSync(path.join(dir, '.diagrams', vendored))).toBe(true);
+  }, 60_000);
 });

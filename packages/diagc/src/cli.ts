@@ -352,6 +352,7 @@ async function main() {
     // Compile first so artifacts reflect current sources (TS + include expansion).
     const sources = await fg('**/*.diagram.{ts,json}', { cwd: dirs.srcDir, absolute: true });
     if (sources.length === 0) warnNoSources(dirs.srcDir);
+    let failed = false;
     for (const f of sources) {
       try {
         await compileFile(f, dirs.artifactsDir, {
@@ -360,13 +361,14 @@ async function main() {
           resolver: snap.resolver,
         });
       } catch (e) {
+        failed = true;
         console.error(`✗ ${f}\n${errMessage(e)}`);
       }
     }
     // publish's glob above ignores args.files (that only scopes which rendered
-    // pages come out below), so it always compiles the whole source tree —
-    // an update run here is always full-tree, so the prune is unguarded.
-    if (args.updateIncludes) await snap.prune();
+    // pages come out below), so an update run here is always full-tree; like
+    // compile's, its prune waits until every source compiles.
+    if (args.updateIncludes && !failed) await snap.prune();
     let images = args.images;
     let renderPng: ((htmlPath: string, pngPath: string) => Promise<void>) | undefined;
     if (args.images) {
