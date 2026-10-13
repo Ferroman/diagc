@@ -17,7 +17,8 @@ import { useLegendState } from '../legend/useLegendState';
 import { LoopHighlightContext } from '../loops/loop-highlight';
 import { useLoopOverlay } from '../loops/useLoopOverlay';
 import { stylePreset } from '../sketch/stylePresets';
-import { canvasClassName, canvasStyle } from './canvas-frame';
+import { typeHuesOf } from './type-hues';
+import { canvasClassName, canvasGrid, canvasStyle } from './canvas-frame';
 import { canvasToggles, toggleOf } from './canvas-toggles';
 import { CanvasControls } from './CanvasControls';
 import { CanvasOverlays } from './CanvasOverlays';
@@ -42,8 +43,10 @@ import { useRootFit } from './useRootFit';
 import { useViewLayout } from './useViewLayout';
 import { useViewModeMoves } from './useViewModeMoves';
 import '../styles.css';
+import '../presets.css';
 import '@fontsource/kalam/400.css';
 import '@fontsource/kalam/700.css';
+import '../fonts.css';
 
 import { DEFAULT_ON_NODE_META_KEYS, type DiagramViewProps } from './view-types';
 
@@ -64,6 +67,8 @@ function Inner(props: DiagramViewProps) {
   const icons = useMemo(() => props.icons ?? createIconRegistry(), [props.icons]);
   const notation = useNotation(props);
   const { profile, typeRegistry } = notation;
+  // A palette preset's colour for each node type, over the whole model (type-hues.ts)
+  const hues = useMemo(() => typeHuesOf(preset, props.model, typeRegistry), [preset, props.model, typeRegistry]);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   // In-place label editing target (edit mode double-click): a node's name or a
@@ -133,6 +138,7 @@ function Inner(props: DiagramViewProps) {
     strokes: ink.strokes,
     drawingsVisible: ink.drawingsVisible,
     nodeColors: notation.nodeColors,
+    hues,
   });
   const moves = useViewModeMoves({ props, editing });
 
@@ -182,6 +188,7 @@ function Inner(props: DiagramViewProps) {
     notation,
     icons,
     preset,
+    hues,
     compiled,
     layout: viewLayout,
     hiddenCounts,
@@ -285,6 +292,7 @@ function Inner(props: DiagramViewProps) {
   });
 
   const { pen, laser } = gestures;
+  const grid = canvasGrid(preset, props.snapGrid);
   return (
     <LoopHighlightContext.Provider value={loopHighlight}>
       {/* the badges inside read this to know whether their note is
@@ -344,8 +352,7 @@ function Inner(props: DiagramViewProps) {
             nodesConnectable={editing && !gestureCaptured}
             proOptions={{ hideAttribution: true }}
           >
-            {/* With snapping on the dots ARE the grid, so a dropped box visibly lands on one. */}
-            <Background {...(props.snapGrid !== undefined ? { gap: props.snapGrid, className: 'dg-grid-on' } : {})} />
+            {grid !== null && <Background {...grid} />}
             <DrawingsLayer
               strokes={ink.strokes}
               live={liveStroke(pen.live, props.pen)}

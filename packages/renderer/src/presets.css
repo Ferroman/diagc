@@ -1,0 +1,606 @@
+/* The looks of the presets that restyle boxes (sketch/stylePresets.ts), one
+   block per look, each scoped to its `.dg-style-<id>` class and loaded after
+   styles.css so it wins ties. A palette preset gets each box's colour as
+   `--dg-hue` (BoxBody), and a coloured group's (GroupBody), and decides here
+   how to draw it; an untyped box has none, so every use names a neutral
+   fallback.
+
+   The looks restyle the card shapes — box, rounded, cylinder, pill, hexagon,
+   person — through `:is(…)`, which costs one class of specificity. Glyph shapes
+   (diamond, bar, dots, signals) and the other bodies (tables, commits, notes)
+   keep their own drawing in the look's colours and font. A box's border is set
+   by width and colour, never the shorthand, so a dashed type (`.dg-dashed`: a
+   system, a C4 boundary) stays dashed; where a look gives groups a solid edge
+   of its own, a rule beside it keeps a dashed type's broken. */
+
+/* ---- Soft and Pastel: raised cards, hairline borders, filled group panels, pill tags ---- */
+:is(.dg-style-soft, .dg-style-pastel)
+  :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person) {
+  /* the hairline is the cards' alone: activity bars and dots draw in --dg-node-stroke */
+  border-width: 1px;
+  border-color: color-mix(in srgb, var(--dg-text) 9%, var(--dg-surface));
+  padding: 10px 12px;
+  box-shadow:
+    0 1px 2px rgb(16 24 40 / 0.06),
+    0 6px 16px -4px rgb(16 24 40 / 0.12);
+}
+:is(.dg-style-soft, .dg-style-pastel) .dg-shape-pill {
+  padding: 10px 16px;
+}
+:is(.dg-style-soft, .dg-style-pastel) :is(.dg-shape-box, .dg-shape-rounded) {
+  border-radius: 12px;
+}
+:is(.dg-style-soft, .dg-style-pastel) .dg-group:not(.dg-group-outline) {
+  background: color-mix(in srgb, var(--dg-text) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dg-text) 7%, transparent);
+  border-radius: 18px;
+}
+:is(.dg-style-soft, .dg-style-pastel) .dg-group.dg-dashed:not(.dg-group-outline) {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--dg-text) 26%, transparent);
+}
+:is(.dg-style-soft, .dg-style-pastel) .dg-group-header {
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+:is(.dg-style-soft, .dg-style-pastel) .dg-meta-badge {
+  border: none;
+  background: color-mix(in srgb, var(--dg-text) 6%, transparent);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+:is(.dg-style-soft, .dg-style-pastel) .dg-edge-label {
+  background: var(--dg-surface);
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--dg-text) 8%, transparent),
+    0 2px 6px rgb(16 24 40 / 0.08);
+  padding: 2px 8px;
+}
+
+/* Pastel: Soft, each box washed in its type's colour */
+.dg-style-pastel
+  :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person) {
+  background: color-mix(in srgb, var(--dg-hue, #64748b) 11%, var(--dg-surface));
+  border-color: color-mix(in srgb, var(--dg-hue, #64748b) 32%, var(--dg-surface));
+}
+.dg-style-pastel .dg-icon {
+  color: color-mix(in srgb, var(--dg-hue, #64748b) 75%, var(--dg-text));
+}
+.dg-style-pastel .dg-meta-badge {
+  background: color-mix(in srgb, var(--dg-hue, var(--dg-text)) 14%, transparent);
+  color: color-mix(in srgb, var(--dg-hue, var(--dg-text)) 60%, var(--dg-text));
+}
+
+/* ---- Cards: a type-coloured top band and icon tile; groups with a ruled title bar ---- */
+.dg-style-cards
+  :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person) {
+  border-width: 1px;
+  border-color: color-mix(in srgb, var(--dg-text) 11%, var(--dg-surface));
+  background: var(--dg-surface);
+  padding: 10px 12px;
+  box-shadow: 0 2px 8px -2px rgb(16 24 40 / 0.1);
+}
+.dg-style-cards :is(.dg-shape-box, .dg-shape-rounded) {
+  border-radius: 10px;
+  border-top-width: 3px;
+  border-top-color: var(--dg-hue, var(--dg-node-stroke));
+}
+/* the band is a box's: the other card shapes wear the colour as their edge */
+.dg-style-cards :is(.dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person) {
+  border-color: var(--dg-hue, color-mix(in srgb, var(--dg-text) 11%, var(--dg-surface)));
+}
+.dg-style-cards
+  :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person)
+  .dg-icon {
+  color: var(--dg-hue, var(--dg-text-muted));
+  background: color-mix(in srgb, var(--dg-hue, var(--dg-text-muted)) 13%, var(--dg-surface));
+  border-radius: 6px;
+  padding: 3px;
+  box-sizing: content-box;
+}
+.dg-style-cards .dg-group:not(.dg-group-outline) {
+  background: color-mix(in srgb, var(--dg-text) 2.5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dg-text) 11%, transparent);
+  border-radius: 12px;
+}
+.dg-style-cards .dg-group.dg-dashed:not(.dg-group-outline) {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--dg-text) 28%, transparent);
+}
+.dg-style-cards .dg-group:not(.dg-group-outline) > .dg-group-header {
+  border-bottom: 1px solid color-mix(in srgb, var(--dg-text) 8%, transparent);
+  color: var(--dg-text);
+  font-size: 12px;
+  padding: 9px 12px;
+}
+.dg-style-cards .dg-meta-badge {
+  border-radius: 999px;
+}
+.dg-style-cards .dg-edge-label {
+  background: var(--dg-surface);
+  border: 1px solid color-mix(in srgb, var(--dg-text) 11%, transparent);
+  border-radius: 6px;
+}
+
+/* ---- Layered: no grid; groups are washes of one blue, translucent, so each
+   level of nesting stacks on its parent's and reads deeper ---- */
+/* Chrome draws a canvas tile that holds one flat colour as a solid quad, and under
+   a translucent wash that quad comes out a shade off its rastered neighbours — a
+   faint square in the export. A gradient too slight to see keeps every tile rastered. */
+.dg-style-layered .react-flow {
+  background-image: linear-gradient(rgb(0 0 0 / 0), rgb(0 0 0 / 0.01));
+}
+.dg-style-layered
+  :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person) {
+  border-width: 1px;
+  border-color: color-mix(in srgb, #3b82f6 16%, var(--dg-surface));
+  background: var(--dg-surface);
+  padding: 10px 12px;
+  box-shadow:
+    0 1px 3px rgb(30 58 138 / 0.08),
+    0 6px 14px -6px rgb(30 58 138 / 0.14);
+}
+.dg-style-layered :is(.dg-shape-box, .dg-shape-rounded) {
+  border-radius: 10px;
+}
+.dg-style-layered .dg-icon {
+  color: color-mix(in srgb, #3b82f6 70%, var(--dg-text));
+}
+.dg-style-layered .dg-group:not(.dg-group-outline) {
+  background: color-mix(in srgb, #3b82f6 6%, transparent);
+  border: none;
+  border-radius: 16px;
+}
+/* a wash has no edge; a dashed type is given one */
+.dg-style-layered .dg-group.dg-dashed:not(.dg-group-outline) {
+  border: 1px dashed color-mix(in srgb, #3b82f6 40%, transparent);
+}
+.dg-style-layered .dg-group-header {
+  color: color-mix(in srgb, #3b82f6 45%, var(--dg-text));
+  font-size: 12px;
+}
+.dg-style-layered .dg-meta-badge {
+  border: none;
+  background: color-mix(in srgb, #3b82f6 9%, transparent);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+.dg-style-layered .dg-edge-label {
+  background: var(--dg-surface);
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, #3b82f6 14%, transparent);
+  padding: 2px 8px;
+}
+
+/* A dashed box has to read as dashed, which a hairline at a tenth of the text
+   colour does not: its edge is drawn stronger than a solid box's. */
+:is(.dg-style-soft, .dg-style-pastel, .dg-style-cards, .dg-style-layered)
+  :is(
+    .dg-shape-box,
+    .dg-shape-rounded,
+    .dg-shape-cylinder,
+    .dg-shape-pill,
+    .dg-shape-hexagon,
+    .dg-shape-person
+  ).dg-dashed {
+  border-color: color-mix(in srgb, var(--dg-hue, var(--dg-text)) 45%, var(--dg-surface));
+}
+/* cards: the band stays the box's colour, unbroken */
+.dg-style-cards :is(.dg-shape-box, .dg-shape-rounded).dg-dashed {
+  border-top-style: solid;
+  border-top-color: var(--dg-hue, var(--dg-node-stroke));
+}
+
+/* The fixed-colour looks paint the legend's panel; its text inherits the page's
+   colour, which belongs to the theme the look ignores. */
+:is(.dg-style-neon, .dg-style-terminal, .dg-style-dos) .dg-legend {
+  color: var(--dg-text);
+}
+
+/* JetBrains Mono sets a sixth wider than the sans a saved layout was arranged
+   in, and a box is as wide as its text: as cut, the monospace looks push a box
+   into its neighbour or out of its group. Tracked in, the text keeps its grid
+   and the box nearly its size. */
+:is(.dg-style-terminal, .dg-style-ascii, .dg-style-dos) :is(.dg-node, .dg-group-header, .dg-edge-label),
+.dg-style-neon :is(.dg-type, .dg-meta-badge, .dg-edge-label) {
+  letter-spacing: -0.05em;
+}
+
+/* ---- Neon: a line grid, outlines glowing in the type's neon, cut corners
+   (`corner-shape` where the browser has it, rounded elsewhere), monospace small print ---- */
+/* the line grid's colour, kept off the snap grid's dots (`.dg-grid-on`), which have to show */
+.dg-style-neon .react-flow__background:not(.dg-grid-on) {
+  --xy-background-pattern-color: rgb(0 229 255 / 0.08);
+}
+.dg-style-neon
+  :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person) {
+  border-width: 1px;
+  border-color: var(--dg-hue, #00e5ff);
+  background: color-mix(in srgb, var(--dg-hue, #00e5ff) 7%, #0b0d17);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--dg-hue, #00e5ff) 18%, transparent),
+    0 0 16px -2px color-mix(in srgb, var(--dg-hue, #00e5ff) 50%, transparent);
+  padding: 10px 12px;
+}
+.dg-style-neon :is(.dg-shape-box, .dg-shape-rounded) {
+  border-radius: 12px 0;
+  corner-shape: bevel;
+}
+.dg-style-neon .dg-icon {
+  color: var(--dg-hue, #00e5ff);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--dg-hue, #00e5ff) 70%, transparent));
+}
+.dg-style-neon .dg-label {
+  letter-spacing: 0.02em;
+}
+.dg-style-neon :is(.dg-type, .dg-meta-badge, .dg-edge-label, .dg-group-header) {
+  font-family: 'diagc JetBrains Mono', 'JetBrains Mono', ui-monospace, monospace;
+}
+.dg-style-neon .dg-group:not(.dg-group-outline) {
+  background: rgb(255 43 214 / 0.035);
+  border: 1px solid rgb(255 43 214 / 0.6);
+  border-radius: 16px 0;
+  corner-shape: bevel;
+  box-shadow: inset 0 0 28px rgb(255 43 214 / 0.07);
+}
+.dg-style-neon .dg-group.dg-dashed:not(.dg-group-outline) {
+  border-style: dashed;
+}
+.dg-style-neon .dg-group-header {
+  color: #ff79e6;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+}
+.dg-style-neon .dg-meta-badge {
+  border: 1px solid color-mix(in srgb, var(--dg-hue, #00e5ff) 45%, transparent);
+  color: color-mix(in srgb, var(--dg-hue, #00e5ff) 75%, white);
+  border-radius: 0;
+}
+.dg-style-neon .react-flow__edge-path {
+  filter: drop-shadow(0 0 3px rgb(34 211 238 / 0.7));
+}
+.dg-style-neon .dg-edge-label {
+  border: 1px solid rgb(34 211 238 / 0.55);
+  color: #c6f7ff;
+  border-radius: 0;
+}
+
+/* ---- Terminal: phosphor on black. The scanlines are the screen's, so they sit
+   on the container and stay put while the drawing pans ---- */
+.dg-style-terminal .react-flow {
+  background-image: repeating-linear-gradient(0deg, rgb(57 255 136 / 0.035) 0 1px, transparent 1px 3px);
+}
+.dg-style-terminal
+  :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person) {
+  border-width: 1px;
+  border-color: var(--dg-hue, #39ff88);
+  background: color-mix(in srgb, var(--dg-hue, #39ff88) 5%, #070b07);
+  box-shadow: 0 0 12px -4px color-mix(in srgb, var(--dg-hue, #39ff88) 60%, transparent);
+  padding: 10px 12px;
+}
+.dg-style-terminal :is(.dg-shape-box, .dg-shape-rounded) {
+  border-radius: 0;
+}
+.dg-style-terminal
+  :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person)
+  .dg-label {
+  color: color-mix(in srgb, var(--dg-hue, #39ff88) 35%, white);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--dg-hue, #39ff88) 45%, transparent);
+}
+.dg-style-terminal .dg-icon {
+  color: var(--dg-hue, #39ff88);
+}
+.dg-style-terminal .dg-group:not(.dg-group-outline) {
+  background: rgb(255 176 0 / 0.025);
+  border: 1px dashed rgb(255 176 0 / 0.55);
+  border-radius: 0;
+}
+.dg-style-terminal .dg-group-header {
+  color: #ffc23d;
+  font-weight: 600;
+}
+.dg-style-terminal .dg-group-header::before {
+  content: '>';
+  opacity: 0.7;
+}
+.dg-style-terminal .dg-meta-badge {
+  border: none;
+  background: none;
+  color: color-mix(in srgb, var(--dg-hue, #39ff88) 70%, white);
+  padding: 0;
+}
+.dg-style-terminal .dg-meta-badge::before {
+  content: '[';
+  opacity: 0.6;
+}
+.dg-style-terminal .dg-meta-badge::after {
+  content: ']';
+  opacity: 0.6;
+}
+.dg-style-terminal .dg-edge-label {
+  border: 1px solid rgb(47 209 111 / 0.6);
+  border-radius: 0;
+  color: #b9ffd0;
+}
+
+/* ---- ASCII: frames typed in glyphs (sketch/asciiFrames.ts, as --dg-ascii-*),
+   painted in the box's hue by a nine-slice mask on a pseudo-element that sits
+   4px outside the box, so a saved layout sized for `clean` still fits. Text
+   only: no icons. A browser without mask-box-image gets a dashed border ---- */
+.dg-style-ascii
+  :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person) {
+  --dg-ascii: var(--dg-ascii-box);
+  --dg-glyph: color-mix(in srgb, var(--dg-hue, var(--dg-text)) 80%, var(--dg-text));
+  position: relative;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  clip-path: none;
+  background: var(--dg-canvas-bg);
+  padding: 10px 12px;
+}
+.dg-style-ascii .dg-shape-cylinder {
+  --dg-ascii: var(--dg-ascii-table);
+}
+.dg-style-ascii .dg-shape-hexagon {
+  --dg-ascii: var(--dg-ascii-hex);
+}
+.dg-style-ascii .dg-shape-pill {
+  --dg-ascii: var(--dg-ascii-pill);
+}
+.dg-style-ascii
+  :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person)::after,
+.dg-style-ascii .dg-group::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  pointer-events: none;
+  background: var(--dg-glyph);
+  -webkit-mask-box-image-source: var(--dg-ascii);
+  -webkit-mask-box-image-slice: 14 8 fill;
+  -webkit-mask-box-image-width: 14px 8px;
+  -webkit-mask-box-image-repeat: round;
+}
+.dg-style-ascii .dg-group::after {
+  inset: 0;
+}
+.dg-style-ascii .dg-shape-person::before {
+  content: 'O';
+  border: 0;
+  background: none;
+  width: auto;
+  height: auto;
+  top: -17px;
+  font: 600 15px/1 var(--dg-style-font);
+  color: var(--dg-glyph);
+}
+.dg-style-ascii .dg-icon {
+  display: none;
+}
+.dg-style-ascii .dg-label {
+  font-weight: 600;
+}
+.dg-style-ascii .dg-type {
+  color: var(--dg-text-muted);
+  opacity: 1;
+}
+.dg-style-ascii .dg-meta-badge {
+  border: none;
+  background: none;
+  border-radius: 0;
+  padding: 0;
+  color: color-mix(in srgb, var(--dg-hue, var(--dg-text)) 70%, var(--dg-text));
+}
+.dg-style-ascii .dg-meta-badge::before {
+  content: '[';
+}
+.dg-style-ascii .dg-meta-badge::after {
+  content: ']';
+}
+/* A group's frame is a line of dots, so it never reads as one of the hyphen
+   lines: in the group's own colour where it has one (GroupBody names it
+   --dg-hue), so a trust boundary stays red. `!important` beats the inline
+   accent a coloured group carries, which would draw a second, solid frame. */
+.dg-style-ascii .dg-group {
+  --dg-ascii: var(--dg-ascii-group);
+  --dg-glyph: var(--dg-hue, var(--dg-text-muted));
+  position: relative;
+  border-color: transparent !important;
+  border-radius: 0;
+  background: transparent !important;
+}
+/* The title sits on the frame's top line and masks it. `!important`: a
+   deployment zone styles its header as a tinted tab, more specifically than a
+   look can answer. */
+.dg-style-ascii .dg-group-header {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 14px;
+  height: 14px;
+  padding: 0 6px !important;
+  border-radius: 0 !important;
+  background: var(--dg-canvas-bg) !important;
+  color: var(--dg-text);
+  font: 600 12px/14px var(--dg-style-font);
+}
+.dg-style-ascii :is(.dg-comment-badge, .dg-badge, .dg-count) {
+  background: none;
+  color: var(--dg-text);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+.dg-style-ascii .dg-edge-label {
+  background: var(--dg-canvas-bg);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--dg-text-muted);
+  padding: 0 4px;
+}
+/* Last of the ascii rules: these weigh what the rules above do, so they win
+   only from below them. */
+@supports not (-webkit-mask-box-image-source: none) {
+  .dg-style-ascii
+    :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person) {
+    border-color: var(--dg-glyph);
+    border-style: dashed;
+  }
+  .dg-style-ascii .dg-group {
+    border: 1.5px dotted var(--dg-glyph) !important;
+  }
+  .dg-style-ascii
+    :is(
+      .dg-shape-box,
+      .dg-shape-rounded,
+      .dg-shape-cylinder,
+      .dg-shape-pill,
+      .dg-shape-hexagon,
+      .dg-shape-person
+    )::after,
+  .dg-style-ascii .dg-group::after {
+    display: none;
+  }
+}
+
+/* ---- DOS: a Turbo Vision screen — blue desktop, solid CGA boxes with an inset
+   double frame and a block shadow, double-framed groups titled on the frame ---- */
+.dg-style-dos
+  :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person) {
+  position: relative;
+  border-color: transparent;
+  border-radius: 0;
+  clip-path: none;
+  background: var(--dg-hue, #aaaaaa);
+  color: var(--dg-hue-ink, #000);
+  box-shadow: 9px 8px 0 #000;
+  padding: 10px 12px;
+}
+/* The inset frame is a pseudo-element's border, never an `outline`: the plan's
+   highlight and its drop target are outlines on this same box. */
+.dg-style-dos
+  :is(
+    .dg-shape-box,
+    .dg-shape-rounded,
+    .dg-shape-cylinder,
+    .dg-shape-pill,
+    .dg-shape-hexagon,
+    .dg-shape-person
+  )::after {
+  content: '';
+  position: absolute;
+  inset: 0.5px;
+  border: 3px double #fff;
+  pointer-events: none;
+}
+/* a dashed type: one broken line where the others have the double */
+.dg-style-dos
+  :is(
+    .dg-shape-box,
+    .dg-shape-rounded,
+    .dg-shape-cylinder,
+    .dg-shape-pill,
+    .dg-shape-hexagon,
+    .dg-shape-person
+  ).dg-dashed::after {
+  inset: 1px;
+  border: 2px dashed #fff;
+}
+.dg-style-dos
+  :is(.dg-shape-box, .dg-shape-rounded, .dg-shape-cylinder, .dg-shape-pill, .dg-shape-hexagon, .dg-shape-person)
+  :is(.dg-type, .dg-icon, .dg-meta-badge) {
+  color: color-mix(in srgb, var(--dg-hue-ink, #000) 70%, var(--dg-hue, #aaaaaa));
+  opacity: 1;
+}
+/* A filled node is a light fill, so its text is black. The white --dg-text is
+   for what sits on the blue desktop: a causal loop's words, a node with no fill
+   of its own (an image, a silhouette, a plan event) and the caption a glyph
+   hangs below itself. */
+.dg-style-dos :where(.dg-node:not(.dg-text-node, .dg-image-node, .dg-shape-node, .dg-event-node)) {
+  color: #000;
+}
+.dg-style-dos :where(.dg-node:not(.dg-text-node, .dg-image-node, .dg-shape-node, .dg-event-node)) .dg-type {
+  color: #0000aa;
+}
+.dg-style-dos .dg-glyph-caption {
+  color: var(--dg-text);
+}
+/* A git lane's name: black on the grey every DOS box wears, the lane's colour kept
+   in its border (`!important` beats the inline lane tint and text colour). */
+.dg-style-dos .dg-lane-label {
+  background: #aaaaaa !important;
+  color: #000 !important;
+  box-shadow: 6px 5px 0 #000;
+}
+/* the legend's FK mark sits on the blue panel, not on a grey table */
+.dg-style-dos .dg-legend .dg-table-key {
+  color: #55ffff;
+}
+.dg-style-dos .dg-shape-person::before {
+  content: '\263A';
+  border: 0;
+  background: none;
+  width: auto;
+  height: auto;
+  top: -22px;
+  color: var(--dg-hue, #aaaaaa);
+  font: 22px/1 var(--dg-style-font);
+}
+.dg-style-dos .dg-label {
+  font-weight: 600;
+}
+.dg-style-dos .dg-meta-badge {
+  border: none;
+  background: none;
+  border-radius: 0;
+  padding: 0;
+}
+.dg-style-dos .dg-meta-badge::before {
+  content: '[';
+}
+.dg-style-dos .dg-meta-badge::after {
+  content: ']';
+}
+/* A group is a double frame in its own colour where it has one (GroupBody
+   names it --dg-hue), white otherwise. `!important` beats the inline accent a
+   coloured group carries and a notation's own edge (a deployment zone's solid
+   line, a plan zone's bar). */
+.dg-style-dos .dg-group {
+  position: relative;
+  background: transparent !important;
+  border: 3px double var(--dg-hue, #fff) !important;
+  border-radius: 0 !important;
+}
+/* a dashed type: one broken line where the others have the double */
+.dg-style-dos .dg-group.dg-dashed {
+  border: 2px dashed var(--dg-hue, #fff) !important;
+}
+/* The title sits on the frame's top line and masks it. `!important`: a
+   deployment zone styles its header as a tinted tab, more specifically than a
+   look can answer. */
+.dg-style-dos .dg-group-header {
+  position: absolute;
+  z-index: 1;
+  top: -10.5px;
+  left: 14px;
+  height: 16px;
+  padding: 0 7px !important;
+  border-radius: 0 !important;
+  background: #0000aa !important;
+  color: #fff;
+  font: 600 12px/16px var(--dg-style-font);
+}
+.dg-style-dos .dg-group-header :is(.dg-meta-badge, .dg-icon) {
+  color: #55ffff;
+}
+.dg-style-dos .dg-edge-label {
+  background: #0000aa;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  color: #ffff55;
+  padding: 0 4px;
+}

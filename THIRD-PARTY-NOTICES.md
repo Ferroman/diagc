@@ -31,6 +31,9 @@ Two groups are distinguished, because the obligations differ:
 | [marked](https://marked.js.org) | 18.0.6 | MIT |
 | [@fontsource/kalam](https://fontsource.org) | 5.3.0 | OFL-1.1 |
 | [@fontsource/caveat](https://fontsource.org) | 5.3.0 | OFL-1.1 |
+| [@fontsource/inter](https://fontsource.org) | 5.3.0 | OFL-1.1 |
+| [@fontsource/jetbrains-mono](https://fontsource.org) | 5.3.0 | OFL-1.1 |
+| [@fontsource/chakra-petch](https://fontsource.org) | 5.3.0 | OFL-1.1 |
 
 ### elkjs — election of the GPL branch
 
@@ -110,9 +113,14 @@ The bundled fonts remain under the OFL and are **not** relicensed by this projec
 - **Kalam** — Copyright (c) 2014 Indian Type Foundry (info@indiantypefoundry.com)
 - **Caveat** — Copyright 2014 The Caveat Project Authors
   (https://github.com/googlefonts/caveat)
+- **Inter** — Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
+- **JetBrains Mono** — Copyright 2020 The JetBrains Mono Project Authors
+  (https://github.com/JetBrains/JetBrainsMono)
+- **Chakra Petch** — Copyright 2018 The Chakra Petch Project Authors
+  (https://github.com/m4rc1e/Chakra-Petch)
 
-Both are packaged by [Fontsource](https://fontsource.org). The full OFL-1.1 text ships
-with each package (`node_modules/@fontsource/{kalam,caveat}/LICENSE`) and is available
+All are packaged by [Fontsource](https://fontsource.org). The full OFL-1.1 text ships
+with each package (`node_modules/@fontsource/<name>/LICENSE`) and is available
 at <https://openfontlicense.org>.
 
 Under the OFL these fonts may be bundled and redistributed with software, but may not

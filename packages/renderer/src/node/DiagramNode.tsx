@@ -26,6 +26,9 @@ export interface DiagramNodeData {
   icon?: string;
   /** node accent color (border + background tint) */
   color?: string;
+  /** the box's colour under a palette preset (canvas/type-hues.ts): the look
+   *  draws it from `--dg-hue`, in place of the accent */
+  hue?: string;
   /** label text color; defaults to `color` on C4/shape nodes, else inherited */
   textColor?: string;
   /** implementation technology, composed into the type subtitle */

@@ -48,6 +48,7 @@ function input({ arrangedGeometry, fixed, ...over }: Flat = {}): FlowNodesInput 
     notation: { profile, typeRegistry, nodeColors: undefined, nodeChips: undefined },
     icons,
     preset,
+    hues: undefined,
     compiled,
     layout: {
       arrangedGeometry: arrangedGeometry === undefined ? geometryOf(compiled.roots) : arrangedGeometry,

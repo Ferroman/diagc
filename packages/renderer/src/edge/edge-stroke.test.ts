@@ -45,6 +45,21 @@ describe('edgeStroke', () => {
     expect(edgeStroke('e1', data(partial), plain).dashArray).toBe(dashArray);
   });
 
+  it("takes a preset's dashes for solid and dashed lines, never for dotted or animated ones", () => {
+    const edgeLook = { dash: { solid: '5 3', dashed: '5 11' } };
+    expect(edgeStroke('e1', data({ edgeLook }), plain).dashArray).toBe('5 3');
+    expect(edgeStroke('e1', data({ kind: 'async', edgeLook }), plain).dashArray).toBe('5 11');
+    expect(edgeStroke('e1', data({ relStyle: { line: 'dotted' }, edgeLook }), plain).dashArray).toBe('0.1 5');
+    expect(edgeStroke('e1', data({ kind: 'flow', edgeLook }), plain).dashArray).toBe('6 4');
+  });
+
+  it('draws the default arrow open where the preset asks, and leaves other ends alone', () => {
+    const edgeLook = { openArrow: true };
+    expect(edgeStroke('e1', data({ edgeLook }), plain).end).toMatchObject({ id: 'dg-end-e1', style: 'open-arrow' });
+    const fk = edgeStroke('e1', data({ kind: 'fk', edgeLook }), plain);
+    expect([fk.start?.style, fk.end?.style]).toEqual(['crowsfoot', 'one']);
+  });
+
   it('ends in an arrow by default, under an id safe for svg', () => {
     const { end, start, markerSize } = edgeStroke('a=>b:x', data({}), plain);
     expect(end).toMatchObject({ id: 'dg-end-a__b_x', style: 'arrow' });

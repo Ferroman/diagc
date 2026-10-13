@@ -44,7 +44,8 @@ import type { AnnotationCounts } from '../notes/comment-badge';
 import type { EdgeRouting } from './useViewLayout';
 import type { NodeChip } from '../notations';
 import type { KindStyle, Registry, TypeStyle } from '../registry';
-import type { StylePreset } from '../sketch/stylePresets';
+import type { EdgeLook, StylePreset } from '../sketch/stylePresets';
+import { nodeHue, type TypeHues } from './type-hues';
 import type { DiagramEdgeData } from '../edge/DiagramEdge';
 import type { DiagramNodeData } from '../node/DiagramNode';
 
@@ -60,6 +61,8 @@ export interface NodeDataContext {
   /** notation-resolved accent per node id (e.g. a commit's lane colour); below
    * the node's own colour, above typeColors */
   nodeColors?: ReadonlyMap<string, string>;
+  /** a palette preset's colouring of the model; absent = no palette */
+  hues?: TypeHues;
   /** the notation's chips per node id (profile.node.chips), one derivation
    * per model like nodeColors; absent = no notation chips */
   nodeChips?: ReadonlyMap<string, NodeChip[]>;
@@ -118,6 +121,8 @@ export interface EdgeDataContext {
   pendingAdd: { edgeId: string; x: number; y: number } | null;
   onPendingAddConsumed?: () => void;
   stylePreset?: StylePreset;
+  /** the preset's own line drawing (StylePreset.edges) */
+  edgeLook?: EdgeLook;
   notation?: NotationId;
   /** how the active plane draws routed edges; undefined = every edge floats */
   routing?: EdgeRouting;
@@ -177,6 +182,7 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
   // Counted here rather than in the component so the badge costs one pass over
   // the threats per data build, not one per render.
   const threats = threatSummary(n.node.threats);
+  const color = typeColor(n, ctx);
   const data: DiagramNodeData = {
     label: n.node.name,
     state: n.state,
@@ -188,7 +194,8 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     icons: ctx.icons,
     typeId: n.node.type,
     icon: n.node.icon,
-    color: typeColor(n, ctx),
+    color,
+    hue: ctx.hues !== undefined ? nodeHue(n.node.type, color, ctx.hues) : undefined,
     textColor: n.node.textColor,
     technology: n.node.technology,
     rich: n.node.rich,
@@ -300,6 +307,7 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     tint: e.tint,
     relStyle: e.style,
     stylePreset: ctx.stylePreset,
+    edgeLook: ctx.edgeLook,
     notation: ctx.notation,
     polarity: e.polarity,
     delay: e.delay,
@@ -372,7 +380,8 @@ function addRoute(data: DiagramEdgeData, e: ViewEdge, ctx: EdgeDataContext, rout
   const to = ctx.laidAt.get(e.to);
   if (route === undefined || route.length < 2 || from === undefined || to === undefined) return;
   data.route = route;
-  data.routeCorner = routing.corner;
+  // a preset that bends its lines square (the text looks) overrides the plane's corner
+  data.routeCorner = ctx.edgeLook?.corner ?? routing.corner;
   data.routeFrom = from;
   data.routeTo = to;
   const spot = ctx.labelSpots.get(e.id);
@@ -426,6 +435,7 @@ const NODE_CTX_FIELDS = [
   'stylePreset',
   'notation',
   'nodeColors',
+  'hues',
   'nodeChips',
   'resizable',
 ] as const;
@@ -443,6 +453,7 @@ const EDGE_CTX_FIELDS = [
   'pendingAdd',
   'onPendingAddConsumed',
   'stylePreset',
+  'edgeLook',
   'notation',
   'routing',
   'routes',

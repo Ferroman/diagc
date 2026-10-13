@@ -373,6 +373,10 @@ describe('roundedRoute', () => {
     // the first corner sits between a 10px stub and a 100px jog: radius 5
     expect(roundedRoute(Z, 28)).toBe('M0,0 L0,5 Q0,10 5,10 L72,10 Q100,10 100,38 L100,100');
   });
+
+  it('bends square at radius 0 (the text presets)', () => {
+    expect(roundedRoute(Z, 0)).toBe('M0,0 L0,10 Q0,10 0,10 L100,10 Q100,10 100,10 L100,100');
+  });
 });
 
 describe('snapRouteEnds', () => {

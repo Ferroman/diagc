@@ -444,7 +444,7 @@ m.notation('c4');
 
 ## `m.style(id) → m`
 
-Pin the model-level renderer style preset (see [Model reference](model.md#diagrammodel)) — the
+Pin the model-level renderer style preset (see [Style presets](model.md#style-presets)) — the
 one way to make a diagram *always* render in a preset like `hand-drawn`, rather than following
 whatever the viewer's own header picker is set to.
 

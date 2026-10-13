@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import type { FontScale, TextRun } from '@diagc/core/internal';
 import type { NotationProfile } from '../../notations';
+import { hueInk } from '../../canvas/type-hues';
 import type { TypeStyle } from '../../registry';
 import { NodeChrome } from '../chrome';
 import type { DiagramNodeData } from '../DiagramNode';
@@ -40,7 +41,7 @@ export function BoxBody(props: BodyProps) {
       style={
         data.stylePreset?.rough !== undefined || isTypelessText || look.neutralGlyph
           ? hitStyle
-          : { ...look.accent, ...hitStyle }
+          : { ...boxPaint(style.shape, look.accent), ...hitStyle }
       }
       data-type={data.typeId}
       {...hitAttrs}
@@ -65,11 +66,19 @@ const isTextNode = (data: DiagramNodeData, profile: NotationProfile): boolean =>
   (data.state === 'leaf' || data.state === 'collapsed') &&
   data.image === undefined;
 
+interface BoxLook {
+  className: string;
+  accent: CSSProperties;
+  neutralGlyph: boolean;
+}
+
+// UML draws these glyphs in a fixed neutral stroke — the docs promise node.color is
+// ignored on bars/start/end, so skip the inline accent that would otherwise tint them
+const isNeutralGlyph = (shape: string): boolean => shape === 'bar' || shape === 'start-dot' || shape === 'end-bullseye';
+
 /** The box's classes (before the ghost and loop classes) and its colours. */
-function boxLook(
-  data: DiagramNodeData,
-  style: TypeStyle,
-): { className: string; accent: CSSProperties; neutralGlyph: boolean } {
+function boxLook(data: DiagramNodeData, style: TypeStyle): BoxLook {
+  if (data.hue !== undefined) return huedLook(data, style, data.hue);
   const ink = style.outline === true && data.color !== undefined ? outlineInk(data.color) : undefined;
   const outline = ink !== undefined;
   // Registry solid look (e.g. the C4 profile): applies only when nothing more
@@ -91,10 +100,41 @@ function boxLook(
       // an explicit text color overrides the default (which follows the accent on C4 boxes)
       ...(data.textColor !== undefined ? { color: data.textColor } : {}),
     },
-    // UML draws these glyphs in a fixed neutral stroke — the docs promise node.color is
-    // ignored on bars/start/end, so skip the inline accent that would otherwise tint them
-    neutralGlyph: style.shape === 'bar' || style.shape === 'start-dot' || style.shape === 'end-bullseye',
+    neutralGlyph: isNeutralGlyph(style.shape),
   };
+}
+
+/** The card shapes a palette preset draws itself, from `--dg-hue` (presets.css). */
+const HUE_CARDS = new Set(['box', 'rounded', 'cylinder', 'pill', 'hexagon', 'person']);
+
+/** Under a palette preset: the hue as `--dg-hue` with the ink that reads on it,
+ * no solid fill and no outline ink — the look decides how a hue is drawn. A
+ * shape the looks leave alone (a DFD ellipse, a decision diamond) keeps the
+ * accent path, in the hue. */
+function huedLook(data: DiagramNodeData, style: TypeStyle, hue: string): BoxLook {
+  const ink = hueInk(hue);
+  return {
+    className: `dg-node dg-shape-${style.shape}${style.dashed === true ? ' dg-dashed' : ''}`,
+    accent: {
+      '--dg-hue': hue,
+      ...(ink !== undefined ? { '--dg-hue-ink': ink } : {}),
+      ...(HUE_CARDS.has(style.shape) ? {} : accentStyle(hue)),
+      ...(data.textColor !== undefined ? { color: data.textColor } : {}),
+    } as CSSProperties,
+    neutralGlyph: isNeutralGlyph(style.shape),
+  };
+}
+
+/** What of the accent the box itself carries. A diamond's box stays unpainted
+ * (styles.css) and its polygon takes the fill and the stroke, so both are kept
+ * off the box: an inline background outranks the stylesheet and would show as
+ * a square behind the diamond. */
+function boxPaint(shape: string, accent: CSSProperties): CSSProperties {
+  if (shape !== 'diamond') return accent;
+  const kept = { ...accent };
+  delete kept.background;
+  delete kept.borderColor;
+  return kept;
 }
 
 /** A clip-path cut the border off every diagonal edge, leaving the diamond

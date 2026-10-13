@@ -12,6 +12,7 @@ import type { CompiledView, ViewNode } from '@diagc/core/internal';
 import type { IconRegistry } from '@diagc/icons';
 import type { DiagramNodeData } from '../node/DiagramNode';
 import type { StylePreset } from '../sketch/stylePresets';
+import type { TypeHues } from './type-hues';
 import { toRfNode } from './adapter';
 import { buildNodeDataCached, type NodeDataContext } from './build-data';
 import { diffNodeClasses, withDiffClass } from './diff-marks';
@@ -33,6 +34,8 @@ export interface FlowNodesInput {
   notation: Pick<Notation, 'profile' | 'typeRegistry' | 'nodeColors' | 'nodeChips'>;
   icons: IconRegistry;
   preset: StylePreset;
+  /** the preset's colouring of the model, when it has a palette */
+  hues: TypeHues | undefined;
   compiled: CompiledView;
   layout: Pick<ViewLayout, 'arrangedGeometry' | 'fixed'>;
   hiddenCounts: NodeDataContext['hiddenCounts'];
@@ -92,6 +95,7 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
       stylePreset: preset.rough !== undefined ? preset : undefined,
       notation: props.notation,
       nodeColors,
+      hues: input.hues,
       nodeChips,
       resizable: profile.node?.resizable,
     }),
@@ -119,6 +123,7 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
       preset,
       props.notation,
       nodeColors,
+      input.hues,
       nodeChips,
       profile,
     ],

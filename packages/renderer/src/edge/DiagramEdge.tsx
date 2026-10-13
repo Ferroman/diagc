@@ -5,7 +5,7 @@ import { LoopHighlightContext, type LoopHighlight } from '../loops/loop-highligh
 import type { AnnotationCounts } from '../notes/comment-badge';
 import { notationProfile } from '../notations';
 import type { KindStyle, Registry } from '../registry';
-import type { StylePreset } from '../sketch/stylePresets';
+import type { EdgeLook, StylePreset } from '../sketch/stylePresets';
 import { EdgeLabels } from './EdgeLabels';
 import { EdgeMarkerDefs } from './EdgeMarkerDefs';
 import { EdgeMarks } from './EdgeMarks';
@@ -30,6 +30,8 @@ export interface DiagramEdgeData {
   kindRegistry: Registry<KindStyle>;
   /** style preset with rough params — roughen the stroke (absent = crisp) */
   stylePreset?: StylePreset;
+  /** the preset's own line drawing (absent = the default) */
+  edgeLook?: EdgeLook;
   /** active visual language (e.g. 'causal-loop'); selects the notation profile (see
    * notations.ts) that drives notation-specific rendering (CLD marks/text nodes) */
   notation?: NotationId;

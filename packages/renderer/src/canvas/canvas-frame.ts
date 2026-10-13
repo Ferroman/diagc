@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { BackgroundVariant, type BackgroundProps } from '@xyflow/react';
 import type { StylePreset } from '../sketch/stylePresets';
 
 export interface CanvasFrameState {
@@ -45,4 +46,13 @@ export function canvasStyle(preset: StylePreset): CSSProperties {
     '--dg-style-font': preset.fontFamily,
     ...(preset.cssVars ?? {}),
   } as CSSProperties;
+}
+
+/** The canvas grid's props: the snap grid while snapping (its dots ARE the grid,
+ * so a dropped box visibly lands on one), else the preset's — React Flow's dots,
+ * lines, or none. Drawn by React Flow, so it pans and zooms with the boxes. */
+export function canvasGrid(preset: StylePreset, snapGrid: number | undefined): BackgroundProps | null {
+  if (snapGrid !== undefined) return { gap: snapGrid, className: 'dg-grid-on' };
+  if (preset.grid === 'none') return null;
+  return preset.grid === 'lines' ? { variant: BackgroundVariant.Lines, gap: 32 } : {};
 }

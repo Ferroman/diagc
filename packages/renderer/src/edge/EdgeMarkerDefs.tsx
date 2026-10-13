@@ -16,10 +16,14 @@ export const END_SHAPES: Record<string, { refX: number; el: ReactElement } | und
   none: undefined,
 };
 
+/** The default arrow drawn open, a text diagram's `>`: a preset's look (EdgeLook.openArrow),
+ * not an end style an author names, so it is kept out of END_SHAPES. */
+export const OPEN_ARROW = { refX: 9, el: <path d="M1,1 L9,5 L1,9" fill="none" /> };
+
 /** line-based (unfilled) end shapes: these need the marker to carry a `stroke`
  * so their strokes actually draw. Filled shapes (arrow/dot/…) must NOT get a
  * stroke, or they render an unwanted same-color outline (regression guard). */
-export const LINE_MARKERS = new Set(['crowsfoot', 'one']);
+export const LINE_MARKERS = new Set(['crowsfoot', 'one', 'open-arrow']);
 
 /** An end marker as drawn: its `<marker>` id, the end style it draws and that style's shape. */
 export interface EdgeMarker {

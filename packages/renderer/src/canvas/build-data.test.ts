@@ -245,6 +245,14 @@ describe('buildNodeData', () => {
     ).toBe('#type');
   });
 
+  it('gives a box its hue only under a palette preset: its accent, else its type colour', () => {
+    const hues = { palette: ['#111111'], slots: new Map([['service', 0]]) };
+    expect(buildNodeData(viewNode(), nodeCtx()).hue).toBeUndefined();
+    expect(buildNodeData(viewNode(), nodeCtx({ hues })).hue).toBe('#111111');
+    const red = viewNode({ node: { id: 'n1', name: 'One', type: 'service', color: '#c62828' } });
+    expect(buildNodeData(red, nodeCtx({ hues })).hue).toBe('#c62828');
+  });
+
   it("summarises the node's STRIDE threats, and says nothing when it carries none", () => {
     const threatened = viewNode({
       node: {
@@ -505,6 +513,29 @@ describe('buildEdgeData', () => {
     expect(routed.labelSpot).toEqual({ x: 5, y: 5 });
   });
 
+  it("carries the preset's edge look, and draws a route with its corner over the routing's", () => {
+    const ctx = edgeCtx({
+      routing: { corner: 28 },
+      edgeLook: { corner: 0 },
+      routes: new Map([
+        [
+          'e1',
+          [
+            { x: 0, y: 0 },
+            { x: 10, y: 10 },
+          ],
+        ],
+      ]),
+      laidAt: new Map([
+        ['a', { x: 1, y: 2 }],
+        ['b', { x: 3, y: 4 }],
+      ]),
+    });
+    const d = buildEdgeData(viewEdge(), ctx);
+    expect(d.edgeLook).toEqual({ corner: 0 });
+    expect(d.routeCorner).toBe(0);
+  });
+
   it('carries no route on a floating plane, without one for the edge, or for an endpoint the layout never placed', () => {
     const route = [
       { x: 0, y: 0 },
@@ -654,6 +685,7 @@ describe('the data caches compare every context field', () => {
     typeRegistry: { typeRegistry: createTypeRegistry() },
     typeColors: { typeColors: {} },
     nodeColors: { nodeColors: new Map() },
+    hues: { hues: { palette: ['#111111'], slots: new Map() } },
     nodeChips: { nodeChips: new Map() },
     resizable: { resizable: () => undefined },
     icons: { icons: createIconRegistry() },
@@ -702,6 +734,7 @@ describe('the data caches compare every context field', () => {
     labelMoves: { labelMoves: {} },
     onViewMoveEdgeLabel: { onViewMoveEdgeLabel: () => {} },
     edgeColors: { edgeColors: new Map() },
+    edgeLook: { edgeLook: { corner: 0 } },
   };
   it.each(Object.entries(edgeVariants))('rebuilds the edge data when only %s changes', (_field, over) => {
     const e = viewEdge();

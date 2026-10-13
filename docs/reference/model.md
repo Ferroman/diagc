@@ -24,7 +24,32 @@ For *why* the model is shaped like this, see [What is in a model](../explanation
 | `layers` | `DiagramLayer[]` | |
 | `planes` | `DiagramPlane[]` | Empty means one implicit plane and no switcher. |
 
-Style preset ids: `clean` (default), `sketch`, `hand-drawn`, `pencil`, `blueprint`, `marker`.
+### Style presets
+
+The ids `style` takes. The studio's **Style** row offers the same list.
+
+| id | Look | Light and dark |
+| --- | --- | --- |
+| `clean` (default) | Flat boxes, dashed group borders, the system font. | follows the theme |
+| `sketch` | Hand-drawn outlines with solid fills, Kalam. | follows the theme |
+| `hand-drawn` | Wobbly rounded boxes with hatched fills, Caveat. | follows the theme |
+| `pencil` | Ruled outlines with a fine hatch, Caveat. | follows the theme |
+| `blueprint` | Pale lines on blueprint blue, monospace. | always blue |
+| `marker` | Heavy marker strokes with zigzag fills, Kalam. | follows the theme |
+| `soft` | Raised cards with soft shadows and hairline borders, filled group panels, pill tags. Inter. | follows the theme |
+| `pastel` | `soft`, with each node type washed in its own colour. | follows the theme |
+| `cards` | Cards with a type-coloured top band and icon tile; groups get a ruled title bar. Inter. | follows the theme |
+| `layered` | No grid; groups are washes of one blue that deepen with each level of nesting. Inter. | follows the theme |
+| `neon` | Outlines glowing in a neon per type on a dark line grid, cut corners. Chakra Petch. | always dark |
+| `terminal` | Green phosphor on black with scanlines, amber groups, `[bracketed]` tags. JetBrains Mono. | always dark |
+| `ascii` | Frames typed in text characters (`+--+` boxes, `+==+` data stores, dotted groups), hyphen lines with `>` heads and square bends, no icons. JetBrains Mono. | follows the theme |
+| `dos` | A blue DOS screen: solid boxes with double frames and block shadows, square bends. JetBrains Mono. | always blue |
+
+`pastel`, `cards`, `neon`, `terminal`, `ascii` and `dos` colour boxes by type. Each node type takes the next colour of
+the preset's palette, in order of first appearance, the types of boxes that contain nothing first. Types a notation fills
+alike share a colour, so every kind of C4 container is one colour. A node's own `color`, the notation's colour and
+`typeColors` still win, as in every preset. A group takes no colour from the palette and keeps one of its own. A PNG
+export of a preset that follows the theme is light.
 
 ## `DiagramNode`
 

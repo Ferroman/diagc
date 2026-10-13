@@ -574,6 +574,13 @@ describe('DiagramEdge', () => {
     });
   });
 
+  it('draws the open arrow a preset asks for as a stroked line, not a filled head', () => {
+    const { container } = renderEdge({ edgeLook: { openArrow: true } });
+    const marker = container.querySelector('marker[id^="dg-end-"]')!;
+    expect(marker.getAttribute('stroke')).not.toBeNull();
+    expect(marker.querySelector('path')?.getAttribute('fill')).toBe('none');
+  });
+
   describe('fk edges', () => {
     it('an fk edge renders both a start (crowsfoot) and end (one) marker', () => {
       const { container } = renderEdge({
