@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/Ferroman/diagc/compare/v1.2.0...v1.3.0) (2026-10-13)
+
+
+### Features
+
+* **renderer:** eight new style presets ([#153](https://github.com/Ferroman/diagc/issues/153)) ([53cfc35](https://github.com/Ferroman/diagc/commit/53cfc355c9c96a8fe8eaf7c10b9773243e7e18f5))
+
 ## [1.2.0](https://github.com/Ferroman/diagc/compare/v1.1.7...v1.2.0) (2026-10-12)
 
 
