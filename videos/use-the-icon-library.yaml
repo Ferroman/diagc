@@ -1,0 +1,21 @@
+title: Use the icon library
+url: "http://localhost:5183/#/fixtures%2Fstudio-demo"
+viewport: 1280x720
+crop: {role: main}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+  - click: {role: button, name: Edit}
+  - click: {role: button, name: Expand, within: {role: application}}
+  - click: {text: Orders API, within: {role: application}}
+  - click: {role: tab, name: Library}
+steps:
+  - say: Search by keyword.
+    do:
+      - fill: {label: Search library, value: sqs}
+  - say: Switch the card click to Apply.
+    do:
+      - click: {role: button, name: "Apply to Orders API"}
+  - say: Click a card to restyle the selected node.
+    do:
+      - click: {role: button, name: "Apply Amazon Simple Queue Service", exact: true}

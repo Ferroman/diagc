@@ -229,6 +229,11 @@ picture.
   build redraws other diagrams a few bytes differently, and those diffs are noise.
 - **Look at the PNG before you commit it,** and commit it with the source change. Automatic
   layout is usually right; when it is not, give the diagram layout settings or positions.
+- **The studio animations the how-to pages embed** are committed under `docs/media/` as a GIF and a
+  WebP pair, and `pnpm build:site` copies them to `media/`. They come from the storyboards in
+  `videos/`, which all act on one committed fixture, `.diagrams/src/fixtures/studio-demo.diagram.json`;
+  run `pnpm animate` to rebuild `docs/media/`. It needs `howto` on PATH and starts its own studio on
+  port 5183, so it does not disturb a dev server you already have running.
 
 CI compiles every source (`pnpm compile`), and the Pages workflow publishes them all to
 the live site.

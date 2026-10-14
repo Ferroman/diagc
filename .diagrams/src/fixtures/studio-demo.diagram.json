@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "id": "examples/studio-demo",
+  "name": "Studio demo",
+  "nodes": [
+    {
+      "id": "platform",
+      "name": "Payments platform",
+      "type": "system",
+      "color": "#1168bd"
+    },
+    {
+      "id": "web",
+      "name": "Storefront",
+      "type": "service",
+      "color": "#42a5f5"
+    },
+    {
+      "id": "api",
+      "name": "Orders API",
+      "type": "service",
+      "color": "#42a5f5"
+    },
+    {
+      "id": "pay",
+      "name": "Payments API",
+      "type": "service",
+      "color": "#66bb6a"
+    },
+    {
+      "id": "db",
+      "name": "Orders DB",
+      "type": "database",
+      "color": "#6b4fbb"
+    },
+    {
+      "id": "k8s",
+      "name": "Kubernetes",
+      "type": "infra",
+      "color": "#e0a75d"
+    }
+  ],
+  "containment": [
+    {
+      "plane": "architecture",
+      "parent": "platform",
+      "child": "web"
+    },
+    {
+      "plane": "architecture",
+      "parent": "platform",
+      "child": "api"
+    },
+    {
+      "plane": "architecture",
+      "parent": "platform",
+      "child": "pay"
+    },
+    {
+      "plane": "architecture",
+      "parent": "platform",
+      "child": "db"
+    },
+    {
+      "plane": "infra",
+      "parent": "platform",
+      "child": "k8s"
+    },
+    {
+      "plane": "infra",
+      "parent": "platform",
+      "child": "api"
+    }
+  ],
+  "relations": [
+    {
+      "id": "r1",
+      "from": "web",
+      "to": "api",
+      "kind": "sync",
+      "label": "checkout",
+      "layer": "data-flow"
+    },
+    {
+      "id": "r2",
+      "from": "api",
+      "to": "db",
+      "kind": "reads",
+      "label": "orders",
+      "layer": "data-flow"
+    },
+    {
+      "id": "r3",
+      "from": "pay",
+      "to": "db",
+      "kind": "writes",
+      "label": "ledger",
+      "layer": "data-flow"
+    }
+  ],
+  "layers": [
+    {
+      "id": "data-flow",
+      "name": "Data flow"
+    }
+  ],
+  "planes": [
+    {
+      "id": "architecture",
+      "name": "Architecture"
+    },
+    {
+      "id": "infra",
+      "name": "Infrastructure"
+    }
+  ]
+}

@@ -276,7 +276,7 @@ describe('a dead link in a docs page', () => {
 
   it('to a picture outside the published ones is reported: the site would not serve it', () => {
     expect(dead('# A\n\n![p](../../site/img/studio.png)\n')).toEqual([
-      'docs/how-to/a.md: ../../site/img/studio.png — a picture must be under .diagrams/static/',
+      'docs/how-to/a.md: ../../site/img/studio.png — a picture must be under .diagrams/static/ or docs/media/',
     ]);
   });
 
