@@ -8,6 +8,11 @@ Leave remarks and resource links on any node or relation, and read them on the p
 2. For a node, the **Links** section takes a label and a URL per row.
 3. A badge appears at the element's bottom-right corner (a quarter of the way along an arrow) with the comment count, or `↗` when there are only links. Click it to open the bubble; drag the bubble to where it reads best. Its place and open state are saved with the layout, so the published page opens the way you left it.
 
+![Write a comment; the badge lands on the node](../media/comment-on-a-diagram.webp)
+
+GIF: [comment-on-a-diagram.gif](../media/comment-on-a-diagram.gif)
+
+
 ## In TypeScript
 
 ```ts

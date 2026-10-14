@@ -21,6 +21,11 @@ Click **＋** (New diagram) beside the diagram picker in the top bar, name it `p
 
 The studio creates `.diagrams/src/payments.diagram.json` and opens it in edit mode. A tool row appears under the top bar: Done, Select / Pen / Eraser, Undo, Redo, Save.
 
+![Search the library, place a card, name it, then chain the next node from it](../media/draw-in-the-studio.webp)
+
+GIF: [draw-in-the-studio.gif](../media/draw-in-the-studio.gif)
+
+
 > **Why a new one?** Only `.diagram.json` files are editable in the browser. Diagrams compiled from `.diagram.ts` open with a **read-only** chip — the studio will not fight your TypeScript. A diagram made by `diagc init` is one of these.
 
 ## Step 2 — Place an icon

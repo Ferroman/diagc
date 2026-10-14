@@ -15,6 +15,11 @@ One sentence each:
 - **A plane answers "where does this live?"** — the same service is inside its logical system on one plane and inside the cluster it runs on in another.
 - **A layer answers "what else is true?"** — the structure stays put and extra arrows appear.
 
+![Turn on a layer, then switch plane](../media/use-planes-and-layers.webp)
+
+GIF: [use-planes-and-layers.gif](../media/use-planes-and-layers.gif)
+
+
 ---
 
 ## What they are for

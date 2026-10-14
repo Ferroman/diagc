@@ -24,6 +24,11 @@ comms.contains(mail, push);
 
 The diagram opens as one box. Double-click to descend. Siblings stay folded, so you always read one path of detail against an overview.
 
+![A group rests folded; its chip unfolds it](../media/organise-large-diagrams.webp)
+
+GIF: [organise-large-diagrams.gif](../media/organise-large-diagrams.gif)
+
+
 **Do not fight it.** If a diagram is unreadable fully expanded, that is fine — it is not meant to be seen fully expanded. The exception is the PNG export, which *does* unfold everything; see [Publish and share](publish-and-share.md).
 
 ### Shape the tree, not the picture

@@ -1,0 +1,14 @@
+title: Use planes and layers
+url: "http://localhost:5183/#/fixtures%2Fstudio-demo"
+viewport: 1280x720
+crop: {role: main}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+steps:
+  - say: Turn on a layer.
+    do:
+      - click: {role: button, name: Data flow}
+  - say: Switch to another plane.
+    do:
+      - click: {role: button, name: Infrastructure}

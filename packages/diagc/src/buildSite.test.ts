@@ -26,7 +26,8 @@ beforeEach(() => {
   put('.diagrams/html/examples/acme.html', 'acme page');
   put('.diagrams/static/examples/acme.png', 'acme picture');
   put('docs/README.md', '# Documentation\n\n| | |\n| --- | --- |\n| [Guide](how-to/guide.md) | A guide. |\n');
-  put('docs/how-to/guide.md', '# Guide\n\n[Back](../README.md)\n');
+  put('docs/how-to/guide.md', '# Guide\n\n[Back](../README.md)\n\n![Gesture](../media/gesture.webp)\n');
+  put('docs/media/gesture.webp', 'animation');
 });
 
 describe('build-site', () => {
@@ -61,6 +62,15 @@ describe('build-site', () => {
     expect(readFileSync(at('docs/index.html'), 'utf8')).toContain('<h1 id="documentation">Documentation</h1>');
     expect(readFileSync(at('docs/how-to/guide.html'), 'utf8')).toContain('<a href="../index.html">Back</a>');
     expect(existsSync(at('docs/README.md'))).toBe(false);
+  });
+
+  it('copies the animation pictures under media/', () => {
+    const run = build('--root', root);
+    expect(run.status).toBe(0);
+    expect(readFileSync(at('media/gesture.webp'), 'utf8')).toBe('animation');
+    expect(readFileSync(at('docs/how-to/guide.html'), 'utf8')).toContain(
+      '<img src="../../media/gesture.webp" alt="Gesture" loading="lazy">',
+    );
   });
 
   it('stops on a dead link in the docs, names every one, and writes nothing', () => {

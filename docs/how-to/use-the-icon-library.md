@@ -21,6 +21,11 @@ Type in the search box. It matches an entry's **name, its category, and its keyw
 
 Sections with more than 16 entries start collapsed — the AWS, Azure and Google Cloud packs are some 1,700 icons between them, so the panel opens as a tidy list of headers. Searching expands whatever matched. The number beside a category name is how many entries currently match.
 
+![Search by keyword, switch the card click to Apply, and restyle the selected node](../media/use-the-icon-library.webp)
+
+GIF: [use-the-icon-library.gif](../media/use-the-icon-library.gif)
+
+
 ## Place one
 
 - **Click** a card to drop a node at an auto-placed spot, with its name selected so you can type immediately.

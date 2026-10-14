@@ -1,0 +1,18 @@
+title: Comment on a diagram
+url: "http://localhost:5183/#/fixtures%2Fstudio-demo"
+viewport: 1280x720
+crop: {role: main}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+  - click: {role: button, name: Edit}
+  - click: {text: Payments platform, within: {role: application}}
+steps:
+  - say: Write the comment.
+    do:
+      - click: {label: "New comment"}
+      - type: "shared by both APIs"
+      - click: {role: button, name: "Add comment"}
+  - say: The comment lands on the node as a badge.
+    do:
+      - wait_for: {text: "Comments 1"}

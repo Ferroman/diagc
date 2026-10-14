@@ -28,8 +28,11 @@ const parts = [
   { from: 'site', to: '', fix: 'restore it from git' },
   { from: path.join('.diagrams', 'html'), to: 'html', fix: 'run `pnpm build:cli` and `pnpm publish-diagrams` first' },
   { from: path.join('.diagrams', 'static'), to: 'static', fix: 'run `pnpm publish-diagrams` first' },
+  { from: path.join('docs', 'media'), to: 'media', fix: 'run `pnpm animate` first' },
 ];
 // Everything is checked before anything is written, so a failed build leaves no half site.
+const docsDir = path.join(root, 'docs');
+if (!(await isDir(docsDir))) fail('docs is missing — restore it from git.');
 for (const part of parts) {
   if (!(await isDir(path.join(root, part.from)))) fail(`${part.from} is missing — ${part.fix}.`);
 }
@@ -37,8 +40,6 @@ for (const part of parts) {
 // The docs are rendered in memory, for the same reason the parts are checked first: a dead
 // link stops the build before _site/ is touched. Every one is printed, so one run is enough
 // to fix them all.
-const docsDir = path.join(root, 'docs');
-if (!(await isDir(docsDir))) fail('docs is missing — restore it from git.');
 const files = new Map();
 for (const file of (await readdir(docsDir, { recursive: true })).filter((f) => f.endsWith('.md')).sort()) {
   files.set(file.split(path.sep).join('/'), await readFile(path.join(docsDir, file), 'utf8'));

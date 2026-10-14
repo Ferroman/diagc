@@ -1,0 +1,25 @@
+title: Draw in the studio
+url: "http://localhost:5183/#/fixtures%2Fstudio-demo"
+viewport: 1280x720
+crop: {role: main}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+  - click: {role: button, name: Edit}
+  - click: {role: tab, name: Library}
+steps:
+  - say: Search the library by keyword.
+    do:
+      - fill: {label: Search library, value: sqs}
+  - say: Click a card to place the node.
+    do:
+      - click: {role: button, name: "Place Amazon Simple Queue Service", exact: true}
+  - say: Type its name.
+    do:
+      - wait_for: {role: textbox, name: Rename, within: {role: application}}
+      - fill: {label: Rename, value: "Payment events"}
+      - press: Enter
+  - say: Chain the next node from it.
+    do:
+      - click: {role: button, name: "Add a connected node", within: {role: application}}
+      - wait_for: {role: textbox, name: Rename, within: {role: application}}

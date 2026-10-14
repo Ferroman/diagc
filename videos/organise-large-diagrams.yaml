@@ -1,0 +1,14 @@
+title: Organise large diagrams
+url: "http://localhost:5183/#/fixtures%2Fstudio-demo"
+viewport: 1280x720
+crop: {role: main}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+steps:
+  - say: Unfold a group with its chip.
+    do:
+      - click: {role: button, name: Expand, within: {role: application}}
+  - say: Its children appear; the same chip folds it back.
+    do:
+      - wait_for: {text: "Orders API", within: {role: application}}

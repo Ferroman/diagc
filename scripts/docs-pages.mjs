@@ -213,7 +213,7 @@ export function renderDocs({ files, exists }) {
       return href;
     };
     // Where a link written for GitHub leads on the site. Another docs page: that page.
-    // A picture: the site's copy under static/. Any other file: its page on GitHub.
+    // A picture: the site's copy under static/ or media/. Any other file: its page on GitHub.
     const relink = (href, picture) => {
       // Out of the site: a web or a mail address. Any other scheme (javascript:, data:) has
       // no place in a page of docs, and GitHub strips it too.
@@ -231,7 +231,11 @@ export function renderDocs({ files, exists }) {
       if (repoPath.startsWith('.diagrams/static/')) {
         return exists(repoPath) ? to(repoPath.slice('.diagrams/'.length)) : dead(href, 'no such picture');
       }
-      if (picture) return dead(href, 'a picture must be under .diagrams/static/');
+      if (repoPath.startsWith('docs/media/')) {
+        // The pictures `pnpm animate` writes are committed under docs/media/ and copied to media/.
+        return exists(repoPath) ? to('media/' + repoPath.slice('docs/media/'.length)) : dead(href, 'no such picture');
+      }
+      if (picture) return dead(href, 'a picture must be under .diagrams/static/ or docs/media/');
       if (repoPath.startsWith('docs/') && repoPath.endsWith('.md')) {
         const other = repoPath.slice('docs/'.length);
         const there = parsed.get(other);
