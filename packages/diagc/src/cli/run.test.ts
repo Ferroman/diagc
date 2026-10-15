@@ -40,7 +40,7 @@ describe('the command table', () => {
       compile: ['--out', '--update-includes'],
       lint: ['--json'],
       watch: ['--out'],
-      publish: ['--out', '--no-images', '--link', '--update-includes'],
+      publish: ['--out', '--no-images', '--link', '--update-includes', '--style', '--theme'],
       studio: [],
       eject: ['--out'],
       diff: ['--out', '--no-images', '--json', '--labels', '--image-url'],

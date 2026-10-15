@@ -12,6 +12,8 @@ export interface FlagValues {
   '--update-includes': true;
   '--type': string;
   '--agents': true;
+  '--style': string;
+  '--theme': 'light' | 'dark';
 }
 
 export type Flag = keyof FlagValues;
@@ -48,6 +50,26 @@ export class UsageError extends Error {
 }
 
 const badValue = (flag: Flag, why: string): UsageError => new UsageError(`${flag}: ${why}`, 1);
+
+/** The style presets `--style` takes: the renderer's, by id and in its order. The CLI
+ * cannot import the renderer (it only couples to the viewer as a built artifact), so
+ * the list is written out and styleIds.test.ts pins it to the renderer's. */
+export const STYLE_IDS = [
+  'clean',
+  'sketch',
+  'hand-drawn',
+  'pencil',
+  'blueprint',
+  'marker',
+  'soft',
+  'pastel',
+  'cards',
+  'layered',
+  'neon',
+  'terminal',
+  'ascii',
+  'dos',
+];
 
 /** How a flag reads its value from the argument after it, which it takes whatever it is. */
 type Reader<V> = (next: string | undefined) => V;
@@ -93,6 +115,19 @@ const FLAGS: { [F in Flag]: FlagValues[F] extends true ? null : Reader<FlagValue
     return next;
   },
   '--agents': null,
+  '--style': (next) => {
+    // No fallback: a missing value would otherwise swallow the next flag as the style.
+    if (next === undefined || next.startsWith('--'))
+      throw badValue('--style', `needs a style id, e.g. --style sketch (one of ${STYLE_IDS.join(', ')})`);
+    // Refused here rather than passed on: the page falls back to the diagram's own
+    // style for an id it does not know, so a typo would quietly publish the wrong look.
+    if (!STYLE_IDS.includes(next)) throw badValue('--style', `no style '${next}'; one of ${STYLE_IDS.join(', ')}`);
+    return next;
+  },
+  '--theme': (next) => {
+    if (next !== 'light' && next !== 'dark') throw badValue('--theme', 'light or dark, e.g. --theme dark');
+    return next;
+  },
 };
 
 const isFlag = (arg: string): arg is Flag => Object.hasOwn(FLAGS, arg);

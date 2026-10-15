@@ -7,6 +7,7 @@ import { classifyAssetRef, rewriteAssetRefs, safeAssetPath } from './assets';
 import { buildGallery, type GalleryEntry } from './gallery';
 import { discoverDiagrams } from './discover';
 import { stampHtml } from './html';
+import type { PictureLook } from './snapshot';
 
 export interface PublishOptions {
   srcDir: string;
@@ -18,8 +19,10 @@ export interface PublishOptions {
   assetsDir: string;
   images: boolean;
   names?: string[];
-  /** takes `htmlPath`'s picture of `plane` (the first plane when absent) into `pngPath` */
-  renderPng?: (htmlPath: string, pngPath: string, plane?: string) => Promise<void>;
+  /** takes `htmlPath`'s picture into `pngPath`, of the plane and in the look `look` says */
+  renderPng?: (htmlPath: string, pngPath: string, look?: PictureLook) => Promise<void>;
+  /** the look every picture is taken in, in place of the page's own: `--style`, `--theme` */
+  look?: Pick<PictureLook, 'style' | 'theme'>;
   /** an http(s) address for the gallery's header — never put on a diagram page */
   link?: string;
   /** where a warning goes, one line each: `console.warn` by default, so a caller with
@@ -116,6 +119,7 @@ export function planePictures(model: DiagramModel): PlanePicture[] {
 
 interface PictureRun {
   render: NonNullable<PublishOptions['renderPng']>;
+  look: NonNullable<PublishOptions['look']>;
   staticDir: string;
   /** every diagram discovered, by name: a plane's picture must not take one's file */
   diagrams: ReadonlySet<string>;
@@ -135,7 +139,10 @@ async function renderPictures(name: string, model: DiagramModel, pagePath: strin
     }
     const pngPath = path.join(run.staticDir, `${file}.png`);
     await mkdir(path.dirname(pngPath), { recursive: true });
-    await run.render(pagePath, pngPath, picture.plane);
+    await run.render(pagePath, pngPath, {
+      ...(picture.plane !== undefined ? { plane: picture.plane } : {}),
+      ...run.look,
+    });
     written.push(pngPath);
   }
   return written;
@@ -190,7 +197,13 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
       pages.push(pagePath);
 
       if (opts.images && opts.renderPng !== undefined) {
-        const run = { render: opts.renderPng, staticDir: opts.staticDir, diagrams: discovered, warn };
+        const run = {
+          render: opts.renderPng,
+          look: opts.look ?? {},
+          staticDir: opts.staticDir,
+          diagrams: discovered,
+          warn,
+        };
         images.push(...(await renderPictures(d.name, modelRaw, pagePath, run)));
       }
     } catch (e) {

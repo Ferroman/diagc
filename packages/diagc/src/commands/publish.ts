@@ -43,8 +43,8 @@ async function compileSources(dirs: PublishDirs, { io, home, snapshots }: Contex
 }
 
 /** `diagc publish [names...]`: compile, then a page per diagram, the gallery, and PNGs. */
-export const publish: Command<'--out' | '--no-images' | '--link' | '--update-includes'> = {
-  flags: ['--out', '--no-images', '--link', '--update-includes'],
+export const publish: Command<'--out' | '--no-images' | '--link' | '--update-includes' | '--style' | '--theme'> = {
+  flags: ['--out', '--no-images', '--link', '--update-includes', '--style', '--theme'],
   async run({ positionals, flags }, ctx) {
     const { io, home, snapshots } = ctx;
     if (!existsSync(home.viewerShell)) {
@@ -75,6 +75,11 @@ export const publish: Command<'--out' | '--no-images' | '--link' | '--update-inc
       images: renderPng !== undefined,
       names,
       ...(renderPng !== undefined ? { renderPng } : {}),
+      // the pictures' look; the pages keep the diagram's own, with the reader's picker
+      look: {
+        ...(flags['--style'] !== undefined ? { style: flags['--style'] } : {}),
+        ...(flags['--theme'] !== undefined ? { theme: flags['--theme'] } : {}),
+      },
       ...(flags['--link'] !== undefined ? { link: flags['--link'] } : {}),
       warn: io.err,
     });

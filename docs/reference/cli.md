@@ -28,7 +28,7 @@ Everything the CLI needs is in the package — the prebuilt studio, the viewer s
 From a checkout, `pnpm link --global` inside the repo gives you a `diagc` that runs the working tree instead. Both layouts are detected automatically; the differences are called out below where they matter.
 
 ```
-diagc <init|compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir] [--no-images] [--link url]
+diagc <init|compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir] [--no-images] [--link url] [--style id] [--theme light|dark]
 ```
 
 An unknown command exits `1` with that usage line, and so does a flag or an argument the command does not take.
@@ -129,6 +129,7 @@ diagc publish
 diagc publish acme shop      # only these diagrams
 diagc publish --no-images
 diagc publish --link https://github.com/you/repo
+diagc publish --style sketch --theme dark   # the pictures in that look
 ```
 
 - `.diagrams/html/<name>.html` — self-contained interactive pages, every asset inlined as a data URI.
@@ -140,6 +141,8 @@ diagc publish --link https://github.com/you/repo
 **Exit code:** `0` when every diagram is published; `1` when a source does not compile (`✗ <file>` and the error, as `compile` prints them) or a diagram is skipped (`publish: skipping diagram …`), after everything else is written.
 
 **`--link <url>` puts one link in the index header**, shown as the address it goes to — the project's repository, say. It must be an `http(s)` URL; anything else exits `1` before anything is compiled. Diagram pages never carry it: a published page belongs to its diagram and has no chrome of its publisher's.
+
+**`--style <id>` and `--theme light|dark` choose the look of the pictures.** Without them a PNG is drawn in its diagram's own [style preset](model.md#style-presets) (`clean` where it names none) and in the light theme. `--style` takes a preset id and refuses any other, naming the ids, before anything is compiled; `--theme` takes `light` or `dark`. Both apply to every picture of the run and to nothing else: a page still opens in its diagram's own style and the reader's theme, with a picker for the style and a switch for the theme (see [Publish and share](../how-to/publish-and-share.md#share-an-interactive-page)).
 
 **Requires the viewer shell.** An installed `diagc` ships it. From a checkout you must build it once (`pnpm build:cli`); until then publish exits `1` with `viewer shell not built`.
 
@@ -224,6 +227,8 @@ A command takes only the flags its row lists; any other exits `1` with the usage
 | `--out <dir>` | `compile`, `watch`, `publish`, `eject`, `diff` | `.diagrams/.artifacts` (`diff`: `.diagrams/diff/<from>..<to>`) | Where artifacts are written — for `publish`, the artifacts only, its pages and images still go under `.diagrams/`; for `eject`, the dir its post-swap recompile writes into; for `diff`, its pages and images. |
 | `--no-images` | `publish`, `diff` | off | Skip PNG export; write HTML only. |
 | `--link <url>` | `publish` | none | Link the index header to this `http(s)` address. |
+| `--style <id>` | `publish` | each diagram's own | Draw the PNGs in this [style preset](model.md#style-presets); a page keeps its diagram's own style. |
+| `--theme <light\|dark>` | `publish` | `light` | Draw the PNGs in this theme; a page keeps following its reader's. |
 | `--labels <a,b>` | `diff` | the refs | Names for the before and after sides. |
 | `--image-url <template>` | `diff` | relative | `summary.md`'s image links; `{path}` stands for each PNG's path. |
 | `--json` | `lint`, `diff` | off | Print the findings (lint) or the changes (diff) as JSON. |

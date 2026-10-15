@@ -6,7 +6,7 @@ Turn diagrams into things other people can open: images for your README, interac
 
 With a diagram open (not in edit mode), the topbar's **⋯** menu has **Export PNG**: it downloads the canvas as you see it — current folds, active layers, your theme and any drawings — at the diagram's full size, not just the part on screen, at twice screen resolution. The canvas jumps to the full view for a moment while it renders. The zoom controls and the legend are left out. Nothing needs to be built, and no Chrome is involved.
 
-For an image that belongs in the repo, use `publish` below instead: it is reproducible (every group unfolded, light theme, a declared legend baked in) and writes to the committed `.diagrams/static/`.
+For an image that belongs in the repo, use `publish` below instead: it is reproducible (every group unfolded, the light theme and the diagram's own style unless you name others, a declared legend baked in) and writes to the committed `.diagrams/static/`.
 
 ## Export
 
@@ -14,6 +14,7 @@ For an image that belongs in the repo, use `publish` below instead: it is reprod
 diagc publish                # everything
 diagc publish shop payments  # only these, by diagram name
 diagc publish --no-images    # HTML only
+diagc publish --style sketch --theme dark   # the images in that look
 ```
 
 Three outputs:
@@ -26,7 +27,7 @@ Three outputs:
 
 Freehand drawings (`<name>.drawings.json`) ship with the page and are included in the PNG; the export frame grows to fit a stroke drawn outside the boxes.
 
-The PNG is always drawn in the light theme, whatever theme a reader of the page uses.
+The PNG is drawn in the diagram's own style and the light theme, whatever a reader of the page picks — unless you choose for it: `--style <id>` draws every image of the run in that [style preset](../reference/model.md#style-presets), `--theme dark` in the dark theme. The pages are not touched by either; they open the way the next section says.
 
 ## Put an image in your docs
 
@@ -47,7 +48,7 @@ Design a diagram intended for a README accordingly: keep it shallow, and either 
 Two more, smaller:
 
 - A node's `description` never renders — only `name` does.
-- The image renders in the **light** theme regardless of your studio setting.
+- The image renders in the **light** theme regardless of your studio setting, unless `--theme dark` says otherwise.
 
 ## When PNGs do not appear
 
@@ -74,6 +75,10 @@ Pages with several planes get a plane picker at the top. `<name>.png` shows the 
 The page opens in the theme of the reader's system, light or dark. The `☾` / `☀` corner control switches it, and the browser remembers the choice for every published page on the same host. Switching back to the system's own theme forgets the choice, so the page follows the system again. The index page has the same switch.
 
 To fix the theme of a page you embed on another site, add `?theme=dark` or `?theme=light` to its address. The page then shows no switch.
+
+The page opens in its diagram's own [style preset](../reference/model.md#style-presets), and the **Style** picker at the top lets a reader try the others — `sketch`, `neon`, `dos`… — for as long as the page is open; a pick is not remembered, so the author's choice is what the next visit shows. `?style=sketch` in the address fixes the style, as `?theme=` fixes the theme, and hides the picker.
+
+Press `F` to fit the whole diagram in the window again (the `⛶` corner control does the same), after a zoom or a fold has taken you somewhere else. Opening a group from its `▸` chip brings the open box into view by itself: the page pans to it, or zooms out when the box is larger than the window.
 
 Presenting the page on a call? Press `L` (or the `◉` corner control) for a laser pointer: drag to draw a red trail that fades out after a second, so people can see what you are pointing at. It never touches the diagram, and `Esc` switches it off. The studio has the same control.
 

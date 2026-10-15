@@ -31,8 +31,10 @@ describe('resolveTheme', () => {
     expect(resolveTheme({ ...base, param: '' })).toBe('light');
   });
 
-  it('keeps an export light above everything', () => {
-    expect(resolveTheme({ exportMode: true, param: 'dark', stored: 'dark', systemDark: true })).toBe('light');
+  it('keeps an export light whatever the renderer remembers or prefers, unless the publisher names a theme', () => {
+    expect(resolveTheme({ exportMode: true, param: null, stored: 'dark', systemDark: true })).toBe('light');
+    expect(resolveTheme({ exportMode: true, param: 'dark', stored: undefined, systemDark: false })).toBe('dark');
+    expect(resolveTheme({ exportMode: true, param: 'purple', stored: 'dark', systemDark: true })).toBe('light');
   });
 });
 

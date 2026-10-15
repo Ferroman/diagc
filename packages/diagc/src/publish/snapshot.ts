@@ -29,14 +29,29 @@ interface ExportWindow {
   __DG_FIT__?: (pad?: number) => void;
 }
 
-/** The page's export render: `?export=1` unfolds every group for a full overview,
- * and `plane` names the plane to draw (the first when absent). */
-export function exportUrl(htmlPath: string, plane?: string): string {
-  const query = new URLSearchParams({ export: '1', ...(plane !== undefined ? { plane } : {}) });
+/** How a picture is taken: which plane (the first when absent), and the look the
+ * publisher chose — a style preset, light or dark — in place of the page's own
+ * (the diagram's style, light). */
+export interface PictureLook {
+  plane?: string;
+  style?: string;
+  theme?: 'light' | 'dark';
+}
+
+/** The page's export render: `?export=1` unfolds every group for a full overview;
+ * `plane`, `style` and `theme` say which plane, and in what look (see PictureLook —
+ * the viewer reads them as apps/viewer/src/style.ts and theme.ts say). */
+export function exportUrl(htmlPath: string, look: PictureLook = {}): string {
+  const query = new URLSearchParams({
+    export: '1',
+    ...(look.plane !== undefined ? { plane: look.plane } : {}),
+    ...(look.style !== undefined ? { style: look.style } : {}),
+    ...(look.theme !== undefined ? { theme: look.theme } : {}),
+  });
   return `${pathToFileURL(path.resolve(htmlPath)).href}?${query.toString()}`;
 }
 
-export async function renderPng(htmlPath: string, pngPath: string, plane?: string): Promise<void> {
+export async function renderPng(htmlPath: string, pngPath: string, look: PictureLook = {}): Promise<void> {
   const executablePath = findChrome();
   if (executablePath === undefined) {
     throw new Error(
@@ -45,14 +60,15 @@ export async function renderPng(htmlPath: string, pngPath: string, plane?: strin
   }
   const browser = await chromium.launch({ executablePath, headless: true });
   try {
-    // Light, by name: `?export=1` already makes the viewer light whatever the browser
-    // prefers, and this says so where the picture is taken.
+    // Named, not left to the browser: `?export=1` already makes the viewer light (or
+    // the theme in the address) whatever the browser prefers, and this says so where
+    // the picture is taken.
     const page = await browser.newPage({
       viewport: { width: 1600, height: 1000 },
       deviceScaleFactor: 2,
-      colorScheme: 'light',
+      colorScheme: look.theme ?? 'light',
     });
-    await page.goto(exportUrl(htmlPath, plane));
+    await page.goto(exportUrl(htmlPath, look));
     await page.waitForFunction(() => (window as unknown as ExportWindow).__DG_READY__ === true, null, {
       timeout: 15_000,
     });
