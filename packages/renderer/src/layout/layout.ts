@@ -28,6 +28,7 @@ import {
 import { planLayout, type LayoutPlan, type LevelPlan } from './layout-plan';
 import { packBoxes } from './pack';
 import { removeOverlaps } from './overlap';
+import { centreLevels } from './symmetry';
 import { bandLanes, hoistLanes, rebaseRoutes, routeBandedEdges } from './swimlane';
 
 /** What a notation's own arrangement is handed (NotationProfile.layout). */
@@ -99,6 +100,7 @@ function settingsKey(settings?: LayoutSettings): string {
     settings.spacing ?? '',
     settings.edgeRouting ?? '',
     settings.aspectRatio ?? '',
+    settings.symmetric === true ? 'symmetric' : '',
   ];
   return `!${parts.join(',')}`;
 }
@@ -160,9 +162,10 @@ export async function layoutView(
   // Activity lanes are dissolved for elk and put back as bands (swimlane.ts).
   const hoist = hoistLanes(view, settings);
   const laid = hoist?.view ?? view;
-  const result =
+  const arranged =
     (partitions === undefined ? await layoutPlanned(laid, sizeOverrides, settings) : undefined) ??
     (await layoutSingleRun(laid, sizeOverrides, settings, partitions));
+  const result = withSymmetry(arranged, laid, settings, hoist !== undefined);
   releaseReserved(laid, sizeOverrides, result.geometry);
   if (hoist !== undefined) {
     const captions = new Map<string, BoxSize>();
@@ -179,6 +182,19 @@ export async function layoutView(
   }
   cache.set(key, result);
   return result;
+}
+
+/** The symmetric setting: a pass over layered's output (symmetry.ts). Not over
+ * activity lanes (`banded`): the banding stacks those afresh, and would undo a
+ * centring the routes had already followed. */
+function withSymmetry(
+  result: LayoutResult,
+  view: CompiledView,
+  settings: LayoutSettings | undefined,
+  banded: boolean,
+): LayoutResult {
+  if (settings?.symmetric !== true || banded || result.algorithm !== DEFAULT_ALGORITHM) return result;
+  return { ...result, ...centreLevels(view, result, settings.direction ?? FALLBACK_DIRECTION) };
 }
 
 /** Hand the strips reserved under leaves (`SizeHint.reserveBottom`) back: elk

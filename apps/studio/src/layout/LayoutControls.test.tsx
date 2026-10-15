@@ -99,16 +99,36 @@ describe('LayoutControls', () => {
     expect([...select.options].map((o) => o.value)).toContain('1.4');
   });
 
+  it('patches symmetry on, and clears it when switched off again', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<LayoutControls settings={{}} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText('Symmetry'), { target: { value: 'centred' } });
+    expect(onChange).toHaveBeenCalledWith({ symmetric: true });
+
+    rerender(<LayoutControls settings={{ symmetric: true }} onChange={onChange} />);
+    expect((screen.getByLabelText('Symmetry') as HTMLSelectElement).value).toBe('centred');
+    fireEvent.change(screen.getByLabelText('Symmetry'), { target: { value: '' } });
+    expect(onChange).toHaveBeenCalledWith({ symmetric: undefined });
+  });
+
+  it('shows the symmetry picker for layered only', () => {
+    const { rerender } = render(<LayoutControls settings={{}} onChange={vi.fn()} />);
+    expect(screen.queryByLabelText('Symmetry')).not.toBeNull();
+    rerender(<LayoutControls settings={{ algorithm: 'mrtree' }} onChange={vi.fn()} />);
+    expect(screen.queryByLabelText('Symmetry')).toBeNull();
+  });
+
   it('names every control in a visible row label, so the options need no prefix', () => {
     render(<LayoutControls settings={{}} onChange={() => {}} />);
     // the dock gives each control a row of its own; in the topbar they were bare
     // selects whose options had to say what they were ("Wrap: off")
-    for (const name of ['Algorithm', 'Direction', 'Wrap', 'Spacing', 'Edges']) {
+    for (const name of ['Algorithm', 'Direction', 'Wrap', 'Symmetry', 'Spacing', 'Edges']) {
       expect(screen.getByText(name, { selector: '.layout-row > span' })).toBeDefined();
     }
     const labels = (name: string) =>
       [...(screen.getByLabelText(name) as HTMLSelectElement).options].map((o) => o.textContent);
     expect(labels('Wrap')).toEqual(['Off', 'Square', 'Screen', 'Wide']);
+    expect(labels('Symmetry')).toEqual(['Off', 'Centred']);
     expect(labels('Edge routing')).toEqual(['Rounded', 'Square']);
   });
 
