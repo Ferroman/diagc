@@ -13,6 +13,10 @@ Show how a handful of variables push each other around in circles. Every link is
 5. Select a link. Its **Properties** panel carries two rows this notation adds: **Polarity** (`∅`, `+`, `−`) and **Delay** (`·`, `‖`). Polarity colours the whole link — green for `+`, red for `−` — and prints its sign near the arrow head; a delay draws two hash marks across the middle of the line.
 6. The *Style* section gains two more rows here: **Curvature**, which deepens or flattens the bow, and **Flip curve**, which moves the bulge to the other side of the line, arrow direction unchanged.
 
+![Set one link's Polarity to −; the loop's badge turns from R to B](../media/draw-a-causal-loop-diagram.webp)
+
+GIF: [draw-a-causal-loop-diagram.gif](../media/draw-a-causal-loop-diagram.gif)
+
 A link's `kind` is free-form and the loop maths never reads it, so the `sync` a connect gesture leaves behind works as well as anything; the two examples below write `influence`.
 
 `↻` in the corner controls hides and shows the R/B badges, which pile up once a graph is dense. Click a badge to make its loop glow and dim the rest; click it again to let go. In view mode, selecting a variable narrows the badges to the loops that variable is in, and the left dock becomes **Leverage**: the loops it sits in, the upstream drivers that reach it with the net sign of each shortest path, and the variables that recur across its loops. `Ctrl`/`Cmd` + click a second variable adds a **Dependency** section reading the two against each other. That panel is the studio's — a published page gets the badges, not the analysis.

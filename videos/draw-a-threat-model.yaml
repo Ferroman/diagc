@@ -1,0 +1,33 @@
+title: Draw a threat model
+url: "http://localhost:5183/#/fixtures%2Fthreat-model-demo"
+viewport: 1280x720
+crop: {role: main}
+# The new threat's title box can drop keys typed fast, so fill it at a slower pace.
+pace: {typing: 8}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+  - click: {role: button, name: Edit}
+  - wait_for: {text: Auth service, within: {role: application}}
+  # The threat's bubble opens to the left of its element: make room for it there.
+  - click: {role: button, name: "Collapse panel", nth: 0}
+  - click: {role: button, name: Fit View}
+  - click: {role: button, name: Zoom Out}
+  - click: {role: button, name: Zoom Out}
+  - click: {role: button, name: Zoom Out}
+steps:
+  - note: Select an element
+    do:
+      - click: {text: Auth service, within: {role: application}}
+  - note: Its grey + opens a threat
+    do:
+      - click: {role: button, name: Add a threat, nth: 2}
+    pause: 1
+  - note: Its grey + opens a threat
+    do:
+      - fill: {role: textbox, name: Rename threat, value: Reset codes can be brute-forced}
+      - press: Enter
+  - note: The Register lists every threat
+    do:
+      - box: {role: region, name: Register}
+    pause: 1.5

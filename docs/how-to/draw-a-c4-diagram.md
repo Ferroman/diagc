@@ -53,6 +53,10 @@ The whole picture above is `.diagrams/src/docs/c4.diagram.ts` in this repo.
 3. Select a node — the Properties panel's **Technology** field sets the per-node subtitle.
 4. Clear a node's **Colour** swatch to let the C4 notation's fill show through (see precedence, below).
 
+![Unfold the system, select a container, and set its Technology; it prints under the name](../media/draw-a-c4-diagram.webp)
+
+GIF: [draw-a-c4-diagram.gif](../media/draw-a-c4-diagram.gif)
+
 ## What to know
 
 - **An explicit node colour always beats the notation's fill.** That's the standing rule for every notation, not a C4 special case — `node.color`, and failing that a model `typeColors` entry, wins over whatever the active notation would paint. The **Library**'s C4 cards set an explicit `color` on every stencil, so a dropped Person or Software System already reads about right without turning the notation on at all — but that same colour then shadows the authentic multi-shade palette once you do. The External twins carry a grey close to the notation's own, so they look right regardless; the others need their Colour swatch cleared (or `m.node(...)` called without `color`, as in the DSL example above) to show it. This diagram's nodes never set `color`, so the fill is the notation speaking.

@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "id": "fixtures/c4-demo",
+  "name": "Expense claims",
+  "nodes": [
+    {
+      "id": "employee",
+      "name": "Employee",
+      "type": "c4-person"
+    },
+    {
+      "id": "claims",
+      "name": "Expense Claims",
+      "type": "c4-system"
+    },
+    {
+      "id": "web",
+      "name": "Web Application",
+      "type": "c4-container-web",
+      "technology": "TypeScript, Next.js"
+    },
+    {
+      "id": "db",
+      "name": "Claims Database",
+      "type": "c4-container-db",
+      "technology": "PostgreSQL 16"
+    }
+  ],
+  "containment": [
+    {
+      "parent": "claims",
+      "child": "web"
+    },
+    {
+      "parent": "claims",
+      "child": "db"
+    }
+  ],
+  "relations": [
+    {
+      "id": "employee->web#0",
+      "from": "employee",
+      "to": "web",
+      "kind": "sync",
+      "label": "Submits claims [HTTPS]"
+    },
+    {
+      "id": "web->db#0",
+      "from": "web",
+      "to": "db",
+      "kind": "writes",
+      "label": "Stores claims [SQL/TCP]"
+    }
+  ],
+  "layers": [],
+  "planes": [],
+  "notation": "c4"
+}

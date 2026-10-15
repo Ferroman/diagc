@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "id": "fixtures/threat-model-demo",
+  "name": "Password reset flow",
+  "nodes": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "type": "tm-entity"
+    },
+    {
+      "id": "auth",
+      "name": "Auth service",
+      "type": "tm-process"
+    },
+    {
+      "id": "internet-facing",
+      "name": "DMZ",
+      "type": "tm-boundary"
+    }
+  ],
+  "containment": [
+    {
+      "parent": "internet-facing",
+      "child": "auth"
+    }
+  ],
+  "relations": [
+    {
+      "id": "customer->auth#0",
+      "from": "customer",
+      "to": "auth",
+      "kind": "data-flow",
+      "label": "HTTPS: reset request",
+      "threats": [
+        {
+          "id": "t1",
+          "category": "I",
+          "title": "Reset token leaks to third parties via the Referer header",
+          "severity": "medium"
+        }
+      ]
+    }
+  ],
+  "layers": [],
+  "planes": [],
+  "notation": "threat-model"
+}

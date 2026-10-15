@@ -11,6 +11,10 @@ Where the software runs: the environments, regions, availability zones, networks
 3. Put a node inside a zone from the node's own panel: **Memberships** → *Choose parent…* → the zone → **Add**. Zones nest the same way. Dragging a box into a zone only moves it; the picker is what changes containment.
 4. Drag from a connect dot to another node to draw a connection, and give it a label: the port or protocol is usually what a reader wants from the line.
 
+![Put Orders DB in the Private subnet from its Memberships](../media/draw-a-deployment-diagram.webp)
+
+GIF: [draw-a-deployment-diagram.gif](../media/draw-a-deployment-diagram.gif)
+
 ## From TypeScript
 
 There is no special builder: every element is an `m.node` with a `deploy-*` type, and `contains` builds the zones.

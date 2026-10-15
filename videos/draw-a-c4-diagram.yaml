@@ -1,0 +1,25 @@
+title: Draw a C4 diagram
+url: "http://localhost:5183/#/fixtures%2Fc4-demo"
+viewport: 1280x720
+crop: {role: main}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+  - click: {role: button, name: Edit}
+  - wait_for: {text: Expense Claims, within: {role: application}}
+  # Close the side panels the steps do not use, so the diagram is drawn larger.
+  - click: {role: button, name: "Collapse panel", nth: 1}
+  - click: {role: button, name: Fit View}
+steps:
+  - note: Unfold the system to see its containers
+    do:
+      - click: {role: button, name: Expand, within: {role: application}}
+    pause: 1
+  - note: Select a container
+    do:
+      - click: {text: Web Application, within: {role: application}}
+  - note: Its Technology prints under its name
+    do:
+      - fill: {label: Technology, value: "Go, htmx"}
+      - press: Enter
+    pause: 1.5

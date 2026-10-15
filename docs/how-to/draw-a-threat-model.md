@@ -15,6 +15,10 @@ A STRIDE data-flow diagram: the external entities, processes and data stores you
 7. On a flow, the **Threats** section's first line reads **Crosses: *from* → *to*** — the two boundaries its ends sit in, `outside` where there is none. Nothing declares that; it is read off the containment you built in step 3.
 8. The **Threat model** panel on the right has the two lists a review runs on: **Crossings to review** — every boundary-crossing flow with no threat recorded yet, each clickable to select it — and the **Register**, every threat in the diagram grouped by the element that carries it. Validation problems with the threats show under **Issues**.
 
+![The grey + on an element opens a threat on it, and the Register lists it](../media/draw-a-threat-model.webp)
+
+GIF: [draw-a-threat-model.gif](../media/draw-a-threat-model.gif)
+
 The panel is there in view mode too: a read-only `.diagram.ts` threat model still gets its register.
 
 ## From TypeScript

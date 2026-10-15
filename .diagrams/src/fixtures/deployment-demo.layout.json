@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "planes": {},
+  "settings": {
+    "default": {
+      "direction": "RIGHT"
+    }
+  },
+  "unfolded": {
+    "default": ["vpc", "public", "private"]
+  }
+}

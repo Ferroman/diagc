@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "id": "fixtures/git-graph-demo",
+  "name": "Dark mode toggle",
+  "nodes": [
+    {
+      "id": "main",
+      "name": "main",
+      "type": "branch",
+      "color": "#2f6fed"
+    },
+    {
+      "id": "dark-mode",
+      "name": "dark-mode",
+      "type": "branch",
+      "color": "#b08ad9"
+    },
+    {
+      "id": "main-1",
+      "name": "",
+      "type": "commit"
+    },
+    {
+      "id": "dark-mode-1",
+      "name": "",
+      "type": "commit"
+    },
+    {
+      "id": "dark-mode-2",
+      "name": "",
+      "type": "commit"
+    },
+    {
+      "id": "main-2",
+      "name": "v3.2.0",
+      "type": "commit"
+    }
+  ],
+  "containment": [
+    {
+      "parent": "main",
+      "child": "main-1"
+    },
+    {
+      "parent": "dark-mode",
+      "child": "dark-mode-1"
+    },
+    {
+      "parent": "dark-mode",
+      "child": "dark-mode-2"
+    },
+    {
+      "parent": "main",
+      "child": "main-2"
+    }
+  ],
+  "relations": [
+    {
+      "id": "main-1->dark-mode-1#0",
+      "from": "main-1",
+      "to": "dark-mode-1",
+      "kind": "branch"
+    },
+    {
+      "id": "dark-mode-1->dark-mode-2#0",
+      "from": "dark-mode-1",
+      "to": "dark-mode-2",
+      "kind": "commit"
+    },
+    {
+      "id": "dark-mode-2->main-2#0",
+      "from": "dark-mode-2",
+      "to": "main-2",
+      "kind": "merge"
+    },
+    {
+      "id": "main-1->main-2#0",
+      "from": "main-1",
+      "to": "main-2",
+      "kind": "commit"
+    }
+  ],
+  "layers": [],
+  "planes": [
+    {
+      "id": "git-graph",
+      "name": "Git graph",
+      "notation": "git-graph"
+    }
+  ]
+}

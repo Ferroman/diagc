@@ -3,8 +3,8 @@
 //
 // Every storyboard acts on a committed diagram under .diagrams/src/fixtures/, so a run is
 // reproducible. The studio is started on the fixed port the studio storyboards' URLs name, and the
-// demo diagram and its layout sidecar are restored before each take — a take edits them (a placed
-// node, a typed name, a comment, an unfolded group) and the studio writes those edits back. The
+// fixtures folder is restored before each take — a take edits a fixture (a placed node, a typed
+// name, a comment, an unfolded group) and the studio writes those edits back. The
 // published-page storyboards open the fixtures' published pages, which this script publishes and
 // serves on a second port; a published page cannot save, so those need no restoring.
 //
@@ -22,10 +22,7 @@ const PORT = 5183;
 const PAGES_PORT = 5184;
 const WIDTH = 800;
 const OUT = path.join('docs', 'media');
-const FIXTURES = [
-  path.join('.diagrams', 'src', 'fixtures', 'studio-demo.diagram.json'),
-  path.join('.diagrams', 'src', 'fixtures', 'studio-demo.layout.json'),
-];
+const FIXTURES = path.join(root, '.diagrams', 'src', 'fixtures');
 // The diagrams whose published pages the storyboards open, as `diagc publish` names them.
 const PAGES = ['fixtures/published-demo'];
 const PAGES_DIR = path.join(root, '.diagrams', 'html');
@@ -55,20 +52,17 @@ if (unknown.length > 0)
   fail(`no storyboard ${unknown.join(', ')}; videos/ holds ${all.map((f) => f.slice(0, -5)).join(', ')}.`);
 const storyboards = asked.length === 0 ? all : all.filter((f) => asked.includes(f.slice(0, -5)));
 
-// Only the fixtures that exist are restored, so a run that starts from a clean tree leaves a clean
-// tree: the layout sidecar is build output of the takes themselves. A sidecar created by one take
-// must be removed before the next, or the next take lays out against the previous take's positions.
+// The files the folder holds now are put back, and any other file is removed, so a run that starts
+// from a clean tree leaves a clean tree: a layout sidecar a take writes is build output of the take
+// itself, and left in place the next take would lay out against the previous take's positions.
 const snapshot = path.join(tmpdir(), 'diagc-animate-restore');
 rmSync(snapshot, { recursive: true, force: true });
 mkdirSync(snapshot, { recursive: true });
-const saved = FIXTURES.filter((f) => existsSync(path.join(root, f)));
-for (const file of saved) copyFileSync(path.join(root, file), path.join(snapshot, path.basename(file)));
+const saved = readdirSync(FIXTURES);
+for (const file of saved) copyFileSync(path.join(FIXTURES, file), path.join(snapshot, file));
 const restore = () => {
-  for (const file of FIXTURES) {
-    const target = path.join(root, file);
-    if (saved.includes(file)) copyFileSync(path.join(snapshot, path.basename(file)), target);
-    else rmSync(target, { force: true });
-  }
+  for (const file of readdirSync(FIXTURES)) if (!saved.includes(file)) rmSync(path.join(FIXTURES, file));
+  for (const file of saved) copyFileSync(path.join(snapshot, file), path.join(FIXTURES, file));
 };
 
 // Spawned detached so the whole process group can be signalled: pnpm runs vite through a shell,
@@ -113,21 +107,25 @@ const took = async () => {
   await run('node', [path.join('bin', 'diagc.mjs'), 'publish', ...PAGES, '--no-images']);
   await new Promise((resolve, reject) => pages.once('error', reject).listen(PAGES_PORT, '127.0.0.1', resolve));
   mkdirSync(path.join(root, OUT), { recursive: true });
-  for (const file of storyboards) {
+  // Restored after a failed take too, which would otherwise leave its edits in the fixtures.
+  try {
+    for (const file of storyboards) {
+      restore();
+      await run('pnpm', ['compile']);
+      await run('howto', [
+        'animate',
+        path.join('videos', file),
+        '--out',
+        OUT,
+        '--format',
+        'both',
+        '--width',
+        String(WIDTH),
+      ]);
+    }
+  } finally {
     restore();
-    await run('pnpm', ['compile']);
-    await run('howto', [
-      'animate',
-      path.join('videos', file),
-      '--out',
-      OUT,
-      '--format',
-      'both',
-      '--width',
-      String(WIDTH),
-    ]);
   }
-  restore();
 };
 
 try {

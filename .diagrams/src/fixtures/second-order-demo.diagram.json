@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "id": "fixtures/second-order-demo",
+  "name": "Requiring two-factor authentication",
+  "nodes": [
+    {
+      "id": "mandate-2fa",
+      "name": "Require 2FA for every login",
+      "type": "so-decision"
+    },
+    {
+      "id": "fewer-breaches",
+      "name": "Account takeovers drop",
+      "type": "so-consequence-positive"
+    },
+    {
+      "id": "lockouts",
+      "name": "Support is flooded with lockout tickets",
+      "type": "so-consequence-negative"
+    },
+    {
+      "id": "trust",
+      "name": "Customers trust the product more",
+      "type": "so-consequence-positive"
+    },
+    {
+      "id": "contractor",
+      "name": "Support hires a contractor to keep up",
+      "type": "so-consequence-negative"
+    }
+  ],
+  "containment": [],
+  "relations": [
+    {
+      "id": "mandate-2fa->fewer-breaches#0",
+      "from": "mandate-2fa",
+      "to": "fewer-breaches",
+      "kind": "leads-to"
+    },
+    {
+      "id": "mandate-2fa->lockouts#0",
+      "from": "mandate-2fa",
+      "to": "lockouts",
+      "kind": "leads-to"
+    },
+    {
+      "id": "fewer-breaches->trust#0",
+      "from": "fewer-breaches",
+      "to": "trust",
+      "kind": "leads-to"
+    },
+    {
+      "id": "lockouts->contractor#0",
+      "from": "lockouts",
+      "to": "contractor",
+      "kind": "leads-to"
+    }
+  ],
+  "layers": [],
+  "planes": [],
+  "notation": "second-order"
+}

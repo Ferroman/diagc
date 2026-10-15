@@ -16,6 +16,10 @@ Editing needs a JSON diagram: one compiled from `.diagram.ts` opens read-only.
 6. A row reads, left to right: a badge that cycles **none → PK → FK**, the column name, and its type. **↑** and **↓** move it, **✕** removes it, and **＋ add column** at the foot appends one. The type field suggests `uuid`, `int`, `bigint`, `text`, `varchar`, `bool`, `timestamp`, `timestamptz`, `jsonb` and `numeric`, and keeps anything else you type.
 7. Drag from a row's connect point — on the row's right edge — onto another table. That makes an `fk` relation from that column to the target's primary key, and flags the column `FK` if it was not flagged already.
 
+![Add a column to a table, then type its name and its type in place](../media/draw-an-er-diagram.webp)
+
+GIF: [draw-an-er-diagram.gif](../media/draw-an-er-diagram.gif)
+
 The rows are inert outside edit mode, and the per-row connect points are hidden there, so a published page or a PNG shows the table without the editing chrome.
 
 ## From TypeScript

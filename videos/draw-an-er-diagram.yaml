@@ -1,0 +1,25 @@
+title: Draw an ER diagram
+url: "http://localhost:5183/#/fixtures%2Fer-demo"
+viewport: 1280x720
+crop: {role: main}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+  - click: {role: button, name: Edit}
+  - wait_for: {text: members, within: {role: application}}
+  # Close the side panels the steps do not use, so the diagram is drawn larger.
+  - click: {role: button, name: "Collapse panel", nth: 1}
+  - click: {role: button, name: "Collapse panel", nth: 0}
+  - click: {role: button, name: Fit View}
+  # Zoomed out, so what the steps add stays in the picture.
+  - click: {role: button, name: Zoom Out}
+steps:
+  - note: Add a column to a table
+    do:
+      - click: {role: button, name: "＋ add column", nth: 1}
+  - note: Name it and give it a type
+    do:
+      - fill: {role: textbox, name: "Column name", nth: 6, value: returned_on}
+      - fill: {role: combobox, name: "Column type", nth: 6, value: timestamptz}
+      - press: Enter
+    pause: 1.5

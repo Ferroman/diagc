@@ -1,0 +1,39 @@
+title: Draw a second-order thinking diagram
+url: "http://localhost:5183/#/fixtures%2Fsecond-order-demo"
+viewport: 1280x720
+crop: {role: main}
+# The new box's name editor is not focused when it opens, and garbles keys typed before its layout
+# lands, or typed fast: so let it settle, and fill it at a slower pace.
+pace: {typing: 8}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+  - click: {role: button, name: Edit}
+  - wait_for: {text: Account takeovers drop, within: {role: application}}
+  # Close the side panels the steps do not use, so the diagram is drawn larger.
+  - click: {role: button, name: "Collapse panel", nth: 0}
+  - click: {role: button, name: Fit View}
+  # Zoomed out, so what the steps add stays in the picture.
+  - click: {role: button, name: Zoom Out}
+  - click: {role: button, name: Zoom Out}
+  - click: {role: button, name: Zoom Out}
+steps:
+  - note: Select a consequence
+    do:
+      - click: {text: Account takeovers drop, within: {role: application}}
+  - note: And then what? Add a good one
+    do:
+      - click: {role: button, name: Good consequence}
+    pause: 1
+  - note: And then what? Add a good one
+    do:
+      - fill: {role: textbox, name: Edit text, within: {role: application}, value: Fraud refunds fall}
+  - note: And then what? A bad one, an order deeper
+    do:
+      - click: {role: button, name: Bad consequence}
+    pause: 1
+  - note: And then what? A bad one, an order deeper
+    do:
+      - fill: {role: textbox, name: Edit text, within: {role: application}, value: Fraud team gets cut}
+      - press: Control+Enter
+    pause: 1.5

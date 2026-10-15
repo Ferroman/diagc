@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "id": "fixtures/causal-loop-demo",
+  "name": "Word-of-mouth growth",
+  "nodes": [
+    {
+      "id": "users",
+      "name": "Active users"
+    },
+    {
+      "id": "word-of-mouth",
+      "name": "Word of mouth"
+    },
+    {
+      "id": "signups",
+      "name": "New sign-ups"
+    }
+  ],
+  "containment": [],
+  "relations": [
+    {
+      "id": "users->word-of-mouth#0",
+      "from": "users",
+      "to": "word-of-mouth",
+      "kind": "influence",
+      "polarity": "+"
+    },
+    {
+      "id": "word-of-mouth->signups#0",
+      "from": "word-of-mouth",
+      "to": "signups",
+      "kind": "influence",
+      "polarity": "+"
+    },
+    {
+      "id": "signups->users#0",
+      "from": "signups",
+      "to": "users",
+      "kind": "influence",
+      "polarity": "+"
+    }
+  ],
+  "layers": [],
+  "planes": [],
+  "notation": "causal-loop"
+}

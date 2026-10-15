@@ -52,6 +52,10 @@ The whole picture above is `.diagrams/src/docs/git-graph.diagram.ts` in this rep
 4. **Add commit** to a lane (tag and gap are optional) — or, on the canvas, select a lane or the last commit on it and press its `+` (or `Tab`): the commit lands at the lane's tip and its tag opens for typing, so `Tab`, tag, `Tab`, tag … runs a lane out. Select a commit, then **Branch** it into another lane or **Merge** it into one — each is a single undo step. A commit that already has a successor on its lane offers no `+`: a second child there would be a branch, and that needs a lane to land on.
 5. Rename a commit's tag by double-clicking it; delete, recolour and describe commits and lanes as any node.
 
+![Select a lane; Tab adds a commit at its tip and opens its tag, and Tab again adds the next](../media/draw-a-git-branching-diagram.webp)
+
+GIF: [draw-a-git-branching-diagram.gif](../media/draw-a-git-branching-diagram.gif)
+
 ## What to know
 
 - **Lanes never fold.** Semantic zoom leaves them alone; dragging a commit still works, and the plane's *Auto-layout* switch freezes or frees positions as on any plane. The algorithm, direction, spacing and routing pickers are hidden — the notation owns the arrangement.

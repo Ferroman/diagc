@@ -82,6 +82,10 @@ The whole picture above is `.diagrams/src/docs/activity.diagram.ts` in this repo
 4. Connect elements by dragging from one to another, the same gesture as any diagram. New connections start as a plain `sync` relation; select the arrow and set its **Kind** to `control`, `object-flow`, `interrupt` or `note-link` to match what it means. Give it a **Label** like `[order accepted]` for a guard.
 5. Rename, recolour and delete lanes, regions and elements the same way as any node. To move an element to another lane, use the node panel's *Memberships* section: remove its current lane (✕), then pick the new one under **Choose parent…** and **Add**. The list offers only lanes and regions (a lane's only frames), and dragging an element across a lane boundary does not re-home it.
 
+![Add a lane above Finance and name it, then add an action to it from the Activity panel](../media/draw-an-activity-diagram.webp)
+
+GIF: [draw-an-activity-diagram.gif](../media/draw-an-activity-diagram.gif)
+
 ## What to know
 
 - **Bars, start and end ignore `color`.** They draw in a neutral stroke token regardless of what the node sets — there's no per-node colour on fixed UML glyphs in v1.
