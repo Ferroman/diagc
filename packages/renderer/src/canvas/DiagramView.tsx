@@ -22,6 +22,7 @@ import { canvasClassName, canvasGrid, canvasStyle } from './canvas-frame';
 import { canvasToggles, toggleOf } from './canvas-toggles';
 import { CanvasControls } from './CanvasControls';
 import { CanvasOverlays } from './CanvasOverlays';
+import { forwardEdgeClick } from './click-through';
 import { useCanvasClicks } from './useCanvasClicks';
 import { useCanvasCommands } from './useCanvasCommands';
 import { useCommitMoves } from './useCommitMoves';
@@ -29,6 +30,7 @@ import { useCompiledView } from './useCompiledView';
 import { useDrillNavigation } from './useDrillNavigation';
 import { useDropAndPaste } from './useDropAndPaste';
 import { useEditRequests } from './useEditRequests';
+import { useFitKey } from './useFitKey';
 import { useFlowEdges } from './useFlowEdges';
 import { useFlowNodes, type LabelEdit } from './useFlowNodes';
 import { MAX_ZOOM, MIN_ZOOM, useLayoutApi } from './useLayoutApi';
@@ -39,6 +41,7 @@ import { useNoteNodes } from './useNoteNodes';
 import { useNoteSession } from './useNoteSession';
 import { useNotation } from './useNotation';
 import { useNudgeAndArrange } from './useNudgeAndArrange';
+import { useRevealOnUnfold } from './useRevealOnUnfold';
 import { useRootFit } from './useRootFit';
 import { useViewLayout } from './useViewLayout';
 import { useViewModeMoves } from './useViewModeMoves';
@@ -100,6 +103,21 @@ function Inner(props: DiagramViewProps) {
     isAlwaysExpanded: notation.isAlwaysExpanded,
   });
   const { drillRoot, enterNode } = nav;
+  // The box a fold chip just opened, for useRevealOnUnfold to bring into view
+  // once its layout lands. Recorded here, on the way to the host, because the
+  // host only ever sees the pin: which gesture set it is the view's to know.
+  const pendingRevealRef = useRef<string | null>(null);
+  const hostToggleExpand = props.onToggleExpand;
+  const onToggleExpand = useMemo<DiagramViewProps['onToggleExpand']>(
+    () =>
+      hostToggleExpand === undefined
+        ? undefined
+        : (id, next) => {
+            pendingRevealRef.current = next === 'expanded' ? id : null;
+            hostToggleExpand(id, next);
+          },
+    [hostToggleExpand],
+  );
 
   // A requested node that React Flow's copy does not hold yet, waiting for
   // useNodeResync to hand it the selection (see useEditRequests).
@@ -164,6 +182,14 @@ function Inner(props: DiagramViewProps) {
   });
   const frames = useMoveFrames(compiled, viewLayout.arrangedGeometry, viewLayout.containerShifts);
   useRootFit({ pendingRootFitRef: nav.pendingRootFitRef, compiled, layout: viewLayout, reactFlow });
+  useRevealOnUnfold({
+    pendingRevealRef,
+    pendingRootFitRef: nav.pendingRootFitRef,
+    compiled,
+    layout: viewLayout,
+    reactFlow,
+    wrapperRef,
+  });
   const drop = useDropAndPaste({ editing, edit, reactFlow, wrapperRef });
 
   const notes = useNoteNodes({
@@ -182,7 +208,7 @@ function Inner(props: DiagramViewProps) {
     typeRegistry,
   });
   const flow = useFlowNodes({
-    props,
+    props: { ...props, ...(onToggleExpand !== undefined ? { onToggleExpand } : {}) },
     editing,
     edit,
     notation,
@@ -283,13 +309,14 @@ function Inner(props: DiagramViewProps) {
     loopsOffered: loops.cld,
     clearLoopHighlight: loopHighlight.clear,
   });
-  useCanvasCommands({
+  const commands = useCanvasCommands({
     canvasCommandsRef: props.canvasCommandsRef,
     layoutApiRef: props.layoutApiRef,
     reactFlow,
     toggles,
     arrange,
   });
+  useFitKey({ chromeless, builtinKeys: props.builtinKeys !== false, fit: () => commands.fitView() });
 
   const { pen, laser } = gestures;
   const grid = canvasGrid(preset, props.snapGrid);
@@ -315,6 +342,8 @@ function Inner(props: DiagramViewProps) {
           style={canvasStyle(preset)}
           onDragOver={drop.onDragOver}
           onDrop={drop.onDrop}
+          // capture, ahead of React Flow's own edge click (see click-through.ts)
+          onClickCapture={forwardEdgeClick}
           onKeyDownCapture={nudge.onKeyDownCapture}
           onBlurCapture={nudge.onBlurCapture}
           {...gestures.gestureHandlers}

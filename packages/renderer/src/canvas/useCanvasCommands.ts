@@ -24,9 +24,10 @@ const pressOf = (toggle: CanvasToggle) => () => {
  * re-assigned on every commit rather than read through refs like the layout
  * api: every entry closes over this render's state (is there a legend? how
  * many boxes are selected?), and an assignment per render is cheaper than
- * mirroring ten values into refs to keep one object stable.
+ * mirroring ten values into refs to keep one object stable. Also handed back,
+ * for the canvas's own built-in keys (useFitKey).
  */
-export function useCanvasCommands(input: CanvasCommandsInput): void {
+export function useCanvasCommands(input: CanvasCommandsInput): CanvasCommands {
   const { reactFlow, toggles } = input;
   const { canArrange, selectedIds, alignSelection, distributeSelection } = input.arrange;
   const canvasCommands: CanvasCommands = {
@@ -70,4 +71,5 @@ export function useCanvasCommands(input: CanvasCommandsInput): void {
       ref.current = null;
     };
   });
+  return canvasCommands;
 }

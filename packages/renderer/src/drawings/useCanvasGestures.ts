@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from
 import { DEFAULT_STROKE_WIDTH, type Point, type Stroke } from '@diagc/core/internal';
 import { usePen, type PenHandlers } from './usePen';
 import { useLaser } from './useLaser';
+import { isPlainKey } from '../canvas/useFitKey';
 import type { DrawTool, PenSettings } from '../canvas/view-types';
 
 export interface CanvasGesturesInput {
@@ -47,18 +48,16 @@ export function useCanvasGestures(input: CanvasGesturesInput): CanvasGestures {
     setLaserOn(false);
   }, [input.modelId]);
   // L toggles the laser, Escape switches it off — window-level like the Alt
-  // listener, ignored inside form fields and with a modifier held (Ctrl+L is the
-  // browser's address bar). Not installed for the chrome-less export, which has
-  // no control to show the state and no one at the keyboard. A host that owns
-  // the keyboard (builtinKeys off) takes L over — it may have rebound it — but
-  // never Escape: that is a cancel, and must work whatever the keymap says.
+  // listener, ignored inside form fields and with a modifier held (isPlainKey:
+  // Ctrl+L is the browser's address bar). Not installed for the chrome-less
+  // export, which has no control to show the state and no one at the keyboard.
+  // A host that owns the keyboard (builtinKeys off) takes L over — it may have
+  // rebound it — but never Escape: that is a cancel, and must work whatever
+  // the keymap says. F, the other built-in key, is useFitKey's.
   useEffect(() => {
     if (input.chromeless) return;
     const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const tag = target?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable === true) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!isPlainKey(e)) return;
       if (e.key === 'Escape') setLaserOn(false);
       else if (input.builtinKeys && e.key.toLowerCase() === 'l' && !e.repeat) {
         e.preventDefault();
