@@ -24,7 +24,7 @@ comms.contains(mail, push);
 
 The diagram opens as one box. Double-click to descend. Siblings stay folded, so you always read one path of detail against an overview.
 
-![A group rests folded; its chip unfolds it](../media/organise-large-diagrams.webp)
+![A group rests folded; its chip unfolds it and brings it into view](../media/organise-large-diagrams.webp)
 
 GIF: [organise-large-diagrams.gif](../media/organise-large-diagrams.gif)
 
@@ -55,6 +55,14 @@ The breadcrumb trail at the top takes you back out.
 If the diagram is a long chain that runs off the screen sideways, try the **Wrap** picker in the right dock's **Layout & style** section first (`screen` aims at a 16:10 shape). It folds the chain onto several rows without touching what is nested where, and is saved with the other layout settings.
 
 Splitting is usually better than more nesting. Give each subsystem its own diagram, then build an umbrella that pulls them together — see [Compose diagrams](compose-diagrams.md). `key` makes the shared database in two child diagrams resolve to one node in the umbrella.
+
+## Balance a lopsided tree
+
+A layered arrangement keeps its edges straight, so a parent tends to sit over one of its children and a branch with many children pulls the rows above it to one side. Set **Symmetry** to `centred` in the right dock's **Layout & style** section to centre every row on the diagram's axis instead: the tree reads as a balanced pyramid, and the edges between rows that moved apart take a bend. In view mode the setting is a preview; in edit mode it is saved with the other layout settings (`symmetric: true`, see [`LayoutSettings`](../reference/model.md#layoutsettings)).
+
+![Symmetry set to centred moves every row onto the diagram's axis](../media/centre-a-layered-diagram.webp)
+
+GIF: [centre-a-layered-diagram.gif](../media/centre-a-layered-diagram.gif)
 
 ## See also
 

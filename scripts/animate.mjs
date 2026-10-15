@@ -1,41 +1,59 @@
 #!/usr/bin/env node
 // Rebuild docs/media/ from the storyboards in videos/.
 //
-// Every storyboard acts on one committed diagram, .diagrams/src/fixtures/studio-demo.diagram.json,
-// so a run is reproducible: the studio is started on the fixed port the storyboards' URLs name, and
-// the demo diagram and its layout sidecar are restored before each take — a take edits them (a
-// placed node, a typed name, a comment, an unfolded group) and the studio writes those edits back.
+// Every storyboard acts on a committed diagram under .diagrams/src/fixtures/, so a run is
+// reproducible. The studio is started on the fixed port the studio storyboards' URLs name, and the
+// demo diagram and its layout sidecar are restored before each take — a take edits them (a placed
+// node, a typed name, a comment, an unfolded group) and the studio writes those edits back. The
+// published-page storyboards open the fixtures' published pages, which this script publishes and
+// serves on a second port; a published page cannot save, so those need no restoring.
 //
-// Needs `howto` on PATH. Run `pnpm animate` from the repository root.
+// Needs `howto` on PATH. Run `pnpm animate` from the repository root; `pnpm animate NAME…` takes
+// only the storyboards named (videos/NAME.yaml), so one change does not re-encode every picture.
 
-import { spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { copyFileSync, createReadStream, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
 const PORT = 5183;
+const PAGES_PORT = 5184;
 const WIDTH = 800;
 const OUT = path.join('docs', 'media');
 const FIXTURES = [
   path.join('.diagrams', 'src', 'fixtures', 'studio-demo.diagram.json'),
   path.join('.diagrams', 'src', 'fixtures', 'studio-demo.layout.json'),
 ];
+// The diagrams whose published pages the storyboards open, as `diagc publish` names them.
+const PAGES = ['fixtures/published-demo'];
+const PAGES_DIR = path.join(root, '.diagrams', 'html');
 
 const fail = (message) => {
   console.error(message);
   process.exit(1);
 };
 
-const run = (command, args) => {
-  const result = spawnSync(command, args, { cwd: root, stdio: 'inherit' });
-  if (result.status !== 0) fail(`${command} ${args.join(' ')} failed`);
-};
+// Asynchronous, so the page server below keeps answering while a take runs: a synchronous spawn
+// blocks the event loop the server needs, and the take's browser waits for a page that never comes.
+// A failure throws rather than exits, so the studio and the server are stopped either way.
+const run = (command, args) =>
+  new Promise((resolve, reject) => {
+    const child = spawn(command, args, { cwd: root, stdio: 'inherit' });
+    child.once('error', reject);
+    child.once('exit', (code) => (code === 0 ? resolve() : reject(new Error(`${command} ${args.join(' ')} failed`))));
+  });
 
-const storyboards = readdirSync(path.join(root, 'videos'))
+const all = readdirSync(path.join(root, 'videos'))
   .filter((f) => f.endsWith('.yaml') && !f.startsWith('_'))
   .sort();
-if (storyboards.length === 0) fail('videos/ holds no storyboards.');
+if (all.length === 0) fail('videos/ holds no storyboards.');
+const asked = process.argv.slice(2);
+const unknown = asked.filter((name) => !all.includes(`${name}.yaml`));
+if (unknown.length > 0)
+  fail(`no storyboard ${unknown.join(', ')}; videos/ holds ${all.map((f) => f.slice(0, -5)).join(', ')}.`);
+const storyboards = asked.length === 0 ? all : all.filter((f) => asked.includes(f.slice(0, -5)));
 
 // Only the fixtures that exist are restored, so a run that starts from a clean tree leaves a clean
 // tree: the layout sidecar is build output of the takes themselves. A sidecar created by one take
@@ -63,6 +81,20 @@ const server = spawn('pnpm', ['--filter', '@diagc/studio', 'exec', 'vite', '--po
   detached: true,
 });
 
+// The published pages, served over http rather than opened from disk, so a storyboard's URL names
+// the same page on every machine. Only files under PAGES_DIR are served.
+const pages = createServer((request, response) => {
+  const file = path.join(PAGES_DIR, decodeURIComponent(new URL(request.url, 'http://x').pathname));
+  if (!file.startsWith(PAGES_DIR + path.sep) || !existsSync(file) || !statSync(file).isFile()) {
+    response.writeHead(404).end();
+    return;
+  }
+  response.writeHead(200, {
+    'content-type': file.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/octet-stream',
+  });
+  createReadStream(file).pipe(response);
+});
+
 const ready = async () => {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
@@ -77,19 +109,34 @@ const ready = async () => {
 };
 
 const took = async () => {
-  if (!(await ready())) fail(`the studio did not come up on port ${PORT}.`);
+  if (!(await ready())) throw new Error(`the studio did not come up on port ${PORT}.`);
+  await run('node', [path.join('bin', 'diagc.mjs'), 'publish', ...PAGES, '--no-images']);
+  await new Promise((resolve, reject) => pages.once('error', reject).listen(PAGES_PORT, '127.0.0.1', resolve));
   mkdirSync(path.join(root, OUT), { recursive: true });
   for (const file of storyboards) {
     restore();
-    run('pnpm', ['compile']);
-    run('howto', ['animate', path.join('videos', file), '--out', OUT, '--format', 'both', '--width', String(WIDTH)]);
+    await run('pnpm', ['compile']);
+    await run('howto', [
+      'animate',
+      path.join('videos', file),
+      '--out',
+      OUT,
+      '--format',
+      'both',
+      '--width',
+      String(WIDTH),
+    ]);
   }
   restore();
 };
 
 try {
   await took();
+} catch (error) {
+  console.error(error.message);
+  process.exitCode = 1;
 } finally {
+  pages.close();
   try {
     process.kill(-server.pid, 'SIGTERM');
   } catch {

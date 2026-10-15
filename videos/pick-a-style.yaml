@@ -1,0 +1,15 @@
+title: Pick a style on a published page
+url: "http://127.0.0.1:5184/fixtures/published-demo.html?theme=light"
+viewport: 800x600
+setup:
+  - wait_for: {text: Orders API, within: {role: application}}
+steps:
+  - say: The Style picker redraws the page in another preset.
+    do:
+      - circle: {label: Style}
+      - select: {label: Style, option: Sketch}
+    pause: 1
+  - say: Try another; the next visit opens in the diagram's own style again.
+    do:
+      - select: {label: Style, option: Neon}
+    pause: 1.5
