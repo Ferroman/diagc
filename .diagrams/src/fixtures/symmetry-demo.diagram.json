@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "id": "fixtures/symmetry-demo",
+  "name": "Symmetry demo",
+  "nodes": [
+    {
+      "id": "app",
+      "name": "Checkout app",
+      "type": "service",
+      "color": "#42a5f5"
+    },
+    {
+      "id": "gw",
+      "name": "API gateway",
+      "type": "service",
+      "color": "#1168bd"
+    },
+    {
+      "id": "orders",
+      "name": "Orders",
+      "type": "service",
+      "color": "#66bb6a"
+    },
+    {
+      "id": "search",
+      "name": "Search",
+      "type": "service",
+      "color": "#66bb6a"
+    },
+    {
+      "id": "db",
+      "name": "Orders DB",
+      "type": "database",
+      "color": "#6b4fbb"
+    },
+    {
+      "id": "pay",
+      "name": "Payments",
+      "type": "service",
+      "color": "#e0a75d"
+    },
+    {
+      "id": "events",
+      "name": "Order events",
+      "type": "queue",
+      "color": "#e0a75d"
+    },
+    {
+      "id": "invoices",
+      "name": "Invoices",
+      "type": "service",
+      "color": "#e0a75d"
+    }
+  ],
+  "containment": [],
+  "relations": [
+    {
+      "id": "r1",
+      "from": "app",
+      "to": "gw",
+      "kind": "sync"
+    },
+    {
+      "id": "r2",
+      "from": "gw",
+      "to": "orders",
+      "kind": "sync"
+    },
+    {
+      "id": "r3",
+      "from": "gw",
+      "to": "search",
+      "kind": "sync"
+    },
+    {
+      "id": "r4",
+      "from": "orders",
+      "to": "db",
+      "kind": "sync"
+    },
+    {
+      "id": "r5",
+      "from": "orders",
+      "to": "pay",
+      "kind": "sync"
+    },
+    {
+      "id": "r6",
+      "from": "orders",
+      "to": "events",
+      "kind": "sync"
+    },
+    {
+      "id": "r7",
+      "from": "orders",
+      "to": "invoices",
+      "kind": "sync"
+    }
+  ],
+  "layers": [],
+  "planes": []
+}

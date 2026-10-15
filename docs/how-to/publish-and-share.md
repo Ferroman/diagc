@@ -78,7 +78,15 @@ To fix the theme of a page you embed on another site, add `?theme=dark` or `?the
 
 The page opens in its diagram's own [style preset](../reference/model.md#style-presets), and the **Style** picker at the top lets a reader try the others — `sketch`, `neon`, `dos`… — for as long as the page is open; a pick is not remembered, so the author's choice is what the next visit shows. `?style=sketch` in the address fixes the style, as `?theme=` fixes the theme, and hides the picker.
 
+![The Style picker redraws a published page as sketch, then neon](../media/pick-a-style.webp)
+
+GIF: [pick-a-style.gif](../media/pick-a-style.gif)
+
 Press `F` to fit the whole diagram in the window again (the `⛶` corner control does the same), after a zoom or a fold has taken you somewhere else. Opening a group from its `▸` chip brings the open box into view by itself: the page pans to it, or zooms out when the box is larger than the window.
+
+![Unfolding a group brings it into view; F fits the whole diagram again](../media/unfold-and-fit.webp)
+
+GIF: [unfold-and-fit.gif](../media/unfold-and-fit.gif)
 
 Presenting the page on a call? Press `L` (or the `◉` corner control) for a laser pointer: drag to draw a red trail that fades out after a second, so people can see what you are pointing at. It never touches the diagram, and `Esc` switches it off. The studio has the same control.
 

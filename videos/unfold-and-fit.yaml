@@ -1,0 +1,18 @@
+title: Unfold and fit on a published page
+url: "http://127.0.0.1:5184/fixtures/published-demo.html?theme=light"
+viewport: 800x600
+setup:
+  - wait_for: {text: Orders API, within: {role: application}}
+steps:
+  - say: Unfold a group from its chip; the page brings the open box into view.
+    do:
+      - click: {role: button, name: Expand, within: {role: application}}
+    pause: 1
+  - say: Press F.
+    note: Press F
+    do:
+      - press: f
+  - say: The whole diagram fits the window again.
+    do:
+      - wait_for: {text: Customer, within: {role: application}}
+    pause: 1.5

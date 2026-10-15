@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "id": "fixtures/published-demo",
+  "name": "Published demo",
+  "nodes": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "type": "person",
+      "color": "#08427b"
+    },
+    {
+      "id": "shop",
+      "name": "Shop",
+      "type": "system",
+      "color": "#1168bd"
+    },
+    {
+      "id": "web",
+      "name": "Storefront",
+      "type": "service",
+      "color": "#42a5f5"
+    },
+    {
+      "id": "orders",
+      "name": "Orders API",
+      "type": "service",
+      "color": "#42a5f5"
+    },
+    {
+      "id": "payments",
+      "name": "Payments API",
+      "type": "service",
+      "color": "#66bb6a"
+    },
+    {
+      "id": "db",
+      "name": "Orders DB",
+      "type": "database",
+      "color": "#6b4fbb"
+    },
+    {
+      "id": "events",
+      "name": "Order events",
+      "type": "queue",
+      "color": "#e0a75d"
+    },
+    {
+      "id": "bank",
+      "name": "Card network",
+      "type": "system",
+      "color": "#8a8a8a"
+    },
+    {
+      "id": "processor",
+      "name": "Card processor",
+      "type": "service",
+      "color": "#9e9e9e"
+    },
+    {
+      "id": "fraud",
+      "name": "Fraud check",
+      "type": "service",
+      "color": "#ef5350"
+    }
+  ],
+  "containment": [
+    {
+      "parent": "shop",
+      "child": "web"
+    },
+    {
+      "parent": "shop",
+      "child": "orders"
+    },
+    {
+      "parent": "shop",
+      "child": "payments"
+    },
+    {
+      "parent": "shop",
+      "child": "db"
+    },
+    {
+      "parent": "shop",
+      "child": "events"
+    },
+    {
+      "parent": "bank",
+      "child": "processor"
+    },
+    {
+      "parent": "bank",
+      "child": "fraud"
+    }
+  ],
+  "relations": [
+    {
+      "id": "r1",
+      "from": "customer",
+      "to": "web",
+      "kind": "sync",
+      "label": "browses"
+    },
+    {
+      "id": "r2",
+      "from": "web",
+      "to": "orders",
+      "kind": "sync",
+      "label": "checkout"
+    },
+    {
+      "id": "r3",
+      "from": "orders",
+      "to": "db",
+      "kind": "writes",
+      "label": "orders"
+    },
+    {
+      "id": "r4",
+      "from": "orders",
+      "to": "payments",
+      "kind": "sync",
+      "label": "charge"
+    },
+    {
+      "id": "r5",
+      "from": "orders",
+      "to": "events",
+      "kind": "async",
+      "label": "placed"
+    },
+    {
+      "id": "r6",
+      "from": "payments",
+      "to": "processor",
+      "kind": "sync",
+      "label": "authorise"
+    },
+    {
+      "id": "r7",
+      "from": "processor",
+      "to": "fraud",
+      "kind": "sync",
+      "label": "score"
+    }
+  ],
+  "layers": [],
+  "planes": []
+}

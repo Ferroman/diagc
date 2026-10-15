@@ -1,0 +1,16 @@
+title: Centre a layered diagram
+url: "http://localhost:5183/#/fixtures%2Fsymmetry-demo"
+viewport: 1024x600
+crop: {role: main}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+  - wait_for: {text: API gateway, within: {role: application}}
+  - click: {role: button, name: "Collapse panel", nth: 0}
+  - click: {role: button, name: Fit View}
+steps:
+  - say: Set Symmetry to Centred; every row is centred on the diagram's axis.
+    do:
+      - box: {role: combobox, name: Symmetry}
+      - select: {role: combobox, name: Symmetry, option: Centred}
+    pause: 2
