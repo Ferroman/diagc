@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "id": "fixtures/fishbone-demo",
+  "name": "Checkout outage",
+  "nodes": [
+    {
+      "id": "outage",
+      "name": "Checkout outage on release day",
+      "type": "fb-effect"
+    },
+    {
+      "id": "people",
+      "name": "People",
+      "type": "fb-category"
+    },
+    {
+      "id": "process",
+      "name": "Process",
+      "type": "fb-category"
+    },
+    {
+      "id": "requirements",
+      "name": "Requirements",
+      "type": "fb-category"
+    },
+    {
+      "id": "code",
+      "name": "Code",
+      "type": "fb-category"
+    },
+    {
+      "id": "infrastructure",
+      "name": "Infrastructure",
+      "type": "fb-category"
+    },
+    {
+      "id": "dependencies",
+      "name": "Dependencies",
+      "type": "fb-category"
+    },
+    {
+      "id": "on-call",
+      "name": "On-call engineer new to checkout",
+      "type": "fb-cause"
+    },
+    {
+      "id": "no-freeze",
+      "name": "No change freeze on release day",
+      "type": "fb-cause"
+    },
+    {
+      "id": "migration",
+      "name": "Untested schema migration",
+      "type": "fb-cause"
+    },
+    {
+      "id": "no-fixture",
+      "name": "No fixture with real order data",
+      "type": "fb-cause"
+    }
+  ],
+  "containment": [],
+  "relations": [
+    {
+      "id": "people->outage#0",
+      "from": "people",
+      "to": "outage",
+      "kind": "cause-of"
+    },
+    {
+      "id": "process->outage#0",
+      "from": "process",
+      "to": "outage",
+      "kind": "cause-of"
+    },
+    {
+      "id": "requirements->outage#0",
+      "from": "requirements",
+      "to": "outage",
+      "kind": "cause-of"
+    },
+    {
+      "id": "code->outage#0",
+      "from": "code",
+      "to": "outage",
+      "kind": "cause-of"
+    },
+    {
+      "id": "infrastructure->outage#0",
+      "from": "infrastructure",
+      "to": "outage",
+      "kind": "cause-of"
+    },
+    {
+      "id": "dependencies->outage#0",
+      "from": "dependencies",
+      "to": "outage",
+      "kind": "cause-of"
+    },
+    {
+      "id": "on-call->people#0",
+      "from": "on-call",
+      "to": "people",
+      "kind": "cause-of"
+    },
+    {
+      "id": "no-freeze->process#0",
+      "from": "no-freeze",
+      "to": "process",
+      "kind": "cause-of"
+    },
+    {
+      "id": "migration->code#0",
+      "from": "migration",
+      "to": "code",
+      "kind": "cause-of"
+    },
+    {
+      "id": "no-fixture->migration#0",
+      "from": "no-fixture",
+      "to": "migration",
+      "kind": "cause-of"
+    }
+  ],
+  "layers": [],
+  "planes": [],
+  "notation": "fishbone"
+}

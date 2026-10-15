@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "id": "fixtures/plan-demo",
+  "name": "Launch plan",
+  "nodes": [
+    {
+      "id": "alice",
+      "name": "Alice Ng",
+      "type": "person",
+      "plane": "plan",
+      "color": "#2f6fed"
+    },
+    {
+      "id": "bob",
+      "name": "Bob Lee",
+      "type": "person",
+      "plane": "plan",
+      "color": "#b08ad9"
+    },
+    {
+      "id": "discovery",
+      "name": "Discovery",
+      "type": "plan-zone",
+      "plane": "plan",
+      "metadata": {
+        "start": "2026-01-05",
+        "end": "2026-01-16"
+      },
+      "color": "#b08ad9"
+    },
+    {
+      "id": "build",
+      "name": "Build",
+      "type": "plan-zone",
+      "plane": "plan",
+      "metadata": {
+        "start": "2026-01-19",
+        "end": "2026-01-30"
+      },
+      "color": "#2f6fed"
+    }
+  ],
+  "containment": [],
+  "relations": [
+    {
+      "id": "alice->discovery#0",
+      "from": "alice",
+      "to": "discovery",
+      "kind": "owns"
+    },
+    {
+      "id": "bob->build#0",
+      "from": "bob",
+      "to": "build",
+      "kind": "executes"
+    }
+  ],
+  "layers": [],
+  "planes": [
+    {
+      "id": "plan",
+      "name": "Plan",
+      "notation": "plan"
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "id": "fixtures/activity-demo",
+  "name": "Expense approval",
+  "nodes": [
+    {
+      "id": "claim",
+      "name": "Expense claim",
+      "type": "activity-frame"
+    },
+    {
+      "id": "finance",
+      "name": "Finance",
+      "type": "activity-lane",
+      "color": "#3caea3"
+    },
+    {
+      "id": "finance-start",
+      "name": "",
+      "type": "activity-start"
+    },
+    {
+      "id": "check-receipts",
+      "name": "Check the receipts",
+      "type": "activity-action"
+    },
+    {
+      "id": "within-policy",
+      "name": "",
+      "type": "activity-decision"
+    },
+    {
+      "id": "reimburse",
+      "name": "Reimburse the claim",
+      "type": "activity-action"
+    },
+    {
+      "id": "finance-end",
+      "name": "",
+      "type": "activity-end"
+    }
+  ],
+  "containment": [
+    {
+      "parent": "claim",
+      "child": "finance"
+    },
+    {
+      "parent": "finance",
+      "child": "finance-start"
+    },
+    {
+      "parent": "finance",
+      "child": "check-receipts"
+    },
+    {
+      "parent": "finance",
+      "child": "within-policy"
+    },
+    {
+      "parent": "finance",
+      "child": "reimburse"
+    },
+    {
+      "parent": "finance",
+      "child": "finance-end"
+    }
+  ],
+  "relations": [
+    {
+      "id": "finance-start->check-receipts#0",
+      "from": "finance-start",
+      "to": "check-receipts",
+      "kind": "control"
+    },
+    {
+      "id": "check-receipts->within-policy#0",
+      "from": "check-receipts",
+      "to": "within-policy",
+      "kind": "control"
+    },
+    {
+      "id": "within-policy->reimburse#0",
+      "from": "within-policy",
+      "to": "reimburse",
+      "kind": "control",
+      "label": "[within policy]"
+    },
+    {
+      "id": "within-policy->finance-end#0",
+      "from": "within-policy",
+      "to": "finance-end",
+      "kind": "control",
+      "label": "[over the limit]"
+    },
+    {
+      "id": "reimburse->finance-end#0",
+      "from": "reimburse",
+      "to": "finance-end",
+      "kind": "control"
+    }
+  ],
+  "layers": [],
+  "planes": []
+}

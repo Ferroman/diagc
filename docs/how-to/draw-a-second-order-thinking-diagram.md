@@ -57,6 +57,10 @@ The whole picture above is `.diagrams/src/docs/second-order.diagram.ts` in this 
 5. Select the new consequence and repeat — `Tab` or its `+` again — to go one order deeper.
 6. Changing a consequence from good to bad (or to neutral) is its **type** in the node panel, not a separate field.
 
+![Add a good consequence from the And then what? panel, then a bad one an order deeper](../media/draw-a-second-order-thinking-diagram.webp)
+
+GIF: [draw-a-second-order-thinking-diagram.gif](../media/draw-a-second-order-thinking-diagram.gif)
+
 The palette's *Second-order thinking* section holds the same four stencils (decision, good/bad/neutral consequence) for drag-and-drop.
 
 ## How the bands are decided

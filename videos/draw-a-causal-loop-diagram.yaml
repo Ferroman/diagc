@@ -1,0 +1,24 @@
+title: Draw a causal-loop diagram
+url: "http://localhost:5183/#/fixtures%2Fcausal-loop-demo"
+viewport: 1280x720
+crop: {role: main}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+  - click: {role: button, name: Edit}
+  - wait_for: {text: Word of mouth, within: {role: application}}
+  # Close the side panels the steps do not use, so the diagram is drawn larger.
+  - click: {role: button, name: "Collapse panel", nth: 1}
+  - click: {role: button, name: Fit View}
+steps:
+  - note: Select a link
+    do:
+      - click: {text: "+", within: {role: group, name: "Edge from word-of-mouth to signups"}}
+  - note: Set its Polarity to −
+    do:
+      - box: {role: group, name: Polarity}
+      - click: {role: button, name: "−", within: {role: group, name: Polarity}}
+  - note: One − link makes the loop balancing
+    do:
+      - circle: {role: button, name: "Highlight this loop"}
+    pause: 1.5

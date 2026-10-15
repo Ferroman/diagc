@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "id": "fixtures/deployment-demo",
+  "name": "Two-subnet VPC",
+  "nodes": [
+    {
+      "id": "lb",
+      "name": "Load balancer",
+      "type": "deploy-load-balancer"
+    },
+    {
+      "id": "app",
+      "name": "API",
+      "type": "deploy-service",
+      "technology": "Go"
+    },
+    {
+      "id": "db",
+      "name": "Orders DB",
+      "type": "deploy-database",
+      "technology": "Postgres"
+    },
+    {
+      "id": "public",
+      "name": "Public",
+      "type": "deploy-subnet-public"
+    },
+    {
+      "id": "private",
+      "name": "Private",
+      "type": "deploy-subnet-private"
+    },
+    {
+      "id": "vpc",
+      "name": "VPC",
+      "type": "deploy-network"
+    }
+  ],
+  "containment": [
+    {
+      "parent": "public",
+      "child": "lb"
+    },
+    {
+      "parent": "private",
+      "child": "app"
+    },
+    {
+      "parent": "vpc",
+      "child": "public"
+    },
+    {
+      "parent": "vpc",
+      "child": "private"
+    }
+  ],
+  "relations": [
+    {
+      "id": "lb->app#0",
+      "from": "lb",
+      "to": "app",
+      "kind": "network",
+      "label": "HTTP 8080"
+    },
+    {
+      "id": "app->db#0",
+      "from": "app",
+      "to": "db",
+      "kind": "network",
+      "label": "TCP 5432"
+    }
+  ],
+  "layers": [],
+  "planes": [],
+  "notation": "deployment"
+}
