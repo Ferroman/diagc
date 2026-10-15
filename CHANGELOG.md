@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/Ferroman/diagc/compare/v1.3.0...v1.4.0) (2026-10-15)
+
+
+### Features
+
+* style presets on published pages, symmetric layout, and view fixes ([#156](https://github.com/Ferroman/diagc/issues/156)) ([befd925](https://github.com/Ferroman/diagc/commit/befd925e7277ffb96d6cae76b1c6a79d2097f6d0))
+
 ## [1.3.0](https://github.com/Ferroman/diagc/compare/v1.2.0...v1.3.0) (2026-10-13)
 
 
