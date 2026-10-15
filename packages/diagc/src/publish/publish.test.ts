@@ -389,8 +389,8 @@ describe('publishDiagrams', () => {
       assetsDir: f.assets,
       images: true,
       names: ['planed'],
-      renderPng: async (html, png, plane) => {
-        calls.push([path.relative(f.html, html), path.relative(f.stat, png), plane]);
+      renderPng: async (html, png, look) => {
+        calls.push([path.relative(f.html, html), path.relative(f.stat, png), look?.plane]);
       },
     });
     expect(calls).toEqual([
@@ -399,6 +399,32 @@ describe('publishDiagrams', () => {
       ['planed.html', 'planed.up.png', '../up'],
     ]);
     expect(res.images).toEqual(calls.map(([, png]) => path.join(f.stat, png)));
+  });
+
+  it('takes every picture in the look the publisher chose, each plane included', async () => {
+    const f = await fixture();
+    await planed(f);
+    const looks: unknown[] = [];
+    await publishDiagrams({
+      srcDir: f.src,
+      artifactsDir: f.artifacts,
+      htmlDir: f.html,
+      staticDir: f.stat,
+      shellPath: f.shell,
+      libraryDir: f.lib,
+      assetsDir: f.assets,
+      images: true,
+      names: ['planed'],
+      look: { style: 'sketch', theme: 'dark' },
+      renderPng: async (_html, _png, look) => {
+        looks.push(look);
+      },
+    });
+    expect(looks).toEqual([
+      { style: 'sketch', theme: 'dark' },
+      { plane: 'Target VPC', style: 'sketch', theme: 'dark' },
+      { plane: '../up', style: 'sketch', theme: 'dark' },
+    ]);
   });
 
   it("skips a plane's picture that would overwrite another diagram's, and says so", async () => {
@@ -419,7 +445,8 @@ describe('publishDiagrams', () => {
       assetsDir: f.assets,
       images: true,
       names: ['planed', 'planed.target-vpc'],
-      renderPng: async (html, png, plane) => {
+      renderPng: async (html, png, look) => {
+        const plane = look?.plane;
         pngs.push(
           `${path.relative(f.html, html)} -> ${path.relative(f.stat, png)}${plane !== undefined ? ` (${plane})` : ''}`,
         );

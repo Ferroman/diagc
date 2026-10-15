@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from 'react';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getViewportForBounds } from '@xyflow/react';
@@ -3679,5 +3680,94 @@ describe('the data the canvas hands its nodes and edges', () => {
     expect(dataOf('nodes').size).toBe(nodes.size);
     for (const [id, data] of dataOf('nodes')) expect(data).toBe(nodes.get(id));
     for (const [id, data] of dataOf('edges')) expect(data).toBe(edges.get(id));
+  });
+});
+
+describe('a click on an edge over a node control', () => {
+  afterEach(() => {
+    delete (document as { elementsFromPoint?: unknown }).elementsFromPoint;
+  });
+
+  it('goes to the control, and does not select the edge', async () => {
+    const onToggleExpand = vi.fn();
+    const { container } = render(
+      <DiagramView model={containerEndpointModel()} pins={{ sys: 'expanded' }} onToggleExpand={onToggleExpand} />,
+    );
+    await waitFor(() => expect(container.querySelector('.react-flow__edge')).not.toBeNull());
+    const edge = container.querySelector('.react-flow__edge')!;
+    const chip = await screen.findByRole('button', { name: 'Collapse' });
+    // the line crosses the group's header: the browser lists the edge's hit
+    // path first, the chip beneath it
+    document.elementsFromPoint = () => [edge, chip];
+    fireEvent.click(edge);
+    expect(onToggleExpand).toHaveBeenCalledWith('sys', 'collapsed');
+    expect(container.querySelector('.react-flow__edge.selected')).toBeNull();
+  });
+
+  it('is still a click on the edge where no control lies under it', async () => {
+    const onToggleExpand = vi.fn();
+    const { container } = render(
+      <DiagramView model={containerEndpointModel()} pins={{ sys: 'expanded' }} onToggleExpand={onToggleExpand} />,
+    );
+    await waitFor(() => expect(container.querySelector('.react-flow__edge')).not.toBeNull());
+    const edge = container.querySelector('.react-flow__edge')!;
+    document.elementsFromPoint = () => [edge];
+    fireEvent.click(edge);
+    expect(onToggleExpand).not.toHaveBeenCalled();
+    await waitFor(() => expect(container.querySelector('.react-flow__edge.selected')).not.toBeNull());
+  });
+});
+
+describe('the F key', () => {
+  it('fits the view on a page with the built-in keys, and not where the host owns the keyboard', async () => {
+    const apiRef: { current: LayoutApi | null } = { current: null };
+    const { rerender } = render(<DiagramView model={containerEndpointModel()} layoutApiRef={apiRef} />);
+    await screen.findByText('gw');
+    await waitFor(() => expect(apiRef.current).not.toBeNull());
+    const fit = vi.fn();
+    apiRef.current!.fitView = fit;
+    fireEvent.keyDown(window, { key: 'f' });
+    expect(fit).toHaveBeenCalledTimes(1);
+    rerender(<DiagramView model={containerEndpointModel()} layoutApiRef={apiRef} builtinKeys={false} />);
+    fireEvent.keyDown(window, { key: 'f' });
+    expect(fit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('opening a box brings it into view', () => {
+  function nestedModel() {
+    const m = model('reveal');
+    const box = m.node('box', { name: 'Box', type: 'system' });
+    box.contains(m.node('inner', { name: 'Inner', type: 'service' }));
+    return m.toJSON();
+  }
+  /** a host that keeps the pins, as the reader's view and the studio do */
+  function Host() {
+    const [pins, setPins] = useState<Record<string, 'expanded' | 'collapsed'>>({});
+    return <DiagramView model={nestedModel()} pins={pins} onToggleExpand={(id, next) => setPins({ [id]: next })} />;
+  }
+
+  it('pans to a box that opened off screen', async () => {
+    const { container } = render(<Host />);
+    await screen.findByText('Box');
+    // jsdom lays nothing out: give the canvas a frame to be off of
+    vi.spyOn(container.querySelector('.dg-canvas')!, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+      toJSON: () => ({}),
+    });
+    const far = { x: 5000, y: 5000, zoom: 1 };
+    await act(async () => {
+      await dragCapture.instance.setViewport(far);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Expand' }));
+    await screen.findByText('Inner');
+    await waitFor(() => expect(dragCapture.instance.getViewport()).not.toEqual(far));
   });
 });

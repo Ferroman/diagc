@@ -7,6 +7,17 @@ describe('exportUrl', () => {
   });
 
   it('names the plane to draw, encoded', () => {
-    expect(exportUrl('/out/html/a.html', 'Target VPC/2')).toBe('file:///out/html/a.html?export=1&plane=Target+VPC%2F2');
+    expect(exportUrl('/out/html/a.html', { plane: 'Target VPC/2' })).toBe(
+      'file:///out/html/a.html?export=1&plane=Target+VPC%2F2',
+    );
+  });
+
+  it('names the style and the theme the picture is taken in, when the publisher chose them', () => {
+    expect(exportUrl('/out/html/a.html', { style: 'sketch', theme: 'dark' })).toBe(
+      'file:///out/html/a.html?export=1&style=sketch&theme=dark',
+    );
+    expect(exportUrl('/out/html/a.html', { plane: 'p', theme: 'light' })).toBe(
+      'file:///out/html/a.html?export=1&plane=p&theme=light',
+    );
   });
 });

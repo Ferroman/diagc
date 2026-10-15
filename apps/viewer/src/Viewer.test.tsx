@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { dayOf, isoOf, layoutPlaneKey, model, type DiagramModel } from '@diagc/core/internal';
 import { darkTheme, lightTheme, THEME_STORAGE_KEY, todayIso } from '@diagc/renderer';
@@ -278,10 +278,13 @@ describe('Viewer threat table', () => {
     expect(table(container)).toBeNull();
   });
 
-  it('leaves a diagram with no threats exactly as it was', async () => {
+  it('puts no register under a diagram with no threats', async () => {
     const { container } = render(<Viewer data={{ model: onePlane() }} />);
     expect(await screen.findByText('Alpha')).toBeDefined();
-    expect(container.firstElementChild?.classList.contains('dg-canvas')).toBe(true);
+    // the canvas host holds the bar and the drawing, and nothing follows it
+    const host = container.firstElementChild?.firstElementChild;
+    expect(host?.querySelector('.dg-canvas')).not.toBeNull();
+    expect(host?.nextElementSibling).toBeNull();
     expect(table(container)).toBeNull();
   });
 
@@ -289,10 +292,10 @@ describe('Viewer threat table', () => {
     const { container } = render(<Viewer data={{ model: threatenedPlanes() }} />);
     expect(await screen.findByText('User')).toBeDefined();
     expect(table(container)).not.toBeNull();
-    // The picker stays inside the canvas host (it is absolutely placed over the
-    // drawing), not beside the table in the column.
+    // The picker stays inside the canvas host (its bar is absolutely placed over
+    // the drawing), not beside the table in the column.
     const picker = screen.getByRole('group', { name: /plane/i });
-    expect(picker.parentElement).toBe(container.firstElementChild?.firstElementChild);
+    expect(picker.closest('[role="toolbar"]')?.parentElement).toBe(container.firstElementChild?.firstElementChild);
   });
 });
 
@@ -635,9 +638,10 @@ describe('Viewer leverage panel', () => {
     const { container } = render(<Viewer data={{ model: m() }} />);
     expect(await screen.findByText('Alpha')).toBeDefined();
     fireEvent.click(variable(container, 'a'));
-    // a plain click on a box does nothing new, and the DOM stays as bare as before
+    // a plain click on a box does nothing new: no report, and no column for one
     expect(panel()).toBeNull();
-    expect(container.firstElementChild?.classList.contains('dg-canvas')).toBe(true);
+    expect(container.querySelector('.dg-leverage')).toBeNull();
+    expect(container.firstElementChild?.firstElementChild?.nextElementSibling).toBeNull();
   });
 
   it('keeps the export DOM bare — no wrapper, no panel', async () => {
@@ -768,14 +772,20 @@ describe('Viewer theme', () => {
     expect(bg()).toBe(darkTheme.bg);
   });
 
-  it('keeps an export render light, with no switch', async () => {
+  it('keeps an export render light, with no switch, unless the publisher names a theme', async () => {
     system(true);
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-    window.history.replaceState(null, '', '/?export=1&theme=dark');
-    const { container } = render(<Viewer data={{ model: m() }} expandAll />);
+    window.history.replaceState(null, '', '/?export=1');
+    const { unmount } = render(<Viewer data={{ model: m() }} expandAll />);
     await screen.findByText('Alpha');
     expect(bg()).toBe(lightTheme.bg);
-    expect(container.querySelector('.react-flow')?.classList.contains('dark')).toBe(false);
+    expect(switchButton()).toBeNull();
+    unmount();
+    // `diagc publish --theme dark` takes its pictures through this address
+    window.history.replaceState(null, '', '/?export=1&theme=dark');
+    render(<Viewer data={{ model: m() }} expandAll />);
+    await screen.findByText('Alpha');
+    expect(bg()).toBe(darkTheme.bg);
     expect(switchButton()).toBeNull();
   });
 
@@ -843,6 +853,64 @@ describe("Viewer — the reader's own view", () => {
     const { container } = render(<Viewer data={{ model: b.toJSON() }} />);
     expect(await screen.findByText('Alpha')).toBeDefined();
     expect(container.querySelector('.dg-canvas')?.className).toContain('dg-style-sketch');
+  });
+
+  describe('the style picker', () => {
+    const styled = () => {
+      const b = model('styled');
+      b.node('a', { name: 'Alpha', type: 'service' });
+      b.style('sketch');
+      return b.toJSON();
+    };
+    const canvasClass = (container: HTMLElement) => container.querySelector('.dg-canvas')?.className ?? '';
+    afterEach(() => window.history.replaceState(null, '', '/'));
+
+    it("opens on the diagram's own style and redraws the page in the one the reader picks, for the session", async () => {
+      const { container } = render(<Viewer data={{ model: styled() }} />);
+      await screen.findByText('Alpha');
+      const picker = screen.getByLabelText('Style') as HTMLSelectElement;
+      expect(picker.value).toBe('sketch');
+      fireEvent.change(picker, { target: { value: 'neon' } });
+      await waitFor(() => expect(canvasClass(container)).toContain('dg-style-neon'));
+      expect(canvasClass(container)).not.toContain('dg-style-sketch');
+      expect(localStorage.length).toBe(0);
+    });
+
+    it('lists every preset, clean first', async () => {
+      render(<Viewer data={{ model: m() }} />);
+      await screen.findByText('Alpha');
+      const options = [...(screen.getByLabelText('Style') as HTMLSelectElement).options].map((o) => o.value);
+      expect(options[0]).toBe('clean');
+      expect(options).toContain('sketch');
+      expect(options).toContain('dos');
+      expect((screen.getByLabelText('Style') as HTMLSelectElement).value).toBe('clean');
+    });
+
+    it('takes the style from the URL, and offers no picker there', async () => {
+      window.history.replaceState(null, '', '/?style=dos');
+      const { container } = render(<Viewer data={{ model: styled() }} />);
+      await screen.findByText('Alpha');
+      expect(canvasClass(container)).toContain('dg-style-dos');
+      expect(screen.queryByLabelText('Style')).toBeNull();
+    });
+
+    it('draws an export in the style the publisher names, with no picker', async () => {
+      window.history.replaceState(null, '', '/?export=1&style=terminal');
+      const { container } = render(<Viewer data={{ model: styled() }} expandAll />);
+      await screen.findByText('Alpha');
+      expect(canvasClass(container)).toContain('dg-style-terminal');
+      expect(screen.queryByLabelText('Style')).toBeNull();
+      // and keeps the export DOM bare: the canvas is the page
+      expect(container.firstElementChild?.classList.contains('dg-canvas')).toBe(true);
+    });
+
+    it('sits in the top bar with the plane chips', async () => {
+      render(<Viewer data={{ model: twoPlanes() }} />);
+      await screen.findByText('Alpha');
+      const bar = screen.getByLabelText('Style').closest('[role="toolbar"]');
+      expect(bar).not.toBeNull();
+      expect(within(bar as HTMLElement).getByRole('button', { name: 'Landscape' })).toBeDefined();
+    });
   });
 
   it('opens and folds a group from its chip, for the session', async () => {

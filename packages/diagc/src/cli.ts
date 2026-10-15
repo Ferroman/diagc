@@ -45,6 +45,9 @@ Options:
                   diff: .diagrams/diff/<from>..<to>)
   --no-images     Publish (or diff) HTML without rendering PNG images
   --link url      Publish with a link to url in the index header
+  --style id      Publish: take the PNGs in this style preset (clean, sketch, …) in
+                  place of each diagram's own
+  --theme t       Publish: take the PNGs light (the default) or dark
   --json          lint: print the findings as a JSON array; diff: the changes as JSON
   --labels a,b    diff: name the two sides (default: the refs)
   --image-url t   diff: summary.md's image links as t, {path} standing for each PNG

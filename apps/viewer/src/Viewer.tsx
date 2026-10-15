@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   type DiagramModel,
@@ -13,6 +13,7 @@ import {
   DiagramView,
   LeveragePanel,
   lightTheme,
+  STYLE_PRESETS,
   useReaderView,
   type DiagramSelection,
   type LayoutApi,
@@ -21,6 +22,7 @@ import {
 } from '@diagc/renderer';
 import { createIconRegistry } from '@diagc/icons';
 import { ThreatTable, showsThreatTable } from './ThreatTable';
+import { useStyle } from './style';
 import { useTheme } from './theme';
 
 const icons = createIconRegistry();
@@ -135,7 +137,7 @@ const leverageColumnStyle: CSSProperties = {
 // / `.dg-legend`): the theme's surface tokens, a 6px radius, 12px system-ui.
 // Inline rather than a stylesheet because the viewer app carries no CSS of its
 // own and the published page is a single inlined file.
-const pickerStyle: CSSProperties = {
+const barStyle: CSSProperties = {
   position: 'absolute',
   // Top-CENTRE, not a corner: every corner is already spoken for by renderer
   // chrome the published page can show — breadcrumbs top-left once a reader
@@ -158,6 +160,65 @@ const pickerStyle: CSSProperties = {
   padding: '3px 4px',
   font: '400 12px system-ui, sans-serif',
 };
+
+const planeGroupStyle: CSSProperties = { display: 'inline-flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' };
+
+// The style picker, drawn as one more chip of the bar: no box of its own, the
+// muted text the unselected plane chips use, the arrow the browser gives a select.
+const styleSelectStyle = (afterPlanes: boolean): CSSProperties => ({
+  background: 'none',
+  border: 'none',
+  // a hairline between the planes and the style, where both are shown
+  borderLeft: afterPlanes ? '1px solid var(--dg-border)' : 'none',
+  marginLeft: afterPlanes ? 4 : 0,
+  paddingLeft: afterPlanes ? 8 : 4,
+  borderRadius: 0,
+  color: 'var(--dg-text-muted)',
+  cursor: 'pointer',
+  font: 'inherit',
+  padding: '2px 4px',
+});
+
+/** The bar over the drawing: the plane chips and the style picker, together top-centre. */
+function TopBar({ children }: { children: ReactNode }) {
+  return (
+    <div style={barStyle} role="toolbar" aria-label="View">
+      {children}
+    </div>
+  );
+}
+
+/**
+ * The published page's style picker: every preset, the one the page is drawn in
+ * selected. A pick lasts the visit (see useStyle); the diagram's own style is
+ * what the page opens on.
+ */
+export function StylePicker({
+  style,
+  afterPlanes,
+  onSelect,
+}: {
+  style: string;
+  /** drawn beside plane chips, so with a divider */
+  afterPlanes: boolean;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <select
+      aria-label="Style"
+      title="Style"
+      style={styleSelectStyle(afterPlanes)}
+      value={style}
+      onChange={(e) => onSelect(e.target.value)}
+    >
+      {STYLE_PRESETS.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.label}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 const planeButtonStyle = (current: boolean): CSSProperties => ({
   background: current ? 'var(--dg-badge-bg)' : 'none',
@@ -189,7 +250,7 @@ export function PlanePicker({
 }) {
   const currentId = active ?? planes[0]?.id;
   return (
-    <div style={pickerStyle} role="group" aria-label="Plane">
+    <span style={planeGroupStyle} role="group" aria-label="Plane">
       {planes.map((p) => {
         const current = p.id === currentId;
         return (
@@ -204,7 +265,7 @@ export function PlanePicker({
           </button>
         );
       })}
-    </div>
+    </span>
   );
 }
 
@@ -263,8 +324,10 @@ export function Viewer({
   const apiRef = useRef<LayoutApi | null>(null);
 
   // Which theme, and the reader's switch where they have one (see theme.ts for the
-  // order: an export is always light).
+  // order: an export is light unless the publisher said otherwise). The style the
+  // same way (style.ts): the URL, the reader's pick, the diagram's own.
   const { theme, toggle: toggleTheme } = useTheme(expandAll);
+  const { style, setStyle } = useStyle(expandAll, model?.style);
   // Publish the theme's --dg-* tokens so node strokes/fills and the dashed
   // group-container borders resolve. Without this every published page loses those
   // variables (React Flow's colorMode themes React Flow itself, not our tokens), so
@@ -362,6 +425,7 @@ export function Viewer({
   const view = (
     <DiagramView
       {...readerProps}
+      styleId={style}
       colorMode={theme}
       {...(toggleTheme !== undefined ? { onToggleTheme: toggleTheme } : {})}
       // Export mode is a one-shot screenshot: no one clicks the controls, and
@@ -379,20 +443,27 @@ export function Viewer({
     />
   );
   const picker = showsPlanePicker(model.planes, expandAll);
+  const styling = setStyle !== undefined;
   const table = showsThreatTable(model, expandAll);
-  // A page with nothing to add — one plane, no threats — and every export render
-  // keep exactly the DOM they had before this chrome existed: no wrapper,
-  // nothing over the canvas, nothing under it, so the PNG pipeline (which
-  // measures and screenshots this tree) is untouched. That is also why the
-  // register never renders in export mode: the snapshot screenshots `.react-flow`
-  // and frames it from __DG_BOUNDS__, measured off the canvas host, so a strip
-  // below the canvas would shrink the drawing without ever appearing in the image.
-  if (!picker && !table && !leverage) return view;
-  // the canvas keeps its own positioning context: the picker is placed against
-  // the drawing, not against the page with the table in it
+  // A page with nothing to add — one plane, no threats, the style fixed by its
+  // address — and every export render keep exactly the DOM they had before this
+  // chrome existed: no wrapper, nothing over the canvas, nothing under it, so the
+  // PNG pipeline (which measures and screenshots this tree) is untouched. That is
+  // also why the register never renders in export mode: the snapshot screenshots
+  // `.react-flow` and frames it from __DG_BOUNDS__, measured off the canvas host,
+  // so a strip below the canvas would shrink the drawing without ever appearing
+  // in the image.
+  if (!picker && !styling && !table && !leverage) return view;
+  // the canvas keeps its own positioning context: the bar is placed against the
+  // drawing, not against the page with the table in it
   const host = (
     <div style={{ position: 'relative', flex: '1 1 0', minHeight: 0, minWidth: 0 }}>
-      {picker && <PlanePicker planes={model.planes} active={plane} onSelect={pickPlane} />}
+      {(picker || styling) && (
+        <TopBar>
+          {picker && <PlanePicker planes={model.planes} active={plane} onSelect={pickPlane} />}
+          {setStyle !== undefined && <StylePicker style={style} afterPlanes={picker} onSelect={setStyle} />}
+        </TopBar>
+      )}
       {view}
     </div>
   );

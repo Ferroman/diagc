@@ -340,6 +340,13 @@ export interface LayoutSettings {
    * several rows (`elk.layered.wrapping.strategy = MULTI_EDGE`) aiming at this
    * ratio. Absent = no wrapping (one unbounded row/column, the default). */
   aspectRatio?: number;
+  /** layered only: centre every row (every column, for a sideways flow) of every
+   * level on its level's axis, so the arrangement is balanced around its middle.
+   * elk's own placement favours straight edges over balance and leaves a parent
+   * over ONE of its children; this trades those straight lines for symmetry, and
+   * bends the edge between two rows that moved apart in the gap between them.
+   * Absent = off. */
+  symmetric?: boolean;
 }
 
 /** Editor-managed node positions, keyed by resolved containment plane. */

@@ -58,6 +58,19 @@ describe('parseArgv', () => {
     expect(parseArgv(['publish', '--link', 'https://github.com/o/r']).flags).toEqual({
       '--link': 'https://github.com/o/r',
     });
+    expect(parseArgv(['publish', '--style', 'sketch', '--theme', 'dark']).flags).toEqual({
+      '--style': 'sketch',
+      '--theme': 'dark',
+    });
+  });
+
+  it('refuses a style it does not know and a theme that is neither light nor dark, naming the choices', () => {
+    expect(() => parseArgv(['publish', '--style', 'sketchy'])).toThrow(
+      /--style: no style 'sketchy'; one of clean, sketch/,
+    );
+    expect(() => parseArgv(['publish', '--style'])).toThrow(/--style: needs a style id/);
+    expect(() => parseArgv(['publish', '--theme', 'blue'])).toThrow(/--theme: light or dark/);
+    expect(() => parseArgv(['publish', '--theme'])).toThrow(/--theme: light or dark/);
   });
 
   it('takes the argument after a flag as its value, so it is neither the command nor a flag', () => {

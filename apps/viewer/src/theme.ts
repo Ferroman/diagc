@@ -16,12 +16,13 @@ export interface ThemeInputs {
 }
 
 /**
- * Which theme a published page shows. First match wins: an export is light (a committed
- * picture must not depend on who rendered it); then the URL, for a page embedded on
- * another host; then the remembered choice; then the system.
+ * Which theme a published page shows. First match wins: an export is light, or the
+ * theme `publish --theme` put in its address (a committed picture must not depend on
+ * who rendered it, so nothing remembered or preferred reaches one); then the URL, for
+ * a page embedded on another host; then the remembered choice; then the system.
  */
 export function resolveTheme({ exportMode, param, stored, systemDark }: ThemeInputs): Theme {
-  if (exportMode) return 'light';
+  if (exportMode) return isTheme(param) ? param : 'light';
   if (isTheme(param)) return param;
   return stored ?? (systemDark ? 'dark' : 'light');
 }

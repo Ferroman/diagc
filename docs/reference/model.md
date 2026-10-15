@@ -49,7 +49,8 @@ The ids `style` takes. The studio's **Style** row offers the same list.
 the preset's palette, in order of first appearance, the types of boxes that contain nothing first. Types a notation fills
 alike share a colour, so every kind of C4 container is one colour. A node's own `color`, the notation's colour and
 `typeColors` still win, as in every preset. A group takes no colour from the palette and keeps one of its own. A PNG
-export of a preset that follows the theme is light.
+export of a preset that follows the theme is light, unless `diagc publish --theme dark` takes it; `--style` takes every
+picture of a run in a preset of its own, whatever the diagrams say (see [Publish and share](../how-to/publish-and-share.md#export)).
 
 ## `DiagramNode`
 
@@ -236,6 +237,7 @@ as `planes` and `manual` — so a plane that borrows containment with
 | `spacing` | `number?` | Base node-to-node spacing in px, at every nesting level. Layers sit the same distance apart, and the gap between unconnected groups is derived from it. |
 | `edgeRouting` | `'curved' \| 'orthogonal'?` | How routed edges are drawn. Both follow the layout's own waypoints, which is what keeps a line off the boxes it was steered around: `curved` (default) rounds the bends generously, `orthogonal` keeps them tight. An edge whose endpoint was placed by hand floats as a bezier either way. `layered` only. |
 | `aspectRatio` | `number?` | `layered` only. When set, elk wraps long chains onto several rows aiming at this width÷height (`MULTI_EDGE` wrapping). Absent = no wrapping. Unconnected groups are packed toward it too (toward 0.75, a portrait page, when absent). |
+| `symmetric` | `boolean?` | `layered` only. `true` centres every row (every column, for a sideways flow) of every level on its level's axis — the whole diagram's, or the inside of an open container — so the arrangement is balanced around its middle. elk's own placement favours straight edges and leaves a parent over one of its children; this trades those straight lines for symmetry, bending the edge between two rows that moved apart in the gap between them. Absent = off. Not applied to activity lanes. |
 
 `export.collapsed` lists node ids to keep FOLDED in the PNG only; the interactive
 page ignores it and opens the way `unfolded` says (fully folded when absent), so

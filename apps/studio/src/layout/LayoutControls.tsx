@@ -40,6 +40,14 @@ const WRAP_PRESETS: { value: string; label: string }[] = [
   { value: '2', label: 'Wide' },
 ];
 
+// Layered's symmetry: rows centred on the axis, or elk's own placement, which
+// favours straight edges over balance. Stored as `symmetric: true`; the empty
+// value is "off" and sends `undefined` like every other control's default.
+const SYMMETRY: { value: string; label: string }[] = [
+  { value: '', label: 'Off' },
+  { value: 'centred', label: 'Centred' },
+];
+
 export interface LayoutControlsProps {
   /** the plane's effective settings — sidecar values with any preview merged over */
   settings: LayoutSettings;
@@ -59,8 +67,8 @@ export interface LayoutControlsProps {
 }
 
 /**
- * Algorithm / direction / spacing / edge routing, with no opinion about where
- * the settings live. The editor dispatches them into the undo stack; view mode
+ * Algorithm / direction / wrap / symmetry / spacing / edge routing, with no
+ * opinion about where the settings live. The editor dispatches them into the undo stack; view mode
  * holds them in ephemeral React state. Choosing a control's default value
  * sends `undefined`, so neither store accumulates redundant entries.
  *
@@ -163,6 +171,7 @@ export function LayoutControls({
           </select>
         </label>
       )}
+      {algorithm === 'layered' && <SymmetryRow symmetric={settings.symmetric} onChange={onChange} />}
       <label className="layout-row">
         <span>Spacing</span>
         <input
@@ -197,5 +206,33 @@ export function LayoutControls({
         </select>
       </label>
     </>
+  );
+}
+
+/** Layered's symmetry row: rows centred on the axis, or elk's own placement. */
+function SymmetryRow({
+  symmetric,
+  onChange,
+}: {
+  symmetric: boolean | undefined;
+  onChange: LayoutControlsProps['onChange'];
+}) {
+  return (
+    <label className="layout-row">
+      <span>Symmetry</span>
+      <select
+        className="chip-select"
+        aria-label="Symmetry"
+        title="Centre every row on the diagram's axis, so the arrangement is balanced around its middle (edges between rows bend in the gap between them)"
+        value={symmetric === true ? 'centred' : ''}
+        onChange={(e) => onChange({ symmetric: e.target.value === 'centred' ? true : undefined })}
+      >
+        {SYMMETRY.map((s) => (
+          <option key={s.value} value={s.value}>
+            {s.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

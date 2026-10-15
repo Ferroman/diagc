@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, consequenceOrders, model, type CompiledView, type ViewNode } from '@diagc/core/internal';
 import { COLLAPSED_SIZE, layoutOptionsFor } from './layout-graph';
-import { layoutView, type NodeGeometry } from './layout';
+import { layoutView, type LayoutResult, type NodeGeometry } from './layout';
 import { buildGraph } from './layout-graph';
 
 function makeModel() {
@@ -704,5 +704,33 @@ describe('layoutView packs independent parts', () => {
     const { algorithm, geometry } = await layoutView(compileView(m.toJSON(), {}), undefined, { algorithm: 'force' });
     expect(algorithm).toBe('force');
     expect(geometry.size).toBe(6);
+  });
+});
+
+describe('layoutView symmetry', () => {
+  it('centres the rows of a layered arrangement on its axis when asked, and keys the cache on it', async () => {
+    // a root over three children of unequal families: elk's balanced placement
+    // leaves the root over ONE child (a straight edge), well off the middle of
+    // the row below it; the symmetric setting puts it over the middle
+    const m = model('sym');
+    const node = (id: string) => m.node(id, { type: 'service' });
+    const root = node('root');
+    const families: Record<string, string[]> = { a: ['a1', 'a2'], b: ['b1'], c: ['c1', 'c2', 'c3'] };
+    for (const [id, kids] of Object.entries(families)) {
+      const parent = node(id);
+      m.relate(root, parent, { kind: 'sync' });
+      for (const kid of kids) m.relate(parent, node(kid), { kind: 'sync' });
+    }
+    const view = compileView(m.toJSON(), {});
+    const plain = await layoutView(view, undefined, {});
+    const sym = await layoutView(view, undefined, { symmetric: true });
+    expect(sym).not.toBe(plain);
+    const centre = (g: NodeGeometry) => g.x + g.width / 2;
+    const rowCentre = (r: LayoutResult) => {
+      const row = ['a', 'b', 'c'].map((id) => r.geometry.get(id)!);
+      return (Math.min(...row.map((g) => g.x)) + Math.max(...row.map((g) => g.x + g.width))) / 2;
+    };
+    expect(Math.abs(centre(sym.geometry.get('root')!) - rowCentre(sym))).toBeLessThan(0.5);
+    expect(Math.abs(centre(plain.geometry.get('root')!) - rowCentre(plain))).toBeGreaterThan(10);
   });
 });
