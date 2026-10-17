@@ -46,7 +46,7 @@ diagc show shop
 
 - Every group is open, as in the PNG `diagc publish` makes. A group listed in the layout's `export.collapsed` stays folded, as it does in the PNG.
 - `show` reads the source, not the compiled artifact, so it shows the diagram as it is now. You do not have to compile first.
-- The flow runs the way the plane's layout settings say (`direction` in `<name>.layout.json`); without one, downwards.
+- The flow runs the way the plane's layout settings say (`direction` in `<name>.layout.json`); without one, downwards, except an activity diagram and a fishbone, which run to the right, as on the page.
 - The line tells the kind: a dashed line is an `async` or `hosted-on` relation, a heavy one is `writes`, and a boundary such as `system` has a dashed frame.
 - A diagram that [declares a legend](add-a-legend.md) gets it under the picture, framed, with a blank line between. A `top-` position puts it over the picture and a `-right` one against the picture's right edge.
 

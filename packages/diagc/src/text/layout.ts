@@ -51,6 +51,14 @@ export const CELL_OPTIONS: Readonly<Record<string, string>> = {
  * row below, two columns either side. */
 const CONTAINER_PADDING = '[top=2,left=2,bottom=1,right=2]';
 
+/** The gaps for a flow. A cell is about twice as tall as it is wide, so a sideways
+ * flow's gap between neighbours, counted in rows, is half a downward one's, counted in
+ * columns, and its gap between levels twice: turned, the picture keeps its proportions. */
+function cellOptions(direction: string): Readonly<Record<string, string>> {
+  if (direction === 'DOWN' || direction === 'UP') return CELL_OPTIONS;
+  return { ...CELL_OPTIONS, 'elk.spacing.nodeNode': '2', 'elk.layered.spacing.nodeNodeBetweenLayers': '4' };
+}
+
 const elk = new ELK();
 
 function elkNode(vn: ViewNode, boxes: ReadonlyMap<string, BoxText>, direction: string): ElkNode {
@@ -66,7 +74,7 @@ function elkNode(vn: ViewNode, boxes: ReadonlyMap<string, BoxText>, direction: s
   return {
     id: vn.id,
     layoutOptions: {
-      ...CELL_OPTIONS,
+      ...cellOptions(direction),
       'elk.direction': direction,
       'elk.padding': CONTAINER_PADDING,
       'elk.nodeSize.constraints': 'MINIMUM_SIZE',
@@ -196,6 +204,66 @@ function oneCell(cell: CellPoint, source: BoxGeometry | undefined, target: BoxGe
   return [cell];
 }
 
+const sameCell = (a: CellPoint, b: CellPoint): boolean => a.x === b.x && a.y === b.y;
+
+/** Where an end beside a corner of its box goes: beside the nearest cell of that side
+ * that is not a corner, so the arrow points at the box and not at its corner. An end
+ * beside the middle of a side, or not beside the box at all, stays. */
+function besideSide(end: CellPoint, box: BoxGeometry): CellPoint {
+  const toward = towardBox(end, box);
+  if (toward === LEFT || toward === RIGHT) return { x: end.x, y: clamp(end.y, box.y + 1, box.y + box.height - 2) };
+  if (toward === UP || toward === DOWN) return { x: clamp(end.x, box.x + 1, box.x + box.width - 2), y: end.y };
+  return end;
+}
+
+/**
+ * The route with its last point beside the side of its box (`besideSide`). A box one
+ * line of text tall has one row between its corners, and on a sideways flow elk's ends
+ * miss it: a lone end, in the middle of the side, is half a cell into that row and
+ * rounds onto the border's, and several are spread over the whole side. Where the
+ * last segment meets the side square on it moves along
+ * with the end, staying straight; on a route of one segment that moves the other end
+ * too, so where that one would leave the middle of its own box's side the route jogs
+ * halfway instead.
+ */
+function slideEnd(points: CellPoint[], box: BoxGeometry | undefined, other: BoxGeometry | undefined): CellPoint[] {
+  const end = points.at(-1)!;
+  const before = points.at(-2)!;
+  const to = box === undefined ? end : besideSide(end, box);
+  if (sameCell(to, end)) return points;
+  const [dx, dy] = [to.x - end.x, to.y - end.y];
+  const squareOn = dx !== 0 ? before.x === end.x : before.y === end.y;
+  if (!squareOn) return [...points.slice(0, -1), to];
+  const moved = { x: before.x + dx, y: before.y + dy };
+  const stays =
+    points.length > 2 ||
+    other === undefined ||
+    (towardBox(moved, other) !== undefined && sameCell(besideSide(moved, other), moved));
+  if (stays) return [...points.slice(0, -2), moved, to];
+  const half = dy !== 0 ? Math.floor((before.x + end.x) / 2) : Math.floor((before.y + end.y) / 2);
+  const jog =
+    dy !== 0
+      ? [
+          { x: half, y: before.y },
+          { x: half, y: to.y },
+        ]
+      : [
+          { x: before.x, y: half },
+          { x: to.x, y: half },
+        ];
+  return [before, ...jog, to];
+}
+
+/** Both ends of a route beside the sides of their boxes, not their corners. */
+function offCorners(
+  points: CellPoint[],
+  source: BoxGeometry | undefined,
+  target: BoxGeometry | undefined,
+): CellPoint[] {
+  const ended = slideEnd(points, target, source);
+  return orthogonal(slideEnd([...ended].reverse(), source, target).reverse());
+}
+
 /** Points with repeats and straight-through middles dropped, and a corner put in
  * wherever rounding left two consecutive points apart on both axes. */
 function orthogonal(points: readonly CellPoint[]): CellPoint[] {
@@ -234,6 +302,7 @@ function routeOf(
   points[0] = placeEnd(points[0]!, points[1]!, source, target);
   points[points.length - 1] = placeEnd(points.at(-1)!, points.at(-2)!, target, source);
   let placed = orthogonal(points);
+  if (placed.length >= 2) placed = offCorners(placed, source, target);
   if (placed.length === 1) placed = oneCell(placed[0]!, source, target);
   if (placed.length < 2) return undefined;
   const text = labels.get(edge.id) ?? '';
@@ -288,7 +357,7 @@ export async function layoutCells(
   const graph: ElkNode = {
     id: '__root',
     layoutOptions: {
-      ...CELL_OPTIONS,
+      ...cellOptions(direction),
       'elk.direction': direction,
       'elk.padding': '[top=0,left=0,bottom=0,right=0]',
       'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
