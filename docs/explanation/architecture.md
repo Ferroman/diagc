@@ -35,23 +35,23 @@ The overlay is also *partial*: nodes with no recorded position fall back to auto
 | `core` | The model — types, `validate()`, the builder DSL, the editor command algebra, and the view compiler. No React, no filesystem. |
 | `renderer` | `DiagramView`: React Flow + elk layout, plus the type / kind / theme registries that turn free-form strings into shapes and colours. |
 | `icons` | Icon id → lucide component. Nothing else. |
-| `diagc` | The CLI: `compile`, `watch`, `publish`, `studio`. The only package that touches the filesystem. |
-| `studio` | The browser app — picker, canvas, edit mode, library — plus the dev-server API that reads and writes your `.diagrams/src`. |
+| `diagc` | The CLI: `compile`, `watch`, `publish`, `studio`, `diff` and the rest, the studio's read and write API, and the text renderer behind `show` and `tui`. The only package that touches the filesystem. |
+| `studio` | The browser app — picker, canvas, edit mode, library — and, in a checkout, the Vite plugin that serves it `diagc`'s API for reading and writing your `.diagrams/src`. |
 | `viewer` | A single-file shell that `publish` stamps a model into. |
 
 The arrows all point toward `core`, and `core` depends on nothing. That is the one structural rule worth preserving: the model has no idea it is going to be drawn.
 
-`diagc` is unusual — it *reads* `viewer`'s built output rather than importing it, and it *spawns* `studio`'s dev server rather than linking against it. Both are process boundaries, not code dependencies, which is what lets `diagc` run against any repo on your machine while the code stays in this one.
+`diagc` is unusual — it *reads* `viewer`'s built output rather than importing it, and it runs `studio` rather than linking against it: in a checkout it spawns the studio's dev server, and an installed CLI serves the studio's built bundle from a server of its own. Both are process boundaries, not code dependencies, which is what lets `diagc` run against any repo on your machine while the code stays in this one.
 
 ## Ways to look at a diagram
 
-**The studio** is a dev-time tool. It needs a running Vite server because it reads and writes files through a small API, so it only exists where the source is.
+**The studio** is a dev-time tool. It needs a local server, because it reads and writes files through a small API, so it only exists where the source is.
 
 **A published page** is a single self-contained HTML file with the model, the layout and every referenced image inlined as data URIs. No server, no network, no build. Mail one to someone and it works.
 
 The two share the same renderer, so a published page folds and unfolds exactly like the studio does. It just cannot save.
 
-**The terminal** has no renderer to share. `diagc show` prints the view as text and `diagc tui` browses it, and both run the same view compiler as the browser — the same folds, planes, layers and aggregated arrows — then lay the result out in character cells, with the same layout engine sized for text. That is why a text picture never keeps the positions you dragged in the studio: those are pixels, for boxes of another size. See [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md).
+**The terminal** has no renderer to share. `diagc show` prints the view as text and `diagc tui` browses it, and both run the same view compiler as the browser — the same folds, planes, layers and aggregated arrows — then lay the result out in character cells, with the same layout engine sized for text. A fishbone is the exception: it is laid out as the fish the page draws, spine and slanting bones. That is why a text picture never keeps the positions you dragged in the studio: those are pixels, for boxes of another size. See [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md).
 
 ## Where things go wrong
 

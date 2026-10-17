@@ -67,9 +67,10 @@ these strings attached, which is why the tutorials and how-tos never mention the
 | `packages/core` | `@diagc/core` | Builder DSL, the JSON model + validation, the view compiler. **Published.** |
 | `packages/renderer` | `@diagc/renderer` | React `DiagramView` (React Flow + elk) and the type/kind/theme registries. |
 | `packages/icons` | `@diagc/icons` | Icon id → lucide component. |
-| `packages/diagc` | `@diagc/cli` | The `diagc` CLI: init, compile, lint, watch, publish, studio, eject, diff, guide. **Published.** |
+| `packages/diagc` | `@diagc/cli` | The `diagc` CLI: init, compile, lint, watch, publish, show, studio, tui, eject, diff, guide. **Published.** |
 | `apps/studio` | `@diagc/studio` | The browser app and its dev-server API. |
 | `apps/viewer` | `@diagc/viewer` | The single-file shell `publish` stamps a model into. |
+| `apps/obsidian` | `@diagc/obsidian` | The Obsidian plugin: the studio and diagram embeds in a vault. Built from a checkout, not published. |
 
 To change what the renderer draws when you use `DiagramView` yourself inside the workspace, see [Renderer registries and theme](docs/reference/renderer.md).
 

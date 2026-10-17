@@ -5,6 +5,7 @@ Diagrams as code, with a local studio. diagc turns diagram sources that live in 
 - **Pages and pictures.** `diagc publish` writes one self-contained HTML page per diagram, and a PNG. The page folds, zooms and switches views in the browser, with no server behind it. Host the pages on GitHub Pages, GitLab Pages or any static host, and put the PNG in a README.
 - **Diffs in pull requests.** A GitHub Action comments on a pull request that changes a diagram: the list of changes, and the before and after pictures.
 - **A local studio.** `diagc studio` opens a browser app against your repository. Draw a diagram there and the studio saves it as a file in the repository. `diagc eject` turns a drawn diagram into TypeScript.
+- **In the terminal.** `diagc show` prints a diagram as text, for a pipe or a coding agent. `diagc tui` browses the diagrams full-screen and redraws as you edit.
 
 Diagrams are plain files in your repository, so they diff, review and refactor like the rest of it.
 
@@ -30,12 +31,16 @@ diagc studio       # opens the editor, recompiling as you edit
 | `diagc init` | Set a repository up: a starter diagram (`--type c4` for a C4 one), the `.gitignore` lines, and with `--agents` a pointer to the guide for coding agents (`AGENTS.md` / `CLAUDE.md`, and a Claude Code skill). |
 | `diagc compile` | Compile `.diagrams/src/**/*.diagram.{ts,json}` into validated artifacts under `.diagrams/.artifacts/`. The default command. |
 | `diagc lint` | Report what compiles but is probably a mistake — typos, duplicates, unused or undrawn parts. `--json` for a script or an agent; exit 1 until clean. |
-| `diagc watch` | The same, recompiling on change. |
-| `diagc studio` | Serve the visual editor against the current directory (default `http://127.0.0.1:5173`). Diagrams drawn here are saved back as `.diagram.json`. |
+| `diagc watch` | Compile, then again on every change. |
 | `diagc publish` | Write self-contained HTML pages to `.diagrams/html/` and PNGs to `.diagrams/static/`. |
+| `diagc show` | Print a diagram as text: boxes, lines and labels in box-drawing characters, coloured on a terminal and plain in a pipe. `--plane`, `--layers`, `--depth` and `--root` choose the view, `--ascii` the characters. |
+| `diagc studio` | Serve the visual editor against the current directory (default `http://127.0.0.1:5173`). Diagrams drawn here are saved back as `.diagram.json`. |
+| `diagc tui` | Browse the diagrams full-screen in the terminal: fold and unfold, go into a group, switch planes and layers, search. Redraws as the sources change. |
+| `diagc eject` | Replace a drawn `.diagram.json` with a generated `.diagram.ts`, checked first to rebuild the same model. |
+| `diagc diff` | Draw what changed in the diagrams between two git refs, or a ref and the working tree: before and after pages and PNGs, and a summary. |
 | `diagc guide` | Print how to write a diagram: the DSL, then one topic per diagram type (`diagc guide c4`). Written for a coding agent as much as for a person. |
 
-Flags: `--type <type>` and `--agents` (init), `--out <dir>` (artifact directory), `--json` (lint findings as JSON), `--no-images` (publish HTML only), `--link <url>` (link the published index to an address), `--help`.
+`diagc --help` lists every command and flag, and the [CLI reference](https://ferroman.github.io/diagc/docs/reference/cli.html) has the details.
 
 PNG export drives headless Chrome. Without one, `publish` writes HTML and says so; point `CHROME_PATH` at a browser to get images.
 
