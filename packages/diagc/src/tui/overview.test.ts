@@ -123,6 +123,37 @@ describe('overviewPixels', () => {
     expect(shares(overviewPixels(joined, place, all))[1]).toBe('##5555##');
   });
 
+  it('draws a fish’s spine as strongly as a box, and its slanted bones as lines', () => {
+    const fish: TextLayout = {
+      width: 10,
+      height: 6,
+      boxes: new Map([['head', { x: 8, y: 2, width: 2, height: 3 }]]),
+      routes: new Map([
+        [
+          'bone',
+          {
+            points: [
+              { x: 1, y: 1 },
+              { x: 3, y: 3 },
+            ],
+          },
+        ],
+      ]),
+      fish: { spine: { y: 3, from: 0, to: 8 }, head: 'head', words: new Map(), labels: new Set() },
+    };
+    const place = { x: 0, y: 0, width: 10, height: 6, scale: 1, cell: { width: 1, height: 1 } };
+    // the screen on the corner cell, so the rest is the fish, dimmed off screen
+    const corner = { scroll: { x: 9, y: 5 }, width: 1, height: 1 };
+    expect(shares(overviewPixels(fish, place, corner))).toEqual([
+      '..........',
+      '.2........',
+      '..2.....44',
+      '4444444444',
+      '........44',
+      '.........#',
+    ]);
+  });
+
   it('fills the selected box, off screen or not', () => {
     const p = overviewPixels(layout, tiny, bottomRight, 'a');
     expect(shares(p).slice(0, 4)).toEqual(['####....', '####....', '####....', '####....']);

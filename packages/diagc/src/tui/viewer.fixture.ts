@@ -50,7 +50,7 @@ export const pointer = (action: 'press' | 'drag' | 'release', at: { x: number; y
 });
 
 /** What an event is handled against: the diagram's scene, built as the app builds it. */
-export async function ctxOf(diagram: DiagramState, at = 0): Promise<Ctx> {
-  const scene = await buildScene(sceneInput(diagram, model, undefined), UNICODE);
-  return { model, scene, view, at };
+export async function ctxOf(diagram: DiagramState, at = 0, of: DiagramModel = model): Promise<Ctx> {
+  const scene = await buildScene(sceneInput(diagram, of, undefined), UNICODE);
+  return { model: of, scene, view, at };
 }

@@ -19,6 +19,8 @@ export interface Glyphs {
    * applies only while the mask is a plain corner */
   line(mask: number, weight: Weight, corner?: Corner): string;
   arrow(direction: ArrowDirection): string;
+  /** a line one cell a row, a fishbone's bone or tick: falling to the right, or rising */
+  slant(falling: boolean): string;
   mark(mark: Exclude<EndMark, 'arrow' | 'none'>): string;
   /** one cell, for text cut short */
   ellipsis: string;
@@ -64,6 +66,7 @@ export const UNICODE: Glyphs = {
     return LIGHT(mask);
   },
   arrow: (direction) => ({ up: '▲', down: '▼', left: '◀', right: '▶' })[direction],
+  slant: (falling) => (falling ? '╲' : '╱'),
   mark: (mark) => ({ dot: '●', square: '■', diamond: '◆', many: '*', one: '1' })[mark],
   ellipsis: '…',
   folded: '+',
@@ -97,6 +100,7 @@ export const ASCII: Glyphs = {
     return '+';
   },
   arrow: (direction) => ({ up: '^', down: 'v', left: '<', right: '>' })[direction],
+  slant: (falling) => (falling ? '\\' : '/'),
   mark: (mark) => ({ dot: 'o', square: '#', diamond: '@', many: '*', one: '1' })[mark],
   ellipsis: '~',
   folded: '+',
