@@ -46,7 +46,8 @@ diagc show shop
 
 - Every group is open, as in the PNG `diagc publish` makes. A group listed in the layout's `export.collapsed` stays folded, as it does in the PNG.
 - `show` reads the source, not the compiled artifact, so it shows the diagram as it is now. You do not have to compile first.
-- The flow runs the way the plane's layout settings say (`direction` in `<name>.layout.json`); without one, downwards, except an activity diagram and a fishbone, which run to the right, as on the page.
+- The flow runs the way the plane's layout settings say (`direction` in `<name>.layout.json`); without one, downwards, except an activity diagram, which runs to the right, as on the page.
+- A fishbone is the fish the page draws: the spine across with the effect boxed at its head, the categories above and below it, two to a column, each on a bone slanting in to the spine (`╲` and `╱`, `\` and `/` with `--ascii`), and every cause on a line to its bone, its sub-causes on ticks to that line.
 - The line tells the kind: a dashed line is an `async` or `hosted-on` relation, a heavy one is `writes`, and a boundary such as `system` has a dashed frame.
 - A diagram that [declares a legend](add-a-legend.md) gets it under the picture, framed, with a blank line between. A `top-` position puts it over the picture and a `-right` one against the picture's right edge, unless the legend is the wider of the two: then it starts at the left edge, as a `-left` one does.
 
@@ -89,7 +90,7 @@ diagc tui shop      # this one
 
 The viewer opens a diagram as the published page does: folded, except the groups its layout saved as unfolded. It compiles the sources as you save them and redraws, so keep it open in one terminal pane and edit the `.diagram.ts` in another. A source that does not compile keeps the last picture and shows the error in the bottom row.
 
-A picture bigger than the screen gets an overview in the bottom-right corner: every box drawn small in braille dots, the part on screen outlined and the rest dimmed. Click on it, or drag across it, to go to that part of the picture; `o` hides it. The dots are braille characters, so the terminal's font, or a fallback font it borrows from, has to have them.
+A picture bigger than the screen gets an overview in the bottom-right corner: every box drawn small, the part on screen outlined and the rest dimmed. Click on it, or drag across it, to go to that part of the picture; `o` hides it. In a terminal that shows images through kitty's graphics protocol, such as kitty, Ghostty or WezTerm, the overview is a picture in the terminal's text colour, fine enough to show the lines between the boxes as well. Elsewhere, under tmux, and while the help is open, it is drawn in braille dots, so the terminal's font, or a fallback font it borrows from, has to have them.
 
 A diagram that declares a legend shows it in the corner its `position` names, as the published page does. A legend in the overview's corner sits above the overview, and is cut short, with a line saying how many rows are left out, where there is no room for all of it. `L` hides it and shows it again. A diagram drawn in shapes that say nothing about themselves, such as a start dot or a decision, has a legend on offer even when it declares none: `L` shows it.
 
@@ -122,7 +123,7 @@ The viewer is read-only. Change a diagram in its source, or in `diagc studio`.
 ## What the text picture leaves out
 
 - **Your positions.** Boxes you placed by hand in the studio are saved in pixels, for boxes of another size. The text picture is always laid out automatically.
-- **The special layouts.** A plan's time axis, a fishbone's spine, git lanes and activity swimlanes draw as an ordinary graph: the names, the nesting and the arrows are all there, the geometry is not.
+- **The special layouts.** A plan's time axis, git lanes and activity swimlanes draw as an ordinary graph: the names, the nesting and the arrows are all there, the geometry is not.
 - **What only a browser draws.** Icons, images, freehand drawings and notes. A foreign key's arrow ends at its table, not at the row.
 - **The theme's colours.** A second-order diagram's good and bad consequences, a causal loop's polarities and a deployment's zones take their colours from the page's light or dark theme. A text picture cannot know the background it will be read on, so it draws them uncoloured.
 - **Part of the legend.** A layer that is off has no row, as on a published page: the top row lists the layers. Nothing the text picture leaves out is keyed, such as a threat badge or the drawings. A swatch is made of characters, so an interrupt's lightning jog is drawn as a plain arrow.

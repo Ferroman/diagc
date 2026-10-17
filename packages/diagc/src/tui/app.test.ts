@@ -50,6 +50,9 @@ function fakeTerminal() {
     type: (data: string) => input!(data),
     resize: () => resize!(),
     screen,
+    /** everything written, in order */
+    written: () => writes.join(''),
+    last: () => writes.at(-1) ?? '',
     breakIt: () => void (broken = true),
   };
 }
@@ -209,12 +212,16 @@ describe('runTui', () => {
     expect(['SIGINT', 'SIGTERM', 'uncaughtException'].map((e) => process.listenerCount(e))).toEqual(before);
   });
 
-  it('goes where the overview is clicked', async () => {
-    // a chain far taller than the screen
+  /** A chain far taller than the screen, so it has an overview. */
+  function long(): void {
     const nodes = Array.from({ length: 20 }, (_, i) => ({ id: `n${i}`, name: `Node ${i}` }));
     const relations = nodes.slice(1).map((n, i) => ({ id: `r${i}`, from: `n${i}`, to: n.id, kind: 'sync' }));
     const model = { version: 1, id: 'long', name: 'long', nodes, containment: [], relations, layers: [], planes: [] };
     writeFileSync(path.join(artifactsDir, 'long.diagram.json'), JSON.stringify(model));
+  }
+
+  it('goes where the overview is clicked', async () => {
+    long();
     const fake = fakeTerminal();
     const done = runTui(options(fake, manualWatch(), 'long'));
     await until(fake.screen, 'Node 0');
@@ -226,6 +233,37 @@ describe('runTui', () => {
     await until(fake.screen, 'Node 19');
     fake.type('q');
     await done;
+  });
+
+  it('draws the overview as an image once the terminal says it shows them, sent only when it changes', async () => {
+    long();
+    const fake = fakeTerminal();
+    const done = runTui(options(fake, manualWatch(), 'long'));
+    await until(fake.screen, 'Node 0');
+    // asked as the TUI started; a terminal that does not answer keeps the braille
+    expect(fake.written()).toContain('\x1b_Gi=31,s=1,v=1,a=q');
+    expect(fake.written()).not.toContain('\x1b_Ga=T');
+    fake.type('\x1b]10;rgb:ffff/ffff/ffff\x1b\\\x1b[6;20;10t\x1b_Gi=31;OK\x1b\\');
+    expect(fake.last()).toContain('\x1b_Ga=T,f=32,o=z,s=');
+    expect(fake.screen()).not.toMatch(/[\u2801-\u28ff]/);
+    // a key that changes nothing on the overview sends no image
+    fake.type('x');
+    expect(fake.last()).not.toContain('\x1b_G');
+    // the overview off takes the image away; back on, it is sent again
+    fake.type('o');
+    expect(fake.last()).toContain('\x1b_Ga=d,d=I');
+    fake.type('o');
+    expect(fake.last()).toContain('\x1b_Ga=T');
+    // a resize asks for the cell's size again, the font may have changed, and sends the
+    // image again, which the terminal may have moved
+    fake.resize();
+    expect(fake.written()).toContain('\x1b[16t\x1b[?2026h');
+    const resent = fake.last();
+    expect(resent.indexOf('\x1b_Ga=d,d=I')).toBeGreaterThan(-1);
+    expect(resent.indexOf('\x1b_Ga=T')).toBeGreaterThan(resent.indexOf('\x1b_Ga=d,d=I'));
+    fake.type('q');
+    await done;
+    expect(fake.last()).toContain('\x1b_Ga=d,d=I');
   });
 
   it('shows the legend a diagram declares, which L hides and brings back', async () => {

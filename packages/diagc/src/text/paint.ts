@@ -4,7 +4,7 @@ import { parseColor } from './ansi';
 import { Canvas, type CellPoint, type Color, type Style } from './canvas';
 import type { BoxLine, BoxText } from './content';
 import { DOWN, LEFT, RIGHT, UP, type ArrowDirection, type Corner, type Glyphs, type Weight } from './glyphs';
-import { STEP, towardBox, type BoxGeometry } from './layout';
+import { STEP, towardBox, type BoxGeometry, type FishDrawing } from './layout';
 import type { Scene } from './scene';
 import { kindLook, typeLook, type EndMark, type LineStyle, type TextShape } from './vocabulary';
 import { cellWidth } from './width';
@@ -90,10 +90,10 @@ function drawTitle(p: Painter, id: string, g: BoxGeometry): void {
 }
 
 /** A leaf or folded box: border, shape details, and its lines (centred, but a table's
- * rows left-aligned so their columns line up). */
-function drawBox(p: Painter, id: string, g: BoxGeometry): void {
+ * rows left-aligned so their columns line up). `weight` overrides the border's. */
+function drawBox(p: Painter, id: string, g: BoxGeometry, weight?: Weight): void {
   const box: BoxText = p.scene.boxes.get(id)!;
-  const ink = borderInk(p, id);
+  const ink = { ...borderInk(p, id), ...(weight !== undefined ? { weight } : {}) };
   const rule = (y: number): void => p.canvas.segment({ x: g.x, y }, { x: g.x + g.width - 1, y }, ink.weight, ink.style);
   p.canvas.clear({ x: g.x + 1, y: g.y + 1, width: g.width - 2, height: g.height - 2 });
   p.canvas.rect(g, ink.weight, ink.style, CORNER[box.shape]);
@@ -162,6 +162,44 @@ const isFrame = (scene: Scene, id: string): boolean => {
   return vn.state === 'expanded' && vn.children.length > 0;
 };
 
+/** A route of a fish: its straight runs as lines, its slants one character a cell, up
+ * to the cell it ends on, which is the line it meets. */
+function drawFishRoute(p: Painter, points: readonly CellPoint[], ink: Ink): void {
+  for (let i = 1; i < points.length; i++) {
+    const [a, b] = [points[i - 1]!, points[i]!];
+    if (a.x === b.x || a.y === b.y) {
+      p.canvas.segment(a, b, ink.weight, ink.style);
+      continue;
+    }
+    const [dx, dy] = [Math.sign(b.x - a.x), Math.sign(b.y - a.y)];
+    const slant = p.glyphs.slant(dx === dy);
+    for (let x = a.x, y = a.y; x !== b.x; x += dx, y += dy) p.canvas.put({ x, y }, slant, ink.style);
+  }
+}
+
+/**
+ * A fishbone as the fish (fish.ts): the lines first, then the head's box, heavy, and
+ * the spine run into its border, then the words, a bone's label bold in the bone's
+ * colour, and last the boxes of what is not on the fish. A word is selected as a title
+ * is, in reverse.
+ */
+function paintFish(p: Painter, fish: FishDrawing, edges: readonly ViewEdge[]): void {
+  const { layout } = p.scene;
+  for (const edge of edges) drawFishRoute(p, layout.routes.get(edge.id)!.points, edgeInk(p, edge));
+  drawBox(p, fish.head, layout.boxes.get(fish.head)!, 'heavy');
+  const { y, from, to } = fish.spine;
+  p.canvas.segment({ x: from, y }, { x: to, y }, 'heavy', borderInk(p, fish.head).style);
+  for (const [id, lines] of fish.words) {
+    const label = fish.labels.has(id);
+    const style: Style = {
+      ...(label ? { ...borderInk(p, id).style, bold: true } : {}),
+      ...(id === p.selected ? { bold: true, inverse: true } : {}),
+    };
+    for (const line of lines) p.canvas.text(line, line.text, style);
+  }
+  for (const [id, g] of layout.boxes) if (id !== fish.head && !fish.words.has(id)) drawBox(p, id, g);
+}
+
 /**
  * The scene as a canvas, in layers: open containers' frames from the outside in,
  * then the edges' lines, then the boxes over them (a box clears what is under it)
@@ -176,6 +214,10 @@ export function paint(scene: Scene, options: PaintOptions): Canvas {
     return g === undefined ? [] : [{ id, g, frame: isFrame(scene, id) }];
   });
   const edges = scene.view.edges.filter((e) => layout.routes.has(e.id));
+  if (layout.fish !== undefined) {
+    paintFish(p, layout.fish, edges);
+    return p.canvas;
+  }
   for (const { id, g, frame } of drawn) if (frame) drawFrame(p, id, g);
   for (const edge of edges) {
     const { points } = layout.routes.get(edge.id)!;

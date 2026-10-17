@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Cell } from '../text/canvas';
 import type { TextLayout } from '../text/layout';
-import { onOverview, overviewCells, overviewJump, overviewPlace, type OverviewPlace } from './overview';
+import { onOverview, overviewCells, overviewJump, overviewPixels, overviewPlace, type OverviewPlace } from './overview';
+import type { Pixels } from './pixels';
 
 const text = (rows: Cell[][]): string[] => rows.map((r) => r.map((c) => c.ch).join(''));
 
@@ -64,6 +65,98 @@ describe('overviewCells', () => {
   it('cuts the screen’s outline at the picture’s edge, where it still shows', () => {
     const past = { scroll: { x: 6, y: 0 }, width: 4, height: 2 };
     expect(text(overviewCells({ ...layout, boxes: new Map() }, half, past))[0]).toBe('   ⣿');
+  });
+});
+
+describe('overviewPixels', () => {
+  /** The pixels as rows of digits, each one's share in tenths: `#` for all of it. */
+  const shares = (p: Pixels): string[] =>
+    Array.from({ length: p.height }, (_, y) =>
+      Array.from({ length: p.width }, (_, x) => {
+        const a = p.at(x, y);
+        return a >= 1 ? '#' : a === 0 ? '.' : String(Math.round(a * 10));
+      }).join(''),
+    );
+  // cells of 2 × 4 pixels: the braille dots' grid, so the two read alike
+  const tiny = { ...half, cell: { width: 2, height: 4 } };
+
+  it('outlines each box and the screen a pixel thick, tints the screen and dims the rest', () => {
+    expect(shares(overviewPixels(layout, tiny, bottomRight))).toEqual([
+      '4444....',
+      '4..4....',
+      '4..4....',
+      '4444....',
+      '....####',
+      '....#22#',
+      '....#22#',
+      '....####',
+    ]);
+  });
+
+  it('is as many pixels as its cells hold', () => {
+    const p = overviewPixels(layout, { ...half, cell: { width: 9, height: 18 } }, bottomRight);
+    expect([p.width, p.height]).toEqual([36, 36]);
+  });
+
+  it('draws the lines between the boxes fainter than the boxes', () => {
+    const joined: TextLayout = {
+      width: 8,
+      height: 3,
+      boxes: new Map([
+        ['a', { x: 0, y: 0, width: 2, height: 3 }],
+        ['b', { x: 6, y: 0, width: 2, height: 3 }],
+      ]),
+      routes: new Map([
+        [
+          'r',
+          {
+            points: [
+              { x: 2, y: 1 },
+              { x: 5, y: 1 },
+            ],
+          },
+        ],
+      ]),
+    };
+    const place = { x: 0, y: 0, width: 8, height: 3, scale: 1, cell: { width: 1, height: 1 } };
+    const all = { scroll: { x: 0, y: 0 }, width: 8, height: 3 };
+    expect(shares(overviewPixels(joined, place, all))[1]).toBe('##5555##');
+  });
+
+  it('draws a fish’s spine as strongly as a box, and its slanted bones as lines', () => {
+    const fish: TextLayout = {
+      width: 10,
+      height: 6,
+      boxes: new Map([['head', { x: 8, y: 2, width: 2, height: 3 }]]),
+      routes: new Map([
+        [
+          'bone',
+          {
+            points: [
+              { x: 1, y: 1 },
+              { x: 3, y: 3 },
+            ],
+          },
+        ],
+      ]),
+      fish: { spine: { y: 3, from: 0, to: 8 }, head: 'head', words: new Map(), labels: new Set() },
+    };
+    const place = { x: 0, y: 0, width: 10, height: 6, scale: 1, cell: { width: 1, height: 1 } };
+    // the screen on the corner cell, so the rest is the fish, dimmed off screen
+    const corner = { scroll: { x: 9, y: 5 }, width: 1, height: 1 };
+    expect(shares(overviewPixels(fish, place, corner))).toEqual([
+      '..........',
+      '.2........',
+      '..2.....44',
+      '4444444444',
+      '........44',
+      '.........#',
+    ]);
+  });
+
+  it('fills the selected box, off screen or not', () => {
+    const p = overviewPixels(layout, tiny, bottomRight, 'a');
+    expect(shares(p).slice(0, 4)).toEqual(['####....', '####....', '####....', '####....']);
   });
 });
 

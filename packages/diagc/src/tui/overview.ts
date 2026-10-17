@@ -2,10 +2,13 @@ import { Dots, type DotRect } from '../text/braille';
 import type { Cell, CellPoint, CellRect, Style } from '../text/canvas';
 import type { TextLayout } from '../text/layout';
 import { clampScroll } from './nav';
+import { Pixels } from './pixels';
 
-// The overview: the whole picture drawn small in braille dots, in the canvas's corner,
-// with the part on screen outlined. Boxes only — at this size an edge's line runs
+// The overview: the whole picture drawn small in the canvas's corner, with the part on
+// screen outlined. In braille dots it is boxes only — at that size an edge's line runs
 // into the boxes' and leaves a smudge — since what it answers is where the reader is.
+// A terminal that shows images gets it in pixels, a few times finer each way, where
+// the lines between the boxes fit too.
 
 /** Where the overview's dots go on the screen, inside a border a cell wide. */
 export interface OverviewPlace extends CellRect {
@@ -49,13 +52,25 @@ export function overviewPlace(picture: Extent, view: Extent & { top: number }): 
   return { x: view.width - 1 - width, y: view.top + view.height - 1 - height, width, height, scale };
 }
 
-/** A rectangle of the picture as the overview's dots: every dot it touches, so a box
- * too small for one still shows as one. A cell is 2 dots across and 4 down. */
-function toDots(r: CellRect, scale: number): DotRect {
-  const x = Math.floor(r.x * scale * 2);
-  const y = Math.floor(r.y * scale * 4);
-  const right = Math.max(x, Math.ceil((r.x + r.width) * scale * 2) - 1);
-  const bottom = Math.max(y, Math.ceil((r.y + r.height) * scale * 4) - 1);
+/** A cell's size in pixels, as the terminal says. */
+export interface CellPixels {
+  width: number;
+  height: number;
+}
+
+/** Where the overview goes, and the pixels each of its cells holds. */
+export type PixelPlace = OverviewPlace & { cell: CellPixels };
+
+/** A braille cell's dots. */
+const BRAILLE: CellPixels = { width: 2, height: 4 };
+
+/** A rectangle of the picture as the overview's dots, `unit` to a cell: every dot it
+ * touches, so a box too small for one still shows as one. */
+function toDots(r: CellRect, scale: number, unit: CellPixels = BRAILLE): DotRect {
+  const x = Math.floor(r.x * scale * unit.width);
+  const y = Math.floor(r.y * scale * unit.height);
+  const right = Math.max(x, Math.ceil((r.x + r.width) * scale * unit.width) - 1);
+  const bottom = Math.max(y, Math.ceil((r.y + r.height) * scale * unit.height) - 1);
   return { x, y, width: right - x + 1, height: bottom - y + 1 };
 }
 
@@ -100,6 +115,44 @@ export function overviewCells(
       return { ch: dots.char(column, row), style };
     }),
   );
+}
+
+/** How much of the terminal's text colour each part of the pixel overview takes: what
+ * is off screen gets `OFF_SCREEN` of its share, as dim text is about half as strong. */
+const SHARE_OF = { box: 1, line: 0.5, screen: 1, screenTint: 0.2, selected: 1 };
+const OFF_SCREEN = 0.4;
+
+/** The overview in pixels, `place`'s cells' worth: each box's outline and the lines
+ * between them, what is off screen dimmed, the part on screen outlined and faintly
+ * tinted, and the selected box filled in, as inverse fills it on the canvas. */
+export function overviewPixels(
+  layout: TextLayout,
+  place: PixelPlace,
+  window: PictureWindow,
+  selected?: string,
+): Pixels {
+  const { cell, scale } = place;
+  const pixels = new Pixels(place.width * cell.width, place.height * cell.height);
+  // a route runs through the middles of its cells
+  const centre = (p: CellPoint): CellPoint => ({
+    x: Math.floor((p.x + 0.5) * scale * cell.width),
+    y: Math.floor((p.y + 0.5) * scale * cell.height),
+  });
+  for (const route of layout.routes.values()) {
+    route.points.slice(1).forEach((p, i) => pixels.line(centre(route.points[i]!), centre(p), SHARE_OF.line));
+  }
+  // a fish's spine is drawn heavy, a bone's to the boxes' thin lines
+  const spine = layout.fish?.spine;
+  if (spine !== undefined)
+    pixels.line(centre({ x: spine.from, y: spine.y }), centre({ x: spine.to, y: spine.y }), SHARE_OF.box);
+  for (const box of layout.boxes.values()) pixels.outline(toDots(box, scale, cell), SHARE_OF.box);
+  const screen = toDots(onPicture(window, layout), scale, cell);
+  pixels.dimOutside(screen, OFF_SCREEN);
+  pixels.fill(screen, SHARE_OF.screenTint);
+  pixels.outline(screen, SHARE_OF.screen);
+  const box = selected === undefined ? undefined : layout.boxes.get(selected);
+  if (box !== undefined) pixels.fill(toDots(box, scale, cell), SHARE_OF.selected);
+  return pixels;
 }
 
 /** Whether the screen cell `at` is on the overview, its border included. */

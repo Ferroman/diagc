@@ -53,5 +53,36 @@ describe('parseInput', () => {
   it('skips sequences it does not know, and keeps what follows', () => {
     expect(parseInput('\x1b[200~q')).toEqual([key('q')]);
     expect(parseInput('\x1b[?1;2cq')).toEqual([key('q')]);
+    expect(parseInput('\x1b[5;1tq')).toEqual([key('q')]);
+  });
+});
+
+describe('the replies to the terminal query', () => {
+  it('reads whether the terminal shows images', () => {
+    expect(parseInput('\x1b_Gi=31;OK\x1b\\')).toEqual([{ kind: 'graphics', ok: true }]);
+    expect(parseInput('\x1b_Gi=31;EINVAL:bad format\x1b\\')).toEqual([{ kind: 'graphics', ok: false }]);
+  });
+
+  it('reads the size of a cell in pixels', () => {
+    expect(parseInput('\x1b[6;20;10t')).toEqual([{ kind: 'cell-size', width: 10, height: 20 }]);
+  });
+
+  it('reads the text colour, ended either way, at any number of digits', () => {
+    expect(parseInput('\x1b]10;rgb:ffff/8080/0000\x1b\\')).toEqual([{ kind: 'text-color', rgb: [255, 128, 0] }]);
+    expect(parseInput('\x1b]10;rgb:f/8/0\x07')).toEqual([{ kind: 'text-color', rgb: [255, 136, 0] }]);
+  });
+
+  it('reads replies that arrive together, between keys', () => {
+    expect(parseInput('j\x1b[6;18;9t\x1b_Gi=31;OK\x1b\\q').map((e) => e.kind)).toEqual([
+      'key',
+      'cell-size',
+      'graphics',
+      'key',
+    ]);
+  });
+
+  it('never reads a string it does not know, or one cut short, as keys', () => {
+    expect(parseInput('\x1b]11;rgb:0000/0000/0000\x1b\\q')).toEqual([key('q')]);
+    expect(parseInput('\x1b_Gi=1;OK')).toEqual([]);
   });
 });

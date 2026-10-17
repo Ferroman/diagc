@@ -3,7 +3,7 @@ import type { CellPoint, CellRect } from '../text/canvas';
 import { readerPins, type Pins } from '../text/folds';
 import type { SceneInput, Scene } from '../text/scene';
 import { onKey, onMouse } from './actions';
-import type { InputEvent } from './keys';
+import type { UserInput } from './keys';
 import { clampScroll, follow } from './nav';
 import type { OverviewPlace } from './overview';
 
@@ -121,7 +121,7 @@ export function settle(state: DiagramState, scene: Scene, view: { width: number;
   };
 }
 
-function reduceList(state: TuiState, event: InputEvent): Reduced {
+function reduceList(state: TuiState, event: UserInput): Reduced {
   const stay = (index = state.index): Reduced => ({ state: { ...state, index }, effects: [] });
   if (event.kind !== 'key') return stay();
   const last = Math.max(0, state.names.length - 1);
@@ -134,7 +134,7 @@ function reduceList(state: TuiState, event: InputEvent): Reduced {
   return stay();
 }
 
-export function reduce(state: TuiState, event: InputEvent, ctx: Ctx): Reduced {
+export function reduce(state: TuiState, event: UserInput, ctx: Ctx): Reduced {
   if (state.screen === 'list' || state.diagram === undefined) return reduceList(state, event);
   const { message: _cleared, ...diagram } = state.diagram;
   const step = event.kind === 'mouse' ? onMouse(diagram, ctx, event) : onKey(diagram, ctx, event);

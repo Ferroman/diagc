@@ -4,7 +4,17 @@ import { UNICODE } from '../text/glyphs';
 import { paint } from '../text/paint';
 import { buildScene, type Scene } from '../text/scene';
 import { cellWidth } from '../text/width';
-import { canvasSize, composeFrame, frameText, legendPlaceOf, overviewPlaceOf, PANEL_WIDTH } from './screen';
+import type { Graphics } from './kitty';
+import {
+  canvasSize,
+  composeFrame,
+  frameText,
+  legendPlaceOf,
+  overviewImage,
+  overviewPlaceOf,
+  PANEL_WIDTH,
+  type FrameInput,
+} from './screen';
 import { openDiagram, type TuiState } from './state';
 
 const model: DiagramModel = {
@@ -37,13 +47,17 @@ function stateOf(extra: Partial<NonNullable<TuiState['diagram']>> = {}): TuiStat
   };
 }
 
-async function frame(state: TuiState, size: { columns: number; rows: number }, scene?: Scene) {
+async function inputOf(state: TuiState, scene?: Scene, graphics?: Graphics): Promise<FrameInput> {
   const s = scene ?? (await sceneOf());
   const canvas = paint(s, {
     glyphs: UNICODE,
     ...(state.diagram?.selected !== undefined ? { selected: state.diagram.selected } : {}),
   }).cells(UNICODE);
-  return composeFrame(state, { model, scene: s, canvas }, size, 'ansi256');
+  return { model, scene: s, canvas, ...(graphics !== undefined ? { graphics } : {}) };
+}
+
+async function frame(state: TuiState, size: { columns: number; rows: number }, scene?: Scene, graphics?: Graphics) {
+  return composeFrame(state, await inputOf(state, scene, graphics), size, 'ansi256');
 }
 
 const sized = (lines: string[], size: { columns: number; rows: number }) => {
@@ -226,6 +240,49 @@ describe('the overview', () => {
     const lines = await frame(stateOf({ help: true }), { columns: 100, rows: 30 });
     expect(lines.some((l) => plain(l).includes('overview on / off'))).toBe(true);
   });
+
+  describe('on a terminal that shows images', () => {
+    const graphics: Graphics = { cell: { width: 10, height: 20 }, ink: [200, 210, 220] };
+
+    it('is an image over its place, in the terminal’s text colour, the cells under it blank', async () => {
+      const scene = await sceneOf(chain);
+      const place = overviewPlaceOf(stateOf(), scene, size)!;
+      const image = overviewImage(stateOf(), await inputOf(stateOf(), scene, graphics), size)!;
+      expect(image.place).toMatchObject({ x: place.x, y: place.y, width: place.width, height: place.height });
+      expect([image.width, image.height]).toEqual([place.width * 10, place.height * 20]);
+      expect([...image.rgba.slice(0, 3)]).toEqual([200, 210, 220]);
+      expect(image.rgba.some((v, i) => i % 4 === 3 && v > 0)).toBe(true);
+      const lines = await frame(stateOf(), size, scene, graphics);
+      sized(lines, size);
+      const inside = lines
+        .slice(place.y, place.y + place.height)
+        .map((l) => [...plain(l)].slice(place.x, place.x + place.width).join(''));
+      expect(inside.join('').trim()).toBe('');
+      // the border stays text
+      expect([at(lines[place.y - 1]!, place.x - 1), at(lines[place.y + place.height]!, place.x + place.width)]).toEqual(
+        ['┌', '┘'],
+      );
+    });
+
+    it('is braille under the help, which an image would cover', async () => {
+      const scene = await sceneOf(chain);
+      const help = stateOf({ help: true });
+      // wide enough that the help, in the middle, leaves the overview in its corner
+      const big = { columns: 160, rows: 40 };
+      expect(overviewImage(help, await inputOf(help, scene, graphics), big)).toBeUndefined();
+      expect((await frame(help, big, scene, graphics)).some((l) => braille.test(plain(l)))).toBe(true);
+    });
+
+    it('is no image where the overview is not drawn', async () => {
+      const scene = await sceneOf(chain);
+      const off = stateOf({ overview: false });
+      expect(overviewImage(off, await inputOf(off, scene, graphics), size)).toBeUndefined();
+      expect(overviewImage(stateOf(), await inputOf(stateOf(), await sceneOf(), graphics), size)).toBeUndefined();
+      const list: TuiState = { ...stateOf(), screen: 'list' };
+      expect(overviewImage(list, await inputOf(list, scene, graphics), size)).toBeUndefined();
+      expect(overviewImage(stateOf(), await inputOf(stateOf(), scene), size)).toBeUndefined();
+    });
+  });
 });
 
 describe('the legend', () => {
@@ -287,5 +344,9 @@ describe('the legend', () => {
 describe('frameText', () => {
   it('puts each line at its row, inside a synchronized update', () => {
     expect(frameText(['ab', 'cd'])).toBe('\x1b[?2026h\x1b[1;1Hab\x1b[2;1Hcd\x1b[?2026l');
+  });
+
+  it('puts the images after the text, inside the same update', () => {
+    expect(frameText(['ab'], '<image>')).toBe('\x1b[?2026h\x1b[1;1Hab<image>\x1b[?2026l');
   });
 });

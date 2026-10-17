@@ -1,4 +1,11 @@
-import { ACTIVITY_END_TYPE, type Column, type NotationId, type ViewEdge, type ViewNode } from '@diagc/core/internal';
+import {
+  ACTIVITY_END_TYPE,
+  FB_EFFECT_TYPE,
+  type Column,
+  type NotationId,
+  type ViewEdge,
+  type ViewNode,
+} from '@diagc/core/internal';
 import type { Glyphs } from './glyphs';
 import { subtitleOf, typeLook, type TextShape } from './vocabulary';
 import { cellWidth, fitCells, printable, wrapCells } from './width';
@@ -81,12 +88,16 @@ export function boxText(vn: ViewNode, ctx: BoxContext): BoxText {
   }
   const mark = markOf(vn, look.shape, ctx.glyphs);
   const name = mark === undefined ? vn.node.name : vn.node.name === '' ? mark : `${mark} ${vn.node.name}`;
-  // a name keeps its own line breaks (the studio's name field takes them), each line
-  // wrapped on its own
-  const lines: BoxLine[] = name
-    .split(/\r?\n/)
-    .flatMap((line) => wrapCells(printable(line), NAME_WRAP))
-    .map((text) => ({ text, role: 'title' }));
+  // A name keeps its own line breaks (the studio's name field takes them), each line
+  // wrapped on its own. A fishbone's head is one line, as on the page: it names the
+  // whole fish, where wrapping would leave a word on a line of its own.
+  const lines: BoxLine[] =
+    vn.node.type === FB_EFFECT_TYPE
+      ? [{ text: fitCells(printable(name), TITLE_MAX, ctx.glyphs.ellipsis), role: 'title' }]
+      : name
+          .split(/\r?\n/)
+          .flatMap((line) => wrapCells(printable(line), NAME_WRAP))
+          .map((text) => ({ text, role: 'title' }));
   for (const text of subtitle === '' ? [] : wrapCells(subtitle, NAME_WRAP)) lines.push({ text, role: 'subtitle' });
   const columns = look.shape === 'table' ? (vn.columns ?? vn.node.columns ?? []) : [];
   lines.push(...columnRows(columns));

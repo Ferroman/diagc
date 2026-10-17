@@ -10,10 +10,25 @@ export type BoxGeometry = CellRect;
 
 /** An edge's path. `points[0]` is the cell just outside the source box and the last
  * point the cell just outside the target box, where the arrowhead goes; consecutive
- * points differ on one axis only. */
+ * points differ on one axis only. On a fish (`FishDrawing`) a bone and a tick are
+ * slanted instead, one cell a row, and end on the line they meet. */
 export interface Route {
   points: CellPoint[];
   label?: CellPoint & { text: string };
+}
+
+/** What a fishbone is drawn with besides boxes and routes, where it is drawn as the
+ * fish (fish.ts). */
+export interface FishDrawing {
+  /** the spine, along row `y` from its tail to the head's border */
+  spine: { y: number; from: number; to: number };
+  /** the effect, boxed at the spine's right end */
+  head: string;
+  /** the categories and causes, drawn as their words rather than boxed: each line
+   * where it starts. A node's box in `boxes` is the cells its words take. */
+  words: Map<string, (CellPoint & { text: string })[]>;
+  /** the categories among `words`: their bones' labels */
+  labels: Set<string>;
 }
 
 export interface TextLayout {
@@ -21,6 +36,7 @@ export interface TextLayout {
   height: number;
   boxes: Map<string, BoxGeometry>;
   routes: Map<string, Route>;
+  fish?: FishDrawing;
 }
 
 /**

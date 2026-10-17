@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import type { DiagramModel } from '@diagc/core/internal';
 import { UNICODE } from '../text/glyphs';
 import { buildScene } from '../text/scene';
 import { onKey, onMouse, type Step } from './actions';
-import type { InputEvent } from './keys';
+import type { UserInput } from './keys';
 import { readingOrder } from './nav';
 import { openDiagram, sceneInput, type Ctx, type DiagramState } from './state';
 import { ctxOf, key, model, pointer, view } from './viewer.fixture';
@@ -13,15 +14,15 @@ const opened = (extra: Partial<DiagramState> = {}): DiagramState => ({
 });
 
 /** One event, to `onKey` or `onMouse` as the reducer hands it on. */
-const handle = (d: DiagramState, event: InputEvent, ctx: Ctx): Step =>
+const handle = (d: DiagramState, event: UserInput, ctx: Ctx): Step =>
   event.kind === 'mouse' ? onMouse(d, ctx, event) : onKey(d, ctx, event);
 
 /** Feeds events one by one, rebuilding the scene before each, as the app does. */
-async function feed(diagram: DiagramState, events: InputEvent[], at = 0): Promise<Step> {
+async function feed(diagram: DiagramState, events: UserInput[], at = 0, of = model): Promise<Step> {
   let step: Step = { diagram, effects: [] };
   const effects = [];
   for (const event of events) {
-    step = handle(step.diagram, event, await ctxOf(step.diagram, at));
+    step = handle(step.diagram, event, await ctxOf(step.diagram, at, of));
     effects.push(...step.effects);
   }
   return { ...step, effects };
@@ -41,6 +42,42 @@ describe('onKey', () => {
     // c points at p, so the flow puts c above p
     expect((await feed(opened({ selected: 'c' }), [key('down')])).diagram.selected).toBe('p');
     expect((await feed(opened({ selected: 'p' }), [key('k')])).diagram.selected).toBe('c');
+  });
+
+  it('moves about a fishbone’s fish as about boxes: Tab reaches every node, the arrows go to the nearest', async () => {
+    const fish: DiagramModel = {
+      ...model,
+      notation: 'fishbone',
+      nodes: [
+        { id: 'e', name: 'Outage', type: 'fb-effect' },
+        { id: 'people', name: 'People', type: 'fb-category' },
+        { id: 'process', name: 'Process', type: 'fb-category' },
+        { id: 'on-call', name: 'On-call engineer new to checkout', type: 'fb-cause' },
+        { id: 'no-freeze', name: 'No change freeze', type: 'fb-cause' },
+      ],
+      containment: [],
+      relations: [
+        { id: 'r1', from: 'people', to: 'e', kind: 'cause-of' },
+        { id: 'r2', from: 'process', to: 'e', kind: 'cause-of' },
+        { id: 'r3', from: 'on-call', to: 'people', kind: 'cause-of' },
+        { id: 'r4', from: 'no-freeze', to: 'process', kind: 'cause-of' },
+      ],
+      layers: [],
+      planes: [],
+    };
+    const start = openDiagram('m', fish, undefined);
+    const seen = new Set<string>();
+    let diagram = start;
+    for (let i = 0; i < 5; i++) {
+      diagram = (await feed(diagram, [key('tab')], 0, fish)).diagram;
+      seen.add(diagram.selected!);
+    }
+    expect([...seen].sort()).toEqual(fish.nodes.map((n) => n.id).sort());
+    // a bone's causes are to the left of its label, and the head to the right of all
+    const from = async (selected: string, name: string): Promise<string | undefined> =>
+      (await feed({ ...start, selected }, [key(name)], 0, fish)).diagram.selected;
+    expect(await from('people', 'left')).toBe('on-call');
+    expect(await from('process', 'right')).toBe('e');
   });
 
   it('unfolds and folds the selected container, and only a container', async () => {
@@ -157,7 +194,7 @@ describe('onMouse', () => {
   it('scrolls with the wheel and the paging keys, inside the picture', async () => {
     const tall = { ...view, height: 2, width: 5 };
     const ctx = { ...(await ctxOf(opened())), view: tall };
-    const wheel = (action: 'wheel-up' | 'wheel-down'): InputEvent => ({
+    const wheel = (action: 'wheel-up' | 'wheel-down'): UserInput => ({
       kind: 'mouse',
       action,
       x: 0,

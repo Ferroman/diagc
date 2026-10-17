@@ -1,6 +1,6 @@
-// What a terminal in raw mode sends, read into key presses and mouse reports. One read
-// can hold several (a paste, keys typed faster than they are read), so the input is
-// consumed sequence by sequence.
+// What a terminal in raw mode sends, read into key presses, mouse reports and its
+// replies to the TUI's query. One read can hold several (a paste, keys typed faster
+// than they are read), so the input is consumed sequence by sequence.
 
 export interface Key {
   kind: 'key';
@@ -20,7 +20,18 @@ export interface Mouse {
   shift: boolean;
 }
 
-export type InputEvent = Key | Mouse;
+/** What the terminal says back to `TERMINAL_QUERY`, which nobody typed. */
+export type Reply =
+  | { kind: 'graphics'; ok: boolean }
+  | { kind: 'cell-size'; width: number; height: number }
+  | { kind: 'text-color'; rgb: [number, number, number] };
+
+/** What the reader typed or did with the mouse. */
+export type UserInput = Key | Mouse;
+
+export type InputEvent = UserInput | Reply;
+
+export const isReply = (event: InputEvent): event is Reply => event.kind !== 'key' && event.kind !== 'mouse';
 
 const LETTER_KEYS: Record<string, string> = { A: 'up', B: 'down', C: 'right', D: 'left', H: 'home', F: 'end' };
 const TILDE_KEYS: Record<string, string> = {
@@ -50,10 +61,39 @@ function mouseOf(button: number, x: number, y: number, release: boolean): Mouse 
 
 type Match = [event: InputEvent | undefined, length: number];
 
+/** A colour channel of an `rgb:` reply, one to four hex digits, as 0–255. */
+const channel = (hex: string): number => Math.round((parseInt(hex, 16) / (16 ** hex.length - 1)) * 255);
+
+/** A string sequence, which the terminal ends with ST or, after `]`, BEL: its body and
+ * its length — or, cut short, no body and everything left, so none of it reads as keys. */
+function stringSequence(body: string): [text: string | undefined, length: number] {
+  // eslint-disable-next-line no-control-regex -- the terminators are control characters
+  const end = /\x1b\\|\x07/.exec(body);
+  return end === null ? [undefined, body.length + 1] : [body.slice(0, end.index), end.index + end[0].length + 1];
+}
+
+/** A reply to the query, or a string sequence (`ESC _`, `ESC ]`) of any other kind,
+ * read as nothing. Undefined for neither. */
+function reply(body: string): Match | undefined {
+  if (body.startsWith('_') || body.startsWith(']')) {
+    const [text = '', length] = stringSequence(body);
+    const graphics = /^_G[^;]*;(.*)$/s.exec(text);
+    if (graphics !== null) return [{ kind: 'graphics', ok: graphics[1] === 'OK' }, length];
+    const color = /^\]10;rgb:([0-9a-f]{1,4})\/([0-9a-f]{1,4})\/([0-9a-f]{1,4})$/i.exec(text);
+    const rgb =
+      color === null ? undefined : ([color[1]!, color[2]!, color[3]!].map(channel) as [number, number, number]);
+    return [rgb === undefined ? undefined : { kind: 'text-color', rgb }, length];
+  }
+  const m = /^\[6;(\d+);(\d+)t/.exec(body);
+  return m === null ? undefined : [{ kind: 'cell-size', width: Number(m[2]), height: Number(m[1]) }, m[0].length + 1];
+}
+
 /** The escape sequence at the start of `s`, which starts with ESC, read. The patterns
  * match what follows the ESC. */
 function escape(s: string): Match {
   const body = s.slice(1);
+  const answer = reply(body);
+  if (answer !== undefined) return answer;
   let m = /^\[<(\d+);(\d+);(\d+)([Mm])/.exec(body);
   if (m !== null) return [mouseOf(Number(m[1]), Number(m[2]), Number(m[3]), m[4] === 'm'), m[0].length + 1];
   if (body.startsWith('[Z')) return [{ kind: 'key', name: 'tab', shift: true }, 3];

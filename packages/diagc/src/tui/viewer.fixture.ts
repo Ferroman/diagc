@@ -1,7 +1,7 @@
 import type { DiagramModel } from '@diagc/core/internal';
 import { UNICODE } from '../text/glyphs';
 import { buildScene } from '../text/scene';
-import type { InputEvent } from './keys';
+import type { UserInput } from './keys';
 import { sceneInput, type Ctx, type DiagramState } from './state';
 
 // What the viewer's tests share: a small diagram, the screen it is shown on, and the
@@ -36,13 +36,13 @@ export const model: DiagramModel = {
 /** The canvas: under a one-row top bar, 40 by 12. */
 export const view = { top: 1, width: 40, height: 12 };
 
-export const key = (name: string, extra: { shift?: boolean; ctrl?: boolean } = {}): InputEvent => ({
+export const key = (name: string, extra: { shift?: boolean; ctrl?: boolean } = {}): UserInput => ({
   kind: 'key',
   name,
   ...extra,
 });
 
-export const pointer = (action: 'press' | 'drag' | 'release', at: { x: number; y: number }): InputEvent => ({
+export const pointer = (action: 'press' | 'drag' | 'release', at: { x: number; y: number }): UserInput => ({
   kind: 'mouse',
   action,
   ...at,
@@ -50,7 +50,7 @@ export const pointer = (action: 'press' | 'drag' | 'release', at: { x: number; y
 });
 
 /** What an event is handled against: the diagram's scene, built as the app builds it. */
-export async function ctxOf(diagram: DiagramState, at = 0): Promise<Ctx> {
-  const scene = await buildScene(sceneInput(diagram, model, undefined), UNICODE);
-  return { model, scene, view, at };
+export async function ctxOf(diagram: DiagramState, at = 0, of: DiagramModel = model): Promise<Ctx> {
+  const scene = await buildScene(sceneInput(diagram, of, undefined), UNICODE);
+  return { model: of, scene, view, at };
 }

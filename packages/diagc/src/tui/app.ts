@@ -11,8 +11,9 @@ import { UNICODE } from '../text/glyphs';
 import { paint } from '../text/paint';
 import { buildScene, type Scene } from '../text/scene';
 import { startWatch } from '../watch';
-import { parseInput } from './keys';
-import { canvasSize, composeFrame, frameText, legendPlaceOf, overviewPlaceOf } from './screen';
+import { isReply, parseInput, type Reply } from './keys';
+import { CELL_SIZE_QUERY, graphicsOf, hear, imageChange, TERMINAL_QUERY, type FrameImage, type Heard } from './kitty';
+import { canvasSize, composeFrame, frameText, legendPlaceOf, overviewImage, overviewPlaceOf } from './screen';
 import { openDiagram, reduce, sceneInput, settle, type DiagramState, type Effect, type TuiState } from './state';
 import type { Terminal } from './terminal';
 
@@ -116,6 +117,12 @@ class App {
   private pending?: string;
   /** the newest layout asked for; an older one that finishes later is dropped */
   private layoutSeq = 0;
+  /** what the terminal has said about itself, in answer to `TERMINAL_QUERY` */
+  private heard: Heard = {};
+  /** the image on the screen, which a frame changes only when it has to */
+  private image?: FrameImage;
+  /** the image may not be where it was: a resize can move or clear it */
+  private imageStale = false;
   private watcher?: DiagramWatcher;
   private finished = false;
   private settleRun: { resolve: () => void; reject: (e: unknown) => void } = { resolve: () => {}, reject: () => {} };
@@ -133,6 +140,7 @@ class App {
       terminal.onInput((data) => this.guard(() => this.input(data)));
       terminal.onResize(() => this.guard(() => this.resized()));
       terminal.start();
+      terminal.write(TERMINAL_QUERY);
       this.watcher = this.options.watch((change) => this.later(() => this.changed(change)));
       this.later(() => this.boot());
     });
@@ -144,6 +152,11 @@ class App {
     if (this.finished) return;
     this.finished = true;
     for (const ending of ENDINGS) process.off(ending, this.onEnding);
+    try {
+      if (this.image !== undefined) this.options.terminal.write(imageChange(this.image, undefined));
+    } catch {
+      // a terminal that cannot take the image's removal still has to be given back
+    }
     try {
       this.options.terminal.stop();
     } finally {
@@ -172,13 +185,31 @@ class App {
 
   private draw(): void {
     if (this.finished) return;
+    const graphics = graphicsOf(this.heard);
     const input = {
       ...(this.model !== undefined ? { model: this.model } : {}),
       ...(this.scene !== undefined ? { scene: this.scene } : {}),
       ...(this.canvas !== undefined ? { canvas: this.canvas } : {}),
       ...(this.notice !== undefined ? { notice: this.notice } : {}),
+      ...(graphics !== undefined ? { graphics } : {}),
     };
-    this.options.terminal.write(frameText(composeFrame(this.state, input, this.size(), this.options.color)));
+    const size = this.size();
+    const lines = composeFrame(this.state, input, size, this.options.color);
+    const image = overviewImage(this.state, input, size);
+    const change = this.imageStale
+      ? imageChange(this.image, undefined) + imageChange(undefined, image)
+      : imageChange(this.image, image);
+    [this.image, this.imageStale] = [image, false];
+    this.options.terminal.write(frameText(lines, change));
+  }
+
+  /** A reply to the query: the overview turns into an image once the terminal says it
+   * shows them, and is redrawn at a new cell size. Off the diagram screen there is no
+   * overview to redraw, and nothing drawn yet that is worth drawing early. */
+  private replied(reply: Reply): void {
+    const before = JSON.stringify(graphicsOf(this.heard));
+    this.heard = hear(this.heard, reply);
+    if (this.state.screen === 'diagram' && JSON.stringify(graphicsOf(this.heard)) !== before) this.draw();
   }
 
   private repaint(): void {
@@ -322,6 +353,10 @@ class App {
     if (this.state.screen === 'list' && this.pending === undefined) this.notice = undefined;
     for (const event of parseInput(data)) {
       if (this.finished) return;
+      if (isReply(event)) {
+        this.replied(event);
+        continue;
+      }
       const size = this.size();
       const ctx = {
         model: this.model,
@@ -345,6 +380,8 @@ class App {
   }
 
   private resized(): void {
+    if (graphicsOf(this.heard) !== undefined) this.options.terminal.write(CELL_SIZE_QUERY);
+    this.imageStale = true;
     if (this.state.diagram !== undefined && this.scene !== undefined) {
       this.state = {
         ...this.state,
