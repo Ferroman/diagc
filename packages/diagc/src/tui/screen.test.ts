@@ -350,3 +350,71 @@ describe('frameText', () => {
     expect(frameText(['ab'], '<image>')).toBe('\x1b[?2026h\x1b[1;1Hab<image>\x1b[?2026l');
   });
 });
+
+describe('the DOS style', () => {
+  const GROUND = { blue: '48;2;0;0;170', grey: '48;2;170;170;170', cyan: '48;2;0;170;170', black: '48;2;0;0;0' };
+  const DESKTOP = '\x1b[38;2;255;255;255;48;2;0;0;170m';
+
+  async function dosFrame(state: TuiState, size: { columns: number; rows: number }) {
+    const scene = await buildScene({ model, pins: {}, style: 'dos' }, UNICODE);
+    const canvas = paint(scene, { glyphs: UNICODE }).cells(UNICODE);
+    return composeFrame(state, { model, scene, canvas, style: 'dos' }, size, 'truecolor');
+  }
+
+  it('draws the title and the status grey, as a menu bar and a status line', async () => {
+    const lines = await dosFrame(stateOf(), { columns: 80, rows: 24 });
+    for (const bar of [lines[0]!, lines.at(-1)!]) {
+      expect(bar.startsWith('\x1b[38;2;0;0;0;48;2;170;170;170m')).toBe(true);
+      expect(bar).not.toContain('\x1b[7m');
+    }
+  });
+
+  it('lays the canvas on the blue desktop out to the screen’s edges', async () => {
+    const size = { columns: 80, rows: 24 };
+    const lines = await dosFrame(stateOf(), size);
+    sized(lines, size);
+    // a row below the picture, and the cells right of it on a row it is on
+    expect(lines[20]).toBe(`${DESKTOP}${' '.repeat(80)}\x1b[0m`);
+    const row = lines[2]!;
+    expect(row.slice(row.lastIndexOf(DESKTOP) + DESKTOP.length, -'\x1b[0m'.length)).toMatch(/^ {10,}$/);
+  });
+
+  it('puts the help in a grey dialog with a double frame and a shadow', async () => {
+    const lines = await dosFrame(stateOf({ help: true }), { columns: 100, rows: 30 });
+    const top = lines.find((l) => plain(l).includes(' Keys '))!;
+    expect(plain(top)).toMatch(/╔═ Keys ═+╗/);
+    expect(top).toContain(GROUND.grey);
+    // the dialog's foot, wider than any box's, and the shadow under it
+    const foot = lines.findIndex((l) => /╚═{20,}╝/.test(plain(l)));
+    expect(lines[foot + 1]).toContain(GROUND.black);
+  });
+
+  it('draws the details panel cyan', async () => {
+    const lines = await dosFrame(stateOf({ panel: true, selected: 'a' }), { columns: 120, rows: 30 });
+    const id = lines.find((l) => plain(l).includes('id a'))!;
+    expect(id).toContain(GROUND.cyan);
+  });
+
+  it('marks the list’s current name in cyan on the desktop', () => {
+    const list: TuiState = { screen: 'list', names: ['alpha', 'beta'], index: 1 };
+    const lines = composeFrame(list, { style: 'dos' }, { columns: 30, rows: 6 }, 'truecolor');
+    sized(lines, { columns: 30, rows: 6 });
+    expect(lines.find((l) => plain(l).includes('beta'))).toContain(GROUND.cyan);
+    expect(lines.find((l) => plain(l).includes('alpha'))!.startsWith(DESKTOP)).toBe(true);
+    expect(lines[0]).toContain(GROUND.grey);
+  });
+
+  it('draws the overview’s image white, as the desktop’s text', async () => {
+    const chain: DiagramModel = {
+      ...model,
+      nodes: Array.from({ length: 12 }, (_, i) => ({ id: `n${i}`, name: `Node ${i}` })),
+      relations: Array.from({ length: 11 }, (_, i) => ({ id: `r${i}`, from: `n${i}`, to: `n${i + 1}`, kind: 'sync' })),
+    };
+    const scene = await buildScene({ model: chain, pins: {}, style: 'dos' }, UNICODE);
+    const canvas = paint(scene, { glyphs: UNICODE }).cells(UNICODE);
+    const graphics: Graphics = { cell: { width: 10, height: 20 }, ink: [200, 210, 220] };
+    const input = { model: chain, scene, canvas, graphics, style: 'dos' as const };
+    const image = overviewImage(stateOf(), input, { columns: 60, rows: 20 })!;
+    expect([...image.rgba.slice(0, 3)]).toEqual([255, 255, 255]);
+  });
+});

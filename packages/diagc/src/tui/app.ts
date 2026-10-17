@@ -7,6 +7,7 @@ import { discoverDiagrams } from '../publish/discover';
 import { lockedResolverFor } from '../snapshots';
 import type { ColorMode } from '../text/ansi';
 import type { Cell } from '../text/canvas';
+import { styleOf, type TextStyle } from '../text/dos';
 import { UNICODE } from '../text/glyphs';
 import { paint } from '../text/paint';
 import { buildScene, type Scene } from '../text/scene';
@@ -39,6 +40,8 @@ export interface TuiOptions {
   name?: string;
   watch: WatchStarter;
   color: ColorMode;
+  /** the style to draw every diagram in; absent = each diagram's own */
+  style?: TextStyle;
   now?: () => number;
 }
 
@@ -130,7 +133,9 @@ class App {
     void this.finish(reason instanceof Error ? reason : undefined);
   };
 
-  constructor(private readonly options: TuiOptions) {}
+  constructor(private readonly options: TuiOptions) {
+    if (options.style !== undefined) this.state.style = options.style;
+  }
 
   run(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -183,6 +188,14 @@ class App {
     return { columns: this.options.terminal.columns, rows: this.options.terminal.rows };
   }
 
+  /** The style the screen is drawn in: the reader's pick, else the open diagram's own.
+   * Without colour it is the terminal's own, DOS being its colours more than its lines. */
+  private style(): TextStyle {
+    if (this.options.color === 'none' || this.options.color === 'mono') return 'clean';
+    const own = this.state.screen === 'diagram' && this.model !== undefined ? styleOf(this.model) : 'clean';
+    return this.state.style ?? own;
+  }
+
   private draw(): void {
     if (this.finished) return;
     const graphics = graphicsOf(this.heard);
@@ -192,6 +205,7 @@ class App {
       ...(this.canvas !== undefined ? { canvas: this.canvas } : {}),
       ...(this.notice !== undefined ? { notice: this.notice } : {}),
       ...(graphics !== undefined ? { graphics } : {}),
+      style: this.style(),
     };
     const size = this.size();
     const lines = composeFrame(this.state, input, size, this.options.color);
@@ -328,7 +342,7 @@ class App {
     if (d === undefined || this.model === undefined) return this.draw();
     let scene: Scene;
     try {
-      scene = await buildScene(sceneInput(d, this.model, this.overlay), UNICODE);
+      scene = await buildScene(sceneInput(d, this.model, this.overlay, this.style()), UNICODE);
     } catch (e) {
       this.state = { ...this.state, diagram: { ...d, message: { text: errMessage(e), error: true } } };
       return this.draw();
@@ -365,6 +379,7 @@ class App {
         view: canvasSize(this.state, size),
         overview: overviewPlaceOf(this.state, this.scene, size),
         legend: legendPlaceOf(this.state, this.scene, size),
+        style: this.style(),
         at: (this.options.now ?? Date.now)(),
       };
       const { state, effects } = reduce(this.state, event, ctx);

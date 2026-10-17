@@ -45,7 +45,7 @@ describe('the command table', () => {
       publish: ['--out', '--no-images', '--link', '--update-includes', '--style', '--theme'],
       show: ['--plane', '--layers', '--depth', '--root', '--ascii', '--color', '--no-color'],
       studio: [],
-      tui: [],
+      tui: ['--style'],
       eject: ['--out'],
       diff: ['--out', '--no-images', '--json', '--labels', '--image-url'],
       guide: [],

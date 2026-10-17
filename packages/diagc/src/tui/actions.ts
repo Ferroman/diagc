@@ -1,4 +1,5 @@
 import type { CellPoint } from '../text/canvas';
+import type { TextStyle } from '../text/dos';
 import type { Pins } from '../text/folds';
 import { neverFolds } from '../text/vocabulary';
 import type { Key, Mouse } from './keys';
@@ -16,7 +17,12 @@ export interface Step {
   effects: Effect[];
   /** back to the list of diagrams */
   toList?: boolean;
+  /** the style the reader switched to, for this diagram and every one after it */
+  style?: TextStyle;
 }
+
+/** The style `s` switches to from `style`: DOS from the terminal's own, and back. */
+export const otherStyle = (style: TextStyle | undefined): TextStyle => (style === 'dos' ? 'clean' : 'dos');
 
 /** A second press on the same cell within this many ms is a double click. */
 const DOUBLE_CLICK_MS = 400;
@@ -239,6 +245,7 @@ const KEYS: Record<string, Action> = {
   o: (d, ctx) => toggleOverview(d, ctx),
   L: (d, ctx) => toggleLegend(d, ctx),
   '?': (d) => stay({ ...d, help: !d.help }),
+  s: (d, ctx) => ({ diagram: d, effects: [{ kind: 'relayout' }], style: otherStyle(ctx.style) }),
   r: (d) => ({ diagram: d, effects: [{ kind: 'reload' }] }),
   q: (d) => ({ diagram: d, effects: [{ kind: 'quit' }] }),
   escape: (d) => escape(d),

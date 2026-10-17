@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readingOrder } from './nav';
-import { openDiagram, reduce, settle, type DiagramState, type TuiState } from './state';
+import { openDiagram, reduce, sceneInput, settle, type DiagramState, type TuiState } from './state';
 import { ctxOf, key, model, pointer, view } from './viewer.fixture';
 
 function opened(extra: Partial<DiagramState> = {}): TuiState {
@@ -52,6 +52,28 @@ describe('reduce on a diagram', () => {
     const left = reduce(opened(), key('escape'), ctx);
     expect([left.state.screen, left.effects]).toEqual(['list', []]);
     expect(reduce(opened({ panel: true }), key('escape'), ctx).state.screen).toBe('diagram');
+  });
+});
+
+describe('the style', () => {
+  it('keeps the style a diagram switches to as the reader’s, for the diagrams after it', async () => {
+    const ctx = await ctxOf(opened().diagram!);
+    expect(reduce(opened(), key('s'), ctx).state.style).toBe('dos');
+    expect(reduce({ ...opened(), style: 'dos' }, key('s'), { ...ctx, style: 'dos' }).state.style).toBe('clean');
+    // any other key leaves the pick as it was
+    expect(reduce({ ...opened(), style: 'dos' }, key('tab'), ctx).state.style).toBe('dos');
+  });
+
+  it('switches on the list too, where nothing is laid out', () => {
+    const list: TuiState = { screen: 'list', names: ['a'], index: 0 };
+    expect(reduce(list, key('s'), { view, at: 0 })).toEqual({ state: { ...list, style: 'dos' }, effects: [] });
+    expect(reduce({ ...list, style: 'dos' }, key('s'), { view, at: 0 }).state.style).toBe('clean');
+  });
+
+  it('lays a diagram out in the style it is drawn in', () => {
+    const d = openDiagram('m', model, undefined);
+    expect(sceneInput(d, model, undefined, 'dos').style).toBe('dos');
+    expect(sceneInput(d, model, undefined)).not.toHaveProperty('style');
   });
 });
 

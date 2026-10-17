@@ -1,6 +1,7 @@
 import type { DiagramModel } from '@diagc/core/internal';
 import { serialize, type ColorMode } from '../text/ansi';
 import type { Cell, CellPoint, CellRect, Style } from '../text/canvas';
+import { BLACK, CYAN, DESKTOP, GREY, RED, SHADOW, SHADOW_REACH, WHITE, type TextStyle } from '../text/dos';
 import { UNICODE } from '../text/glyphs';
 import { legendCells, legendSize } from '../text/legend';
 import type { Scene } from '../text/scene';
@@ -37,6 +38,8 @@ export interface FrameInput {
   notice?: string;
   /** the terminal shows images: the overview goes as one */
   graphics?: Graphics;
+  /** the style the screen is drawn in; absent = the terminal's own */
+  style?: TextStyle;
 }
 
 type Row = Cell[];
@@ -60,6 +63,7 @@ const HELP: readonly (readonly [string, string])[] = [
   ['i', 'details of the box'],
   ['o', 'overview on / off'],
   ['L', 'legend on / off'],
+  ['s', 'DOS style on / off'],
   ['Shift-arrows, PgUp, PgDn', 'scroll'],
   ['Home, End, mouse wheel', 'scroll'],
   ['click, double-click, drag', 'select, fold, pan'],
@@ -72,7 +76,70 @@ const HELP: readonly (readonly [string, string])[] = [
 const INVERSE: Style = { inverse: true };
 const DIM: Style = { dim: true };
 
-const blankRow = (columns: number): Row => Array.from({ length: columns }, () => ({ ch: ' ', style: {} }));
+/** How the screen's parts look in a style. */
+interface Chrome {
+  /** the title row */
+  title: Style;
+  /** the status row: its text, its hints and its complaints */
+  status: Style;
+  hint: Style;
+  error: Style;
+  /** what the canvas and the list lie on */
+  ground: Style;
+  /** the list's current row */
+  current: Style;
+  /** the details panel, and its rule against the canvas */
+  panel: Style;
+  rule: Style;
+  /** the help: inside it, its frame and the frame's characters (corners, across, down) */
+  dialog: Style;
+  border: Style;
+  frame: readonly [string, string, string, string, string, string];
+  /** what a dialog's shadow does to what it falls on */
+  shadow?: Style;
+  /** the overview image's colour, in place of the terminal's text colour */
+  ink?: [number, number, number];
+}
+
+/** The terminal's own look: its colours, with inverse for the bars. */
+const CLEAN: Chrome = {
+  title: INVERSE,
+  status: {},
+  hint: DIM,
+  error: { fg: { ansi: 9 }, bold: true },
+  ground: {},
+  current: INVERSE,
+  panel: {},
+  rule: DIM,
+  dialog: {},
+  border: {},
+  frame: ['┌', '┐', '└', '┘', '─', '│'],
+};
+
+const BAR: Style = { fg: BLACK, bg: GREY };
+
+/** Turbo Vision's: a grey menu bar and status line over the blue desktop, the list's
+ * row and the panel a cyan window, the help a grey dialog in a double frame. */
+const DOS: Chrome = {
+  title: BAR,
+  status: BAR,
+  hint: BAR,
+  error: { ...BAR, fg: RED, bold: true },
+  ground: DESKTOP,
+  current: { fg: BLACK, bg: CYAN },
+  panel: { fg: BLACK, bg: CYAN },
+  rule: { fg: BLACK, bg: CYAN },
+  dialog: BAR,
+  border: { fg: WHITE, bg: GREY },
+  frame: ['╔', '╗', '╚', '╝', '═', '║'],
+  shadow: SHADOW,
+  ink: WHITE.rgb,
+};
+
+const chromeOf = (input: Pick<FrameInput, 'style'>): Chrome => (input.style === 'dos' ? DOS : CLEAN);
+
+const blankRow = (columns: number, style: Style = {}): Row =>
+  Array.from({ length: columns }, () => ({ ch: ' ', style }));
 
 /** Before cell `i` is overwritten: if it is half of a wide character, blank the other
  * half, so an overlay over a wide character never leaves the row a cell short or
@@ -195,7 +262,7 @@ export function overviewImage(state: TuiState, input: FrameInput, size: Size): F
   const { width, height } = canvasSize(state, size);
   const window = { scroll: d.scroll, width, height };
   const pixels = overviewPixels(scene.layout, { ...place, cell: graphics.cell }, window, d.selected);
-  return { place, width: pixels.width, height: pixels.height, rgba: pixels.rgba(graphics.ink) };
+  return { place, width: pixels.width, height: pixels.height, rgba: pixels.rgba(chromeOf(input).ink ?? graphics.ink) };
 }
 
 function titleOf(d: DiagramState, model: DiagramModel | undefined): string {
@@ -213,16 +280,19 @@ function titleOf(d: DiagramState, model: DiagramModel | undefined): string {
 }
 
 function statusOf(d: DiagramState, input: FrameInput): [text: string, style: Style] {
-  if (d.search?.editing === true) return [`/${d.search.query}_`, {}];
-  if (d.message !== undefined) return [d.message.text, d.message.error ? { fg: { ansi: 9 }, bold: true } : {}];
+  const chrome = chromeOf(input);
+  if (d.search?.editing === true) return [`/${d.search.query}_`, chrome.status];
+  if (d.message !== undefined) return [d.message.text, d.message.error ? chrome.error : chrome.status];
   const node = d.selected === undefined ? undefined : input.model?.nodes.find((n) => n.id === d.selected);
-  if (node === undefined) return ['arrows move · Enter fold · > go in · / search · i details · ? help · q quit', DIM];
+  if (node === undefined)
+    return ['arrows move · Enter fold · > go in · / search · i details · ? help · q quit', chrome.hint];
   const subtitle = printable(subtitleOf(node, input.scene?.notation));
   const name = printable(node.name);
-  return [`${name}${subtitle === '' ? '' : `  ${subtitle}`}   · Enter fold · i details · ? help`, {}];
+  return [`${name}${subtitle === '' ? '' : `  ${subtitle}`}   · Enter fold · i details · ? help`, chrome.status];
 }
 
 function drawPanel(rows: Row[], d: DiagramState, input: FrameInput, size: Size): void {
+  const { panel, rule } = chromeOf(input);
   const beside = size.columns >= PANEL_MIN_COLUMNS;
   const left = beside ? size.columns - PANEL_WIDTH : 0;
   const width = beside ? PANEL_WIDTH - 3 : size.columns - 2;
@@ -232,10 +302,11 @@ function drawPanel(rows: Row[], d: DiagramState, input: FrameInput, size: Size):
       : ['Select a box to see its details.'];
   for (let r = 1; r < size.rows - 1; r++) {
     const row = rows[r]!;
-    for (let c = left; c < size.columns; c++) row[c] = { ch: ' ', style: {} };
-    if (beside) row[left] = { ch: '│', style: DIM };
+    for (let c = left; c < size.columns; c++) row[c] = { ch: ' ', style: panel };
+    if (beside) row[left] = { ch: '│', style: rule };
     const line = lines[r - 1];
-    if (line !== undefined) write(row, left + (beside ? 2 : 1), line, { style: r === 1 ? { bold: true } : {} });
+    if (line !== undefined)
+      write(row, left + (beside ? 2 : 1), line, { style: r === 1 ? { ...panel, bold: true } : panel });
   }
 }
 
@@ -273,7 +344,22 @@ function drawLegend(rows: Row[], scene: Scene, place: CellRect): void {
   });
 }
 
-function drawHelp(rows: Row[], area: { top: number; width: number; height: number }): void {
+/** A dialog's shadow, where the chrome casts one: two columns right of `box` and a row
+ * below, as the DOS style's boxes cast theirs. */
+function shade(rows: Row[], box: CellRect, shadow: Style | undefined): void {
+  if (shadow === undefined) return;
+  const [right, bottom] = [box.x + box.width, box.y + box.height];
+  for (let y = box.y + SHADOW_REACH.y; y < bottom + SHADOW_REACH.y; y++) {
+    const row = rows[y];
+    for (let x = box.x + SHADOW_REACH.x; x < right + SHADOW_REACH.x; x++) {
+      const cell = row?.[x];
+      if (cell !== undefined && (x >= right || y >= bottom))
+        row![x] = { ch: cell.ch, style: { ...cell.style, ...shadow } };
+    }
+  }
+}
+
+function drawHelp(rows: Row[], area: { top: number; width: number; height: number }, chrome: Chrome): void {
   const keyWidth = Math.max(...HELP.map(([k]) => cellWidth(k)));
   const lines = HELP.map(([k, what]) => `${k}${' '.repeat(keyWidth - cellWidth(k))}  ${what}`);
   const width = Math.min(area.width, Math.max(...lines.map(cellWidth)) + 4);
@@ -281,14 +367,29 @@ function drawHelp(rows: Row[], area: { top: number; width: number; height: numbe
   if (width < 3 || height < 2) return;
   const x = (area.width - width) >> 1;
   const y = area.top + ((area.height - height) >> 1);
+  const [tl, tr, bl, br, across, down] = chrome.frame;
   for (let r = 0; r < height; r++) {
     const row = rows[y + r]!;
     const edge = r === 0 || r === height - 1;
-    const [l, fill, rt] = r === 0 ? ['┌', '─', '┐'] : r === height - 1 ? ['└', '─', '┘'] : ['│', ' ', '│'];
-    write(row, x, `${l}${fill.repeat(width - 2)}${rt}`);
-    if (!edge) write(row, x + 2, lines[r - 1] ?? '', { maxX: x + width - 1 });
+    const [l, rt] = r === 0 ? [tl, tr] : r === height - 1 ? [bl, br] : [down, down];
+    write(row, x, l, { style: chrome.border });
+    write(row, x + 1, (edge ? across : ' ').repeat(width - 2), { style: edge ? chrome.border : chrome.dialog });
+    write(row, x + width - 1, rt, { style: chrome.border });
+    if (!edge) write(row, x + 2, lines[r - 1] ?? '', { style: chrome.dialog, maxX: x + width - 1 });
   }
-  write(rows[y]!, x + 2, ' Keys ', { style: { bold: true }, maxX: x + width - 1 });
+  write(rows[y]!, x + 2, ' Keys ', { style: { ...chrome.border, bold: true }, maxX: x + width - 1 });
+  shade(rows, { x, y, width, height }, chrome.shadow);
+}
+
+/** The canvas's cells that set no background of their own, laid on the chrome's ground:
+ * the picture's lies on it already, but not what lies over the picture. */
+function onGround(rows: Row[], area: { top: number; height: number }, ground: Style): void {
+  if (ground.bg === undefined) return;
+  for (const row of rows.slice(area.top, area.top + area.height)) {
+    row.forEach((cell, c) => {
+      if (cell.style.bg === undefined) row[c] = { ch: cell.ch, style: { ...ground, ...cell.style } };
+    });
+  }
 }
 
 /** Where a frame's parts go: the canvas, and the overview and the legend where they
@@ -302,9 +403,10 @@ interface Places {
 type OverviewPlaces = Required<Pick<Places, 'canvas' | 'overview'>> & { image: boolean };
 
 function composeDiagram(d: DiagramState, input: FrameInput, size: Size, places: Places): Row[] {
-  const rows = Array.from({ length: size.rows }, () => blankRow(size.columns));
+  const chrome = chromeOf(input);
+  const rows = Array.from({ length: size.rows }, () => blankRow(size.columns, chrome.ground));
   const area = places.canvas;
-  rows[0] = bar(size.columns, titleOf(d, input.model), INVERSE);
+  rows[0] = bar(size.columns, titleOf(d, input.model), chrome.title);
   if (input.scene === undefined || input.canvas === undefined) centred(rows, area, input.notice ?? 'Loading…');
   else if (input.scene.layout.boxes.size === 0) centred(rows, area, 'Nothing on this plane');
   else {
@@ -315,8 +417,9 @@ function composeDiagram(d: DiagramState, input: FrameInput, size: Size, places: 
     }
     if (d.legend && places.legend !== undefined) drawLegend(rows, input.scene, places.legend);
   }
+  onGround(rows, area, chrome.ground);
   if (d.panel && size.rows > 2) drawPanel(rows, d, input, size);
-  if (d.help) drawHelp(rows, area);
+  if (d.help) drawHelp(rows, area, chrome);
   if (size.rows > 1) {
     const [text, style] = statusOf(d, input);
     rows[size.rows - 1] = bar(size.columns, fitCells(text, Math.max(0, size.columns - 2)), style);
@@ -325,9 +428,10 @@ function composeDiagram(d: DiagramState, input: FrameInput, size: Size, places: 
 }
 
 function composeList(state: TuiState, input: FrameInput, size: Size): Row[] {
-  const rows = Array.from({ length: size.rows }, () => blankRow(size.columns));
+  const chrome = chromeOf(input);
+  const rows = Array.from({ length: size.rows }, () => blankRow(size.columns, chrome.ground));
   const count = state.names.length;
-  rows[0] = bar(size.columns, `diagc · ${count} diagram${count === 1 ? '' : 's'}`, INVERSE);
+  rows[0] = bar(size.columns, `diagc · ${count} diagram${count === 1 ? '' : 's'}`, chrome.title);
   const area = { top: 1, width: size.columns, height: Math.max(0, size.rows - 2) };
   if (count === 0) centred(rows, area, input.notice ?? 'No diagrams under .diagrams/src');
   // keep the current name on screen: scroll the list once it passes the bottom
@@ -335,15 +439,17 @@ function composeList(state: TuiState, input: FrameInput, size: Size): Row[] {
   for (let r = 0; r < area.height && first + r < count; r++) {
     const current = first + r === state.index;
     // the marker as well as the inverse bar: a terminal may show no attributes at all
-    const row = current ? bar(size.columns, `› ${state.names[first + r]!}`, INVERSE) : blankRow(size.columns);
-    if (!current) write(row, 3, state.names[first + r]!);
+    const name = state.names[first + r]!;
+    const row = current ? bar(size.columns, `› ${name}`, chrome.current) : blankRow(size.columns, chrome.ground);
+    if (!current) write(row, 3, name, { style: chrome.ground });
     rows[area.top + r] = row;
   }
+  onGround(rows, area, chrome.ground);
   // with names to show, a notice is what the last pick ran into, said in the status row
   const [status, style] =
     count > 0 && input.notice !== undefined
-      ? [input.notice, { fg: { ansi: 9 }, bold: true }]
-      : ['Enter open · ↑↓ move · r reload · q quit', DIM];
+      ? [input.notice, chrome.error]
+      : ['Enter open · ↑↓ move · s style · r reload · q quit', chrome.hint];
   if (size.rows > 1) rows[size.rows - 1] = bar(size.columns, fitCells(status, Math.max(0, size.columns - 2)), style);
   return rows;
 }

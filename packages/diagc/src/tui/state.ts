@@ -1,8 +1,9 @@
 import { presetLayers, type DiagramModel, type LayoutOverlay } from '@diagc/core/internal';
 import type { CellPoint, CellRect } from '../text/canvas';
+import type { TextStyle } from '../text/dos';
 import { readerPins, type Pins } from '../text/folds';
 import type { SceneInput, Scene } from '../text/scene';
-import { onKey, onMouse } from './actions';
+import { onKey, onMouse, otherStyle } from './actions';
 import type { UserInput } from './keys';
 import { clampScroll, follow } from './nav';
 import type { OverviewPlace } from './overview';
@@ -49,6 +50,9 @@ export interface TuiState {
   /** the list's current row */
   index: number;
   diagram?: DiagramState;
+  /** the style the reader picked, with `--style` or `s`, for every diagram; absent =
+   * each diagram's own */
+  style?: TextStyle;
 }
 
 /** What an event is read against: the open diagram's model and laid-out picture, the
@@ -63,6 +67,8 @@ export interface Ctx {
   overview?: OverviewPlace;
   /** where the legend goes on this screen, its border included, whether or not it is on */
   legend?: CellRect;
+  /** the style the diagram is drawn in; absent = the terminal's own */
+  style?: TextStyle;
   at: number;
 }
 
@@ -95,8 +101,13 @@ export function openDiagram(
   };
 }
 
-/** What to lay out for `state`. */
-export function sceneInput(state: DiagramState, model: DiagramModel, overlay: LayoutOverlay | undefined): SceneInput {
+/** What to lay out for `state`, in `style`. */
+export function sceneInput(
+  state: DiagramState,
+  model: DiagramModel,
+  overlay: LayoutOverlay | undefined,
+  style?: TextStyle,
+): SceneInput {
   const root = state.path.at(-1);
   return {
     model,
@@ -105,6 +116,7 @@ export function sceneInput(state: DiagramState, model: DiagramModel, overlay: La
     ...(overlay !== undefined ? { overlay } : {}),
     ...(state.plane !== undefined ? { plane: state.plane } : {}),
     ...(root !== undefined ? { root } : {}),
+    ...(style !== undefined ? { style } : {}),
   };
 }
 
@@ -129,6 +141,7 @@ function reduceList(state: TuiState, event: UserInput): Reduced {
   if (event.name === 'up' || event.name === 'k') return stay(Math.max(0, state.index - 1));
   if (event.name === 'down' || event.name === 'j') return stay(Math.min(last, state.index + 1));
   if (event.name === 'r') return { state, effects: [{ kind: 'reload' }] };
+  if (event.name === 's') return { state: { ...state, style: otherStyle(state.style) }, effects: [] };
   const name = state.names[state.index];
   if (event.name === 'enter' && name !== undefined) return { state, effects: [{ kind: 'open', name }] };
   return stay();
@@ -139,7 +152,12 @@ export function reduce(state: TuiState, event: UserInput, ctx: Ctx): Reduced {
   const { message: _cleared, ...diagram } = state.diagram;
   const step = event.kind === 'mouse' ? onMouse(diagram, ctx, event) : onKey(diagram, ctx, event);
   return {
-    state: { ...state, diagram: step.diagram, ...(step.toList === true ? { screen: 'list' as const } : {}) },
+    state: {
+      ...state,
+      diagram: step.diagram,
+      ...(step.toList === true ? { screen: 'list' as const } : {}),
+      ...(step.style !== undefined ? { style: step.style } : {}),
+    },
     effects: step.effects,
   };
 }

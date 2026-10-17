@@ -11,6 +11,15 @@ describe('tui', () => {
     });
   });
 
+  it('refuses a style the terminal does not draw, naming the two it does', async () => {
+    await inTempDir(async (dir) => {
+      writeSources(dir, { shop: diagram('shop') });
+      const io = captureIo();
+      expect(await tui.run(argsOf(['shop'], { '--style': 'sketch' }), contextFor(io))).toBe(1);
+      expect(io.stderr).toBe("diagc: the terminal draws the clean and dos styles, not 'sketch'\n");
+    });
+  });
+
   it('refuses to run without a terminal, pointing at show', async () => {
     await inTempDir(async (dir) => {
       writeSources(dir, { shop: diagram('shop') });

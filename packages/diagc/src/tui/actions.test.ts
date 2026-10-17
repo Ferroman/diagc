@@ -29,6 +29,12 @@ async function feed(diagram: DiagramState, events: UserInput[], at = 0, of = mod
 }
 
 describe('onKey', () => {
+  it('switches between the DOS style and the plain one with s, which lays the picture out again', async () => {
+    const ctx = await ctxOf(opened());
+    expect(handle(opened(), key('s'), ctx)).toMatchObject({ style: 'dos', effects: [{ kind: 'relayout' }] });
+    expect(handle(opened(), key('s'), { ...ctx, style: 'dos' }).style).toBe('clean');
+  });
+
   it('steps through the boxes in reading order with Tab and back with Shift-Tab', async () => {
     const order = readingOrder((await ctxOf(opened())).scene!.layout.boxes);
     expect((await feed(opened(), [key('tab')])).diagram.selected).toBe(order[0]);
