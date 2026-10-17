@@ -12,6 +12,8 @@ export interface DiagramMenuContext {
   actions: Pick<DiagramActions, 'renameDiagram' | 'duplicateDiagram' | 'ejectDiagram'>;
   /** save the canvas as drawn as a PNG */
   exportPng: () => void;
+  /** save the diagram as one web page, the one `diagc publish` writes */
+  exportPage: () => void;
 }
 
 /**
@@ -19,7 +21,14 @@ export interface DiagramMenuContext {
  * compiled from TypeScript has no source here to rename or eject, only a
  * model to copy.
  */
-export const diagramMenuItems = ({ owned, hasModel, hint, actions, exportPng }: DiagramMenuContext): MenuItem[] => [
+export const diagramMenuItems = ({
+  owned,
+  hasModel,
+  hint,
+  actions,
+  exportPng,
+  exportPage,
+}: DiagramMenuContext): MenuItem[] => [
   ...(owned
     ? [
         {
@@ -37,6 +46,13 @@ export const diagramMenuItems = ({ owned, hasModel, hint, actions, exportPng }: 
           label: 'Export PNG',
           title: 'Save the canvas as drawn — folds, layers, theme and drawings — as a PNG image',
           onSelect: exportPng,
+        },
+        {
+          id: 'export-page',
+          label: 'Export web page',
+          title:
+            'Save a web page anyone can open in a browser, all in one file: the diagram to explore, with a light/dark switch and a style picker. Made from what is saved — positions not yet saved are left out',
+          onSelect: exportPage,
         },
         {
           id: 'duplicate',

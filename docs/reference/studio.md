@@ -144,7 +144,7 @@ One row, in both modes. Layout and style are not here: they are the right dock's
 | --- | --- |
 | Diagram picker (`Ctrl/Cmd + K` by default) | Switch diagrams. Type to search — every word must appear somewhere in the name, folder included. Diagrams are grouped by the folder part of their name (`docs/fishbone` is under **docs**); diagrams with no folder come first. Click a folder heading to collapse it; collapsed folders are remembered across reloads, and a search looks inside them anyway. `↑` / `↓` move, `Enter` opens, `Esc` closes. To move a diagram into a folder, **Rename** it to `folder/name`. **New diagram** starts from the open diagram's folder. |
 | `＋` | New diagram. |
-| `⋯` (view mode) | **Rename**, **Duplicate** and **Eject** — only the ones that apply: a diagram compiled from TypeScript offers Duplicate alone. `↑` / `↓` move, `Enter` runs, `Esc` closes. |
+| `⋯` (view mode) | **Rename**, **Export PNG**, **Export web page**, **Duplicate** and **Eject** — only the ones that apply: a diagram compiled from TypeScript offers the two exports and Duplicate. See [Publish and share](../how-to/publish-and-share.md#a-web-page-from-the-studio) for the exports. `↑` / `↓` move, `Enter` runs, `Esc` closes. |
 | **Edit** / `read-only` | Enter edit mode, or the mark of a diagram compiled from `.diagram.ts`. |
 | **Save positions** (view mode) | Appears once you have moved something: writes Alt-dragged boxes and edge labels, and which groups are open, to `<name>.layout.json`. See [Place boxes on a generated diagram](../how-to/position-a-generated-diagram.md). |
 | **Notes** (edit mode, threat models) | Open or close every threat bubble at once. |

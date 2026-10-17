@@ -8,6 +8,12 @@ With a diagram open (not in edit mode), the topbar's **⋯** menu has **Export P
 
 For an image that belongs in the repo, use `publish` below instead: it is reproducible (every group unfolded, the light theme and the diagram's own style unless you name others, a declared legend baked in) and writes to the committed `.diagrams/static/`.
 
+## A web page from the studio
+
+The same **⋯** menu has **Export web page**: it downloads `<name>.html`, the [interactive page](#share-an-interactive-page) `diagc publish` writes, as one file you can send to anyone. The reader needs nothing but a browser: they can unfold groups, switch planes, and pick light or dark and a style.
+
+The page is made from what is saved — the diagram, its layout file and its drawings, with every picture packed in — and opens the way a published page does: folded, on the first plane. Boxes you have moved but not saved with **Save positions** are not in it. If a picture cannot be read, the page is still saved without it, and the studio names what is missing.
+
 ## Export
 
 ```bash

@@ -17,6 +17,7 @@ describe('the handlers module', () => {
     expect(Object.keys(handlers).sort()).toEqual([
       'MAX_ASSET_BYTES',
       'ejectDiagramSource',
+      'exportPage',
       'isSafeName',
       'listDiagramModels',
       'listDrawings',

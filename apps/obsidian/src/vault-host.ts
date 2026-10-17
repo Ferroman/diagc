@@ -42,14 +42,20 @@ export function buildVaultHost(app: App, plugin: DiagcPlugin, sourcePath = ''): 
   if (!(adapter instanceof FileSystemAdapter)) return undefined;
   const folder = plugin.settings.diagramsFolder;
   const home = path.join(adapter.getBasePath(), folder);
-  const ctx = { diagramsDir: path.join(home, 'src'), artifactsDir: path.join(home, '.artifacts') };
-  mkdirSync(ctx.diagramsDir, { recursive: true });
-  mkdirSync(ctx.artifactsDir, { recursive: true });
   // `manifest.dir` is the vault-relative plugin folder Obsidian actually
   // installed this build into; it is only absent on manifest shapes older
   // than the field, so fall back to the conventional configDir/plugins/<id>
   // layout rather than hardcoding this plugin's id twice.
   const pluginDir = plugin.manifest.dir ?? `${app.vault.configDir}/plugins/${plugin.manifest.id}`;
+  const installed = path.join(adapter.getBasePath(), pluginDir);
+  const ctx = {
+    diagramsDir: path.join(home, 'src'),
+    artifactsDir: path.join(home, '.artifacts'),
+    // the build copies the viewer page and the icon library into the plugin folder (esbuild.config.mjs)
+    pages: { shellPath: path.join(installed, 'viewer.html'), libraryDir: path.join(installed, 'library') },
+  };
+  mkdirSync(ctx.diagramsDir, { recursive: true });
+  mkdirSync(ctx.artifactsDir, { recursive: true });
   return {
     apiFetch: makeApiFetch(ctx, handlers),
     openLink: (link) => {

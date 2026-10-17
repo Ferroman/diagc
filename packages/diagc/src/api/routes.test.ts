@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { Handlers } from './dispatch';
 import { matchRoute, ROUTES, type RouteResult } from './routes';
 
+const PAGES = { shellPath: 'S', libraryDir: 'L' };
+
 /** A handlers object that records each call as `[name, ...args]` and answers 200 with the name. */
 function spyHandlers(): { handlers: Handlers; calls: unknown[][] } {
   const calls: unknown[][] = [];
@@ -29,7 +31,14 @@ async function dispatch(
   if (route === undefined) throw new Error(`no route for ${method} ${url}`);
   const { handlers, calls } = spyHandlers();
   const match = url.match(route.pattern) as RegExpMatchArray;
-  const ctx = { match, body: send.body, contentType: send.contentType, diagramsDir: 'D', artifactsDir: 'A' };
+  const ctx = {
+    match,
+    body: send.body,
+    contentType: send.contentType,
+    diagramsDir: 'D',
+    artifactsDir: 'A',
+    pages: PAGES,
+  };
   const result = await route.handler(handlers, ctx);
   return { result, calls };
 }
@@ -49,6 +58,7 @@ describe('the route table', () => {
       'POST ^\\/api\\/diagrams\\/(.+)\\/rename$ json',
       'POST ^\\/api\\/diagrams\\/(.+)\\/eject$ none',
       'POST ^\\/api\\/(diagrams|layouts|drawings)\\/(.+)$ json',
+      'GET ^\\/api\\/pages\\/(.+)$ none',
     ]);
   });
 
@@ -85,6 +95,7 @@ describe('the route table', () => {
     ['GET', '/api/diagrams', []],
     ['GET', '/api/layouts', []],
     ['GET', '/api/drawings', []],
+    ['GET', '/api/pages/team/shop', ['team/shop']],
   ])('%s %s captures %j', (method, url, captures) => {
     const route = matchRoute(method, url)!;
     expect(url.match(route.pattern)!.slice(1)).toEqual(captures);
@@ -102,6 +113,8 @@ describe('the route table', () => {
     expect(matchRoute('GET', '/api/nope')).toBeUndefined();
     expect(matchRoute('GET', '/index.html')).toBeUndefined();
     expect(matchRoute('POST', '/api/diagrams')).toBeUndefined();
+    expect(matchRoute('GET', '/api/pages')).toBeUndefined();
+    expect(matchRoute('POST', '/api/pages/shop')).toBeUndefined();
   });
 
   it('hands each route its handler, the decoded name and the directories', async () => {
@@ -122,6 +135,7 @@ describe('the route table', () => {
       ['POST', '/api/diagrams/a%20b', { body: { m: 1 } }, ['saveDiagram', 'D', 'a b', { m: 1 }]],
       ['POST', '/api/layouts/a%20b', { body: { l: 1 } }, ['saveLayout', 'D', 'a b', { l: 1 }]],
       ['POST', '/api/drawings/a%20b', { body: { d: 1 } }, ['saveDrawings', 'D', 'a b', { d: 1 }]],
+      ['GET', '/api/pages/team/a%20b', {}, ['exportPage', 'D', 'A', PAGES, 'team/a b']],
     ];
     for (const [method, url, send, call] of cases) {
       const { result, calls } = await dispatch(method, url, send);

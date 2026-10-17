@@ -26,29 +26,50 @@ export async function listDiagramModels(diagramsDir: string, artifactsDir: strin
   const artifactNames = await walkDiagramJson(artifactsDir);
   const all = [...new Set([...sourceNames, ...artifactNames])].sort();
   const diagrams: DiagramEntry[] = [];
-  for (const name of all) {
-    const isSource = sourceNames.has(name);
-    // Every read and save refuses a name isSafeName refuses, so such a source is shown but not offered for editing.
-    const editable = isSource && isSafeName(name);
-    const file = isSource
-      ? path.join(diagramsDir, `${name}.diagram.json`)
-      : path.join(artifactsDir, `${name}.diagram.json`);
-    let model: DiagramModel | null = null;
-    const issues: { message: string }[] = [];
-    if (isSource && !editable) {
-      issues.push({
-        message: `'${name}' is read-only here: the studio saves names of lowercase letters, digits, '-' and '/', none ending in /rename, /eject or /composed. Rename the file to edit it.`,
-      });
-    }
-    try {
-      model = JSON.parse(await readFile(file, 'utf8')) as DiagramModel;
-    } catch {
-      issues.push({ message: `Could not read model for '${name}'` });
-    }
-    if (isSource && hasIncludes(model)) model = await composedForList(model as DiagramModel, file, diagramsDir, issues);
-    diagrams.push({ name, model, issues, editable });
-  }
+  for (const name of all) diagrams.push(await loadEntry(diagramsDir, artifactsDir, name, sourceNames.has(name)));
   return { status: 200, body: { diagrams } };
+}
+
+/** The diagram `name` as the studio's list shows it, or undefined when the list has
+ * no such name. Looking the name up in the listing, rather than checking its
+ * spelling, is what keeps it inside the two directories: a compiled diagram's name
+ * comes from its `.diagram.ts` file and need not pass `isSafeName`. */
+export async function diagramAsShown(
+  diagramsDir: string,
+  artifactsDir: string,
+  name: string,
+): Promise<DiagramEntry | undefined> {
+  if ((await walkDiagramJson(diagramsDir)).includes(name)) return loadEntry(diagramsDir, artifactsDir, name, true);
+  if ((await walkDiagramJson(artifactsDir)).includes(name)) return loadEntry(diagramsDir, artifactsDir, name, false);
+  return undefined;
+}
+
+/** One listed diagram: its JSON source with includes expanded, or else its artifact. */
+async function loadEntry(
+  diagramsDir: string,
+  artifactsDir: string,
+  name: string,
+  isSource: boolean,
+): Promise<DiagramEntry> {
+  // Every read and save refuses a name isSafeName refuses, so such a source is shown but not offered for editing.
+  const editable = isSource && isSafeName(name);
+  const file = isSource
+    ? path.join(diagramsDir, `${name}.diagram.json`)
+    : path.join(artifactsDir, `${name}.diagram.json`);
+  let model: DiagramModel | null = null;
+  const issues: { message: string }[] = [];
+  if (isSource && !editable) {
+    issues.push({
+      message: `'${name}' is read-only here: the studio saves names of lowercase letters, digits, '-' and '/', none ending in /rename, /eject or /composed. Rename the file to edit it.`,
+    });
+  }
+  try {
+    model = JSON.parse(await readFile(file, 'utf8')) as DiagramModel;
+  } catch {
+    issues.push({ message: `Could not read model for '${name}'` });
+  }
+  if (isSource && hasIncludes(model)) model = await composedForList(model as DiagramModel, file, diagramsDir, issues);
+  return { name, model, issues, editable };
 }
 
 /** `model` with its includes expanded for the list, or `model` itself when they

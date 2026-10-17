@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { isIP } from 'node:net';
 import { errMessage } from '@diagc/core/internal';
+import type { PageSources } from './pages';
 import { matchRoute, type Route } from './routes';
 
 /** The handler module, passed in rather than imported: the Vite adapter loads it
@@ -11,6 +12,8 @@ export type Handlers = typeof import('./handlers');
 export interface ApiContext {
   diagramsDir: string;
   artifactsDir: string;
+  /** what the page route builds from; a host without it answers that route 501 */
+  pages?: PageSources;
 }
 
 /** A request in transport-neutral terms: no `IncomingMessage`, so a host with

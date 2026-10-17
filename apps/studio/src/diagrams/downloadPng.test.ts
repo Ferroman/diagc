@@ -2,15 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LayoutApi } from '@diagc/renderer';
 import { defaultHost, setHost } from '../host';
-import { downloadPng, pngFileName } from './downloadPng';
-
-describe('pngFileName', () => {
-  it('uses the diagram name without its folder', () => {
-    expect(pngFileName('docs/activity')).toBe('activity.png');
-    expect(pngFileName('shop')).toBe('shop.png');
-    expect(pngFileName('')).toBe('diagram.png');
-  });
-});
+import { downloadPng } from './downloadPng';
 
 describe('downloadPng', () => {
   afterEach(() => {
@@ -27,7 +19,7 @@ describe('downloadPng', () => {
       expect(this.download).toBe('shop.png');
       expect(this.href).toBe('blob:x');
     });
-    await downloadPng(api, 'shop');
+    await downloadPng(api, 'team/shop');
     expect(click).toHaveBeenCalledOnce();
   });
 

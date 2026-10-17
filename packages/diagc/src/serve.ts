@@ -5,6 +5,7 @@ import path from 'node:path';
 import { errMessage } from '@diagc/core/internal';
 import { handleApiRequest } from './api/dispatch';
 import * as handlers from './api/handlers';
+import type { PageSources } from './api/pages';
 
 /** Content types for what a Vite build actually emits, plus the image formats a
  * diagram can reference. Anything else is streamed as octet-stream. */
@@ -37,6 +38,8 @@ export interface ServeOptions {
   studioDir: string;
   diagramsDir: string;
   artifactsDir: string;
+  /** what the page route builds from (see `PageSources`) */
+  pages?: PageSources;
   /** first port to try; the server walks upward when one is taken */
   port?: number;
   host?: string;
@@ -129,14 +132,14 @@ function listen(server: Server, port: number, host: string, attempts = 20): Prom
  * itself is an ordinary SPA that only ever talks to `/api/*`, which is what
  * makes a static bundle behave identically here. */
 export async function startStudioServer(opts: ServeOptions): Promise<StudioServer> {
-  const { studioDir, diagramsDir, artifactsDir } = opts;
+  const { studioDir, diagramsDir, artifactsDir, pages } = opts;
   const host = opts.host ?? '127.0.0.1';
   const index = path.join(studioDir, 'index.html');
 
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     void (async () => {
       try {
-        if (await handleApiRequest(req, res, { diagramsDir, artifactsDir }, handlers)) return;
+        if (await handleApiRequest(req, res, { diagramsDir, artifactsDir, pages }, handlers)) return;
         const file = resolveStatic(studioDir, req.url ?? '/');
         if (file === undefined) {
           res.statusCode = 400;

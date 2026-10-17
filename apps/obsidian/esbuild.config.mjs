@@ -1,5 +1,5 @@
 import esbuild from 'esbuild';
-import { copyFileSync, cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 // apps/studio/src/app.css opens with three global rules that must not restyle
 // Obsidian's own DOM; everything else in the bundle is class-scoped already.
@@ -28,7 +28,7 @@ const result = await esbuild.build({
   target: 'es2022',
   external: ['obsidian', 'electron'],
   jsx: 'automatic',
-  // fonts and small images ride inside the css/js — the plugin dir stays 4 files + library/
+  // fonts and small images ride inside the css/js — the plugin dir stays 5 files + library/
   loader: { '.woff2': 'dataurl', '.woff': 'dataurl', '.svg': 'dataurl', '.png': 'dataurl' },
   // packages/diagc/src/compile.ts (executeDiagramTs, shared with the studio's
   // eject/download-source route) reads `import.meta.url` to pin @diagc/core
@@ -56,3 +56,9 @@ const scopedCss = scopeRules(readFileSync('dist/main.css', 'utf8'));
 writeFileSync('dist/styles.css', scopedCss + '\n' + readFileSync('src/plugin.css', 'utf8'));
 copyFileSync('manifest.json', 'dist/manifest.json');
 cpSync('../studio/public/library', 'dist/library', { recursive: true });
+// The page the studio's "Export web page" stamps a diagram into. It is a build
+// output, not a source, so a checkout that has not built it fails here rather
+// than shipping a plugin whose export answers "no viewer page".
+const viewerShell = '../viewer/dist/index.html';
+if (!existsSync(viewerShell)) throw new Error(`${viewerShell} is missing — run \`pnpm build:cli\` first.`);
+copyFileSync(viewerShell, 'dist/viewer.html');

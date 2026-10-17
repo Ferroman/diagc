@@ -5,7 +5,7 @@ import type { DiagramModel, LayoutOverlay, Drawings } from '@diagc/core/internal
 import { errMessage, isDrawings, uniqueSlug } from '@diagc/core/internal';
 import { classifyAssetRef, rewriteAssetRefs, safeAssetPath } from './assets';
 import { buildGallery, type GalleryEntry } from './gallery';
-import { discoverDiagrams } from './discover';
+import { discoverDiagrams, type DiscoveredDiagram } from './discover';
 import { stampHtml } from './html';
 import type { PictureLook } from './snapshot';
 
@@ -94,6 +94,36 @@ export async function inlineAssets(
   return rewriteAssetRefs(model, (ref) => cache.get(ref));
 }
 
+/** What a page carries beside its model. */
+export interface PageSidecars {
+  layout?: LayoutOverlay;
+  drawings?: Drawings;
+}
+
+/**
+ * A diagram's layout and drawings as its page carries them; a path left out is a
+ * sidecar the diagram does not have. A hand-edited drawings sidecar can be valid
+ * JSON and still not be a drawings overlay. Stamping it would put shapeless data
+ * into a page that has no validator of its own, so it is warned about and dropped
+ * — the page still ships, just without ink. Unparseable JSON throws.
+ */
+export async function readSidecars(
+  d: Pick<DiscoveredDiagram, 'name' | 'layoutPath' | 'drawingsPath'>,
+  warn: (line: string) => void,
+): Promise<PageSidecars> {
+  const out: PageSidecars = {};
+  if (d.layoutPath !== undefined) out.layout = JSON.parse(await readFile(d.layoutPath, 'utf8')) as LayoutOverlay;
+  if (d.drawingsPath !== undefined) {
+    const parsed = JSON.parse(await readFile(d.drawingsPath, 'utf8')) as unknown;
+    if (isDrawings(parsed)) out.drawings = parsed;
+    else
+      warn(
+        `publish: ignoring malformed drawings sidecar for diagram "${d.name}" (${d.drawingsPath}); the page ships without ink.`,
+      );
+  }
+  return out;
+}
+
 /** One picture of a diagram: its plane (absent = the first) and what goes between
  * the diagram's name and `.png`. */
 export interface PlanePicture {
@@ -173,27 +203,11 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
     try {
       const modelRaw = JSON.parse(await readFile(d.modelPath, 'utf8')) as DiagramModel;
       titles.set(d.name, modelRaw.name);
-      const layout =
-        d.layoutPath !== undefined ? (JSON.parse(await readFile(d.layoutPath, 'utf8')) as LayoutOverlay) : undefined;
-      // A hand-edited sidecar can be valid JSON and still not be a drawings
-      // overlay. Publishing it would stamp shapeless data into a page that has
-      // no validator of its own, so it is warned about and dropped — the page
-      // still ships, just without ink. (Unparseable JSON keeps its old
-      // behaviour: it throws, and the diagram is skipped below.)
-      let drawings: Drawings | undefined;
-      if (d.drawingsPath !== undefined) {
-        const parsed = JSON.parse(await readFile(d.drawingsPath, 'utf8')) as unknown;
-        if (isDrawings(parsed)) drawings = parsed;
-        else
-          warn(
-            `publish: ignoring malformed drawings sidecar for diagram "${d.name}" (${d.drawingsPath}); the page ships without ink.`,
-          );
-      }
-
+      const sidecars = await readSidecars(d, warn);
       const inlined = await inlineAssets(modelRaw, opts, cache, `diagram "${d.name}"`);
       const pagePath = path.join(opts.htmlDir, `${d.name}.html`);
       await mkdir(path.dirname(pagePath), { recursive: true });
-      await writeFile(pagePath, stampHtml(shell, { model: inlined, layout, drawings }));
+      await writeFile(pagePath, stampHtml(shell, { model: inlined, ...sidecars }));
       pages.push(pagePath);
 
       if (opts.images && opts.renderPng !== undefined) {

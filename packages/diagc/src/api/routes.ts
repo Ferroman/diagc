@@ -1,3 +1,5 @@
+import type { PageSources } from './pages';
+
 // Type-only: the route table names handlers but never imports their module, so
 // a host that loads this table (Vite's config bundle) does not drag
 // `@diagc/core` in with it. `dispatch` takes the handlers as an argument.
@@ -15,6 +17,7 @@ export interface RouteCtx {
   contentType?: string;
   diagramsDir: string;
   artifactsDir: string;
+  pages?: PageSources;
 }
 
 export type BodyMode = 'none' | 'json' | 'raw';
@@ -103,6 +106,12 @@ export const ROUTES: Route[] = [
           ? h.saveLayout(c.diagramsDir, name, c.body)
           : h.saveDrawings(c.diagramsDir, name, c.body);
     },
+  },
+  // --- pages: a diagram as one self-contained web page, for the studio to download ---
+  {
+    method: 'GET',
+    pattern: /^\/api\/pages\/(.+)$/,
+    handler: (h, c) => h.exportPage(c.diagramsDir, c.artifactsDir, c.pages, decodeURIComponent(c.match[1] ?? '')),
   },
 ];
 
