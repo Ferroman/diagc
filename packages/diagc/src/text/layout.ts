@@ -53,7 +53,9 @@ const CONTAINER_PADDING = '[top=2,left=2,bottom=1,right=2]';
 
 /** The gaps for a flow. A cell is about twice as tall as it is wide, so a sideways
  * flow's gap between neighbours, counted in rows, is half a downward one's, counted in
- * columns, and its gap between levels twice: turned, the picture keeps its proportions. */
+ * columns, and its gap between levels twice: turned, the boxes keep their spacing. Only
+ * those two gaps are scaled. The clearances around lines are a cell or two already,
+ * near the least a grid of cells can hold, so they stay as written in every flow. */
 function cellOptions(direction: string): Readonly<Record<string, string>> {
   if (direction === 'DOWN' || direction === 'UP') return CELL_OPTIONS;
   return { ...CELL_OPTIONS, 'elk.spacing.nodeNode': '2', 'elk.layered.spacing.nodeNodeBetweenLayers': '4' };
