@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/Ferroman/diagc/compare/v1.4.0...v1.5.0) (2026-10-17)
+
+
+### Features
+
+* **studio:** export a diagram as a web page ([#160](https://github.com/Ferroman/diagc/issues/160)) ([653c0e9](https://github.com/Ferroman/diagc/commit/653c0e981df3654104d37bd7a257ae5e72cd045a))
+
 ## [1.4.0](https://github.com/Ferroman/diagc/compare/v1.3.0...v1.4.0) (2026-10-15)
 
 
