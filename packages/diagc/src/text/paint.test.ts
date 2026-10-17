@@ -235,6 +235,15 @@ describe('paint in the DOS style', () => {
     expect(at(cells, start.x, bottom).ch).toBe('│');
   });
 
+  it('keeps an end mark bright where it lies in a shadow', async () => {
+    const { scene, cells, text } = await dos(pair('fk'));
+    const a = scene.layout.boxes.get('a')!;
+    const y = a.y + a.height;
+    const x = text[y]!.indexOf('*');
+    expect(x).toBeGreaterThanOrEqual(a.x + 2);
+    expect(at(cells, x, y).style).toEqual({ bg: BLACK, fg: WHITE });
+  });
+
   it('joins a line to the double frame it leaves with the mixed junction', async () => {
     const { scene, cells } = await dos(pair());
     const a = scene.layout.boxes.get('a')!;

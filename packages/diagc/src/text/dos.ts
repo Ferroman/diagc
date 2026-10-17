@@ -100,20 +100,17 @@ export const mixed = (a: readonly number[], b: readonly number[], share: number)
   rgb: [0, 1, 2].map((i) => Math.round(a[i]! * share + b[i]! * (1 - share))) as [number, number, number],
 });
 
-const inside = (boxes: readonly CellRect[], x: number, y: number): boolean =>
-  boxes.some((b) => x >= b.x && x < b.x + b.width && y >= b.y && y < b.y + b.height);
-
-/** Each box's block shadow, cast over whatever lies beside it and below it — a line, a
- * frame, an arrowhead, which keep their characters in the shade — but never on a box. */
+/**
+ * Each box's block shadow, laid as the ground beside it and below it before anything is
+ * drawn there: a line, which takes its colour from the ground, is shaded with it, while
+ * an arrowhead or a label, drawn in a colour of its own, stays bright on the black. A
+ * box drawn over another's shadow lays its own ground.
+ */
 export function castShadows(canvas: Canvas, boxes: readonly CellRect[]): void {
   const { x: dx, y: dy } = SHADOW_REACH;
   for (const b of boxes) {
     const [right, bottom] = [b.x + b.width, b.y + b.height];
-    for (let y = b.y + dy; y < bottom + dy; y++) {
-      for (let x = b.x + dx; x < right + dx; x++) {
-        const beside = x >= right || y >= bottom;
-        if (beside && !inside(boxes, x, y)) canvas.restyle({ x, y, width: 1, height: 1 }, SHADOW);
-      }
-    }
+    canvas.ground({ x: right, y: b.y + dy, width: dx, height: b.height }, SHADOW);
+    canvas.ground({ x: b.x + dx, y: bottom, width: b.width - dx, height: dy }, SHADOW);
   }
 }

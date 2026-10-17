@@ -1,7 +1,7 @@
 import type { DiagramModel, DiagramNode, NotationId, ViewEdge } from '@diagc/core/internal';
 import type { Accents } from './accents';
 import { parseColor } from './ansi';
-import { Canvas, type CellPoint, type CellRect, type Color, type Style } from './canvas';
+import { Canvas, type CellPoint, type Color, type Style } from './canvas';
 import type { BoxLine, BoxText } from './content';
 import {
   BLACK,
@@ -221,9 +221,11 @@ function drawEnd(p: Painter, edge: ViewEdge, end: 'start' | 'end'): void {
   const box = p.scene.layout.boxes.get(end === 'start' ? edge.from : edge.to);
   const mark: EndMark = end === 'start' ? (look.start ?? 'none') : look.end;
   const ink = edgeInk(p, edge);
+  // in DOS a mark is white of its own, not the ground's, to stay bright in a shadow
+  const style = p.dos === undefined ? ink.style : { fg: WHITE, ...ink.style };
   if (mark === 'none') join(p, at, box, ink);
-  else if (mark === 'arrow') p.canvas.put(at, p.glyphs.arrow(arrowOf(at, prev, box)), ink.style);
-  else p.canvas.put(at, p.glyphs.mark(mark), ink.style);
+  else if (mark === 'arrow') p.canvas.put(at, p.glyphs.arrow(arrowOf(at, prev, box)), style);
+  else p.canvas.put(at, p.glyphs.mark(mark), style);
 }
 
 const isFrame = (scene: Scene, id: string): boolean => {
@@ -250,10 +252,12 @@ function drawFishRoute(p: Painter, points: readonly CellPoint[], ink: Ink): void
  * A fishbone as the fish (fish.ts): the lines first, then the head's box, heavy, and
  * the spine run into its border, then the words, a bone's label bold in the bone's
  * colour, and last the boxes of what is not on the fish. A word is selected as a title
- * is, in reverse. Returns the boxes drawn, which cast DOS's shadows.
+ * is, in reverse.
  */
-function paintFish(p: Painter, fish: FishDrawing, edges: readonly ViewEdge[]): CellRect[] {
+function paintFish(p: Painter, fish: FishDrawing, edges: readonly ViewEdge[]): void {
   const { layout } = p.scene;
+  const boxes = [...layout.boxes].filter(([id]) => id !== fish.head && !fish.words.has(id));
+  if (p.dos !== undefined) castShadows(p.canvas, [layout.boxes.get(fish.head)!, ...boxes.map(([, g]) => g)]);
   for (const edge of edges) drawFishRoute(p, layout.routes.get(edge.id)!.points, edgeInk(p, edge));
   drawBox(p, fish.head, layout.boxes.get(fish.head)!, 'heavy');
   const { y, from, to } = fish.spine;
@@ -266,9 +270,7 @@ function paintFish(p: Painter, fish: FishDrawing, edges: readonly ViewEdge[]): C
     };
     for (const line of lines) p.canvas.text(line, line.text, style);
   }
-  const boxes = [...layout.boxes].filter(([id]) => id !== fish.head && !fish.words.has(id));
   for (const [id, g] of boxes) drawBox(p, id, g);
-  return [layout.boxes.get(fish.head)!, ...boxes.map(([, g]) => g)];
 }
 
 /** An edge's label: in its line's ink, or in DOS yellow. */
@@ -282,7 +284,7 @@ const labelStyle = (p: Painter, edge: ViewEdge): Style => {
  * then the edges' lines, then the boxes over them (a box clears what is under it)
  * and the frames' titles, then edge labels and the ends of the edges, last so
  * nothing covers an arrowhead. In the DOS style (the scene's `style`) it all lies on
- * the desktop, and the boxes' shadows fall last, over whatever is beside them.
+ * the desktop, the boxes' shadows laid on it first.
  */
 export function paint(scene: Scene, options: PaintOptions): Canvas {
   const { layout } = scene;
@@ -297,10 +299,14 @@ export function paint(scene: Scene, options: PaintOptions): Canvas {
   });
   const edges = scene.view.edges.filter((e) => layout.routes.has(e.id));
   if (layout.fish !== undefined) {
-    const boxes = paintFish(p, layout.fish, edges);
-    if (p.dos !== undefined) castShadows(p.canvas, boxes);
+    paintFish(p, layout.fish, edges);
     return p.canvas;
   }
+  if (p.dos !== undefined)
+    castShadows(
+      p.canvas,
+      drawn.filter((d) => !d.frame).map((d) => d.g),
+    );
   for (const { id, g, frame } of drawn) if (frame) drawFrame(p, id, g);
   for (const edge of edges) {
     const { points } = layout.routes.get(edge.id)!;
@@ -314,10 +320,5 @@ export function paint(scene: Scene, options: PaintOptions): Canvas {
     drawEnd(p, edge, 'start');
     drawEnd(p, edge, 'end');
   }
-  if (p.dos !== undefined)
-    castShadows(
-      p.canvas,
-      drawn.filter((d) => !d.frame).map((d) => d.g),
-    );
   return p.canvas;
 }
