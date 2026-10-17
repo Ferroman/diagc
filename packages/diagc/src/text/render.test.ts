@@ -93,6 +93,21 @@ describe('renderToLines', () => {
     expect(cellWidth(lines[0]!)).toBe(Math.max(...picture.map(cellWidth)));
   });
 
+  it("puts a right corner's legend at the left edge when it is the wider, and leaves the picture where it is", async () => {
+    const bare = modelOf({
+      nodes: [
+        { id: 'a', name: 'A' },
+        { id: 'b', name: 'B' },
+      ],
+      relations: [{ id: 'r', from: 'a', to: 'b', kind: 'sync' }],
+    });
+    const model = { ...bare, legend: { position: 'bottom-right' as const } };
+    const lines = await renderToLines({ model, pins: {} }, plain);
+    const gap = lines.indexOf('');
+    expect(lines.slice(0, gap)).toEqual(await renderToLines({ model: bare, pins: {} }, plain));
+    expect(lines[gap + 1]).toBe('┌─ Legend ────┐');
+  });
+
   it('leaves out a legend the diagram did not declare, though one is offered for its shapes', async () => {
     const model = modelOf({
       nodes: [
