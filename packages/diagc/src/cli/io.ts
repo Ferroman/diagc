@@ -7,6 +7,9 @@ export interface CliIo {
   err: (line: string) => void;
   /** text on stdout as it is */
   write: (text: string) => void;
+  /** set when stdout is a terminal, with its width: what a command that draws reads to
+   * colour its output and to say when a picture is wider than the screen */
+  readonly tty?: { columns: number };
 }
 
 /** The process's own streams. `write` is a plain write, which, unlike console.log's, does
@@ -15,4 +18,8 @@ export const processIo: CliIo = {
   out: (line) => console.log(line),
   err: (line) => console.error(line),
   write: (text) => void process.stdout.write(text),
+  // read when asked, not at startup: a terminal's width changes with its window
+  get tty() {
+    return process.stdout.isTTY ? { columns: process.stdout.columns ?? 80 } : undefined;
+  },
 };

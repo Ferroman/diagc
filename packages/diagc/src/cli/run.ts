@@ -7,7 +7,9 @@ import { guide } from '../commands/guide';
 import { init } from '../commands/init';
 import { lint } from '../commands/lint';
 import { publish } from '../commands/publish';
+import { show } from '../commands/show';
 import { studio } from '../commands/studio';
+import { tui } from '../commands/tui';
 import { watch } from '../commands/watch';
 import { findHome, homePaths } from '../home';
 import { resolveInclude } from '../includes';
@@ -24,7 +26,9 @@ export const COMMANDS: Readonly<Record<string, Command>> = {
   lint,
   watch,
   publish,
+  show,
   studio,
+  tui,
   eject,
   diff,
   guide,

@@ -64,6 +64,37 @@ describe('parseArgv', () => {
     });
   });
 
+  it("reads show's view flags", () => {
+    expect(
+      parseArgv([
+        'show',
+        'shop',
+        '--plane',
+        'logical',
+        '--layers',
+        'a, b',
+        '--depth',
+        '2',
+        '--root',
+        'p',
+        '--ascii',
+        '--color',
+      ]).flags,
+    ).toEqual({
+      '--plane': 'logical',
+      '--layers': ['a', 'b'],
+      '--depth': 2,
+      '--root': 'p',
+      '--ascii': true,
+      '--color': true,
+    });
+    expect(parseArgv(['show', 'shop', '--layers', '', '--no-color', '--depth', '0']).flags).toEqual({
+      '--layers': [],
+      '--no-color': true,
+      '--depth': 0,
+    });
+  });
+
   it('refuses a style it does not know and a theme that is neither light nor dark, naming the choices', () => {
     expect(() => parseArgv(['publish', '--style', 'sketchy'])).toThrow(
       /--style: no style 'sketchy'; one of clean, sketch/,
@@ -111,6 +142,14 @@ describe('parseArgv', () => {
       [['diff', 'a', '--image-url'], '--image-url: needs a {path} placeholder, e.g. https://host/pr-1/{path}'],
       [['init', '--out', '--type'], '--out: needs a directory, e.g. --out build/artifacts'],
       [['--json', '--type'], "--type: needs a diagram type, e.g. --type c4 ('diagc guide' lists them)"],
+      [['show', 'a', '--plane'], '--plane: needs a plane id, e.g. --plane logical'],
+      [['show', 'a', '--plane', '--ascii'], '--plane: needs a plane id, e.g. --plane logical'],
+      [['show', 'a', '--root'], '--root: needs a node id, e.g. --root checkout'],
+      [['show', 'a', '--layers'], "--layers: needs layer ids, e.g. --layers security,data ('' for none)"],
+      [['show', 'a', '--depth'], '--depth: a whole number of levels to open, e.g. --depth 1'],
+      [['show', 'a', '--depth', '-1'], '--depth: a whole number of levels to open, e.g. --depth 1'],
+      [['show', 'a', '--depth', '1.5'], '--depth: a whole number of levels to open, e.g. --depth 1'],
+      [['show', 'a', '--depth', 'x'], '--depth: a whole number of levels to open, e.g. --depth 1'],
     ];
     for (const [argv, message] of refused) expect([argv, refusal(argv)]).toEqual([argv, new UsageError(message, 1)]);
     expect(refusal(['--nope']).exitCode).toBe(1);

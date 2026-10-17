@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { captureIo } from '../../test-fixtures/cli';
-import { diagramNames, pngRenderer, warnNoSources } from './shared';
+import { captureIo, diagram, inTempDir, writeSources } from '../../test-fixtures/cli';
+import { writeFileSync } from 'node:fs';
+import { diagramNames, pngRenderer, sourceOf, warnNoSources } from './shared';
 
 const snapshot = vi.hoisted(() => ({
   findChrome: vi.fn((): string | undefined => undefined),
@@ -33,6 +34,20 @@ describe('diagramNames', () => {
     expect(io.stderr).toBe('');
     expect(diagramNames(io, ['nope', 'shop', 'gone'], known)).toBeUndefined();
     expect([io.stdout, io.stderr]).toEqual(['', "diagc: no diagram 'nope'\ndiagc: no diagram 'gone'\n"]);
+  });
+});
+
+describe('sourceOf', () => {
+  it('finds a name’s source, the TypeScript one first', async () => {
+    await inTempDir(async () => {
+      writeSources('.', { shop: diagram('shop'), 'team/app': diagram('app') });
+      expect(sourceOf('shop')).toBe('.diagrams/src/shop.diagram.json');
+      expect(sourceOf('team/app')).toBe('.diagrams/src/team/app.diagram.json');
+      writeFileSync('.diagrams/src/shop.diagram.ts', 'export default {};');
+      expect(sourceOf('shop')).toBe('.diagrams/src/shop.diagram.ts');
+      expect(sourceOf('nope')).toBeUndefined();
+      expect(sourceOf('shop', 'elsewhere')).toBeUndefined();
+    });
   });
 });
 

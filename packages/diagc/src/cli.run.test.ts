@@ -398,6 +398,24 @@ describe('output through a pipe', () => {
     expect(code).toBe(0);
   }, 60_000);
 
+  it('stops quietly when the reader closes the pipe early, as head does', async () => {
+    const dir = fresh(true);
+    // a picture far bigger than the 64 kB a pipe holds: a long chain of wide boxes
+    const nodes = Array.from({ length: 600 }, (_, i) => ({ id: `n${i}`, name: `Node number ${i} `.repeat(4) }));
+    const relations = nodes.slice(1).map((n, i) => ({ id: `r${i}`, from: `n${i}`, to: n.id, kind: 'sync' }));
+    writeFileSync(
+      path.join(dir, '.diagrams', 'src', 'big.diagram.json'),
+      JSON.stringify(diagram('big', { nodes, relations })),
+    );
+    const child = spawn(process.execPath, [bin, 'show', 'big'], { cwd: dir });
+    let stderr = '';
+    child.stderr.on('data', (d: Buffer) => void (stderr += d.toString()));
+    child.stdout.once('data', () => child.stdout.destroy());
+    const code = await new Promise<number | null>((resolve) => child.on('close', resolve));
+    expect(stderr).toBe('');
+    expect(code).toBe(0);
+  }, 60_000);
+
   it('does not wait for an open handle to close before exiting', () => {
     const dir = fresh(true);
     // A source that leaves a timer running in the CLI's own process.
@@ -545,7 +563,9 @@ describe('the usage, and which mistake is reported first', () => {
   }, 30_000);
 
   it('prints the usage on stdout and exits 0 for --help or -h anywhere before a mistake', () => {
-    expect(usage).toMatch(/^Usage: diagc <init\|compile\|lint\|watch\|publish\|studio\|eject\|diff\|guide> /);
+    expect(usage).toMatch(
+      /^Usage: diagc <init\|compile\|lint\|watch\|publish\|show\|studio\|tui\|eject\|diff\|guide> /,
+    );
     expect(usage.endsWith('\n  --help, -h      Show this help and exit\n')).toBe(true);
     const dir = fresh();
     const helps = [

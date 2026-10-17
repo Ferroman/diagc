@@ -1,0 +1,121 @@
+# Look at a diagram in the terminal
+
+Print a diagram as text, or browse it full-screen, without a browser. Both draw the same view the studio and the published pages draw: the same folds, planes, layers and aggregated arrows, in boxes and lines made of characters.
+
+## Print a diagram
+
+```bash
+diagc show shop
+```
+
+`shop` is the diagram's name, the path under `.diagrams/src` without `.diagram.ts`. A path works too: `diagc show .diagrams/src/shop.diagram.ts`.
+
+```
+          ╭──────────╮
+          │ Customer │
+          │  person  │
+          ╰─────┬────╯
+                │
+        Browses │
+                │
+┌╌ Shop system ╌┼╌╌╌╌╌╌╌┐
+╎               ▼       ╎
+╎        ┌────────────┐ ╎
+╎        │ Storefront │ ╎
+╎        │  service   │ ╎
+╎        └──────┬─────┘ ╎
+╎               │       ╎
+╎ Places orders │       ╎
+╎               ▼       ╎
+╎        ┌────────────┐ ╎
+╎        │ Orders API │ ╎
+╎        │  service   │ ╎
+╎        └──────┬─────┘ ╎
+╎               ┃       ╎
+╎    Order rows ┃       ╎
+╎               ▼       ╎
+╎         ╭───────────╮ ╎
+╎         ├───────────┤ ╎
+╎         │ Orders DB │ ╎
+╎         │ database  │ ╎
+╎         ╰───────────╯ ╎
+└╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┘
+```
+
+(The picture is the basic starter that `diagc init` writes, with a few empty rows taken out.)
+
+- Every group is open, as in the PNG `diagc publish` makes. A group listed in the layout's `export.collapsed` stays folded, as it does in the PNG.
+- `show` reads the source, not the compiled artifact, so it shows the diagram as it is now. You do not have to compile first.
+- The flow runs the way the plane's layout settings say (`direction` in `<name>.layout.json`); without one, downwards.
+- The line tells the kind: a dashed line is an `async` or `hosted-on` relation, a heavy one is `writes`, and a boundary such as `system` has a dashed frame.
+
+## Choose what to draw
+
+```bash
+diagc show shop --depth 1          # only the top level of groups open
+diagc show shop --depth 0          # every group folded: the overview
+diagc show shop --plane infra      # another plane
+diagc show shop --layers security  # these layers in place of the plane's own
+diagc show shop --layers ''        # no layers at all
+diagc show shop --root checkout    # what is inside one group
+```
+
+A folded group says how much it holds:
+
+```
+ ┌╌╌╌╌╌╌╌╌╌╌╌╌┐
+ ╎    Shop    ╎
+ ╎   system   ╎
+ ╎ + 3 inside ╎
+ └╌╌╌╌╌╌╌╌╌╌╌╌┘
+```
+
+An unknown plane, layer or group exits `1` and lists the ones the diagram has.
+
+## Paste it somewhere
+
+- **Plain text.** In a terminal the picture is in colour: a node's `color` on its border, a layer's tint on its lines. In a pipe or a file it has none, so `diagc show shop > shop.txt` is plain text. `--no-color` turns colour off in a terminal, `--color` turns it on in a pipe, and `NO_COLOR` is respected.
+- **Only ASCII.** `--ascii` draws with `+ - | . :` and `> < ^ v`, for a font or a tool that has no box-drawing characters.
+- **In Markdown.** Put the output in a fenced code block. It lines up in any monospaced font, wide characters included.
+- **A wide picture.** A terminal wraps a line that is wider than itself, which takes the picture apart. `show` says so on stderr when that happens: `diagc show shop | less -S` scrolls sideways instead, or open the diagram with `diagc tui`.
+
+## Browse a diagram
+
+```bash
+diagc tui           # the list of diagrams
+diagc tui shop      # this one
+```
+
+The viewer opens a diagram as the published page does: folded, except the groups its layout saved as unfolded. It compiles the sources as you save them and redraws, so keep it open in one terminal pane and edit the `.diagram.ts` in another. A source that does not compile keeps the last picture and shows the error in the bottom row.
+
+| Key | What it does |
+| --- | --- |
+| arrows, `h j k l` | Move to the next box in that direction. |
+| `Tab`, `Shift-Tab` | Next, previous box. |
+| `Enter`, `Space`, double-click | Unfold or fold the box. |
+| `e`, `c` | Unfold, fold every group. |
+| `>`, `<` | Go into the box, as drilling in the studio does; back out. |
+| `p`, `P` | Next, previous plane. |
+| `1` … `9` | Turn a layer on or off. The top row lists them. |
+| `/`, `n`, `N` | Search the names; next, previous match. A match inside a folded group unfolds it. |
+| `i` | Details of the box: its description, every relation in and out, threats, comments, links. |
+| `Shift`-arrows, `PgUp`, `PgDn`, `Home`, `End`, the mouse wheel, a drag | Scroll. |
+| `r` | Read the diagram again. |
+| `?` | All the keys. |
+| `Esc` | Close the search, the help or the details; then back to the list. |
+| `q`, `Ctrl-C` | Quit. |
+
+The viewer is read-only. Change a diagram in its source, or in `diagc studio`.
+
+## What the text picture leaves out
+
+- **Your positions.** Boxes you placed by hand in the studio are saved in pixels, for boxes of another size. The text picture is always laid out automatically.
+- **The special layouts.** A plan's time axis, a fishbone's spine, git lanes and activity swimlanes draw as an ordinary graph: the names, the nesting and the arrows are all there, the geometry is not.
+- **What only a browser draws.** Icons, images, freehand drawings, notes and the legend. A foreign key's arrow ends at its table, not at the row.
+
+## See also
+
+- [`diagc` reference → `show`](../reference/cli.md#show) and [`tui`](../reference/cli.md#tui)
+- [Organise a large diagram](organise-large-diagrams.md) — folding, pins and drilling, which the viewer follows
+- [Use planes and layers](use-planes-and-layers.md)
+- [Write diagrams with a coding agent](write-diagrams-with-a-coding-agent.md) — `diagc show` is the check an agent can read as text

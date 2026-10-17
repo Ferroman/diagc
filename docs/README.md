@@ -36,6 +36,7 @@ Get something done.
 | [Draw a causal-loop diagram](how-to/draw-a-causal-loop-diagram.md) | Variables, signed links and delays — the reinforcing and balancing loops are found for you. |
 | [Compose diagrams](how-to/compose-diagrams.md) | `include` and `key`: umbrella views over several diagrams. |
 | [Publish and share](how-to/publish-and-share.md) | PNGs for a README, interactive pages, GitHub Pages. |
+| [Look at a diagram in the terminal](how-to/look-at-a-diagram-in-the-terminal.md) | `diagc show` prints it as text; `diagc tui` browses it, live, without a browser. |
 | [Show what changed](how-to/show-what-changed.md) | Before/after pictures between two git refs, for an ADR or a review. |
 | [Eject a diagram to TypeScript](how-to/eject-to-typescript.md) | Promote a studio-drawn diagram to a verified, generated `.diagram.ts`. |
 | [Place boxes on a generated diagram](how-to/position-a-generated-diagram.md) | Position a read-only `.diagram.ts` view without losing it on re-compile. |

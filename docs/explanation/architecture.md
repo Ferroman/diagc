@@ -43,13 +43,15 @@ The arrows all point toward `core`, and `core` depends on nothing. That is the o
 
 `diagc` is unusual — it *reads* `viewer`'s built output rather than importing it, and it *spawns* `studio`'s dev server rather than linking against it. Both are process boundaries, not code dependencies, which is what lets `diagc` run against any repo on your machine while the code stays in this one.
 
-## Two ways to look at a diagram
+## Ways to look at a diagram
 
 **The studio** is a dev-time tool. It needs a running Vite server because it reads and writes files through a small API, so it only exists where the source is.
 
 **A published page** is a single self-contained HTML file with the model, the layout and every referenced image inlined as data URIs. No server, no network, no build. Mail one to someone and it works.
 
 The two share the same renderer, so a published page folds and unfolds exactly like the studio does. It just cannot save.
+
+**The terminal** has no renderer to share. `diagc show` prints the view as text and `diagc tui` browses it, and both run the same view compiler as the browser — the same folds, planes, layers and aggregated arrows — then lay the result out in character cells, with the same layout engine sized for text. That is why a text picture never keeps the positions you dragged in the studio: those are pixels, for boxes of another size. See [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md).
 
 ## Where things go wrong
 
