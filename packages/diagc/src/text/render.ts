@@ -14,7 +14,9 @@ export interface TextOptions {
 
 /** The picture with its legend beside it, as the corner it names would have it: over
  * or under the picture with a blank row between, against its left or right edge. Not
- * over the picture, as on a canvas, where a printed picture would lose what it covers. */
+ * over the picture, as on a canvas, where a printed picture would lose what it covers.
+ * A legend wider than the picture starts at the left edge either way: set against the
+ * right one, it would push the picture along for the sake of its key. */
 function withLegend(picture: Cell[][], legend: Cell[][], position: LegendPosition): Cell[][] {
   const indent = position.endsWith('right') ? Math.max(0, (picture[0]?.length ?? 0) - (legend[0]?.length ?? 0)) : 0;
   const placed = legend.map((row) => [...Array.from({ length: indent }, () => ({ ch: ' ', style: {} })), ...row]);

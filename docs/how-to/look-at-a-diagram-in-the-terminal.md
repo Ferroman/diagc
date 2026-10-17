@@ -48,7 +48,7 @@ diagc show shop
 - `show` reads the source, not the compiled artifact, so it shows the diagram as it is now. You do not have to compile first.
 - The flow runs the way the plane's layout settings say (`direction` in `<name>.layout.json`); without one, downwards, except an activity diagram and a fishbone, which run to the right, as on the page.
 - The line tells the kind: a dashed line is an `async` or `hosted-on` relation, a heavy one is `writes`, and a boundary such as `system` has a dashed frame.
-- A diagram that [declares a legend](add-a-legend.md) gets it under the picture, framed, with a blank line between. A `top-` position puts it over the picture and a `-right` one against the picture's right edge.
+- A diagram that [declares a legend](add-a-legend.md) gets it under the picture, framed, with a blank line between. A `top-` position puts it over the picture and a `-right` one against the picture's right edge, unless the legend is the wider of the two: then it starts at the left edge, as a `-left` one does.
 
 ## Choose what to draw
 
