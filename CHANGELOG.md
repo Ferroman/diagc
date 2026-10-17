@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/Ferroman/diagc/compare/v1.5.0...v1.6.0) (2026-10-17)
+
+
+### Features
+
+* **cli:** draw diagrams in the terminal with diagc show and diagc tui ([#163](https://github.com/Ferroman/diagc/issues/163)) ([c54ab2a](https://github.com/Ferroman/diagc/commit/c54ab2a957a8268f778f2d7ddf9fdb8fb6613a10))
+
 ## [1.5.0](https://github.com/Ferroman/diagc/compare/v1.4.0...v1.5.0) (2026-10-17)
 
 
