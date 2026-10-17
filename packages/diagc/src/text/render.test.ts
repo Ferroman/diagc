@@ -155,4 +155,19 @@ describe('renderToLines', () => {
     const text = (await renderToLines({ model, pins: exportPins(model, undefined) }, plain)).join('\n');
     for (const n of model.nodes) expect(text).toContain(n.name);
   });
+
+  it('draws a fishbone’s bones in their colours, the causes on them and their lines too', async () => {
+    const home = homePaths(findHome(fileURLToPath(import.meta.url)));
+    const file = path.join(home.root, '.diagrams', 'src', 'examples', 'fishbone', 'starter.diagram.ts');
+    const model = await loadModel(file, { coreEntry: home.coreEntry });
+    const lines = await renderToLines({ model, pins: {} }, { ascii: false, color: 'truecolor' });
+    // People and Process are the first column, blue; Requirements and Code the second, red
+    const blue = '\x1b[38;2;123;167;217m';
+    const red = '\x1b[38;2;217;83;79m';
+    const row = (text: string): string => lines.find((l) => l.includes(text))!;
+    expect(row('People')).toContain(blue);
+    expect(row('On-call engineer')).toContain(`${blue}├`);
+    expect(row('Code')).toContain(`${red}├`);
+    expect(row('No fixture')).toContain(`${red}├`);
+  });
 });

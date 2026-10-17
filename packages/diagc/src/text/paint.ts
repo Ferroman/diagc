@@ -1,4 +1,5 @@
 import type { DiagramModel, DiagramNode, NotationId, ViewEdge } from '@diagc/core/internal';
+import type { Accents } from './accents';
 import { parseColor } from './ansi';
 import { Canvas, type CellPoint, type Color, type Style } from './canvas';
 import type { BoxLine, BoxText } from './content';
@@ -50,22 +51,25 @@ export const rgb = (css: string | undefined): Color | undefined => {
   return parsed === undefined ? undefined : { rgb: parsed };
 };
 
-/** A node's accent, as the renderer resolves it: its own colour, the model's colour
- * for its type (or for every type), then the notation's for the type. */
+/** A node's accent, as the renderer resolves it: its own colour, the one its notation
+ * gives it (a lane's, a bone's), the model's colour for its type (or for every type),
+ * then the notation's for the type. */
 export function accentCss(
   model: DiagramModel,
   node: DiagramNode,
   notation: NotationId | undefined,
+  accents: Accents,
 ): string | undefined {
   const typeColor = node.type !== undefined ? model.typeColors?.[node.type] : undefined;
-  return node.color ?? typeColor ?? model.typeColors?.['*'] ?? typeLook(node.type, notation).accent;
+  const byNotation = accents.nodes.get(node.id);
+  return node.color ?? byNotation ?? typeColor ?? model.typeColors?.['*'] ?? typeLook(node.type, notation).accent;
 }
 
 /** How a box's border is drawn: heavy when selected (and for a fork bar), dashed
  * for a boundary, in the node's accent. */
 function borderInk(p: Painter, id: string): Ink {
   const box = p.scene.boxes.get(id)!;
-  const fg = rgb(accentCss(p.scene.input.model, p.scene.nodes.get(id)!.node, p.scene.notation));
+  const fg = rgb(accentCss(p.scene.input.model, p.scene.nodes.get(id)!.node, p.scene.notation, p.scene.accents));
   const weight: Weight = id === p.selected || box.shape === 'bar' ? 'heavy' : box.dashed ? 'dashed' : 'light';
   return { weight, style: fg !== undefined ? { fg } : {} };
 }
@@ -109,7 +113,7 @@ function drawBox(p: Painter, id: string, g: BoxGeometry): void {
 
 function edgeInk(p: Painter, edge: ViewEdge): Ink {
   const weight = WEIGHT[kindLook(edge, p.scene.notation).line];
-  const fg = rgb(edge.style?.color ?? edge.tint);
+  const fg = rgb(edge.style?.color ?? edge.tint ?? p.scene.accents.edges.get(edge.id));
   const base: Style = fg !== undefined ? { fg } : {};
   if (p.selected === undefined) return { weight, style: base };
   const mine = edge.from === p.selected || edge.to === p.selected;
