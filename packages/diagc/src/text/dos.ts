@@ -1,7 +1,7 @@
 import type { DiagramModel, NotationId } from '@diagc/core/internal';
 import { parseColor } from './ansi';
 import type { Canvas, CellRect, Color, Style } from './canvas';
-import { typeLook } from './vocabulary';
+import { typeLook, type TextShape } from './vocabulary';
 
 // The DOS style in character cells: the browser's Turbo Vision screen (the DOS preset
 // in packages/renderer/src/sketch/stylePresets.ts, its rules in presets.css) as far as
@@ -83,6 +83,15 @@ export function dosHue(css: string | undefined, type: string | undefined, slots:
   const slot = type === undefined ? undefined : slots.get(type);
   return slot === undefined ? GREY : cga(DOS_PALETTE[slot % DOS_PALETTE.length]!);
 }
+
+/** A box's fill, as its type's legend swatch shows it too: its colour (`dosHue`), but a
+ * table's body grey under its cyan head, as the page draws one. */
+export const dosFill = (
+  shape: TextShape,
+  css: string | undefined,
+  type: string | undefined,
+  slots: ReadonlyMap<string, number>,
+): Rgb => (shape === 'table' ? GREY : dosHue(css, type, slots));
 
 /** Black or white, whichever reads on `rgb`: the renderer's `hueInk`. */
 export function inkOn([r, g, b]: readonly number[]): Rgb {

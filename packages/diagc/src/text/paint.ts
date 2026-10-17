@@ -3,20 +3,7 @@ import type { Accents } from './accents';
 import { parseColor } from './ansi';
 import { Canvas, type CellPoint, type Color, type Style } from './canvas';
 import type { BoxLine, BoxText } from './content';
-import {
-  BLACK,
-  castShadows,
-  CYAN,
-  DESKTOP,
-  dosHue,
-  dosSlots,
-  GREY,
-  inkOn,
-  mixed,
-  WHITE,
-  YELLOW,
-  type Rgb,
-} from './dos';
+import { BLACK, castShadows, CYAN, DESKTOP, dosFill, dosSlots, inkOn, mixed, WHITE, YELLOW, type Rgb } from './dos';
 import { DOWN, LEFT, RIGHT, UP, type ArrowDirection, type Corner, type Glyphs, type Weight } from './glyphs';
 import { STEP, towardBox, type BoxGeometry, type FishDrawing } from './layout';
 import type { Scene } from './scene';
@@ -77,7 +64,7 @@ export const rgb = (css: string | undefined): Color | undefined => {
 
 /** A node's own colour, as the renderer resolves it: its own, the one its notation
  * gives it (a lane's, a bone's), the model's for its type (or for every type). */
-function colorCss(model: DiagramModel, node: DiagramNode, accents: Accents): string | undefined {
+export function colorCss(model: DiagramModel, node: DiagramNode, accents: Accents): string | undefined {
   const typeColor = node.type !== undefined ? model.typeColors?.[node.type] : undefined;
   return node.color ?? accents.nodes.get(node.id) ?? typeColor ?? model.typeColors?.['*'];
 }
@@ -122,11 +109,10 @@ function drawFrame(p: Painter, id: string, g: BoxGeometry): void {
   p.canvas.rect(g, ink.weight, ink.style, cornerOf(p, id));
 }
 
-/** A box's fill in the DOS style: its colour, but a table's body is grey under its
- * cyan head, as the page draws one; the small print is the ink 70% over the fill. */
+/** A box's fill in the DOS style (`dosFill`) and its ink; the small print is the ink 70%
+ * over the fill. */
 function cardOf(p: Painter, slots: ReadonlyMap<string, number>, id: string): Card {
-  const table = p.scene.boxes.get(id)!.shape === 'table';
-  const fill = table ? GREY : dosHue(ownCss(p, id), p.scene.nodes.get(id)!.node.type, slots);
+  const fill = dosFill(p.scene.boxes.get(id)!.shape, ownCss(p, id), p.scene.nodes.get(id)!.node.type, slots);
   const ink = inkOn(fill.rgb);
   const small: Style = { fg: mixed(ink.rgb, fill.rgb, 0.7) };
   return { fill, ink, lines: { title: { bold: true }, subtitle: small, note: small, row: {} } };
