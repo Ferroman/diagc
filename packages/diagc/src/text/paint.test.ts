@@ -277,6 +277,29 @@ describe('paint in the DOS style', () => {
     expect(at(cells, p.x + p.width, p.y + 1).style.bg).toEqual(BLUE);
   });
 
+  it("keeps an open group's frame out of its children's shadows, as the page's padding does", async () => {
+    const model = modelOf({
+      nodes: [
+        { id: 'g', name: 'Group', type: 'team' },
+        { id: 'a', name: 'A', type: 'service' },
+        { id: 'b', name: 'B', type: 'service' },
+      ],
+      containment: [
+        { parent: 'g', child: 'a' },
+        { parent: 'g', child: 'b' },
+      ],
+      relations: [{ id: 'r', from: 'a', to: 'b', kind: 'sync' }],
+    });
+    const { scene, cells } = await dos(model);
+    const g = scene.layout.boxes.get('g')!;
+    const [right, bottom] = [g.x + g.width - 1, g.y + g.height - 1];
+    const frame = [
+      ...Array.from({ length: g.height }, (_, i) => at(cells, right, g.y + i)),
+      ...Array.from({ length: g.width }, (_, i) => at(cells, g.x + i, bottom)),
+    ];
+    expect(frame.map((c) => c.style.bg)).toEqual(frame.map(() => BLUE));
+  });
+
   it('frames an open group in its own colour where it has one', async () => {
     const model = modelOf({
       nodes: [
