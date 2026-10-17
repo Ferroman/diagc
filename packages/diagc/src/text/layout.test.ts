@@ -182,6 +182,53 @@ describe('layoutCells', () => {
     }
   });
 
+  it('ends every route beside a side of its box, not beside a corner, every way it flows', async () => {
+    // a box one line of text tall has one row between its borders: elk ends a lone
+    // route in the middle of its side, half a cell into that row, and spreads several
+    // over the whole side
+    const node = (id: string) => ({ id, name: id.toUpperCase() + 'xx' });
+    const relation = (from: string, to: string) => ({ id: `${from}-${to}`, from, to, kind: 'sync' });
+    const chain = modelOf({ nodes: ['a', 'b', 'c'].map(node), relations: [relation('a', 'b'), relation('b', 'c')] });
+    const fans = modelOf({
+      nodes: ['a', 'b', 'c', 'd', 'e', 'f'].map(node),
+      relations: [relation('a', 'd'), relation('b', 'd'), relation('c', 'd'), relation('d', 'e'), relation('d', 'f')],
+    });
+    // this repository's packages: sideways, viewer's straight line to renderer meets the
+    // middle of viewer's side and renderer's corner, so it takes a jog
+    const packages = modelOf({
+      nodes: ['core', 'renderer', 'icons', 'diagc', 'studio', 'viewer'].map((id) => ({ id, name: id })),
+      relations: [
+        relation('diagc', 'core'),
+        relation('studio', 'core'),
+        relation('studio', 'renderer'),
+        relation('viewer', 'core'),
+        relation('viewer', 'renderer'),
+        relation('renderer', 'core'),
+        relation('renderer', 'icons'),
+        { ...relation('diagc', 'viewer'), label: 'stamps' },
+        { ...relation('diagc', 'studio'), label: 'spawns' },
+      ],
+    });
+    // the end touches a border cell that is not a corner
+    const beside = (p: CellPoint, b: BoxGeometry): boolean =>
+      (p.x > b.x && p.x < b.x + b.width - 1 && (p.y === b.y - 1 || p.y === b.y + b.height)) ||
+      (p.y > b.y && p.y < b.y + b.height - 1 && (p.x === b.x - 1 || p.x === b.x + b.width));
+    for (const [name, model] of Object.entries({ chain, fans, packages })) {
+      for (const direction of ['DOWN', 'UP', 'RIGHT', 'LEFT']) {
+        const { view, layout } = await laid(model, direction);
+        const ends = Object.fromEntries(
+          view.layoutEdges.map((e) => {
+            const points = layout.routes.get(e.id)!.points;
+            const at = [beside(points[0]!, layout.boxes.get(e.from)!), beside(points.at(-1)!, layout.boxes.get(e.to)!)];
+            return [e.id, at];
+          }),
+        );
+        const sides = Object.fromEntries(Object.keys(ends).map((id) => [id, [true, true]]));
+        expect({ name, direction, ends }).toEqual({ name, direction, ends: sides });
+      }
+    }
+  });
+
   it('keeps every route orthogonal and every point on the canvas', async () => {
     const model = modelOf({
       nodes: ['a', 'b', 'c', 'd'].map((id) => ({ id, name: id.toUpperCase().repeat(4) })),

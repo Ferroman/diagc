@@ -4,6 +4,7 @@ import {
   compileView,
   defined,
   defaultLayoutDirection,
+  FISHBONE_NOTATION,
   layoutPlaneKey,
   presetLayers,
   type CompiledView,
@@ -54,10 +55,14 @@ export interface Scene {
 
 const DIRECTIONS = new Set(['DOWN', 'UP', 'LEFT', 'RIGHT']);
 
-/** The way the plane flows: its saved layout setting, else the model's default. */
-function directionOf(input: SceneInput): string {
+/** The way the plane flows: its saved layout setting, else the model's default. A
+ * fishbone's default is rightwards, as the page draws the fish, head on the right. Its
+ * causes are as wide as sentences: a downward flow sets them side by side, off the
+ * edge of a terminal, where a sideways one stacks them, and the picture only scrolls. */
+function directionOf(input: SceneInput, notation: NotationId | undefined): string {
   const saved = input.overlay?.settings?.[layoutPlaneKey(input.model, input.plane)]?.direction;
-  return saved !== undefined && DIRECTIONS.has(saved) ? saved : defaultLayoutDirection(input.model);
+  if (saved !== undefined && DIRECTIONS.has(saved)) return saved;
+  return notation === FISHBONE_NOTATION ? 'RIGHT' : defaultLayoutDirection(input.model);
 }
 
 export async function buildScene(input: SceneInput, glyphs: Glyphs): Promise<Scene> {
@@ -87,7 +92,7 @@ export async function buildScene(input: SceneInput, glyphs: Glyphs): Promise<Sce
   for (const root of view.roots) walk(root, undefined);
 
   const labels = new Map(view.layoutEdges.map((e) => [e.id, edgeText(e, glyphs)]));
-  const layout = await layoutCells(view, boxes, directionOf(input), labels);
+  const layout = await layoutCells(view, boxes, directionOf(input, notation), labels);
   const scene: Scene = { input, view, layout, boxes, nodes, parentOf, hierarchy, ...defined({ notation }) };
   const legend = legendOf(scene, glyphs);
   return legend === undefined ? scene : { ...scene, legend };

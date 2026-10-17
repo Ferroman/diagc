@@ -63,6 +63,25 @@ describe('buildScene', () => {
     expect(right.layout.boxes.get('c')!.x).toBeGreaterThanOrEqual(p.x + p.width);
   });
 
+  it('flows a fishbone rightwards, to its head, unless the layout’s settings say otherwise', async () => {
+    const fish: DiagramModel = {
+      ...model,
+      notation: 'fishbone',
+      nodes: [
+        { id: 'e', name: 'Outage', type: 'fb-effect' },
+        { id: 'k', name: 'People', type: 'fb-category' },
+      ],
+      containment: [],
+      relations: [{ id: 'r', from: 'k', to: 'e', kind: 'cause-of' }],
+    };
+    const right = await buildScene({ model: fish, pins: {} }, UNICODE);
+    const k = right.layout.boxes.get('k')!;
+    expect(right.layout.boxes.get('e')!.x).toBeGreaterThanOrEqual(k.x + k.width);
+    const overlay: LayoutOverlay = { version: 1, planes: {}, settings: { default: { direction: 'DOWN' } } };
+    const down = await buildScene({ model: fish, overlay, pins: {} }, UNICODE);
+    expect(down.layout.boxes.get('e')!.y).toBeGreaterThanOrEqual(down.layout.boxes.get('k')!.y + 3);
+  });
+
   it('keeps the containers that never fold open', async () => {
     const lanes = { ...model, nodes: model.nodes.map((n) => (n.id === 'p' ? { ...n, type: 'activity-lane' } : n)) };
     const scene = await buildScene({ model: lanes, pins: {} }, UNICODE);
