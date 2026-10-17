@@ -129,7 +129,7 @@ A diagram whose `style` is [`dos`](../reference/model.md#style-presets) opens in
 - `diagc tui --style dos` opens every diagram in the DOS style, and `--style clean` opens every one in the terminal's own colours, a `dos` diagram included.
 - Every other style is the browser's: the viewer draws those diagrams in the terminal's own colours.
 - The DOS style needs colour. With `NO_COLOR` set, or `TERM=dumb`, the viewer draws in the terminal's own look whatever the style.
-- A shadow falls two columns right of its box and a row below it. A line that runs under it is drawn dark; an arrowhead or a label stays bright.
+- A shadow falls two columns right of its box and a row below it. A white line that runs under it is drawn dark grey there; a line in a colour of its own, an arrowhead and a label keep their colour.
 
 ## What the text picture leaves out
 

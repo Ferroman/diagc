@@ -204,7 +204,7 @@ diagc tui shop
 
 It runs the studio's compile watcher on `./.diagrams/src` and redraws the open diagram when its source compiles or its layout changes; a failed compile keeps the last picture and shows the error in the bottom row. A diagram opens as the published page opens it: the first plane, its layers, and the groups its layout saved as unfolded. A picture bigger than the screen gets an overview in the corner, drawn as an image where the terminal speaks kitty's graphics protocol and in braille elsewhere, and a declared legend shows in the corner it names; `L` hides it. A diagram in the `dos` style is drawn in it, and `s` switches it on and off. Keys and mouse are in [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md#browse-a-diagram); `?` lists them in the viewer.
 
-- **Style:** `--style dos` draws every diagram in the DOS style, `--style clean` every one in the terminal's own colours; any other id exits `1`, naming the two. Without colour (`NO_COLOR`, `TERM=dumb`) it draws in its own look whatever the style. See [The DOS style](../how-to/look-at-a-diagram-in-the-terminal.md#the-dos-style).
+- **Style:** `--style dos` draws every diagram in the DOS style, `--style clean` every one in the terminal's own colours; any other id exits `1`. Without colour (`NO_COLOR`, `TERM=dumb`) it draws in its own look whatever the style. See [The DOS style](../how-to/look-at-a-diagram-in-the-terminal.md#the-dos-style).
 - **Needs a terminal:** with stdin or stdout not a terminal it exits `1` and points at `show`.
 - **Exit code:** `0` when quit; `1` for a name with no source, checked first, or for a `--style` other than `dos` or `clean`.
 
