@@ -77,6 +77,26 @@ function toDots(r: CellRect, scale: number, unit: CellPixels = BRAILLE): DotRect
 const overlaps = (a: DotRect, b: DotRect): boolean =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
+const within = (a: DotRect, b: DotRect): boolean =>
+  a.x >= b.x && a.y >= b.y && a.x + a.width <= b.x + b.width && a.y + a.height <= b.y + b.height;
+
+/** `r` less `by` dots each side. */
+const inset = (r: DotRect, by: number): DotRect => ({
+  x: r.x + by,
+  y: r.y + by,
+  width: r.width - 2 * by,
+  height: r.height - 2 * by,
+});
+
+/** The selected box, and whether it is an open group: one that holds other boxes. The
+ * canvas marks a group by its frame and title, and filling it would hide all it holds. */
+function selection(layout: TextLayout, selected: string | undefined): { box: CellRect; group: boolean } | undefined {
+  const box = selected === undefined ? undefined : layout.boxes.get(selected);
+  if (box === undefined) return undefined;
+  const group = [...layout.boxes].some(([id, b]) => id !== selected && within(b, box));
+  return { box, group };
+}
+
 /** The window cut to the picture: past the picture's edge its outline would be lost. */
 function onPicture(window: PictureWindow, picture: Extent): CellRect {
   const x = clamp(window.scroll.x, 0, picture.width);
@@ -90,7 +110,8 @@ function onPicture(window: PictureWindow, picture: Extent): CellRect {
 }
 
 /** The overview's cells, `place`'s size: each box's outline and the window's, what is
- * off screen dim and the selected box inverse, as it is on the canvas. */
+ * off screen dim and the selected box inverse, as it is on the canvas (a group, its
+ * frame). */
 export function overviewCells(
   layout: TextLayout,
   place: OverviewPlace,
@@ -101,13 +122,15 @@ export function overviewCells(
   for (const box of layout.boxes.values()) dots.outline(toDots(box, place.scale));
   const screen = toDots(onPicture(window, layout), place.scale);
   dots.outline(screen);
-  const box = selected === undefined ? undefined : layout.boxes.get(selected);
-  const chosen = box === undefined ? undefined : toDots(box, place.scale);
+  const chosen = selection(layout, selected);
+  const dotted = chosen === undefined ? undefined : toDots(chosen.box, place.scale);
+  // a group's inside: its cells clear of its frame
+  const inside = dotted === undefined || chosen?.group !== true ? undefined : inset(dotted, 1);
   return Array.from({ length: place.height }, (_, row) =>
     Array.from({ length: place.width }, (_, column) => {
       const cell = { x: column * 2, y: row * 4, width: 2, height: 4 };
       const style: Style =
-        chosen !== undefined && overlaps(cell, chosen)
+        dotted !== undefined && overlaps(cell, dotted) && !(inside !== undefined && within(cell, inside))
           ? { inverse: true }
           : overlaps(cell, screen)
             ? {}
@@ -124,7 +147,8 @@ const OFF_SCREEN = 0.4;
 
 /** The overview in pixels, `place`'s cells' worth: each box's outline and the lines
  * between them, what is off screen dimmed, the part on screen outlined and faintly
- * tinted, and the selected box filled in, as inverse fills it on the canvas. */
+ * tinted, and the selected box filled in, as inverse fills it on the canvas; a selected
+ * group framed heavy instead. */
 export function overviewPixels(
   layout: TextLayout,
   place: PixelPlace,
@@ -150,8 +174,16 @@ export function overviewPixels(
   pixels.dimOutside(screen, OFF_SCREEN);
   pixels.fill(screen, SHARE_OF.screenTint);
   pixels.outline(screen, SHARE_OF.screen);
-  const box = selected === undefined ? undefined : layout.boxes.get(selected);
-  if (box !== undefined) pixels.fill(toDots(box, scale, cell), SHARE_OF.selected);
+  const chosen = selection(layout, selected);
+  const dotted = chosen === undefined ? undefined : toDots(chosen.box, scale, cell);
+  if (dotted === undefined || chosen === undefined) return pixels;
+  if (!chosen.group) {
+    pixels.fill(dotted, SHARE_OF.selected);
+    return pixels;
+  }
+  // a second line inside the first: heavy, as the canvas draws a selected frame
+  pixels.outline(dotted, SHARE_OF.selected);
+  if (dotted.width > 2 && dotted.height > 2) pixels.outline(inset(dotted, 1), SHARE_OF.selected);
   return pixels;
 }
 
