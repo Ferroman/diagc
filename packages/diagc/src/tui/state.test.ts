@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { DiagramModel } from '@diagc/core/internal';
 import { UNICODE } from '../text/glyphs';
 import { buildScene } from '../text/scene';
-import type { InputEvent } from './keys';
+import type { UserInput } from './keys';
 import { readingOrder } from './nav';
 import { openDiagram, reduce, sceneInput, settle, type Ctx, type DiagramState, type TuiState } from './state';
 
@@ -33,13 +33,13 @@ const model: DiagramModel = {
 };
 
 const view = { top: 1, width: 40, height: 12 };
-const key = (name: string, extra: { shift?: boolean; ctrl?: boolean } = {}): InputEvent => ({
+const key = (name: string, extra: { shift?: boolean; ctrl?: boolean } = {}): UserInput => ({
   kind: 'key',
   name,
   ...extra,
 });
-const press = (x: number, y: number): InputEvent => ({ kind: 'mouse', action: 'press', x, y, shift: false });
-const pointer = (action: 'press' | 'drag' | 'release', at: { x: number; y: number }): InputEvent => ({
+const press = (x: number, y: number): UserInput => ({ kind: 'mouse', action: 'press', x, y, shift: false });
+const pointer = (action: 'press' | 'drag' | 'release', at: { x: number; y: number }): UserInput => ({
   kind: 'mouse',
   action,
   ...at,
@@ -61,7 +61,7 @@ function opened(extra: Partial<DiagramState> = {}): TuiState {
 }
 
 /** Feeds events one by one, rebuilding the scene before each, as the app does. */
-async function feed(state: TuiState, events: InputEvent[], at = 0) {
+async function feed(state: TuiState, events: UserInput[], at = 0) {
   let current = state;
   const effects = [];
   for (const event of events) {

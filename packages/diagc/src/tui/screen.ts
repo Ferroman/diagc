@@ -7,8 +7,9 @@ import type { Scene } from '../text/scene';
 import { subtitleOf } from '../text/vocabulary';
 import { cellWidth, charWidth, fitCells, isControl, printable } from '../text/width';
 import { detailLines } from './details';
+import type { FrameImage, Graphics } from './kitty';
 import { legendPlace } from './legend';
-import { overviewCells, overviewPlace, type OverviewPlace } from './overview';
+import { overviewCells, overviewPixels, overviewPlace, type OverviewPlace } from './overview';
 import type { DiagramState, TuiState } from './state';
 
 // One frame of the TUI, as lines exactly the terminal's size: a title row, the canvas
@@ -34,6 +35,8 @@ export interface FrameInput {
   canvas?: Cell[][];
   /** what to say where there is nothing to show yet */
   notice?: string;
+  /** the terminal shows images: the overview goes as one */
+  graphics?: Graphics;
 }
 
 type Row = Cell[];
@@ -174,6 +177,27 @@ export function legendPlaceOf(state: TuiState, scene: Scene | undefined, size: S
   return legendPlace(legendSize(scene.legend), scene.legend.position, canvasSize(state, size), framed);
 }
 
+/** Where the overview is drawn on this frame: on, with a place, over a picture. */
+function overviewDrawn(state: TuiState, input: FrameInput, size: Size): OverviewPlace | undefined {
+  if (state.diagram?.overview !== true || input.canvas === undefined) return undefined;
+  return overviewPlaceOf(state, input.scene, size);
+}
+
+/** Whether the overview goes as an image: the terminal shows them, and the help is not
+ * up — it lies over the overview, and an image sits above the text. */
+const asImage = (d: DiagramState, input: FrameInput): boolean => input.graphics !== undefined && !d.help;
+
+/** The overview as an image, where it is drawn as one on this frame. */
+export function overviewImage(state: TuiState, input: FrameInput, size: Size): FrameImage | undefined {
+  const [d, place, scene, graphics] = [state.diagram, overviewDrawn(state, input, size), input.scene, input.graphics];
+  if (d === undefined || place === undefined || scene === undefined || graphics === undefined || !asImage(d, input))
+    return undefined;
+  const { width, height } = canvasSize(state, size);
+  const window = { scroll: d.scroll, width, height };
+  const pixels = overviewPixels(scene.layout, { ...place, cell: graphics.cell }, window, d.selected);
+  return { place, width: pixels.width, height: pixels.height, rgba: pixels.rgba(graphics.ink) };
+}
+
 function titleOf(d: DiagramState, model: DiagramModel | undefined): string {
   if (model === undefined) return d.name;
   const name = (id: string): string => printable(model.nodes.find((n) => n.id === id)?.name ?? id);
@@ -215,10 +239,14 @@ function drawPanel(rows: Row[], d: DiagramState, input: FrameInput, size: Size):
   }
 }
 
-/** The overview, opaque over the canvas, in a border a cell wide around `place`. */
-function drawOverview(rows: Row[], d: DiagramState, scene: Scene, { canvas, overview: place }: OverviewPlaces): void {
+/** The overview, opaque over the canvas, in a border a cell wide around `place`; blank
+ * inside where an image goes over it. */
+function drawOverview(rows: Row[], d: DiagramState, scene: Scene, places: OverviewPlaces): void {
+  const { canvas, overview: place, image } = places;
   const { width, height } = canvas;
-  const cells = overviewCells(scene.layout, place, { scroll: d.scroll, width, height }, d.selected);
+  const cells = image
+    ? Array.from({ length: place.height }, () => blankRow(place.width))
+    : overviewCells(scene.layout, place, { scroll: d.scroll, width, height }, d.selected);
   const [left, right] = [place.x - 1, place.x + place.width];
   for (let r = -1; r <= place.height; r++) {
     const row = rows[place.y + r];
@@ -271,7 +299,7 @@ interface Places {
   legend?: CellRect;
 }
 
-type OverviewPlaces = Required<Pick<Places, 'canvas' | 'overview'>>;
+type OverviewPlaces = Required<Pick<Places, 'canvas' | 'overview'>> & { image: boolean };
 
 function composeDiagram(d: DiagramState, input: FrameInput, size: Size, places: Places): Row[] {
   const rows = Array.from({ length: size.rows }, () => blankRow(size.columns));
@@ -282,7 +310,9 @@ function composeDiagram(d: DiagramState, input: FrameInput, size: Size, places: 
   else {
     blit(rows, input.canvas, d.scroll, area);
     const place = places.overview;
-    if (d.overview && place !== undefined) drawOverview(rows, d, input.scene, { canvas: area, overview: place });
+    if (d.overview && place !== undefined) {
+      drawOverview(rows, d, input.scene, { canvas: area, overview: place, image: asImage(d, input) });
+    }
     if (d.legend && places.legend !== undefined) drawLegend(rows, input.scene, places.legend);
   }
   if (d.panel && size.rows > 2) drawPanel(rows, d, input, size);
@@ -332,8 +362,9 @@ export function composeFrame(state: TuiState, input: FrameInput, size: Size, mod
   return serialize(rows.slice(0, safe.rows), mode, false);
 }
 
-/** The escapes that put `lines` on the screen in one go: each line at its row, inside
- * a synchronized update, so a terminal that has them never shows a frame half drawn. */
-export function frameText(lines: readonly string[]): string {
-  return `\x1b[?2026h${lines.map((line, i) => `\x1b[${i + 1};1H${line}`).join('')}\x1b[?2026l`;
+/** The escapes that put `lines` on the screen in one go: each line at its row, then
+ * `images`' commands, inside a synchronized update, so a terminal that has them never
+ * shows a frame half drawn. */
+export function frameText(lines: readonly string[], images = ''): string {
+  return `\x1b[?2026h${lines.map((line, i) => `\x1b[${i + 1};1H${line}`).join('')}${images}\x1b[?2026l`;
 }
