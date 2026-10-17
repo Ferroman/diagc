@@ -7,7 +7,7 @@ import { typeLook } from './vocabulary';
 // in packages/renderer/src/sketch/stylePresets.ts, its rules in presets.css) as far as
 // a terminal can draw it. A blue desktop; boxes solid in CGA's light colours, one per
 // type, in a white double frame with a block shadow; open groups double-framed in
-// their type's colour and titled on the frame; lines white, their labels yellow.
+// white or their own colour and titled on the frame; lines white, their labels yellow.
 // dos.test.ts holds the palette and the colouring rule to the renderer's.
 
 /** The styles a terminal draws: its own, and DOS. The rest are the browser's. */

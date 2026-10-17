@@ -260,7 +260,7 @@ describe('paint in the DOS style', () => {
     expect(at(cells, label.x, label.y).style).toEqual({ bg: BLUE, fg: YELLOW });
   });
 
-  it("double-frames an open group in its type's colour, its title white on the frame, and casts it no shadow", async () => {
+  it('double-frames an open group in white, its title on the frame, and casts it no shadow', async () => {
     const model = modelOf({
       nodes: [
         { id: 'p', name: 'Platform', type: 'team' },
@@ -271,9 +271,23 @@ describe('paint in the DOS style', () => {
     const { scene, cells, text } = await dos(model);
     const p = scene.layout.boxes.get('p')!;
     expect(text[p.y]![p.x]).toBe('╔');
-    expect(at(cells, p.x, p.y).style).toEqual({ bg: BLUE, fg: rgb('#00aaaa') });
+    // the palette colours boxes, never an open group's frame
+    expect(at(cells, p.x, p.y).style).toEqual({ bg: BLUE, fg: WHITE });
     expect(at(cells, p.x + 3, p.y)).toEqual({ ch: 'P', style: { bg: BLUE, fg: WHITE, bold: true, inverse: false } });
     expect(at(cells, p.x + p.width, p.y + 1).style.bg).toEqual(BLUE);
+  });
+
+  it('frames an open group in its own colour where it has one', async () => {
+    const model = modelOf({
+      nodes: [
+        { id: 'p', name: 'Platform', color: '#ff5555' },
+        { id: 'a', name: 'A' },
+      ],
+      containment: [{ parent: 'p', child: 'a' }],
+    });
+    const { scene, cells } = await dos(model);
+    const p = scene.layout.boxes.get('p')!;
+    expect(at(cells, p.x, p.y).style.fg).toEqual(rgb('#ff5555'));
   });
 
   it('heads a table in cyan over its grey body', async () => {

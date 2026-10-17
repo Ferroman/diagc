@@ -92,22 +92,19 @@ export function accentCss(
   return colorCss(model, node, accents) ?? typeLook(node.type, notation).accent;
 }
 
-/** A node's colour in the DOS style: its own, else its type's; none for an untyped node. */
-function hueOf(p: Painter, slots: ReadonlyMap<string, number>, id: string): Rgb | undefined {
-  const { node } = p.scene.nodes.get(id)!;
-  const own = colorCss(p.scene.input.model, node, p.scene.accents);
-  if (own === undefined && (node.type === undefined || !slots.has(node.type))) return undefined;
-  return dosHue(own, node.type, slots);
-}
+/** A node's own colour (`colorCss`), as the CSS a terminal has to read. */
+const ownCss = (p: Painter, id: string): string | undefined =>
+  colorCss(p.scene.input.model, p.scene.nodes.get(id)!.node, p.scene.accents);
 
 /** How a box's border is drawn: heavy when selected (and for a fork bar), dashed
  * for a boundary, in the node's accent. In DOS a frame is double: a box's white on its
- * fill, an open group's in its colour on the desktop, the selection's yellow. */
+ * fill, an open group's in its own colour, never the palette's, and the selection's
+ * yellow. */
 function borderInk(p: Painter, id: string): Ink {
   const box = p.scene.boxes.get(id)!;
   if (p.dos !== undefined) {
     const weight: Weight = box.shape === 'bar' ? 'heavy' : box.dashed ? 'dashed' : 'double';
-    const fg = id === p.selected ? YELLOW : isFrame(p.scene, id) ? (hueOf(p, p.dos, id) ?? WHITE) : WHITE;
+    const fg = id === p.selected ? YELLOW : isFrame(p.scene, id) ? (rgb(ownCss(p, id)) ?? WHITE) : WHITE;
     return { weight, style: { fg } };
   }
   const fg = rgb(accentCss(p.scene.input.model, p.scene.nodes.get(id)!.node, p.scene.notation, p.scene.accents));
@@ -129,7 +126,7 @@ function drawFrame(p: Painter, id: string, g: BoxGeometry): void {
  * cyan head, as the page draws one; the small print is the ink 70% over the fill. */
 function cardOf(p: Painter, slots: ReadonlyMap<string, number>, id: string): Card {
   const table = p.scene.boxes.get(id)!.shape === 'table';
-  const fill = table ? GREY : (hueOf(p, slots, id) ?? GREY);
+  const fill = table ? GREY : dosHue(ownCss(p, id), p.scene.nodes.get(id)!.node.type, slots);
   const ink = inkOn(fill.rgb);
   const small: Style = { fg: mixed(ink.rgb, fill.rgb, 0.7) };
   return { fill, ink, lines: { title: { bold: true }, subtitle: small, note: small, row: {} } };
