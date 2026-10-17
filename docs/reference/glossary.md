@@ -93,6 +93,15 @@ links. In edit mode you can drag it where it reads best, and its place is saved 
 layout. See
 [How threats are shown](../how-to/draw-a-threat-model.md#how-threats-are-shown).
 
+## Overview
+
+In `diagc tui`, the small copy of a picture too big for the screen, in its bottom-right
+corner: every box drawn in braille dots, the part on screen outlined and the rest dimmed.
+Click or drag on it to go to that part; `o` hides it. Elsewhere the docs also use
+"overview" in its everyday sense: the folded top level a diagram rests at, or a PNG with
+every group unfolded. See
+[Browse a diagram](../how-to/look-at-a-diagram-in-the-terminal.md#browse-a-diagram).
+
 ## Pin
 
 A viewer's override that holds a group open or shut, whatever semantic zoom would decide.

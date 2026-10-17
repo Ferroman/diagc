@@ -113,6 +113,10 @@ A diagram that declares a legend shows it in the corner its `position` names, as
 | `Esc` | Close the search, the help or the details; then back to the list. |
 | `q`, `Ctrl-C` | Quit. |
 
+The viewer takes the mouse while it is open, so a drag pans the picture instead of selecting text. To select with the terminal, hold `Shift` as you drag (`Option` in iTerm2), or copy from `diagc show`, which prints the same picture.
+
+The viewer needs a terminal that understands xterm's escape codes for the alternate screen and the mouse, as most terminal emulators do. It is tested in kitty on Linux, and has not been tried on Windows.
+
 The viewer is read-only. Change a diagram in its source, or in `diagc studio`.
 
 ## What the text picture leaves out
