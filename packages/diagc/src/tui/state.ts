@@ -5,7 +5,7 @@ import { readerPins, type Pins } from '../text/folds';
 import type { SceneInput, Scene } from '../text/scene';
 import { onKey, onMouse, otherStyle } from './actions';
 import type { UserInput } from './keys';
-import { clampScroll, follow } from './nav';
+import { clampScroll, follow, type View } from './nav';
 import type { OverviewPlace } from './overview';
 
 // The TUI's state and what an input event does to it: a pure reducer, so every key is
@@ -61,8 +61,8 @@ export interface Ctx {
   model?: DiagramModel;
   overlay?: LayoutOverlay;
   scene?: Scene;
-  /** the canvas: its first screen row and its size */
-  view: { top: number; width: number; height: number };
+  /** the canvas: its first screen row, its size and the overview's corner (`viewOf`) */
+  view: View & { top: number };
   /** where the overview goes on this screen, whether or not it is on */
   overview?: OverviewPlace;
   /** where the legend goes on this screen, its border included, whether or not it is on */
@@ -122,7 +122,7 @@ export function sceneInput(
 
 /** `state` fitted to a new picture: a selection the picture no longer draws is gone,
  * one that asked to be followed is scrolled to, and the scroll stays on the picture. */
-export function settle(state: DiagramState, scene: Scene, view: { width: number; height: number }): DiagramState {
+export function settle(state: DiagramState, scene: Scene, view: View): DiagramState {
   const { follow: wanted, selected, ...rest } = state;
   const box = selected === undefined ? undefined : scene.layout.boxes.get(selected);
   const scroll = wanted === true && box !== undefined ? follow(state.scroll, box, view) : state.scroll;

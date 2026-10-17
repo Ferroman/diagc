@@ -270,6 +270,31 @@ describe('runTui', () => {
     await done;
   });
 
+  it('never leaves a selected box under the overview', async () => {
+    // a chain taller than the screen ending in a row of leaves wider than it: the
+    // last leaves are in the overview's corner
+    const chain = Array.from({ length: 8 }, (_, i) => ({ id: `n${i}`, name: `Node ${i}` }));
+    const leaves = Array.from({ length: 10 }, (_, i) => ({ id: `l${i}`, name: `Leaf${i}` }));
+    const relations = [
+      ...chain.slice(1).map((n, i) => ({ id: `r${i}`, from: `n${i}`, to: n.id, kind: 'sync' })),
+      ...leaves.map((l) => ({ id: `r-${l.id}`, from: 'n7', to: l.id, kind: 'sync' })),
+    ];
+    const nodes = [...chain, ...leaves];
+    const model = { version: 1, id: 'fan', name: 'fan', nodes, containment: [], relations, layers: [], planes: [] };
+    writeFileSync(path.join(artifactsDir, 'fan.diagram.json'), JSON.stringify(model));
+    const fake = fakeTerminal();
+    const done = runTui(options(fake, manualWatch(), 'fan'));
+    await until(fake.screen, 'Node 0');
+    // on the canvas as well as in the status row
+    const shown = (name: string): number => fake.screen().split(name).length - 1;
+    for (const leaf of leaves) {
+      fake.type(`/${leaf.name}\r`);
+      expect([leaf.name, shown(leaf.name)]).toEqual([leaf.name, 2]);
+    }
+    fake.type('q');
+    await done;
+  });
+
   it('draws the overview as an image once the terminal says it shows them, sent only when it changes', async () => {
     long();
     const fake = fakeTerminal();

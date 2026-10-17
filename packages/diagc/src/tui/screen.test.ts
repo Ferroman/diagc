@@ -13,6 +13,7 @@ import {
   overviewImage,
   overviewPlaceOf,
   PANEL_WIDTH,
+  viewOf,
   type FrameInput,
 } from './screen';
 import { openDiagram, type TuiState } from './state';
@@ -217,6 +218,16 @@ describe('the overview', () => {
       .slice(place.y, place.y + place.height)
       .map((l) => [...plain(l)].slice(place.x, place.x + place.width).join(''));
     expect(inside.join('')).toMatch(braille);
+  });
+
+  it('is the corner of the view the scroll keeps clear, while it is on', async () => {
+    const scene = await sceneOf(chain);
+    const place = overviewPlaceOf(stateOf(), scene, size)!;
+    expect(viewOf(stateOf(), scene, size)).toEqual({
+      ...canvasSize(stateOf(), size),
+      corner: { width: place.width + 2, height: place.height + 2 },
+    });
+    expect(viewOf(stateOf({ overview: false }), scene, size)).toEqual(canvasSize(stateOf(), size));
   });
 
   it('goes beside the panel, not under it, on a wide terminal', async () => {

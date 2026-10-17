@@ -10,6 +10,7 @@ import { cellWidth, charWidth, fitCells, isControl, printable } from '../text/wi
 import { detailLines } from './details';
 import type { FrameImage, Graphics } from './kitty';
 import { legendPlace } from './legend';
+import type { View } from './nav';
 import { overviewCells, overviewPixels, overviewPlace, type OverviewPlace } from './overview';
 import type { DiagramState, TuiState } from './state';
 
@@ -228,6 +229,15 @@ function pictureShown(state: TuiState, scene: Scene | undefined, size: Size): sc
  * same, for clicks. */
 export function overviewPlaceOf(state: TuiState, scene: Scene | undefined, size: Size): OverviewPlace | undefined {
   return pictureShown(state, scene, size) ? overviewPlace(scene.layout, canvasSize(state, size)) : undefined;
+}
+
+/** The canvas as the scroll reads it: its size, and the corner the overview's frame
+ * covers while it is on, which a selected box is kept out of and the scroll may run
+ * past the picture to uncover. `reduce` and `settle` read it. */
+export function viewOf(state: TuiState, scene: Scene | undefined, size: Size): View & { top: number } {
+  const canvas = canvasSize(state, size);
+  const place = state.diagram?.overview === true ? overviewPlaceOf(state, scene, size) : undefined;
+  return place === undefined ? canvas : { ...canvas, corner: { width: place.width + 2, height: place.height + 2 } };
 }
 
 /** Where the legend goes on this screen, its border included, whether or not it is on:

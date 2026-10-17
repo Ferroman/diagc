@@ -6,6 +6,14 @@ import type { BoxGeometry } from '../text/layout';
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
 
+/** The window onto the picture: its size, and the bottom-right corner of it the
+ * overview covers while it is on. */
+export interface View {
+  width: number;
+  height: number;
+  corner?: { width: number; height: number };
+}
+
 /** Room kept around a box scrolled into view, in cells. */
 const MARGIN = 2;
 
@@ -68,21 +76,37 @@ function followAxis(at: number, start: number, size: number, span: number): numb
   return at;
 }
 
-/** The scroll that brings `box` into a view of `view`'s size, moving as little as it can. */
-export function follow(scroll: CellPoint, box: BoxGeometry, view: { width: number; height: number }): CellPoint {
-  return {
+/** `scroll` moved on until `box` and its margin are clear of the view's corner: up or
+ * left of it, whichever is the shorter move that keeps the box's start on screen. */
+function clearCorner(scroll: CellPoint, box: BoxGeometry, view: View): CellPoint {
+  if (view.corner === undefined) return scroll;
+  const left = box.x + box.width + MARGIN - (scroll.x + view.width - view.corner.width);
+  const up = box.y + box.height + MARGIN - (scroll.y + view.height - view.corner.height);
+  if (left <= 0 || up <= 0) return scroll;
+  const byX = box.x >= scroll.x + left ? left : Infinity;
+  const byY = box.y >= scroll.y + up ? up : Infinity;
+  if (byX === Infinity && byY === Infinity) return scroll;
+  return byY <= byX ? { x: scroll.x, y: scroll.y + byY } : { x: scroll.x + byX, y: scroll.y };
+}
+
+/** The scroll that brings `box` into `view`, out from under the overview, moving as
+ * little as it can. */
+export function follow(scroll: CellPoint, box: BoxGeometry, view: View): CellPoint {
+  const seen = {
     x: followAxis(scroll.x, box.x, box.width, view.width),
     y: followAxis(scroll.y, box.y, box.height, view.height),
   };
+  return clearCorner(seen, box, view);
 }
 
 /** `scroll` kept where the view still shows content: never before the start, never so
- * far that the view is past the end. */
-export function clampScroll(
-  scroll: CellPoint,
-  content: { width: number; height: number },
-  view: { width: number; height: number },
-): CellPoint {
+ * far that the view is past the end, but for the overview's corner: as far past the
+ * right and the bottom as that covers, so nothing has to stay under it. */
+export function clampScroll(scroll: CellPoint, content: { width: number; height: number }, view: View): CellPoint {
   const clamp = (v: number, max: number): number => Math.max(0, Math.min(v, Math.max(0, max)));
-  return { x: clamp(scroll.x, content.width - view.width), y: clamp(scroll.y, content.height - view.height) };
+  const room = view.corner ?? { width: 0, height: 0 };
+  return {
+    x: clamp(scroll.x, content.width + room.width - view.width),
+    y: clamp(scroll.y, content.height + room.height - view.height),
+  };
 }

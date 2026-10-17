@@ -14,7 +14,7 @@ import { buildScene, type Scene } from '../text/scene';
 import { startWatch } from '../watch';
 import { isReply, parseInput, type Reply } from './keys';
 import { CELL_SIZE_QUERY, graphicsOf, hear, imageChange, TERMINAL_QUERY, type FrameImage, type Heard } from './kitty';
-import { canvasSize, composeFrame, frameText, legendPlaceOf, overviewImage, overviewPlaceOf } from './screen';
+import { composeFrame, frameText, legendPlaceOf, overviewImage, overviewPlaceOf, viewOf } from './screen';
 import { openDiagram, reduce, sceneInput, settle, type DiagramState, type Effect, type TuiState } from './state';
 import type { Terminal } from './terminal';
 
@@ -350,7 +350,7 @@ class App {
     if (seq !== this.layoutSeq || this.state.diagram === undefined) return;
     this.scene = scene;
     // the state as it is now: keys pressed while elk worked have moved it on
-    this.state = { ...this.state, diagram: settle(this.state.diagram, scene, canvasSize(this.state, this.size())) };
+    this.state = { ...this.state, diagram: settle(this.state.diagram, scene, viewOf(this.state, scene, this.size())) };
     this.repaint();
     this.draw();
   }
@@ -376,7 +376,7 @@ class App {
         model: this.model,
         overlay: this.overlay,
         scene: this.scene,
-        view: canvasSize(this.state, size),
+        view: viewOf(this.state, this.scene, size),
         overview: overviewPlaceOf(this.state, this.scene, size),
         legend: legendPlaceOf(this.state, this.scene, size),
         style: this.style(),
@@ -400,7 +400,7 @@ class App {
     if (this.state.diagram !== undefined && this.scene !== undefined) {
       this.state = {
         ...this.state,
-        diagram: settle(this.state.diagram, this.scene, canvasSize(this.state, this.size())),
+        diagram: settle(this.state.diagram, this.scene, viewOf(this.state, this.scene, this.size())),
       };
     }
     this.draw();

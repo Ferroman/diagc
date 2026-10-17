@@ -214,6 +214,16 @@ describe('onMouse', () => {
     expect(end.diagram.scroll.y).toBe(ctx.scene!.layout.height - tall.height);
     expect(handle(end.diagram, key('home'), ctx).diagram.scroll).toEqual({ x: 0, y: 0 });
   });
+
+  it("scrolls past the picture's right and bottom as far as the overview covers, to show what is under it", async () => {
+    const covered = { ...view, height: 2, width: 5, corner: { width: 3, height: 1 } };
+    const ctx = { ...(await ctxOf(opened())), view: covered };
+    const { width, height } = ctx.scene!.layout;
+    expect(handle(opened(), key('end'), ctx).diagram.scroll.y).toBe(height + 1 - covered.height);
+    const right = Array.from({ length: 50 }, () => key('shift+right'));
+    const far = right.reduce((d, k) => handle(d, k, ctx).diagram, opened());
+    expect(far.scroll.x).toBe(width + 3 - covered.width);
+  });
 });
 
 describe('the overview', () => {
