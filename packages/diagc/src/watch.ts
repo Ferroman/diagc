@@ -53,7 +53,13 @@ export function createSerialRunner(task: (key: string) => Promise<void>): {
 export function startWatch(
   dir: string,
   outDir: string,
-  opts: { onEvent?: (e: WatchEvent) => void; coreEntry?: string; resolver?: IncludeResolver } = {},
+  opts: {
+    onEvent?: (e: WatchEvent) => void;
+    coreEntry?: string;
+    resolver?: IncludeResolver;
+    /** where a compile's warnings go, one line each; the console's by default */
+    warn?: (line: string) => void;
+  } = {},
 ): { close(): Promise<void> } {
   // A save is a truncate followed by the data. Compiling on the first of those events can
   // read an empty file, and the second is no rescue: chokidar drops a `change` that comes
@@ -71,6 +77,7 @@ export function startWatch(
         rootDir: dir,
         ...(opts.coreEntry !== undefined ? { coreEntry: opts.coreEntry } : {}),
         ...(opts.resolver !== undefined ? { resolver: opts.resolver } : {}),
+        ...(opts.warn !== undefined ? { warn: opts.warn } : {}),
       });
       opts.onEvent?.({ file, ok: true, artifact });
     } catch (e) {

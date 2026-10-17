@@ -1,8 +1,8 @@
 import { execFile } from 'node:child_process';
-import { copyFile, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSerialRunner, startWatch, type WatchEvent } from './watch';
 
 const fixtures = path.resolve(import.meta.dirname, '../test-fixtures');
@@ -130,6 +130,25 @@ describe('startWatch', () => {
     await eventWhere(events, (e) => e.ok);
     expect(JSON.parse(await readFile(path.join(out, 'app.diagram.json'), 'utf8')).id).toBe('sample');
 
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('hands compile warnings to warn, not to the console', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'diagc-src-'));
+    const out = await mkdtemp(path.join(tmpdir(), 'diagc-out-'));
+    const events: WatchEvent[] = [];
+    const warned: string[] = [];
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const model = { version: 1, id: 'w', name: 'w', nodes: [{ id: 'a', name: 'A', type: 'servise' }] };
+    await writeFile(
+      path.join(dir, 'w.diagram.json'),
+      JSON.stringify({ ...model, containment: [], relations: [], layers: [], planes: [] }),
+    );
+    watcher = startWatch(dir, out, { onEvent: (e) => events.push(e), warn: (line) => warned.push(line) });
+    await eventWhere(events, (e) => e.ok);
+    expect(warned.some((w) => w.includes("'servise'"))).toBe(true);
+    expect(consoleWarn).not.toHaveBeenCalled();
+    consoleWarn.mockRestore();
     await rm(dir, { recursive: true, force: true });
   });
 

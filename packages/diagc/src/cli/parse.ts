@@ -14,6 +14,13 @@ export interface FlagValues {
   '--agents': true;
   '--style': string;
   '--theme': 'light' | 'dark';
+  '--plane': string;
+  '--layers': string[];
+  '--depth': number;
+  '--root': string;
+  '--ascii': true;
+  '--color': true;
+  '--no-color': true;
 }
 
 export type Flag = keyof FlagValues;
@@ -74,6 +81,15 @@ export const STYLE_IDS = [
 /** How a flag reads its value from the argument after it, which it takes whatever it is. */
 type Reader<V> = (next: string | undefined) => V;
 
+/** A flag's value that has to be there: no fallback, since a missing value would
+ * otherwise swallow the next flag as the value. */
+const required =
+  (flag: Flag, hint: string): Reader<string> =>
+  (next) => {
+    if (next === undefined || next.startsWith('--')) throw badValue(flag, hint);
+    return next;
+  };
+
 /** Every flag, in the order the refusal of one a command does not take goes through them:
  * how it reads its value, or null for a flag that takes none. */
 const FLAGS: { [F in Flag]: FlagValues[F] extends true ? null : Reader<FlagValues[F]> } = {
@@ -128,6 +144,24 @@ const FLAGS: { [F in Flag]: FlagValues[F] extends true ? null : Reader<FlagValue
     if (next !== 'light' && next !== 'dark') throw badValue('--theme', 'light or dark, e.g. --theme dark');
     return next;
   },
+  '--plane': required('--plane', 'needs a plane id, e.g. --plane logical'),
+  '--layers': (next) => {
+    // An empty value is a choice, not a missing one: no layers at all.
+    const value = required('--layers', "needs layer ids, e.g. --layers security,data ('' for none)")(next);
+    return value
+      .split(',')
+      .map((id) => id.trim())
+      .filter((id) => id !== '');
+  },
+  '--depth': (next) => {
+    if (next === undefined || !/^\d+$/.test(next))
+      throw badValue('--depth', 'a whole number of levels to open, e.g. --depth 1');
+    return Number(next);
+  },
+  '--root': required('--root', 'needs a node id, e.g. --root checkout'),
+  '--ascii': null,
+  '--color': null,
+  '--no-color': null,
 };
 
 const isFlag = (arg: string): arg is Flag => Object.hasOwn(FLAGS, arg);

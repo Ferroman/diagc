@@ -28,7 +28,7 @@ Everything the CLI needs is in the package — the prebuilt studio, the viewer s
 From a checkout, `pnpm link --global` inside the repo gives you a `diagc` that runs the working tree instead. Both layouts are detected automatically; the differences are called out below where they matter.
 
 ```
-diagc <init|compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir] [--no-images] [--link url] [--style id] [--theme light|dark]
+diagc <init|compile|lint|watch|publish|show|studio|tui|eject|diff|guide> [files...] [--out dir] [--no-images] [--link url] [--style id] [--theme light|dark]
 ```
 
 An unknown command exits `1` with that usage line, and so does a flag or an argument the command does not take.
@@ -150,6 +150,28 @@ diagc publish --style sketch --theme dark   # the pictures in that look
 
 **Remote includes resolve locked**, same as `compile`; `diagc publish --update-includes` refreshes and re-pins them first. Publish always compiles the whole source tree regardless of `files...` (that only filters which pages are rendered below it), so an `--update-includes` run here prunes unreferenced entries whenever every source compiles — there is no scoped/unpruned form the way a filtered `compile` run has. A source that fails may never have reached its includes, so then nothing is pruned.
 
+### `show`
+
+Prints a diagram as text on stdout: boxes, frames, lines and labels in box-drawing characters.
+
+```bash
+diagc show shop
+diagc show shop --depth 1             # only the top level of groups open
+diagc show shop --plane infra --layers security
+diagc show shop --root checkout       # one group's inside
+diagc show shop --ascii --no-color    # plain ASCII, no escapes
+```
+
+- **Input:** one diagram name, or a path under `.diagrams/src`, read as `eject` reads one. The source is loaded and validated as `lint` loads it, so the picture is the source as it is now, compiled or not. The layout beside it (`<name>.layout.json`) gives the flow's direction and the export's folds; positions in it are not used. A layout that does not read as one is named on stderr and drawn without.
+- **What is drawn:** the first plane, or `--plane`'s; the plane's own layers, or `--layers`' (`''` for none); every group open except those the layout's `export.collapsed` folds — the PNG's folds — or, with `--depth n`, only the top `n` levels open. `--root <id>` draws one group's inside, as drilling into it does.
+- **Colour:** when stdout is a terminal, or with `--color`; never with `--no-color` or a non-empty `NO_COLOR`. `FORCE_COLOR` colours a pipe. 24-bit colour where `COLORTERM` says the terminal has it, the 256-colour palette otherwise.
+- **Width:** on a terminal narrower than the picture, one line on stderr says so and suggests `less -S` or `diagc tui`; stdout keeps the whole picture.
+- **Legend:** a declared one is printed under the picture, framed, after a blank line: over it for a `top-` position, against its right edge for a `-right` one (at its left edge when the legend is the wider). A legend that is only on offer, for shapes that say nothing about themselves, is left out, as the PNG leaves it out.
+- **Leaves out:** saved positions, the layouts of their own that the plan, git-graph and activity notations have in the browser (they draw as an ordinary graph; a fishbone is drawn as the fish), icons, images, drawings and notes.
+- **Exit code:** `0`, also for a view with nothing in it (`diagc: nothing to draw in <name>` on stderr); `1` with the reason on stderr for no name, an unknown name, a source that does not load, an unknown plane, layer or node, a `--root` that holds nothing, or `--color` with `--no-color`.
+
+Remote includes resolve locked, as for `lint`; `show` refuses `--update-includes`. See [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md).
+
 ### `studio`
 
 Runs the browser studio against the current directory.
@@ -170,6 +192,22 @@ Which server depends on how `diagc` was installed, and nothing else does:
 Both serve the same API from the same route table (`packages/diagc/src/api`), so saving, renaming, assets, and the shape library behave identically.
 
 Remote includes resolve locked here too, same as `compile` — `studio` refuses `--update-includes`; run `diagc compile --update-includes` first if a lock entry is missing.
+
+### `tui`
+
+A full-screen, read-only viewer in the terminal: the list of diagrams, or the one named.
+
+```bash
+diagc tui
+diagc tui shop
+```
+
+It runs the studio's compile watcher on `./.diagrams/src` and redraws the open diagram when its source compiles or its layout changes; a failed compile keeps the last picture and shows the error in the bottom row. A diagram opens as the published page opens it: the first plane, its layers, and the groups its layout saved as unfolded. A picture bigger than the screen gets an overview in the corner, drawn as an image where the terminal speaks kitty's graphics protocol and in braille elsewhere, and a declared legend shows in the corner it names; `L` hides it. Keys and mouse are in [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md#browse-a-diagram); `?` lists them in the viewer.
+
+- **Needs a terminal:** with stdin or stdout not a terminal it exits `1` and points at `show`.
+- **Exit code:** `0` when quit; `1` for a name with no source, checked first.
+
+Remote includes resolve locked, as in the studio; `tui` refuses `--update-includes`.
 
 ### `eject`
 
@@ -229,6 +267,12 @@ A command takes only the flags its row lists; any other exits `1` with the usage
 | `--link <url>` | `publish` | none | Link the index header to this `http(s)` address. |
 | `--style <id>` | `publish` | each diagram's own | Draw the PNGs in this [style preset](model.md#style-presets); a page keeps its diagram's own style. |
 | `--theme <light\|dark>` | `publish` | `light` | Draw the PNGs in this theme; a page keeps following its reader's. |
+| `--plane <id>` | `show` | the first | Draw this plane. |
+| `--layers <a,b>` | `show` | the plane's own | Draw these layers in place of the plane's; `''` for none. |
+| `--depth <n>` | `show` | every group open | Open only the top `n` levels of groups; `0` folds them all. |
+| `--root <id>` | `show` | none | Draw this group's inside only. |
+| `--ascii` | `show` | off | Plain ASCII in place of box-drawing characters. |
+| `--color`, `--no-color` | `show` | colour on a terminal | Colour the picture, or do not, whatever stdout is. |
 | `--labels <a,b>` | `diff` | the refs | Names for the before and after sides. |
 | `--image-url <template>` | `diff` | relative | `summary.md`'s image links; `{path}` stands for each PNG's path. |
 | `--json` | `lint`, `diff` | off | Print the findings (lint) or the changes (diff) as JSON. |
@@ -236,7 +280,7 @@ A command takes only the flags its row lists; any other exits `1` with the usage
 | `--agents` | `init` | off | Write the coding-agent block into `AGENTS.md` / `CLAUDE.md`, and the Claude Code skill where there is a `.claude/` folder or a `CLAUDE.md`. |
 | `--update-includes` | `compile`, `publish` | off | Refetch every remote `include`, vendor it under `.diagrams/includes/`, and rewrite `.diagrams/includes.lock.json`. Entries the run didn't touch are pruned only when every source compiled, and on `compile` only with no `files...` given (a full-tree run); `publish` always compiles the whole tree. |
 
-Anything not recognised as a flag is collected as `files...`: any number for `compile`, `lint`, `publish`, `diff` and `guide`, one at most for `watch`, `eject` and `init`, none for `studio`.
+Anything not recognised as a flag is collected as `files...`: any number for `compile`, `lint`, `publish`, `diff` and `guide`, one at most for `watch`, `eject`, `init` and `tui`, one for `show`, none for `studio`.
 
 ## Environment variables
 
@@ -248,6 +292,10 @@ Anything not recognised as a flag is collected as `files...`: any number for `co
 | `ARTIFACTS_DIR` | studio server | Artifact directory. Set by `diagc studio`. |
 | `DIAGRAMS_CWD` | studio dev server | Extra path added to Vite's filesystem allow-list (checkout layout only). |
 | `DIAGRAMS_OPEN` | studio server | `1` opens a browser on start. |
+| `NO_COLOR` | `show`, `tui` | Non-empty: no colour, unless `show --color` asks for it. |
+| `FORCE_COLOR` | `show` | Set and not `0`: colour even when stdout is not a terminal. |
+| `COLORTERM` | `show`, `tui` | `truecolor` or `24bit`: 24-bit colour in place of the 256-colour palette. |
+| `TERM` | `show`, `tui` | `dumb`: no colour. |
 
 Chrome is otherwise looked for at `/usr/bin/google-chrome`, `/usr/bin/google-chrome-stable`, `/usr/bin/chromium`, `/usr/bin/chromium-browser`, `/snap/bin/chromium`, and `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`.
 

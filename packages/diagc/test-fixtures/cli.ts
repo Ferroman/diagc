@@ -18,13 +18,15 @@ export interface CapturedIo extends CliIo {
   readonly stderr: string;
 }
 
-export function captureIo(): CapturedIo {
+/** `tty` makes stdout a terminal of that width, as `processIo` reports one. */
+export function captureIo(tty?: { columns: number }): CapturedIo {
   let stdout = '';
   let stderr = '';
   return {
     out: (line) => void (stdout += `${line}\n`),
     err: (line) => void (stderr += `${line}\n`),
     write: (text) => void (stdout += text),
+    ...(tty !== undefined ? { tty } : {}),
     get stdout() {
       return stdout;
     },

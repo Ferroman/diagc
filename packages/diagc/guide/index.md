@@ -8,7 +8,7 @@ This guide is for diagc {{version}}.
 
 1. Write or edit `.diagrams/src/<name>.diagram.ts`. A folder is allowed: `.diagrams/src/team/app.diagram.ts` is the diagram `team/app`.
 2. Run `diagc lint --json`. It prints `[]` and exits 0 when everything is clean. Otherwise each finding has `file`, `severity`, `code` and `message`: fix it and run again. An `error` means the diagram does not compile. A `warning` compiles but is probably a mistake, such as a misspelled type.
-3. Run `diagc publish <name>` and look at `.diagrams/static/<name>.png` to check the picture. It needs Chrome; set `CHROME_PATH` when none is found. The PNG shows the first plane with every group opened and only the layers that plane turns on; each further plane gets `.diagrams/static/<name>.<plane>.png`, and the other layers are on the page `.diagrams/html/<name>.html`.
+3. Run `diagc show <name>` to read the picture as text: the boxes, what sits inside what, and the arrows with their labels, every group open. It needs nothing else. Run `diagc publish <name>` and look at `.diagrams/static/<name>.png` to check the picture itself. It needs Chrome; set `CHROME_PATH` when none is found. The PNG shows the first plane with every group opened and only the layers that plane turns on; each further plane gets `.diagrams/static/<name>.<plane>.png`, and the other layers are on the page `.diagrams/html/<name>.html`.
 
 A person runs `diagc studio` to browse every diagram and to move boxes by hand.
 

@@ -22,7 +22,7 @@
 import { processIo } from './cli/io';
 import { run } from './cli/run';
 
-const USAGE = `Usage: diagc <init|compile|lint|watch|publish|studio|eject|diff|guide> [files...] [--out dir]
+const USAGE = `Usage: diagc <init|compile|lint|watch|publish|show|studio|tui|eject|diff|guide> [files...] [--out dir]
 
 Commands:
   init      init [name] [--type <type>] [--agents]: set a repository up — a starter
@@ -33,7 +33,11 @@ Commands:
   lint      Report suspicious diagrams (typos, duplicates, unused or undrawn parts); exit 1 on any
   watch     Recompile — and live-recompile — a directory of sources
   publish   Compile and render an HTML/PNG site under .diagrams/
+  show      show <name>: print the diagram as text — boxes, lines and labels in the
+            terminal or a pipe, every container open (--depth folds deeper levels)
   studio    Run the visual studio against the current directory
+  tui       tui [name]: look at the diagrams in the terminal — fold and unfold,
+            go into boxes, switch planes and layers, search; redraws as sources change
   eject     Promote a JSON diagram to a generated TypeScript source (verified)
   diff      diff <from>[..<to>] [names...]: what changed in the diagrams between two git
             refs (or a ref and the working tree), with before/after pages and PNGs
@@ -48,6 +52,12 @@ Options:
   --style id      Publish: take the PNGs in this style preset (clean, sketch, …) in
                   place of each diagram's own
   --theme t       Publish: take the PNGs light (the default) or dark
+  --plane id      show: draw this plane (default: the first)
+  --layers a,b    show: draw these layers in place of the plane's own ('' for none)
+  --depth n       show: open only the top n levels of containers
+  --root id       show: draw this container's inside only
+  --ascii         show: plain ASCII in place of box-drawing characters
+  --color, --no-color  show: colour or not, whatever stdout is (default: a terminal is)
   --json          lint: print the findings as a JSON array; diff: the changes as JSON
   --labels a,b    diff: name the two sides (default: the refs)
   --image-url t   diff: summary.md's image links as t, {path} standing for each PNG
@@ -68,8 +78,20 @@ async function exit(code: number): Promise<never> {
   process.exit(code);
 }
 
+/** A reader that stops early (`diagc show big | head`, quitting `less`) closes the
+ * pipe, and what is left to write has nowhere to go. That is the reader's choice, not
+ * the command failing: end quietly, as other tools do, rather than with a stack trace. */
+function quietOnClosedPipe(stream: NodeJS.WriteStream): void {
+  stream.on('error', (e: NodeJS.ErrnoException) => {
+    if (e.code === 'EPIPE') process.exit(0);
+    throw e;
+  });
+}
+
 /** The binary: argv through the process's own streams, then exit with the code. */
 async function main(): Promise<never> {
+  quietOnClosedPipe(process.stdout);
+  quietOnClosedPipe(process.stderr);
   return exit(await run(process.argv.slice(2), processIo, USAGE));
 }
 

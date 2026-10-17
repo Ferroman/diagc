@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import type { CliIo } from '../cli/io';
 import { diagramName } from '../names';
 import { RELATIVE_PATHS } from '../paths';
@@ -39,4 +41,15 @@ export async function pngRenderer(
     return undefined;
   }
   return snapshot.renderPng;
+}
+
+/** The source a diagram name reads from: its `.diagram.ts`, else its `.diagram.json`;
+ * undefined when it has neither. TypeScript first, as the hand-written one of the two
+ * (a `.diagram.json` beside it is the studio's, or a leftover from an eject). */
+export function sourceOf(name: string, srcDir: string = RELATIVE_PATHS.srcDir): string | undefined {
+  for (const ext of ['.diagram.ts', '.diagram.json']) {
+    const file = path.posix.join(srcDir, `${name}${ext}`);
+    if (existsSync(file)) return file;
+  }
+  return undefined;
 }
