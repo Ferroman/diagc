@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DiagramModel } from '@diagc/core/internal';
-import { serialize } from './ansi';
+import { parseColor, serialize } from './ansi';
 import type { Cell } from './canvas';
 import { ASCII, UNICODE } from './glyphs';
 import { paint } from './paint';
@@ -30,9 +30,10 @@ const pair = (kind = 'sync', extra = {}): DiagramModel =>
 async function drawn(
   model: DiagramModel,
   selected?: string,
+  style?: 'dos',
 ): Promise<{ scene: Scene; cells: Cell[][]; text: string[] }> {
   const pins = Object.fromEntries(model.containment.map((c) => [c.parent, 'expanded' as const]));
-  const scene = await buildScene({ model, pins }, UNICODE);
+  const scene = await buildScene({ model, pins, ...(style !== undefined ? { style } : {}) }, UNICODE);
   const cells = paint(scene, { glyphs: UNICODE, ...(selected !== undefined ? { selected } : {}) }).cells(UNICODE);
   return { scene, cells, text: serialize(cells, 'none') };
 }
@@ -176,5 +177,108 @@ describe('paint', () => {
     const text = serialize(paint(scene, { glyphs: ASCII }).cells(ASCII), 'none').join('\n');
     expect(text).toMatch(/^[\x20-\x7e\n]*$/);
     expect(text).toContain('reads');
+  });
+});
+
+describe('paint in the DOS style', () => {
+  const rgb = (css: string) => ({ rgb: parseColor(css)! });
+  const [BLUE, WHITE, BLACK, YELLOW] = ['#0000aa', '#ffffff', '#000000', '#ffff55'].map(rgb);
+  const dos = (model: DiagramModel, selected?: string) => drawn(model, selected, 'dos');
+  const typed = modelOf({
+    nodes: [
+      { id: 'a', name: 'Web', type: 'service' },
+      { id: 'b', name: 'Database', type: 'database' },
+    ],
+    relations: [{ id: 'r', from: 'a', to: 'b', kind: 'sync', label: 'reads' }],
+  });
+
+  it('lays the picture on a blue desktop, and leaves room for the shadows', async () => {
+    const { scene, cells } = await dos(pair());
+    const plain = await drawn(pair());
+    expect(scene.layout.width).toBe(plain.scene.layout.width + 2);
+    expect(scene.layout.height).toBe(plain.scene.layout.height + 1);
+    expect(cells.length).toBe(scene.layout.height);
+    // the room's top corner, where no shadow falls
+    expect(at(cells, scene.layout.width - 1, 0).style).toEqual({ bg: BLUE, fg: WHITE });
+  });
+
+  it("fills a box in its type's colour, in a white double frame, with black text", async () => {
+    const { scene, cells, text } = await dos(typed);
+    const [a, b] = [scene.layout.boxes.get('a')!, scene.layout.boxes.get('b')!];
+    expect(text[a.y]!.slice(a.x, a.x + a.width)).toMatch(/^╔═+╗$/);
+    expect(at(cells, a.x, a.y).style).toEqual({ bg: rgb('#aaaaaa'), fg: WHITE });
+    const name = at(cells, text[a.y + 1]!.indexOf('Web'), a.y + 1);
+    expect(name).toEqual({ ch: 'W', style: { bg: rgb('#aaaaaa'), fg: BLACK, bold: true } });
+    // the second type takes the palette's second colour
+    expect(at(cells, b.x + 1, b.y + 1).style.bg).toEqual(rgb('#00aaaa'));
+  });
+
+  it('fills a box in its own colour, with text in whichever of black and white reads on it', async () => {
+    const { scene, cells } = await dos(modelOf({ nodes: [{ id: 'a', name: 'A', color: '#08427b' }] }));
+    const a = scene.layout.boxes.get('a')!;
+    expect(at(cells, a.x + 1, a.y + 1).style).toEqual({ bg: rgb('#08427b'), fg: WHITE });
+  });
+
+  it('casts a block shadow two columns right and a row down, over what is under it', async () => {
+    const { scene, cells } = await dos(pair());
+    const a = scene.layout.boxes.get('a')!;
+    const shade = { bg: BLACK, fg: rgb('#555555') };
+    const [right, bottom] = [a.x + a.width, a.y + a.height];
+    expect(at(cells, right, a.y + 1).style).toMatchObject(shade);
+    expect(at(cells, right + 1, bottom).style).toMatchObject(shade);
+    expect(at(cells, a.x + 2, bottom).style).toMatchObject(shade);
+    // the light the box stands in: its top row's right and its bottom row's first two
+    expect(at(cells, right, a.y).style.bg).toEqual(BLUE);
+    expect(at(cells, a.x + 1, bottom).style.bg).toEqual(BLUE);
+    // the line leaving the box keeps its character in the shade
+    const start = scene.layout.routes.get(scene.view.edges[0]!.id)!.points[0]!;
+    expect(at(cells, start.x, bottom).ch).toBe('│');
+  });
+
+  it('joins a line to the double frame it leaves with the mixed junction', async () => {
+    const { scene, cells } = await dos(pair());
+    const a = scene.layout.boxes.get('a')!;
+    const start = scene.layout.routes.get(scene.view.edges[0]!.id)!.points[0]!;
+    expect(at(cells, start.x, a.y + a.height - 1).ch).toBe('╤');
+  });
+
+  it('draws lines white and their labels yellow, on the desktop', async () => {
+    const { scene, cells } = await dos(typed);
+    const route = scene.layout.routes.get(scene.view.edges[0]!.id)!;
+    const end = route.points.at(-1)!;
+    expect(at(cells, end.x, end.y)).toEqual({ ch: '▼', style: { bg: BLUE, fg: WHITE } });
+    const label = route.label!;
+    expect(at(cells, label.x, label.y).style).toEqual({ bg: BLUE, fg: YELLOW });
+  });
+
+  it("double-frames an open group in its type's colour, its title white on the frame, and casts it no shadow", async () => {
+    const model = modelOf({
+      nodes: [
+        { id: 'p', name: 'Platform', type: 'team' },
+        { id: 'a', name: 'A', type: 'service' },
+      ],
+      containment: [{ parent: 'p', child: 'a' }],
+    });
+    const { scene, cells, text } = await dos(model);
+    const p = scene.layout.boxes.get('p')!;
+    expect(text[p.y]![p.x]).toBe('╔');
+    expect(at(cells, p.x, p.y).style).toEqual({ bg: BLUE, fg: rgb('#00aaaa') });
+    expect(at(cells, p.x + 3, p.y)).toEqual({ ch: 'P', style: { bg: BLUE, fg: WHITE, bold: true, inverse: false } });
+    expect(at(cells, p.x + p.width, p.y + 1).style.bg).toEqual(BLUE);
+  });
+
+  it('heads a table in cyan over its grey body', async () => {
+    const model = modelOf({ nodes: [{ id: 't', name: 'users', type: 'db-table', columns: [{ name: 'id' }] }] });
+    const { scene, cells } = await dos(model);
+    const t = scene.layout.boxes.get('t')!;
+    expect(at(cells, t.x + 1, t.y + 1).style.bg).toEqual(rgb('#00aaaa'));
+    expect(at(cells, t.x + 1, t.y + 3).style.bg).toEqual(rgb('#aaaaaa'));
+  });
+
+  it('shows the selection with a yellow frame and its title reversed', async () => {
+    const { scene, cells } = await dos(pair(), 'a');
+    const a = scene.layout.boxes.get('a')!;
+    expect(at(cells, a.x, a.y)).toMatchObject({ ch: '╔', style: { fg: YELLOW } });
+    expect(at(cells, a.x + 2, a.y + 1).style.inverse).toBe(true);
   });
 });

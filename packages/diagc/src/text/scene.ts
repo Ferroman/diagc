@@ -16,6 +16,7 @@ import {
 } from '@diagc/core/internal';
 import { notationAccents, type Accents } from './accents';
 import { boxText, edgeText, type BoxText } from './content';
+import { SHADOW_REACH, type TextStyle } from './dos';
 import { fishCells } from './fish';
 import { withNeverFolds, type Pins } from './folds';
 import type { Glyphs } from './glyphs';
@@ -34,6 +35,9 @@ export interface SceneInput {
   pins: Pins;
   /** draw this container's interior only (the drill view) */
   root?: string;
+  /** the style it is drawn in; absent = the terminal's own. DOS's boxes cast shadows,
+   * which the picture leaves room for at its right and its foot. */
+  style?: TextStyle;
 }
 
 /** A laid-out view: everything painting and the TUI's navigation read. */
@@ -93,10 +97,12 @@ export async function buildScene(input: SceneInput, glyphs: Glyphs): Promise<Sce
 
   const labels = new Map(view.layoutEdges.map((e) => [e.id, edgeText(e, glyphs)]));
   // A fishbone is the fish, as on the page, whatever way the plane's settings say to flow.
-  const layout =
+  const laid =
     notation === FISHBONE_NOTATION
       ? fishCells(model, view, boxes)
       : await layoutCells(view, boxes, directionOf(input), labels);
+  const room = input.style === 'dos' && laid.boxes.size > 0;
+  const layout = room ? { ...laid, width: laid.width + SHADOW_REACH.x, height: laid.height + SHADOW_REACH.y } : laid;
   const accents = notationAccents(model, plane, notation, view.edges);
   const scene: Scene = { input, view, layout, boxes, nodes, parentOf, hierarchy, accents, ...defined({ notation }) };
   const legend = legendOf(scene, glyphs);

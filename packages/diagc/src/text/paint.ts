@@ -1,8 +1,22 @@
 import type { DiagramModel, DiagramNode, NotationId, ViewEdge } from '@diagc/core/internal';
 import type { Accents } from './accents';
 import { parseColor } from './ansi';
-import { Canvas, type CellPoint, type Color, type Style } from './canvas';
+import { Canvas, type CellPoint, type CellRect, type Color, type Style } from './canvas';
 import type { BoxLine, BoxText } from './content';
+import {
+  BLACK,
+  castShadows,
+  CYAN,
+  DESKTOP,
+  dosHue,
+  dosSlots,
+  GREY,
+  inkOn,
+  mixed,
+  WHITE,
+  YELLOW,
+  type Rgb,
+} from './dos';
 import { DOWN, LEFT, RIGHT, UP, type ArrowDirection, type Corner, type Glyphs, type Weight } from './glyphs';
 import { STEP, towardBox, type BoxGeometry, type FishDrawing } from './layout';
 import type { Scene } from './scene';
@@ -21,6 +35,16 @@ interface Painter {
   scene: Scene;
   glyphs: Glyphs;
   selected?: string;
+  /** each type's colour slot, where the scene is drawn in the DOS style */
+  dos?: ReadonlyMap<string, number>;
+}
+
+/** How a box is filled in the DOS style: its colour, the ink that reads on it, and its
+ * lines' styles. */
+interface Card {
+  fill: Rgb;
+  ink: Rgb;
+  lines: Record<BoxLine['role'], Style>;
 }
 
 /** How a line is drawn: its weight and its style. */
@@ -51,33 +75,73 @@ export const rgb = (css: string | undefined): Color | undefined => {
   return parsed === undefined ? undefined : { rgb: parsed };
 };
 
-/** A node's accent, as the renderer resolves it: its own colour, the one its notation
- * gives it (a lane's, a bone's), the model's colour for its type (or for every type),
- * then the notation's for the type. */
+/** A node's own colour, as the renderer resolves it: its own, the one its notation
+ * gives it (a lane's, a bone's), the model's for its type (or for every type). */
+function colorCss(model: DiagramModel, node: DiagramNode, accents: Accents): string | undefined {
+  const typeColor = node.type !== undefined ? model.typeColors?.[node.type] : undefined;
+  return node.color ?? accents.nodes.get(node.id) ?? typeColor ?? model.typeColors?.['*'];
+}
+
+/** A node's accent: its own colour, then the notation's for the type. */
 export function accentCss(
   model: DiagramModel,
   node: DiagramNode,
   notation: NotationId | undefined,
   accents: Accents,
 ): string | undefined {
-  const typeColor = node.type !== undefined ? model.typeColors?.[node.type] : undefined;
-  const byNotation = accents.nodes.get(node.id);
-  return node.color ?? byNotation ?? typeColor ?? model.typeColors?.['*'] ?? typeLook(node.type, notation).accent;
+  return colorCss(model, node, accents) ?? typeLook(node.type, notation).accent;
+}
+
+/** A node's colour in the DOS style: its own, else its type's; none for an untyped node. */
+function hueOf(p: Painter, slots: ReadonlyMap<string, number>, id: string): Rgb | undefined {
+  const { node } = p.scene.nodes.get(id)!;
+  const own = colorCss(p.scene.input.model, node, p.scene.accents);
+  if (own === undefined && (node.type === undefined || !slots.has(node.type))) return undefined;
+  return dosHue(own, node.type, slots);
 }
 
 /** How a box's border is drawn: heavy when selected (and for a fork bar), dashed
- * for a boundary, in the node's accent. */
+ * for a boundary, in the node's accent. In DOS a frame is double: a box's white on its
+ * fill, an open group's in its colour on the desktop, the selection's yellow. */
 function borderInk(p: Painter, id: string): Ink {
   const box = p.scene.boxes.get(id)!;
+  if (p.dos !== undefined) {
+    const weight: Weight = box.shape === 'bar' ? 'heavy' : box.dashed ? 'dashed' : 'double';
+    const fg = id === p.selected ? YELLOW : isFrame(p.scene, id) ? (hueOf(p, p.dos, id) ?? WHITE) : WHITE;
+    return { weight, style: { fg } };
+  }
   const fg = rgb(accentCss(p.scene.input.model, p.scene.nodes.get(id)!.node, p.scene.notation, p.scene.accents));
   const weight: Weight = id === p.selected || box.shape === 'bar' ? 'heavy' : box.dashed ? 'dashed' : 'light';
   return { weight, style: fg !== undefined ? { fg } : {} };
 }
 
+/** The corner a box's shape gives its frame; DOS has square ones only. */
+const cornerOf = (p: Painter, id: string): Corner | undefined =>
+  p.dos === undefined ? CORNER[p.scene.boxes.get(id)!.shape] : undefined;
+
 /** An open container's frame. Its title is written later (`drawTitle`). */
 function drawFrame(p: Painter, id: string, g: BoxGeometry): void {
   const ink = borderInk(p, id);
-  p.canvas.rect(g, ink.weight, ink.style, CORNER[p.scene.boxes.get(id)!.shape]);
+  p.canvas.rect(g, ink.weight, ink.style, cornerOf(p, id));
+}
+
+/** A box's fill in the DOS style: its colour, but a table's body is grey under its
+ * cyan head, as the page draws one; the small print is the ink 70% over the fill. */
+function cardOf(p: Painter, slots: ReadonlyMap<string, number>, id: string): Card {
+  const table = p.scene.boxes.get(id)!.shape === 'table';
+  const fill = table ? GREY : (hueOf(p, slots, id) ?? GREY);
+  const ink = inkOn(fill.rgb);
+  const small: Style = { fg: mixed(ink.rgb, fill.rgb, 0.7) };
+  return { fill, ink, lines: { title: { bold: true }, subtitle: small, note: small, row: {} } };
+}
+
+/** A DOS box's ground: its fill under the whole box, a table's head cyan. */
+function groundCard(p: Painter, box: BoxText, g: BoxGeometry, card: Card): void {
+  p.canvas.ground(g, { bg: card.fill, fg: card.ink });
+  if (box.shape !== 'table') return;
+  const head = box.lines.findIndex((line) => line.role === 'row');
+  const height = head < 0 ? box.lines.length : head;
+  p.canvas.ground({ x: g.x + 1, y: g.y + 1, width: g.width - 2, height }, { bg: CYAN, fg: BLACK });
 }
 
 /** An open container's title, in its top border. Written after the edges: a line that
@@ -96,7 +160,9 @@ function drawBox(p: Painter, id: string, g: BoxGeometry, weight?: Weight): void 
   const ink = { ...borderInk(p, id), ...(weight !== undefined ? { weight } : {}) };
   const rule = (y: number): void => p.canvas.segment({ x: g.x, y }, { x: g.x + g.width - 1, y }, ink.weight, ink.style);
   p.canvas.clear({ x: g.x + 1, y: g.y + 1, width: g.width - 2, height: g.height - 2 });
-  p.canvas.rect(g, ink.weight, ink.style, CORNER[box.shape]);
+  const card = p.dos === undefined ? undefined : cardOf(p, p.dos, id);
+  if (card !== undefined) groundCard(p, box, g, card);
+  p.canvas.rect(g, ink.weight, ink.style, cornerOf(p, id));
   let y = g.y + 1;
   if (box.shape === 'cylinder') rule(y++);
   let ruled = false;
@@ -106,7 +172,10 @@ function drawBox(p: Painter, id: string, g: BoxGeometry, weight?: Weight): void 
       ruled = true;
     }
     const x = line.role === 'row' ? g.x + 2 : g.x + Math.floor((g.width - cellWidth(line.text)) / 2);
-    const style = line.role === 'title' && id === p.selected ? { bold: true, inverse: true } : LINE_STYLE[line.role];
+    const style =
+      line.role === 'title' && id === p.selected
+        ? { bold: true, inverse: true }
+        : (card?.lines ?? LINE_STYLE)[line.role];
     p.canvas.text({ x, y: y++ }, line.text, style, g.x + g.width - 1);
   }
 }
@@ -181,9 +250,9 @@ function drawFishRoute(p: Painter, points: readonly CellPoint[], ink: Ink): void
  * A fishbone as the fish (fish.ts): the lines first, then the head's box, heavy, and
  * the spine run into its border, then the words, a bone's label bold in the bone's
  * colour, and last the boxes of what is not on the fish. A word is selected as a title
- * is, in reverse.
+ * is, in reverse. Returns the boxes drawn, which cast DOS's shadows.
  */
-function paintFish(p: Painter, fish: FishDrawing, edges: readonly ViewEdge[]): void {
+function paintFish(p: Painter, fish: FishDrawing, edges: readonly ViewEdge[]): CellRect[] {
   const { layout } = p.scene;
   for (const edge of edges) drawFishRoute(p, layout.routes.get(edge.id)!.points, edgeInk(p, edge));
   drawBox(p, fish.head, layout.boxes.get(fish.head)!, 'heavy');
@@ -197,25 +266,39 @@ function paintFish(p: Painter, fish: FishDrawing, edges: readonly ViewEdge[]): v
     };
     for (const line of lines) p.canvas.text(line, line.text, style);
   }
-  for (const [id, g] of layout.boxes) if (id !== fish.head && !fish.words.has(id)) drawBox(p, id, g);
+  const boxes = [...layout.boxes].filter(([id]) => id !== fish.head && !fish.words.has(id));
+  for (const [id, g] of boxes) drawBox(p, id, g);
+  return [layout.boxes.get(fish.head)!, ...boxes.map(([, g]) => g)];
 }
+
+/** An edge's label: in its line's ink, or in DOS yellow. */
+const labelStyle = (p: Painter, edge: ViewEdge): Style => {
+  const { style } = edgeInk(p, edge);
+  return p.dos === undefined ? style : { ...style, fg: YELLOW };
+};
 
 /**
  * The scene as a canvas, in layers: open containers' frames from the outside in,
  * then the edges' lines, then the boxes over them (a box clears what is under it)
  * and the frames' titles, then edge labels and the ends of the edges, last so
- * nothing covers an arrowhead.
+ * nothing covers an arrowhead. In the DOS style (the scene's `style`) it all lies on
+ * the desktop, and the boxes' shadows fall last, over whatever is beside them.
  */
 export function paint(scene: Scene, options: PaintOptions): Canvas {
   const { layout } = scene;
   const p: Painter = { canvas: new Canvas(layout.width, layout.height), scene, ...options };
+  if (scene.input.style === 'dos') {
+    p.dos = dosSlots(scene.input.model, scene.notation);
+    p.canvas.ground({ x: 0, y: 0, width: layout.width, height: layout.height }, DESKTOP);
+  }
   const drawn = [...scene.nodes.keys()].flatMap((id) => {
     const g = layout.boxes.get(id);
     return g === undefined ? [] : [{ id, g, frame: isFrame(scene, id) }];
   });
   const edges = scene.view.edges.filter((e) => layout.routes.has(e.id));
   if (layout.fish !== undefined) {
-    paintFish(p, layout.fish, edges);
+    const boxes = paintFish(p, layout.fish, edges);
+    if (p.dos !== undefined) castShadows(p.canvas, boxes);
     return p.canvas;
   }
   for (const { id, g, frame } of drawn) if (frame) drawFrame(p, id, g);
@@ -227,9 +310,14 @@ export function paint(scene: Scene, options: PaintOptions): Canvas {
   for (const { id, g, frame } of drawn) (frame ? drawTitle : drawBox)(p, id, g);
   for (const edge of edges) {
     const label = layout.routes.get(edge.id)!.label;
-    if (label !== undefined) p.canvas.text(label, label.text, edgeInk(p, edge).style);
+    if (label !== undefined) p.canvas.text(label, label.text, labelStyle(p, edge));
     drawEnd(p, edge, 'start');
     drawEnd(p, edge, 'end');
   }
+  if (p.dos !== undefined)
+    castShadows(
+      p.canvas,
+      drawn.filter((d) => !d.frame).map((d) => d.g),
+    );
   return p.canvas;
 }
