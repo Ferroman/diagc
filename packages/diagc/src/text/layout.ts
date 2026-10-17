@@ -63,9 +63,17 @@ export const CELL_OPTIONS: Readonly<Record<string, string>> = {
   'elk.separateConnectedComponents': 'true',
 };
 
+/** How the cells are laid out: the way the plane flows, and how far right and down a
+ * box's shadow falls where the style casts one (DOS), which keeps it off a frame. */
+export interface Flow {
+  direction: string;
+  shadow?: { x: number; y: number };
+}
+
 /** Inside a container's frame: the title row and a blank one above the children, a
- * row below, two columns either side. */
-const CONTAINER_PADDING = '[top=2,left=2,bottom=1,right=2]';
+ * row below, two columns either side, and the reach of a child's shadow beyond that,
+ * as the page's padding holds it. */
+const containerPadding = ({ x, y } = { x: 0, y: 0 }): string => `[top=2,left=2,bottom=${1 + y},right=${2 + x}]`;
 
 /** The gaps for a flow. A cell is about twice as tall as it is wide, so a sideways
  * flow's gap between neighbours, counted in rows, is half a downward one's, counted in
@@ -79,7 +87,8 @@ function cellOptions(direction: string): Readonly<Record<string, string>> {
 
 const elk = new ELK();
 
-function elkNode(vn: ViewNode, boxes: ReadonlyMap<string, BoxText>, direction: string): ElkNode {
+function elkNode(vn: ViewNode, boxes: ReadonlyMap<string, BoxText>, flow: Flow): ElkNode {
+  const { direction } = flow;
   const box = boxes.get(vn.id);
   const width = box?.width ?? 5;
   const height = box?.height ?? 3;
@@ -94,11 +103,11 @@ function elkNode(vn: ViewNode, boxes: ReadonlyMap<string, BoxText>, direction: s
     layoutOptions: {
       ...cellOptions(direction),
       'elk.direction': direction,
-      'elk.padding': CONTAINER_PADDING,
+      'elk.padding': containerPadding(flow.shadow),
       'elk.nodeSize.constraints': 'MINIMUM_SIZE',
       'elk.nodeSize.minimum': vertical ? `(${height}, ${width})` : `(${width}, ${height})`,
     },
-    children: vn.children.map((c) => elkNode(c, boxes, direction)),
+    children: vn.children.map((c) => elkNode(c, boxes, flow)),
   };
 }
 
@@ -368,9 +377,10 @@ function normalize(boxes: Map<string, BoxGeometry>, routes: Map<string, Route>):
 export async function layoutCells(
   view: CompiledView,
   boxes: ReadonlyMap<string, BoxText>,
-  direction: string,
+  flow: Flow,
   labels: ReadonlyMap<string, string>,
 ): Promise<TextLayout> {
+  const { direction } = flow;
   if (view.roots.length === 0) return { width: 0, height: 0, boxes: new Map(), routes: new Map() };
   const graph: ElkNode = {
     id: '__root',
@@ -380,7 +390,7 @@ export async function layoutCells(
       'elk.padding': '[top=0,left=0,bottom=0,right=0]',
       'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
     },
-    children: view.roots.map((vn) => elkNode(vn, boxes, direction)),
+    children: view.roots.map((vn) => elkNode(vn, boxes, flow)),
     edges: elkEdges(view, labels),
   };
   const laid = collect(await elk.layout(graph));

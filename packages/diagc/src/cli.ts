@@ -50,7 +50,7 @@ Options:
   --no-images     Publish (or diff) HTML without rendering PNG images
   --link url      Publish with a link to url in the index header
   --style id      Publish: take the PNGs in this style preset (clean, sketch, …) in
-                  place of each diagram's own
+                  place of each diagram's own; tui: draw every diagram in dos or clean
   --theme t       Publish: take the PNGs light (the default) or dark
   --plane id      show: draw this plane (default: the first)
   --layers a,b    show: draw these layers in place of the plane's own ('' for none)

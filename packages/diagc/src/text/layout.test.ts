@@ -30,7 +30,7 @@ async function laid(model: DiagramModel, direction = 'DOWN'): Promise<{ view: Co
   };
   view.roots.forEach(walk);
   const labels = new Map(view.layoutEdges.map((e) => [e.id, edgeText(e, UNICODE)]));
-  return { view, layout: await layoutCells(view, boxes, direction, labels) };
+  return { view, layout: await layoutCells(view, boxes, { direction }, labels) };
 }
 
 const inside = (p: CellPoint, b: BoxGeometry): boolean =>

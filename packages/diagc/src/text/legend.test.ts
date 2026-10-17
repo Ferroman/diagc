@@ -201,6 +201,50 @@ describe('the legend of a scene', () => {
   });
 });
 
+describe('the legend in the DOS style', () => {
+  const dos = { style: 'dos' } as const;
+
+  it("keys a type in its boxes' fill, its own colour else its palette slot, in their square double frame", async () => {
+    const legend = await legendFor({ ...shop, legend: { show: ['types'] } }, dos);
+    expect(read(legend)).toEqual([['Elements', '╔═╗ service', '╔═╗ database']]);
+    expect(legend!.sections[0]!.rows.map((r) => r.style)).toEqual([
+      { fg: { rgb: [170, 170, 170] } },
+      { fg: { rgb: [245, 158, 11] } },
+    ]);
+  });
+
+  it("keys a notation's type from the palette as its boxes are filled, never in the notation's accent", async () => {
+    const model = modelOf({
+      notation: 'c4',
+      nodes: [
+        { id: 'p', name: 'User', type: 'c4-person' },
+        { id: 'w', name: 'Web', type: 'c4-container-web' },
+      ],
+      legend: { show: ['types'] },
+    });
+    const rows = (await legendFor(model, dos))!.sections[0]!.rows;
+    expect(rows.map((r) => [r.swatch, r.style])).toEqual([
+      ['╔═╗', { fg: { rgb: [170, 170, 170] } }],
+      ['╔═╗', { fg: { rgb: [0, 170, 170] } }],
+    ]);
+  });
+
+  it("keys a table in its body's grey and a dashed type in its broken line", async () => {
+    const model = modelOf({
+      nodes: [
+        { id: 't', name: 'orders', type: 'db-table', columns: [{ name: 'id' }] },
+        { id: 'b', name: 'Edge', type: 'c4-system-boundary' },
+      ],
+      legend: { show: ['types'] },
+    });
+    const rows = (await legendFor(model, dos))!.sections[0]!.rows;
+    expect(rows.map((r) => [r.swatch, r.style])).toEqual([
+      ['╔═╗', { fg: { rgb: [170, 170, 170] } }],
+      ['┌╌┐', { fg: { rgb: [0, 170, 170] } }],
+    ]);
+  });
+});
+
 describe('legendCells', () => {
   it('frames the legend, its title in the top border and its section titles over their rows', async () => {
     const legend = (await legendFor(shop, { layers: ['data-flow'] }))!;

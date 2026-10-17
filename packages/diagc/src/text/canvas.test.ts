@@ -38,6 +38,39 @@ describe('Canvas', () => {
     expect(picture(c, ASCII)).toEqual(['==.']);
   });
 
+  it('joins a single line to a double one with the mixed junction', () => {
+    const c = new Canvas(5, 4);
+    c.rect({ x: 0, y: 0, width: 5, height: 3 }, 'double');
+    c.segment({ x: 2, y: 2 }, { x: 2, y: 3 }, 'light');
+    expect(picture(c)).toEqual(['╔═══╗', '║   ║', '╚═╤═╝', '  │']);
+    const crossing = new Canvas(3, 3);
+    crossing.segment({ x: 0, y: 1 }, { x: 2, y: 1 }, 'double');
+    crossing.segment({ x: 1, y: 0 }, { x: 1, y: 2 }, 'light');
+    expect(picture(crossing)).toEqual([' │', '═╪═', ' │']);
+  });
+
+  it("gives what is drawn on a ground the ground's colours where it sets none", () => {
+    const blue = {
+      bg: { rgb: [0, 0, 170] as [number, number, number] },
+      fg: { rgb: [255, 255, 255] as [number, number, number] },
+    };
+    const c = new Canvas(3, 1);
+    c.ground({ x: 0, y: 0, width: 3, height: 1 }, blue);
+    c.text({ x: 0, y: 0 }, 'a', { bold: true });
+    c.stroke({ x: 1, y: 0 }, LEFT | RIGHT, 'light', { fg: { ansi: 3 } });
+    const [a, line, blank] = c.cells(UNICODE)[0]!;
+    expect(a!.style).toEqual({ ...blue, bold: true });
+    expect(line!.style).toEqual({ ...blue, fg: { ansi: 3 } });
+    expect(blank!.style).toEqual(blue);
+  });
+
+  it('clears the ground with what was drawn', () => {
+    const c = new Canvas(1, 1);
+    c.ground({ x: 0, y: 0, width: 1, height: 1 }, { bg: { ansi: 4 } });
+    c.clear({ x: 0, y: 0, width: 1, height: 1 });
+    expect(c.cells(UNICODE)[0]![0]!.style).toEqual({});
+  });
+
   it('refuses a diagonal segment', () => {
     expect(() => new Canvas(3, 3).segment({ x: 0, y: 0 }, { x: 1, y: 1 }, 'light')).toThrow();
   });

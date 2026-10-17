@@ -69,6 +69,23 @@ describe('follow', () => {
   it('shows the top-left of a box bigger than the view', () => {
     expect(follow({ x: 0, y: 0 }, { x: 50, y: 30, width: 40, height: 30 }, view)).toEqual({ x: 48, y: 28 });
   });
+
+  describe('with the overview over the corner', () => {
+    // the overview's frame: the view's last 8 columns of its last 4 rows
+    const covered = { ...view, corner: { width: 8, height: 4 } };
+
+    it('moves a box out from under it the shorter way', () => {
+      expect(follow({ x: 0, y: 0 }, { x: 30, y: 5, width: 5, height: 3 }, covered)).toEqual({ x: 17, y: 4 });
+    });
+
+    it('moves a box left of it where moving it up would lose its top', () => {
+      expect(follow({ x: 0, y: 0 }, { x: 30, y: 0, width: 5, height: 8 }, covered)).toEqual({ x: 25, y: 0 });
+    });
+
+    it('leaves a box clear of it where it is', () => {
+      expect(follow({ x: 0, y: 0 }, { x: 5, y: 2, width: 5, height: 3 }, covered)).toEqual({ x: 0, y: 0 });
+    });
+  });
 });
 
 describe('clampScroll', () => {
@@ -78,5 +95,10 @@ describe('clampScroll', () => {
     expect(clampScroll({ x: -5, y: -1 }, content, view)).toEqual({ x: 0, y: 0 });
     expect(clampScroll({ x: 500, y: 500 }, content, view)).toEqual({ x: 80, y: 40 });
     expect(clampScroll({ x: 5, y: 5 }, { width: 10, height: 5 }, view)).toEqual({ x: 0, y: 0 });
+  });
+
+  it('lets the scroll run past the right and the bottom as far as the overview covers, so nothing stays under it', () => {
+    const view = { width: 20, height: 10, corner: { width: 8, height: 4 } };
+    expect(clampScroll({ x: 500, y: 500 }, { width: 100, height: 50 }, view)).toEqual({ x: 88, y: 44 });
   });
 });

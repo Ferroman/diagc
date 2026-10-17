@@ -90,7 +90,7 @@ diagc tui shop      # this one
 
 The viewer opens a diagram as the published page does: folded, except the groups its layout saved as unfolded. It compiles the sources as you save them and redraws, so keep it open in one terminal pane and edit the `.diagram.ts` in another. A source that does not compile keeps the last picture and shows the error in the bottom row.
 
-A picture bigger than the screen gets an overview in the bottom-right corner: every box drawn small, the part on screen outlined and the rest dimmed. Click on it, or drag across it, to go to that part of the picture; `o` hides it. In a terminal that shows images through kitty's graphics protocol, such as kitty, Ghostty or WezTerm, the overview is a picture in the terminal's text colour, fine enough to show the lines between the boxes as well. Elsewhere, under tmux, and while the help is open, it is drawn in braille dots, so the terminal's font, or a fallback font it borrows from, has to have them.
+A picture bigger than the screen gets an overview in the bottom-right corner: every box drawn small, the part on screen outlined and the rest dimmed. Click on it, or drag across it, to go to that part of the picture; `o` hides it. Nothing has to stay under it: the screen scrolls past the picture's right and bottom edges as far as the overview reaches, and a box you select is scrolled out from under it. In a terminal that shows images through kitty's graphics protocol, such as kitty, Ghostty or WezTerm, the overview is a picture in the terminal's text colour, fine enough to show the lines between the boxes as well. Elsewhere, under tmux, and while the help is open, it is drawn in braille dots, so the terminal's font, or a fallback font it borrows from, has to have them.
 
 A diagram that declares a legend shows it in the corner its `position` names, as the published page does. A legend in the overview's corner sits above the overview, and is cut short, with a line saying how many rows are left out, where there is no room for all of it. `L` hides it and shows it again. A diagram drawn in shapes that say nothing about themselves, such as a start dot or a decision, has a legend on offer even when it declares none: `L` shows it.
 
@@ -109,6 +109,7 @@ A diagram that declares a legend shows it in the corner its `position` names, as
 | a click or a drag on the overview | Go to that part of the picture. |
 | `o` | Hide or show the overview. |
 | `L` | Hide or show the legend. |
+| `s` | Switch between the DOS style and the terminal's own colours. |
 | `r` | Read the diagram again. |
 | `?` | All the keys. |
 | `Esc` | Close the search, the help or the details; then back to the list. |
@@ -120,11 +121,22 @@ The viewer needs a terminal that understands xterm's escape codes for the altern
 
 The viewer is read-only. Change a diagram in its source, or in `diagc studio`.
 
+### The DOS style
+
+A diagram whose `style` is [`dos`](../reference/model.md#style-presets) opens in it, as its published page does: a blue screen, each box filled in its type's colour in a white double frame with a block shadow, an open group double-framed and titled on its frame, a grey menu bar and status line, the help a grey dialog.
+
+- `s` switches between the DOS style and the terminal's own colours, for the diagram on screen and every diagram opened after it.
+- `diagc tui --style dos` opens every diagram in the DOS style, and `--style clean` opens every one in the terminal's own colours, a `dos` diagram included.
+- Every other style is the browser's: the viewer draws those diagrams in the terminal's own colours.
+- The DOS style needs colour. With `NO_COLOR` set, or `TERM=dumb`, the viewer draws in the terminal's own look whatever the style.
+- A shadow falls two columns right of its box and a row below it. A white line that runs under it is drawn dark grey there; a line in a colour of its own, an arrowhead and a label keep their colour.
+
 ## What the text picture leaves out
 
 - **Your positions.** Boxes you placed by hand in the studio are saved in pixels, for boxes of another size. The text picture is always laid out automatically.
 - **The special layouts.** A plan's time axis, git lanes and activity swimlanes draw as an ordinary graph: the names, the nesting and the arrows are all there, the geometry is not.
 - **What only a browser draws.** Icons, images, freehand drawings and notes. A foreign key's arrow ends at its table, not at the row.
+- **Most styles.** `diagc show` prints every diagram in the terminal's own colours, and `diagc tui` draws only the `dos` style besides them (see [The DOS style](#the-dos-style)). The sketched, hatched and themed looks are the browser's.
 - **The theme's colours.** A second-order diagram's good and bad consequences, a causal loop's polarities and a deployment's zones take their colours from the page's light or dark theme. A text picture cannot know the background it will be read on, so it draws them uncoloured.
 - **Part of the legend.** A layer that is off has no row, as on a published page: the top row lists the layers. Nothing the text picture leaves out is keyed, such as a threat badge or the drawings. A swatch is made of characters, so an interrupt's lightning jog is drawn as a plain arrow.
 

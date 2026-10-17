@@ -15,6 +15,18 @@ const layout: TextLayout = {
 };
 const half: OverviewPlace = { x: 0, y: 0, width: 4, height: 2, scale: 0.5 };
 const bottomRight = { scroll: { x: 4, y: 2 }, width: 4, height: 2 };
+// a group round a box: a 16×8 picture drawn at half size, 8×4 cells, all on screen
+const nested: TextLayout = {
+  width: 16,
+  height: 8,
+  boxes: new Map([
+    ['g', { x: 0, y: 0, width: 16, height: 8 }],
+    ['a', { x: 4, y: 2, width: 6, height: 4 }],
+  ]),
+  routes: new Map(),
+};
+const nestedHalf: OverviewPlace = { x: 0, y: 0, width: 8, height: 4, scale: 0.5 };
+const whole = { scroll: { x: 0, y: 0 }, width: 16, height: 8 };
 
 describe('overviewPlace', () => {
   it('is nowhere when the whole picture is on screen', () => {
@@ -60,6 +72,13 @@ describe('overviewCells', () => {
     const rows = overviewCells(layout, half, bottomRight, 'a');
     expect(rows[0]!.slice(0, 2).map((c) => c.style)).toEqual([{ inverse: true }, { inverse: true }]);
     expect(rows[0]![2]!.style).toEqual({ dim: true });
+  });
+
+  it('draws a selected group’s frame inverse, never its inside, where what it holds is drawn', () => {
+    const rows = overviewCells(nested, nestedHalf, whole, 'g');
+    const edge = [true, true, true, true, true, true, true, true];
+    const side = [true, false, false, false, false, false, false, true];
+    expect(rows.map((r) => r.map((c) => c.style.inverse === true))).toEqual([edge, side, side, edge]);
   });
 
   it('cuts the screen’s outline at the picture’s edge, where it still shows', () => {
@@ -157,6 +176,14 @@ describe('overviewPixels', () => {
   it('fills the selected box, off screen or not', () => {
     const p = overviewPixels(layout, tiny, bottomRight, 'a');
     expect(shares(p).slice(0, 4)).toEqual(['####....', '####....', '####....', '####....']);
+  });
+
+  it('frames a selected group two pixels thick, never filling it over what it holds', () => {
+    const p = overviewPixels(nested, { ...nestedHalf, cell: { width: 2, height: 4 } }, whole, 'g');
+    expect([p.at(0, 8), p.at(1, 8), p.at(8, 1)]).toEqual([1, 1, 1]);
+    // the group's inside keeps the screen's tint, and the box it holds its outline
+    expect([p.at(2, 2), p.at(6, 6)]).toEqual([0.2, 0.2].map(Math.fround));
+    expect(p.at(4, 6)).toBe(1);
   });
 });
 

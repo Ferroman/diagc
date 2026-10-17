@@ -52,6 +52,8 @@ alike share a colour, so every kind of C4 container is one colour. A node's own 
 export of a preset that follows the theme is light, unless `diagc publish --theme dark` takes it; `--style` takes every
 picture of a run in a preset of its own, whatever the diagrams say (see [Publish and share](../how-to/publish-and-share.md#export)).
 
+`diagc tui` draws a `dos` diagram in the DOS style too, in character cells, and every other preset in the terminal's own colours (see [The DOS style](../how-to/look-at-a-diagram-in-the-terminal.md#the-dos-style)).
+
 ## `DiagramNode`
 
 | Field | Type | Notes |

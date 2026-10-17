@@ -10,14 +10,15 @@ export const DOWN = 2;
 export const LEFT = 4;
 export const RIGHT = 8;
 
-export type Weight = 'light' | 'heavy' | 'dashed';
+export type Weight = 'light' | 'heavy' | 'dashed' | 'double';
 export type Corner = 'round' | 'chamfer';
 export type ArrowDirection = 'up' | 'down' | 'left' | 'right';
 
 export interface Glyphs {
   /** the character for a cell whose lines leave it in `mask`'s directions; `corner`
-   * applies only while the mask is a plain corner */
-  line(mask: number, weight: Weight, corner?: Corner): string;
+   * applies only while the mask is a plain corner, and `minor` names the directions
+   * drawn lighter than `weight`, which only a double line has characters to show */
+  line(mask: number, weight: Weight, corner?: Corner, minor?: number): string;
   arrow(direction: ArrowDirection): string;
   /** a line one cell a row, a fishbone's bone or tick: falling to the right, or rising */
   slant(falling: boolean): string;
@@ -47,6 +48,21 @@ const LIGHT = table(' │││─┘┐┤─└┌├─┴┬┼');
 const HEAVY = table(' ┃┃┃━┛┓┫━┗┏┣━┻┳╋');
 const CORNERS = new Set([DOWN | RIGHT, DOWN | LEFT, UP | RIGHT, UP | LEFT]);
 
+const DOUBLE = table(' ║║║═╝╗╣═╚╔╠═╩╦╬');
+// The mixed junctions: double one way and single the other. Unicode has them only
+// whole, so a line is double along an axis when any of its directions there is.
+const DOUBLE_ACROSS = table(' │││═╛╕╡═╘╒╞═╧╤╪');
+const DOUBLE_DOWN = table(' ║║║─╜╖╢─╙╓╟─╨╥╫');
+
+/** A double line, with what joins it single where `minor` says. */
+function double(mask: number, minor: number): string {
+  const strong = mask & ~minor;
+  const across = (strong & (LEFT | RIGHT)) !== 0;
+  const down = (strong & (UP | DOWN)) !== 0;
+  if (across === down) return across ? DOUBLE(mask) : LIGHT(mask);
+  return across ? DOUBLE_ACROSS(mask) : DOUBLE_DOWN(mask);
+}
+
 const ROUND: Record<number, string> = { [DOWN | RIGHT]: '╭', [DOWN | LEFT]: '╮', [UP | RIGHT]: '╰', [UP | LEFT]: '╯' };
 const CHAMFER: Record<number, string> = {
   [DOWN | RIGHT]: '╱',
@@ -56,7 +72,8 @@ const CHAMFER: Record<number, string> = {
 };
 
 export const UNICODE: Glyphs = {
-  line(mask, weight, corner) {
+  line(mask, weight, corner, minor = 0) {
+    if (weight === 'double') return double(mask, minor);
     if (corner !== undefined && CORNERS.has(mask)) return (corner === 'round' ? ROUND : CHAMFER)[mask]!;
     if (weight === 'heavy') return HEAVY(mask);
     // The dashed set has no junctions: where a dashed line meets anything, the
@@ -96,7 +113,7 @@ export const ASCII: Glyphs = {
     const vertical = (mask & (LEFT | RIGHT)) === 0;
     const horizontal = (mask & (UP | DOWN)) === 0;
     if (vertical) return weight === 'dashed' ? ':' : '|';
-    if (horizontal) return weight === 'dashed' ? '.' : weight === 'heavy' ? '=' : '-';
+    if (horizontal) return weight === 'dashed' ? '.' : weight === 'heavy' || weight === 'double' ? '=' : '-';
     return '+';
   },
   arrow: (direction) => ({ up: '^', down: 'v', left: '<', right: '>' })[direction],

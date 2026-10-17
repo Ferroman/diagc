@@ -202,10 +202,11 @@ diagc tui
 diagc tui shop
 ```
 
-It runs the studio's compile watcher on `./.diagrams/src` and redraws the open diagram when its source compiles or its layout changes; a failed compile keeps the last picture and shows the error in the bottom row. A diagram opens as the published page opens it: the first plane, its layers, and the groups its layout saved as unfolded. A picture bigger than the screen gets an overview in the corner, drawn as an image where the terminal speaks kitty's graphics protocol and in braille elsewhere, and a declared legend shows in the corner it names; `L` hides it. Keys and mouse are in [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md#browse-a-diagram); `?` lists them in the viewer.
+It runs the studio's compile watcher on `./.diagrams/src` and redraws the open diagram when its source compiles or its layout changes; a failed compile keeps the last picture and shows the error in the bottom row. A diagram opens as the published page opens it: the first plane, its layers, and the groups its layout saved as unfolded. A picture bigger than the screen gets an overview in the corner, drawn as an image where the terminal speaks kitty's graphics protocol and in braille elsewhere, and a declared legend shows in the corner it names; `L` hides it. A diagram in the `dos` style is drawn in it, and `s` switches it on and off. Keys and mouse are in [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md#browse-a-diagram); `?` lists them in the viewer.
 
+- **Style:** `--style dos` draws every diagram in the DOS style, `--style clean` every one in the terminal's own colours; any other id exits `1`. Without colour (`NO_COLOR`, `TERM=dumb`) it draws in its own look whatever the style. See [The DOS style](../how-to/look-at-a-diagram-in-the-terminal.md#the-dos-style).
 - **Needs a terminal:** with stdin or stdout not a terminal it exits `1` and points at `show`.
-- **Exit code:** `0` when quit; `1` for a name with no source, checked first.
+- **Exit code:** `0` when quit; `1` for a name with no source, checked first, or for a `--style` other than `dos` or `clean`.
 
 Remote includes resolve locked, as in the studio; `tui` refuses `--update-includes`.
 
@@ -265,7 +266,7 @@ A command takes only the flags its row lists; any other exits `1` with the usage
 | `--out <dir>` | `compile`, `watch`, `publish`, `eject`, `diff` | `.diagrams/.artifacts` (`diff`: `.diagrams/diff/<from>..<to>`) | Where artifacts are written — for `publish`, the artifacts only, its pages and images still go under `.diagrams/`; for `eject`, the dir its post-swap recompile writes into; for `diff`, its pages and images. |
 | `--no-images` | `publish`, `diff` | off | Skip PNG export; write HTML only. |
 | `--link <url>` | `publish` | none | Link the index header to this `http(s)` address. |
-| `--style <id>` | `publish` | each diagram's own | Draw the PNGs in this [style preset](model.md#style-presets); a page keeps its diagram's own style. |
+| `--style <id>` | `publish`, `tui` | each diagram's own | `publish`: draw the PNGs in this [style preset](model.md#style-presets); a page keeps its diagram's own style. `tui`: draw every diagram in `dos` or `clean`, the two styles a terminal has. |
 | `--theme <light\|dark>` | `publish` | `light` | Draw the PNGs in this theme; a page keeps following its reader's. |
 | `--plane <id>` | `show` | the first | Draw this plane. |
 | `--layers <a,b>` | `show` | the plane's own | Draw these layers in place of the plane's; `''` for none. |

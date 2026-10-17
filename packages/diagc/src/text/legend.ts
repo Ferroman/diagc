@@ -5,15 +5,16 @@ import {
   relationOnPlane,
   scopeToRoot,
   type DiagramModel,
+  type DiagramNode,
   type LegendItem,
   type LegendPosition,
   type LegendSection,
-  type NotationId,
 } from '@diagc/core/internal';
 import { Canvas, type Cell, type Style } from './canvas';
 import { typeMark } from './content';
+import { dosFill, dosSlots } from './dos';
 import { DOWN, LEFT, RIGHT, type Glyphs, type Weight } from './glyphs';
-import { accentCss, CORNER, rgb, WEIGHT } from './paint';
+import { accentCss, colorCss, CORNER, rgb, WEIGHT } from './paint';
 import type { Scene } from './scene';
 import { KIND_LOOKS, kindLook, TYPE_LOOKS, typeLook, type EndMark, type KindLook, type TypeLook } from './vocabulary';
 import { cellWidth, fitCells, printable } from './width';
@@ -23,7 +24,9 @@ import { cellWidth, fitCells, printable } from './width';
 // keying a diagram that declared none, items that recaption a derived row; each swatch
 // is drawn the way the picture draws what it stands for. Nothing the picture leaves
 // out (a threat badge, a drawing) is keyed, nor a layer that is off: no row here can
-// switch one on, and the TUI's title row lists the layers with their keys.
+// switch one on, and the TUI's title row lists the layers with their keys. In the DOS
+// style a type is keyed as its boxes are drawn there: in their fill, in a square
+// double frame.
 
 export interface LegendRow {
   /** `${section}:${key}`, which an item that names the same kind or type recaptions */
@@ -106,12 +109,13 @@ function lineSwatch(look: KindLook, glyphs: Glyphs): string {
 }
 
 /** A box of the type as the picture draws it: the mark its name follows where it has
- * one, else the top of its border, which carries its corners and its dashes. */
-function shapeSwatch(type: string | undefined, look: TypeLook, glyphs: Glyphs): string {
+ * one, else the top of its border, which carries its corners and its dashes (in `dos`,
+ * square and double). */
+function shapeSwatch(type: string | undefined, look: TypeLook, glyphs: Glyphs, dos: boolean): string {
   const mark = typeMark(type, look.shape, glyphs);
   if (mark !== undefined) return centre(mark);
-  const weight: Weight = look.shape === 'bar' ? 'heavy' : look.dashed === true ? 'dashed' : 'light';
-  const corner = CORNER[look.shape];
+  const weight: Weight = look.shape === 'bar' ? 'heavy' : look.dashed === true ? 'dashed' : dos ? 'double' : 'light';
+  const corner = dos ? undefined : CORNER[look.shape];
   return `${glyphs.line(DOWN | RIGHT, weight, corner)}${glyphs.line(LEFT | RIGHT, weight)}${glyphs.line(DOWN | LEFT, weight, corner)}`;
 }
 
@@ -176,11 +180,13 @@ function kindRows(scene: Keyed, glyphs: Glyphs): LegendRow[] {
 
 function typeRows(scene: Keyed, glyphs: Glyphs): LegendRow[] {
   const { model } = scene.input;
+  const slots = scene.input.style === 'dos' ? dosSlots(model, scene.notation) : undefined;
+  // a DOS box is filled in its own colour or its type's slot, never the notation's accent
+  const css = (node: DiagramNode): string | undefined =>
+    slots === undefined ? accentCss(model, node, scene.notation, scene.accents) : colorCss(model, node, scene.accents);
   const accents = agreed(
     [...scene.nodes.values()].flatMap((vn) =>
-      vn.node.type === undefined
-        ? []
-        : [[vn.node.type, accentCss(model, vn.node, scene.notation, scene.accents)] as const],
+      vn.node.type === undefined ? [] : [[vn.node.type, css(vn.node)] as const],
     ),
   );
   return ordered(accents.keys(), Object.keys(TYPE_LOOKS)).map((type) => {
@@ -189,8 +195,9 @@ function typeRows(scene: Keyed, glyphs: Glyphs): LegendRow[] {
     const label = look.legend ?? (look.label === undefined || look.label === '' ? printable(type) : look.label);
     return {
       id: `types:${type}`,
-      swatch: shapeSwatch(type, look, glyphs),
-      style: colour(accents.get(type)),
+      swatch: shapeSwatch(type, look, glyphs, slots !== undefined),
+      style:
+        slots === undefined ? colour(accents.get(type)) : { fg: dosFill(look.shape, accents.get(type), type, slots) },
       label,
       ...vocabulary(look.legend),
     };
@@ -214,12 +221,8 @@ function markRows(scene: Keyed): LegendRow[] {
 
 /** The hand-written rows. One naming a kind or a type already keyed recaptions that row
  * in place, keeping its swatch; the rest are rows of their own. */
-function itemRows(
-  items: readonly LegendItem[],
-  derived: LegendRow[],
-  notation: NotationId | undefined,
-  glyphs: Glyphs,
-) {
+function itemRows(items: readonly LegendItem[], derived: LegendRow[], scene: Keyed, glyphs: Glyphs) {
+  const { notation } = scene;
   return items.flatMap((item, i): LegendRow[] => {
     const label = printable(item.label);
     const target = item.kind !== undefined ? `kinds:${item.kind}` : item.type !== undefined ? `types:${item.type}` : '';
@@ -233,7 +236,7 @@ function itemRows(
       item.kind !== undefined
         ? lineSwatch(kindLook({ kind: item.kind }, notation), glyphs)
         : item.type !== undefined
-          ? shapeSwatch(item.type, typeLook(item.type, notation), glyphs)
+          ? shapeSwatch(item.type, typeLook(item.type, notation), glyphs, scene.input.style === 'dos')
           : item.color !== undefined
             ? centre(glyphs.mark('square'))
             : centre('');
@@ -259,7 +262,7 @@ export function legendOf(scene: Keyed, glyphs: Glyphs): TextLegend | undefined {
     types,
     marks: shown.includes('marks') ? markRows(scene) : [],
   };
-  const items = itemRows(config.items ?? [], [...derived.kinds, ...derived.types], scene.notation, glyphs);
+  const items = itemRows(config.items ?? [], [...derived.kinds, ...derived.types], scene, glyphs);
   const sections = (['layers', 'kinds', 'types', 'marks', 'items'] as const)
     .map((s) => ({ title: TITLES[s], rows: s === 'items' ? items : derived[s] }))
     .filter((s) => s.rows.length > 0);

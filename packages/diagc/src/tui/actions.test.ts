@@ -29,6 +29,12 @@ async function feed(diagram: DiagramState, events: UserInput[], at = 0, of = mod
 }
 
 describe('onKey', () => {
+  it('switches between the DOS style and the plain one with s, which lays the picture out again', async () => {
+    const ctx = await ctxOf(opened());
+    expect(handle(opened(), key('s'), ctx)).toMatchObject({ style: 'dos', effects: [{ kind: 'relayout' }] });
+    expect(handle(opened(), key('s'), { ...ctx, style: 'dos' }).style).toBe('clean');
+  });
+
   it('steps through the boxes in reading order with Tab and back with Shift-Tab', async () => {
     const order = readingOrder((await ctxOf(opened())).scene!.layout.boxes);
     expect((await feed(opened(), [key('tab')])).diagram.selected).toBe(order[0]);
@@ -207,6 +213,16 @@ describe('onMouse', () => {
     const end = handle(opened(), key('end'), ctx);
     expect(end.diagram.scroll.y).toBe(ctx.scene!.layout.height - tall.height);
     expect(handle(end.diagram, key('home'), ctx).diagram.scroll).toEqual({ x: 0, y: 0 });
+  });
+
+  it("scrolls past the picture's right and bottom as far as the overview covers, to show what is under it", async () => {
+    const covered = { ...view, height: 2, width: 5, corner: { width: 3, height: 1 } };
+    const ctx = { ...(await ctxOf(opened())), view: covered };
+    const { width, height } = ctx.scene!.layout;
+    expect(handle(opened(), key('end'), ctx).diagram.scroll.y).toBe(height + 1 - covered.height);
+    const right = Array.from({ length: 50 }, () => key('shift+right'));
+    const far = right.reduce((d, k) => handle(d, k, ctx).diagram, opened());
+    expect(far.scroll.x).toBe(width + 3 - covered.width);
   });
 });
 

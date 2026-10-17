@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -82,6 +82,41 @@ const options = (fake: ReturnType<typeof fakeTerminal>, watch: ReturnType<typeof
 });
 
 describe('runTui', () => {
+  it('draws a diagram in the DOS style where it asks for it, and s switches it off', async () => {
+    compiled('shop', 'Web', 'Database');
+    const file = path.join(artifactsDir, 'shop.diagram.json');
+    writeFileSync(file, JSON.stringify({ ...JSON.parse(readFileSync(file, 'utf8')), style: 'dos' }));
+    const fake = fakeTerminal();
+    const done = runTui({ ...options(fake, manualWatch(), 'shop'), color: 'truecolor' });
+    await until(fake.screen, '╔');
+    expect(fake.last()).toContain('48;2;0;0;170');
+    fake.type('s');
+    await until(fake.screen, '┌');
+    expect(fake.screen()).not.toContain('╔');
+    fake.type('q');
+    await done;
+  });
+
+  it('draws every diagram in the style it is started with', async () => {
+    compiled('shop', 'Web', 'Database');
+    const fake = fakeTerminal();
+    const done = runTui({ ...options(fake, manualWatch(), 'shop'), color: 'truecolor', style: 'dos' });
+    await until(fake.screen, '╔');
+    fake.type('q');
+    await done;
+  });
+
+  it('draws plain on a screen without colour, whatever the style', async () => {
+    compiled('shop', 'Web', 'Database');
+    const fake = fakeTerminal();
+    const done = runTui({ ...options(fake, manualWatch(), 'shop'), color: 'mono', style: 'dos' });
+    await until(fake.screen, 'Database');
+    expect(fake.screen()).toContain('┌');
+    expect(fake.screen()).not.toContain('╔');
+    fake.type('q');
+    await done;
+  });
+
   it('opens the diagram it is named, and quits with q, giving the terminal back', async () => {
     compiled('shop', 'Web', 'Database');
     const fake = fakeTerminal();
@@ -231,6 +266,31 @@ describe('runTui', () => {
     // click there is a click on its last cell: the picture's end
     fake.type('\x1b[<0;100;29M\x1b[<0;100;29m');
     await until(fake.screen, 'Node 19');
+    fake.type('q');
+    await done;
+  });
+
+  it('never leaves a selected box under the overview', async () => {
+    // a chain taller than the screen ending in a row of leaves wider than it: the
+    // last leaves are in the overview's corner
+    const chain = Array.from({ length: 8 }, (_, i) => ({ id: `n${i}`, name: `Node ${i}` }));
+    const leaves = Array.from({ length: 10 }, (_, i) => ({ id: `l${i}`, name: `Leaf${i}` }));
+    const relations = [
+      ...chain.slice(1).map((n, i) => ({ id: `r${i}`, from: `n${i}`, to: n.id, kind: 'sync' })),
+      ...leaves.map((l) => ({ id: `r-${l.id}`, from: 'n7', to: l.id, kind: 'sync' })),
+    ];
+    const nodes = [...chain, ...leaves];
+    const model = { version: 1, id: 'fan', name: 'fan', nodes, containment: [], relations, layers: [], planes: [] };
+    writeFileSync(path.join(artifactsDir, 'fan.diagram.json'), JSON.stringify(model));
+    const fake = fakeTerminal();
+    const done = runTui(options(fake, manualWatch(), 'fan'));
+    await until(fake.screen, 'Node 0');
+    // on the canvas as well as in the status row
+    const shown = (name: string): number => fake.screen().split(name).length - 1;
+    for (const leaf of leaves) {
+      fake.type(`/${leaf.name}\r`);
+      expect([leaf.name, shown(leaf.name)]).toEqual([leaf.name, 2]);
+    }
     fake.type('q');
     await done;
   });
