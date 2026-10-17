@@ -39,6 +39,12 @@ const key = (name: string, extra: { shift?: boolean; ctrl?: boolean } = {}): Inp
   ...extra,
 });
 const press = (x: number, y: number): InputEvent => ({ kind: 'mouse', action: 'press', x, y, shift: false });
+const pointer = (action: 'press' | 'drag' | 'release', at: { x: number; y: number }): InputEvent => ({
+  kind: 'mouse',
+  action,
+  ...at,
+  shift: false,
+});
 
 async function ctxOf(diagram: DiagramState, at = 0): Promise<Ctx> {
   const scene = await buildScene(sceneInput(diagram, model, undefined), UNICODE);
@@ -76,6 +82,7 @@ describe('openDiagram', () => {
       scroll: { x: 0, y: 0 },
       panel: false,
       help: false,
+      overview: true,
     });
   });
 });
@@ -218,6 +225,54 @@ describe('reduce on a diagram', () => {
     const { height } = ctx.scene!.layout;
     expect(end.state.diagram!.scroll.y).toBe(height - tall.height);
     expect(reduce(end.state, key('home'), ctx).state.diagram!.scroll).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe('the overview', () => {
+  it('turns off and on with o', async () => {
+    const off = await feed(opened(), [key('o')]);
+    expect(off.diagram.overview).toBe(false);
+    expect((await feed(off.state, [key('o')])).diagram.overview).toBe(true);
+  });
+
+  it('says why it does not show when it is turned on', async () => {
+    const off = opened({ overview: false });
+    const ctx = await ctxOf(off.diagram!);
+    const fits = reduce(off, key('o'), { ...ctx, view: { top: 1, width: 200, height: 100 } });
+    expect(fits.state.diagram!.message).toEqual({ text: 'the whole diagram fits on the screen', error: false });
+    const cramped = reduce(off, key('o'), { ...ctx, view: { top: 1, width: 4, height: 2 } });
+    expect(cramped.state.diagram!.message).toEqual({ text: 'the screen is too small for the overview', error: false });
+    const shown = reduce(off, key('o'), { ...ctx, overview: { x: 0, y: 1, width: 6, height: 2, scale: 0.1 } });
+    expect(shown.state.diagram!.message).toBeUndefined();
+  });
+
+  it('scrolls to where it is clicked, and follows a drag that started on it', async () => {
+    const small = { top: 1, width: 4, height: 2 };
+    const base = await ctxOf(opened().diagram!);
+    const { width, height } = base.scene!.layout;
+    // at half size its first cell is the picture's start and its last the picture's end
+    const place = { x: 10, y: 3, width: Math.ceil(width / 2), height: Math.ceil(height / 2), scale: 0.5 };
+    const ctx = { ...base, view: small, overview: place };
+    const last = { x: place.x + place.width - 1, y: place.y + place.height - 1 };
+    const pressed = reduce(opened(), pointer('press', last), ctx);
+    expect(pressed.state.diagram!.scroll).toEqual({ x: width - small.width, y: height - small.height });
+    // past its border, as a drag that left it: the nearest cell, the first
+    const dragged = reduce(pressed.state, pointer('drag', { x: 0, y: 0 }), ctx);
+    expect(dragged.state.diagram!.scroll).toEqual({ x: 0, y: 0 });
+    expect(reduce(dragged.state, pointer('release', { x: 0, y: 0 }), ctx).state.diagram!.drag).toBeUndefined();
+  });
+
+  it('takes a click for itself, not for the box under it, and leaves it to the canvas while off', async () => {
+    const base = await ctxOf(opened().diagram!);
+    const p = base.scene!.layout.boxes.get('p')!;
+    const at = { x: p.x + 1, y: p.y + 1 + view.top };
+    const ctx = { ...base, overview: { x: at.x - 1, y: at.y - 1, width: 6, height: 2, scale: 0.1 } };
+    const on = reduce(opened(), pointer('press', at), ctx);
+    expect(on.state.diagram!.selected).toBeUndefined();
+    expect(on.state.diagram!.drag).toMatchObject({ overview: true });
+    const off = reduce(opened({ overview: false }), pointer('press', at), ctx);
+    expect(off.state.diagram!.selected).toBe('p');
+    expect(off.state.diagram!.drag?.overview).toBeUndefined();
   });
 });
 

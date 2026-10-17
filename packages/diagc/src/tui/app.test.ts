@@ -209,6 +209,25 @@ describe('runTui', () => {
     expect(['SIGINT', 'SIGTERM', 'uncaughtException'].map((e) => process.listenerCount(e))).toEqual(before);
   });
 
+  it('goes where the overview is clicked', async () => {
+    // a chain far taller than the screen
+    const nodes = Array.from({ length: 20 }, (_, i) => ({ id: `n${i}`, name: `Node ${i}` }));
+    const relations = nodes.slice(1).map((n, i) => ({ id: `r${i}`, from: `n${i}`, to: n.id, kind: 'sync' }));
+    const model = { version: 1, id: 'long', name: 'long', nodes, containment: [], relations, layers: [], planes: [] };
+    writeFileSync(path.join(artifactsDir, 'long.diagram.json'), JSON.stringify(model));
+    const fake = fakeTerminal();
+    const done = runTui(options(fake, manualWatch(), 'long'));
+    await until(fake.screen, 'Node 0');
+    expect(fake.screen()).toMatch(/[\u2801-\u28ff]/);
+    expect(fake.screen()).not.toContain('Node 19');
+    // the overview's border ends in the canvas's bottom-right cell (99, 28), and a
+    // click there is a click on its last cell: the picture's end
+    fake.type('\x1b[<0;100;29M\x1b[<0;100;29m');
+    await until(fake.screen, 'Node 19');
+    fake.type('q');
+    await done;
+  });
+
   it('redraws on a resize', async () => {
     compiled('shop', 'Web');
     const fake = fakeTerminal();

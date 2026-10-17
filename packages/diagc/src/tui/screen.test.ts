@@ -4,7 +4,7 @@ import { UNICODE } from '../text/glyphs';
 import { paint } from '../text/paint';
 import { buildScene, type Scene } from '../text/scene';
 import { cellWidth } from '../text/width';
-import { canvasSize, composeFrame, frameText, PANEL_WIDTH } from './screen';
+import { canvasSize, composeFrame, frameText, overviewPlaceOf, PANEL_WIDTH } from './screen';
 import { openDiagram, type TuiState } from './state';
 
 const model: DiagramModel = {
@@ -173,6 +173,58 @@ describe('composeFrame', () => {
   it('writes no escape without colour', async () => {
     const lines = composeFrame(stateOf(), { model, scene: await sceneOf() }, { columns: 40, rows: 8 }, 'none');
     expect(lines.join('')).not.toContain('\x1b');
+  });
+});
+
+describe('the overview', () => {
+  // a chain, so the boxes stack down past a 20-row screen
+  const chain: DiagramModel = {
+    ...model,
+    nodes: Array.from({ length: 12 }, (_, i) => ({ id: `n${i}`, name: `Node ${i}` })),
+    relations: Array.from({ length: 11 }, (_, i) => ({ id: `r${i}`, from: `n${i}`, to: `n${i + 1}`, kind: 'sync' })),
+    layers: [],
+  };
+  const size = { columns: 60, rows: 20 };
+  const braille = /[\u2801-\u28ff]/;
+  const at = (line: string, x: number): string | undefined => [...plain(line)][x];
+
+  it('sits in the canvas’s bottom-right corner, framed, while the picture is bigger than the screen', async () => {
+    const scene = await sceneOf(chain);
+    const place = overviewPlaceOf(stateOf(), scene, size)!;
+    const lines = await frame(stateOf(), size, scene);
+    sized(lines, size);
+    const [top, bottom] = [lines[place.y - 1]!, lines[place.y + place.height]!];
+    expect([at(top, place.x - 1), at(top, place.x + place.width)]).toEqual(['┌', '┐']);
+    expect([at(bottom, place.x - 1), at(bottom, place.x + place.width)]).toEqual(['└', '┘']);
+    // the border's right column is the canvas's last, its bottom row the canvas's last
+    expect(place.x + place.width).toBe(size.columns - 1);
+    expect(place.y + place.height).toBe(size.rows - 2);
+    const inside = lines
+      .slice(place.y, place.y + place.height)
+      .map((l) => [...plain(l)].slice(place.x, place.x + place.width).join(''));
+    expect(inside.join('')).toMatch(braille);
+  });
+
+  it('goes beside the panel, not under it, on a wide terminal', async () => {
+    const wide = { columns: 100, rows: 20 };
+    const place = overviewPlaceOf(stateOf({ panel: true }), await sceneOf(chain), wide)!;
+    expect(place.x + place.width).toBe(wide.columns - PANEL_WIDTH - 1);
+  });
+
+  it('is left out while it is off, when the picture fits, and where the panel covers the canvas', async () => {
+    const scene = await sceneOf(chain);
+    const shows = async (state: TuiState, s: Scene = scene): Promise<boolean> =>
+      (await frame(state, size, s)).some((l) => braille.test(plain(l)));
+    expect(await shows(stateOf())).toBe(true);
+    expect(await shows(stateOf({ overview: false }))).toBe(false);
+    expect(await shows(stateOf(), await sceneOf())).toBe(false);
+    expect(overviewPlaceOf(stateOf({ panel: true }), scene, size)).toBeUndefined();
+    expect(await shows(stateOf({ panel: true }))).toBe(false);
+  });
+
+  it('is in the help', async () => {
+    const lines = await frame(stateOf({ help: true }), { columns: 100, rows: 30 });
+    expect(lines.some((l) => plain(l).includes('overview on / off'))).toBe(true);
   });
 });
 

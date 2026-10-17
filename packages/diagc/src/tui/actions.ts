@@ -3,6 +3,7 @@ import type { Pins } from '../text/folds';
 import { neverFolds } from '../text/vocabulary';
 import type { Key, Mouse } from './keys';
 import { clampScroll, follow, hitTest, nearest, readingOrder, type Direction } from './nav';
+import { onOverview, overviewJump } from './overview';
 import { openDiagram, type Ctx, type DiagramState, type Effect } from './state';
 
 // What each key and click does to an open diagram. Each action takes the state and
@@ -177,6 +178,16 @@ function escape(d: DiagramState): Step {
   return { diagram: d, effects: [], toList: true };
 }
 
+/** The overview on or off; turned on where it cannot show, it says why, or the key
+ * would seem to do nothing. */
+function toggleOverview(d: DiagramState, ctx: Ctx): Step {
+  if (d.overview || ctx.overview !== undefined || ctx.scene === undefined) return stay({ ...d, overview: !d.overview });
+  const { layout } = ctx.scene;
+  const fits = layout.width <= ctx.view.width && layout.height <= ctx.view.height;
+  const text = fits ? 'the whole diagram fits on the screen' : 'the screen is too small for the overview';
+  return stay({ ...d, overview: true, message: { text, error: false } });
+}
+
 type Action = (d: DiagramState, ctx: Ctx, key: Key) => Step;
 
 const page = (ctx: Ctx): number => Math.max(1, ctx.view.height - 2);
@@ -215,6 +226,7 @@ const KEYS: Record<string, Action> = {
   n: (d, ctx) => nextMatch(d, ctx, 1),
   N: (d, ctx) => nextMatch(d, ctx, -1),
   i: (d) => stay({ ...d, panel: !d.panel }),
+  o: (d, ctx) => toggleOverview(d, ctx),
   '?': (d) => stay({ ...d, help: !d.help }),
   r: (d) => ({ diagram: d, effects: [{ kind: 'reload' }] }),
   q: (d) => ({ diagram: d, effects: [{ kind: 'quit' }] }),
@@ -248,16 +260,31 @@ function onPress(d: DiagramState, ctx: Ctx, mouse: Mouse): Step {
   return stay({ ...pressed, selected: hit });
 }
 
+/** The screen moved to the part of the picture under `mouse` on the overview, and a
+ * drag started there, which goes on moving it however far it strays off the overview. */
+function jump(d: DiagramState, ctx: Ctx, mouse: Mouse): Step {
+  if (ctx.overview === undefined || ctx.scene === undefined) return stay(d);
+  const { lastPress: _last, ...rest } = d;
+  const scroll = overviewJump(ctx.overview, mouse, ctx.view, ctx.scene.layout);
+  return stay({ ...rest, scroll, drag: { x: mouse.x, y: mouse.y, overview: true } });
+}
+
+function onDrag(d: DiagramState, ctx: Ctx, mouse: Mouse): Step {
+  if (d.drag === undefined) return stay(d);
+  if (d.drag.overview === true) return jump(d, ctx, mouse);
+  const moved = scrolled(d, ctx, { x: d.drag.x - mouse.x, y: d.drag.y - mouse.y });
+  return stay({ ...moved, drag: { x: mouse.x, y: mouse.y } });
+}
+
 export function onMouse(d: DiagramState, ctx: Ctx, mouse: Mouse): Step {
   const inCanvas = mouse.y >= ctx.view.top && mouse.y < ctx.view.top + ctx.view.height && mouse.x < ctx.view.width;
   switch (mouse.action) {
     case 'press':
+      // the overview lies over the canvas, so it is asked first
+      if (d.overview && ctx.overview !== undefined && onOverview(ctx.overview, mouse)) return jump(d, ctx, mouse);
       return inCanvas ? onPress(d, ctx, mouse) : stay(d);
-    case 'drag': {
-      if (d.drag === undefined) return stay(d);
-      const moved = scrolled(d, ctx, { x: d.drag.x - mouse.x, y: d.drag.y - mouse.y });
-      return stay({ ...moved, drag: { x: mouse.x, y: mouse.y } });
-    }
+    case 'drag':
+      return onDrag(d, ctx, mouse);
     case 'release': {
       const { drag: _done, ...rest } = d;
       return stay(rest);

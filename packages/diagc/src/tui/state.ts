@@ -5,6 +5,7 @@ import type { SceneInput, Scene } from '../text/scene';
 import { onKey, onMouse } from './actions';
 import type { InputEvent } from './keys';
 import { clampScroll, follow } from './nav';
+import type { OverviewPlace } from './overview';
 
 // The TUI's state and what an input event does to it: a pure reducer, so every key is
 // tested without a terminal. What a change needs from outside — a new layout, a file
@@ -25,13 +26,16 @@ export interface DiagramState {
   /** the details panel */
   panel: boolean;
   help: boolean;
+  /** the overview, which shows while the picture is bigger than the screen */
+  overview: boolean;
   search?: { query: string; editing: boolean };
   /** one line for the status row, cleared by the next key */
   message?: { text: string; error: boolean };
   /** the last mouse press, for telling a double click */
   lastPress?: { x: number; y: number; at: number };
-  /** where a drag on empty canvas last was, while it pans */
-  drag?: CellPoint;
+  /** where a drag last was, while it pans the canvas or, started on the overview, moves
+   * the screen about it */
+  drag?: CellPoint & { overview?: true };
   /** scroll the selection into view once the layout it waits for arrives (`settle`) */
   follow?: boolean;
 }
@@ -53,6 +57,8 @@ export interface Ctx {
   scene?: Scene;
   /** the canvas: its first screen row and its size */
   view: { top: number; width: number; height: number };
+  /** where the overview goes on this screen, whether or not it is on */
+  overview?: OverviewPlace;
   at: number;
 }
 
@@ -80,6 +86,7 @@ export function openDiagram(
     scroll: { x: 0, y: 0 },
     panel: false,
     help: false,
+    overview: true,
   };
 }
 

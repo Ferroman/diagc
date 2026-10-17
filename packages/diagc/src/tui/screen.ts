@@ -5,12 +5,13 @@ import type { Scene } from '../text/scene';
 import { subtitleOf } from '../text/vocabulary';
 import { cellWidth, charWidth, fitCells, isControl, printable } from '../text/width';
 import { detailLines } from './details';
+import { overviewCells, overviewPlace, type OverviewPlace } from './overview';
 import type { DiagramState, TuiState } from './state';
 
 // One frame of the TUI, as lines exactly the terminal's size: a title row, the canvas
-// (a window onto the painted picture, and the details panel beside it), and a status
-// row. Built cell by cell, so a wide character at a window's edge can be blanked
-// instead of shifting the rest of the row.
+// (a window onto the painted picture, the overview in its corner, and the details
+// panel beside it), and a status row. Built cell by cell, so a wide character at a
+// window's edge can be blanked instead of shifting the rest of the row.
 
 /** The details panel's columns, its separator included. */
 export const PANEL_WIDTH = 40;
@@ -51,9 +52,11 @@ const HELP: readonly (readonly [string, string])[] = [
   ['1 … 9', 'turn a layer on or off'],
   ['/, n, N', 'search; next / previous match'],
   ['i', 'details of the box'],
+  ['o', 'overview on / off'],
   ['Shift-arrows, PgUp, PgDn', 'scroll'],
   ['Home, End, mouse wheel', 'scroll'],
   ['click, double-click, drag', 'select, fold, pan'],
+  ['click, drag on the overview', 'go there'],
   ['r', 'reload'],
   ['Esc', 'close; back to the list'],
   ['q, Ctrl-C', 'quit'],
@@ -139,6 +142,17 @@ export function canvasSize(state: TuiState, size: Size): { top: number; width: n
   return { top: 1, width: Math.max(0, size.columns - (beside ? PANEL_WIDTH : 0)), height: Math.max(0, size.rows - 2) };
 }
 
+/** Where the overview goes on this screen, whether or not it is on: nowhere without a
+ * picture, or where the panel covers the canvas. `reduce` reads the same, for clicks. */
+export function overviewPlaceOf(state: TuiState, scene: Scene | undefined, size: Size): OverviewPlace | undefined {
+  const d = state.diagram;
+  if (state.screen !== 'diagram' || d === undefined || scene === undefined || scene.layout.boxes.size === 0) {
+    return undefined;
+  }
+  if (d.panel && size.columns < PANEL_MIN_COLUMNS) return undefined;
+  return overviewPlace(scene.layout, canvasSize(state, size));
+}
+
 function titleOf(d: DiagramState, model: DiagramModel | undefined): string {
   if (model === undefined) return d.name;
   const name = (id: string): string => printable(model.nodes.find((n) => n.id === id)?.name ?? id);
@@ -180,6 +194,27 @@ function drawPanel(rows: Row[], d: DiagramState, input: FrameInput, size: Size):
   }
 }
 
+/** The overview, opaque over the canvas, in a border a cell wide around `place`. */
+function drawOverview(rows: Row[], d: DiagramState, scene: Scene, { canvas, overview: place }: Required<Places>): void {
+  const { width, height } = canvas;
+  const cells = overviewCells(scene.layout, place, { scroll: d.scroll, width, height }, d.selected);
+  const [left, right] = [place.x - 1, place.x + place.width];
+  for (let r = -1; r <= place.height; r++) {
+    const row = rows[place.y + r];
+    if (row === undefined) continue;
+    if (r === -1 || r === place.height) {
+      const [l, rt] = r === -1 ? ['┌', '┐'] : ['└', '┘'];
+      write(row, left, `${l}${'─'.repeat(place.width)}${rt}`, { style: DIM });
+      continue;
+    }
+    write(row, left, '│', { style: DIM });
+    cells[r]!.forEach((cell, c) => write(row, place.x + c, cell.ch, { style: cell.style }));
+    write(row, right, '│', { style: DIM });
+  }
+  const title = ' overview ';
+  if (cellWidth(title) <= place.width - 2) write(rows[place.y - 1]!, left + 2, title, { style: DIM });
+}
+
 function drawHelp(rows: Row[], area: { top: number; width: number; height: number }): void {
   const keyWidth = Math.max(...HELP.map(([k]) => cellWidth(k)));
   const lines = HELP.map(([k, what]) => `${k}${' '.repeat(keyWidth - cellWidth(k))}  ${what}`);
@@ -198,12 +233,23 @@ function drawHelp(rows: Row[], area: { top: number; width: number; height: numbe
   write(rows[y]!, x + 2, ' Keys ', { style: { bold: true }, maxX: x + width - 1 });
 }
 
-function composeDiagram(d: DiagramState, input: FrameInput, size: Size, area: ReturnType<typeof canvasSize>): Row[] {
+/** Where a frame's parts go: the canvas, and the overview where it has a place. */
+interface Places {
+  canvas: ReturnType<typeof canvasSize>;
+  overview?: OverviewPlace;
+}
+
+function composeDiagram(d: DiagramState, input: FrameInput, size: Size, places: Places): Row[] {
   const rows = Array.from({ length: size.rows }, () => blankRow(size.columns));
+  const area = places.canvas;
   rows[0] = bar(size.columns, titleOf(d, input.model), INVERSE);
   if (input.scene === undefined || input.canvas === undefined) centred(rows, area, input.notice ?? 'Loading…');
   else if (input.scene.layout.boxes.size === 0) centred(rows, area, 'Nothing on this plane');
-  else blit(rows, input.canvas, d.scroll, area);
+  else {
+    blit(rows, input.canvas, d.scroll, area);
+    const place = places.overview;
+    if (d.overview && place !== undefined) drawOverview(rows, d, input.scene, { canvas: area, overview: place });
+  }
   if (d.panel && size.rows > 2) drawPanel(rows, d, input, size);
   if (d.help) drawHelp(rows, area);
   if (size.rows > 1) {
@@ -242,7 +288,10 @@ export function composeFrame(state: TuiState, input: FrameInput, size: Size, mod
   const safe = { columns: Math.max(0, size.columns), rows: Math.max(0, size.rows) };
   const rows =
     state.screen === 'diagram' && state.diagram !== undefined
-      ? composeDiagram(state.diagram, input, safe, canvasSize(state, safe))
+      ? composeDiagram(state.diagram, input, safe, {
+          canvas: canvasSize(state, safe),
+          overview: overviewPlaceOf(state, input.scene, safe),
+        })
       : composeList(state, input, safe);
   return serialize(rows.slice(0, safe.rows), mode, false);
 }

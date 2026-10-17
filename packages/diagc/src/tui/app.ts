@@ -12,7 +12,7 @@ import { paint } from '../text/paint';
 import { buildScene, type Scene } from '../text/scene';
 import { startWatch } from '../watch';
 import { parseInput } from './keys';
-import { canvasSize, composeFrame, frameText } from './screen';
+import { canvasSize, composeFrame, frameText, overviewPlaceOf } from './screen';
 import { openDiagram, reduce, sceneInput, settle, type DiagramState, type Effect, type TuiState } from './state';
 import type { Terminal } from './terminal';
 
@@ -206,7 +206,16 @@ class App {
     this.state = {
       ...this.state,
       screen: 'diagram',
-      diagram: { name: wanted, layers: [], pins: {}, path: [], scroll: { x: 0, y: 0 }, panel: false, help: false },
+      diagram: {
+        name: wanted,
+        layers: [],
+        pins: {},
+        path: [],
+        scroll: { x: 0, y: 0 },
+        panel: false,
+        help: false,
+        overview: true,
+      },
     };
     this.draw();
   }
@@ -312,12 +321,13 @@ class App {
     if (this.state.screen === 'list' && this.pending === undefined) this.notice = undefined;
     for (const event of parseInput(data)) {
       if (this.finished) return;
-      const view = canvasSize(this.state, this.size());
+      const size = this.size();
       const ctx = {
         model: this.model,
         overlay: this.overlay,
         scene: this.scene,
-        view,
+        view: canvasSize(this.state, size),
+        overview: overviewPlaceOf(this.state, this.scene, size),
         at: (this.options.now ?? Date.now)(),
       };
       const { state, effects } = reduce(this.state, event, ctx);

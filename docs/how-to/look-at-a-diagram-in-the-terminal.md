@@ -88,6 +88,8 @@ diagc tui shop      # this one
 
 The viewer opens a diagram as the published page does: folded, except the groups its layout saved as unfolded. It compiles the sources as you save them and redraws, so keep it open in one terminal pane and edit the `.diagram.ts` in another. A source that does not compile keeps the last picture and shows the error in the bottom row.
 
+A picture bigger than the screen gets an overview in the bottom-right corner: every box drawn small in braille dots, the part on screen outlined and the rest dimmed. Click on it, or drag across it, to go to that part of the picture; `o` hides it. The dots are braille characters, so the terminal's font, or a fallback font it borrows from, has to have them.
+
 | Key | What it does |
 | --- | --- |
 | arrows, `h j k l` | Move to the next box in that direction. |
@@ -100,6 +102,8 @@ The viewer opens a diagram as the published page does: folded, except the groups
 | `/`, `n`, `N` | Search the names; next, previous match. A match inside a folded group unfolds it. |
 | `i` | Details of the box: its description, every relation in and out, threats, comments, links. |
 | `Shift`-arrows, `PgUp`, `PgDn`, `Home`, `End`, the mouse wheel, a drag | Scroll. |
+| a click or a drag on the overview | Go to that part of the picture. |
+| `o` | Hide or show the overview. |
 | `r` | Read the diagram again. |
 | `?` | All the keys. |
 | `Esc` | Close the search, the help or the details; then back to the list. |
