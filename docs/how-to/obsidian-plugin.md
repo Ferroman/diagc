@@ -11,7 +11,7 @@ pnpm install
 pnpm build:obsidian
 ```
 
-This bundles `apps/obsidian/dist/`: `main.js`, `manifest.json`, `styles.css`, and a copy of the icon library (`library/`).
+This builds the viewer page, then bundles `apps/obsidian/dist/`: `main.js`, `manifest.json`, `styles.css`, a copy of the icon library (`library/`), and a copy of the viewer page (`viewer.html`), which the studio's **Export web page** builds a diagram's page from.
 
 ```bash
 OBSIDIAN_VAULT=/path/to/vault node scripts/install-obsidian.mjs

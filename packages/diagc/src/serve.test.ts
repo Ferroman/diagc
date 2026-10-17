@@ -2,6 +2,8 @@ import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { model } from '@diagc/core/internal';
+import { DG_DATA_SENTINEL } from './publish/html';
 import { contentTypeFor, resolveStatic, startStudioServer, type StudioServer } from './serve';
 
 let tmp: string;
@@ -161,6 +163,25 @@ describe('startStudioServer', () => {
       const res = await fetch(`${s.url}${url}`, { redirect: 'manual' });
       expect(await res.text()).not.toContain('do not serve me');
     }
+  });
+
+  it('builds a web page from the viewer page it was given, and says so when it was given none', async () => {
+    await writeFile(path.join(diagramsDir, 'flows.diagram.json'), JSON.stringify(model('Flows').toJSON()));
+    const shellPath = path.join(tmp, 'viewer.html');
+    await writeFile(shellPath, `<!doctype html><p>viewer</p>${DG_DATA_SENTINEL}`);
+    const without = await start();
+    expect((await fetch(`${without.url}/api/pages/flows`)).status).toBe(501);
+    await without.close();
+    server = await startStudioServer({
+      studioDir,
+      diagramsDir,
+      artifactsDir: path.join(tmp, 'artifacts'),
+      pages: { shellPath, libraryDir: path.join(studioDir, 'library') },
+      port: 0,
+    });
+    const res = await fetch(`${server.url}/api/pages/flows`);
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { html: string }).html).toContain('<p>viewer</p>{"model":{');
   });
 
   it('reports the port it actually bound', async () => {

@@ -3,6 +3,7 @@ import { SOURCE_URL } from '@diagc/core/internal';
 import type { NotesToggle } from './canvas-editing/canvasEditHandlers';
 import { DiagramPicker } from './diagrams/DiagramPicker';
 import { diagramMenuItems } from './diagrams/diagramMenuItems';
+import { downloadPage } from './diagrams/downloadPage';
 import { downloadPng } from './diagrams/downloadPng';
 import type { DeepLink } from './diagrams/useDeepLink';
 import type { DiagramActions } from './diagrams/useDiagramActions';
@@ -60,6 +61,7 @@ export function TopBar({
     hint,
     actions,
     exportPng: () => void downloadPng(layoutApiRef.current, selected ?? ''),
+    exportPage: () => void downloadPage(selected ?? ''),
   });
   return (
     <header className="topbar">

@@ -4,6 +4,8 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 import type { ViteDevServer } from 'vite';
+import { model } from '@diagc/core/internal';
+import { DG_DATA_SENTINEL } from '../../../packages/diagc/src/publish/html';
 import { designerApi } from './designer-api';
 
 // The route table and handlers themselves are tested in
@@ -33,8 +35,11 @@ function fakeServer(root: string): {
     },
   };
   // Vite types the hook as ObjectHook; invoke its callable form directly.
-  const configure = designerApi(path.join(root, 'diagrams'), path.join(root, 'artifacts'))
-    .configureServer as unknown as (server: ViteDevServer) => void;
+  const configure = designerApi({
+    diagramsDir: path.join(root, 'diagrams'),
+    artifactsDir: path.join(root, 'artifacts'),
+    pages: { shellPath: path.join(root, 'viewer.html'), libraryDir: path.join(root, 'library') },
+  }).configureServer as unknown as (server: ViteDevServer) => void;
   configure(server as unknown as ViteDevServer);
   return { middleware, loads };
 }
@@ -94,6 +99,18 @@ describe('designerApi plugin', () => {
     const r = await request(fakeServer(root), '/api/layouts');
     expect(r.status).toBe(200);
     expect(r.body).toEqual({ layouts: { flows: { version: 1, planes: {} } } });
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('builds a web page from the viewer page it was configured with', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'ds-plugin-'));
+    const src = path.join(root, 'diagrams');
+    await mkdir(src, { recursive: true });
+    await writeFile(path.join(src, 'flows.diagram.json'), JSON.stringify(model('Flows').toJSON()));
+    await writeFile(path.join(root, 'viewer.html'), `<!doctype html><p>viewer</p>${DG_DATA_SENTINEL}`);
+    const r = await request(fakeServer(root), '/api/pages/flows');
+    expect(r.status).toBe(200);
+    expect((r.body as { html: string }).html).toContain('<p>viewer</p>{"model":{');
     await rm(root, { recursive: true, force: true });
   });
 

@@ -105,6 +105,7 @@ async function servePackaged(home: HomePaths, env: StudioEnv): Promise<StudioSes
     studioDir: home.studioDir,
     diagramsDir: env.DIAGRAMS_DIR,
     artifactsDir: env.ARTIFACTS_DIR,
+    pages: { shellPath: home.viewerShell, libraryDir: home.libraryDir },
   });
   console.log(`Studio ready on ${server.url}`);
   if (env.DIAGRAMS_OPEN === '1') openBrowser(server.url);

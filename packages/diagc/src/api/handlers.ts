@@ -14,6 +14,7 @@ export {
 } from './diagrams';
 export { walkDiagramJson, walkFiles } from './files';
 export { readLibrary, saveLibrary } from './library';
+export { exportPage } from './pages';
 export type { HandlerResult } from './result';
 export { listDrawings, listLayouts, saveDrawings, saveLayout } from './sidecars';
 

@@ -1531,7 +1531,7 @@ describe('editor shell', () => {
     // the read-only branch instead.
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /^edit$/i })).toBeNull();
-      expect(diagramActions()).toEqual(['Export PNG', 'Duplicate']);
+      expect(diagramActions()).toEqual(['Export PNG', 'Export web page', 'Duplicate']);
     });
   });
 
@@ -1557,7 +1557,7 @@ describe('editor shell', () => {
     fireEvent.click(screen.getByRole('option', { name: 'two' }));
     expect(await screen.findByText(/read-only/i)).toBeDefined();
     // the menu has to be OPEN for this to mean anything: closed, no row exists
-    expect(diagramActions()).toEqual(['Export PNG', 'Duplicate']);
+    expect(diagramActions()).toEqual(['Export PNG', 'Export web page', 'Duplicate']);
   });
 
   it('entering edit starts the session from the raw source, not the composed boot model', async () => {
@@ -1848,6 +1848,7 @@ describe('editor shell', () => {
       expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual([
         'Rename',
         'Export PNG',
+        'Export web page',
         'Duplicate',
         'Eject',
       ]);
@@ -1862,12 +1863,16 @@ describe('editor shell', () => {
       });
     });
 
-    it('offers a read-only diagram only Export PNG and Duplicate — it has no source to rename or eject', async () => {
+    it('offers a read-only diagram only the exports and Duplicate — it has no source to rename or eject', async () => {
       vi.stubGlobal('fetch', stubFetch([{ name: 'sketch', model: goodModel, issues: [], editable: false }]));
       render(<App />);
       await screen.findByText(/read-only/i);
       fireEvent.click(topbar().getByRole('button', { name: 'Diagram actions' }));
-      expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Export PNG', 'Duplicate']);
+      expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual([
+        'Export PNG',
+        'Export web page',
+        'Duplicate',
+      ]);
     });
 
     it('keeps its toggles as icon buttons that still say what they are', async () => {
