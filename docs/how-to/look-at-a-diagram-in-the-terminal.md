@@ -75,7 +75,7 @@ An unknown plane, layer or group exits `1` and lists the ones the diagram has.
 
 ## Paste it somewhere
 
-- **Plain text.** In a terminal the picture is in colour: a node's `color` on its border, a layer's tint on its lines. In a pipe or a file it has none, so `diagc show shop > shop.txt` is plain text. `--no-color` turns colour off in a terminal, `--color` turns it on in a pipe, and `NO_COLOR` is respected.
+- **Plain text.** In a terminal the picture is in colour: a node's `color` on its border, a layer's tint on its lines, and the colours the page gives a fishbone's bones, a git graph's lanes and a trust boundary. In a pipe or a file it has none, so `diagc show shop > shop.txt` is plain text. `--no-color` turns colour off in a terminal, `--color` turns it on in a pipe, and `NO_COLOR` is respected.
 - **Only ASCII.** `--ascii` draws with `+ - | . :` and `> < ^ v`, for a font or a tool that has no box-drawing characters.
 - **In Markdown.** Put the output in a fenced code block. It lines up in any monospaced font, wide characters included.
 - **A wide picture.** A terminal wraps a line that is wider than itself, which takes the picture apart. `show` says so on stderr when that happens: `diagc show shop | less -S` scrolls sideways instead, or open the diagram with `diagc tui`.
@@ -120,6 +120,7 @@ The viewer is read-only. Change a diagram in its source, or in `diagc studio`.
 - **Your positions.** Boxes you placed by hand in the studio are saved in pixels, for boxes of another size. The text picture is always laid out automatically.
 - **The special layouts.** A plan's time axis, a fishbone's spine, git lanes and activity swimlanes draw as an ordinary graph: the names, the nesting and the arrows are all there, the geometry is not.
 - **What only a browser draws.** Icons, images, freehand drawings and notes. A foreign key's arrow ends at its table, not at the row.
+- **The theme's colours.** A second-order diagram's good and bad consequences, a causal loop's polarities and a deployment's zones take their colours from the page's light or dark theme. A text picture cannot know the background it will be read on, so it draws them uncoloured.
 - **Part of the legend.** A layer that is off has no row, as on a published page: the top row lists the layers. Nothing the text picture leaves out is keyed, such as a threat badge or the drawings. A swatch is made of characters, so an interrupt's lightning jog is drawn as a plain arrow.
 
 ## See also

@@ -47,7 +47,7 @@ export interface TextLegend {
 }
 
 /** What the legend is read from: a scene, before its legend is added to it. */
-type Keyed = Pick<Scene, 'input' | 'view' | 'nodes' | 'notation'>;
+type Keyed = Pick<Scene, 'input' | 'view' | 'nodes' | 'notation' | 'accents'>;
 
 /** A swatch's cells: three, the width of a line with a mark at each end. */
 const SWATCH = 3;
@@ -178,7 +178,9 @@ function typeRows(scene: Keyed, glyphs: Glyphs): LegendRow[] {
   const { model } = scene.input;
   const accents = agreed(
     [...scene.nodes.values()].flatMap((vn) =>
-      vn.node.type === undefined ? [] : [[vn.node.type, accentCss(model, vn.node, scene.notation)] as const],
+      vn.node.type === undefined
+        ? []
+        : [[vn.node.type, accentCss(model, vn.node, scene.notation, scene.accents)] as const],
     ),
   );
   return ordered(accents.keys(), Object.keys(TYPE_LOOKS)).map((type) => {
