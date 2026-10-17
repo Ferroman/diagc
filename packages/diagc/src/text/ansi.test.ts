@@ -88,6 +88,24 @@ describe('serialize', () => {
     expect(serialize([row('a  ', { inverse: true })], 'none')).toEqual(['a  ']);
   });
 
+  it('sets a background colour in each depth', () => {
+    expect(serialize([row('x', { bg: { rgb: [0, 0, 170] } })], 'truecolor')).toEqual(['\x1b[48;2;0;0;170mx\x1b[0m']);
+    expect(serialize([row('x', { bg: { rgb: [0, 0, 170] } })], 'ansi256')).toEqual(['\x1b[48;5;19mx\x1b[0m']);
+    expect(serialize([row('x', { bg: { ansi: 4 } })], 'ansi256')).toEqual(['\x1b[44mx\x1b[0m']);
+    expect(serialize([row('x', { bg: { ansi: 12 } })], 'ansi256')).toEqual(['\x1b[104mx\x1b[0m']);
+    const [both] = serialize([row('x', { fg: { rgb: [0, 0, 0] }, bg: { rgb: [170, 170, 170] } })], 'truecolor');
+    expect(both).toBe('\x1b[38;2;0;0;0;48;2;170;170;170mx\x1b[0m');
+  });
+
+  it('drops a background in mono, as it drops a colour', () => {
+    expect(serialize([row('x', { inverse: true, bg: { rgb: [0, 0, 170] } })], 'mono')).toEqual(['\x1b[7mx\x1b[0m']);
+  });
+
+  it('keeps a blank with a background, which shows', () => {
+    const [line] = serialize([row('a  ', { bg: { ansi: 4 } })], 'ansi256');
+    expect(line).toBe('\x1b[44ma  \x1b[0m');
+  });
+
   it('skips the second half of a wide character', () => {
     expect(
       serialize(

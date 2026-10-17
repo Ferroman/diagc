@@ -6,6 +6,8 @@ export type Color = { rgb: [number, number, number] } | { ansi: number };
 
 export interface Style {
   fg?: Color;
+  /** the cell's background */
+  bg?: Color;
   bold?: boolean;
   dim?: boolean;
   inverse?: boolean;
@@ -35,12 +37,16 @@ interface Slot {
   /** directions lines leave this cell in; 0 = the cell holds `ch` instead */
   mask: number;
   weight: Weight;
+  /** the directions drawn at `weight`; the rest of `mask` is lighter */
+  top: number;
   corner?: Corner;
+  /** the style under what is drawn here (`Canvas.ground`) */
+  ground?: Style;
 }
 
-const RANK: Record<Weight, number> = { dashed: 0, light: 1, heavy: 2 };
+const RANK: Record<Weight, number> = { dashed: 0, light: 1, heavy: 2, double: 3 };
 
-const blank = (): Slot => ({ ch: ' ', style: {}, mask: 0, weight: 'dashed' });
+const blank = (): Slot => ({ ch: ' ', style: {}, mask: 0, weight: 'dashed', top: 0 });
 
 /**
  * A grid of character cells that lines, boxes and text are drawn into. Lines are
@@ -63,14 +69,16 @@ export class Canvas {
     return this.slots[y]?.[x];
   }
 
-  /** Adds line directions to a cell. The heavier weight wins a shared cell. */
+  /** Adds line directions to a cell. The heavier weight wins a shared cell, and the
+   * directions drawn lighter are kept, for a junction that can show both. */
   stroke({ x, y }: CellPoint, mask: number, weight: Weight, style?: Style): void {
     const s = this.slot(x, y);
     if (s === undefined) return;
     const was = s.mask;
     if (was === 0) this.unwide(x, y);
     s.mask |= mask;
-    if (was === 0 || RANK[weight] > RANK[s.weight]) s.weight = weight;
+    if (was === 0 || RANK[weight] > RANK[s.weight]) [s.weight, s.top] = [weight, mask];
+    else if (weight === s.weight) s.top |= mask;
     if (style !== undefined) s.style = style;
   }
 
@@ -121,12 +129,24 @@ export class Canvas {
     }
   }
 
-  /** Puts one character in a cell, over whatever was there. */
+  /** Puts one character in a cell, over whatever was there but its ground. */
   put({ x, y }: CellPoint, ch: string, style: Style = {}): void {
     const s = this.slot(x, y);
     if (s === undefined) return;
     this.unwide(x, y);
-    this.slots[y]![x] = { ch, style, mask: 0, weight: 'dashed' };
+    this.slots[y]![x] = { ch, style, mask: 0, weight: 'dashed', top: 0, ...(s.ground ? { ground: s.ground } : {}) };
+  }
+
+  /** Lays a style under a rectangle: what is drawn there, before or after, takes its
+   * colours where it sets none of its own. A box's fill is its ground, which the text
+   * written in it keeps. `clear` takes the ground away with the rest. */
+  ground({ x, y, width, height }: CellRect, style: Style): void {
+    for (let cy = y; cy < y + height; cy++) {
+      for (let cx = x; cx < x + width; cx++) {
+        const s = this.slot(cx, cy);
+        if (s !== undefined) s.ground = style;
+      }
+    }
   }
 
   /**
@@ -170,7 +190,10 @@ export class Canvas {
   /** The finished picture, lines resolved with `glyphs`. */
   cells(glyphs: Glyphs): Cell[][] {
     return this.slots.map((row) =>
-      row.map((s) => ({ ch: s.mask === 0 ? s.ch : glyphs.line(s.mask, s.weight, s.corner), style: s.style })),
+      row.map((s) => ({
+        ch: s.mask === 0 ? s.ch : glyphs.line(s.mask, s.weight, s.corner, s.mask & ~s.top),
+        style: s.ground === undefined ? s.style : { ...s.ground, ...s.style },
+      })),
     );
   }
 

@@ -69,9 +69,12 @@ function palette256([r, g, b]: readonly [number, number, number]): number {
     : 16 + 36 * ri + 6 * gi + bi;
 }
 
-function colorCode(color: Color, mode: ColorMode): string {
-  if ('ansi' in color) return String(color.ansi < 8 ? 30 + color.ansi : 90 + color.ansi - 8);
-  return mode === 'truecolor' ? `38;2;${color.rgb.join(';')}` : `38;5;${palette256(color.rgb)}`;
+/** The SGR parameters for `color` as the text's colour, or with `ground` as the cell's
+ * background: each code is the foreground's plus ten. */
+function colorCode(color: Color, mode: ColorMode, ground = false): string {
+  const base = ground ? 10 : 0;
+  if ('ansi' in color) return String(base + (color.ansi < 8 ? 30 + color.ansi : 90 + color.ansi - 8));
+  return mode === 'truecolor' ? `${38 + base};2;${color.rgb.join(';')}` : `${38 + base};5;${palette256(color.rgb)}`;
 }
 
 /** The escape that sets `style`, or `''` for the plain style. */
@@ -82,13 +85,16 @@ export function sgr(style: Style, mode: ColorMode): string {
   if (style.dim === true) codes.push('2');
   if (style.inverse === true) codes.push('7');
   if (style.fg !== undefined && mode !== 'mono') codes.push(colorCode(style.fg, mode));
+  if (style.bg !== undefined && mode !== 'mono') codes.push(colorCode(style.bg, mode, true));
   return codes.length === 0 ? '' : `\x1b[${codes.join(';')}m`;
 }
 
 const RESET = '\x1b[0m';
 
-/** A blank that shows nothing: trailing ones can go. An inverse blank is a bar. */
-const invisible = (cell: Cell): boolean => cell.ch === ' ' && cell.style.inverse !== true;
+/** A blank that shows nothing: trailing ones can go. An inverse blank is a bar, and a
+ * blank on a background is a patch of it. */
+const invisible = (cell: Cell): boolean =>
+  cell.ch === ' ' && cell.style.inverse !== true && cell.style.bg === undefined;
 
 /**
  * The picture as text, one string per row. Trailing blanks are trimmed unless `trim`
