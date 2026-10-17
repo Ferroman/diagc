@@ -48,7 +48,7 @@ diagc show shop
 - `show` reads the source, not the compiled artifact, so it shows the diagram as it is now. You do not have to compile first.
 - The flow runs the way the plane's layout settings say (`direction` in `<name>.layout.json`); without one, downwards, except an activity diagram and a fishbone, which run to the right, as on the page.
 - The line tells the kind: a dashed line is an `async` or `hosted-on` relation, a heavy one is `writes`, and a boundary such as `system` has a dashed frame.
-- A diagram that [declares a legend](add-a-legend.md) gets it under the picture, framed, with a blank line between. A `top-` position puts it over the picture and a `-right` one against the picture's right edge.
+- A diagram that [declares a legend](add-a-legend.md) gets it under the picture, framed, with a blank line between. A `top-` position puts it over the picture and a `-right` one against the picture's right edge, unless the legend is the wider of the two: then it starts at the left edge, as a `-left` one does.
 
 ## Choose what to draw
 
@@ -112,6 +112,10 @@ A diagram that declares a legend shows it in the corner its `position` names, as
 | `?` | All the keys. |
 | `Esc` | Close the search, the help or the details; then back to the list. |
 | `q`, `Ctrl-C` | Quit. |
+
+The viewer takes the mouse while it is open, so a drag pans the picture instead of selecting text. To select with the terminal, hold `Shift` as you drag (`Option` in iTerm2), or copy from `diagc show`, which prints the same picture.
+
+The viewer needs a terminal that understands xterm's escape codes for the alternate screen and the mouse, as most terminal emulators do. It is tested in kitty on Linux, and has not been tried on Windows.
 
 The viewer is read-only. Change a diagram in its source, or in `diagc studio`.
 
