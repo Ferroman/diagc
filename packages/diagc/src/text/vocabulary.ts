@@ -25,6 +25,9 @@ export interface TypeLook {
   neverFolds?: boolean;
   /** the border colour a notation gives the type (C4's blues) */
   accent?: string;
+  /** what a legend calls the type (the renderer's `legendLabel`): set only on a shape
+   * that says nothing about itself, which a legend keys without being asked */
+  legend?: string;
 }
 
 export type LineStyle = 'solid' | 'dashed' | 'heavy';
@@ -34,6 +37,8 @@ export interface KindLook {
   line: LineStyle;
   end: EndMark;
   start?: EndMark;
+  /** what a legend calls the kind, as `TypeLook.legend` */
+  legend?: string;
 }
 
 const box = (label?: string, extra: Partial<TypeLook> = {}): TypeLook => ({
@@ -105,15 +110,15 @@ export const TYPE_LOOKS: Readonly<Record<string, TypeLook>> = {
   'aws-subnet-private': box(''),
   'activity-frame': box(undefined, open),
   'activity-lane': box(undefined, open),
-  'activity-region': box(undefined, { ...dashed, ...open }),
-  'activity-action': shaped('rounded', ''),
-  'activity-decision': shaped('diamond', ''),
-  'activity-bar': shaped('bar', ''),
-  'activity-start': shaped('dot', ''),
-  'activity-end': shaped('dot', ''),
-  'activity-send': box(''),
-  'activity-receive': box(''),
-  'activity-object': box(''),
+  'activity-region': box(undefined, { ...dashed, ...open, legend: 'Interruptible region' }),
+  'activity-action': shaped('rounded', '', { legend: 'Action' }),
+  'activity-decision': shaped('diamond', '', { legend: 'Decision / merge' }),
+  'activity-bar': shaped('bar', '', { legend: 'Fork / join' }),
+  'activity-start': shaped('dot', '', { legend: 'Start' }),
+  'activity-end': shaped('dot', '', { legend: 'End' }),
+  'activity-send': box('', { legend: 'Send signal' }),
+  'activity-receive': box('', { legend: 'Receive signal' }),
+  'activity-object': box('', { legend: 'Object' }),
   'activity-note': shaped('note', ''),
   'so-decision': shaped('rounded', ''),
   'so-consequence-positive': shaped('rounded', ''),
@@ -122,13 +127,13 @@ export const TYPE_LOOKS: Readonly<Record<string, TypeLook>> = {
   'fb-effect': box(''),
   'fb-category': box(''),
   'fb-cause': box(''),
-  'deploy-environment': box('[Environment]'),
-  'deploy-region': box('[Region]'),
-  'deploy-zone': box('[Availability zone]', dashed),
-  'deploy-network': box('[Network]'),
-  'deploy-subnet-public': box('[Public subnet]'),
-  'deploy-subnet-private': box('[Private subnet]'),
-  'deploy-cluster': box('[Cluster]', dashed),
+  'deploy-environment': box('[Environment]', { legend: 'Environment' }),
+  'deploy-region': box('[Region]', { legend: 'Region' }),
+  'deploy-zone': box('[Availability zone]', { ...dashed, legend: 'Availability zone' }),
+  'deploy-network': box('[Network]', { legend: 'Network' }),
+  'deploy-subnet-public': box('[Public subnet]', { legend: 'Public subnet' }),
+  'deploy-subnet-private': box('[Private subnet]', { legend: 'Private subnet' }),
+  'deploy-cluster': box('[Cluster]', { ...dashed, legend: 'Cluster' }),
   'deploy-host': box('[Host]'),
   'deploy-service': shaped('rounded', '[Service]'),
   'deploy-database': shaped('cylinder', '[Database]'),
@@ -138,12 +143,12 @@ export const TYPE_LOOKS: Readonly<Record<string, TypeLook>> = {
   'deploy-gateway': shaped('hexagon', '[Gateway]'),
   'deploy-firewall': box('[Firewall]'),
   'deploy-internet': shaped('rounded', '[External network]', dashed),
-  'tm-entity': box(''),
-  'tm-process': shaped('rounded', ''),
-  'tm-store': shaped('cylinder', ''),
-  'tm-boundary': box('', { ...dashed, ...open }),
-  'plan-zone': shaped('rounded', ''),
-  'plan-event': shaped('diamond', ''),
+  'tm-entity': box('', { legend: 'External entity' }),
+  'tm-process': shaped('rounded', '', { legend: 'Process' }),
+  'tm-store': shaped('cylinder', '', { legend: 'Data store' }),
+  'tm-boundary': box('', { ...dashed, ...open, legend: 'Trust boundary' }),
+  'plan-zone': shaped('rounded', '', { legend: 'Zone' }),
+  'plan-event': shaped('diamond', '', { legend: 'Event' }),
 };
 
 const solid: KindLook = { line: 'solid', end: 'arrow' };
@@ -157,19 +162,19 @@ export const KIND_LOOKS: Readonly<Record<string, KindLook>> = {
   'hosted-on': { line: 'dashed', end: 'arrow' },
   flow: solid,
   mixed: { line: 'heavy', end: 'arrow' },
-  fk: { line: 'solid', end: 'one', start: 'many' },
-  control: solid,
-  'object-flow': { line: 'dashed', end: 'arrow' },
-  interrupt: solid,
-  'note-link': { line: 'dashed', end: 'none' },
+  fk: { line: 'solid', end: 'one', start: 'many', legend: 'Foreign key: many to one' },
+  control: { ...solid, legend: 'Control flow' },
+  'object-flow': { line: 'dashed', end: 'arrow', legend: 'Object flow' },
+  interrupt: { ...solid, legend: 'Interrupt' },
+  'note-link': { line: 'dashed', end: 'none', legend: 'Note link' },
   influence: solid,
   network: solid,
   'leads-to': solid,
   'cause-of': solid,
-  'data-flow': solid,
-  owns: solid,
-  executes: solid,
-  checks: solid,
+  'data-flow': { ...solid, legend: 'Data flow' },
+  owns: { ...solid, legend: 'Owns' },
+  executes: { ...solid, legend: 'Executes' },
+  checks: { ...solid, legend: 'Checks' },
 };
 
 // What a notation's profile changes (packages/renderer/src/notations.ts). Not pinned
@@ -203,7 +208,7 @@ const NOTATION_TYPES: Partial<Record<NotationId, Record<string, TypeLook>>> = {
   deployment: { 'c4-deployment-node': box('[Deployment Node]') },
   // a commit is a dot and a branch a lane in the browser: neither prints its type
   [GIT_NOTATION]: { commit: shaped('dot', ''), branch: box('', open), [GIT_STAGE_TYPE]: box('') },
-  plan: { 'plan-zone': shaped('rounded', '', open) },
+  plan: { 'plan-zone': { ...TYPE_LOOKS['plan-zone']!, ...open } },
 };
 
 const NOTATION_KINDS: Partial<Record<NotationId, Record<string, KindLook>>> = {

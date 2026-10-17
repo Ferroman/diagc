@@ -1,16 +1,19 @@
 import type { DiagramModel } from '@diagc/core/internal';
 import { serialize, type ColorMode } from '../text/ansi';
-import type { Cell, CellPoint, Style } from '../text/canvas';
+import type { Cell, CellPoint, CellRect, Style } from '../text/canvas';
+import { UNICODE } from '../text/glyphs';
+import { legendCells, legendSize } from '../text/legend';
 import type { Scene } from '../text/scene';
 import { subtitleOf } from '../text/vocabulary';
 import { cellWidth, charWidth, fitCells, isControl, printable } from '../text/width';
 import { detailLines } from './details';
+import { legendPlace } from './legend';
 import { overviewCells, overviewPlace, type OverviewPlace } from './overview';
 import type { DiagramState, TuiState } from './state';
 
 // One frame of the TUI, as lines exactly the terminal's size: a title row, the canvas
-// (a window onto the painted picture, the overview in its corner, and the details
-// panel beside it), and a status row. Built cell by cell, so a wide character at a
+// (a window onto the painted picture, the overview and the legend in their corners,
+// and the details panel beside it), and a status row. Built cell by cell, so a wide character at a
 // window's edge can be blanked instead of shifting the rest of the row.
 
 /** The details panel's columns, its separator included. */
@@ -53,6 +56,7 @@ const HELP: readonly (readonly [string, string])[] = [
   ['/, n, N', 'search; next / previous match'],
   ['i', 'details of the box'],
   ['o', 'overview on / off'],
+  ['L', 'legend on / off'],
   ['Shift-arrows, PgUp, PgDn', 'scroll'],
   ['Home, End, mouse wheel', 'scroll'],
   ['click, double-click, drag', 'select, fold, pan'],
@@ -142,15 +146,32 @@ export function canvasSize(state: TuiState, size: Size): { top: number; width: n
   return { top: 1, width: Math.max(0, size.columns - (beside ? PANEL_WIDTH : 0)), height: Math.max(0, size.rows - 2) };
 }
 
-/** Where the overview goes on this screen, whether or not it is on: nowhere without a
- * picture, or where the panel covers the canvas. `reduce` reads the same, for clicks. */
-export function overviewPlaceOf(state: TuiState, scene: Scene | undefined, size: Size): OverviewPlace | undefined {
+/** Whether the canvas shows a picture for the overview and the legend to lie over: not
+ * off the diagram screen, without one, or where the panel covers the canvas. */
+function pictureShown(state: TuiState, scene: Scene | undefined, size: Size): scene is Scene {
   const d = state.diagram;
-  if (state.screen !== 'diagram' || d === undefined || scene === undefined || scene.layout.boxes.size === 0) {
-    return undefined;
-  }
-  if (d.panel && size.columns < PANEL_MIN_COLUMNS) return undefined;
-  return overviewPlace(scene.layout, canvasSize(state, size));
+  if (state.screen !== 'diagram' || d === undefined || scene === undefined) return false;
+  return scene.layout.boxes.size > 0 && !(d.panel && size.columns < PANEL_MIN_COLUMNS);
+}
+
+/** Where the overview goes on this screen, whether or not it is on. `reduce` reads the
+ * same, for clicks. */
+export function overviewPlaceOf(state: TuiState, scene: Scene | undefined, size: Size): OverviewPlace | undefined {
+  return pictureShown(state, scene, size) ? overviewPlace(scene.layout, canvasSize(state, size)) : undefined;
+}
+
+/** Where the legend goes on this screen, its border included, whether or not it is on:
+ * kept off the overview while that is on. `reduce` reads the same, for clicks. */
+export function legendPlaceOf(state: TuiState, scene: Scene | undefined, size: Size): CellRect | undefined {
+  if (!pictureShown(state, scene, size) || scene.legend === undefined) return undefined;
+  const overview = state.diagram?.overview === true ? overviewPlaceOf(state, scene, size) : undefined;
+  const framed = overview && {
+    x: overview.x - 1,
+    y: overview.y - 1,
+    width: overview.width + 2,
+    height: overview.height + 2,
+  };
+  return legendPlace(legendSize(scene.legend), scene.legend.position, canvasSize(state, size), framed);
 }
 
 function titleOf(d: DiagramState, model: DiagramModel | undefined): string {
@@ -195,7 +216,7 @@ function drawPanel(rows: Row[], d: DiagramState, input: FrameInput, size: Size):
 }
 
 /** The overview, opaque over the canvas, in a border a cell wide around `place`. */
-function drawOverview(rows: Row[], d: DiagramState, scene: Scene, { canvas, overview: place }: Required<Places>): void {
+function drawOverview(rows: Row[], d: DiagramState, scene: Scene, { canvas, overview: place }: OverviewPlaces): void {
   const { width, height } = canvas;
   const cells = overviewCells(scene.layout, place, { scroll: d.scroll, width, height }, d.selected);
   const [left, right] = [place.x - 1, place.x + place.width];
@@ -213,6 +234,15 @@ function drawOverview(rows: Row[], d: DiagramState, scene: Scene, { canvas, over
   }
   const title = ' overview ';
   if (cellWidth(title) <= place.width - 2) write(rows[place.y - 1]!, left + 2, title, { style: DIM });
+}
+
+/** The legend, opaque over the canvas, cut to `place`. */
+function drawLegend(rows: Row[], scene: Scene, place: CellRect): void {
+  if (scene.legend === undefined) return;
+  legendCells(scene.legend, UNICODE, place).forEach((cells, r) => {
+    const row = rows[place.y + r];
+    if (row !== undefined) cells.forEach((cell, c) => write(row, place.x + c, cell.ch, { style: cell.style }));
+  });
 }
 
 function drawHelp(rows: Row[], area: { top: number; width: number; height: number }): void {
@@ -233,11 +263,15 @@ function drawHelp(rows: Row[], area: { top: number; width: number; height: numbe
   write(rows[y]!, x + 2, ' Keys ', { style: { bold: true }, maxX: x + width - 1 });
 }
 
-/** Where a frame's parts go: the canvas, and the overview where it has a place. */
+/** Where a frame's parts go: the canvas, and the overview and the legend where they
+ * have a place. */
 interface Places {
   canvas: ReturnType<typeof canvasSize>;
   overview?: OverviewPlace;
+  legend?: CellRect;
 }
+
+type OverviewPlaces = Required<Pick<Places, 'canvas' | 'overview'>>;
 
 function composeDiagram(d: DiagramState, input: FrameInput, size: Size, places: Places): Row[] {
   const rows = Array.from({ length: size.rows }, () => blankRow(size.columns));
@@ -249,6 +283,7 @@ function composeDiagram(d: DiagramState, input: FrameInput, size: Size, places: 
     blit(rows, input.canvas, d.scroll, area);
     const place = places.overview;
     if (d.overview && place !== undefined) drawOverview(rows, d, input.scene, { canvas: area, overview: place });
+    if (d.legend && places.legend !== undefined) drawLegend(rows, input.scene, places.legend);
   }
   if (d.panel && size.rows > 2) drawPanel(rows, d, input, size);
   if (d.help) drawHelp(rows, area);
@@ -291,6 +326,7 @@ export function composeFrame(state: TuiState, input: FrameInput, size: Size, mod
       ? composeDiagram(state.diagram, input, safe, {
           canvas: canvasSize(state, safe),
           overview: overviewPlaceOf(state, input.scene, safe),
+          legend: legendPlaceOf(state, input.scene, safe),
         })
       : composeList(state, input, safe);
   return serialize(rows.slice(0, safe.rows), mode, false);

@@ -48,6 +48,7 @@ diagc show shop
 - `show` reads the source, not the compiled artifact, so it shows the diagram as it is now. You do not have to compile first.
 - The flow runs the way the plane's layout settings say (`direction` in `<name>.layout.json`); without one, downwards.
 - The line tells the kind: a dashed line is an `async` or `hosted-on` relation, a heavy one is `writes`, and a boundary such as `system` has a dashed frame.
+- A diagram that [declares a legend](add-a-legend.md) gets it under the picture, framed, with a blank line between. A `top-` position puts it over the picture and a `-right` one against the picture's right edge.
 
 ## Choose what to draw
 
@@ -90,6 +91,8 @@ The viewer opens a diagram as the published page does: folded, except the groups
 
 A picture bigger than the screen gets an overview in the bottom-right corner: every box drawn small in braille dots, the part on screen outlined and the rest dimmed. Click on it, or drag across it, to go to that part of the picture; `o` hides it. The dots are braille characters, so the terminal's font, or a fallback font it borrows from, has to have them.
 
+A diagram that declares a legend shows it in the corner its `position` names, as the published page does. A legend in the overview's corner sits above the overview, and is cut short, with a line saying how many rows are left out, where there is no room for all of it. `L` hides it and shows it again. A diagram drawn in shapes that say nothing about themselves, such as a start dot or a decision, has a legend on offer even when it declares none: `L` shows it.
+
 | Key | What it does |
 | --- | --- |
 | arrows, `h j k l` | Move to the next box in that direction. |
@@ -104,6 +107,7 @@ A picture bigger than the screen gets an overview in the bottom-right corner: ev
 | `Shift`-arrows, `PgUp`, `PgDn`, `Home`, `End`, the mouse wheel, a drag | Scroll. |
 | a click or a drag on the overview | Go to that part of the picture. |
 | `o` | Hide or show the overview. |
+| `L` | Hide or show the legend. |
 | `r` | Read the diagram again. |
 | `?` | All the keys. |
 | `Esc` | Close the search, the help or the details; then back to the list. |
@@ -115,7 +119,8 @@ The viewer is read-only. Change a diagram in its source, or in `diagc studio`.
 
 - **Your positions.** Boxes you placed by hand in the studio are saved in pixels, for boxes of another size. The text picture is always laid out automatically.
 - **The special layouts.** A plan's time axis, a fishbone's spine, git lanes and activity swimlanes draw as an ordinary graph: the names, the nesting and the arrows are all there, the geometry is not.
-- **What only a browser draws.** Icons, images, freehand drawings, notes and the legend. A foreign key's arrow ends at its table, not at the row.
+- **What only a browser draws.** Icons, images, freehand drawings and notes. A foreign key's arrow ends at its table, not at the row.
+- **Part of the legend.** A layer that is off has no row, as on a published page: the top row lists the layers. Nothing the text picture leaves out is keyed, such as a threat badge or the drawings. A swatch is made of characters, so an interrupt's lightning jog is drawn as a plain arrow.
 
 ## See also
 

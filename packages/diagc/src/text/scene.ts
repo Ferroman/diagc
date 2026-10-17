@@ -2,6 +2,7 @@ import {
   activeNotation,
   buildHierarchy,
   compileView,
+  defined,
   defaultLayoutDirection,
   layoutPlaneKey,
   presetLayers,
@@ -16,6 +17,7 @@ import { boxText, edgeText, type BoxText } from './content';
 import { withNeverFolds, type Pins } from './folds';
 import type { Glyphs } from './glyphs';
 import { layoutCells, type TextLayout } from './layout';
+import { legendOf, type TextLegend } from './legend';
 import { hidesKind } from './vocabulary';
 
 /** What a text picture is a picture of. */
@@ -45,6 +47,9 @@ export interface Scene {
   /** the plane's containment, over the nodes the active layers show */
   hierarchy: HierarchyIndex;
   notation?: NotationId;
+  /** the key to what is drawn: declared by the diagram, or offered for what its
+   * shapes cannot say; absent when there is nothing to key */
+  legend?: TextLegend;
 }
 
 const DIRECTIONS = new Set(['DOWN', 'UP', 'LEFT', 'RIGHT']);
@@ -83,5 +88,7 @@ export async function buildScene(input: SceneInput, glyphs: Glyphs): Promise<Sce
 
   const labels = new Map(view.layoutEdges.map((e) => [e.id, edgeText(e, glyphs)]));
   const layout = await layoutCells(view, boxes, directionOf(input), labels);
-  return { input, view, layout, boxes, nodes, parentOf, hierarchy, ...(notation !== undefined ? { notation } : {}) };
+  const scene: Scene = { input, view, layout, boxes, nodes, parentOf, hierarchy, ...defined({ notation }) };
+  const legend = legendOf(scene, glyphs);
+  return legend === undefined ? scene : { ...scene, legend };
 }

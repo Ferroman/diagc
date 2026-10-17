@@ -12,7 +12,7 @@ import { paint } from '../text/paint';
 import { buildScene, type Scene } from '../text/scene';
 import { startWatch } from '../watch';
 import { parseInput } from './keys';
-import { canvasSize, composeFrame, frameText, overviewPlaceOf } from './screen';
+import { canvasSize, composeFrame, frameText, legendPlaceOf, overviewPlaceOf } from './screen';
 import { openDiagram, reduce, sceneInput, settle, type DiagramState, type Effect, type TuiState } from './state';
 import type { Terminal } from './terminal';
 
@@ -215,6 +215,7 @@ class App {
         panel: false,
         help: false,
         overview: true,
+        legend: false,
       },
     };
     this.draw();
@@ -328,6 +329,7 @@ class App {
         scene: this.scene,
         view: canvasSize(this.state, size),
         overview: overviewPlaceOf(this.state, this.scene, size),
+        legend: legendPlaceOf(this.state, this.scene, size),
         at: (this.options.now ?? Date.now)(),
       };
       const { state, effects } = reduce(this.state, event, ctx);

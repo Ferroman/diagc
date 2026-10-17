@@ -166,7 +166,8 @@ diagc show shop --ascii --no-color    # plain ASCII, no escapes
 - **What is drawn:** the first plane, or `--plane`'s; the plane's own layers, or `--layers`' (`''` for none); every group open except those the layout's `export.collapsed` folds — the PNG's folds — or, with `--depth n`, only the top `n` levels open. `--root <id>` draws one group's inside, as drilling into it does.
 - **Colour:** when stdout is a terminal, or with `--color`; never with `--no-color` or a non-empty `NO_COLOR`. `FORCE_COLOR` colours a pipe. 24-bit colour where `COLORTERM` says the terminal has it, the 256-colour palette otherwise.
 - **Width:** on a terminal narrower than the picture, one line on stderr says so and suggests `less -S` or `diagc tui`; stdout keeps the whole picture.
-- **Leaves out:** saved positions, the layouts of their own that the plan, fishbone, git-graph and activity notations have in the browser (they draw as an ordinary graph), icons, images, drawings, notes and the legend.
+- **Legend:** a declared one is printed under the picture, framed, after a blank line: over it for a `top-` position, against its right edge for a `-right` one. A legend that is only on offer, for shapes that say nothing about themselves, is left out, as the PNG leaves it out.
+- **Leaves out:** saved positions, the layouts of their own that the plan, fishbone, git-graph and activity notations have in the browser (they draw as an ordinary graph), icons, images, drawings and notes.
 - **Exit code:** `0`, also for a view with nothing in it (`diagc: nothing to draw in <name>` on stderr); `1` with the reason on stderr for no name, an unknown name, a source that does not load, an unknown plane, layer or node, a `--root` that holds nothing, or `--color` with `--no-color`.
 
 Remote includes resolve locked, as for `lint`; `show` refuses `--update-includes`. See [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md).
@@ -201,7 +202,7 @@ diagc tui
 diagc tui shop
 ```
 
-It runs the studio's compile watcher on `./.diagrams/src` and redraws the open diagram when its source compiles or its layout changes; a failed compile keeps the last picture and shows the error in the bottom row. A diagram opens as the published page opens it: the first plane, its layers, and the groups its layout saved as unfolded. A picture bigger than the screen gets a braille overview in the corner. Keys and mouse are in [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md#browse-a-diagram); `?` lists them in the viewer.
+It runs the studio's compile watcher on `./.diagrams/src` and redraws the open diagram when its source compiles or its layout changes; a failed compile keeps the last picture and shows the error in the bottom row. A diagram opens as the published page opens it: the first plane, its layers, and the groups its layout saved as unfolded. A picture bigger than the screen gets a braille overview in the corner, and a declared legend shows in the corner it names; `L` hides it. Keys and mouse are in [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md#browse-a-diagram); `?` lists them in the viewer.
 
 - **Needs a terminal:** with stdin or stdout not a terminal it exits `1` and points at `show`.
 - **Exit code:** `0` when quit; `1` for a name with no source, checked first.

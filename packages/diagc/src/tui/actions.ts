@@ -2,6 +2,7 @@ import type { CellPoint } from '../text/canvas';
 import type { Pins } from '../text/folds';
 import { neverFolds } from '../text/vocabulary';
 import type { Key, Mouse } from './keys';
+import { onLegend } from './legend';
 import { clampScroll, follow, hitTest, nearest, readingOrder, type Direction } from './nav';
 import { onOverview, overviewJump } from './overview';
 import { openDiagram, type Ctx, type DiagramState, type Effect } from './state';
@@ -103,7 +104,9 @@ function switchPlane(d: DiagramState, ctx: Ctx, step: 1 | -1): Step {
     planes.findIndex((p) => p.id === (d.plane ?? planes[0]!.id)),
   );
   const plane = planes[(at + step + planes.length) % planes.length]!;
-  return relayout({ ...openDiagram(d.name, ctx.model, ctx.overlay, plane.id), panel: d.panel });
+  // what the reader has open or shut stays as it was; the view is the new plane's
+  const { panel, overview, legend } = d;
+  return relayout({ ...openDiagram(d.name, ctx.model, ctx.overlay, plane.id), panel, overview, legend });
 }
 
 function toggleLayer(d: DiagramState, ctx: Ctx, n: number): Step {
@@ -188,6 +191,13 @@ function toggleOverview(d: DiagramState, ctx: Ctx): Step {
   return stay({ ...d, overview: true, message: { text, error: false } });
 }
 
+/** The legend on or off; turned on where it cannot show, it says why, as the overview does. */
+function toggleLegend(d: DiagramState, ctx: Ctx): Step {
+  if (d.legend || ctx.legend !== undefined || ctx.scene === undefined) return stay({ ...d, legend: !d.legend });
+  const text = ctx.scene.legend === undefined ? 'this diagram has no legend' : 'the screen is too small for the legend';
+  return stay({ ...d, legend: true, message: { text, error: false } });
+}
+
 type Action = (d: DiagramState, ctx: Ctx, key: Key) => Step;
 
 const page = (ctx: Ctx): number => Math.max(1, ctx.view.height - 2);
@@ -227,6 +237,7 @@ const KEYS: Record<string, Action> = {
   N: (d, ctx) => nextMatch(d, ctx, -1),
   i: (d) => stay({ ...d, panel: !d.panel }),
   o: (d, ctx) => toggleOverview(d, ctx),
+  L: (d, ctx) => toggleLegend(d, ctx),
   '?': (d) => stay({ ...d, help: !d.help }),
   r: (d) => ({ diagram: d, effects: [{ kind: 'reload' }] }),
   q: (d) => ({ diagram: d, effects: [{ kind: 'quit' }] }),
@@ -280,8 +291,10 @@ export function onMouse(d: DiagramState, ctx: Ctx, mouse: Mouse): Step {
   const inCanvas = mouse.y >= ctx.view.top && mouse.y < ctx.view.top + ctx.view.height && mouse.x < ctx.view.width;
   switch (mouse.action) {
     case 'press':
-      // the overview lies over the canvas, so it is asked first
+      // the overview and the legend lie over the canvas, so they are asked first; a
+      // legend's rows switch nothing, so a press there does nothing
       if (d.overview && ctx.overview !== undefined && onOverview(ctx.overview, mouse)) return jump(d, ctx, mouse);
+      if (d.legend && ctx.legend !== undefined && onLegend(ctx.legend, mouse)) return stay(d);
       return inCanvas ? onPress(d, ctx, mouse) : stay(d);
     case 'drag':
       return onDrag(d, ctx, mouse);

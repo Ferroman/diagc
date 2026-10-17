@@ -34,15 +34,17 @@ export interface BoxContext {
   glyphs: Glyphs;
 }
 
-/** The mark a glyph type's name follows. */
-function markOf(vn: ViewNode, shape: TextShape, glyphs: Glyphs): string | undefined {
-  if (vn.external !== undefined) return glyphs.external;
+/** The mark a glyph type's name follows, which is what a legend keys it by. */
+export function typeMark(type: string | undefined, shape: TextShape, glyphs: Glyphs): string | undefined {
   if (shape === 'diamond') return glyphs.decision;
-  if (vn.node.type === ACTIVITY_END_TYPE) return glyphs.end;
+  if (type === ACTIVITY_END_TYPE) return glyphs.end;
   // an activity's start, a git commit: the dot is the element, the name a caption
   if (shape === 'dot') return glyphs.start;
   return undefined;
 }
+
+const markOf = (vn: ViewNode, shape: TextShape, glyphs: Glyphs): string | undefined =>
+  vn.external !== undefined ? glyphs.external : typeMark(vn.node.type, shape, glyphs);
 
 /** A table's rows: a key column when any row is a key, names padded so the types
  * line up in one column. */

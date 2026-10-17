@@ -95,6 +95,14 @@ A declared legend is baked into the PNG and into the published HTML page, with t
 - **Layers that are off are dropped, not greyed.** Neither an image nor a published page offers a layer switch, so a greyed row would be noise — worse, on the page it would look clickable and do nothing. An overlay reaches the key there only if the exported plane presets it in `layers`. The rows that do appear are plain rows, not buttons.
 - **The capture frame grows** by the legend's height, so the panel can never cover the diagram.
 
+## In the terminal
+
+`diagc show` prints a declared legend under the picture, and `diagc tui` draws it in its corner, where `L` hides it and shows a legend on offer. See [Look at a diagram in the terminal](look-at-a-diagram-in-the-terminal.md). The rows are the same as in the browser, with three differences:
+
+- **The swatches are characters.** A connection is its line and its ends (`──▶`, `╌╌▶`, `━━▶`), an element the top of its border or the mark its name starts with, and a layer or a colour a `■` in that colour.
+- **Layers that are off are left out**, as in an export. The viewer's top row lists the layers, with the keys that switch them.
+- **Only what the text picture draws is keyed.** There is no threat badge and no Drawings row.
+
 ## Gotchas
 
 - **Connection and element rows describe the drawn view, not the model.** A kind used only by relations behind a switched-off layer has no row at all. Switch the layer on and the row appears. Layer rows are the deliberate exception — see [What gets derived](#what-gets-derived).

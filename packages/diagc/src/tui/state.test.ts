@@ -83,7 +83,12 @@ describe('openDiagram', () => {
       panel: false,
       help: false,
       overview: true,
+      legend: false,
     });
+  });
+
+  it('opens with the legend on where the diagram declares one', () => {
+    expect(openDiagram('m', { ...model, legend: {} }, undefined).legend).toBe(true);
   });
 });
 
@@ -123,6 +128,11 @@ describe('reduce on a diagram', () => {
     expect([inside.diagram.path, inside.effects]).toEqual([['p'], [{ kind: 'relayout' }]]);
     const back = await feed(inside.state, [key('<')]);
     expect([back.diagram.path, back.diagram.selected]).toEqual([[], 'p']);
+  });
+
+  it('keeps the panel, the overview and the legend as they were across a plane switch', async () => {
+    const shown = { panel: true, overview: false, legend: true };
+    expect((await feed(opened(shown), [key('p')])).diagram).toMatchObject({ plane: 'alt', ...shown });
   });
 
   it('switches planes, each opening with its own layers and folds', async () => {
@@ -273,6 +283,45 @@ describe('the overview', () => {
     const off = reduce(opened({ overview: false }), pointer('press', at), ctx);
     expect(off.state.diagram!.selected).toBe('p');
     expect(off.state.diagram!.drag?.overview).toBeUndefined();
+  });
+});
+
+describe('the legend', () => {
+  const keyed = { ...model, legend: {} };
+  const ctxWith = async (diagram: DiagramState, extra: Partial<Ctx> = {}): Promise<Ctx> => ({
+    ...(await ctxOf(diagram)),
+    model: keyed,
+    scene: await buildScene(sceneInput(diagram, keyed, undefined), UNICODE),
+    ...extra,
+  });
+  const place = { x: 20, y: 5, width: 15, height: 4 };
+
+  it('turns off and on with L', async () => {
+    const on = opened({ legend: true });
+    const off = reduce(on, key('L'), await ctxWith(on.diagram!, { legend: place }));
+    expect(off.state.diagram!.legend).toBe(false);
+    const back = reduce(off.state, key('L'), await ctxWith(off.state.diagram!, { legend: place }));
+    expect(back.state.diagram).toMatchObject({ legend: true });
+    expect(back.state.diagram!.message).toBeUndefined();
+  });
+
+  it('says why it does not show when it is turned on', async () => {
+    const off = opened();
+    const none = reduce(off, key('L'), await ctxOf(off.diagram!));
+    expect(none.state.diagram!.message).toEqual({ text: 'this diagram has no legend', error: false });
+    const cramped = reduce(off, key('L'), await ctxWith(off.diagram!));
+    expect(cramped.state.diagram!.message).toEqual({ text: 'the screen is too small for the legend', error: false });
+  });
+
+  it('takes a click for itself, not for the box under it, and leaves it to the canvas while off', async () => {
+    const base = await ctxWith(opened().diagram!);
+    const p = base.scene!.layout.boxes.get('p')!;
+    const at = { x: p.x + 1, y: p.y + 1 + view.top };
+    const ctx = { ...base, legend: { x: at.x - 1, y: at.y - 1, width: 15, height: 4 } };
+    const on = reduce(opened({ legend: true }), pointer('press', at), ctx);
+    expect(on.state.diagram!.selected).toBeUndefined();
+    expect(on.state.diagram!.drag).toBeUndefined();
+    expect(reduce(opened(), pointer('press', at), ctx).state.diagram!.selected).toBe('p');
   });
 });
 

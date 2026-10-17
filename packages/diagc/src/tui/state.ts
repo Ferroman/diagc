@@ -1,5 +1,5 @@
 import { presetLayers, type DiagramModel, type LayoutOverlay } from '@diagc/core/internal';
-import type { CellPoint } from '../text/canvas';
+import type { CellPoint, CellRect } from '../text/canvas';
 import { readerPins, type Pins } from '../text/folds';
 import type { SceneInput, Scene } from '../text/scene';
 import { onKey, onMouse } from './actions';
@@ -28,6 +28,8 @@ export interface DiagramState {
   help: boolean;
   /** the overview, which shows while the picture is bigger than the screen */
   overview: boolean;
+  /** the legend, on as a diagram opens where it declares one */
+  legend: boolean;
   search?: { query: string; editing: boolean };
   /** one line for the status row, cleared by the next key */
   message?: { text: string; error: boolean };
@@ -59,6 +61,8 @@ export interface Ctx {
   view: { top: number; width: number; height: number };
   /** where the overview goes on this screen, whether or not it is on */
   overview?: OverviewPlace;
+  /** where the legend goes on this screen, its border included, whether or not it is on */
+  legend?: CellRect;
   at: number;
 }
 
@@ -87,6 +91,7 @@ export function openDiagram(
     panel: false,
     help: false,
     overview: true,
+    legend: model.legend !== undefined,
   };
 }
 

@@ -63,6 +63,47 @@ describe('renderToLines', () => {
     }
   });
 
+  it('prints a declared legend under the picture, a blank line between', async () => {
+    const model = modelOf({
+      nodes: [
+        { id: 'a', name: 'Web' },
+        { id: 'b', name: 'DB' },
+      ],
+      relations: [{ id: 'r', from: 'a', to: 'b', kind: 'sync' }],
+      legend: {},
+    });
+    const lines = await renderToLines({ model, pins: {} }, plain);
+    expect(lines.slice(-5)).toEqual(['', '┌─ Legend ────┐', '│ Connections │', '│ ──▶ sync    │', '└─────────────┘']);
+    expect(lines[0]).toBe('┌─────┐');
+  });
+
+  it("puts a top corner's legend over the picture, and a right corner's against its right edge", async () => {
+    const model = modelOf({
+      nodes: [
+        { id: 'a', name: 'A web front end with a long name' },
+        { id: 'b', name: 'DB' },
+      ],
+      relations: [{ id: 'r', from: 'a', to: 'b', kind: 'sync' }],
+      legend: { position: 'top-right' },
+    });
+    const lines = await renderToLines({ model, pins: {} }, plain);
+    expect(lines[0]!.trimStart()).toBe('┌─ Legend ────┐');
+    expect(lines[4]).toBe('');
+    const picture = lines.slice(5);
+    expect(cellWidth(lines[0]!)).toBe(Math.max(...picture.map(cellWidth)));
+  });
+
+  it('leaves out a legend the diagram did not declare, though one is offered for its shapes', async () => {
+    const model = modelOf({
+      nodes: [
+        { id: 'a', name: 'Pick', type: 'activity-action' },
+        { id: 'b', name: 'Pack', type: 'activity-action' },
+      ],
+      relations: [{ id: 'r', from: 'a', to: 'b', kind: 'control' }],
+    });
+    expect((await renderToLines({ model, pins: {} }, plain)).join('\n')).not.toContain('Legend');
+  });
+
   it('draws nothing for a view with nothing in it', async () => {
     expect(await renderToLines({ model: modelOf({}), pins: {} }, plain)).toEqual([]);
   });

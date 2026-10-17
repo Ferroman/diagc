@@ -32,15 +32,17 @@ describe('the type table', () => {
     expect(Object.keys(TYPE_LOOKS)).toEqual(Object.keys(DEFAULT_TYPE_STYLES));
   });
 
-  it("agrees with the renderer's shape, subtitle, dash and folding per type", () => {
+  it("agrees with the renderer's shape, subtitle, dash, folding and legend caption per type", () => {
     for (const [type, style] of Object.entries(DEFAULT_TYPE_STYLES)) {
       const look = TYPE_LOOKS[type]!;
-      expect({ type, shape: look.shape, label: look.label, dashed: look.dashed, neverFolds: look.neverFolds }).toEqual({
+      const { shape, label, dashed, neverFolds, legend } = look;
+      expect({ type, shape, label, dashed, neverFolds, legend }).toEqual({
         type,
         shape: TEXT_SHAPE[style.shape],
         label: style.label,
         dashed: style.dashed,
         neverFolds: style.alwaysExpanded,
+        legend: style.legendLabel,
       });
     }
   });
@@ -54,6 +56,10 @@ describe('the type table', () => {
     expect(typeLook('commit', 'git-graph').shape).toBe('dot');
     expect(typeLook('commit', undefined).shape).toBe('box');
   });
+
+  it("keeps the shared table's legend caption in a notation's own look", () => {
+    expect(typeLook('plan-zone', 'plan').legend).toBe('Zone');
+  });
 });
 
 describe('the kind table', () => {
@@ -61,13 +67,20 @@ describe('the kind table', () => {
     expect(Object.keys(KIND_LOOKS)).toEqual(Object.keys(DEFAULT_KIND_STYLES));
   });
 
-  it("agrees with the renderer's dash, weight and end markers per kind", () => {
+  it("agrees with the renderer's dash, weight, end markers and legend caption per kind", () => {
     for (const [kind, style] of Object.entries(DEFAULT_KIND_STYLES)) {
       const look = KIND_LOOKS[kind]!;
       const line = style.dashed === true ? 'dashed' : (style.width ?? 0) >= 2.5 ? 'heavy' : 'solid';
       const end = style.endMarker === 'none' ? 'none' : style.endMarker === 'one' ? 'one' : 'arrow';
       const start = style.startMarker === 'crowsfoot' ? 'many' : undefined;
-      expect({ kind, ...look }).toEqual({ kind, line, end, ...(start !== undefined ? { start } : {}) });
+      const legend = style.legendLabel;
+      expect({ kind, ...look }).toEqual({
+        kind,
+        line,
+        end,
+        ...(start !== undefined ? { start } : {}),
+        ...(legend !== undefined ? { legend } : {}),
+      });
     }
   });
 

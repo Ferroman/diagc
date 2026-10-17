@@ -228,6 +228,27 @@ describe('runTui', () => {
     await done;
   });
 
+  it('shows the legend a diagram declares, which L hides and brings back', async () => {
+    const nodes = [
+      { id: 'a', name: 'Web' },
+      { id: 'b', name: 'DB' },
+    ];
+    const relations = [{ id: 'r', from: 'a', to: 'b', kind: 'sync' }];
+    const model = { version: 1, id: 'keyed', name: 'keyed', nodes, containment: [], relations, layers: [], planes: [] };
+    writeFileSync(path.join(artifactsDir, 'keyed.diagram.json'), JSON.stringify({ ...model, legend: {} }));
+    const fake = fakeTerminal();
+    const done = runTui(options(fake, manualWatch(), 'keyed'));
+    await until(fake.screen, 'Legend');
+    expect(fake.screen()).toContain('──▶ sync');
+    fake.type('L');
+    expect(fake.screen()).not.toContain('Legend');
+    fake.type('L');
+    expect(fake.screen()).toContain('Legend');
+    expect(fake.screen()).not.toContain('too small');
+    fake.type('q');
+    await done;
+  });
+
   it('redraws on a resize', async () => {
     compiled('shop', 'Web');
     const fake = fakeTerminal();

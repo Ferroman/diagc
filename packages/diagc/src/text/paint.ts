@@ -28,9 +28,9 @@ interface Ink {
   style: Style;
 }
 
-const WEIGHT: Record<LineStyle, Weight> = { solid: 'light', dashed: 'dashed', heavy: 'heavy' };
+export const WEIGHT: Record<LineStyle, Weight> = { solid: 'light', dashed: 'dashed', heavy: 'heavy' };
 
-const CORNER: Partial<Record<TextShape, Corner>> = {
+export const CORNER: Partial<Record<TextShape, Corner>> = {
   rounded: 'round',
   cylinder: 'round',
   dot: 'round',
@@ -45,23 +45,27 @@ const LINE_STYLE: Record<BoxLine['role'], Style> = {
   row: {},
 };
 
-const rgb = (css: string | undefined): Color | undefined => {
+export const rgb = (css: string | undefined): Color | undefined => {
   const parsed = css === undefined ? undefined : parseColor(css);
   return parsed === undefined ? undefined : { rgb: parsed };
 };
 
 /** A node's accent, as the renderer resolves it: its own colour, the model's colour
  * for its type (or for every type), then the notation's for the type. */
-function accentOf(model: DiagramModel, node: DiagramNode, notation: NotationId | undefined): Color | undefined {
+export function accentCss(
+  model: DiagramModel,
+  node: DiagramNode,
+  notation: NotationId | undefined,
+): string | undefined {
   const typeColor = node.type !== undefined ? model.typeColors?.[node.type] : undefined;
-  return rgb(node.color ?? typeColor ?? model.typeColors?.['*'] ?? typeLook(node.type, notation).accent);
+  return node.color ?? typeColor ?? model.typeColors?.['*'] ?? typeLook(node.type, notation).accent;
 }
 
 /** How a box's border is drawn: heavy when selected (and for a fork bar), dashed
  * for a boundary, in the node's accent. */
 function borderInk(p: Painter, id: string): Ink {
   const box = p.scene.boxes.get(id)!;
-  const fg = accentOf(p.scene.input.model, p.scene.nodes.get(id)!.node, p.scene.notation);
+  const fg = rgb(accentCss(p.scene.input.model, p.scene.nodes.get(id)!.node, p.scene.notation));
   const weight: Weight = id === p.selected || box.shape === 'bar' ? 'heavy' : box.dashed ? 'dashed' : 'light';
   return { weight, style: fg !== undefined ? { fg } : {} };
 }

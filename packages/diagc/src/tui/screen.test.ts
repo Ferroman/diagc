@@ -4,7 +4,7 @@ import { UNICODE } from '../text/glyphs';
 import { paint } from '../text/paint';
 import { buildScene, type Scene } from '../text/scene';
 import { cellWidth } from '../text/width';
-import { canvasSize, composeFrame, frameText, overviewPlaceOf, PANEL_WIDTH } from './screen';
+import { canvasSize, composeFrame, frameText, legendPlaceOf, overviewPlaceOf, PANEL_WIDTH } from './screen';
 import { openDiagram, type TuiState } from './state';
 
 const model: DiagramModel = {
@@ -225,6 +225,62 @@ describe('the overview', () => {
   it('is in the help', async () => {
     const lines = await frame(stateOf({ help: true }), { columns: 100, rows: 30 });
     expect(lines.some((l) => plain(l).includes('overview on / off'))).toBe(true);
+  });
+});
+
+describe('the legend', () => {
+  const chain: DiagramModel = {
+    ...model,
+    nodes: Array.from({ length: 12 }, (_, i) => ({ id: `n${i}`, name: `Node ${i}` })),
+    relations: Array.from({ length: 11 }, (_, i) => ({ id: `r${i}`, from: `n${i}`, to: `n${i + 1}`, kind: 'sync' })),
+    layers: [],
+    legend: {},
+  };
+  const size = { columns: 60, rows: 20 };
+  const row = (lines: string[], y: number, x: number, width: number): string =>
+    [...plain(lines[y]!)].slice(x, x + width).join('');
+
+  it('sits in its corner over the overview, framed, its title in the border', async () => {
+    const scene = await sceneOf(chain);
+    const state = stateOf({ legend: true });
+    const place = legendPlaceOf(state, scene, size)!;
+    const overview = overviewPlaceOf(state, scene, size)!;
+    const lines = await frame(state, size, scene);
+    sized(lines, size);
+    expect(place.x + place.width).toBe(size.columns);
+    expect(place.y + place.height).toBe(overview.y - 1);
+    expect([0, 1, 2, 3].map((r) => row(lines, place.y + r, place.x, place.width))).toEqual([
+      '┌─ Legend ────┐',
+      '│ Connections │',
+      '│ ──▶ sync    │',
+      '└─────────────┘',
+    ]);
+  });
+
+  it('goes to the corner the diagram names, and takes the overview’s rows once that is off', async () => {
+    const topLeft = await sceneOf({ ...chain, legend: { position: 'top-left' } });
+    expect(legendPlaceOf(stateOf({ legend: true }), topLeft, size)).toMatchObject({ x: 0, y: 1 });
+    const scene = await sceneOf(chain);
+    // its bottom border on the canvas's last row, the one over the status row
+    expect(legendPlaceOf(stateOf({ legend: true, overview: false }), scene, size)).toMatchObject({
+      y: size.rows - 1 - 4,
+    });
+  });
+
+  it('is left out while it is off, without a legend, and where the panel covers the canvas', async () => {
+    const scene = await sceneOf(chain);
+    const shows = async (state: TuiState, s: Scene = scene): Promise<boolean> =>
+      (await frame(state, size, s)).some((l) => plain(l).includes('Legend'));
+    expect(await shows(stateOf({ legend: true }))).toBe(true);
+    expect(await shows(stateOf({ legend: false }))).toBe(false);
+    expect(await shows(stateOf({ legend: true }), await sceneOf({ ...chain, legend: undefined }))).toBe(false);
+    expect(legendPlaceOf(stateOf({ legend: true, panel: true }), scene, size)).toBeUndefined();
+    expect(await shows(stateOf({ legend: true, panel: true }))).toBe(false);
+  });
+
+  it('is in the help', async () => {
+    const lines = await frame(stateOf({ help: true }), { columns: 100, rows: 30 });
+    expect(lines.some((l) => plain(l).includes('legend on / off'))).toBe(true);
   });
 });
 
