@@ -141,6 +141,10 @@ export function overviewPixels(
   for (const route of layout.routes.values()) {
     route.points.slice(1).forEach((p, i) => pixels.line(centre(route.points[i]!), centre(p), SHARE_OF.line));
   }
+  // a fish's spine is drawn heavy, a bone's to the boxes' thin lines
+  const spine = layout.fish?.spine;
+  if (spine !== undefined)
+    pixels.line(centre({ x: spine.from, y: spine.y }), centre({ x: spine.to, y: spine.y }), SHARE_OF.box);
   for (const box of layout.boxes.values()) pixels.outline(toDots(box, scale, cell), SHARE_OF.box);
   const screen = toDots(onPicture(window, layout), scale, cell);
   pixels.dimOutside(screen, OFF_SCREEN);

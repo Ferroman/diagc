@@ -16,6 +16,7 @@ import {
 } from '@diagc/core/internal';
 import { notationAccents, type Accents } from './accents';
 import { boxText, edgeText, type BoxText } from './content';
+import { fishCells } from './fish';
 import { withNeverFolds, type Pins } from './folds';
 import type { Glyphs } from './glyphs';
 import { layoutCells, type TextLayout } from './layout';
@@ -58,14 +59,10 @@ export interface Scene {
 
 const DIRECTIONS = new Set(['DOWN', 'UP', 'LEFT', 'RIGHT']);
 
-/** The way the plane flows: its saved layout setting, else the model's default. A
- * fishbone's default is rightwards, as the page draws the fish, head on the right. Its
- * causes are as wide as sentences: a downward flow sets them side by side, off the
- * edge of a terminal, where a sideways one stacks them, and the picture only scrolls. */
-function directionOf(input: SceneInput, notation: NotationId | undefined): string {
+/** The way the plane flows: its saved layout setting, else the model's default. */
+function directionOf(input: SceneInput): string {
   const saved = input.overlay?.settings?.[layoutPlaneKey(input.model, input.plane)]?.direction;
-  if (saved !== undefined && DIRECTIONS.has(saved)) return saved;
-  return notation === FISHBONE_NOTATION ? 'RIGHT' : defaultLayoutDirection(input.model);
+  return saved !== undefined && DIRECTIONS.has(saved) ? saved : defaultLayoutDirection(input.model);
 }
 
 export async function buildScene(input: SceneInput, glyphs: Glyphs): Promise<Scene> {
@@ -95,7 +92,11 @@ export async function buildScene(input: SceneInput, glyphs: Glyphs): Promise<Sce
   for (const root of view.roots) walk(root, undefined);
 
   const labels = new Map(view.layoutEdges.map((e) => [e.id, edgeText(e, glyphs)]));
-  const layout = await layoutCells(view, boxes, directionOf(input, notation), labels);
+  // A fishbone is the fish, as on the page, whatever way the plane's settings say to flow.
+  const layout =
+    notation === FISHBONE_NOTATION
+      ? fishCells(model, view, boxes)
+      : await layoutCells(view, boxes, directionOf(input), labels);
   const accents = notationAccents(model, plane, notation, view.edges);
   const scene: Scene = { input, view, layout, boxes, nodes, parentOf, hierarchy, accents, ...defined({ notation }) };
   const legend = legendOf(scene, glyphs);

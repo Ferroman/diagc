@@ -46,9 +46,9 @@ const pointer = (action: 'press' | 'drag' | 'release', at: { x: number; y: numbe
   shift: false,
 });
 
-async function ctxOf(diagram: DiagramState, at = 0): Promise<Ctx> {
-  const scene = await buildScene(sceneInput(diagram, model, undefined), UNICODE);
-  return { model, scene, view, at };
+async function ctxOf(diagram: DiagramState, at = 0, m: DiagramModel = model): Promise<Ctx> {
+  const scene = await buildScene(sceneInput(diagram, m, undefined), UNICODE);
+  return { model: m, scene, view, at };
 }
 
 function opened(extra: Partial<DiagramState> = {}): TuiState {
@@ -61,11 +61,15 @@ function opened(extra: Partial<DiagramState> = {}): TuiState {
 }
 
 /** Feeds events one by one, rebuilding the scene before each, as the app does. */
-async function feed(state: TuiState, events: UserInput[], at = 0) {
+async function feed(state: TuiState, events: UserInput[], at = 0, m: DiagramModel = model) {
   let current = state;
   const effects = [];
   for (const event of events) {
-    const out = reduce(current, event, current.diagram !== undefined ? await ctxOf(current.diagram, at) : { view, at });
+    const out = reduce(
+      current,
+      event,
+      current.diagram !== undefined ? await ctxOf(current.diagram, at, m) : { view, at },
+    );
     current = out.state;
     effects.push(...out.effects);
   }
@@ -107,6 +111,42 @@ describe('reduce on a diagram', () => {
     const down = await feed(opened({ selected: 'c' }), [key('down')]);
     expect(down.diagram.selected).toBe('p');
     expect((await feed(opened({ selected: 'p' }), [key('k')])).diagram.selected).toBe('c');
+  });
+
+  it('moves about a fishbone’s fish as about boxes: Tab reaches every node, the arrows go to the nearest', async () => {
+    const fish: DiagramModel = {
+      ...model,
+      notation: 'fishbone',
+      nodes: [
+        { id: 'e', name: 'Outage', type: 'fb-effect' },
+        { id: 'people', name: 'People', type: 'fb-category' },
+        { id: 'process', name: 'Process', type: 'fb-category' },
+        { id: 'on-call', name: 'On-call engineer new to checkout', type: 'fb-cause' },
+        { id: 'no-freeze', name: 'No change freeze', type: 'fb-cause' },
+      ],
+      containment: [],
+      relations: [
+        { id: 'r1', from: 'people', to: 'e', kind: 'cause-of' },
+        { id: 'r2', from: 'process', to: 'e', kind: 'cause-of' },
+        { id: 'r3', from: 'on-call', to: 'people', kind: 'cause-of' },
+        { id: 'r4', from: 'no-freeze', to: 'process', kind: 'cause-of' },
+      ],
+      layers: [],
+      planes: [],
+    };
+    const start: TuiState = { ...opened(), diagram: openDiagram('m', fish, undefined) };
+    const seen = new Set<string>();
+    let state = start;
+    for (let i = 0; i < 5; i++) {
+      state = (await feed(state, [key('tab')], 0, fish)).state;
+      seen.add(state.diagram!.selected!);
+    }
+    expect([...seen].sort()).toEqual(fish.nodes.map((n) => n.id).sort());
+    // a bone's causes are to the left of its label, and the head to the right of all
+    const from = async (selected: string, name: string): Promise<string | undefined> =>
+      (await feed({ ...start, diagram: { ...start.diagram!, selected } }, [key(name)], 0, fish)).diagram.selected;
+    expect(await from('people', 'left')).toBe('on-call');
+    expect(await from('process', 'right')).toBe('e');
   });
 
   it('unfolds and folds the selected container, and only a container', async () => {

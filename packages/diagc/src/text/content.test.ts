@@ -77,6 +77,14 @@ describe('boxText', () => {
     for (const l of b.lines) expect(cellWidth(l.text)).toBeLessThanOrEqual(NAME_WRAP);
   });
 
+  it('keeps a fishbone’s head on one line, as the page does: it names the whole fish', () => {
+    const name = 'Checkout outage on release day';
+    const b = boxText(view({ id: 'e', name, type: 'fb-effect' }), { ...ctx, notation: 'fishbone' });
+    expect(texts(b)).toEqual([name]);
+    const long = boxText(view({ id: 'e', name: 'x'.repeat(80), type: 'fb-effect' }), { ...ctx, notation: 'fishbone' });
+    expect(cellWidth(long.lines[0]!.text)).toBe(60);
+  });
+
   it('marks a drill view’s stand-in for an outside node, dashed', () => {
     const b = boxText(view({ id: 's', name: 'Stripe' }, { external: 'stripe' }), ctx);
     expect(b.lines[0]!.text).toBe('↗ Stripe');

@@ -26,6 +26,8 @@ describe('glyphs', () => {
       ASCII.line(UP | RIGHT, 'light', 'chamfer'),
       ...(['up', 'down', 'left', 'right'] as const).map((d) => ASCII.arrow(d)),
       ...(['dot', 'square', 'diamond', 'many', 'one'] as const).map((m) => ASCII.mark(m)),
+      ASCII.slant(true),
+      ASCII.slant(false),
       ASCII.ellipsis,
       ASCII.folded,
       ASCII.external,
@@ -35,6 +37,11 @@ describe('glyphs', () => {
       ASCII.delay,
     ];
     for (const glyph of all) expect(glyph).toMatch(/^[\x20-\x7e]+$/);
+  });
+
+  it('slants a line one cell a row, falling or rising to the right', () => {
+    expect([UNICODE.slant(true), UNICODE.slant(false)]).toEqual(['╲', '╱']);
+    expect([ASCII.slant(true), ASCII.slant(false)]).toEqual(['\\', '/']);
   });
 
   it('points arrows the way they go', () => {

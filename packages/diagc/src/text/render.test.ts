@@ -156,18 +156,41 @@ describe('renderToLines', () => {
     for (const n of model.nodes) expect(text).toContain(n.name);
   });
 
-  it('draws a fishbone’s bones in their colours, the causes on them and their lines too', async () => {
+  it('draws a fishbone as the fish, bones slanting in to a heavy spine that runs into the head', async () => {
+    const home = homePaths(findHome(fileURLToPath(import.meta.url)));
+    const file = path.join(home.root, '.diagrams', 'src', 'examples', 'fishbone', 'starter.diagram.ts');
+    const model = await loadModel(file, { coreEntry: home.coreEntry });
+    expect(await renderToLines({ model, pins: {} }, plain)).toEqual([
+      '                          People',
+      '    On-call engineer new to ──╲                                    Requirements   Infrastructure',
+      '                   checkout    ╲                                          ╲               ╲',
+      '                                ╲                                          ╲               ╲       ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓',
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫ Checkout outage on release day ┃',
+      '                                ╱                                          ╱               ╱       ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛',
+      'No change freeze on release    ╱            Untested schema migration ────╱               ╱',
+      '                        day ──╱      No fixture with real order data ╱   ╱         Dependencies',
+      '                          Process                                     Code',
+    ]);
+    const ascii = await renderToLines({ model, pins: {} }, { ascii: true, color: 'none' });
+    expect(ascii[1]).toContain('On-call engineer new to --\\');
+    expect(ascii[4]).toMatch(/^=+\+ Checkout outage on release day \|$/);
+    expect(ascii[7]).toContain('day --/      No fixture with real order data /   /');
+  });
+
+  it('draws each bone of a fishbone in its colour: its label, its causes’ lines, their ticks', async () => {
     const home = homePaths(findHome(fileURLToPath(import.meta.url)));
     const file = path.join(home.root, '.diagrams', 'src', 'examples', 'fishbone', 'starter.diagram.ts');
     const model = await loadModel(file, { coreEntry: home.coreEntry });
     const lines = await renderToLines({ model, pins: {} }, { ascii: false, color: 'truecolor' });
-    // People and Process are the first column, blue; Requirements and Code the second, red
-    const blue = '\x1b[38;2;123;167;217m';
-    const red = '\x1b[38;2;217;83;79m';
+    // People and Process are the first column, blue; Requirements and Code the second,
+    // red: a label bold in its colour, a cause's line and a sub-cause's tick in it
+    const blue = '38;2;123;167;217m';
+    const red = '38;2;217;83;79m';
     const row = (text: string): string => lines.find((l) => l.includes(text))!;
-    expect(row('People')).toContain(blue);
-    expect(row('On-call engineer')).toContain(`${blue}├`);
-    expect(row('Code')).toContain(`${red}├`);
-    expect(row('No fixture')).toContain(`${red}├`);
+    expect(row('People')).toContain(`\x1b[1;${blue}People`);
+    expect(row('On-call engineer')).toContain(`\x1b[${blue}──╲`);
+    expect(row('Code')).toContain(`\x1b[1;${red}Code`);
+    expect(row('Untested schema migration')).toContain(`\x1b[${red}────╱`);
+    expect(row('No fixture')).toContain(`data \x1b[${red}╱`);
   });
 });
