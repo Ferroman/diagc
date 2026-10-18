@@ -234,7 +234,8 @@ picture.
   WebP pair, and `pnpm build:site` copies them to `media/`. They come from the storyboards in
   `videos/`, which act on the committed fixtures in `.diagrams/src/fixtures/`: the studio ones on
   `studio-demo` and `symmetry-demo`, each `draw-a-…` one on its diagram type's `<type>-demo`, the
-  published-page ones on the page of `published-demo`. Run `pnpm animate` to rebuild `docs/media/`,
+  published-page ones on the page of `published-demo`. The README's `showcase` opens
+  `examples/acme`, read-only in the studio, so it writes nothing. Run `pnpm animate` to rebuild `docs/media/`,
   or `pnpm animate NAME…` for the storyboards named. It needs `howto` on PATH, starts its own
   studio on port 5183 and serves the published pages on port 5184, so it does not disturb a dev
   server you already have running. A take edits its fixture, and the whole fixtures folder is put

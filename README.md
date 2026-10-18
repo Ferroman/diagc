@@ -6,7 +6,7 @@ Diagrams as code, with a local studio. diagc turns diagram sources that live in 
 - **Diffs in pull requests.** A GitHub Action comments on a pull request that changes a diagram: the list of changes, and the before and after pictures.
 - **A local studio.** `diagc studio` opens a browser app against your repository. Draw a diagram there and the studio saves it as a file in the repository. `diagc eject` turns a drawn diagram into TypeScript.
 
-[![The studio, with a diagram partly unfolded](site/img/studio-view.png)](https://ferroman.github.io/diagc/)
+[![The studio: unfold a folded diagram, turn on a layer, switch the plane, then the theme and the style](docs/media/showcase.webp)](https://ferroman.github.io/diagc/)
 
 **[Website](https://ferroman.github.io/diagc/)** · **[Live examples](https://ferroman.github.io/diagc/html/index.html)** · **[Documentation](docs/README.md)**
 
