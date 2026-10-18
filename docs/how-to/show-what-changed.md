@@ -13,11 +13,12 @@ It prints the changes per diagram:
 ```
 diagc diff adr-12-before -> adr-12-after
 checkout:
-  + Payments service [service]
   + Payment events [queue]
+  + Payments service [service]
   - Payments monolith [service]
   ~ Orders API -> Checkout API (renamed)
   + Checkout API -> Payment events (async: charge requested)
+  + Payment events -> Payments service (async: charges)
   - Orders API -> Payments monolith (sync: charge)
   ~ Web app -> Checkout API (sync: GraphQL): label
 1 diagram(s) changed, 14 unchanged
@@ -29,6 +30,10 @@ and writes, under `.diagrams/diff/adr-12-before..adr-12-after/`:
 - `<name>.before.html` and `<name>.after.html`: the same pictures as interactive pages.
 - `index.html`: every changed diagram, both versions side by side, with the change list.
 - `summary.md`: the pictures in a before/after table and the change list, ready to paste into an ADR.
+
+`index.html` for the change above:
+
+![The side-by-side page: the change list, then the before and after pictures with the changes outlined](../media/show-what-changed.png)
 
 Any two refs work: tags, branches, commits, `HEAD~3`. Give a single ref to compare it with the working tree, including uncommitted edits:
 

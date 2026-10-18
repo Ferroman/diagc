@@ -238,7 +238,8 @@ picture.
   or `pnpm animate NAME…` for the storyboards named. It needs `howto` on PATH, starts its own
   studio on port 5183 and serves the published pages on port 5184, so it does not disturb a dev
   server you already have running. A take edits its fixture, and the whole fixtures folder is put
-  back before the next one.
+  back before the next one. `show-what-changed.png` is a still taken by hand: the `index.html` that
+  `diagc diff adr-12-before..adr-12-after` writes for the `checkout` diagram its how-to prints.
 
 CI compiles every source (`pnpm compile`), and the Pages workflow publishes them all to
 the live site.
