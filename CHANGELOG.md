@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/Ferroman/diagc/compare/v1.6.0...v1.7.0) (2026-10-18)
+
+
+### Features
+
+* **cli:** the DOS style in diagc tui ([#168](https://github.com/Ferroman/diagc/issues/168)) ([1cc8226](https://github.com/Ferroman/diagc/commit/1cc8226d35a262b21daba728906886af3ec30990))
+
 ## [1.6.0](https://github.com/Ferroman/diagc/compare/v1.5.0...v1.6.0) (2026-10-17)
 
 
