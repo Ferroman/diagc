@@ -1,0 +1,53 @@
+title: The studio, from folded to DOS
+url: "http://localhost:5183/#/examples%2Facme"
+viewport: 1280x720
+crop: {role: main}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+  - wait_for: {text: Acme Platform, within: {role: application}}
+  - click: {role: button, name: "Collapse panel", nth: 0}
+  - click: {role: button, name: Fit View}
+steps:
+  - note: A diagram rests folded
+    do:
+      - wait_for: {text: Acme Platform, within: {role: application}}
+    pause: 1
+  - note: Unfold a group to zoom in
+    do:
+      - click: {role: button, name: Expand, within: {role: application}}
+    pause: 1
+  - note: Unfold further
+    do:
+      - click: {role: button, name: Expand, within: {role: application}, nth: 1}
+      - click: {role: button, name: Fit View}
+    pause: 1
+  - note: Turn on a layer
+    do:
+      - click: {role: button, name: Data flow, within: {role: complementary, name: Layers & planes}, nth: 1}
+    pause: 2
+  - note: Switch the plane
+    do:
+      - click: {role: button, name: Infrastructure}
+      - click: {role: button, name: Fit View}
+    pause: 1.5
+  - note: Light or dark
+    do:
+      - click: {role: button, name: Switch to dark theme}
+    pause: 1.5
+  - note: "Style: Sketch"
+    do:
+      - select: {role: combobox, name: Style, exact: true, option: Sketch}
+    pause: 1
+  - note: "Style: Blueprint"
+    do:
+      - select: {role: combobox, name: Style, exact: true, option: Blueprint}
+    pause: 1
+  - note: "Style: Neon"
+    do:
+      - select: {role: combobox, name: Style, exact: true, option: Neon}
+    pause: 1
+  - note: "Style: DOS"
+    do:
+      - select: {role: combobox, name: Style, exact: true, option: DOS}
+    pause: 2

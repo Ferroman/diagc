@@ -6,7 +6,9 @@
 // fixtures folder is restored before each take — a take edits a fixture (a placed node, a typed
 // name, a comment, an unfolded group) and the studio writes those edits back. The
 // published-page storyboards open the fixtures' published pages, which this script publishes and
-// serves on a second port; a published page cannot save, so those need no restoring.
+// serves on a second port; a published page cannot save, so those need no restoring. The README's
+// showcase is the one exception: it opens examples/acme, which the studio shows read-only, and a
+// read-only diagram's unfolding and style are never written back.
 //
 // Needs `howto` on PATH. Run `pnpm animate` from the repository root; `pnpm animate NAME…` takes
 // only the storyboards named (videos/NAME.yaml), so one change does not re-encode every picture.
