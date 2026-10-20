@@ -5,7 +5,7 @@ import { Canvas, type CellPoint, type Color, type Style } from './canvas';
 import type { BoxLine, BoxText } from './content';
 import { BLACK, castShadows, CYAN, DESKTOP, dosFill, dosSlots, inkOn, mixed, WHITE, YELLOW, type Rgb } from './dos';
 import { DOWN, LEFT, RIGHT, UP, type ArrowDirection, type Corner, type Glyphs, type Weight } from './glyphs';
-import { STEP, towardBox, type BoxGeometry, type FishDrawing } from './layout';
+import { STEP, towardBox, type BoxGeometry, type FishDrawing, type GitDrawing } from './layout';
 import type { Scene } from './scene';
 import { kindLook, typeLook, type EndMark, type LineStyle, type TextShape } from './vocabulary';
 import { cellWidth } from './width';
@@ -256,6 +256,64 @@ function paintFish(p: Painter, fish: FishDrawing, edges: readonly ViewEdge[]): v
   for (const [id, g] of boxes) drawBox(p, id, g);
 }
 
+/** Text or a line in a node's own colour (`ownCss`), where it has one. */
+const ownInk = (p: Painter, id: string): Style => {
+  const fg = rgb(ownCss(p, id));
+  return fg !== undefined ? { fg } : {};
+};
+
+/** A stage's frame, dim and dashed, or heavy when it is selected. Its sides break at
+ * the lanes' rows, so a lane's line runs across in front of the frame rather than
+ * meeting it in a junction. */
+function drawStageFrame(p: Painter, id: string, lines: ReadonlySet<number>): void {
+  const g = p.scene.layout.boxes.get(id)!;
+  const [weight, ink]: [Weight, Style] =
+    id === p.selected ? ['heavy', ownInk(p, id)] : ['dashed', { ...ownInk(p, id), dim: true }];
+  const [right, bottom] = [g.x + g.width - 1, g.y + g.height - 1];
+  p.canvas.segment({ x: g.x, y: g.y }, { x: right, y: g.y }, weight, ink);
+  p.canvas.segment({ x: g.x, y: bottom }, { x: right, y: bottom }, weight, ink);
+  for (const x of [g.x, right]) {
+    for (let y = g.y; y <= bottom; y++) {
+      if (!lines.has(y)) p.canvas.stroke({ x, y }, (y > g.y ? UP : 0) | (y < bottom ? DOWN : 0), weight, ink);
+    }
+  }
+}
+
+/**
+ * A git graph as its lanes (git.ts): the stages' frames first, then the links
+ * and the lanes' tails, then each commit's dot over the lines that meet it, its tag
+ * bold above it, the lanes' names, the stages' titles in their frames' top borders,
+ * and last the boxes of what is on no lane. A dot, tag, name or title is selected in
+ * reverse, a stage's frame heavy.
+ */
+function paintGit(p: Painter, git: GitDrawing, edges: readonly ViewEdge[]): void {
+  const { layout } = p.scene;
+  const own = (id: string): Style => ownInk(p, id);
+  const chosen = (id: string, style: Style): Style => (id === p.selected ? { ...style, inverse: true } : style);
+  const boxes = [...layout.boxes].filter(([id]) => !git.dots.has(id) && !git.names.has(id) && !git.stages.has(id));
+  if (p.dos !== undefined)
+    castShadows(
+      p.canvas,
+      boxes.map(([, g]) => g),
+    );
+  const lines = new Set([...git.names.values(), ...git.dots.values()].map((at) => at.y));
+  for (const id of git.stages.keys()) drawStageFrame(p, id, lines);
+  for (const edge of edges) {
+    const { points } = layout.routes.get(edge.id)!;
+    const ink = edgeInk(p, edge);
+    for (let i = 1; i < points.length; i++) p.canvas.segment(points[i - 1]!, points[i]!, ink.weight, ink.style);
+  }
+  for (const t of git.tails) p.canvas.segment({ x: t.from, y: t.y }, { x: t.to, y: t.y }, 'dashed', own(t.lane));
+  for (const [id, dot] of git.dots) p.canvas.put(dot, p.glyphs.start, chosen(id, own(id)));
+  for (const [id, tag] of git.tags) p.canvas.text(tag, tag.text, chosen(id, { ...own(id), bold: true }));
+  for (const [id, name] of git.names) p.canvas.text(name, name.text, chosen(id, { ...own(id), bold: true }));
+  for (const [id, title] of git.stages) {
+    const g = layout.boxes.get(id)!;
+    p.canvas.text({ x: g.x + 2, y: g.y }, ` ${title} `, chosen(id, { ...own(id), bold: true }), g.x + g.width - 2);
+  }
+  for (const [id, g] of boxes) drawBox(p, id, g);
+}
+
 /** An edge's label: in its line's ink, or in DOS yellow. */
 const labelStyle = (p: Painter, edge: ViewEdge): Style => {
   const { style } = edgeInk(p, edge);
@@ -283,6 +341,10 @@ export function paint(scene: Scene, options: PaintOptions): Canvas {
   const edges = scene.view.edges.filter((e) => layout.routes.has(e.id));
   if (layout.fish !== undefined) {
     paintFish(p, layout.fish, edges);
+    return p.canvas;
+  }
+  if (layout.git !== undefined) {
+    paintGit(p, layout.git, edges);
     return p.canvas;
   }
   if (p.dos !== undefined)
