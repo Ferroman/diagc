@@ -192,3 +192,80 @@ function computeColumns(
   }
   return { columns, cycleEdges };
 }
+
+/** A commit's tag as column placement sees it, in the drawing's own unit. */
+export interface ColumnTag {
+  col: number;
+  /** what it hangs on, a lane or a spare row: tags on different rows never meet */
+  row: string;
+  /** how far it reaches left and right of its column's centre */
+  left: number;
+  right: number;
+}
+
+/** A stage frame as column placement sees it. */
+export interface ColumnFrame {
+  id: string;
+  fromCol: number;
+  toCol: number;
+  /** the least width it needs: its title's */
+  width: number;
+}
+
+/** What takes room in a git graph's columns, in the drawing's own unit: pixels on
+ * the page, cells in the terminal. */
+export interface ColumnRoom {
+  /** the last column to place */
+  maxCol: number;
+  /** column 0's centre when nothing pushes it */
+  first: number;
+  /** neighbouring columns' distance when nothing needs more; a frame is as many
+   * pitches wide as it spans columns */
+  pitch: number;
+  /** the least room between two tags on one row */
+  gap: number;
+  tags: readonly ColumnTag[];
+  frames: readonly ColumnFrame[];
+}
+
+export interface ColumnPlaces {
+  /** column → its centre */
+  x: number[];
+  /** column → how far a frame ending there reaches past its half pitch */
+  growRight: number[];
+  /** frame id → how far it reaches past its outer columns' half pitches, each side */
+  growth: Map<string, number>;
+}
+
+/**
+ * Where each column of a git graph stands, for the page and the terminal alike. A
+ * column sits a pitch after the one before it, or further when what is drawn there
+ * needs the room: a tag clears the previous tag on its row by `gap` and starts no
+ * further left than zero, and a frame narrower than its title grows evenly on both
+ * sides, so it stays centred on its commits and pushes its neighbours away. Every
+ * constraint looks left, so one pass settles them all.
+ */
+export function placeColumns(room: ColumnRoom): ColumnPlaces {
+  const { maxCol, pitch, gap } = room;
+  const growLeft = new Array<number>(maxCol + 1).fill(0);
+  const growRight = new Array<number>(maxCol + 1).fill(0);
+  const growth = new Map<string, number>();
+  for (const f of room.frames) {
+    const grow = Math.max(0, f.width - (f.toCol - f.fromCol + 1) * pitch) / 2;
+    growth.set(f.id, grow);
+    growLeft[f.fromCol] = Math.max(growLeft[f.fromCol]!, grow);
+    growRight[f.toCol] = Math.max(growRight[f.toCol]!, grow);
+  }
+  const tagsAt = new Map<number, ColumnTag[]>();
+  for (const t of room.tags) tagsAt.set(t.col, [...(tagsAt.get(t.col) ?? []), t]);
+  const x: number[] = [];
+  const tagEnd = new Map<string, number>(); // row → right edge of its rightmost tag so far
+  for (let col = 0; col <= maxCol; col++) {
+    let at = (col === 0 ? room.first : x[col - 1]! + pitch + growRight[col - 1]!) + growLeft[col]!;
+    const here = tagsAt.get(col) ?? [];
+    for (const t of here) at = Math.max(at, t.left, (tagEnd.get(t.row) ?? -Infinity) + gap + t.left);
+    x.push(at);
+    for (const t of here) tagEnd.set(t.row, Math.max(tagEnd.get(t.row) ?? -Infinity, at + t.right));
+  }
+  return { x, growRight, growth };
+}

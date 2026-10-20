@@ -3,6 +3,9 @@ import {
   gitGraph,
   isGitKind,
   LEAF_SIZE,
+  placeColumns,
+  type ColumnPlaces,
+  type ColumnTag,
   type DiagramModel,
   type DiagramNode,
   type GitGraph,
@@ -105,58 +108,24 @@ export function gitRoute(s: Point, t: Point, col: number): Point[] {
   return [s, { x, y: s.y }, { x, y: t.y }, t];
 }
 
-interface Columns {
-  /** column → the x of its commits' centres */
-  x: number[];
-  /** column → how far a stage frame ending there reaches past its half pitch */
-  growRight: number[];
-  /** stage id → how far its frame reaches past its outer columns' half pitches, each side */
-  stageGrowth: Map<string, number>;
-}
-
 /**
- * Where each column stands. A column sits COL after the one before it, or
- * further when what is drawn there needs the room: a commit's tag clears the
- * previous tag on its row by TAG_GAP and starts no further left than the
- * diagram, and a stage frame is at least as wide as its title, grown evenly on
- * both sides so that it stays centred on its commits and pushes its neighbours
- * away. Only what the view shows takes room, and with tags and titles that fit
- * the pitch is the plain COL. Every constraint looks left, so one pass settles all.
+ * Where each column stands (core's `placeColumns`, in pixels): a tag hangs centred
+ * over its commit on its lane's row, or on the spare row the strays share, and a
+ * stage frame needs its title's width. Only what the view shows takes room.
  */
-function columnsOf(graph: GitGraph, shown: ReadonlySet<string>, stages: GitStage[], maxCol: number): Columns {
+function columnsOf(graph: GitGraph, shown: ReadonlySet<string>, stages: GitStage[], maxCol: number): ColumnPlaces {
   const { COL, DIAMETER, MARGIN, TAG_PX, TAG_GAP, STAGE_TITLE_PAD } = GIT_LAYOUT;
   const measure = (text: string): number => Math.ceil(textWidth(text, TAG_PX));
-  const growLeft = new Array<number>(maxCol + 1).fill(0);
-  const growRight = new Array<number>(maxCol + 1).fill(0);
-  const stageGrowth = new Map<string, number>();
-  for (const s of stages) {
-    const grow = Math.max(0, measure(s.node.name) + 2 * STAGE_TITLE_PAD - (s.toCol - s.fromCol + 1) * COL) / 2;
-    stageGrowth.set(s.id, grow);
-    growLeft[s.fromCol] = Math.max(growLeft[s.fromCol]!, grow);
-    growRight[s.toCol] = Math.max(growRight[s.toCol]!, grow);
-  }
-  // column → the tags drawn in it, each with the row it hangs on: its lane, or
-  // '' for the spare row the strays share
-  const tags = new Map<number, { row: string; width: number }[]>();
+  const tags: ColumnTag[] = [];
   const tag = (commit: DiagramNode, row: string): void => {
     if (!shown.has(commit.id) || commit.name === '') return;
-    const col = graph.columns.get(commit.id) ?? 0;
-    tags.set(col, [...(tags.get(col) ?? []), { row, width: measure(commit.name) }]);
+    const half = measure(commit.name) / 2;
+    tags.push({ col: graph.columns.get(commit.id) ?? 0, row, left: half, right: half });
   };
   for (const lane of graph.lanes) for (const c of lane.commits) tag(c, lane.id);
   for (const s of graph.strays) tag(s, '');
-
-  const x: number[] = [];
-  const tagEnd = new Map<string, number>(); // row → right edge of its rightmost tag so far
-  for (let col = 0; col <= maxCol; col++) {
-    let at = col === 0 ? MARGIN + DIAMETER / 2 : x[col - 1]! + COL + growRight[col - 1]!;
-    at += growLeft[col]!;
-    const here = tags.get(col) ?? [];
-    for (const t of here) at = Math.max(at, t.width / 2, (tagEnd.get(t.row) ?? -Infinity) + TAG_GAP + t.width / 2);
-    x.push(at);
-    for (const t of here) tagEnd.set(t.row, Math.max(tagEnd.get(t.row) ?? -Infinity, at + t.width / 2));
-  }
-  return { x, growRight, stageGrowth };
+  const frames = stages.map((s) => ({ ...s, width: measure(s.node.name) + 2 * STAGE_TITLE_PAD }));
+  return placeColumns({ maxCol, first: MARGIN + DIAMETER / 2, pitch: COL, gap: TAG_GAP, tags, frames });
 }
 
 /**
@@ -195,7 +164,7 @@ export function gitLayout({ view, model, plane, sizeHints }: NotationLayoutInput
   // above the first lane (the tags of that lane's commits hang just below it).
   const top = MARGIN + (stages.length > 0 ? STAGE_HEADER : 0);
   for (const s of stages) {
-    const grow = cols.stageGrowth.get(s.id)!;
+    const grow = cols.growth.get(s.id)!;
     geometry.set(s.id, {
       x: cols.x[s.fromCol]! - COL / 2 - grow,
       y: top - STAGE_HEADER,

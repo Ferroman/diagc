@@ -11,6 +11,8 @@ import {
   mergedAway,
   nextCommitId,
   parseGap,
+  placeColumns,
+  type ColumnRoom,
 } from './git-graph';
 import { validate } from '../../validate/index';
 
@@ -209,5 +211,48 @@ describe('parseGap', () => {
   it('reads a non-negative integer or a string of digits, and nothing else', () => {
     expect([0, 3, '2', '007'].map(parseGap)).toEqual([0, 3, 2, 7]);
     expect([-1, 1.5, '1.5', ' 2', '', null, true, undefined].map(parseGap)).toEqual(Array(8).fill(undefined));
+  });
+});
+
+describe('placeColumns', () => {
+  const room = (over: Partial<ColumnRoom> = {}): ColumnRoom => ({
+    maxCol: 3,
+    first: 10,
+    pitch: 4,
+    gap: 1,
+    tags: [],
+    frames: [],
+    ...over,
+  });
+
+  it('spaces the columns a pitch apart when nothing needs more room', () => {
+    expect(placeColumns(room())).toEqual({ x: [10, 14, 18, 22], growRight: [0, 0, 0, 0], growth: new Map() });
+  });
+
+  it('moves a column right until its tag clears the last tag on its row, and leaves other rows be', () => {
+    const tags = [
+      { col: 0, row: 'main', left: 3, right: 4 },
+      { col: 1, row: 'main', left: 2, right: 2 },
+      { col: 2, row: 'develop', left: 9, right: 9 },
+    ];
+    // column 1: 10 + 4 (main's tag at 0) + 1 (gap) + 2 (its own reach left)
+    expect(placeColumns(room({ tags })).x).toEqual([10, 17, 21, 25]);
+  });
+
+  it('starts no tag left of zero', () => {
+    expect(placeColumns(room({ tags: [{ col: 0, row: 'main', left: 12, right: 12 }] })).x[0]).toBe(12);
+  });
+
+  it('grows a frame narrower than its title evenly on both sides, pushing its neighbours away', () => {
+    const placed = placeColumns(room({ frames: [{ id: 'harden', fromCol: 1, toCol: 2, width: 16 }] }));
+    // two pitches (8) wide by its columns: 4 short each side
+    expect(placed.growth.get('harden')).toBe(4);
+    expect(placed.x).toEqual([10, 18, 22, 30]);
+    expect(placed.growRight).toEqual([0, 0, 4, 0]);
+  });
+
+  it('pushes column 0 right by the growth of a frame that starts there', () => {
+    const placed = placeColumns(room({ frames: [{ id: 'first', fromCol: 0, toCol: 0, width: 8 }] }));
+    expect(placed.x[0]).toBe(12);
   });
 });
