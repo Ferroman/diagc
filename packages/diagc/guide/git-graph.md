@@ -13,6 +13,9 @@ A branching history: one lane per branch, commits along it, and the branch-offs 
 - `branch.merge(src, { tag })` adds a commit that absorbs the commit `src` from another lane. It throws if `src` is on the same lane.
 - `g.stage(id, { name, from, to })` frames a span of columns across every lane. `to` defaults to `from`. Declare it after the commits it names.
 - Columns are worked out from the links: a commit sits one column after everything it follows, branches from or merges. Do not try to place commits.
+- A column widens to fit what is drawn in it: a commit moves right until its tag clears the tag before it on the lane, and a stage's frame widens to its title. Use `gap` for time passing, not to make room for a label.
+- Branches, commits and stages are nodes, and every node shares one id space. A commit's id defaults to `<branch id>-<n>`. `g.stage('release', …)` after `g.branch('release')` throws at that line: name the stage `release-stage`.
+- Commits may share a tag: two deploys to prod are two commits tagged `deploy = prod`, and lint does not report them.
 
 ## Node types
 
