@@ -296,7 +296,7 @@ A plane with `notation: 'git-graph'` reads ordinary nodes and relations as a bra
 | Merge | Relation `kind: 'merge'`, from the absorbed commit to the merge commit |
 | Stage | Top-level node, `type: 'git-stage'`: a frame across every lane. `metadata.from` / `metadata.to` (commit ids; `to` defaults to `from`) give the columns it spans. `name` is its title, `color` its colour. |
 
-A commit's column is one past every commit it follows, branches from or merges, plus its gap. The layout never fails: a cycle is cut, a commit outside every lane is parked beneath the lanes — and validation reports both (`git-*` codes below).
+A commit's column is one past every commit it follows, branches from or merges, plus its gap. Columns are evenly spaced unless something drawn in them needs more room: a column moves right until its tags clear the previous tag on their lane, and a stage frame widens to fit its title, pushing the columns on either side away. The layout never fails: a cycle is cut, a commit outside every lane is parked beneath the lanes — and validation reports both (`git-*` codes below).
 
 ## Activity diagram conventions
 

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, model, type CompiledView, type DiagramModel, type ViewEdge } from '@diagc/core/internal';
+import { textWidth } from './box-size';
 import { GIT_LAYOUT, LANE_PALETTE, gitEdgeColor, gitLayout, gitNodeColors, gitRoute } from './git-layout';
+import type { LayoutResult } from './layout';
 
 const { COL, LANE, DIAMETER, LABEL_W, MARGIN, TAIL_GAP } = GIT_LAYOUT;
 
@@ -141,6 +143,83 @@ describe('gitLayout stages', () => {
     const r = gitLayout({ view: view(m), model: m, plane: m.planes[0]?.id });
     const spareRowY = MARGIN + STAGE_HEADER + 3 * LANE + MARGIN;
     expect(r.geometry.get('work')!.y).toBeLessThan(spareRowY);
+  });
+});
+
+describe('gitLayout tag and title room', () => {
+  const { TAG_PX, TAG_GAP, STAGE_TITLE_PAD } = GIT_LAYOUT;
+  const tag = (text: string): number => Math.ceil(textWidth(text, TAG_PX));
+  const centreX = (r: LayoutResult, id: string): number => {
+    const g = r.geometry.get(id)!;
+    return g.x + g.width / 2;
+  };
+  const laid = (m: DiagramModel): LayoutResult => gitLayout({ view: view(m), model: m, plane: m.planes[0]?.id });
+
+  it('moves a tagged commit right until its tag clears the previous tag on its lane', () => {
+    const m = model('g');
+    const main = m.gitGraph().branch('main');
+    main.commit('candidate-3.2.645 = QA');
+    main.commit('bug fix');
+    const r = laid(m.toJSON());
+    const apart = centreX(r, 'main-2') - centreX(r, 'main-1');
+    expect(apart).toBe((tag('candidate-3.2.645 = QA') + tag('bug fix')) / 2 + TAG_GAP);
+  });
+
+  it('counts an untagged commit between two tags as room already there', () => {
+    const m = model('g');
+    const main = m.gitGraph().branch('main');
+    main.commit('build #403');
+    main.commit();
+    main.commit('build #404');
+    const r = laid(m.toJSON());
+    expect(centreX(r, 'main-2') - centreX(r, 'main-1')).toBe(COL);
+    expect(centreX(r, 'main-3') - centreX(r, 'main-2')).toBe(COL);
+  });
+
+  it('leaves the pitch alone for tags on different lanes', () => {
+    const m = model('g');
+    const g = m.gitGraph();
+    const main = g.branch('main');
+    const dev = g.branch('develop');
+    const base = main.commit('a release with a long tag');
+    dev.commit({ from: base, tag: 'another long tag on develop' });
+    const r = laid(m.toJSON());
+    expect(centreX(r, 'develop-1') - centreX(r, 'main-1')).toBe(COL);
+  });
+
+  it('starts no tag left of the diagram', () => {
+    const m = model('g');
+    m.gitGraph().branch('main').commit('a first commit with a long tag');
+    const r = laid(m.toJSON());
+    expect(centreX(r, 'main-1') - tag('a first commit with a long tag') / 2).toBe(0);
+  });
+
+  it('widens a stage frame to its title, centred on its columns, and pushes the neighbours aside', () => {
+    const m = model('g');
+    const g = m.gitGraph();
+    const main = g.branch('main');
+    main.commit();
+    const harden = main.commit();
+    main.commit();
+    const title = 'Release branch hardened, then deleted';
+    g.stage('harden', { name: title, from: harden });
+    const r = laid(m.toJSON());
+    const frame = r.geometry.get('harden')!;
+    expect(frame.width).toBe(tag(title) + 2 * STAGE_TITLE_PAD);
+    expect(frame.x + frame.width / 2).toBe(centreX(r, 'main-2'));
+    expect(centreX(r, 'main-2') - centreX(r, 'main-1')).toBe(COL / 2 + frame.width / 2);
+    expect(centreX(r, 'main-3') - centreX(r, 'main-2')).toBe(COL / 2 + frame.width / 2);
+  });
+
+  it('keeps the lane label box clear of a widened last column', () => {
+    const m = model('g');
+    const g = m.gitGraph();
+    const tip = g.branch('main').commit();
+    g.stage('tip', { name: 'Release branch hardened, then deleted', from: tip });
+    const r = laid(m.toJSON());
+    const frame = r.geometry.get('tip')!;
+    const lane = r.geometry.get('main')!;
+    expect(frame.x + frame.width).toBeLessThanOrEqual(lane.width - MARGIN - LABEL_W - TAIL_GAP);
   });
 });
 
