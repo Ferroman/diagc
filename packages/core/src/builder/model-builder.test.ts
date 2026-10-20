@@ -17,6 +17,25 @@ describe('builder: nodes and containment', () => {
     ]);
   });
 
+  it('refuses an id a node already has, naming the kinds of both', () => {
+    const m = model('acme');
+    m.node('orders', { type: 'service' });
+    expect(() => m.node('orders')).toThrow(
+      "Duplicate node id 'orders': a node with no type reuses the id of the 'service' node declared before it",
+    );
+  });
+
+  it('refuses a git stage named like a branch: stages, branches and commits share one id space', () => {
+    const m = model('acme');
+    const g = m.gitGraph();
+    const release = g.branch('release');
+    const rc = release.commit('rc1');
+    expect(() => g.stage('release', { from: rc })).toThrow(
+      "Duplicate node id 'release': a 'git-stage' node reuses the id of the 'branch' node declared before it." +
+        ' Every node shares one id space, whatever declares it: m.node, a branch, a commit, a stage.',
+    );
+  });
+
   it('records containment as a DAG, allowing multi-membership', () => {
     const m = model('acme');
     const users = m.node('users', { type: 'table' });

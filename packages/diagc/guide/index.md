@@ -91,7 +91,7 @@ export default m;
 
 ## Rules that catch people
 
-- Calling `m.node` twice with one id is an error (`duplicate-node`). Declare a node once and keep the handle.
+- Declaring an id twice throws at the second declaration, and the message names its line. Every node shares one id space, whatever declares it: `m.node`, a git branch, a commit, a stage. Declare a node once and keep the handle.
 - `m.relate(a, 'b-id', …)` does not work. Pass the handle that `m.node` returned.
 - Put what the reader must see in `name`. `description` is not drawn.
 - Keep a relation `label` to a short phrase. It is cut at about 24 characters.

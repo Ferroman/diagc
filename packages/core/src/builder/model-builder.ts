@@ -53,6 +53,17 @@ export class ModelBuilder {
   ) {}
 
   node(id: string, opts: NodeOpts = {}): NodeRef {
+    // Refused here rather than left to validation: thrown from the second
+    // declaration, the error carries its line, and the notation builders declare
+    // nodes too, so a clash can be between two calls that do not look alike.
+    const taken = this.nodes.find((n) => n.id === id);
+    if (taken !== undefined) {
+      const kind = (type: string | undefined): string => (type === undefined ? 'node with no type' : `'${type}' node`);
+      throw new Error(
+        `Duplicate node id '${id}': a ${kind(opts.type)} reuses the id of the ${kind(taken.type)} declared before it.` +
+          ' Every node shares one id space, whatever declares it: m.node, a branch, a commit, a stage.',
+      );
+    }
     const { name, ...rest } = opts;
     this.nodes.push({ id, name: name ?? id, ...defined(rest) });
     return new NodeRef(id, this);

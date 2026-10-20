@@ -157,11 +157,12 @@ Subfolders under `.diagrams/src/` are mirrored into the artifact directory, so `
 
 ## When compile fails
 
-The message names the file and the issue, and no artifact is written. Every code is listed in [Model reference](../reference/model.md#validation-codes). The four you will actually hit:
+The message names the file and the issue, and no artifact is written. A mistake the builder sees as you make it is thrown from that call, so its message names the line as well. Declaring an id a second time is one: every node shares one id space, whatever declares it — `m.node`, a git branch, a commit or a stage — and the message names the kinds of both nodes.
+
+Every validation code is listed in [Model reference](../reference/model.md#validation-codes). The three you will actually hit:
 
 | Code | Usually means |
 | --- | --- |
-| `duplicate-node` | You called `m.node` twice with the same id. |
 | `dangling-endpoint` | A relation names a node you renamed or removed. |
 | `unknown-layer` | You used a `layer` on a relation without `m.layer(...)`. |
 | `containment-cycle` | A node ended up inside itself, transitively. |

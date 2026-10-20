@@ -464,7 +464,7 @@ You rarely call this — `export default m` and the compiler calls it for you.
 ## Gotchas
 
 - **`m.relate` takes `NodeRef`s, not ids.** Keep the handles that `m.node` returns.
-- **`m.node` is not idempotent.** Calling it twice with the same id creates two nodes and fails validation with `duplicate-node`.
+- **`m.node` is not idempotent.** Calling it twice with the same id throws at the second call. Every node shares one id space, whatever declares it, so a git branch, a commit and a stage cannot share an id with each other or with an `m.node` either.
 - **A trailing plain object in `contains` is always read as options**, never as a child. That is only ambiguous if you try to pass something that is not a `NodeRef`.
 - **`description` does not render on the canvas.** Put anything the reader must see in `name`.
 
