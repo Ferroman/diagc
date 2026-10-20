@@ -11,13 +11,13 @@ import { show } from '../commands/show';
 import { studio } from '../commands/studio';
 import { tui } from '../commands/tui';
 import { watch } from '../commands/watch';
-import { findHome, homePaths } from '../home';
+import { cliVersion, findHome, homePaths } from '../home';
 import { resolveInclude } from '../includes';
 import { RELATIVE_PATHS } from '../paths';
 import { snapshotSession } from '../snapshots';
 import type { Command } from './command';
 import type { CliIo } from './io';
-import { checkTaken, parseArgv, UsageError, type ParsedArgv } from './parse';
+import { checkTaken, parseArgv, UsageError, VersionRequest, type ParsedArgv } from './parse';
 
 /** Every command by name, in the order the refusal of a flag names the commands that
  * take it. */
@@ -64,6 +64,10 @@ export async function run(argv: readonly string[], io: CliIo, usage: string): Pr
     checkTaken(parsed, COMMANDS);
     return await dispatch(parsed, io, usage);
   } catch (e) {
+    if (e instanceof VersionRequest) {
+      io.out(cliVersion(homePaths(findHome(fileURLToPath(import.meta.url))).root));
+      return 0;
+    }
     if (!(e instanceof UsageError)) {
       io.err(errMessage(e));
       return 1;

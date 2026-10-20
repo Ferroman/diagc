@@ -66,6 +66,7 @@ Options:
   --agents        init: write the coding-agent block into AGENTS.md / CLAUDE.md, and
                   the skill into .claude/skills/diagc/ where Claude Code is in use
   --help, -h      Show this help and exit
+  --version       Print diagc's version and exit
 `;
 
 /** End the process once stdout and stderr have taken everything written to them:

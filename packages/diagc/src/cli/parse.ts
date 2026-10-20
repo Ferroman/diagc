@@ -56,6 +56,15 @@ export class UsageError extends Error {
   }
 }
 
+/** `--version`: the run prints the version, whatever else argv says after it, and ends
+ * with exit 0. */
+export class VersionRequest extends Error {
+  constructor() {
+    super('version requested');
+    this.name = 'VersionRequest';
+  }
+}
+
 const badValue = (flag: Flag, why: string): UsageError => new UsageError(`${flag}: ${why}`, 1);
 
 /** The style presets `--style` takes: the renderer's, by id and in its order. The CLI
@@ -168,7 +177,8 @@ const isFlag = (arg: string): arg is Flag => Object.hasOwn(FLAGS, arg);
 
 /** Read argv against every flag there is, whichever command it names: which arguments
  * are values depends on the flags alone, and the command may come after its flags. The
- * first mistake in argv's order is thrown as a {@link UsageError}. An unknown flag is an
+ * first mistake in argv's order is thrown as a {@link UsageError}, and so is `--help`;
+ * `--version` is a {@link VersionRequest}. An unknown flag is an
  * error rather than a file path, so a typo surfaces loudly instead of quietly skewing
  * the file set. */
 export function parseArgv(argv: readonly string[]): ParsedArgv {
@@ -183,6 +193,7 @@ export function parseArgv(argv: readonly string[]): ParsedArgv {
       continue;
     }
     if (arg === '--help' || arg === '-h') throw new UsageError('help requested', 0);
+    if (arg === '--version') throw new VersionRequest();
     if (arg.startsWith('--')) throw new UsageError(`Unknown flag '${arg}'`, 1);
     // The first argument that is not a flag names the command; anything after it is
     // the command's (flags may appear before or after the command).
