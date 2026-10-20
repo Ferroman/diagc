@@ -5,6 +5,7 @@ import {
   defined,
   defaultLayoutDirection,
   FISHBONE_NOTATION,
+  GIT_NOTATION,
   layoutPlaneKey,
   presetLayers,
   type CompiledView,
@@ -19,6 +20,7 @@ import { boxText, edgeText, type BoxText } from './content';
 import { SHADOW_REACH, type TextStyle } from './dos';
 import { fishCells } from './fish';
 import { withNeverFolds, type Pins } from './folds';
+import { gitCells } from './git';
 import type { Glyphs } from './glyphs';
 import { layoutCells, type Flow, type TextLayout } from './layout';
 import { legendOf, type TextLegend } from './legend';
@@ -102,11 +104,14 @@ export async function buildScene(input: SceneInput, glyphs: Glyphs): Promise<Sce
   for (const root of view.roots) walk(root, undefined);
 
   const labels = new Map(view.layoutEdges.map((e) => [e.id, edgeText(e, glyphs)]));
-  // A fishbone is the fish, as on the page, whatever way the plane's settings say to flow.
+  // A fishbone is the fish and a git graph its lanes, as on the page, whatever way
+  // the plane's settings say to flow.
   const laid =
     notation === FISHBONE_NOTATION
       ? fishCells(model, view, boxes)
-      : await layoutCells(view, boxes, flowOf(input), labels);
+      : notation === GIT_NOTATION
+        ? gitCells(model, plane, view, boxes)
+        : await layoutCells(view, boxes, flowOf(input), labels);
   const room = input.style === 'dos' && laid.boxes.size > 0;
   const layout = room ? { ...laid, width: laid.width + SHADOW_REACH.x, height: laid.height + SHADOW_REACH.y } : laid;
   const accents = notationAccents(model, plane, notation, view.edges);

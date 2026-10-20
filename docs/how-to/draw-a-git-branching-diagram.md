@@ -31,7 +31,7 @@ Show how releases, hotfixes, nightlies and feature work flow between branches â€
    export default m;
    ```
 
-3. `diagc compile`, open it in the studio or publish it. Columns are computed: every commit sits one column after everything it follows, branched from or merged â€” nothing to date. Leave a deliberate gap with `commit({ tag: '2.0', gap: 3 })`.
+3. `diagc compile`, open it in the studio or publish it. Columns are computed: every commit sits one column after everything it follows, branched from or merged â€” nothing to date. Leave a deliberate gap with `commit({ tag: '2.0', gap: 3 })`. A long tag needs no gap: its column moves right until the tag clears the one before it on the lane.
 
 4. Optionally frame the **stages** the history went through. A stage is a named frame across every lane, spanning the columns of the commits it names:
 
@@ -40,7 +40,7 @@ Show how releases, hotfixes, nightlies and feature work flow between branches â€
    g.stage('stabilisation', { name: 'Release candidates', from: rc1, to: rc3, color: '#e0a030' });
    ```
 
-   Declare a stage after the commits it names. `to` defaults to `from` (a one-column frame); two stages over neighbouring columns share a wall. The titles take a band above the first lane, so a graph with stages is a little taller than one without.
+   Declare a stage after the commits it names. `to` defaults to `from` (a one-column frame); two stages over neighbouring columns share a wall. A frame narrower than its title widens to fit it, and the columns on either side move away. The titles take a band above the first lane, so a graph with stages is a little taller than one without.
 
 The whole picture above is `.diagrams/src/docs/git-graph.diagram.ts` in this repo.
 

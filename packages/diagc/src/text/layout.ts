@@ -31,12 +31,30 @@ export interface FishDrawing {
   labels: Set<string>;
 }
 
+/** What a git graph is drawn with besides boxes and routes (git.ts). A commit's box
+ * is the cells of its dot and tag, a lane's its name's, a stage's its frame; a route
+ * runs from dot to dot, both included. */
+export interface GitDrawing {
+  /** commit id → its dot */
+  dots: Map<string, CellPoint>;
+  /** commit id → its tag, where it starts; an untagged commit has none */
+  tags: Map<string, CellPoint & { text: string }>;
+  /** lane id → its name, where it starts, on its line's row */
+  names: Map<string, CellPoint & { text: string }>;
+  /** each lane's line from its last commit on to its name, dashed; none where that
+   * commit merged away */
+  tails: { lane: string; y: number; from: number; to: number }[];
+  /** stage id → its title, written into its frame's top border */
+  stages: Map<string, string>;
+}
+
 export interface TextLayout {
   width: number;
   height: number;
   boxes: Map<string, BoxGeometry>;
   routes: Map<string, Route>;
   fish?: FishDrawing;
+  git?: GitDrawing;
 }
 
 /**

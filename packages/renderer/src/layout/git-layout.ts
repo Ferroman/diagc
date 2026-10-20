@@ -3,12 +3,18 @@ import {
   gitGraph,
   isGitKind,
   LEAF_SIZE,
+  placeColumns,
+  type ColumnPlaces,
+  type ColumnTag,
   type DiagramModel,
+  type DiagramNode,
   type GitGraph,
+  type GitStage,
   type Point,
   type ViewEdge,
   type ViewNode,
 } from '@diagc/core/internal';
+import { textWidth } from './box-size';
 import type { LayoutResult, NodeGeometry, NotationLayoutInput } from './layout';
 
 /** Flow-pixel constants of the git arrangement. Tuned against real renders;
@@ -30,6 +36,14 @@ export const GIT_LAYOUT = {
   STAGE_HEADER: 30,
   /** how far a stage frame reaches past the first/last lane it covers */
   STAGE_PAD: 6,
+  /** the size a commit tag and a stage title are measured at — must match the
+   * font of `.dg-commit-tag` and `.dg-git-stage-name` (600 12px, the weight
+   * `textWidth`'s advances are calibrated for) */
+  TAG_PX: 12,
+  /** least room between two tags on one lane */
+  TAG_GAP: 8,
+  /** a stage title's inset from each side of its frame (`.dg-git-stage-name` padding) */
+  STAGE_TITLE_PAD: 6,
 } as const;
 
 /** Lane colours for branches that set none, by lane index. */
@@ -95,6 +109,26 @@ export function gitRoute(s: Point, t: Point, col: number): Point[] {
 }
 
 /**
+ * Where each column stands (core's `placeColumns`, in pixels): a tag hangs centred
+ * over its commit on its lane's row, or on the spare row the strays share, and a
+ * stage frame needs its title's width. Only what the view shows takes room.
+ */
+function columnsOf(graph: GitGraph, shown: ReadonlySet<string>, stages: GitStage[], maxCol: number): ColumnPlaces {
+  const { COL, DIAMETER, MARGIN, TAG_PX, TAG_GAP, STAGE_TITLE_PAD } = GIT_LAYOUT;
+  const measure = (text: string): number => Math.ceil(textWidth(text, TAG_PX));
+  const tags: ColumnTag[] = [];
+  const tag = (commit: DiagramNode, row: string): void => {
+    if (!shown.has(commit.id) || commit.name === '') return;
+    const half = measure(commit.name) / 2;
+    tags.push({ col: graph.columns.get(commit.id) ?? 0, row, left: half, right: half });
+  };
+  for (const lane of graph.lanes) for (const c of lane.commits) tag(c, lane.id);
+  for (const s of graph.strays) tag(s, '');
+  const frames = stages.map((s) => ({ ...s, width: measure(s.node.name) + 2 * STAGE_TITLE_PAD }));
+  return placeColumns({ maxCol, first: MARGIN + DIAMETER / 2, pitch: COL, gap: TAG_GAP, tags, frames });
+}
+
+/**
  * The git arrangement: lanes are full-width bands in declaration order, commits
  * sit at their column, links get orthogonal routes. Pure and synchronous; it
  * replaces elk for a git-graph plane (see NotationProfile.layout). Geometry is
@@ -116,22 +150,25 @@ export function gitLayout({ view, model, plane, sizeHints }: NotationLayoutInput
   };
   view.roots.forEach(walk);
 
+  const stages = graph.stages.filter((s) => shown.has(s.id));
   let maxCol = -1;
   for (const [id, c] of graph.columns) if (shown.has(id)) maxCol = Math.max(maxCol, c);
-  const width = MARGIN + (maxCol + 1) * COL + TAIL_GAP + LABEL_W + MARGIN;
-  const columnX = (id: string): number => MARGIN + DIAMETER / 2 + (graph.columns.get(id) ?? 0) * COL;
+  for (const s of stages) maxCol = Math.max(maxCol, s.toCol);
+  const cols = columnsOf(graph, shown, stages, maxCol);
+  const end = maxCol < 0 ? MARGIN : cols.x[maxCol]! - DIAMETER / 2 + COL + cols.growRight[maxCol]!;
+  const width = end + TAIL_GAP + LABEL_W + MARGIN;
+  const columnX = (id: string): number => cols.x[graph.columns.get(id) ?? 0]!;
 
   const lanes = graph.lanes.filter((l) => shown.has(l.id));
   // Stages: frames across every lane, one column-span each, titled in a band
   // above the first lane (the tags of that lane's commits hang just below it).
-  const stages = graph.stages.filter((s) => shown.has(s.id));
   const top = MARGIN + (stages.length > 0 ? STAGE_HEADER : 0);
   for (const s of stages) {
-    const left = MARGIN + DIAMETER / 2 + s.fromCol * COL - COL / 2;
+    const grow = cols.growth.get(s.id)!;
     geometry.set(s.id, {
-      x: left,
+      x: cols.x[s.fromCol]! - COL / 2 - grow,
       y: top - STAGE_HEADER,
-      width: (s.toCol - s.fromCol + 1) * COL,
+      width: cols.x[s.toCol]! - cols.x[s.fromCol]! + COL + 2 * grow,
       height: STAGE_HEADER + lanes.length * LANE + STAGE_PAD,
     });
   }

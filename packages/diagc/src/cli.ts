@@ -32,7 +32,8 @@ Commands:
   compile   Compile *.diagram.{ts,json} sources into overlay artifacts once
   lint      Report suspicious diagrams (typos, duplicates, unused or undrawn parts); exit 1 on any
   watch     Recompile — and live-recompile — a directory of sources
-  publish   Compile and render an HTML/PNG site under .diagrams/
+  publish   publish [names...]: compile, then write an HTML page and PNGs under
+            .diagrams/ for each diagram named, or for every diagram with none
   show      show <name>: print the diagram as text — boxes, lines and labels in the
             terminal or a pipe, every container open (--depth folds deeper levels)
   studio    Run the visual studio against the current directory
@@ -66,6 +67,7 @@ Options:
   --agents        init: write the coding-agent block into AGENTS.md / CLAUDE.md, and
                   the skill into .claude/skills/diagc/ where Claude Code is in use
   --help, -h      Show this help and exit
+  --version       Print diagc's version and exit
 `;
 
 /** End the process once stdout and stderr have taken everything written to them:

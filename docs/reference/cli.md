@@ -259,7 +259,7 @@ diagc guide all        # everything
 
 ## Flags
 
-A command takes only the flags its row lists; any other exits `1` with the usage, as an unknown flag does, naming the commands that take it.
+A command takes only the flags its row lists; any other exits `1` with the usage, as an unknown flag does, naming the commands that take it. Two flags go with any command, or none: `--help` (`-h`) prints the usage, and `--version` the version number alone, and both exit `0`.
 
 | Flag | Applies to | Default | Meaning |
 | --- | --- | --- | --- |

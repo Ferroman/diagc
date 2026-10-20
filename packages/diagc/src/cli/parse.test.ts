@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkTaken, parseArgv, UsageError, type Takes } from './parse';
+import { checkTaken, parseArgv, UsageError, VersionRequest, type Takes } from './parse';
 
 /** What `parseArgv` throws for `argv`. */
 function refusal(argv: string[]): UsageError {
@@ -119,6 +119,14 @@ describe('parseArgv', () => {
     for (const argv of [['--help'], ['watch', '-h'], ['compile', 'a.diagram.ts', '--help'], ['--help', '--bogus']]) {
       expect(refusal(argv)).toMatchObject({ exitCode: 0 });
     }
+  });
+
+  it('asks for the version with --version, anywhere before a mistake or a --help', () => {
+    for (const argv of [['--version'], ['compile', '--version'], ['--version', '--bogus'], ['--version', '--help']]) {
+      expect(() => parseArgv(argv)).toThrow(VersionRequest);
+    }
+    expect(refusal(['--help', '--version'])).toMatchObject({ exitCode: 0 });
+    expect(refusal(['--bogus', '--version'])).toMatchObject({ exitCode: 1, message: "Unknown flag '--bogus'" });
   });
 
   it('refuses the first mistake in argv, with exit 1', () => {

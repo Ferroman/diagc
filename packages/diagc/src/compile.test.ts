@@ -358,8 +358,8 @@ describe('LoadError', () => {
 
   it('leaves a validation error alone, so lint still reads its issues', async () => {
     const file = await throwing(
-      'dup.diagram.ts',
-      "m.node('a', { type: 'service' });\nm.node('a', { type: 'service' });",
+      'layer.diagram.ts',
+      "const a = m.node('a', { type: 'service' });\nm.relate(a, a, { kind: 'sync', layer: 'nowhere' });",
     );
     const err = (await executeDiagramTs(file).catch((e: unknown) => e)) as Error;
     expect(err).not.toBeInstanceOf(LoadError);

@@ -296,7 +296,7 @@ A plane with `notation: 'git-graph'` reads ordinary nodes and relations as a bra
 | Merge | Relation `kind: 'merge'`, from the absorbed commit to the merge commit |
 | Stage | Top-level node, `type: 'git-stage'`: a frame across every lane. `metadata.from` / `metadata.to` (commit ids; `to` defaults to `from`) give the columns it spans. `name` is its title, `color` its colour. |
 
-A commit's column is one past every commit it follows, branches from or merges, plus its gap. The layout never fails: a cycle is cut, a commit outside every lane is parked beneath the lanes — and validation reports both (`git-*` codes below).
+A commit's column is one past every commit it follows, branches from or merges, plus its gap. Columns are evenly spaced unless something drawn in them needs more room: a column moves right until its tags clear the previous tag on their lane, and a stage frame widens to fit its title, pushing the columns on either side away. The layout never fails: a cycle is cut, a commit outside every lane is parked beneath the lanes — and validation reports both (`git-*` codes below).
 
 ## Activity diagram conventions
 
@@ -563,7 +563,7 @@ Also returned by `diagramWarnings()`, so `compile` prints them and [`diagc lint`
 
 | Code | Means |
 | --- | --- |
-| `duplicate-name` | Two siblings of one type share a name (case and surrounding spaces ignored), usually one thing declared twice. Activity start, end, bar and decision glyphs are exempt. |
+| `duplicate-name` | Two siblings of one type share a name (case and surrounding spaces ignored), usually one thing declared twice. Activity start, end, bar and decision glyphs are exempt, and so are git commits, whose names are tags a history may repeat. |
 | `unknown-type` | A node's `type` is not in the [registry](#registry-defaults) or its notation's vocabulary, so it draws as a plain box. Names the closest known type when one is a likely typo. Nodes with an `image` or `shape` are exempt. Reported once per type. |
 | `unknown-kind` | The same for a relation's `kind`, which draws as a plain arrow. |
 | `unused-layer` | A layer that no node, table row, relation or `layerRules` entry is on. |

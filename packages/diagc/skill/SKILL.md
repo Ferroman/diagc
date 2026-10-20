@@ -17,7 +17,7 @@ A diagram is a TypeScript file under `.diagrams/src/`; `diagc` validates it, lay
 
 1. Write or edit `.diagrams/src/<name>.diagram.ts`.
 2. Run `diagc lint --json` until it prints `[]` and exits 0. Each finding has `file`, `severity`, `code` and `message`: an `error` does not compile, a `warning` compiles but is probably a mistake.
-3. Run `diagc show <name>` and read the picture as text: the boxes, the nesting and the arrows with their labels. Then run `diagc publish <name>` and look at `.diagrams/static/<name>.png`. It needs Chrome (set `CHROME_PATH` when none is found); without one it writes the HTML page only.
+3. Run `diagc show <name>` and read the picture as text: the boxes, the nesting and the arrows with their labels. Then run `diagc publish <name>` and look at `.diagrams/static/<name>.png`; `diagc publish` with no name does every diagram at once. It needs Chrome (set `CHROME_PATH` when none is found); without one it writes the HTML page only.
 
 ## Rules
 

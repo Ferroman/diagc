@@ -566,7 +566,9 @@ describe('the usage, and which mistake is reported first', () => {
     expect(usage).toMatch(
       /^Usage: diagc <init\|compile\|lint\|watch\|publish\|show\|studio\|tui\|eject\|diff\|guide> /,
     );
-    expect(usage.endsWith('\n  --help, -h      Show this help and exit\n')).toBe(true);
+    expect(
+      usage.endsWith("\n  --help, -h      Show this help and exit\n  --version       Print diagc's version and exit\n"),
+    ).toBe(true);
     const dir = fresh();
     const helps = [
       ['-h'],
@@ -584,6 +586,11 @@ describe('the usage, and which mistake is reported first', () => {
     }
     expect(readdirSync(dir)).toEqual([]);
   }, 60_000);
+
+  it('prints its version and exits 0 for --version', () => {
+    const { version } = JSON.parse(readFileSync(path.join(home.root, 'package.json'), 'utf8')) as { version: string };
+    expect(run(['--version'], fresh())).toMatchObject({ status: 0, stdout: `${version}\n`, stderr: '' });
+  }, 30_000);
 
   it("refuses a flag as argv reads, then one the command does not take in the flag table's order, then an argument too many", () => {
     const out = '--out: needs a directory, e.g. --out build/artifacts';

@@ -29,12 +29,15 @@ export type LintCode =
   | 'undrawn-relation';
 
 /** Shapes a diagram repeats on purpose: every activity has its start dot, and
- * forks, merges and ends are anonymous or share one caption. */
+ * forks, merges and ends are anonymous or share one caption. A git commit's name
+ * is its tag, and a history repeats its events: two deploys to prod are two
+ * commits tagged the same. */
 const REPEATED_GLYPHS = new Set<string>([
   ACTIVITY_START_TYPE,
   ACTIVITY_END_TYPE,
   ACTIVITY_BAR_TYPE,
   ACTIVITY_DECISION_TYPE,
+  'commit',
 ]);
 
 export function lintModel(model: DiagramModel): LintFinding[] {

@@ -54,6 +54,23 @@ describe('lintModel', () => {
       });
       expect(codes(m)).toEqual([]);
     });
+
+    it('allows commits on one lane to share a tag: a history repeats its events', () => {
+      const m = base({
+        notation: 'git-graph',
+        nodes: [
+          { id: 'develop', name: 'develop', type: 'branch' },
+          { id: 'develop-1', name: 'deploy = prod', type: 'commit' },
+          { id: 'develop-2', name: 'deploy = prod', type: 'commit' },
+        ],
+        containment: [
+          { parent: 'develop', child: 'develop-1' },
+          { parent: 'develop', child: 'develop-2' },
+        ],
+        relations: [],
+      });
+      expect(codes(m)).toEqual([]);
+    });
   });
 
   describe('unknown-type / unknown-kind', () => {

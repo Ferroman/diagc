@@ -68,6 +68,12 @@ describe('run', () => {
       expect([argv, await diagc(argv)]).toEqual([argv, { code: 0, stdout: `${USAGE}\n`, stderr: '' }]);
   });
 
+  it('prints the version on stdout and exits 0 for --version, whatever command it follows', async () => {
+    const { version } = JSON.parse(readFileSync(path.join(home.root, 'package.json'), 'utf8')) as { version: string };
+    for (const argv of [['--version'], ['show', 'x', '--version']])
+      expect(await diagc(argv)).toEqual({ code: 0, stdout: `${version}\n`, stderr: '' });
+  });
+
   it("refuses a flag as argv reads, then one the command does not take in the flag table's order, then an argument too many", async () => {
     const out = 'compile, watch, publish, eject and diff do.';
     const locked = '(it always resolves includes locked); compile and publish do.';
