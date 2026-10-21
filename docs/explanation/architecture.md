@@ -51,7 +51,7 @@ The arrows all point toward `core`, and `core` depends on nothing. That is the o
 
 The two share the same renderer, so a published page folds and unfolds exactly like the studio does. It just cannot save.
 
-**The terminal** has no renderer to share. `diagc show` prints the view as text and `diagc tui` browses it, and both run the same view compiler as the browser — the same folds, planes, layers and aggregated arrows — then lay the result out in character cells, with the same layout engine sized for text. A fishbone and a git graph are the exceptions: a fishbone is laid out as the fish the page draws, spine and slanting bones, and a git graph as its lanes, its columns spaced by the same rule as the page's. That is why a text picture never keeps the positions you dragged in the studio: those are pixels, for boxes of another size. See [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md).
+**The terminal** has no renderer to share. `diagc show` prints the view as text and `diagc tui` browses it, and both run the same view compiler as the browser — the same folds, planes, layers and aggregated arrows — then lay the result out in character cells, with the same layout engine sized for text. A fishbone and a git graph are the exceptions: a fishbone is laid out as the fish the page draws, spine and slanting bones, and a git graph as its lanes: down the screen by default, as a terminal reads a history, or across it as on the page, its columns spaced by the same rule as the page's. That is why a text picture never keeps the positions you dragged in the studio: those are pixels, for boxes of another size. See [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md).
 
 ## Where things go wrong
 
