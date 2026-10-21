@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.0](https://github.com/Ferroman/diagc/compare/v1.7.0...v1.8.0) (2026-10-21)
+
+
+### Features
+
+* **diagc:** a git graph in the terminal runs down the screen, --horizontal and H turn it across ([#174](https://github.com/Ferroman/diagc/issues/174)) ([1becca3](https://github.com/Ferroman/diagc/commit/1becca3a75f207caceb3a7149497d13b6f518d8a))
+* git-graph tags and stage titles get room, git graphs in diagc show, diagc --version ([#172](https://github.com/Ferroman/diagc/issues/172)) ([afbe4af](https://github.com/Ferroman/diagc/commit/afbe4af806e852840d7bd74d6a951c0e7b442042))
+
 ## [1.7.0](https://github.com/Ferroman/diagc/compare/v1.6.0...v1.7.0) (2026-10-18)
 
 
