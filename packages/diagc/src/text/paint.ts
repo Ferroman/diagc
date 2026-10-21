@@ -262,27 +262,54 @@ const ownInk = (p: Painter, id: string): Style => {
   return fg !== undefined ? { fg } : {};
 };
 
-/** A stage's frame, dim and dashed, or heavy when it is selected. Its sides break at
- * the lanes' rows, so a lane's line runs across in front of the frame rather than
- * meeting it in a junction. */
-function drawStageFrame(p: Painter, id: string, lines: ReadonlySet<number>): void {
+/** Every cell a link or a lane's tail runs through, as `x,y`. */
+function linedCells(p: Painter, git: GitDrawing, edges: readonly ViewEdge[]): Set<string> {
+  const lined = new Set<string>();
+  const run = (a: CellPoint, b: CellPoint): void => {
+    const [dx, dy] = [Math.sign(b.x - a.x), Math.sign(b.y - a.y)];
+    for (let i = 0; i <= Math.abs(b.x - a.x) + Math.abs(b.y - a.y); i++) lined.add(`${a.x + i * dx},${a.y + i * dy}`);
+  };
+  for (const edge of edges) {
+    const { points } = p.scene.layout.routes.get(edge.id)!;
+    for (let i = 1; i < points.length; i++) run(points[i - 1]!, points[i]!);
+  }
+  for (const tail of git.tails) run(tail.from, tail.to);
+  return lined;
+}
+
+/** A stage's frame, dim and dashed, or heavy when it is selected. It is stroked cell by
+ * cell and gives way where a line runs through it, so a lane's line runs in front of
+ * the frame rather than meeting it in a junction. */
+function drawStageFrame(p: Painter, id: string, lined: ReadonlySet<string>): void {
   const g = p.scene.layout.boxes.get(id)!;
   const [weight, ink]: [Weight, Style] =
     id === p.selected ? ['heavy', ownInk(p, id)] : ['dashed', { ...ownInk(p, id), dim: true }];
   const [right, bottom] = [g.x + g.width - 1, g.y + g.height - 1];
-  p.canvas.segment({ x: g.x, y: g.y }, { x: right, y: g.y }, weight, ink);
-  p.canvas.segment({ x: g.x, y: bottom }, { x: right, y: bottom }, weight, ink);
-  for (const x of [g.x, right]) {
-    for (let y = g.y; y <= bottom; y++) {
-      if (!lines.has(y)) p.canvas.stroke({ x, y }, (y > g.y ? UP : 0) | (y < bottom ? DOWN : 0), weight, ink);
-    }
+  const stroke = (x: number, y: number, mask: number): void => {
+    if (!lined.has(`${x},${y}`)) p.canvas.stroke({ x, y }, mask, weight, ink);
+  };
+  for (let x = g.x; x <= right; x++) {
+    const mask = (x > g.x ? LEFT : 0) | (x < right ? RIGHT : 0);
+    for (const y of [g.y, bottom]) stroke(x, y, mask);
   }
+  for (let y = g.y; y <= bottom; y++) {
+    const mask = (y > g.y ? UP : 0) | (y < bottom ? DOWN : 0);
+    for (const x of [g.x, right]) stroke(x, y, mask);
+  }
+}
+
+/** A lane's tail, cell by cell down the screen, where a one-cell segment would read as
+ * one across it. */
+function drawTail(p: Painter, git: GitDrawing, tail: GitDrawing['tails'][number]): void {
+  const ink = ownInk(p, tail.lane);
+  if (!git.down) return p.canvas.segment(tail.from, tail.to, 'dashed', ink);
+  for (let y = tail.from.y; y <= tail.to.y; y++) p.canvas.stroke({ x: tail.from.x, y }, UP | DOWN, 'dashed', ink);
 }
 
 /**
  * A git graph as its lanes (git.ts): the stages' frames first, then the links
  * and the lanes' tails, then each commit's dot over the lines that meet it, its tag
- * bold above it, the lanes' names, the stages' titles in their frames' top borders,
+ * bold beside it, the lanes' names, the stages' titles in their frames' top borders,
  * and last the boxes of what is on no lane. A dot, tag, name or title is selected in
  * reverse, a stage's frame heavy.
  */
@@ -296,20 +323,20 @@ function paintGit(p: Painter, git: GitDrawing, edges: readonly ViewEdge[]): void
       p.canvas,
       boxes.map(([, g]) => g),
     );
-  const lines = new Set([...git.names.values(), ...git.dots.values()].map((at) => at.y));
-  for (const id of git.stages.keys()) drawStageFrame(p, id, lines);
+  const lined = linedCells(p, git, edges);
+  for (const id of git.stages.keys()) drawStageFrame(p, id, lined);
   for (const edge of edges) {
     const { points } = layout.routes.get(edge.id)!;
     const ink = edgeInk(p, edge);
     for (let i = 1; i < points.length; i++) p.canvas.segment(points[i - 1]!, points[i]!, ink.weight, ink.style);
   }
-  for (const t of git.tails) p.canvas.segment({ x: t.from, y: t.y }, { x: t.to, y: t.y }, 'dashed', own(t.lane));
+  for (const tail of git.tails) drawTail(p, git, tail);
   for (const [id, dot] of git.dots) p.canvas.put(dot, p.glyphs.start, chosen(id, own(id)));
   for (const [id, tag] of git.tags) p.canvas.text(tag, tag.text, chosen(id, { ...own(id), bold: true }));
   for (const [id, name] of git.names) p.canvas.text(name, name.text, chosen(id, { ...own(id), bold: true }));
   for (const [id, title] of git.stages) {
     const g = layout.boxes.get(id)!;
-    p.canvas.text({ x: g.x + 2, y: g.y }, ` ${title} `, chosen(id, { ...own(id), bold: true }), g.x + g.width - 2);
+    p.canvas.text(title, ` ${title.text} `, chosen(id, { ...own(id), bold: true }), g.x + g.width - 2);
   }
   for (const [id, g] of boxes) drawBox(p, id, g);
 }

@@ -77,6 +77,7 @@ describe('parseArgv', () => {
         '2',
         '--root',
         'p',
+        '--horizontal',
         '--ascii',
         '--color',
       ]).flags,
@@ -85,6 +86,7 @@ describe('parseArgv', () => {
       '--layers': ['a', 'b'],
       '--depth': 2,
       '--root': 'p',
+      '--horizontal': true,
       '--ascii': true,
       '--color': true,
     });

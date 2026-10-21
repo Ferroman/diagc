@@ -43,7 +43,7 @@ describe('the command table', () => {
       lint: ['--json'],
       watch: ['--out'],
       publish: ['--out', '--no-images', '--link', '--update-includes', '--style', '--theme'],
-      show: ['--plane', '--layers', '--depth', '--root', '--ascii', '--color', '--no-color'],
+      show: ['--plane', '--layers', '--depth', '--root', '--horizontal', '--ascii', '--color', '--no-color'],
       studio: [],
       tui: ['--style'],
       eject: ['--out'],

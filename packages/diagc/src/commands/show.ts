@@ -19,7 +19,7 @@ import { renderToLines } from '../text/render';
 import { cellWidth } from '../text/width';
 import { LOCKED, sourceOf } from './shared';
 
-type ShowFlag = '--plane' | '--layers' | '--depth' | '--root' | '--ascii' | '--color' | '--no-color';
+type ShowFlag = '--plane' | '--layers' | '--depth' | '--root' | '--horizontal' | '--ascii' | '--color' | '--no-color';
 type ShowFlags = CommandArgs<ShowFlag>['flags'];
 
 const listOf = (what: string, ids: readonly string[]): string =>
@@ -85,7 +85,7 @@ function widthHint(io: CliIo, lines: readonly string[], name: string): void {
 
 /** `diagc show <name>`: the diagram as text on stdout. */
 export const show: Command<ShowFlag> = {
-  flags: ['--plane', '--layers', '--depth', '--root', '--ascii', '--color', '--no-color'],
+  flags: ['--plane', '--layers', '--depth', '--root', '--horizontal', '--ascii', '--color', '--no-color'],
   positionals: { max: 1, what: 'one diagram name' },
   whyNot: LOCKED,
   async run({ positionals, flags }, { io, usage, home, snapshots }) {
@@ -127,7 +127,17 @@ export const show: Command<ShowFlag> = {
     const pins =
       flags['--depth'] !== undefined ? depthPins(model, plane, flags['--depth']) : exportPins(model, overlay);
     const lines = await renderToLines(
-      { model, pins, ...defined({ overlay, plane, layers: flags['--layers'], root: flags['--root'] }) },
+      {
+        model,
+        pins,
+        ...defined({
+          overlay,
+          plane,
+          layers: flags['--layers'],
+          root: flags['--root'],
+          horizontal: flags['--horizontal'],
+        }),
+      },
       { ascii: flags['--ascii'] === true, color: colorModeFor(process.env, io.tty !== undefined, colorFlag(flags)) },
     );
     if (lines.length === 0) {

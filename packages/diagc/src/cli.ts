@@ -57,6 +57,8 @@ Options:
   --layers a,b    show: draw these layers in place of the plane's own ('' for none)
   --depth n       show: open only the top n levels of containers
   --root id       show: draw this container's inside only
+  --horizontal    show: a git graph across the screen, its lanes as rows, as the page
+                  draws it (default: down the screen, its lanes as columns)
   --ascii         show: plain ASCII in place of box-drawing characters
   --color, --no-color  show: colour or not, whatever stdout is (default: a terminal is)
   --json          lint: print the findings as a JSON array; diff: the changes as JSON
