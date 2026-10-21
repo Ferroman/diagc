@@ -64,6 +64,7 @@ const HELP: readonly (readonly [string, string])[] = [
   ['i', 'details of the box'],
   ['o', 'overview on / off'],
   ['L', 'legend on / off'],
+  ['H', 'a git graph across / down'],
   ['s', 'DOS style on / off'],
   ['Shift-arrows, PgUp, PgDn', 'scroll'],
   ['Home, End, mouse wheel', 'scroll'],

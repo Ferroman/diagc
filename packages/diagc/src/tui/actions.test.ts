@@ -28,7 +28,35 @@ async function feed(diagram: DiagramState, events: UserInput[], at = 0, of = mod
   return { ...step, effects };
 }
 
+/** A git graph: one lane, one tagged commit. */
+const history: DiagramModel = {
+  ...model,
+  nodes: [
+    { id: 'main', name: 'main', type: 'branch' },
+    { id: 'main-1', name: 'v1', type: 'commit' },
+  ],
+  containment: [{ parent: 'main', child: 'main-1' }],
+  relations: [],
+  layers: [],
+  planes: [{ id: 'git', name: 'Git', notation: 'git-graph' }],
+};
+
 describe('onKey', () => {
+  it('turns a git graph across the screen with H and back down it, laid out again with the selection in view', async () => {
+    const d: DiagramState = { ...openDiagram('history', history, undefined), selected: 'main-1' };
+    const across = handle(d, key('H'), await ctxOf(d, 0, history));
+    expect(across).toMatchObject({ diagram: { horizontal: true, follow: true }, effects: [{ kind: 'relayout' }] });
+    const down = handle(across.diagram, key('H'), await ctxOf(across.diagram, 0, history));
+    expect(down.diagram).not.toHaveProperty('horizontal');
+    expect(down.effects).toEqual([{ kind: 'relayout' }]);
+  });
+
+  it('says H turns a git graph only, and lays nothing out again for anything else', async () => {
+    const step = handle(opened(), key('H'), await ctxOf(opened()));
+    expect(step.diagram.message).toEqual({ text: 'only a git graph turns across the screen', error: true });
+    expect(step.effects).toEqual([]);
+  });
+
   it('switches between the DOS style and the plain one with s, which lays the picture out again', async () => {
     const ctx = await ctxOf(opened());
     expect(handle(opened(), key('s'), ctx)).toMatchObject({ style: 'dos', effects: [{ kind: 'relayout' }] });
@@ -106,8 +134,8 @@ describe('onKey', () => {
     expect([back.diagram.path, back.diagram.selected]).toEqual([[], 'p']);
   });
 
-  it('keeps the panel, the overview and the legend as they were across a plane switch', async () => {
-    const shown = { panel: true, overview: false, legend: true };
+  it('keeps the panel, the overview, the legend and a git graph’s turn as they were across a plane switch', async () => {
+    const shown = { panel: true, overview: false, legend: true, horizontal: true as const };
     expect((await feed(opened(shown), [key('p')])).diagram).toMatchObject({ plane: 'alt', ...shown });
   });
 

@@ -41,6 +41,8 @@ export interface DiagramState {
   drag?: CellPoint & { overview?: true };
   /** scroll the selection into view once the layout it waits for arrives (`settle`) */
   follow?: boolean;
+  /** a git graph turned across the screen (`H`); absent = down it */
+  horizontal?: true;
 }
 
 export interface TuiState {
@@ -117,6 +119,7 @@ export function sceneInput(
     ...(state.plane !== undefined ? { plane: state.plane } : {}),
     ...(root !== undefined ? { root } : {}),
     ...(style !== undefined ? { style } : {}),
+    ...(state.horizontal === true ? { horizontal: true } : {}),
   };
 }
 
