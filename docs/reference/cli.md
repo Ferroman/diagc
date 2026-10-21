@@ -160,14 +160,15 @@ diagc show shop --depth 1             # only the top level of groups open
 diagc show shop --plane infra --layers security
 diagc show shop --root checkout       # one group's inside
 diagc show shop --ascii --no-color    # plain ASCII, no escapes
+diagc show release --horizontal       # a git graph across the screen, as the page draws it
 ```
 
 - **Input:** one diagram name, or a path under `.diagrams/src`, read as `eject` reads one. The source is loaded and validated as `lint` loads it, so the picture is the source as it is now, compiled or not. The layout beside it (`<name>.layout.json`) gives the flow's direction and the export's folds; positions in it are not used. A layout that does not read as one is named on stderr and drawn without.
-- **What is drawn:** the first plane, or `--plane`'s; the plane's own layers, or `--layers`' (`''` for none); every group open except those the layout's `export.collapsed` folds — the PNG's folds — or, with `--depth n`, only the top `n` levels open. `--root <id>` draws one group's inside, as drilling into it does.
+- **What is drawn:** the first plane, or `--plane`'s; the plane's own layers, or `--layers`' (`''` for none); every group open except those the layout's `export.collapsed` folds — the PNG's folds — or, with `--depth n`, only the top `n` levels open. `--root <id>` draws one group's inside, as drilling into it does. A git graph runs down the screen, a column per lane; `--horizontal` turns it across, a row per lane, as the page draws it.
 - **Colour:** when stdout is a terminal, or with `--color`; never with `--no-color` or a non-empty `NO_COLOR`. `FORCE_COLOR` colours a pipe. 24-bit colour where `COLORTERM` says the terminal has it, the 256-colour palette otherwise.
 - **Width:** on a terminal narrower than the picture, one line on stderr says so and suggests `less -S` or `diagc tui`; stdout keeps the whole picture.
 - **Legend:** a declared one is printed under the picture, framed, after a blank line: over it for a `top-` position, against its right edge for a `-right` one (at its left edge when the legend is the wider). A legend that is only on offer, for shapes that say nothing about themselves, is left out, as the PNG leaves it out.
-- **Leaves out:** saved positions, the layouts of their own that the plan, git-graph and activity notations have in the browser (they draw as an ordinary graph; a fishbone is drawn as the fish), icons, images, drawings and notes.
+- **Leaves out:** saved positions, the layouts of their own that the plan and activity notations have in the browser (they draw as an ordinary graph; a fishbone is drawn as the fish and a git graph as its lanes), icons, images, drawings and notes.
 - **Exit code:** `0`, also for a view with nothing in it (`diagc: nothing to draw in <name>` on stderr); `1` with the reason on stderr for no name, an unknown name, a source that does not load, an unknown plane, layer or node, a `--root` that holds nothing, or `--color` with `--no-color`.
 
 Remote includes resolve locked, as for `lint`; `show` refuses `--update-includes`. See [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md).
@@ -202,7 +203,7 @@ diagc tui
 diagc tui shop
 ```
 
-It runs the studio's compile watcher on `./.diagrams/src` and redraws the open diagram when its source compiles or its layout changes; a failed compile keeps the last picture and shows the error in the bottom row. A diagram opens as the published page opens it: the first plane, its layers, and the groups its layout saved as unfolded. A picture bigger than the screen gets an overview in the corner, drawn as an image where the terminal speaks kitty's graphics protocol and in braille elsewhere, and a declared legend shows in the corner it names; `L` hides it. A diagram in the `dos` style is drawn in it, and `s` switches it on and off. Keys and mouse are in [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md#browse-a-diagram); `?` lists them in the viewer.
+It runs the studio's compile watcher on `./.diagrams/src` and redraws the open diagram when its source compiles or its layout changes; a failed compile keeps the last picture and shows the error in the bottom row. A diagram opens as the published page opens it: the first plane, its layers, and the groups its layout saved as unfolded. A picture bigger than the screen gets an overview in the corner, drawn as an image where the terminal speaks kitty's graphics protocol and in braille elsewhere, and a declared legend shows in the corner it names; `L` hides it. A diagram in the `dos` style is drawn in it, and `s` switches it on and off. A git graph is drawn down the screen, as `show` draws it, and `H` turns it across. Keys and mouse are in [Look at a diagram in the terminal](../how-to/look-at-a-diagram-in-the-terminal.md#browse-a-diagram); `?` lists them in the viewer.
 
 - **Style:** `--style dos` draws every diagram in the DOS style, `--style clean` every one in the terminal's own colours; any other id exits `1`. Without colour (`NO_COLOR`, `TERM=dumb`) it draws in its own look whatever the style. See [The DOS style](../how-to/look-at-a-diagram-in-the-terminal.md#the-dos-style).
 - **Needs a terminal:** with stdin or stdout not a terminal it exits `1` and points at `show`.
@@ -272,6 +273,7 @@ A command takes only the flags its row lists; any other exits `1` with the usage
 | `--layers <a,b>` | `show` | the plane's own | Draw these layers in place of the plane's; `''` for none. |
 | `--depth <n>` | `show` | every group open | Open only the top `n` levels of groups; `0` folds them all. |
 | `--root <id>` | `show` | none | Draw this group's inside only. |
+| `--horizontal` | `show` | down the screen | Draw a git graph across the screen, a row per lane, as the page draws it. |
 | `--ascii` | `show` | off | Plain ASCII in place of box-drawing characters. |
 | `--color`, `--no-color` | `show` | colour on a terminal | Colour the picture, or do not, whatever stdout is. |
 | `--labels <a,b>` | `diff` | the refs | Names for the before and after sides. |

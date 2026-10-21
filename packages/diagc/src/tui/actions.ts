@@ -1,3 +1,4 @@
+import { GIT_NOTATION } from '@diagc/core/internal';
 import type { CellPoint } from '../text/canvas';
 import type { TextStyle } from '../text/dos';
 import type { Pins } from '../text/folds';
@@ -111,8 +112,18 @@ function switchPlane(d: DiagramState, ctx: Ctx, step: 1 | -1): Step {
   );
   const plane = planes[(at + step + planes.length) % planes.length]!;
   // what the reader has open or shut stays as it was; the view is the new plane's
-  const { panel, overview, legend } = d;
-  return relayout({ ...openDiagram(d.name, ctx.model, ctx.overlay, plane.id), panel, overview, legend });
+  const { panel, overview, legend, horizontal } = d;
+  const kept = { panel, overview, legend, ...(horizontal === true ? { horizontal } : {}) };
+  return relayout({ ...openDiagram(d.name, ctx.model, ctx.overlay, plane.id), ...kept });
+}
+
+/** A git graph turned across the screen, or back down it, the selection kept in view;
+ * anything else says it does not turn, or the key would seem to do nothing. */
+function turnGit(d: DiagramState, ctx: Ctx): Step {
+  if (ctx.scene?.notation !== GIT_NOTATION) return say(d, 'only a git graph turns across the screen');
+  const { horizontal, ...rest } = d;
+  const turned: DiagramState = horizontal === true ? rest : { ...rest, horizontal: true };
+  return relayout({ ...turned, scroll: { x: 0, y: 0 }, ...(d.selected !== undefined ? { follow: true } : {}) });
 }
 
 function toggleLayer(d: DiagramState, ctx: Ctx, n: number): Step {
@@ -244,6 +255,7 @@ const KEYS: Record<string, Action> = {
   i: (d) => stay({ ...d, panel: !d.panel }),
   o: (d, ctx) => toggleOverview(d, ctx),
   L: (d, ctx) => toggleLegend(d, ctx),
+  H: (d, ctx) => turnGit(d, ctx),
   '?': (d) => stay({ ...d, help: !d.help }),
   s: (d, ctx) => ({ diagram: d, effects: [{ kind: 'relayout' }], style: otherStyle(ctx.style) }),
   r: (d) => ({ diagram: d, effects: [{ kind: 'reload' }] }),

@@ -40,6 +40,9 @@ export interface SceneInput {
   /** the style it is drawn in; absent = the terminal's own. DOS's boxes cast shadows,
    * which the picture leaves room for at its right and its foot. */
   style?: TextStyle;
+  /** a git graph across the screen, its lanes rows, as the page draws it; absent = down
+   * the screen, its lanes columns, as a terminal reads a history */
+  horizontal?: boolean;
 }
 
 /** A laid-out view: everything painting and the TUI's navigation read. */
@@ -104,13 +107,13 @@ export async function buildScene(input: SceneInput, glyphs: Glyphs): Promise<Sce
   for (const root of view.roots) walk(root, undefined);
 
   const labels = new Map(view.layoutEdges.map((e) => [e.id, edgeText(e, glyphs)]));
-  // A fishbone is the fish and a git graph its lanes, as on the page, whatever way
-  // the plane's settings say to flow.
+  // A fishbone is the fish and a git graph its lanes, whatever way the plane's
+  // settings say to flow.
   const laid =
     notation === FISHBONE_NOTATION
       ? fishCells(model, view, boxes)
       : notation === GIT_NOTATION
-        ? gitCells(model, plane, view, boxes)
+        ? gitCells(model, view, boxes, defined({ plane, across: input.horizontal }))
         : await layoutCells(view, boxes, flowOf(input), labels);
   const room = input.style === 'dos' && laid.boxes.size > 0;
   const layout = room ? { ...laid, width: laid.width + SHADOW_REACH.x, height: laid.height + SHADOW_REACH.y } : laid;

@@ -18,6 +18,7 @@ export interface FlagValues {
   '--layers': string[];
   '--depth': number;
   '--root': string;
+  '--horizontal': true;
   '--ascii': true;
   '--color': true;
   '--no-color': true;
@@ -168,6 +169,7 @@ const FLAGS: { [F in Flag]: FlagValues[F] extends true ? null : Reader<FlagValue
     return Number(next);
   },
   '--root': required('--root', 'needs a node id, e.g. --root checkout'),
+  '--horizontal': null,
   '--ascii': null,
   '--color': null,
   '--no-color': null,

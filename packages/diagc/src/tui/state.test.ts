@@ -75,6 +75,12 @@ describe('the style', () => {
     expect(sceneInput(d, model, undefined, 'dos').style).toBe('dos');
     expect(sceneInput(d, model, undefined)).not.toHaveProperty('style');
   });
+
+  it('lays a git graph out across the screen once it is turned, down it otherwise', () => {
+    const d = openDiagram('m', model, undefined);
+    expect(sceneInput({ ...d, horizontal: true }, model, undefined).horizontal).toBe(true);
+    expect(sceneInput(d, model, undefined)).not.toHaveProperty('horizontal');
+  });
 });
 
 describe('reduce on the list', () => {

@@ -35,6 +35,22 @@ const shop = diagram('shop', {
   ],
 });
 
+/** main with a tagged commit, and a feature lane branched off it. */
+const history = diagram('history', {
+  nodes: [
+    { id: 'main', name: 'main', type: 'branch' },
+    { id: 'feature', name: 'feature', type: 'branch' },
+    { id: 'main-1', name: 'v1', type: 'commit' },
+    { id: 'feature-1', name: '', type: 'commit' },
+  ],
+  containment: [
+    { parent: 'main', child: 'main-1' },
+    { parent: 'feature', child: 'feature-1' },
+  ],
+  relations: [{ id: 'b', from: 'main-1', to: 'feature-1', kind: 'branch' }],
+  planes: [{ id: 'git', name: 'Git', notation: 'git-graph' }],
+});
+
 type Flags = Parameters<typeof show.run>[0]['flags'];
 
 async function run(positionals: string[], flags: Flags = {}, tty?: { columns: number }) {
@@ -69,6 +85,19 @@ describe('show', () => {
       writeSources(dir, { shop });
       const { stdout } = await run(['shop'], { '--ascii': true });
       expect(stdout).toMatch(/^[\x20-\x7e\n]+$/);
+    });
+  });
+
+  it('draws a git graph down the screen, its lanes as columns, and across it with --horizontal', async () => {
+    await inTempDir(async (dir) => {
+      writeSources(dir, { history });
+      const down = (await run(['history'])).stdout.trimEnd().split('\n');
+      expect(down[0]).toBe('● v1');
+      expect(down.at(-1)).toMatch(/^main +feature$/);
+      const across = (await run(['history'], { '--horizontal': true })).stdout.trimEnd().split('\n');
+      expect(across[0]!.trim()).toBe('v1');
+      expect(across[1]).toMatch(/^ *●╌* main$/);
+      expect(across.at(-1)).toMatch(/●╌* feature$/);
     });
   });
 

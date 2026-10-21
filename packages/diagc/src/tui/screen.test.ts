@@ -349,6 +349,7 @@ describe('the legend', () => {
   it('is in the help', async () => {
     const lines = await frame(stateOf({ help: true }), { columns: 100, rows: 30 });
     expect(lines.some((l) => plain(l).includes('legend on / off'))).toBe(true);
+    expect(lines.some((l) => plain(l).includes('a git graph across / down'))).toBe(true);
   });
 });
 

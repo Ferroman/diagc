@@ -48,7 +48,7 @@ diagc show shop
 - `show` reads the source, not the compiled artifact, so it shows the diagram as it is now. You do not have to compile first.
 - The flow runs the way the plane's layout settings say (`direction` in `<name>.layout.json`); without one, downwards, except an activity diagram, which runs to the right, as on the page.
 - A fishbone is the fish the page draws: the spine across with the effect boxed at its head, the categories above and below it, two to a column, each on a bone slanting in to the spine (`╲` and `╱`, `\` and `/` with `--ascii`), and every cause on a line to its bone, its sub-causes on ticks to that line.
-- A git graph is its lanes, as the page draws them: a row per lane, each commit a dot (`●`, `*` with `--ascii`) at its column with its tag over it, the lane's name at the right end, and the branch-offs and merges between the rows. A column is as wide as its tags need, so no two tags on a lane run together. A stage is a dim frame across every lane, its title in its top border.
+- A git graph is its lanes, drawn down the screen as a terminal reads a history: a column per lane, each commit a dot (`●`, `*` with `--ascii`) on its row with its tag beside it, the lanes' names along the foot, and the branch-offs and merges between the columns. A lane is as wide as its widest tag or its name. A stage is a dim frame across every lane, its title in its top border past the last lane. `--horizontal` draws it across the screen, as the page does: a row per lane, each tag over its dot and the lane's name at the right end. There a column is as wide as its tags need, so no two tags on a lane run together.
 - The line tells the kind: a dashed line is an `async` or `hosted-on` relation, a heavy one is `writes`, and a boundary such as `system` has a dashed frame.
 - A diagram that [declares a legend](add-a-legend.md) gets it under the picture, framed, with a blank line between. A `top-` position puts it over the picture and a `-right` one against the picture's right edge, unless the legend is the wider of the two: then it starts at the left edge, as a `-left` one does.
 
@@ -61,6 +61,7 @@ diagc show shop --plane infra      # another plane
 diagc show shop --layers security  # these layers in place of the plane's own
 diagc show shop --layers ''        # no layers at all
 diagc show shop --root checkout    # what is inside one group
+diagc show release --horizontal    # a git graph across the screen, as the page draws it
 ```
 
 A folded group says how much it holds:
@@ -110,6 +111,7 @@ A diagram that declares a legend shows it in the corner its `position` names, as
 | a click or a drag on the overview | Go to that part of the picture. |
 | `o` | Hide or show the overview. |
 | `L` | Hide or show the legend. |
+| `H` | Turn a git graph across the screen, as the page draws it, and back down. |
 | `s` | Switch between the DOS style and the terminal's own colours. |
 | `r` | Read the diagram again. |
 | `?` | All the keys. |

@@ -192,32 +192,65 @@ describe('renderToLines', () => {
     expect(ascii[7]).toContain('day --/      No fixture with real order data /   /');
   });
 
-  it('draws a git graph as its lanes: dots at their columns, tags over them, the names at the right', async () => {
+  it('draws a git graph down the screen: a column a lane, a dot a commit with its tag beside it, the names at the foot', async () => {
     const home = homePaths(findHome(fileURLToPath(import.meta.url)));
     const file = path.join(home.root, '.diagrams', 'src', 'examples', 'git-graph', 'starter.diagram.ts');
     const model = await loadModel(file, { coreEntry: home.coreEntry });
     expect(await renderToLines({ model, pins: {} }, plain)).toEqual([
+      '●',
+      '├╌╌╌╌╌╌╌╌╌┐',
+      '╎         ●',
+      '╎         ╎',
+      '╎         ●',
+      '├╌╌╌╌╌╌╌╌╌┘',
+      '● v3.2.0',
+      '╎',
+      'main      dark-mode',
+    ]);
+    const ascii = await renderToLines({ model, pins: {} }, { ascii: true, color: 'none' });
+    expect(ascii.slice(0, 3)).toEqual(['*', '+.........+', ':         *']);
+  });
+
+  it('draws a git graph across the screen when asked: dots at their columns, tags over them, the names at the right', async () => {
+    const home = homePaths(findHome(fileURLToPath(import.meta.url)));
+    const file = path.join(home.root, '.diagrams', 'src', 'examples', 'git-graph', 'starter.diagram.ts');
+    const model = await loadModel(file, { coreEntry: home.coreEntry });
+    expect(await renderToLines({ model, pins: {}, horizontal: true }, plain)).toEqual([
       '           v3.2.0',
       '  ●╌╌╌╌╌╌╌╌╌┬╌●╌╌ main',
       '  ╎         ╎',
       '  ╎         ╎',
       '  └╌╌╌●╌╌╌●╌┘     dark-mode',
     ]);
-    const ascii = await renderToLines({ model, pins: {} }, { ascii: true, color: 'none' });
+    const ascii = await renderToLines({ model, pins: {}, horizontal: true }, { ascii: true, color: 'none' });
     expect(ascii[1]).toBe('  *.........+.*.. main');
   });
 
-  it('draws a git stage as a dim frame titled in its colour, its sides broken where a lane runs across', async () => {
+  it('draws a git stage down the screen as a dim frame titled in its colour past the lanes, broken where a lane runs through', async () => {
     const home = homePaths(findHome(fileURLToPath(import.meta.url)));
     const file = path.join(home.root, '.diagrams', 'src', 'examples', 'git-graph', 'release-train.diagram.ts');
     const model = await loadModel(file, { coreEntry: home.coreEntry });
     const lines = await renderToLines({ model, pins: {} }, plain);
+    expect(lines[2]).toMatch(/^┌╌╎╌+╎╌+ 24\.10 train ╌┐$/);
+    expect(lines[3]![0]).toBe('╎');
+    expect(lines.at(-1)).toMatch(/^ {2}main +release\/24\.10 +hotfix\/24\.10\.1 +release\/24\.11$/);
+    const orange = '38;2;224;142;11m';
+    const coloured = await renderToLines({ model, pins: {} }, { ascii: false, color: 'truecolor' });
+    expect(coloured[2]).toContain(`\x1b[1;${orange} 24.10 train `);
+    expect(coloured[2]).toMatch(new RegExp(`^\x1b\\[2;${orange}┌╌`));
+  });
+
+  it('draws a git stage across the screen as a dim frame titled in its colour, its sides broken where a lane runs across', async () => {
+    const home = homePaths(findHome(fileURLToPath(import.meta.url)));
+    const file = path.join(home.root, '.diagrams', 'src', 'examples', 'git-graph', 'release-train.diagram.ts');
+    const model = await loadModel(file, { coreEntry: home.coreEntry });
+    const lines = await renderToLines({ model, pins: {}, horizontal: true }, plain);
     expect(lines[0]).toMatch(/^ *┌╌ 24\.10 train ╌*┐ *┌╌ 24\.11 train ╌*┐$/);
     const left = lines[0]!.indexOf('┌');
     expect(lines[1]![left]).toBe('╎');
     expect(lines[2]![left]).toBe('╌'); // main's line, running across
     const orange = '38;2;224;142;11m';
-    const coloured = await renderToLines({ model, pins: {} }, { ascii: false, color: 'truecolor' });
+    const coloured = await renderToLines({ model, pins: {}, horizontal: true }, { ascii: false, color: 'truecolor' });
     expect(coloured[0]).toContain(`\x1b[1;${orange} 24.10 train `);
     expect(coloured[0]).toContain(`\x1b[2;${orange}┌╌`);
   });
