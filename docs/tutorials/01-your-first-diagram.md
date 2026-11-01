@@ -129,7 +129,7 @@ Embed the PNG in any markdown file:
 ![Shop](.diagrams/static/shop.png)
 ```
 
-> **If you see `No Chrome found`:** the PNG step drives a real browser. Install Chrome or Chromium, or point `CHROME_PATH` at an existing binary. `diagc publish --no-images` skips PNGs and still writes the HTML.
+> **If you see `No Chrome found`:** the PNG step drives a real browser. Run `npx playwright-core install chromium` once (diagc finds what it installs), install Chrome or Chromium, or point `CHROME_PATH` at an existing binary. `diagc publish --no-images` skips PNGs and still writes the HTML.
 
 ## What you have now
 

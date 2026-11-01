@@ -6,6 +6,8 @@ import { diagramNames, pngRenderer, resolveSources, sourceOf, warnNoSources } fr
 const snapshot = vi.hoisted(() => ({
   findChrome: vi.fn((): string | undefined => undefined),
   renderPng: async () => {},
+  NO_CHROME_MESSAGE:
+    "No Chrome found — writing HTML only. Get one with 'npx playwright-core install chromium' (diagc finds it there), set CHROME_PATH, or use --no-images.",
 }));
 vi.mock('../publish/snapshot', () => snapshot);
 
@@ -108,7 +110,7 @@ describe('pngRenderer', () => {
     expect(await pngRenderer(io, true)).toBeUndefined();
     expect([io.stdout, io.stderr]).toEqual([
       '',
-      'No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.\n',
+      "No Chrome found — writing HTML only. Get one with 'npx playwright-core install chromium' (diagc finds it there), set CHROME_PATH, or use --no-images.\n",
     ]);
   });
 

@@ -149,7 +149,7 @@ diagc publish --single-file                 # every page whole, to send on its o
 
 **Requires the built viewer.** An installed `diagc` ships it. From a checkout you must build it once (`pnpm build:cli`); until then publish exits `1` with `viewer not built`.
 
-**PNG export needs a browser.** If none is found, publish prints `No Chrome found — writing HTML only` on stderr and continues without images. See `CHROME_PATH` below.
+**PNG export needs a browser.** If none is found, publish prints `No Chrome found — writing HTML only` on stderr, names the way to get one (`npx playwright-core install chromium`, whose Chromium it then finds in Playwright's cache), and continues without images. See `CHROME_PATH` below.
 
 **Remote includes resolve locked**, same as `compile`; `diagc publish --update-includes` refreshes and re-pins them first. Publish always compiles the whole source tree regardless of `files...` (that only filters which pages are rendered below it), so an `--update-includes` run here prunes unreferenced entries whenever every source compiles — there is no scoped/unpruned form the way a filtered `compile` run has. A source that fails may never have reached its includes, so then nothing is pruned.
 
@@ -294,7 +294,8 @@ Anything not recognised as a flag is collected as `files...`: any number for `co
 
 | Variable | Read by | Meaning |
 | --- | --- | --- |
-| `CHROME_PATH` | `publish` | Path to a Chrome/Chromium binary for PNG export. Checked before the default locations. |
+| `CHROME_PATH` | `publish`, `diff` | Path to a Chrome/Chromium binary for PNG export. Checked before the system locations and Playwright's browser cache. |
+| `PLAYWRIGHT_BROWSERS_PATH` | `publish`, `diff` | Where Playwright keeps its browsers, if not the platform's cache; `publish` looks there for a Chromium installed by `npx playwright-core install chromium`. |
 | `DIAGC_AUTH_TOKENS` | `--update-includes` | Credentials for private include hosts: `;`-separated `token@host` (bearer) or `user:pass@host` (basic). Sent over https only, to the named host only. See [Compose diagrams](../how-to/compose-diagrams.md#private-hosts). |
 | `DIAGRAMS_DIR` | studio server | Source directory. Set by `diagc studio`. |
 | `ARTIFACTS_DIR` | studio server | Artifact directory. Set by `diagc studio`. |

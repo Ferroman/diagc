@@ -65,16 +65,23 @@ Two more, smaller:
 The PNG step drives a real headless browser. If none is found you get:
 
 ```
-No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.
+No Chrome found — writing HTML only. Get one with 'npx playwright-core install chromium' (diagc finds it there), set CHROME_PATH, or use --no-images.
 ```
 
-Point it at any Chrome or Chromium:
+The quickest fix, on a laptop or a stock CI runner alike, is the one the line names:
+
+```bash
+npx playwright-core install chromium   # once; diagc finds what it installs
+diagc publish
+```
+
+It downloads a Chromium into Playwright's own cache (`~/.cache/ms-playwright` on Linux, `~/Library/Caches/ms-playwright` on macOS, `%LOCALAPPDATA%\ms-playwright` on Windows, or wherever `PLAYWRIGHT_BROWSERS_PATH` points), which `publish` searches after the system places. Or point it at any Chrome or Chromium:
 
 ```bash
 CHROME_PATH=/path/to/chrome diagc publish
 ```
 
-Checked automatically: `/usr/bin/google-chrome`, `/usr/bin/google-chrome-stable`, `/usr/bin/chromium`, `/usr/bin/chromium-browser`, `/snap/bin/chromium`, `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`.
+Checked automatically, in order: `CHROME_PATH`; `/usr/bin/google-chrome`, `/usr/bin/google-chrome-stable`, `/usr/bin/chromium`, `/usr/bin/chromium-browser`, `/snap/bin/chromium`, `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`; then Playwright's cache, the newest full Chromium first and its headless shell after.
 
 ## Share an interactive page
 

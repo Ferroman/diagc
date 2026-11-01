@@ -38,7 +38,7 @@ export async function pngRenderer(
   if (!images) return undefined;
   const snapshot = await import('../publish/snapshot');
   if (snapshot.findChrome() === undefined) {
-    io.err('No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.');
+    io.err(snapshot.NO_CHROME_MESSAGE);
     return undefined;
   }
   return snapshot.renderPng;
