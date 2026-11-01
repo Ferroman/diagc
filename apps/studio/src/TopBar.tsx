@@ -3,12 +3,14 @@ import { SOURCE_URL } from '@diagc/core/internal';
 import type { NotesToggle } from './canvas-editing/canvasEditHandlers';
 import { DiagramPicker } from './diagrams/DiagramPicker';
 import { diagramMenuItems } from './diagrams/diagramMenuItems';
+import { readOnlyMenuItems } from './diagrams/readOnlyMenuItems';
 import { downloadPage } from './diagrams/downloadPage';
 import { downloadPng } from './diagrams/downloadPng';
 import type { DeepLink } from './diagrams/useDeepLink';
 import type { DiagramActions } from './diagrams/useDiagramActions';
 import type { DiagramBoot } from './diagrams/useDiagramBoot';
 import type { DiagramOnScreen } from './diagrams/useDiagramView';
+import { getHost } from './host';
 import { useKeyHint } from './hotkeys/HotkeysContext';
 import type { HotkeyPrefs } from './hotkeys/useHotkeyPrefs';
 import type { ViewArrangement } from './layout/useViewArrangement';
@@ -21,7 +23,7 @@ export interface TopBarProps {
   boot: Pick<DiagramBoot, 'names' | 'ownedNames' | 'canDesign'>;
   deepLink: Pick<DeepLink, 'selected' | 'selectDiagram'>;
   session: Pick<EditSession, 'editing' | 'leaveEdit' | 'layoutApiRef'>;
-  view: Pick<DiagramOnScreen, 'model' | 'enterEditFromSource'>;
+  view: Pick<DiagramOnScreen, 'model' | 'current' | 'enterEditFromSource'>;
   /** opening another diagram resets the view, as the picker does */
   nav: Pick<ViewNavigation, 'resetView'>;
   actions: DiagramActions;
@@ -109,9 +111,24 @@ export function TopBar({
             </button>
           )
         ) : (
-          <span className="chip read-only" title="Compiled from TypeScript — edit the source">
+          // Not a label: the first screen after `diagc init` is a compiled diagram,
+          // and a chip that only says "no" is where a new user gives up. It says
+          // where the diagram comes from and offers the two ways on.
+          <MenuButton
+            label="Read-only diagram"
+            className="chip read-only"
+            header={
+              view.current?.source !== undefined ? `Compiled from ${view.current.source}` : 'Compiled from TypeScript'
+            }
+            items={readOnlyMenuItems({
+              source: view.current?.source,
+              hint,
+              actions,
+              openSource: () => getHost().openSource(selected),
+            })}
+          >
             read-only
-          </span>
+          </MenuButton>
         ))}
       <span className="spacer" />
       {/* Stays up here, unlike the other layout chips: it appears only when

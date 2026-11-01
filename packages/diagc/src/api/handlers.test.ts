@@ -26,6 +26,7 @@ describe('the handlers module', () => {
       'readAsset',
       'readComposedDiagram',
       'readDiagram',
+      'readDiagramSource',
       'readLibrary',
       'renameDiagram',
       'saveAsset',
@@ -46,6 +47,7 @@ describe('the handlers module', () => {
       model: DiagramModel | null;
       issues: { message: string }[];
       editable: boolean;
+      source?: string;
     }>();
     expectTypeOf(readAsset).returns.resolves.toEqualTypeOf<HandlerResult & { bytes?: Buffer; contentType?: string }>();
   });

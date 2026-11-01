@@ -18,6 +18,8 @@ import type DiagcPlugin from './main';
 export interface VaultHost {
   apiFetch: (url: string, init?: RequestInit) => Promise<Response>;
   openLink: (link: string) => void;
+  /** the `.diagram.ts` a compiled diagram comes from, opened in the vault's own editor */
+  openSource: (name: string) => void;
   assetBase: string;
   libraryBase: string;
 }
@@ -63,6 +65,7 @@ export function buildVaultHost(app: App, plugin: DiagcPlugin, sourcePath = ''): 
       if (target !== null) void app.workspace.openLinkText(target, sourcePath, true);
       else if (/^https?:/.test(link)) window.open(link, '_blank', 'noopener');
     },
+    openSource: (name) => void app.workspace.openLinkText(`${folder}/src/${name}.diagram.ts`, '', true),
     assetBase: resourceBase(app, `${folder}/src/assets`),
     libraryBase: resourceBase(app, `${pluginDir}/library`),
   };

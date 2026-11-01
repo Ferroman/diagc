@@ -41,6 +41,7 @@ const DEFS = [
   { id: 'diagram.new', label: 'New diagram', group: 'Diagram', scope: 'both', defaults: [] },
   { id: 'diagram.duplicate', label: 'Duplicate diagram', group: 'Diagram', scope: 'view', defaults: [] },
   { id: 'diagram.eject', label: 'Eject to TypeScript', group: 'Diagram', scope: 'view', defaults: [] },
+  { id: 'diagram.delete', label: 'Delete diagram', group: 'Diagram', scope: 'view', defaults: [] },
 
   { id: 'edit.add-node', label: 'Add node', group: 'Editing', scope: 'edit', defaults: ['N'] },
   { id: 'edit.add-child', label: 'Add the expected child', group: 'Editing', scope: 'edit', defaults: ['Tab'] },

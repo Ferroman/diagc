@@ -14,6 +14,8 @@ export interface LoadedArtifact {
   layout?: LayoutOverlay;
   drawings?: Drawings;
   issues: { code?: string; message: string }[];
+  /** the `.diagram.ts` a compiled diagram comes from, as the API names it */
+  source?: string;
 }
 
 /** One diagram as delivered by `GET /api/diagrams`. */
@@ -22,6 +24,7 @@ export interface ApiDiagram {
   model: DiagramModel | null;
   issues: { message: string }[];
   editable: boolean;
+  source?: string;
 }
 
 /** Build the studio's diagram map from the boot API responses. Each model is
@@ -43,20 +46,22 @@ export function loadArtifacts(
     // Same trust rule as the layout: the server only parses, the guard decides.
     const rawDrawings = drawings[d.name];
     const withDrawings = isDrawings(rawDrawings) ? { drawings: rawDrawings } : {};
+    const withSource = defined({ source: d.source });
     if (d.model === null || (d.model as { version?: unknown }).version !== 1) {
       out[d.name] = {
         name: d.name,
         issues: d.issues.length > 0 ? d.issues : [{ message: 'Not a version-1 diagram model' }],
         ...withLayout,
         ...withDrawings,
+        ...withSource,
       };
       continue;
     }
     const issues = validate(d.model);
     out[d.name] =
       issues.length > 0
-        ? { name: d.name, issues, ...withLayout, ...withDrawings }
-        : { name: d.name, model: d.model, issues: [], ...withLayout, ...withDrawings };
+        ? { name: d.name, issues, ...withLayout, ...withDrawings, ...withSource }
+        : { name: d.name, model: d.model, issues: [], ...withLayout, ...withDrawings, ...withSource };
   }
   return out;
 }

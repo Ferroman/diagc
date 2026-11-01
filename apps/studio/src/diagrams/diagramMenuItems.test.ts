@@ -9,6 +9,7 @@ const context = (over: Partial<DiagramMenuContext> = {}): DiagramMenuContext => 
     renameDiagram: vi.fn(async () => {}),
     duplicateDiagram: vi.fn(async () => {}),
     ejectDiagram: vi.fn(async () => {}),
+    deleteDiagram: vi.fn(async () => {}),
   },
   exportPng: vi.fn(),
   exportPage: vi.fn(),
@@ -16,7 +17,7 @@ const context = (over: Partial<DiagramMenuContext> = {}): DiagramMenuContext => 
 });
 
 describe('diagramMenuItems', () => {
-  it('lists Rename, the two exports, Duplicate and Eject for an owned diagram on screen', () => {
+  it('lists Rename, the two exports, Duplicate, Eject and Delete for an owned diagram on screen', () => {
     // Breaks if the menu reorders, or a row loses its condition.
     expect(diagramMenuItems(context()).map((i) => i.id)).toEqual([
       'rename',
@@ -24,6 +25,7 @@ describe('diagramMenuItems', () => {
       'export-page',
       'duplicate',
       'eject',
+      'delete',
     ]);
   });
 
@@ -34,7 +36,7 @@ describe('diagramMenuItems', () => {
       'export-page',
       'duplicate',
     ]);
-    expect(diagramMenuItems(context({ hasModel: false })).map((i) => i.id)).toEqual(['rename', 'eject']);
+    expect(diagramMenuItems(context({ hasModel: false })).map((i) => i.id)).toEqual(['rename', 'eject', 'delete']);
   });
 
   it("names each row's key in its title, and runs its action", () => {
@@ -47,6 +49,7 @@ describe('diagramMenuItems', () => {
       'Save a web page anyone can open in a browser, all in one file: the diagram to explore, with a light/dark switch and a style picker. Made from what is saved — positions not yet saved are left out',
       'Copy this diagram — layout and all — to a new editable one and open it [diagram.duplicate]',
       'Promote this diagram to a TypeScript source — it becomes read-only here [diagram.eject]',
+      'Delete this diagram — its source, layout and drawings are removed from disk [diagram.delete]',
     ]);
     for (const item of items) item.onSelect();
     expect(c.actions.renameDiagram).toHaveBeenCalledTimes(1);
@@ -54,5 +57,6 @@ describe('diagramMenuItems', () => {
     expect(c.exportPage).toHaveBeenCalledTimes(1);
     expect(c.actions.duplicateDiagram).toHaveBeenCalledTimes(1);
     expect(c.actions.ejectDiagram).toHaveBeenCalledTimes(1);
+    expect(c.actions.deleteDiagram).toHaveBeenCalledTimes(1);
   });
 });

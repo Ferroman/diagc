@@ -9,6 +9,7 @@ export {
   listDiagramModels,
   readComposedDiagram,
   readDiagram,
+  readDiagramSource,
   renameDiagram,
   saveDiagram,
   type DiagramEntry,

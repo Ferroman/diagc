@@ -25,7 +25,7 @@ export interface UseDiagramActionsOptions {
   current: LoadedArtifact | undefined;
   names: string[];
   ownedNames: Set<string>;
-  store: Pick<DiagramStore, 'rename' | 'putDraft' | 'markOwned' | 'disown'>;
+  store: Pick<DiagramStore, 'rename' | 'putDraft' | 'markOwned' | 'disown' | 'remove'>;
   selectDiagram: DeepLink['selectDiagram'];
   renameSelected: DeepLink['renameSelected'];
   startEditing: EditSession['startEditing'];
@@ -43,6 +43,8 @@ export interface DiagramActions {
   duplicateDiagram: () => Promise<void>;
   /** Promote the selected JSON-backed diagram to a generated TypeScript source. */
   ejectDiagram: () => Promise<void>;
+  /** Remove the selected owned diagram from disk, and open the next one. */
+  deleteDiagram: () => Promise<void>;
 }
 
 /** Prompt for a name, create an empty diagram server-side, and edit it. */
@@ -192,7 +194,35 @@ async function ejectDiagram(o: UseDiagramActionsOptions): Promise<void> {
 }
 
 /**
- * Diagram lifecycle (create/rename/duplicate) — the flows that talk to the dev
+ * Delete the selected owned diagram: its source and sidecars go from disk (and
+ * its stale artifact with them, server-side), then it leaves every store and
+ * the studio moves on to its neighbour in the list — the next name, else the
+ * previous, else nothing. View mode only, and only a diagram the studio owns: a
+ * compiled diagram is its TypeScript's to delete.
+ */
+async function deleteDiagram(o: UseDiagramActionsOptions): Promise<void> {
+  const { selected, names, ownedNames, store } = o;
+  if (o.editing || !ownedNames.has(selected)) return;
+  const ok = await getHost().confirmDialog(
+    `Delete '${selected}'? Its source, layout and drawings are removed from disk.`,
+  );
+  if (!ok) return;
+  const res = await getHost().apiFetch(`/api/diagrams/${selected}`, { method: 'DELETE' });
+  if (!res.ok) {
+    getHost().notify(`Could not delete '${selected}'`);
+    return;
+  }
+  const at = names.indexOf(selected);
+  const next = names[at + 1] ?? names[at - 1] ?? '';
+  // One commit (automatic batching), as rename: the selection never names a
+  // diagram the store no longer holds.
+  store.remove(selected);
+  o.selectDiagram(next);
+  o.resetView();
+}
+
+/**
+ * Diagram lifecycle (create/rename/duplicate/delete) — the flows that talk to the dev
  * API about whole diagrams and then re-key the artifact store + selection. One
  * function each above; the hook hands them this render's options.
  */
@@ -202,5 +232,6 @@ export function useDiagramActions(options: UseDiagramActionsOptions): DiagramAct
     renameDiagram: () => renameDiagram(options),
     duplicateDiagram: () => duplicateDiagram(options),
     ejectDiagram: () => ejectDiagram(options),
+    deleteDiagram: () => deleteDiagram(options),
   };
 }

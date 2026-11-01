@@ -63,3 +63,26 @@ describe('loadArtifacts', () => {
     expect(arts['bad']?.drawings).toBeUndefined();
   });
 });
+
+describe('where a diagram comes from', () => {
+  it('keeps the source the API names, on a loaded model and on one that failed', () => {
+    const ok = {
+      version: 1 as const,
+      id: 'a',
+      name: 'a',
+      nodes: [],
+      containment: [],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
+    const out = loadArtifacts([
+      { name: 'a', model: ok, issues: [], editable: false, source: 'a.diagram.ts' },
+      { name: 'b', model: null, issues: [{ message: 'no' }], editable: false, source: 'team/b.diagram.ts' },
+      { name: 'c', model: ok, issues: [], editable: true },
+    ]);
+    expect(out['a']?.source).toBe('a.diagram.ts');
+    expect(out['b']?.source).toBe('team/b.diagram.ts');
+    expect(out['c']).not.toHaveProperty('source');
+  });
+});

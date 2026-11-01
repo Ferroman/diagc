@@ -40,6 +40,9 @@ export interface HostAdapter {
   confirmDialog(message: string): Promise<boolean>;
   /** fire-and-forget notice; default wraps window.alert (same focus caveat) */
   notify(message: string): void;
+  /** show the TypeScript a compiled diagram comes from; default opens the API's
+   * text of it in a new tab. Obsidian opens the file in the vault instead. */
+  openSource(name: string): void;
 }
 
 export const defaultHost: HostAdapter = {
@@ -65,6 +68,7 @@ export const defaultHost: HostAdapter = {
   promptText: async (message, initial) => window.prompt(message, initial),
   confirmDialog: async (message) => window.confirm(message),
   notify: (message) => window.alert(message),
+  openSource: (name) => window.open(`/api/diagrams/${name}/source`, '_blank', 'noopener'),
 };
 
 let current: HostAdapter = defaultHost;

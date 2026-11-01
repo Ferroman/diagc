@@ -11,6 +11,7 @@ import {
   listDiagramModels,
   readComposedDiagram,
   readDiagram,
+  readDiagramSource,
   renameDiagram,
   saveDiagram,
   type DiagramEntry,
@@ -708,7 +709,7 @@ describe('listDiagramModels entries', () => {
               issues: [
                 {
                   message:
-                    "'Bad' is read-only here: the studio saves names of lowercase letters, digits, '-' and '/', none ending in /rename, /eject or /composed. Rename the file to edit it.",
+                    "'Bad' is read-only here: the studio saves names of lowercase letters, digits, '-' and '/', none ending in /rename, /eject, /composed or /source. Rename the file to edit it.",
                 },
                 { message: "Could not read model for 'Bad'" },
               ],
@@ -898,5 +899,46 @@ describe('deleteDiagram', () => {
     );
     expect(r).toEqual({ status: 200, body: { ok: true } });
     expect(await readdir(dir)).toEqual([]);
+  });
+});
+
+describe('readDiagramSource', () => {
+  it('answers the TypeScript source as plain text, 404 without one, 400 for an unsafe name', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    await mkdir(path.join(dir, 'team'));
+    const ts = "import { model } from '@diagc/core';\nexport default model('shop');\n";
+    await writeFile(path.join(dir, 'team', 'shop.diagram.ts'), ts);
+    const r = (await readDiagramSource(dir, 'team/shop')) as { status: number; bytes?: Buffer; contentType?: string };
+    expect([r.status, r.contentType, r.bytes?.toString('utf8')]).toEqual([200, 'text/plain; charset=utf-8', ts]);
+    expect((await readDiagramSource(dir, 'team/none')).status).toBe(404);
+    expect((await readDiagramSource(dir, '../x')).status).toBe(400);
+    const route = await runRoute(
+      { method: 'GET', url: '/api/diagrams/team/shop/source' },
+      { diagramsDir: dir, artifactsDir: dir },
+      handlers,
+    );
+    expect(route).toMatchObject({ status: 200, contentType: 'text/plain; charset=utf-8' });
+  });
+});
+
+describe('listDiagramModels: where a compiled diagram comes from', () => {
+  it('names the .diagram.ts beside a compiled artifact, and nothing for a JSON source or a bare artifact', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'diagc-models-'));
+    const src = path.join(root, 'src');
+    const art = path.join(root, 'art');
+    await mkdir(path.join(src, 'team'), { recursive: true });
+    await mkdir(path.join(art, 'team'), { recursive: true });
+    const json = (id: string) =>
+      JSON.stringify({ version: 1, id, name: id, nodes: [], containment: [], relations: [], layers: [], planes: [] });
+    await writeFile(path.join(src, 'team', 'arch.diagram.ts'), 'export default {};');
+    await writeFile(path.join(art, 'team', 'arch.diagram.json'), json('arch'));
+    await writeFile(path.join(src, 'flows.diagram.json'), json('flows'));
+    await writeFile(path.join(art, 'bare.diagram.json'), json('bare'));
+    const body = (await listDiagramModels(src, art)).body as { diagrams: DiagramEntry[] };
+    const byName = Object.fromEntries(body.diagrams.map((d) => [d.name, d]));
+    expect(byName['team/arch']).toMatchObject({ editable: false, source: 'team/arch.diagram.ts' });
+    expect(byName['flows']).not.toHaveProperty('source');
+    expect(byName['bare']).not.toHaveProperty('source');
+    await rm(root, { recursive: true, force: true });
   });
 });

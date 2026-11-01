@@ -130,6 +130,7 @@ interface DiagramFixture {
   model: unknown;
   issues: { message: string }[];
   editable: boolean;
+  source?: string;
 }
 
 // Route-driven fetch stub shared by every case below. `opts.extra` is tried
@@ -175,6 +176,7 @@ describe('editor shell', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    setHost(defaultHost);
   });
 
   it('offers Edit for owned diagrams, dispatches edits, saves both files', async () => {
@@ -1514,6 +1516,78 @@ describe('editor shell', () => {
     });
   });
 
+  it('the read-only chip opens a menu that says where the diagram comes from, with Open source and a copy', async () => {
+    vi.stubGlobal(
+      'fetch',
+      stubFetch([{ name: 'two', model: twoModel, issues: [], editable: false, source: 'two.diagram.ts' }]),
+    );
+    const openSource = vi.fn();
+    setHost({ ...defaultHost, openSource });
+    render(<App />);
+    const chip = await screen.findByRole('button', { name: 'Read-only diagram' });
+    expect(chip.textContent).toBe('read-only');
+    expect(screen.queryByRole('button', { name: /^edit$/i })).toBeNull();
+    fireEvent.click(chip);
+    expect(screen.getByText('Compiled from two.diagram.ts')).toBeDefined();
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual([
+      'Open source',
+      'Copy to editable diagram',
+    ]);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Open source' }));
+    expect(openSource).toHaveBeenCalledWith('two');
+    fireEvent.click(chip);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy to editable diagram' }));
+    // the copy is Duplicate under its first-screen name: a JSON twin, opened for editing
+    await waitFor(() => {
+      const post = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        (c) => String(c[0]) === '/api/diagrams/two-copy' && (c[1] as RequestInit | undefined)?.method === 'POST',
+      );
+      expect(post).toBeDefined();
+    });
+    expect(await screen.findByRole('button', { name: /^save$/i })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Read-only diagram' })).toBeNull();
+  });
+
+  it('a diagram whose source is not known still gets the copy', async () => {
+    render(<App />);
+    await screen.findByRole('button', { name: /^edit$/i });
+    fireEvent.click(screen.getByRole('button', { name: /^Diagram:/ }));
+    fireEvent.click(screen.getByRole('option', { name: 'two' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Read-only diagram' }));
+    expect(screen.getByText('Compiled from TypeScript')).toBeDefined();
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Copy to editable diagram']);
+  });
+
+  it('Delete asks, removes the diagram, and opens the next one', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<App />);
+    // 'sketch' is the owned diagram in the fixture, selected by default.
+    await screen.findByRole('button', { name: /^edit$/i });
+    await pickDiagramAction('Delete');
+    await waitFor(() => {
+      const del = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        (c) => String(c[0]) === '/api/diagrams/sketch' && (c[1] as RequestInit | undefined)?.method === 'DELETE',
+      );
+      expect(del).toBeDefined();
+    });
+    expect(window.confirm).toHaveBeenCalledWith(
+      "Delete 'sketch'? Its source, layout and drawings are removed from disk.",
+    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Diagram: two' })).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: /^Diagram:/ }));
+    expect(screen.queryByRole('option', { name: 'sketch' })).toBeNull();
+    expect(screen.getByRole('option', { name: 'two' })).toBeDefined();
+  });
+
+  it('Delete is not offered for a diagram compiled from TypeScript', async () => {
+    render(<App />);
+    await screen.findByRole('button', { name: /^edit$/i });
+    fireEvent.click(screen.getByRole('button', { name: /^Diagram:/ }));
+    fireEvent.click(screen.getByRole('option', { name: 'two' }));
+    await screen.findByRole('button', { name: 'Read-only diagram' });
+    expect(diagramActions()).not.toContain('Delete');
+  });
+
   it('Eject promotes an owned diagram and flips it read-only', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<App />);
@@ -1851,6 +1925,7 @@ describe('editor shell', () => {
         'Export web page',
         'Duplicate',
         'Eject',
+        'Delete',
       ]);
       fireEvent.click(screen.getByRole('menuitem', { name: 'Duplicate' }));
       expect(screen.queryByRole('menu')).toBeNull();

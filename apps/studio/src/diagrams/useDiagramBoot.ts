@@ -21,6 +21,8 @@ export interface DiagramStore {
   markOwned: (name: string) => void;
   /** `name` is no longer the studio's to edit (ejected to TypeScript) */
   disown: (name: string) => void;
+  /** `name` is gone from disk (deleted): out of every store, ownership included */
+  remove: (name: string) => void;
 }
 
 export interface DiagramBoot extends DiagramStore {
@@ -162,5 +164,22 @@ export function useDiagramBoot(): DiagramBoot {
         next.delete(name);
         return next;
       }),
+    remove: (name) => {
+      // Out of all three, as rename moves in all three: whichever held the
+      // content, the name must leave `names` or the picker keeps offering it.
+      const drop = (rec: Record<string, LoadedArtifact>): Record<string, LoadedArtifact> => {
+        if (!(name in rec)) return rec;
+        const { [name]: _gone, ...rest } = rec;
+        return rest;
+      };
+      setLoaded(drop);
+      setSources(drop);
+      setDrafts(drop);
+      setOwnedNames((s) => {
+        const next = new Set(s);
+        next.delete(name);
+        return next;
+      });
+    },
   };
 }

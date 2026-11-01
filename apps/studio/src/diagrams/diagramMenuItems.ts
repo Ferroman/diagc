@@ -9,7 +9,7 @@ export interface DiagramMenuContext {
   hasModel: boolean;
   /** ' (key)' for a button's title, or '' */
   hint: (id: ActionId) => string;
-  actions: Pick<DiagramActions, 'renameDiagram' | 'duplicateDiagram' | 'ejectDiagram'>;
+  actions: Pick<DiagramActions, 'renameDiagram' | 'duplicateDiagram' | 'ejectDiagram' | 'deleteDiagram'>;
   /** save the canvas as drawn as a PNG */
   exportPng: () => void;
   /** save the diagram as one web page, the one `diagc publish` writes */
@@ -69,6 +69,14 @@ export const diagramMenuItems = ({
           label: 'Eject',
           title: `Promote this diagram to a TypeScript source — it becomes read-only here${hint('diagram.eject')}`,
           onSelect: () => void actions.ejectDiagram(),
+        },
+        // Last, and only for a diagram the studio owns: a compiled one is its
+        // TypeScript's to delete, where the file is.
+        {
+          id: 'delete',
+          label: 'Delete',
+          title: `Delete this diagram — its source, layout and drawings are removed from disk${hint('diagram.delete')}`,
+          onSelect: () => void actions.deleteDiagram(),
         },
       ]
     : []),

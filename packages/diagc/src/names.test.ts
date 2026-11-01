@@ -20,6 +20,7 @@ describe('isSafeName', () => {
     expect(isSafeName('team/rename')).toBe(false);
     expect(isSafeName('x/eject')).toBe(false);
     expect(isSafeName('a/b/composed')).toBe(false);
+    expect(isSafeName('team/source')).toBe(false);
   });
 
   it('takes those words where no route mistakes them: alone, or as a folder', () => {
@@ -27,6 +28,7 @@ describe('isSafeName', () => {
     expect(isSafeName('rename')).toBe(true);
     expect(isSafeName('eject')).toBe(true);
     expect(isSafeName('composed')).toBe(true);
+    expect(isSafeName('source')).toBe(true);
     expect(isSafeName('rename/x')).toBe(true);
     expect(isSafeName('team/renamed')).toBe(true);
   });
