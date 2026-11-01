@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "scripts": { "build": "vite build" },
+  "scripts": { "build": "vite build && vite build -c vite.shared.config.ts" },
   "dependencies": {
     "@diagc/core": "workspace:*",
     "@diagc/icons": "workspace:*",

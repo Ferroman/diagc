@@ -1,9 +1,10 @@
+import { existsSync, readdirSync } from 'node:fs';
 import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { model } from '@diagc/core/internal';
-import { DG_DATA_SENTINEL } from './html';
+import { DG_DATA_SENTINEL, SOURCE_URL } from './html';
 import { publishDiagrams } from './publish';
 
 async function fixture() {
@@ -461,5 +462,74 @@ describe('publishDiagrams', () => {
     expect(warnings).toEqual([
       'publish: no picture of plane "Target VPC" of diagram "planed": planed.target-vpc.png is diagram "planed.target-vpc"\'s.',
     ]);
+  });
+});
+
+describe('pages that share one viewer', () => {
+  /** a built viewer folder, as `apps/viewer/dist/shared` is: a script, a stylesheet, a font */
+  async function sharedViewer(root: string): Promise<string> {
+    const dir = path.join(root, 'viewer-shared');
+    await mkdir(dir);
+    await writeFile(path.join(dir, 'viewer.js'), '/* the viewer */');
+    await writeFile(path.join(dir, 'viewer.css'), '/* its styles */');
+    await writeFile(path.join(dir, 'kalam-latin-400-normal.woff2'), Buffer.from('font'));
+    return dir;
+  }
+  const base = (f: Awaited<ReturnType<typeof fixture>>) => ({
+    srcDir: f.src,
+    artifactsDir: f.artifacts,
+    htmlDir: f.html,
+    staticDir: f.stat,
+    shellPath: f.shell,
+    libraryDir: f.lib,
+    assetsDir: f.assets,
+    images: false,
+  });
+
+  it('writes the viewer folder once, and a small page per diagram that reaches it by a relative path', async () => {
+    const f = await fixture();
+    await mkdir(path.join(f.artifacts, 'team'));
+    const deep = model('deep', { name: 'Deep one' });
+    deep.node('x', { name: 'X' });
+    await writeFile(path.join(f.artifacts, 'team', 'deep.diagram.json'), JSON.stringify(deep.toJSON()));
+    const viewerDir = await sharedViewer(f.root);
+    const res = await publishDiagrams({ ...base(f), viewerDir });
+    expect(res.viewer).toBe(path.join(f.html, 'diagc-viewer'));
+    expect(readdirSync(path.join(f.html, 'diagc-viewer')).sort()).toEqual([
+      'kalam-latin-400-normal.woff2',
+      'viewer.css',
+      'viewer.js',
+    ]);
+    const page = await readFile(path.join(f.html, 'demo.html'), 'utf8');
+    expect(page).toContain('<link rel="stylesheet" href="./diagc-viewer/viewer.css">');
+    expect(page).toContain('<script src="./diagc-viewer/viewer.js"></script>');
+    expect(page).toContain('<title>demo</title>');
+    expect(page).toContain('"id":"demo"');
+    expect(page).toContain('data:image/svg+xml;base64,'); // the library ref is still inlined: the data is the page's own
+    expect(page).toContain(SOURCE_URL);
+    expect(page).not.toContain(DG_DATA_SENTINEL);
+    expect(page.length).toBeLessThan(64 * 1024);
+    const nested = await readFile(path.join(f.html, 'team', 'deep.html'), 'utf8');
+    expect(nested).toContain('<script src="../diagc-viewer/viewer.js"></script>');
+    expect(nested).toContain('<title>Deep one</title>');
+    expect(await readFile(path.join(f.html, 'index.html'), 'utf8')).toContain('href="team/deep.html"');
+  });
+
+  it('keeps a page whole with singleFile, writing no viewer folder', async () => {
+    const f = await fixture();
+    const viewerDir = await sharedViewer(f.root);
+    const res = await publishDiagrams({ ...base(f), viewerDir, singleFile: true });
+    expect(res.viewer).toBeUndefined();
+    expect(existsSync(path.join(f.html, 'diagc-viewer'))).toBe(false);
+    const page = await readFile(path.join(f.html, 'demo.html'), 'utf8');
+    expect(page).toContain('<script id="dg-data" type="application/json">{');
+    expect(page).not.toContain('diagc-viewer');
+  });
+
+  it('stamps the shell when no viewer folder is given, as the studio export and diff do', async () => {
+    const f = await fixture();
+    const res = await publishDiagrams(base(f));
+    expect(res.viewer).toBeUndefined();
+    expect(existsSync(path.join(f.html, 'diagc-viewer'))).toBe(false);
   });
 });

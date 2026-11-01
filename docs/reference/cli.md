@@ -28,7 +28,7 @@ Everything the CLI needs is in the package — the prebuilt studio, the viewer s
 From a checkout, `pnpm link --global` inside the repo gives you a `diagc` that runs the working tree instead. Both layouts are detected automatically; the differences are called out below where they matter.
 
 ```
-diagc <init|compile|lint|watch|publish|show|studio|tui|eject|diff|guide> [files...] [--out dir] [--no-images] [--link url] [--style id] [--theme light|dark]
+diagc <init|compile|lint|watch|publish|show|studio|tui|eject|diff|guide> [files...] [--out dir] [--no-images] [--single-file] [--link url] [--style id] [--theme light|dark]
 ```
 
 An unknown command exits `1` with that usage line, and so does a flag or an argument the command does not take.
@@ -130,6 +130,7 @@ diagc publish acme shop      # only these diagrams
 diagc publish --no-images
 diagc publish --link https://github.com/you/repo
 diagc publish --style sketch --theme dark   # the pictures in that look
+diagc publish --single-file                 # every page whole, to send on its own
 ```
 
 - `.diagrams/html/<name>.html` — self-contained interactive pages, every asset inlined as a data URI.
@@ -144,7 +145,9 @@ diagc publish --style sketch --theme dark   # the pictures in that look
 
 **`--style <id>` and `--theme light|dark` choose the look of the pictures.** Without them a PNG is drawn in its diagram's own [style preset](model.md#style-presets) (`clean` where it names none) and in the light theme. `--style` takes a preset id and refuses any other, naming the ids, before anything is compiled; `--theme` takes `light` or `dark`. Both apply to every picture of the run and to nothing else: a page still opens in its diagram's own style and the reader's theme, with a picker for the style and a switch for the theme (see [Publish and share](../how-to/publish-and-share.md#share-an-interactive-page)).
 
-**Requires the viewer shell.** An installed `diagc` ships it. From a checkout you must build it once (`pnpm build:cli`); until then publish exits `1` with `viewer shell not built`.
+**The pages share one viewer.** `publish` copies the viewer — one script, one stylesheet, the fonts — into `.diagrams/html/diagc-viewer/` and each page loads it from there, so a page is a few kilobytes of its own data and a site of many diagrams weighs one viewer, not one per page. The folder travels with the pages: deploy `.diagrams/html/` whole. A page still opens from disk (`file://`), folds and unfolds, and keeps its theme and style pickers. `--single-file` writes every page as it was before, viewer inside, as a file to e-mail or drop on an air-gapped machine; the studio's **Export web page** and `diagc diff` always write whole pages.
+
+**Requires the built viewer.** An installed `diagc` ships it. From a checkout you must build it once (`pnpm build:cli`); until then publish exits `1` with `viewer not built`.
 
 **PNG export needs a browser.** If none is found, publish prints `No Chrome found — writing HTML only` on stderr and continues without images. See `CHROME_PATH` below.
 
@@ -267,6 +270,7 @@ A command takes only the flags its row lists; any other exits `1` with the usage
 | --- | --- | --- | --- |
 | `--out <dir>` | `compile`, `watch`, `publish`, `eject`, `diff` | `.diagrams/.artifacts` (`diff`: `.diagrams/diff/<from>..<to>`) | Where artifacts are written — for `publish`, the artifacts only, its pages and images still go under `.diagrams/`; for `eject`, the dir its post-swap recompile writes into; for `diff`, its pages and images. |
 | `--no-images` | `publish`, `diff` | off | Skip PNG export; write HTML only. |
+| `--single-file` | `publish` | off | Write every page whole, the viewer inside it, instead of one shared `diagc-viewer/` folder beside the pages. |
 | `--link <url>` | `publish` | none | Link the index header to this `http(s)` address. |
 | `--style <id>` | `publish`, `tui` | each diagram's own | `publish`: draw the PNGs in this [style preset](model.md#style-presets); a page keeps its diagram's own style. `tui`: draw every diagram in `dos` or `clean`, the two styles a terminal has. |
 | `--theme <light\|dark>` | `publish` | `light` | Draw the PNGs in this theme; a page keeps following its reader's. |

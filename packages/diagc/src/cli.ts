@@ -49,6 +49,8 @@ Options:
   --out dir       Artifact output directory (default .diagrams/.artifacts;
                   diff: .diagrams/diff/<from>..<to>)
   --no-images     Publish (or diff) HTML without rendering PNG images
+  --single-file   Publish every page whole, the viewer inside it, as a file to send
+                  on its own (default: the pages share one diagc-viewer/ folder)
   --link url      Publish with a link to url in the index header
   --style id      Publish: take the PNGs in this style preset (clean, sketch, …) in
                   place of each diagram's own; tui: draw every diagram in dos or clean

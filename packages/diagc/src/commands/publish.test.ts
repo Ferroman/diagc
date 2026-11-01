@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { argsOf, captureIo, contextFor, DANGLING, diagram, inTempDir, writeSources } from '../../test-fixtures/cli';
@@ -31,7 +31,7 @@ describe('publish', () => {
       const io = captureIo();
       expect(await publish.run(argsOf([], { '--no-images': true, '--out': 'build' }), contextFor(io))).toBe(0);
       expect([io.stdout, io.stderr]).toEqual([
-        '✓ 2 page(s) -> .diagrams/html\n✓ gallery -> .diagrams/html/index.html\n',
+        '✓ 2 page(s) -> .diagrams/html\n✓ viewer -> .diagrams/html/diagc-viewer\n✓ gallery -> .diagrams/html/index.html\n',
         '',
       ]);
       expect(existsSync(path.join(dir, 'build', 'team', 'b.diagram.json'))).toBe(true);
@@ -71,7 +71,9 @@ describe('publish', () => {
       const io = captureIo();
       expect(await publish.run(argsOf([], { '--no-images': true }), contextFor(io))).toBe(1);
       const assets = path.join(realpathSync(dir), '.diagrams', 'src', 'assets');
-      expect(io.stdout).toBe('✓ 3 page(s) -> .diagrams/html\n✓ gallery -> .diagrams/html/index.html\n');
+      expect(io.stdout).toBe(
+        '✓ 3 page(s) -> .diagrams/html\n✓ viewer -> .diagrams/html/diagc-viewer\n✓ gallery -> .diagrams/html/index.html\n',
+      );
       expect(io.stderr).toBe(
         `✗ ${path.join(dir, '.diagrams', 'src', 'e.diagram.json')}\n` +
           "Invalid diagram model:\n  - Relation 'r' references unknown node 'ghost'\n(keeping last good artifact)\n" +
@@ -94,6 +96,27 @@ describe('publish', () => {
       expect(await publish.run(argsOf(['nope', 'shop', 'gone'], { '--no-images': true }), contextFor(nope))).toBe(1);
       expect([nope.stdout, nope.stderr]).toEqual(['', "diagc: no diagram 'nope'\ndiagc: no diagram 'gone'\n"]);
       expect(existsSync(path.join(dir, '.diagrams', 'html', 'cart.html'))).toBe(false);
+    });
+  });
+
+  it('shares the viewer by default — one folder, small pages — and keeps a page whole with --single-file', async () => {
+    await inTempDir(async (dir) => {
+      writeSources(dir, { shop: diagram('shop'), 'team/app': diagram('app') });
+      const io = captureIo();
+      expect(await publish.run(argsOf([], { '--no-images': true }), contextFor(io))).toBe(0);
+      const html = path.join(dir, '.diagrams', 'html');
+      expect(existsSync(path.join(html, 'diagc-viewer', 'viewer.js'))).toBe(true);
+      expect(existsSync(path.join(html, 'diagc-viewer', 'viewer.css'))).toBe(true);
+      expect(statSync(path.join(html, 'shop.html')).size).toBeLessThan(64 * 1024);
+      expect(readFileSync(path.join(html, 'team', 'app.html'), 'utf8')).toContain('../diagc-viewer/viewer.js');
+      expect(io.stdout).toContain('✓ viewer -> .diagrams/html/diagc-viewer');
+
+      const whole = captureIo();
+      expect(
+        await publish.run(argsOf(['shop'], { '--no-images': true, '--single-file': true }), contextFor(whole)),
+      ).toBe(0);
+      expect(statSync(path.join(html, 'shop.html')).size).toBeGreaterThan(1024 * 1024);
+      expect(whole.stdout).not.toContain('viewer ->');
     });
   });
 });

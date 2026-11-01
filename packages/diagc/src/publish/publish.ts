@@ -1,12 +1,12 @@
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { DiagramModel, LayoutOverlay, Drawings } from '@diagc/core/internal';
 import { errMessage, isDrawings, uniqueSlug } from '@diagc/core/internal';
 import { classifyAssetRef, rewriteAssetRefs, safeAssetPath } from './assets';
 import { buildGallery, type GalleryEntry } from './gallery';
 import { discoverDiagrams, type DiscoveredDiagram } from './discover';
-import { stampHtml } from './html';
+import { linkedPageHtml, stampHtml, VIEWER_DIR, viewerRelFor } from './html';
 import type { PictureLook } from './snapshot';
 
 export interface PublishOptions {
@@ -14,7 +14,15 @@ export interface PublishOptions {
   artifactsDir: string;
   htmlDir: string;
   staticDir: string;
+  /** the single-file viewer page, stamped whole into each page with `singleFile` (and
+   * without a `viewerDir`) */
   shellPath: string;
+  /** the built viewer as separate files (`viewer.js`, `viewer.css`, its fonts): copied
+   * once into `htmlDir/diagc-viewer/` and loaded by every page from there. Absent, every
+   * page carries the shell. */
+  viewerDir?: string;
+  /** every page whole, viewer and all, as a file to send on its own */
+  singleFile?: boolean;
   libraryDir: string;
   assetsDir: string;
   images: boolean;
@@ -35,6 +43,8 @@ export interface PublishResult {
   gallery: string;
   /** the diagrams it warned it was skipping, by name */
   skipped: string[];
+  /** the viewer folder the pages load, when they share one */
+  viewer?: string;
 }
 
 /** The model's display name from its artifact, for a diagram this run did not read. */
@@ -178,11 +188,55 @@ async function renderPictures(name: string, model: DiagramModel, pagePath: strin
   return written;
 }
 
+/** What every page of one run is written with. */
+interface PageRun {
+  opts: PublishOptions;
+  /** the single-file shell, or undefined when the pages share the viewer */
+  shell: string | undefined;
+  cache: Map<string, Buffer>;
+  /** every diagram discovered, by name: a plane's picture must not take one's file */
+  discovered: ReadonlySet<string>;
+  warn: (line: string) => void;
+}
+
+/** One diagram's page: the file written and the model it holds. Throws on what the
+ * diagram's own files make impossible, for the caller to report and skip. */
+async function publishPage(d: DiscoveredDiagram, run: PageRun): Promise<{ page: string; model: DiagramModel }> {
+  const { opts, warn } = run;
+  const model = JSON.parse(await readFile(d.modelPath, 'utf8')) as DiagramModel;
+  const sidecars = await readSidecars(d, warn);
+  const inlined = await inlineAssets(model, opts, run.cache, `diagram "${d.name}"`);
+  const page = path.join(opts.htmlDir, `${d.name}.html`);
+  await mkdir(path.dirname(page), { recursive: true });
+  const data = { model: inlined, ...sidecars };
+  await writeFile(
+    page,
+    run.shell === undefined ? linkedPageHtml(data, viewerRelFor(d.name), model.name) : stampHtml(run.shell, data),
+  );
+  return { page, model };
+}
+
+/** The pictures of a page, when the run takes any; none otherwise. */
+function publishPictures(d: DiscoveredDiagram, page: string, model: DiagramModel, run: PageRun): Promise<string[]> {
+  const { opts, warn } = run;
+  if (!opts.images || opts.renderPng === undefined) return Promise.resolve([]);
+  return renderPictures(d.name, model, page, {
+    render: opts.renderPng,
+    look: opts.look ?? {},
+    staticDir: opts.staticDir,
+    diagrams: run.discovered,
+    warn,
+  });
+}
+
 export async function publishDiagrams(opts: PublishOptions): Promise<PublishResult> {
   const warn = opts.warn ?? console.warn;
-  const shell = await readFile(opts.shellPath, 'utf8');
   await mkdir(opts.htmlDir, { recursive: true });
   if (opts.images) await mkdir(opts.staticDir, { recursive: true });
+  // One viewer for every page, or the shell in each: a reader's `file://` open
+  // works either way (see linkedPageHtml); what differs is what a site weighs.
+  const shared = opts.singleFile !== true && opts.viewerDir !== undefined;
+  const shell = shared ? undefined : await readFile(opts.shellPath, 'utf8');
 
   const cache = new Map<string, Buffer>();
 
@@ -193,37 +247,28 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
     const want = new Set(opts.names);
     chosen = all.filter((d) => want.has(d.name));
   }
+  // Copied (over) with every run that writes a page, so the pages and the viewer
+  // they load are always of one build; a run with nothing to publish leaves none.
+  const viewer = shared && chosen.length > 0 ? path.join(opts.htmlDir, VIEWER_DIR) : undefined;
+  if (viewer !== undefined) await cp(opts.viewerDir!, viewer, { recursive: true });
 
   const pages: string[] = [];
   const images: string[] = [];
   const skipped: string[] = [];
   // diagram name → the model's display name, for the index cards
   const titles = new Map<string, string>();
+  const run: PageRun = { opts, shell, cache, discovered, warn };
   for (const d of chosen) {
     try {
-      const modelRaw = JSON.parse(await readFile(d.modelPath, 'utf8')) as DiagramModel;
-      titles.set(d.name, modelRaw.name);
-      const sidecars = await readSidecars(d, warn);
-      const inlined = await inlineAssets(modelRaw, opts, cache, `diagram "${d.name}"`);
-      const pagePath = path.join(opts.htmlDir, `${d.name}.html`);
-      await mkdir(path.dirname(pagePath), { recursive: true });
-      await writeFile(pagePath, stampHtml(shell, { model: inlined, ...sidecars }));
-      pages.push(pagePath);
-
-      if (opts.images && opts.renderPng !== undefined) {
-        const run = {
-          render: opts.renderPng,
-          look: opts.look ?? {},
-          staticDir: opts.staticDir,
-          diagrams: discovered,
-          warn,
-        };
-        images.push(...(await renderPictures(d.name, modelRaw, pagePath, run)));
-      }
+      // The page counts once written: a picture that then fails skips the diagram
+      // (exit 1) but leaves a page a reader can open.
+      const { page, model } = await publishPage(d, run);
+      titles.set(d.name, model.name);
+      pages.push(page);
+      images.push(...(await publishPictures(d, page, model, run)));
     } catch (e) {
       warn(`publish: skipping diagram "${d.name}": ${errMessage(e)}`);
       skipped.push(d.name);
-      continue;
     }
   }
 
@@ -251,5 +296,5 @@ export async function publishDiagrams(opts: PublishOptions): Promise<PublishResu
   const galleryPath = path.join(opts.htmlDir, 'index.html');
   await writeFile(galleryPath, buildGallery(entries, opts.link !== undefined ? { link: opts.link } : {}));
 
-  return { pages, images, gallery: galleryPath, skipped };
+  return { pages, images, gallery: galleryPath, skipped, ...(viewer !== undefined ? { viewer } : {}) };
 }
