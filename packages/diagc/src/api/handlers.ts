@@ -4,6 +4,7 @@
 // helper one subject module exports to another does not become part of that type.
 export { MAX_ASSET_BYTES, readAsset, saveAsset } from './assets';
 export {
+  deleteDiagram,
   ejectDiagramSource,
   listDiagramModels,
   readComposedDiagram,

@@ -75,6 +75,12 @@ export const ROUTES: Route[] = [
     pattern: /^\/api\/diagrams\/(.+)$/,
     handler: (h, c) => h.readDiagram(c.diagramsDir, decodeURIComponent(c.match[1] ?? '')),
   },
+  // A diagram the studio owns, with its sidecars and its compiled artifact.
+  {
+    method: 'DELETE',
+    pattern: /^\/api\/diagrams\/(.+)$/,
+    handler: (h, c) => h.deleteDiagram(c.diagramsDir, c.artifactsDir, decodeURIComponent(c.match[1] ?? '')),
+  },
   // Rename must be checked before the generic save route, whose `(.+)`
   // would otherwise swallow `<from>/rename` as a filename.
   {

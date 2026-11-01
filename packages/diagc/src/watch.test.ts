@@ -152,6 +152,22 @@ describe('startWatch', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it('removes the artifact of a source that is deleted', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'diagc-watch-'));
+    const out = await mkdtemp(path.join(tmpdir(), 'diagc-out-'));
+    const events: WatchEvent[] = [];
+    watcher = startWatch(dir, out, { onEvent: (e) => events.push(e) });
+    const source = path.join(dir, 'sample.diagram.ts');
+    await copyFile(path.join(fixtures, 'sample.diagram.ts'), source);
+    await eventWhere(events, (e) => e.file === source && e.ok);
+    const artifact = path.join(out, 'sample.diagram.json');
+    expect(await readFile(artifact, 'utf8')).toContain('"id": "sample"');
+    await rm(source);
+    await vi.waitFor(async () => {
+      await expect(readFile(artifact, 'utf8')).rejects.toThrow();
+    }, 4000);
+  });
+
   it('watches .diagram.json sources too', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'diagc-src-'));
     const out = await mkdtemp(path.join(tmpdir(), 'diagc-out-'));

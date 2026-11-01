@@ -1,6 +1,8 @@
+import { existsSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { watch as chokidarWatch } from 'chokidar';
 import { errMessage, type IncludeResolver } from '@diagc/core/internal';
-import { compileFile } from './compile';
+import { artifactPathFor, compileFile } from './compile';
 
 export type WatchEvent = { file: string; ok: true; artifact: string } | { file: string; ok: false; error: string };
 
@@ -85,12 +87,25 @@ export function startWatch(
     }
   };
 
-  // Serialize compiles per file path: each event chains onto the previous
-  // in-flight compile for the same path, so events for one file are processed
-  // sequentially in trigger order (a slow earlier compile can no longer report
-  // or write a stale result after a newer one). Different files still compile
-  // concurrently.
-  const runner = createSerialRunner(compile);
+  // A source that is gone takes its artifact with it: left behind, the studio
+  // would list the diagram again, read-only, from the stale copy. Reported as
+  // nothing — there is no result to print.
+  const remove = async (file: string) => {
+    try {
+      await rm(artifactPathFor(file, outDir, dir), { force: true });
+    } catch {
+      /* a directory already gone, or unreadable: nothing left to remove */
+    }
+  };
+
+  // Serialize work per file path: each event chains onto the previous in-flight
+  // task for the same path, so events for one file are processed sequentially in
+  // trigger order (a slow earlier compile can no longer report or write a stale
+  // result after a newer one). Different files still compile concurrently. What
+  // a task does is decided when it runs, from the disk: a file that is there is
+  // compiled, one that is not has its artifact removed — so an add followed by an
+  // unlink, or the reverse, lands on whatever the disk says last.
+  const runner = createSerialRunner((file) => (existsSync(file) ? compile(file) : remove(file)));
 
   const onFsEvent = (file: string) => {
     if (!file.endsWith('.diagram.ts') && !file.endsWith('.diagram.json')) return;
@@ -99,6 +114,7 @@ export function startWatch(
 
   watcher.on('add', onFsEvent);
   watcher.on('change', onFsEvent);
+  watcher.on('unlink', onFsEvent);
 
   return {
     async close() {

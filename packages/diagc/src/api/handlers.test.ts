@@ -16,6 +16,7 @@ describe('the handlers module', () => {
   it('exports the handlers the hosts call, the name rule and the asset limit, and nothing else', () => {
     expect(Object.keys(handlers).sort()).toEqual([
       'MAX_ASSET_BYTES',
+      'deleteDiagram',
       'ejectDiagramSource',
       'exportPage',
       'isSafeName',

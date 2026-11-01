@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, rename, unlink } from 'node:fs/promises';
+import { access, mkdir, readFile, rename, rm, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { composeIncludes, errMessage, validate, type DiagramModel } from '@diagc/core/internal';
 import { writeFileAtomic } from '../atomic-write';
@@ -272,6 +272,42 @@ async function moveIfPresent(src: string, dst: string): Promise<boolean> {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return false;
     throw e;
   }
+}
+
+/**
+ * Remove a studio-owned diagram: its JSON source, its layout and drawings sidecars,
+ * and its compiled artifact — the watcher's copy, which would otherwise list the
+ * diagram again, read-only, the next time the studio starts without a watcher
+ * having seen the deletion. A diagram with a `.diagram.ts` is TypeScript's: the
+ * studio never offers to delete it, and the route refuses too (409). Published
+ * pages and PNGs are left where they are; `diagc publish` regenerates them.
+ */
+export async function deleteDiagram(diagramsDir: string, artifactsDir: string, name: string): Promise<HandlerResult> {
+  if (!isSafeName(name)) return refuse(400, `Unsafe name '${name}'`);
+  const tsPath = path.join(diagramsDir, `${name}.diagram.ts`);
+  try {
+    await access(tsPath);
+    return refuse(409, `'${name}' is TypeScript-owned (${tsPath}) — delete its source`);
+  } catch {
+    /* no TypeScript source — the studio's to delete */
+  }
+  const source = path.join(diagramsDir, `${name}.diagram.json`);
+  try {
+    await access(source);
+  } catch {
+    return refuse(404, `No diagram source '${name}'`);
+  }
+  // The sidecars and the artifact first, the source last: a failure part-way
+  // leaves a diagram the studio still lists and can retry on.
+  for (const file of [
+    path.join(diagramsDir, `${name}.layout.json`),
+    path.join(diagramsDir, `${name}.drawings.json`),
+    path.join(artifactsDir, `${name}.diagram.json`),
+  ]) {
+    await rm(file, { force: true });
+  }
+  await unlink(source);
+  return { status: 200, body: { ok: true } };
 }
 
 /** Promote a JSON-owned diagram to a generated `.diagram.ts`. See `ejectDiagram`

@@ -190,6 +190,14 @@ export async function loadModel(file: string, opts?: LoadOptions): Promise<Diagr
   return model;
 }
 
+/** Where `file` compiles to under `outDir`: its name as `.diagram.json`, in the
+ * subdirectory it has under `rootDir`. The watcher removes the same path when the
+ * source goes. */
+export function artifactPathFor(file: string, outDir: string, rootDir?: string): string {
+  const base = path.basename(file).replace(/\.diagram\.(ts|json)$/, '');
+  return path.join(outDir, relativeSubdir(file, rootDir), `${base}.diagram.json`);
+}
+
 export async function compileFile(file: string, outDir: string, opts?: LoadOptions): Promise<string> {
   const model = await loadModel(file, opts);
   // Sound but probably not what was meant (a fishbone cause on no bone, a typo'd
@@ -197,10 +205,8 @@ export async function compileFile(file: string, outDir: string, opts?: LoadOptio
   // complaint. `diagc lint` is the strict reading of the same list.
   for (const w of diagramWarnings(model)) (opts?.warn ?? console.warn)(`${file}: ${w.message}`);
 
-  const base = path.basename(file).replace(/\.diagram\.(ts|json)$/, '');
-  const artifactDir = path.join(outDir, relativeSubdir(file, opts?.rootDir));
-  await mkdir(artifactDir, { recursive: true });
-  const artifact = path.join(artifactDir, `${base}.diagram.json`);
+  const artifact = artifactPathFor(file, outDir, opts?.rootDir);
+  await mkdir(path.dirname(artifact), { recursive: true });
   await writeFile(artifact, `${JSON.stringify(model, null, 2)}\n`);
   return artifact;
 }

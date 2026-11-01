@@ -6,6 +6,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { validate, type DiagramModel } from '@diagc/core/internal';
 import {
+  deleteDiagram,
   ejectDiagramSource,
   listDiagramModels,
   readComposedDiagram,
@@ -841,5 +842,61 @@ describe('remote includes in the studio', () => {
     await expect(ejectDiagramSource(bare.src, bare.art, 'umbrella')).rejects.toThrow(
       notSnapshotted(path.join(bare.src, 'umbrella.diagram.ts')),
     );
+  });
+});
+
+describe('deleteDiagram', () => {
+  async function workspace() {
+    const root = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    const dir = path.join(root, 'diagrams');
+    const artifacts = path.join(root, 'artifacts');
+    await mkdir(dir);
+    await mkdir(artifacts);
+    return { dir, artifacts };
+  }
+
+  it('removes the source, its sidecars and its compiled artifact, and leaves other diagrams alone', async () => {
+    const { dir, artifacts } = await workspace();
+    await saveDiagram(dir, 'team/sketch', { ...goodModel, id: 'team/sketch' });
+    await saveLayout(dir, 'team/sketch', { version: 1, planes: {} });
+    await saveDrawings(dir, 'team/sketch', { version: 1, planes: {} });
+    await saveDiagram(dir, 'team/other', { ...goodModel, id: 'team/other' });
+    // the watcher's copy, which would otherwise list the diagram read-only after a restart
+    await mkdir(path.join(artifacts, 'team'), { recursive: true });
+    await writeFile(path.join(artifacts, 'team', 'sketch.diagram.json'), JSON.stringify(goodModel));
+    expect(await deleteDiagram(dir, artifacts, 'team/sketch')).toEqual({ status: 200, body: { ok: true } });
+    expect((await readdir(path.join(dir, 'team'))).sort()).toEqual(['other.diagram.json']);
+    expect(await readdir(path.join(artifacts, 'team'))).toEqual([]);
+  });
+
+  it('deletes a diagram that has no sidecar and no artifact', async () => {
+    const { dir, artifacts } = await workspace();
+    await saveDiagram(dir, 'sketch', goodModel);
+    expect((await deleteDiagram(dir, artifacts, 'sketch')).status).toBe(200);
+    expect(await readdir(dir)).toEqual([]);
+  });
+
+  it('404s an unknown name, 409s a TypeScript-owned one, 400s an unsafe one', async () => {
+    const { dir, artifacts } = await workspace();
+    expect((await deleteDiagram(dir, artifacts, 'missing')).status).toBe(404);
+    await writeFile(path.join(dir, 'ts.diagram.ts'), 'export default {};');
+    await writeFile(path.join(artifacts, 'ts.diagram.json'), JSON.stringify(goodModel));
+    const owned = await deleteDiagram(dir, artifacts, 'ts');
+    expect(owned.status).toBe(409);
+    expect(JSON.stringify(owned.body)).toContain('TypeScript');
+    expect(await readdir(artifacts)).toEqual(['ts.diagram.json']);
+    expect((await deleteDiagram(dir, artifacts, '../escape')).status).toBe(400);
+  });
+
+  it('is the route DELETE /api/diagrams/<name>', async () => {
+    const { dir, artifacts } = await workspace();
+    await saveDiagram(dir, 'sketch', goodModel);
+    const r = await runRoute(
+      { method: 'DELETE', url: '/api/diagrams/sketch' },
+      { diagramsDir: dir, artifactsDir: artifacts },
+      handlers,
+    );
+    expect(r).toEqual({ status: 200, body: { ok: true } });
+    expect(await readdir(dir)).toEqual([]);
   });
 });
