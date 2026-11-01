@@ -152,6 +152,12 @@ export class ModelBuilder {
     element.comments = [...comments, comment];
   }
 
+  /** internal — whether `nodeId` is declared here with an `include`; NodeRef.included()
+   * asks before it hands out a handle into that diagram */
+  hasInclude(nodeId: string): boolean {
+    return this.nodes.some((n) => n.id === nodeId && n.include !== undefined);
+  }
+
   /** internal — appends a link to a node; used by NodeRef.link() */
   addLink(nodeId: string, link: Link): void {
     const node = this.nodes.find((n) => n.id === nodeId);

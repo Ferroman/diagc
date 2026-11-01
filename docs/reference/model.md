@@ -117,7 +117,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | Field | Type | Notes |
 | --- | --- | --- |
 | `id` | `string` | Unique. The builder generates `from->to#n`. |
-| `from`, `to` | `string` | Node ids. |
+| `from`, `to` | `string` | Node ids. In a diagram that composes, `<include node>/<node inside it>` names a node the include brings in; it is checked once composed. |
 | `kind` | `string` | Free-form; resolved by the kind registry. |
 | `label` | `string?` | Legacy single label. |
 | `labels` | `EdgeLabel[]?` | Positioned labels; supersedes `label` when present. |

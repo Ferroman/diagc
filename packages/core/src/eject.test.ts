@@ -288,6 +288,37 @@ describe('ejectSource', () => {
     expect(replayedIds).toEqual(m.relations.map((r) => r.id));
   });
 
+  it('emits a relation into an include as ref.included(id), and replaying it through the builder rebuilds the model', () => {
+    const m: DiagramModel = {
+      version: 1,
+      id: 'u',
+      name: 'u',
+      nodes: [
+        { id: 'bill', name: 'Billing', include: './billing.diagram.json' },
+        { id: 'note', name: 'Notify', include: './notify.diagram.json' },
+        { id: 'api', name: 'api', type: 'service' },
+      ],
+      containment: [],
+      layers: [],
+      planes: [],
+      relations: [
+        { id: 'bill/notifier->note/emailgw#0', from: 'bill/notifier', to: 'note/emailgw', kind: 'sync' },
+        { id: 'api->bill/ledger#0', from: 'api', to: 'bill/ledger', kind: 'reads' },
+      ],
+    };
+    const src = ejectSource(m);
+    expect(src).toContain("m.relate(bill.included('notifier'), note.included('emailgw'), { kind: 'sync' });");
+    expect(src).toContain("m.relate(api, bill.included('ledger'), { kind: 'reads' });");
+
+    const replay = buildModel('u');
+    const bill = replay.node('bill', { name: 'Billing', include: './billing.diagram.json' });
+    const note = replay.node('note', { name: 'Notify', include: './notify.diagram.json' });
+    const api = replay.node('api', { type: 'service' });
+    replay.relate(bill.included('notifier'), note.included('emailgw'), { kind: 'sync' });
+    replay.relate(api, bill.included('ledger'), { kind: 'reads' });
+    expect(replay.toJSON()).toEqual(m);
+  });
+
   it("emits a relation's plane, and replaying it through the builder rebuilds the model", () => {
     const m: DiagramModel = {
       version: 1,

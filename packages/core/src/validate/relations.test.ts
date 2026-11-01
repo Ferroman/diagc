@@ -282,4 +282,30 @@ describe('an fk on a malformed table', () => {
       ]);
     }
   });
+  it('accepts an end inside an include — <include node>/<its id there> — and still flags every other unknown end', () => {
+    const m = emptyModel();
+    m.nodes = [
+      { id: 'a', name: 'a', type: 't' },
+      { id: 'bill', name: 'Billing', include: './billing.diagram.json' },
+      { id: 'plain', name: 'plain', type: 't' },
+    ];
+    m.relations = [
+      { id: 'into', from: 'a', to: 'bill/ledger', kind: 'k' },
+      { id: 'across', from: 'bill/notifier', to: 'bill/deep/er', kind: 'k' },
+      { id: 'not-include', from: 'a', to: 'plain/x', kind: 'k' },
+      { id: 'no-such-host', from: 'a', to: 'ghost/x', kind: 'k' },
+    ];
+    expect(validate(m)).toEqual([
+      {
+        code: 'dangling-endpoint',
+        message: "Relation 'not-include' references unknown node 'plain/x'",
+        ref: 'not-include',
+      },
+      {
+        code: 'dangling-endpoint',
+        message: "Relation 'no-such-host' references unknown node 'ghost/x'",
+        ref: 'no-such-host',
+      },
+    ]);
+  });
 });

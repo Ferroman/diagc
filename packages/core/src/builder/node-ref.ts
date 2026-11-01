@@ -11,6 +11,7 @@ import type {
   TextRun,
   Threat,
 } from '../types';
+import { BuilderError } from './builder-error';
 import type { ModelBuilder } from './model-builder';
 
 export interface NodeOpts {
@@ -114,6 +115,23 @@ export class NodeRef {
       if (child instanceof NodeRef) this.builder.addContainment(this.id, child.id, opts?.plane);
     }
     return this;
+  }
+
+  /**
+   * A handle for the node `id` of the diagram this node includes, under the id it
+   * has once composed (`<this id>/<id>`), so a relation can cross into or between
+   * includes: `m.relate(api, billing.included('ledger'), { kind: 'writes' })`.
+   * Nothing is declared here; the end is checked when the include is composed,
+   * and a node the include does not have is that model's `dangling-endpoint`.
+   */
+  included(id: string): NodeRef {
+    if (!this.builder.hasInclude(this.id)) {
+      throw new BuilderError(
+        'not-an-include',
+        `included(): '${this.id}' includes no diagram — give it { include: './part.diagram.json' } first`,
+      );
+    }
+    return new NodeRef(`${this.id}/${id}`, this.builder);
   }
 
   /** A STRIDE finding against this element. On every node ref, not just the
