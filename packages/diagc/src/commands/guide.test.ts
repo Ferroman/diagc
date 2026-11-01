@@ -24,7 +24,7 @@ describe('guide', () => {
     expect(await guide.run(argsOf(['nope']), contextFor(unknown))).toBe(1);
     expect([unknown.stdout, unknown.stderr]).toEqual([
       '',
-      "diagc: No guide topic 'nope'. Topics: all, activity, c4, causal-loop, deployment, er, fishbone, git-graph, plan, second-order, threat-model\n",
+      "diagc: No guide topic 'nope'. Topics: all, activity, c4, causal-loop, compose, deployment, er, fishbone, git-graph, plan, second-order, threat-model\n",
     ]);
     const two = captureIo();
     expect(await guide.run(argsOf(['a', 'b']), contextFor(two))).toBe(1);

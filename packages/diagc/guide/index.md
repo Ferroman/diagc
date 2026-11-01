@@ -34,6 +34,8 @@ More node options:
 | `metadata` | Free-form key and value data. |
 | `plane`, `layer` | Show the node in one plane only, or put it on a layer. |
 
+The look of one box — `icon`, `image`, `textColor`, `rich`, `textAlign`, `fontScale` — and a `link` to open from it are usually set in the studio; `reference/builder-api.md` lists them.
+
 More relation options: `layer`, `plane` (drawn on that plane only), `description`, `id`, and `style`, one arrow's look: `{ color: '#c0392b', line: 'dashed', shape: 'step', end: 'none' }` (`line` is `solid`, `dashed` or `dotted`; `shape` is `curved`, `straight` or `step`; `end` is `arrow`, `dot`, `square`, `diamond` or `none`; `RelationStyle` in `reference/model.md` has the rest). The file is TypeScript, so to give many arrows one look, declare the style once (`const toProd = { color: '#c0392b' }`) and pass `style: toProd` to each.
 
 ## Types and kinds
@@ -104,6 +106,12 @@ export default m;
 Run `diagc guide <topic>` before writing one of these. Some are switched on with `m.notation('<id>')`, some come with a builder (`m.gitGraph()`, `m.plan()`, …), and the topic says which.
 
 {{topics}}
+
+## Features
+
+Any diagram can use these; each has a topic of its own.
+
+{{feature-topics}}
 
 `diagc guide all` prints this page and every topic.
 

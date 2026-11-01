@@ -19,7 +19,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-export { ejectSource } from './eject';
+export { ejectSource, NODE_OPT_KEYS, RELATE_OPT_KEYS } from './eject';
 export * from './types';
 export * from './shared-constants';
 export * from './activity/activity';

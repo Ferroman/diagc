@@ -15,7 +15,7 @@ In a repository that already has diagrams this adds no starter. It appends which
 
 Diagrams live in `.diagrams/src/*.diagram.ts` and are built with `diagc`.
 
-- Run `diagc guide` before writing or changing one; `diagc guide <type>` covers one diagram type.
+- Run `diagc guide` before writing or changing one; `diagc guide <type>` covers one diagram type, and `diagc guide compose` pulling other diagrams in.
 - Run `diagc lint --json` until it reports nothing.
 - Run `diagc show <name>` to read the picture as text, and `diagc publish <name>` to look at `.diagrams/static/<name>.png`.
 ```
@@ -30,7 +30,7 @@ Like the block, it names commands and files and no DSL, and only the text betwee
 
 ## What the agent reads
 
-`diagc guide` prints the DSL, the node types and relation kinds the linter accepts, the rules a diagram must follow, and the list of topics. `diagc guide c4` — or `er`, `deployment`, `activity`, any topic in that list — adds one diagram type's conventions and a complete starter. The text ships inside the CLI, so it describes the version the agent is running, and every listing in it is compiled by diagc's own test suite.
+`diagc guide` prints the DSL, the node types and relation kinds the linter accepts, the rules a diagram must follow, and the list of topics. `diagc guide c4` — or `er`, `deployment`, `activity`, any topic in that list — adds one diagram type's conventions and a complete starter; `diagc guide compose` covers pulling other diagrams in. The text ships inside the CLI, so it describes the version the agent is running, and every listing in it is compiled by diagc's own test suite.
 
 For a model with no shell, <https://ferroman.github.io/diagc/llms.txt> is `diagc guide all` for the current `main`. Paste it in, or point the model at it.
 

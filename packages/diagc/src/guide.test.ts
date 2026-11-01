@@ -114,11 +114,27 @@ describe('renderGuide', () => {
     expect(git.match(/`sync`/g)).toHaveLength(1);
   });
 
-  it('lists the topics by command and title', () => {
+  it('lists the diagram types — the topics with a starter — by command and title', () => {
     page('index', '{{topics}}\n');
     page('er', '# ER\n\nTables.\n');
     page('c4', '# C4\n\nSystems.\n');
+    page('compose', '# Compose\n\nUmbrellas.\n');
+    starter('er', 'export default 1;\n');
+    starter('c4', 'export default 1;\n');
     expect(renderGuide(undefined, ctx)).toBe('- `diagc guide c4` — C4\n- `diagc guide er` — ER');
+  });
+
+  it('lists the feature topics — the ones with no starter — apart, and refuses an empty list', () => {
+    page('index', '{{feature-topics}}\n');
+    page('er', '# ER\n');
+    page('compose', '# Compose\n\nUmbrellas.\n');
+    starter('er', 'export default 1;\n');
+    expect(renderGuide(undefined, ctx)).toBe('- `diagc guide compose` — Compose');
+    rmSync(path.join(ctx.guideDir, 'compose.md'));
+    expect(() => renderGuide(undefined, ctx)).toThrow(/index\.md: \{\{feature-topics\}\} is empty/);
+    page('index', '{{topics}}\n');
+    rmSync(path.join(ctx.startersDir, 'er'), { recursive: true });
+    expect(() => renderGuide(undefined, ctx)).toThrow(/index\.md: \{\{topics\}\} is empty/);
   });
 
   it('refuses a topic file with no title, naming it', () => {

@@ -52,7 +52,7 @@ export const AGENTS_BLOCK = `${AGENTS_BEGIN}
 
 Diagrams live in \`.diagrams/src/*.diagram.ts\` and are built with \`diagc\`.
 
-- Run \`diagc guide\` before writing or changing one; \`diagc guide <type>\` covers one diagram type.
+- Run \`diagc guide\` before writing or changing one; \`diagc guide <type>\` covers one diagram type, and \`diagc guide compose\` pulling other diagrams in.
 - Run \`diagc lint --json\` until it reports nothing.
 - Run \`diagc show <name>\` to read the picture as text, and \`diagc publish <name>\` to look at \`.diagrams/static/<name>.png\`.
 ${AGENTS_END}

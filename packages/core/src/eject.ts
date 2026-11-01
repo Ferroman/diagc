@@ -115,7 +115,9 @@ function quoted(s: string): string {
 }
 
 /** NodeOpts emission order — mirrors the interface declaration in builder/node-ref.ts. */
-const NODE_OPT_KEYS = [
+/** Every field of a node but `id`, in the order eject writes them; also what the
+ * guide is measured against. */
+export const NODE_OPT_KEYS = [
   'type',
   'name',
   'icon',
@@ -151,7 +153,7 @@ void _nodeOptCoverage;
 
 /** RelateOpts emission order (after the always-first `kind` and conditional `id`)
  * — mirrors the interface declaration in builder/node-ref.ts. */
-const RELATE_OPT_KEYS = [
+export const RELATE_OPT_KEYS = [
   'label',
   'labels',
   'style',

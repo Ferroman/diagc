@@ -12,6 +12,7 @@ A diagram is a TypeScript file under `.diagrams/src/`; `diagc` validates it, lay
 
 1. Run `diagc guide`: the DSL, the node types and relation kinds, the rules, and the list of diagram types.
 2. Run `diagc guide <topic>` when the diagram is one of those types (`c4`, `er`, `deployment`, …). Each topic prints a complete starter to begin from.
+3. Run `diagc guide compose` when the diagram pulls other diagrams in. Composition is a node option, `include`; never rebuild another diagram's content by hand.
 
 ## The loop
 
