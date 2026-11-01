@@ -10,6 +10,7 @@ describe('@diagc/core entry points', () => {
     'ActivityScope',
     'BUILTIN_NOTATIONS',
     'BranchRef',
+    'BuilderError',
     'CategoryRef',
     'CauseRef',
     'CommitRef',

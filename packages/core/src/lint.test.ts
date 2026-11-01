@@ -284,3 +284,14 @@ describe('a model validation refuses', () => {
     expect(lintModel(base({ legend: { items: 5 } as unknown as DiagramModel['legend'] }))).toEqual([]);
   });
 });
+
+describe('a relation with no kind', () => {
+  // validate() refuses it (missing-kind); lint is also run on models validation
+  // refuses, so it must read past the hole rather than throw from inside it.
+  it('is passed over by lintModel and diagramWarnings instead of crashing them', () => {
+    const m = base({ relations: [{ id: 'r', from: 'a', to: 'b' } as unknown as DiagramModel['relations'][number]] });
+    expect(() => lintModel(m)).not.toThrow();
+    expect(codes(m)).not.toContain('unknown-kind');
+    expect(diagramWarnings(m).map((i) => i.code)).not.toContain('unknown-kind');
+  });
+});

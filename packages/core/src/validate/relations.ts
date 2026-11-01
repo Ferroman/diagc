@@ -17,6 +17,7 @@ export function validateRelations(ctx: Ctx): void {
   for (const r of model.relations) {
     if (relationIds.has(r.id)) report(issues, 'duplicate-relation', `Duplicate relation id '${r.id}'`, r.id);
     relationIds.add(r.id);
+    checkKind(ctx, r);
     checkRefsAndFlags(ctx, r);
     checkLabels(ctx, r);
     if (r.style !== undefined) {
@@ -24,6 +25,15 @@ export function validateRelations(ctx: Ctx): void {
       checkStyleValues(ctx, r, r.style);
     }
     checkColumnRefs(ctx, r);
+  }
+}
+
+/** `kind` is the one option every relation needs: the type says so, but a JSON
+ * source or an untyped author can leave it out, and then the kind registry has
+ * nothing to look up. One issue, so the lint's did-you-mean never sees it. */
+function checkKind({ issues }: Ctx, relation: DiagramRelation): void {
+  if (typeof relation.kind !== 'string' || relation.kind.trim() === '') {
+    report(issues, 'missing-kind', `Relation '${relation.id}' has no kind`, relation.id);
   }
 }
 

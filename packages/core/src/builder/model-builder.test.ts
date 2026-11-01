@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { model } from './index';
+import { BuilderError, model } from './index';
 
 describe('builder: nodes and containment', () => {
   it('builds nodes with free-form types', () => {
@@ -23,6 +23,38 @@ describe('builder: nodes and containment', () => {
     expect(() => m.node('orders')).toThrow(
       "Duplicate node id 'orders': a node with no type reuses the id of the 'service' node declared before it",
     );
+  });
+
+  it('a duplicate id is a BuilderError coded duplicate-node, so lint can name the rule', () => {
+    const m = model('acme');
+    m.node('orders');
+    let thrown: unknown;
+    try {
+      m.node('orders');
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown).toBeInstanceOf(BuilderError);
+    expect((thrown as BuilderError).code).toBe('duplicate-node');
+    expect((thrown as Error).name).toBe('BuilderError');
+  });
+
+  it('relate() without a kind is a BuilderError coded missing-kind that names both ends', () => {
+    const m = model('acme');
+    const a = m.node('a');
+    const b = m.node('b');
+    for (const opts of [{}, { kind: '' }, { kind: '  ' }, undefined]) {
+      let thrown: unknown;
+      try {
+        m.relate(a, b, opts as never);
+      } catch (e) {
+        thrown = e;
+      }
+      expect(thrown, JSON.stringify(opts)).toBeInstanceOf(BuilderError);
+      expect((thrown as BuilderError).code).toBe('missing-kind');
+      expect((thrown as Error).message).toBe("relate(): relation 'a' -> 'b' needs a kind, e.g. { kind: 'sync' }");
+    }
+    expect(m.toJSON().relations).toEqual([]);
   });
 
   it('refuses a git stage named like a branch: stages, branches and commits share one id space', () => {

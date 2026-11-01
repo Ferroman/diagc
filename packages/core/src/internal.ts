@@ -40,6 +40,8 @@ export { defaultLayoutDirection, type LayoutDirection } from './layout-defaults'
 export {
   model,
   ModelBuilder,
+  BuilderError,
+  type BuilderErrorCode,
   NodeRef,
   BranchRef,
   CommitRef,

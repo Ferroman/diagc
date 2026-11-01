@@ -107,7 +107,8 @@ function vocabulary(model: DiagramModel, add: Add): void {
     add('unknown-type', `'${n.id}' has type '${n.type}', which draws as a plain box${hint(n.type, types)}`, n.id);
   }
   for (const r of model.relations) {
-    if (kinds.has(r.kind) || reported.has(`k:${r.kind}`)) continue;
+    // a relation with no kind is validation's (missing-kind); there is nothing to look up
+    if (typeof r.kind !== 'string' || kinds.has(r.kind) || reported.has(`k:${r.kind}`)) continue;
     reported.add(`k:${r.kind}`);
     add('unknown-kind', `'${r.id}' has kind '${r.kind}', which draws as a plain arrow${hint(r.kind, kinds)}`, r.id);
   }

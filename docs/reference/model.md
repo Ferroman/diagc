@@ -500,6 +500,7 @@ The compiler prints them, and the notation's panel lists them.
 | `invalid-columns` | `columns` is malformed: not a list, or an entry without a string `name`. |
 | `containment-cycle` | A node contains itself, transitively, within a plane. |
 | `dangling-endpoint` | A relation names a node that does not exist. |
+| `missing-kind` | A relation has no `kind`, or it is not a non-empty string. The builder refuses the `relate()` call on the spot, naming both ends. |
 | `unknown-layer` | A `layer` does not match any declared layer. |
 | `unknown-plane` | A `plane` does not match any declared plane. |
 | `unknown-column` | `fromColumn`/`toColumn` names no column on that table. |
