@@ -13,6 +13,7 @@ export interface ValidationIssue {
     | 'duplicate-relation'
     | 'containment-cycle'
     | 'dangling-endpoint'
+    | 'missing-kind'
     | 'unknown-layer'
     | 'unknown-plane'
     | 'unknown-hidden-node'

@@ -23,6 +23,7 @@ const context = (over: Partial<HotkeyContext> = {}): HotkeyContext => ({
     renameDiagram: vi.fn(async () => {}),
     duplicateDiagram: vi.fn(async () => {}),
     ejectDiagram: vi.fn(async () => {}),
+    deleteDiagram: vi.fn(async () => {}),
   },
   selection: { selection: null, groupSel: [] },
   canvasEditing: {
@@ -60,6 +61,7 @@ describe('buildHotkeyHandlers: the diagram actions', () => {
   it('offers Edit, Rename and Eject on an owned diagram only, Duplicate and New wherever the design API is up', () => {
     // Breaks if a diagram action loses its owned or design-API gate.
     expect(present(buildHotkeyHandlers(context()), 'diagram.')).toEqual([
+      'diagram.delete',
       'diagram.duplicate',
       'diagram.eject',
       'diagram.new',

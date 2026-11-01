@@ -22,6 +22,7 @@ export interface FlagValues {
   '--ascii': true;
   '--color': true;
   '--no-color': true;
+  '--single-file': true;
 }
 
 export type Flag = keyof FlagValues;
@@ -173,6 +174,7 @@ const FLAGS: { [F in Flag]: FlagValues[F] extends true ? null : Reader<FlagValue
   '--ascii': null,
   '--color': null,
   '--no-color': null,
+  '--single-file': null,
 };
 
 const isFlag = (arg: string): arg is Flag => Object.hasOwn(FLAGS, arg);

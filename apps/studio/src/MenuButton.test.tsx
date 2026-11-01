@@ -139,4 +139,24 @@ describe('MenuButton', () => {
     );
     expect(container.innerHTML).toBe('');
   });
+
+  it('shows a header above the items that is neither an item nor focusable, and takes a class for its trigger', () => {
+    render(
+      <MenuButton
+        label="Read-only diagram"
+        items={items()}
+        className="chip read-only"
+        header="Compiled from x.diagram.ts"
+      >
+        read-only
+      </MenuButton>,
+    );
+    const button = screen.getByRole('button', { name: 'Read-only diagram' });
+    expect(button.className).toBe('chip read-only');
+    expect(button.textContent).toBe('read-only');
+    fireEvent.click(button);
+    expect(screen.getByText('Compiled from x.diagram.ts')).toBeDefined();
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Rename', 'Duplicate', 'Eject']);
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Rename' }));
+  });
 });

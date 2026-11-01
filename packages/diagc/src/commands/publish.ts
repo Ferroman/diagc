@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { errMessage } from '@diagc/core/internal';
 import type { Command, Context } from '../cli/command';
 import { compileFile } from '../compile';
@@ -43,18 +44,23 @@ async function compileSources(dirs: PublishDirs, { io, home, snapshots }: Contex
 }
 
 /** `diagc publish [names...]`: compile, then a page per diagram, the gallery, and PNGs. */
-export const publish: Command<'--out' | '--no-images' | '--link' | '--update-includes' | '--style' | '--theme'> = {
-  flags: ['--out', '--no-images', '--link', '--update-includes', '--style', '--theme'],
+export const publish: Command<
+  '--out' | '--no-images' | '--link' | '--update-includes' | '--style' | '--theme' | '--single-file'
+> = {
+  flags: ['--out', '--no-images', '--link', '--update-includes', '--style', '--theme', '--single-file'],
   async run({ positionals, flags }, ctx) {
     const { io, home, snapshots } = ctx;
-    if (!existsSync(home.viewerShell)) {
-      // Only a checkout can be missing it; an installed package ships the shell,
-      // so there the message would send the reader off to build a repo they
-      // do not have.
+    const singleFile = flags['--single-file'] === true;
+    // The shell for whole pages, the folder for pages that share the viewer: one
+    // build makes both. Only a checkout can be missing them; an installed package
+    // ships both, so there the message would send the reader off to build a repo
+    // they do not have.
+    const needed = singleFile ? home.viewerShell : path.join(home.viewerDir, 'viewer.js');
+    if (!existsSync(needed)) {
       io.err(
         home.layout === 'monorepo'
-          ? 'viewer shell not built — run `pnpm --filter @diagc/viewer build` in the monorepo.'
-          : `viewer shell missing from this install (${home.viewerShell}) — reinstall diagc.`,
+          ? 'viewer not built — run `pnpm --filter @diagc/viewer build` in the monorepo.'
+          : `viewer missing from this install (${needed}) — reinstall diagc.`,
       );
       return 1;
     }
@@ -71,6 +77,8 @@ export const publish: Command<'--out' | '--no-images' | '--link' | '--update-inc
     const res = await publishDiagrams({
       ...dirs,
       shellPath: home.viewerShell,
+      viewerDir: home.viewerDir,
+      singleFile,
       libraryDir: home.libraryDir,
       images: renderPng !== undefined,
       names,
@@ -84,6 +92,7 @@ export const publish: Command<'--out' | '--no-images' | '--link' | '--update-inc
       warn: io.err,
     });
     io.out(`✓ ${res.pages.length} page(s) -> ${dirs.htmlDir}`);
+    if (res.viewer !== undefined) io.out(`✓ viewer -> ${res.viewer}`);
     if (res.images.length > 0) io.out(`✓ ${res.images.length} image(s) -> ${dirs.staticDir}`);
     io.out(`✓ gallery -> ${res.gallery}`);
     return failed || res.skipped.length > 0 ? 1 : 0;

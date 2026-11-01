@@ -54,7 +54,9 @@ describe('the route table', () => {
       'GET ^\\/api\\/layouts$ none',
       'GET ^\\/api\\/drawings$ none',
       'GET ^\\/api\\/diagrams\\/(.+)\\/composed$ none',
+      'GET ^\\/api\\/diagrams\\/(.+)\\/source$ none',
       'GET ^\\/api\\/diagrams\\/(.+)$ none',
+      'DELETE ^\\/api\\/diagrams\\/(.+)$ none',
       'POST ^\\/api\\/diagrams\\/(.+)\\/rename$ json',
       'POST ^\\/api\\/diagrams\\/(.+)\\/eject$ none',
       'POST ^\\/api\\/(diagrams|layouts|drawings)\\/(.+)$ json',
@@ -65,14 +67,17 @@ describe('the route table', () => {
   it('puts composed, rename and eject ahead of the generic routes, whose (.+) would take the word as a name', () => {
     const at = (method: string, url: string) => ROUTES.indexOf(matchRoute(method, url)!);
     expect(at('GET', '/api/diagrams/team/shop/composed')).toBe(7);
-    expect(at('GET', '/api/diagrams/team/shop')).toBe(8);
-    expect(at('POST', '/api/diagrams/team/shop/rename')).toBe(9);
-    expect(at('POST', '/api/diagrams/team/shop/eject')).toBe(10);
-    expect(at('POST', '/api/diagrams/team/shop')).toBe(11);
+    expect(at('GET', '/api/diagrams/team/shop/source')).toBe(8);
+    expect(at('GET', '/api/diagrams/team/shop')).toBe(9);
+    expect(at('DELETE', '/api/diagrams/team/shop')).toBe(10);
+    expect(at('POST', '/api/diagrams/team/shop/rename')).toBe(11);
+    expect(at('POST', '/api/diagrams/team/shop/eject')).toBe(12);
+    expect(at('POST', '/api/diagrams/team/shop')).toBe(13);
     // Alone, the word is a name like any other.
-    expect(at('GET', '/api/diagrams/composed')).toBe(8);
-    expect(at('POST', '/api/diagrams/rename')).toBe(11);
-    expect(at('POST', '/api/diagrams/eject')).toBe(11);
+    expect(at('GET', '/api/diagrams/composed')).toBe(9);
+    expect(at('GET', '/api/diagrams/source')).toBe(9);
+    expect(at('POST', '/api/diagrams/rename')).toBe(13);
+    expect(at('POST', '/api/diagrams/eject')).toBe(13);
   });
 
   it.each([
@@ -80,8 +85,10 @@ describe('the route table', () => {
     ['GET', '/api/assets/a%2Fb.png', ['a%2Fb.png']],
     ['GET', '/api/diagrams/team/shop/composed', ['team/shop']],
     ['GET', '/api/diagrams/a/composed/composed', ['a/composed']],
+    ['GET', '/api/diagrams/team/shop/source', ['team/shop']],
     ['GET', '/api/diagrams/team/shop', ['team/shop']],
     ['GET', '/api/diagrams/team%2Fshop', ['team%2Fshop']],
+    ['DELETE', '/api/diagrams/team/shop', ['team/shop']],
     ['POST', '/api/diagrams/team/shop/rename', ['team/shop']],
     ['POST', '/api/diagrams/a/rename/rename', ['a/rename']],
     ['POST', '/api/diagrams/team/shop/eject', ['team/shop']],
@@ -103,7 +110,7 @@ describe('the route table', () => {
 
   it('matches the method and the whole url, and nothing else', () => {
     expect(matchRoute(undefined, '/api/diagrams')).toBeUndefined();
-    expect(matchRoute('DELETE', '/api/diagrams/shop')).toBeUndefined();
+    expect(matchRoute('DELETE', '/api/layouts/shop')).toBeUndefined();
     expect(matchRoute('PUT', '/api/diagrams/shop')).toBeUndefined();
     expect(matchRoute('POST', '/api/library')).toBeUndefined();
     expect(matchRoute('GET', '/api/assets')).toBeUndefined();

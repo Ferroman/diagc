@@ -12,12 +12,13 @@ A diagram is a TypeScript file under `.diagrams/src/`; `diagc` validates it, lay
 
 1. Run `diagc guide`: the DSL, the node types and relation kinds, the rules, and the list of diagram types.
 2. Run `diagc guide <topic>` when the diagram is one of those types (`c4`, `er`, `deployment`, …). Each topic prints a complete starter to begin from.
+3. Run `diagc guide compose` when the diagram pulls other diagrams in. Composition is a node option, `include`; never rebuild another diagram's content by hand.
 
 ## The loop
 
 1. Write or edit `.diagrams/src/<name>.diagram.ts`.
 2. Run `diagc lint --json` until it prints `[]` and exits 0. Each finding has `file`, `severity`, `code` and `message`: an `error` does not compile, a `warning` compiles but is probably a mistake.
-3. Run `diagc show <name>` and read the picture as text: the boxes, the nesting and the arrows with their labels. Then run `diagc publish <name>` and look at `.diagrams/static/<name>.png`; `diagc publish` with no name does every diagram at once. It needs Chrome (set `CHROME_PATH` when none is found); without one it writes the HTML page only.
+3. Run `diagc show <name>` and read the picture as text: the boxes, the nesting and the arrows with their labels. Then run `diagc publish <name>` and look at `.diagrams/static/<name>.png`; `diagc publish` with no name does every diagram at once. It needs Chrome (`npx playwright-core install chromium` gets one, or set `CHROME_PATH`); without one it writes the HTML page only.
 
 ## Rules
 

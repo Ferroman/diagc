@@ -60,6 +60,32 @@ describe('compile', () => {
     });
   });
 
+  it('takes a diagram by name as publish does, TypeScript before a JSON twin, and refuses an unknown one', async () => {
+    await inTempDir(async (dir) => {
+      writeSources(dir, { shop: diagram('shop'), 'team/app': diagram('app') });
+      writeFileSync(
+        path.join(dir, '.diagrams', 'src', 'shop.diagram.ts'),
+        "import { model } from '@diagc/core';\nconst m = model('shop');\nm.node('ts', { type: 'service' });\nexport default m;\n",
+      );
+      const io = captureIo();
+      expect(await compile.run(argsOf(['shop', 'team/app']), contextFor(io))).toBe(0);
+      expect([io.stdout, io.stderr]).toEqual([
+        '✓ .diagrams/src/shop.diagram.ts -> .diagrams/.artifacts/shop.diagram.json\n' +
+          '✓ .diagrams/src/team/app.diagram.json -> .diagrams/.artifacts/team/app.diagram.json\n',
+        '',
+      ]);
+      expect(
+        JSON.parse(readFileSync(path.join(dir, '.diagrams', '.artifacts', 'shop.diagram.json'), 'utf8')).nodes,
+      ).toEqual([{ id: 'ts', name: 'ts', type: 'service' }]);
+      const bad = captureIo();
+      expect(await compile.run(argsOf(['big']), contextFor(bad))).toBe(1);
+      expect([bad.stdout, bad.stderr]).toEqual([
+        '',
+        "diagc: no diagram 'big' — not a file, and nothing under .diagrams/src is named that\n",
+      ]);
+    });
+  });
+
   it('says on stderr that there are no sources, and exits 0', async () => {
     await inTempDir(async () => {
       const io = captureIo();

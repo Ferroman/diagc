@@ -15,7 +15,7 @@ In a repository that already has diagrams this adds no starter. It appends which
 
 Diagrams live in `.diagrams/src/*.diagram.ts` and are built with `diagc`.
 
-- Run `diagc guide` before writing or changing one; `diagc guide <type>` covers one diagram type.
+- Run `diagc guide` before writing or changing one; `diagc guide <type>` covers one diagram type, and `diagc guide compose` pulling other diagrams in.
 - Run `diagc lint --json` until it reports nothing.
 - Run `diagc show <name>` to read the picture as text, and `diagc publish <name>` to look at `.diagrams/static/<name>.png`.
 ```
@@ -30,7 +30,7 @@ Like the block, it names commands and files and no DSL, and only the text betwee
 
 ## What the agent reads
 
-`diagc guide` prints the DSL, the node types and relation kinds the linter accepts, the rules a diagram must follow, and the list of topics. `diagc guide c4` — or `er`, `deployment`, `activity`, any topic in that list — adds one diagram type's conventions and a complete starter. The text ships inside the CLI, so it describes the version the agent is running, and every listing in it is compiled by diagc's own test suite.
+`diagc guide` prints the DSL, the node types and relation kinds the linter accepts, the rules a diagram must follow, and the list of topics. `diagc guide c4` — or `er`, `deployment`, `activity`, any topic in that list — adds one diagram type's conventions and a complete starter; `diagc guide compose` covers pulling other diagrams in. The text ships inside the CLI, so it describes the version the agent is running, and every listing in it is compiled by diagc's own test suite.
 
 For a model with no shell, <https://ferroman.github.io/diagc/llms.txt> is `diagc guide all` for the current `main`. Paste it in, or point the model at it.
 
@@ -47,6 +47,10 @@ Nothing in the loop needs the studio. Open it yourself afterwards, to read the r
 ## Asking for a diagram
 
 The guide's rules do most of the work; what the agent cannot know is what the diagram is *for*. Say which diagram type (`diagc guide` lists them), what the reader should see first — groups rest folded, so the top level is the overview — and which details belong on a layer rather than in the base picture. Point it at the code or the document to draw from: diagc does not read your code, so the agent is the one doing the reading.
+
+## How well the guide works
+
+[`scripts/guide-eval/`](../../scripts/guide-eval/README.md) measures it: one cold agent per diagram type, given nothing but `diagc guide all` and a brief, scored on the compiled artifact. Its first run found the one hole the guide had — composition — and is how a release checks that the guide still carries every feature. Pass rates move with the model, so read them as a trend, not a gate.
 
 ## See also
 

@@ -9,7 +9,7 @@ Every panel, gesture and shortcut in the browser app. Start it with `diagc studi
 | **View** | default | Navigate, fold/unfold, toggle layers and planes, inspect. |
 | **Edit** | **Edit** in the top bar, on a JSON-backed diagram | Everything in view, plus mutation and Save. |
 
-A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot enter edit mode. Only `.diagram.json` sources are browser-editable.
+A diagram compiled from `.diagram.ts` shows a **read-only** chip and cannot enter edit mode. Click the chip: it names the source the diagram is compiled from and offers **Open source** (the TypeScript, as text in a new tab; in Obsidian, the file in the vault) and **Copy to editable diagram** (Duplicate: a `.diagram.json` twin, layout and all, that opens in edit mode). Only `.diagram.json` sources are browser-editable.
 
 **New diagram** (`＋`, beside the diagram picker) is always available while the dev server runs — it creates an empty `.diagram.json` and opens it for editing.
 
@@ -87,7 +87,7 @@ Every action below can be given a different key, a second key, or none: open **K
 | Snap to grid | `Shift + S` | both modes |
 | Keyboard shortcuts | `?` | both modes |
 
-**Bindable, no default:** New / Duplicate / Eject diagram, Re-layout, Auto-layout, open/close all threat notes, pen width (thin / medium / thick), dim unconnected, show/hide drawings, show/hide loop badges, Freeze layout, Save positions, Auto-arrange, align left / centre / right / top / middle / bottom, distribute horizontally / vertically, inspector tab (Properties / Library).
+**Bindable, no default:** New / Duplicate / Eject / Delete diagram, Re-layout, Auto-layout, open/close all threat notes, pen width (thin / medium / thick), dim unconnected, show/hide drawings, show/hide loop badges, Freeze layout, Save positions, Auto-arrange, align left / centre / right / top / middle / bottom, distribute horizontally / vertically, inspector tab (Properties / Library).
 
 **Fixed** — gestures and cancels, not rebindable:
 
@@ -144,8 +144,8 @@ One row, in both modes. Layout and style are not here: they are the right dock's
 | --- | --- |
 | Diagram picker (`Ctrl/Cmd + K` by default) | Switch diagrams. Type to search — every word must appear somewhere in the name, folder included. Diagrams are grouped by the folder part of their name (`docs/fishbone` is under **docs**); diagrams with no folder come first. Click a folder heading to collapse it; collapsed folders are remembered across reloads, and a search looks inside them anyway. `↑` / `↓` move, `Enter` opens, `Esc` closes. To move a diagram into a folder, **Rename** it to `folder/name`. **New diagram** starts from the open diagram's folder. |
 | `＋` | New diagram. |
-| `⋯` (view mode) | **Rename**, **Export PNG**, **Export web page**, **Duplicate** and **Eject** — only the ones that apply: a diagram compiled from TypeScript offers the two exports and Duplicate. See [Publish and share](../how-to/publish-and-share.md#a-web-page-from-the-studio) for the exports. `↑` / `↓` move, `Enter` runs, `Esc` closes. |
-| **Edit** / `read-only` | Enter edit mode, or the mark of a diagram compiled from `.diagram.ts`. |
+| `⋯` (view mode) | **Rename**, **Export PNG**, **Export web page**, **Duplicate**, **Eject** and **Delete** — only the ones that apply: a diagram compiled from TypeScript offers the two exports and Duplicate. **Delete** asks first, then removes the source with its layout and drawings (and its compiled artifact) and opens the next diagram in the list. See [Publish and share](../how-to/publish-and-share.md#a-web-page-from-the-studio) for the exports. `↑` / `↓` move, `Enter` runs, `Esc` closes. |
+| **Edit** / `read-only` | Enter edit mode — or, on a diagram compiled from `.diagram.ts`, a menu: the source it comes from, **Open source** and **Copy to editable diagram**. |
 | **Save positions** (view mode) | Appears once you have moved something: writes Alt-dragged boxes and edge labels, and which groups are open, to `<name>.layout.json`. See [Place boxes on a generated diagram](../how-to/position-a-generated-diagram.md). |
 | **Notes** (edit mode, threat models) | Open or close every threat bubble at once. |
 | `⋮⋮` | Snap dragged boxes (and arrow-key nudges) to a 10px grid; the background dots become the grid. A viewer preference, remembered across reloads, never saved to the diagram. |

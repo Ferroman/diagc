@@ -1,15 +1,14 @@
 import type { Command } from '../cli/command';
 import { formatLintReport, lintFile, type LintReport } from '../lint';
-import { globSorted } from '../glob';
 import { RELATIVE_PATHS } from '../paths';
-import { SOURCES, warnNoSources } from './shared';
+import { resolveSources } from './shared';
 
 /** `diagc lint [files...] [--json]`: every finding, and exit 1 on any. */
 export const lint: Command<'--json'> = {
   flags: ['--json'],
   async run({ positionals, flags }, { io, home, snapshots }) {
-    const files = positionals.length > 0 ? positionals : await globSorted(SOURCES);
-    if (positionals.length === 0 && files.length === 0) warnNoSources(io);
+    const files = await resolveSources(io, positionals);
+    if (files === undefined) return 1;
     const reports: LintReport[] = [];
     for (const file of files) {
       reports.push(

@@ -269,4 +269,43 @@ describe('an fk on a malformed table', () => {
       { code: 'unknown-column', message: "Relation 'r' fromColumn 'id' is not a column of 'a'", ref: 'r' },
     ]);
   });
+  it('reports missing-kind for a relation whose kind is absent, empty, blank or not a string', () => {
+    for (const kind of [undefined, '', '  ', 3, null]) {
+      const m = emptyModel();
+      m.nodes = [
+        { id: 'a', name: 'a', type: 't' },
+        { id: 'b', name: 'b', type: 't' },
+      ];
+      m.relations = [{ id: 'r', from: 'a', to: 'b', kind } as unknown as DiagramModel['relations'][number]];
+      expect(validate(m), String(kind)).toEqual([
+        { code: 'missing-kind', message: "Relation 'r' has no kind", ref: 'r' },
+      ]);
+    }
+  });
+  it('accepts an end inside an include — <include node>/<its id there> — and still flags every other unknown end', () => {
+    const m = emptyModel();
+    m.nodes = [
+      { id: 'a', name: 'a', type: 't' },
+      { id: 'bill', name: 'Billing', include: './billing.diagram.json' },
+      { id: 'plain', name: 'plain', type: 't' },
+    ];
+    m.relations = [
+      { id: 'into', from: 'a', to: 'bill/ledger', kind: 'k' },
+      { id: 'across', from: 'bill/notifier', to: 'bill/deep/er', kind: 'k' },
+      { id: 'not-include', from: 'a', to: 'plain/x', kind: 'k' },
+      { id: 'no-such-host', from: 'a', to: 'ghost/x', kind: 'k' },
+    ];
+    expect(validate(m)).toEqual([
+      {
+        code: 'dangling-endpoint',
+        message: "Relation 'not-include' references unknown node 'plain/x'",
+        ref: 'not-include',
+      },
+      {
+        code: 'dangling-endpoint',
+        message: "Relation 'no-such-host' references unknown node 'ghost/x'",
+        ref: 'no-such-host',
+      },
+    ]);
+  });
 });

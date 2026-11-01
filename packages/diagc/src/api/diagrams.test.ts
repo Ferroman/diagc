@@ -6,10 +6,12 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { validate, type DiagramModel } from '@diagc/core/internal';
 import {
+  deleteDiagram,
   ejectDiagramSource,
   listDiagramModels,
   readComposedDiagram,
   readDiagram,
+  readDiagramSource,
   renameDiagram,
   saveDiagram,
   type DiagramEntry,
@@ -707,7 +709,7 @@ describe('listDiagramModels entries', () => {
               issues: [
                 {
                   message:
-                    "'Bad' is read-only here: the studio saves names of lowercase letters, digits, '-' and '/', none ending in /rename, /eject or /composed. Rename the file to edit it.",
+                    "'Bad' is read-only here: the studio saves names of lowercase letters, digits, '-' and '/', none ending in /rename, /eject, /composed or /source. Rename the file to edit it.",
                 },
                 { message: "Could not read model for 'Bad'" },
               ],
@@ -841,5 +843,102 @@ describe('remote includes in the studio', () => {
     await expect(ejectDiagramSource(bare.src, bare.art, 'umbrella')).rejects.toThrow(
       notSnapshotted(path.join(bare.src, 'umbrella.diagram.ts')),
     );
+  });
+});
+
+describe('deleteDiagram', () => {
+  async function workspace() {
+    const root = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    const dir = path.join(root, 'diagrams');
+    const artifacts = path.join(root, 'artifacts');
+    await mkdir(dir);
+    await mkdir(artifacts);
+    return { dir, artifacts };
+  }
+
+  it('removes the source, its sidecars and its compiled artifact, and leaves other diagrams alone', async () => {
+    const { dir, artifacts } = await workspace();
+    await saveDiagram(dir, 'team/sketch', { ...goodModel, id: 'team/sketch' });
+    await saveLayout(dir, 'team/sketch', { version: 1, planes: {} });
+    await saveDrawings(dir, 'team/sketch', { version: 1, planes: {} });
+    await saveDiagram(dir, 'team/other', { ...goodModel, id: 'team/other' });
+    // the watcher's copy, which would otherwise list the diagram read-only after a restart
+    await mkdir(path.join(artifacts, 'team'), { recursive: true });
+    await writeFile(path.join(artifacts, 'team', 'sketch.diagram.json'), JSON.stringify(goodModel));
+    expect(await deleteDiagram(dir, artifacts, 'team/sketch')).toEqual({ status: 200, body: { ok: true } });
+    expect((await readdir(path.join(dir, 'team'))).sort()).toEqual(['other.diagram.json']);
+    expect(await readdir(path.join(artifacts, 'team'))).toEqual([]);
+  });
+
+  it('deletes a diagram that has no sidecar and no artifact', async () => {
+    const { dir, artifacts } = await workspace();
+    await saveDiagram(dir, 'sketch', goodModel);
+    expect((await deleteDiagram(dir, artifacts, 'sketch')).status).toBe(200);
+    expect(await readdir(dir)).toEqual([]);
+  });
+
+  it('404s an unknown name, 409s a TypeScript-owned one, 400s an unsafe one', async () => {
+    const { dir, artifacts } = await workspace();
+    expect((await deleteDiagram(dir, artifacts, 'missing')).status).toBe(404);
+    await writeFile(path.join(dir, 'ts.diagram.ts'), 'export default {};');
+    await writeFile(path.join(artifacts, 'ts.diagram.json'), JSON.stringify(goodModel));
+    const owned = await deleteDiagram(dir, artifacts, 'ts');
+    expect(owned.status).toBe(409);
+    expect(JSON.stringify(owned.body)).toContain('TypeScript');
+    expect(await readdir(artifacts)).toEqual(['ts.diagram.json']);
+    expect((await deleteDiagram(dir, artifacts, '../escape')).status).toBe(400);
+  });
+
+  it('is the route DELETE /api/diagrams/<name>', async () => {
+    const { dir, artifacts } = await workspace();
+    await saveDiagram(dir, 'sketch', goodModel);
+    const r = await runRoute(
+      { method: 'DELETE', url: '/api/diagrams/sketch' },
+      { diagramsDir: dir, artifactsDir: artifacts },
+      handlers,
+    );
+    expect(r).toEqual({ status: 200, body: { ok: true } });
+    expect(await readdir(dir)).toEqual([]);
+  });
+});
+
+describe('readDiagramSource', () => {
+  it('answers the TypeScript source as plain text, 404 without one, 400 for an unsafe name', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'designer-'));
+    await mkdir(path.join(dir, 'team'));
+    const ts = "import { model } from '@diagc/core';\nexport default model('shop');\n";
+    await writeFile(path.join(dir, 'team', 'shop.diagram.ts'), ts);
+    const r = (await readDiagramSource(dir, 'team/shop')) as { status: number; bytes?: Buffer; contentType?: string };
+    expect([r.status, r.contentType, r.bytes?.toString('utf8')]).toEqual([200, 'text/plain; charset=utf-8', ts]);
+    expect((await readDiagramSource(dir, 'team/none')).status).toBe(404);
+    expect((await readDiagramSource(dir, '../x')).status).toBe(400);
+    const route = await runRoute(
+      { method: 'GET', url: '/api/diagrams/team/shop/source' },
+      { diagramsDir: dir, artifactsDir: dir },
+      handlers,
+    );
+    expect(route).toMatchObject({ status: 200, contentType: 'text/plain; charset=utf-8' });
+  });
+});
+
+describe('listDiagramModels: where a compiled diagram comes from', () => {
+  it('names the .diagram.ts beside a compiled artifact, and nothing for a JSON source or a bare artifact', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'diagc-models-'));
+    const src = path.join(root, 'src');
+    const art = path.join(root, 'art');
+    await mkdir(path.join(src, 'team'), { recursive: true });
+    await mkdir(path.join(art, 'team'), { recursive: true });
+    const json = (id: string) =>
+      JSON.stringify({ version: 1, id, name: id, nodes: [], containment: [], relations: [], layers: [], planes: [] });
+    await writeFile(path.join(src, 'team', 'arch.diagram.ts'), 'export default {};');
+    await writeFile(path.join(art, 'team', 'arch.diagram.json'), json('arch'));
+    await writeFile(path.join(src, 'flows.diagram.json'), json('flows'));
+    await writeFile(path.join(art, 'bare.diagram.json'), json('bare'));
+    const body = (await listDiagramModels(src, art)).body as { diagrams: DiagramEntry[] };
+    const byName = Object.fromEntries(body.diagrams.map((d) => [d.name, d]));
+    expect(byName['team/arch']).toMatchObject({ editable: false, source: 'team/arch.diagram.ts' });
+    expect(byName['flows']).not.toHaveProperty('source');
+    expect(byName['bare']).not.toHaveProperty('source');
+    await rm(root, { recursive: true, force: true });
   });
 });

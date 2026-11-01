@@ -60,9 +60,43 @@ describe('lintFile', () => {
     );
     const [r, ...rest] = await lintFile(file);
     expect(rest).toEqual([]);
-    expect(r).toMatchObject({ file, severity: 'error', code: 'load', message: 'm.nod is not a function', line: 3 });
+    const message = "m.nod is not a function (did you mean 'node'?)";
+    expect(r).toMatchObject({ file, severity: 'error', code: 'load', message, line: 3 });
     expect(typeof r!.column).toBe('number');
-    expect(formatLintReport(r!)).toBe(`${file}:3:${r!.column}: error load: m.nod is not a function`);
+    expect(formatLintReport(r!)).toBe(`${file}:3:${r!.column}: error load: ${message}`);
+  });
+
+  it('reports a builder refusal under its own code, placed at the call', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'diagc-lint-'));
+    const file = path.join(dir, 'kindless.diagram.ts');
+    await writeFile(
+      file,
+      "import { model } from '@diagc/core';\nconst m = model('x');\nconst a = m.node('a');\nconst b = m.node('b');\n" +
+        'm.relate(a, b, {} as never);\nexport default m;\n',
+    );
+    const [r, ...rest] = await lintFile(file);
+    expect(rest).toEqual([]);
+    expect(r).toMatchObject({
+      file,
+      severity: 'error',
+      code: 'missing-kind',
+      message: "relate(): relation 'a' -> 'b' needs a kind, e.g. { kind: 'sync' }",
+      line: 5,
+    });
+    expect(formatLintReport(r!)).toMatch(/^.*kindless\.diagram\.ts:5:\d+: error missing-kind: relate\(\)/);
+  });
+
+  it('tells an author who calls m.include() where composition lives', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'diagc-lint-'));
+    const file = path.join(dir, 'umbrella.diagram.ts');
+    await writeFile(
+      file,
+      "import { model } from '@diagc/core';\nconst m = model('x');\n(m as never as { include: (p: string) => void }).include('./part.diagram.json');\nexport default m;\n",
+    );
+    const [r] = await lintFile(file);
+    expect(r).toMatchObject({ severity: 'error', code: 'load', line: 3 });
+    expect(r!.message).toContain('give a node `include`');
+    expect(r!.message).toContain("see 'diagc guide compose'");
   });
 
   it('reports a load error with no position without one', async () => {

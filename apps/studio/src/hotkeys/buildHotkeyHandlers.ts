@@ -58,6 +58,7 @@ function diagramKeys(c: HotkeyContext) {
     'diagram.new': on(canDesign, () => void actions.newDiagram()),
     'diagram.duplicate': on(canDesign && viewChips, () => void actions.duplicateDiagram()),
     'diagram.eject': on(canDesign && !editing && owned, () => void actions.ejectDiagram()),
+    'diagram.delete': on(canDesign && !editing && owned, () => void actions.deleteDiagram()),
   } satisfies Handlers;
 }
 

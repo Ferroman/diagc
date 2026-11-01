@@ -1,6 +1,7 @@
 // The builder DSL a diagram is written in: the model builder, the node refs it
 // hands back, and each notation's builder. Both entry points export it from here.
 export { model, ModelBuilder } from './model-builder';
+export { BuilderError, type BuilderErrorCode } from './builder-error';
 export {
   NodeRef,
   type NodeOpts,

@@ -132,6 +132,7 @@ describe('the hotkey handlers App offers', () => {
     expect(present()).toEqual(
       sorted(
         [
+          'diagram.delete',
           'diagram.duplicate',
           'diagram.eject',
           'diagram.new',

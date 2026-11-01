@@ -74,6 +74,18 @@ Duplicate parent/child/plane triples are ignored, so calling it twice is safe. A
 
 > **Omitting `plane` does not mean "every plane".** An untagged edge belongs to the model's default plane — whichever you declared **first**. In a diagram with several planes, tag containment explicitly, or reordering your `m.plane(...)` calls changes what the diagram means. See [Use planes and layers](../how-to/use-planes-and-layers.md#gotchas).
 
+## `ref.included(id) → NodeRef`
+
+A handle for a node *inside* the diagram `ref` includes, under the id it has once composed: `billing.included('ledger')` is `billing/ledger`. For relations that cross into an include, or between two includes — the only way to name a node this diagram did not declare.
+
+```ts
+const billing = m.node('billing', { name: 'Billing', include: './billing.diagram.json' });
+const notify = m.node('notify', { name: 'Notify', include: './notify.diagram.json' });
+m.relate(billing.included('notifier'), notify.included('emailgw'), { kind: 'async', label: 'sends' });
+```
+
+Nothing is declared: the end is checked when the include is composed, and a node the include does not have fails the compile as the composed model's `dangling-endpoint`, by its full id (`notify/nope`). **Throws** (`not-an-include`) on a node with no `include`. See [Compose diagrams](../how-to/compose-diagrams.md#connect-across-diagrams).
+
 ## `m.relate(from, to, opts) → m`
 
 | Option | Type | Notes |

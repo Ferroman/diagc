@@ -14,8 +14,12 @@ export type HomeLayout = 'monorepo' | 'packaged';
 export interface HomePaths {
   root: string;
   layout: HomeLayout;
-  /** single-file viewer HTML that `publish` stamps models into */
+  /** single-file viewer HTML that `publish --single-file`, the studio's export and
+   * `diff` stamp models into */
   viewerShell: string;
+  /** the same viewer as separate files (`viewer.js`, `viewer.css`, fonts), which
+   * `publish` copies once beside the pages for them to share */
+  viewerDir: string;
   /** icon/shape library that `publish` inlines `/library/...` refs from */
   libraryDir: string;
   /** module `@diagc/core` is aliased to when jiti executes a `.diagram.ts` */
@@ -94,6 +98,7 @@ export function homePaths(home: Home, coreEntry = resolveCoreEntry): HomePaths {
       root,
       layout,
       viewerShell: path.join(root, 'assets', 'viewer', 'index.html'),
+      viewerDir: path.join(root, 'assets', 'viewer', 'shared'),
       // The studio bundle carries its own `public/library` through the Vite
       // build, so publish and the studio server read one staged copy.
       libraryDir: path.join(studioDir, 'library'),
@@ -108,6 +113,7 @@ export function homePaths(home: Home, coreEntry = resolveCoreEntry): HomePaths {
     root,
     layout,
     viewerShell: path.join(root, 'apps', 'viewer', 'dist', 'index.html'),
+    viewerDir: path.join(root, 'apps', 'viewer', 'dist', 'shared'),
     libraryDir: path.join(root, 'apps', 'studio', 'public', 'library'),
     coreEntry: path.join(root, 'packages', 'core', 'src', 'index.ts'),
     studioDir: path.join(root, 'apps', 'studio'),

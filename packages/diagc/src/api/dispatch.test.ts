@@ -88,6 +88,26 @@ const goodModel = {
   planes: [],
 };
 
+describe('DELETE', () => {
+  it('reaches its route from the studio page (same-origin), and is refused from another origin', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'dispatch-'));
+    await mkdir(path.join(root, 'diagrams'));
+    await mkdir(path.join(root, 'artifacts'));
+    await writeFile(path.join(root, 'diagrams', 'gone.diagram.json'), JSON.stringify(goodModel));
+    const foreign = await request(root, '/api/diagrams/gone', {
+      method: 'DELETE',
+      headers: { host: 'localhost:5173', origin: 'http://evil.example' },
+    });
+    expect(foreign.status).toBe(403);
+    const same = await request(root, '/api/diagrams/gone', {
+      method: 'DELETE',
+      headers: { host: 'localhost:5173', origin: 'http://localhost:5173' },
+    });
+    expect([same.handled, same.status, same.body]).toEqual([true, 200, { ok: true }]);
+    await rm(root, { recursive: true, force: true });
+  });
+});
+
 describe('handleApiRequest', () => {
   it('delegates a GET to the matching handler and sends its JSON envelope', async () => {
     const root = await tempRoot();

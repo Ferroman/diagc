@@ -37,7 +37,7 @@ The overlay is also *partial*: nodes with no recorded position fall back to auto
 | `icons` | Icon id → lucide component. Nothing else. |
 | `diagc` | The CLI: `compile`, `watch`, `publish`, `studio`, `diff` and the rest, the studio's read and write API, and the text renderer behind `show` and `tui`. The only package that touches the filesystem. |
 | `studio` | The browser app — picker, canvas, edit mode, library — and, in a checkout, the Vite plugin that serves it `diagc`'s API for reading and writing your `.diagrams/src`. |
-| `viewer` | A single-file shell that `publish` stamps a model into. |
+| `viewer` | The published page's app, built twice: a single-file shell that `publish --single-file`, the studio's export and `diff` stamp a model into, and a `shared/` folder of separate files that published pages load from beside them. |
 
 The arrows all point toward `core`, and `core` depends on nothing. That is the one structural rule worth preserving: the model has no idea it is going to be drawn.
 
@@ -56,7 +56,7 @@ The two share the same renderer, so a published page folds and unfolds exactly l
 ## Where things go wrong
 
 - **The studio does not show a `.diagram.ts` diagram, or shows an old version of it.** The studio reads TypeScript diagrams through their artifacts: run `diagc compile`, or use `diagc studio`, which runs the watcher.
-- **`diagc publish` writes HTML but no PNGs.** The PNG step drives a headless Chrome. Install one or set `CHROME_PATH`. See [Publish and share](../how-to/publish-and-share.md).
+- **`diagc publish` writes HTML but no PNGs.** The PNG step drives a headless Chrome. Run `npx playwright-core install chromium`, install one, or set `CHROME_PATH`. See [Publish and share](../how-to/publish-and-share.md).
 - **A diagram opens read-only.** It came from a `.diagram.ts`. Edit the TypeScript. Only JSON-backed diagrams are browser-editable.
 
 ## Read next

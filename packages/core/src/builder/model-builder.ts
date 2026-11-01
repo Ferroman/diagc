@@ -26,6 +26,7 @@ import { PLAN_NOTATION } from '../notations/plan/plan';
 import { SecondOrderBuilder } from '../notations/second-order/builder';
 import { ThreatModelBuilder } from '../notations/threat-model/builder';
 import { TM_NOTATION } from '../notations/threat-model/threat-model';
+import { BuilderError } from './builder-error';
 import { NodeRef, type CommentOpts, type NodeOpts, type RelateOpts, type ThreatOpts } from './node-ref';
 import { ACTIVITY_FRAME_TYPE } from '../activity/activity';
 
@@ -59,7 +60,8 @@ export class ModelBuilder {
     const taken = this.nodes.find((n) => n.id === id);
     if (taken !== undefined) {
       const kind = (type: string | undefined): string => (type === undefined ? 'node with no type' : `'${type}' node`);
-      throw new Error(
+      throw new BuilderError(
+        'duplicate-node',
         `Duplicate node id '${id}': a ${kind(opts.type)} reuses the id of the ${kind(taken.type)} declared before it.` +
           ' Every node shares one id space, whatever declares it: m.node, a branch, a commit, a stage.',
       );
@@ -150,6 +152,12 @@ export class ModelBuilder {
     element.comments = [...comments, comment];
   }
 
+  /** internal — whether `nodeId` is declared here with an `include`; NodeRef.included()
+   * asks before it hands out a handle into that diagram */
+  hasInclude(nodeId: string): boolean {
+    return this.nodes.some((n) => n.id === nodeId && n.include !== undefined);
+  }
+
   /** internal — appends a link to a node; used by NodeRef.link() */
   addLink(nodeId: string, link: Link): void {
     const node = this.nodes.find((n) => n.id === nodeId);
@@ -165,6 +173,15 @@ export class ModelBuilder {
   /** internal — like relate(), but returns the new relation's id (FlowRef needs
    * it to hang threats off the flow) */
   addRelation(from: NodeRef, to: NodeRef, opts: RelateOpts): string {
+    // The one option every relation needs. Refused here, not left to validation:
+    // the type says it is required, but a diagram written without types (or by
+    // a model) omits it, and then the error should name the two ends and the line.
+    if (opts === undefined || typeof opts.kind !== 'string' || opts.kind.trim() === '') {
+      throw new BuilderError(
+        'missing-kind',
+        `relate(): relation '${from.id}' -> '${to.id}' needs a kind, e.g. { kind: 'sync' }`,
+      );
+    }
     const pair = `${from.id}->${to.id}`;
     const n = this.pairCounters.get(pair) ?? 0;
     this.pairCounters.set(pair, n + 1);

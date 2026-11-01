@@ -19,7 +19,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-export { ejectSource } from './eject';
+export { ejectSource, NODE_OPT_KEYS, RELATE_OPT_KEYS } from './eject';
 export * from './types';
 export * from './shared-constants';
 export * from './activity/activity';
@@ -40,6 +40,8 @@ export { defaultLayoutDirection, type LayoutDirection } from './layout-defaults'
 export {
   model,
   ModelBuilder,
+  BuilderError,
+  type BuilderErrorCode,
   NodeRef,
   BranchRef,
   CommitRef,
@@ -79,7 +81,7 @@ export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrok
 export { defined, errMessage, nextFreeId, SOURCE_URL, uniqueSlug, type Defined, type SameKeys } from './util';
 export { allowedParentTypes, childrenOf, countAnchored } from './children';
 export { bestLaneOrder } from './lanes';
-export { lintModel, type LintCode, type LintFinding } from './lint';
+export { lintModel, type LintCode, type LintFinding, didYouMean } from './lint';
 export {
   diffMarks,
   diffModels,

@@ -123,6 +123,18 @@ Rules worth knowing:
 - **Two nodes in the *same* diagram may not share a key** — that is `duplicate-key`.
 - **An umbrella-authored keyed node wins the display attributes.** Declare `key: 'appuser-db'` on a node in the umbrella itself to control what the merged node looks like.
 
+## Connect across diagrams
+
+An umbrella can draw an arrow into an include, or between two includes, without the included diagrams knowing: name the node under the id it has once composed, `<include node>/<its id there>`. In TypeScript the include node's handle gives it to you:
+
+```ts
+const billing = m.node('billing', { name: 'Billing', include: './billing.diagram.json' });
+const notify = m.node('notify', { name: 'Notify', include: './notify.diagram.json' });
+m.relate(billing.included('notifier'), notify.included('emailgw'), { kind: 'async', label: 'sends' });
+```
+
+In a `.diagram.json` source the relation simply reads `"from": "billing/notifier"`. Either way the end is checked when the include is composed: a node the include does not have fails the compile with `dangling-endpoint` naming the full id. This is for arrows the included diagrams cannot know about; when the two sides are *the same thing*, give them a `key` instead (above) and let them merge.
+
 ## Verify the composition
 
 ```bash
@@ -135,7 +147,7 @@ The artifact is the *composed* result — open it and you will see the prefixed 
 
 - **Only one plane's structure grafts as the include node's own containment.** The default, or whichever `includePlane` names — everything else the child declares is dropped unless you also set `includePlanes: true` (see [Keeping the include's own views](#keeping-the-includes-own-views)).
 - **The studio opens a JSON umbrella composed, not raw.** A designer-owned diagram with `include` nodes is expanded for view the same way a compiled artifact is, and any compose warnings (e.g. a `key` type mismatch) show up in the issues panel. Entering edit or Duplicate always fetches the raw, uncomposed source first, though — a save or a copy never bakes grafted content into the model on disk; both keep the `include`.
-- **Prefixing changes ids.** Anything that referenced `db` in the child now needs `perm/db` at the umbrella level.
+- **Prefixing changes ids.** Anything that referenced `db` in the child is `perm/db` at the umbrella level — which is what `perm.included('db')` hands you.
 
 ## See also
 

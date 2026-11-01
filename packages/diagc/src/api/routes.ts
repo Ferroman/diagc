@@ -70,10 +70,23 @@ export const ROUTES: Route[] = [
     pattern: /^\/api\/diagrams\/(.+)\/composed$/,
     handler: (h, c) => h.readComposedDiagram(c.diagramsDir, decodeURIComponent(c.match[1] ?? '')),
   },
+  // The TypeScript a compiled diagram comes from, as text. Before the generic read
+  // for the same reason as the composed one.
+  {
+    method: 'GET',
+    pattern: /^\/api\/diagrams\/(.+)\/source$/,
+    handler: (h, c) => h.readDiagramSource(c.diagramsDir, decodeURIComponent(c.match[1] ?? '')),
+  },
   {
     method: 'GET',
     pattern: /^\/api\/diagrams\/(.+)$/,
     handler: (h, c) => h.readDiagram(c.diagramsDir, decodeURIComponent(c.match[1] ?? '')),
+  },
+  // A diagram the studio owns, with its sidecars and its compiled artifact.
+  {
+    method: 'DELETE',
+    pattern: /^\/api\/diagrams\/(.+)$/,
+    handler: (h, c) => h.deleteDiagram(c.diagramsDir, c.artifactsDir, decodeURIComponent(c.match[1] ?? '')),
   },
   // Rename must be checked before the generic save route, whose `(.+)`
   // would otherwise swallow `<from>/rename` as a filename.

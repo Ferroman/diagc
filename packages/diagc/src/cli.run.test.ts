@@ -268,10 +268,12 @@ function diagram(id: string, extra: Record<string, unknown> = {}): Record<string
 }
 
 describe('diagc publish, through the real CLI', () => {
-  // publish stops at once without the viewer shell, and CI runs the tests before
-  // `pnpm build:dist` builds it, so a checkout that lacks it builds it here (about a second).
+  // publish stops at once without the viewer — the shell, and the shared folder the
+  // same build makes — and CI runs the tests before `pnpm build:dist` builds them, so
+  // a checkout that lacks either builds both here (about two seconds).
   beforeAll(() => {
-    if (existsSync(homePaths(home).viewerShell)) return;
+    const paths = homePaths(home);
+    if (existsSync(paths.viewerShell) && existsSync(path.join(paths.viewerDir, 'viewer.js'))) return;
     const r = spawnSync('pnpm', ['build:cli'], { cwd: home.root, encoding: 'utf8' });
     if (r.status !== 0) throw new Error(`pnpm build:cli failed:\n${r.stderr}`);
   }, 120_000);
@@ -794,7 +796,7 @@ describe('what each command prints where, through the real CLI', () => {
     const assets = path.join(realpathSync(dir), '.diagrams', 'src', 'assets');
     expect([r.status, r.stdout, r.stderr]).toEqual([
       1,
-      '✓ 3 page(s) -> .diagrams/html\n✓ gallery -> .diagrams/html/index.html\n',
+      '✓ 3 page(s) -> .diagrams/html\n✓ viewer -> .diagrams/html/diagc-viewer\n✓ gallery -> .diagrams/html/index.html\n',
       `publish: could not read asset "deadbeef.png" for diagram "a" (looked in ${assets}/deadbeef.png); leaving ref as-is.\n` +
         'publish: refusing out-of-root asset "/library/../../x.svg" for diagram "b"; leaving ref as-is.\n' +
         'publish: ignoring malformed drawings sidecar for diagram "c" (.diagrams/src/c.drawings.json); the page ships without ink.\n' +
@@ -808,7 +810,7 @@ describe('what each command prints where, through the real CLI', () => {
     const r = run(['publish', '--no-images', '--out', 'build'], dir);
     expect([r.status, r.stdout, r.stderr]).toEqual([
       0,
-      '✓ 2 page(s) -> .diagrams/html\n✓ gallery -> .diagrams/html/index.html\n',
+      '✓ 2 page(s) -> .diagrams/html\n✓ viewer -> .diagrams/html/diagc-viewer\n✓ gallery -> .diagrams/html/index.html\n',
       '',
     ]);
     expect(existsSync(path.join(dir, 'build', 'team', 'b.diagram.json'))).toBe(true);
@@ -931,7 +933,7 @@ describe('what each command prints where, through the real CLI', () => {
       status: 1,
       stdout: '',
       stderr:
-        "diagc: No guide topic 'nope'. Topics: all, activity, c4, causal-loop, deployment, er, fishbone, git-graph, plan, second-order, threat-model\n",
+        "diagc: No guide topic 'nope'. Topics: all, activity, c4, causal-loop, compose, deployment, er, fishbone, git-graph, plan, second-order, threat-model\n",
     });
     expect(readdirSync(dir)).toEqual([]);
   }, 30_000);

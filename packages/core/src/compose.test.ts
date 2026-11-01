@@ -52,6 +52,35 @@ describe('composeIncludes: expansion', () => {
     expect(validate(m)).toEqual([]);
   });
 
+  it("keeps the umbrella's own relation into the include: its end is a real node once composed", async () => {
+    const umbrella = doc('arch', {
+      nodes: [
+        { id: 'perm', name: 'Permission', type: 'system', include: 'permission' },
+        { id: 'web', name: 'Web', type: 'service' },
+      ],
+      relations: [{ id: 'web->perm/db#0', from: 'web', to: 'perm/db', kind: 'reads' }],
+    });
+    expect(validate(umbrella)).toEqual([]);
+    const { model: m } = await composeIncludes(umbrella, 'mem:arch', memory({ permission }));
+    expect(m.relations).toContainEqual({ id: 'web->perm/db#0', from: 'web', to: 'perm/db', kind: 'reads' });
+    expect(validate(m)).toEqual([]);
+  });
+
+  it('a relation into a node the include does not have is a dangling-endpoint of the composed model, by its full id', async () => {
+    const umbrella = doc('arch', {
+      nodes: [
+        { id: 'perm', name: 'Permission', type: 'system', include: 'permission' },
+        { id: 'web', name: 'Web', type: 'service' },
+      ],
+      relations: [{ id: 'r', from: 'web', to: 'perm/nope', kind: 'reads' }],
+    });
+    expect(validate(umbrella)).toEqual([]);
+    const { model: m } = await composeIncludes(umbrella, 'mem:arch', memory({ permission }));
+    expect(validate(m)).toEqual([
+      { code: 'dangling-endpoint', message: "Relation 'r' references unknown node 'perm/nope'", ref: 'r' },
+    ]);
+  });
+
   it('imports layers namespaced with rewritten relation references, and drops planes', async () => {
     const svc = doc('svc', {
       nodes: [

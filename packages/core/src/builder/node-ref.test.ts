@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FlowRef, model, NodeRef } from './index';
+import { BuilderError, FlowRef, model, NodeRef } from './index';
 
 describe('comments and links', () => {
   it('ref.comment() synthesises c1, c2 per element and keeps by/at; ref.link() appends', () => {
@@ -57,5 +57,41 @@ describe('comments and links', () => {
     expect(() => new NodeRef('zz', m).comment('nowhere')).toThrow(/zz/);
     expect(() => new NodeRef('zz', m).link('L', 'https://x')).toThrow(/zz/);
     expect(() => new FlowRef('rr', m).comment('nowhere')).toThrow(/rr/);
+  });
+});
+
+describe('included()', () => {
+  it('is a handle for a node inside the include, named as it is once composed, so a relation can cross into it', () => {
+    const m = model('umbrella');
+    const bill = m.node('bill', { name: 'Billing', include: './billing.diagram.json' });
+    const note = m.node('note', { name: 'Notify', include: './notify.diagram.json' });
+    const api = m.node('api', { type: 'service' });
+    const notifier = bill.included('notifier');
+    expect(notifier).toBeInstanceOf(NodeRef);
+    expect(notifier.id).toBe('bill/notifier');
+    m.relate(notifier, note.included('emailgw'), { kind: 'sync', label: 'sends' });
+    m.relate(api, bill.included('ledger'), { kind: 'reads' });
+    const json = m.toJSON();
+    expect(json.nodes.map((n) => n.id)).toEqual(['bill', 'note', 'api']); // nothing declared by included()
+    expect(json.relations).toEqual([
+      { id: 'bill/notifier->note/emailgw#0', from: 'bill/notifier', to: 'note/emailgw', kind: 'sync', label: 'sends' },
+      { id: 'api->bill/ledger#0', from: 'api', to: 'bill/ledger', kind: 'reads' },
+    ]);
+  });
+
+  it('refuses a node that includes nothing, as a BuilderError coded not-an-include', () => {
+    const m = model('umbrella');
+    const svc = m.node('svc', { type: 'service' });
+    let thrown: unknown;
+    try {
+      svc.included('x');
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown).toBeInstanceOf(BuilderError);
+    expect((thrown as BuilderError).code).toBe('not-an-include');
+    expect((thrown as Error).message).toBe(
+      "included(): 'svc' includes no diagram — give it { include: './part.diagram.json' } first",
+    );
   });
 });

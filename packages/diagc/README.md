@@ -42,7 +42,7 @@ diagc studio       # opens the editor, recompiling as you edit
 
 `diagc --help` lists every command and flag, and the [CLI reference](https://ferroman.github.io/diagc/docs/reference/cli.html) has the details.
 
-PNG export drives headless Chrome. Without one, `publish` writes HTML and says so; point `CHROME_PATH` at a browser to get images.
+PNG export drives headless Chrome. Without one, `publish` writes HTML and says so; `npx playwright-core install chromium` gets a browser it finds, or point `CHROME_PATH` at one.
 
 ## Two ways to author, one model
 

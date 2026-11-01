@@ -280,7 +280,18 @@ body {
 .chip.read-only {
   border-style: dashed;
   color: var(--dg-text-muted);
-  cursor: default;
+}
+.chip.read-only:hover,
+.chip.read-only[aria-expanded='true'] {
+  border-color: var(--dg-accent);
+  color: var(--dg-accent);
+}
+/* What a menu is about, above its rows: not a row, so no hover and no focus. */
+.menu-button-header {
+  color: var(--dg-text-muted);
+  font-size: 12px;
+  padding: 4px 10px 6px;
+  white-space: nowrap;
 }
 /* The licence source offer. Deliberately quiet — it must be present and reachable, not
    prominent; it is chrome the user did not ask for. `text-decoration: none` because the

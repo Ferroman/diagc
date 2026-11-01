@@ -194,6 +194,48 @@ it('composes includes at compile time: one shared keyed node, both services atta
   expect(json.relations).toContainEqual({ id: 'comm/svc->db#0', from: 'comm/svc', to: 'appuser-db', kind: 'writes' });
 });
 
+it('a TypeScript umbrella relates nodes inside its includes with included(), and a wrong one fails by its full id', async () => {
+  const src = await mkdtemp(path.join(tmpdir(), 'diagc-src-'));
+  const out = await mkdtemp(path.join(tmpdir(), 'diagc-'));
+  const part = (id: string, nodes: string[]) => ({
+    version: 1,
+    id,
+    name: id,
+    nodes: nodes.map((n) => ({ id: n, name: n, type: 'service' })),
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  });
+  await writeFile(path.join(src, 'billing.diagram.json'), JSON.stringify(part('billing', ['invoices', 'notifier'])));
+  await writeFile(path.join(src, 'notify.diagram.json'), JSON.stringify(part('notify', ['router', 'emailgw'])));
+  const umbrella = (to: string) =>
+    "import { model } from '@diagc/core';\nconst m = model('umbrella');\n" +
+    "const bill = m.node('bill', { name: 'Billing', include: './billing.diagram.json' });\n" +
+    "const note = m.node('note', { name: 'Notify', include: './notify.diagram.json' });\n" +
+    `m.relate(bill.included('notifier'), note.included('${to}'), { kind: 'async', label: 'sends' });\n` +
+    'export default m;\n';
+  await writeFile(path.join(src, 'umbrella.diagram.ts'), umbrella('emailgw'));
+  const json = JSON.parse(await readFile(await compileFile(path.join(src, 'umbrella.diagram.ts'), out), 'utf8'));
+  expect(json.nodes.map((n: { id: string }) => n.id)).toEqual([
+    'bill',
+    'note',
+    'bill/invoices',
+    'bill/notifier',
+    'note/router',
+    'note/emailgw',
+  ]);
+  expect(json.relations).toEqual([
+    { id: 'bill/notifier->note/emailgw#0', from: 'bill/notifier', to: 'note/emailgw', kind: 'async', label: 'sends' },
+  ]);
+
+  await writeFile(path.join(src, 'umbrella.diagram.ts'), umbrella('nope'));
+  await expect(compileFile(path.join(src, 'umbrella.diagram.ts'), out)).rejects.toMatchObject({
+    name: 'DiagramValidationError',
+    message: expect.stringContaining("references unknown node 'note/nope'"),
+  });
+});
+
 it('fails the compile on include cycles with the chain in the message', async () => {
   const out = await mkdtemp(path.join(tmpdir(), 'diagc-'));
   await expect(compileFile(path.join(fixtures, 'cycle-a.diagram.json'), out)).rejects.toThrowError(/cycle/i);
@@ -332,10 +374,23 @@ describe('LoadError', () => {
     expect(err).toBeInstanceOf(LoadError);
     const le = err as LoadError;
     expect(le.file).toBe(file);
-    expect(le.reason).toBe('m.nod is not a function');
+    expect(le.reason).toBe("m.nod is not a function (did you mean 'node'?)");
+    expect(le.code).toBeUndefined();
     expect(le.line).toBe(3);
     expect(typeof le.column).toBe('number');
-    expect(le.message).toBe(`${file}:3:${le.column}: m.nod is not a function`);
+    expect(le.message).toBe(`${file}:3:${le.column}: m.nod is not a function (did you mean 'node'?)`);
+  });
+
+  it('carries the code of a builder refusal, placed at the call', async () => {
+    const file = await throwing(
+      'kindless.diagram.ts',
+      "const a = m.node('a', { type: 'service' });\nconst b = m.node('b', { type: 'service' });\nm.relate(a, b, {} as never);",
+    );
+    const err = (await executeDiagramTs(file).catch((e: unknown) => e)) as LoadError;
+    expect(err).toBeInstanceOf(LoadError);
+    expect(err.code).toBe('missing-kind');
+    expect(err.reason).toBe("relate(): relation 'a' -> 'b' needs a kind, e.g. { kind: 'sync' }");
+    expect(err.line).toBe(5);
   });
 
   it('places a refusal thrown by the builder at the call in the file, not inside core', async () => {

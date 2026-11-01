@@ -25,6 +25,8 @@
 export {
   model,
   ModelBuilder,
+  BuilderError,
+  type BuilderErrorCode,
   NodeRef,
   BranchRef,
   CommitRef,

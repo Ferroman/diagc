@@ -14,10 +14,20 @@ import { report, type Ctx } from './context';
 export function validateRelations(ctx: Ctx): void {
   const { model, issues } = ctx;
   const relationIds = new Set<string>();
+  // An end may name a node inside one of this model's includes as
+  // `<include node>/<its id there>`, the id it has once composed (NodeRef.included).
+  // It cannot be checked before composition; the composed model is validated again
+  // and reports a node the include does not have, by that full id.
+  const includeIds = new Set(model.nodes.filter((n) => n.include !== undefined).map((n) => n.id));
+  const insideInclude = (id: string): boolean => {
+    const slash = id.indexOf('/');
+    return slash > 0 && includeIds.has(id.slice(0, slash));
+  };
   for (const r of model.relations) {
     if (relationIds.has(r.id)) report(issues, 'duplicate-relation', `Duplicate relation id '${r.id}'`, r.id);
     relationIds.add(r.id);
-    checkRefsAndFlags(ctx, r);
+    checkKind(ctx, r);
+    checkRefsAndFlags(ctx, r, insideInclude);
     checkLabels(ctx, r);
     if (r.style !== undefined) {
       checkStyleChoices(ctx, r, r.style);
@@ -27,11 +37,21 @@ export function validateRelations(ctx: Ctx): void {
   }
 }
 
-/** endpoints, layer and plane must exist; polarity and delay are typed */
-function checkRefsAndFlags(ctx: Ctx, relation: DiagramRelation): void {
+/** `kind` is the one option every relation needs: the type says so, but a JSON
+ * source or an untyped author can leave it out, and then the kind registry has
+ * nothing to look up. One issue, so the lint's did-you-mean never sees it. */
+function checkKind({ issues }: Ctx, relation: DiagramRelation): void {
+  if (typeof relation.kind !== 'string' || relation.kind.trim() === '') {
+    report(issues, 'missing-kind', `Relation '${relation.id}' has no kind`, relation.id);
+  }
+}
+
+/** endpoints, layer and plane must exist (an end inside an include is checked once
+ * composed, see validateRelations); polarity and delay are typed */
+function checkRefsAndFlags(ctx: Ctx, relation: DiagramRelation, insideInclude: (id: string) => boolean): void {
   const { issues, nodeIds, layerIds, planeIds } = ctx;
   for (const end of [relation.from, relation.to]) {
-    if (!nodeIds.has(end)) {
+    if (!nodeIds.has(end) && !insideInclude(end)) {
       report(issues, 'dangling-endpoint', `Relation '${relation.id}' references unknown node '${end}'`, relation.id);
     }
   }

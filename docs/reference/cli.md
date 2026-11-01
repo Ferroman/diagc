@@ -28,7 +28,7 @@ Everything the CLI needs is in the package — the prebuilt studio, the viewer s
 From a checkout, `pnpm link --global` inside the repo gives you a `diagc` that runs the working tree instead. Both layouts are detected automatically; the differences are called out below where they matter.
 
 ```
-diagc <init|compile|lint|watch|publish|show|studio|tui|eject|diff|guide> [files...] [--out dir] [--no-images] [--link url] [--style id] [--theme light|dark]
+diagc <init|compile|lint|watch|publish|show|studio|tui|eject|diff|guide> [files...] [--out dir] [--no-images] [--single-file] [--link url] [--style id] [--theme light|dark]
 ```
 
 An unknown command exits `1` with that usage line, and so does a flag or an argument the command does not take.
@@ -62,9 +62,9 @@ diagc compile
 diagc compile .diagrams/src/acme.diagram.ts
 ```
 
-- **Input:** `files...` if given, otherwise everything matching `.diagrams/src/**/*.diagram.{ts,json}`, in path order (as `lint` and `publish` take them too).
+- **Input:** `files...` if given — a path, or a diagram name as `publish` takes one (`shop` is `.diagrams/src/shop.diagram.ts`, else `.diagrams/src/shop.diagram.json`; a name that is neither exits `1` with `diagc: no diagram 'shop'` and compiles nothing) — otherwise everything matching `.diagrams/src/**/*.diagram.{ts,json}`, in path order (as `lint` and `publish` take them too).
 - **Output:** one `<name>.diagram.json` per source under `--out`. Subdirectories of `.diagrams/src/` are mirrored, so `src/team-a/app.diagram.ts` becomes `.artifacts/team-a/app.diagram.json`.
-- **Exit code:** `0` if every file compiled, `1` if any failed. Failures print `✗ <file>` and the error; other files still compile. A source that throws while it runs — a misspelled method, a builder call that refuses — is placed at `<file>:<line>:<column>`, the first stack frame inside that file.
+- **Exit code:** `0` if every file compiled, `1` if any failed. Failures print `✗ <file>` and the error; other files still compile. A source that throws while it runs — a misspelled method, a builder call that refuses — is placed at `<file>:<line>:<column>`, the first stack frame inside that file. A misspelled method names the closest one (`m.nod is not a function (did you mean 'node'?)`), and a call to `m.include(…)` says that `include` is a node option and points at `diagc guide compose`.
 
 A remote (`https://…`) `include` resolves from a vendored snapshot, not a live fetch — **locked mode**, the default `compile` (and `watch`/`publish`/`studio`/`eject`) runs in. It reads `.diagrams/includes/<file>` and checks its hash against `.diagrams/includes.lock.json`; an include missing from the lock, or whose vendored file is gone or no longer matches its recorded hash, fails the compile naming the remedy:
 
@@ -88,7 +88,7 @@ diagc lint .diagrams/src/acme.diagram.ts --json
 ```
 
 - **Input:** as `compile`. Nothing is written.
-- **Output:** one line per finding, `<file>: <severity> <code>: <message>`, or with `--json` one array of `{ file, severity, code, message, ref?, line?, column? }`. A source that does not compile reports its validation errors (severity `error`); one that does reports its warnings (severity `warning`): the [lint codes](model.md#lint-codes) plus the notation warnings `compile` prints. Either way, what composing its includes warns about (two includes giving one `key` different types) is a warning with code `include`. A source that throws while it runs is one `load` finding; when the stack places it, the text form reads `<file>:<line>:<column>: error load: <message>` and the JSON form carries `line` and `column`.
+- **Output:** one line per finding, `<file>: <severity> <code>: <message>`, or with `--json` one array of `{ file, severity, code, message, ref?, line?, column? }`. A source that does not compile reports its validation errors (severity `error`); one that does reports its warnings (severity `warning`): the [lint codes](model.md#lint-codes) plus the notation warnings `compile` prints. Either way, what composing its includes warns about (two includes giving one `key` different types) is a warning with code `include`. A source that throws while it runs is one finding; when the stack places it, the text form reads `<file>:<line>:<column>: error <code>: <message>` and the JSON form carries `line` and `column`. The code is `load`, except for a call the builder refused, which keeps the rule's own code — `missing-kind` for a `relate()` with no `kind`, `duplicate-node` for an id declared twice — so the finding reads the same as the validation error a JSON source gets.
 - **Exit code:** `0` when there are no findings, `1` otherwise — so a script or an agent can loop until it is clean.
 
 ### `diff`
@@ -118,7 +118,7 @@ diagc watch
 diagc watch .diagrams/src/team-a
 ```
 
-Takes an optional directory (default `.diagrams/src`). Writes to `--out`. Remote includes resolve locked; `--update-includes` is refused. A directory with no diagrams in it, or one that does not exist, gets the `No diagrams under …` line on stderr, and watch keeps watching. On a failed recompile it prints the error and **keeps the last good artifact**, so the studio never blanks out mid-edit.
+Takes an optional directory (default `.diagrams/src`). Writes to `--out`. Remote includes resolve locked; `--update-includes` is refused. A directory with no diagrams in it, or one that does not exist, gets the `No diagrams under …` line on stderr, and watch keeps watching. On a failed recompile it prints the error and **keeps the last good artifact**, so the studio never blanks out mid-edit. A source that is deleted takes its artifact with it, so the studio does not list the diagram again, read-only, from a stale copy.
 
 ### `publish`
 
@@ -130,6 +130,7 @@ diagc publish acme shop      # only these diagrams
 diagc publish --no-images
 diagc publish --link https://github.com/you/repo
 diagc publish --style sketch --theme dark   # the pictures in that look
+diagc publish --single-file                 # every page whole, to send on its own
 ```
 
 - `.diagrams/html/<name>.html` — self-contained interactive pages, every asset inlined as a data URI.
@@ -144,9 +145,11 @@ diagc publish --style sketch --theme dark   # the pictures in that look
 
 **`--style <id>` and `--theme light|dark` choose the look of the pictures.** Without them a PNG is drawn in its diagram's own [style preset](model.md#style-presets) (`clean` where it names none) and in the light theme. `--style` takes a preset id and refuses any other, naming the ids, before anything is compiled; `--theme` takes `light` or `dark`. Both apply to every picture of the run and to nothing else: a page still opens in its diagram's own style and the reader's theme, with a picker for the style and a switch for the theme (see [Publish and share](../how-to/publish-and-share.md#share-an-interactive-page)).
 
-**Requires the viewer shell.** An installed `diagc` ships it. From a checkout you must build it once (`pnpm build:cli`); until then publish exits `1` with `viewer shell not built`.
+**The pages share one viewer.** `publish` copies the viewer — one script, one stylesheet, the fonts — into `.diagrams/html/diagc-viewer/` and each page loads it from there, so a page is a few kilobytes of its own data and a site of many diagrams weighs one viewer, not one per page. The folder travels with the pages: deploy `.diagrams/html/` whole. A page still opens from disk (`file://`), folds and unfolds, and keeps its theme and style pickers. `--single-file` writes every page as it was before, viewer inside, as a file to e-mail or drop on an air-gapped machine; the studio's **Export web page** and `diagc diff` always write whole pages.
 
-**PNG export needs a browser.** If none is found, publish prints `No Chrome found — writing HTML only` on stderr and continues without images. See `CHROME_PATH` below.
+**Requires the built viewer.** An installed `diagc` ships it. From a checkout you must build it once (`pnpm build:cli`); until then publish exits `1` with `viewer not built`.
+
+**PNG export needs a browser.** If none is found, publish prints `No Chrome found — writing HTML only` on stderr, names the way to get one (`npx playwright-core install chromium`, whose Chromium it then finds in Playwright's cache), and continues without images. See `CHROME_PATH` below.
 
 **Remote includes resolve locked**, same as `compile`; `diagc publish --update-includes` refreshes and re-pins them first. Publish always compiles the whole source tree regardless of `files...` (that only filters which pages are rendered below it), so an `--update-includes` run here prunes unreferenced entries whenever every source compiles — there is no scoped/unpruned form the way a filtered `compile` run has. A source that fails may never have reached its includes, so then nothing is pruned.
 
@@ -253,7 +256,8 @@ diagc guide c4         # one diagram type: its conventions, its node types, its 
 diagc guide all        # everything
 ```
 
-- **Topics:** `activity`, `c4`, `causal-loop`, `deployment`, `er`, `fishbone`, `git-graph`, `plan`, `second-order`, `threat-model`.
+- **Topics:** `activity`, `c4`, `causal-loop`, `compose`, `deployment`, `er`, `fishbone`, `git-graph`, `plan`, `second-order`, `threat-model`.
+- **Two kinds of topic.** A diagram type has a starter, the one `init --type` copies, and its page prints it. A feature — `compose`, pulling other diagrams in — has no starter; the index lists the two kinds apart.
 - **Matches the install.** The text ships in the package, the node types and relation kinds it lists are the ones [`lint`](#lint) checks against, and every listing in it is compiled by the test suite. It needs no network and no diagrams in the current directory.
 - **Also online:** <https://ferroman.github.io/diagc/llms.txt> is `diagc guide all` for the current `main`, for a model with no shell to run the command in.
 - **Exit code:** `0`; `1` for a topic that does not exist (the topics are listed on stderr) or for more than one, or when the install's guide or starter files are missing (the line says to reinstall diagc).
@@ -266,6 +270,7 @@ A command takes only the flags its row lists; any other exits `1` with the usage
 | --- | --- | --- | --- |
 | `--out <dir>` | `compile`, `watch`, `publish`, `eject`, `diff` | `.diagrams/.artifacts` (`diff`: `.diagrams/diff/<from>..<to>`) | Where artifacts are written — for `publish`, the artifacts only, its pages and images still go under `.diagrams/`; for `eject`, the dir its post-swap recompile writes into; for `diff`, its pages and images. |
 | `--no-images` | `publish`, `diff` | off | Skip PNG export; write HTML only. |
+| `--single-file` | `publish` | off | Write every page whole, the viewer inside it, instead of one shared `diagc-viewer/` folder beside the pages. |
 | `--link <url>` | `publish` | none | Link the index header to this `http(s)` address. |
 | `--style <id>` | `publish`, `tui` | each diagram's own | `publish`: draw the PNGs in this [style preset](model.md#style-presets); a page keeps its diagram's own style. `tui`: draw every diagram in `dos` or `clean`, the two styles a terminal has. |
 | `--theme <light\|dark>` | `publish` | `light` | Draw the PNGs in this theme; a page keeps following its reader's. |
@@ -289,7 +294,8 @@ Anything not recognised as a flag is collected as `files...`: any number for `co
 
 | Variable | Read by | Meaning |
 | --- | --- | --- |
-| `CHROME_PATH` | `publish` | Path to a Chrome/Chromium binary for PNG export. Checked before the default locations. |
+| `CHROME_PATH` | `publish`, `diff` | Path to a Chrome/Chromium binary for PNG export. Checked before the system locations and Playwright's browser cache. |
+| `PLAYWRIGHT_BROWSERS_PATH` | `publish`, `diff` | Where Playwright keeps its browsers, if not the platform's cache; `publish` looks there for a Chromium installed by `npx playwright-core install chromium`. |
 | `DIAGC_AUTH_TOKENS` | `--update-includes` | Credentials for private include hosts: `;`-separated `token@host` (bearer) or `user:pass@host` (basic). Sent over https only, to the named host only. See [Compose diagrams](../how-to/compose-diagrams.md#private-hosts). |
 | `DIAGRAMS_DIR` | studio server | Source directory. Set by `diagc studio`. |
 | `ARTIFACTS_DIR` | studio server | Artifact directory. Set by `diagc studio`. |

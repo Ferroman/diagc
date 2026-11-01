@@ -112,7 +112,13 @@ async function mount(opts: { editing?: boolean; leave?: boolean } = {}) {
     });
     return { boot, dl, editing, actions };
   });
-  await waitFor(() => expect(hook.result.current.dl.selected).toBe('docs/one'));
+  // Both: a second mount in one test restores the remembered selection from
+  // storage before its own boot has answered, and a flow that checks ownership
+  // would then see an empty store.
+  await waitFor(() => {
+    expect(hook.result.current.dl.selected).toBe('docs/one');
+    expect(hook.result.current.boot.names).toContain('docs/one');
+  });
   return {
     hook,
     get now() {
@@ -340,5 +346,46 @@ describe('useDiagramActions: Eject', () => {
     expect(requests.at(-1)).toEqual({ method: 'POST', url: '/api/diagrams/docs/one/eject' });
     expect(t.now.boot.ownedNames.has('docs/one')).toBe(false);
     expect(t.now.dl.selected).toBe('docs/one');
+  });
+});
+
+describe('useDiagramActions: Delete', () => {
+  // Breaks if Delete stops asking first, or deletes while editing.
+  it('asks first, and never while editing', async () => {
+    const editing = await mount({ editing: true });
+    await editing.run((a) => a.deleteDiagram());
+    expect(confirm).not.toHaveBeenCalled();
+
+    const t = await mount();
+    confirm.mockResolvedValueOnce(false);
+    await t.run((a) => a.deleteDiagram());
+    expect(requests).toEqual([]);
+    expect(confirm).toHaveBeenCalledWith("Delete 'docs/one'? Its source, layout and drawings are removed from disk.");
+  });
+
+  // Breaks if a refused delete still drops the diagram, or a done one keeps it
+  // listed (the picker would offer a diagram that is gone).
+  it('drops the diagram once the server has deleted it, and moves on to the next one', async () => {
+    const t = await mount();
+    reply = () => new Response('{}', { status: 500 });
+    await t.run((a) => a.deleteDiagram());
+    expect(notify).toHaveBeenCalledWith("Could not delete 'docs/one'");
+    expect(t.now.boot.names).toContain('docs/one');
+
+    reply = () => undefined;
+    await t.run((a) => a.deleteDiagram());
+    expect(requests.at(-1)).toEqual({ method: 'DELETE', url: '/api/diagrams/docs/one' });
+    expect(t.now.boot.names).toEqual(['two']);
+    expect(t.now.boot.ownedNames.has('docs/one')).toBe(false);
+    expect(t.now.dl.selected).toBe('two');
+    expect(t.resetView).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a diagram it does not own', async () => {
+    const t = await mount();
+    act(() => t.now.dl.selectDiagram('two'));
+    await t.run((a) => a.deleteDiagram());
+    expect(confirm).not.toHaveBeenCalled();
+    expect(requests).toEqual([]);
   });
 });

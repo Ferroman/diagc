@@ -8,7 +8,7 @@ This guide is for diagc {{version}}.
 
 1. Write or edit `.diagrams/src/<name>.diagram.ts`. A folder is allowed: `.diagrams/src/team/app.diagram.ts` is the diagram `team/app`.
 2. Run `diagc lint --json`. It prints `[]` and exits 0 when everything is clean. Otherwise each finding has `file`, `severity`, `code` and `message`: fix it and run again. An `error` means the diagram does not compile. A `warning` compiles but is probably a mistake, such as a misspelled type.
-3. Run `diagc show <name>` to read the picture as text: the boxes, what sits inside what, and the arrows with their labels, every group open. It needs nothing else. Run `diagc publish <name>` and look at `.diagrams/static/<name>.png` to check the picture itself; `diagc publish` with no name publishes every diagram. It needs Chrome; set `CHROME_PATH` when none is found. The PNG shows the first plane with every group opened and only the layers that plane turns on; each further plane gets `.diagrams/static/<name>.<plane>.png`, and the other layers are on the page `.diagrams/html/<name>.html`.
+3. Run `diagc show <name>` to read the picture as text: the boxes, what sits inside what, and the arrows with their labels, every group open. It needs nothing else. Run `diagc publish <name>` and look at `.diagrams/static/<name>.png` to check the picture itself; `diagc publish` with no name publishes every diagram. It needs Chrome: `npx playwright-core install chromium` gets one when none is found, or set `CHROME_PATH`. The PNG shows the first plane with every group opened and only the layers that plane turns on; each further plane gets `.diagrams/static/<name>.<plane>.png`, and the other layers are on the page `.diagrams/html/<name>.html`.
 
 A person runs `diagc studio` to browse every diagram and to move boxes by hand.
 
@@ -33,6 +33,8 @@ More node options:
 | `description` | Shown in the detail panel only, never on the canvas. |
 | `metadata` | Free-form key and value data. |
 | `plane`, `layer` | Show the node in one plane only, or put it on a layer. |
+
+The look of one box — `icon`, `image`, `textColor`, `rich`, `textAlign`, `fontScale` — and a `link` to open from it are usually set in the studio; `reference/builder-api.md` lists them.
 
 More relation options: `layer`, `plane` (drawn on that plane only), `description`, `id`, and `style`, one arrow's look: `{ color: '#c0392b', line: 'dashed', shape: 'step', end: 'none' }` (`line` is `solid`, `dashed` or `dotted`; `shape` is `curved`, `straight` or `step`; `end` is `arrow`, `dot`, `square`, `diamond` or `none`; `RelationStyle` in `reference/model.md` has the rest). The file is TypeScript, so to give many arrows one look, declare the style once (`const toProd = { color: '#c0392b' }`) and pass `style: toProd` to each.
 
@@ -104,6 +106,12 @@ export default m;
 Run `diagc guide <topic>` before writing one of these. Some are switched on with `m.notation('<id>')`, some come with a builder (`m.gitGraph()`, `m.plan()`, …), and the topic says which.
 
 {{topics}}
+
+## Features
+
+Any diagram can use these; each has a topic of its own.
+
+{{feature-topics}}
 
 `diagc guide all` prints this page and every topic.
 

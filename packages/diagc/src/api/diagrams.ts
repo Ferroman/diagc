@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, rename, unlink } from 'node:fs/promises';
+import { access, mkdir, readFile, rename, rm, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { composeIncludes, errMessage, validate, type DiagramModel } from '@diagc/core/internal';
 import { writeFileAtomic } from '../atomic-write';
@@ -16,6 +16,10 @@ export interface DiagramEntry {
   model: DiagramModel | null;
   issues: { message: string }[];
   editable: boolean;
+  /** the `.diagram.ts` a compiled diagram comes from, relative to the sources dir
+   * (`team/arch.diagram.ts`), when it is there: what the studio names on its
+   * read-only chip and opens on request */
+  source?: string;
 }
 
 /** Render-ready models for the studio boot: JSON sources (editable) served from
@@ -60,16 +64,46 @@ async function loadEntry(
   const issues: { message: string }[] = [];
   if (isSource && !editable) {
     issues.push({
-      message: `'${name}' is read-only here: the studio saves names of lowercase letters, digits, '-' and '/', none ending in /rename, /eject or /composed. Rename the file to edit it.`,
+      message: `'${name}' is read-only here: the studio saves names of lowercase letters, digits, '-' and '/', none ending in /rename, /eject, /composed or /source. Rename the file to edit it.`,
     });
   }
+  // A compiled diagram names the TypeScript it comes from, when it is beside the
+  // sources: an artifact with no source here (a build output copied in) names none.
+  const source = isSource ? undefined : await tsSourceOf(diagramsDir, name);
   try {
     model = JSON.parse(await readFile(file, 'utf8')) as DiagramModel;
   } catch {
     issues.push({ message: `Could not read model for '${name}'` });
   }
   if (isSource && hasIncludes(model)) model = await composedForList(model as DiagramModel, file, diagramsDir, issues);
-  return { name, model, issues, editable };
+  return { name, model, issues, editable, ...(source !== undefined ? { source } : {}) };
+}
+
+/** `<name>.diagram.ts` relative to `diagramsDir` when that file exists, else undefined. */
+async function tsSourceOf(diagramsDir: string, name: string): Promise<string | undefined> {
+  const rel = `${name}.diagram.ts`;
+  try {
+    await access(path.join(diagramsDir, rel));
+    return rel;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The TypeScript a compiled diagram comes from, as plain text: what the studio's
+ * read-only chip opens. Only `.diagram.ts` is served — a JSON source is the
+ * studio's own, read through `readDiagram`. */
+export async function readDiagramSource(
+  diagramsDir: string,
+  name: string,
+): Promise<HandlerResult & { bytes?: Buffer; contentType?: string }> {
+  if (!isSafeName(name)) return refuse(400, `Unsafe name '${name}'`);
+  try {
+    const bytes = await readFile(path.join(diagramsDir, `${name}.diagram.ts`));
+    return { status: 200, body: undefined, bytes, contentType: 'text/plain; charset=utf-8' };
+  } catch {
+    return refuse(404, `No TypeScript source '${name}'`);
+  }
 }
 
 /** `model` with its includes expanded for the list, or `model` itself when they
@@ -272,6 +306,42 @@ async function moveIfPresent(src: string, dst: string): Promise<boolean> {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return false;
     throw e;
   }
+}
+
+/**
+ * Remove a studio-owned diagram: its JSON source, its layout and drawings sidecars,
+ * and its compiled artifact — the watcher's copy, which would otherwise list the
+ * diagram again, read-only, the next time the studio starts without a watcher
+ * having seen the deletion. A diagram with a `.diagram.ts` is TypeScript's: the
+ * studio never offers to delete it, and the route refuses too (409). Published
+ * pages and PNGs are left where they are; `diagc publish` regenerates them.
+ */
+export async function deleteDiagram(diagramsDir: string, artifactsDir: string, name: string): Promise<HandlerResult> {
+  if (!isSafeName(name)) return refuse(400, `Unsafe name '${name}'`);
+  const tsPath = path.join(diagramsDir, `${name}.diagram.ts`);
+  try {
+    await access(tsPath);
+    return refuse(409, `'${name}' is TypeScript-owned (${tsPath}) — delete its source`);
+  } catch {
+    /* no TypeScript source — the studio's to delete */
+  }
+  const source = path.join(diagramsDir, `${name}.diagram.json`);
+  try {
+    await access(source);
+  } catch {
+    return refuse(404, `No diagram source '${name}'`);
+  }
+  // The sidecars and the artifact first, the source last: a failure part-way
+  // leaves a diagram the studio still lists and can retry on.
+  for (const file of [
+    path.join(diagramsDir, `${name}.layout.json`),
+    path.join(diagramsDir, `${name}.drawings.json`),
+    path.join(artifactsDir, `${name}.diagram.json`),
+  ]) {
+    await rm(file, { force: true });
+  }
+  await unlink(source);
+  return { status: 200, body: { ok: true } };
 }
 
 /** Promote a JSON-owned diagram to a generated `.diagram.ts`. See `ejectDiagram`

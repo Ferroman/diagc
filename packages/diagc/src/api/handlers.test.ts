@@ -16,6 +16,7 @@ describe('the handlers module', () => {
   it('exports the handlers the hosts call, the name rule and the asset limit, and nothing else', () => {
     expect(Object.keys(handlers).sort()).toEqual([
       'MAX_ASSET_BYTES',
+      'deleteDiagram',
       'ejectDiagramSource',
       'exportPage',
       'isSafeName',
@@ -25,6 +26,7 @@ describe('the handlers module', () => {
       'readAsset',
       'readComposedDiagram',
       'readDiagram',
+      'readDiagramSource',
       'readLibrary',
       'renameDiagram',
       'saveAsset',
@@ -45,6 +47,7 @@ describe('the handlers module', () => {
       model: DiagramModel | null;
       issues: { message: string }[];
       editable: boolean;
+      source?: string;
     }>();
     expectTypeOf(readAsset).returns.resolves.toEqualTypeOf<HandlerResult & { bytes?: Buffer; contentType?: string }>();
   });

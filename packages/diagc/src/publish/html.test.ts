@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { DG_DATA_SENTINEL, SOURCE_NOTICE, SOURCE_URL, stampHtml, withSourceNotice } from './html';
+import {
+  DG_DATA_SENTINEL,
+  linkedPageHtml,
+  SOURCE_NOTICE,
+  SOURCE_URL,
+  stampHtml,
+  VIEWER_DIR,
+  viewerRelFor,
+  withSourceNotice,
+} from './html';
 
 const shell = `<script id="dg-data" type="application/json">${DG_DATA_SENTINEL}</script>`;
 const doctypeShell = `<!doctype html>\n<html><head></head><body>${shell}</body></html>`;
@@ -81,5 +90,46 @@ describe('stampHtml source offer', () => {
   it('adds the offer without introducing another script tag', () => {
     const out = stampHtml(shell, { model: { id: 'm' } });
     expect((out.match(/<\/script>/g) ?? []).length).toBe(1);
+  });
+});
+
+describe('viewerRelFor', () => {
+  it('reaches the viewer folder from a page at any depth', () => {
+    expect(VIEWER_DIR).toBe('diagc-viewer');
+    expect(viewerRelFor('shop')).toBe('./diagc-viewer');
+    expect(viewerRelFor('team/app')).toBe('../diagc-viewer');
+    expect(viewerRelFor('a/b/c')).toBe('../../diagc-viewer');
+  });
+});
+
+describe('linkedPageHtml', () => {
+  const out = linkedPageHtml({ model: { id: 'm', name: '</title><b>' } }, '../diagc-viewer', 'A <b> & "title"');
+
+  it('is a whole page that links the stylesheet and the script by the path it is given', () => {
+    expect(out.startsWith('<!doctype html>')).toBe(true);
+    expect(out).toContain('<meta charset="UTF-8">');
+    expect(out).toContain('<meta name="color-scheme" content="light dark">');
+    expect(out).toContain('<link rel="stylesheet" href="../diagc-viewer/viewer.css">');
+    expect(out).toContain('<script src="../diagc-viewer/viewer.js"></script>');
+    expect(out).toContain('<div id="root"></div>');
+  });
+
+  it('titles the page with the name, escaped', () => {
+    expect(out).toContain('<title>A &lt;b&gt; &amp; &quot;title&quot;</title>');
+  });
+
+  it('inlines the data with < escaped, so nothing in it can close its tag', () => {
+    expect(out).toContain('<script id="dg-data" type="application/json">');
+    expect(out).toContain('\\u003c/title>');
+    expect((out.match(/<\/script>/g) ?? []).length).toBe(2);
+    const match = /<script id="dg-data" type="application\/json">([\s\S]*?)<\/script>/.exec(out);
+    expect(JSON.parse(match![1]!.replace(/\\u003c/g, '<'))).toEqual({ model: { id: 'm', name: '</title><b>' } });
+  });
+
+  it('carries the source offer, after the doctype, worded for a page that loads the viewer', () => {
+    expect(out).toContain(SOURCE_URL);
+    expect(out.indexOf('<!doctype html>')).toBeLessThan(out.indexOf('<!--'));
+    expect(out).toContain('loads the diagc viewer');
+    expect(out.slice(out.indexOf('<!--') + 4, out.indexOf('-->'))).not.toContain('--');
   });
 });

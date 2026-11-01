@@ -42,7 +42,7 @@ describe('the command table', () => {
       compile: ['--out', '--update-includes'],
       lint: ['--json'],
       watch: ['--out'],
-      publish: ['--out', '--no-images', '--link', '--update-includes', '--style', '--theme'],
+      publish: ['--out', '--no-images', '--link', '--update-includes', '--style', '--theme', '--single-file'],
       show: ['--plane', '--layers', '--depth', '--root', '--horizontal', '--ascii', '--color', '--no-color'],
       studio: [],
       tui: ['--style'],
@@ -188,7 +188,7 @@ describe('each command, through run', () => {
       const published = await diagc(['publish', '--no-images', 'a']);
       expect([published.code, published.stdout]).toEqual([
         1,
-        '✓ 1 page(s) -> .diagrams/html\n✓ gallery -> .diagrams/html/index.html\n',
+        '✓ 1 page(s) -> .diagrams/html\n✓ viewer -> .diagrams/html/diagc-viewer\n✓ gallery -> .diagrams/html/index.html\n',
       ]);
       expect(published.stderr).toMatch(/^✗ .*c\.diagram\.json\n/m);
     });

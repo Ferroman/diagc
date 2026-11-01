@@ -20,11 +20,17 @@ export function MenuButton({
   label,
   items,
   children,
+  className = 'chip icon',
+  header,
 }: {
   /** the trigger's accessible name; `children` is its glyph */
   label: string;
   items: readonly MenuItem[];
   children: ReactNode;
+  /** the trigger's class: a glyph chip unless the trigger is a word (the read-only chip) */
+  className?: string;
+  /** a line above the items that is not one: what the menu is about, not a choice */
+  header?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -76,7 +82,7 @@ export function MenuButton({
       <button
         ref={triggerRef}
         type="button"
-        className="chip icon"
+        className={className}
         aria-label={label}
         title={label}
         aria-haspopup="menu"
@@ -88,6 +94,7 @@ export function MenuButton({
       </button>
       {open && (
         <div id={menuId} ref={menuRef} className="menu-button-pop" role="menu" aria-label={label} onKeyDown={onKeyDown}>
+          {header !== undefined && <div className="menu-button-header">{header}</div>}
           {items.map((item) => (
             <button
               key={item.id}

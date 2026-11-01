@@ -63,6 +63,7 @@ describe('homePaths', () => {
   it('derives monorepo asset paths from the root', () => {
     const p = homePaths({ root: '/repo', layout: 'monorepo' });
     expect(p.viewerShell).toBe(path.join('/repo', 'apps', 'viewer', 'dist', 'index.html'));
+    expect(p.viewerDir).toBe(path.join('/repo', 'apps', 'viewer', 'dist', 'shared'));
     expect(p.libraryDir).toBe(path.join('/repo', 'apps', 'studio', 'public', 'library'));
     expect(p.coreEntry).toBe(path.join('/repo', 'packages', 'core', 'src', 'index.ts'));
     expect(p.studioDir).toBe(path.join('/repo', 'apps', 'studio'));
@@ -71,6 +72,7 @@ describe('homePaths', () => {
   it('derives packaged asset paths from the package root', () => {
     const p = homePaths({ root: '/pkg', layout: 'packaged' }, () => '/pkg/node_modules/@diagc/core/dist/index.js');
     expect(p.viewerShell).toBe(path.join('/pkg', 'assets', 'viewer', 'index.html'));
+    expect(p.viewerDir).toBe(path.join('/pkg', 'assets', 'viewer', 'shared'));
     expect(p.studioDir).toBe(path.join('/pkg', 'assets', 'studio'));
     // publish and the studio server read the one library copy the studio
     // bundle already carries.

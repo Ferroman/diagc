@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { NODE_TYPES, NOTATION_NODE_TYPES, NOTATION_RELATION_KINDS, RELATION_KINDS } from '@diagc/core/internal';
-import { UnknownStarterError, readStarter } from './starters';
+import { UnknownStarterError, readStarter, starterTypes } from './starters';
 
 /** Where `diagc guide` reads from, and the release it speaks for. */
 export interface GuideContext {
@@ -78,16 +78,27 @@ function relationKindsFor(page: string): string[] {
   return [...new Set([...RELATION_KINDS, ...notationOwn(NOTATION_RELATION_KINDS, page)])];
 }
 
-/** One bullet per topic: the command that prints it, and its own title. */
-function topicList(guideDir: string): string {
-  return guideTopics(guideDir)
-    .map((topic) => {
-      const file = path.join(guideDir, `${topic}.md`);
-      const title = /^# (.+)$/m.exec(readFileSync(file, 'utf8'))?.[1];
-      if (title === undefined) throw new Error(`${file}: a topic starts with a '# Title' line`);
-      return `- \`diagc guide ${topic}\` — ${title.trim()}`;
-    })
-    .join('\n');
+/**
+ * One bullet per topic of one kind: the command that prints it, and its own title.
+ * A topic with a starter is a diagram type (`init --type` offers it); one without is
+ * a feature any diagram can use (composition). Every topic's title is read whatever
+ * its kind, so a page with none fails here. `at` names the page the placeholder is in.
+ */
+function topicList(ctx: GuideContext, kind: 'types' | 'features', placeholder: string, at: string): string {
+  const types = new Set(starterTypes(ctx.startersDir));
+  const bullets: string[] = [];
+  for (const topic of guideTopics(ctx.guideDir)) {
+    const file = path.join(ctx.guideDir, `${topic}.md`);
+    const title = /^# (.+)$/m.exec(readFileSync(file, 'utf8'))?.[1];
+    if (title === undefined) throw new Error(`${file}: a topic starts with a '# Title' line`);
+    if (types.has(topic) === (kind === 'types')) bullets.push(`- \`diagc guide ${topic}\` — ${title.trim()}`);
+  }
+  if (bullets.length === 0) {
+    throw new Error(
+      `${at}: ${placeholder} is empty — ${kind === 'types' ? 'no topic has a starter' : 'every topic has a starter'}`,
+    );
+  }
+  return bullets.join('\n');
 }
 
 /** One page with its placeholders filled. The replacer is a function, so what it
@@ -114,7 +125,9 @@ function renderPage(page: string, ctx: GuideContext): string {
         case 'relation-kinds':
           return codeList(relationKindsFor(page));
         case 'topics':
-          return topicList(ctx.guideDir);
+          return topicList(ctx, 'types', whole, file);
+        case 'feature-topics':
+          return topicList(ctx, 'features', whole, file);
         case 'version':
           return ctx.version;
         default:

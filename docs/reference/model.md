@@ -117,7 +117,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | Field | Type | Notes |
 | --- | --- | --- |
 | `id` | `string` | Unique. The builder generates `from->to#n`. |
-| `from`, `to` | `string` | Node ids. |
+| `from`, `to` | `string` | Node ids. In a diagram that composes, `<include node>/<node inside it>` names a node the include brings in; it is checked once composed. |
 | `kind` | `string` | Free-form; resolved by the kind registry. |
 | `label` | `string?` | Legacy single label. |
 | `labels` | `EdgeLabel[]?` | Positioned labels; supersedes `label` when present. |
@@ -500,6 +500,7 @@ The compiler prints them, and the notation's panel lists them.
 | `invalid-columns` | `columns` is malformed: not a list, or an entry without a string `name`. |
 | `containment-cycle` | A node contains itself, transitively, within a plane. |
 | `dangling-endpoint` | A relation names a node that does not exist. |
+| `missing-kind` | A relation has no `kind`, or it is not a non-empty string. The builder refuses the `relate()` call on the spot, naming both ends. |
 | `unknown-layer` | A `layer` does not match any declared layer. |
 | `unknown-plane` | A `plane` does not match any declared plane. |
 | `unknown-column` | `fromColumn`/`toColumn` names no column on that table. |

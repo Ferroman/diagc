@@ -162,4 +162,14 @@ describe('useDiagramBoot', () => {
     act(() => result.current.disown('zeta'));
     expect([...result.current.ownedNames]).toEqual(['alpha']);
   });
+
+  it('removes a deleted diagram from every store, ownership included', async () => {
+    const { result } = renderHook(() => useDiagramBoot());
+    await waitFor(() => expect(result.current.booted).toBe(true));
+    act(() => result.current.putDraft('docs/one', { name: 'docs/one', issues: [] }));
+    act(() => result.current.remove('docs/one'));
+    expect(result.current.names).not.toContain('docs/one');
+    expect(result.current.artifacts['docs/one']).toBeUndefined();
+    expect(result.current.ownedNames.has('docs/one')).toBe(false);
+  });
 });

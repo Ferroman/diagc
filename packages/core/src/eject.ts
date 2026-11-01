@@ -115,7 +115,9 @@ function quoted(s: string): string {
 }
 
 /** NodeOpts emission order — mirrors the interface declaration in builder/node-ref.ts. */
-const NODE_OPT_KEYS = [
+/** Every field of a node but `id`, in the order eject writes them; also what the
+ * guide is measured against. */
+export const NODE_OPT_KEYS = [
   'type',
   'name',
   'icon',
@@ -151,7 +153,7 @@ void _nodeOptCoverage;
 
 /** RelateOpts emission order (after the always-first `kind` and conditional `id`)
  * — mirrors the interface declaration in builder/node-ref.ts. */
-const RELATE_OPT_KEYS = [
+export const RELATE_OPT_KEYS = [
   'label',
   'labels',
   'style',
@@ -223,16 +225,41 @@ function nodeOpts(node: DiagramNode): [string, unknown][] {
  * model-array order — exactly what ModelBuilder.toJSON() reassembles, so the
  * emitted file reproduces the model through the builder.
  */
-export function ejectSource(model: DiagramModel): string {
+/** The include node an end inside an include belongs to (`bill/notifier` → `bill`),
+ * or undefined for an ordinary end. Only an end that names no node of its own is
+ * read this way: a declared node may carry a `/` in its id. */
+function includeHostOf(model: DiagramModel, end: string): string | undefined {
+  if (model.nodes.some((n) => n.id === end)) return undefined;
+  const slash = end.indexOf('/');
+  const host = end.slice(0, slash);
+  return slash > 0 && model.nodes.some((n) => n.id === host && n.include !== undefined) ? host : undefined;
+}
+
+/** A relation end as the source names it: the node's identifier, or
+ * `<host>.included('<rest>')` for an end inside an include (NodeRef.included). */
+function endpoint(model: DiagramModel, idents: ReadonlyMap<string, string>, end: string): string {
+  const host = includeHostOf(model, end);
+  if (host === undefined) return idents.get(end)!;
+  return `${idents.get(host)!}.included(${quoted(end.slice(host.length + 1))})`;
+}
+
+/** The nodes the source needs a `const` for: every end of a containment edge or a
+ * relation — for an end inside an include, the include node it goes through. */
+function referencedNodes(model: DiagramModel): Set<string> {
   const referenced = new Set<string>();
   for (const c of model.containment) {
     referenced.add(c.parent);
     referenced.add(c.child);
   }
   for (const r of model.relations) {
-    referenced.add(r.from);
-    referenced.add(r.to);
+    referenced.add(includeHostOf(model, r.from) ?? r.from);
+    referenced.add(includeHostOf(model, r.to) ?? r.to);
   }
+  return referenced;
+}
+
+export function ejectSource(model: DiagramModel): string {
+  const referenced = referencedNodes(model);
   const idents = identifiersFor(model.nodes.filter((n) => referenced.has(n.id)).map((n) => n.id));
 
   const sections: string[][] = [];
@@ -308,7 +335,7 @@ export function ejectSource(model: DiagramModel): string {
           if (v !== undefined) o.push([k, v]);
         }
         // relate() requires opts (kind is mandatory), so opts() never returns ''.
-        return `m.relate(${idents.get(r.from)!}, ${idents.get(r.to)!}${opts(o)});`;
+        return `m.relate(${endpoint(model, idents, r.from)}, ${endpoint(model, idents, r.to)}${opts(o)});`;
       }),
     );
   }

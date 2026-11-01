@@ -3,9 +3,9 @@ import { ACTIONS, actionOf, GROUPS } from './actions';
 import { conflictsOf, reservedReason, resolveKeymap } from './keymap';
 
 describe('ACTIONS', () => {
-  it('has 47 actions with unique ids, 22 of them bound by default', () => {
-    expect(ACTIONS).toHaveLength(47);
-    expect(new Set(ACTIONS.map((a) => a.id)).size).toBe(47);
+  it('has 48 actions with unique ids, 22 of them bound by default', () => {
+    expect(ACTIONS).toHaveLength(48);
+    expect(new Set(ACTIONS.map((a) => a.id)).size).toBe(48);
     expect(ACTIONS.filter((a) => a.defaults.length > 0)).toHaveLength(22);
   });
 

@@ -21,15 +21,19 @@ diagc publish                # everything
 diagc publish shop payments  # only these, by diagram name
 diagc publish --no-images    # HTML only
 diagc publish --style sketch --theme dark   # the images in that look
+diagc publish --single-file                 # every page whole, to send on its own
 ```
 
-Three outputs:
+Four outputs:
 
 | Path | What it is | Commit? |
 | --- | --- | --- |
-| `.diagrams/html/<name>.html` | Self-contained interactive page — model, layout and every image inlined. No server needed. | no |
+| `.diagrams/html/<name>.html` | Interactive page — the model, its layout and every image, a few kilobytes — that loads the viewer from the folder below. No server needed. | no |
+| `.diagrams/html/diagc-viewer/` | The viewer the pages share: one script, one stylesheet, the fonts. Written once per run; the pages find it by relative path, so move `html/` as a whole. | no |
 | `.diagrams/html/index.html` | A gallery linking them all: one section per source folder, each card titled with its model's name. | no |
 | `.diagrams/static/<name>.png` | Flat image of the first plane, sized to the diagram. Each further plane gets `<name>.<plane>.png`. | **yes** |
+
+`--single-file` writes each page whole instead, viewer inside — a few megabytes each — for a page that has to travel on its own: an e-mail attachment, an air-gapped machine. The studio's **Export web page** always writes a whole page.
 
 Freehand drawings (`<name>.drawings.json`) ship with the page and are included in the PNG; the export frame grows to fit a stroke drawn outside the boxes.
 
@@ -61,20 +65,27 @@ Two more, smaller:
 The PNG step drives a real headless browser. If none is found you get:
 
 ```
-No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.
+No Chrome found — writing HTML only. Get one with 'npx playwright-core install chromium' (diagc finds it there), set CHROME_PATH, or use --no-images.
 ```
 
-Point it at any Chrome or Chromium:
+The quickest fix, on a laptop or a stock CI runner alike, is the one the line names:
+
+```bash
+npx playwright-core install chromium   # once; diagc finds what it installs
+diagc publish
+```
+
+It downloads a Chromium into Playwright's own cache (`~/.cache/ms-playwright` on Linux, `~/Library/Caches/ms-playwright` on macOS, `%LOCALAPPDATA%\ms-playwright` on Windows, or wherever `PLAYWRIGHT_BROWSERS_PATH` points), which `publish` searches after the system places. Or point it at any Chrome or Chromium:
 
 ```bash
 CHROME_PATH=/path/to/chrome diagc publish
 ```
 
-Checked automatically: `/usr/bin/google-chrome`, `/usr/bin/google-chrome-stable`, `/usr/bin/chromium`, `/usr/bin/chromium-browser`, `/snap/bin/chromium`, `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`.
+Checked automatically, in order: `CHROME_PATH`; `/usr/bin/google-chrome`, `/usr/bin/google-chrome-stable`, `/usr/bin/chromium`, `/usr/bin/chromium-browser`, `/snap/bin/chromium`, `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`; then Playwright's cache, the newest full Chromium first and its headless shell after.
 
 ## Share an interactive page
 
-`.diagrams/html/<name>.html` is a single file with everything inlined. Email it, drop it in Slack, open it from disk — it folds and unfolds exactly like the studio, it just cannot save.
+`.diagrams/html/<name>.html` opens from disk, from a web server, from a file share — it folds and unfolds exactly like the studio, it just cannot save. Keep `diagc-viewer/` beside it: the page loads the viewer from there. To send one page on its own, publish it with `--single-file` (or use the studio's **Export web page**), and it carries the viewer inside.
 
 Pages with several planes get a plane picker at the top. `<name>.png` shows the first plane; each other plane has its own PNG beside it.
 
@@ -107,7 +118,7 @@ npx gh-pages -d .diagrams/html
 
 The first run creates the branch. `main` is never touched. Then enable **Settings → Pages → Deploy from branch → gh-pages**.
 
-Or let CI deploy on every push: this repo's [`pages.yml`](../../.github/workflows/pages.yml) builds the viewer, runs `publish`, and hands the result to GitHub's Pages actions (**Settings → Pages → Source: GitHub Actions**) — it is what serves the [live examples](../examples/README.md). One thing to copy from it: the index reaches its thumbnails as `../static/<name>.png`, so ship `static/` beside `html/` if you want them; `html/` alone gives an index of titles only.
+Or let CI deploy on every push: this repo's [`pages.yml`](../../.github/workflows/pages.yml) builds the viewer, runs `publish`, and hands the result to GitHub's Pages actions (**Settings → Pages → Source: GitHub Actions**) — it is what serves the [live examples](../examples/README.md). Two things to copy from it: ship `html/` whole, `diagc-viewer/` included, since every page loads the viewer from there; and the index reaches its thumbnails as `../static/<name>.png`, so ship `static/` beside `html/` if you want them (`html/` alone gives an index of titles only).
 
 To send visitors of the index back to the repository, publish with `--link https://github.com/<you>/<repo>` — `pages.yml` does. The link sits in the index header only; diagram pages stay bare.
 

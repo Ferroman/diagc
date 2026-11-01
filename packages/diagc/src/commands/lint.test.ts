@@ -28,6 +28,21 @@ describe('lint', () => {
     });
   });
 
+  it('takes a diagram by name, and refuses an unknown one with exit 1 and nothing on stdout', async () => {
+    await inTempDir(async (dir) => {
+      writeSources(dir, { b: diagram('b', MISTYPED) });
+      const io = captureIo();
+      expect(await lint.run(argsOf(['b']), contextFor(io))).toBe(1);
+      expect(io.stdout).toContain('.diagrams/src/b.diagram.json: warning unknown-type');
+      const bad = captureIo();
+      expect(await lint.run(argsOf(['nope'], { '--json': true }), contextFor(bad))).toBe(1);
+      expect([bad.stdout, bad.stderr]).toEqual([
+        '',
+        "diagc: no diagram 'nope' — not a file, and nothing under .diagrams/src is named that\n",
+      ]);
+    });
+  });
+
   it('keeps its empty array on stdout with no sources, the message on stderr', async () => {
     await inTempDir(async () => {
       const io = captureIo();
