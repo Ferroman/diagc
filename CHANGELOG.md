@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/Ferroman/diagc/compare/v1.8.0...v1.9.0) (2026-11-01)
+
+
+### Features
+
+* compose guide, read-only diagram actions and Delete, shared publish viewer ([#176](https://github.com/Ferroman/diagc/issues/176)) ([17f71a4](https://github.com/Ferroman/diagc/commit/17f71a4c34e95824a916bde78aa6e67e61d5bf10))
+
 ## [1.8.0](https://github.com/Ferroman/diagc/compare/v1.7.0...v1.8.0) (2026-10-26)
 
 
