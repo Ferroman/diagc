@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import type { CliIo } from '../cli/io';
+import { globSorted } from '../glob';
 import { diagramName } from '../names';
 import { RELATIVE_PATHS } from '../paths';
 import type { PublishOptions } from '../publish/publish';
@@ -41,6 +42,34 @@ export async function pngRenderer(
     return undefined;
   }
   return snapshot.renderPng;
+}
+
+/**
+ * The sources `compile` and `lint` read for `files...`: a path as given, or a
+ * diagram name read as `publish` reads one (`shop` is `.diagrams/src/shop.diagram.ts`,
+ * else its `.diagram.json`). None given means every source, in path order, with
+ * the no-sources warning when there is none. An argument that is neither a file
+ * nor a diagram is one line on stderr each, and the result is then undefined: an
+ * empty selection would look like nothing to do.
+ */
+export async function resolveSources(io: CliIo, args: readonly string[]): Promise<string[] | undefined> {
+  if (args.length === 0) {
+    const files = await globSorted(SOURCES);
+    if (files.length === 0) warnNoSources(io);
+    return files;
+  }
+  const files: string[] = [];
+  let unknown = false;
+  for (const arg of args) {
+    const file = existsSync(arg) ? arg : sourceOf(diagramName(arg));
+    if (file === undefined) {
+      unknown = true;
+      io.err(`diagc: no diagram '${arg}' — not a file, and nothing under ${RELATIVE_PATHS.srcDir} is named that`);
+      continue;
+    }
+    files.push(file);
+  }
+  return unknown ? undefined : files;
 }
 
 /** The source a diagram name reads from: its `.diagram.ts`, else its `.diagram.json`;

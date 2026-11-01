@@ -50,7 +50,8 @@ export async function lintFile(file: string, opts?: LoadOptions): Promise<LintRe
         {
           file,
           severity: 'error',
-          code: 'load',
+          // a builder refusal names its rule; a source that simply threw is `load`
+          code: e.code ?? 'load',
           message: e.reason,
           ...(e.line !== undefined && e.column !== undefined ? { line: e.line, column: e.column } : {}),
         },

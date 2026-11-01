@@ -12,6 +12,7 @@ import {
   type IncludeResolver,
 } from '@diagc/core/internal';
 import { resolveInclude } from './includes';
+import { loadHint } from './loadHints';
 import { lockedResolverFor } from './snapshots';
 
 /**
@@ -45,12 +46,23 @@ export class LoadError extends Error {
     readonly file: string,
     readonly reason: string,
     position?: { line: number; column: number },
+    /** the rule a builder refusal names (`missing-kind`); undefined for a source
+     * that simply threw, which lint reports as `load` */
+    readonly code?: string,
   ) {
     super(position !== undefined ? `${file}:${position.line}:${position.column}: ${reason}` : reason);
     this.name = 'LoadError';
     this.line = position?.line;
     this.column = position?.column;
   }
+}
+
+/** The code a builder refusal carries, or undefined for any other error. By name,
+ * not instanceof: the diagram ran in jiti's own copy of core. */
+function builderCode(e: unknown): string | undefined {
+  if (!(e instanceof Error) || e.name !== 'BuilderError') return undefined;
+  const code = (e as { code?: unknown }).code;
+  return typeof code === 'string' ? code : undefined;
 }
 
 /** The line and column of the first `at` frame inside `file`. Matched on the
@@ -90,7 +102,12 @@ export async function executeDiagramTs(file: string, coreEntry?: string): Promis
     // A validation error thrown inside the module keeps its shape: lint reads its
     // `issues` by name. Everything else is the source failing to run.
     if (e instanceof Error && e.name === 'DiagramValidationError') throw e;
-    throw new LoadError(file, errMessage(e), positionIn(e instanceof Error ? e.stack : undefined, file));
+    throw new LoadError(
+      file,
+      loadHint(errMessage(e)),
+      positionIn(e instanceof Error ? e.stack : undefined, file),
+      builderCode(e),
+    );
   }
 
   const hasToJSON = typeof (def as { toJSON?: unknown } | null)?.toJSON === 'function';

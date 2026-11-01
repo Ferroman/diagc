@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { captureIo, diagram, inTempDir, writeSources } from '../../test-fixtures/cli';
 import { writeFileSync } from 'node:fs';
-import { diagramNames, pngRenderer, sourceOf, warnNoSources } from './shared';
+import { diagramNames, pngRenderer, resolveSources, sourceOf, warnNoSources } from './shared';
 
 const snapshot = vi.hoisted(() => ({
   findChrome: vi.fn((): string | undefined => undefined),
@@ -47,6 +47,50 @@ describe('sourceOf', () => {
       expect(sourceOf('shop')).toBe('.diagrams/src/shop.diagram.ts');
       expect(sourceOf('nope')).toBeUndefined();
       expect(sourceOf('shop', 'elsewhere')).toBeUndefined();
+    });
+  });
+});
+
+describe('resolveSources', () => {
+  it('keeps a path, reads a name as its source (TypeScript first), and lists every source for none', async () => {
+    await inTempDir(async () => {
+      writeSources('.', { shop: diagram('shop'), 'team/app': diagram('app') });
+      writeFileSync('.diagrams/src/shop.diagram.ts', 'export default {};');
+      const io = captureIo();
+      expect(
+        await resolveSources(io, ['.diagrams/src/team/app.diagram.json', 'shop', 'team/app.diagram.json']),
+      ).toEqual([
+        '.diagrams/src/team/app.diagram.json',
+        '.diagrams/src/shop.diagram.ts',
+        '.diagrams/src/team/app.diagram.json',
+      ]);
+      expect(await resolveSources(io, [])).toEqual([
+        '.diagrams/src/shop.diagram.json',
+        '.diagrams/src/shop.diagram.ts',
+        '.diagrams/src/team/app.diagram.json',
+      ]);
+      expect([io.stdout, io.stderr]).toEqual(['', '']);
+    });
+  });
+
+  it('refuses an argument that is neither a file nor a diagram, naming each, and runs nothing', async () => {
+    await inTempDir(async () => {
+      writeSources('.', { shop: diagram('shop') });
+      const io = captureIo();
+      expect(await resolveSources(io, ['big', 'shop', 'gone.diagram.ts'])).toBeUndefined();
+      expect([io.stdout, io.stderr]).toEqual([
+        '',
+        "diagc: no diagram 'big' — not a file, and nothing under .diagrams/src is named that\n" +
+          "diagc: no diagram 'gone.diagram.ts' — not a file, and nothing under .diagrams/src is named that\n",
+      ]);
+    });
+  });
+
+  it('says where it found no sources when given none and there are none', async () => {
+    await inTempDir(async () => {
+      const io = captureIo();
+      expect(await resolveSources(io, [])).toEqual([]);
+      expect(io.stderr).toBe("No diagrams under .diagrams/src — run 'diagc init' to create one.\n");
     });
   });
 });

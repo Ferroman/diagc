@@ -81,7 +81,7 @@ export { addStroke, deleteStroke, emptyDrawings, pruneDrawingsPlane, uniqueStrok
 export { defined, errMessage, nextFreeId, SOURCE_URL, uniqueSlug, type Defined, type SameKeys } from './util';
 export { allowedParentTypes, childrenOf, countAnchored } from './children';
 export { bestLaneOrder } from './lanes';
-export { lintModel, type LintCode, type LintFinding } from './lint';
+export { lintModel, type LintCode, type LintFinding, didYouMean } from './lint';
 export {
   diffMarks,
   diffModels,

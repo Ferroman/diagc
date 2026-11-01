@@ -1,17 +1,16 @@
 import { errMessage } from '@diagc/core/internal';
 import type { Command } from '../cli/command';
 import { compileFile } from '../compile';
-import { globSorted } from '../glob';
 import { RELATIVE_PATHS } from '../paths';
 import { formatCompileEvent } from '../watch';
-import { SOURCES, warnNoSources } from './shared';
+import { resolveSources } from './shared';
 
-/** `diagc compile [files...]`: the files named, or every source, into artifacts. */
+/** `diagc compile [files...]`: the files or diagrams named, or every source, into artifacts. */
 export const compile: Command<'--out' | '--update-includes'> = {
   flags: ['--out', '--update-includes'],
   async run({ positionals, flags }, { io, home, snapshots }) {
-    const files = positionals.length > 0 ? positionals : await globSorted(SOURCES);
-    if (positionals.length === 0 && files.length === 0) warnNoSources(io);
+    const files = await resolveSources(io, positionals);
+    if (files === undefined) return 1;
     let failed = false;
     for (const file of files) {
       try {

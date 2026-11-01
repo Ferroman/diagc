@@ -332,10 +332,23 @@ describe('LoadError', () => {
     expect(err).toBeInstanceOf(LoadError);
     const le = err as LoadError;
     expect(le.file).toBe(file);
-    expect(le.reason).toBe('m.nod is not a function');
+    expect(le.reason).toBe("m.nod is not a function (did you mean 'node'?)");
+    expect(le.code).toBeUndefined();
     expect(le.line).toBe(3);
     expect(typeof le.column).toBe('number');
-    expect(le.message).toBe(`${file}:3:${le.column}: m.nod is not a function`);
+    expect(le.message).toBe(`${file}:3:${le.column}: m.nod is not a function (did you mean 'node'?)`);
+  });
+
+  it('carries the code of a builder refusal, placed at the call', async () => {
+    const file = await throwing(
+      'kindless.diagram.ts',
+      "const a = m.node('a', { type: 'service' });\nconst b = m.node('b', { type: 'service' });\nm.relate(a, b, {} as never);",
+    );
+    const err = (await executeDiagramTs(file).catch((e: unknown) => e)) as LoadError;
+    expect(err).toBeInstanceOf(LoadError);
+    expect(err.code).toBe('missing-kind');
+    expect(err.reason).toBe("relate(): relation 'a' -> 'b' needs a kind, e.g. { kind: 'sync' }");
+    expect(err.line).toBe(5);
   });
 
   it('places a refusal thrown by the builder at the call in the file, not inside core', async () => {
