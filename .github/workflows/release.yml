@@ -2,7 +2,8 @@
 #
 # release-please keeps one release PR open that bumps the version and writes
 # CHANGELOG.md from the commits since the last release. Merging that PR tags vX.Y.Z,
-# creates the GitHub release, and then the publish job ships both npm packages.
+# creates the GitHub release, and then the publish job ships both npm packages and
+# goes green only once npm serves both at that version.
 #
 # One version for the whole repo (release-please-config.json): `diagc` bakes in the
 # renderer, studio and viewer, so a commit anywhere can change what it ships, and
@@ -94,3 +95,20 @@ jobs:
           for _ in $(seq 60); do served @diagc/core && break; sleep 10; done
           served @diagc/core || { echo "npm does not serve @diagc/core@$v after 10 minutes" >&2; exit 1; }
           publish @diagc/cli "$RUNNER_TEMP/tarballs/diagc-cli-$v.tgz"
+
+      # The tag and the GitHub release already announce this version, so the run must not go
+      # green until `npm install @diagc/cli` would get it: each package's `latest` is exactly
+      # the tag's version and its tarball downloads. A publish that stops half way (an upload
+      # refused, a step that exits 0 without uploading) otherwise leaves a release advertising
+      # a version npm lacks, found by whoever installs next.
+      - name: Check npm serves the version just released
+        run: |
+          tag='${{ inputs.tag || needs.release-please.outputs.tag_name }}'
+          v="${tag#v}"
+          latest() { npm view --prefer-online "$1" version 2>/dev/null; }
+          served() { [ "$(latest "$1")" = "$v" ] && curl -sfI -o /dev/null "$(npm view --prefer-online "$1@$v" dist.tarball)"; }
+          for p in @diagc/core @diagc/cli; do
+            for _ in $(seq 30); do served "$p" && break; sleep 10; done
+            served "$p" || { echo "$tag is released on GitHub, but npm serves $p@$(latest "$p") as latest, not $v" >&2; exit 1; }
+            echo "$p@$v is what npm serves as latest"
+          done
