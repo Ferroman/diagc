@@ -48,6 +48,10 @@ Nothing in the loop needs the studio. Open it yourself afterwards, to read the r
 
 The guide's rules do most of the work; what the agent cannot know is what the diagram is *for*. Say which diagram type (`diagc guide` lists them), what the reader should see first — groups rest folded, so the top level is the overview — and which details belong on a layer rather than in the base picture. Point it at the code or the document to draw from: diagc does not read your code, so the agent is the one doing the reading.
 
+## How well the guide works
+
+[`scripts/guide-eval/`](../../scripts/guide-eval/README.md) measures it: one cold agent per diagram type, given nothing but `diagc guide all` and a brief, scored on the compiled artifact. Its first run found the one hole the guide had — composition — and is how a release checks that the guide still carries every feature. Pass rates move with the model, so read them as a trend, not a gate.
+
 ## See also
 
 - [`diagc` reference → `guide`](../reference/cli.md#guide), [`lint`](../reference/cli.md#lint) and [`show`](../reference/cli.md#show)
