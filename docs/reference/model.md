@@ -82,6 +82,7 @@ picture of a run in a preset of its own, whatever the diagrams say (see [Publish
 | `plane` | `string?` | Restrict the node to one plane — and to the planes that borrow that plane's containment (`containmentOf`), which are views of its structure. Omit to share it across all. Deleting the plane deletes the node. |
 | `layer` | `string?` | The node shows only while this layer is active. |
 | `columns` | `Column[]?` | ER-table rows; rendered when `type` is `db-table`. |
+| `behaviors` | `StateBehavior[]?` | State-machine diagrams only. The state's entry, exit and do behaviours — see [`StateBehavior`](#statebehavior). |
 
 ### Asset refs (`image`, `shape`)
 
@@ -99,6 +100,14 @@ Two forms are accepted, and nothing else:
 | `pk` | `boolean?` | Primary-key member. |
 | `fk` | `boolean?` | Prints the `FK` marker. Presentation only — an `fk` edge is routed by its relation's `fromColumn`, not by this flag. |
 | `layer` | `string?` | The row shows only while this layer is active; the table itself stays on the base sheet. Must name a declared layer (`unknown-layer`). |
+
+### `StateBehavior`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `trigger` | `string` | When it runs: `entry`, `exit`, `do`, or an event name. Non-empty. |
+| `guard` | `string?` | Condition for it to run. Non-empty when given. |
+| `effect` | `string` | What it does. Non-empty. |
 
 ## `ContainmentEdge`
 
@@ -131,6 +140,11 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `delay` | `boolean?` | Causal-loop diagrams only. |
 | `fromColumn` | `string?` | FK column on `from`; anchors the edge to that row. |
 | `toColumn` | `string?` | Referenced column on `to`; defaults to the target's primary key. |
+| `trigger` | `string?` | State-machine diagrams only. The event that fires the transition. Non-empty text. |
+| `guard` | `string?` | State-machine diagrams only. The condition that must hold, printed in brackets. Non-empty text. |
+| `effect` | `string?` | State-machine diagrams only. What runs when the transition fires, printed after a slash. Non-empty text. |
+
+When any of `trigger`, `guard` or `effect` is set, the relation's label reads `trigger [guard] / effect` and replaces the text of its first label (or becomes its only label); `label` is ignored.
 
 ### `RelationStyle`
 
@@ -515,6 +529,8 @@ The compiler prints them, and the notation's panel lists them.
 | `invalid-include` | Malformed `include`; or `includePlane`/`includePlanes` given without `include`. |
 | `unknown-notation` | `notation` is not a built-in id. |
 | `invalid-polarity` | `polarity` is not `+` or `-`. |
+| `invalid-transition` | A relation's `trigger`, `guard` or `effect` is not non-empty text. |
+| `invalid-behaviors` | A node's `behaviors` is not a list of `{ trigger, guard?, effect }` with non-empty text. |
 | `git-link-endpoints` | A `commit`/`branch`/`merge` relation does not join two `commit` nodes. |
 | `git-commit-lane` | A `commit` link crosses lanes, or a `branch`/`merge` link stays in one. |
 | `git-parents` | A commit has more than one incoming `commit` link, or more than one incoming `branch` link. |

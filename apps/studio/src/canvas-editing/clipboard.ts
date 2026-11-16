@@ -311,6 +311,9 @@ function relationCommands(
           delay: r.delay,
           fromColumn: r.fromColumn,
           toColumn: r.toColumn,
+          trigger: r.trigger,
+          guard: r.guard,
+          effect: r.effect,
         }),
       },
     });

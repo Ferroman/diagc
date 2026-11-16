@@ -354,6 +354,18 @@ describe('model commands', () => {
     const next = apply(state, { type: 'set-table-columns', id: 't', columns: [{ name: 'id', pk: true }] });
     expect(next.model.nodes[0]?.columns).toEqual([{ name: 'id', pk: true }]);
   });
+
+  it('routes set-state-behaviors', () => {
+    const m = model('d');
+    m.node('s');
+    const state = { model: m.toJSON(), layout: emptyLayout(), drawings: emptyDrawings() };
+    const next = apply(state, {
+      type: 'set-state-behaviors',
+      id: 's',
+      behaviors: [{ trigger: 'entry', effect: 'go' }],
+    });
+    expect(next.model.nodes[0]?.behaviors).toEqual([{ trigger: 'entry', effect: 'go' }]);
+  });
 });
 
 describe('threat commands', () => {

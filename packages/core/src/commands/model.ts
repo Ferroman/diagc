@@ -1,5 +1,6 @@
 import type {
   Column,
+  StateBehavior,
   Comment,
   DiagramLayer,
   DiagramLegend,
@@ -19,6 +20,7 @@ import {
   setNodeDetails,
   setNodeRich,
   setPlanDates,
+  setStateBehaviors,
   setTableColumns,
   subtreeOf,
   type NodeDetails,
@@ -70,6 +72,7 @@ export type ModelCommand =
   | { type: 'set-plan-dates'; id: string; dates: PlanDates }
   | { type: 'set-node-rich'; id: string; runs: TextRun[] }
   | { type: 'set-table-columns'; id: string; columns: Column[] }
+  | { type: 'set-state-behaviors'; id: string; behaviors: StateBehavior[] }
   /** STRIDE findings ride on the node/relation they are about, so the three
    * threat commands take a {@link ElementRef} instead of a bare id. */
   | { type: 'add-threat'; target: ElementRef; threat: Threat }
@@ -185,6 +188,7 @@ export const MODEL_HANDLERS: Handlers<ModelCommand> = {
   'set-plan-dates': (state, { id, dates }) => withModel(state, setPlanDates(state.model, id, dates)),
   'set-node-rich': (state, { id, runs }) => withModel(state, setNodeRich(state.model, id, runs)),
   'set-table-columns': (state, { id, columns }) => withModel(state, setTableColumns(state.model, id, columns)),
+  'set-state-behaviors': (state, { id, behaviors }) => withModel(state, setStateBehaviors(state.model, id, behaviors)),
   'add-threat': (state, { target, threat }) => withModel(state, addThreat(state.model, target, threat)),
   'update-threat': (state, { target, id, patch }) => withModel(state, updateThreat(state.model, target, id, patch)),
   'remove-threat': (state, { target, id }) => withModel(state, removeThreat(state.model, target, id)),

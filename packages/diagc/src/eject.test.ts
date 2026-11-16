@@ -302,6 +302,37 @@ const MODEL_LEVEL_MODEL: DiagramModel = {
   style: 'sketch',
 };
 
+const STATE_MACHINE_MODEL: DiagramModel = {
+  version: 1,
+  id: 'sm-sample',
+  name: 'SM sample',
+  nodes: [
+    {
+      id: 'idle',
+      name: 'Idle',
+      behaviors: [
+        { trigger: 'entry', effect: 'reset' },
+        { trigger: 'do', guard: 'online', effect: 'poll' },
+      ],
+    },
+    { id: 'busy', name: 'Busy' },
+  ],
+  containment: [],
+  relations: [
+    {
+      id: 'idle->busy#0',
+      from: 'idle',
+      to: 'busy',
+      kind: 'transition',
+      trigger: 'pay',
+      guard: 'total > 0',
+      effect: 'charge',
+    },
+  ],
+  layers: [],
+  planes: [],
+};
+
 const FEATURE_FAMILIES: { name: string; model: DiagramModel }[] = [
   { name: 'git', model: GIT_MODEL },
   { name: 'activity', model: ACTIVITY_MODEL },
@@ -310,6 +341,7 @@ const FEATURE_FAMILIES: { name: string; model: DiagramModel }[] = [
   { name: 'multi-label-edge', model: MULTI_LABEL_MODEL },
   { name: 'planes', model: PLANES_MODEL },
   { name: 'model-level', model: MODEL_LEVEL_MODEL },
+  { name: 'state-machine', model: STATE_MACHINE_MODEL },
 ];
 
 describe('round-trips every model feature', () => {

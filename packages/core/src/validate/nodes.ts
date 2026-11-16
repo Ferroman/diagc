@@ -25,6 +25,7 @@ export function validateNodes(ctx: Ctx): void {
     checkInclude(ctx, n);
     checkMembership(ctx, n);
     checkColumns(ctx, n);
+    checkBehaviors(ctx, n);
   }
 }
 
@@ -176,5 +177,23 @@ function checkColumns(ctx: Ctx, node: DiagramNode): void {
     if (c.layer !== undefined && !ctx.layerIds.has(c.layer)) {
       report(issues, 'unknown-layer', `Column '${node.id}.${c.name}' references unknown layer '${c.layer}'`, node.id);
     }
+  }
+}
+
+const isText = (v: unknown): v is string => typeof v === 'string' && v.trim() !== '';
+
+function checkBehaviors({ issues }: Ctx, node: DiagramNode): void {
+  if (node.behaviors === undefined) return;
+  const bad = (what: string) =>
+    report(issues, 'invalid-behaviors', `Node '${node.id}' has invalid behaviors: ${what}`, node.id);
+  if (!Array.isArray(node.behaviors)) {
+    bad('not a list');
+    return;
+  }
+  for (const [i, b] of (node.behaviors as unknown[]).entries()) {
+    const entry = b as Partial<Record<'trigger' | 'guard' | 'effect', unknown>> | null;
+    if (entry === null || typeof entry !== 'object') bad(`entry ${i} is not an object`);
+    else if (!isText(entry.trigger) || !isText(entry.effect)) bad(`entry ${i} needs a trigger and an effect`);
+    else if (entry.guard !== undefined && !isText(entry.guard)) bad(`guard at ${i} must be non-empty text`);
   }
 }

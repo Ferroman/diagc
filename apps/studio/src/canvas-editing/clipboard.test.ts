@@ -405,6 +405,20 @@ describe("a relation's plane", () => {
   });
 });
 
+describe('a copied transition', () => {
+  it('keeps its trigger, guard and effect', () => {
+    const base = system();
+    const m: DiagramModel = {
+      ...base,
+      relations: [{ ...base.relations[0]!, trigger: 'pay', guard: 'ok', effect: 'charge' }],
+    };
+    const [r] = copySelection({ model: m, layout: undefined, plane: undefined }, ['sys'])!.relations;
+    expect(r).toMatchObject({ trigger: 'pay', guard: 'ok', effect: 'charge' });
+    const out = pasteCommand(m, copySelection({ model: m, layout: undefined, plane: undefined }, ['sys'])!, ctx())!;
+    expect(JSON.stringify(out.command)).toContain('"trigger":"pay","guard":"ok","effect":"charge"');
+  });
+});
+
 describe('the exact payload and batch', () => {
   /** every field a paste carries: a plane, a pen, sizes, positions, a relation with all its options and labels */
   function rich(): { model: DiagramModel; layout: LayoutOverlay } {

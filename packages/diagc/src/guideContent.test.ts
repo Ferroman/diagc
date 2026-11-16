@@ -86,7 +86,8 @@ describe('guide coverage', () => {
     const mentioned = (key: string) => all.includes(`\`${key}\``) || new RegExp(`\\b${key}:`).test(all);
     // Set from a method rather than an option (`ref.threat()`, `ref.comment()`), or
     // placed by hand in the studio (`labels`): the reference has them.
-    const DEFERRED_TO_REFERENCE = ['threats', 'comments', 'labels'];
+    // the state-machine guide page will cover transition parts and behaviours
+    const DEFERRED_TO_REFERENCE = ['threats', 'comments', 'labels', 'trigger', 'guard', 'effect', 'behaviors'];
     const keys = [...new Set([...NODE_OPT_KEYS, ...RELATE_OPT_KEYS])];
     const missing = keys.filter((k) => !mentioned(k) && !DEFERRED_TO_REFERENCE.includes(k));
     expect(missing).toEqual([]);

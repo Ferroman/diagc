@@ -30,6 +30,8 @@ export interface ValidationIssue {
     | 'unknown-notation'
     | 'invalid-polarity'
     | 'invalid-delay'
+    | 'invalid-transition'
+    | 'invalid-behaviors'
     | 'invalid-rich'
     | 'invalid-align'
     | 'invalid-font-scale'

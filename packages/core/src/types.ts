@@ -92,6 +92,16 @@ export interface DiagramNode {
   layer?: string;
   /** ER-table rows; rendered when `type` is 'db-table' (see m.table) */
   columns?: Column[];
+  /** State-machine diagrams only: the state's entry / exit / do behaviours */
+  behaviors?: StateBehavior[];
+}
+
+/** One behaviour of a state: `trigger` names when it runs (`entry`, `exit`, `do`, or an
+ * event), `guard` is an optional condition, `effect` what it does. */
+export interface StateBehavior {
+  trigger: string;
+  guard?: string;
+  effect: string;
 }
 
 export interface ContainmentEdge {
@@ -235,6 +245,12 @@ export interface DiagramRelation {
   fromColumn?: string;
   /** referenced column on `to` (the one/parent side); defaults to the target PK */
   toColumn?: string;
+  /** state-machine transition: the event that fires it */
+  trigger?: string;
+  /** state-machine transition: the condition that must hold, printed in brackets */
+  guard?: string;
+  /** state-machine transition: what runs when it fires, printed after a slash */
+  effect?: string;
 }
 
 export interface DiagramLayer {

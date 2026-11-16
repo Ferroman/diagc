@@ -14,6 +14,9 @@ export interface RelationOptsInput {
   delay?: boolean;
   fromColumn?: string;
   toColumn?: string;
+  trigger?: string;
+  guard?: string;
+  effect?: string;
 }
 
 function requirePlane(model: DiagramModel, plane: string | null | undefined): void {
@@ -61,6 +64,9 @@ export interface RelationPatch {
   delay?: boolean | null;
   fromColumn?: string | null;
   toColumn?: string | null;
+  trigger?: string | null;
+  guard?: string | null;
+  effect?: string | null;
 }
 
 /** Whitelist of {@link RelationPatch} fields that are null-clearable and applied
@@ -77,6 +83,9 @@ const RELATION_NULLABLE_KEYS = [
   'delay',
   'fromColumn',
   'toColumn',
+  'trigger',
+  'guard',
+  'effect',
 ] as const;
 type RelationNullableKey = (typeof RELATION_NULLABLE_KEYS)[number];
 

@@ -1,4 +1,4 @@
-import type { Column, DiagramModel, DiagramNode, FontScale, Link, TextAlign, TextRun } from '../types';
+import type { Column, DiagramModel, DiagramNode, FontScale, Link, StateBehavior, TextAlign, TextRun } from '../types';
 import { normalizeRuns, runsToPlainText } from '../text';
 import { childrenOf } from '../children';
 import { isIsoDate } from '../dates';
@@ -185,4 +185,22 @@ export function setTableColumns(model: DiagramModel, id: string, columns: Column
   // keystroke, so a transient collision must not throw. `validate` reports
   // duplicate-column at publish time.
   return { ...model, nodes: model.nodes.map((n) => (n.id === id ? { ...n, columns } : n)) };
+}
+
+/** Replaces a state's behaviours; an empty list removes the field. Unlike columns, an
+ * empty trigger or effect is rejected here: validate treats it as an error, so a save
+ * would fail anyway. */
+export function setStateBehaviors(model: DiagramModel, id: string, behaviors: StateBehavior[]): DiagramModel {
+  requireNode(model, id);
+  for (const b of behaviors) {
+    if (b.trigger.trim() === '') throw new CommandError('A behaviour needs a trigger');
+  }
+  return {
+    ...model,
+    nodes: model.nodes.map((n) => {
+      if (n.id !== id) return n;
+      const { behaviors: _old, ...rest } = n;
+      return behaviors.length === 0 ? rest : { ...rest, behaviors };
+    }),
+  };
 }

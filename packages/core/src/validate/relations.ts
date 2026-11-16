@@ -87,6 +87,17 @@ function checkRefsAndFlags(ctx: Ctx, relation: DiagramRelation, insideInclude: (
       relation.id,
     );
   }
+  for (const part of ['trigger', 'guard', 'effect'] as const) {
+    const value: unknown = relation[part];
+    if (value !== undefined && (typeof value !== 'string' || value.trim() === '')) {
+      report(
+        issues,
+        'invalid-transition',
+        `Relation '${relation.id}' has invalid ${part}: it must be non-empty text`,
+        relation.id,
+      );
+    }
+  }
 }
 
 function checkLabels({ issues }: Ctx, relation: DiagramRelation): void {
