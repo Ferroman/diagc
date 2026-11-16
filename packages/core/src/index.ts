@@ -44,6 +44,11 @@ export {
   FlowRef,
   PlanBuilder,
   ZoneBuilder,
+  SmElementRef,
+  SmRegionRef,
+  SmScope,
+  StateMachineBuilder,
+  StateRef,
   type NodeOpts,
   type RelateOpts,
   type ContainsOpts,
@@ -58,6 +63,9 @@ export {
   type ElementOpts,
   type ZoneOpts,
   type EventOpts,
+  type SmStateOpts,
+  type SmTransitionParts,
+  type TransitionParts,
 } from './builder/index';
 export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue } from './validate/index';
 export type * from './types';

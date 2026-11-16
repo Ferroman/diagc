@@ -24,3 +24,13 @@ export { ConsequenceRef, SecondOrderBuilder, type ConsequenceOpts } from '../not
 export { FishboneBuilder, CategoryRef, CauseRef, type FishboneOpts } from '../notations/fishbone/builder';
 export { ThreatModelBuilder, FlowRef } from '../notations/threat-model/builder';
 export { PlanBuilder, ZoneBuilder, type ZoneOpts, type EventOpts } from '../notations/plan/builder';
+export {
+  SmElementRef,
+  SmRegionRef,
+  SmScope,
+  StateMachineBuilder,
+  StateRef,
+  type SmStateOpts,
+  type SmTransitionParts,
+  type TransitionParts,
+} from '../notations/state-machine/builder';

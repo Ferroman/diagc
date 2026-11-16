@@ -134,7 +134,7 @@ The first plane declared is the default and owns untagged containment.
 | `containmentOf` | `string?` | Borrow another plane's structure. |
 | `layers` | `string[]?` | Layers on by default in this plane. A default, not a floor: hosts with a layer switch start from this (`presetLayers`) and can turn them off — an export, which has no switch, always draws them. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations. |
-| `notation` | `NotationId?` (`'causal-loop' \| 'git-graph' \| 'c4' \| 'second-order' \| 'fishbone' \| 'threat-model' \| 'plan'`) | Prefer `m.gitGraph()`/`m.secondOrder()`/`m.fishbone()`/`m.threatModel()`/`m.plan()` for `git-graph`/`second-order`/`fishbone`/`threat-model`/`plan`. Overrides `m.notation()` for this plane. |
+| `notation` | `NotationId?` (`'causal-loop' \| 'git-graph' \| 'c4' \| 'second-order' \| 'fishbone' \| 'threat-model' \| 'plan' \| 'state-machine'`) | Prefer `m.gitGraph()`/`m.secondOrder()`/`m.fishbone()`/`m.threatModel()`/`m.plan()`/`m.stateMachine()` for `git-graph`/`second-order`/`fishbone`/`threat-model`/`plan`/`state-machine`. Overrides `m.notation()` for this plane. |
 | `hides` | `string[]?` | Shared node ids to hide here, promoting their contents into their place. |
 | `hidesTree` | `string[]?` | Shared node ids to hide here together with their contents, however deep. A child another visible box also contains stays. |
 
@@ -246,6 +246,61 @@ const start = orders.start();
 const submit = orders.action('submit', 'Submit order');
 const note = orders.note('n1', 'Validated client-side first');
 act.flow(start, submit).noteLink(note, submit);
+```
+
+## `m.stateMachine(id, opts?) → StateMachineBuilder`
+
+Declares a state machine: a framed UML statechart. Repeatable — each call is one frame, so several machines can share a canvas. `StateMachineBuilder` **is** the frame's `NodeRef` (type `sm-machine`).
+
+With no `plane`, the notation is model-wide: it is set to `state-machine`, left alone if it already is, and the call throws (naming the `plane` option) if the model has another notation. Name a plane to draw the machine beside other views of the same model: the first call declares it, later calls reuse it, and everything the handle creates is tagged with it. A plane already declared with another notation throws.
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `name` | `string?` | Defaults to `id`. |
+| `plane` | `string?` | Plane id. Omit to set the notation model-wide. |
+| `planeName` | `string?` | Plane name, when `plane` is given. Default `State machine`. |
+
+### Element helpers (machine, state and region)
+
+The machine, `StateRef` and `SmRegionRef` all extend `SmScope`. Every helper contains the new node in the scope it is called on. Auto ids are `<scope>-<kind>`, `-2`, …; pseudo-states are unnamed.
+
+| Method | Returns | Notes |
+| --- | --- | --- |
+| `.state(id, name?, opts?)` | `StateRef` | A state. `opts`: `entry?`, `exit?`, `do?` (each an effect, stored as a behavior with that trigger, in that order) and `color?`. |
+| `.initial(id?)` | `SmElementRef` | The initial pseudo-state. |
+| `.final(id?)` | `SmElementRef` | A final state. |
+| `.choice(id?, name?)` | `SmElementRef` | A choice. |
+| `.junction(id?)` | `SmElementRef` | A junction. |
+| `.bar(id?)` | `SmElementRef` | A fork or join bar. |
+| `.terminate(id?)` | `SmElementRef` | A terminate node. |
+| `.history({ id?, deep? })` | `SmElementRef` | Shallow history (`H`), or deep (`H*`) with `deep: true`. |
+
+### States and the machine
+
+| Call | Returns | Notes |
+| --- | --- | --- |
+| `state.region(id?, name?)` | `SmRegionRef` | A concurrent region; a state with regions is orthogonal. |
+| `state.on(trigger, { guard?, effect })` | `state` | An internal transition, added to the state's behaviors after `entry`, `exit` and `do`. |
+| `state.history(opts?)` | `SmElementRef` | **Throws** on a state that has regions: use `region.history()`. |
+| `state.entryPoint(id?, name?)`, `state.exitPoint(id?, name?)` | `SmElementRef` | Entry and exit points on the state's border. The machine offers them too. |
+| `sm.transition(from, to, parts?)` | `sm` | A `kind: 'transition'` relation. `parts`: `{ trigger?, guard?, effect? }`, stored as fields, never as a `label`. |
+| `ref.to(target, parts?)` | `target` | The same transition from any element or state, returning the target so a path chains. |
+
+```ts
+import { model } from '@diagc/core';
+
+const m = model('order');
+const order = m.stateMachine('order', { name: 'Order' });
+const draft = order.state('draft', 'Draft');
+const paid = order.state('paid', 'Paid', { entry: 'reserveStock', exit: 'releaseHold' });
+const fulfil = order.state('fulfil', 'Fulfilment');
+const pick = fulfil.region('pick', 'Picking');
+pick.initial().to(pick.state('picking', 'Picking'));
+fulfil.region('bill', 'Billing');
+order.initial().to(draft);
+order.transition(draft, paid, { trigger: 'pay', guard: 'total > 0', effect: 'charge' });
+order.transition(paid, fulfil, { trigger: 'ship' });
+paid.on('remind', { guard: 'overdue', effect: 'email' });
 ```
 
 ## `m.secondOrder(opts?) → SecondOrderBuilder`
