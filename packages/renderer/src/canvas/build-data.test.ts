@@ -55,6 +55,7 @@ const edgeCtx = (over: Partial<EdgeDataContext> = {}): EdgeDataContext => ({
   labelSpots: new Map(),
   flowDirection: 'RIGHT',
   selfLoopIndex: new Map(),
+  parallelBow: new Map(),
   ...over,
 });
 
@@ -374,6 +375,12 @@ describe('buildEdgeData', () => {
     const ctx = edgeCtx({ flowDirection: 'DOWN', selfLoopIndex: new Map([[loop.id, 2]]) });
     expect(buildEdgeData(loop, ctx).selfLoop).toEqual({ direction: 'DOWN', index: 2 });
     expect(buildEdgeData(viewEdge(), ctx).selfLoop).toBeUndefined();
+  });
+
+  it('hands an edge that shares its pair its bow, and a lone edge none', () => {
+    const ctx = edgeCtx({ parallelBow: new Map([['e2', -32]]) });
+    expect(buildEdgeData(viewEdge({ id: 'e2' }), ctx).parallelBow).toBe(-32);
+    expect('parallelBow' in buildEdgeData(viewEdge(), ctx)).toBe(false);
   });
 
   it('copies the shared fields and optional per-constituent overrides', () => {
@@ -747,6 +754,7 @@ describe('the data caches compare every context field', () => {
     edgeLook: { edgeLook: { corner: 0 } },
     flowDirection: { flowDirection: 'DOWN' },
     selfLoopIndex: { selfLoopIndex: new Map([['e1', 1]]) },
+    parallelBow: { parallelBow: new Map([['e1', 32]]) },
   };
   it.each(Object.entries(edgeVariants))('rebuilds the edge data when only %s changes', (_field, over) => {
     const e = viewEdge();

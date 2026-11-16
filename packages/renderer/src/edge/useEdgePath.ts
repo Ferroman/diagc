@@ -16,11 +16,11 @@ import {
   shapeCurve,
   snapRouteEnds,
   tidyRoute,
-  type BowSide,
   type EdgeCurve,
   type EdgePathParams,
   type EdgeShape,
 } from './edge-geometry';
+import { bowOf } from './parallel-edges';
 import { selfLoopCurve, selfLoopPath } from './self-loop';
 import type { EdgeAnchors, EndBox } from './useEdgeAnchors';
 
@@ -148,10 +148,19 @@ function floatingPath(
   // curvature. Notations that want visible arcs (CLD) opt into a symmetric
   // perpendicular bow instead, computed independently of handle facing; see
   // edge-geometry.ts's `bowPath`/`bowControlPoints`.
-  const bowed = profile.edge?.bowed === true && shape === 'curved';
-  const bowSide: BowSide = rel?.bow ?? 'left';
+  // An edge sharing its pair with another bows too (see bowOf).
+  const {
+    bowed,
+    side: bowSide,
+    bulge,
+  } = bowOf({
+    shape,
+    profileBows: profile.edge?.bowed === true,
+    side: rel?.bow,
+    parallelBow: data?.parallelBow,
+  });
   const effectiveShape: EdgeShape = bowed ? 'bow' : shape;
-  const curve = shapeCurve({ shape: effectiveShape, params, curvature, side: bowSide });
+  const curve = shapeCurve({ shape: effectiveShape, params, curvature, side: bowSide, bulge });
   let path: string;
   let labelX: number;
   let labelY: number;
@@ -166,7 +175,7 @@ function floatingPath(
     [path, labelX, labelY] = getSmoothStepPath(params);
   } else if (bowed) {
     const mid = curve.point(0.5);
-    path = bowPath(params, curvature ?? DEFAULT_CURVATURE, bowSide);
+    path = bowPath(params, curvature ?? DEFAULT_CURVATURE, bowSide, bulge);
     labelX = mid.x;
     labelY = mid.y;
   } else {

@@ -10,7 +10,7 @@ import {
 import { FORCED_SIZE_SHAPES } from './box-size';
 import type { SizeHint } from './layout-graph';
 import { CAPTION_HEIGHT, captionWidth, estimateLabelSize, glyphCaptionSize } from '../node/label-size';
-import { behaviorLines } from '../node/behavior-lines';
+import { behaviorLines, STATE_DIVIDER_HEIGHT } from '../node/behavior-lines';
 import { tableSize } from '../node/table-ports';
 import type { NotationProfile } from '../notations';
 import type { Registry, TypeStyle } from '../registry';
@@ -33,13 +33,12 @@ const tableRule: Rule = (n, ctx) => {
   return tableSize(n.columns, n.name);
 };
 
-/** The divider between a state's name and its behaviours, with its margins. */
-const STATE_DIVIDER_HEIGHT = 9;
-
 /** A state's behaviours are drawn under its name, so a leaf state grows with them:
  * the name and one line each, sized as a multiline label, and never smaller than
  * the layout's leaf. A state without any, or with a saved size, takes the usual
- * rules. A folded composite is hinted the same, a little roomier than it needs. */
+ * rules. A folded composite draws them the same way, so withBoxSizes keeps this
+ * hint over its folded box where it is the larger; an open one lists them under
+ * its header, in room its padding makes (containerPad), and this hint goes unused. */
 const stateRule: Rule = (n, ctx) => {
   if (n.type !== SM_STATE_TYPE || ctx.sizes?.[n.id] !== undefined) return undefined;
   const lines = behaviorLines(n);

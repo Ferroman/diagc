@@ -9,7 +9,10 @@ const STACK_STEP = 18;
 const LEAVE = 0.3;
 const ENTER = 0.7;
 /** room between the loop's crown and its label (px) */
-const LABEL_GAP = 10;
+export const LOOP_LABEL_GAP = 10;
+
+/** how far out from the box side the crown of a node's `index`-th self-loop stands (px) */
+export const loopRise = (index: number): number => RISE + index * STACK_STEP;
 
 export interface SelfLoop {
   path: string;
@@ -26,7 +29,7 @@ interface Box {
 
 /** the loop as one cubic: its ends on the box side, its crown `rise` out */
 function loopPoints(box: Box, direction: LayoutDirection, index: number) {
-  const rise = RISE + index * STACK_STEP;
+  const rise = loopRise(index);
   // 4/3 of the rise puts the cubic's crown exactly `rise` out
   const reach = (rise * 4) / 3;
   const across = direction === 'DOWN' || direction === 'UP';
@@ -40,7 +43,7 @@ function loopPoints(box: Box, direction: LayoutDirection, index: number) {
     c1: at(LEAVE, reach),
     c2: at(ENTER, reach),
     to: at(ENTER, 0),
-    label: at((LEAVE + ENTER) / 2, rise + LABEL_GAP),
+    label: at((LEAVE + ENTER) / 2, rise + LOOP_LABEL_GAP),
   };
 }
 

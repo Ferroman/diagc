@@ -4,6 +4,7 @@ import {
   ACTIVITY_START_TYPE,
   LEAF_SIZE,
   RESERVED_NODE_ID,
+  SM_STATE_TYPE,
   type BoxSize,
   type CompiledView,
   type LayoutSettings,
@@ -12,6 +13,8 @@ import {
 } from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT } from './activity-frame';
 import { EDGE_LABEL_MAX_CHARS } from '../node/label-size';
+import { behaviorCompartmentHeight } from '../node/behavior-lines';
+import { selfLoopRooms, type RoomLabel } from './self-loop-room';
 
 /** An elk edge after lifting: both endpoints are direct children of the owner. */
 export interface LiftedEdge {
@@ -271,7 +274,9 @@ const FRAME_PAD: Pad = { top: 0, left: ACTIVITY_LAYOUT.TITLE_STRIP_W, bottom: 0,
 export function containerPad(n: ViewNode): Pad {
   if (n.node.type === ACTIVITY_LANE_TYPE) return LANE_PAD;
   if (n.node.type === ACTIVITY_FRAME_TYPE) return FRAME_PAD;
-  return CONTAINER_PAD;
+  // an open state lists its behaviours under its header, above its substates
+  const behaviors = n.node.type === SM_STATE_TYPE ? behaviorCompartmentHeight(n.node) : 0;
+  return behaviors > 0 ? { ...CONTAINER_PAD, top: CONTAINER_PAD.top + behaviors } : CONTAINER_PAD;
 }
 
 const elkPadding = (p: Pad): string => `[top=${p.top}.0,left=${p.left}.0,bottom=${p.bottom}.0,right=${p.right}.0]`;
@@ -368,6 +373,8 @@ interface GraphBuild {
   emitted: Set<string>;
   /** set once a container is handed edges of its own */
   attachedToContainer: boolean;
+  /** the room a box's self-loops take beside it (see selfLoopRooms) */
+  loopRooms: ReadonlyMap<string, RoomLabel>;
 }
 
 // Padding is applied AFTER the spread so the container-specific value wins:
@@ -412,18 +419,23 @@ function toNode(build: GraphBuild, n: ViewNode): ElkShape {
   // `COLLAPSED_SIZE` is the fallback for callers that pass no sizes at all.
   if (n.state === 'collapsed') {
     const folded = build.sizes?.get(n.id) ?? COLLAPSED_SIZE;
-    return { id: n.id, width: folded.width, height: folded.height };
+    const room = build.loopRooms.get(n.id);
+    return { id: n.id, width: folded.width, height: folded.height, ...(room !== undefined ? { labels: [room] } : {}) };
   }
   return leafShape(build, n);
 }
 
 function leafShape(build: GraphBuild, n: ViewNode): ElkShape {
   const caption = build.sizes?.get(n.id)?.caption;
+  // like an edge label, elk reserves the box only when `text` is non-empty
+  const labels = [
+    ...(caption !== undefined ? [{ ...caption, text: 'caption', layoutOptions: CAPTION_BELOW }] : []),
+    ...(build.loopRooms.has(n.id) ? [build.loopRooms.get(n.id)!] : []),
+  ];
   return {
     id: n.id,
     ...footprint(build.sizes?.get(n.id) ?? LEAF_SIZE),
-    // like an edge label, elk reserves the box only when `text` is non-empty
-    ...(caption !== undefined ? { labels: [{ ...caption, text: 'caption', layoutOptions: CAPTION_BELOW }] } : {}),
+    ...(labels.length > 0 ? { labels } : {}),
     ...(build.activity && n.node.type === ACTIVITY_START_TYPE
       ? { layoutOptions: { 'elk.layered.layering.layerConstraint': 'FIRST' } }
       : {}),
@@ -556,6 +568,9 @@ export function buildGraph(
     activity,
     emitted: new Set(),
     attachedToContainer: false,
+    loopRooms: selfLoopRooms(view.edges, settings?.direction ?? FALLBACK_DIRECTION, (e) =>
+      edgeLabelBox(edgeLabelText(e)),
+    ),
   };
 
   // built before the edges are — `toNode` is what fills `emitted`, and what

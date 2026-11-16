@@ -4,9 +4,10 @@ import { accentStyle, dropTargetAttrs, MetaBadges, sketchOf } from '../node-look
 import type { BodyProps } from './types';
 
 /** A state. Closed, a rounded box: the name, and under a divider one line per
- * behaviour. A folded composite swaps the behaviours for the composite glyph
- * (its content is what the fold hides, not its behaviours). Open, the box is
- * the frame its substates are drawn in, with the name in a header. */
+ * behaviour; a folded composite adds the composite glyph beside its name (its
+ * substates are what the fold hides, not its behaviours). Open, the box is the
+ * frame its substates are drawn in, with the name in a header and the behaviours
+ * under it, in room the layout leaves above the substates (containerPad). */
 export function StateBody({ id, data, selected, width, height, parts }: BodyProps) {
   const { style, name, loopClass, ghost } = parts;
   const open = data.state === 'expanded';
@@ -15,7 +16,7 @@ export function StateBody({ id, data, selected, width, height, parts }: BodyProp
     ? undefined
     : { ...accentStyle(data.color), ...(data.textColor !== undefined ? { color: data.textColor } : {}) };
   const folded = data.composite === true && !open;
-  const behaviors = open || folded ? [] : (data.behaviors ?? []);
+  const behaviors = data.behaviors ?? [];
   return (
     <div
       className={
@@ -36,6 +37,11 @@ export function StateBody({ id, data, selected, width, height, parts }: BodyProp
             {name}
             <MetaBadges data={data} />
           </div>
+          {behaviors.length > 0 && (
+            <div className="dg-sm-open-behaviors">
+              <Behaviors lines={behaviors} />
+            </div>
+          )}
         </>
       ) : (
         <>

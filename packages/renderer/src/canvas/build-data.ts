@@ -151,6 +151,8 @@ export interface EdgeDataContext {
   flowDirection: LayoutDirection;
   /** each self-loop's place among its node's, by edge id (see selfLoopIndexes) */
   selfLoopIndex: ReadonlyMap<string, number>;
+  /** each edge's bow when another joins the same two nodes, by edge id (see parallelBows) */
+  parallelBow: ReadonlyMap<string, number>;
 }
 
 /** relation id → label id → where the label sits along its edge */
@@ -340,6 +342,8 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     else bindViewLabelMoves(data, relation, ctx);
   }
   if (e.from === e.to) data.selfLoop = { direction: ctx.flowDirection, index: ctx.selfLoopIndex.get(e.id) ?? 0 };
+  const bow = ctx.parallelBow.get(e.id);
+  if (bow !== undefined) data.parallelBow = bow;
   if (ctx.routing !== undefined) addRoute(data, e, ctx, ctx.routing);
   return data;
 }
@@ -479,6 +483,7 @@ const EDGE_CTX_FIELDS = [
   'edgeColors',
   'flowDirection',
   'selfLoopIndex',
+  'parallelBow',
 ] as const;
 const _edgeCtxFields: SameKeys<keyof EdgeDataContext, (typeof EDGE_CTX_FIELDS)[number]> = true;
 void _edgeCtxFields;

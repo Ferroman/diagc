@@ -1042,6 +1042,40 @@ describe('DiagramEdge between measured nodes', () => {
     });
   });
 
+  describe('parallel edges', () => {
+    const drawn = (partial: Partial<DiagramEdgeData>) => {
+      const r = renderEdge({ label: 'go', ...partial });
+      const d = r.container.querySelector('path.react-flow__edge-path')!.getAttribute('d')!;
+      const at = r.getByText('go').style.transform;
+      r.unmount();
+      return { d, at };
+    };
+
+    it('bows an edge that shares its pair, moving its label off its sibling', () => {
+      const lone = drawn({});
+      const second = drawn({ parallelBow: 32 });
+      const third = drawn({ parallelBow: -32 });
+      expect(new Set([lone.d, second.d, third.d]).size).toBe(3);
+      expect(new Set([lone.at, second.at, third.at]).size).toBe(3);
+    });
+
+    it('leaves a lone edge on the plain bezier', () => {
+      const [path] = getBezierPath({
+        sourceX: 0,
+        sourceY: 0,
+        targetX: 100,
+        targetY: 100,
+        sourcePosition: Position.Bottom,
+        targetPosition: Position.Top,
+      });
+      expect(drawn({}).d).toBe(path);
+    });
+
+    it('keeps a straight edge straight', () => {
+      expect(drawn({ relStyle: { shape: 'straight' }, parallelBow: 32 }).d).not.toContain('C');
+    });
+  });
+
   describe('self-loop', () => {
     const loopEdge = (partial: Partial<DiagramEdgeData>) =>
       render(
@@ -1062,6 +1096,12 @@ describe('DiagramEdge between measured nodes', () => {
           </svg>
         </ReactFlowProvider>,
       );
+
+    it('draws a loop in any notation, not only a state machine', () => {
+      const { container } = loopEdge({ kind: 'uses', notation: 'c4', selfLoop: { direction: 'DOWN', index: 0 } });
+      const d = container.querySelector('path.react-flow__edge-path')!.getAttribute('d')!;
+      expect(d).toBe(selfLoopPath({ x: 50, y: 40, width: 0, height: 0 }, 'DOWN', 0).path);
+    });
 
     it('draws a loop, not a zero-length line, with its label at the loop spot', () => {
       const { container, getByText } = loopEdge({ label: 'tick', selfLoop: { direction: 'RIGHT', index: 0 } });

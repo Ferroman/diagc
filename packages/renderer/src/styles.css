@@ -2515,6 +2515,10 @@ button.dg-role-chip {
 .dg-sm-behavior {
   white-space: pre-wrap;
 }
+/* an open composite's behaviours, under its header and above its substates */
+.dg-sm-open-behaviors {
+  padding: 0 10px;
+}
 .dg-sm-composite-glyph {
   flex: none;
   margin-left: 6px;
