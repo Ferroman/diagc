@@ -1,6 +1,3 @@
-import { containmentOn } from '../../planes';
-import type { DiagramModel } from '../../types';
-
 /** The notation id a plane (or the model) declares to be drawn as a UML state
  * machine. Pure — the renderer and the studio derive everything from here. */
 export const SM_NOTATION = 'state-machine' as const;
@@ -46,11 +43,3 @@ export const isStateMachineType = (type: string | undefined): boolean => type !=
 /** every sm- type except machine, state and region: a vertex that is not a box holding behaviour */
 export const isPseudoState = (type: string | undefined): boolean =>
   isStateMachineType(type) && type !== SM_MACHINE_TYPE && type !== SM_STATE_TYPE && type !== SM_REGION_TYPE;
-
-/** Whether the node's children on `plane` include a region — a state split into
- * concurrent regions. Reads one plane only: containment is per plane, so the same
- * node may be orthogonal on one and simple on another. */
-export function isOrthogonal(model: DiagramModel, plane: string | undefined, id: string): boolean {
-  const regions = new Set(model.nodes.filter((n) => n.type === SM_REGION_TYPE).map((n) => n.id));
-  return containmentOn(model, plane).some((e) => e.parent === id && regions.has(e.child));
-}

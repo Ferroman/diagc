@@ -105,7 +105,7 @@ describe('m.stateMachine()', () => {
   });
 
   it('numbers auto ids per scope and kind', () => {
-    const a = model('x').stateMachine('a');
+    const a = model('x').stateMachine('machine').state('a');
     expect([a.initial().id, a.initial().id, a.choice().id, a.history({ deep: true }).id]).toEqual([
       'a-initial',
       'a-initial-2',
@@ -127,6 +127,13 @@ describe('m.stateMachine()', () => {
   it('refuses history directly in an orthogonal state', () => {
     const { fulfil } = orderModel();
     expect(() => fulfil.history()).toThrow(/region\.history\(\)/);
+  });
+
+  it('offers no history on the machine itself, which sm-history-parent would warn about', () => {
+    const sm = model('x').stateMachine('a');
+    // @ts-expect-error history belongs to a composite state or a region
+    expect(sm.history).toBeUndefined();
+    expect(typeof sm.state('s').region('r').history).toBe('function');
   });
 
   it('puts history where it belongs', () => {

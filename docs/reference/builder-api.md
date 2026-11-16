@@ -273,7 +273,6 @@ The machine, `StateRef` and `SmRegionRef` all extend `SmScope`. Every helper con
 | `.junction(id?)` | `SmElementRef` | A junction. |
 | `.bar(id?)` | `SmElementRef` | A fork or join bar. |
 | `.terminate(id?)` | `SmElementRef` | A terminate node. |
-| `.history({ id?, deep? })` | `SmElementRef` | Shallow history (`H`), or deep (`H*`) with `deep: true`. |
 
 ### States and the machine
 
@@ -281,7 +280,7 @@ The machine, `StateRef` and `SmRegionRef` all extend `SmScope`. Every helper con
 | --- | --- | --- |
 | `state.region(id?, name?)` | `SmRegionRef` | A concurrent region; a state with regions is orthogonal. |
 | `state.on(trigger, { guard?, effect })` | `state` | An internal transition, added to the state's behaviors after `entry`, `exit` and `do`. |
-| `state.history(opts?)` | `SmElementRef` | **Throws** on a state that has regions: use `region.history()`. |
+| `state.history({ id?, deep? })`, `region.history({ id?, deep? })` | `SmElementRef` | Shallow history (`H`), or deep (`H*`) with `deep: true`. A plain composite state takes `state.history()`; an orthogonal one keeps history in each region, so `state.history()` **throws** on a state that has regions: use `region.history()`. The machine itself has no history. |
 | `state.entryPoint(id?, name?)`, `state.exitPoint(id?, name?)` | `SmElementRef` | Entry and exit points on the state's border. The machine offers them too. |
 | `sm.transition(from, to, parts?)` | `sm` | A `kind: 'transition'` relation. `parts`: `{ trigger?, guard?, effect? }`, stored as fields, never as a `label`. |
 | `ref.to(target, parts?)` | `target` | The same transition from any element or state, returning the target so a path chains. |

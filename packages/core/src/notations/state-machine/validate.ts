@@ -1,6 +1,6 @@
 import type { DiagramModel, DiagramNode } from '../../types';
 import type { Ctx } from '../../validate/context';
-import { flowRules, ofType, planeView, planeWarner, type PlaneView, type Warn } from './reachability';
+import { flowRules, ofType, planeView, planeWarner, typeOf, type PlaneView, type Warn } from './reachability';
 import {
   isPseudoState,
   isStateMachineType,
@@ -64,20 +64,19 @@ function structureRules(ctx: Ctx, plane: string | undefined): void {
   for (const n of nodes) pointRule(view, n, warn);
 }
 
-const typeIn = (view: PlaneView, id: string | undefined) => (id === undefined ? undefined : view.nodes.get(id)?.type);
 const orthogonal = (view: PlaneView, id: string) => ofType(view, id, SM_REGION_TYPE).length > 0;
 
 function regionRules(view: PlaneView, nodes: DiagramNode[], warn: Warn): void {
   for (const n of nodes) {
     const parent = view.parentOf.get(n.id);
-    if (n.type === SM_REGION_TYPE && parent !== undefined && !isStateOrMachine(typeIn(view, parent))) {
+    if (n.type === SM_REGION_TYPE && parent !== undefined && !isStateOrMachine(typeOf(view, parent))) {
       warn('sm-region-parent', `Region '${n.id}' sits in '${parent}'; a region sits in a state or a machine`, n.id);
     }
   }
   for (const [parent, children] of view.childrenOf) {
     if (!orthogonal(view, parent)) continue;
     for (const child of children) {
-      const type = typeIn(view, child);
+      const type = typeOf(view, child);
       if (type !== SM_REGION_TYPE && type !== SM_ENTRY_TYPE && type !== SM_EXIT_TYPE) {
         warn(
           'sm-region-siblings',
@@ -93,8 +92,8 @@ function regionRules(view: PlaneView, nodes: DiagramNode[], warn: Warn): void {
 function historyRule(view: PlaneView, n: DiagramNode, warn: Warn): void {
   const parent = view.parentOf.get(n.id);
   if (parent === undefined || (n.type !== SM_HISTORY_TYPE && n.type !== SM_DEEP_HISTORY_TYPE)) return;
-  const inRegion = typeIn(view, parent) === SM_REGION_TYPE;
-  const inPlainComposite = typeIn(view, parent) === SM_STATE_TYPE && !orthogonal(view, parent);
+  const inRegion = typeOf(view, parent) === SM_REGION_TYPE;
+  const inPlainComposite = typeOf(view, parent) === SM_STATE_TYPE && !orthogonal(view, parent);
   if (!inRegion && !inPlainComposite) {
     warn(
       'sm-history-parent',
@@ -107,7 +106,7 @@ function historyRule(view: PlaneView, n: DiagramNode, warn: Warn): void {
 function pointRule(view: PlaneView, n: DiagramNode, warn: Warn): void {
   const parent = view.parentOf.get(n.id);
   if (parent === undefined || (n.type !== SM_ENTRY_TYPE && n.type !== SM_EXIT_TYPE)) return;
-  if (!isStateOrMachine(typeIn(view, parent))) {
+  if (!isStateOrMachine(typeOf(view, parent))) {
     warn('sm-point-parent', `Point '${n.id}' sits in '${parent}'; it sits on a state or a machine`, n.id);
   }
 }
@@ -124,7 +123,12 @@ function transitionEnds(ctx: Ctx, view: PlaneView, warn: Warn): void {
   };
   for (const t of view.transitions) {
     if (!joinable(t.from) || !joinable(t.to)) {
-      warn('sm-transition-ends', `Transition '${t.id}' must join two states or pseudo-states`, t.id);
+      const end = joinable(t.from) ? t.to : t.from;
+      warn(
+        'sm-transition-ends',
+        `Transition '${t.id}' has '${end}' as an end; a transition joins two states or pseudo-states`,
+        t.id,
+      );
     }
   }
 }

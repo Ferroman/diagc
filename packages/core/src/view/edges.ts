@@ -55,7 +55,10 @@ export function resolveEdges(model: DiagramModel, tree: ViewTree, opts: ResolveE
     includeBase: opts.includeBase ?? true,
     separateDirect: opts.separateDirect ?? false,
   });
-  return [...groups.entries()].map(([key, g]) => toViewEdge(key, g, tintOf));
+  // A transition's label already uses ' / ' before its effect, so on a state-machine
+  // plane two merged transitions `pay` and `ship` must not read as `pay / ship`.
+  const separator = opts.separateDirect === true ? '; ' : ' / ';
+  return [...groups.entries()].map(([key, g]) => toViewEdge(key, g, tintOf, separator));
 }
 
 function groupRelations(
@@ -130,7 +133,12 @@ function sharedStyle(rels: readonly DiagramRelation[], from: string, to: string)
   return Object.keys(shared).length > 0 ? (shared as RelationStyle) : undefined;
 }
 
-function toViewEdge(key: string, g: Group, tintOf: ReadonlyMap<string, string | undefined>): ViewEdge {
+function toViewEdge(
+  key: string,
+  g: Group,
+  tintOf: ReadonlyMap<string, string | undefined>,
+  separator: string,
+): ViewEdge {
   const kinds = new Set(g.rels.map((r) => r.kind));
   const single = g.rels.length === 1 ? g.rels[0] : undefined;
   const edge: ViewEdge = {
@@ -144,7 +152,7 @@ function toViewEdge(key: string, g: Group, tintOf: ReadonlyMap<string, string | 
     const labels = relationLabels(single);
     if (labels.length > 0) edge.labels = labels;
   } else {
-    edge.label = aggregateLabel(g.rels);
+    edge.label = aggregateLabel(g.rels, separator);
   }
   const style = single !== undefined ? edgeStyle(single, g.from, g.to) : sharedStyle(g.rels, g.from, g.to);
   if (style !== undefined) edge.style = style;
@@ -161,7 +169,7 @@ function toViewEdge(key: string, g: Group, tintOf: ReadonlyMap<string, string | 
 
 /** A multi-relation aggregate's label: the constituents' names while that is
  * still cheaper to read than counting them, and the count once it is not. */
-function aggregateLabel(rels: readonly DiagramRelation[]): string {
+function aggregateLabel(rels: readonly DiagramRelation[], separator: string): string {
   const seen = new Set<string>();
   const distinct: string[] = [];
   for (const r of rels) {
@@ -173,7 +181,7 @@ function aggregateLabel(rels: readonly DiagramRelation[]): string {
       }
     }
   }
-  const joined = distinct.join(' / ');
+  const joined = distinct.join(separator);
   // ONE distinct label is the edge's own meaning however long it is (the
   // renderer ellipsises it), so it always survives; several only earn their
   // width while the join stays inside AGG_LABEL_BUDGET. An aggregate here

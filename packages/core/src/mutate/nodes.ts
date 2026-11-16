@@ -194,6 +194,7 @@ export function setStateBehaviors(model: DiagramModel, id: string, behaviors: St
   requireNode(model, id);
   for (const b of behaviors) {
     if (b.trigger.trim() === '') throw new CommandError('A behaviour needs a trigger');
+    if (b.effect.trim() === '') throw new CommandError('A behaviour needs an effect');
   }
   return {
     ...model,

@@ -7,6 +7,7 @@ const CASES: [TransitionParts, string][] = [
   [{ guard: 'x' }, '[x]'],
   [{ effect: 'y' }, '/ y'],
   [{ guard: 'x', effect: 'y' }, '[x] / y'],
+  [{ trigger: 'pay', guard: 'a[0] > 1', effect: 'log' }, 'pay [a[0] > 1] / log'],
   [{}, ''],
 ];
 
@@ -26,10 +27,18 @@ describe('parseTransition', () => {
     ['pay [x', { trigger: 'pay [x' }],
     ['a [x] b [y]', { trigger: 'a b [y]', guard: 'x' }],
     ['pay [x] more', { trigger: 'pay more', guard: 'x' }],
+    ['pay [x]/ y', { trigger: 'pay', guard: 'x', effect: 'y' }],
+    ['pay [x]  /y', { trigger: 'pay', guard: 'x', effect: 'y' }],
+    ['[x]/y', { guard: 'x', effect: 'y' }],
   ])('parses %s', (text, parts) => expect(parseTransition(text)).toEqual(parts));
 
   it('round-trips every formatted string', () => {
     for (const [parts] of CASES) expect(parseTransition(formatTransition(parts))).toEqual(parts);
+  });
+
+  it('keeps the guard of a slash typed straight after it through a second save', () => {
+    const once = parseTransition('pay [x]/ y');
+    expect(parseTransition(formatTransition(once))).toEqual(once);
   });
 });
 

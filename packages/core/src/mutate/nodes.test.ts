@@ -328,4 +328,7 @@ describe('setStateBehaviors', () => {
   it('throws for an empty trigger', () => {
     expect(() => setStateBehaviors(base(), 'a', [{ trigger: '', effect: 'e' }])).toThrow(CommandError);
   });
+  it('throws for an empty effect, which validation would reject too', () => {
+    expect(() => setStateBehaviors(base(), 'a', [{ trigger: 'entry', effect: ' ' }])).toThrow(CommandError);
+  });
 });

@@ -264,6 +264,90 @@ describe('state-machine rules', () => {
     });
   });
 
+  describe('messages', () => {
+    const said = (m: DiagramModel, code: string) =>
+      diagramWarnings(m)
+        .filter((i) => i.code === code)
+        .map((i) => i.message);
+
+    it('state the fact, then the rule', () => {
+      expect(
+        said(sm([n('i', 'sm-initial'), n('s', 'sm-state')], [t('i', 's'), t('i', 's')]), 'sm-initial-flow'),
+      ).toEqual([
+        "'i' has 2 outgoing transitions; an initial has no incoming transition and exactly one outgoing, with no trigger or guard",
+      ]);
+      expect(
+        said(sm([n('i', 'sm-initial'), n('s', 'sm-state')], [t('i', 's', { guard: 'x' })]), 'sm-initial-flow'),
+      ).toEqual([
+        "'i' leaves by a transition with a trigger or guard; an initial has no incoming transition and exactly one outgoing, with no trigger or guard",
+      ]);
+      expect(said(started([n('f', 'sm-final')], [t('s', 'f'), t('f', 's')]), 'sm-final-outgoing')).toEqual([
+        "'f' has 1 outgoing transition; a final or a terminate ends the machine and has none",
+      ]);
+      expect(said(sm([n('f', 'sm-bar')]), 'sm-bar-shape')).toEqual([
+        "'f' has 0 incoming and 0 outgoing transitions; a bar is a fork (one in, several out, into different regions of one state) or a join (several in, one out)",
+      ]);
+      expect(said(started([], [t('s', 's', { trigger: 'x', label: 'go' })]), 'sm-transition-label')).toEqual([
+        "'s->s' has both a label and trigger/guard/effect; the parts are drawn and the label is ignored",
+      ]);
+    });
+
+    it("end every warning with ' on plane <id>' on a model with planes", () => {
+      const nodes = [
+        n('m1', 'sm-machine'),
+        n('m2', 'sm-machine'),
+        n('h', 'sm-history'),
+        n('r', 'sm-region'),
+        n('o', 'sm-state'),
+        n('r2', 'sm-region'),
+        n('x', 'sm-state'),
+        n('e', 'sm-entry'),
+        n('i1', 'sm-initial'),
+        n('i2', 'sm-initial'),
+        n('s', 'sm-state'),
+        n('u', 'sm-state'),
+        n('f', 'sm-final'),
+        n('ch', 'sm-choice'),
+        n('b', 'sm-bar'),
+      ];
+      const inM1 = ['m2', 'h', 'o', 'i1', 'i2', 's', 'u', 'f', 'ch', 'b'].map((k) => c('m1', k, 'p'));
+      const containment = [...inM1, c('h', 'r', 'p'), c('o', 'r2', 'p'), c('o', 'x', 'p'), c('r2', 'e', 'p')];
+      const relations = [
+        t('i1', 's'),
+        t('s', 'f'),
+        t('f', 's'),
+        t('s', 'ch'),
+        t('ch', 's'),
+        t('s', 'm2'),
+        t('s', 's', { trigger: 'x', label: 'go' }),
+      ];
+      const m: DiagramModel = {
+        ...sm(nodes, relations, containment),
+        planes: [{ id: 'p', name: 'P', notation: 'state-machine' }],
+      };
+      const found = diagramWarnings(m).filter((i) => i.code.startsWith('sm-'));
+      expect(new Set(found.map((i) => i.code))).toEqual(
+        new Set([
+          'sm-region-parent',
+          'sm-region-siblings',
+          'sm-machine-parent',
+          'sm-pseudo-children',
+          'sm-transition-ends',
+          'sm-history-parent',
+          'sm-point-parent',
+          'sm-initial-count',
+          'sm-initial-flow',
+          'sm-final-outgoing',
+          'sm-choice-guards',
+          'sm-bar-shape',
+          'sm-unreachable',
+          'sm-transition-label',
+        ]),
+      );
+      for (const w of found) expect(w.message).toMatch(/ on plane 'p'$/);
+    });
+  });
+
   describe('a machine with nothing in it yet', () => {
     it('an empty diagram has no warnings', () => {
       expect(diagramWarnings(sm([]))).toEqual([]);

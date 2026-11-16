@@ -51,7 +51,9 @@ export function planeView(model: DiagramModel, plane: string | undefined): Plane
   };
 }
 
-const typeOf = (view: PlaneView, id: string | undefined) => (id === undefined ? undefined : view.nodes.get(id)?.type);
+/** the type of a vertex on the plane; undefined for no id, or one the plane does not show */
+export const typeOf = (view: PlaneView, id: string | undefined) =>
+  id === undefined ? undefined : view.nodes.get(id)?.type;
 
 export const ofType = (view: PlaneView, id: string, type: string): string[] =>
   (view.childrenOf.get(id) ?? []).filter((child) => typeOf(view, child) === type);
@@ -89,13 +91,13 @@ export function flowRules(ctx: Ctx, plane: string | undefined): void {
   choiceRules(view, ends, warn);
   barRules(view, ends, warn);
   for (const id of unreachableStates(ctx.model, plane)) {
-    warn('sm-unreachable', `'${id}' is reached by no path from an initial`, id);
+    warn('sm-unreachable', `'${id}' is reached by no path from an initial; every state is reached from one`, id);
   }
   for (const r of view.relations) {
     if (hasTransitionParts(r) && r.label !== undefined && r.label !== '') {
       warn(
         'sm-transition-label',
-        `'${r.id}' has a label as well as trigger, guard or effect; the label is drawn`,
+        `'${r.id}' has both a label and trigger/guard/effect; the parts are drawn and the label is ignored`,
         r.id,
       );
     }
@@ -110,21 +112,33 @@ const ofKind = (view: PlaneView, ...types: string[]) =>
 function initialRules(view: PlaneView, { out, into }: Ends, warn: Warn): void {
   initialCount(view, warn);
   for (const n of ofKind(view, SM_INITIAL_TYPE)) {
-    const [only, ...more] = out.get(n.id) ?? [];
-    if ((into.get(n.id)?.length ?? 0) > 0 || only === undefined || more.length > 0 || hasTrigger(only)) {
+    const fact = initialFlowFact(into.get(n.id) ?? [], out.get(n.id) ?? []);
+    if (fact !== undefined) {
       warn(
         'sm-initial-flow',
-        `Initial '${n.id}' has no incoming transition and exactly one outgoing transition, with no trigger or guard`,
+        `'${n.id}' ${fact}; an initial has no incoming transition and exactly one outgoing, with no trigger or guard`,
         n.id,
       );
     }
   }
 }
 
+/** what is wrong with an initial's transitions, the first thing found; undefined when nothing is */
+function initialFlowFact(ins: DiagramRelation[], outs: DiagramRelation[]): string | undefined {
+  if (ins.length > 0) return `has ${transitions(ins.length, 'incoming')}`;
+  if (outs.length !== 1) return `has ${transitions(outs.length, 'outgoing')}`;
+  return hasTriggerOrGuard(outs[0]!) ? 'leaves by a transition with a trigger or guard' : undefined;
+}
+
+const transitions = (count: number, way: string) => `${count} ${way} transition${count === 1 ? '' : 's'}`;
+
 function endRules(view: PlaneView, { out }: Ends, warn: Warn): void {
   for (const n of ofKind(view, SM_FINAL_TYPE, SM_TERMINATE_TYPE)) {
-    if ((out.get(n.id)?.length ?? 0) > 0)
-      warn('sm-final-outgoing', `'${n.id}' ends the machine and has no exits`, n.id);
+    const exits = out.get(n.id)?.length ?? 0;
+    if (exits > 0) {
+      const fact = `'${n.id}' has ${transitions(exits, 'outgoing')}`;
+      warn('sm-final-outgoing', `${fact}; a final or a terminate ends the machine and has none`, n.id);
+    }
   }
 }
 
@@ -132,8 +146,14 @@ function choiceRules(view: PlaneView, { out }: Ends, warn: Warn): void {
   for (const n of ofKind(view, SM_CHOICE_TYPE, SM_JUNCTION_TYPE)) {
     const exits = out.get(n.id) ?? [];
     const elses = exits.filter((t) => t.guard?.trim() === 'else').length;
-    if (exits.some((t) => t.guard === undefined) || elses > 1) {
-      warn('sm-choice-guards', `Every exit of '${n.id}' needs a guard, and at most one may be [else]`, n.id);
+    const unguarded = exits.filter((t) => t.guard === undefined).length;
+    if (unguarded > 0 || elses > 1) {
+      const fact = unguarded > 0 ? `${unguarded} unguarded exit${unguarded === 1 ? '' : 's'}` : `${elses} [else] exits`;
+      warn(
+        'sm-choice-guards',
+        `'${n.id}' has ${fact}; every exit of a choice or junction has a guard, and at most one is [else]`,
+        n.id,
+      );
     }
   }
 }
@@ -142,17 +162,23 @@ function barRules(view: PlaneView, { out, into }: Ends, warn: Warn): void {
   for (const n of ofKind(view, SM_BAR_TYPE)) {
     const exits = out.get(n.id) ?? [];
     const ins = into.get(n.id)?.length ?? 0;
-    if ((ins !== 1 && exits.length !== 1) || (exits.length > 1 && !forkInRegions(view, exits))) {
+    const fact =
+      ins !== 1 && exits.length !== 1
+        ? `has ${ins} incoming and ${transitions(exits.length, 'outgoing')}`
+        : exits.length > 1 && !forkInRegions(view, exits)
+          ? 'forks into targets that are not different regions of one state'
+          : undefined;
+    if (fact !== undefined) {
       warn(
         'sm-bar-shape',
-        `Bar '${n.id}' is a fork (one in, several out, into different regions of one state) or a join (several in, one out)`,
+        `'${n.id}' ${fact}; a bar is a fork (one in, several out, into different regions of one state) or a join (several in, one out)`,
         n.id,
       );
     }
   }
 }
 
-const hasTrigger = (t: DiagramRelation) => t.trigger !== undefined || t.guard !== undefined;
+const hasTriggerOrGuard = (t: DiagramRelation) => t.trigger !== undefined || t.guard !== undefined;
 
 /** more than one initial in one region, or in one container that is not split into regions */
 function initialCount(view: PlaneView, warn: Warn): void {

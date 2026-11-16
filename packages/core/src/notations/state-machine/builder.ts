@@ -121,15 +121,21 @@ export abstract class SmScope extends NodeRef {
   terminate(id?: string): SmElementRef {
     return this.pseudo(id, 'terminate', SM_TERMINATE_TYPE);
   }
-  /** shallow history (`H`), or deep (`H*`) with `deep: true` */
-  history(opts: { id?: string; deep?: boolean } = {}): SmElementRef {
+  /** shallow history (`H`), or deep (`H*`) with `deep: true`. Not public here: history
+   * belongs to a composite state or a region, never to the machine itself. */
+  protected addHistory(opts: { id?: string; deep?: boolean }): SmElementRef {
     return opts.deep === true
       ? this.pseudo(opts.id, 'deep-history', SM_DEEP_HISTORY_TYPE)
       : this.pseudo(opts.id, 'history', SM_HISTORY_TYPE);
   }
 }
 
-export class SmRegionRef extends SmScope {}
+export class SmRegionRef extends SmScope {
+  /** shallow history (`H`), or deep (`H*`) with `deep: true` */
+  history(opts: { id?: string; deep?: boolean } = {}): SmElementRef {
+    return this.addHistory(opts);
+  }
+}
 
 export class StateRef extends SmScope {
   /** a concurrent region: giving a state its first one makes it orthogonal */
@@ -145,14 +151,15 @@ export class StateRef extends SmScope {
     return this;
   }
 
-  /** a state with regions keeps its history inside each region, so this refuses there */
-  override history(opts: { id?: string; deep?: boolean } = {}): SmElementRef {
+  /** Shallow history (`H`), or deep (`H*`) with `deep: true`. A state with regions keeps its
+   * history inside each region, so this refuses there. */
+  history(opts: { id?: string; deep?: boolean } = {}): SmElementRef {
     if (this.m.hasChildOfType(this.id, SM_REGION_TYPE)) {
       throw new Error(
         `state '${this.id}' has regions: history belongs to a region, so call region.history() instead of state.history()`,
       );
     }
-    return super.history(opts);
+    return this.addHistory(opts);
   }
 
   entryPoint(id?: string, name?: string): SmElementRef {

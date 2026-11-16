@@ -249,7 +249,7 @@ as `planes` and `manual` — so a plane that borrows containment with
 | Field | Type | Notes |
 | --- | --- | --- |
 | `algorithm` | `string?` | elk.algorithm: `layered` (default; `stress` on a `causal-loop` plane), `force`, `stress`, `mrtree`, `radial`, `rectpacking`. `stress` asks for 240px edges and has overlapping boxes pushed apart afterwards. |
-| `direction` | `string?` | elk.direction for `layered`: `DOWN` (default), `RIGHT`, `LEFT`, `UP`. A model that draws activity frames defaults to `RIGHT` instead — their lanes are horizontal bands. |
+| `direction` | `string?` | elk.direction for `layered`: `DOWN` (default), `RIGHT`, `LEFT`, `UP`. A model that draws activity frames defaults to `RIGHT` instead — their lanes are horizontal bands — and so does a plane whose notation is `state-machine` (the model's notation, on a model without planes), since transitions read left to right. A state-machine plane leaves the default of the planes beside it alone. |
 | `spacing` | `number?` | Base node-to-node spacing in px, at every nesting level. Layers sit the same distance apart, and the gap between unconnected groups is derived from it. |
 | `edgeRouting` | `'curved' \| 'orthogonal'?` | How routed edges are drawn. Both follow the layout's own waypoints, which is what keeps a line off the boxes it was steered around: `curved` (default) rounds the bends generously, `orthogonal` keeps them tight. An edge whose endpoint was placed by hand floats as a bezier either way. `layered` only. |
 | `aspectRatio` | `number?` | `layered` only. When set, elk wraps long chains onto several rows aiming at this width÷height (`MULTI_EDGE` wrapping). Absent = no wrapping. Unconnected groups are packed toward it too (toward 0.75, a portrait page, when absent). |
@@ -584,7 +584,7 @@ The compiler prints them, and the notation's panel lists them.
 | `sm-choice-guards` | *Warning.* A choice or junction with an exit that has no guard, or with more than one `else` exit. |
 | `sm-bar-shape` | *Warning.* A bar with neither one incoming nor one outgoing transition, or a fork whose targets are not in different regions of one orthogonal state. |
 | `sm-unreachable` | *Warning.* A state that no path from an initial reaches. A machine with no initial is not checked. |
-| `sm-transition-label` | *Warning.* A transition with a `label` and also a trigger, guard or effect; the label is drawn. |
+| `sm-transition-label` | *Warning.* A transition with a `label` and also a trigger, guard or effect; the parts are drawn and the label is ignored. |
 | `plan-date` | A `start`, `end` or `at` is present but is not a real `YYYY-MM-DD` date. |
 | `plan-missing` | A `plan-zone` lacks `start` or `end`; a `plan-event` lacks `at`. |
 | `plan-span` | A zone's `end` is before its `start`. |

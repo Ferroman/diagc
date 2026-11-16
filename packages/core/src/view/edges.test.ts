@@ -453,7 +453,9 @@ describe('resolveEdges: separateDirect', () => {
     m.relate(a2, b, { kind: 'transition', label: 'y' });
     const edges = run(m.toJSON(), { A: 'collapsed' }, true);
     expect(edges.map((e) => e.id)).toEqual(['A=>b:']);
-    expect(edges[0]?.label).toBe('x / y');
+    // ' / ' is a transition's effect separator: 'x / y' would read as trigger x, effect y
+    expect(edges[0]?.label).toBe('x; y');
+    expect(run(m.toJSON(), { A: 'collapsed' })[0]?.label).toBe('x / y');
   });
 
   it('drops a self-transition lifted onto a folded composite', () => {
