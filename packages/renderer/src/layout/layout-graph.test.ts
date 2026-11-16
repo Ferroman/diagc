@@ -438,6 +438,26 @@ describe('buildGraph on an activity', () => {
     expect(find(graph, 'act')?.layoutOptions).toBeUndefined();
   });
 
+  it('lays a state machine out from its initial, as an activity from its start', () => {
+    // the state the machine starts in is also where most transitions return:
+    // elk's degree heuristic would make it the sink and draw the flow backwards
+    const m = model('sm');
+    const sm = m.stateMachine('m');
+    const idle = sm.state('idle', 'Idle');
+    const busy = sm.state('busy', 'Busy');
+    sm.initial('i').to(idle);
+    sm.transition(idle, busy, { trigger: 'go' });
+    sm.transition(busy, idle, { trigger: 'done' });
+    sm.transition(busy, idle, { trigger: 'fail' });
+    const { graph } = buildGraph(compileView(m.toJSON(), { pins: { m: 'expanded' } }), undefined, {
+      direction: 'RIGHT',
+    });
+    expect(graph.layoutOptions?.['elk.layered.cycleBreaking.strategy']).toBe('DEPTH_FIRST');
+    expect(find(graph, 'm')?.layoutOptions?.['elk.layered.cycleBreaking.strategy']).toBe('DEPTH_FIRST');
+    expect(find(graph, 'i')?.layoutOptions?.['elk.layered.layering.layerConstraint']).toBe('FIRST');
+    expect(find(graph, 'idle')?.layoutOptions).toBeUndefined();
+  });
+
   it('hands a note link to elk end to end, and says so', () => {
     const v = activity();
     const { graph, reversed } = buildGraph(v, undefined, { direction: 'RIGHT' });

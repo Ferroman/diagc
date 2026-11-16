@@ -1359,6 +1359,7 @@ path.dg-loop-badge-circle {
    loses to that shorthand, so the labels would keep the crisp UI font. */
 .dg-style-font .dg-node,
 .dg-style-font .dg-group-header,
+.dg-style-font .dg-sm-open-behaviors,
 .dg-style-font .dg-label,
 .dg-style-font .dg-type,
 .dg-style-font .dg-edge-label {
@@ -2515,8 +2516,12 @@ button.dg-role-chip {
 .dg-sm-behavior {
   white-space: pre-wrap;
 }
-/* an open composite's behaviours, under its header and above its substates */
+/* an open composite's behaviours, under its header and above its substates.
+   An open state is a group, not a .dg-node, so nothing above sets its font: the
+   export shell has no page-level font-family and would fall back to serif. */
 .dg-sm-open-behaviors {
+  color: var(--dg-text);
+  font-family: system-ui, sans-serif;
   padding: 0 10px;
 }
 .dg-sm-composite-glyph {
