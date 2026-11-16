@@ -1,0 +1,40 @@
+title: Draw a state machine
+url: "http://localhost:5183/#/fixtures%2Fstate-machine-demo"
+viewport: 1280x720
+crop: {role: main}
+pace: {typing: 8}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+  - click: {role: button, name: Edit}
+  - wait_for: {text: Closed, within: {role: application}}
+  # Close the dock the steps do not use; the inspector stays, for the transition's fields.
+  - click: {role: button, name: "Collapse panel", nth: 1}
+  - click: {role: button, name: Fit View}
+  # Zoomed out, so the state the steps add stays in the picture.
+  - click: {role: button, name: Zoom Out}
+steps:
+  - note: Select a state
+    do:
+      - click: {text: Closed, within: {role: application}}
+  - note: Tab adds the next state, joined by a transition
+    do:
+      - press: Tab
+    pause: 1
+  - note: Tab adds the next state, joined by a transition
+    do:
+      - fill: {role: textbox, name: Rename, within: {role: application}, value: Locked}
+      - press: Enter
+  - note: Select a transition
+    do:
+      - click: {text: push, exact: true, within: {role: application}}
+  - note: Give it a guard and an effect
+    do:
+      - fill: {label: Guard, value: unlocked}
+      - press: Enter
+      - fill: {label: Effect, value: creak}
+      - press: Enter
+      - wait_for: {text: "push [unlocked] / creak", within: {role: application}}
+      # the added state widened the machine: bring all of it back into view
+      - click: {role: button, name: Fit View}
+    pause: 2

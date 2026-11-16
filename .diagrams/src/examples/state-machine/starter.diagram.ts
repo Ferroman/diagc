@@ -34,6 +34,7 @@ order.transition(fulfil, done, { trigger: 'deliver' });
 // Resuming enters Picking's history: picking goes on where it was left.
 order.transition(picking, held, { trigger: 'hold' });
 order.transition(held, resumePicking, { trigger: 'resume' });
+order.transition(held, done, { trigger: 'cancel' });
 
 // An internal transition: the state is not left.
 paid.on('remind', { guard: 'overdue', effect: 'email' });

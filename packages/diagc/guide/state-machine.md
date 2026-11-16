@@ -50,8 +50,7 @@ module order {
 }
 ```
 
-- The variable that holds the mode, a `str` or a sum type, gives one state per value.
-- `init` is the initial transition, to the state it assigns.
+- The variable that holds the mode, a `str` or a sum type, gives one state per value, and `init` is the initial transition, to the state it assigns.
 - An action that changes the mode is a transition. Its name is the trigger, the preconditions on other variables are the guard, and the other updates, or an action it calls for them (`refund`), are the effect. An update that keeps a variable as it was (`total' = total`) is no effect.
 - The alternatives of an `any` from one mode are several transitions from that state.
 - An action that leaves the mode unchanged is an internal transition (`state.on`), or a self-transition when re-entry matters.

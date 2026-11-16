@@ -2,16 +2,20 @@
 
 Show how one thing moves through its modes: states, the transitions between them, and the trigger, guard and effect on each transition. It follows the UML statechart, so it also covers composite and orthogonal states and the pseudo-states a statechart uses.
 
-![State machine starter](../../.diagrams/static/examples/state-machine/starter.png)
+![State machine example: the studio's edit session, read from its Quint spec](../../.diagrams/static/docs/state-machine.png)
 
 ## In the studio
 
 1. Create a new JSON diagram and, in **Layers & planes**, set its **Notation** to *State machine (UML)*.
 2. In the dock's state-machine panel, **add a machine**, then add states and pseudo-states into it. Select a state and press `Tab`, or click the `+` on it, to add a state beside it.
-3. Connect two states by dragging from one to the other. Type the transition's text on the arrow as `trigger [guard] / effect`, for example `pay [total > 0] / charge`. Each part is kept apart, so you can leave any of them out.
+3. Connect two states by dragging from one to the other. Type the transition's text on the arrow as `trigger [guard] / effect`, for example `pay [total > 0] / charge`. Each part is kept apart, so you can leave any of them out. Or select the transition and fill **Trigger**, **Guard** and **Effect** in the inspector.
 4. Select a state to give it `entry`, `exit` and `do` behaviours, or an internal transition such as `remind [overdue] / email`.
 5. Add a region to a state to make it orthogonal. A second region sits beside the first across the flow (below it when the machine runs left to right), with a dashed line between them. Add an entry or exit point to a composite for a transition that crosses its border.
 6. Double-click a composite state to unfold it. Every composite rests folded.
+
+![Tab adds the next state joined by a transition, then a transition gets a guard and an effect](../media/draw-a-state-machine.webp)
+
+GIF: [draw-a-state-machine.gif](../media/draw-a-state-machine.gif)
 
 ## From TypeScript
 
@@ -52,6 +56,7 @@ order.transition(fulfil, done, { trigger: 'deliver' });
 // Resuming enters Picking's history: picking goes on where it was left.
 order.transition(picking, held, { trigger: 'hold' });
 order.transition(held, resumePicking, { trigger: 'resume' });
+order.transition(held, done, { trigger: 'cancel' });
 
 // An internal transition: the state is not left.
 paid.on('remind', { guard: 'overdue', effect: 'email' });
@@ -87,9 +92,15 @@ Nothing on the diagram checks a spec's invariants, and diagc neither imports nor
 
 ## Examples
 
-**Starter** — the listing under [From TypeScript](#from-typescript) is the whole file: an order lifecycle with Draft as a plain composite, Fulfilment as an orthogonal state of two regions, a `hold` from Picking and a `resume` back into its history, a choice after Paid and an internal transition. Copy it into `.diagrams/src/` and change the names. [Source](../../.diagrams/src/examples/state-machine/starter.diagram.ts)
+**Starter** — the listing under [From TypeScript](#from-typescript) is the whole file: an order lifecycle with Draft as a plain composite, Fulfilment as an orthogonal state of two regions, a `hold` from Picking, a `resume` back into its history and a `cancel` from On hold, a choice after Paid and an internal transition. Copy it into `.diagrams/src/` and change the names. [Source](../../.diagrams/src/examples/state-machine/starter.diagram.ts)
 
 [![Order lifecycle](../../.diagrams/static/examples/state-machine/starter.png)](https://ferroman.github.io/diagc/html/examples/state-machine/starter.html)
+
+**From a Quint spec** — the picture at the top of this page: the studio's own edit session, translated by hand from the `mode` variable of its Quint model. Each action that assigns `mode` is a transition, its `if` the guard and its updates the effect; the actions that leave `mode` alone are internal transitions of Editing. [Source](../../.diagrams/src/docs/state-machine.diagram.ts)
+
+**A connection that reconnects** — a protocol: a client connection that retries with backoff through a choice, gives up after five attempts, and has Open as a plain composite with an internal `ping / pong`. [Source](../../.diagrams/src/examples/state-machine/connection.diagram.ts)
+
+[![A connection that reconnects](../../.diagrams/static/examples/state-machine/connection.png)](https://ferroman.github.io/diagc/html/examples/state-machine/connection.html)
 
 ## See also
 

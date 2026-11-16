@@ -99,10 +99,24 @@ A slow-checkout postmortem on four hand-made bones — Database, Network, Applic
 
 ### State machine
 
+[![State machine: the studio edit session, from its Quint spec](../../.diagrams/static/docs/state-machine.png)](https://ferroman.github.io/diagc/html/docs/state-machine.html)
+
+The studio's own edit session, translated by hand from its Quint model: one state per value of `mode`, an action's `if` as the guard and its updates as the effect, a choice on the load's reply, and the actions that keep `mode` as internal transitions of Editing.
+[Live](https://ferroman.github.io/diagc/html/docs/state-machine.html) · [Source](../../.diagrams/src/docs/state-machine.diagram.ts) · [Guide](../how-to/draw-a-state-machine.md)
+
+#### Starter: order lifecycle
+
 [![Starter: order lifecycle](../../.diagrams/static/examples/state-machine/starter.png)](https://ferroman.github.io/diagc/html/examples/state-machine/starter.html)
 
-An order lifecycle: Draft, Paid and an orthogonal Fulfilment of two regions with history in Picking, a choice after Paid with `[in stock]` and `[else]` exits, and an internal transition — `m.stateMachine()`, `region()`, `choice()` and `history()`.
+An order lifecycle: Draft as a plain composite, Paid, and an orthogonal Fulfilment of two regions, with a `resume` from On hold back into Picking's history, a choice after Paid with `[in stock]` and `[else]` exits, and an internal transition — `m.stateMachine()`, `region()`, `choice()` and `history()`.
 [Live](https://ferroman.github.io/diagc/html/examples/state-machine/starter.html) · [Source](../../.diagrams/src/examples/state-machine/starter.diagram.ts) · [Guide](../how-to/draw-a-state-machine.md)
+
+#### A connection that reconnects
+
+[![A connection that reconnects](../../.diagrams/static/examples/state-machine/connection.png)](https://ferroman.github.io/diagc/html/examples/state-machine/connection.html)
+
+A protocol: a client connection that retries with backoff through a choice and gives up after five attempts, with `entry` and `do` behaviours, Open as a plain composite and an internal `ping / pong` — `choice()`, `final()`, `state.on()` and a `description` on the machine.
+[Live](https://ferroman.github.io/diagc/html/examples/state-machine/connection.html) · [Source](../../.diagrams/src/examples/state-machine/connection.diagram.ts) · [Guide](../how-to/draw-a-state-machine.md)
 
 ### Second-order thinking
 
