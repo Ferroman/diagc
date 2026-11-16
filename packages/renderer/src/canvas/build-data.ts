@@ -35,6 +35,7 @@ import type {
 import {
   attachesDirectly,
   runsToPlainText,
+  SM_STATE_TYPE,
   soleRelation,
   threatSummary,
   withHiddenColumns,
@@ -48,6 +49,7 @@ import type { EdgeLook, StylePreset } from '../sketch/stylePresets';
 import { nodeHue, type TypeHues } from './type-hues';
 import type { DiagramEdgeData } from '../edge/DiagramEdge';
 import type { DiagramNodeData } from '../node/DiagramNode';
+import { behaviorLines } from '../node/behavior-lines';
 
 /** per-node data inputs the view threads in; kept as one object so the cache
  * can compare it field-by-field with === and skip rebuilds when nothing moved */
@@ -216,6 +218,7 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     threats: threats.total > 0 ? threats : undefined,
     annotations: nodeAnnotations(n),
     chips: ctx.nodeChips?.get(n.id),
+    ...(n.node.type === SM_STATE_TYPE ? { behaviors: behaviorLines(n.node), composite: n.state !== 'leaf' } : {}),
   };
   if (ctx.labelEditingId === n.id) bindLabelEdit(data, n, ctx);
   // an image or a shape's mask is fetched from the asset or library folder

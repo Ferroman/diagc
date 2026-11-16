@@ -5,6 +5,9 @@ import {
   GIT_STAGE_TYPE,
   isActivityBand,
   PLAN_EVENT_TYPE,
+  SM_MACHINE_TYPE,
+  SM_REGION_TYPE,
+  SM_STATE_TYPE,
 } from '@diagc/core/internal';
 import { isCausalGroup } from '../node-look';
 import { ActivityBandBody } from './ActivityBandBody';
@@ -18,8 +21,12 @@ import { GitLaneBody } from './GitLaneBody';
 import { GitStageBody } from './GitStageBody';
 import { GroupBody } from './GroupBody';
 import { ImageBody } from './ImageBody';
+import { MachineFrameBody } from './MachineFrameBody';
 import { PlanEventBody } from './PlanEventBody';
+import { RegionBody } from './RegionBody';
 import { SilhouetteBody } from './SilhouetteBody';
+import { SM_GLYPH_TYPES, SmGlyphBody } from './SmGlyphBody';
+import { StateBody } from './StateBody';
 import { TableBody } from './TableBody';
 import type { BodyRule } from './types';
 
@@ -30,6 +37,13 @@ import type { BodyRule } from './types';
  * Adding a body is a component, one line here, and the chrome it uses.
  */
 export const NODE_BODIES: readonly BodyRule[] = [
+  // State-machine chrome keys on the type and comes first: the history, entry and
+  // exit glyphs are circles, which the commit rule below would otherwise take, and
+  // an empty machine or region compiles as a leaf yet is still a frame.
+  { match: (data) => data.typeId === SM_MACHINE_TYPE, Body: MachineFrameBody },
+  { match: (data) => data.typeId === SM_REGION_TYPE, Body: RegionBody },
+  { match: (data) => data.typeId === SM_STATE_TYPE, Body: StateBody },
+  { match: (data) => data.typeId !== undefined && SM_GLYPH_TYPES.has(data.typeId), Body: SmGlyphBody },
   { match: (data, _profile, style) => style.shape === 'table' && data.state === 'leaf', Body: TableBody },
   { match: (data, _profile, style) => style.shape === 'circle' && data.state === 'leaf', Body: CommitBody },
   { match: (data) => data.typeId === PLAN_EVENT_TYPE && data.state === 'leaf', Body: PlanEventBody },

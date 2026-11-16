@@ -767,3 +767,36 @@ describe('buildNodeData: typeColors fallback', () => {
     expect(d.color).toBeUndefined();
   });
 });
+
+describe('buildNodeData, state-machine fields', () => {
+  const state = (over: Partial<ViewNode> = {}, node: Partial<DiagramNode> = {}): ViewNode =>
+    viewNode({
+      node: {
+        id: 'n1',
+        name: 'Reserved',
+        type: 'sm-state',
+        behaviors: [
+          { trigger: 'entry', effect: 'reserveStock' },
+          { trigger: 'remind', guard: 'overdue', effect: 'email' },
+        ],
+        ...node,
+      },
+      ...over,
+    });
+
+  it("carries a state's behaviours as formatted lines", () => {
+    expect(buildNodeData(state(), nodeCtx()).behaviors).toEqual(['entry / reserveStock', 'remind [overdue] / email']);
+  });
+
+  it('marks a state composite when it is not a leaf in the view, folded or open', () => {
+    expect(buildNodeData(state(), nodeCtx()).composite).toBe(false);
+    expect(buildNodeData(state({ state: 'collapsed' }), nodeCtx()).composite).toBe(true);
+    expect(buildNodeData(state({ state: 'expanded' }), nodeCtx()).composite).toBe(true);
+  });
+
+  it('fills nothing for any other type', () => {
+    const d = buildNodeData(viewNode({ state: 'collapsed' }), nodeCtx());
+    expect(d.behaviors).toBeUndefined();
+    expect(d.composite).toBeUndefined();
+  });
+});

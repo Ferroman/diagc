@@ -11,6 +11,10 @@ import {
   GIT_NOTATION,
   GIT_STAGE_TYPE,
   PLAN_EVENT_TYPE,
+  SM_ENTRY_TYPE,
+  SM_MACHINE_TYPE,
+  SM_REGION_TYPE,
+  SM_STATE_TYPE,
   TM_NOTATION,
 } from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
@@ -89,6 +93,15 @@ describe('the chrome each node body draws', () => {
       'handles quickAdd(before) quickAdd(after)',
     ],
     ['activity region', { typeId: ACTIVITY_REGION_TYPE, state: 'expanded' as const }, 'handles'],
+    ['state-machine frame', { typeId: SM_MACHINE_TYPE, state: 'expanded' as const }, 'quickAdd handles'],
+    ['state-machine region', { typeId: SM_REGION_TYPE, state: 'expanded' as const }, 'quickAdd handles'],
+    ['state-machine state', { typeId: SM_STATE_TYPE }, 'link threat comment quickAdd handles'],
+    [
+      'state-machine open state',
+      { typeId: SM_STATE_TYPE, state: 'expanded' as const },
+      'threat comment quickAdd handles',
+    ],
+    ['state-machine glyph', { typeId: SM_ENTRY_TYPE }, 'quickAdd handles'],
     ['causal-loop group', { notation: 'causal-loop' as const, state: 'expanded' as const }, 'handles'],
     ['group', { typeId: 'service', state: 'expanded' as const }, 'threat comment quickAdd handles'],
     ['box', { typeId: 'service' }, 'link threat comment quickAdd handles'],

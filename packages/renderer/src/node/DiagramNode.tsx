@@ -107,6 +107,10 @@ export interface DiagramNodeData {
   onAddThreat?: (target: ElementRef) => void;
   /** notation chips — the plan's roles — drawn in the badge row */
   chips?: NodeChip[];
+  /** a state-machine state's behaviours, one formatted line each; filled for `sm-state` only */
+  behaviors?: string[];
+  /** a state-machine state with children in this view, folded or open; filled for `sm-state` only */
+  composite?: boolean;
   /** with onResize: the notation resizes this node on x only, from either
    * side (a zone's width is its dates) */
   resizeAxis?: 'x';

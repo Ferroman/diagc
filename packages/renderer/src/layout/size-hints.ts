@@ -1,6 +1,8 @@
 import {
   DEFAULT_IMAGE_NODE_SIZE,
+  LEAF_SIZE,
   runsToPlainText,
+  SM_STATE_TYPE,
   type DiagramModel,
   type DiagramNode,
   type LayoutOverlay,
@@ -8,6 +10,7 @@ import {
 import { FORCED_SIZE_SHAPES } from './box-size';
 import type { SizeHint } from './layout-graph';
 import { CAPTION_HEIGHT, captionWidth, estimateLabelSize, glyphCaptionSize } from '../node/label-size';
+import { behaviorLines } from '../node/behavior-lines';
 import { tableSize } from '../node/table-ports';
 import type { NotationProfile } from '../notations';
 import type { Registry, TypeStyle } from '../registry';
@@ -28,6 +31,24 @@ const tableRule: Rule = (n, ctx) => {
   if (n.type !== 'db-table' || n.columns === undefined) return undefined;
   if (ctx.sizes?.[n.id] !== undefined) return undefined;
   return tableSize(n.columns, n.name);
+};
+
+/** The divider between a state's name and its behaviours, with its margins. */
+const STATE_DIVIDER_HEIGHT = 9;
+
+/** A state's behaviours are drawn under its name, so a leaf state grows with them:
+ * the name and one line each, sized as a multiline label, and never smaller than
+ * the layout's leaf. A state without any, or with a saved size, takes the usual
+ * rules. A folded composite is hinted the same, a little roomier than it needs. */
+const stateRule: Rule = (n, ctx) => {
+  if (n.type !== SM_STATE_TYPE || ctx.sizes?.[n.id] !== undefined) return undefined;
+  const lines = behaviorLines(n);
+  if (lines.length === 0) return undefined;
+  const text = estimateLabelSize([n.name, ...lines].join('\n'), n.fontScale);
+  return {
+    width: Math.max(LEAF_SIZE.width, text.width),
+    height: Math.max(LEAF_SIZE.height, text.height + STATE_DIVIDER_HEIGHT),
+  };
 };
 
 /** Multiline or rich leaf box labels: an estimated footprint, so elk does not
@@ -96,12 +117,12 @@ const defaultSizeRule: Rule = (n, ctx) => {
 /** the notation's leaf size (a causal-loop variable drawn as text) */
 const notationRule: Rule = (n, ctx) => ctx.profile.node?.leafSize?.(n);
 
-const RULES: readonly Rule[] = [tableRule, labelRule, shapeRule, imageRule, defaultSizeRule, notationRule];
+const RULES: readonly Rule[] = [tableRule, stateRule, labelRule, shapeRule, imageRule, defaultSizeRule, notationRule];
 
 /**
  * The size elk is told for one node before its view state is known (withBoxSizes
  * lays the box estimates over these per view). The first rule that applies wins,
- * in this order: a table, a multiline label, a silhouette's saved size, an image,
+ * in this order: a table, a state with behaviours, a multiline label, a silhouette's saved size, an image,
  * a registry default size, the notation's leaf size. Undefined: the layout's own
  * leaf size.
  */
