@@ -168,7 +168,7 @@ One of the concurrent parts of an orthogonal state. Each region has its own init
 
 ## Pseudo-state
 
-A node that is not a mode: initial, choice, junction, fork or join bar, history, entry point, exit point and terminate. A final state ends the machine but is not a pseudo-state.
+A node that is not a mode: initial, final, choice, junction, fork or join bar, history, entry point, exit point and terminate. diagc counts a final state among them, although UML does not: like the others, it holds no behaviours and nothing sits inside it.
 
 ## Zone
 

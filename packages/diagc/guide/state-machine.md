@@ -7,11 +7,11 @@ A UML state machine: states, the transitions between them, and the events, guard
 ## How it works
 
 - `m.stateMachine(id, opts?)` draws a machine frame and returns a handle. `opts` takes `name`, `plane` and `planeName`. You can call it again for a second machine. Without `plane` the whole diagram becomes a state machine, and the call throws if it has another notation: pass `plane` to draw the machine beside other views.
-- The machine, a state and a region each offer `state(id, name?, { entry?, exit?, do?, color? })`, `initial(id?)`, `final(id?)`, `choice(id?, name?)`, `junction(id?)`, `bar(id?)`, `terminate(id?)` and `history({ id?, deep? })`. `entry`, `exit` and `do` are the state's `behaviors`, each an effect.
+- The machine, a state and a region each offer `state(id, name?, { entry?, exit?, do?, color? })`, `initial(id?)`, `final(id?)`, `choice(id?, name?)`, `junction(id?)`, `bar(id?)` and `terminate(id?)`. `entry`, `exit` and `do` are the state's `behaviors`, each an effect.
 - A transition is `machine.transition(from, to, { trigger?, guard?, effect? })`, or `element.to(target, parts?)`, which returns the target so a path chains. A transition reads `trigger [guard] / effect`. Write the parts as options, never as a `label`.
 - `state.on(trigger, { guard?, effect })` adds an internal transition: the state is not left. It shows in the state's behaviors.
 - A state with children is composite and rests folded in a viewer; double-click unfolds it. `state.region(id?, name?)` adds a concurrent region, and a state with regions is orthogonal. `state.entryPoint(id?, name?)` and `state.exitPoint(id?, name?)` sit on its border.
-- History belongs to the region in an orthogonal state: `region.history()`. `state.history()` throws there.
+- `history({ id?, deep? })` is shallow history (`H`), or deep (`H*`) with `deep: true`. `state.history()` is valid on a plain composite state, and `region.history()` in each region of an orthogonal one, where `state.history()` throws. The machine itself has no history. A transition into a history state resumes the substate that was left.
 
 ## Node types
 
@@ -38,23 +38,24 @@ A Quint spec's mode variable becomes the states. Take this one:
 ```quint
 module order {
   var status: str
-  action init = status' = "draft"
-  action pay = all { status == "draft", total > 0, status' = "paid" }
-  action ship = all { status == "paid", status' = "shipped" }
+  var total: int
+  action init = all { status' = "draft", total' = 0 }
+  action refund = total' = 0
+  action pay = all { status == "draft", total > 0, status' = "paid", total' = total }
+  action ship = all { status == "paid", status' = "shipped", total' = total }
   action cancel = any {
-    all { status == "draft", status' = "cancelled" },
-    all { status == "paid", refund(), status' = "cancelled" },
+    all { status == "draft", status' = "cancelled", total' = total },
+    all { status == "paid", refund, status' = "cancelled" },
   }
 }
 ```
 
 - The variable that holds the mode, a `str` or a sum type, gives one state per value.
 - `init` is the initial transition, to the state it assigns.
-- An action that changes the mode is a transition. Its name is the trigger, the preconditions on other variables are the guard, and the other updates are the effect.
+- An action that changes the mode is a transition. Its name is the trigger, the preconditions on other variables are the guard, and the other updates, or an action it calls for them (`refund`), are the effect. An update that keeps a variable as it was (`total' = total`) is no effect.
 - The alternatives of an `any` from one mode are several transitions from that state.
 - An action that leaves the mode unchanged is an internal transition (`state.on`), or a self-transition when re-entry matters.
-- Independent mode variables that change in one step are orthogonal regions.
-- A Quint invariant has no diagram element yet: write it in a comment.
+- Independent mode variables that change in one step are orthogonal regions. An invariant has no diagram element yet: write it in a comment.
 
 ```ts
 import { model } from '@diagc/core';
@@ -71,7 +72,7 @@ order.initial().to(draft);
 order.transition(draft, paid, { trigger: 'pay', guard: 'total > 0' });
 order.transition(paid, shipped, { trigger: 'ship' });
 order.transition(draft, cancelled, { trigger: 'cancel' });
-order.transition(paid, cancelled, { trigger: 'cancel', guard: 'refund()' });
+order.transition(paid, cancelled, { trigger: 'cancel', effect: 'refund' });
 
 export default m;
 ```

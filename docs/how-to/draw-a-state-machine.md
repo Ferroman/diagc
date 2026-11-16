@@ -10,7 +10,7 @@ Show how one thing moves through its modes: states, the transitions between them
 2. In the dock's state-machine panel, **add a machine**, then add states and pseudo-states into it. Select a state and press `Tab`, or click the `+` on it, to add a state beside it.
 3. Connect two states by dragging from one to the other. Type the transition's text on the arrow as `trigger [guard] / effect`, for example `pay [total > 0] / charge`. Each part is kept apart, so you can leave any of them out.
 4. Select a state to give it `entry`, `exit` and `do` behaviours, or an internal transition such as `remind [overdue] / email`.
-5. Add a region to a state to make it orthogonal. A second region sits below the first, with a dashed line between them. Add an entry or exit point to a composite for a transition that crosses its border.
+5. Add a region to a state to make it orthogonal. A second region sits beside the first across the flow (below it when the machine runs left to right), with a dashed line between them. Add an entry or exit point to a composite for a transition that crosses its border.
 6. Double-click a composite state to unfold it. Every composite rests folded.
 
 ## From TypeScript
@@ -25,14 +25,21 @@ const order = m.stateMachine('order', { name: 'Order' });
 const draft = order.state('draft', 'Draft');
 const paid = order.state('paid', 'Paid', { entry: 'reserveStock', exit: 'releaseHold' });
 const fulfil = order.state('fulfil', 'Fulfilment');
+const held = order.state('held', 'On hold');
 const inStock = order.choice('in-stock');
 const done = order.final();
+
+// Draft is a plain composite: one substate at a time.
+const editing = draft.state('editing', 'Editing');
+draft.initial().to(editing);
+editing.to(draft.state('reviewing', 'Reviewing'), { trigger: 'submit' });
 
 // Two regions make Fulfilment orthogonal: both run at once.
 const pick = fulfil.region('pick', 'Picking');
 const bill = fulfil.region('bill', 'Billing');
-pick.initial().to(pick.state('picking', 'Picking'));
-pick.history();
+const picking = pick.state('picking', 'Picking');
+pick.initial().to(picking);
+const resumePicking = pick.history();
 bill.initial().to(bill.state('invoicing', 'Invoicing'));
 
 order.initial().to(draft);
@@ -42,6 +49,10 @@ order.transition(inStock, fulfil, { guard: 'in stock' });
 order.transition(inStock, draft, { guard: 'else' });
 order.transition(fulfil, done, { trigger: 'deliver' });
 
+// Resuming enters Picking's history: picking goes on where it was left.
+order.transition(picking, held, { trigger: 'hold' });
+order.transition(held, resumePicking, { trigger: 'resume' });
+
 // An internal transition: the state is not left.
 paid.on('remind', { guard: 'overdue', effect: 'email' });
 
@@ -49,9 +60,9 @@ export default m;
 ```
 
 - `m.stateMachine(id, { name? })` returns the machine. Call it again for a second machine on the same canvas. To draw a machine beside other views of the same model, give it a `plane`; without one, the whole diagram becomes a state machine.
-- A machine, a state and a region each offer `state`, `initial`, `final`, `choice`, `junction`, `bar`, `terminate` and `history`. A state adds `region`, `on`, `entryPoint` and `exitPoint`.
+- A machine, a state and a region each offer `state`, `initial`, `final`, `choice`, `junction`, `bar` and `terminate`. A state adds `region`, `on`, `entryPoint`, `exitPoint` and `history`, and a region adds `history`. The machine itself has no history.
 - A transition is `machine.transition(from, to, { trigger?, guard?, effect? })`, or `element.to(target, parts?)`, which returns the target so a path chains. A choice's exits are guards: `[in stock]` and `[else]`.
-- A state is composite when something is inside it. Two or more regions make it orthogonal: both run at once. History belongs to a region there, so `region.history()`; `state.history()` throws on a state with regions.
+- A state is composite when something is inside it. A state with regions is orthogonal: its regions run at once. A plain composite takes `state.history()`; an orthogonal one keeps history in each region, so `region.history()`, and `state.history()` throws on a state with regions. A transition into a history state resumes the substate that was left.
 
 ## How it is drawn
 
@@ -76,7 +87,7 @@ Nothing on the diagram checks a spec's invariants, and diagc neither imports nor
 
 ## Examples
 
-**Starter** — the listing under [From TypeScript](#from-typescript) is the whole file: an order lifecycle with Fulfilment as an orthogonal state of two regions, history in Picking, a choice after Paid and an internal transition. Copy it into `.diagrams/src/` and change the names. [Source](../../.diagrams/src/examples/state-machine/starter.diagram.ts)
+**Starter** — the listing under [From TypeScript](#from-typescript) is the whole file: an order lifecycle with Draft as a plain composite, Fulfilment as an orthogonal state of two regions, a `hold` from Picking and a `resume` back into its history, a choice after Paid and an internal transition. Copy it into `.diagrams/src/` and change the names. [Source](../../.diagrams/src/examples/state-machine/starter.diagram.ts)
 
 [![Order lifecycle](../../.diagrams/static/examples/state-machine/starter.png)](https://ferroman.github.io/diagc/html/examples/state-machine/starter.html)
 
