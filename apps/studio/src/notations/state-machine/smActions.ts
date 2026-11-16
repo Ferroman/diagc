@@ -13,8 +13,10 @@ export const glyphLabel = (type: string): string => DEFAULT_TYPE_STYLES[type]?.l
 
 /**
  * The command that adds one `type` inside `parentId` (top level when absent),
- * with the next free `<type>-<n>` id. `plane` tags both the node and its
- * containment edge, the way quick add does, so a plane's own nodes stay on it.
+ * with the next free `<type>-<n>` id. `planes.node` tags the node (only a plane
+ * with nodes of its own; a borrowing plane adds a shared node), `planes.edge` its
+ * containment edge (always the plane in view, which resolves to the donor's
+ * hierarchy when it borrows) — the split createNodeAt makes for quick add.
  * A state starts named "State", as quick add names it; every other vertex starts
  * unnamed — a pseudo-state reads by its glyph, and the app opens a box's name
  * for typing.
@@ -23,15 +25,15 @@ export function addSmElement(
   model: DiagramModel,
   type: SmType,
   parentId: string | undefined,
-  plane: string | undefined,
+  planes: { node?: string | undefined; edge?: string | undefined },
 ): { command: EditorCommand; id: string } {
   const id = nextFreeId(`${type}-`, new Set(model.nodes.map((n) => n.id)));
   return {
     id,
     command: {
       type: 'add-node',
-      node: { id, name: type === SM_STATE_TYPE ? 'State' : '', type, ...defined({ plane }) },
-      ...(parentId !== undefined ? { parent: defined({ id: parentId, plane }) } : {}),
+      node: { id, name: type === SM_STATE_TYPE ? 'State' : '', type, ...defined({ plane: planes.node }) },
+      ...(parentId !== undefined ? { parent: defined({ id: parentId, plane: planes.edge }) } : {}),
     },
   };
 }

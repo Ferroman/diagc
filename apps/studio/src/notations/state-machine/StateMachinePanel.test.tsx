@@ -16,14 +16,16 @@ function machine(): DiagramModel {
   return m.toJSON();
 }
 
-function setup(over: { m?: DiagramModel; selected?: string; editing?: boolean; scopePlane?: string } = {}) {
+function setup(
+  over: { m?: DiagramModel; selected?: string; editing?: boolean; scopePlane?: string; viewPlane?: string } = {},
+) {
   const onCommand = vi.fn();
   const onSelect = vi.fn();
   const onCreated = vi.fn();
   render(
     <StateMachinePanel
       model={over.m ?? machine()}
-      viewPlane={undefined}
+      viewPlane={over.viewPlane}
       scopePlane={over.scopePlane}
       selection={over.selected !== undefined ? { kind: 'node', id: over.selected } : null}
       editing={over.editing ?? true}
@@ -46,7 +48,7 @@ describe('StateMachinePanel', () => {
   it('selects a row', () => {
     const { onSelect } = setup();
     fireEvent.click(screen.getByRole('button', { name: 'Select Open' }));
-    expect(onSelect).toHaveBeenCalledWith('a');
+    expect(onSelect).toHaveBeenCalledWith({ kind: 'node', id: 'a' });
   });
 
   it('lists an unreachable state first and selects it', () => {
@@ -55,7 +57,7 @@ describe('StateMachinePanel', () => {
     const first = issues.querySelector('button')!;
     expect(first.textContent).toContain("'b'");
     fireEvent.click(first);
-    expect(onSelect).toHaveBeenCalledWith('b');
+    expect(onSelect).toHaveBeenCalledWith({ kind: 'node', id: 'b' });
   });
 
   it('shows no add buttons in view mode', () => {
@@ -71,7 +73,7 @@ describe('StateMachinePanel', () => {
       node: { id: 'sm-region-1', name: '', type: SM_REGION_TYPE },
       parent: { id: 'a' },
     });
-    expect(onSelect).toHaveBeenCalledWith('sm-region-1');
+    expect(onSelect).toHaveBeenCalledWith({ kind: 'node', id: 'sm-region-1' });
     expect(onCreated).toHaveBeenCalledWith('sm-region-1');
   });
 
@@ -93,11 +95,42 @@ describe('StateMachinePanel', () => {
   });
 
   it('tags a new node with the scope plane', () => {
-    const { onCommand } = setup({ selected: 'a', scopePlane: 'p' });
+    const { onCommand } = setup({ selected: 'a', scopePlane: 'p', viewPlane: 'p' });
     fireEvent.click(screen.getByRole('button', { name: 'Add state' }));
     expect(onCommand).toHaveBeenCalledWith(
       expect.objectContaining({ node: expect.objectContaining({ plane: 'p' }), parent: { id: 'a', plane: 'p' } }),
     );
+  });
+
+  it('tags the edge with the plane in view and leaves the node shared on a borrowing plane', () => {
+    // donor 'b' is not the first plane, so an untagged edge would land on 'a'
+    const base = machine();
+    const m: DiagramModel = {
+      ...base,
+      planes: [
+        { id: 'a', name: 'A', notation: 'state-machine' },
+        { id: 'b', name: 'B', notation: 'state-machine' },
+        { id: 'c', name: 'C', notation: 'state-machine', containmentOf: 'b' },
+      ],
+    };
+    const { onCommand } = setup({ m, selected: 'a', viewPlane: 'c' });
+    fireEvent.click(screen.getByRole('button', { name: 'Add state' }));
+    expect(onCommand).toHaveBeenCalledWith({
+      type: 'add-node',
+      node: { id: 'sm-state-1', name: 'State', type: 'sm-state' },
+      parent: { id: 'a', plane: 'c' },
+    });
+  });
+
+  it('selects the transition a warning names', () => {
+    const base = machine();
+    const m: DiagramModel = {
+      ...base,
+      relations: [...base.relations, { id: 't1', from: 'a', to: 'b', kind: 'transition', label: 'x', trigger: 'go' }],
+    };
+    const { onSelect } = setup({ m });
+    fireEvent.click(screen.getByRole('button', { name: /'t1' has a label/ }));
+    expect(onSelect).toHaveBeenCalledWith({ kind: 'edge', id: 't1' });
   });
 
   it('shows only the viewed plane issues on a model with planes', () => {

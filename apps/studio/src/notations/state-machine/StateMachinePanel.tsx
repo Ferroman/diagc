@@ -14,6 +14,7 @@ import {
   type DiagramModel,
   type SmType,
 } from '@diagc/core/internal';
+import type { DiagramSelection } from '@diagc/renderer';
 import { DockSection } from '../../dock/DockSection';
 import { IssueList } from '../IssueList';
 import type { NotationPanelProps } from '../types';
@@ -21,8 +22,12 @@ import { addSmElement, glyphLabel } from './smActions';
 
 type StateMachinePanelProps = Pick<
   NotationPanelProps,
-  'model' | 'viewPlane' | 'scopePlane' | 'selection' | 'onCommand' | 'onSelect' | 'onCreated'
-> & { editing: boolean };
+  'model' | 'viewPlane' | 'scopePlane' | 'selection' | 'onCommand' | 'onCreated'
+> & {
+  editing: boolean;
+  /** a row selects a node; an issue may name a transition */
+  onSelect: (selection: DiagramSelection) => void;
+};
 
 // exported so the test derives its expectation from this value rather than a magic pixel literal
 export const INDENT = 12;
@@ -83,26 +88,25 @@ export function StateMachinePanel({
   const parent =
     selection !== null && selectedType !== undefined && CONTAINERS.includes(selectedType) ? selection.id : undefined;
   const add = (type: SmType, parentId: string | undefined) => {
-    const made = addSmElement(model, type, parentId, scopePlane);
+    const made = addSmElement(model, type, parentId, { node: scopePlane, edge: viewPlane });
     onCommand(made.command);
-    onSelect(made.id);
+    onSelect({ kind: 'node', id: made.id });
     onCreated(made.id);
   };
 
   return (
     <DockSection id="state-machine" title="State machine" className="sidebar so-panel">
-      <IssueList
-        model={model}
-        issues={issues}
-        selects="nodes"
-        label="Issues"
-        onSelect={(target) => onSelect(target.id)}
-      />
+      <IssueList model={model} issues={issues} selects="elements" label="Issues" onSelect={onSelect} />
       {rows.length === 0 ? <p className="so-hint">No machine yet.</p> : null}
       <ul className="plan-rows" aria-label="Machine">
         {rows.map(({ id, name, depth }) => (
           <li key={id} style={{ paddingLeft: `${depth * INDENT}px` }}>
-            <button type="button" className="link-btn" aria-label={`Select ${name}`} onClick={() => onSelect(id)}>
+            <button
+              type="button"
+              className="link-btn"
+              aria-label={`Select ${name}`}
+              onClick={() => onSelect({ kind: 'node', id })}
+            >
               {name}
             </button>
           </li>

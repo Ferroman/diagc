@@ -16,7 +16,7 @@ export const STATE_MACHINE: StudioNotationProfile = {
         selection={ctx.selection}
         editing={ctx.editing}
         onCommand={ctx.onCommand}
-        onSelect={(id) => ctx.select({ kind: 'node', id })}
+        onSelect={ctx.select}
         onCreated={ctx.requestLabelEdit}
       />
     ),
