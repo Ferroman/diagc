@@ -207,6 +207,8 @@ export function unreachableStates(model: DiagramModel, plane: string | undefined
     if (!view.nodes.has(id) || reached.has(id)) return;
     reached.add(id);
     queue.push(id);
+    // Entering a substate activates every state around it, so they are reached too.
+    for (const parent of ancestors(view, id)) reach(parent);
   };
   for (const n of view.nodes.values()) {
     if (n.type === SM_MACHINE_TYPE || (n.type === SM_INITIAL_TYPE && !view.parentOf.has(n.id))) reach(n.id);

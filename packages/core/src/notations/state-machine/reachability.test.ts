@@ -56,6 +56,15 @@ describe('unreachableStates', () => {
     expect(unreachableStates(m, undefined)).toEqual(['o', 'a', 'b']);
   });
 
+  it('reaches a composite through a transition into one of its substates', () => {
+    const m = sm(
+      [n('i', 'sm-initial'), n('a', 'sm-state'), n('c', 'sm-state'), n('inner', 'sm-state')],
+      [t('i', 'a'), t('a', 'inner')],
+      [c('c', 'inner')],
+    );
+    expect(unreachableStates(m, undefined)).toEqual([]);
+  });
+
   it('says nothing about a machine with no initial', () => {
     expect(unreachableStates(sm([n('a', 'sm-state'), n('b', 'sm-state')], [t('a', 'b')]), undefined)).toEqual([]);
     const framed = sm([n('mach', 'sm-machine'), n('a', 'sm-state')], [], [c('mach', 'a')]);
