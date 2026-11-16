@@ -21,6 +21,7 @@ import {
   type EdgePathParams,
   type EdgeShape,
 } from './edge-geometry';
+import { selfLoopCurve, selfLoopPath } from './self-loop';
 import type { EdgeAnchors, EndBox } from './useEdgeAnchors';
 
 /** The line an edge draws, and what its labels, marks and badges are placed along. */
@@ -34,7 +35,8 @@ export interface EdgePath {
   /** where a bundle's joined label sits */
   label: Point;
   /** the spot elk reserved for the label (nothing else is routed through it),
-   * moved onto the route as drawn; only while the route is drawn */
+   * moved onto the route as drawn; only while the route is drawn. A self-loop's
+   * spot is above its crown. */
   labelSpot: Point | undefined;
 }
 
@@ -45,8 +47,11 @@ export function useEdgePath(
   profile: NotationProfile,
 ): EdgePath {
   const route = standingRoute(anchors, data);
-  const { path, curve, label, labelSpot } =
-    route !== undefined && data !== undefined ? routedPath(route, anchors, data) : floatingPath(anchors, data, profile);
+  const { path, curve, label, labelSpot } = anchors.selfLoop
+    ? loopedPath(anchors, data)
+    : route !== undefined && data !== undefined
+      ? routedPath(route, anchors, data)
+      : floatingPath(anchors, data, profile);
 
   // Sketch theme: replace the clean path with a seeded rough stroke (stable per
   // edge id, memoized so it doesn't re-wobble each render). Label position and
@@ -106,6 +111,19 @@ function routedPath(route: Point[], anchors: EdgeAnchors, data: DiagramEdgeData)
   // line as drawn — a label beside its own line reads as belonging to nothing.
   const labelSpot = data.labelSpot !== undefined ? nearestOnRoute(pts, data.labelSpot) : undefined;
   return { path: roundedRoute(pts, data.routeCorner ?? 8), curve, label: labelSpot ?? curve.point(0.5), labelSpot };
+}
+
+// A self-loop has no route (the layout leaves it out) and no facing side to
+// float to, so it is a loop standing out of the box. Its label rides above the
+// loop's crown, which is also where a bundle's joined label sits.
+function loopedPath(anchors: EdgeAnchors, data: DiagramEdgeData | undefined): Omit<EdgePath, 'renderPath'> {
+  const direction = data?.selfLoop?.direction ?? 'RIGHT';
+  const index = data?.selfLoop?.index ?? 0;
+  // unmeasured (first frame): the loop stands on the handle point
+  const box = anchors.source?.rect ?? { x: anchors.from.x, y: anchors.from.y, width: 0, height: 0 };
+  const loop = selfLoopPath(box, direction, index);
+  const spot = { x: loop.labelX, y: loop.labelY };
+  return { path: loop.path, curve: selfLoopCurve(box, direction, index), label: spot, labelSpot: spot };
 }
 
 function floatingPath(

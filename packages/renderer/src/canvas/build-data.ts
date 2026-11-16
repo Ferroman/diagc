@@ -21,6 +21,7 @@ import type {
   EdgeLabel,
   EdgeLabelPlacement,
   EdgeLabelSide,
+  LayoutDirection,
   NotationId,
   PlanRole,
   Point,
@@ -146,6 +147,10 @@ export interface EdgeDataContext {
   onViewMoveEdgeLabel?: (relationId: string, labelId: string, t: number, side: EdgeLabelSide) => void;
   /** notation-resolved stroke per edge id */
   edgeColors?: ReadonlyMap<string, string>;
+  /** the layout's flow direction: the side a self-loop is drawn on */
+  flowDirection: LayoutDirection;
+  /** each self-loop's place among its node's, by edge id (see selfLoopIndexes) */
+  selfLoopIndex: ReadonlyMap<string, number>;
 }
 
 /** relation id → label id → where the label sits along its edge */
@@ -334,6 +339,7 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     if (ctx.editing) bindRelationEdits(data, e, relation, ctx);
     else bindViewLabelMoves(data, relation, ctx);
   }
+  if (e.from === e.to) data.selfLoop = { direction: ctx.flowDirection, index: ctx.selfLoopIndex.get(e.id) ?? 0 };
   if (ctx.routing !== undefined) addRoute(data, e, ctx, ctx.routing);
   return data;
 }
@@ -471,6 +477,8 @@ const EDGE_CTX_FIELDS = [
   'labelMoves',
   'onViewMoveEdgeLabel',
   'edgeColors',
+  'flowDirection',
+  'selfLoopIndex',
 ] as const;
 const _edgeCtxFields: SameKeys<keyof EdgeDataContext, (typeof EDGE_CTX_FIELDS)[number]> = true;
 void _edgeCtxFields;

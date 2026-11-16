@@ -53,6 +53,8 @@ const edgeCtx = (over: Partial<EdgeDataContext> = {}): EdgeDataContext => ({
   routes: new Map(),
   laidAt: new Map(),
   labelSpots: new Map(),
+  flowDirection: 'RIGHT',
+  selfLoopIndex: new Map(),
   ...over,
 });
 
@@ -367,6 +369,13 @@ describe('buildNodeData', () => {
 });
 
 describe('buildEdgeData', () => {
+  it('hands a self-loop the flow direction and its place among the node’s loops', () => {
+    const loop = viewEdge({ id: 'a=>a:|r1', to: 'a' });
+    const ctx = edgeCtx({ flowDirection: 'DOWN', selfLoopIndex: new Map([[loop.id, 2]]) });
+    expect(buildEdgeData(loop, ctx).selfLoop).toEqual({ direction: 'DOWN', index: 2 });
+    expect(buildEdgeData(viewEdge(), ctx).selfLoop).toBeUndefined();
+  });
+
   it('copies the shared fields and optional per-constituent overrides', () => {
     const e = viewEdge({
       label: 'ingress',
@@ -736,6 +745,8 @@ describe('the data caches compare every context field', () => {
     onViewMoveEdgeLabel: { onViewMoveEdgeLabel: () => {} },
     edgeColors: { edgeColors: new Map() },
     edgeLook: { edgeLook: { corner: 0 } },
+    flowDirection: { flowDirection: 'DOWN' },
+    selfLoopIndex: { selfLoopIndex: new Map([['e1', 1]]) },
   };
   it.each(Object.entries(edgeVariants))('rebuilds the edge data when only %s changes', (_field, over) => {
     const e = viewEdge();

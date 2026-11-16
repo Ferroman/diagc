@@ -22,6 +22,7 @@ import { NoteStateContext, type NoteState } from '../notes/note-state';
 import { edgePoint, markFrame, shapeCurve } from './edge-geometry';
 import { notationProfile } from '../notations';
 import { stylePreset } from '../sketch/stylePresets';
+import { selfLoopPath } from './self-loop';
 import { CAPTION_HEIGHT } from '../node/label-size';
 
 // The element, not the render: a test that needs the edge under a context
@@ -1038,6 +1039,36 @@ describe('DiagramEdge between measured nodes', () => {
       });
       expect(pathOf(r)).toBe('M160,63 C230,63 230,41 300,41');
       expect(dotsOf(r)).toEqual(['160,53', '300,53']);
+    });
+  });
+
+  describe('self-loop', () => {
+    const loopEdge = (partial: Partial<DiagramEdgeData>) =>
+      render(
+        <ReactFlowProvider>
+          <svg>
+            <DiagramEdge
+              id="e1"
+              source="a"
+              target="a"
+              sourceX={50}
+              sourceY={40}
+              targetX={50}
+              targetY={0}
+              sourcePosition={Position.Bottom}
+              targetPosition={Position.Top}
+              data={{ kind: 'reads', constituentCount: 1, kindRegistry: createKindRegistry(), ...partial }}
+            />
+          </svg>
+        </ReactFlowProvider>,
+      );
+
+    it('draws a loop, not a zero-length line, with its label at the loop spot', () => {
+      const { container, getByText } = loopEdge({ label: 'tick', selfLoop: { direction: 'RIGHT', index: 0 } });
+      const d = container.querySelector('path.react-flow__edge-path')!.getAttribute('d')!;
+      expect(d).toContain('C');
+      const { labelX, labelY } = selfLoopPath({ x: 50, y: 40, width: 0, height: 0 }, 'RIGHT', 0);
+      expect(getByText('tick').style.transform).toContain(`translate(${labelX}px, ${labelY}px)`);
     });
   });
 });
