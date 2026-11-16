@@ -23,14 +23,16 @@ export function formatTransition(p: TransitionParts): string {
 
 /** Inverse of {@link formatTransition}. The guard is the first top-level bracket pair
  * (nesting counted, so `a[0] > 1` survives); the effect starts at the first `/` outside
- * brackets that begins the text or follows a space, so a slash inside a word
- * (`a/b`) stays in the trigger. Empty parts are omitted. */
+ * brackets that begins the text or follows a space, so a slash inside a word (`a/b`)
+ * stays in the trigger. Whatever is not that guard or that effect (an unclosed `[`, a
+ * second bracket pair, the text around them) stays in the trigger as typed, so no text
+ * is lost. Empty parts are omitted and runs of whitespace in the trigger collapse. */
 export function parseTransition(text: string): TransitionParts {
   let trigger = '';
   let guard: string | undefined;
   let effect: string | undefined;
   let depth = 0;
-  let guardStart = -1;
+  let groupStart = -1;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i]!;
     if (depth === 0 && ch === '/' && (i === 0 || text[i - 1] === ' ') && text[i + 1] === ' ') {
@@ -38,19 +40,20 @@ export function parseTransition(text: string): TransitionParts {
       break;
     }
     if (ch === '[') {
-      if (depth === 0 && guard === undefined) guardStart = i + 1;
+      if (depth === 0) groupStart = i;
       depth++;
     } else if (ch === ']' && depth > 0) {
       depth--;
-      if (depth === 0 && guardStart >= 0) {
-        guard = text.slice(guardStart, i);
-        guardStart = -1;
-        trigger += ' ';
+      if (depth === 0) {
+        if (guard === undefined) guard = text.slice(groupStart + 1, i);
+        else trigger += text.slice(groupStart, i + 1);
+        groupStart = -1;
       }
     } else if (depth === 0) trigger += ch;
   }
+  if (depth > 0) trigger += text.slice(groupStart);
   const parts: TransitionParts = {};
-  const t = trigger.trim();
+  const t = trigger.replace(/\s+/g, ' ').trim();
   if (t !== '') parts.trigger = t;
   if (guard?.trim()) parts.guard = guard.trim();
   if (effect?.trim()) parts.effect = effect.trim();

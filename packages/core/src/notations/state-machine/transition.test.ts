@@ -23,6 +23,9 @@ describe('parseTransition', () => {
     ['pay [a[0] > 1] / log', { trigger: 'pay', guard: 'a[0] > 1', effect: 'log' }],
     ['   ', {}],
     ['go / a / b', { trigger: 'go', effect: 'a / b' }],
+    ['pay [x', { trigger: 'pay [x' }],
+    ['a [x] b [y]', { trigger: 'a b [y]', guard: 'x' }],
+    ['pay [x] more', { trigger: 'pay more', guard: 'x' }],
   ])('parses %s', (text, parts) => expect(parseTransition(text)).toEqual(parts));
 
   it('round-trips every formatted string', () => {
