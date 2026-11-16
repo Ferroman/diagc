@@ -5,6 +5,7 @@ import {
   SM_REGION_TYPE,
   SM_STATE_TYPE,
   SM_TRANSITION_KIND,
+  isStateMachineType,
   defined,
   type DiagramNode,
 } from '@diagc/core/internal';
@@ -45,7 +46,10 @@ export const stateMachineQuickAdd: QuickAddRecipes = (src) => {
     };
   }
   const isState = source.type === SM_STATE_TYPE;
-  if (!isState && source.type !== SM_INITIAL_TYPE && source.type !== SM_CHOICE_TYPE) return undefined;
+  if (!isState && source.type !== SM_INITIAL_TYPE && source.type !== SM_CHOICE_TYPE) {
+    // any other glyph would be cloned by the generic sibling, which is no state
+    return isStateMachineType(source.type) ? 'none' : undefined;
+  }
   return {
     label: isState ? 'Add the next state' : 'Add a state',
     build: () => {

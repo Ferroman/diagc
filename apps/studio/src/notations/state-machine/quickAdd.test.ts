@@ -45,7 +45,7 @@ describe('stateMachineQuickAdd', () => {
       'Add a state inside',
       'Add a state inside',
     ]);
-    expect(answer('f')).toBeUndefined();
+    expect(answer('f')).toBe('none');
     expect(answer('note')).toBeUndefined();
   });
 
