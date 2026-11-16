@@ -12,6 +12,7 @@ import { FISHBONE_PACK } from './packs.fishbone';
 import { PLAN_PACK } from './packs.plan';
 import { DEPLOYMENT_PACK } from './packs.deployment';
 import { THREAT_MODEL_PACK } from './packs.threat-model';
+import { STATE_MACHINE_PACK } from './packs.state-machine';
 
 // The plain built-in stencils (the renderer's DEFAULT_TYPE_STYLES) — what a
 // .diagram.ts author gets from `type:` with no pack at all. Without these the
@@ -284,6 +285,7 @@ export const BUNDLED_LIBRARY: Library = {
     ...THREAT_MODEL_PACK.categories,
     ...DEPLOYMENT_PACK.categories,
     ...PLAN_PACK.categories,
+    ...STATE_MACHINE_PACK.categories,
     ...DATA_PACK.categories,
     ...shapesCategories,
     ...techCategories,
@@ -301,6 +303,7 @@ export const BUNDLED_LIBRARY: Library = {
     ...THREAT_MODEL_PACK.entries,
     ...DEPLOYMENT_PACK.entries,
     ...PLAN_PACK.entries,
+    ...STATE_MACHINE_PACK.entries,
     ...DATA_PACK.entries,
     ...shapesEntries,
     ...techEntries,

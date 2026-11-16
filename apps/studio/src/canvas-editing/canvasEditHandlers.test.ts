@@ -271,6 +271,25 @@ describe('connectAndDeleteHandlers', () => {
     ]);
   });
 
+  it('draws a transition between two states, and none to or from a machine or a region', () => {
+    // Breaks if the connect stops drawing transitions on a state machine, or lets a frame be an end.
+    const sm = model({
+      nodes: [
+        { id: 'a', name: 'A', type: 'sm-state' },
+        { id: 'b', name: 'B', type: 'sm-state' },
+        { id: 'm', name: 'M', type: 'sm-machine' },
+        { id: 'r', name: 'R', type: 'sm-region' },
+      ],
+    });
+    const { ctx, commands } = setup(sm, { notation: 'state-machine' });
+    const { onConnect } = connectAndDeleteHandlers(ctx);
+    onConnect('a', 'b');
+    expect(commands).toEqual([{ type: 'add-relation', from: 'a', to: 'b', opts: { kind: 'transition' } }]);
+    onConnect('a', 'm');
+    onConnect('r', 'b');
+    expect(commands).toHaveLength(1);
+  });
+
   it('deletes against the synchronous session and drops the selection; nothing left to delete is no command', () => {
     // Breaks if a delete reads the render's session, or clears a selection it did not delete.
     const { ctx, commands } = setup(model());

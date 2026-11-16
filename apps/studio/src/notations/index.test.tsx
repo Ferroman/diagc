@@ -32,7 +32,7 @@ describe('STUDIO_NOTATIONS', () => {
       'threat-model': ['connectKind', 'dock', 'label', 'quickAdd'],
       plan: ['datesFromDropPoint', 'dock', 'gestures', 'label', 'planSection', 'quickAdd'],
       deployment: [],
-      'state-machine': ['label'],
+      'state-machine': ['connectKind', 'label', 'quickAdd'],
     });
   });
 

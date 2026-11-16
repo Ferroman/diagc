@@ -2,7 +2,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { DEPLOY_NODE_TYPES, DEPLOY_ZONE_TYPES, LIBRARY_IMAGE_REF } from '@diagc/core/internal';
+import { DEPLOY_NODE_TYPES, DEPLOY_ZONE_TYPES, LIBRARY_IMAGE_REF, SM_TYPES } from '@diagc/core/internal';
 import { DEFAULT_TYPE_STYLES } from '@diagc/renderer';
 import { AWS_PACK } from './packs.aws';
 import { AZURE_PACK } from './packs.azure';
@@ -421,6 +421,38 @@ describe('Deployment pack', () => {
     for (const e of entries) {
       const zone = (DEPLOY_ZONE_TYPES as readonly string[]).includes(e.id) && e.id !== 'deploy-host';
       expect(e.template.width !== undefined, e.id).toBe(zone);
+    }
+  });
+
+  it('uses node types the renderer styles (no silent fallback to a plain box)', () => {
+    for (const e of entries) {
+      expect(DEFAULT_TYPE_STYLES[e.template.type!], `type '${e.template.type}'`).toBeDefined();
+    }
+  });
+});
+
+describe('State machine pack', () => {
+  const entries = BUNDLED_LIBRARY.entries.filter((e) => e.category === 'state-machine');
+
+  it('bundles one stencil per state-machine type, in the notation’s order', () => {
+    expect(BUNDLED_LIBRARY.categories).toContainEqual({
+      id: 'state-machine',
+      name: 'UML · State machine',
+      builtin: true,
+    });
+    expect(entries.map((e) => e.id)).toEqual([...SM_TYPES]);
+  });
+
+  it('drops frames at their own size and each glyph at the size the renderer draws it', () => {
+    const size = (id: string) => ({
+      width: entries.find((e) => e.id === id)?.template.width,
+      height: entries.find((e) => e.id === id)?.template.height,
+    });
+    expect(size('sm-machine')).toEqual({ width: 480, height: 320 });
+    expect(size('sm-state')).toEqual({ width: 140, height: 60 });
+    expect(size('sm-region')).toEqual({ width: 360, height: 160 });
+    for (const id of SM_TYPES.filter((t) => DEFAULT_TYPE_STYLES[t]?.defaultSize !== undefined)) {
+      expect(size(id), id).toEqual(DEFAULT_TYPE_STYLES[id]!.defaultSize);
     }
   });
 
