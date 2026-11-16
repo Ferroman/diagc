@@ -244,12 +244,18 @@ describe('relationEndHandlers', () => {
       });
     });
 
-    it('parses an added label too', () => {
-      // Breaks if adding a label to a bare transition stores free text.
+    it('parses an added label too, and keeps the place it was clicked at', () => {
+      // Breaks if adding a label to a bare transition stores free text or loses the click position.
       expect(patchOf(model({ relations: [base] }), (h) => h.onAddEdgeLabel('t', 'go / run', 0.5, 'top'))).toEqual({
         type: 'update-relation',
         id: 't',
-        patch: { trigger: 'go', guard: null, effect: 'run', label: null },
+        patch: {
+          trigger: 'go',
+          guard: null,
+          effect: 'run',
+          label: null,
+          labels: [{ id: 'transition', text: 'go / run', t: 0.5, side: 'top' }],
+        },
       });
     });
   });

@@ -149,9 +149,12 @@ describe('EdgePanel', () => {
     const model = { ...m, relations: [{ id: 't', from: 'a', to: 'b', kind: 'transition' }, ...m.relations] };
     const { unmount } = render(<EdgePanel model={model} constituentIds={['t']} onCommand={vi.fn()} onClose={noop} />);
     expect(screen.getByLabelText('Trigger')).toBeTruthy();
+    // its text is edited as parts, so a labels-only edit here would be invisible
+    expect(screen.queryByRole('button', { name: 'Add label' })).toBeNull();
     unmount();
     render(<EdgePanel model={model} constituentIds={['a->b#0']} onCommand={vi.fn()} onClose={noop} />);
     expect(screen.queryByLabelText('Trigger')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Add label' })).toBeTruthy();
   });
 
   it('sets polarity as update-relation, and clears it back to null', () => {

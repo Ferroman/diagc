@@ -212,14 +212,16 @@ export function relationEndHandlers({ editor, model }: EditContext) {
     if (model === undefined) return;
     const cur = edgeLabelsOf(model, relationId);
     if (cur === null) return;
-    const patch = transitionLabelPatch(model, relationId, text) ?? { labels: addEdgeLabel(cur, text, t, side) };
+    const patch = transitionLabelPatch(model, relationId, text, { t, side }) ?? {
+      labels: addEdgeLabel(cur, text, t, side),
+    };
     editor.dispatch({ type: 'update-relation', id: relationId, patch });
   };
   const editEdgeLabelFor = (relationId: string, labelId: string, text: string) => {
     if (model === undefined) return;
     const cur = edgeLabelsOf(model, relationId);
     if (cur === null) return;
-    const patch = transitionLabelPatch(model, relationId, text, labelId) ?? {
+    const patch = transitionLabelPatch(model, relationId, text, { labelId }) ?? {
       labels: editEdgeLabel(cur, labelId, text),
     };
     editor.dispatch({ type: 'update-relation', id: relationId, patch });
