@@ -223,6 +223,38 @@ describe('state-machine rules', () => {
       expect(new Set(keys).size).toBe(keys.length);
     });
 
+    const regionWarnings = (model: DiagramModel) =>
+      diagramWarnings(model)
+        .filter((i) => i.code === 'sm-region-parent')
+        .map((i) => i.message);
+
+    it("reads each plane's own containment: wrong only on b, warns only for b", () => {
+      const m = planed();
+      m.containment = [c('h', 'r', 'b')];
+      expect(regionWarnings(m)).toEqual([expect.stringContaining("on plane 'b'")]);
+    });
+
+    it('counts an untagged edge on the default plane only', () => {
+      const m = planed();
+      m.containment = [c('h', 'r')];
+      expect(regionWarnings(m)).toEqual([expect.stringContaining("on plane 'a'")]);
+    });
+
+    it("reads the donor's containment on a plane that borrows, and ignores its own edges", () => {
+      const m = planed();
+      m.planes = [
+        { id: 'a', name: 'A', notation: 'state-machine' },
+        { id: 'c', name: 'C', notation: 'state-machine', containmentOf: 'a' },
+      ];
+      m.containment = [c('h', 'r', 'a')];
+      expect(regionWarnings(m)).toEqual([
+        expect.stringContaining("on plane 'a'"),
+        expect.stringContaining("on plane 'c'"),
+      ]);
+      m.containment = [c('h', 'r', 'c')];
+      expect(regionWarnings(m)).toEqual([]);
+    });
+
     it('leaves a plane of another notation alone, and a model without planes unlabelled', () => {
       const m = planed();
       m.planes = [{ id: 'k', name: 'K', notation: 'c4' }];
