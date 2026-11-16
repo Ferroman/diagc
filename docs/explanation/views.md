@@ -50,7 +50,7 @@ What that one arrow is labelled follows a width budget, because at platform alti
 
 | The aggregate's constituents | Its label |
 | --- | --- |
-| One distinct label (or the same one repeated) | that label, however long — the renderer ellipsises it at ~24 characters |
+| One distinct label (or the same one repeated) | that label, however long — the renderer ellipsises it at ~24 characters (a state-machine transition's wraps onto more lines instead) |
 | Several, joined in ≤ 32 characters | the join, e.g. `reads / writes` |
 | Several, longer than that | `N relations`, N being how many it rolled up |
 | None labelled at all | `N relations` |

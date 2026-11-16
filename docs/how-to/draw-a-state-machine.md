@@ -8,7 +8,7 @@ Show how one thing moves through its modes: states, the transitions between them
 
 1. Create a new JSON diagram and, in **Layers & planes**, set its **Notation** to *State machine (UML)*.
 2. In the dock's state-machine panel, **add a machine**, then add states and pseudo-states into it. Select a state and press `Tab`, or click the `+` on it, to add a state beside it.
-3. Connect two states by dragging from one to the other. Type the transition's text on the arrow as `trigger [guard] / effect`, for example `pay [total > 0] / charge`. Each part is kept apart, so you can leave any of them out. Or select the transition and fill **Trigger**, **Guard** and **Effect** in the inspector.
+3. Connect two states by dragging from one to the other. Type the transition's text on the arrow as `trigger [guard] / effect`, for example `pay [total > 0] / charge`. Each part is kept apart, so you can leave any of them out, and a long one wraps onto more lines. Or select the transition and fill **Trigger**, **Guard** and **Effect** in the inspector.
 4. Select a state to give it `entry`, `exit` and `do` behaviours, or an internal transition such as `remind [overdue] / email`.
 5. Add a region to a state to make it orthogonal. A second region sits beside the first across the flow (below it when the machine runs left to right), with a dashed line between them. Add an entry or exit point to a composite for a transition that crosses its border.
 6. Double-click a composite state to unfold it. Every composite rests folded.

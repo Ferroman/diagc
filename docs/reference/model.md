@@ -144,7 +144,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `guard` | `string?` | State-machine diagrams only. The condition that must hold, printed in brackets. Non-empty text. |
 | `effect` | `string?` | State-machine diagrams only. What runs when the transition fires, printed after a slash. Non-empty text. |
 
-When any of `trigger`, `guard` or `effect` is set, the relation's label reads `trigger [guard] / effect` and replaces the text of its first label (or becomes its only label); `label` is ignored.
+When any of `trigger`, `guard` or `effect` is set, the relation's label reads `trigger [guard] / effect` and replaces the text of its first label (or becomes its only label); `label` is ignored. A label longer than 24 characters is drawn on more lines rather than cut.
 
 ### `RelationStyle`
 
@@ -631,7 +631,7 @@ Strings the renderer already knows. Anything else falls back to a plain box or a
 
 **Relation kinds** — `sync`, `async` (dashed), `reads`, `writes` (thick), `hosted-on` (dashed), `flow` (animated), `mixed` (thick, used for aggregates), `fk` (crow's foot to bar), `network` and `influence` (plain), plus each notation's kinds in its conventions above.
 
-An **aggregate** edge (one arrow standing for several relations, after a fold) labels itself from its constituents: their distinct labels joined with ` / ` while that stays within 32 characters, or a single distinct label whatever its length, and otherwise `N relations`. Single-relation edges always carry their own label. Long labels are ellipsised at ~24 characters when drawn; the arrow's hover title carries the full text. See [Views](../explanation/views.md#semantic-zoom).
+An **aggregate** edge (one arrow standing for several relations, after a fold) labels itself from its constituents: their distinct labels joined with ` / ` while that stays within 32 characters, or a single distinct label whatever its length, and otherwise `N relations`. Single-relation edges always carry their own label. Long labels are ellipsised at ~24 characters when drawn; the arrow's hover title carries the full text. A state-machine transition's label is the exception: it wraps onto lines of at most 24 characters, keeping a guard on one line and breaking before the `/` of the effect. See [Views](../explanation/views.md#semantic-zoom).
 
 **Shapes** — `box`, `cylinder`, `pill`, `hexagon`, `table`, `bubble` (a rounded box with a tail at the bottom-left; the tail hangs outside the node's layout box, so spacing and edge attachment behave exactly as for a box).
 
