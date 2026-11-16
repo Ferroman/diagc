@@ -571,6 +571,20 @@ The compiler prints them, and the notation's panel lists them.
 | `fb-misplaced` | The wrong parent for the type: a category not on the effect, a cause on the effect, the effect on anything. |
 | `fb-too-deep` | A cause hung on a sub-cause — three levels below the effect is the limit. |
 | `fb-contained` | A fishbone node inside a container; nothing on a fish can be grouped. |
+| `sm-region-parent` | *Warning.* A region with a parent that is not a state or a machine. |
+| `sm-region-siblings` | *Warning.* A state that holds a region also holds something other than regions and entry or exit points. |
+| `sm-machine-parent` | *Warning.* A machine that is not top level. |
+| `sm-pseudo-children` | *Warning.* A pseudo-state, a final or a terminate that holds other nodes. |
+| `sm-transition-ends` | *Warning.* A transition that ends on a machine, a region or a node that is not of the notation. |
+| `sm-history-parent` | *Warning.* A history in an orthogonal state, a machine or any other parent that is not a region or a plain composite state. |
+| `sm-point-parent` | *Warning.* An entry or exit point whose parent is not a state or a machine. |
+| `sm-initial-count` | *Warning.* A second initial in one region, or in one container without regions. |
+| `sm-initial-flow` | *Warning.* An initial with an incoming transition, without exactly one outgoing transition, or whose transition has a trigger or a guard. |
+| `sm-final-outgoing` | *Warning.* A final or a terminate with an outgoing transition. |
+| `sm-choice-guards` | *Warning.* A choice or junction with an exit that has no guard, or with more than one `else` exit. |
+| `sm-bar-shape` | *Warning.* A bar with neither one incoming nor one outgoing transition, or a fork whose targets are not in different regions of one orthogonal state. |
+| `sm-unreachable` | *Warning.* A state that no path from an initial reaches. A machine with no initial is not checked. |
+| `sm-transition-label` | *Warning.* A transition with a `label` and also a trigger, guard or effect; the label is drawn. |
 | `plan-date` | A `start`, `end` or `at` is present but is not a real `YYYY-MM-DD` date. |
 | `plan-missing` | A `plan-zone` lacks `start` or `end`; a `plan-event` lacks `at`. |
 | `plan-span` | A zone's `end` is before its `start`. |

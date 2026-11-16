@@ -76,6 +76,20 @@ export interface ValidationIssue {
     | 'plan-span'
     | 'plan-nested'
     | 'plan-role-target'
+    | 'sm-region-parent'
+    | 'sm-region-siblings'
+    | 'sm-machine-parent'
+    | 'sm-pseudo-children'
+    | 'sm-transition-ends'
+    | 'sm-history-parent'
+    | 'sm-point-parent'
+    | 'sm-initial-count'
+    | 'sm-initial-flow'
+    | 'sm-final-outgoing'
+    | 'sm-choice-guards'
+    | 'sm-bar-shape'
+    | 'sm-unreachable'
+    | 'sm-transition-label'
     | LintCode;
   message: string;
   ref?: string;
