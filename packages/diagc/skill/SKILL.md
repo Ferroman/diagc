@@ -1,6 +1,6 @@
 ---
 name: diagc
-description: Write, change or fix a diagc diagram (.diagrams/src/*.diagram.ts) — architecture, C4, deployment, ER, activity, threat model, causal loop, plan and more. Use when asked to draw or update a diagram in a repository that uses diagc.
+description: Write, change or fix a diagc diagram (.diagrams/src/*.diagram.ts) — architecture, C4, deployment, ER, activity, threat model, causal loop, plan, state machine and more. Use when asked to draw or update a diagram in a repository that uses diagc.
 ---
 
 <!-- diagc:begin -->

@@ -21,6 +21,7 @@ import type {
   EdgeLabel,
   EdgeLabelPlacement,
   EdgeLabelSide,
+  LayoutDirection,
   NotationId,
   PlanRole,
   Point,
@@ -35,6 +36,7 @@ import type {
 import {
   attachesDirectly,
   runsToPlainText,
+  SM_STATE_TYPE,
   soleRelation,
   threatSummary,
   withHiddenColumns,
@@ -48,6 +50,8 @@ import type { EdgeLook, StylePreset } from '../sketch/stylePresets';
 import { nodeHue, type TypeHues } from './type-hues';
 import type { DiagramEdgeData } from '../edge/DiagramEdge';
 import type { DiagramNodeData } from '../node/DiagramNode';
+import { behaviorLines } from '../node/behavior-lines';
+import type { RegionSeparator } from '../layout/state-machine-layout';
 
 /** per-node data inputs the view threads in; kept as one object so the cache
  * can compare it field-by-field with === and skip rebuilds when nothing moved */
@@ -102,6 +106,8 @@ export interface NodeDataContext {
   onAddThreat?: (target: ElementRef) => void;
   stylePreset?: StylePreset;
   notation?: NotationId;
+  /** the stacked regions' dashed edges (state-machine-layout.ts regionSeparators) */
+  regionSeparators?: ReadonlyMap<string, RegionSeparator>;
 }
 
 /** per-edge data inputs the view threads in (same cache contract as above) */
@@ -141,6 +147,12 @@ export interface EdgeDataContext {
   onViewMoveEdgeLabel?: (relationId: string, labelId: string, t: number, side: EdgeLabelSide) => void;
   /** notation-resolved stroke per edge id */
   edgeColors?: ReadonlyMap<string, string>;
+  /** the layout's flow direction: the side a self-loop is drawn on */
+  flowDirection: LayoutDirection;
+  /** each self-loop's place among its node's, by edge id (see selfLoopIndexes) */
+  selfLoopIndex: ReadonlyMap<string, number>;
+  /** each edge's bow when another joins the same two nodes, by edge id (see parallelBows) */
+  parallelBow: ReadonlyMap<string, number>;
 }
 
 /** relation id → label id → where the label sits along its edge */
@@ -216,7 +228,10 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     threats: threats.total > 0 ? threats : undefined,
     annotations: nodeAnnotations(n),
     chips: ctx.nodeChips?.get(n.id),
+    ...(n.node.type === SM_STATE_TYPE ? { behaviors: behaviorLines(n.node), composite: n.state !== 'leaf' } : {}),
   };
+  const separator = ctx.regionSeparators?.get(n.id);
+  if (separator !== undefined) data.regionSeparator = separator;
   if (ctx.labelEditingId === n.id) bindLabelEdit(data, n, ctx);
   // an image or a shape's mask is fetched from the asset or library folder
   if (n.node.image !== undefined || n.node.shape !== undefined) {
@@ -326,6 +341,9 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     if (ctx.editing) bindRelationEdits(data, e, relation, ctx);
     else bindViewLabelMoves(data, relation, ctx);
   }
+  if (e.from === e.to) data.selfLoop = { direction: ctx.flowDirection, index: ctx.selfLoopIndex.get(e.id) ?? 0 };
+  const bow = ctx.parallelBow.get(e.id);
+  if (bow !== undefined) data.parallelBow = bow;
   if (ctx.routing !== undefined) addRoute(data, e, ctx, ctx.routing);
   return data;
 }
@@ -438,6 +456,7 @@ const NODE_CTX_FIELDS = [
   'hues',
   'nodeChips',
   'resizable',
+  'regionSeparators',
 ] as const;
 const _nodeCtxFields: SameKeys<keyof NodeDataContext, (typeof NODE_CTX_FIELDS)[number]> = true;
 void _nodeCtxFields;
@@ -462,6 +481,9 @@ const EDGE_CTX_FIELDS = [
   'labelMoves',
   'onViewMoveEdgeLabel',
   'edgeColors',
+  'flowDirection',
+  'selfLoopIndex',
+  'parallelBow',
 ] as const;
 const _edgeCtxFields: SameKeys<keyof EdgeDataContext, (typeof EDGE_CTX_FIELDS)[number]> = true;
 void _edgeCtxFields;

@@ -1,6 +1,15 @@
 import { BaseEdge, type EdgeProps } from '@xyflow/react';
 import { useContext } from 'react';
-import type { EdgeLabel, EdgeLabelSide, NotationId, Point, Polarity, RelationStyle, Side } from '@diagc/core/internal';
+import type {
+  EdgeLabel,
+  EdgeLabelSide,
+  LayoutDirection,
+  NotationId,
+  Point,
+  Polarity,
+  RelationStyle,
+  Side,
+} from '@diagc/core/internal';
 import { LoopHighlightContext, type LoopHighlight } from '../loops/loop-highlight';
 import type { AnnotationCounts } from '../notes/comment-badge';
 import { notationProfile } from '../notations';
@@ -102,6 +111,11 @@ export interface DiagramEdgeData {
    * counting badge toggles the note of. A bundle names none: its threats
    * belong to particular relations and no note exists for the bundle. */
   threatRelation?: string;
+  /** a self-loop (source = target): the flow direction picks the side it is drawn on, the index stacks several */
+  selfLoop?: { direction: LayoutDirection; index: number };
+  /** another edge joins the same two nodes: how far this one bows while it floats,
+   * px left of its travel (negative: right); see parallelBows */
+  parallelBow?: number;
 }
 
 type Props = Pick<

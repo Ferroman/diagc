@@ -1,6 +1,15 @@
 import {
   ACTIVITY_END_TYPE,
   FB_EFFECT_TYPE,
+  SM_DEEP_HISTORY_TYPE,
+  SM_ENTRY_TYPE,
+  SM_EXIT_TYPE,
+  SM_FINAL_TYPE,
+  SM_HISTORY_TYPE,
+  SM_JUNCTION_TYPE,
+  SM_STATE_TYPE,
+  SM_TERMINATE_TYPE,
+  formatTransition,
   type Column,
   type NotationId,
   type ViewEdge,
@@ -44,7 +53,14 @@ export interface BoxContext {
 /** The mark a glyph type's name follows, which is what a legend keys it by. */
 export function typeMark(type: string | undefined, shape: TextShape, glyphs: Glyphs): string | undefined {
   if (shape === 'diamond') return glyphs.decision;
-  if (type === ACTIVITY_END_TYPE) return glyphs.end;
+  if (type === ACTIVITY_END_TYPE || type === SM_FINAL_TYPE) return glyphs.end;
+  // these share the rounded shape, so only the type tells them apart
+  if (type === SM_HISTORY_TYPE) return glyphs.history;
+  if (type === SM_DEEP_HISTORY_TYPE) return glyphs.deepHistory;
+  if (type === SM_ENTRY_TYPE) return glyphs.entryPoint;
+  if (type === SM_EXIT_TYPE) return glyphs.exitPoint;
+  if (type === SM_TERMINATE_TYPE) return glyphs.terminate;
+  if (type === SM_JUNCTION_TYPE) return glyphs.junction;
   // an activity's start, a git commit: the dot is the element, the name a caption
   if (shape === 'dot') return glyphs.start;
   return undefined;
@@ -99,11 +115,17 @@ export function boxText(vn: ViewNode, ctx: BoxContext): BoxText {
           .flatMap((line) => wrapCells(printable(line), NAME_WRAP))
           .map((text) => ({ text, role: 'title' }));
   for (const text of subtitle === '' ? [] : wrapCells(subtitle, NAME_WRAP)) lines.push({ text, role: 'subtitle' });
+  // a state's behaviours, one line each, cut rather than wrapped: they read as code;
+  // only a state lists them, as only a state draws them on the canvas
+  const behaviors = (vn.node.type === SM_STATE_TYPE ? (vn.node.behaviors ?? []) : []).map((behavior) =>
+    fitCells(printable(formatTransition(behavior)), TITLE_MAX, ctx.glyphs.ellipsis),
+  );
+  lines.push(...behaviors.map((text) => ({ text, role: 'row' as const })));
   const columns = look.shape === 'table' ? (vn.columns ?? vn.node.columns ?? []) : [];
   lines.push(...columnRows(columns));
   if (vn.state === 'collapsed') lines.push({ text: `${ctx.glyphs.folded} ${ctx.inside} inside`, role: 'note' });
-  // a cylinder's lid and a table's rule under its title each take a row
-  const extra = look.shape === 'cylinder' || columns.length > 0 ? 1 : 0;
+  // a cylinder's lid and the rule under a title, above a table's columns or a state's behaviours, each take a row
+  const extra = look.shape === 'cylinder' || columns.length > 0 || behaviors.length > 0 ? 1 : 0;
   return { lines, width: widthOf(lines), height: lines.length + 2 + extra, shape: look.shape, dashed };
 }
 

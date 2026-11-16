@@ -71,7 +71,7 @@ const DIRECTIONS = new Set(['DOWN', 'UP', 'LEFT', 'RIGHT']);
 /** The way the plane flows: its saved layout setting, else the model's default. */
 function directionOf(input: SceneInput): string {
   const saved = input.overlay?.settings?.[layoutPlaneKey(input.model, input.plane)]?.direction;
-  return saved !== undefined && DIRECTIONS.has(saved) ? saved : defaultLayoutDirection(input.model);
+  return saved !== undefined && DIRECTIONS.has(saved) ? saved : defaultLayoutDirection(input.model, input.plane);
 }
 
 /** How the scene is laid out: its plane's flow, and room for DOS's shadows. */

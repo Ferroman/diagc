@@ -17,6 +17,7 @@ import { fitContainers, type ContainerFit, type Shift } from '../layout/fit-cont
 import { layoutView, type NodeGeometry } from '../layout/layout';
 import { containerPad, DEFAULT_ALGORITHM, FALLBACK_DIRECTION, type SizeHint } from '../layout/layout-graph';
 import { sizeHintsOf } from '../layout/size-hints';
+import { arrangeStateMachines, regionSeparators, type RegionSeparator } from '../layout/state-machine-layout';
 import type { NotationProfile } from '../notations';
 import { overlayPositions } from './placement';
 import { withShownTableRows } from '../node/table-ports';
@@ -47,6 +48,9 @@ export interface ViewLayout {
   // unchanged when the plane has no activity frames), so the band pass narrows
   // the mutability here, to the type `Inner` reads.
   arrangedGeometry: ReadonlyMap<string, NodeGeometry> | null;
+  /** state-machine regions that draw a dashed leading edge (see
+   * state-machine-layout.ts); empty without stacked regions */
+  regionSeparators: ReadonlyMap<string, RegionSeparator>;
   /** containers whose origin the fit pass moved (they grew left/up around a
    * hand-placed child) — what a saved position has to be corrected by; see
    * fit-containers.ts */
@@ -313,13 +317,13 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     [input.layout, input.model, input.plane],
   );
 
-  // What the layout actually runs with: the plane's settings, with the MODEL's
-  // default direction resolved in where they name none (down — or right for an
-  // activity model, whose lanes are horizontal bands). Kept apart from
+  // What the layout actually runs with: the plane's settings, with the default
+  // direction resolved in where they name none (down — or right for an activity
+  // model, whose lanes are horizontal bands, and on a state-machine plane). Kept apart from
   // `layoutSettings` so callers still see exactly what the sidecar says, and
   // keyed on the direction string so an edit (a new model object) does not by
   // itself re-run the layout.
-  const modelDirection = defaultLayoutDirection(input.model);
+  const modelDirection = defaultLayoutDirection(input.model, input.plane);
   const partitioned = input.profile.partitionOf !== undefined;
   const notationAlgorithm = input.profile.defaultAlgorithm;
   const runSettings = useMemo(
@@ -410,18 +414,31 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     return fitContainers(placedGeometry, input.compiled.roots, containerPad, (n) => isActivityBand(n.node.type));
   }, [placedGeometry, input.compiled, input.profile]);
 
+  const flowDirection = (runSettings?.direction ?? FALLBACK_DIRECTION) as LayoutDirection;
+
   // Activity frames: normalize lanes into full-width stacked bands. Applied to
   // the OVERLAY-APPLIED geometry (not the elk cache) so hand-drags participate:
-  // dragging a node inside a lane grows the band on the next frame.
-  const arrangedGeometry = useMemo(
-    () =>
-      fitted === null
-        ? null
-        : arrangeActivityFrames(fitted.geometry, input.compiled, input.model, {
-            plane: input.plane,
-            sizes: input.layout?.sizes,
-          }),
-    [fitted, input.compiled, input.model, input.plane, input.layout],
+  // dragging a node inside a lane grows the band on the next frame. Then a
+  // state machine's regions are stacked across the flow the layout ran in, and
+  // its entry and exit points put on their composites' borders.
+  const arrangedGeometry = useMemo(() => {
+    if (fitted === null) return null;
+    const banded = arrangeActivityFrames(fitted.geometry, input.compiled, input.model, {
+      plane: input.plane,
+      sizes: input.layout?.sizes,
+    });
+    return arrangeStateMachines(banded, input.compiled, input.model, {
+      plane: input.plane,
+      direction: flowDirection,
+    });
+  }, [fitted, input.compiled, input.model, input.plane, input.layout, flowDirection]);
+
+  // Which of those regions draw the dashed line they share with the one before
+  // them: decided by the same order and direction, but not by any position, so
+  // it does not change with every drag.
+  const separators = useMemo(
+    () => regionSeparators(input.compiled, input.model, { plane: input.plane, direction: flowDirection }),
+    [input.compiled, input.model, input.plane, flowDirection],
   );
 
   // Routes are elk's (or the notation's own), computed for the arrangement the
@@ -445,6 +462,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     routes,
     placedGeometry,
     arrangedGeometry,
+    regionSeparators: separators,
     containerShifts: fitted?.shifts ?? NO_SHIFTS,
     routing,
     laidAt,
@@ -453,6 +471,6 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     lockedX,
     settledFor,
     layoutSettings,
-    flowDirection: (runSettings?.direction ?? FALLBACK_DIRECTION) as LayoutDirection,
+    flowDirection,
   };
 }

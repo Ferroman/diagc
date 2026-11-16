@@ -21,6 +21,32 @@ describe('node checks', () => {
     ]);
   });
 
+  it.each([
+    ['not a list', 'x'],
+    ['an empty trigger', [{ trigger: '', effect: 'e' }]],
+    ['a missing effect', [{ trigger: 'entry' }]],
+    ['an empty guard', [{ trigger: 'do', effect: 'e', guard: '' }]],
+  ])('flags behaviors that are %s', (_name, behaviors) => {
+    const m = emptyModel();
+    m.nodes = [{ id: 's', name: 's', behaviors } as never];
+    expect(validate(m).map((i) => i.code)).toEqual(['invalid-behaviors']);
+  });
+
+  it('accepts well-formed behaviors', () => {
+    const m = emptyModel();
+    m.nodes = [
+      {
+        id: 's',
+        name: 's',
+        behaviors: [
+          { trigger: 'entry', effect: 'start' },
+          { trigger: 'do', guard: 'g', effect: 'e' },
+        ],
+      },
+    ];
+    expect(validate(m)).toEqual([]);
+  });
+
   it('flags columns tagged with undeclared layers', () => {
     const m = emptyModel();
     m.nodes = [{ id: 't', name: 't', type: 'db-table', columns: [{ name: 'id' }, { name: 'flag', layer: 'nope' }] }];

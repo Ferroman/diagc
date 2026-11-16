@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "id": "fixtures/state-machine-demo",
+  "name": "Door",
+  "nodes": [
+    {
+      "id": "door",
+      "name": "Door",
+      "type": "sm-machine"
+    },
+    {
+      "id": "closed",
+      "name": "Closed",
+      "type": "sm-state"
+    },
+    {
+      "id": "opened",
+      "name": "Open",
+      "type": "sm-state"
+    },
+    {
+      "id": "door-initial",
+      "name": "",
+      "type": "sm-initial"
+    }
+  ],
+  "containment": [
+    {
+      "parent": "door",
+      "child": "closed"
+    },
+    {
+      "parent": "door",
+      "child": "opened"
+    },
+    {
+      "parent": "door",
+      "child": "door-initial"
+    }
+  ],
+  "relations": [
+    {
+      "id": "door-initial->closed#0",
+      "from": "door-initial",
+      "to": "closed",
+      "kind": "transition"
+    },
+    {
+      "id": "closed->opened#0",
+      "from": "closed",
+      "to": "opened",
+      "kind": "transition",
+      "trigger": "push"
+    },
+    {
+      "id": "opened->closed#0",
+      "from": "opened",
+      "to": "closed",
+      "kind": "transition",
+      "trigger": "pull"
+    }
+  ],
+  "layers": [],
+  "planes": [],
+  "notation": "state-machine"
+}

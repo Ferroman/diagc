@@ -239,4 +239,47 @@ describe('registries', () => {
     }
     expect(createKindRegistry().resolve(TM_FLOW_KIND)).toEqual({ legendLabel: 'Data flow' });
   });
+
+  it('registers the state-machine vocabulary', () => {
+    const t = createTypeRegistry();
+    const circle = (size: number, legendLabel: string) => ({
+      shape: 'circle',
+      defaultSize: { width: size, height: size },
+      label: '',
+      legendLabel,
+      captionBelow: true,
+    });
+    expect(t.resolve('sm-machine')).toEqual({ shape: 'box', label: '', alwaysExpanded: true });
+    expect(t.resolve('sm-state')).toEqual({ shape: 'rounded', label: '' });
+    expect(t.resolve('sm-region')).toEqual({ shape: 'box', label: '', dashed: true, alwaysExpanded: true });
+    expect(t.resolve('sm-initial')).toEqual({
+      shape: 'start-dot',
+      defaultSize: { width: 24, height: 24 },
+      label: '',
+      legendLabel: 'Initial state',
+      captionBelow: true,
+    });
+    expect(t.resolve('sm-final')).toEqual({
+      shape: 'end-bullseye',
+      defaultSize: { width: 24, height: 24 },
+      label: '',
+      legendLabel: 'Final state',
+      captionBelow: true,
+    });
+    expect(t.resolve('sm-choice')).toEqual({ ...DEFAULT_TYPE_STYLES['activity-decision'], legendLabel: 'Choice' });
+    expect(t.resolve('sm-junction')).toEqual({
+      shape: 'start-dot',
+      defaultSize: { width: 14, height: 14 },
+      label: '',
+      legendLabel: 'Junction',
+      captionBelow: true,
+    });
+    expect(t.resolve('sm-bar')).toEqual({ ...DEFAULT_TYPE_STYLES['activity-bar'], legendLabel: 'Fork / join' });
+    expect(t.resolve('sm-history')).toEqual(circle(28, 'Shallow history'));
+    expect(t.resolve('sm-deep-history')).toEqual(circle(28, 'Deep history'));
+    expect(t.resolve('sm-entry')).toEqual(circle(16, 'Entry point'));
+    expect(t.resolve('sm-exit')).toEqual(circle(16, 'Exit point'));
+    expect(t.resolve('sm-terminate')).toEqual(circle(20, 'Terminate'));
+    expect(createKindRegistry().resolve('transition')).toEqual({ legendLabel: 'Transition' });
+  });
 });

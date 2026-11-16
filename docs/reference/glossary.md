@@ -146,6 +146,30 @@ The threats an element carries, each with a severity, a status and a mitigation.
 published page also lists every register under the canvas. See
 [Draw a threat model](../how-to/draw-a-threat-model.md).
 
+## State
+
+One mode of the thing a state machine describes. A state with something inside it is composite, and one with two or more regions is orthogonal. See [Draw a state machine](../how-to/draw-a-state-machine.md).
+
+## Transition
+
+An arrow between two states, read as `trigger [guard] / effect`. Each part is optional. An internal transition stays in its state and is listed in the state's behaviours.
+
+## Guard
+
+The condition on a transition, written in square brackets: the transition fires only when it holds. A choice's exits are guards, and `else` is the one that takes the rest.
+
+## Effect
+
+What a transition does when it fires, or what a state does on `entry`, `exit` or `do`.
+
+## Region
+
+One of the concurrent parts of an orthogonal state. Each region has its own initial state and its own history.
+
+## Pseudo-state
+
+A node that is not a mode: initial, final, choice, junction, fork or join bar, history, entry point, exit point and terminate. diagc counts a final state among them, although UML does not: like the others, it holds no behaviours and nothing sits inside it.
+
 ## Zone
 
 In a plan, a date bar that can nest and carries role chips. In a deployment diagram, an

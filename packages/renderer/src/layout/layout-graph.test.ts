@@ -185,6 +185,23 @@ describe('buildGraph', () => {
     expect(containerPad(compileView(m.toJSON(), {}).roots[0]!)).toEqual({ top: 0, left: 28, bottom: 0, right: 0 });
   });
 
+  it("pads an open state's top by its behaviours compartment, and a state without any as usual", () => {
+    const m = model('pad').notation('state-machine');
+    const s = m.stateMachine('mc').state('s', 'S', { entry: 'a', exit: 'b' });
+    s.state('kid', 'Kid');
+    const plain = m.stateMachine('mc2').state('p', 'P');
+    plain.state('kid2', 'Kid');
+    const view = compileView(m.toJSON(), { pins: { mc: 'expanded', s: 'expanded', mc2: 'expanded', p: 'expanded' } });
+    const find = (id: string) => {
+      const walk = (n: (typeof view.roots)[number]): typeof n | undefined =>
+        n.id === id ? n : n.children.map(walk).find((x) => x !== undefined);
+      return view.roots.map(walk).find((x) => x !== undefined)!;
+    };
+    // two 15.4px lines under a 9px divider
+    expect(containerPad(find('s')).top).toBe(36 + Math.ceil(9 + 2 * 15.4));
+    expect(containerPad(find('p'))).toEqual({ top: 36, left: 16, bottom: 16, right: 16 });
+  });
+
   it('hands a glyph caption to elk as an outside label below the box', () => {
     const m = model('cap');
     m.node('d', { type: 'activity-decision', name: 'Ok?' });
@@ -201,6 +218,53 @@ describe('buildGraph', () => {
         layoutOptions: { 'elk.nodeLabels.placement': 'OUTSIDE V_BOTTOM H_CENTER' },
       },
     ]);
+  });
+
+  describe('room for self-loops', () => {
+    const looped = (loops: number, label?: string) => {
+      // a state machine keeps each self-transition its own edge, so each draws its own loop
+      const m = model('loop').notation('state-machine');
+      const s = m.node('s', { type: 'sm-state', name: 'S' });
+      const t = m.node('t', { type: 'sm-state', name: 'T' });
+      m.relate(s, t, { kind: 'transition' });
+      for (let i = 0; i < loops; i++) m.relate(s, s, { kind: 'transition', ...(label ? { label } : {}) });
+      return compileView(m.toJSON(), {});
+    };
+    const shapeOf = (view: ReturnType<typeof looped>, direction?: string) =>
+      buildGraph(view, undefined, direction !== undefined ? { direction } : undefined).graph.children!.find(
+        (c) => c.id === 's',
+      )!;
+
+    it('reserves the strip above a box with a self-loop in a sideways flow, at its drawn size', () => {
+      const s = shapeOf(looped(1, 'tick'), 'RIGHT');
+      expect([s.width, s.height]).toEqual([160, 80]);
+      // the loop rises 28, its label sits 10 above the crown, 18 tall
+      expect(s.labels).toEqual([
+        {
+          width: 36,
+          height: 28 + 10 + 9,
+          text: 'self-loops',
+          layoutOptions: { 'elk.nodeLabels.placement': 'OUTSIDE V_TOP H_CENTER' },
+        },
+      ]);
+    });
+
+    it('grows the strip by each further loop, and keeps it on the right in a downward flow', () => {
+      const s = shapeOf(looped(2, 'tick'));
+      expect(s.labels).toEqual([
+        {
+          width: 28 + 18 + 10 + 18,
+          height: 18,
+          text: 'self-loops',
+          layoutOptions: { 'elk.nodeLabels.placement': 'OUTSIDE H_RIGHT V_CENTER' },
+        },
+      ]);
+    });
+
+    it('reserves the loop alone when it carries no label, and nothing for a box without one', () => {
+      expect(shapeOf(looped(1), 'RIGHT').labels?.[0]?.height).toBe(28);
+      expect(shapeOf(looped(0), 'RIGHT').labels).toBeUndefined();
+    });
   });
 
   it("puts each level's edges on its own container for a nested algorithm", () => {
@@ -372,6 +436,26 @@ describe('buildGraph on an activity', () => {
     const { graph } = buildGraph(activity(), undefined, { direction: 'RIGHT' });
     expect(find(graph, 's')?.layoutOptions?.['elk.layered.layering.layerConstraint']).toBe('FIRST');
     expect(find(graph, 'act')?.layoutOptions).toBeUndefined();
+  });
+
+  it('lays a state machine out from its initial, as an activity from its start', () => {
+    // the state the machine starts in is also where most transitions return:
+    // elk's degree heuristic would make it the sink and draw the flow backwards
+    const m = model('sm');
+    const sm = m.stateMachine('m');
+    const idle = sm.state('idle', 'Idle');
+    const busy = sm.state('busy', 'Busy');
+    sm.initial('i').to(idle);
+    sm.transition(idle, busy, { trigger: 'go' });
+    sm.transition(busy, idle, { trigger: 'done' });
+    sm.transition(busy, idle, { trigger: 'fail' });
+    const { graph } = buildGraph(compileView(m.toJSON(), { pins: { m: 'expanded' } }), undefined, {
+      direction: 'RIGHT',
+    });
+    expect(graph.layoutOptions?.['elk.layered.cycleBreaking.strategy']).toBe('DEPTH_FIRST');
+    expect(find(graph, 'm')?.layoutOptions?.['elk.layered.cycleBreaking.strategy']).toBe('DEPTH_FIRST');
+    expect(find(graph, 'i')?.layoutOptions?.['elk.layered.layering.layerConstraint']).toBe('FIRST');
+    expect(find(graph, 'idle')?.layoutOptions).toBeUndefined();
   });
 
   it('hands a note link to elk end to end, and says so', () => {

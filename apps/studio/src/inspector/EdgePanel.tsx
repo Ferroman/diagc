@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react';
-import { crossings, strideFor, type DiagramModel, type EditorCommand, type NotationId } from '@diagc/core/internal';
+import {
+  crossings,
+  SM_TRANSITION_KIND,
+  strideFor,
+  type DiagramModel,
+  type EditorCommand,
+  type NotationId,
+} from '@diagc/core/internal';
 import { notationProfile } from '@diagc/renderer';
 import { getHost } from '../host';
 import { CommentsSection } from './CommentsSection';
@@ -13,6 +20,7 @@ import {
   StyleSection,
 } from './RelationFields';
 import { ThreatsSection } from './ThreatsSection';
+import { TransitionFields } from './TransitionFields';
 import { carriesThreats, threatsOffered } from './threatsOffered';
 import { useDraftField } from './useDraftField';
 
@@ -101,7 +109,11 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation,
 
       <KindField relation={relation} kind={kind} onCommand={onCommand} />
 
-      <LabelsSection relation={relation} draft={labelDraft} onCommand={onCommand} />
+      <TransitionFields relation={relation} onCommand={onCommand} />
+
+      {relation.kind !== SM_TRANSITION_KIND && (
+        <LabelsSection relation={relation} draft={labelDraft} onCommand={onCommand} />
+      )}
 
       {/* Threats are a generic field, so the section is offered on the notation
        * — but a relation that already carries threats keeps it whatever the

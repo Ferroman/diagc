@@ -79,7 +79,7 @@ const BOW_MAX_OFFSET = 160;
  * direction, an edge and its reverse bow to opposite sides and visually
  * separate instead of overlapping.
  */
-function bowControlPoints(params: EdgePathParams, curvature: number, side: BowSide = 'left'): Cubic {
+function bowControlPoints(params: EdgePathParams, curvature: number, side: BowSide = 'left', bulge?: number): Cubic {
   const p0: Point = { x: params.sourceX, y: params.sourceY };
   const p3: Point = { x: params.targetX, y: params.targetY };
   const dx = p3.x - p0.x;
@@ -97,15 +97,15 @@ function bowControlPoints(params: EdgePathParams, curvature: number, side: BowSi
   const s = side === 'right' ? -1 : 1;
   const nx = -uy * s;
   const ny = ux * s;
-  const h = Math.min(BOW_MAX_OFFSET, Math.max(BOW_MIN_OFFSET, curvature * len * BOW_CURVATURE_SCALE));
+  const h = bulge ?? Math.min(BOW_MAX_OFFSET, Math.max(BOW_MIN_OFFSET, curvature * len * BOW_CURVATURE_SCALE));
   const c1: Point = { x: p0.x + ux * (len / 3) + nx * h, y: p0.y + uy * (len / 3) + ny * h };
   const c2: Point = { x: p0.x + ux * ((2 * len) / 3) + nx * h, y: p0.y + uy * ((2 * len) / 3) + ny * h };
   return [p0, c1, c2, p3];
 }
 
 /** SVG path string for the symmetric bow (see `bowControlPoints`), formatted like `getBezierPath`'s output. */
-export function bowPath(params: EdgePathParams, curvature: number, side: BowSide = 'left'): string {
-  const [p0, p1, p2, p3] = bowControlPoints(params, curvature, side);
+export function bowPath(params: EdgePathParams, curvature: number, side: BowSide = 'left', bulge?: number): string {
+  const [p0, p1, p2, p3] = bowControlPoints(params, curvature, side, bulge);
   return `M${p0.x},${p0.y} C${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`;
 }
 
@@ -147,12 +147,14 @@ export interface EdgeSpec {
   params: EdgePathParams;
   curvature: number | undefined;
   side?: BowSide;
+  /** a bow's control-point offset in px, in place of the one `curvature` gives */
+  bulge?: number;
 }
 
 /** the cubic a curved or bowed edge draws; undefined for a straight or step line */
-function cubicOf({ shape, params, curvature, side = 'left' }: EdgeSpec): Cubic | undefined {
+function cubicOf({ shape, params, curvature, side = 'left', bulge }: EdgeSpec): Cubic | undefined {
   if (shape === 'curved') return bezierControlPoints(params, curvature ?? DEFAULT_CURVATURE);
-  if (shape === 'bow') return bowControlPoints(params, curvature ?? DEFAULT_CURVATURE, side);
+  if (shape === 'bow') return bowControlPoints(params, curvature ?? DEFAULT_CURVATURE, side, bulge);
   return undefined;
 }
 

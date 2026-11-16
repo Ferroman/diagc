@@ -53,6 +53,9 @@ const edgeCtx = (over: Partial<EdgeDataContext> = {}): EdgeDataContext => ({
   routes: new Map(),
   laidAt: new Map(),
   labelSpots: new Map(),
+  flowDirection: 'RIGHT',
+  selfLoopIndex: new Map(),
+  parallelBow: new Map(),
   ...over,
 });
 
@@ -367,6 +370,19 @@ describe('buildNodeData', () => {
 });
 
 describe('buildEdgeData', () => {
+  it('hands a self-loop the flow direction and its place among the node’s loops', () => {
+    const loop = viewEdge({ id: 'a=>a:|r1', to: 'a' });
+    const ctx = edgeCtx({ flowDirection: 'DOWN', selfLoopIndex: new Map([[loop.id, 2]]) });
+    expect(buildEdgeData(loop, ctx).selfLoop).toEqual({ direction: 'DOWN', index: 2 });
+    expect(buildEdgeData(viewEdge(), ctx).selfLoop).toBeUndefined();
+  });
+
+  it('hands an edge that shares its pair its bow, and a lone edge none', () => {
+    const ctx = edgeCtx({ parallelBow: new Map([['e2', -32]]) });
+    expect(buildEdgeData(viewEdge({ id: 'e2' }), ctx).parallelBow).toBe(-32);
+    expect('parallelBow' in buildEdgeData(viewEdge(), ctx)).toBe(false);
+  });
+
   it('copies the shared fields and optional per-constituent overrides', () => {
     const e = viewEdge({
       label: 'ingress',
@@ -706,6 +722,7 @@ describe('the data caches compare every context field', () => {
     onAddThreat: { onAddThreat: () => {} },
     stylePreset: { stylePreset: stylePreset('sketch') },
     notation: { notation: 'causal-loop' },
+    regionSeparators: { regionSeparators: new Map() },
   };
   it.each(Object.entries(nodeVariants))('rebuilds the node data when only %s changes', (_field, over) => {
     const n = viewNode();
@@ -735,6 +752,9 @@ describe('the data caches compare every context field', () => {
     onViewMoveEdgeLabel: { onViewMoveEdgeLabel: () => {} },
     edgeColors: { edgeColors: new Map() },
     edgeLook: { edgeLook: { corner: 0 } },
+    flowDirection: { flowDirection: 'DOWN' },
+    selfLoopIndex: { selfLoopIndex: new Map([['e1', 1]]) },
+    parallelBow: { parallelBow: new Map([['e1', 32]]) },
   };
   it.each(Object.entries(edgeVariants))('rebuilds the edge data when only %s changes', (_field, over) => {
     const e = viewEdge();
@@ -765,5 +785,45 @@ describe('buildNodeData: typeColors fallback', () => {
     const n = viewNode({ node: { id: 'n1', name: 'One' } });
     const d = buildNodeData(n, nodeCtx({ typeColors: { service: '#1565c0' } }));
     expect(d.color).toBeUndefined();
+  });
+});
+
+describe('buildNodeData, state-machine fields', () => {
+  const state = (over: Partial<ViewNode> = {}, node: Partial<DiagramNode> = {}): ViewNode =>
+    viewNode({
+      node: {
+        id: 'n1',
+        name: 'Reserved',
+        type: 'sm-state',
+        behaviors: [
+          { trigger: 'entry', effect: 'reserveStock' },
+          { trigger: 'remind', guard: 'overdue', effect: 'email' },
+        ],
+        ...node,
+      },
+      ...over,
+    });
+
+  it("carries a state's behaviours as formatted lines", () => {
+    expect(buildNodeData(state(), nodeCtx()).behaviors).toEqual(['entry / reserveStock', 'remind [overdue] / email']);
+  });
+
+  it('marks a state composite when it is not a leaf in the view, folded or open', () => {
+    expect(buildNodeData(state(), nodeCtx()).composite).toBe(false);
+    expect(buildNodeData(state({ state: 'collapsed' }), nodeCtx()).composite).toBe(true);
+    expect(buildNodeData(state({ state: 'expanded' }), nodeCtx()).composite).toBe(true);
+  });
+
+  it('fills nothing for any other type', () => {
+    const d = buildNodeData(viewNode({ state: 'collapsed' }), nodeCtx());
+    expect(d.behaviors).toBeUndefined();
+    expect(d.composite).toBeUndefined();
+  });
+
+  it("carries a region's separator from the context, and no key for a region without one", () => {
+    const region = (id: string) => viewNode({ id, node: { id, name: '', type: 'sm-region' } });
+    const ctx = nodeCtx({ regionSeparators: new Map([['r2', 'top' as const]]) });
+    expect(buildNodeData(region('r2'), ctx).regionSeparator).toBe('top');
+    expect('regionSeparator' in buildNodeData(region('r1'), ctx)).toBe(false);
   });
 });

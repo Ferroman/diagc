@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIVITY_LANE_TYPE, FB_EFFECT_TYPE, GIT_NOTATION, PLAN_EVENT_TYPE } from '@diagc/core/internal';
+import {
+  ACTIVITY_LANE_TYPE,
+  FB_EFFECT_TYPE,
+  GIT_NOTATION,
+  PLAN_EVENT_TYPE,
+  SM_ENTRY_TYPE,
+  SM_EXIT_TYPE,
+  SM_HISTORY_TYPE,
+  SM_INITIAL_TYPE,
+  SM_MACHINE_TYPE,
+  SM_REGION_TYPE,
+  SM_STATE_TYPE,
+  SM_TERMINATE_TYPE,
+} from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
 import { notationProfile } from '../../notations';
 import { createTypeRegistry } from '../../registry';
@@ -13,8 +26,12 @@ import { GitLaneBody } from './GitLaneBody';
 import { GroupBody } from './GroupBody';
 import { ImageBody } from './ImageBody';
 import { NODE_BODIES } from './index';
+import { MachineFrameBody } from './MachineFrameBody';
 import { PlanEventBody } from './PlanEventBody';
+import { RegionBody } from './RegionBody';
 import { SilhouetteBody } from './SilhouetteBody';
+import { SmGlyphBody } from './SmGlyphBody';
+import { StateBody } from './StateBody';
 import { TableBody } from './TableBody';
 
 const typeRegistry = createTypeRegistry({
@@ -75,6 +92,19 @@ describe('NODE_BODIES', () => {
   it('draws an open causal-loop group as its tag, and a folded one as a text box', () => {
     expect(bodyFor({ notation: 'causal-loop', state: 'expanded' })).toBe(CausalGroupBody);
     expect(bodyFor({ notation: 'causal-loop', state: 'collapsed' })).toBe(BoxBody);
+  });
+  it('keys state-machine chrome on the type, not the fold state', () => {
+    expect(bodyFor({ typeId: SM_MACHINE_TYPE })).toBe(MachineFrameBody);
+    expect(bodyFor({ typeId: SM_REGION_TYPE })).toBe(RegionBody);
+    for (const state of ['leaf', 'collapsed', 'expanded'] as const) {
+      expect(bodyFor({ typeId: SM_STATE_TYPE, state })).toBe(StateBody);
+    }
+  });
+  it('draws the history, entry, exit and terminate glyphs itself, and leaves the shape glyphs to the box', () => {
+    for (const typeId of [SM_HISTORY_TYPE, SM_ENTRY_TYPE, SM_EXIT_TYPE, SM_TERMINATE_TYPE]) {
+      expect(bodyFor({ typeId })).toBe(SmGlyphBody);
+    }
+    expect(bodyFor({ typeId: SM_INITIAL_TYPE })).toBe(BoxBody);
   });
   it('ends with a rule that takes every node', () => {
     expect(NODE_BODIES.at(-1)!.Body).toBe(BoxBody);

@@ -92,6 +92,16 @@ export interface DiagramNode {
   layer?: string;
   /** ER-table rows; rendered when `type` is 'db-table' (see m.table) */
   columns?: Column[];
+  /** State-machine diagrams only: the state's entry / exit / do behaviours */
+  behaviors?: StateBehavior[];
+}
+
+/** One behaviour of a state: `trigger` names when it runs (`entry`, `exit`, `do`, or an
+ * event), `guard` is an optional condition, `effect` what it does. */
+export interface StateBehavior {
+  trigger: string;
+  guard?: string;
+  effect: string;
 }
 
 export interface ContainmentEdge {
@@ -235,6 +245,12 @@ export interface DiagramRelation {
   fromColumn?: string;
   /** referenced column on `to` (the one/parent side); defaults to the target PK */
   toColumn?: string;
+  /** state-machine transition: the event that fires it */
+  trigger?: string;
+  /** state-machine transition: the condition that must hold, printed in brackets */
+  guard?: string;
+  /** state-machine transition: what runs when it fires, printed after a slash */
+  effect?: string;
 }
 
 export interface DiagramLayer {
@@ -327,7 +343,8 @@ export interface LayoutSettings {
   /** elk.algorithm — 'layered' (default) | 'force' | 'stress' | 'mrtree' | 'radial' | 'rectpacking' */
   algorithm?: string;
   /** elk.direction for layered — 'DOWN' | 'RIGHT' | 'LEFT' | 'UP'. Absent ⇒
-   * `defaultLayoutDirection(model)`: down, or right where activity frames are drawn. */
+   * `defaultLayoutDirection(model, plane)`: down, or right where activity frames are drawn
+   * or the plane draws a state machine. */
   direction?: string;
   /** base node-node spacing in px; between-layers spacing is derived from it */
   spacing?: number;
@@ -448,6 +465,7 @@ export const BUILTIN_NOTATIONS = [
   'threat-model',
   'plan',
   'deployment',
+  'state-machine',
 ] as const;
 export type NotationId = (typeof BUILTIN_NOTATIONS)[number];
 export type Polarity = '+' | '-';

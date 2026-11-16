@@ -36,6 +36,8 @@ export * from './elements';
 export { isIsoDate } from './dates';
 export { normalizeRuns, runsToPlainText } from './text';
 export { relationLabels } from './labels';
+export * from './notations/state-machine/transition';
+export * from './notations/state-machine/state-machine';
 export { defaultLayoutDirection, type LayoutDirection } from './layout-defaults';
 export {
   model,
@@ -59,6 +61,11 @@ export {
   FlowRef,
   PlanBuilder,
   ZoneBuilder,
+  SmElementRef,
+  SmRegionRef,
+  SmScope,
+  StateMachineBuilder,
+  StateRef,
   type NodeOpts,
   type RelateOpts,
   type ContainsOpts,
@@ -73,6 +80,8 @@ export {
   type ElementOpts,
   type ZoneOpts,
   type EventOpts,
+  type SmStateOpts,
+  type TransitionParts,
 } from './builder/index';
 export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue } from './validate/index';
 export { IMAGE_REF, LIBRARY_IMAGE_REF } from './validate/nodes';

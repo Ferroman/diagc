@@ -517,6 +517,35 @@ describe('layoutView reserves room under a node without drawing it taller', () =
   });
 });
 
+describe('layoutView keeps room for self-loops', () => {
+  // A self-loop is left out of the layout but stands out of the box's top in a
+  // sideways flow: rise 28, then its label 10 further out, centred, 18 tall.
+  const ROOM = 28 + 10 + 9;
+  const stacked = (loop: boolean) => {
+    const m = model('loops').notation('state-machine');
+    const [p, q, r] = ['p', 'q', 'r'].map((id) => m.node(id, { type: 'sm-state', name: id }));
+    m.relate(p!, r!, { kind: 'transition' });
+    m.relate(q!, r!, { kind: 'transition' }); // p and q share a layer: stacked
+    if (loop) {
+      m.relate(p!, p!, { kind: 'transition', trigger: 'tick' });
+      m.relate(q!, q!, { kind: 'transition', trigger: 'tock' });
+    }
+    return compileView(m.toJSON(), {});
+  };
+
+  it('keeps the strip above a looped box free, at its drawn size', async () => {
+    const plain = await layoutView(stacked(false), undefined, { direction: 'RIGHT' });
+    const { geometry } = await layoutView(stacked(true), undefined, { direction: 'RIGHT' });
+    const [gp, gq] = [geometry.get('p')!, geometry.get('q')!];
+    expect([gp.width, gp.height]).toEqual([plain.geometry.get('p')!.width, plain.geometry.get('p')!.height]);
+    const [upper, lower] = gp.y < gq.y ? [gp, gq] : [gq, gp];
+    expect(upper.y).toBeGreaterThanOrEqual(ROOM);
+    expect(lower.y - (upper.y + upper.height)).toBeGreaterThanOrEqual(ROOM);
+    const [pp, pq] = [plain.geometry.get('p')!, plain.geometry.get('q')!];
+    expect(Math.abs(pp.y - pq.y) - pp.height).toBeLessThan(ROOM);
+  });
+});
+
 /**
  * Independent parts are arranged separately and packed (layout-plan.ts, pack.ts):
  * under INCLUDE_CHILDREN elk skips component packing, and everything without an

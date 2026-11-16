@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { model } from '@diagc/core/internal';
 import { describe, expect, it } from 'vitest';
 import type { DiagramModel } from '@diagc/core/internal';
 import { loadModel } from '../compile';
@@ -270,5 +271,24 @@ describe('renderToLines', () => {
     expect(row('Code')).toContain(`\x1b[1;${red}Code`);
     expect(row('Untested schema migration')).toContain(`\x1b[${red}────╱`);
     expect(row('No fixture')).toContain(`data \x1b[${red}╱`);
+  });
+
+  it('draws a state machine: its regions, behaviours and a transition’s text', async () => {
+    const m = model('order');
+    const order = m.stateMachine('order', { name: 'Order' });
+    const draft = order.state('draft', 'Draft');
+    const paid = order.state('paid', 'Paid', { entry: 'reserveStock' });
+    const fulfil = order.state('fulfil', 'Fulfilment');
+    const pick = fulfil.region('pick', 'Picking');
+    pick.initial().to(pick.state('picking', 'Picking'));
+    fulfil.region('bill', 'Billing');
+    order.initial().to(draft);
+    order.transition(draft, paid, { trigger: 'pay', guard: 'total > 0', effect: 'charge' });
+    order.transition(paid, fulfil, { trigger: 'ship' });
+    const text = (await renderToLines({ model: m.toJSON(), pins: { fulfil: 'expanded' } }, plain)).join('\n');
+    expect(text).toContain('pay [total > 0] / charge');
+    expect(text).toContain('entry / reserveStock');
+    expect(text).toContain('Picking');
+    expect(text).toContain('Billing');
   });
 });

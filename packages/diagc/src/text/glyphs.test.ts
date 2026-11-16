@@ -62,9 +62,24 @@ describe('glyphs', () => {
       ASCII.start,
       ASCII.end,
       ASCII.decision,
+      ASCII.history,
+      ASCII.deepHistory,
+      ASCII.entryPoint,
+      ASCII.exitPoint,
+      ASCII.terminate,
+      ASCII.junction,
       ASCII.delay,
     ];
     for (const glyph of all) expect(glyph).toMatch(/^[\x20-\x7e]+$/);
+  });
+
+  it("marks a state machine's pseudo-states", () => {
+    const marks = (g: typeof UNICODE) => [g.history, g.deepHistory, g.entryPoint, g.exitPoint, g.terminate, g.junction];
+    expect(marks(UNICODE)).toEqual(['H', 'H*', '○', '⊗', '✕', '•']);
+    expect(marks(ASCII)).toEqual(['H', 'H*', 'o', 'x', 'X', '.']);
+    // the initial's own dot stays apart from the junction's
+    expect(UNICODE.start).not.toBe(UNICODE.junction);
+    expect(ASCII.start).not.toBe(ASCII.junction);
   });
 
   it('slants a line one cell a row, falling or rising to the right', () => {

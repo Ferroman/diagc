@@ -103,6 +103,20 @@ describe('relation checks', () => {
     expect(validate(badDelay).map((i) => i.code)).toContain('invalid-delay');
   });
 
+  it.each([
+    ['an empty trigger', { trigger: '' }],
+    ['a non-string guard', { guard: 3 }],
+    ['a blank effect', { effect: '  ' }],
+  ])('flags %s as invalid-transition', (_name, parts) => {
+    const m = emptyModel();
+    m.nodes = [
+      { id: 'a', name: 'a', type: 't' },
+      { id: 'b', name: 'b', type: 't' },
+    ];
+    m.relations = [{ id: 'r', from: 'a', to: 'b', kind: 'k', ...parts } as never];
+    expect(validate(m).map((i) => i.code)).toEqual(['invalid-transition']);
+  });
+
   it('validates relation labels: text type, t range, side enum', () => {
     const nodes = [
       { id: 'a', name: 'a', type: 't' },

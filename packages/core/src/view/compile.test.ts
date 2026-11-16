@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { model } from '../builder/index';
 import { acmeModel } from './acme.fixture';
 import { compileView } from './compile';
 import { LEAF_SIZE, CONTAINER_PADDING, CONTAINER_HEADER } from './size';
@@ -135,5 +136,29 @@ describe('compileView column layers', () => {
     expect(compileView(m(), { activeLayers: ['flags'] }).roots.find((r) => r.id === 't')?.columns).toBeUndefined();
     const withPreset = { ...m(), planes: [{ id: 'p', name: 'p', layers: ['flags'] }] };
     expect(compileView(withPreset, {}).roots.find((r) => r.id === 't')?.columns).toBeUndefined();
+  });
+});
+
+describe('compileView: parallel transitions', () => {
+  const twoTransitions = (notation: 'state-machine' | 'c4') => {
+    const m = model('t');
+    m.plane('p', { notation });
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    m.relate(a, b, { kind: 'transition', label: 'go' });
+    m.relate(a, b, { kind: 'transition', label: 'stop' });
+    return m.toJSON();
+  };
+
+  it('draws each as its own arrow on a state-machine plane', () => {
+    const v = compileView(twoTransitions('state-machine'), {});
+    expect(v.edges).toHaveLength(2);
+    expect(v.layoutEdges).toHaveLength(2);
+  });
+
+  it('merges them on any other notation', () => {
+    const v = compileView(twoTransitions('c4'), {});
+    expect(v.edges).toHaveLength(1);
+    expect(v.layoutEdges).toHaveLength(1);
   });
 });

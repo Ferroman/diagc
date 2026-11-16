@@ -4,6 +4,8 @@ import { soleRelation, type CompiledView } from '@diagc/core/internal';
 import type { StylePreset } from '../sketch/stylePresets';
 import { toRfEdge } from './adapter';
 import { buildEdgeDataCached, type EdgeDataContext } from './build-data';
+import { parallelBows } from '../edge/parallel-edges';
+import { selfLoopIndexes } from '../edge/self-loop';
 import { diffEdgeStatus, withDiffClass } from './diff-marks';
 import type { Notation } from './useNotation';
 import type { ViewLayout } from './useViewLayout';
@@ -20,7 +22,7 @@ export interface FlowEdgesInput {
   notation: Pick<Notation, 'profile' | 'kindRegistry'>;
   preset: StylePreset;
   compiled: CompiledView;
-  layout: Pick<ViewLayout, 'placedGeometry' | 'routing' | 'routes' | 'laidAt' | 'labelSpots'>;
+  layout: Pick<ViewLayout, 'placedGeometry' | 'routing' | 'routes' | 'laidAt' | 'labelSpots' | 'flowDirection'>;
   /** the label placements drawn, and a slide in view mode */
   moves: Pick<ViewModeMoves, 'labelMoves' | 'moveViewLabel'>;
 }
@@ -40,7 +42,7 @@ export function useFlowEdges(input: FlowEdgesInput): FlowEdges {
   const { props, editing, edit, preset, compiled } = input;
   const { profile, kindRegistry } = input.notation;
   const { labelMoves, moveViewLabel } = input.moves;
-  const { placedGeometry, routing, routes, laidAt, labelSpots } = input.layout;
+  const { placedGeometry, routing, routes, laidAt, labelSpots, flowDirection } = input.layout;
   // The sole-relation id of the edge currently showing fixed-side dots. Keyed
   // by the stable *relation* id, not the view-edge id (which changes whenever a
   // side is fixed or freed — fixed sides are baked into the aggregation key), so
@@ -67,6 +69,8 @@ export function useFlowEdges(input: FlowEdgesInput): FlowEdges {
   // its identity on (see build-data.ts) — same stability contract as the node
   // ctx (useFlowNodes), stable callbacks included.
   const clearAddLabel = useCallback(() => setAddLabelAt(null), []);
+  const selfLoopIndex = useMemo(() => selfLoopIndexes(compiled.edges), [compiled]);
+  const parallelBow = useMemo(() => parallelBows(compiled.edges), [compiled]);
   const edgeDataCtx = useMemo<EdgeDataContext>(
     () => ({
       kindRegistry,
@@ -92,6 +96,9 @@ export function useFlowEdges(input: FlowEdgesInput): FlowEdges {
       // export pass no listener, so their labels stay put.
       onViewMoveEdgeLabel: !editing && props.onViewLabelMovesChange !== undefined ? moveViewLabel : undefined,
       edgeColors,
+      flowDirection,
+      selfLoopIndex,
+      parallelBow,
     }),
     [
       kindRegistry,
@@ -114,6 +121,9 @@ export function useFlowEdges(input: FlowEdgesInput): FlowEdges {
       props.onViewLabelMovesChange,
       moveViewLabel,
       edgeColors,
+      flowDirection,
+      selfLoopIndex,
+      parallelBow,
     ],
   );
 

@@ -143,6 +143,20 @@ describe('EdgePanel', () => {
     await waitFor(() => expect(onCommand).toHaveBeenCalledWith({ type: 'delete-relation', id: 'a->b#0' }));
   });
 
+  // breaks if the transition fields leak onto other kinds, or go missing on a transition
+  it('shows the transition fields for a transition and not for another kind', () => {
+    const m = testModel();
+    const model = { ...m, relations: [{ id: 't', from: 'a', to: 'b', kind: 'transition' }, ...m.relations] };
+    const { unmount } = render(<EdgePanel model={model} constituentIds={['t']} onCommand={vi.fn()} onClose={noop} />);
+    expect(screen.getByLabelText('Trigger')).toBeTruthy();
+    // its text is edited as parts, so a labels-only edit here would be invisible
+    expect(screen.queryByRole('button', { name: 'Add label' })).toBeNull();
+    unmount();
+    render(<EdgePanel model={model} constituentIds={['a->b#0']} onCommand={vi.fn()} onClose={noop} />);
+    expect(screen.queryByLabelText('Trigger')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Add label' })).toBeTruthy();
+  });
+
   it('sets polarity as update-relation, and clears it back to null', () => {
     const onCommand = vi.fn();
     render(

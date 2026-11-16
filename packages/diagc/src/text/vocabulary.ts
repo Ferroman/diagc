@@ -149,6 +149,19 @@ export const TYPE_LOOKS: Readonly<Record<string, TypeLook>> = {
   'tm-boundary': box('', { ...dashed, ...open, legend: 'Trust boundary' }),
   'plan-zone': shaped('rounded', '', { legend: 'Zone' }),
   'plan-event': shaped('diamond', '', { legend: 'Event' }),
+  'sm-machine': box('', open),
+  'sm-state': shaped('rounded', ''),
+  'sm-region': box('', { ...dashed, ...open }),
+  'sm-initial': shaped('dot', '', { legend: 'Initial state' }),
+  'sm-final': shaped('dot', '', { legend: 'Final state' }),
+  'sm-choice': shaped('diamond', '', { legend: 'Choice' }),
+  'sm-junction': shaped('dot', '', { legend: 'Junction' }),
+  'sm-bar': shaped('bar', '', { legend: 'Fork / join' }),
+  'sm-history': shaped('rounded', '', { legend: 'Shallow history' }),
+  'sm-deep-history': shaped('rounded', '', { legend: 'Deep history' }),
+  'sm-entry': shaped('rounded', '', { legend: 'Entry point' }),
+  'sm-exit': shaped('rounded', '', { legend: 'Exit point' }),
+  'sm-terminate': shaped('rounded', '', { legend: 'Terminate' }),
 };
 
 const solid: KindLook = { line: 'solid', end: 'arrow' };
@@ -175,6 +188,7 @@ export const KIND_LOOKS: Readonly<Record<string, KindLook>> = {
   owns: { ...solid, legend: 'Owns' },
   executes: { ...solid, legend: 'Executes' },
   checks: { ...solid, legend: 'Checks' },
+  transition: { ...solid, legend: 'Transition' },
 };
 
 // What a notation's profile changes (packages/renderer/src/notations.ts). Not pinned

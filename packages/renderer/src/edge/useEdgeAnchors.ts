@@ -28,6 +28,8 @@ export interface EdgeAnchors {
   /** Both nodes are measured. Until then (first frame, jsdom) `ends` are the
    * handle-based coordinates React Flow passed. */
   measured: boolean;
+  /** the edge starts and ends on the same node */
+  selfLoop: boolean;
   source: EndBox | undefined;
   target: EndBox | undefined;
 }
@@ -48,7 +50,13 @@ export function useEdgeAnchors(handles: EdgeHandles, data: DiagramEdgeData | und
           sourcePos: handles.sourcePosition,
           targetPos: handles.targetPosition,
         };
-  const floating = { ends, measured, source: endBox(sourceNode), target: endBox(targetNode) };
+  const floating = {
+    ends,
+    measured,
+    selfLoop: handles.source === handles.target,
+    source: endBox(sourceNode),
+    target: endBox(targetNode),
+  };
   return { ...floating, ...rowAnchored(floating, data) };
 }
 

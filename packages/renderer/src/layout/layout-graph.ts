@@ -4,6 +4,8 @@ import {
   ACTIVITY_START_TYPE,
   LEAF_SIZE,
   RESERVED_NODE_ID,
+  SM_INITIAL_TYPE,
+  SM_STATE_TYPE,
   type BoxSize,
   type CompiledView,
   type LayoutSettings,
@@ -12,6 +14,8 @@ import {
 } from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT } from './activity-frame';
 import { EDGE_LABEL_MAX_CHARS } from '../node/label-size';
+import { behaviorCompartmentHeight } from '../node/behavior-lines';
+import { selfLoopRooms, type RoomLabel } from './self-loop-room';
 
 /** An elk edge after lifting: both endpoints are direct children of the owner. */
 export interface LiftedEdge {
@@ -87,8 +91,8 @@ export interface ElkShape {
 }
 
 /** The flow direction when the settings name none. Callers that know the model
- * resolve `defaultLayoutDirection(model)` into the settings first (useViewLayout);
- * this is what that resolves to for everything but an activity model. */
+ * resolve `defaultLayoutDirection(model, plane)` into the settings first (useViewLayout);
+ * this is what that resolves to for everything but an activity model or a state-machine plane. */
 export const FALLBACK_DIRECTION = 'DOWN';
 
 /** elk's default and ours: the one algorithm assumed to lay out anything we can
@@ -271,7 +275,9 @@ const FRAME_PAD: Pad = { top: 0, left: ACTIVITY_LAYOUT.TITLE_STRIP_W, bottom: 0,
 export function containerPad(n: ViewNode): Pad {
   if (n.node.type === ACTIVITY_LANE_TYPE) return LANE_PAD;
   if (n.node.type === ACTIVITY_FRAME_TYPE) return FRAME_PAD;
-  return CONTAINER_PAD;
+  // an open state lists its behaviours under its header, above its substates
+  const behaviors = n.node.type === SM_STATE_TYPE ? behaviorCompartmentHeight(n.node) : 0;
+  return behaviors > 0 ? { ...CONTAINER_PAD, top: CONTAINER_PAD.top + behaviors } : CONTAINER_PAD;
 }
 
 const elkPadding = (p: Pad): string => `[top=${p.top}.0,left=${p.left}.0,bottom=${p.bottom}.0,right=${p.right}.0]`;
@@ -348,8 +354,11 @@ function edgeLabelBox(text: string): BoxSize | undefined {
 const CAPTION_BELOW = { 'elk.nodeLabels.placement': 'OUTSIDE V_BOTTOM H_CENTER' };
 const NOTE_LINK = 'note-link';
 
-function hasActivityStart(view: CompiledView): boolean {
-  const walk = (n: ViewNode): boolean => n.node.type === ACTIVITY_START_TYPE || n.children.some(walk);
+/** the nodes a flow is read from: an activity's start, a state machine's initial */
+const START_TYPES: ReadonlySet<string | undefined> = new Set([ACTIVITY_START_TYPE, SM_INITIAL_TYPE]);
+
+function hasStart(view: CompiledView): boolean {
+  const walk = (n: ViewNode): boolean => START_TYPES.has(n.node.type) || n.children.some(walk);
   return view.roots.some(walk);
 }
 
@@ -361,13 +370,15 @@ interface GraphBuild {
   byOwner: Map<string | null, LiftedEdge[]> | undefined;
   /** what every container carries, before its own padding */
   sharedContainerOptions: Record<string, string>;
-  /** an activity laid out from its start node (see `buildGraph`) */
-  activity: boolean;
+  /** an activity or a state machine, laid out from its start node (see `runsFromStart`) */
+  fromStart: boolean;
   /** every id this graph emits — an edge survives substitution only when both of
    * its endpoints did (the rest live inside a block arranged elsewhere) */
   emitted: Set<string>;
   /** set once a container is handed edges of its own */
   attachedToContainer: boolean;
+  /** the room a box's self-loops take beside it (see selfLoopRooms) */
+  loopRooms: ReadonlyMap<string, RoomLabel>;
 }
 
 // Padding is applied AFTER the spread so the container-specific value wins:
@@ -412,19 +423,24 @@ function toNode(build: GraphBuild, n: ViewNode): ElkShape {
   // `COLLAPSED_SIZE` is the fallback for callers that pass no sizes at all.
   if (n.state === 'collapsed') {
     const folded = build.sizes?.get(n.id) ?? COLLAPSED_SIZE;
-    return { id: n.id, width: folded.width, height: folded.height };
+    const room = build.loopRooms.get(n.id);
+    return { id: n.id, width: folded.width, height: folded.height, ...(room !== undefined ? { labels: [room] } : {}) };
   }
   return leafShape(build, n);
 }
 
 function leafShape(build: GraphBuild, n: ViewNode): ElkShape {
   const caption = build.sizes?.get(n.id)?.caption;
+  // like an edge label, elk reserves the box only when `text` is non-empty
+  const labels = [
+    ...(caption !== undefined ? [{ ...caption, text: 'caption', layoutOptions: CAPTION_BELOW }] : []),
+    ...(build.loopRooms.has(n.id) ? [build.loopRooms.get(n.id)!] : []),
+  ];
   return {
     id: n.id,
     ...footprint(build.sizes?.get(n.id) ?? LEAF_SIZE),
-    // like an edge label, elk reserves the box only when `text` is non-empty
-    ...(caption !== undefined ? { labels: [{ ...caption, text: 'caption', layoutOptions: CAPTION_BELOW }] } : {}),
-    ...(build.activity && n.node.type === ACTIVITY_START_TYPE
+    ...(labels.length > 0 ? { labels } : {}),
+    ...(build.fromStart && START_TYPES.has(n.node.type)
       ? { layoutOptions: { 'elk.layered.layering.layerConstraint': 'FIRST' } }
       : {}),
   };
@@ -453,7 +469,7 @@ function flatEdges(view: CompiledView, build: GraphBuild, reversed: Set<string>)
       // wide one pushed the start off the left edge. Laid out the other way
       // round, a note lands beside its target; the route is turned back on
       // collection (`reversed`), so the drawn edge still runs note → target.
-      const flip = build.activity && e.kind === NOTE_LINK;
+      const flip = build.fromStart && e.kind === NOTE_LINK;
       if (flip) reversed.add(e.id);
       return {
         id: e.id,
@@ -492,7 +508,8 @@ function rootOptionsOf(
   };
 }
 
-// An activity is read from its start node, so that is where layering begins.
+// An activity is read from its start node, and a state machine from its
+// initial, so that is where layering begins.
 // elk's default cycle breaking reverses whichever edges its degree heuristic
 // picks, and on a flow with a retry loop that is often the loop's way IN — the
 // start then lands mid-picture and the flow runs backwards from it. Depth-first
@@ -501,7 +518,7 @@ function rootOptionsOf(
 // reads the strategy off each graph that owns the nodes, not off the root, so
 // the containers carry it too (`buildGraph`); on the root alone it changes nothing.
 const runsFromStart = (view: CompiledView, settings: LayoutSettings | undefined): boolean =>
-  (settings?.algorithm ?? DEFAULT_ALGORITHM) === DEFAULT_ALGORITHM && hasActivityStart(view);
+  (settings?.algorithm ?? DEFAULT_ALGORITHM) === DEFAULT_ALGORITHM && hasStart(view);
 
 /**
  * The elk input graph.
@@ -532,8 +549,10 @@ export function buildGraph(
   const substitute = opts?.substitute;
   const partitions = opts?.partitions !== undefined && opts.partitions.size > 0 ? opts.partitions : undefined;
   const rootOptions = rootOptionsOf(settings, substitute, partitions);
-  const activity = runsFromStart(view, settings);
-  const cycleBreaking: Record<string, string> = activity ? { 'elk.layered.cycleBreaking.strategy': 'DEPTH_FIRST' } : {};
+  const fromStart = runsFromStart(view, settings);
+  const cycleBreaking: Record<string, string> = fromStart
+    ? { 'elk.layered.cycleBreaking.strategy': 'DEPTH_FIRST' }
+    : {};
   Object.assign(rootOptions, cycleBreaking);
   const nested = usesNestedLayout(settings) && opts?.flat !== true;
 
@@ -553,9 +572,12 @@ export function buildGraph(
     substitute,
     byOwner: nested ? liftEdges(view) : undefined,
     sharedContainerOptions: nested ? rootOptions : { ...spacingOptionsOf(rootOptions), ...cycleBreaking },
-    activity,
+    fromStart,
     emitted: new Set(),
     attachedToContainer: false,
+    loopRooms: selfLoopRooms(view.edges, settings?.direction ?? FALLBACK_DIRECTION, (e) =>
+      edgeLabelBox(edgeLabelText(e)),
+    ),
   };
 
   // built before the edges are — `toNode` is what fills `emitted`, and what

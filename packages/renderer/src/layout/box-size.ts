@@ -3,6 +3,7 @@ import {
   isActivityChrome,
   PLAN_ZONE_TYPE,
   runsToPlainText,
+  SM_STATE_TYPE,
   type BoxSize,
   type DiagramNode,
   type FontScale,
@@ -224,6 +225,13 @@ function boxInputOf(n: ViewNode, ctx: BoxSizeContext): BoxSizeInput {
  *    force-size it (glyphs, activity chrome, silhouettes without a stored size
  *    all take the layout's size inline, so `LEAF_SIZE` IS their drawn size).
  */
+/** A folded state is drawn as a leaf state is, its behaviours listed under its name
+ * (StateBody), so the hint that sized them still holds where it is the larger. */
+function foldedStateSize(n: ViewNode, folded: SizeHint, hint: SizeHint | undefined): SizeHint {
+  if (n.node.type !== SM_STATE_TYPE || hint === undefined) return folded;
+  return { width: Math.max(folded.width, hint.width), height: Math.max(folded.height, hint.height) };
+}
+
 export function withBoxSizes(
   roots: readonly ViewNode[],
   hints: ReadonlyMap<string, SizeHint>,
@@ -236,11 +244,10 @@ export function withBoxSizes(
       return;
     }
     if (n.state === 'collapsed') {
-      out.set(
-        n.id,
+      const folded =
         (n.node.type === undefined ? ctx.leafSize?.(n.node) : undefined) ??
-          estimateBoxSize({ ...boxInputOf(n, ctx), collapsedCount: ctx.hiddenCounts.get(n.id) ?? 0 }),
-      );
+        estimateBoxSize({ ...boxInputOf(n, ctx), collapsedCount: ctx.hiddenCounts.get(n.id) ?? 0 });
+      out.set(n.id, foldedStateSize(n, folded, hints.get(n.id)));
       return;
     }
     if (n.node.shape !== undefined) return;

@@ -6,6 +6,9 @@ import {
   LEAF_SIZE,
   NEW_THREAT_TITLE,
   nextThreatId,
+  SM_MACHINE_TYPE,
+  SM_NOTATION,
+  SM_REGION_TYPE,
   strideFor,
   threatsOf,
   uniqueNodeId,
@@ -35,6 +38,9 @@ import { deleteSelectionCommand } from './deleteSelection';
 import { addEdgeLabel, edgeLabelsOf, editEdgeLabel, moveEdgeLabel } from './edge-labels';
 import { quickAdd, quickAddLabel, quickAddPlaced, type QuickAddContext } from './quickAdd';
 import { fkConnectionCommands } from './tableConnect';
+import { transitionLabelPatch } from './transitionLabel';
+
+const isSmFrame = (type: string | undefined): boolean => type === SM_MACHINE_TYPE || type === SM_REGION_TYPE;
 
 /** The callbacks DiagramView takes in edit mode. */
 export type EditingApi = NonNullable<Parameters<typeof DiagramView>[0]['edit']>;
@@ -206,17 +212,19 @@ export function relationEndHandlers({ editor, model }: EditContext) {
     if (model === undefined) return;
     const cur = edgeLabelsOf(model, relationId);
     if (cur === null) return;
-    editor.dispatch({
-      type: 'update-relation',
-      id: relationId,
-      patch: { labels: addEdgeLabel(cur, text, t, side) },
-    });
+    const patch = transitionLabelPatch(model, relationId, text, { t, side }) ?? {
+      labels: addEdgeLabel(cur, text, t, side),
+    };
+    editor.dispatch({ type: 'update-relation', id: relationId, patch });
   };
   const editEdgeLabelFor = (relationId: string, labelId: string, text: string) => {
     if (model === undefined) return;
     const cur = edgeLabelsOf(model, relationId);
     if (cur === null) return;
-    editor.dispatch({ type: 'update-relation', id: relationId, patch: { labels: editEdgeLabel(cur, labelId, text) } });
+    const patch = transitionLabelPatch(model, relationId, text, { labelId }) ?? {
+      labels: editEdgeLabel(cur, labelId, text),
+    };
+    editor.dispatch({ type: 'update-relation', id: relationId, patch });
   };
   const moveEdgeLabelFor = (relationId: string, labelId: string, t: number, side: EdgeLabelSide) => {
     if (model === undefined) return;
@@ -341,6 +349,12 @@ export function connectAndDeleteHandlers({ editor, penLayer, notation, select }:
         m !== undefined ? fkConnectionCommands(m, { from, to, sourceHandle, layer: penLayer ?? undefined }) : null;
       if (cmds !== null) {
         for (const c of cmds) editor.dispatch(c);
+        return;
+      }
+      // a machine or a region is never a transition end: the rule
+      // sm-transition-ends covers hand-written JSON, and the gesture never
+      // creates one
+      if (notation === SM_NOTATION && [from, to].some((id) => isSmFrame(m?.nodes.find((n) => n.id === id)?.type))) {
         return;
       }
       editor.dispatch({

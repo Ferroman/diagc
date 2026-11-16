@@ -70,6 +70,34 @@ describe('NodePanel', () => {
     expect(options('hold')).toEqual(['Sales', 'Stock']);
   });
 
+  // breaks if behaviours leak onto other state-machine types, or go missing on a state
+  it('shows behaviours for a state and not for an initial pseudostate', () => {
+    const model: DiagramModel = {
+      ...testModel(),
+      nodes: [
+        { id: 's', name: 'S', type: 'sm-state' },
+        { id: 'i', name: 'I', type: 'sm-initial' },
+      ],
+      containment: [],
+    };
+    const show = (nodeId: string) =>
+      render(
+        <NodePanel
+          model={model}
+          nodeId={nodeId}
+          activePlane={undefined}
+          onCommand={noop}
+          onClose={noop}
+          onDeleted={noop}
+        />,
+      );
+    const { unmount } = show('s');
+    expect(screen.getByText('Behaviours')).toBeTruthy();
+    unmount();
+    show('i');
+    expect(screen.queryByText('Behaviours')).toBeNull();
+  });
+
   it('commits a rename on blur (Name is a multiline textarea; Enter adds a line)', () => {
     const onCommand = vi.fn();
     render(

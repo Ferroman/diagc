@@ -37,8 +37,8 @@ function geometryOf(roots: ViewNode[]): Map<string, NodeGeometry> {
 
 type Flat = Partial<Omit<FlowNodesInput, 'layout'>> & Partial<FlowNodesInput['layout']>;
 
-/** the hook's input, the layout's two fields written flat */
-function input({ arrangedGeometry, fixed, ...over }: Flat = {}): FlowNodesInput {
+/** the hook's input, the layout's fields written flat */
+function input({ arrangedGeometry, fixed, regionSeparators, ...over }: Flat = {}): FlowNodesInput {
   const json = over.props?.model ?? nested();
   const compiled = over.compiled ?? compileView(json, { pins: { sys: 'expanded' } });
   return {
@@ -53,6 +53,7 @@ function input({ arrangedGeometry, fixed, ...over }: Flat = {}): FlowNodesInput 
     layout: {
       arrangedGeometry: arrangedGeometry === undefined ? geometryOf(compiled.roots) : arrangedGeometry,
       fixed: fixed ?? new Set(),
+      regionSeparators: regionSeparators ?? new Map(),
     },
     hiddenCounts: new Map(),
     metaKeys: [],
@@ -65,6 +66,13 @@ function input({ arrangedGeometry, fixed, ...over }: Flat = {}): FlowNodesInput 
 }
 
 describe('useFlowNodes', () => {
+  it('hands each box its region separator from the layout', () => {
+    const { result } = renderHook(() => useFlowNodes(input({ regionSeparators: new Map([['api', 'left' as const]]) })));
+    const data = (id: string) => result.current.derivedNodes.find((n) => n.id === id)!.data;
+    expect(data('api').regionSeparator).toBe('left');
+    expect(data('client').regionSeparator).toBeUndefined();
+  });
+
   it('derives a node per laid-out box, each parent before its children', () => {
     const { result } = renderHook(() => useFlowNodes(input()));
     expect(result.current.derivedNodes.map((n) => [n.id, n.parentId])).toEqual([

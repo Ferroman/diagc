@@ -6,6 +6,7 @@ import { validateFishbone } from '../notations/fishbone/validate';
 import { validateGit } from '../notations/git-graph/validate';
 import { validatePlan } from '../notations/plan/validate';
 import { validateSecondOrder } from '../notations/second-order/validate';
+import { validateStateMachine } from '../notations/state-machine/validate';
 import { validateThreatModel } from '../notations/threat-model/validate';
 import { validateComments, validateThreats } from './annotations';
 import type { Ctx, ValidationIssue } from './context';
@@ -26,6 +27,7 @@ const NOTATION_VALIDATORS: readonly ((ctx: Ctx) => void)[] = [
   validateFishbone,
   validateThreatModel,
   validatePlan,
+  validateStateMachine,
 ];
 
 export function validate(model: DiagramModel): ValidationIssue[] {

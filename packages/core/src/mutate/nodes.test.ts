@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { model } from '../builder/index';
 import { validate } from '../validate/index';
-import { addNode, deleteNode, renameNode, setNodeDetails, setNodeRich, setTableColumns, uniqueNodeId } from './nodes';
+import {
+  addNode,
+  deleteNode,
+  renameNode,
+  setNodeDetails,
+  setNodeRich,
+  setStateBehaviors,
+  setTableColumns,
+  uniqueNodeId,
+} from './nodes';
 import { setNodePlaneHidden } from './layers-and-planes';
 import { CommandError } from '../command-error';
 import type { Column, DiagramModel } from '../types';
@@ -292,5 +301,34 @@ describe('setTableColumns', () => {
   });
   it('throws for a column on an unknown layer', () => {
     expect(() => setTableColumns(base(), 't', [{ name: 'flag', layer: 'ghost' }])).toThrow(CommandError);
+  });
+});
+
+describe('setStateBehaviors', () => {
+  const base = (): DiagramModel => ({
+    version: 1,
+    id: 'd',
+    name: 'd',
+    nodes: [{ id: 'a', name: 'a', behaviors: [{ trigger: 'entry', effect: 'start' }] }],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  });
+  it('replaces the behaviours', () => {
+    const behaviors = [{ trigger: 'do', guard: 'ok', effect: 'run' }];
+    expect(setStateBehaviors(base(), 'a', behaviors).nodes[0]?.behaviors).toEqual(behaviors);
+  });
+  it('removes the field when the list is empty', () => {
+    expect('behaviors' in setStateBehaviors(base(), 'a', []).nodes[0]!).toBe(false);
+  });
+  it('throws for an unknown node', () => {
+    expect(() => setStateBehaviors(base(), 'nope', [])).toThrow(CommandError);
+  });
+  it('throws for an empty trigger', () => {
+    expect(() => setStateBehaviors(base(), 'a', [{ trigger: '', effect: 'e' }])).toThrow(CommandError);
+  });
+  it('throws for an empty effect, which validation would reject too', () => {
+    expect(() => setStateBehaviors(base(), 'a', [{ trigger: 'entry', effect: ' ' }])).toThrow(CommandError);
   });
 });

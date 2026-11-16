@@ -139,6 +139,7 @@ export const NODE_OPT_KEYS = [
   'plane',
   'layer',
   'columns',
+  'behaviors',
   'threats',
   'comments',
   'links',
@@ -164,6 +165,9 @@ export const RELATE_OPT_KEYS = [
   'delay',
   'fromColumn',
   'toColumn',
+  'trigger',
+  'guard',
+  'effect',
   'threats',
   'comments',
 ] as const;

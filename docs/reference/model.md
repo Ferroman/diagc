@@ -14,7 +14,7 @@ For *why* the model is shaped like this, see [What is in a model](../explanation
 | `id` | `string` | Diagram identity. |
 | `name` | `string` | Display name. |
 | `style` | `string?` | Renderer style preset pinned by this file. Unknown ids fall back to the app preference. |
-| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop` (see [Causal-loop conventions](#causal-loop-conventions)), `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)), `plan` (see [Plan conventions](#plan-conventions)), `deployment` (see [Draw a deployment diagram](../how-to/draw-a-deployment-diagram.md#the-vocabulary)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
+| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop` (see [Causal-loop conventions](#causal-loop-conventions)), `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)), `plan` (see [Plan conventions](#plan-conventions)), `deployment` (see [Draw a deployment diagram](../how-to/draw-a-deployment-diagram.md#the-vocabulary)), `state-machine` (see [State machine conventions](#state-machine-conventions)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
 | `legend` | `DiagramLegend?` | Opt-in key for the diagram's visual vocabulary. Absent means no legend in an image, and none on the canvas unless the diagram is drawn in [shapes that carry no words](#diagramlegend). |
 | `typeColors` | `Record<string, string>?` | Default accent colour per node type; `*` is the fallback. A node's own `color` wins. Dropped from included models on graft — the host owns the look. |
 | `layerRules` | `LayerRule[]?` | Class → layer for relations without a `layer`: `{ kind?, color?, layer }`, every named field must match, first match wins, explicit `layer` beats the rules. Dropped from included models on graft. |
@@ -82,6 +82,7 @@ picture of a run in a preset of its own, whatever the diagrams say (see [Publish
 | `plane` | `string?` | Restrict the node to one plane — and to the planes that borrow that plane's containment (`containmentOf`), which are views of its structure. Omit to share it across all. Deleting the plane deletes the node. |
 | `layer` | `string?` | The node shows only while this layer is active. |
 | `columns` | `Column[]?` | ER-table rows; rendered when `type` is `db-table`. |
+| `behaviors` | `StateBehavior[]?` | State-machine diagrams only. The state's entry, exit and do behaviours — see [`StateBehavior`](#statebehavior). |
 
 ### Asset refs (`image`, `shape`)
 
@@ -99,6 +100,14 @@ Two forms are accepted, and nothing else:
 | `pk` | `boolean?` | Primary-key member. |
 | `fk` | `boolean?` | Prints the `FK` marker. Presentation only — an `fk` edge is routed by its relation's `fromColumn`, not by this flag. |
 | `layer` | `string?` | The row shows only while this layer is active; the table itself stays on the base sheet. Must name a declared layer (`unknown-layer`). |
+
+### `StateBehavior`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `trigger` | `string` | When it runs: `entry`, `exit`, `do`, or an event name. Non-empty. |
+| `guard` | `string?` | Condition for it to run. Non-empty when given. |
+| `effect` | `string` | What it does. Non-empty. |
 
 ## `ContainmentEdge`
 
@@ -131,6 +140,11 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `delay` | `boolean?` | Causal-loop diagrams only. |
 | `fromColumn` | `string?` | FK column on `from`; anchors the edge to that row. |
 | `toColumn` | `string?` | Referenced column on `to`; defaults to the target's primary key. |
+| `trigger` | `string?` | State-machine diagrams only. The event that fires the transition. Non-empty text. |
+| `guard` | `string?` | State-machine diagrams only. The condition that must hold, printed in brackets. Non-empty text. |
+| `effect` | `string?` | State-machine diagrams only. What runs when the transition fires, printed after a slash. Non-empty text. |
+
+When any of `trigger`, `guard` or `effect` is set, the relation's label reads `trigger [guard] / effect` and replaces the text of its first label (or becomes its only label); `label` is ignored.
 
 ### `RelationStyle`
 
@@ -172,7 +186,7 @@ Because an absent `plane` resolves to whichever plane was declared first, plane 
 | `containmentOf` | `string?` | Borrow another plane's containment instead of declaring your own. |
 | `layers` | `string[]?` | Layers switched on when this plane is selected. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations, leaving only layer arrows. |
-| `notation` | `string?` | Visual language, overriding the model's `notation` for this plane. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)), `c4` (see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)), `plan` (see [Plan conventions](#plan-conventions)). |
+| `notation` | `string?` | Visual language, overriding the model's `notation` for this plane. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)), `c4` (see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)), `plan` (see [Plan conventions](#plan-conventions)), `state-machine` (see [State machine conventions](#state-machine-conventions)). |
 | `hides` | `string[]?` | Shared node ids this plane hides; their children are promoted into their place. |
 | `hidesTree` | `string[]?` | Shared node ids this plane hides along with everything inside them (a child with another visible parent stays). |
 
@@ -235,7 +249,7 @@ as `planes` and `manual` — so a plane that borrows containment with
 | Field | Type | Notes |
 | --- | --- | --- |
 | `algorithm` | `string?` | elk.algorithm: `layered` (default; `stress` on a `causal-loop` plane), `force`, `stress`, `mrtree`, `radial`, `rectpacking`. `stress` asks for 240px edges and has overlapping boxes pushed apart afterwards. |
-| `direction` | `string?` | elk.direction for `layered`: `DOWN` (default), `RIGHT`, `LEFT`, `UP`. A model that draws activity frames defaults to `RIGHT` instead — their lanes are horizontal bands. |
+| `direction` | `string?` | elk.direction for `layered`: `DOWN` (default), `RIGHT`, `LEFT`, `UP`. A model that draws activity frames defaults to `RIGHT` instead — their lanes are horizontal bands — and so does a plane whose notation is `state-machine` (the model's notation, on a model without planes), since transitions read left to right. A state-machine plane leaves the default of the planes beside it alone. |
 | `spacing` | `number?` | Base node-to-node spacing in px, at every nesting level. Layers sit the same distance apart, and the gap between unconnected groups is derived from it. |
 | `edgeRouting` | `'curved' \| 'orthogonal'?` | How routed edges are drawn. Both follow the layout's own waypoints, which is what keeps a line off the boxes it was steered around: `curved` (default) rounds the bends generously, `orthogonal` keeps them tight. An edge whose endpoint was placed by hand floats as a bezier either way. `layered` only. |
 | `aspectRatio` | `number?` | `layered` only. When set, elk wraps long chains onto several rows aiming at this width÷height (`MULTI_EDGE` wrapping). Absent = no wrapping. Unconnected groups are packed toward it too (toward 0.75, a portrait page, when absent). |
@@ -450,6 +464,26 @@ Dates live in `metadata` (the git-graph `from`/`to` pattern) so a zone is an ord
 
 See [Draw a plan](../how-to/draw-a-plan.md).
 
+## State machine conventions
+
+A diagram or plane with `notation: 'state-machine'` is a UML state machine: states and pseudo-states connected by transitions. Containment nests states inside a machine, a state or a region.
+
+| Type | Look | Role |
+| --- | --- | --- |
+| `sm-machine` | an always-open box | The machine: the outermost container. |
+| `sm-state` | a rounded box | A state. It may contain further states (a composite state). |
+| `sm-region` | a dashed always-open box | One concurrent region of a state. A state holding regions is orthogonal. |
+| `sm-initial` | a filled dot | Where a machine or region starts. |
+| `sm-final` | a bullseye | A region ends. |
+| `sm-choice` | a diamond | A branch decided when the transition is taken. |
+| `sm-junction` | a small filled dot | Joins or splits transitions with no decision. |
+| `sm-bar` | a bar | Fork or join across regions. |
+| `sm-history`, `sm-deep-history` | a circle | Resume the shallow or deep history of the enclosing state. |
+| `sm-entry`, `sm-exit` | a small circle | An entry or exit point on a state's border. |
+| `sm-terminate` | a circle | The whole machine stops. |
+
+Relation kind `transition` is the one line a state machine draws.
+
 ## Causal-loop conventions
 
 A plane with `notation: 'causal-loop'` reads ordinary nodes and relations as variables and signed links. Nothing new is stored.
@@ -515,6 +549,8 @@ The compiler prints them, and the notation's panel lists them.
 | `invalid-include` | Malformed `include`; or `includePlane`/`includePlanes` given without `include`. |
 | `unknown-notation` | `notation` is not a built-in id. |
 | `invalid-polarity` | `polarity` is not `+` or `-`. |
+| `invalid-transition` | A relation's `trigger`, `guard` or `effect` is not non-empty text. |
+| `invalid-behaviors` | A node's `behaviors` is not a list of `{ trigger, guard?, effect }` with non-empty text. |
 | `git-link-endpoints` | A `commit`/`branch`/`merge` relation does not join two `commit` nodes. |
 | `git-commit-lane` | A `commit` link crosses lanes, or a `branch`/`merge` link stays in one. |
 | `git-parents` | A commit has more than one incoming `commit` link, or more than one incoming `branch` link. |
@@ -535,6 +571,20 @@ The compiler prints them, and the notation's panel lists them.
 | `fb-misplaced` | The wrong parent for the type: a category not on the effect, a cause on the effect, the effect on anything. |
 | `fb-too-deep` | A cause hung on a sub-cause — three levels below the effect is the limit. |
 | `fb-contained` | A fishbone node inside a container; nothing on a fish can be grouped. |
+| `sm-region-parent` | *Warning.* A region with a parent that is not a state or a machine. |
+| `sm-region-siblings` | *Warning.* A state that holds a region also holds something other than regions and entry or exit points. |
+| `sm-machine-parent` | *Warning.* A machine that is not top level. |
+| `sm-pseudo-children` | *Warning.* A pseudo-state, a final or a terminate that holds other nodes. |
+| `sm-transition-ends` | *Warning.* A transition that ends on a machine, a region or a node that is not of the notation. |
+| `sm-history-parent` | *Warning.* A history in an orthogonal state, a machine or any other parent that is not a region or a plain composite state. |
+| `sm-point-parent` | *Warning.* An entry or exit point whose parent is not a state or a machine. |
+| `sm-initial-count` | *Warning.* A second initial in one region, or in one container without regions. |
+| `sm-initial-flow` | *Warning.* An initial with an incoming transition, without exactly one outgoing transition, or whose transition has a trigger or a guard. |
+| `sm-final-outgoing` | *Warning.* A final or a terminate with an outgoing transition. |
+| `sm-choice-guards` | *Warning.* A choice or junction with an exit that has no guard, or with more than one `else` exit. |
+| `sm-bar-shape` | *Warning.* A bar with neither one incoming nor one outgoing transition, or a fork whose targets are not in different regions of one orthogonal state. |
+| `sm-unreachable` | *Warning.* A state that no path from an initial reaches. A machine with no initial is not checked. |
+| `sm-transition-label` | *Warning.* A transition with a `label` and also a trigger, guard or effect; the parts are drawn and the label is ignored. |
 | `plan-date` | A `start`, `end` or `at` is present but is not a real `YYYY-MM-DD` date. |
 | `plan-missing` | A `plan-zone` lacks `start` or `end`; a `plan-event` lacks `at`. |
 | `plan-span` | A zone's `end` is before its `start`. |

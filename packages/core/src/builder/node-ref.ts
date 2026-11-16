@@ -5,6 +5,7 @@ import type {
   EdgeLabel,
   FontScale,
   Link,
+  StateBehavior,
   Polarity,
   RelationStyle,
   TextAlign,
@@ -52,6 +53,8 @@ export interface NodeOpts {
   layer?: string;
   /** ER-table rows (see DiagramNode.columns) */
   columns?: Column[];
+  /** a state's entry / exit / do behaviours (see DiagramNode.behaviors) */
+  behaviors?: StateBehavior[];
   /** STRIDE findings (see DiagramNode.threats) */
   threats?: Threat[];
   /** remarks shown in this node's note (see DiagramNode.comments) */
@@ -80,6 +83,10 @@ export interface RelateOpts {
   fromColumn?: string;
   /** referenced column on the target table (see DiagramRelation.toColumn) */
   toColumn?: string;
+  /** transition parts (see DiagramRelation.trigger, guard, effect) */
+  trigger?: string;
+  guard?: string;
+  effect?: string;
   /** STRIDE findings (see DiagramRelation.threats) */
   threats?: Threat[];
   /** remarks shown in this relation's note (see DiagramRelation.comments) */

@@ -8,6 +8,7 @@ import type {
   DiagramNode,
   DiagramPlane,
   DiagramRelation,
+  StateBehavior,
   LayerRule,
   Link,
   NotationId,
@@ -29,6 +30,8 @@ import { TM_NOTATION } from '../notations/threat-model/threat-model';
 import { BuilderError } from './builder-error';
 import { NodeRef, type CommentOpts, type NodeOpts, type RelateOpts, type ThreatOpts } from './node-ref';
 import { ACTIVITY_FRAME_TYPE } from '../activity/activity';
+import { StateMachineBuilder } from '../notations/state-machine/builder';
+import { SM_MACHINE_TYPE, SM_NOTATION } from '../notations/state-machine/state-machine';
 
 export class ModelBuilder {
   private nodes: DiagramNode[] = [];
@@ -313,6 +316,44 @@ export class ModelBuilder {
   activity(id: string, opts: { name?: string } = {}): ActivityBuilder {
     this.node(id, { type: ACTIVITY_FRAME_TYPE, ...defined({ name: opts.name }) });
     return new ActivityBuilder(id, this);
+  }
+
+  /** Declare a state machine: a framed UML statechart. Repeatable — each call is one
+   * frame. With `plane` the first call declares that plane (notation `state-machine`) and
+   * later calls reuse it, so the machine sits beside other views of the same nodes; with
+   * none, the notation is model-wide, which is refused when the model already has another. */
+  stateMachine(id: string, opts: { name?: string; plane?: string; planeName?: string } = {}): StateMachineBuilder {
+    const { name, plane, planeName } = opts;
+    if (plane !== undefined) {
+      const declared = this.planes.find((p) => p.id === plane);
+      if (declared === undefined) this.plane(plane, { name: planeName ?? 'State machine', notation: SM_NOTATION });
+      else if (declared.notation !== SM_NOTATION) {
+        throw new Error(
+          `stateMachine(): plane '${plane}' is already declared with ${declared.notation === undefined ? 'no notation' : `the '${declared.notation}' notation`}; name a plane of its own`,
+        );
+      }
+    } else if (this.modelNotation === undefined) this.notation(SM_NOTATION);
+    else if (this.modelNotation !== SM_NOTATION) {
+      throw new Error(
+        `stateMachine(): the model notation is '${this.modelNotation}'; pass the plane option to draw the machine on a plane of its own`,
+      );
+    }
+    this.node(id, { type: SM_MACHINE_TYPE, ...defined({ name, plane }) });
+    return new StateMachineBuilder(id, this, plane);
+  }
+
+  /** internal — whether `parent` contains, on any plane, a node of `type`; lets a state
+   * refuse `history()` once it has regions */
+  hasChildOfType(parent: string, type: string): boolean {
+    const typeOf = new Map(this.nodes.map((n) => [n.id, n.type]));
+    return this.containment.some((e) => e.parent === parent && typeOf.get(e.child) === type);
+  }
+
+  /** internal — appends a behavior to a state; used by StateRef.on() */
+  addBehavior(id: string, behavior: StateBehavior): void {
+    const node = this.nodes.find((n) => n.id === id);
+    if (node === undefined) throw new Error(`on(): unknown node '${id}'`);
+    node.behaviors = [...(node.behaviors ?? []), behavior];
   }
 
   /** Declare a legend. Bare `legend()` means derived sections only. */

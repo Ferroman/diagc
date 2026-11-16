@@ -8,6 +8,7 @@ import {
   type NotationId,
   type Point,
 } from '@diagc/core/internal';
+import { BehaviorsSection } from './BehaviorsSection';
 import { CommentsSection } from './CommentsSection';
 import { LinksSection } from './LinksSection';
 import { DetailFields, IdentityFields, LookFields, PlacementFields } from './NodeFields';
@@ -150,6 +151,8 @@ export function NodePanel({
         position={position}
         onCommand={onCommand}
       />
+
+      <BehaviorsSection node={node} onCommand={onCommand} />
 
       <MetadataSection node={node} draft={metadata} onCommand={onCommand} />
 

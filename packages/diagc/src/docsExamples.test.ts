@@ -20,6 +20,7 @@ const HOW_TO: Record<string, string> = {
   'git-graph': 'draw-a-git-branching-diagram.md',
   fishbone: 'draw-a-fishbone-diagram.md',
   'second-order': 'draw-a-second-order-thinking-diagram.md',
+  'state-machine': 'draw-a-state-machine.md',
   'threat-model': 'draw-a-threat-model.md',
   er: 'draw-an-er-diagram.md',
   'causal-loop': 'draw-a-causal-loop-diagram.md',

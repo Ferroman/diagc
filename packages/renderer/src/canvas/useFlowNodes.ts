@@ -37,7 +37,7 @@ export interface FlowNodesInput {
   /** the preset's colouring of the model, when it has a palette */
   hues: TypeHues | undefined;
   compiled: CompiledView;
-  layout: Pick<ViewLayout, 'arrangedGeometry' | 'fixed'>;
+  layout: Pick<ViewLayout, 'arrangedGeometry' | 'fixed' | 'regionSeparators'>;
   hiddenCounts: NodeDataContext['hiddenCounts'];
   metaKeys: NodeDataContext['metaKeys'];
   labelEdit: LabelEdit | null;
@@ -63,7 +63,7 @@ export interface FlowNodes {
 export function useFlowNodes(input: FlowNodesInput): FlowNodes {
   const { props, editing, edit, compiled, labelEdit, preset, setLabelEdit } = input;
   const { profile, typeRegistry, nodeColors, nodeChips } = input.notation;
-  const { arrangedGeometry, fixed } = input.layout;
+  const { arrangedGeometry, fixed, regionSeparators } = input.layout;
   // The per-node data channel inputs, as one object the cached builder keys
   // its identity on (see build-data.ts): while every field is referentially
   // unchanged, the cached data objects are reused instead of rebuilt. So the
@@ -98,6 +98,7 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
       hues: input.hues,
       nodeChips,
       resizable: profile.node?.resizable,
+      regionSeparators,
     }),
     [
       input.metaKeys,
@@ -126,6 +127,7 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
       input.hues,
       nodeChips,
       profile,
+      regionSeparators,
     ],
   );
 

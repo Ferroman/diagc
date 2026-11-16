@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_IMAGE_NODE_SIZE, type DiagramModel, type DiagramNode } from '@diagc/core/internal';
+import { DEFAULT_IMAGE_NODE_SIZE, LEAF_SIZE, type DiagramModel, type DiagramNode } from '@diagc/core/internal';
 import { CAPTION_HEIGHT, captionWidth, estimateLabelSize, glyphCaptionSize } from '../node/label-size';
 import { tableSize } from '../node/table-ports';
 import { notationProfile } from '../notations';
@@ -108,6 +108,25 @@ describe('sizeHintFor, where two rules apply', () => {
       height: DEFAULT_IMAGE_NODE_SIZE.h,
       reserveBottom: CAPTION_HEIGHT,
     });
+  });
+});
+
+describe('sizeHintFor, a state-machine state', () => {
+  const behaviors = [
+    { trigger: 'entry', effect: 'reserveStock' },
+    { trigger: 'remind', guard: 'overdue', effect: 'email' },
+    { trigger: 'exit', effect: 'release' },
+  ];
+
+  it('grows a leaf state taller with its behaviours', () => {
+    const bare = sizeHintFor(node({ type: 'sm-state' }), plain);
+    const full = sizeHintFor(node({ type: 'sm-state', behaviors }), plain);
+    expect(bare).toBeUndefined();
+    expect(full!.height).toBeGreaterThan(LEAF_SIZE.height);
+  });
+
+  it('leaves a state with a saved size to that size', () => {
+    expect(sizeHintFor(node({ type: 'sm-state', behaviors }), saved('n', 200, 200))).toBeUndefined();
   });
 });
 

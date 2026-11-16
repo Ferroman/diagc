@@ -30,7 +30,7 @@ function fixture(): DiagramModel {
 function edgesAt(lod: LodState, layers?: string[]) {
   const j = fixture();
   const h = buildHierarchy(j);
-  return resolveEdges(j, buildViewTree(j, h, lod), layers);
+  return resolveEdges(j, buildViewTree(j, h, lod), { activeLayers: layers });
 }
 
 describe('resolveEdges', () => {
@@ -386,7 +386,7 @@ describe('resolveEdges: layerRules', () => {
   const at = (layers?: string[], includeBase = true) => {
     const j = ruled();
     const h = buildHierarchy(j);
-    return resolveEdges(j, buildViewTree(j, h, {}), layers, includeBase);
+    return resolveEdges(j, buildViewTree(j, h, {}), { activeLayers: layers, includeBase });
   };
 
   it('assigns a layer to unlayered relations by colour or kind, first match wins', () => {
@@ -415,8 +415,60 @@ describe('resolveEdges: layerRules', () => {
     const j = ruled();
     delete j.layerRules;
     const h = buildHierarchy(j);
-    const ids = resolveEdges(j, buildViewTree(j, h, {}), ['http']).map((e) => e.id);
+    const ids = resolveEdges(j, buildViewTree(j, h, {}), { activeLayers: ['http'] }).map((e) => e.id);
     expect(ids.sort()).toEqual(['a=>b:', 'a=>db:', 'a=>db:http', 'b=>a:', 'b=>db:'].sort());
+  });
+});
+
+describe('resolveEdges: separateDirect', () => {
+  function pair(): DiagramModel {
+    const m = model('t');
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    m.relate(a, b, { kind: 'transition', id: 'r1', label: 'go' });
+    m.relate(a, b, { kind: 'transition', id: 'r2', label: 'stop' });
+    return m.toJSON();
+  }
+  const run = (j: DiagramModel, lod: LodState, separateDirect?: boolean) =>
+    resolveEdges(j, buildViewTree(j, buildHierarchy(j), lod), { separateDirect });
+
+  it('keeps two direct transitions apart when asked', () => {
+    const edges = run(pair(), {}, true);
+    expect(edges.map((e) => e.id)).toEqual(['a=>b:|r1', 'a=>b:|r2']);
+    expect(edges.map((e) => e.labels?.map((l) => l.text))).toEqual([['go'], ['stop']]);
+  });
+
+  it('merges them into one edge without the flag', () => {
+    expect(run(pair(), {}).map((e) => e.id)).toEqual(['a=>b:']);
+  });
+
+  it('still merges what folds into one box', () => {
+    const m = model('t');
+    const A = m.node('A', { type: 'service' });
+    const a1 = m.node('a1', { type: 'service' });
+    const a2 = m.node('a2', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    A.contains(a1, a2);
+    m.relate(a1, b, { kind: 'transition', label: 'x' });
+    m.relate(a2, b, { kind: 'transition', label: 'y' });
+    const edges = run(m.toJSON(), { A: 'collapsed' }, true);
+    expect(edges.map((e) => e.id)).toEqual(['A=>b:']);
+    // ' / ' is a transition's effect separator: 'x / y' would read as trigger x, effect y
+    expect(edges[0]?.label).toBe('x; y');
+    expect(run(m.toJSON(), { A: 'collapsed' })[0]?.label).toBe('x / y');
+  });
+
+  it('drops a self-transition lifted onto a folded composite', () => {
+    const m = model('t');
+    const A = m.node('A', { type: 'service' });
+    const a1 = m.node('a1', { type: 'service' });
+    A.contains(a1);
+    m.relate(a1, a1, { kind: 'transition' });
+    const j = m.toJSON();
+    expect(run(j, { A: 'collapsed' }, true)).toEqual([]);
+    const open = run(j, { A: 'expanded' }, true);
+    expect(open).toHaveLength(1);
+    expect(open[0]?.id).toBe(`a1=>a1:|${j.relations[0]!.id}`);
   });
 });
 

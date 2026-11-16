@@ -31,6 +31,7 @@ function input(over: Partial<FlowEdgesInput> = {}): FlowEdgesInput {
       routes: new Map(),
       laidAt: new Map(),
       labelSpots: new Map(),
+      flowDirection: 'RIGHT',
     },
     moves: { labelMoves: undefined, moveViewLabel: vi.fn() },
     ...over,

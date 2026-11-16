@@ -133,6 +133,16 @@ describe('withBoxSizes', () => {
     expect(sizes.get('svc')!.height).toBe(50);
   });
 
+  it("keeps a folded state's behaviours hint where it is larger than the folded box", () => {
+    const m = model('sm').notation('state-machine');
+    const s = m.stateMachine('mc').state('s', 'S');
+    s.state('kid', 'Kid');
+    const view = compileView(m.toJSON(), { pins: { mc: 'expanded' } });
+    const tall = { width: 300, height: 140 };
+    const sizes = withBoxSizes(view.roots, new Map([['s', tall]]), { ...ctx, hiddenCounts: new Map([['s', 1]]) });
+    expect(sizes.get('s')).toMatchObject(tall);
+  });
+
   it('a folded container gets the folded-box footprint, an unfolded one none at all', () => {
     const folded = withBoxSizes(compileView(fixture(), {}).roots, new Map(), ctx);
     expect(folded.get('sys')).toEqual(estimateBoxSize({ name: 'Shop', subtitle: 'system', collapsedCount: 1 }));

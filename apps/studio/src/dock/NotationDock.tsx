@@ -47,6 +47,8 @@ export function NotationDock(props: NotationDockProps) {
         onCommand: editor.dispatch,
         select: selection.select,
         requestLabelEdit: selection.requestLabelEdit,
+        // only a box not already open: in edit mode the toggle is an undo step
+        unfold: (id) => (nav.pins[id] === 'expanded' ? undefined : nav.toggleExpand(id, 'expanded')),
       })}
       <LayoutSection
         model={model}
