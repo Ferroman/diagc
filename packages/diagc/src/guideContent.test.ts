@@ -86,8 +86,7 @@ describe('guide coverage', () => {
     const mentioned = (key: string) => all.includes(`\`${key}\``) || new RegExp(`\\b${key}:`).test(all);
     // Set from a method rather than an option (`ref.threat()`, `ref.comment()`), or
     // placed by hand in the studio (`labels`): the reference has them.
-    // the state-machine guide page will cover transition parts and behaviours
-    const DEFERRED_TO_REFERENCE = ['threats', 'comments', 'labels', 'trigger', 'guard', 'effect', 'behaviors'];
+    const DEFERRED_TO_REFERENCE = ['threats', 'comments', 'labels'];
     const keys = [...new Set([...NODE_OPT_KEYS, ...RELATE_OPT_KEYS])];
     const missing = keys.filter((k) => !mentioned(k) && !DEFERRED_TO_REFERENCE.includes(k));
     expect(missing).toEqual([]);
@@ -95,13 +94,9 @@ describe('guide coverage', () => {
     expect(DEFERRED_TO_REFERENCE.filter(mentioned)).toEqual([]);
   });
 
-  // Notations whose starter and guide page are not written yet.
-  const NO_STARTER_YET: readonly string[] = ['state-machine'];
-
   it('has a starter for every notation, for ER, for activity and for basic', () => {
     const types = starterTypes(ctx.startersDir);
-    for (const id of [...BUILTIN_NOTATIONS, 'er', 'activity', 'basic'].filter((n) => !NO_STARTER_YET.includes(n)))
-      expect(types, id).toContain(id);
+    for (const id of [...BUILTIN_NOTATIONS, 'er', 'activity', 'basic']) expect(types, id).toContain(id);
   });
 
   it('calls build output exactly what init ignores', () => {

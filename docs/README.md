@@ -29,6 +29,7 @@ Get something done.
 | [Draw a C4 diagram](how-to/draw-a-c4-diagram.md) | Solid person/system/container/component fills, and a technology subtitle. |
 | [Draw a second-order thinking diagram](how-to/draw-a-second-order-thinking-diagram.md) | A decision, its consequences, and what follows from those — banded by order. |
 | [Draw a fishbone diagram](how-to/draw-a-fishbone-diagram.md) | An effect, the categories of cause, causes and sub-causes on their bones. |
+| [Draw a state machine](how-to/draw-a-state-machine.md) | States, transitions with trigger, guard and effect, regions, choices and history. |
 | [Draw a threat model](how-to/draw-a-threat-model.md) | A STRIDE data-flow diagram whose elements and flows carry their own threat register. |
 | [Draw a deployment diagram](how-to/draw-a-deployment-diagram.md) | Environments, regions, zones, networks and subnets, and what runs inside them. |
 | [Draw a plan](how-to/draw-a-plan.md) | A schedule: zones as date bars that nest, events, people as owner / executor / checker, and comments on any of them. |

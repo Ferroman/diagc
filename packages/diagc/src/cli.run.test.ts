@@ -933,7 +933,7 @@ describe('what each command prints where, through the real CLI', () => {
       status: 1,
       stdout: '',
       stderr:
-        "diagc: No guide topic 'nope'. Topics: all, activity, c4, causal-loop, compose, deployment, er, fishbone, git-graph, plan, second-order, threat-model\n",
+        "diagc: No guide topic 'nope'. Topics: all, activity, c4, causal-loop, compose, deployment, er, fishbone, git-graph, plan, second-order, state-machine, threat-model\n",
     });
     expect(readdirSync(dir)).toEqual([]);
   }, 30_000);

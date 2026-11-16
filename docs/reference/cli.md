@@ -256,7 +256,7 @@ diagc guide c4         # one diagram type: its conventions, its node types, its 
 diagc guide all        # everything
 ```
 
-- **Topics:** `activity`, `c4`, `causal-loop`, `compose`, `deployment`, `er`, `fishbone`, `git-graph`, `plan`, `second-order`, `threat-model`.
+- **Topics:** `activity`, `c4`, `causal-loop`, `compose`, `deployment`, `er`, `fishbone`, `git-graph`, `plan`, `second-order`, `state-machine`, `threat-model`.
 - **Two kinds of topic.** A diagram type has a starter, the one `init --type` copies, and its page prints it. A feature — `compose`, pulling other diagrams in — has no starter; the index lists the two kinds apart.
 - **Matches the install.** The text ships in the package, the node types and relation kinds it lists are the ones [`lint`](#lint) checks against, and every listing in it is compiled by the test suite. It needs no network and no diagrams in the current directory.
 - **Also online:** <https://ferroman.github.io/diagc/llms.txt> is `diagc guide all` for the current `main`, for a model with no shell to run the command in.

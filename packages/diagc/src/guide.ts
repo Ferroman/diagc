@@ -30,6 +30,7 @@ export const TOPIC_TYPE_PREFIXES: Record<string, readonly string[]> = {
   'threat-model': ['tm-'],
   plan: ['plan-'],
   er: ['db-table'],
+  'state-machine': ['sm-'],
 };
 
 /** Thrown for a topic there is no page for; the message lists what there is. */

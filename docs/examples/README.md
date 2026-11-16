@@ -97,6 +97,13 @@ The guide's own listing: the `Software` preset with causes on three of its six b
 A slow-checkout postmortem on four hand-made bones — Database, Network, Application, Third-party — with a sub-cause on every bone, `description`s, and a `color` on one category: `fb.category()` instead of a preset.
 [Live](https://ferroman.github.io/diagc/html/examples/fishbone/checkout-latency.html) · [Source](../../.diagrams/src/examples/fishbone/checkout-latency.diagram.ts) · [Guide](../how-to/draw-a-fishbone-diagram.md)
 
+### State machine
+
+[![Starter: order lifecycle](../../.diagrams/static/examples/state-machine/starter.png)](https://ferroman.github.io/diagc/html/examples/state-machine/starter.html)
+
+An order lifecycle: Draft, Paid and an orthogonal Fulfilment of two regions with history in Picking, a choice after Paid with `[in stock]` and `[else]` exits, and an internal transition — `m.stateMachine()`, `region()`, `choice()` and `history()`.
+[Live](https://ferroman.github.io/diagc/html/examples/state-machine/starter.html) · [Source](../../.diagrams/src/examples/state-machine/starter.diagram.ts) · [Guide](../how-to/draw-a-state-machine.md)
+
 ### Second-order thinking
 
 [![Second-order thinking: splitting the monolith](../../.diagrams/static/docs/second-order.png)](https://ferroman.github.io/diagc/html/docs/second-order.html)
