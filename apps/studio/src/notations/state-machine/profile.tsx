@@ -18,6 +18,7 @@ export const STATE_MACHINE: StudioNotationProfile = {
         onCommand={ctx.onCommand}
         onSelect={ctx.select}
         onCreated={ctx.requestLabelEdit}
+        onUnfold={ctx.unfold}
       />
     ),
   },

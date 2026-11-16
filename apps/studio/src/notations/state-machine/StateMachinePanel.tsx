@@ -28,6 +28,8 @@ type StateMachinePanelProps = Pick<
   editing: boolean;
   /** a row selects a node; an issue may name a transition */
   onSelect: (selection: DiagramSelection) => void;
+  /** open a folded state so a substate or region added to it shows */
+  onUnfold: (id: string) => void;
 };
 
 // exported so the test derives its expectation from this value rather than a magic pixel literal
@@ -89,6 +91,7 @@ export function StateMachinePanel({
   onCommand,
   onSelect,
   onCreated,
+  onUnfold,
   editing,
 }: StateMachinePanelProps) {
   const rows = useMemo(() => treeRows(model, viewPlane), [model, viewPlane]);
@@ -106,6 +109,9 @@ export function StateMachinePanel({
   const add = (type: SmType, parentId: string | undefined) => {
     const made = addSmElement(model, type, parentId, { node: scopePlane, edge: viewPlane });
     onCommand(made.command);
+    // a state given its first substate or region turns composite, and a
+    // composite rests folded: open it, or the new node is not drawn
+    if (parentId !== undefined && parentId === selected && selectedType === SM_STATE_TYPE) onUnfold(parentId);
     onSelect({ kind: 'node', id: made.id });
     onCreated(made.id);
   };
@@ -114,7 +120,7 @@ export function StateMachinePanel({
     <DockSection id="state-machine" title="State machine" className="sidebar so-panel">
       <IssueList model={model} issues={issues} selects="elements" label="Issues" onSelect={onSelect} />
       {rows.length === 0 ? <p className="so-hint">No machine yet.</p> : null}
-      <ul className="plan-rows" aria-label="Machine">
+      <ul className="sm-rows" aria-label="Machine">
         {rows.map(({ id, name, depth }) => (
           <li key={id} style={{ paddingLeft: `${depth * INDENT}px` }}>
             <button
@@ -129,7 +135,7 @@ export function StateMachinePanel({
         ))}
       </ul>
       {editing ? (
-        <div className="so-answers" role="group" aria-label="Add">
+        <div className="sm-add" role="group" aria-label="Add">
           <button type="button" onClick={() => add(SM_MACHINE_TYPE, undefined)}>
             Add machine
           </button>

@@ -17,6 +17,7 @@ const ctx = (over: Partial<NotationDockContext> = {}): NotationDockContext => ({
   onCommand: vi.fn(),
   select: vi.fn(),
   requestLabelEdit: vi.fn(),
+  unfold: vi.fn(),
   ...over,
 });
 

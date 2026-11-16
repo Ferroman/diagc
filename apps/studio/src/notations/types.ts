@@ -20,6 +20,9 @@ export interface NotationDockContext {
   select: (selection: DiagramSelection | null) => void;
   /** open a node the panel created for naming on the canvas */
   requestLabelEdit: (id: string) => void;
+  /** open a folded box, so a node the panel just put inside it is drawn (and its
+   * name editor has somewhere to open); an open box is left alone */
+  unfold: (id: string) => void;
 }
 
 /**

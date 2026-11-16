@@ -22,6 +22,7 @@ function setup(
   const onCommand = vi.fn();
   const onSelect = vi.fn();
   const onCreated = vi.fn();
+  const onUnfold = vi.fn();
   render(
     <StateMachinePanel
       model={over.m ?? machine()}
@@ -32,9 +33,10 @@ function setup(
       onCommand={onCommand}
       onSelect={onSelect}
       onCreated={onCreated}
+      onUnfold={onUnfold}
     />,
   );
-  return { onCommand, onSelect, onCreated };
+  return { onCommand, onSelect, onCreated, onUnfold };
 }
 
 describe('StateMachinePanel', () => {
@@ -121,6 +123,22 @@ describe('StateMachinePanel', () => {
     });
   });
 
+  it('opens the state a substate or region goes into, and nothing for a sibling', () => {
+    const { onUnfold } = setup({ selected: 'a' });
+    fireEvent.click(screen.getByRole('button', { name: 'Add state' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add choice' }));
+    expect(onUnfold).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Add substate' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add region' }));
+    expect(onUnfold.mock.calls).toEqual([['a'], ['a']]);
+  });
+
+  it('opens nothing when a region goes into a machine', () => {
+    const { onUnfold } = setup({ selected: 'm' });
+    fireEvent.click(screen.getByRole('button', { name: 'Add region' }));
+    expect(onUnfold).not.toHaveBeenCalled();
+  });
+
   it('takes a region only on a state or a machine, and a pseudo-state on any container', () => {
     setup({ selected: 'sm-region-x', m: regioned() });
     expect(screen.getByRole('button', { name: 'Add region' })).toHaveProperty('disabled', true);
@@ -186,6 +204,7 @@ describe('StateMachinePanel', () => {
         onCommand={vi.fn()}
         onSelect={onSelect}
         onCreated={vi.fn()}
+        onUnfold={vi.fn()}
       />,
     );
     const issues = screen.getAllByRole('list', { name: 'Issues' })[0]!;

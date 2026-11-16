@@ -22,6 +22,7 @@ const ctx = (editing: boolean): NotationDockContext => ({
   onCommand: vi.fn(),
   select: vi.fn(),
   requestLabelEdit: vi.fn(),
+  unfold: vi.fn(),
 });
 const entry = (modes: DockEntry['modes']): DockEntry => ({
   modes,

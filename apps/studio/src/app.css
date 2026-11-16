@@ -857,6 +857,21 @@ body {
   align-self: center;
 }
 
+.sm-rows {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+.sm-rows li {
+  padding: 2px 0;
+}
+/* fourteen buttons: they wrap onto rows rather than widen the dock */
+.sm-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .so-answers {
   display: flex;
   gap: 6px;
