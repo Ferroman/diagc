@@ -73,4 +73,41 @@ describe('detailLines', () => {
   it('gives nothing for a node it does not know', () => {
     expect(detailLines(model, 'nope', 40)).toEqual([]);
   });
+
+  it('lists a state’s behaviours and a transition’s parts', () => {
+    const machine: DiagramModel = {
+      ...model,
+      nodes: [
+        {
+          id: 'paid',
+          name: 'Paid',
+          type: 'sm-state',
+          behaviors: [
+            { trigger: 'entry', effect: 'reserveStock' },
+            { trigger: 'remind', guard: 'overdue', effect: 'email' },
+          ],
+        },
+        { id: 'draft', name: 'Draft', type: 'sm-state' },
+      ],
+      containment: [],
+      relations: [
+        {
+          id: 't',
+          from: 'draft',
+          to: 'paid',
+          kind: 'transition',
+          trigger: 'pay',
+          guard: 'total > 0',
+          effect: 'charge',
+        },
+      ],
+    };
+    const paid = detailLines(machine, 'paid', 60, 'state-machine');
+    expect(paid.slice(paid.indexOf('Behaviours'), paid.indexOf('Behaviours') + 3)).toEqual([
+      'Behaviours',
+      'entry / reserveStock',
+      'remind [overdue] / email',
+    ]);
+    expect(detailLines(machine, 'draft', 60, 'state-machine')).toContain('→ Paid  pay [total > 0] / charge');
+  });
 });

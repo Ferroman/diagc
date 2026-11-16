@@ -1,4 +1,10 @@
-import { relationLabels, type DiagramModel, type DiagramNode, type NotationId } from '@diagc/core/internal';
+import {
+  formatTransition,
+  relationLabels,
+  type DiagramModel,
+  type DiagramNode,
+  type NotationId,
+} from '@diagc/core/internal';
 import { subtitleOf } from '../text/vocabulary';
 import { cellWidth, printable, wrapCells } from '../text/width';
 
@@ -55,6 +61,10 @@ export function detailLines(model: DiagramModel, id: string, width: number, nota
     `id ${id}`,
     ...(node.description !== undefined ? ['', ...paragraphs(node.description)] : []),
     ...(parents.length > 0 ? ['', `Inside ${parents.map((p) => nameOf(model, p)).join(', ')}`] : []),
+    ...section(
+      'Behaviours',
+      (node.behaviors ?? []).map((b) => printable(formatTransition(b))),
+    ),
     ...relations(model, id),
     ...notes(node),
   ];

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { DiagramNode, DiagramRelation, ViewEdge, ViewNode } from '@diagc/core/internal';
+import {
+  relationLabels,
+  type DiagramNode,
+  type DiagramRelation,
+  type ViewEdge,
+  type ViewNode,
+} from '@diagc/core/internal';
 import { boxText, edgeText, LABEL_MAX, NAME_WRAP } from './content';
 import { ASCII, UNICODE } from './glyphs';
 import { cellWidth, isControl } from './width';
@@ -158,5 +164,37 @@ describe('edgeText', () => {
     expect(cellWidth(text)).toBe(LABEL_MAX);
     expect(text.endsWith('…')).toBe(true);
     expect(edgeText(edge([relation()], { labels: [{ id: 'l', text: long }] }), ASCII).endsWith('~')).toBe(true);
+  });
+});
+
+describe('state machines', () => {
+  it('lists a state’s behaviours under its name', () => {
+    const node: DiagramNode = {
+      id: 'paid',
+      name: 'Paid',
+      type: 'sm-state',
+      behaviors: [
+        { trigger: 'entry', effect: 'reserveStock' },
+        { trigger: 'remind', guard: 'overdue', effect: 'email' },
+      ],
+    };
+    expect(texts(boxText(view(node), ctx))).toEqual(['Paid', 'entry / reserveStock', 'remind [overdue] / email']);
+  });
+
+  it('marks history and points', () => {
+    const mark = (type: string, glyphs = UNICODE): string =>
+      texts(boxText(view({ id: 'x', name: 'x', type }), { ...ctx, glyphs }))[0]!;
+    expect(mark('sm-deep-history')).toBe('H* x');
+    expect(mark('sm-history')).toBe('H x');
+    expect(mark('sm-exit')).toBe('⊗ x');
+    expect(mark('sm-entry', ASCII)).toBe('o x');
+    expect(mark('sm-terminate')).toBe('✕ x');
+    expect(mark('sm-final')).toBe('◉ x');
+    expect(mark('sm-initial')).toBe('● x');
+  });
+
+  it('says a transition as trigger, guard and effect', () => {
+    const r = relation({ kind: 'transition', trigger: 'pay', guard: 'total > 0', effect: 'charge' });
+    expect(edgeText(edge([r], { labels: relationLabels(r) }), UNICODE)).toBe('pay [total > 0] / charge');
   });
 });
