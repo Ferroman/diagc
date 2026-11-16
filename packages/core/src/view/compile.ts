@@ -10,6 +10,7 @@ import { buildHierarchy } from './hierarchy';
 import { computeLod } from './lod';
 import { buildViewTree } from './tree';
 import { resolveEdges } from './edges';
+import { SM_NOTATION } from '../notations/state-machine/state-machine';
 import { scopeToRoot } from './scope';
 import { visibleColumns } from '../columns';
 import type { CompiledView, ViewNode, ViewportState } from './types';
@@ -62,6 +63,8 @@ export function compileView(model: DiagramModel, viewport: ViewportState): Compi
   // A relation scoped to a plane draws only there, and lays out on every plane that
   // shares its positions. Both read the outer model's planes: the drill view's
   // scoped model has none.
+  // Transitions are separate arrows, so a state-machine plane keeps parallel ones apart.
+  const separateDirect = activeNotation(model.planes ?? [], viewport.plane, model.notation) === SM_NOTATION;
   const drawn = (r: DiagramRelation) => relationOnPlane(r, plane?.id);
   const laidOut = (r: DiagramRelation) => relationLaysOutOn(model, r, plane?.id);
 
@@ -78,26 +81,30 @@ export function compileView(model: DiagramModel, viewport: ViewportState): Compi
       const vn = tree.byId.get(stubId);
       if (vn !== undefined) vn.external = rep;
     }
-    const edges = resolveEdges(withRelations(scoped.model, drawn), tree, activeLayers, plane?.baseRelations ?? true);
-    const layoutEdges = resolveEdges(
-      withRelations(scoped.model, laidOut),
-      tree,
-      scoped.model.layers.map((l) => l.id),
-      true,
-    );
+    const edges = resolveEdges(withRelations(scoped.model, drawn), tree, {
+      activeLayers,
+      includeBase: plane?.baseRelations ?? true,
+      separateDirect,
+    });
+    const layoutEdges = resolveEdges(withRelations(scoped.model, laidOut), tree, {
+      activeLayers: scoped.model.layers.map((l) => l.id),
+      separateDirect,
+    });
     return { roots: tree.roots, edges, layoutEdges, lod, anchorOf: tree.anchorOf, externals: scoped.externals };
   }
 
   const lod = computeLod({ hierarchy, focus: viewport.focus, pins: viewport.pins });
   const tree = buildViewTree(model, hierarchy, lod);
   filterColumns(tree.byId.values(), activeLayerSet);
-  const edges = resolveEdges(withRelations(model, drawn), tree, activeLayers, plane?.baseRelations ?? true);
-  const layoutEdges = resolveEdges(
-    withRelations(model, laidOut),
-    tree,
-    model.layers.map((l) => l.id),
-    true,
-  );
+  const edges = resolveEdges(withRelations(model, drawn), tree, {
+    activeLayers,
+    includeBase: plane?.baseRelations ?? true,
+    separateDirect,
+  });
+  const layoutEdges = resolveEdges(withRelations(model, laidOut), tree, {
+    activeLayers: model.layers.map((l) => l.id),
+    separateDirect,
+  });
   return { roots: tree.roots, edges, layoutEdges, lod, anchorOf: tree.anchorOf };
 }
 

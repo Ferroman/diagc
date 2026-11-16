@@ -40,22 +40,32 @@ interface Group {
   rels: DiagramRelation[];
 }
 
-export function resolveEdges(
-  model: DiagramModel,
-  tree: ViewTree,
-  activeLayers?: string[],
-  includeBase = true,
-): ViewEdge[] {
+export interface ResolveEdgesOptions {
+  activeLayers?: string[];
+  /** draw the relations no layer claims; default true */
+  includeBase?: boolean;
+  /** a relation drawn end to end is its own edge (state-machine planes) */
+  separateDirect?: boolean;
+}
+
+export function resolveEdges(model: DiagramModel, tree: ViewTree, opts: ResolveEdgesOptions = {}): ViewEdge[] {
   const tintOf = new Map(model.layers.map((l) => [l.id, l.tint]));
-  const groups = groupRelations(model, tree, new Set(activeLayers ?? []), includeBase);
+  const groups = groupRelations(model, tree, {
+    active: new Set(opts.activeLayers ?? []),
+    includeBase: opts.includeBase ?? true,
+    separateDirect: opts.separateDirect ?? false,
+  });
   return [...groups.entries()].map(([key, g]) => toViewEdge(key, g, tintOf));
 }
 
 function groupRelations(
   model: DiagramModel,
   tree: ViewTree,
-  active: ReadonlySet<string>,
-  includeBase: boolean,
+  {
+    active,
+    includeBase,
+    separateDirect,
+  }: { active: ReadonlySet<string>; includeBase: boolean; separateDirect: boolean },
 ): Map<string, Group> {
   const anchorFor = (id: string): string | undefined => (tree.byId.has(id) ? id : tree.anchorOf.get(id));
   const groups = new Map<string, Group>();
@@ -68,7 +78,10 @@ function groupRelations(
     if (from === undefined || to === undefined) continue;
     const isOriginalSelfLoop = r.from === r.to;
     if (from === to && !(isOriginalSelfLoop && tree.byId.has(r.from))) continue;
-    const key = `${from}=>${to}:${layer ?? ''}${fixedSidesKey(r, from, to)}`;
+    // Folding exists to merge, so only a relation drawn end to end stays apart:
+    // one rolled up to a folded container still joins that container's edge.
+    const apart = separateDirect && attachesDirectly(r, from, to) ? `|${r.id}` : '';
+    const key = `${from}=>${to}:${layer ?? ''}${fixedSidesKey(r, from, to)}${apart}`;
     const group = groups.get(key) ?? { from, to, layer, rels: [] };
     group.rels.push(r);
     groups.set(key, group);
