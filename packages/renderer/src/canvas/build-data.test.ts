@@ -706,6 +706,7 @@ describe('the data caches compare every context field', () => {
     onAddThreat: { onAddThreat: () => {} },
     stylePreset: { stylePreset: stylePreset('sketch') },
     notation: { notation: 'causal-loop' },
+    regionSeparators: { regionSeparators: new Map() },
   };
   it.each(Object.entries(nodeVariants))('rebuilds the node data when only %s changes', (_field, over) => {
     const n = viewNode();
@@ -798,5 +799,12 @@ describe('buildNodeData, state-machine fields', () => {
     const d = buildNodeData(viewNode({ state: 'collapsed' }), nodeCtx());
     expect(d.behaviors).toBeUndefined();
     expect(d.composite).toBeUndefined();
+  });
+
+  it("carries a region's separator from the context, and no key for a region without one", () => {
+    const region = (id: string) => viewNode({ id, node: { id, name: '', type: 'sm-region' } });
+    const ctx = nodeCtx({ regionSeparators: new Map([['r2', 'top' as const]]) });
+    expect(buildNodeData(region('r2'), ctx).regionSeparator).toBe('top');
+    expect('regionSeparator' in buildNodeData(region('r1'), ctx)).toBe(false);
   });
 });

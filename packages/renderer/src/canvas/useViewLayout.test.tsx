@@ -186,6 +186,52 @@ describe('useViewLayout', () => {
     expect(result.current.arrangedGeometry!.get('l1')?.y).toBeGreaterThan(0);
   });
 
+  it("stacks a state machine's regions across the flow, and leaves the same shapes alone without sm- nodes", async () => {
+    const m = model('sm');
+    const s = m.stateMachine('mc').state('s', 'S');
+    s.region('r1').state('a', 'A');
+    s.region('r2').state('b', 'B');
+    const smJson = m.toJSON();
+    // the same nesting, as plain boxes
+    const plainJson: DiagramModel = { ...smJson, nodes: smJson.nodes.map(({ type: _t, ...n }) => n), planes: [] };
+    const box = (x: number, y: number) => ({ x, y, width: 200, height: 120 });
+    const geometry = new Map([
+      ['mc', { x: 0, y: 0, width: 900, height: 400 }],
+      ['s', { x: 16, y: 36, width: 800, height: 300 }],
+      ['r1', box(16, 36)],
+      ['r2', box(300, 36)], // elk set them side by side
+      ['a', box(16, 36)],
+      ['b', box(16, 36)],
+    ]);
+    const profile: NotationProfile = {
+      id: 'default',
+      layout: () => ({ geometry, routes: new Map(), labelSpots: new Map(), algorithm: 'notation' }),
+    };
+    const pins = Object.fromEntries(smJson.nodes.map((n) => [n.id, 'expanded' as const]));
+    const run = (json: DiagramModel) =>
+      renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+        initialProps: inputFor(json, { profile, compiled: compileView(json, { pins }) }),
+      }).result;
+
+    const sm = run(smJson);
+    await waitFor(() => expect(sm.current.arrangedGeometry).not.toBeNull());
+    expect(sm.current.flowDirection).toBe('RIGHT'); // the machine's default
+    const g = sm.current.arrangedGeometry!;
+    expect(g.get('r2')).toMatchObject({ x: g.get('r1')!.x, y: g.get('r1')!.y + g.get('r1')!.height });
+    expect(sm.current.regionSeparators.get('r2')).toBe('top');
+    // `b` moved with its region, so its edges float (useEdgePath): the route was
+    // drawn for where the layout put it, and it no longer stands there
+    const r2 = g.get('r2')!;
+    expect(sm.current.laidAt.get('b')).toEqual({ x: 0 + 16 + 300 + 16, y: 0 + 36 + 36 + 36 });
+    expect({ x: 16 + r2.x + 16, y: 36 + r2.y + 36 }).not.toEqual(sm.current.laidAt.get('b'));
+
+    const plain = run(plainJson);
+    await waitFor(() => expect(plain.current.arrangedGeometry).not.toBeNull());
+    expect(plain.current.arrangedGeometry).toBe(plain.current.placedGeometry);
+    expect(plain.current.arrangedGeometry!.get('r2')).toEqual(box(300, 36)); // still where it was laid
+    expect(plain.current.regionSeparators.size).toBe(0);
+  });
+
   it('sizes ordinary boxes from their content and folded containers as folded boxes', async () => {
     const m = model('boxes');
     m.node('long', { name: 'avoid direct/sync  communication' });

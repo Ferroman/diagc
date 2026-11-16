@@ -16,6 +16,7 @@ import { LoopHighlightContext } from '../loops/loop-highlight';
 import { notationProfile, type NodeChip } from '../notations';
 import type { StylePreset } from '../sketch/stylePresets';
 import type { EditingApi } from '../canvas/view-types';
+import type { RegionSeparator } from '../layout/state-machine-layout';
 import { NODE_BODIES } from './bodies';
 import { InlineName } from './InlineName';
 
@@ -111,6 +112,8 @@ export interface DiagramNodeData {
   behaviors?: string[];
   /** a state-machine state with children in this view, folded or open; filled for `sm-state` only */
   composite?: boolean;
+  /** a state-machine region stacked after another: the edge they share, which it draws dashed */
+  regionSeparator?: RegionSeparator;
   /** with onResize: the notation resizes this node on x only, from either
    * side (a zone's width is its dates) */
   resizeAxis?: 'x';

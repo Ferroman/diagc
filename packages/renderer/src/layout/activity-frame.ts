@@ -36,15 +36,19 @@ interface Geo {
  * slots a new one beside its neighbour by reordering containment, while the view
  * tree lists children in NODE order, which still says creation order. Only the
  * viewed plane's containment counts: another plane may stack the same lanes in
- * another order.
+ * another order. A state machine's regions stack by the same rule
+ * (state-machine-layout.ts).
  */
-function laneRank(model: DiagramModel, plane: string | undefined): (frame: string, lane: string) => number {
+export function containmentRank(
+  model: DiagramModel,
+  plane: string | undefined,
+): (parent: string, child: string) => number {
   const rank = new Map<string, number>();
   containmentOn(model, containmentPlaneOf(model, plane)).forEach((e, i) => {
     const key = `${e.parent}\u0000${e.child}`;
     if (!rank.has(key)) rank.set(key, i);
   });
-  return (frame, lane) => rank.get(`${frame}\u0000${lane}`) ?? Number.MAX_SAFE_INTEGER;
+  return (parent, child) => rank.get(`${parent}\u0000${child}`) ?? Number.MAX_SAFE_INTEGER;
 }
 
 /**
@@ -56,7 +60,7 @@ function laneRank(model: DiagramModel, plane: string | undefined): (frame: strin
  */
 export function withLaneOrder(view: CompiledView, model: DiagramModel, plane: string | undefined): CompiledView {
   if (!model.nodes.some((n) => n.type === ACTIVITY_FRAME_TYPE)) return view;
-  const rankIn = laneRank(model, plane);
+  const rankIn = containmentRank(model, plane);
   let changed = false;
   const visit = (n: ViewNode): ViewNode => {
     let children = n.children.map(visit);
@@ -97,7 +101,7 @@ export function arrangeActivityFrames<T extends Geo>(
   const out = new Map(geometry);
   const { TITLE_STRIP_W, LANE_MIN_W, LANE_MIN_H, PAD } = ACTIVITY_LAYOUT;
 
-  const rankIn = laneRank(model, plane);
+  const rankIn = containmentRank(model, plane);
 
   const arrange = (frame: ViewNode): void => {
     const lanes = frame.children
