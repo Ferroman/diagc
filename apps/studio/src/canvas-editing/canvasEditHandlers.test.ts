@@ -197,6 +197,63 @@ describe('relationEndHandlers', () => {
     expect(next.live().model.relations[0]?.labels?.map((l) => l.text)).toEqual(['old', 'new']);
   });
 
+  describe('on a transition', () => {
+    const base = { id: 't', from: 'a', to: 'b', kind: 'transition' };
+    const patchOf = (m: DiagramModel, run: (h: ReturnType<typeof relationEndHandlers>) => void) => {
+      const { ctx, commands } = setup(m);
+      run(relationEndHandlers(ctx));
+      expect(commands).toHaveLength(1);
+      return commands[0];
+    };
+
+    it('parses an edited label into its parts and keeps the label position', () => {
+      // Breaks if the typed text is stored as a label instead of trigger, guard and effect.
+      const m = model({
+        relations: [{ ...base, trigger: 'pay', labels: [{ id: 'x', text: 'pay', t: 0.3, side: 'top' }] }],
+      });
+      expect(patchOf(m, (h) => h.onEditEdgeLabel('t', 'x', 'pay [ok] / charge'))).toEqual({
+        type: 'update-relation',
+        id: 't',
+        patch: {
+          trigger: 'pay',
+          guard: 'ok',
+          effect: 'charge',
+          label: null,
+          labels: [{ id: 'x', text: 'pay [ok] / charge', t: 0.3, side: 'top' }],
+        },
+      });
+    });
+
+    it('clears the parts the text no longer has, and edits the synthesized label', () => {
+      // Breaks if a dropped guard or effect survives, or the synthesized label cannot be edited.
+      const m = model({ relations: [{ ...base, trigger: 'pay', guard: 'ok', effect: 'charge' }] });
+      expect(patchOf(m, (h) => h.onEditEdgeLabel('t', 'transition', 'refund'))).toEqual({
+        type: 'update-relation',
+        id: 't',
+        patch: { trigger: 'refund', guard: null, effect: null, label: null },
+      });
+    });
+
+    it('drops the stored label when the text is blanked', () => {
+      // Breaks if an empty label is left drawn.
+      const m = model({ relations: [{ ...base, trigger: 'pay', labels: [{ id: 'x', text: 'pay', t: 0.5 }] }] });
+      expect(patchOf(m, (h) => h.onEditEdgeLabel('t', 'x', '  '))).toEqual({
+        type: 'update-relation',
+        id: 't',
+        patch: { trigger: null, guard: null, effect: null, label: null, labels: null },
+      });
+    });
+
+    it('parses an added label too', () => {
+      // Breaks if adding a label to a bare transition stores free text.
+      expect(patchOf(model({ relations: [base] }), (h) => h.onAddEdgeLabel('t', 'go / run', 0.5, 'top'))).toEqual({
+        type: 'update-relation',
+        id: 't',
+        patch: { trigger: 'go', guard: null, effect: 'run', label: null },
+      });
+    });
+  });
+
   it('does nothing for a relation that is gone or before the diagram is there', () => {
     // Breaks if a stale label gesture dispatches.
     const { ctx, commands } = setup(legacy);

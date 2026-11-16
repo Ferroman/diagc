@@ -13,6 +13,7 @@ import {
   StyleSection,
 } from './RelationFields';
 import { ThreatsSection } from './ThreatsSection';
+import { TransitionFields } from './TransitionFields';
 import { carriesThreats, threatsOffered } from './threatsOffered';
 import { useDraftField } from './useDraftField';
 
@@ -100,6 +101,8 @@ function RelationForm({ model, relationId, onCommand, onBack, onClose, notation,
       </p>
 
       <KindField relation={relation} kind={kind} onCommand={onCommand} />
+
+      <TransitionFields relation={relation} onCommand={onCommand} />
 
       <LabelsSection relation={relation} draft={labelDraft} onCommand={onCommand} />
 

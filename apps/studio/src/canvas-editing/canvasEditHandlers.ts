@@ -38,6 +38,7 @@ import { deleteSelectionCommand } from './deleteSelection';
 import { addEdgeLabel, edgeLabelsOf, editEdgeLabel, moveEdgeLabel } from './edge-labels';
 import { quickAdd, quickAddLabel, quickAddPlaced, type QuickAddContext } from './quickAdd';
 import { fkConnectionCommands } from './tableConnect';
+import { transitionLabelPatch } from './transitionLabel';
 
 const isSmFrame = (type: string | undefined): boolean => type === SM_MACHINE_TYPE || type === SM_REGION_TYPE;
 
@@ -211,17 +212,17 @@ export function relationEndHandlers({ editor, model }: EditContext) {
     if (model === undefined) return;
     const cur = edgeLabelsOf(model, relationId);
     if (cur === null) return;
-    editor.dispatch({
-      type: 'update-relation',
-      id: relationId,
-      patch: { labels: addEdgeLabel(cur, text, t, side) },
-    });
+    const patch = transitionLabelPatch(model, relationId, text) ?? { labels: addEdgeLabel(cur, text, t, side) };
+    editor.dispatch({ type: 'update-relation', id: relationId, patch });
   };
   const editEdgeLabelFor = (relationId: string, labelId: string, text: string) => {
     if (model === undefined) return;
     const cur = edgeLabelsOf(model, relationId);
     if (cur === null) return;
-    editor.dispatch({ type: 'update-relation', id: relationId, patch: { labels: editEdgeLabel(cur, labelId, text) } });
+    const patch = transitionLabelPatch(model, relationId, text, labelId) ?? {
+      labels: editEdgeLabel(cur, labelId, text),
+    };
+    editor.dispatch({ type: 'update-relation', id: relationId, patch });
   };
   const moveEdgeLabelFor = (relationId: string, labelId: string, t: number, side: EdgeLabelSide) => {
     if (model === undefined) return;
