@@ -32,7 +32,7 @@ describe('STUDIO_NOTATIONS', () => {
       'threat-model': ['connectKind', 'dock', 'label', 'quickAdd'],
       plan: ['datesFromDropPoint', 'dock', 'gestures', 'label', 'planSection', 'quickAdd'],
       deployment: [],
-      'state-machine': ['connectKind', 'label', 'quickAdd'],
+      'state-machine': ['connectKind', 'dock', 'label', 'quickAdd'],
     });
   });
 
@@ -54,7 +54,7 @@ describe('STUDIO_NOTATIONS', () => {
     ]);
   });
 
-  it('docks the threat model in both modes and every other panel while editing only', () => {
+  it('docks the threat model and the state machine in both modes and every other panel while editing only', () => {
     const modes = Object.fromEntries(
       Object.entries(STUDIO_NOTATIONS).flatMap(([id, p]) => (p.dock !== undefined ? [[id, p.dock.modes]] : [])),
     );
@@ -64,6 +64,7 @@ describe('STUDIO_NOTATIONS', () => {
       fishbone: 'edit',
       'threat-model': 'both',
       plan: 'edit',
+      'state-machine': 'both',
     });
   });
 
@@ -73,6 +74,7 @@ describe('STUDIO_NOTATIONS', () => {
     ['second-order', 'Second-order thinking'],
     ['fishbone', 'Fishbone'],
     ['threat-model', 'Threat model'],
+    ['state-machine', 'State machine'],
   ] as const)('%s renders its own panel', (id, landmark) => {
     render(<>{STUDIO_NOTATIONS[id].dock!.render(ctx())}</>);
     expect(screen.getByRole('complementary', { name: landmark })).toBeDefined();

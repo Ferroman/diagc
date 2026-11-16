@@ -131,6 +131,7 @@ describe('the right dock per notation', () => {
     ['second-order', [], ['And then what?']],
     ['fishbone', [], ['Fishbone']],
     ['threat-model', ['Threat model'], ['Threat model']],
+    ['state-machine', ['State machine'], ['State machine']],
     ['causal-loop', [], []],
     ['c4', [], []],
     ['deployment', [], []],
