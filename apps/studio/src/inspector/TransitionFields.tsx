@@ -1,4 +1,5 @@
 import { SM_TRANSITION_KIND, type DiagramRelation, type EditorCommand } from '@diagc/core/internal';
+import { transitionLabelsPatch } from '../canvas-editing/transitionLabel';
 import { commitOnEnter } from './commitOnEnter';
 import { useDraftField } from './useDraftField';
 
@@ -9,7 +10,8 @@ const PARTS: { part: Part; title: string }[] = [
   { part: 'effect', title: 'Effect' },
 ];
 
-/** One part of a transition: commits on blur or Enter; a blank box clears the part. */
+/** One part of a transition: commits on blur or Enter; a blank box clears the part.
+ * A stored label follows the parts (transitionLabelsPatch). */
 function PartField({
   relation,
   part,
@@ -25,7 +27,17 @@ function PartField({
   const commit = () => {
     const next = text.trim();
     if (next === (relation[part] ?? '')) return;
-    onCommand({ type: 'update-relation', id: relation.id, patch: { [part]: next === '' ? null : next } });
+    const parts = {
+      trigger: relation.trigger,
+      guard: relation.guard,
+      effect: relation.effect,
+      [part]: next === '' ? undefined : next,
+    };
+    onCommand({
+      type: 'update-relation',
+      id: relation.id,
+      patch: { [part]: next === '' ? null : next, ...transitionLabelsPatch(relation, parts) },
+    });
   };
   return (
     <label className="field">

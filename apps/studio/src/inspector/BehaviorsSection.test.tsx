@@ -94,6 +94,30 @@ describe('BehaviorsSection', () => {
     expect((effect as HTMLInputElement).value).toBe('reserveStock');
   });
 
+  it('keeps the row, and the box focus moved to, through the save a blur commits', () => {
+    // Breaks if the row is keyed by its text: the save remounts it and the next box loses focus.
+    const onCommand = vi.fn();
+    const { rerender } = render(<BehaviorsSection node={state(TWO)} onCommand={onCommand} />);
+    const trigger = screen.getByLabelText('Behaviour 1 trigger');
+    const guard = screen.getByLabelText('Behaviour 1 guard');
+    fireEvent.change(trigger, { target: { value: 'do' } });
+    fireEvent.blur(trigger);
+    guard.focus();
+    const saved = onCommand.mock.calls[0]![0].behaviors as StateBehavior[];
+    rerender(<BehaviorsSection node={state(saved)} onCommand={onCommand} />);
+    expect(screen.getByLabelText('Behaviour 1 guard')).toBe(guard);
+    expect(document.activeElement).toBe(guard);
+    expect((screen.getByLabelText('Behaviour 1 trigger') as HTMLInputElement).value).toBe('do');
+  });
+
+  it('shows the moved rows in their new places', () => {
+    // Breaks if a row keyed by its place keeps the draft of the row that was there.
+    const { rerender } = render(<BehaviorsSection node={state(TWO)} onCommand={vi.fn()} />);
+    rerender(<BehaviorsSection node={state([TWO[1]!, TWO[0]!])} onCommand={vi.fn()} />);
+    expect((screen.getByLabelText('Behaviour 1 effect') as HTMLInputElement).value).toBe('release');
+    expect((screen.getByLabelText('Behaviour 2 guard') as HTMLInputElement).value).toBe('');
+  });
+
   it('shows nothing for a node that is not a state', () => {
     // Breaks if the section appears on every node.
     render(<BehaviorsSection node={{ ...state(), type: 'sm-initial' }} onCommand={vi.fn()} />);

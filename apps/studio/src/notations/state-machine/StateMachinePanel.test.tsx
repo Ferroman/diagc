@@ -77,14 +77,47 @@ describe('StateMachinePanel', () => {
     expect(onCreated).toHaveBeenCalledWith('sm-region-1');
   });
 
-  it('adds at top level, with only State and Machine on, when nothing is selected', () => {
+  it('adds into the one machine on the plane when nothing is selected, with Region and Substate off', () => {
     const { onCommand } = setup();
     expect(screen.getByRole('button', { name: 'Add region' })).toHaveProperty('disabled', true);
-    expect(screen.getByRole('button', { name: 'Add choice' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Add substate' })).toHaveProperty('disabled', true);
+    fireEvent.click(screen.getByRole('button', { name: 'Add state' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add choice' }));
+    expect(onCommand.mock.calls.map(([c]) => c.parent)).toEqual([{ id: 'm' }, { id: 'm' }]);
+  });
+
+  it('adds at top level when nothing is selected and the plane has two machines', () => {
+    const m = machine();
+    m.nodes.push({ id: 'm2', name: 'Window', type: 'sm-machine' });
+    const { onCommand } = setup({ m });
     fireEvent.click(screen.getByRole('button', { name: 'Add state' }));
     expect(onCommand).toHaveBeenCalledWith({
       type: 'add-node',
       node: { id: 'sm-state-1', name: 'State', type: 'sm-state' },
+    });
+  });
+
+  it('adds a state beside the selected state, so two adds in a row are siblings', () => {
+    // Breaks if the new state (selected once made) is taken for a container and the next nests in it.
+    const { onCommand } = setup({ selected: 'a' });
+    fireEvent.click(screen.getByRole('button', { name: 'Add state' }));
+    expect(onCommand).toHaveBeenCalledWith(expect.objectContaining({ parent: { id: 'm' } }));
+  });
+
+  it('adds beside a selected pseudo-state, a state and a glyph alike', () => {
+    const { onCommand } = setup({ selected: 'i' });
+    fireEvent.click(screen.getByRole('button', { name: 'Add state' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add choice' }));
+    expect(onCommand.mock.calls.map(([c]) => c.parent)).toEqual([{ id: 'm' }, { id: 'm' }]);
+  });
+
+  it('nests a substate inside the selected state', () => {
+    const { onCommand } = setup({ selected: 'a' });
+    fireEvent.click(screen.getByRole('button', { name: 'Add substate' }));
+    expect(onCommand).toHaveBeenCalledWith({
+      type: 'add-node',
+      node: { id: 'sm-state-1', name: 'State', type: 'sm-state' },
+      parent: { id: 'a' },
     });
   });
 
@@ -96,7 +129,7 @@ describe('StateMachinePanel', () => {
 
   it('tags a new node with the scope plane', () => {
     const { onCommand } = setup({ selected: 'a', scopePlane: 'p', viewPlane: 'p' });
-    fireEvent.click(screen.getByRole('button', { name: 'Add state' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add substate' }));
     expect(onCommand).toHaveBeenCalledWith(
       expect.objectContaining({ node: expect.objectContaining({ plane: 'p' }), parent: { id: 'a', plane: 'p' } }),
     );
@@ -114,7 +147,7 @@ describe('StateMachinePanel', () => {
       ],
     };
     const { onCommand } = setup({ m, selected: 'a', viewPlane: 'c' });
-    fireEvent.click(screen.getByRole('button', { name: 'Add state' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add substate' }));
     expect(onCommand).toHaveBeenCalledWith({
       type: 'add-node',
       node: { id: 'sm-state-1', name: 'State', type: 'sm-state' },
@@ -129,7 +162,7 @@ describe('StateMachinePanel', () => {
       relations: [...base.relations, { id: 't1', from: 'a', to: 'b', kind: 'transition', label: 'x', trigger: 'go' }],
     };
     const { onSelect } = setup({ m });
-    fireEvent.click(screen.getByRole('button', { name: /'t1' has a label/ }));
+    fireEvent.click(screen.getByRole('button', { name: /'t1' has both a label/ }));
     expect(onSelect).toHaveBeenCalledWith({ kind: 'edge', id: 't1' });
   });
 

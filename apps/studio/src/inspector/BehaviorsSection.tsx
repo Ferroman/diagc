@@ -1,16 +1,19 @@
 import { useState } from 'react';
-import { SM_STATE_TYPE, type DiagramNode, type EditorCommand, type StateBehavior } from '@diagc/core/internal';
+import {
+  formatTransition,
+  SM_STATE_TYPE,
+  type DiagramNode,
+  type EditorCommand,
+  type StateBehavior,
+} from '@diagc/core/internal';
 import { commitOnEnter } from './commitOnEnter';
+import { useDraftField } from './useDraftField';
 
 const FIXED_TRIGGERS = ['entry', 'exit', 'do'];
 /** the select's value for "a free event name" */
 const EVENT = 'event';
 
 type Save = (change: (rows: StateBehavior[]) => StateBehavior[]) => void;
-
-/** A behaviour as text, `trigger [guard] / effect`. */
-const summary = (b: StateBehavior): string =>
-  `${b.trigger}${b.guard !== undefined ? ` [${b.guard}]` : ''} / ${b.effect}`;
 
 const withGuard = (trigger: string, guard: string, effect: string): StateBehavior => ({
   trigger,
@@ -20,7 +23,9 @@ const withGuard = (trigger: string, guard: string, effect: string): StateBehavio
 
 /** One editable row: each box commits on blur or Enter. Trigger and effect are
  * required (core rejects an empty one), so an emptied box snaps back; an emptied
- * guard is removed. */
+ * guard is removed. Each box's draft follows the stored value (useDraftField), so
+ * a row keyed by its place shows a moved or undone behaviour, and a save does not
+ * remount the row under the box focus has just moved to. */
 function BehaviorRow({
   behavior,
   index,
@@ -32,25 +37,30 @@ function BehaviorRow({
   last: boolean;
   save: Save;
 }) {
-  const stored = { trigger: behavior.trigger, guard: behavior.guard ?? '', effect: behavior.effect };
-  const [draft, setDraft] = useState(stored);
+  const drafts = {
+    trigger: useDraftField(behavior.trigger),
+    guard: useDraftField(behavior.guard),
+    effect: useDraftField(behavior.effect),
+  };
   const n = index + 1;
   const commit = () => {
-    const trigger = draft.trigger.trim();
-    const effect = draft.effect.trim();
+    const trigger = drafts.trigger[0].trim();
+    const effect = drafts.effect[0].trim();
     if (trigger === '' || effect === '') {
-      setDraft(stored);
+      drafts.trigger[1](behavior.trigger);
+      drafts.guard[1](behavior.guard ?? '');
+      drafts.effect[1](behavior.effect);
       return;
     }
-    const next = withGuard(trigger, draft.guard.trim(), effect);
-    if (summary(next) === summary(behavior)) return;
+    const next = withGuard(trigger, drafts.guard[0].trim(), effect);
+    if (formatTransition(next) === formatTransition(behavior)) return;
     save((rows) => rows.map((r, i) => (i === index ? next : r)));
   };
-  const box = (field: keyof typeof draft) => (
+  const box = (field: keyof typeof drafts) => (
     <input
       aria-label={`Behaviour ${n} ${field}`}
-      value={draft[field]}
-      onChange={(e) => setDraft({ ...draft, [field]: e.target.value })}
+      value={drafts[field][0]}
+      onChange={(e) => drafts[field][1](e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => commitOnEnter(e, commit)}
     />
@@ -168,8 +178,9 @@ export function BehaviorsSection({
       <h3>Behaviours</h3>
       {rows.map((behavior, i) => (
         <BehaviorRow
-          // the whole list is rewritten on every change, so a row's identity is its place and text
-          key={`${i}:${summary(behavior)}`}
+          // a row's identity is its place: its text changes with every save, and a
+          // remount would take the focus from the box the user just moved to
+          key={i}
           behavior={behavior}
           index={i}
           last={i === rows.length - 1}

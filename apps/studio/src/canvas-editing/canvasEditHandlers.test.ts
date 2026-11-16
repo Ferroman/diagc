@@ -244,6 +244,21 @@ describe('relationEndHandlers', () => {
       });
     });
 
+    it('treats text that parses to no part as blank: an added one stores no label, an edit drops it', () => {
+      // Breaks if `[]` stores an empty label, which would be drawn.
+      expect(patchOf(model({ relations: [base] }), (h) => h.onAddEdgeLabel('t', '[]', 0.5, 'top'))).toEqual({
+        type: 'update-relation',
+        id: 't',
+        patch: { trigger: null, guard: null, effect: null, label: null },
+      });
+      const m = model({ relations: [{ ...base, trigger: 'pay', labels: [{ id: 'x', text: 'pay', t: 0.5 }] }] });
+      expect(patchOf(m, (h) => h.onEditEdgeLabel('t', 'x', '[ ]'))).toEqual({
+        type: 'update-relation',
+        id: 't',
+        patch: { trigger: null, guard: null, effect: null, label: null, labels: null },
+      });
+    });
+
     it('parses an added label too, and keeps the place it was clicked at', () => {
       // Breaks if adding a label to a bare transition stores free text or loses the click position.
       expect(patchOf(model({ relations: [base] }), (h) => h.onAddEdgeLabel('t', 'go / run', 0.5, 'top'))).toEqual({

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { DiagramRelation } from '@diagc/core/internal';
 import { TransitionFields } from './TransitionFields';
@@ -31,6 +31,49 @@ describe('TransitionFields', () => {
     fireEvent.change(guard, { target: { value: '' } });
     fireEvent.keyDown(guard, { key: 'Enter' });
     expect(onCommand).toHaveBeenCalledWith({ type: 'update-relation', id: 't1', patch: { guard: null } });
+  });
+
+  describe('a transition whose label is stored (dragged, or added in place)', () => {
+    const stored = () => relation({ trigger: 'pay', labels: [{ id: 'transition', text: 'pay', t: 0.3, side: 'top' }] });
+    const edit = (rel: DiagramRelation, part: string, value: string) => {
+      const onCommand = vi.fn();
+      render(<TransitionFields relation={rel} onCommand={onCommand} />);
+      const box = screen.getByLabelText(part);
+      fireEvent.change(box, { target: { value } });
+      fireEvent.blur(box);
+      return onCommand.mock.calls[0]?.[0];
+    };
+
+    it('rewrites the stored text with the parts, keeping its place', () => {
+      // Breaks if the stored label keeps the old text: it is drawn once the parts are gone.
+      expect(edit(stored(), 'Trigger', 'ship')).toEqual({
+        type: 'update-relation',
+        id: 't1',
+        patch: { trigger: 'ship', labels: [{ id: 'transition', text: 'ship', t: 0.3, side: 'top' }] },
+      });
+    });
+
+    it('drops the stored label with the last part, and keeps any other label', () => {
+      // Breaks if clearing the trigger brings the stale "pay" back on the canvas.
+      expect(edit(stored(), 'Trigger', '')).toEqual({
+        type: 'update-relation',
+        id: 't1',
+        patch: { trigger: null, labels: null },
+      });
+      const twoLabels = relation({
+        trigger: 'pay',
+        labels: [
+          { id: 'transition', text: 'pay', t: 0.3 },
+          { id: 'note', text: 'see spec', t: 0.8 },
+        ],
+      });
+      cleanup();
+      expect(edit(twoLabels, 'Trigger', '')).toEqual({
+        type: 'update-relation',
+        id: 't1',
+        patch: { trigger: null, labels: [{ id: 'note', text: 'see spec', t: 0.8 }] },
+      });
+    });
   });
 
   it('commits nothing for an unchanged box', () => {
