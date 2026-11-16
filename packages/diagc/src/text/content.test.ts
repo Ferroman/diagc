@@ -191,6 +191,15 @@ describe('state machines', () => {
     expect(mark('sm-terminate')).toBe('✕ x');
     expect(mark('sm-final')).toBe('◉ x');
     expect(mark('sm-initial')).toBe('● x');
+    // a junction is a smaller dot than an initial, so it takes a mark of its own
+    expect(mark('sm-junction')).toBe('• x');
+    expect(mark('sm-junction', ASCII)).toBe('. x');
+    expect(mark('sm-initial', ASCII)).toBe('* x');
+  });
+
+  it('lists behaviours on a state only, as the canvas draws them', () => {
+    const node: DiagramNode = { id: 's', name: 'Svc', type: 'service', behaviors: [{ trigger: 'entry', effect: 'x' }] };
+    expect(texts(boxText(view(node), ctx))).toEqual(['Svc', 'service']);
   });
 
   it('says a transition as trigger, guard and effect', () => {

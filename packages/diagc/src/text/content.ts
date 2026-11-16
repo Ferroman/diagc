@@ -6,6 +6,8 @@ import {
   SM_EXIT_TYPE,
   SM_FINAL_TYPE,
   SM_HISTORY_TYPE,
+  SM_JUNCTION_TYPE,
+  SM_STATE_TYPE,
   SM_TERMINATE_TYPE,
   formatTransition,
   type Column,
@@ -58,6 +60,7 @@ export function typeMark(type: string | undefined, shape: TextShape, glyphs: Gly
   if (type === SM_ENTRY_TYPE) return glyphs.entryPoint;
   if (type === SM_EXIT_TYPE) return glyphs.exitPoint;
   if (type === SM_TERMINATE_TYPE) return glyphs.terminate;
+  if (type === SM_JUNCTION_TYPE) return glyphs.junction;
   // an activity's start, a git commit: the dot is the element, the name a caption
   if (shape === 'dot') return glyphs.start;
   return undefined;
@@ -112,8 +115,9 @@ export function boxText(vn: ViewNode, ctx: BoxContext): BoxText {
           .flatMap((line) => wrapCells(printable(line), NAME_WRAP))
           .map((text) => ({ text, role: 'title' }));
   for (const text of subtitle === '' ? [] : wrapCells(subtitle, NAME_WRAP)) lines.push({ text, role: 'subtitle' });
-  // a state's behaviours, one line each, cut rather than wrapped: they read as code
-  const behaviors = (vn.node.behaviors ?? []).map((behavior) =>
+  // a state's behaviours, one line each, cut rather than wrapped: they read as code;
+  // only a state lists them, as only a state draws them on the canvas
+  const behaviors = (vn.node.type === SM_STATE_TYPE ? (vn.node.behaviors ?? []) : []).map((behavior) =>
     fitCells(printable(formatTransition(behavior)), TITLE_MAX, ctx.glyphs.ellipsis),
   );
   lines.push(...behaviors.map((text) => ({ text, role: 'row' as const })));

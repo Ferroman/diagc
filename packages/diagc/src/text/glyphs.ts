@@ -33,12 +33,14 @@ export interface Glyphs {
   start: string;
   end: string;
   decision: string;
-  /** the marks a state machine's history, entry/exit point and terminate start with */
+  /** the marks a state machine's history, entry/exit point, terminate and junction start with
+   * (a junction is a smaller dot than an initial's `start`) */
   history: string;
   deepHistory: string;
   entryPoint: string;
   exitPoint: string;
   terminate: string;
+  junction: string;
   /** a causal link's delay, after its label */
   delay: string;
 }
@@ -102,6 +104,7 @@ export const UNICODE: Glyphs = {
   entryPoint: '○',
   exitPoint: '⊗',
   terminate: '✕',
+  junction: '•',
   delay: '‖',
 };
 
@@ -141,5 +144,6 @@ export const ASCII: Glyphs = {
   entryPoint: 'o',
   exitPoint: 'x',
   terminate: 'X',
+  junction: '.',
   delay: '||',
 };
