@@ -7,6 +7,7 @@ import {
   SM_HISTORY_TYPE,
   SM_TERMINATE_TYPE,
 } from '@diagc/core/internal';
+import { stylePreset } from '../../sketch/stylePresets';
 import { renderBody } from './render-body';
 
 const glyph = (typeId: string, extra = {}) => renderBody({ typeId, label: '', ...extra });
@@ -42,6 +43,12 @@ describe('SmGlyphBody', () => {
       expect(c.innerHTML).not.toContain('#ff0000');
       expect(c.innerHTML).not.toContain('rgb(255, 0, 0)');
     }
+  });
+
+  it('ignores color in sketch mode too', () => {
+    const c = glyph(SM_ENTRY_TYPE, { color: '#ff0000', stylePreset: stylePreset('sketch') });
+    expect(c.querySelector('.dg-sketch-stroke')).not.toBeNull();
+    expect(c.innerHTML).not.toContain('#ff0000');
   });
 
   it('hangs its name below as a caption', () => {

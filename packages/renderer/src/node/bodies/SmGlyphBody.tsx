@@ -30,7 +30,8 @@ export function SmGlyphBody({ id, data, selected, width, height, parts }: BodyPr
   const ringed = data.typeId !== SM_TERMINATE_TYPE;
   return (
     <div className={`dg-sm-glyph${ringed ? ' dg-sm-ring' : ''}${loopClass}`} data-type={data.typeId}>
-      {ringed && sketchOf(data, 'circle', { id, width, height })}
+      {/* sketchOf tints the outline with the node's colour; these glyphs have none */}
+      {ringed && sketchOf({ ...data, color: undefined }, 'circle', { id, width, height })}
       <GlyphMark type={data.typeId} />
       {(data.label !== '' || data.labelEditing === true) && <div className="dg-node-row dg-glyph-caption">{name}</div>}
       <NodeChrome id={id} data={data} selected={selected} uses={['quickAdd', 'handles']} />
