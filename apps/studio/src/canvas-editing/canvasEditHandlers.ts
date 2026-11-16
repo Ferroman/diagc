@@ -354,12 +354,6 @@ export function connectAndDeleteHandlers({ editor, penLayer, notation, select }:
       if (notation === SM_NOTATION && [from, to].some((id) => isSmFrame(m?.nodes.find((n) => n.id === id)?.type))) {
         return;
       }
-      // a machine or a region is never a transition end: the rule
-      // sm-transition-ends covers hand-written JSON, and the gesture never
-      // creates one
-      if (notation === SM_NOTATION && [from, to].some((id) => isSmFrame(m?.nodes.find((n) => n.id === id)?.type))) {
-        return;
-      }
       editor.dispatch({
         type: 'add-relation',
         from,
