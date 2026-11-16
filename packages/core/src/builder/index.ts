@@ -31,6 +31,5 @@ export {
   StateMachineBuilder,
   StateRef,
   type SmStateOpts,
-  type SmTransitionParts,
   type TransitionParts,
 } from '../notations/state-machine/builder';

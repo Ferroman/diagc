@@ -19,9 +19,8 @@ import {
 } from './state-machine';
 import type { TransitionParts } from './transition';
 
-/** The three parts of a transition's label; the one shape, shared with the model's relation fields. */
+/** re-exported so the builder signatures below resolve to a public name */
 export type { TransitionParts };
-export type SmTransitionParts = TransitionParts;
 
 export interface SmStateOpts {
   /** runs on entering: becomes the behavior `entry / <effect>` */
@@ -35,7 +34,7 @@ export interface SmStateOpts {
 
 /** A transition between two vertices; `parts` ride as relation fields, never as a label,
  * so the renderer owns how `trigger [guard] / effect` is laid out. */
-function transition(m: ModelBuilder, from: NodeRef, to: NodeRef, parts: SmTransitionParts = {}): void {
+function transition(m: ModelBuilder, from: NodeRef, to: NodeRef, parts: TransitionParts = {}): void {
   m.relate(from, to, { kind: SM_TRANSITION_KIND, ...defined(parts) });
 }
 
@@ -49,7 +48,7 @@ export class SmElementRef extends NodeRef {
   }
 
   /** a transition from this element; returns the target so calls chain along a path */
-  to(target: NodeRef, parts?: SmTransitionParts): NodeRef {
+  to(target: NodeRef, parts?: TransitionParts): NodeRef {
     transition(this.b, this, target, parts);
     return target;
   }
@@ -163,7 +162,7 @@ export class StateRef extends SmScope {
     return this.pseudo(id, 'exit', SM_EXIT_TYPE, name);
   }
 
-  to(target: NodeRef, parts?: SmTransitionParts): NodeRef {
+  to(target: NodeRef, parts?: TransitionParts): NodeRef {
     transition(this.m, this, target, parts);
     return target;
   }
@@ -172,7 +171,7 @@ export class StateRef extends SmScope {
 /** One state machine: the frame node itself (this IS its NodeRef). Call m.stateMachine()
  * once per frame — several frames coexist on one canvas. */
 export class StateMachineBuilder extends SmScope {
-  transition(from: NodeRef, to: NodeRef, parts?: SmTransitionParts): this {
+  transition(from: NodeRef, to: NodeRef, parts?: TransitionParts): this {
     transition(this.m, from, to, parts);
     return this;
   }

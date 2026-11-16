@@ -64,7 +64,6 @@ export {
   type ZoneOpts,
   type EventOpts,
   type SmStateOpts,
-  type SmTransitionParts,
   type TransitionParts,
 } from './builder/index';
 export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue } from './validate/index';
