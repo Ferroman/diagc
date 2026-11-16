@@ -32,6 +32,7 @@ describe('STUDIO_NOTATIONS', () => {
       'threat-model': ['connectKind', 'dock', 'label', 'quickAdd'],
       plan: ['datesFromDropPoint', 'dock', 'gestures', 'label', 'planSection', 'quickAdd'],
       deployment: [],
+      'state-machine': ['label'],
     });
   });
 
@@ -49,6 +50,7 @@ describe('STUDIO_NOTATIONS', () => {
       'Threat model (STRIDE)',
       'Plan (schedule)',
       'Deployment',
+      'State machine (UML)',
     ]);
   });
 

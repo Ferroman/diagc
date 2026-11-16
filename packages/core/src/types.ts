@@ -464,6 +464,7 @@ export const BUILTIN_NOTATIONS = [
   'threat-model',
   'plan',
   'deployment',
+  'state-machine',
 ] as const;
 export type NotationId = (typeof BUILTIN_NOTATIONS)[number];
 export type Polarity = '+' | '-';

@@ -93,6 +93,19 @@ export const NODE_TYPES: readonly string[] = [
   'tm-boundary',
   'plan-zone',
   'plan-event',
+  'sm-machine',
+  'sm-state',
+  'sm-region',
+  'sm-initial',
+  'sm-final',
+  'sm-choice',
+  'sm-junction',
+  'sm-bar',
+  'sm-history',
+  'sm-deep-history',
+  'sm-entry',
+  'sm-exit',
+  'sm-terminate',
 ];
 
 /** Kinds registered with no style of their own (`network`, `influence`) are still
@@ -118,6 +131,7 @@ export const RELATION_KINDS: readonly string[] = [
   'checks',
   'network',
   'influence',
+  'transition',
 ];
 
 /** What a notation adds on top of the shared lists; known only where the diagram

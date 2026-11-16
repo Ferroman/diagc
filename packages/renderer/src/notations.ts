@@ -12,6 +12,7 @@ import {
   PLAN_ROLES,
   PLAN_ZONE_TYPE,
   SECOND_ORDER_NOTATION,
+  SM_NOTATION,
   TM_BOUNDARY_TYPE,
   isPlanActor,
   isPlanEvent,
@@ -410,6 +411,13 @@ const PLAN: NotationProfile = {
   canvasOverlay: 'time-axis',
 };
 
+/** A UML state machine: states, pseudo-states and transitions. Only a styling hook
+ * for now; the type vocabulary lives in the registry. */
+const STATE_MACHINE: NotationProfile = {
+  id: SM_NOTATION,
+  className: 'dg-notation-sm',
+};
+
 // Record<NotationId, ...> keying means adding a notation id to BUILTIN_NOTATIONS
 // forces a compile error here until its profile is added — intended.
 export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
@@ -421,6 +429,7 @@ export const NOTATION_PROFILES: Record<NotationId, NotationProfile> = {
   [TM_NOTATION]: THREAT_MODEL,
   [PLAN_NOTATION]: PLAN,
   [DEPLOY_NOTATION]: DEPLOYMENT,
+  [SM_NOTATION]: STATE_MACHINE,
 };
 
 const DEFAULT_PROFILE: NotationProfile = { id: 'default' };

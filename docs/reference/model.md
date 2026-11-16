@@ -14,7 +14,7 @@ For *why* the model is shaped like this, see [What is in a model](../explanation
 | `id` | `string` | Diagram identity. |
 | `name` | `string` | Display name. |
 | `style` | `string?` | Renderer style preset pinned by this file. Unknown ids fall back to the app preference. |
-| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop` (see [Causal-loop conventions](#causal-loop-conventions)), `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)), `plan` (see [Plan conventions](#plan-conventions)), `deployment` (see [Draw a deployment diagram](../how-to/draw-a-deployment-diagram.md#the-vocabulary)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
+| `notation` | `string?` | Visual language for the whole diagram — built in: `causal-loop` (see [Causal-loop conventions](#causal-loop-conventions)), `git-graph`, `c4` (see [C4 stencils](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)), `plan` (see [Plan conventions](#plan-conventions)), `deployment` (see [Draw a deployment diagram](../how-to/draw-a-deployment-diagram.md#the-vocabulary)), `state-machine` (see [State machine conventions](#state-machine-conventions)). A plane's own `notation` wins where one is declared; this is the fallback for planeless (or plane-silent) diagrams. Unknown ids fail validation (`unknown-notation`), same as an unknown plane `notation`. Dropped from included models on graft, same as `typeColors`/`layerRules` — the host's `notation` (if any) is what's drawn. |
 | `legend` | `DiagramLegend?` | Opt-in key for the diagram's visual vocabulary. Absent means no legend in an image, and none on the canvas unless the diagram is drawn in [shapes that carry no words](#diagramlegend). |
 | `typeColors` | `Record<string, string>?` | Default accent colour per node type; `*` is the fallback. A node's own `color` wins. Dropped from included models on graft — the host owns the look. |
 | `layerRules` | `LayerRule[]?` | Class → layer for relations without a `layer`: `{ kind?, color?, layer }`, every named field must match, first match wins, explicit `layer` beats the rules. Dropped from included models on graft. |
@@ -186,7 +186,7 @@ When any of `trigger`, `guard` or `effect` is set, the relation's label reads `t
 | `containmentOf` | `string?` | Borrow another plane's containment instead of declaring your own. |
 | `layers` | `string[]?` | Layers switched on when this plane is selected. |
 | `baseRelations` | `boolean?` | `false` hides untagged relations, leaving only layer arrows. |
-| `notation` | `string?` | Visual language, overriding the model's `notation` for this plane. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)), `c4` (see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)), `plan` (see [Plan conventions](#plan-conventions)). |
+| `notation` | `string?` | Visual language, overriding the model's `notation` for this plane. Built in: `causal-loop`, `git-graph` (see [Git graph conventions](#git-graph-conventions)), `c4` (see [Draw a C4 diagram](../how-to/draw-a-c4-diagram.md)), `second-order` (see [Second-order thinking conventions](#second-order-thinking-conventions)), `fishbone` (see [Fishbone conventions](#fishbone-conventions)), `threat-model` (see [Threat-model conventions](#threat-model-conventions)), `plan` (see [Plan conventions](#plan-conventions)), `state-machine` (see [State machine conventions](#state-machine-conventions)). |
 | `hides` | `string[]?` | Shared node ids this plane hides; their children are promoted into their place. |
 | `hidesTree` | `string[]?` | Shared node ids this plane hides along with everything inside them (a child with another visible parent stays). |
 
@@ -463,6 +463,26 @@ Relation kinds `owns`, `executes`, `checks` — drawn **from the actor (a person
 Dates live in `metadata` (the git-graph `from`/`to` pattern) so a zone is an ordinary node everywhere else. The x origin is 1 January of the earliest year in the plan; the header extends a week either side of the dated range.
 
 See [Draw a plan](../how-to/draw-a-plan.md).
+
+## State machine conventions
+
+A diagram or plane with `notation: 'state-machine'` is a UML state machine: states and pseudo-states connected by transitions. Containment nests states inside a machine, a state or a region.
+
+| Type | Look | Role |
+| --- | --- | --- |
+| `sm-machine` | an always-open box | The machine: the outermost container. |
+| `sm-state` | a rounded box | A state. It may contain further states (a composite state). |
+| `sm-region` | a dashed always-open box | One concurrent region of a state. A state holding regions is orthogonal. |
+| `sm-initial` | a filled dot | Where a machine or region starts. |
+| `sm-final` | a bullseye | A region ends. |
+| `sm-choice` | a diamond | A branch decided when the transition is taken. |
+| `sm-junction` | a small filled dot | Joins or splits transitions with no decision. |
+| `sm-bar` | a bar | Fork or join across regions. |
+| `sm-history`, `sm-deep-history` | a circle | Resume the shallow or deep history of the enclosing state. |
+| `sm-entry`, `sm-exit` | a small circle | An entry or exit point on a state's border. |
+| `sm-terminate` | a circle | The whole machine stops. |
+
+Relation kind `transition` is the one line a state machine draws.
 
 ## Causal-loop conventions
 

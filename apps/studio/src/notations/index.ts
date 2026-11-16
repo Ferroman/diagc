@@ -5,6 +5,7 @@ import {
   GIT_NOTATION,
   PLAN_NOTATION,
   SECOND_ORDER_NOTATION,
+  SM_NOTATION,
   TM_NOTATION,
   type DiagramModel,
   type NotationId,
@@ -14,6 +15,7 @@ import { FISHBONE } from './fishbone/profile';
 import { GIT_GRAPH } from './git-graph/profile';
 import { PLAN } from './plan/profile';
 import { SECOND_ORDER } from './second-order/profile';
+import { STATE_MACHINE } from './state-machine/profile';
 import { THREAT_MODEL } from './threat-model/profile';
 import type { StudioNotationProfile } from './types';
 
@@ -29,6 +31,7 @@ export const STUDIO_NOTATIONS: Record<NotationId, StudioNotationProfile> = {
   [TM_NOTATION]: THREAT_MODEL,
   [PLAN_NOTATION]: PLAN,
   [DEPLOY_NOTATION]: {},
+  [SM_NOTATION]: STATE_MACHINE,
 };
 
 const DEFAULT_PROFILE: StudioNotationProfile = {};

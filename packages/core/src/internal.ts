@@ -37,6 +37,7 @@ export { isIsoDate } from './dates';
 export { normalizeRuns, runsToPlainText } from './text';
 export { relationLabels } from './labels';
 export * from './notations/state-machine/transition';
+export * from './notations/state-machine/state-machine';
 export { defaultLayoutDirection, type LayoutDirection } from './layout-defaults';
 export {
   model,

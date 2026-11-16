@@ -2488,3 +2488,7 @@ button.dg-role-chip {
 .react-flow__edge.dg-diff-changed .react-flow__edge-path {
   stroke: var(--dg-diff-changed) !important;
 }
+
+/* State machine: the hook the notation's own rules attach to. */
+.dg-notation-sm {
+}

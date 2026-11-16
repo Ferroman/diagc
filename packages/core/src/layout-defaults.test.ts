@@ -15,4 +15,10 @@ describe('defaultLayoutDirection', () => {
     m.activity('flow').lane('a', { name: 'A' }).action('x', 'Do it');
     expect(defaultLayoutDirection(m.toJSON())).toBe('RIGHT');
   });
+
+  it('flows right for a state machine: transitions read as a left-to-right story', () => {
+    const m = model('sm');
+    m.node('machine', { type: 'sm-machine' });
+    expect(defaultLayoutDirection(m.toJSON())).toBe('RIGHT');
+  });
 });

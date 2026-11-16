@@ -395,6 +395,7 @@ describe('LayersPlanesPanel', () => {
       ['threat-model', 'Threat model (STRIDE)'],
       ['plan', 'Plan (schedule)'],
       ['deployment', 'Deployment'],
+      ['state-machine', 'State machine (UML)'],
     ];
     expect(options('Notation')).toEqual(want);
     expect(options('Notation Flow')).toEqual(want);

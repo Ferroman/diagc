@@ -292,6 +292,82 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
     label: '',
     legendLabel: 'Event',
   },
+  // ---- State machine (UML) ----------------------------------------------------
+  // UML glyphs carry no type subtitle (empty label). A machine and a region are
+  // always-open containers; a region is the dashed one, as in the UML sheet.
+  'sm-machine': { shape: 'box', label: '', alwaysExpanded: true },
+  'sm-state': { shape: 'rounded', label: '' },
+  'sm-region': { shape: 'box', label: '', dashed: true, alwaysExpanded: true },
+  'sm-initial': {
+    shape: 'start-dot',
+    defaultSize: { width: 24, height: 24 },
+    label: '',
+    legendLabel: 'Initial state',
+    captionBelow: true,
+  },
+  'sm-final': {
+    shape: 'end-bullseye',
+    defaultSize: { width: 24, height: 24 },
+    label: '',
+    legendLabel: 'Final state',
+    captionBelow: true,
+  },
+  'sm-choice': {
+    shape: 'diamond',
+    defaultSize: { width: 48, height: 48 },
+    label: '',
+    legendLabel: 'Choice',
+    captionBelow: true,
+  },
+  'sm-junction': {
+    shape: 'start-dot',
+    defaultSize: { width: 14, height: 14 },
+    label: '',
+    legendLabel: 'Junction',
+    captionBelow: true,
+  },
+  'sm-bar': {
+    shape: 'bar',
+    defaultSize: { width: 8, height: 100 },
+    label: '',
+    legendLabel: 'Fork / join',
+    captionBelow: true,
+  },
+  'sm-history': {
+    shape: 'circle',
+    defaultSize: { width: 28, height: 28 },
+    label: '',
+    legendLabel: 'Shallow history',
+    captionBelow: true,
+  },
+  'sm-deep-history': {
+    shape: 'circle',
+    defaultSize: { width: 28, height: 28 },
+    label: '',
+    legendLabel: 'Deep history',
+    captionBelow: true,
+  },
+  'sm-entry': {
+    shape: 'circle',
+    defaultSize: { width: 16, height: 16 },
+    label: '',
+    legendLabel: 'Entry point',
+    captionBelow: true,
+  },
+  'sm-exit': {
+    shape: 'circle',
+    defaultSize: { width: 16, height: 16 },
+    label: '',
+    legendLabel: 'Exit point',
+    captionBelow: true,
+  },
+  'sm-terminate': {
+    shape: 'circle',
+    defaultSize: { width: 20, height: 20 },
+    label: '',
+    legendLabel: 'Terminate',
+    captionBelow: true,
+  },
 };
 
 export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
@@ -326,6 +402,8 @@ export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
   owns: { legendLabel: 'Owns' },
   executes: { legendLabel: 'Executes' },
   checks: { legendLabel: 'Checks' },
+  // ---- State machine (UML) ----------------------------------------------------
+  transition: { legendLabel: 'Transition' },
 };
 
 function createRegistry<T>(defaults: Record<string, T>, fallback: T, overrides?: Record<string, T>): Registry<T> {
