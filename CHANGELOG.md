@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/Ferroman/diagc/compare/v1.9.0...v1.10.0) (2026-11-16)
+
+
+### Features
+
+* state machine notation ([#179](https://github.com/Ferroman/diagc/issues/179)) ([3702f94](https://github.com/Ferroman/diagc/commit/3702f94422f8a58fc2af99739e72fb00832cf640))
+
 ## [1.9.0](https://github.com/Ferroman/diagc/compare/v1.8.0...v1.9.0) (2026-11-01)
 
 
