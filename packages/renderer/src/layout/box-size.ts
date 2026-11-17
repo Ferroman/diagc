@@ -89,6 +89,8 @@ const MIN_CONTENT_WIDTH = 120;
 const PAD_X = 20;
 const PAD_Y = 16;
 const BORDER = 2;
+/** a box's padding and border across, around its content */
+export const BOX_SIDES = PAD_X + BORDER;
 const PILL_EXTRA_PAD_X = 12; // .dg-shape-pill: padding 8px 16px
 const SIGNAL_EXTRA_PAD_X = 10; // send/receive-signal: one side padded to 20px
 const PERSON_HEAD = 14; // .dg-shape-person: margin-top 14px, inside the RF wrapper

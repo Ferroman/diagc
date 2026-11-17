@@ -145,7 +145,19 @@ describe('sizeHintFor, a state-machine state', () => {
     ];
     const hint = sizeHintFor(node({ type: 'sm-state', name: 'VALIDATION_RETRYING', behaviors }), plain)!;
     expect(hint.width).toBeGreaterThanOrEqual(364);
+    // leaning wide leaves room on the right of the line; not a column of it
+    expect(hint.width).toBeLessThanOrEqual(410);
     expect(Math.abs(hint.height - 58)).toBeLessThanOrEqual(2);
+  });
+
+  it('is never narrower than a box is drawn, however short its lines', () => {
+    // .dg-node's 120px minimum is on its content: with padding and border no box is under 142
+    const behaviors = [
+      { trigger: 'entry', effect: 'attempt++' },
+      { trigger: 'do', effect: 'open socket' },
+    ];
+    const hint = sizeHintFor(node({ type: 'sm-state', name: 'Connecting', behaviors }), plain)!;
+    expect(hint.width).toBeGreaterThanOrEqual(142);
   });
 
   it('leaves a state with a saved size to that size', () => {

@@ -6,10 +6,10 @@ import {
   type DiagramNode,
   type LayoutOverlay,
 } from '@diagc/core/internal';
-import { FORCED_SIZE_SHAPES } from './box-size';
+import { BOX_SIDES, estimateBoxSize, FORCED_SIZE_SHAPES, textWidth } from './box-size';
 import type { SizeHint } from './layout-graph';
 import { CAPTION_HEIGHT, captionWidth, estimateLabelSize, glyphCaptionSize } from '../node/label-size';
-import { behaviorCompartmentHeight, behaviorWidth } from '../node/behavior-lines';
+import { BEHAVIOR_PX, behaviorCompartmentHeight, behaviorRows } from '../node/behavior-lines';
 import { tableSize } from '../node/table-ports';
 import type { NotationProfile } from '../notations';
 import type { Registry, TypeStyle } from '../registry';
@@ -33,19 +33,21 @@ const tableRule: Rule = (n, ctx) => {
 };
 
 /** A state's behaviours are drawn under its name, so a leaf state grows with them: the
- * name's box, then the divider and a row a line at the behaviours' own smaller font,
- * as wide as the longest line, since the lines never wrap (StateBody). The box is
- * drawn at its content's height, so this must be that height, not more: arrows meet
- * the box the layout reserved. A state without any, or with a saved size, takes the
- * usual rules. A folded composite draws them the same way, so withBoxSizes keeps this
- * hint over its folded box where it is the larger; an open one lists them under
+ * box its name alone would be drawn as, then the divider and a row a line, as wide as
+ * the longest line, since the lines never wrap (StateBody). The box is drawn at its
+ * content's height, and never narrower than this width (node-frame.ts), so arrows meet
+ * it where the layout put its sides. A state without any, or with a saved size, takes
+ * the usual rules. A folded composite draws them the same way, so withBoxSizes keeps
+ * this hint over its folded box where it is the larger; an open one lists them under
  * its header, in room its padding makes (containerPad), and this hint goes unused. */
 const stateRule: Rule = (n, ctx) => {
   if (n.type !== SM_STATE_TYPE || ctx.sizes?.[n.id] !== undefined) return undefined;
   const behaviors = behaviorCompartmentHeight(n);
   if (behaviors === 0) return undefined;
-  const name = estimateLabelSize(n.name, n.fontScale);
-  return { width: Math.max(name.width, behaviorWidth(n)), height: name.height + behaviors };
+  const name = n.name.split('\n').reduce((longest, l) => (l.length > longest.length ? l : longest), '');
+  const box = estimateBoxSize({ name, fontScale: n.fontScale });
+  const widest = Math.max(...behaviorRows(n).map((row) => textWidth(row, BEHAVIOR_PX)));
+  return { width: Math.max(box.width, Math.ceil(widest) + BOX_SIDES), height: box.height + behaviors };
 };
 
 /** Multiline or rich leaf box labels: an estimated footprint, so elk does not
