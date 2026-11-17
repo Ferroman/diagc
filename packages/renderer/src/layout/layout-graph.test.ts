@@ -167,6 +167,20 @@ describe('buildGraph', () => {
     expect(labels[2]).toBeUndefined();
   });
 
+  it("reserves every line of a transition's wrapped label, and one line for another kind", () => {
+    const m = model('wrap');
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    const c = m.node('c', { type: 'service' });
+    // 'requestEdit [owns d]' / '/ send load': two lines, the wider 20 characters
+    m.relate(a, b, { kind: 'transition', trigger: 'requestEdit', guard: 'owns d', effect: 'send load' });
+    m.relate(b, c, { kind: 'sync', label: 'requestEdit [owns d] / send load' });
+    const { graph: g } = buildGraph(compileView(m.toJSON(), {}), undefined, undefined);
+    const [wrapped, cut] = g.edges!.map((e) => e.labels![0]!);
+    expect(wrapped).toMatchObject({ width: 20 * 6 + 12, height: 18 + 14 });
+    expect(cut).toMatchObject({ width: 24 * 6 + 12, height: 18 });
+  });
+
   it('pads an activity lane clear of its title strip, and a frame not at all', () => {
     // A lane's name runs down a 28px strip on its LEFT edge and it has no header
     // band on top; the generic container padding (16 left, 36 top) parked its

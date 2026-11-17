@@ -1,8 +1,9 @@
 import { EdgeLabelRenderer, useReactFlow } from '@xyflow/react';
 import { useRef, useState, type PointerEvent, type ReactElement } from 'react';
-import type { EdgeLabel, EdgeLabelSide, Point } from '@diagc/core/internal';
+import { labelLines, wrapsLabel, type EdgeLabel, type EdgeLabelSide, type Point } from '@diagc/core/internal';
 import type { DiagramEdgeData } from './DiagramEdge';
 import { nearestOnCurve, type EdgeCurve } from './edge-geometry';
+import { EDGE_LABEL_MAX_CHARS } from '../node/label-size';
 
 /** perpendicular offset for top/bottom positioned labels (px) */
 const LABEL_OFFSET = 14;
@@ -67,6 +68,11 @@ export function EdgeLabels({
   } | null>(null);
   const slide = useLabelSlide(data, curve);
   const editableLabels = data.editableLabels === true;
+  // a wrapping kind draws the lines the layout reserved room for (labelLines);
+  // any other is one line, ellipsised by the chip's own max-width
+  const wraps = wrapsLabel(data.kind);
+  const shown = (text: string): string => (wraps ? labelLines(text, EDGE_LABEL_MAX_CHARS).join('\n') : text);
+  const wrapClass = wraps ? ' dg-edge-label-wrap' : '';
   return (
     <>
       {/* The joined label of a bundled arrow. An HTML element in the label layer, not
@@ -77,10 +83,10 @@ export function EdgeLabels({
       {data.labels === undefined && data.label !== undefined && (
         <EdgeLabelRenderer>
           <div
-            className="dg-edge-label dg-edge-chip"
+            className={`dg-edge-label dg-edge-chip${wrapClass}`}
             style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${label.x}px, ${label.y}px)` }}
           >
-            {data.label}
+            {shown(data.label)}
           </div>
         </EdgeLabelRenderer>
       )}
@@ -97,7 +103,7 @@ export function EdgeLabels({
           return (
             <EdgeLabelRenderer key={lb.id}>
               <div
-                className={`dg-edge-label dg-edge-label-${side} nodrag nopan`}
+                className={`dg-edge-label dg-edge-label-${side}${wrapClass} nodrag nopan`}
                 style={{
                   position: 'absolute',
                   transform: `translate(-50%, -50%) translate(${lx}px, ${ly}px)`,
@@ -120,7 +126,7 @@ export function EdgeLabels({
                     }}
                   />
                 ) : (
-                  lb.text
+                  shown(lb.text)
                 )}
               </div>
             </EdgeLabelRenderer>

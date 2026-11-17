@@ -16,7 +16,7 @@ import {
   containerPad,
   DEFAULT_ALGORITHM,
   DEFAULT_SPACING,
-  edgeLabelText,
+  edgeLabelBox,
   FALLBACK_DIRECTION,
   footprint,
   type ElkRoutedEdge,
@@ -123,12 +123,13 @@ function signature(
     n.children.forEach(walk);
   };
   view.roots.forEach(walk);
-  // an edge's reserved footprint depends on its label length, so fold that into
-  // the key — editing a label must re-layout, not serve a stale arrangement.
+  // an edge's reserved footprint depends on its label (its length, and where a
+  // wrapped label breaks), so fold the footprint into the key — editing a label
+  // must re-layout, not serve a stale arrangement.
   const edges = view.layoutEdges
     .map((e) => {
-      const t = edgeLabelText(e).trim();
-      return t === '' ? e.id : `${e.id}~${t.length}`;
+      const box = edgeLabelBox(e);
+      return box === undefined ? e.id : `${e.id}~${box.width}x${box.height}`;
     })
     .join('|');
   const sized =

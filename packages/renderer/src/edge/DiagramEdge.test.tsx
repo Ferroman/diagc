@@ -111,6 +111,30 @@ describe('DiagramEdge', () => {
     expect(getByText('bot')).toBeDefined();
   });
 
+  it("draws a long transition label on several lines, and cuts another kind's to one", () => {
+    const text = 'requestEdit [owns d] / send load';
+    const lines = (kind: string) => {
+      const { baseElement, unmount } = renderEdge({ kind, labels: [{ id: 'l1', text, side: 'center' }] });
+      const label = baseElement.querySelector('.dg-edge-label-center') as HTMLElement;
+      const out = { text: label.textContent, wraps: label.classList.contains('dg-edge-label-wrap') };
+      unmount();
+      return out;
+    };
+    expect(lines('transition')).toEqual({ text: 'requestEdit [owns d]\n/ send load', wraps: true });
+    expect(lines('sync')).toEqual({ text, wraps: false });
+  });
+
+  it('wraps the joined label of a bundled transition too', () => {
+    const { container } = renderEdge({
+      kind: 'transition',
+      label: 'pay; ship; cancel the order now',
+      constituentCount: 3,
+    });
+    const chip = container.ownerDocument.querySelector('.dg-edge-chip') as HTMLElement;
+    expect(chip.classList.contains('dg-edge-label-wrap')).toBe(true);
+    expect(chip.textContent).toBe('pay; ship; cancel the\norder now');
+  });
+
   it('renders its own arrow end marker by default', () => {
     const { container } = renderEdge({});
     const path = container.querySelector('path.react-flow__edge-path');

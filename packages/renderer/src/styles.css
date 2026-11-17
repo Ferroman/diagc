@@ -1005,6 +1005,13 @@ button.dg-note-status:hover {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* A kind whose label wraps (edge/label-lines.ts) arrives already broken into
+   lines no longer than the cap, and the layout reserved their room: keep those
+   breaks, and no others, and never ellipsise. */
+.dg-edge-label-wrap {
+  white-space: pre;
+  max-width: none;
+}
 /* a bundled arrow's chip is not a handle: presses fall through to the edge */
 .dg-edge-chip {
   pointer-events: none;

@@ -3,9 +3,11 @@ import {
   ACTIVITY_LANE_TYPE,
   ACTIVITY_START_TYPE,
   LEAF_SIZE,
+  labelLines,
   RESERVED_NODE_ID,
   SM_INITIAL_TYPE,
   SM_STATE_TYPE,
+  wrapsLabel,
   type BoxSize,
   type CompiledView,
   type LayoutSettings,
@@ -327,6 +329,8 @@ function spacingOptionsOf(options: Record<string, string>): Record<string, strin
 const EDGE_LABEL_CHAR = 6;
 const EDGE_LABEL_PAD = 12;
 const EDGE_LABEL_HEIGHT = 18;
+/** one more line of a wrapped label: styles.css .dg-edge-label, 10px at 1.4 */
+const EDGE_LABEL_LINE = 14;
 
 /** The widest single label an edge carries (aggregate edges expose one joined
  * `label`; a sole relation exposes its positioned `labels`). Empty ⇒ no label. */
@@ -343,12 +347,18 @@ export function edgeLabelText(e: ViewEdge): string {
 // between two parallel arrows reads as belonging to either.
 const INLINE_LABEL = { 'elk.edgeLabels.inline': 'true' };
 
-function edgeLabelBox(text: string): BoxSize | undefined {
-  const t = text.trim();
+/** The room an edge's label takes: one line cut at EDGE_LABEL_MAX_CHARS, or, for a
+ * kind whose label wraps (`wrapsLabel`), as many lines as `labelLines` breaks it into. */
+export function edgeLabelBox(e: ViewEdge): BoxSize | undefined {
+  const t = edgeLabelText(e).trim();
   if (t === '') return undefined;
-  // the label is ellipsised at EDGE_LABEL_MAX_CHARS, so no more room than that
-  const chars = Math.min([...t].length, EDGE_LABEL_MAX_CHARS);
-  return { width: Math.round(chars * EDGE_LABEL_CHAR + EDGE_LABEL_PAD), height: EDGE_LABEL_HEIGHT };
+  const lines = wrapsLabel(e.kind) ? labelLines(t, EDGE_LABEL_MAX_CHARS) : [t];
+  // a cut label is ellipsised at EDGE_LABEL_MAX_CHARS, so no more room than that
+  const chars = Math.min(Math.max(...lines.map((l) => [...l].length)), EDGE_LABEL_MAX_CHARS);
+  return {
+    width: Math.round(chars * EDGE_LABEL_CHAR + EDGE_LABEL_PAD),
+    height: EDGE_LABEL_HEIGHT + (lines.length - 1) * EDGE_LABEL_LINE,
+  };
 }
 
 const CAPTION_BELOW = { 'elk.nodeLabels.placement': 'OUTSIDE V_BOTTOM H_CENTER' };
@@ -463,7 +473,7 @@ function flatEdges(view: CompiledView, build: GraphBuild, reversed: Set<string>)
     )
     .map((e) => {
       const text = edgeLabelText(e).trim();
-      const box = edgeLabelBox(text);
+      const box = edgeLabelBox(e);
       // A note points AT what it annotates, which makes every note a source:
       // layered put them all in the first layer beside the start node, and a
       // wide one pushed the start off the left edge. Laid out the other way
@@ -575,9 +585,7 @@ export function buildGraph(
     fromStart,
     emitted: new Set(),
     attachedToContainer: false,
-    loopRooms: selfLoopRooms(view.edges, settings?.direction ?? FALLBACK_DIRECTION, (e) =>
-      edgeLabelBox(edgeLabelText(e)),
-    ),
+    loopRooms: selfLoopRooms(view.edges, settings?.direction ?? FALLBACK_DIRECTION, edgeLabelBox),
   };
 
   // built before the edges are — `toNode` is what fills `emitted`, and what

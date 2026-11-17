@@ -178,6 +178,15 @@ describe('paint', () => {
     expect(text).toMatch(/^[\x20-\x7e\n]*$/);
     expect(text).toContain('reads');
   });
+
+  it('draws a wrapped label a line a row', async () => {
+    const transition = { trigger: 'requestEdit', guard: 'owns d', effect: 'send load' };
+    const { scene, text } = await drawn(pair('transition', transition));
+    const label = [...scene.layout.routes.values()][0]!.label!;
+    expect(text[label.y]).toContain('requestEdit [owns d]');
+    expect(text[label.y + 1]).toContain('/ send load');
+    expect(text.join('\n')).not.toContain('…');
+  });
 });
 
 describe('paint in the DOS style', () => {

@@ -10,6 +10,9 @@ import {
   SM_STATE_TYPE,
   SM_TERMINATE_TYPE,
   formatTransition,
+  LABEL_LINE_MAX,
+  labelLines,
+  wrapsLabel,
   type Column,
   type NotationId,
   type ViewEdge,
@@ -130,7 +133,9 @@ export function boxText(vn: ViewNode, ctx: BoxContext): BoxText {
 }
 
 /** What an edge says beside its line: the relation's labels, or an aggregate's own
- * label, then a causal link's polarity and delay. Cut to `LABEL_MAX`. */
+ * label, then a causal link's polarity and delay. Cut to `LABEL_MAX`, except a kind
+ * whose label wraps (a transition), which goes on to more lines past `LABEL_LINE_MAX`
+ * cells, the lines joined by `\n`. */
 export function edgeText(edge: ViewEdge, glyphs: Glyphs): string {
   const said =
     edge.constituents.length === 1
@@ -142,5 +147,7 @@ export function edgeText(edge: ViewEdge, glyphs: Glyphs): string {
   const parts = [said];
   if (edge.polarity !== undefined) parts.push(`(${edge.polarity})`);
   if (edge.delay === true) parts.push(glyphs.delay);
-  return fitCells(parts.filter((p) => p !== '').join(' '), LABEL_MAX, glyphs.ellipsis);
+  const text = parts.filter((p) => p !== '').join(' ');
+  if (wrapsLabel(edge.kind)) return labelLines(text, LABEL_LINE_MAX, cellWidth).join('\n');
+  return fitCells(text, LABEL_MAX, glyphs.ellipsis);
 }

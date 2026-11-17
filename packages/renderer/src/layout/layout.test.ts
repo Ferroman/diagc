@@ -144,6 +144,21 @@ describe('layoutView', () => {
     expect(big.geometry.get('ext')).toMatchObject({ width: 300, height: 200 });
   });
 
+  it('keys the cache on where a transition label breaks, not only on its length', async () => {
+    // both labels are 32 characters on two lines, but the first's wider line is 20
+    // characters and the second's 22: their reserved boxes differ
+    const machine = (label: { trigger: string; guard: string; effect: string }) => {
+      const m = model('sm-key');
+      const a = m.node('a', { type: 'service' });
+      const b = m.node('b', { type: 'service' });
+      m.relate(a, b, { kind: 'transition', ...label });
+      return compileView(m.toJSON(), {});
+    };
+    const two = await layoutView(machine({ trigger: 'aaaaaaaaaaa', guard: 'bbbbbb', effect: 'ccccccccc' }));
+    const three = await layoutView(machine({ trigger: 'a'.repeat(22), guard: 'b', effect: 'ccc' }));
+    expect(three).not.toBe(two);
+  });
+
   it('keys the cache on aspectRatio, so toggling wrap re-runs elk', async () => {
     const view = compileView(makeModel(), { focus: ['sys'] });
     const plain = await layoutView(view, undefined, {});

@@ -265,6 +265,21 @@ describe('layoutCells', () => {
     }
   });
 
+  it('gives a wrapped label a row for each line, clear of both boxes', async () => {
+    const transition = { trigger: 'requestEdit', guard: 'owns d', effect: 'send load' };
+    const model = { ...pair, relations: [{ id: 'r', from: 'a', to: 'b', kind: 'transition', ...transition }] };
+    const { layout } = await laid(model);
+    const label = routeOf(layout).label!;
+    expect(label.text).toBe('requestEdit [owns d]\n/ send load');
+    const lines = label.text.split('\n');
+    for (const id of ['a', 'b']) {
+      const box = layout.boxes.get(id)!;
+      lines.forEach((line, row) => {
+        for (let i = 0; i < line.length; i++) expect(inside({ x: label.x + i, y: label.y + row }, box)).toBe(false);
+      });
+    }
+  });
+
   it('lays out nothing for an empty view', async () => {
     const { layout } = await laid(modelOf({}));
     expect([layout.width, layout.height, layout.boxes.size]).toEqual([0, 0, 0]);
