@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.1](https://github.com/Ferroman/diagc/compare/v1.10.0...v1.10.1) (2026-11-17)
+
+
+### Bug Fixes
+
+* a long transition label wraps onto more lines instead of being cut ([#181](https://github.com/Ferroman/diagc/issues/181)) ([59eb722](https://github.com/Ferroman/diagc/commit/59eb722cac25d2de263c204d645c2c8d697038c5))
+
 ## [1.10.0](https://github.com/Ferroman/diagc/compare/v1.9.0...v1.10.0) (2026-11-16)
 
 
