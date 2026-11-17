@@ -125,6 +125,41 @@ describe('sizeHintFor, a state-machine state', () => {
     expect(full!.height).toBeGreaterThan(LEAF_SIZE.height);
   });
 
+  // The drawn sizes below were measured in Chrome (StateBody, styles.css): a state's
+  // behaviours sit one to a row at 11px and never wrap, so the box is as wide as its
+  // longest line and 34 + 9 + 15.4 px a line tall.
+  it('reserves the height the box is drawn at, one row a line, however long the lines', () => {
+    const active = [
+      { trigger: 'receiver books a coin', effect: 'reserve the coin' },
+      { trigger: 'booking becomes final', effect: 'the coin is spent' },
+      { trigger: 'booking is released', effect: 'the coin is free again' },
+      { trigger: 'return date arrives', effect: 'the return can start' },
+    ];
+    const hint = sizeHintFor(node({ type: 'sm-state', name: 'ACTIVE', behaviors: active }), plain)!;
+    expect(Math.abs(hint.height - 104)).toBeLessThanOrEqual(2);
+  });
+
+  it('reserves at least the width of its longest line, which the box grows to', () => {
+    const behaviors = [
+      { trigger: 'signature check job', guard: 'still not verified, checks left', effect: 'count the check' },
+    ];
+    const hint = sizeHintFor(node({ type: 'sm-state', name: 'VALIDATION_RETRYING', behaviors }), plain)!;
+    expect(hint.width).toBeGreaterThanOrEqual(364);
+    // leaning wide leaves room on the right of the line; not a column of it
+    expect(hint.width).toBeLessThanOrEqual(410);
+    expect(Math.abs(hint.height - 58)).toBeLessThanOrEqual(2);
+  });
+
+  it('is never narrower than a box is drawn, however short its lines', () => {
+    // .dg-node's 120px minimum is on its content: with padding and border no box is under 142
+    const behaviors = [
+      { trigger: 'entry', effect: 'attempt++' },
+      { trigger: 'do', effect: 'open socket' },
+    ];
+    const hint = sizeHintFor(node({ type: 'sm-state', name: 'Connecting', behaviors }), plain)!;
+    expect(hint.width).toBeGreaterThanOrEqual(142);
+  });
+
   it('leaves a state with a saved size to that size', () => {
     expect(sizeHintFor(node({ type: 'sm-state', behaviors }), saved('n', 200, 200))).toBeUndefined();
   });
