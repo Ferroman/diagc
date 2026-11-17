@@ -1122,13 +1122,20 @@ describe('DiagramEdge between measured nodes', () => {
       );
 
     it('draws a loop in any notation, not only a state machine', () => {
-      const { container } = loopEdge({ kind: 'uses', notation: 'c4', selfLoop: { direction: 'DOWN', index: 0 } });
+      const { container } = loopEdge({
+        kind: 'uses',
+        notation: 'c4',
+        selfLoop: { direction: 'DOWN', index: 0, labelWidth: 0 },
+      });
       const d = container.querySelector('path.react-flow__edge-path')!.getAttribute('d')!;
       expect(d).toBe(selfLoopPath({ x: 50, y: 40, width: 0, height: 0 }, 'DOWN', 0).path);
     });
 
     it('draws a loop, not a zero-length line, with its label at the loop spot', () => {
-      const { container, getByText } = loopEdge({ label: 'tick', selfLoop: { direction: 'RIGHT', index: 0 } });
+      const { container, getByText } = loopEdge({
+        label: 'tick',
+        selfLoop: { direction: 'RIGHT', index: 0, labelWidth: 0 },
+      });
       const d = container.querySelector('path.react-flow__edge-path')!.getAttribute('d')!;
       expect(d).toContain('C');
       const { labelX, labelY } = selfLoopPath({ x: 50, y: 40, width: 0, height: 0 }, 'RIGHT', 0);

@@ -112,7 +112,7 @@ export interface DiagramEdgeData {
    * belong to particular relations and no note exists for the bundle. */
   threatRelation?: string;
   /** a self-loop (source = target): the flow direction picks the side it is drawn on, the index stacks several */
-  selfLoop?: { direction: LayoutDirection; index: number };
+  selfLoop?: { direction: LayoutDirection; index: number; labelWidth: number };
   /** another edge joins the same two nodes: how far this one bows while it floats,
    * px left of its travel (negative: right); see parallelBows */
   parallelBow?: number;

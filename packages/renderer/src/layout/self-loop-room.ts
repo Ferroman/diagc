@@ -1,5 +1,5 @@
 import type { BoxSize, ViewEdge } from '@diagc/core/internal';
-import { LOOP_LABEL_GAP, loopRise } from '../edge/self-loop';
+import { LOOP_LABEL_GAP, loopHalfExtent, loopRise } from '../edge/self-loop';
 
 /** an outside node label elk keeps free beside a box */
 export interface RoomLabel {
@@ -19,7 +19,9 @@ const RIGHT_OF = { 'elk.nodeLabels.placement': 'OUTSIDE H_RIGHT V_CENTER' };
  * left out of the layout (it has no route), and it stands out of the side across
  * the flow (self-loop.ts): above the box in a sideways flow, right of it in an
  * upright one. The room reaches the outermost loop's crown and, when a loop has
- * a label, the widest one, which is centred `LOOP_LABEL_GAP` beyond that crown.
+ * a label, the widest one: centred `LOOP_LABEL_GAP` above that crown, or
+ * starting that far right of it. Beside a box the room is also as tall as a
+ * loop on a short side bulges to.
  */
 export function selfLoopRooms(
   edges: readonly ViewEdge[],
@@ -35,13 +37,18 @@ export function selfLoopRooms(
     const labels = own.map(labelOf).filter((b): b is BoxSize => b !== undefined);
     const width = Math.max(0, ...labels.map((b) => b.width));
     const height = Math.max(0, ...labels.map((b) => b.height));
-    // how far out the room reaches, given the label's extent along that way
-    const out = (extent: number) => rise + (labels.length > 0 ? LOOP_LABEL_GAP + extent / 2 : 0);
+    // how far out the room reaches, given how far the label reaches past the crown's gap
+    const out = (extent: number) => rise + (labels.length > 0 ? LOOP_LABEL_GAP + extent : 0);
     rooms.set(
       id,
       sideways
-        ? { width: Math.max(1, width), height: out(height), text: 'self-loops', layoutOptions: ABOVE }
-        : { width: out(width), height: Math.max(1, height), text: 'self-loops', layoutOptions: RIGHT_OF },
+        ? { width: Math.max(1, width), height: out(height / 2), text: 'self-loops', layoutOptions: ABOVE }
+        : {
+            width: out(width),
+            height: Math.max(2 * loopHalfExtent(0), height),
+            text: 'self-loops',
+            layoutOptions: RIGHT_OF,
+          },
     );
   }
   return rooms;

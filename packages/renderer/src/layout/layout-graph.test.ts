@@ -267,8 +267,8 @@ describe('buildGraph', () => {
       const s = shapeOf(looped(2, 'tick'));
       expect(s.labels).toEqual([
         {
-          width: 28 + 18 + 10 + 18,
-          height: 18,
+          width: 28 + 18 + 10 + 36,
+          height: 32,
           text: 'self-loops',
           layoutOptions: { 'elk.nodeLabels.placement': 'OUTSIDE H_RIGHT V_CENTER' },
         },

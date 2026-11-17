@@ -8,6 +8,7 @@ import {
   type LayoutSettings,
   type Point,
   type ViewNode,
+  SM_REGION_TYPE,
 } from '@diagc/core/internal';
 import {
   buildGraph,
@@ -374,6 +375,9 @@ interface PlanContext {
 // should still fold into a second row/column rather than outgrow the container.
 const ALONG_ROW_ASPECT = 4;
 const ALONG_COLUMN_ASPECT = 0.4;
+// Extremes, for what must stay in one line: a state's regions.
+const ONE_ROW_ASPECT = 1e6;
+const ONE_COLUMN_ASPECT = 1e-6;
 
 /** Arrange each detached group of a level on its own, then pack the blocks. */
 async function arrangeLevel(level: LevelPlan, ctx: PlanContext): Promise<Block> {
@@ -385,10 +389,19 @@ async function arrangeLevel(level: LevelPlan, ctx: PlanContext): Promise<Block> 
   // a layer with the connected nodes, where extent along the layer is nearly free
   // and extent across it pushes every later layer away — so it runs with the
   // layer: down the column when the flow is horizontal, along the row when vertical.
+  // A state's regions are neither: they lie across the flow whatever their
+  // number, as arrangeStateMachines then lines them up — packed the other way,
+  // the state would keep the room of a stack it no longer holds.
   const direction = ctx.settings?.direction ?? FALLBACK_DIRECTION;
-  const aspect =
-    level.attached.length > 0
-      ? direction === 'DOWN' || direction === 'UP'
+  const upright = direction === 'DOWN' || direction === 'UP';
+  const regionsOnly =
+    level.detached.length > 0 && level.detached.every((g) => g.length === 1 && g[0]!.node.type === SM_REGION_TYPE);
+  const aspect = regionsOnly
+    ? upright
+      ? ONE_ROW_ASPECT
+      : ONE_COLUMN_ASPECT
+    : level.attached.length > 0
+      ? upright
         ? ALONG_ROW_ASPECT
         : ALONG_COLUMN_ASPECT
       : ctx.settings?.aspectRatio;

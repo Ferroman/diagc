@@ -17,9 +17,25 @@ describe('selfLoopPath', () => {
 
   it('puts the loop on the right side for a vertical flow', () => {
     const { path, labelX } = selfLoopPath(box, 'DOWN');
-    expect(path.startsWith('M 100 12 ')).toBe(true);
-    expect(path.endsWith(' 100 28')).toBe(true);
+    expect(path.startsWith('M 100 10 ')).toBe(true);
+    expect(path.endsWith(' 100 30')).toBe(true);
     expect(labelX).toBeGreaterThan(128);
+  });
+
+  it('is as round on a short side as on a long one: it bulges past its ends', () => {
+    const curve = selfLoopCurve(box, 'DOWN');
+    const ys = Array.from({ length: 21 }, (_, i) => curve.point(i / 20).y);
+    expect(Math.min(...ys)).toBeLessThan(6);
+    expect(Math.max(...ys)).toBeGreaterThan(34);
+    // a long side has the span already
+    expect(selfLoopPath({ ...box, width: 200 }, 'RIGHT').path).toBe(
+      'M 60 0 C 60 -37.333333333333336 140 -37.333333333333336 140 0',
+    );
+  });
+
+  it('starts a label beside the loop past its crown, and centres one above it', () => {
+    expect(selfLoopPath(box, 'DOWN', 0, 60).labelX).toBe(100 + 28 + 10 + 30);
+    expect(selfLoopPath(box, 'RIGHT', 0, 60).labelX).toBe(50);
   });
 
   it('has a crown 28 px out on the curve', () => {

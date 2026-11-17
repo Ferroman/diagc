@@ -373,7 +373,9 @@ describe('buildEdgeData', () => {
   it('hands a self-loop the flow direction and its place among the node’s loops', () => {
     const loop = viewEdge({ id: 'a=>a:|r1', to: 'a' });
     const ctx = edgeCtx({ flowDirection: 'DOWN', selfLoopIndex: new Map([[loop.id, 2]]) });
-    expect(buildEdgeData(loop, ctx).selfLoop).toEqual({ direction: 'DOWN', index: 2 });
+    expect(buildEdgeData(loop, ctx).selfLoop).toEqual({ direction: 'DOWN', index: 2, labelWidth: 0 });
+    const labelled = buildEdgeData({ ...loop, label: 'tick' }, ctx).selfLoop!;
+    expect(labelled.labelWidth).toBeGreaterThan(0); // its label starts past the loop's crown
     expect(buildEdgeData(viewEdge(), ctx).selfLoop).toBeUndefined();
   });
 

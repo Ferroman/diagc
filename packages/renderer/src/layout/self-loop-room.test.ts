@@ -23,9 +23,10 @@ describe('selfLoopRooms', () => {
     expect(rooms.get('a')?.layoutOptions).toEqual({ 'elk.nodeLabels.placement': 'OUTSIDE V_TOP H_CENTER' });
   });
 
-  it('sits right of the box in an upright flow', () => {
+  it('sits right of the box in an upright flow, the label starting past the crown', () => {
     const rooms = selfLoopRooms([edge('1', 'a')], 'UP', () => box);
-    expect(rooms.get('a')).toMatchObject({ width: 28 + 10 + 20, height: 18 });
+    // as tall as a loop on a short side bulges to
+    expect(rooms.get('a')).toMatchObject({ width: 28 + 10 + 40, height: 32 });
     expect(rooms.get('a')?.layoutOptions).toEqual({ 'elk.nodeLabels.placement': 'OUTSIDE H_RIGHT V_CENTER' });
   });
 });
