@@ -59,7 +59,7 @@ export function LayoutSection(props: LayoutSectionProps) {
           : {
               settings,
               onChange: editing ? canvasEditing.setLayoutSettings : arrangement.previewLayoutSettings,
-              defaultDirection: defaultLayoutDirection(model, activePlane),
+              defaultDirection: defaultLayoutDirection(model),
               algorithmLocked,
               defaultAlgorithm: notationProfile(notation).defaultAlgorithm,
             }

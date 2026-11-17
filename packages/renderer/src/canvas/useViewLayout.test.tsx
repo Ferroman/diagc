@@ -186,23 +186,6 @@ describe('useViewLayout', () => {
     expect(result.current.arrangedGeometry!.get('l1')?.y).toBeGreaterThan(0);
   });
 
-  it("flows right on a state machine's plane and leaves the plane beside it down", async () => {
-    const m = model('both');
-    m.plane('arch', { name: 'Architecture', notation: 'c4' });
-    m.node('api', { type: 'service', plane: 'arch' });
-    m.stateMachine('order', { plane: 'life' }).state('s', 'S');
-    const json = m.toJSON();
-    const flowOn = async (plane: string) => {
-      const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
-        initialProps: inputFor(json, { plane, compiled: compileView(json, { plane }) }),
-      });
-      await waitFor(() => expect(result.current.arrangedGeometry).not.toBeNull());
-      return result.current.flowDirection;
-    };
-    expect(await flowOn('arch')).toBe('DOWN');
-    expect(await flowOn('life')).toBe('RIGHT');
-  });
-
   it("stacks a state machine's regions across the flow, and leaves the same shapes alone without sm- nodes", async () => {
     const m = model('sm');
     const s = m.stateMachine('mc').state('s', 'S');
@@ -225,14 +208,15 @@ describe('useViewLayout', () => {
       layout: () => ({ geometry, routes: new Map(), labelSpots: new Map(), algorithm: 'notation' }),
     };
     const pins = Object.fromEntries(smJson.nodes.map((n) => [n.id, 'expanded' as const]));
+    const runsRight: LayoutOverlay = { version: 1, planes: {}, settings: { default: { direction: 'RIGHT' } } };
     const run = (json: DiagramModel) =>
       renderHook((p: ViewLayoutInput) => useViewLayout(p), {
-        initialProps: inputFor(json, { profile, compiled: compileView(json, { pins }) }),
+        initialProps: inputFor(json, { profile, layout: runsRight, compiled: compileView(json, { pins }) }),
       }).result;
 
     const sm = run(smJson);
     await waitFor(() => expect(sm.current.arrangedGeometry).not.toBeNull());
-    expect(sm.current.flowDirection).toBe('RIGHT'); // the machine's default
+    expect(sm.current.flowDirection).toBe('RIGHT');
     const g = sm.current.arrangedGeometry!;
     expect(g.get('r2')).toMatchObject({ x: g.get('r1')!.x, y: g.get('r1')!.y + g.get('r1')!.height });
     expect(sm.current.regionSeparators.get('r2')).toBe('top');

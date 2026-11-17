@@ -343,8 +343,7 @@ export interface LayoutSettings {
   /** elk.algorithm — 'layered' (default) | 'force' | 'stress' | 'mrtree' | 'radial' | 'rectpacking' */
   algorithm?: string;
   /** elk.direction for layered — 'DOWN' | 'RIGHT' | 'LEFT' | 'UP'. Absent ⇒
-   * `defaultLayoutDirection(model, plane)`: down, or right where activity frames are drawn
-   * or the plane draws a state machine. */
+   * `defaultLayoutDirection(model)`: down, or right where activity frames are drawn. */
   direction?: string;
   /** base node-node spacing in px; between-layers spacing is derived from it */
   spacing?: number;

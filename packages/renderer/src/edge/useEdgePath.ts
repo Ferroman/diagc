@@ -114,14 +114,14 @@ function routedPath(route: Point[], anchors: EdgeAnchors, data: DiagramEdgeData)
 }
 
 // A self-loop has no route (the layout leaves it out) and no facing side to
-// float to, so it is a loop standing out of the box. Its label rides above the
+// float to, so it is a loop standing out of the box. Its label rides beyond the
 // loop's crown, which is also where a bundle's joined label sits.
 function loopedPath(anchors: EdgeAnchors, data: DiagramEdgeData | undefined): Omit<EdgePath, 'renderPath'> {
   const direction = data?.selfLoop?.direction ?? 'RIGHT';
   const index = data?.selfLoop?.index ?? 0;
   // unmeasured (first frame): the loop stands on the handle point
   const box = anchors.source?.rect ?? { x: anchors.from.x, y: anchors.from.y, width: 0, height: 0 };
-  const loop = selfLoopPath(box, direction, index);
+  const loop = selfLoopPath(box, direction, index, data?.selfLoop?.labelWidth);
   const spot = { x: loop.labelX, y: loop.labelY };
   return { path: loop.path, curve: selfLoopCurve(box, direction, index), label: spot, labelSpot: spot };
 }

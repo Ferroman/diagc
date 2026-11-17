@@ -52,6 +52,7 @@ import type { DiagramEdgeData } from '../edge/DiagramEdge';
 import type { DiagramNodeData } from '../node/DiagramNode';
 import { behaviorLines } from '../node/behavior-lines';
 import type { RegionSeparator } from '../layout/state-machine-layout';
+import { edgeLabelBox } from '../layout/layout-graph';
 
 /** per-node data inputs the view threads in; kept as one object so the cache
  * can compare it field-by-field with === and skip rebuilds when nothing moved */
@@ -341,7 +342,13 @@ export function buildEdgeData(e: ViewEdge, ctx: EdgeDataContext): DiagramEdgeDat
     if (ctx.editing) bindRelationEdits(data, e, relation, ctx);
     else bindViewLabelMoves(data, relation, ctx);
   }
-  if (e.from === e.to) data.selfLoop = { direction: ctx.flowDirection, index: ctx.selfLoopIndex.get(e.id) ?? 0 };
+  if (e.from === e.to) {
+    data.selfLoop = {
+      direction: ctx.flowDirection,
+      index: ctx.selfLoopIndex.get(e.id) ?? 0,
+      labelWidth: edgeLabelBox(e)?.width ?? 0,
+    };
+  }
   const bow = ctx.parallelBow.get(e.id);
   if (bow !== undefined) data.parallelBow = bow;
   if (ctx.routing !== undefined) addRoute(data, e, ctx, ctx.routing);
