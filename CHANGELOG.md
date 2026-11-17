@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.2](https://github.com/Ferroman/diagc/compare/v1.10.1...v1.10.2) (2026-11-17)
+
+
+### Bug Fixes
+
+* **renderer:** a state with behaviours is laid out at the size it is drawn ([#184](https://github.com/Ferroman/diagc/issues/184)) ([e4fe624](https://github.com/Ferroman/diagc/commit/e4fe624b8a40bcdd2ea7efbf62f8fe54023696f2))
+
 ## [1.10.1](https://github.com/Ferroman/diagc/compare/v1.10.0...v1.10.1) (2026-11-17)
 
 
