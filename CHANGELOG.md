@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/Ferroman/diagc/compare/v1.10.2...v1.11.0) (2026-11-17)
+
+
+### Features
+
+* a state machine is laid out top to bottom by default ([#186](https://github.com/Ferroman/diagc/issues/186)) ([039692b](https://github.com/Ferroman/diagc/commit/039692b9d97bfe43e3c138e9f997c674eced0daf))
+
 ## [1.10.2](https://github.com/Ferroman/diagc/compare/v1.10.1...v1.10.2) (2026-11-17)
 
 
