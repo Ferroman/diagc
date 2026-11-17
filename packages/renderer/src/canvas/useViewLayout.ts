@@ -317,13 +317,13 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     [input.layout, input.model, input.plane],
   );
 
-  // What the layout actually runs with: the plane's settings, with the default
-  // direction resolved in where they name none (down — or right for an activity
-  // model, whose lanes are horizontal bands, and on a state-machine plane). Kept apart from
+  // What the layout actually runs with: the plane's settings, with the MODEL's
+  // default direction resolved in where they name none (down — or right for an
+  // activity model, whose lanes are horizontal bands). Kept apart from
   // `layoutSettings` so callers still see exactly what the sidecar says, and
   // keyed on the direction string so an edit (a new model object) does not by
   // itself re-run the layout.
-  const modelDirection = defaultLayoutDirection(input.model, input.plane);
+  const modelDirection = defaultLayoutDirection(input.model);
   const partitioned = input.profile.partitionOf !== undefined;
   const notationAlgorithm = input.profile.defaultAlgorithm;
   const runSettings = useMemo(

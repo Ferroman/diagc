@@ -93,8 +93,8 @@ export interface ElkShape {
 }
 
 /** The flow direction when the settings name none. Callers that know the model
- * resolve `defaultLayoutDirection(model, plane)` into the settings first (useViewLayout);
- * this is what that resolves to for everything but an activity model or a state-machine plane. */
+ * resolve `defaultLayoutDirection(model)` into the settings first (useViewLayout);
+ * this is what that resolves to for everything but an activity model. */
 export const FALLBACK_DIRECTION = 'DOWN';
 
 /** elk's default and ours: the one algorithm assumed to lay out anything we can
