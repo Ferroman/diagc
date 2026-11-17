@@ -5,7 +5,15 @@ import { Canvas, type CellPoint, type Color, type Style } from './canvas';
 import type { BoxLine, BoxText } from './content';
 import { BLACK, castShadows, CYAN, DESKTOP, dosFill, dosSlots, inkOn, mixed, WHITE, YELLOW, type Rgb } from './dos';
 import { DOWN, LEFT, RIGHT, UP, type ArrowDirection, type Corner, type Glyphs, type Weight } from './glyphs';
-import { STEP, towardBox, type BoxGeometry, type FishDrawing, type GitDrawing } from './layout';
+import {
+  labelExtent,
+  STEP,
+  towardBox,
+  type BoxGeometry,
+  type FishDrawing,
+  type GitDrawing,
+  type Route,
+} from './layout';
 import type { Scene } from './scene';
 import { kindLook, typeLook, type EndMark, type LineStyle, type TextShape } from './vocabulary';
 import { cellWidth } from './width';
@@ -347,6 +355,15 @@ const labelStyle = (p: Painter, edge: ViewEdge): Style => {
   return p.dos === undefined ? style : { ...style, fg: YELLOW };
 };
 
+/** A label's lines, one a row, each centred in the room the layout gave the widest. */
+function drawLabel(p: Painter, label: NonNullable<Route['label']>, style: Style): void {
+  const { width } = labelExtent(label.text);
+  label.text.split('\n').forEach((line, i) => {
+    const x = label.x + Math.floor((width - cellWidth(line)) / 2);
+    p.canvas.text({ x, y: label.y + i }, line, style);
+  });
+}
+
 /**
  * The scene as a canvas, in layers: open containers' frames from the outside in,
  * then the edges' lines, then the boxes over them (a box clears what is under it)
@@ -388,7 +405,7 @@ export function paint(scene: Scene, options: PaintOptions): Canvas {
   for (const { id, g, frame } of drawn) (frame ? drawTitle : drawBox)(p, id, g);
   for (const edge of edges) {
     const label = layout.routes.get(edge.id)!.label;
-    if (label !== undefined) p.canvas.text(label, label.text, labelStyle(p, edge));
+    if (label !== undefined) drawLabel(p, label, labelStyle(p, edge));
     drawEnd(p, edge, 'start');
     drawEnd(p, edge, 'end');
   }

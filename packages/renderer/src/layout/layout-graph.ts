@@ -3,9 +3,11 @@ import {
   ACTIVITY_LANE_TYPE,
   ACTIVITY_START_TYPE,
   LEAF_SIZE,
+  labelLines,
   RESERVED_NODE_ID,
   SM_INITIAL_TYPE,
   SM_STATE_TYPE,
+  wrapsLabel,
   type BoxSize,
   type CompiledView,
   type LayoutSettings,
@@ -14,7 +16,6 @@ import {
 } from '@diagc/core/internal';
 import { ACTIVITY_LAYOUT } from './activity-frame';
 import { EDGE_LABEL_MAX_CHARS } from '../node/label-size';
-import { labelLines, wrapsLabel } from '../edge/label-lines';
 import { behaviorCompartmentHeight } from '../node/behavior-lines';
 import { selfLoopRooms, type RoomLabel } from './self-loop-room';
 
@@ -351,7 +352,7 @@ const INLINE_LABEL = { 'elk.edgeLabels.inline': 'true' };
 export function edgeLabelBox(e: ViewEdge): BoxSize | undefined {
   const t = edgeLabelText(e).trim();
   if (t === '') return undefined;
-  const lines = wrapsLabel(e.kind) ? labelLines(t) : [t];
+  const lines = wrapsLabel(e.kind) ? labelLines(t, EDGE_LABEL_MAX_CHARS) : [t];
   // a cut label is ellipsised at EDGE_LABEL_MAX_CHARS, so no more room than that
   const chars = Math.min(Math.max(...lines.map((l) => [...l].length)), EDGE_LABEL_MAX_CHARS);
   return {

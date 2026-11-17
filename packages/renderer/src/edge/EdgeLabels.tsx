@@ -1,9 +1,9 @@
 import { EdgeLabelRenderer, useReactFlow } from '@xyflow/react';
 import { useRef, useState, type PointerEvent, type ReactElement } from 'react';
-import type { EdgeLabel, EdgeLabelSide, Point } from '@diagc/core/internal';
+import { labelLines, wrapsLabel, type EdgeLabel, type EdgeLabelSide, type Point } from '@diagc/core/internal';
 import type { DiagramEdgeData } from './DiagramEdge';
 import { nearestOnCurve, type EdgeCurve } from './edge-geometry';
-import { labelLines, wrapsLabel } from './label-lines';
+import { EDGE_LABEL_MAX_CHARS } from '../node/label-size';
 
 /** perpendicular offset for top/bottom positioned labels (px) */
 const LABEL_OFFSET = 14;
@@ -71,7 +71,7 @@ export function EdgeLabels({
   // a wrapping kind draws the lines the layout reserved room for (labelLines);
   // any other is one line, ellipsised by the chip's own max-width
   const wraps = wrapsLabel(data.kind);
-  const shown = (text: string): string => (wraps ? labelLines(text).join('\n') : text);
+  const shown = (text: string): string => (wraps ? labelLines(text, EDGE_LABEL_MAX_CHARS).join('\n') : text);
   const wrapClass = wraps ? ' dg-edge-label-wrap' : '';
   return (
     <>

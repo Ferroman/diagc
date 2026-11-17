@@ -14,7 +14,14 @@ export type BoxGeometry = CellRect;
  * slanted instead, one cell a row, and end on the line they meet. */
 export interface Route {
   points: CellPoint[];
+  /** the label's top left cell; a wrapped label's `text` holds its lines split by `\n` */
   label?: CellPoint & { text: string };
+}
+
+/** The cells a label takes: its widest line, and a row for each line. */
+export function labelExtent(text: string): { width: number; height: number } {
+  const lines = text.split('\n');
+  return { width: Math.max(...lines.map(cellWidth)), height: lines.length };
 }
 
 /** What a fishbone is drawn with besides boxes and routes, where it is drawn as the
@@ -138,7 +145,7 @@ function elkEdges(view: CompiledView, labels: ReadonlyMap<string, string>): ElkE
       id: e.id,
       sources: [e.from],
       targets: [e.to],
-      ...(text !== '' ? { labels: [{ text, width: cellWidth(text), height: 1 }] } : {}),
+      ...(text !== '' ? { labels: [{ text, ...labelExtent(text) }] } : {}),
     };
   });
 }
@@ -374,7 +381,10 @@ function normalize(boxes: Map<string, BoxGeometry>, routes: Map<string, Route>):
   for (const b of boxes.values()) span(b.x, b.x + b.width - 1, b.y, b.y + b.height - 1);
   for (const r of routes.values()) {
     for (const p of r.points) span(p.x, p.x, p.y, p.y);
-    if (r.label !== undefined) span(r.label.x, r.label.x + cellWidth(r.label.text) - 1, r.label.y, r.label.y);
+    if (r.label !== undefined) {
+      const { width, height } = labelExtent(r.label.text);
+      span(r.label.x, r.label.x + width - 1, r.label.y, r.label.y + height - 1);
+    }
   }
   if (xs.length === 0) return { width: 0, height: 0, boxes, routes };
   const dx = -Math.min(0, ...xs);

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SM_TRANSITION_KIND } from '@diagc/core/internal';
-import { labelLines, wrapsLabel } from './label-lines';
-import { EDGE_LABEL_MAX_CHARS } from '../node/label-size';
+import { LABEL_LINE_MAX, labelLines, wrapsLabel } from './label-lines';
+import { SM_TRANSITION_KIND } from './state-machine';
 
 describe('wrapsLabel', () => {
   it('wraps a transition and cuts every other kind', () => {
@@ -32,14 +31,20 @@ describe('labelLines', () => {
     const text = 'autosaveFires [dirty and not saving] / startSave then notify the watchers';
     const lines = labelLines(text);
     expect(lines.length).toBeGreaterThan(2);
-    for (const line of lines) expect([...line].length).toBeLessThanOrEqual(EDGE_LABEL_MAX_CHARS);
+    for (const line of lines) expect([...line].length).toBeLessThanOrEqual(LABEL_LINE_MAX);
     expect(lines.join(' ')).toBe(text);
   });
 
   it('cuts a word longer than a line into pieces', () => {
-    const word = 'x'.repeat(EDGE_LABEL_MAX_CHARS + 5);
+    const word = 'x'.repeat(LABEL_LINE_MAX + 5);
     // the slash cannot ride with an effect that fills a line on its own
-    expect(labelLines(`go / ${word}`)).toEqual(['go /', 'x'.repeat(EDGE_LABEL_MAX_CHARS), 'xxxxx']);
+    expect(labelLines(`go / ${word}`)).toEqual(['go /', 'x'.repeat(LABEL_LINE_MAX), 'xxxxx']);
+  });
+
+  it('measures a line the way it is told to, so wide characters count as two cells', () => {
+    const cells = (t: string): number => [...t].reduce((n, ch) => n + (ch === '漢' ? 2 : 1), 0);
+    expect(labelLines('go 漢漢漢', 6, cells)).toEqual(['go', '漢漢漢']);
+    expect(labelLines('漢漢漢漢', 6, cells)).toEqual(['漢漢漢', '漢']);
   });
 
   it('collapses runs of spaces', () => {

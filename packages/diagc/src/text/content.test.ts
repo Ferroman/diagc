@@ -150,6 +150,16 @@ describe('edgeText', () => {
     expect(edgeText(edge([relation()], { delay: true }), ASCII)).toBe('||');
   });
 
+  it('wraps a long transition onto more lines, and keeps another kind on one', () => {
+    const text = 'requestEdit [owns d] / send load';
+    const t = relation({ kind: 'transition', labels: [{ id: 'l', text }] });
+    expect(edgeText(edge([t], { kind: 'transition', labels: t.labels! }), UNICODE)).toBe(
+      'requestEdit [owns d]\n/ send load',
+    );
+    const s = relation({ labels: [{ id: 'l', text }] });
+    expect(edgeText(edge([s], { labels: s.labels! }), UNICODE)).toBe(text);
+  });
+
   it('uses an aggregate’s own label', () => {
     expect(edgeText(edge([relation(), relation({ id: 's' })], { label: '3 relations' }), UNICODE)).toBe('3 relations');
   });
