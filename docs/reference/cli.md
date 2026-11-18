@@ -13,13 +13,13 @@ npm i -D @diagc/core     # optional: types for .diagram.ts authoring
 
 Node ≥ 22. The install script ([`install.sh`](../../install.sh), macOS and Linux) needs only `curl` and `tar`: it uses the Node on your `PATH` when that is new enough, and otherwise downloads the current Node 24 into its own directory, checked against nodejs.org's published checksums. Nothing needs root.
 
-| Variable | Default | Effect |
-| --- | --- | --- |
-| `DIAGC_VERSION` | `latest` | the `@diagc/cli` release to install |
-| `DIAGC_HOME` | `~/.local/share/diagc` | where the package (and a downloaded Node) go |
-| `DIAGC_BIN_DIR` | `~/.local/bin` | where the `diagc` launcher goes |
-| `DIAGC_NODE` | | `download` fetches a private Node even when the `PATH` has one |
-| `DIAGC_NODE_MIRROR` | `https://nodejs.org/dist` | where Node is downloaded from |
+| Variable            | Default                   | Effect                                                         |
+| ------------------- | ------------------------- | -------------------------------------------------------------- |
+| `DIAGC_VERSION`     | `latest`                  | the `@diagc/cli` release to install                            |
+| `DIAGC_HOME`        | `~/.local/share/diagc`    | where the package (and a downloaded Node) go                   |
+| `DIAGC_BIN_DIR`     | `~/.local/bin`            | where the `diagc` launcher goes                                |
+| `DIAGC_NODE`        |                           | `download` fetches a private Node even when the `PATH` has one |
+| `DIAGC_NODE_MIRROR` | `https://nodejs.org/dist` | where Node is downloaded from                                  |
 
 Re-running the script updates to the latest release. To uninstall, delete `DIAGC_HOME` and the launcher.
 
@@ -102,7 +102,7 @@ diagc diff v1.0..v2.0 checkout     # only these diagrams, by name
 ```
 
 - **Input:** the `.diagrams/` tree at each ref, read with `git archive` (nothing is checked out), and every `*.diagram.{ts,json}` in it compiled in memory. Diagrams pair up by name.
-- **Output:** the change list on stdout (`+` added, `-` removed, `~` changed), or with `--json` one object `{ from, to, diagrams: [{ name, status, diff?, error? }] }`. When anything changed, it also writes to `.diagrams/diff/<from>..<to>/` (or `--out`): a page and a PNG per side of each changed diagram with the changes outlined, `index.html` with the two sides next to each other, and `summary.md` for an ADR. `--no-images` skips the PNGs; they also need Chrome, as `publish` does.
+- **Output:** the change list on stdout (`+` added, `-` removed, `~` changed), or with `--json` one object `{ from, to, diagrams: [{ name, status, diff?, error? }] }`. When anything changed, it also writes to `.diagrams/diff/<from>..<to>/` (or `--out`): a page and a PNG per side of each changed diagram with the changes outlined; for a diagram both refs have, `<name>.diff.html` with both versions in one picture and a PNG of it per plane that shows a change; `index.html` with each change list beside its combined picture; and `summary.md` for an ADR. `--no-images` skips the PNGs; they also need Chrome, as `publish` does.
 - **What it cannot compare:** a diagram that does not compile at either side is listed as not compared, with why, on stdout, in `index.html` and in `summary.md`. A layout or drawings sidecar that cannot be read leaves the diagram compared but drawn without it, and is named on stderr, in `index.html` and in `summary.md`.
 - **For a comment elsewhere:** `--labels main,#12` names the two sides in place of the refs, and `--image-url 'https://host/pr-12/{path}'` makes `summary.md` link its images there (`{path}` is each PNG's path under the output directory). The [pull-request action](../how-to/show-what-changed.md#show-it-on-every-pull-request) uses both.
 - **Names:** after the range, as `eject` reads them (`shop`, `shop.diagram.json` or `.diagrams/src/shop.diagram.json`); one that matches no diagram at either side exits `1`.
@@ -231,13 +231,13 @@ diagc eject shop
 
 Every refusal leaves `.diagrams/src` exactly as it was — nothing is written, nothing is deleted:
 
-| Case | What happens |
-| --- | --- |
-| No `<name>.diagram.json` | Refuses: no such diagram. |
-| `<name>.diagram.ts` already exists | Refuses: already TypeScript-owned. |
+| Case                                                                                          | What happens                                                                                                    |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| No `<name>.diagram.json`                                                                      | Refuses: no such diagram.                                                                                       |
+| `<name>.diagram.ts` already exists                                                            | Refuses: already TypeScript-owned.                                                                              |
 | The JSON does not parse, fails validation, or holds a value the generated code cannot express | Refuses, naming the parse error, listing the validation issues, or naming the diagram and the underlying error. |
-| The generated source fails to execute | Refuses, surfacing the underlying execution error. |
-| The generated source executes but rebuilds a model that differs from the JSON | Refuses, naming the paths where the two models first differ. |
+| The generated source fails to execute                                                         | Refuses, surfacing the underlying execution error.                                                              |
+| The generated source executes but rebuilds a model that differs from the JSON                 | Refuses, naming the paths where the two models first differ.                                                    |
 
 See [Eject a diagram to TypeScript](../how-to/eject-to-typescript.md) for the studio side and
 the crash-recovery note (a crash between writing the TS and deleting the JSON leaves both —
@@ -266,45 +266,45 @@ diagc guide all        # everything
 
 A command takes only the flags its row lists; any other exits `1` with the usage, as an unknown flag does, naming the commands that take it. Two flags go with any command, or none: `--help` (`-h`) prints the usage, and `--version` the version number alone, and both exit `0`.
 
-| Flag | Applies to | Default | Meaning |
-| --- | --- | --- | --- |
-| `--out <dir>` | `compile`, `watch`, `publish`, `eject`, `diff` | `.diagrams/.artifacts` (`diff`: `.diagrams/diff/<from>..<to>`) | Where artifacts are written — for `publish`, the artifacts only, its pages and images still go under `.diagrams/`; for `eject`, the dir its post-swap recompile writes into; for `diff`, its pages and images. |
-| `--no-images` | `publish`, `diff` | off | Skip PNG export; write HTML only. |
-| `--single-file` | `publish` | off | Write every page whole, the viewer inside it, instead of one shared `diagc-viewer/` folder beside the pages. |
-| `--link <url>` | `publish` | none | Link the index header to this `http(s)` address. |
-| `--style <id>` | `publish`, `tui` | each diagram's own | `publish`: draw the PNGs in this [style preset](model.md#style-presets); a page keeps its diagram's own style. `tui`: draw every diagram in `dos` or `clean`, the two styles a terminal has. |
-| `--theme <light\|dark>` | `publish` | `light` | Draw the PNGs in this theme; a page keeps following its reader's. |
-| `--plane <id>` | `show` | the first | Draw this plane. |
-| `--layers <a,b>` | `show` | the plane's own | Draw these layers in place of the plane's; `''` for none. |
-| `--depth <n>` | `show` | every group open | Open only the top `n` levels of groups; `0` folds them all. |
-| `--root <id>` | `show` | none | Draw this group's inside only. |
-| `--horizontal` | `show` | down the screen | Draw a git graph across the screen, a row per lane, as the page draws it. |
-| `--ascii` | `show` | off | Plain ASCII in place of box-drawing characters. |
-| `--color`, `--no-color` | `show` | colour on a terminal | Colour the picture, or do not, whatever stdout is. |
-| `--labels <a,b>` | `diff` | the refs | Names for the before and after sides. |
-| `--image-url <template>` | `diff` | relative | `summary.md`'s image links; `{path}` stands for each PNG's path. |
-| `--json` | `lint`, `diff` | off | Print the findings (lint) or the changes (diff) as JSON. |
-| `--type <type>` | `init` | `basic` | Which starter to copy. |
-| `--agents` | `init` | off | Write the coding-agent block into `AGENTS.md` / `CLAUDE.md`, and the Claude Code skill where there is a `.claude/` folder or a `CLAUDE.md`. |
-| `--update-includes` | `compile`, `publish` | off | Refetch every remote `include`, vendor it under `.diagrams/includes/`, and rewrite `.diagrams/includes.lock.json`. Entries the run didn't touch are pruned only when every source compiled, and on `compile` only with no `files...` given (a full-tree run); `publish` always compiles the whole tree. |
+| Flag                     | Applies to                                     | Default                                                        | Meaning                                                                                                                                                                                                                                                                                                 |
+| ------------------------ | ---------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--out <dir>`            | `compile`, `watch`, `publish`, `eject`, `diff` | `.diagrams/.artifacts` (`diff`: `.diagrams/diff/<from>..<to>`) | Where artifacts are written — for `publish`, the artifacts only, its pages and images still go under `.diagrams/`; for `eject`, the dir its post-swap recompile writes into; for `diff`, its pages and images.                                                                                          |
+| `--no-images`            | `publish`, `diff`                              | off                                                            | Skip PNG export; write HTML only.                                                                                                                                                                                                                                                                       |
+| `--single-file`          | `publish`                                      | off                                                            | Write every page whole, the viewer inside it, instead of one shared `diagc-viewer/` folder beside the pages.                                                                                                                                                                                            |
+| `--link <url>`           | `publish`                                      | none                                                           | Link the index header to this `http(s)` address.                                                                                                                                                                                                                                                        |
+| `--style <id>`           | `publish`, `tui`                               | each diagram's own                                             | `publish`: draw the PNGs in this [style preset](model.md#style-presets); a page keeps its diagram's own style. `tui`: draw every diagram in `dos` or `clean`, the two styles a terminal has.                                                                                                            |
+| `--theme <light\|dark>`  | `publish`                                      | `light`                                                        | Draw the PNGs in this theme; a page keeps following its reader's.                                                                                                                                                                                                                                       |
+| `--plane <id>`           | `show`                                         | the first                                                      | Draw this plane.                                                                                                                                                                                                                                                                                        |
+| `--layers <a,b>`         | `show`                                         | the plane's own                                                | Draw these layers in place of the plane's; `''` for none.                                                                                                                                                                                                                                               |
+| `--depth <n>`            | `show`                                         | every group open                                               | Open only the top `n` levels of groups; `0` folds them all.                                                                                                                                                                                                                                             |
+| `--root <id>`            | `show`                                         | none                                                           | Draw this group's inside only.                                                                                                                                                                                                                                                                          |
+| `--horizontal`           | `show`                                         | down the screen                                                | Draw a git graph across the screen, a row per lane, as the page draws it.                                                                                                                                                                                                                               |
+| `--ascii`                | `show`                                         | off                                                            | Plain ASCII in place of box-drawing characters.                                                                                                                                                                                                                                                         |
+| `--color`, `--no-color`  | `show`                                         | colour on a terminal                                           | Colour the picture, or do not, whatever stdout is.                                                                                                                                                                                                                                                      |
+| `--labels <a,b>`         | `diff`                                         | the refs                                                       | Names for the before and after sides.                                                                                                                                                                                                                                                                   |
+| `--image-url <template>` | `diff`                                         | relative                                                       | `summary.md`'s image links; `{path}` stands for each PNG's path.                                                                                                                                                                                                                                        |
+| `--json`                 | `lint`, `diff`                                 | off                                                            | Print the findings (lint) or the changes (diff) as JSON.                                                                                                                                                                                                                                                |
+| `--type <type>`          | `init`                                         | `basic`                                                        | Which starter to copy.                                                                                                                                                                                                                                                                                  |
+| `--agents`               | `init`                                         | off                                                            | Write the coding-agent block into `AGENTS.md` / `CLAUDE.md`, and the Claude Code skill where there is a `.claude/` folder or a `CLAUDE.md`.                                                                                                                                                             |
+| `--update-includes`      | `compile`, `publish`                           | off                                                            | Refetch every remote `include`, vendor it under `.diagrams/includes/`, and rewrite `.diagrams/includes.lock.json`. Entries the run didn't touch are pruned only when every source compiled, and on `compile` only with no `files...` given (a full-tree run); `publish` always compiles the whole tree. |
 
 Anything not recognised as a flag is collected as `files...`: any number for `compile`, `lint`, `publish`, `diff` and `guide`, one at most for `watch`, `eject`, `init` and `tui`, one for `show`, none for `studio`.
 
 ## Environment variables
 
-| Variable | Read by | Meaning |
-| --- | --- | --- |
-| `CHROME_PATH` | `publish`, `diff` | Path to a Chrome/Chromium binary for PNG export. Checked before the system locations and Playwright's browser cache. |
-| `PLAYWRIGHT_BROWSERS_PATH` | `publish`, `diff` | Where Playwright keeps its browsers, if not the platform's cache; `publish` looks there for a Chromium installed by `npx playwright-core install chromium`. |
-| `DIAGC_AUTH_TOKENS` | `--update-includes` | Credentials for private include hosts: `;`-separated `token@host` (bearer) or `user:pass@host` (basic). Sent over https only, to the named host only. See [Compose diagrams](../how-to/compose-diagrams.md#private-hosts). |
-| `DIAGRAMS_DIR` | studio server | Source directory. Set by `diagc studio`. |
-| `ARTIFACTS_DIR` | studio server | Artifact directory. Set by `diagc studio`. |
-| `DIAGRAMS_CWD` | studio dev server | Extra path added to Vite's filesystem allow-list (checkout layout only). |
-| `DIAGRAMS_OPEN` | studio server | `1` opens a browser on start. |
-| `NO_COLOR` | `show`, `tui` | Non-empty: no colour, unless `show --color` asks for it. |
-| `FORCE_COLOR` | `show` | Set and not `0`: colour even when stdout is not a terminal. |
-| `COLORTERM` | `show`, `tui` | `truecolor` or `24bit`: 24-bit colour in place of the 256-colour palette. |
-| `TERM` | `show`, `tui` | `dumb`: no colour. |
+| Variable                   | Read by             | Meaning                                                                                                                                                                                                                    |
+| -------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CHROME_PATH`              | `publish`, `diff`   | Path to a Chrome/Chromium binary for PNG export. Checked before the system locations and Playwright's browser cache.                                                                                                       |
+| `PLAYWRIGHT_BROWSERS_PATH` | `publish`, `diff`   | Where Playwright keeps its browsers, if not the platform's cache; `publish` looks there for a Chromium installed by `npx playwright-core install chromium`.                                                                |
+| `DIAGC_AUTH_TOKENS`        | `--update-includes` | Credentials for private include hosts: `;`-separated `token@host` (bearer) or `user:pass@host` (basic). Sent over https only, to the named host only. See [Compose diagrams](../how-to/compose-diagrams.md#private-hosts). |
+| `DIAGRAMS_DIR`             | studio server       | Source directory. Set by `diagc studio`.                                                                                                                                                                                   |
+| `ARTIFACTS_DIR`            | studio server       | Artifact directory. Set by `diagc studio`.                                                                                                                                                                                 |
+| `DIAGRAMS_CWD`             | studio dev server   | Extra path added to Vite's filesystem allow-list (checkout layout only).                                                                                                                                                   |
+| `DIAGRAMS_OPEN`            | studio server       | `1` opens a browser on start.                                                                                                                                                                                              |
+| `NO_COLOR`                 | `show`, `tui`       | Non-empty: no colour, unless `show --color` asks for it.                                                                                                                                                                   |
+| `FORCE_COLOR`              | `show`              | Set and not `0`: colour even when stdout is not a terminal.                                                                                                                                                                |
+| `COLORTERM`                | `show`, `tui`       | `truecolor` or `24bit`: 24-bit colour in place of the 256-colour palette.                                                                                                                                                  |
+| `TERM`                     | `show`, `tui`       | `dumb`: no colour.                                                                                                                                                                                                         |
 
 Chrome is otherwise looked for at `/usr/bin/google-chrome`, `/usr/bin/google-chrome-stable`, `/usr/bin/chromium`, `/usr/bin/chromium-browser`, `/snap/bin/chromium`, and `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`.
 
@@ -312,37 +312,37 @@ Chrome is otherwise looked for at `/usr/bin/google-chrome`, `/usr/bin/google-chr
 
 Inside this monorepo:
 
-| Script | Runs |
-| --- | --- |
-| `pnpm compile` | `diagc compile` |
-| `pnpm compile:watch` | `diagc watch` |
-| `pnpm publish-diagrams` | `diagc publish` |
-| `pnpm studio` | the studio dev server directly (not via `diagc`) |
-| `pnpm dev` | `compile:watch` and the studio together |
-| `pnpm build:cli` | builds the viewer shell `publish` needs |
-| `pnpm build:studio` | builds the static studio bundle the installed CLI serves |
-| `pnpm build:dist` | everything a release needs: both packages compiled, both bundles built and staged |
-| `pnpm publish-site` | `gh-pages -d .diagrams/html` |
-| `pnpm test` / `pnpm typecheck` | vitest / tsc across every package |
+| Script                         | Runs                                                                              |
+| ------------------------------ | --------------------------------------------------------------------------------- |
+| `pnpm compile`                 | `diagc compile`                                                                   |
+| `pnpm compile:watch`           | `diagc watch`                                                                     |
+| `pnpm publish-diagrams`        | `diagc publish`                                                                   |
+| `pnpm studio`                  | the studio dev server directly (not via `diagc`)                                  |
+| `pnpm dev`                     | `compile:watch` and the studio together                                           |
+| `pnpm build:cli`               | builds the viewer shell `publish` needs                                           |
+| `pnpm build:studio`            | builds the static studio bundle the installed CLI serves                          |
+| `pnpm build:dist`              | everything a release needs: both packages compiled, both bundles built and staged |
+| `pnpm publish-site`            | `gh-pages -d .diagrams/html`                                                      |
+| `pnpm test` / `pnpm typecheck` | vitest / tsc across every package                                                 |
 
 ## Files and directories
 
-| Path | Owner | Commit it? |
-| --- | --- | --- |
-| `.diagrams/src/*.diagram.ts` | you | yes |
-| `.diagrams/src/*.diagram.json` | you, via the studio | yes |
-| `.diagrams/src/*.layout.json` | the studio | yes |
-| `.diagrams/src/*.drawings.json` | the studio (freehand drawings) | yes |
-| `.diagrams/src/assets/` | the studio (imported images) | yes |
-| `.diagrams/src/library.json` | the studio (your library entries) | yes |
-| `.diagrams/.artifacts/` | `compile` | no |
-| `.diagrams/html/` | `publish` | no |
-| `.diagrams/diff/` | `diff` | usually not — copy the PNGs you keep next to the ADR |
-| `.diagrams/static/*.png` | `publish` | yes — these are your doc images |
-| `.diagrams/includes/` | `compile --update-includes` | yes — vendored snapshots of remote includes |
-| `.diagrams/includes.lock.json` | `compile --update-includes` | yes — the hashes pinning them |
-| `AGENTS.md`, `CLAUDE.md` | you; `init --agents` owns the text between the `diagc` markers | yes |
-| `.claude/skills/diagc/SKILL.md` | `init --agents`; the text outside the `diagc` markers is yours | yes |
+| Path                            | Owner                                                          | Commit it?                                           |
+| ------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------- |
+| `.diagrams/src/*.diagram.ts`    | you                                                            | yes                                                  |
+| `.diagrams/src/*.diagram.json`  | you, via the studio                                            | yes                                                  |
+| `.diagrams/src/*.layout.json`   | the studio                                                     | yes                                                  |
+| `.diagrams/src/*.drawings.json` | the studio (freehand drawings)                                 | yes                                                  |
+| `.diagrams/src/assets/`         | the studio (imported images)                                   | yes                                                  |
+| `.diagrams/src/library.json`    | the studio (your library entries)                              | yes                                                  |
+| `.diagrams/.artifacts/`         | `compile`                                                      | no                                                   |
+| `.diagrams/html/`               | `publish`                                                      | no                                                   |
+| `.diagrams/diff/`               | `diff`                                                         | usually not — copy the PNGs you keep next to the ADR |
+| `.diagrams/static/*.png`        | `publish`                                                      | yes — these are your doc images                      |
+| `.diagrams/includes/`           | `compile --update-includes`                                    | yes — vendored snapshots of remote includes          |
+| `.diagrams/includes.lock.json`  | `compile --update-includes`                                    | yes — the hashes pinning them                        |
+| `AGENTS.md`, `CLAUDE.md`        | you; `init --agents` owns the text between the `diagc` markers | yes                                                  |
+| `.claude/skills/diagc/SKILL.md` | `init --agents`; the text outside the `diagc` markers is yours | yes                                                  |
 
 ## See also
 

@@ -852,8 +852,8 @@ describe('what each command prints where, through the real CLI', () => {
     expect([r.status, r.stdout, r.stderr]).toEqual([
       0,
       'diagc diff before -> after\ngone:\n  - diagram removed: gone\nshop:\n  ~ A -> B (renamed)\n2 diagram(s) changed, 1 unchanged\n',
-      '✓ 3 page(s) -> .diagrams/diff/HEAD..working-tree\n' +
-        '✓ side by side -> .diagrams/diff/HEAD..working-tree/index.html\n' +
+      '✓ 4 page(s) -> .diagrams/diff/HEAD..working-tree\n' +
+        '✓ overview -> .diagrams/diff/HEAD..working-tree/index.html\n' +
         '✓ for an ADR -> .diagrams/diff/HEAD..working-tree/summary.md\n',
     ]);
     expect(readdirSync(path.join(dir, '.diagrams', 'diff', 'HEAD..working-tree')).sort()).toEqual([
@@ -861,6 +861,7 @@ describe('what each command prints where, through the real CLI', () => {
       'index.html',
       'shop.after.html',
       'shop.before.html',
+      'shop.diff.html',
       'summary.md',
     ]);
 
@@ -915,7 +916,7 @@ describe('what each command prints where, through the real CLI', () => {
       expect([r.status, r.stderr]).toEqual([
         0,
         'No Chrome found — writing HTML only; install Chrome / set CHROME_PATH, or use --no-images.\n' +
-          '✓ 2 page(s) -> review\n✓ side by side -> review/index.html\n✓ for an ADR -> review/summary.md\n',
+          '✓ 3 page(s) -> review\n✓ overview -> review/index.html\n✓ for an ADR -> review/summary.md\n',
       ]);
     },
     60_000,

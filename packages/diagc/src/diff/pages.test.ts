@@ -4,9 +4,10 @@ import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { compareDiagramSets } from './compare';
 import { loadDiagramSet } from './load';
+import { OVERVIEW_SCRIPT } from './overview';
 import { writeDiffPages } from './pages';
 import { DG_DATA_SENTINEL, stampHtml } from '../publish/html';
-import { THEME_HEAD_SCRIPT, THEME_SWITCH, themeCss } from '../publish/pageTheme';
+import { THEME_HEAD_SCRIPT, THEME_SWITCH } from '../publish/pageTheme';
 import {
   diffRepo,
   everyStatus,
@@ -52,18 +53,32 @@ describe('writeDiffPages', () => {
       'diff/new/fresh.after.html',
       'diff/shop.after.html',
       'diff/shop.before.html',
+      'diff/shop.diff.html',
     ]);
     expect(rendered.sort()).toEqual(res.pages.map((p) => path.relative(out, p)).sort());
+    expect(res.images.map((p) => path.relative(out, p))).toContain('diff/shop.diff.png');
 
     const stamped = (rel: string) => {
       const html = readFileSync(path.join(out, 'diff', rel), 'utf8');
       return JSON.parse(
         html.slice(html.indexOf('>', html.indexOf('id="dg-data"')) + 1, html.lastIndexOf('</script>')),
       ) as {
-        diff: { marks: unknown };
+        model: { nodes: { id: string }[]; relations: { id: string }[] };
+        diff: { marks: unknown; combined?: unknown };
         layout?: unknown;
       };
     };
+    // both versions in one model: the removed node and its relation are back in it
+    const combined = stamped('shop.diff.html');
+    expect(combined.model.nodes.map((n) => n.id)).toContain('legacy');
+    expect(combined.model.relations.map((r) => r.id)).toContain('web->legacy#0');
+    expect(combined.diff).toEqual({
+      marks: {
+        nodes: { api: 'changed', db: 'added', legacy: 'removed' },
+        relations: { 'web->api#0': 'changed', 'api->db#0': 'added', 'web->legacy#0': 'removed' },
+      },
+      combined: { planes: {} },
+    });
     expect(stamped('shop.before.html').diff.marks).toEqual({
       nodes: { api: 'changed', legacy: 'removed' },
       relations: { 'web->api#0': 'changed', 'web->legacy#0': 'removed' },
@@ -75,9 +90,13 @@ describe('writeDiffPages', () => {
     expect(stamped('shop.before.html').layout).toEqual({ version: 1, planes: {} });
 
     const index = readFileSync(res.index, 'utf8');
-    expect(index).toContain('<iframe src="shop.before.html?export=1"');
+    // a diagram both sides have opens on the combined picture; its sides load on demand
+    expect(index).toContain('<iframe src="shop.diff.html"');
+    expect(index).toContain('<iframe data-src="shop.before.html?export=1"');
     expect(index).toContain('<iframe src="new/fresh.after.html?export=1"');
-    expect(index).toContain('<li class="add">+ Orders DB [database]</li>');
+    expect(index).toContain(
+      '<li class="add"><button type="button" data-focus="{&quot;node&quot;:&quot;db&quot;}">+ Orders DB [database]</button></li>',
+    );
     // the overview follows the reader's theme, as the index page does
     expect(index).toContain(THEME_HEAD_SCRIPT);
     expect(index).toContain(':root[data-theme=dark]');
@@ -86,6 +105,7 @@ describe('writeDiffPages', () => {
     expect(summary).toContain('| ![before](shop.before.png) | ![after](shop.after.png) |');
     expect(summary).toContain('| ![before](gone.before.png) | — |');
     expect(summary).toContain('- `~` API -> API gateway (renamed)');
+    expect(summary).toContain('**Changes**\n\n![Changes](shop.diff.png)');
   });
 
   it('points the summary images at --image-url when given', async () => {
@@ -203,7 +223,7 @@ describe('every status, whole', () => {
     '> shop.layout.json at feat/<x> & "y": does not parse (oops) — compared and drawn without it',
     '',
   ];
-  const summaryOf = (cells: [string, string, string]) =>
+  const summaryOf = (cells: [string, string, string], combined: string[] = []) =>
     [
       ...SUMMARY_HEAD,
       '## broken',
@@ -234,15 +254,18 @@ describe('every status, whole', () => {
       '',
       ...SHOP_CHANGES.map((l) => `- \`${l[0]}\` ${l.slice(2)}`),
       '',
+      ...combined,
     ].join('\n');
 
   it('writes the pages in order, each with its data, and the overview and summary byte for byte', async () => {
     const sets = everyStatus();
     const { out, res, rendered, rel } = await write(compareDiagramSets(sets.before, sets.after), sets);
     const pages = ['diff/gone.before', 'diff/new/fresh.after', 'diff/shop.before', 'diff/shop.after'];
-    expect(rel(res.pages)).toEqual(pages.map((p) => `${p}.html`));
-    expect(rel(res.images)).toEqual(pages.map((p) => `${p}.png`));
-    expect(rendered).toEqual(pages.map((p) => `${p}.html ${p}.png`));
+    expect(rel(res.pages)).toEqual([...pages, 'diff/shop.diff'].map((p) => `${p}.html`));
+    // The three planes of the combined model show the same changes, so it gets one
+    // picture: its first plane's.
+    expect(rel(res.images)).toEqual([...pages, 'diff/shop.diff'].map((p) => `${p}.png`));
+    expect(rendered).toEqual([...pages, 'diff/shop.diff'].map((p) => `${p}.html ${p}.png`));
     expect(rel([res.index, res.summary])).toEqual(['diff/index.html', 'diff/summary.md']);
     expect(readFileSync(path.join(out, 'diff/shop.before.html'), 'utf8')).toBe(
       stampHtml(SHELL, {
@@ -258,43 +281,30 @@ describe('every status, whole', () => {
       }),
     );
 
-    const light =
-      '--bg:#fff;--card:#fff;--border:#d0d7de;--text:#1f2328;--muted:#57606a;--faint:#8c959f;--add:#16a34a;--del:#dc2626;--chg:#b45309';
-    const dark =
-      '--bg:#12161b;--card:#1b222b;--border:#2d3743;--text:#e6ebf0;--muted:#a3afbb;--faint:#8b98a5;--add:#4ade80;--del:#f87171;--chg:#fbbf24';
-    expect(readFileSync(res.index, 'utf8')).toBe(`<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Diagram diff v1 → feat/&lt;x&gt; &amp; &quot;y&quot;</title>
-${THEME_HEAD_SCRIPT}
-<style>
-${themeCss(light, dark)}
-  body { font: 14px/1.45 system-ui, sans-serif; margin: 0 auto; padding: 16px 24px 48px; max-width: 1800px; color: var(--text); background: var(--bg); }
-  header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
-  h1 { font-size: 20px; } h2 { font-size: 16px; margin: 32px 0 6px; } h3 { font-size: 13px; margin: 0 0 6px; color: var(--muted); }
-  ul { margin: 0 0 12px; padding-left: 18px; font-family: ui-monospace, monospace; font-size: 12.5px; }
-  li.add { color: var(--add); } li.del { color: var(--del); } li.chg { color: var(--chg); }
-  .key span { display: inline-block; margin-right: 14px; } .key i { display: inline-block; width: 12px; height: 12px; border: 3px solid; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
-  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .side iframe { width: 100%; height: 70vh; border: 1px solid var(--border); border-radius: 6px; }
-  .side.empty p { height: 70vh; margin: 0; display: grid; place-items: center; border: 1px dashed var(--border); border-radius: 6px; color: var(--faint); }
-  @media (max-width: 900px) { .pair { grid-template-columns: 1fr; } }
-</style></head><body>
+    // The overview from its styles on, byte for byte.
+    const index = readFileSync(res.index, 'utf8');
+    expect(index.slice(index.indexOf('</style>'))).toBe(`</style></head><body>
 <header><h1>Diagram diff · v1 → feat/&lt;x&gt; &amp; &quot;y&quot;</h1>${THEME_SWITCH}</header>
 <p class="key"><span><i style="border-color:#16a34a"></i>added</span><span><i style="border-color:#dc2626;border-style:dashed"></i>removed</span><span><i style="border-color:#d97706"></i>changed</span><span><i style="border-color:#d97706;border-style:dashed"></i>holds a change (folded box, on the linked pages)</span></p>
 <ul><li>shop.drawings.json at v1: not a drawings overlay — compared and drawn without it</li><li>shop.layout.json at feat/&lt;x&gt; &amp; &quot;y&quot;: does not parse (oops) — compared and drawn without it</li></ul>
 <section><h2>broken</h2><p>Not compared: does not compile at feat/&lt;x&gt; &amp; &quot;y&quot;: bad &lt;json&gt;</p></section>
-<section><h2>gone</h2><ul><li class="del">- diagram removed: gone</li></ul><div class="pair"><div class="side"><h3><a href="gone.before.html">Before · v1</a></h3><iframe src="gone.before.html?export=1" title="Before · v1"></iframe></div><div class="side empty"><h3>After · feat/&lt;x&gt; &amp; &quot;y&quot;</h3><p>not present</p></div></div></section>
-<section><h2>new/fresh</h2><ul><li class="add">+ new diagram: fresh (1 nodes, 0 relations)</li></ul><div class="pair"><div class="side empty"><h3>Before · v1</h3><p>not present</p></div><div class="side"><h3><a href="new/fresh.after.html">After · feat/&lt;x&gt; &amp; &quot;y&quot;</a></h3><iframe src="new/fresh.after.html?export=1" title="After · feat/&lt;x&gt; &amp; &quot;y&quot;"></iframe></div></div></section>
-<section><h2>shop</h2><ul><li class="add">+ Orders &lt;DB&gt; [database]</li><li class="add">+ note</li><li class="del">- Legacy [service]</li><li class="del">- tmp</li><li class="chg">~ Web: type</li><li class="chg">~ API -&gt; API gateway (renamed): description</li><li class="add">+ API gateway -&gt; Orders &lt;DB&gt; (reads: SQL)</li><li class="del">- Web -&gt; Legacy (sync)</li><li class="chg">~ Web -&gt; API gateway (sync: HTTPS): label</li><li class="add">+ layer new</li><li class="del">- layer old</li><li class="add">+ plane ops</li><li class="del">- plane flow</li></ul><div class="pair"><div class="side"><h3><a href="shop.before.html">Before · v1</a></h3><iframe src="shop.before.html?export=1" title="Before · v1"></iframe></div><div class="side"><h3><a href="shop.after.html">After · feat/&lt;x&gt; &amp; &quot;y&quot;</a></h3><iframe src="shop.after.html?export=1" title="After · feat/&lt;x&gt; &amp; &quot;y&quot;"></iframe></div></div></section>
+<section><h2>gone</h2><div class="diagram"><ul><li class="del">- diagram removed: gone</li></ul><div class="pair"><div class="side"><h3><a href="gone.before.html">Before · v1</a></h3><iframe src="gone.before.html?export=1" title="Before · v1"></iframe></div><div class="side empty"><h3>After · feat/&lt;x&gt; &amp; &quot;y&quot;</h3><p>not present</p></div></div></div></section>
+<section><h2>new/fresh</h2><div class="diagram"><ul><li class="add">+ new diagram: fresh (1 nodes, 0 relations)</li></ul><div class="pair"><div class="side empty"><h3>Before · v1</h3><p>not present</p></div><div class="side"><h3><a href="new/fresh.after.html">After · feat/&lt;x&gt; &amp; &quot;y&quot;</a></h3><iframe src="new/fresh.after.html?export=1" title="After · feat/&lt;x&gt; &amp; &quot;y&quot;"></iframe></div></div></div></section>
+<section><h2>shop</h2><div class="diagram"><ul><li class="add"><button type="button" data-focus="{&quot;node&quot;:&quot;db&quot;}">+ Orders &lt;DB&gt; [database]</button></li><li class="add"><button type="button" data-focus="{&quot;node&quot;:&quot;note&quot;}">+ note</button></li><li class="del"><button type="button" data-focus="{&quot;node&quot;:&quot;legacy&quot;}">- Legacy [service]</button></li><li class="del"><button type="button" data-focus="{&quot;node&quot;:&quot;tmp&quot;}">- tmp</button></li><li class="chg"><button type="button" data-focus="{&quot;node&quot;:&quot;web&quot;}">~ Web: type</button><dl><dt>type</dt><dd class="was">service</dd><dd>webapp</dd></dl></li><li class="chg"><button type="button" data-focus="{&quot;node&quot;:&quot;api&quot;}">~ API -&gt; API gateway (renamed): description</button><dl><dt>description</dt><dd class="was">—</dd><dd>edge</dd></dl></li><li class="add"><button type="button" data-focus="{&quot;relation&quot;:&quot;api-&gt;db#0&quot;}">+ API gateway -&gt; Orders &lt;DB&gt; (reads: SQL)</button></li><li class="del"><button type="button" data-focus="{&quot;relation&quot;:&quot;web-&gt;legacy#0&quot;}">- Web -&gt; Legacy (sync)</button></li><li class="chg"><button type="button" data-focus="{&quot;relation&quot;:&quot;web-&gt;api#0&quot;}">~ Web -&gt; API gateway (sync: HTTPS): label</button><dl><dt>label</dt><dd class="was">—</dd><dd>HTTPS</dd></dl></li><li class="add">+ layer new</li><li class="del">- layer old</li><li class="add"><button type="button" data-focus="{&quot;plane&quot;:&quot;ops&quot;}">+ plane ops</button></li><li class="del"><button type="button" data-focus="{&quot;plane&quot;:&quot;flow&quot;}">- plane flow</button></li></ul><div><div class="views"><button type="button" data-show="combined" aria-pressed="true">Combined</button><button type="button" data-show="sides" aria-pressed="false">Side by side</button></div><div class="combined" data-view="combined"><iframe src="shop.diff.html" title="v1 → feat/&lt;x&gt; &amp; &quot;y&quot;"></iframe></div><div class="pair" data-view="sides" hidden><div class="side"><h3><a href="shop.before.html">Before · v1</a></h3><iframe data-src="shop.before.html?export=1" title="Before · v1"></iframe></div><div class="side"><h3><a href="shop.after.html">After · feat/&lt;x&gt; &amp; &quot;y&quot;</a></h3><iframe data-src="shop.after.html?export=1" title="After · feat/&lt;x&gt; &amp; &quot;y&quot;"></iframe></div></div></div></div></section>
+${OVERVIEW_SCRIPT}
 </body></html>
 `);
+    expect(index).toContain(THEME_HEAD_SCRIPT);
 
     expect(readFileSync(res.summary, 'utf8')).toBe(
-      summaryOf([
-        '| ![before](https://host/gone.before.png?raw=1) | — |',
-        '| — | ![after](https://host/new/fresh.after.png?raw=1) |',
-        '| ![before](https://host/shop.before.png?raw=1) | ![after](https://host/shop.after.png?raw=1) |',
-      ]),
+      summaryOf(
+        [
+          '| ![before](https://host/gone.before.png?raw=1) | — |',
+          '| — | ![after](https://host/new/fresh.after.png?raw=1) |',
+          '| ![before](https://host/shop.before.png?raw=1) | ![after](https://host/shop.after.png?raw=1) |',
+        ],
+        ['**Changes on Main**', '', '![Changes on Main](https://host/shop.diff.png?raw=1)', ''],
+      ),
     );
   });
 
@@ -316,7 +326,7 @@ ${themeCss(light, dark)}
     const { res } = await write(compareDiagramSets(sets.before, sets.after, ['same']), sets);
     expect(res.pages).toEqual([]);
     expect(readFileSync(res.index, 'utf8')).toMatch(
-      /<\/p>\n<ul><li>shop\.drawings\.json at v1: .*<\/li><\/ul>\n<p>No diagram changed\.<\/p>\n<\/body><\/html>\n$/,
+      /<\/p>\n<ul><li>shop\.drawings\.json at v1: .*<\/li><\/ul>\n<p>No diagram changed\.<\/p>\n<script>[^]*<\/script>\n<\/body><\/html>\n$/,
     );
     expect(readFileSync(res.summary, 'utf8')).toBe([...SUMMARY_HEAD, 'No diagram changed.', ''].join('\n'));
   });

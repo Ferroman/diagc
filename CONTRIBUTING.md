@@ -62,15 +62,15 @@ these strings attached, which is why the tutorials and how-tos never mention the
 
 ![Which package owns what](.diagrams/static/docs/workspace.png)
 
-| Path | Package | Role |
-| --- | --- | --- |
-| `packages/core` | `@diagc/core` | Builder DSL, the JSON model + validation, the view compiler. **Published.** |
-| `packages/renderer` | `@diagc/renderer` | React `DiagramView` (React Flow + elk) and the type/kind/theme registries. |
-| `packages/icons` | `@diagc/icons` | Icon id → lucide component. |
-| `packages/diagc` | `@diagc/cli` | The `diagc` CLI: init, compile, lint, watch, publish, show, studio, tui, eject, diff, guide. **Published.** |
-| `apps/studio` | `@diagc/studio` | The browser app and its dev-server API. |
-| `apps/viewer` | `@diagc/viewer` | The single-file shell `publish` stamps a model into. |
-| `apps/obsidian` | `@diagc/obsidian` | The Obsidian plugin: the studio and diagram embeds in a vault. Built from a checkout, not published. |
+| Path                | Package           | Role                                                                                                        |
+| ------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------- |
+| `packages/core`     | `@diagc/core`     | Builder DSL, the JSON model + validation, the view compiler. **Published.**                                 |
+| `packages/renderer` | `@diagc/renderer` | React `DiagramView` (React Flow + elk) and the type/kind/theme registries.                                  |
+| `packages/icons`    | `@diagc/icons`    | Icon id → lucide component.                                                                                 |
+| `packages/diagc`    | `@diagc/cli`      | The `diagc` CLI: init, compile, lint, watch, publish, show, studio, tui, eject, diff, guide. **Published.** |
+| `apps/studio`       | `@diagc/studio`   | The browser app and its dev-server API.                                                                     |
+| `apps/viewer`       | `@diagc/viewer`   | The single-file shell `publish` stamps a model into.                                                        |
+| `apps/obsidian`     | `@diagc/obsidian` | The Obsidian plugin: the studio and diagram embeds in a vault. Built from a checkout, not published.        |
 
 To change what the renderer draws when you use `DiagramView` yourself inside the workspace, see [Renderer registries and theme](docs/reference/renderer.md).
 
@@ -153,25 +153,25 @@ One name per concept, so a reader meets one word for one thing. The user-facing 
 are in the [glossary](docs/reference/glossary.md). This table settles the ones the code
 had drifted on. When you touch code that still uses a retired name, rename it.
 
-| Concept | Use | Retire |
-| --- | --- | --- |
-| Count marker on a node or relation; click to open its note | **badge** | "chip" for the one on a relation (`chipSpots`, `placeChip`) |
-| Panel listing an element's threats, comments and links | **note** (the layout file says `notes`, the command `set-note-offset`) | "bubble" and "threat note" in code; user docs may say "bubble" for its shape |
-| Small pill-shaped control or label, for example a fold toggle, a layer toggle, a top-bar button, a plan role, a legend swatch | **chip** | "chip" for a badge, a text node, an external stub, a label or the quick-add button; `NodeBadge` (a plan role) → `NodeChip` |
-| Typeless node drawn as plain text (a causal-loop variable) | **text node** | "text chip" |
-| Stand-in for an off-frame node in a drill view | **external stub** | "ghost chip" |
-| Text on a relation | **label** | "label chip" |
-| The `+` that adds a connected node | **quick-add button** | "`+` chip" |
-| Viewer-set fold override | **pin** | "pin" for anything else in code |
-| A node's stored coordinates | **saved position** | `pinned` for positions, `QuickAddPlacement.pinned` |
-| Style named in the model | **diagram style** | `pinnedStyle` |
-| Relation end fixed to one side of its node | **fixed side** | "pinned side", `PinDot` |
-| A node or relation that can carry notes | **element** (`ElementRef`, keyed by `elementKey`) | `ThreatTarget`, `ElementTarget` (deprecated aliases kept for the 1.0 API), `threatTargetKey` |
-| Threats listed for an element, or for the page | **threat register** | — |
-| `<name>.layout.json` / `<name>.drawings.json` beside a diagram | **sidecar** (the file); the layout file holds the **layout overlay** (`LayoutOverlay`), the drawings file `Drawings` | bare "overlay" for the sidecar |
-| Keeping layout entries in step with the model when ids are deleted | **layout pruning** (`prune*`) | "mirror", "mirror hygiene" |
-| What a notation draws above the diagram: loop labels, git lanes, order bands, the time axis | **canvas overlay** | bare "overlay" |
-| Cross-cutting set of nodes or relations toggled together | **layer** | "overlay" for a layer in code |
+| Concept                                                                                                                       | Use                                                                                                                  | Retire                                                                                                                     |
+| ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Count marker on a node or relation; click to open its note                                                                    | **badge**                                                                                                            | "chip" for the one on a relation (`chipSpots`, `placeChip`)                                                                |
+| Panel listing an element's threats, comments and links                                                                        | **note** (the layout file says `notes`, the command `set-note-offset`)                                               | "bubble" and "threat note" in code; user docs may say "bubble" for its shape                                               |
+| Small pill-shaped control or label, for example a fold toggle, a layer toggle, a top-bar button, a plan role, a legend swatch | **chip**                                                                                                             | "chip" for a badge, a text node, an external stub, a label or the quick-add button; `NodeBadge` (a plan role) → `NodeChip` |
+| Typeless node drawn as plain text (a causal-loop variable)                                                                    | **text node**                                                                                                        | "text chip"                                                                                                                |
+| Stand-in for an off-frame node in a drill view                                                                                | **external stub**                                                                                                    | "ghost chip"                                                                                                               |
+| Text on a relation                                                                                                            | **label**                                                                                                            | "label chip"                                                                                                               |
+| The `+` that adds a connected node                                                                                            | **quick-add button**                                                                                                 | "`+` chip"                                                                                                                 |
+| Viewer-set fold override                                                                                                      | **pin**                                                                                                              | "pin" for anything else in code                                                                                            |
+| A node's stored coordinates                                                                                                   | **saved position**                                                                                                   | `pinned` for positions, `QuickAddPlacement.pinned`                                                                         |
+| Style named in the model                                                                                                      | **diagram style**                                                                                                    | `pinnedStyle`                                                                                                              |
+| Relation end fixed to one side of its node                                                                                    | **fixed side**                                                                                                       | "pinned side", `PinDot`                                                                                                    |
+| A node or relation that can carry notes                                                                                       | **element** (`ElementRef`, keyed by `elementKey`)                                                                    | `ThreatTarget`, `ElementTarget` (deprecated aliases kept for the 1.0 API), `threatTargetKey`                               |
+| Threats listed for an element, or for the page                                                                                | **threat register**                                                                                                  | —                                                                                                                          |
+| `<name>.layout.json` / `<name>.drawings.json` beside a diagram                                                                | **sidecar** (the file); the layout file holds the **layout overlay** (`LayoutOverlay`), the drawings file `Drawings` | bare "overlay" for the sidecar                                                                                             |
+| Keeping layout entries in step with the model when ids are deleted                                                            | **layout pruning** (`prune*`)                                                                                        | "mirror", "mirror hygiene"                                                                                                 |
+| What a notation draws above the diagram: loop labels, git lanes, order bands, the time axis                                   | **canvas overlay**                                                                                                   | bare "overlay"                                                                                                             |
+| Cross-cutting set of nodes or relations toggled together                                                                      | **layer**                                                                                                            | "overlay" for a layer in code                                                                                              |
 
 ## Comments
 
@@ -240,7 +240,8 @@ picture.
   studio on port 5183 and serves the published pages on port 5184, so it does not disturb a dev
   server you already have running. A take edits its fixture, and the whole fixtures folder is put
   back before the next one. `show-what-changed.png` is a still taken by hand: the `index.html` that
-  `diagc diff adr-12-before..adr-12-after` writes for the `checkout` diagram its how-to prints.
+  `diagc diff adr-12-before..adr-12-after` writes for the `checkout` diagram its how-to prints, in a
+  1280 by 900 window at twice the pixel density.
 
 CI compiles every source (`pnpm compile`), and the Pages workflow publishes them all to
 the live site.

@@ -95,12 +95,17 @@ export { allowedParentTypes, childrenOf, countAnchored } from './children';
 export { bestLaneOrder } from './lanes';
 export { lintModel, type LintCode, type LintFinding, didYouMean } from './lint';
 export {
+  combineDiff,
   diffMarks,
+  diffMarksByPlane,
   diffModels,
   isEmptyDiff,
+  type CombinedDiff,
   type DiffMarks,
   type DiffStatus,
+  type FieldChange,
   type ModelDiff,
+  type PlaneMarks,
   type NodeChange,
   type RelationChange,
 } from './diff';

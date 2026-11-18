@@ -21,6 +21,7 @@ import {
   type LoopEdgeInput,
 } from '@diagc/renderer';
 import { createIconRegistry } from '@diagc/icons';
+import { DIFF_COLORS, DiffSwitches, hostClass, openingDiffPlane, useDiffView, type PlaneStatuses } from './diff-view';
 import { ThreatTable, showsThreatTable } from './ThreatTable';
 import { useStyle } from './style';
 import { useTheme } from './theme';
@@ -31,8 +32,10 @@ export interface ViewerData {
   model: DiagramModel;
   layout?: LayoutOverlay;
   drawings?: Drawings;
-  /** a `diagc diff` side: outline what changed against the other version */
-  diff?: { marks: DiffMarks };
+  /** a `diagc diff` page: outline what changed against the other version.
+   * `combined` says the model holds both versions (core's combineDiff): the page
+   * then opens unfolded on the first plane with a change, and shows the switches. */
+  diff?: { marks: DiffMarks; combined?: { planes: PlaneStatuses } };
 }
 
 interface ExportWindow {
@@ -179,10 +182,22 @@ const styleSelectStyle = (afterPlanes: boolean): CSSProperties => ({
   padding: '2px 4px',
 });
 
+// The bar of a combined diff page stands above the canvas, not over it: with a chip
+// and a count per plane and the switches it is tall enough to cover the top of the
+// picture, and the picture is fitted to the canvas, not to what the bar leaves free.
+const barAboveStyle: CSSProperties = {
+  ...barStyle,
+  position: 'static',
+  transform: 'none',
+  alignSelf: 'center',
+  margin: '8px 12px',
+  boxShadow: 'none',
+};
+
 /** The bar over the drawing: the plane chips and the style picker, together top-centre. */
-function TopBar({ children }: { children: ReactNode }) {
+function TopBar({ children, above = false }: { children: ReactNode; above?: boolean }) {
   return (
-    <div style={barStyle} role="toolbar" aria-label="View">
+    <div style={above ? barAboveStyle : barStyle} role="toolbar" aria-label="View">
       {children}
     </div>
   );
@@ -220,6 +235,28 @@ export function StylePicker({
   );
 }
 
+// A diff page's plane chip: the name cut short, since every chip there also carries a
+// count and the bar must not cover the picture it is about (the full name is the title).
+const planeNameStyle: CSSProperties = {
+  display: 'inline-block',
+  maxWidth: 190,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  verticalAlign: 'bottom',
+};
+
+// A plane chip's count of changes, and the colour of a plane that itself changed.
+const planeCountStyle: CSSProperties = {
+  marginLeft: 5,
+  padding: '0 5px',
+  borderRadius: 8,
+  background: DIFF_COLORS.changed,
+  color: '#fff',
+  fontSize: 10,
+  fontWeight: 600,
+};
+
 const planeButtonStyle = (current: boolean): CSSProperties => ({
   background: current ? 'var(--dg-badge-bg)' : 'none',
   border: 'none',
@@ -242,26 +279,40 @@ export function PlanePicker({
   planes,
   active,
   onSelect,
+  changes,
+  statuses,
 }: {
   planes: readonly DiagramPlane[];
   /** the plane being drawn; undefined means the first one (DiagramView's default) */
   active: string | undefined;
   onSelect: (id: string) => void;
+  /** a diff page: how many changes each plane shows */
+  changes?: Record<string, number>;
+  /** a diff page: the planes that were added, removed or changed themselves */
+  statuses?: PlaneStatuses;
 }) {
   const currentId = active ?? planes[0]?.id;
   return (
     <span style={planeGroupStyle} role="group" aria-label="Plane">
       {planes.map((p) => {
         const current = p.id === currentId;
+        const status = statuses?.[p.id];
+        const count = changes?.[p.id] ?? 0;
         return (
           <button
             key={p.id}
             type="button"
             aria-pressed={current}
-            style={planeButtonStyle(current)}
+            style={{
+              ...planeButtonStyle(current),
+              ...(status !== undefined ? { boxShadow: `inset 0 -2px 0 ${DIFF_COLORS[status]}` } : {}),
+              ...(status === 'removed' ? { textDecoration: 'line-through' } : {}),
+            }}
+            {...(changes !== undefined ? { title: status !== undefined ? `${p.name} (${status})` : p.name } : {})}
             onClick={() => onSelect(p.id)}
           >
-            {p.name}
+            {changes !== undefined ? <span style={planeNameStyle}>{p.name}</span> : p.name}
+            {count > 0 && <span style={planeCountStyle}>{count}</span>}
           </button>
         );
       })}
@@ -284,6 +335,16 @@ export function Viewer({
       ? (data as ViewerData).model
       : undefined;
   const layout = model !== undefined ? (data as ViewerData).layout : undefined;
+  // A combined diff page, read live: it opens unfolded like an export (the whole
+  // change is the point), on the first plane that shows one. Its export render is
+  // an export like any other, on the plane the publisher names.
+  const combined = model !== undefined && !expandAll ? (data as ViewerData).diff?.combined : undefined;
+  const combinedMarks = combined !== undefined ? (data as ViewerData).diff?.marks : undefined;
+  const [diffOpening] = useState(() => {
+    if (model === undefined || combinedMarks === undefined) return undefined;
+    const plane = openingDiffPlane(model, combinedMarks);
+    return { pins: exportFolds(model, layout), ...(plane !== undefined ? { plane } : {}) };
+  });
   // The page opens on the model's first plane (what `<name>.png` shows) with that
   // plane's preset layers, unfolded where the layout was SAVED open (a
   // hand-placed interior is only visible while its container is open) and
@@ -301,6 +362,7 @@ export function Viewer({
     ...(expandAll && model !== undefined
       ? { opening: { pins: exportFolds(model, layout), ...(exportPlane !== undefined ? { plane: exportPlane } : {}) } }
       : {}),
+    ...(diffOpening !== undefined ? { opening: diffOpening } : {}),
   });
   // The causal-loop reading aids, all viewer state and none of it saved: the
   // clicked variable the report is about, the ctrl-clicked one to compare it
@@ -322,6 +384,7 @@ export function Viewer({
     setFocus(null);
   }, []);
   const apiRef = useRef<LayoutApi | null>(null);
+  const diffView = useDiffView({ marks: combinedMarks, model, plane, setPlane, apiRef });
 
   // Which theme, and the reader's switch where they have one (see theme.ts for the
   // order: an export is light unless the publisher said otherwise). The style the
@@ -425,6 +488,9 @@ export function Viewer({
   const view = (
     <DiagramView
       {...readerProps}
+      // A plane switch re-seeds the folds from the layout; a combined diff page
+      // stays unfolded on every plane, under whatever the reader folds by hand.
+      {...(diffOpening !== undefined ? { pins: { ...diffOpening.pins, ...readerProps.pins } } : {})}
       styleId={style}
       colorMode={theme}
       {...(toggleTheme !== undefined ? { onToggleTheme: toggleTheme } : {})}
@@ -439,7 +505,7 @@ export function Viewer({
       // passes none — nothing is clicked in a screenshot.
       {...(leverage ? { onSelect, onCompareSelect, onCldEdges: setCldEdges, externalHighlight: focus } : {})}
       {...(drawings !== undefined ? { drawings } : {})}
-      {...(diff !== undefined ? { diffMarks: diff.marks } : {})}
+      {...(diff !== undefined ? { diffMarks: diffView.marks ?? diff.marks } : {})}
     />
   );
   const picker = showsPlanePicker(model.planes, expandAll);
@@ -453,20 +519,43 @@ export function Viewer({
   // `.react-flow` and frames it from __DG_BOUNDS__, measured off the canvas host,
   // so a strip below the canvas would shrink the drawing without ever appearing
   // in the image.
-  if (!picker && !styling && !table && !leverage) return view;
+  if (!picker && !styling && !table && !leverage && combined === undefined) return view;
   // the canvas keeps its own positioning context: the bar is placed against the
   // drawing, not against the page with the table in it
-  const host = (
-    <div style={{ position: 'relative', flex: '1 1 0', minHeight: 0, minWidth: 0 }}>
-      {(picker || styling) && (
-        <TopBar>
-          {picker && <PlanePicker planes={model.planes} active={plane} onSelect={pickPlane} />}
-          {setStyle !== undefined && <StylePicker style={style} afterPlanes={picker} onSelect={setStyle} />}
-        </TopBar>
+  const bar = (picker || styling || combined !== undefined) && (
+    <TopBar above={combined !== undefined}>
+      {picker && (
+        <PlanePicker
+          planes={model.planes}
+          active={plane}
+          onSelect={pickPlane}
+          {...(combined !== undefined ? { changes: diffView.planes, statuses: combined.planes } : {})}
+        />
       )}
-      {view}
-    </div>
+      {combined !== undefined && (
+        <DiffSwitches show={diffView.show} counts={diffView.counts} onToggle={diffView.toggle} first={!picker} />
+      )}
+      {setStyle !== undefined && (
+        <StylePicker style={style} afterPlanes={picker || combined !== undefined} onSelect={setStyle} />
+      )}
+    </TopBar>
   );
+  const host =
+    combined !== undefined ? (
+      // the switches' classes go around the canvas, where the renderer's styles read them
+      <div
+        style={{ display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: 0, minWidth: 0 }}
+        className={hostClass(diffView.show)}
+      >
+        {bar}
+        <div style={{ position: 'relative', flex: '1 1 0', minHeight: 0, minWidth: 0 }}>{view}</div>
+      </div>
+    ) : (
+      <div style={{ position: 'relative', flex: '1 1 0', minHeight: 0, minWidth: 0 }}>
+        {bar}
+        {view}
+      </div>
+    );
   return (
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
       {leverage ? (

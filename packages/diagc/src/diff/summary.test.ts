@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { compareDiagramSets } from './compare';
+import type { DiagramFiles } from './pages';
 import { summaryMarkdown } from './summary';
 import { everyStatus } from '../../test-fixtures/diff';
 
 const { before, after } = everyStatus();
 const diffs = compareDiagramSets(before, after);
 const pages = (png: boolean) =>
-  new Map([
+  new Map<string, DiagramFiles>([
     ['gone', { before: 'gone.before', png }],
     ['new/fresh', { after: 'new/fresh.after', png }],
     ['shop', { before: 'shop.before', after: 'shop.after', png }],
@@ -31,6 +32,21 @@ describe('summaryMarkdown', () => {
     });
     expect(md).toContain(
       '| ![before](https://host/pr-7/shop.before.png?raw=true) | ![after](https://host/pr-7/shop.after.png?raw=true) |',
+    );
+  });
+
+  it('adds the combined picture of each plane it was given, under the change list', () => {
+    const files = pages(true);
+    files.set('shop', {
+      before: 'shop.before',
+      after: 'shop.after',
+      png: true,
+      pictures: [{ plane: 'Main', rel: 'shop.diff' }, { rel: 'shop.diff.ops' }],
+    });
+    const md = summaryMarkdown({ diffs, files, before, after, imageUrl: 'https://host/{path}' });
+    expect(md).toContain(
+      '- `-` plane flow\n\n**Changes on Main**\n\n![Changes on Main](https://host/shop.diff.png)\n\n' +
+        '**Changes**\n\n![Changes](https://host/shop.diff.ops.png)\n',
     );
   });
 

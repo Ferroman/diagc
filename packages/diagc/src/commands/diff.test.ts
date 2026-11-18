@@ -49,8 +49,8 @@ describe('diff', () => {
         'diagc diff before -> after\ngone:\n  - diagram removed: gone\nshop:\n  ~ A -> B (renamed)\n2 diagram(s) changed, 1 unchanged\n',
       );
       expect(io.stderr).toBe(
-        '✓ 3 page(s) -> .diagrams/diff/HEAD..working-tree\n' +
-          '✓ side by side -> .diagrams/diff/HEAD..working-tree/index.html\n' +
+        '✓ 4 page(s) -> .diagrams/diff/HEAD..working-tree\n' +
+          '✓ overview -> .diagrams/diff/HEAD..working-tree/index.html\n' +
           '✓ for an ADR -> .diagrams/diff/HEAD..working-tree/summary.md\n',
       );
       expect(readdirSync(path.join(dir, '.diagrams', 'diff', 'HEAD..working-tree')).sort()).toEqual([
@@ -58,6 +58,7 @@ describe('diff', () => {
         'index.html',
         'shop.after.html',
         'shop.before.html',
+        'shop.diff.html',
         'summary.md',
       ]);
     });
@@ -77,14 +78,15 @@ describe('diff', () => {
         'diagc diff HEAD -> working tree\nshop:\n  ~ A -> B (renamed)\n1 diagram(s) changed, 0 unchanged\n',
       );
       expect(io.stderr).toBe(
-        '✓ 2 page(s) -> .diagrams/diff/HEAD..working-tree\n' +
-          '✓ side by side -> .diagrams/diff/HEAD..working-tree/index.html\n' +
+        '✓ 3 page(s) -> .diagrams/diff/HEAD..working-tree\n' +
+          '✓ overview -> .diagrams/diff/HEAD..working-tree/index.html\n' +
           '✓ for an ADR -> .diagrams/diff/HEAD..working-tree/summary.md\n',
       );
       expect(readdirSync(path.join(pkg, '.diagrams', 'diff', 'HEAD..working-tree')).sort()).toEqual([
         'index.html',
         'shop.after.html',
         'shop.before.html',
+        'shop.diff.html',
         'summary.md',
       ]);
       expect(readdirSync(path.join(dir, '.diagrams'))).toEqual(['src']);
@@ -102,7 +104,7 @@ describe('diff', () => {
       ).toBe(0);
       expect(JSON.parse(io.stdout)).toMatchObject({ from: 'HEAD', to: 'working tree', diagrams: [{ name: 'shop' }] });
       expect(io.stderr).toBe(
-        '✓ 2 page(s) -> review\n✓ side by side -> review/index.html\n✓ for an ADR -> review/summary.md\n',
+        '✓ 3 page(s) -> review\n✓ overview -> review/index.html\n✓ for an ADR -> review/summary.md\n',
       );
     });
   });
