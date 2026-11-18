@@ -133,17 +133,14 @@ export function useFlowEdges(input: FlowEdgesInput): FlowEdges {
     return compiled.edges.map((e) => {
       const data = buildEdgeDataCached(e, edgeDataCtx);
       const relation = soleRelation(e);
-      const diffClass = withDiffClass(
-        undefined,
-        diffMarks !== undefined ? diffEdgeStatus(e.constituents, diffMarks) : undefined,
-      );
+      const status = diffMarks !== undefined ? diffEdgeStatus(e.constituents, diffMarks) : undefined;
       return toRfEdge({
         id: e.id,
         source: e.from,
         target: e.to,
-        data,
+        data: status !== undefined ? { ...data, diff: status } : data,
         reconnectable: editing && relation !== undefined,
-        className: diffClass,
+        className: withDiffClass(undefined, status),
       });
     });
   }, [compiled, placedGeometry, edgeDataCtx, editing, diffMarks]);

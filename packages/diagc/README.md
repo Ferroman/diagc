@@ -37,7 +37,7 @@ diagc studio       # opens the editor, recompiling as you edit
 | `diagc studio` | Serve the visual editor against the current directory (default `http://127.0.0.1:5173`). Diagrams drawn here are saved back as `.diagram.json`. |
 | `diagc tui` | Browse the diagrams full-screen in the terminal: fold and unfold, go into a group, switch planes and layers, search. Redraws as the sources change. |
 | `diagc eject` | Replace a drawn `.diagram.json` with a generated `.diagram.ts`, checked first to rebuild the same model. |
-| `diagc diff` | Draw what changed in the diagrams between two git refs, or a ref and the working tree: before and after pages and PNGs, and a summary. |
+| `diagc diff` | Draw what changed in the diagrams between two git refs, or a ref and the working tree: one picture with both versions and the changes marked, before and after pages, PNGs and a summary. |
 | `diagc guide` | Print how to write a diagram: the DSL, then one topic per diagram type (`diagc guide c4`). Written for a coding agent as much as for a person. |
 
 `diagc --help` lists every command and flag, and the [CLI reference](https://ferroman.github.io/diagc/docs/reference/cli.html) has the details.

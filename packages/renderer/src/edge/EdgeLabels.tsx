@@ -72,7 +72,8 @@ export function EdgeLabels({
   // any other is one line, ellipsised by the chip's own max-width
   const wraps = wrapsLabel(data.kind);
   const shown = (text: string): string => (wraps ? labelLines(text, EDGE_LABEL_MAX_CHARS).join('\n') : text);
-  const wrapClass = wraps ? ' dg-edge-label-wrap' : '';
+  // the classes both kinds of label share: wrapping, and the edge's mark on a diff page
+  const extraClass = `${wraps ? ' dg-edge-label-wrap' : ''}${data.diff !== undefined ? ` dg-diff-${data.diff}` : ''}`;
   return (
     <>
       {/* The joined label of a bundled arrow. An HTML element in the label layer, not
@@ -83,7 +84,7 @@ export function EdgeLabels({
       {data.labels === undefined && data.label !== undefined && (
         <EdgeLabelRenderer>
           <div
-            className={`dg-edge-label dg-edge-chip${wrapClass}`}
+            className={`dg-edge-label dg-edge-chip${extraClass}`}
             style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${label.x}px, ${label.y}px)` }}
           >
             {shown(data.label)}
@@ -103,7 +104,7 @@ export function EdgeLabels({
           return (
             <EdgeLabelRenderer key={lb.id}>
               <div
-                className={`dg-edge-label dg-edge-label-${side}${wrapClass} nodrag nopan`}
+                className={`dg-edge-label dg-edge-label-${side}${extraClass} nodrag nopan`}
                 style={{
                   position: 'absolute',
                   transform: `translate(-50%, -50%) translate(${lx}px, ${ly}px)`,
