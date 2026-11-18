@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.0](https://github.com/Ferroman/diagc/compare/v1.12.0...v1.13.0) (2026-11-18)
+
+
+### Features
+
+* **diff:** one combined picture per diagram, and relations matched by what they say ([#190](https://github.com/Ferroman/diagc/issues/190)) ([29d3afd](https://github.com/Ferroman/diagc/commit/29d3afd3a88ddfaec805fe1bdefc695cafe6a02d))
+
 ## [1.12.0](https://github.com/Ferroman/diagc/compare/v1.11.0...v1.12.0) (2026-11-18)
 
 
