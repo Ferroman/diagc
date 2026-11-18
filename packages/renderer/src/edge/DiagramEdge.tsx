@@ -1,6 +1,7 @@
 import { BaseEdge, type EdgeProps } from '@xyflow/react';
 import { useContext } from 'react';
 import type {
+  DiffStatus,
   EdgeLabel,
   EdgeLabelSide,
   LayoutDirection,
@@ -36,6 +37,9 @@ export interface DiagramEdgeData {
   /** per-relation overrides (single-constituent edges only) */
   relStyle?: RelationStyle;
   constituentCount: number;
+  /** the edge's mark on a diff page, for its labels: they are drawn in the label
+   * layer, outside the edge's own element, so its class does not reach them */
+  diff?: DiffStatus;
   kindRegistry: Registry<KindStyle>;
   /** style preset with rough params — roughen the stroke (absent = crisp) */
   stylePreset?: StylePreset;

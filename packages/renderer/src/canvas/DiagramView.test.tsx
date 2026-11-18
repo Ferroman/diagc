@@ -3276,6 +3276,8 @@ describe('diff marks', () => {
     // sys rests folded, so the added api inside it shows only as a mark on sys
     expect(node('sys')?.classList.contains('dg-diff-inside')).toBe(true);
     await waitFor(() => expect(container.querySelector('.react-flow__edge.dg-diff-removed')).not.toBeNull());
+    // the label is drawn in the label layer, outside the edge's own element
+    await waitFor(() => expect(container.querySelector('.dg-edge-label.dg-diff-removed')?.textContent).toBe('ingress'));
   });
 
   it('marks nothing without diffMarks', async () => {
