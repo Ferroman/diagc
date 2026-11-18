@@ -15,6 +15,12 @@ import type { LayoutApi } from './view-types';
 export const MIN_ZOOM = 0.02;
 export const MAX_ZOOM = 4;
 
+// LayoutApi.focusNodes: a lone small box is not blown up to fill the canvas, the
+// boxes keep their surroundings in view, and the move is slow enough to follow.
+const FOCUS_MAX_ZOOM = 1;
+const FOCUS_PADDING = 0.35;
+const FOCUS_MS = 300;
+
 export interface LayoutApiInput {
   layoutApiRef: MutableRefObject<LayoutApi | null> | undefined;
   reactFlow: ReactFlowInstance;
@@ -94,6 +100,16 @@ export function useLayoutApi(input: LayoutApiInput): void {
           return;
         }
         void reactFlow.fitView({ padding: pad });
+      },
+      focusNodes: (ids) => {
+        const boxes = ids.map((id) => ref.current?.nodeBounds(id));
+        const rect = wrapperRef.current?.getBoundingClientRect();
+        if (boxes.length === 0 || boxes.includes(undefined) || rect === undefined || rect.width <= 0) return false;
+        const bounds = unionBounds(boxes);
+        if (bounds === undefined) return false;
+        const viewport = getViewportForBounds(bounds, rect.width, rect.height, MIN_ZOOM, FOCUS_MAX_ZOOM, FOCUS_PADDING);
+        void reactFlow.setViewport(viewport, { duration: FOCUS_MS });
+        return true;
       },
       legendReserve: () => legendReserveRef.current,
       exportPng: async (opts) => {

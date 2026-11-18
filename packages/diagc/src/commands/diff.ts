@@ -92,7 +92,7 @@ export const diff: Command<'--out' | '--no-images' | '--json' | '--labels' | '--
       io.err(
         `✓ ${res.pages.length} page(s)${res.images.length > 0 ? `, ${res.images.length} image(s)` : ''} -> ${outDir}`,
       );
-      io.err(`✓ side by side -> ${res.index}`);
+      io.err(`✓ overview -> ${res.index}`);
       io.err(`✓ for an ADR -> ${res.summary}`);
       return 0;
     } catch (e) {

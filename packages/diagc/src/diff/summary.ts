@@ -1,13 +1,14 @@
 import type { DiagramDiff } from './compare';
 import { describeDiff } from './describe';
 import type { DiagramSet } from './load';
+import type { DiagramFiles } from './pages';
 
 /** What `summary.md` is written from. */
 export interface SummaryOptions {
   diffs: readonly DiagramDiff[];
   /** each shown diagram's pages by side, as paths under the output directory without
    * the extension, and whether a PNG was rendered beside each */
-  files: Map<string, { before?: string; after?: string; png: boolean }>;
+  files: Map<string, DiagramFiles>;
   before: DiagramSet;
   after: DiagramSet;
   /** where the images are served from, as `DiffPagesOptions.imageUrl` */
@@ -39,6 +40,12 @@ export function summaryMarkdown({ diffs, files, before, after, imageUrl }: Summa
     );
     for (const l of describeDiff(d)) out.push(`- \`${l[0]}\` ${l.slice(2)}`);
     out.push('');
+    // Both versions in one picture, per plane that shows a change: a change on a
+    // later plane is in neither picture of the table above.
+    for (const picture of f?.pictures ?? []) {
+      const where = picture.plane !== undefined ? `Changes on ${picture.plane}` : 'Changes';
+      out.push(`**${where}**`, '', `![${where}](${png(picture.rel)})`, '');
+    }
   }
   return out.join('\n');
 }

@@ -2497,6 +2497,18 @@ button.dg-role-chip {
   stroke: var(--dg-diff-changed) !important;
 }
 
+/* The combined diff page's switches, as classes on a host element around the
+   canvas: the removed elements are in that picture only to show what went, so
+   switching them off takes them out; dimming fades whatever carries no mark. */
+.dg-diff-hide-removed .react-flow__node.dg-diff-removed,
+.dg-diff-hide-removed .react-flow__edge.dg-diff-removed {
+  visibility: hidden;
+}
+.dg-diff-dim .react-flow__node:not([class*='dg-diff-']) > *,
+.dg-diff-dim .react-flow__edge:not([class*='dg-diff-']) {
+  opacity: 0.25;
+}
+
 /* State machine. A state is a rounded .dg-node (or an open .dg-group) with a
    behaviours compartment under a divider; the machine frame and the regions fill
    the wrapper the layout sized, as the activity frame and region do. */

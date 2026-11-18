@@ -67,6 +67,10 @@ export interface LayoutApi {
    * after the frame is resized).
    * A per-side padding object reserves space for a panel such as the legend. */
   fitView: (padding?: number | { top?: number; right?: number; bottom?: number; left?: number }) => void;
+  /** bring these nodes into view together, no closer than the canvas reads at
+   * 1:1. False when one of them is not on the canvas (folded away, on another
+   * plane, not laid out yet), and the view stays where it is. */
+  focusNodes: (ids: readonly string[]) => boolean;
   /** px reserved by the legend panel on its own edge, or null when none is
    * shown — the export handshake grows the capture frame by this. */
   legendReserve: () => { side: 'top' | 'right' | 'bottom' | 'left'; px: number } | null;

@@ -41,7 +41,35 @@ describe('indexHtml', () => {
   it('colours each change by its sign', () => {
     expect(html).toContain('<li class="add">+ Orders &lt;DB&gt; [database]</li>');
     expect(html).toContain('<li class="del">- Legacy [service]</li>');
-    expect(html).toContain('<li class="chg">~ API -&gt; API gateway (renamed): description</li>');
+    expect(html).toContain('<li class="chg">~ API -&gt; API gateway (renamed): description<dl>');
+  });
+
+  it('shows a changed field as it was and as it is', () => {
+    expect(html).toContain('<dl><dt>type</dt><dd class="was">service</dd><dd>webapp</dd></dl>');
+  });
+
+  it('opens a diagram that has a combined page on it, each change a button that finds it there', () => {
+    const withCombined = indexHtml(
+      diffs,
+      new Map([
+        ['shop', { before: 'shop.before', after: 'shop.after', combined: 'shop.diff', removedIds: ['gone~removed'] }],
+      ]),
+      before,
+      after,
+    );
+    expect(withCombined).toContain('<div class="combined" data-view="combined"><iframe src="shop.diff.html"');
+    // the sides wait for their button
+    expect(withCombined).toContain('<div class="pair" data-view="sides" hidden>');
+    expect(withCombined).toContain('<iframe data-src="shop.before.html?export=1"');
+    expect(withCombined).toContain(
+      '<button type="button" data-focus="{&quot;node&quot;:&quot;db&quot;}">+ Orders &lt;DB&gt; [database]</button>',
+    );
+    // a removed relation is asked for under the id the combined page gave it
+    expect(withCombined).toContain(
+      'data-focus="{&quot;relation&quot;:&quot;gone~removed&quot;}">- Web -&gt; Legacy (sync)',
+    );
+    // a layer is on no picture: its line stays text
+    expect(withCombined).toContain('<li class="add">+ layer new</li>');
   });
 
   it('names each sidecar left out, from both sides', () => {
