@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/Ferroman/diagc/compare/v1.11.0...v1.12.0) (2026-11-18)
+
+
+### Features
+
+* **state-machine:** zones show a process's phases, and a state's kind colours it ([#188](https://github.com/Ferroman/diagc/issues/188)) ([744eefd](https://github.com/Ferroman/diagc/commit/744eefd6d5cd2e946c6a478614fdbf4c4c0f4c7c))
+
 ## [1.11.0](https://github.com/Ferroman/diagc/compare/v1.10.2...v1.11.0) (2026-11-17)
 
 
