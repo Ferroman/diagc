@@ -106,7 +106,7 @@ diagc diff v1.0..v2.0 checkout     # only these diagrams, by name
 - **What it cannot compare:** a diagram that does not compile at either side is listed as not compared, with why, on stdout, in `index.html` and in `summary.md`. A layout or drawings sidecar that cannot be read leaves the diagram compared but drawn without it, and is named on stderr, in `index.html` and in `summary.md`.
 - **For a comment elsewhere:** `--labels main,#12` names the two sides in place of the refs, and `--image-url 'https://host/pr-12/{path}'` makes `summary.md` link its images there (`{path}` is each PNG's path under the output directory). The [pull-request action](../how-to/show-what-changed.md#show-it-on-every-pull-request) uses both.
 - **Names:** after the range, as `eject` reads them (`shop`, `shop.diagram.json` or `.diagrams/src/shop.diagram.json`); one that matches no diagram at either side exits `1`.
-- **What counts:** nodes by id (any field, plus a move to another container), relations by id or else by endpoints and kind, layers and planes by id. Layout positions are not compared.
+- **What counts:** nodes by id (any field, plus a move to another container), layers and planes by id (any field). Relations pair up by what they say: the same ends, kind and layer are one relation, changed where a field differs, and an id the author gave is followed to other ends or another layer. An id the builder made from the ends and a number is not evidence, since it shifts when a relation is added. Layout positions are not compared.
 - **Exit code:** `0` whether or not anything changed; `1` outside a git repository (`not a git repository`), for a ref that does not exist, a name that matches no diagram, or a failure.
 
 ### `watch`

@@ -1,6 +1,6 @@
 # Show what changed between two versions
 
-Diagrams live in git, so the repository's history is the architecture's history. `diagc diff` compares the diagrams at two refs and draws the difference: what was added, what went and what changed. Use it for the before/after pictures in an ADR, or to review a pull request that touches a diagram.
+Diagrams live in git, so the repository's history is the architecture's history. `diagc diff` compares the diagrams at two refs and draws the difference in one picture: what was added, what went and what changed. Use it for the pictures in an ADR, or to review a pull request that touches a diagram.
 
 ## Compare two tags
 
@@ -36,23 +36,23 @@ and writes, under `.diagrams/diff/adr-12-before..adr-12-after/`:
 
 ![The overview page: the change list on the left, and one picture with the added, removed and changed elements outlined](../media/show-what-changed.png)
 
-## Read the combined picture
-
-The combined picture is the later version with everything the earlier one lost drawn back in, so one picture shows what arrived, what changed and what went.
-
-- **Switches:** `Added`, `Removed` and `Changed` turn each kind of mark on and off, with the number of each on the plane you are looking at. Switching `Removed` off takes the removed elements out of the picture. `Dim the rest` fades everything that did not change.
-- **Planes:** each plane's chip carries the number of changes that plane shows. A plane that was itself added, removed or changed is underlined in the mark's colour. The page opens on the first plane that shows a change.
-- **The change list:** click a line to bring that element into view. The picture moves to a plane that shows it first. A changed line shows each changed field as it was and as it is.
-- **Side by side:** the button above the picture swaps it for the two versions next to each other.
-
-Changes on a layer are drawn on the planes that switch that layer on. A layer no plane switches on is only in the change list.
-
 Any two refs work: tags, branches, commits, `HEAD~3`. Give a single ref to compare it with the working tree, including uncommitted edits:
 
 ```bash
 diagc diff main                    # what this branch changed
 diagc diff v1.0..v2.0 checkout     # only the checkout diagram
 ```
+
+## Read the combined picture
+
+The combined picture is the later version with everything the earlier one lost drawn back in, so one picture shows what arrived, what changed and what went.
+
+- **Switches:** `Added`, `Removed` and `Changed` turn each kind of mark on and off, with the number of each on the plane you are looking at. Switching `Removed` off takes the removed elements out of the picture, which leaves the later version as it is. `Dim the rest` fades everything that did not change.
+- **Planes:** each plane's chip carries the number of changes that plane shows. A plane that was itself added, removed or changed is underlined in the mark's colour. The page opens on the first plane that shows a change.
+- **The change list:** click a line to bring that element into view. The picture moves to a plane that shows it first. A changed line shows each changed field as it was and as it is.
+- **Side by side:** the button above the picture swaps it for the two versions next to each other.
+
+Changes on a layer are drawn on the planes that switch that layer on. A layer no plane switches on is only in the change list.
 
 ## Reading the marks
 
@@ -77,7 +77,7 @@ PNGs need Chrome, as for `publish`; without it, or with `--no-images`, you get t
 
 ## Show it on every pull request
 
-A pull request that touches a diagram can get a comment with the change list and both pictures, kept up to date on every push. Add `.github/workflows/diagram-diff.yml`:
+A pull request that touches a diagram can get a comment with the change list, the before and after pictures and the combined picture, kept up to date on every push. Add `.github/workflows/diagram-diff.yml`:
 
 ```yaml
 name: Diagram diff
@@ -108,7 +108,7 @@ What it does on each push:
 2. Pushes the PNGs to the `diagc-diff-assets` branch, under `pr-<number>/`. A comment can only show an image that has a URL, and a branch in the same repository keeps them as private as the code.
 3. Writes one comment, and edits it on later pushes. If a push takes the diagram change back out, the comment says there are no changes any more.
 
-The interactive pages are attached to the run as the `diagram-diff` artifact.
+The interactive pages are attached to the run as the `diagram-diff` artifact: download it and open `index.html`.
 
 | Input               | Default                       |                                                                                                                                                |
 | ------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -128,6 +128,7 @@ Two limits:
 - **Only `.diagrams/` is read at each ref.** A local `include` that points outside `.diagrams/` cannot be resolved at an old ref.
 - **Nodes match by id.** Renaming a node's _name_ is a change; changing its _id_ reads as one node removed and another added.
 - **Planes that show the same changes share one combined PNG.** Planes over one structure repeat its changes, so only the first of them and each plane that shows something else get a picture. The page has every plane.
+- **A field that holds a list is shown as JSON** in the change list, a state's `behaviors` for one.
 - **Add `.diagrams/diff/` to `.gitignore`** unless you mean to commit the output.
 - **The assets branch only grows.** Each PR's folder is replaced on every push, but a closed PR's folder stays. Delete the branch now and then; it is recreated on the next run.
 

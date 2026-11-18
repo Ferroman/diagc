@@ -1,5 +1,5 @@
 # Posts what a pull request changed in its diagrams as one PR comment: the change list
-# and before/after pictures, kept up to date on every push.
+# and the pictures (before, after and both in one), kept up to date on every push.
 #
 #   - uses: actions/checkout@v7
 #     with: { fetch-depth: 2 }      # the PR's merge commit and its base parent
@@ -13,7 +13,7 @@
 # back out would not run, and the comment would keep showing it. Unchanged, the action
 # only edits an earlier comment to say so.
 name: diagc diagram diff
-description: Comment on a pull request with before/after pictures of the diagrams it changed.
+description: Comment on a pull request with pictures of what it changed in the diagrams.
 inputs:
   diagc:
     description: How to run diagc. Needs Node 22+ on the runner.
