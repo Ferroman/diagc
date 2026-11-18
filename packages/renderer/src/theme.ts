@@ -56,6 +56,20 @@ export interface ThemeTokens {
   deployHost: string;
   /** a subnet's wash strength (color-mix % against --dg-node-fill, like planZoneTint) */
   deploySubnetTint: string;
+  /** a state machine's states by kind: a good end, a failure, a wait */
+  smOk: string;
+  smFailed: string;
+  smWaiting: string;
+  /** the colours a state machine's zones take in turn when they name none; kept
+   *  clear of the three kind colours, so a wash is never read as a kind */
+  smZone1: string;
+  smZone2: string;
+  smZone3: string;
+  smZone4: string;
+  smZone5: string;
+  smZone6: string;
+  /** a zone's wash strength (color-mix % against --dg-node-fill, like planZoneTint) */
+  smZoneTint: string;
   /** how much of its own colour an outline keeps — a C4 boundary, an AWS group: a
    * line and a title drawn straight on the canvas. color-mix % of the colour,
    * the rest toward --dg-text (100% = the colour as written) */
@@ -114,6 +128,16 @@ export const lightTheme: ThemeTokens = {
   deployCluster: '#0f766e',
   deployHost: '#475569',
   deploySubnetTint: '10%',
+  smOk: '#1f8a4c',
+  smFailed: '#c2413c',
+  smWaiting: '#b7791f',
+  smZone1: '#2563eb',
+  smZone2: '#7c3aed',
+  smZone3: '#0f766e',
+  smZone4: '#be185d',
+  smZone5: '#475569',
+  smZone6: '#4338ca',
+  smZoneTint: '9%',
   outlineInk: '100%', // the colour as written: it was picked against a light page
 };
 
@@ -163,6 +187,16 @@ export const darkTheme: ThemeTokens = {
   deployCluster: '#2dd4bf',
   deployHost: '#94a3b8',
   deploySubnetTint: '16%',
+  smOk: '#5dd39e',
+  smFailed: '#f28b82',
+  smWaiting: '#e0b341',
+  smZone1: '#60a5fa',
+  smZone2: '#a78bfa',
+  smZone3: '#2dd4bf',
+  smZone4: '#f472b6',
+  smZone5: '#94a3b8',
+  smZone6: '#818cf8',
+  smZoneTint: '14%',
   // lifted toward --dg-text, as roleChipText is: written for a white page, the AWS
   // Cloud navy (#242F3E) is 1.36:1 on the dark canvas, and 4.85:1 at this share
   outlineInk: '55%',

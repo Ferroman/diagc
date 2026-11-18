@@ -140,6 +140,7 @@ export const NODE_OPT_KEYS = [
   'layer',
   'columns',
   'behaviors',
+  'stateKind',
   'threats',
   'comments',
   'links',

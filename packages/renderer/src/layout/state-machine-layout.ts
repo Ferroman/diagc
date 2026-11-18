@@ -5,13 +5,15 @@ import {
   SM_MACHINE_TYPE,
   SM_REGION_TYPE,
   SM_STATE_TYPE,
+  SM_ZONE_TYPE,
   type CompiledView,
   type DiagramModel,
   type LayoutDirection,
+  type ViewEdge,
   type ViewNode,
 } from '@diagc/core/internal';
 import { containmentRank } from './activity-frame';
-import { containerPad } from './layout-graph';
+import { containerPad, ORDER_LINK_KIND } from './layout-graph';
 
 interface Geo {
   x: number;
@@ -48,6 +50,9 @@ const axesOf = (direction: LayoutDirection): Axes =>
 // elk's coordinates are fractional; a hair of difference is not a change
 const EPSILON = 0.5;
 
+/** the room a widened zone leaves beside a sibling that is not a zone */
+const ZONE_CLEARANCE = 12;
+
 const NO_SEPARATORS: ReadonlyMap<string, RegionSeparator> = new Map();
 
 const hasStateMachine = (model: DiagramModel) => model.nodes.some((n) => isStateMachineType(n.type));
@@ -64,6 +69,36 @@ function regionsOf(n: ViewNode, rankIn: (parent: string, child: string) => numbe
   return n.children
     .filter((c) => c.node.type === SM_REGION_TYPE)
     .sort((a, b) => rankIn(n.id, a.id) - rankIn(n.id, b.id));
+}
+
+/** a machine's zones on show, in containment order (see containmentRank) */
+function zonesOf(n: ViewNode, rankIn: (parent: string, child: string) => number): ViewNode[] {
+  if (n.state !== 'expanded' || n.node.type !== SM_MACHINE_TYPE) return [];
+  return n.children.filter((c) => c.node.type === SM_ZONE_TYPE).sort((a, b) => rankIn(n.id, a.id) - rankIn(n.id, b.id));
+}
+
+/**
+ * The view with a machine's zones held in their declared order, for the layout
+ * run: one layout-only link from each zone to the next (ORDER_LINK_KIND), so the
+ * zones follow each other along the flow whatever the transitions between them
+ * suggest, and elk still routes every transition. The same object back when no
+ * machine has two zones (it is a layout cache key).
+ */
+export function withZoneOrder(view: CompiledView, model: DiagramModel, plane: string | undefined): CompiledView {
+  if (!model.nodes.some((n) => n.type === SM_ZONE_TYPE)) return view;
+  const rankIn = containmentRank(model, plane);
+  const links: ViewEdge[] = [];
+  const visit = (n: ViewNode): void => {
+    const zones = zonesOf(n, rankIn);
+    for (let i = 0; i + 1 < zones.length; i++) {
+      const from = zones[i]!.id;
+      const to = zones[i + 1]!.id;
+      links.push({ id: `${ORDER_LINK_KIND}:${from}:${to}`, from, to, kind: ORDER_LINK_KIND, constituents: [] });
+    }
+    n.children.forEach(visit);
+  };
+  view.roots.forEach(visit);
+  return links.length === 0 ? view : { ...view, layoutEdges: [...view.layoutEdges, ...links] };
 }
 
 /** Copy-on-write over the geometry: the input map back while nothing changed. */
@@ -135,6 +170,56 @@ function stackRegions<T extends Geo>(draft: Draft<T>, parent: ViewNode, regions:
   });
 }
 
+/** do two boxes share any stretch of the flow, so that one can stand in the other's way across it? */
+const sharesFlow = (a: Geo, b: Geo, axes: Axes): boolean =>
+  a[axes.along] < b[axes.along] + b[axes.alongSize] && b[axes.along] < a[axes.along] + a[axes.alongSize];
+
+/**
+ * Give a machine's zones one extent across the flow: each runs from the first
+ * zone's near side to the last one's far side, so they read as a stack of bands
+ * and not as boxes of whatever width their content took. A zone stops short of a
+ * sibling that is not a zone and stands beside it (an initial outside every zone,
+ * say), which it would otherwise cover.
+ *
+ * A zone's content is parent-relative, so it is shifted back by as much as the
+ * zone's near side moved: nothing inside a zone moves on the canvas, and every
+ * route still stands on its ends.
+ */
+function alignZones<T extends Geo>(draft: Draft<T>, parent: ViewNode, zones: readonly ViewNode[], axes: Axes) {
+  const laid = zones.map((z) => draft.get(z.id));
+  if (zones.length < 2 || laid.some((g) => g === undefined)) return;
+  const boxes = laid as T[];
+  const near = Math.min(...boxes.map((g) => g[axes.across]));
+  const far = Math.max(...boxes.map((g) => g[axes.across] + g[axes.acrossSize]));
+  const others = parent.children
+    .filter((c) => c.node.type !== SM_ZONE_TYPE && !isBorderPoint(c))
+    .map((c) => draft.get(c.id))
+    .filter((g): g is T => g !== undefined);
+  zones.forEach((zone, i) => {
+    const box = boxes[i]!;
+    const inTheWay = others.filter((o) => sharesFlow(o, box, axes));
+    const from = Math.max(
+      near,
+      ...inTheWay
+        .filter((o) => o[axes.across] + o[axes.acrossSize] <= box[axes.across])
+        .map((o) => o[axes.across] + o[axes.acrossSize] + ZONE_CLEARANCE),
+    );
+    const to = Math.min(
+      far,
+      ...inTheWay
+        .filter((o) => o[axes.across] >= box[axes.across] + box[axes.acrossSize])
+        .map((o) => o[axes.across] - ZONE_CLEARANCE),
+    );
+    const shift = box[axes.across] - from;
+    draft.set(zone.id, { ...box, [axes.across]: from, [axes.acrossSize]: to - from });
+    if (Math.abs(shift) < EPSILON) return;
+    for (const child of zone.children) {
+      const g = draft.get(child.id);
+      if (g !== undefined) draft.set(child.id, { ...g, [axes.across]: g[axes.across] + shift });
+    }
+  });
+}
+
 /**
  * Grow `n` right and down around the children this pass moved or grew. Never
  * left or up, and never smaller: the stack starts at the padding corner, so it
@@ -190,7 +275,9 @@ function snapBorderPoints<T extends Geo>(draft: Draft<T>, n: ViewNode, before: G
  * orthogonal state's (or machine's) regions stacked across the flow and filling
  * it, and its entry and exit points on its border. elk already stacks regions
  * roughly so; this pass lines them up, puts them in containment order and closes
- * the gaps, which is what lets one dashed line divide two regions.
+ * the gaps, which is what lets one dashed line divide two regions. A machine's
+ * zones, which the layout run already put in order (withZoneOrder), are given
+ * one extent across the flow.
  *
  * Geometry is parent-relative (React Flow nesting). Boxes grow right and down to
  * fit, ancestors included; nothing else moves. Edges touching a node this pass
@@ -216,6 +303,7 @@ export function arrangeStateMachines<T extends Geo>(
     const before = draft.get(n.id);
     const regions = regionsOf(n, rankIn);
     if (regions.length > 0) stackRegions(draft, n, regions, axes);
+    alignZones(draft, n, zonesOf(n, rankIn), axes);
     growAround(draft, n);
     if (before !== undefined && isOpenComposite(n)) snapBorderPoints(draft, n, before);
   };

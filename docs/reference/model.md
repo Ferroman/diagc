@@ -83,6 +83,7 @@ picture of a run in a preset of its own, whatever the diagrams say (see [Publish
 | `layer` | `string?` | The node shows only while this layer is active. |
 | `columns` | `Column[]?` | ER-table rows; rendered when `type` is `db-table`. |
 | `behaviors` | `StateBehavior[]?` | State-machine diagrams only. The state's entry, exit and do behaviours — see [`StateBehavior`](#statebehavior). |
+| `stateKind` | `'ok' \| 'failed' \| 'waiting'`? | State-machine diagrams only. How the state is going: a good end, a failure, a wait. It colours the state green, red or amber; the node's own `color` wins. A transition into a `failed` state is drawn red. |
 
 ### Asset refs (`image`, `shape`)
 
@@ -473,6 +474,7 @@ A diagram or plane with `notation: 'state-machine'` is a UML state machine: stat
 | `sm-machine` | an always-open box | The machine: the outermost container. |
 | `sm-state` | a rounded box | A state. It may contain further states (a composite state). |
 | `sm-region` | a dashed always-open box | One concurrent region of a state. A state holding regions is orthogonal. |
+| `sm-zone` | a square, lightly tinted always-open area | A zone of a machine: a titled area that holds states, with the node's `description` as a note under the title. It is a drawing aid: every rule reads its content as the machine's own. Zones follow each other along the flow in containment order. |
 | `sm-initial` | a filled dot | Where a machine or region starts. |
 | `sm-final` | a bullseye | A region ends. |
 | `sm-choice` | a diamond | A branch decided when the transition is taken. |
@@ -551,6 +553,7 @@ The compiler prints them, and the notation's panel lists them.
 | `invalid-polarity` | `polarity` is not `+` or `-`. |
 | `invalid-transition` | A relation's `trigger`, `guard` or `effect` is not non-empty text. |
 | `invalid-behaviors` | A node's `behaviors` is not a list of `{ trigger, guard?, effect }` with non-empty text. |
+| `invalid-state-kind` | A node's `stateKind` is not `ok`, `failed` or `waiting`. |
 | `git-link-endpoints` | A `commit`/`branch`/`merge` relation does not join two `commit` nodes. |
 | `git-commit-lane` | A `commit` link crosses lanes, or a `branch`/`merge` link stays in one. |
 | `git-parents` | A commit has more than one incoming `commit` link, or more than one incoming `branch` link. |
@@ -574,8 +577,9 @@ The compiler prints them, and the notation's panel lists them.
 | `sm-region-parent` | *Warning.* A region with a parent that is not a state or a machine. |
 | `sm-region-siblings` | *Warning.* A state that holds a region also holds something other than regions and entry or exit points. |
 | `sm-machine-parent` | *Warning.* A machine that is not top level. |
+| `sm-zone-parent` | *Warning.* A zone whose parent is not a machine: a zone in a state, a region or another zone. |
 | `sm-pseudo-children` | *Warning.* A pseudo-state, a final or a terminate that holds other nodes. |
-| `sm-transition-ends` | *Warning.* A transition that ends on a machine, a region or a node that is not of the notation. |
+| `sm-transition-ends` | *Warning.* A transition that ends on a machine, a region, a zone or a node that is not of the notation. |
 | `sm-history-parent` | *Warning.* A history in an orthogonal state, a machine or any other parent that is not a region or a plain composite state. |
 | `sm-point-parent` | *Warning.* An entry or exit point whose parent is not a state or a machine. |
 | `sm-initial-count` | *Warning.* A second initial in one region, or in one container without regions. |

@@ -35,6 +35,7 @@ import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './layout/git
 import type { LayoutResult, NotationLayoutInput } from './layout/layout';
 import { PLAN_LAYOUT, planGraphCached, planLayout } from './layout/plan-layout';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
+import { stateMachineColors, stateMachineEdgeColor } from './state-kinds';
 
 /** A small chip in a node's badge row: one of the plan's role chips, the only
  * producer today. */
@@ -411,11 +412,14 @@ const PLAN: NotationProfile = {
   canvasOverlay: 'time-axis',
 };
 
-/** A UML state machine: states, pseudo-states and transitions. Only a styling hook
- * for now; the type vocabulary lives in the registry. */
+/** A UML state machine: states, pseudo-states and transitions. The type vocabulary
+ * lives in the registry; the profile adds the colours that are not UML's — a zone's
+ * wash, a state's kind, and the failure colour on the way into a failed state. */
 const STATE_MACHINE: NotationProfile = {
   id: SM_NOTATION,
   className: 'dg-notation-sm',
+  node: { colorOf: stateMachineColors },
+  edge: { colorOf: stateMachineEdgeColor },
 };
 
 // Record<NotationId, ...> keying means adding a notation id to BUILTIN_NOTATIONS

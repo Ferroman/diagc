@@ -266,7 +266,7 @@ The machine, `StateRef` and `SmRegionRef` all extend `SmScope`. Every helper con
 
 | Method | Returns | Notes |
 | --- | --- | --- |
-| `.state(id, name?, opts?)` | `StateRef` | A state. `opts`: `entry?`, `exit?`, `do?` (each an effect, stored as a behavior with that trigger, in that order) and `color?`. |
+| `.state(id, name?, opts?)` | `StateRef` | A state. `opts`: `entry?`, `exit?`, `do?` (each an effect, stored as a behavior with that trigger, in that order), `kind?` (`'ok'`, `'failed'` or `'waiting'`: how the state is going, which colours it and is stored as `stateKind`) and `color?`, which wins over the kind's colour. |
 | `.initial(id?)` | `SmElementRef` | The initial pseudo-state. |
 | `.final(id?)` | `SmElementRef` | A final state. |
 | `.choice(id?, name?)` | `SmElementRef` | A choice. |
@@ -278,6 +278,7 @@ The machine, `StateRef` and `SmRegionRef` all extend `SmScope`. Every helper con
 
 | Call | Returns | Notes |
 | --- | --- | --- |
+| `sm.zone(id, name?, { note?, color? })` | `SmZoneRef` | A zone of the machine: a titled, tinted area that holds states, and offers the element calls above. `note` is a line under the title. Zones follow each other along the flow in the order they are declared; without `color` they take the theme's colours in turn. The machine's rules read through a zone. |
 | `state.region(id?, name?)` | `SmRegionRef` | A concurrent region; a state with regions is orthogonal. |
 | `state.on(trigger, { guard?, effect })` | `state` | An internal transition, added to the state's behaviors after `entry`, `exit` and `do`. |
 | `state.history({ id?, deep? })`, `region.history({ id?, deep? })` | `SmElementRef` | Shallow history (`H`), or deep (`H*`) with `deep: true`. A plain composite state takes `state.history()`; an orthogonal one keeps history in each region, so `state.history()` **throws** on a state that has regions: use `region.history()`. The machine itself has no history. |

@@ -152,6 +152,7 @@ export const TYPE_LOOKS: Readonly<Record<string, TypeLook>> = {
   'sm-machine': box('', open),
   'sm-state': shaped('rounded', ''),
   'sm-region': box('', { ...dashed, ...open }),
+  'sm-zone': box('', open),
   'sm-initial': shaped('dot', '', { legend: 'Initial state' }),
   'sm-final': shaped('dot', '', { legend: 'Final state' }),
   'sm-choice': shaped('diamond', '', { legend: 'Choice' }),

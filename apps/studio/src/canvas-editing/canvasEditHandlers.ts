@@ -9,6 +9,7 @@ import {
   SM_MACHINE_TYPE,
   SM_NOTATION,
   SM_REGION_TYPE,
+  SM_ZONE_TYPE,
   strideFor,
   threatsOf,
   uniqueNodeId,
@@ -40,7 +41,8 @@ import { quickAdd, quickAddLabel, quickAddPlaced, type QuickAddContext } from '.
 import { fkConnectionCommands } from './tableConnect';
 import { transitionLabelPatch } from './transitionLabel';
 
-const isSmFrame = (type: string | undefined): boolean => type === SM_MACHINE_TYPE || type === SM_REGION_TYPE;
+const isSmFrame = (type: string | undefined): boolean =>
+  type === SM_MACHINE_TYPE || type === SM_REGION_TYPE || type === SM_ZONE_TYPE;
 
 /** The callbacks DiagramView takes in edit mode. */
 export type EditingApi = NonNullable<Parameters<typeof DiagramView>[0]['edit']>;
@@ -351,7 +353,7 @@ export function connectAndDeleteHandlers({ editor, penLayer, notation, select }:
         for (const c of cmds) editor.dispatch(c);
         return;
       }
-      // a machine or a region is never a transition end: the rule
+      // a machine, a region or a zone is never a transition end: the rule
       // sm-transition-ends covers hand-written JSON, and the gesture never
       // creates one
       if (notation === SM_NOTATION && [from, to].some((id) => isSmFrame(m?.nodes.find((n) => n.id === id)?.type))) {

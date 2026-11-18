@@ -1,6 +1,15 @@
 import type { DiagramModel, DiagramNode } from '../../types';
 import type { Ctx } from '../../validate/context';
-import { flowRules, ofType, planeView, planeWarner, typeOf, type PlaneView, type Warn } from './reachability';
+import {
+  flowRules,
+  ofType,
+  planeView,
+  planeWarner,
+  typeOf,
+  zoneParents,
+  type PlaneView,
+  type Warn,
+} from './reachability';
 import {
   isPseudoState,
   isStateMachineType,
@@ -12,6 +21,7 @@ import {
   SM_NOTATION,
   SM_REGION_TYPE,
   SM_STATE_TYPE,
+  SM_ZONE_TYPE,
 } from './state-machine';
 
 /**
@@ -43,6 +53,7 @@ function structureRules(ctx: Ctx, plane: string | undefined): void {
   const view = planeView(ctx.model, plane);
   const warn = planeWarner(ctx, plane);
   const nodes = [...view.nodes.values()];
+  zoneRules(ctx.model, plane, warn);
   regionRules(view, nodes, warn);
   for (const n of nodes) {
     const parent = view.parentOf.get(n.id);
@@ -62,6 +73,16 @@ function structureRules(ctx: Ctx, plane: string | undefined): void {
   transitionEnds(ctx, view, warn);
   for (const n of nodes) historyRule(view, n, warn);
   for (const n of nodes) pointRule(view, n, warn);
+}
+
+/** a zone sits directly in a machine: nowhere else is there a top level to divide */
+function zoneRules(model: DiagramModel, plane: string | undefined, warn: Warn): void {
+  const types = new Map(model.nodes.map((n) => [n.id, n.type]));
+  for (const [zone, parent] of zoneParents(model, plane)) {
+    if (parent !== undefined && types.get(parent) !== SM_MACHINE_TYPE) {
+      warn('sm-zone-parent', `Zone '${zone}' sits in '${parent}'; a zone sits directly in a machine`, zone);
+    }
+  }
 }
 
 const orthogonal = (view: PlaneView, id: string) => ofType(view, id, SM_REGION_TYPE).length > 0;
@@ -113,13 +134,13 @@ function pointRule(view: PlaneView, n: DiagramNode, warn: Warn): void {
 
 const isStateOrMachine = (type: string | undefined) => type === SM_STATE_TYPE || type === SM_MACHINE_TYPE;
 
-/** a transition joins two vertices: not a machine, a region, or a node of another notation */
+/** a transition joins two vertices: not a machine, a region, a zone, or a node of another notation */
 function transitionEnds(ctx: Ctx, view: PlaneView, warn: Warn): void {
   const types = new Map(ctx.model.nodes.map((n) => [n.id, n.type]));
   const joinable = (id: string) => {
     if (!types.has(id)) return true; // dangling is an error of its own
     const type = types.get(id);
-    return isStateMachineType(type) && type !== SM_MACHINE_TYPE && type !== SM_REGION_TYPE;
+    return isStateMachineType(type) && type !== SM_MACHINE_TYPE && type !== SM_REGION_TYPE && type !== SM_ZONE_TYPE;
   };
   for (const t of view.transitions) {
     if (!joinable(t.from) || !joinable(t.to)) {

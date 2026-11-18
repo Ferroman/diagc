@@ -298,6 +298,7 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   'sm-machine': { shape: 'box', label: '', alwaysExpanded: true },
   'sm-state': { shape: 'rounded', label: '' },
   'sm-region': { shape: 'box', label: '', dashed: true, alwaysExpanded: true },
+  'sm-zone': { shape: 'box', label: '', alwaysExpanded: true },
   'sm-initial': {
     shape: 'start-dot',
     defaultSize: { width: 24, height: 24 },

@@ -7,7 +7,9 @@ import {
   buildGraph,
   COLLAPSED_SIZE,
   componentGap,
+  containerMinWidth,
   containerPad,
+  ORDER_LINK_KIND,
   STRESS_EDGE_LENGTH,
   type ElkShape,
 } from './layout-graph';
@@ -214,6 +216,40 @@ describe('buildGraph', () => {
     // two 15.4px lines under a 9px divider
     expect(containerPad(find('s')).top).toBe(36 + Math.ceil(9 + 2 * 15.4));
     expect(containerPad(find('p'))).toEqual({ top: 36, left: 16, bottom: 16, right: 16 });
+  });
+
+  it("gives a zone its header's room: more under a note, and the width its longest line needs", () => {
+    const m = model('zone');
+    const machine = m.stateMachine('mc');
+    machine.zone('bare', 'Bare').state('a', 'A');
+    machine.zone('noted', 'Noted', { note: 'A line that says what this zone is' }).state('b', 'B');
+    machine.zone('blank', 'Blank', { note: '   ' }).state('c', 'C');
+    const view = compileView(m.toJSON(), {
+      pins: { mc: 'expanded', bare: 'expanded', noted: 'expanded', blank: 'expanded' },
+    });
+    const find = (id: string) => view.roots[0]!.children.find((c) => c.id === id)!;
+    expect(containerPad(find('bare'))).toEqual({ top: 36, left: 16, bottom: 16, right: 16 });
+    expect(containerPad(find('noted')).top).toBe(36 + 17);
+    // a blank note is no note
+    expect(containerPad(find('blank')).top).toBe(36);
+    expect(containerMinWidth(find('noted'))).toBeGreaterThan(containerMinWidth(find('bare')));
+    expect(containerMinWidth(find('noted'))).toBeGreaterThan('A line that says what this zone is'.length * 4.5);
+    // only a zone's header is a concern
+    expect(containerMinWidth(view.roots[0]!)).toBe(0);
+  });
+
+  it('marks a layout-only order link so elk never turns it round, and no other edge', () => {
+    const m = model('order');
+    const a = m.node('a', { type: 'service' });
+    const b = m.node('b', { type: 'service' });
+    m.relate(a, b, { kind: 'sync' });
+    const view = compileView(m.toJSON(), {});
+    const link = { id: 'o', from: 'b', to: 'a', kind: ORDER_LINK_KIND, constituents: [] };
+    const { graph } = buildGraph({ ...view, layoutEdges: [...view.layoutEdges, link] }, undefined, undefined);
+    const options = (id: string) =>
+      (graph.edges as { id: string; layoutOptions?: Record<string, string> }[]).find((e) => e.id === id)?.layoutOptions;
+    expect(options('o')).toEqual({ 'elk.layered.priority.direction': '100' });
+    expect(options(view.layoutEdges[0]!.id)).toBeUndefined();
   });
 
   it('hands a glyph caption to elk as an outside label below the box', () => {

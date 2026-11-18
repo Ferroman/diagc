@@ -1,4 +1,4 @@
-import { FONT_SCALES, TEXT_ALIGNS, type DiagramNode, type TextRun } from '../types';
+import { FONT_SCALES, STATE_KINDS, TEXT_ALIGNS, type DiagramNode, type TextRun } from '../types';
 import { RESERVED_NODE_ID } from '../shared-constants';
 import { report, type Ctx } from './context';
 
@@ -26,6 +26,7 @@ export function validateNodes(ctx: Ctx): void {
     checkMembership(ctx, n);
     checkColumns(ctx, n);
     checkBehaviors(ctx, n);
+    checkStateKind(ctx, n);
   }
 }
 
@@ -181,6 +182,16 @@ function checkColumns(ctx: Ctx, node: DiagramNode): void {
 }
 
 const isText = (v: unknown): v is string => typeof v === 'string' && v.trim() !== '';
+
+function checkStateKind({ issues }: Ctx, node: DiagramNode): void {
+  if (node.stateKind === undefined || (STATE_KINDS as readonly unknown[]).includes(node.stateKind)) return;
+  report(
+    issues,
+    'invalid-state-kind',
+    `Node '${node.id}' has stateKind '${String(node.stateKind)}'; it is one of ${STATE_KINDS.join(', ')}`,
+    node.id,
+  );
+}
 
 function checkBehaviors({ issues }: Ctx, node: DiagramNode): void {
   if (node.behaviors === undefined) return;

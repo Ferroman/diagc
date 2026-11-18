@@ -17,7 +17,12 @@ import { fitContainers, type ContainerFit, type Shift } from '../layout/fit-cont
 import { layoutView, type NodeGeometry } from '../layout/layout';
 import { containerPad, DEFAULT_ALGORITHM, FALLBACK_DIRECTION, type SizeHint } from '../layout/layout-graph';
 import { sizeHintsOf } from '../layout/size-hints';
-import { arrangeStateMachines, regionSeparators, type RegionSeparator } from '../layout/state-machine-layout';
+import {
+  arrangeStateMachines,
+  regionSeparators,
+  withZoneOrder,
+  type RegionSeparator,
+} from '../layout/state-machine-layout';
 import type { NotationProfile } from '../notations';
 import { overlayPositions } from './placement';
 import { withShownTableRows } from '../node/table-ports';
@@ -367,7 +372,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   );
 
   const laidView = useMemo(
-    () => withLaneOrder(input.compiled, input.model, input.plane),
+    () => withZoneOrder(withLaneOrder(input.compiled, input.model, input.plane), input.model, input.plane),
     [input.compiled, input.model, input.plane],
   );
   const { geometry, geometryRef, routes, labelSpots, fixed, lockedX, settledFor } = useLayoutRun({

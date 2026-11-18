@@ -67,6 +67,7 @@ export default m;
 - `m.stateMachine(id, { name? })` returns the machine. Call it again for a second machine on the same canvas. To draw a machine beside other views of the same model, give it a `plane`; without one, the whole diagram becomes a state machine.
 - A machine, a state and a region each offer `state`, `initial`, `final`, `choice`, `junction`, `bar` and `terminate`. A state adds `region`, `on`, `entryPoint`, `exitPoint` and `history`, and a region adds `history`. The machine itself has no history.
 - A transition is `machine.transition(from, to, { trigger?, guard?, effect? })`, or `element.to(target, parts?)`, which returns the target so a path chains. A choice's exits are guards: `[in stock]` and `[else]`.
+- `machine.zone(id, name?, { note?, color? })` returns a zone: a titled, tinted area that holds states as the machine does. Zones show the phases of a process, and follow each other in the order you declare them. A zone changes nothing about the machine: `diagc lint` reads its states as the machine's own. See [Zones and colour](#zones-and-colour).
 - A state is composite when something is inside it. A state with regions is orthogonal: its regions run at once. A plain composite takes `state.history()`; an orthogonal one keeps history in each region, so `region.history()`, and `state.history()` throws on a state with regions. A transition into a history state resumes the substate that was left.
 
 ## How it is drawn
@@ -74,6 +75,23 @@ export default m;
 A state is a rounded box with its name, and a second compartment for its behaviours when it has any. The machine is a frame with a name tab. Regions stack inside their state, separated by dashed lines. The pseudo-states keep their UML shapes: a filled dot for initial, a bullseye for final, a diamond for a choice, a circled `H` or `H*` for history. The legend names the ones that do not explain themselves.
 
 A composite state rests folded and shows the UML composite glyph. Double-click unfolds it; siblings stay folded. Unfolding moves the other boxes, because the layout runs again.
+
+## Zones and colour
+
+A long machine is easier to read when it says which phase each state belongs to, and which states are ends, failures or waits. Neither is UML: both are drawing aids, and the machine means the same without them.
+
+```ts
+const review = refund.zone('review', '1. Review', { note: 'Support decides on the request' });
+const pay = refund.zone('pay', '2. Pay', { note: 'The bank moves the money' });
+
+const inReview = review.state('in-review', 'In review', { kind: 'waiting' });
+const payFailed = pay.state('pay-failed', 'Payment failed', { kind: 'failed' });
+```
+
+- A zone is a square, lightly tinted area with its title and an optional note at the top. Zones follow each other along the flow in the order you declare them, each as wide as the widest. A zone sits directly in a machine, and a transition cannot end on one.
+- A zone takes the next of six theme colours, or the `color` you give it. The theme colours read on a light and on a dark page.
+- A state's `kind` is `ok`, `failed` or `waiting`: green, red or amber. A state without a kind stays a plain box, so the few that matter stand out. A state's own `color` wins over its kind.
+- A transition into a `failed` state is drawn red. The legend lists the kinds in use.
 
 ## Lint
 
@@ -97,6 +115,10 @@ Nothing on the diagram checks a spec's invariants, and diagc neither imports nor
 [![Order lifecycle](../../.diagrams/static/examples/state-machine/starter.png)](https://ferroman.github.io/diagc/html/examples/state-machine/starter.html)
 
 **From a Quint spec** — the picture at the top of this page: the studio's own edit session, translated by hand from the `mode` variable of its Quint model. Each action that assigns `mode` is a transition, its `if` the guard and its updates the effect; the actions that leave `mode` alone are internal transitions of Editing. [Source](../../.diagrams/src/docs/state-machine.diagram.ts)
+
+**A refund in three phases** — zones and state kinds: a refund request that support reviews, the bank pays and that ends refunded or rejected. [Source](../../.diagrams/src/examples/state-machine/zones.diagram.ts)
+
+[![A refund in three phases](../../.diagrams/static/examples/state-machine/zones.png)](https://ferroman.github.io/diagc/html/examples/state-machine/zones.html)
 
 **A connection that reconnects** — a protocol: a client connection that retries with backoff through a choice, gives up after five attempts, and has Open as a plain composite with an internal `ping / pong`. [Source](../../.diagrams/src/examples/state-machine/connection.diagram.ts)
 

@@ -8,6 +8,7 @@ import {
   SM_MACHINE_TYPE,
   SM_REGION_TYPE,
   SM_STATE_TYPE,
+  SM_ZONE_TYPE,
 } from '@diagc/core/internal';
 import { isCausalGroup } from '../node-look';
 import { ActivityBandBody } from './ActivityBandBody';
@@ -29,6 +30,7 @@ import { SM_GLYPH_TYPES, SmGlyphBody } from './SmGlyphBody';
 import { StateBody } from './StateBody';
 import { TableBody } from './TableBody';
 import type { BodyRule } from './types';
+import { ZoneBody } from './ZoneBody';
 
 /**
  * Which body draws a node: the first rule that matches. The order is the
@@ -42,6 +44,7 @@ export const NODE_BODIES: readonly BodyRule[] = [
   // an empty machine or region compiles as a leaf yet is still a frame.
   { match: (data) => data.typeId === SM_MACHINE_TYPE, Body: MachineFrameBody },
   { match: (data) => data.typeId === SM_REGION_TYPE, Body: RegionBody },
+  { match: (data) => data.typeId === SM_ZONE_TYPE, Body: ZoneBody },
   { match: (data) => data.typeId === SM_STATE_TYPE, Body: StateBody },
   { match: (data) => data.typeId !== undefined && SM_GLYPH_TYPES.has(data.typeId), Body: SmGlyphBody },
   { match: (data, _profile, style) => style.shape === 'table' && data.state === 'leaf', Body: TableBody },

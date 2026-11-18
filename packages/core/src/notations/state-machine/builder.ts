@@ -1,6 +1,6 @@
 import { NodeRef } from '../../builder/node-ref';
 import type { ModelBuilder } from '../../builder/model-builder';
-import type { StateBehavior } from '../../types';
+import type { StateBehavior, StateKind } from '../../types';
 import { defined } from '../../util';
 import {
   SM_BAR_TYPE,
@@ -16,6 +16,7 @@ import {
   SM_STATE_TYPE,
   SM_TERMINATE_TYPE,
   SM_TRANSITION_KIND,
+  SM_ZONE_TYPE,
 } from './state-machine';
 import type { TransitionParts } from './transition';
 
@@ -29,6 +30,16 @@ export interface SmStateOpts {
   exit?: string;
   /** runs while in the state: becomes the behavior `do / <effect>` */
   do?: string;
+  /** how the state is going, which colours it: a good end, a failure, a wait */
+  kind?: StateKind;
+  /** the state's own colour; wins over the colour of its `kind` */
+  color?: string;
+}
+
+export interface SmZoneOpts {
+  /** a line under the zone's title that says what the zone is */
+  note?: string;
+  /** the zone's colour; without it the zone takes the next colour of the theme's set */
   color?: string;
 }
 
@@ -78,7 +89,7 @@ export abstract class SmScope extends NodeRef {
     id: string,
     type: string,
     name: string | undefined,
-    extra: { color?: string; behaviors?: StateBehavior[] } = {},
+    extra: { color?: string; description?: string; stateKind?: StateKind; behaviors?: StateBehavior[] } = {},
   ): void {
     this.m.node(id, { type, ...defined({ name, plane: this.plane }), ...defined(extra) });
     this.m.addContainment(this.id, id, this.plane);
@@ -96,7 +107,7 @@ export abstract class SmScope extends NodeRef {
     if (opts.exit !== undefined) behaviors.push({ trigger: 'exit', effect: opts.exit });
     if (opts.do !== undefined) behaviors.push({ trigger: 'do', effect: opts.do });
     this.declare(id, SM_STATE_TYPE, name, {
-      ...defined({ color: opts.color }),
+      ...defined({ color: opts.color, stateKind: opts.kind }),
       ...(behaviors.length > 0 ? { behaviors } : {}),
     });
     return new StateRef(id, this.m, this.plane);
@@ -136,6 +147,9 @@ export class SmRegionRef extends SmScope {
     return this.addHistory(opts);
   }
 }
+
+/** A zone of a machine: it holds states and pseudo-states as the machine does. */
+export class SmZoneRef extends SmScope {}
 
 export class StateRef extends SmScope {
   /** a concurrent region: giving a state its first one makes it orthogonal */
@@ -178,6 +192,13 @@ export class StateRef extends SmScope {
 /** One state machine: the frame node itself (this IS its NodeRef). Call m.stateMachine()
  * once per frame — several frames coexist on one canvas. */
 export class StateMachineBuilder extends SmScope {
+  /** A zone: a titled, tinted area that holds some of the machine's states. It tells the
+   * reader which part of the process those states are; the machine reads straight through it. */
+  zone(id: string, name?: string, opts: SmZoneOpts = {}): SmZoneRef {
+    this.declare(id, SM_ZONE_TYPE, name, defined({ color: opts.color, description: opts.note }));
+    return new SmZoneRef(id, this.m, this.plane);
+  }
+
   transition(from: NodeRef, to: NodeRef, parts?: TransitionParts): this {
     transition(this.m, from, to, parts);
     return this;

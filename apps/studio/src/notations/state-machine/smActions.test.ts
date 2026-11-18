@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SM_INITIAL_TYPE, SM_REGION_TYPE, SM_STATE_TYPE, model } from '@diagc/core/internal';
+import { SM_INITIAL_TYPE, SM_REGION_TYPE, SM_STATE_TYPE, SM_ZONE_TYPE, model } from '@diagc/core/internal';
 import { addSmElement, glyphLabel } from './smActions';
 
 const empty = () => model('m').toJSON();
@@ -25,6 +25,17 @@ describe('addSmElement', () => {
   it('adds no parent and no plane at top level, and names a state', () => {
     const { command } = addSmElement(empty(), SM_STATE_TYPE, undefined, {});
     expect(command).toEqual({ type: 'add-node', node: { id: 'sm-state-1', name: 'State', type: SM_STATE_TYPE } });
+  });
+});
+
+describe('addSmElement: a zone', () => {
+  it('starts named, since a zone is its title', () => {
+    const { command } = addSmElement(empty(), SM_ZONE_TYPE, 'm', {});
+    expect(command).toEqual({
+      type: 'add-node',
+      node: { id: 'sm-zone-1', name: 'Zone', type: SM_ZONE_TYPE },
+      parent: { id: 'm' },
+    });
   });
 });
 

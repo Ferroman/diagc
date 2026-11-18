@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validate } from './index';
-import type { DiagramModel, DiagramNode } from '../types';
+import { STATE_KINDS, type DiagramModel, type DiagramNode } from '../types';
 import { emptyModel, raw } from './models.fixture';
 
 describe('node checks', () => {
@@ -30,6 +30,20 @@ describe('node checks', () => {
     const m = emptyModel();
     m.nodes = [{ id: 's', name: 's', behaviors } as never];
     expect(validate(m).map((i) => i.code)).toEqual(['invalid-behaviors']);
+  });
+
+  it('flags a stateKind that is not one of the kinds, and accepts each that is', () => {
+    const m = emptyModel();
+    m.nodes = [{ id: 's', name: 's', stateKind: 'broken' } as never];
+    expect(validate(m)).toEqual([
+      {
+        code: 'invalid-state-kind',
+        message: "Node 's' has stateKind 'broken'; it is one of ok, failed, waiting",
+        ref: 's',
+      },
+    ]);
+    m.nodes = STATE_KINDS.map((stateKind) => ({ id: stateKind, name: stateKind, stateKind }));
+    expect(validate(m)).toEqual([]);
   });
 
   it('accepts well-formed behaviors', () => {

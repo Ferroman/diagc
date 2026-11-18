@@ -304,6 +304,28 @@ describe('setTableColumns', () => {
   });
 });
 
+describe('setNodeDetails: stateKind', () => {
+  const base = (): DiagramModel => ({
+    version: 1,
+    id: 'd',
+    name: 'd',
+    nodes: [{ id: 'a', name: 'a', type: 'sm-state' }],
+    containment: [],
+    relations: [],
+    layers: [],
+    planes: [],
+  });
+  it('sets the kind, and null removes the field', () => {
+    const failed = setNodeDetails(base(), 'a', { stateKind: 'failed' });
+    expect(failed.nodes[0]?.stateKind).toBe('failed');
+    expect('stateKind' in setNodeDetails(failed, 'a', { stateKind: null }).nodes[0]!).toBe(false);
+  });
+  it('leaves the kind alone when the details do not name it', () => {
+    const failed = setNodeDetails(base(), 'a', { stateKind: 'failed' });
+    expect(setNodeDetails(failed, 'a', { color: '#123456' }).nodes[0]?.stateKind).toBe('failed');
+  });
+});
+
 describe('setStateBehaviors', () => {
   const base = (): DiagramModel => ({
     version: 1,

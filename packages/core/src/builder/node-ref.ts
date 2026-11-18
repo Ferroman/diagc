@@ -6,6 +6,7 @@ import type {
   FontScale,
   Link,
   StateBehavior,
+  StateKind,
   Polarity,
   RelationStyle,
   TextAlign,
@@ -55,6 +56,8 @@ export interface NodeOpts {
   columns?: Column[];
   /** a state's entry / exit / do behaviours (see DiagramNode.behaviors) */
   behaviors?: StateBehavior[];
+  /** how a state is going (see DiagramNode.stateKind) */
+  stateKind?: StateKind;
   /** STRIDE findings (see DiagramNode.threats) */
   threats?: Threat[];
   /** remarks shown in this node's note (see DiagramNode.comments) */
