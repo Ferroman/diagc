@@ -7,7 +7,8 @@ A UML state machine: states, the transitions between them, and the events, guard
 ## How it works
 
 - `m.stateMachine(id, opts?)` draws a machine frame and returns a handle. `opts` takes `name`, `plane` and `planeName`. You can call it again for a second machine. Without `plane` the whole diagram becomes a state machine, and the call throws if it has another notation: pass `plane` to draw the machine beside other views.
-- The machine, a state and a region each offer `state(id, name?, { entry?, exit?, do?, color? })`, `initial(id?)`, `final(id?)`, `choice(id?, name?)`, `junction(id?)`, `bar(id?)` and `terminate(id?)`. `entry`, `exit` and `do` are the state's `behaviors`, each an effect.
+- The machine, a zone, a state and a region each offer `state(id, name?, { entry?, exit?, do?, kind?, color? })`, `initial(id?)`, `final(id?)`, `choice(id?, name?)`, `junction(id?)`, `bar(id?)` and `terminate(id?)`. `entry`, `exit` and `do` are the state's `behaviors`, each an effect. `kind` says how a state is going, and colours it: `ok` is green, `failed` is red, `waiting` is amber. It is the state's `stateKind`. A transition into a `failed` state is drawn red, and the legend lists the kinds in use. A state's own `color` wins over its kind.
+- `machine.zone(id, name?, { note?, color? })` draws a titled, tinted area and returns a handle that holds states as the machine does. Use zones to show the phases of a process. Zones follow each other along the flow in the order you declare them, each as wide as the widest. A zone has no meaning to the machine: every rule reads its states as the machine's own. `note` is one line under the title. Without `color` the zones take the theme's colours in turn.
 - A transition is `machine.transition(from, to, { trigger?, guard?, effect? })`, or `element.to(target, parts?)`, which returns the target so a path chains. A transition reads `trigger [guard] / effect`, on more lines past 24 characters. Write the parts as options, never as a `label`.
 - `state.on(trigger, { guard?, effect })` adds an internal transition: the state is not left. It shows in the state's behaviors.
 - A state with children is composite and rests folded in a viewer; double-click unfolds it. `state.region(id?, name?)` adds a concurrent region, and a state with regions is orthogonal. `state.entryPoint(id?, name?)` and `state.exitPoint(id?, name?)` sit on its border.
@@ -24,12 +25,11 @@ You never write these types yourself: the builder creates them. A state is compo
 Every rule is a warning, never an error: the diagram still compiles. Lint reports them under these codes.
 
 - `sm-initial-count`, `sm-initial-flow`: one initial per region, with exactly one plain transition out and none in.
-- `sm-final-outgoing`: a final or a terminate has no transition out.
-- `sm-choice-guards`: each exit of a choice or junction has a guard, and at most one is `else`.
+- `sm-final-outgoing`, `sm-choice-guards`: a final or a terminate has no transition out, and each exit of a choice or junction has a guard, and at most one is `else`.
 - `sm-bar-shape`: a bar has one transition on one side, and a fork's targets are in different regions.
 - `sm-unreachable`: a state no path from an initial reaches. A machine with no initial is not checked.
 - `sm-transition-ends`, `sm-transition-label`: a transition joins two state-machine nodes, and its parts carry the text.
-- `sm-region-parent`, `sm-region-siblings`, `sm-machine-parent`, `sm-pseudo-children`, `sm-history-parent`, `sm-point-parent`: where each node may sit.
+- `sm-region-parent`, `sm-region-siblings`, `sm-machine-parent`, `sm-zone-parent`, `sm-pseudo-children`, `sm-history-parent`, `sm-point-parent`: where each node may sit. A zone sits directly in a machine.
 
 ## From a Quint spec
 

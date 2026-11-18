@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   compileView,
   SM_EXIT_TYPE,
+  SM_INITIAL_TYPE,
   SM_MACHINE_TYPE,
   SM_REGION_TYPE,
   SM_STATE_TYPE,
+  SM_ZONE_TYPE,
   type CompiledView,
   type DiagramModel,
   type ViewNode,
@@ -239,5 +241,94 @@ describe('regionSeparators', () => {
     const folded = regionSeparators(compileView(m, { pins: { mc: 'expanded' } }), m, { direction: 'RIGHT' });
     expect(folded.size).toBe(0);
     expect(regionSeparators(compileView(m, {}), m, { direction: 'DOWN' })).toBe(folded);
+  });
+});
+
+describe('arrangeStateMachines: zones', () => {
+  /** Machine `mc` with the zones `z1` (holding `a`) and `z2` (holding `b`), and a loose initial `i`. */
+  function zonedMachine(): DiagramModel {
+    return {
+      version: 1,
+      id: 'd',
+      name: 'd',
+      nodes: [
+        { id: 'mc', name: 'M', type: SM_MACHINE_TYPE },
+        { id: 'z1', name: 'Z1', type: SM_ZONE_TYPE },
+        { id: 'z2', name: 'Z2', type: SM_ZONE_TYPE },
+        { id: 'a', name: 'A', type: SM_STATE_TYPE },
+        { id: 'b', name: 'B', type: SM_STATE_TYPE },
+        { id: 'i', name: '', type: SM_INITIAL_TYPE },
+      ],
+      containment: [
+        { parent: 'mc', child: 'z1' },
+        { parent: 'mc', child: 'z2' },
+        { parent: 'z1', child: 'a' },
+        { parent: 'z2', child: 'b' },
+        { parent: 'mc', child: 'i' },
+      ],
+      relations: [],
+      layers: [],
+      planes: [],
+    };
+  }
+  /** the zones one under the other, out of line and of different widths; the initial above both */
+  const down = (initial: NodeGeometry): Map<string, NodeGeometry> =>
+    new Map([
+      ['mc', { x: 0, y: 0, width: 900, height: 600 }],
+      ['z1', { x: 200, y: 100, width: 300, height: 150 }],
+      ['z2', { x: 60, y: 300, width: 500, height: 150 }],
+      ['a', { x: 16, y: 36, width: 160, height: 60 }],
+      ['b', { x: 16, y: 36, width: 160, height: 60 }],
+      ['i', initial],
+    ]);
+  const ABOVE = { x: 300, y: 40, width: 24, height: 24 };
+
+  it('gives the zones one near side and one width in a DOWN flow', () => {
+    const m = zonedMachine();
+    const out = arrangeStateMachines(down(ABOVE), open(m), m, { direction: 'DOWN' });
+    expect(out.get('z1')).toMatchObject({ x: 60, y: 100, width: 500, height: 150 });
+    expect(out.get('z2')).toMatchObject({ x: 60, y: 300, width: 500, height: 150 });
+  });
+
+  it('leaves what a zone holds where it stood on the canvas', () => {
+    const m = zonedMachine();
+    const view = open(m);
+    const before = absolute(view, down(ABOVE));
+    const after = absolute(view, arrangeStateMachines(down(ABOVE), view, m, { direction: 'DOWN' }));
+    for (const id of ['a', 'b', 'i']) expect(after.get(id), id).toEqual(before.get(id));
+  });
+
+  it('gives them one top and one height in a RIGHT flow', () => {
+    const m = zonedMachine();
+    const across = new Map<string, NodeGeometry>([
+      ['mc', { x: 0, y: 0, width: 900, height: 600 }],
+      ['z1', { x: 100, y: 200, width: 150, height: 300 }],
+      ['z2', { x: 300, y: 60, width: 150, height: 500 }],
+      ['a', { x: 16, y: 36, width: 100, height: 60 }],
+      ['b', { x: 16, y: 36, width: 100, height: 60 }],
+      ['i', { x: 40, y: 300, width: 24, height: 24 }],
+    ]);
+    const out = arrangeStateMachines(across, open(m), m, { direction: 'RIGHT' });
+    expect(out.get('z1')).toMatchObject({ x: 100, y: 60, width: 150, height: 500 });
+    expect(out.get('z2')).toMatchObject({ x: 300, y: 60, width: 150, height: 500 });
+  });
+
+  it('stops a zone short of a sibling that stands beside it and is no zone', () => {
+    const m = zonedMachine();
+    // the initial stands left of z1, level with it: z1 may not run over it
+    const beside = { x: 100, y: 150, width: 24, height: 24 };
+    const out = arrangeStateMachines(down(beside), open(m), m, { direction: 'DOWN' });
+    expect(out.get('z1')!.x).toBe(100 + 24 + 12);
+    expect(out.get('z1')!.x + out.get('z1')!.width).toBe(560);
+    // z2 shares no stretch of the flow with it, and takes the whole extent
+    expect(out.get('z2')).toMatchObject({ x: 60, width: 500 });
+  });
+
+  it('leaves a lone zone as the layout drew it', () => {
+    const m = zonedMachine();
+    const one = { ...m, nodes: m.nodes.filter((n) => n.id !== 'z2' && n.id !== 'b') };
+    one.containment = m.containment.filter((e) => e.child !== 'z2' && e.child !== 'b');
+    const geometry = down(ABOVE);
+    expect(arrangeStateMachines(geometry, open(one), one, { direction: 'DOWN' })).toBe(geometry);
   });
 });

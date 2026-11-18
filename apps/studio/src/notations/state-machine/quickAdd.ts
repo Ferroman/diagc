@@ -5,6 +5,7 @@ import {
   SM_REGION_TYPE,
   SM_STATE_TYPE,
   SM_TRANSITION_KIND,
+  SM_ZONE_TYPE,
   isStateMachineType,
   defined,
   type DiagramNode,
@@ -17,8 +18,8 @@ export const smConnectKind = (): string => SM_TRANSITION_KIND;
 
 /**
  * A state, an initial or a choice grows the next state across a transition; a
- * region or a machine takes a state inside, with no transition (neither may be
- * a transition end). Any other node leaves `+` with nothing to offer.
+ * region, a zone or a machine takes a state inside, with no transition (none may
+ * be a transition end). Any other node leaves `+` with nothing to offer.
  */
 export const stateMachineQuickAdd: QuickAddRecipes = (src) => {
   const { model, source, ctx } = src;
@@ -32,7 +33,7 @@ export const stateMachineQuickAdd: QuickAddRecipes = (src) => {
     const node: DiagramNode = { id: place.id, name: 'State', type: SM_STATE_TYPE, ...placeTags(place, ctx.penLayer) };
     return { place, node };
   };
-  if (source.type === SM_REGION_TYPE || source.type === SM_MACHINE_TYPE) {
+  if (source.type === SM_REGION_TYPE || source.type === SM_MACHINE_TYPE || source.type === SM_ZONE_TYPE) {
     return {
       label: 'Add a state inside',
       build: () => {

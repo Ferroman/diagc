@@ -1,4 +1,14 @@
-import type { Column, DiagramModel, DiagramNode, FontScale, Link, StateBehavior, TextAlign, TextRun } from '../types';
+import type {
+  Column,
+  DiagramModel,
+  DiagramNode,
+  FontScale,
+  Link,
+  StateBehavior,
+  StateKind,
+  TextAlign,
+  TextRun,
+} from '../types';
 import { normalizeRuns, runsToPlainText } from '../text';
 import { childrenOf } from '../children';
 import { isIsoDate } from '../dates';
@@ -59,6 +69,7 @@ export interface NodeDetails {
   plane?: string | null;
   layer?: string | null;
   links?: Link[] | null;
+  stateKind?: StateKind | null;
 }
 
 /** Whitelist of {@link NodeDetails} fields wired through the loop below. Every
@@ -80,6 +91,7 @@ const NODE_DETAIL_KEYS = [
   'plane',
   'layer',
   'links',
+  'stateKind',
 ] as const;
 type NodeDetailKey = (typeof NODE_DETAIL_KEYS)[number];
 

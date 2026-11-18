@@ -7,9 +7,11 @@ import {
   RESERVED_NODE_ID,
   SM_INITIAL_TYPE,
   SM_STATE_TYPE,
+  SM_ZONE_TYPE,
   wrapsLabel,
   type BoxSize,
   type CompiledView,
+  type DiagramNode,
   type LayoutSettings,
   type ViewEdge,
   type ViewNode,
@@ -18,6 +20,7 @@ import { ACTIVITY_LAYOUT } from './activity-frame';
 import { EDGE_LABEL_MAX_CHARS } from '../node/label-size';
 import { behaviorCompartmentHeight } from '../node/behavior-lines';
 import { selfLoopRooms, type RoomLabel } from './self-loop-room';
+import { textWidth } from './box-size';
 
 /** An elk edge after lifting: both endpoints are direct children of the owner. */
 export interface LiftedEdge {
@@ -277,9 +280,34 @@ const FRAME_PAD: Pad = { top: 0, left: ACTIVITY_LAYOUT.TITLE_STRIP_W, bottom: 0,
 export function containerPad(n: ViewNode): Pad {
   if (n.node.type === ACTIVITY_LANE_TYPE) return LANE_PAD;
   if (n.node.type === ACTIVITY_FRAME_TYPE) return FRAME_PAD;
+  if (n.node.type === SM_ZONE_TYPE) return zoneNoteOf(n.node) !== undefined ? ZONE_PAD_WITH_NOTE : ZONE_PAD;
   // an open state lists its behaviours under its header, above its substates
   const behaviors = n.node.type === SM_STATE_TYPE ? behaviorCompartmentHeight(n.node) : 0;
   return behaviors > 0 ? { ...CONTAINER_PAD, top: CONTAINER_PAD.top + behaviors } : CONTAINER_PAD;
+}
+
+/** A zone's note: its description, when that is more than blank. */
+export const zoneNoteOf = (node: DiagramNode): string | undefined =>
+  node.description !== undefined && node.description.trim() !== '' ? node.description.trim() : undefined;
+
+// styles.css .dg-sm-zone-head: 8px above, a 12px title at 1.3, and under a note
+// an 11px line at 1.35 after a 2px gap; then the room every container leaves
+// between its header and its content.
+const ZONE_PAD: Pad = { ...CONTAINER_PAD, top: 36 };
+const ZONE_PAD_WITH_NOTE: Pad = { ...CONTAINER_PAD, top: 36 + 17 };
+const ZONE_HEAD_SIDES = 2 * 10 + 4;
+
+/**
+ * The least width a container's own header needs, 0 where the header is no
+ * concern: a zone's title and note are one line each and must not be cut, and a
+ * zone of one small state is narrower than either.
+ */
+export function containerMinWidth(n: ViewNode): number {
+  if (n.node.type !== SM_ZONE_TYPE) return 0;
+  const note = zoneNoteOf(n.node);
+  // the title is semibold: a little wider than the regular face textWidth measures
+  const title = textWidth(n.node.name, 12) * 1.08;
+  return Math.ceil(Math.max(title, note !== undefined ? textWidth(note, 11) : 0)) + ZONE_HEAD_SIDES;
 }
 
 const elkPadding = (p: Pad): string => `[top=${p.top}.0,left=${p.left}.0,bottom=${p.bottom}.0,right=${p.right}.0]`;
@@ -389,16 +417,38 @@ interface GraphBuild {
   attachedToContainer: boolean;
   /** the room a box's self-loops take beside it (see selfLoopRooms) */
   loopRooms: ReadonlyMap<string, RoomLabel>;
+  /** this run reads a container's minimum size with its two extents swapped (see `minimumSize`) */
+  swapsMinimum: boolean;
 }
+
+/** is this a whole-tree run down or up the page, which reads a minimum swapped (see `minimumSize`)? */
+const swapsMinimumIn = (settings: LayoutSettings | undefined, nested: boolean): boolean =>
+  !nested && ['DOWN', 'UP'].includes(settings?.direction ?? FALLBACK_DIRECTION);
+
+/**
+ * A container's minimum width as elk options. A whole-tree layered run
+ * (INCLUDE_CHILDREN) down or up the page lays the tree out left to right and
+ * turns the result, and it reads a nested container's minimum before the turn:
+ * a minimum width comes back as a minimum HEIGHT. Such a run is handed the
+ * value on the other extent, which zones-layout.test.ts holds elk to.
+ */
+const minimumSize = (width: number, swapped: boolean): Record<string, string> => ({
+  'elk.nodeSize.constraints': 'MINIMUM_SIZE',
+  'elk.nodeSize.minimum': swapped ? `(0.0, ${width}.0)` : `(${width}.0, 0.0)`,
+});
 
 // Padding is applied AFTER the spread so the container-specific value wins:
 // `layoutOptionsFor` never emits `elk.padding` today, but if it ever did, a
 // container would silently lose its 36px header room and the title would
 // overlap its children. elk is indifferent to key order.
-const containerOptions = (build: GraphBuild, n: ViewNode): Record<string, string> => ({
-  ...build.sharedContainerOptions,
-  'elk.padding': elkPadding(containerPad(n)),
-});
+const containerOptions = (build: GraphBuild, n: ViewNode): Record<string, string> => {
+  const minWidth = containerMinWidth(n);
+  return {
+    ...build.sharedContainerOptions,
+    'elk.padding': elkPadding(containerPad(n)),
+    ...(minWidth > 0 ? minimumSize(minWidth, build.swapsMinimum) : {}),
+  };
+};
 
 function toNode(build: GraphBuild, n: ViewNode): ElkShape {
   build.emitted.add(n.id);
@@ -463,6 +513,20 @@ function withPartition(shape: ElkShape, partitions: ReadonlyMap<string, number> 
     : { ...shape, layoutOptions: { ...shape.layoutOptions, 'elk.partitioning.partition': String(p) } };
 }
 
+/**
+ * The kind of a layout-only link: it holds its target after its source along the
+ * flow and is never drawn. A notation that orders some boxes adds these to the
+ * view's `layoutEdges` (a state machine's zones, state-machine-layout.ts), so the
+ * plan reads the boxes as one connected group and elk keeps routing every real
+ * edge around them. Elk's partitions would say the same, but only for the root's
+ * own children.
+ */
+export const ORDER_LINK_KIND = '__order__';
+
+// Reversing an order link to break a cycle would undo the order it is there to
+// hold, so it outweighs any real edge when elk picks which one to turn round.
+const ORDER_LINK_OPTIONS = { 'elk.layered.priority.direction': '100' };
+
 /** The flat path's edges, all on the root, each with its label's footprint. An
  * edge reaches a substituted graph only when both of its endpoints did. */
 function flatEdges(view: CompiledView, build: GraphBuild, reversed: Set<string>): ElkEdge[] {
@@ -486,6 +550,7 @@ function flatEdges(view: CompiledView, build: GraphBuild, reversed: Set<string>)
         sources: [flip ? e.to : e.from],
         targets: [flip ? e.from : e.to],
         ...(box !== undefined ? { labels: [{ ...box, text, layoutOptions: INLINE_LABEL }] } : {}),
+        ...(e.kind === ORDER_LINK_KIND ? { layoutOptions: ORDER_LINK_OPTIONS } : {}),
       };
     });
 }
@@ -586,6 +651,7 @@ export function buildGraph(
     emitted: new Set(),
     attachedToContainer: false,
     loopRooms: selfLoopRooms(view.edges, settings?.direction ?? FALLBACK_DIRECTION, edgeLabelBox),
+    swapsMinimum: swapsMinimumIn(settings, nested),
   };
 
   // built before the edges are — `toNode` is what fills `emitted`, and what

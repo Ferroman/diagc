@@ -348,6 +348,54 @@ describe('state-machine rules', () => {
     });
   });
 
+  describe('zones', () => {
+    const zoned = (extra: DiagramNode[], rels: DiagramRelation[] = [], contain: ContainmentEdge[] = []) =>
+      sm(
+        [
+          n('mc', 'sm-machine'),
+          n('z1', 'sm-zone'),
+          n('z2', 'sm-zone'),
+          n('i', 'sm-initial'),
+          n('a', 'sm-state'),
+          ...extra,
+        ],
+        [t('i', 'a'), ...rels],
+        [c('mc', 'z1'), c('mc', 'z2'), c('z1', 'i'), c('z1', 'a'), ...contain],
+      );
+
+    it('a machine divided into zones has no warnings', () => {
+      const m = zoned([n('b', 'sm-state')], [t('a', 'b')], [c('z2', 'b')]);
+      expect(warned(m)).toEqual([]);
+    });
+
+    it('the rules read through a zone: two initials in two zones are two in one machine', () => {
+      const m = zoned([n('i2', 'sm-initial'), n('b', 'sm-state')], [t('i2', 'b')], [c('z2', 'i2'), c('z2', 'b')]);
+      expect(only(m, 'sm-initial-count')).toEqual([['sm-initial-count', 'i2']]);
+    });
+
+    it('a state no transition reaches is unreachable in a zone too', () => {
+      const m = zoned([n('b', 'sm-state')], [], [c('z2', 'b')]);
+      expect(only(m, 'sm-unreachable')).toEqual([['sm-unreachable', 'b']]);
+    });
+
+    it('sm-zone-parent: a zone in a state or in a zone; a loose zone is fine', () => {
+      const inState = zoned([n('z3', 'sm-zone')], [], [c('a', 'z3')]);
+      expect(only(inState, 'sm-zone-parent')).toEqual([['sm-zone-parent', 'z3']]);
+      const inZone = zoned([n('z3', 'sm-zone')], [], [c('z1', 'z3')]);
+      expect(only(inZone, 'sm-zone-parent')).toEqual([['sm-zone-parent', 'z3']]);
+      expect(warned(sm([n('z', 'sm-zone')]))).toEqual([]);
+    });
+
+    it('sm-transition-ends: a transition that ends on a zone', () => {
+      const m = zoned([], [t('a', 'z2')]);
+      expect(only(m, 'sm-transition-ends')).toEqual([['sm-transition-ends', 'a->z2']]);
+    });
+
+    it('sm-pseudo-children: a zone is not a pseudo-state, so it may hold nodes', () => {
+      expect(only(zoned([]), 'sm-pseudo-children')).toEqual([]);
+    });
+  });
+
   describe('a machine with nothing in it yet', () => {
     it('an empty diagram has no warnings', () => {
       expect(diagramWarnings(sm([]))).toEqual([]);

@@ -4,6 +4,7 @@
 export { applyTheme, darkTheme, lightTheme, THEME_STORAGE_KEY, type ThemeTokens } from './theme';
 export { createKindRegistry, createTypeRegistry, DEFAULT_TYPE_STYLES } from './registry';
 export { notationProfile } from './notations';
+export { STATE_KIND_LABEL } from './state-kinds';
 export { DiagramView } from './canvas/DiagramView';
 export {
   LIBRARY_ENTRY_DND_TYPE,

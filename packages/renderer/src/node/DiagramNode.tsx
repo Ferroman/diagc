@@ -112,6 +112,8 @@ export interface DiagramNodeData {
   behaviors?: string[];
   /** a state-machine state with children in this view, folded or open; filled for `sm-state` only */
   composite?: boolean;
+  /** a state-machine zone's note, the line under its title; filled for `sm-zone` only */
+  zoneNote?: string;
   /** a state-machine region stacked after another: the edge they share, which it draws dashed */
   regionSeparator?: RegionSeparator;
   /** with onResize: the notation resizes this node on x only, from either

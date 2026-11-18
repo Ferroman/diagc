@@ -96,6 +96,7 @@ export const NODE_TYPES: readonly string[] = [
   'sm-machine',
   'sm-state',
   'sm-region',
+  'sm-zone',
   'sm-initial',
   'sm-final',
   'sm-choice',

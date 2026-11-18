@@ -4,6 +4,7 @@ import {
   SM_REGION_TYPE,
   SM_STATE_TYPE,
   SM_TYPES,
+  SM_ZONE_TYPE,
   containmentOn,
   containmentPlaneOf,
   diagramWarnings,
@@ -39,7 +40,7 @@ const PSEUDO_TYPES = SM_TYPES.filter(isPseudoState);
 
 /**
  * Where "Add state" and the pseudo-state buttons put the new vertex: into a
- * selected machine or region; beside a selected state or pseudo-state, in its
+ * selected machine, zone or region; beside a selected state or pseudo-state, in its
  * parent on the plane in view (so adding twice — the new state is selected once
  * made — gives two siblings, not one inside the other; "Add substate" nests); with
  * nothing selected, into the plane's machine when it has exactly one; otherwise
@@ -47,11 +48,27 @@ const PSEUDO_TYPES = SM_TYPES.filter(isPseudoState);
  */
 function addParent(model: DiagramModel, plane: string | undefined, selected: string | undefined): string | undefined {
   const type = model.nodes.find((n) => n.id === selected)?.type;
-  if (selected !== undefined && (type === SM_MACHINE_TYPE || type === SM_REGION_TYPE)) return selected;
+  if (selected !== undefined && (type === SM_MACHINE_TYPE || type === SM_REGION_TYPE || type === SM_ZONE_TYPE)) {
+    return selected;
+  }
   if (selected !== undefined && isStateMachineType(type)) return parentIn(model, plane, selected);
   const inScope = nodeScopeOn(model, plane);
   const machines = model.nodes.filter((n) => n.type === SM_MACHINE_TYPE && inScope(n));
   return machines.length === 1 ? machines[0]!.id : undefined;
+}
+
+/**
+ * The machine "Add zone" divides: the selected one, the one that holds the
+ * selected zone (so adding twice gives two zones side by side), else the plane's
+ * machine when it has exactly one. A zone sits directly in a machine, so with
+ * anything else selected, or several machines and none chosen, there is nowhere
+ * to put one.
+ */
+function zoneParent(model: DiagramModel, plane: string | undefined, selected: string | undefined): string | undefined {
+  const type = model.nodes.find((n) => n.id === selected)?.type;
+  if (selected !== undefined && type === SM_MACHINE_TYPE) return selected;
+  if (selected !== undefined && type === SM_ZONE_TYPE) return parentIn(model, plane, selected);
+  return addParent(model, plane, undefined);
 }
 
 /** The machines on `plane` and everything below them, in containment order. */
@@ -106,6 +123,7 @@ export function StateMachinePanel({
   const selected = selection?.kind === 'node' ? selection.id : undefined;
   const selectedType = model.nodes.find((n) => n.id === selected)?.type;
   const parent = addParent(model, viewPlane, selected);
+  const machineForZone = zoneParent(model, viewPlane, selected);
   const add = (type: SmType, parentId: string | undefined) => {
     const made = addSmElement(model, type, parentId, { node: scopePlane, edge: viewPlane });
     onCommand(made.command);
@@ -151,6 +169,13 @@ export function StateMachinePanel({
             onClick={() => add(SM_REGION_TYPE, selected)}
           >
             Add region
+          </button>
+          <button
+            type="button"
+            disabled={machineForZone === undefined}
+            onClick={() => add(SM_ZONE_TYPE, machineForZone)}
+          >
+            Add zone
           </button>
           {PSEUDO_TYPES.map((type) => (
             <button key={type} type="button" onClick={() => add(type, parent)}>

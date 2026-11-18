@@ -14,6 +14,7 @@ import {
   buildGraph,
   COLLAPSED_SIZE,
   componentGap,
+  containerMinWidth,
   containerPad,
   DEFAULT_ALGORITHM,
   DEFAULT_SPACING,
@@ -455,7 +456,7 @@ async function resolveLevels(nodes: readonly ViewNode[], ctx: PlanContext): Prom
     if (level.attached.length === 0) {
       const pad = containerPad(n);
       levels.prelaid.set(n.id, {
-        width: block.width + pad.left + pad.right,
+        width: Math.max(block.width + pad.left + pad.right, containerMinWidth(n)),
         height: block.height + pad.top + pad.bottom,
       });
       levels.pads.set(n.id, pad);

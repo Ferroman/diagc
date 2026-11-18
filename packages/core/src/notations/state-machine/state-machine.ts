@@ -5,6 +5,9 @@ export const SM_NOTATION = 'state-machine' as const;
 export const SM_MACHINE_TYPE = 'sm-machine' as const;
 export const SM_STATE_TYPE = 'sm-state' as const;
 export const SM_REGION_TYPE = 'sm-region' as const;
+/** A zone: a titled, tinted area of a machine that holds states. A drawing aid with no
+ * meaning to the machine: every rule reads a zone's content as the machine's own. */
+export const SM_ZONE_TYPE = 'sm-zone' as const;
 export const SM_INITIAL_TYPE = 'sm-initial' as const;
 export const SM_FINAL_TYPE = 'sm-final' as const;
 export const SM_CHOICE_TYPE = 'sm-choice' as const;
@@ -20,6 +23,7 @@ export const SM_TYPES = [
   SM_MACHINE_TYPE,
   SM_STATE_TYPE,
   SM_REGION_TYPE,
+  SM_ZONE_TYPE,
   SM_INITIAL_TYPE,
   SM_FINAL_TYPE,
   SM_CHOICE_TYPE,
@@ -40,6 +44,10 @@ const SM_TYPE_SET: ReadonlySet<string> = new Set(SM_TYPES);
 
 export const isStateMachineType = (type: string | undefined): boolean => type !== undefined && SM_TYPE_SET.has(type);
 
-/** every sm- type except machine, state and region: a vertex that is not a box holding behaviour */
+/** every sm- type except machine, state, region and zone: a vertex that is not a box holding behaviour */
 export const isPseudoState = (type: string | undefined): boolean =>
-  isStateMachineType(type) && type !== SM_MACHINE_TYPE && type !== SM_STATE_TYPE && type !== SM_REGION_TYPE;
+  isStateMachineType(type) &&
+  type !== SM_MACHINE_TYPE &&
+  type !== SM_STATE_TYPE &&
+  type !== SM_REGION_TYPE &&
+  type !== SM_ZONE_TYPE;

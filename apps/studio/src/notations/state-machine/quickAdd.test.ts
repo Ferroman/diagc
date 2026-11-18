@@ -12,6 +12,7 @@ const sm: DiagramModel = {
   nodes: [
     { id: 'm', name: 'M', type: 'sm-machine' },
     { id: 'r', name: 'R', type: 'sm-region' },
+    { id: 'z', name: 'Z', type: 'sm-zone' },
     { id: 's', name: 'S', type: 'sm-state' },
     { id: 'i', name: '', type: 'sm-initial' },
     { id: 'c', name: '', type: 'sm-choice' },
@@ -34,7 +35,7 @@ const built = (id: string) => {
 
 describe('stateMachineQuickAdd', () => {
   it('names what the + adds for each source', () => {
-    const labels = ['s', 'i', 'c', 'r', 'm'].map((id) => {
+    const labels = ['s', 'i', 'c', 'r', 'm', 'z'].map((id) => {
       const a = answer(id);
       return typeof a === 'object' ? a.label : a;
     });
@@ -42,6 +43,7 @@ describe('stateMachineQuickAdd', () => {
       'Add the next state',
       'Add a state',
       'Add a state',
+      'Add a state inside',
       'Add a state inside',
       'Add a state inside',
     ]);
@@ -67,8 +69,8 @@ describe('stateMachineQuickAdd', () => {
     }
   });
 
-  it('a region and a machine take a state inside, with no transition', () => {
-    for (const id of ['r', 'm']) {
+  it('a region, a machine and a zone take a state inside, with no transition', () => {
+    for (const id of ['r', 'm', 'z']) {
       const b = built(id);
       expect(b?.beside).toBe(false);
       expect(b?.command).toMatchObject({

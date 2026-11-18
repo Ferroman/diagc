@@ -37,6 +37,7 @@ import {
   attachesDirectly,
   runsToPlainText,
   SM_STATE_TYPE,
+  SM_ZONE_TYPE,
   soleRelation,
   threatSummary,
   withHiddenColumns,
@@ -52,7 +53,7 @@ import type { DiagramEdgeData } from '../edge/DiagramEdge';
 import type { DiagramNodeData } from '../node/DiagramNode';
 import { behaviorLines } from '../node/behavior-lines';
 import type { RegionSeparator } from '../layout/state-machine-layout';
-import { edgeLabelBox } from '../layout/layout-graph';
+import { edgeLabelBox, zoneNoteOf } from '../layout/layout-graph';
 
 /** per-node data inputs the view threads in; kept as one object so the cache
  * can compare it field-by-field with === and skip rebuilds when nothing moved */
@@ -230,6 +231,7 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     annotations: nodeAnnotations(n),
     chips: ctx.nodeChips?.get(n.id),
     ...(n.node.type === SM_STATE_TYPE ? { behaviors: behaviorLines(n.node), composite: n.state !== 'leaf' } : {}),
+    ...(n.node.type === SM_ZONE_TYPE && zoneNoteOf(n.node) !== undefined ? { zoneNote: zoneNoteOf(n.node) } : {}),
   };
   const separator = ctx.regionSeparators?.get(n.id);
   if (separator !== undefined) data.regionSeparator = separator;

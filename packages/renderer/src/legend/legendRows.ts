@@ -21,12 +21,16 @@ import {
   type DiagramRelation,
   type LegendItem,
   type LegendSection,
+  type StateKind,
   type ViewNode,
+  SM_STATE_TYPE,
+  STATE_KINDS,
   threatSummary,
 } from '@diagc/core/internal';
 import { typeColor } from '../canvas/build-data';
 import { DEFAULT_KIND_STYLES, DEFAULT_TYPE_STYLES, type KindStyle, type Registry, type TypeStyle } from '../registry';
 import { nodeHue, type TypeHues } from '../canvas/type-hues';
+import { STATE_KIND_COLOR, STATE_KIND_LABEL } from '../state-kinds';
 
 /** `draw` is the discriminant — deliberately not `kind`, which already means
  * "relation kind" throughout this module. */
@@ -333,6 +337,28 @@ function markRows(input: LegendInput): LegendRow[] {
     }));
 }
 
+/** One row per state kind on screen whose colour the canvas actually draws: a state
+ * with its own colour shows that colour, and says nothing about its kind. */
+function stateKindRows(input: LegendInput): LegendRow[] {
+  const seen = new Set<StateKind>();
+  const walk = (nodes: ViewNode[]): void => {
+    for (const v of nodes) {
+      const { type, stateKind, color } = v.node;
+      if (type === SM_STATE_TYPE && stateKind !== undefined && color === undefined) seen.add(stateKind);
+      walk(v.children);
+    }
+  };
+  walk(input.compiled.roots);
+  const style = input.typeRegistry.resolve(SM_STATE_TYPE);
+  return STATE_KINDS.filter((k) => seen.has(k)).map((k) => ({
+    id: `marks:state-${k}`,
+    section: 'marks' as const,
+    label: STATE_KIND_LABEL[k],
+    swatch: { draw: 'shape' as const, style, color: STATE_KIND_COLOR[k] },
+    vocabulary: true as const,
+  }));
+}
+
 function swatchOf(item: LegendItem, input: LegendInput): LegendSwatch | undefined {
   if (item.kind !== undefined) {
     return {
@@ -390,7 +416,7 @@ export function legendRows(input: LegendInput): LegendRow[] {
     ...(sections.includes('layers') ? [...layerRows(input), ...drawingsRow(input)] : []),
     ...(sections.includes('kinds') ? kindRows(input) : []),
     ...types,
-    ...(sections.includes('marks') ? markRows(input) : []),
+    ...(sections.includes('marks') ? [...stateKindRows(input), ...markRows(input)] : []),
   ];
   const extras: LegendRow[] = [];
   (input.config.items ?? []).forEach((item, i) => {

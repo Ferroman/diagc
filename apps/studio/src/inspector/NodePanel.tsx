@@ -9,6 +9,7 @@ import {
   type Point,
 } from '@diagc/core/internal';
 import { BehaviorsSection } from './BehaviorsSection';
+import { StateKindSection } from './StateKindSection';
 import { CommentsSection } from './CommentsSection';
 import { LinksSection } from './LinksSection';
 import { DetailFields, IdentityFields, LookFields, PlacementFields } from './NodeFields';
@@ -151,6 +152,8 @@ export function NodePanel({
         position={position}
         onCommand={onCommand}
       />
+
+      <StateKindSection node={node} onCommand={onCommand} />
 
       <BehaviorsSection node={node} onCommand={onCommand} />
 

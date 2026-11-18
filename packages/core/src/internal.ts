@@ -65,6 +65,7 @@ export {
   SmElementRef,
   SmRegionRef,
   SmScope,
+  SmZoneRef,
   StateMachineBuilder,
   StateRef,
   type NodeOpts,
@@ -82,6 +83,7 @@ export {
   type ZoneOpts,
   type EventOpts,
   type SmStateOpts,
+  type SmZoneOpts,
   type TransitionParts,
 } from './builder/index';
 export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue } from './validate/index';

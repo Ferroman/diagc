@@ -118,6 +118,13 @@ An order lifecycle: Draft as a plain composite, Paid, and an orthogonal Fulfilme
 A protocol: a client connection that retries with backoff through a choice and gives up after five attempts, with `entry` and `do` behaviours, Open as a plain composite and an internal `ping / pong` — `choice()`, `final()`, `state.on()` and a `description` on the machine.
 [Live](https://ferroman.github.io/diagc/html/examples/state-machine/connection.html) · [Source](../../.diagrams/src/examples/state-machine/connection.diagram.ts) · [Guide](../how-to/draw-a-state-machine.md)
 
+#### A refund in three phases
+
+[![A refund in three phases](../../.diagrams/static/examples/state-machine/zones.png)](https://ferroman.github.io/diagc/html/examples/state-machine/zones.html)
+
+A refund request that support reviews, the bank pays and that ends refunded or rejected. Three zones show its phases and state kinds colour the waits, the failures and the good end — `zone()` and `kind`.
+[Live](https://ferroman.github.io/diagc/html/examples/state-machine/zones.html) · [Source](../../.diagrams/src/examples/state-machine/zones.diagram.ts) · [Guide](../how-to/draw-a-state-machine.md)
+
 ### Second-order thinking
 
 [![Second-order thinking: splitting the monolith](../../.diagrams/static/docs/second-order.png)](https://ferroman.github.io/diagc/html/docs/second-order.html)

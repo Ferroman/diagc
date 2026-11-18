@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { SM_REGION_TYPE, model, type DiagramModel } from '@diagc/core/internal';
+import { SM_REGION_TYPE, SM_ZONE_TYPE, model, type DiagramModel } from '@diagc/core/internal';
 import { INDENT, StateMachinePanel } from './StateMachinePanel';
 
 /** a machine with an initial, two states (b unreachable), and a final */
@@ -13,6 +13,15 @@ function machine(): DiagramModel {
   sm.state('b', 'Locked');
   sm.final('f');
   start.to(a);
+  return m.toJSON();
+}
+
+/** the machine with a zone `z` holding one state */
+function zoned(): DiagramModel {
+  const m = model('sm');
+  const sm = m.stateMachine('m', { name: 'Door' });
+  const zone = sm.zone('z', 'Phase');
+  zone.initial('i').to(zone.state('a', 'Open'));
   return m.toJSON();
 }
 
@@ -143,6 +152,41 @@ describe('StateMachinePanel', () => {
     setup({ selected: 'sm-region-x', m: regioned() });
     expect(screen.getByRole('button', { name: 'Add region' })).toHaveProperty('disabled', true);
     expect(screen.getByRole('button', { name: 'Add choice' })).toHaveProperty('disabled', false);
+  });
+
+  it('adds a zone to the selected machine, and to the one machine when nothing is selected', () => {
+    const picked = setup({ selected: 'm' });
+    fireEvent.click(screen.getByRole('button', { name: 'Add zone' }));
+    expect(picked.onCommand).toHaveBeenCalledWith({
+      type: 'add-node',
+      node: { id: 'sm-zone-1', name: 'Zone', type: SM_ZONE_TYPE },
+      parent: { id: 'm' },
+    });
+    expect(picked.onCreated).toHaveBeenCalledWith('sm-zone-1');
+    cleanup();
+    const none = setup();
+    fireEvent.click(screen.getByRole('button', { name: 'Add zone' }));
+    expect(none.onCommand.mock.calls[0]![0].parent).toEqual({ id: 'm' });
+  });
+
+  it('adds the next zone beside a selected zone, and a state inside it', () => {
+    const { onCommand } = setup({ selected: 'z', m: zoned() });
+    fireEvent.click(screen.getByRole('button', { name: 'Add zone' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add state' }));
+    expect(onCommand.mock.calls.map(([c]) => [c.node.type, c.parent])).toEqual([
+      [SM_ZONE_TYPE, { id: 'm' }],
+      ['sm-state', { id: 'z' }],
+    ]);
+  });
+
+  it('offers no zone with a state selected and two machines to choose from, and one inside a single machine', () => {
+    const two = machine();
+    two.nodes.push({ id: 'm2', name: 'Window', type: 'sm-machine' });
+    setup({ selected: 'a', m: two });
+    expect(screen.getByRole('button', { name: 'Add zone' })).toHaveProperty('disabled', true);
+    cleanup();
+    setup({ selected: 'a' });
+    expect(screen.getByRole('button', { name: 'Add zone' })).toHaveProperty('disabled', false);
   });
 
   it('tags a new node with the scope plane', () => {

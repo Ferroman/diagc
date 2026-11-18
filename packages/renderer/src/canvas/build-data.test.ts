@@ -822,6 +822,17 @@ describe('buildNodeData, state-machine fields', () => {
     expect(d.composite).toBeUndefined();
   });
 
+  it("carries a zone's note, trimmed, and no key for a zone without one or for another type", () => {
+    const zone = (description?: string) =>
+      viewNode({
+        node: { id: 'z', name: 'Zone', type: 'sm-zone', ...(description !== undefined ? { description } : {}) },
+      });
+    expect(buildNodeData(zone('  Both sides confirm  '), nodeCtx()).zoneNote).toBe('Both sides confirm');
+    expect('zoneNote' in buildNodeData(zone(), nodeCtx())).toBe(false);
+    expect('zoneNote' in buildNodeData(zone('   '), nodeCtx())).toBe(false);
+    expect('zoneNote' in buildNodeData(state({}, { description: 'a state' }), nodeCtx())).toBe(false);
+  });
+
   it("carries a region's separator from the context, and no key for a region without one", () => {
     const region = (id: string) => viewNode({ id, node: { id, name: '', type: 'sm-region' } });
     const ctx = nodeCtx({ regionSeparators: new Map([['r2', 'top' as const]]) });

@@ -94,7 +94,14 @@ export interface DiagramNode {
   columns?: Column[];
   /** State-machine diagrams only: the state's entry / exit / do behaviours */
   behaviors?: StateBehavior[];
+  /** State-machine diagrams only: how the state is going, which colours it (see STATE_KINDS) */
+  stateKind?: StateKind;
 }
+
+/** How a state is going, for the reader: a good end, a failure, or a wait on someone or
+ * something. The renderer colours a state by it; the machine does not read it. */
+export const STATE_KINDS = ['ok', 'failed', 'waiting'] as const;
+export type StateKind = (typeof STATE_KINDS)[number];
 
 /** One behaviour of a state: `trigger` names when it runs (`entry`, `exit`, `do`, or an
  * event), `guard` is an optional condition, `effect` what it does. */

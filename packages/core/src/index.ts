@@ -47,6 +47,7 @@ export {
   SmElementRef,
   SmRegionRef,
   SmScope,
+  SmZoneRef,
   StateMachineBuilder,
   StateRef,
   type NodeOpts,
@@ -64,6 +65,7 @@ export {
   type ZoneOpts,
   type EventOpts,
   type SmStateOpts,
+  type SmZoneOpts,
   type TransitionParts,
 } from './builder/index';
 export { validate, diagramWarnings, DiagramValidationError, type ValidationIssue } from './validate/index';
@@ -84,6 +86,7 @@ export {
   THREAT_SEVERITIES,
   LEGEND_SECTIONS,
   LEGEND_POSITIONS,
+  STATE_KINDS,
   BUILTIN_NOTATIONS,
 } from './types';
 // Types that public signatures mention (ModelBuilder.addThreat / addComment,

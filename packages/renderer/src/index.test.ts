@@ -14,6 +14,7 @@ describe('@diagc/renderer', () => {
       'LIBRARY_ENTRY_DND_TYPE',
       'LeveragePanel',
       'PLAN_LAYOUT',
+      'STATE_KIND_LABEL',
       'STYLE_PRESETS',
       'THEME_STORAGE_KEY',
       'applyTheme',

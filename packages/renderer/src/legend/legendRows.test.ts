@@ -533,3 +533,34 @@ describe('marks', () => {
     expect(rows(erModel(), { config: { show: ['marks'] } }).every((r) => r.section === 'marks')).toBe(true);
   });
 });
+
+describe('state kinds', () => {
+  function kinded(): DiagramModel {
+    const m = model('k');
+    const machine = m.stateMachine('a');
+    const start = machine.state('start', 'Start');
+    machine.state('done', 'Done', { kind: 'ok' });
+    machine.state('lost', 'Lost', { kind: 'failed' });
+    // a state with its own colour shows that colour: its kind is not on screen
+    machine.state('held', 'Held', { kind: 'waiting', color: '#123456' });
+    machine.initial().to(start);
+    return m.toJSON();
+  }
+
+  it("lists the kinds whose colour is on screen, in the kinds' own order, as state swatches", () => {
+    const rs = rows(kinded()).filter((r) => r.id.startsWith('marks:state-'));
+    expect(rs.map((r) => [r.id, r.label])).toEqual([
+      ['marks:state-ok', 'Succeeded'],
+      ['marks:state-failed', 'Failed'],
+    ]);
+    expect(rs[0]!.swatch).toMatchObject({ draw: 'shape', color: 'var(--dg-sm-ok)', style: { shape: 'rounded' } });
+    // a kind explains a colour nothing on the canvas names: it offers the legend by itself
+    expect(rs.every((r) => r.vocabulary === true)).toBe(true);
+  });
+
+  it('lists none for a machine without kinds', () => {
+    const m = model('p');
+    m.stateMachine('a').state('s', 'S');
+    expect(rows(m.toJSON()).some((r) => r.id.startsWith('marks:state-'))).toBe(false);
+  });
+});

@@ -14,11 +14,16 @@ import {
   SM_STATE_TYPE,
   SM_TERMINATE_TYPE,
   SM_TRANSITION_KIND,
+  SM_ZONE_TYPE,
 } from './state-machine';
 import { hasTransitionParts } from './transition';
 
 /** What one plane shows of a model, read once: the state-machine nodes, who contains whom
- * and the relations. Containment is the plane's own, or its donor's when it borrows. */
+ * and the relations. Containment is the plane's own, or its donor's when it borrows.
+ *
+ * A zone is not in it. A zone only says where states are drawn, so what a zone holds is
+ * read as held by the zone's own parent, and every rule over this view sees the machine
+ * as it is without zones. The rules about zones themselves read `zoneParents`. */
 export interface PlaneView {
   nodes: Map<string, DiagramNode>;
   /** a node's first parent on the plane; a loose node has none */
@@ -29,17 +34,43 @@ export interface PlaneView {
   transitions: DiagramRelation[];
 }
 
+/** each zone on the plane and the node that holds it; `undefined` for a loose zone */
+export function zoneParents(model: DiagramModel, plane: string | undefined): Map<string, string | undefined> {
+  const inScope = nodeScopeOn(model, plane);
+  const zones = new Map<string, string | undefined>(
+    model.nodes.filter((n) => n.type === SM_ZONE_TYPE && inScope(n)).map((n) => [n.id, undefined]),
+  );
+  for (const e of containmentOn(model, containmentPlaneOf(model, plane))) {
+    if (zones.has(e.child) && zones.get(e.child) === undefined) zones.set(e.child, e.parent);
+  }
+  return zones;
+}
+
+/** the nearest holder of `id` that is not a zone; `undefined` when a loose zone ends the climb */
+function throughZones(zones: ReadonlyMap<string, string | undefined>, id: string): string | undefined {
+  let at: string | undefined = id;
+  // a containment cycle is an error of its own; the bound only keeps the climb finite
+  for (let hops = 0; at !== undefined && zones.has(at) && hops <= zones.size; hops++) at = zones.get(at);
+  return at !== undefined && zones.has(at) ? undefined : at;
+}
+
 export function planeView(model: DiagramModel, plane: string | undefined): PlaneView {
   const inScope = nodeScopeOn(model, plane);
-  const nodes = new Map(model.nodes.filter((n) => isStateMachineType(n.type) && inScope(n)).map((n) => [n.id, n]));
+  const zones = zoneParents(model, plane);
+  const nodes = new Map(
+    model.nodes
+      .filter((n) => isStateMachineType(n.type) && n.type !== SM_ZONE_TYPE && inScope(n))
+      .map((n) => [n.id, n]),
+  );
   const parentOf = new Map<string, string>();
   const childrenOf = new Map<string, string[]>();
   for (const e of containmentOn(model, containmentPlaneOf(model, plane))) {
-    if (!nodes.has(e.child) || !nodes.has(e.parent)) continue;
-    if (!parentOf.has(e.child)) parentOf.set(e.child, e.parent);
-    const siblings = childrenOf.get(e.parent) ?? [];
+    const parent = throughZones(zones, e.parent);
+    if (parent === undefined || !nodes.has(e.child) || !nodes.has(parent)) continue;
+    if (!parentOf.has(e.child)) parentOf.set(e.child, parent);
+    const siblings = childrenOf.get(parent) ?? [];
     siblings.push(e.child);
-    childrenOf.set(e.parent, siblings);
+    childrenOf.set(parent, siblings);
   }
   const relations = model.relations.filter((r) => relationOnPlane(r, plane));
   return {

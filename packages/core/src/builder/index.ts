@@ -28,8 +28,10 @@ export {
   SmElementRef,
   SmRegionRef,
   SmScope,
+  SmZoneRef,
   StateMachineBuilder,
   StateRef,
   type SmStateOpts,
+  type SmZoneOpts,
   type TransitionParts,
 } from '../notations/state-machine/builder';

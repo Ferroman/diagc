@@ -53,7 +53,7 @@ const SAMPLES: Partial<Record<NotationId, DiagramModel[]>> = Object.fromEntries(
 
 // A theme's colours, a light one and a dark one: a text picture cannot know the
 // background it will be read on, so these notations draw without theirs.
-const THEMED: readonly NotationId[] = ['second-order', 'deployment'];
+const THEMED: readonly NotationId[] = ['second-order', 'deployment', 'state-machine'];
 
 describe('notationAccents', () => {
   it('colours boxes and lines as the renderer’s notation does', () => {

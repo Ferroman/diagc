@@ -8,6 +8,7 @@ import {
   SM_NOTATION,
   SM_REGION_TYPE,
   SM_TRANSITION_KIND,
+  SM_ZONE_TYPE,
 } from './state-machine';
 
 /** the order machine of the design: composite, orthogonal state, internal transition, history */
@@ -94,6 +95,40 @@ describe('m.stateMachine()', () => {
     const other = model('y');
     other.stateMachine('a').state('s', 'S', { do: 'poll', entry: 'open' });
     expect(nodeOf(other.toJSON(), 's')?.behaviors?.map((b) => b.trigger)).toEqual(['entry', 'do']);
+  });
+
+  it('a zone holds states by containment and carries its note and colour', () => {
+    const m = model('z');
+    const machine = m.stateMachine('transfer');
+    const agree = machine.zone('agree', '1. Agree', { note: 'Both sides confirm', color: '#2980b9' });
+    const plain = machine.zone('plain');
+    agree.initial().to(agree.state('pending', 'Pending'));
+    plain.state('done', 'Done', { kind: 'ok' });
+    const json = m.toJSON();
+    expect(nodeOf(json, 'agree')).toEqual({
+      id: 'agree',
+      name: '1. Agree',
+      type: SM_ZONE_TYPE,
+      color: '#2980b9',
+      description: 'Both sides confirm',
+    });
+    expect(nodeOf(json, 'plain')).toEqual({ id: 'plain', name: 'plain', type: SM_ZONE_TYPE });
+    expect(json.containment).toEqual([
+      { parent: 'transfer', child: 'agree' },
+      { parent: 'transfer', child: 'plain' },
+      { parent: 'agree', child: 'agree-initial' },
+      { parent: 'agree', child: 'pending' },
+      { parent: 'plain', child: 'done' },
+    ]);
+  });
+
+  it('`kind` becomes the state kind, and a state without one has none', () => {
+    const m = model('k');
+    const machine = m.stateMachine('a');
+    machine.state('lost', 'Lost', { kind: 'failed' });
+    machine.state('plain', 'Plain');
+    expect(nodeOf(m.toJSON(), 'lost')?.stateKind).toBe('failed');
+    expect(nodeOf(m.toJSON(), 'plain')).not.toHaveProperty('stateKind');
   });
 
   it('draws transitions with parts and no label', () => {
