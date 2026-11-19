@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/Ferroman/diagc/compare/v1.13.1...v1.14.0) (2026-11-19)
+
+
+### Features
+
+* **activity:** lanes as columns under a flow that runs down, wrapped names, right-angled loops ([#194](https://github.com/Ferroman/diagc/issues/194)) ([0dd93ec](https://github.com/Ferroman/diagc/commit/0dd93ecd508f18a4616b8b10e73ef42a399c2402))
+
 ## [1.13.1](https://github.com/Ferroman/diagc/compare/v1.13.0...v1.13.1) (2026-11-18)
 
 
