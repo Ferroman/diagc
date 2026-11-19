@@ -11,11 +11,11 @@ import {
   type Point,
   type ViewNode,
 } from '@diagc/core/internal';
-import { arrangeActivityFrames, withLaneOrder } from '../layout/activity-frame';
+import { arrangeActivityFrames, laneAxisOf, withLaneOrder } from '../layout/activity-frame';
 import { withBoxSizes } from '../layout/box-size';
 import { fitContainers, type ContainerFit, type Shift } from '../layout/fit-containers';
 import { layoutView, type NodeGeometry } from '../layout/layout';
-import { containerPad, DEFAULT_ALGORITHM, FALLBACK_DIRECTION, type SizeHint } from '../layout/layout-graph';
+import { captionsOf, containerPad, DEFAULT_ALGORITHM, FALLBACK_DIRECTION, type SizeHint } from '../layout/layout-graph';
 import { sizeHintsOf } from '../layout/size-hints';
 import {
   arrangeStateMachines,
@@ -267,19 +267,49 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
   return { geometry, geometryRef, routes, labelSpots, fixed, lockedX, settledFor };
 }
 
+/**
+ * Activity frames: normalize lanes into stacked bands as long as the frame.
+ * Applied to the OVERLAY-APPLIED geometry (not the elk cache) so hand-drags
+ * participate: dragging a node inside a lane grows the band on the next frame.
+ * Then a state machine's regions are stacked across the flow the layout ran in,
+ * and its entry and exit points put on their composites' borders.
+ */
+function arrangeChrome(
+  geometry: ReadonlyMap<string, NodeGeometry>,
+  input: ViewLayoutInput,
+  direction: LayoutDirection,
+  sizes: ReadonlyMap<string, SizeHint>,
+): ReadonlyMap<string, NodeGeometry> {
+  const banded = arrangeActivityFrames(geometry, input.compiled, input.model, {
+    plane: input.plane,
+    sizes: input.layout?.sizes,
+    axis: laneAxisOf(direction),
+    captions: captionsOf(sizes),
+  });
+  return arrangeStateMachines(banded, input.compiled, input.model, { plane: input.plane, direction });
+}
+
+/** Does the plane's layout flow down (or up) the page: its saved direction, else the model's default. */
+function flowsDownOf(input: ViewLayoutInput): boolean {
+  const saved = input.layout?.settings?.[layoutPlaneKey(input.model, input.plane)]?.direction;
+  return laneAxisOf(saved ?? defaultLayoutDirection(input.model)) === 'columns';
+}
+
 export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // Per-node size hints, before the view state is known (size-hints.ts). Keyed
   // on the whole overlay, so a committed drag recomputes them and the layout run
   // follows: layoutView's cache spares elk the work, and a notation's own layout
   // runs again.
+  const flowsDown = flowsDownOf(input);
   const sizeHints = useMemo(
     () =>
       sizeHintsOf(input.model, {
         profile: input.profile,
         typeRegistry: input.typeRegistry,
         sizes: input.layout?.sizes,
+        flowsDown,
       }),
-    [input.model, input.layout, input.profile, input.typeRegistry],
+    [input.model, input.layout, input.profile, input.typeRegistry, flowsDown],
   );
 
   // The model-keyed hints above cannot know a node's VIEW state, and an ordinary
@@ -323,8 +353,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   );
 
   // What the layout actually runs with: the plane's settings, with the MODEL's
-  // default direction resolved in where they name none (down — or right for an
-  // activity model, whose lanes are horizontal bands). Kept apart from
+  // default direction resolved in where they name none (down). Kept apart from
   // `layoutSettings` so callers still see exactly what the sidecar says, and
   // keyed on the direction string so an edit (a new model object) does not by
   // itself re-run the layout.
@@ -421,22 +450,11 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
 
   const flowDirection = (runSettings?.direction ?? FALLBACK_DIRECTION) as LayoutDirection;
 
-  // Activity frames: normalize lanes into full-width stacked bands. Applied to
-  // the OVERLAY-APPLIED geometry (not the elk cache) so hand-drags participate:
-  // dragging a node inside a lane grows the band on the next frame. Then a
-  // state machine's regions are stacked across the flow the layout ran in, and
-  // its entry and exit points put on their composites' borders.
-  const arrangedGeometry = useMemo(() => {
-    if (fitted === null) return null;
-    const banded = arrangeActivityFrames(fitted.geometry, input.compiled, input.model, {
-      plane: input.plane,
-      sizes: input.layout?.sizes,
-    });
-    return arrangeStateMachines(banded, input.compiled, input.model, {
-      plane: input.plane,
-      direction: flowDirection,
-    });
-  }, [fitted, input.compiled, input.model, input.plane, input.layout, flowDirection]);
+  const arrangedGeometry = useMemo(
+    () => (fitted === null ? null : arrangeChrome(fitted.geometry, input, flowDirection, sizes)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the fields of `input` that arrangeChrome reads
+    [fitted, input.compiled, input.model, input.plane, input.layout, flowDirection, sizes],
+  );
 
   // Which of those regions draw the dashed line they share with the one before
   // them: decided by the same order and direction, but not by any position, so

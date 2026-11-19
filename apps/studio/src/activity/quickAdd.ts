@@ -9,9 +9,10 @@ function laneBeside(
   frame: string,
   side: QuickAddSide | undefined,
 ): QuickAddRecipe {
+  // lanes are rows or columns as the flow runs: "before" and "after" hold for both
   const above = side === 'before';
   return {
-    label: above ? 'Add a lane above' : 'Add a lane below',
+    label: above ? 'Add a lane before' : 'Add a lane after',
     build: () => {
       // lanes stack in declaration order (arrangeActivityFrames), so the
       // containment slot IS the position — no set-position to write

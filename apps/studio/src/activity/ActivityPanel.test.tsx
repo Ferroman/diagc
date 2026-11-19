@@ -79,7 +79,7 @@ describe('ActivityPanel', () => {
       type: 'batch',
       commands: [
         { type: 'add-node', node: { id: 'ops', name: 'Ops', type: 'activity-lane' }, parent: { id: 'f' } },
-        { type: 'set-position', nodeId: 'ops', x: 52, y: 24 },
+        { type: 'set-position', nodeId: 'ops', x: 52, y: 52 },
       ],
     });
     expect(onSelect).toHaveBeenCalledWith('ops');
@@ -95,7 +95,7 @@ describe('ActivityPanel', () => {
       commands: [
         { type: 'add-node', node: { id: 'ops', name: 'Ops', type: 'activity-lane' }, parent: { id: 'f' } },
         // the frame already holds one lane: its cascade, not the selected lane's
-        { type: 'set-position', nodeId: 'ops', x: 28 + 24 + 24, y: 24 + 16 },
+        { type: 'set-position', nodeId: 'ops', x: 28 + 24 + 24, y: 52 + 16 },
       ],
     });
     expect(onSelect).toHaveBeenCalledWith('ops');
@@ -122,7 +122,7 @@ describe('ActivityPanel', () => {
           node: { id: 'fill-order', name: 'Fill order', type: 'activity-action' },
           parent: { id: 'l' },
         },
-        { type: 'set-position', nodeId: 'fill-order', x: 28 + 24 + 0, y: 24 + 0 },
+        { type: 'set-position', nodeId: 'fill-order', x: 28 + 24 + 0, y: 28 + 24 + 0 },
       ],
     });
     expect(onSelect).toHaveBeenCalledWith('fill-order');
@@ -141,7 +141,7 @@ describe('ActivityPanel', () => {
           node: { id: 'ship-order', name: 'Ship order', type: 'activity-action' },
           parent: { id: 'l' },
         },
-        { type: 'set-position', nodeId: 'ship-order', x: 28 + 24 + 48, y: 24 + 32 },
+        { type: 'set-position', nodeId: 'ship-order', x: 28 + 24 + 48, y: 28 + 24 + 32 },
       ],
     });
   });
@@ -153,7 +153,7 @@ describe('ActivityPanel', () => {
       type: 'batch',
       commands: [
         { type: 'add-node', node: { id: 'decision', name: '', type: 'activity-decision' }, parent: { id: 'l' } },
-        { type: 'set-position', nodeId: 'decision', x: 52, y: 24 },
+        { type: 'set-position', nodeId: 'decision', x: 52, y: 52 },
       ],
     });
     onCommand.mockClear();
@@ -162,7 +162,7 @@ describe('ActivityPanel', () => {
       type: 'batch',
       commands: [
         { type: 'add-node', node: { id: 'action', name: 'Action', type: 'activity-action' }, parent: { id: 'l' } },
-        { type: 'set-position', nodeId: 'action', x: 52, y: 24 },
+        { type: 'set-position', nodeId: 'action', x: 52, y: 52 },
       ],
     });
   });
@@ -174,7 +174,7 @@ describe('ActivityPanel', () => {
       type: 'batch',
       commands: [
         { type: 'add-node', node: { id: 'region', name: 'Region', type: 'activity-region' }, parent: { id: 'l' } },
-        { type: 'set-position', nodeId: 'region', x: 52, y: 24 },
+        { type: 'set-position', nodeId: 'region', x: 52, y: 52 },
       ],
     });
     expect(onSelect).toHaveBeenCalledWith('region');
@@ -319,7 +319,7 @@ describe('on planes', () => {
       type: 'set-position',
       nodeId: 'ops',
       x: 52,
-      y: 24,
+      y: 52,
       plane: 'base',
     });
   });
@@ -342,7 +342,7 @@ describe('on planes', () => {
       type: 'set-position',
       nodeId: 'ops',
       x: 28 + 24 + 24,
-      y: 24 + 16,
+      y: 52 + 16,
       plane: 'base',
     });
     expect(activityContext(m, { kind: 'node', id: 'ship' }, 'base')).toMatchObject({

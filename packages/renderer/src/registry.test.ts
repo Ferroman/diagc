@@ -106,7 +106,12 @@ describe('registries', () => {
       alwaysExpanded: true,
       legendLabel: 'Interruptible region',
     });
-    expect(r.resolve('activity-action')).toEqual({ shape: 'rounded', label: '', legendLabel: 'Action' });
+    expect(r.resolve('activity-action')).toEqual({
+      shape: 'rounded',
+      label: '',
+      legendLabel: 'Action',
+      wrapLabel: 180,
+    });
     expect(r.resolve('activity-decision')).toEqual({
       shape: 'diamond',
       defaultSize: { width: 48, height: 48 },
@@ -117,6 +122,7 @@ describe('registries', () => {
     expect(r.resolve('activity-bar')).toEqual({
       shape: 'bar',
       defaultSize: { width: 8, height: 100 },
+      turnsWithFlow: true,
       label: '',
       legendLabel: 'Fork / join',
       captionBelow: true,
@@ -147,7 +153,12 @@ describe('registries', () => {
       label: '',
       legendLabel: 'Receive signal',
     });
-    expect(r.resolve('activity-object')).toEqual({ shape: 'box', label: '', legendLabel: 'Object' });
+    expect(r.resolve('activity-object')).toEqual({
+      shape: 'box',
+      label: '',
+      legendLabel: 'Object',
+      wrapLabel: 180,
+    });
     expect(r.resolve('activity-note')).toEqual({ shape: 'note', defaultSize: { width: 140, height: 64 }, label: '' });
   });
 
@@ -274,7 +285,9 @@ describe('registries', () => {
       legendLabel: 'Junction',
       captionBelow: true,
     });
-    expect(t.resolve('sm-bar')).toEqual({ ...DEFAULT_TYPE_STYLES['activity-bar'], legendLabel: 'Fork / join' });
+    // a state machine's bar is the activity's, except that it does not turn with the flow
+    const { turnsWithFlow: _turns, ...bar } = DEFAULT_TYPE_STYLES['activity-bar']!;
+    expect(t.resolve('sm-bar')).toEqual({ ...bar, legendLabel: 'Fork / join' });
     expect(t.resolve('sm-history')).toEqual(circle(28, 'Shallow history'));
     expect(t.resolve('sm-deep-history')).toEqual(circle(28, 'Deep history'));
     expect(t.resolve('sm-entry')).toEqual(circle(16, 'Entry point'));

@@ -19,6 +19,9 @@ export interface SizeHintContext {
   typeRegistry: Registry<TypeStyle>;
   /** the overlay's saved sizes: an explicit resize */
   sizes: LayoutOverlay['sizes'];
+  /** the flow runs down (or up) the page: a glyph that lies across the flow
+   * (`TypeStyle.turnsWithFlow`) is turned. Absent: it runs across. */
+  flowsDown?: boolean;
 }
 
 type Rule = (n: DiagramNode, ctx: SizeHintContext) => SizeHint | undefined;
@@ -103,8 +106,11 @@ const imageRule: Rule = (n, ctx) => {
 const defaultSizeRule: Rule = (n, ctx) => {
   if (n.type === undefined) return undefined;
   const style = ctx.typeRegistry.resolve(n.type);
-  const ds = style.defaultSize;
-  if (ds === undefined) return undefined;
+  if (style.defaultSize === undefined) return undefined;
+  const ds =
+    style.turnsWithFlow === true && ctx.flowsDown === true
+      ? { width: style.defaultSize.height, height: style.defaultSize.width }
+      : style.defaultSize;
   const s = ctx.sizes?.[n.id];
   const name = style.captionBelow === true ? (n.name ?? '').trim() : '';
   return {

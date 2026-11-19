@@ -21,9 +21,9 @@ const label = (answer: ReturnType<typeof activityQuickAdd>) => (typeof answer ==
 
 describe('activityQuickAdd', () => {
   it('a lane in a frame offers a band above or below it, below by default', () => {
-    expect(label(activityQuickAdd(src('a'), 'before'))).toBe('Add a lane above');
-    expect(label(activityQuickAdd(src('a'), 'after'))).toBe('Add a lane below');
-    expect(label(activityQuickAdd(src('a'), undefined))).toBe('Add a lane below');
+    expect(label(activityQuickAdd(src('a'), 'before'))).toBe('Add a lane before');
+    expect(label(activityQuickAdd(src('a'), 'after'))).toBe('Add a lane after');
+    expect(label(activityQuickAdd(src('a'), undefined))).toBe('Add a lane after');
   });
 
   it('settles the rest of the chrome, and a frameless lane, as nothing on any notation', () => {

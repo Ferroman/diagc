@@ -3,11 +3,13 @@ import {
   ACTIVITY_LANE_TYPE,
   containmentOn,
   containmentPlaneOf,
+  type BoxSize,
   type CompiledView,
   type DiagramModel,
   type Size,
   type ViewNode,
 } from '@diagc/core/internal';
+import { textWidth } from './box-size';
 
 /** geometry constants for activity frames; the studio's ActivityPanel reads
  * these for its cascade placement, so they live on the package surface */
@@ -23,6 +25,31 @@ export const ACTIVITY_LAYOUT = {
   /** content padding inside a lane */
   PAD: 24,
 } as const;
+
+/**
+ * Which way a frame's lanes run. The lanes lie ALONG the flow, so that a lane is
+ * as long as the activity and as thick as its own busiest step: rows under a
+ * flow that runs across the page, columns under one that runs down it.
+ */
+export type LaneAxis = 'rows' | 'columns';
+
+export const laneAxisOf = (direction: string | undefined): LaneAxis =>
+  direction === 'RIGHT' || direction === 'LEFT' ? 'rows' : 'columns';
+
+/** A box mirrored in the diagonal: x for y, width for height. Rows and columns
+ * are one arrangement seen from two sides, so each pass is written for rows and
+ * run on flipped boxes for columns. Its own inverse. */
+export const flip = <T extends { x: number; y: number; width: number; height: number }>(g: T): T => ({
+  ...g,
+  x: g.y,
+  y: g.x,
+  width: g.height,
+  height: g.width,
+});
+
+/** How long a lane's name strip must be for the name to fit on it: the name is
+ * one line (`.dg-activity-name`, 12px semibold) with room at both ends. */
+export const laneNameLength = (name: string): number => Math.ceil(textWidth(name, 12) * 1.08) + 16;
 
 interface Geo {
   x: number;
@@ -81,20 +108,27 @@ export interface BandOptions {
   plane?: string;
   /** saved overlay sizes, which act as minimums */
   sizes?: Record<string, Size>;
+  /** which way the lanes run; rows when absent */
+  axis?: LaneAxis;
+  /** the caption hung under a member (an activity glyph's name), by id: a lane
+   * holds its members' captions too */
+  captions?: ReadonlyMap<string, BoxSize>;
 }
 
 /**
- * Normalize every activity frame in the view into full-width stacked lane
- * bands. Geometry is parent-relative (React Flow nesting): lanes' x/y/w/h and
- * frames' w/h are overridden; frame x/y and all children stay untouched —
- * lanes grow around content, content never moves. Saved overlay sizes act as
- * minimums. Pure and cheap: runs on every placedGeometry recompute.
+ * Normalize every activity frame in the view into stacked lane bands, each as
+ * long as the frame. Geometry is parent-relative (React Flow nesting): lanes'
+ * x/y/w/h and frames' w/h are overridden; frame x/y and all children stay
+ * untouched — lanes grow around content, content never moves. Saved overlay
+ * sizes act as minimums. Pure and cheap: runs on every placedGeometry recompute.
+ *
+ * Written for rows; for columns each box is flipped on the way in and out.
  */
 export function arrangeActivityFrames<T extends Geo>(
   geometry: ReadonlyMap<string, T>,
   view: CompiledView,
   model: DiagramModel,
-  { plane, sizes }: BandOptions = {},
+  { plane, sizes, axis = 'rows', captions }: BandOptions = {},
 ): ReadonlyMap<string, T> {
   if (!model.nodes.some((n) => n.type === ACTIVITY_FRAME_TYPE)) return geometry;
   const typeOf = new Map(model.nodes.map((n) => [n.id, n.type]));
@@ -102,6 +136,13 @@ export function arrangeActivityFrames<T extends Geo>(
   const { TITLE_STRIP_W, LANE_MIN_W, LANE_MIN_H, PAD } = ACTIVITY_LAYOUT;
 
   const rankIn = containmentRank(model, plane);
+  const turn = <G extends { x: number; y: number; width: number; height: number }>(g: G): G =>
+    axis === 'rows' ? g : flip(g);
+  // a saved size seen along the flow: `w` its length, `h` its thickness
+  const savedOf = (id: string): Size | undefined => {
+    const saved = sizes?.[id];
+    return saved === undefined || axis === 'rows' ? saved : { w: saved.h, h: saved.w };
+  };
 
   const arrange = (frame: ViewNode): void => {
     const lanes = frame.children
@@ -113,10 +154,11 @@ export function arrangeActivityFrames<T extends Geo>(
       // wrongly holds — either way it would read as a shrunken box. Hold it at
       // one empty band's footprint so it still looks like somewhere to draw.
       const fg = out.get(frame.id)!;
+      const least = turn({ x: 0, y: 0, width: TITLE_STRIP_W + LANE_MIN_W, height: LANE_MIN_H });
       out.set(frame.id, {
         ...fg,
-        width: Math.max(fg.width, TITLE_STRIP_W + LANE_MIN_W),
-        height: Math.max(fg.height, LANE_MIN_H),
+        width: Math.max(fg.width, least.width),
+        height: Math.max(fg.height, least.height),
       });
       return;
     }
@@ -131,21 +173,26 @@ export function arrangeActivityFrames<T extends Geo>(
       for (const kid of lane.children) {
         const g = out.get(kid.id);
         if (g === undefined) continue;
-        right = Math.max(right, g.x + g.width);
-        bottom = Math.max(bottom, g.y + g.height);
+        const caption = captions?.get(kid.id);
+        // under columns a caption wider than its glyph reaches past it on both sides
+        const reach = axis === 'columns' && caption !== undefined ? Math.max(0, (caption.width - g.width) / 2) : 0;
+        const box = turn({ x: g.x, y: g.y, width: g.width + reach, height: g.height + (caption?.height ?? 0) });
+        right = Math.max(right, box.x + box.width);
+        bottom = Math.max(bottom, box.y + box.height);
       }
-      const saved = sizes?.[lane.id];
-      heights.push(Math.max(LANE_MIN_H, bottom + PAD, saved?.h ?? 0));
+      const saved = savedOf(lane.id);
+      heights.push(Math.max(LANE_MIN_H, bottom + PAD, saved?.h ?? 0, laneNameLength(lane.node.name)));
       commonW = Math.max(commonW, right + PAD, saved?.w ?? 0);
     }
     let y = 0;
     lanes.forEach((lane, i) => {
       const g = out.get(lane.id)!;
-      out.set(lane.id, { ...g, x: TITLE_STRIP_W, y, width: commonW, height: heights[i]! });
+      out.set(lane.id, { ...g, ...turn({ x: TITLE_STRIP_W, y, width: commonW, height: heights[i]! }) });
       y += heights[i]!;
     });
     const fg = out.get(frame.id)!;
-    out.set(frame.id, { ...fg, width: TITLE_STRIP_W + commonW, height: y });
+    const size = turn({ x: 0, y: 0, width: TITLE_STRIP_W + commonW, height: y });
+    out.set(frame.id, { ...fg, width: size.width, height: size.height });
   };
 
   const walk = (n: ViewNode): void => {

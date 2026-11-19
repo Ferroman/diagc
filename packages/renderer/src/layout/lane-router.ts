@@ -17,6 +17,15 @@ import type { BoxSize, Point } from '@diagc/core/internal';
  * across to the gap beside its target, and in. Vertical runs that share a gap
  * are spread apart so parallel links stay readable.
  *
+ * A link that goes BACK along the flow (a loop, a retry) cannot leave forwards
+ * and arrive from behind without turning round twice. It leaves its source
+ * sideways instead, runs back along a lane's pad strip, and comes into its target
+ * from the side (`backRoute`). And a decision sends its branches out of
+ * different corners (`fanOut`). A label sits beside its source, where a guard is read.
+ *
+ * Everything here is written for a flow that runs to the right. A frame whose
+ * flow runs down is routed flipped (swimlane.ts).
+ *
  * Pure geometry in absolute flow coordinates; no elk, no DOM.
  */
 
@@ -26,8 +35,13 @@ export interface RouterBox {
   y: number;
   width: number;
   height: number;
-  /** a caption hung under the box (activity glyph name): an obstacle too */
+  /** a caption hung on the box (activity glyph name): an obstacle too */
   caption?: BoxSize;
+  /** where the caption hangs: under the box, or — a column frame, routed flipped
+   * (swimlane.ts) — on its right, where `caption` is the flipped caption */
+  captionSide?: 'bottom' | 'right';
+  /** a decision: its outgoing links leave by different corners */
+  fanOut?: boolean;
 }
 
 export type HSide = 'left' | 'right';
@@ -41,6 +55,8 @@ export interface RouterEdge {
   fromSide?: HSide | VSide;
   toSide?: HSide | VSide;
   hasLabel?: boolean;
+  /** the label's box as drawn, for a label placed beside its source */
+  labelSize?: BoxSize;
 }
 
 export interface RouterInput {
@@ -59,6 +75,11 @@ export interface RouterResult {
 const MARGIN = 6;
 /** spacing between parallel vertical runs in one gap */
 const LANE_STEP = 10;
+/** where the runs sharing one corridor sit, off its middle: MARGIN apart, and no
+ * nearer a box than MARGIN (a pad strip is four margins wide) */
+const CORRIDOR_SLOTS = [0, MARGIN, -MARGIN];
+/** room between a source and the label set beside it */
+const LABEL_GAP = 6;
 /** a gap narrower than this carries no route */
 const MIN_GAP = 2 * MARGIN;
 
@@ -72,6 +93,10 @@ interface Rect {
 /** the box plus its caption, as one obstacle */
 export function obstacleOf(b: RouterBox): Rect {
   if (b.caption === undefined) return b;
+  if (b.captionSide === 'right') {
+    const h = Math.max(b.height, b.caption.height);
+    return { x: b.x, y: b.y + (b.height - h) / 2, width: b.width + b.caption.width, height: h };
+  }
   const cx = b.x + b.width / 2;
   const w = Math.max(b.width, b.caption.width);
   return { x: cx - w / 2, y: b.y, width: w, height: b.height + b.caption.height };
@@ -95,6 +120,7 @@ export function columnGaps(obstacles: readonly Rect[]): Gap[] {
 }
 
 type Side = HSide | VSide;
+export type RouterSide = Side;
 
 const isVertical = (side: Side): side is VSide => side === 'top' || side === 'bottom';
 
@@ -186,9 +212,10 @@ function endPoint(box: RouterBox, side: Side): Point {
   const cx = box.x + box.width / 2;
   const cy = box.y + box.height / 2;
   if (side === 'left') return { x: box.x, y: cy };
-  if (side === 'right') return { x: box.x + box.width, y: cy };
+  const hang = box.caption !== undefined && box.captionSide === 'right';
+  if (side === 'right') return { x: box.x + box.width + (hang ? box.caption!.width : 0), y: cy };
   if (side === 'top') return { x: cx, y: box.y };
-  return { x: cx, y: box.y + box.height + (box.caption?.height ?? 0) };
+  return { x: cx, y: box.y + box.height + (hang ? 0 : (box.caption?.height ?? 0)) };
 }
 
 /** One link being routed: its edge, its two boxes, and the side each end sits on. */
@@ -430,28 +457,173 @@ function pointsOf(p: Plan, xs: { out: number; into: number }): Point[] {
       ];
 }
 
-function emit(result: RouterResult, edge: RouterEdge, route: Point[]): void {
+/** does a label of `size` centred on `at` keep off every box? */
+function labelFits(ctx: RouterContext, at: Point, size: BoxSize): boolean {
+  const x0 = at.x - size.width / 2;
+  const y0 = at.y - size.height / 2;
+  return ctx.obstacles.every(
+    (o) => x0 + size.width <= o.x || x0 >= o.x + o.width || y0 + size.height <= o.y || y0 >= o.y + o.height,
+  );
+}
+
+/** how far a label slides along a run between two tries */
+const LABEL_STEP = 8;
+
+/** A label's spot beside its source: as near the start as it fits, on the run
+ * out of the box, else on the one after the first bend. It fits where the run
+ * holds it and it covers no box. Undefined when it fits on neither run. */
+function spotBesideSource(ctx: RouterContext, pts: readonly Point[], size: BoxSize): Point | undefined {
+  for (let i = 1; i < Math.min(3, pts.length); i++) {
+    const a = pts[i - 1]!;
+    const b = pts[i]!;
+    const across = Math.abs(a.x - b.x) < 0.5;
+    const length = across ? size.height : size.width;
+    const run = across ? Math.abs(b.y - a.y) : Math.abs(b.x - a.x);
+    const dir = across ? Math.sign(b.y - a.y) : Math.sign(b.x - a.x);
+    for (let reach = LABEL_GAP + length / 2; reach <= run - LABEL_GAP - length / 2; reach += LABEL_STEP) {
+      const at = across ? { x: a.x, y: a.y + dir * reach } : { x: a.x + dir * reach, y: a.y };
+      if (labelFits(ctx, at, size)) return at;
+    }
+  }
+  return undefined;
+}
+
+function emit(ctx: RouterContext, result: RouterResult, edge: RouterEdge, route: Point[]): void {
   result.routes.set(edge.id, route);
-  if (edge.hasLabel === true) result.labelSpots.set(edge.id, labelSpotOf(route));
+  if (edge.hasLabel !== true) return;
+  // a label reads as its source's: a guard beside its decision, an outcome beside its step
+  const beside = edge.labelSize !== undefined ? spotBesideSource(ctx, route, edge.labelSize) : undefined;
+  result.labelSpots.set(edge.id, beside ?? labelSpotOf(route));
+}
+
+const V_SIDES: readonly VSide[] = ['top', 'bottom'];
+
+/** does the link go back along the flow: its target starts before its source ends */
+const goesBack = (a: RouterBox, b: RouterBox): boolean => b.x < a.x + a.width;
+
+/** How many runs each corridor already carries, so the next takes a free slot. */
+type CorridorUse = Map<number, number>;
+
+/**
+ * A link that goes back: out of the source sideways, along a corridor (a lane's
+ * pad strip, which no box reaches) to the target's column, and into the target
+ * from the side. Of the clear ways, the shortest; a side another link of the
+ * same decision already took costs extra. Undefined when no way is clear.
+ */
+function backRoute(
+  ctx: RouterContext,
+  link: Omit<Link, 'outSide' | 'inSide'>,
+  used: CorridorUse,
+  taken: ReadonlySet<Side>,
+): { route: Point[]; outSide: VSide } | undefined {
+  let best: { route: Point[]; outSide: VSide; cost: number; corridor: number } | undefined;
+  for (const outSide of V_SIDES) {
+    for (const inSide of V_SIDES) {
+      const ends = fixedEnds({ ...link, outSide, inSide });
+      const { start, end } = ends;
+      for (const corridor of ctx.corridors) {
+        const y = corridor + CORRIDOR_SLOTS[(used.get(corridor) ?? 0) % CORRIDOR_SLOTS.length]!;
+        if (!ends.leaves(y) || !ends.arrives(y)) continue;
+        const cost = Math.abs(start.y - y) + Math.abs(end.y - y) + (taken.has(outSide) ? 1e4 : 0);
+        if (best !== undefined && cost >= best.cost) continue;
+        if (
+          !isClear(ctx, start, { x: start.x, y }, ends.onlyA) ||
+          !isClear(ctx, { x: start.x, y }, { x: end.x, y }, NONE) ||
+          !isClear(ctx, { x: end.x, y }, end, ends.onlyB)
+        ) {
+          continue;
+        }
+        best = { route: simplify([start, { x: start.x, y }, { x: end.x, y }, end]), outSide, cost, corridor };
+      }
+    }
+  }
+  if (best === undefined) return undefined;
+  used.set(best.corridor, (used.get(best.corridor) ?? 0) + 1);
+  return best;
+}
+
+/**
+ * The corner each forward link of a decision leaves by, where its author fixed
+ * none: sideways towards a target that lies to that side, forwards otherwise.
+ * The link reaching farthest sideways chooses first; one whose corner is gone
+ * leaves forwards, or shares the corner when that is gone too. A decision with a
+ * single way out keeps it forwards.
+ */
+function fanOut(
+  a: RouterBox,
+  links: readonly { edge: RouterEdge; b: RouterBox }[],
+  taken: Set<Side>,
+): Map<string, Side> {
+  const out = new Map<string, Side>();
+  if (links.length + taken.size < 2) return out;
+  const mid = (box: RouterBox): number => box.y + box.height / 2;
+  const reach = (l: { b: RouterBox }): number => mid(l.b) - mid(a);
+  for (const l of [...links].sort((p, q) => Math.abs(reach(q)) - Math.abs(reach(p)))) {
+    const d = reach(l);
+    const want: Side = Math.abs(d) <= a.height ? 'right' : d < 0 ? 'top' : 'bottom';
+    const side = !taken.has(want) ? want : !taken.has('right') ? 'right' : want;
+    taken.add(side);
+    out.set(l.edge.id, side);
+  }
+  return out;
 }
 
 export function routeLaneEdges(input: RouterInput): RouterResult {
   const ctx = routerContext(input);
   const byId = new Map(input.boxes.map((b) => [b.id, b] as const));
   const result: RouterResult = { routes: new Map(), labelSpots: new Map() };
+  const links = input.edges.flatMap((edge) => {
+    const a = byId.get(edge.from);
+    const b = byId.get(edge.to);
+    return a === undefined || b === undefined || a === b ? [] : [{ edge, a, b }];
+  });
+
+  // the links that go back first: each takes a side of its source, which a
+  // decision's forward links then leave free
+  const used: CorridorUse = new Map();
+  const takenOf = new Map<string, Set<Side>>();
+  const taken = (id: string): Set<Side> => {
+    const set = takenOf.get(id) ?? new Set<Side>();
+    takenOf.set(id, set);
+    return set;
+  };
+  const forward: typeof links = [];
+  for (const link of links) {
+    const { edge, a, b } = link;
+    const free = edge.fromSide === undefined && edge.toSide === undefined;
+    const back = free && goesBack(a, b) ? backRoute(ctx, link, used, taken(a.id)) : undefined;
+    if (back === undefined) {
+      forward.push(link);
+      continue;
+    }
+    taken(a.id).add(back.outSide);
+    emit(ctx, result, edge, back.route);
+  }
+
+  const corners = new Map<string, Side>();
+  for (const box of input.boxes) {
+    if (box.fanOut !== true) continue;
+    const own = forward.filter((l) => l.a === box && l.edge.fromSide === undefined && l.edge.toSide === undefined);
+    for (const [id, side] of fanOut(box, own, taken(box.id))) corners.set(id, side);
+  }
+
   // a route that needs no shared gap is emitted as it is found; the planned
   // ones wait until every run in their gaps is known
   const plans: Plan[] = [];
-  for (const edge of input.edges) {
-    const a = byId.get(edge.from);
-    const b = byId.get(edge.to);
-    if (a === undefined || b === undefined || a === b) continue;
-    const step = routeOrPlan(ctx, { edge, a, b, outSide: edge.fromSide ?? 'right', inSide: edge.toSide ?? 'left' });
+  for (const { edge, a, b } of forward) {
+    const sides = { outSide: edge.fromSide ?? 'right', inSide: edge.toSide ?? 'left' } as const;
+    const corner = corners.get(edge.id);
+    // a decision's corner is a preference: where no route leaves by it, the
+    // link leaves forwards like any other
+    const step =
+      (corner !== undefined && corner !== 'right'
+        ? routeOrPlan(ctx, { edge, a, b, ...sides, outSide: corner })
+        : undefined) ?? routeOrPlan(ctx, { edge, a, b, ...sides });
     if (step === undefined) continue;
-    if ('route' in step) emit(result, edge, step.route);
+    if ('route' in step) emit(ctx, result, edge, step.route);
     else plans.push(step);
   }
   const xOf = spreadRuns(plans);
-  for (const p of plans) emit(result, p.edge, simplify(pointsOf(p, xOf.get(p)!)));
+  for (const p of plans) emit(ctx, result, p.edge, simplify(pointsOf(p, xOf.get(p)!)));
   return result;
 }

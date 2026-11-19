@@ -1,3 +1,4 @@
+import { laneAxisOf } from '../layout/activity-frame';
 import { useMemo, useRef, useState } from 'react';
 import { Background, ConnectionMode, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -335,6 +336,7 @@ function Inner(props: DiagramViewProps) {
             dragging: drag.dragging,
             preset,
             notationClass: profile.className,
+            flowsDown: laneAxisOf(viewLayout.flowDirection) === 'columns',
             penActive: gestures.penActive,
             eraserActive: gestures.eraserActive,
             laserOn: gestures.laserOn,

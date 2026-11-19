@@ -23,6 +23,9 @@ import { InlineName } from './InlineName';
 export interface DiagramNodeData {
   // --- rendering: identity, look, label ----------------------------------
   label: string;
+  /** `label` as drawn when its type wraps a long name: the same text, broken into
+   * the lines the layout sized the box for (box-size.ts `wrappedName`) */
+  wrappedLabel?: string;
   typeId?: string;
   icon?: string;
   /** node accent color (border + background tint) */

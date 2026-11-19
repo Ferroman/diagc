@@ -15,6 +15,7 @@ import {
   COLLAPSED_SIZE,
   componentGap,
   containerMinWidth,
+  captionsOf,
   containerPad,
   DEFAULT_ALGORITHM,
   DEFAULT_SPACING,
@@ -32,6 +33,7 @@ import { packBoxes } from './pack';
 import { removeOverlaps } from './overlap';
 import { centreLevels } from './symmetry';
 import { bandLanes, hoistLanes, rebaseRoutes, routeBandedEdges } from './swimlane';
+import { laneAxisOf } from './activity-frame';
 
 /** What a notation's own arrangement is handed (NotationProfile.layout). */
 export interface NotationLayoutInput {
@@ -163,7 +165,7 @@ export async function layoutView(
   if (hit) return hit;
 
   // Activity lanes are dissolved for elk and put back as bands (swimlane.ts).
-  const hoist = hoistLanes(view, settings);
+  const hoist = hoistLanes(view);
   const laid = hoist?.view ?? view;
   const arranged =
     (partitions === undefined ? await layoutPlanned(laid, sizeOverrides, settings) : undefined) ??
@@ -171,13 +173,12 @@ export async function layoutView(
   const result = withSymmetry(arranged, laid, settings, hoist !== undefined);
   releaseReserved(laid, sizeOverrides, result.geometry);
   if (hoist !== undefined) {
-    const captions = new Map<string, BoxSize>();
-    for (const [id, s] of sizeOverrides ?? []) if (s.caption !== undefined) captions.set(id, s.caption);
-    const below = new Map([...captions].map(([id, c]) => [id, c.height] as const));
+    const captions = captionsOf(sizeOverrides);
+    const axis = laneAxisOf(settings?.direction ?? FALLBACK_DIRECTION);
     const banding = { result, hoist, original: view };
-    const moved = bandLanes(banding, settings?.spacing ?? DEFAULT_SPACING, below);
+    const moved = bandLanes(banding, settings?.spacing ?? DEFAULT_SPACING, captions, axis);
     rebaseRoutes(banding, moved);
-    routeBandedEdges(banding, captions);
+    routeBandedEdges(banding, captions, axis);
   }
   if (cache.size >= CACHE_CAP) {
     const oldest = cache.keys().next().value;

@@ -38,19 +38,14 @@ function zigzag(): DiagramModel {
 }
 
 describe('hoistLanes', () => {
-  it('leaves a vertical flow alone', () => {
-    expect(hoistLanes(view(zigzag()), { direction: 'DOWN' })).toBeUndefined();
-    expect(hoistLanes(view(zigzag()), undefined)).toBeUndefined();
-  });
-
   it('leaves a view without activity frames alone', () => {
     const m = model('plain');
     m.node('x', { name: 'X' });
-    expect(hoistLanes(view(m.toJSON()), RIGHT)).toBeUndefined();
+    expect(hoistLanes(view(m.toJSON()))).toBeUndefined();
   });
 
   it("makes the lanes' members the frame's children, lane by lane", () => {
-    const hoist = hoistLanes(view(zigzag()), RIGHT)!;
+    const hoist = hoistLanes(view(zigzag()))!;
     const frame = hoist.view.roots.find((r) => r.id === 'f')!;
     expect(frame.children.map((c) => c.id)).toEqual(['a', 'c', 'b', 'd']);
     expect(hoist.frames.get('f')!.lanes).toEqual([
@@ -65,7 +60,7 @@ describe('hoistLanes', () => {
     const m = zigzag();
     m.nodes.push({ id: 'outside', name: 'Outside' });
     m.relations.push({ id: 'to-lane', from: 'outside', to: 'l2', kind: 'uses' });
-    const hoist = hoistLanes(view(m), RIGHT)!;
+    const hoist = hoistLanes(view(m))!;
     expect(hoist.view.layoutEdges.some((e) => e.to === 'l2')).toBe(false);
   });
 });
@@ -147,19 +142,116 @@ describe('layoutView on activity lanes', () => {
     expect(lane(captioned).height).toBeGreaterThan(lane(bare).height - 1);
   });
 
-  it('lays out a downward activity exactly as before', async () => {
+  it('stands the lanes side by side under a flow that runs down', async () => {
     const v = view(zigzag());
-    const { geometry } = await layoutView(v, undefined, { direction: 'DOWN' });
-    // the lanes stayed elk's containers: each is laid out, not synthesized
-    expect(geometry.get('a')!.x).toBeGreaterThanOrEqual(0);
-    expect(geometry.has('l1')).toBe(true);
+    const { geometry, routes } = await layoutView(v, undefined, { direction: 'DOWN' });
+    const abs = absolute(v, geometry);
+    const y = (id: string) => abs.get(id)!.y;
+    expect(y('a')).toBeLessThan(y('b'));
+    expect(y('b')).toBeLessThan(y('c'));
+    expect(y('c')).toBeLessThan(y('d'));
+    const lanes = ['l1', 'l2', 'l3'].map((id) => abs.get(id)!);
+    for (let i = 1; i < lanes.length; i++) expect(lanes[i]!.x).toBe(lanes[i - 1]!.x + lanes[i - 1]!.width);
+    expect(new Set(lanes.map((l) => l.height)).size).toBe(1);
+    expect(new Set(lanes.map((l) => l.y)).size).toBe(1);
+    expect(lanes[0]!.y).toBe(abs.get('f')!.y + L.TITLE_STRIP_W);
+    for (const [member, lane] of [
+      ['a', 'l1'],
+      ['c', 'l1'],
+      ['b', 'l2'],
+      ['d', 'l3'],
+    ] as const) {
+      const n = abs.get(member)!;
+      const l = abs.get(lane)!;
+      expect(n.x).toBeGreaterThanOrEqual(l.x);
+      expect(n.x + n.width).toBeLessThanOrEqual(l.x + l.width);
+      expect(n.y).toBeGreaterThanOrEqual(l.y + L.LANE_STRIP_W);
+    }
+    // a and c follow each other in one lane: they stand in one line down it
+    expect(abs.get('a')!.x + abs.get('a')!.width / 2).toBeCloseTo(abs.get('c')!.x + abs.get('c')!.width / 2, 0);
+    // every link is routed at right angles, out of a bottom and into a top
+    for (const e of v.layoutEdges) {
+      const pts = routes.get(e.id)!;
+      expect(pts, e.id).toBeDefined();
+      expect(pts.every((p, i) => i === 0 || p.x === pts[i - 1]!.x || p.y === pts[i - 1]!.y)).toBe(true);
+      const from = abs.get(e.from)!;
+      const to = abs.get(e.to)!;
+      expect(pts[0]!.y).toBeCloseTo(from.y + from.height, 0);
+      expect(pts[pts.length - 1]!.y).toBeCloseTo(to.y, 0);
+    }
+  });
+
+  it('turns a lane as wide as a caption wider than its glyph, under a flow that runs down', async () => {
+    const m = model('cap');
+    m.activity('f').lane('l1').decision('d', 'Is it in stock and ready to ship?');
+    const v = view(m.toJSON());
+    const sizes = new Map([['d', { width: 48, height: 48, caption: { width: 180, height: 35 } }]]);
+    const { geometry } = await layoutView(v, sizes, { direction: 'DOWN' });
+    const lane = geometry.get('l1')!;
+    const d = geometry.get('d')!;
+    expect(d.x + d.width / 2 - 90).toBeGreaterThanOrEqual(L.PAD - 1);
+    expect(lane.width).toBeGreaterThanOrEqual(d.x + d.width / 2 + 90 + L.PAD - 1);
   });
 });
 
 describe('bandLanes', () => {
+  it('puts steps that follow each other in a lane in one line, and branches side by side', () => {
+    const m = model('fork');
+    const act = m.activity('f');
+    const l1 = act.lane('l1');
+    const fork = l1.bar('fork');
+    const p = l1.action('p', 'P');
+    const q = l1.action('q', 'Q');
+    const p2 = l1.action('p2', 'P2');
+    act.flow(fork, p).flow(fork, q).flow(p, p2);
+    const v = view(m.toJSON());
+    const hoist = hoistLanes(v)!;
+    const box = (x: number, y: number) => ({ x, y, width: 100, height: 40 });
+    const g = new Map<string, NodeGeometry>([
+      ['f', { x: 0, y: 0, width: 1000, height: 1000 }],
+      ['fork', { x: 28, y: 300, width: 8, height: 100 }],
+      // elk put q a layer after p, and p2 far from p
+      ['p', box(200, 250)],
+      ['q', box(400, 500)],
+      ['p2', box(600, 900)],
+    ]);
+    bandLanes({ result: { geometry: g, routes: new Map(), labelSpots: new Map() }, hoist, original: v }, 40);
+    const mid = (id: string) => g.get(id)!.y + g.get(id)!.height / 2;
+    expect(mid('p')).toBe(mid('fork'));
+    expect(mid('p2')).toBe(mid('p'));
+    // q follows the same bar as p: a branch, on the next track
+    expect(g.get('q')!.y).toBe(g.get('fork')!.y + 100 + 40);
+  });
+
+  it('bands columns as it bands rows, flipped', () => {
+    const boxes = (): Map<string, NodeGeometry> =>
+      new Map([
+        ['f', { x: 0, y: 0, width: 1000, height: 1000 }],
+        ['a', { x: 28, y: 0, width: 100, height: 40 }],
+        ['b', { x: 200, y: 100, width: 100, height: 40 }],
+        ['c', { x: 400, y: 440, width: 100, height: 40 }],
+        ['d', { x: 600, y: 200, width: 100, height: 40 }],
+      ]);
+    const turn = (g: NodeGeometry): NodeGeometry => ({ x: g.y, y: g.x, width: g.height, height: g.width });
+    const v = view(zigzag());
+    const run = (g: Map<string, NodeGeometry>, axis: 'rows' | 'columns') => {
+      bandLanes(
+        { result: { geometry: g, routes: new Map(), labelSpots: new Map() }, hoist: hoistLanes(v)!, original: v },
+        40,
+        undefined,
+        axis,
+      );
+      return g;
+    };
+    const rows = run(boxes(), 'rows');
+    const columns = run(new Map([...boxes()].map(([id, g]) => [id, turn(g)])), 'columns');
+    for (const id of ['a', 'b', 'c', 'd', 'l1', 'l2', 'l3']) expect(columns.get(id), id).toEqual(turn(rows.get(id)!));
+    expect(columns.get('f')).toMatchObject({ width: rows.get('f')!.height, height: rows.get('f')!.width });
+  });
+
   it("closes up the height elk spent on another lane's nodes", () => {
     const v = view(zigzag());
-    const hoist = hoistLanes(v, RIGHT)!;
+    const hoist = hoistLanes(v)!;
     const box = (x: number, y: number) => ({ x, y, width: 100, height: 40 });
     const g = new Map<string, NodeGeometry>([
       ['f', { x: 0, y: 0, width: 1000, height: 1000 }],
@@ -175,8 +267,9 @@ describe('bandLanes', () => {
     );
     const pad = { top: L.PAD, left: L.LANE_STRIP_W + L.PAD };
     expect(g.get('a')).toMatchObject({ x: pad.left, y: pad.top });
-    expect(g.get('c')).toMatchObject({ x: 400 - 28 + pad.left, y: pad.top + 40 + 40 });
-    expect(g.get('l1')).toMatchObject({ x: L.TITLE_STRIP_W, y: 0, height: pad.top + 40 + 40 + 40 + L.PAD });
+    // c follows a in the lane (by way of b, in another): one line
+    expect(g.get('c')).toMatchObject({ x: 400 - 28 + pad.left, y: pad.top });
+    expect(g.get('l1')).toMatchObject({ x: L.TITLE_STRIP_W, y: 0, height: L.LANE_MIN_H });
     expect(g.get('l2')!.y).toBe(g.get('l1')!.height);
     expect(moved.get('a')).toEqual({ dx: L.TITLE_STRIP_W + pad.left - 28, dy: pad.top });
   });
@@ -185,7 +278,7 @@ describe('bandLanes', () => {
 describe('rebaseRoutes', () => {
   const setup = () => {
     const v = view(zigzag());
-    const hoist = hoistLanes(v, RIGHT)!;
+    const hoist = hoistLanes(v)!;
     const id = (from: string, to: string) => v.layoutEdges.find((e) => e.from === from && e.to === to)!.id;
     return { v, hoist, id };
   };

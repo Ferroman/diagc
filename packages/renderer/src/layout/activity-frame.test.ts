@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, type DiagramModel } from '@diagc/core/internal';
-import { ACTIVITY_LAYOUT as L, arrangeActivityFrames, laneDropOffset, withLaneOrder } from './activity-frame';
+import {
+  ACTIVITY_LAYOUT as L,
+  arrangeActivityFrames,
+  flip,
+  laneAxisOf,
+  laneDropOffset,
+  laneNameLength,
+  withLaneOrder,
+} from './activity-frame';
 
 const model = (extraLaneKids: { id: string; parent: string }[] = []): DiagramModel => ({
   version: 1,
@@ -41,6 +49,77 @@ const twoPlanes = (): DiagramModel => ({
 });
 
 const geo = (entries: [string, { x: number; y: number; width: number; height: number }][]) => new Map(entries);
+
+describe('laneAxisOf', () => {
+  it('runs the lanes along the flow', () => {
+    expect(laneAxisOf('RIGHT')).toBe('rows');
+    expect(laneAxisOf('LEFT')).toBe('rows');
+    expect(laneAxisOf('DOWN')).toBe('columns');
+    expect(laneAxisOf('UP')).toBe('columns');
+    expect(laneAxisOf(undefined)).toBe('columns');
+  });
+});
+
+describe('arrangeActivityFrames, lanes as columns', () => {
+  const g = () =>
+    geo([
+      ['f', { x: 5, y: 7, width: 1, height: 1 }],
+      ['l1', { x: 0, y: 0, width: 1, height: 1 }],
+      ['l2', { x: 0, y: 0, width: 1, height: 1 }],
+      ['k', { x: 30, y: 400, width: 160, height: 40 }],
+    ]);
+  const m = model([{ id: 'k', parent: 'l1' }]);
+
+  it('is the row arrangement of the flipped boxes, flipped back', () => {
+    const columns = arrangeActivityFrames(g(), view(m), m, { axis: 'columns' });
+    const rows = arrangeActivityFrames(new Map([...g()].map(([id, box]) => [id, flip(box)])), view(m), m);
+    for (const id of ['l1', 'l2']) expect(columns.get(id)).toEqual(flip(rows.get(id)!));
+    expect(columns.get('f')).toMatchObject({ x: 5, y: 7, width: rows.get('f')!.height, height: rows.get('f')!.width });
+  });
+
+  it('stands the lanes side by side under the title strip, as tall as each other', () => {
+    const out = arrangeActivityFrames(g(), view(m), m, { axis: 'columns' });
+    const l1 = out.get('l1')!;
+    const l2 = out.get('l2')!;
+    expect(l1).toMatchObject({ x: 0, y: L.TITLE_STRIP_W, width: 160 + 30 + L.PAD, height: 400 + 40 + L.PAD });
+    expect(l2).toMatchObject({ x: l1.width, y: L.TITLE_STRIP_W, height: l1.height });
+    expect(out.get('f')).toMatchObject({ width: l1.width + l2.width, height: L.TITLE_STRIP_W + l1.height });
+  });
+
+  it('widens a column lane for a caption wider than its glyph', () => {
+    const captions = new Map([['k', { width: 260, height: 20 }]]);
+    const out = arrangeActivityFrames(g(), view(m), m, { axis: 'columns', captions });
+    expect(out.get('l1')!.width).toBe(30 + 160 + 50 + L.PAD);
+    expect(out.get('l1')!.height).toBe(400 + 40 + 20 + L.PAD);
+  });
+
+  it("reads a saved size along the flow: its height is the lane's length", () => {
+    const out = arrangeActivityFrames(g(), view(m), m, { axis: 'columns', sizes: { l2: { w: 300, h: 900 } } });
+    expect(out.get('l2')).toMatchObject({ width: 300, height: 900 });
+    expect(out.get('l1')!.height).toBe(900);
+  });
+});
+
+describe('a lane and its name', () => {
+  it('is never thinner than its name is long', () => {
+    const named: DiagramModel = {
+      ...model(),
+      nodes: model().nodes.map((n) =>
+        n.id === 'l1' ? { ...n, name: 'Model tools (simulator only, no real code)' } : n,
+      ),
+    };
+    const g = geo([
+      ['f', { x: 0, y: 0, width: 1, height: 1 }],
+      ['l1', { x: 0, y: 0, width: 1, height: 1 }],
+      ['l2', { x: 0, y: 0, width: 1, height: 1 }],
+    ]);
+    const need = laneNameLength('Model tools (simulator only, no real code)');
+    expect(need).toBeGreaterThan(L.LANE_MIN_H);
+    expect(arrangeActivityFrames(g, view(named), named).get('l1')!.height).toBe(need);
+    expect(arrangeActivityFrames(g, view(named), named, { axis: 'columns' }).get('l1')!.width).toBe(need);
+    expect(arrangeActivityFrames(g, view(named), named).get('l2')!.height).toBe(L.LANE_MIN_H);
+  });
+});
 
 describe('arrangeActivityFrames', () => {
   it('returns the same reference when the model has no frames', () => {

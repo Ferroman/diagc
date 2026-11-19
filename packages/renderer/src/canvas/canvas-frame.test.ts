@@ -9,6 +9,7 @@ const resting: CanvasFrameState = {
   dragging: false,
   preset: stylePreset('clean'),
   notationClass: undefined,
+  flowsDown: false,
   penActive: false,
   eraserActive: false,
   laserOn: false,
@@ -27,13 +28,14 @@ describe('canvasClassName', () => {
       dragging: true,
       preset: stylePreset('hand-drawn'),
       notationClass: 'dg-notation-cld',
+      flowsDown: true,
       penActive: true,
       eraserActive: true,
       laserOn: true,
     };
     expect(canvasClassName(busy)).toBe(
       'dg-canvas dg-no-chrome dg-mode-edit dg-dragging dg-style-hand-drawn dg-style-rough dg-style-font ' +
-        'dg-notation-cld dg-tool-pen dg-tool-eraser dg-tool-laser',
+        'dg-notation-cld dg-flow-down dg-tool-pen dg-tool-eraser dg-tool-laser',
     );
   });
 

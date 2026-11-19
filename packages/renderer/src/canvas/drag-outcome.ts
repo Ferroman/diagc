@@ -30,11 +30,13 @@ export function snapBackResets(
 /** Lane reorder: an activity lane has no position of its own — its band is
  * stacked from containment order (arrangeActivityFrames) — so dragging one is
  * a reorder: where its middle lands among its sibling bands says how many
- * slots it moves. Undefined unless `id` is a lane inside a frame. */
+ * slots it moves. Lanes that stand side by side (columns, under a flow that runs
+ * down) are reordered by where the drag ends across the page. Undefined unless
+ * `id` is a lane inside a frame. */
 export function laneDrop(
   nodes: readonly Node[],
   id: string,
-  arranged: ReadonlyMap<string, { y: number; height: number }> | null,
+  arranged: ReadonlyMap<string, { x: number; y: number; width: number; height: number }> | null,
 ): { frameId: string; offset: number } | undefined {
   const typeOf = (n: Node) => (n.data as { typeId?: string }).typeId;
   const rf = nodes.find((n) => n.id === id);
@@ -44,9 +46,20 @@ export function laneDrop(
     .filter((n) => n.parentId === frameId && typeOf(n) === ACTIVITY_LANE_TYPE)
     .flatMap((n) => {
       const g = arranged?.get(n.id);
-      return g === undefined ? [] : [{ id: n.id, y: g.y, height: g.height }];
+      return g === undefined ? [] : [{ id: n.id, ...g }];
     });
-  return { frameId, offset: laneDropOffset(lanes, id, rf.position.y) };
+  // column lanes all start at the frame's top and differ in x
+  const columns = lanes.length > 1 && lanes.every((l) => l.y === lanes[0]!.y);
+  return columns
+    ? {
+        frameId,
+        offset: laneDropOffset(
+          lanes.map((l) => ({ id: l.id, y: l.x, height: l.width })),
+          id,
+          rf.position.x,
+        ),
+      }
+    : { frameId, offset: laneDropOffset(lanes, id, rf.position.y) };
 }
 
 /** Drop into: where the dropped box sits inside its target, both absolute. */

@@ -350,7 +350,8 @@ export interface LayoutSettings {
   /** elk.algorithm — 'layered' (default) | 'force' | 'stress' | 'mrtree' | 'radial' | 'rectpacking' */
   algorithm?: string;
   /** elk.direction for layered — 'DOWN' | 'RIGHT' | 'LEFT' | 'UP'. Absent ⇒
-   * `defaultLayoutDirection(model)`: down, or right where activity frames are drawn. */
+   * `defaultLayoutDirection(model)`: down. An activity's lanes run along it:
+   * columns under DOWN or UP, rows under RIGHT or LEFT. */
   direction?: string;
   /** base node-node spacing in px; between-layers spacing is derived from it */
   spacing?: number;

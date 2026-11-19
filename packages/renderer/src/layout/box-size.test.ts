@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compileView, model } from '@diagc/core/internal';
-import { LAYOUT_SIZED_TYPES, estimateBoxSize, textWidth, withBoxSizes } from './box-size';
+import { LAYOUT_SIZED_TYPES, estimateBoxSize, textWidth, withBoxSizes, wrapText, wrappedName } from './box-size';
 import { createTypeRegistry } from '../registry';
 
 // The expectations are the DOM sizes measured in headless Chrome against the
@@ -77,6 +77,55 @@ describe('estimateBoxSize', () => {
     expect(estimateBoxSize({ name: 'Acme Platform', collapsedCount: 170 }).width).toBeGreaterThan(
       estimateBoxSize({ name: 'Acme Platform', collapsedCount: 1 }).width,
     );
+  });
+});
+
+describe('wrapText', () => {
+  it('breaks at word boundaries, each line within the cap', () => {
+    const lines = wrapText('Do each random run on the real system, compare the full state', 180, 12);
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.join(' ')).toBe('Do each random run on the real system, compare the full state');
+    for (const line of lines) expect(textWidth(line, 12)).toBeLessThanOrEqual(180);
+  });
+
+  it('keeps a short text, a break already in it, and a word wider than the cap', () => {
+    expect(wrapText('Ask for a change', 180, 12)).toEqual(['Ask for a change']);
+    expect(wrapText('one\ntwo', 180, 12)).toEqual(['one', 'two']);
+    expect(wrapText('a Supercalifragilisticexpialidocious b', 60, 12)).toEqual([
+      'a',
+      'Supercalifragilisticexpialidocious',
+      'b',
+    ]);
+  });
+});
+
+describe('wrappedName', () => {
+  const types = createTypeRegistry();
+  const long = 'Find a short run for each example, refusal and broken rule';
+
+  it('wraps a long name of a type that wraps, and no other', () => {
+    const action = types.resolve('activity-action');
+    expect(wrappedName({ id: 'n', name: long, type: 'activity-action' }, action)!.length).toBeGreaterThan(1);
+    expect(wrappedName({ id: 'n', name: 'Short', type: 'activity-action' }, action)).toBeUndefined();
+    expect(wrappedName({ id: 'n', name: long, type: 'service' }, types.resolve('service'))).toBeUndefined();
+    expect(wrappedName({ id: 'n', name: long }, undefined)).toBeUndefined();
+  });
+
+  it('leaves a rich label as its author laid it out', () => {
+    const node = { id: 'n', name: long, type: 'activity-action', rich: [{ text: long }] };
+    expect(wrappedName(node, types.resolve('activity-action'))).toBeUndefined();
+  });
+
+  it('sizes the box for the lines it is drawn on', () => {
+    const m = model('wrap');
+    const lane = m.activity('f').lane('l');
+    lane.action('long', long);
+    lane.action('short', 'Short');
+    const view = compileView(m.toJSON(), { pins: { f: 'expanded', l: 'expanded' } });
+    const sizes = withBoxSizes(view.roots, new Map(), { typeRegistry: types, metaKeys: [], hiddenCounts: new Map() });
+    const lines = wrappedName({ id: 'long', name: long, type: 'activity-action' }, types.resolve('activity-action'))!;
+    expect(sizes.get('long')!.height).toBe(sizes.get('short')!.height + (lines.length - 1) * 16);
+    expect(sizes.get('long')!.width).toBeLessThan(estimateBoxSize({ name: long, shape: 'rounded' }).width);
   });
 });
 

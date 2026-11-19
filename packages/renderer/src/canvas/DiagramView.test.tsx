@@ -1954,15 +1954,17 @@ describe('activity diagrams', () => {
     expect(await screen.findByText('Do it')).toBeDefined();
   });
 
-  it('activity lanes share one width (band pass applied)', async () => {
+  it('activity lanes share one length (band pass applied)', async () => {
     const { container } = render(<DiagramView model={activityModel()} />);
     await waitFor(() => expect(container.querySelectorAll('.dg-activity-lane')).toHaveLength(2));
     const laneA = container.querySelector('.react-flow__node[data-id="a"]') as HTMLElement | null;
     const laneB = container.querySelector('.react-flow__node[data-id="b"]') as HTMLElement | null;
+    // the flow runs down, so the lanes are columns: as tall as each other
     await waitFor(() => {
-      expect(laneA?.style.width).not.toBe('');
-      expect(laneA?.style.width).toBe(laneB?.style.width);
+      expect(laneA?.style.height).not.toBe('');
+      expect(laneA?.style.height).toBe(laneB?.style.height);
     });
+    expect(container.querySelector('.dg-canvas')?.classList.contains('dg-flow-down')).toBe(true);
   });
 
   it('routes an edge inside every lane, not only the one the band pass left in place', async () => {
@@ -2008,10 +2010,12 @@ describe('activity diagrams', () => {
       if (w === null) throw new Error('frame not rendered');
       return w;
     });
+    // one empty column lane: its length runs down the page
     await waitFor(() =>
-      expect(wrapper.style.width).toBe(`${ACTIVITY_LAYOUT.TITLE_STRIP_W + ACTIVITY_LAYOUT.LANE_MIN_W}px`),
+      expect(wrapper.style.height).toBe(`${ACTIVITY_LAYOUT.TITLE_STRIP_W + ACTIVITY_LAYOUT.LANE_MIN_W}px`),
     );
-    expect(wrapper.style.height).toBe(`${ACTIVITY_LAYOUT.LANE_MIN_H}px`);
+    // across the page it is at least a lane's least thickness (a bare leaf is wider)
+    expect(parseFloat(wrapper.style.width)).toBeGreaterThanOrEqual(ACTIVITY_LAYOUT.LANE_MIN_H);
   });
 
   it('nodeBounds reports a nested lane in absolute flow coordinates, and undefined for an unknown id', async () => {
@@ -2023,25 +2027,25 @@ describe('activity diagrams', () => {
     const a = apiRef.current!.nodeBounds('a')!;
     const b = apiRef.current!.nodeBounds('b')!;
     const act1 = apiRef.current!.nodeBounds('act1')!;
-    // lanes are banded inside the frame: past its title strip, b stacked under
-    // a (lane a holds one action, so it is one empty band tall). Positions only:
-    // jsdom measures every box 800×600 (test-setup).
-    expect(a.x).toBe(frame.x + ACTIVITY_LAYOUT.TITLE_STRIP_W);
-    expect(b.y).toBe(a.y + ACTIVITY_LAYOUT.LANE_MIN_H);
+    // lanes are banded inside the frame: under its title strip, b beside a.
+    // Positions only: jsdom measures every box 800×600 (test-setup).
+    expect(a.y).toBe(frame.y + ACTIVITY_LAYOUT.TITLE_STRIP_W);
+    expect(b.y).toBe(a.y);
+    expect(b.x).toBeGreaterThanOrEqual(a.x + ACTIVITY_LAYOUT.LANE_MIN_H);
     // a grandchild accumulates both parents' offsets
-    expect(act1.x).toBeGreaterThan(a.x);
+    expect(act1.y).toBeGreaterThan(a.y);
     expect(apiRef.current!.nodeBounds('nope')).toBeUndefined();
   });
 
-  it('a bar leaf gets its registry default size', async () => {
+  it('a bar leaf gets its registry default size, turned to lie across a flow that runs down', async () => {
     const { container } = render(<DiagramView model={looseBarModel()} />);
     const wrapper = await waitFor(() => {
       const w = container.querySelector('.react-flow__node[data-id="b1"]') as HTMLElement | null;
       if (w === null) throw new Error('bar node not rendered');
       return w;
     });
-    await waitFor(() => expect(wrapper.style.width).toBe('8px'));
-    expect(wrapper.style.height).toBe('100px');
+    await waitFor(() => expect(wrapper.style.width).toBe('100px'));
+    expect(wrapper.style.height).toBe('8px');
   });
 });
 
@@ -3357,14 +3361,15 @@ describe('what a drag reports when it ends on a lane or a note', () => {
     return m.toJSON();
   }
 
-  it('a lane dropped below its neighbour reports the reorder, returns to its band, and is no move', async () => {
+  it('a lane dropped past its neighbour reports the reorder, returns to its band, and is no move', async () => {
     const onNodesMoved = vi.fn();
     const onMoveLane = vi.fn();
     const { container } = render(<DiagramView model={laneModel()} mode="edit" edit={{ onNodesMoved, onMoveLane }} />);
     await settle(container, 'a');
     await settle(container, 'b');
     const before = nodeOf('a').position;
-    await drag({ a: { x: before.x, y: nodeOf('b').position.y + 1000 } });
+    // column lanes: past its neighbour is to the right of it
+    await drag({ a: { x: nodeOf('b').position.x + 1000, y: before.y } });
 
     expect(onMoveLane).toHaveBeenCalledTimes(1);
     expect(onMoveLane).toHaveBeenCalledWith('flow', 'a', 1);
