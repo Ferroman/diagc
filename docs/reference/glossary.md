@@ -59,7 +59,7 @@ can show several diagrams. See [Compose diagrams](../how-to/compose-diagrams.md)
 ## Lane
 
 In a git branching diagram, the row a branch's commits sit on. In an activity diagram, a
-swimlane for one actor. See [Draw a git branching diagram](../how-to/draw-a-git-branching-diagram.md)
+swimlane for one actor: a column when the flow runs down, a row when it runs across. See [Draw a git branching diagram](../how-to/draw-a-git-branching-diagram.md)
 and [Draw an activity diagram](../how-to/draw-an-activity-diagram.md).
 
 ## Layer

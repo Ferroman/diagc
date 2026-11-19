@@ -8,7 +8,7 @@ A frame's children must be lanes; a lane's children are the flow (actions, objec
 
 ## In TypeScript
 
-1. Declare the frame, then its lanes top to bottom:
+1. Declare the frame, then its lanes in order. They are drawn as columns, left to right:
 
    ```ts
    import { model } from '@diagc/core';
@@ -82,7 +82,7 @@ The whole picture above is `.diagrams/src/docs/activity.diagram.ts` in this repo
 4. Connect elements by dragging from one to another, the same gesture as any diagram. New connections start as a plain `sync` relation; select the arrow and set its **Kind** to `control`, `object-flow`, `interrupt` or `note-link` to match what it means. Give it a **Label** like `[order accepted]` for a guard.
 5. Rename, recolour and delete lanes, regions and elements the same way as any node. To move an element to another lane, use the node panel's *Memberships* section: remove its current lane (✕), then pick the new one under **Choose parent…** and **Add**. The list offers only lanes and regions (a lane's only frames), and dragging an element across a lane boundary does not re-home it.
 
-![Add a lane above Finance and name it, then add an action to it from the Activity panel](../media/draw-an-activity-diagram.webp)
+![Add a lane before Finance and name it, then add an action to it from the Activity panel](../media/draw-an-activity-diagram.webp)
 
 GIF: [draw-an-activity-diagram.gif](../media/draw-an-activity-diagram.gif)
 
@@ -134,7 +134,11 @@ export default m;
 
 [![Expense approval](../../.diagrams/static/examples/activity/starter.png)](https://ferroman.github.io/diagc/html/examples/activity/starter.html)
 
-**Order fulfilment** — a paid order handed from the order service to the warehouse and on to the carrier, ending in a tracking link. It exercises `region` and `interrupt` for the part a cancellation can still stop, `bar` for the fork and join inside it, `receive` and `send` for the signals, `objectFlow` through an `object` for the tracking number, and a `note` with `noteLink` for the cut-off. [Source](../../.diagrams/src/examples/activity/order-fulfilment.diagram.ts)
+**Review loop** — a change goes round until the reviewer accepts it. The rejected branch goes back to the first step, round the side of the steps between; two checks run side by side between a fork and a join; the long names wrap. [Source](../../.diagrams/src/examples/activity/review-loop.diagram.ts)
+
+[![Review loop](../../.diagrams/static/examples/activity/review-loop.png)](https://ferroman.github.io/diagc/html/examples/activity/review-loop.html)
+
+**Order fulfilment** — a paid order handed from the order service to the warehouse and on to the carrier, ending in a tracking link. It exercises `region` and `interrupt` for the part a cancellation can still stop, `bar` for the fork and join inside it, `receive` and `send` for the signals, `objectFlow` through an `object` for the tracking number, and a `note` with `noteLink` for the cut-off. It is placed by hand, and its layout sets the direction to `RIGHT`, so its lanes are rows. [Source](../../.diagrams/src/examples/activity/order-fulfilment.diagram.ts)
 
 [![Order fulfilment](../../.diagrams/static/examples/activity/order-fulfilment.png)](https://ferroman.github.io/diagc/html/examples/activity/order-fulfilment.html)
 
