@@ -48,6 +48,13 @@ Order processing across three swimlanes: a decision, a fork and join, an object 
 One lane: a start, a check, a decision with two guards, and a final node — the smallest activity diagram that still branches.
 [Live](https://ferroman.github.io/diagc/html/examples/activity/starter.html) · [Source](../../.diagrams/src/examples/activity/starter.diagram.ts) · [Guide](../how-to/draw-an-activity-diagram.md)
 
+#### Review loop
+
+[![Review loop](../../.diagrams/static/examples/activity/review-loop.png)](https://ferroman.github.io/diagc/html/examples/activity/review-loop.html)
+
+A change goes round until the reviewer accepts it. The rejected branch goes back to the first step, round the side of the steps between; two checks run side by side between a fork and a join; the long names wrap.
+[Live](https://ferroman.github.io/diagc/html/examples/activity/review-loop.html) · [Source](../../.diagrams/src/examples/activity/review-loop.diagram.ts) · [Guide](../how-to/draw-an-activity-diagram.md)
+
 #### Order fulfilment
 
 [![Order fulfilment](../../.diagrams/static/examples/activity/order-fulfilment.png)](https://ferroman.github.io/diagc/html/examples/activity/order-fulfilment.html)
