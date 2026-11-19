@@ -410,3 +410,158 @@ describe('routeLaneEdges, links it leaves floating', () => {
     expect(routed(boxes, [120], { from: 'a', to: 'b', toSide: 'top' })).toBe(false);
   });
 });
+
+describe('routeLaneEdges, a link that goes back', () => {
+  // a row of three boxes; the pad strips of their lane lie at y 10 and y 110
+  const row = [box('a', 0, 40), box('m', 200, 40), box('b', 400, 40)];
+
+  it('leaves sideways, runs back along a corridor and comes in from the side', () => {
+    const { routes } = routeLaneEdges({ boxes: row, corridors: [10, 110], edges: [{ id: 'e', from: 'b', to: 'a' }] });
+    expect(routes.get('e')).toEqual([
+      { x: 450, y: 40 },
+      { x: 450, y: 10 },
+      { x: 50, y: 10 },
+      { x: 50, y: 40 },
+    ]);
+  });
+
+  it('gives each run in one corridor a place of its own', () => {
+    const { routes } = routeLaneEdges({
+      boxes: row,
+      corridors: [10],
+      edges: [
+        { id: 'e1', from: 'b', to: 'a' },
+        { id: 'e2', from: 'm', to: 'a' },
+      ],
+    });
+    expect(routes.get('e1')![1]!.y).toBe(10);
+    expect(routes.get('e2')![1]!.y).toBe(16);
+  });
+
+  it('takes the other side when a box stands between the source and the nearer corridor', () => {
+    const boxes = [...row, box('over', 400, -40, 100, 40)];
+    const { routes } = routeLaneEdges({ boxes, corridors: [-60, 110], edges: [{ id: 'e', from: 'b', to: 'a' }] });
+    const pts = routes.get('e')!;
+    expect(pts[0]).toEqual({ x: 450, y: 80 });
+    expect(pts[1]!.y).toBe(110);
+    expect(hits(pts, boxes[3]!)).toBe(false);
+  });
+
+  it('is routed forwards where no corridor is clear, and honours a fixed side', () => {
+    const none = routeLaneEdges({ boxes: row, corridors: [], edges: [{ id: 'e', from: 'b', to: 'a' }] });
+    expect(none.routes.has('e')).toBe(false);
+    const fixed = routeLaneEdges({
+      boxes: row,
+      corridors: [10, 110],
+      edges: [{ id: 'e', from: 'b', to: 'a', fromSide: 'left', toSide: 'right' }],
+    });
+    expect(fixed.routes.get('e')![0]).toEqual({ x: 400, y: 60 });
+  });
+});
+
+describe('routeLaneEdges, a decision', () => {
+  const decision = (id: string, x: number, y: number): RouterBox => ({ ...box(id, x, y, 48, 48), fanOut: true });
+
+  it('sends its branches out of different corners, towards their targets', () => {
+    const { routes } = routeLaneEdges({
+      boxes: [decision('d', 0, 200), box('up', 200, 0), box('on', 200, 204), box('down', 200, 400)],
+      corridors: [],
+      edges: [
+        { id: 'u', from: 'd', to: 'up' },
+        { id: 'o', from: 'd', to: 'on' },
+        { id: 'w', from: 'd', to: 'down' },
+      ],
+    });
+    expect(routes.get('u')).toEqual([
+      { x: 24, y: 200 },
+      { x: 24, y: 20 },
+      { x: 200, y: 20 },
+    ]);
+    expect(routes.get('o')![0]).toEqual({ x: 48, y: 224 });
+    expect(routes.get('w')![0]).toEqual({ x: 24, y: 248 });
+  });
+
+  it('keeps a single way out forwards, and gives a second branch to one side the front', () => {
+    const one = routeLaneEdges({
+      boxes: [decision('d', 0, 200), box('up', 200, 0)],
+      corridors: [],
+      edges: [{ id: 'u', from: 'd', to: 'up' }],
+    });
+    expect(one.routes.get('u')![0]).toEqual({ x: 48, y: 224 });
+    const two = routeLaneEdges({
+      boxes: [decision('d', 0, 400), box('far', 200, 0), box('near', 400, 200)],
+      corridors: [],
+      edges: [
+        { id: 'f', from: 'd', to: 'far' },
+        { id: 'n', from: 'd', to: 'near' },
+      ],
+    });
+    expect(two.routes.get('f')![0]).toEqual({ x: 24, y: 400 });
+    expect(two.routes.get('n')![0]).toEqual({ x: 48, y: 424 });
+  });
+
+  it('leaves the corner a loop back took to the loop', () => {
+    const { routes } = routeLaneEdges({
+      boxes: [box('first', 0, 40), decision('d', 300, 36), box('up', 500, -200)],
+      corridors: [-220, 10],
+      edges: [
+        { id: 'back', from: 'd', to: 'first' },
+        { id: 'u', from: 'd', to: 'up' },
+      ],
+    });
+    expect(routes.get('back')![0]).toEqual({ x: 324, y: 36 });
+    expect(routes.get('u')![0]).toEqual({ x: 348, y: 60 });
+  });
+});
+
+describe('routeLaneEdges, a label beside its source', () => {
+  const size = { width: 60, height: 16 };
+
+  it('sits at the start of the run out of the box', () => {
+    const { labelSpots } = routeLaneEdges({
+      boxes: [box('a', 0, 0), box('b', 400, 0)],
+      corridors: [],
+      edges: [{ id: 'e', from: 'a', to: 'b', hasLabel: true, labelSize: size }],
+    });
+    expect(labelSpots.get('e')).toEqual({ x: 100 + 6 + 30, y: 20 });
+  });
+
+  it('moves past the first bend when the run out of the box is too short', () => {
+    const { routes, labelSpots } = routeLaneEdges({
+      boxes: [box('a', 0, 0), box('b', 130, 300)],
+      corridors: [],
+      edges: [{ id: 'e', from: 'a', to: 'b', hasLabel: true, labelSize: size }],
+    });
+    const bend = routes.get('e')![1]!;
+    expect(bend.x - 100).toBeLessThan(size.width);
+    // down the run after the bend, as near the bend as it clears the source box
+    expect(labelSpots.get('e')).toEqual({ x: bend.x, y: 50 });
+  });
+
+  it('slides along the run until it covers no box', () => {
+    const { labelSpots } = routeLaneEdges({
+      boxes: [box('a', 0, 0), box('b', 600, 0), box('under', 110, 27, 100, 40)],
+      corridors: [],
+      edges: [{ id: 'e', from: 'a', to: 'b', hasLabel: true, labelSize: size }],
+    });
+    const spot = labelSpots.get('e')!;
+    expect(spot.y).toBe(20);
+    expect(spot.x - 30).toBeGreaterThanOrEqual(210);
+  });
+});
+
+describe('routeLaneEdges, a frame routed flipped', () => {
+  it('counts a caption hung on the right as part of the box, and leaves from beyond it', () => {
+    const d: RouterBox = { ...box('d', 0, 0, 48, 48), caption: { width: 20, height: 120 }, captionSide: 'right' };
+    expect(obstacleOf(d)).toEqual({ x: 0, y: -36, width: 68, height: 120 });
+    const { routes } = routeLaneEdges({
+      boxes: [d, box('b', 300, 4)],
+      corridors: [],
+      edges: [{ id: 'e', from: 'd', to: 'b' }],
+    });
+    expect(routes.get('e')).toEqual([
+      { x: 68, y: 24 },
+      { x: 300, y: 24 },
+    ]);
+  });
+});

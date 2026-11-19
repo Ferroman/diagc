@@ -81,6 +81,9 @@ export interface BoxSizeInput {
   /** set for a folded container: its hidden-descendant count, drawn as a badge
    * beside the fold/pin chrome */
   collapsedCount?: number;
+  /** how many lines the label is drawn on, `name` being the widest (a wrapped
+   * name); absent = one */
+  lines?: number;
 }
 
 // .dg-node: `min-width: 120px` on the content box, `padding: 8px 10px`, and a
@@ -149,6 +152,40 @@ export function textWidth(text: string, px: number): number {
   return (em / 1000) * px;
 }
 
+/**
+ * `text` broken into lines no wider than `maxPx` at `px`, at word boundaries. A
+ * line break already in the text stays, and a single word wider than the cap
+ * keeps its own line: nothing is ever cut.
+ */
+export function wrapText(text: string, maxPx: number, px: number): string[] {
+  const out: string[] = [];
+  for (const hard of text.split('\n')) {
+    let line = '';
+    for (const word of hard.split(/\s+/).filter((w) => w !== '')) {
+      const next = line === '' ? word : `${line} ${word}`;
+      if (line !== '' && textWidth(next, px) > maxPx) {
+        out.push(line);
+        line = word;
+      } else line = next;
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+/**
+ * The lines a leaf's name is drawn on when its type wraps (`TypeStyle.wrapLabel`)
+ * and the name is too long for one; undefined when it is drawn as written. The
+ * layout sizes the box from these lines and the canvas draws these lines, so the
+ * two cannot disagree about where the name breaks. A rich label is the author's
+ * own layout and is left alone.
+ */
+export function wrappedName(node: DiagramNode, style: TypeStyle | undefined): string[] | undefined {
+  if (style?.wrapLabel === undefined || node.rich !== undefined) return undefined;
+  const lines = wrapText(node.name, style.wrapLabel, LABEL[node.fontScale ?? 'md'].px);
+  return lines.length > 1 && lines.join('\n') !== node.name ? lines : undefined;
+}
+
 export function estimateBoxSize(input: BoxSizeInput): BoxSize {
   const label = LABEL[input.fontScale ?? 'md'];
   // the row is a flex line with a 6px gap, and always ends in the (possibly
@@ -178,7 +215,11 @@ export function estimateBoxSize(input: BoxSizeInput): BoxSize {
   return {
     width: Math.ceil(Math.max(MIN_CONTENT_WIDTH, title, second)) + PAD_X + extraPad + border,
     height:
-      PAD_Y + border + label.line + (hasSecondRow ? SECOND_ROW : 0) + (input.shape === 'person' ? PERSON_HEAD : 0),
+      PAD_Y +
+      border +
+      label.line * (input.lines ?? 1) +
+      (hasSecondRow ? SECOND_ROW : 0) +
+      (input.shape === 'person' ? PERSON_HEAD : 0),
   };
 }
 
@@ -199,13 +240,17 @@ function boxInputOf(n: ViewNode, ctx: BoxSizeContext): BoxSizeInput {
   // a folded container draws its label on one row whatever the leaf would do;
   // reserve the longest line of a multiline/rich name
   const plain = node.rich !== undefined ? runsToPlainText(node.rich) : node.name;
-  const name = plain.split('\n').reduce((longest, l) => (l.length > longest.length ? l : longest), '');
+  const wrapped = n.state === 'leaf' ? wrappedName(node, style) : undefined;
+  const widest = (lines: readonly string[]): string =>
+    lines.reduce((longest, l) => (l.length > longest.length ? l : longest), '');
+  const name = widest(wrapped ?? plain.split('\n'));
   const metaBadges = ctx.metaKeys
     .map((k) => node.metadata?.[k])
     .filter((v): v is NonNullable<typeof v> => v !== undefined && v !== null)
     .map(String);
   return {
     name,
+    lines: wrapped?.length,
     fontScale: node.fontScale,
     hasIcon: node.icon !== undefined || style?.icon !== undefined || node.image !== undefined,
     subtitle: node.type !== undefined ? typeSubtitle(style?.label ?? node.type, node.technology) : '',

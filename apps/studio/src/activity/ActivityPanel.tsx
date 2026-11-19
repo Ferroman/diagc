@@ -63,10 +63,11 @@ export function ActivityPanel({ model, viewPlane, selection, onCommand, onSelect
   const L = ACTIVITY_LAYOUT;
   const cascadeIn = (parentId: string) => {
     const childCount = inPlane.filter((e) => e.parent === parentId).length;
-    return { x: L.LANE_STRIP_W + L.PAD + 24 * childCount, y: L.PAD + 16 * childCount };
+    // past the lane's name strip, which runs down its left edge or along its top
+    return { x: L.LANE_STRIP_W + L.PAD + 24 * childCount, y: L.LANE_STRIP_W + L.PAD + 16 * childCount };
   };
 
-  // Bands stack in containment order (the frame's children, top to bottom),
+  // Bands stack in containment order (the frame's children, first to last),
   // so restacking a lane is a move-child on that order — the layout follows.
   const byId = new Map(model.nodes.map((n) => [n.id, n]));
   const lanes = inPlane

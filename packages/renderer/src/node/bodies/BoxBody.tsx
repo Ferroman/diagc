@@ -195,7 +195,8 @@ function BoxLabel({ data }: { data: DiagramNodeData }): ReactElement {
   const style: CSSProperties = {
     whiteSpace: 'pre-wrap',
     color: data.textColor,
-    textAlign: data.textAlign,
+    // a wrapped name reads as a block centred in its box unless the author aligned it
+    textAlign: data.textAlign ?? (data.wrappedLabel !== undefined ? 'center' : undefined),
   };
   if (data.rich !== undefined) {
     return (
@@ -211,7 +212,7 @@ function BoxLabel({ data }: { data: DiagramNodeData }): ReactElement {
   }
   return (
     <span className={`dg-label${fontScaleClass(data.fontScale)}`} style={style}>
-      {data.label}
+      {data.wrappedLabel ?? data.label}
     </span>
   );
 }

@@ -15,6 +15,7 @@
 // This module is pure — no React imports; the React Flow type-cast boundary
 // lives in toRfNode/toRfEdge (see adapter.ts).
 
+import { wrappedName } from '../layout/box-size';
 import type {
   Column,
   DiagramNode,
@@ -189,6 +190,12 @@ function nodeAnnotations(n: ViewNode): AnnotationCounts | undefined {
   return comments > 0 || links > 0 ? { comments, links } : undefined;
 }
 
+/** A leaf's name broken into the lines its box was sized for, where its type wraps one. */
+function wrappedLabelOf(n: ViewNode, ctx: NodeDataContext): string | undefined {
+  if (n.state !== 'leaf' || n.node.type === undefined) return undefined;
+  return wrappedName(n.node, ctx.typeRegistry.resolve(n.node.type))?.join('\n');
+}
+
 /** Build the data channel for one view node. Pure: same inputs → equivalent
  * output; the wrapped callbacks bind the view's host callbacks to this node's
  * id (rename/rich-commit/resize/columns) exactly as the inline construction did. */
@@ -199,6 +206,7 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
   const color = typeColor(n, ctx);
   const data: DiagramNodeData = {
     label: n.node.name,
+    wrappedLabel: wrappedLabelOf(n, ctx),
     state: n.state,
     promoted: n.promoted,
     sharedMembers: n.sharedMembers,

@@ -11,6 +11,24 @@ const cld: SizeHintContext = { ...plain, profile: notationProfile('causal-loop')
 const saved = (id: string, w: number, h: number): SizeHintContext => ({ ...plain, sizes: { [id]: { w, h } } });
 const node = (fields: Partial<DiagramNode>): DiagramNode => ({ id: 'n', name: 'Name', ...fields });
 
+describe('sizeHintFor, a glyph that lies across the flow', () => {
+  it('turns a fork bar under a flow that runs down, and only then', () => {
+    const bar = node({ type: 'activity-bar', name: '' });
+    expect(sizeHintFor(bar, plain)).toMatchObject({ width: 8, height: 100 });
+    expect(sizeHintFor(bar, { ...plain, flowsDown: true })).toMatchObject({ width: 100, height: 8 });
+    // a decision is the same shape either way
+    expect(sizeHintFor(node({ type: 'activity-decision', name: '' }), { ...plain, flowsDown: true })).toMatchObject({
+      width: 48,
+      height: 48,
+    });
+  });
+
+  it('leaves a bar someone resized as they sized it', () => {
+    const ctx = { ...saved('n', 8, 160), flowsDown: true };
+    expect(sizeHintFor(node({ type: 'activity-bar', name: '' }), ctx)).toMatchObject({ width: 8, height: 160 });
+  });
+});
+
 describe('sizeHintFor, one rule at a time', () => {
   it("gives a plain one-line box no hint, so it takes the layout's leaf size", () => {
     expect(sizeHintFor(node({}), plain)).toBeUndefined();

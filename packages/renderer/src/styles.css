@@ -557,6 +557,18 @@ button.dg-comment-badge:hover {
   bottom: 0;
   transform: translate(-50%, 50%);
 }
+/* a column lane's pair sits on its upright edges: the new lane goes in beside it */
+.dg-flow-down .dg-activity-lane > .dg-quick-add[data-side] {
+  left: 0;
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+}
+.dg-flow-down .dg-activity-lane > .dg-quick-add[data-side='after'] {
+  left: auto;
+  right: 0;
+  transform: translate(50%, -50%);
+}
 /* Chrome-less mode (the PNG export): drop the affordances nobody can click in a
    still image, so a committed picture is the diagram and nothing else. The
    link badge is part of that contract too — a still export can't follow it,
@@ -2058,6 +2070,24 @@ path.dg-loop-badge-circle {
     sans-serif;
   color: var(--dg-text);
   white-space: nowrap;
+}
+/* Under a flow that runs down the page the lanes are columns (activity-frame.ts
+   `laneAxisOf`): the same strips, along the top, their names set level. */
+.dg-flow-down .dg-activity-lane {
+  border-top: none;
+  border-left: 1px solid var(--dg-node-stroke);
+}
+.dg-flow-down .dg-activity-strip {
+  right: 0;
+  bottom: auto;
+  width: auto;
+  height: 28px;
+  border-right: none;
+  border-bottom: 1px solid var(--dg-node-stroke);
+}
+.dg-flow-down .dg-activity-name {
+  writing-mode: horizontal-tb;
+  transform: none;
 }
 .dg-activity-region {
   width: 100%;

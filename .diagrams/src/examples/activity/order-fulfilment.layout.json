@@ -27,6 +27,7 @@
   "settings": {
     "default": {
       "algorithm": "mrtree",
+      "direction": "RIGHT",
       "spacing": 8
     }
   }

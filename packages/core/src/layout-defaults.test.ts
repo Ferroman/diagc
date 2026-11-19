@@ -10,22 +10,15 @@ describe('defaultLayoutDirection', () => {
     expect(defaultLayoutDirection({ nodes: [] })).toBe('DOWN');
   });
 
-  it('flows right where activity frames are drawn — their lanes are horizontal bands', () => {
+  it('flows down for an activity too: its lanes are columns', () => {
     const m = model('act');
     m.activity('flow').lane('a', { name: 'A' }).action('x', 'Do it');
-    expect(defaultLayoutDirection(m.toJSON())).toBe('RIGHT');
+    expect(defaultLayoutDirection(m.toJSON())).toBe('DOWN');
   });
 
   it('flows down for a state machine, like any other diagram', () => {
     const m = model('sm');
     m.stateMachine('machine');
     expect(defaultLayoutDirection(m.toJSON())).toBe('DOWN');
-  });
-
-  it('keeps an activity frame model-wide', () => {
-    const m = model('act');
-    m.plane('arch', { name: 'Architecture', notation: 'c4' });
-    m.activity('flow').lane('a', { name: 'A' }).action('x', 'Do it');
-    expect(defaultLayoutDirection(m.toJSON())).toBe('RIGHT');
   });
 });

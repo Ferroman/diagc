@@ -193,7 +193,7 @@ Declares an activity frame: a UML swimlane flow. Repeatable — each call is one
 
 ### `act.lane(id, opts?) → LaneRef`
 
-A lane. Lanes are drawn top to bottom in declaration order. `LaneRef` is a `NodeRef` (type `activity-lane`).
+A lane. Lanes are drawn in declaration order: left to right as columns when the flow runs down (the default), top to bottom as rows when the plane's layout direction is `RIGHT`. `LaneRef` is a `NodeRef` (type `activity-lane`).
 
 | Option | Type | Notes |
 | --- | --- | --- |

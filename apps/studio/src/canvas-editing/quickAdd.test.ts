@@ -206,8 +206,8 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
         expect(quickAddLabel(j, id, c), `${notation} ${id}`).toBeUndefined();
         expect(quickAdd(j, id, c), `${notation} ${id}`).toBeUndefined();
       }
-      expect(quickAddLabel(j, 'a', c, 'before')).toBe('Add a lane above');
-      expect(quickAddLabel(j, 'a', c)).toBe('Add a lane below');
+      expect(quickAddLabel(j, 'a', c, 'before')).toBe('Add a lane before');
+      expect(quickAddLabel(j, 'a', c)).toBe('Add a lane after');
       const below = quickAdd(j, 'a', c)!;
       expect(batchOf(below.command)).toEqual([
         {
@@ -219,15 +219,15 @@ describe('quickAddLabel / quickAdd — one predicate', () => {
     }
   });
 
-  it('an activity lane adds a sibling band above or below itself; Tab adds below', () => {
+  it('an activity lane adds a sibling band before or after itself; Tab adds after', () => {
     const m = model('act');
     const flow = m.activity('flow');
     flow.lane('a', { name: 'A', color: '#ff0000' });
     flow.lane('b', { name: 'B' });
     const j = m.toJSON();
-    expect(quickAddLabel(j, 'a', ctx(), 'before')).toBe('Add a lane above');
-    expect(quickAddLabel(j, 'a', ctx(), 'after')).toBe('Add a lane below');
-    expect(quickAddLabel(j, 'a', ctx())).toBe('Add a lane below');
+    expect(quickAddLabel(j, 'a', ctx(), 'before')).toBe('Add a lane before');
+    expect(quickAddLabel(j, 'a', ctx(), 'after')).toBe('Add a lane after');
+    expect(quickAddLabel(j, 'a', ctx())).toBe('Add a lane after');
     const above = quickAdd(j, 'a', ctx(), 'before')!;
     expect(above).toMatchObject({ beside: false });
     // no colour copied: neighbouring bands are usually told apart by it

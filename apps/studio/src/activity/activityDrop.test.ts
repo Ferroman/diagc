@@ -138,10 +138,10 @@ describe('activityDropPosition', () => {
     });
   });
 
-  it('keeps a lane drop clear of the lane label strip and the top edge', () => {
+  it('keeps a lane drop clear of the lane name strip, down its left edge or along its top', () => {
     expect(activityDropPosition(model(), 'l1', { point: { x: 130, y: 95 }, size, boundsOf })).toEqual({
       x: ACTIVITY_LAYOUT.LANE_STRIP_W,
-      y: 0,
+      y: ACTIVITY_LAYOUT.LANE_STRIP_W,
     });
   });
 

@@ -39,9 +39,9 @@ describe('laneDrop', () => {
     node('c', { parentId: 'flow', typeId: ACTIVITY_LANE_TYPE }),
   ];
   const arranged = new Map([
-    ['a', { y: 0, height: 100 }],
-    ['b', { y: 100, height: 100 }],
-    ['c', { y: 200, height: 100 }],
+    ['a', { x: 0, y: 0, width: 500, height: 100 }],
+    ['b', { x: 0, y: 100, width: 500, height: 100 }],
+    ['c', { x: 0, y: 200, width: 500, height: 100 }],
   ]);
   const at = (id: string, y: number) => lanes.map((n) => (n.id === id ? { ...n, position: { x: 0, y } } : n));
 
@@ -49,6 +49,28 @@ describe('laneDrop', () => {
     expect(laneDrop(at('a', 260), 'a', arranged)).toEqual({ frameId: 'flow', offset: 2 });
     expect(laneDrop(at('a', 160), 'a', arranged)).toEqual({ frameId: 'flow', offset: 1 });
     expect(laneDrop(at('c', -10), 'c', arranged)).toEqual({ frameId: 'flow', offset: -2 });
+  });
+
+  it('counts across the page where the lanes stand side by side', () => {
+    const columns = new Map([
+      ['a', { x: 0, y: 28, width: 100, height: 500 }],
+      ['b', { x: 100, y: 28, width: 100, height: 500 }],
+      ['c', { x: 200, y: 28, width: 100, height: 500 }],
+    ]);
+    const atX = (id: string, x: number) => lanes.map((n) => (n.id === id ? { ...n, position: { x, y: 28 } } : n));
+    expect(laneDrop(atX('a', 260), 'a', columns)).toEqual({ frameId: 'flow', offset: 2 });
+    expect(laneDrop(atX('c', 60), 'c', columns)).toEqual({ frameId: 'flow', offset: -1 });
+    // a drag down a column lane moves it nowhere
+    expect(
+      laneDrop(
+        lanes.map((n) => (n.id === 'a' ? { ...n, position: { x: 0, y: 900 } } : n)),
+        'a',
+        columns,
+      ),
+    ).toEqual({
+      frameId: 'flow',
+      offset: 0,
+    });
   });
 
   it('reports no move for a lane let go inside its own band', () => {

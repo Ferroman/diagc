@@ -13,6 +13,8 @@ export interface CanvasFrameState {
   preset: StylePreset;
   /** the notation's own class, if it has one */
   notationClass: string | undefined;
+  /** the layout flows down (or up) the page: an activity's lanes are columns */
+  flowsDown: boolean;
   penActive: boolean;
   eraserActive: boolean;
   laserOn: boolean;
@@ -30,6 +32,7 @@ export function canvasClassName(s: CanvasFrameState): string {
     s.preset.rough !== undefined && 'dg-style-rough',
     s.preset.fontFamily !== undefined && 'dg-style-font',
     s.notationClass,
+    s.flowsDown && 'dg-flow-down',
     s.penActive && 'dg-tool-pen',
     s.eraserActive && 'dg-tool-eraser',
     s.laserOn && 'dg-tool-laser',

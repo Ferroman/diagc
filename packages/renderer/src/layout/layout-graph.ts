@@ -97,7 +97,7 @@ export interface ElkShape {
 
 /** The flow direction when the settings name none. Callers that know the model
  * resolve `defaultLayoutDirection(model)` into the settings first (useViewLayout);
- * this is what that resolves to for everything but an activity model. */
+ * this is what that resolves to. */
 export const FALLBACK_DIRECTION = 'DOWN';
 
 /** elk's default and ours: the one algorithm assumed to lay out anything we can
@@ -249,6 +249,13 @@ export function liftEdges(view: CompiledView): Map<string | null, LiftedEdge[]> 
     byOwner.set(owner, list);
   }
   return byOwner;
+}
+
+/** The captions among the size hints (an activity glyph's name, hung under it), by node id. */
+export function captionsOf(sizes: ReadonlyMap<string, SizeHint> | undefined): Map<string, BoxSize> {
+  const captions = new Map<string, BoxSize>();
+  for (const [id, hint] of sizes ?? []) if (hint.caption !== undefined) captions.set(id, hint.caption);
+  return captions;
 }
 
 export interface Pad {

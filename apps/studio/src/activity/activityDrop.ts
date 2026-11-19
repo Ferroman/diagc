@@ -76,7 +76,8 @@ export function homeActivityParent(
  * The parent-relative spot for a node of `size` centered on the drop `point`
  * inside activity container `parentId`, or undefined when the parent is not a
  * lane/region or is not on the canvas (the node then falls to elk, as any
- * nested add does). Kept clear of the lane's rotated label strip.
+ * nested add does). Kept clear of the lane's name strip, which runs down its
+ * left edge when the lanes are rows and along its top when they are columns.
  */
 export function activityDropPosition(
   model: DiagramModel,
@@ -88,9 +89,9 @@ export function activityDropPosition(
   if (type === undefined || !ACTIVITY_HOMES.has(type)) return undefined;
   const b = boundsOf(parentId);
   if (b === undefined) return undefined;
-  const minX = type === ACTIVITY_LANE_TYPE ? ACTIVITY_LAYOUT.LANE_STRIP_W : 0;
+  const strip = type === ACTIVITY_LANE_TYPE ? ACTIVITY_LAYOUT.LANE_STRIP_W : 0;
   return {
-    x: Math.max(minX, Math.round(point.x - b.x - size.width / 2)),
-    y: Math.max(0, Math.round(point.y - b.y - size.height / 2)),
+    x: Math.max(strip, Math.round(point.x - b.x - size.width / 2)),
+    y: Math.max(strip, Math.round(point.y - b.y - size.height / 2)),
   };
 }

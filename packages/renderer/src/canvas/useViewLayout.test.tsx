@@ -146,7 +146,7 @@ describe('useViewLayout', () => {
         { id: 'l1', name: 'L1', type: 'activity-lane' },
         { id: 'l2', name: 'L2', type: 'activity-lane' },
       ],
-      // l1 above l2 on the default plane `a`, l2 above l1 on `b`
+      // l1 before l2 on the default plane `a`, l2 before l1 on `b`
       containment: [
         { parent: 'f', child: 'l1' },
         { parent: 'f', child: 'l2' },
@@ -182,8 +182,9 @@ describe('useViewLayout', () => {
       }),
     });
     await waitFor(() => expect(result.current.arrangedGeometry).not.toBeNull());
-    expect(result.current.arrangedGeometry!.get('l2')?.y).toBe(0);
-    expect(result.current.arrangedGeometry!.get('l1')?.y).toBeGreaterThan(0);
+    // the flow runs down: the lanes are columns, the first at the frame's left edge
+    expect(result.current.arrangedGeometry!.get('l2')?.x).toBe(0);
+    expect(result.current.arrangedGeometry!.get('l1')?.x).toBeGreaterThan(0);
   });
 
   it("stacks a state machine's regions across the flow, and leaves the same shapes alone without sm- nodes", async () => {

@@ -57,6 +57,15 @@ export interface TypeStyle {
    * for glyphs too small to hold text (a 48px decision, a start dot), where an
    * inside label overflows and the positioned glyph paints over it */
   captionBelow?: boolean;
+  /** the widest a leaf's plain name is drawn, in px: a longer one is broken into
+   * lines at word boundaries (layout/box-size.ts `wrappedName`), and the layout
+   * reserves the taller box. For types whose names are phrases — an activity's
+   * actions — where one long line makes its whole column that wide. */
+  wrapLabel?: number;
+  /** `defaultSize` is the glyph as drawn under a flow that runs across the page;
+   * under one that runs down it the two sides swap. A fork bar lies across the
+   * flow whichever way that runs. */
+  turnsWithFlow?: boolean;
 }
 
 export interface KindStyle {
@@ -78,6 +87,9 @@ export interface Registry<T> {
   resolve(id: string): T;
   register(id: string, style: T): void;
 }
+
+/** the widest an activity action's or object's name is drawn before it wraps */
+const ACTIVITY_LABEL_MAX_W = 180;
 
 export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   system: { shape: 'box', dashed: true },
@@ -152,7 +164,7 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   'activity-region': { shape: 'box', dashed: true, alwaysExpanded: true, legendLabel: 'Interruptible region' },
   // UML glyphs carry no type subtitle; an empty label suppresses the `.dg-type` fallback.
   // The frame, a lane and a note get no `legendLabel`: each already says what it is.
-  'activity-action': { shape: 'rounded', label: '', legendLabel: 'Action' },
+  'activity-action': { shape: 'rounded', label: '', legendLabel: 'Action', wrapLabel: ACTIVITY_LABEL_MAX_W },
   'activity-decision': {
     shape: 'diamond',
     defaultSize: { width: 48, height: 48 },
@@ -163,6 +175,7 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
   'activity-bar': {
     shape: 'bar',
     defaultSize: { width: 8, height: 100 },
+    turnsWithFlow: true,
     label: '',
     legendLabel: 'Fork / join',
     captionBelow: true,
@@ -193,7 +206,7 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
     label: '',
     legendLabel: 'Receive signal',
   },
-  'activity-object': { shape: 'box', label: '', legendLabel: 'Object' },
+  'activity-object': { shape: 'box', label: '', legendLabel: 'Object', wrapLabel: ACTIVITY_LABEL_MAX_W },
   'activity-note': { shape: 'note', defaultSize: { width: 140, height: 64 }, label: '' },
   // ---- Second-order thinking -------------------------------------------------
   // The decision is the solid root (theme tokens, so it inverts with the theme);
