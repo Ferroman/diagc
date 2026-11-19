@@ -324,12 +324,12 @@ An `activity-frame` node containing `activity-lane` nodes reads as a UML swimlan
 | `activity-frame` | chrome (frame band) | — | Always expanded. Children must be `activity-lane`. |
 | `activity-lane` | chrome (lane band) | — | Always expanded. Parent must be an `activity-frame`. |
 | `activity-region` | chrome (dashed band) | — | Always expanded. Interruptible sub-area; parent must be an `activity-lane` if contained at all. |
-| `activity-action` | rounded | — | |
-| `activity-object` | box | — | |
+| `activity-action` | rounded | — | A name longer than about 180 px wraps at word boundaries. |
+| `activity-object` | box | — | The name wraps as an action's does. |
 | `activity-send` | send-signal | 140 × 44 | |
 | `activity-receive` | receive-signal | 140 × 44 | |
 | `activity-decision` | diamond | 48 × 48 | |
-| `activity-bar` | bar | 8 × 100 | Fork/join. `color` ignored — drawn in the neutral stroke token. |
+| `activity-bar` | bar | 100 × 8 | Fork/join. It lies across the flow: 8 × 100 when the direction is `RIGHT` or `LEFT`. `color` ignored — drawn in the neutral stroke token. |
 | `activity-start` | start-dot | 24 × 24 | `color` ignored. |
 | `activity-end` | end-bullseye | 28 × 28 | `color` ignored. |
 | `activity-note` | note | 140 × 64 | |

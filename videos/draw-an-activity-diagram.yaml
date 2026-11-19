@@ -16,11 +16,11 @@ steps:
   - note: Select a lane
     do:
       - click: {text: Finance, exact: true, within: {role: application}}
-  - note: Its + adds a lane above it
+  - note: Its + adds a lane before it
     do:
-      - click: {role: button, name: Add a lane above, within: {role: application}}
+      - click: {role: button, name: Add a lane before, within: {role: application}}
     pause: 1
-  - note: Its + adds a lane above it
+  - note: Its + adds a lane before it
     do:
       - fill: {role: textbox, name: Rename, within: {role: application}, value: Employee}
       - press: Enter
