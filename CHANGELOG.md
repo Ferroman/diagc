@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.1](https://github.com/Ferroman/diagc/compare/v1.13.0...v1.13.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* **diff:** switching Removed off takes removed boxes and arrow labels out ([#192](https://github.com/Ferroman/diagc/issues/192)) ([c80f71e](https://github.com/Ferroman/diagc/commit/c80f71e9a0cdd6a9104ba3324b3b070665bddefb))
+
 ## [1.13.0](https://github.com/Ferroman/diagc/compare/v1.12.0...v1.13.0) (2026-11-18)
 
 
