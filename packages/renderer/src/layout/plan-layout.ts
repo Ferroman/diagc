@@ -377,9 +377,10 @@ function placeRootEvents(run: PlanRun, roots: readonly string[]): void {
     const at = atOf(nodeOf(run, id)) ?? run.origin;
     run.geometry.set(id, {
       x: planX(at, run.origin) + DAY / 2 - EVENT / 2,
-      // the week band's middle: the day band below is all labels, and a
-      // diamond there would sit on a day's number
-      y: -(DAY_H + WEEK_H / 2) - EVENT / 2,
+      // on the line between the month and week bands: in the day band it
+      // would sit on the day numbers, and in the week band's middle the
+      // diamond and its name cover the W## label of every week they cross
+      y: -(DAY_H + WEEK_H) - EVENT / 2,
       width: EVENT,
       height: EVENT,
     });

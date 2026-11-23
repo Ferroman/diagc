@@ -40,7 +40,7 @@ function seed() {
     { id: 'z', position: { x: planX(dayOf('2026-01-20')!, origin), y: 0 }, measured: { width: 22 * DAY, height: 40 } },
     {
       id: 'e',
-      position: { x: planX(dayOf('2026-02-02')!, origin) + DAY / 2 - EVENT / 2, y: -(DAY_H + WEEK_H / 2) - EVENT / 2 },
+      position: { x: planX(dayOf('2026-02-02')!, origin) + DAY / 2 - EVENT / 2, y: -(DAY_H + WEEK_H) - EVENT / 2 },
       measured: { width: EVENT, height: EVENT },
     },
   );
@@ -91,6 +91,16 @@ describe('TimeAxisOverlay', () => {
     expect(shades[0]!.getAttribute('height')).toBe(String(DAY_H + bottom));
     const grid = container.querySelector('.dg-time-axis-grid')!;
     expect(shades[shades.length - 1]!.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+  it('backs the header with an opaque rect first, so the canvas dots never show between the day digits', () => {
+    seed();
+    const { container } = render(<TimeAxisOverlay model={plan()} plane="plan" />);
+    const svg = container.querySelector('.dg-time-axis')!;
+    const backing = svg.firstElementChild!;
+    expect(backing.getAttribute('class')).toBe('dg-time-axis-backing');
+    const frame = container.querySelector('.dg-time-axis-frame')!;
+    for (const k of ['x', 'y', 'width', 'height']) expect(backing.getAttribute(k)).toBe(frame.getAttribute(k));
+    expect(backing.getAttribute('y')).toBe(String(-HEADER_H));
   });
   it('draws today as its day cell, its line running down from the day band', () => {
     seed();

@@ -194,13 +194,15 @@ describe('planLayout', () => {
     expect(r.geometry.get('z')!.height).toBe(TITLE_H);
   });
 
-  it('centres root events in the week band, and people in a roster strip above the header', () => {
+  it('centres root events on the month/week boundary, clear of the week labels, and people in a roster strip above the header', () => {
     expect(HEADER_H).toBe(MONTH_H + WEEK_H + DAY_H);
     const m = roadmap();
     const r = planLayout({ view: view(m), model: m, plane: 'plan' });
     expect(r.geometry.get('kickoff')).toEqual({
       x: planX(dayOf('2026-01-05')!, origin) + DAY / 2 - EVENT / 2,
-      y: -(DAY_H + WEEK_H / 2) - EVENT / 2,
+      // centred on the line between the month and week bands: centred in the
+      // week band, the diamond and its name sat on the W## label
+      y: -(DAY_H + WEEK_H) - EVENT / 2,
       width: EVENT,
       height: EVENT,
     });

@@ -53,6 +53,10 @@ export function TimeAxisOverlay({ model, plane, today }: TimeAxisOverlayProps) {
   return (
     <ViewportPortal>
       <svg className="dg-time-axis" aria-hidden="true">
+        {/* opaque, under everything: the frame and the weekend wash are
+            tints, and through them the canvas dots (one every 20px, so one
+            per day) fell between the two digits of a day's number */}
+        <rect className="dg-time-axis-backing" x={axis.x0} y={-HEADER_H} width={axis.x1 - axis.x0} height={HEADER_H} />
         {/* the frame is what content-bounds measures: the header must reach the PNG */}
         <rect className="dg-time-axis-frame" x={axis.x0} y={-HEADER_H} width={axis.x1 - axis.x0} height={HEADER_H} />
         {/* first, so the grid, the rules and today all draw over the shading */}

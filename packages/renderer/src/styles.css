@@ -1986,6 +1986,12 @@ path.dg-loop-badge-circle {
   pointer-events: none;
   z-index: -1;
 }
+/* a preset's canvas colour, else the theme's background: React Flow's own
+   light default is transparent, which would let the dots through again */
+.dg-time-axis-backing {
+  fill: var(--dg-canvas-bg, var(--dg-bg));
+  stroke: none;
+}
 .dg-time-axis-frame {
   fill: color-mix(in srgb, var(--dg-text) var(--dg-plan-axis-band), transparent);
   stroke: none;
