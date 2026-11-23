@@ -100,6 +100,64 @@ describe('deriveNoteNodes', () => {
     expect(overlaps(absBox(deriveNoteNodes(input()), 'note:node:web'), webAbs)).toBe(false);
   });
 
+  it('hangs a note with comments only off the comments badge, one with threats off the threats badge', () => {
+    // `db` (a store, drawn as a box) has a remark and no threats: its only
+    // badge is the comments one, at the bottom-right corner
+    expect(dataOf(byId(deriveNoteNodes(input()), 'note:node:db')).badge).toEqual(badgeCenter(dbAbs, 'box', 'comments'));
+    const both: DiagramModel = {
+      ...tm,
+      nodes: tm.nodes.map((n) => (n.id === 'web' ? { ...n, comments: [{ id: 'c2', text: 'Behind the WAF' }] } : n)),
+    };
+    const web = byId(deriveNoteNodes(input({}, both)), 'note:node:web');
+    expect(dataOf(web).badge).toEqual(badgeCenter(webAbs, 'ellipse'));
+  });
+
+  it('an open plan zone wears its badges on the corners, as the plan stylesheet draws them', () => {
+    const plan: DiagramModel = {
+      version: 1,
+      id: 'p',
+      name: 'p',
+      notation: 'plan',
+      layers: [],
+      planes: [{ id: 'plan', name: 'Plan', notation: 'plan' }],
+      nodes: [
+        {
+          id: 'z',
+          name: 'Zone',
+          type: 'plan-zone',
+          plane: 'plan',
+          metadata: { start: '2026-01-05', end: '2026-01-30' },
+          links: [{ label: 'DEV-1', url: 'https://example.com/DEV-1' }],
+        },
+        {
+          id: 'r',
+          name: 'Row',
+          type: 'plan-zone',
+          plane: 'plan',
+          metadata: { start: '2026-01-05', end: '2026-01-09' },
+        },
+      ],
+      containment: [{ parent: 'z', child: 'r', plane: 'plan' }],
+      relations: [],
+    };
+    const zAbs = { x: 0, y: 0, width: 520, height: 120 };
+    const notes = deriveNoteNodes(
+      input(
+        {
+          compiled: compileView(plan, { plane: 'plan', pins: { z: 'expanded' } }),
+          geometry: new Map([
+            ['z', zAbs],
+            ['r', { x: 0, y: 60, width: 100, height: 40 }],
+          ]),
+          open: new Set(['node:z']),
+          typeRegistry: createTypeRegistry(notationProfile('plan').typeStyles),
+        },
+        plan,
+      ),
+    );
+    expect(dataOf(byId(notes, 'note:node:z')).badge).toEqual(badgeCenter(zAbs, 'box', 'comments'));
+  });
+
   it('puts a dragged note at its badge plus the saved offset, and treats {0,0} as never dragged', () => {
     const badge = badgeCenter(webAbs, 'ellipse');
     const dragged = deriveNoteNodes(input({ placements: { 'node:web': { dx: 30, dy: -40 } } }));

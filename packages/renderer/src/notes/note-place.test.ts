@@ -20,9 +20,25 @@ describe('badgeCenter', () => {
     expect(badgeCenter(box, 'ellipse')).toEqual({ x: 325, y: 317 });
     expect(badgeCenter({ x: 0, y: 0, width: 400, height: 200 }, 'group')).toEqual({ x: 343, y: 13 });
   });
+  it('the comments badge: bottom-right on a box, tucked in on an ellipse, in the header left of the threats on a group', () => {
+    expect(badgeCenter(box, 'box', 'comments')).toEqual({ x: 417, y: 357 });
+    expect(badgeCenter(box, 'ellipse', 'comments')).toEqual({ x: 395, y: 343 });
+    expect(badgeCenter({ x: 0, y: 0, width: 400, height: 200 }, 'group', 'comments')).toEqual({ x: 319, y: 13 });
+  });
 });
 
 describe('placeNote', () => {
+  it('a badge on the bottom-right corner opens the note below and to the right of it, its tail short', () => {
+    const comments = badgeCenter(box, 'box', 'comments');
+    const at = placeNote(
+      { badge: comments, element: box, size: { width: W, height: 80 } },
+      obstaclesOf([{ rect: box, kind: 'box' }]),
+    );
+    expect(at.y).toBe(box.y + box.height + NOTE_GAP);
+    // the note's left edge starts just before the badge
+    expect(at.x).toBeLessThan(comments.x);
+    expect(at.x).toBeGreaterThan(comments.x - 40);
+  });
   it('opens above and to the left of the badge when that is free, clear of the element by NOTE_GAP', () => {
     const at = placeNote(
       { badge, element: box, size: { width: W, height: 80 } },
