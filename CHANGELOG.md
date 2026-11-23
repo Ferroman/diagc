@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/Ferroman/diagc/compare/v1.15.0...v1.16.0) (2026-11-23)
+
+
+### Features
+
+* edit inside an opened plan zone ([#202](https://github.com/Ferroman/diagc/issues/202)) ([bf052f4](https://github.com/Ferroman/diagc/commit/bf052f49571a0206430996c8c0dbdb9d2409837c))
+
 ## [1.15.0](https://github.com/Ferroman/diagc/compare/v1.14.1...v1.15.0) (2026-11-23)
 
 
