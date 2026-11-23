@@ -42,6 +42,30 @@ describe('timeAxis', () => {
       width: a.x1 - planX(d('2026-02-01'), origin),
     });
   });
+  it('bands every day of the drawn extent with its date and weekday letter', () => {
+    const a = timeAxis(range, origin);
+    expect(a.days).toHaveLength(d('2026-02-18') - d('2026-01-13'));
+    expect(a.days[0]).toEqual({ x: a.x0, width: DAY, day: d('2026-01-13'), date: '13', weekday: 'T' }); // a Tuesday
+    expect(a.days.find((b) => b.day === d('2026-01-19'))).toMatchObject({ date: '19', weekday: 'M' });
+  });
+  it('numbers days across a year boundary', () => {
+    const a = timeAxis({ start: d('2026-12-28'), end: d('2027-01-05') }, origin);
+    const i = a.days.findIndex((b) => b.day === d('2027-01-01'));
+    expect(a.days[i]).toMatchObject({ date: '1', weekday: 'F' });
+    expect(a.days[i - 1]).toMatchObject({ date: '31', weekday: 'T' });
+  });
+  it('shades each weekend as one run', () => {
+    const a = timeAxis(range, origin);
+    expect(a.weekends[0]).toEqual({ x: planX(d('2026-01-17'), origin), width: 2 * DAY, label: '' }); // Sat 17, Sun 18
+    expect(a.weekends.every((w) => w.width === 2 * DAY)).toBe(true); // extent Tue 13 Jan – Tue 17 Feb: no clipped run
+    expect(a.weekends).toHaveLength(5);
+  });
+  it('clips a weekend run to the drawn extent', () => {
+    // range starting Sun 25 Jan: the extent starts a week earlier, on Sun 18 Jan
+    const a = timeAxis({ start: d('2026-01-25'), end: d('2026-02-10') }, origin);
+    expect(a.x0).toBe(planX(d('2026-01-18'), origin));
+    expect(a.weekends[0]).toEqual({ x: a.x0, width: DAY, label: '' });
+  });
   it('bands weeks from each Monday, labelling only those at least three days wide', () => {
     const a = timeAxis(range, origin);
     // drawn from Tue 13 Jan: a 6-day stub week, then full weeks from Mon 19 Jan
