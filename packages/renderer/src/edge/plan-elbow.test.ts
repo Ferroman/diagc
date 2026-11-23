@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { PLAN_LAYOUT } from '../layout/plan-layout';
-import { ELBOW_STUB, planElbow } from './plan-elbow';
+import { ELBOW_STUB, planElbow as elbowOf, type ElbowEnd } from './plan-elbow';
+
+/** two zones: what every case below draws between */
+const planElbow = (a: Omit<ElbowEnd, 'type'>, b: Omit<ElbowEnd, 'type'>) =>
+  elbowOf({ ...a, type: 'plan-zone' }, { ...b, type: 'plan-zone' })!;
 
 const { ROW_GAP } = PLAN_LAYOUT;
 const S = ELBOW_STUB;
@@ -49,5 +53,13 @@ describe('planElbow', () => {
     expect(points[0]).toEqual({ x: 100 - S, y: 200 });
     expect(points[4]).toEqual({ x: 300, y: 300 + PLAN_LAYOUT.BAR_H / 2 });
     expect(points[1]!.y).toBe(200 + ROW_GAP / 2);
+  });
+
+  it('only between dated rows: a zone or an event at both ends, never a free-form box inside a zone', () => {
+    const a = { x: 0, y: 0, width: 100, height: 40 };
+    const b = { x: 200, y: 96, width: 80, height: 40 };
+    expect(elbowOf({ ...a, type: 'plan-event' }, { ...b, type: 'plan-zone' })).toBeDefined();
+    expect(elbowOf({ ...a, type: 'container' }, { ...b, type: 'plan-zone' })).toBeUndefined();
+    expect(elbowOf({ ...a, type: 'plan-zone' }, { ...b })).toBeUndefined();
   });
 });

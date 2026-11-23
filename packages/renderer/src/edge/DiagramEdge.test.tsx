@@ -924,9 +924,16 @@ describe('DiagramEdge between measured nodes', () => {
   const FLOATING_PATH = 'M100,36.666666666666664 C200,36.666666666666664 200,103.33333333333334 300,103.33333333333334';
 
   it('a plan dependency is a finish-to-start elbow between the bars as drawn; a shape the author set still wins', () => {
-    const nodes = [box('a', 0, 0), box('b', 300, 100)];
-    const elbow = planElbow({ x: 0, y: 0, width: 100, height: 40 }, { x: 300, y: 100, width: 100, height: 40 });
+    const zone = { typeId: 'plan-zone' };
+    const nodes = [box('a', 0, 0, undefined, zone), box('b', 300, 100, undefined, zone)];
+    const elbow = planElbow(
+      { x: 0, y: 0, width: 100, height: 40, type: 'plan-zone' },
+      { x: 300, y: 100, width: 100, height: 40, type: 'plan-zone' },
+    )!;
     expect(pathOf(edgeBetween(nodes, { notation: 'plan' }))).toBe(roundedRoute(elbow.points, 4));
+    cleanup();
+    // a C4 box scheduled inside a zone has no dates to run finish to start
+    expect(pathOf(edgeBetween([box('a', 0, 0), box('b', 300, 100)], { notation: 'plan' }))).toBe(FLOATING_PATH);
     cleanup();
     expect(pathOf(edgeBetween(nodes, { notation: 'plan', relStyle: { shape: 'straight' } }))).toMatch(
       /^M ?100,[\d.]+ ?L ?300,/,

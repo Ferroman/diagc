@@ -34,8 +34,8 @@ import {
 } from '@diagc/core/internal';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './layout/fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './layout/git-layout';
-import { planElbow } from './edge/plan-elbow';
-import type { LayoutResult, NodeGeometry, NotationLayoutInput } from './layout/layout';
+import { planElbow, type ElbowEnd } from './edge/plan-elbow';
+import type { LayoutResult, NotationLayoutInput } from './layout/layout';
 import { PLAN_LAYOUT, planChips, planGraphCached, planLabelSides, planLayout } from './layout/plan-layout';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
 import { stateMachineColors, stateMachineEdgeColor } from './state-kinds';
@@ -160,9 +160,10 @@ export interface NotationProfile {
     /** relation kinds the view never draws as edges (the legend skips them too) */
     hidden?: (kind: string) => boolean;
     /** the notation's own path between two boxes as drawn (absolute), used
-     * instead of floating whenever both ends are measured and the relation
-     * names no shape: a plan's finish-to-start arrow (edge/plan-elbow.ts) */
-    elbow?: (source: NodeGeometry, target: NodeGeometry) => { points: Point[]; label: Point };
+     * instead of floating whenever both ends are measured, the relation names
+     * no shape and this returns one: a plan's finish-to-start arrow between
+     * two dated rows (edge/plan-elbow.ts) */
+    elbow?: (source: ElbowEnd, target: ElbowEnd) => { points: Point[]; label: Point } | undefined;
     /** React Flow's stacking order for every edge: above 0 draws them over the
      * boxes (a box sits at 0, an open container at -1), and it must stay under
      * a note (2, canvas/adapter.ts). Unset = React Flow's own, under the boxes. */

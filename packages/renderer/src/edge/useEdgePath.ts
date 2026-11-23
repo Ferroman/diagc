@@ -84,7 +84,13 @@ function elbowOf(
   const elbow = profile.edge?.elbow;
   if (elbow === undefined || !anchors.measured || data?.relStyle?.shape !== undefined) return undefined;
   if (anchors.source === undefined || anchors.target === undefined) return undefined;
-  const { points, label } = elbow(anchors.source.rect, anchors.target.rect);
+  const typeOf = (end: EndBox) => (end.node.data as { typeId?: string }).typeId;
+  const drawn = elbow(
+    { ...anchors.source.rect, type: typeOf(anchors.source) },
+    { ...anchors.target.rect, type: typeOf(anchors.target) },
+  );
+  if (drawn === undefined) return undefined;
+  const { points, label } = drawn;
   return { path: roundedRoute(points, ELBOW_CORNER), curve: routeCurve(points), label, labelSpot: label };
 }
 

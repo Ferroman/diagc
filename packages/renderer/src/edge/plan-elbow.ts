@@ -1,4 +1,4 @@
-import type { Point } from '@diagc/core/internal';
+import { PLAN_EVENT_TYPE, PLAN_ZONE_TYPE, type Point } from '@diagc/core/internal';
 import { PLAN_LAYOUT } from '../layout/plan-layout';
 import type { NodeGeometry } from '../layout/layout';
 
@@ -6,6 +6,13 @@ import type { NodeGeometry } from '../layout/layout';
  * the dependent bar's start it turns into it: clear of the corner, short
  * enough to read as that bar's end and that bar's start */
 export const ELBOW_STUB = 8;
+
+/** one end of an edge: its box as drawn (absolute) and its node type */
+export type ElbowEnd = NodeGeometry & { type?: string };
+
+/** what runs finish to start: a row with dates. A C4 box or any other free-form
+ * node scheduled inside a zone has none, and its links keep floating. */
+const DATED: ReadonlySet<string | undefined> = new Set([PLAN_ZONE_TYPE, PLAN_EVENT_TYPE]);
 
 /** the middle of a bar's first row: a bar's own middle, or an open zone's title
  * band (a tall box whose middle is somewhere among its rows) */
@@ -23,9 +30,10 @@ const rowY = (r: NodeGeometry): number => r.y + Math.min(r.height, PLAN_LAYOUT.B
  * When the dependent bar starts before the first one ends, the same path runs
  * back left along the gap. Absolute flow coordinates in and out, from the
  * boxes as drawn, so the arrow follows a drag, a fold or an opened zone
- * without a route to go stale.
+ * without a route to go stale. Undefined between anything but two dated rows.
  */
-export function planElbow(source: NodeGeometry, target: NodeGeometry): { points: Point[]; label: Point } {
+export function planElbow(source: ElbowEnd, target: ElbowEnd): { points: Point[]; label: Point } | undefined {
+  if (!DATED.has(source.type) || !DATED.has(target.type)) return undefined;
   const { ROW_GAP } = PLAN_LAYOUT;
   const tx = target.x;
   const ty = rowY(target);
