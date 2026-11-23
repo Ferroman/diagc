@@ -101,6 +101,22 @@ describe('useCompiledView', () => {
       expect(restingPins(nested(), plain, createTypeRegistry(plain.typeStyles), pins)).toBe(pins);
     });
 
+    it("carries the opened zone's people in as themselves, not as stubs", () => {
+      const m = model('own');
+      const p = m.plan();
+      p.zone('a', { start: '2026-01-05', end: '2026-01-30' })
+        .owner(p.person('alice', 'Alice'))
+        .zone('a1', { start: '2026-01-05', end: '2026-01-09' });
+      const { result } = renderHook(() =>
+        useCompiledView(
+          input({ model: m.toJSON(), plane: 'plan', profile: planProfile, typeRegistry: planTypes, drillRoot: 'a' }),
+        ),
+      );
+      const ids = result.current.compiled.roots.map((r) => r.id);
+      expect(ids).toContain('alice');
+      expect(ids).not.toContain('__ext__:alice');
+    });
+
     it("a dependency into a folded zone's row draws to the zone", () => {
       const { result } = renderHook(() =>
         useCompiledView(

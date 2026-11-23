@@ -212,6 +212,20 @@ describe('plan profile', () => {
     void z;
     return m.toJSON();
   }
+  it('carries into an opened zone the actors holding a role on it or on anything in it', () => {
+    const m = model('carry');
+    const p = m.plan();
+    const alice = p.person('alice', 'Alice');
+    const bob = p.person('bob', 'Bob');
+    const chen = p.person('chen', 'Chen');
+    const a = p.zone('a', { start: '2026-01-05', end: '2026-01-30' }).owner(alice);
+    a.zone('a1', { start: '2026-01-05', end: '2026-01-09' }).executor(bob);
+    p.zone('b', { start: '2026-02-02', end: '2026-02-06' }).checker(chen);
+    const carry = notationProfile('plan').drillCarry!;
+    expect(carry(m.toJSON(), 'plan', 'a')).toEqual(['alice', 'bob']);
+    expect(carry(m.toJSON(), 'plan', 'a1')).toEqual(['bob']);
+  });
+
   it('owns the layout and the header, rests zones open, sizes events, hides the role kinds', () => {
     const p = notationProfile('plan');
     expect(p.layout).toBe(planLayout);

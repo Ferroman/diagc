@@ -8,6 +8,7 @@ import {
   type CompiledView,
   type DiagramModel,
 } from '@diagc/core/internal';
+import { notationProfile } from '../notations';
 import { PLAN_LAYOUT, planLabelSides, planLayout, planX } from './plan-layout';
 
 const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT, HEADER_H, MONTH_H, WEEK_H, DAY_H, ROSTER_GAP } = PLAN_LAYOUT;
@@ -442,7 +443,8 @@ describe('planLayout', () => {
       const pins = Object.fromEntries(
         json.nodes.filter((n) => n.type === PLAN_ZONE_TYPE).map((n) => [n.id, 'expanded' as const]),
       );
-      const v = compileView(json, { plane: 'plan', pins, root: 'a' });
+      const carry = notationProfile('plan').drillCarry!(json, 'plan', 'a');
+      const v = compileView(json, { plane: 'plan', pins, root: 'a', carry: [...carry] });
       return { json, r: planLayout({ view: v, model: json, plane: 'plan' }) };
     }
     const o = dayOf('2025-01-01')!; // the origin: 1 January of the earliest year, which `early` sets
@@ -461,8 +463,8 @@ describe('planLayout', () => {
       });
     });
 
-    it('lists the actors holding a role in it in the roster, from its first day', () => {
-      const alice = opened().r.geometry.get('__ext__:alice')!;
+    it('lists the actors holding a role in it in the roster, as themselves, from its first day', () => {
+      const alice = opened().r.geometry.get('alice')!;
       expect(alice.x).toBe(planX(dayOf('2026-01-05')!, o));
       expect(alice.y).toBe(-HEADER_H - ROSTER_GAP - alice.height);
     });

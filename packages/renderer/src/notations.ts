@@ -16,6 +16,7 @@ import {
   isPlanActor,
   isPlanEvent,
   isPlanRole,
+  planSubtree,
   isPlanZone,
   rolesOf,
   TM_NOTATION,
@@ -90,6 +91,10 @@ export interface NotationProfile {
    * below) — selecting an actor would otherwise dim every zone it holds a
    * role on, the opposite of what a reader wants. */
   related?: (model: DiagramModel, plane: string | undefined, id: string) => readonly string[];
+  /** nodes outside a drilled container carried into its view as themselves
+   * (ViewportState.carry): a plan's people and teams belong to no zone, but an
+   * opened zone without the ones holding its roles is a schedule nobody runs */
+  drillCarry?: (model: DiagramModel, plane: string | undefined, root: string) => readonly string[];
   /** the canvas offers an element's first threat: the empty threat badge on a
    * node or a flow, and a note's add row. Elsewhere a threat is added in the
    * panel; a badge on every box of a C4 diagram would be noise. */
@@ -357,6 +362,15 @@ function planRelated(model: DiagramModel, plane: string | undefined, id: string)
   return [];
 }
 
+/** The actors holding a role on an opened zone or on any zone inside it, in
+ * the roster's order: what an opened zone carries in (`drillCarry`). */
+function planDrillCarry(model: DiagramModel, plane: string | undefined, root: string): readonly string[] {
+  const g = planGraphCached(model, plane);
+  const zones = new Set(planSubtree(g, root));
+  const holders = new Set(model.relations.filter((r) => isPlanRole(r.kind) && zones.has(r.to)).map((r) => r.from));
+  return g.actors.filter((id) => holders.has(id));
+}
+
 const PLAN: NotationProfile = {
   id: PLAN_NOTATION,
   className: 'dg-notation-plan',
@@ -365,6 +379,7 @@ const PLAN: NotationProfile = {
   // and clamps them itself, so it must re-run when a drag changes them.
   layoutReadsPositions: true,
   related: planRelated,
+  drillCarry: planDrillCarry,
   node: {
     restsOpen: (n) => n.type === PLAN_ZONE_TYPE,
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
