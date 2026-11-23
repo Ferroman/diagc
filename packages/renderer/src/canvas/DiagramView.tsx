@@ -36,6 +36,7 @@ import { useFlowEdges } from './useFlowEdges';
 import { useFlowNodes, type LabelEdit } from './useFlowNodes';
 import { MAX_ZOOM, MIN_ZOOM, useLayoutApi } from './useLayoutApi';
 import { useMoveFrames } from './useMoveFrames';
+import { savedResize } from './saved-frame';
 import { useNodeDragging } from './useNodeDragging';
 import { useNodeResync } from './useNodeResync';
 import { useNoteNodes } from './useNoteNodes';
@@ -180,8 +181,19 @@ function Inner(props: DiagramViewProps) {
     editing,
     ignoreSavedPositions: props.ignoreSavedPositions,
     viewPositions: moves.viewPositions,
+    drillRoot,
   });
-  const frames = useMoveFrames(compiled, viewLayout.arrangedGeometry, viewLayout.containerShifts, viewLayout.viewShift);
+  const frames = useMoveFrames(
+    compiled,
+    viewLayout.arrangedGeometry,
+    viewLayout.containerShifts,
+    viewLayout.viewShift,
+    viewLayout.savedFrame,
+  );
+  // a resize is reported at the saved position, as a move is (saved-frame.ts);
+  // the refs are stable, so this changes only with `edit`
+  /* eslint-disable-next-line react-hooks/exhaustive-deps -- frames' refs are stable useRef identities */
+  const nodeEdit = useMemo(() => savedResize(edit, frames), [edit]);
   useRootFit({ pendingRootFitRef: nav.pendingRootFitRef, compiled, layout: viewLayout, reactFlow });
   useRevealOnUnfold({
     pendingRevealRef,
@@ -211,7 +223,7 @@ function Inner(props: DiagramViewProps) {
   const flow = useFlowNodes({
     props: { ...props, ...(onToggleExpand !== undefined ? { onToggleExpand } : {}) },
     editing,
-    edit,
+    edit: nodeEdit,
     notation,
     icons,
     preset,
@@ -273,6 +285,7 @@ function Inner(props: DiagramViewProps) {
     strokesRef: ink.strokesRef,
     legendReserveRef: legend.legendReserveRef,
     viewShiftRef: frames.viewShiftRef,
+    savedFrameRef: frames.savedFrameRef,
   });
   const edges = useFlowEdges({ props, editing, edit, notation, preset, compiled, layout: viewLayout, moves });
 

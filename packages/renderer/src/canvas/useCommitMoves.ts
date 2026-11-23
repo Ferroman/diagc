@@ -4,6 +4,7 @@ import { isActivityBand, type Point } from '@diagc/core/internal';
 import { savedPositions, type Shift } from '../layout/fit-containers';
 import type { NodeGeometry } from '../layout/layout';
 import type { Positions } from './useNudge';
+import { toSaved } from './saved-frame';
 import type { EditingApi } from './view-types';
 
 export interface CommitMovesInput {
@@ -17,6 +18,8 @@ export interface CommitMovesInput {
   arrangedRef: MutableRefObject<ReadonlyMap<string, NodeGeometry> | null>;
   /** the layout's view-only y shifts (LayoutResult.viewShift): on screen, not saved */
   viewShiftRef: MutableRefObject<ReadonlyMap<string, number>>;
+  /** the layout's drill frames (LayoutResult.savedFrame): on screen, not saved */
+  savedFrameRef: MutableRefObject<ReadonlyMap<string, Point>>;
   setViewPositions: Dispatch<SetStateAction<Record<string, Point>>>;
 }
 
@@ -41,6 +44,7 @@ export function useCommitMoves(input: CommitMovesInput): (onScreen: Positions) =
     containerShiftsRef,
     arrangedRef,
     viewShiftRef,
+    savedFrameRef,
     setViewPositions,
   } = input;
   return useCallback(
@@ -48,25 +52,26 @@ export function useCommitMoves(input: CommitMovesInput): (onScreen: Positions) =
       if (Object.keys(onScreen).length === 0) return;
       const typeOf = (id: string) =>
         (rfNodesRef.current.find((n) => n.id === id)?.data as { typeId?: string } | undefined)?.typeId;
-      const positions = unshifted(
-        savedPositions(
-          onScreen,
-          rfNodesRef.current,
-          { bases: containerBasesRef.current, shifts: containerShiftsRef.current },
-          // an activity lane is banded at a fixed spot (arrangeActivityFrames)
-          (parentId) => isActivityBand(typeOf(parentId)),
-        ),
-        viewShiftRef.current,
+      const drawn = savedPositions(
+        onScreen,
+        rfNodesRef.current,
+        { bases: containerBasesRef.current, shifts: containerShiftsRef.current },
+        // an activity lane is banded at a fixed spot (arrangeActivityFrames)
+        (parentId) => isActivityBand(typeOf(parentId)),
       );
-      // displacement from the ARRANGED spot (parent-relative on both sides):
-      // a notation that derives positions reads this, not the position
+      // displacement from the ARRANGED spot, both as drawn (parent-relative on
+      // both sides): a notation that derives positions reads this, not the
+      // position — a plan zone's days are its dx
       const arranged = arrangedRef.current;
       const deltas = Object.fromEntries(
-        Object.entries(positions).map(([id, pos]) => {
+        Object.entries(drawn).map(([id, pos]) => {
           const g = arranged?.get(id);
           return [id, g === undefined ? { dx: 0, dy: 0 } : { dx: pos.x - g.x, dy: pos.y - g.y }];
         }),
       );
+      // what is saved: without the fold shift and the drill frame (saved-frame.ts)
+      const frames = { savedFrameRef, viewShiftRef };
+      const positions = Object.fromEntries(Object.entries(drawn).map(([id, p]) => [id, toSaved(frames, id, p)]));
       if (editing) {
         if (edit?.onNodesMoved !== undefined) edit.onNodesMoved(positions, deltas);
         else for (const [id, pos] of Object.entries(positions)) edit?.onNodeMoved?.(id, pos);
@@ -75,17 +80,8 @@ export function useCommitMoves(input: CommitMovesInput): (onScreen: Positions) =
       }
     },
     /* eslint-disable-next-line react-hooks/exhaustive-deps --
-       the five refs and setViewPositions are stable useRef/useState identities from DiagramView's hooks, read
+       the six refs and setViewPositions are stable useRef/useState identities from DiagramView's hooks, read
        at gesture time */
     [editing, edit],
-  );
-}
-
-/** `positions` with each node's view shift taken back off: the shift is the
- * view's (a fold above it), the saved y is the one it returns to */
-function unshifted(positions: Record<string, Point>, viewShift: ReadonlyMap<string, number>): Record<string, Point> {
-  if (viewShift.size === 0 || !Object.keys(positions).some((id) => viewShift.has(id))) return positions;
-  return Object.fromEntries(
-    Object.entries(positions).map(([id, p]) => [id, { x: p.x, y: p.y - (viewShift.get(id) ?? 0) }]),
   );
 }

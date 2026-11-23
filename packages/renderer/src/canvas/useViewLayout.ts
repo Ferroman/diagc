@@ -42,6 +42,8 @@ export interface ViewLayoutInput {
   editing: boolean;
   ignoreSavedPositions: boolean | undefined;
   viewPositions: Record<string, Point>;
+  /** the drilled container, handed to a notation's own layout */
+  drillRoot?: string | undefined;
 }
 
 export interface ViewLayout {
@@ -77,6 +79,9 @@ export interface ViewLayout {
   /** the layout's view-only y shifts (LayoutResult.viewShift), already in
    * `placedGeometry`; a committed move takes them back off */
   viewShift: ReadonlyMap<string, number>;
+  /** the layout's drill frames (LayoutResult.savedFrame), already in the
+   * geometry; a committed move takes them back off */
+  savedFrame: ReadonlyMap<string, Point>;
   /** the scene the last FINISHED layout run was for; null before the first.
    * Layout is asynchronous and the previous arrangement is kept meanwhile, so
    * right after the scene changes `arrangedGeometry` is non-null and the OLD
@@ -94,6 +99,7 @@ const NO_SHIFTS: ReadonlyMap<string, Shift> = new Map();
 const NO_SPOTS: ReadonlyMap<string, Point> = new Map();
 const NONE_FIXED: ReadonlySet<string> = new Set();
 const NO_VIEW_SHIFT: ReadonlyMap<string, number> = new Map();
+const NO_FRAMES: ReadonlyMap<string, Point> = new Map();
 
 /** `geometry` with each shifted node moved by its dy; the same map back when
  * nothing shifts, so the memos downstream keep their input */
@@ -205,11 +211,12 @@ interface LayoutRunInput {
   plane: string | undefined;
   partitions: ReadonlyMap<string, number> | undefined;
   layoutPositions: Record<string, Point> | undefined;
+  drillRoot: string | undefined;
 }
 
 type LayoutRun = Pick<
   ViewLayout,
-  'geometry' | 'geometryRef' | 'routes' | 'labelSpots' | 'fixed' | 'lockedX' | 'viewShift' | 'settledFor'
+  'geometry' | 'geometryRef' | 'routes' | 'labelSpots' | 'fixed' | 'lockedX' | 'viewShift' | 'savedFrame' | 'settledFor'
 >;
 
 /** The asynchronous layout run, and what its last finished run produced. */
@@ -224,6 +231,7 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
   const [fixed, setFixed] = useState<ReadonlySet<string>>(NONE_FIXED);
   const [lockedX, setLockedX] = useState<ReadonlySet<string>>(NONE_FIXED);
   const [viewShift, setViewShift] = useState<ReadonlyMap<string, number>>(NO_VIEW_SHIFT);
+  const [savedFrame, setSavedFrame] = useState<ReadonlyMap<string, Point>>(NO_FRAMES);
   const [settledFor, setSettledFor] = useState<ViewLayout['settledFor']>(null);
   useEffect(() => {
     let live = true;
@@ -239,6 +247,7 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
               plane: run.plane,
               sizeHints: run.sizes,
               positions: run.layoutPositions,
+              ...(run.drillRoot !== undefined ? { root: run.drillRoot } : {}),
             }),
           )
         : layoutView(
@@ -256,6 +265,7 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
         setFixed(r.fixed ?? NONE_FIXED);
         setLockedX(r.lockedX ?? NONE_FIXED);
         setViewShift(r.viewShift ?? NO_VIEW_SHIFT);
+        setSavedFrame(r.savedFrame ?? NO_FRAMES);
         setSettledFor(run.compiled);
       })
       // layoutView degrades to the default algorithm rather than rejecting, so
@@ -283,9 +293,10 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
     run.plane,
     run.partitions,
     run.layoutPositions,
+    run.drillRoot,
   ]);
 
-  return { geometry, geometryRef, routes, labelSpots, fixed, lockedX, viewShift, settledFor };
+  return { geometry, geometryRef, routes, labelSpots, fixed, lockedX, viewShift, savedFrame, settledFor };
 }
 
 /**
@@ -425,17 +436,20 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     () => withZoneOrder(withLaneOrder(input.compiled, input.model, input.plane), input.model, input.plane),
     [input.compiled, input.model, input.plane],
   );
-  const { geometry, geometryRef, routes, labelSpots, fixed, lockedX, viewShift, settledFor } = useLayoutRun({
-    compiled: input.compiled,
-    laidView,
-    sizes,
-    runSettings,
-    profile: input.profile,
-    model: input.model,
-    plane: input.plane,
-    partitions,
-    layoutPositions,
-  });
+  const { geometry, geometryRef, routes, labelSpots, fixed, lockedX, viewShift, savedFrame, settledFor } = useLayoutRun(
+    {
+      compiled: input.compiled,
+      laidView,
+      sizes,
+      runSettings,
+      profile: input.profile,
+      model: input.model,
+      plane: input.plane,
+      partitions,
+      layoutPositions,
+      drillRoot: input.drillRoot,
+    },
+  );
 
   // Overlay-applied geometry: elk output with any layout-overlay positions for
   // the active plane substituted in (width/height stay elk's). Derived so the
@@ -516,6 +530,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     fixed,
     lockedX,
     viewShift,
+    savedFrame,
     settledFor,
     layoutSettings,
     flowDirection,

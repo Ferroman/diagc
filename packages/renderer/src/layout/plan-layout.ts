@@ -15,7 +15,6 @@ import {
   type BoxSize,
   type DiagramModel,
   type DiagramNode,
-  type CompiledView,
   type PlanGraph,
   type PlanSpan,
   type PlanRole,
@@ -108,17 +107,6 @@ export const planX = (day: number, origin: number): number => (day - origin) * P
  * them most of a year's canvas to the left of the bars. 0 with nothing dated. */
 const chartLeft = (run: PlanRun): number => (run.range !== undefined ? planX(run.range.start, run.origin) : 0);
 
-/** The zone a drilled view opened (its children are the view's top level), or
- * undefined on the whole plan. A drill is the view that carries `externals`. */
-export function planDrillRoot(graph: PlanGraph, view: CompiledView): string | undefined {
-  if (view.externals === undefined) return undefined;
-  for (const r of view.roots) {
-    const parent = view.externals.has(r.id) ? undefined : graph.parent.get(r.id);
-    if (parent !== undefined) return parent;
-  }
-  return undefined;
-}
-
 /** One plan arrangement under way: what it reads, and the maps every step fills. */
 interface PlanRun {
   graph: PlanGraph;
@@ -128,6 +116,10 @@ interface PlanRun {
   range: PlanSpan | undefined;
   /** a drilled view's stubs: stub id → the real node outside the opened zone */
   stubs: ReadonlyMap<string, string>;
+  /** the opened zone, when the view is one zone's interior */
+  root: string | undefined;
+  /** an opened zone's children → its interior origin (LayoutResult.savedFrame) */
+  savedFrame: Map<string, Point>;
   /** what the VIEW shows (layers can hide what the plane's containment holds) */
   shown: ReadonlySet<string>;
   /** what the view shows folded: drawn as a bar, its rows hidden */
@@ -144,9 +136,8 @@ interface PlanRun {
   viewShift: Map<string, number>;
 }
 
-function planRun({ view, model, plane, sizeHints, positions }: NotationLayoutInput): PlanRun {
+function planRun({ view, model, plane, sizeHints, positions, root }: NotationLayoutInput): PlanRun {
   const graph = planGraphCached(model, plane);
-  const root = planDrillRoot(graph, view);
   const stubs = view.externals ?? new Map<string, string>();
   const shown = new Set<string>();
   const collapsed = new Set<string>();
@@ -161,6 +152,8 @@ function planRun({ view, model, plane, sizeHints, positions }: NotationLayoutInp
     origin: graph.origin ?? 0,
     range: root === undefined ? graph.range : (planSubtreeRange(graph, model, root) ?? graph.range),
     stubs,
+    root,
+    savedFrame: new Map(),
     shown,
     collapsed,
     positions,
@@ -511,6 +504,31 @@ function placeRoster(run: PlanRun, roots: readonly string[]): void {
 }
 
 /**
+ * A zone opened on its own: its interior laid out exactly as inside the zone
+ * (`layZone` — rows, free-form children at their saved spots, clamps and all),
+ * then moved to where the zone starts, its title band left out. Every child of
+ * the zone is drawn by that one offset, its `savedFrame`, so whatever an edit
+ * there records — a moved box, a resized row — is the same position it would
+ * record in the whole plan. The zone's own events go to the header, where a
+ * top-level event goes. Returns the y below the interior.
+ */
+function placeOpenedZone(run: PlanRun, root: string, roots: readonly string[]): number {
+  const node = nodeOf(run, root);
+  const span = spanOf(node);
+  const width = span === undefined ? PLAN_LAYOUT.DAY : (span.end - span.start + 1) * PLAN_LAYOUT.DAY;
+  const size = layZone(run, root);
+  const frame = { x: planX(startOf(run, root), run.origin), y: -titleBand(node.name, run.chips.get(root), width) };
+  for (const id of roots) {
+    const g = run.geometry.get(id);
+    if (g === undefined || run.graph.parent.get(id) !== root) continue;
+    run.geometry.set(id, { ...g, x: g.x + frame.x, y: g.y + frame.y });
+    run.savedFrame.set(id, frame);
+  }
+  placeRootEvents(run, roots);
+  return size.height + frame.y + PLAN_LAYOUT.ROW_GAP;
+}
+
+/**
  * A zone opened on its own keeps the dependencies that cross its edge: their
  * outside end is a stub (scopeToRoot), drawn as a marker at the left edge of
  * the dates when the node it stands for ends before them, at the right
@@ -568,8 +586,9 @@ export function planLayout(input: NotationLayoutInput): LayoutResult {
   const roots = input.view.roots.map((r) => r.id);
   // a stub keeps its stand-in's type, but not its dates: never a row or a header event
   const own = roots.filter((id) => !run.stubs.has(id));
-  const y = placeRootZones(run, own);
-  placeRootEvents(run, own);
+  const opened = run.root !== undefined && run.byId.has(run.root) && isPlanZone(nodeOf(run, run.root));
+  const y = opened ? placeOpenedZone(run, run.root!, own) : placeRootZones(run, own);
+  if (!opened) placeRootEvents(run, own);
   placeRoster(run, roots);
   placeStubs(run, roots);
   placeStrays(run, roots, y);
@@ -581,5 +600,6 @@ export function planLayout(input: NotationLayoutInput): LayoutResult {
     fixed: run.fixed,
     lockedX: run.lockedX,
     ...(run.viewShift.size > 0 ? { viewShift: run.viewShift } : {}),
+    ...(run.savedFrame.size > 0 ? { savedFrame: run.savedFrame } : {}),
   };
 }

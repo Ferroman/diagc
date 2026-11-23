@@ -439,13 +439,15 @@ describe('planLayout', () => {
       m.relate(early, a1, { kind: 'sync' });
       m.relate(a2, late, { kind: 'sync' });
       a1.owner(p.person('alice', 'Alice'));
+      a.contains(m.node('box', { name: 'Box' })); // free-form, saved below
       const json = m.toJSON();
       const pins = Object.fromEntries(
         json.nodes.filter((n) => n.type === PLAN_ZONE_TYPE).map((n) => [n.id, 'expanded' as const]),
       );
       const carry = notationProfile('plan').drillCarry!(json, 'plan', 'a');
       const v = compileView(json, { plane: 'plan', pins, root: 'a', carry: [...carry] });
-      return { json, r: planLayout({ view: v, model: json, plane: 'plan' }) };
+      const positions = { box: { x: 40, y: TITLE_H + 10 } };
+      return { json, r: planLayout({ view: v, model: json, plane: 'plan', positions, root: 'a' }) };
     }
     const o = dayOf('2025-01-01')!; // the origin: 1 January of the earliest year, which `early` sets
 
@@ -454,6 +456,20 @@ describe('planLayout', () => {
       const a1 = r.geometry.get('a1')!;
       expect(a1).toMatchObject({ x: planX(dayOf('2026-01-05')!, o), y: 0 });
       expect(r.geometry.get('a2')).toMatchObject({ x: planX(dayOf('2026-01-19')!, o), y: a1.height + ROW_GAP });
+    });
+
+    it('draws a free-form child where it sits in the whole view, against the rows', () => {
+      const { r } = opened();
+      // the zone's interior, translated: x by the zone's start, y by its title band
+      expect(r.geometry.get('box')).toMatchObject({ x: planX(dayOf('2026-01-05')!, o) + 40, y: 10 });
+    });
+
+    it("reports the zone's interior origin for each child, so an edit saves what it would in the whole view", () => {
+      const { r } = opened();
+      const frame = { x: planX(dayOf('2026-01-05')!, o), y: -TITLE_H };
+      for (const id of ['a1', 'a2', 'box', 'ev']) expect(r.savedFrame?.get(id)).toEqual(frame);
+      expect(r.savedFrame?.has('alice') ?? false).toBe(false); // the roster is no zone's
+      expect(r.viewShift).toBeUndefined();
     });
 
     it("puts the zone's event in the header, as a top-level one", () => {
