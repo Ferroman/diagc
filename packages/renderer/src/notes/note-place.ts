@@ -45,18 +45,37 @@ const GROUP_HEADER = 28;
 const GROUP_BORDER = 2;
 
 /**
- * Where the counting badge's centre is on an element's box (parent-relative
- * in, same space out). The offsets are the stylesheet's: `top/left: -6px` for
- * an 18px pill on a box; `top: 8px; left: 16px` on an ellipse, whose corner is
- * outside the curve; `top: 4px; right: 48px` in a group's header band, left of
- * the fold chips.
+ * Where a counting badge's centre is on an element's box (parent-relative in,
+ * same space out). An element wears up to two, and a note hangs off the one
+ * drawn: `threats` when it has any, else `comments` (its comments and links).
+ * The offsets are the stylesheet's (`.dg-threat-badge`, `.dg-comment-badge`):
+ *   - box: threats `top/left: -6px` over the top-left corner, comments
+ *     `bottom/right: -6px` over the bottom-right one;
+ *   - ellipse, whose corners are outside the curve: threats `top: 8px; left:
+ *     16px`, comments `bottom: 8px; right: 16px`;
+ *   - group, in the header band left of the fold chips: threats `top: 4px;
+ *     right: 48px`, comments `top: 4px; right: 72px`.
+ * A wider comments pill (a count of 10 or more) grows leftward from its right
+ * edge; the 18px pill's centre is close enough for a tail to aim at.
  */
-export function badgeCenter(rect: Rect, kind: BadgeKind): Point {
+export function badgeCenter(rect: Rect, kind: BadgeKind, badge: 'threats' | 'comments' = 'threats'): Point {
+  const right = rect.x + rect.width;
+  const bottom = rect.y + rect.height;
+  if (badge === 'comments') {
+    switch (kind) {
+      case 'ellipse':
+        return { x: right - 16 - BADGE_R, y: bottom - 8 - BADGE_R };
+      case 'group':
+        return { x: right - 72 - BADGE_R, y: rect.y + 4 + BADGE_R };
+      default:
+        return { x: right + 6 - BADGE_R, y: bottom + 6 - BADGE_R };
+    }
+  }
   switch (kind) {
     case 'ellipse':
       return { x: rect.x + 16 + BADGE_R, y: rect.y + 8 + BADGE_R };
     case 'group':
-      return { x: rect.x + rect.width - 48 - BADGE_R, y: rect.y + 4 + BADGE_R };
+      return { x: right - 48 - BADGE_R, y: rect.y + 4 + BADGE_R };
     default:
       return { x: rect.x - 6 + BADGE_R, y: rect.y - 6 + BADGE_R };
   }

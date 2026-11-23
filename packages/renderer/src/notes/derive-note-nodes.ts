@@ -2,6 +2,7 @@ import type { Node } from '@xyflow/react';
 import {
   elementKey,
   hasNoteContent,
+  PLAN_ZONE_TYPE,
   soleRelation,
   type Comment,
   type CompiledView,
@@ -149,9 +150,11 @@ function elementRequests(
 ): NoteRequest[] {
   // How the badge sits on this element — the stylesheet's three placements
   // (see badgeCenter): in the header band of an expanded container, tucked
-  // into an ellipse, over the corner of anything else.
+  // into an ellipse, over the corner of anything else. An open plan zone is
+  // the exception: its header holds the role chips, so the plan's stylesheet
+  // hangs both badges off its corners, as on a leaf.
   const badgeKindOf = (n: ViewNode): BadgeKind => {
-    if (n.state === 'expanded') return 'group';
+    if (n.state === 'expanded') return n.node.type === PLAN_ZONE_TYPE ? 'box' : 'group';
     const shape = n.node.type !== undefined ? typeRegistry.resolve(n.node.type).shape : undefined;
     return shape === 'ellipse' ? 'ellipse' : 'box';
   };
@@ -171,7 +174,9 @@ function elementRequests(
         threats: n.node.threats ?? [],
         comments: n.node.comments ?? [],
         links: n.node.links ?? [],
-        badge: badgeCenter(rect, badgeKindOf(n)),
+        // the badge the element actually wears: threats when it has any,
+        // else the comments one, on another corner
+        badge: badgeCenter(rect, badgeKindOf(n), (n.node.threats ?? []).length > 0 ? 'threats' : 'comments'),
         element: rect,
         parentId: parent,
       });

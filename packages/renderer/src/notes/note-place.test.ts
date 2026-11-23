@@ -20,6 +20,11 @@ describe('badgeCenter', () => {
     expect(badgeCenter(box, 'ellipse')).toEqual({ x: 325, y: 317 });
     expect(badgeCenter({ x: 0, y: 0, width: 400, height: 200 }, 'group')).toEqual({ x: 343, y: 13 });
   });
+  it('the comments badge: bottom-right on a box, tucked in on an ellipse, in the header left of the threats on a group', () => {
+    expect(badgeCenter(box, 'box', 'comments')).toEqual({ x: 417, y: 357 });
+    expect(badgeCenter(box, 'ellipse', 'comments')).toEqual({ x: 395, y: 343 });
+    expect(badgeCenter({ x: 0, y: 0, width: 400, height: 200 }, 'group', 'comments')).toEqual({ x: 319, y: 13 });
+  });
 });
 
 describe('placeNote', () => {
