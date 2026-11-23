@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.1](https://github.com/Ferroman/diagc/compare/v1.14.0...v1.14.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **renderer:** plan bars keep to their dates, and names sit beside short bars ([#197](https://github.com/Ferroman/diagc/issues/197)) ([7affb4a](https://github.com/Ferroman/diagc/commit/7affb4a66e24e783eb8f57dad9919d919e26e1d2))
+
 ## [1.14.0](https://github.com/Ferroman/diagc/compare/v1.13.1...v1.14.0) (2026-11-19)
 
 
