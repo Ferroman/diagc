@@ -163,6 +163,10 @@ export interface NotationProfile {
      * instead of floating whenever both ends are measured and the relation
      * names no shape: a plan's finish-to-start arrow (edge/plan-elbow.ts) */
     elbow?: (source: NodeGeometry, target: NodeGeometry) => { points: Point[]; label: Point };
+    /** React Flow's stacking order for every edge: above 0 draws them over the
+     * boxes (a box sits at 0, an open container at -1), and it must stay under
+     * a note (2, canvas/adapter.ts). Unset = React Flow's own, under the boxes. */
+    zIndex?: number;
   };
   /** what the notation draws above the diagram */
   canvasOverlay?: 'loop-labels' | 'git-lanes' | 'order-bands' | 'time-axis';
@@ -421,7 +425,9 @@ const PLAN: NotationProfile = {
     // above).
     draggableWhenFixed: () => true,
   },
-  edge: { hidden: isPlanRole, elbow: planElbow },
+  // A dependency's drops cross every row between its two bars: under them it
+  // vanishes behind each one, so plan edges are drawn over the bars.
+  edge: { hidden: isPlanRole, elbow: planElbow, zIndex: 1 },
   canvasOverlay: 'time-axis',
 };
 

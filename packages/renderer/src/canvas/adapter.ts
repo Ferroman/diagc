@@ -69,6 +69,8 @@ export interface RfEdgeInput {
   reconnectable?: boolean;
   /** extra class on React Flow's edge wrapper (a diff mark) */
   className?: string;
+  /** React Flow's stacking order for the edge; unset = drawn under the boxes */
+  zIndex?: number;
 }
 
 /** Build a React Flow edge, widening our typed data channel at the boundary. */
