@@ -100,6 +100,11 @@ export interface NotationProfile {
     /** containers that never fold: the view pins them expanded whatever the
      * viewer's pins say (a git lane is a row, not a box with an inside) */
     alwaysExpanded?: (n: DiagramNode) => boolean;
+    /** containers drawn open until the viewer folds them: the view pins them
+     * expanded unless the host's pins say collapsed. A plan zone is a bar with
+     * rows in it — folded by default it would hide the schedule it exists to
+     * show — but it still folds and opens like any box. */
+    restsOpen?: (n: DiagramNode) => boolean;
     /** node id → accent colour, applied where the node sets none (a commit
      * takes its lane's colour) */
     colorOf?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, string>;
@@ -361,7 +366,7 @@ const PLAN: NotationProfile = {
   layoutReadsPositions: true,
   related: planRelated,
   node: {
-    alwaysExpanded: (n) => n.type === PLAN_ZONE_TYPE,
+    restsOpen: (n) => n.type === PLAN_ZONE_TYPE,
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
     chips: planChips,
     labelSides: planLabelSides,

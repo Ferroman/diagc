@@ -2579,6 +2579,30 @@ describe('plan notation', () => {
     expect(container.querySelector('.dg-time-axis-today')).not.toBeNull();
     expect(container.querySelector('.dg-notation-plan')).not.toBeNull();
   });
+  it('snapshots a zone moved up under a fold at its saved place, not where the fold drew it', async () => {
+    const m = model('p');
+    const p = m.plan();
+    p.zone('a', { start: '2026-01-05', end: '2026-01-30' })
+      .zone('a1', { start: '2026-01-05', end: '2026-01-09' })
+      .zone('a1x', { start: '2026-01-05', end: '2026-01-06' });
+    p.zone('b', { start: '2026-02-02', end: '2026-02-06' });
+    const apiRef: { current: LayoutApi | null } = { current: null };
+    const layout = { version: 1 as const, planes: { plan: { a: { x: 0, y: 0 }, b: { x: 0, y: 400 } } } };
+    const { container } = render(
+      <DiagramView
+        model={m.toJSON()}
+        plane="plan"
+        notation="plan"
+        layout={layout}
+        pins={{ a: 'collapsed' }}
+        layoutApiRef={apiRef}
+      />,
+    );
+    await waitFor(() => expect(container.querySelector('.react-flow__node[data-id="b"]')).not.toBeNull());
+    // drawn higher (the fold gave its height back), saved where it was: a
+    // freeze must not write the folded picture into the layout
+    await waitFor(() => expect(apiRef.current?.snapshotPositions()['b']?.y).toBe(400));
+  });
   it('draws no today line when the host passes null', async () => {
     const { container } = render(<DiagramView model={plan()} plane="plan" notation="plan" today={null} />);
     await waitFor(() => expect(container.querySelector('.dg-time-axis')).not.toBeNull());

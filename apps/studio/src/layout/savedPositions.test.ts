@@ -74,6 +74,10 @@ describe('saving which boxes are open', () => {
     expect(unfoldedOf({ z: 'expanded', a: 'expanded', shut: 'collapsed' })).toEqual(['a', 'z']);
   });
 
+  it('unfoldedOf leaves out what rests open anyway (a plan zone): its fold is never saved', () => {
+    expect(unfoldedOf({ z: 'expanded', a: 'expanded' }, (id) => id === 'z')).toEqual(['a']);
+  });
+
   it("replaces the plane's list with what is open now, leaving other planes alone", () => {
     const out = withSavedPositions({ layout: saved, model: makeModel(), plane: 'alt' }, {}, ['b', 'a']);
     expect(out.unfolded).toEqual({ alt: ['a', 'b'], other: ['kept'] });

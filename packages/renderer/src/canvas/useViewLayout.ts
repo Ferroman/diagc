@@ -74,6 +74,9 @@ export interface ViewLayout {
   /** nodes the notation's layout locked on x (LayoutResult.lockedX): a saved
    * or dragged position moves them on y only */
   lockedX: ReadonlySet<string>;
+  /** the layout's view-only y shifts (LayoutResult.viewShift), already in
+   * `placedGeometry`; a committed move takes them back off */
+  viewShift: ReadonlyMap<string, number>;
   /** the scene the last FINISHED layout run was for; null before the first.
    * Layout is asynchronous and the previous arrangement is kept meanwhile, so
    * right after the scene changes `arrangedGeometry` is non-null and the OLD
@@ -90,6 +93,22 @@ export interface ViewLayout {
 const NO_SHIFTS: ReadonlyMap<string, Shift> = new Map();
 const NO_SPOTS: ReadonlyMap<string, Point> = new Map();
 const NONE_FIXED: ReadonlySet<string> = new Set();
+const NO_VIEW_SHIFT: ReadonlyMap<string, number> = new Map();
+
+/** `geometry` with each shifted node moved by its dy; the same map back when
+ * nothing shifts, so the memos downstream keep their input */
+function withViewShift(
+  geometry: Map<string, NodeGeometry>,
+  viewShift: ReadonlyMap<string, number>,
+): Map<string, NodeGeometry> {
+  if (viewShift.size === 0) return geometry;
+  const out = new Map(geometry);
+  for (const [id, dy] of viewShift) {
+    const g = out.get(id);
+    if (g !== undefined) out.set(id, { ...g, y: g.y + dy });
+  }
+  return out;
+}
 
 /** `positions` without the fixed ids; the same object back when none applies,
  * so the memo below keeps its identity on the planes that fix nothing */
@@ -190,7 +209,7 @@ interface LayoutRunInput {
 
 type LayoutRun = Pick<
   ViewLayout,
-  'geometry' | 'geometryRef' | 'routes' | 'labelSpots' | 'fixed' | 'lockedX' | 'settledFor'
+  'geometry' | 'geometryRef' | 'routes' | 'labelSpots' | 'fixed' | 'lockedX' | 'viewShift' | 'settledFor'
 >;
 
 /** The asynchronous layout run, and what its last finished run produced. */
@@ -204,6 +223,7 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
   const [labelSpots, setLabelSpots] = useState<ReadonlyMap<string, Point>>(NO_SPOTS);
   const [fixed, setFixed] = useState<ReadonlySet<string>>(NONE_FIXED);
   const [lockedX, setLockedX] = useState<ReadonlySet<string>>(NONE_FIXED);
+  const [viewShift, setViewShift] = useState<ReadonlyMap<string, number>>(NO_VIEW_SHIFT);
   const [settledFor, setSettledFor] = useState<ViewLayout['settledFor']>(null);
   useEffect(() => {
     let live = true;
@@ -235,6 +255,7 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
         setLabelSpots(r.labelSpots);
         setFixed(r.fixed ?? NONE_FIXED);
         setLockedX(r.lockedX ?? NONE_FIXED);
+        setViewShift(r.viewShift ?? NO_VIEW_SHIFT);
         setSettledFor(run.compiled);
       })
       // layoutView degrades to the default algorithm rather than rejecting, so
@@ -264,7 +285,7 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
     run.layoutPositions,
   ]);
 
-  return { geometry, geometryRef, routes, labelSpots, fixed, lockedX, settledFor };
+  return { geometry, geometryRef, routes, labelSpots, fixed, lockedX, viewShift, settledFor };
 }
 
 /**
@@ -404,7 +425,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     () => withZoneOrder(withLaneOrder(input.compiled, input.model, input.plane), input.model, input.plane),
     [input.compiled, input.model, input.plane],
   );
-  const { geometry, geometryRef, routes, labelSpots, fixed, lockedX, settledFor } = useLayoutRun({
+  const { geometry, geometryRef, routes, labelSpots, fixed, lockedX, viewShift, settledFor } = useLayoutRun({
     compiled: input.compiled,
     laidView,
     sizes,
@@ -433,10 +454,12 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     const withSaved = overlayPositions(geometry, yOnly(movable(saved, fixed), lockedX, geometry));
     // A drag still wins over an automatic arrangement, so moving a box while
     // auto-arrange is on behaves the way dragging always does.
-    return input.editing
+    const placed = input.editing
       ? withSaved
       : overlayPositions(withSaved, yOnly(movable(input.viewPositions, fixed), lockedX, geometry));
-  }, [geometry, fixed, lockedX, saved, input.editing, input.viewPositions]);
+    // last: the shift moves a node from wherever it was saved or dragged to
+    return withViewShift(placed, viewShift);
+  }, [geometry, fixed, lockedX, viewShift, saved, input.editing, input.viewPositions]);
 
   // A hand-placed child may sit past the wall of the box elk sized for it: the
   // container gives way (fit-containers.ts). Not where the notation owns the
@@ -492,6 +515,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     labelSpots,
     fixed,
     lockedX,
+    viewShift,
     settledFor,
     layoutSettings,
     flowDirection,

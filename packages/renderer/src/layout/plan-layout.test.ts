@@ -36,10 +36,12 @@ function roadmap(): DiagramModel {
   return m.toJSON();
 }
 
-/** zones pinned expanded, as DiagramView does through alwaysExpanded */
-function view(m: DiagramModel): CompiledView {
+/** zones open, as DiagramView rests them, except the `folded` ones */
+function view(m: DiagramModel, folded: readonly string[] = []): CompiledView {
   const pins = Object.fromEntries(
-    m.nodes.filter((n) => n.type === PLAN_ZONE_TYPE).map((n) => [n.id, 'expanded' as const]),
+    m.nodes
+      .filter((n) => n.type === PLAN_ZONE_TYPE)
+      .map((n) => [n.id, folded.includes(n.id) ? ('collapsed' as const) : ('expanded' as const)]),
   );
   return compileView(m, { plane: 'plan', pins });
 }
@@ -347,7 +349,133 @@ describe('planLayout', () => {
     expect(sides.get('last-day')).toBe('left'); // to the right is outside its parent
     expect(sides.get('root-day')).toBe('right'); // nothing to stay inside of
     expect(sides.has('long')).toBe(false); // fits: drawn inside, as ever
-    expect(sides.has('parent')).toBe(false); // a zone with rows titles its band instead
+    expect(sides.has('parent')).toBe(false); // fits its dates
+  });
+
+  it('gives a zone with rows a side too, for when it is folded into a bar', () => {
+    const m = model('folds');
+    const p = m.plan();
+    // a long name on a three-day zone: open, it titles its band; folded, it is
+    // a bar like any other and its name goes beside it
+    p.zone('short', { name: 'Kubernetes 1.29 to 1.30', start: '2026-03-02', end: '2026-03-04' }).zone('row', {
+      start: '2026-03-02',
+      end: '2026-03-03',
+    });
+    expect(planLabelSides(m.toJSON(), 'plan').get('short')).toBe('right');
+  });
+
+  describe('a fold', () => {
+    /** a (two rows, a1 holding a row of its own) saved at y 100, b saved below it, c saved above it */
+    function stacked() {
+      const m = model('fold');
+      const p = m.plan();
+      const a = p.zone('a', { start: '2026-01-05', end: '2026-01-30' });
+      a.zone('a1', { start: '2026-01-05', end: '2026-01-16' }).zone('a1x', { start: '2026-01-05', end: '2026-01-09' });
+      a.zone('a2', { start: '2026-01-19', end: '2026-01-30' });
+      p.zone('b', { start: '2026-02-02', end: '2026-02-06' });
+      p.zone('c', { start: '2026-02-09', end: '2026-02-13' });
+      return m.toJSON();
+    }
+    const positions = { c: { x: 0, y: 0 }, a: { x: 0, y: 100 }, b: { x: 0, y: 400 } };
+    const heightOfA = (folded: readonly string[]) =>
+      planLayout({ view: view(stacked(), folded), model: stacked(), plane: 'plan', positions }).geometry.get('a')!
+        .height;
+
+    it('shifts saved top-level zones below a folded one up by the height it gave back', () => {
+      const m = stacked();
+      const r = planLayout({ view: view(m, ['a']), model: m, plane: 'plan', positions });
+      expect(r.geometry.get('a')!.height).toBe(BAR_H);
+      expect(r.viewShift?.get('b')).toBe(-(heightOfA([]) - BAR_H));
+      expect(r.viewShift?.has('a')).toBe(false);
+      expect(r.viewShift?.has('c')).toBe(false); // above the fold: it stays
+    });
+
+    it('shifts saved top-level zones below a nested fold', () => {
+      const m = stacked();
+      const r = planLayout({ view: view(m, ['a1']), model: m, plane: 'plan', positions });
+      expect(heightOfA(['a1'])).toBeLessThan(heightOfA([]));
+      expect(r.viewShift?.get('b')).toBe(-(heightOfA([]) - heightOfA(['a1'])));
+    });
+
+    it('stacks unsaved zones by their open height, and closes the gap through the view shift', () => {
+      // so a move committed while folded saves the open-stack y (useCommitMoves
+      // takes the shift back off), and unfolding never lands one zone on another
+      const m = stacked();
+      const r = planLayout({ view: view(m, ['a']), model: m, plane: 'plan' });
+      const open = heightOfA([]);
+      expect(r.geometry.get('b')!.y).toBe(open + ROW_GAP);
+      expect(r.viewShift?.get('b')).toBe(-(open - BAR_H));
+      expect(r.viewShift?.get('c')).toBe(-(open - BAR_H));
+      expect(r.viewShift?.has('a')).toBe(false);
+    });
+
+    it('moves only the zones wholly below a fold: one beside it stays put', () => {
+      const m = stacked();
+      // b shares a's lane, 10px lower: closing a's gap would lift it into the header
+      const beside = { a: { x: 0, y: 0 }, b: { x: 0, y: 10 } };
+      const r = planLayout({ view: view(m, ['a']), model: m, plane: 'plan', positions: beside });
+      expect(r.viewShift?.has('b') ?? false).toBe(false);
+    });
+
+    it('shifts nothing with no fold', () => {
+      const m = stacked();
+      expect(planLayout({ view: view(m), model: m, plane: 'plan', positions }).viewShift?.size ?? 0).toBe(0);
+      expect(planLayout({ view: view(m), model: m, plane: 'plan' }).viewShift?.size ?? 0).toBe(0);
+    });
+  });
+
+  describe('a zone opened on its own', () => {
+    /** a (5–30 Jan) ⊃ a1, a2, event ev; early (Dec 2025) → a1; a2 → late (Feb); alice owns a1 */
+    function opened() {
+      const m = model('open');
+      const p = m.plan();
+      const a = p.zone('a', { start: '2026-01-05', end: '2026-01-30' });
+      const a1 = a.zone('a1', { start: '2026-01-05', end: '2026-01-09' });
+      const a2 = a.zone('a2', { start: '2026-01-19', end: '2026-01-30' });
+      a.event('ev', { at: '2026-01-14' });
+      const early = p.zone('early', { start: '2025-12-01', end: '2025-12-12' });
+      const late = p.zone('late', { start: '2026-02-02', end: '2026-02-06' });
+      m.relate(early, a1, { kind: 'sync' });
+      m.relate(a2, late, { kind: 'sync' });
+      a1.owner(p.person('alice', 'Alice'));
+      const json = m.toJSON();
+      const pins = Object.fromEntries(
+        json.nodes.filter((n) => n.type === PLAN_ZONE_TYPE).map((n) => [n.id, 'expanded' as const]),
+      );
+      const v = compileView(json, { plane: 'plan', pins, root: 'a' });
+      return { json, r: planLayout({ view: v, model: json, plane: 'plan' }) };
+    }
+    const o = dayOf('2025-01-01')!; // the origin: 1 January of the earliest year, which `early` sets
+
+    it("draws the zone's rows at their own dates, stacked from the top", () => {
+      const { r } = opened();
+      const a1 = r.geometry.get('a1')!;
+      expect(a1).toMatchObject({ x: planX(dayOf('2026-01-05')!, o), y: 0 });
+      expect(r.geometry.get('a2')).toMatchObject({ x: planX(dayOf('2026-01-19')!, o), y: a1.height + ROW_GAP });
+    });
+
+    it("puts the zone's event in the header, as a top-level one", () => {
+      expect(opened().r.geometry.get('ev')).toMatchObject({
+        x: planX(dayOf('2026-01-14')!, o) + DAY / 2 - EVENT / 2,
+        y: -(DAY_H + WEEK_H) - EVENT / 2,
+      });
+    });
+
+    it('lists the actors holding a role in it in the roster, from its first day', () => {
+      const alice = opened().r.geometry.get('__ext__:alice')!;
+      expect(alice.x).toBe(planX(dayOf('2026-01-05')!, o));
+      expect(alice.y).toBe(-HEADER_H - ROSTER_GAP - alice.height);
+    });
+
+    it('marks a zone outside it at the edge its dates lie on', () => {
+      const { r } = opened();
+      const early = r.geometry.get('__ext__:early')!;
+      const late = r.geometry.get('__ext__:late')!;
+      expect(early.x + early.width).toBeLessThan(planX(dayOf('2026-01-05')!, o));
+      expect(early.y).toBe(0);
+      expect(late.x).toBeGreaterThan(planX(dayOf('2026-01-31')!, o));
+      expect(late.y).toBe(0);
+    });
   });
 
   it('draws an empty plan as nothing, with no origin to trip on', () => {

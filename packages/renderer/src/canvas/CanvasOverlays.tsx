@@ -11,6 +11,8 @@ import type { StylePreset } from '../sketch/stylePresets';
 export interface CanvasOverlaysProps {
   model: DiagramModel;
   plane: string | undefined;
+  /** the container opened on its own, if any (the drill root) */
+  drillRoot: string | undefined;
   /** which notation overlay the canvas draws, if any */
   overlay: NotationProfile['canvasOverlay'];
   /** the layout has placed the boxes: every overlay waits for that */
@@ -34,7 +36,14 @@ export function CanvasOverlays(props: CanvasOverlaysProps): ReactElement | null 
       )}
       {props.overlay === 'git-lanes' && <GitLanesOverlay model={props.model} plane={props.plane} />}
       {props.overlay === 'order-bands' && <OrderBandsOverlay model={props.model} direction={props.flowDirection} />}
-      {props.overlay === 'time-axis' && <TimeAxisOverlay model={props.model} plane={props.plane} today={props.today} />}
+      {props.overlay === 'time-axis' && (
+        <TimeAxisOverlay
+          model={props.model}
+          plane={props.plane}
+          today={props.today}
+          {...(props.drillRoot !== undefined ? { root: props.drillRoot } : {})}
+        />
+      )}
     </>
   );
 }

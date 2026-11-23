@@ -12,6 +12,7 @@ import {
   isoOf,
   planGraph,
   planSubtree,
+  planSubtreeRange,
   rolesOf,
   spanOf,
 } from './plan';
@@ -192,5 +193,17 @@ describe('planGraph', () => {
     expect(planSubtree(g, 'q1')).toEqual(['q1', 'design', 'build', 'm1']);
     expect(planSubtree(g, 'build')).toEqual(['build', 'm1']);
     expect(planSubtree(g, 'm1')).toEqual(['m1']);
+  });
+  it("planSubtreeRange spans a zone's own dates and everything scheduled under it", () => {
+    const m = model('range');
+    const p = m.plan();
+    const a = p.zone('a', { start: '2026-01-01', end: '2026-01-31' });
+    a.zone('a1', { start: '2026-01-05', end: '2026-01-10' });
+    a.event('mid', { at: '2026-01-20' });
+    p.zone('b', { start: '2026-03-01', end: '2026-03-05' });
+    const json = m.toJSON();
+    const g = planGraph(json, 'plan');
+    expect(planSubtreeRange(g, json, 'a')).toEqual({ start: dayOf('2026-01-01'), end: dayOf('2026-01-31') });
+    expect(planSubtreeRange(g, json, 'a1')).toEqual({ start: dayOf('2026-01-05'), end: dayOf('2026-01-10') });
   });
 });

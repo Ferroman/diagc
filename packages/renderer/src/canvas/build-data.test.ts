@@ -110,7 +110,7 @@ describe('buildNodeData', () => {
   });
 
   it('offers neither a fold nor an enter on a container the notation never folds', () => {
-    // a plan zone, an activity frame: the view pins them open and refuses to
+    // an activity frame, a git lane: the view pins them open and refuses to
     // drill into them, so a fold or enter chip there would be a dead button
     const enter = () => {};
     const ctx = nodeCtx({ onEnterNode: enter, isAlwaysExpanded: (id) => id === 'n1' });
@@ -122,9 +122,10 @@ describe('buildNodeData', () => {
     expect(other.onEnterNode).toBe(enter);
   });
 
-  it("carries a leaf's outside-label side, never an open container's", () => {
+  it("carries a bar's outside-label side — a leaf's or a folded container's — never an open container's", () => {
     const ctx = nodeCtx({ labelSides: new Map([['n1', 'left' as const]]) });
     expect(buildNodeData(viewNode(), ctx).labelSide).toBe('left');
+    expect(buildNodeData(viewNode({ state: 'collapsed' }), ctx).labelSide).toBe('left');
     expect(buildNodeData(viewNode({ state: 'expanded' }), ctx).labelSide).toBeUndefined();
     expect(buildNodeData(viewNode({ id: 'n2' }), ctx).labelSide).toBeUndefined();
   });

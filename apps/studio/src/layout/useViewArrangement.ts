@@ -27,6 +27,8 @@ export interface UseViewArrangementOptions {
   activePlaneManual: boolean;
   /** the viewer's fold overrides, and the plane's saved open boxes (navigation's) */
   pins: Pins;
+  /** a box open by default whose fold is never saved (navigation's) */
+  restsOpen?: (id: string) => boolean;
   savedUnfoldedKey: string;
   layoutApiRef: RefObject<LayoutApi | null>;
   putLayout: DiagramStore['putLayout'];
@@ -69,6 +71,7 @@ export function useViewArrangement({
   activePlane,
   activePlaneManual,
   pins,
+  restsOpen,
   savedUnfoldedKey,
   layoutApiRef,
   putLayout,
@@ -158,7 +161,7 @@ export function useViewArrangement({
 
   // Which boxes are open is saved WITH the positions (see withSavedPositions),
   // so the chip also has something to save when only a fold changed.
-  const unfoldedNow = useMemo(() => unfoldedOf(pins), [pins]);
+  const unfoldedNow = useMemo(() => unfoldedOf(pins, restsOpen), [pins, restsOpen]);
   const foldsUnsaved = model !== undefined && unfoldedNow.join('\u0000') !== savedUnfoldedKey;
 
   const unsavedView = Object.keys(movedPositions).length > 0 || Object.keys(movedLabels).length > 0 || foldsUnsaved;

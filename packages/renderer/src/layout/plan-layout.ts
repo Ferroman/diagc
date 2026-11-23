@@ -8,12 +8,16 @@ import {
   PLAN_NOTATION,
   PLAN_ROLES,
   planGraph,
+  planSubtree,
+  planSubtreeRange,
   rolesOf,
   spanOf,
   type BoxSize,
   type DiagramModel,
   type DiagramNode,
+  type CompiledView,
   type PlanGraph,
+  type PlanSpan,
   type PlanRole,
   type Point,
   type ViewNode,
@@ -102,16 +106,32 @@ export const planX = (day: number, origin: number): number => (day - origin) * P
 /** x of the chart's first day: where the roster and the strays line up. The
  * origin is 1 January, so a plan opening in November would otherwise leave
  * them most of a year's canvas to the left of the bars. 0 with nothing dated. */
-const chartLeft = (run: PlanRun): number =>
-  run.graph.range !== undefined ? planX(run.graph.range.start, run.origin) : 0;
+const chartLeft = (run: PlanRun): number => (run.range !== undefined ? planX(run.range.start, run.origin) : 0);
+
+/** The zone a drilled view opened (its children are the view's top level), or
+ * undefined on the whole plan. A drill is the view that carries `externals`. */
+export function planDrillRoot(graph: PlanGraph, view: CompiledView): string | undefined {
+  if (view.externals === undefined) return undefined;
+  for (const r of view.roots) {
+    const parent = view.externals.has(r.id) ? undefined : graph.parent.get(r.id);
+    if (parent !== undefined) return parent;
+  }
+  return undefined;
+}
 
 /** One plan arrangement under way: what it reads, and the maps every step fills. */
 interface PlanRun {
   graph: PlanGraph;
   /** the origin day: 1 January of the earliest year */
   origin: number;
+  /** the dates drawn: the whole plan's, or those of the zone opened on its own */
+  range: PlanSpan | undefined;
+  /** a drilled view's stubs: stub id → the real node outside the opened zone */
+  stubs: ReadonlyMap<string, string>;
   /** what the VIEW shows (layers can hide what the plane's containment holds) */
   shown: ReadonlySet<string>;
+  /** what the view shows folded: drawn as a bar, its rows hidden */
+  collapsed: ReadonlySet<string>;
   positions: Record<string, Point> | undefined;
   sizeHints: ReadonlyMap<string, BoxSize> | undefined;
   byId: ReadonlyMap<string, DiagramNode>;
@@ -120,27 +140,41 @@ interface PlanRun {
   geometry: Map<string, NodeGeometry>;
   fixed: Set<string>;
   lockedX: Set<string>;
+  /** top-level zone → dy, view only (LayoutResult.viewShift) */
+  viewShift: Map<string, number>;
 }
 
 function planRun({ view, model, plane, sizeHints, positions }: NotationLayoutInput): PlanRun {
   const graph = planGraphCached(model, plane);
+  const root = planDrillRoot(graph, view);
+  const stubs = view.externals ?? new Map<string, string>();
   const shown = new Set<string>();
+  const collapsed = new Set<string>();
   const walk = (n: ViewNode): void => {
     shown.add(n.id);
+    if (n.state === 'collapsed') collapsed.add(n.id);
     n.children.forEach(walk);
   };
   view.roots.forEach(walk);
   return {
     graph,
     origin: graph.origin ?? 0,
+    range: root === undefined ? graph.range : (planSubtreeRange(graph, model, root) ?? graph.range),
+    stubs,
     shown,
+    collapsed,
     positions,
     sizeHints,
-    byId: new Map(model.nodes.map((n) => [n.id, n] as const)),
+    // a stub is in the drilled view, not the model: it is looked up like any node
+    byId: new Map([
+      ...model.nodes.map((n) => [n.id, n] as const),
+      ...view.roots.filter((r) => stubs.has(r.id)).map((r) => [r.id, r.node] as const),
+    ]),
     chips: planChips(model, plane),
     geometry: new Map(),
     fixed: new Set(),
     lockedX: new Set(),
+    viewShift: new Map(),
   };
 }
 
@@ -226,7 +260,8 @@ const sidesCache = new WeakMap<DiagramModel, Map<string | undefined, ReadonlyMap
  * out of the zone it belongs to. The name goes beside the bar, as Gantt charts
  * do: to the right, or to the left where the right would cross the wall of the
  * zone the bar is in, and failing both wherever there is more room. A zone with
- * rows is absent — its name titles its band (`titleBand`).
+ * rows gets a side as well: open, its name titles its band (`titleBand`) and
+ * the canvas ignores the side; folded, it is a bar like any other.
  */
 export function planLabelSides(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, LabelSide> {
   let byPlane = sidesCache.get(model);
@@ -243,8 +278,6 @@ export function planLabelSides(model: DiagramModel, plane: string | undefined): 
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const sides = new Map<string, LabelSide>();
   for (const id of graph.zones) {
-    const kids = graph.children.get(id);
-    if (kids !== undefined && kids.zones.length + kids.events.length + kids.others.length > 0) continue;
     const node = byId.get(id)!;
     const span = spanOf(node);
     if (span === undefined) continue;
@@ -353,20 +386,57 @@ function layZone(run: PlanRun, id: string): BoxSize {
   return { width, height };
 }
 
-/** The top-level zones, one row each in start order; returns the y below them. */
+/** Everything the plan graph puts under `id` — rows, events, borrowed nodes — at any depth. */
+function graphSubtree(run: PlanRun, id: string): string[] {
+  const kids = run.graph.children.get(id);
+  if (kids === undefined) return [];
+  return [...kids.events, ...kids.others, ...kids.zones.flatMap((z) => [z, ...graphSubtree(run, z)])];
+}
+
+/** How much shorter the folds inside top-level zone `id` (or of `id` itself)
+ * made it: its height with every folded subtree shown again, less `height`.
+ * Only what a fold hid comes back — a row a layer hides stays hidden — so a
+ * layer toggle still moves nothing it did not move before. */
+function foldedAway(run: PlanRun, id: string, height: number): number {
+  const folds = planSubtree(run.graph, id).filter((z) => run.collapsed.has(z));
+  if (folds.length === 0) return 0;
+  const shown = new Set(run.shown);
+  for (const z of folds) for (const c of graphSubtree(run, z)) shown.add(c);
+  return layZone({ ...run, shown, geometry: new Map(), fixed: new Set() }, id).height - height;
+}
+
+/** The top-level zones, one row each in start order; returns the y below them.
+ * The arranged y is where each zone sits with every fold OPEN — stacked by open
+ * heights, or its saved y — so whatever a move records while something is
+ * folded is a position that still holds once it opens. The gap a fold leaves is
+ * closed in the view only (`viewShift`, which a committed move takes back off):
+ * each zone moves up by what the folds wholly above it gave back. A zone beside
+ * a folded one — sharing its lane, a little lower — is not below it, and stays
+ * put rather than rising into the header. */
 function placeRootZones(run: PlanRun, roots: readonly string[]): number {
   const rootZones = byStart(
     run,
     roots.filter((id) => isPlanZone(nodeOf(run, id))),
   );
   let y = 0;
+  let away = 0;
+  const rows: { id: string; y: number; openBottom: number; away: number }[] = [];
   for (const id of rootZones) {
     const size = layZone(run, id);
+    const gave = foldedAway(run, id, size.height);
     run.geometry.set(id, { x: planX(startOf(run, id), run.origin), y, ...size });
     run.lockedX.add(id);
-    y += size.height + PLAN_LAYOUT.ROW_GAP;
+    const top = run.positions?.[id]?.y ?? y;
+    rows.push({ id, y: top, openBottom: top + size.height + gave, away: gave });
+    y += size.height + gave + PLAN_LAYOUT.ROW_GAP;
+    away += gave;
   }
-  return y;
+  for (const row of rows) {
+    const dy = rows.reduce((sum, above) => (above.openBottom <= row.y ? sum + above.away : sum), 0);
+    if (dy > 0) run.viewShift.set(row.id, -dy);
+  }
+  // the strays park under the zones as drawn, every gap closed
+  return y - away;
 }
 
 /** A top-level event sits in the time-axis header, on its day. */
@@ -405,8 +475,7 @@ function placeRoster(run: PlanRun, roots: readonly string[]): void {
   const roster = [...run.graph.actors, ...roots.filter((id) => isPlanActor(nodeOf(run, id)))].filter(
     (id, i, all) => rootSet.has(id) && all.indexOf(id) === i,
   );
-  const rosterWidth =
-    run.graph.range !== undefined ? (run.graph.range.end + 1 - run.graph.range.start) * PLAN_LAYOUT.DAY : undefined;
+  const rosterWidth = run.range !== undefined ? (run.range.end + 1 - run.range.start) * PLAN_LAYOUT.DAY : undefined;
   const left = chartLeft(run);
   const rosterRows: { id: string; size: BoxSize }[][] = [];
   let rosterRow: { id: string; size: BoxSize }[] = [];
@@ -441,6 +510,37 @@ function placeRoster(run: PlanRun, roots: readonly string[]): void {
   }
 }
 
+/**
+ * A zone opened on its own keeps the dependencies that cross its edge: their
+ * outside end is a stub (scopeToRoot), drawn as a marker at the left edge of
+ * the dates when the node it stands for ends before them, at the right
+ * otherwise, stacked down from the top on each side. A stub has no dates of its
+ * own — laid out as a zone it would land on 1 January. Actor stubs are the
+ * roster's (placeRoster), so they are placed by then.
+ */
+function placeStubs(run: PlanRun, roots: readonly string[]): void {
+  const { ROW_GAP, ROSTER_GAP } = PLAN_LAYOUT;
+  const { range } = run;
+  if (range === undefined) return; // nothing dated: they park as strays
+  let left = 0;
+  let right = 0;
+  for (const id of roots) {
+    const real = run.stubs.get(id);
+    if (real === undefined || run.geometry.has(id)) continue;
+    const node = run.byId.get(real);
+    const ends = node === undefined ? undefined : (spanOf(node)?.end ?? atOf(node));
+    const size = hint(run, id);
+    const before = ends !== undefined && ends < range.start;
+    const x = before
+      ? planX(range.start, run.origin) - ROSTER_GAP - size.width
+      : planX(range.end + 1, run.origin) + ROSTER_GAP;
+    run.geometry.set(id, { x, y: before ? left : right, ...size });
+    run.fixed.add(id);
+    if (before) left += size.height + ROW_GAP;
+    else right += size.height + ROW_GAP;
+  }
+}
+
 /** Strays (a shared node with no zone) park under the zones at `y`, from the
  * chart's first day, as git-graph's spare row. */
 function placeStrays(run: PlanRun, roots: readonly string[], y: number): void {
@@ -466,9 +566,12 @@ function placeStrays(run: PlanRun, roots: readonly string[], y: number): void {
 export function planLayout(input: NotationLayoutInput): LayoutResult {
   const run = planRun(input);
   const roots = input.view.roots.map((r) => r.id);
-  const y = placeRootZones(run, roots);
-  placeRootEvents(run, roots);
+  // a stub keeps its stand-in's type, but not its dates: never a row or a header event
+  const own = roots.filter((id) => !run.stubs.has(id));
+  const y = placeRootZones(run, own);
+  placeRootEvents(run, own);
   placeRoster(run, roots);
+  placeStubs(run, roots);
   placeStrays(run, roots, y);
   return {
     geometry: run.geometry,
@@ -477,5 +580,6 @@ export function planLayout(input: NotationLayoutInput): LayoutResult {
     algorithm: PLAN_NOTATION,
     fixed: run.fixed,
     lockedX: run.lockedX,
+    ...(run.viewShift.size > 0 ? { viewShift: run.viewShift } : {}),
   };
 }

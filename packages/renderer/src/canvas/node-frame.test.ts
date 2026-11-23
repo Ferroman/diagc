@@ -104,6 +104,11 @@ describe('nodeFrameProps: size', () => {
     expect(nodeFrameProps(viewNode({ type: 'branch' }), geo, undefined, ctx({ profile: lanes })).style).toEqual(size);
   });
 
+  it('sizes a folded plan zone from the layout: a bar on its dates, as a childless one is', () => {
+    const zone = viewNode({ type: 'plan-zone' }, 'collapsed');
+    expect(nodeFrameProps(zone, geo, undefined, ctx({ profile: owned })).style).toEqual(size);
+  });
+
   it('floors an ordinary box at the width elk laid out, and leaves its height to CSS', () => {
     const frame = nodeFrameProps(viewNode(), geo, undefined, ctx());
     expect(frame.style).toEqual({ minWidth: 140 });

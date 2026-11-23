@@ -116,4 +116,9 @@ export interface StudioNotationProfile {
   datesFromDropPoint?: boolean;
   /** the node panel offers the plan dates of a zone or event */
   planSection?: boolean;
+  /** an opened container (a drill) is view-only in edit mode: the notation's
+   * gestures still read a node's place from the whole plane — a plan's resize
+   * and quick add count a nested zone's x from its parent's start, which an
+   * opened zone no longer draws — so an edit there would land on the wrong day */
+  drilledViewOnly?: boolean;
 }

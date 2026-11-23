@@ -209,3 +209,50 @@ describe('useViewNavigation: folds', () => {
     expect(edit.dispatched).toEqual([{ type: 'set-unfolded', ids: ['sys'], plane: 'bare' }]);
   });
 });
+
+describe('useViewNavigation: plan zones', () => {
+  /** a plan: zone z holding a row, and a plain system box beside it */
+  function plan(): DiagramModel {
+    const m = model('plan');
+    m.node('box', { type: 'system' });
+    m.plan()
+      .zone('z', { start: '2026-01-05', end: '2026-01-30' })
+      .zone('row', { start: '2026-01-05', end: '2026-01-09' });
+    return m.toJSON();
+  }
+  const folds = (ids: string[]): LayoutOverlay => ({ version: 1, planes: {}, unfolded: { plan: ids } });
+
+  // Breaks if folding a zone while editing becomes an edit again: an undo
+  // entry and a dirty diagram for what is only a way of looking at it.
+  it('folding a zone sends no command', () => {
+    const t = mount(plan(), { editing: true, layout: folds([]) });
+    act(() => t.now.toggleExpand('z', 'collapsed'));
+    expect(t.now.pins).toEqual({ z: 'collapsed' });
+    expect(t.dispatched).toEqual([]);
+  });
+
+  // Breaks if an undo or redo of another box's fold (the saved list changing)
+  // re-seeds from openingPins, which knows nothing of zone folds.
+  it('a re-seed keeps folded zones folded', () => {
+    const t = mount(plan(), { editing: true, layout: folds([]) });
+    act(() => t.now.toggleExpand('z', 'collapsed'));
+    t.rerender({ editing: true, layout: folds(['box']) });
+    expect(t.now.pins).toEqual({ z: 'collapsed', box: 'expanded' });
+  });
+
+  // Breaks if a zone's pin leaks into the saved open boxes through another
+  // box's recorded toggle.
+  it("records another box's fold as ever, without the zones in it", () => {
+    const t = mount(plan(), { editing: true, layout: folds([]) });
+    act(() => t.now.toggleExpand('z', 'expanded'));
+    act(() => t.now.toggleExpand('box', 'expanded'));
+    expect(t.dispatched).toEqual([{ type: 'set-unfolded', ids: ['box'] }]);
+  });
+
+  // Breaks if a plan stops opening with the zones its author folded for the export.
+  it('opens with the zones listed in export.collapsed folded', () => {
+    const t = mount(undefined);
+    t.rerender({ model: plan(), layout: { version: 1, planes: {}, export: { collapsed: ['z'] } } });
+    expect(t.now.pins).toEqual({ z: 'collapsed' });
+  });
+});

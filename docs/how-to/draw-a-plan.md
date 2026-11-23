@@ -21,6 +21,12 @@ GIF: [draw-a-plan.gif](../media/draw-a-plan.gif)
 
 Click an actor — a person or a team — and the zones they hold a role on stay bright with a coloured outline, the chip for that role turns solid, and the rest of the chart dims. Click a zone instead and its actors light up the same way, in their own colours. Click empty canvas to clear it. This works in both the studio and a published page — it is a viewer gesture, never saved to the diagram.
 
+Zones start open. To take one out of the way while you talk through the rest, press **▾** on it: it folds into a single bar on its own dates, with its name, its role chips and a count of what it hides, and the zones below it move up to close the gap. **▸** opens it again. A dependency arrow into something inside a folded zone ends on the folded bar.
+
+To look at one zone on its own, press **⤢** on it (or double-click it outside edit mode). Only its contents are drawn: its rows at their dates, the date header narrowed to its dates, and in the roster the people and teams holding a role on a zone inside it. An opened zone is for looking: in edit mode it takes no edits yet — go back to the whole plan to change it. A zone outside it that a dependency reaches is drawn as a small box at the left edge when its dates come before, at the right edge otherwise. The breadcrumbs above the canvas take you back (**⌂** to the whole plan); a zone inside it opens the same way. The studio keeps the opened zone in the page address, so a reload or a shared link opens it again.
+
+Folds are a way of looking, in edit mode too: they are not edits, are not undone, and are not saved — a reload opens every zone again. A zone listed in the layout's `export.collapsed` opens folded, and is folded in the PNG.
+
 ## From TypeScript
 
 ```ts

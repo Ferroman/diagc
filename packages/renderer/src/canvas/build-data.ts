@@ -260,13 +260,14 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
 }
 
 /** What the notation decided about this node's frame: the dashed edge a
- * stacked region shares, a leaf's name drawn beside it (an open container
- * titles its band, whatever its width), and a container pinned open — which
- * offers neither a fold nor an enter, since the view would refuse both. */
+ * stacked region shares, a bar's name drawn beside it (a leaf's, or a folded
+ * container's — an open one titles its band, whatever its width), and a
+ * container pinned open — which offers neither a fold nor an enter, since the
+ * view would refuse both. */
 function bindNotationMarks(data: DiagramNodeData, n: ViewNode, ctx: NodeDataContext): void {
   const separator = ctx.regionSeparators?.get(n.id);
   if (separator !== undefined) data.regionSeparator = separator;
-  if (n.state === 'leaf') {
+  if (n.state !== 'expanded') {
     const labelSide = ctx.labelSides?.get(n.id);
     if (labelSide !== undefined) data.labelSide = labelSide;
   } else if (ctx.isAlwaysExpanded?.(n.id) === true) {

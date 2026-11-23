@@ -89,6 +89,11 @@ export interface LayoutResult {
   /** nodes whose x the notation derives (a plan zone's x IS its start date):
    * the overlay may place them on y only. A weaker hold than `fixed`. */
   lockedX?: ReadonlySet<string>;
+  /** node id → dy added AFTER saved positions and drags, view only: a plan
+   * folds a zone and the top-level zones saved below it close the gap. Never
+   * saved — a committed move takes it back off (useCommitMoves), so unfolding
+   * puts them back where they were. */
+  viewShift?: ReadonlyMap<string, number>;
 }
 
 const elk = new ELK();

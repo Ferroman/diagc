@@ -354,6 +354,29 @@ describe('useViewLayout', () => {
     expect(result.current.placedGeometry?.get('box')).toMatchObject({ x: 50, y: 50 }); // arranged x, saved y
   });
 
+  it("moves a node by the layout's view shift after its saved position, in both modes", async () => {
+    const m = fixture();
+    const profile: NotationProfile = {
+      id: 'default',
+      layout: () => ({
+        geometry: GEOMETRY,
+        routes: new Map(),
+        labelSpots: new Map(),
+        algorithm: 'notation',
+        viewShift: new Map([['box', -100]]),
+      }),
+    };
+    const layout: LayoutOverlay = { version: 1, planes: { default: { box: { x: 50, y: 400 } } } };
+    const { result, rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile, layout }),
+    });
+    await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());
+    expect(result.current.viewShift.get('box')).toBe(-100);
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ y: 300 });
+    rerender(inputFor(m, { profile, layout, editing: true }));
+    expect(result.current.placedGeometry?.get('box')).toMatchObject({ y: 300 });
+  });
+
   it('fixes nothing when the layout names nothing (elk, git-graph)', async () => {
     const { result } = renderHook((p: ViewLayoutInput) => useViewLayout(p), { initialProps: inputFor(fixture()) });
     await waitFor(() => expect(result.current.placedGeometry).not.toBeNull());

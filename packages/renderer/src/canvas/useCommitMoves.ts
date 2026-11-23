@@ -15,6 +15,8 @@ export interface CommitMovesInput {
   containerBasesRef: MutableRefObject<ReadonlyMap<string, Point>>;
   containerShiftsRef: MutableRefObject<ReadonlyMap<string, Shift>>;
   arrangedRef: MutableRefObject<ReadonlyMap<string, NodeGeometry> | null>;
+  /** the layout's view-only y shifts (LayoutResult.viewShift): on screen, not saved */
+  viewShiftRef: MutableRefObject<ReadonlyMap<string, number>>;
   setViewPositions: Dispatch<SetStateAction<Record<string, Point>>>;
 }
 
@@ -31,18 +33,30 @@ export interface CommitMovesInput {
  * (fit-containers.ts), or is doing so right now under expandParent.
  */
 export function useCommitMoves(input: CommitMovesInput): (onScreen: Positions) => void {
-  const { editing, edit, rfNodesRef, containerBasesRef, containerShiftsRef, arrangedRef, setViewPositions } = input;
+  const {
+    editing,
+    edit,
+    rfNodesRef,
+    containerBasesRef,
+    containerShiftsRef,
+    arrangedRef,
+    viewShiftRef,
+    setViewPositions,
+  } = input;
   return useCallback(
     (onScreen: Positions) => {
       if (Object.keys(onScreen).length === 0) return;
       const typeOf = (id: string) =>
         (rfNodesRef.current.find((n) => n.id === id)?.data as { typeId?: string } | undefined)?.typeId;
-      const positions = savedPositions(
-        onScreen,
-        rfNodesRef.current,
-        { bases: containerBasesRef.current, shifts: containerShiftsRef.current },
-        // an activity lane is banded at a fixed spot (arrangeActivityFrames)
-        (parentId) => isActivityBand(typeOf(parentId)),
+      const positions = unshifted(
+        savedPositions(
+          onScreen,
+          rfNodesRef.current,
+          { bases: containerBasesRef.current, shifts: containerShiftsRef.current },
+          // an activity lane is banded at a fixed spot (arrangeActivityFrames)
+          (parentId) => isActivityBand(typeOf(parentId)),
+        ),
+        viewShiftRef.current,
       );
       // displacement from the ARRANGED spot (parent-relative on both sides):
       // a notation that derives positions reads this, not the position
@@ -61,8 +75,17 @@ export function useCommitMoves(input: CommitMovesInput): (onScreen: Positions) =
       }
     },
     /* eslint-disable-next-line react-hooks/exhaustive-deps --
-       the four refs and setViewPositions are stable useRef/useState identities from DiagramView's hooks, read
+       the five refs and setViewPositions are stable useRef/useState identities from DiagramView's hooks, read
        at gesture time */
     [editing, edit],
+  );
+}
+
+/** `positions` with each node's view shift taken back off: the shift is the
+ * view's (a fold above it), the saved y is the one it returns to */
+function unshifted(positions: Record<string, Point>, viewShift: ReadonlyMap<string, number>): Record<string, Point> {
+  if (viewShift.size === 0 || !Object.keys(positions).some((id) => viewShift.has(id))) return positions;
+  return Object.fromEntries(
+    Object.entries(positions).map(([id, p]) => [id, { x: p.x, y: p.y - (viewShift.get(id) ?? 0) }]),
   );
 }

@@ -82,6 +82,10 @@ function frameSize(n: ViewNode, geo: NodeGeometry, ctx: NodeFrameContext): NodeF
     return { style: { width: geo.width, height: geo.height } };
   if (n.state === 'leaf' && n.node.type !== undefined && layoutSized(n.node.type, ctx))
     return { style: { width: geo.width, height: geo.height } };
+  // a folded zone is a bar on its dates like a childless one, and its box fills
+  // the wrapper the same way: without the layout's size it is 0px tall
+  if (n.state === 'collapsed' && n.node.type !== undefined && LAYOUT_SIZED_TYPES.has(n.node.type))
+    return { style: { width: geo.width, height: geo.height } };
   // An ordinary box keeps its CSS sizing, but never narrower than the box elk
   // laid out (box-size.ts estimates it): routes and gaps are computed against
   // that box, so a narrower drawn one leaves an orthogonal arrow starting in

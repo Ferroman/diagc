@@ -181,7 +181,7 @@ function Inner(props: DiagramViewProps) {
     ignoreSavedPositions: props.ignoreSavedPositions,
     viewPositions: moves.viewPositions,
   });
-  const frames = useMoveFrames(compiled, viewLayout.arrangedGeometry, viewLayout.containerShifts);
+  const frames = useMoveFrames(compiled, viewLayout.arrangedGeometry, viewLayout.containerShifts, viewLayout.viewShift);
   useRootFit({ pendingRootFitRef: nav.pendingRootFitRef, compiled, layout: viewLayout, reactFlow });
   useRevealOnUnfold({
     pendingRevealRef,
@@ -272,6 +272,7 @@ function Inner(props: DiagramViewProps) {
     wrapperRef,
     strokesRef: ink.strokesRef,
     legendReserveRef: legend.legendReserveRef,
+    viewShiftRef: frames.viewShiftRef,
   });
   const edges = useFlowEdges({ props, editing, edit, notation, preset, compiled, layout: viewLayout, moves });
 
@@ -420,6 +421,7 @@ function Inner(props: DiagramViewProps) {
             <CanvasOverlays
               model={props.model}
               plane={props.plane}
+              drillRoot={drillRoot}
               overlay={profile.canvasOverlay}
               placed={viewLayout.placedGeometry !== null}
               flowDirection={viewLayout.flowDirection}

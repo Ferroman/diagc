@@ -234,6 +234,7 @@ export {
   rolesOf,
   planGraph,
   planSubtree,
+  planSubtreeRange,
   type PlanRole,
   type PlanSpan,
   type PlanRoles,
