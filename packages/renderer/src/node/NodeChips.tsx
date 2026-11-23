@@ -72,7 +72,7 @@ export function NodeChips({
           ⤢
         </button>
       )}
-      {isContainer && !isCldGroup && <FoldChip id={id} data={data} />}
+      {isContainer && !isCldGroup && data.neverFolds !== true && <FoldChip id={id} data={data} />}
       {isCldGroup && <FoldChip id={id} data={data} group />}
     </span>
   );

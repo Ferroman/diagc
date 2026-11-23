@@ -44,6 +44,7 @@ export function BoxBody(props: BodyProps) {
           : { ...boxPaint(style.shape, look.accent), ...hitStyle }
       }
       data-type={data.typeId}
+      data-label-side={data.labelSide}
       {...hitAttrs}
       {...dropTargetAttrs(data)}
       {...ghost.title}

@@ -46,7 +46,7 @@ import {
 import type { IconRegistry } from '@diagc/icons';
 import type { AnnotationCounts } from '../notes/comment-badge';
 import type { EdgeRouting } from './useViewLayout';
-import type { NodeChip } from '../notations';
+import type { LabelSide, NodeChip } from '../notations';
 import type { KindStyle, Registry, TypeStyle } from '../registry';
 import type { EdgeLook, StylePreset } from '../sketch/stylePresets';
 import { nodeHue, type TypeHues } from './type-hues';
@@ -80,6 +80,12 @@ export interface NodeDataContext {
   onOpenLink?: (link: string) => void;
   onToggleExpand?: (id: string, next: 'expanded' | 'collapsed') => void;
   onEnterNode?: (id: string) => void;
+  /** the notation's outside-label sides per node id (profile.node.labelSides);
+   * absent = every name inside its box */
+  labelSides?: ReadonlyMap<string, LabelSide>;
+  /** a container the notation never folds (useNotation's isAlwaysExpanded):
+   * it gets no fold or enter chip, since the view would refuse either */
+  isAlwaysExpanded?: (id: string) => boolean;
   editing: boolean;
   /** the node id currently in in-place rename (undefined = no label edit) */
   labelEditingId?: string;
@@ -241,8 +247,7 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     ...(n.node.type === SM_STATE_TYPE ? { behaviors: behaviorLines(n.node), composite: n.state !== 'leaf' } : {}),
     ...(n.node.type === SM_ZONE_TYPE && zoneNoteOf(n.node) !== undefined ? { zoneNote: zoneNoteOf(n.node) } : {}),
   };
-  const separator = ctx.regionSeparators?.get(n.id);
-  if (separator !== undefined) data.regionSeparator = separator;
+  bindNotationMarks(data, n, ctx);
   if (ctx.labelEditingId === n.id) bindLabelEdit(data, n, ctx);
   // an image or a shape's mask is fetched from the asset or library folder
   if (n.node.image !== undefined || n.node.shape !== undefined) {
@@ -252,6 +257,22 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
   if (n.node.link !== undefined) data.onOpenLink = ctx.onOpenLink;
   if (ctx.editing) bindNodeEdits(data, n, ctx);
   return data;
+}
+
+/** What the notation decided about this node's frame: the dashed edge a
+ * stacked region shares, a leaf's name drawn beside it (an open container
+ * titles its band, whatever its width), and a container pinned open — which
+ * offers neither a fold nor an enter, since the view would refuse both. */
+function bindNotationMarks(data: DiagramNodeData, n: ViewNode, ctx: NodeDataContext): void {
+  const separator = ctx.regionSeparators?.get(n.id);
+  if (separator !== undefined) data.regionSeparator = separator;
+  if (n.state === 'leaf') {
+    const labelSide = ctx.labelSides?.get(n.id);
+    if (labelSide !== undefined) data.labelSide = labelSide;
+  } else if (ctx.isAlwaysExpanded?.(n.id) === true) {
+    data.neverFolds = true;
+    data.onEnterNode = undefined;
+  }
 }
 
 /** The in-place label editor's two commits, bound to this node: each closes
@@ -474,6 +495,8 @@ const NODE_CTX_FIELDS = [
   'nodeChips',
   'resizable',
   'regionSeparators',
+  'isAlwaysExpanded',
+  'labelSides',
 ] as const;
 const _nodeCtxFields: SameKeys<keyof NodeDataContext, (typeof NODE_CTX_FIELDS)[number]> = true;
 void _nodeCtxFields;

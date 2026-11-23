@@ -13,7 +13,7 @@ import type { IconRegistry } from '@diagc/icons';
 import type { Registry, TypeStyle } from '../registry';
 import type { AnnotationCounts } from '../notes/comment-badge';
 import { LoopHighlightContext } from '../loops/loop-highlight';
-import { notationProfile, type NodeChip } from '../notations';
+import { notationProfile, type LabelSide, type NodeChip } from '../notations';
 import type { StylePreset } from '../sketch/stylePresets';
 import type { EditingApi } from '../canvas/view-types';
 import type { RegionSeparator } from '../layout/state-machine-layout';
@@ -84,6 +84,12 @@ export interface DiagramNodeData {
   onRichCommit?: (runs: TextRun[] | null) => void;
   /** enter this container — drill into it as its own diagram (nested zoom) */
   onEnterNode?: (id: string) => void;
+  /** a container the notation pins open (a plan zone, an activity frame): no
+   * fold chip, since a fold would be undone by the pin before it drew */
+  neverFolds?: boolean;
+  /** the name is drawn beside the box, on this side, not in it: the box is
+   * too narrow for it and its width means something (a plan's short bar) */
+  labelSide?: LabelSide;
   /** the node's name is being edited in place (double-click in edit mode) */
   labelEditing?: boolean;
   /** commit the in-place edit; null = cancelled */
