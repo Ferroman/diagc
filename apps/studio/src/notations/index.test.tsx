@@ -2,7 +2,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { BUILTIN_NOTATIONS, TM_FLOW_KIND, model, type DiagramModel } from '@diagc/core/internal';
-import { connectKind, editsCanvas, notationLabel, studioNotation, STUDIO_NOTATIONS } from './index';
+import { connectKind, notationLabel, studioNotation, STUDIO_NOTATIONS } from './index';
 import type { NotationDockContext } from './types';
 
 const empty: DiagramModel = model('d').toJSON();
@@ -31,7 +31,7 @@ describe('STUDIO_NOTATIONS', () => {
       'second-order': ['dock', 'label', 'quickAdd'],
       fishbone: ['dock', 'label', 'quickAdd'],
       'threat-model': ['connectKind', 'dock', 'label', 'quickAdd'],
-      plan: ['datesFromDropPoint', 'dock', 'drilledViewOnly', 'gestures', 'label', 'planSection', 'quickAdd'],
+      plan: ['datesFromDropPoint', 'dock', 'gestures', 'label', 'planSection', 'quickAdd'],
       deployment: [],
       'state-machine': ['connectKind', 'dock', 'label', 'quickAdd'],
     });
@@ -115,14 +115,3 @@ describe('connectKind', () => {
   });
 });
 
-describe('editsCanvas', () => {
-  // Breaks if an opened plan zone takes edits before its gestures know the
-  // zone is open: a resize there wrote dates counted from the wrong day.
-  it('keeps an opened plan zone view-only in edit mode, and edits everywhere else', () => {
-    const plan = studioNotation('plan');
-    expect(editsCanvas(plan, true, true)).toBe(false);
-    expect(editsCanvas(plan, true, false)).toBe(true);
-    expect(editsCanvas(studioNotation(undefined), true, true)).toBe(true);
-    expect(editsCanvas(plan, false, false)).toBe(false);
-  });
-});

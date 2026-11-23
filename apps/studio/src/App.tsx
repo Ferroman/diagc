@@ -13,7 +13,7 @@ import { useViewArrangement } from './layout/useViewArrangement';
 import { useDiagramView } from './diagrams/useDiagramView';
 import { useCausalLoopAnalysis } from './notations/causal-loop/useCausalLoopAnalysis';
 import { EditorToolbar } from './canvas-editing/EditorToolbar';
-import { editsCanvas, studioNotation } from './notations';
+import { studioNotation } from './notations';
 import { useDockLayout } from './dock/useDockLayout';
 import { useLibrary } from './library/useLibrary';
 import { HotkeysContext, keyName } from './hotkeys/HotkeysContext';
@@ -278,8 +278,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
               <StudioCanvas
                 model={model}
                 today={today}
-                // an opened plan zone is view-only until its gestures know it is open
-                editing={editsCanvas(studioProfile, editing, enteredPath.length > 0)}
+                editing={editing}
                 nav={nav}
                 selection={canvasSelection}
                 deepLink={dl}
