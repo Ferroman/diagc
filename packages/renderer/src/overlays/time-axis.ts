@@ -44,10 +44,10 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
 /** a week label needs room for three characters at the band's font */
 const MIN_LABELLED_WEEK = 3;
-/** days a month label (`Dec 2026`, 11px) needs: a sliver of a month at the
+/** days a month label (`Dec 2026`, 11px, ~58px with its offset) needs: a sliver of a month at the
  * extent's edge — an opened zone starting on the 7th — would print its name
  * over the next month's */
-const MIN_LABELLED_MONTH = 4;
+const MIN_LABELLED_MONTH = 3;
 
 /** 0 = Sunday … 6 = Saturday; 1970-01-01 was a Thursday */
 export const weekday = (day: number): number => (((day + 4) % 7) + 7) % 7;

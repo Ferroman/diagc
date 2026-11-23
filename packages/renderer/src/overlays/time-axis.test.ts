@@ -33,6 +33,9 @@ describe('timeAxis', () => {
     const a = timeAxis({ start: d('2026-12-07'), end: d('2027-01-14') }, origin);
     expect(a.months[0]).toMatchObject({ width: DAY, label: '' });
     expect(a.months[1]!.label).toBe('Dec 2026');
+    // three days hold the name: 5 Jan opens the extent on Mon 29 Dec
+    const b = timeAxis({ start: d('2026-01-05'), end: d('2026-01-30') }, origin);
+    expect(b.months[0]).toMatchObject({ width: 3 * DAY, label: 'Dec 2025' });
   });
 
   it('draws a week of margin either side, in plan x', () => {
