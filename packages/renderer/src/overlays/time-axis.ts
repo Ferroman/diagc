@@ -44,6 +44,10 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
 /** a week label needs room for three characters at the band's font */
 const MIN_LABELLED_WEEK = 3;
+/** days a month label (`Dec 2026`, 11px) needs: a sliver of a month at the
+ * extent's edge — an opened zone starting on the 7th — would print its name
+ * over the next month's */
+const MIN_LABELLED_MONTH = 4;
 
 /** 0 = Sunday … 6 = Saturday; 1970-01-01 was a Thursday */
 export const weekday = (day: number): number => (((day + 4) % 7) + 7) % 7;
@@ -74,7 +78,8 @@ export function timeAxis(range: PlanSpan, origin: number): TimeAxis {
   const months: AxisBand[] = [];
   for (let d = from; d < to; d = firstOfNextMonth(d)) {
     const end = Math.min(firstOfNextMonth(d), to);
-    months.push({ x: x(d), width: x(end) - x(d), label: `${MONTHS[monthOf(d)]!} ${String(yearOf(d))}` });
+    const label = end - d >= MIN_LABELLED_MONTH ? `${MONTHS[monthOf(d)]!} ${String(yearOf(d))}` : '';
+    months.push({ x: x(d), width: x(end) - x(d), label });
   }
   const weeks: AxisBand[] = [];
   for (let d = from; d < to;) {

@@ -75,9 +75,11 @@ export function TimeAxisOverlay({ model, plane, today, root }: TimeAxisOverlayPr
         {axis.months.map((m) => (
           <g key={m.x}>
             <line className="dg-time-axis-tick" x1={m.x} y1={-HEADER_H} x2={m.x} y2={0} />
-            <text className="dg-time-axis-month" x={m.x + 6} y={-HEADER_H + MONTH_H / 2} dominantBaseline="middle">
-              {m.label}
-            </text>
+            {m.label !== '' && (
+              <text className="dg-time-axis-month" x={m.x + 6} y={-HEADER_H + MONTH_H / 2} dominantBaseline="middle">
+                {m.label}
+              </text>
+            )}
           </g>
         ))}
         {axis.weeks.map((w) => (

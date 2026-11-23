@@ -28,6 +28,13 @@ describe('weekday / isoWeek', () => {
 describe('timeAxis', () => {
   const origin = d('2026-01-01');
   const range = { start: d('2026-01-20'), end: d('2026-02-10') };
+  it('leaves a month too narrow for its name unlabelled', () => {
+    // 7 Dec – 14 Jan: the extent opens on Mon 30 Nov, one day of November
+    const a = timeAxis({ start: d('2026-12-07'), end: d('2027-01-14') }, origin);
+    expect(a.months[0]).toMatchObject({ width: DAY, label: '' });
+    expect(a.months[1]!.label).toBe('Dec 2026');
+  });
+
   it('draws a week of margin either side, in plan x', () => {
     const a = timeAxis(range, origin);
     expect(a.x0).toBe(planX(d('2026-01-13'), origin));
