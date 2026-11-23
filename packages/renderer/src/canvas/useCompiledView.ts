@@ -62,6 +62,13 @@ export function useCompiledView(input: CompiledViewInput): CompiledViewState {
     [profile, props.pins, props.model, typeRegistry],
   );
 
+  // An opened container may bring in nodes from outside it as themselves (a
+  // plan's people and teams, NotationProfile.drillCarry).
+  const carry = useMemo(
+    () => (drillRoot === undefined ? undefined : profile.drillCarry?.(props.model, props.plane, drillRoot)),
+    [drillRoot, profile, props.model, props.plane],
+  );
+
   const compiled = useMemo(() => {
     const raw = compileView(props.model, {
       // drilled → `root` drives visibility; otherwise `focus` (pins + the plane
@@ -71,6 +78,7 @@ export function useCompiledView(input: CompiledViewInput): CompiledViewState {
       activeLayers: props.activeLayers,
       plane: props.plane,
       root: drillRoot,
+      ...(carry !== undefined && carry.length > 0 ? { carry: [...carry] } : {}),
     });
     // A notation may keep some relation kinds off the canvas (plan roles become
     // chips). Only the DRAWN set is filtered: layoutEdges keep every relation,
@@ -78,7 +86,7 @@ export function useCompiledView(input: CompiledViewInput): CompiledViewState {
     const hidden = profile.edge?.hidden;
     if (hidden === undefined || !raw.edges.some((e) => hidden(e.kind))) return raw;
     return { ...raw, edges: raw.edges.filter((e) => !hidden(e.kind)) };
-  }, [props.model, props.plane, focus, drillRoot, effectivePins, props.activeLayers, profile]);
+  }, [props.model, props.plane, focus, drillRoot, carry, effectivePins, props.activeLayers, profile]);
   // Render-phase ref, the strokesRef pattern: useLayoutApi's snapshotPositions
   // needs compiled.externals to drop stub ids, but that effect only re-runs on
   // [layoutApiRef, reactFlow] — so it reads `compiled` through a ref kept

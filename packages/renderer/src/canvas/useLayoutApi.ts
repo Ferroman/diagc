@@ -1,11 +1,12 @@
 import { useEffect, type MutableRefObject } from 'react';
 import { getViewportForBounds, type Node, type ReactFlowInstance } from '@xyflow/react';
-import type { CompiledView, Stroke } from '@diagc/core/internal';
+import type { CompiledView, Point, Stroke } from '@diagc/core/internal';
 import { strokesBounds } from '../drawings/drawings';
 import type { NodeGeometry } from '../layout/layout';
 import { isNoteId } from '../notes/derive-note-nodes';
 import { overhangBounds, unionBounds } from './content-bounds';
 import { captureCanvas, exportFrame } from './export-image';
+import { toSaved } from './saved-frame';
 import type { LayoutApi } from './view-types';
 
 // Zoom limits, shared by DiagramView's <ReactFlow> element and the
@@ -33,6 +34,8 @@ export interface LayoutApiInput {
   strokesRef: MutableRefObject<readonly Stroke[]>;
   /** the layout's view-only y shifts (LayoutResult.viewShift), taken back off a snapshot */
   viewShiftRef: MutableRefObject<ReadonlyMap<string, number>>;
+  /** the layout's drill frames (LayoutResult.savedFrame), taken back off a snapshot */
+  savedFrameRef: MutableRefObject<ReadonlyMap<string, Point>>;
   legendReserveRef: MutableRefObject<{ side: 'top' | 'right' | 'bottom' | 'left'; px: number } | null>;
 }
 
@@ -49,6 +52,7 @@ export function useLayoutApi(input: LayoutApiInput): void {
     strokesRef,
     legendReserveRef,
     viewShiftRef,
+    savedFrameRef,
   } = input;
   useEffect(() => {
     const ref = layoutApiRef;
@@ -61,13 +65,14 @@ export function useLayoutApi(input: LayoutApiInput): void {
       // go the same way: a note's place is an offset in `layout.notes`, so a
       // freeze that wrote its `note:` id into `layout.planes` would save a
       // phantom box there for good. A view shift (a plan zone drawn higher
-      // because a fold above it gave its height back) is taken back off: what
-      // is saved has to hold once the fold opens again.
+      // because a fold above it gave its height back) and a drill frame (an
+      // opened zone's child, drawn at the zone's place) are taken back off:
+      // what is saved has to hold in the whole view, every fold open.
       snapshotPositions: () =>
         Object.fromEntries(
           rfNodesRef.current
             .filter((n) => !(compiledRef.current.externals?.has(n.id) ?? false) && !isNoteId(n.id))
-            .map((n) => [n.id, { x: n.position.x, y: n.position.y - (viewShiftRef.current.get(n.id) ?? 0) }]),
+            .map((n) => [n.id, toSaved({ savedFrameRef, viewShiftRef }, n.id, n.position)]),
         ),
       autoPositions: () =>
         geometryRef.current === null

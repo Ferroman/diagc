@@ -44,6 +44,8 @@ export interface NotationLayoutInput {
   /** the plane's saved, parent-relative positions, for an arrangement that
    * reads them (see NotationProfile.layoutReadsPositions) */
   positions?: Record<string, Point>;
+  /** the drilled container (ViewportState.root): the view is its interior */
+  root?: string;
 }
 
 export interface NodeGeometry {
@@ -94,6 +96,12 @@ export interface LayoutResult {
    * saved — a committed move takes it back off (useCommitMoves), so unfolding
    * puts them back where they were. */
   viewShift?: ReadonlyMap<string, number>;
+  /** node id → the origin its saved position is relative to, where the view
+   * draws it away from the parent it is saved in: an opened plan zone's
+   * children, laid out as in the zone and moved to the zone's place. Drawn
+   * positions already include it; a committed move, a snapshot and a resize
+   * report take it back off (canvas/saved-frame.ts). */
+  savedFrame?: ReadonlyMap<string, Point>;
 }
 
 const elk = new ELK();

@@ -22,6 +22,11 @@ export interface ViewportState {
    * everything outside its subtree disappears. Relations crossing the boundary are
    * re-pointed to an external stub node (see ViewNode.external). */
   root?: string;
+  /** with `root`: nodes outside its subtree carried into the drilled view as
+   * themselves rather than as stubs — a plan's people and teams, who belong to
+   * no zone but hold roles on the ones in view. A carried node keeps only its
+   * relations into the subtree (see scopeToRoot). */
+  carry?: readonly string[];
 }
 
 /** A box's width and height in the drawn view, in flow pixels. */

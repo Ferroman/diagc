@@ -72,7 +72,7 @@ export function compileView(model: DiagramModel, viewport: ViewportState): Compi
   // stubs), then run the standard pipeline over it so LOD, promotion and edge
   // aggregation all work unchanged.
   if (viewport.root !== undefined && hierarchy.childrenOf.has(viewport.root)) {
-    const scoped = scopeToRoot(model, hierarchy, viewport.root);
+    const scoped = scopeToRoot(model, hierarchy, viewport.root, new Set(viewport.carry ?? []));
     const sh = buildHierarchy(scoped.model, undefined, activeLayerSet);
     const lod = computeLod({ hierarchy: sh, focus: viewport.focus, pins: viewport.pins });
     const tree = buildViewTree(scoped.model, sh, lod);

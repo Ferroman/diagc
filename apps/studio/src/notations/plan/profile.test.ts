@@ -63,3 +63,28 @@ describe("the plan's gestures", () => {
     expect(gestures.resize!({ ...resize, id: 'gone' })).toBe('generic');
   });
 });
+
+// Inside an opened zone the canvas reports what it reports in the whole plan —
+// a position relative to the zone's interior (renderer: canvas/saved-frame.ts)
+// — so the gestures need nothing of their own; pinned here two levels deep.
+describe('the plan gestures, given what an opened zone reports', () => {
+  function deep(): DiagramModel {
+    const m = model('deep');
+    m.plan()
+      .zone('a', { start: '2026-01-05', end: '2026-01-30' })
+      .zone('a1', { start: '2026-01-12', end: '2026-01-23' })
+      .zone('a1x', { start: '2026-01-12', end: '2026-01-16' });
+    return m.toJSON();
+  }
+  it("a left-handle resize of a1x one day in moves its start a day, counted from a1's start", () => {
+    const command = gestures.resize!({
+      model: deep(),
+      plane: 'plan',
+      id: 'a1x',
+      w: 4 * DAY,
+      h: 40,
+      pos: { x: DAY, y: 0 },
+    });
+    expect(command).toEqual({ type: 'set-plan-dates', id: 'a1x', dates: { start: '2026-01-13' } });
+  });
+});

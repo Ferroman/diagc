@@ -11,9 +11,12 @@ export interface MoveFrames {
   containerShiftsRef: MutableRefObject<ViewLayout['containerShifts']>;
   /** the layout's view-only y shifts, taken back off a committed position */
   viewShiftRef: MutableRefObject<ViewLayout['viewShift']>;
+  /** the layout's drill frames (LayoutResult.savedFrame), taken back off too */
+  savedFrameRef: MutableRefObject<ViewLayout['savedFrame']>;
 }
 
 const NO_VIEW_SHIFT: ViewLayout['viewShift'] = new Map();
+const NO_FRAMES: ViewLayout['savedFrame'] = new Map();
 
 /**
  * The frames a move is committed against, as render-phase refs: commitMoves
@@ -22,10 +25,10 @@ const NO_VIEW_SHIFT: ViewLayout['viewShift'] = new Map();
  */
 export function useMoveFrames(
   compiled: CompiledView,
-  arrangedGeometry: ReadonlyMap<string, NodeGeometry> | null,
-  containerShifts: ViewLayout['containerShifts'],
-  viewShift: ViewLayout['viewShift'] = NO_VIEW_SHIFT,
+  layout: Pick<ViewLayout, 'arrangedGeometry' | 'containerShifts'> &
+    Partial<Pick<ViewLayout, 'viewShift' | 'savedFrame'>>,
 ): MoveFrames {
+  const { arrangedGeometry, containerShifts, viewShift = NO_VIEW_SHIFT, savedFrame = NO_FRAMES } = layout;
   const arrangedRef = useRef(arrangedGeometry);
   arrangedRef.current = arrangedGeometry;
 
@@ -56,5 +59,7 @@ export function useMoveFrames(
   containerShiftsRef.current = containerShifts;
   const viewShiftRef = useRef(viewShift);
   viewShiftRef.current = viewShift;
-  return { arrangedRef, containerBasesRef, containerShiftsRef, viewShiftRef };
+  const savedFrameRef = useRef(savedFrame);
+  savedFrameRef.current = savedFrame;
+  return { arrangedRef, containerBasesRef, containerShiftsRef, viewShiftRef, savedFrameRef };
 }

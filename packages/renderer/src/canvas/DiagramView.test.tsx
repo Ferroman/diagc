@@ -2635,6 +2635,58 @@ describe('plan notation', () => {
     expect(deltas.dep.dx).toBeCloseTo(NUDGE_STEP);
     expect(deltas.dep.dy).toBeCloseTo(0);
   });
+  describe('inside a zone opened two levels deep', () => {
+    /** a ⊃ a1 ⊃ { row a1x, free-form box saved at (20, TITLE_H + 10) }; open a, then a1 */
+    function deep() {
+      const m = model('deep');
+      const p = m.plan();
+      const a1 = p
+        .zone('a', { start: '2026-01-05', end: '2026-01-30' })
+        .zone('a1', { start: '2026-01-12', end: '2026-01-23' });
+      a1.zone('a1x', { start: '2026-01-12', end: '2026-01-16' });
+      a1.contains(m.node('box', { name: 'Box' }));
+      return m.toJSON();
+    }
+    const layout = {
+      version: 1 as const,
+      planes: { plan: { box: { x: 20, y: PLAN_LAYOUT.TITLE_H + 10 } } },
+    };
+    async function nudge(id: string) {
+      const onNodesMoved = vi.fn();
+      const { container } = render(
+        <DiagramView
+          model={deep()}
+          plane="plan"
+          notation="plan"
+          mode="edit"
+          edit={{ onNodesMoved }}
+          layout={layout}
+          enteredPath={['a', 'a1']}
+        />,
+      );
+      const el = await waitFor(() => {
+        const n = container.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
+        if (n === null) throw new Error('not yet');
+        return n;
+      });
+      fireEvent.click(el);
+      await waitFor(() => expect(el.classList.contains('selected')).toBe(true));
+      fireEvent.keyDown(el, { key: 'ArrowRight' });
+      await waitFor(() => expect(onNodesMoved).toHaveBeenCalled());
+      return onNodesMoved.mock.calls[0]! as [Record<string, { x: number; y: number }>, Record<string, { dx: number }>];
+    }
+
+    it('a moved free-form box saves its place in a1, as in the whole plan', async () => {
+      const [positions] = await nudge('box');
+      expect(positions.box!.x).toBeCloseTo(20 + NUDGE_STEP);
+      expect(positions.box!.y).toBeCloseTo(PLAN_LAYOUT.TITLE_H + 10);
+    });
+
+    it('a moved row reports the drawn displacement, which is its days', async () => {
+      const [, deltas] = await nudge('a1x');
+      expect(deltas.a1x!.dx).toBeCloseTo(NUDGE_STEP);
+    });
+  });
   it('edit mode: a nested zone, an event and a roster person all stay draggable though the layout fixed them', async () => {
     // A person used to be excluded here (the roster never moved), but
     // drop-to-assign needs an actor's drag too now — it always snaps back

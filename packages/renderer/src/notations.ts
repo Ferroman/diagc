@@ -1,4 +1,5 @@
 import {
+  buildHierarchy,
   CAUSAL_LOOP_NOTATION,
   consequenceOrders,
   DEPLOY_NOTATION,
@@ -16,6 +17,7 @@ import {
   isPlanActor,
   isPlanEvent,
   isPlanRole,
+  planSubtree,
   isPlanZone,
   rolesOf,
   TM_NOTATION,
@@ -90,6 +92,10 @@ export interface NotationProfile {
    * below) — selecting an actor would otherwise dim every zone it holds a
    * role on, the opposite of what a reader wants. */
   related?: (model: DiagramModel, plane: string | undefined, id: string) => readonly string[];
+  /** nodes outside a drilled container carried into its view as themselves
+   * (ViewportState.carry): a plan's people and teams belong to no zone, but an
+   * opened zone without the ones holding its roles is a schedule nobody runs */
+  drillCarry?: (model: DiagramModel, plane: string | undefined, root: string) => readonly string[];
   /** the canvas offers an element's first threat: the empty threat badge on a
    * node or a flow, and a note's add row. Elsewhere a threat is added in the
    * panel; a badge on every box of a C4 diagram would be noise. */
@@ -357,6 +363,25 @@ function planRelated(model: DiagramModel, plane: string | undefined, id: string)
   return [];
 }
 
+/** What an opened zone carries in (`drillCarry`), in the roster's order: the
+ * actors holding a role on it or on any zone inside it, and the actors with
+ * no role anywhere yet. Those are the pool a zone is staffed from, and a
+ * person or team just added (Add person, `+` beside an actor) is one of them:
+ * left out, it would be created off screen. Someone busy only elsewhere stays
+ * out, which is the noise an opened zone is for removing. */
+function planDrillCarry(model: DiagramModel, plane: string | undefined, root: string): readonly string[] {
+  const g = planGraphCached(model, plane);
+  const zones = new Set(planSubtree(g, root));
+  const roles = model.relations.filter((r) => isPlanRole(r.kind));
+  const holders = new Set(roles.filter((r) => zones.has(r.to)).map((r) => r.from));
+  const busy = new Set(roles.map((r) => r.from));
+  // the pool is not in `g.actors` (a role holder list); the whole plan's
+  // roster draws it after them, from the plane's own nodes, and so does this
+  const onPlane = buildHierarchy(model, plane).childrenOf;
+  const pool = model.nodes.filter((n) => isPlanActor(n) && !busy.has(n.id) && onPlane.has(n.id)).map((n) => n.id);
+  return [...g.actors.filter((id) => holders.has(id)), ...pool];
+}
+
 const PLAN: NotationProfile = {
   id: PLAN_NOTATION,
   className: 'dg-notation-plan',
@@ -365,6 +390,7 @@ const PLAN: NotationProfile = {
   // and clamps them itself, so it must re-run when a drag changes them.
   layoutReadsPositions: true,
   related: planRelated,
+  drillCarry: planDrillCarry,
   node: {
     restsOpen: (n) => n.type === PLAN_ZONE_TYPE,
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),

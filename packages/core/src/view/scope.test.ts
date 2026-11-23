@@ -141,3 +141,39 @@ describe('compileView drill root (isolated view + external stubs)', () => {
     }
   });
 });
+
+describe('compileView drill root: carried nodes', () => {
+  // `ops` lives outside every frame and relates to a node inside (order-ctrl),
+  // to one outside (the db) and to the drill root itself (service)
+  function withOps(): DiagramModel {
+    const json = m();
+    json.nodes.push({ id: 'ops', name: 'Ops', type: 'person' });
+    json.relations.push(
+      { id: 'r-ops-oc', from: 'ops', to: 'order-ctrl', kind: 'owns' },
+      { id: 'r-ops-db', from: 'ops', to: 'db', kind: 'owns' },
+      { id: 'r-ops-svc', from: 'ops', to: 'service', kind: 'owns' },
+    );
+    return json;
+  }
+
+  it('a carried node is kept as itself, with its relations into the frame', () => {
+    const v = compileView(withOps(), { root: 'service', carry: ['ops'] });
+    expect(v.roots.map((r) => r.id)).toContain('ops');
+    expect(v.roots.some((r) => r.id === `${EXTERNAL_STUB_PREFIX}ops`)).toBe(false);
+    expect(v.layoutEdges.some((e) => e.from === 'ops' && e.to === 'order-ctrl')).toBe(true);
+  });
+
+  it('a carried node keeps only its relations into the frame: no stub for what it touches outside', () => {
+    const v = compileView(withOps(), { root: 'service', carry: ['ops'] });
+    const fromOps = v.layoutEdges.filter((e) => e.from === 'ops');
+    expect(fromOps.map((e) => e.to)).toEqual(['order-ctrl']);
+    // the db stub still comes from order-ctrl's own reads, not from ops
+    expect(v.layoutEdges.filter((e) => e.to === `${EXTERNAL_STUB_PREFIX}db`).every((e) => e.from !== 'ops')).toBe(true);
+  });
+
+  it('without carry, the same node is a stub, as ever', () => {
+    const v = compileView(withOps(), { root: 'service' });
+    expect(v.roots.map((r) => r.id)).toContain(`${EXTERNAL_STUB_PREFIX}ops`);
+    expect(v.roots.map((r) => r.id)).not.toContain('ops');
+  });
+});
