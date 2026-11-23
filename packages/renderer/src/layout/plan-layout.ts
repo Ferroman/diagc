@@ -6,15 +6,20 @@ import {
   isPlanEvent,
   isPlanZone,
   PLAN_NOTATION,
+  PLAN_ROLES,
   planGraph,
+  rolesOf,
   spanOf,
   type BoxSize,
   type DiagramModel,
   type DiagramNode,
   type PlanGraph,
+  type PlanRole,
   type Point,
   type ViewNode,
 } from '@diagc/core/internal';
+import type { LabelSide, NodeChip } from '../notations';
+import { textWidth, wrapText } from './box-size';
 import type { LayoutResult, NodeGeometry, NotationLayoutInput } from './layout';
 
 /** The schedule's fixed geometry. `DAY` is the scale (px per calendar day);
@@ -32,6 +37,31 @@ export const PLAN_LAYOUT = {
   /** month band 22 + week band 22, above y = 0 */
   HEADER_H: 44,
   ROSTER_GAP: 24,
+} as const;
+
+/** What a zone's text is estimated with, read off styles.css: a zone with rows
+ * titles itself in `.dg-group-header` (600 11px, padded 8px 10px; the plan's
+ * rule wraps it onto 14px lines, chips onto a line of their own 4px below);
+ * a childless bar is a `.dg-node` (12px, its `.dg-label` 600, padded 10px a
+ * side); a role chip is a `.dg-badge` (10px, 6px a side and a 1px border, 4px
+ * apart, the row 8px off the name). `BOLD` widens the regular-weight advances
+ * box-size.ts measures to the 600 weight both names are set in; `BORDER` is
+ * the bar's 3px left edge and 1.5px right one. */
+const ZONE_TEXT = {
+  TITLE_PX: 11,
+  LABEL_PX: 12,
+  CHIP_PX: 10,
+  BOLD: 1.08,
+  PAD_X: 10,
+  PAD_Y: 8,
+  BORDER: 4.5,
+  LINE: 14,
+  CHIP_H: 16,
+  CHIP_SIDES: 14,
+  CHIP_GAP: 4,
+  CHIPS_OFF: 8,
+  /** the room between a bar and a name drawn beside it (styles.css) */
+  OUTSIDE_GAP: 6,
 } as const;
 
 /** cards per roster row when the plan has no dated range to measure a width
@@ -60,6 +90,12 @@ export function planGraphCached(model: DiagramModel, plane: string | undefined):
  * plan grows into an earlier year. */
 export const planX = (day: number, origin: number): number => (day - origin) * PLAN_LAYOUT.DAY;
 
+/** x of the chart's first day: where the roster and the strays line up. The
+ * origin is 1 January, so a plan opening in November would otherwise leave
+ * them most of a year's canvas to the left of the bars. 0 with nothing dated. */
+const chartLeft = (run: PlanRun): number =>
+  run.graph.range !== undefined ? planX(run.graph.range.start, run.origin) : 0;
+
 /** One plan arrangement under way: what it reads, and the maps every step fills. */
 interface PlanRun {
   graph: PlanGraph;
@@ -70,6 +106,8 @@ interface PlanRun {
   positions: Record<string, Point> | undefined;
   sizeHints: ReadonlyMap<string, BoxSize> | undefined;
   byId: ReadonlyMap<string, DiagramNode>;
+  /** the role chips per zone, which share a zone's title line */
+  chips: ReadonlyMap<string, NodeChip[]>;
   geometry: Map<string, NodeGeometry>;
   fixed: Set<string>;
   lockedX: Set<string>;
@@ -90,6 +128,7 @@ function planRun({ view, model, plane, sizeHints, positions }: NotationLayoutInp
     positions,
     sizeHints,
     byId: new Map(model.nodes.map((n) => [n.id, n] as const)),
+    chips: planChips(model, plane),
     geometry: new Map(),
     fixed: new Set(),
     lockedX: new Set(),
@@ -97,6 +136,125 @@ function planRun({ view, model, plane, sizeHints, positions }: NotationLayoutInp
 }
 
 const hint = (run: PlanRun, id: string): BoxSize => run.sizeHints?.get(id) ?? LEAF_SIZE;
+
+/** short/long labels per role — the chip's `O`/`E`/`C` initial and the role
+ * chip menu's item text (see RoleChipMenu). */
+export const ROLE_LABEL: Record<PlanRole, { initial: string; title: string }> = {
+  owns: { initial: 'O', title: 'Owner' },
+  executes: { initial: 'E', title: 'Executor' },
+  checks: { initial: 'C', title: 'Checker' },
+};
+
+/** Role chips per zone, in owns / executes / checks order: `O·Alice` (first
+ * word of the name), titled `Owner: Alice Ng`, in the actor's colour. Reads
+ * the relation's `from` node whatever its type — a person or a team, alike.
+ * The badge row draws them (the notation's `chips`); the layout measures
+ * them, since they share a line with the zone's name. */
+export function planChips(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, NodeChip[]> {
+  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  const out = new Map<string, NodeChip[]>();
+  for (const id of planGraphCached(model, plane).zones) {
+    const roles = rolesOf(model, id);
+    const chips: NodeChip[] = [];
+    for (const role of PLAN_ROLES) {
+      for (const actorId of roles[role]) {
+        const actor = byId.get(actorId);
+        if (actor === undefined) continue;
+        const first = actor.name.trim().split(/\s+/)[0] ?? actor.id;
+        chips.push({
+          role,
+          refId: actorId,
+          text: `${ROLE_LABEL[role].initial}·${first}`,
+          title: `${ROLE_LABEL[role].title}: ${actor.name}`,
+          color: actor.color,
+        });
+      }
+    }
+    if (chips.length > 0) out.set(id, chips);
+  }
+  return out;
+}
+
+/** the chip row's width, with its offset from the name; 0 without chips */
+function chipsWidth(chips: readonly NodeChip[] | undefined): number {
+  if (chips === undefined || chips.length === 0) return 0;
+  const { CHIP_PX, CHIP_SIDES, CHIP_GAP, CHIPS_OFF } = ZONE_TEXT;
+  const each = chips.reduce((w, c) => w + textWidth(c.text, CHIP_PX) + CHIP_SIDES, 0);
+  return CHIPS_OFF + each + CHIP_GAP * (chips.length - 1);
+}
+
+/** a name and its chips on one line, as a bar's row draws them */
+const nameRowWidth = (name: string, chips: readonly NodeChip[] | undefined): number =>
+  textWidth(name, ZONE_TEXT.LABEL_PX) * ZONE_TEXT.BOLD + chipsWidth(chips);
+
+/**
+ * How far down a zone with rows starts its first one: the title band. A name
+ * that fits beside its chips takes the usual TITLE_H; one that does not wraps
+ * (the header wraps, styles.css), with the chips on a line of their own below
+ * it — and a first row at the fixed TITLE_H would then be drawn over the
+ * title. A short zone with a long name is exactly the case: its width is its
+ * dates, not its text.
+ */
+function titleBand(name: string, chips: readonly NodeChip[] | undefined, width: number): number {
+  const { TITLE_PX, BOLD, PAD_X, PAD_Y, BORDER, LINE, CHIP_H, CHIP_GAP } = ZONE_TEXT;
+  const room = width - 2 * PAD_X - BORDER;
+  const chipW = chipsWidth(chips);
+  if (textWidth(name, TITLE_PX) * BOLD + chipW <= room) return PLAN_LAYOUT.TITLE_H;
+  const lines = wrapText(name, room, TITLE_PX * BOLD).length;
+  const text = lines * LINE + (chipW > 0 ? CHIP_GAP + CHIP_H : 0);
+  // TITLE_H is the padded one-line header plus the gap above the first row
+  const gap = PLAN_LAYOUT.TITLE_H - (2 * PAD_Y + CHIP_H);
+  return Math.max(PLAN_LAYOUT.TITLE_H, 2 * PAD_Y + text + gap);
+}
+
+const sidesCache = new WeakMap<DiagramModel, Map<string | undefined, ReadonlyMap<string, LabelSide>>>();
+
+/**
+ * The childless bars too short for their name, and the side each one's name is
+ * drawn on instead (the notation's `labelSides`). A bar's width is its dates —
+ * a one-day bar is DAY wide — so it never grows to fit its name the way a box
+ * would: a wider box would end on a later day than the plan says, and stick
+ * out of the zone it belongs to. The name goes beside the bar, as Gantt charts
+ * do: to the right, or to the left where the right would cross the wall of the
+ * zone the bar is in, and failing both wherever there is more room. A zone with
+ * rows is absent — its name titles its band (`titleBand`).
+ */
+export function planLabelSides(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, LabelSide> {
+  let byPlane = sidesCache.get(model);
+  if (byPlane === undefined) {
+    byPlane = new Map();
+    sidesCache.set(model, byPlane);
+  }
+  const cached = byPlane.get(plane);
+  if (cached !== undefined) return cached;
+  const { DAY } = PLAN_LAYOUT;
+  const { PAD_X, BORDER, OUTSIDE_GAP } = ZONE_TEXT;
+  const graph = planGraphCached(model, plane);
+  const chips = planChips(model, plane);
+  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  const sides = new Map<string, LabelSide>();
+  for (const id of graph.zones) {
+    const kids = graph.children.get(id);
+    if (kids !== undefined && kids.zones.length + kids.events.length + kids.others.length > 0) continue;
+    const node = byId.get(id)!;
+    const span = spanOf(node);
+    if (span === undefined) continue;
+    const row = nameRowWidth(node.name, chips.get(id));
+    if (row + 2 * PAD_X + BORDER <= (span.end - span.start + 1) * DAY) continue;
+    const parentId = graph.parent.get(id);
+    const parentSpan = parentId !== undefined ? spanOf(byId.get(parentId)!) : undefined;
+    if (parentSpan === undefined) {
+      sides.set(id, 'right');
+      continue;
+    }
+    const need = row + OUTSIDE_GAP + PAD_X;
+    const right = (parentSpan.end - span.end) * DAY;
+    const left = (span.start - parentSpan.start) * DAY;
+    sides.set(id, right >= need ? 'right' : left >= need ? 'left' : right >= left ? 'right' : 'left');
+  }
+  byPlane.set(plane, sides);
+  return sides;
+}
 const nodeOf = (run: PlanRun, id: string): DiagramNode => run.byId.get(id)!;
 
 /** Where a zone's bar begins. `spanOf` gives up on a reversed or malformed
@@ -122,7 +280,8 @@ function layZone(run: PlanRun, id: string): BoxSize {
   const others = kids.others.filter((c) => run.shown.has(c));
   const events = kids.events.filter((c) => run.shown.has(c));
   if (zones.length + others.length + events.length === 0) return { width, height: BAR_H };
-  let y = TITLE_H;
+  const band = titleBand(nodeOf(run, id).name, run.chips.get(id), width);
+  let y = band;
   for (const c of zones) {
     const size = layZone(run, c);
     geometry.set(c, { x: (startOf(run, c) - start) * DAY, y, ...size });
@@ -145,7 +304,7 @@ function layZone(run: PlanRun, id: string): BoxSize {
     }
     const size = hint(run, c);
     const cx = Math.min(Math.max(pos.x, 0), Math.max(0, width - size.width));
-    const cy = Math.max(pos.y, TITLE_H);
+    const cy = Math.max(pos.y, band);
     geometry.set(c, { x: cx, y: cy, ...size });
     fixed.add(c);
     posBottom = Math.max(posBottom ?? 0, cy + size.height);
@@ -180,7 +339,7 @@ function layZone(run: PlanRun, id: string): BoxSize {
   // `y` carries a trailing ROW_GAP after the last row; the bottom PAD
   // replaces it. A positioned "other" can stand lower than the flow (or be
   // the zone's only content) — the bar covers whichever bottom is greater.
-  const flowHeight = zones.length + flowed.length === 0 ? TITLE_H : y - ROW_GAP + PAD;
+  const flowHeight = zones.length + flowed.length === 0 ? band : y - ROW_GAP + PAD;
   const height = posBottom === undefined ? flowHeight : Math.max(flowHeight, posBottom + PAD);
   return { width, height };
 }
@@ -220,7 +379,8 @@ function placeRootEvents(run: PlanRun, roots: readonly string[]): void {
 /**
  * The roster: actors (people or teams) with roles first, then every other
  * actor root; a strip above the header, not a picture, so neither axis is
- * the overlay's. Cards run left to right from the origin and wrap into a
+ * the overlay's. Cards run left to right from the chart's first day (not
+ * the origin, which can be months earlier) and wrap into a
  * further row when the next one would cross the plan's width (an actor's
  * own date range has no bearing here, so the width the CHART draws is the
  * only ruler there is; with nothing dated yet, wrap by count instead). Rows
@@ -233,7 +393,9 @@ function placeRoster(run: PlanRun, roots: readonly string[]): void {
   const roster = [...run.graph.actors, ...roots.filter((id) => isPlanActor(nodeOf(run, id)))].filter(
     (id, i, all) => rootSet.has(id) && all.indexOf(id) === i,
   );
-  const rosterWidth = run.graph.range !== undefined ? planX(run.graph.range.end + 1, run.origin) : undefined;
+  const rosterWidth =
+    run.graph.range !== undefined ? (run.graph.range.end + 1 - run.graph.range.start) * PLAN_LAYOUT.DAY : undefined;
+  const left = chartLeft(run);
   const rosterRows: { id: string; size: BoxSize }[][] = [];
   let rosterRow: { id: string; size: BoxSize }[] = [];
   let rowRight = 0;
@@ -257,7 +419,7 @@ function placeRoster(run: PlanRun, roots: readonly string[]): void {
     const r = rosterRows[i]!;
     const rowH = Math.max(...r.map((c) => c.size.height));
     const rowY = rowTop === undefined ? -HEADER_H - ROSTER_GAP - rowH : rowTop - ROW_GAP - rowH;
-    let rx = 0;
+    let rx = left;
     for (const c of r) {
       run.geometry.set(c.id, { x: rx, y: rowY, ...c.size });
       run.fixed.add(c.id);
@@ -267,10 +429,10 @@ function placeRoster(run: PlanRun, roots: readonly string[]): void {
   }
 }
 
-/** Strays (a shared node with no zone) park under the zones at `y`, as
- * git-graph's spare row. */
+/** Strays (a shared node with no zone) park under the zones at `y`, from the
+ * chart's first day, as git-graph's spare row. */
 function placeStrays(run: PlanRun, roots: readonly string[], y: number): void {
-  let sx = 0;
+  let sx = chartLeft(run);
   for (const id of roots) {
     if (run.geometry.has(id)) continue;
     const size = hint(run, id);

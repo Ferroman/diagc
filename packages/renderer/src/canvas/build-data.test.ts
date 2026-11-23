@@ -109,6 +109,26 @@ describe('buildNodeData', () => {
     expect(expanded.onEnterNode).toBe(enter);
   });
 
+  it('offers neither a fold nor an enter on a container the notation never folds', () => {
+    // a plan zone, an activity frame: the view pins them open and refuses to
+    // drill into them, so a fold or enter chip there would be a dead button
+    const enter = () => {};
+    const ctx = nodeCtx({ onEnterNode: enter, isAlwaysExpanded: (id) => id === 'n1' });
+    const pinned = buildNodeData(viewNode({ state: 'expanded' }), ctx);
+    expect(pinned.neverFolds).toBe(true);
+    expect(pinned.onEnterNode).toBeUndefined();
+    const other = buildNodeData(viewNode({ id: 'n2', state: 'expanded' }), ctx);
+    expect(other.neverFolds).toBeUndefined();
+    expect(other.onEnterNode).toBe(enter);
+  });
+
+  it("carries a leaf's outside-label side, never an open container's", () => {
+    const ctx = nodeCtx({ labelSides: new Map([['n1', 'left' as const]]) });
+    expect(buildNodeData(viewNode(), ctx).labelSide).toBe('left');
+    expect(buildNodeData(viewNode({ state: 'expanded' }), ctx).labelSide).toBeUndefined();
+    expect(buildNodeData(viewNode({ id: 'n2' }), ctx).labelSide).toBeUndefined();
+  });
+
   it('marks external stubs', () => {
     expect(buildNodeData(viewNode({ external: 'real-id' }), nodeCtx()).external).toBe(true);
   });
@@ -725,6 +745,8 @@ describe('the data caches compare every context field', () => {
     stylePreset: { stylePreset: stylePreset('sketch') },
     notation: { notation: 'causal-loop' },
     regionSeparators: { regionSeparators: new Map() },
+    isAlwaysExpanded: { isAlwaysExpanded: () => false },
+    labelSides: { labelSides: new Map() },
   };
   it.each(Object.entries(nodeVariants))('rebuilds the node data when only %s changes', (_field, over) => {
     const n = viewNode();

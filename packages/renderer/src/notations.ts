@@ -9,7 +9,6 @@ import {
   PLAN_ACTOR_TYPES,
   PLAN_EVENT_TYPE,
   PLAN_NOTATION,
-  PLAN_ROLES,
   PLAN_ZONE_TYPE,
   SECOND_ORDER_NOTATION,
   SM_NOTATION,
@@ -33,7 +32,7 @@ import {
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './layout/fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './layout/git-layout';
 import type { LayoutResult, NotationLayoutInput } from './layout/layout';
-import { PLAN_LAYOUT, planGraphCached, planLayout } from './layout/plan-layout';
+import { PLAN_LAYOUT, planChips, planGraphCached, planLabelSides, planLayout } from './layout/plan-layout';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
 import { stateMachineColors, stateMachineEdgeColor } from './state-kinds';
 
@@ -48,6 +47,9 @@ export interface NodeChip {
   title: string;
   color?: string;
 }
+
+/** the side of its box a name drawn outside the box hangs on */
+export type LabelSide = 'left' | 'right';
 
 /** A visual language: default look plus registry/chrome overrides for a plane's notation. */
 export interface NotationProfile {
@@ -104,6 +106,11 @@ export interface NotationProfile {
     /** small chips in a node's badge row (the plan's role chips); keyed by
      * node id, one derivation per model like colorOf */
     chips?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, NodeChip[]>;
+    /** leaf boxes whose name is drawn OUTSIDE the box, on the given side: a
+     * box whose width means something (a plan bar's is its dates) and is too
+     * narrow for its name. Keyed by node id, one derivation per model like
+     * chips; absent = the name sits inside, as on every other box. */
+    labelSides?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, LabelSide>;
     /** a role chip opens a menu that changes or removes the role, in edit mode */
     roleChips?: boolean;
     /** types outlined in their own colour when the selection's neighbourhood
@@ -321,41 +328,9 @@ const DEPLOYMENT: NotationProfile = {
 // The notation owns the arrangement (as git-graph does) because x IS a date.
 // Roles are relations actor → zone that never draw as edges: they become
 // chips on the zone, so the picture stays a Gantt chart, not a web.
-/** short/long labels per role — the chip's `O`/`E`/`C` initial and the role
- * chip menu's item text (see RoleChipMenu). */
-export const ROLE_LABEL: Record<PlanRole, { initial: string; title: string }> = {
-  owns: { initial: 'O', title: 'Owner' },
-  executes: { initial: 'E', title: 'Executor' },
-  checks: { initial: 'C', title: 'Checker' },
-};
-
-/** Role chips per zone, in owns / executes / checks order: `O·Alice` (first
- * word of the name), titled `Owner: Alice Ng`, in the actor's colour. Reads
- * the relation's `from` node whatever its type — a person or a team, alike. */
-export function planChips(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, NodeChip[]> {
-  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
-  const out = new Map<string, NodeChip[]>();
-  for (const id of planGraphCached(model, plane).zones) {
-    const roles = rolesOf(model, id);
-    const chips: NodeChip[] = [];
-    for (const role of PLAN_ROLES) {
-      for (const actorId of roles[role]) {
-        const actor = byId.get(actorId);
-        if (actor === undefined) continue;
-        const first = actor.name.trim().split(/\s+/)[0] ?? actor.id;
-        chips.push({
-          role,
-          refId: actorId,
-          text: `${ROLE_LABEL[role].initial}·${first}`,
-          title: `${ROLE_LABEL[role].title}: ${actor.name}`,
-          color: actor.color,
-        });
-      }
-    }
-    if (chips.length > 0) out.set(id, chips);
-  }
-  return out;
-}
+// ROLE_LABEL and planChips live beside the layout (plan-layout.ts): the layout
+// measures a zone's chips to size its title band, so both read one derivation.
+export { ROLE_LABEL, planChips } from './layout/plan-layout';
 
 /** The other half of a role relation, whichever end `id` is: an actor's
  * selection neighbourhood is every zone it holds a role on, and a zone's is
@@ -389,6 +364,7 @@ const PLAN: NotationProfile = {
     alwaysExpanded: (n) => n.type === PLAN_ZONE_TYPE,
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
     chips: planChips,
+    labelSides: planLabelSides,
     roleChips: true,
     actorOutline: (type) => PLAN_ACTOR_TYPES.has(type),
     resizable: (n) => (n.type === PLAN_ZONE_TYPE ? 'x' : undefined),

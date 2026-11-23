@@ -8,7 +8,7 @@ import {
   type CompiledView,
   type DiagramModel,
 } from '@diagc/core/internal';
-import { PLAN_LAYOUT, planLayout, planX } from './plan-layout';
+import { PLAN_LAYOUT, planLabelSides, planLayout, planX } from './plan-layout';
 
 const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT, HEADER_H, ROSTER_GAP } = PLAN_LAYOUT;
 
@@ -206,10 +206,11 @@ describe('planLayout', () => {
     const alice = r.geometry.get('alice')!;
     const bob = r.geometry.get('bob')!;
     const rowY = -HEADER_H - ROSTER_GAP - LEAF_SIZE.height;
-    // both fit the one row (the plan is thousands of px wide): left to right
-    // from the origin, roles first (alice owns build), then the rest (bob)
-    expect(alice).toMatchObject({ x: 0, y: rowY, width: LEAF_SIZE.width, height: LEAF_SIZE.height });
-    expect(bob).toMatchObject({ x: LEAF_SIZE.width + ROSTER_GAP, y: rowY });
+    // both fit the one row: left to right from the plan's first day (5 Jan,
+    // not the 1 Jan origin), roles first (alice owns build), then the rest (bob)
+    const first = planX(dayOf('2026-01-05')!, origin);
+    expect(alice).toMatchObject({ x: first, y: rowY, width: LEAF_SIZE.width, height: LEAF_SIZE.height });
+    expect(bob).toMatchObject({ x: first + LEAF_SIZE.width + ROSTER_GAP, y: rowY });
     for (const id of ['kickoff', 'alice', 'bob']) expect(r.fixed?.has(id)).toBe(true);
   });
 
@@ -228,13 +229,32 @@ describe('planLayout', () => {
     const c = r.geometry.get('chen')!;
     expect(a).toMatchObject({ x: 0 });
     expect(b).toMatchObject({ x: 40 + ROSTER_GAP });
-    expect(c).toMatchObject({ x: 0 }); // its own row, back at the origin
+    expect(c).toMatchObject({ x: 0 }); // its own row, back at the plan's first day (= the origin here)
     // chen's row (declared last, wrapped) sits ROSTER_GAP above the header;
     // alice/bob's row sits ROW_GAP above that
     expect(c.y).toBe(-HEADER_H - ROSTER_GAP - 20);
     expect(a.y).toBe(c.y - ROW_GAP - 20);
     expect(b.y).toBe(a.y);
     for (const id of ['alice', 'bob', 'chen']) expect(r.fixed?.has(id)).toBe(true);
+  });
+
+  it("starts the roster at a late-in-the-year plan's first day and wraps it against the plan's own width", () => {
+    // The origin is 1 January: a plan that opens on 30 November would leave a
+    // roster anchored there eleven months of canvas to the left of its chart.
+    const m = model('late');
+    const p = m.plan();
+    p.zone('z', { start: '2026-11-30', end: '2026-12-05' }); // 6 days = 120px plan width
+    const alice = p.person('alice', 'Alice');
+    const bob = p.person('bob', 'Bob');
+    const chen = p.person('chen', 'Chen');
+    const hints = new Map([alice, bob, chen].map((n) => [n.id, { width: 40, height: 20 }]));
+    const r = planLayout({ view: view(m.toJSON()), model: m.toJSON(), plane: 'plan', sizeHints: hints });
+    const first = planX(dayOf('2026-11-30')!, origin);
+    expect(r.geometry.get('alice')).toMatchObject({ x: first });
+    expect(r.geometry.get('bob')).toMatchObject({ x: first + 40 + ROSTER_GAP });
+    // 104 + 24 + 40 = 168 > 120: chen wraps, though the plan ends 11 months from the origin
+    expect(r.geometry.get('chen')).toMatchObject({ x: first });
+    expect(r.geometry.get('chen')!.y).toBeGreaterThan(r.geometry.get('alice')!.y);
   });
 
   it("wraps a dateless plan's roster by count, six to a row", () => {
@@ -266,7 +286,11 @@ describe('planLayout', () => {
     const r = planLayout({ view: compileView(m, { plane: 'plan', pins, activeLayers: [] }), model: m, plane: 'plan' });
     expect(r.geometry.has('later')).toBe(false);
     const q1 = r.geometry.get('q1')!;
-    expect(r.geometry.get('stray')).toMatchObject({ x: 0, y: q1.y + q1.height + ROW_GAP });
+    // under the chart's first day (the earliest zone starts 5 Jan), not the origin
+    expect(r.geometry.get('stray')).toMatchObject({
+      x: planX(dayOf('2026-01-05')!, origin),
+      y: q1.y + q1.height + ROW_GAP,
+    });
     expect(r.fixed?.has('stray')).toBe(false);
   });
 
@@ -286,6 +310,41 @@ describe('planLayout', () => {
     expect(r.geometry.get('bad')).toMatchObject({ x: planX(dayOf('2026-03-02')!, origin), width: DAY });
     // and it still sorts after `ok`, by its own start rather than the origin
     expect(r.geometry.get('bad')!.y).toBeGreaterThan(r.geometry.get('ok')!.y);
+  });
+
+  it("deepens a zone's title band when its name and chips wrap, so its first row starts below them", () => {
+    // 11 days = 220px: the name alone wraps, and the two role chips take a line
+    // of their own. A first row at the fixed TITLE_H would sit on the title.
+    const m = model('wrap');
+    const p = m.plan();
+    const a = p.person('a', 'Bayu');
+    const b = p.person('b', 'Bohdan');
+    const wide = p.zone('wide', { name: 'Envoy Gateway v1.9.1 → v1.10.0', start: '2026-11-30', end: '2027-02-10' });
+    wide.zone('w1', { name: 'Demo', start: '2026-11-30', end: '2026-12-04' });
+    const narrow = p.zone('narrow', { name: 'Envoy Gateway v1.9.1 → v1.10.0', start: '2026-11-30', end: '2026-12-10' });
+    narrow.executor(a).checker(b);
+    narrow.zone('n1', { name: 'Demo', start: '2026-11-30', end: '2026-12-04' });
+    const r = planLayout({ view: view(m.toJSON()), model: m.toJSON(), plane: 'plan' });
+    expect(r.geometry.get('w1')!.y).toBe(TITLE_H); // one line, no chips: the band as ever
+    const first = r.geometry.get('n1')!;
+    expect(first.y).toBeGreaterThan(TITLE_H);
+    expect(r.geometry.get('narrow')!.height).toBe(first.y + first.height + PAD);
+  });
+
+  it('draws the name of a bar too short for it beside the bar, on the side its parent has room', () => {
+    const m = model('short');
+    const p = m.plan();
+    const parent = p.zone('parent', { name: 'Upgrade', start: '2026-11-30', end: '2026-12-31' });
+    parent.zone('first-day', { name: 'EU prod', start: '2026-11-30', end: '2026-11-30' });
+    parent.zone('last-day', { name: 'EU prod', start: '2026-12-31', end: '2026-12-31' });
+    parent.zone('long', { name: 'Dev + demo', start: '2026-12-01', end: '2026-12-20' });
+    p.zone('root-day', { name: 'Imlek / CNY (ID 5-6, SG 6-8 Feb)', start: '2027-02-05', end: '2027-02-08' });
+    const sides = planLabelSides(m.toJSON(), 'plan');
+    expect(sides.get('first-day')).toBe('right');
+    expect(sides.get('last-day')).toBe('left'); // to the right is outside its parent
+    expect(sides.get('root-day')).toBe('right'); // nothing to stay inside of
+    expect(sides.has('long')).toBe(false); // fits: drawn inside, as ever
+    expect(sides.has('parent')).toBe(false); // a zone with rows titles its band instead
   });
 
   it('draws an empty plan as nothing, with no origin to trip on', () => {

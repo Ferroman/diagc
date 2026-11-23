@@ -31,7 +31,7 @@ export interface FlowNodesInput {
   >;
   editing: boolean;
   edit: EditingApi | undefined;
-  notation: Pick<Notation, 'profile' | 'typeRegistry' | 'nodeColors' | 'nodeChips'>;
+  notation: Pick<Notation, 'profile' | 'typeRegistry' | 'nodeColors' | 'nodeChips' | 'isAlwaysExpanded' | 'labelSides'>;
   icons: IconRegistry;
   preset: StylePreset;
   /** the preset's colouring of the model, when it has a palette */
@@ -62,7 +62,7 @@ export interface FlowNodes {
 /** The nodes React Flow draws: each box's data and frame, the notes after them, and React Flow's copy. */
 export function useFlowNodes(input: FlowNodesInput): FlowNodes {
   const { props, editing, edit, compiled, labelEdit, preset, setLabelEdit } = input;
-  const { profile, typeRegistry, nodeColors, nodeChips } = input.notation;
+  const { profile, typeRegistry, nodeColors, nodeChips, isAlwaysExpanded, labelSides } = input.notation;
   const { arrangedGeometry, fixed, regionSeparators } = input.layout;
   // The per-node data channel inputs, as one object the cached builder keys
   // its identity on (see build-data.ts): while every field is referentially
@@ -99,6 +99,8 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
       nodeChips,
       resizable: profile.node?.resizable,
       regionSeparators,
+      isAlwaysExpanded,
+      labelSides,
     }),
     [
       input.metaKeys,
@@ -128,6 +130,8 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
       nodeChips,
       profile,
       regionSeparators,
+      isAlwaysExpanded,
+      labelSides,
     ],
   );
 

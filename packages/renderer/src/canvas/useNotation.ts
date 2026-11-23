@@ -17,6 +17,8 @@ export interface Notation {
   nodeColors: NodeDataContext['nodeColors'];
   /** small chips in a node's badge row (the plan's role chips) */
   nodeChips: NodeDataContext['nodeChips'];
+  /** leaf boxes whose name is drawn beside them (a plan's short bars) */
+  labelSides: NodeDataContext['labelSides'];
 }
 
 /** A container the notation never folds: git lanes are rows, not boxes with an inside. */
@@ -58,5 +60,9 @@ export function useNotation(
   );
   // Derived the same way as nodeColors: id-keyed, one derivation per model/plane.
   const nodeChips = useMemo(() => profile.node?.chips?.(props.model, props.plane), [profile, props.model, props.plane]);
-  return { profile, typeRegistry, kindRegistry, isAlwaysExpanded, nodeColors, nodeChips };
+  const labelSides = useMemo(
+    () => profile.node?.labelSides?.(props.model, props.plane),
+    [profile, props.model, props.plane],
+  );
+  return { profile, typeRegistry, kindRegistry, isAlwaysExpanded, nodeColors, nodeChips, labelSides };
 }

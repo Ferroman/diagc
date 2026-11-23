@@ -2258,7 +2258,64 @@ path.dg-loop-badge-circle {
   border-left-width: 3px;
   border-radius: 6px;
 }
-/* an event: an unclipped, unpainted box filling its 16×16 wrapper; ::before is
+/* A childless zone is a bar exactly as wide as its dates: React Flow's wrapper
+   carries the layout's width (LAYOUT_SIZED_TYPES) and height, and the box fills
+   it instead of growing past it — not to the 120px every other box is at
+   least, which drew a one-day bar six days long and out through the end of its
+   zone, and not onto a second line, which pushed it out through the bottom.
+   The name stays on one line; one that would not fit the bar is drawn beside
+   it (below), so the ellipsis is only a guard for an estimate that undershot. */
+.dg-notation-plan .dg-node[data-type='plan-zone'] {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.dg-notation-plan .dg-node[data-type='plan-zone'] .dg-node-row {
+  min-width: 0;
+}
+/* !important: BoxLabel sets `white-space: pre-wrap` inline */
+.dg-notation-plan .dg-node[data-type='plan-zone'] .dg-node-row .dg-label {
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A bar too short for its name (planLabelSides, data-label-side) hangs the
+   whole row — name and role chips — beside itself, on the side its zone has
+   room: the usual Gantt answer, and the one that keeps the bar's dates true.
+   No padding then: a one-day bar is 20px, less than the padding alone. The
+   6px gap is ZONE_TEXT.OUTSIDE_GAP in plan-layout.ts. */
+.dg-notation-plan .dg-node[data-type='plan-zone'][data-label-side] {
+  padding: 0;
+}
+.dg-notation-plan .dg-node[data-type='plan-zone'][data-label-side] .dg-node-row {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+.dg-notation-plan .dg-node[data-type='plan-zone'][data-label-side] .dg-node-row .dg-label {
+  overflow: visible;
+}
+.dg-notation-plan .dg-node[data-type='plan-zone'][data-label-side='right'] .dg-node-row {
+  left: calc(100% + 6px);
+}
+.dg-notation-plan .dg-node[data-type='plan-zone'][data-label-side='left'] .dg-node-row {
+  right: calc(100% + 6px);
+}
+/* A zone with rows: a name too long for the bar wraps onto 14px lines and the
+   chips take a line of their own, 4px below; the layout deepens the title band
+   to match (titleBand in plan-layout.ts), so the first row starts below them
+   rather than over them. */
+.dg-notation-plan .dg-group[data-type='plan-zone'] > .dg-group-header {
+  flex-wrap: wrap;
+  row-gap: 4px;
+  line-height: 14px;
+}
+/* an event:an unclipped, unpainted box filling its 16×16 wrapper; ::before is
    the diamond in the node's colour (currentColor — the branch sets it on the
    root), and the tag hangs to the right. Rough mode draws the sketch instead. */
 .dg-event-node {

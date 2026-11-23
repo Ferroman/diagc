@@ -495,6 +495,17 @@ describe('DiagramNode', () => {
     expect(container.querySelector('[data-testid="enter-chip"]')).toBeNull();
   });
 
+  it('marks a box whose name is drawn beside it with that side, for the stylesheet', () => {
+    const { container } = renderNode({ typeId: 'plan-zone', label: 'EU prod', state: 'leaf', labelSide: 'right' });
+    expect(container.querySelector('.dg-node')?.getAttribute('data-label-side')).toBe('right');
+  });
+
+  it('a container that never folds has no fold or enter chip', () => {
+    renderNode({ typeId: 'plan-zone', label: 'Build', state: 'expanded', neverFolds: true });
+    expect(screen.queryByTestId('fold-chip')).toBeNull();
+    expect(screen.queryByTestId('enter-chip')).toBeNull();
+  });
+
   it('the disclosure toggle expands via onToggleExpand', () => {
     const onToggleExpand = vi.fn();
     const { container } = renderNode({
