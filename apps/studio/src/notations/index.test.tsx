@@ -114,4 +114,3 @@ describe('connectKind', () => {
     expect(connectKind('plan', plan, 'a', 'b')).toBe('sync');
   });
 });
-
