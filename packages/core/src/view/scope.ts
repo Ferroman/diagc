@@ -23,9 +23,20 @@ export interface ScopedModel {
  * ancestor OUTSIDE the drill root's own ancestor chain (so "a class uses the
  * database" stays visible as class → ⟨Database⟩, and a sibling of the root stands
  * for itself rather than collapsing into the ancestor both sides share).
+ *
+ * A `carry` id outside the subtree is kept as itself, at the top level: its
+ * relations into the subtree stay as they are, and every other relation of it
+ * is dropped, never stubbed — it is there for what it does in the frame, and a
+ * stub per thing it touches elsewhere would fill the view with the outside.
  */
-export function scopeToRoot(model: DiagramModel, hierarchy: HierarchyIndex, root: string): ScopedModel {
+export function scopeToRoot(
+  model: DiagramModel,
+  hierarchy: HierarchyIndex,
+  root: string,
+  carry: ReadonlySet<string> = new Set(),
+): ScopedModel {
   const sub = descendantsOf(hierarchy, root);
+  const carried = new Set([...carry].filter((id) => id !== root && !sub.has(id)));
   const rootAncestors = ancestorChain(hierarchy, root);
   const externals = new Map<string, string>();
   const stubFor = (offFrame: string): string | undefined => {
@@ -35,12 +46,19 @@ export function scopeToRoot(model: DiagramModel, hierarchy: HierarchyIndex, root
     externals.set(id, rep);
     return id;
   };
-  const relations = scopedRelations(model.relations, sub, stubFor);
+  const relations = scopedRelations(
+    model.relations.filter((r) => {
+      const c = carried.has(r.from) ? r.to : carried.has(r.to) ? r.from : undefined;
+      return c === undefined || sub.has(c);
+    }),
+    new Set([...sub, ...carried]),
+    stubFor,
+  );
 
   // The subtree is already within one resolved plane; the synthetic model is
   // plane-less, so strip each node's `plane` scope (else buildHierarchy would
   // filter a plane-scoped node out when no plane is active).
-  const nodes = model.nodes.filter((n) => sub.has(n.id)).map(({ plane: _plane, ...rest }) => rest);
+  const nodes = model.nodes.filter((n) => sub.has(n.id) || carried.has(n.id)).map(({ plane: _plane, ...rest }) => rest);
   nodes.push(...stubNodes(model, externals));
   const containment = model.containment
     .filter((e) => sub.has(e.parent) && sub.has(e.child))
