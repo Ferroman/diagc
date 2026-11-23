@@ -1986,6 +1986,12 @@ path.dg-loop-badge-circle {
   pointer-events: none;
   z-index: -1;
 }
+/* a preset's canvas colour, else the theme's background: React Flow's own
+   light default is transparent, which would let the dots through again */
+.dg-time-axis-backing {
+  fill: var(--dg-canvas-bg, var(--dg-bg));
+  stroke: none;
+}
 .dg-time-axis-frame {
   fill: color-mix(in srgb, var(--dg-text) var(--dg-plan-axis-band), transparent);
   stroke: none;
@@ -2016,6 +2022,39 @@ path.dg-loop-badge-circle {
   font-weight: 500;
   font-size: 10px;
 }
+/* the day band: a weekday letter over the day of the month, both centred in
+   the day; weekends wash down the chart in the frame's own tint, so no new
+   theme token, and stay under the grid and the bars */
+.dg-time-axis-weekday,
+.dg-time-axis-day,
+.dg-time-axis-today-text {
+  font:
+    500 10px system-ui,
+    sans-serif;
+  text-anchor: middle;
+}
+.dg-time-axis-weekday,
+.dg-time-axis-today-weekday {
+  font-size: 9px;
+}
+.dg-time-axis-weekday {
+  fill: var(--dg-plan-axis-week-label);
+}
+.dg-time-axis-day {
+  fill: var(--dg-plan-axis-month-label);
+}
+.dg-time-axis-weekend {
+  fill: color-mix(in srgb, var(--dg-text) var(--dg-plan-axis-band), transparent);
+  stroke: none;
+}
+/* today: its day cell filled in the accent, its text in the surface colour */
+.dg-time-axis-today-day {
+  fill: var(--dg-accent);
+}
+.dg-time-axis-today-text {
+  fill: var(--dg-surface);
+  font-weight: 700;
+}
 .dg-time-axis-event {
   stroke: var(--dg-text-muted);
   stroke-width: 1;
@@ -2024,12 +2063,6 @@ path.dg-loop-badge-circle {
 .dg-time-axis-today {
   stroke: var(--dg-accent);
   stroke-width: 2;
-}
-.dg-time-axis-today-label {
-  fill: var(--dg-accent);
-  font:
-    600 10px system-ui,
-    sans-serif;
 }
 
 /* ---- activity diagrams: frame / lane / region chrome ---------------------- */

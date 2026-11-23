@@ -13,12 +13,16 @@ export interface TimeAxisOverlayProps {
   today?: string | null;
 }
 
-const BAND_H = PLAN_LAYOUT.HEADER_H / 2;
+const { MONTH_H, WEEK_H, DAY_H } = PLAN_LAYOUT;
+/** a day's two lines of text, centred in the day band: the weekday letter over
+ * the day of the month (both fit a 20px day stacked, neither fits beside) */
+const WEEKDAY_Y = -DAY_H + 10;
+const DATE_Y = -9;
 
 /**
- * The calendar header of a plan: a month band and a week band above y = 0, a
- * faint grid line per week down to the content, a dashed rule under each root
- * event and the today line. Reads RENDERED positions from the store (like
+ * The calendar header of a plan: month, week and day bands above y = 0,
+ * weekends shaded and a faint grid line per week down to the content, a dashed
+ * rule under each root event, and today as its own marked day. Reads RENDERED positions from the store (like
  * GitLanesOverlay) so the grid follows a drag; must be mounted inside
  * <ReactFlow>. Dates come from the cached plan graph, never from the DOM.
  */
@@ -45,28 +49,47 @@ export function TimeAxisOverlay({ model, plane, today }: TimeAxisOverlayProps) {
     todayDay !== undefined && todayDay >= g.range.start - MARGIN_BEFORE && todayDay < g.range.end + MARGIN_AFTER
       ? planX(todayDay, origin) + DAY / 2
       : undefined;
+  const todayBand = todayX === undefined ? undefined : axis.days.find((d) => d.day === todayDay);
   return (
     <ViewportPortal>
       <svg className="dg-time-axis" aria-hidden="true">
+        {/* opaque, under everything: the frame and the weekend wash are
+            tints, and through them the canvas dots (one every 20px, so one
+            per day) fell between the two digits of a day's number */}
+        <rect className="dg-time-axis-backing" x={axis.x0} y={-HEADER_H} width={axis.x1 - axis.x0} height={HEADER_H} />
         {/* the frame is what content-bounds measures: the header must reach the PNG */}
         <rect className="dg-time-axis-frame" x={axis.x0} y={-HEADER_H} width={axis.x1 - axis.x0} height={HEADER_H} />
+        {/* first, so the grid, the rules and today all draw over the shading */}
+        {axis.weekends.map((w) => (
+          <rect key={w.x} className="dg-time-axis-weekend" x={w.x} y={-DAY_H} width={w.width} height={DAY_H + bottom} />
+        ))}
         {axis.months.map((m) => (
           <g key={m.x}>
             <line className="dg-time-axis-tick" x1={m.x} y1={-HEADER_H} x2={m.x} y2={0} />
-            <text className="dg-time-axis-month" x={m.x + 6} y={-HEADER_H + BAND_H / 2} dominantBaseline="middle">
+            <text className="dg-time-axis-month" x={m.x + 6} y={-HEADER_H + MONTH_H / 2} dominantBaseline="middle">
               {m.label}
             </text>
           </g>
         ))}
         {axis.weeks.map((w) => (
           <g key={w.x}>
-            <line className="dg-time-axis-tick" x1={w.x} y1={-BAND_H} x2={w.x} y2={0} />
+            <line className="dg-time-axis-tick" x1={w.x} y1={-DAY_H - WEEK_H} x2={w.x} y2={0} />
             <line className="dg-time-axis-grid" x1={w.x} y1={0} x2={w.x} y2={bottom} />
             {w.label !== '' && (
-              <text className="dg-time-axis-week" x={w.x + 4} y={-BAND_H / 2} dominantBaseline="middle">
+              <text className="dg-time-axis-week" x={w.x + 4} y={-DAY_H - WEEK_H / 2} dominantBaseline="middle">
                 {w.label}
               </text>
             )}
+          </g>
+        ))}
+        {axis.days.map((d) => (
+          <g key={d.x}>
+            <text className="dg-time-axis-weekday" x={d.x + d.width / 2} y={WEEKDAY_Y} dominantBaseline="middle">
+              {d.weekday}
+            </text>
+            <text className="dg-time-axis-day" x={d.x + d.width / 2} y={DATE_Y} dominantBaseline="middle">
+              {d.date}
+            </text>
           </g>
         ))}
         {rootEvents.map((id) => {
@@ -75,11 +98,29 @@ export function TimeAxisOverlay({ model, plane, today }: TimeAxisOverlayProps) {
           const x = planX(at, origin) + DAY / 2;
           return <line key={id} className="dg-time-axis-event" x1={x} y1={0} x2={x} y2={bottom} />;
         })}
-        {todayX !== undefined && (
+        {/* Today is its own day, filled: a "today" word in the week band sat
+            on the week's label whenever the two shared a week. The cell and
+            its text go after the line, so the line runs out from under it. */}
+        {todayX !== undefined && todayBand !== undefined && (
           <g>
-            <line className="dg-time-axis-today" x1={todayX} y1={-BAND_H} x2={todayX} y2={bottom} />
-            <text className="dg-time-axis-today-label" x={todayX + 4} y={-BAND_H / 2} dominantBaseline="middle">
-              today
+            <line className="dg-time-axis-today" x1={todayX} y1={-DAY_H} x2={todayX} y2={bottom} />
+            <rect
+              className="dg-time-axis-today-day"
+              x={todayBand.x}
+              y={-DAY_H}
+              width={todayBand.width}
+              height={DAY_H}
+            />
+            <text
+              className="dg-time-axis-today-text dg-time-axis-today-weekday"
+              x={todayX}
+              y={WEEKDAY_Y}
+              dominantBaseline="middle"
+            >
+              {todayBand.weekday}
+            </text>
+            <text className="dg-time-axis-today-text" x={todayX} y={DATE_Y} dominantBaseline="middle">
+              {todayBand.date}
             </text>
           </g>
         )}

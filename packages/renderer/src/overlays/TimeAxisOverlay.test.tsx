@@ -22,7 +22,8 @@ vi.mock('@xyflow/react', async (importOriginal) => {
 });
 const { TimeAxisOverlay } = await import('./TimeAxisOverlay');
 
-const { DAY, HEADER_H, PAD, EVENT } = PLAN_LAYOUT;
+const { DAY, HEADER_H, PAD, EVENT, MONTH_H, WEEK_H, DAY_H } = PLAN_LAYOUT;
+const bottom = 40 + PAD; // the content bottom seed() gives: max(y + h) + PAD
 const origin = dayOf('2026-01-01')!;
 
 function plan() {
@@ -39,7 +40,7 @@ function seed() {
     { id: 'z', position: { x: planX(dayOf('2026-01-20')!, origin), y: 0 }, measured: { width: 22 * DAY, height: 40 } },
     {
       id: 'e',
-      position: { x: planX(dayOf('2026-02-02')!, origin) + DAY / 2 - EVENT / 2, y: -HEADER_H / 2 - EVENT / 2 },
+      position: { x: planX(dayOf('2026-02-02')!, origin) + DAY / 2 - EVENT / 2, y: -(DAY_H + WEEK_H) - EVENT / 2 },
       measured: { width: EVENT, height: EVENT },
     },
   );
@@ -53,28 +54,81 @@ describe('TimeAxisOverlay', () => {
     expect(months).toEqual(['Jan 2026', 'Feb 2026']);
     const weeks = [...container.querySelectorAll('.dg-time-axis-week')].map((t) => t.textContent);
     expect(weeks).toContain('W04');
+    // each band in its own strip, top to bottom: months, weeks, days
+    const monthY = Number(container.querySelector('.dg-time-axis-month')!.getAttribute('y'));
+    expect(monthY).toBeGreaterThan(-HEADER_H);
+    expect(monthY).toBeLessThan(-HEADER_H + MONTH_H);
+    const weekY = Number(container.querySelector('.dg-time-axis-week')!.getAttribute('y'));
+    expect(weekY).toBeGreaterThan(-DAY_H - WEEK_H);
+    expect(weekY).toBeLessThan(-DAY_H);
+    const days = [...container.querySelectorAll('.dg-time-axis-day')];
+    expect(days).toHaveLength(dayOf('2026-02-18')! - dayOf('2026-01-13')!);
+    expect(days[0]!.textContent).toBe('13');
+    expect(container.querySelector('.dg-time-axis-weekday')!.textContent).toBe('T');
+    for (const t of [days[0]!, container.querySelector('.dg-time-axis-weekday')!]) {
+      const y = Number(t.getAttribute('y'));
+      expect(y).toBeGreaterThan(-DAY_H);
+      expect(y).toBeLessThan(0);
+    }
     const frame = container.querySelector('.dg-time-axis-frame')!;
     expect(frame.getAttribute('y')).toBe(String(-HEADER_H));
     expect(frame.getAttribute('height')).toBe(String(HEADER_H));
     const grid = container.querySelectorAll('.dg-time-axis-grid');
     expect(grid.length).toBeGreaterThan(3);
-    expect(grid[0]!.getAttribute('y2')).toBe(String(40 + PAD)); // content bottom = max(y + h) + PAD
+    expect(grid[0]!.getAttribute('y2')).toBe(String(bottom));
     const rule = container.querySelector('.dg-time-axis-event')!;
     expect(rule.getAttribute('x1')).toBe(String(planX(dayOf('2026-02-02')!, origin) + DAY / 2));
     expect(container.querySelector('.dg-time-axis-today')).toBeNull();
   });
-  it('draws the today line only when today is inside the drawn range', () => {
+  it('shades weekends from the day band down to the content bottom, under the grid', () => {
+    seed();
+    const { container } = render(<TimeAxisOverlay model={plan()} plane="plan" />);
+    const shades = [...container.querySelectorAll('.dg-time-axis-weekend')];
+    expect(shades).toHaveLength(5); // Tue 13 Jan – Tue 17 Feb holds five weekends
+    expect(shades[0]!.getAttribute('x')).toBe(String(planX(dayOf('2026-01-17')!, origin)));
+    expect(shades[0]!.getAttribute('width')).toBe(String(2 * DAY));
+    expect(shades[0]!.getAttribute('y')).toBe(String(-DAY_H));
+    expect(shades[0]!.getAttribute('height')).toBe(String(DAY_H + bottom));
+    const grid = container.querySelector('.dg-time-axis-grid')!;
+    expect(shades[shades.length - 1]!.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+  it('backs the header with an opaque rect first, so the canvas dots never show between the day digits', () => {
+    seed();
+    const { container } = render(<TimeAxisOverlay model={plan()} plane="plan" />);
+    const svg = container.querySelector('.dg-time-axis')!;
+    const backing = svg.firstElementChild!;
+    expect(backing.getAttribute('class')).toBe('dg-time-axis-backing');
+    const frame = container.querySelector('.dg-time-axis-frame')!;
+    for (const k of ['x', 'y', 'width', 'height']) expect(backing.getAttribute(k)).toBe(frame.getAttribute(k));
+    expect(backing.getAttribute('y')).toBe(String(-HEADER_H));
+  });
+  it('draws today as its day cell, its line running down from the day band', () => {
     seed();
     const inside = render(<TimeAxisOverlay model={plan()} plane="plan" today="2026-01-28" />);
+    const cell = inside.container.querySelector('.dg-time-axis-today-day')!;
+    expect(cell.getAttribute('x')).toBe(String(planX(dayOf('2026-01-28')!, origin)));
+    expect(cell.getAttribute('width')).toBe(String(DAY));
+    expect(cell.getAttribute('y')).toBe(String(-DAY_H));
     const line = inside.container.querySelector('.dg-time-axis-today')!;
     expect(line.getAttribute('x1')).toBe(String(planX(dayOf('2026-01-28')!, origin) + DAY / 2));
-    expect(inside.container.querySelector('.dg-time-axis-today-label')?.textContent).toBe('today');
+    expect(line.getAttribute('y1')).toBe(String(-DAY_H));
+    expect(inside.container.querySelector('.dg-time-axis-today-label')).toBeNull();
     inside.unmount();
     const outside = render(<TimeAxisOverlay model={plan()} plane="plan" today="2026-06-01" />);
     expect(outside.container.querySelector('.dg-time-axis-today')).toBeNull();
     outside.unmount();
     const none = render(<TimeAxisOverlay model={plan()} plane="plan" today={null} />);
     expect(none.container.querySelector('.dg-time-axis-today')).toBeNull();
+  });
+  it('draws today over a weekend', () => {
+    seed();
+    const { container } = render(<TimeAxisOverlay model={plan()} plane="plan" today="2026-01-31" />); // a Saturday
+    const cell = container.querySelector('.dg-time-axis-today-day')!;
+    expect(cell).not.toBeNull();
+    const shades = container.querySelectorAll('.dg-time-axis-weekend');
+    expect(shades.length).toBeGreaterThan(0);
+    for (const shade of shades)
+      expect(shade.compareDocumentPosition(cell) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
   it('the today line reaches the axis margins exactly, and stops one day past them', () => {
     seed();

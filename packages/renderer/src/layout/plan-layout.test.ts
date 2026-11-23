@@ -10,7 +10,7 @@ import {
 } from '@diagc/core/internal';
 import { PLAN_LAYOUT, planLabelSides, planLayout, planX } from './plan-layout';
 
-const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT, HEADER_H, ROSTER_GAP } = PLAN_LAYOUT;
+const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT, HEADER_H, MONTH_H, WEEK_H, DAY_H, ROSTER_GAP } = PLAN_LAYOUT;
 
 /**
  * plan plane: q1 (Jan 5 – Mar 27) ⊃ design (Jan 5 – Jan 30), build (Feb 2 – Mar 27) ⊃ { m1 event Mar 2, api, db (borrowed) };
@@ -194,12 +194,15 @@ describe('planLayout', () => {
     expect(r.geometry.get('z')!.height).toBe(TITLE_H);
   });
 
-  it('puts root events on the header baseline and people in a fixed roster strip above it', () => {
+  it('centres root events on the month/week boundary, clear of the week labels, and people in a roster strip above the header', () => {
+    expect(HEADER_H).toBe(MONTH_H + WEEK_H + DAY_H);
     const m = roadmap();
     const r = planLayout({ view: view(m), model: m, plane: 'plan' });
     expect(r.geometry.get('kickoff')).toEqual({
       x: planX(dayOf('2026-01-05')!, origin) + DAY / 2 - EVENT / 2,
-      y: -HEADER_H / 2 - EVENT / 2,
+      // centred on the line between the month and week bands: centred in the
+      // week band, the diamond and its name sat on the W## label
+      y: -(DAY_H + WEEK_H) - EVENT / 2,
       width: EVENT,
       height: EVENT,
     });

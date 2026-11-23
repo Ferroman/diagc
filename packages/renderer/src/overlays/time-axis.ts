@@ -7,12 +7,28 @@ export interface AxisBand {
   label: string;
 }
 
+/** one day of the day band: a bar's start and end read against these */
+export interface DayBand {
+  x: number;
+  width: number;
+  /** the day number (days since 1970-01-01), as `dayOf` gives it */
+  day: number;
+  /** the day of the month, no leading zero */
+  date: string;
+  /** the weekday's initial, `M` … `S` */
+  weekday: string;
+}
+
 export interface TimeAxis {
   /** drawn extent, a week of margin before the first date and after the last */
   x0: number;
   x1: number;
   months: AxisBand[];
   weeks: AxisBand[];
+  days: DayBand[];
+  /** each run of Saturday and Sunday inside the extent, as one unlabelled band
+   * (one day where the extent cuts a weekend), shaded down the chart */
+  weekends: AxisBand[];
 }
 
 /** The drawn extent's margins, in days, either side of the dated range.
@@ -24,6 +40,8 @@ export const MARGIN_AFTER = 8;
 /** fixed English abbreviations: the axis reads the same on every machine, and
  * a locale name would not survive the PNG round trip as text anyway */
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+/** indexed by `weekday()` (0 = Sunday), fixed English for the reason MONTHS is */
+const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
 /** a week label needs room for three characters at the band's font */
 const MIN_LABELLED_WEEK = 3;
 
@@ -70,7 +88,24 @@ export function timeAxis(range: PlanSpan, origin: number): TimeAxis {
     });
     d = end;
   }
-  return { x0: x(from), x1: x(to), months, weeks };
+  const days: DayBand[] = [];
+  const weekends: AxisBand[] = [];
+  for (let d = from; d < to; d++) {
+    const wd = weekday(d);
+    days.push({
+      x: x(d),
+      width: PLAN_LAYOUT.DAY,
+      day: d,
+      date: String(Number(isoOf(d).slice(8))),
+      weekday: WEEKDAYS[wd]!,
+    });
+    if (wd !== 0 && wd !== 6) continue;
+    // a Sunday extends the Saturday run just before it, unless the extent starts on it
+    const last = weekends[weekends.length - 1];
+    if (wd === 0 && last !== undefined && last.x + last.width === x(d)) last.width += PLAN_LAYOUT.DAY;
+    else weekends.push({ x: x(d), width: PLAN_LAYOUT.DAY, label: '' });
+  }
+  return { x0: x(from), x1: x(to), months, weeks, days, weekends };
 }
 
 /** The reader's calendar date, `YYYY-MM-DD`, from the LOCAL clock: "today" is
