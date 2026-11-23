@@ -31,14 +31,25 @@ export interface LayoutApiInput {
   geometryRef: MutableRefObject<Map<string, NodeGeometry> | null>;
   wrapperRef: MutableRefObject<HTMLDivElement | null>;
   strokesRef: MutableRefObject<readonly Stroke[]>;
+  /** the layout's view-only y shifts (LayoutResult.viewShift), taken back off a snapshot */
+  viewShiftRef: MutableRefObject<ReadonlyMap<string, number>>;
   legendReserveRef: MutableRefObject<{ side: 'top' | 'right' | 'bottom' | 'left'; px: number } | null>;
 }
 
 /** Populate the host's imperative layout ref (auto-layout toggle). Functions
  * read refs so the api object stays stable while always returning current data. */
 export function useLayoutApi(input: LayoutApiInput): void {
-  const { layoutApiRef, reactFlow, rfNodesRef, compiledRef, geometryRef, wrapperRef, strokesRef, legendReserveRef } =
-    input;
+  const {
+    layoutApiRef,
+    reactFlow,
+    rfNodesRef,
+    compiledRef,
+    geometryRef,
+    wrapperRef,
+    strokesRef,
+    legendReserveRef,
+    viewShiftRef,
+  } = input;
   useEffect(() => {
     const ref = layoutApiRef;
     if (ref === undefined) return;
@@ -49,12 +60,14 @@ export function useLayoutApi(input: LayoutApiInput): void {
       // other view of the same plane. Drop them from the snapshot. Notes
       // go the same way: a note's place is an offset in `layout.notes`, so a
       // freeze that wrote its `note:` id into `layout.planes` would save a
-      // phantom box there for good.
+      // phantom box there for good. A view shift (a plan zone drawn higher
+      // because a fold above it gave its height back) is taken back off: what
+      // is saved has to hold once the fold opens again.
       snapshotPositions: () =>
         Object.fromEntries(
           rfNodesRef.current
             .filter((n) => !(compiledRef.current.externals?.has(n.id) ?? false) && !isNoteId(n.id))
-            .map((n) => [n.id, { x: n.position.x, y: n.position.y }]),
+            .map((n) => [n.id, { x: n.position.x, y: n.position.y - (viewShiftRef.current.get(n.id) ?? 0) }]),
         ),
       autoPositions: () =>
         geometryRef.current === null

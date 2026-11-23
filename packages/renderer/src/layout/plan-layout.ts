@@ -406,29 +406,37 @@ function foldedAway(run: PlanRun, id: string, height: number): number {
 }
 
 /** The top-level zones, one row each in start order; returns the y below them.
- * A zone with a saved y keeps it (the overlay's y wins — lockedX), so a fold
- * above it would leave a gap: each such zone is shifted up, in the view only,
- * by what the folds in the top-level zones above it gave back. */
+ * The arranged y is where each zone sits with every fold OPEN — stacked by open
+ * heights, or its saved y — so whatever a move records while something is
+ * folded is a position that still holds once it opens. The gap a fold leaves is
+ * closed in the view only (`viewShift`, which a committed move takes back off):
+ * each zone moves up by what the folds wholly above it gave back. A zone beside
+ * a folded one — sharing its lane, a little lower — is not below it, and stays
+ * put rather than rising into the header. */
 function placeRootZones(run: PlanRun, roots: readonly string[]): number {
   const rootZones = byStart(
     run,
     roots.filter((id) => isPlanZone(nodeOf(run, id))),
   );
   let y = 0;
-  const rows: { id: string; y: number; away: number }[] = [];
+  let away = 0;
+  const rows: { id: string; y: number; openBottom: number; away: number }[] = [];
   for (const id of rootZones) {
     const size = layZone(run, id);
+    const gave = foldedAway(run, id, size.height);
     run.geometry.set(id, { x: planX(startOf(run, id), run.origin), y, ...size });
     run.lockedX.add(id);
-    rows.push({ id, y: run.positions?.[id]?.y ?? y, away: foldedAway(run, id, size.height) });
-    y += size.height + PLAN_LAYOUT.ROW_GAP;
+    const top = run.positions?.[id]?.y ?? y;
+    rows.push({ id, y: top, openBottom: top + size.height + gave, away: gave });
+    y += size.height + gave + PLAN_LAYOUT.ROW_GAP;
+    away += gave;
   }
   for (const row of rows) {
-    if (run.positions?.[row.id] === undefined) continue; // stacked: already closed up
-    const dy = rows.reduce((sum, above) => (above.y < row.y ? sum + above.away : sum), 0);
+    const dy = rows.reduce((sum, above) => (above.openBottom <= row.y ? sum + above.away : sum), 0);
     if (dy > 0) run.viewShift.set(row.id, -dy);
   }
-  return y;
+  // the strays park under the zones as drawn, every gap closed
+  return y - away;
 }
 
 /** A top-level event sits in the time-axis header, on its day. */

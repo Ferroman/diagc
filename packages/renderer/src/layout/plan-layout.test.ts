@@ -397,10 +397,30 @@ describe('planLayout', () => {
       expect(r.viewShift?.get('b')).toBe(-(heightOfA([]) - heightOfA(['a1'])));
     });
 
-    it('shifts nothing unsaved (the stacking already closed the gap) and nothing with no fold', () => {
+    it('stacks unsaved zones by their open height, and closes the gap through the view shift', () => {
+      // so a move committed while folded saves the open-stack y (useCommitMoves
+      // takes the shift back off), and unfolding never lands one zone on another
       const m = stacked();
-      expect(planLayout({ view: view(m, ['a']), model: m, plane: 'plan' }).viewShift?.size ?? 0).toBe(0);
+      const r = planLayout({ view: view(m, ['a']), model: m, plane: 'plan' });
+      const open = heightOfA([]);
+      expect(r.geometry.get('b')!.y).toBe(open + ROW_GAP);
+      expect(r.viewShift?.get('b')).toBe(-(open - BAR_H));
+      expect(r.viewShift?.get('c')).toBe(-(open - BAR_H));
+      expect(r.viewShift?.has('a')).toBe(false);
+    });
+
+    it('moves only the zones wholly below a fold: one beside it stays put', () => {
+      const m = stacked();
+      // b shares a's lane, 10px lower: closing a's gap would lift it into the header
+      const beside = { a: { x: 0, y: 0 }, b: { x: 0, y: 10 } };
+      const r = planLayout({ view: view(m, ['a']), model: m, plane: 'plan', positions: beside });
+      expect(r.viewShift?.has('b') ?? false).toBe(false);
+    });
+
+    it('shifts nothing with no fold', () => {
+      const m = stacked();
       expect(planLayout({ view: view(m), model: m, plane: 'plan', positions }).viewShift?.size ?? 0).toBe(0);
+      expect(planLayout({ view: view(m), model: m, plane: 'plan' }).viewShift?.size ?? 0).toBe(0);
     });
   });
 

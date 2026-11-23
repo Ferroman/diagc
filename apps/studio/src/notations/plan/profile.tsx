@@ -36,4 +36,5 @@ export const PLAN: StudioNotationProfile = {
   quickAdd: planQuickAdd,
   datesFromDropPoint: true,
   planSection: true,
+  drilledViewOnly: true,
 };

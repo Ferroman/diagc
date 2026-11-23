@@ -272,6 +272,7 @@ function Inner(props: DiagramViewProps) {
     wrapperRef,
     strokesRef: ink.strokesRef,
     legendReserveRef: legend.legendReserveRef,
+    viewShiftRef: frames.viewShiftRef,
   });
   const edges = useFlowEdges({ props, editing, edit, notation, preset, compiled, layout: viewLayout, moves });
 

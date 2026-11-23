@@ -53,3 +53,8 @@ export const connectKind = (
   from: string,
   to: string,
 ): string => studioNotation(notation).connectKind?.(model, from, to) ?? 'sync';
+
+/** Whether the canvas takes edits: edit mode, unless the notation keeps an
+ * opened container view-only (StudioNotationProfile.drilledViewOnly). */
+export const editsCanvas = (profile: StudioNotationProfile, editing: boolean, drilled: boolean): boolean =>
+  editing && !(drilled && profile.drilledViewOnly === true);
