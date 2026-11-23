@@ -60,10 +60,15 @@ export function withSavedPositions(
   return unfolded === undefined ? placed : withUnfolded(placed, key, unfolded);
 }
 
-/** the containers a pins map holds open, as the sorted list the overlay saves */
-export const unfoldedOf = (pins: Record<string, 'expanded' | 'collapsed'>): string[] =>
+/** the containers a pins map holds open, as the sorted list the overlay saves;
+ * a box that rests open (a plan zone, `restsOpen`) is left out — open is what
+ * it is anyway, and its fold is never saved */
+export const unfoldedOf = (
+  pins: Record<string, 'expanded' | 'collapsed'>,
+  restsOpen: (id: string) => boolean = () => false,
+): string[] =>
   Object.entries(pins)
-    .filter(([, state]) => state === 'expanded')
+    .filter(([id, state]) => state === 'expanded' && !restsOpen(id))
     .map(([id]) => id)
     .sort();
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   activeNotation,
   borrowsContainment,
@@ -10,7 +10,7 @@ import {
   type LayoutOverlay,
   type NotationId,
 } from '@diagc/core/internal';
-import type { DiagramSelection } from '@diagc/renderer';
+import { notationProfile, type DiagramSelection } from '@diagc/renderer';
 import type { EditorApi } from '../session/useEditor';
 import { remapVisibleLayers } from './layerMerge';
 import { unfoldedOf } from '../layout/savedPositions';
@@ -49,6 +49,9 @@ export interface ViewNavigation {
   pins: Pins;
   /** the plane's saved open boxes, as one comparable string */
   savedUnfoldedKey: string;
+  /** a box the notation draws open until folded (a plan zone): its fold is
+   * only a way of looking, never saved */
+  restsOpen: (id: string) => boolean;
   switchPlane: (id: string) => void;
   activateLayer: (id: string | null) => void;
   mergeSelectedLayers: (sources: string[], target?: string) => void;
@@ -88,6 +91,18 @@ export function useViewNavigation({
   // A borrowing plane is a view of its donor's structure, so a node drawn
   // there is added shared and joins that structure (see createNodeAt).
   const activePlaneBorrowsContainment = model !== undefined && borrowsContainment(model, activePlane);
+  // A box the notation rests open (a plan zone) is open unless folded, and its
+  // fold is only a way of looking: never recorded, never in the saved open
+  // boxes, and never undone by a re-seed from them.
+  const restsOpen = useCallback(
+    (id: string): boolean => {
+      const rests = notationProfile(notation).node?.restsOpen;
+      const node = rests === undefined ? undefined : model?.nodes.find((n) => n.id === id);
+      return node !== undefined && rests!(node);
+    },
+    [notation, model],
+  );
+  const restingFolds = (p: Pins): Pins => Object.fromEntries(Object.entries(p).filter(([id]) => restsOpen(id)));
 
   // Seed the layer switch from the plane's presets when a diagram arrives on
   // screen. A plane's `layers` are a DEFAULT the user then owns (see
@@ -134,7 +149,11 @@ export function useViewNavigation({
     const was = lastSavedUnfolded.current;
     lastSavedUnfolded.current = editing ? savedUnfoldedKey : null;
     if (!editing || was === null || was === savedUnfoldedKey || model === undefined) return;
-    setPins((p) => (unfoldedOf(p).join('\u0000') === savedUnfoldedKey ? p : openingPins(layout, model, activePlane)));
+    setPins((p) =>
+      unfoldedOf(p, restsOpen).join('\u0000') === savedUnfoldedKey
+        ? p
+        : { ...restingFolds(p), ...openingPins(layout, model, activePlane) },
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the saved list's CONTENT; layout/model/plane are read at that moment
   }, [editing, savedUnfoldedKey]);
 
@@ -178,10 +197,10 @@ export function useViewNavigation({
   // is on screen — saving it is the explicit Save positions chip.
   const toggleExpand = (id: string, next: 'expanded' | 'collapsed') => {
     setPins((p) => ({ ...p, [id]: next }));
-    if (editing) {
+    if (editing && !restsOpen(id)) {
       editor.dispatch({
         type: 'set-unfolded',
-        ids: unfoldedOf({ ...pins, [id]: next }),
+        ids: unfoldedOf({ ...pins, [id]: next }, restsOpen),
         ...defined({ plane: activePlane }),
       });
     }
@@ -217,6 +236,7 @@ export function useViewNavigation({
     switchPlane,
     activateLayer,
     mergeSelectedLayers,
+    restsOpen,
     toggleExpand,
     toggleLayer,
     resetView,

@@ -169,6 +169,7 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     activePlane,
     activePlaneManual,
     pins: nav.pins,
+    restsOpen: nav.restsOpen,
     savedUnfoldedKey: nav.savedUnfoldedKey,
     layoutApiRef,
     putLayout: boot.putLayout,

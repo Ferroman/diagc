@@ -124,6 +124,12 @@ describe('useViewArrangement: what Save positions would write', () => {
     expect(t.now.unsavedView).toBe(false);
   });
 
+  // Breaks if opening a plan zone again (it rests open) offers to save the view.
+  it('has nothing to save for a box that rests open', () => {
+    const t = mount({ pins: { z: 'expanded' }, restsOpen: (id) => id === 'z' });
+    expect(t.now.unsavedView).toBe(false);
+  });
+
   // Breaks if Save positions stops posting the moved boxes into the saved
   // overlay, or stops clearing the chip and folding the saved file into the
   // store on success.
