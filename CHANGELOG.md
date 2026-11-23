@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.0](https://github.com/Ferroman/diagc/compare/v1.14.1...v1.15.0) (2026-11-23)
+
+
+### Features
+
+* fold plan zones, and open one on its own ([#201](https://github.com/Ferroman/diagc/issues/201)) ([25c09d3](https://github.com/Ferroman/diagc/commit/25c09d330b54523bd99e20122f22f5eab77c2a55))
+* **renderer:** a day row in the plan header ([#199](https://github.com/Ferroman/diagc/issues/199)) ([952fbed](https://github.com/Ferroman/diagc/commit/952fbed03e715a687070bc8d0975ce88a5072015))
+
 ## [1.14.1](https://github.com/Ferroman/diagc/compare/v1.14.0...v1.14.1) (2026-11-23)
 
 
