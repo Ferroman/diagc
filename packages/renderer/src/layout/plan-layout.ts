@@ -226,7 +226,8 @@ const sidesCache = new WeakMap<DiagramModel, Map<string | undefined, ReadonlyMap
  * out of the zone it belongs to. The name goes beside the bar, as Gantt charts
  * do: to the right, or to the left where the right would cross the wall of the
  * zone the bar is in, and failing both wherever there is more room. A zone with
- * rows is absent — its name titles its band (`titleBand`).
+ * rows gets a side as well: open, its name titles its band (`titleBand`) and
+ * the canvas ignores the side; folded, it is a bar like any other.
  */
 export function planLabelSides(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, LabelSide> {
   let byPlane = sidesCache.get(model);
@@ -243,8 +244,6 @@ export function planLabelSides(model: DiagramModel, plane: string | undefined): 
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const sides = new Map<string, LabelSide>();
   for (const id of graph.zones) {
-    const kids = graph.children.get(id);
-    if (kids !== undefined && kids.zones.length + kids.events.length + kids.others.length > 0) continue;
     const node = byId.get(id)!;
     const span = spanOf(node);
     if (span === undefined) continue;

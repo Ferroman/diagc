@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type MutableRefObject } from 'react';
-import { compileView, type CompiledView, type ViewNode } from '@diagc/core/internal';
+import { compileView, type CompiledView, type DiagramModel, type ViewNode } from '@diagc/core/internal';
 import type { NotationProfile } from '../notations';
 import type { Registry, TypeStyle } from '../registry';
 import { neverFolds } from './useNotation';
@@ -22,19 +22,45 @@ export interface CompiledViewState {
   compiledRef: MutableRefObject<CompiledView>;
 }
 
+type Pins = Record<string, 'expanded' | 'collapsed'>;
+
+/**
+ * The pins the view compiles with: the host's, plus what the notation says
+ * about its containers. One that never folds (a git lane is a row, not a box
+ * with an inside) is pinned expanded over whatever the host says; one that
+ * rests open (a plan zone) is expanded unless the host folded it. The host's
+ * own pins come back as they are when the notation adds nothing, so the
+ * compile memo keeps its input.
+ */
+export function restingPins(
+  model: DiagramModel,
+  profile: NotationProfile,
+  typeRegistry: Registry<TypeStyle>,
+  pins: Pins | undefined,
+): Pins | undefined {
+  const restsOpen = profile.node?.restsOpen;
+  let out: Pins | undefined;
+  for (const n of model.nodes) {
+    const pin = neverFolds(n, profile, typeRegistry)
+      ? 'expanded'
+      : restsOpen?.(n) === true && pins?.[n.id] !== 'collapsed'
+        ? 'expanded'
+        : undefined;
+    if (pin === undefined || pins?.[n.id] === pin) continue;
+    out ??= { ...(pins ?? {}) };
+    out[n.id] = pin;
+  }
+  return out ?? pins;
+}
+
 /** What is drawn: the view compiled from the model, the pins, the layers and the drill. */
 export function useCompiledView(input: CompiledViewInput): CompiledViewState {
   const { props, profile, typeRegistry, focus, drillRoot, visibleRef } = input;
-  // A notation may declare containers that never fold (git lanes are rows, not
-  // boxes with an inside): they are pinned expanded over whatever the host's
-  // pins say. The host's own pins still feed the chips, so nothing else changes.
-  const effectivePins = useMemo(() => {
-    const pinned = props.model.nodes.filter((n) => neverFolds(n, profile, typeRegistry));
-    if (pinned.length === 0) return props.pins; // referential stability: nothing to add
-    const pins: Record<string, 'expanded' | 'collapsed'> = { ...(props.pins ?? {}) };
-    for (const n of pinned) pins[n.id] = 'expanded';
-    return pins;
-  }, [profile, props.pins, props.model.nodes, typeRegistry]);
+  // The host's own pins still feed the chips, so nothing else changes.
+  const effectivePins = useMemo(
+    () => restingPins(props.model, profile, typeRegistry, props.pins),
+    [profile, props.pins, props.model, typeRegistry],
+  );
 
   const compiled = useMemo(() => {
     const raw = compileView(props.model, {

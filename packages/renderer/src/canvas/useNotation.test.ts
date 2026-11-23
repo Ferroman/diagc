@@ -20,6 +20,16 @@ describe('useNotation', () => {
     expect(result.current.isAlwaysExpanded('nowhere')).toBe(false);
   });
 
+  it('lets a plan zone fold and open: it rests open, it is not pinned', () => {
+    const m = model('plan');
+    m.plan()
+      .zone('z', { start: '2026-01-05', end: '2026-01-30' })
+      .zone('row', { start: '2026-01-05', end: '2026-01-09' });
+    const { result } = renderHook(() => useNotation({ model: m.toJSON(), notation: 'plan', plane: 'plan' }));
+    // false is what puts the fold and enter chips back, and lets a drill in
+    expect(result.current.isAlwaysExpanded('z')).toBe(false);
+  });
+
   it("lets the host's registries win over the notation's", () => {
     const typeRegistry = createTypeRegistry();
     const kindRegistry = createKindRegistry();

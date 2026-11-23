@@ -347,7 +347,19 @@ describe('planLayout', () => {
     expect(sides.get('last-day')).toBe('left'); // to the right is outside its parent
     expect(sides.get('root-day')).toBe('right'); // nothing to stay inside of
     expect(sides.has('long')).toBe(false); // fits: drawn inside, as ever
-    expect(sides.has('parent')).toBe(false); // a zone with rows titles its band instead
+    expect(sides.has('parent')).toBe(false); // fits its dates
+  });
+
+  it('gives a zone with rows a side too, for when it is folded into a bar', () => {
+    const m = model('folds');
+    const p = m.plan();
+    // a long name on a three-day zone: open, it titles its band; folded, it is
+    // a bar like any other and its name goes beside it
+    p.zone('short', { name: 'Kubernetes 1.29 to 1.30', start: '2026-03-02', end: '2026-03-04' }).zone('row', {
+      start: '2026-03-02',
+      end: '2026-03-03',
+    });
+    expect(planLabelSides(m.toJSON(), 'plan').get('short')).toBe('right');
   });
 
   it('draws an empty plan as nothing, with no origin to trip on', () => {

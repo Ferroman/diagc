@@ -212,13 +212,15 @@ describe('plan profile', () => {
     void z;
     return m.toJSON();
   }
-  it('owns the layout and the header, pins zones open, sizes events, hides the role kinds', () => {
+  it('owns the layout and the header, rests zones open, sizes events, hides the role kinds', () => {
     const p = notationProfile('plan');
     expect(p.layout).toBe(planLayout);
     expect(p.canvasOverlay).toBe('time-axis');
     expect(p.className).toBe('dg-notation-plan');
-    expect(p.node?.alwaysExpanded?.({ id: 'z', name: 'Z', type: 'plan-zone' })).toBe(true);
-    expect(p.node?.alwaysExpanded?.({ id: 'e', name: 'E', type: 'plan-event' })).toBe(false);
+    // open until the viewer folds them, not pinned: a zone folds and opens
+    expect(p.node?.alwaysExpanded).toBeUndefined();
+    expect(p.node?.restsOpen?.({ id: 'z', name: 'Z', type: 'plan-zone' })).toBe(true);
+    expect(p.node?.restsOpen?.({ id: 'e', name: 'E', type: 'plan-event' })).toBe(false);
     expect(p.node?.leafSize?.({ id: 'e', name: 'E', type: 'plan-event' })).toEqual({
       width: PLAN_LAYOUT.EVENT,
       height: PLAN_LAYOUT.EVENT,
