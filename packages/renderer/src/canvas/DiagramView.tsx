@@ -181,7 +181,7 @@ function Inner(props: DiagramViewProps) {
     ignoreSavedPositions: props.ignoreSavedPositions,
     viewPositions: moves.viewPositions,
   });
-  const frames = useMoveFrames(compiled, viewLayout.arrangedGeometry, viewLayout.containerShifts);
+  const frames = useMoveFrames(compiled, viewLayout.arrangedGeometry, viewLayout.containerShifts, viewLayout.viewShift);
   useRootFit({ pendingRootFitRef: nav.pendingRootFitRef, compiled, layout: viewLayout, reactFlow });
   useRevealOnUnfold({
     pendingRevealRef,

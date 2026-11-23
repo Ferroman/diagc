@@ -29,6 +29,13 @@ describe('useMoveFrames', () => {
     expect(result.current.arrangedRef.current).toBe(geometry);
   });
 
+  it("carries the layout's view shift for the commit to take back off", () => {
+    const { compiled, geometry } = scene();
+    const viewShift = new Map([['client', -40]]);
+    const { result } = renderHook(() => useMoveFrames(compiled, geometry, new Map(), viewShift));
+    expect(result.current.viewShiftRef.current).toBe(viewShift);
+  });
+
   it('has no frames before the layout lands', () => {
     const { compiled } = scene();
     const { result } = renderHook(() => useMoveFrames(compiled, null, new Map()));

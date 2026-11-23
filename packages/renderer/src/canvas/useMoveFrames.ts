@@ -9,7 +9,11 @@ export interface MoveFrames {
   /** each open container's origin before the fit pass shifted it */
   containerBasesRef: MutableRefObject<ReadonlyMap<string, Point>>;
   containerShiftsRef: MutableRefObject<ViewLayout['containerShifts']>;
+  /** the layout's view-only y shifts, taken back off a committed position */
+  viewShiftRef: MutableRefObject<ViewLayout['viewShift']>;
 }
+
+const NO_VIEW_SHIFT: ViewLayout['viewShift'] = new Map();
 
 /**
  * The frames a move is committed against, as render-phase refs: commitMoves
@@ -20,6 +24,7 @@ export function useMoveFrames(
   compiled: CompiledView,
   arrangedGeometry: ReadonlyMap<string, NodeGeometry> | null,
   containerShifts: ViewLayout['containerShifts'],
+  viewShift: ViewLayout['viewShift'] = NO_VIEW_SHIFT,
 ): MoveFrames {
   const arrangedRef = useRef(arrangedGeometry);
   arrangedRef.current = arrangedGeometry;
@@ -49,5 +54,7 @@ export function useMoveFrames(
   containerBasesRef.current = containerBases;
   const containerShiftsRef = useRef(containerShifts);
   containerShiftsRef.current = containerShifts;
-  return { arrangedRef, containerBasesRef, containerShiftsRef };
+  const viewShiftRef = useRef(viewShift);
+  viewShiftRef.current = viewShift;
+  return { arrangedRef, containerBasesRef, containerShiftsRef, viewShiftRef };
 }

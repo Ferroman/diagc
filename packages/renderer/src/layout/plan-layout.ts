@@ -8,6 +8,7 @@ import {
   PLAN_NOTATION,
   PLAN_ROLES,
   planGraph,
+  planSubtree,
   rolesOf,
   spanOf,
   type BoxSize,
@@ -112,6 +113,8 @@ interface PlanRun {
   origin: number;
   /** what the VIEW shows (layers can hide what the plane's containment holds) */
   shown: ReadonlySet<string>;
+  /** what the view shows folded: drawn as a bar, its rows hidden */
+  collapsed: ReadonlySet<string>;
   positions: Record<string, Point> | undefined;
   sizeHints: ReadonlyMap<string, BoxSize> | undefined;
   byId: ReadonlyMap<string, DiagramNode>;
@@ -120,13 +123,17 @@ interface PlanRun {
   geometry: Map<string, NodeGeometry>;
   fixed: Set<string>;
   lockedX: Set<string>;
+  /** top-level zone → dy, view only (LayoutResult.viewShift) */
+  viewShift: Map<string, number>;
 }
 
 function planRun({ view, model, plane, sizeHints, positions }: NotationLayoutInput): PlanRun {
   const graph = planGraphCached(model, plane);
   const shown = new Set<string>();
+  const collapsed = new Set<string>();
   const walk = (n: ViewNode): void => {
     shown.add(n.id);
+    if (n.state === 'collapsed') collapsed.add(n.id);
     n.children.forEach(walk);
   };
   view.roots.forEach(walk);
@@ -134,6 +141,7 @@ function planRun({ view, model, plane, sizeHints, positions }: NotationLayoutInp
     graph,
     origin: graph.origin ?? 0,
     shown,
+    collapsed,
     positions,
     sizeHints,
     byId: new Map(model.nodes.map((n) => [n.id, n] as const)),
@@ -141,6 +149,7 @@ function planRun({ view, model, plane, sizeHints, positions }: NotationLayoutInp
     geometry: new Map(),
     fixed: new Set(),
     lockedX: new Set(),
+    viewShift: new Map(),
   };
 }
 
@@ -352,18 +361,47 @@ function layZone(run: PlanRun, id: string): BoxSize {
   return { width, height };
 }
 
-/** The top-level zones, one row each in start order; returns the y below them. */
+/** Everything the plan graph puts under `id` — rows, events, borrowed nodes — at any depth. */
+function graphSubtree(run: PlanRun, id: string): string[] {
+  const kids = run.graph.children.get(id);
+  if (kids === undefined) return [];
+  return [...kids.events, ...kids.others, ...kids.zones.flatMap((z) => [z, ...graphSubtree(run, z)])];
+}
+
+/** How much shorter the folds inside top-level zone `id` (or of `id` itself)
+ * made it: its height with every folded subtree shown again, less `height`.
+ * Only what a fold hid comes back — a row a layer hides stays hidden — so a
+ * layer toggle still moves nothing it did not move before. */
+function foldedAway(run: PlanRun, id: string, height: number): number {
+  const folds = planSubtree(run.graph, id).filter((z) => run.collapsed.has(z));
+  if (folds.length === 0) return 0;
+  const shown = new Set(run.shown);
+  for (const z of folds) for (const c of graphSubtree(run, z)) shown.add(c);
+  return layZone({ ...run, shown, geometry: new Map(), fixed: new Set() }, id).height - height;
+}
+
+/** The top-level zones, one row each in start order; returns the y below them.
+ * A zone with a saved y keeps it (the overlay's y wins — lockedX), so a fold
+ * above it would leave a gap: each such zone is shifted up, in the view only,
+ * by what the folds in the top-level zones above it gave back. */
 function placeRootZones(run: PlanRun, roots: readonly string[]): number {
   const rootZones = byStart(
     run,
     roots.filter((id) => isPlanZone(nodeOf(run, id))),
   );
   let y = 0;
+  const rows: { id: string; y: number; away: number }[] = [];
   for (const id of rootZones) {
     const size = layZone(run, id);
     run.geometry.set(id, { x: planX(startOf(run, id), run.origin), y, ...size });
     run.lockedX.add(id);
+    rows.push({ id, y: run.positions?.[id]?.y ?? y, away: foldedAway(run, id, size.height) });
     y += size.height + PLAN_LAYOUT.ROW_GAP;
+  }
+  for (const row of rows) {
+    if (run.positions?.[row.id] === undefined) continue; // stacked: already closed up
+    const dy = rows.reduce((sum, above) => (above.y < row.y ? sum + above.away : sum), 0);
+    if (dy > 0) run.viewShift.set(row.id, -dy);
   }
   return y;
 }
@@ -476,5 +514,6 @@ export function planLayout(input: NotationLayoutInput): LayoutResult {
     algorithm: PLAN_NOTATION,
     fixed: run.fixed,
     lockedX: run.lockedX,
+    ...(run.viewShift.size > 0 ? { viewShift: run.viewShift } : {}),
   };
 }

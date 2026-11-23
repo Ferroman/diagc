@@ -36,10 +36,12 @@ function roadmap(): DiagramModel {
   return m.toJSON();
 }
 
-/** zones pinned expanded, as DiagramView does through alwaysExpanded */
-function view(m: DiagramModel): CompiledView {
+/** zones open, as DiagramView rests them, except the `folded` ones */
+function view(m: DiagramModel, folded: readonly string[] = []): CompiledView {
   const pins = Object.fromEntries(
-    m.nodes.filter((n) => n.type === PLAN_ZONE_TYPE).map((n) => [n.id, 'expanded' as const]),
+    m.nodes
+      .filter((n) => n.type === PLAN_ZONE_TYPE)
+      .map((n) => [n.id, folded.includes(n.id) ? ('collapsed' as const) : ('expanded' as const)]),
   );
   return compileView(m, { plane: 'plan', pins });
 }
@@ -360,6 +362,46 @@ describe('planLayout', () => {
       end: '2026-03-03',
     });
     expect(planLabelSides(m.toJSON(), 'plan').get('short')).toBe('right');
+  });
+
+  describe('a fold', () => {
+    /** a (two rows, a1 holding a row of its own) saved at y 100, b saved below it, c saved above it */
+    function stacked() {
+      const m = model('fold');
+      const p = m.plan();
+      const a = p.zone('a', { start: '2026-01-05', end: '2026-01-30' });
+      a.zone('a1', { start: '2026-01-05', end: '2026-01-16' }).zone('a1x', { start: '2026-01-05', end: '2026-01-09' });
+      a.zone('a2', { start: '2026-01-19', end: '2026-01-30' });
+      p.zone('b', { start: '2026-02-02', end: '2026-02-06' });
+      p.zone('c', { start: '2026-02-09', end: '2026-02-13' });
+      return m.toJSON();
+    }
+    const positions = { c: { x: 0, y: 0 }, a: { x: 0, y: 100 }, b: { x: 0, y: 400 } };
+    const heightOfA = (folded: readonly string[]) =>
+      planLayout({ view: view(stacked(), folded), model: stacked(), plane: 'plan', positions }).geometry.get('a')!
+        .height;
+
+    it('shifts saved top-level zones below a folded one up by the height it gave back', () => {
+      const m = stacked();
+      const r = planLayout({ view: view(m, ['a']), model: m, plane: 'plan', positions });
+      expect(r.geometry.get('a')!.height).toBe(BAR_H);
+      expect(r.viewShift?.get('b')).toBe(-(heightOfA([]) - BAR_H));
+      expect(r.viewShift?.has('a')).toBe(false);
+      expect(r.viewShift?.has('c')).toBe(false); // above the fold: it stays
+    });
+
+    it('shifts saved top-level zones below a nested fold', () => {
+      const m = stacked();
+      const r = planLayout({ view: view(m, ['a1']), model: m, plane: 'plan', positions });
+      expect(heightOfA(['a1'])).toBeLessThan(heightOfA([]));
+      expect(r.viewShift?.get('b')).toBe(-(heightOfA([]) - heightOfA(['a1'])));
+    });
+
+    it('shifts nothing unsaved (the stacking already closed the gap) and nothing with no fold', () => {
+      const m = stacked();
+      expect(planLayout({ view: view(m, ['a']), model: m, plane: 'plan' }).viewShift?.size ?? 0).toBe(0);
+      expect(planLayout({ view: view(m), model: m, plane: 'plan', positions }).viewShift?.size ?? 0).toBe(0);
+    });
   });
 
   it('draws an empty plan as nothing, with no origin to trip on', () => {
