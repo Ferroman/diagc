@@ -22,7 +22,7 @@ vi.mock('@xyflow/react', async (importOriginal) => {
 });
 const { TimeAxisOverlay } = await import('./TimeAxisOverlay');
 
-const { DAY, HEADER_H, PAD, EVENT } = PLAN_LAYOUT;
+const { DAY, HEADER_H, PAD, EVENT, WEEK_H, DAY_H } = PLAN_LAYOUT;
 const origin = dayOf('2026-01-01')!;
 
 function plan() {
@@ -39,7 +39,7 @@ function seed() {
     { id: 'z', position: { x: planX(dayOf('2026-01-20')!, origin), y: 0 }, measured: { width: 22 * DAY, height: 40 } },
     {
       id: 'e',
-      position: { x: planX(dayOf('2026-02-02')!, origin) + DAY / 2 - EVENT / 2, y: -HEADER_H / 2 - EVENT / 2 },
+      position: { x: planX(dayOf('2026-02-02')!, origin) + DAY / 2 - EVENT / 2, y: -(DAY_H + WEEK_H / 2) - EVENT / 2 },
       measured: { width: EVENT, height: EVENT },
     },
   );

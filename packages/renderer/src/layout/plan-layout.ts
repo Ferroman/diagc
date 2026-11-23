@@ -27,6 +27,10 @@ import type { LayoutResult, NodeGeometry, NotationLayoutInput } from './layout';
  * `ROSTER_GAP` is both the roster's horizontal card spacing and the vertical
  * gap between its last row and the header; `ROW_GAP` (shared with a zone's own
  * child rows) spaces the roster's rows from each other. */
+const MONTH_H = 22;
+const WEEK_H = 22;
+const DAY_H = 30;
+
 export const PLAN_LAYOUT = {
   DAY: 20,
   BAR_H: 40,
@@ -34,8 +38,13 @@ export const PLAN_LAYOUT = {
   PAD: 12,
   ROW_GAP: 8,
   EVENT: 16,
-  /** month band 22 + week band 22, above y = 0 */
-  HEADER_H: 44,
+  /** the header's three bands, top to bottom above y = 0: months, ISO weeks,
+   * and days — the day band is the tallest, a weekday letter over the day of
+   * the month, stacked so both fit a 20px day */
+  MONTH_H,
+  WEEK_H,
+  DAY_H,
+  HEADER_H: MONTH_H + WEEK_H + DAY_H,
   ROSTER_GAP: 24,
 } as const;
 
@@ -362,13 +371,15 @@ function placeRootZones(run: PlanRun, roots: readonly string[]): number {
 
 /** A top-level event sits in the time-axis header, on its day. */
 function placeRootEvents(run: PlanRun, roots: readonly string[]): void {
-  const { DAY, EVENT, HEADER_H } = PLAN_LAYOUT;
+  const { DAY, EVENT, WEEK_H, DAY_H } = PLAN_LAYOUT;
   for (const id of roots) {
     if (!isPlanEvent(nodeOf(run, id))) continue;
     const at = atOf(nodeOf(run, id)) ?? run.origin;
     run.geometry.set(id, {
       x: planX(at, run.origin) + DAY / 2 - EVENT / 2,
-      y: -HEADER_H / 2 - EVENT / 2,
+      // the week band's middle: the day band below is all labels, and a
+      // diamond there would sit on a day's number
+      y: -(DAY_H + WEEK_H / 2) - EVENT / 2,
       width: EVENT,
       height: EVENT,
     });
