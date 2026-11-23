@@ -6,41 +6,48 @@ const { ROW_GAP } = PLAN_LAYOUT;
 const S = ELBOW_STUB;
 
 describe('planElbow', () => {
-  it('finish to start: out of the end of the first bar, along the gap below it, into the start of the next', () => {
+  it('finish to start: down out of the end of the first bar, along the gap below it, into the start of the next', () => {
     const { points, label } = planElbow(
       { x: 0, y: 0, width: 100, height: 40 },
       { x: 200, y: 96, width: 80, height: 40 },
     );
     const gap = 40 + ROW_GAP / 2;
+    // it leaves through the bar's bottom edge, inside its end: a name drawn
+    // beside the bar is never crossed
     expect(points).toEqual([
-      { x: 100, y: 20 },
-      { x: 100 + S, y: 20 },
-      { x: 100 + S, y: gap },
+      { x: 100 - S, y: 40 },
+      { x: 100 - S, y: gap },
       { x: 200 - S, y: gap },
       { x: 200 - S, y: 116 },
       { x: 200, y: 116 },
     ]);
-    expect(label).toEqual({ x: (100 + S + 200 - S) / 2, y: gap });
+    expect(label).toEqual({ x: (100 - S + 200 - S) / 2, y: gap });
+  });
+
+  it('a one-day bar: it leaves from the middle of the bar', () => {
+    const { points } = planElbow({ x: 0, y: 0, width: 12, height: 40 }, { x: 200, y: 96, width: 80, height: 40 });
+    expect(points[0]).toEqual({ x: 6, y: 40 });
   });
 
   it('a bar that starts before the first one ends: the gap run goes back left, the head still enters from the left', () => {
     const { points } = planElbow({ x: 0, y: 0, width: 100, height: 40 }, { x: 40, y: 96, width: 80, height: 40 });
-    expect(points[3]!.x).toBeLessThan(points[2]!.x);
+    expect(points[2]!.x).toBeLessThan(points[1]!.x);
     const [a, b] = points.slice(-2);
     expect(a!.y).toBe(b!.y);
     expect(b!.x).toBeGreaterThan(a!.x);
     expect(b).toEqual({ x: 40, y: 116 });
   });
 
-  it('a dependent bar above runs in the gap above the first one', () => {
+  it('a dependent bar above: it leaves through the top edge and runs in the gap above', () => {
     const { points } = planElbow({ x: 0, y: 200, width: 100, height: 40 }, { x: 200, y: 0, width: 80, height: 40 });
-    expect(points[2]!.y).toBe(200 - ROW_GAP / 2);
+    expect(points[0]).toEqual({ x: 100 - S, y: 200 });
+    expect(points[1]!.y).toBe(200 - ROW_GAP / 2);
   });
 
-  it('an open zone (a tall box) leaves from and enters at its title row, not its middle', () => {
+  it('an open zone (a tall box) leaves through its bottom and is entered at its title row, not its middle', () => {
     const { points } = planElbow({ x: 0, y: 0, width: 100, height: 200 }, { x: 300, y: 300, width: 100, height: 160 });
-    expect(points[0]).toEqual({ x: 100, y: PLAN_LAYOUT.BAR_H / 2 });
-    expect(points[5]).toEqual({ x: 300, y: 300 + PLAN_LAYOUT.BAR_H / 2 });
-    expect(points[2]!.y).toBe(200 + ROW_GAP / 2);
+    expect(points[0]).toEqual({ x: 100 - S, y: 200 });
+    expect(points[4]).toEqual({ x: 300, y: 300 + PLAN_LAYOUT.BAR_H / 2 });
+    expect(points[1]!.y).toBe(200 + ROW_GAP / 2);
   });
 });
