@@ -420,6 +420,7 @@ function Inner(props: DiagramViewProps) {
             <CanvasOverlays
               model={props.model}
               plane={props.plane}
+              drillRoot={drillRoot}
               overlay={profile.canvasOverlay}
               placed={viewLayout.placedGeometry !== null}
               flowDirection={viewLayout.flowDirection}

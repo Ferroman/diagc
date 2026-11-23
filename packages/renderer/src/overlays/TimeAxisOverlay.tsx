@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNodes, ViewportPortal } from '@xyflow/react';
-import { atOf, dayOf, isPlanEvent, type DiagramModel } from '@diagc/core/internal';
+import { atOf, dayOf, isPlanEvent, planSubtreeRange, type DiagramModel } from '@diagc/core/internal';
 import { absoluteRects } from '../loops/loops';
 import { PLAN_LAYOUT, planGraphCached, planX } from '../layout/plan-layout';
 import { MARGIN_AFTER, MARGIN_BEFORE, timeAxis } from './time-axis';
@@ -11,6 +11,9 @@ export interface TimeAxisOverlayProps {
   /** the host's date (`YYYY-MM-DD`) for the today line; null or absent draws
    * none — an export must never bake in a line that is wrong tomorrow */
   today?: string | null;
+  /** the zone opened on its own (the drill root): the header shows its dates,
+   * and the rules its events, not the whole plan's */
+  root?: string;
 }
 
 const { MONTH_H, WEEK_H, DAY_H } = PLAN_LAYOUT;
@@ -26,27 +29,33 @@ const DATE_Y = -9;
  * GitLanesOverlay) so the grid follows a drag; must be mounted inside
  * <ReactFlow>. Dates come from the cached plan graph, never from the DOM.
  */
-export function TimeAxisOverlay({ model, plane, today }: TimeAxisOverlayProps) {
+export function TimeAxisOverlay({ model, plane, today, root }: TimeAxisOverlayProps) {
   const nodes = useNodes();
   const rects = useMemo(() => absoluteRects(nodes), [nodes]);
   const g = planGraphCached(model, plane);
-  const axis = useMemo(
-    () => (g.range !== undefined && g.origin !== undefined ? timeAxis(g.range, g.origin) : undefined),
-    [g],
+  // the same dates the layout scoped the drilled view to (plan-layout's planRun)
+  const range = useMemo(
+    () => (root === undefined ? g.range : (planSubtreeRange(g, model, root) ?? g.range)),
+    [g, model, root],
   );
-  if (axis === undefined || g.origin === undefined || g.range === undefined) return null;
+  const axis = useMemo(
+    () => (range !== undefined && g.origin !== undefined ? timeAxis(range, g.origin) : undefined),
+    [range, g],
+  );
+  if (axis === undefined || g.origin === undefined || range === undefined) return null;
   const { DAY, HEADER_H, PAD } = PLAN_LAYOUT;
   const origin = g.origin;
   let bottom = 0;
   for (const r of rects.values()) bottom = Math.max(bottom, r.y + r.height);
   bottom += PAD;
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
-  const rootEvents = g.events.filter((id) => !g.parent.has(id) && isPlanEvent(byId.get(id)!));
+  // the view's top-level events: the plan's, or the opened zone's own
+  const rootEvents = g.events.filter((id) => g.parent.get(id) === root && isPlanEvent(byId.get(id)!));
   const todayDay = today === undefined || today === null ? undefined : dayOf(today);
   // "inside the drawn extent" is the axis's own question, so it reads the
   // axis's own margins rather than a second copy of 7 and 8
   const todayX =
-    todayDay !== undefined && todayDay >= g.range.start - MARGIN_BEFORE && todayDay < g.range.end + MARGIN_AFTER
+    todayDay !== undefined && todayDay >= range.start - MARGIN_BEFORE && todayDay < range.end + MARGIN_AFTER
       ? planX(todayDay, origin) + DAY / 2
       : undefined;
   const todayBand = todayX === undefined ? undefined : axis.days.find((d) => d.day === todayDay);

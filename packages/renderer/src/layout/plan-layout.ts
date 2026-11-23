@@ -9,12 +9,15 @@ import {
   PLAN_ROLES,
   planGraph,
   planSubtree,
+  planSubtreeRange,
   rolesOf,
   spanOf,
   type BoxSize,
   type DiagramModel,
   type DiagramNode,
+  type CompiledView,
   type PlanGraph,
+  type PlanSpan,
   type PlanRole,
   type Point,
   type ViewNode,
@@ -103,14 +106,28 @@ export const planX = (day: number, origin: number): number => (day - origin) * P
 /** x of the chart's first day: where the roster and the strays line up. The
  * origin is 1 January, so a plan opening in November would otherwise leave
  * them most of a year's canvas to the left of the bars. 0 with nothing dated. */
-const chartLeft = (run: PlanRun): number =>
-  run.graph.range !== undefined ? planX(run.graph.range.start, run.origin) : 0;
+const chartLeft = (run: PlanRun): number => (run.range !== undefined ? planX(run.range.start, run.origin) : 0);
+
+/** The zone a drilled view opened (its children are the view's top level), or
+ * undefined on the whole plan. A drill is the view that carries `externals`. */
+export function planDrillRoot(graph: PlanGraph, view: CompiledView): string | undefined {
+  if (view.externals === undefined) return undefined;
+  for (const r of view.roots) {
+    const parent = view.externals.has(r.id) ? undefined : graph.parent.get(r.id);
+    if (parent !== undefined) return parent;
+  }
+  return undefined;
+}
 
 /** One plan arrangement under way: what it reads, and the maps every step fills. */
 interface PlanRun {
   graph: PlanGraph;
   /** the origin day: 1 January of the earliest year */
   origin: number;
+  /** the dates drawn: the whole plan's, or those of the zone opened on its own */
+  range: PlanSpan | undefined;
+  /** a drilled view's stubs: stub id → the real node outside the opened zone */
+  stubs: ReadonlyMap<string, string>;
   /** what the VIEW shows (layers can hide what the plane's containment holds) */
   shown: ReadonlySet<string>;
   /** what the view shows folded: drawn as a bar, its rows hidden */
@@ -129,6 +146,8 @@ interface PlanRun {
 
 function planRun({ view, model, plane, sizeHints, positions }: NotationLayoutInput): PlanRun {
   const graph = planGraphCached(model, plane);
+  const root = planDrillRoot(graph, view);
+  const stubs = view.externals ?? new Map<string, string>();
   const shown = new Set<string>();
   const collapsed = new Set<string>();
   const walk = (n: ViewNode): void => {
@@ -140,11 +159,17 @@ function planRun({ view, model, plane, sizeHints, positions }: NotationLayoutInp
   return {
     graph,
     origin: graph.origin ?? 0,
+    range: root === undefined ? graph.range : (planSubtreeRange(graph, model, root) ?? graph.range),
+    stubs,
     shown,
     collapsed,
     positions,
     sizeHints,
-    byId: new Map(model.nodes.map((n) => [n.id, n] as const)),
+    // a stub is in the drilled view, not the model: it is looked up like any node
+    byId: new Map([
+      ...model.nodes.map((n) => [n.id, n] as const),
+      ...view.roots.filter((r) => stubs.has(r.id)).map((r) => [r.id, r.node] as const),
+    ]),
     chips: planChips(model, plane),
     geometry: new Map(),
     fixed: new Set(),
@@ -442,8 +467,7 @@ function placeRoster(run: PlanRun, roots: readonly string[]): void {
   const roster = [...run.graph.actors, ...roots.filter((id) => isPlanActor(nodeOf(run, id)))].filter(
     (id, i, all) => rootSet.has(id) && all.indexOf(id) === i,
   );
-  const rosterWidth =
-    run.graph.range !== undefined ? (run.graph.range.end + 1 - run.graph.range.start) * PLAN_LAYOUT.DAY : undefined;
+  const rosterWidth = run.range !== undefined ? (run.range.end + 1 - run.range.start) * PLAN_LAYOUT.DAY : undefined;
   const left = chartLeft(run);
   const rosterRows: { id: string; size: BoxSize }[][] = [];
   let rosterRow: { id: string; size: BoxSize }[] = [];
@@ -478,6 +502,37 @@ function placeRoster(run: PlanRun, roots: readonly string[]): void {
   }
 }
 
+/**
+ * A zone opened on its own keeps the dependencies that cross its edge: their
+ * outside end is a stub (scopeToRoot), drawn as a marker at the left edge of
+ * the dates when the node it stands for ends before them, at the right
+ * otherwise, stacked down from the top on each side. A stub has no dates of its
+ * own — laid out as a zone it would land on 1 January. Actor stubs are the
+ * roster's (placeRoster), so they are placed by then.
+ */
+function placeStubs(run: PlanRun, roots: readonly string[]): void {
+  const { ROW_GAP, ROSTER_GAP } = PLAN_LAYOUT;
+  const { range } = run;
+  if (range === undefined) return; // nothing dated: they park as strays
+  let left = 0;
+  let right = 0;
+  for (const id of roots) {
+    const real = run.stubs.get(id);
+    if (real === undefined || run.geometry.has(id)) continue;
+    const node = run.byId.get(real);
+    const ends = node === undefined ? undefined : (spanOf(node)?.end ?? atOf(node));
+    const size = hint(run, id);
+    const before = ends !== undefined && ends < range.start;
+    const x = before
+      ? planX(range.start, run.origin) - ROSTER_GAP - size.width
+      : planX(range.end + 1, run.origin) + ROSTER_GAP;
+    run.geometry.set(id, { x, y: before ? left : right, ...size });
+    run.fixed.add(id);
+    if (before) left += size.height + ROW_GAP;
+    else right += size.height + ROW_GAP;
+  }
+}
+
 /** Strays (a shared node with no zone) park under the zones at `y`, from the
  * chart's first day, as git-graph's spare row. */
 function placeStrays(run: PlanRun, roots: readonly string[], y: number): void {
@@ -503,9 +558,12 @@ function placeStrays(run: PlanRun, roots: readonly string[], y: number): void {
 export function planLayout(input: NotationLayoutInput): LayoutResult {
   const run = planRun(input);
   const roots = input.view.roots.map((r) => r.id);
-  const y = placeRootZones(run, roots);
-  placeRootEvents(run, roots);
+  // a stub keeps its stand-in's type, but not its dates: never a row or a header event
+  const own = roots.filter((id) => !run.stubs.has(id));
+  const y = placeRootZones(run, own);
+  placeRootEvents(run, own);
   placeRoster(run, roots);
+  placeStubs(run, roots);
   placeStrays(run, roots, y);
   return {
     geometry: run.geometry,

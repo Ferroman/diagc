@@ -404,6 +404,60 @@ describe('planLayout', () => {
     });
   });
 
+  describe('a zone opened on its own', () => {
+    /** a (5–30 Jan) ⊃ a1, a2, event ev; early (Dec 2025) → a1; a2 → late (Feb); alice owns a1 */
+    function opened() {
+      const m = model('open');
+      const p = m.plan();
+      const a = p.zone('a', { start: '2026-01-05', end: '2026-01-30' });
+      const a1 = a.zone('a1', { start: '2026-01-05', end: '2026-01-09' });
+      const a2 = a.zone('a2', { start: '2026-01-19', end: '2026-01-30' });
+      a.event('ev', { at: '2026-01-14' });
+      const early = p.zone('early', { start: '2025-12-01', end: '2025-12-12' });
+      const late = p.zone('late', { start: '2026-02-02', end: '2026-02-06' });
+      m.relate(early, a1, { kind: 'sync' });
+      m.relate(a2, late, { kind: 'sync' });
+      a1.owner(p.person('alice', 'Alice'));
+      const json = m.toJSON();
+      const pins = Object.fromEntries(
+        json.nodes.filter((n) => n.type === PLAN_ZONE_TYPE).map((n) => [n.id, 'expanded' as const]),
+      );
+      const v = compileView(json, { plane: 'plan', pins, root: 'a' });
+      return { json, r: planLayout({ view: v, model: json, plane: 'plan' }) };
+    }
+    const o = dayOf('2025-01-01')!; // the origin: 1 January of the earliest year, which `early` sets
+
+    it("draws the zone's rows at their own dates, stacked from the top", () => {
+      const { r } = opened();
+      const a1 = r.geometry.get('a1')!;
+      expect(a1).toMatchObject({ x: planX(dayOf('2026-01-05')!, o), y: 0 });
+      expect(r.geometry.get('a2')).toMatchObject({ x: planX(dayOf('2026-01-19')!, o), y: a1.height + ROW_GAP });
+    });
+
+    it("puts the zone's event in the header, as a top-level one", () => {
+      expect(opened().r.geometry.get('ev')).toMatchObject({
+        x: planX(dayOf('2026-01-14')!, o) + DAY / 2 - EVENT / 2,
+        y: -(DAY_H + WEEK_H) - EVENT / 2,
+      });
+    });
+
+    it('lists the actors holding a role in it in the roster, from its first day', () => {
+      const alice = opened().r.geometry.get('__ext__:alice')!;
+      expect(alice.x).toBe(planX(dayOf('2026-01-05')!, o));
+      expect(alice.y).toBe(-HEADER_H - ROSTER_GAP - alice.height);
+    });
+
+    it('marks a zone outside it at the edge its dates lie on', () => {
+      const { r } = opened();
+      const early = r.geometry.get('__ext__:early')!;
+      const late = r.geometry.get('__ext__:late')!;
+      expect(early.x + early.width).toBeLessThan(planX(dayOf('2026-01-05')!, o));
+      expect(early.y).toBe(0);
+      expect(late.x).toBeGreaterThan(planX(dayOf('2026-01-31')!, o));
+      expect(late.y).toBe(0);
+    });
+  });
+
   it('draws an empty plan as nothing, with no origin to trip on', () => {
     const m = model('empty');
     m.plan();

@@ -245,3 +245,15 @@ export function planSubtree(graph: PlanGraph, id: string): string[] {
   walk(id);
   return out;
 }
+
+/** The dates a zone opened on its own spans: its own, widened by everything
+ * scheduled under it (`planSubtree`). Undefined when none of it is dated. */
+export function planSubtreeRange(graph: PlanGraph, model: DiagramModel, root: string): PlanSpan | undefined {
+  const ids = planSubtree(graph, root);
+  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  return rangeOf(
+    ids.filter((id) => byId.get(id) !== undefined && !isPlanEvent(byId.get(id)!)),
+    ids.filter((id) => byId.get(id) !== undefined && isPlanEvent(byId.get(id)!)),
+    byId,
+  );
+}

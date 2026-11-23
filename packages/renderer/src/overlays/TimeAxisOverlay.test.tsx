@@ -148,6 +148,23 @@ describe('TimeAxisOverlay', () => {
       r.unmount();
     }
   });
+  it('scopes the header, the rules and today to a zone opened on its own', () => {
+    const m = model('p');
+    const p = m.plan();
+    const z = p.zone('z', { start: '2026-01-20', end: '2026-02-10' });
+    z.zone('r', { start: '2026-01-26', end: '2026-01-30' }).event('in', { at: '2026-01-28' });
+    p.event('e', { at: '2026-02-02' });
+    rfNodes.length = 0;
+    rfNodes.push({ id: 'r', position: { x: 0, y: 0 }, measured: { width: 100, height: 40 } });
+    // 9 Feb: inside the whole plan's drawn extent, outside r's (26 – 30 Jan, + 8 days)
+    const { container } = render(<TimeAxisOverlay model={m.toJSON()} plane="plan" root="r" today="2026-02-09" />);
+    const firstDay = container.querySelector('.dg-time-axis-day')!;
+    expect(firstDay.textContent).toBe(String(26 - MARGIN_BEFORE));
+    const rules = [...container.querySelectorAll('.dg-time-axis-event')].map((l) => Number(l.getAttribute('x1')));
+    expect(rules).toEqual([planX(dayOf('2026-01-28')!, origin) + DAY / 2]); // r's own event, not the plan's
+    expect(container.querySelector('.dg-time-axis-today')).toBeNull();
+  });
+
   it('renders nothing for a plan with no dates', () => {
     rfNodes.length = 0;
     const m = model('empty');
