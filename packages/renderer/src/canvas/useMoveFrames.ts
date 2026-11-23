@@ -25,11 +25,10 @@ const NO_FRAMES: ViewLayout['savedFrame'] = new Map();
  */
 export function useMoveFrames(
   compiled: CompiledView,
-  arrangedGeometry: ReadonlyMap<string, NodeGeometry> | null,
-  containerShifts: ViewLayout['containerShifts'],
-  viewShift: ViewLayout['viewShift'] = NO_VIEW_SHIFT,
-  savedFrame: ViewLayout['savedFrame'] = NO_FRAMES,
+  layout: Pick<ViewLayout, 'arrangedGeometry' | 'containerShifts'> &
+    Partial<Pick<ViewLayout, 'viewShift' | 'savedFrame'>>,
 ): MoveFrames {
+  const { arrangedGeometry, containerShifts, viewShift = NO_VIEW_SHIFT, savedFrame = NO_FRAMES } = layout;
   const arrangedRef = useRef(arrangedGeometry);
   arrangedRef.current = arrangedGeometry;
 

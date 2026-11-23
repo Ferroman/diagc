@@ -23,7 +23,9 @@ describe('useMoveFrames', () => {
   it("records each open container's origin, before the shift the fit pass gave it", () => {
     const { compiled, geometry } = scene();
     const shifts = new Map([['sys', { dx: 5, dy: 8 }]]);
-    const { result } = renderHook(() => useMoveFrames(compiled, geometry, shifts));
+    const { result } = renderHook(() =>
+      useMoveFrames(compiled, { arrangedGeometry: geometry, containerShifts: shifts }),
+    );
     expect([...result.current.containerBasesRef.current]).toEqual([['sys', { x: 95, y: 42 }]]);
     expect(result.current.containerShiftsRef.current).toBe(shifts);
     expect(result.current.arrangedRef.current).toBe(geometry);
@@ -32,22 +34,29 @@ describe('useMoveFrames', () => {
   it("carries the layout's view shift for the commit to take back off", () => {
     const { compiled, geometry } = scene();
     const viewShift = new Map([['client', -40]]);
-    const { result } = renderHook(() => useMoveFrames(compiled, geometry, new Map(), viewShift));
+    const { result } = renderHook(() =>
+      useMoveFrames(compiled, { arrangedGeometry: geometry, containerShifts: new Map(), viewShift }),
+    );
     expect(result.current.viewShiftRef.current).toBe(viewShift);
   });
 
   it('has no frames before the layout lands', () => {
     const { compiled } = scene();
-    const { result } = renderHook(() => useMoveFrames(compiled, null, new Map()));
+    const { result } = renderHook(() =>
+      useMoveFrames(compiled, { arrangedGeometry: null, containerShifts: new Map() }),
+    );
     expect(result.current.containerBasesRef.current.size).toBe(0);
     expect(result.current.arrangedRef.current).toBeNull();
   });
 
   it('keeps the refs themselves across a re-layout, with the new frames in them', () => {
     const { compiled, geometry } = scene();
-    const { result, rerender } = renderHook((g: Map<string, NodeGeometry>) => useMoveFrames(compiled, g, new Map()), {
-      initialProps: geometry,
-    });
+    const { result, rerender } = renderHook(
+      (g: Map<string, NodeGeometry>) => useMoveFrames(compiled, { arrangedGeometry: g, containerShifts: new Map() }),
+      {
+        initialProps: geometry,
+      },
+    );
     const refs = result.current;
     const moved = new Map(geometry).set('sys', { x: 0, y: 0, width: 300, height: 200 });
     rerender(moved);

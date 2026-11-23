@@ -183,13 +183,7 @@ function Inner(props: DiagramViewProps) {
     viewPositions: moves.viewPositions,
     drillRoot,
   });
-  const frames = useMoveFrames(
-    compiled,
-    viewLayout.arrangedGeometry,
-    viewLayout.containerShifts,
-    viewLayout.viewShift,
-    viewLayout.savedFrame,
-  );
+  const frames = useMoveFrames(compiled, viewLayout);
   // a resize is reported at the saved position, as a move is (saved-frame.ts);
   // the refs are stable, so this changes only with `edit`
   /* eslint-disable-next-line react-hooks/exhaustive-deps -- frames' refs are stable useRef identities */
