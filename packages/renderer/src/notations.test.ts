@@ -225,6 +225,16 @@ describe('plan profile', () => {
     expect(carry(m.toJSON(), 'plan', 'a')).toEqual(['alice', 'bob']);
     expect(carry(m.toJSON(), 'plan', 'a1')).toEqual(['bob']);
   });
+  it('carries in the actors with no role yet, so one added or assigned from inside an opened zone shows', () => {
+    const m = model('pool');
+    const p = m.plan();
+    const alice = p.person('alice', 'Alice');
+    p.person('dana', 'Dana'); // no role anywhere: the pool you assign from
+    const chen = p.person('chen', 'Chen');
+    p.zone('a', { start: '2026-01-05', end: '2026-01-30' }).owner(alice);
+    p.zone('b', { start: '2026-02-02', end: '2026-02-06' }).checker(chen);
+    expect(notationProfile('plan').drillCarry!(m.toJSON(), 'plan', 'a')).toEqual(['alice', 'dana']);
+  });
 
   it('owns the layout and the header, rests zones open, sizes events, hides the role kinds', () => {
     const p = notationProfile('plan');

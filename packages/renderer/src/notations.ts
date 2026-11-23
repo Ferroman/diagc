@@ -1,4 +1,5 @@
 import {
+  buildHierarchy,
   CAUSAL_LOOP_NOTATION,
   consequenceOrders,
   DEPLOY_NOTATION,
@@ -362,13 +363,23 @@ function planRelated(model: DiagramModel, plane: string | undefined, id: string)
   return [];
 }
 
-/** The actors holding a role on an opened zone or on any zone inside it, in
- * the roster's order: what an opened zone carries in (`drillCarry`). */
+/** What an opened zone carries in (`drillCarry`), in the roster's order: the
+ * actors holding a role on it or on any zone inside it, and the actors with
+ * no role anywhere yet. Those are the pool a zone is staffed from, and a
+ * person or team just added (Add person, `+` beside an actor) is one of them:
+ * left out, it would be created off screen. Someone busy only elsewhere stays
+ * out, which is the noise an opened zone is for removing. */
 function planDrillCarry(model: DiagramModel, plane: string | undefined, root: string): readonly string[] {
   const g = planGraphCached(model, plane);
   const zones = new Set(planSubtree(g, root));
-  const holders = new Set(model.relations.filter((r) => isPlanRole(r.kind) && zones.has(r.to)).map((r) => r.from));
-  return g.actors.filter((id) => holders.has(id));
+  const roles = model.relations.filter((r) => isPlanRole(r.kind));
+  const holders = new Set(roles.filter((r) => zones.has(r.to)).map((r) => r.from));
+  const busy = new Set(roles.map((r) => r.from));
+  // the pool is not in `g.actors` (a role holder list); the whole plan's
+  // roster draws it after them, from the plane's own nodes, and so does this
+  const onPlane = buildHierarchy(model, plane).childrenOf;
+  const pool = model.nodes.filter((n) => isPlanActor(n) && !busy.has(n.id) && onPlane.has(n.id)).map((n) => n.id);
+  return [...g.actors.filter((id) => holders.has(id)), ...pool];
 }
 
 const PLAN: NotationProfile = {

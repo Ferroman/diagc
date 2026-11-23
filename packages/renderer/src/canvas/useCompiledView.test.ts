@@ -117,6 +117,19 @@ describe('useCompiledView', () => {
       expect(ids).not.toContain('__ext__:alice');
     });
 
+    it('carries in a person with no role yet, so one added inside an opened zone shows there', () => {
+      const m = model('pool');
+      const p = m.plan();
+      p.zone('a', { start: '2026-01-05', end: '2026-01-30' }).zone('a1', { start: '2026-01-05', end: '2026-01-09' });
+      p.person('dana', 'Dana');
+      const { result } = renderHook(() =>
+        useCompiledView(
+          input({ model: m.toJSON(), plane: 'plan', profile: planProfile, typeRegistry: planTypes, drillRoot: 'a' }),
+        ),
+      );
+      expect(result.current.compiled.roots.map((r) => r.id)).toContain('dana');
+    });
+
     it("a dependency into a folded zone's row draws to the zone", () => {
       const { result } = renderHook(() =>
         useCompiledView(
