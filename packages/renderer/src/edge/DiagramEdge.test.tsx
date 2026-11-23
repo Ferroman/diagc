@@ -19,7 +19,8 @@ import { createKindRegistry } from '../registry';
 import { DiagramEdge, type DiagramEdgeData } from './DiagramEdge';
 import { badgePosition } from './EdgeNoteBadges';
 import { NoteStateContext, type NoteState } from '../notes/note-state';
-import { edgePoint, markFrame, shapeCurve } from './edge-geometry';
+import { edgePoint, markFrame, roundedRoute, shapeCurve } from './edge-geometry';
+import { planElbow } from './plan-elbow';
 import { notationProfile } from '../notations';
 import { stylePreset } from '../sketch/stylePresets';
 import { selfLoopPath } from './self-loop';
@@ -921,6 +922,18 @@ describe('DiagramEdge between measured nodes', () => {
   };
   const ROUTE_PATH = 'M100,20 L192,20 Q200,20 200,28 L200,112 Q200,120 208,120 L300,120';
   const FLOATING_PATH = 'M100,36.666666666666664 C200,36.666666666666664 200,103.33333333333334 300,103.33333333333334';
+
+  it('a plan dependency is a finish-to-start elbow between the bars as drawn; a shape the author set still wins', () => {
+    const nodes = [box('a', 0, 0), box('b', 300, 100)];
+    const elbow = planElbow({ x: 0, y: 0, width: 100, height: 40 }, { x: 300, y: 100, width: 100, height: 40 });
+    expect(pathOf(edgeBetween(nodes, { notation: 'plan' }))).toBe(roundedRoute(elbow.points, 4));
+    cleanup();
+    expect(pathOf(edgeBetween(nodes, { notation: 'plan', relStyle: { shape: 'straight' } }))).toMatch(
+      /^M ?100,[\d.]+ ?L ?300,/,
+    );
+    cleanup();
+    expect(pathOf(edgeBetween(nodes, {}))).toBe(FLOATING_PATH);
+  });
 
   it('leaves and meets each box on the border facing the other, not at the handles React Flow passed', () => {
     expect(pathOf(edgeBetween([box('a', 0, 0), box('b', 300, 0)], {}))).toBe('M100,20 C200,20 200,20 300,20');

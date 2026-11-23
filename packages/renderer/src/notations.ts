@@ -28,12 +28,14 @@ import {
   type NotationId,
   type Polarity,
   type PlanRole,
+  type Point,
   type BoxSize,
   type ViewEdge,
 } from '@diagc/core/internal';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './layout/fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './layout/git-layout';
-import type { LayoutResult, NotationLayoutInput } from './layout/layout';
+import { planElbow } from './edge/plan-elbow';
+import type { LayoutResult, NodeGeometry, NotationLayoutInput } from './layout/layout';
 import { PLAN_LAYOUT, planChips, planGraphCached, planLabelSides, planLayout } from './layout/plan-layout';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
 import { stateMachineColors, stateMachineEdgeColor } from './state-kinds';
@@ -157,6 +159,10 @@ export interface NotationProfile {
     colorOf?: (e: ViewEdge, model: DiagramModel, plane: string | undefined) => string | undefined;
     /** relation kinds the view never draws as edges (the legend skips them too) */
     hidden?: (kind: string) => boolean;
+    /** the notation's own path between two boxes as drawn (absolute), used
+     * instead of floating whenever both ends are measured and the relation
+     * names no shape: a plan's finish-to-start arrow (edge/plan-elbow.ts) */
+    elbow?: (source: NodeGeometry, target: NodeGeometry) => { points: Point[]; label: Point };
   };
   /** what the notation draws above the diagram */
   canvasOverlay?: 'loop-labels' | 'git-lanes' | 'order-bands' | 'time-axis';
@@ -415,7 +421,7 @@ const PLAN: NotationProfile = {
     // above).
     draggableWhenFixed: () => true,
   },
-  edge: { hidden: isPlanRole },
+  edge: { hidden: isPlanRole, elbow: planElbow },
   canvasOverlay: 'time-axis',
 };
 

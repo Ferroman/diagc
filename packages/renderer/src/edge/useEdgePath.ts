@@ -47,11 +47,14 @@ export function useEdgePath(
   profile: NotationProfile,
 ): EdgePath {
   const route = standingRoute(anchors, data);
+  const elbow = elbowOf(anchors, data, profile);
   const { path, curve, label, labelSpot } = anchors.selfLoop
     ? loopedPath(anchors, data)
-    : route !== undefined && data !== undefined
-      ? routedPath(route, anchors, data)
-      : floatingPath(anchors, data, profile);
+    : elbow !== undefined
+      ? elbow
+      : route !== undefined && data !== undefined
+        ? routedPath(route, anchors, data)
+        : floatingPath(anchors, data, profile);
 
   // Sketch theme: replace the clean path with a seeded rough stroke (stable per
   // edge id, memoized so it doesn't re-wobble each render). Label position and
@@ -64,6 +67,25 @@ export function useEdgePath(
     [data?.stylePreset, path, id],
   );
   return { path, renderPath, curve, label, labelSpot };
+}
+
+/** the radius of an elbow's corners: rounded enough to read as one line
+ * turning, small enough to keep it in an 8px gap between rows */
+const ELBOW_CORNER = 4;
+
+// A notation's own path (a plan's finish-to-start arrow), from both boxes as
+// drawn, so it needs both ends measured; before that, and for a relation whose
+// author set a shape, the edge floats as any other.
+function elbowOf(
+  anchors: EdgeAnchors,
+  data: DiagramEdgeData | undefined,
+  profile: NotationProfile,
+): Omit<EdgePath, 'renderPath'> | undefined {
+  const elbow = profile.edge?.elbow;
+  if (elbow === undefined || !anchors.measured || data?.relStyle?.shape !== undefined) return undefined;
+  if (anchors.source === undefined || anchors.target === undefined) return undefined;
+  const { points, label } = elbow(anchors.source.rect, anchors.target.rect);
+  return { path: roundedRoute(points, ELBOW_CORNER), curve: routeCurve(points), label, labelSpot: label };
 }
 
 // Routed: draw along the layout's waypoints (absolute flow coords, the same
