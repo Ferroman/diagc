@@ -17,9 +17,9 @@ export const STATUS_WORD: Record<ThreatStatus, string> = {
   accepted: 'accepted',
   'not-applicable': 'n/a',
 };
-/** how the badge sits on an element — the three placements styles.css gives
- * `.dg-threat-badge`, mirrored here because the note has to know where its
- * tail is going before anything is measured */
+/** how the badges sit on an element — the three placements styles.css gives
+ * `.dg-threat-badge` and `.dg-comment-badge`, mirrored here because the note
+ * has to know where its tail is going before anything is measured */
 export type BadgeKind = 'box' | 'ellipse' | 'group';
 
 /** the counting badge is an 18px pill; its centre is what the tail points at */
@@ -135,11 +135,53 @@ export interface NoteToPlace {
   away?: Point;
 }
 
+/** each spot a note may open at, in order, and the direction it slides outward */
+function spotsAround(badge: Point, e: Rect, { width: w, height: h }: BoxSize): { at: Point; out: Point }[] {
+  // The order below is written for a badge on the element's top-left (the
+  // threats badge on a box). A badge on another corner mirrors it, so the
+  // first spot is always the one off that corner: a comments badge at the
+  // bottom-right opens its note below and to the right, not above the box
+  // with a tail as long as the box is tall.
+  const low = badge.y > e.y + e.height / 2;
+  const onRight = badge.x > e.x + e.width / 2;
+  const above = e.y - NOTE_GAP - h;
+  const below = e.y + e.height + NOTE_GAP;
+  const left = e.x - NOTE_GAP - w;
+  const right = e.x + e.width + NOTE_GAP;
+  const up = { x: 0, y: -1 };
+  const down = { x: 0, y: 1 };
+  const toLeft = { x: -1, y: 0 };
+  const toRight = { x: 1, y: 0 };
+  /** the note reaching left of the badge (its right edge just past it) / right of it */
+  const leftOfBadge = badge.x + TAIL_ROOM - w;
+  const rightOfBadge = badge.x - TAIL_ROOM;
+  /** the note hanging down from the badge (its top just above it) / up from it */
+  const downFromBadge = badge.y - TAIL_ROOM;
+  const upFromBadge = badge.y + TAIL_ROOM - h;
+  const near = { y: low ? below : above, out: low ? down : up };
+  const far = { y: low ? above : below, out: low ? up : down };
+  const outer = { x: onRight ? right : left, out: onRight ? toRight : toLeft };
+  const inner = { x: onRight ? left : right, out: onRight ? toLeft : toRight };
+  const [xOut, xIn] = onRight ? [rightOfBadge, leftOfBadge] : [leftOfBadge, rightOfBadge];
+  const [yOut, yIn] = low ? [upFromBadge, downFromBadge] : [downFromBadge, upFromBadge];
+  return [
+    { at: { x: xOut, y: near.y }, out: near.out },
+    { at: { x: xIn, y: near.y }, out: near.out },
+    { at: { x: outer.x, y: yOut }, out: outer.out },
+    { at: { x: inner.x, y: yOut }, out: inner.out },
+    { at: { x: xOut, y: far.y }, out: far.out },
+    { at: { x: xIn, y: far.y }, out: far.out },
+    { at: { x: outer.x, y: yIn }, out: outer.out },
+    { at: { x: inner.x, y: yIn }, out: inner.out },
+  ];
+}
+
 /**
  * Where a note opens: the first free spot next to its badge, in a fixed
- * order — above-left of the badge (the comic default), above-right, then to
- * the left and right of the element with the note's top near the badge,
- * then below, then left/right with its bottom near the badge — each spot
+ * order — for a badge on the top-left corner: above-left of the badge (the
+ * comic default), above-right, then to the left and right of the element
+ * with the note's top near the badge, then below, then left/right with its
+ * bottom near the badge; mirrored for a badge on another corner — each spot
  * slid outward in steps (SLIDES) until it clears. "Free" means it covers no
  * obstacle. When nothing near is free, the least-covering near spot wins: a
  * note that hides part of a neighbour is still read next to the element it
@@ -159,25 +201,7 @@ export function placeNote(note: NoteToPlace, obstacles: readonly Rect[]): Point 
   const { badge, element, size, away } = note;
   const e = element ?? { x: badge.x - BADGE_R, y: badge.y - BADGE_R, width: 2 * BADGE_R, height: 2 * BADGE_R };
   const { width: w, height: h } = size;
-  const above = e.y - NOTE_GAP - h;
-  const below = e.y + e.height + NOTE_GAP;
-  const left = e.x - NOTE_GAP - w;
-  const right = e.x + e.width + NOTE_GAP;
-  const up = { x: 0, y: -1 };
-  const down = { x: 0, y: 1 };
-  const toLeft = { x: -1, y: 0 };
-  const toRight = { x: 1, y: 0 };
-  /** each spot and the direction it slides outward */
-  const spots: { at: Point; out: Point }[] = [
-    { at: { x: badge.x + TAIL_ROOM - w, y: above }, out: up },
-    { at: { x: badge.x - TAIL_ROOM, y: above }, out: up },
-    { at: { x: left, y: badge.y - TAIL_ROOM }, out: toLeft },
-    { at: { x: right, y: badge.y - TAIL_ROOM }, out: toRight },
-    { at: { x: badge.x + TAIL_ROOM - w, y: below }, out: down },
-    { at: { x: badge.x - TAIL_ROOM, y: below }, out: down },
-    { at: { x: left, y: badge.y + TAIL_ROOM - h }, out: toLeft },
-    { at: { x: right, y: badge.y + TAIL_ROOM - h }, out: toRight },
-  ];
+  const spots = spotsAround(badge, e, size);
   let groups: (typeof spots)[] = [spots];
   if (away !== undefined) {
     // how far a spot's centre lies along `away`: its side of the line

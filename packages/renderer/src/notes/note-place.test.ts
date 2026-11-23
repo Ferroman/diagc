@@ -28,6 +28,17 @@ describe('badgeCenter', () => {
 });
 
 describe('placeNote', () => {
+  it('a badge on the bottom-right corner opens the note below and to the right of it, its tail short', () => {
+    const comments = badgeCenter(box, 'box', 'comments');
+    const at = placeNote(
+      { badge: comments, element: box, size: { width: W, height: 80 } },
+      obstaclesOf([{ rect: box, kind: 'box' }]),
+    );
+    expect(at.y).toBe(box.y + box.height + NOTE_GAP);
+    // the note's left edge starts just before the badge
+    expect(at.x).toBeLessThan(comments.x);
+    expect(at.x).toBeGreaterThan(comments.x - 40);
+  });
   it('opens above and to the left of the badge when that is free, clear of the element by NOTE_GAP', () => {
     const at = placeNote(
       { badge, element: box, size: { width: W, height: 80 } },
