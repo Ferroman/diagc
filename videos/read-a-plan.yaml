@@ -1,0 +1,21 @@
+title: Read a plan
+url: "http://localhost:5183/#/fixtures%2Fplan-teams-demo"
+viewport: 1280x720
+crop: {role: main}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+  - wait_for: {text: Checkout v2, within: {role: application}}
+  # Close both side panels, so the chart is drawn larger.
+  - click: {role: button, name: "Collapse panel", nth: 1}
+  - click: {role: button, name: "Collapse panel", nth: 0}
+  - click: {role: button, name: Fit View}
+steps:
+  - note: Click a person to light their work
+    do:
+      - click: {text: Ana Silva, within: {role: application}}
+    pause: 1
+  - note: Fold a zone to take it out of the way
+    do:
+      - click: {role: button, name: Collapse, exact: true, within: {role: application}}
+    pause: 1.5

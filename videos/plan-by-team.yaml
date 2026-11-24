@@ -1,0 +1,21 @@
+title: Plan by team
+url: "http://localhost:5183/#/fixtures%2Fplan-teams-demo"
+viewport: 1280x720
+crop: {role: main}
+setup:
+  - wait_for: {text: diagc studio}
+  - click: {role: button, name: "Switch to light theme"}
+  - wait_for: {text: Checkout v2, within: {role: application}}
+  # Close both side panels, so the chart is drawn larger.
+  - click: {role: button, name: "Collapse panel", nth: 1}
+  - click: {role: button, name: "Collapse panel", nth: 0}
+  - click: {role: button, name: Fit View}
+steps:
+  - note: Group by team draws one lane per team
+    do:
+      - click: {role: button, name: Group by team}
+    pause: 1
+  - note: The eye hides a team and its work
+    do:
+      - click: {role: button, name: Hide Mobile}
+    pause: 1.5
