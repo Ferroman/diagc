@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.0](https://github.com/Ferroman/diagc/compare/v1.19.0...v1.20.0) (2026-11-24)
+
+
+### Features
+
+* **plan:** teams — group the chart by team, hide teams and people ([#211](https://github.com/Ferroman/diagc/issues/211)) ([03d8577](https://github.com/Ferroman/diagc/commit/03d85776ecb4199cbc03fa1cc14131a325f033fd))
+
 ## [1.19.0](https://github.com/Ferroman/diagc/compare/v1.18.0...v1.19.0) (2026-11-24)
 
 
