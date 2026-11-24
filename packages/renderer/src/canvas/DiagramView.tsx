@@ -28,7 +28,7 @@ import { useCanvasClicks } from './useCanvasClicks';
 import { useCanvasCommands } from './useCanvasCommands';
 import { useCommitMoves } from './useCommitMoves';
 import { useCompiledView } from './useCompiledView';
-import { useCentreDayPan, useDayWidth } from './useDayWidth';
+import { useCentreDayPan, useDayWidth, useDrillStretch } from './useDayWidth';
 import { useDrillNavigation } from './useDrillNavigation';
 import { useDropAndPaste } from './useDropAndPaste';
 import { useEditRequests } from './useEditRequests';
@@ -108,6 +108,16 @@ function Inner(props: DiagramViewProps) {
     isAlwaysExpanded: notation.isAlwaysExpanded,
   });
   const { drillRoot, enterNode } = nav;
+  // the width a drill lands on and how it is framed (see useDrillStretch)
+  const stretchFit = useDrillStretch({
+    days,
+    path: nav.enteredPath,
+    drillRoot,
+    model: props.model,
+    plane: props.plane,
+    stretches,
+    wrapperRef,
+  });
   // The box a fold chip just opened, for useRevealOnUnfold to bring into view
   // once its layout lands. Recorded here, on the way to the host, because the
   // host only ever sees the pin: which gesture set it is the view's to know.
@@ -193,7 +203,13 @@ function Inner(props: DiagramViewProps) {
   // the refs are stable, so this changes only with `edit`
   /* eslint-disable-next-line react-hooks/exhaustive-deps -- frames' refs are stable useRef identities */
   const nodeEdit = useMemo(() => savedResize(edit, frames), [edit]);
-  useRootFit({ pendingRootFitRef: nav.pendingRootFitRef, compiled, layout: viewLayout, reactFlow });
+  useRootFit({
+    pendingRootFitRef: nav.pendingRootFitRef,
+    compiled,
+    layout: viewLayout,
+    reactFlow,
+    ...stretchFit,
+  });
   useRevealOnUnfold({
     pendingRevealRef,
     pendingRootFitRef: nav.pendingRootFitRef,

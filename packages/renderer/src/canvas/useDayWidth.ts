@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import type { ReactFlowInstance, Viewport } from '@xyflow/react';
-import { PLAN_LAYOUT } from '../layout/plan-layout';
+import { isPlanZone, planSubtreeRange, type DiagramModel } from '@diagc/core/internal';
+import { PLAN_LAYOUT, planGraphCached } from '../layout/plan-layout';
+import type { RootFitInput } from './useRootFit';
 import type { DiagramViewProps } from './view-types';
 
 /** The next width a day button gives: the next step up or down from `width`,
@@ -86,4 +88,103 @@ export function useCentreDayPan(input: {
     void reactFlow.setViewport(centredViewport(reactFlow.getViewport(), canvasWidth, pan.from, pan.to));
     /* eslint-disable-next-line react-hooks/exhaustive-deps -- the pan waits for the layout (geometry); the refs are stable */
   }, [geometry, days.width]);
+}
+
+/** The share of the canvas an opened zone's days fill: a little room either side. */
+const OPENED_FILL = 0.9;
+
+/** The day width that stretches `days` across `canvasWidth`, in the allowed range. */
+export function openedZoneWidth(canvasWidth: number, days: number): number {
+  const width = Math.floor((canvasWidth * OPENED_FILL) / days);
+  return Math.min(PLAN_LAYOUT.DAY_MAX, Math.max(PLAN_LAYOUT.DAY_MIN, width));
+}
+
+/** The width opening `root` stretches to: its interior's dates across the
+ * canvas; undefined for a root that is not a dated zone. */
+function stretchFor(model: DiagramModel, plane: string | undefined, root: string, canvasWidth: number) {
+  const node = model.nodes.find((n) => n.id === root);
+  if (node === undefined || !isPlanZone(node)) return undefined;
+  const range = planSubtreeRange(planGraphCached(model, plane), model, root);
+  return range === undefined ? undefined : openedZoneWidth(canvasWidth, range.end - range.start + 1);
+}
+
+/** How many leading levels two drill paths share. */
+function sharedDepth(a: readonly string[], b: readonly string[]): number {
+  let k = 0;
+  while (k < a.length && k < b.length && a[k] === b[k]) k++;
+  return k;
+}
+
+export interface OpenedZoneStretchInput {
+  days: DayWidth;
+  /** the drill trail, outermost first */
+  path: readonly string[];
+  model: DiagramModel;
+  plane: string | undefined;
+  /** the notation stretches time (NotationProfile.stretchesTime) */
+  stretches: boolean;
+  canvasWidth: () => number;
+}
+
+/**
+ * Opening a zone on its own stretches its days across the canvas; leaving it
+ * gives back the width it had before, whatever was done inside (each level
+ * remembers the width before it, so going in twice and back out restores both
+ * in turn). The new width is decided DURING the render the drill lands in and
+ * returned at once, so the drill's camera fit can wait for a layout at that
+ * width (useRootFit): set from an effect alone, the first layout to settle
+ * would be the old width's, and the fit would frame it. A different diagram
+ * starts afresh (useDayWidth puts the width back to the default).
+ */
+export function useOpenedZoneStretch(input: OpenedZoneStretchInput): number {
+  const { days, path, model, plane, stretches } = input;
+  const seen = useRef({ path, modelId: model.id });
+  const before = useRef<number[]>([]);
+  const pending = useRef<number | null>(null);
+  if (seen.current.modelId !== model.id) {
+    seen.current = { path, modelId: model.id };
+    before.current = [];
+    pending.current = null;
+  } else if (stretches && sharedDepth(seen.current.path, path) !== Math.max(seen.current.path.length, path.length)) {
+    const old = seen.current.path;
+    const k = sharedDepth(old, path);
+    let width = pending.current ?? days.width;
+    if (old.length > k) width = before.current[k] ?? width;
+    before.current = before.current.slice(0, k);
+    for (let i = k; i < path.length; i++) before.current.push(width);
+    const root = path[path.length - 1];
+    if (path.length > k && root !== undefined) width = stretchFor(model, plane, root, input.canvasWidth()) ?? width;
+    pending.current = width;
+    seen.current = { path, modelId: model.id };
+  }
+  useEffect(() => {
+    const width = pending.current;
+    if (width === null) return;
+    pending.current = null;
+    if (width !== days.width) days.set(width);
+  });
+  return pending.current ?? days.width;
+}
+
+/** What a drill's camera fit needs from a view that stretches time: the width
+ * the drill lands on (the fit waits for a layout at it), and, inside a plan
+ * zone, a fit of the width alone. Empty for any other notation. */
+export function useDrillStretch(input: {
+  days: DayWidth;
+  path: readonly string[];
+  drillRoot: string | undefined;
+  model: DiagramModel;
+  plane: string | undefined;
+  stretches: boolean;
+  wrapperRef: RefObject<HTMLElement | null>;
+}): Pick<RootFitInput, 'dayWidth' | 'widthFit'> {
+  const { wrapperRef, drillRoot, model, stretches } = input;
+  const canvas = useCallback(
+    () => ({ width: wrapperRef.current?.clientWidth ?? 0, height: wrapperRef.current?.clientHeight ?? 0 }),
+    [wrapperRef],
+  );
+  const landsAt = useOpenedZoneStretch({ ...input, canvasWidth: () => canvas().width });
+  if (!stretches) return {};
+  const opened = drillRoot !== undefined && model.nodes.some((n) => n.id === drillRoot && isPlanZone(n));
+  return { dayWidth: landsAt, ...(opened ? { widthFit: { canvas } } : {}) };
 }

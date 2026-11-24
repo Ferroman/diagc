@@ -91,6 +91,9 @@ export interface ViewLayout {
    * for this to name the `compiled` it holds. A run that failed counts: there
    * is nothing better coming, and a waiter must not wait forever. */
   settledFor: ReturnType<typeof compileView> | null;
+  /** the day width the last finished run laid out at (a notation that
+   * stretches time), so a fit can wait for the width a drill lands on */
+  settledWidth: number | undefined;
   layoutSettings: NonNullable<LayoutOverlay['settings']>[string] | undefined;
   /** the direction a layered run uses — the sidecar's, else the model's, else
    * the default (git-graph never runs elk, so this is not what it drew) */
@@ -219,7 +222,16 @@ interface LayoutRunInput {
 
 type LayoutRun = Pick<
   ViewLayout,
-  'geometry' | 'geometryRef' | 'routes' | 'labelSpots' | 'fixed' | 'lockedX' | 'viewShift' | 'savedFrame' | 'settledFor'
+  | 'geometry'
+  | 'geometryRef'
+  | 'routes'
+  | 'labelSpots'
+  | 'fixed'
+  | 'lockedX'
+  | 'viewShift'
+  | 'savedFrame'
+  | 'settledFor'
+  | 'settledWidth'
 >;
 
 /** The asynchronous layout run, and what its last finished run produced. */
@@ -236,6 +248,7 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
   const [viewShift, setViewShift] = useState<ReadonlyMap<string, number>>(NO_VIEW_SHIFT);
   const [savedFrame, setSavedFrame] = useState<ReadonlyMap<string, Point>>(NO_FRAMES);
   const [settledFor, setSettledFor] = useState<ViewLayout['settledFor']>(null);
+  const [settledWidth, setSettledWidth] = useState<number | undefined>(undefined);
   useEffect(() => {
     let live = true;
     // A notation that owns the arrangement bypasses elk entirely; wrapped in a
@@ -270,6 +283,7 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
         setLockedX(r.lockedX ?? NONE_FIXED);
         setViewShift(r.viewShift ?? NO_VIEW_SHIFT);
         setSavedFrame(r.savedFrame ?? NO_FRAMES);
+        setSettledWidth(run.dayWidth);
         setSettledFor(run.compiled);
       })
       // layoutView degrades to the default algorithm rather than rejecting, so
@@ -301,7 +315,7 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
     run.dayWidth,
   ]);
 
-  return { geometry, geometryRef, routes, labelSpots, fixed, lockedX, viewShift, savedFrame, settledFor };
+  return { geometry, geometryRef, routes, labelSpots, fixed, lockedX, viewShift, savedFrame, settledFor, settledWidth };
 }
 
 /**
@@ -441,8 +455,8 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     () => withZoneOrder(withLaneOrder(input.compiled, input.model, input.plane), input.model, input.plane),
     [input.compiled, input.model, input.plane],
   );
-  const { geometry, geometryRef, routes, labelSpots, fixed, lockedX, viewShift, savedFrame, settledFor } = useLayoutRun(
-    {
+  const { geometry, geometryRef, routes, labelSpots, fixed, lockedX, viewShift, savedFrame, settledFor, settledWidth } =
+    useLayoutRun({
       compiled: input.compiled,
       laidView,
       sizes,
@@ -454,8 +468,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
       layoutPositions,
       drillRoot: input.drillRoot,
       dayWidth: input.dayWidth,
-    },
-  );
+    });
 
   // Overlay-applied geometry: elk output with any layout-overlay positions for
   // the active plane substituted in (width/height stay elk's). Derived so the
@@ -538,6 +551,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
     viewShift,
     savedFrame,
     settledFor,
+    settledWidth,
     layoutSettings,
     flowDirection,
   };
