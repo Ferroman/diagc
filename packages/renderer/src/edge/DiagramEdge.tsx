@@ -144,7 +144,7 @@ export function DiagramEdge({
     data,
   );
   const profile = notationProfile(data?.notation);
-  const { path, renderPath, curve, label, labelSpot, elbowed } = useEdgePath(id, anchors, data, profile);
+  const { path, renderPath, curve, label, labelSpot, pinnedEnds } = useEdgePath(id, anchors, data, profile);
   const look = edgeStroke(id, data, profile);
   // Loop highlight: when a loop badge is active, glow this edge if it's a member,
   // otherwise dim it. Wraps the whole edge (path + marks + marker) as one group.
@@ -169,7 +169,7 @@ export function DiagramEdge({
         </path>
         {data !== undefined && <EdgeMarks curve={curve} data={data} profile={profile} look={look} />}
       </g>
-      {data !== undefined && !elbowed && <FixedSideDots ends={anchors.ends} data={data} />}
+      {data !== undefined && !pinnedEnds && <FixedSideDots ends={anchors.ends} data={data} />}
       {data !== undefined && <EdgeLabels data={data} curve={curve} label={label} labelSpot={labelSpot} />}
       {data !== undefined && <EdgeNoteBadges id={id} data={data} curve={curve} profile={profile} />}
     </>

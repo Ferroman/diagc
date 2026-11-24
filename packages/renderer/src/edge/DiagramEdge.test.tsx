@@ -19,8 +19,8 @@ import { createKindRegistry } from '../registry';
 import { DiagramEdge, type DiagramEdgeData } from './DiagramEdge';
 import { badgePosition } from './EdgeNoteBadges';
 import { NoteStateContext, type NoteState } from '../notes/note-state';
-import { edgePoint, markFrame, roundedRoute, shapeCurve } from './edge-geometry';
-import { planElbow } from './plan-elbow';
+import { edgePoint, markFrame, shapeCurve } from './edge-geometry';
+import { planArrow } from './plan-arrow';
 import { notationProfile } from '../notations';
 import { stylePreset } from '../sketch/stylePresets';
 import { selfLoopPath } from './self-loop';
@@ -923,14 +923,24 @@ describe('DiagramEdge between measured nodes', () => {
   const ROUTE_PATH = 'M100,20 L192,20 Q200,20 200,28 L200,112 Q200,120 208,120 L300,120';
   const FLOATING_PATH = 'M100,36.666666666666664 C200,36.666666666666664 200,103.33333333333334 300,103.33333333333334';
 
-  it('a plan dependency is a finish-to-start elbow between the bars as drawn; a shape the author set still wins', () => {
+  it('a plan dependency curves from the end of one bar to the start of the next, as drawn; a shape the author set still wins', () => {
     const zone = { typeId: 'plan-zone' };
     const nodes = [box('a', 0, 0, undefined, zone), box('b', 300, 100, undefined, zone)];
-    const elbow = planElbow(
+    const { from, to } = planArrow(
       { x: 0, y: 0, width: 100, height: 40, type: 'plan-zone' },
       { x: 300, y: 100, width: 100, height: 40, type: 'plan-zone' },
     )!;
-    expect(pathOf(edgeBetween(nodes, { notation: 'plan' }))).toBe(roundedRoute(elbow.points, 4));
+    // out of the end heading right, into the start heading right
+    const [curve] = getBezierPath({
+      sourceX: from.x,
+      sourceY: from.y,
+      sourcePosition: Position.Right,
+      targetX: to.x,
+      targetY: to.y,
+      targetPosition: Position.Left,
+    });
+    expect(pathOf(edgeBetween(nodes, { notation: 'plan' }))).toBe(curve);
+    expect(curve).toMatch(/^M100,20 C/);
     cleanup();
     // a C4 box scheduled inside a zone has no dates to run finish to start
     expect(pathOf(edgeBetween([box('a', 0, 0), box('b', 300, 100)], { notation: 'plan' }))).toBe(FLOATING_PATH);
@@ -940,6 +950,14 @@ describe('DiagramEdge between measured nodes', () => {
     );
     cleanup();
     expect(pathOf(edgeBetween(nodes, {}))).toBe(FLOATING_PATH);
+  });
+
+  it("a plan arrow leaves below a name hung right of its bar, read off the bar's data", () => {
+    const nodes = [
+      box('a', 0, 0, undefined, { typeId: 'plan-zone', labelSide: 'right' }),
+      box('b', 300, 100, undefined, { typeId: 'plan-zone' }),
+    ];
+    expect(pathOf(edgeBetween(nodes, { notation: 'plan' }))).toMatch(/^M100,34 C/);
   });
 
   it('a plan arrow offers no fixed-side dots (it has no side to fix); a side fixed earlier floats the edge, as a shape does', () => {

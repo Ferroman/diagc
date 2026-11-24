@@ -35,7 +35,7 @@ import {
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './layout/fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './layout/git-layout';
 import { ABOVE_BOXES_Z } from './canvas/stacking';
-import { planElbow, type ElbowEnd } from './edge/plan-elbow';
+import { planArrow, type ArrowEnd } from './edge/plan-arrow';
 import type { LayoutResult, NotationLayoutInput } from './layout/layout';
 import { PLAN_LAYOUT, planChips, planGraphCached, planLabelSides, planLayout } from './layout/plan-layout';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
@@ -54,9 +54,7 @@ export interface NodeChip {
 }
 
 /** the side of its box a name drawn outside the box hangs on */
-/** where a name too long for its box is drawn: beside it, left or right, or
- * on the right past where a dependency arrow leaving the box's end turns */
-export type LabelSide = 'left' | 'right' | 'right-past-arrow';
+export type LabelSide = 'left' | 'right';
 
 /** A visual language: default look plus registry/chrome overrides for a plane's notation. */
 export interface NotationProfile {
@@ -162,11 +160,12 @@ export interface NotationProfile {
     colorOf?: (e: ViewEdge, model: DiagramModel, plane: string | undefined) => string | undefined;
     /** relation kinds the view never draws as edges (the legend skips them too) */
     hidden?: (kind: string) => boolean;
-    /** the notation's own path between two boxes as drawn (absolute), used
-     * instead of floating whenever both ends are measured, the relation names
-     * no shape and this returns one: a plan's finish-to-start arrow between
-     * two dated rows (edge/plan-elbow.ts) */
-    elbow?: (source: ElbowEnd, target: ElbowEnd) => { points: Point[]; label: Point } | undefined;
+    /** the notation's own ends for an edge between two boxes as drawn
+     * (absolute): a curve leaving `from` rightward and arriving at `to`
+     * rightward, used instead of floating whenever both ends are measured, the
+     * relation names no shape or side and this returns them: a plan's
+     * finish-to-start arrow between two dated rows (edge/plan-arrow.ts) */
+    endToStart?: (source: ArrowEnd, target: ArrowEnd) => { from: Point; to: Point } | undefined;
     /** React Flow's stacking order for every edge: ABOVE_BOXES_Z draws them
      * over the boxes however deep they nest, under the notes (canvas/adapter.ts).
      * Unset = React Flow's own, under the boxes. */
@@ -431,7 +430,7 @@ const PLAN: NotationProfile = {
   },
   // A dependency's drops cross every row between its two bars: under them it
   // vanishes behind each one, so plan edges are drawn over the bars.
-  edge: { hidden: isPlanRole, elbow: planElbow, zIndex: ABOVE_BOXES_Z },
+  edge: { hidden: isPlanRole, endToStart: planArrow, zIndex: ABOVE_BOXES_Z },
   canvasOverlay: 'time-axis',
 };
 
