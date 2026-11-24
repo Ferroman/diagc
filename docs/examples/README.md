@@ -206,6 +206,13 @@ Three phases, one nested twice, a code freeze and a launch, three people with al
 A C4 container view and a plan plane that schedules those containers inside zones — switch planes on the page.
 [Live](https://ferroman.github.io/diagc/html/examples/plan/q4-roadmap.html) · [Source](../../.diagrams/src/examples/plan/q4-roadmap.diagram.ts) · [Guide](../how-to/draw-a-plan.md)
 
+#### Teams
+
+[![Teams: plan by team](../../.diagrams/static/examples/plan/teams.png)](https://ferroman.github.io/diagc/html/examples/plan/teams.html)
+
+Three teams, one person in two of them, a shared project two teams work inside, and a zone no one executes — press Group by team on the page.
+[Live](https://ferroman.github.io/diagc/html/examples/plan/teams.html) · [Source](../../.diagrams/src/examples/plan/teams.diagram.ts) · [Guide](../how-to/draw-a-plan.md)
+
 ### ER
 
 #### Starter: library loans
