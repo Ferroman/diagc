@@ -1,5 +1,6 @@
 import {
   PLAN_EVENT_TYPE,
+  PLAN_PERIOD_TYPE,
   PLAN_PERSON_TYPE,
   PLAN_TEAM_TYPE,
   PLAN_ZONE_TYPE,
@@ -14,6 +15,7 @@ import {
   isoOf,
   planGraph,
   planSubtree,
+  periodSpanOf,
   spanOf,
   uniqueNodeId,
   type DiagramModel,
@@ -438,7 +440,7 @@ export function assign({ model, plane }: PlanPlane, id: string, zoneId: string, 
   return { type: 'batch', commands };
 }
 
-/** Dates for a zone or event the library places: under the pointer when the
+/** Dates for a zone, period or event the library places or a retype makes: under the pointer when the
  * drop point is known and the plan has an origin, at the parent's start when
  * dropped on a zone, else today. */
 export function seedDates(
@@ -446,7 +448,7 @@ export function seedDates(
   type: string | undefined,
   at: { x?: number; parentId?: string },
 ): Record<string, string> | undefined {
-  if (type !== PLAN_ZONE_TYPE && type !== PLAN_EVENT_TYPE) return undefined;
+  if (type !== PLAN_ZONE_TYPE && type !== PLAN_EVENT_TYPE && type !== PLAN_PERIOD_TYPE) return undefined;
   const g = planGraph(model, plane);
   const parent = selectedZone(model, at.parentId);
   const outer = parent === undefined ? undefined : spanOf(parent);
@@ -481,11 +483,15 @@ export function seedDates(
  */
 export function seedOnRetype(ctx: PlanContext, id: string, type: string | undefined): EditorCommand | undefined {
   const { model, plane } = ctx;
-  if (type !== PLAN_ZONE_TYPE && type !== PLAN_EVENT_TYPE) return undefined;
+  if (type !== PLAN_ZONE_TYPE && type !== PLAN_EVENT_TYPE && type !== PLAN_PERIOD_TYPE) return undefined;
   const node = model.nodes.find((n) => n.id === id);
   if (node === undefined) return undefined;
   const already =
-    type === PLAN_ZONE_TYPE ? spanOf({ ...node, type }) !== undefined : atOf({ ...node, type }) !== undefined;
+    type === PLAN_ZONE_TYPE
+      ? spanOf({ ...node, type }) !== undefined
+      : type === PLAN_PERIOD_TYPE
+        ? periodSpanOf({ ...node, type }) !== undefined
+        : atOf({ ...node, type }) !== undefined;
   if (already) return undefined;
   const parentId = planGraph(model, plane).parent.get(id);
   const dates = seedDates(ctx, type, { parentId });

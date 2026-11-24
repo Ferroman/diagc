@@ -28,6 +28,17 @@ describe('PlanSection', () => {
       commands: [{ type: 'add-relation', from: 'alice', to: 'q1', opts: { kind: 'owns' } }],
     });
   });
+  it('a period: start and end, no role pickers', () => {
+    const m = model('p');
+    m.plan().period('freeze', { name: 'Freeze', start: '2026-12-21', end: '2027-01-03' });
+    const json = m.toJSON();
+    const onCommand = vi.fn();
+    render(<PlanSection model={json} node={json.nodes.find((n) => n.id === 'freeze')!} onCommand={onCommand} />);
+    expect((screen.getByLabelText('End') as HTMLInputElement).value).toBe('2027-01-03');
+    expect(screen.queryByLabelText('Owner')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Start'), { target: { value: '2026-12-20' } });
+    expect(onCommand).toHaveBeenCalledWith({ type: 'set-plan-dates', id: 'freeze', dates: { start: '2026-12-20' } });
+  });
   it('an event: at only', () => {
     const m = plan();
     render(<PlanSection model={m} node={m.nodes.find((n) => n.id === 'kickoff')!} onCommand={vi.fn()} />);

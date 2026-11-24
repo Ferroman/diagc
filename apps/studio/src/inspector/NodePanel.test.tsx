@@ -931,6 +931,21 @@ describe('NodePanel', () => {
       expect(screen.getByLabelText('End')).toBeTruthy();
     });
 
+    it('offers the Plan section on a period, whose dates are its whole definition', () => {
+      render(
+        <NodePanel
+          model={planModel('plan-period', { start: '2026-12-21', end: '2027-01-03' })}
+          nodeId="z"
+          activePlane={undefined}
+          notation="plan"
+          onCommand={vi.fn()}
+          onClose={noop}
+          onDeleted={noop}
+        />,
+      );
+      expect((screen.getByLabelText('Start') as HTMLInputElement).value).toBe('2026-12-21');
+    });
+
     it('retyping into plan-zone via the Type field batches the retype with seeded dates, so undo reverts both together', () => {
       const onCommand = vi.fn();
       render(

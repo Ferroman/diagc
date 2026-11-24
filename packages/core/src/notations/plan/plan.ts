@@ -30,7 +30,9 @@ export const PLAN_PERSON_TYPE = 'person' as const;
  * `team`, not a `plan-team`, so it keeps its own pill everywhere else and a
  * role relation reads it exactly like a person. Not in `PLAN_TYPES` either. */
 export const PLAN_TEAM_TYPE = 'team' as const;
-export const PLAN_TYPES: ReadonlySet<string> = new Set([PLAN_ZONE_TYPE, PLAN_EVENT_TYPE]);
+/** The types whose dates the studio's inspector edits: a zone's and a period's
+ * span, an event's day. */
+export const PLAN_TYPES: ReadonlySet<string> = new Set([PLAN_ZONE_TYPE, PLAN_EVENT_TYPE, PLAN_PERIOD_TYPE]);
 /** Everything that can hold a role: a person or a team. `rolesOf` doesn't
  * check this (a role relation may point `from` any node), but the roster, the
  * role pickers and the plan's drag rules all mean "an actor" when they say

@@ -3,6 +3,7 @@ import {
   PLAN_ROLES,
   isPlanActor,
   isPlanEvent,
+  isPlanPeriod,
   isPlanZone,
   rolesOf,
   type DiagramModel,
@@ -89,7 +90,8 @@ interface PlanSectionProps {
   onCommand: (command: EditorCommand) => void;
 }
 
-/** The inspector's Plan section: a zone's span and roles, an event's date. */
+/** The inspector's Plan section: a zone's span and roles, a period's span, an
+ * event's date. */
 export function PlanSection({ model, node, onCommand }: PlanSectionProps) {
   // one derivation per model, not one per render: typing in a date field
   // re-renders the whole inspector
@@ -109,6 +111,12 @@ export function PlanSection({ model, node, onCommand }: PlanSectionProps) {
             <RolePickers model={model} zoneId={node.id} candidates={candidates} onCommand={onCommand} />
           </div>
         </>
+      )}
+      {isPlanPeriod(node) && (
+        <div className="field-row">
+          <DateInput label="Start" value={str(node.metadata?.start)} onChange={(start) => set({ start })} />
+          <DateInput label="End" value={str(node.metadata?.end)} onChange={(end) => set({ end })} />
+        </div>
       )}
       {isPlanEvent(node) && <DateInput label="At" value={str(node.metadata?.at)} onChange={(at) => set({ at })} />}
     </section>
