@@ -24,6 +24,10 @@ export interface ReaderOpening {
   pins?: Pins;
   /** the node to open drilled into */
   root?: string;
+  /** a plan opens drawn in team lanes; ignored by an export, which is never grouped */
+  grouped?: boolean;
+  /** the team/person ids to open hidden; ignored by an export */
+  hidden?: readonly string[];
 }
 
 export interface ReaderViewOptions {
@@ -50,6 +54,10 @@ export type ReaderViewProps = Pick<
   | 'layout'
   | 'activeLayers'
   | 'onToggleLayer'
+  | 'grouped'
+  | 'onGroupedChange'
+  | 'hiddenActors'
+  | 'onHiddenActorsChange'
 >;
 
 export interface ReaderView {
@@ -81,6 +89,18 @@ function openingState(model: DiagramModel, options: ReaderViewOptions): { pins: 
   };
 }
 
+/** The reader's team view, held here so a host that mirrors it (the published
+ * page's address) hears every change through the callbacks. An export is the
+ * PNG, always ungrouped with nothing hidden: it passes none of the four props
+ * and the view keeps its own defaults. */
+function useReaderTeamView(opening: ReaderOpening | undefined, exportMode: boolean) {
+  const [grouped, setGrouped] = useState(opening?.grouped ?? false);
+  const [hidden, setHidden] = useState<readonly string[]>(opening?.hidden ?? []);
+  return exportMode
+    ? {}
+    : { grouped, onGroupedChange: setGrouped, hiddenActors: hidden, onHiddenActorsChange: setHidden };
+}
+
 /**
  * What a read-only host (the published page, an Obsidian embed) does with a
  * model: which plane is drawn, its folds and layers, the drill path, the plane's
@@ -96,6 +116,7 @@ export function useReaderView(options: ReaderViewOptions): ReaderView {
   const [layers, setLayers] = useState<string[]>(() =>
     model !== undefined ? openingState(model, options).layers : [],
   );
+  const teamProps = useReaderTeamView(opening, exportMode);
   const [enteredPath, setEnteredPath] = useState<string[]>(opening?.root !== undefined ? [opening.root] : []);
   // A host that loads its model after mounting (the embed fetches it) is seeded
   // in the render the model arrives in, so the canvas never draws it unseeded.
@@ -141,6 +162,7 @@ export function useReaderView(options: ReaderViewOptions): ReaderView {
     // into buttons and shows an off layer as a greyed row. An export passes
     // neither, so the image keeps inert rows and compiles from the presets.
     ...(exportMode ? {} : { activeLayers: layers, onToggleLayer: toggleLayer }),
+    ...teamProps,
   };
   return { props, plane, notation, setPlane };
 }

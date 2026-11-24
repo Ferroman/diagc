@@ -19,7 +19,10 @@ export interface StudioCanvasProps {
   editing: boolean;
   nav: Pick<ViewNavigation, 'activePlane' | 'activeLayers' | 'toggleLayer' | 'pins' | 'toggleExpand' | 'notation'>;
   selection: Pick<CanvasSelection, 'select' | 'multiSelect' | 'groupSel'>;
-  deepLink: Pick<DeepLink, 'enteredPath' | 'handleEnteredPathChange'>;
+  deepLink: Pick<
+    DeepLink,
+    'enteredPath' | 'handleEnteredPathChange' | 'grouped' | 'hidden' | 'handleGroupedChange' | 'handleHiddenChange'
+  >;
   loops: Pick<CausalLoopAnalysis, 'compareSelect' | 'handleCldEdges' | 'externalHighlight'>;
   prefs: Pick<ViewerPrefs, 'theme' | 'style' | 'snap'>;
   arrangement: Pick<ViewArrangement, 'viewLayout' | 'autoArrange' | 'setMovedPositions' | 'setMovedLabels'>;
@@ -67,6 +70,10 @@ export function StudioCanvas({
         onMultiSelect={selection.multiSelect}
         onEnteredPathChange={deepLink.handleEnteredPathChange}
         enteredPath={deepLink.enteredPath}
+        grouped={deepLink.grouped}
+        onGroupedChange={deepLink.handleGroupedChange}
+        hiddenActors={deepLink.hidden}
+        onHiddenActorsChange={deepLink.handleHiddenChange}
         onCompareSelect={loops.compareSelect}
         colorMode={prefs.theme}
         assetBase={getHost().assetBase}

@@ -954,3 +954,32 @@ describe("Viewer — the reader's own view", () => {
     expect(panel()).toBeNull();
   });
 });
+
+describe('Viewer team view in the address', () => {
+  const teamPlan = () => {
+    const b = model('tp');
+    const p = b.plan();
+    const pay = p.team('pay', 'Payments');
+    p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' }).executor(pay);
+    return b.toJSON();
+  };
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('opens grouped from the address and writes a toggle back in place', async () => {
+    window.history.replaceState(null, '', '/?group=1');
+    const { container } = render(<Viewer data={{ model: teamPlan() }} teamView={{ grouped: true, hidden: [] }} />);
+    await waitFor(() => expect(container.querySelector('.dg-plan-lane-name')?.textContent).toBe('Payments'));
+    fireEvent.click(screen.getByRole('button', { name: 'Group by team' }));
+    await waitFor(() => expect(location.search).toBe(''));
+  });
+
+  it('an export ignores the view and leaves the address alone', async () => {
+    window.history.replaceState(null, '', '/?export=1&group=1');
+    const { container } = render(
+      <Viewer data={{ model: teamPlan() }} expandAll teamView={{ grouped: true, hidden: ['pay'] }} />,
+    );
+    await waitFor(() => expect(container.querySelector('.react-flow__node')).not.toBeNull());
+    expect(container.querySelector('.dg-plan-lane-name')).toBeNull();
+    expect(location.search).toBe('?export=1&group=1');
+  });
+});
