@@ -220,6 +220,32 @@ describe('planLayout', () => {
     for (const id of ['kickoff', 'alice', 'bob']) expect(r.fixed?.has(id)).toBe(true);
   });
 
+  it('a period sits in the header over its days and takes no row', () => {
+    const plan = (withPeriod: boolean) => {
+      const m = model('r2');
+      const p = m.plan();
+      const later = p.zone('later', { name: 'Later', start: '2026-04-01', end: '2026-04-10' });
+      p.zone('q1', { name: 'Q1', start: '2026-01-05', end: '2026-03-27' });
+      if (withPeriod)
+        p.period('freeze', { name: 'Freeze', start: '2026-02-09', end: '2026-02-15', interrupts: [later] });
+      return m.toJSON();
+    };
+    const plain = plan(false);
+    const j = plan(true);
+    const r = planLayout({ view: view(j), model: j, plane: 'plan' });
+    expect(r.geometry.get('freeze')).toEqual({
+      x: planX(dayOf('2026-02-09')!, origin),
+      y: -(DAY_H + WEEK_H) - EVENT / 2,
+      width: 7 * DAY,
+      height: EVENT,
+    });
+    expect(r.fixed?.has('freeze')).toBe(true);
+    // the zones stand where they would without it
+    const without = planLayout({ view: view(plain), model: plain, plane: 'plan' });
+    expect(r.geometry.get('q1')!.y).toBe(without.geometry.get('q1')!.y);
+    expect(r.geometry.get('later')!.y).toBe(without.geometry.get('later')!.y);
+  });
+
   it('wraps the roster into a further row once a card would cross the plan width, stacking rows upward', () => {
     const m = model('w');
     const p = m.plan();
@@ -397,6 +423,15 @@ describe('planLayout', () => {
     m.relate(a, mid, { kind: 'depends' });
     m.relate(mid, c, { kind: 'depends' });
     expect(planLabelSides(m.toJSON(), 'plan').get('mid')).toBe('left'); // its parent's wall is on the right
+  });
+
+  it('a period is no arrow: the bar it interrupts keeps its name where it was', () => {
+    const m = model('frozen');
+    const p = m.plan();
+    p.event('kickoff', { name: 'Kickoff', at: '2026-11-09' });
+    const z = p.zone('z', { name: 'Staging and QA', start: '2026-11-30', end: '2026-11-30' });
+    p.period('freeze', { start: '2026-11-30', end: '2026-11-30', interrupts: [z] });
+    expect(planLabelSides(m.toJSON(), 'plan').get('z')).toBe('right');
   });
 
   it('a role is no arrow: an owner leaves the name beside the bar', () => {

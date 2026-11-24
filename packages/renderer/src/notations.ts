@@ -9,6 +9,7 @@ import {
   GIT_STAGE_TYPE,
   PLAN_ACTOR_TYPES,
   PLAN_EVENT_TYPE,
+  PLAN_INTERRUPTS,
   PLAN_NOTATION,
   PLAN_ZONE_TYPE,
   SECOND_ORDER_NOTATION,
@@ -16,8 +17,12 @@ import {
   TM_BOUNDARY_TYPE,
   isPlanActor,
   isPlanEvent,
+  isPlanPeriod,
   isPlanRole,
+  periodSpanOf,
+  planPeriodsOf,
   planSubtree,
+  planSubtreeRange,
   isPlanZone,
   rolesOf,
   TM_NOTATION,
@@ -392,7 +397,33 @@ function planDrillCarry(model: DiagramModel, plane: string | undefined, root: st
   // roster draws it after them, from the plane's own nodes, and so does this
   const onPlane = buildHierarchy(model, plane).childrenOf;
   const pool = model.nodes.filter((n) => isPlanActor(n) && !busy.has(n.id) && onPlane.has(n.id)).map((n) => n.id);
-  return [...g.actors.filter((id) => holders.has(id)), ...pool];
+  return [...g.actors.filter((id) => holders.has(id)), ...pool, ...carriedPeriods(model, g, zones, root)];
+}
+
+/** The periods an opened zone still shows: those interrupting it or a zone in
+ * it, and those interrupting nobody (a holiday for everyone) whose days touch
+ * its own. A period pausing only some other zone is that zone's business. */
+function carriedPeriods(
+  model: DiagramModel,
+  g: ReturnType<typeof planGraphCached>,
+  zones: ReadonlySet<string>,
+  root: string,
+): string[] {
+  const range = planSubtreeRange(g, model, root);
+  const pausing = new Set([...zones].flatMap((z) => planPeriodsOf(model, z)));
+  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  const interruptsAny = new Set(model.relations.filter((r) => r.kind === PLAN_INTERRUPTS).map((r) => r.from));
+  return g.periods.filter((id) => {
+    if (pausing.has(id)) return true;
+    const span = periodSpanOf(byId.get(id)!);
+    return (
+      !interruptsAny.has(id) &&
+      span !== undefined &&
+      range !== undefined &&
+      span.start <= range.end &&
+      span.end >= range.start
+    );
+  });
 }
 
 const PLAN: NotationProfile = {
@@ -425,12 +456,13 @@ const PLAN: NotationProfile = {
     snapsBack: isPlanActor,
     // Everything fixed drags, actors included: an actor drags only to be
     // dropped (drop-to-assign) and always snaps back after (see snapsBack
-    // above).
-    draggableWhenFixed: () => true,
+    // above). A period does not: its days are edited in the source.
+    draggableWhenFixed: (n) => !isPlanPeriod(n),
   },
   // A dependency's drops cross every row between its two bars: under them it
   // vanishes behind each one, so plan edges are drawn over the bars.
-  edge: { hidden: isPlanRole, endToStart: planArrow, zIndex: ABOVE_BOXES_Z },
+  // A period's `interrupts` is drawn as the stripe on the bar, never a line.
+  edge: { hidden: (k) => isPlanRole(k) || k === PLAN_INTERRUPTS, endToStart: planArrow, zIndex: ABOVE_BOXES_Z },
   canvasOverlay: 'time-axis',
 };
 

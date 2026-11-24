@@ -1639,6 +1639,14 @@ describe('plan chips and x-resize', () => {
     const unnamed = renderNode({ typeId: 'plan-event', label: '' });
     expect(unnamed.container.querySelector('.dg-event-tag')).toBeNull();
   });
+  it('a period is a bracket over its days with its name, in its colour', () => {
+    const { container } = renderNode({ typeId: 'plan-period', label: 'Holiday change freeze', color: '#7ba7d9' });
+    const root = container.querySelector(".dg-node.dg-period-node[data-type='plan-period']") as HTMLElement;
+    expect(root).not.toBeNull();
+    expect(root.style.color).toBe('rgb(123, 167, 217)');
+    expect(container.querySelector('.dg-period-name')?.textContent).toBe('Holiday change freeze');
+    expect(container.querySelector('.dg-node-row')).toBeNull();
+  });
 });
 
 describe('the drop-target outline', () => {

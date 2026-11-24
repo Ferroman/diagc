@@ -305,6 +305,7 @@ export const DEFAULT_TYPE_STYLES: Record<string, TypeStyle> = {
     label: '',
     legendLabel: 'Event',
   },
+  'plan-period': { shape: 'box', label: '', legendLabel: 'Period' },
   // ---- State machine (UML) ----------------------------------------------------
   // UML glyphs carry no type subtitle (empty label). A machine and a region are
   // always-open containers; a region is the dashed one, as in the UML sheet.
@@ -416,6 +417,8 @@ export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
   owns: { legendLabel: 'Owns' },
   executes: { legendLabel: 'Executes' },
   checks: { legendLabel: 'Checks' },
+  // a period → each zone it pauses: drawn as the stripe on the bar, never a line
+  interrupts: { legendLabel: 'Interrupts' },
   // ---- State machine (UML) ----------------------------------------------------
   transition: { legendLabel: 'Transition' },
 };

@@ -7,7 +7,10 @@ import {
   isPlanZone,
   PLAN_NOTATION,
   PLAN_ROLES,
+  PLAN_INTERRUPTS,
+  isPlanPeriod,
   isPlanRole,
+  periodSpanOf,
   planGraph,
   planSubtree,
   planSubtreeRange,
@@ -335,7 +338,7 @@ function arrowEnds(model: DiagramModel, graph: PlanGraph, end: 'from' | 'to'): S
     return chain;
   };
   for (const r of model.relations) {
-    if (isPlanRole(r.kind)) continue;
+    if (isPlanRole(r.kind) || r.kind === PLAN_INTERRUPTS) continue;
     const holdsOther = new Set(upFrom(end === 'from' ? r.to : r.from));
     for (const id of upFrom(r[end])) {
       if (holdsOther.has(id)) break;
@@ -485,6 +488,24 @@ function placeRootZones(run: PlanRun, roots: readonly string[]): number {
   }
   // the strays park under the zones as drawn, every gap closed
   return y - away;
+}
+
+/** A period is a bracket in the header over its days, on the line the root
+ * events sit on: it is a stretch of the calendar, not a row of work. */
+function placePeriods(run: PlanRun, roots: readonly string[]): void {
+  const { DAY, EVENT, WEEK_H, DAY_H } = PLAN_LAYOUT;
+  for (const id of roots) {
+    if (!isPlanPeriod(nodeOf(run, id))) continue;
+    const span = periodSpanOf(nodeOf(run, id));
+    const start = span?.start ?? run.origin;
+    run.geometry.set(id, {
+      x: planX(start, run.origin),
+      y: -(DAY_H + WEEK_H) - EVENT / 2,
+      width: span === undefined ? DAY : (span.end - span.start + 1) * DAY,
+      height: EVENT,
+    });
+    run.fixed.add(id);
+  }
 }
 
 /** A top-level event sits in the time-axis header, on its day. */
@@ -644,6 +665,7 @@ export function planLayout(input: NotationLayoutInput): LayoutResult {
   const opened = run.root !== undefined && run.byId.has(run.root) && isPlanZone(nodeOf(run, run.root));
   const y = opened ? placeOpenedZone(run, run.root!, own) : placeRootZones(run, own);
   if (!opened) placeRootEvents(run, own);
+  placePeriods(run, own);
   placeRoster(run, roots);
   placeStubs(run, roots);
   placeStrays(run, roots, y);

@@ -149,6 +149,7 @@ export const TYPE_LOOKS: Readonly<Record<string, TypeLook>> = {
   'tm-boundary': box('', { ...dashed, ...open, legend: 'Trust boundary' }),
   'plan-zone': shaped('rounded', '', { legend: 'Zone' }),
   'plan-event': shaped('diamond', '', { legend: 'Event' }),
+  'plan-period': box('', { legend: 'Period' }),
   'sm-machine': box('', open),
   'sm-state': shaped('rounded', ''),
   'sm-region': box('', { ...dashed, ...open }),
@@ -189,6 +190,7 @@ export const KIND_LOOKS: Readonly<Record<string, KindLook>> = {
   owns: { ...solid, legend: 'Owns' },
   executes: { ...solid, legend: 'Executes' },
   checks: { ...solid, legend: 'Checks' },
+  interrupts: { ...solid, legend: 'Interrupts' },
   transition: { ...solid, legend: 'Transition' },
 };
 

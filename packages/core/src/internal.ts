@@ -83,6 +83,7 @@ export {
   type ElementOpts,
   type ZoneOpts,
   type EventOpts,
+  type PeriodOpts,
   type SmStateOpts,
   type SmZoneOpts,
   type TransitionParts,
