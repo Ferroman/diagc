@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.0](https://github.com/Ferroman/diagc/compare/v1.18.0...v1.19.0) (2026-11-24)
+
+
+### Features
+
+* stretch a plan's time ([#209](https://github.com/Ferroman/diagc/issues/209)) ([e9b855c](https://github.com/Ferroman/diagc/commit/e9b855c3eb12c303ca8e2e2dac24e5b7c13b6949))
+
 ## [1.18.0](https://github.com/Ferroman/diagc/compare/v1.17.0...v1.18.0) (2026-11-24)
 
 
