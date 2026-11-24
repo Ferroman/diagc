@@ -18,7 +18,11 @@ export function nextDayWidth(width: number, dir: 1 | -1): number {
  * saved x is kept at `PLAN_LAYOUT.DAY` (saved-frame.ts); 1 for a notation that
  * does not stretch time. */
 export const savedScale = (stretches: boolean, drawn: number | undefined, width: number): number =>
-  stretches ? (drawn ?? width) / PLAN_LAYOUT.DAY : 1;
+  stretches ? drawnDayWidth(drawn, width) / PLAN_LAYOUT.DAY : 1;
+
+/** The width the days on screen are drawn at: the last layout's, so the header
+ * and the gestures switch with the bars, not a frame ahead of them. */
+export const drawnDayWidth = (settled: number | undefined, width: number): number => settled ?? width;
 
 /** The viewport that keeps the day under the canvas centre there once days go
  * from `from` to `to` px wide. Every x the plan draws is a day times the width
@@ -82,19 +86,22 @@ export function useDayWidth(props: Pick<DiagramViewProps, 'dayWidth' | 'onDayWid
  * it, the boxes still stand at the old width and the pan would jump them. */
 export function useCentreDayPan(input: {
   days: DayWidth;
-  geometry: unknown;
+  /** the width the last finished layout drew the days at (useViewLayout) */
+  settledWidth: number | undefined;
   reactFlow: Pick<ReactFlowInstance, 'getViewport' | 'setViewport'>;
   wrapperRef: RefObject<HTMLElement | null>;
 }): void {
-  const { days, geometry, reactFlow, wrapperRef } = input;
+  const { days, settledWidth, reactFlow, wrapperRef } = input;
   useEffect(() => {
     const pan = days.pendingPanRef.current;
-    if (pan === null || pan.to !== days.width) return;
+    // the boxes move when their layout lands at the new width, not when the
+    // width changes: panning earlier flings the old boxes for a frame
+    if (pan === null || pan.to !== settledWidth) return;
     days.pendingPanRef.current = null;
     const canvasWidth = wrapperRef.current?.clientWidth ?? 0;
     void reactFlow.setViewport(centredViewport(reactFlow.getViewport(), canvasWidth, pan.from, pan.to));
-    /* eslint-disable-next-line react-hooks/exhaustive-deps -- the pan waits for the layout (geometry); the refs are stable */
-  }, [geometry, days.width]);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- the pan waits for the layout's width; the refs are stable */
+  }, [settledWidth]);
 }
 
 /** The share of the canvas an opened zone's days fill: a little room either side. */
@@ -143,13 +150,17 @@ export interface OpenedZoneStretchInput {
  * would be the old width's, and the fit would frame it. A different diagram
  * starts afresh (useDayWidth puts the width back to the default).
  */
-export function useOpenedZoneStretch(input: OpenedZoneStretchInput): number {
+/** A drill's landing width: a number, or a zone to measure once the canvas has
+ * a width (the render a view mounts in has none: its wrapper is not there yet) */
+type Landing = number | { measure: string };
+
+export function useOpenedZoneStretch(input: OpenedZoneStretchInput): number | null {
   const { days, path, model, plane, stretches } = input;
   // seen as the top level at first, so a view that mounts inside a zone (a deep
   // link, a reload) stretches it as an open would
   const seen = useRef<{ path: readonly string[]; modelId: string }>({ path: [], modelId: model.id });
   const before = useRef<number[]>([]);
-  const pending = useRef<number | null>(null);
+  const pending = useRef<Landing | null>(null);
   if (seen.current.modelId !== model.id) {
     seen.current = { path, modelId: model.id };
     before.current = [];
@@ -157,22 +168,32 @@ export function useOpenedZoneStretch(input: OpenedZoneStretchInput): number {
   } else if (stretches && sharedDepth(seen.current.path, path) !== Math.max(seen.current.path.length, path.length)) {
     const old = seen.current.path;
     const k = sharedDepth(old, path);
-    let width = pending.current ?? days.width;
+    let width = typeof pending.current === 'number' ? pending.current : days.width;
     if (old.length > k) width = before.current[k] ?? width;
     before.current = before.current.slice(0, k);
     for (let i = k; i < path.length; i++) before.current.push(width);
     const root = path[path.length - 1];
-    if (path.length > k && root !== undefined) width = stretchFor(model, plane, root, input.canvasWidth()) ?? width;
-    pending.current = width;
+    const opens = path.length > k && root !== undefined && stretchFor(model, plane, root, 1) !== undefined;
+    const canvas = input.canvasWidth();
+    pending.current =
+      opens && canvas === 0 ? { measure: root } : opens ? (stretchFor(model, plane, root, canvas) ?? width) : width;
     seen.current = { path, modelId: model.id };
   }
   useEffect(() => {
-    const width = pending.current;
-    if (width === null) return;
+    const landing = pending.current;
+    if (landing === null) return;
     pending.current = null;
+    // by now the wrapper is there to measure (still none: the width stays)
+    const width =
+      typeof landing === 'number'
+        ? landing
+        : input.canvasWidth() > 0
+          ? (stretchFor(model, plane, landing.measure, input.canvasWidth()) ?? days.width)
+          : days.width;
     if (width !== days.width) days.set(width);
   });
-  return pending.current ?? days.width;
+  // null: not known until the canvas is measured — a fit waits for it
+  return pending.current === null ? days.width : typeof pending.current === 'number' ? pending.current : null;
 }
 
 /** What a drill's camera fit needs from a view that stretches time: the width
@@ -185,14 +206,17 @@ export function useDrillStretch(input: {
   model: DiagramModel;
   plane: string | undefined;
   stretches: boolean;
+  /** a view with no chrome (an export) keeps the width it was given */
+  chromeless: boolean;
   wrapperRef: RefObject<HTMLElement | null>;
 }): Pick<RootFitInput, 'dayWidth' | 'widthFit'> {
-  const { wrapperRef, drillRoot, model, stretches } = input;
+  const { wrapperRef, drillRoot, model } = input;
+  const stretches = input.stretches && !input.chromeless;
   const canvas = useCallback(
     () => ({ width: wrapperRef.current?.clientWidth ?? 0, height: wrapperRef.current?.clientHeight ?? 0 }),
     [wrapperRef],
   );
-  const landsAt = useOpenedZoneStretch({ ...input, canvasWidth: () => canvas().width });
+  const landsAt = useOpenedZoneStretch({ ...input, stretches, canvasWidth: () => canvas().width });
   if (!stretches) return {};
   const opened = drillRoot !== undefined && model.nodes.some((n) => n.id === drillRoot && isPlanZone(n));
   return { dayWidth: landsAt, ...(opened ? { widthFit: { canvas } } : {}) };

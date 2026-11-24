@@ -2804,6 +2804,30 @@ describe('plan notation: stretching time', () => {
     await waitFor(() => expect(apiRef.current?.snapshotPositions()['loose']).toEqual({ x: 1000, y: 700 }));
   });
 
+  it('a view mounted inside a zone (a reload, a shared link) stretches it to the canvas', async () => {
+    // the wrapper has no width in the render the view mounts in: the stretch
+    // must wait for it rather than settle for 20 px a day
+    const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
+    try {
+      const m = model('deep');
+      const z = m.plan().zone('z', { name: 'Z', start: '2026-01-01', end: '2026-01-20' }); // 20 days
+      z.zone('in', { name: 'In', start: '2026-01-02', end: '2026-01-05' });
+      const onDayWidthChange = vi.fn();
+      render(
+        <DiagramView
+          model={m.toJSON()}
+          plane="plan"
+          notation="plan"
+          enteredPath={['z']}
+          onDayWidthChange={onDayWidthChange}
+        />,
+      );
+      await waitFor(() => expect(onDayWidthChange).toHaveBeenCalledWith(45));
+    } finally {
+      width.mockRestore();
+    }
+  });
+
   it('opening another diagram resets the width to 20', async () => {
     const { container, rerender } = render(<DiagramView model={plan('a')} plane="plan" notation="plan" />);
     fireEvent.click(screen.getByRole('button', { name: 'Wider days' }));

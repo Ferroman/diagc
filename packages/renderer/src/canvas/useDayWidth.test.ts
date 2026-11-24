@@ -34,19 +34,20 @@ describe('centredViewport', () => {
 });
 
 describe('useCentreDayPan', () => {
-  it('pans once the stretched layout lands, not before, and only for the width it waited for', () => {
+  it('pans once the layout has landed at the new width, not when the width changes', () => {
     const setViewport = vi.fn();
     const reactFlow = { getViewport: () => ({ x: 100, y: 0, zoom: 1 }), setViewport };
     const wrapperRef = { current: { clientWidth: 1000 } as HTMLElement };
     const pendingPanRef = { current: { from: 20, to: 40 } as { from: number; to: number } | null };
     const days = (width: number) => ({ width, set: vi.fn(), step: vi.fn(), pendingPanRef });
     const { rerender } = renderHook(
-      (p: { width: number; geometry: unknown }) =>
-        useCentreDayPan({ days: days(p.width), geometry: p.geometry, reactFlow, wrapperRef }),
-      { initialProps: { width: 20, geometry: 'old' } },
+      (p: { width: number; settledWidth: number }) =>
+        useCentreDayPan({ days: days(p.width), settledWidth: p.settledWidth, reactFlow, wrapperRef }),
+      { initialProps: { width: 20, settledWidth: 20 } },
     );
-    expect(setViewport).not.toHaveBeenCalled(); // still the old width
-    rerender({ width: 40, geometry: 'new' });
+    rerender({ width: 40, settledWidth: 20 }); // the click's render: the boxes still stand at 20
+    expect(setViewport).not.toHaveBeenCalled();
+    rerender({ width: 40, settledWidth: 40 }); // the layout lands
     expect(setViewport).toHaveBeenCalledWith({ x: 500 - 400 * 2, y: 0, zoom: 1 });
     expect(pendingPanRef.current).toBeNull();
   });

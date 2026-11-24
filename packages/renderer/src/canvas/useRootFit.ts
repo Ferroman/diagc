@@ -15,7 +15,7 @@ export interface RootFitInput {
   /** a view that stretches time: the day width this transition lands on (an
    * opened zone's stretch, or the width given back on leaving it). The fit
    * waits for a layout at it, as it waits for the scene's. */
-  dayWidth?: number;
+  dayWidth?: number | null;
   /** fit the width only (an opened plan zone): a tall zone fitted on both axes
    * would zoom out and undo the stretch that made its days readable */
   widthFit?: { canvas: () => { width: number; height: number } };
@@ -74,6 +74,8 @@ export function useRootFit(input: RootFitInput): void {
   useEffect(() => {
     const fit = pendingRootFitRef.current;
     if (fit === null || arrangedGeometry === null || settledFor !== compiled) return;
+    // null: the width it lands on is not measured yet (useOpenedZoneStretch)
+    if (input.dayWidth === null) return;
     if (input.dayWidth !== undefined && input.layout.settledWidth !== input.dayWidth) return;
     pendingRootFitRef.current = null;
     if (input.widthFit !== undefined) {
@@ -86,5 +88,5 @@ export function useRootFit(input: RootFitInput): void {
     void reactFlow.fitView(fit === 'glide' ? { padding: 0.15, duration: 500 } : undefined);
     /* eslint-disable-next-line react-hooks/exhaustive-deps --
        pendingRootFitRef is a stable useRef identity (owned by useDrillNavigation) read through .current */
-  }, [compiled, arrangedGeometry, settledFor, input.layout.settledWidth, reactFlow]);
+  }, [compiled, arrangedGeometry, settledFor, input.layout.settledWidth, input.dayWidth, reactFlow]);
 }

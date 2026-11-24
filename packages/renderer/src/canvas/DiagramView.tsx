@@ -28,7 +28,7 @@ import { useCanvasClicks } from './useCanvasClicks';
 import { useCanvasCommands } from './useCanvasCommands';
 import { useCommitMoves } from './useCommitMoves';
 import { useCompiledView } from './useCompiledView';
-import { savedScale, useCentreDayPan, useDayWidth, useDrillStretch } from './useDayWidth';
+import { drawnDayWidth, savedScale, useCentreDayPan, useDayWidth, useDrillStretch } from './useDayWidth';
 import { useDrillNavigation } from './useDrillNavigation';
 import { useDropAndPaste } from './useDropAndPaste';
 import { useEditRequests } from './useEditRequests';
@@ -120,6 +120,7 @@ function Inner(props: DiagramViewProps) {
     model: props.model,
     plane: props.plane,
     stretches,
+    chromeless,
     wrapperRef,
   });
   // The box a fold chip just opened, for useRevealOnUnfold to bring into view
@@ -201,7 +202,7 @@ function Inner(props: DiagramViewProps) {
     drillRoot,
     dayWidth: stretches ? days.width : undefined,
   });
-  useCentreDayPan({ days, geometry: viewLayout.geometry, reactFlow, wrapperRef });
+  useCentreDayPan({ days, settledWidth: viewLayout.settledWidth, reactFlow, wrapperRef });
   // the width the boxes on screen are drawn at, once their layout has landed
   scaleRef.current = savedScale(stretches, viewLayout.settledWidth, days.width);
   const frames = useMoveFrames(compiled, viewLayout, scaleRef);
@@ -466,7 +467,7 @@ function Inner(props: DiagramViewProps) {
               placed={viewLayout.placedGeometry !== null}
               flowDirection={viewLayout.flowDirection}
               today={props.today}
-              dayWidth={days.width}
+              dayWidth={drawnDayWidth(viewLayout.settledWidth, days.width)}
               loopEdges={loops.showLoops ? loops.loopEdges : null}
               rough={preset.rough}
               loopNodeFilter={editing ? null : loops.selectedNode}
