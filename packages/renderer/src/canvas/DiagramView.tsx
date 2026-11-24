@@ -26,6 +26,7 @@ import { CanvasOverlays } from './CanvasOverlays';
 import { forwardEdgeClick } from './click-through';
 import { useCanvasClicks } from './useCanvasClicks';
 import { useCanvasCommands } from './useCanvasCommands';
+import { modelIdOf } from './copy-ids';
 import { useCommitMoves } from './useCommitMoves';
 import { useCompiledView } from './useCompiledView';
 import { drawnDayWidth, savedScale, useCentreDayPan, useDayWidth, useDrillStretch } from './useDayWidth';
@@ -213,10 +214,19 @@ function Inner(props: DiagramViewProps) {
   const frames = useMoveFrames(compiled, viewLayout, scaleRef);
   // read at resize time: whether a box's width is its dates (an x-resized plan bar)
   const widthIsDatesRef = useRef<(id: string) => boolean>(() => false);
-  // a resize is reported at the saved position, as a move is (saved-frame.ts);
-  // the refs are stable, so this changes only with `edit`
-  /* eslint-disable-next-line react-hooks/exhaustive-deps -- frames' refs are stable useRef identities */
-  const nodeEdit = useMemo(() => savedResize(edit, frames, (id) => widthIsDatesRef.current(id)), [edit]);
+  // a resize is reported at the saved position, as a move is (saved-frame.ts),
+  // and a lane copy's as its zone's; the refs are stable, so this changes only with `edit`
+  const nodeEdit = useMemo(
+    () =>
+      savedResize(
+        edit,
+        frames,
+        (id) => widthIsDatesRef.current(id),
+        (id) => modelIdOf(compiledRef.current.copies, id),
+      ),
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- frames' and compiledRef are stable useRef identities */
+    [edit],
+  );
   useRootFit({
     pendingRootFitRef: nav.pendingRootFitRef,
     compiled,
@@ -276,6 +286,7 @@ function Inner(props: DiagramViewProps) {
     edit,
     rfNodesRef,
     ...frames,
+    compiledRef,
     setViewPositions: moves.setViewPositions,
   });
   const arrange = useNudgeAndArrange({
@@ -289,6 +300,7 @@ function Inner(props: DiagramViewProps) {
     rfNodesRef,
     setRfNodes,
     commitMoves,
+    compiledRef,
   });
   const { nudge } = arrange;
   const drag = useNodeDragging({
@@ -297,6 +309,7 @@ function Inner(props: DiagramViewProps) {
     model: props.model,
     plane: props.plane,
     profile,
+    compiled,
     reactFlow,
     rfNodesRef,
     setRfNodes,

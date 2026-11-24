@@ -133,6 +133,10 @@ export interface DiagramNodeData {
   resizeAxis?: 'x';
   /** the narrowest an x-resize may make the box: a plan bar's one day */
   resizeMin?: number;
+  /** a grouped plan's lane copy: the model id of the zone (or row) it draws.
+   * Its canvas id is its own, but every callback reports this one, so each
+   * copy acts as the zone. Absent everywhere else: the canvas id is the model id. */
+  modelId?: string;
   /** this node is the drop target under the pointer during a single-node
    * drag that could land on it (see EditingApi.onDropInto) — draws the
    * notation's drag-over outline. Like `selected`, but on `data`: useNodeDragging
@@ -178,7 +182,8 @@ export function DiagramNode({
   // is wired from the same channel: commit, then add. `run` is a no-op when the
   // node has no recipe, so no separate label gate is needed here.
   const quickAdd = data.quickAdd;
-  const onTab = quickAdd !== undefined ? () => quickAdd.run(id) : undefined;
+  const modelId = data.modelId ?? id;
+  const onTab = quickAdd !== undefined ? () => quickAdd.run(modelId) : undefined;
   const name =
     data.labelEditing === true ? (
       <InlineName label={data.label} onCommit={data.onLabelCommit} onTab={onTab} />

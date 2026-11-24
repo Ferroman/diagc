@@ -269,7 +269,9 @@ export interface EditingApi {
    * so a host that never learns the batch form keeps working.
    * `deltas` is each node's displacement from where the layout arranged it,
    * parent-relative — what a notation that derives positions (a plan's dates)
-   * reads instead of the position. */
+   * reads instead of the position. Keys are model ids. A node may have a
+   * delta and no position: a grouped plan's lane row is drawn at its lane's
+   * y, not its own, so it reports how far its days moved and no place to save. */
   onNodesMoved?: (positions: Record<string, Point>, deltas: Record<string, { dx: number; dy: number }>) => void;
   /** a single dragged box was let go over a drop target (profile.node.dropTarget)
    * that is neither in its own subtree nor its current parent. `rel` is the

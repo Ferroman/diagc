@@ -5,6 +5,7 @@ import { strokesBounds } from '../drawings/drawings';
 import type { NodeGeometry } from '../layout/layout';
 import { isNoteId } from '../notes/derive-note-nodes';
 import { overhangBounds, unionBounds } from './content-bounds';
+import { copiesOf, modelIdOf } from './copy-ids';
 import { captureCanvas, exportFrame } from './export-image';
 import { savedX, toSaved } from './saved-frame';
 import type { LayoutApi } from './view-types';
@@ -63,8 +64,9 @@ export function useLayoutApi(input: LayoutApiInput): void {
     if (ref === undefined) return;
     const frames = { savedFrameRef, viewShiftRef, ...(scaleRef !== undefined ? { scaleRef } : {}) };
     const sx = (x: number): number => savedX(frames, x);
+    // the host names model ids: a zone a grouped plan draws as copies is its first one
     const drawnBounds = (id: string) => {
-      const n = reactFlow.getInternalNode(id);
+      const n = reactFlow.getInternalNode(copiesOf(compiledRef.current.copies, id)[0]!);
       if (n === undefined) return undefined;
       return { ...n.internals.positionAbsolute, width: n.measured.width ?? 0, height: n.measured.height ?? 0 };
     };
@@ -78,13 +80,20 @@ export function useLayoutApi(input: LayoutApiInput): void {
       // phantom box there for good. A view shift (a plan zone drawn higher
       // because a fold above it gave its height back) and a drill frame (an
       // opened zone's child, drawn at the zone's place) are taken back off:
-      // what is saved has to hold in the whole view, every fold open.
-      snapshotPositions: () =>
-        Object.fromEntries(
-          rfNodesRef.current
-            .filter((n) => !(compiledRef.current.externals?.has(n.id) ?? false) && !isNoteId(n.id))
-            .map((n) => [n.id, toSaved(frames, n.id, n.position)]),
-        ),
+      // what is saved has to hold in the whole view, every fold open. A
+      // grouped plan answers in model ids: a lane header is no node at all,
+      // and a zone drawn in several lanes is its first copy.
+      snapshotPositions: () => {
+        const { externals, copies, lanes } = compiledRef.current;
+        const headers = new Set(lanes?.map((l) => l.id));
+        const out: Record<string, Point> = {};
+        for (const n of rfNodesRef.current) {
+          if ((externals?.has(n.id) ?? false) || isNoteId(n.id) || headers.has(n.id)) continue;
+          const id = modelIdOf(copies, n.id);
+          if (!(id in out)) out[id] = toSaved(frames, n.id, n.position);
+        }
+        return out;
+      },
       autoPositions: () =>
         geometryRef.current === null
           ? {}
@@ -132,7 +141,9 @@ export function useLayoutApi(input: LayoutApiInput): void {
         void reactFlow.fitView({ padding: pad });
       },
       focusNodes: (ids) => {
-        const boxes = ids.map(drawnBounds);
+        // every box drawing one of them: a zone is framed in each of its lanes
+        const copies = compiledRef.current.copies;
+        const boxes = ids.flatMap((id) => copiesOf(copies, id)).map(drawnBounds);
         const rect = wrapperRef.current?.getBoundingClientRect();
         if (boxes.length === 0 || boxes.includes(undefined) || rect === undefined || rect.width <= 0) return false;
         const bounds = unionBounds(boxes);

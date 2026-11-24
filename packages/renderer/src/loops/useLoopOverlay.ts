@@ -3,6 +3,7 @@ import { compileView, type DiagramModel } from '@diagc/core/internal';
 import { combinePolarities, type LoopEdgeInput } from './loops';
 import { EMPTY_ID_SET, type LoopHighlight } from './loop-highlight';
 import type { NotationProfile } from '../notations';
+import { modelIdOf, widenToCopies } from '../canvas/copy-ids';
 
 export interface LoopOverlayInput {
   profile: NotationProfile;
@@ -66,29 +67,36 @@ export function useLoopOverlay(input: LoopOverlayInput): LoopOverlay {
   // with the notation's own `related` (nodes that belong here although no
   // drawn edge joins them, e.g. a plan actor's zones): both describe the same
   // "stays normal" set, just from different sources.
+  //
+  // `selectedNode` is a model id (a grouped plan's copy focuses its zone), so
+  // the walk reads each arrow's ends as model ids too, and the lit set is
+  // widened to every copy of each id in it: one zone, every box it is drawn as.
   const { profile, model, plane } = input;
+  const { edges: drawnEdges, copies } = input.compiled;
   const neighborFocus = useMemo(() => {
     if (!focusConnected || selectedNode === null) return null;
     const nodes = new Set<string>([selectedNode]);
     const edges = new Set<string>();
-    for (const e of input.compiled.edges) {
-      if (e.from === selectedNode) {
-        nodes.add(e.to);
+    for (const e of drawnEdges) {
+      const from = modelIdOf(copies, e.from);
+      const to = modelIdOf(copies, e.to);
+      if (from === selectedNode) {
+        nodes.add(to);
         edges.add(e.id);
-      } else if (e.to === selectedNode) {
-        nodes.add(e.from);
+      } else if (to === selectedNode) {
+        nodes.add(from);
         edges.add(e.id);
       }
     }
     for (const id of profile.related?.(model, plane, selectedNode) ?? []) nodes.add(id);
-    return { nodes, edges };
-  }, [focusConnected, selectedNode, input.compiled.edges, profile, model, plane]);
+    return { nodes: widenToCopies(copies, nodes), edges };
+  }, [focusConnected, selectedNode, drawnEdges, copies, profile, model, plane]);
   // Precedence: a leverage row (ext) or loop badge glows its set (strong dim of
   // the rest); plain node selection is the gentle fallback (light dim, no glow).
   const loopHighlight = useMemo<LoopHighlight>(() => {
     const strong =
       ext != null
-        ? { nodes: new Set(ext.nodes), edges: new Set(ext.edges) }
+        ? { nodes: widenToCopies(copies, ext.nodes), edges: widenToCopies(copies, ext.edges) }
         : activeLoop !== null
           ? { nodes: activeLoop.nodes, edges: activeLoop.edges }
           : null;
@@ -107,7 +115,7 @@ export function useLoopOverlay(input: LoopOverlayInput): LoopOverlay {
         setActiveLoop((cur) => (cur?.key === key ? null : { key, nodes: new Set(nodes), edges: new Set(edges) })),
       clear: () => setActiveLoop(null),
     };
-  }, [activeLoop, ext, neighborFocus, selectedNode]);
+  }, [activeLoop, ext, neighborFocus, selectedNode, copies]);
   // A highlighted loop's ids (and the node-focus filter) go stale when the view
   // recompiles (plane / zoom / edit).
   useEffect(() => {

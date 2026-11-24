@@ -196,6 +196,9 @@ export interface NotationProfile {
      * zone's or event's displacement as days (`onNodesMoved` deltas). The overlay
      * still never stores a position for it — `fixed` keeps that meaning. */
     draggableWhenFixed?: (n: DiagramNode) => boolean;
+    /** a node the view draws for itself and nothing can act on (a plan's lane
+     * header): never selected, so a click on it reports nothing */
+    inert?: (n: DiagramNode) => boolean;
   };
   edge?: {
     marks?: boolean;
@@ -510,6 +513,8 @@ const PLAN: NotationProfile = {
     // above). A period does not: its days are edited in the source. Nor does a
     // lane header: a lane's place is the teams' order.
     draggableWhenFixed: (n) => !isPlanPeriod(n) && n.type !== PLAN_LANE_TYPE,
+    // a lane header is the view's, not the model's: there is nothing to select
+    inert: (n) => n.type === PLAN_LANE_TYPE,
   },
   // A dependency's drops cross every row between its two bars: under them it
   // vanishes behind each one, so plan edges are drawn over the bars.

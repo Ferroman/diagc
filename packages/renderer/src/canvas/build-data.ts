@@ -55,6 +55,7 @@ import type { DiagramNodeData } from '../node/DiagramNode';
 import { behaviorLines } from '../node/behavior-lines';
 import type { RegionSeparator } from '../layout/state-machine-layout';
 import { edgeLabelBox, zoneNoteOf } from '../layout/layout-graph';
+import { modelIdOf } from './copy-ids';
 
 /** per-node data inputs the view threads in; kept as one object so the cache
  * can compare it field-by-field with === and skip rebuilds when nothing moved */
@@ -222,13 +223,16 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
   // the threats per data build, not one per render.
   const threats = threatSummary(n.node.threats);
   const color = typeColor(n, ctx);
+  // a lane copy (a grouped plan) draws its zone: the counts and chips are the
+  // zone's, and whatever it reports, it reports as the zone (data.modelId)
+  const real = modelIdOf(ctx.copies, n.id);
   const data: DiagramNodeData = {
     label: n.node.name,
     wrappedLabel: wrappedLabelOf(n, ctx),
     state: n.state,
     promoted: n.promoted,
     sharedMembers: n.sharedMembers,
-    hiddenCount: ctx.hiddenCounts.get(n.id) ?? 0,
+    hiddenCount: ctx.hiddenCounts.get(real) ?? 0,
     metaBadges: metaBadgesOf(n, ctx.metaKeys),
     typeRegistry: ctx.typeRegistry,
     icons: ctx.icons,
@@ -255,12 +259,14 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     notation: ctx.notation,
     threats: threats.total > 0 ? threats : undefined,
     annotations: nodeAnnotations(n),
-    chips: ctx.nodeChips?.get(ctx.copies?.get(n.id) ?? n.id),
+    chips: ctx.nodeChips?.get(real),
     ...(n.node.type === SM_STATE_TYPE ? { behaviors: behaviorLines(n.node), composite: n.state !== 'leaf' } : {}),
     ...(n.node.type === SM_ZONE_TYPE && zoneNoteOf(n.node) !== undefined ? { zoneNote: zoneNoteOf(n.node) } : {}),
   };
+  if (real !== n.id) data.modelId = real;
   bindNotationMarks(data, n, ctx);
-  if (ctx.labelEditingId === n.id) bindLabelEdit(data, n, ctx);
+  // a rename the host asks for names the zone, and opens on its copy
+  if (ctx.labelEditingId !== undefined && [n.id, real].includes(ctx.labelEditingId)) bindLabelEdit(data, n, ctx);
   // an image or a shape's mask is fetched from the asset or library folder
   if (n.node.image !== undefined || n.node.shape !== undefined) {
     data.assetBase = ctx.assetBase;
@@ -288,7 +294,7 @@ function bindNotationMarks(data: DiagramNodeData, n: ViewNode, ctx: NodeDataCont
   if (n.state !== 'expanded') {
     const labelSide = ctx.labelSides?.get(real);
     if (labelSide !== undefined) data.labelSide = labelSide;
-  } else if (ctx.isAlwaysExpanded?.(n.id) === true) {
+  } else if (ctx.isAlwaysExpanded?.(real) === true) {
     data.neverFolds = true;
     data.onEnterNode = undefined;
   }
@@ -297,15 +303,16 @@ function bindNotationMarks(data: DiagramNodeData, n: ViewNode, ctx: NodeDataCont
 /** The in-place label editor's two commits, bound to this node: each closes
  * the editor, then renames only to a new non-blank name. */
 function bindLabelEdit(data: DiagramNodeData, n: ViewNode, ctx: NodeDataContext): void {
+  const id = data.modelId ?? n.id;
   data.labelEditing = true;
   data.onLabelCommit = (value: string | null) => {
     ctx.endLabelEdit?.();
     const name = value?.trim() ?? '';
-    if (name !== '' && name !== n.node.name) ctx.onRenameNode?.(n.id, name);
+    if (name !== '' && name !== n.node.name) ctx.onRenameNode?.(id, name);
   };
   data.onRichCommit = (runs: TextRun[] | null) => {
     ctx.endLabelEdit?.();
-    if (runs !== null && runsToPlainText(runs).trim() !== '') ctx.onSetNodeRich?.(n.id, runs);
+    if (runs !== null && runsToPlainText(runs).trim() !== '') ctx.onSetNodeRich?.(id, runs);
   };
 }
 
@@ -316,7 +323,7 @@ function bindNodeEdits(data: DiagramNodeData, n: ViewNode, ctx: NodeDataContext)
   if (n.node.type === 'db-table' && ctx.onSetTableColumns !== undefined) {
     data.onColumnsChange = (columns: Column[]) => {
       const all = n.node.columns ?? [];
-      ctx.onSetTableColumns?.(n.id, withHiddenColumns(all, n.columns ?? all, columns));
+      ctx.onSetTableColumns?.(data.modelId ?? n.id, withHiddenColumns(all, n.columns ?? all, columns));
     };
   }
   if (ctx.onResize !== undefined) {

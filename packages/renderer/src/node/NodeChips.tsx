@@ -20,6 +20,8 @@ export function NodeChips({
   profile: NotationProfile;
   focusId: string | null;
 }): ReactElement {
+  // a lane copy's controls act on its zone (DiagramNodeData.modelId)
+  const modelId = data.modelId ?? id;
   const isContainer = data.state !== 'leaf';
   const isCldGroup = isCausalGroup(data, profile);
   return (
@@ -44,7 +46,9 @@ export function NodeChips({
         // Edit mode, where the notation's chips are roles: the chip opens a
         // menu instead of sitting inert.
         if (data.onSetRole !== undefined && profile.node?.roleChips === true) {
-          return <RoleChipMenu key={key} chip={chip} className={chipClass} zoneId={id} onSetRole={data.onSetRole} />;
+          return (
+            <RoleChipMenu key={key} chip={chip} className={chipClass} zoneId={modelId} onSetRole={data.onSetRole} />
+          );
         }
         return (
           <span
@@ -66,7 +70,7 @@ export function NodeChips({
           aria-label="Enter node"
           onClick={(e) => {
             e.stopPropagation();
-            data.onEnterNode?.(id);
+            data.onEnterNode?.(modelId);
           }}
         >
           ⤢
@@ -96,7 +100,7 @@ export function FoldChip({ id, data, group = false }: { id: string; data: Diagra
       aria-expanded={group ? undefined : expanded}
       onClick={(e) => {
         e.stopPropagation();
-        data.onToggleExpand?.(id, expanded ? 'collapsed' : 'expanded');
+        data.onToggleExpand?.(data.modelId ?? id, expanded ? 'collapsed' : 'expanded');
       }}
     >
       {expanded ? '▾' : '▸'}

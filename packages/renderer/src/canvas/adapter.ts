@@ -33,6 +33,8 @@ export interface RfNodeInput {
   /** `false` takes the node out of every move (drag, nudge, align) whatever the
    * canvas-wide `nodesDraggable` says; absent = the canvas decides */
   draggable?: false;
+  /** `false` keeps the node out of every selection: a click, a marquee, the delete key */
+  selectable?: false;
   /** extra class on React Flow's node wrapper (its `nopan` opt-in, see toRfNode's caller) */
   className?: string;
 }

@@ -7,6 +7,7 @@ import {
   dayOf,
   layoutPlaneKey,
   model,
+  planCopyId,
   relationLabels,
   type DiagramModel,
   type LayoutOverlay,
@@ -4015,5 +4016,344 @@ describe('opening a box brings it into view', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Expand' }));
     await screen.findByText('Inner');
     await waitFor(() => expect(dragCapture.instance.getViewport()).not.toEqual(far));
+  });
+});
+
+describe('a plan grouped by team', () => {
+  // Payments builds `api`, Platform `ui`, both inside `checkout` — so
+  // `checkout` is drawn twice, once per lane, each copy with its own canvas
+  // id. Alice owns it; Bob holds nothing yet. `other` is Platform's alone,
+  // and `checkout -> other` is drawn in the Platform lane only.
+  function sharedPlan() {
+    const m = model('shared');
+    const p = m.plan();
+    const pay = p.team('pay', 'Payments');
+    const plat = p.team('plat', 'Platform');
+    const alice = p.person('alice', 'Alice');
+    p.person('bob', 'Bob');
+    const checkout = p.zone('checkout', { name: 'Checkout', start: '2026-01-05', end: '2026-02-27' }).owner(alice);
+    checkout.zone('api', { name: 'API', start: '2026-01-05', end: '2026-01-30' }).executor(pay);
+    checkout.zone('ui', { name: 'UI', start: '2026-02-02', end: '2026-02-20' }).executor(plat);
+    const other = p.zone('other', { name: 'Other', start: '2026-03-02', end: '2026-03-13' }).executor(plat);
+    m.relate(checkout, other, { kind: 'depends' });
+    return m.toJSON();
+  }
+  const payCopy = planCopyId('pay', 'checkout');
+  const platCopy = planCopyId('plat', 'checkout');
+  const box = (container: HTMLElement, id: string) =>
+    container.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
+  const settle = (container: HTMLElement, id: string) =>
+    waitFor(() => {
+      const el = box(container, id);
+      if (el === null) throw new Error(`${id} not yet`);
+      if (dragCapture.instance?.getInternalNode(id)?.internals.positionAbsolute === undefined)
+        throw new Error(`${id} not measured`);
+      return el;
+    });
+  type RfNode = { id: string; position: { x: number; y: number }; data: Record<string, any> };
+  const nodeOf = (id: string): RfNode => dragCapture.instance.getNodes().find((n: RfNode) => n.id === id);
+  const absOf = (id: string) =>
+    dragCapture.instance.getInternalNode(id)!.internals.positionAbsolute as { x: number; y: number };
+  /** one drag through DiagramView's own handlers (see drop-to-assign): `to`
+   * as the box's on-screen position, released over the flow point `at` */
+  function drag(id: string, to: { x: number; y: number }, at: { x: number; y: number }) {
+    const pointer = dragCapture.instance.flowToScreenPosition(at);
+    act(() => dragCapture.props['onNodesChange']([{ type: 'position', id, position: to, dragging: true }]));
+    const node = nodeOf(id);
+    act(() => dragCapture.props['onNodeDragStop']({ clientX: pointer.x, clientY: pointer.y }, node, [node]));
+  }
+  /** a host that keeps the pins, as the studio does */
+  function Host(props: {
+    onToggleExpand?: (id: string, next: 'expanded' | 'collapsed') => void;
+    pins?: Record<string, 'expanded' | 'collapsed'>;
+  }) {
+    const [pins, setPins] = useState<Record<string, 'expanded' | 'collapsed'>>(props.pins ?? {});
+    return (
+      <DiagramView
+        model={sharedPlan()}
+        plane="plan"
+        notation="plan"
+        grouped
+        pins={pins}
+        onToggleExpand={(id, next) => {
+          props.onToggleExpand?.(id, next);
+          setPins({ [id]: next });
+        }}
+      />
+    );
+  }
+
+  it('clicking a copy selects the zone', async () => {
+    const onSelect = vi.fn();
+    const { container } = render(
+      <DiagramView model={sharedPlan()} plane="plan" notation="plan" grouped onSelect={onSelect} />,
+    );
+    fireEvent.click(await settle(container, platCopy));
+    expect(onSelect).toHaveBeenLastCalledWith({ kind: 'node', id: 'checkout' });
+  });
+
+  it('selecting both copies reports the zone once', async () => {
+    const onMultiSelect = vi.fn();
+    const { container } = render(
+      <DiagramView model={sharedPlan()} plane="plan" notation="plan" grouped onMultiSelect={onMultiSelect} />,
+    );
+    await settle(container, platCopy);
+    act(() => dragCapture.props['onSelectionChange']({ nodes: [nodeOf(payCopy), nodeOf(platCopy)] }));
+    expect(onMultiSelect).toHaveBeenLastCalledWith(['checkout']);
+  });
+
+  it('clicking an arrow drawn in a lane reports the arrow it copies', async () => {
+    const onSelect = vi.fn();
+    const json = sharedPlan();
+    const { container } = render(<DiagramView model={json} plane="plan" notation="plan" grouped onSelect={onSelect} />);
+    await settle(container, platCopy);
+    const relation = json.relations.find((r) => r.from === 'checkout' && r.to === 'other')!;
+    const drawn = dragCapture.props['edges'].find((e: { source: string }) => e.source === platCopy);
+    act(() => dragCapture.props['onEdgeClick']({ clientX: 0, clientY: 0, detail: 1 }, drawn));
+    expect(onSelect).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'edge', constituentIds: [relation.id] }));
+    expect(onSelect.mock.lastCall![0].id).not.toBe(drawn.id);
+  });
+
+  it('a lane header is inert: not selectable, not draggable, a click reports nothing', async () => {
+    const onSelect = vi.fn();
+    const { container } = render(
+      <DiagramView
+        model={sharedPlan()}
+        plane="plan"
+        notation="plan"
+        grouped
+        onSelect={onSelect}
+        mode="edit"
+        edit={{}}
+      />,
+    );
+    const header = await settle(container, planCopyId('pay', ''));
+    fireEvent.click(header);
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(nodeOf(planCopyId('pay', ''))).toEqual(expect.objectContaining({ selectable: false, draggable: false }));
+  });
+
+  it('folding one copy folds them all', async () => {
+    const onToggleExpand = vi.fn();
+    const { container } = render(<Host onToggleExpand={onToggleExpand} />);
+    const pay = await settle(container, payCopy);
+    fireEvent.click(within(pay).getAllByRole('button', { name: 'Collapse' })[0]!);
+    expect(onToggleExpand).toHaveBeenCalledWith('checkout', 'collapsed');
+    await waitFor(() => {
+      for (const id of [payCopy, platCopy])
+        expect(within(box(container, id)!).getByRole('button', { name: 'Expand' })).toBeTruthy();
+    });
+  });
+
+  it('unfolding a copy brings it into view', async () => {
+    const { container } = render(<Host pins={{ checkout: 'collapsed' }} />);
+    const pay = await settle(container, payCopy);
+    vi.spyOn(container.querySelector('.dg-canvas')!, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+      toJSON: () => ({}),
+    });
+    const far = { x: 5000, y: 5000, zoom: 1 };
+    await act(async () => {
+      await dragCapture.instance.setViewport(far);
+    });
+    fireEvent.click(within(pay).getByRole('button', { name: 'Expand' }));
+    await waitFor(() => expect(dragCapture.instance.getViewport()).not.toEqual(far));
+  });
+
+  it('opening a copy opens the zone', async () => {
+    const onEnteredPathChange = vi.fn();
+    const { container } = render(
+      <DiagramView
+        model={sharedPlan()}
+        plane="plan"
+        notation="plan"
+        grouped
+        onEnteredPathChange={onEnteredPathChange}
+      />,
+    );
+    const plat = await settle(container, platCopy);
+    expect(container.querySelector('.dg-plan-lane')).not.toBeNull();
+    fireEvent.click(within(plat).getAllByTestId('enter-chip')[0]!);
+    await waitFor(() => expect(onEnteredPathChange).toHaveBeenLastCalledWith(['checkout']));
+    // inside an opened zone there are no lanes: the real zone's rows, ungrouped
+    await waitFor(() => expect(box(container, 'api')).not.toBeNull());
+    expect(container.querySelector('.dg-plan-lane')).toBeNull();
+  });
+
+  it('a role chip on a copy edits the zone', async () => {
+    const onSetRole = vi.fn();
+    const { container } = render(
+      <DiagramView model={sharedPlan()} plane="plan" notation="plan" grouped mode="edit" edit={{ onSetRole }} />,
+    );
+    const plat = await settle(container, platCopy);
+    fireEvent.click(within(plat).getAllByRole('button', { name: 'O·Alice' })[0]!);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Remove' }));
+    expect(onSetRole).toHaveBeenCalledWith('checkout', 'alice', null);
+  });
+
+  it('the + on a copy adds after the zone', async () => {
+    const run = vi.fn();
+    const label = vi.fn((id: string) => (id === 'checkout' ? 'Add zone' : undefined));
+    const { container } = render(
+      <DiagramView
+        model={sharedPlan()}
+        plane="plan"
+        notation="plan"
+        grouped
+        mode="edit"
+        edit={{ quickAdd: { label, run } }}
+      />,
+    );
+    const pay = await settle(container, payCopy);
+    fireEvent.click(pay);
+    const add = await waitFor(() => {
+      const b = box(container, payCopy)!.querySelector<HTMLElement>('.dg-quick-add');
+      if (b === null) throw new Error('no + yet');
+      return b;
+    });
+    fireEvent.click(add);
+    expect(run).toHaveBeenCalledWith('checkout');
+    expect(label).not.toHaveBeenCalledWith(payCopy, undefined);
+  });
+
+  it('clicking an actor lights every copy of their zones', async () => {
+    const { container } = render(<DiagramView model={sharedPlan()} plane="plan" notation="plan" grouped />);
+    await settle(container, platCopy);
+    fireEvent.click(await settle(container, 'alice'));
+    await waitFor(() => expect(container.querySelector('.dg-focus-node-dim')).not.toBeNull());
+    const dimmed = (id: string) => box(container, id)!.querySelector('.dg-focus-node-dim') !== null;
+    const lit = (id: string) => box(container, id)!.querySelector('[data-plan-hit]') !== null;
+    for (const id of [payCopy, platCopy]) {
+      expect(dimmed(id)).toBe(false);
+      expect(lit(id)).toBe(true);
+    }
+    expect(dimmed(planCopyId('plat', 'other'))).toBe(true);
+  });
+
+  it('clicking a copy focuses its zone: its other copy and its actor stay bright', async () => {
+    const { container } = render(<DiagramView model={sharedPlan()} plane="plan" notation="plan" grouped />);
+    fireEvent.click(await settle(container, payCopy));
+    await waitFor(() => expect(container.querySelector('.dg-focus-node-dim')).not.toBeNull());
+    const dimmed = (id: string) => box(container, id)!.querySelector('.dg-focus-node-dim') !== null;
+    expect(dimmed(platCopy)).toBe(false);
+    expect(dimmed('alice')).toBe(false);
+    expect(dimmed('bob')).toBe(true);
+    expect(box(container, 'alice')!.querySelector('[data-plan-hit]')).not.toBeNull();
+  });
+
+  it('dropping a person on a copy assigns them to the zone', async () => {
+    const onDropInto = vi.fn();
+    const onNodesMoved = vi.fn();
+    const { container } = render(
+      <DiagramView
+        model={sharedPlan()}
+        plane="plan"
+        notation="plan"
+        grouped
+        mode="edit"
+        edit={{ onDropInto, onNodesMoved }}
+      />,
+    );
+    await settle(container, payCopy);
+    await settle(container, 'bob');
+    // the top lane's copy: jsdom measures every box 800x600, so a point inside
+    // a lower lane's copy is inside the copies above it too
+    const at = { x: absOf(payCopy).x + 10, y: absOf(payCopy).y + 10 };
+    drag('bob', at, at);
+    expect(onDropInto).toHaveBeenCalledTimes(1);
+    expect(onDropInto).toHaveBeenCalledWith('bob', 'checkout', { x: 10, y: 10 });
+    expect(onNodesMoved).not.toHaveBeenCalled();
+  });
+
+  it("dragging a copy's dates leaves the zone's saved row alone", async () => {
+    const onNodesMoved = vi.fn();
+    const onNodeMoved = vi.fn();
+    const layout = { version: 1 as const, planes: { plan: { checkout: { x: 80, y: 260 } } } };
+    const { container } = render(
+      <DiagramView
+        model={sharedPlan()}
+        plane="plan"
+        notation="plan"
+        grouped
+        layout={layout}
+        mode="edit"
+        edit={{ onNodesMoved, onNodeMoved }}
+      />,
+    );
+    await settle(container, payCopy);
+    const before = nodeOf(payCopy).position;
+    const to = { x: before.x + 7 * PLAN_LAYOUT.DAY, y: before.y + 90 };
+    drag(payCopy, to, { x: -10_000, y: -10_000 });
+    // a row cannot move up or down while grouped: the drag keeps it on its lane
+    expect(nodeOf(payCopy).position.y).toBe(before.y);
+    expect(onNodesMoved).toHaveBeenCalledTimes(1);
+    const [positions, deltas] = onNodesMoved.mock.calls[0]!;
+    // the days, under the zone's own id; no position at all, so the host has
+    // no y to write — the saved y (260 here) stays as it is, and a zone with
+    // none keeps none
+    expect(Object.keys(deltas)).toEqual(['checkout']);
+    expect(deltas.checkout.dx).toBeCloseTo(7 * PLAN_LAYOUT.DAY);
+    expect(deltas.checkout.dy).toBe(0);
+    expect(positions).toEqual({});
+    expect(onNodeMoved).not.toHaveBeenCalled();
+  });
+
+  it('two copies of a zone moved together are one move of the zone', async () => {
+    const onNodesMoved = vi.fn();
+    const { container } = render(
+      <DiagramView model={sharedPlan()} plane="plan" notation="plan" grouped mode="edit" edit={{ onNodesMoved }} />,
+    );
+    await settle(container, platCopy);
+    const a = nodeOf(payCopy);
+    const b = nodeOf(platCopy);
+    const dx = 3 * PLAN_LAYOUT.DAY;
+    act(() =>
+      dragCapture.props['onNodesChange']([
+        { type: 'position', id: payCopy, position: { x: a.position.x + dx, y: a.position.y }, dragging: true },
+        { type: 'position', id: platCopy, position: { x: b.position.x + dx, y: b.position.y }, dragging: true },
+      ]),
+    );
+    act(() =>
+      dragCapture.props['onNodeDragStop']({ clientX: 0, clientY: 0 }, nodeOf(payCopy), [
+        nodeOf(payCopy),
+        nodeOf(platCopy),
+      ]),
+    );
+    expect(onNodesMoved).toHaveBeenCalledTimes(1);
+    const deltas = onNodesMoved.mock.calls[0]![1];
+    expect(Object.keys(deltas)).toEqual(['checkout']);
+    expect(deltas.checkout.dx).toBeCloseTo(dx);
+  });
+
+  it('resizing a copy resizes the zone', async () => {
+    const onResize = vi.fn();
+    const { container } = render(
+      <DiagramView model={sharedPlan()} plane="plan" notation="plan" grouped mode="edit" edit={{ onResize }} />,
+    );
+    await settle(container, platCopy);
+    const data = nodeOf(platCopy).data;
+    const { x } = nodeOf(platCopy).position;
+    act(() => data['onResize'](platCopy, 400, 40, { x, y: 999 }));
+    expect(onResize).toHaveBeenCalledWith('checkout', 400, 40, expect.objectContaining({ x }));
+  });
+
+  it('the layout api answers for the zone, not its copies', async () => {
+    const apiRef: { current: LayoutApi | null } = { current: null };
+    const { container } = render(
+      <DiagramView model={sharedPlan()} plane="plan" notation="plan" grouped layoutApiRef={apiRef} />,
+    );
+    await settle(container, platCopy);
+    const snapshot = apiRef.current!.snapshotPositions();
+    expect(Object.keys(snapshot)).toContain('checkout');
+    expect(Object.keys(snapshot).some((id) => id.startsWith('__lane__'))).toBe(false);
+    expect(snapshot['checkout']).toEqual(nodeOf(payCopy).position);
+    expect(apiRef.current!.nodeBounds('checkout')).toBeDefined();
   });
 });

@@ -4,6 +4,7 @@ import { isNodeRef, soleRelation, type CompiledView } from '@diagc/core/internal
 import { reconnectSide } from '../edge/floating';
 import type { LoopHighlight } from '../loops/loop-highlight';
 import type { NoteData } from '../notes/NoteNode';
+import { modelIdOf } from './copy-ids';
 import { noSelection, soleSelection } from './node-copy';
 import { useClickCorrelation } from './useClickCorrelation';
 import type { AddLabelAt } from './useFlowEdges';
@@ -49,10 +50,13 @@ type ClickHandlers = {
  */
 export function useCanvasClicks(input: CanvasClicksInput): ClickHandlers {
   const { props, editing, edit, reactFlow, compiled, enterNode, setLabelEdit } = input;
-  const { selectOnAppearRef, setFixedSideRelation, setAddLabelAt, setSelectedNode, loopHighlight } = input;
+  const { setFixedSideRelation, setAddLabelAt, setSelectedNode, loopHighlight } = input;
   // Which end a reconnect drag grabbed ('source'/'target'), captured on start so
   // onReconnect can tell a same-node side change from a move to another node.
   const reconnectEndRef = useRef<'source' | 'target' | null>(null);
+  // Everything reported is a model id: a lane copy (a grouped plan) stands
+  // for its zone, and ungrouped this is the identity.
+  const real = (id: string): string => modelIdOf(compiled.copies, id);
   // Double-click-to-enter / double-click-to-add-label are detected from click
   // events (see useClickCorrelation): the correlation protocol, its window
   // predicate, and the pane fall-through guards all live in that one hook so
@@ -68,27 +72,7 @@ export function useCanvasClicks(input: CanvasClicksInput): ClickHandlers {
     setAddLabelAt({ edgeId, x: fp.x, y: fp.y });
   };
 
-  // Multi-selection report. The prop is read through a ref and deduped by
-  // contents: React Flow's SelectionListener has the callback in its effect
-  // deps, so an inline host callback would otherwise fire it every render —
-  // and a host that stores the array would then re-render forever.
-  const onMultiSelectRef = useRef(props.onMultiSelect);
-  onMultiSelectRef.current = props.onMultiSelect;
-  const lastMultiRef = useRef<string[]>([]);
-  const onSelectionChange = useCallback(({ nodes }: { nodes: Node[] }) => {
-    const ids = nodes.map((n) => n.id);
-    const last = lastMultiRef.current;
-    if (ids.length === last.length && ids.every((id, i) => id === last[i])) return;
-    lastMultiRef.current = ids;
-    // A genuine selection change supersedes a label request still waiting for
-    // its node to be laid out: the user clicked elsewhere in that window, and
-    // the claim must not yank the ring back when the node lands. (The claim's
-    // own consumption reaches here too, but only after it has been cleared.)
-    selectOnAppearRef.current = null;
-    onMultiSelectRef.current?.(ids);
-    /* eslint-disable-next-line react-hooks/exhaustive-deps --
-       selectOnAppearRef is a stable useRef identity from DiagramView, written through .current */
-  }, []);
+  const onSelectionChange = useMultiSelectReport(input);
 
   const onNodeClick = (e: MouseEvent, node: Node) => {
     setFixedSideRelation(null);
@@ -110,6 +94,8 @@ export function useCanvasClicks(input: CanvasClicksInput): ClickHandlers {
       selectNoteTarget(input, node);
       return;
     }
+    // a node nothing acts on (a lane header, profile.node.inert) answers nothing
+    if (node.selectable === false) return;
     // an external stub stands in for an off-frame node — clicking it drills there
     const rep = compiled.externals?.get(node.id);
     if (rep !== undefined) {
@@ -122,19 +108,20 @@ export function useCanvasClicks(input: CanvasClicksInput): ClickHandlers {
     // double-click correlation.
     if (!editing && (e.ctrlKey || e.metaKey) && props.onCompareSelect !== undefined) {
       corr.clearNodeClick();
-      props.onCompareSelect(node.id);
+      props.onCompareSelect(real(node.id));
       return;
     }
     // both modes: focus this node's neighborhood; view mode also filters badges
-    setSelectedNode(node.id);
-    props.onSelect?.({ kind: 'node', id: node.id });
+    // a copy focuses, selects and opens its zone
+    setSelectedNode(real(node.id));
+    props.onSelect?.({ kind: 'node', id: real(node.id) });
     // A shift-click grows the multi-selection (React Flow's job) and must
     // never count toward the view-mode drill double-click. Otherwise a
     // second click (detail>=2) on the SAME node within the window is a
     // double-click → enter it; the detail check separates it from a
     // click-then-click-elsewhere, which stays detail 1.
     if (editing || e.shiftKey) corr.clearNodeClick();
-    else if (corr.consumeNodeDrill(node.id, e, e.detail)) enterNode(node.id);
+    else if (corr.consumeNodeDrill(node.id, e, e.detail)) enterNode(real(node.id));
     else corr.recordNodeClick(node.id, e);
   };
 
@@ -145,7 +132,9 @@ export function useCanvasClicks(input: CanvasClicksInput): ClickHandlers {
     // threat row instead (NoteNode) — so it is excluded here, or the
     // rename box would open on a `note:` id no node answers to. By type,
     // so a model node called `note:x` still renames.
-    if (editing && node.type !== 'note') setLabelEdit({ kind: 'node', id: node.id });
+    // A copy renames in its own box (the canvas id), and the commit names the
+    // zone (build-data's bindLabelEdit).
+    if (editing && node.type !== 'note' && node.selectable !== false) setLabelEdit({ kind: 'node', id: node.id });
   };
 
   const onReconnectStart = (_e: MouseEvent, _edge: Edge, handleType: 'source' | 'target') => {
@@ -158,7 +147,7 @@ export function useCanvasClicks(input: CanvasClicksInput): ClickHandlers {
   };
   const onConnect = (conn: Connection) => {
     if (conn.source !== null && conn.target !== null)
-      edit?.onConnect?.(conn.source, conn.target, conn.sourceHandle, conn.targetHandle);
+      edit?.onConnect?.(real(conn.source), real(conn.target), conn.sourceHandle, conn.targetHandle);
   };
 
   const onEdgeClick = (e: MouseEvent, edge: Edge) => {
@@ -168,9 +157,10 @@ export function useCanvasClicks(input: CanvasClicksInput): ClickHandlers {
     setFixedSideRelation(editing && soleRel !== undefined ? soleRel : null);
     setSelectedNode(null);
     corr.clearNodeClick(); // an edge click breaks any pending node double-click
+    // an arrow drawn in a lane is the arrow it copies
     props.onSelect?.({
       kind: 'edge',
-      id: edge.id,
+      id: real(edge.id),
       constituentIds: viewEdge?.constituents.map((c) => c.id),
     });
     // Double-click-to-add: detect the SECOND click of a double-click from
@@ -203,7 +193,7 @@ export function useCanvasClicks(input: CanvasClicksInput): ClickHandlers {
     // carrying detail>=2. Drill into that node instead of fit-viewing.
     const nodeId = !editing ? corr.takePaneNodeDrill(e, e.detail) : null;
     if (nodeId !== null) {
-      enterNode(nodeId);
+      enterNode(real(nodeId));
       return;
     }
     if (e.detail === 2) {
@@ -236,6 +226,35 @@ export function useCanvasClicks(input: CanvasClicksInput): ClickHandlers {
     onDelete,
     onSelectionChange,
   };
+}
+
+/** Multi-selection report. The prop is read through a ref and deduped by
+ * contents: React Flow's SelectionListener has the callback in its effect
+ * deps, so an inline host callback would otherwise fire it every render —
+ * and a host that stores the array would then re-render forever. In model
+ * ids: two copies of one zone selected are the zone, once. */
+function useMultiSelectReport(input: CanvasClicksInput): ClickHandlers['onSelectionChange'] {
+  const { selectOnAppearRef } = input;
+  const onMultiSelectRef = useRef(input.props.onMultiSelect);
+  onMultiSelectRef.current = input.props.onMultiSelect;
+  // render-phase, as the callback is bound once
+  const copiesRef = useRef(input.compiled.copies);
+  copiesRef.current = input.compiled.copies;
+  const lastMultiRef = useRef<string[]>([]);
+  return useCallback(({ nodes }: { nodes: Node[] }) => {
+    const ids = [...new Set(nodes.map((n) => modelIdOf(copiesRef.current, n.id)))];
+    const last = lastMultiRef.current;
+    if (ids.length === last.length && ids.every((id, i) => id === last[i])) return;
+    lastMultiRef.current = ids;
+    // A genuine selection change supersedes a label request still waiting for
+    // its node to be laid out: the user clicked elsewhere in that window, and
+    // the claim must not yank the ring back when the node lands. (The claim's
+    // own consumption reaches here too, but only after it has been cleared.)
+    selectOnAppearRef.current = null;
+    onMultiSelectRef.current?.(ids);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps --
+       selectOnAppearRef is a stable useRef identity from DiagramView, written through .current */
+  }, []);
 }
 
 /** A note's click selects the element it is about: a box, or a flow. */
@@ -289,7 +308,8 @@ function reportReconnect(
     },
     relation,
   );
-  edit?.onReconnect?.(relation.id, conn.source, conn.target, endSide);
+  const real = (id: string) => modelIdOf(compiled.copies, id);
+  edit?.onReconnect?.(relation.id, real(conn.source), real(conn.target), endSide);
 }
 
 /** edit mode: a double-click on empty canvas drops a node there; view mode
@@ -307,7 +327,7 @@ function paneDoubleClick(input: CanvasClicksInput, e: MouseEvent): void {
 /** what the delete key removes: the selected nodes, and the relations of the
  * edges selected explicitly */
 function reportDelete(input: CanvasClicksInput, { nodes, edges }: { nodes: Node[]; edges: Edge[] }): void {
-  const nodeIds = nodes.map((n) => n.id);
+  const nodeIds = [...new Set(nodes.map((n) => modelIdOf(input.compiled.copies, n.id)))];
   // Only explicitly selected edges translate to relation deletes:
   // edges React Flow cascade-deletes alongside a node are pruned
   // model-side by delete-node already, and a bundled edge maps to

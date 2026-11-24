@@ -1,5 +1,6 @@
 import { useLayoutEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import type { Node } from '@xyflow/react';
+import { boxOf } from './copy-ids';
 import type { Positions } from './useNudge';
 
 export interface NodeResyncInput {
@@ -30,9 +31,10 @@ export function useNodeResync(input: NodeResyncInput): void {
     // it the selection, so the ring and the quick-add button land on the box the caret
     // is in. Read before the updater so the ref is cleared exactly once.
     // The claim is still checked against the BOXES: a label request always names
-    // a model node, and a note is never one of them.
+    // a model node, and a note is never one of them — drawn, in a grouped plan,
+    // as a lane copy, which is then the box that takes it (boxOf).
     const claim = selectOnAppearRef.current;
-    const claimed = claim !== null && derivedNodes.some((n) => n.id === claim) ? claim : null;
+    const claimed = claim !== null ? (boxOf(derivedNodes, claim) ?? null) : null;
     if (claimed !== null) selectOnAppearRef.current = null;
     setRfNodes((prev) => {
       const selected =

@@ -1,9 +1,10 @@
 import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import type { Node } from '@xyflow/react';
-import { isActivityBand, type Point } from '@diagc/core/internal';
+import { isActivityBand, type CompiledView, type Point } from '@diagc/core/internal';
 import { savedPositions, type Shift } from '../layout/fit-containers';
 import type { NodeGeometry } from '../layout/layout';
 import type { Positions } from './useNudge';
+import { laneRows, modelMoves } from './copy-ids';
 import { savedX, toSaved } from './saved-frame';
 import type { EditingApi } from './view-types';
 
@@ -22,6 +23,8 @@ export interface CommitMovesInput {
   savedFrameRef: MutableRefObject<ReadonlyMap<string, Point>>;
   /** drawn px per saved px on x (a stretched plan's day width; see saved-frame.ts) */
   scaleRef?: MutableRefObject<number>;
+  /** the view on screen: a grouped plan's copies are reported as their zones */
+  compiledRef?: MutableRefObject<Pick<CompiledView, 'copies' | 'lanes'>>;
   setViewPositions: Dispatch<SetStateAction<Record<string, Point>>>;
 }
 
@@ -48,6 +51,7 @@ export function useCommitMoves(input: CommitMovesInput): (onScreen: Positions) =
     viewShiftRef,
     savedFrameRef,
     scaleRef,
+    compiledRef,
     setViewPositions,
   } = input;
   return useCallback(
@@ -66,7 +70,7 @@ export function useCommitMoves(input: CommitMovesInput): (onScreen: Positions) =
       // both sides): a notation that derives positions reads this, not the
       // position — a plan zone's days are its dx
       const arranged = arrangedRef.current;
-      const deltas = Object.fromEntries(
+      const canvasDeltas = Object.fromEntries(
         Object.entries(drawn).map(([id, pos]) => {
           const g = arranged?.get(id);
           return [id, g === undefined ? { dx: 0, dy: 0 } : { dx: savedX({ scaleRef }, pos.x - g.x), dy: pos.y - g.y }];
@@ -76,16 +80,23 @@ export function useCommitMoves(input: CommitMovesInput): (onScreen: Positions) =
       // day (saved-frame.ts) — the displacement too, so a plan reads its days
       // off it at the width it saves in
       const frames = { savedFrameRef, viewShiftRef, ...(scaleRef !== undefined ? { scaleRef } : {}) };
-      const positions = Object.fromEntries(Object.entries(drawn).map(([id, p]) => [id, toSaved(frames, id, p)]));
+      const onCanvas = Object.fromEntries(Object.entries(drawn).map(([id, p]) => [id, toSaved(frames, id, p)]));
+      // ...and in model ids: a lane copy is its zone, a lane's row reports its
+      // days and no position (copy-ids.ts modelMoves). The identity ungrouped.
+      const view = compiledRef?.current;
+      const { positions, deltas } =
+        view === undefined
+          ? { positions: onCanvas, deltas: canvasDeltas }
+          : modelMoves(view.copies, laneRows(view), onCanvas, canvasDeltas);
       if (editing) {
         if (edit?.onNodesMoved !== undefined) edit.onNodesMoved(positions, deltas);
         else for (const [id, pos] of Object.entries(positions)) edit?.onNodeMoved?.(id, pos);
       } else {
-        setViewPositions((p) => ({ ...p, ...positions }));
+        if (Object.keys(positions).length > 0) setViewPositions((p) => ({ ...p, ...positions }));
       }
     },
     /* eslint-disable-next-line react-hooks/exhaustive-deps --
-       the six refs and setViewPositions are stable useRef/useState identities from DiagramView's hooks, read
+       the refs and setViewPositions are stable useRef/useState identities from DiagramView's hooks, read
        at gesture time */
     [editing, edit],
   );

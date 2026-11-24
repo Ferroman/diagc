@@ -103,11 +103,13 @@ interface MoveScene {
   plane: string | undefined;
 }
 
-/** One node of the gesture: where it was let go, how far it went, and its parent zone's span. */
+/** One node of the gesture: where it was let go, how far it went, and its
+ * parent zone's span. No `pos` for a node the view drew somewhere that is not
+ * its own (a grouped plan's lane row): its days move, its place does not. */
 interface Move {
   id: string;
   node: DiagramNode;
-  pos: Point;
+  pos?: Point;
   delta: MoveDelta;
   outer: PlanSpan | undefined;
 }
@@ -116,6 +118,7 @@ interface Move {
  * at `pos.x`, clamped into the parent's span when nested; a root zone still
  * gets the position it would normally get, so its y sticks. */
 function datelessZoneMove({ g, origin, plane }: MoveScene, { id, pos, outer }: Move): EditorCommand[] {
+  if (pos === undefined) return []; // nowhere of its own to take dates from
   const base = outer?.start ?? origin;
   let start = base + Math.round(pos.x / DAY);
   let end = start + ZONE_DAYS - 1;
@@ -165,7 +168,7 @@ function zoneMove(scene: MoveScene, move: Move, shifted: Set<string>): EditorCom
   // a nested zone whose parent's dates are unusable has no parent SPAN
   // either, and writing it a position only litters the layout file with a
   // coordinate the arrangement overrides anyway.
-  if (!g.parent.has(id)) {
+  if (!g.parent.has(id) && pos !== undefined) {
     out.push({
       type: 'set-position',
       nodeId: id,
@@ -195,15 +198,18 @@ function eventMove({ id, node, delta, outer }: Move): EditorCommand[] {
  * floor the layout clamps its saved position by on read — `g.parent.has(id)` is
  * what tells the two apart, the same test the zone move uses.
  */
-function freeMove({ g, plane }: MoveScene, { id, pos }: Move): EditorCommand {
+function freeMove({ g, plane }: MoveScene, { id, pos }: Move): EditorCommand[] {
+  if (pos === undefined) return [];
   const nested = g.parent.has(id);
-  return {
-    type: 'set-position',
-    nodeId: id,
-    x: nested ? Math.max(0, pos.x) : pos.x,
-    y: nested ? Math.max(TITLE_H, pos.y) : pos.y,
-    ...planeOpt(plane),
-  };
+  return [
+    {
+      type: 'set-position',
+      nodeId: id,
+      x: nested ? Math.max(0, pos.x) : pos.x,
+      y: nested ? Math.max(TITLE_H, pos.y) : pos.y,
+      ...planeOpt(plane),
+    },
+  ];
 }
 
 /**
@@ -219,7 +225,9 @@ function freeMove({ g, plane }: MoveScene, { id, pos }: Move): EditorCommand {
  * y sticks. People never move: the roster is a list, and a person is refused
  * outright here (planLayout also marks it `fixed`, so no gesture reaches it
  * anyway). Any other node — a stray, or a zone's "other" child — keeps its
- * drop point, clamped to the layout's floor when nested (see freeMove).
+ * drop point, clamped to the layout's floor when nested (see freeMove). A
+ * node with a displacement and no position (a grouped plan's lane row: one
+ * zone, drawn at several lanes' y) moves by its days and saves no place.
  * Returns undefined when the gesture changes nothing, so a no-op never reaches
  * undo.
  */
@@ -236,19 +244,21 @@ export function planMoves(
   const shifted = new Set<string>();
   // parents before children (a child inside a moved parent's subtree is done);
   // a descending sort keeps gesture order among equals, where reverse() would not
-  const ids = Object.keys(positions).sort((a, b) => planSubtree(g, b).length - planSubtree(g, a).length);
+  const ids = [...new Set([...Object.keys(positions), ...Object.keys(deltas)])].sort(
+    (a, b) => planSubtree(g, b).length - planSubtree(g, a).length,
+  );
   for (const id of ids) {
     const node = byId.get(id);
     const pos = positions[id];
     const delta = deltas[id];
-    if (node === undefined || pos === undefined || delta === undefined || shifted.has(id)) continue;
-    const move: Move = { id, node, pos, delta, outer: parentSpan(g, byId, id) };
+    if (node === undefined || delta === undefined || shifted.has(id)) continue;
+    const move: Move = { id, node, ...(pos !== undefined ? { pos } : {}), delta, outer: parentSpan(g, byId, id) };
     if (isPlanZone(node)) out.push(...zoneMove(scene, move, shifted));
     else if (isPlanEvent(node)) out.push(...eventMove(move));
     // An actor is excluded HERE, not left to the layout's `fixed` set: the
     // roster is a list, and "an actor never moves" is this function's own
     // contract, not a fact it borrows from whoever arranged the canvas.
-    else if (!isPlanActor(node)) out.push(freeMove(scene, move));
+    else if (!isPlanActor(node)) out.push(...freeMove(scene, move));
   }
   return out.length === 0 ? undefined : { type: 'batch', commands: out };
 }

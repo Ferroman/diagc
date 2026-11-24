@@ -69,6 +69,17 @@ describe('planMoves', () => {
       plane: 'plan',
     });
   });
+  it('a displacement with no position (a grouped lane row) moves the days and writes no position', () => {
+    // a team lane draws the zone at the lane's y, not its own: the renderer
+    // reports the days only, so the zone's saved y — or its having none — stands
+    const c = planMoves(roadmap(), 'plan', {}, { q1: { dx: 7 * DAY, dy: 0 } });
+    expect(dates(c)[0]).toEqual({
+      type: 'set-plan-dates',
+      id: 'q1',
+      dates: { start: shift('2026-01-05', 7), end: shift('2026-03-27', 7) },
+    });
+    expect(commands(c).some((x) => x.type === 'set-position')).toBe(false);
+  });
   it('a vertical move of a top-level zone changes no dates but still saves y', () => {
     const c = planMoves(roadmap(), 'plan', { q1: { x: 0, y: 120 } }, { q1: { dx: 3, dy: 120 } });
     expect(dates(c)).toEqual([]);

@@ -14,7 +14,10 @@ export interface NodeFrameContext {
 }
 
 /** How React Flow frames one box: whether it drags, how it keeps to its parent, how it is sized. */
-export type NodeFrame = Pick<RfNodeInput, 'draggable' | 'className' | 'expandParent' | 'extent' | 'style' | 'zIndex'>;
+export type NodeFrame = Pick<
+  RfNodeInput,
+  'draggable' | 'selectable' | 'className' | 'expandParent' | 'extent' | 'style' | 'zIndex'
+>;
 
 /** The frame of the box `n` draws, laid out at `geo` inside `parent` (undefined at the top). */
 export function nodeFrameProps(
@@ -41,6 +44,8 @@ export function nodeFrameProps(
     // for it.
     draggable: dragLocked ? false : undefined,
     className: dragLocked && ctx.editing ? 'nopan' : undefined,
+    // a node nothing acts on (a lane header) is never selected either
+    ...(ctx.profile.node?.inert?.(n.node) === true ? { selectable: false as const } : {}),
     ...parentHold(n, parent, ctx),
     ...frameSize(n, geo, ctx),
   };

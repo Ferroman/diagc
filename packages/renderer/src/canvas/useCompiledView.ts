@@ -122,7 +122,8 @@ export function useCompiledView(input: CompiledViewInput): CompiledViewState {
   useEffect(() => {
     const ids: string[] = [];
     const walk = (n: ViewNode) => {
-      ids.push(n.id);
+      // as model ids: a plane switch maps what was shown, and a lane copy shows its zone
+      ids.push(compiled.copies?.get(n.id) ?? n.id);
       n.children.forEach(walk);
     };
     compiled.roots.forEach(walk);
