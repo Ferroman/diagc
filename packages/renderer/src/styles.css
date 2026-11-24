@@ -2413,10 +2413,12 @@ path.dg-loop-badge-circle {
 .dg-notation-plan .dg-group[data-type='plan-zone'] > .dg-group-header {
   position: relative;
 }
-/* A plan period in the header (PlanPeriodBody): a bracket over its days, on the
-   line the root events sit on — a line with a tick down at each end, no fill,
-   since it is a stretch of the calendar and not work — with its name on the
-   line, on the canvas colour so the line breaks around it. */
+/* A plan period in the header (PlanPeriodBody): a bracket over its days — a
+   line on the boundary the root events sit on, a tick down at each end into
+   the week band, no fill, since it is a stretch of the calendar and not work —
+   with its name just above the line, as an event's beside its diamond. Above,
+   not on it: a short period's name is wider than its days, and on the line it
+   covered both ticks. */
 .dg-period-node {
   position: relative;
   background: none;
@@ -2443,11 +2445,9 @@ path.dg-loop-badge-circle {
 .dg-period-name {
   position: absolute;
   left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  padding: 0 4px;
+  bottom: calc(50% + 2px);
+  transform: translateX(-50%);
   white-space: nowrap;
-  background: var(--dg-canvas-bg, var(--dg-bg));
   color: var(--dg-text);
   font:
     600 11px/1.2 system-ui,

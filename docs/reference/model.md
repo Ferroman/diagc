@@ -451,14 +451,15 @@ A plane with `notation: 'plan'` is a schedule: a calendar runs left to right and
 | --- | --- | --- |
 | `plan-zone` | a rounded bar tinted with the node's `color`, a thick left edge, title top-left, role chips after the title; `(end − start + 1)` days wide | A phase or work item. A container: what it contains is scheduled in it — nested zones one row each (by start date) and events in its title strip, both automatic; any other node (a scheduled C4 container, a plain box) is free-form instead, wrapped into rows only until it is dragged, and stays wherever it is put after that. Starts open; folds into one bar on its dates and opens on its own like any container — a viewer gesture, never saved. |
 | `plan-event` | a 16 px diamond, name beside it | A point in time. Top-level events sit in the header, on the line between its month and week rows, with a dashed rule down the chart. |
+| `plan-period` | a bracket over its days in the header, on the events' line, name on it; no row | Days in which planned work pauses — a holiday freeze, an offsite. Each zone it `interrupts` is hatched over those days (clipped to the zone's own span; a nested zone only if it is named too). One that interrupts nothing pauses everyone: the chart is shaded over its days, under the bars. Changes no date. Shown and selectable in the studio; not dragged. |
 | `person` | the ordinary pill | An individual actor. Listed in a roster strip above the header (left to right, wrapping into further rows); attached to zones by role relations, never containment. |
 | `team` | the ordinary pill, a `users` icon | A group actor — same deal as `person`, drawn in the same roster and holding roles the same way, for when a role belongs to a team rather than one individual. |
 
-Relation kinds `owns`, `executes`, `checks` — drawn **from the actor (a person or a team) to the zone**, never as arrows: each becomes a chip on the zone (`O·Alice`, `E·Bob`, `C·Chen`; hover for the full name). Any other kind between zones (`sync`, …) draws as a dependency arrow.
+Relation kinds `owns`, `executes`, `checks` — drawn **from the actor (a person or a team) to the zone**, never as arrows: each becomes a chip on the zone (`O·Alice`, `E·Bob`, `C·Chen`; hover for the full name). Kind `interrupts` runs **from a period to a zone** and is never an arrow either: it is the hatch on the bar. Any other kind between zones (`sync`, …) draws as a dependency arrow.
 
 | Metadata key | On | Value |
 | --- | --- | --- |
-| `start`, `end` | `plan-zone` | `YYYY-MM-DD`; `end` inclusive; `end ≥ start` |
+| `start`, `end` | `plan-zone`, `plan-period` | `YYYY-MM-DD`; `end` inclusive; `end ≥ start` |
 | `at` | `plan-event` | `YYYY-MM-DD` |
 
 Dates live in `metadata` (the git-graph `from`/`to` pattern) so a zone is an ordinary node everywhere else. The x origin is 1 January of the earliest year in the plan; the header extends a week either side of the dated range. It has three rows — months, ISO weeks, and days (weekday letter over day of the month) — with weekends shaded down the chart and, on a page or in the studio, today's day marked.
@@ -590,10 +591,11 @@ The compiler prints them, and the notation's panel lists them.
 | `sm-unreachable` | *Warning.* A state that no path from an initial reaches. A machine with no initial is not checked. |
 | `sm-transition-label` | *Warning.* A transition with a `label` and also a trigger, guard or effect; the parts are drawn and the label is ignored. |
 | `plan-date` | A `start`, `end` or `at` is present but is not a real `YYYY-MM-DD` date. |
-| `plan-missing` | A `plan-zone` lacks `start` or `end`; a `plan-event` lacks `at`. |
-| `plan-span` | A zone's `end` is before its `start`. |
+| `plan-missing` | A `plan-zone` or `plan-period` lacks `start` or `end`; a `plan-event` lacks `at`. |
+| `plan-span` | A zone's or a period's `end` is before its `start`. |
 | `plan-nested` | A zone or event contained in a zone (on the plan plane) lies outside that zone's span. |
 | `plan-role-target` | On a plan, a relation of kind `owns` / `executes` / `checks` points at something that is not a `plan-zone`. |
+| `plan-interrupts` | On a plan, a relation of kind `interrupts` does not run from a `plan-period` to a `plan-zone`. |
 | `invalid-threats` | `threats` is not a list, or an entry is not an object. The per-threat checks below are skipped for that element. |
 | `threat-id` | A threat has no `id`, or repeats one already used on the same element. |
 | `threat-title` | A threat has no `title`. |

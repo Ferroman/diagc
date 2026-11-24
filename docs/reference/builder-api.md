@@ -434,6 +434,8 @@ Declares a plan (schedule) plane — always a plane, id `plan` by default, name 
 | --- | --- | --- |
 | `plan.zone(id, opts)` | `ZoneBuilder` | A top-level zone (`plan-zone`). `opts` = [`m.node`](#mnodeid-opts--noderef)'s options minus `type`/`plane`/`metadata`, plus **required** `start` and `end` (`YYYY-MM-DD`, `end` inclusive). |
 | `plan.event(id, opts)` | `NodeRef` | A top-level event (`plan-event`); `opts` as above with **required** `at`. |
+| `plan.period(id, opts)` | `PeriodBuilder` | A period (`plan-period`): days in which planned work pauses. `opts` as for a zone (**required** `start` and `end`), plus `interrupts?: NodeRef[]`, the zones it pauses. Top-level only. |
+| `period.interrupts(...zones)` | `period` | One `interrupts` relation `period → zone` per zone. A period that interrupts nothing pauses everyone. |
 | `plan.person(id, name?, opts?)` | `NodeRef` | A `person` node on the plan plane. |
 | `plan.team(id, name?, opts?)` | `NodeRef` | A `team` node on the plan plane — an actor like `person`, for a role that belongs to a group rather than one individual. |
 | `zone.zone(id, opts)` | `ZoneBuilder` | A nested zone, contained on the plan plane. |
@@ -441,15 +443,15 @@ Declares a plan (schedule) plane — always a plane, id `plan` by default, name 
 | `zone.contains(...refs)` | `zone` | Schedules any nodes inside the zone (containment on the plan plane). |
 | `zone.owner(ref)` / `zone.executor(ref)` / `zone.checker(ref)` | `zone` | A role relation `ref → zone` of kind `owns` / `executes` / `checks`; ids follow the `from->to#n` scheme. |
 
-A `ZoneBuilder` is a `NodeRef`, so `.comment()`, `.link()` and `.threat()` chain on it.
+A `ZoneBuilder` is a `NodeRef`, so `.comment()`, `.link()` and `.threat()` chain on it; so is a `PeriodBuilder`.
 
 ```ts
 const m = model('launch');
 const plan = m.plan();
 const alice = plan.person('alice', 'Alice Ng');
-plan.zone('build', { name: 'Build', start: '2026-01-26', end: '2026-03-06' })
-  .owner(alice)
-  .zone('api', { name: 'API', start: '2026-01-26', end: '2026-02-13' });
+const build = plan.zone('build', { name: 'Build', start: '2026-01-26', end: '2026-03-06' }).owner(alice);
+build.zone('api', { name: 'API', start: '2026-01-26', end: '2026-02-13' });
+plan.period('freeze', { name: 'Release freeze', start: '2026-02-09', end: '2026-02-13' }).interrupts(build);
 ```
 
 ## `m.legend(opts?) → m`
