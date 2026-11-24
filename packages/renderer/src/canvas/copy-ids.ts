@@ -2,11 +2,14 @@ import type { Node } from '@xyflow/react';
 import type { CompiledView, DiagramNode, Point } from '@diagc/core/internal';
 import { isNoteId } from '../notes/note-id';
 
-// A grouped plan draws one zone as several boxes, a copy per team lane, each
-// under its own canvas id (CompiledView.copies maps it back). The host only
-// ever hears model ids, so every path that reads a canvas id and reports it
-// goes through here; ungrouped there is no map and each is the identity.
-// Copy ids are looked up, never parsed.
+// A grouped plan draws one zone as several boxes, a copy per team lane, and
+// a plan's roster draws a person in several teams as a badge in each team's
+// frame, grouped or not: each copy under its own canvas id
+// (CompiledView.copies maps it back). The host only ever hears model ids, so
+// every path that reads a canvas id and reports it goes through here; with no
+// map each is the identity. A map is no sign of grouping — an ungrouped plan
+// with badge copies has one — so a path that must tell grouped from not reads
+// `lanes` or `pinnedRows`. Copy ids are looked up, never parsed.
 
 type Copies = ReadonlyMap<string, string> | undefined;
 

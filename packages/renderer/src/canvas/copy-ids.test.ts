@@ -119,6 +119,21 @@ describe('modelMoves', () => {
     expect(modelMoves(undefined, new Set(), positions, deltas)).toEqual({ positions, deltas });
   });
 
+  it("ungrouped with a roster's badge copies (a map, no rows), a zone reports its place and days as ever", () => {
+    // planRoster: Ben's badge in Platform is a copy, so the ungrouped view carries a map
+    const badges = new Map([['__lane__:plat:ben', 'ben']]);
+    const positions = { app: { x: 240, y: 340 }, stray: { x: 1, y: 2 } };
+    const deltas = { app: { dx: 0, dy: 40 }, stray: { dx: 1, dy: 2 } };
+    expect(modelMoves(badges, new Set(), positions, deltas)).toEqual({ positions, deltas });
+  });
+
+  it('a badge copy reports as the person it draws', () => {
+    const badges = new Map([['__lane__:plat:ben', 'ben']]);
+    expect(
+      modelMoves(badges, new Set(), { '__lane__:plat:ben': { x: 5, y: 6 } }, { '__lane__:plat:ben': { dx: 5, dy: 6 } }),
+    ).toEqual({ positions: { ben: { x: 5, y: 6 } }, deltas: { ben: { dx: 5, dy: 6 } } });
+  });
+
   it('a row copy keeps its days and loses its position: its lane y is no row of the zone', () => {
     const out = modelMoves(
       copies,

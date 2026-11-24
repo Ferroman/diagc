@@ -2976,7 +2976,7 @@ describe('plan notation: stretching time', () => {
         const frame = rfNode(container, 'pay')!;
         expect(frame.querySelector('.dg-roster-frame-header')?.textContent).toContain('Payments');
         expect(rfNode(container, 'plat')?.querySelector('.dg-roster-frame-header')?.textContent).toContain('Platform');
-        expect(frame.style.zIndex).toBe('-1');
+        expect(Number(frame.style.zIndex)).toBeLessThan(Number(rfNode(container, 'alice')!.style.zIndex || 0));
       });
     }
 

@@ -3,6 +3,7 @@ import { ACTIVITY_LANE_TYPE, GIT_STAGE_TYPE, type DiagramNode, type ViewNode } f
 import { notationProfile, type NotationProfile } from '../notations';
 import { createTypeRegistry } from '../registry';
 import { nodeFrameProps, type NodeFrameContext } from './node-frame';
+import { SELECTED_NODE_LIFT } from './stacking';
 
 const geo = { x: 10, y: 20, width: 140, height: 60 };
 const size = { width: 140, height: 60 };
@@ -139,13 +140,14 @@ describe('nodeFrameProps: size', () => {
 });
 
 describe('nodeFrameProps: a plan roster frame', () => {
-  it('is sized to the frame and drawn behind the badges beside it, as an open container is', () => {
+  it('is sized to the frame and drawn behind the badges beside it, selected or not', () => {
     const team = { ...viewNode({ type: 'team' }), id: 'pay' };
     const roster = [{ team: 'pay', members: ['ana'] }];
-    expect(nodeFrameProps(team, geo, undefined, ctx({ profile: owned, roster }))).toMatchObject({
-      style: size,
-      zIndex: -1,
-    });
+    const frame = nodeFrameProps(team, geo, undefined, ctx({ profile: owned, roster }));
+    expect(frame).toMatchObject({ style: size });
+    // React Flow lifts a selected node by SELECTED_NODE_LIFT; the badges are
+    // roots at 0 beside it, not its children, so lifted it must still be under 0
+    expect(frame.zIndex! + SELECTED_NODE_LIFT).toBeLessThan(0);
     // a team heading no frame keeps a card's sizing
     expect(nodeFrameProps(team, geo, undefined, ctx({ profile: owned, roster: [] })).zIndex).toBeUndefined();
   });
